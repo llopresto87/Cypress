@@ -1,0 +1,406 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "name": "cypress",
+  "fullName": "Contextual Yield Protocol for Routed Expert Seed Systems",
+  "version": "6.8.0",
+  "supersedes": "general_expert_prompts@1.0.0",
+  "created": "2026-05-23",
+  "description": "CYPRESS (Contextual Yield Protocol for Routed Expert Seed Systems) — a project-agnostic multi-agent seed for single- or multi-repository programs. As of 6.0.0 it is a pure graph system: the entire method surface — protocols, skills, agent charters, method/posture nodes, and template artifacts — installs INTO the plant's unified docs/graph/ as seed-owned routable nodes (origin: seed), activated progressively by the router; the always-loaded kernel is a small bootstrap (identity, tiers, rule anchors, boundaries), and tool directories hold only harness projections (agents, skills). Its tool-neutral INSTALL_PROMPT.md keeps user chat in orchestration/planning, dispatches Sonnet-class read-only scouts and Opus-class authors/reviewers, and grows the graph without building the application or publishing Git state.",
+  "principles": [
+    "Risk-proportional tiers: every task is classified T0 (question) / T1 (trivial non-behavioral edit, in-session) / T2 (spec-covered change, minimal workers) / T3 (spec-bearing work, full funnel) before acting; process depth follows the tier, misclassifying down is the violation, escalating up is normal.",
+    "Spec-driven: every behavior has an executable spec in docs/graph/specs/.",
+    "Test-driven: RED-GREEN-REFACTOR-COMMIT authorizes every code change; on untested code, characterize first.",
+    "Unified graph: ALL maintained knowledge lives below docs/graph/ — project facts AND the method surface (protocol/skill/agent/method nodes, origin: seed). Tier 1 routes, Tier 2 owns facts (machinery included), Tier 3 provides source-backed depth and template artifacts. Load minimally; declare what you skip; connect every leaf; one home per fact. The kernel is a bootstrap: nothing about how to work is always-loaded except identity, tiers, the eight rule anchors, and the boundaries.",
+    "Integrate, don't patch: the unit of work is the whole file; delete and consolidate rather than bolt on.",
+    "Plan-of-record: docs/graph/plans/grill.md is updated continuously, never silently rewritten.",
+    "Synthetic data only: never source test/demo data from production.",
+    "Scale-agnostic: the same method governs a single repo or a program of several.",
+    "Tool-agnostic: the same kernel runs in Claude Code, opencode, Codex, and Copilot.",
+    "Toolcraft: when an operation recurs across sessions, build a durable, tested tool and catalog it in docs/graph/tools/; never reinvent throwaway scripts.",
+    "Minimum sufficient work: produce the smallest body of work that reliably delivers the required result — every operation serves a named decision, effort scales with uncertainty and consequence (the tiers), structure/artifacts/delegation earn their lifecycle rent, and work stops when the result is sufficiently trusted. Depth in docs/graph/method/engineering-posture.md; grow, graft, and harvest each audit their own additions against it.",
+    "Design for responsibility: give each part one coherent responsibility, keep cohesive things together, and point dependencies at stable contracts rather than volatile detail — but prefer the smallest structure that fits; correct separation is the goal, never maximum. Structure is named at plan time (grill §9) and audited at review. Depth in docs/graph/method/design-posture.md."
+  ],
+  "kernel": {
+    "core/AGENTS.md": "Bootstrap kernel — the ONLY always-loaded instruction file, read on every session by every supported tool: identity, first move (the router), tier table, the eight rule anchors, boundaries. Full statements live in the graph machinery nodes.",
+    "core/method/tiers.md": "method.tiers node — tier depth, hard edges, execution paths. Installed to docs/graph/method/.",
+    "core/method/delegation.md": "method.delegation node — roster, mechanical routing, model classes, delegation bounds, brief discipline. Installed to docs/graph/method/.",
+    "core/method/engineering-posture.md": "method.engineering-posture node — general engineering principles (was operating-principles §1–§12). Installed to docs/graph/method/.",
+    "core/method/design-posture.md": "method.design-posture node — SOLID/responsibility design cluster (was §13–§19). Installed to docs/graph/method/.",
+    "core/method/stewardship-posture.md": "method.stewardship-posture node — records, verification, knowledge, session closure, tools (was §20–§27). Installed to docs/graph/method/."
+  },
+  "agents": [
+    {
+      "file": "agents/00-orchestrator.md",
+      "name": "orchestrator",
+      "role": "First contact, routing, enforces all eight rules."
+    },
+    {
+      "file": "agents/01-architect.md",
+      "name": "architect",
+      "role": "Boundaries, ADRs, spec §4/§6/§7 contracts."
+    },
+    {
+      "file": "agents/02-implementer.md",
+      "name": "implementer",
+      "role": "GREEN-phase code that turns failing tests green."
+    },
+    {
+      "file": "agents/03-reviewer.md",
+      "name": "reviewer",
+      "role": "Audits diffs against spec, plan, wiki, conventions."
+    },
+    {
+      "file": "agents/04-tester.md",
+      "name": "tester",
+      "role": "Spec→test translation, RED phase, eval suites, regression corpus."
+    },
+    {
+      "file": "agents/05-security.md",
+      "name": "security",
+      "role": "Design-time threat models, auth, secrets, supply chain, AI abuse."
+    },
+    {
+      "file": "agents/06-reliability.md",
+      "name": "reliability",
+      "role": "Bring-up from scratch, deploy, observability, rollback, capacity, cost."
+    },
+    {
+      "file": "agents/07-data-ml.md",
+      "name": "data-ml",
+      "role": "Datasets, pipelines, model selection, evaluation, synthetic/example data."
+    },
+    {
+      "file": "agents/08-product.md",
+      "name": "product",
+      "role": "User outcome, flows, accessibility, spec §3/§9 author."
+    },
+    {
+      "file": "agents/09-docs-librarian.md",
+      "name": "docs-librarian",
+      "role": "Owns unified docs/graph health, fact placement, wiki depth, provenance, and catalogs (including the reusable-tool catalog, docs/graph/tools/)."
+    },
+    {
+      "file": "agents/10-research-scout.md",
+      "name": "research-scout",
+      "role": "Internet research, source ingest, optional Context7/DeepWiki bridge."
+    },
+    {
+      "file": "agents/11-pentest.md",
+      "name": "pentest",
+      "role": "Hands-on authorized penetration testing; reproduce, fix, re-verify."
+    },
+    {
+      "file": "agents/12-devils-advocate.md",
+      "name": "devils-advocate",
+      "role": "Hostile pass over a finished claim-bearing deliverable; refutes each load-bearing claim from primary sources, never the working papers. Read-only, advisory."
+    },
+    {
+      "file": "agents/multi-agent-architect.md",
+      "name": "multi-agent-architect",
+      "role": "Agent-topology layer: design/review of agentic systems — delegation bounds, tool contracts, fail-closed gates, evals, cost/latency budgets. Delegator, depth 2."
+    },
+    {
+      "file": "agents/growth-orchestrator.md",
+      "name": "growth-orchestrator",
+      "role": "Growth DNA: conducts grow/adopt/from-scratch — detect shape, dispatch scouts by boundary, sequence authors, gate on knowledge validation. Delegator, depth 2."
+    },
+    {
+      "file": "agents/growth-scout.md",
+      "name": "growth-scout",
+      "role": "Read-only per-boundary evidence gatherer; returns claims tied to paths/symbols for the graph authors. Sonnet leaf."
+    },
+    {
+      "file": "agents/seed-installer.md",
+      "name": "seed-installer",
+      "role": "Additive seed/adapter install via install.sh; preserves target-owned files; verifies the host tool loads the kernel. Opus leaf."
+    }
+  ],
+  "protocols": [
+    {
+      "file": "protocols/grow.md",
+      "name": "grow",
+      "role": "Canonical tool-neutral full-growth workflow with delegated scouts, authors, and validators."
+    },
+    {
+      "file": "protocols/initialize.md",
+      "name": "initialize",
+      "role": "Optional coding-tool adapter to INSTALL_PROMPT.md and grow."
+    },
+    {
+      "file": "protocols/from-scratch.md",
+      "name": "from-scratch",
+      "role": "9-phase project bootstrap."
+    },
+    {
+      "file": "protocols/brainstorm.md",
+      "name": "brainstorm",
+      "role": "Socratic convergence to a precise problem."
+    },
+    {
+      "file": "protocols/specify.md",
+      "name": "specify",
+      "role": "Authoring an executable spec."
+    },
+    {
+      "file": "protocols/grill.md",
+      "name": "grill",
+      "role": "Plan-of-record discipline."
+    },
+    {
+      "file": "protocols/test-first.md",
+      "name": "test-first",
+      "role": "RED-GREEN-REFACTOR-COMMIT cycle."
+    },
+    {
+      "file": "protocols/ingest-library.md",
+      "name": "ingest-library",
+      "role": "Wiki build/refresh."
+    },
+    {
+      "file": "protocols/verify.md",
+      "name": "verify",
+      "role": "Risk-proportional gate discipline: gate depth follows the change's blast radius, from one focused check (T1) to the broad battery (contracts, security, migrations, concurrency)."
+    },
+    {
+      "file": "protocols/recover.md",
+      "name": "recover",
+      "role": "The failure discipline: classify every failure (transient/deterministic/capability/ambiguity/systemic) before reacting, take the single move that class allows, three attempts total, then escalate with evidence. No identical retries of deterministic failures, no silent downgrades; a gate red twice reopens grill."
+    },
+    {
+      "file": "protocols/canonize.md",
+      "name": "canonize",
+      "role": "The single end-of-task close-out spawn (kernel §3.7 + §3.8): ONE docs-librarian brief persists knowledge of interest into the graph AND catalogs durable tools in docs/graph/tools. T0/T1 tasks satisfy it with a one-line self-record in the compact delivery."
+    },
+    {
+      "file": "protocols/toolcraft.md",
+      "name": "toolcraft",
+      "role": "Doctrine (kernel §3.8): defines what counts as a durable, reusable, test-authorized tool vs a disposable one-off. Executes inside the canonize close-out spawn — never a separate spawn."
+    },
+    {
+      "file": "protocols/deliver.md",
+      "name": "deliver",
+      "role": "Session summary: compact form for T0/T1, full cold-pickup form for T2/T3 after the close-out; carries the fail-closed produced_by attribution assertion."
+    },
+    {
+      "file": "protocols/harvest.md",
+      "name": "harvest",
+      "role": "User-triggered-only cross-project meta-loop (never automatic): propose a mature plant's project-agnostic lessons and its reusable library-doc, legal-citation, tool, expert and skill corpora back into the seed for the user to ratify. Standalone entry: HARVEST_PROMPT.md."
+    },
+    {
+      "file": "protocols/graft.md",
+      "name": "graft",
+      "role": "User-decided-only cross-project meta-loop (never automatic): the outward complement of harvest. Carry the enriched seed onto an existing grown plant — three-way-reconcile its seed-owned machinery (kernel, protocols, skills, agents, templates, shared scripts) and refresh its library/legal/tool surfaces from the corpora — additively, reversibly, preserving the plant's own source and authored facts, for the steward to ratify. Standalone entry: GRAFT_PROMPT.md."
+    }
+  ],
+  "skills": [
+    {
+      "file": "skills/knowledge-graph/SKILL.md",
+      "name": "knowledge-graph",
+      "role": "Build/maintain the tiered node graph; dedup; the linter."
+    },
+    {
+      "file": "skills/context-router/SKILL.md",
+      "name": "context-router",
+      "role": "Resolve the minimal node set for a task; declare skips."
+    },
+    {
+      "file": "skills/holistic-editing/SKILL.md",
+      "name": "holistic-editing",
+      "role": "Integrate, don't bolt on; the whole file is the unit of work."
+    },
+    {
+      "file": "skills/validate-knowledge/SKILL.md",
+      "name": "validate-knowledge",
+      "role": "Prove the graph works: clean-context Q&A + enforcement tests."
+    },
+    {
+      "file": "skills/library-wiki/SKILL.md",
+      "name": "library-wiki"
+    },
+    {
+      "file": "skills/research-and-ingest/SKILL.md",
+      "name": "research-and-ingest"
+    },
+    {
+      "file": "skills/spec-author/SKILL.md",
+      "name": "spec-author"
+    },
+    {
+      "file": "skills/test-first/SKILL.md",
+      "name": "test-first"
+    },
+    {
+      "file": "skills/adr-writer/SKILL.md",
+      "name": "adr-writer"
+    },
+    {
+      "file": "skills/grill-planner/SKILL.md",
+      "name": "grill-planner"
+    },
+    {
+      "file": "skills/brainstorm-socratic/SKILL.md",
+      "name": "brainstorm-socratic"
+    },
+    {
+      "file": "skills/from-scratch-bootstrap/SKILL.md",
+      "name": "from-scratch-bootstrap"
+    },
+    {
+      "file": "skills/adopt-existing/SKILL.md",
+      "name": "adopt-existing"
+    }
+  ],
+  "templates": [
+    {
+      "file": "templates/spec.template.md",
+      "produces": "docs/graph/specs/SPEC-NNNN-<slug>.md"
+    },
+    {
+      "file": "templates/grill.template.md",
+      "produces": "docs/graph/plans/grill.md"
+    },
+    {
+      "file": "templates/library-page.template.md",
+      "produces": "docs/graph/libraries/<name>.md"
+    },
+    {
+      "file": "templates/tool-page.template.md",
+      "produces": "docs/graph/tools/<name>.md"
+    },
+    {
+      "file": "templates/adr.template.md",
+      "produces": "docs/graph/decisions/adr-NNNN-<slug>.md"
+    },
+    {
+      "file": "templates/prompt-contract.template.md",
+      "produces": "docs/graph/prompts/prompt-contracts/PROMPT-NNNN-<slug>.md"
+    },
+    {
+      "file": "templates/data-contract.template.md",
+      "produces": "docs/graph/data/data-contracts.md (one section per dataset)"
+    },
+    {
+      "file": "templates/threat-model.template.md",
+      "produces": "docs/graph/decisions/threat-model-<feature>.md"
+    },
+    {
+      "file": "templates/knowledge-graph/_schema.md",
+      "produces": "docs/graph/_schema.md"
+    },
+    {
+      "file": "templates/knowledge-graph/graph-lint.py",
+      "produces": "docs/graph/graph-lint.py (set KINDS/ROOT_ID)"
+    },
+    {
+      "file": "templates/knowledge-graph/spec-lint.py",
+      "produces": "docs/graph/spec-lint.py (set TEST_GLOBS) — mechanical spec-contract test-coverage gate"
+    },
+    {
+      "file": "templates/knowledge-graph/index.md",
+      "produces": "docs/graph/index.md (the router)"
+    },
+    {
+      "file": "templates/knowledge-graph/node.template.md",
+      "produces": "docs/graph/nodes/<id>.md"
+    },
+    {
+      "file": "templates/prompts/graph-session-bootstrap.md",
+      "produces": "the canonical graph-discipline block every delegation brief embeds verbatim; all static seed files reference it instead of paraphrasing"
+    },
+    {
+      "file": "templates/prompts/investigation-brief.md",
+      "produces": "a read-only sub-agent investigation brief (generic; non-growth investigations)"
+    },
+    {
+      "file": "templates/prompts/node-authoring-brief.md",
+      "produces": "a graph-node authoring brief (generic; the per-node HARD RULES the growth author brief embeds)"
+    },
+    {
+      "file": "templates/prompts/growth-evidence-ledger.md",
+      "produces": "the canonical growth evidence-ledger schema — one structured artifact per boundary at .cypress/growth/<slug>.ledger.md (a gitignored seed organ), the contract a growth-scout fills and a growth author consumes"
+    },
+    {
+      "file": "templates/prompts/growth-scout-brief.md",
+      "produces": "the growth-dedicated read-only scout brief; its collection target IS the evidence-ledger schema"
+    },
+    {
+      "file": "templates/prompts/growth-author-brief.md",
+      "produces": "the growth-dedicated author brief; consumes the evidence ledger and maps each section to its deliverable instead of re-investigating source"
+    },
+    {
+      "file": "templates/prompts/clean-context-validation-brief.md",
+      "produces": "a clean-context validation brief"
+    },
+    {
+      "file": "templates/prompts/handback-payload.md",
+      "produces": "the standard cross-agent HANDBACK block every specialist ends its turn with; the routing-attribution carrier the deliver-time produced_by assertion reads"
+    }
+  ],
+  "docs_skeleton": {
+    "root": "templates/docs/",
+    "installed_at": "docs/graph/",
+    "applied_on": "every install, adding missing graph leaves without overwriting existing files"
+  },
+  "agent_router": {
+    "description": "Mechanical agent-router: the specialist-selection analog of the knowledge router (graph-lint.py --plan). A keyword heuristic floor with confidence bands, not an oracle; its output is cited in every delegation brief.",
+    "tool": "integrations/claude-code/agent-lint.py",
+    "installed_at": ".claude/agent-lint.py",
+    "installed_by": "install.sh (claude-code adapter)",
+    "golden_set": "agents/_routes.golden.tsv",
+    "golden_set_installed_at": ".claude/agents/_routes.golden.tsv",
+    "commands": {
+      "--route \"<task>\"": "rank specialists by IDF-weighted routing_triggers/name match; print a confidence band (HIGH/MEDIUM/LOW/NONE) to cite in a delegation brief.",
+      "--lint": "validate agent frontmatter (routing_triggers present; can_delegate == Task-in-tools; bounded-delegation depth/allowlist invariant) — the P0/P1 gate.",
+      "--eval": "run the golden routing set; assert top-1 accuracy and that novel-stack phrases return LOW/NONE — the eval gate."
+    },
+    "frontmatter_fields_added": [
+      "routing_triggers",
+      "can_delegate",
+      "max_spawn_depth",
+      "delegates_to"
+    ],
+    "decisions": [
+      "docs/decisions/adr-0001-mechanical-agent-router.md",
+      "docs/decisions/adr-0002-bounded-delegation-hybrid.md",
+      "docs/decisions/adr-0003-enforcement-layering-honesty.md"
+    ],
+    "plan": "docs/plans/agent-routing-and-delegation.md"
+  },
+  "integrations": [
+    {
+      "tool": "claude-code",
+      "dir": "integrations/claude-code/",
+      "method": "symlink"
+    },
+    {
+      "tool": "opencode",
+      "dir": "integrations/opencode/",
+      "method": "symlink"
+    },
+    {
+      "tool": "codex",
+      "dir": "integrations/codex/",
+      "method": "symlink + manual config.toml merge"
+    },
+    {
+      "tool": "github-copilot",
+      "dir": "integrations/github-copilot/",
+      "method": "transform (frontmatter rewrite per Copilot conventions)"
+    },
+    {
+      "tool": "prime-agent",
+      "dir": "integrations/prime-agent/",
+      "method": "symlink + copied route-extension.ts (before_agent_start) + settings.json; CI parity via agent-lint.py --dir .prime/agent/agents",
+      "first_class": true
+    }
+  ],
+  "installer": "install.sh",
+  "install_prompt": "INSTALL_PROMPT.md",
+  "entry_points": {
+    "primary": "INSTALL_PROMPT.md is the single entry point: paste it into an agent-capable chat and it runs one flow in three phases — PLACE (install.sh drops all files), HAND OFF (restart rooted at the target for the registration boundary), GROW IN FULL (execute grow under its completeness contract). install.sh and grow are its internal mechanisms.",
+    "coding_tool_adapter": "/initialize delegates to grow; it is not the primary interface.",
+    "new_project": "INSTALL_PROMPT.md → grow → from-scratch when no executable project evidence exists.",
+    "existing_project": "INSTALL_PROMPT.md → grow → delegated source-first adoption/refresh.",
+    "completeness": "grow.completeness-contract binds the orchestrating model to full-depth growth: every knowledge collection is covered-to-evidence or absent-with-named-reason, proven by a growth completeness ledger and audited in grow Phase 6."
+  }
+}

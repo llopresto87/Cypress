@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "_comment": "Project-scoped Claude Code settings. Commit this file to git so the team shares the same agents, skills, and command set. Per-user overrides go in .claude/settings.local.json (gitignored).",
+  "agents": {
+    "directories": [".claude/agents"]
+  },
+  "skills": {
+    "directories": [".claude/skills"]
+  },
+  "commands": {
+    "directories": [".claude/commands"]
+  },
+  "memory": {
+    "files": ["CLAUDE.md", "AGENTS.md"]
+  },
+  "_hooks_comment": "UserPromptSubmit runs route-hook.py on every prompt and injects its output (hookSpecificOutput.additionalContext) so the route-first step happens deterministically. Both Claude Code AND VS Code Copilot (Agent Hooks, Preview) read this .claude/settings.json hooks block. Path: Claude Code sets $CLAUDE_PROJECT_DIR to the repo root even when the session cwd is a subdirectory, so use it; Copilot falls back to $PWD (its hook cwd is the workspace root). Trailing '|| true' makes it FAIL-OPEN — a hook must never block a prompt.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/route-hook.py\" || true"
+          }
+        ]
+      }
+    ]
+  }
+}

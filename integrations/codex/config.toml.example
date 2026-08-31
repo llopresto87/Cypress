@@ -1,0 +1,90 @@
+# ~/.codex/config.toml — CYPRESS integration
+#
+# Copy or merge into your existing ~/.codex/config.toml. Adjust the
+# paths under [[skills.config]] to match where you installed this
+# seed system in the target project.
+#
+# The seed system's installer prints this snippet with paths
+# substituted; you can also generate it on the fly with:
+#
+#   /path/to/cypress/install.sh codex --print-config
+#
+
+# ----- Project documentation discovery -----
+
+# Increase the instruction budget so AGENTS.md and its references fit
+project_doc_max_bytes = 65536
+
+# Fall back to alternate filenames if AGENTS.md is missing
+project_doc_fallback_filenames = ["TEAM_GUIDE.md", ".agents.md"]
+
+# Treat any of these markers as a project root
+project_root_markers = [".git", ".hg", ".sl"]
+
+
+# ----- Skills registration -----
+# One entry per skill the seed system provides. Replace
+# /abs/path/to/project with the absolute path to your project.
+
+[[skills.config]]
+path = "/abs/path/to/project/.codex/skills/library-wiki/SKILL.md"
+enabled = true
+
+[[skills.config]]
+path = "/abs/path/to/project/.codex/skills/research-and-ingest/SKILL.md"
+enabled = true
+
+[[skills.config]]
+path = "/abs/path/to/project/.codex/skills/grill-planner/SKILL.md"
+enabled = true
+
+[[skills.config]]
+path = "/abs/path/to/project/.codex/skills/brainstorm-socratic/SKILL.md"
+enabled = true
+
+[[skills.config]]
+path = "/abs/path/to/project/.codex/skills/spec-author/SKILL.md"
+enabled = true
+
+[[skills.config]]
+path = "/abs/path/to/project/.codex/skills/test-first/SKILL.md"
+enabled = true
+
+[[skills.config]]
+path = "/abs/path/to/project/.codex/skills/adr-writer/SKILL.md"
+enabled = true
+
+[[skills.config]]
+path = "/abs/path/to/project/.codex/skills/from-scratch-bootstrap/SKILL.md"
+enabled = true
+
+[[skills.config]]
+path = "/abs/path/to/project/.codex/skills/adopt-existing/SKILL.md"
+enabled = true
+
+[[skills.config]]
+path = "/abs/path/to/project/.codex/skills/context-router/SKILL.md"
+enabled = true
+
+[[skills.config]]
+path = "/abs/path/to/project/.codex/skills/knowledge-graph/SKILL.md"
+enabled = true
+
+[[skills.config]]
+path = "/abs/path/to/project/.codex/skills/holistic-editing/SKILL.md"
+enabled = true
+
+[[skills.config]]
+path = "/abs/path/to/project/.codex/skills/validate-knowledge/SKILL.md"
+enabled = true
+
+
+# ----- Optional: documentation MCP -----
+# Context7 provides current library docs. With it configured,
+# research-scout fetches version-pinned docs faster than crawling.
+#
+# [mcp_servers.context7]
+# command = "npx"
+# args = ["-y", "@upstash/context7-mcp"]
+# env = { CONTEXT7_API_KEY = "..." }
+# timeout_secs = 30

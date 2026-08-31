@@ -1,0 +1,17 @@
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# OS / editor cruft
+.DS_Store
+*.swp
+
+# Local per-tool overlays installed into a working project (not seed source)
+.claude/
+.opencode/
+.codex/
+.prime/
+
+# Seed organs — grow/graft/harvest working state, never plant knowledge
+.cypress/

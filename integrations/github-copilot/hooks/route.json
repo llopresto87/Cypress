@@ -1,0 +1,12 @@
+{
+  "_comment": "VS Code Copilot Agent Hooks (Preview) config. Installed to .github/hooks/route.json when the project has NO .claude/settings.json (which VS Code also reads — installing both would fire the hook twice). Enforces progressive discovery: on every prompt, route-hook.py injects the route-first mandate + the router's suggested node set. Uses VS Code's single-nested hooks format. See https://code.visualstudio.com/docs/agent-customization/hooks",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "type": "command",
+        "command": "python3 \"${CLAUDE_PROJECT_DIR:-$PWD}/.github/hooks/route-hook.py\" || true",
+        "timeout": 20
+      }
+    ]
+  }
+}

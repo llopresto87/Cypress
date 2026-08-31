@@ -1,0 +1,6 @@
+{
+  "_comment": "Project-scoped Prime Agent settings for the CYPRESS seed. Commit to git so the team shares the same resource surface. Prime Agent auto-discovers .prime/agent/{skills,prompts,extensions}/ by convention; these arrays list them EXPLICITLY (bare names resolve relative to .prime/agent/, never a '.prime/agent/...' prefix) so the seed's resources still load if a project runs under a locked-down or non-default config. NOTE: recursion depth (RLM_MAX_DEPTH, default 2) is a GLOBAL/session/env dial, NOT settable here — see integrations/prime-agent/README.md for raising it to reach the seed's deepest delegation chain.",
+  "extensions": ["extensions"],
+  "skills": ["skills"],
+  "prompts": ["prompts"]
+}

@@ -1,0 +1,75 @@
+# Golden routing corpus for agent-lint.py --eval  (plan §4.3)
+# Columns: task<TAB>expected_agent
+# expected_agent is a roster agent name, OR the sentinel "LOW" meaning the
+# router must return LOW/NONE confidence (the "commission an expert" path).
+# Owned/extended by `tester` + `data-ml` (plan §4.3). This tester-authored
+# corpus is the acceptance contract for the routing_triggers the implementer
+# / data-ml add to the agent defs (16 in the current roster), and the seed
+# for the production
+# .claude/agents/_routes.golden.tsv.
+#
+# --- reviewer ---
+audit this diff against the spec	reviewer
+review the pull request before we merge	reviewer
+check the change is integrated and not bolted on	reviewer
+# --- tester ---
+write the failing test that encodes the spec contract	tester
+add a regression test for this bug	tester
+run the verification gates before merge	tester
+# --- implementer ---
+make the failing test pass	implementer
+write the code to turn the red test green	implementer
+implement the minimum behavior to satisfy the test	implementer
+# --- architect ---
+design the data model for the orders service	architect
+choose a framework and write the adr for the split	architect
+decide sync versus async at the service boundary	architect
+# --- reliability ---
+the deploy is flaking under load, add observability	reliability
+configure rollback and capacity budgets for the cluster	reliability
+stand up fresh infrastructure and set the timers	reliability
+# --- docs-librarian ---
+author a graph node for the auth subsystem	docs-librarian
+fix the wiki page that fails graph validation	docs-librarian
+dedupe the knowledge facts so each has one home	docs-librarian
+catalog the reusable tool this task produced	docs-librarian
+# --- security ---
+add a threat model for the upload endpoint	security
+assess the supply-chain and secrets handling risk	security
+design the authorization model for the api	security
+# --- multi-agent-architect ---
+design a multi-agent topology with bounded delegation	multi-agent-architect
+diagnose runaway fan-out in the agent fleet	multi-agent-architect
+define the agent role tool and termination contract	multi-agent-architect
+# --- data-ml ---
+generate synthetic fixture data for tests not sourced from production	data-ml
+design the dataset contract and the pipeline	data-ml
+select a model and design its evaluation	data-ml
+# --- product ---
+write the acceptance criteria and the user flow	product
+define onboarding and the accessibility floor	product
+# --- research-scout ---
+retrieve the authoritative upstream documentation for a new library	research-scout
+find and normalize the official spec for this dependency	research-scout
+# --- pentest ---
+run an authorized penetration test of the login	pentest
+write a proof-of-concept exploit for the upload endpoint	pentest
+# --- growth-orchestrator ---
+grow the knowledge graph from this existing codebase	growth-orchestrator
+adopt this project into the docs graph by subsystem boundary	growth-orchestrator
+run the from-scratch bootstrap for a brand new project	growth-orchestrator
+# --- growth-scout ---
+gather executable evidence from this subsystem's source	growth-scout
+scout this repository boundary and return claims with paths and symbols	growth-scout
+produce the evidence ledger for adopting this codebase	growth-scout
+# --- seed-installer ---
+install the expert seed system into this target project	seed-installer
+place the kernel and adapters additively for this host tool	seed-installer
+# --- novel-stack / no clear specialist -> LOW (commission path) ---
+set up a cobol batch job on the mainframe	LOW
+tune the fortran numerical solver kernel	LOW
+configure the sap abap transport request	LOW
+try to refute every load-bearing claim in this finished document	devils-advocate
+check this deliverable's citations against the sources they name	devils-advocate
+what single fact would break this conclusion	devils-advocate
+what should this document claim and does not	devils-advocate
