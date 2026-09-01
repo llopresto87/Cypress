@@ -58,7 +58,7 @@ docs/graph/                 — THE WHOLE KNOWLEDGE SYSTEM
   nodes/                    — fact owners (Tier 2)
   plans/ decisions/ runbooks/ best-practices/
   libraries/ sources/       — dependency wiki + external provenance
-  product/ architecture/ api/ data/ evaluations/ prompts/
+  product/ architecture/ api/ data/ evaluations/ prompts/ design/
   tools/                    — reusable-tool catalog
   changelog.md
 ```

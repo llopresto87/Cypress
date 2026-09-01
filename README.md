@@ -37,11 +37,12 @@ practice on the production path.
   when the router resolves it for the task at hand. A hard size budget
   is enforced by `tests/seed-lint.py`, so kernel growth is a lint
   failure, not a drift.
-- **A 17-agent team** under `agents/`:
+- **An 18-agent team** under `agents/`:
   - `orchestrator` (first contact, routing)
   - `architect`, `implementer`, `reviewer`, `tester`
   - `security`, `pentest`, `reliability`, `data-ml`, `product`
   - `docs-librarian`, `research-scout`
+  - `ui-ux-designer` (interface and interaction design)
   - `devils-advocate` (hostile refutation of a finished deliverable's claims)
   - `multi-agent-architect` (agent-topology design and review)
   - `growth-orchestrator`, `growth-scout`, `seed-installer` (growth DNA)

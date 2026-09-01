@@ -26,6 +26,11 @@ Scout the boundary **{{subsystem / repo / path}}** and return one
   architecture, api, data, libraries, prompts, evaluations);
 - `specs/` candidates and `decisions/` (ADR) candidates;
 - any **project-specific specialist agent** this plant needs;
+- the **design surface** — screens/views inventory, component
+  inventory, styling / design-token system, interaction states
+  (loading/empty/error/success), and the current accessibility state —
+  each tied to a `path:line` and symbol, read-only (feedstock for the
+  `ui-ux-designer`);
 - `runbooks/` and verification commands (discovered, not executed).
 
 ## Rules (state these to the sub-agent verbatim)

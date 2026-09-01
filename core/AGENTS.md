@@ -54,7 +54,7 @@ The session is the orchestrator: it routes, plans, briefs, verifies,
 and accepts. For T2/T3 every piece of *doing* goes to a clean-context
 specialist from the roster — `orchestrator`, `architect`,
 `implementer`, `reviewer`, `tester`, `security`, `pentest`,
-`reliability`, `data-ml`, `product`, `docs-librarian`,
+`reliability`, `data-ml`, `product`, `ui-ux-designer`, `docs-librarian`,
 `research-scout`, `devils-advocate`, `multi-agent-architect`,
 `growth-orchestrator`,
 `growth-scout`, `seed-installer` — each an `agent.*` node routed by its

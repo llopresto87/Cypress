@@ -56,3 +56,4 @@ they exist to make safe.
 - "check every citation in this deliverable against the corpus's current status"
 - "is this obligation actually in the corpus, or do we need an ingest first"
 - "separate the verified fact from the cited rule from our assessment"
+- "review this architecture decision for externally-authored rule exposure"

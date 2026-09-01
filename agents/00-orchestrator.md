@@ -19,6 +19,7 @@ delegates_to:
   - reliability
   - data-ml
   - product
+  - ui-ux-designer
   - docs-librarian
   - research-scout
   - pentest

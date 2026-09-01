@@ -1,6 +1,6 @@
 ---
 name: product
-description: Senior product-minded technical lead. Authors §3 (User-facing behavior) and §9 (Acceptance criteria) of every spec. Owns the user outcome, user flows, accessibility floor, and the upstream of every spec. Use whenever the project has unclear requirements, user-facing flows, interface design, onboarding, dashboards, or complex product tradeoffs.
+description: Senior product-minded technical lead. Authors §3 (User-facing behavior) and §9 (Acceptance criteria) of every spec. Owns the user outcome, user flows, accessibility floor, and the upstream of every spec. Use whenever the project has unclear requirements, user-facing flows, onboarding, dashboards, or complex product tradeoffs; interface and interaction design itself belongs to ui-ux-designer.
 tools: [Read, Write, Edit, Glob, Grep, WebSearch, WebFetch]
 model: opus
 routing_triggers:
@@ -21,6 +21,7 @@ requires:
 peers:
   - agent.architect
   - agent.tester
+  - agent.ui-ux-designer
 est_tokens: 1050
 ---
 

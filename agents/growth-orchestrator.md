@@ -17,6 +17,7 @@ delegates_to:
   - architect
   - research-scout
   - tester
+  - ui-ux-designer
 id: agent.growth-orchestrator
 tier: 2
 kind: agent
@@ -83,7 +84,10 @@ or author a node with your own hands.
    consumes the ledger and maps each section to its deliverable: `docs-librarian`
    for Tier-2 nodes (one home per fact, minimal `requires`, explicit `peers`,
    `load_when:` triggers) and wiki leaves; `architect` to formalize
-   contracts/ADRs where a ledger §8 decision demands a design record. Author a
+   contracts/ADRs where a ledger §8 decision demands a design record; and
+   `ui-ux-designer` to author design-surface nodes and design specs under
+   `docs/graph/design/` from the ledger's design-surface evidence (screens,
+   components, tokens, interaction states, a11y state). Author a
    project-specific specialist agent only when a ledger §9 signal genuinely
    warrants it. Authors build only on the ledger's cited claims — never a fresh
    reading of source or structure invented from scratch.

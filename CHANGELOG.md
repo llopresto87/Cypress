@@ -1,5 +1,70 @@
 # Changelog
 
+## 6.9.0 — lean funnel spawns; legal in the architecture path; ui-ux-designer joins the roster (2026-09-01)
+
+The grill funnel's worker agents are re-scoped to spend tokens on the work
+instead of on rediscovering context; architectural work gains a named legal
+checkpoint; and the roster gains a definitive interface-design expert with
+matching growth facilities. Plan-of-record:
+`docs/plans/grill-lean-funnel-design-legal.md`. Quality over size governed the
+rewrite: no normative rule was dropped — duplicated depth was replaced by a
+pointer to its owning node, verified by an independent review pass.
+
+### Changed — one step per spawn (`tester`, `implementer`, `reviewer`, `method.delegation`)
+
+- **`agents/04-tester.md`**, **`agents/02-implementer.md`**,
+  **`agents/03-reviewer.md`** each gain a **"Scope of one spawn"** section
+  (new owned facts `tester.spawn-scope`, `implementer.spawn-scope`,
+  `reviewer.spawn-scope`): one spawn = the RED phase for ONE increment's named
+  contracts / ONE RED→GREEN→REFACTOR cycle / ONE diff for ONE increment. The
+  brief carries the inputs (contract text, test paths, diff); oversized or
+  under-specified work is handed back for re-slicing, never absorbed. Depth
+  duplicated from owning nodes became pointers (test-first, toolcraft,
+  design/engineering posture, holistic-editing); the token economy comes from
+  the per-spawn scope and brief-carried inputs, not from shrinking the
+  charters. Every check of the reviewer checklist survives with unchanged
+  output format and severity semantics.
+- **`core/method/delegation.md`** gains the orchestrator side of the same
+  contract (`delegation.step-scope`): a funnel-worker brief names ONE
+  well-defined step and embeds its inputs; oversized steps are re-sliced
+  before spawning, per `protocols/grill.md` §9 increment shape.
+
+### Added — legal checkpoint in architectural work (`architect.legal-checkpoint`, `grill.legal-checkpoint`)
+
+- **`agents/01-architect.md`**: when a boundary, contract, dependency, or ADR
+  implicates externally-authored rules (licenses, regulation, data protection,
+  standards, third-party terms), the question routes to `legal` before the ADR
+  is accepted — instantiated from `agent-corpus/legal.md` via the corpus
+  withdraw contract when the plant roster lacks it; a legal-corpus gap becomes
+  an explicit grill.md §12 open question ("not recorded — needs ingest"),
+  never a recalled rule.
+- **`protocols/grill.md`** §11 hands externally-authored-rule exposure to
+  `legal` alongside `security`/`reliability` (minimal touch; the protocol was
+  deliberately not compressed). `agent-corpus/legal.md` gains one
+  architecture-review routing exemplar. `legal` remains a corpus role — the
+  per-session roster economy stands.
+
+### Added — `ui-ux-designer` (18th roster agent) and the design surface in growth
+
+- **`agents/13-ui-ux-designer.md`**: definitive interface/interaction design
+  authority — information architecture, screen flows, interaction states,
+  design tokens and component system, visual hierarchy, usability-heuristics
+  audits, and how the accessibility floor is met in the interface. Authors
+  design specs under `docs/graph/design/` mapping to spec §3/§9. Boundaries:
+  `product` keeps outcome, acceptance criteria, and the accessibility floor
+  itself; `implementer` writes all production code. Leaf agent with its own
+  "Scope of one spawn" (one flow, one heuristics audit, or one
+  component/token spec per spawn).
+- Growth facilities: `templates/prompts/growth-scout-brief.md` and
+  `agents/growth-scout.md` now inventory the **design surface** (screens,
+  components, tokens/styles, interaction states, a11y state) read-only;
+  `agents/growth-orchestrator.md` may delegate design-surface node authoring
+  to `ui-ux-designer` (added to its `delegates_to`).
+- Roster wiring: kernel §1, `method.delegation` roster table, `manifest.json`,
+  README (18-agent team), graph-template `index.md`, and three
+  `_routes.golden.tsv` rows (eval gate stays at 100% top-1; no existing row
+  changed hands).
+
 ## 6.8.0 — one labeled entry point; growth bound by an explicit completeness contract (2026-08-31)
 
 The install/grow surface is refactored into **one clearly-labeled flow** and the

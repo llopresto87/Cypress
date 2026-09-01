@@ -71,10 +71,14 @@ route — you do not widen scope to chase it.
    log`, `wc`). Do not bulk-read; sample the load-bearing files.
 2. **Trace capability to evidence.** For each capability the subsystem provides,
    find the code that implements it and name it.
-3. **Note the sharp edges.** The surprising coupling, the undocumented invariant,
+3. **Inventory the design surface** where the boundary has a UI — screens/views,
+   the component inventory, the styling / design-token system, interaction states,
+   and the current accessibility state — each tied to a `path:line` and symbol,
+   read-only feedstock for `ui-ux-designer`.
+4. **Note the sharp edges.** The surprising coupling, the undocumented invariant,
    the config that silently changes behavior — these are the facts the next agent
    most needs and the code least advertises.
-4. **Record provenance for version-pinned facts** so the author can cite them.
+5. **Record provenance for version-pinned facts** so the author can cite them.
 
 ## Output — the evidence ledger
 

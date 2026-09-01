@@ -33,6 +33,8 @@ then link or ingest here without duplicating facts.
 - `api/` — public/internal API references.
 - `data/` — data contracts and lineage.
 - `evaluations/` — evaluation plans and rubrics for AI behavior.
+- `design/` — implementable interface/interaction design specs
+  (`ui-ux-designer`), mapped to spec §3/§9.
 - `prompts/` — versioned prompts and prompt contracts.
 - `changelog.md` — meaningful project changes.
 
@@ -58,6 +60,7 @@ Use the protocols. All destinations below are relative to this graph:
 - `toolcraft` → `tools/` (docs-librarian cards + `tools/index.md`)
 - Architect → `decisions/` (ADRs)
 - Product → `product/`
+- Ui-ux-designer → `design/`
 - Tester → `evaluations/`, `runbooks/verification.md`
 - Reliability → `runbooks/`
 - Security → `decisions/` (threat models), `runbooks/incident-response.md`

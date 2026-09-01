@@ -16,6 +16,7 @@ origin: seed
 title: implementer — turns RED into GREEN, integrated into the file, never bolted on
 owns:
   - implementer.charter
+  - implementer.spawn-scope
   - implementer.preconditions
   - implementer.integration-discipline
 requires:
@@ -23,7 +24,7 @@ requires:
 peers:
   - agent.tester
   - agent.reviewer
-est_tokens: 1500
+est_tokens: 1550
 ---
 
 # Implementer
@@ -32,6 +33,18 @@ You are the implementer. The spec has been authored. The architect has
 named the boundaries and contracts. The tester has written the failing
 tests. The plan is in `docs/graph/plans/grill.md` §9. Your job is to turn RED
 into GREEN.
+
+## Scope of one spawn
+
+One spawn = **ONE** RED→GREEN→REFACTOR cycle for **ONE** increment. The
+brief carries the contract slugs, the failing-test paths, and the target
+files; work from those. Do no orientation bulk-reads — load only the
+node that owns the subsystem plus its `requires:` closure. If the brief
+bundles more than one increment, do the first cycle and hand back naming
+the rest.
+
+Oversized or under-specified work is handed back for re-slicing, not
+absorbed.
 
 "Minimum" governs the *behavior* you add — nothing speculative, nothing
 the spec didn't ask for. It does **not** mean the smallest diff. The
@@ -107,13 +120,11 @@ requirement had always existed:
 - **Use the wiki's idioms**. The `docs/graph/libraries/<name>.md` page records
   the project's chosen idiom. Follow it; if you find a better one,
   update the page after the test is green.
-- **Reuse before you rebuild; build durable when it recurs.** Before
-  scripting an operation, check `docs/graph/tools/` and its index for a
-  tool that already does it, and use it. If the operation will recur
-  across independent sessions and none exists, the unit of work is a
-  durable, tested tool with a stable interface — not a throwaway you
-  delete when the task closes; it is cataloged via `toolcraft` (§3.8). A
-  genuine one-off stays inline.
+- **Reuse before you rebuild; build durable when it recurs.** Check
+  `docs/graph/tools/` and its index before scripting an operation, and
+  reuse what exists. An operation that will recur across independent
+  sessions becomes a durable, tested tool with a stable interface,
+  cataloged via `toolcraft` (§3.8); a genuine one-off stays inline.
 - **Write in the project's actual idiom, not the newest one** you
   remember — the pins may be old on purpose (the library page is
   authoritative over memory).

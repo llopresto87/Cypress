@@ -10,6 +10,7 @@ owns:
   - rule.grill
   - grill.flow
   - grill.increment-shape
+  - grill.legal-checkpoint
 requires:
 peers:
   - protocol.specify
@@ -21,7 +22,7 @@ load_when:
   - "spec exists but no plan implements it"
   - "scope an increment, slice the work"
   - "plan is stale, assumption broke, architecture change"
-est_tokens: 1200
+est_tokens: 1310
 command: true
 ---
 
@@ -74,7 +75,9 @@ informs the other.
    `docs/graph/libraries/` page exists; if not, run `ingest-library`.
 4. **§6 — Decisions.** Make explicit choices; cite evidence; tag
    reversibility. Anything non-obvious gets an ADR (delegate to
-   `architect`). When the plan needs a recurring operation — one a future
+   `architect`); an ADR that implicates externally-authored rules
+   clears the architect's `legal` checkpoint before it is accepted.
+   When the plan needs a recurring operation — one a future
    session will run again — decide it as a **durable tool** (an increment
    in §9 with a stable interface and a test), not an inline throwaway, and
    check `docs/graph/tools/` for one that already exists (§3.8).
@@ -87,7 +90,13 @@ informs the other.
 7. **§10 — Verification Plan.** Which gates run for which
    increments.
 8. **§11 — Risks and Mitigations.** Hand to `security` and
-   `reliability` as relevant.
+   `reliability` as relevant. When a boundary, contract, or dependency
+   exposes **externally-authored rules** (licenses, regulation, data
+   protection, standards, third-party terms), hand that exposure to
+   `legal` alongside them — spawn-or-instantiate mechanics per the
+   architect's legal checkpoint (`architect.legal-checkpoint`); a corpus
+   gap is a §12 open question ("not recorded — needs ingest"), never a
+   recalled rule.
 9. **§12 — Open Questions.** Every "we'll figure that out later"
    becomes a row here with a named owner and a resolution path.
 10. **§13 — Done Criteria.** Objective conditions that prove the

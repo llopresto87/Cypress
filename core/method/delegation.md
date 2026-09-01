@@ -11,6 +11,7 @@ owns:
   - delegation.bounds
   - delegation.harness-registration
   - delegation.briefs
+  - delegation.step-scope
   - delegation.turn
   - delegation.spec-authoring
 requires:
@@ -28,7 +29,7 @@ load_when:
   - "sonnet or opus, which model class"
   - "unknown agent type, specialist not registered, no such subagent"
   - "the roster was just installed, can I spawn it yet"
-est_tokens: 1850
+est_tokens: 2000
 ---
 
 # Delegation — the team, routing, and bounds
@@ -55,6 +56,7 @@ simulation in the chat is not delegation.
 | `reliability`         | Deploy, observability, rollback, capacity, cost; infra from scratch. |
 | `data-ml`             | Datasets, pipelines, model selection, evaluation, synthetic data. |
 | `product`             | User outcome, UX, acceptance criteria, accessibility.             |
+| `ui-ux-designer`      | Interface/interaction design: flows, states, tokens, components, heuristics audits. |
 | `docs-librarian`      | `docs/graph/` health, fact ownership, wiki leaves, catalogs, close-out. |
 | `research-scout`      | Internet research; ingest libraries/specs into the wiki.          |
 | `devils-advocate`     | Hostile pass over a *finished* claim-bearing deliverable; refutes from primary sources. |
@@ -190,6 +192,15 @@ plus the routing evidence and the handback requirement
 `route_evidence` feed the deliver-time attribution assertion,
 `protocol.deliver`). Parameterized briefs live in
 `docs/graph/templates/prompts/`; use them.
+
+### One step per spawn
+
+A funnel worker (`tester`, `implementer`, `reviewer`) brief names **one**
+well-defined step and embeds its inputs — the contract text, the test
+paths, the diff — so the worker spends its tokens on the work, not on
+rediscovering context. An oversized step is re-sliced by the orchestrator
+*before* spawning, per `docs/graph/protocols/grill.md` §9 (increment
+shape); it is never handed whole to the worker to absorb.
 
 ## Spec authoring is shared
 

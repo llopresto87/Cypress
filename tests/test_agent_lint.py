@@ -97,7 +97,8 @@ ROSTER_ARGS = ["--dir", str(ROSTER)]
 # corpus honest about which names are routable).
 ALL_AGENTS = {
     "orchestrator", "architect", "implementer", "reviewer", "tester",
-    "security", "reliability", "data-ml", "product", "docs-librarian",
+    "security", "reliability", "data-ml", "product", "ui-ux-designer",
+    "docs-librarian",
     "research-scout", "pentest", "devils-advocate", "multi-agent-architect",
     "growth-orchestrator", "growth-scout", "seed-installer",
 }
