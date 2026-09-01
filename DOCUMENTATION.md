@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- **Version documented:** 6.10.0
+- **Version documented:** 6.11.0
 - **Repository role:** this repo is the **seed** — the product that is shipped
   into other projects. It is *not* a grown project itself.
 - **License:** MIT — see [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.

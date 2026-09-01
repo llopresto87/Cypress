@@ -1,5 +1,65 @@
 # Changelog
 
+## 6.11.0 — growth grounded in the outside world; the librarian rebalance made mandatory (2026-09-01)
+
+A live install executed `grow` to the letter and still failed its spirit:
+it read only the project's own files, never spawned `research-scout`,
+shipped a thin `libraries/` index as COVERED, wrote a descriptive
+`best-practices/`, and marked `sources/` ABSENT with "no external
+information was consumed" — circular, since none was ever retrieved. It
+also skipped the whole-graph librarian pass. The mechanisms existed
+(`research-scout`, `ingest-library`, Phase 5); the canonical workflow
+never dispatched them. Now it does.
+
+### Changed — `protocols/grow.md`
+
+- **Worker topology step 3 (new)**: after ledger reconciliation, dispatch
+  Sonnet-class `research-scout`s for every ledger-§5 dependency flagged
+  architecturally significant / cross-cutting / security- or
+  operations-critical, and for the external standards the project is held
+  to — version-pinned upstream docs into `docs/graph/sources/` per
+  `ingest-library`. "A growth that spawns only growth-scouts has gathered
+  half its evidence."
+- **Boundaries**: "executable source is the truth" is explicitly scoped to
+  claims *about this project*; upstream documentation is the primary
+  evidence for what a dependency or standard *is*. Web retrieval is in
+  scope for growth; Git publishing is not.
+- **Phase 2**: the external pass is a gated step before authoring, with a
+  recorded dispatch list the completeness ledger audits against; a host
+  with no web retrieval is a named blocker, never a silent thin index.
+- **Phase 4**: `libraries/` rich pages must ground in the retrieved
+  upstream material (smoke test recorded as a pending backfill — growth
+  runs no application code); `sources/` names the circular-absence defect;
+  `best-practices/` is normative — the standard, cited, plus the project's
+  observed stance.
+- **Phase 5**: retitled the librarian rebalance pass — a mandatory named
+  `docs-librarian` dispatch (connect, merge, split, delete, compact
+  router) with its report carried in the delivery.
+- **Phase 6**: new checks 11 (external grounding, circular-absence audit)
+  and 12 (the rebalance pass actually ran).
+- **Delivery**: growth closes through `canonize` (§3.7) before reporting.
+- Frontmatter: peers gain `protocol.ingest-library` and
+  `protocol.canonize`; `est_tokens` 3600 → 4500.
+
+### Changed — the surfaces that execute it
+
+- **`INSTALL_PROMPT.md`**: growth's evidence declared two-sided
+  (growth-scouts + research-scouts); Phase 2 names the three historically
+  skipped steps (external pass, librarian rebalance, canonize close-out)
+  as defects, not judgment calls; the Sonnet model-policy bullet notes
+  research-scout's writes are mechanical normalization; Finish requires
+  the rebalance report and the canonize close-out.
+- **`agents/growth-orchestrator.md`**: step 3 upgrades "on a novel
+  dependency" to the mandatory external pass; step 5 runs the rebalance
+  before validation; `est_tokens` 1150 → 1300.
+- **`templates/prompts/growth-author-brief.md`**: ledger routing for
+  `libraries/` now consumes `sources/normalized/`; new `best-practices/`
+  routing (normative stance).
+- **`templates/prompts/growth-completeness-ledger.md`**: documents the
+  three trap rows (`libraries/`, `sources/`, `best-practices/`) whose
+  status is audited against the evidence ledgers, not taken at the
+  orchestrator's word.
+
 ## 6.10.0 — termination bounds made real; every spawn traced (2026-09-01)
 
 Closes the debt recorded in 6.9.2: multi-agent-architect's pre-ship checklist

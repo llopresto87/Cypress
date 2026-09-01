@@ -41,6 +41,23 @@ exactly one of:
 `ran out of context`, `seemed enough`, `templates are present`, and `common
 cases done` are NOT statuses — they are the failure the contract forbids.
 
+Three rows carry known traps; their status is audited against the evidence
+ledgers, not taken at the orchestrator's word:
+
+- **libraries/** — an index table alone is not COVERED when any evidence
+  ledger's §5 flags an architecturally significant / cross-cutting /
+  security- or operations-critical dependency: each flagged dependency needs
+  a rich page grounded in upstream documentation retrieved by
+  `research-scout` this growth (`protocols/grow.md` topology step 3).
+- **sources/** — "no external information was consumed" is CIRCULAR when no
+  research-scout was ever dispatched: the absence is the orchestrator's
+  omission, not a property of the project. ABSENT here is legitimate only
+  with ledger §5 rows cited proving no dependency or external standard
+  warranted retrieval.
+- **best-practices/** — a descriptive leaf ("what the project happens to
+  do") is not COVERED; the collection is normative: the external standard,
+  cited, plus the project's observed stance against it.
+
 | Collection                     | Status | Nodes/leaves | Strongest source paths / reason / blocker |
 |--------------------------------|--------|--------------|-------------------------------------------|
 | root node (governed project)   |        |              |                                           |
@@ -52,7 +69,7 @@ cases done` are NOT statuses — they are the failure the contract forbids.
 | api/                           |        |              |                                           |
 | data/                          |        |              |                                           |
 | libraries/ (index + rich pages)|        |              |                                           |
-| sources/                       |        |              |                                           |
+| sources/ (this growth's ingests)|       |              |                                           |
 | legal/ (only if in scope)      |        |              |                                           |
 | prompts/                       |        |              |                                           |
 | evaluations/                   |        |              |                                           |

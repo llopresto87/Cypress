@@ -53,7 +53,15 @@ each section is keyed to the deliverable it feeds. Also load
     warrants one; otherwise report "no custom agent warranted");
   - `runbooks/` + verification → §10, labeled **discovered, not
     executed**;
-  - `libraries/` → §5.
+  - `libraries/` → §5 **plus** the research-scout's normalized upstream
+    sources under `docs/graph/sources/normalized/` — a rich page for a
+    §5-flagged significant dependency is grounded in that retrieved
+    material (`docs/graph/protocols/ingest-library.md`), never in memory
+    of the library's API;
+  - `best-practices/` → the retrieved standards in `docs/graph/sources/`
+    plus §1–§6/§11 for the project's stance: state the external standard
+    (cited) and where the project observably stands — normative, not a
+    description of current habits.
 - **One home per fact.** A fact the graph already owns is linked, never
   re-stated. Never ask two authors to own overlapping facts or files.
 - **Smallest sufficient artifact.** Author only what the evidence

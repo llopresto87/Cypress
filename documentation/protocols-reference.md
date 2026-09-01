@@ -33,7 +33,7 @@ All 15 protocols are tier 2 nodes with `origin: seed`, `kind: protocol`.
 | deliver | `protocol.deliver` | `rule.deliver`, `deliver.forms`, `deliver.attribution-assertion` | — | canonize, recover | 1450 |
 | ingest-library | `protocol.ingest-library` | `ingest-library.flow`, `ingest-library.corpus-first` | — | harvest, skill.library-wiki, skill.research-and-ingest | 1200 |
 | from-scratch | `protocol.from-scratch` | `from-scratch.phases` | — | brainstorm, ingest-library, skill.from-scratch-bootstrap | 1300 |
-| grow | `protocol.grow` | `grow.worker-topology`, `grow.growth-flow`, `grow.completeness-contract` | — | harvest, graft, initialize | 3600 |
+| grow | `protocol.grow` | `grow.worker-topology`, `grow.growth-flow`, `grow.completeness-contract` | — | harvest, graft, initialize, ingest-library, canonize | 4500 |
 | harvest | `protocol.harvest` | `harvest.fold-back-flow`, `harvest.agnosticism-gate` | — | graft, grow | 7000 |
 | graft | `protocol.graft` | `graft.reconcile-flow`, `graft.user-sovereignty`, `graft.pure-graph-mandate` | — | harvest, grow | 9790 |
 | initialize | `protocol.initialize` | `initialize.adapter-edges` | `protocol.grow` | — | 230 |
@@ -1457,7 +1457,8 @@ entered unprompted.
 - **id:** `protocol.grow` — tier 2 (note: no `command: true`)
 - **owns:** `grow.worker-topology`, `grow.growth-flow`, `grow.completeness-contract`
 - **requires:** —
-- **peers:** `protocol.harvest`, `protocol.graft`, `protocol.initialize`
+- **peers:** `protocol.harvest`, `protocol.graft`, `protocol.initialize`,
+  `protocol.ingest-library`, `protocol.canonize`
 - **load_when:** "grow the knowledge graph, first growth"; "install
   prompt, EXPERT_SEED_INSTALL_PROMPT"; "docs/graph is missing or badly
   drifted"; "regrow or refresh the graph after major drift"
@@ -1487,13 +1488,21 @@ does not perform the delegated investigation or authoring itself.
 2. Reconcile the per-boundary ledgers into a coherent evidence set in
    the orchestration plane, cross-referencing the persisted ledgers.
    Resolve contradictions with another bounded scout; do not guess.
-3. Spawn **Opus-class** authors for every written artifact or deep
+3. Spawn Sonnet-class **`research-scout`s** for the external evidence —
+   the mandatory flip side of step 1. Mine the reconciled ledgers' §5
+   for every architecturally significant / cross-cutting / security- or
+   operations-critical dependency, and the evidence set for external
+   standards the project is held to; retrieve version-pinned upstream
+   docs per `ingest-library` into `docs/graph/sources/`. "Executable
+   source is the truth" scopes to claims about this project; a growth
+   that spawns only growth-scouts has gathered half its evidence.
+4. Spawn **Opus-class** authors for every written artifact or deep
    synthesis, using the growth-author brief that CONSUMES the ledger and
    maps each section to its deliverable — authors build on cited
    evidence, never a fresh reading invented from scratch.
-4. Spawn separate **Opus-class** reviewers/validators for graph
+5. Spawn separate **Opus-class** reviewers/validators for graph
    integrity, source fidelity, navigation, and false-premise rejection.
-5. Route each finding back to a bounded Opus author, then revalidate.
+6. Route each finding back to a bounded Opus author, then revalidate.
 
 Every brief states purpose, exact scope, allowed reads/writes, required
 graph context, evidence supplied, constraints, output contract, and
@@ -1522,6 +1531,10 @@ ordinary state of the session that just installed the roster), that is
 - Executable source is primary evidence (manifests, entry points,
   routes, models, migrations, config, deploy descriptors, tests, CI,
   prompts, evaluations). Existing prose is clues only; corroborate.
+- That rule scopes to claims **about this project**: for what a
+  dependency or external standard *is*, upstream documentation fetched
+  by `research-scout` is primary. Web retrieval is in scope for growth;
+  Git publishing is not.
 - Preserve target-owned files; knowledge writes stay under
   `docs/graph/`.
 - Do not change application code, manifests, CI, infrastructure, or
@@ -1565,7 +1578,8 @@ silent one:
 
 - *Covered* — authored to the full depth its evidence supports: every
   real subsystem has a node; every direct dependency is indexed and each
-  architecturally-significant one has a project-specific page; every
+  architecturally-significant one has a project-specific page grounded
+  in retrieved upstream documentation (topology step 3); every
   observed route/message/job/entity/migration/config/AI-contract is
   homed; every leaf is connected to its owning node by an `artifacts:`
   edge; the router resolves representative tasks to small closures.
@@ -1624,7 +1638,14 @@ commands/prompts/evaluations; direct dependencies and evidence of
 actual use; and discrepancies between executable source and existing
 prose. The persisted per-boundary ledgers ARE the evidence set.
 Reconcile across them; resolve contradictions by scoped follow-up
-scouting; record which ledger owns each contested fact.
+scouting; record which ledger owns each contested fact. Then run the
+external pass (topology step 3) before authoring: dispatch
+`research-scout`s for every §5-flagged significant dependency and the
+external standards the project is held to; record the dispatch list —
+Phase 4's `libraries/` rich pages, normative `best-practices/`, and
+`sources/` are authored FROM this material, and the completeness ledger
+audits against it. No web retrieval on the host is a named blocker,
+never a silent thin index.
 
 **Phase 3 — Model and author through Opus workers.** Configure
 `ROOT_ID` and `KINDS` in `graph-lint.py`. Brief Opus-class authors on
@@ -1645,24 +1666,34 @@ populate every collection supported by evidence: `product/`
 edges); `api/` (observed HTTP/RPC/event/job contracts + source
 locations); `data/` (entities/ownership/persistence/migrations/
 lineage/privacy); `libraries/` (every direct dependency indexed; rich
-pages for significant ones); `legal/` (only when subject to
+pages for significant ones, grounded in the retrieved upstream material
+— a thin index where §5 flags significant deps is NOT coverage; smoke
+tests recorded as pending backfill); `legal/` (only when subject to
 externally-authored rules — check `legal-corpus/` first, re-confirm
-`verified`/`legal_status` against the publisher); `sources/`;
-`prompts/` and `evaluations/`; `runbooks/verification.md` (exact
+`verified`/`legal_status` against the publisher); `sources/`
+(provenance for THIS growth's research-scout ingests — "no external
+information consumed" when none was dispatched is circular and a
+completeness defect); `prompts/` and `evaluations/`;
+`runbooks/verification.md` (exact
 commands, labeled `discovered, not executed`); `plans/grill.md`
-(evidence, gaps, next increment); `best-practices/`; `changelog.md`.
+(evidence, gaps, next increment); `best-practices/` (**normative**: the
+external standard, cited, plus the project's observed stance — not a
+description of current habits); `changelog.md`.
 Prepare `specs/` and `decisions/` indexes but do not manufacture
 records — formalize a spec only from a real observable, an ADR only from
 a decision the source shows. Where a ledger's specialist-agent signal
 genuinely warrants it, author a project-specific expert agent; a signal
 is a candidate, not a mandate.
 
-**Phase 5 — Connect and fertilize.** Dispatch an Opus librarian to
-ensure every leaf has an owning-node edge, every node is reachable,
-searchable paths/symbols/commands live in the right home, unknowns are
-answerable questions with likely evidence locations, and the router
-stays compact. Depth belongs behind edges, not in the always-loaded
-router or oversized nodes.
+**Phase 5 — Connect and fertilize (the librarian rebalance pass).** A
+mandatory named `docs-librarian` dispatch after Phase 4, never skipped
+because authors "already linked things": connect every leaf to its
+owning node, merge duplicate fact homes, split accreted nodes, delete
+pass-throughs, keep searchable paths/symbols/commands in the right home
+and the router compact; re-run `graph-lint.py` after rebalancing and
+carry the merge/split/move/delete report into the delivery. Depth
+belongs behind edges, not in the always-loaded router or oversized
+nodes.
 
 **Phase 6 — Independent validation.** Dispatch separate Opus reviewers
 and clean-context validators. They run only knowledge checks
@@ -1679,7 +1710,12 @@ drift check; (9) the growth is **minimum-sufficient and well-composed**
 router, one coherent responsibility per node); (10) the growth is
 **complete** against the completeness contract (a row per collection,
 each `covered` with sampled source paths or `absent` with confirmed
-no-evidence). Under-growth is a defect on equal footing with
+no-evidence); (11) the growth is **externally grounded** (every
+§5-flagged dependency has a rich upstream-cited page, `sources/` rows
+resolve, `best-practices/` is normative, and a `sources/` ABSENT caused
+by never dispatching a research-scout is a circular-absence finding);
+(12) the Phase 5 librarian rebalance pass actually ran and its report is
+in the delivery. Under-growth is a defect on equal footing with
 over-growth. Route findings to bounded Opus authors and repeat
 validation — **bounded by the recover discipline**: a finding surviving
 two author-fix → revalidate rounds is not converging; stop, record it as
@@ -1690,8 +1726,11 @@ evidence is fresh.
 
 ### Delivery and maturity
 
-The orchestration chat reports target boundary/revisions, worker
-assignments, evidence inspected, artifacts created/refreshed, validation
+Growth closes through `canonize` (§3.7) before reporting, so its own
+lessons land in the graph. The orchestration chat reports target
+boundary/revisions, worker
+assignments, evidence inspected, artifacts created/refreshed, the Phase
+5 librarian rebalance report, validation
 results, untrusted/excluded docs, honest unknowns, and one next action —
 **with its tier** (kernel §0). It includes the **growth completeness
 ledger** (every collection covered-to-evidence or absent-with-reason) so
