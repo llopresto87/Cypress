@@ -41,6 +41,10 @@ GRAPH DISCIPLINE — execute before reading any source:
 6. If the graph has no nodes yet (bootstrap pass), report the failed
    probe and stay inside the exact paths named in this brief.
 ```
+- **Trace this spawn.** Your `spawn_id` is **{{caller-minted dot-chain id,
+  e.g. orchestrator.3.architect.1 — see delegation.tracing}}**; echo it
+  verbatim in your handback's `spawn_id` field.
+
 - **Cite the router.** This brief was selected by `agent-lint --route`; the
   ranked line and confidence band that picked you are: {{paste the `agent-lint
   --route` line + band}}. Echo it back in `route_evidence`, and if you were

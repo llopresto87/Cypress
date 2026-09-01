@@ -217,6 +217,21 @@ def check() -> None:
                     fail(f"{rel}: embedded GRAPH DISCIPLINE block has drifted from "
                          f"the canonical copy in {canonical.name} — sync it verbatim")
 
+    # -- spawn tracing contract: every delegation brief carries the
+    # caller-minted spawn_id and the handback payload echoes it
+    # (delegation.tracing — the correlation chain only works if no
+    # template drops the field)
+    for rel in ("templates/prompts/handback-payload.md",
+                "templates/prompts/investigation-brief.md",
+                "templates/prompts/node-authoring-brief.md",
+                "templates/prompts/growth-scout-brief.md",
+                "templates/prompts/growth-author-brief.md",
+                "templates/prompts/clean-context-validation-brief.md"):
+        p = ROOT / rel
+        if p.exists() and "spawn_id" not in p.read_text(encoding="utf-8"):
+            fail(f"{rel}: no spawn_id field — the delegation trace chain "
+                 f"(delegation.tracing) breaks at this template")
+
     # -- machinery nodes: the seed's method surface is graph content ----
     # Every protocol, skill, agent, and method file installs into a
     # plant's docs/graph/ as a routable node; its frontmatter must carry

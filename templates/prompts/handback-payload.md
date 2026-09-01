@@ -17,6 +17,9 @@ Discipline: docs/graph/agents/00-orchestrator.md (delegation), kernel §3.6.
 ```
 HANDBACK
 - produced_by: {{this agent name}}
+- spawn_id: {{echoed VERBATIM from the brief — the caller-minted
+             dot-chain, e.g. orchestrator.3.architect.1; see
+             docs/graph/method/delegation.md, delegation.tracing}}
 - status: complete | blocked-out-of-domain | failed
 - failure_class: {{only when failed: transient | deterministic | capability |
                    ambiguity | systemic | unregistered — see

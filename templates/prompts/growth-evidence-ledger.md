@@ -132,5 +132,6 @@ fact); it is never padded to look populated.
 
 The scout ends its turn with the payload from
 `docs/graph/templates/prompts/handback-payload.md` (`produced_by: growth-scout`,
-`in_domain_work_done` citing the ledger path, `route_evidence`, `gates`,
-`tools_built`), and names the ledger file it wrote.
+`spawn_id` echoed from the brief, `in_domain_work_done` citing the ledger
+path, `route_evidence`, `gates`, `tools_built`), and names the ledger
+file it wrote.

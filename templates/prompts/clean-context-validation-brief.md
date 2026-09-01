@@ -60,6 +60,10 @@ GRAPH DISCIPLINE — execute before reading any source:
   the session route, and again per question as stated above.
 - If the knowledge base can't answer without opening source, say so —
   that is a finding about the base, not a failure to try.
+- **Trace this spawn.** Your `spawn_id` is **{{caller-minted dot-chain id,
+  e.g. orchestrator.3.architect.1 — see delegation.tracing}}**; echo it
+  verbatim in your handback's `spawn_id` field.
+
 - **Cite the router.** This brief was selected by `agent-lint --route`; the
   ranked line and confidence band that picked you are: {{paste the `agent-lint
   --route` line + band}} — echo it back in `route_evidence`.

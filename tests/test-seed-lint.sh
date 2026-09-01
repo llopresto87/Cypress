@@ -94,6 +94,16 @@ PY
 expect_fail "documents version 0.0.1" "doc-tree-version-pin"
 restore documentation/README.md
 
+# 5d. The spawn-trace contract: a brief that drops the spawn_id field breaks
+# the delegation correlation chain and must fail the lint.
+python3 - "$TMP/templates/prompts/investigation-brief.md" <<'PY'
+import sys; p=sys.argv[1]; t=open(p).read()
+assert "spawn_id" in t
+open(p,'w').write(t.replace("spawn_id", "spawnid"))
+PY
+expect_fail "no spawn_id field" "spawn-trace-contract"
+restore templates/prompts/investigation-brief.md
+
 # 6. manifest version and the top CHANGELOG entry must agree.
 python3 - "$TMP/manifest.json" <<'PY'
 import re,sys; p=sys.argv[1]; t=open(p).read()

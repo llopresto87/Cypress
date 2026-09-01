@@ -1,5 +1,55 @@
 # Changelog
 
+## 6.10.0 — termination bounds made real; every spawn traced (2026-09-01)
+
+Closes the debt recorded in 6.9.2: multi-agent-architect's pre-ship checklist
+demanded caps the seed itself lacked. Steward decision: token/time caps are
+NOT wanted — the seed's real bounding mechanisms are the depth cap, the
+three-attempt boundary, the single-step spawn scope, and the graph's context
+budgets, and those four now bound execution without holes. Correlation-id
+tracing IS wanted, and now exists.
+
+### Changed — the four bounds close their gaps
+
+- **`protocols/recover.md`** (three-attempt boundary): an attempt that ends
+  without advancing its deliverable — no new artifact, evidence, or narrowed
+  hypothesis — now **counts as a failed attempt** even though nothing errored.
+  A loop that keeps "succeeding" at making no progress previously evaded
+  every error-shaped gate; the boundary is the seed's iteration cap, so it
+  trips on futility too.
+- **`core/method/delegation.md`** (`delegation.step-scope`): the spawn-scope
+  overrun now has ONE defined outcome — finish the briefed step (or its
+  coherent finishable part), STOP, and hand back naming the remainder for the
+  caller to re-slice; absorbing overflow in-place is named as the
+  unbounded-spawn anti-pattern.
+- `max_spawn_depth` and the graph load-tier/est_tokens budgets were audited
+  and left as-is (already lint-enforced end to end).
+
+### Added — spawn tracing (`delegation.tracing`)
+
+- Every delegation carries a caller-minted, dot-chained **`spawn_id`**
+  (`orchestrator.3.architect.1`): stated in the brief, echoed verbatim in the
+  handback, cited wherever the spawn's work is referenced. The chain
+  reconstructs the full delegation path with zero infrastructure, and an id
+  deeper than the caller's `max_spawn_depth` is a bound violation on its
+  face. Leaves mint nothing. Wired into
+  `templates/prompts/handback-payload.md` (new `spawn_id` field), all five
+  delegation briefs, and the growth evidence-ledger's handback list.
+  `tests/seed-lint.py` now fails any brief/handback template that drops the
+  field (planted regression: case 5d in `tests/test-seed-lint.sh`).
+
+### Changed — multi-agent-architect checklist matches the doctrine
+
+- **Termination bounds** no longer demands "hard iteration/token/time caps"
+  (scrubbed by steward decision): it now names the real mechanisms — depth
+  cap, no-progress-counting retry boundary, single-step spawn scope with
+  stop-and-hand-back overrun — each with defined at-boundary behavior. The
+  agent-contract workflow step says the same.
+- **Cost ceiling** drops the per-task token/latency budget demand; it keeps
+  model-tier-per-role and adds the graph's load-tier context budgets.
+- **Observability** (correlation-id tracing) is unchanged — and the seed now
+  satisfies it via `delegation.tracing`.
+
 ## 6.9.2 — the doctrine audit: 18 scoped reviews of the method surface itself (2026-09-01)
 
 6.9.1 proved the gates honest; this release audits what the gates cannot see —

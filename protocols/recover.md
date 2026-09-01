@@ -67,6 +67,14 @@ decision to the human with the evidence — never a fourth quiet attempt,
 never a fallback chain that consumes growing resources on a falling
 probability of success.
 
+**No-progress counts as failure.** An attempt that ends without
+advancing its deliverable — no new artifact, no new evidence, no
+narrowed hypothesis — is a **failed attempt** (usually `deterministic`
+or `ambiguity`) even though nothing errored, and it consumes one of the
+three. Spinning without progress is how a runaway loop evades every
+error-shaped gate; this boundary is the seed's iteration cap, so it
+must trip on futility, not only on failure.
+
 ## Gate-failure rule
 
 A gate that fails **twice on the same increment** is not asking for a

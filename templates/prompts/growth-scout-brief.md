@@ -92,6 +92,10 @@ GRAPH DISCIPLINE — execute before reading any source:
 - **Read-only.** `Bash` only for read-only inspection (`ls`, `git log`,
   `wc`). Do not create, edit, or run anything that mutates state, and do
   not fetch/pull/commit/push Git.
+- **Trace this spawn.** Your `spawn_id` is **{{caller-minted dot-chain id,
+  e.g. orchestrator.3.architect.1 — see delegation.tracing}}**; echo it
+  verbatim in your handback's `spawn_id` field.
+
 - **Cite the router.** This brief was selected by `agent-lint --route`;
   the ranked line and confidence band that picked you are: {{paste the
   `agent-lint --route` line + band}}. Echo it back in `route_evidence`.

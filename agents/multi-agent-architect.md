@@ -93,8 +93,10 @@ wiki — never from memory.
    forces it.
 3. **Define each agent contract.** Role (one sentence), inputs, outputs (a
    schema, not prose), tool surface (least privilege), and **termination** — the
-   explicit condition and hard iteration/token/time cap at which the agent stops.
-   No agent ships without a termination bound.
+   explicit stop condition plus the bounded-execution rules of the pre-ship
+   checklist (depth cap, no-progress-counting retry boundary, single-step
+   spawn scope with stop-and-hand-back overrun). No agent ships without a
+   termination bound.
 4. **Pick an execution substrate.** In-process delegate (shared memory, one
    process, cheap, cache-friendly) vs out-of-process workers on a queue/board
    (isolation, independent failure, durable) vs a durable orchestrator (Temporal)
@@ -223,8 +225,12 @@ evals-after-the-fact — live only there; the checklist is the actionable home.)
 
 ## Pre-ship checklist
 
-- [ ] **Termination bounds** — every agent/loop has an explicit stop condition
-      and a hard iteration/token/time cap with defined at-cap behavior.
+- [ ] **Termination bounds** — every agent/loop has an explicit stop
+      condition and bounded execution with defined at-boundary behavior:
+      a delegation depth cap (`max_spawn_depth`), a bounded retry rule
+      that also counts no-progress attempts (recover's three-attempt
+      boundary), and a single-step spawn scope whose overrun means stop
+      and hand back, never absorb (delegation.step-scope).
 - [ ] **Idempotency** — every step a retry/watchdog can re-run is idempotent
       (keyed, CAS-claimed, or effect-guarded).
 - [ ] **Observability** — turns, tool calls, delegations, terminations traced
@@ -234,8 +240,9 @@ evals-after-the-fact — live only there; the checklist is the actionable home.)
       before rollout.
 - [ ] **Guardrails** — irreversible actions gated; model output validated before
       it becomes control flow.
-- [ ] **Cost ceiling** — per-task token/latency budget stated and enforced;
-      model tier chosen per agent role.
+- [ ] **Cost ceiling** — model tier chosen per agent role (cheap class for
+      read-only survey work, strong class for authoring and judgment);
+      context loaded per the graph's load-tier budgets, not wholesale.
 - [ ] **Human-in-the-loop points** — named explicitly (which actions, which
       agents, what the human sees).
 - [ ] **Failure / rollback** — reclaim path for dead/wedged workers, a rollback,

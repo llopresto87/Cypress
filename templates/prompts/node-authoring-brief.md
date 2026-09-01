@@ -44,6 +44,9 @@ GRAPH DISCIPLINE — execute before reading any source:
 If the first node set is not routable yet, report the failed probe (block
 step 6) and use only the exact schema/evidence paths supplied here.
 
+Your `spawn_id` is {{caller-minted dot-chain id — see
+delegation.tracing}}; echo it verbatim in the handback.
+
 This brief was selected by `agent-lint --route`; the ranked line and
 confidence band that picked you are: {{paste the `agent-lint --route` line +
 band}} — echo it back in `route_evidence`. If you can delegate (e.g. spawning

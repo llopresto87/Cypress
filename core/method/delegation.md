@@ -13,6 +13,7 @@ owns:
   - delegation.briefs
   - delegation.step-scope
   - delegation.turn
+  - delegation.tracing
   - delegation.spec-authoring
 requires:
 peers:
@@ -204,6 +205,27 @@ paths, the diff — so the worker spends its tokens on the work, not on
 rediscovering context. An oversized step is re-sliced by the orchestrator
 *before* spawning, per `docs/graph/plans/grill.md` §9 (increment
 shape); it is never handed whole to the worker to absorb.
+
+**At the boundary, stop.** A worker that discovers mid-spawn that the
+step is bigger than briefed finishes the briefed step (or the coherent
+part it can finish), then STOPS and hands back naming the remainder in
+its handback — the caller re-slices and re-spawns. Absorbing the
+overflow in-place is the unbounded-spawn anti-pattern; the step scope
+only bounds anything if overrunning it has this one defined outcome.
+
+## Every spawn is traced
+
+Every delegation carries a **`spawn_id`** — a dot-chained correlation id
+the CALLER mints by extending its own: the session's first spawns are
+`orchestrator.1`, `orchestrator.2`, …; a coordinator spawned as
+`orchestrator.3` mints `orchestrator.3.architect.1` for its own first
+child, and so on. The brief states it; the handback echoes it verbatim
+(`spawn_id:` field, `templates/prompts/handback-payload.md`); the
+delivery record and grill.md §15 cite it wherever a spawn's work is
+referenced. The chain IS the trace: any handback's id reconstructs the
+full delegation path without any infrastructure, and an id deeper than
+the caller's `max_spawn_depth` allows is a bound violation on its face.
+Leaves never mint one — a leaf has no children to trace.
 
 ## Spec authoring is shared
 

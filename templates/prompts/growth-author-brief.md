@@ -104,6 +104,10 @@ GRAPH DISCIPLINE — execute before reading any source:
 - **Never invent.** No fabricated version, URL, CVE, status, date, or
   passing result. `not recorded` / `not audited` / `discovered, not
   executed` instead.
+- **Trace this spawn.** Your `spawn_id` is **{{caller-minted dot-chain id,
+  e.g. orchestrator.3.architect.1 — see delegation.tracing}}**; echo it
+  verbatim in your handback's `spawn_id` field.
+
 - **Cite the router.** Selected by `agent-lint --route`: {{paste the
   ranked line + confidence band}} — echo it back in `route_evidence`.
 
