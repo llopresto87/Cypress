@@ -101,10 +101,13 @@ Two territories, and graft writes to exactly one of them:
   `.claude/skills/`, the `.prime/agent/`, `.opencode/` and `.codex/`
   equivalents, and `.github/`'s transformed views); the tool-specific commands,
   settings, and
-  hooks; the shared script `.claude/agent-lint.py`; and the knowledge-graph
-  scaffold `docs/graph/{_schema.md,graph-lint.py,spec-lint.py}` — preserving
-  the plant's configured `TEST_GLOBS` — plus `index.md`'s router shell. Graft
-  carries the seed's newest version of these onto the plant.
+  hooks; the shared router script `docs/graph/agent-lint.py` (also projected
+  to `.claude/agent-lint.py` on Claude Code installs); and the graph engine
+  scripts `docs/graph/{graph-lint.py,spec-lint.py}` — preserving the
+  plant's configured `TEST_GLOBS`. Graft carries the seed's newest version
+  of these onto the plant. `_schema.md` and `index.md` are NOT in this
+  list — they are project-instantiated and stay the plant's (see the
+  engine-vs-instance rule below).
 - **The plant's own life (graft preserves, always).** The rootstock: the plant's
   application source, and every knowledge fact the plant authored under
   `docs/graph/` — its `nodes/`, `specs/`, `decisions/`, `libraries/`, `plans/`,
@@ -216,9 +219,10 @@ and delivers; clean-context workers survey and author. Model policy is strict �
 **Sonnet-class** workers survey and classify (read-only); **Opus-class** workers
 perform every reconciliation, holistic merge, corpus refresh, and validation.
 
-Every spawned worker runs the plant's graph router before it reads plant source
-— `python3 docs/graph/graph-lint.py --plan "<its exact task>"` — and returns the
-command, the loaded closure, and its deliberate skips. Where the host supports
+Every spawned worker executes the canonical GRAPH DISCIPLINE block of
+`docs/graph/templates/prompts/graph-session-bootstrap.md` (the one home for
+the worker discipline — briefs embed it; this file only points at it) and
+returns the `--plan` command, the loaded closure, and its deliberate skips. Where the host supports
 model-class selection and clean-context spawning, honour it; if it cannot, report
 that this host cannot execute the seed's operating model rather than collapsing
 the work into the main chat.
@@ -358,7 +362,10 @@ delta forward as a named list; Phase 7 reports it.
 it.** The installer drops the knowledge-graph scaffold (`graph-lint.py`,
 `spec-lint.py`, `_schema.md`, `index.md`) *only if absent*, so a plant that
 already has them keeps its OLD engine across a graft and silently misses every
-linter improvement since it grew. **A graft that leaves a plant on a stale graph
+linter improvement since it grew. (The agent router `docs/graph/agent-lint.py`
+is the exception: it carries no project config, so the installer fast-forwards
+it like any machinery file — identical untouched, changed backed up for the
+audit — and it needs no engine-style reconciliation.) **A graft that leaves a plant on a stale graph
 engine is not a true upgrade.** Reconcile the engine explicitly, as a
 config-preserving fast-forward: adopt the seed's current engine body and
 re-inject the plant's own PROJECT CONFIG (`ROOT_ID` / `KINDS` / `KIND_PREFIX` in
@@ -527,7 +534,8 @@ backups exist). Then prove the plant is left more capable and no less itself:
   deliberately refreshed library/legal/tool surfaces. Any unexpected change to the
   plant's own life BLOCKS.
 - **Customization audit (the reconcile-before-overwrite gate)** — run
-  `tools/graft-audit.py <plant> <seed> --tokens <plant tokens>` over the fresh
+  `tools/graft-audit.py <plant> <seed> --tokens=<plant tokens>
+  --engine=<plant>/docs/graph/graph-lint.py` over the fresh
   backups. Every seed-owned file whose backup differs from the seed *and* carries
   plant-signal content is a divergence the blind FF overwrote; each must be
   re-integrated into the FF'd file (holistic MERGE) or explicitly ratified. An
@@ -537,7 +545,7 @@ backups exist). Then prove the plant is left more capable and no less itself:
   (`python3 docs/graph/graph-lint.py` and a representative `--plan`) **on the
   upgraded engine** (the audit's engine-currency check reports no seed engine
   line missing from the plant — else reconcile with `tools/graft-graph-engine.py`),
-  the agent router lints and evals clean (`python3 .claude/agent-lint.py --lint` /
+  the agent router lints and evals clean (`python3 docs/graph/agent-lint.py --lint` /
   `--eval` where installed), and internal links and edges resolve. Report the
   **roster delta** Phase 3 carried forward — the specialists added or renamed by
   this graft — as work the plant's next session registers, not as something this

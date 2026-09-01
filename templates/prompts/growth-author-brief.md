@@ -115,4 +115,6 @@ linter passes (`graph-lint.py`, and `spec-lint.py` for a spec) or report
 what it flags. End with the payload from
 `docs/graph/templates/prompts/handback-payload.md` (`produced_by: {{you}}`,
 `in_domain_work_done` with paths, `route_evidence`); spawn only from your
-`delegates_to` allowlist within your depth cap, else STOP and hand back.
+`delegates_to` allowlist within your depth cap, else STOP and hand back. If
+you are a leaf (`can_delegate: false`) you have no allowlist — never spawn;
+STOP and hand back instead.

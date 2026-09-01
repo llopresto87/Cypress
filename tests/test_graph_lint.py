@@ -244,12 +244,74 @@ class MachineryNodeTests(unittest.TestCase):
                          f"NN- filename prefix must be accepted:\n{r.stdout}\n{r.stderr}")
 
     def test_pregrowth_machinery_only_graph_lints_without_root(self):
-        graph = build_graph(self.tmp, {})  # empty nodes/, index has no ids
+        graph = build_graph(self.tmp, {})  # empty nodes/, no root
         self._add_machinery(graph, "method", "tiers.md",
                             node_md("method.tiers", "method"))
+        # the shipped index lists every machinery node; reachability is
+        # a traversal seeded by the listed ids, so list it here too
+        (graph / "index.md").write_text("# index\n\n- method.tiers\n",
+                                        encoding="utf-8")
         r = run_lint(graph)
         self.assertEqual(r.returncode, 0,
                          f"pre-growth grace: machinery-only graph must lint:\n{r.stdout}\n{r.stderr}")
+
+
+    def test_pregrowth_prefix_collision_is_not_listed(self):
+        """Regression: the pre-growth (no-root) branch kept the raw substring
+        test after 6.9.1 fixed the root branch — an orphan machinery node
+        passed whenever its id merely prefixed an unrelated longer id in
+        index.md (skill.context vs skill.context-router)."""
+        graph = build_graph(self.tmp, {})  # empty nodes/, no root
+        self._add_machinery(graph, "skills", "context-router.md",
+                            node_md("skill.context-router", "skill"))
+        self._add_machinery(graph, "skills", "context.md",
+                            node_md("skill.context", "skill"))
+        (graph / "index.md").write_text(
+            "# index\n\n- skill.context-router\n", encoding="utf-8")
+        r = run_lint(graph)
+        out = r.stdout + r.stderr
+        self.assertNotEqual(r.returncode, 0,
+                            f"pre-growth orphan must not ride a prefix:\n{out}")
+        self.assertIn("skill.context:", out, out)
+
+    def test_pregrowth_orphan_island_fails(self):
+        """Regression: pre-growth reachability once unioned EVERY node's
+        outgoing edges into the seen-set, so two mutually-peering ghost
+        nodes vouched for each other and a whole orphan island passed."""
+        graph = build_graph(self.tmp, {})
+        self._add_machinery(graph, "method", "tiers.md",
+                            node_md("method.tiers", "method"))
+        ghost_a = node_md("skill.ghost-a", "skill").replace(
+            "requires:", "peers:\n  - skill.ghost-b\nrequires:")
+        ghost_b = node_md("skill.ghost-b", "skill").replace(
+            "requires:", "peers:\n  - skill.ghost-a\nrequires:")
+        self._add_machinery(graph, "skills", "ghost-a.md", ghost_a)
+        self._add_machinery(graph, "skills", "ghost-b.md", ghost_b)
+        (graph / "index.md").write_text("# index\n\n- method.tiers\n",
+                                        encoding="utf-8")
+        r = run_lint(graph)
+        out = r.stdout + r.stderr
+        self.assertNotEqual(r.returncode, 0,
+                            f"a mutually-peering orphan island must fail:\n{out}")
+        self.assertIn("skill.ghost-a", out, out)
+
+    def test_duplicate_id_fails(self):
+        """Regression: _schema.md rule 2 claims id uniqueness, but nothing
+        enforced it — a project node and a machinery node sharing one id both
+        passed their filename checks and --plan resolved to whichever file
+        was scanned last, silently."""
+        nodes = {"root": node_md("root", "root", requires=["protocol.foo"])}
+        graph = build_graph(self.tmp, nodes)
+        self._add_machinery(graph, "protocols", "foo.md",
+                            node_md("protocol.foo", "protocol"))
+        (graph / "nodes" / "protocol.foo.md").write_text(
+            node_md("protocol.foo", "protocol",
+                    owns=["protocol.foo.second-home"]),
+            encoding="utf-8")
+        r = run_lint(graph)
+        out = r.stdout + r.stderr
+        self.assertNotEqual(r.returncode, 0, f"duplicate id must fail:\n{out}")
+        self.assertIn("declared by 2 files", out, out)
 
     def test_project_node_still_requires_root(self):
         nodes = {"subsystem.api": node_md("subsystem.api", "subsystem")}
@@ -258,6 +320,90 @@ class MachineryNodeTests(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0,
                             "a project node with no root must still fail")
         self.assertIn("missing root node", r.stdout + r.stderr)
+
+
+
+
+class VersionLeakageTests(unittest.TestCase):
+    """Regression: VERSION_RE's lookbehind excluded any word char — including
+    the leading `v` of the standard `vX.Y.Z` spelling — so `v2.7.2` evaded
+    check_version_leakage while bare `2.7.2` was caught."""
+
+    def setUp(self):
+        self.assertTrue(GRAPH_LINT.exists(), f"missing tool: {GRAPH_LINT}")
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def _graph_with_body_suffix(self, suffix: str) -> Path:
+        node = node_md("subsystem.alpha", "subsystem")
+        node = node.replace("plain words.", f"plain words. {suffix}")
+        nodes = {
+            "root": node_md("root", "root", requires=["subsystem.alpha"]),
+            "subsystem.alpha": node,
+        }
+        return build_graph(self.tmp, nodes)
+
+    def test_v_prefixed_semver_is_caught(self):
+        """A `v2.7.2` pin in a non-machinery body must fail the leak check."""
+        r = run_lint(self._graph_with_body_suffix("Pinned at v2.7.2 today."))
+        out = r.stdout + r.stderr
+        self.assertNotEqual(r.returncode, 0, f"v-prefixed pin must fail:\n{out}")
+        self.assertIn("version pin", out, out)
+
+    def test_section_reference_is_not_a_pin(self):
+        """`\u00a75.4` stays exempt — the lookbehind still shields section refs."""
+        r = run_lint(self._graph_with_body_suffix("See \u00a75.4 for the rule."))
+        self.assertEqual(r.returncode, 0, f"section ref must pass:\n{r.stdout}\n{r.stderr}")
+
+
+class ReachabilityBoundaryTests(unittest.TestCase):
+    """Regression: reachability once used a plain substring test against
+    index.md, so an orphan node passed whenever its id merely prefixed an
+    unrelated longer string (`subsystem.orphan` vs `subsystem.orphaned-thing`)."""
+
+    def setUp(self):
+        self.assertTrue(GRAPH_LINT.exists(), f"missing tool: {GRAPH_LINT}")
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def _graph(self, index_lines: list) -> Path:
+        nodes = {
+            "root": node_md("root", "root", requires=["subsystem.alpha"]),
+            "subsystem.alpha": node_md("subsystem.alpha", "subsystem"),
+            "subsystem.orphan": node_md("subsystem.orphan", "subsystem"),
+        }
+        graph = build_graph(self.tmp, nodes)
+        (graph / "index.md").write_text(
+            "# index\n\n" + "\n".join(f"- {l}" for l in index_lines) + "\n",
+            encoding="utf-8",
+        )
+        return graph
+
+    def test_prefix_of_longer_string_is_not_listed(self):
+        """An orphan whose id only prefixes an unrelated index string fails."""
+        r = run_lint(self._graph(["root", "subsystem.alpha", "subsystem.orphaned-thing"]))
+        out = r.stdout + r.stderr
+        self.assertNotEqual(r.returncode, 0, f"prefix collision must not count:\n{out}")
+        self.assertIn("unreachable", out, out)
+        self.assertIn("subsystem.orphan", out, out)
+
+    def test_dotted_child_id_is_not_the_parent(self):
+        """An orphan whose id only prefixes a DOTTED child id in index.md
+        (`subsystem.orphan` vs `subsystem.orphan.child`) fails too — dotted
+        ids are this graph's norm, so a bare word-char lookahead was only
+        half the fix."""
+        r = run_lint(self._graph(["root", "subsystem.alpha", "subsystem.orphan.child"]))
+        out = r.stdout + r.stderr
+        self.assertNotEqual(r.returncode, 0, f"dotted-child collision must not count:\n{out}")
+        self.assertIn("unreachable", out, out)
+
+    def test_exact_listing_still_counts(self):
+        """The same orphan listed exactly in index.md passes as before."""
+        graph = self._graph(["root", "subsystem.alpha", "subsystem.orphan"])
+        res = run_lint(graph)
+        self.assertEqual(res.returncode, 0, f"exact listing must pass:\n{res.stdout}\n{res.stderr}")
 
 
 if __name__ == "__main__":

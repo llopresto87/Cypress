@@ -254,6 +254,9 @@ evals-after-the-fact — live only there; the checklist is the actionable home.)
   budgets and runbooks go to `reliability`.
 - You read the graph before designing and cite the owning node rather than
   copying its facts.
+- Before the design ships, route the finished topology, contracts, and
+  pre-ship checklist through `reviewer` for an independent audit — you do
+  not certify your own design.
 
 ## Handback (end every turn with this)
 

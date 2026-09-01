@@ -495,7 +495,8 @@ a ready procedure instead of rediscovering the sequence.
 - **The withdraw contract (consumed by `grow` / `toolcraft` / commission).**
   Check the corpus first; if a match exists, instantiate it into the project's
   `docs/graph/skills/<name>.md` (projected into `.claude/skills/<name>/SKILL.md`
-  and kin by the harness) from `docs/graph/templates/skill.template.md`, grounding
+  and kin — created by the plant itself; install.sh projects only seed
+  skills) from `docs/graph/templates/skill.template.md`, grounding
   its steps in the project's real gates and tools; else author it fresh, and its
   durable form becomes a harvest candidate.
 

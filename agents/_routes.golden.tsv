@@ -4,7 +4,7 @@
 # router must return LOW/NONE confidence (the "commission an expert" path).
 # Owned/extended by `tester` + `data-ml` (plan §4.3). This tester-authored
 # corpus is the acceptance contract for the routing_triggers the implementer
-# / data-ml add to the agent defs (16 in the current roster), and the seed
+# / data-ml add to the agent defs (18 in the current roster), and the seed
 # for the production
 # .claude/agents/_routes.golden.tsv.
 #

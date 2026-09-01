@@ -118,4 +118,87 @@ grep -q "knowledge overwrite" "$TMP/aout3" || { cat "$TMP/aout3"; fail "plant-au
 [ "$rc3" -eq 1 ] || fail "audit must exit 1 on a plant-authored knowledge overwrite (got $rc3)"
 echo "  audit flags plant-authored docs/graph/ overwrite (seed-owned vs plant-owned) — OK"
 
+# REGRESSION — a wrong plant root must not read as a clean audit. Zero backups
+# under a directory with no docs/graph/ once printed the same "clean" line and
+# exit 0 a real audit earns; auditing nothing proves nothing.
+mkdir -p "$TMP/notaplant"
+set +e
+python3 "$AUDIT" "$TMP/notaplant" "$TMP/seed" --date=$DATE >"$TMP/aout4" 2>&1
+rc4=$?
+set -e
+grep -q "not a plant root" "$TMP/aout4" || { cat "$TMP/aout4"; fail "wrong root not refused"; }
+[ "$rc4" -eq 1 ] || fail "audit must exit 1 on a non-plant root (got $rc4)"
+echo "  audit refuses a vacuous run against a non-plant root (exit 1) — OK"
+
+# REGRESSION — zero backups for the REQUESTED date while backups exist for
+# another date is a wrong --date, not a clean graft: the real fast-forward
+# went unexamined. (Zero backups anywhere stays a legitimate no-op graft —
+# idempotent installs make that the normal case.)
+set +e
+python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=19990101 --tokens=widgetco >"$TMP/aout5" 2>&1
+rc5=$?
+set -e
+grep -q "wrong --date" "$TMP/aout5" || { cat "$TMP/aout5"; fail "wrong --date not flagged"; }
+[ "$rc5" -eq 1 ] || fail "audit must exit 1 on a date that audited nothing while backups exist (got $rc5)"
+echo "  audit refuses a vacuous audit under a wrong --date (exit 1) — OK"
+
+# REGRESSION — space-form options: `--tokens acme` once silently dropped the
+# value into the positionals (audited with DEFAULT tokens; a plant
+# customization matching ONLY the explicit token then classified DELTA and
+# the audit printed clean/exit 0). Both forms must behave identically now,
+# and stray positionals must fail. Plant a token-only line (no generic
+# signal words) so the explicit token is load-bearing.
+rm -f "$TMP/plant/docs/graph/nodes/api.md.bak-$DATE-000000"
+printf 'seed body\ngeneric seed line\nwidgetco special retention rule\n' > "$TMP/plant/docs/graph/agents/b.md.bak-$DATE-000000"
+set +e
+python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date "$DATE" --tokens widgetco >"$TMP/aout6" 2>&1
+rc6=$?
+set -e
+grep -q "CUSTOMIZED': 1" "$TMP/aout6" || { cat "$TMP/aout6"; fail "space-form --tokens not honored"; }
+[ "$rc6" -eq 1 ] || fail "space-form flags must classify identically (got $rc6)"
+rm -f "$TMP/plant/docs/graph/agents/b.md.bak-$DATE-000000"
+set +e
+python3 "$AUDIT" "$TMP/plant" "$TMP/seed" stray-arg --date=$DATE >"$TMP/aout7" 2>&1
+rc7=$?
+set -e
+[ "$rc7" -eq 2 ] || { cat "$TMP/aout7"; fail "stray positional must exit 2 (got $rc7)"; }
+echo "  audit accepts --flag value form; stray positionals fail loudly — OK"
+
+# REGRESSION — _schema.md and index.md are project-instantiated (plant-owned):
+# a backup over docs/graph/_schema.md is a knowledge overwrite, not exempt
+# machinery (graft.md: copying the seed template would regress placeholders).
+printf 'plant-instantiated schema\n' > "$TMP/plant/docs/graph/_schema.md.bak-$DATE-000000"
+set +e
+python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=$DATE --tokens=widgetco >"$TMP/aout8" 2>&1
+rc8=$?
+set -e
+grep -q "knowledge overwrite" "$TMP/aout8" || { cat "$TMP/aout8"; fail "_schema.md overwrite not flagged as knowledge"; }
+[ "$rc8" -eq 1 ] || fail "audit must exit 1 on a schema overwrite (got $rc8)"
+rm -f "$TMP/plant/docs/graph/_schema.md.bak-$DATE-000000"
+echo "  audit flags _schema.md/index.md overwrites as plant knowledge — OK"
+
+# REGRESSION — plant-AUTHORED project skills live under docs/graph/skills/
+# too; the wholesale machinery-subtree exemption hid their overwrites
+# (UNMAPPED, never scanned, "clean"). A machinery-shaped path with no seed
+# source is plant knowledge.
+printf 'plant-authored skill body\n' > "$TMP/plant/docs/graph/skills/deploy-widgetco.md.bak-$DATE-000000"
+set +e
+python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=$DATE --tokens=widgetco >"$TMP/aout9" 2>&1
+rc9=$?
+set -e
+grep -q "knowledge overwrite" "$TMP/aout9" || { cat "$TMP/aout9"; fail "plant-authored skill overwrite not flagged"; }
+grep -q "UNMAPPED backup" "$TMP/aout9" || { cat "$TMP/aout9"; fail "unmapped backups not listed"; }
+[ "$rc9" -eq 1 ] || fail "audit must exit 1 on a plant-skill overwrite (got $rc9)"
+rm -f "$TMP/plant/docs/graph/skills/deploy-widgetco.md.bak-$DATE-000000"
+echo "  audit flags plant-authored docs/graph/skills/ overwrites; lists UNMAPPED — OK"
+
+# REGRESSION — a flag must never swallow a flag: `--tokens --engine=x` once
+# consumed "--engine=x" as the token value and audited with defaults.
+set +e
+python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --tokens --engine=x >"$TMP/aout10" 2>&1
+rc10=$?
+set -e
+[ "$rc10" -eq 2 ] || { cat "$TMP/aout10"; fail "flag-swallowed-flag must exit 2 (got $rc10)"; }
+echo "  audit rejects a flag consumed as a value (exit 2) — OK"
+
 echo "test-graft-tools: PASS"

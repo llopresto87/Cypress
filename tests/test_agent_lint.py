@@ -686,6 +686,27 @@ def test_eval_passes_on_good_golden(tmp_path):
     )
 
 
+def test_eval_fails_on_zero_labeled_rows(tmp_path):
+    """Regression: a golden corpus with only LOW (novel-stack) rows once
+    yielded `acc = 1.0` from the 0/0 guard and an "OK — accuracy 100.0%"
+    banner — a vacuous pass in a gate that markets itself as fail-closed.
+    Zero labeled rows must FAIL, not score."""
+    all_low = (
+        "# task\texpected\n"
+        "set up a cobol batch job on the mainframe\tLOW\n"
+        "port the firmware to the new dsp\tLOW\n"
+    )
+    root, dst = build_project(tmp_path, _EVAL_ROSTER, golden=all_low)
+    r = run(dst, ["--eval"], cwd=root)
+    assert r.returncode != 0, (
+        f"--eval must fail closed on zero labeled rows:\nstdout:\n{r.stdout}\n"
+        f"stderr:\n{r.stderr}"
+    )
+    assert "vacuous" in (r.stdout + r.stderr), (
+        f"failure should name the vacuous 0/0 gate:\n{r.stdout}\n{r.stderr}"
+    )
+
+
 def test_eval_fails_below_threshold(tmp_path):
     root, dst = build_project(tmp_path, _EVAL_ROSTER, golden=_BAD_GOLDEN)
     r = run(dst, ["--eval"], cwd=root)

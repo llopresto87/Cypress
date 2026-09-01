@@ -243,6 +243,8 @@ closure is the rule, not your comfort.
 ## Reference files
 
 - `docs/graph/skills/knowledge-graph.md` — builds and lints the graph.
-- `docs/graph/templates/knowledge-graph/_schema.md` — the node contract.
+- `docs/graph/_schema.md` — the node contract (the adopted copy beside the
+  graph; `docs/graph/templates/knowledge-graph/_schema.md` is the pristine
+  seed template, fast-forwarded on graft).
 - `docs/graph/templates/knowledge-graph/index.md` — the router-index template.
 - the kernel (`AGENTS.md`) — the context-budget rule this skill implements.

@@ -11,7 +11,7 @@ scores each agent's `routing_triggers` / `name` / `description` against a task,
 and returns a ranked list with a confidence band. It also lints the delegation
 frontmatter and scores a golden routing corpus as a fail-closed gate.
 
-Install target : .claude/agent-lint.py
+Install target : docs/graph/agent-lint.py (every harness) + .claude/agent-lint.py (Claude Code projection)
 Seed source    : cypress/integrations/claude-code/agent-lint.py
 (kept byte-identical). Design of record:
   docs/plans/agent-routing-and-delegation.md  (§4 router, §4.1 schema, §4.3 eval)
@@ -198,7 +198,14 @@ def parse_frontmatter(text: str, path: Path):
 
 
 def find_agents_dir() -> Path | None:
-    """Walk up from cwd and the script's own location for `.claude/agents/`."""
+    """Walk up from cwd and the script's own location for a roster.
+
+    Two homes are accepted: `.claude/agents/` (the Claude Code
+    projection) and `docs/graph/agents/` (the graph home, present on
+    EVERY harness — the kernel mandates `python3
+    docs/graph/agent-lint.py --route` on all five tools, so the script
+    must resolve a roster on opencode/codex/copilot/prime-agent plants
+    that have no .claude/ at all)."""
     starts = [Path.cwd(), Path(__file__).resolve().parent]
     seen = set()
     for start in starts:
@@ -207,10 +214,16 @@ def find_agents_dir() -> Path | None:
             if p in seen:
                 break
             seen.add(p)
-            cand = p / AGENTS_REL
-            if cand.is_dir():
-                return cand
+            # the graph home FIRST: a plant-commissioned expert is authored
+            # into docs/graph/agents/ (the home) before any projection, and
+            # the projection can be stale after a graft
+            for rel in (Path("docs/graph/agents"), AGENTS_REL):
+                cand = p / rel
+                if cand.is_dir():
+                    return cand
             if p.name == ".claude" and (p / "agents").is_dir():
+                return p / "agents"
+            if p.name == "graph" and (p / "agents").is_dir():
                 return p / "agents"
             p = p.parent
     return None
@@ -445,6 +458,10 @@ def cmd_eval(agents: list, adir: Path) -> int:
     rows = load_golden(adir)
     labeled = [(t, e) for t, e in rows if e != "LOW"]
     novel = [(t, e) for t, e in rows if e == "LOW"]
+    if not labeled:
+        print("agent-lint --eval: FAIL — golden corpus has zero labeled "
+              "(non-LOW) rows; a 0/0 accuracy gate is vacuous", file=sys.stderr)
+        return 1
 
     misroutes = []
     correct = 0
@@ -504,7 +521,7 @@ def main() -> int:
     else:
         adir = find_agents_dir()
     if adir is None:
-        print("FATAL: no .claude/agents/ directory found by walking up from cwd "
+        print("FATAL: no .claude/agents/ or docs/graph/agents/ roster found by walking up from cwd "
               "or the script location (pass --dir to point at one).\n"
               "  If you are rooted in the SEED repo rather than a plant, that is "
               "expected — the seed ships no roster projection of its own, and a "

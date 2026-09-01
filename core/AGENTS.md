@@ -45,8 +45,8 @@ mid-task is normal and cheap. Full discipline and execution paths:
 | **T3** | new/changed behavior, architecture, contracts, dependencies, ambiguity — **and anything no other row covers** | full funnel, all doing delegated |
 
 Hard edges: if an edit *could* alter behavior, an interface, a persisted
-format, or security posture, it is not T1. No covering spec means T3,
-however small it looks.
+format, security posture — or anything a spec covers — it is not T1.
+No covering spec means T3, however small it looks.
 
 ## 1. Sessions route; workers do
 
@@ -62,7 +62,7 @@ own triggers. Every brief embeds the canonical block from
 `docs/graph/templates/prompts/graph-session-bootstrap.md` **verbatim**
 plus the handback contract — the brief is the only enforcement that
 crosses the spawn boundary. Roster table, mechanical routing
-(`python3 .claude/agent-lint.py --route`), model classes, and the
+(`python3 docs/graph/agent-lint.py --route`), model classes, and the
 depth-capped delegation bounds: `method.delegation`.
 
 ## 2. Enter work through a protocol node
@@ -70,7 +70,7 @@ depth-capped delegation bounds: `method.delegation`.
 State which protocol you are entering before you begin. The router's
 **Method** section maps where-the-work-stands → the `protocol.*` entry
 node. Default T3 sequence: brainstorm* → specify → grill →
-ingest-library* → test-first → implement → verify → canonize → deliver.
+ingest-library* → test-first → verify → canonize → deliver.
 On any failure: `protocol.recover`. `harvest` and `graft` are
 user-sovereign — never enter them unprompted.
 

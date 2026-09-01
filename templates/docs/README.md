@@ -57,7 +57,9 @@ Use the protocols. All destinations below are relative to this graph:
 - `specify` → `specs/`
 - `grill` → `plans/grill.md`
 - `ingest-library` → `libraries/` + `sources/`
-- `toolcraft` → `tools/` (docs-librarian cards + `tools/index.md`)
+- `canonize` close-out → `tools/` (docs-librarian cards +
+  `tools/index.md`), applying the `toolcraft` doctrine; `toolcraft` is
+  never entered as a command of its own
 - Architect → `decisions/` (ADRs)
 - Product → `product/`
 - Ui-ux-designer → `design/`

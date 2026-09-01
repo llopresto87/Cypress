@@ -25,7 +25,7 @@ This seed system maps to Codex as follows:
 | `core/AGENTS.md`         | `AGENTS.md` at repo root (with sub-agents inlined or referenced) |
 | `agents/*.md`            | `.codex/agents/*.md` (referenced from AGENTS.md) |
 | `skills/*/SKILL.md`      | `.codex/skills/*/SKILL.md` (registered in `~/.codex/config.toml`) |
-| protocols                | `.codex/protocols/*.md` (referenced from AGENTS.md) |
+| `protocols/*.md`         | `docs/graph/protocols/*.md` (graph nodes; no `.codex/` copy) |
 | `templates/`             | `templates/` (kept at repo root, untouched)      |
 | `templates/docs/`        | `docs/graph/` (missing leaves added on install)  |
 
@@ -71,11 +71,12 @@ into `~/.codex/config.toml` and adjust the paths to the project root.
 /path/to/cypress/install.sh codex
 ```
 
-Creates:
-- `AGENTS.md` → symlink or copy of `core/AGENTS.md`
-- `.codex/agents/*.md` → symlinks to `agents/*.md`
-- `.codex/protocols/*.md` → symlinks to `protocols/*.md`
-- `.codex/skills/<name>/SKILL.md` → symlinks to `skills/<name>/SKILL.md`
+Creates (copies by default; `--symlink` opts into live seed links):
+- `AGENTS.md` → copy of `core/AGENTS.md` (shared with a co-installed
+  Claude Code kernel where present)
+- `.codex/agents/*.md` → copies of `agents/*.md`
+- `.codex/skills/<name>/SKILL.md` → copies of `skills/<name>/SKILL.md`
+- protocols install once, as graph nodes: `docs/graph/protocols/*.md`
 - A printed reminder showing the `~/.codex/config.toml` lines
   the user needs to add for skill registration (the installer
   does not modify global user config without consent).

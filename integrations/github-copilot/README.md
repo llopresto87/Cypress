@@ -52,27 +52,44 @@ regenerated it (`docs/graph/method/delegation.md`,
 ### Source agent → `.github/agents/<name>.agent.md`
 
 ```yaml
-# Source (.agents/01-architect.md)
+# Source (agents/01-architect.md) — quoted verbatim
 ---
 name: architect
 description: Senior system architect. ...
-tools: [Read, Write, Edit, Glob, Grep, WebSearch, WebFetch]
+tools: [Read, Write, Edit, Glob, Grep, WebSearch, WebFetch, Task]
 model: opus
 ---
 
 # Transformed (.github/agents/architect.agent.md)
 ---
 description: Senior system architect. ...
-tools: ['codebase', 'fetch', 'findTestFiles', 'githubRepo', 'search', 'usages', 'editFiles']
-model: claude-opus-4
+tools: ['codebase', 'search', 'usages', 'findTestFiles', 'runCommands', 'editFiles', 'fetch', 'githubRepo']
 ---
 ```
 
-The Copilot equivalents of the universal tool names are:
-- `Read`, `Glob`, `Grep` → `codebase`, `search`, `usages`, `findTestFiles`
-- `Write`, `Edit` → `editFiles`
-- `WebSearch`, `WebFetch` → `fetch`, `githubRepo`
-- `Bash` → `runCommands` (only granted to non-review agents)
+The transform derives each agent's Copilot toolset from its OWN
+`tools:` allowlist (the allowlist is the discipline — a write-less
+agent must stay write-less on Copilot too):
+- always granted: `codebase`, `search`, `usages`, `findTestFiles`,
+  and `runCommands` — command execution is a baseline because the
+  GRAPH DISCIPLINE bootstrap mandates running
+  `python3 docs/graph/graph-lint.py --plan` / `agent-lint.py --route`
+  in every session, Bash-less charters included
+- `Write` / `Edit` → `editFiles`
+- `Bash` → `runTasks` (the workspace task runner)
+- `WebSearch` / `WebFetch` → `fetch`, `githubRepo` (both are REMOTE
+  reach; `githubRepo` searches GitHub, so it is web-gated, not part of
+  the local read set)
+
+Two fields are deliberately NOT projected:
+- `model:` — Copilot model ids churn; the class stays in the source
+  node (`docs/graph/agents/<name>.md`) and the session picks the
+  workspace default.
+- `Task` — Copilot has no subagent spawning. The six coordinators'
+  delegation flows (including the kernel's close-out-spawn mandate)
+  degrade to the single session on Copilot: do the work sequentially
+  in-session and record the deviation, rather than simulating personas
+  in-chat (which the kernel forbids).
 
 ### Source protocol → `.github/prompts/<name>.prompt.md`
 
@@ -133,8 +150,10 @@ way Claude Code does, because the two share a hook format.
   mandate plus the suggested node set as
   `hookSpecificOutput.additionalContext`, which the host injects as a
   prepended message. It emits **JSON** (plain-text stdout is *not*
-  injected by Copilot) and uses a relative command path (not
-  `$CLAUDE_PROJECT_DIR`, which is Claude-only) so it resolves in both.
+  injected by Copilot) and uses `${CLAUDE_PROJECT_DIR:-$PWD}` in the
+  command — Claude Code sets `$CLAUDE_PROJECT_DIR`; Copilot doesn't, and
+  falls back to `$PWD` (its hook cwd is the workspace root) — so the
+  same command line resolves in both hosts.
 - **VS Code reads `.claude/settings.json` hooks directly.** So if the
   project has the Claude Code install (`.claude/settings.json` +
   `.claude/route-hook.py`), Copilot picks up the same hook — nothing

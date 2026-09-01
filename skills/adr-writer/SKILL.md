@@ -22,7 +22,7 @@ load_when:
   - "opening a one-way door decision"
 artifacts:
   - templates/adr.template.md
-  - templates/docs/decisions/README.md
+  - decisions/README.md
 est_tokens: 1400
 ---
 

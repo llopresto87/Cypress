@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- **Version documented:** 6.8.0
+- **Version documented:** 6.9.2
 - **Repository role:** this repo is the **seed** — the product that is shipped
   into other projects. It is *not* a grown project itself.
 - **License:** MIT — see [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -51,7 +51,7 @@ templates, and tooling that you drop into any codebase. Once installed, an AI
 coding agent (Claude Code, Prime Agent, opencode, OpenAI Codex, or GitHub
 Copilot) gains:
 
-- a **senior engineering team** of 17 named specialist agents;
+- a **senior engineering team** of 18 named specialist agents;
 - a set of **named protocols** (workflows) for spec-driven and test-driven work;
 - a **progressive-discovery knowledge graph** that keeps a large or multi-repo
   codebase inside a context window;
@@ -264,7 +264,7 @@ subsystem, writing a spec, a test, code, or a doc — goes to a **clean-context
 specialist** from the roster. Persona simulation in the chat is not delegation;
 a real spawn with a purpose-made brief is.
 
-### 6.2 The 17 specialists
+### 6.2 The 18 specialists
 
 | Specialist | When to call |
 |------------|--------------|
@@ -278,6 +278,7 @@ a real spawn with a purpose-made brief is.
 | `reliability` | Deploy, observability, rollback, capacity, cost; infra from scratch. |
 | `data-ml` | Datasets, pipelines, model selection, evaluation, synthetic data. |
 | `product` | User outcome, UX, acceptance criteria, accessibility. |
+| `ui-ux-designer` | Interface layout, interaction states, design tokens/component system, screen flows, usability-heuristics audits. |
 | `docs-librarian` | `docs/graph/` health, fact ownership, wiki leaves, catalogs, close-out. |
 | `research-scout` | Internet research; ingest libraries/specs into the wiki. |
 | `devils-advocate` | Hostile pass over a *finished* claim-bearing deliverable; refutes from primary sources. |
@@ -291,7 +292,7 @@ it routable and enforces the delegation bounds.
 
 ### 6.3 Mechanical routing
 
-Before spawning, the orchestrator runs `python3 .claude/agent-lint.py --route
+Before spawning, the orchestrator runs `python3 docs/graph/agent-lint.py --route
 "<task>"`. This ranks specialists by an IDF-weighted match against their
 `routing_triggers` frontmatter and prints a **confidence band** (HIGH / MEDIUM /
 LOW / NONE) to cite in the delegation brief. It is a **keyword heuristic floor,
@@ -364,8 +365,10 @@ protocol you are entering before you begin. There are 15 protocol nodes in
 `protocols/`.
 
 **The default T3 sequence:**
-`brainstorm* → specify → grill → ingest-library* → test-first → implement →
-verify → canonize → deliver` (asterisked steps are conditional).
+`brainstorm* → specify → grill → ingest-library* → test-first →
+verify → canonize → deliver` (asterisked steps are conditional;
+implementation happens inside test-first's GREEN phase — there is no
+separate `implement` protocol).
 
 | Protocol | Purpose |
 |----------|---------|
@@ -654,7 +657,7 @@ or authored facts.
 ```
 core/                 Bootstrap kernel (AGENTS.md) + method/ posture nodes
   method/               tiers, delegation, engineering/design/stewardship posture
-agents/               17 specialist agents (graph nodes; projected to the harness)
+agents/               18 specialist agents (graph nodes; projected to the harness)
   _routes.golden.tsv    golden routing set for agent-lint --eval
 protocols/            15 protocol graph nodes (installed to docs/graph/protocols/)
 skills/               13 skill graph nodes (installed flat to docs/graph/skills/)
@@ -725,12 +728,12 @@ in exactly their mapped home), canonical-block byte-identity in the brief
 templates, and the per-session instruction budget of the integrations.
 
 **Current status (documented run):** all gates PASS —
-`agent-lint`: 17 agents valid; `--eval`: top-1 accuracy 100% (46/46);
-`seed lint: PASS`; `legal lint: PASS — 128 entries across 13 pages`;
-`test_agent_lint.py`: 43 passed, 1 skipped.
+`agent-lint`: 18 agents valid; `--eval`: top-1 accuracy 100% (49/49);
+`seed lint: PASS`; `legal lint: PASS — 129 entries across 13 pages`;
+`test_agent_lint.py`: 44 passed, 1 skipped.
 
 > **Honesty note carried in the CHANGELOG:** the routing eval is substantially
-> **in-sample** — 42 of its 46 golden rows are byte-identical to the expected
+> **in-sample** — 42 of its 49 labeled golden rows are byte-identical to the expected
 > agent's own `routing_triggers`, so the 100% score reads stronger than it is.
 > The seed states this weakness rather than hiding it.
 

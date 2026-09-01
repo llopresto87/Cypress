@@ -63,9 +63,13 @@ against ground truth you already know.
    agent *reject* the premise with a citation; a weak one lets the
    agent hallucinate agreement. This is the highest-value test — it
    catches the gaps that ordinary questions glide over.
-5. **Grade and fix.** Every wrong answer, every missed rejection, every
-   over-broad load is a defect in the base, not the agent. Fix the node
-   or the trigger; re-run.
+5. **Grade and fix — independently.** Every wrong answer, every missed
+   rejection, every over-broad load is a defect in the base, not the
+   agent. Fix the node or the trigger; re-run. In a standalone run the
+   grading is done by (or reviewed by) an agent that did not author the
+   base; when that is impossible, record the deviation with the result.
+   (`docs/graph/protocols/grow.md` Phase 6 already enforces this inside
+   `grow`.)
 
 A base passes when a cold agent answers correctly, loads minimally, and
 refuses the false premises — citing sources, without opening the raw
@@ -114,6 +118,10 @@ output is evidence you act on, not changes they make.
 - **Validating with an agent that shares your context** (a fork of
   yourself). It inherits your assumptions and will pass a base a
   stranger would fail. Use a clean context.
+- **Grading your own base.** Authoring the nodes and then scoring the
+  answers re-imports the assumptions the clean context was meant to
+  strip. Have a non-author grade or review the grading, or record the
+  deviation.
 - **Only asking questions the docs obviously answer.** You are testing
   the seams, not the center.
 - **Treating a wrong answer as the test agent's failure.** If the base

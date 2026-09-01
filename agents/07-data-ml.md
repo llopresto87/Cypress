@@ -115,6 +115,12 @@ with:
 - Drift signals (production metrics that say "re-evaluate now").
 - Re-evaluation schedule.
 
+For any LLM/VLM feature, author the prompt contract at
+`docs/graph/prompts/prompt-contracts/PROMPT-NNNN-<slug>.md` from
+`docs/graph/templates/prompt-contract.template.md` (the prompt body lives
+inline in its §12), register it in `docs/graph/prompts/prompt-registry.md`,
+and route it to `security` for review.
+
 ## Model selection (when the project uses third-party models)
 
 Before committing to a model:

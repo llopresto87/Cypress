@@ -174,4 +174,103 @@ for order in "claude-code prime-agent" "prime-agent claude-code"; do
   rm -rf "$D"
 done
 
+# REGRESSION — idempotent re-run: a second identical install must create no
+# backups. 6.9.0 backed up and rewrote byte-identical files (hundreds of no-op
+# .bak entries per documented re-run, burying graft-audit's real signal), and
+# opencode/codex/copilot placed AGENTS.md via raw place_file while prime-agent
+# used place_kernel — the two ping-ponged the kernel file into fresh churn on
+# every run of `install.sh all`.
+D="$(mktemp -d)"
+"$ROOT/install.sh" all --project-dir "$D" --copy >/dev/null
+"$ROOT/install.sh" all --project-dir "$D" --copy >/dev/null
+n="$(find "$D" -name '*.bak-*' | wc -l)"
+[[ "$n" -eq 0 ]] || { echo "re-run churn: $n spurious .bak file(s) created by an identical re-install" >&2; exit 1; }
+rm -rf "$D"
+echo "  idempotent re-run: zero .bak churn — OK"
+
+# REGRESSION — a seed checked out under a glob-metachar path ('seed [copy]')
+# must still land files at the declared destinations: the unquoted \${f#\$src/}
+# prefix-strip treated \$src as a glob pattern, silently nesting every machinery
+# file under the full absolute source path while reporting success.
+SB="$(mktemp -d)"; S="$SB/seed [copy]"
+mkdir -p "$S"
+( cd "$ROOT" && tar --exclude=.git --exclude=__pycache__ --exclude=.pytest_cache -cf - . ) \
+  | ( cd "$S" && tar -xf - )
+D="$(mktemp -d)"
+bash "$S/install.sh" codex --project-dir "$D" --copy >/dev/null
+need "$D/docs/graph/protocols/deliver.md" "glob-metachar-seed-path"
+need "$D/docs/graph/method/tiers.md" "glob-metachar-seed-path"
+rm -rf "$D" "$SB"
+echo "  glob-metachar seed path installs to declared destinations — OK"
+
+# REGRESSION — a platform without symlinks (ln -s fails; place_kernel's own
+# degradation path) must not churn: the pristine kernel copy was backed up and
+# re-copied on EVERY run (5 .bak per `all` re-run pre-fix). Both kernels must
+# stay byte-identical independent copies.
+SHIM="$(mktemp -d)"
+printf '#!/bin/sh\nexit 1\n' > "$SHIM/ln"; chmod +x "$SHIM/ln"
+D="$(mktemp -d)"
+PATH="$SHIM:$PATH" "$ROOT/install.sh" all --project-dir "$D" --copy >/dev/null
+PATH="$SHIM:$PATH" "$ROOT/install.sh" all --project-dir "$D" --copy >/dev/null
+n="$(find "$D" -name '*.bak-*' | wc -l)"
+[[ "$n" -eq 0 ]] || { echo "no-symlink kernel churn: $n .bak file(s) on identical re-runs" >&2; exit 1; }
+diff -q "$D/CLAUDE.md" "$D/AGENTS.md" >/dev/null \
+  || { echo "no-symlink kernels drifted apart" >&2; exit 1; }
+rm -rf "$D" "$SHIM"
+echo "  symlink-less platform: kernel copies converge with zero churn — OK"
+
+# REGRESSION — the kernel mandates `python3 docs/graph/agent-lint.py --route`
+# on EVERY harness, but the router was once placed only by the claude-code
+# adapter: a single-tool opencode/codex/copilot/prime-agent plant had an
+# unexecutable mandatory first routing step. Every adapter must now yield a
+# working router at the universal path.
+for tool in claude-code opencode codex github-copilot prime-agent; do
+  D="$(mktemp -d)"
+  "$ROOT/install.sh" "$tool" --project-dir "$D" --copy >/dev/null
+  need "$D/docs/graph/agent-lint.py" "$tool-universal-router"
+  need "$D/docs/graph/agents/_routes.golden.tsv" "$tool-golden-corpus"
+  ( cd "$D" && python3 docs/graph/agent-lint.py --lint >/dev/null ) \
+    || { echo "$tool: --lint failed in-plant" >&2; exit 1; }
+  ( cd "$D" && python3 docs/graph/agent-lint.py --route "audit the diff against the spec" >/dev/null ) \
+    || { echo "$tool: --route (the kernel-mandated step) failed in-plant" >&2; exit 1; }
+  ( cd "$D" && python3 docs/graph/agent-lint.py --eval >/dev/null ) \
+    || { echo "$tool: --eval (the graft exit gate) failed in-plant" >&2; exit 1; }
+  rm -rf "$D"
+done
+echo "  universal agent router (--lint/--route/--eval) works on all five adapters — OK"
+
+# REGRESSION — the universal router must FAST-FORWARD: the first placement was
+# add-if-missing, so a plant kept a stale router forever while the .claude
+# projection refreshed — the kernel-mandated path was the stale one.
+D="$(mktemp -d)"
+"$ROOT/install.sh" opencode --project-dir "$D" --copy >/dev/null
+printf '# STALE ROUTER v1\n' > "$D/docs/graph/agent-lint.py"
+"$ROOT/install.sh" opencode --project-dir "$D" --copy >/dev/null
+grep -q "STALE ROUTER" "$D/docs/graph/agent-lint.py" \
+  && { echo "docs/graph/agent-lint.py not fast-forwarded on re-install" >&2; exit 1; }
+n="$(find "$D/docs/graph" -name 'agent-lint.py.bak-*' | wc -l)"
+[[ "$n" -eq 1 ]] || { echo "router fast-forward must back up the changed file (got $n baks)" >&2; exit 1; }
+rm -rf "$D"
+echo "  universal router fast-forwards with backup on re-install — OK"
+
+# REGRESSION — Copilot agent projection once granted ONE fixed tool superset
+# (editFiles/runCommands for everyone): the source allowlist is the
+# discipline. Read-only-ish agents must not gain write/run tools.
+D="$(mktemp -d)"
+"$ROOT/install.sh" github-copilot --project-dir "$D" --copy >/dev/null
+grep -q "editFiles" "$D/.github/agents/reviewer.agent.md" \
+  && { echo "copilot: reviewer (no Write/Edit) was granted editFiles" >&2; exit 1; }
+grep -q "runTasks" "$D/.github/agents/devils-advocate.agent.md" \
+  && { echo "copilot: devils-advocate (no Bash) was granted runTasks" >&2; exit 1; }
+grep -q "githubRepo" "$D/.github/agents/implementer.agent.md" \
+  && { echo "copilot: implementer (no web tools) was granted githubRepo" >&2; exit 1; }
+grep -q "editFiles" "$D/.github/agents/implementer.agent.md" \
+  || { echo "copilot: implementer lost editFiles" >&2; exit 1; }
+grep -q "runCommands" "$D/.github/agents/ui-ux-designer.agent.md" \
+  || { echo "copilot: ui-ux-designer lost runCommands (its charter mandates graph-lint --plan)" >&2; exit 1; }
+grep -q "githubRepo" "$D/.github/agents/devils-advocate.agent.md" \
+  || { echo "copilot: devils-advocate (WebSearch) lost githubRepo" >&2; exit 1; }
+rm -rf "$D"
+echo "  copilot projection derives tools from each agent allowlist — OK"
+
 printf 'full five-tool install contract + CC/PA coexistence: PASS\n'

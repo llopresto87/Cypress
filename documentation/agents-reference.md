@@ -1,8 +1,8 @@
 # CYPRESS specialist agents — complete reference
 
-This document describes all **17 specialist agents** shipped by the CYPRESS seed. Each agent is a fully-formed system prompt with YAML frontmatter, stored in `agents/*.md`. At install time these files are projected into the host tool's agent directory (for example `.claude/agents/`, `.prime/agent/agents/`, `.opencode/agents/`, `.codex/agents/`).
+This document describes all **18 specialist agents** shipped by the CYPRESS seed. Each agent is a fully-formed system prompt with YAML frontmatter, stored in `agents/*.md`. At install time these files are projected into the host tool's agent directory (for example `.claude/agents/`, `.prime/agent/agents/`, `.opencode/agents/`, `.codex/agents/`).
 
-Sources for this reference: `agents/*.md` (the 17 agent definitions), `agents/_routes.golden.tsv` (the golden routing corpus), and `core/method/delegation.md` (the delegation model).
+Sources for this reference: `agents/*.md` (the 18 agent definitions), `agents/_routes.golden.tsv` (the golden routing corpus), and `core/method/delegation.md` (the delegation model).
 
 ## 1. The sessions-route, workers-do model
 
@@ -16,7 +16,7 @@ Because hooks do not reach a subagent, the **brief is the only enforcement that 
 
 Source: `core/method/delegation.md`, `00-orchestrator.md`.
 
-Before spawning, the router runs `python3 .claude/agent-lint.py --route "<task>"` and cites the ranked line and confidence band in the brief. The route is a **keyword heuristic, not an oracle**: the router reasons over it and records a rationale whenever it overrides a HIGH-band pick. The deliver-time attribution assertion flags unexplained overrides.
+Before spawning, the router runs `python3 docs/graph/agent-lint.py --route "<task>"` and cites the ranked line and confidence band in the brief. The route is a **keyword heuristic, not an oracle**: the router reasons over it and records a rationale whenever it overrides a HIGH-band pick. The deliver-time attribution assertion flags unexplained overrides.
 
 On a **LOW / NONE** band, no shipped specialist fits. The router then **commissions** a new expert: it spawns an Opus-class agent-definition author to write one from `docs/graph/templates/agent.template.md`, grounded in the project's version-pinned facts. A commissioned expert joins the *project's* roster, never the seed's.
 
@@ -31,7 +31,7 @@ Each agent's `model:` frontmatter field is its **model class**:
 - **sonnet-class** → read-only investigation.
 - **opus-class** → authoring, implementation, and judgment-heavy design.
 
-Only two agents run on sonnet — `research-scout` and `growth-scout`, both read-only scouts. The other 15 run on opus. Model class is a distinct axis from the **task tier** (T0–T3, kernel §0) and the graph **load-tier** (the node `tier:` field). Only the risk axis is written `T0–T3`.
+Only two agents run on sonnet — `research-scout` and `growth-scout`, the two scout roles (growth-scout writes only its evidence ledger; research-scout's drafts are mechanical normalization finalized by the librarian). The other 16 run on opus. Model class is a distinct axis from the **task tier** (T0–T3, kernel §0) and the graph **load-tier** (the node `tier:` field). Only the risk axis is written `T0–T3`.
 
 ## 4. Bounded delegation
 
@@ -66,7 +66,7 @@ Source: `core/method/delegation.md`.
 
 Spec authoring is split across three agents: `product` writes the user-facing layer, `architect` the functional contracts, and `tester` the executable encoding. A spec is finished when all three have signed off on the same document.
 
-## 6. Summary table — all 17 agents
+## 6. Summary table — all 18 agents
 
 | # | Agent (`name`) | `id` | `model` | Delegation | Owns (facts) |
 |---|---|---|---|---|---|
@@ -87,16 +87,17 @@ Spec authoring is split across three agents: `product` writes the user-facing la
 | 15 | `growth-scout` | `agent.growth-scout` | sonnet | leaf (no Task) | `growth-scout.charter`, `growth-scout.evidence-discipline` |
 | 16 | `multi-agent-architect` | `agent.multi-agent-architect` | opus | coordinator, depth 2 | `multi-agent-architect.charter`, `multi-agent-architect.topology-catalog`, `multi-agent-architect.pre-ship-checklist` |
 | 17 | `seed-installer` | `agent.seed-installer` | opus | leaf (no Task) | `seed-installer.charter`, `seed-installer.install-discipline` |
+| 18 | `ui-ux-designer` | `agent.ui-ux-designer` | opus | leaf (no Task) | `ui-ux-designer.charter`, `ui-ux-designer.design-spec`, `ui-ux-designer.heuristics` |
 
 Coordinators as an edge list of `delegates_to` allowlists:
 
 | Coordinator | `max_spawn_depth` | `delegates_to` |
 |---|---|---|
-| `orchestrator` | 3 | `architect`, `implementer`, `reviewer`, `tester`, `security`, `reliability`, `data-ml`, `product`, `docs-librarian`, `research-scout`, `pentest`, `multi-agent-architect`, `growth-orchestrator`, `growth-scout`, `seed-installer` |
+| `orchestrator` | 3 | `architect`, `implementer`, `reviewer`, `tester`, `security`, `reliability`, `data-ml`, `product`, `docs-librarian`, `research-scout`, `pentest`, `multi-agent-architect`, `growth-orchestrator`, `growth-scout`, `seed-installer`, `ui-ux-designer` |
 | `architect` | 1 | `tester`, `research-scout` |
 | `reviewer` | 1 | `security`, `reliability` |
 | `docs-librarian` | 1 | `research-scout` |
-| `growth-orchestrator` | 2 | `growth-scout`, `seed-installer`, `docs-librarian`, `architect`, `research-scout`, `tester` |
+| `growth-orchestrator` | 2 | `growth-scout`, `seed-installer`, `docs-librarian`, `architect`, `research-scout`, `tester`, `ui-ux-designer` |
 | `multi-agent-architect` | 2 | `architect`, `tester`, `implementer`, `reviewer`, `data-ml`, `security`, `reliability` |
 
 ## 7. Agent reference (per agent)
@@ -455,7 +456,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **Role:** Senior growth scout. The read-only evidence-gatherer of the grow/adopt flow: dispatched at ONE real subsystem or repository boundary, it inspects executable source directly and returns claims tied to paths and symbols — the ledger the graph authors build from.
 - **model class:** `sonnet`
 - **Delegation:** Task-less leaf — `can_delegate: false`, no `Task` tool; stops and hands back at any out-of-domain boundary
-- **tools:** `Read`, `Glob`, `Grep`, `Bash`
+- **tools:** `Read`, `Write`, `Glob`, `Grep`, `Bash`
 - **tier (graph load-tier):** 2
 - **owns (facts):** `growth-scout.charter`, `growth-scout.evidence-discipline`
 - **requires:** —
@@ -520,3 +521,25 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "place the kernel and adapters additively for this host tool"
 
 **Charter.** The seed installer places CYPRESS into a target so a fresh agent session there loads the kernel, roster, protocols, and skills — and it does so additively, leaving every target-owned file exactly as found or safely backed up. An install that overwrites the project it serves is a failure no matter how clean the result. It selects only the host adapters actually used, backs up rather than clobbers, and does not build or run the target app or push Git state. It is a Task-less leaf.
+
+
+### 7.18 `ui-ux-designer`
+
+*Source file: `agents/13-ui-ux-designer.md`*
+
+- **id:** `agent.ui-ux-designer`
+- **Role:** Senior interface & interaction designer. The definitive authority on information architecture, screen/flow design, interaction states, design tokens and the component system, visual hierarchy, and usability-heuristics audits — and on HOW the accessibility floor is met in the interface.
+- **model class:** `opus`
+- **Delegation:** Task-less leaf — `can_delegate: false`, no `Task` tool; stops and hands back at any out-of-domain boundary
+- **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `WebSearch`, `WebFetch`
+- **tier (graph load-tier):** 2
+- **owns (facts):** `ui-ux-designer.charter`, `ui-ux-designer.design-spec`, `ui-ux-designer.heuristics`
+- **requires:** —
+- **peers:** `agent.product`, `agent.architect`, `agent.implementer`
+- **routing_triggers:**
+  - "design the interface layout and interaction states"
+  - "create the component library and design tokens"
+  - "audit the ui against usability heuristics"
+  - "design the screen flows and visual hierarchy"
+
+**Charter.** Authors implementable design specs under `docs/graph/design/` that map to spec §3 and §9. Distinct from `product`, which owns the user outcome and the accessibility floor itself, and from `implementer`, which writes the code. Frontmatter fields above are taken verbatim from `agents/13-ui-ux-designer.md`; that file is the single source of truth for the charter.

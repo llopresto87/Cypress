@@ -80,6 +80,13 @@ place_file() {
     [[ -e "$src" ]] || die "missing source: $src"
     mkdir -p "$(dirname "$dest")"
     if [[ -e "$dest" || -L "$dest" ]]; then
+        # an already-correct destination needs no backup and no rewrite:
+        # backing up byte-identical files buries the graft-audit signal
+        # under hundreds of no-op .bak entries on every re-run
+        case "$LINK_MODE" in
+            copy)    [[ -f "$dest" && ! -L "$dest" ]] && cmp -s "$src" "$dest" && return 0 ;;
+            symlink) [[ -L "$dest" && "$(readlink "$dest")" == "$src" ]] && return 0 ;;
+        esac
         if [[ $FORCE -eq 1 ]]; then
             rm -f "$dest"
         else
@@ -127,6 +134,23 @@ place_kernel() {
             log "kernel: $name shares one file with $(basename "$sibling") (interchangeable Claude Code / Prime Agent)"
             return
         fi
+        # A PRISTINE kernel copy needs no backup: when both files already
+        # carry the seed kernel byte-identically, converge to the shared
+        # symlink where the platform allows, else keep the copy as the
+        # documented degradation. Without this, symlink-less platforms
+        # backed up and re-copied the same kernel on every single run.
+        if [[ -f "$dest" && ! -L "$dest" ]] \
+                && cmp -s "$SEED_ROOT/core/AGENTS.md" "$dest" \
+                && cmp -s "$SEED_ROOT/core/AGENTS.md" "$sibling"; then
+            if ln -s "$(basename "$sibling")" "${dest}.lnprobe.$$" 2>/dev/null; then
+                mv "${dest}.lnprobe.$$" "$dest"
+                log "kernel: $name -> $(basename "$sibling") (converged pristine copy to the shared kernel)"
+            else
+                rm -f "${dest}.lnprobe.$$"
+                log "kernel: $name kept as an identical copy (symlinks unavailable)"
+            fi
+            return
+        fi
         if [[ -e "$dest" || -L "$dest" ]]; then
             if [[ $FORCE -eq 1 ]]; then
                 rm -f "$dest"
@@ -153,21 +177,24 @@ place_tree() {
     mkdir -p "$dest"
     local f
     while IFS= read -r -d '' f; do
-        local rel="${f#$src/}"
+        local rel="${f#"$src"/}"   # quoted: an unquoted $src is a glob pattern
         place_file "$f" "$dest/$rel"
     done < <(find "$src" -type f -name "$pattern" -print0)
 }
 
 # place_docs_skeleton: install every knowledge artifact beneath the one
-# docs/graph/ root. Existing files are preserved; missing seed leaves are
-# added individually so adoption is safe for projects with partial graphs.
+# docs/graph/ root. Plant-authored content is preserved: scaffold files
+# and template leaves are added only when missing. The seed-owned
+# machinery subtrees (protocols/skills/agents/method/templates) are
+# fast-forwarded to the current seed — identical files untouched,
+# changed files backed up (unless --force) for graft-audit to inspect.
 place_docs_skeleton() {
     place_graph_scaffold
     place_graph_machinery
     local src="$SEED_ROOT/templates/docs" dest="$PROJECT_DIR/docs/graph" f rel
     log "populating missing unified-graph leaves in docs/graph/"
     while IFS= read -r -d '' f; do
-        rel="${f#$src/}"
+        rel="${f#"$src"/}"         # quoted: an unquoted $src is a glob pattern
         if [[ ! -e "$dest/$rel" && ! -L "$dest/$rel" ]]; then
             mkdir -p "$(dirname "$dest/$rel")"
             cp "$f" "$dest/$rel"
@@ -186,6 +213,10 @@ place_graph_machinery() {
     place_tree "$SEED_ROOT/protocols"   "$g/protocols" "*.md"
     place_tree "$SEED_ROOT/core/method" "$g/method"    "*.md"
     place_tree "$SEED_ROOT/agents"      "$g/agents"    "*.md"
+    # the golden routing corpus rides with the roster so the kernel-
+    # mandated router can run --eval (a graft exit gate) on EVERY harness,
+    # not only where .claude/agents/ exists
+    place_file "$SEED_ROOT/agents/_routes.golden.tsv" "$g/agents/_routes.golden.tsv"
     local d name
     for d in "$SEED_ROOT/skills"/*/; do
         name="$(basename "$d")"
@@ -203,6 +234,13 @@ place_graph_scaffold() {
     [[ -e "$g/_schema.md" ]] || cp "$SEED_ROOT/templates/knowledge-graph/_schema.md" "$g/_schema.md"
     [[ -e "$g/graph-lint.py" ]] || cp "$SEED_ROOT/templates/knowledge-graph/graph-lint.py" "$g/graph-lint.py"
     [[ -e "$g/spec-lint.py" ]] || cp "$SEED_ROOT/templates/knowledge-graph/spec-lint.py" "$g/spec-lint.py"
+    # the agent router is kernel-mandated on EVERY harness ("python3
+    # docs/graph/agent-lint.py --route"); claude-code additionally projects
+    # it to .claude/agent-lint.py. Unlike the graph engines (add-if-missing,
+    # reconciled by graft-graph-engine.py), the router carries NO project
+    # config, so it fast-forwards like machinery: identical -> untouched,
+    # changed -> backed up and replaced (graft-audit inspects the backup).
+    place_file "$SEED_ROOT/integrations/claude-code/agent-lint.py" "$g/agent-lint.py"
     [[ -e "$g/index.md" ]] || cp "$SEED_ROOT/templates/knowledge-graph/index.md" "$g/index.md"
     log "  run /initialize to discover the project and grow the graph"
 }
@@ -297,7 +335,10 @@ install_claude_code() {
 
 install_opencode() {
     log "installing for opencode in $PROJECT_DIR"
-    place_file "$SEED_ROOT/core/AGENTS.md" "$PROJECT_DIR/AGENTS.md"
+    place_kernel "$PROJECT_DIR/AGENTS.md"   # NOT raw place_file: the kernel
+    # may already be the CLAUDE.md-shared file; bypassing place_kernel made
+    # this call and prime-agent's ping-pong the file into fresh .bak churn
+    # on every re-run
     # Harness projections of docs/graph/{agents,skills}/ (the home).
     place_tree "$SEED_ROOT/agents"    "$PROJECT_DIR/.opencode/agents"    "*.md"
     for d in "$SEED_ROOT/skills"/*/; do
@@ -326,7 +367,10 @@ install_opencode() {
 
 install_codex() {
     log "installing for Codex CLI in $PROJECT_DIR"
-    place_file "$SEED_ROOT/core/AGENTS.md" "$PROJECT_DIR/AGENTS.md"
+    place_kernel "$PROJECT_DIR/AGENTS.md"   # NOT raw place_file: the kernel
+    # may already be the CLAUDE.md-shared file; bypassing place_kernel made
+    # this call and prime-agent's ping-pong the file into fresh .bak churn
+    # on every re-run
     # Harness projections of docs/graph/{agents,skills}/ (the home).
     place_tree "$SEED_ROOT/agents"    "$PROJECT_DIR/.codex/agents"    "*.md"
     for d in "$SEED_ROOT/skills"/*/; do
@@ -362,7 +406,10 @@ install_github_copilot() {
     # and clobbers the target file; place_file's backup mv takes the link itself.
     mkdir -p "$PROJECT_DIR/.github"
     place_file "$SEED_ROOT/core/AGENTS.md" "$PROJECT_DIR/.github/copilot-instructions.md"
-    place_file "$SEED_ROOT/core/AGENTS.md" "$PROJECT_DIR/AGENTS.md"
+    place_kernel "$PROJECT_DIR/AGENTS.md"   # NOT raw place_file: the kernel
+    # may already be the CLAUDE.md-shared file; bypassing place_kernel made
+    # this call and prime-agent's ping-pong the file into fresh .bak churn
+    # on every re-run
 
     # Agents -> .github/agents/<name>.agent.md (transformed frontmatter)
     mkdir -p "$PROJECT_DIR/.github/agents"
@@ -380,11 +427,30 @@ fm = m.group(1)
 body = text[m.end():]
 desc = re.search(r"^description:\s*(.+?)(?=\n[a-z_]+:|\Z)", fm, re.S | re.M)
 description = (desc.group(1).strip() if desc else "").replace("\n", " ").strip()
+# Per-agent tool mapping — the source frontmatter's tools: allowlist IS the
+# discipline; projecting one fixed superset (the old behavior) silently gave
+# read-only agents editFiles/runCommands on Copilot.
+tm = re.search(r"^tools:\s*\[([^\]]*)\]", fm, re.M)
+src_tools = {t.strip() for t in (tm.group(1).split(",") if tm else []) if t.strip()}
+# read set + runCommands always: the GRAPH DISCIPLINE bootstrap mandates
+# `python3 docs/graph/graph-lint.py --plan` / agent-lint --route in EVERY
+# session, so command execution is a baseline capability on Copilot even for
+# Bash-less charters. Write access (editFiles) and web reach (fetch,
+# githubRepo — a REMOTE GitHub search, not local) stay allowlist-derived;
+# runTasks (workspace task runner) requires Bash. `Task` (subagent spawning)
+# has no Copilot equivalent and is not projected.
+cop = ["codebase", "search", "usages", "findTestFiles", "runCommands"]
+if src_tools & {"Write", "Edit"}:
+    cop.append("editFiles")
+if "Bash" in src_tools:
+    cop.append("runTasks")
+if src_tools & {"WebSearch", "WebFetch"}:
+    cop += ["fetch", "githubRepo"]
+tools_line = "tools: [" + ", ".join(f"'{t}'" for t in cop) + "]"
 out = (
     "---\n"
     f"description: {description}\n"
-    "tools: ['codebase', 'editFiles', 'fetch', 'findTestFiles', "
-    "'githubRepo', 'search', 'usages', 'runCommands', 'runTasks']\n"
+    f"{tools_line}\n"
     "---\n\n"
     f"<!-- GENERATED from {src.rsplit('/', 1)[-1]} by install.sh github-copilot — do not edit here; edit the seed source and re-run. -->\n\n"
 ) + body

@@ -62,10 +62,11 @@ INDEX = HERE / "index.md"
 REQUIRED_KEYS = {"id", "tier", "kind", "title", "owns", "requires", "load_when", "est_tokens"}
 LIST_KEYS = {"owns", "requires", "peers", "libraries", "artifacts", "load_when"}
 
-# A version pin: 2.7.2, ^15.0.0, ~4.8.2, 1.9.3, 0.0.13-SNAPSHOT, 8.0.31.
+# A version pin: 2.7.2, v2.7.2, ^15.0.0, ~4.8.2, 0.0.13-SNAPSHOT, 8.0.31.
 # The lookbehind excludes `§5.4` (a section reference) and any digit/word/
-# path character so `docs/v2.1` and `1.2.3` inside a word don't match.
-VERSION_RE = re.compile(r"(?<![\w./§-])[\^~]?\d+\.\d+(\.\d+)?(-[A-Za-z0-9]+)?(?![\w.])")
+# path character so `docs/v2.1` and `1.2.3` inside a word don't match; the
+# optional leading v is part of the match so `v2.7.2` cannot hide behind it.
+VERSION_RE = re.compile(r"(?<![\w./§-])[vV]?[\^~]?\d+\.\d+(\.\d+)?(-[A-Za-z0-9]+)?(?![\w.])")
 BODY_TOKENS_PER_WORD = 1.35
 STEM = 6  # prefix length for the singular/plural fold (order/orders, node/nodes)
 
@@ -242,6 +243,20 @@ def check_unique_ownership(nodes: list, errs: list) -> None:
                 home[fact] = n.id
 
 
+def check_unique_ids(nodes: list, errs: list) -> None:
+    """_schema.md rule 2 promises id uniqueness; a set silently erased
+    collisions and resolve() let the later file win — a duplicate id
+    split the routing authority invisibly."""
+    byid = {}
+    for n in nodes:
+        byid.setdefault(n.id, []).append(n)
+    for nid, ns in byid.items():
+        if len(ns) > 1:
+            files = ", ".join(str(x.path.relative_to(HERE)) for x in ns)
+            errs.append(f"{nid}: declared by {len(ns)} files ({files}) — "
+                        f"ids are unique project-wide (_schema.md rule 2)")
+
+
 def check_edges(nodes: list, errs: list) -> None:
     ids = {n.id for n in nodes}
     for n in nodes:
@@ -284,12 +299,24 @@ def check_reachability(nodes: list, errs: list) -> None:
             errs.append(f"missing root node {ROOT_ID!r}")
         else:
             index_text = INDEX.read_text(encoding="utf-8") if INDEX.exists() else ""
-            seen = {n.id for n in nodes if n.id in index_text}
-            for n in nodes:
-                seen.update(n.get_list("requires") + n.get_list("peers"))
+            # same boundary rule as the root branch below, then a REAL
+            # traversal seeded by the index-listed nodes: the old version
+            # unioned EVERY node's outgoing edges into `seen`, so two
+            # mutually-peering ghost nodes marked each other reachable
+            # (an orphan island always passed)
+            listed = {n.id for n in nodes if re.search(
+                rf"(?<![\w.-]){re.escape(n.id)}(?![\w-])(?!\.[\w-])", index_text)}
+            by = {n.id: n for n in nodes}
+            seen, stack2 = set(), list(listed)
+            while stack2:
+                cur = stack2.pop()
+                if cur in seen or cur not in by:
+                    continue
+                seen.add(cur)
+                stack2.extend(by[cur].get_list("requires") + by[cur].get_list("peers"))
             for n in nodes:
                 if n.id not in seen:
-                    errs.append(f"{n.id}: unreachable — no root yet, not listed in index.md, and no edge reaches it")
+                    errs.append(f"{n.id}: unreachable — no root yet, not listed in index.md, and no listed node reaches it")
         return
     seen = set()
     stack = [ROOT_ID]
@@ -302,7 +329,12 @@ def check_reachability(nodes: list, errs: list) -> None:
     if INDEX.exists():
         index_text = INDEX.read_text(encoding="utf-8")
         for n in nodes:
-            if n.id in index_text:
+            # boundary match: a plain substring test lets an orphan pass
+            # whenever its id merely prefixes an unrelated longer id —
+            # including a dotted child (`x.orphan` vs `x.orphan.child`);
+            # a trailing sentence period (`x.orphan.`) still counts
+            if re.search(rf"(?<![\w.-]){re.escape(n.id)}(?![\w-])(?!\.[\w-])",
+                         index_text):
                 seen.add(n.id)
     for n in nodes:
         if n.id not in seen:
@@ -364,8 +396,8 @@ def check_budget(nodes: list, errs: list) -> None:
         measured = n.measured_tokens
         if measured > 2 * est or est > 2 * max(measured, 1):
             errs.append(f"{n.id}: est_tokens={est} but body measures ~{measured} (must be within 2x)")
-        if not n.is_machinery and n.body.count("\n") > 170:
-            errs.append(f"{n.id}: body is {n.body.count(chr(10))} lines — over the ~150-line ceiling; split it")
+        if not n.is_machinery and len(n.body.strip("\n").splitlines()) > 170:
+            errs.append(f"{n.id}: body is {n.body.count(chr(10))} lines — over the 170-line ceiling (aim ~150); split it")
 
 
 # --- router dry-run ---------------------------------------------------
@@ -495,6 +527,7 @@ def main() -> int:
     errs: list = []
     for n in nodes:
         check_schema(n, errs)
+    check_unique_ids(nodes, errs)
     check_unique_ownership(nodes, errs)
     check_edges(nodes, errs)
     check_acyclic(nodes, errs)

@@ -28,7 +28,7 @@ This seed system maps to Prime Agent as follows:
 
 | Seed file                    | Prime Agent path                                   |
 |------------------------------|----------------------------------------------------|
-| `core/AGENTS.md`             | `AGENTS.md` (symlink or copy at repo root)         |
+| `core/AGENTS.md`             | `AGENTS.md` (copy by default; `--symlink` opt-in)  |
 | `agents/*.md`                | `.prime/agent/agents/*.md` (brief sources — see below) |
 | `skills/*/SKILL.md`          | `.prime/agent/skills/*/SKILL.md`                   |
 | protocols → slash commands   | `.prime/agent/prompts/*.md` (generated projections) |
@@ -206,6 +206,18 @@ Creates (symlinks by default under `--symlink`, copies otherwise):
 - `.prime/agent/APPEND_SYSTEM.md` → copied (RLM-native execution overlay,
   appended to the system prompt every session)
 - `docs/graph/` → scaffold + missing leaves from `templates/docs/`
+
+### CI parity
+
+Gate the roster in the plant's CI the same way Claude Code does:
+
+```sh
+python3 docs/graph/agent-lint.py --lint --eval --dir .prime/agent/agents
+```
+
+`--lint` validates the routing/delegation frontmatter; `--eval` runs the
+golden routing set against it. A roster edit that breaks either fails the
+build.
 
 ## Interchangeable with Claude Code in one plant
 

@@ -49,10 +49,11 @@ phase is a precise problem statement, the primary user, the first
 useful slice, the constraints, and at least three shaped options for
 the technical approach.
 
-Stop and ask the user at most three questions per exchange; do not
-interview endlessly. If you cannot reach precision in three turns,
-write what you have, mark the gaps as assumptions in grill.md, and
-proceed.
+Pacing and the stopping rule belong to
+`docs/graph/skills/brainstorm-socratic.md` — one-to-three questions per
+turn under a hard cap of nine questions total. When the cap is reached
+without precision, write what you have, mark the gaps as assumptions in
+grill.md, and proceed.
 
 ### Phase 2 — Project skeleton
 

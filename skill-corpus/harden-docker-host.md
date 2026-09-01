@@ -3,7 +3,8 @@
 > Optional procedure — bring a Linux host (recent Ubuntu LTS, e.g. 24.04 /
 > 26.04) that runs Docker to a security floor, idempotently, and prove each
 > control is actually active. Not a core skill; instantiate into
-> `.claude/skills/` from `templates/skill.template.md` if selected. Owns the
+> `docs/graph/skills/<name>.md` (its home, projected into the harness dirs
+> the plant uses) from `templates/skill.template.md` if selected. Owns the
 > *procedure*; the *what/why* of each control lives in
 > `library-corpus/container/docker-host-hardening.md` — this skill applies that
 > floor in order and gates it, it does not restate it. Run by `reliability`

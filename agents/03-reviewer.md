@@ -130,7 +130,7 @@ load-bearing — none is optional.
 **Wiki adherence**
 - Every library used here on `docs/graph/libraries/index.md`?
 - Idioms recorded in the wiki the ones being used?
-- New idiom → wiki updated?
+- New idiom → named in the handback for the close-out librarian?
 
 **Correctness**
 - Error paths explicit?

@@ -43,9 +43,12 @@ the same bootstrap and the same lint run would be pure coordination
 waste. The librarian owns the graph's **fact-bearing surfaces** —
 nodes, wiki pages, the tool catalog — and one-home-per-fact; the
 session never edits those. The session-owned operational artifacts
-under the same root — grill.md, the verification runbook,
-changelog.md — are the deliberate exception: the session writes them
-directly. A delivery that changed understanding but left the graph
+under the same root — grill.md and changelog.md — are the deliberate
+exception: the session writes them directly, and the verification
+runbook is written by the tester worker that ran the gates
+(`docs/graph/protocols/verify.md` and
+`docs/graph/agents/04-tester.md` agree on that). A delivery that
+changed understanding but left the graph
 untouched is a silent knowledge leak — the same failure class as a
 green lie.
 
@@ -107,10 +110,15 @@ agnosticism gate), throwaway prototypes or genuine one-offs.
    owns — update, don't duplicate); each tool gets
    `docs/graph/templates/tool-page.template.md` filled into
    `docs/graph/tools/<name>.md`, an index row, and an `artifacts:` edge
-   from its owning node; each recurring procedure gets
-   `docs/graph/templates/skill.template.md` filled into `.claude/skills/<name>/SKILL.md`
-   (checking `skill-corpus/` first for a ready one, deduping against skills
-   already present, composing existing disciplines by reference);
+   from its owning node (checking `tool-corpus/` first for a ready card —
+   when working in the seed repo, or when the plant has harvested the tool
+   corpus); each recurring procedure gets
+   `docs/graph/templates/skill.template.md` filled into its home node
+   `docs/graph/skills/<name>.md`, plus the projection in each harness
+   directory the plant actually uses (`.claude/skills/<name>/SKILL.md` and
+   kin) — checking `skill-corpus/` first for a ready one under the same
+   condition, deduping against skills already present, composing existing
+   disciplines by reference;
    `load_when:` triggers that failed to fire are sharpened. One `graph-lint`
    run confirms the graph stays clean.
 4. **Confirm or record-empty.** The librarian hands back nodes/fact-keys

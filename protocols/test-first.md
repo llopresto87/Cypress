@@ -142,10 +142,13 @@ a green you have seen turn red and back is a trusted green.
    tool it built — in your handback payload; the close-out librarian
    persists them (§3.7/§3.8). You do not edit the wiki or the tool
    catalog inline.
-4. If using version control, commit. Commit message:
+4. Run the increment's named gate from grill.md §9 before you commit —
+   `docs/graph/protocols/verify.md` owns that per-increment cadence,
+   and the full verify pass still runs before close-out and deliver.
+5. If using version control, commit. Commit message:
    `feat(<scope>): <contract slug> — implements SPEC-NNNN`
    or `fix(<scope>): <bug slug> — adds regression for SPEC-NNNN`.
-5. Hand the diff to `reviewer`.
+6. Hand the diff to `reviewer`.
 
 ## Per-language choice of test framework
 
@@ -212,7 +215,11 @@ date:
 - **Throwaway prototypes** to learn about a library or approach.
   Mark the code clearly; do not merge it.
 - **Pure configuration changes** (raise a timeout, add a log
-  scope) where there is no behavior change to verify.
+  scope) where there is no *unit-testable* behavior to assert. The
+  operational risk is real and goes to `docs/graph/protocols/verify.md`'s
+  gates instead. Such a change still tiers at T2 or above — a config
+  value alters behavior, so it is never T1
+  (`docs/graph/method/tiers.md`).
 - **Type-only changes** in a strongly typed language where the type
   checker is the verifier.
 - **Generated code** where the generator itself is tested.

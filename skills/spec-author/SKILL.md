@@ -75,11 +75,15 @@ outcome, observable from outside.
 Tester turns these into test names.
 
 ```
-Contract: SUBMIT_VALID_FORM_RETURNS_2XX
-Contract: SUBMIT_FORM_SCHEMA_INVALID
-Contract: SUBMIT_FORM_PERSISTS_RECORD
-Contract: GET_SUBMITTED_RECORD_RETURNS_BY_ID
+### Contract: SUBMIT_VALID_FORM_RETURNS_2XX
+### Contract: SUBMIT_FORM_SCHEMA_INVALID
+### Contract: SUBMIT_FORM_PERSISTS_RECORD
+### Contract: GET_SUBMITTED_RECORD_RETURNS_BY_ID
 ```
+
+(The `### ` heading form is load-bearing: `spec-lint.py` only counts
+`### Contract: SLUG` headings as live contracts — a bare `Contract:` line
+is invisible to coverage.)
 
 **One outcome per contract.** "Returns 201 *and* sends an email" is
 two contracts: one for the response, one for the side effect.

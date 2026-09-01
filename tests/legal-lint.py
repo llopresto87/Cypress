@@ -85,8 +85,10 @@ def has_field(body: str, field: str) -> bool:
     (`- **verified:** 2026-07-31 · **legal_status:** `in force``), so a
     start-of-bullet anchor reports a false missing field. The bolded
     `**field:**` form is specific enough to match mid-line safely.
+    The word boundary stops `text` from being satisfied by `**text_form:**` — an
+    entry carrying only the grade, not the words, is non-citable.
     """
-    return bool(re.search(rf"\*\*{re.escape(field)}[^:]*:\*\*", body))
+    return bool(re.search(rf"\*\*{re.escape(field)}\b[^:]*:\*\*", body))
 
 
 def without_notes(body: str) -> str:
@@ -164,15 +166,30 @@ def check() -> None:
 
             tf = re.search(r"\*\*text_form:\*\*\s*(.*)", body)
             if tf:
-                val = tf.group(1).lower()
+                # The grade value can span lines and can be compound
+                # ("per id, not uniform — `normalized summary` for X;
+                # `verbatim` for Y"): capture up to the next bullet, and
+                # anchor NOTHING at the start — a start-anchored match let
+                # any prefix text disable the honesty check entirely.
+                seg = body[tf.start():]
+                nxt = re.search(r"\n\s*[-*]\s+\*\*", seg)
+                val = (seg[:nxt.start()] if nxt else seg).lower()
                 if not any(v.split(" —")[0] in val for v in TEXT_FORMS):
                     fail(f"{rel}: `{eid}` text_form is not a schema value: "
                          f"{tf.group(1).strip()[:60]!r}")
-                # grade honesty — the falsification the schema forbids
-                if re.match(r"\s*\*{0,2}`?verbatim", val) and not quoted(body):
-                    fail(f"{rel}: `{eid}` is graded `verbatim` but its text "
-                         f"carries no quoted or blockquoted wording — a "
-                         f"paraphrase graded as the source's own words")
+                # grade honesty — the falsification the schema forbids.
+                # A verbatim GRADE anywhere in the value (leading, or the
+                # backticked/bolded token compound "per id" lines use)
+                # claims the source's own words somewhere in the entry;
+                # the entry must carry them. Plain prose mentions ("one
+                # phrase reproduced verbatim is quoted in the notes") are
+                # not grades and stay exempt.
+                if (re.search(r"`verbatim`|\*\*verbatim\*\*|^\s*\*{0,2}`?verbatim",
+                              val) and not quoted(body)):
+                    fail(f"{rel}: `{eid}` is graded `verbatim` (in whole or "
+                         f"per id) but its text carries no quoted or "
+                         f"blockquoted wording — a paraphrase graded as "
+                         f"the source's own words")
 
             ls = re.search(r"\*\*legal_status:\*\*\s*(.*)", body)
             if ls and not any(v in ls.group(1).lower() for v in LEGAL_STATUSES):

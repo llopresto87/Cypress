@@ -14,6 +14,8 @@ requires:
 peers:
   - protocol.test-first
   - protocol.recover
+  - protocol.canonize
+  - protocol.deliver
   - skill.validate-knowledge
 load_when:
   - "increment done, ready to merge or deploy"
@@ -175,6 +177,9 @@ out of ritual — wall-clock and attention are budget too.
 
 8. **Update grill.md** section 15 (Changelog) with the date and
    verification outcome.
+9. **Hand off.** When the gates for the whole piece of work are green,
+   hand to `canonize` (close-out) to persist what the work taught, then
+   to `deliver` for the handoff package.
 
 ## Adding a new gate
 

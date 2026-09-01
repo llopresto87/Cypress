@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft-07/schema#",
   "name": "cypress",
   "fullName": "Contextual Yield Protocol for Routed Expert Seed Systems",
-  "version": "6.9.0",
+  "version": "6.9.2",
   "supersedes": "general_expert_prompts@1.0.0",
   "created": "2026-05-23",
   "description": "CYPRESS (Contextual Yield Protocol for Routed Expert Seed Systems) — a project-agnostic multi-agent seed for single- or multi-repository programs. As of 6.0.0 it is a pure graph system: the entire method surface — protocols, skills, agent charters, method/posture nodes, and template artifacts — installs INTO the plant's unified docs/graph/ as seed-owned routable nodes (origin: seed), activated progressively by the router; the always-loaded kernel is a small bootstrap (identity, tiers, rule anchors, boundaries), and tool directories hold only harness projections (agents, skills). Its tool-neutral INSTALL_PROMPT.md keeps user chat in orchestration/planning, dispatches Sonnet-class read-only scouts and Opus-class authors/reviewers, and grows the graph without building the application or publishing Git state.",
@@ -15,7 +15,7 @@
     "Plan-of-record: docs/graph/plans/grill.md is updated continuously, never silently rewritten.",
     "Synthetic data only: never source test/demo data from production.",
     "Scale-agnostic: the same method governs a single repo or a program of several.",
-    "Tool-agnostic: the same kernel runs in Claude Code, opencode, Codex, and Copilot.",
+    "Tool-agnostic: the same kernel runs in Claude Code, opencode, Codex, Copilot, and Prime Agent.",
     "Toolcraft: when an operation recurs across sessions, build a durable, tested tool and catalog it in docs/graph/tools/; never reinvent throwaway scripts.",
     "Minimum sufficient work: produce the smallest body of work that reliably delivers the required result — every operation serves a named decision, effort scales with uncertainty and consequence (the tiers), structure/artifacts/delegation earn their lifecycle rent, and work stops when the result is sufficiently trusted. Depth in docs/graph/method/engineering-posture.md; grow, graft, and harvest each audit their own additions against it.",
     "Design for responsibility: give each part one coherent responsibility, keep cohesive things together, and point dependencies at stable contracts rather than volatile detail — but prefer the smallest structure that fits; correct separation is the goal, never maximum. Structure is named at plan time (grill §9) and audited at review. Depth in docs/graph/method/design-posture.md."
@@ -349,7 +349,7 @@
   "agent_router": {
     "description": "Mechanical agent-router: the specialist-selection analog of the knowledge router (graph-lint.py --plan). A keyword heuristic floor with confidence bands, not an oracle; its output is cited in every delegation brief.",
     "tool": "integrations/claude-code/agent-lint.py",
-    "installed_at": ".claude/agent-lint.py",
+    "installed_at": "docs/graph/agent-lint.py (every harness) + .claude/agent-lint.py (Claude Code projection)",
     "installed_by": "install.sh (claude-code adapter)",
     "golden_set": "agents/_routes.golden.tsv",
     "golden_set_installed_at": ".claude/agents/_routes.golden.tsv",

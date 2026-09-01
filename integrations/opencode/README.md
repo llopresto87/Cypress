@@ -24,7 +24,7 @@ This seed system maps to opencode as follows:
 
 | Seed file                | opencode path                                      |
 |--------------------------|----------------------------------------------------|
-| `core/AGENTS.md`         | `AGENTS.md` (symlink or copy at repo root)         |
+| `core/AGENTS.md`         | `AGENTS.md` (copy by default; `--symlink` opt-in)  |
 | `agents/*.md`            | `.opencode/agents/*.md`                            |
 | `skills/*/SKILL.md`      | `.opencode/skills/*/SKILL.md`                      |
 | protocols → commands     | `.opencode/commands/*.md`                          |
@@ -111,7 +111,7 @@ have the other apply.
 /path/to/cypress/install.sh opencode
 ```
 
-Creates symlinks (or copies on Windows) from the seed source to:
+Creates copies by default (`--symlink` opts into live seed links) from the seed source to:
 - `AGENTS.md` → `core/AGENTS.md`
 - `.opencode/agents/*.md` → `agents/*.md`
 - `.opencode/skills/<name>/SKILL.md` → `skills/<name>/SKILL.md`

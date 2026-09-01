@@ -71,7 +71,7 @@ practice on the production path.
   - `spec-author`, `test-first`, `adr-writer`
   - `grill-planner`, `brainstorm-socratic`
   - `from-scratch-bootstrap`, `adopt-existing`
-- **Seven templates** under `templates/`:
+- **Ten templates** under `templates/`:
   - `spec.template.md` — executable spec
   - `grill.template.md` — plan-of-record
   - `library-page.template.md` — wiki page
@@ -79,7 +79,11 @@ practice on the production path.
   - `prompt-contract.template.md` — LLM/VLM prompt
   - `data-contract.template.md` — dataset contract
   - `threat-model.template.md` — security threat model
-- **A mechanical agent-router** (`.claude/agent-lint.py`) — the
+  - `agent.template.md` — commissioned specialist agent
+  - `skill.template.md` — project-specific procedure
+  - `tool-page.template.md` — durable-tool catalog card
+- **A mechanical agent-router** (`docs/graph/agent-lint.py`, projected
+  to `.claude/agent-lint.py` on Claude Code) — the
   specialist-selection analog of the knowledge router. `--route "<task>"`
   ranks specialists by their `routing_triggers` frontmatter and prints a
   confidence band to cite in the delegation brief; `--lint` validates the
@@ -95,8 +99,8 @@ practice on the production path.
   Agent are first-class citizens at full parity (progressive-discovery
   enforcement hook/extension plus the same `agent-lint.py` CI gate).
 - **`install.sh`** — drops the seed into a target project for any
-  one tool or all five, using symlinks by default so updates to the
-  seed propagate.
+  one tool or all five, copying by default; pass `--symlink` for live
+  seed links so updates to the seed propagate.
 
 ## Core ideas
 
@@ -289,7 +293,7 @@ the way to your first useful slice.
 
 ```
 core/                 Bootstrap kernel (AGENTS.md) + method/ posture nodes
-agents/               17 specialist agents (graph nodes; projected to the harness)
+agents/               18 specialist agents (graph nodes; projected to the harness)
 protocols/            Protocol graph nodes (installed to docs/graph/protocols/)
 skills/               13 skill graph nodes (installed flat to docs/graph/skills/)
 templates/            Per-artifact templates (spec, grill, ADR, etc.; Tier-3 artifacts)
@@ -311,10 +315,14 @@ CHANGELOG.md          Seed-system changes
 
 ## Updating the seed
 
-Because the installer symlinks by default, edits to the seed
-propagate automatically to every project that installed via symlink.
-For copy-mode installs (e.g. Windows), re-run `install.sh` to
-re-copy.
+The installer copies by default. Re-running `install.sh` in the target
+project fast-forwards the machinery (kernel, protocols, agents, skills,
+method, templates, the agent router): identical files are untouched,
+changed ones are backed up first. It does NOT refresh the knowledge-graph
+engines or your instantiated `_schema.md`/`index.md` — those are
+add-if-missing, and upgrading a grown plant properly is the graft
+protocol's job (engine reconciliation included). For installs made with
+`--symlink`, edits to the seed propagate automatically.
 
 For a principled, reconciled upgrade of an existing grown plant — one that
 adopts what the seed advanced, preserves the plant's own local machinery

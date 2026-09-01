@@ -16,9 +16,12 @@ classifies:
 
 It also flags any backup over PLANT-AUTHORED docs/graph/ content (a knowledge
 overwrite — should be none; knowledge is add-if-missing). The seed-owned graph
-subtrees docs/graph/{protocols,skills,agents,method,templates}/ and the scaffold
-(_schema.md, graph-lint.py, spec-lint.py) are machinery, expected to be
-fast-forwarded; everything else under docs/graph/ is the plant's own. Given the
+subtrees docs/graph/{protocols,skills,agents,method,templates}/ and the shared
+scripts (graph-lint.py, spec-lint.py, agent-lint.py) are machinery, expected to
+be fast-forwarded — but only where a seed source actually backs the path: a
+plant-authored project skill under docs/graph/skills/ is plant knowledge.
+_schema.md and index.md are project-instantiated and always the plant's own,
+like everything else under docs/graph/. Given the
 plant's graph-lint.py and the seed's, it also warns if the plant engine is
 STALE (missing engine lines the seed has).
 
@@ -42,24 +45,60 @@ GENERIC_SIGNALS = ("this project's", "this program", "our stack", "our program",
 
 
 def parse_args():
+    """Accept --flag=value AND --flag value. The old =-only parser
+    silently dropped a space-separated value into the positional list:
+    `--tokens acme` audited with DEFAULT tokens and could print "clean"
+    for a graft that buried a real customization — the exact false-pass
+    this gate exists to prevent. Unknown extra positionals now fail
+    loudly instead of being ignored."""
     a = sys.argv[1:]
-    pos = [x for x in a if not x.startswith("--")]
-    opt = {}
-    for x in a:
-        if x.startswith("--date="):
-            opt["date"] = x.split("=", 1)[1]
-        elif x.startswith("--tokens="):
-            opt["tokens"] = [t.strip().lower() for t in x.split("=", 1)[1].split(",") if t.strip()]
-        elif x.startswith("--engine="):
-            opt["engine"] = x.split("=", 1)[1]
+    pos, opt, i = [], {}, 0
+    def _set(key, raw):
+        if key == "tokens":
+            opt["tokens"] = [t.strip().lower() for t in raw.split(",") if t.strip()]
+        else:
+            opt[key] = raw
+    while i < len(a):
+        x = a[i]
+        if x.startswith("--"):
+            body = x[2:]
+            key, eq, val = body.partition("=")
+            if key not in ("date", "tokens", "engine"):
+                print(f"  !! unknown option --{key}")
+                sys.exit(2)
+            if not eq:
+                i += 1
+                if i >= len(a):
+                    print(f"  !! --{key} needs a value")
+                    sys.exit(2)
+                val = a[i]
+            if val.startswith("--"):
+                print(f"  !! --{key} got {val!r} as its value — a flag "
+                      f"swallowed a flag; write --{key}=<value>")
+                sys.exit(2)
+            _set(key, val)
+            if key == "tokens" and not opt["tokens"]:
+                print("  !! --tokens list is empty — only the generic "
+                      "plant signals will be scanned")
+        else:
+            pos.append(x)
+        i += 1
+    if len(pos) > 2:
+        print(f"  !! unexpected extra arguments: {pos[2:]} — "
+              f"did an option value go astray?")
+        sys.exit(2)
     return pos, opt
 
 
 # seed-owned machinery under the plant's docs/graph/ (6.0.0 layout): these
-# subtrees + the scaffold files are the seed's to fast-forward; everything
-# else under docs/graph/ is plant-authored knowledge.
+# subtrees + the engine scripts are the seed's to fast-forward; everything
+# else under docs/graph/ is plant-authored knowledge. _schema.md and
+# index.md are deliberately NOT here: they are project-instantiated
+# (graft.md — "copying the seed template would regress placeholders and
+# wipe the authored router"), so a backup over them IS a knowledge
+# overwrite worth alarming on.
 MACHINERY_SUBTREES = ("protocols/", "skills/", "agents/", "method/", "templates/")
-SCAFFOLD_FILES = ("_schema.md", "graph-lint.py", "spec-lint.py")
+SCAFFOLD_FILES = ("graph-lint.py", "spec-lint.py", "agent-lint.py")
 
 
 def plant_rel(bak: Path, plant: Path, date: str) -> str:
@@ -74,6 +113,10 @@ def seed_source_for(rel: str, seed: Path):
         return seed / "core/AGENTS.md"
     if rel.startswith("docs/graph/"):
         sub = rel[len("docs/graph/"):]
+        if sub == "agent-lint.py":
+            return seed / "integrations/claude-code/agent-lint.py"
+        if sub == "agents/_routes.golden.tsv":
+            return seed / "agents/_routes.golden.tsv"
         if sub.startswith("protocols/"):
             return seed / "protocols" / sub[len("protocols/"):]
         if sub.startswith("method/"):
@@ -114,6 +157,14 @@ def main() -> int:
         print(__doc__)
         return 1
     plant, seed = Path(pos[0]), Path(pos[1])
+    # A vacuous audit must not read as a clean one: a wrong plant root
+    # finds zero backups and would otherwise print the same "clean" line
+    # a real audit earns. A plant always has docs/graph/ — refuse anything
+    # that does not.
+    if not (plant / "docs" / "graph").is_dir():
+        print(f"  !! {plant} has no docs/graph/ — not a plant root; "
+              f"refusing a vacuous audit")
+        return 1
     tokens = opt.get("tokens", []) + [t.lower() for t in GENERIC_SIGNALS]
 
     date = opt.get("date")
@@ -124,17 +175,22 @@ def main() -> int:
 
     baks = [p for p in plant.rglob(f"*.bak-{date}-*") if p.is_file() and not p.is_symlink()]
     counts = {"IDENTICAL": 0, "DELTA": 0, "CUSTOMIZED": 0, "UNMAPPED": 0}
-    customized, knowledge_hits = [], []
+    customized, knowledge_hits, unmapped = [], [], []
     for b in baks:
         rel = plant_rel(b, plant, date)
-        # a real knowledge overwrite is a backup over PLANT-AUTHORED docs/graph/
-        # content — the seed-owned machinery subtrees and scaffold are the
-        # graft's to fast-forward and are exempt
-        if rel.startswith("docs/graph/") and not is_seed_owned_graph_path(rel):
-            knowledge_hits.append(b.relative_to(plant).as_posix())
         src = seed_source_for(rel, seed)
-        if not src or not src.exists():
+        seed_backed = bool(src and src.exists())
+        # a real knowledge overwrite is a backup over PLANT-AUTHORED
+        # docs/graph/ content. A machinery-shaped path is only exempt when
+        # a seed source ACTUALLY backs it: a plant-authored project skill
+        # lives at docs/graph/skills/<name>.md too, and exempting the
+        # subtree wholesale hid exactly those overwrites.
+        if rel.startswith("docs/graph/") and not (
+                is_seed_owned_graph_path(rel) and seed_backed):
+            knowledge_hits.append(b.relative_to(plant).as_posix())
+        if not seed_backed:
             counts["UNMAPPED"] += 1
+            unmapped.append(b.relative_to(plant).as_posix())
             continue
         bt, st = b.read_text(errors="replace"), src.read_text(errors="replace")
         if bt == st:
@@ -150,6 +206,27 @@ def main() -> int:
                 counts["DELTA"] += 1
 
     print(f"  backups audited: {len(baks)} -> {counts}")
+    if unmapped:
+        print(f"  !! {len(unmapped)} UNMAPPED backup(s) — no seed source; "
+              f"inspect by hand:")
+        for u in unmapped[:20]:
+            print(f"       {u}")
+    if not baks:
+        # Idempotent installs make zero-backup grafts the NORMAL no-op
+        # case — but only when no backups exist at all. Backups under
+        # OTHER date stamps mean the requested date audited nothing
+        # while the real fast-forward went unexamined: fail, do not
+        # print the same "clean" verdict a real audit earns.
+        other = sorted({m.group(1) for p in plant.rglob("*.bak-*")
+                        for m in [re.search(r"\.bak-(\d{8})-\d+$", p.name)]
+                        if m and m.group(1) != date})
+        if other:
+            print(f"  !! zero backups for date {date}, but backups exist "
+                  f"for {', '.join(other)} — wrong --date? refusing a "
+                  f"vacuous audit")
+            return 1
+        print("  note: zero backup files — nothing was overwritten; "
+              "the audit had nothing to prove")
     if opt.get("engine"):
         _engine_currency(opt["engine"])
     if knowledge_hits:

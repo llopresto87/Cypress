@@ -1,7 +1,8 @@
 <!--
 Template: skill.template.md
 Authored by: orchestrator (commission), or harvested from skill-corpus/
-Lives at: .claude/skills/<name>/SKILL.md
+Lives at: docs/graph/skills/<name>.md (home), projected into each harness
+dir the plant uses: .claude/skills/<name>/SKILL.md and kin
 Used: when a repeatable project-specific PROCEDURE recurs and no existing
 skill covers it — the procedure sibling of a durable tool (toolcraft).
 Fill by copying into the target path and replacing every <placeholder>.
@@ -45,4 +46,4 @@ disciplines, it does not duplicate them.>
 
 - `docs/graph/templates/<any template this skill fills>`
 - `docs/graph/protocols/<the protocol(s) this skill composes>`
-- `.agents/<the agent that primarily runs this skill>`
+- `docs/graph/agents/<the agent that primarily runs this skill>`

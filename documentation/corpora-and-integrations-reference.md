@@ -366,7 +366,9 @@ The universal source of truth is:
 - `templates/docs/` — the `docs/graph/` knowledge-graph leaves.
 
 `install.sh <tool> [<tool> …]` drops the seed into a target project for one
-tool or all five, using symlinks by default so seed updates propagate.
+tool or all five, copying by default (`--symlink` opts into live seed
+links); machinery re-installs fast-forward — identical files untouched,
+changed ones backed up.
 
 ## B.0 First-class vs supported
 
@@ -384,10 +386,10 @@ Source: `README.md` line 94, `integrations/prime-agent/README.md`,
 
 | Tool | Kernel file (destination) | Overlay directory | Install method | First-class | Enforcement mechanism |
 |---|---|---|---|---|---|
-| Claude Code | `CLAUDE.md` (symlink/copy of `core/AGENTS.md`) | `.claude/{agents,skills,commands}` | symlink (copy on Windows); commands generated | **Yes** | `.claude/route-hook.py` on `UserPromptSubmit` |
-| Prime Agent | `AGENTS.md` (symlink/copy of `core/AGENTS.md`) | `.prime/agent/{agents,skills,prompts,extensions}` | symlink or copy; prompts generated | **Yes** | `.prime/agent/extensions/route-extension.ts` on `before_agent_start` |
-| opencode | `AGENTS.md` (or `CLAUDE.md` fallback) | `.opencode/{agents,skills,commands}` | symlink (copy on Windows); `opencode.json` copied | No | Kernel FIRST-MOVE mandate (no dedicated hook shipped) |
-| Codex | `AGENTS.md` at repo root | `.codex/{agents,protocols,skills}` | symlink or copy; global `~/.codex/config.toml` edits are user-consented | No | Kernel FIRST-MOVE mandate; skills registered in global config |
+| Claude Code | `CLAUDE.md` (copy of `core/AGENTS.md`; `--symlink` opt-in) | `.claude/{agents,skills,commands}` | copy by default; commands generated | **Yes** | `.claude/route-hook.py` on `UserPromptSubmit` |
+| Prime Agent | `AGENTS.md` (copy of `core/AGENTS.md`; shared with CLAUDE.md when co-installed) | `.prime/agent/{agents,skills,prompts,extensions}` | copy by default; prompts generated | **Yes** | `.prime/agent/extensions/route-extension.ts` on `before_agent_start` |
+| opencode | `AGENTS.md` (or `CLAUDE.md` fallback) | `.opencode/{agents,skills,commands}` | copy by default; `opencode.json` copied | No | Kernel FIRST-MOVE mandate (no dedicated hook shipped) |
+| Codex | `AGENTS.md` at repo root | `.codex/{agents,skills}` | copy by default; global `~/.codex/config.toml` edits are user-consented | No | Kernel FIRST-MOVE mandate; skills registered in global config |
 | GitHub Copilot | `.github/copilot-instructions.md` (copy) + `AGENTS.md` | `.github/{agents,prompts,instructions,hooks}` | **transform** (regenerate, not symlink) | No | `route-hook.py` via VS Code Agent Hooks (Preview) |
 
 ## B.2 Claude Code
@@ -401,15 +403,15 @@ Claude Code reads on every session: `CLAUDE.md` (project memory at repo root),
 
 | Seed file | Claude Code path |
 |---|---|
-| `core/AGENTS.md` | `CLAUDE.md` (symlink or copy at repo root) |
+| `core/AGENTS.md` | `CLAUDE.md` (copy by default; `--symlink` opt-in) |
 | `agents/*.md` | `.claude/agents/*.md` |
 | `skills/*/SKILL.md` | `.claude/skills/*/SKILL.md` |
 | protocols → slash commands | `.claude/commands/*.md` (generated) |
 | `templates/` | `templates/` (kept at repo root, untouched) |
 | `templates/docs/` | `docs/graph/` (missing leaves added on install) |
 
-- **Install:** `install.sh claude-code`. `CLAUDE.md` → symlink (or copy on
-  Windows) to `core/AGENTS.md`; agents/skills → symlinks; commands generated
+- **Install:** `install.sh claude-code`. `CLAUDE.md` → copy of
+  `core/AGENTS.md` (`--symlink` opt-in); agents/skills → copies; commands generated
   one per protocol node with `command: true`; `docs/graph/` scaffolded. If
   `.claude/` already has custom content, the installer prompts; conflicts are
   reported, not silently overwritten.
@@ -444,7 +446,7 @@ SKILL.md`), extensions (`.prime/agent/extensions/*.ts`), and settings
 
 | Seed file | Prime Agent path |
 |---|---|
-| `core/AGENTS.md` | `AGENTS.md` (symlink or copy at repo root) |
+| `core/AGENTS.md` | `AGENTS.md` (copy by default; `--symlink` opt-in) |
 | `agents/*.md` | `.prime/agent/agents/*.md` (brief sources) |
 | `skills/*/SKILL.md` | `.prime/agent/skills/*/SKILL.md` |
 | protocols → slash commands | `.prime/agent/prompts/*.md` (generated projections) |
@@ -542,11 +544,12 @@ subagent directories out of the box; project-local agents are surfaced by
 referencing them from `AGENTS.md`.
 
 **Mapping:** `core/AGENTS.md` → `AGENTS.md` at repo root (sub-agents inlined or
-referenced); `agents/*.md` → `.codex/agents/*.md`; protocols →
-`.codex/protocols/*.md`; `skills/*/SKILL.md` → `.codex/skills/*/SKILL.md`
+referenced); `agents/*.md` → `.codex/agents/*.md`; protocols install once,
+as graph nodes → `docs/graph/protocols/*.md` (no `.codex/` copy);
+`skills/*/SKILL.md` → `.codex/skills/*/SKILL.md`
 (registered in `~/.codex/config.toml`); `templates/docs/` → `docs/graph/`.
 
-- **Install:** `install.sh codex`. Symlinks or copies; prints a reminder of the
+- **Install:** `install.sh codex`. Copies by default; prints a reminder of the
   `~/.codex/config.toml` lines to add for skill registration (the installer
   does **not** modify global user config without consent). `install.sh codex
   --print-config` prints the snippet with paths substituted.
@@ -591,11 +594,11 @@ agents (`.github/agents/<name>.agent.md`).
   filename-driven and its formats are incompatible (different frontmatter keys,
   different folder expectations), so `install.sh github-copilot` **regenerates**
   transformed copies. The source of truth stays the universal files; re-run the
-  installer after editing any source. Tool-name mapping example: `Read/Glob/Grep`
-  → `codebase, search, usages, findTestFiles`; `Write/Edit` → `editFiles`;
-  `WebSearch/WebFetch` → `fetch, githubRepo`; `Bash` → `runCommands` (only
-  granted to non-review agents). Model class maps too (`opus` →
-  `claude-opus-4`).
+  installer after editing any source. The toolset is derived per agent from
+  its own `tools:` allowlist (see integrations/github-copilot/README.md for
+  the exact mapping); `model:` and `Task` are not projected — Copilot has
+  no subagent spawning, so coordinator delegation degrades to the single
+  session there.
 - **Enforcement (Agent Hooks, Preview):** the same cross-tool `route-hook.py`
   runs on `UserPromptSubmit`, emits **JSON** (`hookSpecificOutput.
   additionalContext`; plain-text stdout is not injected by Copilot), and uses a

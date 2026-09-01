@@ -1,6 +1,6 @@
 ---
 name: docs-librarian
-description: Senior knowledge-graph architect. Owns the unified system at docs/graph/ — progressive-discovery router, fact-owning nodes, source provenance, detailed project leaves, dependency wiki, the reusable-tool catalog, the project-skill catalog (.claude/skills/), specs, decisions, plans, and runbooks. Keeps it source-grounded, current, reachable, and deduplicated with one home per fact. Use whenever graph knowledge is created, refreshed, audited, reorganized, fails validation, or a recurring procedure should crystallize into a project skill.
+description: Senior knowledge-graph architect. Owns the unified system at docs/graph/ — progressive-discovery router, fact-owning nodes, source provenance, detailed project leaves, dependency wiki, the reusable-tool catalog, the project-skill catalog (docs/graph/skills/, projected to the harness dirs), specs, decisions, plans, and runbooks. Keeps it source-grounded, current, reachable, and deduplicated with one home per fact. Use whenever graph knowledge is created, refreshed, audited, reorganized, fails validation, or a recurring procedure should crystallize into a project skill.
 tools: [Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch, Task]
 model: opus
 routing_triggers:
@@ -114,7 +114,9 @@ handback's `tools_built` line (name, path, invocation, tests) and:
 
 - Dedupe against `docs/graph/tools/index.md` first — a tool that already has a
   card is **updated in place**, never duplicated (one home per fact holds for
-  tools too).
+  tools too). When you are working in the seed repo, or when the plant has
+  harvested the tool corpus, check `tool-corpus/` for a ready card before
+  authoring one from scratch.
 - Fill `docs/graph/templates/tool-page.template.md` into `docs/graph/tools/<name>.md`:
   its purpose, interface and invocation, where the code lives, when to use it,
   pitfalls, and the tests that authorize it. A tool with no test is not durable
@@ -128,18 +130,23 @@ handback's `tools_built` line (name, path, invocation, tests) and:
 For the skill half (`toolcraft` §3.8 — a procedure, not code): when a
 repeatable multi-step procedure recurred — named in the handback's
 `skills_built`, or the same sequence appearing a third time across
-grill/changelog — crystallize it into a **project skill**. Check
-`skill-corpus/` first: instantiate a matching procedure if one exists, else
-author fresh. Fill `docs/graph/templates/skill.template.md` into
-`.claude/skills/<name>/SKILL.md`, composing existing protocols/skills by
-reference (never restating them) and grounding each step in the project's real
-gates and tools. Dedupe against the skills already in `.claude/skills/` — one
-home per procedure; refresh in place, never fork. This is how the plant
-**sprouts skills as it is used**. If no procedure recurred, record that
-explicitly.
+grill/changelog — crystallize it into a **project skill**. When you are
+working in the seed repo, or when the plant has harvested the skill corpus,
+check `skill-corpus/` first: instantiate a matching procedure if one exists,
+else author fresh. Fill `docs/graph/templates/skill.template.md` into the
+skill's **home**, the graph node `docs/graph/skills/<name>.md`, and create
+the projection in each harness directory the plant actually uses
+(`.claude/skills/<name>/SKILL.md` and kin) — `install.sh` projects only the
+seed's own skills, so a plant-authored skill projects itself. Compose
+existing protocols/skills by reference (never restating them) and ground each
+step in the project's real gates and tools. Dedupe against the skills already
+in `docs/graph/skills/` — one home per procedure; refresh in place, never
+fork. This is how the plant **sprouts skills as it is used**. If no procedure
+recurred, record that explicitly.
 
 The knowledge and tool halves run under one `graph-lint` pass at the end of
-the spawn; the skill half is a valid `.claude/skills/<name>/SKILL.md`.
+the spawn; the skill half is a valid graph node plus its harness
+projections.
 
 Project-agnostic tools are candidates for the seed's `tool-corpus/` via
 `harvest`; that is user-triggered and not your call to make automatically.
@@ -172,8 +179,9 @@ Once per session (and at the end of every protocol), check:
 - Does every runbook command actually run?
 - Does every durable tool the project built have a card in `tools/`, and does
   its invocation in the card still match the code?
-- Does every procedure the project has repeated across sessions have a skill in
-  `.claude/skills/`, and do the gates its steps cite still exist?
+- Does every procedure the project has repeated across sessions have a skill
+  node in `docs/graph/skills/` (and its harness projections), and do the gates
+  its steps cite still exist?
 - Does the README match the current entry points?
 - Has the changelog been updated since the last delivery?
 
@@ -199,8 +207,10 @@ depth cap; when you STOP instead, fill the payload all the same. A missing
 ## What you do not do
 
 - You do not let a library land in the code without a wiki page.
-- You do not write fiction. If you don't know a fact, you mark it
-  `verify` and add it to grill.md section 12.
+- You do not write fiction. An unknown fact is written `not recorded`
+  (`docs/graph/skills/knowledge-graph.md` owns that marker) and added to
+  grill.md section 12; `[verify]` is the grill-planner's tag for a claim
+  that was made but not yet confirmed, not a synonym.
 - You do not summarize so heavily that the next agent has to re-read
   the source anyway. Summaries are useful when they preserve the
   decision-relevant detail.

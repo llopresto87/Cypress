@@ -121,8 +121,14 @@ If a target file already exists, the installer:
   `<path>.bak-<timestamp>` and warns.
 
 The installer never deletes files outside of `.claude/`,
-`.opencode/`, `.codex/`, or `.github/`. It never touches your
-existing files in `docs/graph/`; it adds missing seed artifacts only.
+`.opencode/`, `.codex/`, or `.github/`. In `docs/graph/` it adds
+missing scaffold and template leaves only and never touches
+plant-authored content (`nodes/`, `specs/`, and the rest of the
+graph you grow); the seed-owned machinery subtrees (`protocols/`,
+`skills/`, `agents/`, `method/`, `templates/`) are fast-forwarded
+to the current seed — byte-identical files are left untouched, and
+anything that differs is backed up first (unless `--force`) so
+`tools/graft-audit.py` can prove no customization was buried.
 
 ## Verifying the install
 
@@ -236,9 +242,9 @@ Recommended order if installing all five:
 ```sh
 ./install.sh claude-code      # CLAUDE.md, no conflict with AGENTS.md
 ./install.sh opencode         # AGENTS.md (fresh)
-./install.sh codex            # AGENTS.md (already present and identical — backup is harmless)
+./install.sh codex            # AGENTS.md (already present and identical — left untouched)
 ./install.sh github-copilot   # .github/copilot-instructions.md (no conflict)
-./install.sh prime-agent      # AGENTS.md (present and identical — backup harmless); adds .prime/agent/
+./install.sh prime-agent      # AGENTS.md (present and identical — untouched); adds .prime/agent/
 ```
 
 Or simply `./install.sh all`.

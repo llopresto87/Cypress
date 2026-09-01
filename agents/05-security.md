@@ -23,6 +23,7 @@ peers:
   - agent.pentest
   - agent.reviewer
   - agent.reliability
+  - agent.tester
 est_tokens: 2200
 ---
 
@@ -193,8 +194,10 @@ These belong in `docs/graph/runbooks/verification.md`:
 - AI red-team eval suite for any LLM/VLM feature.
 
 When you adopt or inherit a codebase, apply this minimum gate-bar before
-you trust its supply chain — recording each as present or absent per the
-verify rule, never silently dropped:
+you trust its supply chain — recording each in one of the three states
+owned by `docs/graph/protocols/verify.md`: **executed** (run this pass),
+**discovered** (exists but not run this pass), or **absent** (with a date
+and a planned-add owner). Never silently dropped:
 - An image vulnerability scan that FAILS THE BUILD on HIGH/CRITICAL.
 - A tag-policy lint: no floating or untagged image references; digest
   required.

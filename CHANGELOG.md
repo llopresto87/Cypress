@@ -1,5 +1,256 @@
 # Changelog
 
+## 6.9.2 — the doctrine audit: 18 scoped reviews of the method surface itself (2026-09-01)
+
+6.9.1 proved the gates honest; this release audits what the gates cannot see —
+the MEANING of the kernel, protocols, agents, skills, templates, and corpora.
+Eighteen scoped read-only doctrine audits (one per surface) fed two
+implementation passes. Every fix repairs a verified contradiction, broken
+handoff, unexecutable instruction, restatement drift, or plant-breaking
+assumption; regression tests were added where a gate could carry the invariant.
+
+### Fixed — the kernel's mandatory routing step now exists on every harness
+
+- `python3 .claude/agent-lint.py --route` was mandated by the kernel,
+  delegation.md, the orchestrator, and grow.md on ALL five tools — but
+  install.sh placed agent-lint.py only for claude-code: 4/5 single-tool plants
+  had an unexecutable mandatory first delegation step. The router now installs
+  at **`docs/graph/agent-lint.py`** on every adapter (claude-code keeps its
+  `.claude/` projection) and — unlike the config-carrying graph engines —
+  FAST-FORWARDS on re-install (identical untouched, changed backed up for
+  graft-audit, which now maps it and the golden corpus as seed machinery).
+  `agents/_routes.golden.tsv` rides with the roster into every plant so
+  `--eval` (a graft exit gate) runs everywhere; roster discovery prefers
+  the graph home `docs/graph/agents/` (where a commissioned expert is
+  authored) over the `.claude/` projection; every normative reference uses
+  the universal path. Regressions in `tests/test-full-install.sh`: all five
+  adapters run `--lint`, `--route` (the kernel-mandated step) and `--eval`
+  in-plant, and a stale router is proven fast-forwarded with backup.
+- Kernel §2's default T3 sequence named a phantom `implement` protocol (no such
+  node; implementation lives inside test-first's GREEN phase) — dropped, and
+  the three documentation mirrors aligned. Kernel §0's T1 hard edge restored
+  tiers.md's fifth condition: "or anything a spec covers".
+
+### Fixed — contradictions an executing agent could not obey
+
+- T2 RED→GREEN merging existed in three conflicting versions (tiers.md vs
+  tester charter vs orchestrator): tiers.md now owns the canonical criterion
+  (single contract + mechanical RED), the others cite it.
+- growth-scout was mandated to write its evidence ledger by three documents
+  while its own tools lacked Write and its last line claimed "strictly
+  read-only" — Write granted, the read-only bound rewritten to its true scope.
+- Implementer/reviewer instructed inline wiki edits the librarian-ownership
+  doctrine forbids — now handback-mediated. Tester's bug-fix loop names the
+  actor split. Pentest loads the actual threat-model artifact, binds
+  protocol.test-first, and the AI red-team gate bar has one owner (security).
+- Project-skill cataloging had two irreconcilable homes (`.claude/skills/`
+  direct vs graph node + projection): harvest.md's graph-home doctrine now
+  rules everywhere (toolcraft, canonize, docs-librarian, skill template,
+  skill-corpus entries), stated strictly: the plant creates its own harness
+  projection; install.sh projects only seed skills.
+- graft.md contradicted itself on `_schema.md`/`index.md` ownership: they are
+  project-instantiated, plant-owned — the machinery list, graft-audit's
+  exemption set (`SCAFFOLD_FILES`), and a new regression case all agree an
+  overwrite of them is a knowledge overwrite.
+- verify.md names its handoff (canonize → deliver) and peers; canonize's
+  runbook actor matches verify/tester; deliver uses verify's owned three-state
+  gate vocabulary (executed/discovered/absent); grill's workflow now fills
+  §0–§15 — its own exit bar — and exits through §15.
+- Entry-protocol repairs: brainstorm hands off to from-scratch Phase 2 (not 4);
+  from-scratch defers to brainstorm-socratic's nine-question budget;
+  ingest-library's seed-corpus check is plant-safe and its "fill every
+  section" no longer contradicts the template's demand-grown discipline.
+
+### Fixed — tools and their contracts
+
+- graph-lint.py: the pre-growth reachability branch got the 6.9.1 boundary fix
+  (the root branch alone had it — a machinery orphan could ride a prefix);
+  duplicate node ids are now detected (_schema.md claimed it, nothing enforced
+  it); the body-ceiling message states the real rule (170 hard, ~150 aim).
+  Regressions in `tests/test_graph_lint.py` (17 tests).
+- graft-audit.py: space-form options (`--tokens acme`) were silently dropped —
+  the audit ran with default tokens and could print "clean" over a buried
+  customization; both flag forms now parse, stray positionals exit 2.
+  graft.md's documented invocation includes `--engine=` so the engine-currency
+  check it cites actually runs. Regressions in `tests/test-graft-tools.sh`.
+- install.sh's Copilot agent projection granted ONE fixed tool superset
+  (editFiles/runCommands for everyone, `model:` never emitted as claimed):
+  tools now derive from each agent's own allowlist — `editFiles` only with
+  Write/Edit, `runTasks` only with Bash, `fetch`/`githubRepo` only with web
+  tools; `runCommands` stays a baseline for ALL agents because the GRAPH
+  DISCIPLINE bootstrap mandates running the graph router in every session.
+  Neither `model:` (Copilot ids churn) nor `Task` (no subagent spawning on
+  Copilot — coordinator flows degrade to the single session there, and the
+  README says so) is projected. Regression in `tests/test-full-install.sh`.
+- claude-code settings.json shipped four schema-invalid dead keys
+  (agents/skills/commands/memory) — removed; discovery is by convention.
+- _schema.md now documents KIND_PREFIX, the agent-node routing_triggers
+  substitution, and the version-check code exemptions; the knowledge-graph and
+  context-router skills point at the adopted `docs/graph/_schema.md` rather
+  than the pristine seed template; spec-author's contract example uses the
+  `### Contract:` form the linter actually counts.
+
+### Fixed — legal corpus grade honesty (129 entries)
+
+- Four cra.md sites claimed `text_form: verbatim` over unquoted paraphrase,
+  invisible to legal-lint through multi-id folding — regraded per-id
+  ("per id, not uniform"); the mis-formed "Open source:" heading became a real
+  canonical entry (128 → 129). Seven dangling GDPR sub-ids repointed to their
+  real undivided entries. nis2.md flags the three un-extracted decree articles
+  as open ingest work. The table-only id sets carry ISO-style id-formation
+  notes. No content, quotation, or grade was invented or upgraded.
+- The independent review of this release then caught that the new compound
+  grade line DISABLED legal-lint's start-anchored honesty check: the gate now
+  captures the full (multi-line) grade value and fires on a `verbatim` grade
+  token anywhere in it — which immediately exposed and fixed a fifth stale
+  claim in cra.md's penalties block. The same review pass regraded the
+  remaining structure-as-verbatim entries per span (`gdpr-art-13`,
+  `gdpr-art-15`, `nis2-dir-art-21`, `nis2-dir-art-23`) and converted
+  cra-art-14's three minted sub-ids to provision labels citable through
+  the parent entry. Regression: the compound-grade fixture in
+  `tests/test-legal-lint.sh`.
+
+### Fixed — smaller drifts
+
+Root README symlink-default and "Seven templates" claims; codex README's
+phantom `.codex/protocols/`; opencode/prime-agent symlink wording; copilot
+hook-path claim; prime-agent CI-parity wiring documented; posture nodes cite
+their owning protocols instead of restating them; grow/graft cite the
+graph-session-bootstrap home; brief/handback path typos (`.agents/`);
+growth-scout-brief's handback field list matches the ledger schema;
+prompt-contract template wired to data-ml; golden-corpus comment count;
+delegation model-class rule covers adversarial validation (opus) and
+mechanical retrieval (sonnet); research-scout's legal-ingest handoff;
+LOW/NONE commissioning checks agent-corpus; canonize/docs-librarian check
+tool-corpus in the tool half.
+
+### Recorded debt (not fixed)
+
+multi-agent-architect's pre-ship checklist demands hard iteration/token/time
+caps with defined at-cap behavior and correlation-id tracing; the seed's own
+coordinator system has only depth caps (`max_spawn_depth`) and recover.md's
+3-attempt boundary. Known gap, recorded here rather than papered over.
+
+## 6.9.1 — the gates stop lying: false-pass fixes across every linter, idempotent installs (2026-09-01)
+
+A holistic bug hunt (four parallel read-only investigators + orchestrator
+verification) found no failure in what the gates test — and eleven ways the
+gates and tools could report green without testing anything. Every fix below
+repairs a "vacuous pass" or a silent misbehavior; each carries a regression
+case that fails on the pre-fix code.
+
+### Fixed — linter false-passes
+
+- **`tests/legal-lint.py`**: `has_field()` matched `**text_form:**` when asked
+  for `text` (the `[^:]*` gap swallowed `_form`), so an entry carrying only
+  the grade — not the law's words — passed as citable. A `\b` after the field
+  name closes it. The stricter check exposed four shipped corpus entries with
+  no conforming `text` field (`cra-art-13-1-3`, `cra-art-28-30` in
+  `legal-corpus/eu/cra.md`; `it-dlgs-138-2024`, `acn-registration-pages` in
+  `legal-corpus/eu/nis2.md`); each now carries a `text` bullet built strictly
+  from facts already recorded in the entry. Regression: case 6 in
+  `tests/test-legal-lint.sh`.
+- **`templates/knowledge-graph/spec-lint.py`**: the contract-slug scan was a
+  bare substring match — a prefix slug (`PARSE_JSON`) stole coverage credit
+  from `PARSE_JSON_STRICT` (the longer, actually-covered slug was reported
+  uncovered), and an UNREGISTERED extension (`PARSE_JSON_V2` in a test)
+  credited `PARSE_JSON`. Now boundary-guarded (`(?<![A-Z0-9_])…(?![A-Z0-9_])`)
+  and longest-first. Regressions: cases 5 and 5b in
+  `tests/test-spec-lint.sh`.
+- **`templates/knowledge-graph/graph-lint.py`**: (a) `VERSION_RE`'s lookbehind
+  excluded the leading `v` of `vX.Y.Z` — the most common semver spelling
+  evaded the version-leak check entirely; the optional `v` is now part of the
+  match. (b) reachability used a plain substring test against `index.md`, so
+  an unreachable node passed whenever its id merely prefixed an unrelated
+  longer string — including a dotted child (`x.orphan` vs `x.orphan.child`,
+  the graph's normal id shape); now a boundary match that rejects both
+  continuations while still accepting a trailing sentence period.
+  Regressions: `VersionLeakageTests` and `ReachabilityBoundaryTests` in
+  `tests/test_graph_lint.py`.
+- **`integrations/claude-code/agent-lint.py`** (the single home; installers
+  copy it into plants): `--eval` on a golden corpus with zero labeled rows
+  reported "top-1 accuracy 100.0% (0/0) — OK" at exit 0; the fail-closed gate
+  now fails on a vacuous 0/0. Regression:
+  `test_eval_fails_on_zero_labeled_rows` in `tests/test_agent_lint.py`.
+- **`tools/graft-audit.py`**: a wrong plant root (or wrong `--date`) found
+  zero backups and printed the same "clean — no customization buried" exit-0
+  line a real audit earns. A root without `docs/graph/` is now refused
+  (exit 1); zero backups for the requested date while backups exist under
+  other date stamps is refused as a wrong `--date` (exit 1); zero backups
+  anywhere stays a legitimate no-op graft (the idempotent installer makes
+  that the normal case) and says so explicitly. Regressions: the
+  non-plant-root and wrong-date cases in `tests/test-graft-tools.sh`.
+
+### Fixed — test suites that could not fail
+
+- **`tests/test-spec-lint.sh`**: `! grep -q OLD_RETIRED_THING` — bash exempts
+  `!`-negated commands from `set -e`, so the retired-contract leak this line
+  exists to catch could never stop the suite. Now an explicit `if grep; then
+  fail` with a message.
+- **`tests/test-knowledge-paths.sh`**, **`tests/test-orchestration-entry.sh`**:
+  both hard-depended on undocumented `rg`; on a machine without ripgrep the
+  `|| true` / bare-`if` idioms turned exit 127 into "no match" and the suites
+  passed while checking nothing. Converted to POSIX `grep -rE` with explicit
+  rc discrimination (rc>1 fails the suite loudly).
+
+### Fixed — installer
+
+- **`install.sh`**: (a) re-running any installer backed up and rewrote every
+  byte-identical file — measured pre-fix: 103–134 no-op `.bak`s per
+  single-tool re-run and 608 for `install.sh all`, burying graft-audit's
+  real signal; identical placements are now skipped. (b) the
+  opencode/codex/copilot installers placed `AGENTS.md` via raw `place_file`
+  while prime-agent used `place_kernel`; on `install.sh all` the two
+  ping-ponged the kernel between a copy and the CLAUDE.md-shared symlink,
+  creating fresh backups on every run — all four now route through
+  `place_kernel`, and `place_kernel` converges a pristine (byte-identical)
+  kernel copy without a backup: to the shared symlink where the platform
+  allows, kept as an identical copy where `ln -s` fails (symlink-less
+  platforms churned 5 kernel `.bak`s per re-run even after the reroute).
+  (c) the unquoted `${f#$src/}` prefix-strip treated the seed
+  path as a glob pattern: a checkout under a path containing `[`/`]`/`*`
+  silently nested every machinery file under the full absolute source path
+  and reported success; both strips are now quoted. Regressions: the
+  idempotent-re-run, glob-metachar-path, and symlink-less-platform cases in
+  `tests/test-full-install.sh`.
+
+### Fixed — docs that contradicted the code, and a brief outside the lint
+
+- **`INSTALL.md`** no longer claims the installer "never touches your existing
+  files in docs/graph/": the seed-owned machinery subtrees are fast-forwarded
+  with backups for graft-audit (as `GRAFT_PROMPT.md` always said);
+  plant-authored graph content is add-only. `install.sh`'s
+  `place_docs_skeleton` docstring says the same.
+- **`integrations/claude-code/README.md`** claimed symlinks-by-default and
+  "the installer prompts before touching it… never silently overwritten" —
+  the installer copies by default and has no prompts; the README now
+  describes the real backup/`--force` behavior.
+- **`templates/prompts/clean-context-validation-brief.md`** is a live
+  delegation brief but never embedded the canonical GRAPH DISCIPLINE block
+  ("brief templates embed it byte-identical; lint enforces sync" — the lint's
+  hardcoded list simply didn't know this brief). Block embedded; the brief
+  joined `tests/seed-lint.py`'s byte-identity list.
+- **`README.md`** repository-layout block said "17 specialist agents" while
+  line 40 of the same file said 18; `tests/seed-lint.py` now also polices the
+  "N specialist agents" phrasing.
+- **`DOCUMENTATION.md`** and **`documentation/`** were pinned at 6.8.0 with a
+  17-agent roster omitting `ui-ux-designer` — the 6.9.0 roster commit updated
+  every governed surface but this tree, which no gate read. Roster, counts,
+  and version updated; the whole tree now sits in `tests/seed-lint.py`'s
+  numeric-claims prose scan, the "N specialist agents" pattern tolerates
+  qualifier words ("18 *named* specialist agents"), and the tree's
+  documented-version pins are checked against `manifest.json`
+  (regressions: cases 5b/5c in `tests/test-seed-lint.sh`). The in-sample
+  honesty note now reads 42-of-49 labeled rows (recomputed against the
+  current golden corpus). An adversarial review of this release's own
+  diff caught and removed a mis-attribution it had introduced in
+  `legal-corpus/eu/nis2.md` (`it-dlgs-138-2024`): the amend/repeal
+  clauses in the decree's title describe Directive (EU) 2022/2555, not
+  acts of the decree itself.
+
+No kernel, protocol, agent-charter, or routing behavior changed; the eight
+rule homes, the roster, and the golden corpus are untouched.
+
 ## 6.9.0 — lean funnel spawns; legal in the architecture path; ui-ux-designer joins the roster (2026-09-01)
 
 The grill funnel's worker agents are re-scoped to spend tokens on the work

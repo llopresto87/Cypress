@@ -53,8 +53,10 @@ parameters, then `When to apply`, the procedure itself, `Anti-patterns`, and
 `protocols/harvest.md` owns this contract. In short: when a project hits a
 repeatable procedure the core `skills/` don't cover, check this corpus
 **first**. A matching page is instantiated into the project's
-`docs/graph/skills/<name>.md` (projected into `.claude/skills/<name>/SKILL.md`
-and kin by the harness) from `docs/graph/templates/skill.template.md`,
+`docs/graph/skills/<name>.md` — its home — from
+`docs/graph/templates/skill.template.md`, and the projection is then created
+in each harness dir the plant actually uses (`.claude/skills/<name>/SKILL.md`
+and kin), because `install.sh` projects only the seed's own skills,
 grounding its steps in the project's real gates and tools. If none matches,
 author it fresh as a project skill — and its durable, agnostic form becomes a
 harvest candidate for the next cycle.

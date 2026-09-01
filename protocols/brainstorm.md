@@ -75,5 +75,5 @@ The brainstorm protocol is done when:
 - The user has confirmed the problem statement, the primary user,
   and the first useful slice. Confirmation is explicit ("yes",
   "looks right"), not assumed from silence.
-- The next protocol (`grill` or `from-scratch` Phase 4) has an
+- The next protocol (`grill` or `from-scratch` Phase 2) has an
   unambiguous entry point.

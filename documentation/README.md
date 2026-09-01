@@ -1,6 +1,6 @@
 # CYPRESS Documentation
 
-Human-readable documentation for the CYPRESS seed system (version 6.8.0).
+Human-readable documentation for the CYPRESS seed system (version 6.9.2).
 
 ## Start here
 
@@ -13,7 +13,7 @@ Human-readable documentation for the CYPRESS seed system (version 6.8.0).
 
 | File | Covers |
 |------|--------|
-| **[agents-reference.md](agents-reference.md)** | All 17 specialist agents — per-agent charter, model class, tools, routing triggers, owned facts, edges, and coordinator/leaf status. |
+| **[agents-reference.md](agents-reference.md)** | All 18 specialist agents — per-agent charter, model class, tools, routing triggers, owned facts, edges, and coordinator/leaf status. |
 | **[protocols-reference.md](protocols-reference.md)** | All 15 protocols — owned facts, edges, triggers, and a detailed step-by-step walkthrough of each workflow. |
 | **[skills-and-templates-reference.md](skills-and-templates-reference.md)** | The 13 skills, the 10 artifact templates, the knowledge-graph node contract and linters, and the 9 delegation/brief templates. |
 | **[corpora-and-integrations-reference.md](corpora-and-integrations-reference.md)** | The 5 harvested corpora (library, legal, tool, agent, skill) with inventories, and the 5 tool integrations (Claude Code, Prime Agent, opencode, Codex, GitHub Copilot). |

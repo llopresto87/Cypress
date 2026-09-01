@@ -103,7 +103,8 @@ a one-line coverage note per ledger section (populated / `none found` /
 `not recorded` with the gap), and anything you deliberately deferred for
 length. End your turn with the payload from
 `docs/graph/templates/prompts/handback-payload.md` (`produced_by: growth-scout`,
-`in_domain_work_done` citing the ledger path, `route_evidence`). You are
+`in_domain_work_done` citing the ledger path, `route_evidence`, `gates`,
+`tools_built`). You are
 a read-only leaf: at an out-of-domain boundary, name the next specialist
 in `recommended_next` and STOP — a missing `produced_by` is a
 deliver-time BLOCK.

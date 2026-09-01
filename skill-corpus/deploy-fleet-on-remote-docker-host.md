@@ -2,7 +2,8 @@
 
 > Optional procedure — the single universal method for taking a fresh set of
 > repos online on a remote Docker host over SSH, from nothing. Not a core
-> skill; instantiate into `.claude/skills/` from `templates/skill.template.md`
+> skill; instantiate into `docs/graph/skills/<name>.md` (its home, projected
+> into the harness dirs the plant uses) from `templates/skill.template.md`
 > if selected. Composes existing corpus pages and tools — it does not restate
 > them. Parameterized by `<host>`, `<ssh-user>` (default `root`), `<ssh-key>`,
 > `<remote-dir>`; nothing about a specific host, key, or project lives here.

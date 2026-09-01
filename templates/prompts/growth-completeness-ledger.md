@@ -20,8 +20,8 @@ docs/graph/:
     .cypress/growth/completeness-ledger.md
 
 Discipline: protocols/grow.md (grow.completeness-contract — the rule,
-the no-early-stop clause, and the Phase 6 audit that reads this ledger),
-protocols/deliver.md (the delivery block that carries it).
+the no-early-stop clause, the Phase 6 audit that reads this ledger, and
+the instruction to include it in the growth delivery).
 -->
 
 # Growth completeness ledger — {{plant name}}
@@ -66,5 +66,5 @@ cases done` are NOT statuses — they are the failure the contract forbids.
 
 Growth is done ONLY when every row is COVERED or ABSENT (or a named UNKNOWN),
 Phase 6 independent validation passes against the graph, and the maturity test
-at the foot of `protocols/grow.md` is met — against the graph, never the file
-tree.
+at the foot of `docs/graph/protocols/grow.md` is met — against the graph,
+never the file tree.

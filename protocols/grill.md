@@ -65,15 +65,23 @@ informs the other.
 
 ## Workflow
 
-1. **Open or create grill.md** from `docs/graph/templates/grill.template.md`.
-2. **§1 — Artifact Discovery.** Read what already exists. Files
+1. **Open or create grill.md** from `docs/graph/templates/grill.template.md`,
+   and fill **§0 — Metadata** (feature name, date, driver, spec link).
+2. **§2/§3/§4 — Shared Understanding, User Goal, Operating
+   Constraints.** Write down what the user actually asked for, the
+   shared restatement both sides accept, and the constraints the plan
+   must operate under (budget, stack, compatibility, deadline). These
+   are conversation products — capture them before discovery colors
+   them.
+3. **§1 — Artifact Discovery.** Read what already exists. Files
    inspected, docs inspected, tests inspected, ADRs read, specs read,
    libraries already wikified, constraints already recorded. Cite
    paths. Do not guess; read.
-3. **§5 — Research Summary.** Hand to `research-scout` for any
+4. **§5 — Research Summary.** Hand to `research-scout` for any
    library, spec, or API the plan depends on. For each, ensure a
    `docs/graph/libraries/` page exists; if not, run `ingest-library`.
-4. **§6 — Decisions.** Make explicit choices; cite evidence; tag
+5. **§6/§7 — Decisions and Options Considered.** Make explicit choices;
+   record the discarded options and why in §7; cite evidence; tag
    reversibility. Anything non-obvious gets an ADR (delegate to
    `architect`); an ADR that implicates externally-authored rules
    clears the architect's `legal` checkpoint before it is accepted.
@@ -81,15 +89,15 @@ informs the other.
    session will run again — decide it as a **durable tool** (an increment
    in §9 with a stable interface and a test), not an inline throwaway, and
    check `docs/graph/tools/` for one that already exists (§3.8).
-5. **§8 — Architecture Plan.** The boundary diagram and the
+6. **§8 — Architecture Plan.** The boundary diagram and the
    contracts. Should align with the spec's §4.
-6. **§9 — Implementation Plan.** Slice the work into increments.
+7. **§9 — Implementation Plan.** Slice the work into increments.
    **Each increment names the spec contract(s) it satisfies, the
    files touched, the tests to write (in RED), the gate that proves
    it done, and a rollback path.**
-7. **§10 — Verification Plan.** Which gates run for which
+8. **§10 — Verification Plan.** Which gates run for which
    increments.
-8. **§11 — Risks and Mitigations.** Hand to `security` and
+9. **§11 — Risks and Mitigations.** Hand to `security` and
    `reliability` as relevant. When a boundary, contract, or dependency
    exposes **externally-authored rules** (licenses, regulation, data
    protection, standards, third-party terms), hand that exposure to
@@ -97,14 +105,14 @@ informs the other.
    architect's legal checkpoint (`architect.legal-checkpoint`); a corpus
    gap is a §12 open question ("not recorded — needs ingest"), never a
    recalled rule.
-9. **§12 — Open Questions.** Every "we'll figure that out later"
+10. **§12 — Open Questions.** Every "we'll figure that out later"
    becomes a row here with a named owner and a resolution path.
-10. **§13 — Done Criteria.** Objective conditions that prove the
+11. **§13 — Done Criteria.** Objective conditions that prove the
     feature is complete. These must align with the spec's §9
     acceptance criteria.
-11. **§14 — Recommended Next Step.** A single action — usually
+12. **§14 — Recommended Next Step.** A single action — usually
     "enter `test-first` for increment 1".
-12. **§15 — Changelog.** Add an entry describing this grill
+13. **§15 — Changelog.** Add an entry describing this grill
     session.
 
 The grill protocol is a *pass*: you might iterate it twice if
@@ -150,7 +158,8 @@ spec-driven. Skip it and you'll find drift.
 
 ## Exit conditions
 
-- §0–§14 populated for the current feature.
+- §0–§15 populated for the current feature (the §15 changelog entry
+  included).
 - Every library named in §5 has a wiki page.
 - Every non-obvious decision has an ADR or a row in §6.
 - Every increment in §9 names spec contracts and tests.

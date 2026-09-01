@@ -83,11 +83,14 @@ release choreography, a data-reset dance). Same recurrence trigger, different
 shape: if the recurring thing is code that runs, it is a tool; if it is the
 *how* — the ordered steps and the gate each one clears, usually composing
 existing protocols and tools — it is a skill. When such a procedure recurs and
-no core `docs/graph/skills/` discipline covers it, author it as a project skill in
-`.claude/skills/<name>/SKILL.md` from `docs/graph/templates/skill.template.md`, the same
-way a missing role is commissioned from `docs/graph/templates/agent.template.md`. A skill
-self-catalogs by living in `.claude/skills/`; it **composes** disciplines by
-reference, never restating them. The core `docs/graph/skills/` stay the fixed shared
+no core `docs/graph/skills/` discipline covers it, author it as a project skill from
+`docs/graph/templates/skill.template.md`, the same
+way a missing role is commissioned from `docs/graph/templates/agent.template.md`. Its
+**home is the graph node** `docs/graph/skills/<name>.md`; also create the
+projection in each harness directory the plant actually uses
+(`.claude/skills/<name>/SKILL.md` and kin), because `install.sh` projects only
+the seed's own skills — a skill authored in the plant projects itself. It
+**composes** disciplines by reference, never restating them. The core `docs/graph/skills/` stay the fixed shared
 methodology — a project skill is the optional, project-specific procedure on
 top.
 

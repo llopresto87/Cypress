@@ -32,9 +32,16 @@ grep -q 'graph-lint.py --plan' "$ROOT/templates/prompts/investigation-brief.md"
 grep -q 'graph-lint.py --plan' "$ROOT/templates/prompts/node-authoring-brief.md"
 grep -q 'must run inside every spawned worker' "$ROOT/skills/context-router/SKILL.md"
 
-if rg -n 'adopt(s|ing)? (the )?(specialist|persona)|one agent adopts each persona' \
-  "$ROOT/core" "$ROOT/agents" "$ROOT/protocols"; then
-  printf 'orchestration chat still permits persona simulation\n' >&2
+# grep, not rg: ripgrep is undocumented here, and a missing rg (exit 127) was
+# indistinguishable from "no match" — this guard silently stopped guarding.
+set +e
+sim="$(grep -rnE 'adopt(s|ing)? (the )?(specialist|persona)|one agent adopts each persona' \
+  "$ROOT/core" "$ROOT/agents" "$ROOT/protocols")"
+rc=$?
+set -e
+[[ $rc -le 1 ]] || { echo "grep itself failed (rc=$rc) — the check did not run" >&2; exit 1; }
+if [[ $rc -eq 0 ]]; then
+  printf 'orchestration chat still permits persona simulation:\n%s\n' "$sim" >&2
   exit 1
 fi
 

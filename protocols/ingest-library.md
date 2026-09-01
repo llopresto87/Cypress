@@ -59,8 +59,10 @@ One of:
 ### 0. Withdraw from the seed corpus before re-downloading
 
 Once you know the library's exact name, version, and ecosystem (Identify,
-below), check the seed's library-documentation corpus **first** — the pages
-`harvest` folded back from earlier plants
+below), this step applies **when you are working in the seed repo, or when
+the plant has harvested the library corpus**; otherwise skip to Step 1.
+Where it applies, check the library-documentation corpus **first** — the
+pages `harvest` folded back from earlier plants
 (`library-corpus/<ecosystem>/<library>.md`, keyed by library and **not by
 version** — the corpus keeps the version-durable orientation layer; see
 `docs/graph/protocols/harvest.md`). If the page exists, seed
@@ -111,8 +113,11 @@ This catches discrepancies between docs and code. Note any.
 ### 4. Compose the wiki page
 
 Use `docs/graph/templates/library-page.template.md` to produce
-`docs/graph/libraries/<name>.md` — the template owns the section list;
-fill every section. Two constraints the template cannot enforce:
+`docs/graph/libraries/<name>.md` — the template owns the section list.
+On creation, fill §0–§3 (pin, role, install, used API surface) plus §10
+(references); §4–§12 are demand-grown as the project meets each idiom,
+pitfall, deprecation, or upgrade. Never fabricate a "none" row to make a
+section look complete. Two constraints the template cannot enforce:
 
 - The API-surface section covers only the slice this project actually
   uses — start small; it grows as the codebase grows.

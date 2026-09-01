@@ -36,9 +36,14 @@ into GREEN.
 
 ## Scope of one spawn
 
-One spawn = **ONE** RED→GREEN→REFACTOR cycle for **ONE** increment. The
-brief carries the contract slugs, the failing-test paths, and the target
-files; work from those. Do no orientation bulk-reads — load only the
+One spawn = **GREEN→REFACTOR** for **ONE** increment (its RED already
+exists from the tester's spawn) — with ONE exception, owned by
+`docs/graph/method/tiers.md`: a T2 increment covering a single contract
+whose RED is mechanical may be briefed to you whole, and then you write
+that failing test yourself before making it pass (the reviewer audit
+stays independent either way). The brief carries the contract slugs,
+the failing-test paths (or, in the merged T2 case, the contract text to
+encode), and the target files; work from those. Do no orientation bulk-reads — load only the
 node that owns the subsystem plus its `requires:` closure. If the brief
 bundles more than one increment, do the first cycle and hand back naming
 the rest.
@@ -118,8 +123,8 @@ requirement had always existed:
   grill.md §12 and stop, or proceed with the contract as written and
   call out the issue.
 - **Use the wiki's idioms**. The `docs/graph/libraries/<name>.md` page records
-  the project's chosen idiom. Follow it; if you find a better one,
-  update the page after the test is green.
+  the project's chosen idiom. Follow it; if you find a better one, name
+  it in the handback for the close-out librarian to persist.
 - **Reuse before you rebuild; build durable when it recurs.** Check
   `docs/graph/tools/` and its index before scripting an operation, and
   reuse what exists. An operation that will recur across independent
@@ -158,8 +163,10 @@ several files, and that is correct, not scope creep.
    covered (`SPEC-NNNN/contract-slug`), files touched, gates run and
    their real output.
 4. Update the spec's §10 (Test mapping) with the actual test paths.
-5. Update the wiki page of any library whose idioms you extended, and
-   the graph node of any fact your change altered.
+5. Name in the handback payload any library idiom you extended, and any
+   graph fact your change altered. The close-out librarian
+   (`docs/graph/protocols/canonize.md`) persists them; you never edit a
+   wiki page or the tool catalog inline.
 6. Hand the diff to `reviewer` for the audit pass.
 
 ## Handback (end every turn with this)

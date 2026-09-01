@@ -61,7 +61,7 @@ names the node id and lets the traversal do the work.
 Every node begins with frontmatter. The full contract — every key's
 semantics (`id`, `owns`, `requires`, `peers`, `artifacts`, `libraries`,
 `load_when`, `est_tokens`) and the anti-patterns — lives in
-`docs/graph/templates/knowledge-graph/_schema.md`, the file installed beside the
+`docs/graph/_schema.md`, the file installed beside the
 graph itself; copy an existing node rather than authoring frontmatter
 from scratch. The key that carries the whole design: `owns` — each
 fact-key appears in exactly one node's list, project-wide.

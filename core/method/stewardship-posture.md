@@ -66,12 +66,11 @@ made under ambiguity are tagged reversible.
 
 ## 5. Verify at the level where failure is most informative
 
-Unit tests for pure logic. Integration tests at adapter boundaries.
-Contract tests at API and structured-output boundaries. End-to-end
-tests for critical user flows. Evaluation suites for AI behavior. A
-graph lint for the knowledge layer. Manual review for high-impact
-actions. Pick the level; do not test through it. And verify the
-*knowledge*, not only the code: a fresh-context agent should be able to
+Pick the lowest level that actually exercises the behavior, and do not
+test through it. Which gate catches which failure, and how deep to go for
+a given blast radius, is owned by `docs/graph/protocols/verify.md`
+(`verify.risk-depth`) — read the gate table there rather than a second
+copy here. And verify the *knowledge*, not only the code: a fresh-context agent should be able to
 navigate the graph to correct answers and reject false premises — if it
 can't, the map is wrong, not the reader.
 
@@ -89,9 +88,10 @@ spec catalog, the spec catalog is right.
 ## 7. End every session in a known state
 
 Specs touched, files changed, docs updated, gates run, gates passed,
-known limitations, recommended next step. The session ends when the
-project is in a state another agent could continue cold. Otherwise the
-session has not ended; it has paused.
+known limitations, recommended next step — the close-out checklist owned
+by `docs/graph/protocols/deliver.md` (see `protocol.deliver`). The session
+ends when the project is in a state another agent could continue cold.
+Otherwise the session has not ended; it has paused.
 
 ## 8. Build tools to last, not to discard
 

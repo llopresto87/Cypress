@@ -41,8 +41,8 @@ GRAPH DISCIPLINE — execute before reading any source:
    probe and stay inside the exact paths named in this brief.
 ```
 
-If the first node set is not routable yet, use only the exact
-schema/evidence paths supplied here.
+If the first node set is not routable yet, report the failed probe (block
+step 6) and use only the exact schema/evidence paths supplied here.
 
 This brief was selected by `agent-lint --route`; the ranked line and
 confidence band that picked you are: {{paste the `agent-lint --route` line +
@@ -60,9 +60,11 @@ Write: {{list the exact file paths — filename MUST equal the id + ".md"}}.
 1. Frontmatter is the tiny YAML subset only: `key: scalar`, or `key:`
    then two-space-indented `  - item` lines. No nested maps, no inline
    `[a, b]` lists.
-2. Required keys, in order: `id`, `tier`, `kind`, `title`, `repo`
-   (optional), `owns`, `requires`, `peers`, `libraries` (may be empty),
-   `artifacts` (may be empty), `load_when`, `est_tokens`. `tier: 2`.
+2. Required keys (the linter checks presence, not order): `id`, `tier`,
+   `kind`, `title`, `owns`, `requires`, `load_when`, `est_tokens`.
+   `tier: 2`. `repo`, `peers`, `libraries`, and `artifacts` are optional
+   keys the linter validates only when they are present; listing them in
+   the order above is house style, not a gate.
 3. **No version numbers in the body** — the linter rejects them outside
    inline/`fenced` code. Versions live in `docs/graph/libraries/`; link
    instead.
@@ -70,8 +72,9 @@ Write: {{list the exact file paths — filename MUST equal the id + ".md"}}.
    **unique across the whole graph**.
 5. `requires:` only ids from {{the allowed set}} — minimal (2–4).
    `peers:` only ids from {{the allowed set}}.
-6. Body ≤ 150 lines, sections in order: "What this is" (2–3 sentences),
-   "What you must know", "Sharp edges", "Where the code is",
+6. Body: the linter hard-fails only above 170 lines — aim for ~150. The
+   section order is house style, not a linted rule: "What this is" (2–3
+   sentences), "What you must know", "Sharp edges", "Where the code is",
    "Neighbours" (one line per peer: why + when to cross).
 7. `est_tokens` ≈ 1.35 × body word count — honest; the linter fails if
    off by >2×.

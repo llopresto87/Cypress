@@ -83,7 +83,13 @@ def main() -> int:
 
     hits: dict[str, list[str]] = {slug: [] for slug in contracts}
     tested_slugs: set[str] = set()
-    slug_union = re.compile("|".join(re.escape(s) for s in contracts))
+    # Boundary-guarded and longest-first: a bare substring scan let a
+    # prefix slug steal the match from PARSE_JSON_STRICT and let an
+    # UNREGISTERED extension (PARSE_JSON_V2 in a test) credit PARSE_JSON.
+    slug_union = re.compile(
+        "(?<![A-Z0-9_])(?:"
+        + "|".join(re.escape(s) for s in sorted(contracts, key=len, reverse=True))
+        + ")(?![A-Z0-9_])")
     for f in files:
         try:
             body = f.read_text(encoding="utf-8", errors="replace")

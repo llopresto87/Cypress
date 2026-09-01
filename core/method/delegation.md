@@ -67,12 +67,13 @@ simulation in the chat is not delegation.
 
 ## Route mechanically first
 
-Before spawning, run `python3 .claude/agent-lint.py --route "<task>"`
+Before spawning, run `python3 docs/graph/agent-lint.py --route "<task>"`
 and cite the ranked line + confidence band in the brief. It is a
 keyword heuristic, not an oracle — reason over it, and record why if
 you override a HIGH-band pick. On **LOW/NONE** no specialist fits:
-first spawn an Opus-class agent-definition author to create the missing
-expert. (A *specialist* is a member of the shipped roster above; an *expert*
+check `agent-corpus/` for the role first — where present, harvested on
+demand — before authoring from scratch, then spawn an Opus-class
+agent-definition author to create the missing expert. (A *specialist* is a member of the shipped roster above; an *expert*
 is one you commission here for this project — it joins the *project's* roster,
 never the seed's. The words are otherwise interchangeable.) A definition
 authored mid-session is not yet a spawnable type — see
@@ -86,8 +87,10 @@ library compounds.
 
 ## Route by model class
 
-Read-only investigation → **sonnet-class**; authoring, implementation,
-judgment-heavy design → **opus-class**. This **model class** lives in each
+Read-only investigation and mechanical retrieval/normalization →
+**sonnet-class** (draft artifacts are finalized by an opus librarian);
+authoring, implementation, judgment-heavy design, review, or adversarial
+validation → **opus-class**. This **model class** lives in each
 agent's `model:` frontmatter. It is a distinct axis from the **task tier**
 (T0–T3, kernel §0) and the graph **load-tier** (the node `tier:` field): three
 independent axes that share the word loosely — only the risk axis is written
@@ -199,7 +202,7 @@ A funnel worker (`tester`, `implementer`, `reviewer`) brief names **one**
 well-defined step and embeds its inputs — the contract text, the test
 paths, the diff — so the worker spends its tokens on the work, not on
 rediscovering context. An oversized step is re-sliced by the orchestrator
-*before* spawning, per `docs/graph/protocols/grill.md` §9 (increment
+*before* spawning, per `docs/graph/plans/grill.md` §9 (increment
 shape); it is never handed whole to the worker to absorb.
 
 ## Spec authoring is shared

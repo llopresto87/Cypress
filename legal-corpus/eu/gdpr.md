@@ -543,7 +543,10 @@ Where an entry states any of these fields inline, **the entry's own value wins.*
 - **provision:** Article 13 — "Information to be provided where personal data are
   collected from the data subject" / "Informazioni da fornire qualora i dati
   personali siano raccolti presso l'interessato"
-- **text_form:** **verbatim** (EN and IT, all four paragraphs)
+- **text_form:** **per span, not uniform** — `verbatim` only for the
+  para. 4 sentence quoted below; the paras. 1–3 structure is a
+  `normalized summary` restatement — **not the article's words; do not
+  quote it** (the full text was consulted in EN and IT)
 - **text (EN, the operative structure):** para. 1 requires, **at the time the
   data are obtained**, (a) controller identity and contact details; (b) DPO
   contact details where applicable; (c) purposes **and the legal basis**;
@@ -563,7 +566,7 @@ Where an entry states any of these fields inline, **the entry's own value wins.*
   official Italian OJ PDF: https://eur-lex.europa.eu/eli/reg/2016/679/oj/ita/pdf
 - **consulted:** direct `curl` through the `r.jina.ai` proxy against the full
   EUR-Lex GDPR document — **verification_grade:** `proxy-sourced`
-- **language_version:** English **and Italian**, both verbatim
+- **language_version:** English **and Italian**, both consulted in full
 - **verified:** 2026-07-31
 - **legal_status:** `in force`
 - **notes:** **This is an information duty, not a consent duty**, and that
@@ -607,7 +610,10 @@ Where an entry states any of these fields inline, **the entry's own value wins.*
 - **instrument:** Regulation (EU) 2016/679 (General Data Protection Regulation)
 - **provision:** Article 15 — "Right of access by the data subject" / "Diritto di
   accesso dell'interessato"
-- **text_form:** **verbatim** (EN and IT, all four paragraphs)
+- **text_form:** **per span, not uniform** — `verbatim` only for the
+  spans in quotation marks below; the surrounding structure is a
+  `normalized summary` restatement — **not the article's words; do not
+  quote it** (the full text was consulted in EN and IT)
 - **text (EN, para. 1):** the data subject has the right to obtain **confirmation
   as to whether or not** personal data concerning them are being processed and,
   where so, **access to the data** plus eight items: (a) purposes; (b) categories
@@ -695,8 +701,8 @@ Where an entry states any of these fields inline, **the entry's own value wins.*
 - **language_version:** English only (IT not captured in this pass)
 - **notes:** Two limbs: **rectification** of inaccurate data and **completion**
   of incomplete data. It is the right `gdpr-art-13`/`gdpr-art-14` notices must
-  mention (Art. 13(2)(b)) and `gdpr-art-15(1)(e)` access replies must flag; its
-  exercise triggers the `gdpr-art-19` notification duty.
+  mention (Art. 13(2)(b)) and `gdpr-art-15` access replies must flag under
+  Art. 15(1)(e); its exercise triggers the `gdpr-art-19` notification duty.
 
 ### `gdpr-art-18`
 
@@ -728,8 +734,8 @@ Where an entry states any of these fields inline, **the entry's own value wins.*
   are kept (storage is always allowed) but their further processing is limited
   to the listed grounds. Point (d) makes restriction the **automatic pendant of
   an Art. 21 objection** while the balancing test is pending — read with
-  `gdpr-art-21-1`. Lifting the restriction requires **prior notice to the data
-  subject** (para. 3). Triggers the `gdpr-art-19` notification duty.
+  `gdpr-art-21`, Art. 21(1). Lifting the restriction requires **prior notice
+  to the data subject** (para. 3). Triggers the `gdpr-art-19` notification duty.
 
 ### `gdpr-art-19`
 
@@ -789,8 +795,9 @@ Where an entry states any of these fields inline, **the entry's own value wins.*
   **standalone transparency duty** — the objection right must be brought to the
   data subject's attention "clearly and separately from any other information"
   at first communication, i.e. alongside the Art. 13/14 notice. An objection
-  under para. 1 is one of the six erasure grounds of `gdpr-art-17-1(c)` and
-  triggers restriction under `gdpr-art-18` (point (d) of its para. 1).
+  under para. 1 is one of the six erasure grounds of `gdpr-art-17-1`, point
+  (c), and triggers restriction under `gdpr-art-18` (point (d) of its
+  para. 1).
 
 ### `gdpr-art-22`
 
@@ -826,7 +833,7 @@ Where an entry states any of these fields inline, **the entry's own value wins.*
   safeguards (human intervention, expressing one's point of view, contesting
   the decision). Para. 4 **re-bans special-category bases** for such decisions
   except under Art. 9(2)(a)/(g) with safeguards. The article is **referenced by
-  `gdpr-art-47(2)(e)`** (BCR content) and by the Art. 13(2)(f)/15(1)(h)
+  `gdpr-art-47`, Art. 47(2)(e)** (BCR content) and by the Art. 13(2)(f)/15(1)(h)
   information duties. **Extraction note:** the retained snapshot's rendering
   runs the following section header ("Section 5 — Restrictions") into the
   article's tail; that header is **not** part of Art. 22 and is excluded above.
@@ -1538,10 +1545,10 @@ own entries below.
   snapshot, `proxy-sourced`.
 - **language_version:** English only (IT not captured in this pass)
 - **notes:** **The complaint right** that the information duties must disclose:
-  it is one of the eight content items of `gdpr-art-15(1)(f)` and the Art.
-  13(2)(d)/14(2)(e) notice element, and `gdpr-art-47(2)(e)` carries it into BCR
-  content. In Italy the receiving authority is the Garante (the authority for
-  the DPIA list in `../case-law/index.md` → `garante-elenco-dpia-2018`). "Without
+  it is one of the eight content items of `gdpr-art-15`, Art. 15(1)(f), and the
+  Art. 13(2)(d)/14(2)(e) notice element, and `gdpr-art-47`, Art. 47(2)(e),
+  carries it into BCR content. In Italy the receiving authority is the Garante
+  (the authority for the DPIA list in `../case-law/index.md` → `garante-elenco-dpia-2018`). "Without
   prejudice to any other administrative or judicial remedy" — the right is
   cumulative, not exclusive.
 

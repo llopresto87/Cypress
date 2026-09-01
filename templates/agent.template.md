@@ -12,7 +12,7 @@ Frontmatter uses the extended routing schema (agent-routing plan §4.1):
   Required ONLY when can_delegate is true (omit entirely when false):
     max_spawn_depth (1..3) and delegates_to (an allowlist naming only
     strictly-shallower agents; leaf agents sit at depth 0).
-After authoring, run `python3 .claude/agent-lint.py --lint`; it enforces
+After authoring, run `python3 docs/graph/agent-lint.py --lint`; it enforces
 this schema and the delegation graph, and `--route "<task>"` should then
 select the new expert from its triggers.
 Save as agents/<name>.md (or the host tool's agent directory). Delete

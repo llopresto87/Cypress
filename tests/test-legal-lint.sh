@@ -8,7 +8,7 @@
 # excluding case-law/index.md's seven entries — the `case-law` /
 # `regulator-decision` kind that `_schema.md` itself calls the highest-risk
 # thing in a compliance document after a number. The audit reported a clean
-# "121/121" for weeks. The real census is 128.
+# "121/121" for weeks. The real census then was 128 (129 as of 6.9.2).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -61,7 +61,7 @@ for ch in ['"', '“', '”', '«', '»']:
     t=t.replace(ch, '')
 open(p,'w').write(t)
 PY
-expect_fail "graded \`verbatim\` but its text" "verbatim-without-quotation"
+expect_fail "graded \`verbatim\` (in whole or per id) but its text" "verbatim-without-quotation"
 restore legal-corpus/eu/eprivacy-directive.md
 
 # 4. Controlled vocabulary: an invented text_form or legal_status is rejected.
@@ -82,7 +82,42 @@ PY
 expect_fail "case-law/index.md" "index-named-page-is-scanned"
 restore legal-corpus/case-law/index.md
 
-# 6. After all restores, the copy lints clean again.
+# 6. REGRESSION — `text_form` must not satisfy `text`. has_field() once
+# matched `**text_form:**` for the field `text` (the `[^:]*` gap swallowed
+# `_form`), so an entry carrying only the grade — not the words — passed as
+# citable. Remove the text bullet, keep text_form: the lint must fail.
+python3 - "$TMP/legal-corpus/eu/nis2.md" <<'PY'
+import sys; p=sys.argv[1]; t=open(p).read()
+assert "- **text:** per its official title above" in t
+open(p,'w').write(t.replace("- **text:** per its official title above",
+                            "- **gone:** per its official title above", 1))
+PY
+expect_fail "has no \`text\`" "text_form-does-not-satisfy-text"
+restore legal-corpus/eu/nis2.md
+
+# 7. REGRESSION — a COMPOUND per-id grade must not disable grade honesty.
+# The check was once start-anchored (`re.match`), so any prefix before
+# `verbatim` — e.g. the "per id, not uniform" house style 6.9.2 introduced —
+# skipped the falsification gate entirely: a backticked `verbatim` grade over
+# a quoteless paraphrase passed.
+cat > "$TMP/legal-corpus/eu/zz-fixture.md" <<'EOF'
+# Fixture page
+
+### `eu.zz-fixture` — planted compound false grade
+
+- **instrument:** Regulation (EU) 2024/2847 (CRA)
+- **provision:** Article 14
+- **text_form:** **per id, not uniform** — `normalized summary` for none;
+  `verbatim` for `eu.zz-fixture`, reproduced exactly from the OJ.
+- **text:** a fully paraphrased restatement with no quotation anywhere.
+- **official_url:** https://example.org
+- **consulted:** x — **verification_grade:** proxy-sourced
+- **language_version:** EN · **verified:** 2026-01-01 · **legal_status:** in force
+EOF
+expect_fail "graded \`verbatim\` (in whole or per id)" "compound-grade-honesty"
+rm "$TMP/legal-corpus/eu/zz-fixture.md"
+
+# 8. After all restores, the copy lints clean again.
 lint >/dev/null || { echo "legal-lint did not return to PASS after restores" >&2; exit 1; }
 
 printf 'legal-lint contract: PASS\n'

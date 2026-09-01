@@ -22,7 +22,7 @@ load_when:
   - "how do I make this change cleanly, integrate not bolt on"
   - "which technology to pick, boring vs experimental"
   - "is this abstraction or extra worker worth its cost"
-est_tokens: 3100
+est_tokens: 2950
 ---
 
 # Engineering posture
@@ -50,20 +50,11 @@ test is the most concrete possible restatement of a spec contract. The
 test name names the contract; the test body exercises it; the test
 failure message tells the next agent what broke and why.
 
-Cycle: RED (failing test) → GREEN (the minimum *new behavior* that
-passes) → REFACTOR (integrate it cleanly with the suite green) →
-COMMIT. "Minimum" governs behavior, not diff size: you add nothing
-speculative, but the code you do add is woven into the file, not
-stapled on (see §9). REFACTOR is where that integration lands and is
-not optional when you touched existing code.
-
-On code that has no test and no spec, you cannot write a "correct"
-failing test against behavior nobody has written down. The first move
-is a **characterization test** that pins current behavior — bug
-included, named so no one mistakes it for a correctness claim — and
-*then* the change makes it fail in the way you intend. That failure is
-your RED. Exceptions to test-first are explicit, scoped, and noted in
-grill.md.
+The full statement — the RED → GREEN → REFACTOR → COMMIT cycle, what
+"minimum" governs, the characterize-first move on untested code, and the
+recorded exceptions — is owned by `docs/graph/protocols/test-first.md`.
+Read it there; this posture only fixes the stance: the discipline is not
+optional, and REFACTOR is where integration lands (see §9).
 
 ## 3. Choose nothing until the goal forces the choice
 
@@ -257,8 +248,8 @@ wrappers, no `if` special-casing the new case while the general logic
 that should have changed sits untouched, no dead branch left "to be
 safe." Deleting and consolidating are first-class outcomes — remove
 duplicated *policy* and second sources of truth as you go, though code
-that merely looks alike while meaning something different is left alone
-(see `method.design-posture`). Stay within the file and the direct
+that merely looks alike while meaning something different is left alone —
+same shape, different reason to change. Stay within the file and the direct
 consequences of the request; unrelated issues are their own increment.
 
 The exception is deliberately append-only artifacts — the plan-of-record

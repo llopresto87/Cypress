@@ -67,7 +67,7 @@ means T3, however small it looks.
 The **default T3 sequence** (kernel §2), verbatim:
 
 > brainstorm\* → specify → grill → ingest-library\* → test-first →
-> implement → verify → canonize → deliver.
+> verify → canonize → deliver (implementation lives inside test-first's GREEN phase).
 > On any failure: `protocol.recover`. `harvest` and `graft` are
 > user-sovereign — never enter them unprompted.
 
@@ -172,7 +172,7 @@ If the project has no grill.md yet, create one from the template
 - The user has confirmed the problem statement, the primary user, and
   the first useful slice. Confirmation is explicit ("yes", "looks
   right"), not assumed from silence.
-- The next protocol (`grill` or `from-scratch` Phase 4) has an
+- The next protocol (`grill` or `from-scratch` Phase 2) has an
   unambiguous entry point.
 
 ---
@@ -958,8 +958,10 @@ agnosticism gate), throwaway prototypes or genuine one-offs.
    in exactly one node's `owns:` (dedupe — update, don't duplicate);
    each tool gets `tool-page.template.md` filled into
    `docs/graph/tools/<name>.md` plus an index row and an `artifacts:`
-   edge; each recurring procedure gets `skill.template.md` filled into
-   `.claude/skills/<name>/SKILL.md` (checking `skill-corpus/` first,
+   edge (checking `tool-corpus/` first where the corpus is available);
+   each recurring procedure gets `skill.template.md` filled into its home
+   node `docs/graph/skills/<name>.md` plus the projection in each harness
+   dir the plant uses (checking `skill-corpus/` first where available,
    deduping, composing existing disciplines by reference); failed
    `load_when:` triggers are sharpened. One `graph-lint` run confirms
    the graph stays clean.
@@ -1058,9 +1060,11 @@ a release choreography, a data-reset dance). Same recurrence trigger,
 different shape: if the recurring thing is code that runs, it is a tool;
 if it is the *how*, it is a skill. When such a procedure recurs and no
 core `docs/graph/skills/` discipline covers it, author it as a project
-skill in `.claude/skills/<name>/SKILL.md` from the template. A skill
-self-catalogs by living in `.claude/skills/`; it **composes**
-disciplines by reference, never restating them.
+skill from the template. Its home is the graph node
+`docs/graph/skills/<name>.md`; the projection is also created in each
+harness dir the plant actually uses (`.claude/skills/<name>/SKILL.md` and
+kin), because `install.sh` projects only the seed's own skills. It
+**composes** disciplines by reference, never restating them.
 
 ### Design-time half of the rule
 
@@ -1496,7 +1500,7 @@ graph context, evidence supplied, constraints, output contract, and
 verification. Every spawned session executes
 `python3 docs/graph/graph-lint.py --plan "<exact delegated task>"`
 before source reads or writes. Route each spawn with
-`python3 .claude/agent-lint.py --route "<exact delegated task>"` and
+`python3 docs/graph/agent-lint.py --route "<exact delegated task>"` and
 cite the ranked specialist and confidence band. Delegating workers spawn
 only from their `delegates_to` allowlist and under their
 `max_spawn_depth` cap — the deepest legal chain is orchestrator →
@@ -2051,9 +2055,10 @@ Two territories, and graft writes to exactly one:
   marked `origin: seed`); the harness projections (`.claude/agents/`,
   `.claude/skills/`, and the `.prime/agent/`, `.opencode/`, `.codex/`,
   `.github/` equivalents); tool-specific commands/settings/hooks; the
-  shared script `.claude/agent-lint.py`; and the knowledge-graph scaffold
-  `docs/graph/{_schema.md,graph-lint.py,spec-lint.py}` (preserving the
-  plant's configured `TEST_GLOBS`) plus `index.md`'s router shell.
+  shared router script `docs/graph/agent-lint.py`; and the graph engine scripts
+  `docs/graph/{graph-lint.py,spec-lint.py}` (preserving the plant's
+  configured `TEST_GLOBS`). `_schema.md` and `index.md` are
+  project-instantiated and stay the plant's, always.
 - **The plant's own life (graft preserves, always):** the plant's
   application source, and every knowledge fact the plant authored under
   `docs/graph/` — its `nodes/`, `specs/`, `decisions/`, `libraries/`,
@@ -2311,7 +2316,7 @@ upgrade.
   deliver (`rule.deliver`), 3.7 canonize (`rule.canonize`), 3.8
   toolcraft (`rule.toolcraft`).
 - **The delivery funnel:** brainstorm* → specify → grill →
-  ingest-library* → test-first → implement → verify → canonize →
+  ingest-library* → test-first → verify → canonize →
   deliver; recover on any failure.
 - **The seed meta-loop:** grow (seed → new plant), harvest (mature plant
   → seed, user-triggered), graft (enriched seed → existing plant,

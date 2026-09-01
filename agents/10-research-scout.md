@@ -107,6 +107,20 @@ When two sources disagree:
 - A draft wiki page (or updates to an existing page) at
   `docs/graph/libraries/<name>.md`, handed to docs-librarian for finalization.
 
+Your writes are **mechanical normalization**, not authoring: you transcribe
+and structure what the sources say. Every draft is finalized by the
+opus-class `docs-librarian`, which is why a sonnet-class scout is the right
+model here (`docs/graph/method/delegation.md`, model-class rule).
+
+**Legal ingest is different.** When the target is a law, regulation,
+standard, court decision, or regulator publication, the artifact is a
+legal-corpus ENTRY, not a library page: follow `legal-corpus/_schema.md`
+(the owning contract — mandatory fields, the closed `text_form` and
+`verification_grade` vocabularies, the amendment trap) and write to
+`legal-corpus/<scope>/<instrument-slug>.md`, handed to docs-librarian for
+finalization like any other ingest. Your source-discipline rules apply
+unchanged; never soften a grade the schema defines.
+
 ## Handback (end every turn with this)
 
 End every turn with the payload from `docs/graph/templates/prompts/handback-payload.md`

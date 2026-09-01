@@ -55,6 +55,15 @@ An entry whose heading names both a Directive article **and** a decree article
 cites the **Directive** as its instrument and records the decree article in
 `transposed_by`; the decree's own provisions have their own `it-dlgs-138-…`
 entries. Where the two diverge, the decree is what a national authority enforces.
+**That rule is not yet kept for three decree articles, and they are the three an
+Italian deliverable needs most:** `it-dlgs-138-art-23` (governance and
+management liability), `it-dlgs-138-art-24` (risk-management measures) and
+`it-dlgs-138-art-25` (incident reporting) have **no standalone entry** — each
+exists only inside its combined Directive-side heading, `primary-fetched` for
+the **article number and title only**, with the full paragraph text **not
+extracted in this pass**. Until they are extracted (ingest requests 4a–4c), cite
+those three **by article number and title only**, never as decree wording, and
+do not read the Directive-side text as the Italian text.
 
 ### Group A — Directive Arts. 20, 21, 23, 34
 
@@ -199,6 +208,13 @@ anywhere.
   confirm against Normattiva before quoting it verbatim in a legal document.**
 - **text_form:** `normalized summary` (the act as a whole; individual articles
   below carry `verbatim` where extracted)
+- **text:** per its official title above — the act transposes into Italian
+  law Directive (EU) 2022/2555 (NIS2); the amending clauses in the title
+  ("recante modifica del regolamento (UE) n. 910/2014 e della direttiva
+  (UE) 2018/1972 e che abroga la direttiva (UE) 2016/1148") describe the
+  **Directive** being transposed (see `nis2-dir-2022-2555`), not acts of
+  this decree. Not the act's words; per-article text is carried by the
+  article entries below where extracted.
 - **published:** Gazzetta Ufficiale n. 230, 1 October 2024, codice redazionale
   **24G00155**
 - **official_url:**
@@ -419,8 +435,10 @@ anywhere.
 - **provision:** Directive Art. 21(1)–(2); Italian decree **Art. 24**
   ("Obblighi in materia di misure di gestione dei rischi per la sicurezza
   informatica")
-- **text_form:** **`verbatim`** for the Directive's Art. 21(1)–(5) (fetched
-  2026-07-31); the decree's **article number, title and opening clause are
+- **text_form:** **per span, not uniform** — `verbatim` only for the
+  quoted spans below (fetched 2026-07-31); the (a)–(j) measure list is a
+  close `normalized summary` of Art. 21(1)–(2) — **not the words; do not
+  quote it**. The decree's **article number, title and opening clause are
   `verbatim`** from the GU extraction, its full paragraph text was **not
   extracted in this pass**
 - **verification_grade:** Directive limb **`proxy-sourced`**; decree limb
@@ -478,8 +496,10 @@ anywhere.
 
 - **provision:** Directive Art. 23; Italian decree **Art. 25** ("Obblighi in
   materia di notifica di incidente" — title `verbatim` from the GU extraction)
-- **text_form:** **`verbatim`** for the Directive's Art. 23(3) and 23(4)
-  (fetched 2026-07-31); the two decree fragments quoted below are **`verbatim`**
+- **text_form:** **per span, not uniform** — `verbatim` for the Art. 23(3)
+  blockquote and the two decree fragments quoted below (fetched
+  2026-07-31); the staged-deadline table is a `normalized summary` of
+  Art. 23(4) — **not the words; do not quote the table**
 - **verification_grade:** Directive limb **`proxy-sourced`**; decree limb
   `primary-fetched`
 - **text:**
@@ -621,6 +641,38 @@ computing, [fornitori di reti di] distribuzione dei contenuti, i fornitori di
 servizi gestiti, i fornitori di servizi di sicurezza gestiti, ... di motori di
 ricerca online o di piattaforme di servizi di social network."*
 
+**Id-formation rule — how the ids in the table below are citable (read this
+before citing any of them).** None of them carries its own standalone `###`
+entry heading **except** `acn-det-379907-2025` and
+`acn-det-127434-baseline-2027`, which have full entries further down — cite
+those two through their own entries, not through their rows.
+
+- **`it-dlgs-138-art-42`, `it-dlgs-138-art-7`, `it-dlgs-138-art-30`** are decree
+  provisions. Each is citable through **Group C**'s standing fields above
+  (instrument via the `it-dlgs-138-…` id prefix, official_url, consulted,
+  language_version, verified, legal_status) **plus the article stated in its own
+  row** — and where a row's `grade` column narrows Group C's
+  `primary-fetched` (Art. 42's provider list, Art. 30's end date), **the row
+  wins**. Their `text_form` in this table is a **`normalized summary`** of the
+  milestone: the only decree wording reproduced here is the Italian quoted
+  immediately above this table (Arts. 7 and 42) and the quoted span in the
+  Art. 30 row. **Do not quote a row's English milestone description as the
+  decree's words.**
+- **`it-nis-acn-list-2025`, `it-nis-acn-notify-2025`,
+  `it-nis-governance-roster-2025`, `it-nis-csirt-referent-2025`,
+  `it-nis-incident-duty-live`, `it-nis-registry-update-2026`** are **not
+  provisions**. They record operational milestones and status dates, and are
+  citable **only as that**, with the row's own grade attached — several are
+  `secondary-corroborated` and two are single-source `unverified`. Where a
+  milestone marks when a duty starts to bite, the duty itself lives in the
+  article named in the row's **basis** column; that article is what to cite for
+  the obligation.
+- Because none of these rows is a standalone `###` entry, the corpus's lint
+  gate never checks them against the citability contract — the discipline above
+  is what stands in for it. And every value in the `date` column is a **number**
+  (`../_schema.md` rule 5): carry its grade at the point of use, never the bare
+  date.
+
 | id | milestone | date | status 2026-07-31 | basis | grade |
 |---|---|---|---|---|---|
 | `it-dlgs-138-art-42` | first-wave registration (cloud / data-centre / CDN / managed-service / managed-security / **online-marketplace** / search-engine / social-network providers) | **17 Jan 2025** | past | Art. 42(1) | `primary-fetched` for the date and basis; the **full enumerated provider list was reconstructed** from a nearby definitions passage plus one secondary source — corroborated, **not quoted end-to-end** |
@@ -737,6 +789,9 @@ Art. 38 sanctions.
 - **text_form:** `topic only` · **verification_grade:** `secondary-corroborated`
   (an official body's plain-language page, not primary legislative text — high
   authority, still not the law)
+- **text:** topic only — ACN's published guidance pages on NIS registration
+  (process, portal, dates); records that the process exists and where it is
+  described, not what any provision says.
 - **official_url:** https://www.acn.gov.it/portale/en/nis/registrazione ·
   https://www.acn.gov.it/portale/en/nis/la-normativa ·
   https://www.acn.gov.it/portale/en/w/normativa-nis-date-e-informazioni-utili-per-un-implementazione-efficace
@@ -759,7 +814,20 @@ Art. 38 sanctions.
 4. **D.Lgs. 138/2024** — full paragraph text for Arts. 23, 24, 25 and 34, with a
    real PDF renderer rather than content-stream extraction. This matters most for
    Art. 25, where the Directive-side threshold is primary but the Italian
-   wording is not.
+   wording is not. **Three of those four also owe a standalone entry**, which
+   the page's own rule above ("Standing fields") promises and this page does not
+   yet deliver — each currently exists only inside a combined Directive-side
+   heading, article number and title only:
+   - **4a. `it-dlgs-138-art-25` — incident reporting.** Extract decree Art. 25
+     in full and give it its own entry; today it appears only inside
+     `nis2-dir-art-23` / `it-dlgs-138-art-25`. Highest of the three: the Italian
+     notification deadlines are what an Italian authority enforces.
+   - **4b. `it-dlgs-138-art-24` — risk-management measures.** Same, inside
+     `nis2-dir-art-21` / `it-dlgs-138-art-24` (article number, title and opening
+     clause only).
+   - **4c. `it-dlgs-138-art-23` — governance and management liability.** Same,
+     inside `nis2-dir-art-20` / `it-dlgs-138-art-23`, whose decree limb is
+     flagged `unverified — confirm the decree's full text`.
 5. **Recommendation 2003/361/EC Annex Arts. 3–6** — the autonomous / partner /
    linked-enterprise aggregation rules, where corporate-group structure bears on
    the size gate.

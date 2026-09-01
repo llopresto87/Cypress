@@ -63,16 +63,15 @@ Every brief states purpose, exact scope, allowed reads/writes, required graph
 context, evidence supplied, constraints, output contract, and verification.
 Hooks do not substitute for a self-contained worker brief.
 
-Every spawned session executes
-`python3 docs/graph/graph-lint.py --plan "<exact delegated task>"` before
-source reads or writes, loads the resulting nodes plus `requires` closure, and
-returns its route output, loaded/skipped set, and widening log. Before the
-first nodes exist, bootstrap workers still execute and report the failed probe,
-then stay inside their explicitly enumerated paths. Re-run the tool normally
-for all workers spawned after the graph becomes routable.
+Every spawned session executes the graph-session discipline exactly as
+`docs/graph/templates/prompts/graph-session-bootstrap.md` states it — that
+canonical block, embedded verbatim in every brief, owns the `--plan` before
+source reads, the loaded/skipped report, the widening log, and the
+bootstrap fallback. Do not paraphrase it here or in a brief; the block
+forbids paraphrase.
 
 Route each spawn the way you route knowledge. Run
-`python3 .claude/agent-lint.py --route "<exact delegated task>"` and cite the
+`python3 docs/graph/agent-lint.py --route "<exact delegated task>"` and cite the
 ranked specialist and confidence band in the brief. Delegating workers spawn
 only from their `delegates_to` allowlist and under their `max_spawn_depth` cap
 — the deepest legal chain is orchestrator → multi-agent-architect → architect
@@ -295,9 +294,10 @@ exist, preserve them with provenance. Put observed implementation choices in
 architecture leaves or nodes.
 
 Where a ledger's §9 specialist-agent signal genuinely warrants it — a
-high-risk surface or dominant domain the base roster does not cover — author a
-project-specific expert agent (`docs/graph/templates/agent.template.md`) from that cited
-evidence. A signal is a candidate, not a mandate: absent a real need, record
+high-risk surface or dominant domain the base roster does not cover — check
+`agent-corpus/` for the role first (where present — harvested on demand) before
+authoring from scratch, then author the project-specific expert agent
+(`docs/graph/templates/agent.template.md`) from that cited evidence. A signal is a candidate, not a mandate: absent a real need, record
 "no custom agent warranted" rather than padding the plant's roster.
 
 For an existing graph, refresh current fact owners rather than duplicating

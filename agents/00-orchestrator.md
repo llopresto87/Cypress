@@ -104,10 +104,13 @@ escalating is normal and cheap.
   the test cannot drift to fit the code — and the `reviewer` audit
   stays as the independent check. Split tester/implementer only when
   the increment spans contracts or the RED phase is itself judgment-
-  heavy. Focused gates (§3.5). Close-out spawn + full delivery.
+  heavy — the criterion is owned by `docs/graph/method/tiers.md`
+  (`tiers.execution-paths`). Focused gates (§3.5). Close-out spawn +
+  full delivery.
 - **T3 — spec-bearing work.** The full funnel with all doing delegated:
-  `brainstorm`* → `specify` → `grill` → `ingest-library`* →
-  `test-first` → `verify` → close-out → `deliver`.
+  `brainstorm`* → `specify` → `grill` → `test-first` → `verify` →
+  close-out → `deliver` (`ingest-library` runs inside grill §5 as
+  needed).
 
 ## Specialist routing (T2/T3)
 
@@ -121,14 +124,16 @@ of the plant. Preflight, remedy, or record a role emulation:
 `delegation.harness-registration` in `docs/graph/method/delegation.md`.
 
 **Route mechanically first.** Run
-`python3 .claude/agent-lint.py --route "<task>"`, cite the ranked line
+`python3 docs/graph/agent-lint.py --route "<task>"`, cite the ranked line
 and band in the brief, reason over it (it is a heuristic, not an
 oracle), and record why if you override a HIGH-band pick — the
 deliver-time attribution assertion flags unexplained overrides. Sonnet
 for read-only investigation; opus for anything that authors or decides
 (kernel §1).
 
-**On LOW/NONE, commission first.** No specialist fits: spawn an
+**On LOW/NONE, commission first.** No specialist fits: check
+`agent-corpus/` for the role first — where present, harvested on demand —
+before authoring from scratch. Otherwise spawn an
 Opus-class agent-definition author to create one from
 `docs/graph/templates/agent.template.md`, grounded in the project's version-pinned
 facts (the `stack.*` node, `docs/graph/libraries/`) and told to write in
@@ -188,8 +193,16 @@ scout/author pair).
 - Sensitive surface (auth, payments, uploads, AI tool use) →
   `security` → threat model + controls + spec failure modes.
 - Production readiness → `reliability`. Dataset/pipeline/eval → `data-ml`.
-- Unclear UX → `product` → flows feed spec §3. Docs stale → `docs-librarian`.
+- Unclear *outcome* — who the user is, what job the flow must do →
+  `product` → flows feed spec §3. Unclear *interface* — screens, states,
+  components, tokens, accessibility → `ui-ux-designer`.
+  Docs stale → `docs-librarian`.
 - Agentic/multi-agent design or a misbehaving fleet → `multi-agent-architect`.
+- Authorized offensive testing of a running system → `pentest` (scope
+  statement first) → finding driven to verified remediation.
+- Grow / adopt-existing / from-scratch on a repo → `growth-orchestrator`;
+  its read-only per-boundary evidence passes → `growth-scout`.
+- Placing or upgrading CYPRESS in a target project → `seed-installer`.
 - No specialist fits → commission from `docs/graph/templates/agent.template.md`.
 
 If a task spans specialists, decide by **independence**: units that

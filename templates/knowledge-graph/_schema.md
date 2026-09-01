@@ -116,6 +116,11 @@ Four kinds are reserved for the seed's machinery and always present:
 
 An `id`'s prefix must match its `kind` (`subsystem.orders`,
 `stack.python`), except the single root node whose id *is* the root id.
+Projects that want a terser namespace may map a kind to a different
+prefix via the `KIND_PREFIX` table in `graph-lint.py`'s PROJECT CONFIG
+block (e.g. `{"subsystem": "sub"}` lets `sub.orders` carry
+`kind: subsystem`); unmapped kinds keep the identity rule. The graft
+engine preserves this config across seed updates.
 
 ## Key semantics
 
@@ -138,6 +143,9 @@ inside it, and must resolve. `libraries` is the specialized wiki edge;
 all other leaf kinds use `artifacts`.
 
 **`load_when`** — what the router matches a task description against.
+On `kind: agent` nodes, `routing_triggers` (the same key the harness
+roster uses) substitutes for `load_when` — the linter accepts either;
+all shipped agent nodes use `routing_triggers`.
 Write the phrases a developer would actually type, including globs.
 
 **`est_tokens`** — honest estimate of the node's own body. The router
@@ -149,7 +157,7 @@ Answer, in this order, and nothing else: **what this is** (2–3
 sentences) · **what you must know** (the owned facts, terse) · **sharp
 edges** (what will bite, dated) · **where the code is** (concrete
 paths) · **neighbours** (why each peer exists, when to cross). Under
-~150 lines; a longer node is two nodes.
+~150 lines (the linter rejects past 170); a longer node is two nodes.
 
 ## The rules the linter enforces
 
@@ -164,7 +172,9 @@ paths) · **neighbours** (why each peer exists, when to cross). Under
 8. Every id in `libraries` has a page in `docs/graph/libraries/`.
 9. Every path in `artifacts` resolves beneath `docs/graph/`.
 10. Version pins do not appear in a node body unless it owns a
-   `*.versions` fact-key. Versions belong in `docs/graph/libraries/`.
+   `*.version`/`*.versions` fact-key. Versions belong in
+   `docs/graph/libraries/`. Fenced and inline code are exempt —
+   quoting a real config line is not restating a fact.
 11. `est_tokens` is within 2× of the measured body size; body under the
     line ceiling.
 

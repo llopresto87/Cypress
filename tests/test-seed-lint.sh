@@ -76,6 +76,24 @@ printf '\n\nThe seed ships 99 skills.\n' >> "$TMP/README.md"
 expect_fail "claims 99 skills" "skills-count"
 restore README.md
 
+# 5b. REGRESSION — the qualified "N named specialist agents" phrasing is
+# policed too: DOCUMENTATION.md shipped a release saying "17 named
+# specialist agents" while the roster had 18, and the first version of
+# this scan only matched the bare "N specialist agents" form.
+printf '\n\nA team of 99 named specialist agents.\n' >> "$TMP/DOCUMENTATION.md"
+expect_fail "99 named specialist agents" "qualified-agent-count"
+restore DOCUMENTATION.md
+
+# 5c. REGRESSION — the documentation tree's version pin must match the
+# manifest: DOCUMENTATION.md/documentation/README.md sat at 6.8.0 for a
+# whole release because no gate read them.
+python3 - "$TMP/documentation/README.md" <<'PY'
+import sys; p=sys.argv[1]; t=open(p).read()
+import re; open(p,"w").write(re.sub(r"\(version \d+\.\d+\.\d+\)", "(version 0.0.1)", t, count=1))
+PY
+expect_fail "documents version 0.0.1" "doc-tree-version-pin"
+restore documentation/README.md
+
 # 6. manifest version and the top CHANGELOG entry must agree.
 python3 - "$TMP/manifest.json" <<'PY'
 import re,sys; p=sys.argv[1]; t=open(p).read()

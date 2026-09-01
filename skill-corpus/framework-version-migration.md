@@ -4,7 +4,8 @@
 > across a major generation of a framework, language runtime, or load-bearing
 > dependency, so the jump lands without silent behavior drift and without a
 > big-bang no gate can bisect. Not a core skill; instantiate into
-> `.claude/skills/` from `templates/skill.template.md` if selected. Composes
+> `docs/graph/skills/<name>.md` (its home, projected into the harness dirs
+> the plant uses) from `templates/skill.template.md` if selected. Composes
 > `verify`, `grill`, `adr-writer`, and `security` by reference — it does not
 > restate them. Parameterized by `<source-generation>` and
 > `<target-generation>`.

@@ -90,10 +90,12 @@ asserts, not from your inability to land a hit.
   have no opinion on whether a diff is well integrated.
 - **`pentest`** proves a vulnerability against a *running* system. You
   hunt statically for defeaters in sources and hand off when you cannot
-  reach further. Where both run, the shared evidentiary discipline —
-  observed marked apart from inferred, and a could-not-reach result
-  reported as a first-class deliverable rather than as silence — is
-  owned by `skill-corpus/adversarial-pentest-passes.md`.
+  reach further. Where both run, apply the shared evidentiary
+  discipline inline: mark observed apart from inferred, and report a
+  could-not-reach result as a first-class deliverable rather than as
+  silence. If the plant has harvested the optional corpus skill
+  `adversarial-pentest-passes`, load it and follow it; when it is
+  absent, the one-line discipline above is the whole rule.
 - **`security`** produces the technical finding; you test whether the
   finding's claims survive contact with primary sources.
 

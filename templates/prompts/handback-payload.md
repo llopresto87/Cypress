@@ -9,7 +9,7 @@ A LEAF worker (no Task tool) that hits an out-of-domain boundary returns
 this instead of doing the work itself: it names the specialist, it does
 not spawn one. A DELEGATOR returns it when it STOPs rather than spawning.
 Fill the {{PLACEHOLDERS}} and return the body verbatim to the caller.
-Discipline: .agents/00-orchestrator.md (delegation), kernel §3.6.
+Discipline: docs/graph/agents/00-orchestrator.md (delegation), kernel §3.6.
 -->
 
 # Handback — {{unit of work}}
@@ -81,6 +81,7 @@ HANDBACK
 - **`skills_built` feeds the same close-out (§3.8) — the procedure sibling.**
   A repeatable multi-step *procedure* a future session will walk again (a
   migration recipe, a release choreography) is named here so the close-out
-  crystallizes it into a project skill (`.claude/skills/`). A one-off sequence
+  crystallizes it into a project skill (home `docs/graph/skills/<name>.md`,
+  projected into the harness dirs in use). A one-off sequence
   is `none`. Leaving a recurring procedure out is a silent capability leak,
   exactly as an uncatalogued tool is.

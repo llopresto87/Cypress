@@ -246,7 +246,10 @@ binding**.
 - **provision:** Art. 2(2)–(4) — products covered by sector-specific EU rules;
   Art. 2(7)–(8) — national-security, defence and classified-information
   products. One id per limb, both recorded in this block.
-- **text_form:** `verbatim` (proxy-sourced)
+- **text_form:** `normalized summary` — **not the article's words; do not quote
+  it**, for either id. (proxy-sourced; both limbs were read in the OJ render and
+  the exclusion list is condensed here, not transcribed. Cite the substance and
+  the id; a filing that needs the exclusion wording must go to the OJ text.)
 - **text:** Excludes products already covered by sector-specific EU rules —
   medical devices (Reg. (EU) 2017/745), in-vitro diagnostics
   (Reg. (EU) 2017/746), motor-vehicle type-approval (Reg. (EU) 2019/2144),
@@ -255,9 +258,29 @@ binding**.
   security or defence, or specifically designed to process classified
   information.
 
-### Open source: `cra-art-3-48` · `cra-art-3-14` · `cra-art-24` · `cra-recital-17` · `cra-recital-18` · `cra-recital-19` · `cra-recital-20`
+### `cra-art-3-48` · `cra-art-3-14` · `cra-art-24` · `cra-recital-17` · `cra-recital-18` · `cra-recital-19` · `cra-recital-20` — open source
 
-- **text_form:** `verbatim` (proxy-sourced) for all seven
+**Open source.** Seven ids, one block: two definitions, the steward duty, and
+the four recitals that set the scope test. One id per limb.
+
+- **provision:** Art. 3(48) — definition of free and open-source software;
+  Art. 3(14) — definition of the open-source software steward; Art. 24 —
+  steward obligations; Recitals 17, 18, 19 and 20.
+- **text_form:** **per id, not uniform** — `normalized summary` for
+  `cra-art-3-48`, `cra-art-3-14` and `cra-art-24`: **not the Regulation's
+  words; do not quote them**, cite the substance and the id. In
+  `cra-art-3-48` the quotation marks mark the **defined term** only — the
+  definition that follows them is restated, not transcribed. `verbatim`
+  (proxy-sourced) for `cra-recital-17`, `cra-recital-18`, `cra-recital-19` and
+  `cra-recital-20`, and there **only for the spans inside quotation marks**;
+  the unquoted sentences around those spans are restatement or this corpus's
+  own reading, and are **not** quotable.
+- **legal_status:** `not yet applicable` for `cra-art-24` ·
+  **applies_from:** 2027-12-11 — the general date; Art. 24 sits outside both
+  departing limbs (Art. 14, and Chapter IV = Arts. 35–51). The definitions and
+  the recitals take the same general date, read as part of the act.
+- **text (per id, below):** each of the following bullets carries that
+  id's content.
 - `cra-art-3-48` — "free and open-source software" means software whose source
   code is openly shared and which is made available under a free and open-source
   licence granting all rights to make it freely accessible, usable, modifiable
@@ -337,8 +360,15 @@ binding**.
 ### `cra-art-13-1-3` · `cra-art-13-6` · `cra-art-13-8` · `cra-art-13-9` — manufacturer duties
 
 - **provision:** Article 13(1)–(3), (6), (8) and (9) — manufacturer duties
-- **text_form:** `verbatim` (proxy-sourced) ·
-  **legal_status:** `not yet applicable` · **applies_from:** 2027-12-11
+- **text_form:** **per id, not uniform** — `normalized summary` for
+  `cra-art-13-1-3`: **not the article's words; do not quote it**, cite the
+  substance and the id. `verbatim` (proxy-sourced) for `cra-art-13-6`,
+  `cra-art-13-8` and `cra-art-13-9`, and there only for the spans inside
+  quotation marks; the unquoted sentences around those spans are restatement
+  and are **not** quotable.
+- **legal_status:** `not yet applicable` · **applies_from:** 2027-12-11
+- **text (per id, below):** each of the following bullets carries that
+  id's content.
 - `cra-art-13-1-3` — on placing a product on the market, ensure design,
   development and production comply with Annex I Part I, and document and keep
   updated a cybersecurity risk assessment covering intended purpose, reasonably
@@ -367,16 +397,19 @@ binding**.
    deadline is the highest-risk field on this page
 - **legal_status:** `not yet applicable` · **applies_from:** **2026-09-11**
 - **text:**
-  - `cra-art-14-1-2` — **actively exploited vulnerabilities**: simultaneous
+  - **Art. 14(1)–(2) — actively exploited vulnerabilities** (cite
+    `cra-art-14` + the paragraph): simultaneous
     notification to the coordinating CSIRT and ENISA via the Single Reporting
     Platform — early warning within **24 hours** of the manufacturer becoming
     aware; fuller vulnerability notification within **72 hours**; final report
     **no later than 14 days** after a corrective or mitigating measure becomes
     available.
-  - `cra-art-14-3-4` — **severe incidents**: same channel — early warning within
+  - **Art. 14(3)–(4) — severe incidents** (cite `cra-art-14` + the
+    paragraph): same channel — early warning within
     **24 hours**, incident notification within **72 hours**, final report
     **within one month** of the incident notification.
-  - `cra-art-14-5` — an incident is **severe** where it negatively affects, or
+  - **Art. 14(5)** (cite `cra-art-14` + the paragraph) — an incident
+    is **severe** where it negatively affects, or
     is capable of negatively affecting, the product's ability to protect the
     availability, authenticity, integrity or confidentiality of sensitive or
     important data or functions, or has led or could lead to the introduction or
@@ -390,6 +423,8 @@ binding**.
    words; do not quote either.** (proxy-sourced; `cra-art-32` additionally draws
    on the corresponding recital, and the module labels A, B, C, H were confirmed
    present in the source.) · **applies_from:** 2027-12-11
+- **text (per id, below):** each of the following bullets carries that
+  id's content.
 - `cra-art-28-30` — manufacturers must draw up an EU declaration of conformity
   once compliance with Annex I is demonstrated via the chosen conformity
   assessment procedure, and affix the **CE marking**; a product that has not
@@ -421,8 +456,11 @@ binding**.
 ### `cra-annex-iv` — critical products
 
 - **provision:** Annex IV — critical products
-- **text_form:** `verbatim` (proxy-sourced; full 3-item list, confirmed complete
-  by the immediately-following "ANNEX V" boundary marker) ·
+- **text_form:** `normalized summary` — **not the Annex's words; do not quote
+  it.** (proxy-sourced; the full 3-item list was read and is condensed here, not
+  transcribed. The list is complete — the immediately-following "ANNEX V"
+  boundary marker confirms nothing was truncated — but completeness of the
+  items is not verbatim reproduction of them.) ·
   **applies_from:** 2027-12-11
 - **text:** (1) hardware devices with security boxes; (2) smart meter gateways
   within smart metering systems (per Dir. (EU) 2019/944 Art. 2(23)) and other
@@ -433,9 +471,29 @@ binding**.
 
 ## 4. Penalties
 
-`text_form: verbatim` (proxy-sourced) for all four; figures retrieved from the
-primary text, **not memory**. **applies_from:** 2027-12-11 (with Art. 14's own
+`text_form`: for the three table rows below, only the **figures** are
+verbatim from the primary text (proxy-sourced, retrieved, **not
+memory**) — the scope wording is a compressed restatement, per the
+id-formation note; `cra-art-64-10` carries its own entry and grade. **applies_from:** 2027-12-11 (with Art. 14's own
 date for Art. 14 breaches).
+
+**Id-formation rule — how the first three rows are citable.** `cra-art-64-2`,
+`cra-art-64-3` and `cra-art-64-4` have **no standalone `###` entry**;
+`cra-art-64-10` does, immediately below. The three table ids are citable
+through **this section block** — which states their shared `text_form`,
+provenance and `applies_from` — **plus the article and ceiling stated in their
+own row**, and through the block the page-wide standing fields above
+(instrument, official_url, consulted/`proxy-sourced`, language_version,
+verified, legal_status). That is the eight-field set, exactly the inheritance
+`../international/iso-27001.md` states for its control ids. Two limits, and
+they bind: what each row reproduces from the primary text is its **figures**
+(the ceiling and the percentage) — **the scope wording in the `provision`
+column is a compressed restatement, not the article's words, so quote the
+numbers and never the phrasing**; and because these rows are not `###`
+entries, the corpus's lint gate never checks them against the citability
+contract. A ceiling is a number, the highest-risk field there is
+(`../_schema.md` rule 5): cite it with its `proxy-sourced` grade at the point
+of use.
 
 | id | provision | ceiling |
 |---|---|---|

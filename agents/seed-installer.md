@@ -46,8 +46,10 @@ do not push Git state.
 ## Install discipline
 
 - **Additive and reversible.** Use `install.sh`'s `place_file` / `place_tree`:
-  each destination that already exists is backed up to `dest.bak-<ts>`, never
-  clobbered. Prefer the symlink model where the host supports it, so a seed
+  a destination that already matches the source byte-for-byte is left
+  untouched (no backup, no rewrite — re-runs are no-ops); one that differs
+  is backed up to `dest.bak-<ts>` before being replaced, never clobbered.
+  Prefer the symlink model where the host supports it, so a seed
   update propagates and edits to a "root" kernel file land back in the seed.
 - **Only the adapters actually used.** Detect the host tool(s) in play and
   install those adapters only; do not scatter `.prime/agent/`, `.opencode/`,

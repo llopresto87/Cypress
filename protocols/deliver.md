@@ -91,7 +91,10 @@ section 15.
 - <one-line decision> — link to ADR or grill.md section 6 row
 
 ## Gates run
-- Formatter, linter, type-check, unit, integration, ... — PASS / FAIL / SKIPPED (reason)
+- Formatter, linter, type-check, unit, integration, ... — each as executed /
+  discovered / absent (reason), the three states owned by
+  docs/graph/protocols/verify.md. There is no FAIL state: a failing gate is
+  fixed or handed back, never recorded and delivered.
 
 ## Known limitations
 - <thing that doesn't work yet> — link to grill.md section 12 row

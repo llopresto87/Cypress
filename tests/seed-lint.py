@@ -208,7 +208,8 @@ def check() -> None:
             for rel in ("templates/prompts/investigation-brief.md",
                         "templates/prompts/node-authoring-brief.md",
                         "templates/prompts/growth-scout-brief.md",
-                        "templates/prompts/growth-author-brief.md"):
+                        "templates/prompts/growth-author-brief.md",
+                        "templates/prompts/clean-context-validation-brief.md"):
                 p = ROOT / rel
                 if not p.exists():
                     fail(f"{rel}: embedding template missing")
@@ -433,18 +434,43 @@ def check() -> None:
 
     n_skills = sum(1 for _, k, _ in machinery if k == "skill")
     word_alt = "|".join(WORD_NUMS)  # word-number alternates for the count regexes
+    manifest_version = json.loads(
+        (ROOT / "manifest.json").read_text(encoding="utf-8"))["version"]
     # Every shipped prose surface, including the integration READMEs and the
     # manifest — the declarative rim where roster/skill counts drift (the
     # "eight skills" / phantom-command-home class) if left unscanned.
     prose_files = ["README.md", "core/AGENTS.md", "INSTALL.md", "manifest.json"]
     prose_files += sorted(str(p.relative_to(ROOT))
                           for p in ROOT.glob("integrations/*/README.md"))
+    # the companion documentation tree drifted a whole release once
+    # (17 agents, no ui-ux-designer) because no gate ever read it
+    prose_files += ["DOCUMENTATION.md"]
+    prose_files += sorted(str(p.relative_to(ROOT))
+                          for p in ROOT.glob("documentation/*.md"))
     prose = {p: (ROOT / p).read_text(encoding="utf-8")
              for p in prose_files if (ROOT / p).exists()}
     for path, text in prose.items():
         for m in re.finditer(rf"\b(\d+|{word_alt})[- ]agent team\b", text, re.I):
             if num(m.group(1)) != len(agents):
                 fail(f"{path}: claims a {m.group(1)}-agent team; agents/ has {len(agents)}")
+        # same fact, second phrasing — README's layout block said "17
+        # specialist agents" and DOCUMENTATION.md "17 named specialist
+        # agents" for a release while README line 40 said 18; up to two
+        # qualifier words are allowed between the number and the noun
+        for m in re.finditer(
+                rf"\b(\d+|{word_alt})\s+(?:[a-z-]+\s+){{0,2}}specialist agents\b",
+                text, re.I):
+            if num(m.group(1)) != len(agents):
+                fail(f"{path}: claims {m.group(0)!r}; "
+                     f"agents/ has {len(agents)}")
+        # the documented-version pins drifted a whole release unnoticed:
+        # "Version documented: 6.8.0" / "(version 6.8.0)" vs manifest
+        for m in re.finditer(r"[Vv]ersion(?: documented)?[:*\s]+\**(\d+\.\d+\.\d+)",
+                             text):
+            if path in ("DOCUMENTATION.md", "documentation/README.md") \
+                    and m.group(1) != manifest_version:
+                fail(f"{path}: documents version {m.group(1)}; "
+                     f"manifest.json is {manifest_version}")
         for m in re.finditer(rf"\b(\d+|{word_alt})\s+(?:opus\s+)?coordinator",
                              text, re.I):
             if num(m.group(1)) != len(delegators):

@@ -81,8 +81,8 @@ Italian employment-relations statute).
   **comma 3's information duty still applies** to them — the notice obligation
   operates on both commi 1 and 2, and GDPR Art. 13 (`gdpr-art-13`) imposes the
   parallel information duty on the data controller. **GDPR interplay:**
-  worker-data processing under this article typically rests on `gdpr-art-9-2-b`
-  (special categories in employment law, where involved) and
+  worker-data processing under this article typically rests on `gdpr-art-9`,
+  Art. 9(2)(b) (special categories in employment law, where involved) and
   `gdpr-art-6-1-b`/`6-1-f`; the GDPR does **not** displace Art. 4 L. 300/1970 —
   the two regimes run together, and this article's consent-free,
   collective-negotiation model is the Italian answer the GDPR's Art. 88

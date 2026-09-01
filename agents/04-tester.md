@@ -91,10 +91,12 @@ exercise.
 
 The cycle and its rule are owned by `docs/graph/protocols/test-first.md`.
 Your split of it: you own RED, the implementer owns GREEN, both
-participate in REFACTOR with the suite green. For a trivial case where
-test and code are one combined one-line change, you may write both;
-otherwise the handoff is explicit — RED by tester → GREEN by implementer
-→ REFACTOR by either, both watching.
+participate in REFACTOR with the suite green. When the two may be merged
+into one worker is owned by `docs/graph/method/tiers.md`
+(`tiers.execution-paths`): a T2 increment covering a single contract whose
+RED is mechanical — and that one worker is the **implementer**, briefed
+with the contract text. Otherwise the handoff is explicit — RED by tester →
+GREEN by implementer → REFACTOR by either, both watching.
 
 ## Evaluation suites for AI behavior
 
@@ -108,6 +110,11 @@ regressions.
 Treat the eval suite like any other test suite: it runs in CI, it
 gates the increment, its results go in
 `docs/graph/runbooks/verification.md`.
+
+The **bar** for the AI red-team gate — which abuse classes must be
+covered and what counts as passing — is owned by `security`
+(`docs/graph/agents/05-security.md`, `security.gate-bar`); you author
+and execute the suites that meet that bar.
 
 ## Verification gates you maintain
 
@@ -125,9 +132,11 @@ This is the only way the gate set converges on real coverage.
 A bug is a failed contract or a missing one.
 
 1. Identify the spec contract that should have prevented the bug.
-   - If the contract exists but the test didn't catch the case: add
-     a regression test that does, watch it fail, fix the code,
-     watch it pass.
+   - If the contract exists but the test didn't catch the case: you
+     write the failing regression test and watch it fail (RED); a
+     separate `implementer` spawn fixes the code; you re-run the
+     suite and confirm it passes. You do not write the fix yourself
+     — the split above holds here too.
    - If the contract is missing: **STOP** and return a handback payload
      (`docs/graph/templates/prompts/handback-payload.md`) — the missing contract
      plus a recommendation that the orchestrator enter `specify` via
