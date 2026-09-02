@@ -131,7 +131,7 @@ def seed_source_for(rel: str, seed: Path):
         if sub in SCAFFOLD_FILES:
             return seed / "templates/knowledge-graph" / sub
         return None  # plant-authored graph content — never seed-mapped
-    for adapter in (".claude/", ".codex/", ".opencode/"):
+    for adapter in (".claude/", ".codex/", ".opencode/", ".prime/agent/"):
         if rel.startswith(adapter):
             sub = rel[len(adapter):]
             # harness projections of docs/graph/{agents,skills}/
@@ -227,6 +227,7 @@ def main() -> int:
             return 1
         print("  note: zero backup files — nothing was overwritten; "
               "the audit had nothing to prove")
+    _kernel_currency(plant, seed)
     if opt.get("engine"):
         _engine_currency(opt["engine"])
     if knowledge_hits:
@@ -271,6 +272,32 @@ def _code_lines(text: str) -> set:
         if s.strip() and not s.lstrip().startswith("#"):
             out.add(s)
     return out
+
+
+def _kernel_currency(plant: Path, seed: Path):
+    """The kernel body is seed-owned machinery loaded on every session. A graft
+    that only re-points the CLAUDE.md<->AGENTS.md symlink and leaves a STALE
+    kernel body is a silent, high-impact miss (install.sh place_kernel once did
+    exactly this, and left no .bak for the backup-scan to catch). Compare the
+    plant's live kernel file(s) — resolving the shared symlink — against the
+    seed's current core/AGENTS.md directly, independent of any backup."""
+    sk = seed / "core/AGENTS.md"
+    if not sk.exists():
+        return
+    seed_txt = sk.read_text(errors="replace")
+    stale = []
+    for name in ("AGENTS.md", "CLAUDE.md"):
+        f = plant / name
+        if not f.exists():
+            continue
+        if f.read_text(errors="replace") != seed_txt:
+            stale.append(name)
+    if stale:
+        print(f"  !! KERNEL STALE: {', '.join(stale)} differ(s) from the seed "
+              f"core/AGENTS.md — the graft left the plant on an old kernel; "
+              f"fast-forward the kernel body (re-run install / place_kernel)")
+    else:
+        print("  kernel: current (plant AGENTS.md/CLAUDE.md == seed core/AGENTS.md)")
 
 
 def _engine_currency(spec: str):

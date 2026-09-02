@@ -1,5 +1,112 @@
 # Changelog
 
+## 6.13.0 — the kernel always fast-forwards; harvest imports must be reachable (2026-09-02)
+
+A live graft exposed two silent, high-impact holes: a plant grafted across
+several versions was left on its OLD kernel, and a harvest folded a corpus into
+the seed while leaving the reusable expert behind and unwired.
+
+### Fixed — `install.sh` never fast-forwarded a stale kernel body
+
+- `place_kernel` shared `CLAUDE.md`↔`AGENTS.md` by symlink but, when the real
+  kernel file already existed and was stale, only re-pointed the symlink and
+  left the OLD body in place — and made **no `.bak`**, so `graft-audit.py` was
+  structurally blind to it. The kernel loads on every session of every adapter,
+  so a graft could leave the whole plant on a superseded kernel invisibly.
+  `place_kernel` now always brings the canonical real kernel file to the current
+  seed kernel (with a per-file backup, idempotent, symlink-degradation
+  preserved), then points the sibling at it. Regression added to
+  `tests/test-full-install.sh` (graft over a stale kernel must FF the body and
+  leave a backup).
+
+### Added — `graft-audit.py` kernel-currency check
+
+- The audit now compares the plant's live `AGENTS.md`/`CLAUDE.md` against the
+  seed's `core/AGENTS.md` directly (mirroring its engine-currency check), so a
+  stale kernel is caught even when no fresh install ran. `protocols/graft.md`
+  Phase 7 gains a **Kernel current** gate (byte-equal kernel on every adapter;
+  no adapter the plant uses may be silently skipped) and the same line in its
+  integrity-gate template.
+
+### Changed — `protocols/harvest.md`: imports must be faithful AND reachable
+
+- Phase 4 gains three fail-closed gates and a new owned fact
+  `harvest.availability-gate`: **Faithful import** (a reusable expert/skill/tool
+  is folded in at full generalizable fidelity, never thinned to a stub — only
+  plant-specifics stripped); **Availability** (every harvested artifact must be
+  wired into the `install`/`grow`/`graft` withdraw flow that delivers it — a
+  corpus page reachable by its withdraw contract and its `index.md`, a
+  base-roster promotion present in every roster ground-truth surface, an
+  agent/skill-corpus entry with a live withdraw path — an unreachable import
+  BLOCKS; harvest's mirror of grow's "grown, not just installed"); and **Plant
+  untouched** (harvest is inbound-only, the donor plant is read-only; any write
+  to the plant BLOCKS). Self-consistency now requires the seed's FULL
+  `tests/run.sh`, not a partial run. Quality bar and "what you do not do"
+  updated to match. `est_tokens` 7000 → 7600; graft 9790 → 10000.
+
+### Fixed — `protocols/grow.md`: tool & skill corpora now reachable at growth
+
+- Applying the new availability gate retroactively surfaced an asymmetry: `grow`
+  withdrew `agent-corpus`, `legal-corpus`, and `library-corpus` (via
+  `ingest-library`) but had **no path** to `tool-corpus` or `skill-corpus`,
+  though both withdraw contracts name `grow` — so a harvested portable tool or
+  reusable skill only reached a plant via a later `graft`, never at growth time.
+  `grow` now withdraws both on evidence (stack-matched portable tool; a
+  procedure the source actually performs), grounded and never fabricated,
+  mirroring its existing `agent-corpus` discipline. All five corpora are now
+  reachable by both `grow` and `graft`; `install` ships the base roster and the
+  docs skeleton (incl. the legal collection scaffold the legal agent needs).
+
+### Fixed — `tools/graft-audit.py`: audit the prime-agent adapter
+
+- The customization audit mapped `.claude`/`.codex`/`.opencode` projections but
+  not `.prime/agent/`, so a buried customization under the prime-agent adapter
+  read as UNMAPPED and could be missed. Added `.prime/agent/` to the adapter map.
+
+## 6.12.0 — legal analyst promoted to base roster (2026-09-02)
+
+Harvested from a mature plant: the `legal` specialist moves from the suggested-
+expert catalog (`agent-corpus/`) to the base roster (`agents/14-legal.md`),
+making corpus-bound regulatory-compliance analysis a first-class seed capability
+shipped to every plant by default.
+
+### Added — `agents/14-legal.md`
+
+- **Charter:** regulatory-compliance analyst. Owns reasoning about externally-
+  authored rules (regulatory codes, standards catalogs, compliance requirements)
+  against a curated, verified legal corpus (`docs/graph/legal/`) as its only
+  knowledge source — never live search, never model memory.
+- **Corpus rule:** every legal claim is bound to a corpus entry; a gap produces
+  an explicit refusal (`not recorded — requires research-scout ingest`), never a
+  reconstructed citation.
+- **Four-part finding discipline:** separates verified technical fact, cited
+  obligation, explicitly-labelled assessment, and qualification boundary (the
+  standing note that final legal qualification belongs to a named human role).
+- **Citation ledger:** a fail-closed deliverable gate — any legal claim with no
+  corpus-entry row blocks the deliverable.
+- **Neighbours:** pairs with `security` (technical posture) and `research-scout`
+  (corpus ingest); distinct from both.
+- Frontmatter: `model: opus`, `can_delegate: false`, `est_tokens: 2400`.
+
+### Changed — roster surfaces
+
+- **`manifest.json`:** version `6.11.0` → `6.12.0`; agents[] gains `legal`.
+- **`core/AGENTS.md` (§1):** roster line gains `legal`.
+- **`core/method/delegation.md`:** roster table gains `legal` row.
+- **`README.md`:** 18-agent team → 19-agent team; layout block gains `legal`.
+- **`agents/_routes.golden.tsv`:** six new legal routing exemplars.
+
+### Changed — `agent-corpus/legal.md`
+
+Now a pointer to the base-roster agent, not a suggested-expert definition.
+
+### Added — legal-corpus withdrawal contract (already present)
+
+`protocols/harvest.md` already documents the legal-corpus withdraw contract;
+`install.sh` already places `legal-corpus/` to `docs/graph/legal/`. No change
+needed — the machinery was present; only the consuming expert was missing from
+the base roster.
+
 ## 6.11.0 — growth grounded in the outside world; the librarian rebalance made mandatory (2026-09-01)
 
 A live install executed `grow` to the letter and still failed its spirit:

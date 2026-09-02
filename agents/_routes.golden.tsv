@@ -76,3 +76,10 @@ what should this document claim and does not	devils-advocate
 design the interface layout and its loading empty error states	ui-ux-designer
 define the design tokens and component system for the app	ui-ux-designer
 run a usability heuristics audit of the checkout ui	ui-ux-designer
+# --- legal ---
+which recorded external rules apply to this finding	legal
+check every citation in this compliance document against the corpus	legal
+is this obligation actually in the corpus or do we need an ingest	legal
+is this regulatory obligation actually recorded in the legal corpus or not	legal
+determine the regulatory lawful basis for this data processing	legal
+prepare an impact assessment and map the compliance obligations	legal

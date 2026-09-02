@@ -115,59 +115,60 @@ place_file() {
 # both harnesses at once — no drift. On a platform without symlinks the second
 # file degrades to an independent copy (identical at install; may drift on edit).
 place_kernel() {
-    local dest="$1" name sibling
+    local dest="$1" name sibling seed_kernel
     name="$(basename "$dest")"
+    seed_kernel="$SEED_ROOT/core/AGENTS.md"
     case "$name" in
         CLAUDE.md) sibling="$PROJECT_DIR/AGENTS.md" ;;
         AGENTS.md) sibling="$PROJECT_DIR/CLAUDE.md" ;;
-        *)         place_file "$SEED_ROOT/core/AGENTS.md" "$dest"; return ;;
+        *)         place_file "$seed_kernel" "$dest"; return ;;
     esac
-    if [[ -e "$sibling" || -L "$sibling" ]]; then
-        local rs rd
-        rs="$(readlink -f "$sibling" 2>/dev/null || echo "$sibling")"
-        rd="$(readlink -f "$dest"    2>/dev/null || echo "$dest")"
-        if [[ "$rs" == "$rd" && ( -e "$dest" || -L "$dest" ) ]]; then
-            # Already the same shared inode. Refresh the one real file on --force.
-            if [[ $FORCE -eq 1 && ! -L "$dest" ]]; then
-                cp "$SEED_ROOT/core/AGENTS.md" "$rd"
-            fi
-            log "kernel: $name shares one file with $(basename "$sibling") (interchangeable Claude Code / Prime Agent)"
-            return
-        fi
-        # A PRISTINE kernel copy needs no backup: when both files already
-        # carry the seed kernel byte-identically, converge to the shared
-        # symlink where the platform allows, else keep the copy as the
-        # documented degradation. Without this, symlink-less platforms
-        # backed up and re-copied the same kernel on every single run.
-        if [[ -f "$dest" && ! -L "$dest" ]] \
-                && cmp -s "$SEED_ROOT/core/AGENTS.md" "$dest" \
-                && cmp -s "$SEED_ROOT/core/AGENTS.md" "$sibling"; then
-            if ln -s "$(basename "$sibling")" "${dest}.lnprobe.$$" 2>/dev/null; then
-                mv "${dest}.lnprobe.$$" "$dest"
-                log "kernel: $name -> $(basename "$sibling") (converged pristine copy to the shared kernel)"
-            else
-                rm -f "${dest}.lnprobe.$$"
-                log "kernel: $name kept as an identical copy (symlinks unavailable)"
-            fi
-            return
-        fi
-        if [[ -e "$dest" || -L "$dest" ]]; then
-            if [[ $FORCE -eq 1 ]]; then
-                rm -f "$dest"
-            else
-                local bak="${dest}.bak-$(date +%Y%m%d-%H%M%S)"
-                mv "$dest" "$bak"; warn "backed up existing $dest -> $bak"
-            fi
-        fi
-        if ln -s "$(basename "$sibling")" "$dest" 2>/dev/null; then
-            log "kernel: $name -> $(basename "$sibling") (shared kernel — interchangeable Claude Code / Prime Agent)"
-            return
-        fi
-        warn "symlink unavailable; placing $name as an independent kernel copy (may drift from $(basename "$sibling"))"
-    fi
-    place_file "$SEED_ROOT/core/AGENTS.md" "$dest"
-}
 
+    # ONE real file holds the kernel; the other is a PROJECT-LOCAL relative
+    # symlink to it, so Claude Code (CLAUDE.md) and Prime Agent / opencode /
+    # Codex (AGENTS.md) run off byte-identical instructions. The real file's
+    # BODY is ALWAYS brought to the current seed kernel: a graft that merely
+    # re-points the symlink and leaves a STALE kernel body is the exact bug this
+    # guards against (it also left no .bak, so graft-audit could not see it).
+    # A stale body is fast-forwarded WITH a per-file .bak; a pristine body is
+    # left untouched (idempotent, no backup churn).
+    local realfile
+    if [[ -f "$dest" && ! -L "$dest" ]]; then realfile="$dest"
+    elif [[ -f "$sibling" && ! -L "$sibling" ]]; then realfile="$sibling"
+    else realfile="$dest"; fi
+
+    # 1) Fast-forward the canonical real file to the current seed kernel.
+    if [[ -f "$realfile" && ! -L "$realfile" ]] && cmp -s "$seed_kernel" "$realfile"; then
+        : # already current — no backup, no rewrite
+    else
+        if [[ -f "$realfile" && ! -L "$realfile" && $FORCE -ne 1 ]]; then
+            local bak="${realfile}.bak-$(date +%Y%m%d-%H%M%S)"
+            cp "$realfile" "$bak"; warn "backed up existing $realfile -> $bak"
+        fi
+        rm -f "$realfile"
+        cp "$seed_kernel" "$realfile"
+        log "kernel: $(basename "$realfile") fast-forwarded to the current seed kernel"
+    fi
+
+    # 2) Point the OTHER kernel file at the real file via a project-local symlink.
+    local other
+    if [[ "$realfile" == "$dest" ]]; then other="$sibling"; else other="$dest"; fi
+    if [[ -L "$other" && "$(readlink "$other")" == "$(basename "$realfile")" ]]; then
+        log "kernel: $(basename "$other") -> $(basename "$realfile") (shared kernel — interchangeable Claude Code / Prime Agent)"
+        return
+    fi
+    if [[ -f "$other" && ! -L "$other" && $FORCE -ne 1 ]] && ! cmp -s "$seed_kernel" "$other"; then
+        local bak2="${other}.bak-$(date +%Y%m%d-%H%M%S)"
+        cp "$other" "$bak2"; warn "backed up existing $other -> $bak2"
+    fi
+    rm -f "$other"
+    if ln -s "$(basename "$realfile")" "$other" 2>/dev/null; then
+        log "kernel: $(basename "$other") -> $(basename "$realfile") (shared kernel — interchangeable Claude Code / Prime Agent)"
+    else
+        cp "$seed_kernel" "$other"
+        warn "symlink unavailable; placing $(basename "$other") as an independent kernel copy (may drift on edit)"
+    fi
+}
 # place_tree SRC_DIR DEST_DIR [PATTERN]
 # Mirrors every file matching PATTERN (default *) from SRC_DIR into
 # DEST_DIR by calling place_file for each.

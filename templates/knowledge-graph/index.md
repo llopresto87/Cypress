@@ -80,7 +80,7 @@ owns the roster table. The full roster: `agent.orchestrator`,
 `agent.tester`, `agent.security`, `agent.pentest`, `agent.reliability`,
 `agent.data-ml`, `agent.product`, `agent.ui-ux-designer`,
 `agent.docs-librarian`,
-`agent.research-scout`, `agent.devils-advocate`,
+`agent.research-scout`, `agent.devils-advocate`, `agent.legal`,
 `agent.multi-agent-architect`,
 `agent.growth-orchestrator`, `agent.growth-scout`,
 `agent.seed-installer`. Situational skills not routed above:

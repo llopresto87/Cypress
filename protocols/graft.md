@@ -19,7 +19,7 @@ load_when:
   - "graft the seed, re-propagate machinery"
   - "plant grew from an older seed version"
   - "reconcile local machinery divergence"
-est_tokens: 9790
+est_tokens: 10000
 ---
 
 # Protocol: graft
@@ -541,6 +541,17 @@ backups exist). Then prove the plant is left more capable and no less itself:
   re-integrated into the FF'd file (holistic MERGE) or explicitly ratified. An
   un-reintegrated, un-ratified customization BLOCKS — a buried divergence is the
   one failure the installer cannot catch on its own.
+- **Kernel current (the always-loaded bootstrap)** — the plant's kernel body
+  (`AGENTS.md` / `CLAUDE.md`, resolving the shared symlink) must be byte-equal to
+  the seed's `core/AGENTS.md`. The kernel loads on every session of every
+  adapter, yet `place_kernel` shares the two files by symlink and once left a
+  STALE body behind (with no `.bak`, so the customization audit was blind to it):
+  the audit's kernel-currency check (`tools/graft-audit.py`) now asserts it
+  directly, and a stale kernel BLOCKS — fast-forward the kernel body (re-run the
+  installer for each adapter the plant uses; a plant that runs Prime Agent, all
+  its `.claude`/`.codex`/`.opencode`/`.github`/`.prime` adapters must each be
+  grafted, none silently skipped) and re-project the plant's own agents/skills
+  into any adapter that lacks them.
 - **Machinery healthy** — the plant's graph still routes
   (`python3 docs/graph/graph-lint.py` and a representative `--plan`) **on the
   upgraded engine** (the audit's engine-currency check reports no seed engine
@@ -669,6 +680,7 @@ State the summary in the chat, and record a provenance entry in the plant's own
 
 ## Integrity gate
 - Rootstock intact (source + authored facts unchanged): PASS / BLOCK (<hit>)
+- Kernel current (AGENTS.md/CLAUDE.md == seed core/AGENTS.md; every adapter grafted, none skipped): PASS / BLOCK (<stale kernel / skipped adapter>)
 - Graph engine upgraded to seed's (or superset kept): PASS / FAIL (<lines / KEEP-PLANT>)
 - Customization audit — no divergence buried by the FF: PASS / BLOCK (<file + signal>)
 - Plant graph routes on upgraded engine / agent-router lint+eval: PASS / FAIL (<command + result>)

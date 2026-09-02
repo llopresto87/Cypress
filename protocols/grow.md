@@ -361,6 +361,21 @@ authoring from scratch, then author the project-specific expert agent
 (`docs/graph/templates/agent.template.md`) from that cited evidence. A signal is a candidate, not a mandate: absent a real need, record
 "no custom agent warranted" rather than padding the plant's roster.
 
+Apply the same withdraw-on-evidence discipline to the reusable-tool and
+suggested-skill corpora, so harvested tooling and procedures reach a new plant
+at growth time and not only via a later graft. Where the plant's real stack
+matches a portable tool the corpus carries (`tool-corpus/<category>/<name>.md`)
+— a self-contained capability the source genuinely needs — seed
+`docs/graph/tools/<name>.md` from it as the orientation layer (adopt the
+portable implementation when the stack matches; re-author test-first when it
+does not). Where a repeatable procedure the source actually performs matches a
+`skill-corpus/<name>.md` entry, seed `docs/graph/skills/<name>.md` from it
+(projected into the harness by the plant itself). Both are candidates, not
+mandates, and neither is fabricated: a tool or skill whose need has not actually
+arisen in the source is left for `toolcraft`/`canonize` to sprout from real
+recurring use, and the absence is recorded ("no corpus tool/skill warranted")
+rather than padded.
+
 For an existing graph, refresh current fact owners rather than duplicating
 them, preserve valid hand-authored knowledge, cite contrary evidence for
 stale claims, and record unresolved conflicts. Never claim coverage for source
