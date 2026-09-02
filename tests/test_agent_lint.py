@@ -99,7 +99,8 @@ ALL_AGENTS = {
     "orchestrator", "architect", "implementer", "reviewer", "tester",
     "security", "reliability", "data-ml", "product", "ui-ux-designer",
     "docs-librarian",
-    "research-scout", "pentest", "devils-advocate", "multi-agent-architect",
+    "research-scout", "pentest", "devils-advocate", "legal",
+    "multi-agent-architect",
     "growth-orchestrator", "growth-scout", "seed-installer",
 }
 

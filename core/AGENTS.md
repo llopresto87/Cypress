@@ -55,7 +55,7 @@ and accepts. For T2/T3 every piece of *doing* goes to a clean-context
 specialist from the roster — `orchestrator`, `architect`,
 `implementer`, `reviewer`, `tester`, `security`, `pentest`,
 `reliability`, `data-ml`, `product`, `ui-ux-designer`, `docs-librarian`,
-`research-scout`, `devils-advocate`, `multi-agent-architect`,
+`research-scout`, `devils-advocate`, `legal`, `multi-agent-architect`,
 `growth-orchestrator`,
 `growth-scout`, `seed-installer` — each an `agent.*` node routed by its
 own triggers. Every brief embeds the canonical block from

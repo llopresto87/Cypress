@@ -9,6 +9,7 @@ title: harvest — folding a mature plant's project-agnostic lessons back into t
 owns:
   - harvest.fold-back-flow
   - harvest.agnosticism-gate
+  - harvest.availability-gate
 requires:
 peers:
   - protocol.graft
@@ -18,7 +19,7 @@ load_when:
   - "fold generalizable improvements upstream"
   - "the plant is mature, propose a harvest"
   - "seed improvement from project experience"
-est_tokens: 7000
+est_tokens: 7600
 ---
 
 # Protocol: harvest
@@ -276,8 +277,44 @@ The seed must leave harvest **more capable and no less agnostic**:
   any plant name, domain noun, stack fingerprint (a language/framework combo that
   identifies the plant), identifying count, internal-component/file/config name,
   path, credential, dataset shape, or version pin. Any hit BLOCKS.
-- **Self-consistency** — run the seed's own lints/tests; the kernel,
-  manifest, protocol table, and any registries stay in sync.
+- **Faithful import (no silent thinning)** — a harvested capability lands in the
+  seed at its FULL reusable fidelity, not a summarized stub. A plant that
+  authored a complete reusable expert, skill, or tool is imported with the whole
+  of its generalizable discipline intact — only plant-specifics stripped (the
+  agnosticism gate), never its substance. Reducing a full expert charter to a
+  short blueprint loses exactly the hard-won discipline the harvest exists to
+  compound. Compare the imported artifact against its plant source: if the
+  generalizable content did not survive the move, the import is incomplete and
+  BLOCKS.
+- **Availability — the import is WIRED into the downstream flow, not merely
+  deposited.** A harvest is only half done when a file lands in a seed
+  directory: the seed exists to serve `install` / `grow` / `graft`, so every
+  harvested artifact must be REACHABLE by the flow that delivers it to the next
+  plant. Prove the reach for each:
+  - a **corpus page** — reachable through its documented withdraw contract
+    (`grow` / `graft` / `ingest-library` check the corpus for it) and listed in
+    its corpus `index.md`;
+  - a **base-roster promotion** — present in every roster ground-truth surface
+    the harnesses project (manifest, kernel roster line, `method.delegation`
+    table, `agents/_routes.golden.tsv`), so `install` ships it and `graft`
+    fast-forwards it into an existing plant;
+  - an **`agent-corpus` / `skill-corpus` entry** — has a live withdraw path a
+    plant can instantiate from.
+  A harvested artifact that no `install`/`grow`/`graft` path can reach is an
+  INERT import — it compounds nothing — and BLOCKS until it is wired. This is
+  harvest's mirror of grow's "grown, not just installed" and graft's "grown,
+  not just grafted": material imported but not made available has not been
+  harvested, only stored.
+- **Plant untouched** — harvest is inbound-only (plant → seed); the donor plant
+  is READ-ONLY, exactly as graft treats the seed. Its working tree must be
+  byte-unchanged by the harvest. Any write to the plant — a harness projection,
+  a golden-route row, a canonized skill wired into its router — is a scope breach
+  and BLOCKS; it is also how a harvest silently half-grafts a plant that never
+  ratified the change.
+- **Self-consistency** — run the seed's OWN FULL gate (`bash tests/run.sh` —
+  every lint and suite, never a hand-picked subset; a partial run is precisely
+  how a real failure passes as green), and confirm the kernel, manifest,
+  protocol/roster tables, and every registry stay in sync.
 - **Clean install** — a dry-run install into a scratch target still succeeds
   and is additive.
 - **Minimum-sufficient fold-back** — a candidate that passed all three gates
@@ -553,7 +590,10 @@ Rejected:    <generic categories only, e.g. "internal/proprietary pages;
 ## Seed integrity gate
 - Agnosticism scan: PASS (no plant name/domain/stack/fingerprint/path/count in
   the diff OR this log) / BLOCK (<hit>)
-- Seed lint/tests: PASS / FAIL
+- Faithful import (full reusable fidelity, no thinning): PASS / BLOCK (<artifact>)
+- Availability (every import reachable by install/grow/graft withdraw): PASS / BLOCK (<artifact + missing wiring>)
+- Plant untouched (donor working tree byte-unchanged): PASS / BLOCK (<write>)
+- Seed FULL gate (bash tests/run.sh — all lints + suites): PASS / FAIL
 - Clean dry-run install: PASS / FAIL
 - Version bump: <old> → <new>; CHANGELOG + harvest-log updated
 ```
@@ -564,7 +604,11 @@ A harvest that passes:
 - Lands only lessons true for an arbitrary next project.
 - Shows the before→after generalization for every fold-back.
 - Carries provenance and a proof (test/lint) for every seed change.
-- Leaves the agnosticism scan clean and the seed installing cleanly.
+- Imports each lesson at its full reusable fidelity and WIRES it into the
+  install/grow/graft flow that delivers it, so it actually reaches the next
+  plant — an import the downstream flow cannot reach is not a harvest.
+- Leaves the agnosticism scan clean, the donor plant byte-unchanged, and the
+  seed installing cleanly under its full gate.
 - Proposes for ratification; never silently rewrites the seed.
 
 A harvest that fails:
@@ -573,6 +617,13 @@ A harvest that fails:
   including into the CHANGELOG, the harvest-log, or a provenance note.
 - Backports a lesson "because it was useful here" without generalizing it.
 - Bolts a special-case onto a seed artifact instead of integrating it.
+- Deposits a harvested corpus page, expert, or skill the seed's
+  install/grow/graft flow cannot reach — an inert import that compounds nothing.
+- Silently thins a reusable expert, skill, or tool to a stub, losing the
+  generalizable substance the harvest exists to carry.
+- Writes into the donor plant (a projection, a golden row, a canonized skill) —
+  harvest is inbound-only.
+- Reports green from a partial gate instead of the seed's full `tests/run.sh`.
 - Bumps the version with no CHANGELOG/harvest-log provenance.
 - Mutates the seed without a human ratifying the proposal.
 
@@ -595,5 +646,12 @@ A harvest that fails:
   life, not the seed's.
 - You do not break the seed's clean install or agnosticism to land a lesson;
   if it cannot be generalized cleanly, leave it in the plant and record why.
+- You do not leave a harvested artifact INERT — a corpus page, expert, or skill
+  deposited in a seed directory but not wired into the install/grow/graft
+  withdraw path that delivers it. Correctly imported means reachable downstream.
+- You do not import a reusable expert/skill/tool as a thinned stub; the whole
+  generalizable substance survives, only plant-specifics are stripped.
+- You do not write to the donor plant — it is read-only; harvest folds INTO the
+  seed only.
 - You do not silently mutate the seed; harvest proposes, the steward ratifies.
 - You do not fold a change in without provenance and a proof.

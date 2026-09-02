@@ -174,6 +174,26 @@ for order in "claude-code prime-agent" "prime-agent claude-code"; do
   rm -rf "$D"
 done
 
+# REGRESSION — GRAFT over a STALE kernel must fast-forward the kernel BODY,
+# not merely re-point the CLAUDE.md<->AGENTS.md symlink. place_kernel once
+# symlinked one kernel file to the other and left the underlying STALE body
+# untouched — AND made no .bak — so a graft silently left the plant on an OLD
+# kernel (loaded on every session of every adapter) and graft-audit was blind
+# to it. A copy-mode (no --force) install over pre-existing stale kernels must
+# bring BOTH files to the current seed kernel and leave a backup behind.
+D="$(mktemp -d)"
+printf '# OLD STALE KERNEL 5.x\nstale body\n' > "$D/AGENTS.md"
+printf '# OLD STALE KERNEL 5.x\nstale body\n' > "$D/CLAUDE.md"
+"$ROOT/install.sh" claude-code --project-dir "$D" --copy >/dev/null
+diff -q "$D/AGENTS.md" "$ROOT/core/AGENTS.md" >/dev/null \
+  || { echo "stale-kernel graft: AGENTS.md not fast-forwarded to the seed kernel" >&2; exit 1; }
+diff -q "$D/CLAUDE.md" "$ROOT/core/AGENTS.md" >/dev/null \
+  || { echo "stale-kernel graft: CLAUDE.md not fast-forwarded to the seed kernel" >&2; exit 1; }
+[[ -n "$(find "$D" -maxdepth 1 -name '*.bak-*')" ]] \
+  || { echo "stale-kernel graft: no .bak left — graft-audit would be blind to the kernel overwrite" >&2; exit 1; }
+rm -rf "$D"
+echo "  graft over stale kernel: body fast-forwarded + backup left — OK"
+
 # REGRESSION — idempotent re-run: a second identical install must create no
 # backups. 6.9.0 backed up and rewrote byte-identical files (hundreds of no-op
 # .bak entries per documented re-run, burying graft-audit's real signal), and

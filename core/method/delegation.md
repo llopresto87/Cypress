@@ -61,6 +61,7 @@ simulation in the chat is not delegation.
 | `docs-librarian`      | `docs/graph/` health, fact ownership, wiki leaves, catalogs, close-out. |
 | `research-scout`      | Internet research; ingest libraries/specs into the wiki.          |
 | `devils-advocate`     | Hostile pass over a *finished* claim-bearing deliverable; refutes from primary sources. |
+| `legal`               | Regulatory compliance: corpus-bound legal reasoning, four-part findings, citation ledger. |
 | `multi-agent-architect` | Agent-topology design/review: delegation bounds, tool contracts, fail-closed gates, evals, cost budgets. |
 | `growth-orchestrator` | Growth DNA: conducts grow/adopt/from-scratch end to end.          |
 | `growth-scout`        | Read-only per-boundary evidence gathering for graph authors.      |

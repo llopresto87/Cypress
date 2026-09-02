@@ -1,6 +1,6 @@
 # CYPRESS specialist agents — complete reference
 
-This document describes all **18 specialist agents** shipped by the CYPRESS seed. Each agent is a fully-formed system prompt with YAML frontmatter, stored in `agents/*.md`. At install time these files are projected into the host tool's agent directory (for example `.claude/agents/`, `.prime/agent/agents/`, `.opencode/agents/`, `.codex/agents/`).
+This document describes all **19 specialist agents** shipped by the CYPRESS seed. Each agent is a fully-formed system prompt with YAML frontmatter, stored in `agents/*.md`. At install time these files are projected into the host tool's agent directory (for example `.claude/agents/`, `.prime/agent/agents/`, `.opencode/agents/`, `.codex/agents/`).
 
 Sources for this reference: `agents/*.md` (the 18 agent definitions), `agents/_routes.golden.tsv` (the golden routing corpus), and `core/method/delegation.md` (the delegation model).
 

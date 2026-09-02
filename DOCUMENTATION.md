@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- **Version documented:** 6.11.0
+- **Version documented:** 6.13.0
 - **Repository role:** this repo is the **seed** — the product that is shipped
   into other projects. It is *not* a grown project itself.
 - **License:** MIT — see [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -51,7 +51,7 @@ templates, and tooling that you drop into any codebase. Once installed, an AI
 coding agent (Claude Code, Prime Agent, opencode, OpenAI Codex, or GitHub
 Copilot) gains:
 
-- a **senior engineering team** of 18 named specialist agents;
+- a **senior engineering team** of 19 named specialist agents;
 - a set of **named protocols** (workflows) for spec-driven and test-driven work;
 - a **progressive-discovery knowledge graph** that keeps a large or multi-repo
   codebase inside a context window;
@@ -657,7 +657,7 @@ or authored facts.
 ```
 core/                 Bootstrap kernel (AGENTS.md) + method/ posture nodes
   method/               tiers, delegation, engineering/design/stewardship posture
-agents/               18 specialist agents (graph nodes; projected to the harness)
+agents/               19 specialist agents (graph nodes; projected to the harness)
   _routes.golden.tsv    golden routing set for agent-lint --eval
 protocols/            15 protocol graph nodes (installed to docs/graph/protocols/)
 skills/               13 skill graph nodes (installed flat to docs/graph/skills/)

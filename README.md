@@ -37,13 +37,14 @@ practice on the production path.
   when the router resolves it for the task at hand. A hard size budget
   is enforced by `tests/seed-lint.py`, so kernel growth is a lint
   failure, not a drift.
-- **An 18-agent team** under `agents/`:
+- **An 19-agent team** under `agents/`:
   - `orchestrator` (first contact, routing)
   - `architect`, `implementer`, `reviewer`, `tester`
   - `security`, `pentest`, `reliability`, `data-ml`, `product`
   - `docs-librarian`, `research-scout`
   - `ui-ux-designer` (interface and interaction design)
   - `devils-advocate` (hostile refutation of a finished deliverable's claims)
+  - `legal` (regulatory compliance: corpus-bound reasoning, citation ledger)
   - `multi-agent-architect` (agent-topology design and review)
   - `growth-orchestrator`, `growth-scout`, `seed-installer` (growth DNA)
 - **Named protocols** under `protocols/`:
@@ -293,7 +294,7 @@ the way to your first useful slice.
 
 ```
 core/                 Bootstrap kernel (AGENTS.md) + method/ posture nodes
-agents/               18 specialist agents (graph nodes; projected to the harness)
+agents/               19 specialist agents (graph nodes; projected to the harness)
 protocols/            Protocol graph nodes (installed to docs/graph/protocols/)
 skills/               13 skill graph nodes (installed flat to docs/graph/skills/)
 templates/            Per-artifact templates (spec, grill, ADR, etc.; Tier-3 artifacts)

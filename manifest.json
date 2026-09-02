@@ -2,31 +2,31 @@
   "$schema": "https://json-schema.org/draft-07/schema#",
   "name": "cypress",
   "fullName": "Contextual Yield Protocol for Routed Expert Seed Systems",
-  "version": "6.11.0",
+  "version": "6.13.0",
   "supersedes": "general_expert_prompts@1.0.0",
   "created": "2026-05-23",
-  "description": "CYPRESS (Contextual Yield Protocol for Routed Expert Seed Systems) — a project-agnostic multi-agent seed for single- or multi-repository programs. As of 6.0.0 it is a pure graph system: the entire method surface — protocols, skills, agent charters, method/posture nodes, and template artifacts — installs INTO the plant's unified docs/graph/ as seed-owned routable nodes (origin: seed), activated progressively by the router; the always-loaded kernel is a small bootstrap (identity, tiers, rule anchors, boundaries), and tool directories hold only harness projections (agents, skills). Its tool-neutral INSTALL_PROMPT.md keeps user chat in orchestration/planning, dispatches Sonnet-class read-only scouts and Opus-class authors/reviewers, and grows the graph without building the application or publishing Git state.",
+  "description": "CYPRESS (Contextual Yield Protocol for Routed Expert Seed Systems) \u2014 a project-agnostic multi-agent seed for single- or multi-repository programs. As of 6.0.0 it is a pure graph system: the entire method surface \u2014 protocols, skills, agent charters, method/posture nodes, and template artifacts \u2014 installs INTO the plant's unified docs/graph/ as seed-owned routable nodes (origin: seed), activated progressively by the router; the always-loaded kernel is a small bootstrap (identity, tiers, rule anchors, boundaries), and tool directories hold only harness projections (agents, skills). Its tool-neutral INSTALL_PROMPT.md keeps user chat in orchestration/planning, dispatches Sonnet-class read-only scouts and Opus-class authors/reviewers, and grows the graph without building the application or publishing Git state.",
   "principles": [
     "Risk-proportional tiers: every task is classified T0 (question) / T1 (trivial non-behavioral edit, in-session) / T2 (spec-covered change, minimal workers) / T3 (spec-bearing work, full funnel) before acting; process depth follows the tier, misclassifying down is the violation, escalating up is normal.",
     "Spec-driven: every behavior has an executable spec in docs/graph/specs/.",
     "Test-driven: RED-GREEN-REFACTOR-COMMIT authorizes every code change; on untested code, characterize first.",
-    "Unified graph: ALL maintained knowledge lives below docs/graph/ — project facts AND the method surface (protocol/skill/agent/method nodes, origin: seed). Tier 1 routes, Tier 2 owns facts (machinery included), Tier 3 provides source-backed depth and template artifacts. Load minimally; declare what you skip; connect every leaf; one home per fact. The kernel is a bootstrap: nothing about how to work is always-loaded except identity, tiers, the eight rule anchors, and the boundaries.",
+    "Unified graph: ALL maintained knowledge lives below docs/graph/ \u2014 project facts AND the method surface (protocol/skill/agent/method nodes, origin: seed). Tier 1 routes, Tier 2 owns facts (machinery included), Tier 3 provides source-backed depth and template artifacts. Load minimally; declare what you skip; connect every leaf; one home per fact. The kernel is a bootstrap: nothing about how to work is always-loaded except identity, tiers, the eight rule anchors, and the boundaries.",
     "Integrate, don't patch: the unit of work is the whole file; delete and consolidate rather than bolt on.",
     "Plan-of-record: docs/graph/plans/grill.md is updated continuously, never silently rewritten.",
     "Synthetic data only: never source test/demo data from production.",
     "Scale-agnostic: the same method governs a single repo or a program of several.",
     "Tool-agnostic: the same kernel runs in Claude Code, opencode, Codex, Copilot, and Prime Agent.",
     "Toolcraft: when an operation recurs across sessions, build a durable, tested tool and catalog it in docs/graph/tools/; never reinvent throwaway scripts.",
-    "Minimum sufficient work: produce the smallest body of work that reliably delivers the required result — every operation serves a named decision, effort scales with uncertainty and consequence (the tiers), structure/artifacts/delegation earn their lifecycle rent, and work stops when the result is sufficiently trusted. Depth in docs/graph/method/engineering-posture.md; grow, graft, and harvest each audit their own additions against it.",
-    "Design for responsibility: give each part one coherent responsibility, keep cohesive things together, and point dependencies at stable contracts rather than volatile detail — but prefer the smallest structure that fits; correct separation is the goal, never maximum. Structure is named at plan time (grill §9) and audited at review. Depth in docs/graph/method/design-posture.md."
+    "Minimum sufficient work: produce the smallest body of work that reliably delivers the required result \u2014 every operation serves a named decision, effort scales with uncertainty and consequence (the tiers), structure/artifacts/delegation earn their lifecycle rent, and work stops when the result is sufficiently trusted. Depth in docs/graph/method/engineering-posture.md; grow, graft, and harvest each audit their own additions against it.",
+    "Design for responsibility: give each part one coherent responsibility, keep cohesive things together, and point dependencies at stable contracts rather than volatile detail \u2014 but prefer the smallest structure that fits; correct separation is the goal, never maximum. Structure is named at plan time (grill \u00a79) and audited at review. Depth in docs/graph/method/design-posture.md."
   ],
   "kernel": {
-    "core/AGENTS.md": "Bootstrap kernel — the ONLY always-loaded instruction file, read on every session by every supported tool: identity, first move (the router), tier table, the eight rule anchors, boundaries. Full statements live in the graph machinery nodes.",
-    "core/method/tiers.md": "method.tiers node — tier depth, hard edges, execution paths. Installed to docs/graph/method/.",
-    "core/method/delegation.md": "method.delegation node — roster, mechanical routing, model classes, delegation bounds, brief discipline. Installed to docs/graph/method/.",
-    "core/method/engineering-posture.md": "method.engineering-posture node — general engineering principles (was operating-principles §1–§12). Installed to docs/graph/method/.",
-    "core/method/design-posture.md": "method.design-posture node — SOLID/responsibility design cluster (was §13–§19). Installed to docs/graph/method/.",
-    "core/method/stewardship-posture.md": "method.stewardship-posture node — records, verification, knowledge, session closure, tools (was §20–§27). Installed to docs/graph/method/."
+    "core/AGENTS.md": "Bootstrap kernel \u2014 the ONLY always-loaded instruction file, read on every session by every supported tool: identity, first move (the router), tier table, the eight rule anchors, boundaries. Full statements live in the graph machinery nodes.",
+    "core/method/tiers.md": "method.tiers node \u2014 tier depth, hard edges, execution paths. Installed to docs/graph/method/.",
+    "core/method/delegation.md": "method.delegation node \u2014 roster, mechanical routing, model classes, delegation bounds, brief discipline. Installed to docs/graph/method/.",
+    "core/method/engineering-posture.md": "method.engineering-posture node \u2014 general engineering principles (was operating-principles \u00a71\u2013\u00a712). Installed to docs/graph/method/.",
+    "core/method/design-posture.md": "method.design-posture node \u2014 SOLID/responsibility design cluster (was \u00a713\u2013\u00a719). Installed to docs/graph/method/.",
+    "core/method/stewardship-posture.md": "method.stewardship-posture node \u2014 records, verification, knowledge, session closure, tools (was \u00a720\u2013\u00a727). Installed to docs/graph/method/."
   },
   "agents": [
     {
@@ -37,7 +37,7 @@
     {
       "file": "agents/01-architect.md",
       "name": "architect",
-      "role": "Boundaries, ADRs, spec §4/§6/§7 contracts."
+      "role": "Boundaries, ADRs, spec \u00a74/\u00a76/\u00a77 contracts."
     },
     {
       "file": "agents/02-implementer.md",
@@ -52,7 +52,7 @@
     {
       "file": "agents/04-tester.md",
       "name": "tester",
-      "role": "Spec→test translation, RED phase, eval suites, regression corpus."
+      "role": "Spec\u2192test translation, RED phase, eval suites, regression corpus."
     },
     {
       "file": "agents/05-security.md",
@@ -72,7 +72,7 @@
     {
       "file": "agents/08-product.md",
       "name": "product",
-      "role": "User outcome, flows, accessibility, spec §3/§9 author."
+      "role": "User outcome, flows, accessibility, spec \u00a73/\u00a79 author."
     },
     {
       "file": "agents/13-ui-ux-designer.md",
@@ -100,14 +100,19 @@
       "role": "Hostile pass over a finished claim-bearing deliverable; refutes each load-bearing claim from primary sources, never the working papers. Read-only, advisory."
     },
     {
+      "file": "agents/14-legal.md",
+      "name": "legal",
+      "role": "Regulatory-compliance analyst: corpus-bound legal reasoning, four-part findings, citation ledger, qualification boundary. Never model memory."
+    },
+    {
       "file": "agents/multi-agent-architect.md",
       "name": "multi-agent-architect",
-      "role": "Agent-topology layer: design/review of agentic systems — delegation bounds, tool contracts, fail-closed gates, evals, cost/latency budgets. Delegator, depth 2."
+      "role": "Agent-topology layer: design/review of agentic systems \u2014 delegation bounds, tool contracts, fail-closed gates, evals, cost/latency budgets. Delegator, depth 2."
     },
     {
       "file": "agents/growth-orchestrator.md",
       "name": "growth-orchestrator",
-      "role": "Growth DNA: conducts grow/adopt/from-scratch — detect shape, dispatch scouts by boundary, sequence authors, gate on knowledge validation. Delegator, depth 2."
+      "role": "Growth DNA: conducts grow/adopt/from-scratch \u2014 detect shape, dispatch scouts by boundary, sequence authors, gate on knowledge validation. Delegator, depth 2."
     },
     {
       "file": "agents/growth-scout.md",
@@ -174,12 +179,12 @@
     {
       "file": "protocols/canonize.md",
       "name": "canonize",
-      "role": "The single end-of-task close-out spawn (kernel §3.7 + §3.8): ONE docs-librarian brief persists knowledge of interest into the graph AND catalogs durable tools in docs/graph/tools. T0/T1 tasks satisfy it with a one-line self-record in the compact delivery."
+      "role": "The single end-of-task close-out spawn (kernel \u00a73.7 + \u00a73.8): ONE docs-librarian brief persists knowledge of interest into the graph AND catalogs durable tools in docs/graph/tools. T0/T1 tasks satisfy it with a one-line self-record in the compact delivery."
     },
     {
       "file": "protocols/toolcraft.md",
       "name": "toolcraft",
-      "role": "Doctrine (kernel §3.8): defines what counts as a durable, reusable, test-authorized tool vs a disposable one-off. Executes inside the canonize close-out spawn — never a separate spawn."
+      "role": "Doctrine (kernel \u00a73.8): defines what counts as a durable, reusable, test-authorized tool vs a disposable one-off. Executes inside the canonize close-out spawn \u2014 never a separate spawn."
     },
     {
       "file": "protocols/deliver.md",
@@ -194,7 +199,7 @@
     {
       "file": "protocols/graft.md",
       "name": "graft",
-      "role": "User-decided-only cross-project meta-loop (never automatic): the outward complement of harvest. Carry the enriched seed onto an existing grown plant — three-way-reconcile its seed-owned machinery (kernel, protocols, skills, agents, templates, shared scripts) and refresh its library/legal/tool surfaces from the corpora — additively, reversibly, preserving the plant's own source and authored facts, for the steward to ratify. Standalone entry: GRAFT_PROMPT.md."
+      "role": "User-decided-only cross-project meta-loop (never automatic): the outward complement of harvest. Carry the enriched seed onto an existing grown plant \u2014 three-way-reconcile its seed-owned machinery (kernel, protocols, skills, agents, templates, shared scripts) and refresh its library/legal/tool surfaces from the corpora \u2014 additively, reversibly, preserving the plant's own source and authored facts, for the steward to ratify. Standalone entry: GRAFT_PROMPT.md."
     }
   ],
   "skills": [
@@ -298,7 +303,7 @@
     },
     {
       "file": "templates/knowledge-graph/spec-lint.py",
-      "produces": "docs/graph/spec-lint.py (set TEST_GLOBS) — mechanical spec-contract test-coverage gate"
+      "produces": "docs/graph/spec-lint.py (set TEST_GLOBS) \u2014 mechanical spec-contract test-coverage gate"
     },
     {
       "file": "templates/knowledge-graph/index.md",
@@ -322,7 +327,7 @@
     },
     {
       "file": "templates/prompts/growth-evidence-ledger.md",
-      "produces": "the canonical growth evidence-ledger schema — one structured artifact per boundary at .cypress/growth/<slug>.ledger.md (a gitignored seed organ), the contract a growth-scout fills and a growth author consumes"
+      "produces": "the canonical growth evidence-ledger schema \u2014 one structured artifact per boundary at .cypress/growth/<slug>.ledger.md (a gitignored seed organ), the contract a growth-scout fills and a growth author consumes"
     },
     {
       "file": "templates/prompts/growth-scout-brief.md",
@@ -355,8 +360,8 @@
     "golden_set_installed_at": ".claude/agents/_routes.golden.tsv",
     "commands": {
       "--route \"<task>\"": "rank specialists by IDF-weighted routing_triggers/name match; print a confidence band (HIGH/MEDIUM/LOW/NONE) to cite in a delegation brief.",
-      "--lint": "validate agent frontmatter (routing_triggers present; can_delegate == Task-in-tools; bounded-delegation depth/allowlist invariant) — the P0/P1 gate.",
-      "--eval": "run the golden routing set; assert top-1 accuracy and that novel-stack phrases return LOW/NONE — the eval gate."
+      "--lint": "validate agent frontmatter (routing_triggers present; can_delegate == Task-in-tools; bounded-delegation depth/allowlist invariant) \u2014 the P0/P1 gate.",
+      "--eval": "run the golden routing set; assert top-1 accuracy and that novel-stack phrases return LOW/NONE \u2014 the eval gate."
     },
     "frontmatter_fields_added": [
       "routing_triggers",
@@ -402,10 +407,10 @@
   "installer": "install.sh",
   "install_prompt": "INSTALL_PROMPT.md",
   "entry_points": {
-    "primary": "INSTALL_PROMPT.md is the single entry point: paste it into an agent-capable chat and it runs one flow in three phases — PLACE (install.sh drops all files), HAND OFF (restart rooted at the target for the registration boundary), GROW IN FULL (execute grow under its completeness contract). install.sh and grow are its internal mechanisms.",
+    "primary": "INSTALL_PROMPT.md is the single entry point: paste it into an agent-capable chat and it runs one flow in three phases \u2014 PLACE (install.sh drops all files), HAND OFF (restart rooted at the target for the registration boundary), GROW IN FULL (execute grow under its completeness contract). install.sh and grow are its internal mechanisms.",
     "coding_tool_adapter": "/initialize delegates to grow; it is not the primary interface.",
-    "new_project": "INSTALL_PROMPT.md → grow → from-scratch when no executable project evidence exists.",
-    "existing_project": "INSTALL_PROMPT.md → grow → delegated source-first adoption/refresh.",
+    "new_project": "INSTALL_PROMPT.md \u2192 grow \u2192 from-scratch when no executable project evidence exists.",
+    "existing_project": "INSTALL_PROMPT.md \u2192 grow \u2192 delegated source-first adoption/refresh.",
     "completeness": "grow.completeness-contract binds the orchestrating model to full-depth growth: every knowledge collection is covered-to-evidence or absent-with-named-reason, proven by a growth completeness ledger and audited in grow Phase 6."
   }
 }
