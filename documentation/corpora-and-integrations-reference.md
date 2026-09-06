@@ -7,7 +7,7 @@ This reference documents two parts of the CYPRESS seed:
 - **Part B — the integrations.** The five per-tool adapters under
   `integrations/` that project the shared seed onto each host harness.
 
-The repository root is `/home/okik/cypress-6.6.0/cypress`. This repository *is*
+The repository root is `/home/okik/cypress-6.6.0/cypress`. This repository is
 the seed (the shippable product), not a grown project. Every fact below comes
 from source files on disk; each major section cites its source path.
 
@@ -15,7 +15,7 @@ from source files on disk; each major section cites its source path.
 
 # Part A — The Corpora
 
-CYPRESS keeps five **corpora** at the seed root. Each corpus is a
+CYPRESS keeps five corpora at the seed root. Each corpus is a
 project-agnostic, durable store of reusable knowledge. `harvest`
 (`protocols/harvest.md`, `HARVEST_PROMPT.md`) folds a mature plant's
 generalizable lessons *into* a corpus; `grow` / `graft` / `toolcraft` /
@@ -32,20 +32,20 @@ The five corpora and their mirror relationship (source:
 | Agent corpus | `agent-corpus/` | Optional expert roles (candidates) | a plant's roster / `docs/graph/agents/` |
 | Skill corpus | `skill-corpus/` | Optional procedures (candidates) | a plant's `docs/graph/skills/` |
 
-The library and legal corpora are **reference** corpora (external facts to
-cite). The tool, agent, and skill corpora are **artifact / role / procedure**
-corpora (reusable seed material to instantiate).
+The library and legal corpora are reference corpora (external facts to cite).
+The tool, agent, and skill corpora are artifact / role / procedure corpora
+(reusable seed material to instantiate).
 
 ## A.0 The two hard properties every corpus shares
 
 Every corpus entry must satisfy two gates, stated in each `README.md` and
 enforced by `protocols/harvest.md`:
 
-1. **Agnostic or it does not belong here.** No project name, domain noun,
-   path, credential, or dataset shape. If you cannot describe the entry
-   without naming the plant, it is not ready to harvest.
-2. **Durable or it does not belong here.** No version-pinned specific. A page
-   must read like a general-purpose reference, not one project's runbook step.
+1. Agnostic or it does not belong here. No project name, domain noun, path,
+   credential, or dataset shape. If you cannot describe the entry without
+   naming the plant, it is not ready to harvest.
+2. Durable or it does not belong here. No version-pinned specific. A page must
+   read like a general-purpose reference, not one project's runbook step.
 
 A third principle governs *reading* a corpus: **orientation, not gospel.** A
 corpus page seeds a project's own leaf as an orientation layer; the project
@@ -58,14 +58,14 @@ Source: `agent-corpus/README.md`, `protocols/harvest.md` (§ "The
 suggested-expert corpus").
 
 The always-loaded team lives in `agents/`, is named in the kernel §1 table, and
-**every plant pays its per-session cost**. That economy is the reason a
-harvested role, procedure, or reference does **not** land in the kernel or the
-always-loaded roster. Instead:
+every plant pays its per-session cost. That economy is the reason a harvested
+role, procedure, or reference does not land in the kernel or the always-loaded
+roster. Instead:
 
-- A corpus is a **catalog of candidates** — none loaded by default, none named
-  in the kernel. It costs nothing until a project selects an entry.
+- A corpus is a catalog of candidates: none loaded by default, none named in
+  the kernel. It costs nothing until a project selects an entry.
 - Depositing into a corpus gives harvest a home for a generic foreign role,
-  tool, procedure, or citation **without touching the kernel budget** or the
+  tool, procedure, or citation without touching the kernel budget or the
   seed's one-home-per-fact roster.
 - The kernel is loaded on every session of every plant, so additions there
   must earn roughly 2k-token-per-session rent, and `tests/seed-lint.py` fails
@@ -84,12 +84,12 @@ Source: `protocols/harvest.md` lines 452–458.
 Key points:
 
 - A role that serves a domain some projects simply do not have (a regulatory
-  analyst, a stack specialist) **stays in the catalog** however good it is,
+  analyst, a stack specialist) stays in the catalog however good it is,
   because the catalog costs nothing until selected.
-- **Harvest may *propose* a promotion; it never performs one.** Moving an entry
+- Harvest may *propose* a promotion; it never performs one. Moving an entry
   from a corpus into the always-loaded roster is the steward's (the seed
   owner's) call, not the system's.
-- `harvest`, `graft`, and `harvest` triggers are all **user-sovereign**:
+- `harvest`, `graft`, and `harvest` triggers are all user-sovereign:
   nothing in the seed may trigger them automatically (source: `CLAUDE.md`,
   `HARVEST_PROMPT.md`, `protocols/harvest.md` § "Trigger — manual only").
 
@@ -103,21 +103,21 @@ contract".
 **durable, agnostic surface only**. Each candidate must survive three hard
 gates before it may touch the seed:
 
-1. **Agnosticism** — would this help an arbitrary next project that never heard
+1. **Agnosticism:** would this help an arbitrary next project that never heard
    of this plant?
-2. **Durability** — will this still be true a version from now, or is it pinned
+2. **Durability:** will this still be true a version from now, or is it pinned
    to one release?
-3. **Non-redundancy** — does the seed already own this rule? Open its would-be
+3. **Non-redundancy:** does the seed already own this rule? Open its would-be
    home and read it first.
 
-A single leaked project-specific or version-pinned detail — anywhere, including
-the CHANGELOG entry and harvest-log — is a failed harvest. Plant-identifying
+A single leaked project-specific or version-pinned detail, anywhere, including
+the CHANGELOG entry and harvest-log, is a failed harvest. Plant-identifying
 provenance lives only in the ratification proposal shown to the steward, never
 in the seed's committed files.
 
 **Withdraw (grow / graft / toolcraft / commission, outbound).** When a new
-project needs a capability, role, procedure, or citation, it **checks the
-matching corpus first**:
+project needs a capability, role, procedure, or citation, it checks the
+matching corpus first:
 
 | Consumer | Corpus checked first | What it seeds | Template used |
 |---|---|---|---|
@@ -128,20 +128,20 @@ matching corpus first**:
 | `grow` / `toolcraft` / commission | `skill-corpus/` | `docs/graph/skills/<name>.md` | `docs/graph/templates/skill.template.md` |
 
 If a match exists, the project seeds its own leaf from the corpus page as the
-**orientation layer**, then fetches or authors the version-specific / project-
+orientation layer, then fetches or authors the version-specific / project-
 specific delta fresh. If no match exists, the project ingests / commissions /
-authors fresh, and that durable, agnostic work becomes a **harvest candidate**
+authors fresh, and that durable, agnostic work becomes a harvest candidate
 for the next cycle. Nothing project-specific ever flows back.
 
 ## A.4 Inventory
 
-Counts below are of **entry pages** (excludes each corpus's `README.md`,
+Counts below are of entry pages (excludes each corpus's `README.md`,
 `index.md`, `_schema.md`, and per-scope `index.md`). Source: directory listing
 under each corpus root.
 
 ### A.4.1 Library corpus — `library-corpus/`
 
-Keyed by `library-corpus/<ecosystem>/<library>.md` — one page per library, not
+Keyed by `library-corpus/<ecosystem>/<library>.md`, one page per library, not
 per version. `<library>` is the canonical id, lowercased, scope slash removed
 (`@microsoft/signalr` -> `microsoft-signalr`). Source:
 `library-corpus/README.md`.
@@ -166,7 +166,7 @@ per version. `<library>` is the canonical id, lowercased, scope slash removed
   `ingest-library` against the real lockfile.
 - **Note on hosted-platform DSLs:** a hosted platform's declarative
   pipeline/config DSL (e.g. a CI platform's YAML schema) may earn a page with
-  no installable package, pinned by **retrieval-date** instead of a version.
+  no installable package, pinned by retrieval-date instead of a version.
 - New ecosystems (`cargo`, `go`, `gem`, …) are added as they are harvested.
 
 Example entry shape (`library-corpus/pypi/fastapi.md`): a title
@@ -175,7 +175,7 @@ Example entry shape (`library-corpus/pypi/fastapi.md`): a title
 
 ### A.4.2 Legal corpus — `legal-corpus/`
 
-Keyed by `legal-corpus/<scope>/<instrument-slug>.md` — one page per instrument
+Keyed by `legal-corpus/<scope>/<instrument-slug>.md`, one page per instrument
 (or tightly-coupled family). Entry shape fixed by `_schema.md`; routed by
 `index.md`. Source: `legal-corpus/README.md`, `legal-corpus/index.md`,
 `legal-corpus/_schema.md`.
@@ -193,17 +193,17 @@ The four scopes are: `eu` (Union-level instruments), `national`
 (global standards / treaty-level), and `case-law` (judicial and regulator
 decisions, which routinely span jurisdictions).
 
-`case-law/index.md` is a single page holding **several** citable entries, one
+`case-law/index.md` is a single page holding several citable entries, one
 per case/decision, each with its own id. Examples present:
 `cjeu-c-582-14-breyer`, `gc-latombe-2025-judgment`,
 `cjeu-c-703-25-p-latombe-appeal`, `garante-elenco-dpia-2018`,
 `lg-muenchen-i-3-o-17493-20`, `garante-9782874-google-analytics`, and
-`absent-garante-google-fonts` (a **verified absence** — a recorded finding that
+`absent-garante-google-fonts` (a verified absence: a recorded finding that
 a decision does not exist, itself a valid citable entry).
 
 **What is special about the legal corpus.** It is the sharpest agnosticism
 boundary of the five, because legal analysis *feels* portable and is not. The
-corpus states what the law **says**; the plant states what that **means** for
+corpus states what the law says; the plant states what that means for
 one system. Everything that stays out (source: `legal-corpus/README.md`):
 
 - Any application of the law to a system.
@@ -215,20 +215,20 @@ one system. Everything that stays out (source: `legal-corpus/README.md`):
 carries all eight fields: `id`, `instrument`, `provision`, `text_form` +
 `text`, `official_url`, `consulted` (what was actually read, with a
 `verification_grade`), `language_version` (edition / consolidation),
-`verified` + `legal_status`. Missing any one ⇒ **non-citable**, treated by a
+`verified` + `legal_status`. Missing any one ⇒ non-citable, treated by a
 consumer as `not recorded — requires ingest`.
 
 **Standing hazards (`_schema.md`, `index.md`):**
 
-1. **The amendment trap** — original text and consolidated text sit under the
+1. **The amendment trap:** original text and consolidated text sit under the
    same article number and read identically. An entry must state ORIGINAL vs
    CONSOLIDATED (with date), or it is non-citable.
-2. **Same number, different subject** — a directive's Article N and its
+2. **Same number, different subject:** a directive's Article N and its
    transposing act's Article N routinely address unrelated matters.
-3. **`in force` ≠ settled** — an instrument can be valid and under appeal.
-4. **A number is the highest-risk field** — deadlines, thresholds, fine
+3. **`in force` ≠ settled:** an instrument can be valid and under appeal.
+4. **A number is the highest-risk field:** deadlines, thresholds, fine
    ceilings. A deadline that is a *formula* must never be a *calendar date*.
-5. **Guidance is not law**, and a standard is not a legal basis.
+5. Guidance is not law, and a standard is not a legal basis.
 
 **Grade per entry, never per page.** A page may hold a primary-fetched verbatim
 article beside a secondary-corroborated summary. A page-level "verified" banner
@@ -237,8 +237,8 @@ over mixed provenance is falsification. `text_form` values: `verbatim`
 requires licensed copy` (citable by identifier and title only), `topic only`.
 
 **Roles (`legal-corpus/index.md`):** written by `docs-librarian`, ingested by
-`research-scout`, and **read** by the optional role in `agent-corpus/legal.md`
-— a role instantiated **without** `WebSearch`, `WebFetch`, or `Bash`, so this
+`research-scout`, and read by the optional role in `agent-corpus/legal.md`,
+a role instantiated without `WebSearch`, `WebFetch`, or `Bash`, so this
 corpus plus the project's own legal leaf is its only source of law. A corpus
 gap produces an explicit refusal (`not recorded — needs ingest`), never a
 reconstructed citation. That refusal-on-gap behaviour is only safe because
@@ -248,14 +248,14 @@ reconstructed citation. That refusal-on-gap behaviour is only safe because
 project's `docs/graph/legal/<instrument>.md` from the matching corpus page as
 the orientation layer; the project authors its own application beside it.
 `graft` (Phases 2, 4, 5) refreshes an already-grown project's legal leaves the
-same way. **Currency is never withdrawn, only the citation** — re-confirm
+same way. Currency is never withdrawn, only the citation: re-confirm
 `verified` + `legal_status` before any consequential reliance. Nothing flows
 back except a citation; a superseded entry is never deleted, only marked and
 linked forward.
 
 ### A.4.3 Tool corpus — `tool-corpus/`
 
-Keyed by `tool-corpus/<category>/<name>.md` — one page per tool. Source:
+Keyed by `tool-corpus/<category>/<name>.md`, one page per tool. Source:
 `tool-corpus/README.md`.
 
 | Category (subfolder) | Entry count | Entries |
@@ -265,8 +265,8 @@ Keyed by `tool-corpus/<category>/<name>.md` — one page per tool. Source:
 | **Total** | **7** | |
 
 - **Belongs here:** the capability and the recurring operation; the interface
-  shape (invocation, inputs, outputs) in the general; the **portable
-  implementation when the tool is genuinely stack-neutral** (a self-contained
+  shape (invocation, inputs, outputs) in the general; the portable
+  implementation when the tool is genuinely stack-neutral (a self-contained
   script with no third-party or project dependencies, like the seed's own
   `graph-lint.py` / `agent-lint.py`); the approach/algorithm and idioms;
   conceptual pitfalls.
@@ -295,18 +295,19 @@ Source: `agent-corpus/README.md`.
 | `legal.md` | Reads a verified legal corpus as its only source of law (see A.4.2) |
 | **Total** | **5** |
 
-- These are **OPTIONAL expert roles** — none loaded by default, none named in
+- These are OPTIONAL expert roles: none loaded by default, none named in
   the kernel. A project *may* select one.
 - **Belongs here:** a role's mandate, when to select it, its boundary against
-  the base roster, and its `routing_triggers` exemplars — all statable with
-  **zero framework names**. Every page follows the shape: optional-role
+  the base roster, and its `routing_triggers` exemplars, all statable with
+  zero framework names. Every page follows the shape: optional-role
   blockquote, `## Mandate`, `## When to select`, `## Boundary (does not
   duplicate the base roster)`, `## routing_triggers (exemplars)`.
 - **Stays out:** stack-specific experts (a framework/language/library
-  specialist) — the plant's own, commissioned fresh; roles that duplicate the
-  base roster's mandate — one home per role, extend the existing agent instead.
+  specialist), which are the plant's own and commissioned fresh; roles that
+  duplicate the base roster's mandate, since there is one home per role, so
+  extend the existing agent instead.
 - **Withdraw:** a matching role is instantiated into the project's
-  `docs/graph/agents/` (the harness projections — `.claude/agents/` and kin —
+  `docs/graph/agents/` (the harness projections, `.claude/agents/` and kin,
   are regenerated from it) from `docs/graph/templates/agent.template.md`,
   grounded in the project's pinned facts. The selected role joins the
   *project's* roster (and its kernel table / manifest), never this catalog.
@@ -324,12 +325,12 @@ procedure. Source: `skill-corpus/README.md`.
 | `harden-docker-host.md` | Docker host hardening procedure |
 | **Total** | **4** |
 
-- A **skill is a procedure** (the disciplined sequence for a recurring kind of
+- A skill is a procedure (the disciplined sequence for a recurring kind of
   work), as opposed to an *agent* (a role) or a *tool* (an artifact). The
-  seed's `skills/` holds the fixed **core methodology** every plant inherits;
-  this corpus holds **optional** procedures a project may or may not need.
+  seed's `skills/` holds the fixed core methodology every plant inherits;
+  this corpus holds optional procedures a project may or may not need.
 - **Belongs here:** a procedure statable with no plant identity, whose steps
-  each name the gate they clear, stated by **composing** existing
+  each name the gate they clear, stated by composing existing
   protocols/skills/agents by reference (never restating a discipline the seed
   already owns), recurring across independent project lineages. Naming a
   widely-portable substrate (a container runtime, an SSH transport) is fine when
@@ -355,30 +356,31 @@ projects them onto five host harnesses through per-tool adapters under
 
 The universal source of truth is:
 
-- `core/AGENTS.md` — the kernel.
-- `agents/*.md` — the roster (Claude-Code-shaped frontmatter: `name`,
+- `core/AGENTS.md`: the kernel.
+- `agents/*.md`: the roster (Claude-Code-shaped frontmatter: `name`,
   `description`, `tools`, `model`).
-- `skills/*/SKILL.md` — the skills.
-- `protocols/*.md` — the protocols (each node whose frontmatter declares
+- `skills/*/SKILL.md`: the skills.
+- `protocols/*.md`: the protocols (each node whose frontmatter declares
   `command: true` is projected as a slash command; the user-sovereign
   meta-loop protocols `graft`, `grow`, `harvest`, and the canonize-folded
   `toolcraft`, carry no `command:` field and are commands on no harness).
-- `templates/docs/` — the `docs/graph/` knowledge-graph leaves.
+- `templates/docs/`: the `docs/graph/` knowledge-graph leaves.
 
 `install.sh <tool> [<tool> …]` drops the seed into a target project for one
 tool or all five, copying by default (`--symlink` opts into live seed
-links); machinery re-installs fast-forward — identical files untouched,
-changed ones backed up.
+links); machinery re-installs fast-forward: identical files untouched,
+changed ones backed up. The install also delivers `docs/graph/prose-lint.py`,
+the prose gate under the `humanizer` skill, as fast-forward machinery.
 
 ## B.0 First-class vs supported
 
 Source: `README.md` line 94, `integrations/prime-agent/README.md`,
 `tests/test-full-install.sh`.
 
-- **Claude Code and Prime Agent are the two first-class citizens at full
-  parity** — each ships a progressive-discovery enforcement hook/extension and
+- Claude Code and Prime Agent are the two first-class citizens at full
+  parity: each ships a progressive-discovery enforcement hook/extension and
   is gated by the same `agent-lint.py` CI check.
-- **opencode, Codex, and GitHub Copilot are supported** integrations. They
+- opencode, Codex, and GitHub Copilot are supported integrations. They
   install the same kernel, roster, skills, and commands, but each has stated
   gaps (documented per tool below).
 
@@ -418,19 +420,19 @@ Claude Code reads on every session: `CLAUDE.md` (project memory at repo root),
 - **Enforcement:** `.claude/route-hook.py` runs on `UserPromptSubmit`, runs the
   graph router (`docs/graph/graph-lint.py --plan "<prompt>"`) on the actual
   prompt, and injects the route-first mandate plus the suggested node set as
-  `hookSpecificOutput.additionalContext`. It is **fail-open** (trailing
+  `hookSpecificOutput.additionalContext`. It is fail-open (trailing
   `|| true`; any error degrades to the mandate or silence; a hook must never
   block a prompt). The frontmatter format (`name`, `description`, `tools`,
   `model`) is exactly what Claude Code expects, so the files work unchanged.
 - **Status register at session start:** `.claude/status-hook.py` runs once on
   `SessionStart`, runs `docs/graph/status-register.py --summary` (a frontmatter
-  scan — counts of `open` / `hotfix` / `deferred` items and the oldest of them)
+  scan that counts `open` / `hotfix` / `deferred` items and the oldest of them)
   and injects it as `additionalContext`, so lifecycle debt is in front of the
   model before it plans without a line in any brief. Fail-open; subagents
   receive nothing (hooks do not cross the spawn boundary).
 - **Known gap / sharp edge:** the roster is enumerated when the session
-  **starts**. A roster written mid-session (by an install, graft, or freshly
-  commissioned expert) is on disk but **not spawnable until a new session**, and
+  starts. A roster written mid-session (by an install, graft, or freshly
+  commissioned expert) is on disk but not spawnable until a new session, and
   a session rooted at the seed never carries a plant's roster. The preflight,
   remedy, and recorded fallback are owned by `docs/graph/method/delegation.md`
   (`delegation.harness-registration`).
@@ -462,36 +464,35 @@ SKILL.md`), extensions (`.prime/agent/extensions/*.ts`), and settings
 - **Install:** `install.sh prime-agent`. `AGENTS.md` → `core/AGENTS.md`; roster
   briefs, skills, generated prompts, the `route-extension.ts`, `settings.json`,
   and `APPEND_SYSTEM.md` are placed; `docs/graph/` scaffolded. Prime Agent has
-  **no static roster/protocol/template tool-dirs** — it is graph-only (the test
+  no static roster/protocol/template tool-dirs; it is graph-only (the test
   asserts `.prime/agent/protocols` and `.prime/agent/templates` do NOT exist).
 - **Enforcement:** `route-extension.ts` subscribes to `before_agent_start`,
   runs the same graph router as `route-hook.py`, and injects the route-first
   mandate plus suggested node set via Prime Agent's native extension API. It is
-  **fail-open** and auto-discovered from `.prime/agent/extensions/`.
+  fail-open and auto-discovered from `.prime/agent/extensions/`.
   `status-extension.ts` uses the same event with a process-local first-prompt
-  guard to inject `status-register.py --summary` once per session — the parity
-  of Claude Code's `SessionStart` hook
+  guard to inject `status-register.py --summary` once per session; that is the
+  parity of Claude Code's `SessionStart` hook
   (`settings.json` also lists it for locked-down configs). The kernel's own
   blunt "FIRST MOVE" mandate is the non-extension floor.
 - **Delegation advantage (no registration lag):** Prime Agent has no
   session-start roster enumeration. Delegation is a runtime primitive
   (`await rlm("<brief>")`); the `agents/*.md` install as **brief sources** the
   orchestrator reads and passes into the `rlm()` call. The "installed but not
-  spawnable" trap therefore **does not exist** here — the recorded
-  `delegation.harness-registration` fallback is the normal path, not a
-  workaround.
+  spawnable" trap therefore does not exist here: the recorded
+  `delegation.harness-registration` fallback is the normal path.
 - **Native-execution overlay:** `.prime/agent/APPEND_SYSTEM.md` is appended to
   the system prompt every session (Claude Code never reads it). It maps the
   kernel's discipline onto Prime Agent primitives (fan-out `rlm()` delegation,
   model policy, kernel-run gates, canonize + continual-harness close-out,
   nonblocking `goal` / `rlm_heartbeat` loops). A project can edit it; a global
   `~/.prime/agent/APPEND_SYSTEM.md` is superseded inside the plant.
-- **settings.json:** lists only the seed's own resource dirs with **bare
-  relative names** (`extensions`, `skills`, `prompts`), resolved against
-  `.prime/agent/` — a `.prime/agent/...` prefix would double-nest. No
+- **settings.json:** lists only the seed's own resource dirs with bare
+  relative names (`extensions`, `skills`, `prompts`), resolved against
+  `.prime/agent/`; a `.prime/agent/...` prefix would double-nest. No
   `instructions` key (the kernel auto-loads via the context-file walk).
 - **Known gap (recursion depth):** `RLM_MAX_DEPTH` (default 2) is a
-  **global/session/env dial, NOT settable from project `settings.json`** —
+  global/session/env dial and is not settable from project `settings.json`:
   `getRlmMaxDepth()` reads global settings only, so a committed value is
   silently ignored (`rlmMaxDepth` in project settings is rejected by the CI
   test). Default depth-2 work runs unchanged; to reach the seed's deepest chain
@@ -506,7 +507,7 @@ Source: `integrations/opencode/README.md`, `opencode.json`.
 opencode reads `AGENTS.md` (its preferred filename) or `CLAUDE.md` as fallback,
 `.opencode/agents/*.md`, `.opencode/commands/*.md`,
 `.opencode/skills/<name>/SKILL.md` (with `.claude/skills/` fallbacks), and
-`opencode.json`. All directory locations are discovered **by convention**; the
+`opencode.json`. All directory locations are discovered by convention; the
 schema rejects unknown keys (`additionalProperties: false`). opencode is
 Claude-Code-compatible by default, so a Claude Code project already works in it.
 
@@ -515,13 +516,13 @@ Claude-Code-compatible by default, so a Claude Code project already works in it.
 protocols → `.opencode/commands/*.md`; `templates/docs/` → `docs/graph/`.
 
 - **Install:** `install.sh opencode`. Symlinks (copies on Windows); commands
-  generated; `opencode.json` **copied** (not symlinked) so the project can edit
+  generated; `opencode.json` copied (not symlinked) so the project can edit
   it; `docs/graph/` scaffolded.
 - **Enforcement:** no dedicated hook is shipped. The kernel's FIRST-MOVE
   mandate is the route-first floor.
 - **`opencode.json`** is deliberately almost empty:
   `{"$schema": "https://opencode.ai/config.json", "subagent_depth": 3}`.
-  `subagent_depth: 3` is the load-bearing key — opencode defaults it to **1**
+  `subagent_depth: 3` is the load-bearing key: opencode defaults it to 1
   ("prevents subagents from launching subagents"), which collapses the seed's
   depth-3 delegation chain. The value must equal the highest `max_spawn_depth`
   in `agents/*.md`; `tests/seed-lint.py` enforces that the two agree. Only one
@@ -537,8 +538,8 @@ protocols → `.opencode/commands/*.md`; `templates/docs/` → `docs/graph/`.
   | `tools: [Read, Glob, Grep, Bash]` (list) | `permission: {edit: deny, bash: deny}` (`tools` object deprecated) | a read-only leaf's tool bound is not enforced by the harness |
 
   Neither is fixable in `opencode.json`; the fix is for `install.sh` to emit a
-  **transformed** projection (as it does for Copilot). Until then, treat the
-  model class and leaf tool bound as **brief-enforced** on opencode, per
+  transformed projection (as it does for Copilot). Until then, treat the
+  model class and leaf tool bound as brief-enforced on opencode, per
   `delegation.harness-registration`.
 
 ## B.5 Codex (OpenAI Codex CLI)
@@ -547,8 +548,8 @@ Source: `integrations/codex/README.md`, `config.toml.example`.
 
 Codex reads `AGENTS.md` files (walking up to the project root, merging
 top-down), fallback filenames from `~/.codex/config.toml`, skills registered
-via `[[skills.config]]`, and subagent config via the `[agents]` section — both
-in **global** `~/.codex/config.toml`. Codex does not support `.claude/`-style
+via `[[skills.config]]`, and subagent config via the `[agents]` section, both
+in global `~/.codex/config.toml`. Codex does not support `.claude/`-style
 subagent directories out of the box; project-local agents are surfaced by
 referencing them from `AGENTS.md`.
 
@@ -560,21 +561,21 @@ as graph nodes → `docs/graph/protocols/*.md` (no `.codex/` copy);
 
 - **Install:** `install.sh codex`. Copies by default; prints a reminder of the
   `~/.codex/config.toml` lines to add for skill registration (the installer
-  does **not** modify global user config without consent). `install.sh codex
+  does not modify global user config without consent). `install.sh codex
   --print-config` prints the snippet with paths substituted.
 - **Enforcement:** no dedicated hook. Kernel FIRST-MOVE mandate is the floor.
   Approval modes: `untrusted`, `on-request`, `never`; the `verify` protocol
   needs the agent to run gate commands, so pick `on-request` (interactive) or
   `never` (non-interactive CI with a hardened sandbox).
 - **Known gaps:**
-  - **AGENTS.md size budget** — Codex truncates `AGENTS.md` at
+  - **AGENTS.md size budget:** Codex truncates `AGENTS.md` at
     `project_doc_max_bytes` (default 32 KiB). The seed's `AGENTS.md` is
     intentionally short (~9 KB); depth lives in referenced files. Do not paste
     agent/protocol bodies into `AGENTS.md`. Raise via
     `project_doc_max_bytes = 65536` if needed.
-  - **Skills not auto-discovered** — each must be listed one `[[skills.config]]`
+  - **Skills not auto-discovered:** each must be listed one `[[skills.config]]`
     entry at a time in global config.
-  - **Registration lag** — installed agents and the global-config merge both
+  - **Registration lag:** installed agents and the global-config merge both
     land after the current session began, so nothing is addressable until a new
     session (`delegation.harness-registration` owns the rule and fallback).
 
@@ -599,33 +600,33 @@ agents (`.github/agents/<name>.agent.md`).
 | `protocols/*.md` | `.github/prompts/*.prompt.md` (transformed) |
 | `templates/docs/` | `docs/graph/` (missing leaves added on install) |
 
-- **Install method — transform, not symlink.** Copilot's discovery is
-  filename-driven and its formats are incompatible (different frontmatter keys,
-  different folder expectations), so `install.sh github-copilot` **regenerates**
-  transformed copies. The source of truth stays the universal files; re-run the
-  installer after editing any source. The toolset is derived per agent from
+- **Install method:** transform. Copilot's discovery is filename-driven and
+  its formats are incompatible (different frontmatter keys, different folder
+  expectations), so `install.sh github-copilot` regenerates transformed copies
+  instead of symlinking the source files. The source of truth stays the
+  universal files; re-run the installer after editing any source. The toolset is derived per agent from
   its own `tools:` allowlist (see integrations/github-copilot/README.md for
-  the exact mapping); `model:` and `Task` are not projected — Copilot has
-  no subagent spawning, so coordinator delegation degrades to the single
+  the exact mapping); `model:` and `Task` are not projected, because Copilot
+  has no subagent spawning, so coordinator delegation degrades to the single
   session there.
 - **Enforcement (Agent Hooks, Preview):** the same cross-tool `route-hook.py`
-  runs on `UserPromptSubmit`, emits **JSON** (`hookSpecificOutput.
+  runs on `UserPromptSubmit`, emits JSON (`hookSpecificOutput.
   additionalContext`; plain-text stdout is not injected by Copilot), and uses a
   relative command path (not `$CLAUDE_PROJECT_DIR`, which is Claude-only) so it
   resolves in both hosts. VS Code reads `.claude/settings.json` hooks directly,
   so a project with the Claude Code install picks up the same hook with nothing
   extra; a Copilot-only install drops `.github/hooks/route.json` +
   `.github/hooks/route-hook.py` (and `status.json` + `status-hook.py` for the
-  session-start status register). **Do not keep both configs, or the hook fires
-  twice.** The generated `.github/copilot-instructions.md` also leads with the
+  session-start status register). Do not keep both configs, or the hook fires
+  twice. The generated `.github/copilot-instructions.md` also leads with the
   FIRST-MOVE mandate, so route-first holds even without hooks enabled.
-- **Known gaps:** Agent Hooks are **Preview** (format may change). A regenerated
+- **Known gaps:** Agent Hooks are Preview (format may change). A regenerated
   `.github/agents/*.agent.md` does not appear in the picker of the session that
   regenerated it (registration lag; `delegation.harness-registration`). If
   `.github/copilot-instructions.md` already exists, the installer backs it up
   (`.bak-<timestamp>`), writes the kernel, and prints a diff to merge back. For
   multi-root workspaces enable `chat.useCustomizationsInParentRepositories`. A
-  weak local model may still skip the injected context — the hook guarantees the
+  weak local model may still skip the injected context; the hook guarantees the
   context is present, not that the model reasons over it.
 
 ## B.7 The interchangeable Claude-Code + Prime-Agent shared kernel
@@ -633,7 +634,7 @@ agents (`.github/agents/<name>.agent.md`).
 Source: `integrations/prime-agent/README.md` § "Interchangeable with Claude
 Code in one plant", `tests/test-full-install.sh`.
 
-A single plant is meant to run **either** Claude Code **or** Prime Agent,
+A single plant is meant to run either Claude Code or Prime Agent,
 interchangeably, off the same project knowledge. Install both in one command or
 two, in any order:
 
@@ -645,8 +646,8 @@ What that gives:
 
 - **One shared kernel, no drift.** Claude Code reads `CLAUDE.md`; Prime Agent
   reads `AGENTS.md` (it wins over `CLAUDE.md` in a directory). The installer
-  collapses the two to a **single source of truth**: the first placed is the
-  real file, the second a **project-local relative symlink** to it (`AGENTS.md
+  collapses the two to a single source of truth: the first placed is the
+  real file, the second a project-local relative symlink to it (`AGENTS.md
   -> CLAUDE.md` or the reverse, by install order). Editing the kernel updates
   both harnesses at once. On a platform without symlinks the second file
   degrades to an independent copy (identical at install; keep in sync by hand).
@@ -663,15 +664,15 @@ What that gives:
   (`before_agent_start`). They run in different session types, so there is no
   double-firing.
 
-Switching harness is just opening the plant in the other tool — nothing to
-re-install, nothing to reconcile.
+Switching harness is just opening the plant in the other tool, with nothing to
+re-install and nothing to reconcile.
 
 ## B.8 The CI parity gate
 
 Source: `tests/test-full-install.sh` (run via `bash tests/run.sh`).
 
-`tests/test-full-install.sh` is the gate that makes Prime Agent a **first-class
-citizen and not a doc-only integration**. It asserts:
+`tests/test-full-install.sh` is the gate that makes Prime Agent a first-class
+citizen and not a doc-only integration. It asserts:
 
 - **The SAME `agent-lint.py` runs on Prime Agent's installed roster.** The test
   runs `integrations/claude-code/agent-lint.py --lint --dir <T>/.prime/agent/
@@ -681,7 +682,7 @@ citizen and not a doc-only integration**. It asserts:
   routing set) is the parity proof.
 - **The golden routing corpus is byte-identical across projections.**
   `.prime/agent/agents/_routes.golden.tsv` must `cmp` equal to the one home
-  `agents/_routes.golden.tsv` — no drift.
+  `agents/_routes.golden.tsv`, with no drift.
 - **Prime Agent is graph-only.** `.prime/agent/protocols` and
   `.prime/agent/templates` must NOT exist (stale-dir check).
 - **settings.json hygiene.** Valid JSON; resource entries use bare relative
@@ -689,7 +690,7 @@ citizen and not a doc-only integration**. It asserts:
   appear in project settings (it is silently ignored, so shipping it is a bug).
 - **Coexistence in both orders.** For `claude-code prime-agent` and
   `prime-agent claude-code`, the test asserts both `CLAUDE.md` and `AGENTS.md`
-  exist and are identical, **exactly one** of them is a symlink (the single
+  exist and are identical, exactly one of them is a symlink (the single
   source of truth), that symlink's target is the project-local sibling basename
   (not into the seed), both harness roster roots exist
   (`.claude/agents/00-orchestrator.md`, `.prime/agent/agents/00-orchestrator.md`),

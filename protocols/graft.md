@@ -110,7 +110,7 @@ Two territories, and graft writes to exactly one of them:
   hooks; the shared router script `docs/graph/agent-lint.py` (also projected
   to `.claude/agent-lint.py` on Claude Code installs); and the graph engine
   scripts `docs/graph/{graph-lint.py,spec-lint.py}` (and the config-free
-  `agent-lint.py` / `agnosticism-lint.py` / `status-register.py`, which fast-forward) — preserving the
+  `agent-lint.py` / `agnosticism-lint.py` / `prose-lint.py` / `status-register.py`, which fast-forward) — preserving the
   plant's configured `TEST_GLOBS`. Graft carries the seed's newest version
   of these onto the plant. `_schema.md` and `index.md` are NOT in this
   list — they are project-instantiated and stay the plant's (see the

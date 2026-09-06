@@ -54,6 +54,7 @@ need "$T/.claude/agent-lint.py" claude-code
 need "$T/docs/graph/spec-lint.py" claude-code
 need "$T/docs/graph/graph-lint.py" claude-code
 need "$T/docs/graph/agnosticism-lint.py" claude-code
+need "$T/docs/graph/prose-lint.py" claude-code
 need "$T/docs/graph/status-register.py" claude-code
 need "$T/.claude/status-hook.py" claude-code
 # 7.0.0: a plant's edited .claude/settings.json is BACKED UP on re-install, never
@@ -76,6 +77,9 @@ grep -q '"SessionStart"' "$T/.claude/settings.json" \
 # must be able to run it on its own harvest candidates without a seed checkout.
 python3 "$T/docs/graph/agnosticism-lint.py" --root "$T/docs/graph/protocols" >/dev/null \
   || { echo "installed agnosticism-lint.py does not run in the plant" >&2; exit 1; }
+# the prose floor is DELIVERED too: a plant runs it on its own deliverables.
+python3 "$T/docs/graph/prose-lint.py" --file "$T/docs/graph/skills/humanizer.md" >/dev/null 2>&1; prc=$?
+[ "$prc" -ne 2 ] || { echo "installed prose-lint.py does not run in the plant" >&2; exit 1; }
 need "$T/EXPERT_SEED_INSTALL_PROMPT.md" claude-code
 # 6.0.0: protocols/templates/method are graph-only — no tool-dir copies.
 for gone in .claude/protocols .claude/templates .claude/core; do

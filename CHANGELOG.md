@@ -1,5 +1,26 @@
 # Changelog
 
+## 7.1.0 — humanizer skill, prose posture, prose-lint; documentation rewritten as prose (2026-09-07)
+
+### Added — `skills/humanizer/SKILL.md`, `core/method/prose-posture.md`
+- `skill.humanizer`: the procedure for prose a person reads (documentation, README text, ADR and spec bodies, runbooks, delivery summaries, pull-request descriptions, commit messages): document contract, three execution levels, the five rewriting passes, drafting from notes, verification and the adversarial pass, five output modes (file, embedded, drafting, rewrite, audit), and where it runs (deliver, canonize, adr-writer, spec-author, harvest). Adapted under MIT from the humanizer skill and the human-prose doctrine; notices in `skills/humanizer/LICENSE.upstream`.
+- `method.prose-posture`: the doctrine the skill applies: meaning governs style, the information contract, claim classes, structure carries emphasis, genre profiles for the document types this system produces, voice as a constraint, the diagnostics A–X, the anti-patterns of editing (no synonym roulette, no universal word or punctuation bans, no planted imperfection, no detector chasing, no over-editing stable language), authorship and provenance integrity, decision rules, stop conditions. Registered in `manifest.json` `kernel`; installed to `docs/graph/method/`.
+
+### Added — `tools/prose-lint.py`
+- The mechanical floor under the skill: detectable tells reported as `path:line: §N|letter strong|weak` (humanizer §1–§25 and human-prose A–X), a dash rate per 1,000 words with `--strict` and `--sample <file>`, weak clusters, and `--against <rev>` fact preservation over numbers, headings, inline code, fenced blocks, link targets and requirement levels (must, must not, shall, should, may, never, required, prohibited). Prose only: frontmatter, code, tables, link targets and HTML comments are masked. Exit 0 clean, 1 findings, 2 usage or no file matched.
+- Delivered to plants as `docs/graph/prose-lint.py` (`install.sh`), registered in `tools/graft-audit.py` `DELIVERED_TOOLS`.
+
+### Changed — wiring
+- `protocols/deliver.md` quality bar: the full-form summary, pull-request description and commit message pass the skill in embedded mode with no strong tell. `protocols/canonize.md`: the brief carries a prose pass for what the librarian writes, with `--against HEAD` before graph-lint. `protocols/graft.md`: `prose-lint.py` in the fast-forwarded tool list. `agents/09-docs-librarian.md`: peer and audit question. `skills/adr-writer/SKILL.md` step 12 and `skills/spec-author/SKILL.md` sign-off: the prose pass before the status flips.
+- `manifest.json` skills roster: humanizer (14 skills). `INSTALL.md` count. `templates/knowledge-graph/index.md`: router rows for `skill.humanizer` and `method.prose-posture`.
+
+### Changed — documentation
+- `README.md`, `DOCUMENTATION.md`, `documentation/*.md` rewritten with the skill in file mode: prose only; numbers, headings, code spans, link targets and requirement levels identical to the previous text. Entries for the humanizer skill, the prose posture node and prose-lint added; skill count 14.
+
+### Tests
+- `tests/test-prose-lint.sh` (new, in `tests/run.sh`): clean passes; each planted tell is named with file:line; masked regions are never reported; weak-alone passes, a weak cluster fails; `--strict`, `--sample`; `--against` catches a dropped number, a reworded heading and `must` changed to `should`; a vacuous scan exits 2; `scan()` importable.
+- `tests/test-full-install.sh`, `tests/test-unified-graph-install.sh`: `docs/graph/prose-lint.py` delivered and runnable. `tests/test-graft-tools.sh`: registry mapping for prose-lint.
+
 ## 7.0.1 — the graft audit's kernel check gates, and recognises a recorded kernel boundary (2026-09-07)
 
 ### Changed — `tools/graft-audit.py`

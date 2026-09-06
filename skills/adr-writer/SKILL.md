@@ -14,6 +14,7 @@ requires:
 peers:
   - skill.grill-planner
   - agent.architect
+  - skill.humanizer
 load_when:
   - "write an ADR"
   - "record an architecture decision"
@@ -204,6 +205,10 @@ Two decisions people forget to record because they feel like inaction:
 11. Add a row to grill.md §6 with the ADR's identifier; when the owner
     ratifies, flip the frontmatter to `accepted` with a fresh
     `status_date`.
+12. Before the status flips to `accepted`: the body is prose a person reads
+    in a year. Apply `docs/graph/skills/humanizer.md` in file mode and run
+    `python3 docs/graph/prose-lint.py --file <adr> --against HEAD`; a strong
+    tell or a dropped number, heading, or code span blocks the flip.
 
 ## Anti-patterns
 

@@ -256,6 +256,10 @@ place_graph_scaffold() {
     # (a harvest candidate, a shared component), never to the plant's own
     # project-specific knowledge, where naming the project is correct.
     place_file "$SEED_ROOT/tools/agnosticism-lint.py" "$g/agnosticism-lint.py"
+    # the prose floor under the humanizer skill: detectable AI-writing tells
+    # plus the fact-preservation check (--against <rev>). Config-free, so it
+    # fast-forwards like the router; it applies to prose a person reads.
+    place_file "$SEED_ROOT/tools/prose-lint.py" "$g/prose-lint.py"
     # the lifecycle status register: lint + query over every status-bearing
     # artifact. Config-free (vocabulary is the schema's), so it fast-forwards
     # like the router. A session-start hook injects its --summary once.

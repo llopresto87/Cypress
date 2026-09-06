@@ -27,6 +27,7 @@ requires:
   - skill.knowledge-graph
 peers:
   - agent.research-scout
+  - skill.humanizer
 est_tokens: 1750
 ---
 
@@ -184,6 +185,8 @@ Once per session (and at the end of every protocol), check:
   its steps cite still exist?
 - Does the README match the current entry points?
 - Has the changelog been updated since the last delivery?
+- Does the prose you wrote this session pass `docs/graph/prose-lint.py`
+  (no strong tell; `--against HEAD` reports no dropped fact)?
 
 Flag misses in the delivery summary so the orchestrator can dispatch
 fixes.

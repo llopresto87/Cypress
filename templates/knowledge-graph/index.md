@@ -80,7 +80,8 @@ test-first → verify → canonize → deliver.
 | Project does not exist yet | `protocol.from-scratch` |
 | Loading context minimally | `skill.context-router` |
 | Authoring or linting graph nodes | `skill.knowledge-graph` |
-| Engineering and design posture — the why | `method.engineering-posture` · `method.design-posture` · `method.stewardship-posture` · `method.secrets-posture` · `method.release-posture` · `method.incident-posture` · `method.contract-posture` · `method.vcs-posture` |
+| Engineering and design posture — the why | `method.engineering-posture` · `method.design-posture` · `method.stewardship-posture` · `method.secrets-posture` · `method.release-posture` · `method.incident-posture` · `method.contract-posture` · `method.vcs-posture` · `method.prose-posture` |
+| Prose a person will read: documentation, README, ADR or spec body, runbook, PR text, delivery summary, or a draft that reads like a model wrote it | `skill.humanizer` (procedure) · `method.prose-posture` (doctrine) |
 | Fold lessons into the seed / carry the seed onto a plant | `protocol.harvest` / `protocol.graft` — **user-sovereign, never automatic** |
 
 Specialist agent nodes route via their own triggers; `method.delegation`

@@ -1,7 +1,7 @@
 # CYPRESS
 
-**CYPRESS** — the **C**ontextual **Y**ield **P**rotocol for **R**outed
-**E**xpert **S**eed **S**ystems — is a multi-agent seed for general
+**CYPRESS**, the **C**ontextual **Y**ield **P**rotocol for **R**outed
+**E**xpert **S**eed **S**ystems, is a multi-agent seed for general
 programming projects. Drop it into any codebase and an AI coding agent
 (Claude Code, Prime Agent, opencode, OpenAI Codex, or GitHub Copilot) gains
 a senior
@@ -11,12 +11,12 @@ test-driven discipline by default.
 
 The name is a backronym: the CYPRESS seed still grows and *routes*
 *expert* teams over a project's knowledge graph, *yielding*
-project-specific knowledge as it goes — the branding changed, the
+project-specific knowledge as it goes. The branding changed; the
 behavior did not.
 
-CYPRESS is **language-agnostic, vendor-agnostic, and project-agnostic**.
+CYPRESS is language-agnostic, vendor-agnostic, and project-agnostic.
 It does not assume your stack, your domain, your deployment target, or
-even your repository count — the same method governs a single repo or a
+even your repository count; the same method governs a single repo or a
 program of several. It assumes only that you want serious engineering
 practice on the production path.
 
@@ -28,16 +28,16 @@ practice on the production path.
 > lint-checked against the tree, but for the canonical list read those homes or
 > the router at `docs/graph/index.md`.
 
-- **A bootstrap kernel** (`core/AGENTS.md`) — read by every supported
+- A bootstrap kernel (`core/AGENTS.md`), read by every supported
   AI coding tool on every session. ~7 KB and deliberately nothing more:
   identity, the first move (open the router), the tier table, the eight
-  rules as one-line anchors, and the boundaries. Everything else — every
-  protocol, skill, agent charter, posture principle, and template — is
+  rules as one-line anchors, and the boundaries. Everything else (every
+  protocol, skill, agent charter, posture principle, and template) is
   a routable node inside the plant's `docs/graph/` and activates only
-  when the router resolves it for the task at hand. A hard size budget
-  is enforced by `tests/seed-lint.py`, so kernel growth is a lint
-  failure, not a drift.
-- **An 19-agent team** under `agents/`:
+  when the router resolves it for the task at hand. `tests/seed-lint.py`
+  enforces a hard size budget, so kernel growth is a lint failure, not
+  a drift.
+- A 19-agent team under `agents/`:
   - `orchestrator` (first contact, routing)
   - `architect`, `implementer`, `reviewer`, `tester`
   - `security`, `pentest`, `reliability`, `data-ml`, `product`
@@ -47,7 +47,7 @@ practice on the production path.
   - `legal` (regulatory compliance: corpus-bound reasoning, citation ledger)
   - `multi-agent-architect` (agent-topology design and review)
   - `growth-orchestrator`, `growth-scout`, `seed-installer` (growth DNA)
-- **Named protocols** under `protocols/`:
+- Named protocols under `protocols/`:
   - `grow` (canonical tool-neutral source-to-graph full-growth workflow)
   - `initialize` (optional coding-tool adapter to `grow`)
   - `from-scratch` (9-phase bootstrap)
@@ -57,49 +57,49 @@ practice on the production path.
   - `test-first` (RED-GREEN-REFACTOR-COMMIT)
   - `ingest-library` (build the wiki)
   - `verify` (risk-proportional gate discipline)
-  - `recover` (classified, bounded failure recovery — never an identical
+  - `recover` (classified, bounded failure recovery: never an identical
     retry of a deterministic failure, three attempts, then escalate)
   - `canonize` (the single close-out spawn: persist knowledge AND
     catalog tools in one librarian brief)
   - `toolcraft` (durable-tool doctrine; executes inside the canonize spawn)
-  - `deliver` (cold-pickup summary — compact for T0/T1, full for T2/T3)
+  - `deliver` (cold-pickup summary: compact for T0/T1, full for T2/T3)
   - `harvest` (user-triggered-only cross-project meta-loop: plant → seed)
   - `graft` (user-decided-only cross-project meta-loop: seed → existing plant)
-- **Thirteen composable skills** under `skills/`:
+- Fourteen composable skills under `skills/`:
   - `knowledge-graph`, `context-router`, `validate-knowledge`
-  - `holistic-editing`
+  - `holistic-editing`, `humanizer`
   - `library-wiki`, `research-and-ingest`
   - `spec-author`, `test-first`, `adr-writer`
   - `grill-planner`, `brainstorm-socratic`
   - `from-scratch-bootstrap`, `adopt-existing`
-- **Ten templates** under `templates/`:
-  - `spec.template.md` — executable spec
-  - `grill.template.md` — plan-of-record
-  - `library-page.template.md` — wiki page
-  - `adr.template.md` — decision record
-  - `prompt-contract.template.md` — LLM/VLM prompt
-  - `data-contract.template.md` — dataset contract
-  - `threat-model.template.md` — security threat model
-  - `agent.template.md` — commissioned specialist agent
-  - `skill.template.md` — project-specific procedure
-  - `tool-page.template.md` — durable-tool catalog card
-- **A mechanical agent-router** (`docs/graph/agent-lint.py`, projected
-  to `.claude/agent-lint.py` on Claude Code) — the
+- Ten templates under `templates/`:
+  - `spec.template.md`: executable spec
+  - `grill.template.md`: plan-of-record
+  - `library-page.template.md`: wiki page
+  - `adr.template.md`: decision record
+  - `prompt-contract.template.md`: LLM/VLM prompt
+  - `data-contract.template.md`: dataset contract
+  - `threat-model.template.md`: security threat model
+  - `agent.template.md`: commissioned specialist agent
+  - `skill.template.md`: project-specific procedure
+  - `tool-page.template.md`: durable-tool catalog card
+- A mechanical agent-router (`docs/graph/agent-lint.py`, projected
+  to `.claude/agent-lint.py` on Claude Code), the
   specialist-selection analog of the knowledge router. `--route "<task>"`
   ranks specialists by their `routing_triggers` frontmatter and prints a
   confidence band to cite in the delegation brief; `--lint` validates the
   routing/delegation frontmatter; `--eval` runs a golden routing set.
-  Delegation is **bounded**: only six coordinator agents carry a depth-capped
+  Delegation is bounded: only six coordinator agents carry a depth-capped
   `Task`, every leaf worker is Task-less (the hard recursion cap), and each
   turn ends with a handback payload that attributes the work.
-- **A populated unified `docs/graph/` skeleton** the installer adds to
+- A populated unified `docs/graph/` skeleton the installer adds to
   projects without overwriting existing knowledge.
-- **Per-tool integration layers** under `integrations/` for Claude
-  Code, Prime Agent, opencode, Codex, and GitHub Copilot — each with the
+- Per-tool integration layers under `integrations/` for Claude
+  Code, Prime Agent, opencode, Codex, and GitHub Copilot, each with the
   right config files and tool-specific overlays. Claude Code and Prime
   Agent are first-class citizens at full parity (progressive-discovery
   enforcement hook/extension plus the same `agent-lint.py` CI gate).
-- **`install.sh`** — drops the seed into a target project for any
+- `install.sh` drops the seed into a target project for any
   one tool or all five, copying by default; pass `--symlink` for live
   seed links so updates to the seed propagate.
 
@@ -108,7 +108,7 @@ practice on the production path.
 ### Risk-proportional tiers
 
 Process is proportional to risk, never to habit. Every task is
-classified before acting — **T0** a question (read minimally, answer
+classified before acting: **T0** a question (read minimally, answer
 with citations, no spawn), **T1** a trivial edit with no behavior,
 contract, or spec surface (the one in-session authoring exception, one
 focused gate, compact delivery), **T2** a change already authorized by
@@ -143,32 +143,32 @@ in `protocols/test-first.md`.
 
 A large or multi-repo codebase does not fit in a context window, and an
 agent that has read everything has no signal about what matters. So
-CYPRESS keeps **all maintained project knowledge** at `docs/graph/`:
+CYPRESS keeps all maintained project knowledge at `docs/graph/`:
 Tier-1 routing, Tier-2 fact-owning nodes, and Tier-3 wiki leaves for
 dependencies, sources, product, architecture, APIs, data, prompts,
 evaluations, plans, runbooks, specs, and decisions. Before
 touching code, an agent opens the router (`docs/graph/index.md`),
-resolves the few nodes its task needs — entry nodes plus their required
-closure — and **declares what it loaded and what it deliberately
-skipped**. A task touching one subsystem loads a handful of nodes, not
+resolves the few nodes its task needs (entry nodes plus their required
+closure), and declares what it loaded and what it deliberately
+skipped. A task touching one subsystem loads a handful of nodes, not
 the whole tree.
 
-Two invariants, enforced by `graph-lint.py` (a dependency-free linter
-scaffolded into `docs/graph/`): **one home per fact** — every fact lives
-in exactly one node, everything else links, so it is updated in one
-place instead of drifting — and **every detailed leaf resolves through
-an owning node's edge**. The `context-router` skill walks the graph; the
+`graph-lint.py` (a dependency-free linter scaffolded into
+`docs/graph/`) enforces two invariants. First, one home per fact: every
+fact lives in exactly one node, everything else links, so it is updated in one
+place instead of drifting. Second, every detailed leaf resolves through
+an owning node's edge. The `context-router` skill walks the graph; the
 `knowledge-graph` skill builds it; `validate-knowledge` proves it works
 with clean-context test agents.
 
 ### LLM wiki depth
 
 `docs/graph/libraries/` is a project-local, version-pinned, agent-maintained
-wiki of every external dependency — one specialized Tier-3 collection
+wiki of every external dependency, one specialized Tier-3 collection
 inside the same graph. Other collections provide the same source-backed
 depth for project architecture and operations. Built using the
 [llm-wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f),
-it compounds — every time the project uses a library in a new way, the
+it compounds: every time the project uses a library in a new way, the
 page records the idiom. Agent memory of library APIs is unreliable
 across versions; the wiki is not. Built via the `ingest-library`
 protocol, optionally accelerated by an MCP server like
@@ -178,11 +178,11 @@ protocol, optionally accelerated by an MCP server like
 
 When an agent changes a file, the unit of work is the whole file, not
 the smallest diff. A change is complete only when the file reads as if
-the requirement had always existed — no appended functions, no `_v2`
-wrappers, no dead code left behind. Deleting and consolidating are
-first-class outcomes; an additive-only diff is a red flag. (Append-only
-artifacts — the plan history, ADRs, changelogs — are the deliberate
-exception.) See `skills/holistic-editing/`.
+the requirement had always existed, with no appended functions, no `_v2`
+wrappers, and no dead code left behind. Deleting and consolidating are
+first-class outcomes; an additive-only diff is a red flag. (The deliberate
+exception is append-only artifacts: the plan history, ADRs, and
+changelogs.) See `skills/holistic-editing/`.
 
 ### Plan-of-record
 
@@ -195,8 +195,8 @@ The orchestrator opens it first thing every session.
 The knowledge router mechanized the cheap decision (which docs to read); the
 seed also mechanizes the expensive one (which expert does the work).
 `agent-lint.py --route` gives specialist selection the same executable floor,
-confidence signal, and citable evidence — a heuristic to reason over, never an
-oracle. Only six opus coordinators (orchestrator, multi-agent-architect,
+confidence signal, and citable evidence. It is a heuristic to reason over, never
+an oracle. Only six opus coordinators (orchestrator, multi-agent-architect,
 growth-orchestrator, architect, reviewer, docs-librarian) hold a depth-capped `Task`; the leaves are
 Task-less, which is the one hard, harness-enforced recursion cap. A deliver-time
 `produced_by` assertion (fail-closed) attributes every unit of work back to the
@@ -206,58 +206,59 @@ specialist that produced it. The decisions are recorded as
 ### Reverse loop: canonize + harvest + graft
 
 The seed compounds because knowledge flows back. `canonize` (kernel
-§3.7 + §3.8) is the **single close-out spawn**: one docs-librarian
-brief that makes a task **incomplete** until its knowledge of interest
-— new or changed facts, sharp edges, corrected assumptions, provenance,
-failed `load_when:` triggers — is persisted into `docs/graph/` AND any
+§3.7 + §3.8) is the single close-out spawn: one docs-librarian
+brief that makes a task incomplete until its knowledge of interest
+(new or changed facts, sharp edges, corrected assumptions, provenance,
+failed `load_when:` triggers) is persisted into `docs/graph/` AND any
 durable tool it produced is cataloged in `docs/graph/tools/` (the
-`toolcraft` doctrine), or each is explicitly recorded empty; it runs
+`toolcraft` doctrine), or each is explicitly recorded empty. It runs
 before `deliver`. T0/T1 tasks satisfy it with a one-line self-record. `harvest` is the
-inverse of `grow`: once a plant is mature, its **project-agnostic** lessons
+inverse of `grow`: once a plant is mature, its project-agnostic lessons
 and its version-durable library, legal-citation, tool, expert and skill
 corpora are proposed back into the seed for
-human ratification. Harvest is **user-triggered only — never automatic**;
+human ratification. Harvest is user-triggered only and never automatic;
 the system may at most propose a harvest and stop, and nothing lands until
 you are satisfied. Its standalone entry is `HARVEST_PROMPT.md`.
 
-`graft` is harvest's outward complement — it distributes what harvest collects.
-Where harvest folds one plant's lessons *up into* the seed, graft carries the
-enriched seed *back out onto* an existing, already-grown plant: it
+`graft` is harvest's outward complement: it distributes what harvest
+collects. Where harvest folds one plant's lessons *up into* the seed, graft
+carries the enriched seed *back out onto* an existing, already-grown plant: it
 three-way-reconciles the plant's seed-owned machinery (adopting what advanced,
 preserving the plant's own divergences, re-integrating true conflicts) and
-refreshes the plant's library/legal/tool surfaces from the corpora — additively,
-reversibly, and without touching the plant's own source or authored facts — so
-one plant's harvested fruit reaches all the others. Graft is **user-decided —
-never automatic**; the most the system does is propose one (typically right after
-a harvest) and stop. Its standalone entry is `GRAFT_PROMPT.md`.
+refreshes the plant's library/legal/tool surfaces from the corpora. It does so
+additively, reversibly, and without touching the plant's own source or authored
+facts, so one plant's harvested fruit reaches all the others. Graft is
+user-decided and never automatic; the most the system does is propose one
+(typically right after a harvest) and stop. Its standalone entry is
+`GRAFT_PROMPT.md`.
 
 ### Progressive disclosure
 
 Every file in the seed follows Anthropic's progressive-disclosure
-discipline — tight `name`/`description` frontmatter always in context,
-`<500`-line bodies loaded on trigger, deeper references bundled and
-loaded only when needed — so every supported tool's context budget
+discipline: tight `name`/`description` frontmatter always in context,
+`<500`-line bodies loaded on trigger, and deeper references bundled and
+loaded only when needed, so every supported tool's context budget
 stays honest. The knowledge graph applies the same principle to the
 *project's own* facts, not just the seed's files.
 
 ## Quick start
 
-There is **one entry point**: paste [`INSTALL_PROMPT.md`](INSTALL_PROMPT.md) into
+There is one entry point: paste [`INSTALL_PROMPT.md`](INSTALL_PROMPT.md) into
 an agent-capable chat. It runs one flow in three named phases:
 
-1. **PLACE** — invoke `install.sh` to drop every seed file into the target. This
+1. PLACE: invoke `install.sh` to drop every seed file into the target. This
    phase may run from a chat rooted at the seed (the seed is only a source to
    copy from).
-2. **HAND OFF** — re-enter the prompt in a fresh session **rooted at the target**,
+2. HAND OFF: re-enter the prompt in a fresh session rooted at the target,
    because a harness registers agent types when a session *starts*, so growth
    cannot dispatch specialists by name until then
    (`core/method/delegation.md` → `delegation.harness-registration` owns that
    rule). The installer keeps a target-local mirror named
    `EXPERT_SEED_INSTALL_PROMPT.md` for this re-entry and later refreshes.
-3. **GROW IN FULL** — execute the tool-neutral `grow` protocol end to end under
-   its **completeness contract** (`grow.completeness-contract`): every
+3. GROW IN FULL: execute the tool-neutral `grow` protocol end to end under
+   its completeness contract (`grow.completeness-contract`). Every
    evidence-backed knowledge collection is grown to full depth, proven by a
-   growth completeness ledger — never a skeleton.
+   growth completeness ledger, never a skeleton.
 
 Throughout, the chat stays in orchestration/planning, spawning Sonnet-class
 workers for read-only scouting and Opus-class workers for every authoring, code,
@@ -296,7 +297,7 @@ the way to your first useful slice.
 core/                 Bootstrap kernel (AGENTS.md) + method/ posture nodes
 agents/               19 specialist agents (graph nodes; projected to the harness)
 protocols/            Protocol graph nodes (installed to docs/graph/protocols/)
-skills/               13 skill graph nodes (installed flat to docs/graph/skills/)
+skills/               14 skill graph nodes (installed flat to docs/graph/skills/)
 templates/            Per-artifact templates (spec, grill, ADR, etc.; Tier-3 artifacts)
 templates/knowledge-graph/  Node contract, graph-lint.py, router, node template
 templates/prompts/    Parameterized delegation/investigation/validation briefs
@@ -320,20 +321,19 @@ The installer copies by default. Re-running `install.sh` in the target
 project fast-forwards the machinery (kernel, protocols, agents, skills,
 method, templates, the agent router): identical files are untouched,
 changed ones are backed up first. It does NOT refresh the knowledge-graph
-engines or your instantiated `_schema.md`/`index.md` — those are
+engines or your instantiated `_schema.md`/`index.md`; those are
 add-if-missing, and upgrading a grown plant properly is the graft
 protocol's job (engine reconciliation included). For installs made with
 `--symlink`, edits to the seed propagate automatically.
 
-For a principled, reconciled upgrade of an existing grown plant — one that
-adopts what the seed advanced, preserves the plant's own local machinery
+For a principled, reconciled upgrade of an existing grown plant, use
+the [`graft`](protocols/graft.md) protocol via [`GRAFT_PROMPT.md`](GRAFT_PROMPT.md).
+Graft adopts what the seed advanced, preserves the plant's own local machinery
 divergences (and flags them back as harvest candidates), re-integrates true
 conflicts, and refreshes the plant's library/legal/tool surfaces from the
 enriched corpora while leaving the plant's own source and authored facts
-untouched — use
-the [`graft`](protocols/graft.md) protocol via [`GRAFT_PROMPT.md`](GRAFT_PROMPT.md).
-Graft is how the fruits of a `harvest` reach the plants that were grown before
-the seed learned them.
+untouched. It is how the fruits of a `harvest` reach the plants that were grown
+before the seed learned them.
 
 ## Heritage
 
@@ -346,7 +346,7 @@ disclosure throughout for context efficiency.
 
 ## License
 
-CYPRESS is released under the **MIT License** — see [`LICENSE`](LICENSE).
+CYPRESS is released under the MIT License. See [`LICENSE`](LICENSE).
 
 Copyright (c) 2026 Luigi Lopresto.
 </content>

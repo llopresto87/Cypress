@@ -14,6 +14,7 @@ requires:
 peers:
   - skill.test-first
   - skill.grill-planner
+  - skill.humanizer
 load_when:
   - "write a spec"
   - "define functional contracts"
@@ -161,6 +162,10 @@ A spec is not promoted from `draft` to `active` until:
   data.
 
 Sign-off goes in §0 (Metadata).
+
+Before a spec turns `active`, its prose passes `docs/graph/skills/humanizer.md`
+in file mode and `python3 docs/graph/prose-lint.py --file <spec> --against HEAD`
+reports no strong tell and no dropped contract slug, number, or code span.
 
 The sign-offs are judgment; the coverage is mechanical. Once the spec
 is `active`, its §4 contract slugs are enforced by

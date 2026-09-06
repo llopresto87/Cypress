@@ -171,7 +171,7 @@ The installer prints a path to a generated config snippet:
 ```
 
 Merge that file into your global `~/.codex/config.toml` to register
-all thirteen skills. The installer does not modify your global config
+all fourteen skills. The installer does not modify your global config
 without consent.
 
 ## Upgrading

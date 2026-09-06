@@ -224,6 +224,8 @@ got = m.seed_source_for("docs/graph/status-register.py", seed)
 want = seed / "tools/status-register.py"
 assert got == want, f"seed_source_for -> {got!r}, want {want!r}"
 assert "status-register.py" in m.SCAFFOLD_FILES, m.SCAFFOLD_FILES
+assert m.seed_source_for("docs/graph/prose-lint.py", seed) == seed / "tools/prose-lint.py"
+assert "prose-lint.py" in m.SCAFFOLD_FILES, m.SCAFFOLD_FILES
 assert m.is_seed_owned_graph_path("docs/graph/status-register.py")
 PY
 cp "$TMP/seed/tools/status-register.py" "$TMP/plant/docs/graph/status-register.py.bak-$DATE-000000"

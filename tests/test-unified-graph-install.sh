@@ -18,6 +18,7 @@ required=(
   docs/graph/_schema.md
   docs/graph/graph-lint.py
   docs/graph/agnosticism-lint.py
+  docs/graph/prose-lint.py
   docs/graph/status-register.py
   docs/graph/nodes
   docs/graph/libraries/index.md

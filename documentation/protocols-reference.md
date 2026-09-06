@@ -74,7 +74,7 @@ The **default T3 sequence** (kernel §2), verbatim:
 The `*` marks steps that run only when they apply: brainstorm only when
 the goal is vague; ingest-library only when a new dependency is
 introduced. `implement` is the coding step; the seed drives it through
-`test-first`, not a separate `implement` protocol file.
+`test-first`, and ships no separate `implement` protocol file.
 
 How the protocols chain:
 
@@ -92,7 +92,7 @@ How the protocols chain:
    **toolcraft** doctrine in the same pass.
 8. **deliver** ends every session in a cold-pickup state, after the
    canonize close-out has run for T2/T3.
-9. **recover** is entered on any failure — the failure-discipline
+9. **recover** is entered on any failure: the failure-discipline
    detour off any step.
 10. **from-scratch** wraps the whole sequence for a brand-new project
     (nine phases). **grow** / **harvest** / **graft** / **initialize**
@@ -114,7 +114,7 @@ the seed meta-loop (grow, harvest, graft, initialize).
 
 *Source: `protocols/brainstorm.md`*
 
-- **id:** `protocol.brainstorm` — tier 2
+- **id:** `protocol.brainstorm`, tier 2
 - **owns:** `brainstorm.entry-and-exit`, `brainstorm.output-landing`
 - **requires:** `skill.brainstorm-socratic`
 - **peers:** `protocol.specify`, `protocol.grill`, `protocol.from-scratch`
@@ -127,7 +127,7 @@ the seed meta-loop (grow, harvest, graft, initialize).
 Use brainstorm when the goal is vague, contested, or under-specified.
 The deliverable is a precise problem statement, a primary user, a first
 useful slice, the constraints, and a shaped set of options. You do not
-write code and you do not pick a stack in brainstorm — you converge.
+write code and you do not pick a stack in brainstorm; you converge.
 
 ### Entry conditions
 
@@ -181,7 +181,7 @@ If the project has no grill.md yet, create one from the template
 
 *Source: `protocols/specify.md`*
 
-- **id:** `protocol.specify` — tier 2
+- **id:** `protocol.specify`, tier 2
 - **owns:** `rule.spec`, `specify.flow`, `specify.revision-discipline`
 - **requires:** —
 - **peers:** `protocol.brainstorm`, `protocol.grill`
@@ -199,8 +199,8 @@ section of `docs/graph/templates/spec.template.md`, signed off by
 product, architect, and tester.
 
 This node owns **the spec rule** (`rule.spec`): specs are the source of
-truth for *behavior*. Every non-trivial behavior — feature, endpoint,
-job, significant function, LLM/VLM interaction — has a spec, written
+truth for *behavior*. Every non-trivial behavior (feature, endpoint,
+job, significant function, LLM/VLM interaction) has a spec, written
 before the code, with stable section numbers. Specs are executable:
 every functional contract maps to at least one test (the test-first
 rule enforces this). Superseded specs stay on disk with status
@@ -232,7 +232,7 @@ One of:
 This workflow requires spawned clean-context workers. If the host
 cannot spawn them with the required model classes, stop and report the
 unsupported operating model; do not simulate the personas. A specialist
-the host has no *type* for is a different case — see
+the host has no *type* for is a different case; see
 `delegation.harness-registration`.
 
 ### The spec sections (§1–§12)
@@ -259,23 +259,23 @@ revision discipline below.)
 
 ### Workflow (`specify.flow`)
 
-1. **Allocate an identifier** — `SPEC-NNNN-short-slug`; find the next
+1. Allocate an identifier: `SPEC-NNNN-short-slug`. Find the next
    free number in `docs/graph/specs/index.md`. File path:
    `docs/graph/specs/SPEC-NNNN-<slug>.md`.
-2. **Draft from the template** — fill §0–§11 above.
-3. **Testability review** — before the spec leaves `draft`, the tester
+2. Draft from the template: fill §0–§11 above.
+3. Testability review. Before the spec leaves `draft`, the tester
    checks: is every contract observable from outside? is every §9
    assertion measurable? are the data shapes concrete enough for a
    fixture? are the failure modes triggerable in a test environment? A
-   spec that cannot be tested is a description, not a spec — it goes
+   spec that cannot be tested is a description, not a spec; it goes
    back to the architect.
-4. **Security review (if applicable)** — for auth, secrets, payments,
+4. Security review (if applicable). For auth, secrets, payments,
    file uploads, external integrations, or LLM/VLM behaviors that act
    on data, security adds abuse cases as failure modes or
    non-functional requirements.
-5. **Promote to active** — on sign-off, change status `draft` →
+5. Promote to active: on sign-off, change status `draft` →
    `active`, add the index row, link from grill.md §3 and §9.
-6. **Hand off to grill** — the plan implements the contracts in
+6. Hand off to grill: the plan implements the contracts in
    increments each small enough to be one RED-GREEN-REFACTOR cycle.
 
 ### Revision discipline (`specify.revision-discipline`)
@@ -284,9 +284,9 @@ When behavior changes:
 1. Read the existing spec.
 2. Decide: *clarification* (same meaning, said better) or *change*
    (behavior itself is different)?
-3. **Clarifications:** edit in place; add a row to the spec's §12
+3. Clarifications: edit in place; add a row to the spec's §12
    Changelog.
-4. **Changes:** copy the spec to a new identifier, mark the old
+4. Changes: copy the spec to a new identifier, mark the old
    `superseded` with a link forward, write the new spec, update
    everything that depended on the old.
 
@@ -310,7 +310,7 @@ changed and why."
 - The spec describes the implementation, not behavior.
 - No failure modes section (half a spec).
 - No examples.
-- Spec written after the code — mark it `back-written`.
+- Spec written after the code: mark it `back-written`.
 
 ---
 
@@ -318,7 +318,7 @@ changed and why."
 
 *Source: `protocols/grill.md`*
 
-- **id:** `protocol.grill` — tier 2
+- **id:** `protocol.grill`, tier 2
 - **owns:** `rule.grill`, `grill.flow`, `grill.increment-shape`
 - **requires:** —
 - **peers:** `protocol.specify`, `protocol.test-first`
@@ -343,7 +343,7 @@ assumption breaks. Append to its changelog; strike through stale
 claims, never silently rewrite.
 
 "Grill" is the discipline of grilling the *plan* until it is ready to
-implement — pressing the assumptions until solid, the design until
+implement: pressing the assumptions until solid, the design until
 coherent, the plan until each increment is one RED-GREEN-REFACTOR cycle
 (or a small handful).
 
@@ -360,32 +360,32 @@ together.
 
 ### Workflow (`grill.flow`) — the grill.md sections
 
-1. **Open or create grill.md** from the template.
-2. **§1 Artifact Discovery** — read what exists: files, docs, tests,
+1. Open or create grill.md from the template.
+2. §1 Artifact Discovery. Read what exists: files, docs, tests,
    ADRs, specs, wikified libraries, recorded constraints. Cite paths;
    do not guess.
-3. **§5 Research Summary** — hand to `research-scout` for every
+3. §5 Research Summary: hand to `research-scout` for every
    library/spec/API the plan depends on; ensure a
    `docs/graph/libraries/` page exists; if not, run `ingest-library`.
-4. **§6 Decisions** — explicit choices, cited evidence, tagged
+4. §6 Decisions: explicit choices, cited evidence, tagged
    reversibility. Non-obvious decisions get an ADR (delegate to
    `architect`). A recurring operation is decided as a **durable tool**
    (an increment in §9 with a stable interface and a test), and
    `docs/graph/tools/` is checked for an existing one (§3.8).
-5. **§8 Architecture Plan** — boundary diagram and contracts, aligned
+5. §8 Architecture Plan: boundary diagram and contracts, aligned
    with the spec's §4.
-6. **§9 Implementation Plan** — slice the work into increments (see
+6. §9 Implementation Plan: slice the work into increments (see
    increment shape below).
-7. **§10 Verification Plan** — which gates run for which increments.
-8. **§11 Risks and Mitigations** — hand to `security` and
+7. §10 Verification Plan: which gates run for which increments.
+8. §11 Risks and Mitigations: hand to `security` and
    `reliability` as relevant.
-9. **§12 Open Questions** — each "figure out later" becomes a row with
+9. §12 Open Questions: each "figure out later" becomes a row with
    a named owner and resolution path.
-10. **§13 Done Criteria** — objective completion conditions aligned
+10. §13 Done Criteria: objective completion conditions aligned
     with the spec's §9 acceptance criteria.
-11. **§14 Recommended Next Step** — a single action, usually "enter
+11. §14 Recommended Next Step: a single action, usually "enter
     test-first for increment 1".
-12. **§15 Changelog** — an entry describing this grill session.
+12. §15 Changelog: an entry describing this grill session.
 
 The grill protocol is a *pass*: iterate it twice if research changes
 the architecture, and record what changed in the changelog.
@@ -397,8 +397,8 @@ contract(s) it satisfies, the files touched, the tests to write (in
 RED), the behavior added, the gate that proves it done, the rollback
 path, the effort (roughly one RED-GREEN-REFACTOR cycle), and its
 dependencies. The protocol gives a full worked example ("Increment 3 —
-Persist submissions"). If an increment does not fit this shape — vague
-tests, no spec contract, no rollback — it is not ready. Re-slice.
+Persist submissions"). If an increment does not fit this shape (vague
+tests, no spec contract, no rollback), it is not ready. Re-slice.
 
 ### Spec ↔ plan alignment check
 
@@ -423,9 +423,9 @@ This check is what makes spec-driven development actually spec-driven.
 
 ### Anti-patterns
 
-- Skipping §1 ("I know what's in the repo") — read it.
-- Skipping §5 ("I know the library") — the wiki often says otherwise.
-- Increments that touch ten files and add three behaviors — slice them.
+- Skipping §1 ("I know what's in the repo"): read it.
+- Skipping §5 ("I know the library"): the wiki often says otherwise.
+- Increments that touch ten files and add three behaviors: slice them.
 - A risk table where every row says "manageable".
 - A "next step" that is actually a list.
 - A plan with no spec link (that is a wish).
@@ -436,7 +436,7 @@ This check is what makes spec-driven development actually spec-driven.
 
 *Source: `protocols/test-first.md`*
 
-- **id:** `protocol.test-first` — tier 2
+- **id:** `protocol.test-first`, tier 2
 - **owns:** `rule.test-first`, `test-first.cycle`, `test-first.characterize-first`
 - **requires:** —
 - **peers:** `protocol.verify`, `protocol.specify`, `skill.test-first`, `skill.holistic-editing`
@@ -476,7 +476,7 @@ If any is missing, back up to the protocol that produces it (`specify`,
 On legacy or adopted code with no spec and no test, you cannot turn a
 contract into a failing test, because nobody wrote down what the code
 is *supposed* to do. Before you change such code, write a
-**characterization test** that pins what it does *today* — bug
+**characterization test** that pins what it does *today*, bug
 included. Run it; it passes (it describes reality). Name it so no one
 mistakes it for a correctness claim (`characterizes_…`, not
 `should_…`), and note any believed-wrong behavior in the docstring,
@@ -488,8 +488,8 @@ intended, and that failure is your RED.
 
 For each increment in the plan:
 
-**RED — write the failing test**
-1. Identify the spec contract(s) — each is one Given/When/Then in the
+**RED: write the failing test**
+1. Identify the spec contract(s): each is one Given/When/Then in the
    spec §4.
 2. Write test(s) exercising each contract; names:
    `test_<spec_id>_<contract_slug>`. The test name names the contract.
@@ -497,28 +497,28 @@ For each increment in the plan:
    from a missing import or a wrong function name is *not* RED; a
    failure because the *behavior* is missing *is* RED.
 4. If you cannot get RED for the right reason, the test or contract is
-   wrong — fix it.
+   wrong; fix it.
 5. Update spec §10 (Test mapping): status `red`.
 
-*Inherited suites — prove RED by mutation.* A green suite you inherited
+*Inherited suites: prove RED by mutation.* A green suite you inherited
 is untrusted; you have never watched it fail. Before you rely on it,
 deliberately reintroduce the historical defect a test claims to guard
 against, confirm the suite fails for *that specific reason*, then
 revert. Only a green you have seen turn red and back is a trusted
 green.
 
-**GREEN — minimum behavior, integrated**
+**GREEN: minimum behavior, integrated**
 1. Add the minimum *new behavior* that turns RED to GREEN. "Minimum" is
-   about behavior, not diff size: no speculative generality, no
-   expansion into unrelated code — but integrate it into the file's
-   existing design, do not append at the bottom.
+   about behavior, not diff size: no speculative generality and no
+   expansion into unrelated code. But integrate it into the file's
+   existing design; do not append at the bottom.
 2. Run the test; confirm it passes.
 3. Run the surrounding/module tests; confirm nothing else broke. A new
    green that turns another green red is a regression and must be fixed
    before proceeding.
 4. Update spec §10: status `green`.
 
-**REFACTOR — integrate cleanly, suite green**
+**REFACTOR: integrate cleanly, suite green**
 1. Look at the code you wrote and the code around it.
 2. Remove duplication, delete dead branches, fix names/docstrings, move
    code to the right module. When done, the file reads as if the
@@ -526,12 +526,12 @@ green.
    `docs/graph/skills/holistic-editing.md`).
 3. Run tests after each refactor; the suite stays green.
 4. On a pure addition to green fields the refactor may be trivial. But
-   **when you touched existing code, REFACTOR is not optional** — an
+   **when you touched existing code, REFACTOR is not optional**: an
    additive-only diff that left duplication or dead code behind is
-   incomplete. (Append-only artifacts — grill.md history, ADRs — are
-   the deliberate exception; there you supersede.)
+   incomplete. (Append-only artifacts such as grill.md history and ADRs
+   are the deliberate exception; there you supersede.)
 
-**COMMIT — record the increment**
+**COMMIT: record the increment**
 1. Append to grill.md §15 (Changelog): increment title, spec contracts
    covered, files touched, tests added, gates run/passed.
 2. Update spec §10 with actual test names and file paths.
@@ -556,13 +556,14 @@ an ADR.
 ### Bug fixes
 
 A bug is a spec the codebase failed to honor (or a missing spec):
-1. If the violated contract already exists — write a regression test
-   against the buggy code, see it fail, fix, see it pass. If not — the
-   spec was incomplete; run `specify` first, then write the regression.
+1. If the violated contract already exists, write a regression test
+   against the buggy code, see it fail, fix, see it pass. If it does
+   not, the spec was incomplete; run `specify` first, then write the
+   regression.
 2. A bug confirmed but not yet fixable is encoded as an
    explicitly-named, intentionally-failing test inside the regular
-   suite, documenting the root cause — the debt stays visible on every
-   run.
+   suite, documenting the root cause, so the debt stays visible on
+   every run.
 3. The regression test stays in the suite forever.
 
 ### Pure refactor (no behavior change)
@@ -571,9 +572,9 @@ A bug is a spec the codebase failed to honor (or a missing spec):
 2. You write no new test (no new behavior).
 3. You change the code.
 4. Existing tests must still pass.
-5. If any breaks: either (a) behavior changed accidentally — roll back,
-   or (b) the test tested implementation not behavior — fix the test or
-   back up to `specify` if the refactor changes the spec.
+5. If any breaks: either (a) behavior changed accidentally, so roll
+   back, or (b) the test tested implementation not behavior, so fix
+   the test or back up to `specify` if the refactor changes the spec.
 
 ### Migration safety gate
 
@@ -586,14 +587,14 @@ production.
 
 ### Exceptions to test-first (recorded in grill.md §9 with rationale and date)
 
-- **Throwaway prototypes** to learn a library — mark them; do not
+- Throwaway prototypes to learn a library: mark them; do not
   merge.
-- **Pure configuration changes** with no behavior to verify.
-- **Type-only changes** where the type checker is the verifier.
-- **Generated code** where the generator itself is tested.
+- Pure configuration changes with no behavior to verify.
+- Type-only changes where the type checker is the verifier.
+- Generated code where the generator itself is tested.
 
 Reaching for "exception" frequently is a signal that test-first is not
-landing — surface it to the orchestrator.
+landing; surface it to the orchestrator.
 
 ### Exit conditions
 
@@ -612,7 +613,7 @@ landing — surface it to the orchestrator.
 - One giant test per increment.
 - Testing through (e2e for a pure function; a unit test that mocks
   three layers).
-- Mocking everything — mocks for the object under test or its immediate
+- Mocking everything: mocks for the object under test or its immediate
   collaborators are a smell.
 - Assuming dev-machine green means CI green (CI image may lack a
   browser binary or runtime).
@@ -623,7 +624,7 @@ landing — surface it to the orchestrator.
 
 *Source: `protocols/verify.md`*
 
-- **id:** `protocol.verify` — tier 2
+- **id:** `protocol.verify`, tier 2
 - **owns:** `rule.verify`, `verify.gate-states`, `verify.risk-depth`
 - **requires:** —
 - **peers:** `protocol.test-first`, `protocol.recover`, `skill.validate-knowledge`
@@ -641,15 +642,15 @@ their outcomes, recorded in `docs/graph/runbooks/verification.md`.
 This node owns **the verify rule** (`rule.verify`): gates pass, and
 mean something, before merge. No work is "done" until the gates
 proportional to its blast radius have run, with commands and results
-recorded. A gate not yet available is recorded **absent** with a date —
-never silently dropped, never faked green. A gate that runs but asserts
-nothing is a **green lie** — worse than a missing gate, because it is
-trusted.
+recorded. A gate not yet available is recorded **absent** with a date,
+never silently dropped and never faked green. A gate that runs but
+asserts nothing is a **green lie**, worse than a missing gate, because
+it is trusted.
 
-**Actor:** `tester` runs the gates (`reliability` for operational and
+Actor: `tester` runs the gates (`reliability` for operational and
 deploy gates) in its own context and reports outcomes in its handback;
 the runbook entry is part of that worker's write scope. The grill.md
-§15 record (step 8) is the session's — the plan-of-record is a
+§15 record (step 8) is the session's; the plan-of-record is a
 session-owned operational artifact.
 
 ### The gate menu
@@ -667,7 +668,7 @@ observable behavior beyond an enumerated intended-delta list); Build
 rules); Smoke test (deployed system minimally alive); Evaluation suite
 (LLM/VLM behavior); Performance test (latency/throughput/memory); Graph
 lint (duplicate facts, broken edges, leaked pins); Spec-coverage lint
-(live spec contracts with no test — `python3 docs/graph/spec-lint.py`);
+(live spec contracts with no test; `python3 docs/graph/spec-lint.py`);
 Manual review (non-automatable judgment).
 
 ### Risk-proportional gate depth (`verify.risk-depth`)
@@ -685,32 +686,32 @@ change class, not the gate list:
 
 Escalate one row the moment a "local" change turns out to touch a
 shared surface. Never run the broad battery on a provably local change
-out of ritual — wall-clock and attention are budget too.
+out of ritual; wall-clock and attention are budget too.
 
 ### Workflow
 
-1. **Pick the applicable gates** from the risk table and the gate menu.
+1. Pick the applicable gates from the risk table and the gate menu.
    Order by risk: gate the assumption most capable of invalidating the
    increment first. Prefer one high-information gate over overlapping
    ones. Verification stops when the mandatory gates pass and the
-   remaining uncertainty cannot materially change the result — not when
+   remaining uncertainty cannot materially change the result, not when
    every possible gate has run.
-2. **Run them cheapest first** (formatter, linter, type check); proceed
+2. Run them cheapest first (formatter, linter, type check); proceed
    to slower gates only if cheap ones pass.
-3. **Record outcomes** in `docs/graph/runbooks/verification.md` under
+3. Record outcomes in `docs/graph/runbooks/verification.md` under
    the increment heading, with the command and result per gate.
 
 ### The three gate states (`verify.gate-states`)
 
-Report every gate as exactly one of three states — silence must never
+Report every gate as exactly one of three states; silence must never
 imply a pass:
 
-- **executed** — actually run this pass, with command and result. If it
+- executed: actually run this pass, with command and result. If it
   fails, fix the increment or hand it back; do not record a fake PASS.
-- **discovered** — known to exist (read in source/config) but not run
+- discovered: known to exist (read in source/config) but not run
   this pass. Record it "DISCOVERED, not run (date) — reason" so it can
   never be mistaken for an executed pass.
-- **absent** — does not exist yet. Record it with a date, a reason, and
+- absent: does not exist yet. Record it with a date, a reason, and
   the owner who will add it.
 
 Adopting a codebase with no gate infrastructure is not an excuse to
@@ -720,14 +721,14 @@ indistinguishable from one nobody checked.
 
 **The green-lie clause.** The three states are honest only if an
 executed PASS means something. A test command with no tests, a linter
-over an empty set, a type check with everything untyped — these "pass"
+over an empty set, a type check with everything untyped: these "pass"
 and mean nothing. Do not cite a vacuous pass; do not wire such a gate
 into CI. Land the real check first, then add the gate in a later
-increment — never both in the same one. A gate that executes and
+increment, never both in the same one. A gate that executes and
 asserts can still lie by not discriminating: a recorded verdict uses
 only the words the check proved. An invocation-*count* assertion on a
 mock passes vacuously the moment the code stops calling that
-collaborator for a wrong reason — assert on the actual destination,
+collaborator for a wrong reason; assert on the actual destination,
 content, or argument instead.
 
 ### Knowledge layer, LLM features, grill.md
@@ -751,17 +752,17 @@ CI in the next reliability-owned increment.
 
 "It builds and the tests pass" is not the gate; **unchanged behavior**
 is. Two disciplines:
-- **Characterize first, then change** — capture a baseline oracle of
+- Characterize first, then change. Capture a baseline oracle of
   current observable behavior (endpoint responses, persisted shapes,
   message payloads, computed outputs), normalized to mask only volatile
   leaves. This is the RED spine: it must pass on the *pre-change* code.
-- **Diff against the baseline; allow only an enumerated intended-delta
-  list** — the gate passes only if everything matches the baseline
+- Diff against the baseline; allow only an enumerated intended-delta
+  list. The gate passes only if everything matches the baseline
   except an explicit list of intended deltas, each row naming the
   change and why it is a deliberate strengthening. Byte-identical output
   is the wrong contract; observable-behavior preservation is. An
   unexplained diff, or an additive-only edit to the pinning tests, is a
-  red flag to justify — never a silent re-baseline.
+  red flag to justify, never a silent re-baseline.
 
 ### Tolerating a known defect (the self-expiring exception)
 
@@ -778,7 +779,7 @@ so the debt is mechanically visible and self-retiring.
 - "All gates green, but I disabled the flaky one."
 - "Tests pass locally, didn't run them in CI." If the gate isn't in
   CI, it isn't a gate; it's a hope.
-- "We don't have time for the eval suite this increment." — that is the
+- "We don't have time for the eval suite this increment." That is the
   signal to merge a smaller increment, not to skip the gate.
 
 ---
@@ -787,7 +788,7 @@ so the debt is mechanically visible and self-retiring.
 
 *Source: `protocols/recover.md`*
 
-- **id:** `protocol.recover` — tier 2
+- **id:** `protocol.recover`, tier 2
 - **owns:** `recover.failure-classes`, `recover.three-attempt-boundary`
 - **requires:** —
 - **peers:** `protocol.deliver`, `protocol.grill`
@@ -798,7 +799,7 @@ so the debt is mechanically visible and self-retiring.
 ### What it does
 
 Recover is the failure discipline. Failure is a normal output of real
-work; the waste comes from *unclassified* reaction to it — hammering an
+work; the waste comes from *unclassified* reaction to it: hammering an
 identical retry at a deterministic error, widening context because a
 brief was ambiguous, quietly swallowing a red gate. Recover makes the
 response as disciplined as the work: **classify first, then take the
@@ -825,8 +826,8 @@ ones.
 | **Unregistered** | The specialist exists on disk but the host has no such type: the session predates the projection, or it is rooted at the seed rather than the plant. Reads like Systemic — it is not. | Apply `delegation.harness-registration`: preflight, re-enter rooted at the plant, or role-emulate **and record it**. Do not stop the line, and do not commission a second definition. |
 
 An intermittent or probabilistic failure is confirmed **fixed** only on
-mechanism-level evidence — a trace proving the causal path is genuinely
-absent — never on a lower observed failure rate. Any incidental change
+mechanism-level evidence (a trace proving the causal path is genuinely
+absent), never on a lower observed failure rate. Any incidental change
 that reduces *exposure* to the defect buys a better rate while fixing
 nothing. Corollary: sequence any exposure-reducing change **after** the
 diagnostic evidence is captured, never before.
@@ -836,7 +837,7 @@ diagnostic evidence is captured, never before.
 Across ALL strategies combined, a unit of work gets **three attempts**.
 The fourth move is always escalation: record the failure-class history
 in grill.md §12, mark the increment WIP in the delivery, and hand the
-decision to the human with the evidence — never a fourth quiet attempt,
+decision to the human with the evidence: never a fourth quiet attempt,
 never a fallback chain that consumes growing resources on a falling
 probability of success.
 
@@ -858,7 +859,7 @@ not from zero.
 ### Visibility doctrine
 
 - A failure that changed the plan is recorded in grill.md §12 with its
-  class — including recoveries that *worked* (a transient retry that
+  class, including recoveries that *worked* (a transient retry that
   succeeded is telemetry; two of them are a reliability signal).
 - The delivery's session metrics count retries by class; `harvest`
   mines them for systemic seed lessons.
@@ -880,7 +881,7 @@ not from zero.
 
 *Source: `protocols/canonize.md`*
 
-- **id:** `protocol.canonize` — tier 2
+- **id:** `protocol.canonize`, tier 2
 - **owns:** `rule.canonize`, `canonize.close-out-flow`
 - **requires:** `protocol.toolcraft`
 - **peers:** `protocol.deliver`, `protocol.harvest`
@@ -895,67 +896,68 @@ Canonize is the single end-of-task close-out spawn. This node owns
 captured before a task is done. Work generates knowledge and
 capabilities; if either lives only in the session transcript, it dies
 with the session and the next agent rediscovers or rewrites it the hard
-way. Every T2/T3 task ends with **one** docs-librarian spawn — the
-close-out — that persists into `docs/graph/` the facts, sharp edges,
+way. Every T2/T3 task ends with **one** docs-librarian spawn, the
+close-out, that persists into `docs/graph/` the facts, sharp edges,
 corrected assumptions, provenance, and missed `load_when:` triggers the
 work surfaced, and catalogs its durable tools (the toolcraft rule) in
-the same pass. Two doctrines, one execution — a second spawn with the
+the same pass. Two doctrines, one execution: a second spawn with the
 same bootstrap and lint run would be pure coordination waste.
 
-The librarian owns the graph's **fact-bearing surfaces** — nodes, wiki
-pages, the tool catalog — and one-home-per-fact; the session never
+The librarian owns the graph's **fact-bearing surfaces** (nodes, wiki
+pages, the tool catalog) and one-home-per-fact; the session never
 edits those. The session-owned operational artifacts under the same
-root — grill.md, the verification runbook, changelog.md — are the
+root (grill.md, the verification runbook, changelog.md) are the
 deliberate exception: the session writes them directly.
 
 ### When to invoke
 
-- At the completion of every **Tier 2/3** task or increment, before
+- At the completion of every Tier 2/3 task or increment, before
   `deliver`.
 - Whenever the work surfaced a fact the graph does not own,
   contradicted one it does, or produced a tool a future session will
   run again.
-- **Tier 0/1 shortcut:** a question answered or a trivial
+- Tier 0/1 shortcut: a question answered or a trivial
   non-behavioral edit needs no spawn. The session writes one line in
-  the delivery — "canonize: nothing of interest / no tool, because …" —
+  the delivery, "canonize: nothing of interest / no tool, because …",
   and that satisfies the fail-closed doctrine. If a T0/T1 task *did*
   surface something durable, it escalates: spawn the librarian.
 
 ### What the one brief carries
 
-**Knowledge candidates (§3.7):** a new or changed fact about the
+Knowledge candidates (§3.7): a new or changed fact about the
 project's structure or capability; a sharp edge that bit (and the tell
 to spot it next time); a corrected assumption; provenance for a claim;
 a `load_when:` trigger that should have matched and didn't; a new
 library idiom or pitfall.
 
-**Tool candidates (§3.8, toolcraft owns the doctrine):** any durable
-tool the work produced — recurs across sessions, stable interface,
-test-authorized, lives in the repo. Named in `tools_built` on handbacks.
+Tool candidates (§3.8, toolcraft owns the doctrine): any durable
+tool the work produced (recurs across sessions, stable interface,
+test-authorized, lives in the repo). Named in `tools_built` on
+handbacks.
 
-**Skill candidates (§3.8):** any repeatable multi-step procedure a
-future session will walk again — named in `skills_built`, or the same
+Skill candidates (§3.8): any repeatable multi-step procedure a
+future session will walk again, named in `skills_built`, or the same
 sequence appearing a third time. The brief forwards candidates; the
 librarian authors them.
 
-**Neither list includes:** ephemeral scratch, secrets/credentials,
+Neither list includes: ephemeral scratch, secrets/credentials,
 production or personal data, speculation (write "not recorded"),
 project-specific material aimed at the seed (that is `harvest`'s
 agnosticism gate), throwaway prototypes or genuine one-offs.
 
 ### The flow — one spawn (`canonize.close-out-flow`)
 
-1. **Assemble candidates** from the finished work and the workers'
+1. Assemble candidates from the finished work and the workers'
    handback payloads: facts with evidence, tools with path + entry
    point + invocation + covering test.
-2. **Spawn the docs-librarian once** (Opus-class; it owns
+2. Spawn the docs-librarian once (Opus-class; it owns
    `docs/graph/`) with a brief embedding the canonical block from
    `docs/graph/templates/prompts/graph-session-bootstrap.md` plus both
    candidate lists. This spawn is fail-closed. If the host has no such
-   type, apply `delegation.harness-registration` — skipping the
+   type, apply `delegation.harness-registration`; skipping the
    close-out because the type would not resolve is not an option.
-3. **The librarian persists and catalogs in one pass:** each fact lands
-   in exactly one node's `owns:` (dedupe — update, don't duplicate);
+3. The librarian persists and catalogs in one pass. Each fact lands
+   in exactly one node's `owns:` (dedupe: update, don't duplicate);
    each tool gets `tool-page.template.md` filled into
    `docs/graph/tools/<name>.md` plus an index row and an `artifacts:`
    edge (checking `tool-corpus/` first where the corpus is available);
@@ -963,19 +965,22 @@ agnosticism gate), throwaway prototypes or genuine one-offs.
    node `docs/graph/skills/<name>.md` plus the projection in each harness
    dir the plant uses (checking `skill-corpus/` first where available,
    deduping, composing existing disciplines by reference); failed
-   `load_when:` triggers are sharpened. One `graph-lint` run confirms
-   the graph stays clean.
-4. **Confirm or record-empty.** The librarian hands back nodes/fact-keys
+   `load_when:` triggers are sharpened. Every node body, runbook, or
+   README paragraph the librarian writes or refreshes this spawn gets a
+   prose pass: `humanizer` in file mode, then `python3
+   docs/graph/prose-lint.py --file <path> --against HEAD` before the
+   graph-lint pass. One `graph-lint` run confirms the graph stays clean.
+4. Confirm or record-empty. The librarian hands back nodes/fact-keys
    touched and tool cards written, or an explicit "nothing of interest,
-   because …" / "no durable tool, because …" — with the lint result.
+   because …" / "no durable tool, because …", with the lint result.
 
 ### Fail-closed doctrine
 
 A task is **not complete** until its knowledge is canonized, any durable
 tool cataloged, and any recurring procedure crystallized into a project
-skill — or each explicitly recorded empty with a reason. An uncaptured
+skill, or each explicitly recorded empty with a reason. An uncaptured
 fact is a silent knowledge leak; an uncaptured tool or procedure is a
-silent capability leak — the same failure class as a green lie (§3.5).
+silent capability leak, the same failure class as a green lie (§3.5).
 `deliver` (§3.6) does not sign off until this close-out has run (or the
 T0/T1 self-record line is present).
 
@@ -984,7 +989,7 @@ T0/T1 self-record line is present).
 - `deliver` produces the human-facing cold-pickup **summary**; canonize
   persists the machine-facing **graph knowledge and tool catalog**.
 - `toolcraft` owns the *doctrine* of what counts as a durable tool;
-  canonize owns the *execution* — there is no separate toolcraft spawn.
+  canonize owns the *execution*; there is no separate toolcraft spawn.
 - `harvest` folds **project-agnostic** lessons and tools into the seed,
   user-triggered only; canonize keeps **project-specific** knowledge in
   the plant. What harvest's agnosticism gate rejects still belongs here.
@@ -996,7 +1001,7 @@ T0/T1 self-record line is present).
 - Spawn the librarian twice for one task's close-out.
 - Write the graph's fact-bearing surfaces from the main session.
 - Canonize secrets, production data, or speculation.
-- Duplicate a fact or tool card that already has a home — update it in
+- Duplicate a fact or tool card that already has a home: update it in
   place.
 
 ---
@@ -1005,7 +1010,7 @@ T0/T1 self-record line is present).
 
 *Source: `protocols/toolcraft.md`*
 
-- **id:** `protocol.toolcraft` — tier 2 (note: no `command: true`)
+- **id:** `protocol.toolcraft`, tier 2 (note: no `command: true`)
 - **owns:** `rule.toolcraft`, `toolcraft.durability-criteria`
 - **requires:** —
 - **peers:** `protocol.canonize`, `protocol.grill`, `protocol.harvest`
@@ -1019,42 +1024,42 @@ Toolcraft is the doctrine (kernel §3.8) of durable, tested, cataloged
 tools versus throwaway scripts. This node owns **the toolcraft rule**
 (`rule.toolcraft`): durable tools compound; throwaway scripts are
 rework. When an operation will recur across independent sessions, the
-unit of work is a **durable, tested tool** with a stable interface —
+unit of work is a **durable, tested tool** with a stable interface,
 designed so at plan time, named in `tools_built` on every handback, and
 cataloged in `docs/graph/tools/` by the librarian inside the close-out
 spawn. Genuine one-offs and throwaway prototypes stay disposable.
 
-**This file owns the doctrine only.** The execution — cataloging the
-tool — happens inside the single close-out spawn defined in
+**This file owns the doctrine only.** The execution (cataloging the tool)
+happens inside the single close-out spawn defined in
 `docs/graph/protocols/canonize.md`, in the same librarian brief that
 persists the task's knowledge. There is no separate toolcraft spawn.
 
 ### What counts as a durable tool (`toolcraft.durability-criteria`)
 
 Catalog a piece of real code that:
-- **recurs across independent sessions** — an agent, expert, or skill
+- recurs across independent sessions: an agent, expert, or skill
   will plausibly run it again (the trigger is recurrence, not size);
-- has a **stable interface** — a named entry point, defined inputs and
+- has a stable interface: a named entry point, defined inputs and
   outputs, a documented invocation, not a copy-pasted snippet;
-- is **authorized by a test** (§3.4) — at least one test pins what it
+- is authorized by a test (§3.4): at least one test pins what it
   does, so a future session can trust and change it safely;
-- **lives in the repository**, committed where the project keeps its
+- lives in the repository, committed where the project keeps its
   tooling, reachable by path.
 
 ### What stays disposable
 
-- a **genuine one-off** — needed once, no future task plausibly repeats
+- a genuine one-off: needed once, no future task plausibly repeats
   it;
-- a **throwaway prototype** to learn a library or shape — the blessed
+- a throwaway prototype to learn a library or shape, the blessed
   carve-out of the test-first rule; recorded, if anywhere, as an
   exception in grill.md §9;
 - anything embedding secrets, credentials, or production/personal data;
-- project-specific tooling aimed at the seed — that is `harvest`'s
+- project-specific tooling aimed at the seed; that is `harvest`'s
   agnosticism gate.
 
 ### The procedure sibling — durable skills
 
-A tool is durable *code*; a **skill** is a durable *procedure* — the
+A tool is durable *code*; a **skill** is a durable *procedure*: the
 disciplined sequence for a recurring kind of work (a migration recipe,
 a release choreography, a data-reset dance). Same recurrence trigger,
 different shape: if the recurring thing is code that runs, it is a tool;
@@ -1093,7 +1098,7 @@ the seed's `tool-corpus/` and **project-agnostic** skills into
 
 *Source: `protocols/deliver.md`*
 
-- **id:** `protocol.deliver` — tier 2
+- **id:** `protocol.deliver`, tier 2
 - **owns:** `rule.deliver`, `deliver.forms`, `deliver.attribution-assertion`
 - **requires:** —
 - **peers:** `protocol.canonize`, `protocol.recover`
@@ -1106,12 +1111,12 @@ the seed's `tool-corpus/` and **project-agnostic** skills into
 Every session ends with delivery. The deliverable is a concise summary
 that lets another agent (or the same agent next time) pick the project
 up cold. This node owns **the deliver rule** (`rule.deliver`): every
-session ends with a delivery, compact for T0/T1, full for T2/T3 — files
+session ends with a delivery, compact for T0/T1, full for T2/T3: files
 changed, routing attribution, docs updated, decisions, gates with
 outcomes, limitations, and **one** recommended next step. The
 deliver-time attribution assertion is fail-closed: a unit of work with
 no `produced_by` is a BLOCK. A session without a delivery summary is
-paused, not finished — never skip this protocol.
+paused, not finished; never skip this protocol.
 
 ### When to invoke
 
@@ -1128,7 +1133,7 @@ question answered with citations"); gates (the one focused check, or
 "n/a (read-only)"); canonize ("nothing of interest / no tool, because
 …", or "escalated to close-out"); next (one step, or "none"). A T1 edit
 that turns out to touch behavior, a contract, or spec-covered code is
-not T1 — reclassify and take the full path. The compact form appends to
+not T1; reclassify and take the full path. The compact form appends to
 grill.md §15 only when it changed a file.
 
 **Full form (Tier 2/3).** Runs after the `canonize` close-out spawn has
@@ -1144,7 +1149,7 @@ The **Session metrics** block is five lines of telemetry, not prose:
 Tier (with any reclassification), Spawns, Route bands + overrides,
 Retries by class (per `recover`), Gates run/failed-then-fixed. This is
 what lets the system improve on evidence instead of anecdote: `harvest`
-aggregates these across deliveries to find *systemic* seed problems —
+aggregates these across deliveries to find *systemic* seed problems:
 recurring misroutes mean a specialist's `routing_triggers` need
 sharpening, frequent tier reclassifications mean the tier edges need
 tuning, repeated transient retries in one area is a reliability signal.
@@ -1154,8 +1159,10 @@ tuning, repeated transient retries in one area is a reliability signal.
 A delivery that passes names every changed file; names every
 documentation update with its location; cites verification outcomes (no
 hand-waving); lists every limitation explicitly; recommends exactly one
-next step; and is the smallest summary that permits correct use and
-appropriate trust (material caveats in, process narration out —
+next step; reads as the writer, in that the full-form summary and any
+pull-request description or commit message pass the `humanizer` skill in
+embedded mode with no strong tell from `docs/graph/prose-lint.py`; and is
+the smallest summary that permits correct use and appropriate trust (material caveats in, process narration out;
 proportionate communication). A delivery that fails says "implemented
 X" without naming files, "tests pass" without naming gates, "do
 whatever feels right" or five options, hides limitations behind
@@ -1168,23 +1175,23 @@ Before sign-off, attribute every unit of work to the specialist that
 produced it, reading `produced_by` and `route_evidence` from the
 handback payloads. Then:
 
-- **Missing `produced_by` on any unit of work → BLOCK.**
-- **Out-of-domain authoring → FLAG** — a `produced_by` specialist whose
+- Missing `produced_by` on any unit of work → BLOCK.
+- Out-of-domain authoring → FLAG: a `produced_by` specialist whose
   `routing_triggers` do not cover the work it authored.
-- **Unexplained generic-role override → FLAG** — a HIGH band for
+- Unexplained generic-role override → FLAG: a HIGH band for
   specialist X but the work was produced by a generic role or a
   different specialist with no recorded rationale.
-- **Role emulation → FLAG unless declared** — a worker running as a
+- Role emulation → FLAG unless declared: a worker running as a
   generic type wearing a specialist's role must carry
   `harness_override: role-emulated (<reason>)` in its handback. Report
   the count in the delivery.
 
-This assertion runs in the top session at `deliver` — the one place a
+This assertion runs in the top session at `deliver`, the one place a
 hook can reach, since subagent hooks do not fire. A top-session Stop
 hook that greps the delivery for attributions stays **deliberately
 unwired until this plant's real deliveries carry `produced_by`** (a
 gate landed before the thing it checks either checks nothing or blocks
-everything — kernel §3.5, the green-lie rule). Once deliveries carry the
+everything; kernel §3.5, the green-lie rule). Once deliveries carry the
 field, wire it warn-first, then block.
 
 ### The cold-pickup test
@@ -1203,7 +1210,7 @@ can't, the delivery isn't done.
 - Deliver with libraries used but not wikified.
 - Deliver a unit of work with no `produced_by`.
 - Deliver without updating grill.md.
-- Deliver a half-finished increment as done — mark it WIP and recommend
+- Deliver a half-finished increment as done: mark it WIP and recommend
   resuming it as the next step.
 
 ---
@@ -1212,7 +1219,7 @@ can't, the delivery isn't done.
 
 *Source: `protocols/ingest-library.md`*
 
-- **id:** `protocol.ingest-library` — tier 2
+- **id:** `protocol.ingest-library`, tier 2
 - **owns:** `ingest-library.flow`, `ingest-library.corpus-first`
 - **requires:** —
 - **peers:** `protocol.harvest`, `skill.library-wiki`, `skill.research-and-ingest`
@@ -1240,32 +1247,32 @@ wikified library.
 
 ### Cast
 
-- `research-scout` — retrieval and normalization.
-- `docs-librarian` — finalizes the page and updates indexes.
-- `architect` (lightly) — confirms the dependency fits the architecture
+- `research-scout`: retrieval and normalization.
+- `docs-librarian`: finalizes the page and updates indexes.
+- `architect` (lightly): confirms the dependency fits the architecture
   before the page is committed as authoritative.
 
 ### Workflow (`ingest-library.flow`)
 
 **0. Withdraw from the seed corpus first (`ingest-library.corpus-first`).**
 Once you know the library's exact name, version, and ecosystem, check
-the seed's library-documentation corpus **first** — the pages `harvest`
+the seed's library-documentation corpus **first**: the pages `harvest`
 folded back from earlier plants
 (`library-corpus/<ecosystem>/<library>.md`, keyed by library and **not
 by version**). If the page exists, seed
 `docs/graph/libraries/<name>.md` from it, then pin and validate the
 version-specific layer (API deltas, deprecations, CVEs) against this
-project's actual lockfile version from upstream — the corpus never
+project's actual lockfile version from upstream; the corpus never
 substitutes for the pin check. If the corpus page is absent, ingest from
 upstream as usual; the fresh page's version-durable surface becomes a
 harvest candidate. Reuse the corpus, re-download only the
 version-specific delta.
 
-**1. Identify** — canonical name; the exact version to pin (not
+**1. Identify**: canonical name; the exact version to pin (not
 "latest"); ecosystem (npm, PyPI, Go module, Maven, OS package, container
 image, IETF RFC, etc.); why this project needs it (one sentence for §2).
 
-**2. Retrieve** — `research-scout` fetches release notes/CHANGELOG,
+**2. Retrieve**: `research-scout` fetches release notes/CHANGELOG,
 getting-started/quickstart, public API reference, security policy /
 advisories, license file, and for LLM/VLM libraries: pricing-relevant
 behavior, rate limits, structured-output features, safety policies.
@@ -1273,30 +1280,30 @@ Snapshot raw content to `docs/graph/sources/raw/` (when license
 permits) and produce normalized clean Markdown in
 `docs/graph/sources/normalized/`.
 
-**3. Inspect (read the code, not just the docs)** — scan the public API
+**3. Inspect (read the code, not just the docs)**: scan the public API
 surface, `examples/`, and the maintenance signal (recent commit dates,
 open-issue volume). Note any doc/code discrepancy.
 
-**4. Compose the wiki page** — from
+**4. Compose the wiki page**: from
 `docs/graph/templates/library-page.template.md`. The template owns the
 section list; fill every section. Two constraints the template cannot
 enforce: the API-surface section covers only the slice this project
 actually uses (start small); and for a private dependency, record that
 resolution needs registry credentials in the build/CI environment. The
-page is brutally specific to this project — only the parts the project
+page is brutally specific to this project: only the parts the project
 uses or must be careful about.
 
-**5. Register** — `docs-librarian` adds the page to the libraries index
+**5. Register**: `docs-librarian` adds the page to the libraries index
 (Library | Version | Page | Used by | Maintenance | License | Last
 reviewed) and updates the sources index.
 
-**6. Validate** — one of `architect`/`implementer`/`tester` writes a
+**6. Validate**: one of `architect`/`implementer`/`tester` writes a
 tiny smoke test that imports/uses the library at the pinned version, to
 confirm the snippet works; `security` skims for advisories affecting the
-pin. If the smoke test fails, the page is wrong — fix it before calling
+pin. If the smoke test fails, the page is wrong; fix it before calling
 the protocol done.
 
-**7. Notify grill.md** — add the wikified library to §5 (Research
+**7. Notify grill.md**: add the wikified library to §5 (Research
 Summary) and §6 (Decisions Made).
 
 ### Refresh (vs new ingest)
@@ -1317,7 +1324,7 @@ and pitfalls; run the smoke test at the new version.
 - A trivial transitive dependency the codebase doesn't directly use
   (wikify what you import, not every package in `node_modules`).
 - A platform feature part of the runtime itself (stdlib, browser
-  built-ins) — cover those in
+  built-ins); cover those in
   `docs/graph/best-practices/engineering.md`.
 
 ---
@@ -1326,7 +1333,7 @@ and pitfalls; run the smoke test at the new version.
 
 *Source: `protocols/from-scratch.md`*
 
-- **id:** `protocol.from-scratch` — tier 2
+- **id:** `protocol.from-scratch`, tier 2
 - **owns:** `from-scratch.phases`
 - **requires:** —
 - **peers:** `protocol.brainstorm`, `protocol.ingest-library`, `skill.from-scratch-bootstrap`
@@ -1336,7 +1343,7 @@ and pitfalls; run the smoke test at the new version.
 
 ### What it does
 
-Use from-scratch when the project does not yet exist — the repo is empty
+Use from-scratch when the project does not yet exist: the repo is empty
 or near-empty (no `docs/`, no `README.md`, no `grill.md`). Your job is
 to turn a goal into a project another agent can pick up cold. This
 protocol is bigger than the others because the first day matters
@@ -1351,14 +1358,14 @@ disproportionately. Do not skip steps.
 
 ### The nine phases (`from-scratch.phases`)
 
-**Phase 1 — Brainstorm (Socratic).** Adopt
+**Phase 1: Brainstorm (Socratic).** Adopt
 `docs/graph/protocols/brainstorm.md`; do not skip. Output: a precise
 problem statement, the primary user, the first useful slice, the
 constraints, and at least three shaped options. Ask at most three
 questions per exchange; if you cannot reach precision in three turns,
 write what you have, mark gaps as assumptions in grill.md, and proceed.
 
-**Phase 2 — Project skeleton.** Once the brainstorm converges, create
+**Phase 2: Project skeleton.** Once the brainstorm converges, create
 the skeleton: `AGENTS.md` (← `core/AGENTS.md`, the universal kernel),
 `CLAUDE.md` (symlink or copy), `.github/copilot-instructions.md`,
 `docs/graph/agents/` (the team, projected to `.claude/agents/`),
@@ -1371,31 +1378,31 @@ the skeleton: `AGENTS.md` (← `core/AGENTS.md`, the universal kernel),
 per-tool overlay into `.claude/`, `.prime/agent/`, `.opencode/`,
 `.codex/`, or `.github/`, plus the knowledge-graph scaffold. That
 overlay includes the specialist roster this protocol later dispatches
-**by name** — settle spawnability before the first named hand-off
-(`delegation.harness-registration`). A new graph starts tiny — one root
-node — and grows a node per subsystem as the architecture (Phase 5)
+**by name**; settle spawnability before the first named hand-off
+(`delegation.harness-registration`). A new graph starts tiny (one root
+node) and grows a node per subsystem as the architecture (Phase 5)
 takes shape.
 
-**Phase 3 — Initial grill.md.** Open grill.md from the template; fill at
+**Phase 3: Initial grill.md.** Open grill.md from the template; fill at
 minimum §0 (Metadata: project name, date, phase "bootstrapping"), §2
 (problem statement), §3 (User Goal: primary user, outcome, acceptance
 criteria for the first slice, non-goals), §4 (Operating Constraints),
 §7 (three+ shaped options), §11 (Risks), §12 (Open Questions), §14
 ("Phase 4 — research and library ingest").
 
-**Phase 4 — Research and library ingest.** Hand off to `research-scout`
-with candidate technologies, and run `ingest-library` for each — its
+**Phase 4: Research and library ingest.** Hand off to `research-scout`
+with candidate technologies, and run `ingest-library` for each; its
 steps own the existence, version, and maintenance-signal checks and
 produce the wiki page. This phase often updates the shaped options
 (§5/§7) as candidates turn out unmaintained, worse-licensed, or
 sharp-edged.
 
-**Phase 5 — Architecture decision.** Hand off to `architect`: pick the
+**Phase 5: Architecture decision.** Hand off to `architect`: pick the
 option using constraints and research; write
 `docs/graph/decisions/adr-0001-initial-architecture.md`; update grill.md
 §6 (Decisions) and §8 (Architecture Plan); draft the boundary diagram.
 
-**Phase 6 — Verification baseline.** Before any feature code: pick the
+**Phase 6: Verification baseline.** Before any feature code: pick the
 formatter, linter, type checker, and **test framework** (wikify each via
 `research-scout`); write `runbooks/local-development.md` with exact
 install/run commands and `runbooks/verification.md` with exact gate
@@ -1404,15 +1411,15 @@ gate command must pass on a clean checkout before any feature. A project
 that cannot run its gates from a clean checkout, or has no test
 framework configured, is not yet bootstrapped.
 
-**Phase 7 — Specify the first useful slice.** Run `specify` to produce
+**Phase 7: Specify the first useful slice.** Run `specify` to produce
 `docs/graph/specs/SPEC-0001-<slug>.md` covering §1–§10; get the
 sign-offs (product ✓, architect ✓, tester ✓).
 
-**Phase 8 — Test-first the first useful slice.** Run `test-first` for
+**Phase 8: Test-first the first useful slice.** Run `test-first` for
 each contract in SPEC-0001: RED → GREEN → REFACTOR → COMMIT for each
 increment in grill.md §9.
 
-**Phase 9 — Deliver.** Run `deliver`. The recommended next step is the
+**Phase 9: Deliver.** Run `deliver`. The recommended next step is the
 second slice or the next-most-valuable item from the roadmap in
 `docs/graph/product/requirements.md`.
 
@@ -1429,13 +1436,13 @@ second slice or the next-most-valuable item from the roadmap in
 
 ### Common ways to fail this protocol
 
-The catalog of how a first day silently goes wrong — feature code before
+The catalog of how a first day silently goes wrong (feature code before
 the gates run, code where the spec belongs, a skipped brainstorm, a
-stack picked from memory, a bootstrap with no test framework — is the
+stack picked from memory, a bootstrap with no test framework) is the
 honesty discipline owned by `skill.from-scratch-bootstrap`; read it
 alongside this protocol. A structural rule the skill cannot own: **each
-phase adopts a sub-protocol that carries its own failure modes** — read
-the phase's protocol, never a summary of it.
+phase adopts a sub-protocol that carries its own failure modes**, so
+read the phase's protocol, never a summary of it.
 
 ---
 
@@ -1445,8 +1452,8 @@ These four protocols are the seed's own life cycle across projects.
 `grow` runs the seed *into* a new project. `harvest` runs a mature
 project *back into* the seed. `graft` carries the enriched seed
 *outward onto* an existing plant. `initialize` is a thin coding-tool
-adapter to `grow`. `harvest` and `graft` are user-sovereign — never
-entered unprompted.
+adapter to `grow`. `harvest` and `graft` are user-sovereign and are
+never entered unprompted.
 
 ---
 
@@ -1454,7 +1461,7 @@ entered unprompted.
 
 *Source: `protocols/grow.md`*
 
-- **id:** `protocol.grow` — tier 2 (note: no `command: true`)
+- **id:** `protocol.grow`, tier 2 (note: no `command: true`)
 - **owns:** `grow.worker-topology`, `grow.growth-flow`, `grow.completeness-contract`
 - **requires:** —
 - **peers:** `protocol.harvest`, `protocol.graft`, `protocol.initialize`,
@@ -1480,15 +1487,15 @@ does not perform the delegated investigation or authoring itself.
 1. Spawn clean-context **Sonnet-class** scouts for read-only source
    discovery, partitioned by real subsystem, repository, or evidence
    domain. Use the growth-scout brief, whose collection target IS the
-   evidence-ledger schema — demand paths/symbols for every claim. Each
+   evidence-ledger schema: demand paths/symbols for every claim. Each
    scout persists ONE ledger per boundary to the plant's gitignored
    seed-organ scratch, `.cypress/growth/<slug>.ledger.md` (never under
-   `docs/graph/` — the ledger is growth-time feedstock, not plant
+   `docs/graph/`; the ledger is growth-time feedstock, not plant
    knowledge).
 2. Reconcile the per-boundary ledgers into a coherent evidence set in
    the orchestration plane, cross-referencing the persisted ledgers.
    Resolve contradictions with another bounded scout; do not guess.
-3. Spawn Sonnet-class **`research-scout`s** for the external evidence —
+3. Spawn Sonnet-class **`research-scout`s** for the external evidence,
    the mandatory flip side of step 1. Mine the reconciled ledgers' §5
    for every architecturally significant / cross-cutting / security- or
    operations-critical dependency, and the evidence set for external
@@ -1498,7 +1505,7 @@ does not perform the delegated investigation or authoring itself.
    that spawns only growth-scouts has gathered half its evidence.
 4. Spawn **Opus-class** authors for every written artifact or deep
    synthesis, using the growth-author brief that CONSUMES the ledger and
-   maps each section to its deliverable — authors build on cited
+   maps each section to its deliverable: authors build on cited
    evidence, never a fresh reading invented from scratch.
 5. Spawn separate **Opus-class** reviewers/validators for graph
    integrity, source fidelity, navigation, and false-premise rejection.
@@ -1512,7 +1519,7 @@ before source reads or writes. Route each spawn with
 `python3 docs/graph/agent-lint.py --route "<exact delegated task>"` and
 cite the ranked specialist and confidence band. Delegating workers spawn
 only from their `delegates_to` allowlist and under their
-`max_spawn_depth` cap — the deepest legal chain is orchestrator →
+`max_spawn_depth` cap; the deepest legal chain is orchestrator →
 multi-agent-architect → architect → leaf (depth 3). Leaf workers carry
 no `Task` tool: at an out-of-domain boundary they STOP and return the
 handback payload naming the next specialist. Every worker ends its turn
@@ -1520,11 +1527,11 @@ with a payload carrying `produced_by` and `route_evidence`.
 
 Two host conditions look alike and only one is fatal. If the host
 cannot spawn clean-context workers with selectable model classes, stop
-and report that this host cannot execute the seed's operating model — do
-not silently collapse delegated work into the main chat. If it can spawn
-but a named specialist is **not registered as a spawnable type** (the
+and report that this host cannot execute the seed's operating model;
+do not silently collapse delegated work into the main chat. If it can
+spawn but a named specialist is **not registered as a spawnable type** (the
 ordinary state of the session that just installed the roster), that is
-*not* fatal — preflight and apply `delegation.harness-registration`.
+*not* fatal: preflight and apply `delegation.harness-registration`.
 
 ### Boundaries
 
@@ -1564,8 +1571,8 @@ elsewhere.
 
 ### The completeness contract (`grow.completeness-contract`)
 
-Growth is **complete or it is not done**. A first growth that stops at a
-skeleton — a root node, a router, and a handful of leaves — is a failed
+Growth is **complete or it is not done**. A first growth that stops at
+a skeleton (a root node, a router, and a handful of leaves) is a failed
 growth reported as a success, and it is the single most common way this
 protocol is mis-run. The contract is binding on whatever model
 orchestrates growth; it does not soften with model size, context
@@ -1576,14 +1583,14 @@ upgrade.
 collection, growth produces one of exactly two outcomes, never a third
 silent one:
 
-- *Covered* — authored to the full depth its evidence supports: every
+- *Covered*. Authored to the full depth its evidence supports: every
   real subsystem has a node; every direct dependency is indexed and each
   architecturally-significant one has a project-specific page grounded
   in retrieved upstream documentation (topology step 3); every
   observed route/message/job/entity/migration/config/AI-contract is
   homed; every leaf is connected to its owning node by an `artifacts:`
   edge; the router resolves representative tasks to small closures.
-- *Absent with a named reason* — the collection is empty because the
+- *Absent with a named reason*: the collection is empty because the
   **source has no such evidence**, and that absence is stated explicitly
   in the completeness ledger with the paths searched.
 
@@ -1595,8 +1602,8 @@ coverage; only authored, source-cited content is.
 
 **The growth completeness ledger.** Before declaring growth done, the
 orchestration chat fills one ledger (schema:
-`growth-completeness-ledger.md`) — a table over every collection in the
-unified shape plus every subsystem/stack/cross-cutting node — marking
+`growth-completeness-ledger.md`), a table over every collection in the
+unified shape plus every subsystem/stack/cross-cutting node, marking
 each `covered` (with counts and strongest source paths), `absent` (with
 reason and searched paths), or a named `unknown` blocker. It is a
 seed-organ transient written to the plant's gitignored
@@ -1606,15 +1613,15 @@ block and is what Phase 6 validation audits against.
 
 **No early stop.** Growth ends when the ledger shows every collection is
 covered-to-evidence or absent-with-reason, Phase 6's independent
-validation passes, and the maturity test is met against the graph — not
+validation passes, and the maturity test is met against the graph, not
 against the file tree. A fatal host limit, a two-round non-converging
 finding (`recover`), or an unclosable evidence gap is delivered as an
-honest `unknown` with the blocker named — the one legitimate way a
+honest `unknown` with the blocker named: the one legitimate way a
 collection stays uncovered, and it is reported, never silent.
 
 ### The growth flow (`grow.growth-flow`) — six phases
 
-**Phase 1 — Detect and plan.** Determine whether the target is
+**Phase 1: Detect and plan.** Determine whether the target is
 empty/new, one repository, a workspace/monorepo, or an umbrella of
 sibling repos. Stay inside user-placed scope. Record each repo's path,
 branch, HEAD, worktree state, role, manifests, and stack without
@@ -1627,7 +1634,7 @@ tests/CI/operations, dependencies, prompts/evaluations). If there is no
 executable project evidence, route through `from-scratch` for intent
 discovery while retaining this worker/model policy and graph root.
 
-**Phase 2 — Scout and establish evidence.** Spawn the planned
+**Phase 2: Scout and establish evidence.** Spawn the planned
 Sonnet-class scouts on the growth-scout brief. Each writes ONE ledger to
 `.cypress/growth/<slug>.ledger.md` with terse factual claims and exact
 paths/symbols for: bootstrap/entry points/packages/imports;
@@ -1641,13 +1648,13 @@ Reconcile across them; resolve contradictions by scoped follow-up
 scouting; record which ledger owns each contested fact. Then run the
 external pass (topology step 3) before authoring: dispatch
 `research-scout`s for every §5-flagged significant dependency and the
-external standards the project is held to; record the dispatch list —
+external standards the project is held to; record the dispatch list.
 Phase 4's `libraries/` rich pages, normative `best-practices/`, and
 `sources/` are authored FROM this material, and the completeness ledger
 audits against it. No web retrieval on the host is a named blocker,
 never a silent thin index.
 
-**Phase 3 — Model and author through Opus workers.** Configure
+**Phase 3: Model and author through Opus workers.** Configure
 `ROOT_ID` and `KINDS` in `graph-lint.py`. Brief Opus-class authors on
 the growth-author brief, pointing each at the ledgers it reads, the
 exact output paths, schema, relevant existing nodes, and exclusive write
@@ -1659,33 +1666,33 @@ unique `owns`, minimal acyclic `requires`, explicit boundary `peers`,
 concrete `load_when`, honest token cost, source paths, and leaf edges.
 Never ask two authors to own overlapping facts or files.
 
-**Phase 4 — Grow source-backed leaves.** Through bounded Opus authors,
+**Phase 4: Grow source-backed leaves.** Through bounded Opus authors,
 populate every collection supported by evidence: `product/`
 (actors/capabilities/flows/constraints/observed behavior);
 `architecture/` (context/components/boundaries/runtime flows/dated sharp
 edges); `api/` (observed HTTP/RPC/event/job contracts + source
 locations); `data/` (entities/ownership/persistence/migrations/
 lineage/privacy); `libraries/` (every direct dependency indexed; rich
-pages for significant ones, grounded in the retrieved upstream material
-— a thin index where §5 flags significant deps is NOT coverage; smoke
-tests recorded as pending backfill); `legal/` (only when subject to
-externally-authored rules — check `legal-corpus/` first, re-confirm
+pages for significant ones, grounded in the retrieved upstream
+material; a thin index where §5 flags significant deps is NOT coverage;
+smoke tests recorded as pending backfill); `legal/` (only when subject
+to externally-authored rules; check `legal-corpus/` first, re-confirm
 `verified`/`legal_status` against the publisher); `sources/`
-(provenance for THIS growth's research-scout ingests — "no external
+(provenance for THIS growth's research-scout ingests; "no external
 information consumed" when none was dispatched is circular and a
 completeness defect); `prompts/` and `evaluations/`;
 `runbooks/verification.md` (exact
 commands, labeled `discovered, not executed`); `plans/grill.md`
 (evidence, gaps, next increment); `best-practices/` (**normative**: the
-external standard, cited, plus the project's observed stance — not a
+external standard, cited, plus the project's observed stance, not a
 description of current habits); `changelog.md`.
 Prepare `specs/` and `decisions/` indexes but do not manufacture
-records — formalize a spec only from a real observable, an ADR only from
-a decision the source shows. Where a ledger's specialist-agent signal
-genuinely warrants it, author a project-specific expert agent; a signal
+records: formalize a spec only from a real observable, an ADR only
+from a decision the source shows. Where a ledger's specialist-agent
+signal genuinely warrants it, author a project-specific expert agent; a signal
 is a candidate, not a mandate.
 
-**Phase 5 — Connect and fertilize (the librarian rebalance pass).** A
+**Phase 5: Connect and fertilize (the librarian rebalance pass).** A
 mandatory named `docs-librarian` dispatch after Phase 4, never skipped
 because authors "already linked things": connect every leaf to its
 owning node, merge duplicate fact homes, split accreted nodes, delete
@@ -1695,7 +1702,7 @@ carry the merge/split/move/delete report into the delivery. Depth
 belongs behind edges, not in the always-loaded router or oversized
 nodes.
 
-**Phase 6 — Independent validation.** Dispatch separate Opus reviewers
+**Phase 6: Independent validation.** Dispatch separate Opus reviewers
 and clean-context validators. They run only knowledge checks
 (`graph-lint.py` plain and `--plan`), and verify: (1) internal links and
 every `artifacts:`/`libraries:` edge resolve; (2) no maintained
@@ -1717,7 +1724,7 @@ by never dispatching a research-scout is a circular-absence finding);
 (12) the Phase 5 librarian rebalance pass actually ran and its report is
 in the delivery. Under-growth is a defect on equal footing with
 over-growth. Route findings to bounded Opus authors and repeat
-validation — **bounded by the recover discipline**: a finding surviving
+validation, **bounded by the recover discipline**: a finding surviving
 two author-fix → revalidate rounds is not converging; stop, record it as
 an honest unknown or defect, hand the decision to the user. Do not
 weaken the linter or loop a fourth time. Also configure the
@@ -1731,12 +1738,12 @@ lessons land in the graph. The orchestration chat reports target
 boundary/revisions, worker
 assignments, evidence inspected, artifacts created/refreshed, the Phase
 5 librarian rebalance report, validation
-results, untrusted/excluded docs, honest unknowns, and one next action —
+results, untrusted/excluded docs, honest unknowns, and one next action
 **with its tier** (kernel §0). It includes the **growth completeness
 ledger** (every collection covered-to-evidence or absent-with-reason) so
 the delivery proves totality instead of asserting it, plus growth
 metrics (scouts and authors spawned, contradictions resolved,
-findings raised and fixed, evidence gaps left open) — the plant's birth
+findings raised and fixed, evidence gaps left open), the plant's birth
 telemetry that `harvest` mines. The plant is **mature** when a
 clean-context agent can orient from `index.md` without bulk-reading
 source; major capabilities, integrations, data, and cross-cutting
@@ -1752,7 +1759,7 @@ is never evidence of maturity.
 
 *Source: `protocols/initialize.md`*
 
-- **id:** `protocol.initialize` — tier 2
+- **id:** `protocol.initialize`, tier 2
 - **owns:** `initialize.adapter-edges`
 - **requires:** `protocol.grow`
 - **peers:** — (none)
@@ -1768,7 +1775,7 @@ is `docs/graph/protocols/grow.md`. This node is the smallest of the 15
 (est_tokens 230) and delegates unchanged to grow.
 
 When invoked, enter the orchestration role and execute the install
-prompt and grow protocol without weakening them — the orchestration,
+prompt and grow protocol without weakening them; the orchestration,
 model-class, routing, and evidence policy is grow's and
 `INSTALL_PROMPT.md`'s to define, never re-listed here.
 
@@ -1776,7 +1783,7 @@ model-class, routing, and evidence policy is grow's and
 
 The adapter adds only these edges of its own:
 - the roster this adapter installs is not spawnable in the session that
-  installed it — preflight and remedy per
+  installed it; preflight and remedy per
   `delegation.harness-registration` before any by-name dispatch;
 - initialization does not run application builds or application test
   suites;
@@ -1795,7 +1802,7 @@ references.
 
 *Source: `protocols/harvest.md`*
 
-- **id:** `protocol.harvest` — tier 2 (note: no `command: true`)
+- **id:** `protocol.harvest`, tier 2 (note: no `command: true`)
 - **owns:** `harvest.fold-back-flow`, `harvest.agnosticism-gate`
 - **requires:** —
 - **peers:** `protocol.graft`, `protocol.grow`
@@ -1806,24 +1813,24 @@ references.
 ### What it does
 
 Harvest is the inverse of grow. `grow` runs the seed *into* a project
-and grows it; harvest runs the other direction — a mature project *back
-into* the seed — so the next project starts ahead of where this one did.
+and grows it; harvest runs the other direction, a mature project *back
+into* the seed, so the next project starts ahead of where this one did.
 A seed that only seeds cannot improve; a seed that harvests carelessly
 rots into one project's specifics. Harvest is the disciplined gate that
 lets the seed compound **without** losing its agnosticism. It takes only
-the seed-worthy essence of what the plant learned — never the plant's
+the seed-worthy essence of what the plant learned, never the plant's
 flesh. What goes back in must be true for *any* future plant.
 
 ### Trigger — manual only, never automatic
 
 Harvest is **user-sovereign**. Unlike `canonize`, it is never triggered
 automatically, on a schedule, by a hook, or as a "while I'm here" step.
-- **The user starts it** — by invoking this protocol or pasting
+- The user starts it, by invoking this protocol or pasting
   `HARVEST_PROMPT.md`.
-- **The system may, at most, PROPOSE it** — when a mature plant clearly
+- The system may, at most, PROPOSE it: when a mature plant clearly
   holds generalizable lessons, an agent may *suggest* "this looks worth
   harvesting" and stop. The suggestion is a doorbell, not an entry.
-- **Nothing reaches the seed until the user is satisfied.** Every
+- Nothing reaches the seed until the user is satisfied. Every
   fold-back is a proposal the user ratifies; an unratified harvest is a
   draft.
 
@@ -1845,30 +1852,30 @@ automatically, on a schedule, by a hook, or as a "while I'm here" step.
 Every candidate improvement passes three hard tests before it may touch
 the seed.
 
-**Gate 1 — Agnosticism (the heart).** "Would this help an arbitrary
+**Gate 1: Agnosticism (the heart).** "Would this help an arbitrary
 next project, in a different language, framework, and domain, that has
 never heard of this plant?"
-- **YES, verbatim** → harvest as-is (rare — usually only tool-neutral
+- YES, verbatim → harvest as-is (rare, usually only tool-neutral
   rules).
-- **YES, once generalized** → rewrite it stripping every plant-specific
+- YES, once generalized → rewrite it stripping every plant-specific
   name, domain term, stack pin, path, and example, then harvest the
   generalized form; state the before→after explicitly.
-- **NO** → reject; record why; leave it in the plant.
+- NO → reject; record why; leave it in the plant.
 
 Fail-closed corollary: **if you cannot state the lesson without naming
 the plant, it is not ready to harvest.** A single leaked project name,
 domain noun, credential, dataset shape, or version-pinned specific in
-the seed is a failed harvest — worse than a missed lesson.
+the seed is a failed harvest, worse than a missed lesson.
 
 *What counts as a project reference* (all forbidden in the seed,
 including in the CHANGELOG entry, harvest-log row, provenance notes, and
-illustrative examples): a **name** (plant, product, company, service,
-internal tool); a **stack fingerprint** (the language/framework/datastore
-combo that identifies the plant); an **identifying count or metric**; a
-**description of the plant's internals** (file names, config keys,
+illustrative examples): a name (plant, product, company, service,
+internal tool); a stack fingerprint (the language/framework/datastore
+combo that identifies the plant); an identifying count or metric; a
+description of the plant's internals (file names, config keys,
 plugin names, module wiring, a security finding on its own code); a
-**path, host, port, credential, or absolute install location**; an
-**illustrative example framed as the plant's own** (recast every example
+path, host, port, credential, or absolute install location; an
+illustrative example framed as the plant's own (recast every example
 in the generic). Plant-identifying provenance belongs only in the
 ratification proposal shown to the steward, never in the seed's
 committed files.
@@ -1888,33 +1895,34 @@ python3 tools/agnosticism-lint.py --root <dir> --forbid <token> \
         --forbid <another-token> --glob '*.md' --file <path>
 ```
 
-Exit 0 clean, 1 with findings, 2 on a usage error — including a scan that
-matched no file, which would otherwise print the pass a real scan earns.
+Exit 0 clean, 1 with findings, 2 on a usage error, including a scan
+that matched no file, which would otherwise print the pass a real scan
+earns.
 The `--forbid` terms are the caller's, repeatable, and matched
 case-insensitively as substrings (fail-closed, so a token catches the
 compounds built from it): a component meant for any project cannot
 enumerate the names it must not contain without containing them, so the
-adopting tree supplies its own — exactly as `graft-audit.py` takes
+adopting tree supplies its own, exactly as `graft-audit.py` takes
 `--tokens`. `tests/seed-lint.py` runs this same code over the seed's
 shipped prose, passing no `--forbid`, because the seed has no plant token
-it could name. Everything subtler — a domain noun, a stack combination,
-an identifying count — stays human judgement and is not faked
+it could name. Everything subtler (a domain noun, a stack combination,
+an identifying count) stays human judgement and is not faked
 mechanically.
 
-**Gate 2 — Durability (surface, not pin).** "Will this still be true a
+**Gate 2: Durability (surface, not pin).** "Will this still be true a
 version from now — is it about the library, or about one pinned release
 of it?"
-- **KEEP (surface, durable):** the capability the library provides; its
+- KEEP (surface, durable): the capability the library provides; its
   core API shape and canonical usage; idioms/best practices that hold
   across lines; conceptual gotchas; the upstream doc/repo home.
-- **REJECT (pinned, ephemeral):** CVEs/advisories tied to an exact
+- REJECT (pinned, ephemeral): CVEs/advisories tied to an exact
   version; "version X.Y.Z is a breaking marker"; per-release
   deprecations; upgrade/migration diffs between pins; a resolved-version
   number itself. These belong in the plant's
-  `docs/graph/libraries/<name>.md`. When in doubt, a fact is pinned —
+  `docs/graph/libraries/<name>.md`. When in doubt, a fact is pinned;
   drop it.
 
-**Gate 3 — Non-redundancy (does the seed already own this?).** "Does the
+**Gate 3: Non-redundancy (does the seed already own this?).** "Does the
 seed ALREADY say this — in a kernel rule, an agent, a skill, a protocol,
 or a template?" A plant grew *from* the seed, so its ADRs, plan, and
 best-practices are saturated with the seed's own doctrine filled with
@@ -1933,10 +1941,10 @@ Orchestrated like `grow`: the session plans, briefs, and ratifies;
 clean-context workers survey, triage, and author. Sonnet-class for
 read-only survey, Opus-class for every generalization and authoring.
 
-**Phase 1 — Survey the mature plant (Sonnet scouts, read-only).**
+**Phase 1: Survey the mature plant (Sonnet scouts, read-only).**
 Inventory how the plant diverged from the seed and what it accumulated.
 A prior `graft`'s customization-audit ledger and its KEEP-PLANT list
-(`tools/graft-audit.py` output) is a ready-made divergence inventory —
+(`tools/graft-audit.py` output) is a ready-made divergence inventory;
 start from it. Candidate donor surfaces include: shared scripts/tooling
 the plant fixed; skills whose rules it sharpened and any project skill
 it authored; protocols found insufficient; agent/expert definitions;
@@ -1949,50 +1957,50 @@ principle, never a stack-specific rule); runbooks (operational
 (their **version-durable surface** only); the reusable-tool catalog
 (project-agnostic durable tools); legal/regulatory leaves (the
 **citation only**, never the application); session metrics (the seed's
-only *quantitative* donor surface — mine the *pattern*, propose the seed
+only *quantitative* donor surface: mine the *pattern*, propose the seed
 change); and a capability the seed ships that stays inert across plants
 (harvest the *fix to the seed's own machinery*). Output: a **candidate
 ledger** with provenance per row.
 
-**Phase 2 — Triage against all three gates (Opus authors).** For each
+**Phase 2: Triage against all three gates (Opus authors).** For each
 candidate, apply agnosticism, durability, and non-redundancy, and decide
 KEEP-AS-IS / GENERALIZE / REJECT. For anything kept, write its
 **generalized restatement** with the before→after shown (what
 plant-specifics *and* pinned specifics were stripped). Reject rows carry
 a one-line reason (including "redundant — the seed already owns this at
-`<home>`"). Be conservative — when in doubt, reject or generalize
+`<home>`"). Be conservative; when in doubt, reject or generalize
 harder.
 
-**Phase 3 — Backport authoring (Opus authors).** Apply each surviving
+**Phase 3: Backport authoring (Opus authors).** Apply each surviving
 generalized improvement to the SEED artifact it belongs in (`skills/`,
 `protocols/`, `agents/`, shared scripts, `templates/`,
 `library-corpus/`, `legal-corpus/`, `tool-corpus/`, `agent-corpus/`,
-`skill-corpus/`, kernel), each as a **holistic edit** — integrated as if
+`skill-corpus/`, kernel), each as a **holistic edit**, integrated as if
 it had always been there. Every fold-back records provenance (plant
 lineage, generalization applied, seed files touched). A harvested
 tooling fix arrives with its regression test generalized alongside it.
 
-**Phase 4 — Seed integrity gate (fail-closed).** The seed must leave
+**Phase 4: Seed integrity gate (fail-closed).** The seed must leave
 harvest more capable and no less agnostic:
-- **Agnosticism scan** — grep the *entire* diff (including CHANGELOG,
+- Agnosticism scan: grep the *entire* diff (including CHANGELOG,
   harvest-log, provenance notes) for any plant name, domain noun, stack
   fingerprint, identifying count, internal-component/file/config name,
   path, credential, dataset shape, or version pin. Any hit BLOCKS.
-- **Self-consistency** — run the seed's own lints/tests; kernel,
+- Self-consistency: run the seed's own lints/tests; kernel,
   manifest, protocol table, and registries stay in sync.
-- **Clean install** — a dry-run install into a scratch target still
+- Clean install: a dry-run install into a scratch target still
   succeeds and is additive.
-- **Minimum-sufficient fold-back** — generalize an existing rule rather
+- Minimum-sufficient fold-back: generalize an existing rule rather
   than appending a sibling; land the lesson in the cheapest surface that
   reaches its audience (a reference file before a protocol, a protocol
-  before the kernel — kernel bytes cost every session of every plant);
+  before the kernel; kernel bytes cost every session of every plant);
   prefer the smallest edit.
-- **Version + provenance** — bump the seed version, add a CHANGELOG
+- Version + provenance: bump the seed version, add a CHANGELOG
   entry and a harvest-log row; each check names its command and result.
 
-**Phase 5 — Deliver (propose, do not impose).** Harvest **proposes**;
+**Phase 5: Deliver (propose, do not impose).** Harvest **proposes**;
 the human steward **ratifies**. Emit the fold-back as a reviewable
-patch/proposal — never a silent mutation of the seed.
+patch/proposal, never a silent mutation of the seed.
 
 ### The five corpora
 
@@ -2008,14 +2016,14 @@ plant's own facts:
 | Suggested expert | `agent-corpus/<name>.md` | the role's mandate, when-to-select, boundary, `routing_triggers` exemplars | stack-specific experts, roles duplicating a base-roster mandate |
 | Suggested skill | `skill-corpus/<name>.md` | the procedure's steps and the gate each clears, by composition | stack-bound recipes, anything duplicating a core skill |
 
-Two disciplines are special. **Legal currency:** an entry states whether
+Two disciplines are special. Legal currency: an entry states whether
 its text is the **original** or the **consolidated/as-amended** edition
 (the amendment trap), and a `verification_grade` is **never upgraded
-without a new fetch** — downgrading on new evidence is expected,
-upgrading without re-reading is falsification. **Expert promotion:**
+without a new fetch**: downgrading on new evidence is expected,
+upgrading without re-reading is falsification. Expert promotion:
 harvested roles land in the **catalog** by default, never straight into
 the always-loaded roster; promotion to the base roster is a separate,
-steward-only decision whose bar is higher than "useful" — the mandate
+steward-only decision whose bar is higher than "useful": the mandate
 must be *universal* (every project produces the thing it addresses) and
 uncovered by any base agent. Harvest may *propose* a promotion; it never
 performs one.
@@ -2023,14 +2031,14 @@ performs one.
 ### Output — two distinct records
 
 Harvest produces two records that do **not** carry the same content:
-1. **The ratification proposal** — stated in chat / the PR for the
+1. The ratification proposal: stated in chat / the PR for the
    steward. It *may* name the plant and show every before→after
    generalization. It is **never committed to the seed.**
-2. **The seed-committed record** — the CHANGELOG entry and harvest-log
+2. The seed-committed record: the CHANGELOG entry and harvest-log
    row that land inside the seed, bound by the agnosticism gate: no plant
    name, stack fingerprint, count, internal name, or "from <this stack>
    plant" line. It records *that* a harvest happened and *what*
-   generalized lesson landed — never *whose* plant it came from.
+   generalized lesson landed, never *whose* plant it came from.
 
 ### What you do not do
 
@@ -2040,10 +2048,10 @@ Harvest produces two records that do **not** carry the same content:
 - Harvest a plant that is still churning.
 - Copy project-specific facts, names, domain terms, stack pins/
   fingerprints, counts, internal names, paths, secrets, or datasets into
-  the seed — the agnosticism gate is absolute and applies to every
+  the seed; the agnosticism gate is absolute and applies to every
   committed byte.
-- Harvest a self-healing/diagnostic case **narrative** — only its
-  generalized prevention rule.
+- Harvest a self-healing/diagnostic case **narrative**; only its
+  generalized prevention rule goes back.
 - Harvest the plant's `docs/graph/` content.
 - Break the seed's clean install or agnosticism to land a lesson.
 - Silently mutate the seed, or fold a change in without provenance and a
@@ -2055,7 +2063,7 @@ Harvest produces two records that do **not** carry the same content:
 
 *Source: `protocols/graft.md`*
 
-- **id:** `protocol.graft` — tier 2 (note: no `command: true`); the
+- **id:** `protocol.graft`, tier 2 (note: no `command: true`); the
   largest protocol node (est_tokens 9790)
 - **owns:** `graft.reconcile-flow`, `graft.user-sovereignty`, `graft.pure-graph-mandate`
 - **requires:** —
@@ -2069,13 +2077,13 @@ Harvest produces two records that do **not** carry the same content:
 Graft is the distribution arm of the cross-project meta-loop and the
 complement of harvest. `grow` runs the seed into a **new** project;
 `harvest` runs a mature plant **back into** the seed; graft closes the
-third side — it carries the enriched seed **outward onto an existing
+third side: it carries the enriched seed **outward onto an existing
 plant**, so a plant grown from an older seed inherits everything the
 seed has learned since, without being torn up and regrown.
 
 The garden metaphor is load-bearing: you graft the new scion onto the
-living rootstock. The **rootstock** is the plant's own life — its source
-code and the knowledge it authored about itself — and it is inviolate.
+living rootstock. The **rootstock** is the plant's own life (its source
+code and the knowledge it authored about itself), and it is inviolate.
 The **scion** is the seed's evolved machinery: kernel, protocols,
 skills, agents, templates, shared tooling, and the library/tool corpus.
 Harvest and graft are one circulatory system: harvest is **collection**
@@ -2087,12 +2095,12 @@ enriched seed back out to every sibling plant).
 Like harvest, graft is **user-sovereign**. It changes an established,
 possibly production plant, so the **steward** decides when a plant is
 upgraded and ratifies before it is applied.
-- **The user starts it** — by invoking this protocol or pasting
+- The user starts it, by invoking this protocol or pasting
   `GRAFT_PROMPT.md` with a plant (or a set of sibling plants).
-- **The system may PROPOSE it** — most naturally as the tail of a
+- The system may PROPOSE it, most naturally as the tail of a
   `harvest`: "the seed now carries fruit that plants X, Y, Z predate —
   each is due for a graft" and stop.
-- **Every upgrade is ratified before it lands.** Graft reconciles, then
+- Every upgrade is ratified before it lands. Graft reconciles, then
   proposes the reconciled diff; the steward ratifies. An unratified
   graft is a draft. Because every replacement is backed up first, a
   ratified graft is also reversible.
@@ -2100,9 +2108,9 @@ upgraded and ratifies before it is applied.
 ### When to invoke
 
 - The **user** has asked to graft, or ratified a proposal.
-- The plant is **grown and steady** — its graph routes, its
+- The plant is **grown and steady**: its graph routes, its
   plan-of-record is closed or calm. Grafting mid-churn muddies both.
-- The seed has **moved on** since the plant grew — a harvest folded in
+- The seed has **moved on** since the plant grew: a harvest folded in
   new fruit, a protocol sharpened, the corpus grew pages. The wider the
   gap, the more the plant gains.
 - The plant's working tree is **clean** (or the steward accepts a
@@ -2115,33 +2123,34 @@ enters the seed*). Graft's heart is its mirror, the **rootstock line**:
 *nothing the plant authored about itself is overwritten by the upgrade.*
 
 Two territories, and graft writes to exactly one:
-- **Seed-owned machinery (graft's to upgrade):** the kernel
+- Seed-owned machinery (graft's to upgrade): the kernel
   (`CLAUDE.md`/`AGENTS.md`/`.github/copilot-instructions.md`); the
   seed-owned graph subtrees
   `docs/graph/{protocols,skills,agents,method,templates}/` (every node
   marked `origin: seed`); the harness projections (`.claude/agents/`,
   `.claude/skills/`, and the `.prime/agent/`, `.opencode/`, `.codex/`,
   `.github/` equivalents); tool-specific commands/settings/hooks; the
-  shared router script `docs/graph/agent-lint.py`; and the graph engine scripts
-  `docs/graph/{graph-lint.py,spec-lint.py}` (preserving the plant's
-  configured `TEST_GLOBS`). `_schema.md` and `index.md` are
+  shared router script `docs/graph/agent-lint.py`; the config-free scripts
+  that fast-forward with it, now including `docs/graph/prose-lint.py`; and
+  the graph engine scripts `docs/graph/{graph-lint.py,spec-lint.py}`
+  (preserving the plant's configured `TEST_GLOBS`). `_schema.md` and `index.md` are
   project-instantiated and stay the plant's, always.
-- **The plant's own life (graft preserves, always):** the plant's
+- The plant's own life (graft preserves, always): the plant's
   application source, and every knowledge fact the plant authored under
-  `docs/graph/` — its `nodes/`, `specs/`, `decisions/`, `libraries/`,
+  `docs/graph/`: its `nodes/`, `specs/`, `decisions/`, `libraries/`,
   `plans/`, `runbooks/`, product/architecture/API/data, any node
   **without** `origin: seed`, and the pinned version-specific facts in
   its library and tool pages.
 
-> **The rootstock line:** the plant's source and its authored
+> The rootstock line: the plant's source and its authored
 > `docs/graph/` facts stay as the plant left them. If an upgrade cannot
 > land without rewriting something the plant authored, it stops at the
-> line and becomes a proposal for the steward — never a silent
+> line and becomes a proposal for the steward, never a silent
 > overwrite.
 
 The one nuance: a plant's library and tool **pages** are plant-owned,
 yet graft may refresh their *surface* from the enriched corpus (Phase
-4) — renewing only the version-durable orientation and re-pinning the
+4), renewing only the version-durable orientation and re-pinning the
 plant's version-specific facts fresh. Renewing the orientation is a
 graft; overwriting a pin is not.
 
@@ -2155,15 +2164,15 @@ everything that can activate progressively is a routable node; nothing
 about how to work is always-loaded except a small bootstrap kernel;
 every tool-dir surface is a *generated projection* of a node; each fact
 has one home; and no obsolete era, duplicate home, or competing doctrine
-survives. Anywhere a plant falls short — machinery outside the graph, a
+survives. Anywhere a plant falls short (machinery outside the graph, a
 fact with two homes, an always-loaded file that should be a node, a
 hand-maintained projection drifting from source, dead compatibility
-residue — it is drift, and closing it is in graft's scope. Graft
+residue), it is drift, and closing it is in graft's scope. Graft
 executes this as holistic reconstruction: reconstruct from evidence not
 preference; one home, natural owner; integrate don't bolt on;
 minimum-sufficient, sliced, reversible; verify and fix drift at its
 home. The pre-6.0 layout migration is the *maximal instance* of this
-mandate; the mandate is **standing** — even a plant one version behind
+mandate; the mandate is **standing**: even a plant one version behind
 gets audited and rebalanced as Phase 6, every graft.
 
 ### The three-way reconciliation (`graft.reconcile-flow`)
@@ -2171,21 +2180,21 @@ gets audited and rebalanced as Phase 6, every graft.
 A plant is not a blank target; its steward may have locally sharpened a
 protocol, adjusted a setting, or fixed a script. Graft reconciles three
 versions of every seed-owned artifact:
-- **base** — the seed revision the plant grew from (read from the seed
+- base: the seed revision the plant grew from (read from the seed
   stamp; reconstructed from install backups or content lineage on a
   first graft);
-- **theirs** — the artifact in the seed today;
-- **ours** — the artifact as it stands in the plant.
+- theirs: the artifact in the seed today;
+- ours: the artifact as it stands in the plant.
 
 Each artifact takes one of three clean paths:
-- **FAST-FORWARD** — the seed advanced and the plant left the artifact
+- FAST-FORWARD: the seed advanced and the plant left the artifact
   pristine. Adopt the seed's new version outright (the common case and
   the bulk of a graft's value).
-- **KEEP-PLANT (and flag upstream)** — the plant diverged and the seed
+- KEEP-PLANT (and flag upstream): the plant diverged and the seed
   did not. Keep the plant's version untouched, and record the divergence
   as a **harvest candidate**. Graft's outbound pass feeds the inbound
   loop.
-- **MERGE** — both advanced the same artifact. Reconcile as a single
+- MERGE: both advanced the same artifact. Reconcile as a single
   **holistic re-integration**: one coherent file carrying the seed's new
   capability *and* the plant's intent, surfaced to the steward as a
   reviewable proposal. A three-way conflict is a decision, and the
@@ -2198,7 +2207,7 @@ Opus-class for every reconciliation, merge, corpus refresh, and
 validation. Every worker runs the plant's router
 (`graph-lint.py --plan`) before reading plant source.
 
-**Phase 1 — Locate the plant and establish the base (session + Sonnet).**
+**Phase 1: Locate the plant and establish the base (session + Sonnet).**
 Identify the plant or sibling set; record path, host integration,
 branch, HEAD, worktree cleanliness (provenance, no Git mutation). Read
 the plant's **seed stamp**; on a first graft with no stamp, reconstruct
@@ -2206,12 +2215,12 @@ the base from install backups (`*.bak-*`) or content lineage. Confirm
 the seed's version and what changed between base and now (its CHANGELOG
 and harvest log are the map of available fruit).
 
-**Phase 2 — Survey the drift (Sonnet scouts, read-only).** Inventory
+**Phase 2: Survey the drift (Sonnet scouts, read-only).** Inventory
 every seed-owned artifact and classify its three-way state as a first
 guess at FAST-FORWARD / KEEP-PLANT / MERGE. In parallel, inventory the
 **fruit the plant can withdraw**: libraries, tools, and legal
 instruments the plant reasons against for which the corpus now holds a
-page the plant predates or lacks. Return a **graft ledger** — one row
+page the plant predates or lacks. Return a **graft ledger**, one row
 per artifact or withdrawable page.
 
 **Layout migration 5.x → 6.0.0** (between survey and reconcile, when the
@@ -2219,78 +2228,79 @@ survey finds a pre-6.0 plant whose machinery lives in
 `.claude/protocols/`, `.claude/templates/`, `.claude/core/` instead of
 the graph subtrees): (a) install the new machinery into `docs/graph/`
 as `origin: seed` nodes and regenerate projections; (b) diff old
-tool-dir copies against their seed base — a plant-local customization is
-carried into the graph copy as a holistic MERGE and also raised as a
-harvest candidate; (c) relocate the plant's OWN agents and skills into
-`docs/graph/{agents,skills}/`, holistically reconciled — add the node
+tool-dir copies against their seed base, where a plant-local
+customization is carried into the graph copy as a holistic MERGE and
+also raised as a harvest candidate; (c) relocate the plant's OWN
+agents and skills into `docs/graph/{agents,skills}/`, holistically
+reconciled: add the node
 frontmatter they lack, trim every restated fact to a cross-reference,
 regenerate the `.claude/` projection; (d) list the now-redundant old
-machinery — the **steward** confirms deletion explicitly, by name (graft
-never deletes unprompted); (e) rewrite stale references in
+machinery, and the **steward** confirms deletion explicitly, by name
+(graft never deletes unprompted); (e) rewrite stale references in
 plant-authored docs only with the steward's consent; (f) sweep the
-plant's own pre-graph knowledge — a migration this old owes a
+plant's own pre-graph knowledge, since a migration this old owes a
 fact-sweep, not just a machinery swap: dispatch read-only scouts across
 the plant's actual source to inventory facts missing from the graph,
 cross-checked against existing nodes, and hand confirmed findings to
 Opus authors to weave into the owning node.
 
-**Phase 3 — Reconcile the machinery (Opus authors).** For each
+**Phase 3: Reconcile the machinery (Opus authors).** For each
 seed-owned artifact apply the three-way reconciliation: adopt on
 FAST-FORWARD; retain and raise a harvest candidate on KEEP-PLANT; author
 one holistic re-integration on MERGE. Every merged file arrives whole,
 never a seed block bolted beside a plant block. **The roster delta is
-not spawnable in this session** — preflight and take the remedy
+not spawnable in this session**: preflight and take the remedy
 (`delegation.harness-registration`); carry the delta forward as a named
-list for Phase 7. **The graph engine is machinery too** — the installer
+list for Phase 7. **The graph engine is machinery too**: the installer
 drops the scaffold only if absent, so a plant that already has them
 keeps its OLD engine and misses every linter improvement. Reconcile the
 engine as a config-preserving fast-forward: adopt the seed's current
 engine body and re-inject the plant's PROJECT CONFIG (`ROOT_ID` /
 `KINDS` / `KIND_PREFIX` in `graph-lint.py`; `TEST_GLOBS` in
 `spec-lint.py`). A config knob the seed has *extended* is **UNIONED**,
-not re-injected wholesale — the load-bearing case is `KINDS` (6.0.0
+not re-injected wholesale; the load-bearing case is `KINDS` (6.0.0
 added `protocol`/`skill`/`agent`/`method`; keeping the plant's older set
 verbatim would fail every new machinery node with `kind not in KINDS`).
 `tools/graft-graph-engine.py` performs this merge.
 `_schema.md`/`index.md` stay the plant's (project-instantiated). **The
-installer fast-forwards blindly** — a mandatory post-FF audit (Phase 7,
+installer fast-forwards blindly**: a mandatory post-FF audit (Phase 7,
 `tools/graft-audit.py`) catches any local divergence a blind FF buried.
 
-**Phase 4 — Refresh the plant's knowledge from the corpus (Opus
+**Phase 4: Refresh the plant's knowledge from the corpus (Opus
 authors).** For each withdrawable library/tool page, **seed the refresh
 from the corpus as the orientation layer**, then re-pin the plant's
 version-specific facts fresh against the plant's real lockfile. A
 withdrawable **legal** page adds one non-negotiable step: re-confirm each
 entry's `verified` date and `legal_status` against the publisher, and
-never copy a determination. **One home per dependency** — merge the
+never copy a determination. **One home per dependency**: merge the
 corpus orientation into the plant's existing page, never add a parallel
 one, and do not mirror the corpus's own internal sub-namespace grouping
 into the plant (that would create a duplicate home the Phase 7
 minimum-sufficiency gate BLOCKS on).
 
-**Phase 5 — Grow the new capabilities onto the living plant (Opus
+**Phase 5: Grow the new capabilities onto the living plant (Opus
 authors).** Fast-forwarding *carries* a capability; it does not *grow*
 it. **Grafted is not grown.** For each new or newly-enriched capability:
 grow what the plant evidently needs, grounded in its own facts
 (instantiate a suggested skill/expert the plant's stack calls for,
 withdraw a corpus library/tool/legal page it actually uses, ground a
-runbook it can fill). **Never fabricate to fill a surface** — a project
+runbook it can fill). **Never fabricate to fill a surface**: a project
 skill, ADR, or runbook whose content can only come from real recurring
 use sprouts during use, owned by the close-out lifecycle (`canonize` →
 `docs-librarian`), not by the graft. **Surface what was grafted but not
 grown** so the steward sees the copy-but-not-actualized state. **An
 own-kernel plant** (one that carries no seed machinery) still receives
-the substance — as a **weave**, not a summary: map each seed surface the
+the substance as a **weave**, not a summary: map each seed surface the
 delta changed to the plant's equivalent surface and land each rule where
 it acts, in the plant's idiom. Collapsing the delta into one summary
 section is a photocopy, not a graft.
 
-**Phase 6 — Rebalance the plant toward pure graph (Sonnet audit → Opus
+**Phase 6: Rebalance the plant toward pure graph (Sonnet audit → Opus
 authors).** The reconstruction pass, on **every** graft. (1) Inventory
 the drift as a rebalance ledger, hunting: machinery outside the graph; a
 fact with two homes; a hand-maintained projection drifted from its node;
 obsolete residue; substantive thinness (the (f) sweep, now standing). (2)
-Reconstruct in slices bounded by the rootstock line — move each item to
+Reconstruct in slices bounded by the rootstock line: move each item to
 its natural node home as a holistic MERGE, collapse duplicate homes,
 regenerate drifted projections, list obsolete residue for the steward's
 explicit deletion confirmation. Every relocation preserves the fact
@@ -2298,18 +2308,18 @@ itself. (3) Leave the drift closed at its home; install a missing
 fitness function the seed now ships; surface any residual drift with a
 remediation.
 
-**Phase 7 — Apply, verify, and stamp (Opus authors; session gates).**
+**Phase 7: Apply, verify, and stamp (Opus authors; session gates).**
 Apply the ratified upgrade **additively**, backing up every replaced
 file first. Then prove the plant is left more capable and no less
 itself:
-- **Rootstock intact** — the plant's source and authored facts are
+- Rootstock intact: the plant's source and authored facts are
   byte-for-byte unchanged outside machinery and the deliberately
   refreshed surfaces. Any unexpected change BLOCKS.
-- **Customization audit** (`tools/graft-audit.py`) — any seed-owned file
+- Customization audit (`tools/graft-audit.py`): any seed-owned file
   whose backup differs from the seed *and* carries plant-signal content
   is a divergence the blind FF overwrote; re-integrate or ratify. An
   un-reintegrated, un-ratified customization BLOCKS.
-- **Unfilled scaffolds** (`tools/graft-audit.py <plant> <seed> --unfilled`) —
+- Unfilled scaffolds (`tools/graft-audit.py <plant> <seed> --unfilled`):
   every docs leaf still byte-identical to its `templates/docs/**` template is
   reported; `--rename` (default) turns it into `<name>.unfilled.md`, a marker
   the installer honours so the blank leaf is never re-created; `--prune`
@@ -2317,44 +2327,44 @@ itself:
   the next install). `verification.md` is exempt only when it carries an
   `executed` gate row. An unfilled scaffold shadows the authored leaf a cold
   agent needed, so a surviving one BLOCKS.
-- **Lifecycle status** — the plant's `status:` frontmatter (ADRs, specs,
+- Lifecycle status: the plant's `status:` frontmatter (ADRs, specs,
   deviations, risks) is plant-owned and never touched by the fast-forward; a
   plant arriving from pre-7.0.0 runs `tools/status-migrate.py --root docs/graph`
   (dry run, then `--write`) as part of the layout migration and the graft record
   carries its table; `docs/graph/status-register.py` then lints it.
-- **Machinery healthy** — the plant's graph still routes on the upgraded
+- Machinery healthy: the plant's graph still routes on the upgraded
   engine; the agent router lints and evals clean; internal links and
   edges resolve. Report the **roster delta** as work the plant's next
   session registers.
-- **Minimum-sufficient upgrade (the graft reviewer)** — every capability
+- Minimum-sufficient upgrade (the graft reviewer): every capability
   grown cites the plant evidence that demanded it, every MERGE is the
   smallest re-integration, every refreshed page serves a used dependency,
   no artifact lands without a consumer. Over-delivery is a finding, not a
   bonus.
-- **Pure-graph integrity (the rebalance gate)** — the plant ends the
+- Pure-graph integrity (the rebalance gate): the plant ends the
   graft at least as purely a graph as the seed's spec requires; no
   machinery outside a node, no duplicate home, no drifted projection, no
   unlisted residue. Any residual drift is surfaced with a remediation.
-- **Cross-author rebalance** (only if reconciliation/growth/rebalance/(f)
-  used parallel authors) — run **one** final docs-librarian spawn to
+- Cross-author rebalance (only if reconciliation/growth/rebalance/(f)
+  used parallel authors): run **one** final docs-librarian spawn to
   catch one-home-per-fact violations across author boundaries, register
   drift, and a stale shared summary file; follow with a structural audit
   (right `kind`, topology map lists every added node, `requires:`/`peers:`
   edges reflect the body). A green `graph-lint` proves well-formedness,
   not that a parallel absorption reconciled correctly.
-- **Stamp + provenance** — record the seed version the plant now carries
+- Stamp + provenance: record the seed version the plant now carries
   in its seed stamp, and add a provenance entry to the plant's own
   `docs/graph/changelog.md`; each check names its command and result.
 
-**Phase 8 — Deliver (propose, then ratify).** Graft **proposes**; the
+**Phase 8: Deliver (propose, then ratify).** Graft **proposes**; the
 plant's steward **ratifies**. Emit the reconciled upgrade as a reviewable
 patch/proposal, hand the KEEP-PLANT divergences back as harvest
 candidates, and end with the single highest-leverage next step.
 
 ### Provenance & the seed stamp
 
-Graft reads and maintains a lightweight, **plant-owned** stamp — a
-`.cypress/seed.json` marker or equivalent — recording the seed name, the
+Graft reads and maintains a lightweight, **plant-owned** stamp (a
+`.cypress/seed.json` marker or equivalent) recording the seed name, the
 version last grown-or-grafted in, and the date. On the first graft of a
 plant grown before stamps existed, reconstruct the base, then establish
 the stamp. The stamp is provenance the plant owns, not machinery the seed
@@ -2390,15 +2400,15 @@ upgrade.
 
 ## Cross-references at a glance
 
-- **Kernel eight rules → owning protocol:** 3.1 specify (`rule.spec`),
+- Kernel eight rules → owning protocol: 3.1 specify (`rule.spec`),
   3.2 context-router (not a protocol node), 3.3 grill (`rule.grill`),
   3.4 test-first (`rule.test-first`), 3.5 verify (`rule.verify`), 3.6
   deliver (`rule.deliver`), 3.7 canonize (`rule.canonize`), 3.8
   toolcraft (`rule.toolcraft`).
-- **The delivery funnel:** brainstorm* → specify → grill →
+- The delivery funnel: brainstorm* → specify → grill →
   ingest-library* → test-first → verify → canonize →
   deliver; recover on any failure.
-- **The seed meta-loop:** grow (seed → new plant), harvest (mature plant
+- The seed meta-loop: grow (seed → new plant), harvest (mature plant
   → seed, user-triggered), graft (enriched seed → existing plant,
   user-triggered), initialize (coding-tool adapter → grow).
 

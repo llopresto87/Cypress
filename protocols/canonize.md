@@ -126,6 +126,14 @@ never re-litigated or mistaken for a lapse. If nobody can say why, it
 is not a standing deviation — record it `status: open` with an owner
 and let the next session decide.
 
+**Prose pass** (`humanizer.scope`) — every node body, runbook, or README
+paragraph the librarian writes or refreshes this spawn is prose a person
+reads: the brief instructs the librarian to apply
+`docs/graph/skills/humanizer.md` in file mode and to run
+`python3 docs/graph/prose-lint.py --file <path> --against HEAD` before the
+graph-lint pass, so the rewrite carries no strong tell and dropped no
+number, heading, code span, or link target.
+
 **Neither list includes:** ephemeral scratch, secrets/credentials,
 production or personal data, speculation (write "not recorded"),
 project-specific material aimed at the seed (that is `harvest`'s

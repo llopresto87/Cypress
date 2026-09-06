@@ -1,22 +1,22 @@
 # CYPRESS Seed — Skills and Templates Reference
 
-This document describes the **skills** and **templates** shipped in the
+This document describes the skills and templates shipped in the
 CYPRESS seed. The seed is a project-agnostic multi-agent coding-assistant
 system. It installs itself into a target project as a knowledge graph
 under `docs/graph/`. The files documented here are the shippable source.
 
 The reference has three parts:
 
-- **Part A** — the 13 skills in `skills/*/SKILL.md`.
-- **Part B** — the artifact templates in `templates/*.template.md` and the
+- Part A: the 14 skills in `skills/*/SKILL.md`.
+- Part B: the artifact templates in `templates/*.template.md` and the
   knowledge-graph contract in `templates/knowledge-graph/`.
-- **Part C** — the prompt and brief templates in `templates/prompts/`.
+- Part C: the prompt and brief templates in `templates/prompts/`.
 
 All facts come from the source files. Where a source states a rule
 literally, the quoted text is preserved. Each part cites its source paths.
 
 A note on paths. Inside a skill or template, paths are written as they
-appear **after installation** into a plant — for example
+appear after installation into a plant, for example
 `docs/graph/skills/context-router.md` or
 `docs/graph/templates/prompts/handback-payload.md`. In this seed repo the
 same files live under `skills/`, `templates/`, and
@@ -28,22 +28,22 @@ inside a file.
 
 # Part A — Skills
 
-Source: `skills/<name>/SKILL.md` (13 files).
+Source: `skills/<name>/SKILL.md` (14 files).
 
 A **skill** is a *procedure*: how to do one thing well. It is not a role
 (that is an agent) and not an artifact (that is a tool or template). Each
 skill is a graph node of `kind: skill`, `tier: 2`, `origin: seed`. Every
 skill frontmatter carries:
 
-- `id` — the graph id, always `skill.<name>`.
-- `owns` — the fact-keys this skill is the single home of.
-- `requires` — nodes always loaded with it (its hard closure).
-- `peers` — neighbour nodes, not loaded unless the task crosses into them.
-- `load_when` — natural-language triggers the router matches a task against.
-- `artifacts` — template files the skill fills or points at.
-- `est_tokens` — the honest body-size estimate the router sums.
+- `id`: the graph id, always `skill.<name>`.
+- `owns`: the fact-keys this skill is the single home of.
+- `requires`: nodes always loaded with it (its hard closure).
+- `peers`: neighbour nodes, not loaded unless the task crosses into them.
+- `load_when`: natural-language triggers the router matches a task against.
+- `artifacts`: template files the skill fills or points at.
+- `est_tokens`: the honest body-size estimate the router sums.
 
-## Summary table — all 13 skills
+## Summary table — all 14 skills
 
 | Skill | id | owns | requires | peers | est_tokens |
 |---|---|---|---|---|---|
@@ -54,6 +54,7 @@ skill frontmatter carries:
 | from-scratch-bootstrap | `skill.from-scratch-bootstrap` | `from-scratch-bootstrap.method` | `protocol.from-scratch` | `skill.brainstorm-socratic`, `skill.grill-planner` | 680 |
 | grill-planner | `skill.grill-planner` | `grill-planner.method`, `.audit` | `protocol.grill` | `skill.spec-author` | 1300 |
 | holistic-editing | `skill.holistic-editing` | `holistic-editing.method`, `.forbidden-moves` | (none) | `skill.context-router`, `protocol.test-first` | 1500 |
+| humanizer | `skill.humanizer` | `humanizer.method`, `.document-contract`, `.progressive-execution`, `.fact-preservation`, `.modes`, `.scope` | `method.prose-posture` | `skill.holistic-editing`, `skill.adr-writer`, `skill.spec-author`, `agent.docs-librarian`, `protocol.deliver` | 3300 |
 | knowledge-graph | `skill.knowledge-graph` | `knowledge-graph.method`, `.node-contract`, `.linter` | (none) | `skill.context-router`, `skill.library-wiki`, `skill.validate-knowledge` | 1700 |
 | library-wiki | `skill.library-wiki` | `library-wiki.method`, `.version-pinning` | (none) | `skill.research-and-ingest`, `protocol.ingest-library` | 1200 |
 | research-and-ingest | `skill.research-and-ingest` | `research-and-ingest.method`, `.source-ranking` | (none) | `skill.library-wiki`, `agent.research-scout` | 1200 |
@@ -70,6 +71,7 @@ Roles at a glance:
 | Growing a project | adopt-existing, from-scratch-bootstrap |
 | Planning and specs | brainstorm-socratic, grill-planner, spec-author |
 | Writing and testing code | holistic-editing, test-first |
+| Prose people read | humanizer |
 | Recording decisions | adr-writer |
 
 ---
@@ -94,7 +96,7 @@ discovery and authoring discipline for `docs/graph/protocols/initialize.md`.
 **Procedure.**
 
 - **Invariants.** `docs/graph/` is the only maintained knowledge root.
-  Executable source outranks prose. Make additive changes only — never
+  Executable source outranks prose. Make additive changes only: never
   delete or relocate competing AI configurations. Do not run builds or
   application test suites; extract their commands and label them
   `discovered, not executed`. Do not fetch, pull, switch, commit, or
@@ -136,7 +138,7 @@ discovery and authoring discipline for `docs/graph/protocols/initialize.md`.
   fix-and-rerun rounds per defect**; a surviving defect is recorded as an
   honest unknown.
 - **Handoff (stopping condition).** Adoption is DONE when validation passes
-  within its rounds and open defects are recorded — not when every file has
+  within its rounds and open defects are recorded, not when every file has
   been read. End with the handback payload, reporting revisions, evidence,
   artifacts, validation, deliberately excluded docs (named by their
   exclusion node), unknowns, and one highest-leverage next action.
@@ -159,7 +161,7 @@ opening a one-way door decision.
 
 **What it does.** Encodes the discipline of writing an Architecture
 Decision Record (ADR). ADRs live in `docs/graph/decisions/` and record a
-non-obvious technical choice — "why did we pick this?"
+non-obvious technical choice: "why did we pick this?"
 
 **Procedure.**
 
@@ -181,9 +183,9 @@ non-obvious technical choice — "why did we pick this?"
   or `one-way`. `one-way` gets extra scrutiny.
 - **Do not fabricate a decision.** An ADR records a choice that was made,
   not a reconstructed as-built fact. If a survey finds no genuine decisions,
-  the index stays empty. Two decisions people forget: **"do nothing now" is
-  a decision** (ratify the destination, defer timing behind a checkable
-  trigger); and **the asymmetric cost of being wrong** is often the whole
+  the index stays empty. Two decisions people forget: "do nothing now" is
+  a decision (ratify the destination, defer timing behind a checkable
+  trigger), and the asymmetric cost of being wrong is often the whole
   rationale.
 - **Workflow.** Find the next number, read recent ADRs for tone, copy the
   template, fill Context first, then Decision, Consequences, Alternatives,
@@ -218,7 +220,7 @@ framework, or committing to architecture. Applied inside
 **Procedure.**
 
 - **Ask the smallest set of questions that changes the design the most.**
-  Limit: **one to three questions per turn, no more.**
+  Limit: one to three questions per turn, no more.
 - **Reflect every two answers** with a one-paragraph "I now believe X. Tell
   me where I'm wrong."
 - **Hard cap at nine questions total.** If not converged, accept the gaps,
@@ -251,14 +253,14 @@ context budget for a change.
 
 **What it does.** Resolves the minimum set of graph nodes a task needs
 *before reading any source file*. This is the mechanism that keeps a large
-or multi-repo codebase inside a context window. It owns the **knowledge
-rule** and the traversal that makes it executable.
+or multi-repo codebase inside a context window. It owns the knowledge
+rule and the traversal that makes it executable.
 
 **The knowledge rule.** The project keeps one LLM-maintained knowledge
 system at `docs/graph/`: Tier 1 routes, Tier 2 nodes own concise facts,
 Tier 3 leaves hold source-backed depth. Load minimally and declare it. One
 home per fact. Graph before code, ahead of memory. The graph compounds.
-Never fabricate a fact, version, or URL — write "not recorded".
+Never fabricate a fact, version, or URL; write "not recorded".
 
 **The algorithm.**
 
@@ -268,13 +270,13 @@ Never fabricate a fact, version, or URL — write "not recorded".
    that legitimately crosses `peers`); Plan → the plan-of-record + platform
    nodes.
 2. **Resolve entry nodes** by matching `load_when` triggers; prefer the most
-   specific. Watch for aliased names across layers — the Tier-1 router index
-   must carry a **naming-divergence note** listing aliases.
-3. **Take the required closure** — each entry node plus its transitive
+   specific. Watch for aliased names across layers: the Tier-1 router index
+   must carry a naming-divergence note listing aliases.
+3. **Take the required closure**: each entry node plus its transitive
    `requires`. It is small by construction.
 4. **Do not take `peers`** unless the task crosses into them (a trace is the
    exception).
-5. **Declare before you work** — print the resolved LOAD / NOT LOADED /
+5. **Declare before you work**: print the resolved LOAD / NOT LOADED /
    Tier-3-on-demand set.
 6. **Widen honestly, never silently.**
 
@@ -313,9 +315,9 @@ this skill owns the honesty that keeps the first day from cutting corners.
 
 **Procedure (the honesty rules).**
 
-- Bootstrapping is inherently task-tier T3 — the full funnel is proportional,
+- Bootstrapping is inherently task-tier T3: the full funnel is proportional,
   never discounted because the goal "sounds clear."
-- The skeleton phase is done only when the host tool actually **loads** the
+- The skeleton phase is done only when the host tool actually loads the
   machinery from its own directory (Claude Code → `.claude/` + `CLAUDE.md`;
   Prime Agent → `.prime/agent/` + `AGENTS.md`; opencode → `.opencode/` +
   `AGENTS.md`; Codex → `.codex/` + config; Copilot → `.github/` +
@@ -346,7 +348,7 @@ Source: `skills/grill-planner/SKILL.md`
 the next increment · plan a new feature · grill.md drifted from the specs.
 
 **What it does.** Authors, updates, and audits the project's plan-of-record
-at `docs/graph/plans/grill.md` — the single living plan the next agent reads
+at `docs/graph/plans/grill.md`, the single living plan the next agent reads
 first.
 
 **Principles.**
@@ -357,12 +359,12 @@ first.
 - **Section numbers are stable.** Do not renumber; tooling indexes by number.
 - **Specs upstream, plan downstream.** Every §9 increment names at least one
   spec contract; every contract in the spec's §4 appears in an increment.
-- **Increments are small and verifiable** — one RED-GREEN-REFACTOR cycle.
-- **Structure earns its place at plan time** — an increment that adds a
+- **Increments are small and verifiable**: one RED-GREEN-REFACTOR cycle.
+- **Structure earns its place at plan time**: an increment that adds a
   module/layer/interface names the single responsibility and the present
   variation that justifies any abstraction.
 - **Cite, and mark what you haven't verified** with `[verify]` or
-  "not recorded"; mark human-input values **do-not-guess** in §12.
+  "not recorded"; mark human-input values do-not-guess in §12.
 
 **Workflow.** Creating grill.md fills §0–§4 then hands §5 to research-scout,
 §6–§8 to architect, slices §9 with tester, §10–§11 to security/reliability,
@@ -397,18 +399,18 @@ rename crossing a serialization or wire boundary.
 one-liner. The unit of work is the whole file or module, never the smallest
 diff. **Prime directive:** a change is complete only when the file reads as
 if the requirement had existed from the beginning; coherence outranks minimal
-diffs. This does not license gold-plating — "minimum" still governs *new
+diffs. This does not license gold-plating: "minimum" still governs *new
 behavior*.
 
 **Mandatory process, in order.**
 
-1. **Comprehend first** — state the file's responsibilities, structures, and
+1. **Comprehend first**: state the file's responsibilities, structures, and
    conventions; load owning conventions via `context-router` if they live in
    a node.
 2. **Locate the change architecturally.**
-3. **Assess the ripple** — everything the change invalidates, duplicates, or
+3. **Assess the ripple**: everything the change invalidates, duplicates, or
    makes obsolete.
-4. **Integrate** — rewrite affected regions as a whole; deletion and
+4. **Integrate**: rewrite affected regions as a whole; deletion and
    consolidation are first-class outcomes.
 5. **Output the whole revised unit**, never a fragment.
 
@@ -424,7 +426,7 @@ the request. Unrelated issues are filed as their own increment, not silently
 fixed. If integration requires touching other files, say so and list them.
 
 **Append-only exception.** Do NOT apply this skill to the plan-of-record
-changelog, ADRs, or any changelog/audit log — those follow
+changelog, ADRs, or any changelog/audit log. Those follow
 supersede-don't-delete.
 
 **Self-check and output format.** Run a self-check (read the whole file?
@@ -434,7 +436,7 @@ sentences), Integration plan, Full revised code, Changelog (surfacing
 anything removed or restructured beyond the literal request).
 
 **When it does NOT apply.** Genuinely trivial changes (typo, comment, lint,
-single config value). A **rename is the sharp exception** — the moment an
+single config value). A rename is the sharp exception: the moment an
 identifier crosses a serialization, wire, or process boundary it is an
 unversioned contract change, never a trivial edit.
 
@@ -443,7 +445,103 @@ implementer, reviewer, and every specialist touch existing files.
 
 ---
 
-## A.8 knowledge-graph
+## A.8 humanizer
+Source: `skills/humanizer/SKILL.md`
+
+**id:** `skill.humanizer` · **owns:** `humanizer.method`,
+`humanizer.document-contract`, `humanizer.progressive-execution`,
+`humanizer.fact-preservation`, `humanizer.modes`, `humanizer.scope` ·
+**requires:** `method.prose-posture` · **peers:** `skill.holistic-editing`,
+`skill.adr-writer`, `skill.spec-author`, `agent.docs-librarian`,
+`protocol.deliver`
+
+**load_when:** this reads like it was written by an AI · rewrite the
+documentation so it reads naturally · draft the report or memo from these
+notes · empty contrast, one-line closer, forced triad, too many em dashes,
+bold labels on every bullet · polish the pull-request description or commit
+message before hand-off · did the rewrite drop a fact · audit this document
+for prose quality without rewriting it.
+
+**What it does.** Drafts or revises prose whose value depends on the reader
+understanding and trusting it: documentation, README text, ADR and spec
+bodies, runbooks, delivery summaries, pull-request descriptions, commit
+messages. The doctrine is `docs/graph/method/prose-posture.md`; this node
+holds the procedure that applies it. The skill supplies the judgment (what
+the document must cause the reader to understand, which claims must survive,
+what the voice is); the tool `docs/graph/prose-lint.py` (seed home
+`tools/prose-lint.py`) is the floor under it, reporting the tells a pattern
+can catch and proving under `--against <rev>` that a rewrite added and
+dropped nothing.
+
+**When to apply it.** A document, README, runbook, or node body is written or
+refreshed for people; an ADR or spec body is about to flip to `accepted` or
+`active`; a full-form delivery summary, pull-request description, or commit
+message is being prepared; the owner says the text "sounds like an AI";
+imported text will be read as the project's own voice. Out of scope: code,
+commands, frontmatter, `owns:` and `load_when:` lists, generated tables, the
+kernel, and the seed's own machinery prompts, which change through `grill`
+and `holistic-editing`.
+
+**The document contract.** Before drafting or revising substantial prose,
+settle a compact contract: purpose, audience, genre
+(`prose-posture.genre-outranks`), substance, priority, authority
+(`prose-posture.claim-classes`), voice, constraints, end state. A short edit
+infers it in a moment; long or high-stakes work lets it govern every section.
+
+**Progressive execution.** Level 1 is a local edit: infer purpose and voice,
+preserve the claims, revise the weak sentences, run the checks. Level 2 is a
+document revision, adding the contract, a section-and-claim map, voice and
+terminology harmonization, and verification of facts, citations, and
+conditions. Level 3 is high-stakes synthesis, adding a claim and source
+ledger, authority classification, information architecture, per-source
+verification, citation audits, and the adversarial pass, whose closing
+question is which line is being edited only because it "sounds AI". Level 3
+ceremony is never spent on a short paragraph.
+
+**The five rewriting passes.** Understand before editing (read the whole
+section, name its indispensable claims, run `python3
+docs/graph/prose-lint.py --file <path>`, and do not start with a
+word-replacement pass). Rebuild weak structure paragraph by paragraph. Edit
+sentences against `prose-posture.diagnostics` and
+`prose-posture.decision-rules`. Check the document's rhythm for repeats that
+are invisible sentence by sentence. Audit fidelity against the source, then
+run `python3 docs/graph/prose-lint.py --file <path> --against HEAD`; an
+unsupported addition or a material omission is an error until it is
+restored.
+
+**What the fact-preservation check proves.** The working copy and `git show
+<rev>:<path>` must agree on the sorted multiset of numbers, heading texts,
+inline code spans, fenced blocks, link targets, and requirement levels (must,
+must not, shall, should, may, never, required, prohibited). A drift is
+reported as what was added and what was dropped, and it blocks. The check
+proves the rewrite is honest and says nothing about whether the prose is
+good. Counts stated in the seed's own documentation are also cross-checked
+against `manifest.json` by `tests/seed-lint.py`.
+
+**Output modes.** File mode is the default here: the finished text goes back
+into the file, prose only, with code, metadata, paths, identifiers, link
+targets, citations, table data, and anchored headings unchanged, and one
+short paragraph reporting what changed. Embedded mode returns only the
+finished prose in the structure a calling protocol requires; drafting mode
+returns finished prose from notes; rewrite mode returns the complete revised
+text with brief change notes; audit mode reports the highest-impact issues in
+order of effect.
+
+**Where it runs.** In `deliver`, the full-form summary, pull-request
+description, and commit message pass through embedded mode before hand-off.
+In `canonize`, the docs-librarian applies file mode to the node bodies,
+runbooks, and README prose it writes, and runs the tool with `--against`
+before the graph-lint pass. In `adr-writer` and `spec-author`, file mode
+applies before the status flips. In `harvest`, imported prose passes file
+mode and the tool runs beside `agnosticism-lint.py`.
+
+**Source and license.** Adapted from two MIT-licensed skills, the humanizer
+skill by Siqi Chen (2025) and the human-prose doctrine 4.0.0; upstream
+notices are kept at `skills/humanizer/LICENSE.upstream`.
+
+---
+
+## A.9 knowledge-graph
 Source: `skills/knowledge-graph/SKILL.md`
 
 **id:** `skill.knowledge-graph` · **owns:** `knowledge-graph.method`,
@@ -465,7 +563,7 @@ collections (only when a Tier-2 node names the leaf and the task needs it).
 
 **The node contract.** Every node begins with frontmatter; the full contract
 lives in `docs/graph/templates/knowledge-graph/_schema.md`. The key that
-carries the whole design is `owns` — each fact-key appears in exactly one
+carries the whole design is `owns`: each fact-key appears in exactly one
 node's list, project-wide.
 
 **The rules.**
@@ -473,17 +571,17 @@ node's list, project-wide.
 1. **One home per fact.** Duplicated facts rot asymmetrically. When two nodes
    want a fact, extract it to a shared node and both `require` it.
 2. **Version pins live in the library tier.**
-3. **Cite; do not fabricate** — write "not recorded"/"not audited". Separate
-   **observed** from **audited**; add an "observed absences / what this page
+3. **Cite; do not fabricate**: write "not recorded"/"not audited". Separate
+   observed from audited; add an "observed absences / what this page
    is NOT" note where scope is partial.
-4. **Bodies stay small** — under ~150 lines; `est_tokens` within 2× of the
+4. **Bodies stay small**: under ~150 lines; `est_tokens` within 2× of the
    real body.
-5. **Compound, don't restart** — add facts, sharp edges, and triggers as the
+5. **Compound, don't restart**: add facts, sharp edges, and triggers as the
    project earns them. When a recorded fact is later found false, add a dated
-   **Correction** note *alongside* the original, keeping the wrong reasoning.
-6. **One graph, several depths** — leaf collections are not autonomous docs
+   Correction note *alongside* the original, keeping the wrong reasoning.
+6. **One graph, several depths**: leaf collections are not autonomous docs
    trees; a leaf without an owning-node edge is orphaned.
-7. **Never inline secret material** — record a pointer (secret-manager path,
+7. **Never inline secret material**: record a pointer (secret-manager path,
    env-var name, vault key), never a value or a masked copy.
 
 **Node body shape.** what this is · what you must know · sharp edges · where
@@ -495,7 +593,7 @@ parses; unique fact-keys; resolvable acyclic `requires`; reachability;
 within 2× and bodies under the line ceiling). Run before committing any graph
 change. "A graph without a passing linter is a graph that has already started
 to lie." A pass is DONE when the linter passes and each motivating fact has
-one home — growth is demand-driven.
+one home; growth is demand-driven.
 
 **When the graph is wrong.** The code wins on facts (fix the node in the same
 change); the node wins on contracts (a code violation of a recorded contract
@@ -506,7 +604,7 @@ too large, or when a task should have matched a node's triggers and didn't.
 
 ---
 
-## A.9 library-wiki
+## A.10 library-wiki
 Source: `skills/library-wiki/SKILL.md`
 
 **id:** `skill.library-wiki` · **owns:** `library-wiki.method`,
@@ -519,20 +617,20 @@ stale or missing.
 
 **What it does.** Maintains a project-local, version-pinned wiki of every
 direct dependency at `docs/graph/libraries/`. The wiki is the source of truth
-consulted **before** writing code that touches a library, because agent
+consulted before writing code that touches a library, because agent
 memory of library APIs is unreliable across versions.
 
 **The discipline.**
 
-1. **The wiki is local, not a mirror** — the narrow slice this project uses,
+1. **The wiki is local, not a mirror**: the narrow slice this project uses,
    plus project idioms, pitfalls, and history. The full upstream goes in
    `docs/graph/sources/`.
-2. **Pin to a version** — "latest" is not a version; on upgrade, update the
+2. **Pin to a version**: "latest" is not a version; on upgrade, update the
    pin and add an §8 upgrade-path entry.
-3. **Cite, don't paraphrase** — every claim cited in §10 with URL and date.
-4. **Compound, don't restart** — add API names, idioms, and dated pitfalls
+3. **Cite, don't paraphrase**: every claim cited in §10 with URL and date.
+4. **Compound, don't restart**: add API names, idioms, and dated pitfalls
    only when they become real. A bare page is a valid start.
-5. **Validate before publishing** — a page is not authoritative until a smoke
+5. **Validate before publishing**: a page is not authoritative until a smoke
    test imports the pinned version, calls one or two §3 names, and passes in
    the project harness.
 
@@ -552,7 +650,7 @@ dependency, or when a page is missing for code that already uses a library.
 
 ---
 
-## A.10 research-and-ingest
+## A.11 research-and-ingest
 Source: `skills/research-and-ingest/SKILL.md`
 
 **id:** `skill.research-and-ingest` · **owns:** `research-and-ingest.method`,
@@ -588,9 +686,9 @@ advisory beats the docs; a persistent disagreement is recorded with versions
 and an open question in grill.md §12.
 
 **Source reconciliation (lightweight drift check).** Between full passes,
-cheaply diff resolved versions against the wiki pins **without** re-fetching,
+cheaply diff resolved versions against the wiki pins without re-fetching,
 classifying each line: no mismatch / refresh before the next API-affecting
-change / superseded — treat as historical. Distinct from a full research pass
+change / superseded (treat as historical). Distinct from a full research pass
 and from `validate-knowledge`.
 
 **Anti-patterns.** Ingesting paywalled content without OK; over-paraphrasing;
@@ -602,7 +700,7 @@ gathering current evidence for an ADR or spec.
 
 ---
 
-## A.11 spec-author
+## A.12 spec-author
 Source: `skills/spec-author/SKILL.md`
 
 **id:** `skill.spec-author` · **owns:** `spec-author.method`,
@@ -614,16 +712,16 @@ contract slugs · spec sign-off before code · code and spec disagree.
 
 **What it does.** Writes an executable specification under
 `docs/graph/specs/` that turns a clear goal into testable contracts. A spec is
-**executable** when every functional contract maps to at least one test and
+executable when every functional contract maps to at least one test and
 the test name names the contract.
 
 **How to write each section.** §1 Summary (one paragraph, no marketing); §2
 Scope (in/out, out-of-scope equally important); §3 user-facing behavior
-(product, user's vocabulary); §4 functional contracts (architect — one
+(product, user's vocabulary); §4 functional contracts (architect: one
 Given/When/Then per contract, `UPPER_SNAKE_CASE` slugs, one outcome each,
 observable from outside); §5 non-functional (only binding constraints); §6
 data shapes; §7 failure modes (architect + security adversarial cases); §8
-examples (happy, edge, failure — real values); §9 acceptance criteria
+examples (happy, edge, failure, with real values); §9 acceptance criteria
 (product, measurable, mapped to contracts); §10 test mapping (tester;
 statuses `pending`/`red`/`green`/`skipped`); §11 open questions (a spec with
 open questions stays `draft`).
@@ -632,7 +730,7 @@ open questions stays `draft`).
 product ✓, architect ✓, tester ✓ (testability review), and security ✓ (when
 it touches auth, secrets, payments, uploads, external integrations, or AI
 behaviors). Sign-off goes in §0. Once active, §4 slugs are enforced by
-`python3 docs/graph/spec-lint.py` — the §3.1 gate; a new spec's contracts
+`python3 docs/graph/spec-lint.py`, the §3.1 gate; a new spec's contracts
 report uncovered until `test-first` lands RED tests (that failing gate is the
 spec working).
 
@@ -649,7 +747,7 @@ satisfy.
 
 ---
 
-## A.12 test-first
+## A.13 test-first
 Source: `skills/test-first/SKILL.md`
 
 **id:** `skill.test-first` · **owns:** `test-first.shaping`,
@@ -682,7 +780,7 @@ convention); the body is Given/When/Then; one outcome per test.
 
 ---
 
-## A.13 validate-knowledge
+## A.14 validate-knowledge
 Source: `skills/validate-knowledge/SKILL.md`
 
 **id:** `skill.validate-knowledge` · **owns:** `validate-knowledge.method`,
@@ -694,27 +792,27 @@ test agent questions · false-premise adversarial question · prove the linter
 catches a planted violation · is the graph trustworthy.
 
 **What it does.** Proves a knowledge base actually works before it is trusted.
-"Documentation you wrote is documentation you already believe" — so a context
+"Documentation you wrote is documentation you already believe", so a context
 that does not share your memory must be able to use it. Two methods.
 
-**Method 1 — clean-context test agents.** Spawn agents with no prior context;
+**Method 1: clean-context test agents.** Spawn agents with no prior context;
 give them only the entry point (the kernel), not the answers. Ask questions
 whose correct answer you know across the base (a fact lookup, a "how does X
 work," a change-impact, a trace). Require them to declare what they loaded and
-skipped (this tests routing, not just content). **Include adversarial
-false-premise questions** ("Confirm the system uses <tech it does not use>") —
+skipped (this tests routing, not just content). Include adversarial
+false-premise questions ("Confirm the system uses <tech it does not use>"),
 the highest-value test; a trustworthy base lets the agent reject the premise
 with a citation. Grade and fix: every wrong answer, missed rejection, or
 over-broad load is a defect in the base, not the agent.
 
-**Method 2 — enforcement tests.** A rule is enforced only if you have seen it
+**Method 2: enforcement tests.** A rule is enforced only if you have seen it
 fail. Plant a violation in a scratch copy (duplicate fact-key, broken edge,
 misplaced version pin) and confirm the linter fails with the right message.
 Prove drift detection with `--check` mode. Wire the passing linter into the
 verification gates.
 
 **Scope and cost.** Match effort to the base; prefer a few sharp adversarial
-questions over many easy ones. Run read-only — the test agents' output is
+questions over many easy ones. Run read-only: the test agents' output is
 evidence, not changes.
 
 **What this catches that nothing else does.** A node correct but unreachable;
@@ -734,7 +832,7 @@ Sources: `templates/*.template.md` (10 files) and
 
 An **artifact template** is a blank form. An author copies it into a target
 path under `docs/graph/` and fills every `<placeholder>`. Stable section
-numbers must not be renumbered — agents and tooling index into them.
+numbers must not be renumbered; agents and tooling index into them.
 Templates are Tier-3 artifacts; a machinery node points at them via
 `artifacts:`.
 
@@ -771,22 +869,22 @@ Source: `templates/adr.template.md`
 Produces `docs/graph/decisions/adr-NNNN-<slug>.md`. Structure:
 
 - **Title** `# ADR-NNNN: <short slug>`.
-- **Status** — `proposed` | `accepted` | `superseded by ADR-NNNN` |
+- **Status**: `proposed` | `accepted` | `superseded by ADR-NNNN` |
   `deprecated`.
-- **Date** — YYYY-MM-DD.
-- **Context** — the situation that forces a decision, including the
+- **Date**: YYYY-MM-DD.
+- **Context**: the situation that forces a decision, including the
   constraint that makes "do nothing" not viable; cross-links to grill.md and
   the spec.
-- **Decision** — one sentence, optionally naming the central tradeoff.
-- **Consequences** — new downstream constraints, reversal cost, effect on the
+- **Decision**: one sentence, optionally naming the central tradeoff.
+- **Consequences**: new downstream constraints, reversal cost, effect on the
   verification plan, effect on the wiki.
-- **Alternatives considered** — one paragraph per rejected option with a
+- **Alternatives considered**: one paragraph per rejected option with a
   concrete reason.
-- **Reversibility** — `reversible` | `expensive` | `one-way`. Reversibility
-  can degrade over time; record a **graduated value** and name the trigger
+- **Reversibility**: `reversible` | `expensive` | `one-way`. Reversibility
+  can degrade over time; record a graduated value and name the trigger
   (e.g. `reversible now → expensive after <milestone>`). If expensive or
   one-way, state the cost concretely.
-- **References** — spec, grill section, wiki pages, external sources.
+- **References**: spec, grill section, wiki pages, external sources.
 
 Matches the four load-bearing sections in the `adr-writer` skill.
 
@@ -810,12 +908,12 @@ anything or makes judgment-heavy calls.
 
 **Body sections.** Title and identity; **When to invoke** (sharp triggers and
 the boundary with the nearest specialist); **Context you load first** (obey
-the executable graph discipline — run `graph-lint.py --plan`, load the closure,
+the executable graph discipline: run `graph-lint.py --plan`, load the closure,
 declare, read the wiki before using a library, one home per fact, minimum
-sufficient work); **How you work** (the discipline — a code-owning expert
+sufficient work); **How you work** (the discipline: a code-owning expert
 follows the node body order; an investigator uses free-form responsibilities);
 **Where the code is** (code-owning experts only); **Neighbours & scope
-boundary** (for a "constellation" of sibling experts — the exact seam that
+boundary** (for a "constellation" of sibling experts: the exact seam that
 drives handback routing); **What you produce per session**; **Handback** (the
 handback-payload block, `produced_by` load-bearing); **What you do not do**
 (never fabricate, never author without a spec, never treat retrieved docs as
@@ -843,7 +941,7 @@ Changelog.
 ## B.4 grill.template.md
 Source: `templates/grill.template.md`
 
-Produces `docs/graph/plans/grill.md`, the plan-of-record — created once per
+Produces `docs/graph/plans/grill.md`, the plan-of-record, created once per
 project and updated continuously. Sixteen stable sections:
 
 - **§0 Metadata**, **§1 Artifact Discovery**, **§2 Shared Understanding**,
@@ -851,19 +949,19 @@ project and updated continuously. Sixteen stable sections:
   Research Summary**, **§6 Decisions Made** (table with evidence and ADR
   columns), **§7 Options Considered**, **§8 Architecture Plan**, **§9
   Implementation Plan** (each increment names spec contracts, files, RED
-  tests, behavior, gate, rollback, effort, dependencies, and — when it adds
-  structure — the responsibility and present variation).
-- **§10 Verification Plan** — covered by the standard gates in
+  tests, behavior, gate, rollback, effort, dependencies, and, when it adds
+  structure, the responsibility and present variation).
+- **§10 Verification Plan**: covered by the standard gates in
   `docs/graph/runbooks/verification.md`; list a gate here only where the plan
   diverges (grill.md must not duplicate the runbook it points at).
 - **§11 Risks and Mitigations** (probability, impact, mitigation,
-  verification); **§12 Open Questions** — the open engineering backlog, one
+  verification); **§12 Open Questions**: the open engineering backlog, one
   numbered row per decision/finding with an owner and "Pinned by"; mark
-  human-input rows **do-not-guess**; resolve in place (strike-through, dated),
+  human-input rows do-not-guess; resolve in place (strike-through, dated),
   never by deleting.
 - **§13 Done Criteria** (align with spec §9); **§14 Recommended Next Step**
   (one action); **§15 Changelog** (append-only).
-- A trailing note: append, don't fork — a follow-up that grows past a
+- A trailing note: append, don't fork. A follow-up that grows past a
   changelog line becomes a new top-level section (§16, §17, …), never a
   separate document.
 
@@ -895,11 +993,11 @@ Metadata (ID, status, owner, date, version, related spec/eval); §1 Purpose;
 (tools + argument-validation rules that run before the tool fires); §5 Output
 schema; §6 Validation rules (deterministic assertions on output); §7 Refusal
 or escalation conditions (map to spec failure modes); §8 Privacy boundaries;
-§9 Safety boundaries (adversarial inputs tested — prompt injection direct and
-indirect, tool hijacking, exfiltration, jailbreaking, refusal evasion — and
-controls); §10 Evaluation cases (reference `docs/graph/evaluations/`, minimum
-coverage list); §11 Version history; §12 Prompt body (fenced, treated as
-code — diffable, reviewable, testable).
+§9 Safety boundaries (the adversarial inputs tested: prompt injection direct
+and indirect, tool hijacking, exfiltration, jailbreaking, refusal evasion;
+and the controls); §10 Evaluation cases (reference
+`docs/graph/evaluations/`, minimum coverage list); §11 Version history; §12
+Prompt body (fenced, treated as code: diffable, reviewable, testable).
 
 ---
 
@@ -915,8 +1013,8 @@ disciplined sequence of steps, it is a skill. Frontmatter: `name`,
 `description` (the procedure + exact triggers the router matches). Body: one
 paragraph of purpose; "When to apply this skill" (concrete recurring
 triggers); "The procedure" (disciplined steps, each naming its move and the
-gate that proves it done — **compose existing protocols/skills by reference,
-do not restate their rules**); "Anti-patterns"; "Reference files".
+gate that proves it done; compose existing protocols/skills by reference,
+do not restate their rules); "Anti-patterns"; "Reference files".
 
 ---
 
@@ -924,16 +1022,17 @@ do not restate their rules**); "Anti-patterns"; "Reference files".
 Source: `templates/spec.template.md`
 
 Produces `docs/graph/specs/SPEC-NNNN-<slug>.md`, authored jointly by product +
-architect + tester. Sections: §0 Metadata (identifier, status —
-`draft`/`active`/`implemented`/`superseded`/`back-written` — owner, dates,
+architect + tester. Sections: §0 Metadata (identifier; status
+`draft`/`active`/`implemented`/`superseded`/`back-written`; owner, dates,
 related grill/ADRs/wiki, supersedes/superseded-by, and the sign-off line
 `product [ ] · architect [ ] · tester [ ] · security [ ]`); §1 Summary; §2
 Scope (in/out); §3 User-facing behavior (product); §4 Functional contracts
 (architect; one Given/When/Then per contract, stable `UPPER_SNAKE_SLUG`s the
 tests reuse); §5 Non-functional requirements (only the binding ones); §6 Data
 shapes (language-agnostic YAML, cross-link native schemas); §7 Failure modes
-(architect + security adversarial); §8 Examples (happy, edge, failure — real
-values); §9 Acceptance criteria (product, measurable, mapped to contracts);
+(architect + security adversarial); §8 Examples (happy, edge, failure, with
+real values); §9 Acceptance criteria (product, measurable, mapped to
+contracts);
 §10 Test mapping (tester; contract → test name → file → level → status); §11
 Open questions (a spec with open questions is still `draft`); §12 Changelog.
 The contract slugs in §4 are exactly what `spec-lint.py` scans for in tests.
@@ -947,7 +1046,7 @@ Produces `docs/graph/decisions/threat-model-<feature>.md`, authored by
 `security` when a sensitive feature is designed. Sections: §0 Metadata; §1
 Assets (tangible and intangible); §2 Actors (legitimate and adversarial, each
 with capabilities and goals); §3 Trust boundaries (where data crosses an
-authority change — including retrieved document → model prompt); §4 Entry
+authority change, including retrieved document → model prompt); §4 Entry
 points; §5 Data flows (cross-link spec §6); §6 Abuse cases (including
 AI-specific: prompt injection, tool hijacking, exfiltration, hallucinated
 authority, adversarial vision/audio inputs); §7 Security controls (each names
@@ -965,7 +1064,7 @@ by `toolcraft` (kernel §3.8) whenever a task produces a durable, reusable
 tool worth cataloging. Reached from the owning node via an `artifacts:` edge
 and registered in `docs/graph/tools/index.md`. Sections: §0 Identity (name,
 path, language/runtime, owner, stability, last-reviewed); §1 What it does; §2
-Interface & invocation (the stable public contract — inputs, outputs,
+Interface & invocation (the stable public contract: inputs, outputs,
 preconditions; changing it is a versioned change); §3 Where the code lives
 (entry point, supporting files, dependencies); §4 When to use it (and when
 not) plus idioms; §5 Pitfalls and sharp edges (dated); §6 Tests that cover it
@@ -984,25 +1083,25 @@ machine-checked ones in the linter.
 
 **Why a graph and not a folder.** A large or multi-repo codebase does not fit
 in a context window, and a flat `docs/` tree gives no way to decide what *not*
-to read. The graph makes loading a **traversal with a stopping rule**: nodes
+to read. The graph makes loading a traversal with a stopping rule: nodes
 are the unit of loading (one node ≈ one subject); `requires:` edges are the
 closure you must load transitively; `peers:` edges are subjects you must not
 load unless the task crosses into them; tiers bound the depth.
 
 **Three axes named "tier".** The document warns that "tier" is used on three
-axes: the graph **load-tier** (the node `tier:` field — this document's
-subject), the **task tier** (T0–T3 risk classification in kernel §0), and the
-**model class** (sonnet/opus). Only the risk axis is written `T0–T3`.
+axes: the graph load-tier (the node `tier:` field, this document's subject),
+the task tier (T0–T3 risk classification in kernel §0), and the model class
+(sonnet/opus). Only the risk axis is written `T0–T3`.
 
-**Load-tiers.** Tier 0 kernel (always, by host tool — a bootstrap only); Tier
+**Load-tiers.** Tier 0 kernel (always, by host tool; a bootstrap only); Tier
 1 `docs/graph/index.md` (every task first); Tier 2 project nodes
 `docs/graph/nodes/*.md` and machinery nodes
 `docs/graph/{protocols,skills,agents,method}/*.md` (by traversal); Tier 3 the
 leaf collections under `docs/graph/` (only when a Tier-2 node names it and the
 task needs it).
 
-**Machinery nodes.** The seed's method surface — protocols, skills, agents,
-method nodes — lives inside the graph as Tier-2 nodes of kind
+**Machinery nodes.** The seed's method surface (protocols, skills, agents,
+method nodes) lives inside the graph as Tier-2 nodes of kind
 `protocol`/`skill`/`agent`/`method`, each carrying `origin: seed` (graft's
 ownership marker). They route through the same schema and load progressively.
 Two project-fact checks do NOT apply to them (version-pin leakage; the
@@ -1011,8 +1110,8 @@ Two project-fact checks do NOT apply to them (version-pin leakage; the
 stripped.
 
 **Frontmatter.** A small YAML subset: `key: scalar`, or `key:` then
-two-space-indented `  - item` lines — no nested maps, no inline `[a, b]`
-lists. Keys: `id`, `tier`, `kind`, `title`, `repo` (optional), `owns`,
+two-space-indented `  - item` lines, with no nested maps and no inline
+`[a, b]` lists. Keys: `id`, `tier`, `kind`, `title`, `repo` (optional), `owns`,
 `requires`, `peers`, `libraries` (optional), `artifacts` (optional),
 `load_when`, `est_tokens`.
 
@@ -1023,7 +1122,7 @@ present: `protocol`, `skill`, `agent`, `method`. An id's prefix must match its
 kind (`subsystem.orders`), except the single root node whose id *is* the root
 id.
 
-**Key semantics.** `owns` is the dedup mechanism — each fact-key appears in
+**Key semantics.** `owns` is the dedup mechanism: each fact-key appears in
 exactly one node's list project-wide. `requires` is a hard, minimal, acyclic
 dependency. `peers` is soft adjacency (printed as "not loaded"). `artifacts`
 are progressive-discovery edges to leaves (relative to `docs/graph/`, must
@@ -1060,26 +1159,26 @@ of splitting it; filling an unknown with a guess.
 ## B.12 The router template — `index.md`
 Source: `templates/knowledge-graph/index.md` (installs to `docs/graph/index.md`)
 
-Tier 1 — the router every task opens first, and the only index. Match the task
+Tier 1: the router every task opens first, and the only index. Match the task
 against the triggers, load the entry node plus its `requires:` closure, and do
 not load `peers:` unless the task crosses into them. The traversal is
 specified in `skills/context-router.md` and is executable via
 `graph-lint.py --plan "<task>"`. Blocks:
 
-- **Start here by task shape** — a table mapping common task phrasings to the
+- **Start here by task shape**: a table mapping common task phrasings to the
   entry node (root, roster, subsystem, data, auth, secrets, testing, deploy,
   config).
-- **Method — how we work** — the pre-filled machinery routing table (task
+- **Method — how we work**: the pre-filled machinery routing table (task
   state → machinery entry node): `method.tiers`, `method.delegation`, the
   protocols (brainstorm → specify → grill → test-first → ingest-library →
   verify → recover → canonize → deliver → grow/initialize → from-scratch), the
   graph skills, the posture method nodes, and the user-sovereign
   `protocol.harvest` / `protocol.graft` (never automatic). It also lists the
   full specialist-agent roster and the situational skills.
-- **The node table** — grouped by tier/kind (roots; stacks/platform/data/
+- **The node table**: grouped by tier/kind (roots; stacks/platform/data/
   cross-cutting/domain; subsystems), with honest `~tokens` that sum to the
   budget.
-- **Cost discipline** and **When the graph is wrong** — the same rules
+- **Cost discipline** and **When the graph is wrong**: the same rules
   `context-router` and `knowledge-graph` own, restated at the router.
 
 ---
@@ -1099,7 +1198,7 @@ preference to this form when peers of the same kind exist. Frontmatter matches
 ## B.14 The graph linter — `graph-lint.py`
 Source: `templates/knowledge-graph/graph-lint.py` (installs to `docs/graph/graph-lint.py`)
 
-A dependency-free Python 3 script — "it must run on a bare python3." On
+A dependency-free Python 3 script: "it must run on a bare python3." On
 install/adoption it is copied next to `index.md` and the `nodes/` directory
 and its PROJECT CONFIG block is set to the project's kinds and root id.
 
@@ -1123,27 +1222,27 @@ frontmatter subset with a hand-written parser (no PyYAML dependency).
 
 **The checks (functions).**
 
-- `check_schema` — required keys present (`id`, `tier`, `kind`, `title`,
+- `check_schema`: required keys present (`id`, `tier`, `kind`, `title`,
   `owns`, `requires`, `load_when`, `est_tokens`; an agent node with
   `routing_triggers` is exempt from needing `load_when`); list keys are lists;
   `tier` is 2; `kind` is in `KINDS`; the id prefix matches the kind (via
   `kind_prefix`); machinery kind matches its directory and its id name part
   equals the stem with any `NN-` prefix stripped; a project node's filename
   equals its id; every node `owns` at least one fact.
-- `check_unique_ownership` — the dedup invariant: a fact-key owned by two
+- `check_unique_ownership`: the dedup invariant. A fact-key owned by two
   nodes is an error ("extract to a shared node").
-- `check_edges` — every `requires`/`peers` id resolves; no self-edge.
-- `check_acyclic` — a DFS three-colour cycle check on `requires`.
-- `check_reachability` — reachable from `ROOT_ID` by edges, or listed in
+- `check_edges`: every `requires`/`peers` id resolves; no self-edge.
+- `check_acyclic`: a DFS three-colour cycle check on `requires`.
+- `check_reachability`: reachable from `ROOT_ID` by edges, or listed in
   `index.md`. A pre-growth grace lets a fresh install carry only machinery
   nodes; the root becomes mandatory the moment the first project node lands.
-- `check_libraries` — every `libraries` id has a page under `libraries/`.
-- `check_artifacts` — every `artifacts` path resolves beneath `docs/graph/`
+- `check_libraries`: every `libraries` id has a page under `libraries/`.
+- `check_artifacts`: every `artifacts` path resolves beneath `docs/graph/`
   and cannot escape it.
-- `check_version_leakage` — a version pin in a node body (outside inline/
+- `check_version_leakage`: a version pin in a node body (outside inline/
   fenced code) is an error unless the node owns a `*.version(s)` key;
   machinery nodes are exempt.
-- `check_budget` — `est_tokens` within 2× of the measured body (words ×
+- `check_budget`: `est_tokens` within 2× of the measured body (words ×
   1.35); a project node body over 170 newline lines is over the ~150-line
   ceiling; machinery nodes are exempt from the ceiling.
 
@@ -1184,15 +1283,15 @@ Then it scans the test files (skipping `.git`, `node_modules`, `.venv`, etc.,
 and the specs dir itself) for each slug. Behaviors:
 
 - Every active/implemented contract must appear in ≥1 test file, or the gate
-  **FAILs**.
-- A slug in tests but in no live spec is drift → a **WARN**.
-- Live contracts + **zero** matching test files is a "green lie" — it FAILs
+  FAILs.
+- A slug in tests but in no live spec is drift → a WARN.
+- Live contracts + zero matching test files is a "green lie": it FAILs
   loudly, never a vacuous pass ("A coverage check over an empty set is a green
   lie; fix TEST_GLOBS or write the tests.").
 - No live contracts at all → PASS ("no live contracts to cover").
 
 This is the §3.1 gate a new spec's contracts fail until `test-first` lands the
-RED tests — the failing gate is the spec working, not a defect.
+RED tests; the failing gate is the spec working, not a defect.
 
 ---
 
@@ -1200,10 +1299,10 @@ RED tests — the failing gate is the spec working, not a defect.
 
 Source: `templates/prompts/*.md` (9 files).
 
-These are the **delegation briefs** — the runtime prompts an orchestrator or a
+These are the **delegation briefs**: the runtime prompts an orchestrator or a
 growth run hands to a spawned worker. Because hooks do not reach a subagent's
 clean context, the brief is the only enforcement that crosses the delegation
-boundary. Several briefs embed the same canonical **graph-session bootstrap**
+boundary. Several briefs embed the same canonical graph-session bootstrap
 block verbatim; every static seed file references it instead of paraphrasing.
 
 ## Summary table — prompt/brief templates
@@ -1231,21 +1330,21 @@ The embedded block (`GRAPH DISCIPLINE — execute before reading any source`)
 has six numbered steps:
 
 1. Run `python3 docs/graph/graph-lint.py --plan "{{exact delegated task}}"`
-   and include the command and output as **graph-route evidence** (context
-   routing — not the `route_evidence` field).
+   and include the command and output as graph-route evidence (context
+   routing, not the `route_evidence` field).
 2. Load only the reported nodes plus their `requires:` closure.
 3. Declare what you loaded, what you skipped, and any later widening (with the
    reason).
-4. One home per fact — link, never duplicate; the graph outranks memory; write
+4. One home per fact: link, never duplicate; the graph outranks memory; write
    "not recorded" instead of fabricating.
-5. Minimum sufficient work — smallest sufficient evidence, cheapest reliable
+5. Minimum sufficient work: smallest sufficient evidence, cheapest reliable
    method; return findings, not raw dumps.
 6. If the graph has no nodes yet (bootstrap pass), report the failed probe and
    stay inside the brief's exact paths.
 
-**Companion requirements** every brief also carries: **routing evidence**
+Companion requirements every brief also carries: routing evidence
 (paste the `agent-lint --route` ranked line and confidence band; the worker
-echoes it back as `route_evidence`) and **handback** (the worker ends with the
+echoes it back as `route_evidence`) and handback (the worker ends with the
 handback-payload block).
 
 **Why embedding, not referencing, at the boundary.** Subagents start with a
@@ -1258,33 +1357,33 @@ one-home-per-rule: the runtime brief embeds; every static seed file references.
 ## C.2 handback-payload.md
 Source: `templates/prompts/handback-payload.md`
 
-Used once per spawn, at the moment a worker returns control — delegating or
+Used once per spawn, at the moment a worker returns control, delegating or
 leaf, and on all three endings (complete, blocked-out-of-domain, failed). Not
 per tool call. This block is the only reliable carrier across the subagent
 boundary. The payload fields:
 
-- `produced_by` — this agent's name. **Load-bearing:** a unit of work with no
+- `produced_by`: this agent's name. **Load-bearing:** a unit of work with no
   `produced_by` is a deliver-time BLOCK, not a pass (fail-closed).
-- `status` — `complete` | `blocked-out-of-domain` | `failed`.
-- `failure_class` — only when failed: `transient` | `deterministic` |
+- `status`: `complete` | `blocked-out-of-domain` | `failed`.
+- `failure_class`, only when failed: `transient` | `deterministic` |
   `capability` | `ambiguity` | `systemic` | `unregistered` (feeds `recover`).
-- `in_domain_work_done` — what this agent legitimately did, with paths.
-- `out_of_domain_needed` — work this agent must not do itself, or "none".
-- `route_evidence` — the `agent-lint --route` line that selected THIS agent
-  (echoed from the brief) — about YOU, not the next hop, and not graph-lint
-  `--plan` output.
-- `harness_override` — only for a role-emulated specialist.
-- `recommended_next` — an addressable agent + protocol/step, or "none —
+- `in_domain_work_done`: what this agent legitimately did, with paths.
+- `out_of_domain_needed`: work this agent must not do itself, or "none".
+- `route_evidence`: the `agent-lint --route` line that selected THIS agent
+  (echoed from the brief). It is about YOU, not the next hop, and not
+  graph-lint `--plan` output.
+- `harness_override`: only for a role-emulated specialist.
+- `recommended_next`: an addressable agent + protocol/step, or "none —
   session ends here". Never only a protocol name.
-- `next_route_evidence` — the routing line supporting `recommended_next`.
-- `gates` — commands run + results, or "none".
-- `tools_built` — durable reusable tools (name + path + invocation), feeding
+- `next_route_evidence`: the routing line supporting `recommended_next`.
+- `gates`: commands run + results, or "none".
+- `tools_built`: durable reusable tools (name + path + invocation), feeding
   the §3.8 close-out; leaving one out is a silent capability leak.
-- `skills_built` — repeatable multi-step procedures a future session will walk
+- `skills_built`: repeatable multi-step procedures a future session will walk
   again, feeding the same close-out; the procedure sibling of `tools_built`.
 
-Rules make explicit: a **leaf worker recommends, it does not spawn** (no `Task`
-tool); a **delegator that stops still fills this in**; `failure_class` feeds
+Rules make explicit: a leaf worker recommends, it does not spawn (no `Task`
+tool); a delegator that stops still fills this in; `failure_class` feeds
 `recover` and what survived is preserved in `in_domain_work_done` so the next
 attempt starts from the frontier.
 
@@ -1296,12 +1395,12 @@ Source: `templates/prompts/growth-scout-brief.md`
 **Model class: sonnet.** Dispatches one read-only `growth-scout` at one real
 subsystem or repository boundary. The scout is the producer end of a contract:
 authors build every growth deliverable from its ledger, so what the scout fails
-to collect, the authors cannot write. Its collection target is the **growth
-evidence ledger** schema — feedstock for graph nodes/wiki, spec candidates, ADR
+to collect, the authors cannot write. Its collection target is the growth
+evidence ledger schema: feedstock for graph nodes/wiki, spec candidates, ADR
 candidates, project-specific specialist agents, and runbooks.
 
 **Rules (stated verbatim to the sub-agent).** Execute the graph first (the
-embedded GRAPH DISCIPLINE block). Executable source is the truth — READMEs and
+embedded GRAPH DISCIPLINE block). Executable source is the truth; READMEs and
 prior docs are clues; every claim carries `path:line` + a symbol; where source
 and prose disagree, believe the source. Fill the ledger schema, do not
 improvise a format; write it to the plant's gitignored seed-organ scratch
@@ -1320,8 +1419,8 @@ and STOP.
 Source: `templates/prompts/growth-author-brief.md`
 
 **Model class: opus.** Dispatches an author that turns a completed growth
-evidence ledger into a specific deliverable. Its **evidence is already
-gathered** — it builds from the ledger, not from a fresh reading of source.
+evidence ledger into a specific deliverable. Its evidence is already
+gathered: it builds from the ledger, not from a fresh reading of source.
 
 **Feedstock.** Read the ledger(s) at `.cypress/growth/{{boundary-slug}}.ledger.md`
 plus `docs/graph/_schema.md` and an exemplar. Rules: build only on cited
@@ -1332,11 +1431,11 @@ agent → §9; runbooks → §10 labeled "discovered, not executed"; `libraries/
 over-growth exactly as it audits gaps).
 
 **Rules (verbatim).** Execute the graph first (the embedded GRAPH DISCIPLINE
-block). Obey the per-deliverable contract — for a graph node, embed the HARD
+block). Obey the per-deliverable contract: for a graph node, embed the HARD
 RULES from `node-authoring-brief.md`; for a spec/ADR/library/agent, follow the
 matching template. Write only your exclusive scope (exact file paths; knowledge
 writes under `docs/graph/`; no touching application code, manifests, CI, or
-Git). Never invent. Cite the router. **Return** the file paths written, the
+Git). Never invent. Cite the router. Return the file paths written, the
 ledger claims each rests on, any ledger fact deliberately omitted, linter
 confirmation, and the handback payload; spawn only from the `delegates_to`
 allowlist within the depth cap, else STOP.
@@ -1346,10 +1445,10 @@ allowlist within the depth cap, else STOP.
 ## C.5 growth-evidence-ledger.md
 Source: `templates/prompts/growth-evidence-ledger.md`
 
-**The canonical schema of the growth evidence ledger** — the one structured
+The canonical schema of the growth evidence ledger: the one structured
 artifact that passes between a growth-scout (producer) and a growth author
-(consumer). One boundary, one ledger. Every claim is a fact **from executable
-source**, anchored to `path:line` and a symbol; prose is clues until
+(consumer). One boundary, one ledger. Every claim is a fact from executable
+source, anchored to `path:line` and a symbol; prose is clues until
 corroborated; a fact that cannot be established is written `not recorded`.
 
 **A seed organ, not a plant organ.** It is growth-time feedstock, transient to
@@ -1368,7 +1467,7 @@ behaviors → specs feedstock (the §3.1 gate; a candidate list, not an authored
 spec); §8 ADR-worthy decisions → decisions feedstock (only decisions visible in
 source; unknown rationale `not recorded`); §9 Specialist-agent signals →
 project-specific expert agents; §10 Operational evidence → runbooks +
-verification (**discovered, not executed**); §11 Sharp edges → wherever the
+verification (discovered, not executed); §11 Sharp edges → wherever the
 owning fact lives; §12 Uncertainties & cross-boundary notes. The scout ends
 with the handback payload naming the ledger file.
 
@@ -1377,7 +1476,7 @@ with the handback payload naming the ledger file.
 ## C.6 growth-completeness-ledger.md
 Source: `templates/prompts/growth-completeness-ledger.md`
 
-**The canonical schema of the growth completeness ledger** — the artifact that
+The canonical schema of the growth completeness ledger: the artifact that
 makes `protocols/grow.md`'s completeness contract mechanical instead of a
 matter of judgment. **Who fills it:** the orchestration chat, not a spawned
 worker. It is the proof, produced before growth is declared done and carried
@@ -1386,15 +1485,15 @@ seed organ at `.cypress/growth/completeness-ledger.md`, never `docs/graph/`.
 
 **One row per knowledge collection**, with status exactly one of:
 
-- **COVERED** — authored to the full depth the evidence supports; give the
+- **COVERED**: authored to the full depth the evidence supports; give the
   node/leaf count and the strongest source paths.
-- **ABSENT** — the source genuinely has no such evidence; give the reason and
+- **ABSENT**: the source genuinely has no such evidence; give the reason and
   the paths searched (a real absence is a fact).
-- **UNKNOWN** — a named blocker prevents coverage; the only legitimate way a
+- **UNKNOWN**: a named blocker prevents coverage; the only legitimate way a
   collection stays uncovered, and it ships reported, never silent.
 
 "ran out of context", "seemed enough", "templates are present", and "common
-cases done" are NOT statuses — they are the failure the contract forbids. Rows
+cases done" are NOT statuses; they are the failure the contract forbids. Rows
 cover: the root node, subsystem/capability nodes, stack/cross-cutting nodes,
 the Tier-1 router, `product/`, `architecture/`, `api/`, `data/`, `libraries/`,
 `sources/`, `legal/` (if in scope), `prompts/`, `evaluations/`,
@@ -1402,7 +1501,7 @@ the Tier-1 router, `product/`, `architecture/`, `api/`, `data/`, `libraries/`,
 `best-practices/`, `changelog.md`, and project-specific agent(s). Growth is
 done only when every row is COVERED or ABSENT (or a named UNKNOWN), Phase 6
 independent validation passes against the graph, and the maturity test at the
-foot of `protocols/grow.md` is met — against the graph, never the file tree.
+foot of `protocols/grow.md` is met, against the graph, never the file tree.
 
 ---
 
@@ -1422,22 +1521,22 @@ DISCIPLINE block, cites the router, and writes exactly the listed file paths
 2. Required keys in order: `id`, `tier`, `kind`, `title`, `repo` (optional),
    `owns`, `requires`, `peers`, `libraries` (may be empty), `artifacts` (may be
    empty), `load_when`, `est_tokens`; `tier: 2`.
-3. No version numbers in the body (outside inline/fenced code) — versions live
+3. No version numbers in the body (outside inline/fenced code): versions live
    in `docs/graph/libraries/`; link instead.
 4. `owns:` fact-keys are prefixed with the node's short name and unique across
    the whole graph.
-5. `requires:` only ids from the allowed set — minimal (2–4); `peers:` only
+5. `requires:` only ids from the allowed set, minimal (2–4); `peers:` only
    from the allowed set.
 6. Body ≤ 150 lines, sections in order (What this is; What you must know;
    Sharp edges; Where the code is; Neighbours).
-7. `est_tokens` ≈ 1.35 × body word count — honest; the linter fails if off by
+7. `est_tokens` ≈ 1.35 × body word count, honest; the linter fails if off by
    >2×.
 8. Every `artifacts:` path is relative to `docs/graph/`, resolves there, and
    points to source-backed depth owned by this node.
 
-A **FACTS** block supplies verbatim investigation facts; a fact not supplied
-means the node says "not recorded" — the sub-agent does not fill gaps from
-memory. **Return** the file paths written, any fact omitted for length, and
+A FACTS block supplies verbatim investigation facts; a fact not supplied
+means the node says "not recorded"; the sub-agent does not fill gaps from
+memory. Return the file paths written, any fact omitted for length, and
 linter confirmation.
 
 ---
@@ -1446,24 +1545,24 @@ linter confirmation.
 Source: `templates/prompts/investigation-brief.md`
 
 **Model class: sonnet.** Delegates a read-only investigation of a subsystem to
-gather facts for a spec, a graph node, or a plan — facts only, no authoring, no
+gather facts for a spec, a graph node, or a plan: facts only, no authoring, no
 judgment-heavy design. The sub-agent executes the embedded GRAPH DISCIPLINE
 block, cites the router (and says so if routed at LOW/NONE confidence), and
-ends with the handback payload — as a read-only leaf it names the next
+ends with the handback payload; as a read-only leaf it names the next
 specialist and STOPs.
 
-**Rules.** Do NOT read every file — sample intelligently (prioritized
+**Rules.** Do NOT read every file; sample intelligently (prioritized
 manifests, entry points, config); confirm a path with `ls`/`grep` before
-reading. Report facts with evidence — every claim carries a concrete file path
+reading. Report facts with evidence: every claim carries a concrete file path
 (and line where it matters) and an exact value, not a paraphrase. Say
-"not found" rather than guessing. Read-only. Be terse (bullets and tables — it
+"not found" rather than guessing. Read-only. Be terse (bullets and tables; it
 feeds a system prompt or a node).
 
 **Report these concretely.** 1) structure (layout, abstractions,
 conventions); 2) versions/pins/config other work depends on; 3) external edges
 (what it calls, what calls it, over what protocol); 4) data it owns (entities,
 constraints, enums); 5) tests, gates, CI (what exists and what is absent); 6)
-anything surprising or non-standard. **Return** a structured terse report,
+anything surprising or non-standard. Return a structured terse report,
 citing paths, flagging every "not found", and anything omitted for length.
 
 ---
@@ -1471,7 +1570,7 @@ citing paths, flagging every "not found", and anything omitted for length.
 ## C.9 clean-context-validation-brief.md
 Source: `templates/prompts/clean-context-validation-brief.md`
 
-**Model class: opus.** Spawns a **fresh** agent (not a fork of yourself — a
+**Model class: opus.** Spawns a fresh agent (not a fork of yourself: a
 fork inherits your assumptions and passes a base a stranger would fail) to
 validate a knowledge base by answering known-answer and adversarial questions
 using only the docs. The caller grades the answers against ground truth it
@@ -1481,15 +1580,15 @@ Method 1.
 **Strict rules.** Read-only (do not create, edit, or delete anything). Before
 answering each question, run the `--plan` router command with that exact
 question and compare the route output with the nodes actually loaded. Answer by
-loading the **minimum** context — do NOT bulk-read the source tree. For each
+loading the minimum context; do NOT bulk-read the source tree. For each
 question, first declare the exact nodes/pages loaded and skipped, then answer.
-If the base can't answer without opening source, say so — that is a finding.
+If the base can't answer without opening source, say so; that is a finding.
 Cite the router; end with the handback payload naming the specialist who should
 fix the defects (a read-only leaf names them and STOPs).
 
-**Questions.** A mix — a fact lookup, a change-impact ("what must I check
+**Questions.** A mix: a fact lookup, a change-impact ("what must I check
 before changing X?"), a trace across subsystems, and at least one
-**adversarial false-premise** question whose correct answer is to reject the
+adversarial false-premise question whose correct answer is to reject the
 premise with a citation. **Then a system assessment:** did the kernel orient
 you and point to the router/graph? how many nodes did you load? did you ever
 open a source file or bulk-read? for each adversarial question, could the base

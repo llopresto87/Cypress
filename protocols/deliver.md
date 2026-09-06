@@ -140,6 +140,10 @@ A delivery summary that passes:
 - Recommends exactly one next step (not a list).
 - Numbers every decision left to the owner, so the answer can be by
   number.
+- Reads as the writer, not as a model: the full-form summary and any
+  pull-request description or commit message pass the `humanizer` skill
+  in embedded mode (`docs/graph/skills/humanizer.md`), and
+  `docs/graph/prose-lint.py` reports no strong tell on the text.
 - Is the smallest summary that permits correct use and appropriate
   trust: material caveats and risks stay in; process narration,
   restated requests, and recaps of settled context stay out
