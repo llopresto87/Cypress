@@ -1,5 +1,217 @@
 # Changelog
 
+## 7.0.0 — lifecycle status in frontmatter, plant-declared facts, deviation nodes, scaffold pruning, estate standards (2026-09-06)
+
+The node contract gains a machine-readable lifecycle status, a `plant:` block of
+owner-declared facts, and a `deviation` node kind; three delivered tools and a
+session-start hook make them operational; the method surface gains five posture
+nodes and sharpenings across verify, design, engineering, delegation and the
+close-out protocols.
+
+### Changed — node contract (`templates/knowledge-graph/_schema.md`, `graph-lint.py`)
+
+- `status:` lives in frontmatter, in one vocabulary — `open | deferred | hotfix |
+  rejected | superseded | closed` — with kind extensions (ADR `proposed | accepted`;
+  spec `draft | active | implemented | back-written`; deviation `standing`) and
+  required companions (`owner`, `reopen_when`, `superseded_by`, `status_evidence`,
+  `ends_when`, `status_date`). A body `## Status` is a pointer; a differing body
+  value is a lint failure. `legal_status` in the legal corpus is unchanged.
+- New kind `deviation`: a standing, reasoned departure from a named standard —
+  `departs_from`, `reason`, `scope`, `ends_when`, `recorded_in`.
+- `index.md` frontmatter carries `grown:` and a `plant:` block —
+  `environment_class`, `commit_attribution`, `deliverable_language`,
+  `comment_language`. Missing or unfilled: error on a grown plant, warning on an
+  adopted one.
+- Linter rules 12–14 enforce the above; `--plan` on a rootless graph with no match
+  returns an empty set instead of raising. Seven regression tests added.
+- Every templated artifact (`adr`, `spec`, `threat-model`, `data-contract`,
+  `prompt-contract`, the router) now begins with frontmatter; the seed's
+  `<!-- Template -->` header follows it. Specs and decisions index tables are
+  rendered views regenerated from the register.
+
+### Added — tools, delivered to plants
+
+- `tools/status-register.py` → `docs/graph/status-register.py`: lint role (vocabulary,
+  companions, body/frontmatter agreement, `--strict-unknown`) and query role
+  (`--open --hotfix --deferred --rejected --by-kind --since --json --summary`);
+  blank forms (`templates/**`, `_*`, `*.template.md`) are never items.
+- `tools/status-migrate.py`: one-time body-prose → frontmatter migration for adopted
+  and pre-7.0.0 plants; exact mappings, annotations carried as `status_note`,
+  `not recorded` written where the artifact does not state a successor, idempotent,
+  dry-run by default.
+- `tools/graft-audit.py --unfilled [--rename | --prune]`: reports docs leaves
+  byte-identical to their `templates/docs/**` template; rename leaves a
+  `<name>.unfilled.md` marker the installer honours; `verification.md` exempt when
+  it carries an `executed` gate row; `*.template.md` and `_*` exempt.
+- `install.sh`: delivers `status-register.py` as fast-forward machinery; honours
+  `.unfilled.md` markers in `place_docs_skeleton`; installs the session-start hooks; places
+  `.claude/settings.json`, `.prime/agent/settings.json` and `opencode.json` through
+  `place_file`, so an edited copy is backed up instead of silently overwritten.
+- `integrations/claude-code/status-hook.py` (`SessionStart`, registered in
+  `settings.json`), `integrations/github-copilot/hooks/status.json`,
+  `integrations/prime-agent/status-extension.ts` (first prompt of the session):
+  each injects `status-register.py --summary` once; fail-open; nothing crosses the
+  spawn boundary.
+- `templates/docs/nodes/_deviation.template.md`: the deviation form.
+
+### Added — method nodes
+
+- `core/method/secrets-posture.md` (`secrets-posture.channel`, `.recording`, `.compromise`,
+  `.lifetime`), `release-posture.md` (`release-posture.artifact-identity`, `.readiness`,
+  `.dependency-graph`, `.advisories`, `.ordering`, `.rollout`),
+  `incident-posture.md` (`incident-posture.containment`, `.closure`, `.evidence`,
+  `.sequencing`, `.residuals`, `.register-closure`), `contract-posture.md`
+  (`contract-posture.required-input`, `.domain`, `.unversioned`, `.ordering`, `.errors`,
+  `.authorization`, `.read-surfaces`, `.logging`), `vcs-posture.md`
+  (`vcs-posture.local-resting-state`, `vcs-posture.publish-authorization` — a mandate: no push,
+  default-branch change, deploy, or lifted no-change rule without explicit owner
+  authorization naming the act; `vcs-posture.no-worktrees`; `vcs-posture.plant-settings`).
+  Listed on the router's posture row.
+
+### Changed — verify, design, engineering, holistic-editing
+
+- `protocols/verify.md` owns `verify.status-evidence` (`closed` means evidenced),
+  `verify.measure-integrity`, `verify.composition`, `verify.characterize`,
+  `verify.tool-faults`, `verify.silent-substitutes`, `verify.test-first` (gate-side);
+  gate-state, null-result, risk-depth and anti-pattern text sharpened.
+- `core/method/design-posture.md` owns `design-posture.seam-variation`,
+  `design-posture.structural-invariants`, `design-posture.converge-on-drift`,
+  `design-posture.generated-artifacts`, `design-posture.doc-code-precedence`,
+  `design-posture.project-contract-outranks`, `design-posture.maintained-primitives`; §8
+  restrictive-policy sharpened (silent fallback is fail-open; never weaken a control
+  to clear a symptom; destructive operations default to report-only).
+- `core/method/engineering-posture.md`: increments homogeneous in risk; classify
+  blast radius before live infrastructure; separate the mapping/restoring pass from
+  the changing pass; route an owner's decision to the owner and leave it open.
+- `skills/holistic-editing/SKILL.md`: land a fix once at the seam that owns it — the
+  placement half of the class sweep.
+- `agents/multi-agent-architect.md`: workers get a bounded step, never a separate
+  git worktree.
+
+### Changed — close-out and knowledge protocols
+
+- `protocols/canonize.md` owns `canonize.status-review` (run `--open --hotfix`;
+  ask, item by item, whether it moved) and `canonize.deviation-capture` (a departure
+  from an owned standard is asked *why* and written to both the ADR and a
+  `deviation.*` node); the brief carries both.
+- `protocols/deliver.md` owns `deliver.numbered-decisions`: decisions routed to the
+  owner are numbered, individually approvable items.
+- `protocols/grow.md` owns `grow.plant-facts` (Phase 1 asks the `plant:` block once;
+  `grown: true` set at Phase 6); the completeness contract fails on an unfilled
+  scaffold; pre-7.0.0 plants run `status-migrate.py`.
+- `protocols/graft.md`: `deviation.*` nodes and plant `status:` frontmatter are the
+  plant's; Phase 7 reports unfilled scaffolds (`--rename` default, `--prune` on the
+  steward's say-so); status migration joins the layout migration.
+- `skills/adr-writer/SKILL.md`: frontmatter status vocabulary; superseding = new
+  `accepted` + old `superseded` with `superseded_by`; "do nothing now" is `deferred`
+  with `reopen_when`.
+- `skills/context-router/SKILL.md`, `skills/knowledge-graph/SKILL.md`: one owner per
+  concern; one name per concept; provenance declared; knowledge base kept small and
+  typed; status rule as a pointer to the schema; a standard's match surfaces its
+  `deviation.*` exceptions.
+
+### Tests and documentation
+
+- `tests/test-status-register.sh`, `tests/test-status-migrate.sh`, extended
+  `test-graft-tools.sh`, `test-unified-graph-install.sh`, `test-full-install.sh`,
+  `test_graph_lint.py`; all wired into `tests/run.sh`.
+- `DOCUMENTATION.md`, `documentation/protocols-reference.md`,
+  `documentation/corpora-and-integrations-reference.md`, integration READMEs,
+  `manifest.json` updated for the tools, hooks and gates above.
+
+## 6.14.0 — null-result proof, class sweep, host parity, restrictive policy (2026-09-06)
+
+Four new fact keys, two prose extensions, and the agnosticism check extracted
+into a reusable, delivered linter.
+
+### Added — `verify.null-result`
+
+- `protocols/verify.md` A gate that executed and found nothing reports its
+  positive control alongside the zero: an unproven probe returns the same empty
+  result as a clean system. The report states the coverage the control
+  establishes. Control depth follows the same blast-radius rule as gate depth.
+  New anti-pattern: "The scan came back clean." Clean against what?
+
+### Added — `holistic-editing.class-sweep`
+
+- `skills/holistic-editing/SKILL.md` Where a defect has siblings, the unit of
+  work is the defect class: establish the class, fix every affected member,
+  report which were searched, affected, and already clean. A sweep that cannot
+  be enumerated is a claim, not a result.
+- The **Scope rule** is amended in the same pass: "unrelated issues get filed,
+  not fixed" now marks *unrelated* as the operative word — another instance of
+  the same defect is the same work. The sweep is bounded by the defect's
+  identity, the scope rule by its relevance.
+- New forbidden move (fixing the handed instance while known siblings keep the
+  defect) and a new self-check question.
+
+### Added — `engineering-posture.host-parity`
+
+- `core/method/engineering-posture.md` §13. A green result on the authoring
+  host is evidence about the authoring host; the target is authoritative for
+  claims about the target. Two corollaries: validate where it runs or state
+  that you did not, and a file resolved from the working tree but untracked
+  does not exist for CI, a teammate, or the artifact. The same holds for a
+  local model, service, or credential standing in for a remote one.
+
+### Added — `design-posture.restrictive-policy`
+
+- `core/method/design-posture.md` §8. A restrictive rule is designed against
+  two sets: what it must catch and what must keep working. Enumerate what it
+  will deny and check the common paths, not only the motivating one; where the
+  rule is positional, include what its placement displaces. State the invariant
+  it may not violate in the same change.
+
+### Changed — implementer and reviewer
+
+- `agents/02-implementer.md` New precondition: name the caller this increment
+  will be reached through. New bullet under "Integrate, don't bolt on": a
+  function, module, script, role or config that nothing references is not
+  implemented. The diff is not additive, but the reachable program is unchanged.
+- `agents/03-reviewer.md` Matching integration-coherence finding: added surface
+  with no referrer.
+
+### Changed — `delegation.briefs`
+
+- `core/method/delegation.md` A brief carries each constraint at its stated
+  strength. "Avoid X where you can" is a preference; "no X" is a bound.
+  Restating either as the other is a brief-fidelity defect — hardening a
+  preference is as much a corruption as relaxing a bound.
+
+### Added — `tools/agnosticism-lint.py`
+
+- Standalone parameterized linter: `--root`/`--file`/`--glob`/`--forbid`,
+  exit 0/1/2, `path:line: message` findings, importable as
+  `scan()`/`iter_files()`. Forbidden terms are the caller's; the seed passes
+  none.
+- `tests/seed-lint.py` calls it instead of keeping a second copy; findings
+  render in its existing `path: message` form, byte-identical to before.
+- `tests/test-agnosticism-lint.sh` (8 assertions, fixtures under
+  `tests/fixtures/agnosticism/`) wired into `tests/run.sh` ahead of the
+  seed-lint suite.
+- `documentation/protocols-reference.md` documents the tool inside harvest
+  Gate 1; its closing provenance line is corrected to include `tools/`.
+
+### Fixed — the agnosticism floor is delivered, not deposited
+
+- `protocols/harvest.md` Phase 4's agnosticism scan names the tool as its
+  mechanical floor, with the invocation and its limit: it reports what a regex
+  can see, the stack-fingerprint and domain-noun judgment stays human, and a
+  clean run is not a pass on its own.
+- `install.sh` `place_graph_scaffold()` delivers it as
+  `docs/graph/agnosticism-lint.py`. It carries no project config, so it
+  fast-forwards like `agent-lint.py` rather than joining the add-if-missing set.
+- `protocols/graft.md` names it on both sides of the rootstock line: the lint
+  belongs on what a plant sends up, never on what it keeps.
+- `protocols/grow.md` runs it over what a growth authors that is meant to
+  travel; everything else a growth authors should name the project.
+- `INSTALL_PROMPT.md` holds a newly-authored project-agnostic expert definition
+  to that word.
+- `tools/graft-audit.py` counts it as scaffold machinery (`SCAFFOLD_FILES`,
+  `seed_source_for`).
+- `tests/test-unified-graph-install.sh` and `tests/test-full-install.sh` pin
+  presence and in-plant execution.
+
 ## 6.13.1 — a reusable skill belongs in the plant, not the global harness (2026-09-02)
 
 A `question` skill authored during a Prime Agent session on a plant landed in

@@ -95,7 +95,11 @@ authoring, or code edits in the main chat. Maintain the plan here, communicate
 with me here, and always spawn clean-context workers with a bounded purpose, the
 exact paths they may inspect/change, required graph context, evidence rules,
 deliverables, and verification. Use purpose-made existing agents/skills/prompts;
-if none fits, create the missing project-agnostic expert definition first.
+if none fits, create the missing project-agnostic expert definition first — and
+hold it to that word: `python3 docs/graph/agnosticism-lint.py --file <the new
+definition> --forbid <project name> --forbid <domain noun>` catches the
+objective leaks before the definition calcifies. A definition that names this
+project is not an expert definition, it is a note.
 
 Model policy is strict:
 

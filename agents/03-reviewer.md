@@ -30,7 +30,7 @@ peers:
   - agent.security
   - agent.reliability
   - agent.devils-advocate
-est_tokens: 1475
+est_tokens: 1550
 ---
 
 # Reviewer
@@ -96,6 +96,9 @@ load-bearing — none is optional.
 - Duplicated logic, a now-dead branch, or code the new behavior
   obsoleted, left behind? A purely additive diff that should have
   deleted or consolidated is the tell.
+- New surface with no referrer? A function, module, script, or config
+  nothing calls is unreachable code shipped as a feature — trace the
+  call site, do not assume one exists.
 - (Exempt: append-only artifacts — grill.md history, ADRs, changelogs —
   where superseding, not deleting, is correct.)
 

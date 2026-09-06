@@ -1873,6 +1873,34 @@ in the generic). Plant-identifying provenance belongs only in the
 ratification proposal shown to the steward, never in the seed's
 committed files.
 
+*The mechanical floor* (`tools/agnosticism-lint.py`; the sibling
+`tools/status-register.py` is the mechanical floor for lifecycle status, and
+`tools/status-migrate.py` the one-time migration into it). Gate 1 is a
+judgement call, but three of its classes are not: a real host address, a
+pinned advisory, and a term the tree already knows it must not carry are
+objective, and review is exactly where they slip through. The shared
+linter scans any project-agnostic tree for those three and reports
+`path:line` with the offending term.
+
+```sh
+python3 tools/agnosticism-lint.py --root <dir> [--root <dir> ...]
+python3 tools/agnosticism-lint.py --root <dir> --forbid <token> \
+        --forbid <another-token> --glob '*.md' --file <path>
+```
+
+Exit 0 clean, 1 with findings, 2 on a usage error — including a scan that
+matched no file, which would otherwise print the pass a real scan earns.
+The `--forbid` terms are the caller's, repeatable, and matched
+case-insensitively as substrings (fail-closed, so a token catches the
+compounds built from it): a component meant for any project cannot
+enumerate the names it must not contain without containing them, so the
+adopting tree supplies its own — exactly as `graft-audit.py` takes
+`--tokens`. `tests/seed-lint.py` runs this same code over the seed's
+shipped prose, passing no `--forbid`, because the seed has no plant token
+it could name. Everything subtler — a domain noun, a stack combination,
+an identifying count — stays human judgement and is not faked
+mechanically.
+
 **Gate 2 — Durability (surface, not pin).** "Will this still be true a
 version from now — is it about the library, or about one pinned release
 of it?"
@@ -2281,6 +2309,19 @@ itself:
   whose backup differs from the seed *and* carries plant-signal content
   is a divergence the blind FF overwrote; re-integrate or ratify. An
   un-reintegrated, un-ratified customization BLOCKS.
+- **Unfilled scaffolds** (`tools/graft-audit.py <plant> <seed> --unfilled`) —
+  every docs leaf still byte-identical to its `templates/docs/**` template is
+  reported; `--rename` (default) turns it into `<name>.unfilled.md`, a marker
+  the installer honours so the blank leaf is never re-created; `--prune`
+  deletes, only on the steward's say-so (after prune the template reappears on
+  the next install). `verification.md` is exempt only when it carries an
+  `executed` gate row. An unfilled scaffold shadows the authored leaf a cold
+  agent needed, so a surviving one BLOCKS.
+- **Lifecycle status** — the plant's `status:` frontmatter (ADRs, specs,
+  deviations, risks) is plant-owned and never touched by the fast-forward; a
+  plant arriving from pre-7.0.0 runs `tools/status-migrate.py --root docs/graph`
+  (dry run, then `--write`) as part of the layout migration and the graft record
+  carries its table; `docs/graph/status-register.py` then lints it.
 - **Machinery healthy** — the plant's graph still routes on the upgraded
   engine; the agent router lints and evals clean; internal links and
   edges resolve. Report the **roster delta** as work the plant's next
@@ -2362,4 +2403,5 @@ upgrade.
   user-triggered), initialize (coding-tool adapter → grow).
 
 *End of protocols reference. Every fact above is drawn from the files in
-`protocols/*.md` and the kernel `core/AGENTS.md`.*
+`protocols/*.md`, the support tools they name under `tools/`, and the
+kernel `core/AGENTS.md`.*

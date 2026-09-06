@@ -19,7 +19,7 @@ load_when:
   - "graft the seed, re-propagate machinery"
   - "plant grew from an older seed version"
   - "reconcile local machinery divergence"
-est_tokens: 10000
+est_tokens: 10800
 ---
 
 # Protocol: graft
@@ -83,9 +83,15 @@ and ratifies the result before it is applied.
 ## The rootstock line — the heart of this protocol
 
 Harvest's heart is the agnosticism gate: *nothing project-specific enters the
-seed.* Graft's heart is its mirror, the **rootstock line**: *nothing the plant
-authored about itself is overwritten by the upgrade.* Draw it once and hold it
-through every phase.
+seed* — mechanically floored by `tools/agnosticism-lint.py`, which the graft
+also installs into the plant as `docs/graph/agnosticism-lint.py` so a plant can
+check its own harvest candidates before offering them. Graft's heart is its
+mirror, the **rootstock line**: *nothing the plant authored about itself is
+overwritten by the upgrade.* Draw it once and hold it through every phase.
+
+The two gates point opposite ways, and confusing them is the classic error: the
+agnosticism lint belongs on what the plant sends *up*, never on what the plant
+keeps. A plant's own knowledge names the plant, correctly.
 
 Two territories, and graft writes to exactly one of them:
 
@@ -103,7 +109,8 @@ Two territories, and graft writes to exactly one of them:
   settings, and
   hooks; the shared router script `docs/graph/agent-lint.py` (also projected
   to `.claude/agent-lint.py` on Claude Code installs); and the graph engine
-  scripts `docs/graph/{graph-lint.py,spec-lint.py}` — preserving the
+  scripts `docs/graph/{graph-lint.py,spec-lint.py}` (and the config-free
+  `agent-lint.py` / `agnosticism-lint.py` / `status-register.py`, which fast-forward) — preserving the
   plant's configured `TEST_GLOBS`. Graft carries the seed's newest version
   of these onto the plant. `_schema.md` and `index.md` are NOT in this
   list — they are project-instantiated and stay the plant's (see the
@@ -113,7 +120,10 @@ Two territories, and graft writes to exactly one of them:
   `docs/graph/` — its `nodes/`, `specs/`, `decisions/`, `libraries/`, `plans/`,
   `runbooks/`, product, architecture, API, and data collections, any graph node
   **without** `origin: seed`, and the pinned, version-specific facts in its
-  library and tool pages.
+  library and tool pages. Its `deviation.*` nodes are the plant's own: a
+  standing departure the plant chose is its truth, never reconciled away by
+  an upgrade. So is every `status:` frontmatter the plant authored: a
+  fast-forward never advances, closes, or re-opens a plant's lifecycle state.
   Graft reads this territory to understand the plant and to place refreshed
   surface knowledge accurately; it treats every fact in it as the plant's to
   keep.
@@ -341,6 +351,25 @@ The migration's outcome feeds Phase 7 unchanged: the audit runs over the
 backups, the redundant-copy list and any un-consented reference rewrites appear
 in the proposal, and the stamp records the plant as a 6.0.0-layout plant.
 
+### Status migration: pre-7.0.0 → 7.0.0 (same slot; any plant that predates it)
+
+A plant grown or last grafted before 7.0.0 carries lifecycle status as body
+prose — an ADR's `## Status` line, a spec's `**Status:**` bullet — in a
+vocabulary per kind, which nothing can query and which drifts from its index
+rows. The graft runs `python3 <seed>/tools/status-migrate.py --root
+<plant>/docs/graph` (dry run) and reports its table in the graft record; on
+the steward's ratification it re-runs with `--write`, moving each value into
+frontmatter in the schema's one vocabulary (`docs/graph/_schema.md`
+§"Lifecycle status") and leaving the body line as a pointer. What the tool
+cannot map it reports rather than invents: a threat model's `active` means
+"in force", not lifecycle debt, and its new home is the steward's call via
+`--map`; a companion the old record never stated is written `not recorded —
+<why>`. This touches plant-authored frontmatter, so it is the one sanctioned
+exception to the rootstock rule on `status:` — the plant's own value moved
+into the plant's own frontmatter, ratified, never a change of state. The
+installer has already placed `docs/graph/status-register.py`; Phase 7 runs
+its lint after the write.
+
 ### Phase 3 — Reconcile the machinery (Opus authors)
 
 For each seed-owned artifact, apply the three-way reconciliation above and
@@ -541,6 +570,17 @@ backups exist). Then prove the plant is left more capable and no less itself:
   re-integrated into the FF'd file (holistic MERGE) or explicitly ratified. An
   un-reintegrated, un-ratified customization BLOCKS — a buried divergence is the
   one failure the installer cannot catch on its own.
+- **Unfilled scaffolds (the scaffold gate)** — run `tools/graft-audit.py <plant>
+  <seed> --unfilled`. Every `docs/graph/` leaf still byte-identical to its
+  `templates/docs/**` template is a scaffold posing as knowledge and shadows
+  the authored leaf a cold agent needed (`grow.completeness-contract` owns the
+  rule; `runbooks/verification.md` is exempt only while it carries an
+  `executed` gate). List each one in the graft record. `--rename` is the
+  default remedy — `<name>.unfilled.md`, a marker the installer honours so the
+  blank is never re-created; `--prune` runs only on the steward's explicit
+  say-so naming the files, because a pruned leaf reappears at the next install
+  or graft and deletion is the steward's, not the graft's
+  (`graft.user-sovereignty`).
 - **Kernel current (the always-loaded bootstrap)** — the plant's kernel body
   (`AGENTS.md` / `CLAUDE.md`, resolving the shared symlink) must be byte-equal to
   the seed's `core/AGENTS.md`. The kernel loads on every session of every
@@ -678,11 +718,19 @@ State the summary in the chat, and record a provenance entry in the plant's own
 ## Pre-graph knowledge swept (migration (f); N/A if not a pre-graph plant)
 - <fact> — found in <plant source path>, woven into <owning node>
 
+## Unfilled scaffolds (Phase 7 — listed; renamed by default, pruned only on say-so)
+- <docs/graph/<rel>> — renamed `<name>.unfilled.md` / pruned (steward: <who, when>) / filled by <author>
+
+## Status migrated (pre-7.0.0 plant; N/A otherwise)
+- <status-migrate.py table: path — old value → `status` + companions; items reported-not-migrated, with the steward's `--map` decision>
+
 ## Integrity gate
 - Rootstock intact (source + authored facts unchanged): PASS / BLOCK (<hit>)
 - Kernel current (AGENTS.md/CLAUDE.md == seed core/AGENTS.md; every adapter grafted, none skipped): PASS / BLOCK (<stale kernel / skipped adapter>)
 - Graph engine upgraded to seed's (or superset kept): PASS / FAIL (<lines / KEEP-PLANT>)
 - Customization audit — no divergence buried by the FF: PASS / BLOCK (<file + signal>)
+- Unfilled scaffolds — `--unfilled` reports zero after remedy (<n> renamed / <n> pruned on say-so): PASS / BLOCK (<leaf>)
+- Status register lint (`python3 docs/graph/status-register.py --root docs/graph`): PASS / FAIL / N-A (<migration not yet ratified>)
 - Plant graph routes on upgraded engine / agent-router lint+eval: PASS / FAIL (<command + result>)
 - Minimum-sufficient upgrade — every addition evidenced and consumed, merges minimal: PASS / BLOCK (<item + why>)
 - Pure-graph integrity — plant ≥ the seed's pure-graph spec; no machinery outside the graph, no duplicate home, no drifted projection, no unlisted residue: PASS / BLOCK (<drift + home>)
@@ -731,6 +779,10 @@ A graft that passes:
   structural topology audit that disjoint file ownership cannot self-check.
 - Applies additively with a backup behind every replaced file, verifies the plant
   still routes and loads, and updates the seed stamp with dated provenance.
+- Lists every unfilled scaffold (renamed by default, pruned only on the
+  steward's named say-so) and leaves every plant-authored `status:` and
+  `deviation.*` node untouched — moving a pre-7.0.0 plant's status into
+  frontmatter only as a ratified, value-preserving migration.
 - Proposes for ratification and is reversible; the steward decides before it lands.
 
 A graft that fails:
@@ -770,6 +822,8 @@ A graft that fails:
   a stale shared summary file or a fact restated across two author-touched
   files, unnoticed because `graph-lint` only checks that edges resolve, not
   that they make sense.
+- Prunes an unfilled scaffold unasked, or leaves a template-identical leaf
+  shadowing the authored one without listing it.
 - Applies without backups, or reports green without naming the command that ran.
 - Mutates the plant before the steward has ratified the reconciled result.
 

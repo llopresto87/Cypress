@@ -19,7 +19,7 @@ load_when:
   - "fold generalizable improvements upstream"
   - "the plant is mature, propose a harvest"
   - "seed improvement from project experience"
-est_tokens: 7600
+est_tokens: 7950
 ---
 
 # Protocol: harvest
@@ -272,11 +272,24 @@ harvested tooling fix arrives with its regression test generalized alongside it.
 ### Phase 4 — Seed integrity gate (fail-closed)
 
 The seed must leave harvest **more capable and no less agnostic**:
-- **Agnosticism scan** — grep the *entire* diff, including the CHANGELOG entry,
+- **Agnosticism scan** — scan the *entire* diff, including the CHANGELOG entry,
   the harvest-log row, and any provenance note (they are seed artifacts too), for
   any plant name, domain noun, stack fingerprint (a language/framework combo that
   identifies the plant), identifying count, internal-component/file/config name,
   path, credential, dataset shape, or version pin. Any hit BLOCKS.
+  `tools/agnosticism-lint.py` is the mechanical floor — it catches the
+  objective leaks (host-IP literals, pinned advisories) with no judgment
+  required, and takes the plant's own identifying tokens as `--forbid`, which
+  the seed cannot hardcode without leaking them:
+
+  ```
+  python3 tools/agnosticism-lint.py --root <changed dir> [--file <changed file>]
+      --forbid <plant name> --forbid <domain noun> --forbid <component name>
+  ```
+
+  The tool is a floor, not the gate. It reports what a regex can see; the
+  stack-fingerprint and domain-noun judgment above stays yours, and a clean
+  run is not a pass on its own — pair it with a read of the diff.
 - **Faithful import (no silent thinning)** — a harvested capability lands in the
   seed at its FULL reusable fidelity, not a summarized stub. A plant that
   authored a complete reusable expert, skill, or tool is imported with the whole

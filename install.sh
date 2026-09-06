@@ -196,6 +196,13 @@ place_docs_skeleton() {
     log "populating missing unified-graph leaves in docs/graph/"
     while IFS= read -r -d '' f; do
         rel="${f#"$src"/}"         # quoted: an unquoted $src is a glob pattern
+        # A `<name>.unfilled.md` beside the target is the plant's recorded
+        # verdict (graft-audit --unfilled --rename): it looked at this scaffold
+        # and declined it. Honour the marker — re-creating the blank leaf would
+        # re-shadow the authored one a cold agent needs (D-SCAFFOLD).
+        if [[ -e "$dest/${rel%.md}.unfilled.md" ]]; then
+            continue
+        fi
         if [[ ! -e "$dest/$rel" && ! -L "$dest/$rel" ]]; then
             mkdir -p "$(dirname "$dest/$rel")"
             cp "$f" "$dest/$rel"
@@ -242,6 +249,17 @@ place_graph_scaffold() {
     # config, so it fast-forwards like machinery: identical -> untouched,
     # changed -> backed up and replaced (graft-audit inspects the backup).
     place_file "$SEED_ROOT/integrations/claude-code/agent-lint.py" "$g/agent-lint.py"
+    # the agnosticism floor travels with the graph for the same reason: it
+    # carries NO project config (forbidden tokens are --forbid at call time,
+    # never baked in), so it fast-forwards like the router. It is available,
+    # not mandatory -- it applies to artifacts a plant intends to be reusable
+    # (a harvest candidate, a shared component), never to the plant's own
+    # project-specific knowledge, where naming the project is correct.
+    place_file "$SEED_ROOT/tools/agnosticism-lint.py" "$g/agnosticism-lint.py"
+    # the lifecycle status register: lint + query over every status-bearing
+    # artifact. Config-free (vocabulary is the schema's), so it fast-forwards
+    # like the router. A session-start hook injects its --summary once.
+    place_file "$SEED_ROOT/tools/status-register.py" "$g/status-register.py"
     [[ -e "$g/index.md" ]] || cp "$SEED_ROOT/templates/knowledge-graph/index.md" "$g/index.md"
     log "  run /initialize to discover the project and grow the graph"
 }
@@ -311,12 +329,15 @@ install_claude_code() {
     # (those declaring `command: true`). No authored command tree; the node
     # is the single home, the command routes into it.
     generate_slash_commands "$PROJECT_DIR/.claude/commands"
-    # Settings file is copied (so the project can edit it).
-    cp "$SEED_ROOT/integrations/claude-code/settings.json" \
-       "$PROJECT_DIR/.claude/settings.json"
+    # Settings file is placed (so the project can edit it); an edited copy is
+    # backed up before replacement — a graft never destroys a plant's hook config.
+    place_file "$SEED_ROOT/integrations/claude-code/settings.json" "$PROJECT_DIR/.claude/settings.json"
     # Progressive-discovery enforcement hook (referenced by settings.json).
     cp "$SEED_ROOT/integrations/claude-code/route-hook.py" \
        "$PROJECT_DIR/.claude/route-hook.py"
+    # Status-register surfacing hook (SessionStart; referenced by settings.json).
+    cp "$SEED_ROOT/integrations/claude-code/status-hook.py" \
+       "$PROJECT_DIR/.claude/status-hook.py"
     # Mechanical agent-router / roster linter / eval gate, invoked as
     # `python3 .claude/agent-lint.py` by 00-orchestrator.md, the brief
     # templates, and the deliver assertion. Scores .claude/agents/.
@@ -353,8 +374,7 @@ install_opencode() {
     # seed shipped both and let the harness pick. Strict JSON is also the form
     # tests/seed-lint.py and tests/test-full-install.sh can parse; the rationale
     # for what this file does NOT declare lives in integrations/opencode/README.md.
-    cp "$SEED_ROOT/integrations/opencode/opencode.json" \
-       "$PROJECT_DIR/opencode.json"
+    place_file "$SEED_ROOT/integrations/opencode/opencode.json" "$PROJECT_DIR/opencode.json"
     place_docs_skeleton
     log "opencode install done."
     log "  AGENTS.md             -> core/AGENTS.md (bootstrap kernel)"
@@ -526,7 +546,12 @@ PYEOF
            "$PROJECT_DIR/.github/hooks/route-hook.py"
         cp "$SEED_ROOT/integrations/github-copilot/hooks/route.json" \
            "$PROJECT_DIR/.github/hooks/route.json"
+        cp "$SEED_ROOT/integrations/claude-code/status-hook.py" \
+           "$PROJECT_DIR/.github/hooks/status-hook.py"
+        cp "$SEED_ROOT/integrations/github-copilot/hooks/status.json" \
+           "$PROJECT_DIR/.github/hooks/status.json"
         log "  .github/hooks/route.json + route-hook.py (enforce progressive discovery)"
+        log "  .github/hooks/status.json + status-hook.py (status register at session start)"
     fi
 
     place_docs_skeleton
@@ -571,9 +596,11 @@ install_prime_agent() {
     mkdir -p "$PROJECT_DIR/.prime/agent/extensions"
     cp "$SEED_ROOT/integrations/prime-agent/route-extension.ts" \
        "$PROJECT_DIR/.prime/agent/extensions/route-extension.ts"
-    # Settings — copied (so the project can edit it).
-    cp "$SEED_ROOT/integrations/prime-agent/settings.json" \
-       "$PROJECT_DIR/.prime/agent/settings.json"
+    # Status-register surfacing (first prompt of the session) — parity of status-hook.py.
+    cp "$SEED_ROOT/integrations/prime-agent/status-extension.ts" \
+       "$PROJECT_DIR/.prime/agent/extensions/status-extension.ts"
+    # Settings — placed (so the project can edit it); an edited copy is backed up.
+    place_file "$SEED_ROOT/integrations/prime-agent/settings.json" "$PROJECT_DIR/.prime/agent/settings.json"
     # Native-execution overlay — APPENDED to Prime Agent's system prompt every
     # session (Claude Code never reads it). Teaches the model to run the seed's
     # discipline with Prime Agent's RLM-native primitives (recursive rlm()
@@ -588,7 +615,7 @@ install_prime_agent() {
     log "  .prime/agent/agents/       (roster BRIEF SOURCES — read one, spawn an rlm() child with it)"
     log "  .prime/agent/skills/       (harness projection of docs/graph/skills/)"
     log "  .prime/agent/prompts/      (slash-command prompt templates)"
-    log "  .prime/agent/extensions/   (route-extension.ts — progressive-discovery enforcement)"
+    log "  .prime/agent/extensions/   (route-extension.ts — progressive discovery; status-extension.ts — status register)"
     log "  .prime/agent/settings.json (commit to share with team)"
     log "  .prime/agent/APPEND_SYSTEM.md (RLM-native execution overlay — appended to the system prompt)"
     # Unlike claude-code/opencode, Prime Agent does NOT enumerate a roster at

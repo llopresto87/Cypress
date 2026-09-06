@@ -17,6 +17,8 @@ required=(
   docs/graph/index.md
   docs/graph/_schema.md
   docs/graph/graph-lint.py
+  docs/graph/agnosticism-lint.py
+  docs/graph/status-register.py
   docs/graph/nodes
   docs/graph/libraries/index.md
   docs/graph/sources/index.md
@@ -66,5 +68,15 @@ python3 "$TARGET/docs/graph/graph-lint.py" >/dev/null
 grep -q 'full-growth' "$ROOT/protocols/initialize.md"
 grep -q 'does not run application builds' "$ROOT/protocols/initialize.md"
 grep -q 'does not push' "$ROOT/protocols/initialize.md"
+
+
+# 7.0.0 D-SCAFFOLD: a `<name>.unfilled.md` marker (left by graft-audit --unfilled
+# --rename) must stop the add-if-missing pass from re-creating the blank leaf.
+mv "$TARGET/docs/graph/runbooks/rollback.md" "$TARGET/docs/graph/runbooks/rollback.unfilled.md"
+"$ROOT/install.sh" claude-code --project-dir "$TARGET" --copy --force >/dev/null
+if [[ -e "$TARGET/docs/graph/runbooks/rollback.md" ]]; then
+  echo "install re-created runbooks/rollback.md despite the .unfilled.md marker" >&2; exit 1
+fi
+echo "  .unfilled.md marker suppresses scaffold re-creation — OK"
 
 printf 'unified graph install: PASS\n'

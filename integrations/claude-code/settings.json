@@ -12,6 +12,17 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/status-hook.py\" || true"
+          }
+        ]
+      }
     ]
-  }
+  },
+  "_status_hook_comment": "SessionStart runs status-hook.py ONCE per session and injects `status-register.py --summary` (open / hotfix / deferred counts and the oldest items) so lifecycle debt is in front of the model before it plans. Not per prompt: the register is a frontmatter scan, and a session sees it once. Fail-open like route-hook: '|| true'."
 }

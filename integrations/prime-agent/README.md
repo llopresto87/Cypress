@@ -33,6 +33,7 @@ This seed system maps to Prime Agent as follows:
 | `skills/*/SKILL.md`          | `.prime/agent/skills/*/SKILL.md`                   |
 | protocols → slash commands   | `.prime/agent/prompts/*.md` (generated projections) |
 | route enforcement            | `.prime/agent/extensions/route-extension.ts`       |
+| status register (once/session) | `.prime/agent/extensions/status-extension.ts`     |
 | `templates/`                 | `templates/` (kept at repo root, untouched)        |
 | `templates/docs/` (graph leaves) | `docs/graph/` (missing leaves added on install) |
 
@@ -204,6 +205,8 @@ Creates (symlinks by default under `--symlink`, copies otherwise):
 - `.prime/agent/skills/<name>/SKILL.md` → `skills/<name>/SKILL.md`
 - `.prime/agent/prompts/*.md` → generated, one per protocol node with
   `command: true`
+- `.prime/agent/extensions/status-extension.ts` → copied (injects
+  `status-register.py --summary` on the first prompt of the session)
 - `.prime/agent/extensions/route-extension.ts` → copied (progressive-
   discovery enforcement)
 - `.prime/agent/settings.json` → copied (so the project can edit it)

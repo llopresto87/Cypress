@@ -34,7 +34,7 @@ ROOT_ID = "root"
 # The node kinds this project uses. An id must be "<kind>.<name>" for its
 # declared kind — except the root node, whose id is exactly ROOT_ID.
 KINDS = {"root", "subsystem", "stack", "platform", "data", "crosscut", "domain",
-         "protocol", "skill", "agent", "method"}
+         "deviation", "protocol", "skill", "agent", "method"}
 # Optional: kinds whose node ids carry a shorter, different id-prefix than the
 # kind name itself. Maps a kind → the prefix its ids must start with, so a
 # verbose kind can live in a terse id namespace (its ids must then be
@@ -61,6 +61,27 @@ INDEX = HERE / "index.md"
 
 REQUIRED_KEYS = {"id", "tier", "kind", "title", "owns", "requires", "load_when", "est_tokens"}
 LIST_KEYS = {"owns", "requires", "peers", "libraries", "artifacts", "load_when"}
+
+# Lifecycle status (schema §"Lifecycle status"). One base vocabulary for every
+# kind; extensions only where the base cannot express a real state. Companion
+# keys make a status mean something: `closed` without evidence is a green lie,
+# `deferred` without a reopen condition is a quiet abandonment.
+STATUS_BASE = {"open", "deferred", "hotfix", "rejected", "superseded", "closed"}
+STATUS_EXT = {
+    "adr": {"proposed", "accepted"},
+    "spec": {"draft", "active", "implemented", "back-written"},
+    "deviation": {"standing"},
+}
+STATUS_COMPANIONS = {
+    "open": ("owner",), "hotfix": ("owner",), "deferred": ("owner", "reopen_when"),
+    "superseded": ("superseded_by",), "closed": ("status_evidence",),
+    "standing": ("ends_when",),
+}
+DEVIATION_KEYS = {"departs_from", "reason", "scope", "ends_when", "recorded_in"}
+PLANT_KEYS = {"environment_class", "commit_attribution", "deliverable_language", "comment_language"}
+ENVIRONMENT_CLASSES = {"ephemeral-test", "staging", "real-production", "mixed"}
+STATUS_LINE_RE = re.compile(r"^##\s+Status\s*$", re.M)
+_ALL_STATUS_WORDS = STATUS_BASE | set().union(*STATUS_EXT.values())
 
 # A version pin: 2.7.2, v2.7.2, ^15.0.0, ~4.8.2, 0.0.13-SNAPSHOT, 8.0.31.
 # The lookbehind excludes `§5.4` (a section reference) and any digit/word/
@@ -131,6 +152,11 @@ def parse_frontmatter(text: str, path: Path):
         if line.startswith((" ", "\t")):
             item = line.strip()
             if not item.startswith("- "):
+                # One nested map is permitted: the router's `plant:` block
+                # (schema §"The plant: block"). Its keys are read by
+                # check_plant_block by line; here they only must not break.
+                if current == "plant" and ":" in item:
+                    continue
                 raise LintError(f"{path.name}:{lineno}: expected '- item', got {line!r}")
             if current is None:
                 raise LintError(f"{path.name}:{lineno}: list item before any key")
@@ -228,6 +254,100 @@ def check_schema(n: Node, errs: list) -> None:
         errs.append(f"{n.path.name}: filename must equal id ({n.id}.md)")
     if not n.get_list("owns"):
         errs.append(f"{n.path.name}: node owns no facts — link farm, delete or merge it")
+
+
+def status_vocabulary(kind) -> set:
+    return STATUS_BASE | STATUS_EXT.get(str(kind), set())
+
+
+def check_status(n: Node, errs: list) -> None:
+    """Rule 12: status is a vocabulary value with its companions, and the body
+    never carries a competing value. Optional on most kinds; a deviation must
+    carry one (rule 13)."""
+    status = n.meta.get("status")
+    kind = n.meta.get("kind")
+    if status is None:
+        if kind == "deviation":
+            errs.append(f"{n.id}: deviation node must carry status: standing")
+        return
+    vocab = status_vocabulary(kind)
+    if status not in vocab:
+        errs.append(f"{n.id}: status {status!r} not in {sorted(vocab)} for kind {kind!r}")
+    for key in STATUS_COMPANIONS.get(str(status), ()):
+        if not n.meta.get(key):
+            errs.append(f"{n.id}: status {status!r} requires {key!r}")
+    sd = str(n.meta.get("status_date", ""))
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", sd):
+        errs.append(f"{n.id}: status_date must be YYYY-MM-DD (got {sd!r})")
+    m = STATUS_LINE_RE.search(n.body)
+    if m:
+        after = n.body[m.end():].strip().split("\n", 1)[0].strip().strip("`").lower()
+        first = after.split()[0].strip("`*:") if after else ""
+        if first in _ALL_STATUS_WORDS and first != str(status):
+            errs.append(f"{n.id}: body '## Status' says {first!r} but frontmatter says {status!r} — one home")
+
+
+def check_deviation(n: Node, errs: list) -> None:
+    """Rule 13: a deviation is a standing departure with reason, scope, end."""
+    if n.meta.get("kind") != "deviation":
+        return
+    if n.meta.get("status") != "standing":
+        errs.append(f"{n.id}: deviation status must be 'standing' (got {n.meta.get('status')!r})")
+    missing = DEVIATION_KEYS - {k for k, v in n.meta.items() if v not in (None, "", [])}
+    if missing:
+        errs.append(f"{n.id}: deviation missing {', '.join(sorted(missing))}")
+
+
+def check_plant_block(errs: list, warns: list) -> None:
+    """Rule 14: index.md carries the owner-declared plant facts. A grown plant
+    (completeness ledger present, or `grown: true` in index.md) FAILS without
+    them; an adopted plant only warns, so adoption is never blocked on day one."""
+    if not INDEX.exists():
+        return
+    text = INDEX.read_text(encoding="utf-8")
+    if not text.startswith("---\n"):
+        meta = {}
+    else:
+        try:
+            meta, _ = parse_frontmatter(text, INDEX)
+        except LintError as e:
+            errs.append(str(e))
+            return
+    # A plant is "grown" when index.md says so, or when the growth ledger exists
+    # — the latter only trusted when this graph really sits at <plant>/docs/graph,
+    # so a graph parked elsewhere (tests, scratch) never inherits a neighbour's ledger.
+    at_docs_graph = HERE.name == "graph" and HERE.parent.name == "docs"
+    ledger = HERE.parent.parent / ".cypress" / "growth" / "completeness-ledger.md"
+    flag = str(meta.get("grown", "")).strip().lower()
+    grown = flag in ("true", "yes", "1") or (at_docs_graph and ledger.exists())
+    sink = errs if grown else warns
+    # `plant:` is a nested map; the frontmatter subset stores it as an empty
+    # list marker and the indented `key: value` lines are not list items, so
+    # read the block by line rather than through parse_frontmatter.
+    block = {}
+    in_block = False
+    for line in text[4:text.find("\n---\n")].split("\n"):
+        if re.match(r"^plant:\s*$", line):
+            in_block = True
+            continue
+        if in_block:
+            if not line.startswith(" "):
+                break
+            k, _, v = line.strip().partition(":")
+            if k:
+                block[k.strip()] = v.strip()
+    if not block:
+        sink.append("index.md: missing `plant:` block (environment_class, commit_attribution, "
+                    "deliverable_language, comment_language) — the owner-declared facts")
+        return
+    unfilled = {k for k, v in block.items() if v.startswith("<") and v.endswith(">")}
+    missing = (PLANT_KEYS - {k for k, v in block.items() if v}) | unfilled
+    if missing:
+        sink.append(f"index.md: plant block not yet declared for {', '.join(sorted(missing))} "
+                    f"— the owner answers these once (grow Phase 1 / adopt-existing)")
+    ec = block.get("environment_class", "")
+    if ec and "environment_class" not in unfilled and ec not in ENVIRONMENT_CLASSES:
+        sink.append(f"index.md: plant.environment_class {ec!r} not in {sorted(ENVIRONMENT_CLASSES)}")
 
 
 def check_unique_ownership(nodes: list, errs: list) -> None:
@@ -471,7 +591,8 @@ def resolve(nodes: list, task: str):
 
     best = entries[0][0] if entries else 0
     floor = max(3, (best + 1) // 2) if best >= 3 else best
-    seeds = [n for s, n in entries[:3] if s >= floor] or [by_id[ROOT_ID]]
+    # pre-growth graphs have no root yet: fall back to nothing rather than crash
+    seeds = [n for s, n in entries[:3] if s >= floor] or ([by_id[ROOT_ID]] if ROOT_ID in by_id else [])
 
     loaded = {}
     stack = list(seeds)
@@ -525,8 +646,12 @@ def main() -> int:
         return 0
 
     errs: list = []
+    warns: list = []
     for n in nodes:
         check_schema(n, errs)
+        check_status(n, errs)
+        check_deviation(n, errs)
+    check_plant_block(errs, warns)
     check_unique_ids(nodes, errs)
     check_unique_ownership(nodes, errs)
     check_edges(nodes, errs)
@@ -537,6 +662,8 @@ def main() -> int:
     check_version_leakage(nodes, errs)
     check_budget(nodes, errs)
 
+    for w in warns:
+        print(f"  ! warning: {w}", file=sys.stderr)
     if errs:
         print(f"graph-lint: {len(errs)} error(s) in {len(nodes)} node(s)\n", file=sys.stderr)
         for e in errs:

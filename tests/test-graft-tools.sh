@@ -3,7 +3,13 @@
 #   graft-graph-engine.py  adopts the seed engine body, preserves plant config,
 #                          detects a plant superset, and no-ops when current.
 #   graft-audit.py         classifies backups IDENTICAL / DELTA / CUSTOMIZED,
-#                          flags a buried customization (exit 1), passes a clean FF.
+#                          flags a buried customization (exit 1), passes a clean FF,
+#                          maps every delivered tool (status-register.py included)
+#                          to its seed source, and with --unfilled reports the
+#                          template scaffolds a plant never filled (byte-identical
+#                          to templates/docs/**), renaming (--rename) or removing
+#                          (--prune) them on request; verification.md is exempt
+#                          only when it carries an executed gate row.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENGINE="$ROOT/tools/graft-graph-engine.py"
@@ -200,5 +206,133 @@ rc10=$?
 set -e
 [ "$rc10" -eq 2 ] || { cat "$TMP/aout10"; fail "flag-swallowed-flag must exit 2 (got $rc10)"; }
 echo "  audit rejects a flag consumed as a value (exit 2) — OK"
+
+# ---- delivered-tool registry: status-register.py (7.0.0) -------------------
+# install.sh delivers tools/status-register.py as docs/graph/status-register.py
+# (config-free fast-forward machinery, the agent-lint class). The audit must
+# map that path to its seed source, or every fast-forward of it reads as an
+# UNMAPPED knowledge overwrite of docs/graph/.
+mkdir -p "$TMP/seed/tools"
+printf 'seed status register body\n' > "$TMP/seed/tools/status-register.py"
+python3 - "$AUDIT" "$TMP/seed" <<'PY'
+import importlib.util, sys
+from pathlib import Path
+spec = importlib.util.spec_from_file_location("graft_audit", sys.argv[1])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+seed = Path(sys.argv[2])
+got = m.seed_source_for("docs/graph/status-register.py", seed)
+want = seed / "tools/status-register.py"
+assert got == want, f"seed_source_for -> {got!r}, want {want!r}"
+assert "status-register.py" in m.SCAFFOLD_FILES, m.SCAFFOLD_FILES
+assert m.is_seed_owned_graph_path("docs/graph/status-register.py")
+PY
+cp "$TMP/seed/tools/status-register.py" "$TMP/plant/docs/graph/status-register.py.bak-$DATE-000000"
+set +e
+python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=$DATE --tokens=widgetco >"$TMP/aout11" 2>&1
+rc11=$?
+set -e
+grep -q "'IDENTICAL': 4" "$TMP/aout11" || { cat "$TMP/aout11"; fail "status-register.py backup not mapped to tools/status-register.py"; }
+grep -q "knowledge overwrite" "$TMP/aout11" && { cat "$TMP/aout11"; fail "status-register.py fast-forward wrongly flagged as knowledge"; }
+[ "$rc11" -eq 0 ] || { cat "$TMP/aout11"; fail "identical status-register.py backup must audit clean (got $rc11)"; }
+rm -f "$TMP/plant/docs/graph/status-register.py.bak-$DATE-000000"
+echo "  status-register.py registered: seed_source_for + SCAFFOLD_FILES + clean FF — OK"
+
+# ---- --unfilled: template scaffolds never filled (D-SCAFFOLD, 7.0.0) --------
+# install.sh copies templates/docs/<rel> to docs/graph/<rel> when missing; a
+# leaf still BYTE-IDENTICAL to its template at grow Phase 6 / graft Phase 7
+# was never filled. Fixture: rollback.md identical (unfilled), release.md
+# filled, a plant node with no counterpart, api/README.md absent in the plant.
+FIX="$ROOT/tests/fixtures/graft"
+unfilled_plant() { rm -rf "$TMP/uplant"; cp -R "$FIX/plant" "$TMP/uplant"; }
+
+# report only: exactly the identical leaf, exit 1 (a gate), nothing touched
+unfilled_plant
+set +e
+python3 "$AUDIT" "$TMP/uplant" "$FIX/seed" --unfilled >"$TMP/uout1" 2>&1
+urc1=$?
+set -e
+grep -q "^  UNFILLED docs/graph/runbooks/rollback.md" "$TMP/uout1" || { cat "$TMP/uout1"; fail "identical scaffold not reported UNFILLED"; }
+[ "$(grep -c '^  UNFILLED ' "$TMP/uout1")" -eq 1 ] || { cat "$TMP/uout1"; fail "expected exactly one UNFILLED line"; }
+grep -q "unfilled scaffolds: 1 reported" "$TMP/uout1" || { cat "$TMP/uout1"; fail "summary count missing"; }
+[ "$urc1" -eq 1 ] || { cat "$TMP/uout1"; fail "--unfilled must exit 1 while unfilled scaffolds remain (got $urc1)"; }
+[ -f "$TMP/uplant/docs/graph/runbooks/rollback.md" ] || fail "report-only run must not touch the plant"
+[ ! -e "$TMP/uplant/docs/graph/runbooks/rollback.unfilled.md" ] || fail "report-only run must not rename"
+echo "  --unfilled reports exactly the byte-identical scaffold, exit 1, plant untouched — OK"
+
+# --rename: <name>.unfilled.md, exit 0; a second pass finds nothing
+set +e
+python3 "$AUDIT" "$TMP/uplant" "$FIX/seed" --unfilled --rename >"$TMP/uout2" 2>&1
+urc2=$?
+set -e
+[ "$urc2" -eq 0 ] || { cat "$TMP/uout2"; fail "--unfilled --rename must exit 0 (got $urc2)"; }
+[ -f "$TMP/uplant/docs/graph/runbooks/rollback.unfilled.md" ] || { cat "$TMP/uout2"; fail "unfilled scaffold not renamed to rollback.unfilled.md"; }
+[ ! -e "$TMP/uplant/docs/graph/runbooks/rollback.md" ] || fail "original left behind after --rename"
+cmp -s "$TMP/uplant/docs/graph/runbooks/rollback.unfilled.md" "$FIX/seed/templates/docs/runbooks/rollback.md" || fail "rename altered the file body"
+cmp -s "$TMP/uplant/docs/graph/runbooks/release.md" "$FIX/plant/docs/graph/runbooks/release.md" || fail "filled runbook must be untouched"
+[ -f "$TMP/uplant/docs/graph/nodes/acme-api.md" ] || fail "plant node with no template counterpart must be untouched"
+grep -q "unfilled scaffolds: 1 renamed" "$TMP/uout2" || { cat "$TMP/uout2"; fail "rename summary missing"; }
+set +e
+python3 "$AUDIT" "$TMP/uplant" "$FIX/seed" --unfilled >"$TMP/uout3" 2>&1
+urc3=$?
+set -e
+[ "$urc3" -eq 0 ] || { cat "$TMP/uout3"; fail "after --rename a report-only pass must be clean (got $urc3)"; }
+grep -q "unfilled scaffolds: 0" "$TMP/uout3" || { cat "$TMP/uout3"; fail "clean pass must report a zero count"; }
+echo "  --unfilled --rename -> <name>.unfilled.md, exit 0, filled + plant files untouched — OK"
+
+# --prune: removed outright, exit 0
+unfilled_plant
+set +e
+python3 "$AUDIT" "$TMP/uplant" "$FIX/seed" --unfilled --prune >"$TMP/uout4" 2>&1
+urc4=$?
+set -e
+[ "$urc4" -eq 0 ] || { cat "$TMP/uout4"; fail "--unfilled --prune must exit 0 (got $urc4)"; }
+[ ! -e "$TMP/uplant/docs/graph/runbooks/rollback.md" ] || fail "--prune left the unfilled scaffold"
+[ ! -e "$TMP/uplant/docs/graph/runbooks/rollback.unfilled.md" ] || fail "--prune must remove, not rename"
+[ -f "$TMP/uplant/docs/graph/runbooks/release.md" ] || fail "--prune removed a filled runbook"
+grep -q "unfilled scaffolds: 1 removed" "$TMP/uout4" || { cat "$TMP/uout4"; fail "prune summary missing"; }
+echo "  --unfilled --prune removes the scaffold, exit 0 — OK"
+
+# verification.md exemption, both ways: byte-identical WITHOUT an executed
+# gate row is unfilled like any scaffold; byte-identical WITH one (the seed
+# template itself carries a `**executed <date>**` row) is exempt.
+rm -rf "$TMP/vplant"; mkdir -p "$TMP/vplant/docs/graph/runbooks"
+cp "$FIX/seed/templates/docs/runbooks/verification.md" "$TMP/vplant/docs/graph/runbooks/verification.md"
+set +e
+python3 "$AUDIT" "$TMP/vplant" "$FIX/seed" --unfilled >"$TMP/uout5" 2>&1
+urc5=$?
+set -e
+grep -q "^  UNFILLED docs/graph/runbooks/verification.md" "$TMP/uout5" || { cat "$TMP/uout5"; fail "verification.md with no executed gate not reported"; }
+[ "$urc5" -eq 1 ] || { cat "$TMP/uout5"; fail "verification.md without an executed row must gate (got $urc5)"; }
+cp "$FIX/seed-executed/templates/docs/runbooks/verification.md" "$TMP/vplant/docs/graph/runbooks/verification.md"
+set +e
+python3 "$AUDIT" "$TMP/vplant" "$FIX/seed-executed" --unfilled >"$TMP/uout6" 2>&1
+urc6=$?
+set -e
+grep -q "UNFILLED" "$TMP/uout6" && { cat "$TMP/uout6"; fail "verification.md carrying an executed gate row must be exempt"; }
+[ "$urc6" -eq 0 ] || { cat "$TMP/uout6"; fail "exempt verification.md must not gate (got $urc6)"; }
+echo "  verification.md: unfilled without an executed gate row, exempt with one — OK"
+
+# the real seed layout: templates/docs/<rel> mirrors docs/graph/<rel>
+rm -rf "$TMP/rplant"; mkdir -p "$TMP/rplant/docs/graph/runbooks"
+cp "$ROOT/templates/docs/runbooks/rollback.md" "$TMP/rplant/docs/graph/runbooks/rollback.md"
+set +e
+python3 "$AUDIT" "$TMP/rplant" "$ROOT" --unfilled >"$TMP/uout7" 2>&1
+urc7=$?
+set -e
+grep -q "^  UNFILLED docs/graph/runbooks/rollback.md" "$TMP/uout7" || { cat "$TMP/uout7"; fail "real seed template not mirrored to docs/graph/"; }
+[ "$urc7" -eq 1 ] || { cat "$TMP/uout7"; fail "real-seed unfilled scaffold must gate (got $urc7)"; }
+echo "  --unfilled mirrors the real seed's templates/docs/ onto docs/graph/ — OK"
+
+# flag discipline: --rename/--prune act only on --unfilled findings, and never both
+set +e
+python3 "$AUDIT" "$TMP/uplant" "$FIX/seed" --prune >"$TMP/uout8" 2>&1; urc8=$?
+python3 "$AUDIT" "$TMP/uplant" "$FIX/seed" --unfilled --rename --prune >"$TMP/uout9" 2>&1; urc9=$?
+python3 "$AUDIT" "$TMP/uplant" "$TMP/notaplant" --unfilled >"$TMP/uout10" 2>&1; urc10=$?
+set -e
+[ "$urc8" -eq 2 ] || { cat "$TMP/uout8"; fail "--prune without --unfilled must exit 2 (got $urc8)"; }
+[ "$urc9" -eq 2 ] || { cat "$TMP/uout9"; fail "--rename with --prune must exit 2 (got $urc9)"; }
+[ "$urc10" -eq 1 ] || { cat "$TMP/uout10"; fail "a seed root without templates/docs/ must be refused (got $urc10)"; }
+grep -q "templates/docs" "$TMP/uout10" || { cat "$TMP/uout10"; fail "seed-root refusal must name templates/docs/"; }
+echo "  --unfilled flag discipline (prune needs unfilled; rename xor prune; seed root checked) — OK"
 
 echo "test-graft-tools: PASS"

@@ -145,7 +145,9 @@ often skips. You do not have to rely on the model following it: **VS
 Code Agent Hooks (Preview) can enforce it deterministically**, the same
 way Claude Code does, because the two share a hook format.
 
-- **The hook is cross-tool.** `route-hook.py` runs on `UserPromptSubmit`,
+- **Two hooks, both cross-tool.** `status-hook.py` runs on `SessionStart` and
+  injects the plant's lifecycle-status register once per session
+  (`.github/hooks/status.json`); `route-hook.py` runs on `UserPromptSubmit`,
   runs the graph router on the actual prompt, and returns the route-first
   mandate plus the suggested node set as
   `hookSpecificOutput.additionalContext`, which the host injects as a

@@ -1,3 +1,9 @@
+---
+status: open                # open | deferred | hotfix | rejected | superseded | closed
+status_date: YYYY-MM-DD
+owner: security
+---
+
 <!--
 Template: threat-model.template.md
 Authored by: security
@@ -16,7 +22,7 @@ agents and tooling index into them.
 - **Related ADR:** <adr-NNNN-*>
 - **Date:** YYYY-MM-DD
 - **Owner:** `security`
-- **Status:** draft | active | superseded
+- **Status:** see frontmatter (single home)
 
 ## 1. Assets
 What we are protecting. Tangible (user records, payment data, model

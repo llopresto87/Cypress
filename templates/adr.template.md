@@ -1,3 +1,12 @@
+---
+status: proposed            # proposed | accepted | open | deferred | hotfix | rejected | superseded | closed
+status_date: YYYY-MM-DD
+owner: <agent or person>    # required while open | hotfix | deferred
+# superseded_by: ADR-NNNN   # required when superseded
+# status_evidence: <path#anchor | commit | gate-run>   # required when closed
+# reopen_when: <condition>  # required when deferred
+---
+
 <!--
 Template: adr.template.md
 Authored by: architect, orchestrator
@@ -12,7 +21,7 @@ agents and tooling index into them.
 
 ## Status
 
-`proposed` | `accepted` | `superseded by ADR-NNNN` | `deprecated`
+See frontmatter — the single home. Do not restate the value here.
 
 ## Date
 

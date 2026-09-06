@@ -1,3 +1,9 @@
+---
+status: open                # open | deferred | hotfix | rejected | superseded | closed
+status_date: YYYY-MM-DD
+owner: <agent or team>
+---
+
 <!--
 Template: data-contract.template.md
 Authored by: data-ml
@@ -12,7 +18,7 @@ agents and tooling index into them.
 
 ## 0. Metadata
 - **Dataset:** <canonical name>
-- **Status:** draft | active | deprecated
+- **Status:** see frontmatter (single home)
 - **Owner:** <agent or team>
 - **Date:** YYYY-MM-DD
 - **Last reviewed:** YYYY-MM-DD

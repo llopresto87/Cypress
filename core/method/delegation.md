@@ -30,7 +30,7 @@ load_when:
   - "sonnet or opus, which model class"
   - "unknown agent type, specialist not registered, no such subagent"
   - "the roster was just installed, can I spawn it yet"
-est_tokens: 2000
+est_tokens: 2450
 ---
 
 # Delegation — the team, routing, and bounds
@@ -197,6 +197,16 @@ plus the routing evidence and the handback requirement
 `route_evidence` feed the deliver-time attribution assertion,
 `protocol.deliver`). Parameterized briefs live in
 `docs/graph/templates/prompts/`; use them.
+
+**Carry each constraint at its stated strength.** "Avoid X where you
+can" is a preference the worker weighs against the goal; "no X" is a
+bound it does not cross; "prefer Y" ranks options without excluding
+the rest. Restating any of them as another is a brief-fidelity defect,
+and it is the expensive kind: the worker inherits the distortion, not
+the instruction, and reports a blocker that exists only in the brief.
+Hardening a preference is as much a corruption as relaxing a bound —
+tightening is not the safe direction, it is the direction that stalls
+work nobody prohibited.
 
 ### One step per spawn
 

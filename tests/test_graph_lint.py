@@ -406,5 +406,111 @@ class ReachabilityBoundaryTests(unittest.TestCase):
         self.assertEqual(res.returncode, 0, f"exact listing must pass:\n{res.stdout}\n{res.stderr}")
 
 
+class StatusAndPlantTests(unittest.TestCase):
+    """7.0.0: lifecycle status in frontmatter (rules 12–13) and the router's
+    `plant:` block (rule 14). Against the pre-7.0.0 tool every negative case
+    below passes lint — RED for the right reason — because status was prose
+    and `plant:` was unknown."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="graph-lint-status-"))
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+
+    _n = 0
+
+    def _graph(self, extra_nodes: dict | None = None, index_front: str | None = None, grown_marker=False) -> Path:
+        # a fresh directory per graph: several tests build two graphs
+        self._n += 1
+        base = self.tmp / f"g{self._n}"
+        base.mkdir()
+        nodes = {"root": node_md("root", "root", owns=["root.map"])}
+        nodes.update(extra_nodes or {})
+        g = build_graph(base, nodes)
+        front = index_front or ""
+        if grown_marker:
+            # `grown: true` in the router frontmatter marks a grown plant
+            # (the ledger path is only trusted under a real docs/graph layout)
+            front = ("---\ngrown: true\n" + front[4:]) if front.startswith("---\n") else "---\ngrown: true\n---\n"
+        if front:
+            idx = g / "index.md"
+            idx.write_text(front + idx.read_text(encoding="utf-8"), encoding="utf-8")
+        return g
+
+    PLANT = ("---\nplant:\n  environment_class: ephemeral-test\n  commit_attribution: none\n"
+             "  deliverable_language: en\n  comment_language: en\n---\n")
+
+    def _node_with(self, node_id, kind, front_extra: str, body_extra: str = "") -> str:
+        base = node_md(node_id, kind, owns=[f"{node_id}.fact"])
+        # inject extra frontmatter lines before the closing '---'
+        head, _, rest = base.partition("\n---\n")
+        return head + "\n" + front_extra.rstrip("\n") + "\n---\n" + rest + body_extra
+
+    def test_status_vocabulary_is_controlled(self):
+        n = self._node_with("subsystem.a", "subsystem", "status: greenish\nstatus_date: 2026-01-01")
+        r = run_lint(self._graph({"subsystem.a": n}, self.PLANT))
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("status 'greenish' not in", r.stderr)
+
+    def test_closed_requires_evidence(self):
+        n = self._node_with("subsystem.a", "subsystem", "status: closed\nstatus_date: 2026-01-01")
+        r = run_lint(self._graph({"subsystem.a": n}, self.PLANT))
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("requires 'status_evidence'", r.stderr)
+
+    def test_open_with_owner_passes(self):
+        n = self._node_with("subsystem.a", "subsystem", "status: open\nstatus_date: 2026-01-01\nowner: acme-team")
+        r = run_lint(self._graph({"subsystem.a": n}, self.PLANT))
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_body_status_may_not_disagree(self):
+        n = self._node_with("subsystem.a", "subsystem", "status: open\nstatus_date: 2026-01-01\nowner: acme",
+                            body_extra="\n\n## Status\n\n`closed`\n")
+        r = run_lint(self._graph({"subsystem.a": n}, self.PLANT))
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("one home", r.stderr)
+
+    def test_deviation_kind_requires_standing_and_keys(self):
+        bad = self._node_with("deviation.host-key", "deviation", "status: open\nstatus_date: 2026-01-01\nowner: acme")
+        r = run_lint(self._graph({"deviation.host-key": bad}, self.PLANT))
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("deviation status must be 'standing'", r.stderr)
+        good = self._node_with("deviation.host-key", "deviation",
+            "status: standing\nstatus_date: 2026-01-01\ndeparts_from: secrets.transport-trust\n"
+            "reason: verification hangs first-boot provisioning\nscope: bootstrap only\n"
+            "ends_when: fleet configured\nrecorded_in: ADR-0002")
+        r = run_lint(self._graph({"deviation.host-key": good}, self.PLANT))
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_plant_block_missing_warns_on_adopted_fails_on_grown(self):
+        r = run_lint(self._graph())                      # adopted: no ledger, no grown marker
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("warning: index.md: missing `plant:` block", r.stderr)
+        r = run_lint(self._graph(grown_marker=True))     # grown: ledger present
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("missing `plant:` block", r.stderr)
+
+    def test_plant_environment_class_is_controlled(self):
+        bad = self.PLANT.replace("ephemeral-test", "sorta-prod")
+        r = run_lint(self._graph(index_front=bad, grown_marker=True))
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("environment_class 'sorta-prod' not in", r.stderr)
+
+
+class RootlessPlanTests(unittest.TestCase):
+    """`--plan` on a pre-growth (rootless) graph with a task no node matches
+    used to raise KeyError('root'); it must exit 0 with an empty LOAD set."""
+
+    def test_plan_without_root_and_without_match_does_not_crash(self):
+        tmp = Path(tempfile.mkdtemp(prefix="graph-lint-rootless-")); self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        g = build_graph(tmp, {"subsystem.only": node_md("subsystem.only", "subsystem", owns=["only.fact"])})
+        # graph without a root: strip the root node build_graph may have added
+        for f in (g / "nodes").glob("root.md"):
+            f.unlink()
+        r = subprocess.run([sys.executable, str(g / "graph-lint.py"), "--plan", "zebra quux nonsense"],
+                           cwd=str(g), capture_output=True, text=True, timeout=60)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("LOAD (0 nodes", r.stdout)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

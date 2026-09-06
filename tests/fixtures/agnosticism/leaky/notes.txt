@@ -1,0 +1,1 @@
+Scratch notes, not markdown: the fallback host is 198.18.7.43.

@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""graft-audit: prove a graft's fast-forward buried no plant customization.
+"""graft-audit: prove a graft's fast-forward buried no plant customization,
+and report the template scaffolds a plant never filled.
+
+MODE 1 — backup audit (default)
 
 install.sh fast-forwards seed-owned machinery with a per-file backup, but it
 does NOT check whether the file it overwrites carried a plant-authored
@@ -17,23 +20,41 @@ classifies:
 It also flags any backup over PLANT-AUTHORED docs/graph/ content (a knowledge
 overwrite — should be none; knowledge is add-if-missing). The seed-owned graph
 subtrees docs/graph/{protocols,skills,agents,method,templates}/ and the shared
-scripts (graph-lint.py, spec-lint.py, agent-lint.py) are machinery, expected to
-be fast-forwarded — but only where a seed source actually backs the path: a
-plant-authored project skill under docs/graph/skills/ is plant knowledge.
-_schema.md and index.md are project-instantiated and always the plant's own,
-like everything else under docs/graph/. Given the
-plant's graph-lint.py and the seed's, it also warns if the plant engine is
-STALE (missing engine lines the seed has).
+scripts (graph-lint.py, spec-lint.py, agent-lint.py, agnosticism-lint.py,
+status-register.py) are machinery, expected to be fast-forwarded — but only
+where a seed source actually backs the path: a plant-authored project skill
+under docs/graph/skills/ is plant knowledge. _schema.md and index.md are
+project-instantiated and always the plant's own, like everything else under
+docs/graph/. Given the plant's graph-lint.py and the seed's, it also warns if
+the plant engine is STALE (missing engine lines the seed has).
 
 "Plant-signal" = the plant's own name/paths PLUS generic self-reference that a
 customization uses without naming the plant ("this project's", "this program",
 "our stack"). Pass the plant's known tokens with --tokens.
 
+MODE 2 — unfilled scaffolds (--unfilled)
+
+install.sh copies every leaf of the seed's templates/docs/<rel> to the plant's
+docs/graph/<rel> when missing. A leaf still BYTE-IDENTICAL to its template at
+grow Phase 6 / graft Phase 7 was never filled: it is a scaffold posing as
+knowledge, and a fresh agent routed to it reads placeholders as facts. Each one
+is reported as `UNFILLED docs/graph/<rel>`; --rename moves it to
+`<name>.unfilled.md` (the body survives, the router stops trusting it) and
+--prune removes it. docs/graph/runbooks/verification.md is exempt only when it
+carries at least one gate row marked `executed` (verify.md's gate-state
+vocabulary: executed | discovered | absent); byte-identity stays the trigger,
+so a verification runbook identical to its template and carrying no executed
+gate is unfilled like any other scaffold.
+
 Usage:
   graft-audit.py <plant-root> <seed-root> [--date YYYYMMDD] [--tokens t1,t2,...]
                  [--engine <plant-graph-lint.py>:<seed-graph-lint.py>]
+  graft-audit.py <plant-root> <seed-root> --unfilled [--rename | --prune]
 --date defaults to today's UTC date via the newest .bak stamp found.
-Exit 0 if clean/only-DELTA; 1 if any CUSTOMIZED or docs overwrite (a gate hit).
+Backup audit: exit 0 if clean/only-DELTA; 1 if any CUSTOMIZED or docs
+overwrite (a gate hit). Unfilled: exit 1 while unfilled scaffolds remain and
+neither --rename nor --prune was requested (a gate); 0 once none remain or
+after they were renamed/removed. Exit 2 on a malformed command line.
 Dependency-free.
 """
 import re
@@ -43,6 +64,9 @@ from pathlib import Path
 GENERIC_SIGNALS = ("this project's", "this program", "our stack", "our program",
                    "this plant", "our deploy", "in this program")
 
+VALUE_OPTIONS = ("date", "tokens", "engine")
+FLAG_OPTIONS = ("unfilled", "rename", "prune")
+
 
 def parse_args():
     """Accept --flag=value AND --flag value. The old =-only parser
@@ -50,7 +74,10 @@ def parse_args():
     `--tokens acme` audited with DEFAULT tokens and could print "clean"
     for a graft that buried a real customization — the exact false-pass
     this gate exists to prevent. Unknown extra positionals now fail
-    loudly instead of being ignored."""
+    loudly instead of being ignored. Boolean flags take no value; the
+    remediation flags (--rename/--prune) act only on --unfilled findings
+    and exclude each other, so a typo can never delete what a report-only
+    run would merely have listed."""
     a = sys.argv[1:]
     pos, opt, i = [], {}, 0
     def _set(key, raw):
@@ -63,7 +90,14 @@ def parse_args():
         if x.startswith("--"):
             body = x[2:]
             key, eq, val = body.partition("=")
-            if key not in ("date", "tokens", "engine"):
+            if key in FLAG_OPTIONS:
+                if eq:
+                    print(f"  !! --{key} takes no value")
+                    sys.exit(2)
+                opt[key] = True
+                i += 1
+                continue
+            if key not in VALUE_OPTIONS:
                 print(f"  !! unknown option --{key}")
                 sys.exit(2)
             if not eq:
@@ -87,6 +121,12 @@ def parse_args():
         print(f"  !! unexpected extra arguments: {pos[2:]} — "
               f"did an option value go astray?")
         sys.exit(2)
+    if (opt.get("rename") or opt.get("prune")) and not opt.get("unfilled"):
+        print("  !! --rename/--prune act on --unfilled findings; add --unfilled")
+        sys.exit(2)
+    if opt.get("rename") and opt.get("prune"):
+        print("  !! --rename and --prune exclude each other; pick one")
+        sys.exit(2)
     return pos, opt
 
 
@@ -98,7 +138,27 @@ def parse_args():
 # wipe the authored router"), so a backup over them IS a knowledge
 # overwrite worth alarming on.
 MACHINERY_SUBTREES = ("protocols/", "skills/", "agents/", "method/", "templates/")
-SCAFFOLD_FILES = ("graph-lint.py", "spec-lint.py", "agent-lint.py")
+# config-free tools install.sh delivers into docs/graph/ from a seed home
+# outside templates/knowledge-graph/ (the agent-lint class: fast-forwarded,
+# never add-if-missing). plant path under docs/graph/ -> seed-relative source.
+DELIVERED_TOOLS = {
+    "agent-lint.py": "integrations/claude-code/agent-lint.py",
+    "agnosticism-lint.py": "tools/agnosticism-lint.py",
+    "status-register.py": "tools/status-register.py",
+}
+SCAFFOLD_FILES = ("graph-lint.py", "spec-lint.py") + tuple(DELIVERED_TOOLS)
+
+# the scaffold mirror: install.sh place_docs_skeleton copies the seed's
+# templates/docs/<rel> to the plant's docs/graph/<rel> when missing.
+TEMPLATE_DOCS = "templates/docs"
+GRAPH_HOME = "docs/graph"
+VERIFICATION_RUNBOOK = "runbooks/verification.md"
+UNFILLED_SUFFIX = ".unfilled.md"
+# verify.md gate-state vocabulary: executed | discovered | absent. A row is
+# "marked executed" when it carries the token as a whole word and not as a
+# negation ("not executed", "never executed", "un-executed").
+EXECUTED_TOKEN = re.compile(r"(?<!not )(?<!never )(?<!un-)\bexecuted\b", re.IGNORECASE)
+GATE_ROW = re.compile(r"^(\||[-*+]\s|\d+\.\s)")
 
 
 def plant_rel(bak: Path, plant: Path, date: str) -> str:
@@ -113,8 +173,8 @@ def seed_source_for(rel: str, seed: Path):
         return seed / "core/AGENTS.md"
     if rel.startswith("docs/graph/"):
         sub = rel[len("docs/graph/"):]
-        if sub == "agent-lint.py":
-            return seed / "integrations/claude-code/agent-lint.py"
+        if sub in DELIVERED_TOOLS:
+            return seed / DELIVERED_TOOLS[sub]
         if sub == "agents/_routes.golden.tsv":
             return seed / "agents/_routes.golden.tsv"
         if sub.startswith("protocols/"):
@@ -151,6 +211,26 @@ def is_seed_owned_graph_path(rel: str) -> bool:
     return sub.startswith(MACHINERY_SUBTREES) or sub in SCAFFOLD_FILES
 
 
+def scaffold_pairs(plant: Path, seed: Path):
+    """(rel, plant leaf, seed template) for every templates/docs/** leaf the
+    plant carries at its mirrored docs/graph/<rel>. Walking the templates,
+    not the plant, keeps plant-authored content and the fast-forwarded
+    docs/graph/templates/ machinery copy out of the comparison by construction."""
+    troot = seed / TEMPLATE_DOCS
+    for t in sorted(p for p in troot.rglob("*") if p.is_file()):
+        rel = t.relative_to(troot).as_posix()
+        f = plant / GRAPH_HOME / rel
+        if f.is_file() and not f.is_symlink():
+            yield rel, f, t
+
+
+def has_executed_gate(text: str) -> bool:
+    """True when at least one gate row — a markdown table row or list item —
+    is marked with verify.md's `executed` state."""
+    return any(GATE_ROW.match(s) and EXECUTED_TOKEN.search(s)
+               for s in (l.strip() for l in text.splitlines()))
+
+
 def main() -> int:
     pos, opt = parse_args()
     if len(pos) < 2:
@@ -158,13 +238,63 @@ def main() -> int:
         return 1
     plant, seed = Path(pos[0]), Path(pos[1])
     # A vacuous audit must not read as a clean one: a wrong plant root
-    # finds zero backups and would otherwise print the same "clean" line
-    # a real audit earns. A plant always has docs/graph/ — refuse anything
-    # that does not.
-    if not (plant / "docs" / "graph").is_dir():
-        print(f"  !! {plant} has no docs/graph/ — not a plant root; "
+    # finds zero backups (or zero scaffolds) and would otherwise print the
+    # same "clean" line a real audit earns. A plant always has docs/graph/
+    # — refuse anything that does not.
+    if not (plant / GRAPH_HOME).is_dir():
+        print(f"  !! {plant} has no {GRAPH_HOME}/ — not a plant root; "
               f"refusing a vacuous audit")
         return 1
+    if opt.get("unfilled"):
+        action = "prune" if opt.get("prune") else "rename" if opt.get("rename") else None
+        return audit_unfilled(plant, seed, action)
+    return audit_backups(plant, seed, opt)
+
+
+def audit_unfilled(plant: Path, seed: Path, action) -> int:
+    """MODE 2: report (and on request rename/remove) every docs/graph/<rel>
+    leaf byte-identical to the seed's templates/docs/<rel>."""
+    if not (seed / TEMPLATE_DOCS).is_dir():
+        print(f"  !! {seed} has no {TEMPLATE_DOCS}/ — not a seed root; "
+              f"refusing a vacuous scaffold audit")
+        return 1
+    mirrored, unfilled = 0, []
+    for rel, f, t in scaffold_pairs(plant, seed):
+        # a delivered blank form is byte-identical by design — it is the template
+        if f.name.endswith(".template.md") or f.name.startswith("_"):
+            continue
+        mirrored += 1
+        if f.read_bytes() != t.read_bytes():
+            continue
+        if rel == VERIFICATION_RUNBOOK and has_executed_gate(f.read_text(errors="replace")):
+            continue
+        unfilled.append((rel, f))
+    for rel, f in unfilled:
+        line = f"  UNFILLED {GRAPH_HOME}/{rel}"
+        if action == "prune":
+            f.unlink()
+            line += "  -> removed"
+        elif action == "rename":
+            target = f.with_name(f.stem + UNFILLED_SUFFIX)
+            f.replace(target)
+            line += f"  -> {target.name}"
+        print(line)
+    verb = {"prune": "removed", "rename": "renamed", None: "reported"}[action]
+    print(f"  unfilled scaffolds: {len(unfilled)} {verb} "
+          f"(of {mirrored} template-mirrored file(s) under {GRAPH_HOME}/)")
+    if not mirrored:
+        print(f"  note: no {GRAPH_HOME}/ leaf mirrors a {TEMPLATE_DOCS}/ template — "
+              f"nothing to compare (already pruned, or a plant with no scaffold)")
+    if unfilled and action is None:
+        print("  !! unfilled scaffolds remain — fill them, or re-run with "
+              "--rename (keeps the body as <name>.unfilled.md) or --prune")
+        return 1
+    return 0
+
+
+def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
+    """MODE 1: map every fresh .bak to its seed source and classify what the
+    fast-forward replaced."""
     tokens = opt.get("tokens", []) + [t.lower() for t in GENERIC_SIGNALS]
 
     date = opt.get("date")

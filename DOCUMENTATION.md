@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- **Version documented:** 6.13.1
+- **Version documented:** 7.0.0
 - **Repository role:** this repo is the **seed** — the product that is shipped
   into other projects. It is *not* a grown project itself.
 - **License:** MIT — see [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -671,7 +671,7 @@ tool-corpus/          Harvested reusable tools (by category)
 agent-corpus/         Harvested optional expert roles (not the base roster)
 skill-corpus/         Harvested optional procedures (not the core skills)
 integrations/         Per-tool overlays + config (claude-code, prime-agent, opencode, codex, github-copilot)
-tools/                graft reconciliation engine + audit
+tools/                graft reconciliation engine + audit (incl. --unfilled); agnosticism-lint; status-register; status-migrate
 docs/                 The seed's OWN decisions (ADRs) and plans
   decisions/            adr-0001..0004
   plans/                agent-routing, pure-graph-refactor, prime-agent-integration, scouts
@@ -710,11 +710,23 @@ This runs (in order):
 6. `test-full-install.sh` — full install across tools, roster parity, the
    Claude-Code + Prime-Agent coexistence, CI parity gate.
 7. `test-graft-tools.sh` — graft reconciliation engine.
-8. `test-seed-lint.sh` — plant-a-violation regression for each seed-lint class.
-9. `test-legal-lint.sh` — legal-corpus citability contract.
-10. `test_graph_lint.py` — graph-lint CLI-contract regression (stdlib unittest).
-11. `agent-lint.py --lint` and `--eval` (against `agents/`).
-12. `test_agent_lint.py` (pytest; loud SKIP if pytest absent — never a silent
+8. `test-agnosticism-lint.sh` — the shared agnosticism gate
+   (`tools/agnosticism-lint.py`, delivered to plants as
+   `docs/graph/agnosticism-lint.py`), run before the seed-lint suite that
+   consumes it.
+9. `test-status-register.sh` — the lifecycle-status linter/query
+   (`tools/status-register.py`, delivered as `docs/graph/status-register.py`):
+   one vocabulary in frontmatter, companion keys, body/frontmatter agreement,
+   query ordering and the `--summary` the session-start hook injects.
+10. `test-status-migrate.sh` — the one-time body-prose → frontmatter migration
+    (`tools/status-migrate.py`): exact mappings, `not recorded` never invented,
+    annotations carried as `status_note`, idempotent, output lints clean.
+11. `test-seed-lint.sh` — plant-a-violation regression for each seed-lint class.
+12. `test-legal-lint.sh` — legal-corpus citability contract.
+13. `test_graph_lint.py` — graph-lint CLI-contract regression (stdlib unittest),
+    including the 7.0.0 status / deviation / `plant:` block rules.
+14. `agent-lint.py --lint` and `--eval` (against `agents/`).
+15. `test_agent_lint.py` (pytest; loud SKIP if pytest absent — never a silent
     skip).
 13. `seed-lint.py` — one-home-per-fact for the seed's own meta-facts.
 14. `legal-lint.py` — the eight-field-per-entry legal gate.

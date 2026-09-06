@@ -91,8 +91,39 @@ load_when:                     # natural-language triggers for the router
   - "editing {{repo-or-path}}/**"
   - "{{concept}}, {{synonym}}, {{the phrase a dev would type}}"
 est_tokens: {{honest-estimate}}
+status: open                   # lifecycle status (optional on most kinds; see below)
+status_date: YYYY-MM-DD
+owner: {{agent-or-person}}     # required while open | hotfix | deferred
 ---
 ```
+
+### Lifecycle status
+
+Anything that can be *open* carries its status **in frontmatter, never in
+prose** — an agent must read a field, not infer a state. One base vocabulary
+for every kind:
+
+| value | means | requires |
+|---|---|---|
+| `open` | live, unresolved | `owner` |
+| `deferred` | deliberately parked | `owner`, `reopen_when` |
+| `hotfix` | resolved **improperly**; a proper fix is owed — never reads as closed | `owner` |
+| `rejected` | considered and declined; the reason is in the body | — |
+| `superseded` | replaced | `superseded_by` |
+| `closed` | resolved **with evidence** | `status_evidence` (a path#anchor, commit, or gate-run id) |
+
+Kind extensions, only where the base cannot express a real state: ADR adds
+`proposed | accepted`; spec adds `draft | active | implemented | back-written`
+(back-written = documented existing behaviour, untested); `deviation` adds
+`standing` (permanently open by design; requires `ends_when`). `status_date`
+is always present. A body `## Status` section may exist only as a pointer to
+the frontmatter; a body value that disagrees is a lint failure — two homes
+for one fact is how status drift starts. `legal_status` in the legal corpus
+is a *domain* fact (in force / repealed), not a lifecycle, and is separate.
+
+`graph-lint.py` checks status on every node it loads; the delivered
+`status-register.py` checks Tier-3 leaves (ADRs, specs, risk rows) and is
+the query surface (`--open --hotfix --summary`) a session-start hook injects.
 
 ### Node kinds
 
@@ -111,6 +142,15 @@ joints. A common starting set:
   testing.
 - `domain` — the problem-domain vocabulary and workflows.
 
+- `deviation` — a **deliberate, standing departure from a known standard**,
+  with the reason, its scope, and the condition that ends it. Lives in
+  `nodes/` as `deviation.<slug>.md` with `status: standing`, `departs_from`
+  (the fact key or standard it departs from), `reason`, `scope`, `ends_when`,
+  `recorded_in` (the ADR that holds the history). The ADR is the record;
+  the deviation node is the standing truth the router surfaces exactly when
+  the topic comes up, so a lapse is never mistaken for a decision or a
+  decision re-litigated as a lapse.
+
 Four kinds are reserved for the seed's machinery and always present:
 `protocol`, `skill`, `agent`, `method` (see "Machinery nodes" above).
 
@@ -121,6 +161,25 @@ prefix via the `KIND_PREFIX` table in `graph-lint.py`'s PROJECT CONFIG
 block (e.g. `{"subsystem": "sub"}` lets `sub.orders` carry
 `kind: subsystem`); unmapped kinds keep the identity rule. The graft
 engine preserves this config across seed updates.
+
+### The `plant:` block (on `index.md`)
+
+The router's own frontmatter carries the facts **only the owner can assert**
+and that agents otherwise re-ask or guess:
+
+```yaml
+plant:
+  environment_class: ephemeral-test | staging | real-production | mixed
+  commit_attribution: none | <trailer text>
+  deliverable_language: <bcp47>
+  comment_language: <bcp47>
+```
+
+Asked once, in grow Phase 1 or adopt-existing. `mixed` requires a
+per-deployment declaration in the deployment node. Rules about synthetic
+data, disposable credentials, rollback readiness, and build-on-host key off
+`environment_class` instead of being adjudicated case by case. The linter
+**fails** a grown plant that lacks the block and **warns** an adopted one.
 
 ## Key semantics
 
@@ -177,6 +236,13 @@ paths) · **neighbours** (why each peer exists, when to cross). Under
    quoting a real config line is not restating a fact.
 11. `est_tokens` is within 2× of the measured body size; body under the
     line ceiling.
+12. `status`, where present, is a vocabulary value for the node's kind and
+    carries its required companions (`owner`, `reopen_when`, `superseded_by`,
+    `status_evidence`, `ends_when`); a body `## Status` value never disagrees.
+13. A `deviation` node has `status: standing`, `departs_from`, `reason`,
+    `scope`, `ends_when`, `recorded_in`.
+14. `index.md` carries a complete `plant:` block — failure on a grown plant,
+    warning on an adopted one.
 
 ```sh
 python3 docs/graph/graph-lint.py            # lint
@@ -193,3 +259,7 @@ python3 docs/graph/graph-lint.py --plan "<task>"   # dry-run the router
 - **A node with no `owns`** — a link farm; delete it.
 - **Growing a node instead of splitting it** at the line ceiling.
 - **Filling an unknown with a guess** — write "not recorded".
+- **A status stated in prose** — a state nobody can query is a state
+  everybody re-infers; put it in frontmatter.
+- **`closed` without evidence** — that is `hotfix` or `deferred` wearing a
+  green badge.

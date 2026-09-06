@@ -1,3 +1,12 @@
+---
+grown: false                       # set true by grow Phase 6; adopted plants stay false
+plant:
+  environment_class: <ephemeral-test | staging | real-production | mixed>
+  commit_attribution: <none | trailer text>
+  deliverable_language: <bcp47>
+  comment_language: <bcp47>
+---
+
 <!--
 Template: knowledge-graph/index.md
 Lives at: docs/graph/index.md
@@ -71,7 +80,7 @@ test-first → verify → canonize → deliver.
 | Project does not exist yet | `protocol.from-scratch` |
 | Loading context minimally | `skill.context-router` |
 | Authoring or linting graph nodes | `skill.knowledge-graph` |
-| Engineering and design posture — the why | `method.engineering-posture` · `method.design-posture` · `method.stewardship-posture` |
+| Engineering and design posture — the why | `method.engineering-posture` · `method.design-posture` · `method.stewardship-posture` · `method.secrets-posture` · `method.release-posture` · `method.incident-posture` · `method.contract-posture` · `method.vcs-posture` |
 | Fold lessons into the seed / carry the seed onto a plant | `protocol.harvest` / `protocol.graft` — **user-sovereign, never automatic** |
 
 Specialist agent nodes route via their own triggers; `method.delegation`

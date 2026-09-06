@@ -10,6 +10,7 @@ owns:
   - grow.worker-topology
   - grow.growth-flow
   - grow.completeness-contract
+  - grow.plant-facts
 requires:
 peers:
   - protocol.harvest
@@ -22,7 +23,8 @@ load_when:
   - "install prompt, EXPERT_SEED_INSTALL_PROMPT"
   - "docs/graph is missing or badly drifted"
   - "regrow or refresh the graph after major drift"
-est_tokens: 4500
+  - "declare the plant block: environment class, commit attribution, languages"
+est_tokens: 5850
 ---
 
 # Protocol: grow
@@ -200,6 +202,21 @@ A collection may not be left blank. This ledger is part of the delivery block
 and is what Phase 6 validation audits against — coverage is asserted, not
 asserted-to.
 
+**No unfilled scaffold survives growth.** The installer places every leaf of
+the seed's `templates/docs/**` under `docs/graph/` so each collection has
+somewhere to land; a leaf still byte-identical to its template when growth
+ends is a scaffold posing as knowledge, and it **shadows** the authored leaf a
+cold agent needed — the router resolves to placeholders and reads them as
+facts. Phase 6 runs `python3 <seed>/tools/graft-audit.py <plant> <seed>
+--unfilled` and it must report zero. Where a scaffold is honestly unfilled
+(its collection is absent-with-reason), the session re-runs with `--rename`
+— the leaf becomes `<name>.unfilled.md`, a marker the installer honours so
+the blank never comes back — and lists every renamed leaf in the completion
+report. `runbooks/verification.md` earns exemption only by carrying at least
+one gate marked `executed`. Growth never `--prune`s: a pruned leaf reappears
+at the next install or graft, and removal is the steward's call, not the
+growth's.
+
 **No early stop.** Growth does not end at the orchestrator's discretion when
 "enough" has been produced. It ends when the ledger shows every collection is
 covered-to-evidence or absent-with-reason, Phase 6's independent validation
@@ -221,6 +238,31 @@ Ensure the plant gitignores `.cypress/growth/` before scouting — that is where
 the growth evidence ledgers land, and they are a seed organ transient to this
 run, not plant knowledge the plant commits (the `.cypress/seed.json` stamp
 stays tracked; the growth scratch does not).
+
+**Ask the owner for the plant facts — once (`grow.plant-facts`).**
+`docs/graph/index.md` carries a `plant:` block (`docs/graph/_schema.md`
+§"The `plant:` block") holding the facts only the owner can assert and
+agents otherwise re-ask or guess: `environment_class`, `commit_attribution`,
+`deliverable_language`, `comment_language`. Propose each value from evidence
+— deployment descriptors and CI targets for the environment class, trailers
+in the recent commit log for attribution, the language of existing comments,
+docs, and UI strings for the two languages — and record the evidence used
+beside each proposal (the scout that gathered it cites paths like any other
+claim). Put the four to the owner as one numbered ask
+(`deliver.numbered-decisions`) and write the confirmed values into the
+frontmatter block. A value the owner does not answer is not guessed: it
+stays a `status: open` item, owner named, on the growth completeness ledger
+and in the delivery — and `graph-lint.py` fails a grown plant until the block
+is declared. Never ask twice; later sessions read the block.
+
+**An existing graph that predates 7.0.0** (a refresh, or an adopted plant)
+carries lifecycle status as body prose in a vocabulary per kind. Run
+`python3 <seed>/tools/status-migrate.py --root docs/graph` (dry run) and
+show the owner its table; on the owner's go, re-run with `--write`. The tool
+moves each status into frontmatter in the schema's one vocabulary and turns
+the body line into a pointer; what it cannot map (a threat model's `active`,
+a superseded record with no named successor) it reports for the owner to
+decide — never invents.
 
 Settle spawnability here too, not in Phase 2. A session that just installed the
 seed holds an agent registry from before the install, and a session rooted at
@@ -363,7 +405,13 @@ authoring from scratch, then author the project-specific expert agent
 
 Apply the same withdraw-on-evidence discipline to the reusable-tool and
 suggested-skill corpora, so harvested tooling and procedures reach a new plant
-at growth time and not only via a later graft. Where the plant's real stack
+at growth time and not only via a later graft. Anything the plant authors that
+is *meant to travel* — a tool or skill it may later offer back, a component it
+declares project-agnostic — runs `docs/graph/agnosticism-lint.py` over it
+before it is called done, with the plant's own name and paths passed as
+`--forbid`; that is the same floor harvest will apply, applied early enough to
+be cheap. Everything else the growth authors SHOULD name the project: this is
+the plant's own knowledge, and the lint has no business there. Where the plant's real stack
 matches a portable tool the corpus carries (`tool-corpus/<category>/<name>.md`)
 — a self-contained capability the source genuinely needs — seed
 `docs/graph/tools/<name>.md` from it as the orientation layer (adopt the
@@ -411,13 +459,18 @@ knowledge checks:
 ```sh
 python3 docs/graph/graph-lint.py
 python3 docs/graph/graph-lint.py --plan "change a representative subsystem"
+python3 docs/graph/status-register.py --root docs/graph
+python3 <seed>/tools/graft-audit.py <plant> <seed> --unfilled
 ```
 
 They also verify:
 
 1. internal links and every `artifacts:`/`libraries:` edge resolve;
 2. no maintained knowledge collection exists outside `docs/graph/`;
-3. no template placeholders or fabricated dates/statuses remain;
+3. no template placeholders or fabricated dates/statuses remain — and no
+   unfilled scaffold: `--unfilled` reports zero, or every leaf renamed
+   `<name>.unfilled.md` is listed in the completion report
+   (`grow.completeness-contract`);
 4. representative tasks load small, relevant node closures;
 5. known-answer questions are answered from routed graph context with source
    citations, including adversarial false-premise rejection;
@@ -461,6 +514,12 @@ record it as an honest unknown or a defect in the delivery, and hand the
 decision to the user. Do not weaken the linter to make a defective graph
 pass, and do not loop a fourth time.
 
+When validation passes, set `grown: true` in the frontmatter of
+`docs/graph/index.md` — the marker `graph-lint.py` reads to hold this plant
+to the grown standard (a missing `plant:` block fails, not warns, from here
+on). Set it only then; a plant stamped grown while half-grown lies to every
+later lint.
+
 Also configure the spec-coverage gate while the stack evidence is fresh:
 set `TEST_GLOBS` in `docs/graph/spec-lint.py` to the project's real test
 layout (the scouts reported it) and run `python3 docs/graph/spec-lint.py
@@ -481,8 +540,9 @@ rebalance report, validation results,
 untrusted/excluded docs, honest unknowns, and one next action — **with its
 tier** (kernel §0), so the next session starts classified instead of cold.
 Include the **growth completeness ledger** (`grow.completeness-contract`) —
-every collection marked covered-to-evidence or absent-with-reason — so the
-delivery proves totality instead of asserting it. Include growth metrics (the
+every collection marked covered-to-evidence or absent-with-reason, the
+scaffolds renamed `.unfilled.md`, and any `plant:` value the owner left open
+— so the delivery proves totality instead of asserting it. Include growth metrics (the
 delivery block from `docs/graph/protocols/deliver.md`): scouts and authors
 spawned, contradictions resolved by follow-up scouting, validation findings
 raised and fixed, evidence gaps left open. These are the plant's birth

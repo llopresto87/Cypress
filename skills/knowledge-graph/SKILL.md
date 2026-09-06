@@ -27,7 +27,8 @@ artifacts:
   - templates/knowledge-graph/graph-lint.py
   - templates/knowledge-graph/index.md
   - templates/knowledge-graph/node.template.md
-est_tokens: 1700
+  - templates/docs/nodes/_deviation.template.md
+est_tokens: 2150
 ---
 
 # knowledge-graph
@@ -76,6 +77,19 @@ asymmetrically — one copy gets updated, the other silently lies, and a
 lying doc is worse than a missing one. When two nodes both want a fact,
 extract it to a shared node and have both `require` it.
 
+Two corollaries. **One name per concept**: a term maps one-to-one onto
+the thing it names, a near-miss synonym is a fault rather than an alias,
+and the graph uses the name the world already holds — a serialized,
+wire, or externally held identifier is a contract, never renamed to
+match internal vocabulary; a deliberate mismatch is recorded so nobody
+"fixes" it (`skill.holistic-editing` owns the rename mechanics).
+**Rendered views are generated, hand-edited files are shaped for their
+editor**: an index table or status summary is regenerated from its home
+(`status-register.py`), never hand-edited; the files a human does
+maintain — the linter's PROJECT CONFIG, the `plant:` block — stay
+comment-bearing, grouped, and stably ordered, with no shape chosen for
+machine convenience.
+
 ### 2. Version pins live in the library tier
 
 An exact version belongs on its `docs/graph/libraries/<name>.md` page. A
@@ -99,13 +113,22 @@ handler validates the token" (observed in one path) does not mean
 which you did. Where a page's scope is partial, add an explicit
 **observed absences / what this page is NOT** note, so a reader cannot
 mistake the edge of what was surveyed for a guarantee of what holds.
+The same split holds for **traced versus inferred**: a claim not traced
+to a source, command output, or dated observation carries an explicit
+`verify:` marker naming what to re-check; a procedure page says whether
+its commands were run here; unbuilt work is written in the future tense
+with its owning increment named, because a present-tense sentence
+asserts that the thing exists.
 
 ### 4. Bodies stay small
 
 A node body stays under ~150 lines. A node that wants to be longer is
-two nodes. `est_tokens` stays within 2× of the real body size — the
-router sums these to report context cost before work starts, so a lie
-here corrupts every plan.
+two nodes — split, never grow. A node that owns no fact is a link farm:
+delete it rather than pad it. A leaf collection stays homogeneous in
+kind; an artifact of another kind is filed where its kind lives.
+`est_tokens` stays within 2× of the real body size — the router sums
+these to report context cost before work starts, so a lie here corrupts
+every plan.
 
 ### 5. Compound, don't restart
 
@@ -142,6 +165,17 @@ the graph is committed, searchable, and long-lived). Record a
 **pointer**: the secret manager path, the env-var name, the vault key —
 the fact a reader needs is *where to look*, and that is safe to own.
 
+### 8. Status lives in frontmatter, in one vocabulary
+
+Anything that can be open — an ADR, a spec, a risk row, a `deviation`
+node — carries `status` and `status_date` in frontmatter, never in prose,
+using the one lifecycle vocabulary and its required companions defined
+in `docs/graph/_schema.md` ("Lifecycle status"); a body `## Status`
+section is a pointer, and a body value that disagrees is a lint failure.
+`graph-lint.py` checks nodes; `docs/graph/status-register.py` lints the
+Tier-3 leaves and is the query surface (`--open --hotfix --summary`).
+This skill does not restate the vocabulary — the schema is its home.
+
 ## Node body shape
 
 Answer, in this order, and nothing else: **what this is** (2–3
@@ -167,6 +201,9 @@ rather than aspirational. It enforces:
    key.
 8. `est_tokens` is within 2× of the measured body; bodies under the
    line ceiling.
+9. Lifecycle status is a vocabulary value with its companions, a
+   `deviation` node carries its five fields, and `index.md` carries the
+   `plant:` block (schema rules 12–14).
 
 Run it before committing any graph change:
 

@@ -1,3 +1,11 @@
+---
+status: draft               # draft | active | implemented | back-written | open | deferred | hotfix | rejected | superseded | closed
+status_date: YYYY-MM-DD
+owner: <agent or person>
+# superseded_by: SPEC-NNNN  # required when superseded
+# status_evidence: <path#anchor | commit | gate-run>   # required when closed
+---
+
 <!--
 Template: spec.template.md
 Authored by: product + architect + tester (joint)
@@ -13,7 +21,7 @@ agents and tooling index into them.
 ## 0. Metadata
 
 - **Identifier:** SPEC-NNNN-<slug>
-- **Status:** draft | active | implemented | superseded | back-written
+- **Status:** see frontmatter (single home)
 - **Owner:** <agent or person>
 - **Date:** YYYY-MM-DD
 - **Last reviewed:** YYYY-MM-DD

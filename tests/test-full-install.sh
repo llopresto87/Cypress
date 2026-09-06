@@ -53,6 +53,29 @@ need "$T/.claude/skills/context-router/SKILL.md" claude-code
 need "$T/.claude/agent-lint.py" claude-code
 need "$T/docs/graph/spec-lint.py" claude-code
 need "$T/docs/graph/graph-lint.py" claude-code
+need "$T/docs/graph/agnosticism-lint.py" claude-code
+need "$T/docs/graph/status-register.py" claude-code
+need "$T/.claude/status-hook.py" claude-code
+# 7.0.0: a plant's edited .claude/settings.json is BACKED UP on re-install, never
+# silently overwritten — a graft must not destroy local hook config.
+python3 - "$T/.claude/settings.json" <<'PY2'
+import json,sys; p=sys.argv[1]; c=json.load(open(p)); c["_plant_local_marker"]="keep-me"; json.dump(c,open(p,"w"),indent=2)
+PY2
+"$ROOT/install.sh" claude-code --project-dir "$T" --copy >/dev/null 2>&1
+ls "$T/.claude/"settings.json.bak-* >/dev/null 2>&1 \
+  || { echo "re-install overwrote an edited .claude/settings.json without a backup" >&2; exit 1; }
+grep -q keep-me "$T/.claude/"settings.json.bak-* \
+  || { echo "settings.json backup does not carry the plant's edit" >&2; exit 1; }
+# the status register is DELIVERED and its hook is REGISTERED: a plant surfaces
+# its lifecycle debt at session start without any seed checkout or brief line.
+python3 "$T/docs/graph/status-register.py" --root "$T/docs/graph" --summary >/dev/null \
+  || { echo "installed status-register.py does not run in the plant" >&2; exit 1; }
+grep -q '"SessionStart"' "$T/.claude/settings.json" \
+  || { echo ".claude/settings.json does not register the SessionStart status hook" >&2; exit 1; }
+# the agnosticism floor is DELIVERED, not merely present in the seed: a plant
+# must be able to run it on its own harvest candidates without a seed checkout.
+python3 "$T/docs/graph/agnosticism-lint.py" --root "$T/docs/graph/protocols" >/dev/null \
+  || { echo "installed agnosticism-lint.py does not run in the plant" >&2; exit 1; }
 need "$T/EXPERT_SEED_INSTALL_PROMPT.md" claude-code
 # 6.0.0: protocols/templates/method are graph-only — no tool-dir copies.
 for gone in .claude/protocols .claude/templates .claude/core; do
@@ -69,6 +92,13 @@ python3 "$T/docs/graph/graph-lint.py" >/dev/null       # machinery graph lints c
 assert_cmd_roster "$T/.claude/commands" .md "claude-code commands"
 
 "$ROOT/install.sh" opencode --project-dir "$T" --copy --force >/dev/null
+# 7.0.0: an edited opencode.json is backed up on re-install, never silently overwritten.
+python3 - "$T/opencode.json" <<'PY2'
+import json,sys; p=sys.argv[1]; c=json.load(open(p)); c["_plant_local_marker"]="keep-me"; json.dump(c,open(p,"w"),indent=2)
+PY2
+"$ROOT/install.sh" opencode --project-dir "$T" --copy >/dev/null 2>&1
+ls "$T/"opencode.json.bak-* >/dev/null 2>&1 \
+  || { echo "re-install overwrote an edited opencode.json without a backup" >&2; exit 1; }
 need "$T/AGENTS.md" opencode
 need "$T/.opencode/agents/00-orchestrator.md" opencode
 need "$T/.opencode/commands/recover.md" opencode
@@ -115,7 +145,8 @@ need "$T/.prime/agent/agents/00-orchestrator.md" prime-agent
 need "$T/.prime/agent/agents/_routes.golden.tsv" prime-agent
 need "$T/.prime/agent/skills/context-router/SKILL.md" prime-agent
 need "$T/.prime/agent/prompts/recover.md" prime-agent
-need "$T/.prime/agent/extensions/route-extension.ts" prime-agent
+need "$T/.prime/agent/extensions/route-extension.ts"
+need "$T/.prime/agent/extensions/status-extension.ts" prime-agent
 need "$T/.prime/agent/settings.json" prime-agent
 need "$T/.prime/agent/APPEND_SYSTEM.md" prime-agent
 # Prime Agent has no static roster/protocol/template tool-dirs — graph-only.

@@ -214,7 +214,7 @@ evals-after-the-fact — live only there; the checklist is the actionable home.)
   one git tree destroy diff attribution. One mitigation is to serialize workers
   (max spawn = 1) so task completion *is* the commit boundary — parallel workers
   on a shared tree break git-diff attribution. If you need parallelism, give each
-  worker an isolated worktree.
+  worker a bounded step and its own files — one working tree, never a separate git worktree (`method.vcs-posture`, `vcs-posture.no-worktrees`).
 - **Dormant-but-enabled components that mislead operators.** The subtlest one. A
   telemetry exporter (e.g. an OTel or Langfuse tracer) can be *enabled in config
   yet register zero hooks* — no endpoint or keys — so the fleet emits **no** spans

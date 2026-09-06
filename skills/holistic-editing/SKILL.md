@@ -9,6 +9,7 @@ title: holistic-editing — every change is an integration into the whole file, 
 owns:
   - holistic-editing.method
   - holistic-editing.forbidden-moves
+  - holistic-editing.class-sweep
 requires:
 peers:
   - skill.context-router
@@ -18,8 +19,9 @@ load_when:
   - "refactor without bolting on"
   - "review a diff for coherence"
   - "additive-only diff smells wrong"
+  - "same bug probably exists elsewhere, fix one or all"
   - "rename crossing a serialization or wire boundary"
-est_tokens: 1500
+est_tokens: 2300
 ---
 
 # holistic-editing
@@ -82,6 +84,59 @@ for is integrated into the existing design, not stapled to its edge.
 - Preserving a bad structure just because the request didn't name it.
   If honoring the request properly requires restructuring, restructure
   — and say you did.
+- Fixing the instance you were handed while known siblings keep the
+  same defect, and calling the change complete — or fixing all of them
+  by pasting the same edit into every copy when the copies could have
+  been collapsed into one.
+
+## The class sweep
+
+Some defects are not one defect. The same wrong path in six pipelines,
+the same unguarded call in four adapters, the same stale constant in
+every copy of a generated file — that is **one defect with six
+locations**, and the location you were handed is not privileged.
+
+When the thing you are fixing has siblings, the discipline has two
+halves — *find every copy*, then *land the fix once*:
+
+1. **Establish the class before you fix the instance.** What is the
+   defect, stated so a search can find it? Search for it.
+2. **Land the fix once, at the seam that owns it.** The sweep found
+   *n* copies; the fix does not become *n* edits. Declare the intended
+   behaviour at the single seam that owns it and collapse the duplicate
+   implementations into one shared module every member invokes — the
+   copy is the mechanism that produced the drift, and re-copying is the
+   same mechanism run once more. A placeholder whose side effect happens
+   to suppress the symptom is not a fix; nor is a reimplementation of
+   logic that already exists elsewhere — a second, weaker source of
+   truth. Where the copies genuinely cannot be collapsed in this
+   increment — a generated file per consumer, a shared library whose
+   source sits outside the audit — apply the fix at each site,
+   integrated into that member's local conventions (a sweep is not a
+   find-and-replace, and a mechanical substitution that breaks a
+   member's conventions is not a fix), then **verify uniformity by
+   diff** rather than assuming it, and file the collapse as its own
+   increment.
+3. **Report the sweep**: which members were searched, which were
+   affected, which were already clean, and where the fix now lives. A
+   sweep you cannot enumerate is a claim, not a result.
+
+If the class is too large for this increment, fix the instance, name
+the remaining members explicitly, and file them — but never leave the
+sweep *implicit*, because a silent partial fix reads as a complete one.
+
+**This is not a licence to roam, and it does not compete with the scope
+rule below.** Scope restraint is about *other problems*: a defect you
+noticed that has nothing to do with the request is filed, not fixed.
+The class sweep is about *this problem, in another file*. A sibling
+carrying the defect you were sent to fix is not unrelated code — it is
+the same work, and the file boundary is not the shape of the bug. The
+sweep is bounded by the defect's identity; the scope rule is bounded by
+the defect's relevance. Both bound; neither licenses the other's
+territory. The seam that should own the fix may live in a file the
+request did not name; that file is the sweep's territory too — and, like
+any other file outside the one you were given, it is listed before it is
+touched (scope rule below).
 
 ## Scope rule
 
@@ -92,7 +147,9 @@ other code depends on without flagging it first. "Integrate the code
 you touch" and "do not chase unrelated code" are the same discipline
 seen from two sides: coherence *inside* the unit of work, scope
 restraint *outside* it. Unrelated issues you notice get filed as their
-own increment, not silently fixed in this one.
+own increment, not silently fixed in this one — *unrelated* being the
+operative word: another instance of the defect you were sent to fix is
+the same issue, and belongs to the class sweep above, not here.
 
 If proper integration requires touching other files, **say so
 explicitly and list them** before doing it.
@@ -119,6 +176,8 @@ defect. Know which kind of file you are in before you start.
 - Is my diff purely additive? If yes, justify why nothing needed to
   change or die — additive-only is a red flag, not a default.
 - Does anything now exist in **two places**?
+- Does the defect I just fixed exist in **another place**? If I did not
+  look, I do not know.
 - Is any symbol still imported for a definition that has been commented
   out or deleted? A dangling import is often the only trace of a
   half-removed feature — when auditing for dead code, check type, enum,

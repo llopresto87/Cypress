@@ -1,0 +1,12 @@
+{
+  "_comment": "VS Code Copilot Agent Hooks (Preview) config for the status register. Installed to .github/hooks/status.json only when the project has NO .claude/settings.json (which VS Code also reads). SessionStart runs status-hook.py once per session and injects `status-register.py --summary`. Fail-open. If this VS Code build does not emit SessionStart, the hook is inert.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "python3 \"${CLAUDE_PROJECT_DIR:-$PWD}/.github/hooks/status-hook.py\" || true",
+        "timeout": 20
+      }
+    ]
+  }
+}

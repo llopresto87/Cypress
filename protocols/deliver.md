@@ -10,6 +10,7 @@ owns:
   - rule.deliver
   - deliver.forms
   - deliver.attribution-assertion
+  - deliver.numbered-decisions
 requires:
 peers:
   - protocol.canonize
@@ -21,7 +22,8 @@ load_when:
   - "delivery summary, cold pickup"
   - "what did we change, session report"
   - "attribution, produced_by, routing evidence"
-est_tokens: 1450
+  - "decisions for the owner, options to approve, answer by number"
+est_tokens: 1750
 command: true
 ---
 
@@ -89,6 +91,7 @@ section 15.
 
 ## Key decisions
 - <one-line decision> — link to ADR or grill.md section 6 row
+- Awaiting the owner: 1. <item> 2. <item> … — answer by number
 
 ## Gates run
 - Formatter, linter, type-check, unit, integration, ... — each as executed /
@@ -111,6 +114,15 @@ section 15.
 <single highest-leverage action, named specifically>
 ```
 
+**Decisions routed to the owner are numbered** (`deliver.numbered-decisions`).
+Wherever this summary — or any message in the session — puts a choice in
+the owner's hands (an option set, an open question, a conflict between
+specialists, a ratification), it arrives as a numbered list of
+individually approvable items, so the owner answers "1 and 3, not 2"
+instead of re-describing each. That holds for the Key decisions still
+open, for a limitation that needs a call, and for the next step when it
+needs a go/no-go. Default on; the owner may waive it.
+
 The metrics block is five lines of telemetry, not prose. It is what
 lets the system improve on evidence instead of anecdote: `harvest`
 aggregates these across deliveries to find *systemic* seed problems —
@@ -126,6 +138,8 @@ A delivery summary that passes:
 - Cites verification outcomes (no hand-waving).
 - Lists every limitation explicitly (no "should mostly work").
 - Recommends exactly one next step (not a list).
+- Numbers every decision left to the owner, so the answer can be by
+  number.
 - Is the smallest summary that permits correct use and appropriate
   trust: material caveats and risks stay in; process narration,
   restated requests, and recaps of settled context stay out
@@ -137,6 +151,7 @@ A delivery summary that fails:
 - Says "tests pass" without naming the gates.
 - Says "next, do whatever feels right" or lists five options.
 - Hides limitations behind optimism.
+- Buries an owner decision in a paragraph the owner must paraphrase back.
 - Pads the record with narration the next session must filter out —
   future context is a cost this summary imposes on every later turn.
 

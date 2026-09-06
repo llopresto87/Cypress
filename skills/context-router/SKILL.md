@@ -25,7 +25,7 @@ artifacts:
   - templates/prompts/graph-session-bootstrap.md
   - templates/knowledge-graph/_schema.md
   - templates/knowledge-graph/index.md
-est_tokens: 2100
+est_tokens: 2400
 ---
 
 # context-router
@@ -51,13 +51,21 @@ runbooks, specs, decisions, tools). Never parallel doc systems.
 - **Load minimally, and declare it.** Resolve the minimal node set from
   the router — entry nodes plus `requires:` closure — and declare what
   you loaded and deliberately skipped. Never bulk-read to get oriented;
-  the graph is the orientation. The algorithm below is the full form of
-  this obligation; the delegation-boundary form is
+  the graph is the orientation. The boundary you chose not to cross is
+  part of the work's record, not a courtesy: a reader who cannot see it
+  cannot tell an unread node from a read one. The algorithm below is
+  the full form of this obligation; the delegation-boundary form is
   `docs/graph/templates/prompts/graph-session-bootstrap.md`.
 - **One home per fact.** Every fact lives in exactly one node's
   `owns:`; everything else links. Duplicated facts rot asymmetrically.
   `graph-lint.py` enforces unique fact-keys, resolvable acyclic edges,
-  and no version pin outside its owning library page.
+  and no version pin outside its owning library page. The code-side
+  twin is **one owner per concern**: a cross-cutting behaviour — session
+  and auth, policy emission, tolerant parsing, resource creation, a
+  datastore — has exactly one owning component, and a second
+  "convenience" mechanism for a concern that already has an owner is
+  refused, because two mechanisms multiply precedence questions nobody
+  can answer.
 - **Graph before code, ahead of memory.** Memory of APIs and versions
   is unreliable; the graph is local and source-grounded. No wiki page
   for a library you're about to use → run `ingest-library`.
@@ -97,6 +105,15 @@ concept resolves to the node that `owns` it.
 
 If nothing matches, you have found a gap in the graph. Say so, fall
 back to the root node, and note it for the graph's maintainer to fix.
+
+**A standard's match surfaces its standing exceptions.** A
+`deviation.*` node (kind `deviation`, `status: standing` — the schema's
+"Node kinds") carries the departed-from standard's own name in its
+`load_when`, so a task that matches the standard's topic also matches
+every deliberate departure from it. Load it with the standard: a
+standing deviation is part of the answer, never a lapse to fix and
+never a decision to re-argue; its `ends_when` says when it stops
+applying.
 
 **Watch for aliased names across layers.** When a subsystem answers to
 more than one name — a repo or folder name that differs from its

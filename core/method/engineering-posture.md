@@ -6,6 +6,7 @@ origin: seed
 title: engineering posture — sources of truth, minimum sufficient work, decision economy, integration
 owns:
   - engineering-posture.sources-of-truth
+  - engineering-posture.host-parity
   - engineering-posture.context-economy
   - engineering-posture.minimum-sufficient-work
   - engineering-posture.decision-economy
@@ -21,8 +22,9 @@ load_when:
   - "am I done yet, when to stop investigating or validating"
   - "how do I make this change cleanly, integrate not bolt on"
   - "which technology to pick, boring vs experimental"
+  - "works locally but fails in CI or on the target host"
   - "is this abstraction or extra worker worth its cost"
-est_tokens: 2950
+est_tokens: 3850
 ---
 
 # Engineering posture
@@ -135,6 +137,24 @@ minimum within it. Do not solve a larger problem than the one asked,
 and do not investigate broadly before proving broad investigation
 necessary.
 
+Cut the work into increments that are small and *homogeneous in risk*:
+each is bounded to what it can prove in one pass, and none mixes a risk
+class — a new dependency, an architectural choice, a deploy coupling, a
+hardening change whose purpose is to break insecure environments — into
+trivial reversible edits; that item gets its own increment, scheduled
+with the owner where it will break something on purpose. Infrastructure,
+content, and enforcement land separately so each is observed working
+before the next depends on it — the check first, then the gate that
+blocks on it. Each increment's files-touched list, gate command,
+expected outcome, and rollback path are the plan of record's shape
+(`protocol.grill`). And a pass whose job is to understand, map, or
+restore a system carries no improvement work: mixing them makes every
+failure ambiguous between "did not restore" and "the change broke it",
+and on a codebase with no regression net the absence of tests is itself
+the argument against touching code while still learning it. Fixes
+discovered on such a pass are proposed to the owner, not applied
+opportunistically.
+
 ## 6. Every operation serves a decision
 
 Before any read, search, tool call, or spawn, name the unresolved
@@ -195,6 +215,17 @@ diverge materially, the operation is irreversible, authorization is
 unclear, or no safe default exists. Do not ask to avoid an ordinary
 decision, and do not fabricate certainty where an assumption remains
 material.
+
+A question of intent, legal standing, ownership, or scope is not the
+implementer's to decide, whatever the analysis recommends. Route it to
+the owner and leave it open: record why it matters, the working
+assumption, who resolves it and how, flagged do-not-guess. Later
+analysis may recommend — a decision record held at `proposed`, a spec
+held at `draft` — but must not close it; the owner does, and the record
+that closes it names the question it resolves. The plan of record's
+open-questions table is the home (`protocol.grill`); the lifecycle
+vocabulary is the graph schema's, and `status-register.py --open`
+surfaces what is still waiting.
 
 ## 8. Structure, artifacts, and delegation earn their rent
 
@@ -293,6 +324,47 @@ write; and when persistent state is read back corrupt, quarantine the
 bad artifact for inspection, recover to a safe empty or partial state,
 and surface the fault — never fail silently, and never silently
 discard.
+
+## 13. The machine you build on is not the machine it runs on
+
+Where a change is authored and where it executes are different systems
+with different shells, tool versions, path layouts, package names, line
+endings, locales, and privileges. A green result on the authoring host
+is evidence about the authoring host. It is not evidence about the
+target, and presenting it as such is a sources-of-truth error (§1): the
+target is authoritative for claims about the target, exactly as the
+spec is authoritative for claims about intent.
+
+Two corollaries carry most of the failures:
+
+- **Validate where it runs, or say that you did not.** Exercise the
+  change on the execution target, in a faithful container, or in CI.
+  Where none of those is available, the honest report is "verified on
+  the authoring host only; unverified on <target>" — which is useful.
+  Silence, which reads as verified, is not.
+- **Existing locally is not existing.** A file the build resolves from
+  the working tree but that is untracked, ignored, or unpushed does not
+  exist for CI, for a teammate, or for the deployed artifact. Before
+  claiming delivery, confirm the artifact is where the *consumer* will
+  look for it, not merely where you left it.
+
+The same reasoning governs a local model, a local service, or a local
+credential standing in for a remote one: the substitute is a
+convenience for iteration, never the evidence.
+
+When the target is live infrastructure, classify the blast radius before
+running anything — local, read, artifact-producing, or mutating —
+because a "dry run" still authenticates, reads, scans, and writes local
+artifacts, and a read-shaped endpoint can allocate from a finite pool.
+Validate the whole declared change set for self-lockout before executing
+any part of it (the guard sits before the first mutation, not between
+mutations); confirm the target is the project's own, by an ownership
+marker, before acting on it; and exclude the automation's own access
+path and identity from the set it manages while still asserting it keeps
+the privileges it needs. Whether the target is a real production system
+at all is a plant fact: `plant.environment_class` in the router's
+frontmatter answers it once, and it is read there, not re-guessed per
+run.
 
 ## Neighbours
 

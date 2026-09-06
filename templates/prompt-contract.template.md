@@ -1,3 +1,9 @@
+---
+status: open                # open | deferred | hotfix | rejected | superseded | closed
+status_date: YYYY-MM-DD
+owner: <agent or person>
+---
+
 <!--
 Template: prompt-contract.template.md
 Authored by: data-ml, security
@@ -12,7 +18,7 @@ agents and tooling index into them.
 
 ## 0. Metadata
 - **ID:** PROMPT-NNNN
-- **Status:** draft | active | deprecated
+- **Status:** see frontmatter (single home)
 - **Owner:** <agent or person>
 - **Date:** YYYY-MM-DD
 - **Version:** <semver-ish, bump on prompt change>

@@ -18,10 +18,13 @@ This linter makes that failure class deterministic to catch:
   9. corpus agnosticism floor: no leaked host-IP literal or pinned CVE, and
      no dangling corpus/template cross-reference, in the shipped prose
      (objective leaks only — project names and stack fingerprints stay human
-     judgment, since the seed cannot enumerate plant names without naming them)
+     judgment, since the seed cannot enumerate plant names without naming
+     them). The scan itself is `tools/agnosticism-lint.py`, shared machinery
+     any agnostic tree can run; this file calls it, it does not copy it.
 
 Dependency-free; exit 0 clean, 1 with findings.
 """
+import importlib.util
 import json
 import re
 import sys
@@ -95,6 +98,20 @@ findings: list[str] = []
 
 def fail(msg: str) -> None:
     findings.append(msg)
+
+
+def load_agnosticism_lint():
+    """The agnosticism scan is shared machinery — `tools/agnosticism-lint.py`,
+    which any project-agnostic tree can run on its own. The seed does not keep
+    a second copy of it; it calls it and renders the findings in its own voice.
+    Loaded by path because the file is named as a CLI, not as a module."""
+    path = ROOT / "tools" / "agnosticism-lint.py"
+    spec = importlib.util.spec_from_file_location("agnosticism_lint", path)
+    if spec is None or spec.loader is None:      # pragma: no cover - unreachable
+        raise SystemExit(f"seed lint: cannot load {path}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
 def parse_frontmatter(path: Path) -> dict:
@@ -501,30 +518,24 @@ def check() -> None:
     # corpus/template link — over the seed's shipped prose. Subtler
     # fingerprints (a project name, a stack combo) remain human judgment:
     # the seed cannot hardcode plant names to blocklist without itself
-    # leaking them. Loopback / unspecified / documentation IPs are allowed.
+    # leaking them — which is why the shared tool takes them as --forbid
+    # and the seed passes none. Loopback/unspecified/doc IPs are allowed.
     agn_roots = ("core", "agents", "protocols", "skills", "templates",
                  "library-corpus", "legal-corpus", "tool-corpus",
                  "agent-corpus", "skill-corpus")
-    ip_ok = {"127.0.0.1", "0.0.0.0", "255.255.255.255"}
-    ip_re = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
-    cve_re = re.compile(r"\bCVE-\d{4}-\d+\b")
-    ref_re = re.compile(r"\b(?:library-corpus|legal-corpus|tool-corpus|"
-                        r"agent-corpus|skill-corpus|templates)/[A-Za-z0-9_./-]+\.md\b")
-    scan = [p for r in agn_roots for p in (ROOT / r).rglob("*.md")]
+    scan = [ROOT / r for r in agn_roots]
     scan += [ROOT / f for f in ("manifest.json", "README.md", "CHANGELOG.md")
              if (ROOT / f).exists()]
-    for p in scan:
-        text = p.read_text(encoding="utf-8")
+    agn = load_agnosticism_lint()
+    for finding in agn.scan(scan, relative_to=ROOT):
+        fail(f"{finding.path}: {finding.message}")
+    # The dangling-reference arm is link integrity, not agnosticism, so it
+    # stays here — but it walks the same file set, through the same iterator.
+    ref_re = re.compile(r"\b(?:library-corpus|legal-corpus|tool-corpus|"
+                        r"agent-corpus|skill-corpus|templates)/[A-Za-z0-9_./-]+\.md\b")
+    for p in agn.iter_files(scan):
         rel = p.relative_to(ROOT)
-        for ip in ip_re.findall(text):
-            if ip in ip_ok or ip.startswith(("192.0.2.", "198.51.100.", "203.0.113.")):
-                continue
-            fail(f"{rel}: leaked host-IP literal '{ip}' — agnosticism gate "
-                 f"(use a <host> placeholder, not a real address)")
-        for cve in cve_re.findall(text):
-            fail(f"{rel}: pinned advisory '{cve}' — durability gate "
-                 f"(belongs in a plant's docs, never the seed)")
-        for ref in ref_re.findall(text):
+        for ref in ref_re.findall(p.read_text(encoding="utf-8")):
             if "<" in ref or "*" in ref or "{" in ref:
                 continue
             if not (ROOT / ref).exists():

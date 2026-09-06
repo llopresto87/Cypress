@@ -386,15 +386,15 @@ Source: `README.md` line 94, `integrations/prime-agent/README.md`,
 
 | Tool | Kernel file (destination) | Overlay directory | Install method | First-class | Enforcement mechanism |
 |---|---|---|---|---|---|
-| Claude Code | `CLAUDE.md` (copy of `core/AGENTS.md`; `--symlink` opt-in) | `.claude/{agents,skills,commands}` | copy by default; commands generated | **Yes** | `.claude/route-hook.py` on `UserPromptSubmit` |
-| Prime Agent | `AGENTS.md` (copy of `core/AGENTS.md`; shared with CLAUDE.md when co-installed) | `.prime/agent/{agents,skills,prompts,extensions}` | copy by default; prompts generated | **Yes** | `.prime/agent/extensions/route-extension.ts` on `before_agent_start` |
+| Claude Code | `CLAUDE.md` (copy of `core/AGENTS.md`; `--symlink` opt-in) | `.claude/{agents,skills,commands}` | copy by default; commands generated | **Yes** | `.claude/route-hook.py` on `UserPromptSubmit`; `.claude/status-hook.py` on `SessionStart` |
+| Prime Agent | `AGENTS.md` (copy of `core/AGENTS.md`; shared with CLAUDE.md when co-installed) | `.prime/agent/{agents,skills,prompts,extensions}` | copy by default; prompts generated | **Yes** | `.prime/agent/extensions/route-extension.ts` on `before_agent_start`; `status-extension.ts` once per session |
 | opencode | `AGENTS.md` (or `CLAUDE.md` fallback) | `.opencode/{agents,skills,commands}` | copy by default; `opencode.json` copied | No | Kernel FIRST-MOVE mandate (no dedicated hook shipped) |
 | Codex | `AGENTS.md` at repo root | `.codex/{agents,skills}` | copy by default; global `~/.codex/config.toml` edits are user-consented | No | Kernel FIRST-MOVE mandate; skills registered in global config |
-| GitHub Copilot | `.github/copilot-instructions.md` (copy) + `AGENTS.md` | `.github/{agents,prompts,instructions,hooks}` | **transform** (regenerate, not symlink) | No | `route-hook.py` via VS Code Agent Hooks (Preview) |
+| GitHub Copilot | `.github/copilot-instructions.md` (copy) + `AGENTS.md` | `.github/{agents,prompts,instructions,hooks}` | **transform** (regenerate, not symlink) | No | `route-hook.py` + `status-hook.py` via VS Code Agent Hooks (Preview) |
 
 ## B.2 Claude Code
 
-Source: `integrations/claude-code/README.md`, `settings.json`, `route-hook.py`.
+Source: `integrations/claude-code/README.md`, `settings.json`, `route-hook.py`, `status-hook.py`.
 
 Claude Code reads on every session: `CLAUDE.md` (project memory at repo root),
 `.claude/agents/*.md`, `.claude/skills/*/SKILL.md`, and `.claude/commands/*.md`.
@@ -422,6 +422,12 @@ Claude Code reads on every session: `CLAUDE.md` (project memory at repo root),
   `|| true`; any error degrades to the mandate or silence; a hook must never
   block a prompt). The frontmatter format (`name`, `description`, `tools`,
   `model`) is exactly what Claude Code expects, so the files work unchanged.
+- **Status register at session start:** `.claude/status-hook.py` runs once on
+  `SessionStart`, runs `docs/graph/status-register.py --summary` (a frontmatter
+  scan — counts of `open` / `hotfix` / `deferred` items and the oldest of them)
+  and injects it as `additionalContext`, so lifecycle debt is in front of the
+  model before it plans without a line in any brief. Fail-open; subagents
+  receive nothing (hooks do not cross the spawn boundary).
 - **Known gap / sharp edge:** the roster is enumerated when the session
   **starts**. A roster written mid-session (by an install, graft, or freshly
   commissioned expert) is on disk but **not spawnable until a new session**, and
@@ -461,7 +467,10 @@ SKILL.md`), extensions (`.prime/agent/extensions/*.ts`), and settings
 - **Enforcement:** `route-extension.ts` subscribes to `before_agent_start`,
   runs the same graph router as `route-hook.py`, and injects the route-first
   mandate plus suggested node set via Prime Agent's native extension API. It is
-  **fail-open** and auto-discovered from `.prime/agent/extensions/`
+  **fail-open** and auto-discovered from `.prime/agent/extensions/`.
+  `status-extension.ts` uses the same event with a process-local first-prompt
+  guard to inject `status-register.py --summary` once per session — the parity
+  of Claude Code's `SessionStart` hook
   (`settings.json` also lists it for locked-down configs). The kernel's own
   blunt "FIRST MOVE" mandate is the non-extension floor.
 - **Delegation advantage (no registration lag):** Prime Agent has no
@@ -606,7 +615,8 @@ agents (`.github/agents/<name>.agent.md`).
   resolves in both hosts. VS Code reads `.claude/settings.json` hooks directly,
   so a project with the Claude Code install picks up the same hook with nothing
   extra; a Copilot-only install drops `.github/hooks/route.json` +
-  `.github/hooks/route-hook.py`. **Do not keep both configs, or the hook fires
+  `.github/hooks/route-hook.py` (and `status.json` + `status-hook.py` for the
+  session-start status register). **Do not keep both configs, or the hook fires
   twice.** The generated `.github/copilot-instructions.md` also leads with the
   FIRST-MOVE mandate, so route-first holds even without hooks enabled.
 - **Known gaps:** Agent Hooks are **Preview** (format may change). A regenerated
@@ -647,9 +657,11 @@ What that gives:
 - **One shared knowledge graph.** `docs/graph/` is installed once and read by
   both.
 - **Enforcement per session type.** A Claude Code session fires
-  `.claude/route-hook.py` (`UserPromptSubmit`); a Prime Agent session fires
-  `.prime/agent/extensions/route-extension.ts` (`before_agent_start`). They run
-  in different session types, so there is no double-firing.
+  `.claude/route-hook.py` (`UserPromptSubmit`) and `.claude/status-hook.py`
+  (`SessionStart`); a Prime Agent session fires
+  `.prime/agent/extensions/route-extension.ts` and `status-extension.ts`
+  (`before_agent_start`). They run in different session types, so there is no
+  double-firing.
 
 Switching harness is just opening the plant in the other tool — nothing to
 re-install, nothing to reconcile.
@@ -702,5 +714,5 @@ The broader gate is `bash tests/run.sh` (9 shell suites + agent-lint lint/eval
 - Integrations: `integrations/{claude-code,prime-agent,opencode,codex,
   github-copilot}/README.md` and their config files
   (`settings.json`, `opencode.json`, `config.toml.example`), `route-hook.py`,
-  `route-extension.ts`, `APPEND_SYSTEM.md`.
+  `status-hook.py`, `route-extension.ts`, `status-extension.ts`, `APPEND_SYSTEM.md`.
 - Overview and parity: `README.md`, `INSTALL.md`, `tests/test-full-install.sh`.
