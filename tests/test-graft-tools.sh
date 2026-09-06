@@ -335,4 +335,54 @@ set -e
 grep -q "templates/docs" "$TMP/uout10" || { cat "$TMP/uout10"; fail "seed-root refusal must name templates/docs/"; }
 echo "  --unfilled flag discipline (prune needs unfilled; rename xor prune; seed root checked) — OK"
 
+
+# ---- kernel currency: STALE vs plant-extended vs standing deviation (7.0.1) ----
+# The kernel body loads on every session. Byte-identity was the only "current"
+# before 7.0.1, so a plant that deliberately carries extra kernel lines audited
+# as STALE forever. Now: an OLD body (a seed line missing) is STALE and blocks;
+# a seed-current body PLUS plant-authored lines is EXTENDED — it blocks unless a
+# standing deviation node (departs_from: kernel.body) records the boundary.
+KD="20260907"
+rm -rf "$TMP/kseed" "$TMP/kplant"
+mkdir -p "$TMP/kseed/core" "$TMP/kseed/templates/docs" "$TMP/kplant/docs/graph/nodes"
+printf '# kernel\nline one\nline two\nline three\n' > "$TMP/kseed/core/AGENTS.md"
+kaudit() { set +e; python3 "$AUDIT" "$TMP/kplant" "$TMP/kseed" --date=$KD --tokens=widgetco >"$TMP/kout" 2>&1; krc=$?; set -e; }
+# identical -> current, exit 0
+cp "$TMP/kseed/core/AGENTS.md" "$TMP/kplant/AGENTS.md"
+kaudit; [ "$krc" -eq 0 ] && grep -q "kernel: current" "$TMP/kout" || { cat "$TMP/kout"; fail "identical kernel must read current, exit 0 (got $krc)"; }
+# old body (a seed line missing) -> STALE, exit 1
+printf '# kernel\nline one\nline three\n' > "$TMP/kplant/AGENTS.md"
+kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL STALE" "$TMP/kout" || { cat "$TMP/kout"; fail "old kernel body must be STALE and exit 1 (got $krc)"; }
+# seed body + 2 plant lines, no deviation -> EXTENDED, exit 1, never STALE
+printf '# kernel\nline one\nline two\nline three\n- plant rule a\n- plant rule b\n' > "$TMP/kplant/AGENTS.md"
+kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL EXTENDED" "$TMP/kout" && ! grep -q "KERNEL STALE" "$TMP/kout" \
+  || { cat "$TMP/kout"; fail "extended kernel without a deviation must be EXTENDED (not STALE), exit 1 (got $krc)"; }
+grep -q "2 plant-authored line" "$TMP/kout" || { cat "$TMP/kout"; fail "EXTENDED must count the plant lines"; }
+# a deviation node that is NOT standing, or covers another fact -> still EXTENDED
+cat > "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md" <<'MD'
+---
+id: deviation.kernel-boundary
+kind: deviation
+status: closed
+departs_from: kernel.body
+ends_when: the lines have a graph home
+---
+MD
+kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL EXTENDED" "$TMP/kout" || { cat "$TMP/kout"; fail "a closed deviation must not cover the kernel (got $krc)"; }
+sed -i '' 's/^status: closed$/status: standing/; s/^departs_from: kernel.body$/departs_from: secrets-posture.lifetime/' "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md"
+kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL EXTENDED" "$TMP/kout" || { cat "$TMP/kout"; fail "a deviation on another fact must not cover the kernel (got $krc)"; }
+# standing deviation on kernel.body -> recognised, exit 0, no !! line
+sed -i '' 's/^departs_from: .*$/departs_from: kernel.body   # the plant kernel carries lines the seed does not/' "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md"
+kaudit; [ "$krc" -eq 0 ] && grep -q "standing deviation deviation.kernel-boundary" "$TMP/kout" && ! grep -q "!! KERNEL" "$TMP/kout" \
+  || { cat "$TMP/kout"; fail "standing kernel.body deviation must clear the kernel check, exit 0 (got $krc)"; }
+grep -q "ends_when: the lines have a graph home" "$TMP/kout" || { cat "$TMP/kout"; fail "the recognised deviation must surface its ends_when"; }
+# the deviation covers ADDITIONS only: an old body stays STALE even with the node
+printf '# kernel\nline one\nline three\n- plant rule a\n' > "$TMP/kplant/AGENTS.md"
+kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL STALE" "$TMP/kout" || { cat "$TMP/kout"; fail "a deviation must not excuse an old kernel body (got $krc)"; }
+# a blank form (_deviation.template.md) never counts as a deviation
+printf '# kernel\nline one\nline two\nline three\n- plant rule a\n' > "$TMP/kplant/AGENTS.md"
+mv "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md" "$TMP/kplant/docs/graph/nodes/_deviation.template.md"
+kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL EXTENDED" "$TMP/kout" || { cat "$TMP/kout"; fail "a blank template must not read as a deviation (got $krc)"; }
+echo "  kernel currency: STALE blocks, EXTENDED blocks, standing kernel.body deviation clears — OK"
+
 echo "test-graft-tools: PASS"

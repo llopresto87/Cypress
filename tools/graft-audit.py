@@ -34,6 +34,13 @@ customization uses without naming the plant ("this project's", "this program",
 
 MODE 2 — unfilled scaffolds (--unfilled)
 
+The kernel body (AGENTS.md / CLAUDE.md) is compared with the seed's
+core/AGENTS.md and gates the exit code: an OLD body (a seed line missing) is
+`KERNEL STALE`; a seed-current body plus plant-authored lines is
+`KERNEL EXTENDED` unless a standing `deviation.*` node with
+`departs_from: kernel.body` records that boundary, in which case the audit
+reports the deviation and its `ends_when` and passes.
+
 install.sh copies every leaf of the seed's templates/docs/<rel> to the plant's
 docs/graph/<rel> when missing. A leaf still BYTE-IDENTICAL to its template at
 grow Phase 6 / graft Phase 7 was never filled: it is a scaffold posing as
@@ -57,6 +64,7 @@ neither --rename nor --prune was requested (a gate); 0 once none remain or
 after they were renamed/removed. Exit 2 on a malformed command line.
 Dependency-free.
 """
+import difflib
 import re
 import sys
 from pathlib import Path
@@ -357,7 +365,7 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
             return 1
         print("  note: zero backup files — nothing was overwritten; "
               "the audit had nothing to prove")
-    _kernel_currency(plant, seed)
+    kernel_ok = _kernel_currency(plant, seed)
     if opt.get("engine"):
         _engine_currency(opt["engine"])
     if knowledge_hits:
@@ -369,7 +377,7 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
         for rel, hit in customized[:40]:
             print(f"       {rel}  [signal: {','.join(hit)}]")
         return 1
-    if knowledge_hits:
+    if knowledge_hits or not kernel_ok:
         return 1
     print("  clean — no plant knowledge overwritten, no customization buried")
     return 0
@@ -404,30 +412,105 @@ def _code_lines(text: str) -> set:
     return out
 
 
-def _kernel_currency(plant: Path, seed: Path):
+KERNEL_DEVIATION_KEY = "kernel.body"  # departs_from value a deviation uses to cover the kernel
+
+
+def _plant_added_lines(seed_lines, plant_lines):
+    """Lines the plant ADDED to a seed-current kernel body, or None when the
+    plant body is not the seed body plus additions (a seed line is missing or
+    rewritten — an old or hand-edited kernel, not a boundary)."""
+    added = 0
+    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(
+            None, seed_lines, plant_lines, autojunk=False).get_opcodes():
+        if tag in ("delete", "replace"):
+            return None
+        if tag == "insert":
+            added += j2 - j1
+    return added
+
+
+def _fm_value(fm: str, key: str) -> str:
+    m = re.search(rf"^{re.escape(key)}:[ \t]*(.*?)[ \t]*$", fm, re.M)
+    if not m:
+        return ""
+    return m.group(1).split("#", 1)[0].strip().strip("\"'")
+
+
+def _standing_kernel_deviation(plant: Path):
+    """The plant's standing deviation node that covers the kernel body, if any:
+    docs/graph/nodes/deviation.*.md (no blank forms) with kind: deviation,
+    status: standing and departs_from: kernel.body. Returns (id, ends_when)."""
+    nodes = plant / GRAPH_HOME / "nodes"
+    if not nodes.is_dir():
+        return None
+    for f in sorted(nodes.glob("deviation.*.md")):
+        if f.name.startswith("_") or f.name.endswith(".template.md"):
+            continue
+        m = re.match(r"^---\n(.*?)\n---", f.read_text(errors="replace"), re.S)
+        if not m:
+            continue
+        fm = m.group(1)
+        if (_fm_value(fm, "kind") == "deviation"
+                and _fm_value(fm, "status") == "standing"
+                and _fm_value(fm, "departs_from") == KERNEL_DEVIATION_KEY):
+            return _fm_value(fm, "id") or f.stem, _fm_value(fm, "ends_when")
+    return None
+
+
+def _kernel_currency(plant: Path, seed: Path) -> bool:
     """The kernel body is seed-owned machinery loaded on every session. A graft
     that only re-points the CLAUDE.md<->AGENTS.md symlink and leaves a STALE
     kernel body is a silent, high-impact miss (install.sh place_kernel once did
     exactly this, and left no .bak for the backup-scan to catch). Compare the
     plant's live kernel file(s) — resolving the shared symlink — against the
-    seed's current core/AGENTS.md directly, independent of any backup."""
+    seed's current core/AGENTS.md directly, independent of any backup.
+    Three verdicts: current (byte-equal); STALE (a seed line missing — an old
+    or hand-edited body; blocks); EXTENDED (seed body + plant-authored lines —
+    blocks unless a standing deviation.* node with departs_from: kernel.body
+    records the boundary, in which case the deviation is reported and the
+    check passes). Returns True when the check passes."""
     sk = seed / "core/AGENTS.md"
     if not sk.exists():
-        return
+        return True
     seed_txt = sk.read_text(errors="replace")
-    stale = []
+    seed_lines = seed_txt.splitlines()
+    stale, extended = [], {}
     for name in ("AGENTS.md", "CLAUDE.md"):
         f = plant / name
         if not f.exists():
             continue
-        if f.read_text(errors="replace") != seed_txt:
+        txt = f.read_text(errors="replace")
+        if txt == seed_txt:
+            continue
+        added = _plant_added_lines(seed_lines, txt.splitlines())
+        if added is None:
             stale.append(name)
+        else:
+            extended[name] = added
+    ok = True
     if stale:
+        ok = False
         print(f"  !! KERNEL STALE: {', '.join(stale)} differ(s) from the seed "
               f"core/AGENTS.md — the graft left the plant on an old kernel; "
               f"fast-forward the kernel body (re-run install / place_kernel)")
-    else:
+    if extended:
+        n = max(extended.values())
+        dev = _standing_kernel_deviation(plant)
+        if dev:
+            print(f"  kernel: seed body current + {n} plant-authored line(s) in "
+                  f"{', '.join(extended)} — standing deviation {dev[0]} "
+                  f"(ends_when: {dev[1] or 'unstated'})")
+        else:
+            ok = False
+            print(f"  !! KERNEL EXTENDED: {', '.join(extended)} carr(ies) {n} "
+                  f"plant-authored line(s) beyond the seed core/AGENTS.md with no "
+                  f"standing deviation node — record docs/graph/nodes/deviation.<slug>.md "
+                  f"(kind: deviation, status: standing, departs_from: "
+                  f"{KERNEL_DEVIATION_KEY}) or move the lines into a graph node "
+                  f"the kernel routes to")
+    if not stale and not extended:
         print("  kernel: current (plant AGENTS.md/CLAUDE.md == seed core/AGENTS.md)")
+    return ok
 
 
 def _engine_currency(spec: str):

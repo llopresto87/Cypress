@@ -582,16 +582,25 @@ backups exist). Then prove the plant is left more capable and no less itself:
   or graft and deletion is the steward's, not the graft's
   (`graft.user-sovereignty`).
 - **Kernel current (the always-loaded bootstrap)** — the plant's kernel body
-  (`AGENTS.md` / `CLAUDE.md`, resolving the shared symlink) must be byte-equal to
-  the seed's `core/AGENTS.md`. The kernel loads on every session of every
-  adapter, yet `place_kernel` shares the two files by symlink and once left a
-  STALE body behind (with no `.bak`, so the customization audit was blind to it):
-  the audit's kernel-currency check (`tools/graft-audit.py`) now asserts it
-  directly, and a stale kernel BLOCKS — fast-forward the kernel body (re-run the
-  installer for each adapter the plant uses; a plant that runs Prime Agent, all
-  its `.claude`/`.codex`/`.opencode`/`.github`/`.prime` adapters must each be
+  (`AGENTS.md` / `CLAUDE.md`, resolving the shared symlink) is compared with the
+  seed's `core/AGENTS.md` by the audit's kernel-currency check
+  (`tools/graft-audit.py`), which gates the exit code. The kernel loads on
+  every session of every adapter, yet `place_kernel` shares the two files by
+  symlink and once left a STALE body behind (with no `.bak`, so the
+  customization audit was blind to it). Three verdicts: **current** (byte-equal);
+  **STALE** (a seed line missing — an old or hand-edited body) BLOCKS —
+  fast-forward the kernel body (re-run the installer for each adapter the plant
+  uses; a plant that runs Prime Agent, all its
+  `.claude`/`.codex`/`.opencode`/`.github`/`.prime` adapters must each be
   grafted, none silently skipped) and re-project the plant's own agents/skills
-  into any adapter that lacks them.
+  into any adapter that lacks them; **EXTENDED** (the seed body plus
+  plant-authored lines) BLOCKS unless a standing `deviation.*` node with
+  `departs_from: kernel.body` records the boundary — then the audit reports the
+  deviation and its `ends_when` and passes. A kernel line the plant added is a
+  departure from the pure-graph mandate, so it is either moved into a graph node
+  the kernel routes to or recorded as that deviation; it is never silently
+  fast-forwarded away (the installer's kernel pass rewrites the body — re-apply
+  the recorded lines after every graft and re-run the audit).
 - **Machinery healthy** — the plant's graph still routes
   (`python3 docs/graph/graph-lint.py` and a representative `--plan`) **on the
   upgraded engine** (the audit's engine-currency check reports no seed engine

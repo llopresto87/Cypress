@@ -1,5 +1,14 @@
 # Changelog
 
+## 7.0.1 — the graft audit's kernel check gates, and recognises a recorded kernel boundary (2026-09-07)
+
+### Changed — `tools/graft-audit.py`
+- The kernel-currency check now gates the exit code (it printed and passed before). Three verdicts replace byte-identity: `current`; `KERNEL STALE` when a seed line is missing from the plant body (blocks); `KERNEL EXTENDED` when the body is the seed body plus plant-authored lines (blocks) — unless a standing `deviation.*` node with `departs_from: kernel.body` exists under `docs/graph/nodes/`, in which case the audit reports the deviation and its `ends_when` and passes. Blank forms (`_*`, `*.template.md`) never count as deviations; a deviation never excuses a stale body.
+- `protocols/graft.md` "Kernel current" states the three verdicts and the rule for a plant-added kernel line: move it into a graph node or record the deviation; re-apply after every graft.
+
+### Tests
+- `tests/test-graft-tools.sh`: kernel currency — identical/current, stale blocks, extended blocks, closed or off-topic deviation does not cover, standing `kernel.body` deviation clears and surfaces `ends_when`, stale stays stale under a deviation, blank template ignored.
+
 ## 7.0.0 — lifecycle status in frontmatter, plant-declared facts, deviation nodes, scaffold pruning, estate standards (2026-09-06)
 
 The node contract gains a machine-readable lifecycle status, a `plant:` block of
