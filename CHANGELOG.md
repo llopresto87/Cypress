@@ -1,5 +1,27 @@
 # Changelog
 
+## 6.13.1 — a reusable skill belongs in the plant, not the global harness (2026-09-02)
+
+A `question` skill authored during a Prime Agent session on a plant landed in
+the GLOBAL `~/.prime/agent/skills/` (private to the user, uncommitted, invisible
+to the team and CI) instead of the plant's own `.prime/agent/skills/`. Root
+cause: the prime-agent native-execution overlay routed *all* reusable wins —
+skills included — to the continual harness, contradicting the toolcraft rule
+(§3.8), whose home for a project skill is the graph node `docs/graph/skills/`
+projected into each harness dir the plant uses.
+
+### Fixed — prime-agent overlay conflated project skills with harness memory
+
+- `integrations/prime-agent/APPEND_SYSTEM.md` Close-out section rewritten to
+  route by artifact type into THREE non-overlapping homes: project knowledge →
+  `docs/graph/`; a durable TOOL or project SKILL (any authored `SKILL.md`) →
+  the plant (`docs/graph/skills/<name>.md` + `.prime/agent/skills/<name>/`,
+  committed), never the global `~/.prime/agent/skills/` and never the continual
+  harness; a cross-session OPERATING lesson → the continual harness via
+  `refine.run(...)`.
+- `integrations/prime-agent/README.md` Close-out bullet aligned to the same
+  routing (reusable tool/skill in the plant, operating lessons in the harness).
+
 ## 6.13.0 — the kernel always fast-forwards; harvest imports must be reachable (2026-09-02)
 
 A live graft exposed two silent, high-impact holes: a plant grafted across

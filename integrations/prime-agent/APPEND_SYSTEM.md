@@ -45,15 +45,30 @@ IPython kernel (`bash tests/run.sh`, the linters, the test suite) and keep the
 evidence in variables. That is your native tool; use it instead of asking a
 harness to shell out.
 
-## Close-out — persist to the graph AND the continual harness
+## Close-out — three destinations, routed by what the artifact IS
 
-Canonize still writes durable knowledge into `docs/graph/`. Prime Agent adds a
-second, cross-session memory Claude Code has no equivalent for: the **continual
-harness**. After a task, when a lesson, procedure, durable fact, or reusable
-delegation role emerged, persist it with `await refine.run(...)` (memories,
-skills, subagent specs, prompt notes). Keep project-knowledge in the graph;
-keep reusable *operating* lessons in the harness. Do not let a reusable win
-evaporate with the session.
+A reusable win has exactly one correct home; the three do not overlap.
+
+- **Project knowledge** (structure, decisions, specs) → `docs/graph/`, via
+  canonize. Unchanged from Claude Code.
+- **A durable TOOL or a project SKILL** — the §3.8 toolcraft artifact,
+  including any Agent-Skills `SKILL.md` you author for this plant → it belongs
+  **in the plant**. Per `protocol.toolcraft`, a project skill's home is the
+  graph node `docs/graph/skills/<name>.md`, and you project it into the harness
+  dir this plant actually uses: `.prime/agent/skills/<name>/SKILL.md` (the dir
+  this plant's `settings.json` already discovers), committed to the plant's git
+  so the team and CI share it. NEVER accept skill-creator's default drop into
+  the GLOBAL `~/.prime/agent/skills/` (private to you, uncommitted, invisible
+  to the team) and NEVER stash a project skill in the continual harness.
+- **A cross-session OPERATING lesson** (a durable fact, a reusable delegation
+  role, an agent-operating procedure or preference that is NOT a plant
+  deliverable) → the **continual harness** via `await refine.run(...)`
+  (memories, subagent specs, prompt notes). This is Prime Agent's own memory,
+  private to you across sessions — a complement to the graph, never a
+  substitute for a plant tool or skill.
+
+Do not let a reusable win evaporate with the session — but put it where its
+owner can find it.
 
 ## Long-running work
 

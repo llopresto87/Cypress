@@ -131,9 +131,13 @@ kernel; it maps the kernel's discipline onto Prime Agent's primitives:
   `model:` field.
 - **Gates** → run `bash tests/run.sh` and the linters directly in the kernel;
   keep evidence in variables.
-- **Close-out** → canonize into `docs/graph/` **and** persist reusable operating
+- **Close-out** → canonize into `docs/graph/`; author any reusable TOOL or
+  project SKILL **in the plant** (home `docs/graph/skills/<name>.md`, projected
+  to `.prime/agent/skills/<name>/SKILL.md`, committed) per `protocol.toolcraft`,
+  never in the global `~/.prime/agent/skills/`; and persist reusable *operating*
   lessons with the continual harness (`refine.run(...)`) — the cross-session
-  memory Claude Code lacks.
+  memory Claude Code lacks. A project skill is a plant deliverable, not a
+  private harness entry.
 - **Long-running work** → a nonblocking control loop with `goal` and
   `rlm_heartbeat`; end the turn and fan-in on replies instead of polling.
 
