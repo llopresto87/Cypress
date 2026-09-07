@@ -351,6 +351,11 @@ class VersionLeakageTests(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0, f"v-prefixed pin must fail:\n{out}")
         self.assertIn("version pin", out, out)
 
+    def test_spec_revision_citation_is_not_a_pin(self):
+        """`SPEC-0002 v0.2.0` is a specification revision, not a dependency pin."""
+        r = run_lint(self._graph_with_body_suffix("Per SPEC-0002 v0.2.0 AC-3 the drafter emits none."))
+        self.assertEqual(r.returncode, 0, f"spec revision must pass:\n{r.stdout}\n{r.stderr}")
+
     def test_section_reference_is_not_a_pin(self):
         """`\u00a75.4` stays exempt — the lookbehind still shields section refs."""
         r = run_lint(self._graph_with_body_suffix("See \u00a75.4 for the rule."))

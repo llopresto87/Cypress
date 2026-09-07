@@ -24,7 +24,7 @@ load_when:
   - "which technology to pick, boring vs experimental"
   - "works locally but fails in CI or on the target host"
   - "is this abstraction or extra worker worth its cost"
-est_tokens: 3850
+est_tokens: 3950
 ---
 
 # Engineering posture
@@ -44,6 +44,13 @@ code.
 When spec and code disagree, one of them is wrong. The next move is to
 find out which, fix that one deliberately, and bump the version of
 whichever changed.
+
+The rule reaches past the spec to every copy. An installed, generated
+or deployed file is never edited in place: the change is made in the
+source of record and reaches the target only through the project's own
+installer or deploy path, in the same sitting. An edit made only on the
+target is lost on the next rebuild and is a second source of truth
+until then.
 
 ## 2. Tests authorize code
 

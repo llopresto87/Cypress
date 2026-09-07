@@ -88,6 +88,9 @@ _ALL_STATUS_WORDS = STATUS_BASE | set().union(*STATUS_EXT.values())
 # path character so `docs/v2.1` and `1.2.3` inside a word don't match; the
 # optional leading v is part of the match so `v2.7.2` cannot hide behind it.
 VERSION_RE = re.compile(r"(?<![\w./§-])[vV]?[\^~]?\d+\.\d+(\.\d+)?(-[A-Za-z0-9]+)?(?![\w.])")
+# A project-artifact identifier directly before a version token: the token is a
+# revision citation, not a library pin.
+ARTIFACT_REVISION_RE = re.compile(r"(?:SPEC|ADR|RFC|PRD|RUNBOOK|ISSUE|PR)[-_ ]?\d+\s*$", re.I)
 BODY_TOKENS_PER_WORD = 1.35
 STEM = 6  # prefix length for the singular/plural fold (order/orders, node/nodes)
 
@@ -501,6 +504,10 @@ def check_version_leakage(nodes: list, errs: list) -> None:
         body = re.sub(r"`[^`\n]*`", "", body)
         body = re.sub(r"^\s*[-*]?\s*\[[^\]]+\]\([^)]*\)", "", body, flags=re.M)
         for m in VERSION_RE.finditer(body):
+            # A revision of a project artifact (SPEC-0002 v0.2.0, ADR-0007 v1.1)
+            # is a citation, not a dependency pin.
+            if ARTIFACT_REVISION_RE.search(body[max(0, m.start() - 24): m.start()]):
+                continue
             line = body[: m.start()].count("\n") + 1
             errs.append(
                 f"{n.id}: version pin {m.group(0)!r} (body line ~{line}) — versions belong in docs/graph/libraries/; link instead"

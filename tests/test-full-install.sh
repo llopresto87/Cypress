@@ -112,6 +112,25 @@ cmp -s "$ROOT/agents/_routes.golden.tsv" "$T/.claude/agents/_routes.golden.tsv" 
 python3 "$T/docs/graph/graph-lint.py" >/dev/null       # machinery graph lints clean
 assert_cmd_roster "$T/.claude/commands" .md "claude-code commands"
 
+# 7.2.1: the plant facts are an explicit owner choice at install time. With the
+# four flags the router's plant: block is filled; without them the placeholders
+# stay and the installer names the missing facts as a NEXT STEP.
+P="$(mktemp -d)"
+"$ROOT/install.sh" claude-code --project-dir "$P" --copy --force \
+  --environment-class staging --commit-attribution none \
+  --deliverable-language en --comment-language en >/dev/null
+grep -q '^  environment_class: staging$' "$P/docs/graph/index.md" || { echo "plant facts: environment_class not written" >&2; exit 1; }
+grep -q '^  commit_attribution: none$' "$P/docs/graph/index.md" || { echo "plant facts: commit_attribution not written" >&2; exit 1; }
+grep -q '^  comment_language: en$' "$P/docs/graph/index.md" || { echo "plant facts: comment_language not written" >&2; exit 1; }
+"$ROOT/install.sh" claude-code --project-dir "$P" --copy --force --environment-class production >/dev/null 2>&1 && { echo "plant facts: invalid environment_class accepted" >&2; exit 1; }
+grep -q '^  environment_class: staging$' "$P/docs/graph/index.md" || { echo "plant facts: a filled value was overwritten" >&2; exit 1; }
+Q="$(mktemp -d)"
+OUT="$("$ROOT/install.sh" claude-code --project-dir "$Q" --copy --force 2>&1)"
+grep -q 'environment_class: <' "$Q/docs/graph/index.md" || { echo "plant facts: placeholder should remain without flags" >&2; exit 1; }
+grep -q 'plant facts' <<<"$OUT" || { echo "plant facts: installer must name the missing facts" >&2; exit 1; }
+rm -rf "$P" "$Q"
+echo "  plant facts: filled by flags, validated, never overwritten, named when missing — OK"
+
 "$ROOT/install.sh" opencode --project-dir "$T" --copy --force >/dev/null
 # 7.0.0: an edited opencode.json is backed up on re-install, never silently overwritten.
 python3 - "$T/opencode.json" <<'PY2'

@@ -83,3 +83,12 @@ candidate.
 
 Keep the plant's own life inviolate throughout: graft gives the plant the seed's
 new growth and leaves the plant's roots, trunk, and fruit exactly as they were.
+
+## The plant facts come from the owner, before the graft runs
+
+Read the plant's `docs/graph/index.md` `plant:` block first. If any of `environment_class`,
+`commit_attribution`, `deliverable_language`, `comment_language` is still a placeholder, put
+the four to the owner as one numbered ask, proposing each value from evidence with the paths
+you used, and write the confirmed values before running the installer (or pass them as its
+flags). Never guess them and never carry a value over from another plant: the environment
+class alone decides what the release posture tolerates on this plant.

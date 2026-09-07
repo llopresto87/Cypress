@@ -41,6 +41,8 @@ From the seed system directory:
 
 ```sh
 ./install.sh <tool> [--project-dir PATH] [--symlink|--copy] [--force]
+             [--environment-class CLASS] [--commit-attribution none|TRAILER]
+             [--deliverable-language BCP47] [--comment-language BCP47]
 ```
 
 `<tool>` is one of:
@@ -100,6 +102,16 @@ views, and use `--check` to detect drift without writing:
 # CI drift gate: exits non-zero if the .github/ views are stale
 ./install.sh github-copilot --check
 ```
+
+## The plant facts are yours to state
+
+`docs/graph/index.md` carries a `plant:` block with four facts only the owner can
+assert: `environment_class` (ephemeral-test, staging, real-production or mixed — it
+decides what the release posture tolerates, build-on-host included), `commit_attribution`
+(`none` or the trailer text), `deliverable_language` and `comment_language`. Pass them at
+install time with the four flags above, or fill the block by hand before grow or graft.
+The installer never guesses them and never overwrites a value the plant already declares;
+whatever is still a placeholder is named as a NEXT STEP.
 
 ## Copy mode vs symlink mode
 

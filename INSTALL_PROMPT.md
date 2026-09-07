@@ -125,6 +125,16 @@ or test suites; do not fetch/pull/switch/commit/push Git; do not fabricate specs
 ADRs, rationale, commands, sources, or green status. Record Git state only as
 provenance; existing docs never outrank current executable source.
 
+## The plant facts are an explicit choice
+
+Before the installer runs, ask the owner for the four plant facts the router's `plant:`
+block carries (`environment_class`, `commit_attribution`, `deliverable_language`,
+`comment_language`) as one numbered question, propose each from evidence, and pass the
+confirmed values to `install.sh` with `--environment-class`, `--commit-attribution`,
+`--deliverable-language`, `--comment-language`. The installer refuses an unknown environment
+class, never overwrites a declared value, and names any fact still unset as a NEXT STEP.
+Growth asks the same four once more only if they are still placeholders (`grow.plant-facts`).
+
 ## Finish
 
 Finish in this chat with the delivery `grow` defines — detected scope/revisions,

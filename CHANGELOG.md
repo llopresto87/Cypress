@@ -1,5 +1,20 @@
 # Changelog
 
+## 7.2.1 — plant facts are the owner's explicit choice; spec revisions are not version pins (2026-09-08)
+
+### Added — `install.sh`
+- `--environment-class`, `--commit-attribution`, `--deliverable-language`, `--comment-language`: the four facts of the router's `plant:` block, passed at install time. Each fills its placeholder in `docs/graph/index.md` only; a declared value is never overwritten; an unknown environment class is refused; facts still unset are named as a NEXT STEP. `INSTALL_PROMPT.md` and `GRAFT_PROMPT.md` ask the owner for them before running; growth already did.
+
+### Changed — `core/method/engineering-posture.md`
+- `engineering-posture.sources-of-truth`: an installed, generated or deployed file is never edited in place; the change reaches the target only through the project's own installer or deploy path, in the same sitting.
+
+### Fixed — `templates/knowledge-graph/graph-lint.py`
+- The version-pin rule flagged a specification revision cited beside its identifier (`SPEC-0002 v0.2.0`) as a dependency pin. A project-artifact identifier directly before the token now exempts it.
+
+### Tests
+- `tests/test_graph_lint.py`: a spec revision citation passes; a bare version still fails.
+- `tests/test-full-install.sh`: the plant-facts flags fill the block, an invalid class is refused, a declared value survives a re-install, and a bare install names the unset facts.
+
 ## 7.2.0 — bounded execution as a guard, and five estate standards folded into their owners (2026-09-07)
 
 ### Added — `integrations/claude-code/bound-hook.py`, `protocols/toolcraft.md`

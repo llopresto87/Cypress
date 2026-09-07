@@ -4,6 +4,9 @@
 # Usage:
 #   install.sh <tool> [--project-dir PATH] [--symlink|--copy] [--force]
 #                     [--print-config]
+#                     [--environment-class ephemeral-test|staging|real-production|mixed]
+#                     [--commit-attribution none|<trailer>] [--deliverable-language <bcp47>]
+#                     [--comment-language <bcp47>]
 #
 # <tool> is one of:
 #   claude-code        — Drop CLAUDE.md + .claude/ into the project.
@@ -23,6 +26,12 @@
 #   --copy               Copy files into the project (default; keeps the seed
 #                         isolated from project edits).
 #   --force              Overwrite existing target files without prompting.
+#   --environment-class, --commit-attribution, --deliverable-language,
+#   --comment-language   The four plant facts (docs/graph/_schema.md §"The
+#                        plant: block"), the owner's explicit choices. Each fills
+#                        its placeholder in docs/graph/index.md; a value the plant
+#                        already declares is never overwritten. Unset facts are
+#                        named as a NEXT STEP.
 #   --print-config       For `codex`: print the config.toml lines with
 #                         resolved paths instead of editing anything.
 #   --check              For `github-copilot`: verify the generated .github/
@@ -264,7 +273,45 @@ place_graph_scaffold() {
     # like the router. A session-start hook injects its --summary once.
     place_file "$SEED_ROOT/tools/status-register.py" "$g/status-register.py"
     [[ -e "$g/index.md" ]] || cp "$SEED_ROOT/templates/knowledge-graph/index.md" "$g/index.md"
+    fill_plant_facts "$g/index.md"
     log "  run /initialize to discover the project and grow the graph"
+}
+
+# fill_plant_facts INDEX
+# The router's `plant:` block holds the four facts only the owner can assert
+# (schema §"The plant: block"). A value passed on the command line replaces a
+# PLACEHOLDER line only — a value the plant already declares is never
+# overwritten. Whatever is still a placeholder afterwards is named as a NEXT
+# STEP, because an agent otherwise re-asks or guesses it.
+fill_plant_facts() {
+    local idx="$1" key val
+    for key in environment_class commit_attribution deliverable_language comment_language; do
+        case "$key" in
+            environment_class)    val="${PLANT_ENV:-}" ;;
+            commit_attribution)   val="${PLANT_ATTR:-}" ;;
+            deliverable_language) val="${PLANT_DLANG:-}" ;;
+            comment_language)     val="${PLANT_CLANG:-}" ;;
+        esac
+        [[ -n "$val" ]] || continue
+        if grep -qE "^  $key: <" "$idx"; then
+            awk -v k="$key" -v v="$val" '
+                $0 ~ "^  " k ": <" { print "  " k ": " v; next } { print }' "$idx" > "$idx.tmp" \
+              && mv "$idx.tmp" "$idx"
+            log "  plant fact $key set to $val"
+        else
+            log "  plant fact $key already declared; --$(tr _ - <<<"$key") ignored"
+        fi
+    done
+    local missing
+    missing="$( { grep -oE '^  (environment_class|commit_attribution|deliverable_language|comment_language): <' "$idx" || true; } \
+               | sed -E 's/^  ([a-z_]+): </\1/' | tr '\n' ' ')"
+    if [[ -n "$missing" ]]; then
+        log ""
+        log "NEXT STEP — plant facts still unset in docs/graph/index.md: $missing"
+        log "  These are the owner's explicit choices, never an agent's guess. Pass them"
+        log "  now (--environment-class, --commit-attribution, --deliverable-language,"
+        log "  --comment-language) or fill the plant: block before grow or graft."
+    fi
 }
 
 # command_protocols: print the basename of every protocol node that
@@ -651,12 +698,20 @@ while [[ $# -gt 0 ]]; do
         --force)   FORCE=1; shift ;;
         --print-config) PRINT_CONFIG=1; shift ;;
         --check)   CHECK=1; shift ;;
+        --environment-class)   PLANT_ENV="$2";  shift 2 ;;
+        --commit-attribution)  PLANT_ATTR="$2"; shift 2 ;;
+        --deliverable-language) PLANT_DLANG="$2"; shift 2 ;;
+        --comment-language)    PLANT_CLANG="$2"; shift 2 ;;
         -h|--help) usage 0 ;;
         *) die "unknown argument: $1 (try --help)" ;;
     esac
 done
 
 [[ ${#TOOLS[@]} -gt 0 ]] || die "no tool specified (try --help)"
+case "${PLANT_ENV:-}" in
+    ""|ephemeral-test|staging|real-production|mixed) ;;
+    *) die "--environment-class must be one of ephemeral-test | staging | real-production | mixed (got: $PLANT_ENV)" ;;
+esac
 
 # Sanity: refuse to install into the seed itself.
 [[ "$PROJECT_DIR" != "$SEED_ROOT" ]] || die \
