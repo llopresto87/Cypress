@@ -40,7 +40,7 @@ load_when:
   - "roll your own crypto or session primitive, maintained library"
   - "degraded dependency, silent fallback to a default, fail-open or fail-closed posture"
   - "destructive or stranding operation, describe-only default, explicit apply flag"
-est_tokens: 4400
+est_tokens: 4450
 ---
 
 # Design posture
@@ -222,6 +222,11 @@ design consequence — a tool built so that the human *can* stop it.
 Whether the target is a real production system is a plant fact, read
 from `plant.environment_class` in the router's frontmatter, never
 re-guessed per run.
+
+**An inert item announces itself.** An accepted-but-inert setting,
+parameter or code path announces itself where it is accepted, or is
+documented as dead; an inert item is indistinguishable from a working
+one otherwise.
 
 **Anti-patterns.** A default-deny rule with no audited allow set; a
 priority that starves what it deprioritized; a scan or check that

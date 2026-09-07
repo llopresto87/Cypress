@@ -1,6 +1,6 @@
 # Scout 03: prime-agent Skills Loading — Research Findings
 
-**Source**: prime-agent v0.8.1 at `/home/okik/.local/opt/node-v24/lib/node_modules/prime-agent`  
+**Source**: prime-agent v0.8.1 at `<home>/.local/opt/node-v24/lib/node_modules/prime-agent`  
 **Key files read**: `dist/core/skills.js`, `dist/core/package-manager.js`, `dist/core/resource-loader.js`,  
 `dist/core/settings-manager.js`, `dist/core/agent-session.js`, `dist/core/config.js`,  
 `dist/utils/frontmatter.js`, `integrations/prime-agent/README.md`

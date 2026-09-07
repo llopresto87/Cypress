@@ -371,10 +371,10 @@ ends_when: the lines have a graph home
 ---
 MD
 kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL EXTENDED" "$TMP/kout" || { cat "$TMP/kout"; fail "a closed deviation must not cover the kernel (got $krc)"; }
-sed -i '' 's/^status: closed$/status: standing/; s/^departs_from: kernel.body$/departs_from: secrets-posture.lifetime/' "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md"
+sed -i.bak 's/^status: closed$/status: standing/; s/^departs_from: kernel.body$/departs_from: secrets-posture.lifetime/' "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md" && rm -f "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md.bak"
 kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL EXTENDED" "$TMP/kout" || { cat "$TMP/kout"; fail "a deviation on another fact must not cover the kernel (got $krc)"; }
 # standing deviation on kernel.body -> recognised, exit 0, no !! line
-sed -i '' 's/^departs_from: .*$/departs_from: kernel.body   # the plant kernel carries lines the seed does not/' "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md"
+sed -i.bak 's/^departs_from: .*$/departs_from: kernel.body   # the plant kernel carries lines the seed does not/' "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md" && rm -f "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md.bak"
 kaudit; [ "$krc" -eq 0 ] && grep -q "standing deviation deviation.kernel-boundary" "$TMP/kout" && ! grep -q "!! KERNEL" "$TMP/kout" \
   || { cat "$TMP/kout"; fail "standing kernel.body deviation must clear the kernel check, exit 0 (got $krc)"; }
 grep -q "ends_when: the lines have a graph home" "$TMP/kout" || { cat "$TMP/kout"; fail "the recognised deviation must surface its ends_when"; }

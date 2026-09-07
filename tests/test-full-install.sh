@@ -57,6 +57,7 @@ need "$T/docs/graph/agnosticism-lint.py" claude-code
 need "$T/docs/graph/prose-lint.py" claude-code
 need "$T/docs/graph/status-register.py" claude-code
 need "$T/.claude/status-hook.py" claude-code
+need "$T/.claude/bound-hook.py" claude-code
 # 7.0.0: a plant's edited .claude/settings.json is BACKED UP on re-install, never
 # silently overwritten — a graft must not destroy local hook config.
 python3 - "$T/.claude/settings.json" <<'PY2'

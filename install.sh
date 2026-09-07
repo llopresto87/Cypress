@@ -341,6 +341,9 @@ install_claude_code() {
     # Status-register surfacing hook (SessionStart; referenced by settings.json).
     cp "$SEED_ROOT/integrations/claude-code/status-hook.py" \
        "$PROJECT_DIR/.claude/status-hook.py"
+    # Bounded-execution guard (PreToolUse on Bash; referenced by settings.json).
+    cp "$SEED_ROOT/integrations/claude-code/bound-hook.py" \
+       "$PROJECT_DIR/.claude/bound-hook.py"
     # Mechanical agent-router / roster linter / eval gate, invoked as
     # `python3 .claude/agent-lint.py` by 00-orchestrator.md, the brief
     # templates, and the deliver assertion. Scores .claude/agents/.

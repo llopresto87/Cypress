@@ -39,7 +39,7 @@ load_when:
   - "golden master, stored oracle before a migration"
   - "gate script left half-applied state, environment failure or repository failure"
   - "the checker disagrees with the file, fix the tool or the declaration"
-est_tokens: 5200
+est_tokens: 5350
 command: true
 ---
 
@@ -138,6 +138,11 @@ one.
 State the coverage the control establishes, not more. "No secrets
 found by <tool> across <paths>, control fixture detected" is a
 finding. "No secrets" is a hope with a command-line history.
+
+Order protects the reading the same way the control does. The criterion
+that decides a change is written before the measurement runs; a result
+that fails it is a recorded negative and the change is reverted, never
+rationalized into a partial success.
 
 This is `verify.gate-states` one level down: the three states say
 whether a gate *ran*, and a run that reports nothing still owes proof
@@ -336,6 +341,12 @@ the condition that reopens it), each with an owner, so nothing rests as
 level up: a gate without an assertion says the check ran and proved
 nothing; a `closed` without evidence says the work finished and proves
 nothing, and is trusted just as readily.
+
+Promotion is the same gate at the other end of a record's life. A
+specification is not promoted to a live status until executable
+assertions covering its contracts exist and pass, and the promotion
+lands in the same change that adds them; a live status over an empty
+assertion set is a false green.
 
 The vocabulary and each status's required companions live in
 `docs/graph/_schema.md` §"Lifecycle status" — read them there, never

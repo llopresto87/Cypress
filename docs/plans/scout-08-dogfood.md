@@ -188,4 +188,4 @@ is independent of those increments and can land first.
 ---
 
 *Written by research-scout (Sonnet 4.6), read-only pass.*
-*Full detail in: /home/okik/cypress-6.6.0/cypress/docs/plans/scout-08-dogfood.md*
+*Full detail in: <seed-root>/docs/plans/scout-08-dogfood.md*

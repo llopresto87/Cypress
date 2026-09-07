@@ -1,5 +1,30 @@
 # Changelog
 
+## 7.2.0 — bounded execution as a guard, and five estate standards folded into their owners (2026-09-07)
+
+### Added — `integrations/claude-code/bound-hook.py`, `protocols/toolcraft.md`
+- `toolcraft.bounded-execution`: every command an agent runs is bounded, and anything that may outlive the bound is detached, logged to a durable file, and terminated by a marker — six clauses covering the bound, the detached launch, bounded polling, liveness before "running", kill by recorded pid, and completion by marker. A timeout alone covers only the first.
+- `.claude/bound-hook.py`, a `PreToolUse` hook on `Bash`: refuses a blocking-prone shell command (service control, process signalling, package managers, installers, builds, log followers) that carries neither an explicit bound nor a detached launch, and prints both accepted forms; it inspects the payload of `bash -c`, `sh -c` and `eval`, treats a pipe into a shell as an installer, reads separators only outside quotes, and exempts read-only service queries and dry-run builds. Wired in `settings.json` without `|| true` — the one guard among context hooks — while the script itself can only exit 0 or 2 and every internal failure path exits 0. `install.sh` places it; the pattern list is a commented constant.
+- `docs/plans/grill-7.2.0-bounded-execution-and-estate-standards.md`: the plan-of-record for this release.
+
+### Changed — doctrine nodes, one sharpening each under the fact it already owns
+- `verify.status-evidence` (`protocols/verify.md`): a specification is not promoted to a live status until executable assertions covering its contracts exist and pass, in the same change that adds them.
+- `verify.null-result` (`protocols/verify.md`): the criterion that decides a change is written before the measurement runs; a failing result is a recorded negative and the change is reverted.
+- `release-posture.ordering` (`core/method/release-posture.md`): a tool that generates or recovers a change stages it as a separate full copy and does not apply, restart or deploy on its own; applying, promoting and activating are distinct authorizations (its default mode stays the design posture's report-only rule).
+- `vcs-posture` § "Publishing is a separate authorization": the list now names restarting, reloading or stopping a running service, killing a process the agent did not start, and touching a live workload.
+- `design-posture.anti-patterns` (`core/method/design-posture.md` §8): an accepted-but-inert setting, parameter or code path announces itself where it is accepted, or is documented as dead.
+- `protocols/toolcraft.md` gains a `load_when` phrase for the stuck-command case; `est_tokens` re-measured on every edited node.
+
+### Fixed — `documentation/`
+- A host path in the documentation named a user's home directory; replaced with a placeholder. The agnosticism lint that guards the diff would have refused it as a new line.
+
+### Fixed — `tests/test-graft-tools.sh`
+- Two `sed -i ''` invocations were BSD-only and made the whole suite fail on GNU sed; both now use the portable `-i.bak` form.
+
+### Tests
+- `tests/test-bound-hook.sh` (new, registered in `run.sh`): every accepted and refused form of the guard, the non-Bash and malformed-stdin paths, and that a refusal names both accepted forms. Proven red before the hook existed.
+- `tests/test-full-install.sh`: asserts `.claude/bound-hook.py` lands.
+
 ## 7.1.1 — the graft's safety net and its engine check made honest (2026-09-07)
 
 ### Fixed — `install.sh`

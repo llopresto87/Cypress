@@ -86,6 +86,18 @@ addressable until a new session starts — the global-config merge doubly so.
 `docs/graph/method/delegation.md` (`delegation.harness-registration`) owns that
 rule and its recorded fallback.
 
+## Bounded execution has no hook here
+
+This harness exposes no pre-tool hook, so the bounded-execution clauses of
+`protocols/toolcraft.md` § "Bounded execution" are the agent's own discipline
+rather than an enforced guard: every blocking-prone shell command — service
+control, process signalling, package managers, installers, builds, log
+followers — carries an explicit `timeout`, or is launched detached with its
+output in a durable log, its pid recorded, and a terminal result line. The
+worst offenders in practice are process-signalling commands issued from the
+exec tool, which can match the shell issuing them: stop a process by its
+recorded pid, never by a name pattern.
+
 ## Approval modes and the verify rule
 
 Codex has three approval modes: `untrusted`, `on-request`, `never`.

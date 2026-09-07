@@ -72,6 +72,30 @@ backs it up to `<path>.bak-<timestamp>` and warns (byte-identical
 files are left untouched). With `--force` it overwrites without a
 backup — see INSTALL.md "What gets backed up".
 
+## Hooks
+
+Three hooks ship in `settings.json`. `route-hook.py` (UserPromptSubmit) and
+`status-hook.py` (SessionStart) inject context and are wired fail-open with
+`|| true`: a context hook must never block a prompt. `bound-hook.py`
+(PreToolUse, matcher `Bash`) is a guard and is wired without `|| true`: it
+exits 2 to refuse a blocking-prone shell command — service control, process
+signalling, package managers, installers, builds, log followers — that carries
+neither an explicit bound nor a detached launch, and prints both accepted
+forms for the offending command on stderr:
+
+- bounded: `timeout 30 systemctl --user daemon-reload`
+- detached: `setsid nohup ./job.sh > job.log 2>&1 & echo $! > job.pid`
+
+Kill by a recorded pid (`kill -TERM $(cat job.pid)`) passes; `pkill`,
+`killall` and `kill … $(pgrep …)` do not, because no bound repairs signalling
+the wrong process. The script itself can only exit 0 or 2, and every failure
+path inside it (not Bash, no command, unparseable stdin, internal error)
+exits 0 with one line on stderr, so a bug in the guard degrades to no guard
+and can never block every call. The pattern list is a commented constant at
+the top of the file; extending it is a one-line change. The doctrine behind
+the guard is `protocols/toolcraft.md` § "Bounded execution"; the test is
+`tests/test-bound-hook.sh`.
+
 ## What you do not need to do
 
 You do not need to edit the agents or skills to fit Claude Code —

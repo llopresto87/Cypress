@@ -4,7 +4,7 @@
 and whether the seed's `generate_slash_commands` output works with zero transform.
 
 **Verified against:** `prime-agent@0.8.1` at
-`/home/okik/.local/opt/node-v24/lib/node_modules/prime-agent/dist/`
+`<home>/.local/opt/node-v24/lib/node_modules/prime-agent/dist/`
 
 ---
 

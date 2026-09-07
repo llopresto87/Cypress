@@ -1601,4 +1601,4 @@ negative finding is worth more than praise."
 
 *End of reference. Sources: `skills/*/SKILL.md`, `templates/*.template.md`,
 `templates/knowledge-graph/*`, and `templates/prompts/*.md` under
-`/home/okik/cypress-6.6.0/cypress`.*
+`<seed-root>`.*

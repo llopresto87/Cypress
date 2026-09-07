@@ -9,6 +9,7 @@ title: toolcraft — the doctrine of durable, tested, cataloged tools versus thr
 owns:
   - rule.toolcraft
   - toolcraft.durability-criteria
+  - toolcraft.bounded-execution
 requires:
 peers:
   - protocol.canonize
@@ -23,7 +24,8 @@ load_when:
   - "recurring operation across sessions"
   - "catalog a tool, tools_built, skills_built"
   - "throwaway prototype versus reusable tooling"
-est_tokens: 1000
+  - "command hung, session stuck, wrap in a timeout, run detached"
+est_tokens: 1450
 ---
 
 # Protocol: toolcraft — the durable-tool doctrine
@@ -105,6 +107,35 @@ name every tool they build in `tools_built` and every recurring procedure in
 (`docs/graph/templates/prompts/handback-payload.md`); those fields are what the
 close-out brief forwards to the librarian.
 
+## Bounded execution
+
+A tool is only durable if the session that runs it survives it. Every
+command an agent runs is bounded, and anything that may outlive the bound
+is detached, logged to disk, and terminated by a marker:
+
+1. A foreground command carries an explicit bound. Service control, process
+   signalling and installers are the commands that hang most and get no
+   exemption.
+2. Work that may legitimately exceed the bound is never run in the
+   foreground: it is launched detached with hangup trapped, its process
+   group recorded to a file, its output written to a durable log under the
+   project, and it ends with a terminal result line and an exit-code file.
+3. Waiting is bounded polling of that log for new bytes or the marker. A
+   poll that sees no new evidence for a fixed number of intervals stops and
+   reports "no progress since T"; it never re-issues the same command.
+4. "Running" is claimed only on an observed liveness signal — the pid alive
+   and the log growing, or device utilisation — never on the launch having
+   returned.
+5. A process is stopped by its recorded pid or process group with bounded
+   escalation, never by a pattern that can match the shell issuing the kill.
+6. Completion is the marker, not the absence of output and not a timeout;
+   a liveness threshold is derived from measured durations of that task
+   class, not guessed.
+
+A timeout alone covers only the first clause. The other five are what
+distinguish "finished" from "stuck" when the work is long, and a stall is
+reported, never repeated.
+
 ## Fail-closed doctrine
 
 A task is **not complete** until any durable tool it produced is
@@ -115,6 +146,13 @@ the delivery covers this — see `docs/graph/protocols/canonize.md`). A task tha
 built a reusable capability — a tool, or a procedure worn in by repetition —
 but left it uncaptured is a silent capability leak: the next session cannot
 find what exists, so it rewrites it.
+
+The bounded-execution clauses are delivered as a mechanism where the harness
+has a hook surface: the Claude Code integration installs a pre-tool guard
+(`.claude/bound-hook.py`) that refuses a blocking-prone shell command carrying
+neither a bound nor a detached launch, so clause 1 is enforced before it is
+read. Harnesses without a hook surface carry the clauses as the agent's own
+discipline; their integration notes say so.
 
 Cross-project mirror: `harvest` folds **project-agnostic** tools into the
 seed's `tool-corpus/` and **project-agnostic** skills into `skill-corpus/`,

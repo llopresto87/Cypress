@@ -22,7 +22,7 @@ load_when:
   - "git worktree, parallel checkout, second clone for the same task"
   - "commit trailer, co-authored-by line, who signs the commit"
   - "which language for code comments or the deliverable"
-est_tokens: 1000
+est_tokens: 1050
 ---
 
 # VCS posture
@@ -54,6 +54,9 @@ in the conversation, that names the act**:
 - pushing to a shared remote — any branch;
 - changing the default branch — by push, merge, rebase, or force;
 - deploying;
+- restarting, reloading or stopping a running service;
+- killing a process the agent did not start;
+- touching a workload that is serving live traffic;
 - lifting a standing no-change rule (a doc-only phase, a frozen module,
   a "do not touch X" instruction).
 

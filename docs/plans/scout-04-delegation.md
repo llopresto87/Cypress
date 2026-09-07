@@ -1,7 +1,7 @@
 # Scout-04: Delegation / Roster Model — prime-agent
 
 *Scout session: read-only research. All claims verified against source.*  
-*prime-agent v0.8.1 at `/home/okik/.local/opt/node-v24/lib/node_modules/prime-agent`*  
+*prime-agent v0.8.1 at `<home>/.local/opt/node-v24/lib/node_modules/prime-agent`*  
 *Written: 2026-08-28*
 
 ---
@@ -282,4 +282,4 @@ lints the prime-agent brief sources with no changes to the linter itself.
 
 ---
 
-*Full report: `/home/okik/cypress-6.6.0/cypress/docs/plans/scout-04-delegation.md`*
+*Full report: `<seed-root>/docs/plans/scout-04-delegation.md`*

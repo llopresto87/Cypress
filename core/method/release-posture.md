@@ -25,7 +25,7 @@ load_when:
   - "suppress a vulnerability advisory, upgrade now or hold the version"
   - "which increment lands first, the irreversible step and the landing order"
   - "ship the release order across services, canary the lowest-risk one then fan out"
-est_tokens: 1900
+est_tokens: 2050
 ---
 
 # Release posture
@@ -145,6 +145,16 @@ failure count to zero without fixing the defect waits for the trace); a
 validation, threshold, or metric is gated behind the fix that makes a
 corrupt input real, never layered on top of it; when a file governed by
 an exclusion rule moves, the rule changes first and the file second.
+
+The same ordering binds the tool that produces the change. A tool that
+generates or recovers a change stages it and does not apply it: it
+writes its candidate as a separate full copy with the source untouched
+and never restarts, reloads or deploys a service on its own. Applying,
+promoting and activating are distinct steps, each with its own
+authorization and its own passing gate. Its default mode is the one the
+design posture already owns for destructive operations (report-only,
+mutate only on an explicit per-operation flag); this paragraph adds only
+the release-side steps.
 
 ## 6. Roll out one lowest-risk target at a time, in a recorded order
 

@@ -1,7 +1,7 @@
 # Scout 06 — Settings, Packages, MCP/ACP (prime-agent 0.8.1)
 
 **Date:** 2025-08-28  
-**Verified against:** `/home/okik/.local/opt/node-v24/lib/node_modules/prime-agent` (v0.8.1)  
+**Verified against:** `<home>/.local/opt/node-v24/lib/node_modules/prime-agent` (v0.8.1)  
 **Primary sources:** `dist/core/settings-manager.{js,d.ts}`, `dist/core/package-manager.js`, `dist/core/resource-loader.js`, `docs/{settings,packages,extensions,acp,mcp-integrations}.md`
 
 ---

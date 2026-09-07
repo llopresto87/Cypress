@@ -22,7 +22,19 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/bound-hook.py\""
+          }
+        ]
+      }
     ]
   },
+  "_bound_hook_comment": "PreToolUse runs bound-hook.py before every Bash call and refuses (exit 2) a blocking-prone command — service control, process signalling, package managers, installers, builds, log followers — that carries neither an explicit bound nor a detached launch. NOTE the missing '|| true': this hook is a GUARD, not a context injector, and a guard that cannot block is not a guard, so it is deliberately NOT fail-open. The asymmetry is paid for inside the script: it exits 0 or 2 and nothing else, every failure path (not Bash, no command, unparseable stdin, internal exception) exits 0 with one line on stderr, so a bug in the guard degrades to no guard and can never brick a session by blocking everything.",
   "_status_hook_comment": "SessionStart runs status-hook.py ONCE per session and injects `status-register.py --summary` (open / hotfix / deferred counts and the oldest items) so lifecycle debt is in front of the model before it plans. Not per prompt: the register is a frontmatter scan, and a session sees it once. Fail-open like route-hook: '|| true'."
 }

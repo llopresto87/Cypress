@@ -7,7 +7,7 @@ This reference documents two parts of the CYPRESS seed:
 - **Part B — the integrations.** The five per-tool adapters under
   `integrations/` that project the shared seed onto each host harness.
 
-The repository root is `/home/okik/cypress-6.6.0/cypress`. This repository is
+The repository root is `<seed-root>`. This repository is
 the seed (the shippable product), not a grown project. Every fact below comes
 from source files on disk; each major section cites its source path.
 
@@ -424,6 +424,7 @@ Claude Code reads on every session: `CLAUDE.md` (project memory at repo root),
   `|| true`; any error degrades to the mandate or silence; a hook must never
   block a prompt). The frontmatter format (`name`, `description`, `tools`,
   `model`) is exactly what Claude Code expects, so the files work unchanged.
+- **Bounded execution before every shell call:** `.claude/bound-hook.py` (`PreToolUse`, matcher `Bash`) refuses a blocking-prone command that carries neither an explicit bound nor a detached launch, printing both accepted forms; it is the one hook wired without `|| true`, because a guard that cannot block is not a guard. Doctrine: `protocols/toolcraft.md` § "Bounded execution".
 - **Status register at session start:** `.claude/status-hook.py` runs once on
   `SessionStart`, runs `docs/graph/status-register.py --summary` (a frontmatter
   scan that counts `open` / `hotfix` / `deferred` items and the oldest of them)
