@@ -87,13 +87,12 @@ place_file() {
             copy)    [[ -f "$dest" && ! -L "$dest" ]] && cmp -s "$src" "$dest" && return 0 ;;
             symlink) [[ -L "$dest" && "$(readlink "$dest")" == "$src" ]] && return 0 ;;
         esac
-        if [[ $FORCE -eq 1 ]]; then
-            rm -f "$dest"
-        else
-            local bak="${dest}.bak-$(date +%Y%m%d-%H%M%S)"
-            mv "$dest" "$bak"
-            warn "backed up existing $dest -> $bak"
-        fi
+        # --force skips the prompt, never the backup: graft Phase 7's safety
+        # net is this backup, and the customization audit reads it. Destroying
+        # a replaced file leaves a graft with nothing to audit and no way back.
+        local bak="${dest}.bak-$(date +%Y%m%d-%H%M%S)"
+        mv "$dest" "$bak"
+        [[ $FORCE -eq 1 ]] || warn "backed up existing $dest -> $bak"
     fi
     case "$LINK_MODE" in
         symlink) ln -s "$src" "$dest" ;;

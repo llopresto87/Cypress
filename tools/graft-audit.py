@@ -514,14 +514,35 @@ def _kernel_currency(plant: Path, seed: Path) -> bool:
     return ok
 
 
+CONFIG_KEY_RE = re.compile(r"^(ROOT_ID|KINDS|KIND_PREFIX|TEST_GLOBS)\s*=")
+
+
+def _strip_config_assignments(text: str) -> str:
+    """Blank out the PROJECT CONFIG assignments, continuation lines included.
+    They are legitimately plant-specific, and one of them can span several
+    physical lines in the seed and one in the plant (or the reverse): only the
+    first line matches the config-key pattern, so a continuation line would
+    read as a seed engine line missing from the plant, a false STALE on a gate
+    that BLOCKS the graft. Lines are blanked rather than dropped so any later
+    line-numbered report stays honest."""
+    out, depth = [], 0
+    for line in text.splitlines():
+        if depth == 0 and not CONFIG_KEY_RE.match(line):
+            out.append(line)
+            continue
+        code = _strip_inline_comment(line)
+        depth += sum(code.count(o) for o in "([{") - sum(code.count(c) for c in ")]}")
+        depth = max(depth, 0)
+        out.append("")
+    return "\n".join(out)
+
+
 def _engine_currency(spec: str):
     try:
         p, s = spec.split(":", 1)
-        pl = _code_lines(Path(p).read_text())
-        sl = _code_lines(Path(s).read_text())
+        pl = _code_lines(_strip_config_assignments(Path(p).read_text()))
+        sl = _code_lines(_strip_config_assignments(Path(s).read_text()))
         missing = sl - pl
-        # ignore the PROJECT CONFIG assignments (legitimately plant-specific)
-        missing = {m for m in missing if not re.match(r"^(ROOT_ID|KINDS|KIND_PREFIX|TEST_GLOBS)\s*=", m)}
         if missing:
             print(f"  !! graph engine STALE: {len(missing)} seed engine line(s) absent "
                   f"from the plant — reconcile with graft-graph-engine.py")

@@ -1,5 +1,17 @@
 # Changelog
 
+## 7.1.1 — the graft's safety net and its engine check made honest (2026-09-07)
+
+### Fixed — `install.sh`
+- `--force` backs up every file it replaces instead of deleting it. It skips the prompt and the warning, never the backup. Graft Phase 7 names the installer's backup as its safety net and the customization audit reads those backups, so a forced install left a graft with nothing to audit and no way back.
+
+### Fixed — `tools/graft-audit.py`
+- The engine-currency check excludes a `PROJECT CONFIG` assignment across all its physical lines. One that spans several lines in the seed and one in the plant left its continuation lines reading as seed engine lines missing from the plant: a false `graph engine STALE` on a gate that blocks a graft. A real engine line absent from the plant still reports STALE.
+
+### Tests
+- `tests/test-full-install.sh`: an edited `.claude/settings.json` survives a `--force` re-install as a backup carrying the plant's edit.
+- `tests/test-graft-tools.sh`: a multi-line config assignment reads as current; a genuine engine improvement absent from the plant still reports STALE with its count.
+
 ## 7.1.0 — humanizer skill, prose posture, prose-lint; documentation rewritten as prose (2026-09-07)
 
 ### Added — `skills/humanizer/SKILL.md`, `core/method/prose-posture.md`

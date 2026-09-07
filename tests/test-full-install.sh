@@ -67,6 +67,22 @@ ls "$T/.claude/"settings.json.bak-* >/dev/null 2>&1 \
   || { echo "re-install overwrote an edited .claude/settings.json without a backup" >&2; exit 1; }
 grep -q keep-me "$T/.claude/"settings.json.bak-* \
   || { echo "settings.json backup does not carry the plant's edit" >&2; exit 1; }
+# --force must still back up what it replaces. The graft protocol's Phase 7
+# safety net IS the installer's backup ("rely on it and confirm the backups
+# exist"), and the customization audit reads those backups: a --force install
+# that destroys instead of backing up leaves a graft with nothing to audit and
+# no way back. --force skips the prompt, never the backup.
+python3 - "$T/.claude/settings.json" <<'PY2'
+import json,sys; p=sys.argv[1]; c=json.load(open(p)); c["_forced_marker"]="keep-me-too"; json.dump(c,open(p,"w"),indent=2)
+PY2
+rm -f "$T/.claude/"settings.json.bak-*
+"$ROOT/install.sh" claude-code --project-dir "$T" --copy --force >/dev/null 2>&1
+ls "$T/.claude/"settings.json.bak-* >/dev/null 2>&1 \
+  || { echo "--force install destroyed an edited settings.json with no backup" >&2; exit 1; }
+grep -q keep-me-too "$T/.claude/"settings.json.bak-* \
+  || { echo "--force backup does not carry the plant's edit" >&2; exit 1; }
+echo "  --force backs up what it replaces (the graft's safety net) — OK"
+
 # the status register is DELIVERED and its hook is REGISTERED: a plant surfaces
 # its lifecycle debt at session start without any seed checkout or brief line.
 python3 "$T/docs/graph/status-register.py" --root "$T/docs/graph" --summary >/dev/null \

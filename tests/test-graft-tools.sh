@@ -387,4 +387,47 @@ mv "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md" "$TMP/kplant/docs
 kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL EXTENDED" "$TMP/kout" || { cat "$TMP/kout"; fail "a blank template must not read as a deviation (got $krc)"; }
 echo "  kernel currency: STALE blocks, EXTENDED blocks, standing kernel.body deviation clears — OK"
 
+
+# ---- engine currency: a multi-line config assignment is not a stale line ----
+# The PROJECT CONFIG assignments are legitimately plant-specific, so the audit
+# excludes them. They can span several physical lines in the seed and one in the
+# plant (or the reverse): only the first line matches the config-key pattern, so
+# the continuation lines used to read as seed engine lines missing from the
+# plant, i.e. a false STALE on a gate that BLOCKS a graft.
+rm -rf "$TMP/ec"; mkdir -p "$TMP/ec"
+cat > "$TMP/ec/seed.py" <<'PY2'
+ROOT_ID = "root"
+KINDS = {"root", "subsystem",
+         "deviation", "method"}
+def shared():
+    return 1
+PY2
+cat > "$TMP/ec/plant.py" <<'PY2'
+ROOT_ID = "app"
+KINDS = {"root", "subsystem", "deviation", "method", "operator"}
+def shared():
+    return 1
+PY2
+python3 - "$AUDIT" "$TMP/ec" <<'PY2'
+import importlib.util, sys
+from pathlib import Path
+spec = importlib.util.spec_from_file_location("ga", sys.argv[1])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+d = Path(sys.argv[2])
+import io, contextlib
+buf = io.StringIO()
+with contextlib.redirect_stdout(buf):
+    m._engine_currency(f"{d}/plant.py:{d}/seed.py")
+out = buf.getvalue()
+assert "current" in out and "STALE" not in out, f"multi-line config read as stale: {out!r}"
+# a real engine improvement absent from the plant still reports STALE
+(d / "seed.py").write_text((d / "seed.py").read_text() + "def added_helper():\n    return 2\n")
+buf = io.StringIO()
+with contextlib.redirect_stdout(buf):
+    m._engine_currency(f"{d}/plant.py:{d}/seed.py")
+out = buf.getvalue()
+assert "STALE" in out and "2 seed engine line" in out, f"real drift not reported: {out!r}"
+PY2
+echo "  engine currency: multi-line config excluded, real drift still STALE — OK"
+
 echo "test-graft-tools: PASS"
