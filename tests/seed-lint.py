@@ -100,6 +100,19 @@ def fail(msg: str) -> None:
     findings.append(msg)
 
 
+def load_tool(filename: str):
+    """Import a seed tool as a module so its rules have one home. seed-lint
+    checks the seed against the same code the plants are held to, rather than a
+    restatement of it that can drift."""
+    path = ROOT / "tools" / filename
+    spec = importlib.util.spec_from_file_location(path.stem.replace("-", "_"), path)
+    if spec is None or spec.loader is None:      # pragma: no cover - unreachable
+        raise SystemExit(f"seed lint: cannot load {path}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def load_agnosticism_lint():
     """The agnosticism scan is shared machinery — `tools/agnosticism-lint.py`,
     which any project-agnostic tree can run on its own. The seed does not keep
@@ -512,6 +525,105 @@ def check() -> None:
             if num(m.group(1)) != n_skills:
                 fail(f"{path}: claims {m.group(1)} skills; skills/ has {n_skills}")
 
+    # -- growth intake parity: the seed's collections, grow's phases, and the
+    # roster's declared appetites are three views of ONE list ----------------
+    # This is the check that would have caught the defect it was written for.
+    # `design/` shipped in templates/docs/ from 6.9.0 and `legal/` from
+    # 6.12.0, but neither was ever added to grow's unified-shape diagram, its
+    # Phase 4 authoring list, or the cross-cutting scout assignment — so no
+    # scout gathered the evidence, no author wrote the leaves, and no gate
+    # noticed. Every plant grown in that window carries a ui-ux-designer with
+    # nothing to read. A collection the installer creates must be a collection
+    # growth is told to author.
+    # The set of collections is ONE fact, and its home is the audit tool that
+    # holds every plant to it — re-deriving it here with a second walk of
+    # templates/docs/ was a second home that had already drifted: this arm
+    # skipped root-level leaves the tool makes required rows, so a new
+    # templates/docs/glossary.md would pass lint while opening an unanswerable
+    # row in every plant.
+    audit = load_tool("growth-audit.py")
+    tdocs = ROOT / "templates" / "docs"
+    # The audit rows are per-artifact: each runbook is its own procedure to
+    # cover, and a root leaf (changelog.md) is a row of its own. grow.md speaks
+    # at collection granularity, so the prose arms match on the prefix while
+    # the roster arm accepts either — an agent reads `runbooks/`, the audit
+    # answers for `runbooks/rollback.md`.
+    rows = audit.required_collections(ROOT)
+    collections = sorted({r.split("/")[0] + "/" if "/" in r else r for r in rows})
+    grow_text = (ROOT / "protocols" / "grow.md").read_text(encoding="utf-8")
+    shape = grow_text.split("## Unified knowledge shape", 1)[-1].split("```", 2)
+    shape_block = shape[1] if len(shape) > 2 else ""
+    phase4 = grow_text.split("## Phase 4", 1)[-1].split("## Phase 5", 1)[0]
+    for c in collections:
+        if c not in shape_block:
+            fail(f"protocols/grow.md: the unified-shape diagram omits {c!r}, "
+                 f"which install.sh creates in every plant")
+        # Phase 4 names a collection in whatever form its instruction takes:
+        # its own bullet (`design/`), a shared one (`prompts/` and
+        # `evaluations/`), a specific leaf (`plans/grill.md`), or a sentence
+        # (the `specs/` index). Requiring a bullet each would fail three
+        # collections that ARE instructed, so the rule is a backticked mention
+        # here — with the shape diagram above as the strict arm, since a
+        # collection deleted from the seed's shape is the failure that matters.
+        if f"`{c}" not in phase4:
+            fail(f"protocols/grow.md: Phase 4 never tells an author to write "
+                 f"{c!r}, so no plant ever grows it")
+    # The intake arm. A collection with no section in the evidence-ledger
+    # schema is a collection no scout ever gathers evidence for, which is
+    # exactly how design/ and legal/ stayed empty from 6.9.0 to 7.2.1 while
+    # their agents shipped in every plant: the shape and the phases can name a
+    # collection an author is told to write, and the author still has nothing
+    # to write it from. Four collections are legitimately not scouted — they
+    # are outputs of the growth run rather than findings about the source:
+    #   sources/     provenance of the external pass, written as it retrieves
+    #   tools/       withdrawn from tool-corpus / authored from §10 operations
+    #   plans/       the growth's own plan of record
+    #   changelog.md the growth's own provenance entry
+    UNSCOUTED = {"sources/", "tools/", "plans/", "changelog.md"}
+    ledger = (ROOT / "templates" / "prompts" / "growth-evidence-ledger.md"
+              ).read_text(encoding="utf-8")
+    headings = "\n".join(l for l in ledger.splitlines() if l.startswith("## "))
+    for c in collections:
+        if c in UNSCOUTED:
+            continue
+        if c not in headings:
+            fail(f"templates/prompts/growth-evidence-ledger.md: no section "
+                 f"feeds {c!r}, so no scout gathers the evidence an author "
+                 f"would write it from")
+
+    # The record's schema documents the inventory kinds and what each owes the
+    # graph; the tool enforces them. Two homes for one fact, so keep them
+    # honest — a kind the tool plans for that the schema never describes is a
+    # rule an orchestrator cannot follow.
+    record_doc = (ROOT / "templates" / "prompts" / "growth-coverage-record.md"
+                  ).read_text(encoding="utf-8")
+    for kind in audit.KIND_PLAN:
+        if f"`{kind}`" not in record_doc:
+            fail(f"templates/prompts/growth-coverage-record.md: inventory kind "
+                 f"{kind!r} is planned by tools/growth-audit.py but never "
+                 f"described here")
+
+    # The verdict vocabulary has one home — tools/growth-audit.py — and the
+    # protocols quote from it for their own readers. A protocol naming a
+    # verdict the tool cannot emit promises a check that does not exist, which
+    # is the same class of lie as a gate that asserts nothing.
+    known_verdicts = set(audit.VERDICTS) | set(audit.STATUSES) | {"KINDS"}
+    for proto in ("protocols/grow.md", "protocols/graft.md"):
+        text = (ROOT / proto).read_text(encoding="utf-8")
+        for tok in sorted(set(re.findall(r"`([A-Z][A-Z-]{3,})`", text))):
+            if tok not in known_verdicts:
+                fail(f"{proto}: names `{tok}`, which tools/growth-audit.py "
+                     f"does not emit — a promised check that does not exist")
+
+    # Every collection an agent declares it must read has to be one the seed
+    # actually installs — a typo here would make an agent row permanently
+    # uncoverable, and the audit would blame the plant for the seed's mistake.
+    for name, meta in agents.items():
+        for want in meta["fm"].get("plant_knowledge", []) or []:
+            if want not in collections and want not in rows and not (tdocs / want).is_file():
+                fail(f"agents/: {name} declares plant_knowledge {want!r}, "
+                     f"which is not a collection the seed installs")
+
     # -- corpus agnosticism + cross-reference scan (mechanical floor) ----
     # Catches the OBJECTIVE plant-identifier leak class the harvest
     # agnosticism gate promises — a real host IP, a pinned CVE, a dangling
@@ -535,6 +647,16 @@ def check() -> None:
                         r"agent-corpus|skill-corpus|templates)/[A-Za-z0-9_./-]+\.md\b")
     for p in agn.iter_files(scan):
         rel = p.relative_to(ROOT)
+        # CHANGELOG.md is append-only history: it names files as they stood
+        # when the entry was written, so a later rename necessarily leaves a
+        # reference behind that no longer resolves. Rewriting the entry to fix
+        # the link would falsify the record ("supersede, don't rewrite"), and
+        # keeping a tombstone under templates/ would ship a dead file into
+        # every plant. Link integrity is a claim about live pointers; a dated
+        # record's pointers are not live. The agnosticism arm above still
+        # scans it — a leaked host IP is wrong in history too.
+        if rel.as_posix() == "CHANGELOG.md":
+            continue
         for ref in ref_re.findall(p.read_text(encoding="utf-8")):
             if "<" in ref or "*" in ref or "{" in ref:
                 continue

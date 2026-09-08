@@ -24,6 +24,10 @@ requires:
 peers:
   - agent.tester
   - agent.reviewer
+plant_knowledge:
+  - libraries/
+  - best-practices/
+  - architecture/
 est_tokens: 1800
 ---
 

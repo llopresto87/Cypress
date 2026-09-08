@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 7.2.1
+- Version documented: 7.3.0
 - Repository role: this repo is the seed, the product that is shipped
   into other projects. It is *not* a grown project itself.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -408,8 +408,10 @@ explicit in `protocols/test-first.md`.
 5. A completeness contract (`grow.completeness-contract`, added in 6.8.0)
    binds the orchestrating model: every knowledge collection is either *covered
    to the depth its evidence supports* or *absent with a named reason*, never a
-   silent skeleton. Proven by a growth completeness ledger and audited in
-   Phase 6. Template files existing is never coverage.
+   silent skeleton. Proven by the tracked coverage record
+   (`.cypress/coverage.json`) and gated in Phase 6 by
+   `tools/growth-audit.py`, which checks every planned artifact appeared
+   and is not a scaffold. Template files existing is never coverage.
 
 ## 8. Skills, templates, and briefs
 
@@ -449,7 +451,7 @@ template.
 validation briefs, including the canonical graph-session bootstrap block
 (embedded verbatim in every brief), the handback payload (the attribution
 carrier read by the deliver-time `produced_by` assertion), the growth scout/
-author briefs, the evidence and completeness ledger schemas, and the
+author briefs, the evidence-ledger and coverage-record schemas, and the
 clean-context validation brief.
 
 ### 8.4 The `templates/docs/` skeleton
@@ -571,7 +573,8 @@ chat. It runs one flow in three named phases:
    named `EXPERT_SEED_INSTALL_PROMPT.md` for this re-entry and later refreshes.
 3. GROW IN FULL: execute the tool-neutral `grow` protocol end to end under
    its completeness contract. Every evidence-backed collection is grown to
-   full depth, proven by a growth completeness ledger, never a skeleton.
+   full depth, proven by the tracked coverage record and a green
+   `growth-audit.py`, never a skeleton.
 
 Throughout, the chat stays in orchestration/planning, spawning Sonnet-class
 workers for read-only scouting and Opus-class workers for authoring, code,

@@ -22,7 +22,7 @@ peers:
   - agent.growth-orchestrator
   - agent.docs-librarian
   - agent.research-scout
-est_tokens: 950
+est_tokens: 1177
 ---
 
 # Growth Scout
@@ -79,6 +79,14 @@ route — you do not widen scope to chase it.
    the config that silently changes behavior — these are the facts the next agent
    most needs and the code least advertises.
 5. **Record provenance for version-pinned facts** so the author can cite them.
+6. **Gather the three domains a project's own code advertises least.** The
+   interface and design surface (§12), the regulatory exposure the data and
+   deployment imply (§13), and the external standards the stack is held to
+   (§14) are as much source evidence as a route table — and a collection
+   nobody gathers evidence for is a collection no plant ever grows. Report
+   what the source shows and let the specialists qualify it: you supply the
+   screens, the regulated fields, and which standards apply, not the design
+   judgment, the legal conclusion, or the content of the standard.
 
 ## Output — the evidence ledger
 

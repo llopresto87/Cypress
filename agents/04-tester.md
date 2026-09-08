@@ -24,6 +24,10 @@ requires:
 peers:
   - agent.implementer
   - agent.reviewer
+plant_knowledge:
+  - specs/
+  - evaluations/
+  - data/
 est_tokens: 1350
 ---
 

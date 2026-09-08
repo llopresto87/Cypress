@@ -24,6 +24,10 @@ peers:
   - agent.reviewer
   - agent.reliability
   - agent.tester
+plant_knowledge:
+  - best-practices/
+  - decisions/
+  - runbooks/
 est_tokens: 2200
 ---
 

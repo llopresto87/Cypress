@@ -21,6 +21,9 @@ requires:
   - protocol.ingest-library
 peers:
   - agent.docs-librarian
+plant_knowledge:
+  - sources/
+  - libraries/
 est_tokens: 850
 ---
 

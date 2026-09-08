@@ -120,7 +120,48 @@ fact); it is never padded to look populated.
   changes behavior — the facts the next agent most needs and the code
   least advertises. `path:line` + what makes it sharp.
 
-## 12 — Uncertainties & cross-boundary notes
+## 12 — Interface & design surface  → design/ nodes + design specs
+
+- Screens, views, and the flows between them; the component system and where
+  its components are defined; design tokens (color, type, spacing scales) and
+  their source of truth; interaction states the code actually implements
+  (loading, empty, error, success, disabled); and the accessibility
+  affordances present — roles, labels, focus handling, contrast decisions.
+  `path:line` + symbol per claim, as everywhere else.
+- Name the UI framework and its version here too, so the external pass can
+  retrieve the design guidance and platform conventions that framework's
+  ecosystem is held to. `none found` when the boundary genuinely has no user
+  interface — a daemon or a library is a real absence, not an omission.
+
+## 13 — Regulatory exposure  → legal/ nodes (only when the source shows it)
+
+- Evidence that externally-authored rules reach this boundary: personal or
+  otherwise regulated data in the entities of §4, the jurisdictions and
+  sectors the deployment descriptors and configuration imply, retention or
+  consent machinery, audit logging, and any compliance artifact already in
+  the tree (a policy document, a data-processing record, a certification
+  scope).
+- Report what the source shows, never a legal conclusion — qualifying a rule
+  against these facts is `agent.legal`'s work against a verified corpus, and
+  this section is the technical evidence it qualifies. `none found` is a real
+  answer, and it is what makes `legal/` legitimately ABSENT rather than
+  merely unexamined.
+
+## 14 — Normative standards  → best-practices/ feedstock
+
+- The external standards, protocols, and community conventions the evidence
+  shows this boundary is held to: the language and framework's own published
+  guidance, the protocol specifications its contracts implement, the security
+  or accessibility baselines its domain carries, the conventions its linters
+  and formatters encode.
+- For each, name where the project observably stands: the config, the code,
+  or the gate that shows it conforming or departing. The *content* of the
+  standard is not yours to state — the external pass retrieves it. Your job
+  is to name which standards apply and where this project's stance is
+  visible, so `best-practices/` can be written as "the standard says X, and
+  this project does Y" rather than as a description of local habit.
+
+## 15 — Uncertainties & cross-boundary notes
 
 - **Uncertainties**: what could not be established from source, each
   with the evidence a follow-up scout would need. `not recorded`, never

@@ -33,6 +33,9 @@ peers:
   - agent.architect
   - agent.tester
   - agent.security
+plant_knowledge:
+  - libraries/
+  - prompts/
 est_tokens: 2800
 ---
 

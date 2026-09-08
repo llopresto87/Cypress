@@ -31,6 +31,8 @@ peers:
   - agent.research-scout
   - agent.docs-librarian
   - agent.reviewer
+plant_knowledge:
+  - legal/
 est_tokens: 2400
 ---
 

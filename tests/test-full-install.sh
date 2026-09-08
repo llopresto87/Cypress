@@ -364,4 +364,42 @@ grep -q "githubRepo" "$D/.github/agents/devils-advocate.agent.md" \
 rm -rf "$D"
 echo "  copilot projection derives tools from each agent allowlist — OK"
 
+# The seed stamp: install.sh writes it, so a plant always knows which seed it
+# carries. protocols/graft.md described this marker from 4.6.0 onward but
+# nothing wrote it, leaving every graft to guess its own merge base and leaving
+# growth-audit's stamp-vs-record cross-check permanently inert.
+D="$(mktemp -d)"
+"$ROOT/install.sh" claude-code --project-dir "$D" --copy >/dev/null
+[[ -f "$D/.cypress/seed.json" ]] \
+  || { echo "install: no .cypress/seed.json stamp was written" >&2; exit 1; }
+python3 - "$D" "$ROOT" <<'PY'
+import json, sys, pathlib
+d, root = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+stamp = json.loads((d/".cypress/seed.json").read_text())
+want = json.loads((root/"manifest.json").read_text())["version"]
+assert stamp["seed"] == "cypress", stamp
+assert stamp["version"] == want, f"stamp {stamp['version']} != manifest {want}"
+assert "claude-code" in stamp["tools"], stamp
+assert "installed_from" not in stamp, "a first install has nothing to advance from"
+PY
+echo "  install.sh stamps .cypress/seed.json with the manifest version — OK"
+
+# Re-installing over an older stamp records where the plant came FROM: that is
+# the base a graft's three-way merge needs.
+python3 - "$D" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])/".cypress/seed.json"
+s = json.loads(p.read_text()); s["version"] = "0.0.1-old"
+p.write_text(json.dumps(s, indent=2) + "\n")
+PY
+"$ROOT/install.sh" claude-code --project-dir "$D" --copy --force >/dev/null
+python3 - "$D" <<'PY'
+import json, pathlib, sys
+s = json.loads((pathlib.Path(sys.argv[1])/".cypress/seed.json").read_text())
+assert s["installed_from"] == "0.0.1-old", s
+assert s["version"] != "0.0.1-old", s
+PY
+echo "  re-install records installed_from — the graft's merge base — OK"
+rm -rf "$D"
+
 printf 'full five-tool install contract + CC/PA coexistence: PASS\n'

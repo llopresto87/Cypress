@@ -10,6 +10,7 @@ owns:
   - grow.worker-topology
   - grow.growth-flow
   - grow.completeness-contract
+  - grow.stack-inventory
   - grow.plant-facts
 requires:
 peers:
@@ -24,7 +25,8 @@ load_when:
   - "docs/graph is missing or badly drifted"
   - "regrow or refresh the graph after major drift"
   - "declare the plant block: environment class, commit attribution, languages"
-est_tokens: 5850
+  - "is this plant fully grown, coverage record, growth audit"
+est_tokens: 6872
 ---
 
 # Protocol: grow
@@ -144,9 +146,9 @@ All maintained project knowledge lives under one root:
 docs/graph/
 ├── README.md, index.md, _schema.md, graph-lint.py
 ├── nodes/
-├── libraries/, sources/
+├── libraries/, sources/, tools/
 ├── legal/            (only when externally-authored rules are in scope)
-├── product/, architecture/, api/, data/
+├── product/, architecture/, api/, data/, design/
 ├── prompts/, evaluations/
 ├── plans/, runbooks/
 ├── specs/, decisions/, best-practices/
@@ -179,7 +181,7 @@ never a third silent one:
   edge; the router resolves representative tasks to small closures.
 - *Absent with a named reason* — the collection is empty because the
   **source has no such evidence** (no HTTP surface, no migrations, no AI
-  prompts), and that absence is stated explicitly in the completeness ledger
+  prompts), and that absence is stated explicitly in the coverage record
   with the paths that were searched.
 
 Any collection that is neither fully covered nor explicitly absent-with-reason
@@ -188,19 +190,42 @@ are present", and "the common cases are done" are not the second outcome — the
 are the failure the contract exists to forbid. Template files existing at their
 paths is never coverage; only authored, source-cited content is.
 
-**The growth completeness ledger.** Before declaring growth done, the
-orchestration chat fills one ledger in the schema of
-`docs/graph/templates/prompts/growth-completeness-ledger.md` — a table over every
-collection in the unified shape (product, architecture, api, data, libraries,
-sources, legal, prompts, evaluations, runbooks, plans, specs, decisions,
-best-practices, changelog, and every subsystem/stack/cross-cutting node) —
-marking each `covered` (with the count of nodes/leaves authored and the
-strongest source paths), `absent` (with the reason and searched paths), or a
-named `unknown` blocker. It is a seed-organ transient, written to the plant's
-gitignored `.cypress/growth/completeness-ledger.md`, never under `docs/graph/`.
-A collection may not be left blank. This ledger is part of the delivery block
-and is what Phase 6 validation audits against — coverage is asserted, not
-asserted-to.
+**The coverage record and the loop it serves.** Coverage is recorded, not
+narrated. Before declaring growth done the orchestration chat fills
+`.cypress/coverage.json` in the schema of
+`docs/graph/templates/prompts/growth-coverage-record.md`, and
+`tools/growth-audit.py` reads it back:
+
+```text
+inventory  ->  plan  ->  growth  ->  lint --+
+    ^                                       |
+    +--------- repeat while findings --------+
+```
+
+The inventory is what the scouts found the project to be made of (Phase 2).
+The plan turns each item into the artifacts growth owes it and marks which
+need retrieved upstream documentation. Growth authors them. The lint checks
+each planned artifact appeared and is not a scaffold. A finding names a row
+still owed, so the cycle turns again: an item the scouts missed extends the
+inventory, an artifact nobody owed extends the plan, an artifact that was owed
+and never written sends an author back to write it.
+
+Two of the record's three row sets are derived from the seed rather than
+written by the run, so a row cannot go missing by being left out: one per
+knowledge collection the installer creates, and one per roster agent that
+declares `plant_knowledge:` — the collections that agent must be able to read
+before it can work on this project at all. That second set is what makes "all
+agents" a checkable claim rather than an intention, and it is why a graft to a
+newer seed surfaces the specialists it added as rows the plant does not yet
+answer.
+
+The record is **tracked**, beside the plant's `.cypress/seed.json` stamp — not
+under `.cypress/growth/`, which stays the run's gitignored scratch, and not
+under `docs/graph/`, which is the plant's own knowledge. It outlives the run
+that wrote it because its whole purpose is to let a later session, and the next
+graft, tell a collection nobody looked at from one the project genuinely has no
+evidence for. A row may not be left blank, and template files existing at their
+paths is never coverage.
 
 **No unfilled scaffold survives growth.** The installer places every leaf of
 the seed's `templates/docs/**` under `docs/graph/` so each collection has
@@ -236,8 +261,11 @@ worktree state, role, manifests, and stack without mutating Git.
 
 Ensure the plant gitignores `.cypress/growth/` before scouting — that is where
 the growth evidence ledgers land, and they are a seed organ transient to this
-run, not plant knowledge the plant commits (the `.cypress/seed.json` stamp
-stays tracked; the growth scratch does not).
+run, not plant knowledge the plant commits. Two files beside it are the
+exception and stay TRACKED: the `.cypress/seed.json` stamp and
+`.cypress/coverage.json`, the coverage record — it is the durable answer to
+what this growth covered, and a gitignored answer is one the next session and
+the next graft cannot read. Ignore `.cypress/growth/`, not `.cypress/`.
 
 **Ask the owner for the plant facts — once (`grow.plant-facts`).**
 `docs/graph/index.md` carries a `plant:` block (`docs/graph/_schema.md`
@@ -251,7 +279,7 @@ beside each proposal (the scout that gathered it cites paths like any other
 claim). Put the four to the owner as one numbered ask
 (`deliver.numbered-decisions`) and write the confirmed values into the
 frontmatter block. A value the owner does not answer is not guessed: it
-stays a `status: open` item, owner named, on the growth completeness ledger
+stays a `status: open` item, owner named, in the coverage record
 and in the delivery — and `graph-lint.py` fails a grown plant until the block
 is declared. Never ask twice; later sessions read the block.
 
@@ -274,8 +302,20 @@ is the wrong place to learn that no scout can be spawned.
 Inventory cheaply before opening large files. Ignore generated, vendor,
 cache, and build directories. Identify real subsystem boundaries and divide
 read-only scouting across them. Also assign focused scouts for cross-cutting
-evidence where needed: APIs/messages, data/migrations, platform/config,
-tests/CI/operations, dependencies, and prompts/evaluations.
+evidence: APIs/messages, data/migrations, platform/config,
+tests/CI/operations, dependencies, prompts/evaluations, **the interface and
+design surface**, **the project's regulatory exposure**, and **the external
+standards its stack and domain are held to**.
+
+This list is the intake, and a domain missing from it is a collection no plant
+ever grows. It is derived from the roster, not from habit: every agent that
+declares `plant_knowledge:` needs some collection filled before it can work on
+this project at all, and a scout must be assigned to gather the evidence that
+fills it. When the seed adds a specialist, this list gains its evidence domain
+in the same change — the three domains named in bold above are the ones added
+late to the roster and left out of this list for several versions, which is why
+plants grown in that window carry a `ui-ux-designer` with no design material
+and a `legal` analyst with no corpus.
 
 If there is no executable project evidence, route through `from-scratch` for
 intent discovery, while retaining this worker/model policy and graph root.
@@ -295,6 +335,11 @@ ungathered. Each reports terse factual claims with exact paths and symbols for:
 - configuration, secrets interfaces, deployment, and observability;
 - tests, CI gates, scripts, operational commands, prompts, and evaluations;
 - direct dependencies, lock constraints, and evidence of actual use;
+- the interface surface: screens, components, design tokens, interaction
+  states, and the accessibility affordances the source shows;
+- regulatory exposure: personal or regulated data, the jurisdictions and
+  sectors the deployment descriptors imply, and any compliance artifact
+  already in the tree;
 - discrepancies between executable source and existing prose.
 
 The persisted per-boundary ledgers ARE the evidence set: claim area, strong
@@ -303,11 +348,28 @@ deliverable it feeds. Reconcile across them, resolve contradictions by scoped
 follow-up scouting, and record which ledger owns each contested fact. Do not
 let a centralized docs repository become authoritative by repetition.
 
+**Then reconcile the ledgers into the stack inventory (`grow.stack-inventory`).**
+Every item the project is made of gets one row: each language and its version,
+each runtime and framework, each direct dependency with its significance, the
+infrastructure it runs on, its data stores, the external and AI services it
+calls, each design surface, and each regulatory exposure — every row anchored
+to the source path that proves it. Write it into the `inventory` array of
+`.cypress/coverage.json` and run
+`python3 <seed>/tools/growth-audit.py <plant> <seed> --plan`, which turns each
+row into the artifacts growth now owes it and marks which rows require
+grounding in retrieved upstream documentation. The inventory is what growth is
+held to; a project item that never reaches it is an item no gate can miss the
+absence of.
+
 **Then establish the external evidence (topology step 3) before authoring
-begins.** From the reconciled ledgers, list (a) every §5 dependency flagged
-architecturally significant, cross-cutting, security- or operations-critical,
-and (b) the external standards, protocols, and community conventions the
-evidence shows the project is held to. Dispatch one bounded `research-scout`
+begins.** Every inventory row the plan marks `grounding.required` needs
+upstream documentation retrieved from the open web during THIS run — languages,
+runtimes and frameworks (their current guidance and the practices they name as
+wrong, not only their API surface), significant dependencies, infrastructure
+components, data stores, external and AI services, the design standards the
+interface is held to, and the instruments behind each regulatory exposure. A
+page written from model memory is the failure this step exists to prevent:
+memory is unversioned, undated, and uncitable. Dispatch one bounded `research-scout`
 per item (batched sensibly) following `docs/graph/protocols/ingest-library.md`:
 retrieve authoritative upstream documentation pinned to the versions the tree
 actually locks, snapshot raw sources to `docs/graph/sources/raw/`, normalize
@@ -316,7 +378,7 @@ to `docs/graph/sources/normalized/`, and register each in
 normalization, not authoring (`agent.research-scout` owns that distinction).
 Record the dispatch list in the orchestration plan: Phase 4's `libraries/`
 rich pages, normative `best-practices/`, and `sources/` provenance are
-authored FROM this material, and the completeness ledger audits against this
+authored FROM this material, and the coverage record audits against this
 list. If the host truly has no web retrieval, that is a named blocker — the
 affected collections ship as honest `unknown`, never as a silent thin index.
 
@@ -374,6 +436,16 @@ Through bounded Opus authors, populate every collection supported by evidence:
   completeness defect. `sources/` may be absent only when the reconciled
   ledgers genuinely flag no significant dependency and no external standard
   — a rare project, and the ledger rows proving it must be cited;
+- `design/`: one leaf per interface surface the source shows — screens and
+  flows, interaction states, the component system and its design tokens,
+  visual hierarchy, and how the accessibility floor is met — authored by
+  `ui-ux-designer` from the ledger's interface-surface evidence and grounded
+  in the retrieved design standards (`tokens.md` carries the token and
+  component reference). A plant with a user interface and an empty `design/`
+  is an ungrown collection, not a project without design;
+- `tools/`: a page per durable tool the plant actually runs, seeded from
+  `tool-corpus/` where the stack matches and otherwise authored from the
+  operational evidence (`toolcraft` owns the doctrine; this is its catalog);
 - `prompts/` and `evaluations/`: AI contracts, call sites, datasets, rubrics,
   gates, and failure modes;
 - `runbooks/verification.md`: exact commands and prerequisites, explicitly
@@ -461,6 +533,7 @@ python3 docs/graph/graph-lint.py
 python3 docs/graph/graph-lint.py --plan "change a representative subsystem"
 python3 docs/graph/status-register.py --root docs/graph
 python3 <seed>/tools/graft-audit.py <plant> <seed> --unfilled
+python3 <seed>/tools/growth-audit.py <plant> <seed>
 ```
 
 They also verify:
@@ -487,13 +560,18 @@ They also verify:
    only forwards to others is a pass-through to delete. Over-growth and
    mis-composition are findings routed back to an author exactly as gaps
    are.
-10. the growth is **complete** against `grow.completeness-contract`: the
-   growth completeness ledger has a row for every collection in the unified
-   shape, each `covered` (audit a sample of its cited source paths) or
-   `absent` (confirm the source truly has no such evidence). A collection
-   silently missing from the ledger, or marked covered where the evidence is
-   thin or template-only, is a completeness finding routed back exactly as a
-   gap is. Under-growth is a defect on equal footing with over-growth.
+10. the growth is **complete** against `grow.completeness-contract`:
+   `growth-audit.py` exits 0. Its verdicts are the findings — a planned
+   artifact that never appeared (`UNGROWN`), one that appeared as a scaffold
+   (`HOLLOW`), an item that needed retrieved documentation and cites none
+   (`UNGROUNDED`), a row claimed covered that the plant's own files
+   contradict (`CONTRADICTED`), an absence asserted without a reason or the
+   paths searched (`UNJUSTIFIED`), a collection or agent the record never
+   answers for (`MISSING`, `BLANK`). Each routes back to a bounded author
+   exactly as any other gap does, and the audit re-runs. Validators also
+   spot-audit a sample of the cited paths by hand: the linter proves the file
+   exists and says something, not that what it says is true. Under-growth is
+   a defect on equal footing with over-growth.
 11. the growth is **externally grounded**: every ledger-§5 dependency flagged
    architecturally significant / cross-cutting / security- or
    operations-critical has a rich `libraries/` page citing retrieved
@@ -539,7 +617,7 @@ evidence inspected, artifacts created/refreshed, the Phase 5 librarian
 rebalance report, validation results,
 untrusted/excluded docs, honest unknowns, and one next action — **with its
 tier** (kernel §0), so the next session starts classified instead of cold.
-Include the **growth completeness ledger** (`grow.completeness-contract`) —
+Include the **coverage record** (`grow.completeness-contract`) —
 every collection marked covered-to-evidence or absent-with-reason, the
 scaffolds renamed `.unfilled.md`, and any `plant:` value the owner left open
 — so the delivery proves totality instead of asserting it. Include growth metrics (the

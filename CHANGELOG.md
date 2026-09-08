@@ -1,5 +1,63 @@
 # Changelog
 
+## 7.3.0 — growth is proven against a recorded plan: inventory, plan, grow, lint (2026-09-08)
+
+The gap this closes had been open since 6.9.0. `ui-ux-designer` joined the roster then, `legal` at 6.12.0, and `design/` and `legal/` joined `templates/docs/` with them — but grow's cross-cutting scout assignment, its unified-shape diagram, its Phase 4 authoring list, and the evidence-ledger schema were never extended to match. No scout gathered interface or regulatory evidence, no author was told to write those collections, and no gate asked. Every plant grown in that window carries a `ui-ux-designer` with no design material and a `legal` analyst with no corpus, and the seed reported those growths as complete. The roster grew; the intake did not.
+
+The completeness ledger could not catch it either: it was a prose table the orchestrating model filled in about its own work, written to gitignored scratch and discarded when the run ended. A plant kept no durable answer to what growth covered, so a collection nobody looked at was indistinguishable from one the project genuinely has no evidence for — and `graft-audit.py --unfilled`, which only compares byte-identity against 26 template leaves, passes any scaffold edited by a word.
+
+### Added — `tools/growth-audit.py`
+- The coverage gate. `--plan` derives the rows growth is held to and writes them to the plant's tracked `.cypress/coverage.json`; the default mode reads them back after the work and reports what is still owed. Verdicts: `MISSING`, `BLANK`, `UNGROWN`, `HOLLOW`, `UNGROUNDED`, `DANGLING`, `UNJUSTIFIED`, `CONTRADICTED`, `STALE`, and a reported-but-passing `UNKNOWN`. Exit 1 on any of the first nine.
+- Two of the three row sets come from the SEED, not from the record: one per knowledge collection `install.sh` creates, and one per roster agent declaring `plant_knowledge:`. A collection or a specialist therefore cannot be forgotten by being left out, and a graft to a newer seed opens rows the plant does not yet answer — "grafted is not grown", made mechanical.
+- The third set is the stack inventory: one row per language, runtime, framework, dependency, infrastructure component, datastore, external and AI service, design surface, and regulatory exposure the scouts found, each anchored to the source path that proves it. Each carries the artifacts growth owes it and whether it needs upstream documentation retrieved this run. `UNGROUNDED` is what stops a library or best-practices page being written from model memory.
+
+### Added — `templates/prompts/growth-coverage-record.md`
+- The canonical schema of `.cypress/coverage.json`, superseding `growth-completeness-ledger.md`. Tracked beside the `.cypress/seed.json` stamp, because a record whose purpose is to outlive the run cannot be gitignored scratch.
+
+### Added — agent frontmatter `plant_knowledge:`
+- Fourteen roster agents now declare the plant collections they must be able to read before they can work on a project at all. This is what makes "every agent has its project-specific data" a checkable claim rather than an intention.
+
+### Changed — `templates/prompts/growth-evidence-ledger.md`
+- New §12 interface & design surface, §13 regulatory exposure, §14 normative standards; uncertainties move to §15. A collection with no ledger section is a collection no plant ever grows — the schema's intake is why `design/` and `legal/` were empty, not the authors.
+
+### Changed — `protocols/grow.md`
+- The unified shape names `design/` and `tools/`; Phase 4 tells an author to write both; the cross-cutting scout assignment gains the interface surface, regulatory exposure, and the external standards the stack is held to, and says plainly that the list is derived from the roster.
+- Phase 2 reconciles the ledgers into the stack inventory (`grow.stack-inventory`) and runs `--plan`; the external pass covers every item the plan marks `grounding.required`, not only §5-flagged dependencies.
+- `grow.completeness-contract` is now the loop — inventory, plan, grow, lint, repeat while findings remain — and Phase 6 gates on a green audit.
+
+### Changed — `protocols/graft.md`
+- Phase 5 runs grow's loop rather than a graft-shaped imitation of it: `--plan` against the new seed opens a row for every collection and specialist this graft carried, and for the domains an older seed never gathered evidence for. Phase 7 gains the coverage gate; `STALE` blocks auditing a record planned against an older seed.
+
+### Changed — `templates/knowledge-graph/graph-lint.py`
+- The grown-plant test reads `.cypress/coverage.json` instead of the discarded ledger. A plant that had been grown stopped looking grown the moment its scratch was cleaned, and silently dropped its `plant:` block back to warnings. Note the timing moves with it: the record appears at grow Phase 2 (`--plan`) where the ledger appeared at Phase 6, so a planned-but-unfinished plant now fails Rule 14 rather than warning. `grow.plant-facts` asks for the block in Phase 1, so the facts are due before the record exists.
+
+### Added — `install.sh` writes the seed stamp
+- `.cypress/seed.json`, recording the seed name, the version just placed, the date, the adapters installed, and `installed_from` when it advanced over an older stamp. `protocols/graft.md` has described this marker since 4.6.0 as the base every three-way merge needs, but nothing ever wrote it: a plant's base was whatever a steward happened to keep by hand, and `growth-audit.py`'s check that a plant's stamp agrees with its coverage record could never fire because the stamp did not exist. Both are now live — a coverage record planned against a seed the plant does not carry reports `STALE`.
+
+### Changed — `templates/prompts/growth-author-brief.md`
+- Its ledger-section → deliverable map gains `design/` → §12, `legal/` → §13, and points `best-practices/` at §14. The scout gathering the evidence and no author being told to use it was the same omission one step downstream.
+
+### Changed — `INSTALL_PROMPT.md`, `agents/growth-orchestrator.md`, `agents/growth-scout.md`
+- The completeness contract is stated as the commands that prove it. The scout is told to gather the three domains a project's own code advertises least.
+
+### Fixed — the first cut of the gate reported green on an ungrown plant
+An adversarial review of this increment found the audit passing the exact plants it was written to catch. Each is fixed and pinned by a regression case:
+- **Coverage is measured as the body the PLANT authored**, not as any byte-difference from the template. Appending one character to the seed's own `design/README.md` or `legal/index.md` marked those collections COVERED — and their agents with them — which is the "a one-word edit passes" failure the tool exists to close. `is_substantive` now subtracts the lines inherited from the seed template at the same path and holds the 400-byte floor against what remains.
+- **Agent coverage is all-of, not any-of.** Pooling an agent's declared collections let one `best-practices/` page written for the implementer cover `ui-ux-designer` with an empty `design/`. The audit now names which declared collection is empty.
+- **An inventory row closes on the same terms as every other row.** A bare `status: UNKNOWN` with no blocker passed non-fatally, so any design surface or regulatory exposure could be waved out of the inventory.
+- **Grounding must cite a filled file under `docs/graph/sources/`.** `docs/graph/sources/` itself, the seed's untouched sources README, and absolute paths all satisfied `UNGROUNDED` — the only check standing between a library page and model memory.
+- **A planned artifact with no `path` is `BLANK`**, not silently skipped.
+- `resolves()` requires a real file inside the plant: no directories, no absolute paths, no escaping the plant root; `path:12:5` suffixes strip.
+- `${{ github.ref }}` is a CI expression, not an unfilled placeholder — a runbook authored from real CI evidence no longer reports `HOLLOW`.
+- A record naming no `seed_version` is `STALE`; the check previously disabled itself when the field was absent.
+- A malformed record is named and exits 2 instead of raising; `--json` answers in JSON when no record exists; a leaf collection's `.unfilled.md` marker is seen; an `ABSENT` row still carrying the seed's scaffold says which file and how to close it; the unused `--force` flag is gone.
+
+### Tests
+- `tests/test-growth-audit.sh`: fourteen cases — a plant with no record fails; `--plan` derives `design/`, `tools/`, `legal/`, every runbook, and the `ui-ux-designer` and `legal` agent rows from the seed; planned artifacts are checked one by one; a placeholder-bearing page is `HOLLOW`; an unreasoned absence is `UNJUSTIFIED`; a `COVERED` claim the plant's files contradict is caught for both a collection and an agent; `--agents` answers alone; a fully grown plant passes; a record planned against an older seed is `STALE`. Case 10 is the false-green regression — a plant whose `design/` and `legal/` hold nothing but the seed's own scaffold plus one byte, an inventory row closed with a bare `UNKNOWN`, a planned artifact with no path, and grounding cited to the sources directory — asserted to exit 1. Cases 11-13 pin all-of agent coverage, absolute-path evidence, and the malformed-record exit. Case 14 walks the honest-absence path end to end — a plant with no interface and no regulatory exposure establishes those absences, is told its collections still carry the seed's unfilled scaffolds and which command disposes of them, and passes once it has. The green case until then could only be reached by covering everything, so the path a real project takes was never shown to work.
+- `tests/seed-lint.py`: growth-intake parity — every collection `install.sh` creates must appear in grow's shape diagram and Phase 4, must have a section in the evidence-ledger schema that feeds it (the four collections that are outputs of the growth run rather than findings about the source are exempt by name), and every `plant_knowledge:` target must be a collection the seed installs; every inventory kind the tool plans for must be described in the record schema, and every verdict `protocols/grow.md` or `protocols/graft.md` names must be one `tools/growth-audit.py` actually emits — a protocol promising a check that does not exist is the same class of lie as a gate that asserts nothing. The collection set is imported from `tools/growth-audit.py` rather than re-derived, after the second derivation was found already drifted — it skipped root-level leaves the audit makes required rows. The ledger arm is the one that catches the 6.9.0 shape of this defect: verified against a scratch seed where a new collection is wired into the diagram and Phase 4 but has no ledger section, so an author would still have nothing to write it from. This is the check that would have caught the defect it was written for. Its dangling-reference arm now skips `CHANGELOG.md`: an append-only record names files as they stood, and a later rename cannot be fixed there without falsifying the entry.
+- `tests/test-full-install.sh`: the stamp carries the manifest version and the installed adapters, a first install records no `installed_from`, and a re-install over an older stamp records the version it advanced from.
+- `tests/test-orchestration-entry.sh`: pins the coverage record, the audit tool in grow and graft, `grow.stack-inventory`, the two intake domains, and `plant_knowledge:` on the two specialists that were missing it.
+
 ## 7.2.1 — plant facts are the owner's explicit choice; spec revisions are not version pins (2026-09-08)
 
 ### Added — `install.sh`

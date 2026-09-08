@@ -27,7 +27,23 @@ grep -q 'GROW IN FULL' "$ROOT/INSTALL_PROMPT.md"
 grep -q 'grow.completeness-contract' "$ROOT/INSTALL_PROMPT.md"
 grep -q 'The completeness contract' "$ROOT/protocols/grow.md"
 grep -q 'grow.completeness-contract' "$ROOT/protocols/grow.md"
-grep -q 'growth completeness ledger' "$ROOT/protocols/grow.md"
+# 7.3.0: the completeness contract is mechanical — a tracked coverage record
+# and a linter that reads it back, not a prose table the run discarded. Pin the
+# artifact, the tool, and the loop, so the contract cannot regress to an
+# assertion about itself.
+grep -q 'coverage record' "$ROOT/protocols/grow.md"
+grep -q '.cypress/coverage.json' "$ROOT/protocols/grow.md"
+grep -q 'growth-audit.py' "$ROOT/protocols/grow.md"
+grep -q 'growth-audit.py' "$ROOT/protocols/graft.md"
+grep -q 'grow.stack-inventory' "$ROOT/protocols/grow.md"
+grep -q 'growth-audit.py' "$ROOT/INSTALL_PROMPT.md"
+# the intake list is what decides which domains ever get a scout: the two
+# specialists added late to the roster must appear in it (6.9.0 ui-ux-designer,
+# 6.12.0 legal), or plants keep arriving with those agents and nothing to read.
+grep -q 'design surface' "$ROOT/protocols/grow.md"
+grep -q 'regulatory exposure' "$ROOT/protocols/grow.md"
+grep -q 'plant_knowledge' "$ROOT/agents/13-ui-ux-designer.md"
+grep -q 'plant_knowledge' "$ROOT/agents/14-legal.md"
 grep -q 'graph-lint.py --plan' "$ROOT/templates/prompts/investigation-brief.md"
 grep -q 'graph-lint.py --plan' "$ROOT/templates/prompts/node-authoring-brief.md"
 grep -q 'must run inside every spawned worker' "$ROOT/skills/context-router/SKILL.md"

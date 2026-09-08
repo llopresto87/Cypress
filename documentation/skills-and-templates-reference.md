@@ -1314,7 +1314,7 @@ block verbatim; every static seed file references it instead of paraphrasing.
 | `growth-scout-brief.md` | dispatch one read-only scout at one boundary | sonnet | producer of the evidence ledger |
 | `growth-author-brief.md` | dispatch an author to turn a ledger into a deliverable | opus | consumer of the evidence ledger |
 | `growth-evidence-ledger.md` | canonical schema passed scout → author | — | scout writes, author reads |
-| `growth-completeness-ledger.md` | canonical schema proving growth reached full depth | — | the orchestration chat fills it |
+| `growth-coverage-record.md` | canonical schema of `.cypress/coverage.json`, the tracked record `growth-audit.py` reads back | — | the orchestration chat fills it |
 | `node-authoring-brief.md` | delegate authoring of graph nodes with linter rules as hard constraints | opus | node author |
 | `investigation-brief.md` | delegate a read-only fact-gathering investigation | sonnet | investigator (leaf) |
 | `clean-context-validation-brief.md` | spawn a fresh agent to validate a knowledge base | opus | validator (read-only leaf) |
@@ -1468,22 +1468,36 @@ spec); §8 ADR-worthy decisions → decisions feedstock (only decisions visible 
 source; unknown rationale `not recorded`); §9 Specialist-agent signals →
 project-specific expert agents; §10 Operational evidence → runbooks +
 verification (discovered, not executed); §11 Sharp edges → wherever the
-owning fact lives; §12 Uncertainties & cross-boundary notes. The scout ends
-with the handback payload naming the ledger file.
+owning fact lives; §12 Interface & design surface → design/ nodes and design
+specs; §13 Regulatory exposure → legal/ nodes, the technical facts `legal`
+qualifies against its corpus; §14 Normative standards → best-practices/
+feedstock (which standards apply and where the project's stance is visible);
+§15 Uncertainties & cross-boundary notes. The scout ends with the handback
+payload naming the ledger file.
 
 ---
 
-## C.6 growth-completeness-ledger.md
-Source: `templates/prompts/growth-completeness-ledger.md`
+## C.6 growth-coverage-record.md
+Source: `templates/prompts/growth-coverage-record.md`
 
-The canonical schema of the growth completeness ledger: the artifact that
-makes `protocols/grow.md`'s completeness contract mechanical instead of a
-matter of judgment. **Who fills it:** the orchestration chat, not a spawned
-worker. It is the proof, produced before growth is declared done and carried
-in the delivery block, that growth reached full depth. **Where it lives:** a
-seed organ at `.cypress/growth/completeness-ledger.md`, never `docs/graph/`.
+The canonical schema of `.cypress/coverage.json`, the record that makes
+`protocols/grow.md`'s completeness contract mechanical instead of a matter of
+judgment: `tools/growth-audit.py` reads it back and reports what growth still
+owes. **Who fills it:** the orchestration chat, not a spawned worker. **Where
+it lives:** tracked, beside the plant's `.cypress/seed.json` stamp — not under
+`.cypress/growth/`, which stays the run's gitignored scratch, and not under
+`docs/graph/`, which is the plant's own knowledge. It outlives the run that
+wrote it, which is the whole point: a later session and the next graft can tell
+a collection nobody looked at from one the source genuinely has no evidence for.
 
-**One row per knowledge collection**, with status exactly one of:
+It serves the loop `inventory → plan → growth/graft → lint`, repeated while
+findings remain. **Three row sets**, two of them derived from the seed rather
+than written by the run: one per knowledge collection the installer creates,
+one per roster agent declaring `plant_knowledge:`, and one per stack-inventory
+item (each carrying the artifacts growth owes it and whether it needs upstream
+documentation retrieved this run).
+
+**Status is exactly one of:**
 
 - **COVERED**: authored to the full depth the evidence supports; give the
   node/leaf count and the strongest source paths.

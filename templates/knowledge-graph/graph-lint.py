@@ -303,7 +303,7 @@ def check_deviation(n: Node, errs: list) -> None:
 
 def check_plant_block(errs: list, warns: list) -> None:
     """Rule 14: index.md carries the owner-declared plant facts. A grown plant
-    (completeness ledger present, or `grown: true` in index.md) FAILS without
+    (coverage record present, or `grown: true` in index.md) FAILS without
     them; an adopted plant only warns, so adoption is never blocked on day one."""
     if not INDEX.exists():
         return
@@ -316,13 +316,17 @@ def check_plant_block(errs: list, warns: list) -> None:
         except LintError as e:
             errs.append(str(e))
             return
-    # A plant is "grown" when index.md says so, or when the growth ledger exists
-    # — the latter only trusted when this graph really sits at <plant>/docs/graph,
-    # so a graph parked elsewhere (tests, scratch) never inherits a neighbour's ledger.
+    # A plant is "grown" when index.md says so, or when the coverage record
+    # exists — the latter only trusted when this graph really sits at
+    # <plant>/docs/graph, so a graph parked elsewhere (tests, scratch) never
+    # inherits a neighbour's record. Through 7.2.1 this looked for the growth
+    # completeness ledger under .cypress/growth/, which was gitignored scratch
+    # the run discarded: a plant that HAD been grown stopped looking grown the
+    # moment that scratch was cleaned, and silently dropped back to warnings.
     at_docs_graph = HERE.name == "graph" and HERE.parent.name == "docs"
-    ledger = HERE.parent.parent / ".cypress" / "growth" / "completeness-ledger.md"
+    record = HERE.parent.parent / ".cypress" / "coverage.json"
     flag = str(meta.get("grown", "")).strip().lower()
-    grown = flag in ("true", "yes", "1") or (at_docs_graph and ledger.exists())
+    grown = flag in ("true", "yes", "1") or (at_docs_graph and record.exists())
     sink = errs if grown else warns
     # `plant:` is a nested map; the frontmatter subset stores it as an empty
     # list marker and the indented `key: value` lines are not list items, so

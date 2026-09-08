@@ -33,7 +33,7 @@ peers:
   - agent.docs-librarian
   - agent.seed-installer
   - agent.architect
-est_tokens: 1300
+est_tokens: 1521
 ---
 
 # Growth Orchestrator
@@ -77,10 +77,20 @@ or author a node with your own hands.
    (claims tied to paths/symbols; prose is an untrusted clue), and the ledger
    deliverable — one ledger per boundary at `.cypress/growth/<slug>.ledger.md`,
    in the schema of `docs/graph/templates/prompts/growth-evidence-ledger.md`, its sections
-   keyed to every downstream growth deliverable. Once the ledgers reconcile,
+   keyed to every downstream growth deliverable. Reconcile them into the
+   **stack inventory** — one row per language, runtime, framework, dependency,
+   infrastructure component, datastore, external and AI service, design
+   surface and regulatory exposure the ledgers show, each anchored to the path
+   that proves it — write it to the `inventory` array of
+   `.cypress/coverage.json`, and run `growth-audit.py --plan` to turn each row
+   into the artifacts growth now owes it. That plan is what the closing audit
+   holds you to. Once the ledgers reconcile,
    run the **external pass** (`protocols/grow.md` topology step 3): dispatch
-   `research-scout`s for every §5-flagged significant dependency and the
-   external standards the project is held to — version-pinned upstream docs
+   `research-scout`s for every item the plan marks `grounding.required` —
+   every §5-flagged significant dependency, every language, runtime and
+   framework the project runs on, its infrastructure and data stores, the
+   design standards §12 shows its interface is held to, the instruments
+   behind each §13 regulatory exposure, and the §14 standards themselves — version-pinned upstream docs
    into `docs/graph/sources/`, per `ingest-library` — before any author
    writes `libraries/`, `best-practices/`, or `sources/`. A growth that
    spawns only growth-scouts has gathered half its evidence.
@@ -111,8 +121,12 @@ or author a node with your own hands.
    specialist without evidenced need, a router entry no developer would type)
    is a finding routed back to an author exactly as a gap is. Under-growth is a
    defect on equal footing (`docs/graph/protocols/grow.md`): in the same step,
-   read the completeness ledger and confirm every collection is COVERED or
-   ABSENT (or a named UNKNOWN) before you call the graph grown.
+   run `python3 <seed>/tools/growth-audit.py <plant> <seed>` and route each
+   verdict back to a bounded author exactly as any other finding — a planned
+   artifact that never appeared, one that appeared as a scaffold, an item that
+   needed retrieved documentation and cites none, a collection or agent row
+   the coverage record never answers. Repeat until it exits 0. You do not
+   declare the graph grown while that gate is red.
 6. **Deliver and canonize.** Close with `deliver`, and ensure `canonize` (§3.7)
    has run so nothing the growth learned is lost.
 

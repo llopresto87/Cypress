@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft-07/schema#",
   "name": "cypress",
   "fullName": "Contextual Yield Protocol for Routed Expert Seed Systems",
-  "version": "7.2.1",
+  "version": "7.3.0",
   "supersedes": "general_expert_prompts@1.0.0",
   "created": "2026-05-23",
   "description": "CYPRESS (Contextual Yield Protocol for Routed Expert Seed Systems) — a project-agnostic multi-agent seed for single- or multi-repository programs. As of 6.0.0 it is a pure graph system: the entire method surface — protocols, skills, agent charters, method/posture nodes, and template artifacts — installs INTO the plant's unified docs/graph/ as seed-owned routable nodes (origin: seed), activated progressively by the router; the always-loaded kernel is a small bootstrap (identity, tiers, rule anchors, boundaries), and tool directories hold only harness projections (agents, skills). Its tool-neutral INSTALL_PROMPT.md keeps user chat in orchestration/planning, dispatches Sonnet-class read-only scouts and Opus-class authors/reviewers, and grows the graph without building the application or publishing Git state.",
@@ -336,6 +336,10 @@
       "produces": "the canonical growth evidence-ledger schema — one structured artifact per boundary at .cypress/growth/<slug>.ledger.md (a gitignored seed organ), the contract a growth-scout fills and a growth author consumes"
     },
     {
+      "file": "templates/prompts/growth-coverage-record.md",
+      "produces": ".cypress/coverage.json"
+    },
+    {
       "file": "templates/prompts/growth-scout-brief.md",
       "produces": "the growth-dedicated read-only scout brief; its collection target IS the evidence-ledger schema"
     },
@@ -417,6 +421,6 @@
     "coding_tool_adapter": "/initialize delegates to grow; it is not the primary interface.",
     "new_project": "INSTALL_PROMPT.md → grow → from-scratch when no executable project evidence exists.",
     "existing_project": "INSTALL_PROMPT.md → grow → delegated source-first adoption/refresh.",
-    "completeness": "grow.completeness-contract binds the orchestrating model to full-depth growth: every knowledge collection is covered-to-evidence or absent-with-named-reason, proven by a growth completeness ledger and audited in grow Phase 6."
+    "completeness": "grow.completeness-contract binds the orchestrating model to full-depth growth, and tools/growth-audit.py is its mechanical form: the scouts' findings reconcile into a stack inventory, --plan turns each item into the artifacts growth owes it and marks which need upstream documentation retrieved this run, and the lint checks every planned artifact appeared and is not a scaffold. Required rows are derived from the seed — one per installed collection and one per roster agent declaring plant_knowledge: — so a collection or a specialist cannot be forgotten, and a graft to a newer seed surfaces what it carried but never grew. The record is tracked at .cypress/coverage.json; grow Phase 6 and graft Phase 7 both gate on a green audit."
   }
 }

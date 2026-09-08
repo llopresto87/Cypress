@@ -30,6 +30,10 @@ peers:
   - agent.security
   - agent.reliability
   - agent.devils-advocate
+plant_knowledge:
+  - libraries/
+  - best-practices/
+  - specs/
 est_tokens: 1550
 ---
 

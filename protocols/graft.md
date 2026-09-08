@@ -19,7 +19,7 @@ load_when:
   - "graft the seed, re-propagate machinery"
   - "plant grew from an older seed version"
   - "reconcile local machinery divergence"
-est_tokens: 10800
+est_tokens: 11616
 ---
 
 # Protocol: graft
@@ -469,6 +469,37 @@ newly-enriched capability the graft delivered, grow it onto the plant **where
 doing so is appropriate and necessary** — actualized into the plant's living
 skills, tools, and knowledge, not left sitting as a template.
 
+**Run grow's loop, do not re-invent it.** This phase is `grow` applied to a
+living plant, so it uses grow's machinery rather than a graft-shaped imitation
+of it (`protocol.grow`, `grow.completeness-contract`, `grow.stack-inventory`).
+Start by re-planning the coverage record against the seed the plant now
+carries:
+
+```sh
+python3 <seed>/tools/growth-audit.py <plant> <seed> --plan
+python3 <seed>/tools/growth-audit.py <plant> <seed>
+```
+
+`--plan` derives the required rows from the NEW seed, so every collection and
+every `plant_knowledge:`-declaring agent this graft added arrives as a row the
+plant does not yet answer — that is the "grafted is not grown" gap made
+visible, per capability, before any authoring starts. The lint then names what
+is still owed. A plant grown under an older seed also gains rows for the
+domains that seed never gathered evidence for: a `ui-ux-designer` with no
+`design/` material and a `legal` analyst with no corpus are the standing
+examples, and they are the reason an upgraded plant is re-audited rather than
+assumed complete because it was grown once.
+
+Where a new row needs evidence the plant's graph does not hold, the graft
+dispatches the same workers grow does — a growth-scout at the boundary, and a
+`research-scout` for anything the plan marks `grounding.required`, so a new
+`best-practices/` or `libraries/` page is written from retrieved upstream
+documentation rather than model memory. The loop is grow's: inventory, plan,
+author, lint, repeat while findings remain. What a graft may NOT do is close a
+row by lowering it — a row that cannot be covered on this pass is recorded
+`UNKNOWN` with its blocker, or `ABSENT` with the reason and the paths searched,
+and it ships reported.
+
 - **Grow what the plant evidently needs, grounded in its own facts.** Instantiate
   a suggested skill or expert the plant's real stack calls for (the
   `skill-corpus` / `agent-corpus` withdraw contract, into `docs/graph/skills/` /
@@ -581,6 +612,17 @@ backups exist). Then prove the plant is left more capable and no less itself:
   say-so naming the files, because a pruned leaf reappears at the next install
   or graft and deletion is the steward's, not the graft's
   (`graft.user-sovereignty`).
+- **Coverage (the grown-not-just-grafted gate)** — run
+  `tools/growth-audit.py <plant> <seed>`. It is the mechanical form of the
+  promise Phase 5 makes: every knowledge collection this seed installs and
+  every roster agent that declares `plant_knowledge:` has an answered row, and
+  every inventory item's planned artifacts exist and are not scaffolds. A
+  `MISSING` or `BLANK` row means this graft carried a capability it never grew;
+  `UNGROWN`/`HOLLOW`/`UNGROUNDED` mean it grew one without the material.
+  Non-zero BLOCKS the graft. `STALE` means the record was planned against an
+  older seed — re-run `--plan` first; auditing a stale record is how a graft
+  reports coverage it never checked. Genuine absences pass as `ABSENT` with a
+  reason and the paths searched, and named `UNKNOWN` blockers pass reported.
 - **Kernel current (the always-loaded bootstrap)** — the plant's kernel body
   (`AGENTS.md` / `CLAUDE.md`, resolving the shared symlink) is compared with the
   seed's `core/AGENTS.md` by the audit's kernel-currency check
@@ -671,13 +713,18 @@ way. End with the single highest-leverage next step.
 
 A plant that knows which seed version it carries can be grafted cleanly forever
 after, because every future graft has a real **base** for its three-way merge.
-Graft therefore both reads and maintains a lightweight, **plant-owned** stamp —
-a `.cypress/seed.json` marker or an equivalent line the plant's steward keeps —
-recording the seed name, the version last grown-or-grafted in, and the date. On
-the first graft of a plant grown before stamps existed, reconstruct the base as
-best the evidence allows, then establish the stamp so the next graft starts from
-certainty. The stamp is provenance the plant owns, not machinery the seed
-overwrites; graft updates it as the last additive step of a successful upgrade.
+`install.sh` writes that stamp — `.cypress/seed.json`, recording the seed
+name, the version just placed, the date, the adapters installed, and
+`installed_from` when it advanced over an older stamp. It is tracked, like the
+coverage record beside it. Before 7.3.0 nothing wrote it and the marker was
+whatever a steward happened to keep by hand, so a plant's base was frequently
+unknown at exactly the moment a graft needed it. On the first graft of a plant
+grown before the installer wrote stamps, reconstruct the base as best the
+evidence allows; the install step of the graft then establishes it, and every
+graft after that starts from certainty. Confirm the stamp advanced as the last
+additive step of a successful upgrade, and confirm it agrees with the coverage
+record — `growth-audit.py` reports `STALE` when the two disagree, which is the
+plant telling you the upgrade was audited against a seed it does not carry.
 
 ## The relationship to grow, harvest, and canonize
 
@@ -717,6 +764,8 @@ State the summary in the chat, and record a provenance entry in the plant's own
 ## Grown onto the plant (new capabilities actualized, grounded in plant facts)
 - <skill/expert/runbook/page> — grown because <the plant's evidenced need>
 
+## Coverage after the graft (growth-audit; rows this graft answered)
+
 ## Grafted but not yet grown (inert machinery; deferred to real use)
 - <capability> — present as machinery, ungrounded now; sprouts via <use / close-out>
 
@@ -739,6 +788,7 @@ State the summary in the chat, and record a provenance entry in the plant's own
 - Graph engine upgraded to seed's (or superset kept): PASS / FAIL (<lines / KEEP-PLANT>)
 - Customization audit — no divergence buried by the FF: PASS / BLOCK (<file + signal>)
 - Unfilled scaffolds — `--unfilled` reports zero after remedy (<n> renamed / <n> pruned on say-so): PASS / BLOCK (<leaf>)
+- Coverage — `growth-audit.py` exits 0 (<n> rows answered this graft, <n> ABSENT with reason, <n> UNKNOWN carried): PASS / BLOCK (<row>)
 - Status register lint (`python3 docs/graph/status-register.py --root docs/graph`): PASS / FAIL / N-A (<migration not yet ratified>)
 - Plant graph routes on upgraded engine / agent-router lint+eval: PASS / FAIL (<command + result>)
 - Minimum-sufficient upgrade — every addition evidenced and consumed, merges minimal: PASS / BLOCK (<item + why>)

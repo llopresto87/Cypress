@@ -258,7 +258,7 @@ an agent-capable chat. It runs one flow in three named phases:
 3. GROW IN FULL: execute the tool-neutral `grow` protocol end to end under
    its completeness contract (`grow.completeness-contract`). Every
    evidence-backed knowledge collection is grown to full depth, proven by a
-   growth completeness ledger, never a skeleton.
+   coverage record and a green `growth-audit.py`, never a skeleton.
 
 Throughout, the chat stays in orchestration/planning, spawning Sonnet-class
 workers for read-only scouting and Opus-class workers for every authoring, code,

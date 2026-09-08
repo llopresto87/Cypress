@@ -23,6 +23,9 @@ peers:
   - agent.product
   - agent.architect
   - agent.implementer
+plant_knowledge:
+  - design/
+  - best-practices/
 est_tokens: 1371
 ---
 

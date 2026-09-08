@@ -62,10 +62,16 @@ evidence → retrieve external upstream evidence via `research-scout` → model 
 author → grow source-backed leaves → the `docs-librarian` rebalance pass
 (connect and fertilize) → independent validation → canonize → delivery and
 maturity). Honor its
-**completeness contract in full**: fill the growth completeness ledger with a row
-for every collection, and do not declare growth done until every row is
-covered-to-evidence or absent-with-reason and Phase 6 validation passes against
-the graph — never against the file tree. Do not work from a summary and do not
+**completeness contract in full**. That contract is mechanical, not a promise
+you make about your own work: reconcile the scouts' findings into the stack
+inventory, run
+`python3 <seed>/tools/growth-audit.py <plant> <seed> --plan` to turn each item
+into the artifacts growth owes it, author them, then run
+`python3 <seed>/tools/growth-audit.py <plant> <seed>` and route every finding
+back to an author. Repeat until it exits 0. Growth is not done while that gate
+is red, and a row is covered-to-evidence, absent-with-a-reason-and-the-paths-you-
+searched, or a named blocker — never blank. Phase 6 validation then passes
+against the graph, never against the file tree. Do not work from a summary and do not
 skip or collapse its phases. If the target has no executable evidence, `grow`
 routes through `from-scratch` for intent discovery.
 
@@ -139,12 +145,15 @@ Growth asks the same four once more only if they are still placeholders (`grow.p
 
 Finish in this chat with the delivery `grow` defines — detected scope/revisions,
 workers and briefs used (growth-scouts AND research-scouts), graph artifacts
-grown, the librarian rebalance report, the **growth completeness ledger**,
+grown, the librarian rebalance report, the **coverage record**
+(`.cypress/coverage.json`, and the `growth-audit.py` run that passed over it),
 checks and results, excluded/untrusted evidence, honest unknowns, and one
 highest-leverage next action with its task tier (kernel §0), so the next session
-starts classified. Run the `canonize` close-out before delivering. Do not call the plant mature merely because template files
-exist; maturity is proved by the graph, and by every completeness-ledger row
-being closed.
+starts classified. Run the `canonize` close-out before delivering. Do not call
+the plant mature merely because template files exist; maturity is proved by the
+graph, and by a green coverage gate. Commit the coverage record with the graph —
+it is how the next session, and the next graft, can tell what this growth
+covered from what it never looked at.
 
 ---
 

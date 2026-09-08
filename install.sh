@@ -774,6 +774,37 @@ done
 # project facts still live exclusively below docs/graph/.
 place_file "$SEED_ROOT/INSTALL_PROMPT.md" "$PROJECT_DIR/EXPERT_SEED_INSTALL_PROMPT.md"
 
+# The seed stamp: which seed this plant carries, written by the only step that
+# knows for certain. protocols/graft.md has always described `.cypress/seed.json`
+# as the provenance marker, but nothing ever wrote it — so every plant's stamp
+# was whatever a graft session happened to hand-record, and the coverage audit's
+# check that a plant's stamp agrees with its coverage record could never fire.
+# Tracked, like the coverage record beside it; `.cypress/growth/` is the
+# transient scratch and stays ignored.
+write_seed_stamp() {
+    local stamp="$PROJECT_DIR/.cypress/seed.json" version
+    version="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+               "$SEED_ROOT/manifest.json" | head -1)"
+    [[ -n "$version" ]] || { warn "manifest.json has no version — stamp skipped"; return; }
+    mkdir -p "$PROJECT_DIR/.cypress"
+    # An existing stamp records where the plant came FROM; keep that as
+    # `installed_from` so a graft can see the version it advanced off.
+    local prev="" ; [[ -f "$stamp" ]] && prev="$(sed -n \
+        's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$stamp" | head -1)"
+    {
+        printf '{\n'
+        printf '  "seed": "cypress",\n'
+        printf '  "version": "%s",\n' "$version"
+        printf '  "installed_at": "%s",\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        [[ -n "$prev" && "$prev" != "$version" ]] && \
+            printf '  "installed_from": "%s",\n' "$prev"
+        printf '  "tools": "%s"\n' "${expanded[*]}"
+        printf '}\n'
+    } > "$stamp"
+    log "  .cypress/seed.json     (seed stamp: cypress $version — commit it)"
+}
+write_seed_stamp
+
 log "done. FILES ARE PLACED — the project is NOT grown yet."
 log ""
 log "Next step (the HAND OFF phase): open a NEW agent-capable chat ROOTED AT the"

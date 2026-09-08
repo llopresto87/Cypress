@@ -58,10 +58,23 @@ each section is keyed to the deliverable it feeds. Also load
     §5-flagged significant dependency is grounded in that retrieved
     material (`docs/graph/protocols/ingest-library.md`), never in memory
     of the library's API;
-  - `best-practices/` → the retrieved standards in `docs/graph/sources/`
-    plus §1–§6/§11 for the project's stance: state the external standard
-    (cited) and where the project observably stands — normative, not a
-    description of current habits.
+  - `design/` → §12 (screens, flows, components, tokens, interaction
+    states, the accessibility affordances present) **plus** the retrieved
+    design standards and platform conventions in
+    `docs/graph/sources/` — one leaf per interface surface, authored by
+    `ui-ux-designer`; `none found` in §12 means the boundary has no user
+    interface, not that the leaf is skipped silently;
+  - `legal/` → §13 (the regulated data, jurisdictions and compliance
+    artifacts the source shows) **plus** the seed's
+    `legal-corpus/<scope>/<instrument>.md` as the orientation layer,
+    currency re-confirmed against the publisher. The ledger supplies the
+    technical facts; `agent.legal` qualifies them against the corpus and
+    never from memory;
+  - `best-practices/` → §14 (which standards apply and where the
+    project's stance is visible) **plus** the retrieved standards in
+    `docs/graph/sources/`: state the external standard (cited), what it
+    says not to do, and where the project observably stands — normative,
+    not a description of current habits.
 - **One home per fact.** A fact the graph already owns is linked, never
   re-stated. Never ask two authors to own overlapping facts or files.
 - **Smallest sufficient artifact.** Author only what the evidence

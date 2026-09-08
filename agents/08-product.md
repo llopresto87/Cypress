@@ -22,6 +22,9 @@ peers:
   - agent.architect
   - agent.tester
   - agent.ui-ux-designer
+plant_knowledge:
+  - product/
+  - best-practices/
 est_tokens: 1050
 ---
 

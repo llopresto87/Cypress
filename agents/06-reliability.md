@@ -22,6 +22,9 @@ requires:
 peers:
   - agent.security
   - agent.tester
+plant_knowledge:
+  - runbooks/
+  - tools/
 est_tokens: 1850
 ---
 

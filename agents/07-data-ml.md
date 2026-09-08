@@ -22,6 +22,11 @@ requires:
 peers:
   - agent.tester
   - agent.research-scout
+plant_knowledge:
+  - data/
+  - prompts/
+  - evaluations/
+  - libraries/
 est_tokens: 1100
 ---
 

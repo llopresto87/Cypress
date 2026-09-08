@@ -28,6 +28,10 @@ requires:
 peers:
   - agent.research-scout
   - skill.humanizer
+plant_knowledge:
+  - libraries/
+  - sources/
+  - tools/
 est_tokens: 1750
 ---
 

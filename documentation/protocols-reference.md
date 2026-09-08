@@ -1592,7 +1592,7 @@ silent one:
   edge; the router resolves representative tasks to small closures.
 - *Absent with a named reason*: the collection is empty because the
   **source has no such evidence**, and that absence is stated explicitly
-  in the completeness ledger with the paths searched.
+  in the coverage record with the paths searched.
 
 Any collection neither fully covered nor explicitly absent-with-reason
 is an incomplete growth. "Ran out of context", "seemed enough", "the
@@ -1600,21 +1600,22 @@ templates are present", and "the common cases are done" are the failure
 the contract forbids. Template files existing at their paths is never
 coverage; only authored, source-cited content is.
 
-**The growth completeness ledger.** Before declaring growth done, the
-orchestration chat fills one ledger (schema:
-`growth-completeness-ledger.md`), a table over every collection in the
-unified shape plus every subsystem/stack/cross-cutting node, marking
-each `covered` (with counts and strongest source paths), `absent` (with
-reason and searched paths), or a named `unknown` blocker. It is a
-seed-organ transient written to the plant's gitignored
-`.cypress/growth/completeness-ledger.md`, never under `docs/graph/`. A
-collection may not be left blank. This ledger is part of the delivery
-block and is what Phase 6 validation audits against.
+**The coverage record.** Before declaring growth done, the orchestration
+chat fills `.cypress/coverage.json` (schema:
+`growth-coverage-record.md`) and `tools/growth-audit.py` reads it back.
+Rows: one per knowledge collection the installer creates, one per roster
+agent declaring `plant_knowledge:`, and one per stack-inventory item —
+the first two derived from the seed, so a collection or a specialist
+cannot be forgotten by being left out. Each is `COVERED` (with the
+strongest source paths), `ABSENT` (with the reason and the paths
+searched), or a named `UNKNOWN` blocker. The record is tracked beside
+the plant's `.cypress/seed.json` stamp, never under `docs/graph/` and
+never in the gitignored `.cypress/growth/` scratch. A row may not be
+left blank, and the audit is what Phase 6 gates on.
 
-**No early stop.** Growth ends when the ledger shows every collection is
-covered-to-evidence or absent-with-reason, Phase 6's independent
-validation passes, and the maturity test is met against the graph, not
-against the file tree. A fatal host limit, a two-round non-converging
+**No early stop.** Growth ends when `growth-audit.py` exits 0, Phase 6's
+independent validation passes, and the maturity test is met against the
+graph, not against the file tree. A fatal host limit, a two-round non-converging
 finding (`recover`), or an unclosable evidence gap is delivered as an
 honest `unknown` with the blocker named: the one legitimate way a
 collection stays uncovered, and it is reported, never silent.
@@ -1650,7 +1651,7 @@ external pass (topology step 3) before authoring: dispatch
 `research-scout`s for every §5-flagged significant dependency and the
 external standards the project is held to; record the dispatch list.
 Phase 4's `libraries/` rich pages, normative `best-practices/`, and
-`sources/` are authored FROM this material, and the completeness ledger
+`sources/` are authored FROM this material, and the coverage record
 audits against it. No web retrieval on the host is a named blocker,
 never a silent thin index.
 

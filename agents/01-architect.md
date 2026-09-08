@@ -29,6 +29,10 @@ peers:
   - agent.implementer
   - agent.product
   - agent.research-scout
+plant_knowledge:
+  - architecture/
+  - decisions/
+  - libraries/
 est_tokens: 1360
 ---
 
