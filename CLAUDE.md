@@ -7,7 +7,7 @@ There is no `docs/graph/` here; these notes replace it.
 ## Gates (run before claiming anything works)
 
 ```
-bash tests/run.sh        # 9 shell suites + agent-lint (lint/eval) + graph/agent-lint regressions + seed-lint.py + legal-lint.py
+bash tests/run.sh        # 16 shell suites + agent-lint (lint/eval) + graph/agent-lint regressions + seed-lint.py + legal-lint.py
 ```
 
 `tests/seed-lint.py` is one-home-per-fact for the seed's own meta-facts:
@@ -42,7 +42,13 @@ templates, and the per-session instruction budget of the integrations.
 - Failure discipline → `protocols/recover.md` (classify, one move per
   class, three attempts, escalate).
 - Spec-contract coverage → `templates/knowledge-graph/spec-lint.py`
-  (tested by `tests/test-spec-lint.sh`).
+  (tested by `tests/test-spec-lint.sh`); plan-of-record shape →
+  `templates/knowledge-graph/grill-lint.py` (tested by
+  `tests/test-grill-lint.sh`).
+- Grill's spawn order → the phase table in `protocols/grill.md`
+  (`grill.flow`); the generic sequencing rule → `core/method/delegation.md`
+  (`delegation.sequencing`). The skill and the orchestrator point, never
+  re-list.
 - Roster ground truth → `agents/*.md` frontmatter (manifest, kernel
   roster line, and README follow it; lint checks).
 

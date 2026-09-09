@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 7.5.0
+- Version documented: 7.6.0
 - Repository role: this repo is the seed, the product that is shipped
   into other projects. It is *not* a grown project itself.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -461,7 +461,7 @@ Per-artifact templates in `templates/` (each produces a Tier-3 artifact):
 | `threat-model.template.md` | `docs/graph/decisions/threat-model-<feature>.md` |
 
 `templates/knowledge-graph/` holds the node contract (`_schema.md`), the two
-linters (`graph-lint.py`, `spec-lint.py`), the router (`index.md`), and the node
+linters (`graph-lint.py`, `spec-lint.py`, `grill-lint.py`), the router (`index.md`), and the node
 template.
 
 ### 8.3 The prompt/brief templates
@@ -658,7 +658,7 @@ agents/               19 specialist agents (graph nodes; projected to the harnes
 protocols/            15 protocol graph nodes (installed to docs/graph/protocols/)
 skills/               14 skill graph nodes (installed flat to docs/graph/skills/)
 templates/            Per-artifact templates (spec, grill, ADR, etc.)
-  knowledge-graph/      node contract, graph-lint.py, spec-lint.py, router, node template
+  knowledge-graph/      node contract, graph-lint.py, spec-lint.py, grill-lint.py, router, node template
   prompts/              parameterized delegation/investigation/validation briefs
   docs/                 leaf collections installed beneath docs/graph/
 library-corpus/       Harvested library/language surface notes (by ecosystem)
@@ -701,29 +701,31 @@ This runs (in order):
    completeness contract in prose.
 4. `test-graph-artifacts.sh`: graph artifact presence.
 5. `test-spec-lint.sh`: the mechanical spec-contract coverage gate.
-6. `test-full-install.sh`: full install across tools, roster parity, the
+6. `test-grill-lint.sh`: the plan-of-record gate (`grill-lint.py`) — section
+   shape, §9 dependency order, §5 derived from §9, plan↔spec alignment.
+7. `test-full-install.sh`: full install across tools, roster parity, the
    Claude-Code + Prime-Agent coexistence, CI parity gate.
-7. `test-graft-tools.sh`: graft reconciliation engine.
-8. `test-agnosticism-lint.sh`: the shared agnosticism gate
+8. `test-graft-tools.sh`: graft reconciliation engine.
+9. `test-agnosticism-lint.sh`: the shared agnosticism gate
    (`tools/agnosticism-lint.py`, delivered to plants as
    `docs/graph/agnosticism-lint.py`), run before the seed-lint suite that
    consumes it.
-9. `test-status-register.sh`: the lifecycle-status linter/query
+10. `test-status-register.sh`: the lifecycle-status linter/query
    (`tools/status-register.py`, delivered as `docs/graph/status-register.py`):
    one vocabulary in frontmatter, companion keys, body/frontmatter agreement,
    query ordering and the `--summary` the session-start hook injects.
-10. `test-status-migrate.sh`: the one-time body-prose → frontmatter migration
+11. `test-status-migrate.sh`: the one-time body-prose → frontmatter migration
     (`tools/status-migrate.py`): exact mappings, `not recorded` never invented,
     annotations carried as `status_note`, idempotent, output lints clean.
-11. `test-seed-lint.sh`: plant-a-violation regression for each seed-lint class.
-12. `test-legal-lint.sh`: legal-corpus citability contract.
-13. `test_graph_lint.py`: graph-lint CLI-contract regression (stdlib unittest),
+12. `test-seed-lint.sh`: plant-a-violation regression for each seed-lint class.
+13. `test-legal-lint.sh`: legal-corpus citability contract.
+14. `test_graph_lint.py`: graph-lint CLI-contract regression (stdlib unittest),
     including the 7.0.0 status / deviation / `plant:` block rules.
-14. `agent-lint.py --lint` and `--eval` (against `agents/`).
-15. `test_agent_lint.py` (pytest; loud SKIP if pytest absent, never a silent
+15. `agent-lint.py --lint` and `--eval` (against `agents/`).
+16. `test_agent_lint.py` (pytest; loud SKIP if pytest absent, never a silent
     skip).
-13. `seed-lint.py`: one-home-per-fact for the seed's own meta-facts.
-14. `legal-lint.py`: the eight-field-per-entry legal gate.
+17. `seed-lint.py`: one-home-per-fact for the seed's own meta-facts.
+18. `legal-lint.py`: the eight-field-per-entry legal gate.
 
 `tests/seed-lint.py` is the seed's self-consistency gate. It enforces:
 roster/frontmatter/manifest/README consistency, the delegator invariant, numeric

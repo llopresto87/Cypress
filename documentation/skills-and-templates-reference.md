@@ -344,12 +344,16 @@ Source: `skills/grill-planner/SKILL.md`
 `grill-planner.audit` · **requires:** `protocol.grill` · **peers:**
 `skill.spec-author`
 
-**load_when:** update the plan of record · author or revise grill.md · scope
-the next increment · plan a new feature · grill.md drifted from the specs.
+**load_when:** author or revise a section of grill.md · write the
+plan-of-record well, plan authoring discipline · grill.md drifted from the
+specs, audit the plan.
 
-**What it does.** Authors, updates, and audits the project's plan-of-record
-at `docs/graph/plans/grill.md`, the single living plan the next agent reads
-first.
+**What it does.** The authoring discipline for `docs/graph/plans/grill.md`:
+what a worker filling any section carries, and the audit that says whether
+the plan is still consistent. The pass itself — which section, which owner,
+in what spawn order — is the protocol's (`grill.flow`, `grill.revise`); this
+skill does not restate it, because a worker sequencing from a copy is how
+spawns come out of order.
 
 **Principles.**
 
@@ -357,8 +361,9 @@ first.
   struck through (or moved to history) with the new claim dated. §15 is the
   session-by-session changelog.
 - **Section numbers are stable.** Do not renumber; tooling indexes by number.
-- **Specs upstream, plan downstream.** Every §9 increment names at least one
-  spec contract; every contract in the spec's §4 appears in an increment.
+- **Specs upstream, plan downstream.** Behavior in the plan but in no spec is
+  a spec-shaped hole: a §12 row and a back-written spec. The protocol presses
+  the alignment (`grill.press`); `grill-lint.py` runs the mechanical half.
 - **Increments are small and verifiable**: one RED-GREEN-REFACTOR cycle.
 - **Structure earns its place at plan time**: an increment that adds a
   module/layer/interface names the single responsibility and the present
@@ -366,21 +371,20 @@ first.
 - **Cite, and mark what you haven't verified** with `[verify]` or
   "not recorded"; mark human-input values do-not-guess in §12.
 
-**Workflow.** Creating grill.md fills §0–§4 then hands §5 to research-scout,
-§6–§8 to architect, slices §9 with tester, §10–§11 to security/reliability,
-open questions to §12, §13 done criteria from the spec's §9, §14 one next
-step, and the §15 entry. Updating after an increment appends to §15, crosses
-out completed §9 rows, records decision/risk/question changes, and updates
-§14. Auditing checks every increment has a spec contract, every active spec
-is referenced, every library has a wiki page, every ADR matches a §6 row,
-every gate has a runbook entry, §14 names one action.
+**Workflow — the audit.** `python3 docs/graph/grill-lint.py` first (shape,
+§1 citations, §9 completeness and dependency order, §5 derived from §9, §14
+one action, the plan→spec alignment), then the judgment the lint cannot
+make: every active spec referenced from §3/§9; every ADR matches a §6 row;
+every §10 gate is a genuine divergence from the runbook; every §11 row has a
+verification that would detect the risk; a §5 "no external dependency" line
+is true. Inconsistencies become §12 rows; the fix runs through the
+protocol's revision pass.
 
 **Anti-patterns.** §14 with five bullets; §6 with no evidence column; §9
 rows like "implement the feature"; vague risks in §11; silent rewrites.
 
-**When to use.** Whenever a feature is planned, a plan is revised after
-research or implementation, an increment is scoped, or grill.md needs a
-consistency pass.
+**When to use.** Whenever a brief hands you a section of grill.md, or the
+plan needs a consistency pass.
 
 ---
 
@@ -860,6 +864,7 @@ Templates are Tier-3 artifacts; a machinery node points at them via
 | `node.template.md` | `docs/graph/nodes/<id>.md` | one blank node form |
 | `graph-lint.py` | `docs/graph/graph-lint.py` | the graph linter and router dry-run |
 | `spec-lint.py` | `docs/graph/spec-lint.py` | the spec-coverage gate |
+| `grill-lint.py` | `docs/graph/grill-lint.py` | the plan-of-record gate |
 
 ---
 
@@ -944,13 +949,17 @@ Source: `templates/grill.template.md`
 Produces `docs/graph/plans/grill.md`, the plan-of-record, created once per
 project and updated continuously. Sixteen stable sections:
 
-- **§0 Metadata**, **§1 Artifact Discovery**, **§2 Shared Understanding**,
-  **§3 User Goal** (links spec §9), **§4 Operating Constraints**, **§5
-  Research Summary**, **§6 Decisions Made** (table with evidence and ADR
-  columns), **§7 Options Considered**, **§8 Architecture Plan**, **§9
+- **§0 Metadata**, **§1 Artifact Discovery** (every line cites the paths
+  read or reads `none — <reason>`; a blank line is unread), **§2 Shared
+  Understanding**, **§3 User Goal** (links spec §9), **§4 Operating
+  Constraints**, **§5 Research Summary** (covers every library page a §9
+  `Depends on:` row names, or one `no external dependency — <reason>` line
+  the lint checks against §9), **§6 Decisions Made** (table with evidence
+  and ADR columns), **§7 Options Considered**, **§8 Architecture Plan**, **§9
   Implementation Plan** (each increment names spec contracts, files, RED
-  tests, behavior, gate, rollback, effort, dependencies, and, when it adds
-  structure, the responsibility and present variation).
+  tests, behavior, gate, rollback, effort, dependencies — earlier increments
+  and library pages, `none` if neither — and, when it adds structure, the
+  responsibility and present variation; rows in dependency order).
 - **§10 Verification Plan**: covered by the standard gates in
   `docs/graph/runbooks/verification.md`; list a gate here only where the plan
   diverges (grill.md must not duplicate the runbook it points at).
@@ -1292,6 +1301,42 @@ and the specs dir itself) for each slug. Behaviors:
 
 This is the §3.1 gate a new spec's contracts fail until `test-first` lands the
 RED tests; the failing gate is the spec working, not a defect.
+
+
+## B.16 The plan-of-record gate — `grill-lint.py`
+Source: `templates/knowledge-graph/grill-lint.py` (installs to `docs/graph/grill-lint.py`)
+
+A dependency-free, config-free Python 3 gate that makes the grill rule
+(kernel §3.3) mechanical: the plan-of-record is a plan the orchestrator can
+sequence spawns from, not a form.
+
+**Usage.**
+
+```sh
+python3 docs/graph/grill-lint.py             # gate: exit 1 on a defect
+python3 docs/graph/grill-lint.py --list      # print the §9 increment graph
+python3 docs/graph/grill-lint.py --warn      # report but always exit 0
+python3 docs/graph/grill-lint.py --plan P    # lint another plan file
+```
+
+**What it checks** over `docs/graph/plans/grill.md` (subtracting the
+template's own lines, so the form never counts as the plan):
+
+- Every section §0–§15 is present and populated — content or an explicit
+  `not applicable — <reason>`; a template label with nothing after it is
+  neither.
+- Every §1 line cites what was read or reads `none — <reason>`.
+- Every §9 increment names spec contracts, RED tests, a rollback and
+  `Depends on:`; a row that depends on a later row, on itself, or on a row
+  that does not exist FAILs — that is the shape an orchestrator misreads as
+  independence and spawns in parallel.
+- §5 names every `docs/graph/libraries/` page a §9 row depends on, and every
+  library page the plan names exists.
+- Alignment: every `SPEC-NNNN/SLUG` a §9 row names is a `### Contract:` of a
+  spec on disk, and every contract of those specs appears in some increment.
+- No `[verify]` in §9 or §13 (FAIL); in §6/§8/§11 it only WARNs.
+- §14 is one action.
+- No plan at all → SKIP, exit 0.
 
 ---
 

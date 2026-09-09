@@ -250,6 +250,7 @@ place_graph_scaffold() {
     [[ -e "$g/_schema.md" ]] || cp "$SEED_ROOT/templates/knowledge-graph/_schema.md" "$g/_schema.md"
     [[ -e "$g/graph-lint.py" ]] || cp "$SEED_ROOT/templates/knowledge-graph/graph-lint.py" "$g/graph-lint.py"
     [[ -e "$g/spec-lint.py" ]] || cp "$SEED_ROOT/templates/knowledge-graph/spec-lint.py" "$g/spec-lint.py"
+    [[ -e "$g/grill-lint.py" ]] || cp "$SEED_ROOT/templates/knowledge-graph/grill-lint.py" "$g/grill-lint.py"
     # the agent router is kernel-mandated on EVERY harness ("python3
     # docs/graph/agent-lint.py --route"); claude-code additionally projects
     # it to .claude/agent-lint.py. Unlike the graph engines (add-if-missing,

@@ -20,7 +20,7 @@ classifies:
 It also flags any backup over PLANT-AUTHORED docs/graph/ content (a knowledge
 overwrite — should be none; knowledge is add-if-missing). The seed-owned graph
 subtrees docs/graph/{protocols,skills,agents,method,templates}/ and the shared
-scripts (graph-lint.py, spec-lint.py, agent-lint.py, agnosticism-lint.py,
+scripts (graph-lint.py, spec-lint.py, grill-lint.py, agent-lint.py, agnosticism-lint.py,
 prose-lint.py, status-register.py) are machinery, expected to be fast-forwarded — but only
 where a seed source actually backs the path: a plant-authored project skill
 under docs/graph/skills/ is plant knowledge. _schema.md and index.md are
@@ -155,7 +155,7 @@ DELIVERED_TOOLS = {
     "prose-lint.py": "tools/prose-lint.py",
     "status-register.py": "tools/status-register.py",
 }
-SCAFFOLD_FILES = ("graph-lint.py", "spec-lint.py") + tuple(DELIVERED_TOOLS)
+SCAFFOLD_FILES = ("graph-lint.py", "spec-lint.py", "grill-lint.py") + tuple(DELIVERED_TOOLS)
 
 # the scaffold mirror: install.sh place_docs_skeleton copies the seed's
 # templates/docs/<rel> to the plant's docs/graph/<rel> when missing.

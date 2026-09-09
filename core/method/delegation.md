@@ -12,6 +12,7 @@ owns:
   - delegation.harness-registration
   - delegation.briefs
   - delegation.step-scope
+  - delegation.sequencing
   - delegation.turn
   - delegation.tracing
   - delegation.spec-authoring
@@ -27,6 +28,7 @@ load_when:
   - "spawn a worker, write a delegation brief"
   - "route the task, agent routing, roster"
   - "delegation depth, allowlist, can this agent spawn"
+  - "spawn order, parallel or sequential, which spawn waits for which"
   - "sonnet or opus, which model class"
   - "unknown agent type, specialist not registered, no such subagent"
   - "the roster was just installed, can I spawn it yet"
@@ -169,8 +171,10 @@ the host's generic worker and rebuild the specialist inside the brief:
   `tools:` allowlist as an explicit prohibition; for a leaf
   (`can_delegate: false`) "you hold no `Task`: at an out-of-domain
   boundary STOP and hand back"; and for a **coordinator**, its
-  `delegates_to` allowlist and `max_spawn_depth` as a named ceiling. An
-  emulated coordinator with no restated ceiling is an uncapped spawner;
+  `delegates_to` allowlist and `max_spawn_depth` as a named ceiling,
+  and the sequencing rule below. An emulated coordinator with no
+  restated ceiling is an uncapped spawner; one with no restated
+  sequence issues every spawn at once;
 - **carry this section down.** An emulated coordinator will reach its own
   by-name dispatches inside a subagent that cannot restart the session,
   so its brief must hand it both the preflight and this fallback for its
@@ -242,6 +246,28 @@ part it can finish), then STOPS and hands back naming the remainder in
 its handback — the caller re-slices and re-spawns. Absorbing the
 overflow in-place is the unbounded-spawn anti-pattern; the step scope
 only bounds anything if overrunning it has this one defined outcome.
+
+## Spawns are sequenced by dependency
+
+When work spans specialists, decide by **independence**: units that
+touch disjoint files/contracts and consume none of each other's outputs
+may be spawned in parallel, each with its own complete brief and all of
+them named in the plan. Units where one's output feeds the next are
+sequenced — never spawned together and merged by hand. Genuine
+parallelism is wall-clock you keep; false parallelism is a merge
+conflict you scheduled.
+
+The sequence is read, not improvised. A protocol pass takes it from
+the protocol's phase table (`grill.flow` is the model: each phase names
+what it needs and the one phase it may run beside); implementation
+takes it from grill.md §9, whose rows are listed in dependency order
+and whose `Depends on:` field is what "independent" means. A caller
+issues a spawn only after every handback that spawn needs has
+returned; the `spawn_id` ordinals it mints (below) are then the record
+of the order it actually used, and a §15 entry cites them in that
+order. A flat numbered list is not a sequence — it says nothing about
+which edges are dependencies — so a document that only has one is not
+yet a source to spawn from.
 
 ## Every spawn is traced
 

@@ -93,6 +93,7 @@ change.
 | Graph lint           | Knowledge-graph contract: duplicate facts, broken edges, leaked version pins. |
 | Status register      | A lifecycle status whose required companion is missing — a `closed` with no evidence, a `hotfix` with no owner (`python3 docs/graph/status-register.py`). |
 | Spec-coverage lint   | Live spec contracts with no test naming them (`python3 docs/graph/spec-lint.py`) — the §3.1 "specs are executable" claim, checked mechanically. |
+| Plan-of-record lint  | grill.md out of shape — a §9 row depending on a later row, a §5 silent about a page §9 depends on, a contract the plan invents or never implements (`python3 docs/graph/grill-lint.py`) — the §3.3 "it is a plan" claim, checked mechanically. |
 | Manual review        | High-impact, non-automatable judgment.                        |
 
 ## Risk-proportional gate depth

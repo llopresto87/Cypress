@@ -319,118 +319,139 @@ changed and why."
 *Source: `protocols/grill.md`*
 
 - **id:** `protocol.grill`, tier 2
-- **owns:** `rule.grill`, `grill.flow`, `grill.increment-shape`
+- **owns:** `rule.grill`, `grill.flow`, `grill.revise`,
+  `grill.increment-shape`, `grill.press`, `grill.legal-checkpoint`
 - **requires:** —
-- **peers:** `protocol.specify`, `protocol.test-first`
+- **peers:** `protocol.specify`, `protocol.test-first`,
+  `agent.devils-advocate`
+- **artifacts:** `templates/grill.template.md`,
+  `templates/knowledge-graph/grill-lint.py`
 - **load_when:** "plan the implementation, plan-of-record, grill.md";
   "spec exists but no plan implements it"; "scope an increment, slice
-  the work"; "plan is stale, assumption broke, architecture change"
+  the work"; "an increment shipped, revise the plan, record what
+  happened"; "plan is stale, assumption broke, architecture change"
 
 ### What it does
 
 Use grill when a spec exists (or is authored in parallel) and you need
-a plan-of-record before code. The deliverable is
-`docs/graph/plans/grill.md`, populated through §14, with explicit
-decisions, options, an architecture sketch, implementation increments
-mapped to spec contracts, verification gates, risks, and a single
-recommended next step.
+a plan-of-record before code — and again every time that plan has to
+move. The deliverable is `docs/graph/plans/grill.md`, populated through
+§15, with explicit decisions, options, an architecture sketch,
+implementation increments mapped to spec contracts, verification gates,
+risks, and a single recommended next step. Two passes over one
+document: **creation** (`grill.flow`) and **revision** (`grill.revise`);
+most sessions run the second.
 
 This node owns **the grill rule** (`rule.grill`): `grill.md` is the
-living plan-of-record, the source of truth for *plans*, linked to the
-specs it implements and the nodes it depends on. Open it when you
+living plan-of-record, the source of truth for *plans*. Open it when you
 start, before you change architecture, when you finish, and whenever an
 assumption breaks. Append to its changelog; strike through stale
-claims, never silently rewrite.
+claims, never silently rewrite. Its gate is
+`python3 docs/graph/grill-lint.py`.
 
-"Grill" is the discipline of grilling the *plan* until it is ready to
-implement: pressing the assumptions until solid, the design until
-coherent, the plan until each increment is one RED-GREEN-REFACTOR cycle
-(or a small handful).
+"Grill" is a verb: pressing the assumptions until solid, the design
+until coherent, the plan until each increment is one RED-GREEN-REFACTOR
+cycle. Filling the sections writes the plan down; the press
+(`grill.press`) is what makes it a plan.
 
 ### Entry conditions
 
-- The goal is clear (or `brainstorm` has converged it).
-- A spec exists in `docs/graph/specs/` or is authored alongside.
-- No current grill.md exists for this feature, or the existing one is
-  stale by more than a major implementation phase.
+- **Creation:** the goal is clear (or `brainstorm` converged it); a
+  spec exists or is authored alongside; no current grill.md for this
+  feature, or one stale by more than a major phase.
+- **Revision:** grill.md exists and something moved — an increment
+  shipped, a decision changed, a risk or question surfaced, plan and
+  spec catalog drifted, or a session is closing.
 
-If the spec does not yet exist, run `specify` first or in parallel; the
-architect often drafts spec §4 and the grill architecture sketch
-together.
+### The creation pass (`grill.flow`)
 
-### Workflow (`grill.flow`) — the grill.md sections
+A phase table with a named owner per phase; **the table is the spawn
+order.** A phase's spawn is issued only after every handback it needs
+has returned, and two phases run side by side only where the table says
+so (`delegation.sequencing`). The §15 entry lists the pass's spawns by
+`spawn_id` in issue order.
 
-1. Open or create grill.md from the template.
-2. §1 Artifact Discovery. Read what exists: files, docs, tests,
-   ADRs, specs, wikified libraries, recorded constraints. Cite paths;
-   do not guess.
-3. §5 Research Summary: hand to `research-scout` for every
-   library/spec/API the plan depends on; ensure a
-   `docs/graph/libraries/` page exists; if not, run `ingest-library`.
-4. §6 Decisions: explicit choices, cited evidence, tagged
-   reversibility. Non-obvious decisions get an ADR (delegate to
-   `architect`). A recurring operation is decided as a **durable tool**
-   (an increment in §9 with a stable interface and a test), and
-   `docs/graph/tools/` is checked for an existing one (§3.8).
-5. §8 Architecture Plan: boundary diagram and contracts, aligned
-   with the spec's §4.
-6. §9 Implementation Plan: slice the work into increments (see
-   increment shape below).
-7. §10 Verification Plan: which gates run for which increments.
-8. §11 Risks and Mitigations: hand to `security` and
-   `reliability` as relevant.
-9. §12 Open Questions: each "figure out later" becomes a row with
-   a named owner and resolution path.
-10. §13 Done Criteria: objective completion conditions aligned
-    with the spec's §9 acceptance criteria.
-11. §14 Recommended Next Step: a single action, usually "enter
-    test-first for increment 1".
-12. §15 Changelog: an entry describing this grill session.
+| Phase | Sections | Owner | Needs | Parallel with |
+|---|---|---|---|---|
+| 0 | §0 | orchestrator | — | — |
+| 1 | §2 §3 §4 | orchestrator | §0 | — |
+| 2 | §1 | orchestrator (router-bounded reads); a sonnet investigation beyond | §2–§4 | — |
+| 3 | §5 | `research-scout`, one spawn per un-wikified dependency | §1 | — |
+| 4 | §6 §7 §8 | `architect` → ADRs; `legal` inside its checkpoint | §5 | — |
+| 5 | §9 §10 | `architect` slices; `tester` confirms RED tests, owns §10 | §8, spec §4 | 6 |
+| 6 | §11 | `security` ∥ `reliability`; `legal` for external rules | §8 | 5 |
+| 7 | press | orchestrator; `devils-advocate` for one-way doors | §9, §11 | — |
+| 8 | §12–§15 | orchestrator | 7 | — |
 
-The grill protocol is a *pass*: iterate it twice if research changes
-the architecture, and record what changed in the changelog.
+Notes the table cannot hold: §2–§4 come before §1 (conversation
+products, captured before discovery colors them). §1 is read, not
+recalled — every line cites a path or reads `none — <reason>`. §5 is
+**derived, not judged**: its required set is every
+`docs/graph/libraries/` page a §9 `Depends on:` row names, plus what a
+§6 decision rests on; an empty §5 says `no external dependency —
+<reason>`, a falsifiable claim the lint checks against §9. §6/§7 record
+choices, discarded options, evidence, reversibility; non-obvious
+decisions get an ADR, and one implicating externally-authored rules
+clears the architect's `legal` checkpoint first; a recurring operation
+is decided as a durable tool (§3.8). §10 records divergences from the
+verification runbook only. §12 rows carry an owner, a current
+assumption, and a resolution path; §13 aligns with the spec's §9; §14
+is one action.
+
+### The revision pass (`grill.revise`)
+
+§15 entry first (increment, contracts, files, gates and outcomes,
+`spawn_id`s in order); cross out completed §9 rows; a changed decision
+is a new dated §6 row with the old one struck; new risks to §11,
+resolved questions moved in place; §14 renamed. A revision that adds a
+dependency, moves a boundary, or breaks an assumption re-enters the
+creation phase that owns it (phase 3 for a dependency — the scout is
+spawned in revision exactly as in creation), then presses and exits. A
+red gate twice on one increment reopens the pass. Every revision ends
+green under `grill-lint.py`.
 
 ### Increment shape (`grill.increment-shape`)
 
-§9 is where grill earns its keep. A good increment names: the spec
-contract(s) it satisfies, the files touched, the tests to write (in
-RED), the behavior added, the gate that proves it done, the rollback
-path, the effort (roughly one RED-GREEN-REFACTOR cycle), and its
-dependencies. The protocol gives a full worked example ("Increment 3 —
-Persist submissions"). If an increment does not fit this shape (vague
-tests, no spec contract, no rollback), it is not ready. Re-slice.
+A good increment names: spec contracts, files touched, RED tests,
+behavior added, the gate, the rollback path, effort, and `Depends on:`
+— both the earlier increments it builds on and the
+`docs/graph/libraries/` pages it relies on (`none` is a value; blank is
+not). Rows are listed in dependency order. An increment is ready when
+the tester can write the failing test from the row as written;
+otherwise re-slice.
 
-### Spec ↔ plan alignment check
+### Press the plan (`grill.press`)
 
-Before exiting grill, verify:
-- Every contract in the spec's §4 appears in at least one increment in
-  §9.
-- Every acceptance criterion in the spec's §9 maps to at least one
-  contract an increment implements.
-- No increment introduces behavior not covered by a contract (if one
-  does, go back to `specify`).
-
-This check is what makes spec-driven development actually spec-driven.
+Runs after §9 and §11 exist and before §14; a revision presses only
+what moved.
+- **Alignment:** every spec §4 contract has an increment; every
+  acceptance criterion maps to a contract; no increment adds uncovered
+  behavior (else back to `specify`). The lint runs the mechanical half.
+- **Assumptions:** each increment names the assumption whose failure
+  invalidates it, recorded as a §11 row with a verification or a §12
+  row with a resolution path; no `[verify]` survives in §9 or §13;
+  human-input values are do-not-guess.
+- **Refutation:** on a T3 plan, one-way doors and the top risk go to
+  `devils-advocate` for one bounded pass; `refuted` reopens the owning
+  phase; `could-not-refute` is recorded beside the row.
 
 ### Exit conditions
 
-- §0–§14 populated for the current feature.
-- Every library named in §5 has a wiki page.
-- Every non-obvious decision has an ADR or a §6 row.
-- Every §9 increment names spec contracts and tests.
-- The spec ↔ plan alignment check passes.
-- §14 names a single next action.
+"Populated" = content or an explicit `not applicable — <reason>`.
+§0–§15 populated with the §15 spawn list; every §1 line cited; §5
+covers every page §9 depends on and every page named exists; every
+non-obvious decision has an ADR or §6 row and every one-way door was
+pressed; every §9 row fits the shape and the rows are in dependency
+order; alignment holds with no `[verify]` in §9/§13; §14 is one action;
+`grill-lint.py` exits 0.
 
 ### Anti-patterns
 
-- Skipping §1 ("I know what's in the repo"): read it.
-- Skipping §5 ("I know the library"): the wiki often says otherwise.
-- Increments that touch ten files and add three behaviors: slice them.
-- A risk table where every row says "manageable".
-- A "next step" that is actually a list.
-- A plan with no spec link (that is a wish).
-
----
+A §1 line with no path; a §5 silent about a page §9 depends on (the
+lint catches the silence, only you catch an unearned "no research
+needed"); spawning across a dependency edge because the list looked
+flat; ten-file increments; "manageable" risks; a next step that is a
+list; a plan with no spec link.
 
 ## test-first
 
@@ -669,6 +690,8 @@ rules); Smoke test (deployed system minimally alive); Evaluation suite
 (LLM/VLM behavior); Performance test (latency/throughput/memory); Graph
 lint (duplicate facts, broken edges, leaked pins); Spec-coverage lint
 (live spec contracts with no test; `python3 docs/graph/spec-lint.py`);
+Plan-of-record lint (grill.md out of shape — dependency order, §5
+derived from §9, plan↔spec alignment; `python3 docs/graph/grill-lint.py`);
 Manual review (non-automatable judgment).
 
 ### Risk-proportional gate depth (`verify.risk-depth`)

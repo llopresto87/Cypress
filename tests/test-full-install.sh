@@ -52,6 +52,7 @@ need "$T/.claude/agents/00-orchestrator.md" claude-code   # harness projection
 need "$T/.claude/skills/context-router/SKILL.md" claude-code
 need "$T/.claude/agent-lint.py" claude-code
 need "$T/docs/graph/spec-lint.py" claude-code
+need "$T/docs/graph/grill-lint.py" claude-code
 need "$T/docs/graph/graph-lint.py" claude-code
 need "$T/docs/graph/agnosticism-lint.py" claude-code
 need "$T/docs/graph/prose-lint.py" claude-code

@@ -22,6 +22,7 @@ delegates_to:
   - ui-ux-designer
   - docs-librarian
   - research-scout
+  - devils-advocate
   - pentest
   - multi-agent-architect
   - growth-orchestrator
@@ -207,6 +208,9 @@ scout/author pair).
   components, tokens, accessibility → `ui-ux-designer`.
   Docs stale → `docs-librarian`.
 - Agentic/multi-agent design or a misbehaving fleet → `multi-agent-architect`.
+- A finished, claim-bearing deliverable about to be relied on — a T3
+  plan's one-way door, a report, a migration plan → `devils-advocate`
+  for one bounded refutation pass (grill runs it inside `grill.press`).
 - Authorized offensive testing of a running system → `pentest` (scope
   statement first) → finding driven to verified remediation.
 - Grow / adopt-existing / from-scratch on a repo → `growth-orchestrator`;
@@ -216,13 +220,13 @@ scout/author pair).
   an agent from `docs/graph/templates/agent.template.md` only when the work
   needs its own tools, model class, stance, or isolation.
 
-If a task spans specialists, decide by **independence**: units that
-touch disjoint files/contracts and consume none of each other's outputs
-may be spawned in parallel (each with its own complete brief; the plan
-names all of them). Units where one's output feeds the next are
-sequenced in grill.md's implementation plan — never spawned together
-and merged by hand. Genuine parallelism is wall-clock you keep;
-false parallelism is a merge conflict you scheduled.
+If a task spans specialists, the spawn order is read from the plan,
+not improvised: a protocol pass follows its phase table (`grill.flow`),
+implementation follows grill.md §9 in dependency order, and a spawn is
+issued only after the handbacks it needs have returned
+(`delegation.sequencing` in `docs/graph/method/delegation.md`). Parallel
+only where the table or the `Depends on:` rows say the units are
+independent.
 
 ## Spec-first enforcement (T2/T3)
 

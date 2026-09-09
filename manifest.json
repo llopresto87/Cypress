@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft-07/schema#",
   "name": "cypress",
   "fullName": "Contextual Yield Protocol for Routed Expert Seed Systems",
-  "version": "7.5.0",
+  "version": "7.6.0",
   "supersedes": "general_expert_prompts@1.0.0",
   "created": "2026-05-23",
   "description": "CYPRESS (Contextual Yield Protocol for Routed Expert Seed Systems) — a project-agnostic multi-agent seed for single- or multi-repository programs. As of 6.0.0 it is a pure graph system: the entire method surface — protocols, skills, agent charters, method/posture nodes, and template artifacts — installs INTO the plant's unified docs/graph/ as seed-owned routable nodes (origin: seed), activated progressively by the router; the always-loaded kernel is a small bootstrap (identity, tiers, rule anchors, boundaries), and tool directories hold only harness projections (agents, skills). Its tool-neutral INSTALL_PROMPT.md keeps user chat in orchestration/planning, dispatches Sonnet-class read-only scouts and Opus-class authors/reviewers, and grows the graph without building the application or publishing Git state.",
@@ -310,6 +310,10 @@
     {
       "file": "templates/knowledge-graph/spec-lint.py",
       "produces": "docs/graph/spec-lint.py (set TEST_GLOBS) — mechanical spec-contract test-coverage gate"
+    },
+    {
+      "file": "templates/knowledge-graph/grill-lint.py",
+      "produces": "docs/graph/grill-lint.py (no config) — mechanical plan-of-record gate: section shape, §9 dependency order, §5 derived from §9, plan↔spec alignment"
     },
     {
       "file": "templates/knowledge-graph/index.md",

@@ -1,6 +1,6 @@
 ---
 name: grill-planner
-description: Author, update, and audit the project's plan-of-record at docs/graph/plans/grill.md. Use whenever a new feature is being planned, an existing plan needs to be revised after research or implementation, an increment is being scoped, or grill.md needs a consistency pass against the spec catalog. The grill.md is the single living plan; this skill keeps it current, consistent, and indexable.
+description: The authoring discipline for the project's plan-of-record at docs/graph/plans/grill.md — what a worker filling any section carries, and the audit that says whether the plan is still consistent with the specs, the wiki, and the decisions. Use whenever a brief produces or updates grill.md, or grill.md needs a consistency pass. The pass itself (which section, which owner, in which order) is protocol.grill; this skill is how each section is written well.
 id: skill.grill-planner
 tier: 2
 kind: skill
@@ -14,14 +14,12 @@ requires:
 peers:
   - skill.spec-author
 load_when:
-  - "update the plan of record"
-  - "author or revise grill.md"
-  - "scope the next increment"
-  - "plan a new feature"
-  - "grill.md drifted from the specs"
+  - "author or revise a section of grill.md"
+  - "write the plan-of-record well, plan authoring discipline"
+  - "grill.md drifted from the specs, audit the plan"
 artifacts:
   - templates/grill.template.md
-est_tokens: 1300
+est_tokens: 1150
 ---
 
 # grill-planner
@@ -30,16 +28,17 @@ est_tokens: 1300
 the specs it implements and to the wiki pages it depends on, and it
 is the document the next agent reads first to know what's happening.
 
-This skill is the discipline of keeping it current.
+This skill is the discipline of writing it well. Which section is
+filled when, by whom, and in what spawn order is the protocol's
+(`grill.flow` and `grill.revise` in `docs/graph/protocols/grill.md`);
+a brief that produces or updates grill.md cites this skill so the
+worker carries the principles below into whatever section it owns.
 
 ## When to apply this skill
 
-- A new feature or significant change is about to be planned.
-- Research changed the architecture or the option set.
-- An increment finished and the plan needs to record what was done.
-- A new risk or open question was uncovered.
-- The plan and the spec catalog (or the wiki) have drifted apart.
-- A session is ending and grill.md needs its §15 changelog entry.
+- A brief hands you a section of grill.md to author or revise.
+- The plan and the spec catalog, the wiki, or the decisions have
+  drifted apart and the plan needs an audit.
 
 ## The principles
 
@@ -67,9 +66,9 @@ The plan implements specs. If the plan introduces behavior not in
 any spec, that's a spec-shaped hole — file an open question in §12
 and back-write the spec via the `specify` protocol.
 
-The check during grill: every increment in §9 names at least one
-spec contract. Every contract in the relevant spec's §4 appears in
-at least one increment.
+The protocol presses this (`grill.press`: every increment names a
+contract, every contract has an increment) before the plan exits;
+`grill-lint.py` runs the mechanical half.
 
 ### Increments are small and verifiable
 
@@ -102,51 +101,34 @@ than editing the tables in place.
 
 ## Workflow
 
-### Creating grill.md (first time for a feature)
-
-1. Copy `docs/graph/templates/grill.template.md` to `docs/graph/plans/grill.md`.
-2. Fill §0 (Metadata) with the project name, today's date, the
-   feature, the current phase.
-3. Fill §1 (Artifact Discovery) — what you read, with paths.
-4. Fill §2 (Shared Understanding) — the precise problem
-   statement, usually from the brainstorm output.
-5. Fill §3 (User Goal) — link to the spec's §3 and §9.
-6. Fill §4 (Operating Constraints) — global posture and feature-
-   specific constraints.
-7. Hand to `research-scout` to fill §5.
-8. Hand to `architect` to fill §6, §7, §8 (and to write ADRs).
-9. Together with `tester`, slice §9 into increments that map to
-   spec contracts.
-10. Hand to `security` and `reliability` to fill §10 and §11.
-11. Open questions land in §12.
-12. Define §13 (Done Criteria) from the spec's §9.
-13. Recommend a single §14 (Next Step).
-14. Write the §15 entry.
-
-### Updating grill.md (after an increment)
-
-1. Append an entry to §15 (Changelog) — increment title, spec
-   contracts covered, files touched, gates run, gates passed.
-2. Cross out completed rows in §9 (do not delete) and add new
-   rows if the increment revealed work.
-3. If a decision changed, add a row to §6 with the new decision
-   and the date; mark the superseded row.
-4. If a new risk surfaced, add a row to §11.
-5. If an open question was resolved, move it from §12 to §6
-   (Decisions) or §11 (Risks) as appropriate.
-6. Update §14 (Next Step) to the next highest-leverage action.
+The creation and revision passes — which sections, which owner, which
+spawn waits for which handback — are `grill.flow` and `grill.revise` in
+`docs/graph/protocols/grill.md`, and are not restated here: a second
+copy of a sequence drifts, and a worker sequencing from a copy is how
+spawns come out of order. This skill's own workflow is the audit.
 
 ### Auditing grill.md (consistency pass)
 
-Run this when grill.md feels out of sync:
-- Every increment in §9 has at least one spec contract.
-- Every active spec in `docs/graph/specs/` is referenced from §3 or §9.
-- Every library named in §5 has a wiki page.
-- Every ADR in `docs/graph/decisions/` matches a row in §6.
-- Every gate in §10 has an entry in `docs/graph/runbooks/verification.md`.
-- §14 names one action, not a list.
+Run this when grill.md feels out of sync. First the mechanical part:
+`python3 docs/graph/grill-lint.py` checks the shape (every section
+populated, §1 lines cited, §9 rows complete and in dependency order,
+§5 covering the library pages §9 depends on, §14 a single action) and
+the plan→spec half of the alignment check (every contract an increment
+names exists in a live spec; every contract of those specs appears in
+an increment). Then the judgment the lint cannot make:
 
-Record any inconsistencies as open questions in §12 with owners.
+- Every active spec in `docs/graph/specs/` is referenced from §3 or §9.
+- Every ADR in `docs/graph/decisions/` matches a row in §6, and no §6
+  row that changed a boundary is missing its ADR.
+- Every gate named in §10 is a genuine divergence from
+  `docs/graph/runbooks/verification.md`, not a duplicate of it.
+- Every §11 row has a verification that would actually detect the
+  risk; every §12 row has an owner who can resolve it.
+- A `no external dependency` line in §5 is true — the lint sees only
+  what §9 names.
+
+Record any inconsistency as a §12 row with an owner; the fix runs
+through the protocol's revision pass.
 
 ## Anti-patterns
 
@@ -163,6 +145,9 @@ Record any inconsistencies as open questions in §12 with owners.
 ## Reference files
 
 - `docs/graph/templates/grill.template.md` — the template.
-- `docs/graph/protocols/grill.md` — the protocol that drives this skill.
+- `docs/graph/protocols/grill.md` — the protocol that owns the pass
+  this skill writes inside: phases, owners, spawn order, the press,
+  the exit conditions.
+- `docs/graph/grill-lint.py` — the mechanical half of the audit.
 - `docs/graph/agents/00-orchestrator.md` — the agent that opens grill.md
   first thing every session.

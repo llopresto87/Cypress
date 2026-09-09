@@ -23,6 +23,8 @@ agents and tooling index into them.
 - Related libraries:
 
 ## 1. Artifact Discovery
+Every line cites the paths read, or reads `none — <reason>`; a blank
+line is unread, not empty.
 - Existing files inspected:
 - Existing docs inspected:
 - Existing tests inspected:
@@ -55,6 +57,9 @@ belongs outside the current scope.
 - Maintenance constraints:
 
 ## 5. Research Summary
+Covers every docs/graph/libraries/ page a §9 `Depends on:` row names
+and every library, spec, or API a §6 decision rests on — or one line,
+`no external dependency — <reason>`, which grill-lint checks against §9.
 - Best sources:
 - Wikified libraries (link to docs/graph/libraries/<name>.md):
 - Key findings:
@@ -84,9 +89,11 @@ belongs outside the current scope.
 
 Each increment names: spec contracts satisfied, files touched, tests
 to write (RED), behavior added, gate that proves it done, rollback
-path, estimated effort, dependencies — and, when it adds structure
-(a module, layer, interface, service), the single responsibility that
-structure owns and the present variation justifying any abstraction.
+path, estimated effort, dependencies (the earlier increments it builds
+on and the docs/graph/libraries/ pages it relies on; `none` if neither)
+— and, when it adds structure (a module, layer, interface, service),
+the single responsibility that structure owns and the present variation
+justifying any abstraction. Rows are listed in dependency order.
 
 ### Increment 1 — <title>
 - Spec contracts: <SPEC-NNNN/contract-slug, ...>

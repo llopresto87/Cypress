@@ -3,15 +3,15 @@
 while preserving the plant's PROJECT CONFIG.
 
 install.sh drops the knowledge-graph scaffold (graph-lint.py, spec-lint.py,
-_schema.md, index.md) ONLY IF ABSENT — so a plant that already has them keeps
+grill-lint.py, _schema.md, index.md) ONLY IF ABSENT — so a plant that already has them keeps
 its OLD engine across a graft, and the upgrade silently misses the linter.
 A graft that leaves a plant on a stale graph engine is not a true upgrade.
 
 This tool makes the engine a first-class, config-preserving fast-forward: it
 takes the seed's current script as the body of record and re-injects the
 plant's own top-level config assignments (ROOT_ID / KINDS / KIND_PREFIX for
-graph-lint.py; TEST_GLOBS for spec-lint.py), so the plant gains every engine
-improvement while keeping the identity it configured. A config knob the plant
+graph-lint.py; TEST_GLOBS for spec-lint.py; grill-lint.py carries none), so the
+plant gains every engine improvement while keeping the identity it configured. A config knob the plant
 predates (an older engine that never had it) adopts the seed's default.
 
 A config knob is reconciled by shape, not blindly kept wholesale:
