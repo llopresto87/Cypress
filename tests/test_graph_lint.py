@@ -395,6 +395,68 @@ class VersionLeakageTests(unittest.TestCase):
         self.assertEqual(r.returncode, 0, f"section ref must pass:\n{r.stdout}\n{r.stderr}")
 
 
+class LibraryPageShapeTests(unittest.TestCase):
+    """A template-shaped library page (one with a `## 0. Pin` heading) owes
+    the ingest pass its exit — an exact version in the pin table, a dated
+    `Last reviewed`, an index row — while a bare fixture page owes nothing."""
+
+    PAGE = (
+        "# Library: alpha\n\n## 0. Pin\n\n"
+        "| Major | Exact version | Projects / paths | Notes |\n|---|---|---|---|\n"
+        "| 2 | {version} | src/ | — |\n\n"
+        "- **Name:** alpha\n- **Last reviewed:** {reviewed} by scout\n\n"
+        "## 1. Role in this project\n\nWords.\n"
+    )
+
+    def setUp(self):
+        self.assertTrue(GRAPH_LINT.exists(), f"missing tool: {GRAPH_LINT}")
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def _graph(self, *, version="2.7.2", reviewed="2026-09-09", index=True) -> Path:
+        nodes = {"root": node_md("root", "root")}
+        graph = build_graph(self.tmp, nodes, libraries=["alpha"])
+        (graph / "libraries" / "alpha.md").write_text(
+            self.PAGE.format(version=version, reviewed=reviewed), encoding="utf-8")
+        if index:
+            (graph / "libraries" / "index.md").write_text(
+                "# Libraries\n\n| Library | Version | Page |\n|---|---|---|\n"
+                "| alpha | 2.7.2 | alpha.md |\n", encoding="utf-8")
+        return graph
+
+    def test_shaped_page_passes(self):
+        r = run_lint(self._graph())
+        self.assertEqual(r.returncode, 0, f"pinned, dated, indexed page must pass:\n{r.stdout}\n{r.stderr}")
+
+    def test_bare_fixture_page_owes_nothing(self):
+        """A page with no `## 0. Pin` is not template-shaped — the fixtures
+        every other test builds must keep passing."""
+        nodes = {"root": node_md("root", "root")}
+        r = run_lint(build_graph(self.tmp, nodes, libraries=["beta"]))
+        self.assertEqual(r.returncode, 0, f"bare page must pass:\n{r.stdout}\n{r.stderr}")
+
+    def test_placeholder_version_fails(self):
+        r = run_lint(self._graph(version="<exact>"))
+        out = r.stdout + r.stderr
+        self.assertNotEqual(r.returncode, 0, f"placeholder pin must fail:\n{out}")
+        self.assertIn("no exact version", out, out)
+
+    def test_undated_review_fails(self):
+        r = run_lint(self._graph(reviewed="YYYY-MM-DD"))
+        out = r.stdout + r.stderr
+        self.assertNotEqual(r.returncode, 0, f"undated review must fail:\n{out}")
+        self.assertIn("Last reviewed", out, out)
+
+    def test_missing_index_row_fails(self):
+        graph = self._graph(index=False)
+        (graph / "libraries" / "index.md").write_text("# Libraries\n\n| Library | Page |\n|---|---|\n", encoding="utf-8")
+        r = run_lint(graph)
+        out = r.stdout + r.stderr
+        self.assertNotEqual(r.returncode, 0, f"unregistered page must fail:\n{out}")
+        self.assertIn("no row in libraries/index.md", out, out)
+
+
 class ReachabilityBoundaryTests(unittest.TestCase):
     """Regression: reachability once used a plain substring test against
     index.md, so an orphan node passed whenever its id merely prefixed an

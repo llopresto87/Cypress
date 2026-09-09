@@ -1,6 +1,6 @@
 ---
 name: from-scratch
-description: Bootstrap a brand-new project through a nine-phase sequence (brainstorm → skeleton → grill → research → ADR → verification baseline → specify slice 1 → test-first slice 1 → deliver). Use whenever the project does not yet exist, the repo is empty or near-empty, no docs/graph/plans/grill.md exists, or the session begins with "let's start a new project". The first day shapes everything; this protocol prevents skipping load-bearing steps.
+description: Bootstrap a brand-new project through a nine-phase sequence (brainstorm → skeleton → grill creation pass → research → ADR → verification baseline → specify slice 1 → test-first slice 1 → close-out and deliver), each phase with a named owner and the sub-protocol it adopts. Use whenever the project does not yet exist, the repo is empty or near-empty, no docs/graph/plans/grill.md exists, or the session begins with "let's start a new project". The first day shapes everything; this protocol prevents skipping load-bearing steps.
 id: protocol.from-scratch
 tier: 2
 kind: protocol
@@ -11,7 +11,9 @@ owns:
 requires:
 peers:
   - protocol.brainstorm
+  - protocol.grill
   - protocol.ingest-library
+  - protocol.canonize
   - skill.from-scratch-bootstrap
 artifacts:
   - templates/grill.template.md
@@ -20,7 +22,7 @@ load_when:
   - "greenfield, bootstrap from nothing"
   - "no grill.md exists yet, day one setup"
   - "project skeleton, verification baseline"
-est_tokens: 1300
+est_tokens: 1500
 command: true
 ---
 
@@ -40,7 +42,24 @@ disproportionately. Do not skip steps.
 - The repository is empty, near-empty, or contains only a license and
   a README placeholder.
 
-## Phases
+## Phases (`from-scratch.phases`)
+
+Nine phases, each adopting a sub-protocol that carries its own owners
+and failure modes — read the phase's protocol, never a summary of it.
+**The table is the spawn order**: a phase's spawn is issued only after
+the handback it needs has returned (`delegation.sequencing`).
+
+| Phase | Does | Adopts | Owner | Needs |
+|---|---|---|---|---|
+| 1 | Brainstorm | `protocol.brainstorm` | orchestrator, in-session with the user | the goal |
+| 2 | Project skeleton | `install.sh`; `skill.knowledge-graph` | `seed-installer` (the overlay), orchestrator (root node, README) | 1 |
+| 3 | grill.md, creation pass phases 0–2 | `grill.flow` | orchestrator, in-session | 1, 2 |
+| 4 | Research and library ingest | `grill.flow` phase 3 → `ingest-library.flow` per candidate | `research-scout` per dependency; `tester` smoke-tests | 3 |
+| 5 | Architecture decision, ADR-0001 | `grill.flow` phase 4; `skill.adr-writer` | `architect` (`legal` inside its checkpoint) | 4 |
+| 6 | Verification baseline | `protocol.verify` | `reliability` (runbooks, the one gate entry point); `tester` (framework, hello-world test); `research-scout` wikifies each tool | 5 |
+| 7 | Specify the first useful slice | `specify.flow` | per the specify table | 5, 6 |
+| 8 | Test-first the first slice | `grill.flow` phases 5–8, then `test-first.cycle` | per those tables | 7 |
+| 9 | Close-out and deliver | `protocol.canonize` → `protocol.deliver` | `docs-librarian` (one spawn), then the session | 8 |
 
 ### Phase 1 — Brainstorm (Socratic)
 
@@ -103,57 +122,41 @@ program spanning several repos, the unified graph lives at
 the governing root; for a single repo, at its root. See
 `docs/graph/skills/knowledge-graph.md`.
 
-### Phase 3 — Initial grill.md
+### Phases 3–5 — The grill creation pass, greenfield
 
-Open `docs/graph/plans/grill.md` from `docs/graph/templates/grill.template.md`. Fill
-at minimum:
-- §0 (Metadata): project name, today's date, current phase
-  "bootstrapping".
-- §2 (Shared Understanding): the precise problem statement from
-  the brainstorm.
-- §3 (User Goal): primary user, primary outcome, acceptance
-  criteria for the first useful slice, non-goals.
-- §4 (Operating Constraints): everything the brainstorm uncovered.
-- §7 (Options Considered): the three+ shaped options.
-- §11 (Risks and Mitigations): the obvious risks from the
-  brainstorm.
-- §12 (Open Questions): every assumption flagged for validation.
-- §14 (Recommended Next Step): "Phase 4 — research and library
-  ingest".
+Phases 3–5 are `grill.flow`'s phases 0–4 and are not restated here;
+what a greenfield adds:
 
-### Phase 4 — Research and library ingest
-
-Hand off to `research-scout` with the candidate technologies, and run
-`docs/graph/protocols/ingest-library.md` for each — its steps own the existence,
-version, and maintenance-signal checks and produce the wiki page in
-`docs/graph/libraries/`.
-
-This phase often updates the shaped options because a candidate
-library turns out to be unmaintained, has a worse license than
-remembered, or has a sharp edge that matters. Update grill.md §5
-and §7 as you learn.
-
-### Phase 5 — Architecture decision
-
-Hand off to `architect`. The architect:
-- Picks the option using the constraints and the research.
-- Writes `docs/graph/decisions/adr-0001-initial-architecture.md`.
-- Updates grill.md §6 (Decisions Made) and §8 (Architecture Plan).
-- Drafts the boundary diagram.
+- **Phase 3** fills §0 (phase "bootstrapping"), §2–§4 from the
+  brainstorm, and §1 with `none — greenfield` on every line — the
+  honest discovery of an empty repository, and what `grill-lint.py`
+  accepts in place of a path. §7 carries the three-plus shaped options,
+  §11 the obvious risks, §12 every assumption flagged for validation;
+  §14 reads "Phase 4 — research and library ingest".
+- **Phase 4** hands each candidate technology to `research-scout`
+  through `ingest-library.flow` — existence, version, maintenance
+  signal, license, the wiki page — and this is where shaped options
+  die: a candidate turns out unmaintained, worse-licensed than
+  remembered, or sharp in a way that matters. §5 and §7 are updated as
+  it happens.
+- **Phase 5** hands the constraints and the research to `architect`:
+  the option is picked, `docs/graph/decisions/adr-0001-initial-architecture.md`
+  written, grill.md §6 and §8 filled with the boundary diagram.
 
 ### Phase 6 — Verification baseline
 
 Before any feature code, set up the verification baseline:
-- Pick the formatter, linter, type checker, and **test
-  framework** for the chosen stack. Wikify each one through
-  `research-scout`.
-- Write `docs/graph/runbooks/local-development.md` with the exact
-  commands to install dependencies and run the project.
-- Write `docs/graph/runbooks/verification.md` with the exact gate
-  commands.
-- Add a minimal "hello world" test that runs end-to-end. The gate
-  command must pass on a clean checkout before any feature is
-  implemented.
+- `tester` picks the formatter, linter, type checker, and **test
+  framework** for the chosen stack (the framework choice is an ADR,
+  `protocol.test-first`), and adds a minimal "hello world" test that
+  runs end-to-end; `research-scout` wikifies each tool through
+  `ingest-library.flow`.
+- `reliability` writes `docs/graph/runbooks/local-development.md` with
+  the exact commands to install dependencies and run the project, and
+  `docs/graph/runbooks/verification.md` with the exact gate commands
+  behind the one entry point `protocol.verify` requires.
+- The gate command must pass on a clean checkout before any feature
+  is implemented.
 
 A project that cannot run its gates from a clean checkout is not
 yet bootstrapped. A project without a test framework configured is
@@ -172,9 +175,13 @@ Run `docs/graph/protocols/test-first.md` for each contract in SPEC-0001.
 RED → GREEN → REFACTOR → COMMIT for each increment in grill.md
 §9.
 
-### Phase 9 — Deliver
+### Phase 9 — Close-out and deliver
 
-Run `docs/graph/protocols/deliver.md`. The recommended next step is the
+Run `docs/graph/protocols/canonize.md` — the one `docs-librarian` spawn
+that finalizes every wiki page the scouts drafted, writes the
+`libraries/index.md` and `sources/index.md` rows, persists what the
+first day taught, and catalogs any tool it built — then
+`docs/graph/protocols/deliver.md`. The recommended next step is the
 second slice or the next-most-valuable item from the roadmap in
 `docs/graph/product/requirements.md`.
 
@@ -183,13 +190,15 @@ second slice or the next-most-valuable item from the roadmap in
 - `docs/graph/plans/grill.md` exists and is current.
 - `docs/graph/decisions/adr-0001-*.md` records the initial architecture.
 - `docs/graph/libraries/index.md` lists every chosen dependency with a
-  page each.
+  page each; `python3 docs/graph/graph-lint.py` and
+  `python3 docs/graph/grill-lint.py` exit 0.
 - `docs/graph/runbooks/local-development.md` and `verification.md` exist
   and their commands run.
 - `docs/graph/specs/SPEC-0001-*.md` exists, status `implemented` (its
   RED landed with the slice's tests and every contract is green).
 - The first useful slice's tests are green; the suite is green.
 - The README explains what the project is and how to run it.
+- The close-out ran: the delivery cites the librarian's handback.
 
 ## Common ways to fail this protocol
 

@@ -117,11 +117,14 @@ Add a row to `docs/graph/sources/index.md`:
 | <title> | <url> | <maintainer> | YYYY-MM-DD | <version> | <reliability> | <relevance> | <one-line notes> |
 ```
 
-### 6. Hand off to the wiki
+### 6. Draft, then hand back
 
-Notify `docs-librarian` that new normalized sources are available
-so they can integrate them into the relevant wiki page in
-`docs/graph/libraries/`.
+Draft the wiki page from the normalized sources (`skill.library-wiki`
+says what each section owes) and end the turn with the handback
+payload naming the page, the sources index rows, and `tester` as
+`recommended_next` for the smoke test — the scout is a leaf; the
+opus-class `docs-librarian` finalizes the page in the close-out, the
+phase order being `ingest-library.flow`'s.
 
 ## Documentation MCP servers (when available)
 

@@ -1,6 +1,6 @@
 ---
 name: ingest-library
-description: Add or refresh a project-local wiki page at docs/graph/libraries/<name>.md for an external dependency (library, framework, SDK, API, protocol, spec, model provider). Use BEFORE any code touches a new dependency, whenever a wiki page is missing for code that already uses one, whenever a version pin changes, and whenever an upstream security advisory affects a wikified library. The wiki is the project's source of truth; agent memory of library APIs is unreliable across versions, so always ingest first.
+description: Add or refresh a project-local wiki page at docs/graph/libraries/<name>.md for an external dependency (library, framework, SDK, API, protocol, spec, model provider) through a phased pass — corpus check, then research-scout retrieves and drafts, tester smoke-tests the pin, the librarian finalizes and registers at close-out. Use BEFORE any code touches a new dependency, whenever a wiki page is missing for code that already uses one, whenever a version pin changes, and whenever an upstream security advisory affects a wikified library. The wiki is the project's source of truth; agent memory of library APIs is unreliable across versions, so always ingest first.
 id: protocol.ingest-library
 tier: 2
 kind: protocol
@@ -8,6 +8,7 @@ origin: seed
 title: ingest-library — building the version-pinned wiki page before any code touches a dependency
 owns:
   - ingest-library.flow
+  - ingest-library.refresh
   - ingest-library.corpus-first
 requires:
 peers:
@@ -16,12 +17,13 @@ peers:
   - skill.research-and-ingest
 artifacts:
   - templates/library-page.template.md
+  - templates/knowledge-graph/graph-lint.py
 load_when:
   - "adding a new dependency, library, SDK, or API"
   - "no wiki page for a library the code uses"
   - "version pin changed, refresh the library page"
   - "security advisory on a dependency"
-est_tokens: 1200
+est_tokens: 1500
 command: true
 ---
 
@@ -47,132 +49,103 @@ One of:
   cost an agent debugging time).
 - A security advisory affects a wikified library.
 
-## Cast
+## The pass (`ingest-library.flow`)
 
-- `research-scout` — does the retrieval and normalization.
-- `docs-librarian` — finalizes the wiki page and updates indexes.
-- `architect` (lightly) — confirms the dependency fits the architecture
-  before the wiki page is committed as authoritative.
+The pass is a sequence of phases with a named owner each. **The table is
+the spawn order**: a phase's spawn is issued only after the handback it
+needs has returned (`delegation.sequencing`,
+`docs/graph/method/delegation.md`). Two callers hold it: the
+orchestrator inside grill phase 3 (one scout spawn per dependency
+without a page), and the `docs-librarian` during a close-out or a docs
+audit (its one `delegates_to` entry). In both, the scout drafts and the
+librarian finalizes — a sonnet-class worker's writes are mechanical
+normalization, and the opus-class librarian owns the page
+(`delegation.model-classes`).
 
-## Workflow
+| Phase | Does | Owner | Needs | Parallel with |
+|---|---|---|---|---|
+| 0 | Identify: canonical name, exact version (never "latest"), ecosystem, why this project needs it | the caller, in-session | the lockfile or the architect's brief | — |
+| 1 | Corpus check (`ingest-library.corpus-first`, below) | the caller, in-session | phase 0 | — |
+| 2 | Retrieve, snapshot, normalize, register sources; inspect the code; **draft** `docs/graph/libraries/<name>.md` §0–§3 and §10 from the template | `research-scout` (`skill.research-and-ingest` for the sources, `skill.library-wiki` for the page) | phases 0–1 | other dependencies' phase 2 |
+| 3 | Smoke test: import at the pin, call one or two names from §3, run in the project's harness | `tester` | phase 2 (the page's §2 install and §3 names) | — |
+| 4 | grill.md §5 row (and §6 where the choice was a decision) | the session | phase 3 | — |
+| 5 | Finalize the page; the `libraries/index.md` and `sources/index.md` rows; graph-lint | `docs-librarian`, in the close-out spawn (`protocol.canonize`) | phases 2–3 | — |
 
-### 0. Withdraw from the seed corpus before re-downloading
+What the table cannot hold:
 
-Once you know the library's exact name, version, and ecosystem (Identify,
-below), this step applies **when you are working in the seed repo, or when
-the plant has harvested the library corpus**; otherwise skip to Step 1.
-Where it applies, check the library-documentation corpus **first** — the
-pages `harvest` folded back from earlier plants
-(`library-corpus/<ecosystem>/<library>.md`, keyed by library and **not by
-version** — the corpus keeps the version-durable orientation layer; see
+- **Phase 2 fetches**: the version's release notes, the quickstart, the
+  public API reference, the security policy and recent advisories, the
+  license — and for LLM/VLM SDKs, pricing-relevant behavior, rate
+  limits, structured-output features, safety policies. Raw snapshots
+  go to `docs/graph/sources/raw/` (license permitting), normalized
+  Markdown to `docs/graph/sources/normalized/`. Where the source is
+  public code, the scout scans the exported surface, `examples/`, and
+  the maintenance signal (commit recency, open-issue volume) and notes
+  discrepancies between docs and code on the page. Advisories the scout
+  found land in the page's §7; `security` weighs them at grill §11, it
+  is not a separate spawn here.
+- **The draft page is brutally specific.** §0–§3 and §10 on creation;
+  §4–§12 demand-grown as the project meets each idiom, pitfall,
+  deprecation, or upgrade — never a fabricated "none" row. The API
+  surface covers only the slice this project uses. A private dependency
+  records that resolution needs registry credentials in the build/CI
+  environment.
+- **A failed smoke test means the page is wrong** (or the install is):
+  it returns to phase 2 as an attempt under `protocol.recover`'s
+  three-attempt boundary. The page is not authoritative until the test
+  passes.
+- **The librarian's finalization** dedupes against what the graph
+  already owns, adds the index rows (`| Library | Version | Page | Used
+  by | Maintenance | License | Last reviewed |`, and the sources index),
+  and runs `graph-lint.py`, whose library check reads the page's §0 pin
+  and the index row. One spawn for every page this task drafted.
+
+## Corpus first (`ingest-library.corpus-first`)
+
+Once the library's exact name, version, and ecosystem are known, and
+**when you are working in the seed repo or the plant has harvested the
+library corpus** (otherwise phase 1 is a no-op), check the
+library-documentation corpus before re-downloading — the pages
+`harvest` folded back from earlier plants
+(`library-corpus/<ecosystem>/<library>.md`, keyed by library and **not
+by version**; the corpus keeps the version-durable orientation layer,
 `docs/graph/protocols/harvest.md`). If the page exists, seed
 `docs/graph/libraries/<name>.md` from it, then pin and validate the
 version-specific layer (API deltas, deprecations, CVEs) against this
 project's actual lockfile version from upstream — the corpus never
-substitutes for the pin check. If the corpus page is absent, ingest from
-upstream as usual; the fresh page's version-durable surface becomes a
-harvest candidate for the next plant. Reuse the corpus, re-download only
-the version-specific delta.
+substitutes for the pin check. If it is absent, ingest from upstream as
+usual; the fresh page's version-durable surface becomes a harvest
+candidate for the next plant. Reuse the corpus, re-download only the
+version-specific delta.
 
-### 1. Identify
+## Refresh (`ingest-library.refresh`)
 
-Name the library precisely:
-- Canonical name.
-- Version (the exact version the project will pin to; not "latest").
-- Ecosystem (npm package, PyPI package, Go module, Maven artifact,
-  OS package, container image, IETF RFC, etc.).
-- Why this project needs it (one sentence; goes in section 2 of the
-  wiki page).
-
-### 2. Retrieve
-
-`research-scout` fetches:
-- The version's release notes / CHANGELOG entry.
-- The official getting-started or quickstart page.
-- The public API reference (or the canonical entry-point docs).
-- The security policy page or recent advisories.
-- The license file.
-- For LLM/VLM libraries and SDKs: pricing-relevant behavior,
-  rate-limit page, structured-output features, safety policies.
-
-Snapshot the raw content to `docs/graph/sources/raw/` (when license
-permits) and produce normalized clean Markdown in
-`docs/graph/sources/normalized/`.
-
-### 3. Inspect (read the code, not just the docs)
-
-For libraries with public source code, briefly scan:
-- The public API surface (exported names, top-level functions, key
-  classes).
-- The `examples/` directory or equivalent.
-- The maintenance signal: recent commit dates, open-issue volume,
-  the kind of issues that stay open.
-
-This catches discrepancies between docs and code. Note any.
-
-### 4. Compose the wiki page
-
-Use `docs/graph/templates/library-page.template.md` to produce
-`docs/graph/libraries/<name>.md` — the template owns the section list.
-On creation, fill §0–§3 (pin, role, install, used API surface) plus §10
-(references); §4–§12 are demand-grown as the project meets each idiom,
-pitfall, deprecation, or upgrade. Never fabricate a "none" row to make a
-section look complete. Two constraints the template cannot enforce:
-
-- The API-surface section covers only the slice this project actually
-  uses — start small; it grows as the codebase grows.
-- For a private dependency, record that resolution needs registry
-  credentials in the build/CI environment (a fresh checkout without
-  them looks like a broken build, not a missing secret).
-
-The page is brutally specific to this project. The whole upstream
-documentation does not go on the page; only the parts the project
-uses or needs to be careful about.
-
-### 5. Register
-
-`docs-librarian` adds the page to `docs/graph/libraries/index.md` with:
-
-| Library | Version | Page | Used by | Maintenance | License | Last reviewed |
-
-And updates `docs/graph/sources/index.md` with the raw and normalized
-sources just ingested.
-
-### 6. Validate
-
-Before the page is "authoritative":
-- One of: `architect`, `implementer`, or `tester` writes a tiny
-  smoke test that imports/uses the library at the version pinned,
-  to confirm the snippet on the wiki page actually works.
-- `security` skims for advisories that affect the pin and adds the
-  watch.
-
-If the smoke test fails, the wiki page is wrong — fix it before
-calling the protocol done.
-
-### 7. Notify grill.md
-
-Add the wikified library to grill.md section 5 (Research Summary)
-and section 6 (Decisions Made) as appropriate.
-
-## Refresh (vs new ingest)
-
-When refreshing an existing page:
-- Update the version pin and the "Last reviewed" date.
-- Diff the upstream CHANGELOG between the old and new version; record
-  the behavior changes that affect this project.
-- Update the API surface section if any used name changed.
-- Update idioms if a recommended pattern changed.
-- Update pitfalls if any were fixed upstream.
-- Run the smoke test again at the new version.
+The same pass over an existing page, entered when the pin no longer
+matches the lockfile, upstream released a major, an advisory landed, or
+the page's "Last reviewed" is past the project's cadence. Phase 2 diffs
+the upstream CHANGELOG between the old and new pin and records in §8
+the behavior changes that affect this project, updates §0 (pin, date),
+§3 for any used name that changed, §4 if a recommended pattern
+changed, §6 for the new pin's deprecations, §7 from the advisory feed;
+phase 3 re-runs the smoke test at the new pin; phase 5 updates the
+index row. Between full passes, the cheap reconciliation of resolved
+versions against recorded pins is
+`skill.research-and-ingest`'s drift check — it decides *whether* a
+refresh is due, it does not perform one.
 
 ## Exit conditions
 
-- `docs/graph/libraries/<name>.md` exists, populated, dated, sourced.
-- `docs/graph/libraries/index.md` has the row.
-- `docs/graph/sources/index.md` has the source entries.
-- A smoke test verified the pinned version of the library works.
-- grill.md is updated.
+- `docs/graph/libraries/<name>.md` exists with its §0 pin table filled
+  (exact version, not a placeholder), `Last reviewed` dated, §10
+  citing the sources used; §1–§3 populated, §4–§12 present and
+  demand-grown.
+- `docs/graph/sources/` holds the raw (where allowed) and normalized
+  copies, with their `sources/index.md` rows.
+- A smoke test verified the pinned version of the library works, run
+  by `tester` and recorded in its handback.
+- grill.md §5 names the page (grill-lint checks it against §9).
+- `docs/graph/libraries/index.md` has the row, written in the close-out;
+  `python3 docs/graph/graph-lint.py` exits 0.
 
 ## When *not* to use this protocol
 

@@ -1126,114 +1126,87 @@ can't, the delivery isn't done.
 *Source: `protocols/ingest-library.md`*
 
 - **id:** `protocol.ingest-library`, tier 2
-- **owns:** `ingest-library.flow`, `ingest-library.corpus-first`
+- **owns:** `ingest-library.flow`, `ingest-library.refresh`,
+  `ingest-library.corpus-first`
 - **requires:** —
-- **peers:** `protocol.harvest`, `skill.library-wiki`, `skill.research-and-ingest`
+- **peers:** `protocol.harvest`, `skill.library-wiki`,
+  `skill.research-and-ingest`
+- **artifacts:** `templates/library-page.template.md`,
+  `templates/knowledge-graph/graph-lint.py`
 - **load_when:** "adding a new dependency, library, SDK, or API"; "no
   wiki page for a library the code uses"; "version pin changed, refresh
   the library page"; "security advisory on a dependency"
 
 ### What it does
 
-Use ingest-library whenever a new external dependency (library,
-framework, SDK, API, protocol, spec, model provider, or significant
-tool) is introduced, OR whenever an existing page is stale. The
-deliverable is a complete, version-pinned page in
-`docs/graph/libraries/<name>.md`, registered in the index, with raw and
-normalized sources on disk. The wiki is the project's source of truth;
-agent memory of library APIs is unreliable across versions, so always
-ingest first.
+The core wiki-building flow: a complete, version-pinned page in
+`docs/graph/libraries/<name>.md`, registered in `libraries/index.md`,
+with raw and normalized sources on disk — built BEFORE any code touches
+the dependency, because agent memory of library APIs is unreliable
+across versions.
 
 ### Entry conditions
 
-One of: `architect`/`implementer` wants a dependency with no page; the
-version pin no longer matches; a behavior was encountered the page does
-not cover (and cost debugging time); a security advisory affects a
-wikified library.
+`architect` or `implementer` wants a dependency with no page; a pin no
+longer matches what the project uses; a behavior the page does not cover
+cost an agent debugging time; an advisory affects a wikified library.
 
-### Cast
+### The pass (`ingest-library.flow`)
 
-- `research-scout`: retrieval and normalization.
-- `docs-librarian`: finalizes the page and updates indexes.
-- `architect` (lightly): confirms the dependency fits the architecture
-  before the page is committed as authoritative.
+A phase table with a named owner per phase; **the table is the spawn
+order**. Two callers hold it — the orchestrator inside grill phase 3
+(one scout per dependency without a page) and the `docs-librarian`
+during a close-out or docs audit — and in both the scout drafts and the
+librarian finalizes (`delegation.model-classes`).
 
-### Workflow (`ingest-library.flow`)
+| Phase | Does | Owner | Needs |
+|---|---|---|---|
+| 0 | identify: name, exact version, ecosystem, why | the caller | lockfile / brief |
+| 1 | corpus check | the caller | 0 |
+| 2 | retrieve, snapshot, normalize, register sources; inspect code; **draft** §0–§3, §10 | `research-scout` | 0–1 (parallel across dependencies) |
+| 3 | smoke test at the pin | `tester` | 2 |
+| 4 | grill.md §5 (and §6) | the session | 3 |
+| 5 | finalize page, index rows, graph-lint | `docs-librarian`, in the close-out | 2–3 |
 
-**0. Withdraw from the seed corpus first (`ingest-library.corpus-first`).**
-Once you know the library's exact name, version, and ecosystem, check
-the seed's library-documentation corpus **first**: the pages `harvest`
-folded back from earlier plants
-(`library-corpus/<ecosystem>/<library>.md`, keyed by library and **not
-by version**). If the page exists, seed
-`docs/graph/libraries/<name>.md` from it, then pin and validate the
-version-specific layer (API deltas, deprecations, CVEs) against this
-project's actual lockfile version from upstream; the corpus never
-substitutes for the pin check. If the corpus page is absent, ingest from
-upstream as usual; the fresh page's version-durable surface becomes a
-harvest candidate. Reuse the corpus, re-download only the
-version-specific delta.
+Notes: phase 2 fetches release notes, quickstart, API reference,
+security policy and advisories, license (and for LLM/VLM SDKs pricing,
+rate limits, structured output, safety); advisories land in §7 and
+`security` weighs them at grill §11 — no separate spawn. The draft is
+brutally specific: §0–§3 and §10 on creation, §4–§12 demand-grown, never
+a fabricated "none". A failed smoke test returns the page to phase 2 as
+an attempt under `recover`'s three-attempt boundary. The librarian's
+finalization dedupes, writes the index rows, and runs `graph-lint.py`,
+whose library check reads the §0 pin and the index row.
 
-**1. Identify**: canonical name; the exact version to pin (not
-"latest"); ecosystem (npm, PyPI, Go module, Maven, OS package, container
-image, IETF RFC, etc.); why this project needs it (one sentence for §2).
+### Corpus first (`ingest-library.corpus-first`)
 
-**2. Retrieve**: `research-scout` fetches release notes/CHANGELOG,
-getting-started/quickstart, public API reference, security policy /
-advisories, license file, and for LLM/VLM libraries: pricing-relevant
-behavior, rate limits, structured-output features, safety policies.
-Snapshot raw content to `docs/graph/sources/raw/` (when license
-permits) and produce normalized clean Markdown in
-`docs/graph/sources/normalized/`.
+In the seed repo or a plant that harvested the library corpus, check
+`library-corpus/<ecosystem>/<library>.md` (keyed by library, not
+version) before re-downloading: seed the page from it, then pin and
+validate the version-specific layer against the lockfile from upstream.
+Reuse the corpus, re-download only the delta.
 
-**3. Inspect (read the code, not just the docs)**: scan the public API
-surface, `examples/`, and the maintenance signal (recent commit dates,
-open-issue volume). Note any doc/code discrepancy.
+### Refresh (`ingest-library.refresh`)
 
-**4. Compose the wiki page**: from
-`docs/graph/templates/library-page.template.md`. The template owns the
-section list; fill every section. Two constraints the template cannot
-enforce: the API-surface section covers only the slice this project
-actually uses (start small); and for a private dependency, record that
-resolution needs registry credentials in the build/CI environment. The
-page is brutally specific to this project: only the parts the project
-uses or must be careful about.
-
-**5. Register**: `docs-librarian` adds the page to the libraries index
-(Library | Version | Page | Used by | Maintenance | License | Last
-reviewed) and updates the sources index.
-
-**6. Validate**: one of `architect`/`implementer`/`tester` writes a
-tiny smoke test that imports/uses the library at the pinned version, to
-confirm the snippet works; `security` skims for advisories affecting the
-pin. If the smoke test fails, the page is wrong; fix it before calling
-the protocol done.
-
-**7. Notify grill.md**: add the wikified library to §5 (Research
-Summary) and §6 (Decisions Made).
-
-### Refresh (vs new ingest)
-
-Update the version pin and "Last reviewed" date; diff the upstream
-CHANGELOG between old and new version; update the API surface, idioms,
-and pitfalls; run the smoke test at the new version.
+The same pass over an existing page — pin drift, a major release, an
+advisory, or a stale "Last reviewed": phase 2 diffs the upstream
+CHANGELOG into §8 and updates §0/§3/§4/§6/§7, phase 3 re-runs the smoke
+test, phase 5 updates the index row. The cheap drift check between full
+passes is `research-and-ingest`'s; it decides whether a refresh is due.
 
 ### Exit conditions
 
-- `docs/graph/libraries/<name>.md` exists, populated, dated, sourced.
-- The libraries and sources indexes have the rows.
-- A smoke test verified the pinned version works.
-- grill.md is updated.
+The page exists with its §0 pin table filled (an exact version), `Last
+reviewed` dated, §10 citing sources, §1–§3 populated; sources on disk
+with their index rows; a smoke test by `tester` recorded in its
+handback; grill.md §5 names the page; `libraries/index.md` has the row
+(written in the close-out) and `graph-lint.py` exits 0.
 
-### When *not* to use this protocol
+### When not to use it
 
-- A trivial transitive dependency the codebase doesn't directly use
-  (wikify what you import, not every package in `node_modules`).
-- A platform feature part of the runtime itself (stdlib, browser
-  built-ins); cover those in
-  `docs/graph/best-practices/engineering.md`.
-
----
+Trivial transitive dependencies (wikify what you import); platform
+features of the runtime itself (those go in
+`best-practices/engineering.md`).
 
 ## from-scratch
 
@@ -1242,126 +1215,50 @@ and pitfalls; run the smoke test at the new version.
 - **id:** `protocol.from-scratch`, tier 2
 - **owns:** `from-scratch.phases`
 - **requires:** —
-- **peers:** `protocol.brainstorm`, `protocol.ingest-library`, `skill.from-scratch-bootstrap`
+- **peers:** `protocol.brainstorm`, `protocol.grill`,
+  `protocol.ingest-library`, `protocol.canonize`,
+  `skill.from-scratch-bootstrap`
 - **load_when:** "start a new project, empty repo"; "greenfield,
   bootstrap from nothing"; "no grill.md exists yet, day one setup";
   "project skeleton, verification baseline"
 
 ### What it does
 
-Use from-scratch when the project does not yet exist: the repo is empty
-or near-empty (no `docs/`, no `README.md`, no `grill.md`). Your job is
-to turn a goal into a project another agent can pick up cold. This
-protocol is bigger than the others because the first day matters
-disproportionately. Do not skip steps.
+Turns a goal into a project another agent can pick up cold, through
+nine phases that each adopt a sub-protocol carrying its own owners and
+failure modes — read the phase's protocol, never a summary. **The table
+is the spawn order.**
 
-### Entry conditions
+| Phase | Does | Adopts | Owner |
+|---|---|---|---|
+| 1 | Brainstorm | `brainstorm` | orchestrator with the user |
+| 2 | Project skeleton | `install.sh`; `knowledge-graph` | `seed-installer`; orchestrator (root node, README) |
+| 3 | grill.md, creation pass phases 0–2 | `grill.flow` | orchestrator |
+| 4 | Research and ingest | `grill.flow` phase 3 → `ingest-library.flow` | `research-scout` per dependency; `tester` smoke-tests |
+| 5 | ADR-0001 | `grill.flow` phase 4; `adr-writer` | `architect` |
+| 6 | Verification baseline | `verify` | `reliability` (runbooks, gate entry point); `tester` (framework, hello-world test) |
+| 7 | Specify slice 1 | `specify.flow` | per its table |
+| 8 | Test-first slice 1 | `grill.flow` 5–8, then `test-first.cycle` | per those tables |
+| 9 | Close-out and deliver | `canonize` → `deliver` | `docs-librarian` once, then the session |
 
-- The user has stated a goal, even vaguely.
-- There is no `docs/graph/plans/grill.md` yet.
-- The repository is empty, near-empty, or contains only a license and a
-  README placeholder.
-
-### The nine phases (`from-scratch.phases`)
-
-**Phase 1: Brainstorm (Socratic).** Adopt
-`docs/graph/protocols/brainstorm.md`; do not skip. Output: a precise
-problem statement, the primary user, the first useful slice, the
-constraints, and at least three shaped options. Ask at most three
-questions per exchange; if you cannot reach precision in three turns,
-write what you have, mark gaps as assumptions in grill.md, and proceed.
-
-**Phase 2: Project skeleton.** Once the brainstorm converges, create
-the skeleton: `AGENTS.md` (← `core/AGENTS.md`, the universal kernel),
-`CLAUDE.md` (symlink or copy), `.github/copilot-instructions.md`,
-`docs/graph/agents/` (the team, projected to `.claude/agents/`),
-`docs/graph/protocols/`, `docs/graph/skills/`, `README.md`, and the
-`docs/` tree including `docs/graph/` (`_schema.md`, `graph-lint.py`,
-`index.md` router, `nodes/root.md`), `plans/grill.md`, `specs/index.md`,
-`decisions/adr-0001-bootstrapping.md`, `libraries/index.md`,
-`sources/index.md`, `runbooks/local-development.md`,
-`runbooks/verification.md`. The seed's `install.sh` can drop the right
-per-tool overlay into `.claude/`, `.prime/agent/`, `.opencode/`,
-`.codex/`, or `.github/`, plus the knowledge-graph scaffold. That
-overlay includes the specialist roster this protocol later dispatches
-**by name**; settle spawnability before the first named hand-off
-(`delegation.harness-registration`). A new graph starts tiny (one root
-node) and grows a node per subsystem as the architecture (Phase 5)
-takes shape.
-
-**Phase 3: Initial grill.md.** Open grill.md from the template; fill at
-minimum §0 (Metadata: project name, date, phase "bootstrapping"), §2
-(problem statement), §3 (User Goal: primary user, outcome, acceptance
-criteria for the first slice, non-goals), §4 (Operating Constraints),
-§7 (three+ shaped options), §11 (Risks), §12 (Open Questions), §14
-("Phase 4 — research and library ingest").
-
-**Phase 4: Research and library ingest.** Hand off to `research-scout`
-with candidate technologies, and run `ingest-library` for each; its
-steps own the existence, version, and maintenance-signal checks and
-produce the wiki page. This phase often updates the shaped options
-(§5/§7) as candidates turn out unmaintained, worse-licensed, or
-sharp-edged.
-
-**Phase 5: Architecture decision.** Hand off to `architect`: pick the
-option using constraints and research; write
-`docs/graph/decisions/adr-0001-initial-architecture.md`; update grill.md
-§6 (Decisions) and §8 (Architecture Plan); draft the boundary diagram.
-
-**Phase 6: Verification baseline.** Before any feature code: pick the
-formatter, linter, type checker, and **test framework** (wikify each via
-`research-scout`); write `runbooks/local-development.md` with exact
-install/run commands and `runbooks/verification.md` with exact gate
-commands; add a minimal "hello world" test that runs end-to-end. The
-gate command must pass on a clean checkout before any feature. A project
-that cannot run its gates from a clean checkout, or has no test
-framework configured, is not yet bootstrapped.
-
-**Phase 7: Specify the first useful slice.** Run `specify` to produce
-`docs/graph/specs/SPEC-0001-<slug>.md` covering §1–§10; get the
-sign-offs (product ✓, architect ✓, tester ✓).
-
-**Phase 8: Test-first the first useful slice.** Run `test-first` for
-each contract in SPEC-0001: RED → GREEN → REFACTOR → COMMIT for each
-increment in grill.md §9.
-
-**Phase 9: Deliver.** Run `deliver`. The recommended next step is the
-second slice or the next-most-valuable item from the roadmap in
-`docs/graph/product/requirements.md`.
+Greenfield notes: phase 3 fills §1 with `none — greenfield` on every
+line (what `grill-lint.py` accepts in place of a path), §7 with the
+shaped options, §11/§12 from the brainstorm; phase 4 is where shaped
+options die on real research; phase 6 is done only when the gate passes
+on a clean checkout; phase 9 is the one librarian spawn that finalizes
+every page the scouts drafted and writes the index rows.
 
 ### Exit conditions
 
-- grill.md exists and is current.
-- `adr-0001-*.md` records the initial architecture.
-- `libraries/index.md` lists every chosen dependency with a page each.
-- `runbooks/local-development.md` and `verification.md` exist and their
-  commands run.
-- `specs/SPEC-0001-*.md` exists, status `active`.
-- The first useful slice's tests are green; the suite is green.
-- The README explains what the project is and how to run it.
+grill.md current; ADR-0001 recorded; every chosen dependency has a page
+and an index row, `graph-lint.py` and `grill-lint.py` green; both
+runbooks exist and their commands run; SPEC-0001 `implemented`; the
+slice's tests and the suite green; the README explains the project; the
+close-out ran.
 
-### Common ways to fail this protocol
+### Common ways to fail it
 
-The catalog of how a first day silently goes wrong (feature code before
-the gates run, code where the spec belongs, a skipped brainstorm, a
-stack picked from memory, a bootstrap with no test framework) is the
-honesty discipline owned by `skill.from-scratch-bootstrap`; read it
-alongside this protocol. A structural rule the skill cannot own: **each
-phase adopts a sub-protocol that carries its own failure modes**, so
-read the phase's protocol, never a summary of it.
-
----
-
-# The seed meta-loop: grow, harvest, graft, initialize
-
-These four protocols are the seed's own life cycle across projects.
-`grow` runs the seed *into* a new project. `harvest` runs a mature
-project *back into* the seed. `graft` carries the enriched seed
-*outward onto* an existing plant. `initialize` is a thin coding-tool
-adapter to `grow`. `harvest` and `graft` are user-sovereign and are
-never entered unprompted.
-
----
+Owned by `skill.from-scratch-bootstrap` (`from-scratch-bootstrap.method`).
 
 ## grow
 

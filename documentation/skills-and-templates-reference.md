@@ -638,11 +638,12 @@ memory of library APIs is unreliable across versions.
    test imports the pinned version, calls one or two §3 names, and passes in
    the project harness.
 
-**Workflows.** Creating a page fills §0–§3, §10, adds an index row, writes and
-runs the smoke test, then promotes. Refreshing diffs the upstream CHANGELOG,
-updates the pin (§0), §3 API surface, §4 idioms, §6 deprecations, §7 security,
-re-runs the smoke test, updates the index.
-
+**Workflow.** Creating and refreshing a page are `ingest-library.flow` and
+`ingest-library.refresh` (the protocol's phase tables), not restated; the
+skill says what each section of the scout's draft owes — §0/§1 from the
+lockfile and brief, §2 from a command actually run, §3 from current code (or
+"planned" names), §10 from the staged sources. The smoke test is the
+tester's phase of the same pass.
 **Also create a `best-practices/` page** when a *concern* spans multiple
 libraries.
 

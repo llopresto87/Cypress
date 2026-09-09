@@ -71,13 +71,13 @@ Spec authoring is split across three agents: `product` writes the user-facing la
 | 2 | `architect` | `agent.architect` | opus | coordinator, depth 1 | `architect.charter`, `architect.spec-sections`, `architect.reversibility-tags` |
 | 3 | `implementer` | `agent.implementer` | opus | leaf (no Task) | `implementer.charter`, `implementer.preconditions`, `implementer.integration-discipline` |
 | 4 | `reviewer` | `agent.reviewer` | opus | coordinator, depth 1 | `reviewer.charter`, `reviewer.checklist`, `reviewer.severity-scale` |
-| 5 | `tester` | `agent.tester` | opus | leaf (no Task) | `tester.charter`, `tester.test-levels`, `tester.bug-fix-loop` |
+| 5 | `tester` | `agent.tester` | opus | leaf (no Task) | `tester.charter`, `tester.bug-fix-loop` |
 | 6 | `security` | `agent.security` | opus | leaf (no Task) | `security.charter`, `security.secure-defaults`, `security.gate-bar` |
 | 7 | `reliability` | `agent.reliability` | opus | leaf (no Task) | `reliability.charter`, `reliability.runbook-set`, `reliability.delivery-pipeline` |
 | 8 | `data-ml` | `agent.data-ml` | opus | leaf (no Task) | `data-ml.charter`, `data-ml.synthetic-data-rules`, `data-ml.evaluation-design` |
 | 9 | `product` | `agent.product` | opus | leaf (no Task) | `product.charter`, `product.first-useful-slice`, `product.accessibility-floor` |
 | 10 | `docs-librarian` | `agent.docs-librarian` | opus | coordinator, depth 1 | `docs-librarian.charter`, `docs-librarian.close-out-flow`, `docs-librarian.sources-discipline` |
-| 11 | `research-scout` | `agent.research-scout` | sonnet | leaf (no Task) | `research-scout.charter`, `research-scout.source-discipline`, `research-scout.conflict-resolution` |
+| 11 | `research-scout` | `agent.research-scout` | sonnet | leaf (no Task) | `research-scout.charter` |
 | 12 | `pentest` | `agent.pentest` | opus | leaf (no Task) | `pentest.charter`, `pentest.authorization-gate`, `pentest.remediation-loop` |
 | 13 | `devils-advocate` | `agent.devils-advocate` | opus | leaf (no Task) | `devils-advocate.charter`, `devils-advocate.verdict-vocabulary`, `devils-advocate.primary-source-rule` |
 | 14 | `growth-orchestrator` | `agent.growth-orchestrator` | opus | coordinator, depth 2 | `growth-orchestrator.charter`, `growth-orchestrator.growth-phases` |
@@ -90,7 +90,7 @@ Coordinators as an edge list of `delegates_to` allowlists:
 
 | Coordinator | `max_spawn_depth` | `delegates_to` |
 |---|---|---|
-| `orchestrator` | 3 | `architect`, `implementer`, `reviewer`, `tester`, `security`, `reliability`, `data-ml`, `product`, `docs-librarian`, `research-scout`, `pentest`, `multi-agent-architect`, `growth-orchestrator`, `growth-scout`, `seed-installer`, `ui-ux-designer` |
+| `orchestrator` | 3 | `architect`, `implementer`, `reviewer`, `tester`, `security`, `reliability`, `data-ml`, `product`, `docs-librarian`, `research-scout`, `devils-advocate`, `pentest`, `multi-agent-architect`, `growth-orchestrator`, `growth-scout`, `seed-installer`, `ui-ux-designer` |
 | `architect` | 1 | `tester`, `research-scout` |
 | `reviewer` | 1 | `security`, `reliability` |
 | `docs-librarian` | 1 | `research-scout` |
@@ -108,7 +108,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **id:** `agent.orchestrator`
 - **Role:** Default agent. First contact for any request. Classifies the task tier (kernel §0), picks the right protocol, delegates to the right specialists, owns the grill.md plan-of-record, enforces spec-first and test-first, and runs the close-out and delivery rules at the end.
 - **model class:** `opus`
-- **Delegation:** coordinator with `can_delegate: true`, `max_spawn_depth: 3`, `delegates_to:` `architect`, `implementer`, `reviewer`, `tester`, `security`, `reliability`, `data-ml`, `product`, `docs-librarian`, `research-scout`, `pentest`, `multi-agent-architect`, `growth-orchestrator`, `growth-scout`, `seed-installer`
+- **Delegation:** coordinator with `can_delegate: true`, `max_spawn_depth: 3`, `delegates_to:` `architect`, `implementer`, `reviewer`, `tester`, `security`, `reliability`, `data-ml`, `product`, `docs-librarian`, `research-scout`, `devils-advocate`, `pentest`, `multi-agent-architect`, `growth-orchestrator`, `growth-scout`, `seed-installer`
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`, `WebSearch`, `WebFetch`, `Task`
 - **tier (graph load-tier):** 2
 - **owns (facts):** `orchestrator.charter`, `orchestrator.tier-paths`, `orchestrator.delegation-brief`
@@ -207,7 +207,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`
 - **tier (graph load-tier):** 2
-- **owns (facts):** `tester.charter`, `tester.test-levels`, `tester.bug-fix-loop`
+- **owns (facts):** `tester.charter`, `tester.bug-fix-loop`
 - **requires:** `protocol.test-first`
 - **peers:** `agent.implementer`, `agent.reviewer`
 - **routing_triggers:**
@@ -361,7 +361,7 @@ tell and no dropped fact under `--against HEAD`?
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`, `WebSearch`, `WebFetch`
 - **tier (graph load-tier):** 2
-- **owns (facts):** `research-scout.charter`, `research-scout.source-discipline`, `research-scout.conflict-resolution`
+- **owns (facts):** `research-scout.charter`
 - **requires:** `protocol.ingest-library`
 - **peers:** `agent.docs-librarian`
 - **routing_triggers:**

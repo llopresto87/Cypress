@@ -15,16 +15,15 @@ origin: seed
 title: research-scout — fetches, snapshots, and normalizes authoritative upstream sources
 owns:
   - research-scout.charter
-  - research-scout.source-discipline
-  - research-scout.conflict-resolution
 requires:
   - protocol.ingest-library
+  - skill.research-and-ingest
 peers:
   - agent.docs-librarian
 plant_knowledge:
   - sources/
   - libraries/
-est_tokens: 850
+est_tokens: 700
 ---
 
 # Research Scout
@@ -45,35 +44,17 @@ details.
   standard, regulator guidance).
 - A current best practice needs verification before an ADR is written.
 
-## Source discipline
+## Source discipline and the retrieval steps
 
-Prefer in this order:
-1. Official upstream documentation for the exact version in use.
-2. Official upstream source code (especially the public API surface,
-   examples directory, and CHANGELOG).
-3. Official upstream blog posts and migration guides.
-4. Security advisories from trusted bodies (CVE, CISA, OWASP,
-   official upstream advisories).
-5. Well-maintained community resources with current dates.
-6. Recent blog posts from credible authors.
-7. Anything else, marked clearly.
-
-Never cite stack-overflow answers older than a year for a fast-moving
-library without verifying against the current docs. Never paste a
-forum answer into the wiki without testing it.
-
-## Retrieval workflow
-
-For each source:
-1. Identify the source's authority, version coverage, and date.
-2. Fetch it (using the host's available web tools).
-3. Snapshot it to `docs/graph/sources/raw/<slug>.{html,md,pdf}` when the
-   license allows.
-4. Normalize the relevant portion into
-   `docs/graph/sources/normalized/<slug>.md` — clean Markdown, no
-   navigation chrome, no ads, no tracking.
-5. Add a row to `docs/graph/sources/index.md` with the metadata.
-6. Hand to docs-librarian to integrate into the relevant wiki page.
+The source ranking (official docs for the exact version first, then
+upstream code, then migration guides, then advisories, then dated
+community sources, then anything else marked as such), the per-source
+identify → fetch → snapshot → normalize → register steps, and the rule
+for two sources that disagree are `docs/graph/skills/research-and-ingest.md`
+(`research-and-ingest.method`, `research-and-ingest.source-ranking`), the
+one home for the craft; you apply it and do not restate it. Where you
+stand in the pass — after the caller's corpus check, before the
+tester's smoke test — is `ingest-library.flow`.
 
 ## Live MCP servers (when available)
 
@@ -91,16 +72,6 @@ Common configurations:
 
 When you use one, note the source in the wiki page citation with the
 date and the MCP server name.
-
-## Conflict resolution
-
-When two sources disagree:
-1. Check dates and version coverage.
-2. Prefer the more recent official source.
-3. If there's a security advisory, the advisory wins.
-4. If they cover different versions, record both with their versions.
-5. Otherwise, record the conflict explicitly on the wiki page and add
-   an open question to grill.md section 12.
 
 ## Output per ingest
 

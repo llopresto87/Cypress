@@ -46,9 +46,12 @@ templates, and the per-session instruction budget of the integrations.
   `templates/knowledge-graph/grill-lint.py` (tested by
   `tests/test-grill-lint.sh`).
 - Spawn order of a pass → its protocol's phase table (`grill.flow`,
-  `specify.flow`, `test-first.cycle`); the generic sequencing rule →
+  `specify.flow`, `test-first.cycle`, `ingest-library.flow`,
+  `from-scratch.phases`); the generic sequencing rule →
   `core/method/delegation.md` (`delegation.sequencing`). Skills, agents,
   and the orchestrator point, never re-list.
+- Source ranking, retrieval steps, conflict rule → `skills/research-and-ingest`;
+  page-section discipline → `skills/library-wiki`; the scout charter points.
 - The spec's `active` moment → `verify.status-evidence` (promotion lands
   with the RED); specify, spec-author, and the template point at it.
 - Roster ground truth → `agents/*.md` frontmatter (manifest, kernel

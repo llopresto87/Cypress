@@ -583,11 +583,45 @@ def check_reachability(nodes: list, errs: list) -> None:
             errs.append(f"{n.id}: unreachable from {ROOT_ID!r} and unlisted in index.md")
 
 
+LIB_PIN_ROW_RE = re.compile(r"^\|\s*[^|]*\|\s*([^|]*)\|", re.M)
+LIB_REVIEWED_RE = re.compile(r"\*\*Last reviewed:\*\*\s*(\S+)")
+LIB_PLACEHOLDER_RE = re.compile(r"^\s*(<[^>]*>|YYYY-MM-DD|latest|)\s*$", re.I)
+
+
 def check_libraries(nodes: list, errs: list) -> None:
+    """Every `libraries:` edge resolves to a page, and every page that follows
+    the template's form owes the ingest pass its exit: a filled §0 pin (an
+    exact version, never a placeholder or "latest"), a dated `Last reviewed`,
+    and a row in libraries/index.md when the index exists. A page with no
+    `## 0. Pin` heading is not template-shaped and owes nothing here —
+    the growth audit judges a bare page, this check judges an ingested one."""
     for n in nodes:
         for lib in n.get_list("libraries"):
             if not (LIBS_DIR / f"{lib}.md").exists():
                 errs.append(f"{n.id}: libraries → missing page docs/graph/libraries/{lib}.md")
+    if not LIBS_DIR.is_dir():
+        return
+    index_path = LIBS_DIR / "index.md"
+    index = index_path.read_text(encoding="utf-8", errors="replace") if index_path.exists() else None
+    for page in sorted(LIBS_DIR.glob("*.md")):
+        if page.name == "index.md":
+            continue
+        text = page.read_text(encoding="utf-8", errors="replace")
+        m = re.search(r"^## 0\. Pin\s*$(.*?)(?=^## |\Z)", text, re.M | re.S)
+        if not m:
+            continue
+        pin = m.group(1)
+        rows = [r for r in LIB_PIN_ROW_RE.findall(pin)
+                if not set(r.strip()) <= set("-: ") and r.strip().lower() != "exact version"]
+        if not rows or all(LIB_PLACEHOLDER_RE.match(r) for r in rows):
+            errs.append(f"libraries/{page.name}: §0 pin table has no exact version — "
+                        f"the ingest pass exits on a pinned page, never a placeholder")
+        rv = LIB_REVIEWED_RE.search(pin)
+        if not rv or not re.match(r"\d{4}-\d{2}-\d{2}$", rv.group(1)):
+            errs.append(f"libraries/{page.name}: §0 `Last reviewed` is not a date")
+        if index is not None and page.name not in index and page.stem not in index:
+            errs.append(f"libraries/{page.name}: no row in libraries/index.md — "
+                        f"the close-out librarian registers every drafted page")
 
 
 def check_artifacts(nodes: list, errs: list) -> None:

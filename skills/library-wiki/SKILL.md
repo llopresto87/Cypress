@@ -21,7 +21,7 @@ load_when:
   - "wiki page is stale or missing"
 artifacts:
   - templates/library-page.template.md
-est_tokens: 1200
+est_tokens: 1000
 ---
 
 # library-wiki
@@ -99,35 +99,20 @@ pinned version works. The smoke test:
 If the smoke test fails, the page is wrong (or the install is wrong);
 fix one of them before promoting the page.
 
-## Workflow (creating a new page)
+## Workflow
 
-1. Use `docs/graph/templates/library-page.template.md` to create
-   `docs/graph/libraries/<name>.md`.
-2. Fill §0 (Pin) and §1 (Role) from the architect's brief.
-3. Fill §2 (Install) by running the install command in a clean
-   environment and recording exactly what worked.
-4. Fill §3 (Used API surface) from the *current* code that uses the
-   library. If no code uses it yet (the page is being created during
-   architecture), leave §3 empty or list the names from the brief
-   with a note "planned".
-5. Fill §10 (References) with the sources used. `research-scout`
-   stages raw and normalized copies in `docs/graph/sources/`.
-6. Add a row to `docs/graph/libraries/index.md`.
-7. Write the smoke test.
-8. Run the smoke test; promote the page when it passes.
-
-## Workflow (refreshing an existing page)
-
-1. Read the page; note the current pin.
-2. Diff the upstream CHANGELOG between the current pin and the new
-   pin. Record the behavior changes that affect this project in §8.
-3. Update §0 (Pin) with the new version and today's date.
-4. Update §3 (Used API surface) for any name that changed.
-5. Update §4 (Idioms) if the recommended pattern changed.
-6. Update §6 (Deprecations) for the new pin.
-7. Update §7 (Security) — re-check advisory feed.
-8. Re-run the smoke test at the new pin.
-9. Update `docs/graph/libraries/index.md`.
+Creating and refreshing a page — which phase, which owner, which spawn
+waits for which — are `ingest-library.flow` and `ingest-library.refresh`
+in `docs/graph/protocols/ingest-library.md`, and are not restated here: a
+second copy of a sequence drifts. What this skill adds to the scout's
+draft, section by section: §0 (Pin) and §1 (Role) from the lockfile
+and the architect's brief; §2 (Install) from a command actually run in
+a clean environment, recorded exactly as it worked; §3 (Used API
+surface) from the *current* code that uses the library — or, when the
+page precedes the code, the names from the brief marked "planned"; §10
+(References) from the sources `research-scout` staged in
+`docs/graph/sources/`. The smoke test that makes the page authoritative
+is the tester's phase of the same pass.
 
 ## When to also create a `best-practices/` page
 
