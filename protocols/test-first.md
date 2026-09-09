@@ -1,6 +1,6 @@
 ---
 name: test-first
-description: The WORKFLOW that drives every production change through RED → GREEN → REFACTOR → COMMIT — entry conditions (spec, plan, wiki), characterize-first on untested code, the per-phase gates, the bug-fix and pure-refactor variants, the migration safety gate, recorded exceptions, and exit conditions. Use whenever you are about to write or change production code. How to SHAPE each test — level selection, contract naming, one outcome per test — is the test-first skill.
+description: The WORKFLOW that drives every production change through RED → GREEN → REFACTOR → COMMIT — entry conditions (signed spec, plan, wiki), the phase table that says who owns each phase and which spawn waits for which, characterize-first on untested code, the per-phase gates, the review inside COMMIT, the spec's promotion with its RED, the bug-fix and pure-refactor variants, the migration safety gate, recorded exceptions, and exit conditions. Use whenever you are about to write or change production code. How to SHAPE each test — level selection, contract naming, one outcome per test — is the test-first skill.
 id: protocol.test-first
 tier: 2
 kind: protocol
@@ -22,7 +22,7 @@ load_when:
   - "bug fix, regression test"
   - "legacy code with no tests, characterization test"
   - "pure refactor, migration safety"
-est_tokens: 2300
+est_tokens: 2700
 command: true
 ---
 
@@ -45,9 +45,11 @@ exceptions are explicit and recorded in grill.md §9.
 
 ## Entry conditions
 
-- A spec exists in `docs/graph/specs/` for the behavior being added or
-  changed.
-- A plan exists in `docs/graph/plans/grill.md` §9 with the increments named.
+- A spec in `docs/graph/specs/` covers the behavior being added or
+  changed, signed in its §0 (`draft` with product ✓ architect ✓ tester ✓
+  is enough to encode; T2 work needs it `active`, kernel §0).
+- A plan exists in `docs/graph/plans/grill.md` §9 with the increments
+  named, in dependency order, `grill-lint.py` green.
 - The relevant libraries are wikified in `docs/graph/libraries/`.
 
 If any of these is missing, back up to the protocol that produces it
@@ -70,9 +72,29 @@ characterization test fails in exactly the way you intended — that
 failure is your RED, and the normal cycle resumes. Adopting a codebase
 does not license editing untested code bare.
 
-## The cycle
+## The cycle (`test-first.cycle`)
 
-For each increment in the plan:
+One cycle per increment, in grill.md §9 order. Each phase has an owner,
+and **the table is the spawn order**: a phase's spawn is issued only
+after the handback it needs has returned; the next increment's RED is
+not spawned until this increment's COMMIT is recorded, unless §9's
+`Depends on:` rows say the two are independent
+(`delegation.sequencing`, `docs/graph/method/delegation.md`).
+
+| Phase | Owner | Needs | Hands back |
+|---|---|---|---|
+| RED | `tester` | the §9 row, the contract text, the target test paths | failing tests that fail for the right reason; spec §10 rows `red` |
+| GREEN → REFACTOR | `implementer` | the RED handback (test paths, contract slugs, files) | a green, integrated diff; affected gates run locally; spec §10 rows `green` |
+| REVIEW | `reviewer` | the diff, the §9 row | severity-tagged findings; Critical/Major return to `implementer`, one more spawn, an attempt under `protocol.recover` |
+| COMMIT | the session | a clean review | grill.md §15 entry with the `spawn_id`s in issue order; the commit; the spec's status advanced |
+
+The one merge the tiers allow: a T2 increment covering a single
+contract whose RED is mechanical is briefed whole to `implementer`,
+which writes the failing test before making it pass
+(`tiers.execution-paths`); the REVIEW spawn stays independent either
+way. Workers report what they did in the handback; the session, not the
+worker, writes grill.md — the plan-of-record is session-owned
+(`rule.grill`, `protocol.canonize`).
 
 ### RED — write the failing test
 
@@ -133,22 +155,29 @@ a green you have seen turn red and back is a trusted green.
 
 ### COMMIT — record the increment
 
-1. Append to grill.md §15 (Changelog): increment title, spec
-   contracts covered, files touched, tests added, gates run, gates
-   passed.
-2. Update the spec's §10 (Test mapping) with the actual test names
-   and file paths.
-3. Name any library idiom this increment taught — and any durable
-   tool it built — in your handback payload; the close-out librarian
-   persists them (§3.7/§3.8). You do not edit the wiki or the tool
-   catalog inline.
-4. Run the increment's named gate from grill.md §9 before you commit —
-   `docs/graph/protocols/verify.md` owns that per-increment cadence,
-   and the full verify pass still runs before close-out and deliver.
-5. If using version control, commit. Commit message:
+1. **Review first.** Hand the diff and the §9 row to `reviewer`. A
+   Critical or Major finding goes back to `implementer` as one more
+   spawn; a third red on the same increment is the gate-failure rule —
+   reopen `grill` and re-slice (`protocol.recover`).
+2. Run the increment's named gate from grill.md §9 —
+   `docs/graph/protocols/verify.md` owns that per-increment cadence, and
+   the full verify pass still runs before close-out and deliver.
+3. The session appends to grill.md §15 (Changelog): increment title,
+   spec contracts covered, files touched, tests added, gates run with
+   their outcomes, and the cycle's `spawn_id`s in the order issued.
+4. The spec's §10 (Test mapping) carries the actual test names and
+   file paths — the tester wrote the rows at RED, the implementer set
+   them `green`. **The spec's status advances in this same change:**
+   the first RED to land for a `draft` spec promotes it to `active`
+   (the moment `spec-lint.py` starts counting it, and the one place a
+   live status can be honest — `verify.status-evidence`); the last
+   contract to turn green marks it `implemented`.
+5. Library idioms this increment taught, and any durable tool it built,
+   are named in the worker handbacks; the close-out librarian persists
+   them (§3.7/§3.8). Nobody edits the wiki or the tool catalog inline.
+6. If using version control, commit. Commit message:
    `feat(<scope>): <contract slug> — implements SPEC-NNNN`
    or `fix(<scope>): <bug slug> — adds regression for SPEC-NNNN`.
-6. Hand the diff to `reviewer`.
 
 ## Per-language choice of test framework
 
@@ -230,10 +259,15 @@ orchestrator so the team can address it directly.
 
 ## Exit conditions
 
-- Every spec contract for the increment has a passing test.
-- The full suite is green.
-- The verification gates from `verify` protocol have run.
-- grill.md and the spec are updated.
+- Every spec contract for the increment has a passing test, named for
+  the contract; the full suite is green.
+- The increment's named gate ran; the full `verify` pass ran before
+  close-out, recorded in the runbook by the tester that ran it.
+- The review is clean (no Critical or Major open).
+- grill.md §15 carries the increment with its `spawn_id`s; spec §10
+  carries the tests; the spec's status is `active` (or `implemented`
+  when every contract is green); `spec-lint.py` and `grill-lint.py`
+  exit 0.
 
 ## Anti-patterns
 
@@ -256,6 +290,9 @@ orchestrator so the team can address it directly.
   external services are reasonable. Mocks for the object under
   test or its immediate collaborators are a smell — the design is
   probably too coupled.
+- **A worker writing grill.md.** §15 is the session's record of what
+  it spawned and in what order; a worker that appends to it has
+  written the caller's trace. Report in the handback.
 - **Assuming dev-machine green means CI green.** Headless or
   browser-based tests that pass locally are not guaranteed in CI —
   minimal build images often lack a browser binary or another

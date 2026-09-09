@@ -64,8 +64,9 @@ Write the brainstorm output directly into the relevant sections of
 - Section 11 → risks.
 - Section 12 → assumptions and open questions.
 
-If the project does not yet have a grill.md, create one from the
-template (`docs/graph/templates/grill.template.md` or `docs/graph/protocols/grill.md`).
+If the project does not yet have a grill.md, create one from
+`docs/graph/templates/grill.template.md` — brainstorm fills phase 1 of
+the grill pass (`grill.flow`), which is why §2–§4 land before §1.
 
 ## Exit conditions
 

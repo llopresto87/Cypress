@@ -185,6 +185,8 @@ If the project has no grill.md yet, create one from the template
 - **owns:** `rule.spec`, `specify.flow`, `specify.revision-discipline`
 - **requires:** —
 - **peers:** `protocol.brainstorm`, `protocol.grill`
+- **artifacts:** `templates/spec.template.md`,
+  `templates/knowledge-graph/spec-lint.py`
 - **load_when:** "write a spec, no spec covers this behavior"; "new
   feature, endpoint, job, or LLM interaction to define"; "changing an
   existing feature's contract"; "bug revealed an implicit or missing
@@ -194,125 +196,81 @@ If the project has no grill.md yet, create one from the template
 
 Use specify when the goal is clear and you need an executable
 specification before planning the implementation. The deliverable is a
-new (or refreshed) file in `docs/graph/specs/`, populated through every
-section of `docs/graph/templates/spec.template.md`, signed off by
-product, architect, and tester.
+file in `docs/graph/specs/` populated through every section of the spec
+template, signed off in §0 by product, architect, and tester (security
+where it reviewed) — and still `draft`: the spec turns `active` in the
+change that lands its RED tests.
 
 This node owns **the spec rule** (`rule.spec`): specs are the source of
-truth for *behavior*. Every non-trivial behavior (feature, endpoint,
-job, significant function, LLM/VLM interaction) has a spec, written
-before the code, with stable section numbers. Specs are executable:
-every functional contract maps to at least one test (the test-first
-rule enforces this). Superseded specs stay on disk with status
-`superseded` and a link forward. If wiki and spec disagree about how a
-library *can* be used, the wiki is right; if product and spec disagree
-about what to build, fix the spec.
+truth for *behavior*. Every non-trivial behavior has a spec, written
+before the code, with stable section numbers; every functional contract
+maps to at least one test; superseded specs stay on disk with a link
+forward. If wiki and spec disagree about how a library *can* be used,
+the wiki is right; if product and spec disagree about what to build,
+fix the spec.
 
 ### Entry conditions
 
-One of:
-- `brainstorm` has just converged on a problem statement and a first
-  useful slice.
-- An existing feature is being changed in a way that affects its
-  contract.
-- A bug investigation revealed the original spec was incomplete or
-  wrong.
-- An ADR introduces a new system behavior that needs a spec.
+One of: `brainstorm` converged on a first useful slice; an existing
+feature's contract is changing; a bug investigation revealed an
+incomplete or wrong spec; an ADR introduces a new behavior.
 
-### Who participates
+### The pass (`specify.flow`)
 
-| Specialist | Owns |
-|-----------|------|
-| `product` | §3 User-facing behavior, §9 Acceptance criteria (user view) |
-| `architect` | §4 Functional contracts, §6 Data shapes, §7 Failure modes (system view) |
-| `tester` | §10 Test mapping; reviews §4 for testability (executable view) |
-| `docs-librarian` | registers the spec in the index, links it from grill.md |
-| `security` | reviews when the spec touches auth, data, secrets, payments, file handling, or AI behaviors |
+A phase table with a named owner per phase; **the table is the spawn
+order** — a phase's spawn is issued only after every handback it needs
+has returned, and two phases run side by side only where the table says
+so (`delegation.sequencing`). Spawned, clean-context work: if the host
+cannot spawn the required model classes, stop and report; a missing
+*type* is `delegation.harness-registration`, not a stop.
 
-This workflow requires spawned clean-context workers. If the host
-cannot spawn them with the required model classes, stop and report the
-unsupported operating model; do not simulate the personas. A specialist
-the host has no *type* for is a different case; see
-`delegation.harness-registration`.
+| Phase | Sections | Owner | Needs | Parallel with |
+|---|---|---|---|---|
+| 0 | identifier; §0 §1 §2 | orchestrator | the goal | — |
+| 1 | §3 | `product` | §2 | — |
+| 2 | §4 §5 §6 §7 §8 | `architect` | §3 | — |
+| 3 | §9 (maps to §4 slugs) | `product` | §4 | 4 |
+| 4 | §10; testability review of §4 | `tester` | §4 §7 §8 | 3 |
+| 5 | adversarial §7 / §5 | `security`, sensitive surface only | §4 §7 | 3–4 |
+| 6 | §11; sign-offs in §0; §12; grill.md §3/§9 links | orchestrator; signers tick §0 | 3–5 | — |
 
-### The spec sections (§1–§12)
+Notes: the identifier is the next free number on disk, and the catalog
+row is the librarian's at close-out. §3 before §4, §4 before §9 — a §9
+written beside §3 maps to nothing. §10 carries one `pending` row per
+contract and failure mode; a contract that fails the testability review
+returns to `architect` as an attempt under `recover`'s three-attempt
+boundary. **Sign-off is not promotion**: the ticks land in §0 while the
+spec is `draft`; `active` lands with the first RED (`test-first`
+COMMIT, owned by `verify.status-evidence`), `implemented` when every
+contract is green — `spec-lint.py` counts only live specs, so a signed
+draft is planned against and encoded, never reported uncovered. A
+signed draft is what `grill` plans against.
 
-The spec is drafted from `docs/graph/templates/spec.template.md`:
+### Revising an existing spec
 
-| § | Section | Content |
-|---|---------|---------|
-| §0 | Metadata | id, status `draft`, owner, date, related grill section, related ADRs, related wiki pages |
-| §1 | Summary | one paragraph — what the spec covers and why |
-| §2 | Scope | explicit "in scope" and "out of scope" bullets |
-| §3 | User-facing behavior | what the user experiences, in user language |
-| §4 | Functional contracts | each contract is a named Given/When/Then scenario with one outcome |
-| §5 | Non-functional requirements | performance budgets, security, accessibility floor, latency, cost |
-| §6 | Data shapes | schemas for inputs, outputs, persisted state (language-agnostic convention) |
-| §7 | Failure modes | for each contract, the named ways it can fail and what happens |
-| §8 | Examples | concrete input/output pairs (one happy, one edge, one failure) — the seed test cases |
-| §9 | Acceptance criteria | measurable "done" conditions, each mapped to contracts |
-| §10 | Test mapping | for each contract and failure mode, the test(s) that cover it |
-| §11 | Open questions | every "decide later" with a named resolution path |
-
-(The revision changelog is the spec's §12, referenced under the
-revision discipline below.)
-
-### Workflow (`specify.flow`)
-
-1. Allocate an identifier: `SPEC-NNNN-short-slug`. Find the next
-   free number in `docs/graph/specs/index.md`. File path:
-   `docs/graph/specs/SPEC-NNNN-<slug>.md`.
-2. Draft from the template: fill §0–§11 above.
-3. Testability review. Before the spec leaves `draft`, the tester
-   checks: is every contract observable from outside? is every §9
-   assertion measurable? are the data shapes concrete enough for a
-   fixture? are the failure modes triggerable in a test environment? A
-   spec that cannot be tested is a description, not a spec; it goes
-   back to the architect.
-4. Security review (if applicable). For auth, secrets, payments,
-   file uploads, external integrations, or LLM/VLM behaviors that act
-   on data, security adds abuse cases as failure modes or
-   non-functional requirements.
-5. Promote to active: on sign-off, change status `draft` →
-   `active`, add the index row, link from grill.md §3 and §9.
-6. Hand off to grill: the plan implements the contracts in
-   increments each small enough to be one RED-GREEN-REFACTOR cycle.
-
-### Revision discipline (`specify.revision-discipline`)
-
-When behavior changes:
-1. Read the existing spec.
-2. Decide: *clarification* (same meaning, said better) or *change*
-   (behavior itself is different)?
-3. Clarifications: edit in place; add a row to the spec's §12
-   Changelog.
-4. Changes: copy the spec to a new identifier, mark the old
-   `superseded` with a link forward, write the new spec, update
-   everything that depended on the old.
-
-Specs never silently change behavior. The catalog tells the next agent
-"this used to behave like X; now it behaves like Y; here is when it
-changed and why."
+Decide clarification vs change. Clarifications edit in place with a §12
+row; changes copy to a new identifier, mark the old `superseded` with a
+link forward, and update everything that depended on it. Specs never
+silently change behavior.
 
 ### Exit conditions
 
-- `docs/graph/specs/SPEC-NNNN-<slug>.md` exists, status `active`, every
-  section populated.
-- The index has the row; grill.md links from §3 and §9.
-- Every §4 contract has at least one test in §10 (mapping may exist
-  before the test is written).
-- Sign-off recorded: product ✓, architect ✓, tester ✓ (security ✓ if
-  applicable).
+"Populated" = content or an explicit `not applicable — <reason>`. The
+file exists, populated, `draft` with product ✓ architect ✓ tester ✓
+(security ✓ where reviewed) in §0; every §4 contract has a §10 row;
+every §9 criterion maps to a real slug; §11 is empty or flagged in
+grill.md §12; grill.md links the spec from §3 and §9;
+`python3 docs/graph/spec-lint.py` exits 0 (the shape checks,
+mechanically, for every spec on disk).
 
 ### Anti-patterns
 
-- The spec is the README (marketing, not contracts).
-- The spec describes the implementation, not behavior.
-- No failure modes section (half a spec).
-- No examples.
-- Spec written after the code: mark it `back-written`.
-
----
+The spec is the README; the spec describes the implementation; no
+failure modes; no examples; spec written after the code (mark it
+`back-written`); **§9 written beside §3** (a criterion mapping to slugs
+that did not exist yet); **promoted at sign-off** (an `active` spec with
+no test is a red gate for the whole test-first phase and a false green
+the moment someone silences it).
 
 ## grill
 
@@ -458,9 +416,11 @@ list; a plan with no spec link.
 *Source: `protocols/test-first.md`*
 
 - **id:** `protocol.test-first`, tier 2
-- **owns:** `rule.test-first`, `test-first.cycle`, `test-first.characterize-first`
+- **owns:** `rule.test-first`, `test-first.cycle`,
+  `test-first.characterize-first`
 - **requires:** —
-- **peers:** `protocol.verify`, `protocol.specify`, `skill.test-first`, `skill.holistic-editing`
+- **peers:** `protocol.verify`, `protocol.specify`, `skill.test-first`,
+  `skill.holistic-editing`
 - **load_when:** "about to write or change production code"; "RED GREEN
   REFACTOR, failing test first, TDD"; "bug fix, regression test";
   "legacy code with no tests, characterization test"; "pure refactor,
@@ -470,176 +430,99 @@ list; a plan with no spec link.
 
 Use test-first whenever you are about to write or change production
 code. The deliverable is a sequence of RED → GREEN → REFACTOR → COMMIT
-cycles, each tied to one or more spec contracts, with verification
+cycles, each tied to one or more spec contracts, with the verification
 gates passing at the end.
 
-This node owns **the test-first rule** (`rule.test-first`): tests
-authorize code; you integrate, not bolt on. No production code without
-a failing test that authorizes it: RED → GREEN → REFACTOR → COMMIT, per
-increment. The test encodes a named spec contract and must fail for the
-right reason first; GREEN adds the minimum new behavior, integrated
-into the file, not stapled to its edge; REFACTOR is not optional when
-you touched existing code, and an additive-only diff is a red flag to
-justify. The exceptions are explicit and recorded in grill.md §9.
+This node owns **the test-first rule** (`rule.test-first`): no
+production code without a failing test that authorizes it. The test
+encodes a named spec contract and must fail for the right reason first;
+GREEN adds the minimum new behavior, integrated into the file; REFACTOR
+is not optional when you touched existing code; exceptions are explicit
+and recorded in grill.md §9.
 
 ### Entry conditions
 
-- A spec exists in `docs/graph/specs/` for the behavior.
-- A plan exists in `docs/graph/plans/grill.md` §9 with named
-  increments.
-- The relevant libraries are wikified in `docs/graph/libraries/`.
+A spec covers the behavior, signed in its §0 (`draft` with the three
+sign-offs is enough to encode; T2 needs it `active`); grill.md §9 names
+the increments in dependency order, `grill-lint.py` green; the
+libraries are wikified. Missing one → back up to the protocol that
+produces it.
 
-If any is missing, back up to the protocol that produces it (`specify`,
-`grill`, `ingest-library`).
+### Existing code with no test — characterize first
 
-### Characterize first (`test-first.characterize-first`)
-
-On legacy or adopted code with no spec and no test, you cannot turn a
-contract into a failing test, because nobody wrote down what the code
-is *supposed* to do. Before you change such code, write a
-**characterization test** that pins what it does *today*, bug
-included. Run it; it passes (it describes reality). Name it so no one
-mistakes it for a correctness claim (`characterizes_…`, not
-`should_…`), and note any believed-wrong behavior in the docstring,
-linking the grill.md item that tracks fixing it. Now you have a safety
-net: make the change, the characterization test fails exactly as
-intended, and that failure is your RED.
+On legacy or adopted code with no spec and no test, write a
+characterization test that pins what the code does *today* (bug
+included), named `characterizes_…`, with any believed-wrong behavior
+noted and linked to grill.md. Make your change; the characterization
+test fails in exactly the intended way — that is your RED.
 
 ### The cycle (`test-first.cycle`)
 
-For each increment in the plan:
+One cycle per increment, in grill.md §9 order. **The table is the spawn
+order**: a phase's spawn is issued only after the handback it needs has
+returned; the next increment's RED waits for this increment's COMMIT
+unless §9's `Depends on:` rows say they are independent
+(`delegation.sequencing`).
 
-**RED: write the failing test**
-1. Identify the spec contract(s): each is one Given/When/Then in the
-   spec §4.
-2. Write test(s) exercising each contract; names:
-   `test_<spec_id>_<contract_slug>`. The test name names the contract.
-3. Run the test. **Confirm it fails for the right reason.** A failure
-   from a missing import or a wrong function name is *not* RED; a
-   failure because the *behavior* is missing *is* RED.
-4. If you cannot get RED for the right reason, the test or contract is
-   wrong; fix it.
-5. Update spec §10 (Test mapping): status `red`.
+| Phase | Owner | Needs | Hands back |
+|---|---|---|---|
+| RED | `tester` | §9 row, contract text, target test paths | failing tests, right reason; §10 rows `red` |
+| GREEN → REFACTOR | `implementer` | the RED handback | green, integrated diff; affected gates run; §10 rows `green` |
+| REVIEW | `reviewer` | the diff, the §9 row | severity findings; Critical/Major → `implementer` once more, an attempt under `recover` |
+| COMMIT | the session | a clean review | grill.md §15 entry with the `spawn_id`s in order; the commit; the spec's status advanced |
 
-*Inherited suites: prove RED by mutation.* A green suite you inherited
-is untrusted; you have never watched it fail. Before you rely on it,
-deliberately reintroduce the historical defect a test claims to guard
-against, confirm the suite fails for *that specific reason*, then
-revert. Only a green you have seen turn red and back is a trusted
-green.
+The one merge the tiers allow: a T2 single-contract increment with a
+mechanical RED is briefed whole to `implementer`; the REVIEW spawn stays
+independent. Workers report in the handback; the session writes
+grill.md.
 
-**GREEN: minimum behavior, integrated**
-1. Add the minimum *new behavior* that turns RED to GREEN. "Minimum" is
-   about behavior, not diff size: no speculative generality and no
-   expansion into unrelated code. But integrate it into the file's
-   existing design; do not append at the bottom.
-2. Run the test; confirm it passes.
-3. Run the surrounding/module tests; confirm nothing else broke. A new
-   green that turns another green red is a regression and must be fixed
-   before proceeding.
-4. Update spec §10: status `green`.
+- **RED**: identify the contracts; write tests named for them; confirm
+  they fail because the *behavior* is missing (not an import or a
+  name); if RED for the right reason is unreachable, the test or the
+  contract is wrong. Inherited green suites are proven by mutation
+  before they are trusted.
+- **GREEN**: the minimum new behavior — minimum in behavior, not diff
+  size — integrated into the file's design; the surrounding tests stay
+  green.
+- **REFACTOR**: remove the duplication the change introduced, delete the
+  branch it made dead, fix the names; mandatory when existing code was
+  touched; the suite stays green throughout.
+- **COMMIT**: review first (a Critical or Major returns to
+  `implementer`; a third red on the increment reopens `grill`); run the
+  increment's named gate; the session appends §15 with the cycle's
+  `spawn_id`s; spec §10 carries the actual tests and **the spec's status
+  advances in the same change** — first RED promotes `draft` → `active`,
+  last green marks `implemented`; idioms and tools go to the close-out
+  via the handbacks; then the commit
+  (`feat(<scope>): <slug> — implements SPEC-NNNN`).
 
-**REFACTOR: integrate cleanly, suite green**
-1. Look at the code you wrote and the code around it.
-2. Remove duplication, delete dead branches, fix names/docstrings, move
-   code to the right module. When done, the file reads as if the
-   requirement had always existed, with no visible seam (see
-   `docs/graph/skills/holistic-editing.md`).
-3. Run tests after each refactor; the suite stays green.
-4. On a pure addition to green fields the refactor may be trivial. But
-   **when you touched existing code, REFACTOR is not optional**: an
-   additive-only diff that left duplication or dead code behind is
-   incomplete. (Append-only artifacts such as grill.md history and ADRs
-   are the deliberate exception; there you supersede.)
+### Variants
 
-**COMMIT: record the increment**
-1. Append to grill.md §15 (Changelog): increment title, spec contracts
-   covered, files touched, tests added, gates run/passed.
-2. Update spec §10 with actual test names and file paths.
-3. Name any library idiom this increment taught and any durable tool it
-   built in your handback payload; the close-out librarian persists
-   them (§3.7/§3.8). You do not edit the wiki or the tool catalog
-   inline.
-4. If using version control, commit:
-   `feat(<scope>): <contract slug> — implements SPEC-NNNN` or
-   `fix(<scope>): <bug slug> — adds regression for SPEC-NNNN`.
-5. Hand the diff to `reviewer`.
-
-### Per-language test framework
-
-The first time test-first runs in a project, the framework is chosen
-and wikified; subsequent increments use the same one. Criteria: official
-or near-official for the ecosystem; fast feedback; good failure
-messages; support for fakes, fixtures, parametrization, and the test
-levels in `docs/graph/agents/04-tester.md`. The choice is recorded as
-an ADR.
-
-### Bug fixes
-
-A bug is a spec the codebase failed to honor (or a missing spec):
-1. If the violated contract already exists, write a regression test
-   against the buggy code, see it fail, fix, see it pass. If it does
-   not, the spec was incomplete; run `specify` first, then write the
-   regression.
-2. A bug confirmed but not yet fixable is encoded as an
-   explicitly-named, intentionally-failing test inside the regular
-   suite, documenting the root cause, so the debt stays visible on
-   every run.
-3. The regression test stays in the suite forever.
-
-### Pure refactor (no behavior change)
-
-1. Existing tests must pass before you start.
-2. You write no new test (no new behavior).
-3. You change the code.
-4. Existing tests must still pass.
-5. If any breaks: either (a) behavior changed accidentally, so roll
-   back, or (b) the test tested implementation not behavior, so fix
-   the test or back up to `specify` if the refactor changes the spec.
-
-### Migration safety gate
-
-Before any framework, ORM, or runtime **major-version** migration,
-confirm the change is observable. "No migrations tool and no tests,
-with the schema driven only by the ORM's auto-DDL" is itself a
-**blocking** finding that must be closed first. A migration against an
-unguarded schema is an unverified change waiting to surface in
-production.
-
-### Exceptions to test-first (recorded in grill.md §9 with rationale and date)
-
-- Throwaway prototypes to learn a library: mark them; do not
-  merge.
-- Pure configuration changes with no behavior to verify.
-- Type-only changes where the type checker is the verifier.
-- Generated code where the generator itself is tested.
-
-Reaching for "exception" frequently is a signal that test-first is not
-landing; surface it to the orchestrator.
+Bug fixes (a bug is a spec the code failed to honor: regression test
+RED → fix → the test stays forever; a missing contract goes back to
+`specify`; a confirmed-but-unfixable bug is an intentionally failing
+named test). Pure refactors (existing tests green before and after; a
+break means a behavior change or a test of implementation). Migration
+safety gate (an unguarded schema is a blocking finding first). Recorded
+exceptions (throwaway prototypes, pure configuration, type-only changes,
+generated code) — each in grill.md §9 with a rationale and a date.
 
 ### Exit conditions
 
-- Every spec contract for the increment has a passing test.
-- The full suite is green.
-- The verification gates from `verify` have run.
-- grill.md and the spec are updated.
+Every contract for the increment has a passing test named for it; the
+suite is green; the increment's gate ran and the full `verify` pass ran
+before close-out; the review is clean; grill.md §15 carries the
+increment with its `spawn_id`s, spec §10 carries the tests, the spec's
+status is `active` (or `implemented`); `spec-lint.py` and
+`grill-lint.py` exit 0.
 
 ### Anti-patterns
 
-- Writing tests after the code "to be safe" (documentation, not
-  test-first).
-- Tests that pass without the code present (investigate). Ask the same
-  of a whole gate phase: if it would have passed identically against
-  the pre-change code, it proved zero coverage.
-- One giant test per increment.
-- Testing through (e2e for a pure function; a unit test that mocks
-  three layers).
-- Mocking everything: mocks for the object under test or its immediate
-  collaborators are a smell.
-- Assuming dev-machine green means CI green (CI image may lack a
-  browser binary or runtime).
-
----
+Tests written after the code; tests that pass without the code present
+(or a gate phase that would pass against the pre-change code); one
+giant test per increment; testing through the wrong level; mocking the
+object under test; **a worker writing grill.md** (§15 is the session's
+trace of what it spawned); assuming dev-machine green means CI green.
 
 ## verify
 

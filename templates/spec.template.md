@@ -195,14 +195,17 @@ passes), `pending` (test not yet written), `skipped` (with reason).
 | Question | Why it matters | Current assumption | Owner | Resolves by |
 |---|---|---|---|---|
 
-A spec with open questions is still `draft`. Promote to `active`
-only when the table is empty or every row's "current assumption" is
-recorded as a flagged assumption in grill.md §12.
+A spec with open questions is unsigned. Sign off (§0) only when the
+table is empty or every row's "current assumption" is recorded as a
+flagged assumption in grill.md §12. Sign-off keeps the status `draft`;
+`active` lands with the spec's first RED tests (test-first COMMIT),
+`implemented` when every contract is green.
 
 ## 12. Changelog
 
-- YYYY-MM-DD — created in `draft`, signed off by …
+- YYYY-MM-DD — created in `draft`.
+- YYYY-MM-DD — signed off by product, architect, tester (§0); still `draft`.
 - YYYY-MM-DD — clarified §4 contract SUBMIT_… per …
-- YYYY-MM-DD — promoted to `active`.
-- YYYY-MM-DD — marked `implemented` after increment N in grill.md.
+- YYYY-MM-DD — promoted to `active` with the RED tests of increment N.
+- YYYY-MM-DD — marked `implemented` after increment M in grill.md.
 - YYYY-MM-DD — superseded by SPEC-NNNN-….

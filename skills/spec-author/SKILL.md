@@ -161,19 +161,25 @@ A spec is not promoted from `draft` to `active` until:
   uploads, external integrations, or AI behaviors that act on
   data.
 
-Sign-off goes in §0 (Metadata).
+Sign-off goes in §0 (Metadata) — and the spec stays `draft`. Sign-off
+says the contract is authoritative; `active` says it is under test. The
+status moves in the change that lands the spec's first RED tests
+(`test-first`'s COMMIT; `verify.status-evidence` owns the moment), and to
+`implemented` when every contract is green. A live status over an empty
+assertion set is a false green, which is why a signed draft is never
+promoted early to "get the gate going".
 
-Before a spec turns `active`, its prose passes `docs/graph/skills/humanizer.md`
+Before a spec is signed, its prose passes `docs/graph/skills/humanizer.md`
 in file mode and `python3 docs/graph/prose-lint.py --file <spec> --against HEAD`
 reports no strong tell and no dropped contract slug, number, or code span.
 
-The sign-offs are judgment; the coverage is mechanical. Once the spec
-is `active`, its §4 contract slugs are enforced by
+The sign-offs are judgment; the shape and the coverage are mechanical.
 `python3 docs/graph/spec-lint.py` (the §3.1 gate in
-`docs/graph/protocols/verify.md`): every slug must appear in at least one test.
-Expect the new spec's contracts to report uncovered until `test-first`
-lands the RED tests — that failing gate is the spec working, not a
-defect.
+`docs/graph/protocols/verify.md`) checks every spec's shape — unique
+slugs, a §10 row per contract, §9 criteria that map to real slugs, sign-offs
+present on anything past `draft` — and, for live specs, that every slug
+appears in at least one test. A draft is shape-checked and not counted for
+coverage, so a spec in authoring never reports uncovered.
 
 ## Spec drift management
 
@@ -200,7 +206,10 @@ to the code. Decide:
 - **One giant contract that says everything.** Many small,
   single-outcome contracts that compose.
 - **Skipped sign-offs.** A spec without all three sign-offs is
-  still `draft`.
+  unsigned; nobody plans against it.
+- **Promoted at sign-off.** `active` with no test is a red gate until
+  RED lands and a false green after someone silences it. Promote with
+  the RED.
 
 ## Reference files
 

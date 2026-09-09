@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 7.6.0
+- Version documented: 7.7.0
 - Repository role: this repo is the seed, the product that is shipped
   into other projects. It is *not* a grown project itself.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -700,7 +700,7 @@ This runs (in order):
 3. `test-orchestration-entry.sh`: pins the single three-phase entry + the
    completeness contract in prose.
 4. `test-graph-artifacts.sh`: graph artifact presence.
-5. `test-spec-lint.sh`: the mechanical spec-contract coverage gate.
+5. `test-spec-lint.sh`: the spec gate — shape of every spec, coverage of live ones.
 6. `test-grill-lint.sh`: the plan-of-record gate (`grill-lint.py`) — section
    shape, §9 dependency order, §5 derived from §9, plan↔spec alignment.
 7. `test-full-install.sh`: full install across tools, roster parity, the

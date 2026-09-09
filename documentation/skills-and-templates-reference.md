@@ -863,7 +863,7 @@ Templates are Tier-3 artifacts; a machinery node points at them via
 | `index.md` | `docs/graph/index.md` | Tier-1 router template |
 | `node.template.md` | `docs/graph/nodes/<id>.md` | one blank node form |
 | `graph-lint.py` | `docs/graph/graph-lint.py` | the graph linter and router dry-run |
-| `spec-lint.py` | `docs/graph/spec-lint.py` | the spec-coverage gate |
+| `spec-lint.py` | `docs/graph/spec-lint.py` | the spec gate: shape of every spec, coverage of live ones |
 | `grill-lint.py` | `docs/graph/grill-lint.py` | the plan-of-record gate |
 
 ---
@@ -1268,17 +1268,16 @@ prints `graph-lint: OK — N nodes, ~T tokens if fully loaded` and reminds that
 
 ---
 
-## B.15 The spec-coverage gate — `spec-lint.py`
+## B.15 The spec gate — `spec-lint.py`
 Source: `templates/knowledge-graph/spec-lint.py` (installs to `docs/graph/spec-lint.py`)
 
 A dependency-free Python 3 gate that makes "specs are executable" (kernel
-§3.1) mechanical: every functional contract must map to at least one test, and
-tests reuse the contract's stable `UPPER_SNAKE_SLUG`.
+§3.1) mechanical, in two passes.
 
 **Usage.**
 
 ```sh
-python3 docs/graph/spec-lint.py           # gate: exit 1 on uncovered
+python3 docs/graph/spec-lint.py           # gate: exit 1 on a defect
 python3 docs/graph/spec-lint.py --list    # dump contract -> tests map
 python3 docs/graph/spec-lint.py --warn    # report but always exit 0
 ```
@@ -1286,22 +1285,31 @@ python3 docs/graph/spec-lint.py --warn    # report but always exit 0
 **Configuration.** `TEST_GLOBS` (the project's test file patterns) and
 `LIVE_STATUSES` = `{"active", "implemented"}`.
 
-**What it does.** It scans `docs/graph/specs/SPEC-*.md`, reads each spec's
-`**Status:**`, and for live specs collects every `### Contract: SLUG` slug.
-Then it scans the test files (skipping `.git`, `node_modules`, `.venv`, etc.,
-and the specs dir itself) for each slug. Behaviors:
+**Shape — every spec on disk, whatever its status.** Contract slugs are
+unique; a §9 criterion that "maps to" a slug maps to a declared one; a
+*signed* spec (product, architect, tester ticked in §0) or a live one has a
+§10 test-mapping row per contract (`pending` is a value); a live spec
+carries its sign-offs (a promotion nobody signed FAILs); an `implemented`
+spec has no §10 row still `red` or `pending`; a spec with no `### Failure:`
+mode WARNs. Status is read from frontmatter first — the schema's single
+home — and the template's body line "see frontmatter" is never a status
+(the old body-only scan read it as `see` and dropped every
+template-conformant spec from coverage).
 
-- Every active/implemented contract must appear in ≥1 test file, or the gate
-  FAILs.
+**Coverage — live specs only.** For every `### Contract: SLUG` of an
+active/implemented spec, the test files (skipping `.git`, `node_modules`,
+`.venv`, etc., and the specs dir) must name the slug, boundary-guarded and
+longest-first:
+
+- Every live contract must appear in ≥1 test file, or the gate FAILs.
 - A slug in tests but in no live spec is drift → a WARN.
 - Live contracts + zero matching test files is a "green lie": it FAILs
-  loudly, never a vacuous pass ("A coverage check over an empty set is a green
-  lie; fix TEST_GLOBS or write the tests.").
-- No live contracts at all → PASS ("no live contracts to cover").
+  loudly, never a vacuous pass.
 
-This is the §3.1 gate a new spec's contracts fail until `test-first` lands the
-RED tests; the failing gate is the spec working, not a defect.
+A draft is shape-checked and not counted: it turns `active` in the change
+that lands its RED tests, so a spec in authoring never reports uncovered.
 
+---
 
 ## B.16 The plan-of-record gate — `grill-lint.py`
 Source: `templates/knowledge-graph/grill-lint.py` (installs to `docs/graph/grill-lint.py`)

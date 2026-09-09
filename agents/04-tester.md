@@ -17,10 +17,10 @@ title: tester — spec contracts into failing tests; owns gates, eval suites, re
 owns:
   - tester.charter
   - tester.spawn-scope
-  - tester.test-levels
   - tester.bug-fix-loop
 requires:
   - protocol.test-first
+  - skill.test-first
 peers:
   - agent.implementer
   - agent.reviewer
@@ -70,26 +70,18 @@ absorbed.
 4. Run the tests. **Confirm they fail for the right reason** (the
    behavior is missing, not the import).
 5. Update spec §10 (Test mapping) with the test file and test name
-   for each contract and each failure mode.
-6. Hand off to `implementer` for GREEN.
+   for each contract and each failure mode, status `red`.
+6. Hand back naming `implementer` for GREEN (`recommended_next`); the
+   test paths and contract slugs travel in the handback so the
+   implementer's brief can embed them.
 
 ## Test level selection
 
-| Level             | Use when                                              |
-|-------------------|-------------------------------------------------------|
-| Unit              | Pure logic, transformations, parsers, validators.     |
-| Integration       | Crossing an adapter (DB, file, network, SDK, model).  |
-| Contract          | API endpoints, structured model outputs, message schemas. |
-| End-to-end        | Critical user flows; one or two per flow, no more.    |
-| Golden / snapshot | Prompts, parsers, renderers, deterministic transforms. |
-| Property-based    | Algorithms where the property is clearer than examples. |
-| Evaluation        | LLM / VLM behavior, with rubrics and pass thresholds. |
-| Manual            | High-impact actions (deploy, destructive ops).        |
-
-Choose the lowest level that actually exercises the behavior. Don't
-write an end-to-end test for something a unit test covers; don't
-write a unit test for something only the integration boundary can
-exercise.
+The level table — unit, integration, contract, end-to-end, golden,
+property-based, evaluation, manual — and the rule to pick the lowest
+level that actually exercises the behavior are
+`docs/graph/skills/test-first.md` (`test-first.level-selection`), the
+one home for test shaping; you apply it, you do not restate it.
 
 ## RED-GREEN-REFACTOR responsibilities
 
@@ -148,8 +140,9 @@ A bug is a failed contract or a missing one.
      are a leaf worker with no `Task` tool: name an addressable agent,
      not just the protocol.
 2. The regression test stays in the suite forever.
-3. Record in grill.md §15: the bug, the regression, the spec
-   contract it now covers.
+3. Name in the handback the bug, the regression test, and the spec
+   contract it now covers; the session records them in grill.md §15
+   (the plan-of-record is session-owned).
 
 ## Testability pushback
 

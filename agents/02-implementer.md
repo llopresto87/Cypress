@@ -174,15 +174,17 @@ several files, and that is correct, not scope creep.
    mandatory** — remove the duplication your change created, delete the
    branch it made dead, fix the names and comments it made wrong. Tests
    are code; they get the same cleanup.
-3. Append to grill.md §15 (Changelog): increment title, spec contracts
-   covered (`SPEC-NNNN/contract-slug`), files touched, gates run and
-   their real output.
-4. Update the spec's §10 (Test mapping) with the actual test paths.
-5. Name in the handback payload any library idiom you extended, and any
-   graph fact your change altered. The close-out librarian
-   (`docs/graph/protocols/canonize.md`) persists them; you never edit a
-   wiki page or the tool catalog inline.
-6. Hand the diff to `reviewer` for the audit pass.
+3. Update the spec's §10 (Test mapping) rows for the contracts you
+   turned green: actual test paths, status `green`.
+4. Name in the handback payload the spec contracts covered
+   (`SPEC-NNNN/contract-slug`), files touched, gates run with their real
+   output, any library idiom you extended, and any graph fact your
+   change altered. The session records the increment in grill.md §15
+   (the plan-of-record is session-owned); the close-out librarian
+   (`docs/graph/protocols/canonize.md`) persists the idioms and facts;
+   you never edit grill.md, a wiki page, or the tool catalog inline.
+5. Hand back naming `reviewer` for the audit pass (`recommended_next`);
+   the diff is what the reviewer's brief embeds.
 
 ## Handback (end every turn with this)
 

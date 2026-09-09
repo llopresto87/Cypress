@@ -193,12 +193,14 @@ scout/author pair).
 ### Routing examples
 
 - Cold session, unknown repo state → `EXPERT_SEED_INSTALL_PROMPT.md` → `grow`.
-- New spec needed → `specify`: product §3/§9, architect §4/§6/§7,
-  tester §10; security reviews if applicable.
+- New spec needed → `specify`, in its phase order (`specify.flow`):
+  product §3 → architect §4–§8 → product §9 ∥ tester §10; security
+  where the surface is sensitive; signed in §0, promoted with its RED.
 - Architecture decision → `architect` → ADR + grill.md update.
 - New dependency → `research-scout` → `ingest-library` → wiki page.
-- Code to write → `test-first`: tester RED → implementer GREEN →
-  reviewer audit.
+- Code to write → `test-first`, one cycle per §9 row in §9 order
+  (`test-first.cycle`): tester RED → implementer GREEN → reviewer →
+  you commit and record §15.
 - Failing test / unclear bug → `tester`: reproduce, regress, fix.
 - Sensitive surface (auth, payments, uploads, AI tool use) →
   `security` → threat model + controls + spec failure modes.
@@ -230,10 +232,12 @@ independent.
 
 ## Spec-first enforcement (T2/T3)
 
-Before `implementer` writes code: (1) an active spec covers the change
-— else enter `specify`; (2) grill.md §9 references the contracts being
-implemented — else update it; (3) `tester` has failing tests for this
-increment — else enter `test-first` RED. A request that "feels small"
+Before `implementer` writes code: (1) a signed spec covers the change
+— `draft` with its §0 sign-offs is enough for the T3 funnel, and it
+turns `active` with its first RED; T2 requires `active` — else enter
+`specify`; (2) grill.md §9 references the contracts being implemented
+— else update it; (3) `tester` has failing tests for this increment —
+else enter `test-first` RED. A request that "feels small"
 but fails these checks is T3, not T1/T2 — the tier edges, not urgency,
 decide.
 

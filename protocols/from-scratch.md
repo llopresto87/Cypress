@@ -186,7 +186,8 @@ second slice or the next-most-valuable item from the roadmap in
   page each.
 - `docs/graph/runbooks/local-development.md` and `verification.md` exist
   and their commands run.
-- `docs/graph/specs/SPEC-0001-*.md` exists, status `active`.
+- `docs/graph/specs/SPEC-0001-*.md` exists, status `implemented` (its
+  RED landed with the slice's tests and every contract is green).
 - The first useful slice's tests are green; the suite is green.
 - The README explains what the project is and how to run it.
 

@@ -41,14 +41,16 @@ templates, and the per-session instruction budget of the integrations.
   `toolcraft.md` owns only the durable-tool doctrine).
 - Failure discipline → `protocols/recover.md` (classify, one move per
   class, three attempts, escalate).
-- Spec-contract coverage → `templates/knowledge-graph/spec-lint.py`
+- Spec shape and contract coverage → `templates/knowledge-graph/spec-lint.py`
   (tested by `tests/test-spec-lint.sh`); plan-of-record shape →
   `templates/knowledge-graph/grill-lint.py` (tested by
   `tests/test-grill-lint.sh`).
-- Grill's spawn order → the phase table in `protocols/grill.md`
-  (`grill.flow`); the generic sequencing rule → `core/method/delegation.md`
-  (`delegation.sequencing`). The skill and the orchestrator point, never
-  re-list.
+- Spawn order of a pass → its protocol's phase table (`grill.flow`,
+  `specify.flow`, `test-first.cycle`); the generic sequencing rule →
+  `core/method/delegation.md` (`delegation.sequencing`). Skills, agents,
+  and the orchestrator point, never re-list.
+- The spec's `active` moment → `verify.status-evidence` (promotion lands
+  with the RED); specify, spec-author, and the template point at it.
 - Roster ground truth → `agents/*.md` frontmatter (manifest, kernel
   roster line, and README follow it; lint checks).
 

@@ -1,6 +1,6 @@
 ---
 name: specify
-description: Author an executable specification under docs/graph/specs/SPEC-NNNN-<slug>.md, coordinating product (§3 user behavior, §9 acceptance), architect (§4 contracts, §6 data shapes, §7 failure modes), and tester (§10 testability review, test mapping). Use whenever a goal is clear but no spec covers it, an existing feature's contract is changing, or a bug investigation reveals an implicit contract that needs to be made explicit. Specs are the source of truth for behavior — do not write code without one.
+description: Author an executable specification under docs/graph/specs/SPEC-NNNN-<slug>.md through a phased pass — product (§3), architect (§4 §5 §6 §7 §8), then product (§9) and tester (§10, testability) side by side, security where the surface is sensitive — signed off in §0 while still draft; the spec turns active only when its RED tests land. Use whenever a goal is clear but no spec covers it, an existing feature's contract is changing, or a bug investigation reveals an implicit contract that needs to be made explicit. Specs are the source of truth for behavior — do not write code without one.
 id: protocol.specify
 tier: 2
 kind: protocol
@@ -16,13 +16,14 @@ peers:
   - protocol.grill
 artifacts:
   - templates/spec.template.md
+  - templates/knowledge-graph/spec-lint.py
 load_when:
   - "write a spec, no spec covers this behavior"
   - "new feature, endpoint, job, or LLM interaction to define"
   - "changing an existing feature's contract"
   - "bug revealed an implicit or missing contract"
   - "acceptance criteria, Given/When/Then, failure modes"
-est_tokens: 1500
+est_tokens: 1750
 command: true
 ---
 
@@ -60,100 +61,67 @@ One of:
   or wrong.
 - An ADR introduces a new system behavior that needs a spec.
 
-## Who participates
+## The pass (`specify.flow`)
 
-- `product` — drafts §3 (User-facing behavior) and §9 (Acceptance
-  criteria). Owns the user view.
-- `architect` — drafts §4 (Functional contracts), §6 (Data shapes),
-  and §7 (Failure modes). Owns the system view.
-- `tester` — drafts §10 (Test mapping) and reviews §4 for
-  testability. Owns the executable view.
-- `docs-librarian` — registers the spec in `docs/graph/specs/index.md`
-  and links it from grill.md.
-- `security` — reviews when the spec touches auth, data, secrets,
-  payments, file handling, or AI behaviors.
+The pass is a sequence of phases, each filling named sections with a
+named owner. **The table is the spawn order**: a phase's spawn is issued
+only after every handback it needs has returned, and two phases run
+side by side only where the last column says so
+(`delegation.sequencing`, `docs/graph/method/delegation.md`). This is
+spawned, clean-context work: if the host cannot spawn workers of the
+required model classes, stop and report the unsupported operating model
+— never simulate the personas in the orchestration chat. A specialist
+the host has no *type* for is a different condition and does not stop
+the pass (`delegation.harness-registration`).
 
-This workflow requires spawned clean-context workers. If the host cannot
-spawn them with the required model classes, stop and report the unsupported
-operating model; do not simulate the personas in the orchestration chat. A
-specialist the host has no *type* for is not that condition and does not stop
-the workflow — see `delegation.harness-registration`
-(`docs/graph/method/delegation.md`) for the preflight, remedy, and recorded
-fallback.
+| Phase | Sections | Owner | Needs | Parallel with |
+|---|---|---|---|---|
+| 0 | identifier; §0 Metadata, §1 Summary, §2 Scope | orchestrator, in-session | brainstorm output or the clear goal | — |
+| 1 | §3 User-facing behavior | `product` | §2 | — |
+| 2 | §4 Contracts, §5 NFRs, §6 Data shapes, §7 Failure modes, §8 Examples | `architect` | §3 | — |
+| 3 | §9 Acceptance criteria | `product` — each criterion maps to §4 slugs | §4 | phase 4 |
+| 4 | §10 Test mapping; testability review of §4 | `tester` | §4, §7, §8 | phase 3 |
+| 5 | adversarial failure modes into §7, abuse cases into §5 | `security`, when the surface is sensitive | §4, §7 | phases 3–4 |
+| 6 | §11 Open questions; sign-offs in §0; §12 entry; grill.md §3/§9 links | orchestrator, in-session; the signers tick §0 | phases 3–5 | — |
 
-## Workflow
+What the table cannot hold:
 
-### 1. Allocate an identifier
-
-Specs are numbered: `SPEC-NNNN-short-slug`. Find the next free
-number in `docs/graph/specs/index.md`. File path:
-`docs/graph/specs/SPEC-NNNN-<slug>.md`.
-
-### 2. Draft from the template
-
-Open `docs/graph/templates/spec.template.md` and fill in:
-
-- **§0 Metadata** — id, status `draft`, owner, date, related grill
-  section, related ADRs, related wiki pages.
-- **§1 Summary** — one paragraph. What the spec covers and why.
-- **§2 Scope** — explicit "in scope" and "out of scope" bullets.
-- **§3 User-facing behavior** — what the user experiences, in user
-  language. Reference `docs/graph/product/user-flows.md`.
-- **§4 Functional contracts** — each contract is a Given/When/Then
-  scenario, named, with one outcome. (See template.)
-- **§5 Non-functional requirements** — performance budgets,
-  security requirements, accessibility floor, latency, cost.
-  Cross-link to grill.md §4.
-- **§6 Data shapes** — schemas for inputs, outputs, persisted
-  state. Use the language-agnostic schema convention in
-  `docs/graph/templates/spec.template.md`.
-- **§7 Failure modes** — for each contract, the named ways it can
-  fail and what happens in each case. Failure is part of the spec.
-- **§8 Examples** — concrete input/output pairs (one happy, at
-  least one edge, at least one failure). These become the seed test
-  cases.
-- **§9 Acceptance criteria** — measurable conditions for "done".
-  Each criterion maps to one or more contracts.
-- **§10 Test mapping** — for each contract and each failure mode,
-  the test(s) that cover it. Test names match contract names where
-  practical.
-- **§11 Open questions** — every "we will decide later" with a
-  named resolution path.
-
-### 3. Testability review
-
-Before the spec leaves `draft`, the tester runs a testability pass:
-
-- Is every contract observable from outside? (If you can't observe
-  it, you can't test it.)
-- Is every assertion in §9 measurable?
-- Are the data shapes concrete enough that a test fixture could be
-  written from them?
-- Are the failure modes triggerable in a test environment?
-
-If any of these fails, the spec goes back to the architect for
-revision. A spec that cannot be tested is not a spec; it is a
-description.
-
-### 4. Security review (if applicable)
-
-If the spec touches sensitive surface — auth, secrets, payments,
-file uploads, external integrations, LLM/VLM behaviors that act on
-data — security reviews it for abuse cases and adds them as
-failure modes or non-functional requirements.
-
-### 5. Promote to active
-
-When product, architect, tester (and security if applicable) have
-signed off, change the spec's status from `draft` to `active`.
-Add it to `docs/graph/specs/index.md` and link it from grill.md §3
-(User Goal) and §9 (Implementation Plan).
-
-### 6. Hand off to `grill`
-
-The next protocol is `grill`. The plan implements the contracts in
-this spec, in increments small enough that each increment is one
-RED-GREEN-REFACTOR cycle (or a small handful).
+- **The identifier comes from disk.** `SPEC-NNNN-<slug>` takes the next
+  free number among `docs/graph/specs/SPEC-*.md`; the catalog row in
+  `docs/graph/specs/index.md` is a fact-bearing surface the
+  `docs-librarian` writes at close-out (`protocol.canonize`), not a
+  mid-pass spawn. Until then the file on disk is the registration.
+- **§3 before §4, §4 before §9.** `product` writes the user's view
+  first, in the user's vocabulary; `architect` turns it into named,
+  single-outcome Given/When/Then contracts with their data shapes,
+  failure modes, and three real examples; only then can `product` map
+  each acceptance criterion to the slugs it accepts. A §9 written
+  beside §3 maps to nothing.
+- **§10 is the executable view.** `tester` writes one row per contract
+  and per failure mode (status `pending`) and runs the testability
+  review of §4: observable from outside, measurable in §9, fixtures
+  writable from §6, failure modes triggerable in a test environment. A
+  contract that fails the review goes back to `architect` — phase 2
+  again for that contract — and that return is an attempt under
+  `protocol.recover`'s three-attempt boundary, not a free loop. A spec
+  that cannot be tested is not a spec; it is a description.
+- **Sensitive surface** — auth, secrets, payments, file uploads,
+  external integrations, LLM/VLM behavior that acts on data — adds a
+  `security` review: abuse cases become failure modes in §7 or
+  requirements in §5.
+- **Sign-off is not promotion.** `product` ✓ confirms §3 and §9 reflect
+  the outcome, `architect` ✓ that §4 §6 §7 cohere, `tester` ✓ that every
+  contract is testable, `security` ✓ where it reviewed — each ticked in
+  §0 while the spec is still `draft`. The status moves to `active` in
+  the change that lands its RED tests (`test-first`'s COMMIT; the moment
+  is owned by `verify.status-evidence`), and to `implemented` when every
+  contract is green. A live status over an empty assertion set is a
+  false green, and `spec-lint.py` counts only live specs — so a signed
+  draft is planned against and encoded, never reported uncovered.
+- **Hand-off.** A signed draft is what `grill` plans against: its §4
+  contracts are the rows §9 of grill.md maps increments to, in
+  increments small enough for one RED-GREEN-REFACTOR cycle (or a small
+  handful).
 
 ## Revising an existing spec
 
@@ -174,14 +142,20 @@ when it changed and why."
 
 ## Exit conditions
 
-- `docs/graph/specs/SPEC-NNNN-<slug>.md` exists, status `active`,
-  every section populated.
-- `docs/graph/specs/index.md` has the row.
-- grill.md links to the spec from §3 and §9.
-- Every contract in §4 has at least one test in §10 (the test may
-  not be written yet, but the mapping exists).
-- Sign-off recorded: product ✓, architect ✓, tester ✓ (security ✓ if
-  applicable).
+"Populated" means every section §0–§12 carries either content or an
+explicit one-line `not applicable — <reason>`; a template placeholder
+is neither.
+
+- `docs/graph/specs/SPEC-NNNN-<slug>.md` exists, populated, status
+  `draft` with product ✓ architect ✓ tester ✓ (security ✓ where it
+  reviewed) in §0.
+- Every §4 contract has a §10 row; every §9 criterion maps to a slug
+  that exists; every failure mode in §7 names its contract.
+- §11 is empty, or every row's current assumption is a flagged
+  assumption in grill.md §12.
+- grill.md links the spec from §3 and §9.
+- `python3 docs/graph/spec-lint.py` exits 0 — the shape checks above,
+  mechanically, for every spec on disk.
 
 ## Anti-patterns
 
@@ -198,3 +172,8 @@ when it changed and why."
 - **Spec written after the code.** That's a description, not a
   spec. It is still better than no document, but mark its status as
   `back-written` so the team knows.
+- **§9 written beside §3.** An acceptance criterion that maps to no
+  slug, because the slugs did not exist yet. §9 waits for §4.
+- **Promoted at sign-off.** An `active` spec with no test is a red
+  gate for the whole test-first phase and a false green the moment
+  someone silences it. Sign in §0; promote with the RED.
