@@ -20,7 +20,9 @@ nodes are added; the linter treats anything listed here as reachable.
 This is Tier 1. It is the only index. Match your task against the
 triggers below, load the entry node plus the transitive closure of its
 `requires:` edges, and **do not** load its `peers:` unless the task
-crosses into them.
+crosses into them. An expertise node's `composes:` children are a menu
+rather than a closure: descend into a child only when your task names,
+exactly, a term that child carries and its parent does not.
 
 The traversal is specified in `skills/context-router.md` and is
 executable:
@@ -46,6 +48,7 @@ should trust node ownership and this table over it.)
 | "What is this? Where does X live?" | `{{root}}` |
 | "Who should do this?" | `{{root}}.roster` or the relevant agent |
 | Editing {{subsystem}} | `subsystem.{{name}}` |
+| Working against {{framework or library}} | `expertise.{{slug}}` |
 | Adding/changing data or schema | `data.{{model}}` |
 | Anything about auth / tokens / permissions | `crosscut.{{auth}}` |
 | Anything about secrets / credentials | `crosscut.{{secrets}}` |
@@ -114,11 +117,12 @@ owns the roster table. The full roster: `agent.orchestrator`,
 |---|---|---|
 | `{{root}}` | project purpose, map, topology | {{n}} |
 
-### Stacks / Platform / Data / Cross-cutting / Domain
+### Stacks / Expertise / Platform / Data / Cross-cutting / Domain
 
 | Node | Owns | ~tokens |
 |---|---|---|
 | `stack.{{lang}}` | conventions, versions, build | {{n}} |
+| `expertise.{{lib}}` | applicability, composition | {{n}} |
 | `platform.{{x}}` | … | {{n}} |
 | `data.{{model}}` | entities, migration story | {{n}} |
 | `crosscut.{{concern}}` | … | {{n}} |

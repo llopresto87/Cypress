@@ -59,15 +59,21 @@ def run_lint(graph_dir: Path) -> subprocess.CompletedProcess:
     )
 
 
-def node_md(node_id: str, kind: str, *, requires=(), owns=None) -> str:
+def node_md(node_id: str, kind: str, *, requires=(), owns=None, peers=(),
+            composes=(), libraries=(), artifacts=(), load_when=None) -> str:
     """A minimal, schema-valid tier-2 node. est_tokens is derived from the body
-    word count so the budget check (within-2x) always passes."""
+    word count so the budget check (within-2x) always passes.
+
+    The optional edge and trigger keys are what the composes/descent cases
+    need: `libraries` satisfies an expertise node's depth-edge rule, and
+    `load_when` is the vocabulary descent matches a task against."""
     body = (
         f"This node documents the {kind} boundary for testing the lint "
         "contract in a hermetic graph fixture with a handful of plain words."
     )
     est = int(len(body.split()) * 1.35)
     owns = owns if owns is not None else [f"{node_id}.overview"]
+    load_when = load_when if load_when is not None else [f"work on {node_id}"]
     lines = [
         "---",
         f"id: {node_id}",
@@ -78,8 +84,15 @@ def node_md(node_id: str, kind: str, *, requires=(), owns=None) -> str:
         *(f"  - {o}" for o in owns),
         "requires:",
         *(f"  - {r}" for r in requires),
+    ]
+    for key, values in (("peers", peers), ("composes", composes),
+                        ("libraries", libraries), ("artifacts", artifacts)):
+        if values:
+            lines.append(f"{key}:")
+            lines.extend(f"  - {v}" for v in values)
+    lines += [
         "load_when:",
-        f"  - work on {node_id}",
+        *(f"  - {t}" for t in load_when),
         f"est_tokens: {est}",
         "---",
         "",
@@ -89,10 +102,16 @@ def node_md(node_id: str, kind: str, *, requires=(), owns=None) -> str:
     return "\n".join(lines)
 
 
-def build_graph(tmp: Path, nodes: dict, *, config_line: str | None = None) -> Path:
+def build_graph(tmp: Path, nodes: dict, *, config_line: str | None = None,
+                listed=None, libraries=()) -> Path:
     """Materialize a hermetic graph: <tmp>/graph/{graph-lint.py, index.md,
     nodes/*.md}. `nodes` maps node-id -> frontmatter text. `config_line`, when
     given, replaces the tool's default KIND_PREFIX line before it is copied in.
+
+    `listed` chooses which ids index.md names (default: all of them). A node
+    left out is reachable only through a real edge, which is the only way a
+    reachability case can fail — listing alone satisfies the rule. `libraries`
+    names wiki pages to create, for nodes carrying a `libraries:` edge.
     """
     graph = tmp / "graph"
     (graph / "nodes").mkdir(parents=True)
@@ -105,14 +124,21 @@ def build_graph(tmp: Path, nodes: dict, *, config_line: str | None = None) -> Pa
         src = src.replace(DEFAULT_CONFIG_LINE, config_line, 1)
     (graph / "graph-lint.py").write_text(src, encoding="utf-8")
 
-    # index.md lists every node id, so reachability is satisfied regardless of
-    # the requires-edges each test chooses.
+    # index.md lists every node id by default, so reachability is satisfied
+    # regardless of the requires-edges each test chooses; `listed` narrows it.
+    named = nodes if listed is None else listed
     (graph / "index.md").write_text(
-        "# index\n\n" + "\n".join(f"- {nid}" for nid in nodes) + "\n",
+        "# index\n\n" + "\n".join(f"- {nid}" for nid in named) + "\n",
         encoding="utf-8",
     )
     for nid, text in nodes.items():
         (graph / "nodes" / f"{nid}.md").write_text(text, encoding="utf-8")
+    if libraries:
+        (graph / "libraries").mkdir(parents=True, exist_ok=True)
+        for lib in libraries:
+            (graph / "libraries" / f"{lib}.md").write_text(
+                f"# {lib}\n\nA wiki page with enough words in it to look like "
+                "a real leaf for the fixture.\n", encoding="utf-8")
     return graph
 
 
@@ -516,6 +542,387 @@ class RootlessPlanTests(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("LOAD (0 nodes", r.stdout)
 
+
+
+# --------------------------------------------------------------------------
+# 7.5.0 — the `expertise` kind and the lazy `composes:` edge.
+#
+# Contract map:
+#   ComposesContractTests  -> the edge's own rules: targets resolve, both ends
+#                             are expertise, no self-edge, acyclic on its own
+#                             while the requires/composes PAIR is legal, the
+#                             child's upward requires is mirrored downward, a
+#                             node routes to some depth, a versioned slug
+#                             exists only under its unversioned parent.
+#   DescentTests           -> what --plan does with it. Every case asserts the
+#                             PROVENANCE line or the not-loaded REASON, never
+#                             bare membership, and every task is one the
+#                             UNMODIFIED tool did not seed the child on (the
+#                             wording was measured; see each docstring). A
+#                             membership assertion here would pass with the
+#                             descent code deleted, because seeding alone
+#                             loads a child whose triggers beat the top-3 cut.
+# --------------------------------------------------------------------------
+
+EXPERTISE_KINDS_CONFIG = 'KIND_PREFIX = {}'   # expertise ships in KINDS itself
+
+
+def expertise_family(**overrides) -> dict:
+    """The parent/child shape every composes case needs: a subsystem whose
+    name dominates a task, the stack expertise it requires, and two library
+    expertises the parent composes under triggers of their own."""
+    nodes = {
+        "root": node_md("root", "root", requires=["subsystem.orders"],
+                        owns=["root.map"]),
+        "subsystem.orders": node_md(
+            "subsystem.orders", "subsystem", requires=["expertise.dotnet"],
+            owns=["orders.responsibility"],
+            load_when=["orders service", "editing src/Orders/**"]),
+        "expertise.dotnet": node_md(
+            "expertise.dotnet", "expertise",
+            composes=["expertise.ef-core", "expertise.serilog"],
+            libraries=["dotnet"], owns=["dotnet.applicability"],
+            load_when=["dotnet, csharp", "target framework, runtime"]),
+        "expertise.ef-core": node_md(
+            "expertise.ef-core", "expertise", requires=["expertise.dotnet"],
+            libraries=["dotnet"], owns=["ef-core.applicability"],
+            load_when=["entity framework, dbcontext", "entity mapping"]),
+        "expertise.serilog": node_md(
+            "expertise.serilog", "expertise", requires=["expertise.dotnet"],
+            libraries=["dotnet"], owns=["serilog.applicability"],
+            load_when=["structured logging, log sink", "enrichers"]),
+    }
+    nodes.update(overrides)
+    return nodes
+
+
+class ComposesContractTests(unittest.TestCase):
+    def setUp(self):
+        self.assertTrue(GRAPH_LINT.exists(), f"missing tool: {GRAPH_LINT}")
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def lint(self, nodes, **kw):
+        kw.setdefault("libraries", ["dotnet"])
+        return run_lint(build_graph(self.tmp, nodes, **kw))
+
+    def test_expertise_family_lints_clean(self):
+        """The shape every other case mutates is itself valid."""
+        r = self.lint(expertise_family())
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_composes_target_must_resolve(self):
+        nodes = expertise_family()
+        nodes["expertise.dotnet"] = node_md(
+            "expertise.dotnet", "expertise",
+            composes=["expertise.ef-core", "expertise.serilog", "expertise.ghost"],
+            libraries=["dotnet"], owns=["dotnet.applicability"])
+        r = self.lint(nodes)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("composes → unknown node 'expertise.ghost'", r.stderr)
+
+    def test_composes_self_edge_fails(self):
+        nodes = expertise_family()
+        nodes["expertise.ef-core"] = node_md(
+            "expertise.ef-core", "expertise", requires=["expertise.dotnet"],
+            composes=["expertise.ef-core"], libraries=["dotnet"],
+            owns=["ef-core.applicability"])
+        r = self.lint(nodes)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("composes → itself", r.stderr)
+
+    def test_composes_only_between_expertise_nodes(self):
+        """A subsystem that wants a stack's depth `requires` its expertise
+        node; letting any kind compose makes --plan's result unpredictable."""
+        nodes = expertise_family()
+        nodes["subsystem.orders"] = node_md(
+            "subsystem.orders", "subsystem", requires=["expertise.dotnet"],
+            composes=["expertise.ef-core"], owns=["orders.responsibility"])
+        r = self.lint(nodes)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("composes joins expertise nodes only", r.stderr)
+
+    def test_composes_cycle_fails(self):
+        nodes = expertise_family()
+        nodes["expertise.ef-core"] = node_md(
+            "expertise.ef-core", "expertise", requires=["expertise.dotnet"],
+            composes=["expertise.dotnet"], libraries=["dotnet"],
+            owns=["ef-core.applicability"])
+        r = self.lint(nodes)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("composes cycle:", r.stderr)
+
+    def test_requires_composes_pair_is_not_a_cycle(self):
+        """`parent composes child` + `child requires parent` is the INTENDED
+        shape: the eager edge points up, the lazy one down. Checking the union
+        would reject every well-formed family."""
+        r = self.lint(expertise_family())
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("cycle", r.stderr)
+
+    def test_child_requires_parent_needs_reciprocal_composes(self):
+        """A child added without touching its parent is the failure the
+        downward edge would otherwise allow; lint names the line to add."""
+        nodes = expertise_family()
+        nodes["expertise.dotnet"] = node_md(
+            "expertise.dotnet", "expertise", composes=["expertise.ef-core"],
+            libraries=["dotnet"], owns=["dotnet.applicability"])
+        r = self.lint(nodes)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("does not compose it", r.stderr)
+        self.assertIn("expertise.serilog", r.stderr)
+
+    def test_expertise_without_depth_edge_fails(self):
+        """It owns applicability and composition only, so with no libraries/
+        artifacts edge it routes to nothing."""
+        nodes = expertise_family()
+        nodes["expertise.serilog"] = node_md(
+            "expertise.serilog", "expertise", requires=["expertise.dotnet"],
+            owns=["serilog.applicability"])
+        r = self.lint(nodes)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("routes to nothing", r.stderr)
+
+    def test_versioned_slug_only_as_composed_child(self):
+        """A -<digits> slug is legal under the unversioned parent that
+        composes it, and nowhere else — the pin's home is libraries/."""
+        ok = expertise_family()
+        ok["expertise.dotnet"] = node_md(
+            "expertise.dotnet", "expertise",
+            composes=["expertise.ef-core", "expertise.serilog",
+                      "expertise.dotnet-10"],
+            libraries=["dotnet"], owns=["dotnet.applicability"],
+            load_when=["dotnet, csharp", "target framework, runtime"])
+        ok["expertise.dotnet-10"] = node_md(
+            "expertise.dotnet-10", "expertise", requires=["expertise.dotnet"],
+            libraries=["dotnet"], owns=["dotnet-10.applicability"],
+            load_when=["net10.0, dotnet 10 target"])
+        r_ok = self.lint(ok)
+        self.assertEqual(r_ok.returncode, 0, r_ok.stderr)
+
+        self._tmp.cleanup()                 # one hermetic graph per lint call
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        orphan = expertise_family()
+        orphan["expertise.orphan-10"] = node_md(
+            "expertise.orphan-10", "expertise", requires=["expertise.dotnet"],
+            libraries=["dotnet"], owns=["orphan-10.applicability"])
+        r = self.lint(orphan)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("version-qualified expertise slug", r.stderr)
+
+    def test_reachable_only_through_composes_passes(self):
+        """Reachability follows all three edges. The child is deliberately
+        UNLISTED in index.md — listing alone satisfies the rule, so a listed
+        node could never prove the traversal reads `composes`."""
+        nodes = expertise_family()
+        listed = [n for n in nodes if n != "expertise.serilog"]
+        r = self.lint(nodes, listed=listed)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_shared_sibling_trigger_warns(self):
+        """A term two siblings share is family vocabulary: it belongs on the
+        parent, where it cannot descend either of them."""
+        nodes = expertise_family()
+        nodes["expertise.serilog"] = node_md(
+            "expertise.serilog", "expertise", requires=["expertise.dotnet"],
+            libraries=["dotnet"], owns=["serilog.applicability"],
+            load_when=["structured logging", "entity mapping"])
+        r = self.lint(nodes)
+        self.assertIn("is shared with", r.stderr)
+
+    def test_parent_terms_do_not_warn(self):
+        """Two things must NOT warn: a term the parent already carries (that
+        is what family vocabulary is for), and a sub-3-character token such as
+        the `0` in `net8.0`, which no task term can ever match."""
+        nodes = expertise_family()
+        nodes["expertise.dotnet"] = node_md(
+            "expertise.dotnet", "expertise",
+            composes=["expertise.dotnet-8", "expertise.dotnet-10"],
+            libraries=["dotnet"], owns=["dotnet.applicability"],
+            load_when=["dotnet, csharp", "target framework, runtime"])
+        for major in (8, 10):
+            nodes[f"expertise.dotnet-{major}"] = node_md(
+                f"expertise.dotnet-{major}", "expertise",
+                requires=["expertise.dotnet"], libraries=["dotnet"],
+                owns=[f"dotnet-{major}.applicability"],
+                load_when=[f"net{major}.0, dotnet {major} target"])
+        del nodes["expertise.ef-core"], nodes["expertise.serilog"]
+        r = self.lint(nodes)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("is shared with", r.stderr)
+
+
+class DescentTests(unittest.TestCase):
+    """--plan descends only into the children the task names specifically.
+
+    Every task below was measured against the UNMODIFIED tool: it loads the
+    subsystem and the parent expertise, and NOT the child. That is the only
+    regime in which descent decides anything — a task that seeds the child
+    directly would pass these assertions with the descent code removed.
+    """
+
+    def setUp(self):
+        self.assertTrue(GRAPH_LINT.exists(), f"missing tool: {GRAPH_LINT}")
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def plan(self, task, nodes=None, **kw):
+        kw.setdefault("libraries", ["dotnet"])
+        g = build_graph(self.tmp, nodes or expertise_family(), **kw)
+        r = subprocess.run([sys.executable, str(g / "graph-lint.py"), "--plan", task],
+                           cwd=str(g), capture_output=True, text=True, timeout=60)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return r.stdout
+
+    def test_plan_descends_on_specific_term(self):
+        """`mapping` is ef-core's own word; unmodified LOAD is dotnet+orders."""
+        out = self.plan("in the orders service, fix the mapping")
+        self.assertIn('expertise.ef-core', out)
+        self.assertIn('composed by expertise.dotnet on "mapping"', out)
+
+    def test_plan_leaves_the_unnamed_sibling_with_a_reason(self):
+        out = self.plan("in the orders service, fix the mapping")
+        self.assertRegex(
+            out, r"expertise\.serilog\s+composed by expertise\.dotnet; "
+                 r"no task term specific to it")
+
+    def test_plan_descends_from_required_node(self):
+        """The parent is not a seed here — it arrives through the subsystem's
+        `requires`. Descent must work from a node the closure pulled in, which
+        is what makes an agent's ordinary task reach library expertise."""
+        out = self.plan("in the orders service, add a sink")
+        self.assertIn('expertise.serilog', out)
+        self.assertIn('composed by expertise.dotnet on "sink"', out)
+        self.assertIn("subsystem.orders", out)
+
+    def test_plan_ignores_family_vocabulary(self):
+        """serilog carries the parent's own word `dotnet`. A task naming it
+        must NOT descend serilog: family vocabulary sits on the parent by
+        construction, so the child's own vocabulary excludes it."""
+        nodes = expertise_family()
+        nodes["expertise.serilog"] = node_md(
+            "expertise.serilog", "expertise", requires=["expertise.dotnet"],
+            libraries=["dotnet"], owns=["serilog.applicability"],
+            load_when=["structured logging, log sink", "dotnet logging"])
+        out = self.plan("in the orders service, fix the dotnet mapping", nodes)
+        self.assertNotIn("composed by expertise.dotnet on \"dotnet\"", out)
+        self.assertRegex(out, r"expertise\.serilog\s+composed by .*no task term")
+
+    def test_plan_descent_never_folds(self):
+        """Seeding folds prefixes; descent does not. `migrating` is a
+        six-character prefix of the child's `migration`, and must not compose
+        it — otherwise "migrating the CI runner" drags in schema knowledge."""
+        nodes = expertise_family()
+        nodes["expertise.ef-core"] = node_md(
+            "expertise.ef-core", "expertise", requires=["expertise.dotnet"],
+            composes=["expertise.ef-migrations"], libraries=["dotnet"],
+            owns=["ef-core.applicability"],
+            load_when=["entity framework, dbcontext", "entity mapping"])
+        nodes["expertise.ef-migrations"] = node_md(
+            "expertise.ef-migrations", "expertise",
+            requires=["expertise.ef-core"], libraries=["dotnet"],
+            owns=["ef-migrations.applicability"],
+            load_when=["add a migration, migration script"])
+        out = self.plan(
+            "in the orders service, editing the dbcontext, migrating the runner",
+            nodes)
+        self.assertIn('composed by expertise.dotnet on "dbcontext"', out)
+        self.assertRegex(out, r"expertise\.ef-migrations\s+composed by .*no task term")
+
+    def test_plan_descends_two_levels_each_on_own_term(self):
+        """Recursion falls out of the rule: the child becomes the parent for
+        its own children, and each level needs its own specific term."""
+        nodes = expertise_family()
+        nodes["expertise.ef-core"] = node_md(
+            "expertise.ef-core", "expertise", requires=["expertise.dotnet"],
+            composes=["expertise.ef-migrations"], libraries=["dotnet"],
+            owns=["ef-core.applicability"],
+            load_when=["entity framework, dbcontext", "entity mapping"])
+        nodes["expertise.ef-migrations"] = node_md(
+            "expertise.ef-migrations", "expertise",
+            requires=["expertise.ef-core"], libraries=["dotnet"],
+            owns=["ef-migrations.applicability"],
+            load_when=["add a migration, migration script"])
+        out = self.plan(
+            "in the orders service, editing the dbcontext, write the migration",
+            nodes)
+        self.assertIn('composed by expertise.dotnet on "dbcontext"', out)
+        self.assertIn('composed by expertise.ef-core on "migration"', out)
+
+    def test_plan_selects_major_by_tfm_token(self):
+        """Two majors in play: the unversioned parent composes one child per
+        major, and the target-framework token the developer types picks it.
+
+        The task names the subsystem's path glob deliberately. Without it the
+        pre-7.5.0 tool SEEDS `expertise.dotnet-10` on this fixture (measured),
+        and the assertion below would pass with descent deleted."""
+        nodes = expertise_family()
+        nodes["expertise.dotnet"] = node_md(
+            "expertise.dotnet", "expertise",
+            composes=["expertise.ef-core", "expertise.serilog",
+                      "expertise.dotnet-8", "expertise.dotnet-10"],
+            libraries=["dotnet"], owns=["dotnet.applicability"],
+            load_when=["dotnet, csharp", "target framework, runtime"])
+        for major in (8, 10):
+            nodes[f"expertise.dotnet-{major}"] = node_md(
+                f"expertise.dotnet-{major}", "expertise",
+                requires=["expertise.dotnet"], libraries=["dotnet"],
+                owns=[f"dotnet-{major}.applicability"],
+                load_when=[f"net{major}.0, dotnet {major} target"])
+        out = self.plan(
+            "in the orders service, editing src/Orders/**, target net10.0", nodes)
+        self.assertIn('composed by expertise.dotnet on "net10"', out)
+        self.assertRegex(out, r"expertise\.dotnet-8\s+composed by .*no task term")
+
+    def test_plan_reports_not_loaded_with_reason(self):
+        """Peers and un-composed children share one NOT LOADED section, each
+        line carrying why it stayed out."""
+        nodes = expertise_family()
+        nodes["subsystem.orders"] = node_md(
+            "subsystem.orders", "subsystem", requires=["expertise.dotnet"],
+            peers=["subsystem.billing"], owns=["orders.responsibility"],
+            load_when=["orders service", "editing src/Orders/**"])
+        nodes["subsystem.billing"] = node_md(
+            "subsystem.billing", "subsystem", owns=["billing.responsibility"],
+            load_when=["billing service"])
+        out = self.plan("in the orders service, fix the mapping", nodes)
+        self.assertIn("NOT LOADED (with the reason", out)
+        self.assertRegex(out, r"subsystem\.billing\s+peer of subsystem\.orders")
+        self.assertRegex(out, r"expertise\.serilog\s+composed by .*no task term")
+
+    def test_plan_without_composes_is_unchanged(self):
+        """A graph carrying no `composes:` routes exactly as it did before
+        7.5.0. The golden is over the resolved ID SETS, not stdout: the
+        printed shape changed on purpose (reasons, provenance), the routing
+        did not. Sets captured from the pre-7.5.0 tool on this fixture."""
+        nodes = {
+            "root": node_md("root", "root", requires=["subsystem.orders"],
+                            owns=["root.map"]),
+            "subsystem.orders": node_md(
+                "subsystem.orders", "subsystem", requires=["stack.dotnet"],
+                peers=["subsystem.billing"], owns=["orders.responsibility"],
+                load_when=["orders service", "editing src/Orders/**"]),
+            "stack.dotnet": node_md("stack.dotnet", "stack",
+                                    owns=["dotnet.conventions"]),
+            "subsystem.billing": node_md("subsystem.billing", "subsystem",
+                                         owns=["billing.responsibility"],
+                                         load_when=["billing service"]),
+        }
+        out = self.plan("in the orders service, fix the mapping", nodes)
+        load, not_loaded = [], []
+        section = None
+        for line in out.splitlines():
+            if line.startswith("LOAD ("):
+                section = load
+            elif line.startswith("NOT LOADED"):
+                section = not_loaded
+            elif section is not None and line.startswith("  "):
+                section.append(line.split()[0])
+        self.assertEqual(set(load), {"subsystem.orders", "stack.dotnet"})
+        self.assertEqual(set(not_loaded), {"subsystem.billing"})
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

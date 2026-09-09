@@ -12,8 +12,9 @@ project's own node kinds and root id.
 
 Usage:
     python3 graph-lint.py                 # lint; exit 1 on error
-    python3 graph-lint.py --graph         # print requires-DAG
-    python3 graph-lint.py --plan "TASK"   # dry-run the context router
+    python3 graph-lint.py --graph         # print the edges (-> requires, ~> composes)
+    python3 graph-lint.py --plan "TASK"   # dry-run the context router:
+                                          # what loads, what does not, and why
 
 Contract: docs/graph/_schema.md
 No third-party dependencies: it must run on a bare python3.
@@ -34,7 +35,7 @@ ROOT_ID = "root"
 # The node kinds this project uses. An id must be "<kind>.<name>" for its
 # declared kind — except the root node, whose id is exactly ROOT_ID.
 KINDS = {"root", "subsystem", "stack", "platform", "data", "crosscut", "domain",
-         "deviation", "protocol", "skill", "agent", "method"}
+         "expertise", "deviation", "protocol", "skill", "agent", "method"}
 # Optional: kinds whose node ids carry a shorter, different id-prefix than the
 # kind name itself. Maps a kind → the prefix its ids must start with, so a
 # verbose kind can live in a terse id namespace (its ids must then be
@@ -60,7 +61,16 @@ ARTIFACTS_DIR = HERE                            # all knowledge lives below docs
 INDEX = HERE / "index.md"
 
 REQUIRED_KEYS = {"id", "tier", "kind", "title", "owns", "requires", "load_when", "est_tokens"}
-LIST_KEYS = {"owns", "requires", "peers", "libraries", "artifacts", "load_when"}
+LIST_KEYS = {"owns", "requires", "peers", "composes", "libraries", "artifacts", "load_when"}
+# The edges a traversal follows out of a node. `requires` is the eager closure,
+# `peers` the boundary a task may cross deliberately, `composes` the lazy menu
+# an expertise node offers. Reachability follows all three; the router follows
+# `requires` always and `composes` conditionally (see resolve()).
+TRAVERSAL_EDGES = ("requires", "peers", "composes")
+# An expertise id may carry a major-version suffix ONLY as a child composed by
+# the unversioned node (schema rule 19): a plant running two majors at once
+# splits applicability, and that is the single place a version enters a slug.
+VERSIONED_SLUG_RE = re.compile(r"^(?P<base>expertise\.[a-z0-9-]+?)-(?P<major>\d+)$")
 
 # Lifecycle status (schema §"Lifecycle status"). One base vocabulary for every
 # kind; extensions only where the base cannot express a real state. Companion
@@ -136,6 +146,23 @@ class Node:
     def get_list(self, key: str) -> list:
         v = self.meta.get(key, [])
         return v if isinstance(v, list) else [v]
+
+    def out_edges(self) -> list:
+        """Every id this node points at. One home for "the edges a traversal
+        follows": reachability walked `requires + peers` from two hand-written
+        lists, so a third edge would have been reachable in one walk and not
+        the other."""
+        return [t for key in TRAVERSAL_EDGES for t in self.get_list(key)]
+
+    @property
+    def triggers(self) -> set:
+        """The vocabulary descent matches a task against: the node's own
+        `load_when` tokens plus its slug kept WHOLE. The slug is not tokenized
+        — `ef-core` split into `ef` and `core` would let "fix the core module"
+        compose the persistence expertise. Title and repo words stay out: they
+        belong to seed scoring, and a title like "ef-core — the persistence
+        expertise" would put `expertise` in every sibling's vocabulary."""
+        return _tokens(" ".join(self.get_list("load_when"))) | {self.id.split(".", 1)[-1]}
 
 
 def parse_frontmatter(text: str, path: Path):
@@ -385,18 +412,40 @@ def check_unique_ids(nodes: list, errs: list) -> None:
 
 
 def check_edges(nodes: list, errs: list) -> None:
-    ids = {n.id for n in nodes}
+    by_id = {n.id: n for n in nodes}
     for n in nodes:
-        for key in ("requires", "peers"):
+        for key in TRAVERSAL_EDGES:
             for target in n.get_list(key):
-                if target not in ids:
+                if target not in by_id:
                     errs.append(f"{n.id}: {key} → unknown node {target!r}")
+                    continue
                 if target == n.id:
                     errs.append(f"{n.id}: {key} → itself")
+                # `composes` is expertise-to-expertise only (rule 15). A
+                # subsystem that needs a stack's depth `requires` its
+                # expertise node and lets descent do the rest; letting any
+                # kind compose would make "what will --plan load" unanswerable
+                # without reading the whole graph.
+                if key == "composes":
+                    for side, node in (("composes from", n), ("composes to", by_id[target])):
+                        if node.meta.get("kind") != "expertise":
+                            errs.append(
+                                f"{n.id}: {side} {node.id} of kind "
+                                f"{node.meta.get('kind')!r} — composes joins "
+                                f"expertise nodes only")
 
 
-def check_acyclic(nodes: list, errs: list) -> None:
-    graph = {n.id: list(n.get_list("requires")) for n in nodes}
+def check_acyclic(nodes: list, errs: list, key: str = "requires",
+                  arrow: str = " → ") -> None:
+    """`requires` and `composes` are each acyclic on their own.
+
+    Their UNION is deliberately not checked: `parent composes child` together
+    with `child requires parent` is the intended shape — the eager edge points
+    up to what you cannot be correct without, the lazy one points down to what
+    the task may not need — and the router's loaded-set makes termination
+    trivial either way.
+    """
+    graph = {n.id: list(n.get_list(key)) for n in nodes}
     WHITE, GREY, BLACK = 0, 1, 2
     colour = dict.fromkeys(graph, WHITE)
 
@@ -406,8 +455,8 @@ def check_acyclic(nodes: list, errs: list) -> None:
             if v not in colour:
                 continue
             if colour[v] == GREY:
-                cyc = " → ".join(stack[stack.index(v):] + [v])
-                errs.append(f"requires cycle: {cyc}")
+                cyc = arrow.join(stack[stack.index(v):] + [v])
+                errs.append(f"{key} cycle: {cyc}")
             elif colour[v] == WHITE:
                 visit(v, stack + [v])
         colour[u] = BLACK
@@ -415,6 +464,65 @@ def check_acyclic(nodes: list, errs: list) -> None:
     for nid in graph:
         if colour[nid] == WHITE:
             visit(nid, [nid])
+
+
+def check_expertise(n: Node, errs: list, by_id: dict) -> None:
+    """Rules 17–19: an expertise node routes somewhere, its children's upward
+    `requires` is mirrored by its own `composes`, and a version suffix exists
+    only under the unversioned node that composes it."""
+    if n.meta.get("kind") != "expertise":
+        return
+    if not (n.get_list("libraries") or n.get_list("artifacts")):
+        errs.append(f"{n.id}: expertise node with no libraries/artifacts edge — "
+                    f"it owns applicability and composition, so with no depth "
+                    f"to route to it routes to nothing")
+    for target in n.get_list("requires"):
+        parent = by_id.get(target)
+        if (parent is not None and parent.meta.get("kind") == "expertise"
+                and n.id not in parent.get_list("composes")):
+            errs.append(f"{n.id}: requires {target} but {target} does not "
+                        f"compose it — add '  - {n.id}' under composes: in "
+                        f"{parent.path.name}")
+    m = VERSIONED_SLUG_RE.match(n.id)
+    if m:
+        base = by_id.get(m.group("base"))
+        if base is None or n.id not in base.get_list("composes"):
+            errs.append(f"{n.id}: a version-qualified expertise slug is legal "
+                        f"only as a child composed by {m.group('base')!r} — "
+                        f"the pin's home is docs/graph/libraries/, not an id")
+
+
+def check_composition_triggers(nodes: list, warns: list) -> None:
+    """The `load_when` analogue of agent-lint's routing-trigger warning, for
+    composed children. Descent matches a task term against what a child knows
+    and its parent does not, so a term the siblings share is family vocabulary
+    that belongs one level up, and a term half the graph carries descends on
+    tasks that are not about this child at all. Tokens under three characters
+    are ignored: `_terms` drops them from every task, so `0` out of `net8.0`
+    can never match and must never be reported."""
+    by_id = {n.id: n for n in nodes}
+    seen = {}
+    for n in nodes:
+        for t in n.triggers:
+            if len(t) >= 3:
+                seen[t] = seen.get(t, 0) + 1
+    for n in nodes:
+        kids = [by_id[c] for c in n.get_list("composes") if c in by_id]
+        if not kids:
+            continue
+        own = {c.id: {t for t in c.triggers - n.triggers if len(t) >= 3} for c in kids}
+        for c in kids:
+            for t in sorted(own[c.id]):
+                shared = [o.id for o in kids if o.id != c.id and t in own[o.id]]
+                if shared:
+                    warns.append(f"{c.id}: trigger {t!r} is shared with "
+                                 f"{', '.join(sorted(shared))} — family "
+                                 f"vocabulary belongs on {n.id}, where it "
+                                 f"cannot descend a child")
+                elif seen.get(t, 0) > 3:
+                    warns.append(f"{c.id}: trigger {t!r} appears in "
+                                 f"{seen[t]} nodes — too generic to say this "
+                                 f"child is what the task is about; sharpen it")
 
 
 def check_reachability(nodes: list, errs: list) -> None:
@@ -440,7 +548,7 @@ def check_reachability(nodes: list, errs: list) -> None:
                 if cur in seen or cur not in by:
                     continue
                 seen.add(cur)
-                stack2.extend(by[cur].get_list("requires") + by[cur].get_list("peers"))
+                stack2.extend(by[cur].out_edges())
             for n in nodes:
                 if n.id not in seen:
                     errs.append(f"{n.id}: unreachable — no root yet, not listed in index.md, and no listed node reaches it")
@@ -452,7 +560,7 @@ def check_reachability(nodes: list, errs: list) -> None:
         if cur in seen or cur not in by_id:
             continue
         seen.add(cur)
-        stack.extend(by_id[cur].get_list("requires") + by_id[cur].get_list("peers"))
+        stack.extend(by_id[cur].out_edges())
     if INDEX.exists():
         index_text = INDEX.read_text(encoding="utf-8")
         for n in nodes:
@@ -566,8 +674,17 @@ def _terms(task: str) -> set:
 def resolve(nodes: list, task: str):
     """Mirror the traversal in skills/context-router/SKILL.md.
 
-    Scoring is IDF-weighted: a term in many nodes (generic) is worth
-    little; a term in one or two (distinctive) dominates.
+    Seeds are scored IDF-weighted: a term in many nodes (generic) is worth
+    little; a term in one or two (distinctive) dominates. The closure then
+    follows `requires` eagerly — you cannot be correct without it — and
+    `composes` lazily: a composed child loads only when the task names,
+    exactly, a term the child knows and its parent does not. Loud family
+    vocabulary therefore cannot drag a library page into every task about
+    the stack, which is the whole reason the lazy edge exists.
+
+    Returns (loaded, not_loaded, notices): `loaded` pairs each node with how
+    it got there, `not_loaded` pairs each node with why it stayed out, and
+    `notices` carries the wide-descent warnings.
     """
     by_id = {n.id: n for n in nodes}
     terms = _terms(task)
@@ -605,24 +722,49 @@ def resolve(nodes: list, task: str):
     # pre-growth graphs have no root yet: fall back to nothing rather than crash
     seeds = [n for s, n in entries[:3] if s >= floor] or ([by_id[ROOT_ID]] if ROOT_ID in by_id else [])
 
-    loaded = {}
-    stack = list(seeds)
+    loaded: list = []          # [(Node, how)] — how: entry / requires / composed
+    seen: set = set()
+    reasons: dict = {}         # id -> why it is NOT loaded
+    notices: list = []
+    stack = [(n, "entry") for n in seeds]
     while stack:
-        n = stack.pop()
-        if n.id in loaded:
+        n, how = stack.pop()
+        if n.id in seen:
             continue
-        loaded[n.id] = n
+        seen.add(n.id)
+        loaded.append((n, how))
         for r in n.get_list("requires"):
             if r in by_id:
-                stack.append(by_id[r])
-
-    skipped = {
-        p: by_id[p]
-        for n in loaded.values()
-        for p in n.get_list("peers")
-        if p in by_id and p not in loaded
-    }
-    return list(loaded.values()), list(skipped.values())
+                stack.append((by_id[r], f"requires of {n.id}"))
+        if n.meta.get("kind") != "expertise":
+            continue
+        kids = [by_id[c] for c in n.get_list("composes") if c in by_id]
+        hits = 0
+        for c in kids:
+            # The child's OWN vocabulary: what it knows that its parent does
+            # not. An exact hit only — a prefix fold would let "migrating the
+            # CI runner" pull in the schema-migration expertise.
+            own = c.triggers - n.triggers
+            term = next((t for t in sorted(terms) if _match(t, own) == 2), None)
+            if term:
+                hits += 1
+                stack.append((c, f'composed by {n.id} on "{term}"'))
+            else:
+                reasons.setdefault(
+                    c.id, f"composed by {n.id}; no task term specific to it")
+        # A single child that matches is an ordinary descent, not a symptom;
+        # only a parent handing over most of a real menu says the task or the
+        # triggers are too generic.
+        if len(kids) > 1 and hits * 2 > len(kids):
+            notices.append(f"wide descent from {n.id}: {hits} of {len(kids)} "
+                           f"children — the task or the triggers are too generic")
+    for n, _ in loaded:
+        for p in n.get_list("peers"):
+            if p in by_id:
+                reasons.setdefault(
+                    p, f"peer of {n.id} — cross only if the task requires it")
+    not_loaded = [(by_id[i], r) for i, r in reasons.items() if i not in seen]
+    return loaded, not_loaded, notices
 
 
 def main() -> int:
@@ -638,35 +780,48 @@ def main() -> int:
         return 2
 
     if args.plan:
-        loaded, skipped = resolve(nodes, args.plan)
-        total = sum(n.meta.get("est_tokens", 0) for n in loaded)
+        loaded, not_loaded, notices = resolve(nodes, args.plan)
+        total = sum(n.meta.get("est_tokens", 0) for n, _ in loaded)
         print(f"task: {args.plan}\n")
+        for note in notices:
+            print(f"  ! {note}")
+        if notices:
+            print()
         print(f"LOAD ({len(loaded)} nodes, ~{total} tokens):")
-        for n in sorted(loaded, key=lambda x: x.id):
-            print(f"  {n.id:<28} {n.meta.get('title','')}")
-        if skipped:
-            print("\nNOT LOADED (peers — cross only if the task requires it):")
-            for n in sorted(skipped, key=lambda x: x.id):
-                print(f"  {n.id:<28} {n.meta.get('title','')}")
+        for n, how in sorted(loaded, key=lambda x: x[0].id):
+            line = f"  {n.id:<28} {n.meta.get('title','')}"
+            if how.startswith("composed by"):
+                line += f"   <- {how}"
+            print(line)
+        if not_loaded:
+            print("\nNOT LOADED (with the reason; cross only if the task requires it):")
+            for n, reason in sorted(not_loaded, key=lambda x: x[0].id):
+                print(f"  {n.id:<28} {reason}")
         return 0
 
     if args.graph:
         for n in sorted(nodes, key=lambda x: x.id):
             for r in n.get_list("requires"):
                 print(f"{n.id} -> {r}")
+            for c in n.get_list("composes"):
+                print(f"{n.id} ~> {c}")
         return 0
 
     errs: list = []
     warns: list = []
+    by_id = {n.id: n for n in nodes}
     for n in nodes:
         check_schema(n, errs)
         check_status(n, errs)
         check_deviation(n, errs)
+        check_expertise(n, errs, by_id)
     check_plant_block(errs, warns)
     check_unique_ids(nodes, errs)
     check_unique_ownership(nodes, errs)
     check_edges(nodes, errs)
     check_acyclic(nodes, errs)
+    check_acyclic(nodes, errs, "composes", " ~> ")
+    check_composition_triggers(nodes, warns)
     check_reachability(nodes, errs)
     check_libraries(nodes, errs)
     check_artifacts(nodes, errs)

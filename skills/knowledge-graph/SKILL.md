@@ -28,7 +28,8 @@ artifacts:
   - templates/knowledge-graph/index.md
   - templates/knowledge-graph/node.template.md
   - templates/docs/nodes/_deviation.template.md
-est_tokens: 2150
+  - templates/docs/nodes/_expertise.template.md
+est_tokens: 2519
 ---
 
 # knowledge-graph
@@ -60,12 +61,23 @@ names the node id and lets the traversal do the work.
 ## The node contract
 
 Every node begins with frontmatter. The full contract — every key's
-semantics (`id`, `owns`, `requires`, `peers`, `artifacts`, `libraries`,
-`load_when`, `est_tokens`) and the anti-patterns — lives in
+semantics (`id`, `owns`, `requires`, `peers`, `composes`, `artifacts`,
+`libraries`, `load_when`, `est_tokens`) and the anti-patterns — lives in
 `docs/graph/_schema.md`, the file installed beside the
 graph itself; copy an existing node rather than authoring frontmatter
 from scratch. The key that carries the whole design: `owns` — each
 fact-key appears in exactly one node's list, project-wide.
+
+An `expertise` node is authored to route, never to inform. It owns
+exactly two facts — `<slug>.applicability` (when this stack element is
+in play, and what must not be done without it) and `<slug>.composition`
+(which sub-expertises apply under which condition) — and it carries at
+least one `libraries:`/`artifacts:` edge to the depth it points at. The
+API, the pin, and the standard stay on those leaves; the node names the
+leaf that serves each purpose and restates none of them. Its
+specialisations hang off `composes:`, and a child that `requires:` its
+parent must appear in that parent's list — the reciprocity the linter
+checks, so a child cannot be added without the menu learning about it.
 
 ## The rules
 
@@ -136,6 +148,15 @@ Nodes grow with the project. Add a fact when the code gains it; add a
 sharp edge when it bites, dated; add a `load_when` trigger when a task
 should have matched and didn't. Do not pre-populate theoretical facts.
 
+Write every trigger in the forms a developer actually types, and in
+forms of **three characters or more**: the router drops shorter tokens,
+so `EF` can never route — write "entity framework" and "dbcontext"
+instead. On a composed child the wording decides whether it is ever
+reached at all, because descent tests the child's own vocabulary minus
+its parent's: a trigger the family already carries sits on the parent,
+adds nothing, and descends nobody. Give a child the words only it
+answers to.
+
 Compounding extends to being *wrong*: when a recorded fact is later
 found false — after testing or a closer survey — do not silently
 overwrite it. Add a dated **Correction** note *alongside* the original,
@@ -193,7 +214,8 @@ rather than aspirational. It enforces:
 1. Frontmatter parses; required keys present; `id` matches filename and
    kind.
 2. Every fact-key in `owns` is unique across all nodes.
-3. Every id in `requires`/`peers` resolves; `requires` is acyclic.
+3. Every id in `requires`/`peers`/`composes` resolves; `requires` and
+   `composes` are each acyclic — their union deliberately is not.
 4. Every node is reachable from the root or listed in the index.
 5. Every `libraries:` id has a page in `docs/graph/libraries/`.
 6. Every `artifacts:` path resolves beneath `docs/graph/`.
@@ -204,12 +226,17 @@ rather than aspirational. It enforces:
 9. Lifecycle status is a vocabulary value with its companions, a
    `deviation` node carries its five fields, and `index.md` carries the
    `plant:` block (schema rules 12–14).
+10. A `composes` edge runs between two `expertise` nodes and no others;
+    a child that `requires` its parent is listed in that parent's
+    `composes`; an expertise node carries at least one
+    `libraries`/`artifacts` edge; and a `-<digits>` id is composed by
+    the id without the suffix (schema rules 15–19).
 
 Run it before committing any graph change:
 
 ```sh
 python3 docs/graph/graph-lint.py            # lint
-python3 docs/graph/graph-lint.py --graph    # print the requires-DAG
+python3 docs/graph/graph-lint.py --graph    # edges: -> requires, ~> composes
 python3 docs/graph/graph-lint.py --plan "<task>"   # dry-run the router
 ```
 

@@ -18,7 +18,7 @@ load_when:
   - "retry or re-route, flaky failure"
   - "delegation came back wrong or ambiguous"
   - "gate red twice on the same increment"
-est_tokens: 1150
+est_tokens: 1343
 command: true
 ---
 
@@ -43,10 +43,10 @@ relative or elapsed ones.
 |----------------|--------------------------------------------------------------------------|------------------------------------------------------------------------|
 | **Transient**  | Environment flake: network, rate limit, race, resource exhaustion.       | Retry as-is, **max 2**, backing off. Third failure is not transient — reclassify. |
 | **Deterministic** | Same input reliably produces the same failure: compile error, failing assertion, lint, schema rejection. | **Never retry unchanged.** Change the input (the code, the test, the config) and re-run. |
-| **Capability** | The worker is the wrong instrument: wrong specialist, missing expertise, out-of-domain handback, LOW/NONE route band in hindsight. | Re-route: run `agent-lint --route` again with the *sharper* task statement, or commission the missing expert (kernel §1). Do not re-brief the same agent harder. |
+| **Capability** | The worker is the wrong instrument: wrong specialist, missing expertise, out-of-domain handback, LOW/NONE route band in hindsight. | Re-route: run `agent-lint --route` again with the *sharper* task statement — stated in the domain's own words, which also composes the expertise the worker lacked. A knowledge gap closes as an `expertise.*` node; commission an agent only when the work needs its own tools, model class, stance, or isolation (kernel §1). Do not re-brief the same agent harder. |
 | **Ambiguity**  | The worker asked the brief a question, guessed, or two artifacts contradict (spec vs code, plan vs node). | Fix the **cheapest upstream artifact that owns the confusion** — brief first, then plan (grill §), then spec — and re-delegate. Widening the worker's context is not the fix; the contradiction will still be there. |
 | **Systemic**   | The harness or the system itself: wedged delegation, depth cap hit, missing tool, broken gate infrastructure. | Stop the line. Record in grill.md §12 and report to the human with the exact evidence. No workaround that hides it. |
-| **Unregistered** | The specialist exists on disk but the host has no such type: the session predates the projection (install, graft roster delta, freshly commissioned expert), or it is rooted at the seed rather than the plant. Reads like Systemic — it is not. | Apply `delegation.harness-registration` (`docs/graph/method/delegation.md`): preflight, re-enter rooted at the plant, or role-emulate **and record it**. Do not stop the line, and do not "commission the missing expert" — the definition already exists; a second one is a duplicate home. |
+| **Unregistered** | The specialist exists on disk but the host has no such type: the session predates the projection (install, graft roster delta, freshly commissioned expert), or it is rooted at the seed rather than the plant. Reads like Systemic — it is not. | Apply `delegation.harness-registration` (`docs/graph/method/delegation.md`): preflight, re-enter rooted at the plant, or role-emulate **and record it**. Do not stop the line, and do not commission a second definition — this one already exists, and a duplicate is a second home for the same charter. |
 
 An intermittent or probabilistic failure is confirmed **fixed** only on
 mechanism-level evidence — a trace or observation proving the causal
@@ -108,7 +108,8 @@ work and rediscovering it is the rework this protocol exists to kill.
 - You do not retry a deterministic failure without changing the input.
 - You do not exceed two as-is retries for a transient failure.
 - You do not re-brief the same specialist harder when the class is
-  capability — re-route or commission.
+  capability — re-route, compose the missing expertise, or commission an
+  agent when the work needs its own context.
 - You do not widen context to cure ambiguity — fix the owning artifact.
 - You do not work around a systemic failure quietly.
 - You do not make a fourth attempt.

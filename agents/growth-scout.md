@@ -22,7 +22,7 @@ peers:
   - agent.growth-orchestrator
   - agent.docs-librarian
   - agent.research-scout
-est_tokens: 1177
+est_tokens: 1259
 ---
 
 # Growth Scout
@@ -92,10 +92,14 @@ route — you do not widen scope to chase it.
 
 You write ONE structured ledger per boundary, in the canonical schema
 `docs/graph/templates/prompts/growth-evidence-ledger.md` — do not improvise a format. Its
-sections are keyed to the growth deliverables your evidence feeds (graph
-nodes/wiki, specs, ADRs, project-specific specialist agents, runbooks), so
-what you gather is exactly what the authors need and nothing they need is
-left ungathered. Every claim is a one-line fact + `path:line` + symbol; an
+sections are keyed to the growth deliverables your evidence feeds — graph
+nodes/wiki, specs, ADRs, runbooks, and, from §9, both the `expertise.*` node
+every core or significant stack element owes (what it is used *with*, the task
+shapes it is in play for in the words a developer would type, what goes wrong
+without it, and whether the manifests show more than one major) and the rarer
+signal that some sub-work needs a specialist agent of its own — so what you
+gather is exactly what the authors need and nothing they need is left
+ungathered. Every claim is a one-line fact + `path:line` + symbol; an
 empty section is `none found`; an unestablished fact is `not recorded` with the
 evidence a follow-up would need — never a guess.
 

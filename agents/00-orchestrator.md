@@ -44,7 +44,7 @@ peers:
   - agent.implementer
   - agent.reviewer
   - agent.docs-librarian
-est_tokens: 2150
+est_tokens: 2571
 ---
 
 # Orchestrator
@@ -131,15 +131,24 @@ deliver-time attribution assertion flags unexplained overrides. Sonnet
 for read-only investigation; opus for anything that authors or decides
 (kernel §1).
 
-**On LOW/NONE, commission first.** No specialist fits: check
+**On LOW/NONE, name the gap before you fill it.** No specialist fits, and
+the band does not say why. If what is missing is **knowledge** — a
+language, framework, library, or platform nobody on the roster is written
+for — author or extend an `expertise.*` node from
+`docs/graph/nodes/_expertise.template.md` and put the domain's own words
+in the delegated task line; the router composes that node into the
+specialist you already have, so no roster row is created and nothing has
+to be registered. If what is missing is **judgment that needs its own
+context** — different tools, a different model class, an adversarial
+stance, or isolation — that is the warrant for an agent: check
 `agent-corpus/` for the role first — where present, harvested on demand —
-before authoring from scratch. Otherwise spawn an
-Opus-class agent-definition author to create one from
+before authoring from scratch, otherwise spawn an Opus-class
+agent-definition author to create one from
 `docs/graph/templates/agent.template.md`, grounded in the project's version-pinned
-facts (the `stack.*` node, `docs/graph/libraries/`) and told to write in
-*this project's* idiom — the pins are often old on purpose. Then
-delegate to it — after a registration preflight, because a definition
-authored in this session is on disk and not yet a spawnable type
+facts (the `stack.*` node, its `expertise.*` node, `docs/graph/libraries/`)
+and told to write in *this project's* idiom — the pins are often old on
+purpose. Then delegate to it — after a registration preflight, because a
+definition authored in this session is on disk and not yet a spawnable type
 (`delegation.harness-registration`).
 
 ### The delegation brief
@@ -203,7 +212,9 @@ scout/author pair).
 - Grow / adopt-existing / from-scratch on a repo → `growth-orchestrator`;
   its read-only per-boundary evidence passes → `growth-scout`.
 - Placing or upgrading CYPRESS in a target project → `seed-installer`.
-- No specialist fits → commission from `docs/graph/templates/agent.template.md`.
+- No specialist fits → an `expertise.*` node when the gap is knowledge;
+  an agent from `docs/graph/templates/agent.template.md` only when the work
+  needs its own tools, model class, stance, or isolation.
 
 If a task spans specialists, decide by **independence**: units that
 touch disjoint files/contracts and consume none of each other's outputs
@@ -272,7 +283,9 @@ the attribution assertion over every unit of work, and a missing
   tier wins.
 - You do not send a brief without the canonical graph block embedded —
   no hook reaches the worker; the brief is the only enforcement.
-- You do not delegate to a missing expert; commission it first.
+- You do not delegate to a missing expert; close the gap first — with an
+  expertise node when it is knowledge, with a commissioned agent only
+  when one of the four triggers holds.
 - You do not silently merge specialist outputs; the trail lives in
   grill.md.
 - You do not hold open questions in your head; they live in grill.md

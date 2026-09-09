@@ -19,7 +19,7 @@ load_when:
   - "fold generalizable improvements upstream"
   - "the plant is mature, propose a harvest"
   - "seed improvement from project experience"
-est_tokens: 7950
+est_tokens: 8043
 ---
 
 # Protocol: harvest
@@ -490,12 +490,14 @@ the tool mirror of the library corpus above; both gates apply.
 ## The suggested-expert corpus
 
 The roster mirror of the library and tool corpora. A plant sometimes needs a
-specialist the base roster lacks and commissions one (the orchestrator's
-LOW/NONE commission step). Most of that role's value is not its stack wiring
-but its **mandate** — what it owns, when to select it, how it bounds against
-the base roster. When that mandate is genuinely stack-neutral, harvest folds it
-into a seed-side catalog so the next plant selects a ready role instead of
-reinventing it. Both gates apply, plus the roster's own economy: the base team
+specialist the base roster lacks and commissions one — not because a stack was
+unfamiliar (a plant closes a *knowledge* gap with an expertise node of its own,
+which the router composes into the roster it already has) but because some work
+needs its own tools, model class, stance, or isolation. Most of that role's
+value is not its stack wiring but its **mandate** — what it owns, when to
+select it, how it bounds against the base roster. When that mandate is
+genuinely stack-neutral, harvest folds it into a seed-side catalog so the next
+plant selects a ready role instead of reinventing it. Both gates apply, plus the roster's own economy: the base team
 is paid on every session of every plant, so a harvested role lands in the
 **catalog** by default, never straight into the always-loaded roster.
 
@@ -515,7 +517,8 @@ selected. Harvest may *propose* a promotion; it never performs one.
   statable with zero framework names.
 - **What stays out.** A stack-specific expert (a framework/language/library
   specialist), and any role that duplicates a base-roster mandate — the first
-  is the plant's own, commissioned fresh; the second breaks one-home-per-fact.
+  is the plant's own knowledge, which belongs in its expertise nodes against
+  its own pins rather than in any roster; the second breaks one-home-per-fact.
 - **The withdraw contract (consumed by `grow` / `graft` / commission).** When a
   project needs a role the base roster lacks, check the corpus FIRST: if a match
   exists, instantiate it into the project's `docs/graph/agents/` (the harness

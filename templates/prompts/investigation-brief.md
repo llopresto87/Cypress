@@ -48,7 +48,8 @@ GRAPH DISCIPLINE — execute before reading any source:
 - **Cite the router.** This brief was selected by `agent-lint --route`; the
   ranked line and confidence band that picked you are: {{paste the `agent-lint
   --route` line + band}}. Echo it back in `route_evidence`, and if you were
-  routed here at LOW/NONE confidence say so — you may be the wrong specialist.
+  routed here at LOW/NONE confidence say so and name what the task actually
+  needed: the wrong specialist, or expertise no node in this graph carries.
 - **End with a handback.** Close your turn with the payload from
   `docs/graph/templates/prompts/handback-payload.md`: `produced_by: {{you}}`,
   `in_domain_work_done` with paths, `route_evidence`, and — at any

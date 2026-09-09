@@ -820,7 +820,7 @@ ones.
 |-------|-----------------|----------------------|
 | **Transient** | Environment flake: network, rate limit, race, resource exhaustion | Retry as-is, **max 2**, backing off. Third failure is not transient — reclassify. |
 | **Deterministic** | Same input reliably produces the same failure: compile error, failing assertion, lint, schema rejection | **Never retry unchanged.** Change the input (code, test, config) and re-run. |
-| **Capability** | The worker is the wrong instrument: wrong specialist, missing expertise, out-of-domain handback, LOW/NONE route band in hindsight | Re-route: run `agent-lint --route` with a *sharper* task statement, or commission the missing expert (kernel §1). Do not re-brief the same agent harder. |
+| **Capability** | The worker is the wrong instrument: wrong specialist, missing expertise, out-of-domain handback, LOW/NONE route band in hindsight | Re-route: run `agent-lint --route` with a *sharper* task statement, written in the domain's own words so it also composes the expertise the worker lacked. A knowledge gap closes as an `expertise.*` node; commission an agent only when the work needs its own tools, model class, stance, or isolation (kernel §1). Do not re-brief the same agent harder. |
 | **Ambiguity** | The worker asked the brief a question, guessed, or two artifacts contradict (spec vs code, plan vs node) | Fix the **cheapest upstream artifact that owns the confusion** — brief first, then plan (grill §), then spec — and re-delegate. Widening context is not the fix. |
 | **Systemic** | The harness or system itself: wedged delegation, depth cap hit, missing tool, broken gate infrastructure | Stop the line. Record in grill.md §12 and report to the human with the exact evidence. No workaround that hides it. |
 | **Unregistered** | The specialist exists on disk but the host has no such type: the session predates the projection, or it is rooted at the seed rather than the plant. Reads like Systemic — it is not. | Apply `delegation.harness-registration`: preflight, re-enter rooted at the plant, or role-emulate **and record it**. Do not stop the line, and do not commission a second definition. |
@@ -1604,9 +1604,21 @@ coverage; only authored, source-cited content is.
 chat fills `.cypress/coverage.json` (schema:
 `growth-coverage-record.md`) and `tools/growth-audit.py` reads it back.
 Rows: one per knowledge collection the installer creates, one per roster
-agent declaring `plant_knowledge:`, and one per stack-inventory item —
-the first two derived from the seed, so a collection or a specialist
-cannot be forgotten by being left out. Each is `COVERED` (with the
+agent declaring `plant_knowledge:`, one per project-specific expert the
+plant's own graph carries, and one per stack-inventory item — the first
+three derived rather than declared, so a collection, a specialist, or an
+expert cannot be forgotten by being left out. An inventory row for a
+core or significant stack element also owes an `expertise.*` node, which
+is derived rather than decided: the routable handle that says when that
+element is in play and points at its pin page and its standards page
+without restating either. A dominant domain or a core part of the stack
+additionally records whether it warrants an **agent** of its own, which
+is warranted only for what a node cannot be — different tools, a
+different model class, an adversarial stance, or context isolation — and
+names which. Leaving that unasked is `UNSTAFFED`, as is naming no
+trigger, an expert named but never authored, and an expert
+that reaches `docs/graph/agents/` but no harness projection is reported
+as what it is — on disk and unspawnable. Each is `COVERED` (with the
 strongest source paths), `ABSENT` (with the reason and the paths
 searched), or a named `UNKNOWN` blocker. The record is tracked beside
 the plant's `.cypress/seed.json` stamp, never under `docs/graph/` and

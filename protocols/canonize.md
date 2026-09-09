@@ -22,6 +22,7 @@ artifacts:
   - templates/tool-page.template.md
   - templates/skill.template.md
   - templates/docs/nodes/_deviation.template.md
+  - templates/docs/nodes/_expertise.template.md
 load_when:
   - "task is finishing, close out, before deliver"
   - "persist what we learned into the graph"
@@ -29,7 +30,7 @@ load_when:
   - "catalog a tool or skill the work produced"
   - "status review at close-out: did each register item move this session"
   - "we departed from the standard, record the deviation and why"
-est_tokens: 2200
+est_tokens: 2288
 command: true
 ---
 

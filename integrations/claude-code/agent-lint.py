@@ -349,8 +349,12 @@ def cmd_route(agents: list, task: str) -> int:
         print("      If you override to a different/generic agent, record why "
               "(deliver assertion checks this).")
     else:
-        print("HINT: no clear specialist — commission an expert from "
-              "templates/agent.template.md, then delegate (RC4 path).")
+        print("HINT: no clear specialist — name the gap before filling it. "
+              "Knowledge nobody on the roster is written for is an expertise "
+              "node (docs/graph/nodes/_expertise.template.md), which the "
+              "router composes into the roster you already have; commission "
+              "an expert from templates/agent.template.md only when the work "
+              "needs its own tools, model class, stance, or isolation.")
     # This ranks files ON DISK. It cannot see the host's session registry, so
     # it will name a specialist a just-installed session is unable to spawn.
     print("NOTE: fit only, not registration — this reads .claude/agents/ off "

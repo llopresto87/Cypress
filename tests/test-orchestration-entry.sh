@@ -44,7 +44,32 @@ grep -q 'design surface' "$ROOT/protocols/grow.md"
 grep -q 'regulatory exposure' "$ROOT/protocols/grow.md"
 grep -q 'plant_knowledge' "$ROOT/agents/13-ui-ux-designer.md"
 grep -q 'plant_knowledge' "$ROOT/agents/14-legal.md"
+# 7.4.0: growth staffs the project, not only its shelves. The §9 specialist
+# signal has to end in a recorded decision and — where it warrants an expert —
+# in a node the host can actually spawn. Pin the decision, the registration,
+# and the frontmatter the template must carry, because each of the three
+# failed silently before: the decision died with the gitignored ledger, the
+# expert was never projected, and the template could not answer the gate.
+grep -q 'Staff the project' "$ROOT/protocols/grow.md"
+grep -q 'origin: project' "$ROOT/protocols/grow.md"
+grep -q 'delegation.harness-registration' "$ROOT/protocols/grow.md"
+grep -q 'UNSTAFFED' "$ROOT/protocols/graft.md"
+grep -q 'warranted' "$ROOT/templates/prompts/growth-coverage-record.md"
+grep -q '^plant_knowledge:' "$ROOT/templates/agent.template.md"
+grep -q '^origin: project' "$ROOT/templates/agent.template.md"
 grep -q 'graph-lint.py --plan' "$ROOT/templates/prompts/investigation-brief.md"
+# 7.5.0: expertise composes through the graph. The kind and its lazy edge are
+# only real if the contract describes them, an author is told to write them,
+# the form carries the pointer that keeps versions out of the node, and the
+# router skill says how to declare what descent left out.
+grep -q 'composes' "$ROOT/templates/knowledge-graph/_schema.md"
+grep -q 'composes' "$ROOT/protocols/grow.md"
+grep -q '## Version in play' "$ROOT/templates/docs/nodes/_expertise.template.md"
+grep -q 'Expertise and specialist signals' "$ROOT/templates/prompts/growth-evidence-ledger.md"
+grep -q 'no task term specific to it' "$ROOT/skills/context-router/SKILL.md"
+grep -q 'isolation' "$ROOT/protocols/grow.md"
+grep -q 'needs' "$ROOT/templates/prompts/growth-coverage-record.md"
+
 grep -q 'graph-lint.py --plan' "$ROOT/templates/prompts/node-authoring-brief.md"
 grep -q 'must run inside every spawned worker' "$ROOT/skills/context-router/SKILL.md"
 

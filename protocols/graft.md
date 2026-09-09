@@ -19,7 +19,7 @@ load_when:
   - "graft the seed, re-propagate machinery"
   - "plant grew from an older seed version"
   - "reconcile local machinery divergence"
-est_tokens: 11616
+est_tokens: 12037
 ---
 
 # Protocol: graft
@@ -299,8 +299,11 @@ migration threads through the phases that follow:
   in the old spot is half-migrated: the router cannot route them, and
   graph-lint cannot see them. But relocating is not reconciling. Promote each
   into `docs/graph/{agents,skills}/`, adding the node frontmatter it lacks
-  (`id`/`tier`/`kind`/`origin`/`title`/`owns`/`est_tokens`, reusing an agent's
-  `routing_triggers` as its `load_when`) — then read its content against the
+  (`id`/`tier`/`kind`/`origin: project`/`title`/`owns`/`est_tokens`, reusing an
+  agent's `routing_triggers` as its `load_when`, and — for an expert —
+  `plant_knowledge:` naming the collections or expertise nodes it must be able
+  to read, without which the relocated expert lands as a node the coverage gate
+  cannot answer for) — then read its content against the
   rest of the graph, because a plant-authored expert that predates the graph
   was written with no graph to defer to and will almost certainly restate
   facts the graph's crosscut/platform/subsystem nodes already own (an auth
@@ -480,18 +483,25 @@ python3 <seed>/tools/growth-audit.py <plant> <seed> --plan
 python3 <seed>/tools/growth-audit.py <plant> <seed>
 ```
 
-`--plan` derives the required rows from the NEW seed, so every collection and
-every `plant_knowledge:`-declaring agent this graft added arrives as a row the
-plant does not yet answer — that is the "grafted is not grown" gap made
-visible, per capability, before any authoring starts. The lint then names what
-is still owed. A plant grown under an older seed also gains rows for the
-domains that seed never gathered evidence for: a `ui-ux-designer` with no
-`design/` material and a `legal` analyst with no corpus are the standing
-examples, and they are the reason an upgraded plant is re-audited rather than
-assumed complete because it was grown once.
+`--plan` derives the required rows from the NEW seed, so every collection,
+every `plant_knowledge:`-declaring agent, and every `expertise.*` node this
+seed's inventory kinds now owe arrives as a row the plant does not yet answer —
+that is the "grafted is not grown" gap made visible, per capability, before any
+authoring starts. The lint then names what is still owed. A plant grown under
+an older seed also gains rows for the domains that seed never gathered evidence
+for: a `ui-ux-designer` with no `design/` material and a `legal` analyst with
+no corpus are the standing examples, and they are the reason an upgraded plant
+is re-audited rather than assumed complete because it was grown once.
 
-Where a new row needs evidence the plant's graph does not hold, the graft
-dispatches the same workers grow does — a growth-scout at the boundary, and a
+An expertise row is usually grown from facts the plant already holds — and
+where its `stack.*` node already carries the routing prose (when this stack is
+in play, what must not be done without it, which sub-expertises apply under
+which condition), the graft **moves** that prose into the expertise node and
+leaves a `requires:` edge behind rather than copying it: the `stack.*` node
+keeps this project's conventions, the expertise node owns applicability and
+composition, and the same routing fact may not stand in two homes. Where a new
+row needs evidence the plant's graph does not hold, the graft dispatches the
+same workers grow does — a growth-scout at the boundary, and a
 `research-scout` for anything the plan marks `grounding.required`, so a new
 `best-practices/` or `libraries/` page is written from retrieved upstream
 documentation rather than model memory. The loop is grow's: inventory, plan,
@@ -503,7 +513,9 @@ and it ships reported.
 - **Grow what the plant evidently needs, grounded in its own facts.** Instantiate
   a suggested skill or expert the plant's real stack calls for (the
   `skill-corpus` / `agent-corpus` withdraw contract, into `docs/graph/skills/` /
-  `docs/graph/agents/`, with the harness projections regenerated from them),
+  `docs/graph/agents/`, with the harness projections regenerated from them —
+  an expert that reaches the graph and not the projection directory is on disk
+  and unspawnable, and the coverage gate reports it as such),
   withdraw a corpus library/tool page the plant actually uses, withdraw a
   `legal-corpus` instrument the plant is genuinely subject to (currency
   re-confirmed, per Phase 4),
@@ -615,10 +627,18 @@ backups exist). Then prove the plant is left more capable and no less itself:
 - **Coverage (the grown-not-just-grafted gate)** — run
   `tools/growth-audit.py <plant> <seed>`. It is the mechanical form of the
   promise Phase 5 makes: every knowledge collection this seed installs and
-  every roster agent that declares `plant_knowledge:` has an answered row, and
-  every inventory item's planned artifacts exist and are not scaffolds. A
-  `MISSING` or `BLANK` row means this graft carried a capability it never grew;
-  `UNGROWN`/`HOLLOW`/`UNGROUNDED` mean it grew one without the material.
+  every roster agent that declares `plant_knowledge:` has an answered row,
+  every project-specific expert the plant carries is a real node that cites
+  what earned it and is projected where the host can spawn it, and every
+  inventory item's planned artifacts exist and are not scaffolds. A `MISSING`
+  or `BLANK` row means this graft carried a capability it never grew;
+  `UNGROWN`/`HOLLOW`/`UNGROUNDED` mean it grew one without the material;
+  `UNSTAFFED` means a dominant domain or a core part of the stack never
+  answered whether it warrants an expert of its own. A 5.x plant meets this
+  differently: its own experts live in the harness directories with no graph
+  home, so they are invisible until step (c) relocates them — and then they
+  surface as `MISSING` rows the record does not yet answer, which is the same
+  gap wearing the shape this phase can act on.
   Non-zero BLOCKS the graft. `STALE` means the record was planned against an
   older seed — re-run `--plan` first; auditing a stale record is how a graft
   reports coverage it never checked. Genuine absences pass as `ABSENT` with a
@@ -647,7 +667,12 @@ backups exist). Then prove the plant is left more capable and no less itself:
   (`python3 docs/graph/graph-lint.py` and a representative `--plan`) **on the
   upgraded engine** (the audit's engine-currency check reports no seed engine
   line missing from the plant — else reconcile with `tools/graft-graph-engine.py`),
-  the agent router lints and evals clean (`python3 docs/graph/agent-lint.py --lint` /
+  which is what makes the `composes` rules enforceable on this plant at all:
+  every composed id resolves and both ends are `kind: expertise`, `composes` is
+  acyclic on its own, a node that `requires` an expertise parent is listed in
+  that parent's `composes`, and an expertise node carries at least one depth
+  edge to the pin or standard it routes to. The agent router lints and evals
+  clean (`python3 docs/graph/agent-lint.py --lint` /
   `--eval` where installed), and internal links and edges resolve. Report the
   **roster delta** Phase 3 carried forward — the specialists added or renamed by
   this graft — as work the plant's next session registers, not as something this

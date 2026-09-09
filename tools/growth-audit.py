@@ -66,15 +66,19 @@ plant-side state and survives the run that wrote it.
 
 WHAT MAKES IT DETERMINISTIC
 
-Three sets of required rows are derived from the SEED, never from the record
-itself, so a row cannot go missing by being left out:
+Three of the four sets of required rows are derived from something other than
+the record itself, so a row cannot go missing by being left out:
 
   * one COLLECTION row per knowledge collection the installer creates
     (every top-level directory and leaf of the seed's templates/docs/**),
   * one AGENT row per roster agent that declares `plant_knowledge:` — the
     collections that agent must be able to read to do its job at all,
+  * one EXPERT row per project-specific expert the PLANT's own graph carries
+    (anything under docs/graph/agents/ that is not `origin: seed`), which is
+    the supply side of the staffing question,
   * one INVENTORY row per item the scouts found, each carrying its own
-    planned artifacts.
+    planned artifacts and — where the item is a dominant domain or a core
+    part of the stack — its own staffing decision, the demand side.
 
 A graft to a newer seed that adds a collection or an agent therefore adds
 required rows the plant does not yet answer, and they surface as MISSING until
@@ -85,15 +89,24 @@ VERDICTS (a row fails the gate unless noted)
   MISSING      a required row is absent from the record entirely
   BLANK        the row exists with no status — growth never reached it
   UNGROWN      a planned artifact does not exist in the plant
-  HOLLOW       a planned artifact exists but is a scaffold: byte-identical to
-               its seed template, still carrying {{placeholders}}, or too
-               small to carry a fact
+  HOLLOW       a planned artifact exists but is not one: byte-identical to
+               its seed template (for an expert, to the agent template or to a
+               seed agent), still carrying {{placeholders}}, too small to carry
+               a fact, or — for an expert — missing the frontmatter that makes
+               it a node the graph and the harness can use
   UNGROUNDED   an item requiring external grounding cites no retrieved source
                that resolves under docs/graph/sources/
   DANGLING     a COVERED row cites evidence paths that do not exist
   UNJUSTIFIED  an ABSENT row gives no reason, or no paths it searched
   CONTRADICTED a collection is claimed COVERED but holds only scaffolds or
                `.unfilled.md` markers — the plant's own files disagree
+  UNSTAFFED    a surface that has to answer the staffing question records no
+               decision, answers it with something other than a boolean,
+               gives no reason, or names a project-specific expert the plant
+               does not carry. Deliberately its own verdict rather than BLANK
+               or UNJUSTIFIED: those speak about a ROW that was left unfilled,
+               while this speaks about the PROJECT — a surface with nobody
+               assigned to it. The row itself may be complete and correct.
   STALE        the record was written against an older seed than the plant now
                carries; re-plan before trusting it
   UNKNOWN      an honest blocker, named. Reported always, never a failure —
@@ -102,7 +115,8 @@ VERDICTS (a row fails the gate unless noted)
 Usage:
   growth-audit.py <plant-root> <seed-root>            lint (the gate)
   growth-audit.py <plant-root> <seed-root> --plan     create/refresh the plan
-  growth-audit.py <plant-root> <seed-root> --agents   agent coverage only
+  growth-audit.py <plant-root> <seed-root> --agents   agent + expert rows only
+        (the inventory's staffing decisions are part of the full lint, not this)
   growth-audit.py <plant-root> <seed-root> --json     machine-readable findings
 
 Exit 0 when every required row is answered and every planned artifact is
@@ -126,7 +140,7 @@ STATUSES = ("COVERED", "ABSENT", "UNKNOWN")
 # own readers; seed-lint holds them to it, so a protocol cannot promise a check
 # that no longer exists.
 VERDICTS = ("MISSING", "BLANK", "UNGROWN", "HOLLOW", "UNGROUNDED", "DANGLING",
-            "UNJUSTIFIED", "CONTRADICTED", "STALE", "UNKNOWN")
+            "UNJUSTIFIED", "CONTRADICTED", "UNSTAFFED", "STALE", "UNKNOWN")
 
 # A leaf smaller than this carries a heading and nothing else. It is the floor
 # for "a file that states a fact", not a quality bar — quality is the
@@ -152,22 +166,48 @@ PLACEHOLDER_PROSE = re.compile(r"^[A-Za-z][A-Za-z0-9 ,'/-]*$")
 # the defaults `--plan` writes — the orchestrator extends them from evidence,
 # but it may not silently drop one: lint requires every item to carry at least
 # one planned artifact.
+#
+# The third column says whether the item also owes an EXPERTISE NODE — the
+# Tier-2 handle that says when this stack element is in play, what must not be
+# done without it, and which sub-expertises apply under which condition. Six
+# kinds owe one because they are the stack a worker writes against; the other
+# four already have a routable owner for their depth (prompts/, design/,
+# legal/, architecture/) and would gain a pass-through node, not a home.
 KIND_PLAN = {
-    "language":            (["libraries/{slug}.md", "best-practices/{slug}.md"], True),
-    "runtime":             (["libraries/{slug}.md", "best-practices/{slug}.md"], True),
-    "framework":           (["libraries/{slug}.md", "best-practices/{slug}.md"], True),
-    "dependency":          (["libraries/{slug}.md"], True),
-    "infrastructure":      (["architecture/{slug}.md", "best-practices/{slug}.md"], True),
-    "datastore":           (["data/{slug}.md", "best-practices/{slug}.md"], True),
-    "external-service":    (["architecture/{slug}.md"], True),
-    "ai-provider":         (["prompts/{slug}.md", "evaluations/{slug}.md"], True),
-    "design-surface":      (["design/{slug}.md"], True),
-    "regulatory-exposure": (["legal/{slug}.md"], True),
-    "domain":              ([], False),
+    "language":            (["libraries/{slug}.md", "best-practices/{slug}.md"], True, True),
+    "runtime":             (["libraries/{slug}.md", "best-practices/{slug}.md"], True, True),
+    "framework":           (["libraries/{slug}.md", "best-practices/{slug}.md"], True, True),
+    "dependency":          (["libraries/{slug}.md"], True, True),
+    "infrastructure":      (["architecture/{slug}.md", "best-practices/{slug}.md"], True, True),
+    "datastore":           (["data/{slug}.md", "best-practices/{slug}.md"], True, True),
+    "external-service":    (["architecture/{slug}.md"], True, False),
+    "ai-provider":         (["prompts/{slug}.md", "evaluations/{slug}.md"], True, False),
+    "design-surface":      (["design/{slug}.md"], True, False),
+    "regulatory-exposure": (["legal/{slug}.md"], True, False),
+    "domain":              ([], False, False),
 }
 # An incidental dependency earns an index line, not a page of its own, and
 # nothing is retrieved for it. Significance is the scout's call, recorded.
 SIGNIFICANCE = ("core", "significant", "incidental")
+# The kinds whose expertise node must route to the item's own pin home. These
+# are the ones whose depth IS a library page, so a node that does not name it
+# in `libraries:` points at nothing and the version distinction has no home.
+PINNED_KINDS = ("language", "runtime", "framework", "dependency")
+EXPERTISE_PATH = "nodes/expertise.{slug}.md"
+
+# The inventory kinds that must answer the staffing question. A dominant domain
+# is what the evidence ledger's §9 specialist signal exists for, and a core item
+# is the other place an ad-hoc expert is plausibly earned. The default answer is
+# now the expertise node above, which is owed mechanically rather than decided;
+# a spawnable AGENT is warranted only for what a node cannot serve, and the
+# decision names which of those four it is.
+STAFFED_KINDS = ("domain",)
+# What an agent can do that an expertise node cannot. A staffing decision that
+# says `warranted: true` names one of these, because "this surface is important"
+# is not a reason to spawn: knowledge composes through the graph for free, and
+# only a different tool grant, model class, stance, or context boundary needs an
+# agent of its own.
+SPAWN_TRIGGERS = ("tools", "model", "stance", "isolation")
 
 
 class Finding:
@@ -204,6 +244,53 @@ def parse_args():
 
 def slugify(name):
     return re.sub(r"[^a-z0-9]+", "-", str(name).strip().lower()).strip("-")
+
+
+def majors_in_play(rec, slug):
+    """The distinct major versions the inventory records for one slug. Two
+    majors of the same stack running at once is the one case where
+    applicability genuinely differs by version — hosting model, defaults,
+    what the compiler accepts — and the only case where a version enters a
+    node id at all."""
+    majors = []
+    for item in rec.get("inventory", []):
+        if (item.get("slug") or slugify(item.get("name", ""))) != slug:
+            continue
+        m = re.match(r"\s*v?(\d+)", str(item.get("version") or ""))
+        if m and m.group(1) not in majors:
+            majors.append(m.group(1))
+    return sorted(majors) if len(majors) > 1 else []
+
+
+def planned_artifacts(item, majors=()):
+    """Everything an inventory item owes the graph, in one place: the base
+    artifacts its kind implies, the incidental exception, the expertise node,
+    and — where a plant runs two majors of one stack — one version-qualified
+    child per major. Returns (expect rows, grounding required).
+
+    The incidental rule is the pre-7.5.0 behaviour, unchanged: an incidental
+    DEPENDENCY earns an index line and nothing retrieved, while an incidental
+    item of any other kind keeps its kind's pages and its grounding. What is
+    new is that no incidental item owes an expertise node — the graph gains a
+    routing handle for the stack a worker writes against, not for every name
+    in the lockfile."""
+    kind = item.get("kind", "")
+    slug = item.get("slug") or slugify(item.get("name", ""))
+    paths, ground, expertise = KIND_PLAN.get(kind, ([], False, False))
+    incidental = item.get("significance") == "incidental"
+    if incidental and kind == "dependency":
+        return [{"path": "libraries/index.md",
+                 "why": f"{kind} {slug} — incidental"}], False
+    rows = [{"path": p.format(slug=slug), "why": f"{kind} {slug}"} for p in paths]
+    if incidental or not expertise:
+        return rows, ground
+    rows.append({"path": EXPERTISE_PATH.format(slug=slug),
+                 "why": f"{kind} {slug} — applicability and composition"})
+    for major in majors:
+        rows.append({"path": EXPERTISE_PATH.format(slug=f"{slug}-{major}"),
+                     "why": f"{kind} {slug} major {major} — applicability for "
+                            f"this major, composed by expertise.{slug}"})
+    return rows, ground
 
 
 # ---------------------------------------------------------------- seed truth
@@ -283,11 +370,58 @@ def required_agents(seed):
     return out
 
 
+class Templates(dict):
+    """The seed's `templates/docs/**` indexed by the plant-relative path each
+    leaf installs to, and the seed root beside it.
+
+    The seed root rides along because two artifact classes have no template at
+    their own path — an agent node and an expertise node are authored from a
+    form that lives nowhere near them — and `is_substantive()` is the one place
+    that has to find it. Threading the seed through every lint function's
+    signature instead would put a second parameter on callers that have no
+    other use for it (`lint_inventory` has none at all)."""
+
+    def __init__(self, seed):
+        troot = seed / TEMPLATE_DOCS
+        super().__init__(
+            (p.relative_to(troot).as_posix(), p.read_bytes())
+            for p in troot.rglob("*") if p.is_file())
+        self.seed = seed
+
+
 def template_bytes(seed):
-    troot = seed / TEMPLATE_DOCS
-    return {rel: p.read_bytes()
-            for p in troot.rglob("*") if p.is_file()
-            for rel in [p.relative_to(troot).as_posix()]}
+    return Templates(seed)
+
+
+def scaffold_for(seed, rel):
+    """What a plant file at `rel` must not still be, when the seed ships no
+    template at that same path: the form it was authored from, plus every seed
+    file a copy of which would be byte-identical to it.
+
+    Two artifact classes need this. An agent node's form is
+    `templates/agent.template.md`, and a seed agent copied under a new name is
+    the other way a roster entry can be a form rather than an expert. An
+    expertise node's form is `templates/docs/nodes/_expertise.template.md`,
+    which installs under `nodes/` beside the node itself but with a leading
+    underscore, so the same-path lookup never finds it. Without this, the
+    form's own instructional prose counts as the plant's authored content and
+    a filled-in scaffold reads as knowledge — the hole this tool exists to
+    close, reopened once per template-less artifact.
+
+    Returns (template text or None, the set of byte-identical scaffolds)."""
+    if rel.startswith("agents/"):
+        tmpl = seed / "templates" / "agent.template.md"
+        blobs = {p.read_bytes() for p in (seed / "agents").glob("*.md")}
+    elif re.match(r"^nodes/expertise\.[a-z0-9.-]+\.md$", rel):
+        tmpl = seed / "templates" / "docs" / "nodes" / "_expertise.template.md"
+        blobs = set()
+    else:
+        return None, set()
+    text = None
+    if tmpl.is_file():
+        blobs.add(tmpl.read_bytes())
+        text = tmpl.read_text(encoding="utf-8", errors="replace")
+    return text, blobs
 
 
 # ------------------------------------------------------------ plant material
@@ -296,26 +430,47 @@ def _body(text):
     return text.split("\n---\n", 1)[-1] if text.startswith("---\n") else text
 
 
+def _norm(line):
+    """A template line and the same line with its placeholder braces rubbed off
+    are the same inherited line. Deleting `{{` and `}}` was the cheapest way to
+    make a template stop looking like one — every line then differed from its
+    source and the whole form read as authored content."""
+    return re.sub(r"\s+", " ", line.replace("{{", "").replace("}}", "")).strip()
+
+
 def authored_bytes(text, template_text):
     """Bytes of non-blank lines the leaf holds that its seed template does not.
     A leaf at a path the seed ships a template for (a collection README, an
     index, a runbook) is only as grown as the lines the plant added; a leaf the
     seed has no template for is authored in full."""
-    inherited = {ln.strip() for ln in _body(template_text).splitlines() if ln.strip()}
+    inherited = {_norm(ln) for ln in _body(template_text).splitlines() if _norm(ln)}
     return sum(len(ln.strip()) for ln in _body(text).splitlines()
-               if ln.strip() and ln.strip() not in inherited)
+               if _norm(ln) and _norm(ln) not in inherited)
 
 
 def is_substantive(plant, rel, templates):
     """A file states a fact when it exists, keeps no unfilled {{placeholder}},
     and carries enough of its OWN content — measured against the seed template
-    at the same path — to hold one. Deliberately mechanical: this asks whether
-    growth reached the file, not whether what it wrote is good."""
+    it was authored from — to hold one. Deliberately mechanical: this asks
+    whether growth reached the file, not whether what it wrote is good.
+
+    The template is normally the seed's file at the SAME path; where the seed
+    ships none there, `scaffold_for()` resolves the form the artifact was
+    authored from (an agent node, an expertise node) and the seed files a copy
+    would be identical to. Without that resolution the form's own instructional
+    prose counts as this plant's authored content and a filled-in scaffold
+    reads as knowledge."""
     f = plant / GRAPH_HOME / rel
     if not f.is_file():
         return False, "does not exist"
     raw = f.read_bytes()
     template = templates.get(rel)
+    if template is None:
+        text_t, blobs = scaffold_for(templates.seed, rel)
+        if raw in blobs:
+            return False, ("byte-identical to the form it was authored from, "
+                           "or to a seed file copied as a starting point")
+        template = text_t.encode("utf-8") if text_t is not None else None
     if template == raw:
         return False, "byte-identical to its seed template (an unfilled scaffold)"
     text = raw.decode("utf-8", errors="replace")
@@ -392,14 +547,81 @@ def seed_version(seed):
     return None
 
 
-def plant_seed_version(plant):
+def _stamp(plant):
     f = plant / STAMP_REL
     if f.is_file():
         try:
-            return json.loads(f.read_text(encoding="utf-8")).get("version")
+            val = json.loads(f.read_text(encoding="utf-8"))
+            if isinstance(val, dict):
+                return val
         except json.JSONDecodeError:
-            return None
-    return None
+            return {}
+    return {}
+
+
+def plant_seed_version(plant):
+    return _stamp(plant).get("version")
+
+
+def plant_projections(plant):
+    """The harness directories this plant's roster is projected into, read from
+    the stamp `install.sh` wrote. The installer owns that mapping because the
+    installer is what creates the directories; keeping a copy here was a second
+    home for one fact, and a second home drifts — a renamed directory or a
+    changed filename pattern would have gone on being demanded, or stopped
+    being demanded, with nothing to notice.
+
+    Returns None when the stamp records none, which is a different answer from
+    "this plant has no harnesses" and is reported as such rather than passing
+    every projection check by default."""
+    raw = _stamp(plant).get("agent_projections")
+    if not isinstance(raw, list):
+        return None
+    out = []
+    for entry in raw:
+        if isinstance(entry, dict) and str(entry.get("path") or "").strip():
+            out.append((str(entry.get("tool") or "a harness"),
+                        str(entry["path"]), bool(entry.get("verbatim"))))
+    return out
+
+
+def plant_experts(plant, seed):
+    """Every expert the PLANT authored, derived from its own graph rather than
+    from the record — `docs/graph/agents/` is where 6.0.0 put every agent node,
+    and anything there the SEED did not put there is this project's own.
+
+    Seed-ness is derived from the seed's roster, never from the file's own
+    `origin:`. Trusting the declaration inverted the check it was paired with:
+    an expert copied from a seed agent as a starting point keeps `origin: seed`,
+    and the one wrong value the `origin: project` finding exists to catch was
+    the single value that made the file invisible to it.
+
+    Keyed by FILE STEM, because that is what the installer projects by
+    (`03-reviewer.md` -> `.claude/agents/03-reviewer.md`). Keying by the
+    frontmatter `name` asked for a projection at a path nothing writes, and
+    collapsed two files that happened to share a name into one row."""
+    out = {}
+    adir = plant / GRAPH_HOME / "agents"
+    if not adir.is_dir():
+        return out
+    seeded = {p.stem for p in (seed / "agents").glob("*.md")}
+    for p in sorted(adir.glob("*.md")):
+        if p.stem in seeded:
+            continue
+        fm = parse_frontmatter(p)
+        reads = fm.get("plant_knowledge") or []
+        if isinstance(reads, str):
+            reads = [reads]
+        out[p.stem] = {"path": p, "origin": str(fm.get("origin") or "").strip(),
+                       "declared_name": str(fm.get("name") or "").strip(),
+                       "reads": list(reads)}
+    return out
+
+
+def needs_staffing(item):
+    """Whether an inventory item has to answer the staffing question at all."""
+    return (item.get("kind") in STAFFED_KINDS
+            or item.get("significance") == "core")
 
 
 def blank_row(**kw):
@@ -439,19 +661,28 @@ def do_plan(plant, seed, opt):
             ags[name]["reads"] = reads      # the seed owns this fact, not the record
     rec["agents"] = [ags[k] for k in sorted(ags)]
 
+    # The expert set comes from the plant's own graph, so an expert authored in
+    # Phase 4 becomes a required row on the next plan — and stays one.
+    exs = {e.get("name"): e for e in rec.get("experts", []) if e.get("name")}
+    for name, info in plant_experts(plant, seed).items():
+        if name not in exs:
+            exs[name] = blank_row(name=name, motivated_by=[],
+                                  home=f"{GRAPH_HOME}/agents/{name}.md")
+            added.append(f"expert {name}")
+        exs[name]["reads"] = info["reads"]   # the agent file owns this fact
+    rec["experts"] = [exs[k] for k in sorted(exs)]
+
     for item in rec["inventory"]:
-        kind = item.get("kind", "")
         slug = item.get("slug") or slugify(item.get("name", ""))
         item["slug"] = slug
-        paths, ground = KIND_PLAN.get(kind, ([], False))
-        if kind == "dependency" and item.get("significance") == "incidental":
-            paths, ground = ["libraries/index.md"], False
+        expect, ground = planned_artifacts(item, majors_in_play(rec, slug))
         if not item.get("expect"):
-            item["expect"] = [{"path": p.format(slug=slug), "why": f"{kind} {slug}"}
-                              for p in paths]
+            item["expect"] = expect
         item.setdefault("grounding", {})
         item["grounding"].setdefault("required", ground)
         item["grounding"].setdefault("sources", [])
+        if needs_staffing(item):
+            item.setdefault("expert", {})
 
     out = plant / RECORD_REL
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -466,7 +697,8 @@ def do_plan(plant, seed, opt):
     blank += [f"agent:{a['name']}" for a in rec["agents"] if not a.get("status")]
     print(f"  planned {out}")
     print(f"  collections: {len(rec['collections'])}   "
-          f"agents: {len(rec['agents'])}   inventory items: {len(rec['inventory'])}")
+          f"agents: {len(rec['agents'])}   experts: {len(rec['experts'])}   "
+          f"inventory items: {len(rec['inventory'])}")
     for a in added:
         print(f"  NEW ROW      {a}")
     if not rec["inventory"]:
@@ -479,6 +711,20 @@ def do_plan(plant, seed, opt):
     for name in handwritten:
         print(f"  NEEDS EXPECT domain {name} — name the artifacts this domain "
               f"owes the graph; the tool cannot derive them")
+    for item in rec["inventory"]:
+        slug = item.get("slug", "")
+        majors = majors_in_play(rec, slug)
+        if majors and KIND_PLAN.get(item.get("kind", ""), ((), False, False))[2]:
+            print(f"  NEEDS COMPOSITION {slug} runs majors "
+                  f"{', '.join(majors)} — expertise.{slug} composes one child "
+                  f"per major, and each child's load_when carries that "
+                  f"target's own tokens")
+        if needs_staffing(item) and "warranted" not in (item.get("expert") or {}):
+            print(f"  NEEDS EXPERT {item.get('kind', 'item')} "
+                  f"{item.get('name', '?')} — this surface owes an expertise "
+                  f"node either way; record whether it ALSO warrants an agent "
+                  f"of its own, and which of {', '.join(SPAWN_TRIGGERS)} that "
+                  f"agent needs which a node cannot serve")
     if blank:
         print(f"  {len(blank)} row(s) still unanswered — that is the work, "
               f"not a defect, until growth declares itself done.")
@@ -575,6 +821,44 @@ def lint_collections(plant, seed, rec, templates, findings):
                                         f"router stops reading it as knowledge"))
 
 
+NODE_REF_RE = re.compile(r"^[a-z][a-z0-9-]*\.[a-z0-9.-]+$")
+
+
+def read_target(plant, entry):
+    """The files one `plant_knowledge:` entry stands for.
+
+    Three forms, one question — "does this hold anything this plant wrote?".
+    A collection (`design/`) stands for its leaves; a single row
+    (`runbooks/rollback.md`) for that file; a PROJECT node id
+    (`expertise.dotnet`) for `nodes/<id>.md`, where the filename equals the id.
+    Machinery ids are deliberately not a form: they keep NN-prefixed natural
+    names the id does not encode, and a plant expert declares what project
+    knowledge it reads, not which seed protocol it obeys."""
+    if entry.endswith("/") or entry.endswith(".md"):
+        return collection_leaves(plant, entry)[0]
+    if NODE_REF_RE.match(entry):
+        f = plant / GRAPH_HOME / "nodes" / f"{entry}.md"
+        return [f] if f.is_file() else []
+    return []
+
+
+def empty_reads(plant, reads, templates):
+    """Which of the things an agent declares it must read hold nothing this
+    plant wrote. All-of, never any-of: pooling them let one `best-practices/`
+    page written for the implementer mark the ui-ux-designer covered with an
+    empty `design/` — the row would pass on exactly the plant it was built to
+    catch. Shared by the roster arm and the expert arm, which ask the same
+    question of two different row sets."""
+    out = []
+    for entry in reads:
+        live = read_target(plant, entry)
+        if not any(is_substantive(
+                plant, q.relative_to(plant / GRAPH_HOME).as_posix(),
+                templates)[0] for q in live):
+            out.append(entry)
+    return out
+
+
 def lint_agents(plant, seed, rec, templates, findings):
     """The question the plant could not previously answer: can each agent on
     the roster read anything project-specific in its own domain? An agent
@@ -593,17 +877,7 @@ def lint_agents(plant, seed, rec, templates, findings):
         status = check_row_shape(label, row, findings)
         if status != "COVERED":
             continue
-        # Every declared collection, not any of them. Pooling them let one
-        # `best-practices/` page written for the implementer mark the
-        # ui-ux-designer covered with an empty `design/` — the row would pass
-        # on exactly the plant it was built to catch.
-        empty = []
-        for coll in reads:
-            live, _ = collection_leaves(plant, coll)
-            if not any(is_substantive(
-                    plant, q.relative_to(plant / GRAPH_HOME).as_posix(),
-                    templates)[0] for q in live):
-                empty.append(coll)
+        empty = empty_reads(plant, reads, templates)
         if empty:
             findings.append(Finding("CONTRADICTED", label,
                                     f"claimed COVERED but "
@@ -618,6 +892,151 @@ def lint_agents(plant, seed, rec, templates, findings):
                                         f"names {ref!r}, which does not exist"))
 
 
+def lint_experts(plant, seed, rec, templates, findings):
+    """The staffing question from the supply side.
+
+    Growth is supposed to end with experts this project needs and the base
+    roster does not carry — the evidence ledger's §9 signal, turned into an
+    agent. Through 7.3.x nothing checked that it happened, and worse, nothing
+    checked that it took: an expert authored into `docs/graph/agents/` and
+    never projected into the harness is on disk and unspawnable, because the
+    host reads its roster from the projection directory when a session starts.
+    Growth would report a specialist the plant could never call.
+
+    Every expert the plant's graph carries, plus every expert an inventory row
+    names, answers here: it is a real node rather than a filled-in template, it
+    is marked as the plant's own, it cites what motivated it, it can read
+    something in the collections it declares, and it is projected into every
+    harness this plant was installed with."""
+    have = {e.get("name"): e for e in rec.get("experts", []) if e.get("name")}
+    on_disk = plant_experts(plant, seed)
+    projections = plant_projections(plant)
+    named = {}
+    for item in rec.get("inventory", []):
+        ex = item.get("expert") or {}
+        nm = str(ex.get("name") or "").strip()
+        if ex.get("warranted") is True and nm:
+            named.setdefault(nm, item.get("name") or item.get("slug") or "an item")
+    if on_disk and projections is None:
+        findings.append(Finding("STALE", STAMP_REL,
+                                "records no `agent_projections`, so nothing "
+                                "says where this plant's roster has to be "
+                                "spawnable from and every expert would pass "
+                                "the registration check by default — re-run "
+                                "the installer for each adapter this plant "
+                                "uses, then re-audit"))
+    for name in sorted(set(on_disk) | set(named)):
+        label = f"expert {name}"
+        row, info = have.get(name), on_disk.get(name)
+        if row is None:
+            findings.append(Finding(
+                "MISSING", label,
+                (f"the plant's graph carries this expert"
+                 if info else
+                 f"the inventory item {named[name]!r} is staffed with it")
+                + " and the record does not answer for it — re-run --plan"))
+            continue
+        status = check_row_shape(label, row, findings)
+        if status is None or status == "UNKNOWN":
+            continue
+        if info is None:
+            findings.append(Finding("UNSTAFFED", label,
+                                    f"{named.get(name, 'an item')!r} names this "
+                                    f"expert and {GRAPH_HOME}/agents/{name}.md "
+                                    f"does not exist — the surface was staffed "
+                                    f"on paper only"))
+            continue
+        if status == "ABSENT":
+            findings.append(Finding("CONTRADICTED", label,
+                                    f"claimed ABSENT while "
+                                    f"{info['path'].relative_to(plant).as_posix()} "
+                                    f"exists — an expert on disk is a fact "
+                                    f"about this plant, so answer for it"))
+            continue
+        rel = info["path"].relative_to(plant / GRAPH_HOME).as_posix()
+        ok, why = is_substantive(plant, rel, templates)
+        if not ok:
+            findings.append(Finding("HOLLOW", label,
+                                    f"{GRAPH_HOME}/{rel} — {why}"))
+        if info["declared_name"] and info["declared_name"] != name:
+            findings.append(Finding("HOLLOW", label,
+                                    f"its frontmatter name is "
+                                    f"{info['declared_name']!r} while the file "
+                                    f"is {name}.md — the harness projects and "
+                                    f"spawns by filename, so a disagreement "
+                                    f"names an agent nobody can call"))
+        if info["origin"] != "project":
+            findings.append(Finding("HOLLOW", label,
+                                    "carries no `origin: project`, so a graft "
+                                    "cannot tell this plant's own expert from "
+                                    "the seed machinery it replaces"))
+        if not info["reads"]:
+            findings.append(Finding("HOLLOW", label,
+                                    "declares no `plant_knowledge:` — the one "
+                                    "agent authored FOR this project's surface "
+                                    "would be the only one exempt from the "
+                                    "check that asks whether it has anything "
+                                    "project-specific to read"))
+        else:
+            # A node id this plant does not carry is a dangling declaration,
+            # not an empty collection: the expert names knowledge that was
+            # never authored, and saying "holds no filled leaf" would send the
+            # reader looking for a directory.
+            for entry in info["reads"]:
+                if (NODE_REF_RE.match(entry) and not entry.endswith(".md")
+                        and not read_target(plant, entry)):
+                    findings.append(Finding("DANGLING", label,
+                                            f"declares it reads node "
+                                            f"{entry!r}, which this plant's "
+                                            f"graph does not carry"))
+            empty = [e for e in empty_reads(plant, info["reads"], templates)
+                     if read_target(plant, e)]
+            if empty:
+                findings.append(Finding("CONTRADICTED", label,
+                                        f"declares it reads "
+                                        f"{', '.join(info['reads'])}, and "
+                                        f"{', '.join(empty)} "
+                                        f"{'holds' if len(empty) == 1 else 'hold'} "
+                                        f"nothing this plant wrote"))
+        if not row.get("motivated_by"):
+            findings.append(Finding("UNJUSTIFIED", label,
+                                    "cites nothing that motivated it — an "
+                                    "expert is a claim about the source (a "
+                                    "dominant domain, a high-risk surface, a "
+                                    "recurring task shape), never a preference"))
+        for ref in list(row.get("motivated_by") or []) + list(row.get("evidence") or []):
+            if not resolves(plant, ref):
+                findings.append(Finding("DANGLING", label,
+                                        f"cites {ref!r}, which does not exist "
+                                        f"in the plant"))
+            elif str(ref).replace("\\", "/").startswith(f"{GRAPH_HOME}/agents/"):
+                # An expert citing itself, or a sibling expert, is a roster
+                # justifying its own existence. The citation has to point at
+                # the SOURCE that earned it.
+                findings.append(Finding("UNJUSTIFIED", label,
+                                        f"cites {ref!r} — an agent file, not "
+                                        f"the source that earned this expert; "
+                                        f"a roster cannot be its own evidence"))
+        for tool, pattern, verbatim in (projections or []):
+            projected = pattern.replace("{name}", name)
+            proj = plant / projected
+            if Path(projected).is_absolute() or ".." in Path(projected).parts:
+                continue          # a stamp is plant-written; never follow it out
+            if not proj.is_file():
+                findings.append(Finding("UNGROWN", label,
+                                        f"{projected} — authored into the "
+                                        f"graph and never projected, so no "
+                                        f"{tool} session can spawn it: the "
+                                        f"host reads its roster from there when "
+                                        f"a session starts"))
+            elif verbatim and proj.read_bytes() != info["path"].read_bytes():
+                findings.append(Finding("CONTRADICTED", label,
+                                        f"{projected} has drifted from its "
+                                        f"home in {GRAPH_HOME}/agents/ — a "
+                                        f"projection is a copy, not a second "
+                                        f"home; re-project it"))
+
+
 def lint_inventory(plant, rec, templates, findings):
     """The heart of it: every item the scouts found the project to be made of
     names the artifacts growth owed it, and each one is present or it is not."""
@@ -625,10 +1044,15 @@ def lint_inventory(plant, rec, templates, findings):
         name = item.get("name") or item.get("slug") or "<unnamed>"
         kind = item.get("kind", "")
         label = f"{kind or 'item'} {name}"
-        if kind and kind not in KIND_PLAN:
+        if kind not in KIND_PLAN:
             findings.append(Finding("BLANK", label,
-                                    f"kind {kind!r} is not one of "
-                                    f"{', '.join(sorted(KIND_PLAN))}"))
+                                    (f"kind {kind!r} is not one of "
+                                     if kind else
+                                     "carries no kind, so nothing decides what "
+                                     "it owes the graph or whether it has to "
+                                     "answer the staffing question — give it "
+                                     "one of ")
+                                    + f"{', '.join(sorted(KIND_PLAN))}"))
         sig = item.get("significance")
         if sig and sig not in SIGNIFICANCE:
             findings.append(Finding("BLANK", label,
@@ -670,12 +1094,89 @@ def lint_inventory(plant, rec, templates, findings):
                                         "name the file this item owes the "
                                         "graph, or drop the entry"))
                 continue
-            ok, why = is_substantive(plant, rel, templates)
-            if ok:
+            if rel.startswith("nodes/expertise.") and item.get("significance") == "incidental":
+                # Over-growth is a finding too: an incidental dependency owes
+                # an index line, and a routing node for something nobody
+                # writes against is a node the librarian will delete.
+                findings.append(Finding("BLANK", label,
+                                        f"plans {GRAPH_HOME}/{rel} while marked "
+                                        f"incidental — an incidental dependency "
+                                        f"owes an index line, not a node"))
                 continue
-            verdict = "UNGROWN" if why == "does not exist" else "HOLLOW"
-            findings.append(Finding(verdict, label,
-                                    f"{GRAPH_HOME}/{rel} — {why}"))
+            ok, why = is_substantive(plant, rel, templates)
+            if not ok:
+                verdict = "UNGROWN" if why == "does not exist" else "HOLLOW"
+                findings.append(Finding(verdict, label,
+                                        f"{GRAPH_HOME}/{rel} — {why}"))
+                continue
+            if rel.startswith("nodes/expertise.") and kind in PINNED_KINDS:
+                # The node owns applicability, never the pin. If it does not
+                # route to this item's own library page, the version
+                # distinction has nowhere to live and the node is the second
+                # home it was designed not to be.
+                fm = parse_frontmatter(plant / GRAPH_HOME / rel)
+                libs = fm.get("libraries") or []
+                if isinstance(libs, str):
+                    libs = [libs]
+                if item["slug"] not in libs:
+                    findings.append(Finding("HOLLOW", label,
+                                            f"{GRAPH_HOME}/{rel} names no "
+                                            f"`libraries: {item['slug']}` — an "
+                                            f"expertise node routes to the pin "
+                                            f"home rather than restating it, so "
+                                            f"without that edge it routes to "
+                                            f"nothing"))
+        if needs_staffing(item):
+            # The decision ledger §9 was always supposed to force, recorded
+            # where it survives the run. A dominant domain or a core part of
+            # the stack either earns a project-specific expert or is recorded
+            # as not earning one; what it may not do is leave the question
+            # unasked, which is indistinguishable from never having read §9.
+            ex = item.get("expert")
+            if not isinstance(ex, dict) or "warranted" not in ex:
+                findings.append(Finding("UNSTAFFED", label,
+                                        "records no staffing decision — say "
+                                        "whether this surface warrants a "
+                                        "project-specific expert, and why"))
+            elif not isinstance(ex.get("warranted"), bool):
+                # `"no"`, `"false"` and `0` are all truthy-or-falsy by accident.
+                # A decision is a boolean; anything else is a note to self.
+                findings.append(Finding("UNSTAFFED", label,
+                                        f"`warranted` is "
+                                        f"{ex.get('warranted')!r}, not true or "
+                                        f"false — a staffing decision is a "
+                                        f"boolean, not a remark"))
+            elif ex["warranted"] is False:
+                if not str(ex.get("why") or "").strip():
+                    findings.append(Finding("UNSTAFFED", label,
+                                            "`warranted: false` with no reason "
+                                            "— declining to staff a surface is "
+                                            "a decision, and a decision carries "
+                                            "its why"))
+            else:
+                if not str(ex.get("name") or "").strip():
+                    findings.append(Finding("UNSTAFFED", label,
+                                            "warrants a project-specific expert "
+                                            "and names none"))
+                if not str(ex.get("why") or "").strip():
+                    findings.append(Finding("UNSTAFFED", label,
+                                            "warrants a project-specific expert "
+                                            "and gives no reason — the why is "
+                                            "what the expert's charter is "
+                                            "written from"))
+                if ex.get("needs") not in SPAWN_TRIGGERS:
+                    # Every surface already owes an expertise node, which the
+                    # router composes in for free. Spawning on top of that is
+                    # warranted only by something a node cannot be — so the
+                    # decision names which.
+                    findings.append(Finding("UNSTAFFED", label,
+                                            f"`needs` is {ex.get('needs')!r} — "
+                                            f"name which of "
+                                            f"{', '.join(SPAWN_TRIGGERS)} this "
+                                            f"agent needs that its expertise "
+                                            f"node cannot serve; knowledge "
+                                            f"alone composes through the graph "
+                                            f"without a spawn"))
         ground = item.get("grounding") or {}
         if ground.get("required"):
             # The citation has to be a real, filled file under sources/ — the
@@ -705,7 +1206,7 @@ def lint_inventory(plant, rec, templates, findings):
 
 
 def rows(rec, key, label):
-    """The record's three arrays, validated once so every reader below can
+    """The record's four arrays, validated once so every reader below can
     assume shape. Hand-written JSON gets a null array or a bare string where an
     object belongs; that is a mistake to name, not to crash on."""
     val = rec.get(key) or []
@@ -753,15 +1254,17 @@ def do_lint(plant, seed, opt):
                                 f"the record was planned against {has}"))
 
     for key, label in (("collections", "collection"), ("agents", "agent"),
-                       ("inventory", "inventory")):
+                       ("experts", "expert"), ("inventory", "inventory")):
         rows(rec, key, label)
 
     templates = template_bytes(seed)
     if opt.get("agents"):
         lint_agents(plant, seed, rec, templates, findings)
+        lint_experts(plant, seed, rec, templates, findings)
     else:
         lint_collections(plant, seed, rec, templates, findings)
         lint_agents(plant, seed, rec, templates, findings)
+        lint_experts(plant, seed, rec, templates, findings)
         lint_inventory(plant, rec, templates, findings)
 
     if opt.get("json"):
@@ -772,9 +1275,10 @@ def do_lint(plant, seed, opt):
             print(f)
         fatal = [f for f in findings if f.fatal()]
         unknown = [f for f in findings if not f.fatal()]
-        scope = ("agent coverage" if opt.get("agents")
+        scope = ("agent and expert coverage" if opt.get("agents")
                  else f"{len(rec.get('collections', []))} collection(s), "
                       f"{len(rec.get('agents', []))} agent(s), "
+                      f"{len(rec.get('experts', []))} expert(s), "
                       f"{len(rec.get('inventory', []))} inventory item(s)")
         print(f"  audited {scope}")
         if fatal:

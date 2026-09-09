@@ -14,9 +14,20 @@ and never renumber them; agents and tooling index into them.
 
 ## 0. Pin
 
+Versions in play — one row per major this project actually runs. One row is
+the common case; a second row means two majors are live at once, and the
+graph then carries one version-qualified expertise child per row. This table
+is the only home of the pin: no node, best-practices page, or expertise node
+repeats a version.
+
+| Major | Exact version | Projects / paths | Notes |
+|---|---|---|---|
+| <major> | <exact> | <where this major is used> | <why it is still here; §8 holds the upgrade path> |
+
 - **Name:** <canonical>
-- **Version:** <exact>
 - **Ecosystem:** npm | PyPI | Go module | Maven | Cargo | OS pkg | container | RFC | spec
+- **Registry / source:** <url>
+- **Lockfile / manifest line:** <path:line>
 - **License:** <SPDX>
 - **Maintenance signal:** <"healthy: last release N days ago" | "stale: …" | "archived">
 - **Last reviewed:** YYYY-MM-DD by <agent>

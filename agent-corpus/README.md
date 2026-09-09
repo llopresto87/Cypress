@@ -6,7 +6,8 @@ reference corpora `library-corpus/` and `legal-corpus/`. Folded back into the
 seed by the **harvest** protocol
 (`protocols/harvest.md`, `HARVEST_PROMPT.md`) from roles that grown plants found
 generally useful, and withdrawn by `grow` / `graft` (or the orchestrator's
-commission step) when a specific project decides it needs one.
+commission step) when a specific project needs a role, rather than the
+expertise node a knowledge gap closes as.
 
 ## Purpose
 
@@ -34,7 +35,9 @@ follows: an optional-role blockquote, `Mandate`, `When to select`, `Boundary
 ## What stays OUT
 
 - **Stack-specific experts** (a framework/language/library specialist) — those
-  are the plant's own, commissioned fresh against its pins.
+  are the plant's own, and are usually not an agent at all: knowing a stack is
+  knowledge, so it closes as an `expertise.*` node authored against the plant's
+  own pins, which the router composes into the roster the plant already has.
 - **Roles that duplicate the base roster's mandate** (e.g. "a security role",
   "a testing role") — one home per role; extend the existing agent instead.
 
@@ -55,7 +58,9 @@ is instantiated into the project's `docs/graph/agents/` (the harness
 projections — `.claude/agents/` and kin — are regenerated from it) from
 `docs/graph/templates/agent.template.md`, grounded in the project's
 version-pinned facts (its `stack.*` node, `docs/graph/libraries/`) and the
-page's mandate + `routing_triggers`. No match ⇒ commission one fresh, and its
-durable, agnostic mandate becomes a harvest candidate for the next cycle.
+page's mandate + `routing_triggers`. No match ⇒ commission one fresh **when the
+work needs its own tools, model class, stance, or isolation** — a gap that is
+only knowledge is an expertise node instead — and its durable, agnostic mandate
+becomes a harvest candidate for the next cycle.
 Either way the selected role joins the *project's* roster (and its kernel table
 / manifest) — never this catalog.

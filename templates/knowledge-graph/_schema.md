@@ -26,12 +26,16 @@ The graph makes context loading a **traversal with a stopping rule**:
 - `peers:` edges are subjects an agent **must not** load unless the
   task explicitly crosses into them. They exist so you know what you
   are choosing not to read.
+- `composes:` edges are a menu rather than a closure: an expertise node
+  lists its specialisations, and the router descends into only those the
+  task names specifically. They exist so depth is available without
+  every task paying for all of it.
 - Tiers bound the depth. Tier 3 is the collection of project-knowledge
   leaves below `docs/graph/`; a leaf is opened only when a loaded node
   names it and the task needs it.
 
 The result: an agent working on one subsystem loads a few nodes, not
-the whole tree, and can say precisely what it did not read.
+the whole tree, and can say precisely what it did not read and why.
 
 ## Tiers
 
@@ -82,6 +86,8 @@ requires:                      # transitive closure; ALWAYS loaded with this nod
   - {{kind}}.{{dependency}}
 peers:                         # NOT loaded unless the task crosses into them
   - {{kind}}.{{neighbour}}
+composes:                      # lazy, downward, expertise nodes only; descended into
+  - expertise.{{sub-slug}}     # only for the children the task names specifically
 libraries:                     # Tier-3 wiki pages this node depends on (optional)
   - {{library-name}}
 artifacts:                     # graph-relative knowledge leaves (optional)
@@ -134,7 +140,21 @@ joints. A common starting set:
 - `root` — the single entry node describing the whole project and its
   map. (Its id is exactly the root id, e.g. `root` or `program`.)
 - `subsystem` — a service, package, or module.
-- `stack` — a language/framework's shared conventions.
+- `stack` — a language/framework's shared conventions **in this
+  project**: layout, build, house rules, which projects target what.
+  Requires the matching `expertise.*` node and never restates its
+  applicability.
+- `expertise` — **when** a language, runtime, framework, library, or
+  platform is in play for a task, what must not be done without it, and
+  which sub-expertises apply under which condition. Lives in `nodes/`
+  as `expertise.<slug>.md`, the slug unversioned (see `composes`). Owns
+  exactly `<slug>.applicability` and `<slug>.composition`; every fact,
+  pin, and standard stays in `libraries/` and `best-practices/`,
+  reached by `libraries:`/`artifacts:` — an expertise node with no such
+  depth edge routes to nothing and fails lint. Where a plant runs two
+  majors of one stack at once, the unversioned node composes one child
+  per major (`expertise.dotnet-8`), the only place a version enters a
+  slug; the retired child is `superseded`.
 - `platform` — infra: gateway, config, discovery, messaging, deploy,
   observability.
 - `data` — the data model and where it lives.
@@ -191,10 +211,24 @@ two nodes both want a fact, extract it to a shared node and have both
 
 **`requires`** — hard dependency; you cannot be correct on this node
 without them. Keep minimal — every edge is context every future agent
-pays for. Must be acyclic.
+pays for. Must be acyclic on its own (see `composes`).
 
 **`peers`** — soft adjacency; the boundary you are not crossing. The
 router prints these as "not loaded" so the choice is visible.
+
+**`composes`** — lazy, downward, and task-conditioned; expertise nodes
+only, toward expertise nodes only. Where `requires` is a closure the
+router always takes, `composes` is a menu it reads: a composed child
+loads only when the task names, exactly, a term in the child's own
+vocabulary — its `load_when` tokens and its whole slug, minus the
+parent's. Family words on the parent therefore never descend a child;
+a child's triggers must be its own. `composes` is acyclic on its own.
+Its union with `requires` is deliberately not: `parent composes child`
+and `child requires parent` is the intended shape (the eager edge
+points up, the lazy one down), and a child that `requires` an expertise
+node must appear in that node's `composes` — lint names the line to
+add. The router prints un-composed children as "not loaded" with the
+reason, so the choice is visible.
 
 **`artifacts`** — progressive-discovery edges from a node to detailed
 knowledge leaves. Paths are relative to `docs/graph/`, must remain
@@ -218,13 +252,22 @@ edges** (what will bite, dated) · **where the code is** (concrete
 paths) · **neighbours** (why each peer exists, when to cross). Under
 ~150 lines (the linter rejects past 170); a longer node is two nodes.
 
+An `expertise` node answers a routing question instead, so its order is
+**what this is in play for** · **what you must not do without it** ·
+**composition** (one line per composed child, naming the condition it
+applies under) · **version in play** (a pointer to
+`libraries/<slug>.md`, never a version) · **depth** (which leaf serves
+which purpose). The same ceiling applies, and is generous: a node that
+needs more room is restating a leaf.
+
 ## The rules the linter enforces
 
 1. Frontmatter parses and has every required key.
 2. `id` is unique and matches the filename (`<id>.md`).
 3. `id` prefix matches `kind` (root node excepted).
 4. Every fact-key in `owns` is unique across all nodes.
-5. Every id in `requires`/`peers` resolves to a real node.
+5. Every id in `requires` and `peers` resolves to a real node
+   (`composes` has its own rule, 15).
 6. `requires` is acyclic.
 7. Every node is reachable from the root by edges, or is listed in
    `index.md`.
@@ -243,19 +286,34 @@ paths) · **neighbours** (why each peer exists, when to cross). Under
     `scope`, `ends_when`, `recorded_in`.
 14. `index.md` carries a complete `plant:` block — failure on a grown plant,
     warning on an adopted one.
+15. Every id in `composes` resolves, and both ends are `kind: expertise`.
+16. `composes` is acyclic (its union with `requires` is not checked; see
+    `composes`).
+17. An expertise node that `requires` an expertise node is listed in that
+    node's `composes`.
+18. An expertise node has at least one `libraries` or `artifacts` edge.
+19. An expertise id ending in `-<digits>` is composed by the id without the
+    suffix.
 
 ```sh
 python3 docs/graph/graph-lint.py            # lint
-python3 docs/graph/graph-lint.py --graph    # print the requires-DAG
+python3 docs/graph/graph-lint.py --graph    # print the edges: `→` requires, `~>` composes
 python3 docs/graph/graph-lint.py --plan "<task>"   # dry-run the router
 ```
 
 ## Anti-patterns
 
 - **A node that restates a version** — link to the library page.
+- **An expertise node that names the version instead of pointing at
+  it** — the pin has one home; the node says where, never what.
 - **A node that `requires` everything** — a bulk read in disguise.
+- **An expertise node that `composes` everything** — the same bulk read
+  wearing a menu. If every child descends on every task, the children
+  are carrying the family's words instead of their own.
 - **A subsystem node that explains the language/framework** — that is a
   `stack.*` node.
+- **An expertise node that restates its own leaf** — it owns when the
+  depth is in play, not what the depth says.
 - **A node with no `owns`** — a link farm; delete it.
 - **Growing a node instead of splitting it** at the line ceiling.
 - **Filling an unknown with a guess** — write "not recorded".

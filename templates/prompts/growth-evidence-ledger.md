@@ -98,14 +98,25 @@ fact); it is never padded to look populated.
   mark unknown rationale `not recorded`. A candidate list, not an
   authored ADR.
 
-## 9 — Specialist-agent signals  → project-specific expert agents
+## 9 — Expertise and specialist signals  → expertise.* nodes + project-specific expert agents
 
-- Evidence about what *project-specific expertise* a plant needs beyond
-  the base roster: dominant domain language, unusual stack/runtime, a
-  high-risk surface (auth, payments, PII, migrations), or a recurring
-  task shape. Each signal cites the source that motivates it. The author
-  decides whether a signal warrants a custom agent; the scout only
-  supplies the grounded evidence.
+- **Expertise (the usual outcome).** For each core or significant stack
+  element in §5/§0: the libraries and platform pieces it is used *with*
+  (call sites, `path:line`); the task shapes each is in play for, in the
+  ≥3-character words a developer would type (these become `load_when`);
+  what goes wrong without it (the applicability fact); and, from the
+  manifests, whether more than one major is in play. This is what an
+  `expertise.*` node is authored from; the node routes to the pin and the
+  standard and restates neither.
+- **Agents (the rare outcome).** Evidence that some sub-work needs its own
+  context: different tools, a different model class, an adversarial stance,
+  or context isolation. Each signal cites the source, names the recurring
+  task shape, the collections or expertise nodes it would read, and the
+  `needs` it satisfies. The author decides; the scout only supplies
+  grounded evidence.
+- `none found` is a real answer for either half and a common one for the
+  second; say it explicitly, because an unrecorded decision reads exactly
+  like a section nobody opened.
 
 ## 10 — Operational evidence  → runbooks/ + verification (discovered)
 

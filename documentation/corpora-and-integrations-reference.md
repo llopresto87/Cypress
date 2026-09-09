@@ -303,7 +303,9 @@ Source: `agent-corpus/README.md`.
   blockquote, `## Mandate`, `## When to select`, `## Boundary (does not
   duplicate the base roster)`, `## routing_triggers (exemplars)`.
 - **Stays out:** stack-specific experts (a framework/language/library
-  specialist), which are the plant's own and commissioned fresh; roles that
+  specialist), which are the plant's own — and which are usually not a role at
+  all now, because knowledge about a stack closes as an `expertise.*` node the
+  router composes rather than as a commissioned agent; roles that
   duplicate the base roster's mandate, since there is one home per role, so
   extend the existing agent instead.
 - **Withdraw:** a matching role is instantiated into the project's

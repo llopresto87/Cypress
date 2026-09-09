@@ -30,7 +30,7 @@ load_when:
   - "sonnet or opus, which model class"
   - "unknown agent type, specialist not registered, no such subagent"
   - "the roster was just installed, can I spawn it yet"
-est_tokens: 2450
+est_tokens: 2690
 ---
 
 # Delegation — the team, routing, and bounds
@@ -72,20 +72,36 @@ simulation in the chat is not delegation.
 Before spawning, run `python3 docs/graph/agent-lint.py --route "<task>"`
 and cite the ranked line + confidence band in the brief. It is a
 keyword heuristic, not an oracle — reason over it, and record why if
-you override a HIGH-band pick. On **LOW/NONE** no specialist fits:
-check `agent-corpus/` for the role first — where present, harvested on
-demand — before authoring from scratch, then spawn an Opus-class
-agent-definition author to create the missing expert. (A *specialist* is a member of the shipped roster above; an *expert*
-is one you commission here for this project — it joins the *project's* roster,
-never the seed's. The words are otherwise interchangeable.) A definition
-authored mid-session is not yet a spawnable type — see
-`delegation.harness-registration` below before delegating to it. Author it from
-`docs/graph/templates/agent.template.md`, grounded in the
-project's version-pinned facts (the `stack.*` node, the library wiki) —
-never in memory of a version the project may not use. The *new
-expert's* `model:` frontmatter is sonnet if it only investigates, opus
-if it authors; the definition author itself is always opus. The expert
-library compounds.
+you override a HIGH-band pick.
+
+**On LOW/NONE, ask what the gap *is* before you fill it.** The band says
+no specialist matched; it does not say what was missing.
+
+- **Knowledge** — a language, runtime, framework, library, or platform
+  nobody on the roster is written for. The answer is an `expertise.*`
+  node, authored or extended from
+  `docs/graph/nodes/_expertise.template.md`, which the router composes
+  into whichever worker's task names it: the specialist you already have
+  does the work knowing the domain. No spawn, no roster row, no
+  registration. This is the common gap and the default answer.
+- **Judgment that needs its own context** — different `tools`, a
+  different `model` class, an adversarial `stance`, or `isolation` from
+  the caller's context. Those four are what a node cannot be, and they
+  are the whole warrant for an agent. Check `agent-corpus/` for the role
+  first — where present, harvested on demand — before authoring from
+  scratch, then spawn an Opus-class agent-definition author to create
+  the missing expert from `docs/graph/templates/agent.template.md`,
+  grounded in the project's version-pinned facts (the `stack.*` node,
+  its `expertise.*` node, the library wiki) — never in memory of a
+  version the project may not use.
+
+(A *specialist* is a member of the shipped roster above; an *expert* is
+one you commission here for this project — it joins the *project's*
+roster, never the seed's. The words are otherwise interchangeable.) The
+*new expert's* `model:` frontmatter is sonnet if it only investigates,
+opus if it authors; the definition author itself is always opus. A
+definition authored mid-session is not yet a spawnable type — see
+`delegation.harness-registration` below before delegating to it.
 
 ## Route by model class
 
@@ -195,8 +211,11 @@ crosses the boundary. Embed the canonical block from
 plus the routing evidence and the handback requirement
 (`docs/graph/templates/prompts/handback-payload.md` — `produced_by` and
 `route_evidence` feed the deliver-time attribution assertion,
-`protocol.deliver`). Parameterized briefs live in
-`docs/graph/templates/prompts/`; use them.
+`protocol.deliver`). Write that brief's task line in the domain's own
+words — it is the string the worker hands to `--plan`, so the terms it
+names are what compose the worker's expertise closure, and a task line
+vaguer than the work loads a graph vaguer than the work. Parameterized
+briefs live in `docs/graph/templates/prompts/`; use them.
 
 **Carry each constraint at its stated strength.** "Avoid X where you
 can" is a preference the worker weighs against the goal; "no X" is a

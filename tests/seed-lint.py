@@ -103,12 +103,20 @@ def fail(msg: str) -> None:
 def load_tool(filename: str):
     """Import a seed tool as a module so its rules have one home. seed-lint
     checks the seed against the same code the plants are held to, rather than a
-    restatement of it that can drift."""
-    path = ROOT / "tools" / filename
+    restatement of it that can drift.
+
+    A bare filename names a tool under `tools/`; a path with a separator is
+    read relative to the seed root, which is how the graph engine that ships
+    inside `templates/knowledge-graph/` is reached."""
+    path = ROOT / filename if "/" in filename else ROOT / "tools" / filename
     spec = importlib.util.spec_from_file_location(path.stem.replace("-", "_"), path)
     if spec is None or spec.loader is None:      # pragma: no cover - unreachable
         raise SystemExit(f"seed lint: cannot load {path}")
     mod = importlib.util.module_from_spec(spec)
+    # Registered before execution: a module defining a @dataclass looks itself
+    # up in sys.modules while the decorator runs, and an unregistered module
+    # fails there rather than at import.
+    sys.modules[spec.name] = mod
     spec.loader.exec_module(mod)
     return mod
 
@@ -118,13 +126,7 @@ def load_agnosticism_lint():
     which any project-agnostic tree can run on its own. The seed does not keep
     a second copy of it; it calls it and renders the findings in its own voice.
     Loaded by path because the file is named as a CLI, not as a module."""
-    path = ROOT / "tools" / "agnosticism-lint.py"
-    spec = importlib.util.spec_from_file_location("agnosticism_lint", path)
-    if spec is None or spec.loader is None:      # pragma: no cover - unreachable
-        raise SystemExit(f"seed lint: cannot load {path}")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
+    return load_tool("agnosticism-lint.py")
 
 
 def parse_frontmatter(path: Path) -> dict:
@@ -591,6 +593,32 @@ def check() -> None:
                  f"feeds {c!r}, so no scout gathers the evidence an author "
                  f"would write it from")
 
+    # -- the node contract and its linter are two views of ONE fact ---------
+    # `_schema.md` is what an author reads; `graph-lint.py` is what holds them
+    # to it. When 7.5.0 added the `expertise` kind and the `composes` edge, the
+    # failure to guard against was shipping one without the other: a kind the
+    # linter accepts and the contract never describes is a shape nobody knows
+    # how to author, and an edge the contract promises and the linter ignores
+    # is a rule that is not one. Both directions, so neither side can drift.
+    engine = load_tool("templates/knowledge-graph/graph-lint.py")
+    schema = (ROOT / "templates" / "knowledge-graph" / "_schema.md").read_text(
+        encoding="utf-8")
+    for key in sorted(engine.LIST_KEYS):
+        if f"`{key}`" not in schema:
+            fail(f"templates/knowledge-graph/_schema.md: never describes the "
+                 f"{key!r} key, which graph-lint.py parses and enforces")
+    # The kinds list in the schema's "### Node kinds" section, read the way a
+    # reader reads it: the backticked first token of each bullet.
+    section = schema.split("### Node kinds", 1)[-1].split("\n## ", 1)[0]
+    documented = set(re.findall(r"^-\s+`([a-z]+)`", section, re.M))
+    reserved = set(engine.MACHINERY_KINDS)
+    for kind in sorted(engine.KINDS - documented - reserved - {"root"}):
+        fail(f"templates/knowledge-graph/_schema.md: graph-lint.py accepts "
+             f"kind {kind!r} and the contract never describes it")
+    for kind in sorted(documented - engine.KINDS):
+        fail(f"templates/knowledge-graph/graph-lint.py: _schema.md describes "
+             f"kind {kind!r} and KINDS does not accept it")
+
     # The record's schema documents the inventory kinds and what each owes the
     # graph; the tool enforces them. Two homes for one fact, so keep them
     # honest — a kind the tool plans for that the schema never describes is a
@@ -614,6 +642,68 @@ def check() -> None:
             if tok not in known_verdicts:
                 fail(f"{proto}: names `{tok}`, which tools/growth-audit.py "
                      f"does not emit — a promised check that does not exist")
+
+    # An expert growth authors is only spawnable once it is PROJECTED into the
+    # harness directory the host reads its roster from. That mapping has ONE
+    # home — `agent_projection_for` in install.sh, recorded into each plant's
+    # stamp — and the audit reads it from the stamp rather than keeping a copy.
+    # What can still rot is an adapter the installer accepts and forgets to map:
+    # its plants would carry experts nothing ever checks are spawnable.
+    install = (ROOT / "install.sh").read_text(encoding="utf-8")
+    accepted = re.search(r"^\s*([a-z|-]*claude-code[a-z|-]*)\)\s*TOOLS\+=",
+                         install, re.M)
+    if not accepted:
+        fail("install.sh: cannot find the adapter list it accepts on the "
+             "command line; the projection-mapping check cannot run")
+    else:
+        mapped = re.search(r"agent_projection_for\(\)\s*\{(.*?)\n\}",
+                           install, re.S)
+        body = mapped.group(1) if mapped else ""
+        for adapter in accepted.group(1).split("|"):
+            if adapter == "all":
+                continue
+            if not re.search(rf"^\s*{re.escape(adapter)}\)", body, re.M):
+                fail(f"install.sh: accepts the {adapter!r} adapter but "
+                     f"agent_projection_for maps no agent directory for it, so "
+                     f"a plant installed with it would never be checked for a "
+                     f"spawnable expert")
+
+    # The template a plant authors an expert FROM has to be able to satisfy the
+    # gate that expert will be held to. Without `origin: project` a graft cannot
+    # tell the plant's own work from seed machinery; without `plant_knowledge:`
+    # the one agent written for this project's surface is the only one exempt
+    # from the check that asks whether it has anything to read.
+    # Two artifact classes are authored from a form that lives nowhere near
+    # them, so the form is the only thing that can carry the keys the gate will
+    # ask its offspring for. Line-anchored: a header comment EXPLAINS these
+    # keys in prose, and a substring test would be satisfied by the explanation
+    # while the frontmatter that has to carry them stayed empty.
+    for rel, keys in (
+        ("templates/agent.template.md",
+         (r"origin: project", r"plant_knowledge:", r"id: agent\.", r"kind: agent")),
+        # An expertise node owes the same answerability: `libraries:` is the
+        # edge to its pin home, `composes:` the menu the router descends, and
+        # without them the node routes to nothing.
+        ("templates/docs/nodes/_expertise.template.md",
+         (r"id: expertise\.", r"kind: expertise", r"origin: project",
+          r"composes:", r"libraries:")),
+    ):
+        tmpl = (ROOT / rel).read_text(encoding="utf-8")
+        for key in keys:
+            if not re.search(rf"^{key}", tmpl, re.M):
+                fail(f"{rel}: its frontmatter carries no {key!r}, so a node "
+                     f"authored from it cannot answer the coverage gate")
+
+    # The staffing decision has two homes — the tool that requires it and the
+    # schema an orchestrator fills — so keep them honest.
+    for token in ("**experts**", "warranted", "motivated_by", "needs"):
+        if token not in record_doc:
+            fail(f"templates/prompts/growth-coverage-record.md: never "
+                 f"describes {token!r}, which tools/growth-audit.py requires")
+    for kind in audit.STAFFED_KINDS:
+        if f"`{kind}`" not in record_doc:
+            fail(f"templates/prompts/growth-coverage-record.md: {kind!r} must "
+                 f"answer the staffing question and the schema never says so")
 
     # Every collection an agent declares it must read has to be one the seed
     # actually installs — a typo here would make an agent row permanently

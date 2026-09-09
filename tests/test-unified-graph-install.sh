@@ -42,6 +42,7 @@ required=(
   docs/graph/agents/00-orchestrator.md
   docs/graph/method/tiers.md
   docs/graph/method/delegation.md
+  docs/graph/nodes/_expertise.template.md
   docs/graph/templates/prompts/graph-session-bootstrap.md
   docs/graph/templates/spec.template.md
 )

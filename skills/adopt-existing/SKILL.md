@@ -25,7 +25,7 @@ load_when:
 artifacts:
   - templates/prompts/graph-session-bootstrap.md
   - templates/prompts/handback-payload.md
-est_tokens: 1600
+est_tokens: 1614
 ---
 
 # Adopt an existing project
@@ -94,7 +94,9 @@ Normalize the evidence into single fact owners:
 - factor shared stack, platform, data, domain, and cross-cutting facts into
   their own nodes only where this reduces duplication;
 - give nodes concrete `load_when` triggers and source paths;
-- keep `requires` minimal and acyclic; use `peers` for boundaries;
+- keep `requires` minimal and acyclic; use `peers` for boundaries, and
+  `composes` where an `expertise.*` node offers sub-expertises the router
+  should descend into only when the task names one;
 - link detailed leaves using `artifacts:` and dependency wiki pages using
   `libraries:`.
 

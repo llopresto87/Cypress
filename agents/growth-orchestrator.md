@@ -33,7 +33,7 @@ peers:
   - agent.docs-librarian
   - agent.seed-installer
   - agent.architect
-est_tokens: 1521
+est_tokens: 1583
 ---
 
 # Growth Orchestrator
@@ -102,9 +102,13 @@ or author a node with your own hands.
    contracts/ADRs where a ledger §8 decision demands a design record; and
    `ui-ux-designer` to author design-surface nodes and design specs under
    `docs/graph/design/` from the ledger's design-surface evidence (screens,
-   components, tokens, interaction states, a11y state). Author a
-   project-specific specialist agent only when a ledger §9 signal genuinely
-   warrants it. Authors build only on the ledger's cited claims — never a fresh
+   components, tokens, interaction states, a11y state). Plan an `expertise.*`
+   node from §9 for every core or significant stack element — that is what §9's
+   evidence is normally for, and the router composes it into any worker whose
+   task names it — and a project-specific specialist agent only where a §9
+   signal names work needing different tools, a different model class, an
+   adversarial stance, or context isolation. Authors build only on the ledger's
+   cited claims — never a fresh
    reading of source or structure invented from scratch.
 5. **Rebalance, then validate the knowledge — not just its existence.**
    First dispatch the whole-graph `docs-librarian` rebalance pass

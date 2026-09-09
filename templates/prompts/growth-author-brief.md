@@ -49,15 +49,34 @@ each section is keyed to the deliverable it feeds. Also load
     each asserts);
   - `decisions/` (ADR) → §8 (only decisions the source shows; unknown
     rationale is `not recorded`);
-  - project-specific specialist agent → §9 (only if a signal genuinely
-    warrants one; otherwise report "no custom agent warranted");
+  - `nodes/expertise.<slug>.md` → §9's expertise half, which is what §9
+    normally produces: one node per core or significant stack element,
+    owning only *when* that element is in play, what must not be done
+    without it, and which sub-expertises apply under which condition.
+    Author `load_when` from the ≥3-character words §9 records (the child's
+    own words, never the family's), `composes:` from the sub-expertises §9
+    names, and the `libraries:`/`artifacts:` edges to the depth pages
+    below; the node is written from the same retrieved sources as those
+    leaves, carries no version, and restates nothing they own
+    (`docs/graph/templates/docs/nodes/_expertise.template.md`);
+  - project-specific specialist agent → §9's agent half, and only where the
+    work needs what a node cannot give it: different `tools`, a different
+    `model` class, an adversarial `stance`, or context `isolation`;
+    otherwise report "no custom agent warranted". Either way the decision is
+    RECORDED, in the `expert` object of the inventory item it belongs to,
+    naming which of those four it `needs`. An authored expert carries
+    `origin: project`, a `plant_knowledge:` list (the collections or
+    expertise nodes it draws on), and a `motivated_by` citation, and is
+    projected into every harness directory the plant carries — unprojected,
+    it is on disk and unspawnable;
   - `runbooks/` + verification → §10, labeled **discovered, not
     executed**;
   - `libraries/` → §5 **plus** the research-scout's normalized upstream
     sources under `docs/graph/sources/normalized/` — a rich page for a
     §5-flagged significant dependency is grounded in that retrieved
     material (`docs/graph/protocols/ingest-library.md`), never in memory
-    of the library's API;
+    of the library's API. This page is the one home of the pin; the slug's
+    expertise node points here for it and never repeats it;
   - `design/` → §12 (screens, flows, components, tokens, interaction
     states, the accessibility affordances present) **plus** the retrieved
     design standards and platform conventions in
@@ -74,7 +93,9 @@ each section is keyed to the deliverable it feeds. Also load
     project's stance is visible) **plus** the retrieved standards in
     `docs/graph/sources/`: state the external standard (cited), what it
     says not to do, and where the project observably stands — normative,
-    not a description of current habits.
+    not a description of current habits. This page is the one home of the
+    stance; the slug's expertise node points here for it and never repeats
+    it.
 - **One home per fact.** A fact the graph already owns is linked, never
   re-stated. Never ask two authors to own overlapping facts or files.
 - **Smallest sufficient artifact.** Author only what the evidence

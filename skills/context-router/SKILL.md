@@ -25,7 +25,7 @@ artifacts:
   - templates/prompts/graph-session-bootstrap.md
   - templates/knowledge-graph/_schema.md
   - templates/knowledge-graph/index.md
-est_tokens: 2400
+est_tokens: 2779
 ---
 
 # context-router
@@ -49,7 +49,8 @@ product, architecture, APIs, data, prompts, evaluations, plans,
 runbooks, specs, decisions, tools). Never parallel doc systems.
 
 - **Load minimally, and declare it.** Resolve the minimal node set from
-  the router — entry nodes plus `requires:` closure — and declare what
+  the router — entry nodes, their `requires:` closure, and only the
+  composed depth the task names specifically — and declare what
   you loaded and deliberately skipped. Never bulk-read to get oriented;
   the graph is the orientation. The boundary you chose not to cross is
   part of the work's record, not a courtesy: a reader who cannot see it
@@ -126,12 +127,27 @@ search are not blind to any one of them. When you hit an unlisted alias,
 add it to that note in the same change (like sharpening a `load_when`
 trigger).
 
-### 3. Take the required closure
+### 3. Take the closure
 
 Load each entry node, then transitively load every node in its
-`requires:` list. This closure is what you cannot be correct without.
-It is small by construction — if it is not, the graph is mis-modelled
-and should be fixed rather than worked around.
+`requires:` list. That much you cannot be correct without. It is small
+by construction — if it is not, the graph is mis-modelled and should be
+fixed rather than worked around.
+
+Then, from every loaded `expertise` node, take the composed children
+the task names **specifically**: descend into a child when the task
+uses, exactly, a term in that child's own vocabulary — its `load_when:`
+triggers plus its whole slug — that the parent does not already carry.
+So family words sitting on the parent descend nobody, and descent never
+folds a prefix the way the router's own entry matching does. A child
+you take becomes the parent for its own children, which is the whole of
+the recursion. `composes:` is a menu, not a closure: the specialisations
+the task is not about stay unread, and you say so (step 5).
+
+A child you turn out to need but that descent did not reach is the same
+signal as a `load_when:` that should have matched and didn't. Load it,
+say you widened, and sharpen that child's triggers in the same change,
+so the next task routes there without you.
 
 ### 4. Do not take `peers`
 
@@ -149,17 +165,26 @@ lets a reviewer catch a bad load before it becomes a bad change.
 Task: add field <F> to <entity>                              [change]
 
 LOAD (N nodes, ~T tokens)
-  <entry node>          (entry)
-  <required node>       (requires)
-  <required node>       (requires)
+  <entry node>       (entry)
+  <required node>    (requires of <entry node>)
+  <expertise node>   (requires of <required node>)
+  <composed child>   (composed by <expertise node> on "<term>")
 
-NOT LOADED (peers)
-  <peer node>   — owns X; not touched
-  <peer node>   — holds a copy of Y; cross only if the change must reach it
+NOT LOADED (with the reason)
+  <peer node>        peer of <entry> — owns X; not touched
+  <peer node>        peer of <entry> — holds a copy of Y; cross only if
+                     the change must reach it
+  <sibling child>    composed by <expertise>; no task term specific to it
 
 Tier-3 to open on demand
   <library page / spec / ADR> — if the detail is needed
+  <expertise node>'s "depth" map names which leaf your identity needs
 ```
+
+One NOT LOADED section, whatever kept a node out. A peer you chose not
+to cross and a specialisation the task never named are the same kind of
+record — the boundary, and the reason it held — and a set that lists
+only one of them hides the other.
 
 Then, and only then, open source files — and only the ones the loaded
 nodes name.
@@ -213,11 +238,12 @@ reasoning over its output:
 
 Stop loading when any of these is true:
 
-- The required closure is exhausted.
+- The closure is exhausted: `requires:` transitively, plus every
+  composed child the task named specifically.
 - You can state the change you are about to make and name the contract
   it must not break.
-- The next node you would open is a `peer` and the task does not cross
-  into it.
+- The next node you would open is a `peer` the task does not cross into,
+  or a composed child the task never named.
 
 Do **not** stop merely because you have loaded "enough" files. The
 closure is the rule, not your comfort.

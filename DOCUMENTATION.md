@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 7.3.0
+- Version documented: 7.5.0
 - Repository role: this repo is the seed, the product that is shipped
   into other projects. It is *not* a grown project itself.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -283,9 +283,14 @@ Before spawning, the orchestrator runs `python3 docs/graph/agent-lint.py --route
 "<task>"`. This ranks specialists by an IDF-weighted match against their
 `routing_triggers` frontmatter and prints a confidence band (HIGH / MEDIUM /
 LOW / NONE) to cite in the delegation brief. It is a keyword heuristic floor,
-not an oracle: a signal to reason over. On LOW/NONE no specialist fits: the
-orchestrator first spawns an Opus author to commission a new expert for the
-project (which joins the project's roster, never the seed's).
+not an oracle: a signal to reason over. On LOW/NONE no specialist fits, and
+the orchestrator asks first what the gap is. Knowledge — a stack or library
+nobody on the roster is written for — is an `expertise.*` node, authored or
+extended, which the router composes into any worker whose task names it and
+which needs no spawn and no registration. Only judgment that needs its own
+context — different tools, a different model class, an adversarial stance,
+or isolation — commissions an expert, spawning an Opus author to write one
+(which joins the project's roster, never the seed's).
 
 `agent-lint.py` has three commands:
 - `--route "<task>"`: rank specialists, print a band.
@@ -412,6 +417,20 @@ explicit in `protocols/test-first.md`.
    (`.cypress/coverage.json`) and gated in Phase 6 by
    `tools/growth-audit.py`, which checks every planned artifact appeared
    and is not a scaffold. Template files existing is never coverage.
+6. The same contract covers **expertise and staffing**. Every core or
+   significant stack element owes an `expertise.*` node — the routable handle
+   that says when it is in play, what must not be done without it, and which
+   sub-expertises apply under which condition — derived from the stack
+   inventory rather than decided. That node is the default answer to "who
+   knows this here", because the router composes it into any worker whose
+   task names it. A dominant domain or a core part of the stack additionally
+   records whether it warrants an **agent**, which is warranted only for what
+   a node cannot be: different tools, a different model class, an adversarial
+   stance, or context isolation. An expert growth does author is a node with
+   `origin: project` and `plant_knowledge:`, cites the source that earned it,
+   and is projected into every harness directory the plant carries —
+   unprojected, it is on disk and unspawnable, because the host reads its
+   roster from there when a session starts.
 
 ## 8. Skills, templates, and briefs
 

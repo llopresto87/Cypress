@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft-07/schema#",
   "name": "cypress",
   "fullName": "Contextual Yield Protocol for Routed Expert Seed Systems",
-  "version": "7.3.0",
+  "version": "7.5.0",
   "supersedes": "general_expert_prompts@1.0.0",
   "created": "2026-05-23",
   "description": "CYPRESS (Contextual Yield Protocol for Routed Expert Seed Systems) — a project-agnostic multi-agent seed for single- or multi-repository programs. As of 6.0.0 it is a pure graph system: the entire method surface — protocols, skills, agent charters, method/posture nodes, and template artifacts — installs INTO the plant's unified docs/graph/ as seed-owned routable nodes (origin: seed), activated progressively by the router; the always-loaded kernel is a small bootstrap (identity, tiers, rule anchors, boundaries), and tool directories hold only harness projections (agents, skills). Its tool-neutral INSTALL_PROMPT.md keeps user chat in orchestration/planning, dispatches Sonnet-class read-only scouts and Opus-class authors/reviewers, and grows the graph without building the application or publishing Git state.",
@@ -320,6 +320,10 @@
       "produces": "docs/graph/nodes/<id>.md"
     },
     {
+      "file": "templates/docs/nodes/_expertise.template.md",
+      "produces": "docs/graph/nodes/expertise.<slug>.md (one per core or significant stack element; applicability and composition only)"
+    },
+    {
       "file": "templates/prompts/graph-session-bootstrap.md",
       "produces": "the canonical graph-discipline block every delegation brief embeds verbatim; all static seed files reference it instead of paraphrasing"
     },
@@ -421,6 +425,6 @@
     "coding_tool_adapter": "/initialize delegates to grow; it is not the primary interface.",
     "new_project": "INSTALL_PROMPT.md → grow → from-scratch when no executable project evidence exists.",
     "existing_project": "INSTALL_PROMPT.md → grow → delegated source-first adoption/refresh.",
-    "completeness": "grow.completeness-contract binds the orchestrating model to full-depth growth, and tools/growth-audit.py is its mechanical form: the scouts' findings reconcile into a stack inventory, --plan turns each item into the artifacts growth owes it and marks which need upstream documentation retrieved this run, and the lint checks every planned artifact appeared and is not a scaffold. Required rows are derived from the seed — one per installed collection and one per roster agent declaring plant_knowledge: — so a collection or a specialist cannot be forgotten, and a graft to a newer seed surfaces what it carried but never grew. The record is tracked at .cypress/coverage.json; grow Phase 6 and graft Phase 7 both gate on a green audit."
+    "completeness": "grow.completeness-contract binds the orchestrating model to full-depth growth, and tools/growth-audit.py is its mechanical form: the scouts' findings reconcile into a stack inventory, --plan turns each item into the artifacts growth owes it and marks which need upstream documentation retrieved this run, and the lint checks every planned artifact appeared and is not a scaffold. Three of the four row sets are derived from outside the record — one per installed collection, one per roster agent declaring plant_knowledge:, and one per project-specific expert the plant's own graph carries — so a collection, a specialist, or an expert cannot be forgotten, and a graft to a newer seed surfaces what it carried but never grew. The fourth, the inventory, carries the staffing decision: a dominant domain or a core part of the stack records whether it warrants an expert of its own and why, and an expert that reaches the graph but not the harness projection is reported as what it is — on disk and unspawnable. The record is tracked at .cypress/coverage.json; grow Phase 6 and graft Phase 7 both gate on a green audit."
   }
 }

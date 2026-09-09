@@ -26,7 +26,7 @@ load_when:
   - "regrow or refresh the graph after major drift"
   - "declare the plant block: environment class, commit attribution, languages"
   - "is this plant fully grown, coverage record, growth audit"
-est_tokens: 6872
+est_tokens: 7726
 ---
 
 # Protocol: grow
@@ -145,7 +145,7 @@ All maintained project knowledge lives under one root:
 ```text
 docs/graph/
 ├── README.md, index.md, _schema.md, graph-lint.py
-├── nodes/
+├── nodes/            (project facts · expertise.* · deviation.*)
 ├── libraries/, sources/, tools/
 ├── legal/            (only when externally-authored rules are in scope)
 ├── product/, architecture/, api/, data/, design/
@@ -210,14 +210,18 @@ still owed, so the cycle turns again: an item the scouts missed extends the
 inventory, an artifact nobody owed extends the plan, an artifact that was owed
 and never written sends an author back to write it.
 
-Two of the record's three row sets are derived from the seed rather than
-written by the run, so a row cannot go missing by being left out: one per
-knowledge collection the installer creates, and one per roster agent that
+Three of the record's four row sets are derived from somewhere other than the
+run's own account of itself, so a row cannot go missing by being left out: one
+per knowledge collection the installer creates, one per roster agent that
 declares `plant_knowledge:` — the collections that agent must be able to read
-before it can work on this project at all. That second set is what makes "all
-agents" a checkable claim rather than an intention, and it is why a graft to a
-newer seed surfaces the specialists it added as rows the plant does not yet
-answer.
+before it can work on this project at all — and one per project-specific expert
+the plant's own graph carries. The second set is what makes "all agents" a
+checkable claim rather than an intention, and it is why a graft to a newer seed
+surfaces the specialists it added as rows the plant does not yet answer. The
+third holds this protocol to the other half of its promise: growth is supposed
+to leave behind experts this project needs and the shipped roster does not
+have, and an expert is only real once it is a node, cites what earned it, and
+is projected where the host can spawn it.
 
 The record is **tracked**, beside the plant's `.cypress/seed.json` stamp — not
 under `.cypress/growth/`, which stays the run's gitignored scratch, and not
@@ -410,15 +414,33 @@ Through bounded Opus authors, populate every collection supported by evidence:
   integrations, and dated sharp edges;
 - `api/`: observed HTTP/RPC/event/job contracts and source locations;
 - `data/`: entities, ownership, persistence, migrations, lineage, privacy;
-- `libraries/`: every direct dependency indexed; rich project-specific pages
-  for architecturally significant, cross-cutting, security, or operational
-  dependencies, each grounded in the upstream documentation the
-  research-scouts retrieved (Phase 2) per
+- `libraries/` — with `best-practices/` below and `nodes/expertise.*`, three
+  artifacts authored from ONE body of evidence (the ledgers' §5, §9 and §14
+  and the upstream sources the research-scouts retrieved in Phase 2), each
+  owning a different question and restating neither of the others.
+  `libraries/` is the **fact and pin home**: every direct dependency
+  indexed, and a rich project-specific page for every architecturally
+  significant, cross-cutting, security, or operational dependency, grounded
+  in that retrieved documentation per
   `docs/graph/protocols/ingest-library.md` — a thin index table where the
-  ledgers' §5 flags significant dependencies is NOT coverage. Growth runs
+  ledgers' §5 flags significant dependencies is NOT coverage. The exact
+  major(s) this plant runs are recorded there and nowhere else. Growth runs
   no application code, so `ingest-library`'s smoke-test validation is
   recorded on each page and in `plans/grill.md` as a pending backfill,
-  never claimed passed;
+  never claimed passed. `nodes/expertise.<slug>.md` is the **routing node** —
+  one per core or significant language, runtime, framework, dependency,
+  infrastructure component, and datastore the stack inventory carries, which
+  the coverage plan derives; an item the scouts marked incidental owes none.
+  It owns exactly when that element is in play for a task, what must not be
+  done without it, and which sub-expertises apply under which condition; it
+  carries no version and no API surface, pointing at the pin with
+  `libraries:` and at the standard with `artifacts:` instead of repeating
+  either. Composition is wired downward with `composes:` on the parent and
+  upward with `requires:` on the child, so the router descends only into the
+  children a task names specifically. Where the inventory carries one slug
+  at two majors, the unversioned node composes one version-qualified child
+  per major (`expertise.dotnet-8`) whose triggers are that major's target
+  tokens — the only place a version enters a slug;
 - `legal/`: **only when the project is subject to externally-authored rules**
   (statute, regulation, a standards catalog, a contractual regime). Check the
   seed's `legal-corpus/<scope>/<instrument>.md` **first** and seed each page
@@ -452,13 +474,15 @@ Through bounded Opus authors, populate every collection supported by evidence:
   labeled `discovered, not executed` during growth;
 - `plans/grill.md`: inspected evidence, gaps, drift/backfill work, and the
   smallest useful next increment;
-- `best-practices/`: **normative, not descriptive** — the community and
-  upstream standards the project's stack and domain are held to (cited from
-  the retrieved sources), and where the project observably stands against
-  each (conforms / deviates / unknown, with source paths). "Here is what the
-  project happens to do" alone is a description that belongs in
-  `architecture/`; the leaf earns its home by stating the standard and the
-  project's stance;
+- `best-practices/`: the **standard home** of the trio above, and
+  **normative, not descriptive** — the community and upstream standards the
+  project's stack and domain are held to (cited from the same retrieved
+  sources), and where the project observably stands against each (conforms /
+  deviates / unknown, with source paths). "Here is what the project happens
+  to do" alone is a description that belongs in `architecture/`; the leaf
+  earns its home by stating the standard and the project's stance, which is
+  what the matching expertise node routes a worker here for rather than
+  restating;
 - `changelog.md`: artifacts/revisions covered by the growth pass.
 
 Prepare indexes for `specs/` and `decisions/`, but do not manufacture records.
@@ -468,12 +492,24 @@ shows — never invent rationale to fill a record. If genuine intent records
 exist, preserve them with provenance. Put observed implementation choices in
 architecture leaves or nodes.
 
-Where a ledger's §9 specialist-agent signal genuinely warrants it — a
-high-risk surface or dominant domain the base roster does not cover — check
-`agent-corpus/` for the role first (where present — harvested on demand) before
-authoring from scratch, then author the project-specific expert agent
-(`docs/graph/templates/agent.template.md`) from that cited evidence. A signal is a candidate, not a mandate: absent a real need, record
-"no custom agent warranted" rather than padding the plant's roster.
+**Staff the project, and record the decision either way.** A plant is not only
+knowledge; it is also the expertise that knowledge is for. Every core or
+significant stack element owes an `expertise.*` node (the coverage plan derives
+it), and that node is the default answer to "who knows this here": the router
+composes it into any worker whose task names it. An **agent** is warranted only
+for what a node cannot serve — work that needs different `tools`, a different
+`model` class, an adversarial `stance`, or context `isolation` — and every
+inventory item of kind `domain` or marked `significance: core` closes its
+`expert` decision in the coverage record with `warranted`, a `why`, and, when
+true, the `needs` it names. A decision nobody recorded reads exactly like a §9
+nobody opened. Where an agent is warranted, check the seed's `agent-corpus/`
+first, author from `docs/graph/templates/agent.template.md` and the cited
+evidence, mark it `origin: project`, declare its `plant_knowledge:`
+(collections or the expertise nodes it draws on), cite what motivated it, and
+project it to every path this plant's `.cypress/seed.json` records —
+unprojected it is on disk and unspawnable
+(`delegation.harness-registration`), and on most harnesses spawnable only in
+the next session; say so in the delivery.
 
 Apply the same withdraw-on-evidence discipline to the reusable-tool and
 suggested-skill corpora, so harvested tooling and procedures reach a new plant
@@ -513,13 +549,19 @@ between them. The librarian:
   reachable from the router;
 - **rebalances**: merges near-duplicate homes (one home per fact), splits
   nodes that accreted unrelated facts, moves depth behind edges out of the
-  always-loaded router and oversized nodes, and deletes pass-through nodes
-  that only forward;
+  always-loaded router and oversized nodes, deletes pass-through nodes that
+  only forward, and sharpens the expertise families the same way —
+  `graph-lint.py` warns where a composed child's trigger is shared with a
+  sibling (family vocabulary that belongs on the parent, where it cannot
+  descend anyone) or is carried by too much of the graph to say this child
+  is what a task is about, and each warning names the move: lift the term
+  one level, or replace it with the child's own words;
 - verifies searchable paths/symbols/commands sit in the right home and
   unknowns are answerable questions with likely evidence locations;
 - keeps the router compact and re-runs `graph-lint.py` after rebalancing.
 
-Report the pass in the delivery (what was merged, split, moved, deleted).
+Report the pass in the delivery (what was merged, split, moved, deleted, and
+which triggers were sharpened).
 "No rebalance needed" is a legitimate result only when the librarian pass
 actually ran and says so.
 
@@ -531,6 +573,7 @@ knowledge checks:
 ```sh
 python3 docs/graph/graph-lint.py
 python3 docs/graph/graph-lint.py --plan "change a representative subsystem"
+python3 docs/graph/agent-lint.py --lint
 python3 docs/graph/status-register.py --root docs/graph
 python3 <seed>/tools/graft-audit.py <plant> <seed> --unfilled
 python3 <seed>/tools/growth-audit.py <plant> <seed>
@@ -544,13 +587,21 @@ They also verify:
    unfilled scaffold: `--unfilled` reports zero, or every leaf renamed
    `<name>.unfilled.md` is listed in the completion report
    (`grow.completeness-contract`);
-4. representative tasks load small, relevant node closures;
-5. known-answer questions are answered from routed graph context with source
+4. every expert this growth authored is a spawnable agent, not just a file:
+   `agent-lint.py --lint` passes on it (an expert with no `routing_triggers`
+   is a node the router cannot reach), and the coverage audit's expert rows
+   report no missing projection;
+5. representative tasks load small, relevant node closures, and descent is
+   as narrow as the graph claims it is: a task specific to one library loads
+   the parent expertise node and that library's node and none of its
+   siblings, and `--plan` accounts for every child it left out by printing
+   the reason no task term was specific to it;
+6. known-answer questions are answered from routed graph context with source
    citations, including adversarial false-premise rejection;
-6. observed implementation has not been mislabeled as specs or ADR rationale;
-7. commands distinguish executed from merely discovered;
-8. generated tool views pass their read-only drift check where available;
-9. the growth is **minimum-sufficient and well-composed**
+7. observed implementation has not been mislabeled as specs or ADR rationale;
+8. commands distinguish executed from merely discovered;
+9. generated tool views pass their read-only drift check where available;
+10. the growth is **minimum-sufficient and well-composed**
    (`docs/graph/method/engineering-posture.md` and
    `docs/graph/method/design-posture.md`): every authored node,
    leaf, and specialist serves a real routing or fact-owning need; no
@@ -560,19 +611,22 @@ They also verify:
    only forwards to others is a pass-through to delete. Over-growth and
    mis-composition are findings routed back to an author exactly as gaps
    are.
-10. the growth is **complete** against `grow.completeness-contract`:
+11. the growth is **complete** against `grow.completeness-contract`:
    `growth-audit.py` exits 0. Its verdicts are the findings — a planned
    artifact that never appeared (`UNGROWN`), one that appeared as a scaffold
    (`HOLLOW`), an item that needed retrieved documentation and cites none
    (`UNGROUNDED`), a row claimed covered that the plant's own files
    contradict (`CONTRADICTED`), an absence asserted without a reason or the
-   paths searched (`UNJUSTIFIED`), a collection or agent the record never
-   answers for (`MISSING`, `BLANK`). Each routes back to a bounded author
+   paths searched (`UNJUSTIFIED`), a surface that never answered whether it
+   warrants an expert of its own, claimed one without naming what a node
+   could not have served, or named one the plant does not carry
+   (`UNSTAFFED`), a collection, agent, or expert the record never answers for
+   (`MISSING`, `BLANK`). Each routes back to a bounded author
    exactly as any other gap does, and the audit re-runs. Validators also
    spot-audit a sample of the cited paths by hand: the linter proves the file
    exists and says something, not that what it says is true. Under-growth is
    a defect on equal footing with over-growth.
-11. the growth is **externally grounded**: every ledger-§5 dependency flagged
+12. the growth is **externally grounded**: every ledger-§5 dependency flagged
    architecturally significant / cross-cutting / security- or
    operations-critical has a rich `libraries/` page citing retrieved
    upstream sources; every `docs/graph/sources/index.md` row resolves to a
@@ -581,7 +635,7 @@ They also verify:
    audited against the ledgers' §5 — an absence that exists because no
    research-scout was dispatched is a completeness finding (the circular
    absence), not a fact about the project;
-12. the **librarian rebalance pass (Phase 5) actually ran** and its
+13. the **librarian rebalance pass (Phase 5) actually ran** and its
    merge/split/move/delete report is present in the delivery — authored
    collections without a whole-graph librarian pass are a finding.
 

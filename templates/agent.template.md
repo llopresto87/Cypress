@@ -1,9 +1,15 @@
 <!--
 Template: agent.template.md
-Used: when the roster has a gap and the orchestrator must author a NEW
-specialist/expert before delegating (AGENTS.md §1, agents/00-orchestrator.md).
-This is the create-missing-expert-first path: build the expert, then delegate.
-The library of experts compounds — a gap you fill is there for the next task.
+Used: when the roster has a gap that only an AGENT can close, and the
+orchestrator must author a NEW specialist/expert before delegating
+(AGENTS.md §1, agents/00-orchestrator.md). Test the gap against the four
+triggers first: an agent is warranted only for work that needs different
+tools, a different model class, an adversarial stance, or context isolation.
+A gap that is only KNOWLEDGE — a language, framework, library, or platform
+nobody on the roster is written for — is an expertise node instead
+(docs/graph/nodes/_expertise.template.md); the router composes it into
+whichever worker's task names it, with no roster row and no registration.
+Author here only once one of the four triggers holds, and say which.
 
 Frontmatter uses the extended routing schema (agent-routing plan §4.1):
   Required on EVERY agent, in this order: name, description, tools, model,
@@ -12,11 +18,28 @@ Frontmatter uses the extended routing schema (agent-routing plan §4.1):
   Required ONLY when can_delegate is true (omit entirely when false):
     max_spawn_depth (1..3) and delegates_to (an allowlist naming only
     strictly-shallower agents; leaf agents sit at depth 0).
+  Required on every agent that lives in a PLANT (this template's case), so
+    the expert joins the graph rather than sitting beside it: the node keys
+    id, tier, kind, origin, title, owns, est_tokens, and `plant_knowledge:`
+    naming the docs/graph collections or expertise nodes this expert must be
+    able to read.
+    `origin: project` is what tells a graft this is the plant's own work and
+    not seed machinery it may replace; `plant_knowledge:` is what lets the
+    coverage gate ask whether the expert authored FOR this project's surface
+    has anything project-specific to read.
 After authoring, run `python3 docs/graph/agent-lint.py --lint`; it enforces
 this schema and the delegation graph, and `--route "<task>"` should then
 select the new expert from its triggers.
-Save as agents/<name>.md (or the host tool's agent directory). Delete
-these comments and every {{PLACEHOLDER}} before shipping the agent.
+Save as docs/graph/agents/<name>.md — the HOME of every agent node — and then
+PROJECT it into every path this plant's `.cypress/seed.json` records under
+`agent_projections`. An expert that exists only in the graph is on disk and
+unspawnable (`delegation.harness-registration` owns why). Copy it verbatim
+where that entry says `"verbatim": true`; where it says false the projection
+is generated, so re-run the installer for that adapter rather than
+hand-copying. On most harnesses a newly projected agent is discovered when
+the NEXT session starts, so say so when you deliver it. The FILENAME is what
+the harness spawns, so it must match this file's `name:`.
+Delete these comments and every {{PLACEHOLDER}} before shipping the agent.
 -->
 ---
 name: {{kebab-case-id — matches the filename, e.g. stack-django5-expert}}
@@ -40,6 +63,18 @@ can_delegate: {{true if Task is in tools above, otherwise false —
 # max_spawn_depth: {{1..3}}
 # delegates_to:
 #   - {{agent-name — must have a strictly-lower max_spawn_depth; leaves = 0}}
+id: agent.{{same kebab-case id as `name` above}}
+tier: 2
+kind: agent
+origin: project
+title: {{name}} — {{the one line that says what this expert is the sole home of}}
+owns:
+  - {{name}}.charter
+  - {{one fact key per thing this expert is the ONLY home of}}
+plant_knowledge:
+  - {{a docs/graph collection this expert must be able to read, e.g. `data/`}}
+  - {{another — the collections that make this expert useful on THIS project}}
+est_tokens: {{measured, not guessed: words in the body x 1.35}}
 ---
 
 # {{Title Case Name}}

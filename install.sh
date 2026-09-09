@@ -781,6 +781,24 @@ place_file "$SEED_ROOT/INSTALL_PROMPT.md" "$PROJECT_DIR/EXPERT_SEED_INSTALL_PROM
 # check that a plant's stamp agrees with its coverage record could never fire.
 # Tracked, like the coverage record beside it; `.cypress/growth/` is the
 # transient scratch and stays ignored.
+# Where each adapter expects to find a SPAWNABLE agent. `docs/graph/agents/` is
+# the home of every agent node; these are projections of it, and the host reads
+# its roster from them when a session starts — so an agent that exists only in
+# the graph is on disk and unspawnable. This is the ONE home of that mapping:
+# it is recorded into the plant's stamp below, and the growth audit reads it
+# from there rather than keeping a copy that could drift.
+# `{name}` is the agent file's stem; `verbatim` is false where the projection is
+# transformed at install time and so cannot be compared byte-for-byte.
+agent_projection_for() {
+    case "$1" in
+        claude-code)    printf '.claude/agents/{name}.md true' ;;
+        opencode)       printf '.opencode/agents/{name}.md true' ;;
+        codex)          printf '.codex/agents/{name}.md true' ;;
+        prime-agent)    printf '.prime/agent/agents/{name}.md true' ;;
+        github-copilot) printf '.github/agents/{name}.agent.md false' ;;
+    esac
+}
+
 write_seed_stamp() {
     local stamp="$PROJECT_DIR/.cypress/seed.json" version
     version="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
@@ -798,7 +816,17 @@ write_seed_stamp() {
         printf '  "installed_at": "%s",\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
         [[ -n "$prev" && "$prev" != "$version" ]] && \
             printf '  "installed_from": "%s",\n' "$prev"
-        printf '  "tools": "%s"\n' "${expanded[*]}"
+        printf '  "tools": "%s",\n' "${expanded[*]}"
+        printf '  "agent_projections": [\n'
+        local t proj sep=""
+        for t in "${expanded[@]}"; do
+            proj="$(agent_projection_for "$t")"
+            [[ -n "$proj" ]] || continue
+            printf '%s    {"tool": "%s", "path": "%s", "verbatim": %s}' \
+                   "$sep" "$t" "${proj% *}" "${proj##* }"
+            sep=$',\n'
+        done
+        printf '\n  ]\n'
         printf '}\n'
     } > "$stamp"
     log "  .cypress/seed.json     (seed stamp: cypress $version — commit it)"

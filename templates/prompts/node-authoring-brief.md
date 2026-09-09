@@ -65,16 +65,18 @@ Write: {{list the exact file paths — filename MUST equal the id + ".md"}}.
    `[a, b]` lists.
 2. Required keys (the linter checks presence, not order): `id`, `tier`,
    `kind`, `title`, `owns`, `requires`, `load_when`, `est_tokens`.
-   `tier: 2`. `repo`, `peers`, `libraries`, and `artifacts` are optional
-   keys the linter validates only when they are present; listing them in
-   the order above is house style, not a gate.
+   `tier: 2`. `repo`, `peers`, `composes`, `libraries`, and `artifacts`
+   are optional keys the linter validates only when they are present;
+   listing them in the order above is house style, not a gate.
 3. **No version numbers in the body** — the linter rejects them outside
    inline/`fenced` code. Versions live in `docs/graph/libraries/`; link
    instead.
 4. `owns:` fact-keys are prefixed with the node's short name and are
    **unique across the whole graph**.
 5. `requires:` only ids from {{the allowed set}} — minimal (2–4).
-   `peers:` only ids from {{the allowed set}}.
+   `peers:` only ids from {{the allowed set}}. `composes:` only on an
+   `expertise` node and only toward `expertise` nodes — the parent lists
+   its specialisations, and each child `requires:` that parent back.
 6. Body: the linter hard-fails only above 170 lines — aim for ~150. The
    section order is house style, not a linted rule: "What this is" (2–3
    sentences), "What you must know", "Sharp edges", "Where the code is",

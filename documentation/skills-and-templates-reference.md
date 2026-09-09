@@ -1491,11 +1491,15 @@ wrote it, which is the whole point: a later session and the next graft can tell
 a collection nobody looked at from one the source genuinely has no evidence for.
 
 It serves the loop `inventory → plan → growth/graft → lint`, repeated while
-findings remain. **Three row sets**, two of them derived from the seed rather
-than written by the run: one per knowledge collection the installer creates,
-one per roster agent declaring `plant_knowledge:`, and one per stack-inventory
-item (each carrying the artifacts growth owes it and whether it needs upstream
-documentation retrieved this run).
+findings remain. **Four row sets**, three of them derived from somewhere other
+than the run's own account of itself: one per knowledge collection the installer
+creates, one per roster agent declaring `plant_knowledge:`, one per
+project-specific expert the plant's own graph carries, and one per
+stack-inventory item (each carrying the artifacts growth owes it — including
+an `expertise.*` node where it is a core or significant stack element — whether
+it needs upstream documentation retrieved this run, and, for a dominant domain
+or a core part of the stack, whether it also warrants an agent of its own and
+which of tools, model, stance or isolation that agent needs).
 
 **Status is exactly one of:**
 
