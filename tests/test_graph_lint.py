@@ -113,7 +113,14 @@ def build_graph(tmp: Path, nodes: dict, *, config_line: str | None = None,
     reachability case can fail — listing alone satisfies the rule. `libraries`
     names wiki pages to create, for nodes carrying a `libraries:` edge.
     """
+    # One graph per call, in its own subdirectory: a test that builds two
+    # fixtures (a passing shape and the mutation of it) would otherwise write
+    # both into one directory and lint the union of them.
     graph = tmp / "graph"
+    n = 1
+    while graph.exists():
+        n += 1
+        graph = tmp / f"graph{n}"
     (graph / "nodes").mkdir(parents=True)
 
     src = GRAPH_LINT.read_text(encoding="utf-8")
@@ -701,9 +708,6 @@ class ComposesContractTests(unittest.TestCase):
         r_ok = self.lint(ok)
         self.assertEqual(r_ok.returncode, 0, r_ok.stderr)
 
-        self._tmp.cleanup()                 # one hermetic graph per lint call
-        self._tmp = tempfile.TemporaryDirectory()
-        self.tmp = Path(self._tmp.name)
         orphan = expertise_family()
         orphan["expertise.orphan-10"] = node_md(
             "expertise.orphan-10", "expertise", requires=["expertise.dotnet"],
@@ -731,6 +735,36 @@ class ComposesContractTests(unittest.TestCase):
             load_when=["structured logging", "entity mapping"])
         r = self.lint(nodes)
         self.assertIn("is shared with", r.stderr)
+
+    def test_composes_target_end_must_be_expertise(self):
+        """Rule 15 says BOTH ends. The source-end case uses a subsystem that
+        composes; this is the mirror — an expertise node composing something
+        that is not one, which a source-only check would let through."""
+        nodes = expertise_family()
+        nodes["expertise.dotnet"] = node_md(
+            "expertise.dotnet", "expertise",
+            composes=["expertise.ef-core", "expertise.serilog", "subsystem.orders"],
+            libraries=["dotnet"], owns=["dotnet.applicability"])
+        r = self.lint(nodes)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("composes joins expertise nodes only", r.stderr)
+        self.assertIn("composes to subsystem.orders", r.stderr)
+
+    def test_generic_child_trigger_warns(self):
+        """A term most of the graph carries cannot say this child is what the
+        task is about, so it descends on tasks that are not."""
+        nodes = expertise_family()
+        nodes["expertise.serilog"] = node_md(
+            "expertise.serilog", "expertise", requires=["expertise.dotnet"],
+            libraries=["dotnet"], owns=["serilog.applicability"],
+            load_when=["structured logging", "pipeline"])
+        for i in range(4):
+            nodes[f"subsystem.svc{i}"] = node_md(
+                f"subsystem.svc{i}", "subsystem", owns=[f"svc{i}.responsibility"],
+                load_when=["pipeline"])
+        r = self.lint(nodes)
+        self.assertIn("too generic", r.stderr)
+        self.assertIn("'pipeline'", r.stderr)
 
     def test_parent_terms_do_not_warn(self):
         """Two things must NOT warn: a term the parent already carries (that
@@ -892,6 +926,45 @@ class DescentTests(unittest.TestCase):
         self.assertIn("NOT LOADED (with the reason", out)
         self.assertRegex(out, r"subsystem\.billing\s+peer of subsystem\.orders")
         self.assertRegex(out, r"expertise\.serilog\s+composed by .*no task term")
+
+    def test_plan_reports_a_top_scoring_seed_as_an_entry(self):
+        """A seed is a seed however it is reached. The closure stack is LIFO
+        over seeds sorted best-first, so a child that outscores its own
+        subsystem is popped through the parent chain — and would be reported
+        as composed. The load set would be right and the account of it wrong,
+        which is the one thing the provenance line exists to give."""
+        out = self.plan("entity mapping dbcontext orders")
+        line = next(l for l in out.splitlines()
+                    if l.strip().startswith("expertise.ef-core"))
+        self.assertNotIn("composed by", line)
+
+    def test_plan_warns_on_wide_descent(self):
+        """A parent handing over most of a real menu at once says the task or
+        the triggers are too generic, and the notice is what makes that
+        visible instead of merely expensive. A single-child parent must NOT
+        trip it — that is an ordinary descent, not a symptom."""
+        nodes = expertise_family()
+        nodes["expertise.dotnet"] = node_md(
+            "expertise.dotnet", "expertise",
+            composes=["expertise.ef-core", "expertise.serilog", "expertise.polly"],
+            libraries=["dotnet"], owns=["dotnet.applicability"],
+            load_when=["dotnet, csharp"])
+        nodes["expertise.polly"] = node_md(
+            "expertise.polly", "expertise", requires=["expertise.dotnet"],
+            libraries=["dotnet"], owns=["polly.applicability"],
+            load_when=["retry policy, circuit breaker"])
+        out = self.plan("in the orders service, the mapping, the sink, the "
+                        "retry policy", nodes)
+        self.assertIn("wide descent from expertise.dotnet: 3 of 3 children", out)
+
+        narrow = expertise_family()
+        narrow["expertise.dotnet"] = node_md(
+            "expertise.dotnet", "expertise", composes=["expertise.ef-core"],
+            libraries=["dotnet"], owns=["dotnet.applicability"],
+            load_when=["dotnet, csharp"])
+        del narrow["expertise.serilog"]
+        self.assertNotIn("wide descent", self.plan(
+            "in the orders service, fix the mapping", narrow))
 
     def test_plan_without_composes_is_unchanged(self):
         """A graph carrying no `composes:` routes exactly as it did before

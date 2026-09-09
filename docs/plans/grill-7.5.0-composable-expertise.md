@@ -1821,6 +1821,46 @@ project conventions → stack.<slug>`).
     nodes; `--plan` on a task naming `net10.0` composes `dotnet-10` and lists
     `dotnet-8` with its reason, `net8.0` composes the other, and a task naming
     neither composes neither.
+- 2026-09-09 — **independent review of the implementation (0 critical, 3
+  major, 6 minor, 3 nit); every finding fixed and mutation-verified.** The
+  reviewer confirmed the descent tests are load-bearing both ways — against
+  the true pre-7.5.0 router no descent task loads its child, and with the
+  descent block deleted all of them go red — and that 21 of 23 matrix rows
+  were red as claimed. What it found that the matrix did not:
+  - **Three shipped gates were false greens.** (a) `lint_experts` filtered
+    unresolvable reads out of its own check, so an expert declaring a typo'd
+    collection was checked for nothing — the exact exemption the expert row
+    exists to close. It now reports any entry that stands for nothing as
+    `DANGLING`, node or collection alike. (b) seed-lint's template-key arm
+    matched the whole file, and the template's own worked example carries
+    every key at column 0, so an emptied frontmatter passed on the strength
+    of the example showing what it should have said; the arm is now scoped to
+    the frontmatter block, found by its delimiters because a template may
+    open with a header comment. (c) Four checks shipped with no test at all —
+    the wide-descent notice, the graph-wide generic-trigger warning, the
+    TARGET end of the `composes` kind rule (rule 15 says both ends; only the
+    source end was tested), and the incidental over-growth `BLANK`.
+  - **Six minors, all fixed:** `--plan` reported a top-scoring seed as
+    composed, because provenance was decided at pop time and the stack is LIFO
+    over seeds sorted best-first; the "fix the core module" rationale in the
+    tool docstring and the CHANGELOG overstated what exact-only descent
+    prevents, since seeding may still load such a node and the absent
+    composed-by line is what distinguishes them; the record doc's expertise
+    column could drift from `KIND_PLAN`'s third element with only a
+    mention-check between them, and is now derived in both directions;
+    `majors_in_play` sorted majors as strings, so 10 preceded 8, and now also
+    reads a major out of a target-framework moniker; the over-growth check
+    re-derived the incidental rule instead of asking `planned_artifacts`.
+  - **Three nits:** an unreachable identity branch in `is_substantive`,
+    `majors_in_play` computed twice per item, and an unstated reason that
+    stopwords need no stripping from a node's triggers.
+  - **One defect the fixes exposed:** `build_graph` reused one directory per
+    test, so a case building both a passing shape and its mutation linted the
+    union of them. Fixed at the helper, and the ad-hoc cleanup a previous
+    case carried to work around it was removed.
+  - Seven new cases (`test_graph_lint.py` 48 → 52, `test-growth-audit.sh`
+    38 → 40), and all eight fixes mutation-verified to turn their named case
+    red.
 - 2026-09-09 — second review pass (19 of 22 closed, 3 partial; 2 new major,
   5 new minor) integrated. M1's task table now carries wordings the reviewer
   measured RED on the unmodified tool (tasks 2, 4, 6 reworded; task 4's

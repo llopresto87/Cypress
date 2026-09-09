@@ -799,8 +799,10 @@ r["inventory"] = [
 f.write_text(json.dumps(r, indent=2) + "\n")
 PY
 out33="$(python3 "$AUDIT" "$TMP/x33" "$ROOT" --plan 2>&1)" || true
-grep -q "NEEDS COMPOSITION dotnet runs majors" <<<"$out33" \
-    || fail "two majors of one stack did not ask for a child per major"
+# ordered as numbers: as strings 10 sorts before 8, and the message then
+# reads as though the older major were the newer one
+grep -q "NEEDS COMPOSITION dotnet runs majors 8, 10" <<<"$out33" \
+    || fail "two majors of one stack did not ask for a child per major, in order"
 python3 - "$TMP/x33" <<'PY' || exit 1
 import json, pathlib, sys
 r = json.loads((pathlib.Path(sys.argv[1])/".cypress/coverage.json").read_text())
@@ -938,5 +940,55 @@ PY
 out38b="$(python3 "$AUDIT" "$TMP/x38" "$ROOT" 2>&1)" || true
 ! grep -q 'needs. is' <<<"$out38b" \
     || fail "a staffing decision naming its trigger was still reported"
+
+# --- 39. over-growth is a finding, and what is owed has one home ----------
+# An expertise node planned for an item that does not owe one is a routing
+# handle for something nobody writes against — the librarian would delete it.
+# The judgment asks `planned_artifacts` rather than re-deriving the rule.
+expertise_plant "$TMP/x39" incidental dependency
+python3 - "$TMP/x39" <<'PY'
+import json, pathlib, sys
+f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
+r["inventory"][0]["expect"] = [
+    {"path": "libraries/index.md", "why": "incidental"},
+    {"path": "nodes/expertise.dotnet.md", "why": "hand-added over-growth"}]
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+out39="$(python3 "$AUDIT" "$TMP/x39" "$ROOT" 2>&1)" || true
+grep -q "which this item does not owe" <<<"$out39" \
+    || fail "an expertise node planned for an item that owes none was accepted"
+
+# --- 40. an expert's declared read must stand for something ---------------
+# The row exists so the one agent authored FOR this project's surface is not
+# the only one exempt from the check that asks whether it has anything to
+# read. A mistyped collection stands for nothing, so it can be answered
+# neither COVERED nor ABSENT — it is a dangling declaration, exactly like a
+# node the graph does not carry.
+rm -rf "$TMP/x40"; mkdir -p "$TMP/x40"
+bash "$ROOT/install.sh" claude-code --project-dir "$TMP/x40" >/dev/null 2>&1
+python3 - "$TMP/x40" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+body = "\n\n## Charter\n\n" + ("It owns settlement netting in this project. " * 14) + "\n"
+for name, reads in (("typo-expert", "desing/"), ("slashless-expert", "data")):
+    (p/f"docs/graph/agents/{name}.md").write_text(
+        f"---\nname: {name}\norigin: project\nplant_knowledge:\n"
+        f"  - {reads}\n---\n# Expert" + body)
+    (p/f".claude/agents/{name}.md").write_text(
+        (p/f"docs/graph/agents/{name}.md").read_text())
+PY
+python3 "$AUDIT" "$TMP/x40" "$ROOT" --plan >/dev/null 2>&1 || true
+python3 - "$TMP/x40" <<'PY'
+import json, pathlib, sys
+f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
+for e in r["experts"]:
+    e.update(status="COVERED", motivated_by=["docs/graph/index.md"])
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+out40="$(python3 "$AUDIT" "$TMP/x40" "$ROOT" --agents 2>&1)" || true
+grep -q "declares it reads collection 'desing/'" <<<"$out40" \
+    || fail "an expert declaring a collection that does not exist was accepted"
+grep -q "declares it reads collection 'data'" <<<"$out40" \
+    || fail "an expert declaring a slash-less collection name was accepted"
 
 printf 'growth coverage gate: PASS\n'

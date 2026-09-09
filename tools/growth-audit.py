@@ -256,10 +256,16 @@ def majors_in_play(rec, slug):
     for item in rec.get("inventory", []):
         if (item.get("slug") or slugify(item.get("name", ""))) != slug:
             continue
-        m = re.match(r"\s*v?(\d+)", str(item.get("version") or ""))
+        # A major is read from the front of the version, or from a target
+        # framework moniker (`net8.0`, `.NET 8`) where that is what the scouts
+        # recorded — the same fact wearing the ecosystem's own spelling.
+        raw = str(item.get("version") or "")
+        m = re.match(r"\s*v?(\d+)", raw) or re.search(r"(\d+)", raw)
         if m and m.group(1) not in majors:
             majors.append(m.group(1))
-    return sorted(majors) if len(majors) > 1 else []
+    # Sorted as numbers: as strings, 10 sorts before 8 and the message reads
+    # like the older major is the newer one.
+    return sorted(majors, key=int) if len(majors) > 1 else []
 
 
 def planned_artifacts(item, majors=()):
@@ -466,12 +472,15 @@ def is_substantive(plant, rel, templates):
     raw = f.read_bytes()
     template = templates.get(rel)
     if template is None:
+        # No template at this path: resolve the form the artifact was authored
+        # from. `blobs` already contains that form's bytes, so the identity
+        # test below is subsumed and only the same-path case still needs it.
         text_t, blobs = scaffold_for(templates.seed, rel)
         if raw in blobs:
             return False, ("byte-identical to the form it was authored from, "
                            "or to a seed file copied as a starting point")
         template = text_t.encode("utf-8") if text_t is not None else None
-    if template == raw:
+    elif template == raw:
         return False, "byte-identical to its seed template (an unfilled scaffold)"
     text = raw.decode("utf-8", errors="replace")
     for m in PLACEHOLDER.finditer(_body(text)):
@@ -672,10 +681,15 @@ def do_plan(plant, seed, opt):
         exs[name]["reads"] = info["reads"]   # the agent file owns this fact
     rec["experts"] = [exs[k] for k in sorted(exs)]
 
+    majors = {}
     for item in rec["inventory"]:
         slug = item.get("slug") or slugify(item.get("name", ""))
         item["slug"] = slug
-        expect, ground = planned_artifacts(item, majors_in_play(rec, slug))
+        # Computed once per slug: it walks the whole inventory, and the hint
+        # loop below asks the same question of the same rows.
+        if slug not in majors:
+            majors[slug] = majors_in_play(rec, slug)
+        expect, ground = planned_artifacts(item, majors[slug])
         if not item.get("expect"):
             item["expect"] = expect
         item.setdefault("grounding", {})
@@ -713,10 +727,9 @@ def do_plan(plant, seed, opt):
               f"owes the graph; the tool cannot derive them")
     for item in rec["inventory"]:
         slug = item.get("slug", "")
-        majors = majors_in_play(rec, slug)
-        if majors and KIND_PLAN.get(item.get("kind", ""), ((), False, False))[2]:
+        if majors.get(slug) and KIND_PLAN.get(item.get("kind", ""), ((), False, False))[2]:
             print(f"  NEEDS COMPOSITION {slug} runs majors "
-                  f"{', '.join(majors)} — expertise.{slug} composes one child "
+                  f"{', '.join(majors[slug])} — expertise.{slug} composes one child "
                   f"per major, and each child's load_when carries that "
                   f"target's own tokens")
         if needs_staffing(item) and "warranted" not in (item.get("expert") or {}):
@@ -978,19 +991,26 @@ def lint_experts(plant, seed, rec, templates, findings):
                                     "check that asks whether it has anything "
                                     "project-specific to read"))
         else:
-            # A node id this plant does not carry is a dangling declaration,
-            # not an empty collection: the expert names knowledge that was
-            # never authored, and saying "holds no filled leaf" would send the
-            # reader looking for a directory.
+            # An entry that stands for nothing at all is a dangling
+            # declaration, not an empty collection — the expert names a place
+            # that does not exist, and "holds nothing this plant wrote" would
+            # send the reader looking for a directory that was never there.
+            # This covers a node the graph does not carry AND a mistyped or
+            # slash-less collection, which is the same defect wearing a
+            # different name.
+            resolvable = []
             for entry in info["reads"]:
-                if (NODE_REF_RE.match(entry) and not entry.endswith(".md")
-                        and not read_target(plant, entry)):
-                    findings.append(Finding("DANGLING", label,
-                                            f"declares it reads node "
-                                            f"{entry!r}, which this plant's "
-                                            f"graph does not carry"))
-            empty = [e for e in empty_reads(plant, info["reads"], templates)
-                     if read_target(plant, e)]
+                if read_target(plant, entry):
+                    resolvable.append(entry)
+                    continue
+                kind = ("node" if NODE_REF_RE.match(entry) and
+                        not entry.endswith((".md", "/")) else "collection")
+                findings.append(Finding("DANGLING", label,
+                                        f"declares it reads {kind} {entry!r}, "
+                                        f"which this plant does not carry — a "
+                                        f"declaration that stands for nothing "
+                                        f"cannot be answered either way"))
+            empty = empty_reads(plant, resolvable, templates)
             if empty:
                 findings.append(Finding("CONTRADICTED", label,
                                         f"declares it reads "
@@ -1080,6 +1100,13 @@ def lint_inventory(plant, rec, templates, findings):
                 findings.append(Finding("UNKNOWN", label, item["blocker"]))
             continue
         expect = item.get("expect") or []
+        # What this item owes, asked of the one function that owns the answer.
+        # The orchestrator may extend a plan from evidence, so `expect` is not
+        # required to equal this — but an expertise node it does not owe is
+        # over-growth, and that judgment belongs here rather than in a second
+        # copy of the rule.
+        owed = {row["path"] for row in
+                planned_artifacts(item, majors_in_play(rec, item.get("slug", "")))[0]}
         if not expect:
             findings.append(Finding("BLANK", label,
                                     "no planned artifacts — every inventory "
@@ -1094,14 +1121,16 @@ def lint_inventory(plant, rec, templates, findings):
                                         "name the file this item owes the "
                                         "graph, or drop the entry"))
                 continue
-            if rel.startswith("nodes/expertise.") and item.get("significance") == "incidental":
-                # Over-growth is a finding too: an incidental dependency owes
-                # an index line, and a routing node for something nobody
-                # writes against is a node the librarian will delete.
+            if rel.startswith("nodes/expertise.") and rel not in owed:
+                # Over-growth is a finding too, and what is owed has one home:
+                # this asks `planned_artifacts` rather than re-deriving the
+                # incidental rule beside it, so the two cannot disagree.
                 findings.append(Finding("BLANK", label,
-                                        f"plans {GRAPH_HOME}/{rel} while marked "
-                                        f"incidental — an incidental dependency "
-                                        f"owes an index line, not a node"))
+                                        f"plans {GRAPH_HOME}/{rel}, which this "
+                                        f"item does not owe — an expertise node "
+                                        f"is for the stack a worker writes "
+                                        f"against, not for every name in the "
+                                        f"lockfile"))
                 continue
             ok, why = is_substantive(plant, rel, templates)
             if not ok:

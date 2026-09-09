@@ -158,10 +158,17 @@ class Node:
     def triggers(self) -> set:
         """The vocabulary descent matches a task against: the node's own
         `load_when` tokens plus its slug kept WHOLE. The slug is not tokenized
-        — `ef-core` split into `ef` and `core` would let "fix the core module"
-        compose the persistence expertise. Title and repo words stay out: they
-        belong to seed scoring, and a title like "ef-core — the persistence
-        expertise" would put `expertise` in every sibling's vocabulary."""
+        — `ef-core` split into `ef` and `core` would let a task saying "the
+        core module" DESCEND the persistence expertise off a word that names
+        nothing about it. (Seeding is a separate question and is unchanged: it
+        scores id and title tokens, so such a task may still load the node on
+        its own merits, and the absence of a composed-by line is what says
+        so.) Title and repo words stay out of this set: they belong to seed
+        scoring, and a title like "ef-core — the persistence expertise" would
+        put `expertise` in every sibling's vocabulary."""
+        # STOPWORDS are not stripped here and need not be: `_terms` drops them
+        # from every task, so a filler word sitting in a child's triggers can
+        # never be the term that descends it.
         return _tokens(" ".join(self.get_list("load_when"))) | {self.id.split(".", 1)[-1]}
 
 
@@ -726,13 +733,18 @@ def resolve(nodes: list, task: str):
     seen: set = set()
     reasons: dict = {}         # id -> why it is NOT loaded
     notices: list = []
+    # A seed is a seed however it is reached. The stack is LIFO over seeds
+    # sorted best-first, so a child that outscores its own subsystem is popped
+    # through the parent chain and would otherwise be reported as composed —
+    # a true load set with a false account of why.
+    entry_ids = {n.id for n in seeds}
     stack = [(n, "entry") for n in seeds]
     while stack:
         n, how = stack.pop()
         if n.id in seen:
             continue
         seen.add(n.id)
-        loaded.append((n, how))
+        loaded.append((n, "entry" if n.id in entry_ids else how))
         for r in n.get_list("requires"):
             if r in by_id:
                 stack.append((by_id[r], f"requires of {n.id}"))

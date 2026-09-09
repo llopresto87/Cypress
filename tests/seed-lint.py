@@ -129,6 +129,21 @@ def load_agnosticism_lint():
     return load_tool("agnosticism-lint.py")
 
 
+def frontmatter_block(path: Path) -> str:
+    """The YAML frontmatter's text, and nothing else. A template may open with
+    an HTML header comment, so the block is located by its delimiters rather
+    than assumed to start the file — and a worked example further down carries
+    the same keys at column 0, which is exactly what a whole-file match would
+    accept in place of the frontmatter that has to carry them."""
+    lines = path.read_text(encoding="utf-8").split("\n")
+    try:
+        start = lines.index("---")
+        end = lines.index("---", start + 1)
+    except ValueError:
+        return ""
+    return "\n".join(lines[start + 1:end])
+
+
 def parse_frontmatter(path: Path) -> dict:
     text = path.read_text(encoding="utf-8")
     m = re.match(r"\A---\n(.*?)\n---\n", text, re.DOTALL)
@@ -630,6 +645,25 @@ def check() -> None:
             fail(f"templates/prompts/growth-coverage-record.md: inventory kind "
                  f"{kind!r} is planned by tools/growth-audit.py but never "
                  f"described here")
+    # The table's "expertise node" column is the same fact as KIND_PLAN's third
+    # element, written for a reader. Checking only that the kind is MENTIONED
+    # let the column drift from the tool silently, which is how an orchestrator
+    # ends up planning an artifact the gate does not want, or omitting one it
+    # does. Each row is read where it is declared.
+    for line in record_doc.splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) != 4 or not cells[0].startswith("`"):
+            continue
+        if "incidental" in cells[0]:
+            continue        # a significance sub-case, not the kind's own rule
+        kinds = re.findall(r"`([a-z-]+)`", cells[0])
+        documented = not cells[2].lower().startswith("no")
+        for kind in kinds:
+            if kind in audit.KIND_PLAN and audit.KIND_PLAN[kind][2] != documented:
+                fail(f"templates/prompts/growth-coverage-record.md: the kind "
+                     f"table says {kind!r} "
+                     f"{'owes' if documented else 'does not owe'} an expertise "
+                     f"node; tools/growth-audit.py plans the opposite")
 
     # The verdict vocabulary has one home — tools/growth-audit.py — and the
     # protocols quote from it for their own readers. A protocol naming a
@@ -688,9 +722,16 @@ def check() -> None:
          (r"id: expertise\.", r"kind: expertise", r"origin: project",
           r"composes:", r"libraries:")),
     ):
-        tmpl = (ROOT / rel).read_text(encoding="utf-8")
+        # The FRONTMATTER only. A template's worked example carries the same
+        # keys at column 0, so matching the whole file let an emptied
+        # frontmatter pass on the strength of the example that merely shows
+        # what it should have said. Line-anchoring alone was not enough; the
+        # anchor has to be scoped to the block that has to carry the keys.
+        # A template may open with an HTML header comment, so the block is
+        # found rather than assumed to start the file.
+        head = frontmatter_block(ROOT / rel)
         for key in keys:
-            if not re.search(rf"^{key}", tmpl, re.M):
+            if not re.search(rf"^{key}", head, re.M):
                 fail(f"{rel}: its frontmatter carries no {key!r}, so a node "
                      f"authored from it cannot answer the coverage gate")
 
