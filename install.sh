@@ -6,7 +6,7 @@
 #                     [--print-config]
 #                     [--environment-class ephemeral-test|staging|real-production|mixed]
 #                     [--commit-attribution none|<trailer>] [--deliverable-language <bcp47>]
-#                     [--comment-language <bcp47>]
+#                     [--comment-language <bcp47>] [--legal-corpus yes|no]
 #
 # <tool> is one of:
 #   claude-code        — Drop CLAUDE.md + .claude/ into the project.
@@ -32,6 +32,16 @@
 #                        its placeholder in docs/graph/index.md; a value the plant
 #                        already declares is never overwritten. Unset facts are
 #                        named as a NEXT STEP.
+#   --legal-corpus yes|no  Whether this plant carries the seed's legal-corpus/,
+#                        placed WHOLE under docs/graph/legal/corpus/. It is a
+#                        reference wiki, not a reading list: `yes` brings every
+#                        page, `no` brings none, and there is no third option —
+#                        an agent that can only refuse without a corpus must not
+#                        also be given a pre-filtered one. Which instruments bear
+#                        on this project is an INSTRUCTION to agent.legal,
+#                        recorded in docs/graph/legal/index.md and revised as the
+#                        project evolves — never an import filter. Unset is named
+#                        as a NEXT STEP and nothing is placed.
 #   --print-config       For `codex`: print the config.toml lines with
 #                         resolved paths instead of editing anything.
 #   --check              For `github-copilot`: verify the generated .github/
@@ -200,6 +210,7 @@ place_tree() {
 place_docs_skeleton() {
     place_graph_scaffold
     place_graph_machinery
+    [[ "${LEGAL_CORPUS:-}" == "yes" ]] && place_legal_corpus
     local src="$SEED_ROOT/templates/docs" dest="$PROJECT_DIR/docs/graph" f rel
     log "populating missing unified-graph leaves in docs/graph/"
     while IFS= read -r -d '' f; do
@@ -239,6 +250,37 @@ place_graph_machinery() {
         place_file "${d%/}/SKILL.md" "$g/skills/$name.md"
     done
     place_tree "$SEED_ROOT/templates" "$g/templates"
+}
+
+# place_legal_corpus: the seed's legal-corpus/, placed WHOLE under the plant's
+# docs/graph/legal/corpus/ on the owner's explicit `--legal-corpus yes`.
+#
+# Whole, and the word is load-bearing. `agent.legal` runs without WebSearch,
+# WebFetch or Bash: this corpus plus the plant's own legal leaf is the ONLY law
+# it can reach, and its charter turns a corpus gap into a refusal rather than a
+# reconstructed citation. That design is what makes a PARTIAL corpus worse than
+# none — a missing page reads to the analyst exactly like an instrument that
+# does not exist, so a well-meaning import filter silently converts "nobody
+# copied this" into "this does not apply", which is the one answer the refusal
+# rule exists to prevent. Relevance is expressed downstream, as an instruction
+# in docs/graph/legal/index.md that the owner revises as the project evolves.
+#
+# Until 7.11.0 nothing placed it at all: the corpus lived in the seed, the
+# analyst read only the plant, and every plant's legal/ held one empty scaffold.
+place_legal_corpus() {
+    local src="$SEED_ROOT/legal-corpus" dest="$PROJECT_DIR/docs/graph/legal/corpus"
+    [[ -d "$src" ]] || die "missing legal-corpus/ in the seed: $src"
+    log "installing legal-corpus/ WHOLE into docs/graph/legal/corpus/"
+    place_tree "$src" "$dest"
+    local want have
+    want="$(find "$src"  -type f | wc -l | tr -d ' ')"
+    have="$(find "$dest" -type f | wc -l | tr -d ' ')"
+    # A partial corpus is the failure mode this whole feature exists to avoid,
+    # so it is checked rather than assumed.
+    [[ "$have" -ge "$want" ]] || die \
+        "legal corpus placed partially ($have of $want files) — a subset makes a\
+ missing page indistinguishable from an instrument that does not apply"
+    log "  docs/graph/legal/corpus/  ($want pages — the whole corpus; scope it in legal/index.md, never by deleting pages)"
 }
 
 # place_graph_scaffold: drop the knowledge-graph home (schema, linter,
@@ -772,6 +814,7 @@ while [[ $# -gt 0 ]]; do
         --commit-attribution)  PLANT_ATTR="$2"; shift 2 ;;
         --deliverable-language) PLANT_DLANG="$2"; shift 2 ;;
         --comment-language)    PLANT_CLANG="$2"; shift 2 ;;
+        --legal-corpus)        LEGAL_CORPUS="$2"; shift 2 ;;
         -h|--help) usage 0 ;;
         *) die "unknown argument: $1 (try --help)" ;;
     esac
@@ -781,6 +824,10 @@ done
 case "${PLANT_ENV:-}" in
     ""|ephemeral-test|staging|real-production|mixed) ;;
     *) die "--environment-class must be one of ephemeral-test | staging | real-production | mixed (got: $PLANT_ENV)" ;;
+esac
+case "${LEGAL_CORPUS:-}" in
+    ""|yes|no) ;;
+    *) die "--legal-corpus must be yes or no (got: $LEGAL_CORPUS). The corpus is placed whole or not at all; a subset is not an option." ;;
 esac
 
 # Sanity: refuse to install into the seed itself.
@@ -887,6 +934,7 @@ write_seed_stamp() {
         [[ -n "$prev" && "$prev" != "$version" ]] && \
             printf '  "installed_from": "%s",\n' "$prev"
         printf '  "tools": "%s",\n' "${expanded[*]}"
+        printf '  "legal_corpus": "%s",\n' "${LEGAL_CORPUS:-undecided}"
         printf '  "agent_projections": [\n'
         local t proj sep=""
         for t in "${expanded[@]}"; do
@@ -902,6 +950,22 @@ write_seed_stamp() {
     log "  .cypress/seed.json     (seed stamp: cypress $version — commit it)"
 }
 write_seed_stamp
+
+# The corpus decision is the owner's and it is asked BEFORE a run, not settled
+# during one: an analyst with no corpus can only refuse, and a run that meets
+# that refusal mid-flight either stops or invents. Say so while the installer
+# still has the owner's attention.
+if [[ -z "${LEGAL_CORPUS:-}" ]]; then
+    log ""
+    log "NEXT STEP — legal corpus undecided (.cypress/seed.json: \"legal_corpus\": \"undecided\")."
+    log "  docs/graph/legal/ holds only its scaffold, so agent.legal can do exactly"
+    log "  one thing: refuse. Decide BEFORE grow or graft — re-run with"
+    log "  --legal-corpus yes to place the whole corpus under legal/corpus/, or"
+    log "  --legal-corpus no to record that this plant carries none."
+    log "  It is placed whole or not at all. Which instruments bear on this project"
+    log "  is an instruction to the analyst in docs/graph/legal/index.md, revised as"
+    log "  the project evolves — never a subset of pages on disk."
+fi
 
 log "done. FILES ARE PLACED — the project is NOT grown yet."
 log ""

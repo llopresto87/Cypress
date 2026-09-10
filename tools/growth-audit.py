@@ -160,6 +160,10 @@ VERDICTS = ("MISSING", "BLANK", "UNGROWN", "HOLLOW", "UNGROUNDED", "DANGLING",
 CHANGELOG_REL = f"{GRAPH_HOME}/changelog.md"
 # The two halves of retrieved provenance. A normalized snapshot names its raw
 # sibling, or the reason there is none, in this key of its metadata block.
+# The seed's legal-corpus/, and where install.sh places it in a plant. Whole or
+# not at all: see legal-corpus/_schema.md §"Whole corpus, or none".
+LEGAL_CORPUS_DIR = "legal-corpus"
+LEGAL_CORPUS_REL = "legal/corpus/"
 NORMALIZED_DIR = "sources/normalized"
 RAW_DIR = "sources/raw"
 RAW_KEY = "raw"
@@ -329,7 +333,17 @@ def required_collections(seed):
     one collection row; a leaf that sits at the root of templates/docs (or is a
     runbook, where each file is its own procedure) is a row of its own. Deriving
     this from the seed is what stops a collection from being forgotten: adding a
-    template to the seed adds a required row to every plant's next audit."""
+    template to the seed adds a required row to every plant's next audit.
+
+    `legal/corpus/` is the one collection that does not come from a template.
+    It is the seed's `legal-corpus/` placed whole on the owner's
+    `--legal-corpus yes` (7.11.0), so it exists as a collection wherever the
+    seed carries one — and it is a required row on every plant, including the
+    plants whose owner said no. That is the point: an owner who declined
+    answers `ABSENT` with the reason, and the decision becomes a fact the next
+    graft can read instead of an absence it has to guess at. This function is
+    the ONE home for the collection set (seed-lint defers to it), so the row is
+    derived here rather than special-cased in each linter."""
     troot = seed / TEMPLATE_DOCS
     if not troot.is_dir():
         die(f"{seed} has no {TEMPLATE_DOCS}/ — not a seed root")
@@ -347,6 +361,8 @@ def required_collections(seed):
             continue              # blank forms, filled per node, never as a set
         else:
             rows.add(parts[0] + "/")
+    if (seed / LEGAL_CORPUS_DIR).is_dir():
+        rows.add(LEGAL_CORPUS_REL)
     return sorted(rows)
 
 

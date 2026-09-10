@@ -522,9 +522,12 @@ elsewhere" class, and it moves.
   `docs/graph/agents/`, with the harness projections regenerated from them —
   an expert that reaches the graph and not the projection directory is on disk
   and unspawnable, and the coverage gate reports it as such),
-  withdraw a corpus library/tool page the plant actually uses, withdraw a
-  `legal-corpus` instrument the plant is genuinely subject to (currency
-  re-confirmed, per Phase 4),
+  withdraw a corpus library/tool page the plant actually uses, place the
+  **whole** `legal-corpus` where the plant's stamp records
+  `"legal_corpus": "yes"` and re-ask the owner where it records `undecided`
+  (`grow.legal-corpus`; a graft never decides it by inspection, and never
+  withdraws a subset — an analyst cannot distinguish a page nobody copied from
+  an instrument that does not exist),
   or ground a runbook the plant can now fill from its own deploy/release nodes.
   Every grown addition is anchored in evidence already in the plant's graph — its
   references resolve inside the plant, never at a seed-corpus path.

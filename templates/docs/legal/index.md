@@ -1,25 +1,53 @@
 # Legal & regulatory index
 
-The citations of externally-authored rules this project is subject to —
-statute, regulation, standards, or a contractual regime. Each row links to the
-project-local page recording the instrument, the provisions cited, how each was
-sourced, and when it was last verified.
+**This file is the SCOPE INSTRUCTION for `agent.legal`** — the one place that
+says which of the instruments on disk bear on this project, which do not and
+why, and what the corpus does not carry at all. It is a determination, it is
+revised as the project evolves, and it is the *only* legitimate way to narrow
+what the analyst considers.
 
-**This collection exists only if the project is genuinely subject to such
-rules.** An empty legal index on a project with no regulatory exposure is
-noise; delete it rather than carry it.
+`corpus/` beside this file is the seed's `legal-corpus/`, placed **whole** on
+the owner's decision (`grow.legal-corpus`). Every page it ships is here or none
+is. **Do not delete a page to express irrelevance** — write the row below
+instead. The analyst has no web access, so a page that is not on disk is
+indistinguishable from an instrument that does not exist, and its `no corpus
+entry → no claim` rule would turn your import filter into a confident "this
+does not apply" (`corpus/_schema.md` §"Whole corpus, or none").
 
-**One home per fact, and the line is strict.** This collection holds the
-**citation** — what the rule says and how strongly that is sourced. The
-project's **application** of the rule (which of its systems engage it, what was
-found, what was decided) belongs to the owning node or decision record that
-makes the claim, and cites the entry id from here. Never restate a provision
-outside this collection; never record a determination inside it.
+## Scope for this project
+
+Every instrument the corpus carries gets a row. `in scope` means the analyst
+reasons from it; `out of scope` means it does not, **for the stated reason**,
+until someone changes this line.
+
+| Instrument | Scope | Why — the project fact that decides it | Reviewed |
+|---|---|---|---|
+| <corpus page> | in scope / out of scope | <the evidenced reason, with a path> | YYYY-MM-DD |
+
+## Not in the corpus at all
+
+An instrument this project plausibly engages that `corpus/` does not carry.
+The analyst cannot reason about these and must refuse; that refusal is correct.
+Each row is an ingest request, not a gap to be filled from memory.
+
+| Instrument | Why it may apply here | Status |
+|---|---|---|
+| <name> | <the project fact that raises it> | `not recorded — ingest pending` |
+
+## Project-authored leaves
+
+Rows for anything this project authored beside the corpus — a contractual
+regime the corpus does not cover, for instance.
 
 | Instrument | Kind | Page | Provisions covered | Verified | Status |
 |---|---|---|---|---|---|
 
-<!-- Add a row each time an instrument is ingested. -->
+**One home per fact, and the line is strict.** `corpus/` holds the **citation**
+— what the rule says and how strongly that is sourced. The project's
+**application** of the rule (which of its systems engage it, what was found,
+what was decided) belongs to the owning node or decision record that makes the
+claim, and cites the entry id. Never restate a provision outside the corpus;
+never record a determination inside it.
 
 ## Before citing anything here
 

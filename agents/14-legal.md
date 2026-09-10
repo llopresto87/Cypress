@@ -33,6 +33,7 @@ peers:
   - agent.reviewer
 plant_knowledge:
   - legal/
+  - legal/corpus/
 est_tokens: 2400
 ---
 

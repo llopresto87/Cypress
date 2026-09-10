@@ -1,6 +1,6 @@
 # CYPRESS Documentation
 
-Human-readable documentation for the CYPRESS seed system (version 7.10.0).
+Human-readable documentation for the CYPRESS seed system (version 7.11.0).
 
 ## Start here
 

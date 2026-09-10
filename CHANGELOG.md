@@ -1,5 +1,64 @@
 # Changelog
 
+## 7.11.0 — the legal corpus reaches the analyst that was built to read it, whole (2026-09-10)
+
+`agent.legal` has shipped since 6.x with one knowledge source and a charter
+built around it: a curated corpus, no web access, and **no corpus entry → no
+claim**, so a gap produces an explicit refusal instead of a reconstructed
+citation. The corpus it reads is `legal-corpus/` — 16 pages, GDPR through the
+Italian data-protection code.
+
+`install.sh` never placed it in a plant. Not partially: not at all. Every plant
+ever grown got `docs/graph/legal/index.unfilled.md` and nothing else, so the
+analyst designed around a corpus could reach no law whatsoever, and the only
+act available to it was the refusal. A plant then recorded that empty
+collection as `UNKNOWN — regulatory applicability is the owner's
+determination`, which reads as a careful deferral and was in fact a tool that
+was never wired up. Nobody could see it, because the thing that was missing was
+the thing nobody had.
+
+### The corpus travels whole, on the owner's decision, before the run
+
+- `install.sh --legal-corpus yes|no` places `legal-corpus/` under the plant's
+  `docs/graph/legal/corpus/`, all 16 pages, or none. The flag is binary by
+  design and the installer refuses a partial placement (it counts). The stamp
+  records `"legal_corpus": "yes" | "no" | "undecided"`, so a graft can tell an
+  owner who declined from an owner who was never asked.
+- **Never a subset, and this is the load-bearing rule.** The analyst has no web
+  access, so a page that is not on disk is indistinguishable, from where it
+  stands, from an instrument that does not exist — and `no corpus entry → no
+  claim` then converts someone's import filter into a confident "this does not
+  apply". A missing page produces no visible gap; it produces a silent false
+  negative wearing the shape of a correct refusal, which is strictly worse than
+  no corpus at all, because an empty `legal/` at least announces itself.
+  `legal-corpus/_schema.md` gains §"Whole corpus, or none" and both protocols
+  point at it.
+- **Relevance moved to where it belongs.** Which instruments bear on a project
+  is an INSTRUCTION to the analyst, not a property of the filesystem:
+  `templates/docs/legal/index.md` is now a scope statement — every corpus page
+  gets an `in scope` / `out of scope` row with the evidenced reason and a review
+  date, a second table names instruments the corpus does not carry at all as
+  ingest requests, and a third holds project-authored leaves. Narrow what is
+  considered; never narrow what is on disk.
+- **The ask is upfront and numbered.** `grow.legal-corpus` joins the four plant
+  facts in grow's Phase 1: a numbered decision put to the owner before Phase 4
+  authors anything, because a run that meets the refusal mid-flight either
+  stops or invents. Unanswered it stays `status: open` with the owner named,
+  and the installer says so as a NEXT STEP. graft re-asks on `undecided` and
+  never decides by inspection.
+- `agents/14-legal.md` declares `legal/corpus/` alongside `legal/`, so a plant
+  whose corpus never arrived reports as an agent with nothing to read rather
+  than passing on a hand-written index.
+
+### The sentence that taught this
+
+graft's Phase 5 said to *"withdraw a `legal-corpus` instrument the plant is
+genuinely subject to"*, and grow's Phase 4 said to *"seed each page from it"*.
+Both read as licence to assemble a per-project subset, and a session following
+them faithfully began building exactly the filtered corpus described above —
+one page at a time, from an applicability judgment it had made itself. The
+instruction was wrong, not the reading. Both are rewritten.
+
 ## 7.10.0 — the gate reads where the owner reads: four false passes closed on a real graft, one of them a decision nobody was asked (2026-09-10)
 
 A graft ran end to end on a grown plant, the coverage gate went green, and

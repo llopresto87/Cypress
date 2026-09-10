@@ -119,6 +119,10 @@ grep -q "agent legal" "$TMP/out" || fail "--agents did not report the legal row"
 
 # --- 8. a fully grown plant passes ----------------------------------------
 # A gate that can never go green is not a gate.
+# 7.11.0: agent.legal declares legal/corpus/, so a grown plant is one whose
+# owner answered the corpus question. `yes` is that plant; case 14 covers the
+# owner who answered `no` and establishes the absence instead.
+bash "$ROOT/install.sh" claude-code --project-dir "$PLANT" --legal-corpus yes >/dev/null 2>&1
 python3 - "$PLANT" "$ROOT" <<'PY'
 import json, sys, pathlib
 plant, seed = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])

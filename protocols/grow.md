@@ -12,6 +12,7 @@ owns:
   - grow.completeness-contract
   - grow.stack-inventory
   - grow.plant-facts
+  - grow.legal-corpus
 requires:
 peers:
   - protocol.harvest
@@ -287,6 +288,23 @@ stays a `status: open` item, owner named, in the coverage record
 and in the delivery — and `graph-lint.py` fails a grown plant until the block
 is declared. Never ask twice; later sessions read the block.
 
+**Ask the owner about the legal corpus — once, before authoring
+(`grow.legal-corpus`).** `agent.legal` runs without web access: the corpus the
+installer places plus this plant's own legal leaf is the only law it can reach,
+and its charter turns a gap into a refusal rather than a reconstructed
+citation. A plant with no corpus therefore has an analyst that can only refuse,
+and one whose corpus was filtered has an analyst that cannot tell a page nobody
+copied from an instrument that does not exist — which is the refusal rule
+inverted into a silent false negative. So the question is binary and it is the
+owner's: `--legal-corpus yes` places every page under
+`docs/graph/legal/corpus/`, `no` records that this plant carries none. Put it
+as a numbered decision (`deliver.numbered-decisions`) alongside the four plant
+facts, before Phase 4 authors anything. Unanswered, it stays a `status: open`
+item with the owner named, exactly as an unset plant fact does, and
+`.cypress/seed.json` records `"legal_corpus": "undecided"`. What may **not**
+happen is a run deciding it by inspection: relevance is expressed afterwards,
+in `legal/index.md`, and revised as the project evolves.
+
 **An existing graph that predates 7.0.0** (a refresh, or an adopted plant)
 carries lifecycle status as body prose in a vocabulary per kind. Run
 `python3 <seed>/tools/status-migrate.py --root docs/graph` (dry run) and
@@ -445,14 +463,19 @@ Through bounded Opus authors, populate every collection supported by evidence:
   at two majors, the unversioned node composes one version-qualified child
   per major (`expertise.dotnet-8`) whose triggers are that major's target
   tokens — the only place a version enters a slug;
-- `legal/`: **only when the project is subject to externally-authored rules**
-  (statute, regulation, a standards catalog, a contractual regime). Check the
-  seed's `legal-corpus/<scope>/<instrument>.md` **first** and seed each page
-  from it as the orientation layer, then **re-confirm `verified` and
-  `legal_status` against the publisher** before anything here is relied on — a
-  citation that shipped once is not thereby current. The corpus supplies the
-  citation; the project's own application of it is authored here and never
-  folded back (see `docs/graph/protocols/harvest.md`);
+- `legal/`: the corpus itself is placed by the installer, **whole or not at
+  all**, on the owner's `grow.legal-corpus` answer — never assembled here and
+  never subsetted (`legal-corpus/_schema.md` §"Whole corpus, or none").
+  What this phase authors is `legal/index.md`: the **scope instruction** —
+  which instruments bear on this project today, which do not and why, and what
+  the corpus does not carry at all. That is a determination, it is revised as
+  the project evolves, and it is the only legitimate way to narrow what
+  `agent.legal` considers; deleting a page is not. Each in-scope instrument's
+  `verified` and `legal_status` are **re-confirmed against the publisher**
+  before anything is relied on — a citation that shipped once is not thereby
+  current. The corpus supplies the citation; the project's own application of a
+  rule is authored in the node that makes the claim, cites the entry id, and is
+  never folded back (see `docs/graph/protocols/harvest.md`);
 - `sources/`: provenance rows for every upstream source the research-scouts
   retrieved during THIS growth (raw snapshot, normalized copy, index row).
   Growth creates its own external consumption via topology step 3 — marking

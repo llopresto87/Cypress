@@ -8,6 +8,29 @@ remembered article number is a fabrication with a plausible face.
 
 Read this once. After that, copy an existing entry.
 
+## Whole corpus, or none — never a subset
+
+This corpus is a **reference wiki, not a reading list.** A plant carries every
+page of it or none, on the owner's explicit decision (`grow.legal-corpus`,
+`install.sh --legal-corpus yes|no`), and no protocol, agent or run may place
+part of it.
+
+The reason is the asymmetry described below. The consuming analyst has no web
+access, so a page that is not on disk is indistinguishable, from where it
+stands, from an instrument that does not exist — and its core rule, **no corpus
+entry → no claim**, then converts someone's import filter into a confident
+"this does not apply". A missing page does not produce a visible gap; it
+produces a silent false negative wearing the shape of a correct refusal. That
+is strictly worse than no corpus at all, because an empty `legal/` at least
+announces itself.
+
+Relevance is real, and it has a different home. **Which instruments bear on a
+project is an INSTRUCTION to the analyst**, recorded in that plant's
+`docs/graph/legal/index.md`, carrying its reasons, and revised as the project
+evolves — a scope statement the owner can read, argue with, and change. A
+deleted page is none of those things. Narrow what is considered; never narrow
+what is on disk.
+
 ## Who writes, who reads
 
 - **`docs-librarian` writes.** This is a fact-bearing surface (kernel

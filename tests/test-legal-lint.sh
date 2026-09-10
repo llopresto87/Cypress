@@ -121,3 +121,47 @@ rm "$TMP/legal-corpus/eu/zz-fixture.md"
 lint >/dev/null || { echo "legal-lint did not return to PASS after restores" >&2; exit 1; }
 
 printf 'legal-lint contract: PASS\n'
+
+# --- the corpus reaches a plant, whole or not at all -----------------------
+# 7.11.0: install.sh never placed legal-corpus/ in a plant at all, so the one
+# agent built around it — no web access, `no corpus entry -> no claim` — could
+# reach no law and could only ever refuse. Three properties are pinned here:
+# it arrives on the owner's yes, it stays away on their no, and it is never a
+# subset (a page missing from disk is indistinguishable, to that agent, from an
+# instrument that does not exist, which turns an import filter into a silent
+# "this does not apply").
+CTMP="$(mktemp -d)"; trap 'rm -rf "$CTMP"' EXIT
+mkdir -p "$CTMP"/{yes,no,undecided,partial}
+want="$(find "$ROOT/legal-corpus" -type f | wc -l | tr -d ' ')"
+
+bash "$ROOT/install.sh" claude-code --project-dir "$CTMP/yes" --legal-corpus yes >/dev/null 2>&1
+have="$(find "$CTMP/yes/docs/graph/legal/corpus" -type f 2>/dev/null | wc -l | tr -d ' ')"
+[[ "$have" == "$want" ]] \
+    || { echo "legal-lint: FAIL — --legal-corpus yes placed $have of $want pages" >&2; exit 1; }
+# byte-identical: a plant's copy is a projection, not a fork
+diff -r "$ROOT/legal-corpus" "$CTMP/yes/docs/graph/legal/corpus" >/dev/null \
+    || { echo "legal-lint: FAIL — the placed corpus differs from the seed's" >&2; exit 1; }
+grep -q '"legal_corpus": "yes"' "$CTMP/yes/.cypress/seed.json" \
+    || { echo "legal-lint: FAIL — the stamp did not record the owner's yes" >&2; exit 1; }
+
+bash "$ROOT/install.sh" claude-code --project-dir "$CTMP/no" --legal-corpus no >/dev/null 2>&1
+[[ ! -d "$CTMP/no/docs/graph/legal/corpus" ]] \
+    || { echo "legal-lint: FAIL — --legal-corpus no still placed a corpus" >&2; exit 1; }
+grep -q '"legal_corpus": "no"' "$CTMP/no/.cypress/seed.json" \
+    || { echo "legal-lint: FAIL — the stamp did not record the owner's no" >&2; exit 1; }
+
+# Unset is neither yes nor no: nothing placed, and the plant says it was never
+# asked, so a graft can tell a declining owner from an unasked one.
+out="$(bash "$ROOT/install.sh" claude-code --project-dir "$CTMP/undecided" 2>&1)"
+[[ ! -d "$CTMP/undecided/docs/graph/legal/corpus" ]] \
+    || { echo "legal-lint: FAIL — an unasked owner got a corpus anyway" >&2; exit 1; }
+grep -q '"legal_corpus": "undecided"' "$CTMP/undecided/.cypress/seed.json" \
+    || { echo "legal-lint: FAIL — the stamp did not record 'undecided'" >&2; exit 1; }
+grep -q "NEXT STEP — legal corpus undecided" <<<"$out" \
+    || { echo "legal-lint: FAIL — an undecided corpus was not surfaced as a NEXT STEP" >&2; exit 1; }
+
+# A subset is refused, not silently accepted.
+bash "$ROOT/install.sh" claude-code --project-dir "$CTMP/partial" --legal-corpus foo >/dev/null 2>&1 \
+    && { echo "legal-lint: FAIL — --legal-corpus took a value other than yes/no" >&2; exit 1; }
+
+printf 'legal corpus placement: PASS — %s pages, whole or none\n' "$want"
