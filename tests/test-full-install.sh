@@ -468,3 +468,20 @@ PY
 echo "  declared values survive, re-runs are idempotent, a missing key is appended in order — OK"
 
 printf 'full five-tool install contract + CC/PA coexistence: PASS\n'
+
+# --- bytecode is never seed content ---------------------------------------
+# `place_tree`'s default `*` pattern copied everything under templates/,
+# including a __pycache__/ that appears the moment anyone runs a linter in the
+# seed before installing. It is gitignored here, so no Git-based check saw it,
+# and it landed in the plant as a tracked file — one installer's interpreter
+# version shipped as plant data.
+BTMP="$(mktemp -d)"; trap 'rm -rf "$BTMP"' EXIT
+mkdir -p "$ROOT/templates/knowledge-graph/__pycache__"
+printf 'fake bytecode\n' > "$ROOT/templates/knowledge-graph/__pycache__/zz-fixture.cpython-999.pyc"
+bash "$ROOT/install.sh" claude-code --project-dir "$BTMP" >/dev/null 2>&1
+rm -f "$ROOT/templates/knowledge-graph/__pycache__/zz-fixture.cpython-999.pyc"
+found="$(find "$BTMP" \( -name '*.pyc' -o -name '__pycache__' \) | wc -l | tr -d ' ')"
+[[ "$found" == "0" ]] \
+    || { find "$BTMP" \( -name '*.pyc' -o -name '__pycache__' \) >&2
+         echo "test-full-install: FAIL — $found bytecode path(s) placed into the plant" >&2; exit 1; }
+echo "  bytecode never reaches the plant — OK"

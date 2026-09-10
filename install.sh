@@ -205,10 +205,17 @@ place_tree() {
     [[ -d "$src" ]] || die "missing source dir: $src"
     mkdir -p "$dest"
     local f
+    # Python bytecode is never seed content. It is gitignored here, so it is
+    # invisible to any check that reads the tree through Git, but it sits on
+    # disk the moment someone runs a linter before installing — and the default
+    # `*` pattern shipped it into the plant, where it landed as a tracked file
+    # in a directory the plant's own .gitignore only covers going forward. A
+    # plant then carried one installer's interpreter version as data.
     while IFS= read -r -d '' f; do
         local rel="${f#"$src"/}"   # quoted: an unquoted $src is a glob pattern
         place_file "$f" "$dest/$rel"
-    done < <(find "$src" -type f -name "$pattern" -print0)
+    done < <(find "$src" -type f -name "$pattern" \
+                  -not -name '*.pyc' -not -path '*/__pycache__/*' -print0)
 }
 
 # place_docs_skeleton: install every knowledge artifact beneath the one

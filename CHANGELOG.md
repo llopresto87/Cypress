@@ -1,5 +1,25 @@
 # Changelog
 
+## 7.13.1 — the installer stops shipping its own bytecode (2026-09-10)
+
+`place_tree` copies with a default pattern of `*`, so everything under
+`templates/` reached the plant. That includes `__pycache__/`, which appears the
+moment anyone runs `graph-lint.py` in the seed before installing.
+
+The failure hid behind the `.gitignore`. Bytecode is ignored here, so it is
+invisible to every check that reads the tree through Git, and it was still
+sitting on disk for `find` to copy. In the plant it landed inside
+`docs/graph/templates/`, where the plant's own ignore rule does not retroactively
+untrack it — so a plant ended up carrying one installer's interpreter version as
+committed data, and a later graft dutifully reported it as a changed file to
+reconcile.
+
+`place_tree` now excludes `*.pyc` and anything under `__pycache__/` for every
+caller, since no caller ever wanted them. Pinned by a regression in
+`test-full-install.sh` that plants a fake `.pyc` in the seed, installs, and
+requires zero bytecode paths in the result — a check that reads the filesystem
+rather than Git, because reading Git is what missed this.
+
 ## 7.13.0 — the seed's own front door goes through its own gate (2026-09-10)
 
 CYPRESS ships a prose posture, a humanizer skill, and `prose-lint.py` to floor
