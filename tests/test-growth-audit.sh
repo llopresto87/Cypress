@@ -991,4 +991,84 @@ grep -q "declares it reads collection 'desing/'" <<<"$out40" \
 grep -q "declares it reads collection 'data'" <<<"$out40" \
     || fail "an expert declaring a slash-less collection name was accepted"
 
+# --- 41. an authored absence statement is not an unfilled scaffold --------
+# The gate over an ABSENT collection exists to catch the seed's own blank form
+# sitting in it: a cold agent would read that form's placeholders as facts
+# about this project. Classifying by PATH instead of by CONTENT answered a
+# different question and made the gate unpassable — a leaf the plant genuinely
+# authored, holding exactly what the completeness contract asks for (the
+# absence, the paths searched, the candidate considered and excluded), was
+# called an unfilled scaffold forever because the seed happens to template that
+# path. Worse, the remedy the finding named judges a scaffold by byte-identity,
+# so it reported zero and renamed nothing: the only escapes left were deleting
+# authored content or renaming a filled leaf to `.unfilled.md`, a false record.
+rm -rf "$TMP/x41"; mkdir -p "$TMP/x41"
+bash "$ROOT/install.sh" claude-code --project-dir "$TMP/x41" >/dev/null 2>&1
+python3 "$AUDIT" "$TMP/x41" "$ROOT" --plan >/dev/null 2>&1 || true
+python3 - "$TMP/x41" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1]); g = p/"docs/graph"
+# (a) design/README.md is left exactly as the installer placed it.
+# (b) legal/index.md is authored: the absence, where it was looked for, and the
+#     one candidate considered and excluded.
+(g/"legal/index.md").write_text(
+    "# Legal\n\n## No regulatory exposure was established\n\n"
+    + ("This project holds no personal data and moves no money; the absence "
+       "was established by reading every entry point and every persistence "
+       "call under src/. " * 6)
+    + "\n\n## Considered and excluded\n\n"
+    + ("A vendor terms file under vendor/ names an obligation on the vendor "
+       "rather than on this project, so it earns no page here. " * 4) + "\n")
+# (c) api/README.md is well past the floor and still holds a prompt to its
+#     author — a steward who started and stopped.
+(g/"api/README.md").write_text(
+    "# API\n\n"
+    + ("The surface was walked and each finding below carries the source path "
+       "it came from. " * 10)
+    + "\n\n{{what this collection covers}}\n")
+f = p/".cypress/coverage.json"; r = json.loads(f.read_text())
+for c in r["collections"]:
+    c.update(status="ABSENT", reason="the source shows no such evidence",
+             searched=["src/"], evidence=[], leaves=0)
+for a in r["agents"]:
+    a.update(status="ABSENT", reason="its collections are absent-with-reason",
+             searched=["src/"])
+r["inventory"] = [{"kind": "domain", "name": "batch reconciliation",
+                   "status": "ABSENT", "searched": ["src/"],
+                   "reason": "no artifact of its own; the architecture node owns it",
+                   "evidence": ["docs/graph/index.md"], "expect": [],
+                   "grounding": {"required": False, "sources": []}}]
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+out41="$(python3 "$AUDIT" "$TMP/x41" "$ROOT" 2>&1)" || true
+# (a) the behaviour that must survive: the seed's own blank form still fails
+grep -q "CONTRADICTED collection design/" <<<"$out41" \
+    || { printf '%s\n' "$out41" >&2
+         fail "an untouched seed scaffold in an ABSENT collection stopped failing"; }
+# (b) the defect: an authored leaf is not a scaffold, whatever its path
+! grep -q "collection legal/" <<<"$out41" \
+    || { printf '%s\n' "$out41" >&2
+         fail "an authored leaf was called an unfilled scaffold because the seed templates its path"; }
+# (c) a surviving placeholder is a scaffold however many bytes surround it
+grep -q "CONTRADICTED collection api/" <<<"$out41" \
+    || { printf '%s\n' "$out41" >&2
+         fail "a leaf still carrying a template placeholder passed as authored"; }
+# a finding names a remedy that can act on the leaf it names: `--unfilled`
+# judges by byte-identity, so it belongs to (a) and not to (c).
+grep -A1 "CONTRADICTED collection design/" <<<"$out41" | grep -q -- "--unfilled --rename" \
+    || fail "the byte-identical scaffold no longer names the remedy that acts on it"
+! grep -A1 "CONTRADICTED collection api/" <<<"$out41" | grep -q -- "--unfilled --rename" \
+    || fail "a finding prescribed a remedy that cannot act on the leaf it names"
+# and the whole point: authoring the absence is a way OUT of the gate. Dispose
+# of the two leaves that really are scaffolds and the plant goes green with the
+# authored one still in place.
+python3 "$ROOT/tools/graft-audit.py" "$TMP/x41" "$ROOT" --unfilled --rename >/dev/null 2>&1 || true
+rm -f "$TMP/x41/docs/graph/api/README.md"
+[[ "$(audit_at "$TMP/x41")" == 0 ]] || {
+    python3 "$AUDIT" "$TMP/x41" "$ROOT" >&2
+    fail "a plant that authored its absence statement could not pass the gate"
+}
+[[ -f "$TMP/x41/docs/graph/legal/index.md" ]] \
+    || fail "the authored leaf had to be destroyed for the plant to pass"
+
 printf 'growth coverage gate: PASS\n'

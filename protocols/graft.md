@@ -607,8 +607,11 @@ backups exist). Then prove the plant is left more capable and no less itself:
   plant's own life BLOCKS.
 - **Customization audit (the reconcile-before-overwrite gate)** — run
   `tools/graft-audit.py <plant> <seed> --tokens=<plant tokens>
-  --engine=<plant>/docs/graph/graph-lint.py` over the fresh
-  backups. Every seed-owned file whose backup differs from the seed *and* carries
+  --engine=<plant>/docs/graph/graph-lint.py:<seed>/templates/knowledge-graph/graph-lint.py`
+  over the fresh
+  backups. `--engine` takes the **pair** the currency check compares, plant side
+  first, seed side second; a single path is malformed and the audit now refuses
+  it rather than skipping the check. Every seed-owned file whose backup differs from the seed *and* carries
   plant-signal content is a divergence the blind FF overwrote; each must be
   re-integrated into the FF'd file (holistic MERGE) or explicitly ratified. An
   un-reintegrated, un-ratified customization BLOCKS — a buried divergence is the

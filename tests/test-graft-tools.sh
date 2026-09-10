@@ -430,4 +430,89 @@ assert "STALE" in out and "2 seed engine line" in out, f"real drift not reported
 PY2
 echo "  engine currency: multi-line config excluded, real drift still STALE — OK"
 
+# ---- the customization audit must not cry wolf on a pristine file ---------
+# GENERIC_SIGNALS are ordinary self-reference the SEED itself writes in its
+# shipped charters. Matching them unconditionally reported a pristine machinery
+# file — replaced by a reworded version of itself — as a buried customization.
+# A gate that fires on untouched files teaches a steward to ratify without
+# looking, which is the failure this gate exists to prevent.
+rm -rf "$TMP/sig"; mkdir -p "$TMP/sig/seedroot/protocols" "$TMP/sig/plant/docs/graph/protocols"
+cat > "$TMP/sig/seedroot/protocols/alpha.md" <<'MD'
+# Alpha
+Write in this project's idiom; the pins are often old on purpose.
+A brand new seed sentence that the old body did not have.
+MD
+# the backup: the SAME generic phrase, differently worded around it, and no
+# plant-specific content whatsoever.
+cat > "$TMP/sig/plant/docs/graph/protocols/alpha.md.bak-20260101-000000" <<'MD'
+# Alpha
+Write in this project's idiom — the pins are often old on purpose.
+MD
+out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" || true
+grep -q "FF-overwritten plant customization" <<<"$out" \
+    && { printf '%s\n' "$out" >&2; fail "a phrase the seed itself ships was read as plant signal"; }
+echo "  a generic phrase the seed also ships is not plant signal — OK"
+
+# the true positives must still fire: an explicit --tokens match, and a generic
+# phrase that appears in the backup but NOT in the seed source.
+cat > "$TMP/sig/plant/docs/graph/protocols/alpha.md.bak-20260102-000000" <<'MD'
+# Alpha
+Write in this project's idiom; the pins are often old on purpose.
+A brand new seed sentence that the old body did not have.
+Deploy notes for zamber-corp live beside this file.
+MD
+out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260102 --tokens=zamber-corp 2>&1)" || true
+grep -q "FF-overwritten plant customization" <<<"$out" \
+    || { printf '%s\n' "$out" >&2; fail "an explicit plant token stopped being reported"; }
+cat > "$TMP/sig/plant/docs/graph/protocols/alpha.md.bak-20260103-000000" <<'MD'
+# Alpha
+Write in this project's idiom; the pins are often old on purpose.
+A brand new seed sentence that the old body did not have.
+Our stack pins the broker one minor behind on purpose.
+MD
+out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260103 2>&1)" || true
+grep -q "FF-overwritten plant customization" <<<"$out" \
+    || { printf '%s\n' "$out" >&2; fail "a generic phrase absent from the seed source stopped being reported"; }
+echo "  explicit tokens and seed-absent generic phrases still fire — OK"
+
+# ---- --engine refuses to report a check it did not run --------------------
+# A malformed pair was swallowed and announced as a parenthetical skip, so the
+# gate silently did not run while the audit still exited on its other checks.
+out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 \
+        --engine="$TMP/sig/seedroot/protocols/alpha.md" 2>&1)" && rc=0 || rc=$?
+[ "${rc:-0}" -ne 0 ] || fail "a malformed --engine did not fail"
+grep -q -- "--engine wants <plant-file>:<seed-file>" <<<"$out" \
+    || { printf '%s\n' "$out" >&2; fail "a malformed --engine did not say what was wrong"; }
+grep -q "engine check skipped" <<<"$out" \
+    && fail "a malformed --engine still announced itself as a skip"
+out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 \
+        --engine="$TMP/nope.py:$TMP/also-nope.py" 2>&1)" && rc=0 || rc=$?
+[ "${rc:-0}" -ne 0 ] || fail "an --engine naming a missing file did not fail"
+out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" || true
+grep -qi "graph engine" <<<"$out" && fail "--engine omitted still reported an engine verdict"
+echo "  malformed --engine fails loudly; omitted stays silent — OK"
+
+# ---- the node schema is machinery too, and can cross a graft stale --------
+# _schema.md is placed add-if-missing, so a plant keeps its copy forever. It is
+# the contract every other check is written against; a stale one went unreported.
+mkdir -p "$TMP/sig/seedroot/templates/knowledge-graph"
+cat > "$TMP/sig/seedroot/templates/knowledge-graph/_schema.md" <<'MD'
+# Schema
+## Lifecycle status
+open | deferred | hotfix | rejected | superseded | closed
+MD
+cp "$TMP/sig/seedroot/templates/knowledge-graph/_schema.md" "$TMP/sig/plant/docs/graph/_schema.md"
+out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" || true
+grep -q "node schema: current" <<<"$out" || { printf '%s\n' "$out" >&2; fail "a current schema was not reported current"; }
+printf '# Schema\n' > "$TMP/sig/plant/docs/graph/_schema.md"
+out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" || true
+grep -q "node schema STALE" <<<"$out" || { printf '%s\n' "$out" >&2; fail "a stale schema was not reported"; }
+# a plant that EXTENDS the schema is not stale, and staleness does not gate
+{ cat "$TMP/sig/seedroot/templates/knowledge-graph/_schema.md"; printf 'A line this plant added.\n'; } \
+  > "$TMP/sig/plant/docs/graph/_schema.md"
+out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" && rc=0 || rc=$?
+grep -q "node schema: current" <<<"$out" || fail "a plant extension was misread as staleness"
+[ "${rc:-0}" -eq 0 ] || fail "schema currency must report, not gate"
+echo "  schema currency: current / STALE / extended, reports without gating — OK"
+
 echo "test-graft-tools: PASS"

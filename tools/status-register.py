@@ -235,11 +235,38 @@ def parse_frontmatter(text: str):
     return meta, lines, body, body_first_line
 
 
+def _stated_status(scope: str):
+    """The lifecycle value a line *states*, or None when it merely uses the
+    word. Every status word is also an ordinary English word — `open`,
+    `closed`, `active`, `draft`, `proposed`, `accepted`, `rejected`,
+    `deferred`, `superseded` — so scanning a `## Status` section for any
+    occurrence flags the sentence that explains a status as though it
+    declared one. A correct pointer plus an explanation ("see frontmatter;
+    it is not accepted until the owner confirms") then fails a fail-closed
+    gate, and the cheapest way out is to mangle true prose until the linter
+    is happy. That is worse than no gate.
+
+    A line declares a value when, stripped of decoration, it IS the value:
+    `accepted`, **accepted**, "accepted — 2026-01-08". A value inside a
+    running sentence is prose."""
+    text = scope.strip().strip("`*_ \t").strip()
+    if not text:
+        return None
+    # An optional trailing date or parenthetical is decoration around the
+    # value, not a sentence: "closed — 2026-01-08", "open (owner: dev)".
+    head = re.split(r"\s*[\u2014\u2013(:,-]\s*|\s{2,}", text, maxsplit=1)[0]
+    head = head.strip().strip("`*_ .").strip().lower()
+    return head if head in ALL_STATUSES else None
+
+
 def _body_statuses(body: str, first_line: int):
-    """Every vocabulary value the body states as a status: the tokens
-    under a `## Status` heading (until the next heading) and on any
-    `**Status:**` metadata bullet. Returned as (line, value) so a finding
-    can point at the restatement, not the file."""
+    """Every vocabulary value the body STATES as a status: a line under a
+    `## Status` heading (until the next heading), or a `**Status:**`
+    metadata bullet, that declares the value rather than discussing it.
+    Returned as (line, value) so a finding can point at the restatement,
+    not the file. A genuine second home still fails — that is the point of
+    the check; a sentence that happens to contain a lifecycle word does
+    not (`_stated_status`)."""
     found = []
     in_section = False
     for n, line in enumerate(body.split("\n"), start=first_line):
@@ -250,9 +277,9 @@ def _body_statuses(body: str, first_line: int):
         scope = m.group(1) if m else (line if in_section else None)
         if scope is None:
             continue
-        for tok in TOKEN_RE.findall(scope.lower()):
-            if tok in ALL_STATUSES:
-                found.append((n, tok))
+        tok = _stated_status(scope)
+        if tok is not None:
+            found.append((n, tok))
     return found
 
 

@@ -304,7 +304,16 @@ def audit_unfilled(plant: Path, seed: Path, action) -> int:
 def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
     """MODE 1: map every fresh .bak to its seed source and classify what the
     fast-forward replaced."""
-    tokens = opt.get("tokens", []) + [t.lower() for t in GENERIC_SIGNALS]
+    # Explicit --tokens are the plant's own name and paths: always signal.
+    # GENERIC_SIGNALS are ordinary self-reference ("this project's"), which the
+    # SEED itself uses in its shipped charters — so a pristine machinery file,
+    # replaced by a reworded version of itself, matched one and was reported as
+    # a buried customization. A gate that cries wolf on untouched files teaches
+    # a steward to ratify without looking, which is the failure the
+    # reconcile-before-overwrite gate exists to prevent. A generic phrase
+    # therefore counts only when the seed source does NOT also carry it.
+    explicit = [t.lower() for t in opt.get("tokens", [])]
+    generic = [t.lower() for t in GENERIC_SIGNALS]
 
     date = opt.get("date")
     if not date:
@@ -336,8 +345,9 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
             counts["IDENTICAL"] += 1
         else:
             uniq = "\n".join(l[1:] for l in _diff_added(st, bt))
-            low = uniq.lower()
-            hit = [t for t in tokens if t in low]
+            low, st_low = uniq.lower(), st.lower()
+            hit = [t for t in explicit if t in low]
+            hit += [t for t in generic if t in low and t not in st_low]
             if hit:
                 counts["CUSTOMIZED"] += 1
                 customized.append((b.relative_to(plant).as_posix(), sorted(set(hit))[:4]))
@@ -367,8 +377,10 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
         print("  note: zero backup files — nothing was overwritten; "
               "the audit had nothing to prove")
     kernel_ok = _kernel_currency(plant, seed)
+    schema_ok = _schema_currency(plant, seed)
+    engine_ok = True
     if opt.get("engine"):
-        _engine_currency(opt["engine"])
+        engine_ok = _engine_currency(opt["engine"])
     if knowledge_hits:
         print(f"  !! {len(knowledge_hits)} knowledge overwrite(s) under docs/graph/:")
         for k in knowledge_hits[:20]:
@@ -378,7 +390,7 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
         for rel, hit in customized[:40]:
             print(f"       {rel}  [signal: {','.join(hit)}]")
         return 1
-    if knowledge_hits or not kernel_ok:
+    if knowledge_hits or not kernel_ok or not engine_ok:
         return 1
     print("  clean — no plant knowledge overwritten, no customization buried")
     return 0
@@ -537,19 +549,71 @@ def _strip_config_assignments(text: str) -> str:
     return "\n".join(out)
 
 
-def _engine_currency(spec: str):
+def _schema_currency(plant: Path, seed: Path) -> bool:
+    """Report whether the plant's node schema still matches the seed's.
+
+    `_schema.md` is the node CONTRACT — the vocabulary every other check is
+    written against — but the installer places it add-if-missing, so a plant
+    that already has one keeps it across every graft. A plant was found
+    carrying a schema several minors old, missing an entire lifecycle-status
+    vocabulary that the seed's own migration tool writes values into, and
+    nothing anywhere reported it.
+
+    Reports, never rewrites, and does not gate — the same posture the engine
+    check takes on staleness. The schema is the plant's own file and a plant
+    may legitimately extend it; blocking would push a steward to overwrite
+    authored content to clear a gate. Returns True always; the verdict is the
+    output."""
+    ss = seed / "templates/knowledge-graph/_schema.md"
+    ps = plant / "docs/graph/_schema.md"
+    if not ss.is_file() or not ps.is_file():
+        return True
+    seed_lines = [l.strip() for l in ss.read_text(errors="replace").splitlines()]
+    plant_lines = {l.strip() for l in ps.read_text(errors="replace").splitlines()}
+    missing = [l for l in seed_lines if l and l not in plant_lines]
+    if missing:
+        print(f"  !! node schema STALE: {len(missing)} seed schema line(s) absent "
+              f"from docs/graph/_schema.md — the plant is linted against a "
+              f"contract older than the machinery it now runs; reconcile it "
+              f"(the plant's own extensions stay)")
+    else:
+        print("  node schema: current (no seed schema line missing from plant)")
+    return True
+
+
+def _engine_currency(spec: str) -> bool:
+    """Compare the plant's engine against the seed's. `spec` is the PAIR
+    `<plant-file>:<seed-file>`.
+
+    A malformed spec used to be swallowed and announced as a parenthetical
+    skip, so the gate simply did not run while the audit still exited on its
+    other checks — the "green lie" the graft protocol forbids. A caller who
+    asked for this check and did not get it must be told loudly."""
+    parts = spec.split(":", 1)
+    if len(parts) != 2 or not all(x.strip() for x in parts):
+        print(f"  !! --engine wants <plant-file>:<seed-file>, got {spec!r} — "
+              f"refusing to report an engine check that did not run")
+        return False
+    pf, sf = (Path(x.strip()) for x in parts)
+    for f, side in ((pf, "plant"), (sf, "seed")):
+        if not f.is_file():
+            print(f"  !! --engine {side} file does not exist: {f} — "
+                  f"refusing to report an engine check that did not run")
+            return False
     try:
-        p, s = spec.split(":", 1)
-        pl = _code_lines(_strip_config_assignments(Path(p).read_text()))
-        sl = _code_lines(_strip_config_assignments(Path(s).read_text()))
-        missing = sl - pl
-        if missing:
-            print(f"  !! graph engine STALE: {len(missing)} seed engine line(s) absent "
-                  f"from the plant — reconcile with graft-graph-engine.py")
-        else:
-            print("  graph engine: current (no seed engine line missing from plant)")
-    except Exception as e:
-        print(f"  (engine check skipped: {e})")
+        pl = _code_lines(_strip_config_assignments(pf.read_text(errors="replace")))
+        sl = _code_lines(_strip_config_assignments(sf.read_text(errors="replace")))
+    except OSError as e:
+        print(f"  !! --engine could not read a file: {e} — "
+              f"refusing to report an engine check that did not run")
+        return False
+    missing = sl - pl
+    if missing:
+        print(f"  !! graph engine STALE: {len(missing)} seed engine line(s) absent "
+              f"from the plant — reconcile with graft-graph-engine.py")
+    else:
+        print("  graph engine: current (no seed engine line missing from plant)")
+    return True
 
 
 if __name__ == "__main__":

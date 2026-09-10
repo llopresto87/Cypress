@@ -403,4 +403,68 @@ PY
 echo "  re-install records installed_from — the graft's merge base — OK"
 rm -rf "$D"
 
+# ---- the plant: block: absent is not "already declared" -------------------
+# A project grown before the block existed has no block at all, so no
+# placeholder line matched, and the installer took its else-branch and
+# announced all four facts as already declared — suppressing the write AND the
+# NEXT STEP warning that was supposed to catch it. The block stayed missing,
+# which is the exact state it exists to prevent.
+D="$T/plantfacts"; mkdir -p "$D/docs/graph"
+printf '<!--\ntemplate note\n-->\n\n# The router\n' > "$D/docs/graph/index.md"
+out="$("$ROOT/install.sh" claude-code --project-dir "$D" --copy --force \
+        --environment-class staging --commit-attribution none \
+        --deliverable-language en --comment-language en 2>&1)"
+grep -q "already declared" <<<"$out" \
+  && { printf '%s\n' "$out" >&2; echo "an ABSENT plant fact was reported as already declared" >&2; exit 1; }
+python3 - "$D" <<'PY'
+import re, sys, pathlib
+t = (pathlib.Path(sys.argv[1])/"docs/graph/index.md").read_text()
+m = re.match(r"\A---\n(.*?)\n---\n", t, re.S)
+assert m, "no frontmatter was created over an index that had none"
+fm = m.group(1)
+for k, v in (("environment_class","staging"), ("commit_attribution","none"),
+             ("deliverable_language","en"), ("comment_language","en")):
+    assert re.search(rf"^  {k}: {v}$", fm, re.M), f"{k} not written: {fm!r}"
+assert "# The router" in t, "the index body was lost"
+PY
+echo "  an index with no frontmatter gains the plant: block with the passed values — OK"
+
+# no flags: the block still appears, with placeholders, and NEXT STEP names them
+D="$T/plantfacts-bare"; mkdir -p "$D/docs/graph"
+printf '<!--\nx\n-->\n\n# The router\n' > "$D/docs/graph/index.md"
+out="$("$ROOT/install.sh" claude-code --project-dir "$D" --copy --force 2>&1)"
+grep -q "plant facts still unset in docs/graph/index.md: environment_class commit_attribution deliverable_language comment_language" <<<"$out" \
+  || { printf '%s\n' "$out" >&2; echo "NEXT STEP did not name every unset plant fact" >&2; exit 1; }
+grep -qE '^  environment_class: <' "$D/docs/graph/index.md" \
+  || { echo "no placeholder block was written without flags" >&2; exit 1; }
+
+# a declared value is never overwritten, and a re-run is idempotent
+D="$T/plantfacts-declared"; mkdir -p "$D/docs/graph"
+printf -- '---\ngrown: true\nplant:\n  environment_class: real-production\n  commit_attribution: none\n  deliverable_language: it\n  comment_language: it\n---\n\n# The router\n' \
+  > "$D/docs/graph/index.md"
+out="$("$ROOT/install.sh" claude-code --project-dir "$D" --copy --force --environment-class staging 2>&1)"
+grep -q "already declared as real-production" <<<"$out" \
+  || { printf '%s\n' "$out" >&2; echo "a declared value was not reported as declared" >&2; exit 1; }
+grep -q '^  environment_class: real-production$' "$D/docs/graph/index.md" \
+  || { echo "a declared plant fact was overwritten by a flag" >&2; exit 1; }
+"$ROOT/install.sh" claude-code --project-dir "$D" --copy --force --environment-class staging >/dev/null 2>&1
+[ "$(grep -c '^plant:' "$D/docs/graph/index.md")" = 1 ] \
+  || { echo "a re-run duplicated the plant: block" >&2; exit 1; }
+[ "$(grep -c '^---$' "$D/docs/graph/index.md")" = 2 ] \
+  || { echo "a re-run duplicated the frontmatter fence" >&2; exit 1; }
+
+# a block that predates one key gains it, in the template's words and in order
+D="$T/plantfacts-partial"; mkdir -p "$D/docs/graph"
+printf -- '---\ngrown: false\nplant:\n  environment_class: mixed\n  commit_attribution: none\n---\n\n# The router\n' \
+  > "$D/docs/graph/index.md"
+"$ROOT/install.sh" claude-code --project-dir "$D" --copy --force --deliverable-language en >/dev/null 2>&1
+python3 - "$D" <<'PY'
+import re, sys, pathlib
+fm = re.match(r"\A---\n(.*?)\n---\n", (pathlib.Path(sys.argv[1])/"docs/graph/index.md").read_text(), re.S).group(1)
+keys = re.findall(r"^  (environment_class|commit_attribution|deliverable_language|comment_language):", fm, re.M)
+assert keys == ["environment_class", "commit_attribution", "deliverable_language", "comment_language"], keys
+assert re.search(r"^  comment_language: <bcp47>$", fm, re.M), fm
+PY
+echo "  declared values survive, re-runs are idempotent, a missing key is appended in order — OK"
+
 printf 'full five-tool install contract + CC/PA coexistence: PASS\n'

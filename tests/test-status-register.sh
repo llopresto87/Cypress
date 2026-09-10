@@ -69,7 +69,27 @@ grep -q "body-disagrees.md:12: body states status 'proposed' but frontmatter say
 grep -q "FAIL (9 finding(s))" "$TMP/out" || fail "expected exactly 9 findings"
 echo "  nine violation classes fail with file:line + reason — OK"
 
-# 3. Kind extensions are per kind. The same value `accepted` passes on an ADR
+# 3. A lifecycle word used in an ordinary sentence is not a stated status.
+#    Every status word is also an English word, so scanning a "## Status"
+#    section for any occurrence made a correct pointer plus its explanation
+#    fail — and, the check being fail-closed, taught stewards to reword true
+#    prose until the linter was happy. A value still fails when it is stated;
+#    prose that merely uses the word does not.
+run 0 --root "$FIX/prose"
+grep -q "status register: PASS" "$TMP/out" \
+  || fail "a Status section that points at frontmatter and then explains itself was flagged"
+grep -q "2 file(s) scanned, 2 status-carrying" "$TMP/out" \
+  || fail "prose tree counted wrong"
+grep -q "body states status" "$TMP/out" \
+  && fail "a lifecycle word inside a sentence was read as a stated status"
+#    …and the genuine second home it exists to catch still fails (case 2 above
+#    asserts the finding; assert here that the fix did not silence it).
+run 1 --root "$FIX/violations"
+grep -q "body-disagrees.md:12: body states status 'proposed' but frontmatter says 'accepted'" "$TMP/out" \
+  || fail "a bare restated value stopped being reported"
+echo "  prose that uses a lifecycle word passes; a restated value still fails — OK"
+
+# 4. Kind extensions are per kind. The same value `accepted` passes on an ADR
 #    and fails on a spec; both kinds come from the directory name, and the
 #    spec finding says so and names the kind the value belongs to.
 run 0 --root "$FIX/kind-extension/decisions"
@@ -80,7 +100,7 @@ grep -q "'accepted' belongs to kind adr" "$TMP/out" || fail "owning kind not nam
 grep -q "FAIL (1 finding(s))" "$TMP/out" || fail "expected exactly 1 finding"
 echo "  ADR accepted passes, spec accepted fails, inference stated — OK"
 
-# 4. --strict-unknown: a status-less ADR is silent by default and a finding
+# 5. --strict-unknown: a status-less ADR is silent by default and a finding
 #    under strict; an ordinary node stays silent either way.
 run 0 --root "$FIX/strict"
 grep -q "0 status-carrying" "$TMP/out" || fail "strict tree should carry no status"
@@ -91,7 +111,7 @@ grep -q "subsystem.no-status" "$TMP/out" && fail "an ordinary node was asked for
 grep -q "FAIL (1 finding(s))" "$TMP/out" || fail "expected exactly 1 strict finding"
 echo "  --strict-unknown flags only the kinds that must carry a status — OK"
 
-# 5. A lint over no markdown at all is refused (exit 2, not a PASS); a
+# 6. A lint over no markdown at all is refused (exit 2, not a PASS); a
 #    missing root likewise. A query over the same empty tree is NOT refused —
 #    a fresh plant owes nothing yet, and the hook must still run.
 mkdir -p "$TMP/empty"
@@ -107,7 +127,7 @@ run 2 --root "$FIX/query" --since 2026-13-40
 grep -q -- "--since wants YYYY-MM-DD" "$TMP/out" || fail "bad --since not refused"
 echo "  vacuous lint refused, empty query allowed, bad --since refused — OK"
 
-# 6. --open lists oldest-first, an undated item last; --open --hotfix merges
+# 7. --open lists oldest-first, an undated item last; --open --hotfix merges
 #    the two in date order; the query role exits 0 over a tree whose lint
 #    would fail (the violations tree) — a query never fails on content.
 run 0 --root "$FIX/query" --open
@@ -126,7 +146,7 @@ grep -q "deferred\|closed\|rejected\|standing" "$TMP/out" && fail "--open --hotf
 run 0 --root "$FIX/violations" --open
 echo "  --open oldest-first, --open --hotfix merged, never fails on content — OK"
 
-# 7. --since and --by-kind filter; the companion column shows the key the
+# 8. --since and --by-kind filter; the companion column shows the key the
 #    status requires (reopen_when for deferred, status_evidence for closed).
 run 0 --root "$FIX/query" --since 2026-02-01
 [ "$(wc -l <"$TMP/out" | tr -d ' ')" = "3" ] || fail "--since 2026-02-01 should keep 3 dated items"
@@ -141,7 +161,7 @@ grep -q "^open  adr  adr.newer-open" "$TMP/out" || fail "--by-kind adr lost the 
 [ "$(wc -l <"$TMP/out" | tr -d ' ')" = "1" ] || fail "--by-kind adr should keep exactly 1"
 echo "  --since / --by-kind filter; companion column follows the status — OK"
 
-# 8. --summary is one paragraph a session-start hook can inject: one line,
+# 9. --summary is one paragraph a session-start hook can inject: one line,
 #    under 400 characters, counts per status, the three oldest open/hotfix in
 #    date order, and it reads as prose (no undated item claims age).
 run 0 --root "$FIX/query" --summary
@@ -156,7 +176,7 @@ grep -q "Nothing open or hotfix" "$TMP/out" \
   && fail "--summary is over the whole tree; --by-kind must not narrow it"
 echo "  --summary: one line, <400 chars, counts + three oldest — OK"
 
-# 9. --json emits the same result for tooling: the list and the summary.
+# 10. --json emits the same result for tooling: the list and the summary.
 run 0 --root "$FIX/query" --open --json
 python3 - "$TMP/out" <<'PY' || fail "--open --json shape"
 import json, sys
@@ -176,7 +196,7 @@ assert [d["id"] for d in s["oldest_attention"]] == ["spec.oldest-open", "risk.ho
 PY
 echo "  --json for the list and the summary — OK"
 
-# 10. The reuse contract: a hook or host linter imports this file by path and
+# 11. The reuse contract: a hook or host linter imports this file by path and
 #     calls scan()/lint() in-process. If they move or change shape, the
 #     session-start summary and seed-lint's check go silently missing.
 python3 - "$REG" "$FIX" <<'PY' >"$TMP/out" 2>&1 || fail "import contract broken"

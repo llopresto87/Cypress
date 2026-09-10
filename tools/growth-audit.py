@@ -512,6 +512,14 @@ def collection_leaves(plant, name):
     return live, unfilled
 
 
+def _is_collection_descriptor(name, path):
+    """True for a directory collection's own `index.md` / `README.md` — the
+    file that describes the collection rather than adding knowledge to it.
+    For a collection named as a single file the file IS the knowledge, so it
+    is never its own descriptor."""
+    return name.endswith("/") and path.stem.lower() in ("index", "readme")
+
+
 def resolves(plant, ref):
     """A cited path resolves when it names a real file INSIDE the plant. Line
     and anchor suffixes (`path:12`, `path#section`, `path:12:5`) are stripped
@@ -812,26 +820,58 @@ def lint_collections(plant, seed, rec, templates, findings):
                                             f"cites {ref!r}, which does not "
                                             f"exist in the plant"))
         if status == "ABSENT" and live:
-            authored, scaffolds = [], []
+            # Classify by what a leaf CONTAINS, never by whether the seed
+            # happens to template its path. Asking the path answers a
+            # different question: it calls a leaf the plant genuinely authored
+            # an unfilled scaffold forever, which makes the gate unpassable
+            # for a steward who did exactly what the contract asks — state the
+            # absence and the paths searched. `is_substantive` is the one
+            # definition of "states a fact"; the COVERED branch above already
+            # uses it, and a second definition is how two tools drift apart.
+            authored, identical, hollow = [], [], []
             for q in live:
                 qrel = q.relative_to(plant / GRAPH_HOME).as_posix()
-                (scaffolds if qrel in templates else authored).append(q.name)
+                ok, why = is_substantive(plant, qrel, templates)
+                if ok:
+                    # A collection's own index/README is where an absence is
+                    # stated, so an authored one is the record, not a
+                    # contradiction. Any OTHER authored leaf is content, and
+                    # content means the collection is not absent.
+                    if not _is_collection_descriptor(name, q):
+                        authored.append(q.name)
+                elif "byte-identical" in why:
+                    identical.append(q.name)
+                else:
+                    hollow.append((q.name, why))
             if authored:
                 findings.append(Finding("CONTRADICTED", label,
                                         f"claimed ABSENT but the collection "
                                         f"holds {len(authored)} authored "
                                         f"leaf/leaves ({', '.join(authored[:3])})"))
-            elif scaffolds:
+            elif identical:
                 # The seed's own README/index sitting in an honestly-empty
                 # collection is not a contradiction — it is a scaffold the
-                # steward has not disposed of yet.
+                # steward has not disposed of yet. Byte-identity is what
+                # `--unfilled` judges, so that remedy can act on these.
                 findings.append(Finding("CONTRADICTED", label,
                                         f"claimed ABSENT but still carries the "
                                         f"seed's unfilled scaffold "
-                                        f"({', '.join(scaffolds[:3])}) — rename "
+                                        f"({', '.join(identical[:3])}) — rename "
                                         f"it with `graft-audit.py <plant> "
                                         f"<seed> --unfilled --rename` so the "
                                         f"router stops reading it as knowledge"))
+            elif hollow:
+                # Started and abandoned: no longer byte-identical, so
+                # `--unfilled` cannot see it and naming that remedy here would
+                # send the steward to a command that reports zero. Say what is
+                # actually wrong with the leaf and let them finish or remove it.
+                shown = ", ".join(f"{n} ({w})" for n, w in hollow[:2])
+                findings.append(Finding("CONTRADICTED", label,
+                                        f"claimed ABSENT but holds a leaf that "
+                                        f"neither states a fact nor records a "
+                                        f"deliberate blank — {shown}. Finish it, "
+                                        f"or remove it so the router stops "
+                                        f"reading it as knowledge"))
 
 
 NODE_REF_RE = re.compile(r"^[a-z][a-z0-9-]*\.[a-z0-9.-]+$")

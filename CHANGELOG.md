@@ -1,5 +1,90 @@
 # Changelog
 
+## 7.9.0 — the gates stop lying about themselves: seven false verdicts closed, each pinned by the regression that caught it (2026-09-10)
+
+A harvest from a grown plant, and every candidate came from the same place: a
+gate that reported something other than what it had checked. None was a plant
+divergence — the plant's machinery was pristine — so none of this is a lesson
+about that project. It is the seed auditing its own instruments after a real
+upgrade ran through them end to end. Seven false verdicts, in three classes.
+
+### A check that answered a different question than the one it asked
+
+- **`graph-lint.py` registered a library page by substring.** The index-row
+  check asked `page.stem in index_text`, so a page whose stem sits inside a
+  longer sibling's name, a column header, or any sentence of prose passed with
+  no row at all — the gate green on precisely the omission it exists to catch.
+  It now asks whether the index actually REFERENCES the page: a link whose
+  target resolves to it, or a table cell that is its name whole. Header and
+  separator rows are excluded, and the link text stays free so an index may
+  title a row however it likes.
+- **`growth-audit.py` classified a collection leaf by PATH.** A leaf was an
+  unfilled scaffold when the seed happened to template its path, whatever it
+  contained — so a leaf a plant genuinely authored, holding exactly what the
+  completeness contract asks for (the absence, the paths searched, a candidate
+  considered and excluded), was reported as an unfilled scaffold forever. The
+  ABSENT branch now classifies by content through `is_substantive()`, the same
+  definition the COVERED branch already used; a second definition is how two
+  tools drift apart. A collection's own index or README is where an absence is
+  stated, so an authored one is the record rather than a contradiction, while
+  any other authored leaf still means the collection is not absent.
+- **`status-register.py` read a lifecycle word as a stated status.** Every one
+  of those words is also an ordinary English word, and the check scanned a
+  `## Status` section for any occurrence — so a correct pointer followed by an
+  explanation ("see frontmatter; it is not accepted until the owner confirms")
+  failed a fail-closed gate. The cheapest way out was to mangle true prose
+  until the linter was satisfied, which is worse than no gate. A line now
+  declares a value only when, stripped of decoration, it IS the value; a
+  genuine second home still fails.
+
+### A gate that fired on something it had not found
+
+- **`graft-audit.py` read the seed's own phrasing as plant signal.** Generic
+  self-reference like "this project's" appears in the seed's shipped charters,
+  so a pristine machinery file replaced by a reworded version of itself was
+  reported as a buried customization. A gate that cries wolf on untouched files
+  trains a steward to ratify without looking — the failure the
+  reconcile-before-overwrite gate exists to prevent. A generic phrase now
+  counts only when the seed source does not also carry it; explicit `--tokens`
+  are unconditional, as they always were.
+
+### A gate that reported a verdict it never reached
+
+- **`--engine` announced itself as a skip.** A malformed pair was swallowed and
+  printed as a parenthetical while the audit exited on its other checks, so the
+  engine-currency gate simply did not run. It now refuses loudly, names what
+  was wrong, and distinguishes that from the option being omitted. `graft.md`
+  documented the single-path form that caused it; it now documents the pair.
+- **The node schema could cross a graft stale, unreported.** `_schema.md` is
+  placed add-if-missing, so a plant keeps its copy forever — and it is the
+  contract every other check is written against. A plant was found linting
+  against a schema older than the machinery it ran. `graft-audit.py` gains a
+  schema-currency check beside the kernel and engine ones. It reports and does
+  not gate, the engine's posture on staleness: the file is the plant's own and
+  a plant may extend it, so blocking would push a steward to overwrite authored
+  content to clear a gate.
+- **`install.sh` reported an absent plant fact as already declared.** The four
+  owner-asserted facts were written only over a PLACEHOLDER line, so a project
+  predating the `plant:` block — which has no such line — took the else branch
+  for all four and was told they were already declared. The NEXT STEP warning
+  keyed off the same wrong signal and stayed silent too, so the block simply
+  never appeared: the exact state it exists to prevent. The installer now
+  distinguishes three states rather than two — absent, placeholder, declared —
+  creates a missing block (frontmatter included, where the index had none),
+  appends a key the block predates in the template's own words and in order,
+  never overwrites a declared value, and stays idempotent across re-runs.
+
+### Every fix arrives with the regression that caught it
+
+`test_graph_lint.py`, `test-growth-audit.sh`, `test-status-register.sh`,
+`test-graft-tools.sh` and `test-full-install.sh` each gained cases that fail
+against the unfixed tool and pass against the fixed one — including, in every
+case, the behaviour that had to SURVIVE the fix: a byte-identical scaffold
+still reported, a restated status value still failed, an explicit plant token
+still fired, a declared plant fact still never overwritten.
+
+---
+
 ## 7.8.0 — the same review over the rest: ingest-library and from-scratch get phase tables, the ingest cluster has one home per fact, and graph-lint checks the ingested page (2026-09-09)
 
 7.6.0 and 7.7.0 fixed grill, specify and test-first. A mechanical sweep over every machinery node for the same signatures — a sequence with more than one home, a flat list where the order carries dependencies, a step nobody owns, an exit condition that cannot fail — flagged two more protocols and the cluster around one of them. The growth family (`grow`, `graft`, `harvest`) was left alone: it already carries a mandatory worker topology, numbered phases with owners, and a coverage gate.

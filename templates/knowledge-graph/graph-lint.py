@@ -586,13 +586,65 @@ def check_reachability(nodes: list, errs: list) -> None:
 LIB_PIN_ROW_RE = re.compile(r"^\|\s*[^|]*\|\s*([^|]*)\|", re.M)
 LIB_REVIEWED_RE = re.compile(r"\*\*Last reviewed:\*\*\s*(\S+)")
 LIB_PLACEHOLDER_RE = re.compile(r"^\s*(<[^>]*>|YYYY-MM-DD|latest|)\s*$", re.I)
+# A markdown link/image destination, or a reference definition's target.
+LIB_LINK_RE = re.compile(r"\]\(\s*<?([^)>\s]+)|^\s*\[[^\]]+\]:\s*<?([^\s>]+)", re.M)
+LIB_CELL_LINK_RE = re.compile(r"\[([^\]]*)\]\([^)]*\)")
+
+
+def _cell_text(cell: str) -> str:
+    """A table cell reduced to the words it shows: link text instead of link
+    syntax, without inline code, emphasis, or padding."""
+    return LIB_CELL_LINK_RE.sub(r"\1", cell).strip().strip("`*_ ").strip()
+
+
+def _is_rule_row(line: str) -> bool:
+    """A table's `|---|---|` separator, which is punctuation, not content."""
+    cells = [c.strip() for c in line.strip().strip("|").split("|")]
+    return len(cells) > 1 and all(c and set(c) <= set("-:") for c in cells)
+
+
+def index_registers(index_text: str, page: Path) -> bool:
+    """True when libraries/index.md actually *references* `page`.
+
+    Deliberately not a substring test. A short stem sits inside a longer
+    sibling's row, inside a column header, inside any sentence of prose — so
+    asking `stem in index_text` reports a row where none exists, and the gate
+    goes green on precisely the omission it exists to catch. Two things count
+    as a reference:
+
+      1. a markdown link (or reference definition) whose *target* resolves to
+         the page's file — the link text is free, so an index may title the
+         row however it likes, and may reach the page through a folder;
+      2. a table cell that is the page's name or stem *whole* — an index that
+         names the library in its own column without linking it is thin, but
+         it is still a row.
+
+    Separator rows and header rows are excluded from (2): a header is the
+    table's vocabulary, never a statement about a page.
+    """
+    targets = {page.name, page.stem}
+    for m in LIB_LINK_RE.finditer(index_text):
+        dest = (m.group(1) or m.group(2) or "").split("#", 1)[0].split("?", 1)[0]
+        if dest.rsplit("/", 1)[-1] in targets:
+            return True
+    lines = index_text.splitlines()
+    for i, line in enumerate(lines):
+        if "|" not in line or _is_rule_row(line):
+            continue
+        nxt = next((s for s in lines[i + 1:] if s.strip()), "")
+        if _is_rule_row(nxt):                    # this line is the header row
+            continue
+        if any(_cell_text(c) in targets for c in line.strip().strip("|").split("|")):
+            return True
+    return False
 
 
 def check_libraries(nodes: list, errs: list) -> None:
     """Every `libraries:` edge resolves to a page, and every page that follows
     the template's form owes the ingest pass its exit: a filled §0 pin (an
     exact version, never a placeholder or "latest"), a dated `Last reviewed`,
-    and a row in libraries/index.md when the index exists. A page with no
+    and a row in libraries/index.md that references it (`index_registers`)
+    when the index exists. A page with no
     `## 0. Pin` heading is not template-shaped and owes nothing here —
     the growth audit judges a bare page, this check judges an ingested one."""
     for n in nodes:
@@ -619,7 +671,7 @@ def check_libraries(nodes: list, errs: list) -> None:
         rv = LIB_REVIEWED_RE.search(pin)
         if not rv or not re.match(r"\d{4}-\d{2}-\d{2}$", rv.group(1)):
             errs.append(f"libraries/{page.name}: §0 `Last reviewed` is not a date")
-        if index is not None and page.name not in index and page.stem not in index:
+        if index is not None and not index_registers(index, page):
             errs.append(f"libraries/{page.name}: no row in libraries/index.md — "
                         f"the close-out librarian registers every drafted page")
 

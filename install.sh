@@ -285,34 +285,103 @@ place_graph_scaffold() {
 # overwritten. Whatever is still a placeholder afterwards is named as a NEXT
 # STEP, because an agent otherwise re-asks or guesses it.
 fill_plant_facts() {
-    local idx="$1" key val
-    for key in environment_class commit_attribution deliverable_language comment_language; do
-        case "$key" in
-            environment_class)    val="${PLANT_ENV:-}" ;;
-            commit_attribution)   val="${PLANT_ATTR:-}" ;;
-            deliverable_language) val="${PLANT_DLANG:-}" ;;
-            comment_language)     val="${PLANT_CLANG:-}" ;;
-        esac
-        [[ -n "$val" ]] || continue
-        if grep -qE "^  $key: <" "$idx"; then
-            awk -v k="$key" -v v="$val" '
-                $0 ~ "^  " k ": <" { print "  " k ": " v; next } { print }' "$idx" > "$idx.tmp" \
-              && mv "$idx.tmp" "$idx"
-            log "  plant fact $key set to $val"
-        else
-            log "  plant fact $key already declared; --$(tr _ - <<<"$key") ignored"
-        fi
-    done
-    local missing
-    missing="$( { grep -oE '^  (environment_class|commit_attribution|deliverable_language|comment_language): <' "$idx" || true; } \
-               | sed -E 's/^  ([a-z_]+): </\1/' | tr '\n' ' ')"
-    if [[ -n "$missing" ]]; then
-        log ""
-        log "NEXT STEP — plant facts still unset in docs/graph/index.md: $missing"
-        log "  These are the owner's explicit choices, never an agent's guess. Pass them"
-        log "  now (--environment-class, --commit-attribution, --deliverable-language,"
-        log "  --comment-language) or fill the plant: block before grow or graft."
-    fi
+    local idx="$1" out
+    # Three states, not two. A project grown before the `plant:` block existed
+    # has no block at all — no placeholder line to match — and the old code
+    # read that as "already declared", suppressed the write AND the NEXT STEP
+    # warning, and left the block missing. "Absent" and "already declared" are
+    # opposite states. The canonical block shape is read from the index
+    # template so it keeps one home.
+    out="$(PLANT_ENV="${PLANT_ENV:-}" PLANT_ATTR="${PLANT_ATTR:-}" \
+           PLANT_DLANG="${PLANT_DLANG:-}" PLANT_CLANG="${PLANT_CLANG:-}" \
+           python3 - "$idx" "$SEED_ROOT/templates/knowledge-graph/index.md" <<'PYEOF'
+import os, re, sys
+from pathlib import Path
+
+KEYS = ("environment_class", "commit_attribution",
+        "deliverable_language", "comment_language")
+VALUES = dict(zip(KEYS, (os.environ.get(v, "").strip() for v in
+                         ("PLANT_ENV", "PLANT_ATTR", "PLANT_DLANG", "PLANT_CLANG"))))
+
+idx, template = Path(sys.argv[1]), Path(sys.argv[2])
+text = idx.read_text(encoding="utf-8")
+FM = re.compile(r"\A---\n(.*?)\n---\n", re.S)
+
+
+def block_from_template():
+    """The canonical `plant:` block, taken from the index template so the
+    placeholder vocabulary is not restated here."""
+    m = FM.search(template.read_text(encoding="utf-8")) if template.is_file() else None
+    if m:
+        b = re.search(r"^plant:\n(?:[ \t]+\S.*\n)+", m.group(1) + "\n", re.M)
+        if b:
+            return b.group(0)
+    return ("plant:\n"
+            "  environment_class: <ephemeral-test | staging | real-production | mixed>\n"
+            "  commit_attribution: <none | trailer text>\n"
+            "  deliverable_language: <bcp47>\n"
+            "  comment_language: <bcp47>\n")
+
+
+log = []
+m = FM.search(text)
+if m is None:
+    front, body, had_fm = "", text, False
+else:
+    front, body, had_fm = m.group(1) + "\n", text[m.end():], True
+
+if not re.search(r"^plant:\s*$", front, re.M):
+    front = front.rstrip("\n") + "\n" if front.strip() else ""
+    if not re.search(r"^grown:", front, re.M):
+        front = "grown: false\n" + front
+    front += block_from_template()
+    log.append("  plant: block was missing — created it in docs/graph/index.md")
+
+still_unset = []
+for key in KEYS:
+    want = VALUES[key]
+    km = re.search(rf"^(\s+){key}:[ \t]*(.*)$", front, re.M)
+    if km is None:
+        # The block predates this key. Append it in the template's own words,
+        # after the last key already present, so the block keeps the canonical
+        # shape instead of gaining an invented placeholder in an odd place.
+        tpl = re.search(rf"^\s+{key}:[ \t]*(.*)$", block_from_template(), re.M)
+        ph = tpl.group(1).strip() if tpl else "<unset>"
+        last = None
+        for prior in KEYS:
+            pm = re.search(rf"^\s+{prior}:[ \t]*.*$", front, re.M)
+            if pm:
+                last = pm
+        at = last.end() if last else re.search(r"^plant:[ \t]*$", front, re.M).end()
+        front = front[:at] + f"\n  {key}: {ph}" + front[at:]
+        km = re.search(rf"^(\s+){key}:[ \t]*(.*)$", front, re.M)
+    current = km.group(2).strip()
+    placeholder = current.startswith("<") or current == ""
+    if want and placeholder:
+        front = front[:km.start()] + f"{km.group(1)}{key}: {want}" + front[km.end():]
+        log.append(f"  plant fact {key} set to {want}")
+    elif want:
+        log.append(f"  plant fact {key} already declared as {current}; "
+                   f"--{key.replace('_', '-')} ignored")
+    elif placeholder:
+        still_unset.append(key)
+
+new = ("---\n" + front.rstrip("\n") + "\n---\n" +
+       ("" if had_fm or body.startswith("\n") else "\n") + body)
+if new != text:
+    idx.write_text(new, encoding="utf-8")
+
+if still_unset:
+    log.append("")
+    log.append("NEXT STEP — plant facts still unset in docs/graph/index.md: "
+               + " ".join(still_unset))
+    log.append("  These are the owner's explicit choices, never an agent's guess. Pass them")
+    log.append("  now (--environment-class, --commit-attribution, --deliverable-language,")
+    log.append("  --comment-language) or fill the plant: block before grow or graft.")
+print("\n".join(log))
+PYEOF
+    )" || die "could not write the plant: block into $idx"
+    while IFS= read -r line; do log "$line"; done <<<"$out"
 }
 
 # command_protocols: print the basename of every protocol node that

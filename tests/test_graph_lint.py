@@ -457,6 +457,106 @@ class LibraryPageShapeTests(unittest.TestCase):
         self.assertIn("no row in libraries/index.md", out, out)
 
 
+class LibraryIndexRowBoundaryTests(unittest.TestCase):
+    """Regression: the index-row check once asked only whether the page's name
+    or stem occurred ANYWHERE in index.md as a bare substring. A short stem is
+    a substring of half the file — a longer sibling's row, a column header, a
+    sentence of prose — so an unregistered page passed the very gate that
+    exists to catch it. The rule is now a *reference* to the page: a markdown
+    link whose target is the file, or a table cell that is the page's name.
+
+    Every negative case below passes against the pre-fix tool (RED for the
+    right reason: the stem is planted as a substring), and every positive one
+    is a shape the close-out librarian actually writes."""
+
+    # A template-shaped page: the pin check is satisfied, so the index row is
+    # the only thing under test.
+    PAGE = (
+        "# Library: {name}\n\n## 0. Pin\n\n"
+        "| Major | Exact version | Projects / paths | Notes |\n|---|---|---|---|\n"
+        "| 1 | 1.4.0 | src/ | — |\n\n"
+        "- **Name:** {name}\n- **Last reviewed:** 2026-09-09 by scout\n\n"
+        "## 1. Role in this project\n\nWords.\n"
+    )
+
+    def setUp(self):
+        self.assertTrue(GRAPH_LINT.exists(), f"missing tool: {GRAPH_LINT}")
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def _graph(self, pages: dict, index_body: str) -> Path:
+        """`pages` maps a library stem -> True for a template-shaped page or
+        False for a bare one (a bare page owes nothing, so it can stand in for
+        the longer sibling whose row is the substring trap)."""
+        graph = build_graph(self.tmp, {"root": node_md("root", "root")},
+                            libraries=list(pages))
+        for stem, shaped in pages.items():
+            if shaped:
+                (graph / "libraries" / f"{stem}.md").write_text(
+                    self.PAGE.format(name=stem), encoding="utf-8")
+        (graph / "libraries" / "index.md").write_text(index_body, encoding="utf-8")
+        return graph
+
+    HEAD = ("# Libraries index\n\n"
+            "| Library | Version | Page | Last reviewed |\n|---|---|---|---|\n")
+
+    def test_substring_of_a_longer_sibling_row_is_not_a_row(self):
+        """THE DEFECT: `zamber` has no row, but `zamber-lattice` does, and the
+        short stem sits inside the longer one. The bare substring test called
+        that registered; a reference test does not."""
+        graph = self._graph(
+            {"zamber": True, "zamber-lattice": False},
+            self.HEAD + "| zamber-lattice | 3.1.0 | [zamber-lattice](zamber-lattice.md) | 2026-09-09 |\n")
+        r = run_lint(graph)
+        out = r.stdout + r.stderr
+        self.assertNotEqual(r.returncode, 0, f"substring of a sibling row must not count:\n{out}")
+        self.assertIn("libraries/zamber.md: no row", out, out)
+
+    def test_that_same_page_with_its_own_row_passes(self):
+        """The same fixture, the omission repaired — the check must stay usable."""
+        graph = self._graph(
+            {"zamber": True, "zamber-lattice": False},
+            self.HEAD
+            + "| zamber | 1.4.0 | [zamber](zamber.md) | 2026-09-09 |\n"
+            + "| zamber-lattice | 3.1.0 | [zamber-lattice](zamber-lattice.md) | 2026-09-09 |\n")
+        r = run_lint(graph)
+        self.assertEqual(r.returncode, 0, f"a genuinely indexed page must pass:\n{r.stdout}\n{r.stderr}")
+
+    def test_substring_of_a_header_or_prose_is_not_a_row(self):
+        """`beacon` occurs only in a column header and a sentence of prose."""
+        graph = self._graph(
+            {"beacon": True},
+            "# Libraries index\n\nEach row links to the beacon-style wiki page.\n\n"
+            "| Library | beacon notes | Page |\n|---|---|---|\n")
+        r = run_lint(graph)
+        out = r.stdout + r.stderr
+        self.assertNotEqual(r.returncode, 0, f"header/prose mention must not count:\n{out}")
+        self.assertIn("libraries/beacon.md: no row", out, out)
+
+    def test_link_with_different_text_still_counts(self):
+        """The rule is the link TARGET, not the link text: an index that links
+        the page as `[wiki](zamber.md)` — or through the folder — is a row."""
+        for target in ("zamber.md", "./zamber.md", "<zamber.md>",
+                       "libraries/zamber.md", "zamber.md#pin"):
+            with self.subTest(target=target):
+                graph = self._graph(
+                    {"zamber": True},
+                    self.HEAD + f"| the wiki | 1.4.0 | [wiki page]({target}) | 2026-09-09 |\n")
+                r = run_lint(graph)
+                self.assertEqual(r.returncode, 0,
+                                 f"link target {target} must count:\n{r.stdout}\n{r.stderr}")
+
+    def test_named_cell_without_a_link_still_counts(self):
+        """An index that names the library in its own cell and links nothing
+        is thin, but it is a row — the check must not force a link."""
+        graph = self._graph(
+            {"zamber": True},
+            self.HEAD + "| `zamber` | 1.4.0 | not written yet | 2026-09-09 |\n")
+        r = run_lint(graph)
+        self.assertEqual(r.returncode, 0, f"named cell must count:\n{r.stdout}\n{r.stderr}")
+
+
 class ReachabilityBoundaryTests(unittest.TestCase):
     """Regression: reachability once used a plain substring test against
     index.md, so an orphan node passed whenever its id merely prefixed an
