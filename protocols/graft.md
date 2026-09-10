@@ -527,7 +527,9 @@ elsewhere" class, and it moves.
   `"legal_corpus": "yes"` and re-ask the owner where it records `undecided`
   (`grow.legal-corpus`; a graft never decides it by inspection, and never
   withdraws a subset — an analyst cannot distinguish a page nobody copied from
-  an instrument that does not exist),
+  an instrument that does not exist), re-ask the national jurisdiction the same
+  way and raise an ingest request where the corpus carries no national layer for
+  it rather than reading across from a neighbouring country,
   or ground a runbook the plant can now fill from its own deploy/release nodes.
   Every grown addition is anchored in evidence already in the plant's graph — its
   references resolve inside the plant, never at a seed-corpus path.

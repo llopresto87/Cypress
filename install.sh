@@ -7,6 +7,7 @@
 #                     [--environment-class ephemeral-test|staging|real-production|mixed]
 #                     [--commit-attribution none|<trailer>] [--deliverable-language <bcp47>]
 #                     [--comment-language <bcp47>] [--legal-corpus yes|no]
+#                     [--legal-jurisdiction <iso-3166-1-alpha-2>]
 #
 # <tool> is one of:
 #   claude-code        — Drop CLAUDE.md + .claude/ into the project.
@@ -42,6 +43,15 @@
 #                        recorded in docs/graph/legal/index.md and revised as the
 #                        project evolves — never an import filter. Unset is named
 #                        as a NEXT STEP and nothing is placed.
+#   --legal-jurisdiction <cc>  Which national law this plant is established
+#                        under, as a two-letter country code. The corpus's EU
+#                        and international layers are jurisdiction-neutral and
+#                        always come with it; its NATIONAL layer is only as wide
+#                        as what has been ingested (today: Italy). Naming a code
+#                        the corpus does not carry is not an error — it records
+#                        the gap so a research-scout ingest can close it, because
+#                        another country's statute is retrieved, never assumed
+#                        from a neighbouring one.
 #   --print-config       For `codex`: print the config.toml lines with
 #                         resolved paths instead of editing anything.
 #   --check              For `github-copilot`: verify the generated .github/
@@ -281,6 +291,28 @@ place_legal_corpus() {
         "legal corpus placed partially ($have of $want files) — a subset makes a\
  missing page indistinguishable from an instrument that does not apply"
     log "  docs/graph/legal/corpus/  ($want pages — the whole corpus; scope it in legal/index.md, never by deleting pages)"
+
+    # The EU and international layers are jurisdiction-neutral. The national
+    # layer is only as wide as what has been ingested, and the gap is a fact
+    # worth stating loudly: an analyst that cannot see a national instrument
+    # cannot tell it was never ingested from its not existing, and the nearest
+    # neighbour's statute is not a substitute for it.
+    local have; have="$(corpus_jurisdictions | tr '\n' ' ')"
+    if [[ -z "${LEGAL_JURISDICTION:-}" ]]; then
+        log "  national layer carried: ${have:-none} — no --legal-jurisdiction given, so"
+        log "  nothing says which of these (if any) is this plant's. Name it."
+    elif corpus_jurisdictions | grep -qx "$LEGAL_JURISDICTION"; then
+        log "  national layer: '$LEGAL_JURISDICTION' is carried by the corpus"
+    else
+        log ""
+        log "  NATIONAL LAYER MISSING for '$LEGAL_JURISDICTION' — the corpus carries ${have:-none}."
+        log "  The EU and international pages still apply; the national statutes of"
+        log "  '$LEGAL_JURISDICTION' are NOT in the corpus and must not be inferred from a"
+        log "  neighbouring jurisdiction's. Record them in docs/graph/legal/index.md"
+        log "  under 'Not in the corpus at all' and run a research-scout ingest"
+        log "  (protocols/ingest-library.md flow, legal-corpus/_schema.md contract);"
+        log "  agent.legal correctly refuses on them until it lands."
+    fi
 }
 
 # place_graph_scaffold: drop the knowledge-graph home (schema, linter,
@@ -815,6 +847,7 @@ while [[ $# -gt 0 ]]; do
         --deliverable-language) PLANT_DLANG="$2"; shift 2 ;;
         --comment-language)    PLANT_CLANG="$2"; shift 2 ;;
         --legal-corpus)        LEGAL_CORPUS="$2"; shift 2 ;;
+        --legal-jurisdiction)  LEGAL_JURISDICTION="$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')"; shift 2 ;;
         -h|--help) usage 0 ;;
         *) die "unknown argument: $1 (try --help)" ;;
     esac
@@ -829,6 +862,22 @@ case "${LEGAL_CORPUS:-}" in
     ""|yes|no) ;;
     *) die "--legal-corpus must be yes or no (got: $LEGAL_CORPUS). The corpus is placed whole or not at all; a subset is not an option." ;;
 esac
+case "${LEGAL_JURISDICTION:-}" in
+    ""|[a-z][a-z]) ;;
+    *) die "--legal-jurisdiction must be a two-letter country code (got: $LEGAL_JURISDICTION)" ;;
+esac
+
+# Which national jurisdictions the corpus actually carries, derived from the
+# filenames rather than listed here — legal-corpus/README.md fixes the
+# `<cc>-<instrument>.md` convention, and a second list would drift the moment
+# an ingest lands.
+corpus_jurisdictions() {
+    local f
+    for f in "$SEED_ROOT"/legal-corpus/national/*.md; do
+        [[ -e "$f" ]] || continue
+        basename "$f" | sed 's/-.*//'
+    done | sort -u
+}
 
 # Sanity: refuse to install into the seed itself.
 [[ "$PROJECT_DIR" != "$SEED_ROOT" ]] || die \
@@ -935,6 +984,7 @@ write_seed_stamp() {
             printf '  "installed_from": "%s",\n' "$prev"
         printf '  "tools": "%s",\n' "${expanded[*]}"
         printf '  "legal_corpus": "%s",\n' "${LEGAL_CORPUS:-undecided}"
+        printf '  "legal_jurisdiction": "%s",\n' "${LEGAL_JURISDICTION:-undecided}"
         printf '  "agent_projections": [\n'
         local t proj sep=""
         for t in "${expanded[@]}"; do
@@ -965,6 +1015,15 @@ if [[ -z "${LEGAL_CORPUS:-}" ]]; then
     log "  It is placed whole or not at all. Which instruments bear on this project"
     log "  is an instruction to the analyst in docs/graph/legal/index.md, revised as"
     log "  the project evolves — never a subset of pages on disk."
+fi
+if [[ -z "${LEGAL_JURISDICTION:-}" ]]; then
+    log ""
+    log "NEXT STEP — national jurisdiction undecided (.cypress/seed.json)."
+    log "  The corpus's EU and international layers are jurisdiction-neutral; its"
+    log "  national layer carries: $(corpus_jurisdictions | tr '\n' ' ')."
+    log "  Re-run with --legal-jurisdiction <cc>. A code the corpus does not carry"
+    log "  is a recorded ingest request, not an error — another country's statute"
+    log "  is retrieved by a research-scout, never assumed from a neighbour's."
 fi
 
 log "done. FILES ARE PLACED — the project is NOT grown yet."

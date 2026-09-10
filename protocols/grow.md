@@ -297,11 +297,26 @@ and one whose corpus was filtered has an analyst that cannot tell a page nobody
 copied from an instrument that does not exist — which is the refusal rule
 inverted into a silent false negative. So the question is binary and it is the
 owner's: `--legal-corpus yes` places every page under
-`docs/graph/legal/corpus/`, `no` records that this plant carries none. Put it
-as a numbered decision (`deliver.numbered-decisions`) alongside the four plant
-facts, before Phase 4 authors anything. Unanswered, it stays a `status: open`
+`docs/graph/legal/corpus/`, `no` records that this plant carries none.
+
+**And ask which national law, in the same breath (`--legal-jurisdiction <cc>`).**
+The corpus's EU and international layers are jurisdiction-neutral and travel
+with it whole. Its **national** layer is only as wide as what has been
+ingested — today that is Italy, and the installer derives the list from
+`legal-corpus/national/` rather than claiming it here. A plant established
+somewhere else is not a smaller case of the Italian one: naming a code the
+corpus does not carry records an **ingest request**, closed by a
+`research-scout` pass under the corpus's own entry contract, and until it lands
+`agent.legal` refuses on that jurisdiction — correctly. What must never happen
+is a neighbouring country's statute standing in for the missing one, or an
+EU directive being cited for a national obligation it only binds Member States
+to transpose (`legal-corpus/_schema.md` §"Four instrument kinds").
+
+Put both as numbered decisions (`deliver.numbered-decisions`) alongside the four
+plant facts, before Phase 4 authors anything. Unanswered, it stays a `status: open`
 item with the owner named, exactly as an unset plant fact does, and
-`.cypress/seed.json` records `"legal_corpus": "undecided"`. What may **not**
+`.cypress/seed.json` records `"legal_corpus"` / `"legal_jurisdiction"` as
+`"undecided"`. What may **not**
 happen is a run deciding it by inspection: relevance is expressed afterwards,
 in `legal/index.md`, and revised as the project evolves.
 

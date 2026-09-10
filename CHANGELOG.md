@@ -1,5 +1,44 @@
 # Changelog
 
+## 7.12.0 — the corpus knows which country it is not carrying (2026-09-10)
+
+7.11.0 got the corpus to the analyst. It left one thing unsaid, and it is the
+half that fails quietly: **the corpus's national layer is Italy.**
+
+Its EU and international pages are jurisdiction-neutral — GDPR binds the same
+way wherever a controller sits. Its `national/` pages are not: three Italian
+statutes, named by the `<cc>-<instrument>.md` convention `README.md` has always
+documented and no other country filled. A plant established in Germany, then,
+gets a corpus that is complete on its face and silently missing the entire layer
+that decides how the EU rules bite at home — and the analyst reading it cannot
+tell "never ingested" from "does not exist". The nearest failure is not a
+refusal, it is a plausible read-across from the Italian page, or an EU
+directive cited for a national obligation it only binds Member States to
+transpose.
+
+- `install.sh --legal-jurisdiction <cc>` names the establishment. The set of
+  carried jurisdictions is **derived** from `legal-corpus/national/` filenames,
+  never listed in a second place, so the day a `de-` page lands the installer
+  says so without being edited.
+- A code the corpus carries is confirmed. A code it does not is **not an
+  error** — the corpus still arrives whole, the EU layer still applies, and the
+  installer prints the gap with its remedy: record the national instruments in
+  `legal/index.md` and close them with a `research-scout` ingest under
+  `legal-corpus/_schema.md`. `agent.legal` refuses on that jurisdiction until it
+  lands, which is the correct behaviour and now the *legible* one.
+- Unset is its own answer: `"legal_jurisdiction": "undecided"` in the stamp and
+  a NEXT STEP, because a plant that never said where it is established has not
+  thereby said Italy.
+- The ask joins `grow.legal-corpus` as a numbered decision in grow's Phase 1 —
+  corpus and jurisdiction are one conversation with the owner, held before
+  Phase 4 authors anything. graft re-asks both and raises the ingest request
+  rather than reading across.
+- `templates/docs/legal/index.md` gains a **National layer** section: which
+  jurisdiction, whether `corpus/national/` carries it, and what the
+  establishment rests on — the last one because a jurisdiction asserted by an
+  owner and a jurisdiction evidenced by a plant artifact are different facts,
+  and only one of them survives the owner leaving.
+
 ## 7.11.0 — the legal corpus reaches the analyst that was built to read it, whole (2026-09-10)
 
 `agent.legal` has shipped since 6.x with one knowledge source and a charter

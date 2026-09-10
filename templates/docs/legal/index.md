@@ -24,6 +24,22 @@ until someone changes this line.
 |---|---|---|---|
 | <corpus page> | in scope / out of scope | <the evidenced reason, with a path> | YYYY-MM-DD |
 
+## National layer — which jurisdiction, and whether it is carried
+
+The corpus's EU and international pages are jurisdiction-neutral. Its
+**national** pages are only as wide as what has been ingested, so this section
+says which jurisdiction governs this project and whether `corpus/national/`
+actually holds it. Where it does not, every national instrument belongs in the
+table below as an ingest request: `agent.legal` refuses on them until a
+`research-scout` pass lands them, and **no neighbouring country's statute may be
+read across in the meantime.**
+
+| Fact | Value |
+|---|---|
+| Established under | `<country>` (`.cypress/seed.json` → `legal_jurisdiction`) |
+| Carried by `corpus/national/` | yes / **no — ingest pending** |
+| Evidence for the establishment | `<path, or: owner's assertion, undocumented in the plant>` |
+
 ## Not in the corpus at all
 
 An instrument this project plausibly engages that `corpus/` does not carry.

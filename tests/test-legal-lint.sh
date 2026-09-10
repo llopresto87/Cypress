@@ -165,3 +165,41 @@ bash "$ROOT/install.sh" claude-code --project-dir "$CTMP/partial" --legal-corpus
     && { echo "legal-lint: FAIL — --legal-corpus took a value other than yes/no" >&2; exit 1; }
 
 printf 'legal corpus placement: PASS — %s pages, whole or none\n' "$want"
+
+# --- the national layer is named, and its absence is a request -------------
+# The EU pages are jurisdiction-neutral; the national ones are only as wide as
+# what has been ingested. A plant established outside that set must be told so
+# loudly: the analyst cannot distinguish "never ingested" from "does not exist",
+# and the failure mode is reading a neighbouring country's statute across.
+mkdir -p "$CTMP"/{jit,jde,jnone}
+carried="$(ls "$ROOT"/legal-corpus/national/*.md | sed 's|.*/||; s|-.*||' | sort -u | head -1)"
+bash "$ROOT/install.sh" claude-code --project-dir "$CTMP/jit" --legal-corpus yes \
+    --legal-jurisdiction "$carried" >"$CTMP/o-jit" 2>&1
+grep -q "national layer: '$carried' is carried" "$CTMP/o-jit" \
+    || { echo "legal-lint: FAIL — a carried jurisdiction was not confirmed" >&2; exit 1; }
+grep -q "\"legal_jurisdiction\": \"$carried\"" "$CTMP/jit/.cypress/seed.json" \
+    || { echo "legal-lint: FAIL — the stamp did not record the jurisdiction" >&2; exit 1; }
+
+# An uncarried code is a recorded request, never an error, and the corpus still
+# arrives whole — the EU layer applies regardless of establishment.
+bash "$ROOT/install.sh" claude-code --project-dir "$CTMP/jde" --legal-corpus yes \
+    --legal-jurisdiction zz >"$CTMP/o-jde" 2>&1 \
+    || { echo "legal-lint: FAIL — an uncarried jurisdiction was treated as an error" >&2; exit 1; }
+grep -q "NATIONAL LAYER MISSING for 'zz'" "$CTMP/o-jde" \
+    || { echo "legal-lint: FAIL — a missing national layer was not surfaced" >&2; exit 1; }
+grep -q "research-scout ingest" "$CTMP/o-jde" \
+    || { echo "legal-lint: FAIL — the missing layer named no remedy" >&2; exit 1; }
+[[ -f "$CTMP/jde/docs/graph/legal/corpus/eu/gdpr.md" ]] \
+    || { echo "legal-lint: FAIL — an uncarried jurisdiction lost the EU layer too" >&2; exit 1; }
+
+# Unset is its own answer: nothing claimed about establishment.
+bash "$ROOT/install.sh" claude-code --project-dir "$CTMP/jnone" --legal-corpus yes >"$CTMP/o-jn" 2>&1
+grep -q '"legal_jurisdiction": "undecided"' "$CTMP/jnone/.cypress/seed.json" \
+    || { echo "legal-lint: FAIL — an unnamed jurisdiction was not recorded undecided" >&2; exit 1; }
+grep -q "NEXT STEP — national jurisdiction undecided" "$CTMP/o-jn" \
+    || { echo "legal-lint: FAIL — an unnamed jurisdiction was not surfaced" >&2; exit 1; }
+# A malformed code is refused.
+bash "$ROOT/install.sh" claude-code --project-dir "$CTMP/jnone" --legal-jurisdiction italy >/dev/null 2>&1 \
+    && { echo "legal-lint: FAIL — --legal-jurisdiction took a non-country-code" >&2; exit 1; }
+
+printf 'legal jurisdiction: PASS — carried=%s, uncarried is an ingest request\n' "$carried"

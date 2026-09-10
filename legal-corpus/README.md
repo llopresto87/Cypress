@@ -69,7 +69,13 @@ legal-corpus/<scope>/<instrument-slug>.md
   - `eu` — Union-level instruments (regulations, directives, implementing
     decisions, supervisory-body guidance).
   - `national` — national-level statutes and decrees, **prefixed by country
-    code** in the filename (`it-codice-privacy.md`, `de-…`, `fr-…`).
+    code** in the filename (`it-codice-privacy.md`, `de-…`, `fr-…`). This layer
+    is only as wide as what has been ingested; every other layer here is
+    jurisdiction-neutral and applies wherever the instrument does. A plant
+    names its jurisdiction at install (`--legal-jurisdiction <cc>`), and a code
+    with no pages here becomes a recorded ingest request rather than a silent
+    gap — because the one thing a consuming analyst must never do is read a
+    neighbouring country's statute across to fill it.
   - `international` — global standards bodies and treaty-level instruments.
   - `case-law` — judicial and regulator decisions. These routinely span
     jurisdictions (a Union court ruling on a national referral), so they get
