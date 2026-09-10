@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 7.12.0
+- Version documented: 7.13.0
 - Repository role: this repo is the seed, the product that is shipped
   into other projects. It is *not* a grown project itself.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -251,7 +251,7 @@ subsystem, writing a spec, a test, code, or a doc) goes to a clean-context
 specialist from the roster. Persona simulation in the chat is not delegation;
 a real spawn with a purpose-made brief is.
 
-### 6.2 The 18 specialists
+### 6.2 The 19 specialists
 
 | Specialist | When to call |
 |------------|--------------|
@@ -269,6 +269,7 @@ a real spawn with a purpose-made brief is.
 | `docs-librarian` | `docs/graph/` health, fact ownership, wiki leaves, catalogs, close-out. |
 | `research-scout` | Internet research; ingest libraries/specs into the wiki. |
 | `devils-advocate` | Hostile pass over a *finished* claim-bearing deliverable; refutes from primary sources. |
+| `legal` | Regulatory obligations against a verified citation corpus, never live search or memory; every claim bound to a corpus entry, and a corpus gap produces a refusal. |
 | `multi-agent-architect` | Agent-topology design/review: delegation bounds, tool contracts, fail-closed gates, evals, cost budgets. |
 | `growth-orchestrator` | Growth DNA: conducts grow/adopt/from-scratch end to end. |
 | `growth-scout` | Read-only per-boundary evidence gathering for graph authors. |
@@ -284,8 +285,8 @@ Before spawning, the orchestrator runs `python3 docs/graph/agent-lint.py --route
 `routing_triggers` frontmatter and prints a confidence band (HIGH / MEDIUM /
 LOW / NONE) to cite in the delegation brief. It is a keyword heuristic floor,
 not an oracle: a signal to reason over. On LOW/NONE no specialist fits, and
-the orchestrator asks first what the gap is. Knowledge — a stack or library
-nobody on the roster is written for — is an `expertise.*` node, authored or
+the orchestrator asks first what the gap is. Knowledge, meaning a stack or
+library nobody on the roster is written for, is an `expertise.*` node, authored or
 extended, which the router composes into any worker whose task names it and
 which needs no spawn and no registration. Only judgment that needs its own
 context — different tools, a different model class, an adversarial stance,
@@ -403,7 +404,7 @@ explicit in `protocols/test-first.md`.
 
 1. Sonnet-class scouts partition the source by real subsystem/repo/evidence
    domain and each persist ONE evidence ledger per boundary to the gitignored
-   `.cypress/growth/<slug>.ledger.md`. Every claim is tied to paths/symbols.
+   `.cypress/growth/<slug>.ledger.md`. Every claim cites a path or a symbol.
 2. The orchestration plane reconciles the per-boundary ledgers into one
    coherent evidence set.
 3. Opus-class authors consume the ledger and write each artifact, mapping
@@ -418,13 +419,13 @@ explicit in `protocols/test-first.md`.
    `tools/growth-audit.py`, which checks every planned artifact appeared
    and is not a scaffold. Template files existing is never coverage.
 6. The same contract covers **expertise and staffing**. Every core or
-   significant stack element owes an `expertise.*` node — the routable handle
+   significant stack element owes an `expertise.*` node, the routable handle
    that says when it is in play, what must not be done without it, and which
-   sub-expertises apply under which condition — derived from the stack
-   inventory rather than decided. That node is the default answer to "who
-   knows this here", because the router composes it into any worker whose
-   task names it. A dominant domain or a core part of the stack additionally
-   records whether it warrants an **agent**, which is warranted only for what
+   sub-expertises apply under which condition. The stack inventory derives it;
+   nobody decides it. That node is the default answer to "who knows this
+   here", because the router composes it into any worker whose task names it.
+   A dominant domain or a core part of the stack also records whether it
+   warrants an **agent**, which is warranted only for what
    a node cannot be: different tools, a different model class, an adversarial
    stance, or context isolation. An expert growth does author is a node with
    `origin: project` and `plant_knowledge:`, cites the source that earned it,
@@ -530,7 +531,7 @@ them; grow/graft draw from them.
 | Corpus | Location | Holds | Count |
 |--------|----------|-------|-------|
 | Library docs | `library-corpus/` | Version-durable surface notes per dependency, by ecosystem (npm, nuget, maven, pypi, container, language) | 73 pages |
-| Legal citations | `legal-corpus/` | Law/standards citations by jurisdiction (eu, national, international, case-law); graded **per entry, never per page** | 16 pages / 128 entries |
+| Legal citations | `legal-corpus/` | Law/standards citations by jurisdiction (eu, national, international, case-law); graded **per entry, never per page** | 13 instrument pages / 129 entries |
 | Reusable tools | `tool-corpus/` | Durable tested tools by category (ops, testing) | 7 |
 | Optional experts | `agent-corpus/` | Candidate expert roles — the roster mirror; none loaded by default, none named in the kernel | 5 |
 | Optional procedures | `skill-corpus/` | Candidate procedures not in the core skill set | 4 |
@@ -546,18 +547,41 @@ The legal corpus has its own citability contract enforced by
 `tests/legal-lint.py` (an eight-field-per-entry gate, with the "amendment trap"
 mandatory).
 
+It is also the one corpus a plant can carry outright, and the reason is
+`agent.legal`: it runs without web access, reasons only from a corpus, and
+turns a gap into a refusal instead of a reconstructed citation.
+`install.sh --legal-corpus yes` places the corpus in the plant at
+`docs/graph/legal/corpus/`,
+**whole, or not at all.** A subset would be worse than nothing, because the
+analyst cannot distinguish a page nobody copied from an instrument that does
+not exist, and its refusal rule would then convert an import filter into a
+confident "this does not apply". Relevance is expressed instead as a scope
+instruction in the plant's `docs/graph/legal/index.md`, revised as the project
+evolves.
+
+`--legal-jurisdiction <cc>` names the national law the plant is established
+under. The EU and international layers are jurisdiction-neutral; the national
+layer is only as wide as what has been ingested (today: Italy, derived from
+`legal-corpus/national/` filenames rather than listed anywhere). A code the
+corpus does not carry is not an error. It is recorded as an ingest request for
+a `research-scout` pass, because another country's statute is retrieved, never
+read across from a neighbour's.
+
 ## 11. Tool integrations
 
 CYPRESS supports five AI coding tools. Two are first-class at full parity;
 three are lighter-tier.
 
-| Tool | Kernel file | Overlay dir | Method | Tier |
-|------|-------------|-------------|--------|------|
-| **Claude Code** | `CLAUDE.md` | `.claude/` | symlink | first-class |
-| **Prime Agent** | `AGENTS.md` | `.prime/agent/` | symlink + `route-extension.ts` + `settings.json` | first-class |
-| opencode | `AGENTS.md` | `.opencode/` + `opencode.json` | symlink | lighter |
-| Codex | `AGENTS.md` | `.codex/` | symlink + manual `config.toml` merge | lighter |
-| GitHub Copilot | `.github/copilot-instructions.md` | `.github/` | transform (frontmatter rewrite) | lighter |
+Placement is by copy unless you pass `--symlink` (§12.3); the column below says
+what each tool needs *beyond* plain placement.
+
+| Tool | Kernel file | Overlay dir | Beyond placement | Tier |
+|------|-------------|-------------|------------------|------|
+| **Claude Code** | `CLAUDE.md` | `.claude/` | — | first-class |
+| **Prime Agent** | `AGENTS.md` | `.prime/agent/` | `route-extension.ts` + `settings.json` | first-class |
+| opencode | `AGENTS.md` | `.opencode/` + `opencode.json` | — | lighter |
+| Codex | `AGENTS.md` | `.codex/` | manual `config.toml` merge | lighter |
+| GitHub Copilot | `.github/copilot-instructions.md` | `.github/` | transform (frontmatter rewrite), never a symlink | lighter |
 
 - Claude Code and Prime Agent get progressive-discovery enforcement (a
   route-first hook/extension) plus the same `agent-lint.py` CI gate. A single
@@ -609,7 +633,19 @@ canonical entry.
 
 ```sh
 ./install.sh <tool> [--project-dir PATH] [--symlink|--copy] [--force]
+              [--environment-class ephemeral-test|staging|real-production|mixed]
+              [--commit-attribution none|<trailer>]
+              [--deliverable-language <bcp47>] [--comment-language <bcp47>]
+              [--legal-corpus yes|no] [--legal-jurisdiction <cc>]
 ```
+
+The first four flags after `--force` are the plant facts (§5.2): the owner's
+explicit answers, each filling its placeholder in `docs/graph/index.md`. The
+last two are the legal-corpus decision (§10). Every one of them is *asked*
+rather than inferred, and an unanswered one is named as a NEXT STEP and
+recorded as `undecided` in `.cypress/seed.json`. A plant that was never asked
+and a plant whose owner declined are different facts, and a later graft reads
+the difference.
 
 `<tool>` is one of `claude-code`, `opencode`, `codex`, `github-copilot`,
 `prime-agent`, or `all`. For each tool it:
@@ -623,7 +659,12 @@ canonical entry.
 4. ensures `docs/graph/` has the schema, linter, router, nodes dir, and every
    missing leaf, while preserving existing files;
 5. installs the canonical prompt as `EXPERT_SEED_INSTALL_PROMPT.md` at the target
-   root.
+   root;
+6. writes the seed stamp `.cypress/seed.json` (version, date, the adapters
+   installed, the harness projection paths, and the two legal decisions), which
+   is what gives a later graft a real base to reconcile against;
+7. places `legal-corpus/` at `docs/graph/legal/corpus/` when
+   `--legal-corpus yes`, whole, refusing a partial placement.
 
 ### 12.3 Copy vs symlink
 
@@ -700,32 +741,41 @@ This runs (in order):
 3. `test-orchestration-entry.sh`: pins the single three-phase entry + the
    completeness contract in prose.
 4. `test-graph-artifacts.sh`: graph artifact presence.
-5. `test-spec-lint.sh`: the spec gate — shape of every spec, coverage of live ones.
-6. `test-grill-lint.sh`: the plan-of-record gate (`grill-lint.py`) — section
+5. `test-spec-lint.sh`: the spec gate: shape of every spec, coverage of live ones.
+6. `test-grill-lint.sh`: the plan-of-record gate (`grill-lint.py`): section
    shape, §9 dependency order, §5 derived from §9, plan↔spec alignment.
 7. `test-full-install.sh`: full install across tools, roster parity, the
    Claude-Code + Prime-Agent coexistence, CI parity gate.
-8. `test-graft-tools.sh`: graft reconciliation engine.
-9. `test-agnosticism-lint.sh`: the shared agnosticism gate
-   (`tools/agnosticism-lint.py`, delivered to plants as
-   `docs/graph/agnosticism-lint.py`), run before the seed-lint suite that
-   consumes it.
-10. `test-status-register.sh`: the lifecycle-status linter/query
-   (`tools/status-register.py`, delivered as `docs/graph/status-register.py`):
-   one vocabulary in frontmatter, companion keys, body/frontmatter agreement,
-   query ordering and the `--summary` the session-start hook injects.
-11. `test-status-migrate.sh`: the one-time body-prose → frontmatter migration
+8. `test-bound-hook.sh`: the Claude-Code delegation-bound hook.
+9. `test-graft-tools.sh`: graft reconciliation engine.
+10. `test-growth-audit.sh`: the coverage gate (`tools/growth-audit.py`): every
+    planned artifact present and substantive, every declared read filled, every
+    absence established, every UNKNOWN named where the owner reads.
+11. `test-agnosticism-lint.sh`: the shared agnosticism gate
+    (`tools/agnosticism-lint.py`, delivered to plants as
+    `docs/graph/agnosticism-lint.py`), run before the seed-lint suite that
+    consumes it.
+12. `test-prose-lint.sh`: the mechanical floor under the humanizer skill. It
+    reports the tells a pattern can catch, and its fact-preservation check
+    proves a rewrite added and dropped nothing.
+13. `test-status-register.sh`: the lifecycle-status linter/query
+    (`tools/status-register.py`, delivered as `docs/graph/status-register.py`):
+    one vocabulary in frontmatter, companion keys, body/frontmatter agreement,
+    query ordering and the `--summary` the session-start hook injects.
+14. `test-status-migrate.sh`: the one-time body-prose → frontmatter migration
     (`tools/status-migrate.py`): exact mappings, `not recorded` never invented,
     annotations carried as `status_note`, idempotent, output lints clean.
-12. `test-seed-lint.sh`: plant-a-violation regression for each seed-lint class.
-13. `test-legal-lint.sh`: legal-corpus citability contract.
-14. `test_graph_lint.py`: graph-lint CLI-contract regression (stdlib unittest),
+15. `test-seed-lint.sh`: plant-a-violation regression for each seed-lint class.
+16. `test-legal-lint.sh`: legal-corpus citability contract, and the placement
+    contract: whole corpus or none, the jurisdiction recorded, an uncarried
+    jurisdiction surfaced as an ingest request.
+17. `test_graph_lint.py`: graph-lint CLI-contract regression (stdlib unittest),
     including the 7.0.0 status / deviation / `plant:` block rules.
-15. `agent-lint.py --lint` and `--eval` (against `agents/`).
-16. `test_agent_lint.py` (pytest; loud SKIP if pytest absent, never a silent
+18. `agent-lint.py --lint` and `--eval` (against `agents/`).
+19. `test_agent_lint.py` (pytest; loud SKIP if pytest absent, never a silent
     skip).
-17. `seed-lint.py`: one-home-per-fact for the seed's own meta-facts.
-18. `legal-lint.py`: the eight-field-per-entry legal gate.
+20. `seed-lint.py`: one-home-per-fact for the seed's own meta-facts.
+21. `legal-lint.py`: the eight-field-per-entry legal gate.
 
 `tests/seed-lint.py` is the seed's self-consistency gate. It enforces:
 roster/frontmatter/manifest/README consistency, the delegator invariant, numeric
@@ -736,14 +786,15 @@ in exactly their mapped home), canonical-block byte-identity in the brief
 templates, and the per-session instruction budget of the integrations.
 
 Current status (documented run): all gates PASS.
-`agent-lint`: 18 agents valid; `--eval`: top-1 accuracy 100% (49/49);
-`seed lint: PASS`; `legal lint: PASS — 129 entries across 13 pages`;
-`test_agent_lint.py`: 44 passed, 1 skipped.
+`agent-lint`: 19 agents valid; `--eval`: top-1 accuracy 100% (55/55), 3
+novel-stack rows checked; `seed lint: PASS`; `legal lint: PASS — 129 entries
+across 13 pages`; `test_agent_lint.py`: 44 passed, 1 skipped.
 
 > Honesty note carried in the CHANGELOG: the routing eval is substantially
-> in-sample. 42 of its 49 labeled golden rows are byte-identical to the expected
-> agent's own `routing_triggers`, so the 100% score reads stronger than it is.
-> The seed states this weakness rather than hiding it.
+> in-sample. 44 of the 58 labeled rows in `agents/_routes.golden.tsv` are
+> byte-identical to the expected agent's own `routing_triggers`, so the 100%
+> score reads stronger than it is. The seed states this weakness instead of
+> hiding it.
 
 ## 15. Glossary
 

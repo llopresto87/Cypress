@@ -209,17 +209,29 @@ def count_words(mlines) -> int:
 DASH_RE = re.compile(r"—|–|(?<= )--(?= )")
 
 
+# The token on either side of an en dash when it is spanning a range: bare
+# digits (`2–3`), or a short label that ends in one (`T0–T3`, `§1–§12`,
+# `§3.1–§3.8`). Ranges over LABELLED endpoints are how this system writes its
+# tiers and section spans, and counting them as connector dashes charged the
+# rate for the seed's own canonical notation — which pushed authors toward
+# rewriting correct prose to satisfy the meter. An em dash is never a range.
+RANGE_LEFT_RE = re.compile(r"[A-Za-z§]?[A-Za-z0-9.]*\d$")
+RANGE_RIGHT_RE = re.compile(r"^[A-Za-z§]?[A-Za-z0-9.]*\d")
+
+
 def dash_hits(mlines):
     """(line number, matched text) for every dash used as a connector.
-    An en dash between digits is a range, and a hyphen inside a word is a
-    hyphen: neither counts."""
+    An en dash spanning a range is not a connector, and a hyphen inside a word
+    is a hyphen: neither counts."""
     hits = []
     for n, line in enumerate(mlines, 1):
         for m in DASH_RE.finditer(line):
             if m.group(0) == "–":
-                before = line[m.start() - 1] if m.start() else ""
-                after = line[m.end()] if m.end() < len(line) else ""
-                if before.isdigit() and after.isdigit():
+                left = re.search(r"[A-Za-z0-9.§]+$", line[:m.start()])
+                right = re.match(r"[A-Za-z0-9.§]+", line[m.end():])
+                if (left and right
+                        and RANGE_LEFT_RE.search(left.group(0))
+                        and RANGE_RIGHT_RE.match(right.group(0))):
                     continue
             hits.append((n, m.group(0)))
     return hits

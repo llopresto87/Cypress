@@ -9,10 +9,9 @@ team, a set of named protocols, a progressive-discovery knowledge graph
 that keeps the codebase inside a context window, and a spec-driven,
 test-driven discipline by default.
 
-The name is a backronym: the CYPRESS seed still grows and *routes*
-*expert* teams over a project's knowledge graph, *yielding*
-project-specific knowledge as it goes. The branding changed; the
-behavior did not.
+The name is a backronym, and it describes the mechanism: the seed grows and
+*routes* *expert* teams over a project's knowledge graph, *yielding*
+project-specific knowledge as it goes.
 
 CYPRESS is language-agnostic, vendor-agnostic, and project-agnostic.
 It does not assume your stack, your domain, your deployment target, or
@@ -63,8 +62,10 @@ practice on the production path.
     catalog tools in one librarian brief)
   - `toolcraft` (durable-tool doctrine; executes inside the canonize spawn)
   - `deliver` (cold-pickup summary: compact for T0/T1, full for T2/T3)
-  - `harvest` (user-triggered-only cross-project meta-loop: plant → seed)
-  - `graft` (user-decided-only cross-project meta-loop: seed → existing plant)
+  - `harvest` (cross-project meta-loop, user-triggered only: folds one
+    plant's lessons up into the seed)
+  - `graft` (cross-project meta-loop, user-decided only: carries the enriched
+    seed back out onto an existing plant)
 - Fourteen composable skills under `skills/`:
   - `knowledge-graph`, `context-router`, `validate-knowledge`
   - `holistic-editing`, `humanizer`
@@ -94,6 +95,17 @@ practice on the production path.
   turn ends with a handback payload that attributes the work.
 - A populated unified `docs/graph/` skeleton the installer adds to
   projects without overwriting existing knowledge.
+- The legal corpus, on request. `agent.legal` reasons only from a verified
+  citation corpus and refuses where it has none, so `install.sh
+  --legal-corpus yes` places `legal-corpus/` into the plant at
+  `docs/graph/legal/corpus/` — **whole, or not at all**, because an analyst
+  with no web access cannot tell a page nobody copied from an instrument that
+  does not exist. Which instruments bear on the project is written as a scope
+  instruction in `docs/graph/legal/index.md`, never as a subset on disk.
+  `--legal-jurisdiction <cc>` names the national law: the EU and international
+  layers are jurisdiction-neutral, the national layer is only as wide as what
+  has been ingested, and a code the corpus does not carry is recorded as an
+  ingest request the analyst can act on.
 - Per-tool integration layers under `integrations/` for Claude
   Code, Prime Agent, opencode, Codex, and GitHub Copilot, each with the
   right config files and tool-specific overlays. Claude Code and Prime
@@ -186,9 +198,9 @@ changelogs.) See `skills/holistic-editing/`.
 
 ### Plan-of-record
 
-`docs/graph/plans/grill.md` is the living plan. Sections 0–15 are stable.
-Appended, not silently rewritten. Linked to specs, ADRs, and the graph.
-The orchestrator opens it first thing every session.
+`docs/graph/plans/grill.md` is the living plan, and the orchestrator opens it
+first thing every session. Its sections 0–15 are stable, it links out to specs,
+ADRs, and the graph, and it is appended to rather than silently rewritten.
 
 ### Mechanical routing + bounded delegation
 
@@ -270,18 +282,13 @@ If files are already installed and the coding tool exposes commands,
 `/initialize` remains a convenience adapter to the same workflow. It is not
 the canonical entry point.
 
-For an existing project, after growth finishes:
+On an existing project, growth ends with an orchestrator that can navigate a
+source-grounded graph, and a report naming the evidence gaps it found and the
+single highest-leverage next step. From there every change runs the normal
+flow: specify, grill, test-first, verify, deliver.
 
-```
-# 3. The orchestrator can navigate a source-grounded graph and reports
-#    evidence gaps plus one highest-leverage next step.
-# 4. Drive the next change through the normal flow:
-#    specify → grill → test-first → verify → deliver.
-```
-
-For a new project, growth enters `from-scratch`'s 9-phase
-bootstrap and walks you through brainstorm → specify → test-first all
-the way to your first useful slice.
+On a new project, growth enters `from-scratch`'s 9-phase bootstrap and walks
+you from brainstorm through specify and test-first to your first useful slice.
 
 ## Per-tool details
 
@@ -349,5 +356,4 @@ disclosure throughout for context efficiency.
 CYPRESS is released under the MIT License. See [`LICENSE`](LICENSE).
 
 Copyright (c) 2026 Luigi Lopresto.
-</content>
-</invoke>
+

@@ -204,3 +204,37 @@ grep -q "import contract: OK" "$TMP/out" || fail "import contract assertions did
 echo "  scan() importable, returning structured findings — OK"
 
 echo "test-prose-lint: PASS"
+
+# --- a labelled range is not a connector dash -----------------------------
+# The en dash in `T0–T3` or `§1–§12` spans a range, exactly as `2–3` does; only
+# the bare-digit form was exempt, so the seed's own canonical notation for its
+# tiers and section spans was charged against the §8 rate. That pushes an
+# author toward rewriting correct prose to satisfy the meter, which is the one
+# thing a prose gate must never reward.
+RTMP="$(mktemp -d)"; trap 'rm -rf "$RTMP"' EXIT
+cat > "$RTMP/ranges.md" <<'MD'
+# Ranges
+
+Every task is classified T0–T3 before acting, and a spec uses the stable
+section numbers §1–§12 so tooling can index into it. The plan keeps §0–§15,
+and the kernel anchors run §3.1–§3.8. A scout reads 2–3 nodes, no more.
+MD
+python3 "$LINT" --file "$RTMP/ranges.md" >"$RTMP/out" 2>&1 \
+    || { cat "$RTMP/out" >&2; echo "test-prose-lint: FAIL — labelled ranges counted as connector dashes" >&2; exit 1; }
+grep -q "dashes 0.0/1000" "$RTMP/out" \
+    || { cat "$RTMP/out" >&2; echo "test-prose-lint: FAIL — a range still charged the dash rate" >&2; exit 1; }
+
+# A real en-dash connector still counts: the left side is a word, not an endpoint.
+cat > "$RTMP/connector.md" <<'MD'
+# Connector
+
+The gate depth follows blast radius – and asserts something – before done.
+The router resolves nodes – the few a task needs – then declares the skips.
+A worker returns evidence – always – and the session records it in the plan.
+MD
+python3 "$LINT" --file "$RTMP/connector.md" >"$RTMP/out2" 2>&1 \
+    && { cat "$RTMP/out2" >&2; echo "test-prose-lint: FAIL — en-dash connectors stopped counting" >&2; exit 1; }
+grep -q "dash as connector" "$RTMP/out2" \
+    || { cat "$RTMP/out2" >&2; echo "test-prose-lint: FAIL — the connector was not named" >&2; exit 1; }
+
+echo "test-prose-lint: labelled ranges exempt, connectors still caught — OK"

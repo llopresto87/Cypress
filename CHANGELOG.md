@@ -1,5 +1,65 @@
 # Changelog
 
+## 7.13.0 — the seed's own front door goes through its own gate (2026-09-10)
+
+CYPRESS ships a prose posture, a humanizer skill, and `prose-lint.py` to floor
+them. `tests/run.sh` ran `test-prose-lint.sh`, which proves the linter works
+against fixtures, and then linted nothing. The seed's own documentation had
+never been held to the standard the seed sells.
+
+What that permitted, found by reading the files:
+
+- **`README.md` ended with `</content>` and `</invoke>`.** Tool-call scaffolding,
+  committed around 7.1.0 and shipped in every release since, on the first file
+  anyone opens.
+- **A fenced block with its first two steps missing.** "For an existing
+  project, after growth finishes:" was followed by a code block containing two
+  comments numbered 3 and 4 and nothing else. It was never shell; it is prose
+  now.
+- **`DOCUMENTATION.md` §6.2 was titled "The 18 specialists" and listed 18 rows
+  against a roster of 19.** The missing one was `legal` — added to the base
+  roster in 6.12.0 and absent from the documentation for seven minor versions.
+  The agent whose corpus never reached a plant was also the agent the docs
+  never mentioned.
+- **The document contradicted itself about the legal corpus.** §10 said "16
+  pages / 128 entries"; §14, a few screens later, printed the gate's real
+  output, "129 entries across 13 pages".
+- **§11 said every tool is installed by `symlink`; §12.3 said copy is the
+  default.** Both in the same document, and §12.3 was right.
+- **§14 listed 18 gates where `run.sh` runs 21**, omitting `test-bound-hook`,
+  `test-growth-audit` and `test-prose-lint` — the prose gate missing from the
+  list of gates being its own kind of fitting. Its reported figures were from
+  an older tree: 18 agents where there are 19, 49 golden rows where there are
+  58, and an in-sample honesty note quoting 42 of 49 where the real count is 44
+  of 58. The note itself is the seed being honest about a weak eval, so it is
+  worth stating correctly.
+- **The installer's usage line carried no flags at all** — not the four plant
+  facts, not the two legal decisions.
+
+Both files are corrected and rewritten, and both now run in `tests/run.sh`.
+Every number was re-derived from the tree rather than edited toward
+plausibility, and `prose-lint --against HEAD` reports exactly the intended fact
+changes: the stale figures out, the true ones in.
+
+### A range is not a connector dash
+
+§8 counts dashes per 1,000 words because dash dependence is a real tell. It
+exempted `2–3` and charged `T0–T3`, `§1–§12`, `§0–§15` and `§3.1–§3.8`, which
+are the same construct with labelled endpoints — and which happen to be this
+system's canonical notation for its own tiers and section spans. A document
+that used them correctly was pushed over the allowance and its author toward
+rewriting correct prose to satisfy a meter, which is the one thing a prose gate
+must never reward (the lesson 7.9.0 already paid for). An en dash between two
+range endpoints no longer counts; an em dash never was a range and still counts
+everywhere. `DOCUMENTATION.md` fell from 5.7 to 4.2 per 1,000 on that fix alone,
+and the remaining 20 connector dashes were rewritten by hand to 1.3.
+
+`documentation/*-reference.md` stay outside the gate for now, and the reason is
+in `run.sh`: they use per-entry conventions that §2 and §20 read as repeated
+closers and decoration. That genre question is worth settling before those four
+files are wired in, because settling it the other way means mangling correct
+reference prose.
+
 ## 7.12.0 — the corpus knows which country it is not carrying (2026-09-10)
 
 7.11.0 got the corpus to the analyst. It left one thing unsaid, and it is the

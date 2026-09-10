@@ -14,6 +14,17 @@ bash "$ROOT/tests/test-graft-tools.sh"
 bash "$ROOT/tests/test-growth-audit.sh"
 bash "$ROOT/tests/test-agnosticism-lint.sh"
 bash "$ROOT/tests/test-prose-lint.sh"
+# test-prose-lint.sh proves the linter works; this holds the seed's own
+# front-door prose to it. Until 7.13.0 nothing did, and both files drifted:
+# README.md carried committed tool-call residue, DOCUMENTATION.md's roster
+# table was missing an agent added seven minor versions earlier, and its two
+# halves disagreed with each other about the legal corpus's size.
+# documentation/*-reference.md stay out of this gate for now — they use
+# per-entry conventions (`Source file:` closers, one rule per entry) that §2
+# and §20 read as repeated closers and decoration, and wiring them in before
+# that genre question is settled would reward mangling correct reference prose
+# to satisfy a meter.
+python3 "$ROOT/tools/prose-lint.py" --file "$ROOT/README.md" --file "$ROOT/DOCUMENTATION.md"
 bash "$ROOT/tests/test-status-register.sh"
 bash "$ROOT/tests/test-status-migrate.sh"
 bash "$ROOT/tests/test-seed-lint.sh"
