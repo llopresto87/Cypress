@@ -86,7 +86,12 @@ faster than crawling.
 When the license permits, write the raw content to
 `docs/graph/sources/raw/<slug>-<retrieved-date>.<ext>`. Acceptable
 extensions: `.md`, `.html`, `.pdf`, `.txt`, `.json`. Strip nothing
-from the raw file — preserve provenance.
+from the raw file — preserve provenance. When the license does not
+permit — or the host retrieved through an MCP summary and holds no
+page to keep — say so in the `raw:` line of the normalized metadata
+block. A snapshot with neither the raw file nor the reason is
+`UNJUSTIFIED` at the coverage gate: the reason recorded is what makes
+the omission a decision instead of a habit.
 
 ### 4. Normalize
 
@@ -105,6 +110,7 @@ source-maintainer: <name>
 source-version-coverage: <e.g. "1.4 - 1.6">
 retrieved: YYYY-MM-DD
 license: <SPDX or "see source">
+raw: raw/<slug>-<retrieved-date>.<ext> | withheld — <why: the license, a host without fetch, an MCP summary with no page behind it>
 reliability: official | community-trusted | community | mirror
 ---
 ```

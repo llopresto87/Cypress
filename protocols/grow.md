@@ -378,7 +378,11 @@ per item (batched sensibly) following `docs/graph/protocols/ingest-library.md`:
 retrieve authoritative upstream documentation pinned to the versions the tree
 actually locks, snapshot raw sources to `docs/graph/sources/raw/`, normalize
 to `docs/graph/sources/normalized/`, and register each in
-`docs/graph/sources/index.md`. These sonnet-class writes are mechanical
+`docs/graph/sources/index.md`. A normalized snapshot names its raw file, or
+the reason none was kept, in the `raw:` line of its metadata block — the
+coverage gate holds `sources/` to it (`UNJUSTIFIED`), because "when the
+license permits" recorded nowhere is an out every scout takes. These
+sonnet-class writes are mechanical
 normalization, not authoring (`agent.research-scout` owns that distinction).
 Record the dispatch list in the orchestration plan: Phase 4's `libraries/`
 rich pages, normative `best-practices/`, and `sources/` provenance are
@@ -616,12 +620,16 @@ They also verify:
    artifact that never appeared (`UNGROWN`), one that appeared as a scaffold
    (`HOLLOW`), an item that needed retrieved documentation and cites none
    (`UNGROUNDED`), a row claimed covered that the plant's own files
-   contradict (`CONTRADICTED`), an absence asserted without a reason or the
-   paths searched (`UNJUSTIFIED`), a surface that never answered whether it
-   warrants an expert of its own, claimed one without naming what a node
-   could not have served, or named one the plant does not carry
-   (`UNSTAFFED`), a collection, agent, or expert the record never answers for
-   (`MISSING`, `BLANK`). Each routes back to a bounded author
+   contradict, or an agent's absence that found a filled leaf of the graph
+   where it searched (`CONTRADICTED`), an absence asserted without a reason
+   or the paths searched, or a retrieved source with neither its raw
+   snapshot nor the reason there is none (`UNJUSTIFIED`), a surface that
+   never answered whether it warrants an expert of its own, claimed one
+   without naming what a node could not have served, or named one the plant
+   does not carry (`UNSTAFFED`), an `UNKNOWN` whose blocker the record names
+   and the delivery entry never does (`SILENT`), a collection, agent, or
+   expert the record never answers for (`MISSING`, `BLANK`). Each routes
+   back to a bounded author
    exactly as any other gap does, and the audit re-runs. Validators also
    spot-audit a sample of the cited paths by hand: the linter proves the file
    exists and says something, not that what it says is true. Under-growth is
@@ -671,6 +679,14 @@ evidence inspected, artifacts created/refreshed, the Phase 5 librarian
 rebalance report, validation results,
 untrusted/excluded docs, honest unknowns, and one next action — **with its
 tier** (kernel §0), so the next session starts classified instead of cold.
+Every `UNKNOWN` row is named there **and** in the plant's `changelog.md`
+entry for the pass — the row, what it waits on, and who — and a blocker
+that is the owner's to resolve is put to the owner as a numbered decision
+(`deliver.numbered-decisions`), the same ask the plant facts use, not left
+for them to find. The record is not where the owner reads:
+`growth-audit.py` reports an `UNKNOWN` the changelog never names as
+`SILENT`, and the gate fails on it. A blocker filed as "the owner's
+determination" that the owner never saw was not put to anyone.
 Include the **coverage record** (`grow.completeness-contract`) —
 every collection marked covered-to-evidence or absent-with-reason, the
 scaffolds renamed `.unfilled.md`, and any `plant:` value the owner left open

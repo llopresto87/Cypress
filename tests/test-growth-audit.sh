@@ -7,7 +7,10 @@
 # carrying a ui-ux-designer with no design/ material, a legal analyst with no
 # corpus, and library pages written from model memory rather than retrieved
 # documentation — each invisible because no gate ever asked. Every case below
-# is one of those made mechanical.
+# is one of those made mechanical. Cases 42-45 came from one real graft the
+# audit passed: an index line never written, a retrieval with no artifact
+# behind it, an absence that had found the material, and an owner's decision
+# filed in the record and never put to the owner.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -135,6 +138,10 @@ for c in rec["collections"]:
 for a in rec["agents"]:
     a.update(status="COVERED", artifacts=[], reason="", searched=[], blocker="")
 leaf("sources/normalized/dotnet-9-docs.md")
+# 7.10.0: a normalized snapshot keeps its raw sibling, or says why not.
+src = g/"sources/normalized/dotnet-9-docs.md"
+src.write_text("---\nraw: withheld — the upstream license forbids redistribution; "
+               "URL and date are in the index row\n---\n" + src.read_text())
 leaf("libraries/dotnet.md"); leaf("best-practices/dotnet.md")
 # 7.5.0: a core stack element also owes the expertise node that says when it is
 # in play and routes to the two leaves above. It carries the `libraries:` edge
@@ -1070,5 +1077,153 @@ rm -f "$TMP/x41/docs/graph/api/README.md"
 }
 [[ -f "$TMP/x41/docs/graph/legal/index.md" ]] \
     || fail "the authored leaf had to be destroyed for the plant to pass"
+
+# --- 42. the index line an incidental item owes has to be in the index -----
+# A real plant shipped `tsx` COVERED with `expect: libraries/index.md` and no
+# tsx row in it — the one false COVERED in its inventory, and the audit passed
+# it because the index as a whole was substantive. The line is the artifact.
+expertise_plant "$TMP/x42" incidental dependency
+out42="$(python3 "$AUDIT" "$TMP/x42" "$ROOT" 2>&1)" || true
+grep -q "UNGROWN      dependency dotnet" <<<"$out42" \
+    || fail "an incidental item with no index row passed"
+grep -q "libraries/index.md has no row naming 'dotnet'" <<<"$out42" \
+    || fail "the missing index row was not named"
+printf '| dotnet | 9.0 | — | build | healthy | MIT | 2026-09-10 |\n' \
+    >> "$TMP/x42/docs/graph/libraries/index.md"
+out42="$(python3 "$AUDIT" "$TMP/x42" "$ROOT" 2>&1)" || true
+! grep -q "UNGROWN      dependency dotnet" <<<"$out42" \
+    || fail "an incidental item with its index row was still reported UNGROWN"
+# Whole-cell, never substring: a row for a longer sibling is not this item's.
+expertise_plant "$TMP/x42b" incidental dependency
+printf '| dotnet-tools | 1.0 | — | | | | |\n' >> "$TMP/x42b/docs/graph/libraries/index.md"
+out42b="$(python3 "$AUDIT" "$TMP/x42b" "$ROOT" 2>&1)" || true
+grep -q "UNGROWN      dependency dotnet" <<<"$out42b" \
+    || fail "a row for a longer sibling name passed as the incidental item's own"
+
+# --- 43. a normalized source keeps its raw snapshot, or says why not -------
+# grow.md owes three things per retrieved source — raw snapshot, normalized
+# copy, index row — and the skill's "when the license permits" was the only
+# out. An out nobody has to record is one every scout takes: a real plant
+# cited 23 library pages to one retrieval date with not one artifact behind
+# it, and the next graft audited a pass it could not re-inspect.
+rm -rf "$TMP/x43"; mkdir -p "$TMP/x43"
+bash "$ROOT/install.sh" claude-code --project-dir "$TMP/x43" >/dev/null 2>&1
+python3 "$AUDIT" "$TMP/x43" "$ROOT" --plan >/dev/null 2>&1 || true
+python3 - "$TMP/x43" <<'PY'
+import json, pathlib, sys
+plant = pathlib.Path(sys.argv[1]); g = plant/"docs/graph"
+(g/"sources/normalized/react.md").write_text(
+    "# react docs\n\n## Fact\n\n" + ("A retrieved upstream fact with its URL. " * 14) + "\n")
+p = plant/".cypress/coverage.json"; r = json.loads(p.read_text())
+for c in r["collections"]:
+    if c["name"] == "sources/":
+        c.update(status="COVERED", leaves=1,
+                 evidence=["docs/graph/sources/normalized/react.md"])
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+out43="$(python3 "$AUDIT" "$TMP/x43" "$ROOT" 2>&1)" || true
+grep -q "UNJUSTIFIED  collection sources/" <<<"$out43" \
+    || fail "a normalized source with no raw snapshot and no reason passed"
+grep -q "normalized/react.md retains no raw snapshot" <<<"$out43" \
+    || fail "the snapshot without provenance was not named"
+# A recorded reason is provenance.
+python3 - "$TMP/x43" <<'PY'
+import pathlib, sys
+f = pathlib.Path(sys.argv[1])/"docs/graph/sources/normalized/react.md"
+f.write_text("---\nraw: withheld — react.dev terms forbid redistribution; "
+             "URL and date are in the index row\n---\n" + f.read_text())
+PY
+out43="$(python3 "$AUDIT" "$TMP/x43" "$ROOT" 2>&1)" || true
+! grep -q "normalized/react.md retains no raw snapshot" <<<"$out43" \
+    || fail "a normalized source that recorded why no raw was kept was still reported"
+# A `raw:` naming a file that is not there is not provenance either.
+sed -i '2s#.*#raw: raw/react-2026-09-10.html#' "$TMP/x43/docs/graph/sources/normalized/react.md"
+out43="$(python3 "$AUDIT" "$TMP/x43" "$ROOT" 2>&1)" || true
+grep -q 'raw: raw/react-2026-09-10.html`, which does not exist' <<<"$out43" \
+    || fail "a raw: line naming a missing snapshot passed"
+# The snapshot itself, on disk, is the whole answer.
+printf '<html>react</html>\n' > "$TMP/x43/docs/graph/sources/raw/react-2026-09-10.html"
+out43="$(python3 "$AUDIT" "$TMP/x43" "$ROOT" 2>&1)" || true
+! grep -q "collection sources/" <<<"$out43" \
+    || fail "a normalized source with its raw sibling on disk was still reported"
+
+# --- 44. an absence that found something is a redirect, not an absence -----
+# A real plant marked ui-ux-designer ABSENT with the design material's real
+# paths under product/ in `searched`, then left the agent node pointing at the
+# empty design/. The router sent design work there at high confidence; a cold
+# session spawned it, read a template, and improvised where it was told not to.
+rm -rf "$TMP/x44"; mkdir -p "$TMP/x44"
+bash "$ROOT/install.sh" claude-code --project-dir "$TMP/x44" >/dev/null 2>&1
+python3 "$AUDIT" "$TMP/x44" "$ROOT" --plan >/dev/null 2>&1 || true
+python3 - "$TMP/x44" <<'PY'
+import json, pathlib, sys
+plant = pathlib.Path(sys.argv[1]); g = plant/"docs/graph"
+(g/"product").mkdir(parents=True, exist_ok=True)
+(g/"product/design-system.md").write_text(
+    "# design system\n\n## Tokens\n\n" + ("A token and its value, with the screen it serves. " * 14) + "\n")
+p = plant/".cypress/coverage.json"; r = json.loads(p.read_text())
+for a in r["agents"]:
+    if a["name"] == "ui-ux-designer":
+        a.update(status="ABSENT",
+                 reason="the design material was written under product/ and stays there",
+                 searched=["docs/graph/design/", "docs/graph/product/design-system.md"])
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+out44="$(python3 "$AUDIT" "$TMP/x44" "$ROOT" 2>&1)" || true
+grep -q "CONTRADICTED agent ui-ux-designer" <<<"$out44" \
+    || fail "an ABSENT agent row that searched a filled graph leaf passed"
+grep -q "product/design-system.md' — among the paths it searched — is a filled leaf" <<<"$out44" \
+    || fail "the filled leaf the absence found was not named"
+grep -q "re-home it" <<<"$out44" || fail "the contradiction did not name the remedy"
+# Source paths, a directory, and an untouched scaffold establish an absence.
+python3 - "$TMP/x44" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
+for a in r["agents"]:
+    if a["name"] == "ui-ux-designer":
+        a["searched"] = ["src/", "docs/graph/design/", "docs/graph/design/README.md"]
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+out44="$(python3 "$AUDIT" "$TMP/x44" "$ROOT" 2>&1)" || true
+! grep -q "CONTRADICTED agent ui-ux-designer" <<<"$out44" \
+    || fail "an absence established against source paths and scaffolds was called a contradiction"
+
+# --- 45. an UNKNOWN the delivery never names was filed, not asked ---------
+# The seed's answer to "I cannot determine this" is record-and-report, and
+# the record is not where anyone reads. A real plant marked legal/ UNKNOWN —
+# "the owner's determination, not the graft's" — in a 43 KB JSON, and its
+# delivery entry never said the word. The owner came away believing nothing
+# had been grown at all.
+rm -rf "$TMP/x45"; mkdir -p "$TMP/x45"
+bash "$ROOT/install.sh" claude-code --project-dir "$TMP/x45" >/dev/null 2>&1
+python3 "$AUDIT" "$TMP/x45" "$ROOT" --plan >/dev/null 2>&1 || true
+python3 - "$TMP/x45" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
+for c in r["collections"]:
+    if c["name"] == "legal/":
+        c.update(status="UNKNOWN",
+                 blocker="regulatory applicability is the owner's determination")
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+out45="$(python3 "$AUDIT" "$TMP/x45" "$ROOT" 2>&1)" || true
+grep -q "SILENT       collection legal/" <<<"$out45" \
+    || fail "an UNKNOWN row the changelog never names passed as reported"
+grep -q "changelog.md never names it" <<<"$out45" \
+    || fail "the silent UNKNOWN did not say where it should have been named"
+# SILENT fails the gate; UNKNOWN itself never does.
+python3 - "$ROOT" <<'PY'
+import importlib.util, pathlib, sys
+spec = importlib.util.spec_from_file_location(
+    "ga", pathlib.Path(sys.argv[1])/"tools/growth-audit.py")
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+assert m.Finding("SILENT", "x", "y").fatal(), "SILENT must fail the gate"
+assert not m.Finding("UNKNOWN", "x", "y").fatal(), "UNKNOWN must not"
+PY
+# Named in the delivery entry — as a word, not a substring — it is reported.
+printf '\n## 2026-09-10 — graft\n\n- `legal/` — UNKNOWN: regulatory applicability is the owner'"'"'s determination; waits on the owner.\n' \
+    >> "$TMP/x45/docs/graph/changelog.md"
+out45="$(python3 "$AUDIT" "$TMP/x45" "$ROOT" 2>&1)" || true
+! grep -q "SILENT" <<<"$out45" || fail "an UNKNOWN named in the changelog was still SILENT"
 
 printf 'growth coverage gate: PASS\n'

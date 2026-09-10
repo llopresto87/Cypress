@@ -87,11 +87,19 @@ Exactly one of, on every collection, agent, and expert row:
   `evidence` paths; they must resolve in the plant.
 - **ABSENT** — the source genuinely has no such evidence. Give the `reason` and
   the `searched` paths that establish it. A real absence is a fact; an
-  unestablished one is a gap wearing a fact's clothes.
+  unestablished one is a gap wearing a fact's clothes. For an agent or
+  expert row, `searched` names where the material would be and was not; a
+  filled leaf of this plant's graph listed there is a redirect, not an
+  absence (`CONTRADICTED`) — re-home the material into the collection the
+  agent reads, or cite the source paths instead.
 - **UNKNOWN** — a named `blocker` (unreachable source, a two-round
   non-converging `recover` finding, an evidence gap the scouts could not close)
   prevents coverage. The only legitimate way a row stays uncovered, and it
-  ships reported, never silent.
+  ships reported, never silent — named in the plant's `changelog.md` entry
+  for the pass (the row, what it waits on, and who) and put to the owner as
+  a numbered decision (`deliver.numbered-decisions`), the same ask the
+  plant facts use. The audit reads that entry and reports an `UNKNOWN` it
+  never names as `SILENT`, which fails the gate.
 
 `ran out of context`, `seemed enough`, `templates are present`, and `common
 cases done` are not statuses — they are the failure the contract forbids.
@@ -158,13 +166,15 @@ mapping.
 may not silently drop one. `grounding.required` means a `research-scout` must
 retrieve the upstream documentation this run and normalize it under
 `docs/graph/sources/` — the page is written from what was retrieved, never from
-model memory.
+model memory. Each normalized source keeps its raw snapshot under
+`sources/raw/`, or names in its `raw:` line why none was kept; the `sources/`
+collection row is `UNJUSTIFIED` otherwise.
 
 | kind | planned artifacts | expertise node | grounded |
 |---|---|---|---|
 | `language`, `runtime`, `framework` | `libraries/<slug>.md`, `best-practices/<slug>.md` | yes (its `libraries:` names `<slug>`) | yes |
 | `dependency` (core / significant) | `libraries/<slug>.md` | yes (its `libraries:` names `<slug>`) | yes |
-| `dependency` (incidental) | a line in `libraries/index.md` | no | no |
+| `dependency` (incidental) | a row of `libraries/index.md` naming it (the line is the artifact; the audit looks for the row, not the file) | no | no |
 | `infrastructure` | `architecture/<slug>.md`, `best-practices/<slug>.md` | yes | yes |
 | `datastore` | `data/<slug>.md`, `best-practices/<slug>.md` | yes | yes |
 | `external-service` | `architecture/<slug>.md` | no | yes |

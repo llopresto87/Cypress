@@ -1,7 +1,8 @@
 # Sources index
 
 Every external source ingested by this project. Raw snapshots in
-`raw/` (when license allows); normalized clean-markdown summaries in
+`raw/` (when license allows — and when it does not, the normalized
+file's `raw:` line says so); normalized clean-markdown summaries in
 `normalized/`.
 
 | Source | URL | Maintainer | Retrieved | Version | Reliability | Relevance | Notes |

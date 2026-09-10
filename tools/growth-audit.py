@@ -88,7 +88,9 @@ VERDICTS (a row fails the gate unless noted)
 
   MISSING      a required row is absent from the record entirely
   BLANK        the row exists with no status — growth never reached it
-  UNGROWN      a planned artifact does not exist in the plant
+  UNGROWN      a planned artifact does not exist in the plant — or, where
+               the artifact an incidental item owes is a line in an index, no
+               row of that index names it
   HOLLOW       a planned artifact exists but is not one: byte-identical to
                its seed template (for an expert, to the agent template or to a
                seed agent), still carrying {{placeholders}}, too small to carry
@@ -97,9 +99,14 @@ VERDICTS (a row fails the gate unless noted)
   UNGROUNDED   an item requiring external grounding cites no retrieved source
                that resolves under docs/graph/sources/
   DANGLING     a COVERED row cites evidence paths that do not exist
-  UNJUSTIFIED  an ABSENT row gives no reason, or no paths it searched
+  UNJUSTIFIED  an ABSENT row gives no reason, or no paths it searched; a
+               normalized source under a COVERED sources/ that keeps no raw
+               snapshot and states no reason in its `raw:` line
   CONTRADICTED a collection is claimed COVERED but holds only scaffolds or
-               `.unfilled.md` markers — the plant's own files disagree
+               `.unfilled.md` markers — the plant's own files disagree; an
+               agent or expert row claimed ABSENT whose searched paths include
+               a filled leaf of this plant's graph — something to read, found,
+               then called absent
   UNSTAFFED    a surface that has to answer the staffing question records no
                decision, answers it with something other than a boolean,
                gives no reason, or names a project-specific expert the plant
@@ -107,10 +114,16 @@ VERDICTS (a row fails the gate unless noted)
                or UNJUSTIFIED: those speak about a ROW that was left unfilled,
                while this speaks about the PROJECT — a surface with nobody
                assigned to it. The row itself may be complete and correct.
+  SILENT       an UNKNOWN row whose blocker the record names and the plant's
+               own changelog never does. UNKNOWN passes on one condition,
+               reported, and the record is not where anyone reads: a decision
+               filed there was never put to the owner it waits on
   STALE        the record was written against an older seed than the plant now
                carries; re-plan before trusting it
   UNKNOWN      an honest blocker, named. Reported always, never a failure —
-               the one legitimate way a row stays uncovered.
+               the one legitimate way a row stays uncovered — where reported
+               means named in docs/graph/changelog.md, the entry the delivery
+               writes (see SILENT).
 
 Usage:
   growth-audit.py <plant-root> <seed-root>            lint (the gate)
@@ -140,7 +153,16 @@ STATUSES = ("COVERED", "ABSENT", "UNKNOWN")
 # own readers; seed-lint holds them to it, so a protocol cannot promise a check
 # that no longer exists.
 VERDICTS = ("MISSING", "BLANK", "UNGROWN", "HOLLOW", "UNGROUNDED", "DANGLING",
-            "UNJUSTIFIED", "CONTRADICTED", "UNSTAFFED", "STALE", "UNKNOWN")
+            "UNJUSTIFIED", "CONTRADICTED", "UNSTAFFED", "SILENT", "STALE",
+            "UNKNOWN")
+# Where a delivery lands in the plant: grow's close-out and graft's Phase 8
+# entry both write here, so it is where an UNKNOWN row is either named or not.
+CHANGELOG_REL = f"{GRAPH_HOME}/changelog.md"
+# The two halves of retrieved provenance. A normalized snapshot names its raw
+# sibling, or the reason there is none, in this key of its metadata block.
+NORMALIZED_DIR = "sources/normalized"
+RAW_DIR = "sources/raw"
+RAW_KEY = "raw"
 
 # A leaf smaller than this carries a heading and nothing else. It is the floor
 # for "a file that states a fact", not a quality bar — quality is the
@@ -539,6 +561,73 @@ def resolves(plant, ref):
     return target.is_file()
 
 
+def graph_leaf_filled(plant, ref, templates):
+    """Whether a cited path is a filled leaf of this plant's own graph — the
+    thing an agent row exists to find. A source path, a directory, or a leaf
+    still byte-identical to its scaffold is not."""
+    raw = re.sub(r":\d+(?::\d+)?(-\d+)?$", "", str(ref).split("#", 1)[0]).strip()
+    if not raw.startswith(GRAPH_HOME + "/") or not resolves(plant, raw):
+        return False
+    return is_substantive(plant, raw[len(GRAPH_HOME) + 1:], templates)[0]
+
+
+LINK_RE = re.compile(r"\[([^\]]*)\]\(([^)\s]+)\)")
+
+
+def index_names(plant, rel, *names):
+    """Whether a table row of the index at `rel` names one of `names` whole —
+    as a cell, a backticked or bold cell, or a link's text or target stem.
+    Whole-cell, never substring: graph-lint's first index check asked
+    `stem in text` and passed a page whose stem sat inside a sibling's name
+    (7.9.0). Header rows are harmless here — a column is not called `tsx`."""
+    f = plant / GRAPH_HOME / rel
+    if not f.is_file():
+        return False
+    want = {n.strip().lower() for n in names if n and n.strip()}
+    for line in f.read_text(encoding="utf-8", errors="replace").splitlines():
+        if not line.lstrip().startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if all(re.fullmatch(r":?-{2,}:?", c) for c in cells if c):
+            continue
+        for cell in cells:
+            m = LINK_RE.fullmatch(cell)
+            cands = {m.group(1), Path(m.group(2)).stem} if m else {cell.strip("`*")}
+            if any(c.strip().lower() in want for c in cands):
+                return True
+    return False
+
+
+def raw_retained(plant, rel):
+    """Whether a normalized snapshot keeps its provenance: a raw sibling under
+    sources/raw/ (`<stem>-<date>.<ext>` or `<stem>.<ext>`), or a `raw:` line in
+    its metadata block naming the snapshot kept or the reason none was.
+
+    "When the license permits" was the research skill's only out, and an out
+    nobody has to record is one every scout takes: the plant this closed on
+    cited 23 library pages to one retrieval date with not a single artifact
+    behind it, and the next graft audited a pass it could not re-inspect."""
+    f = plant / GRAPH_HOME / rel
+    raw_dir = plant / GRAPH_HOME / RAW_DIR
+    if raw_dir.is_dir() and any(
+            q.is_file() and (q.stem == f.stem or q.name.startswith(f.stem + "-"))
+            for q in raw_dir.iterdir()):
+        return True, ""
+    val = parse_frontmatter(f).get(RAW_KEY)
+    val = (val if isinstance(val, str) else " ".join(val or [])).strip()
+    if not val:
+        return False, (f"retains no raw snapshot under {GRAPH_HOME}/{RAW_DIR}/ "
+                       f"and states no reason — its metadata block's `{RAW_KEY}:` "
+                       f"line names the snapshot kept, or why none was (the "
+                       f"license, a host without fetch, an MCP summary with no "
+                       f"page behind it)")
+    if re.fullmatch(r"[\w./-]+\.[A-Za-z0-9]{1,5}", val):
+        # A path, and the sibling scan above found nothing by that name.
+        return False, (f"names `{RAW_KEY}: {val}`, which does not exist under "
+                       f"{GRAPH_HOME}/{RAW_DIR}/")
+    return True, ""
+
+
 # ------------------------------------------------------------------- record
 
 def load_record(plant):
@@ -819,6 +908,8 @@ def lint_collections(plant, seed, rec, templates, findings):
                     findings.append(Finding("DANGLING", label,
                                             f"cites {ref!r}, which does not "
                                             f"exist in the plant"))
+            if name == "sources/":
+                lint_sources(plant, label, templates, findings)
         if status == "ABSENT" and live:
             # Classify by what a leaf CONTAINS, never by whether the seed
             # happens to template its path. Asking the path answers a
@@ -872,6 +963,48 @@ def lint_collections(plant, seed, rec, templates, findings):
                                         f"deliberate blank — {shown}. Finish it, "
                                         f"or remove it so the router stops "
                                         f"reading it as knowledge"))
+
+
+def lint_sources(plant, label, templates, findings):
+    """Every normalized snapshot in a COVERED sources/ keeps its provenance —
+    the raw artifact, or the recorded reason there is none. Reported once, at
+    the collection, rather than once per inventory item that cites it."""
+    d = plant / GRAPH_HOME / NORMALIZED_DIR
+    if not d.is_dir():
+        return
+    for q in sorted(d.glob("*.md")):
+        if q.name.endswith(UNFILLED_SUFFIX) or q.stem.lower() in ("index", "readme"):
+            continue
+        rel = q.relative_to(plant / GRAPH_HOME).as_posix()
+        if not is_substantive(plant, rel, templates)[0]:
+            continue
+        ok, why = raw_retained(plant, rel)
+        if not ok:
+            findings.append(Finding("UNJUSTIFIED", label,
+                                    f"{GRAPH_HOME}/{rel} {why}"))
+
+
+def absence_found_something(plant, label, row, templates, findings):
+    """An agent or expert row claimed ABSENT names, in `searched`, where the
+    material would be and was not. A filled leaf of this plant's graph in that
+    list is the opposite of an absence: something to read, found, and then
+    called absent — a redirect the record knows and the router cannot see.
+    The plant this closed on marked its designer ABSENT with the design
+    material's real paths in `searched`, and left the agent node pointing at
+    the empty directory; a cold session spawned it there."""
+    found = [ref for ref in row.get("searched", [])
+             if graph_leaf_filled(plant, ref, templates)]
+    if found:
+        findings.append(Finding("CONTRADICTED", label,
+                                f"claimed ABSENT, yet {found[0]!r} — among the "
+                                f"paths it searched — is a filled leaf of this "
+                                f"plant's graph. An absence is established by "
+                                f"looking where the material would be and "
+                                f"finding nothing. If that leaf is this agent's "
+                                f"material, re-home it into the collection the "
+                                f"agent reads (a move keeps one home) and cover "
+                                f"the row; if it is not, cite the source paths "
+                                f"you searched instead"))
 
 
 NODE_REF_RE = re.compile(r"^[a-z][a-z0-9-]*\.[a-z0-9.-]+$")
@@ -928,6 +1061,8 @@ def lint_agents(plant, seed, rec, templates, findings):
                                     f"any of it"))
             continue
         status = check_row_shape(label, row, findings)
+        if status == "ABSENT":
+            absence_found_something(plant, label, row, templates, findings)
         if status != "COVERED":
             continue
         empty = empty_reads(plant, reads, templates)
@@ -992,6 +1127,8 @@ def lint_experts(plant, seed, rec, templates, findings):
         status = check_row_shape(label, row, findings)
         if status is None or status == "UNKNOWN":
             continue
+        if status == "ABSENT":
+            absence_found_something(plant, label, row, templates, findings)
         if info is None:
             findings.append(Finding("UNSTAFFED", label,
                                     f"{named.get(name, 'an item')!r} names this "
@@ -1172,6 +1309,24 @@ def lint_inventory(plant, rec, templates, findings):
                                         f"against, not for every name in the "
                                         f"lockfile"))
                 continue
+            if rel.endswith("/index.md") and item.get("significance") == "incidental":
+                # The line IS the artifact, so the file's own size says
+                # nothing: a fresh index with one true row is under the
+                # substantive floor, and an index of twenty-four rows with
+                # none for this item passed as COVERED on a real plant.
+                if not (plant / GRAPH_HOME / rel).is_file():
+                    findings.append(Finding("UNGROWN", label,
+                                            f"{GRAPH_HOME}/{rel} — does not "
+                                            f"exist"))
+                elif not index_names(plant, rel, item.get("name"), item.get("slug")):
+                    findings.append(Finding("UNGROWN", label,
+                                            f"{GRAPH_HOME}/{rel} has no row "
+                                            f"naming {name!r} — the index line "
+                                            f"is the artifact an incidental "
+                                            f"item owes, and a COVERED row "
+                                            f"pointing at an index that never "
+                                            f"mentions it is a false COVERED"))
+                continue
             ok, why = is_substantive(plant, rel, templates)
             if not ok:
                 verdict = "UNGROWN" if why == "does not exist" else "HOLLOW"
@@ -1274,6 +1429,48 @@ def lint_inventory(plant, rec, templates, findings):
                                         "it there"))
 
 
+def unknown_rows(rec):
+    """Every row the record closes UNKNOWN, labelled as the lint labels it,
+    with the names a delivery entry would call it by."""
+    out = []
+    for key, prefix in (("collections", "collection"), ("agents", "agent"),
+                        ("experts", "expert")):
+        for row in rec.get(key, []):
+            if ((row.get("status") or "").strip().upper() == "UNKNOWN"
+                    and row.get("name")):
+                out.append((f"{prefix} {row['name']}",
+                            [str(row["name"]).rstrip("/")]))
+    for item in rec.get("inventory", []):
+        if (item.get("status") or "").strip().upper() == "UNKNOWN":
+            name = item.get("name") or item.get("slug") or "<unnamed>"
+            out.append((f"{item.get('kind') or 'item'} {name}",
+                        [n for n in (item.get("name"), item.get("slug")) if n]))
+    return out
+
+
+def lint_disclosure(plant, rec, findings):
+    """UNKNOWN passes the gate on one condition — reported — and the record is
+    not where anyone reads. The plant's changelog is where grow's delivery and
+    graft's Phase 8 entry land, so a blocker the changelog never names was
+    filed, not put to the owner it waits on. The plant this closed on marked
+    its legal corpus UNKNOWN — "the owner's determination, not the graft's" —
+    in a 43 KB JSON, and its delivery entry never said the word."""
+    f = plant / CHANGELOG_REL
+    text = f.read_text(encoding="utf-8", errors="replace") if f.is_file() else ""
+    for label, names in unknown_rows(rec):
+        if any(re.search(r"(?<![\w-])" + re.escape(n) + r"(?![\w-])", text, re.I)
+               for n in names if n):
+            continue
+        where = (f"{CHANGELOG_REL} never names it" if text
+                 else f"{CHANGELOG_REL} does not exist")
+        findings.append(Finding("SILENT", label,
+                                f"UNKNOWN with its blocker named in the record "
+                                f"and nowhere the owner reads — {where}. A "
+                                f"decision filed in JSON was never asked: name "
+                                f"this row, what it waits on, and who, in the "
+                                f"delivery entry"))
+
+
 def rows(rec, key, label):
     """The record's four arrays, validated once so every reader below can
     assume shape. Hand-written JSON gets a null array or a bare string where an
@@ -1335,6 +1532,7 @@ def do_lint(plant, seed, opt):
         lint_agents(plant, seed, rec, templates, findings)
         lint_experts(plant, seed, rec, templates, findings)
         lint_inventory(plant, rec, templates, findings)
+        lint_disclosure(plant, rec, findings)
 
     if opt.get("json"):
         print(json.dumps([{"verdict": f.verdict, "row": f.row,

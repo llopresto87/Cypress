@@ -56,6 +56,11 @@ templates, and the per-session instruction budget of the integrations.
   with the RED); specify, spec-author, and the template point at it.
 - Roster ground truth → `agents/*.md` frontmatter (manifest, kernel
   roster line, and README follow it; lint checks).
+- Unknown-row disclosure → `tools/growth-audit.py` (`SILENT`): every
+  UNKNOWN row is named in the plant's `changelog.md` entry and put to the
+  owner as a numbered decision; grow's delivery and graft's Phase 8 point.
+  Raw-snapshot provenance → the `raw:` line of a normalized source
+  (`skills/research-and-ingest`).
 
 ## Conventions
 

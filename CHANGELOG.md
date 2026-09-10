@@ -1,5 +1,85 @@
 # Changelog
 
+## 7.10.0 — the gate reads where the owner reads: four false passes closed on a real graft, one of them a decision nobody was asked (2026-09-10)
+
+A graft ran end to end on a grown plant, the coverage gate went green, and
+the owner came away believing no knowledge had been created at all. The
+knowledge was there — a megabyte of it, fifteen expertise nodes citing
+fifteen retrieved snapshots. What was missing was narrower and worse: four
+things the gate had passed that it should not have, and one of them was the
+reason the owner could not see the rest. None was a plant divergence. Each is
+now a verdict, pinned by the regression that would have caught it
+(`tests/test-growth-audit.sh` 42–45).
+
+### A decision filed where nobody reads (`SILENT`)
+
+- The seed's answer to "I cannot determine this" is record-and-report:
+  `UNKNOWN` with its blocker, "reported, never silent". The plant marked its
+  legal corpus `UNKNOWN` — *"regulatory applicability is the owner's
+  determination, not the graft's"* — in a 43 KB JSON, and its delivery entry
+  never said the word. The run classified the row as the owner's decision
+  correctly and then never put it to the owner. Two things close that. The
+  gate: `growth-audit.py` now reads the plant's `docs/graph/changelog.md`,
+  the entry grow's delivery and graft's Phase 8 both write, and reports an
+  `UNKNOWN` it never names as `SILENT` — fatal, unlike `UNKNOWN` itself,
+  because "reported" was the one condition under which `UNKNOWN` passes.
+  The ask: a blocker that is the owner's to resolve goes to them as a
+  numbered decision (`deliver.numbered-decisions`), the one owner-ask
+  mechanism the seed has and until now used only for the four plant facts.
+  `grow.md`'s delivery, `graft.md`'s Phase 5 and output format, and the
+  coverage-record template say so in their own place.
+
+### An absence that had found the material (`CONTRADICTED`, agent rows)
+
+- `ui-ux-designer` was `ABSENT` with the design material's real paths under
+  `product/` in `searched` — and the agent node still declared `design/`,
+  an empty directory the router sent design work into at high confidence.
+  The redirect lived in the record and nowhere the router reads. An agent or
+  expert row claimed `ABSENT` whose searched paths include a filled leaf of
+  the plant's own graph is now `CONTRADICTED`: something to read, found,
+  then called absent. Source paths, directories, and untouched scaffolds
+  still establish an absence. One helper, both arms. `graft.md` Phase 6
+  gains the drift class this was — a collection the seed added after the
+  plant's base, filled elsewhere: a move, never a copy, never `ABSENT` —
+  and Phase 5 points at it. `grow.md` already said an empty `design/` on a
+  plant with a user interface is an ungrown collection; the graft had no
+  rule for meeting that collection late, and improvised one.
+
+### A retrieval with no artifact behind it (`UNJUSTIFIED`, `sources/`)
+
+- Every library page cited a retrieval date with not one raw snapshot on
+  disk, so the graft audited a pass it could not re-inspect — the structural
+  cause of a `sharp` page that inverted upstream's `failOn` guidance and of
+  four column tables more specific than any evidence behind them. `grow.md`
+  owed three things per source (raw, normalized, index row); the research
+  skill's "when the license permits" was the only out, and an out nobody
+  has to record is one every scout takes. A normalized snapshot now names its
+  raw sibling, or the reason there is none, in a `raw:` line of its metadata
+  block; a `sources/` row `COVERED` over a snapshot with neither is
+  `UNJUSTIFIED`, and a `raw:` naming a file that is not there is too. The
+  skill, the three `sources/` templates, and the coverage-record template
+  carry the field.
+
+### An index line never written (`UNGROWN`, incidental items)
+
+- `tsx` was `COVERED` with `expect: libraries/index.md` and no `tsx` row in
+  it — the one false `COVERED` in the inventory, passed because the index as
+  a whole was substantive. For an incidental item the line IS the artifact,
+  so the audit now asks whether a row names it whole (a cell, a backticked
+  or bold cell, a link's text or target stem — never a substring, the 7.9.0
+  graph-lint rule) and reports `UNGROWN` otherwise. This also closes a
+  latent false `HOLLOW`: a fresh index with one true row is under the
+  substantive floor and used to fail for having been filled.
+
+### What did not change
+
+- `UNKNOWN` still never fails the gate on its own; the charter-correct
+  refusal (a legal analyst with no corpus refusing rather than inventing a
+  citation) stays the intended outcome. What fails is not naming it, and
+  not asking.
+- Nothing here weakens a verdict. The plant that surfaced these now reports
+  twenty findings where it reported one (`STALE`); all twenty are real.
+
 ## 7.9.0 — the gates stop lying about themselves: seven false verdicts closed, each pinned by the regression that caught it (2026-09-10)
 
 A harvest from a grown plant, and every candidate came from the same place: a

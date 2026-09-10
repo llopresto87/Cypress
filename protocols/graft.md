@@ -508,7 +508,13 @@ documentation rather than model memory. The loop is grow's: inventory, plan,
 author, lint, repeat while findings remain. What a graft may NOT do is close a
 row by lowering it — a row that cannot be covered on this pass is recorded
 `UNKNOWN` with its blocker, or `ABSENT` with the reason and the paths searched,
-and it ships reported.
+and it ships reported — named in the Phase 8 entry, which is where
+`growth-audit.py` looks (`SILENT` otherwise), and put to the steward as a
+numbered decision where the blocker is theirs to resolve
+(`deliver.numbered-decisions`). And a collection this seed added
+after the plant's base, whose material the plant already authored under
+another home, is not `ABSENT` at all: it is Phase 6 drift, the "filled
+elsewhere" class, and it moves.
 
 - **Grow what the plant evidently needs, grounded in its own facts.** Instantiate
   a suggested skill or expert the plant's real stack calls for (the
@@ -577,7 +583,16 @@ runs it, lighter.
     tombstone with no pointer, a stale index/topology entry;
   - **substantive thinness** — real, load-bearing plant knowledge (deploy docs,
     per-repo READMEs, comment-only sharp edges) still living outside the graph
-    structure (the (f) sweep, now standing).
+    structure (the (f) sweep, now standing);
+  - **a collection the seed added after the base, filled elsewhere** —
+    material a newer seed gives a collection of its own, authored under
+    another home when no such collection existed (design material under
+    `product/` from before `design/` shipped). A move, never a copy, and
+    never an `ABSENT` row: copying makes a second home, and `ABSENT` makes a
+    phantom gap the roster's `plant_knowledge:` then points into — a cold
+    session spawns the agent at the empty directory while the material sits
+    unread. The audit reads an absence that names a filled leaf where it
+    searched as `CONTRADICTED`.
 - **(2) Reconstruct in slices (Opus authors), bounded by the rootstock line.**
   Move each item to its natural node home as a holistic MERGE — never a copy;
   collapse duplicate homes into one and trim restated facts to cross-references;
@@ -637,7 +652,10 @@ backups exist). Then prove the plant is left more capable and no less itself:
   or `BLANK` row means this graft carried a capability it never grew;
   `UNGROWN`/`HOLLOW`/`UNGROUNDED` mean it grew one without the material;
   `UNSTAFFED` means a dominant domain or a core part of the stack never
-  answered whether it warrants an expert of its own. A 5.x plant meets this
+  answered whether it warrants an expert of its own; `SILENT` means a row
+  this graft closed `UNKNOWN` — the owner's decision, by the record's own
+  words — was never named in the Phase 8 entry: filed, not asked. A 5.x
+  plant meets this
   differently: its own experts live in the harness directories with no graph
   home, so they are invisible until step (c) relocates them — and then they
   surface as `MISSING` rows the record does not yet answer, which is the same
@@ -793,6 +811,7 @@ State the summary in the chat, and record a provenance entry in the plant's own
 - <skill/expert/runbook/page> — grown because <the plant's evidenced need>
 
 ## Coverage after the graft (growth-audit; rows this graft answered)
+- UNKNOWN carried: <row> — waits on <decision>, owner <who>   (each by name; the audit reads this entry)
 
 ## Grafted but not yet grown (inert machinery; deferred to real use)
 - <capability> — present as machinery, ungrounded now; sprouts via <use / close-out>
