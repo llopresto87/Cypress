@@ -47,13 +47,22 @@ exceptions are explicit and recorded in grill.md §9.
 
 - A spec in `docs/graph/specs/` covers the behavior being added or
   changed, signed in its §0 (`draft` with product ✓ architect ✓ tester ✓
-  is enough to encode; T2 work needs it `active`, kernel §0).
+  is enough to encode; the T2 covered lane needs it `active`, kernel §0).
 - A plan exists in `docs/graph/plans/grill.md` §9 with the increments
   named, in dependency order, `grill-lint.py` green.
 - The relevant libraries are wikified in `docs/graph/libraries/`.
 
 If any of these is missing, back up to the protocol that produces it
 (`specify`, `grill`, `ingest-library`) rather than starting test-first.
+
+**The T2 contained lane substitutes, it does not waive.** A contained
+change has no spec over its surface, so the first two conditions are
+met differently: the *defect and its reproduction* stand in for the
+contract text, and a grill.md entry line stands in for the §9 increment
+row. Everything below this point — RED first, fails for the right
+reason, GREEN, REFACTOR, the independent REVIEW — applies unchanged.
+The lane buys its way out of `specify` and the grill pass, never out of
+the cycle (`tiers.contained-lane`).
 
 ## Existing code with no test — characterize first
 
@@ -89,10 +98,10 @@ not spawned until this increment's COMMIT is recorded, unless §9's
 | COMMIT | the session | a clean review | grill.md §15 entry with the `spawn_id`s in issue order; the commit; the spec's status advanced |
 
 The one merge the tiers allow: a T2 increment covering a single
-contract whose RED is mechanical is briefed whole to `implementer`,
-which writes the failing test before making it pass
-(`tiers.execution-paths`); the REVIEW spawn stays independent either
-way. Workers report what they did in the handback; the session, not the
+contract — or, on the contained lane, a single reproduced defect —
+whose RED is mechanical is briefed whole to `implementer`, which writes
+the failing test before making it pass (`tiers.execution-paths`); the
+REVIEW spawn stays independent either way. Workers report what they did in the handback; the session, not the
 worker, writes grill.md — the plan-of-record is session-owned
 (`rule.grill`, `protocol.canonize`).
 

@@ -86,8 +86,9 @@ def main() -> int:
         "needs, and state which you loaded and which you deliberately "
         "skipped. Do not bulk-read to orient. Then classify the task tier "
         "out loud (kernel §0: T0 question / T1 trivial non-behavioral edit / "
-        "T2 spec-covered change / T3 everything else) — process follows the "
-        "tier."
+        "T2 contained change — spec-covered, or small, local and reversible "
+        "with a RED test and a recorded why / T3 everything else) — process "
+        "follows the tier."
     )
     suggestion = ""
     try:

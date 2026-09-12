@@ -1,6 +1,6 @@
 ---
 name: canonize
-description: The single end-of-task close-out spawn. At the completion of every non-trivial task, spawn the docs-librarian ONCE with a combined brief that (a) persists into docs/graph any knowledge of interest the work surfaced (b) catalogs in docs/graph/tools any durable tool it produced (the toolcraft doctrine, kernel §3.8, executes inside this same spawn — never a second one), (c) walks the open/hotfix status register item by item and moves — in frontmatter, with evidence — what this session actually moved, and (d) records every decision that departs from a standard the graph owns as both an ADR entry and a standing `deviation.*` node. A task is not complete until all four are done or explicitly recorded empty. For Tier 0/1 tasks (kernel §0), the session self-records "nothing of interest / no tool" in the delivery instead of spawning. Runs before deliver signs off.
+description: The single end-of-task close-out spawn. At the completion of every non-trivial task, spawn the docs-librarian ONCE with a combined brief that (a) persists into docs/graph any knowledge of interest the work surfaced (b) catalogs in docs/graph/tools any durable tool it produced (the toolcraft doctrine, kernel §3.8, executes inside this same spawn — never a second one), (c) walks the open/hotfix status register item by item and moves — in frontmatter, with evidence — what this session actually moved, (d) records every decision that departs from a standard the graph owns as both an ADR entry and a standing `deviation.*` node, and (e) on a T2 contained-lane task writes the why-record the lane owes — one ADR or one changelog line carrying defect → cause → fix → pinning test. A task is not complete until all five are done or explicitly recorded empty. For Tier 0/1 tasks (kernel §0), the session self-records "nothing of interest / no tool" in the delivery instead of spawning. Runs before deliver signs off.
 id: protocol.canonize
 tier: 2
 kind: protocol
@@ -11,6 +11,7 @@ owns:
   - canonize.close-out-flow
   - canonize.status-review
   - canonize.deviation-capture
+  - canonize.why-record
 requires:
   - protocol.toolcraft
 peers:
@@ -30,6 +31,7 @@ load_when:
   - "catalog a tool or skill the work produced"
   - "status review at close-out: did each register item move this session"
   - "we departed from the standard, record the deviation and why"
+  - "small fix with no spec, where does the why get written down"
 est_tokens: 2288
 command: true
 ---
@@ -127,6 +129,18 @@ never re-litigated or mistaken for a lapse. If nobody can say why, it
 is not a standing deviation — record it `status: open` with an owner
 and let the next session decide.
 
+**Why-record** (`tiers.contained-lane`) — mandatory on every **T2
+contained lane** task, because the lane spent no spec to explain
+itself and the close-out is where that debt comes due. The brief names
+the defect, its cause, the fix, and the test that pins it, and the
+librarian writes **one** entry: an **ADR** when a real choice was made
+among options (`docs/graph/skills/adr-writer.md`), otherwise a
+`changelog.md` line naming defect → cause → fix → test. One entry, not
+both, and never a spec — a small change that needs a spec to be
+explicable was misclassified, and the honest close-out says so rather
+than manufacturing the spec after the fact. A covered-lane task owes no
+why-record: its spec contract already carries the why.
+
 **Prose pass** (`humanizer.scope`) — every node body, runbook, or README
 paragraph the librarian writes or refreshes this spawn is prose a person
 reads: the brief instructs the librarian to apply
@@ -144,8 +158,10 @@ agnosticism gate), throwaway prototypes or genuine one-offs.
 
 1. **Assemble candidates** from the finished work and the workers'
    handback payloads: facts with evidence, tools with path + entry point
-   + invocation + covering test, and every decision that departed from a
-   graph-owned standard, each with the standard it departs from.
+   + invocation + covering test, every decision that departed from a
+   graph-owned standard, each with the standard it departs from, and —
+   on the T2 contained lane — the why-record's defect, cause, fix, and
+   pinning test.
 2. **Spawn the docs-librarian once** (Opus-class; it owns `docs/graph/`)
    with a brief that embeds the canonical block from
    `docs/graph/templates/prompts/graph-session-bootstrap.md` plus both candidate
@@ -193,8 +209,10 @@ uncaptured tool or procedure is a silent capability leak; a status the
 work moved but the frontmatter still shows `open` is the same leak in a
 third form (the next session redoes closed work, or trusts a hotfix as
 a fix); an unrecorded deviation is the fourth (a deliberate departure
-read as a lapse and reverted) — all the same failure class as a green
-lie (§3.5). `deliver` (§3.6) does not sign off
+read as a lapse and reverted); and a contained-lane change delivered
+with no why-record is the fifth — a behavior change nobody can trace
+back to a reason, the exact debt the lane borrowed against when it
+skipped the spec — all the same failure class as a green lie (§3.5). `deliver` (§3.6) does not sign off
 until this close-out has run (or the T0/T1 self-record line is present).
 
 ## Relationship to the other protocols
@@ -205,8 +223,10 @@ until this close-out has run (or the T0/T1 self-record line is present).
   counts as a durable tool; canonize owns the *execution* — there is no
   separate toolcraft spawn.
 - `adr-writer` (`docs/graph/skills/adr-writer.md`) writes the ADR that
-  carries a deviation's history; canonize owns the moment it is captured
-  and the `deviation.*` node that makes it standing truth.
+  carries a deviation's history — and the short-form ADR a contained
+  lane's why-record calls for; canonize owns the moment either is
+  captured and the `deviation.*` node that makes a departure standing
+  truth.
 - `harvest` folds **project-agnostic** lessons and tools into the seed,
   user-triggered only; canonize keeps **project-specific** knowledge and
   tools in the plant. What harvest's agnosticism gate rejects still
@@ -216,6 +236,9 @@ until this close-out has run (or the T0/T1 self-record line is present).
 
 - You do not close a Tier 2/3 task without the librarian spawn, and you
   do not skip the T0/T1 self-record line "because it was minor".
+- You do not close a contained-lane task without its why-record, and
+  you do not let that record grow into a spec — if it needs one, the
+  task was misclassified; say so in the delivery and reclassify.
 - You do not spawn the librarian twice for one task's close-out; facts
   and tools travel in the same brief.
 - You do not write the graph's fact-bearing surfaces from the main

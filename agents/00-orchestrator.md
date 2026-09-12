@@ -71,22 +71,31 @@ Has this project been grown?  no → EXPERT_SEED_INSTALL_PROMPT.md → grow
    └─ no
       Trivial edit, NO behavior/contract/spec surface? → T1: edit in-session
       └─ no
-         Covered by an active spec + plan line?        → T2: minimal worker set
+         Covered by an active spec + plan line?        → T2 covered lane
          └─ no
-            New project?                               → T3 via from-scratch
-            Goal vague or contested?                   → T3 via brainstorm
-            Otherwise                                  → T3: specify → grill → test-first
+            Contained? (one surface, no new dep,       → T2 contained lane
+            reversible, no spec over it, intent fits
+            a decision note — ALL of them)
+            └─ no
+               New project?                            → T3 via from-scratch
+               Goal vague or contested?                → T3 via brainstorm
+               Otherwise                               → T3: specify → grill → test-first
 ```
 
-State the classification and its edge: *"T2 — bug fix covered by
-SPEC-0007 §4.2; regression test + fix via tester → implementer."*
+State the classification, the lane, and the edge that qualified it:
+*"T2 covered — bug fix under SPEC-0007 §4.2; regression test + fix via
+tester → implementer."* · *"T2 contained — off-by-one in the retry
+backoff, no spec owns `retry/`; one surface, revert-reversible; RED
+test + ADR at close-out."*
 
 The tier edges are load-bearing (kernel §0): T1 must have **no**
-behavior, contract, persisted-format, security, or spec surface; T2
-must already be **authorized** by an active spec contract and plan
-line. When in doubt, or when the work crosses the edge mid-task,
-reclassify **upward** and say so. Misclassifying down is the violation;
-escalating is normal and cheap.
+behavior, contract, persisted-format, security, or spec surface; the
+covered lane must already be **authorized** by an active spec contract
+and plan line; the contained lane needs **every** one of its conditions
+(`tiers.contained-lane`), and any doubt about any one of them is T3.
+When in doubt, or when the work crosses the edge mid-task, reclassify
+**upward** and say so. Misclassifying down is the violation; escalating
+is normal and cheap.
 
 ### Tier paths
 
@@ -99,15 +108,22 @@ escalating is normal and cheap.
   compact delivery with the one-line canonize self-record
   ("nothing of interest / no tool, because …"). If the edit surfaced
   anything durable, escalate to the close-out spawn.
-- **T2 — covered change.** Spawn the minimal worker set. For a bounded
-  increment, one test-first worker may own RED→GREEN in a single
-  context: the authorizing spec contract already pins the behavior, so
-  the test cannot drift to fit the code — and the `reviewer` audit
-  stays as the independent check. Split tester/implementer only when
-  the increment spans contracts or the RED phase is itself judgment-
-  heavy — the criterion is owned by `docs/graph/method/tiers.md`
-  (`tiers.execution-paths`). Focused gates (§3.5). Close-out spawn +
-  full delivery.
+- **T2 — contained change.** Spawn the minimal worker set. For a
+  bounded increment, one test-first worker may own RED→GREEN in a
+  single context: on the covered lane the authorizing spec contract
+  pins the behavior, on the contained lane the reproduction in the
+  brief does — either way the test cannot drift to fit the code, and
+  the `reviewer` audit stays as the independent check. Split
+  tester/implementer only when the increment spans contracts or the RED
+  phase is itself judgment-heavy — the criterion is owned by
+  `docs/graph/method/tiers.md` (`tiers.execution-paths`). Focused gates
+  (§3.5). Close-out spawn + full delivery. On the contained lane the
+  brief carries the defect and its reproduction instead of contract
+  text, you add the grill.md line yourself on entry, and the close-out
+  brief must name the **why-record** the lane owes — an ADR when a real
+  choice was made, otherwise the `changelog.md` entry naming the
+  defect, its cause, and the test that pins it
+  (`tiers.contained-lane`, `docs/graph/protocols/canonize.md`).
 - **T3 — spec-bearing work.** The full funnel with all doing delegated:
   `brainstorm`* → `specify` → `grill` → `test-first` → `verify` →
   close-out → `deliver` (`ingest-library` runs inside grill §5 as
@@ -234,12 +250,17 @@ independent.
 
 Before `implementer` writes code: (1) a signed spec covers the change
 — `draft` with its §0 sign-offs is enough for the T3 funnel, and it
-turns `active` with its first RED; T2 requires `active` — else enter
-`specify`; (2) grill.md §9 references the contracts being implemented
-— else update it; (3) `tester` has failing tests for this increment —
-else enter `test-first` RED. A request that "feels small"
-but fails these checks is T3, not T1/T2 — the tier edges, not urgency,
-decide.
+turns `active` with its first RED; the T2 covered lane requires
+`active` — else enter `specify`; (2) grill.md §9 references the
+contracts being implemented — else update it; (3) `tester` has failing
+tests for this increment — else enter `test-first` RED.
+
+The T2 **contained lane** is the one exemption from (1) and (2), and it
+is narrow: no spec owns the surface, so the RED test is the contract
+and the why-record is the history; the grill.md line is the entry
+bookkeeping, not a §9 contract reference. (3) is never exempt. A
+request that "feels small" but fails the contained lane's conditions is
+T3, not T1/T2 — the tier edges, not urgency, decide.
 
 ## Invariants you enforce
 

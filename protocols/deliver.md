@@ -61,7 +61,8 @@ earn the full ceremony. Deliver in the chat, in five lines or fewer:
 ```
 
 A T1 edit that turns out to touch behavior, a contract, or anything a
-spec covers is not T1 — reclassify and take the full path. The compact
+spec covers is not T1 — reclassify and take the full path: a small
+behavior change is T2's contained lane, not a stretched T1. The compact
 form appends to grill.md §15 only when it changed a file.
 
 ## Full form (Tier 2/3)
@@ -104,7 +105,7 @@ section 15.
 - <assumption not yet validated> — link to grill.md section 12 row
 
 ## Session metrics
-- Tier: <T0-T3> (reclassified: <none, or T1→T2 + why>)
+- Tier: <T0-T3; for T2 name the lane: covered | contained> (reclassified: <none, or T1→T2 + why>)
 - Spawns: <N> (<agent×count, ...>)
 - Route bands: <HIGH×n MEDIUM×n LOW×n> — overrides: <none, or count + why>
 - Retries: <none, or class×count per docs/graph/protocols/recover.md>

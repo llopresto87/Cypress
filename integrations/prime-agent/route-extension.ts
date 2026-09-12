@@ -50,8 +50,10 @@ const MANDATE =
   "anything, open docs/graph/index.md, load only the nodes this task needs, " +
   "and state which you loaded and which you deliberately skipped. Do not " +
   "bulk-read to orient. Then classify the task tier out loud (kernel " +
-  "\u00a70: T0 question / T1 trivial non-behavioral edit / T2 spec-covered " +
-  "change / T3 everything else) \u2014 process follows the tier.";
+  "\u00a70: T0 question / T1 trivial non-behavioral edit / T2 contained " +
+  "change \u2014 spec-covered, or small, local and reversible with a RED " +
+  "test and a recorded why / T3 everything else) \u2014 process follows " +
+  "the tier.";
 
 export default function routeExtension(pi: ExtensionAPI): void {
   pi.on("before_agent_start", async (event, ctx) => {

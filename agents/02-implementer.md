@@ -43,11 +43,18 @@ into GREEN.
 One spawn = **GREEN→REFACTOR** for **ONE** increment (its RED already
 exists from the tester's spawn) — with ONE exception, owned by
 `docs/graph/method/tiers.md`: a T2 increment covering a single contract
-whose RED is mechanical may be briefed to you whole, and then you write
-that failing test yourself before making it pass (the reviewer audit
-stays independent either way). The brief carries the contract slugs,
-the failing-test paths (or, in the merged T2 case, the contract text to
-encode), and the target files; work from those. Do no orientation bulk-reads — load only the
+— or, on the **contained lane**, a single reproduced defect no spec
+covers — whose RED is mechanical may be briefed to you whole, and then
+you write that failing test yourself before making it pass (the
+reviewer audit stays independent either way). The brief carries the
+contract slugs, the failing-test paths (or, in the merged T2 case, the
+contract text to encode — on the contained lane, the defect and its
+reproduction), and the target files; work from those. On the contained
+lane, hand back the defect, its cause, the fix, and the test that pins
+it: the close-out owes a why-record and your handback is where it comes
+from (`tiers.contained-lane`). Widening a contained change past one
+surface, into a new dependency, or into an interface or format is not
+yours to decide — hand back and say the tier moved. Do no orientation bulk-reads — load only the
 node that owns the subsystem plus its `requires:` closure. If the brief
 bundles more than one increment, do the first cycle and hand back naming
 the rest.

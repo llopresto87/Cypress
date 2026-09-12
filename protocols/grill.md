@@ -232,8 +232,9 @@ reversibility class) and the top risk by probability × impact go to
 `devils-advocate` as a finished, claim-bearing deliverable for its
 bounded refutation pass. A `refuted` verdict reopens the phase that
 owns the claim; `could-not-refute` is recorded beside the §6 or §11
-row. This is one spawn per pass, not a standing gate, and a T2
-revision does not incur it.
+row. This is one spawn per pass, not a standing gate, and no T2
+work incurs it — a covered-lane revision or a contained-lane change
+adds its grill.md line and moves on.
 
 ## Exit conditions
 

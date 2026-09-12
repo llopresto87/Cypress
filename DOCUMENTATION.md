@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 7.13.1
+- Version documented: 7.14.0
 - Repository role: this repo is the seed, the product that is shipped
   into other projects. It is *not* a grown project itself.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -125,7 +125,7 @@ full statement of each rule lives in (and only in) its owning node.
 
 | #   | Rule        | One-line statement | Owner node |
 |-----|-------------|--------------------|------------|
-| 3.1 | **spec**       | Every non-trivial behavior has an executable spec in `docs/graph/specs/`, written before the code. | `protocol.specify` (`rule.spec`) |
+| 3.1 | **spec**       | Every non-trivial behavior has an executable spec in `docs/graph/specs/`, written before the code — except a T2 contained change, pinned by its RED test and why-record instead ([§4.1](#41-t2s-contained-lane)). | `protocol.specify` (`rule.spec`) |
 | 3.2 | **knowledge**  | `docs/graph/` is the single source of truth — one home per fact, loaded minimally and declared, ahead of memory. | `skill.context-router` (`rule.knowledge`) |
 | 3.3 | **grill**      | `docs/graph/plans/grill.md` is the living plan-of-record; append, never silently rewrite. | `protocol.grill` (`rule.grill`) |
 | 3.4 | **test-first** | No production code without a failing test that authorizes it — RED → GREEN → REFACTOR → COMMIT. | `protocol.test-first` (`rule.test-first`) |
@@ -160,16 +160,43 @@ proportionality, decided out loud before acting. Depth lives in
 |------|--------------|----------------|
 | **T0** | a question — nothing changes | Resolve minimal nodes, read, answer with citations. No spawn. Compact delivery. |
 | **T1** | a trivial edit with **no** behavior, contract, or spec surface (typo, comment, formatting) | The session edits directly — the one in-session authoring exception. One focused gate. Compact delivery with a one-line canonize self-record. |
-| **T2** | a bounded change **already authorized** by an active spec + plan | Spawn the minimal worker set (one test-first worker may own RED→GREEN in one context). Close-out spawn + full delivery. |
-| **T3** | anything that creates/changes behavior, architecture, contracts, dependencies, or is ambiguous — **and anything no other row clearly covers** | Full funnel: brainstorm* → specify → grill → test-first → verify → close-out → deliver. All *doing* delegated to clean-context specialists. |
+| **T2** | a **contained change**, reached by either lane: *covered* — already authorized by an active spec + plan; or *contained* — small, local, reversible, with no spec over the surface | Spawn the minimal worker set (one test-first worker may own RED→GREEN in one context). Close-out spawn + full delivery. No brainstorm, no specify pass, no grill refutation. |
+| **T3** | change beyond what the contained lane holds — architecture, contracts, dependencies, ambiguity — **and anything no other row clearly covers** | Full funnel: brainstorm* → specify → grill → test-first → verify → close-out → deliver. All *doing* delegated to clean-context specialists. |
 
-The two hard edges keep the tiers honest:
+### 4.1 T2's contained lane
+
+Most maintenance is a small defect fix in code no spec covers. Sending all of
+it to T3 buys a specify pass and a grill pass to authorize three lines — paid
+often enough that the funnel stops being believed. The contained lane makes the
+authorization proportional: **the failing test that pins the behavior, plus a
+recorded why**, instead of a spec document.
+
+It opens only when **every** condition holds — one surface (no contract, public
+interface, persisted format, or schema); no new dependency; reversible by revert
+(no migration, no one-way door, no auth/security/concurrency change); no active
+spec owns the surface; and the intent fits in a decision note. Any doubt about
+any one of them is T3.
+
+What it buys and what it never buys:
+
+| Still owed | Waived |
+|------------|--------|
+| The RED test, written before the fix — §3.4 in full | The spec document, its §0 sign-offs, the `specify` pass |
+| The **why-record** at close-out: defect → cause → fix → pinning test, as a short ADR when a real choice was made, otherwise a `changelog.md` entry | The grill refutation spawn, the architect pass, the devil's-advocate pass |
+| A `grill.md` line on entry, so the plan-of-record still records what happened | The full `grill` pass |
+| The independent reviewer audit, and the gates the blast radius earns | Nothing — gate depth follows radius, never the lane |
+
+The three hard edges keep the tiers honest:
 
 1. **T1 is defined by what it cannot touch.** If the edit could alter behavior,
    an interface, a persisted format, security posture, or anything a spec covers,
    it is not T1. A config value change alters behavior; it is never T1.
-2. **T2 requires existing spec authorization.** No active spec contract covering
-   the change means it is T3, however small it looks.
+2. **The covered lane requires existing spec authorization.** No active spec
+   contract covering the change closes that lane — take the contained lane if it
+   qualifies, else T3.
+3. **The contained lane is unanimous.** Every condition, or T3. When the work
+   turns out to need an interface change, a dependency, a migration, or a spec
+   to explain itself, stop and reclassify upward mid-task.
 
 Misclassifying **down** is the violation. Escalating **up** mid-task is normal
 and cheap.
@@ -386,7 +413,10 @@ authored jointly by product (user-facing layer), architect (functional
 contracts), and tester (executable encoding). A spec is finished when all
 three sign off on the same document. Specs use stable section numbers (§1–§12) so
 agents and tooling can index into them. Code without a spec is in remediation
-mode; a spec without code is an unimplemented feature.
+mode; a spec without code is an unimplemented feature. The exception is T2's
+contained lane ([§4.1](#41-t2s-contained-lane)): a small, single-surface,
+reversible change with no spec over it carries its contract in the RED test
+and its why in the close-out record, and never enters `specify`.
 
 ### 7.2 Test-driven development (TDD)
 
@@ -712,7 +742,7 @@ tools/                graft reconciliation engine + audit (incl. --unfilled); ag
 docs/                 The seed's OWN decisions (ADRs) and plans
   decisions/            adr-0001..0004
   plans/                agent-routing, pure-graph-refactor, prime-agent-integration, scouts
-tests/                run.sh + 9 shell suites + python linters/regressions
+tests/                run.sh + 17 shell suites + python linters/regressions
 install.sh            Drops the seed into a target project
 manifest.json         Machine-readable catalog of all seed files
 INSTALL_PROMPT.md     THE single entry point (paste into an agent chat)

@@ -109,6 +109,12 @@ from the change class, not the gate list:
 | Central abstraction, dependency direction, concurrency, auth/security, data migration | Broad system gates: full test suite, security scan, e2e on critical flows, manual review. |
 | Affected scope genuinely uncertain                                  | Treat as the row above; uncertainty buys breadth, never a discount.    |
 
+The **tier does not pick the row; the blast radius does.** A T2
+contained-lane change is usually the "local logic change" row, but a
+three-line fix on a shared path earns the row its radius names — the
+lane bought a cheaper *authorization*, never a cheaper gate
+(`tiers.contained-lane`).
+
 Escalate one row the moment a "local" change turns out to touch a
 shared surface. Never run the broad battery on a provably local change
 out of ritual — wall-clock and attention are budget too.

@@ -57,12 +57,16 @@ The kernel defines four work tiers:
 |------|-----------|-------------|
 | T0 | a question — nothing changes | read minimal nodes, answer with citations |
 | T1 | a trivial edit, no behavior/contract/spec surface | edit in-session; one focused gate |
-| T2 | a bounded change already authorized by an active spec + plan | minimal worker set + close-out |
-| T3 | new/changed behavior, architecture, contracts, dependencies, ambiguity — and anything no other row covers | full funnel, all doing delegated |
+| T2 | a contained change — authorized by an active spec + plan (*covered lane*), or small, local and reversible with no spec over it (*contained lane*) | minimal worker set + close-out |
+| T3 | change beyond what that holds — architecture, contracts, dependencies, ambiguity — and anything no other row covers | full funnel, all doing delegated |
 
 Hard edges (kernel): if an edit *could* alter behavior, an interface, a
-persisted format, or security posture, it is not T1. No covering spec
-means T3, however small it looks.
+persisted format, or security posture, it is not T1. The covered lane
+needs an active spec contract. The contained lane is unanimous — one
+surface, no new dependency, reversible, no spec over it, intent fits a
+decision note — and any doubt is T3. On the contained lane the RED test
+is the contract and the close-out's why-record is the history; depth in
+`method.tiers` (`tiers.contained-lane`).
 
 The **default T3 sequence** (kernel §2), verbatim:
 
@@ -205,7 +209,12 @@ This node owns **the spec rule** (`rule.spec`): specs are the source of
 truth for *behavior*. Every non-trivial behavior has a spec, written
 before the code, with stable section numbers; every functional contract
 maps to at least one test; superseded specs stay on disk with a link
-forward. If wiki and spec disagree about how a library *can* be used,
+forward. The one exception is the **T2 contained lane** — a small,
+single-surface, reversible change with no spec over the surface, whose
+contract is the RED test and whose why is the close-out's why-record;
+it does not enter `specify` at all (`tiers.contained-lane`). A change
+that needs prose to be explicable is spec-bearing work regardless of
+its line count. If wiki and spec disagree about how a library *can* be used,
 the wiki is right; if product and spec disagree about what to build,
 fix the spec.
 
@@ -443,10 +452,13 @@ and recorded in grill.md §9.
 ### Entry conditions
 
 A spec covers the behavior, signed in its §0 (`draft` with the three
-sign-offs is enough to encode; T2 needs it `active`); grill.md §9 names
-the increments in dependency order, `grill-lint.py` green; the
-libraries are wikified. Missing one → back up to the protocol that
-produces it.
+sign-offs is enough to encode; the T2 covered lane needs it `active`);
+grill.md §9 names the increments in dependency order, `grill-lint.py`
+green; the libraries are wikified. Missing one → back up to the
+protocol that produces it. The T2 **contained lane** substitutes rather
+than waives: the defect and its reproduction stand in for the contract
+text, a grill.md entry line for the §9 row — and the cycle below runs
+unchanged.
 
 ### Existing code with no test — characterize first
 
@@ -471,8 +483,9 @@ unless §9's `Depends on:` rows say they are independent
 | REVIEW | `reviewer` | the diff, the §9 row | severity findings; Critical/Major → `implementer` once more, an attempt under `recover` |
 | COMMIT | the session | a clean review | grill.md §15 entry with the `spawn_id`s in order; the commit; the spec's status advanced |
 
-The one merge the tiers allow: a T2 single-contract increment with a
-mechanical RED is briefed whole to `implementer`; the REVIEW spawn stays
+The one merge the tiers allow: a T2 single-contract increment — or a
+single reproduced defect on the contained lane — with a mechanical RED
+is briefed whole to `implementer`; the REVIEW spawn stays
 independent. Workers report in the handback; the session writes
 grill.md.
 
@@ -807,7 +820,12 @@ close-out, that persists into `docs/graph/` the facts, sharp edges,
 corrected assumptions, provenance, and missed `load_when:` triggers the
 work surfaced, and catalogs its durable tools (the toolcraft rule) in
 the same pass. Two doctrines, one execution: a second spawn with the
-same bootstrap and lint run would be pure coordination waste.
+same bootstrap and lint run would be pure coordination waste. On a T2
+**contained-lane** task the same spawn also writes the why-record the
+lane owes — one short ADR when a real choice was made, otherwise one
+`changelog.md` line carrying defect → cause → fix → pinning test
+(`canonize.why-record`). A contained change delivered without it is a
+behavior change nobody can trace to a reason.
 
 The librarian owns the graph's **fact-bearing surfaces** (nodes, wiki
 pages, the tool catalog) and one-home-per-fact; the session never

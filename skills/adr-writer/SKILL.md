@@ -49,6 +49,12 @@ This skill encodes the discipline of writing them well.
 - Two specialists disagreed and the orchestrator picked an option.
 - A bug post-mortem revealed an implicit decision that should have
   been explicit.
+- A **T2 contained-lane** change made a real choice among options and
+  owes its why-record (`tiers.contained-lane`). Write the short form:
+  Context, Decision, Consequences, Reversibility — the sections that
+  carry the why. Skip Alternatives when none were weighed, and say so
+  in one line rather than inventing them. A contained change whose why
+  needs every section was misclassified; hand that back, do not pad.
 - Anyone asks "why did we do it this way?" and the answer isn't in
   an existing ADR.
 

@@ -1,6 +1,6 @@
 ---
 name: specify
-description: Author an executable specification under docs/graph/specs/SPEC-NNNN-<slug>.md through a phased pass — product (§3), architect (§4 §5 §6 §7 §8), then product (§9) and tester (§10, testability) side by side, security where the surface is sensitive — signed off in §0 while still draft; the spec turns active only when its RED tests land. Use whenever a goal is clear but no spec covers it, an existing feature's contract is changing, or a bug investigation reveals an implicit contract that needs to be made explicit. Specs are the source of truth for behavior — do not write code without one.
+description: Author an executable specification under docs/graph/specs/SPEC-NNNN-<slug>.md through a phased pass — product (§3), architect (§4 §5 §6 §7 §8), then product (§9) and tester (§10, testability) side by side, security where the surface is sensitive — signed off in §0 while still draft; the spec turns active only when its RED tests land. Use whenever a goal is clear but no spec covers it, an existing feature's contract is changing, or a bug investigation reveals an implicit contract that needs to be made explicit. Specs are the source of truth for behavior — do not write code without one, the single exception being a T2 contained-lane change (small, single-surface, reversible, no spec over the surface), which is pinned by its RED test and its close-out why-record instead.
 id: protocol.specify
 tier: 2
 kind: protocol
@@ -45,6 +45,18 @@ this). Superseded specs stay on disk with status `superseded` and a
 link forward, catalogued in `docs/graph/specs/index.md`. If wiki and
 spec disagree about how a library *can* be used, the wiki is right;
 if product and spec disagree about what to build, fix the spec.
+
+**The one exception, and its price.** A **T2 contained-lane** change —
+small, single-surface, reversible, with no spec over the surface —
+carries its behavior in the RED test that pins it and its why in the
+close-out's why-record, and does not enter this protocol
+(`tiers.contained-lane`). That is not a spec-free behavior change: it
+is a behavior change whose contract is executable but not narrative,
+and it is bounded by the lane's conditions, every one of which must
+hold. The moment a change needs prose to be explicable — because the
+behavior is contested, spans a surface, or a reader would ask what the
+rule *is* rather than what broke — it is spec-bearing work and belongs
+here. "It is only a few lines" is not one of the conditions.
 
 This protocol is the bridge between "we know what we want" and "we
 have a plan". The spec is the contract that the plan will implement

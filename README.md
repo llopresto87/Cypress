@@ -123,13 +123,17 @@ Process is proportional to risk, never to habit. Every task is
 classified before acting: **T0** a question (read minimally, answer
 with citations, no spawn), **T1** a trivial edit with no behavior,
 contract, or spec surface (the one in-session authoring exception, one
-focused gate, compact delivery), **T2** a change already authorized by
-an active spec and plan (minimal worker set, focused gates, close-out),
-**T3** anything spec-bearing (the full delegated funnel). The tier
+focused gate, compact delivery), **T2** a contained change (minimal
+worker set, focused gates, close-out) — reached either by an active
+spec and plan, the *covered lane*, or by being small, local and
+reversible with no spec over the surface, the *contained lane*, where a
+failing test and a recorded why are the proportional authorization —
+and **T3** anything spec-bearing (the full delegated funnel). The tier
 edges are load-bearing: misclassifying *down* is the violation;
-escalating up mid-task is normal and cheap. This keeps a typo fix from
-paying a feature's coordination cost while keeping every consequential
-change inside the full discipline (kernel §0).
+escalating up mid-task is normal and cheap. This keeps a typo fix — and
+a three-line defect fix — from paying a feature's coordination cost
+while keeping every consequential change inside the full discipline
+(kernel §0).
 
 ### Spec-driven (SDD)
 
@@ -137,7 +141,10 @@ Every non-trivial behavior has a spec at `docs/graph/specs/SPEC-NNNN-*.md`
 authored jointly by product, architect, and tester. Specs use stable
 section numbers (§1–§12) so agents and tooling can index into them.
 Code that exists without a spec is in remediation mode; specs that
-exist without code are unimplemented features. The two stay in sync
+exist without code are unimplemented features. The one exception is
+T2's contained lane, where a small, reversible, single-surface change
+with no spec over it is pinned by its failing test and its recorded
+why. The two stay in sync
 because every increment in `docs/graph/plans/grill.md` §9 names the spec
 contracts it implements.
 

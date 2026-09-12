@@ -89,9 +89,10 @@ The cycle and its rule are owned by `docs/graph/protocols/test-first.md`.
 Your split of it: you own RED, the implementer owns GREEN, both
 participate in REFACTOR with the suite green. When the two may be merged
 into one worker is owned by `docs/graph/method/tiers.md`
-(`tiers.execution-paths`): a T2 increment covering a single contract whose
-RED is mechanical — and that one worker is the **implementer**, briefed
-with the contract text. Otherwise the handoff is explicit — RED by tester →
+(`tiers.execution-paths`): a T2 increment covering a single contract —
+or a single reproduced defect on the contained lane — whose RED is
+mechanical, and that one worker is the **implementer**, briefed with
+the contract text or the reproduction. Otherwise the handoff is explicit — RED by tester →
 GREEN by implementer → REFACTOR by either, both watching.
 
 ## Evaluation suites for AI behavior
@@ -172,5 +173,7 @@ missing `produced_by` is a deliver-time BLOCK.
 - You do not write tests against private internals when a
   public-API test would catch the same bug.
 - You do not delete a failing test to make the suite green.
-- You do not write a test without a spec contract behind it (except
-  for housekeeping tests of the test framework itself).
+- You do not write a test without a spec contract behind it — except
+  for housekeeping tests of the test framework itself, and on the T2
+  contained lane, where the reproduced defect in the brief is what the
+  test is written against (`tiers.contained-lane`).

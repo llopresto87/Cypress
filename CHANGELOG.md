@@ -1,5 +1,71 @@
 # Changelog
 
+## 7.14.0 — a two-line fix stops buying a feature's process (2026-09-13)
+
+T1 was defined by touching **no** behavior. T2 required that an active spec
+contract already authorize the change — "no active spec contract covering the
+change means it is T3, however small it looks". Put those two edges together and
+a two-line defect fix in code no spec covers matches neither: it touches
+behavior, so T1 is closed; nothing covers it, so T2 is closed. It went to T3 and
+bought a `specify` pass and a `grill` pass to authorize two lines.
+
+That is the most common shape of maintenance work paying the most expensive path
+in the system, and the damage is not wall-clock. A process that is
+disproportionate often enough stops being believed — and the way it fails is not
+slow funnels, it is a change quietly relabelled T1, or the tiers skipped
+outright. The edge written to prevent under-classification was producing it.
+
+**T2 is now a *contained change* with two entry lanes.** The **covered lane** is
+the old T2, unchanged: an active spec contract and plan line authorize the work.
+The new **contained lane** carries the case that had no home — no spec owns the
+surface, and the proportional authorization is the failing test that pins the
+behavior plus a recorded why, instead of a spec document.
+
+The lane opens only when **every** condition holds: one surface (no contract,
+public interface, persisted format, or schema); no new dependency; reversible by
+revert (no migration, no one-way door, no auth/security/concurrency change); no
+active spec owns the surface; and the intent fits in a decision note. Any doubt
+about any one of them is T3. It is the third hard edge, and it escalates
+mid-task the moment the work outgrows it.
+
+What the lane buys, and what it never buys:
+
+- **Waived:** the `specify` pass, the `grill` pass, the refutation spawn, the
+  architect pass.
+- **Still owed in full:** the RED test written before the fix; the independent
+  reviewer audit; a `grill.md` line on entry so the plan-of-record still records
+  what happened; the gates the change's blast radius earns. `verify` now says so
+  outright — the tier does not pick the gate row, the blast radius does.
+
+In place of the spec, the lane owes a **why-record**, and `canonize` owns writing
+it (`canonize.why-record`): one short ADR when a real choice was made among
+options, otherwise one `changelog.md` line carrying defect → cause → fix →
+pinning test. One entry, never both, and never a spec — a small change that needs
+a spec to be explicable was misclassified, and the honest close-out says so
+rather than manufacturing the spec afterward. Canonize's completeness claim grows
+from four items to five: a contained-lane change delivered with no why-record is
+a leak beside the uncaptured fact, tool, status, and deviation.
+
+The kernel's §3.1 anchor now carries the exception explicitly. Asserting "every
+non-trivial behavior has a spec, written before the code" while the tier table
+routes small behavior changes around it would have left the seed contradicting
+itself in its always-loaded file.
+
+No tier was renumbered. The lane went **inside** T2 rather than becoming a fifth
+tier between T1 and T2 precisely so that every `Tier: T2` already written in a
+plant's `grill.md` §15 and delivery records keeps its meaning. Deliveries now
+name the lane alongside the tier.
+
+The lane is the seed's most abusable surface — the one place a behavior change
+proceeds without a spec — so it ships with its own gate.
+`tests/test-tier-lanes.sh` (new, wired into `run.sh`) pins both halves: that the
+lane has exactly one home and every routing surface points at it, and that it
+never acquired an exit from the test, the review, the gates, or the record. It
+also fails if the superseded "however small it looks" edge reappears anywhere in
+shipped prose. Reasoning and the three rejected alternatives — a fifth tier,
+grading the T3 funnel instead, amending a contract into the nearest spec — are in
+`docs/decisions/adr-0006-t2-contained-lane.md`.
+
 ## 7.13.1 — the installer stops shipping its own bytecode (2026-09-10)
 
 `place_tree` copies with a default pattern of `*`, so everything under
