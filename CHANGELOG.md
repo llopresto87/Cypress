@@ -1,5 +1,170 @@
 # Changelog
 
+## 7.15.0 — the roster a session enumerates is the roster the graph holds (2026-09-13)
+
+`docs/graph/agents/` has been the one home of every agent since 6.0.0, and the
+tool directories under `.claude/`, `.opencode/`, `.codex/`, `.prime/` and
+`.github/` have been described — in this installer's own comments — as
+"projections of it". They were not. Every adapter copied `agents/*.md` **out of
+the seed**, so the projection was a projection of the seed's roster, and an
+agent a project commissioned for itself reached the graph and stopped there.
+
+The failure is quiet in the worst way. The node is on disk, it lints, it is
+routable, the router will name it — and then the session cannot spawn it,
+because the harness enumerated its roster at start-up from a directory that
+never received it. A project can commission an expert, register it, route to it
+and never once be told that nothing can call it. Skills had the same hole from
+the same line of code, and the withdraw contracts in `harvest`, `toolcraft`,
+`skill-corpus/README.md` and the librarian's charter had all quietly written the
+hole down as if it were the design ("install.sh projects only the seed's own
+skills — a skill authored in the plant projects itself").
+
+Adapters now project **from `docs/graph/`**, after placing it. `project_agents`
+and `project_skills` replace five hand-rolled copy loops, the graph is
+established first in every adapter, and the four documents that described the
+old behaviour say the new one. A project's own agents and skills reach every
+harness it runs, which is what "one home, and projections of it" always meant.
+
+**Two more installer defects, both of the shape "a re-run knows less than the
+tree it is re-running over".**
+
+- **The seed stamp merges; it never narrows.** `.cypress/seed.json` records what
+  a project *carries*. Installing one adapter into a project that already runs
+  five used to rewrite the stamp with that one adapter's facts — dropping the
+  other four adapters and their projection paths, forgetting the version the
+  project came from, and resetting the owner's corpus and jurisdiction decisions
+  to `undecided`. Those are decisions, not flags: silence on a re-run now
+  inherits them, and only `undecided` is ever overwritten by silence.
+- **A fast-forwarded kernel says what it discarded.** The kernel is the one
+  artifact loaded on every session, so a project that recorded a deliberate
+  deviation on it has that deviation only there. The fast-forward is still
+  right — a stale kernel is the worse failure — but it was announced with the
+  same generic "backed up existing file" line as any other write. It now names
+  the overwrite in the kernel's own terms, names the backup as the recovery
+  path, and says outright that a recorded deviation is not in the new body.
+  `--force` no longer skips that backup: it is the only copy of what was there.
+
+**The amendment trap is a gate instead of a paragraph.** `legal-corpus/_schema.md`
+has always been categorical — an entry that does not say whether its text is the
+original or the consolidated edition is non-citable — and nothing enforced it.
+An unamended reading of an amended instrument reads exactly like a correct one,
+which is the whole reason the rule exists and exactly why prose could not carry
+it. `legal-lint.py` now requires every entry on an amendable instrument to state
+its edition. A judgment is not amended, so the decision corpus is exempt
+structurally rather than by enumeration — though a regulator's determination
+published alongside legislation sits on a legislative page and is carried by the
+ledger like any other entry. The entries that predate the check are enumerated in a dated
+ledger rather than waived, so the debt is countable, a new entry cannot join it,
+and an entry that later states its edition is reported until its row is struck —
+the ledger only shrinks.
+
+**A portability claim is a gate.** `tool-corpus` pages may declare
+`Stability: portable`, meaning code an adopting project runs as-is. Nothing
+checked that the code compiled, let alone ran. `tests/test-tool-corpus.sh`
+compiles every embedded implementation on a page that claims portability and
+executes the behaviour each such page exists for. Code nobody has run is a
+claim, not a tool.
+
+**Two gates that could not run, and one that lied about why.** A
+`sed -i EXPR FILE` in the growth-coverage suite is GNU-only; on a BSD `sed` it
+reads the expression as a backup suffix and the file as the script, so under
+`set -e` the suite aborted there and every assertion below it went unrun. And
+the agent-lint regression was invoked with an absolute path, which let the test
+runner settle its collection root on an ancestor directory and then fail to
+match the very file it was pointed at — a hard error, before a single test ran.
+Both are fixed at the invocation, not papered over with a skip.
+
+**Doctrine sharpened in the homes that already owned it**, no new file and no
+new kernel byte:
+
+- `protocols/verify.md` — a per-case harness that stops at the first failing
+  assertion reports a **lower bound**, not a total, so a fix-and-recount loop
+  reads as convergence while the real count is unknown; and a check recorded
+  `discovered` or `absent` among `executed` peers does not inherit their
+  standing by sitting next to them. Also: establish a control's wiring by
+  following the invocation chain, not by searching the repository for the gate's
+  name — automation can be defined in a different repository than the code it
+  guards, and a gate can be invoked by a hook that never names it.
+- `protocols/test-first.md` — two corollaries that decide whether a mutation
+  result can be read at all: confirm the mutant actually rebuilt (a toolchain
+  that caches on a cheap staleness check can run the old artifact and call the
+  mutation survived), and an exact-match membership check needs both a
+  prefix-extension and a suffix-extension mutant or the suite cannot tell exact
+  comparison from relaxed.
+- `core/method/delegation.md` — a worker whose run has completed is not a
+  correspondent; continuing that work means a fresh spawn with a full brief, and
+  a caller who messages a finished worker loses the follow-up silently. And a
+  fact a brief supplies is a lead, not evidence — with the same burden of proof
+  running back the other way when the worker corrects it.
+- `core/method/engineering-posture.md` — where a request rests on a premise the
+  evidence contradicts, neither silent compliance nor refusal: the evidence and
+  a corrected proposal, in the same turn. And a probe can be corrupted before it
+  runs, by a shell that expands the command typed rather than the command meant,
+  so read the exit code and not the emptiness of the output.
+- `core/method/prose-posture.md` — the diagnostics are built on one language's
+  vocabulary; on a document in another language a silent detector has reported
+  that it cannot read the document, never that the prose is good.
+
+**Corpora grew.** Seven optional procedures (`skill-corpus/`): proving an
+assertion bites by mutation, recovering a RED that was never observed, the
+owner-opened compressed fix path, the throwaway fix-review packet with its
+mandatory negative test, the live-patch stopgap and its drift debt, driving a
+hosted CI/CD platform from a shell and its two-branch trap, and the numbered
+release round that never authorises a release and whose deliverable language is
+a parameter, English by default. Seven reusable tools
+(`tool-corpus/`), three of them with executable implementations. Two optional
+roles (`agent-corpus/`): a claim-verifier that re-tests dated claims against the
+current tree, whose page states plainly where its positive verdict parts company
+with the devil's-advocate's permanent could-not-refute ceiling; and a
+report-editor that may re-present a finished report and may never add a field to
+it, because a value beside a finding reads as the assessor's judgment however it
+is captioned.
+
+### Harvest log
+
+```
+# Harvest — from a grown plant — 2026-09-13
+Harvested:   3 installer defects with their regressions; 2 gates promoted from
+             prose to enforcement (citation-edition, corpus portability); 2
+             gates repaired that could not run; 7 doctrine sharpenings into
+             existing homes; 7 optional procedures; 7 reusable tools; 2 optional
+             roles; 8 library surface pages and one new ecosystem bucket.
+Generalized: every plant and organisation name, internal procedure reference,
+             document-package name, non-English process noun used as jargon,
+             finding/decision identifier, person, host, port, path and stack
+             fingerprint stripped; every version pin and advisory stripped from
+             the library surfaces. before→after held per candidate in triage.
+Rejected:    per-technology expert charters (statable only by naming a
+             framework); a role duplicating one the catalog already owns;
+             four doctrine pages the seed already owned, one almost verbatim;
+             a pseudonymised-fixture tool (an anti-pattern, not a capability);
+             citation currency deltas that could not be re-fetched at the
+             publisher — the rule was mechanised instead of the values guessed.
+```
+
+### Seed integrity gate
+
+- Agnosticism scan: PASS — `tools/agnosticism-lint.py` over every changed file
+  with the donor's identifying tokens as `--forbid`, plus a read of the diff and
+  of this entry. No plant name, organisation, procedure reference, identifier,
+  person, host, port, path, count or stack fingerprint.
+- Durability: PASS — no version pin, advisory, or per-release deprecation in any
+  new library surface page.
+- Faithful import: PASS after correction — an independent review found four
+  passages thinned out of their donors and one page that had inverted its
+  donor's contract outright; all five were restored or corrected before release.
+- Availability: PASS — every new page is reachable by its corpus's stated
+  withdraw path; the new ecosystem bucket is named everywhere ecosystems are
+  enumerated.
+- Plant untouched: PASS — the donor's working tree carries no write from this
+  harvest.
+- Seed FULL gate (`bash tests/run.sh`): PASS — 18 shell suites, agent-lint
+  (19 agents, routing eval 100%), graph-lint and agent-lint regressions,
+  seed-lint, legal-lint.
+- Clean dry-run install: PASS — all five adapters into a scratch target, in both
+  link modes, additive, graph lints clean.
+- Version bump: 7.14.0 → 7.15.0; CHANGELOG updated.
+
 ## 7.14.0 — a two-line fix stops buying a feature's process (2026-09-13)
 
 T1 was defined by touching **no** behavior. T2 required that an active spec

@@ -169,9 +169,20 @@ place_kernel() {
     if [[ -f "$realfile" && ! -L "$realfile" ]] && cmp -s "$seed_kernel" "$realfile"; then
         : # already current — no backup, no rewrite
     else
-        if [[ -f "$realfile" && ! -L "$realfile" && $FORCE -ne 1 ]]; then
+        # A kernel body that differs is not just "an existing file": the kernel
+        # is the one artifact loaded on EVERY session, so a plant that recorded
+        # a deliberate deviation on it has that deviation ONLY here, and the
+        # fast-forward discards it. The overwrite still happens — a stale kernel
+        # is the worse failure, and the seed owns the kernel — but it is
+        # announced in the kernel's own terms, with the backup named as the
+        # recovery path, so the deviation is re-applied rather than quietly lost.
+        if [[ -f "$realfile" && ! -L "$realfile" ]]; then
             local bak="${realfile}.bak-$(date +%Y%m%d-%H%M%S)"
-            cp "$realfile" "$bak"; warn "backed up existing $realfile -> $bak"
+            cp "$realfile" "$bak"
+            warn "kernel: $(basename "$realfile") differed from the seed kernel and was OVERWRITTEN"
+            warn "  previous body: $bak"
+            warn "  any recorded deviation on the kernel body is NOT in the new body."
+            warn "  diff the backup and re-apply what the plant decided to keep."
         fi
         rm -f "$realfile"
         cp "$seed_kernel" "$realfile"
@@ -205,7 +216,13 @@ place_tree() {
     [[ -d "$src" ]] || die "missing source dir: $src"
     mkdir -p "$dest"
     local f
-    # Python bytecode is never seed content. It is gitignored here, so it is
+    # `-type l` is not optional. Under --symlink the graph home is a tree of
+    # SYMLINKS into the seed, and a projection taken FROM the graph therefore
+    # reads symlinks. A bare `-type f` matches none of them, so every adapter
+    # that projects the roster silently placed an EMPTY roster — the exact
+    # "present in the graph, absent from the roster the session enumerates"
+    # failure the projection change exists to prevent, moved into the other
+    # link mode. Python bytecode is never seed content. It is gitignored here, so it is
     # invisible to any check that reads the tree through Git, but it sits on
     # disk the moment someone runs a linter before installing — and the default
     # `*` pattern shipped it into the plant, where it landed as a tracked file
@@ -214,8 +231,51 @@ place_tree() {
     while IFS= read -r -d '' f; do
         local rel="${f#"$src"/}"   # quoted: an unquoted $src is a glob pattern
         place_file "$f" "$dest/$rel"
-    done < <(find "$src" -type f -name "$pattern" \
+    done < <(find "$src" \( -type f -o -type l \) -name "$pattern" \
                   -not -name '*.pyc' -not -path '*/__pycache__/*' -print0)
+}
+
+# project_agents DEST_DIR
+# project_skills DEST_DIR
+# The harness projections of the graph's roster and skill set. `docs/graph/`
+# is the ONE home of both (place_graph_machinery fast-forwards the seed's own
+# nodes into it); a tool directory is a projection the harness reads because it
+# spawns agents and loads skills from fixed locations. So the projection is
+# taken FROM THE GRAPH, never from the seed: a plant that authored an agent or
+# a skill of its own has it in the graph, and sourcing the projection from the
+# seed instead silently leaves every plant-authored node unspawnable on every
+# harness — present in the graph, absent from the roster the session enumerates.
+# The graph home is established first (each adapter calls place_docs_skeleton
+# before projecting), so these read a tree that already carries the current seed
+# plus whatever the plant authored.
+# Both project the home's TOP LEVEL only, and skip the files that are not
+# nodes. A harness reads its roster by listing a directory, so anything placed
+# there becomes a spawnable entry: recursing would turn a plant's scratch note
+# at `agents/notes/todo.md` into a phantom agent, and an `index.md` beside the
+# nodes into a phantom skill. `_`-prefixed files are the graph's own
+# conventions (templates, the routing corpus) and are handled explicitly or
+# not at all.
+project_agents() {
+    local dest="$1" home="$PROJECT_DIR/docs/graph/agents" f name
+    for f in "$home"/*.md; do
+        [[ -f "$f" ]] || continue           # -f follows a symlinked home
+        name="$(basename "$f")"
+        case "$name" in _*|index.md|README.md) continue ;; esac
+        place_file "$f" "$dest/$name"
+    done
+    # the golden routing corpus rides with the roster (not a *.md, so the loop
+    # skips it) so agent-lint.py --eval can score the roster on EVERY harness
+    [[ -f "$home/_routes.golden.tsv" ]] && \
+        place_file "$home/_routes.golden.tsv" "$dest/_routes.golden.tsv"
+}
+project_skills() {
+    local dest="$1" home="$PROJECT_DIR/docs/graph/skills" f name
+    for f in "$home"/*.md; do
+        [[ -f "$f" ]] || continue
+        name="$(basename "$f" .md)"
+        case "$name" in _*|index|README) continue ;; esac
+        place_file "$f" "$dest/$name/SKILL.md"
+    done
 }
 
 # place_docs_skeleton: install every knowledge artifact beneath the one
@@ -517,15 +577,12 @@ install_claude_code() {
     # exist because the harness spawns agents and loads skills from
     # fixed locations. Protocols, templates, method/posture nodes have
     # no harness location and are graph-only.
-    place_tree "$SEED_ROOT/agents"      "$PROJECT_DIR/.claude/agents"      "*.md"
-    # The golden routing corpus is a peer of the agent defs (not a *.md, so
-    # place_tree skips it); agent-lint.py --eval loads it from .claude/agents/.
-    place_file "$SEED_ROOT/agents/_routes.golden.tsv" \
-               "$PROJECT_DIR/.claude/agents/_routes.golden.tsv"
-    for d in "$SEED_ROOT/skills"/*/; do
-        local name; name="$(basename "$d")"
-        place_file "${d%/}/SKILL.md" "$PROJECT_DIR/.claude/skills/$name/SKILL.md"
-    done
+    # The graph home FIRST: docs/graph/{agents,skills}/ is the one home, and the
+    # harness directories below are projections of it. Projecting before the home
+    # exists would project the previous run's tree.
+    place_docs_skeleton
+    project_agents "$PROJECT_DIR/.claude/agents"
+    project_skills "$PROJECT_DIR/.claude/skills"
     # Slash commands — generated projections of the command-protocol nodes
     # (those declaring `command: true`). No authored command tree; the node
     # is the single home, the command routes into it.
@@ -547,7 +604,6 @@ install_claude_code() {
     # templates, and the deliver assertion. Scores .claude/agents/.
     cp "$SEED_ROOT/integrations/claude-code/agent-lint.py" \
        "$PROJECT_DIR/.claude/agent-lint.py"
-    place_docs_skeleton
     log "Claude Code install done."
     log "  CLAUDE.md             -> core/AGENTS.md (bootstrap kernel)"
     log "  docs/graph/           -> the ONE knowledge system: method surface"
@@ -566,11 +622,12 @@ install_opencode() {
     # this call and prime-agent's ping-pong the file into fresh .bak churn
     # on every re-run
     # Harness projections of docs/graph/{agents,skills}/ (the home).
-    place_tree "$SEED_ROOT/agents"    "$PROJECT_DIR/.opencode/agents"    "*.md"
-    for d in "$SEED_ROOT/skills"/*/; do
-        local name; name="$(basename "$d")"
-        place_file "${d%/}/SKILL.md" "$PROJECT_DIR/.opencode/skills/$name/SKILL.md"
-    done
+    # The graph home FIRST: docs/graph/{agents,skills}/ is the one home, and the
+    # harness directories below are projections of it. Projecting before the home
+    # exists would project the previous run's tree.
+    place_docs_skeleton
+    project_agents "$PROJECT_DIR/.opencode/agents"
+    project_skills "$PROJECT_DIR/.opencode/skills"
     # Slash commands — the same generated projections as every other harness.
     generate_slash_commands "$PROJECT_DIR/.opencode/commands"
     # ONE config file only. opencode reads opencode.json OR opencode.jsonc and
@@ -579,7 +636,6 @@ install_opencode() {
     # tests/seed-lint.py and tests/test-full-install.sh can parse; the rationale
     # for what this file does NOT declare lives in integrations/opencode/README.md.
     place_file "$SEED_ROOT/integrations/opencode/opencode.json" "$PROJECT_DIR/opencode.json"
-    place_docs_skeleton
     log "opencode install done."
     log "  AGENTS.md             -> core/AGENTS.md (bootstrap kernel)"
     log "  docs/graph/           -> the ONE knowledge system (method surface + project graph)"
@@ -597,12 +653,12 @@ install_codex() {
     # this call and prime-agent's ping-pong the file into fresh .bak churn
     # on every re-run
     # Harness projections of docs/graph/{agents,skills}/ (the home).
-    place_tree "$SEED_ROOT/agents"    "$PROJECT_DIR/.codex/agents"    "*.md"
-    for d in "$SEED_ROOT/skills"/*/; do
-        local name; name="$(basename "$d")"
-        place_file "${d%/}/SKILL.md" "$PROJECT_DIR/.codex/skills/$name/SKILL.md"
-    done
+    # The graph home FIRST: docs/graph/{agents,skills}/ is the one home, and the
+    # harness directories below are projections of it. Projecting before the home
+    # exists would project the previous run's tree.
     place_docs_skeleton
+    project_agents "$PROJECT_DIR/.codex/agents"
+    project_skills "$PROJECT_DIR/.codex/skills"
 
     # Generate config snippet with resolved paths
     local snippet="$PROJECT_DIR/.codex/codex-config-snippet.toml"
@@ -637,8 +693,14 @@ install_github_copilot() {
     # on every re-run
 
     # Agents -> .github/agents/<name>.agent.md (transformed frontmatter)
+    # The graph home FIRST: docs/graph/{agents,skills}/ is the one home, and the
+    # harness directories below are projections of it. Projecting before the home
+    # exists would project the previous run's tree.
+    place_docs_skeleton
     mkdir -p "$PROJECT_DIR/.github/agents"
-    for f in "$SEED_ROOT/agents"/*.md; do
+    for f in "$PROJECT_DIR/docs/graph/agents"/*.md; do
+        [[ -f "$f" ]] || continue
+        case "$(basename "$f")" in _*|index.md|README.md) continue ;; esac
         local name; name="$(basename "$f" .md | sed -E 's/^[0-9]+-//')"
         # Strip the universal frontmatter; rewrite for Copilot.
         python3 - "$f" "$PROJECT_DIR/.github/agents/$name.agent.md" <<'PYEOF'
@@ -716,9 +778,14 @@ PYEOF
 
     # Skills -> .github/instructions/<name>-skill.instructions.md
     mkdir -p "$PROJECT_DIR/.github/instructions"
-    for d in "$SEED_ROOT/skills"/*/; do
-        local name; name="$(basename "$d")"
-        python3 - "${d%/}/SKILL.md" "$PROJECT_DIR/.github/instructions/$name-skill.instructions.md" <<'PYEOF'
+    # From the GRAPH, like every other adapter: a skill the plant authored is
+    # in docs/graph/skills/ and nowhere else, and this loop is what puts it in
+    # front of the harness.
+    for f in "$PROJECT_DIR/docs/graph/skills"/*.md; do
+        [[ -f "$f" ]] || continue
+        case "$(basename "$f")" in _*|index.md|README.md) continue ;; esac
+        local name; name="$(basename "$f" .md)"
+        python3 - "$f" "$PROJECT_DIR/.github/instructions/$name-skill.instructions.md" <<'PYEOF'
 import re, sys
 src, dst = sys.argv[1], sys.argv[2]
 text = open(src).read()
@@ -758,7 +825,6 @@ PYEOF
         log "  .github/hooks/status.json + status-hook.py (status register at session start)"
     fi
 
-    place_docs_skeleton
     log "GitHub Copilot install done."
     log "  .github/copilot-instructions.md       (bootstrap kernel)"
     log "  AGENTS.md                              (kernel mirror)"
@@ -783,15 +849,13 @@ install_prime_agent() {
     # embeds into rlm() calls. The golden routing corpus rides along (place_tree
     # skips the non-*.md file) so agent-lint.py can score the roster in CI —
     # the SAME gate claude-code runs, pointed at this dir (full parity).
-    place_tree "$SEED_ROOT/agents"      "$PROJECT_DIR/.prime/agent/agents"      "*.md"
-    place_file "$SEED_ROOT/agents/_routes.golden.tsv" \
-               "$PROJECT_DIR/.prime/agent/agents/_routes.golden.tsv"
-    # Skills — the same Agent-Skills SKILL.md the seed ships, no transform.
-    local d name
-    for d in "$SEED_ROOT/skills"/*/; do
-        name="$(basename "$d")"
-        place_file "${d%/}/SKILL.md" "$PROJECT_DIR/.prime/agent/skills/$name/SKILL.md"
-    done
+    # The graph home FIRST: docs/graph/{agents,skills}/ is the one home, and the
+    # harness directories below are projections of it. Projecting before the home
+    # exists would project the previous run's tree.
+    place_docs_skeleton
+    project_agents "$PROJECT_DIR/.prime/agent/agents"
+    # Skills — the same Agent-Skills SKILL.md shape, no transform.
+    project_skills "$PROJECT_DIR/.prime/agent/skills"
     # Slash commands — generated prompt-template projections of the
     # command-protocol nodes, the same roster as every other harness.
     generate_slash_commands "$PROJECT_DIR/.prime/agent/prompts"
@@ -812,7 +876,6 @@ install_prime_agent() {
     # instead of emulating a file-based harness. Copied so the project can edit it.
     cp "$SEED_ROOT/integrations/prime-agent/APPEND_SYSTEM.md" \
        "$PROJECT_DIR/.prime/agent/APPEND_SYSTEM.md"
-    place_docs_skeleton
     log "Prime Agent install done."
     log "  AGENTS.md                  -> core/AGENTS.md (bootstrap kernel, auto-loaded)"
     log "  docs/graph/                -> the ONE knowledge system: method surface + project graph"
@@ -908,6 +971,19 @@ if [[ ${CHECK:-0} -eq 1 ]]; then
     for tool in "${expanded[@]}"; do
         [[ "$tool" == "github-copilot" ]] || continue
         tmp="$(mktemp -d)"; orig="$PROJECT_DIR"
+        # The projections are taken FROM docs/graph/, so a regeneration that
+        # starts from an empty directory regenerates from the SEED's roster
+        # alone and can never match a target whose graph also carries nodes the
+        # plant authored. Every such plant would read STALE for ever, with no
+        # re-run able to clear it — a drift gate that is always red is a drift
+        # gate nobody runs. Carry the real graph in.
+        if [[ -d "$orig/docs/graph" ]]; then
+            mkdir -p "$tmp/docs/graph"
+            for sub_dir in agents skills; do
+                [[ -d "$orig/docs/graph/$sub_dir" ]] && \
+                    cp -R "$orig/docs/graph/$sub_dir" "$tmp/docs/graph/"
+            done
+        fi
         # Reproduce the target's multi-tool hook state. Copilot installation
         # intentionally omits .github/hooks when Claude's settings already
         # provide the same VS Code-compatible hook; an empty temp directory
@@ -972,29 +1048,66 @@ agent_projection_for() {
     esac
 }
 
+# stamp_field STAMP KEY — read one scalar string field out of an existing stamp.
+stamp_field() {
+    [[ -f "$1" ]] || return 0
+    sed -n "s/.*\"$2\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" "$1" | head -1
+}
+
 write_seed_stamp() {
     local stamp="$PROJECT_DIR/.cypress/seed.json" version
     version="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
                "$SEED_ROOT/manifest.json" | head -1)"
     [[ -n "$version" ]] || { warn "manifest.json has no version — stamp skipped"; return; }
     mkdir -p "$PROJECT_DIR/.cypress"
+    # The stamp is the plant's record of what it CARRIES, not a log of the last
+    # command typed — so a run MERGES into it and never narrows it. Installing
+    # one adapter into a plant that already runs five adds that adapter; it does
+    # not retract the other four, forget where the plant came from, or reset the
+    # owner's corpus decisions to `undecided`. Every field below is therefore
+    # "what this run states, else what the stamp already held".
+    local prev prev_from prev_tools prev_corpus prev_juris
+    prev="$(stamp_field "$stamp" version)"
+    prev_from="$(stamp_field "$stamp" installed_from)"
+    prev_tools="$(stamp_field "$stamp" tools)"
+    prev_corpus="$(stamp_field "$stamp" legal_corpus)"
+    prev_juris="$(stamp_field "$stamp" legal_jurisdiction)"
+
     # An existing stamp records where the plant came FROM; keep that as
-    # `installed_from` so a graft can see the version it advanced off.
-    local prev="" ; [[ -f "$stamp" ]] && prev="$(sed -n \
-        's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$stamp" | head -1)"
+    # `installed_from` so a graft can see the version it advanced off. A re-run
+    # at the SAME version must not erase it — the plant still came from there.
+    local from="$prev_from"
+    [[ -n "$prev" && "$prev" != "$version" ]] && from="$prev"
+
+    # Adapters accumulate: the union of what the plant already carried and what
+    # this run installed, de-duplicated, in first-seen order.
+    local tools=() t seen
+    for t in $prev_tools "${expanded[@]}"; do
+        seen=0
+        local u; for u in "${tools[@]}"; do [[ "$u" == "$t" ]] && seen=1; done
+        [[ $seen -eq 0 ]] && tools+=("$t")
+    done
+
+    # The corpus and jurisdiction are the OWNER's decisions, recorded once and
+    # re-stated only when the owner re-states them. A run that passes no flag
+    # inherits; only `undecided` is ever overwritten by silence.
+    local corpus="${LEGAL_CORPUS:-${prev_corpus:-undecided}}"
+    local juris="${LEGAL_JURISDICTION:-${prev_juris:-undecided}}"
+    [[ -z "${LEGAL_CORPUS:-}" && -n "$prev_corpus" ]] && corpus="$prev_corpus"
+    [[ -z "${LEGAL_JURISDICTION:-}" && -n "$prev_juris" ]] && juris="$prev_juris"
+
     {
         printf '{\n'
         printf '  "seed": "cypress",\n'
         printf '  "version": "%s",\n' "$version"
         printf '  "installed_at": "%s",\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-        [[ -n "$prev" && "$prev" != "$version" ]] && \
-            printf '  "installed_from": "%s",\n' "$prev"
-        printf '  "tools": "%s",\n' "${expanded[*]}"
-        printf '  "legal_corpus": "%s",\n' "${LEGAL_CORPUS:-undecided}"
-        printf '  "legal_jurisdiction": "%s",\n' "${LEGAL_JURISDICTION:-undecided}"
+        [[ -n "$from" ]] && printf '  "installed_from": "%s",\n' "$from"
+        printf '  "tools": "%s",\n' "${tools[*]}"
+        printf '  "legal_corpus": "%s",\n' "$corpus"
+        printf '  "legal_jurisdiction": "%s",\n' "$juris"
         printf '  "agent_projections": [\n'
-        local t proj sep=""
-        for t in "${expanded[@]}"; do
+        local proj sep=""
+        for t in "${tools[@]}"; do
             proj="$(agent_projection_for "$t")"
             [[ -n "$proj" ]] || continue
             printf '%s    {"tool": "%s", "path": "%s", "verbatim": %s}' \

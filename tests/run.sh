@@ -30,6 +30,10 @@ bash "$ROOT/tests/test-status-register.sh"
 bash "$ROOT/tests/test-status-migrate.sh"
 bash "$ROOT/tests/test-seed-lint.sh"
 bash "$ROOT/tests/test-legal-lint.sh"
+# tool-corpus portability contract: a page that claims `Stability: portable`
+# ships code an adopting project runs as-is, so the code must at least compile
+# and the two behaviours the pages exist for must actually be demonstrated.
+bash "$ROOT/tests/test-tool-corpus.sh"
 # graph-lint CLI-contract regression (stdlib unittest — no third-party deps,
 # matching graph-lint.py's own rule, so it always runs here).
 python3 "$ROOT/tests/test_graph_lint.py"
@@ -41,9 +45,12 @@ python3 "$ROOT/integrations/claude-code/agent-lint.py" --eval --dir "$ROOT/agent
 # executable in an isolated venv, so `python3 -m pytest` stays unavailable and
 # probing it alone would skip a gate that is in fact installed.
 if python3 -m pytest --version >/dev/null 2>&1; then
-    python3 -m pytest -q "$ROOT/tests/test_agent_lint.py"
+    ( cd "$ROOT" && python3 -m pytest -q tests/test_agent_lint.py )
 elif command -v pytest >/dev/null 2>&1; then
-    pytest -q "$ROOT/tests/test_agent_lint.py"
+    # A repo-RELATIVE path from the repo root, deliberately: handed an absolute
+    # one, pytest can settle its rootdir on an ancestor of the repo and then fail
+    # to match the file it was pointed at, erroring before a single test runs.
+    ( cd "$ROOT" && pytest -q tests/test_agent_lint.py )
 else
     echo "[gate] SKIP tests/test_agent_lint.py — pytest not installed (brew install pytest, or pip install pytest) to run it" >&2
 fi

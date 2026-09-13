@@ -1141,7 +1141,15 @@ out43="$(python3 "$AUDIT" "$TMP/x43" "$ROOT" 2>&1)" || true
 ! grep -q "normalized/react.md retains no raw snapshot" <<<"$out43" \
     || fail "a normalized source that recorded why no raw was kept was still reported"
 # A `raw:` naming a file that is not there is not provenance either.
-sed -i '2s#.*#raw: raw/react-2026-09-10.html#' "$TMP/x43/docs/graph/sources/normalized/react.md"
+# `sed -i EXPR FILE` is GNU-only: BSD sed reads EXPR as the backup suffix and
+# FILE as the script, so this line aborted the suite on every macOS run under
+# `set -e`, leaving every assertion below it unrun rather than merely unproven.
+python3 - "$TMP/x43/docs/graph/sources/normalized/react.md" <<'RAWLINE'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1]); lines = p.read_text().splitlines(keepends=True)
+lines[1] = "raw: raw/react-2026-09-10.html\n"
+p.write_text("".join(lines))
+RAWLINE
 out43="$(python3 "$AUDIT" "$TMP/x43" "$ROOT" 2>&1)" || true
 grep -q 'raw: raw/react-2026-09-10.html`, which does not exist' <<<"$out43" \
     || fail "a raw: line naming a missing snapshot passed"

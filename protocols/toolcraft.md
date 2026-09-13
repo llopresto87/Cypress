@@ -88,10 +88,11 @@ existing protocols and tools — it is a skill. When such a procedure recurs and
 no core `docs/graph/skills/` discipline covers it, author it as a project skill from
 `docs/graph/templates/skill.template.md`, the same
 way a missing role is commissioned from `docs/graph/templates/agent.template.md`. Its
-**home is the graph node** `docs/graph/skills/<name>.md`; also create the
-projection in each harness directory the plant actually uses
-(`.claude/skills/<name>/SKILL.md` and kin), because `install.sh` projects only
-the seed's own skills — a skill authored in the plant projects itself. It
+**home is the graph node** `docs/graph/skills/<name>.md`; create the projection
+in each harness directory the plant actually uses
+(`.claude/skills/<name>/SKILL.md` and kin) in the same pass, so the harness can
+load it before the next install — `install.sh` projects what the graph holds,
+so from then on the projection is maintained for you. It
 **composes** disciplines by reference, never restating them. The core `docs/graph/skills/` stay the fixed shared
 methodology — a project skill is the optional, project-specific procedure on
 top.

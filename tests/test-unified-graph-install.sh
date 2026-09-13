@@ -81,4 +81,151 @@ if [[ -e "$TARGET/docs/graph/runbooks/rollback.md" ]]; then
 fi
 echo "  .unfilled.md marker suppresses scaffold re-creation — OK"
 
+
+
+# 7.15.0 — the harness projections are projections OF THE GRAPH, not of the
+# seed. A plant that authored an agent of its own had it in docs/graph/agents/
+# and in NO adapter directory, so every harness enumerated a roster missing it
+# and the agent was unspawnable on all of them.
+cat > "$TARGET/docs/graph/agents/90-plant-authored.md" <<'AGENT'
+---
+name: plant-authored
+description: an agent this plant commissioned for itself
+---
+# plant-authored
+AGENT
+cat > "$TARGET/docs/graph/skills/plant-authored-skill.md" <<'SKILL'
+---
+name: plant-authored-skill
+description: a procedure this plant authored for itself
+---
+# plant-authored-skill
+SKILL
+for tool in claude-code opencode codex prime-agent github-copilot; do
+  "$ROOT/install.sh" "$tool" --project-dir "$TARGET" --copy --force >/dev/null 2>&1
+done
+for projected in \
+  .claude/agents/90-plant-authored.md \
+  .opencode/agents/90-plant-authored.md \
+  .codex/agents/90-plant-authored.md \
+  .prime/agent/agents/90-plant-authored.md \
+  .github/agents/plant-authored.agent.md \
+  .claude/skills/plant-authored-skill/SKILL.md \
+  .opencode/skills/plant-authored-skill/SKILL.md \
+  .codex/skills/plant-authored-skill/SKILL.md \
+  .prime/agent/skills/plant-authored-skill/SKILL.md ; do
+  [[ -e "$TARGET/$projected" ]] || {
+    echo "plant-authored node not projected: $projected" >&2; exit 1; }
+done
+# the seed's own roster still reaches every harness
+[[ -e "$TARGET/.claude/agents/00-orchestrator.md" ]]
+[[ -e "$TARGET/.opencode/skills/context-router/SKILL.md" ]]
+echo "  plant-authored agents and skills reach every harness projection — OK"
+
+
+# 7.15.0 — the seed stamp MERGES; a single-adapter re-run must not narrow it.
+STAMP="$TARGET/.cypress/seed.json"
+grep -q '"tools": "[^"]*claude-code' "$STAMP"
+grep -q '"tools": "[^"]*codex' "$STAMP"
+"$ROOT/install.sh" codex --project-dir "$TARGET" --copy --force \
+    --legal-corpus no --legal-jurisdiction it >/dev/null 2>&1
+grep -q '"legal_corpus": "no"' "$STAMP"
+grep -q '"legal_jurisdiction": "it"' "$STAMP"
+# a later run that states NEITHER flag inherits both decisions and keeps every
+# adapter — the failure was a stamp rewritten with one adapter's facts, the
+# owner's corpus decisions reset to `undecided`, and `installed_from` dropped.
+"$ROOT/install.sh" opencode --project-dir "$TARGET" --copy --force >/dev/null 2>&1
+grep -q '"legal_corpus": "no"' "$STAMP" || {
+  echo "stamp reset legal_corpus to undecided on a re-run that stated no flag" >&2; exit 1; }
+grep -q '"legal_jurisdiction": "it"' "$STAMP" || {
+  echo "stamp reset legal_jurisdiction on a re-run that stated no flag" >&2; exit 1; }
+for t in claude-code opencode codex prime-agent github-copilot; do
+  grep -q "\"tools\": \"[^\"]*$t" "$STAMP" || {
+    echo "stamp narrowed: $t dropped by a single-adapter re-run" >&2; exit 1; }
+  grep -q "\"tool\": \"$t\"" "$STAMP" || {
+    echo "stamp narrowed: $t agent_projection dropped by a single-adapter re-run" >&2; exit 1; }
+done
+echo "  seed stamp merges rather than narrows on a single-adapter re-run — OK"
+
+
+# 7.15.0 — a customized kernel body is fast-forwarded, but never silently: the
+# backup is the recovery path for a recorded kernel deviation, so --force must
+# not skip it, and the overwrite must say what was lost.
+KERNEL="$TARGET/AGENTS.md"
+[[ -L "$KERNEL" ]] && KERNEL="$TARGET/CLAUDE.md"
+printf '\n<!-- deviation.kernel-body: a line this plant decided to keep -->\n' >> "$KERNEL"
+KOUT="$("$ROOT/install.sh" claude-code --project-dir "$TARGET" --copy --force 2>&1)"
+grep -q 'OVERWRITTEN' <<<"$KOUT" || {
+  echo "kernel fast-forward discarded a customized body without announcing it" >&2; exit 1; }
+grep -q 'deviation' <<<"$KOUT" || {
+  echo "kernel overwrite notice does not name the deviation it discarded" >&2; exit 1; }
+if ! grep -rql 'deviation.kernel-body' "$TARGET"/*.bak-* 2>/dev/null; then
+  echo "--force destroyed the only copy of the plant's kernel body" >&2; exit 1
+fi
+echo "  customized kernel body is backed up and the overwrite announced — OK"
+
+
+# 7.15.0 — the projection must hold in BOTH link modes and under --check.
+# The first version of this suite exercised --copy only, and shipped two
+# defects in the paths it did not cover: under --symlink the graph home is a
+# tree of symlinks, which `find -type f` does not match, so every adapter
+# placed an EMPTY roster; and `--check` regenerated from a seed-only temp tree,
+# so any plant with an agent of its own read STALE for ever.
+SYM="$(mktemp -d)"
+"$ROOT/install.sh" claude-code --project-dir "$SYM" --symlink --force >/dev/null 2>&1
+cat > "$SYM/docs/graph/agents/92-symlink-mode.md" <<'AGENT'
+---
+name: symlink-mode
+description: a plant agent installed under the symlink link mode
+---
+# symlink-mode
+AGENT
+"$ROOT/install.sh" claude-code --project-dir "$SYM" --symlink --force >/dev/null 2>&1
+sym_agents=$(ls "$SYM/.claude/agents"/*.md 2>/dev/null | wc -l | tr -d ' ')
+[[ "$sym_agents" -gt 1 ]] || {
+  echo "--symlink projected $sym_agents agent file(s) — an empty roster" >&2; exit 1; }
+[[ -e "$SYM/.claude/agents/92-symlink-mode.md" ]] || {
+  echo "--symlink did not project the plant-authored agent" >&2; exit 1; }
+[[ -e "$SYM/.claude/skills/context-router/SKILL.md" ]] || {
+  echo "--symlink did not project skills" >&2; exit 1; }
+rm -rf "$SYM"
+echo "  --symlink projects the roster, plant-authored nodes included — OK"
+
+# --check regenerates the transformed views to compare them. It must compare
+# against the SAME source the real install used — the plant's graph — or it
+# reports drift that no re-run can clear.
+CHK="$(mktemp -d)"
+"$ROOT/install.sh" github-copilot --project-dir "$CHK" --copy --force >/dev/null 2>&1
+"$ROOT/install.sh" github-copilot --project-dir "$CHK" --check >/dev/null 2>&1 || {
+  echo "--check reported STALE on a freshly installed target" >&2; exit 1; }
+cat > "$CHK/docs/graph/agents/93-plant-own.md" <<'AGENT'
+---
+name: plant-own
+description: an agent this plant commissioned for itself
+---
+# plant-own
+AGENT
+"$ROOT/install.sh" github-copilot --project-dir "$CHK" --copy --force >/dev/null 2>&1
+[[ -e "$CHK/.github/agents/plant-own.agent.md" ]] || {
+  echo "the copilot view did not gain the plant-authored agent" >&2; exit 1; }
+"$ROOT/install.sh" github-copilot --project-dir "$CHK" --check >/dev/null 2>&1 || {
+  echo "--check reports STALE for ever once the plant authors an agent" >&2; exit 1; }
+echo "  --check stays clean when the plant has agents of its own — OK"
+
+# A harness reads its roster by listing a directory, so only NODES may be
+# placed there: a scratch note under the home would become a spawnable agent,
+# and an index page beside the skills a loadable skill.
+mkdir -p "$CHK/docs/graph/agents/notes"
+printf 'working notes\n'  > "$CHK/docs/graph/agents/notes/todo.md"
+printf '# skills index\n' > "$CHK/docs/graph/skills/index.md"
+"$ROOT/install.sh" all --project-dir "$CHK" --copy --force >/dev/null 2>&1
+[[ -z "$(find "$CHK/.claude" "$CHK/.codex" "$CHK/.github" -name 'todo*' 2>/dev/null)" ]] || {
+  echo "a note under the agent home was projected as a spawnable agent" >&2; exit 1; }
+[[ ! -e "$CHK/.claude/skills/index/SKILL.md" ]] || {
+  echo "an index page beside the skills was projected as a skill" >&2; exit 1; }
+[[ ! -e "$CHK/.github/instructions/index-skill.instructions.md" ]] || {
+  echo "an index page was projected as a copilot skill instruction" >&2; exit 1; }
+rm -rf "$CHK"
+echo "  only nodes are projected — notes and index pages are not roster entries — OK"
+
 printf 'unified graph install: PASS\n'

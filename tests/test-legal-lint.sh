@@ -112,12 +112,129 @@ cat > "$TMP/legal-corpus/eu/zz-fixture.md" <<'EOF'
 - **text:** a fully paraphrased restatement with no quotation anywhere.
 - **official_url:** https://example.org
 - **consulted:** x — **verification_grade:** proxy-sourced
-- **language_version:** EN · **verified:** 2026-01-01 · **legal_status:** in force
+- **language_version:** EN, original OJ text as published · **verified:** 2026-01-01 · **legal_status:** in force
 EOF
 expect_fail "graded \`verbatim\` (in whole or per id)" "compound-grade-honesty"
 rm "$TMP/legal-corpus/eu/zz-fixture.md"
 
-# 8. After all restores, the copy lints clean again.
+# 8. THE AMENDMENT TRAP — a new entry that does not state the EDITION of the
+# text it read is non-citable. _schema.md has always said so; until this check
+# nothing enforced it, and an unamended reading of an amended instrument reads
+# exactly like a correct one, so the corpus could not tell them apart.
+cat > "$TMP/legal-corpus/eu/zz-edition.md" <<'EOF'
+# Fixture page
+
+### `eu.zz-edition` — planted unstated edition
+
+- **instrument:** Regulation (EU) 2024/2847 (CRA)
+- **provision:** Article 14
+- **text_form:** `normalized summary`
+- **text:** a paraphrase of the obligation.
+- **official_url:** https://example.org
+- **consulted:** x — **verification_grade:** proxy-sourced
+- **language_version:** English · **verified:** 2026-01-01 · **legal_status:** in force
+EOF
+expect_fail "does not state the EDITION" "amendment-trap"
+
+# The same entry passes the moment it says which edition it read.
+python3 - "$TMP/legal-corpus/eu/zz-edition.md" <<'PY'
+import sys; p=sys.argv[1]; t=open(p).read()
+open(p,'w').write(t.replace("**language_version:** English",
+    "**language_version:** English, consolidated version as at 2024-11-20", 1))
+PY
+lint >/dev/null || { echo "[amendment-trap] a stated edition still failed" >&2; exit 1; }
+rm "$TMP/legal-corpus/eu/zz-edition.md"
+
+# A decision is not amended, so case-law is exempt by construction — not by a
+# list that someone has to remember to extend.
+cat > "$TMP/legal-corpus/case-law/zz-decision.md" <<'EOF'
+# Fixture page
+
+### `zz-decision` — a judgment states no edition, and needs none
+
+- **instrument:** Court judgment in Case C-000/00
+- **provision:** paragraph 1
+- **text_form:** `normalized summary`
+- **text:** a paraphrase of the holding.
+- **official_url:** https://example.org
+- **consulted:** x — **verification_grade:** proxy-sourced
+- **language_version:** English · **verified:** 2026-01-01 · **legal_status:** in force
+EOF
+lint >/dev/null || { echo "[amendment-trap] case-law was not exempt" >&2; exit 1; }
+rm "$TMP/legal-corpus/case-law/zz-decision.md"
+
+# The recorded-debt ledger only shrinks: an entry on it that NOW states its
+# edition must be struck, or the ledger rots into a permanent waiver.
+python3 - "$TMP/legal-corpus/eu/gdpr.md" <<'PY'
+import re,sys; p=sys.argv[1]; t=open(p).read()
+i=t.index("### `gdpr-art-5-1-a`")
+j=t.index("**language_version:**", i)
+k=t.index("\n", j)
+t=t[:j]+"**language_version:** English, original OJ text as published"+t[k:]
+open(p,'w').write(t)
+PY
+expect_fail "still listed in EDITION_DEBT" "edition-debt-shrinks"
+restore legal-corpus/eu/gdpr.md
+
+# 8b. The edition marker must be an edition CLAIM, not a keyword. The field is
+# named `language_version`, so prose about the LANGUAGE trips any loose match:
+# both phrasings below say nothing about the edition and must still FAIL.
+for phrasing in "Italian" "Italian, original-language text" \
+                "the Italian version published by the OJ"; do
+  python3 - "$TMP/legal-corpus/eu/nis2.md" "$phrasing" <<'PY'
+import re, sys
+p, value = sys.argv[1], sys.argv[2]
+t = open(p).read()
+i = t.index("### `nis2-dir-2022-2555`")
+j = t.index("**language_version:**", i)
+end = re.compile(r"\n\s*[-*]\s+\*\*").search(t, j).start()
+open(p, "w").write(t[:j] + f"**language_version:** {value}" + t[end:])
+PY
+  expect_fail "does not state the EDITION" "edition-marker: $phrasing"
+  restore legal-corpus/eu/nis2.md
+done
+echo "  edition markers reject language prose that states no edition — OK"
+
+# 8c. A multi-group page states its fields PER GROUP. An entry must inherit the
+# nearest preceding group's edition, never the first one on the page — or an
+# entry under a later group silently borrows a claim about a different fetch of
+# a different instrument.
+cat > "$TMP/legal-corpus/eu/zz-groups.md" <<'EOF'
+# Fixture page
+
+## Group A — first fetch
+
+- **instrument:** Regulation (EU) 2024/2847 (CRA)
+- **official_url:** https://example.org
+- **consulted:** x — **verification_grade:** proxy-sourced
+- **language_version:** English, consolidated version as at 2024-11-20
+- **verified:** 2026-01-01 · **legal_status:** in force
+
+### `eu.zz-group-a` — inherits Group A, which states an edition
+
+- **provision:** Article 13
+- **text_form:** `normalized summary`
+- **text:** a paraphrase.
+
+## Group B — second fetch, states no edition
+
+- **instrument:** Regulation (EU) 2024/2847 (CRA)
+- **official_url:** https://example.org
+- **consulted:** y — **verification_grade:** proxy-sourced
+- **language_version:** English
+- **verified:** 2026-01-01 · **legal_status:** in force
+
+### `eu.zz-group-b` — must NOT inherit Group A's edition
+
+- **provision:** Article 14
+- **text_form:** `normalized summary`
+- **text:** a paraphrase.
+EOF
+expect_fail "\`eu.zz-group-b\` does not state the EDITION" "edition-group-scope"
+rm "$TMP/legal-corpus/eu/zz-groups.md"
+echo "  an entry inherits its own group's edition, not the page's first — OK"
+
+# 9. After all restores, the copy lints clean again.
 lint >/dev/null || { echo "legal-lint did not return to PASS after restores" >&2; exit 1; }
 
 printf 'legal-lint contract: PASS\n'

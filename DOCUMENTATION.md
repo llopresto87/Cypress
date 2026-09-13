@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 7.14.0
+- Version documented: 7.15.0
 - Repository role: this repo is the seed, the product that is shipped
   into other projects. It is *not* a grown project itself.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -560,11 +560,11 @@ them; grow/graft draw from them.
 
 | Corpus | Location | Holds | Count |
 |--------|----------|-------|-------|
-| Library docs | `library-corpus/` | Version-durable surface notes per dependency, by ecosystem (npm, nuget, maven, pypi, container, language) | 73 pages |
+| Library docs | `library-corpus/` | Version-durable surface notes per dependency, by ecosystem (npm, nuget, maven, pypi, container, language, platform) | 81 pages |
 | Legal citations | `legal-corpus/` | Law/standards citations by jurisdiction (eu, national, international, case-law); graded **per entry, never per page** | 13 instrument pages / 129 entries |
-| Reusable tools | `tool-corpus/` | Durable tested tools by category (ops, testing) | 7 |
-| Optional experts | `agent-corpus/` | Candidate expert roles — the roster mirror; none loaded by default, none named in the kernel | 5 |
-| Optional procedures | `skill-corpus/` | Candidate procedures not in the core skill set | 4 |
+| Reusable tools | `tool-corpus/` | Durable tested tools by category (ops, testing); `tests/test-tool-corpus.sh` compiles every shell and Python implementation on a page claiming `Stability: portable`, and exercises the behaviour of the ones that ship one | 14 |
+| Optional experts | `agent-corpus/` | Candidate expert roles — the roster mirror; none loaded by default, none named in the kernel | 7 |
+| Optional procedures | `skill-corpus/` | Candidate procedures not in the core skill set | 11 |
 
 The corpora sit outside the roster and kernel because the always-loaded team pays
 a per-session cost in every plant. A harvested role or procedure lands in a corpus
@@ -742,7 +742,7 @@ tools/                graft reconciliation engine + audit (incl. --unfilled); ag
 docs/                 The seed's OWN decisions (ADRs) and plans
   decisions/            adr-0001..0004
   plans/                agent-routing, pure-graph-refactor, prime-agent-integration, scouts
-tests/                run.sh + 17 shell suites + python linters/regressions
+tests/                run.sh + 18 shell suites + python linters/regressions
 install.sh            Drops the seed into a target project
 manifest.json         Machine-readable catalog of all seed files
 INSTALL_PROMPT.md     THE single entry point (paste into an agent chat)
@@ -796,16 +796,25 @@ This runs (in order):
     (`tools/status-migrate.py`): exact mappings, `not recorded` never invented,
     annotations carried as `status_note`, idempotent, output lints clean.
 15. `test-seed-lint.sh`: plant-a-violation regression for each seed-lint class.
-16. `test-legal-lint.sh`: legal-corpus citability contract, and the placement
-    contract: whole corpus or none, the jurisdiction recorded, an uncarried
-    jurisdiction surfaced as an ingest request.
-17. `test_graph_lint.py`: graph-lint CLI-contract regression (stdlib unittest),
+16. `test-legal-lint.sh`: legal-corpus citability contract — including the
+    amendment trap (an entry on an amendable instrument must state whether its
+    text is the original or the consolidated edition; decisions are exempt by
+    construction) and the dated edition-debt ledger, which only shrinks — and
+    the placement contract: whole corpus or none, the jurisdiction recorded, an
+    uncarried jurisdiction surfaced as an ingest request.
+17. `test-tool-corpus.sh`: the tool-corpus portability contract. Every shell
+    and Python implementation embedded on a page declaring `Stability:
+    portable` compiles, the pages that ship a runnable implementation have
+    their behaviour exercised, and the compile stage refuses a run that
+    selected almost nothing — code an adopting project is invited to run as-is,
+    that nobody has run, is a claim, not a tool.
+18. `test_graph_lint.py`: graph-lint CLI-contract regression (stdlib unittest),
     including the 7.0.0 status / deviation / `plant:` block rules.
-18. `agent-lint.py --lint` and `--eval` (against `agents/`).
-19. `test_agent_lint.py` (pytest; loud SKIP if pytest absent, never a silent
+19. `agent-lint.py --lint` and `--eval` (against `agents/`).
+20. `test_agent_lint.py` (pytest; loud SKIP if pytest absent, never a silent
     skip).
-20. `seed-lint.py`: one-home-per-fact for the seed's own meta-facts.
-21. `legal-lint.py`: the eight-field-per-entry legal gate.
+21. `seed-lint.py`: one-home-per-fact for the seed's own meta-facts.
+22. `legal-lint.py`: the eight-field-per-entry legal gate.
 
 `tests/seed-lint.py` is the seed's self-consistency gate. It enforces:
 roster/frontmatter/manifest/README consistency, the delegator invariant, numeric

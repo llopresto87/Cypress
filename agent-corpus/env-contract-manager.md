@@ -11,7 +11,10 @@ component actually read, and do they agree across app source, deploy
 manifests, and the deploy-pipeline contract?** Classifies each variable
 required-vs-optional at the component's one centralization point, reconciles
 values that live outside the repo (external config server, CI-UI variables) and
-flags what cannot be verified from the repo alone, and keeps a **fail-closed**
+flags what cannot be verified from the repo alone — a variable can be present
+by *name* and empty by *value*, so a read-only probe over a variable store
+proves a variable's **absence** and never the presence of a usable value — and
+keeps a **fail-closed**
 guard so a missing required secret stops the boot rather than degrading
 silently. Records variable names and locations, **never values**.
 
@@ -22,6 +25,9 @@ silently. Records variable names and locations, **never values**.
 - A secret is a cross-artifact contract (a value baked into committed config
   that a naive per-file rotation would desync).
 - A profile silently breaks a feature via a wrong host/port default.
+- A value is edited while work is in flight: a variable-group snapshot is taken
+  when a run is **queued**, not when the value is read, so a value changed
+  mid-run is not the value that run used.
 
 ## Boundary (does not duplicate the base roster)
 

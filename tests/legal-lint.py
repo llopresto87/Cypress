@@ -25,6 +25,15 @@ What this checks:
   3. CONTROLLED VOCABULARY — text_form / legal_status values must be ones the
      schema defines.
   4. NEVER-INHERITABLE fields are inline: provision, text_form, text.
+  5. THE AMENDMENT TRAP — an entry on an amendable instrument must state the
+     EDITION of the text it read. _schema.md has always been categorical here
+     ("an entry that does not say is non-citable"), and nothing enforced it, so
+     the corpus accumulated entries whose text could be the original or the
+     consolidated version with nothing in the record to tell them apart. An
+     unamended reading of an amended instrument reads exactly like a correct
+     one; that is what makes this the trap it is named for, and why a rule
+     stated in prose and unenforced was worth so little. Decisions are exempt
+     structurally: a judgment or a regulator's decision is not amended.
 
 Inheritance is real and legitimate: a page states the fields its entries share
 in a header block (one instrument, one fetch), and a multi-instrument page
@@ -52,6 +61,57 @@ CORPUS = ROOT / "legal-corpus"
 INHERITABLE = ["instrument", "official_url", "consulted", "language_version",
                "verified", "legal_status"]
 ALWAYS_INLINE = ["provision", "text_form", "text"]
+
+# What counts as stating an edition. The field is NAMED `language_version`, so
+# ordinary prose about the LANGUAGE trips any loose keyword: "Italian,
+# original-language text" and "the Italian version published by the OJ" both say
+# nothing about the edition while containing "original" and "version". A marker
+# set that accepts those is a gate that passes the exact entries it exists to
+# catch, so each pattern below has to be an edition CLAIM, not a word.
+#
+# An explicit "not recorded" passes on purpose — it is an admission, which is
+# the point; what must fail is silence, which is indistinguishable from a
+# correct entry.
+EDITION_MARKERS = (
+    r"consolidat",                      # consolidated / consolidation / consolidato
+    r"as amended",
+    r"as at\b",
+    r"\boriginal(?![\s-]*language)",    # "original OJ text" yes; "original-language" no
+    r"as published",
+    r"as adopted",
+    r"in vigore dal",                   # national consolidation portal header
+    r"ult\. agg",
+    r"\bversion\s+\d",                  # a guideline's own version number
+    r"\bv\d+(\.\d+)*\b",
+    r"\d+(?:st|nd|rd|th)\s+edition",
+    r"\d{4}[a-z\s]{0,15}edition",      # "2022 edition", "2022 third edition"
+    r"\bedition\s+of\b",
+    r"\bedition\b[^.\n]{0,20}\d{4}",
+    r"not recorded",
+)
+
+# Entries that predate this check, frozen on 2026-09-13. The debt is enumerated
+# rather than waived so it is countable and cannot grow: a NEW entry may not
+# join this list, and an entry that later states its edition is reported as a
+# stale row and must be struck from it. The ledger therefore shrinks on its own
+# and can never quietly become the normal case.
+EDITION_DEBT = {
+    "acn-det-127434-baseline-2027", "acn-det-379907-2025",
+    "eu-dpf-adequacy-2023-1795",
+    "gdpr-art-13", "gdpr-art-14", "gdpr-art-15", "gdpr-art-16",
+    "gdpr-art-17-3-b", "gdpr-art-18", "gdpr-art-19", "gdpr-art-20",
+    "gdpr-art-21", "gdpr-art-22", "gdpr-art-28-3-b", "gdpr-art-28-3-c",
+    "gdpr-art-28-3-d", "gdpr-art-28-3-e", "gdpr-art-28-3-f",
+    "gdpr-art-28-3-g", "gdpr-art-34", "gdpr-art-36", "gdpr-art-4-11",
+    "gdpr-art-4-7", "gdpr-art-4-8", "gdpr-art-45", "gdpr-art-47",
+    "gdpr-art-5-1-a", "gdpr-art-5-1-b", "gdpr-art-5-1-c", "gdpr-art-5-1-d",
+    "gdpr-art-5-1-e", "gdpr-art-5-1-f", "gdpr-art-5-2", "gdpr-art-6-1-a",
+    "gdpr-art-6-1-b", "gdpr-art-6-1-f", "gdpr-art-7-1", "gdpr-art-77",
+    "gdpr-art-82", "gdpr-art-9",
+    "iso-27001-2022-amd1-2024", "iso-27001-certification-cycle",
+    "iso-gdpr-art-42-relationship",
+    "it-dlgs-138-art-38", "it-dlgs-138-mercato-online",
+}
 
 TEXT_FORMS = ["verbatim", "normalized summary",
               "wording withheld — requires licensed copy", "topic only"]
@@ -125,11 +185,55 @@ def quoted(body: str) -> bool:
         bool(re.search(r"(?m)^\s*>", seg))
 
 
+def entry_starts(text: str) -> dict:
+    """Byte offset of each entry heading, so an entry can be read in page order."""
+    return {m.group(1): m.start()
+            for m in re.finditer(r"(?m)^### `([^`]+)`", text)}
+
+
+def edition_value(block: str, last: bool = False):
+    """The `language_version` value as stated in BLOCK, or None if it states none.
+
+    The value runs to the next bolded field bullet, so a multi-line edition note
+    ("consolidated version recorded as at ...") is read whole rather than
+    truncated at the newline. With `last`, return the FINAL such value in BLOCK
+    rather than the first — see `inherited_edition`.
+    """
+    pat = re.compile(r"(?mi)\*\*language_version[:*]\*{0,2}(.*?)"
+                     r"(?=\n\s*[-*]\s+\*\*|\n#|\Z)", re.S)
+    found = pat.findall(block)
+    if not found:
+        return None
+    return (found[-1] if last else found[0]).lower()
+
+
+def inherited_edition(text: str, entry_start: int) -> str:
+    """The edition an entry inherits: the NEAREST preceding group's, not the page's.
+
+    A multi-instrument page states its fields per provenance GROUP, which is the
+    shape `_schema.md` rule 4 requires. Reading the first `language_version` on
+    the page therefore hands every entry the FIRST group's edition, so an entry
+    under a later group that states none at all inherits a claim about a
+    different fetch of a different instrument — a stated edition that was never
+    stated about it. Take the last one that precedes the entry, ignoring values
+    that belong to other entries rather than to a group.
+    """
+    prefix = text[:entry_start]
+    prefix = re.sub(r"(?ms)^### `[^`]+`.*?(?=^### `|^## |\Z)", "", prefix)
+    return edition_value(prefix, last=True) or ""
+
+
+def states_edition(value: str) -> bool:
+    """Does VALUE make an edition claim, as opposed to describing the language?"""
+    return any(re.search(pat, value) for pat in EDITION_MARKERS)
+
+
 def check() -> None:
     if not CORPUS.is_dir():
         return
     pages = 0
     entries = 0
+    debt_seen = set()
     # The contract itself is not a content page: _schema.md's `### `text_form``
     # and `### `instrument-provision-id`` are vocabulary sections and the entry
     # template. This excludes ONE exact path, not a filename pattern — the
@@ -148,6 +252,7 @@ def check() -> None:
         header = text.split("### `")[0]
         supplied = {f for f in INHERITABLE
                     if re.search(rf"(?mi)\*\*{re.escape(f)}[:*]", header)}
+        starts = entry_starts(text)
         by_prefix = "id prefix" in header
 
         for eid, body in blocks:
@@ -196,8 +301,36 @@ def check() -> None:
                 fail(f"{rel}: `{eid}` legal_status is not a schema value: "
                      f"{ls.group(1).strip()[:60]!r}")
 
+            # The amendment trap. A decision is not amended, so `case-law/`
+            # is exempt by construction rather than by a list.
+            if "case-law" not in rel.parts:
+                ev = edition_value(body)
+                if ev is None:
+                    ev = inherited_edition(text, starts[eid])
+                stated = states_edition(ev)
+                if eid in EDITION_DEBT:
+                    debt_seen.add(eid)
+                    if stated:
+                        fail(f"{rel}: `{eid}` now states its edition but is "
+                             f"still listed in EDITION_DEBT — strike the row; "
+                             f"the ledger only shrinks")
+                elif not stated:
+                    fail(f"{rel}: `{eid}` does not state the EDITION of the "
+                         f"text it read (original, or consolidated as at a "
+                         f"date) — non-citable under _schema.md's amendment "
+                         f"trap. An unamended reading of an amended instrument "
+                         f"is indistinguishable from a correct one.")
+
+    # A ledger row for an entry that no longer exists is a row nobody can
+    # discharge; it would keep the debt count honest-looking while hiding that
+    # the entry it names is gone.
+    for gone in sorted(EDITION_DEBT - debt_seen):
+        fail(f"EDITION_DEBT lists `{gone}`, which is in no corpus page — "
+             f"strike the row")
+
     if not findings:
-        print(f"legal lint: PASS — {entries} entries across {pages} pages")
+        print(f"legal lint: PASS — {entries} entries across {pages} pages "
+              f"({len(EDITION_DEBT)} carrying recorded edition debt)")
 
 
 def main() -> int:

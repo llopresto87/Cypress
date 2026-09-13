@@ -7,7 +7,7 @@ There is no `docs/graph/` here; these notes replace it.
 ## Gates (run before claiming anything works)
 
 ```
-bash tests/run.sh        # 17 shell suites + agent-lint (lint/eval) + graph/agent-lint regressions + seed-lint.py + legal-lint.py
+bash tests/run.sh        # 18 shell suites + agent-lint (lint/eval) + graph/agent-lint regressions + seed-lint.py + legal-lint.py
 ```
 
 `tests/seed-lint.py` is one-home-per-fact for the seed's own meta-facts:

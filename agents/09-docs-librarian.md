@@ -141,8 +141,8 @@ check `skill-corpus/` first: instantiate a matching procedure if one exists,
 else author fresh. Fill `docs/graph/templates/skill.template.md` into the
 skill's **home**, the graph node `docs/graph/skills/<name>.md`, and create
 the projection in each harness directory the plant actually uses
-(`.claude/skills/<name>/SKILL.md` and kin) — `install.sh` projects only the
-seed's own skills, so a plant-authored skill projects itself. Compose
+(`.claude/skills/<name>/SKILL.md` and kin) so the harness can load it now;
+`install.sh` projects what the graph holds and maintains it from then on. Compose
 existing protocols/skills by reference (never restating them) and ground each
 step in the project's real gates and tools. Dedupe against the skills already
 in `docs/graph/skills/` — one home per procedure; refresh in place, never

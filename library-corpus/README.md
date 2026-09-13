@@ -45,9 +45,12 @@ library-corpus/<ecosystem>/<library>.md
 
 - Keyed by **library, not version** — one page per library.
 - `<ecosystem>` — one of `language`, `npm`, `nuget`, `pypi`, `maven`,
-  `container` (add more as harvested: `cargo`, `go`, `gem`, …). `container`
-  holds container-runtime tooling (engine, compose, and images serving as a
-  runtime stage) rather than an installable package registry.
+  `container`, `platform` (add more as harvested: `cargo`, `go`, `gem`, …).
+  `container` holds container-runtime tooling (engine, compose, and images
+  serving as a runtime stage) rather than an installable package registry;
+  `platform` holds the hosted-platform surfaces the last rule below admits —
+  a platform's own CLI or declarative pipeline/config DSL, which has no
+  installable package and no version to pin.
 - `<library>` — the canonical id, lowercased, scope slash removed
   (`@microsoft/signalr` → `microsoft-signalr`).
 

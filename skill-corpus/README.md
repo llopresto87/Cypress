@@ -54,9 +54,9 @@ parameters, then `When to apply`, the procedure itself, `Anti-patterns`, and
 repeatable procedure the core `skills/` don't cover, check this corpus
 **first**. A matching page is instantiated into the project's
 `docs/graph/skills/<name>.md` — its home — from
-`docs/graph/templates/skill.template.md`, and the projection is then created
-in each harness dir the plant actually uses (`.claude/skills/<name>/SKILL.md`
-and kin), because `install.sh` projects only the seed's own skills,
-grounding its steps in the project's real gates and tools. If none matches,
+`docs/graph/templates/skill.template.md`, grounding its steps in the project's
+real gates and tools. The harness projections (`.claude/skills/<name>/SKILL.md`
+and kin) follow from that home: `install.sh` projects what is in the graph, so
+an instantiated page reaches every harness the plant runs on the next install. If none matches,
 author it fresh as a project skill — and its durable, agnostic form becomes a
 harvest candidate for the next cycle.

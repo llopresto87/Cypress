@@ -279,6 +279,19 @@ rule; this section is about what a recorded assertion can have proved.
      - Smoke test: absent (2025-06-01) — no deploy target yet; reliability adds it with the first deploy (see grill.md §12)
      ```
 
+   Two failure modes live in the seams between these states. A harness
+   that stops at the first failing assertion in a case reports a count
+   that is a **lower bound**, not a total: every later assertion in that
+   case would also have failed and was never reached, so a fix-and-recount
+   loop reads as convergence while the real defect count is unknown. Say
+   "at least N" until every assertion in the case has run. And a check
+   recorded `discovered` or `absent` inside a list whose other rows are
+   `executed` does not inherit their standing by sitting among them: a
+   contract may not rest on such a row without saying so in the contract's
+   own text, because an unmeasured assumption surrounded by measured ones
+   is the one place in a verification record where being wrong costs
+   nothing.
+
    Adopting an existing codebase with no test or gate infrastructure is
    not an excuse to leave the runbook empty: record each standard gate
    explicitly as `absent (YYYY-MM-DD) — <reason>`. A blank verification
@@ -443,12 +456,26 @@ code path that can produce the outcome, not the presence of the
 implementing code, the documentation, or the fact that the system works
 — and state the strength it actually enforces, never the strength its
 name implies; present-but-unwired permission machinery is protection
-that does not exist.
+that does not exist. Establish that wiring by following the invocation
+chain itself — definition to build step to entry point to lifecycle hook
+— rather than searching the repository for the gate's name: a component's
+automation can be defined in a different repository than the code it
+guards, and a gate can be invoked by a hook that never names it, so a
+name search answers a question about text while reporting an answer about
+behavior.
 
 When the check and its subject disagree, **the instrument is the first
 suspect.** Put the prior on the checker: read the raw source at the
 cited location and verify a tool's finding against the underlying data
-before recording it. Two of your own contradictory measurements indict
+before recording it. Suspect it earlier than its output, too — a probe
+can be corrupted *before it runs*, because a shell expands the command
+you typed rather than the command you meant: a variable reference
+immediately followed by a delimiter the shell also reads as an expansion
+modifier, or a pattern handed unquoted to a program that does its own
+matching, is rewritten before the check ever sees its input. Read the
+probe's **exit code**, never the emptiness of its output — a corrupted
+probe and a clean negative both come back empty, and only one of them
+means what you are about to write down. Two of your own contradictory measurements indict
 your method, not the other reader. Match the instrument's shape to the
 subject's — a line-oriented scan over multi-line constructs produces a
 number that looks like evidence and is not. A tool that produced a false

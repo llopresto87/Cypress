@@ -200,6 +200,14 @@ numbered tells.
 | W | Synthetic friendliness | Great question, The good news is, Don't worry, Luckily, You're all set | Remove it unless the voice and purpose call for it. |
 | X | Meta-writing residue | "Here is a revised version", "As requested", "I hope this helps", "Let me know if", notes to self, placeholder commentary, unrequested explanations of the editing | Remove outright. It is the most certain tell and the easiest to miss when it wraps real content. |
 
+These diagnostics are built on one language's vocabulary. On a document
+written in another, run the tool for its language-independent checks only
+— structural repetition, decorative formatting, heading density,
+punctuation — and record every vocabulary-based finding as **inapplicable**
+rather than clean. A silent detector there has reported that it cannot read
+the document, never that the prose is good, and the two look identical in
+the output.
+
 Stock model vocabulary (`additionally`, `crucial`, `delve`, `enhance`,
 `fostering`, `highlight` as a verb, `interplay`, `intricate`, `key` as an
 adjective, `landscape` as an abstraction, `meticulous`, `pivotal`,

@@ -992,7 +992,8 @@ core `docs/graph/skills/` discipline covers it, author it as a project
 skill from the template. Its home is the graph node
 `docs/graph/skills/<name>.md`; the projection is also created in each
 harness dir the plant actually uses (`.claude/skills/<name>/SKILL.md` and
-kin), because `install.sh` projects only the seed's own skills. It
+kin), so the harness can load it before the next install — `install.sh`
+projects what the graph holds, and maintains it from then on. It
 **composes** disciplines by reference, never restating them.
 
 ### Design-time half of the rule

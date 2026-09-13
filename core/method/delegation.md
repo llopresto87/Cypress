@@ -203,6 +203,14 @@ work outside its domain (`blocked-out-of-domain`), or it failed (`failed`). The
 payload is required in all three; a leaf that stops at a domain boundary still
 returns it, naming the next specialist rather than doing the work.
 
+Because the turn ends at that return, a worker whose run has **completed** is
+not a correspondent: sending it more work does not resume it. Continuing that
+line of work means spawning a fresh worker with a full brief, and the new one
+inherits none of the old one's context — so whatever the finished worker
+established has to be carried forward in the brief, not assumed. A caller who
+treats a completed worker as re-taskable loses the follow-up silently: the work
+is neither done nor refused, it was never spawned.
+
 Where a document means something else, it says so in words rather than reusing
 this term — "per exchange with the user" for a conversational round, "each time
 the caller re-reads the payload" for a caller-side read.
@@ -220,6 +228,14 @@ words — it is the string the worker hands to `--plan`, so the terms it
 names are what compose the worker's expertise closure, and a task line
 vaguer than the work loads a graph vaguer than the work. Parameterized
 briefs live in `docs/graph/templates/prompts/`; use them.
+
+**A fact the brief supplies is a lead, not evidence.** A path, a line number,
+an identifier or a prior finding handed down in a brief is what the caller
+believed when it wrote the brief; the worker confirms it against the artifact or
+the register before building on it, and reports the correction when it does not
+hold. The duty runs both ways: a correction to a supplied fact carries the same
+burden of proof as the claim it corrects, so "the brief is wrong" is itself a
+claim that cites the artifact.
 
 **Carry each constraint at its stated strength.** "Avoid X where you
 can" is a preference the worker weighs against the goal; "no X" is a

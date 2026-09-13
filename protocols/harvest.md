@@ -305,8 +305,16 @@ The seed must leave harvest **more capable and no less agnostic**:
   harvested artifact must be REACHABLE by the flow that delivers it to the next
   plant. Prove the reach for each:
   - a **corpus page** — reachable through its documented withdraw contract
-    (`grow` / `graft` / `ingest-library` check the corpus for it) and listed in
-    its corpus `index.md`;
+    (`grow` / `graft` / `ingest-library` check the corpus for it). Reachability
+    takes one of two forms, and which one is not a style choice: a corpus whose
+    consumer can enumerate the directory is reached by the **path formula** its
+    README states (`<ecosystem>/<library>.md` and its kin), and a second listing
+    would be a copy of the filesystem that drifts against it; a corpus whose
+    consumer **cannot** enumerate — the legal corpus, read by an analyst with no
+    filesystem reach, whose whole discipline is that a gap must produce a
+    refusal — needs a routed `index.md`, because there a missing row and a
+    missing instrument are the same thing to the reader. Where a page's corpus
+    keeps an index, the page is in it;
   - a **base-roster promotion** — present in every roster ground-truth surface
     the harnesses project (manifest, kernel roster line, `method.delegation`
     table, `agents/_routes.golden.tsv`), so `install` ships it and `graft`
@@ -547,9 +555,9 @@ a ready procedure instead of rediscovering the sequence.
   plant's own), and anything duplicating a core skill.
 - **The withdraw contract (consumed by `grow` / `toolcraft` / commission).**
   Check the corpus first; if a match exists, instantiate it into the project's
-  `docs/graph/skills/<name>.md` (projected into `.claude/skills/<name>/SKILL.md`
-  and kin — created by the plant itself; install.sh projects only seed
-  skills) from `docs/graph/templates/skill.template.md`, grounding
+  `docs/graph/skills/<name>.md` (the graph is the home; `install.sh` projects it
+  into `.claude/skills/<name>/SKILL.md` and kin on the next run, the same as any
+  seed skill) from `docs/graph/templates/skill.template.md`, grounding
   its steps in the project's real gates and tools; else author it fresh, and its
   durable form becomes a harvest candidate.
 

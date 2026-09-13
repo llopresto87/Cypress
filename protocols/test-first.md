@@ -132,6 +132,18 @@ production code the historical defect a test claims to guard against,
 confirm the suite fails for *that specific reason*, then revert. Only
 a green you have seen turn red and back is a trusted green.
 
+Two corollaries decide whether a mutation result can be read at all.
+First, confirm the mutant actually rebuilt before believing it survived:
+a toolchain that caches compiled artifacts on a cheap staleness check can
+satisfy that check with an edit of the same size made in the same second,
+and then runs the *old* artifact — a survived mutation that was never
+executed. Second, a check that claims **exact** membership (an allow-list
+of hosts, roles, scopes, media types, extensions, flags) needs a mutant
+input that is a strict prefix-extension of an allowed value and one that
+is a strict suffix-extension. Without both, the suite cannot tell an
+exact comparison from a relaxed one, which is precisely the mutation an
+attacker would make.
+
 ### GREEN — minimum behavior, integrated
 
 1. Add the minimum *new behavior* that turns RED into GREEN. "Minimum"

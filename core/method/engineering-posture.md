@@ -223,6 +223,13 @@ unclear, or no safe default exists. Do not ask to avoid an ordinary
 decision, and do not fabricate certainty where an assumption remains
 material.
 
+Where a request rests on a premise the evidence contradicts, neither
+silent compliance nor refusal is the answer: say so in the same turn,
+with the evidence and a corrected proposal, and then proceed on the
+corrected footing. Implementing a request whose stated premise you have
+already disproved produces work that is correct against the words and
+wrong against the goal.
+
 A question of intent, legal standing, ownership, or scope is not the
 implementer's to decide, whatever the analysis recommends. Route it to
 the owner and leave it open: record why it matters, the working

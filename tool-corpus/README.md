@@ -50,8 +50,11 @@ tool-corpus/<category>/<name>.md
 - Keyed by **category, not project** — one page per tool.
 - `<category>` — the kind of work the tool does. Currently populated: `ops`
   (deploy pipelines, secret rotation, cert generation, disposable test-identity
-  provisioning) and `testing` (smoke suites, CI-runner simulation,
-  failure-signature triage). Further categories such as `scaffolding`,
+  provisioning, layered-config merge verification, declared-variable existence
+  auditing, structured-secret field detection, large-artifact staging,
+  config-driven server response harnessing) and `testing` (smoke suites,
+  CI-runner simulation, failure-signature triage, working-tree snapshots,
+  authentication-parity oracles). Further categories such as `scaffolding`,
   `codegen`, `data`, and `analysis` are added as they are harvested.
 - `<name>` — the canonical id, lowercased, kebab-case.
 
@@ -66,3 +69,10 @@ tool-corpus/<category>/<name>.md
 - **Orientation, not gospel.** Adopt the portable implementation only when the
   stack matches; otherwise treat the page as a blueprint and re-author against
   the project's real stack, test-first. Confirm the tool still fits before use.
+- **A portability claim is a gate, not an adjective.** `tests/test-tool-corpus.sh`
+  compiles every shell and Python implementation on a page declaring
+  `Stability: portable`, exercises the behaviour of the pages that ship a
+  runnable one, and fails a run whose selector matched almost nothing. Code an
+  adopting project is invited to run as-is, that nobody has run, is the same
+  green lie a gate that asserts nothing is — so a page either earns the word or
+  says `blueprint`, which is an honest and common answer.
