@@ -526,7 +526,48 @@ class TestRouterTokenizerEquivalence(unittest.TestCase):
         self.assertIn("chain", frag,
                       "the pieces must be reachable, at the fragment tier")
 
-    def test_the_knowledge_routers_descent_also_discounts_a_fragment(self):
+    def test_every_separator_discounts_its_fragments_in_both_routers(self):
+        """The class, not the hyphen.
+
+        The compound-fragment fix discounted `-` and nothing else, while the
+        TASK side of the same comparison already split on `-`, `/`, `.` and
+        `*`. So the two halves of one comparison disagreed, and a piece of a
+        path spoke for the whole: `docs/graph` in `protocol.grow`'s load_when
+        made `graph` score exactly like a standalone word, the same shape that
+        let `chain` out of `supply-chain` take the band for `agent.security`.
+        Measured when this was written: 13 shipped path compounds across
+        load_when and routing_triggers, and `node.template.md` ships
+        `"editing {{repo-or-path}}/**"`, so every plant is taught to write more.
+
+        A node's own id is the exception and is asserted below: `expertise.
+        ef-core` IS `ef-core`, because that is its name rather than somebody
+        else's compound.
+        """
+        for sep in ("-", "/", "."):
+            text = f"audit the supply{sep}chain and secrets handling risk"
+            with self.subTest(separator=sep):
+                self.assertEqual(
+                    self._strength(self.al, text, "chain"), 1,
+                    f"agent-lint: a fragment split on {sep!r} scores at full "
+                    f"strength")
+                whole, frag = self.gl._split_terms(text)
+                self.assertEqual(
+                    self.gl._strength("chain", whole, frag), 1,
+                    f"graph-lint: a fragment split on {sep!r} scores at full "
+                    f"strength")
+                self.assertEqual(
+                    self.gl._strength(f"supply{sep}chain", whole, frag), 2,
+                    "the compound must still reach its owner whole")
+
+    def test_a_node_id_segment_is_a_name_not_a_fragment(self):
+        """`expertise.ef-core` is `ef-core`. Discounting a node's OWN id
+        segments would make every expertise child harder to select than the
+        task words that name it, which is the opposite of the defect above."""
+        whole, frag = self.gl._split_terms("expertise.ef-core", keep_path_segments=True)
+        self.assertEqual(self.gl._strength("ef-core", whole, frag), 2,
+                         "a node's id segment was demoted to a fragment")
+
+    def test_graph_lints_dead_tokenizer_has_no_live_caller(self):
         """The half of the fix that did NOT land when the scorer's did.
 
         `resolve()` has two decisions, and 7.16.0 gave the fragment model to

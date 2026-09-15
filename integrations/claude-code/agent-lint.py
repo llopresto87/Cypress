@@ -454,13 +454,12 @@ def _tokens(text: str) -> dict:
     without the hyphen is not lost.
     """
     strength: dict[str, int] = {}
-    for w in re.findall(r"[a-z0-9_]+(?:-[a-z0-9_]+)*", text.lower()):
+    for w in re.findall(r"[a-z0-9_]+(?:[-/.][a-z0-9_]+)*", text.lower()):
         strength[w] = 2                      # the whole token, as written
-        parts = w.split("-")
+        parts = [p for p in re.split(r"[-/.]", w) if p]
         if len(parts) > 1:
             for part in parts:
-                if part:
-                    strength.setdefault(part, 1)   # fragment: never upgrades a 2
+                strength.setdefault(part, 1)   # fragment: never upgrades a 2
     return strength
 
 
@@ -478,7 +477,9 @@ def _merge(*maps: dict) -> dict:
 
 # --- canonical stemmer -----------------------------------------------------
 # This block is byte-identical in agent-lint.py and graph-lint.py and
-# `seed-lint.py`'s check_stemmer_sync enforces that. The two routers already
+# `seed-lint.py`'s check_canonical_router_blocks enforces that. (It read
+# `check_stemmer_sync` for a release: a function of that name has never
+# existed, in a comment shipped into every plant.) The two routers already
 # carried one copied scorer; the copy is why the compound-fragment fix reached
 # only one of them, and why a `STEM = 6` fold documented as handling
 # "test/tests, node/nodes" handled neither, in both files, for four releases.

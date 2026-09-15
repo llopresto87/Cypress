@@ -1,5 +1,39 @@
 # Changelog
 
+## 7.16.1 — a fragment of a path is a fragment too (2026-09-16)
+
+The compound-fragment fix discounted the hyphen and nothing else, and the TASK
+side of the same comparison already split on `-`, `/`, `.` and `*`. So the two
+halves of one comparison disagreed about what a token is, and a piece of a path
+spoke for the whole: `docs/graph`, in `protocol.grow`'s `load_when`, made
+`graph` score exactly like a standalone word — the same shape that let `chain`,
+taken from `agent.security`'s `supply-chain`, take the band on "our chain of
+language-model calls loops forever".
+
+Measured: 13 shipped path compounds across `load_when` and `routing_triggers`,
+and `templates/knowledge-graph/node.template.md` ships
+`"editing {{repo-or-path}}/**"`, so every plant is taught to write more of them.
+Both routers discount every separator now. No corpus class moved — contract
+60/61, paraphrase 4/18, adversarial 3 of 12 within its budget of 3,
+unknown-domain 5/5 — which is the point: this closes a defect without buying a
+row.
+
+One exception, asserted rather than assumed: a node's OWN id segments are its
+name. `expertise.ef-core` IS `ef-core`, and discounting that would make every
+expertise child harder to select than the words that name it. A path written
+inside a `load_when` phrase is a fragment; a node's id is not.
+
+The knowledge router's descent got more precise as a side effect, and the test
+that pinned the old behaviour was asserting the defect: it expected a child to
+be descended into on `"net10"`, half of its own `net10.0` version token. It now
+descends on the whole token, selects the same child, and `net10` still matches
+at the fragment tier.
+
+Also: `agent-lint.py` and `graph-lint.py` both carried a comment, shipped into
+every plant, saying `seed-lint.py`'s `check_stemmer_sync` enforces the canonical
+router blocks. No function of that name has ever existed. It is
+`check_canonical_router_blocks`.
+
 ## 7.16.0 — the installer has one way to write, and the audit can see all of it (2026-09-13)
 
 A plant edit to `.claude/route-hook.py` was destroyed by the next install. No

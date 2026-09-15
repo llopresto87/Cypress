@@ -782,7 +782,9 @@ def _tokens(text: str) -> set:
 
 # --- canonical stemmer -----------------------------------------------------
 # This block is byte-identical in agent-lint.py and graph-lint.py and
-# `seed-lint.py`'s check_stemmer_sync enforces that. The two routers already
+# `seed-lint.py`'s check_canonical_router_blocks enforces that. (It read
+# `check_stemmer_sync` for a release: a function of that name has never
+# existed, in a comment shipped into every plant.) The two routers already
 # carried one copied scorer; the copy is why the compound-fragment fix reached
 # only one of them, and why a `STEM = 6` fold documented as handling
 # "test/tests, node/nodes" handled neither, in both files, for four releases.
@@ -880,7 +882,7 @@ def _match(term: str, toks: set) -> int:
     return 0
 
 
-def _split_terms(text: str) -> tuple:
+def _split_terms(text: str, keep_path_segments: bool = False) -> tuple:
     """(whole, fragment) — a hyphen fragment does not speak for its compound.
 
     `agent-lint.py` learned this at 7.15.0 and this router received it at
@@ -906,14 +908,30 @@ def _split_terms(text: str) -> tuple:
     """
     whole, frag = set(), set()
     for w in re.findall(r"[a-z0-9_/*.-]+", text.lower()):
-        for part in [w, *re.split(r"[/*.]+", w)]:
-            part = part.strip("_")
-            if len(part) >= 3 and part not in STOPWORDS:
-                whole.add(part)
-        if "-" in w:
-            for part in w.split("-"):
+        cleaned = w.strip("_")
+        if len(cleaned) >= 3 and cleaned not in STOPWORDS:
+            whole.add(cleaned)
+        # Every separator, not just the hyphen. `/` and `.` pieces used to land
+        # in `whole` at full strength, so `docs/graph` in `protocol.grow`'s
+        # load_when made `graph` speak for it exactly as `supply-chain` once
+        # made `chain` speak for `agent.security`. Measured: 13 shipped path
+        # compounds across load_when and routing_triggers, and
+        # `templates/knowledge-graph/node.template.md` ships
+        # `"editing {{repo-or-path}}/**"`, so every plant is taught to write
+        # more of them.
+        # Path segments first (`/`, `.`, `*`), then hyphen pieces of each.
+        # `keep_path_segments` decides only where the PATH segments land: in a
+        # node's own id they are its name (`expertise.ef-core` IS `ef-core`),
+        # and inside a load_when phrase they are a fragment (`docs/graph` must
+        # not let `graph` speak for `protocol.grow`). Hyphen pieces are always
+        # fragments, in both cases.
+        for seg in re.split(r"[/*.]+", w):
+            seg = seg.strip("_")
+            if len(seg) >= 3 and seg not in STOPWORDS:
+                (whole if keep_path_segments else frag).add(seg)
+            for part in seg.split("-"):
                 part = part.strip("_")
-                if len(part) >= 3 and part not in STOPWORDS:
+                if len(part) >= 3 and part not in STOPWORDS and part != seg:
                     frag.add(part)
     return whole, frag - whole
 
@@ -955,7 +973,12 @@ def resolve(nodes: list, task: str):
 
     buckets = {}
     for n in nodes:
-        name_w, name_f = _split_terms(" ".join([n.id, n.meta.get("title", ""), str(n.meta.get("repo", ""))]))
+        # A node's OWN id segments are its NAME, not a fragment of somebody
+        # else's compound: `expertise.ef-core` is `ef-core`. Only a path
+        # written inside a load_when phrase is a fragment.
+        name_w, name_f = _split_terms(
+            " ".join([n.id, n.meta.get("title", ""), str(n.meta.get("repo", ""))]),
+            keep_path_segments=True)
         lw_w, lw_f = _split_terms(" ".join(n.get_list("load_when") + n.get_list("routing_triggers")))
         buckets[n.id] = (name_w, name_f, lw_w, lw_f)
 

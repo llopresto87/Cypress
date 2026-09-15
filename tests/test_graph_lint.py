@@ -1087,7 +1087,15 @@ class DescentTests(unittest.TestCase):
                 load_when=[f"net{major}.0, dotnet {major} target"])
         out = self.plan(
             "in the orders service, editing src/Orders/**, target net10.0", nodes)
-        self.assertIn('composed by expertise.dotnet on "net10"', out)
+        # The WHOLE token, not a piece of it. This read `"net10"` while the
+        # load_when says `net10.0`: the router split on `.` and kept both
+        # pieces at full strength, so a child could be descended into on half
+        # of its own version token — the same shape that let `chain`, taken
+        # from `supply-chain`, speak for the security agent. `net10` still
+        # matches at the fragment tier, so a task that writes it without the
+        # `.0` is not lost; it simply cannot clear the standalone bar descent
+        # requires on its own.
+        self.assertIn('composed by expertise.dotnet on "net10.0"', out)
         self.assertRegex(out, r"expertise\.dotnet-8\s+composed by .*no task term")
 
     def test_plan_reports_not_loaded_with_reason(self):
