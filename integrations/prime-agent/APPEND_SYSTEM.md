@@ -53,7 +53,7 @@ A reusable win has exactly one correct home; the three do not overlap.
   canonize. Unchanged from Claude Code.
 - **A durable TOOL or a project SKILL** — the §3.8 toolcraft artifact,
   including any Agent-Skills `SKILL.md` you author for this plant → it belongs
-  **in the plant**. Per `protocol.toolcraft`, a project skill's home is the
+  **in the plant**. Per `skill.toolcraft`, a project skill's home is the
   graph node `docs/graph/skills/<name>.md`, and you project it into the harness
   dir this plant actually uses: `.prime/agent/skills/<name>/SKILL.md` (the dir
   this plant's `settings.json` already discovers), committed to the plant's git

@@ -39,6 +39,7 @@ load_when:
   - "golden master, stored oracle before a migration"
   - "gate script left half-applied state, environment failure or repository failure"
   - "the checker disagrees with the file, fix the tool or the declaration"
+prevents: Gates that run and assert nothing, so green means the command exited zero rather than that the behavior holds.
 est_tokens: 5350
 command: true
 ---

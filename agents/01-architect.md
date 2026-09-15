@@ -33,6 +33,7 @@ plant_knowledge:
   - architecture/
   - decisions/
   - libraries/
+prevents: Boundaries decided incrementally by whoever writes the next file, and specs with no functional contracts, data shapes or failure modes.
 est_tokens: 1360
 ---
 
@@ -163,17 +164,18 @@ and renders no rule from memory; its mandate and the corpus withdraw
 contract live in `agent-corpus/legal.md` and `agent-corpus/README.md`,
 not here.
 
-- **If the plant roster carries `legal` AND your plant-local
-  `delegates_to` allowlist was extended to include it at instantiation
-  time,** spawn it via bounded Task within your depth cap and wait for
-  its finding before you accept the decision. (The withdraw contract
-  does not wire allowlists for you; if yours was not extended, treat
-  the roster as lacking it.)
-- **If the roster lacks it,** instantiate the role from
-  `agent-corpus/legal.md` through the corpus withdraw contract first;
-  if you cannot spawn it this turn, **STOP** and hand back naming
-  `legal` as `recommended_next`. Do not decide the one-way door
-  without it.
+`legal` is on the base roster — it has been a first-class seed agent since
+6.12.0, not a corpus role to withdraw. What is NOT automatic is your
+reach to it: this charter's `delegates_to` allowlist is `tester` and
+`research-scout`, and nothing else.
+
+- **If your plant-local `delegates_to` was extended to include
+  `legal`,** spawn it via bounded Task within your depth cap and wait
+  for its finding before you accept the decision.
+- **Otherwise — the default —** you do not spawn it. **STOP** and hand
+  back naming `legal` as `recommended_next`, with the rule question
+  stated. Do not decide the one-way door without it, and do not reach
+  past your allowlist to avoid the handback.
 - **A legal-corpus gap** becomes an explicit open question in
   grill.md §12 ("not recorded — needs ingest") — never a rule, number,
   or citation you reconstruct yourself into the ADR.

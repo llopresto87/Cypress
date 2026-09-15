@@ -103,10 +103,20 @@ def scan(paths, forbid=(), globs=DEFAULT_GLOBS, relative_to=None):
              for t in (s.strip() for s in forbid) if t]
     findings: list[Finding] = []
     for f in iter_files(paths, globs):
+        rel_for_error = (f.relative_to(relative_to).as_posix()
+                         if relative_to else f.as_posix())
         try:
             text = f.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError):
-            continue          # binary or unreadable: carries no prose
+        except (UnicodeDecodeError, OSError) as exc:
+            # NOT a silent skip. The comment here used to read "binary or
+            # unreadable: carries no prose", but DEFAULT_GLOBS is ("*.md",) —
+            # a markdown file that will not decode is a prose file this tool
+            # could not read, which is the one thing it must never report as
+            # clean. An unread input is UNKNOWN, and unknown is not green.
+            findings.append(Finding(
+                rel_for_error, 0, "unreadable", "",
+                f"could not be read, so it was NOT scanned: {exc}"))
+            continue
         rel = (f.relative_to(relative_to).as_posix()
                if relative_to else f.as_posix())
         for n, line in enumerate(text.splitlines(), 1):

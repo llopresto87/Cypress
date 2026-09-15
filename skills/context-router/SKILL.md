@@ -25,6 +25,7 @@ artifacts:
   - templates/prompts/graph-session-bootstrap.md
   - templates/knowledge-graph/_schema.md
   - templates/knowledge-graph/index.md
+prevents: A session that opens source files before deciding which few facts the task needs, and never declares what it skipped, so nobody downstream can tell an informed omission from an unread node.
 est_tokens: 2779
 ---
 

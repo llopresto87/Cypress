@@ -95,6 +95,9 @@ def parse_args():
             opt[key] = raw
     while i < len(a):
         x = a[i]
+        if x in ("--help", "-h"):
+            print(__doc__)
+            sys.exit(0)
         if x.startswith("--"):
             body = x[2:]
             key, eq, val = body.partition("=")
@@ -145,17 +148,99 @@ def parse_args():
 # (graft.md — "copying the seed template would regress placeholders and
 # wipe the authored router"), so a backup over them IS a knowledge
 # overwrite worth alarming on.
-MACHINERY_SUBTREES = ("protocols/", "skills/", "agents/", "method/", "templates/")
+# `legal/corpus/` is seed-owned like the rest: install.sh places legal-corpus/
+# WHOLE under it on `--legal-corpus yes`, and place_tree fast-forwards it on
+# every later run. It was missing here, so editing any of its 16 pages produced
+# a backup that classified UNMAPPED *and* was reported as a plant knowledge
+# overwrite — the exact false positive this module's header says it exists to
+# avoid, on a first-class documented feature.
+# `legal/index.md` is deliberately NOT included: that one IS plant-authored (it
+# is where the owner scopes which instruments bear on the project), so a backup
+# over it is a real knowledge overwrite and must keep alarming.
+MACHINERY_SUBTREES = ("protocols/", "skills/", "agents/", "method/", "templates/",
+                      "legal/corpus/")
 # config-free tools install.sh delivers into docs/graph/ from a seed home
 # outside templates/knowledge-graph/ (the agent-lint class: fast-forwarded,
 # never add-if-missing). plant path under docs/graph/ -> seed-relative source.
 DELIVERED_TOOLS = {
     "agent-lint.py": "integrations/claude-code/agent-lint.py",
+    # the frontmatter reader every engine beside it imports. A new placed file
+    # the audit cannot map is UNMAPPED, and three of them turned up the moment
+    # it started shipping — which is what this table is for.
+    "frontmatter.py": "templates/knowledge-graph/frontmatter.py",
+    # placed only when --legal-corpus yes; the corpus travels with its checker
+    "legal-lint.py": "tests/legal-lint.py",
     "agnosticism-lint.py": "tools/agnosticism-lint.py",
     "prose-lint.py": "tools/prose-lint.py",
     "status-register.py": "tools/status-register.py",
 }
 SCAFFOLD_FILES = ("graph-lint.py", "spec-lint.py", "grill-lint.py") + tuple(DELIVERED_TOOLS)
+
+# Seed machinery the installer places OUTSIDE docs/graph/, into the harness
+# adapter directories: hooks, extensions, settings, the system-prompt overlay,
+# the tool-neutral entry prompt. Verbatim copies of a seed file, so a backup
+# over one is byte-comparable exactly like a docs/graph/ node.
+# Until 7.16.0 install.sh wrote every one of these with a bare `cp`, so none
+# ever produced a backup and this table had nothing to classify — the audit
+# reported "clean" over destroyed plant customizations. The writer now backs
+# them up; this is what makes them legible instead of UNMAPPED.
+ADAPTER_MACHINERY = {
+    ".claude/route-hook.py": "integrations/claude-code/route-hook.py",
+    ".claude/status-hook.py": "integrations/claude-code/status-hook.py",
+    ".claude/bound-hook.py": "integrations/claude-code/bound-hook.py",
+    ".claude/agent-lint.py": "integrations/claude-code/agent-lint.py",
+    ".claude/frontmatter.py": "templates/knowledge-graph/frontmatter.py",
+    ".claude/settings.json": "integrations/claude-code/settings.json",
+    ".github/hooks/route-hook.py": "integrations/claude-code/route-hook.py",
+    ".github/hooks/status-hook.py": "integrations/claude-code/status-hook.py",
+    ".github/hooks/route.json": "integrations/github-copilot/hooks/route.json",
+    ".github/hooks/status.json": "integrations/github-copilot/hooks/status.json",
+    ".prime/agent/settings.json": "integrations/prime-agent/settings.json",
+    ".prime/agent/APPEND_SYSTEM.md": "integrations/prime-agent/APPEND_SYSTEM.md",
+    ".prime/agent/extensions/route-extension.ts":
+        "integrations/prime-agent/route-extension.ts",
+    ".prime/agent/extensions/status-extension.ts":
+        "integrations/prime-agent/status-extension.ts",
+    "opencode.json": "integrations/opencode/opencode.json",
+    "EXPERT_SEED_INSTALL_PROMPT.md": "INSTALL_PROMPT.md",
+}
+
+# Harness views GENERATED from a seed node at install time — slash commands,
+# the transformed Copilot agent/prompt/instruction files, the Codex snippet.
+# They are seed-owned (never plant knowledge), but they are NOT byte-comparable
+# with the node they came from, so claiming IDENTICAL or DELTA over them would
+# be a measurement the audit cannot make. They get their own verdict.
+GENERATED_VIEWS = (
+    ".claude/commands/", ".opencode/commands/", ".prime/agent/prompts/",
+    ".github/agents/", ".github/prompts/", ".github/instructions/",
+)
+GENERATED_FILES = (".codex/codex-config-snippet.toml",)
+# `.cypress/seed.json` is the installer's own derived state, replaced without a
+# backup by design (place_state), so it never reaches this audit.
+
+
+def generator_for(rel: str, seed: Path):
+    """The seed node a generated harness view was projected FROM, or None."""
+    if rel in GENERATED_FILES:
+        return seed / "integrations/codex/config.toml.example"
+    if not rel.startswith(GENERATED_VIEWS):
+        return None
+    stem = Path(rel).name
+    for suffix in (".agent.md", ".prompt.md", ".instructions.md", ".md"):
+        if stem.endswith(suffix):
+            stem = stem[: -len(suffix)]
+            break
+    if rel.startswith(".github/instructions/"):
+        stem = stem[:-len("-skill")] if stem.endswith("-skill") else stem
+        cand = seed / "skills" / stem / "SKILL.md"
+        return cand if cand.exists() else None
+    if rel.startswith((".github/agents/",)):
+        for c in sorted((seed / "agents").glob("*.md")):
+            if re.sub(r"^\d+-", "", c.stem) == stem:
+                return c
+        return None
+    cand = seed / "protocols" / f"{stem}.md"
+    return cand if cand.exists() else None
 
 # the scaffold mirror: install.sh place_docs_skeleton copies the seed's
 # templates/docs/<rel> to the plant's docs/graph/<rel> when missing.
@@ -197,9 +282,13 @@ def seed_source_for(rel: str, seed: Path):
             return seed / "skills" / Path(sub).stem / "SKILL.md"
         if sub.startswith("templates/"):
             return seed / "templates" / sub[len("templates/"):]
+        if sub.startswith("legal/corpus/"):
+            return seed / "legal-corpus" / sub[len("legal/corpus/"):]
         if sub in SCAFFOLD_FILES:
             return seed / "templates/knowledge-graph" / sub
         return None  # plant-authored graph content — never seed-mapped
+    if rel in ADAPTER_MACHINERY:
+        return seed / ADAPTER_MACHINERY[rel]
     for adapter in (".claude/", ".codex/", ".opencode/", ".prime/agent/"):
         if rel.startswith(adapter):
             sub = rel[len(adapter):]
@@ -322,7 +411,8 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
         date = stamps[-1] if stamps else "00000000"
 
     baks = [p for p in plant.rglob(f"*.bak-{date}-*") if p.is_file() and not p.is_symlink()]
-    counts = {"IDENTICAL": 0, "DELTA": 0, "CUSTOMIZED": 0, "UNMAPPED": 0}
+    counts = {"IDENTICAL": 0, "DELTA": 0, "CUSTOMIZED": 0,
+              "GENERATED": 0, "UNMAPPED": 0}
     customized, knowledge_hits, unmapped = [], [], []
     for b in baks:
         rel = plant_rel(b, plant, date)
@@ -337,6 +427,26 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
                 is_seed_owned_graph_path(rel) and seed_backed):
             knowledge_hits.append(b.relative_to(plant).as_posix())
         if not seed_backed:
+            # A generated harness view has a seed GENERATOR rather than a seed
+            # twin. It is still seed-owned machinery, so reporting it UNMAPPED
+            # ("no seed source; inspect by hand") sent a steward hunting for a
+            # file that never existed. Byte comparison is meaningless here, so
+            # the one question that still has meaning is asked instead: does the
+            # replaced body carry a plant customization signal?
+            gen = generator_for(rel, seed)
+            if gen is not None and gen.exists():
+                bt = b.read_text(errors="replace")
+                low = bt.lower()
+                gen_low = gen.read_text(errors="replace").lower()
+                hit = [x for x in explicit if x in low]
+                hit += [x for x in generic if x in low and x not in gen_low]
+                if hit:
+                    counts["CUSTOMIZED"] += 1
+                    customized.append(
+                        (b.relative_to(plant).as_posix(), sorted(set(hit))[:4]))
+                else:
+                    counts["GENERATED"] += 1
+                continue
             counts["UNMAPPED"] += 1
             unmapped.append(b.relative_to(plant).as_posix())
             continue
@@ -391,6 +501,14 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
             print(f"       {rel}  [signal: {','.join(hit)}]")
         return 1
     if knowledge_hits or not kernel_ok or not engine_ok:
+        return 1
+    if unmapped:
+        # An UNMAPPED backup is a file the audit could not classify at all.
+        # Printing the warning and then "clean" told a steward both that
+        # something was unexplained and that nothing was — and the second line
+        # is the one that gets believed. Unknown is not green.
+        print(f"  UNRESOLVED — {len(unmapped)} backup(s) the audit cannot map to "
+              f"a seed source. Classify them by hand before ratifying this graft.")
         return 1
     print("  clean — no plant knowledge overwritten, no customization buried")
     return 0

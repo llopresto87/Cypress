@@ -26,6 +26,7 @@ peers:
 plant_knowledge:
   - design/
   - best-practices/
+prevents: Screens whose layout, states and hierarchy are settled one component at a time by whoever writes the markup, with no design spec a reviewer could hold the result against.
 est_tokens: 1371
 ---
 

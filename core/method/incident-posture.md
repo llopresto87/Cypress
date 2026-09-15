@@ -25,6 +25,7 @@ load_when:
   - "prioritize the remediation backlog, which vulnerability or exposure first"
   - "out of scope finding, park it as a residual with an owner and a trigger"
   - "risk register row, accepted risk, can this risk be closed"
+prevents: Containment that destroys the evidence, remediation sequenced by what is easy rather than by exposure, and residual risk nobody owns.
 est_tokens: 1750
 ---
 

@@ -21,6 +21,7 @@ load_when:
   - "is the graph trustworthy"
 artifacts:
   - templates/prompts/clean-context-validation-brief.md
+prevents: A knowledge base trusted because it exists, never put in front of a cold agent, with guard rails nobody has confirmed catch anything.
 est_tokens: 1050
 ---
 

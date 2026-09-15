@@ -127,6 +127,13 @@ def union_set(plant_rhs: str, seed_rhs: str) -> str:
 
 
 def main() -> int:
+    # `--help` answers on the tool's own terms. This exited 2 through the
+    # unknown-option path — the same defect U-10 recorded for graft-audit.py,
+    # in the same directory, with the same idiom; fixing one of four closed the
+    # instance and left the class.
+    if "--help" in sys.argv[1:] or "-h" in sys.argv[1:]:
+        print(__doc__ or "")
+        return 0
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     preserve = DEFAULT_PRESERVE
     for a in sys.argv[1:]:

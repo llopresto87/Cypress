@@ -74,7 +74,9 @@ roster. Instead:
 
 ## A.2 The steward-only promotion rule
 
-Source: `protocols/harvest.md` lines 452–458.
+Source: `protocols/harvest.md`, §"Promotion to the base roster". (A line
+number here was wrong and would go wrong again on the next edit of that file;
+a heading is the stable address.)
 
 > **Promotion to the base roster is a separate, steward-only decision**, and
 > the bar is higher than "useful": the role's mandate must be **universal** —
@@ -148,13 +150,18 @@ per version. `<library>` is the canonical id, lowercased, scope slash removed
 
 | Ecosystem (subfolder) | Entry count | Examples |
 |---|---|---|
-| `container` | 4 | `docker.md`, `docker-compose.md`, `nginx.md`, `docker-host-hardening.md` |
+| `container` | 7 | `docker.md`, `docker-compose.md`, `nginx.md`, `docker-host-hardening.md` |
 | `language` | 5 | `python.md`, `typescript.md`, `dotnet.md`, `angular.md`, `flutter.md` |
 | `maven` | 21 | `spring-boot.md`, `hibernate-orm.md`, `resilience4j.md`, `stripe-java.md` |
-| `npm` | 9 | `rxjs.md`, `playwright-test.md`, `primeng.md`, `keycloak-js.md` |
+| `npm` | 10 | `rxjs.md`, `playwright-test.md`, `primeng.md`, `keycloak-js.md` |
 | `nuget` | 22 | `Microsoft.EntityFrameworkCore.md`, `Dapper.md`, `xunit.md`, `Npgsql.md` |
-| `pypi` | 12 | `fastapi.md`, `pydantic.md`, `numpy.md`, `openai.md`, `qdrant-client.md` |
-| **Total** | **73** | |
+| `platform` | 2 | `azure-cli.md`, `azure-pipelines-yaml.md` |
+| `pypi` | 14 | `fastapi.md`, `pydantic.md`, `numpy.md`, `openai.md`, `qdrant-client.md` |
+| **Total** | **81** | |
+
+`nuget` (22) and `maven` (21) together are 43 of these 81 pages — 53%. The
+estate this corpus was harvested from is a .NET/Java shop; see §A.4.1a for
+what that means for an adopter on a different stack.
 
 - **Belongs here (surface, durable):** the capability the library provides; its
   ecosystem and canonical package name; core API shape and canonical usage;
@@ -173,6 +180,60 @@ Example entry shape (`library-corpus/pypi/fastapi.md`): a title
 `# fastapi — pypi`, an agnostic blockquote, then `## What it is`,
 `## Core API / usage shape`, `## Idioms & best practices`, `## Upstream docs`.
 
+### A.4.1a Agnosticism: the machinery is, the shipped corpus is not
+
+The seed's machinery — protocols, skills, agents, `ingest-library`,
+`research-and-ingest`, `library-wiki` — makes no assumption about ecosystem;
+it ingests any dependency, in any language, the same way. The **shipped
+library-corpus content** is a different claim: `nuget` (22 pages) and `maven`
+(21) together are 43 of its 81 pages, 53% — the corpus was harvested from a
+.NET/Java estate, and it shows in the composition, not the mechanism.
+
+**The corpus never ships into a plant.** Unlike `legal-corpus/`, which
+`install.sh --legal-corpus yes` places whole at `docs/graph/legal/corpus/`,
+`install.sh` has no equivalent for `library-corpus/` (grep it — there is no
+`place_library_corpus`, no flag). The corpus stays in this seed repository. A
+freshly grown plant's `ingest-library.corpus-first` check
+(`protocols/ingest-library.md`) can only find it when the pass runs inside
+the seed repo itself; for every installed plant it is a no-op, and phase 2
+goes straight to upstream. The corpus reaches a plant at all only through a
+later `graft` (§9.3), which is user-decided, never automatic — and even then
+only for the dependencies the corpus happens to carry a page for.
+
+**What this means for an adopter, concretely:**
+
+- On any stack, `install.sh` gives every adopter the identical, fully
+  agnostic machinery: the same `ingest-library` phases, the same
+  smoke-test-then-finalize pass, over whatever dependency the project
+  actually uses.
+- A later `graft` from this seed gives a .NET or Java plant a head start on
+  roughly half its dependency surface (EF Core, Dapper, xUnit, Npgsql,
+  Spring Boot, Hibernate, Resilience4j, …) — an orientation page to seed
+  from, not a finished one; the plant still pins and validates against its
+  own lockfile (`ingest-library.corpus-first`).
+- A Rust, Go, Ruby, or PHP plant's `graft` finds nothing to withdraw for its
+  ecosystem (none of those ecosystems has a subfolder yet) and runs the
+  exact same from-upstream `ingest-library` pass a .NET plant runs for any
+  dependency its corpus also lacks. The gap is corpus coverage, not
+  capability, and it closes the way every corpus entry arrives: `harvest`
+  folding a future plant's ingested pages back in.
+
+**Why the corpus exists, and why that is a narrower claim than "solves
+version drift":** ingesting a dependency from scratch is expensive, and most
+of that cost is spent re-learning the same durable surface — what the
+library is, its core API shape, its idioms — which barely changes between
+releases; only the pin, its CVEs, and its per-release deprecations do
+(`protocols/harvest.md`, "The library & language documentation corpus"). The
+corpus captures exactly the durable half and is deliberately unpinned (see
+"Stays out," above) — it is not itself a version-drift tracker and ships no
+CVEs, no deprecations, no resolved version. The version-pinned half —
+API deltas against the actual lockfile, deprecations, advisories, a
+smoke-tested pin — is what running `ingest-library` (or its `.refresh` pass)
+against a real project delivers, corpus present or not. Two different
+artifacts, two different claims: the shipped corpus gives you a durable
+orientation page today; `ingest-library` gives a plant the version-pinned
+page it can actually trust.
+
 ### A.4.2 Legal corpus — `legal-corpus/`
 
 Keyed by `legal-corpus/<scope>/<instrument-slug>.md`, one page per instrument
@@ -189,9 +250,11 @@ Keyed by `legal-corpus/<scope>/<instrument-slug>.md`, one page per instrument
 | **Total (instrument pages)** | **12** | plus the multi-entry `case-law/index.md` |
 
 The four scopes are: `eu` (Union-level instruments), `national`
-(country-code-prefixed statutes: `it-…`, `de-…`, `fr-…`), `international`
-(global standards / treaty-level), and `case-law` (judicial and regulator
-decisions, which routinely span jurisdictions).
+(country-code-prefixed statutes, e.g. `it-…`; a second jurisdiction would
+file as `de-…` or `fr-…` under the same convention, but today the national
+layer carries exactly one country — `it` — across all three of its pages),
+`international` (global standards / treaty-level), and `case-law` (judicial
+and regulator decisions, which routinely span jurisdictions).
 
 `case-law/index.md` is a single page holding several citable entries, one
 per case/decision, each with its own id. Examples present:
@@ -260,9 +323,9 @@ Keyed by `tool-corpus/<category>/<name>.md`, one page per tool. Source:
 
 | Category (subfolder) | Entry count | Entries |
 |---|---|---|
-| `ops` | 4 | `container-deploy-pipeline.md`, `disposable-test-identity-provisioner.md`, `env-secret-rotation.md`, `self-signed-tls-cert.md` |
-| `testing` | 3 | `ci-runner-local-simulator.md`, `failure-signature-triage.md`, `http-smoke-suite.md` |
-| **Total** | **7** | |
+| `ops` | 9 | `config-driven-server-response-harness.md`, `container-deploy-pipeline.md`, `declared-variable-existence-auditor.md`, `disposable-test-identity-provisioner.md`, `env-secret-rotation.md`, `large-artifact-stager.md`, `layered-config-merge-verifier.md`, `self-signed-tls-cert.md`, `structured-secret-field-detector.md` |
+| `testing` | 5 | `auth-parity-oracle.md`, `ci-runner-local-simulator.md`, `failure-signature-triage.md`, `http-smoke-suite.md`, `working-tree-snapshot.md` |
+| **Total** | **14** | |
 
 - **Belongs here:** the capability and the recurring operation; the interface
   shape (invocation, inputs, outputs) in the general; the portable
@@ -288,12 +351,14 @@ Source: `agent-corpus/README.md`.
 
 | Entry | Role summary |
 |---|---|
+| `claim-verifier.md` | Re-tests a dated list of recorded claims against a system that has moved since |
 | `client-frontend-specialist.md` | Owns a non-trivial dedicated client (web SPA, mobile, desktop) end-to-end |
 | `env-contract-manager.md` | Environment / configuration contract role |
 | `integration-topologist.md` | Cross-service integration topology role |
 | `legacy-runtime-reconstructor.md` | Reconstructing a legacy runtime |
-| `legal.md` | Reads a verified legal corpus as its only source of law (see A.4.2) |
-| **Total** | **5** |
+| `legal.md` | Promoted to the base roster at 6.12.0 (`agents/14-legal.md`); this page is a historical tombstone documenting the harvested mandate, not a withdrawable candidate (see A.4.2) |
+| `report-editor.md` | Re-cuts a finished, fact-bearing report for a different reader without touching its claims |
+| **Total** | **7** |
 
 - These are OPTIONAL expert roles: none loaded by default, none named in
   the kernel. A project *may* select one.
@@ -323,9 +388,16 @@ procedure. Source: `skill-corpus/README.md`.
 |---|---|
 | `adversarial-pentest-passes.md` | Adversarial penetration-test passes |
 | `deploy-fleet-on-remote-docker-host.md` | Deploy a fleet on a remote Docker host |
+| `drive-hosted-cicd-cli.md` | Drive a hosted CI/CD platform from its CLI: authenticate, queue a run against the right refs, prove what it built |
+| `fix-review-packet.md` | A throwaway review file that lets a non-specialist accept or reject a security/compliance fix without reading the diff |
 | `framework-version-migration.md` | Behavior-preserving major framework/runtime migration |
 | `harden-docker-host.md` | Docker host hardening procedure |
-| **Total** | **4** |
+| `live-patch-stopgap.md` | Deploy an already-verified fix straight into a running instance — no push, no pipeline, no rebuild — to stop active harm |
+| `mutation-verify.md` | Prove an assertion actually bites by naming the smallest change that would break the subject while it still passes |
+| `operator-compressed-fix-path.md` | The disciplined form of a compressed-ceremony fix, for a small diff whose root cause is already known |
+| `prove-red-after-green.md` | Recover the missing RED for a fix that landed before its test was ever seen failing |
+| `release.md` | A numbered, resumable acceptance round across a multi-component delivery |
+| **Total** | **11** |
 
 - A skill is a procedure (the disciplined sequence for a recurring kind of
   work), as opposed to an *agent* (a role) or a *tool* (an artifact). The
@@ -364,8 +436,8 @@ The universal source of truth is:
 - `skills/*/SKILL.md`: the skills.
 - `protocols/*.md`: the protocols (each node whose frontmatter declares
   `command: true` is projected as a slash command; the user-sovereign
-  meta-loop protocols `graft`, `grow`, `harvest`, and the canonize-folded
-  `toolcraft`, carry no `command:` field and are commands on no harness).
+  meta-loop protocols `graft`, `grow` and `harvest` carry no `command:` field
+  and are commands on no harness).
 - `templates/docs/`: the `docs/graph/` knowledge-graph leaves.
 
 `install.sh <tool> [<tool> …]` drops the seed into a target project for one
@@ -376,15 +448,20 @@ the prose gate under the `humanizer` skill, as fast-forward machinery.
 
 ## B.0 First-class vs supported
 
-Source: `README.md` line 94, `integrations/prime-agent/README.md`,
+Source: `README.md` §"Per-tool details", `integrations/prime-agent/README.md`,
 `tests/test-full-install.sh`.
 
 - Claude Code and Prime Agent are the two first-class citizens at full
-  parity: each ships a progressive-discovery enforcement hook/extension and
-  is gated by the same `agent-lint.py` CI check.
+  parity: each ships a progressive-discovery enforcement hook/extension, and
+  the same `agent-lint.py` passes against either harness's installed roster.
+  What asserts that is `tests/test-full-install.sh`, a gate in the seed's own
+  suite; `install.sh` places the linter into a plant but no workflow that runs
+  it, so running it on every push is the plant's to wire (§B.8).
 - opencode, Codex, and GitHub Copilot are supported integrations. They
-  install the same kernel, roster, skills, and commands, but each has stated
-  gaps (documented per tool below).
+  install the same kernel, roster, and skills; commands reach opencode and
+  Copilot but not Codex, which gets no command surface at all (the Slash
+  commands row of `documentation/host-capability-matrix.md`). Each has stated
+  gaps, documented per tool below.
 
 ## B.1 Per-tool summary table
 
@@ -394,7 +471,7 @@ Source: `README.md` line 94, `integrations/prime-agent/README.md`,
 | Prime Agent | `AGENTS.md` (copy of `core/AGENTS.md`; shared with CLAUDE.md when co-installed) | `.prime/agent/{agents,skills,prompts,extensions}` | copy by default; prompts generated | **Yes** | `.prime/agent/extensions/route-extension.ts` on `before_agent_start`; `status-extension.ts` once per session |
 | opencode | `AGENTS.md` (or `CLAUDE.md` fallback) | `.opencode/{agents,skills,commands}` | copy by default; `opencode.json` copied | No | Kernel FIRST-MOVE mandate (no dedicated hook shipped) |
 | Codex | `AGENTS.md` at repo root | `.codex/{agents,skills}` | copy by default; global `~/.codex/config.toml` edits are user-consented | No | Kernel FIRST-MOVE mandate; skills registered in global config |
-| GitHub Copilot | `.github/copilot-instructions.md` (copy) + `AGENTS.md` | `.github/{agents,prompts,instructions,hooks}` | **transform** (regenerate, not symlink) | No | `route-hook.py` + `status-hook.py` via VS Code Agent Hooks (Preview) |
+| GitHub Copilot | `.github/copilot-instructions.md` (copy) + `AGENTS.md` | `.github/{agents,prompts,instructions,hooks}` | **transform** (regenerate, not symlink) | No | `route-hook.py` + `status-hook.py` via VS Code Agent Hooks (Preview), installed only when `.claude/settings.json` is absent — VS Code reads both, and firing both would double-inject (`documentation/host-capability-matrix.md`) |
 
 ## B.2 Claude Code
 
@@ -426,7 +503,7 @@ Claude Code reads on every session: `CLAUDE.md` (project memory at repo root),
   `|| true`; any error degrades to the mandate or silence; a hook must never
   block a prompt). The frontmatter format (`name`, `description`, `tools`,
   `model`) is exactly what Claude Code expects, so the files work unchanged.
-- **Bounded execution before every shell call:** `.claude/bound-hook.py` (`PreToolUse`, matcher `Bash`) refuses a blocking-prone command that carries neither an explicit bound nor a detached launch, printing both accepted forms; it is the one hook wired without `|| true`, because a guard that cannot block is not a guard. Doctrine: `protocols/toolcraft.md` § "Bounded execution".
+- **Bounded execution before every shell call:** `.claude/bound-hook.py` (`PreToolUse`, matcher `Bash`) refuses a blocking-prone command that carries neither an explicit bound nor a detached launch, printing both accepted forms; it is the one hook wired without `|| true`, because a guard that cannot block is not a guard. Doctrine: `core/method/engineering-posture.md` §14, "A command that may outlive its session is bounded" (`toolcraft.bounded-execution`).
 - **Status register at session start:** `.claude/status-hook.py` runs once on
   `SessionStart`, runs `docs/graph/status-register.py --summary` (a frontmatter
   scan that counts `open` / `hotfix` / `deferred` items and the oldest of them)
@@ -573,7 +650,7 @@ as graph nodes → `docs/graph/protocols/*.md` (no `.codex/` copy);
 - **Known gaps:**
   - **AGENTS.md size budget:** Codex truncates `AGENTS.md` at
     `project_doc_max_bytes` (default 32 KiB). The seed's `AGENTS.md` is
-    intentionally short (~9 KB); depth lives in referenced files. Do not paste
+    intentionally short (7 742 bytes, under a hard 8 000-byte budget the gate enforces); depth lives in referenced files. Do not paste
     agent/protocol bodies into `AGENTS.md`. Raise via
     `project_doc_max_bytes = 65536` if needed.
   - **Skills not auto-discovered:** each must be listed one `[[skills.config]]`
@@ -670,12 +747,14 @@ What that gives:
 Switching harness is just opening the plant in the other tool, with nothing to
 re-install and nothing to reconcile.
 
-## B.8 The CI parity gate
+## B.8 The parity gate (seed-local)
 
 Source: `tests/test-full-install.sh` (run via `bash tests/run.sh`).
 
 `tests/test-full-install.sh` is the gate that makes Prime Agent a first-class
-citizen and not a doc-only integration. It asserts:
+citizen and not a doc-only integration. It runs in the seed's own suite
+(`bash tests/run.sh`), against a throwaway install — it is not a workflow any
+plant receives. It asserts:
 
 - **The SAME `agent-lint.py` runs on Prime Agent's installed roster.** The test
   runs `integrations/claude-code/agent-lint.py --lint --dir <T>/.prime/agent/
@@ -701,9 +780,10 @@ citizen and not a doc-only integration. It asserts:
   `.prime/agent/extensions/route-extension.ts`), and the shared
   `docs/graph/index.md` exists. Both install orders must converge.
 
-The broader gate is `bash tests/run.sh` (9 shell suites + agent-lint lint/eval
-+ graph/agent-lint regressions + `seed-lint.py` + `legal-lint.py`); source:
-`CLAUDE.md`.
+The broader gate is `bash tests/run.sh`: every shell suite under `tests/`,
+plus agent-lint lint/eval, graph/agent-lint regressions, `seed-lint.py`, and
+`legal-lint.py`. The suite count moves as suites are added — read
+`tests/run.sh` for the current roster rather than a number restated here.
 
 ---
 

@@ -7,7 +7,7 @@ under `docs/graph/`. The files documented here are the shippable source.
 
 The reference has three parts:
 
-- Part A: the 14 skills in `skills/*/SKILL.md`.
+- Part A: the 15 skills in `skills/*/SKILL.md`.
 - Part B: the artifact templates in `templates/*.template.md` and the
   knowledge-graph contract in `templates/knowledge-graph/`.
 - Part C: the prompt and brief templates in `templates/prompts/`.
@@ -28,7 +28,9 @@ inside a file.
 
 # Part A — Skills
 
-Source: `skills/<name>/SKILL.md` (14 files).
+Source: `skills/<name>/SKILL.md` (15 files).
+
+Each skill node also declares `prevents:` — the failure its own absence produces. It is not mirrored here; `python3 tools/roster-justification.py` prints it beside the responsibility and the overlaps, reading each column out of the node that owns it ([ADR-0008](../docs/decisions/adr-0008-roster-justification-lives-in-the-node.md)).
 
 A **skill** is a *procedure*: how to do one thing well. It is not a role
 (that is an agent) and not an artifact (that is a tool or template). Each
@@ -43,24 +45,25 @@ skill frontmatter carries:
 - `artifacts`: template files the skill fills or points at.
 - `est_tokens`: the honest body-size estimate the router sums.
 
-## Summary table — all 14 skills
+## Summary table — all 15 skills
 
 | Skill | id | owns | requires | peers | est_tokens |
 |---|---|---|---|---|---|
-| adopt-existing | `skill.adopt-existing` | `adopt-existing.method`, `.refresh`, `.validation` | `protocol.grow` | `protocol.initialize`, `skill.knowledge-graph`, `skill.from-scratch-bootstrap` | 1600 |
-| adr-writer | `skill.adr-writer` | `adr-writer.method`, `.reversibility`, `.numbering` | (none) | `skill.grill-planner`, `agent.architect` | 1400 |
-| brainstorm-socratic | `skill.brainstorm-socratic` | `brainstorm-socratic.method` | (none) | `protocol.brainstorm`, `skill.spec-author` | 650 |
-| context-router | `skill.context-router` | `rule.knowledge`, `context-router.method`, `.declaration` | `skill.knowledge-graph` | `skill.validate-knowledge` | 2100 |
-| from-scratch-bootstrap | `skill.from-scratch-bootstrap` | `from-scratch-bootstrap.method` | `protocol.from-scratch` | `skill.brainstorm-socratic`, `skill.grill-planner` | 680 |
-| grill-planner | `skill.grill-planner` | `grill-planner.method`, `.audit` | `protocol.grill` | `skill.spec-author` | 1300 |
-| holistic-editing | `skill.holistic-editing` | `holistic-editing.method`, `.forbidden-moves` | (none) | `skill.context-router`, `protocol.test-first` | 1500 |
-| humanizer | `skill.humanizer` | `humanizer.method`, `.document-contract`, `.progressive-execution`, `.fact-preservation`, `.modes`, `.scope` | `method.prose-posture` | `skill.holistic-editing`, `skill.adr-writer`, `skill.spec-author`, `agent.docs-librarian`, `protocol.deliver` | 3300 |
-| knowledge-graph | `skill.knowledge-graph` | `knowledge-graph.method`, `.node-contract`, `.linter` | (none) | `skill.context-router`, `skill.library-wiki`, `skill.validate-knowledge` | 1700 |
-| library-wiki | `skill.library-wiki` | `library-wiki.method`, `.version-pinning` | (none) | `skill.research-and-ingest`, `protocol.ingest-library` | 1200 |
-| research-and-ingest | `skill.research-and-ingest` | `research-and-ingest.method`, `.source-ranking` | (none) | `skill.library-wiki`, `agent.research-scout` | 1200 |
-| spec-author | `skill.spec-author` | `spec-author.method`, `.sign-off` | `protocol.specify` | `skill.test-first`, `skill.grill-planner` | 1250 |
-| test-first | `skill.test-first` | `test-first.shaping`, `.level-selection` | `protocol.test-first` | `skill.spec-author` | 350 |
-| validate-knowledge | `skill.validate-knowledge` | `validate-knowledge.method`, `.adversarial-questions` | (none) | `skill.knowledge-graph`, `skill.context-router` | 1050 |
+| adopt-existing | `skill.adopt-existing` | `adopt-existing.method`, `adopt-existing.refresh`, `adopt-existing.validation` | `protocol.grow` | `protocol.initialize`, `skill.knowledge-graph`, `protocol.from-scratch` | 1614 |
+| adr-writer | `skill.adr-writer` | `adr-writer.method`, `adr-writer.reversibility`, `adr-writer.numbering` | (none) | `skill.grill-planner`, `agent.architect`, `skill.humanizer` | 1850 |
+| brainstorm-internal | `skill.brainstorm-internal` | `brainstorm-internal.method` | (none) | `protocol.brainstorm`, `skill.brainstorm-socratic`, `skill.adr-writer`, `skill.grill-planner` | 900 |
+| brainstorm-socratic | `skill.brainstorm-socratic` | `brainstorm-socratic.method` | (none) | `protocol.brainstorm`, `skill.brainstorm-internal`, `skill.humanizer`, `skill.spec-author` | 955 |
+| context-router | `skill.context-router` | `rule.knowledge`, `context-router.method`, `context-router.declaration` | `skill.knowledge-graph` | `skill.validate-knowledge` | 2779 |
+| grill-planner | `skill.grill-planner` | `grill-planner.method`, `grill-planner.audit` | `protocol.grill` | `skill.spec-author` | 1150 |
+| holistic-editing | `skill.holistic-editing` | `holistic-editing.method`, `holistic-editing.forbidden-moves`, `holistic-editing.class-sweep` | (none) | `skill.context-router`, `protocol.test-first` | 2300 |
+| humanizer | `skill.humanizer` | `humanizer.method`, `humanizer.document-contract`, `humanizer.progressive-execution`, `humanizer.fact-preservation`, `humanizer.modes`, `humanizer.scope` | `method.prose-posture` | `skill.holistic-editing`, `skill.adr-writer`, `skill.spec-author`, `agent.docs-librarian`, `protocol.deliver` | 3300 |
+| knowledge-graph | `skill.knowledge-graph` | `knowledge-graph.method`, `knowledge-graph.node-contract`, `knowledge-graph.linter` | (none) | `skill.context-router`, `skill.library-wiki`, `skill.validate-knowledge` | 2519 |
+| library-wiki | `skill.library-wiki` | `library-wiki.method`, `library-wiki.version-pinning` | (none) | `skill.research-and-ingest`, `protocol.ingest-library` | 1000 |
+| research-and-ingest | `skill.research-and-ingest` | `research-and-ingest.method`, `research-and-ingest.source-ranking` | (none) | `skill.library-wiki`, `agent.research-scout` | 1200 |
+| spec-author | `skill.spec-author` | `spec-author.method`, `spec-author.sign-off` | `protocol.specify` | `skill.test-first`, `skill.grill-planner`, `skill.humanizer` | 1250 |
+| test-first | `skill.test-first` | `test-first.shaping`, `test-first.level-selection` | `protocol.test-first` | `skill.spec-author` | 350 |
+| toolcraft | `skill.toolcraft` | `rule.toolcraft`, `toolcraft.durability-criteria` | (none) | `agent.tool-smith`, `protocol.canonize`, `protocol.grill`, `protocol.harvest`, `method.engineering-posture` | 1240 |
+| validate-knowledge | `skill.validate-knowledge` | `validate-knowledge.method`, `validate-knowledge.adversarial-questions` | (none) | `skill.knowledge-graph`, `skill.context-router` | 1050 |
 
 Roles at a glance:
 
@@ -68,7 +71,9 @@ Roles at a glance:
 |---|---|
 | Knowledge graph | context-router, knowledge-graph, validate-knowledge |
 | Dependency knowledge | library-wiki, research-and-ingest |
-| Growing a project | adopt-existing, from-scratch-bootstrap |
+| Growing a project | adopt-existing (greenfield entry is `protocol.from-scratch`) |
+| Deciding without a user | brainstorm-internal |
+| Keeping a repeated operation | toolcraft (the rule; `agent.tool-smith` builds) |
 | Planning and specs | brainstorm-socratic, grill-planner, spec-author |
 | Writing and testing code | holistic-editing, test-first |
 | Prose people read | humanizer |
@@ -82,7 +87,7 @@ Source: `skills/adopt-existing/SKILL.md`
 **id:** `skill.adopt-existing` · **owns:** `adopt-existing.method`,
 `adopt-existing.refresh`, `adopt-existing.validation` ·
 **requires:** `protocol.grow` · **peers:** `protocol.initialize`,
-`skill.knowledge-graph`, `skill.from-scratch-bootstrap`
+`skill.knowledge-graph`, `protocol.from-scratch`
 
 **load_when:** adopt an existing codebase into the graph · initialize
 cypress on a project that already has code · refresh the knowledge graph
@@ -153,7 +158,7 @@ Source: `skills/adr-writer/SKILL.md`
 
 **id:** `skill.adr-writer` · **owns:** `adr-writer.method`,
 `adr-writer.reversibility`, `adr-writer.numbering` · **requires:** (none) ·
-**peers:** `skill.grill-planner`, `agent.architect`
+**peers:** `skill.grill-planner`, `agent.architect`, `skill.humanizer`
 
 **load_when:** write an ADR · record an architecture decision · why did we
 choose this dependency or design · supersede an existing decision record ·
@@ -201,16 +206,48 @@ recorded on disk.
 
 ---
 
-## A.3 brainstorm-socratic
+## A.3 brainstorm-internal
+Source: `skills/brainstorm-internal/SKILL.md`
+
+**id:** `skill.brainstorm-internal` · **owns:**
+`brainstorm-internal.method` · **requires:** (none) · **peers:**
+`protocol.brainstorm`, `skill.brainstorm-socratic`, `skill.adr-writer`,
+`skill.grill-planner`
+
+**load_when:** generate options for a decision that is mine to make · what are
+the alternatives, nobody to ask · fill the rejected alternatives of an adr ·
+two designs satisfy the same contract, which one · shaped options for the plan,
+no user input needed.
+
+**What it does.** The divergence technique CYPRESS applies to itself, with no
+user in the loop — the internal of the brainstorm protocol's two modes
+(`brainstorm.mode-selection` owns which applies). Generates genuinely distinct
+options against evidence already in hand, states each option's *preconditions*
+rather than its advantages, names the single fact that would kill each, and
+marks every precondition known-true, known-false or unchecked. Exits on a
+written options set — into `grill.md` §7 or an ADR's rejected alternatives —
+with no user confirmation required or waited for.
+
+**The failure it prevents.** A session brainstorming against itself generates
+one real option and two strawmen: it has already quietly decided, and produces
+the decision plus two alternatives shaped to lose. The output is
+indistinguishable from genuine divergence, and an ADR built on it records
+rejected alternatives nobody considered. Preconditions and kill conditions are
+what replace the user as the thing that pushes back.
+
+---
+
+## A.4 brainstorm-socratic
 Source: `skills/brainstorm-socratic/SKILL.md`
 
 **id:** `skill.brainstorm-socratic` · **owns:**
 `brainstorm-socratic.method` · **requires:** (none) · **peers:**
-`protocol.brainstorm`, `skill.spec-author`
+`protocol.brainstorm`, `skill.brainstorm-internal`, `skill.humanizer`,
+`skill.spec-author`
 
 **load_when:** converge a vague or contested goal · socratic questioning
 for requirements · brainstorm a new feature idea · the goal is too fuzzy to
-specify.
+specify · ask the owner what they actually want.
 
 **What it does.** The Socratic questioning technique that takes a vague goal
 from "build me a thing" to precise, without designing UI, picking a
@@ -239,7 +276,7 @@ framework, or committing to architecture. Applied inside
 
 ---
 
-## A.4 context-router
+## A.5 context-router
 Source: `skills/context-router/SKILL.md`
 
 **id:** `skill.context-router` · **owns:** `rule.knowledge`,
@@ -294,46 +331,6 @@ subsystem nodes "for comparison."
 
 **When to use.** At the start of every non-trivial task, once a project has
 a graph.
-
----
-
-## A.5 from-scratch-bootstrap
-Source: `skills/from-scratch-bootstrap/SKILL.md`
-
-**id:** `skill.from-scratch-bootstrap` · **owns:**
-`from-scratch-bootstrap.method` · **requires:** `protocol.from-scratch` ·
-**peers:** `skill.brainstorm-socratic`, `skill.grill-planner`
-
-**load_when:** start a brand-new project · bootstrap an empty repo · mkdir a
-new project and cd into it · no grill.md exists yet · first day of a project.
-
-**What it does.** Stands up a brand-new project from an empty repo through
-the nine-phase `docs/graph/protocols/from-scratch.md` (brainstorm, skeleton,
-grill, research, architecture, verification baseline, specify first slice,
-test-first the first slice, deliver). The protocol owns the phase sequence;
-this skill owns the honesty that keeps the first day from cutting corners.
-
-**Procedure (the honesty rules).**
-
-- Bootstrapping is inherently task-tier T3: the full funnel is proportional,
-  never discounted because the goal "sounds clear."
-- The skeleton phase is done only when the host tool actually loads the
-  machinery from its own directory (Claude Code → `.claude/` + `CLAUDE.md`;
-  Prime Agent → `.prime/agent/` + `AGENTS.md`; opencode → `.opencode/` +
-  `AGENTS.md`; Codex → `.codex/` + config; Copilot → `.github/` +
-  `copilot-instructions.md`), not when files merely exist.
-- The stack is chosen from verified research, never memory.
-- The verification baseline passes on a clean checkout before any feature
-  code.
-- Specs before tests before code, always.
-
-**Common failure modes.** Skipping the brainstorm; picking the stack from
-memory; writing feature code before gates pass; skipping ADR-0001; skipping
-SPEC-0001; writing code in Phase 7 instead of the spec; "we'll add tests
-later" in Phase 6.
-
-**When to use.** When a project does not exist yet and the repo is empty or
-near-empty.
 
 ---
 
@@ -392,7 +389,7 @@ plan needs a consistency pass.
 Source: `skills/holistic-editing/SKILL.md`
 
 **id:** `skill.holistic-editing` · **owns:** `holistic-editing.method`,
-`holistic-editing.forbidden-moves` · **requires:** (none) · **peers:**
+`holistic-editing.forbidden-moves`, `holistic-editing.class-sweep` · **requires:** (none) · **peers:**
 `skill.context-router`, `protocol.test-first`
 
 **load_when:** edit an existing file of any substance · refactor without
@@ -710,7 +707,7 @@ Source: `skills/spec-author/SKILL.md`
 
 **id:** `skill.spec-author` · **owns:** `spec-author.method`,
 `spec-author.sign-off` · **requires:** `protocol.specify` · **peers:**
-`skill.test-first`, `skill.grill-planner`
+`skill.test-first`, `skill.grill-planner`, `skill.humanizer`
 
 **load_when:** write a spec · define functional contracts · given when then
 contract slugs · spec sign-off before code · code and spec disagree.
@@ -785,7 +782,44 @@ convention); the body is Given/When/Then; one outcome per test.
 
 ---
 
-## A.14 validate-knowledge
+## A.14 toolcraft
+Source: `skills/toolcraft/SKILL.md`
+
+**id:** `skill.toolcraft` · **owns:** `rule.toolcraft`,
+`toolcraft.durability-criteria` · **requires:** (none) · **peers:**
+`agent.tool-smith`, `protocol.canonize`, `protocol.grill`, `protocol.harvest`,
+`method.engineering-posture`
+
+**load_when:** should this script be kept, is this a durable tool · recurring
+operation across sessions · catalog a tool, tools_built, skills_built ·
+throwaway prototype versus reusable tooling · crystallize a repeated procedure
+into a project skill.
+
+**What it does.** Owns the toolcraft rule (kernel §3.8): when an operation will
+recur across independent sessions, the unit of work is a durable, tested,
+cataloged tool, not a throwaway script. Defines what counts as durable
+(recurrence, stable interface, test-authorized, lives in the repo), what stays
+disposable (genuine one-offs, learning prototypes, anything embedding secrets),
+the procedure sibling (a repeated *how* is a project skill, not a tool), the
+design-time half (grill names the tool at plan time), and the fail-closed rule
+that a task is incomplete until a durable tool is cataloged or recorded absent.
+
+**Three actors, three moments.** This node is the rule and is read by every
+session. `agent.tool-smith` **builds** the tool, mid-task, when the recurrence
+is noticed. `protocol.canonize` **catalogs** it, once, at close-out — and there
+is still no second cataloging spawn. Until 7.16.0 all three sat in one protocol
+node, which is why the doctrine required a tool to be produced and named nobody
+to produce one.
+
+**Bounded execution lives elsewhere.** The discipline for a command that may
+outlive its session moved to `method.engineering-posture`
+(`toolcraft.bounded-execution`): it binds every session that runs anything, not
+only one producing a tool, and it was filed under toolcraft because toolcraft
+was the nearest node when it was written.
+
+---
+
+## A.15 validate-knowledge
 Source: `skills/validate-knowledge/SKILL.md`
 
 **id:** `skill.validate-knowledge` · **owns:** `validate-knowledge.method`,
@@ -833,7 +867,7 @@ before relying on the graph to route work.
 # Part B — Artifact and knowledge-graph templates
 
 Sources: `templates/*.template.md` (10 files) and
-`templates/knowledge-graph/` (5 files).
+`templates/knowledge-graph/` (6 files).
 
 An **artifact template** is a blank form. An author copies it into a target
 path under `docs/graph/` and fills every `<placeholder>`. Stable section
@@ -1143,7 +1177,7 @@ router matches. `est_tokens` is an honest body estimate.
 edges (dated) · where the code is (concrete paths) · neighbours. Under ~150
 lines; a longer node is two nodes.
 
-**The eleven linter rules (as stated in `_schema.md`).**
+**The linter rules (as stated in `_schema.md`, which is the home for all of them).**
 
 1. Frontmatter parses and has every required key.
 2. `id` is unique and matches the filename (`<id>.md`).
@@ -1417,7 +1451,8 @@ per tool call. This block is the only reliable carrier across the subagent
 boundary. The payload fields:
 
 - `produced_by`: this agent's name. **Load-bearing:** a unit of work with no
-  `produced_by` is a deliver-time BLOCK, not a pass (fail-closed).
+  `produced_by` is a deliver-time BLOCK, not a pass — detective, called by
+  the session running the assertion rather than by a hook.
 - `status`: `complete` | `blocked-out-of-domain` | `failed`.
 - `failure_class`, only when failed: `transient` | `deterministic` |
   `capability` | `ambiguity` | `systemic` | `unregistered` (feeds `recover`).

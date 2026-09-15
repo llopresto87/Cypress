@@ -28,6 +28,7 @@ plant_knowledge:
   - specs/
   - evaluations/
   - data/
+prevents: Spec contracts that never become failing tests, so specs stay draft for ever and the gates measure nothing.
 est_tokens: 1350
 ---
 

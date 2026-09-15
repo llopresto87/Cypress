@@ -27,6 +27,7 @@ plant_knowledge:
   - prompts/
   - evaluations/
   - libraries/
+prevents: Datasets with no contract, evaluations designed to pass, and fixture data copied out of production.
 est_tokens: 1100
 ---
 

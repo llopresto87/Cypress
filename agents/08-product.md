@@ -7,6 +7,7 @@ routing_triggers:
   - "write the acceptance criteria and the user flow"
   - "define onboarding and the accessibility floor"
   - "map the user flow states and recovery paths"
+  - "cut the smallest slice that delivers the outcome end to end"
 can_delegate: false
 id: agent.product
 tier: 2
@@ -25,6 +26,7 @@ peers:
 plant_knowledge:
   - product/
   - best-practices/
+prevents: A build with no stated user outcome, acceptance criteria written to match whatever shipped, and the accessibility floor left to whoever writes the markup.
 est_tokens: 1050
 ---
 

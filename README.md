@@ -13,11 +13,57 @@ The name is a backronym, and it describes the mechanism: the seed grows and
 *routes* *expert* teams over a project's knowledge graph, *yielding*
 project-specific knowledge as it goes.
 
-CYPRESS is language-agnostic, vendor-agnostic, and project-agnostic.
-It does not assume your stack, your domain, your deployment target, or
-even your repository count; the same method governs a single repo or a
-program of several. It assumes only that you want serious engineering
-practice on the production path.
+CYPRESS's machinery (the kernel, protocols, skills, and agents) is
+language-agnostic, vendor-agnostic, and project-agnostic. It does not assume
+your stack, your domain, your deployment target, or even your repository
+count; the same method governs a single repo or a program of several. It
+assumes only that you want serious engineering practice on the production
+path.
+
+The seed's shipped reference material is narrower than the method that reads
+it. The library corpus (81 pages) was harvested from a .NET/Java estate:
+`nuget` and `maven` together are 53% of it. The legal corpus carries
+exactly one national jurisdiction (`it`). Neither corpus installs into a
+plant by default (only `legal-corpus/`, and only on `--legal-corpus yes`); an
+adopter on any other stack gets the identical agnostic machinery and runs
+`ingest-library` fresh from upstream, exactly as a .NET project does for any
+dependency its corpus doesn't carry either. See
+[`documentation/corpora-and-integrations-reference.md`](documentation/corpora-and-integrations-reference.md),
+§A.4.1a, for the measured breakdown.
+
+## Try it, and what it costs
+
+```sh
+git clone https://github.com/llopresto87/Cypress
+./Cypress/install.sh claude-code --project-dir /path/to/your/project
+```
+
+That places the files. It does not change your code, and every file it
+replaces is left beside itself as a timestamped copy. Then open an agent
+session rooted at your project and paste
+[`INSTALL_PROMPT.md`](INSTALL_PROMPT.md), which drives the one-time growth
+pass that reads your repository and builds its knowledge graph.
+
+The running cost, measured rather than estimated:
+
+| | |
+|---|---|
+| Always loaded, per session | 26 259 bytes (~6 562 tokens) on Claude Code, opencode, Codex; 20 914 on Prime Agent; 31 903 on GitHub Copilot |
+| Of that, the kernel | 7 742 bytes, under a hard 8 000-byte budget the gate enforces |
+| Everything else | routed in on demand, not loaded up front |
+| Method overhead on a small, well-specified task | 10 to 20% more tokens than an unguided session, measured once |
+
+GitHub Copilot used to be the outlier: its skill projections were
+always-applied rather than discovered, so every skill BODY counted against
+every session, at 138 535 bytes against 26 259 everywhere else. 7.16.0 narrowed
+them to pointers (a description and the path to the node), which brings it to
+31 903 and models it like every other harness. The gap that remains is the
+pointer boilerplate each file carries, not the discipline behind it.
+[`documentation/host-capability-matrix.md`](documentation/host-capability-matrix.md)
+says what every host does and does not enforce.
+
+The method itself, why it is shaped this way, and the evidence behind each
+claim are below. You do not need any of it to run the two commands above.
 
 ## What you get
 
@@ -36,7 +82,7 @@ practice on the production path.
   when the router resolves it for the task at hand. `tests/seed-lint.py`
   enforces a hard size budget, so kernel growth is a lint failure, not
   a drift.
-- A 19-agent team under `agents/`:
+- A 20-agent team under `agents/`:
   - `orchestrator` (first contact, routing)
   - `architect`, `implementer`, `reviewer`, `tester`
   - `security`, `pentest`, `reliability`, `data-ml`, `product`
@@ -46,11 +92,12 @@ practice on the production path.
   - `legal` (regulatory compliance: corpus-bound reasoning, citation ledger)
   - `multi-agent-architect` (agent-topology design and review)
   - `growth-orchestrator`, `growth-scout`, `seed-installer` (growth DNA)
+  - `tool-smith` (builds the durable tool a repeated plant operation earned)
 - Named protocols under `protocols/`:
   - `grow` (canonical tool-neutral source-to-graph full-growth workflow)
-  - `initialize` (optional coding-tool adapter to `grow`)
+  - `initialize` (the entry fork: `grow` if there is source to scout, `from-scratch` if not)
   - `from-scratch` (9-phase bootstrap)
-  - `brainstorm` (Socratic convergence)
+  - `brainstorm` (convergence, two modes: user-facing and internal)
   - `specify` (executable spec authoring)
   - `grill` (plan-of-record discipline)
   - `test-first` (RED-GREEN-REFACTOR-COMMIT)
@@ -60,19 +107,19 @@ practice on the production path.
     retry of a deterministic failure, three attempts, then escalate)
   - `canonize` (the single close-out spawn: persist knowledge AND
     catalog tools in one librarian brief)
-  - `toolcraft` (durable-tool doctrine; executes inside the canonize spawn)
   - `deliver` (cold-pickup summary: compact for T0/T1, full for T2/T3)
   - `harvest` (cross-project meta-loop, user-triggered only: folds one
     plant's lessons up into the seed)
   - `graft` (cross-project meta-loop, user-decided only: carries the enriched
     seed back out onto an existing plant)
-- Fourteen composable skills under `skills/`:
+- Fifteen composable skills under `skills/`:
   - `knowledge-graph`, `context-router`, `validate-knowledge`
   - `holistic-editing`, `humanizer`
   - `library-wiki`, `research-and-ingest`
   - `spec-author`, `test-first`, `adr-writer`
-  - `grill-planner`, `brainstorm-socratic`
-  - `from-scratch-bootstrap`, `adopt-existing`
+  - `grill-planner`, `brainstorm-socratic`, `brainstorm-internal`
+  - `toolcraft` (durable-tool doctrine; the rule every session reads)
+  - `adopt-existing`
 - Ten templates under `templates/`:
   - `spec.template.md`: executable spec
   - `grill.template.md`: plan-of-record
@@ -98,7 +145,7 @@ practice on the production path.
 - The legal corpus, on request. `agent.legal` reasons only from a verified
   citation corpus and refuses where it has none, so `install.sh
   --legal-corpus yes` places `legal-corpus/` into the plant at
-  `docs/graph/legal/corpus/` — **whole, or not at all**, because an analyst
+  `docs/graph/legal/corpus/`, **whole, or not at all**, because an analyst
   with no web access cannot tell a page nobody copied from an instrument that
   does not exist. Which instruments bear on the project is written as a scope
   instruction in `docs/graph/legal/index.md`, never as a subset on disk.
@@ -109,8 +156,17 @@ practice on the production path.
 - Per-tool integration layers under `integrations/` for Claude
   Code, Prime Agent, opencode, Codex, and GitHub Copilot, each with the
   right config files and tool-specific overlays. Claude Code and Prime
-  Agent are first-class citizens at full parity (progressive-discovery
-  enforcement hook/extension plus the same `agent-lint.py` CI gate).
+  Agent are first-class citizens at full parity: a progressive-discovery
+  hook on Claude Code and the equivalent extension on Prime Agent, and the
+  same `agent-lint.py` roster/routing gate pointed at either harness's
+  projection. `install.sh` places that linter; it does not place a CI
+  workflow, so running it on every push is the adopting project's to wire.
+  The seed runs its own gate in CI on Linux and macOS
+  (`.github/workflows/gate.yml`). Method parity across all five adapters
+  does not mean identical enforcement — see
+  `documentation/host-capability-matrix.md` for which bounds each host
+  actually holds mechanically versus which stay brief-enforced or
+  unsupported.
 - `install.sh` drops the seed into a target project for any
   one tool or all five, copying by default; pass `--symlink` for live
   seed links so updates to the seed propagate.
@@ -124,14 +180,14 @@ classified before acting: **T0** a question (read minimally, answer
 with citations, no spawn), **T1** a trivial edit with no behavior,
 contract, or spec surface (the one in-session authoring exception, one
 focused gate, compact delivery), **T2** a contained change (minimal
-worker set, focused gates, close-out) — reached either by an active
+worker set, focused gates, close-out), reached either by an active
 spec and plan, the *covered lane*, or by being small, local and
 reversible with no spec over the surface, the *contained lane*, where a
-failing test and a recorded why are the proportional authorization —
+failing test and a recorded why are the proportional authorization,
 and **T3** anything spec-bearing (the full delegated funnel). The tier
 edges are load-bearing: misclassifying *down* is the violation;
-escalating up mid-task is normal and cheap. This keeps a typo fix — and
-a three-line defect fix — from paying a feature's coordination cost
+escalating up mid-task is normal and cheap. This keeps a typo fix, and
+a three-line defect fix, from paying a feature's coordination cost
 while keeping every consequential change inside the full discipline
 (kernel §0).
 
@@ -218,9 +274,25 @@ confidence signal, and citable evidence. It is a heuristic to reason over, never
 an oracle. Only six opus coordinators (orchestrator, multi-agent-architect,
 growth-orchestrator, architect, reviewer, docs-librarian) hold a depth-capped `Task`; the leaves are
 Task-less, which is the one hard, harness-enforced recursion cap. A deliver-time
-`produced_by` assertion (fail-closed) attributes every unit of work back to the
-specialist that produced it. The decisions are recorded as
-`docs/decisions/adr-0001..0003`.
+`produced_by` assertion attributes every unit of work back to the specialist
+that produced it: specified to block when the attribution is missing, but
+**detective rather than preventive**: the top session performs it at `deliver`,
+and the `Stop` hook that would mechanize it is deliberately unwired until real
+deliveries carry `produced_by` (`protocols/deliver.md`). So a tier-down
+misclassification is caught by a reviewer reading the assertion, not by a gate
+refusing the delivery.
+
+That distinction is the point of `docs/decisions/adr-0003`, which sorts every
+control in the seed into **hard** (the harness refuses: which agents hold
+`Task`), **soft** (a contract or a tool refuses: `can_delegate`,
+`max_spawn_depth`, `delegates_to`, checked statically by `agent-lint.py
+--lint`, not by the `Task` tool at runtime), **detective** (asserted post-hoc
+from named evidence a person reads: the `produced_by` assertion) and
+**judgment** (a named agent or person decides, and no tool can — most of the
+rows in the lifecycle protocols' gate tables). The fourth label is the ADR's
+2026-09-14 amendment, which also settled that a protocol gate is almost never
+`hard`. Where this README says a thing is enforced, that is the vocabulary it
+means. The decisions are recorded as `docs/decisions/adr-0001..0008`.
 
 ### Reverse loop: canonize + harvest + graft
 
@@ -253,12 +325,46 @@ user-decided and never automatic; the most the system does is propose one
 
 ### Progressive disclosure
 
-Every file in the seed follows Anthropic's progressive-disclosure
-discipline: tight `name`/`description` frontmatter always in context,
-`<500`-line bodies loaded on trigger, and deeper references bundled and
-loaded only when needed, so every supported tool's context budget
-stays honest. The knowledge graph applies the same principle to the
-*project's own* facts, not just the seed's files.
+The seed follows Anthropic's progressive-disclosure discipline: tight
+`name`/`description` frontmatter always in context, bodies loaded on
+trigger, and deeper references bundled and loaded only when needed. The
+knowledge graph applies the same principle to the *project's own* facts,
+not just the seed's files.
+
+The numbers, because a discipline that is not measured is a preference.
+Always-loaded per session, before any routing happens:
+
+| Harness | Eager bytes | ~tokens |
+|---|---|---|
+| prime-agent | 20 914 | 5 226 |
+| claude-code / opencode / codex | 26 259 | 6 562 |
+| github-copilot | 31 903 | 7 973 |
+
+The bootstrap kernel is 7 742 bytes of that, under a hard 8 000-byte budget.
+The rest is the roster and skill metadata each harness enumerates at start-up.
+
+`github-copilot` is the reason this table exists. Its skill projections carried
+`applyTo: '**'`, so every skill *body* was always-applied context there rather
+than the descriptions every other harness reads, at **138 535 bytes against
+26 259**, on the one harness that pays for it. That contradicted progressive
+disclosure, and 7.16.0 fixed it rather than recording it: the projections are
+now pointers, each carrying the description that lets a session decide whether
+a skill applies and the path to the node holding the discipline. The remaining
+gap is that pointer boilerplate. `EAGER_EXEMPTIONS` in `tests/seed-lint.py` is
+consequently **empty**, and the `EAGER_BUDGET` ratchet has no slack: every
+harness is now under the same 32 000-byte bound, and the number may shrink,
+never grow.
+
+Routable node bodies run from a handful of lines to 1 384
+(`protocols/graft.md`), with a median of 166. `tests/seed-lint.py` enforces two
+ceilings: 1 000 lines for any routable node, and 2 500 for the three
+cross-project meta-loop protocols — `graft`, `grow`, `harvest` — which are the
+only ones that write into a repository the seed does not own, and which a
+session loads only when it is already performing that operation
+([ADR-0007](docs/decisions/adr-0007-lifecycle-protocol-ceiling.md)). Both
+ratchet: they may fall freely, and raising either is an owner decision recorded
+in `tests/ratchets.json`. This paragraph used to claim `<500`-line bodies, which
+was true of most nodes and not of the largest ones.
 
 ## Quick start
 
@@ -286,7 +392,7 @@ deep analysis, review, and validation task. Every worker executes
 loads that route, and returns routing evidence.
 
 If files are already installed and the coding tool exposes commands,
-`/initialize` remains a convenience adapter to the same workflow. It is not
+`/initialize` remains a convenience adapter, but it forks: `grow` when there is source to scout, `from-scratch` when the repository is empty. It is not
 the canonical entry point.
 
 On an existing project, growth ends with an orchestrator that can navigate a
@@ -309,11 +415,12 @@ you from brainstorm through specify and test-first to your first useful slice.
 
 ```
 core/                 Bootstrap kernel (AGENTS.md) + method/ posture nodes
-agents/               19 specialist agents (graph nodes; projected to the harness)
+agents/               20 specialist agents (graph nodes; projected to the harness)
 protocols/            Protocol graph nodes (installed to docs/graph/protocols/)
-skills/               14 skill graph nodes (installed flat to docs/graph/skills/)
+skills/               15 skill graph nodes (installed flat to docs/graph/skills/)
 templates/            Per-artifact templates (spec, grill, ADR, etc.; Tier-3 artifacts)
-templates/knowledge-graph/  Node contract, graph-lint.py, router, node template
+templates/knowledge-graph/  Node contract, the three linters (graph-lint.py,
+                            spec-lint.py, grill-lint.py), router, node template
 templates/prompts/    Parameterized delegation/investigation/validation briefs
 templates/docs/       Leaf collections installed beneath docs/graph/
 library-corpus/       Harvested library/language surface notes (by ecosystem)

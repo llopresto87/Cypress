@@ -120,7 +120,9 @@ for every kind:
 
 Kind extensions, only where the base cannot express a real state: ADR adds
 `proposed | accepted`; spec adds `draft | active | implemented | back-written`
-(back-written = documented existing behaviour, untested); `deviation` adds
+(back-written = written AFTER the behaviour it describes, so no RED landed
+with it and no promotion was signed; it may still be fully tested, and its
+§10 rows are held to the same standard as any other live spec); `deviation` adds
 `standing` (permanently open by design; requires `ends_when`). `status_date`
 is always present. A body `## Status` section may exist only as a pointer to
 the frontmatter; a body value that disagrees is a lint failure — two homes

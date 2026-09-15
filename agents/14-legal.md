@@ -13,6 +13,7 @@ routing_triggers:
   - "evaluate the international transfer impact for this data flow"
   - "check every citation in this compliance document against the corpus"
   - "is this obligation actually in the corpus or do we need an ingest"
+  - "which provision of the instrument applies, with its article and date"
 can_delegate: false
 id: agent.legal
 tier: 2
@@ -34,6 +35,7 @@ peers:
 plant_knowledge:
   - legal/
   - legal/corpus/
+prevents: Regulatory answers reconstructed from model memory — confident citations to provisions that do not say what they are quoted as saying.
 est_tokens: 2400
 ---
 

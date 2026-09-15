@@ -130,6 +130,13 @@ def build_graph(tmp: Path, nodes: dict, *, config_line: str | None = None,
         )
         src = src.replace(DEFAULT_CONFIG_LINE, config_line, 1)
     (graph / "graph-lint.py").write_text(src, encoding="utf-8")
+    # ...and the frontmatter reader it imports, beside it. The engine is a
+    # standalone script, so the import resolves next to the script: every place
+    # the engine TRAVELS has to carry the reader — install.sh does, and so must
+    # a fixture that copies the engine into a temp graph.
+    (graph / "frontmatter.py").write_text(
+        (SEED / "templates" / "knowledge-graph" / "frontmatter.py").read_text(encoding="utf-8"),
+        encoding="utf-8")
 
     # index.md lists every node id by default, so reachability is satisfied
     # regardless of the requires-edges each test chooses; `listed` narrows it.
@@ -1042,11 +1049,21 @@ class DescentTests(unittest.TestCase):
             requires=["expertise.ef-core"], libraries=["dotnet"],
             owns=["ef-migrations.applicability"],
             load_when=["add a migration, migration script"])
+        # The second-level term is "script", not "migration", and the reason is
+        # worth stating: `migration` is a word in the CHILD'S OWN ID
+        # (`expertise.ef-migrations`), and a node whose name matches the task is
+        # SEEDED, not descended to. That was invisible while an inflection
+        # scored half — `migration` reached `migrations` at strength 1, worth 6,
+        # under the floor — and became visible the moment inflections scored as
+        # the word they inflect, which lifted it to 12 and made the node an
+        # entry. The node being found by its own name is the router working;
+        # this test is about DESCENT, so it uses a term the child holds in its
+        # `load_when` and not in its name.
         out = self.plan(
-            "in the orders service, editing the dbcontext, write the migration",
+            "in the orders service, editing the dbcontext, run the script",
             nodes)
         self.assertIn('composed by expertise.dotnet on "dbcontext"', out)
-        self.assertIn('composed by expertise.ef-core on "migration"', out)
+        self.assertIn('composed by expertise.ef-core on "script"', out)
 
     def test_plan_selects_major_by_tfm_token(self):
         """Two majors in play: the unversioned parent composes one child per

@@ -13,8 +13,9 @@ owns:
   - canonize.deviation-capture
   - canonize.why-record
 requires:
-  - protocol.toolcraft
+  - skill.toolcraft
 peers:
+  - agent.tool-smith
   - protocol.deliver
   - protocol.harvest
   - skill.adr-writer
@@ -32,7 +33,8 @@ load_when:
   - "status review at close-out: did each register item move this session"
   - "we departed from the standard, record the deviation and why"
   - "small fix with no spec, where does the why get written down"
-est_tokens: 2288
+prevents: Knowledge that dies with the session that produced it, and durable tools reinvented as throwaway scripts because nothing cataloged the last one.
+est_tokens: 2724
 command: true
 ---
 
@@ -86,13 +88,17 @@ green lie.
 - a `load_when:` trigger that should have matched this task and didn't;
 - a new library idiom or pitfall learned while using a dependency.
 
-**Tool candidates** (§3.8, `docs/graph/protocols/toolcraft.md` owns the doctrine) —
+**Tool candidates** (§3.8, `docs/graph/skills/toolcraft.md` owns the doctrine) —
 catalog any durable tool the work produced: recurs across sessions,
 stable interface, test-authorized, lives in the repo. The worker
 handbacks already name these in `tools_built`; the brief forwards them.
+The producer is `agent.tool-smith`, spawned **mid-task** when the
+recurrence was noticed — never here. Close-out catalogs what was built;
+it does not build. A tool candidate that arrives with no tool behind it
+is a finding for the next plan, not work for the librarian.
 
 **Skill candidates** (§3.8, the procedure sibling of a tool — the
-doctrine lives in `docs/graph/protocols/toolcraft.md`) — forward any repeatable
+doctrine lives in `docs/graph/skills/toolcraft.md`) — forward any repeatable
 multi-step procedure the work walked that a future session will walk
 again: named in `skills_built` on a handback, or the same sequence now
 appearing a third time in grill/changelog. The brief forwards the
@@ -203,7 +209,7 @@ agnosticism gate), throwaway prototypes or genuine one-offs.
 A task is **not complete** until its knowledge is canonized, any durable
 tool is cataloged, and any recurring procedure is crystallized into a
 project skill — or each is explicitly recorded empty with a reason
-(this node and `docs/graph/protocols/toolcraft.md` own the rule; toolcraft owns what
+(this node and `docs/graph/skills/toolcraft.md` own the rule; toolcraft owns what
 counts as durable). An uncaptured fact is a silent knowledge leak; an
 uncaptured tool or procedure is a silent capability leak; a status the
 work moved but the frontmatter still shows `open` is the same leak in a
@@ -219,9 +225,14 @@ until this close-out has run (or the T0/T1 self-record line is present).
 
 - `deliver` produces the human-facing cold-pickup **summary**; canonize
   persists the machine-facing **graph knowledge and tool catalog**.
-- `toolcraft` (`docs/graph/protocols/toolcraft.md`) owns the *doctrine* of what
-  counts as a durable tool; canonize owns the *execution* — there is no
-  separate toolcraft spawn.
+- `toolcraft` (`docs/graph/skills/toolcraft.md`) owns the *doctrine* of what
+  counts as a durable tool. Three actors, three moments, and conflating them
+  is what left the doctrine with no author for so long:
+  **`skill.toolcraft` rules**, **`agent.tool-smith` builds** (mid-task, when
+  the recurrence is noticed), **canonize catalogs** (once, at close-out).
+  There is still no separate *cataloging* spawn — a second spawn with the same
+  bootstrap and lint run would be coordination waste — and that rule was never
+  about authoring, which does not happen here at all.
 - `adr-writer` (`docs/graph/skills/adr-writer.md`) writes the ADR that
   carries a deviation's history — and the short-form ADR a contained
   lane's why-record calls for; canonize owns the moment either is

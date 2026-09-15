@@ -15,7 +15,7 @@ requires:
 peers:
   - protocol.initialize
   - skill.knowledge-graph
-  - skill.from-scratch-bootstrap
+  - protocol.from-scratch
 load_when:
   - "adopt an existing codebase into the graph"
   - "initialize cypress on a project that already has code"
@@ -25,6 +25,7 @@ load_when:
 artifacts:
   - templates/prompts/graph-session-bootstrap.md
   - templates/prompts/handback-payload.md
+prevents: An adoption with no way back — a graph authored once from a snapshot of the code, with no refresh path when the source moves under it, so it decays into a confident description of a repository that no longer exists.
 est_tokens: 1614
 ---
 

@@ -28,6 +28,7 @@ plant_knowledge:
   - libraries/
   - best-practices/
   - architecture/
+prevents: Nobody positioned to refuse the work — green-phase coding begun by whoever picked the task up, so whether a spec is signed, a test is red, and a library page exists gets judged by the same session that wants to start, and the answer is always yes.
 est_tokens: 1800
 ---
 

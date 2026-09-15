@@ -29,11 +29,21 @@ This seed system maps to Codex as follows:
 | `templates/`             | `templates/` (kept at repo root, untouched)      |
 | `templates/docs/`        | `docs/graph/` (missing leaves added on install)  |
 
+> **The projection is taken from the graph, not from the seed.** The rows
+> above are `seed → harness` for brevity; the real path is
+> `seed → docs/graph/{agents,skills}/ → harness`, and `install.sh`'s own
+> log lines say so ("harness projection of docs/graph/skills/"). The
+> distinction is not cosmetic: it is why a plant-commissioned expert that
+> a grow run writes into `docs/graph/agents/` gets projected here too, and
+> why `tools/growth-audit.py` reports one that reached the graph but not
+> the harness as `UNGROWN` — on disk and unspawnable.
+
 ## AGENTS.md size budget
 
 Codex truncates `AGENTS.md` at `project_doc_max_bytes` (default
-32 KiB). The seed system's `AGENTS.md` is intentionally short
-(~9 KB); the depth lives in the referenced files. To avoid
+32 KiB). The seed system's `AGENTS.md` is intentionally short —
+under the 8 000-byte budget `seed-lint` enforces, so roughly a
+quarter of the limit; the depth lives in the referenced files. To avoid
 truncation, do not paste agent and protocol bodies into
 `AGENTS.md` — keep them in `.codex/` and let the agent open them
 on demand.
@@ -89,7 +99,7 @@ rule and its recorded fallback.
 ## Bounded execution has no hook here
 
 This harness exposes no pre-tool hook, so the bounded-execution clauses of
-`protocols/toolcraft.md` § "Bounded execution" are the agent's own discipline
+`core/method/engineering-posture.md` §14 (`toolcraft.bounded-execution`) are the agent's own discipline
 rather than an enforced guard: every blocking-prone shell command — service
 control, process signalling, package managers, installers, builds, log
 followers — carries an explicit `timeout`, or is launched detached with its

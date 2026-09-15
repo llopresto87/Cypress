@@ -26,7 +26,19 @@ import argparse
 import re
 import sys
 from dataclasses import dataclass
+from functools import lru_cache
+import importlib.util as _ilu
 from pathlib import Path
+from pathlib import Path as _Path
+
+# The one frontmatter reader, loaded from beside this file. A COPY sits next to
+# every consumer because the linters that ship into plants are standalone files
+# with no package to import from; seed-lint enforces byte-identity across them.
+_fm_spec = _ilu.spec_from_file_location(
+    "cypress_frontmatter", _Path(__file__).resolve().parent / "frontmatter.py")
+_frontmatter = _ilu.module_from_spec(_fm_spec)
+_fm_spec.loader.exec_module(_frontmatter)
+
 
 # ----------------------------- PROJECT CONFIG -----------------------------
 # The single root node's id (its id == this string; every other node's id
@@ -102,18 +114,56 @@ VERSION_RE = re.compile(r"(?<![\w./§-])[vV]?[\^~]?\d+\.\d+(\.\d+)?(-[A-Za-z0-9]
 # revision citation, not a library pin.
 ARTIFACT_REVISION_RE = re.compile(r"(?:SPEC|ADR|RFC|PRD|RUNBOOK|ISSUE|PR)[-_ ]?\d+\s*$", re.I)
 BODY_TOKENS_PER_WORD = 1.35
-STEM = 6  # prefix length for the singular/plural fold (order/orders, node/nodes)
+# STEM is the LAST-RESORT prefix fold, not the inflection rule. The inflection
+# rule is `_stems()` in the canonical stemmer block below, which reduces both
+# sides of the comparison; this only catches long words that share a six-letter
+# prefix without sharing a stem (`documentation` / `documented`). Until 7.16.0
+# this line read "prefix length for the singular/plural fold (test/tests,
+# node/nodes)" and handled neither: the test is one-sided, requiring the TASK's
+# word to PREFIX a roster word, and a plural never prefixes its own singular.
+STEM = 6
 
-# Filler words that appear in many nodes' searchable text without carrying
-# routing signal.
+# --- canonical stopwords ---------------------------------------------------
+# Byte-identical in agent-lint.py and graph-lint.py; seed-lint's
+# check_canonical_router_blocks enforces that.
+#
+# Filler words that carry no routing signal. The pronouns are here because they
+# were NOT, and three shipped triggers already wrote "we" ("review the pull
+# request before we merge", "do we need an ingest", "which protocol should we
+# enter"). That made `we` a scoreable term at df=3, so every task phrased "we
+# need X" paid three agents a weight-2 match for saying "we". A fourth trigger
+# writing "our" took it further: df=1 earned the RARE-term bonus, and the task
+# "our chain of language-model calls loops forever" routed HIGH to `security`
+# on the strength of the word "our". A word every task writes cannot select
+# between the agents every task is scored against.
 STOPWORDS = frozenset(
     "the and for add new from that this with why how are was not you its "
     "change what where when does did into out about a an of to in on it "
     "over via using use onto off around per which while would could should "
     "want need make made get got run see tell show give take find "
     "there any some someone goes going tells told anyone something "
-    "stack whole".split()
+    "stack whole "
+    # `down` and `up` were the only directional particles missing while
+    # `out`, `off`, `on`, `onto`, `over` and `around` were all present, and
+    # the gap cost the same way the pronouns did: a trigger added in 7.16.0
+    # ("record what is not written down") made `down` df=1 scoreable
+    # vocabulary owned by ONE agent, so "the checkout page went down for
+    # nine minutes and we only found out from twitter" routed HIGH to the
+    # documentation agent, score 24 against a runner-up of 2. Third instance
+    # of one class -- `our`, then the reflexives, then this -- in the
+    # release that closed it twice.
+    "down up "
+    "i me my mine we us our ours he him his she her hers they them their "
+    "theirs your yours "
+    # The reflexives were missing while every other person was present, and the
+    # gap is not cosmetic: a probe agent carrying "yourself" as a trigger took
+    # the whole band on "can you deploy this yourself" — df=1, so the pronoun
+    # earned the RARE-term bonus and contributed 12 of 20 points. That is the
+    # `our` incident above, reproduced with a reflexive, after the fix that was
+    # supposed to close the class.
+    "myself ourselves yourself yourselves himself herself itself themselves".split()
 )
+# --- end canonical stopwords -----------------------------------------------
 
 
 class LintError(Exception):
@@ -171,45 +221,36 @@ class Node:
         # never be the term that descends it.
         return _tokens(" ".join(self.get_list("load_when"))) | {self.id.split(".", 1)[-1]}
 
+    @property
+    def trigger_terms(self) -> tuple:
+        """The same vocabulary, split into (whole, fragment) tiers.
+
+        `triggers` reads a hyphenated compound as two ORDINARY words, because
+        `_tokens`' regex has no `-` in it. 7.16.0 gave the SCORER the fragment
+        model and left the descent on `triggers`, so the defect the release
+        reports as closed was still live one code path over: a child whose
+        `load_when` says `supply-chain` was descended into on the bare term
+        `chain`, at the standalone tier the descent requires precisely so a
+        weak match cannot pull an expertise in. The slug stays whole here for
+        the same reason it does in `triggers`.
+        """
+        whole, frag = _split_terms(" ".join(self.get_list("load_when")))
+        return whole | {self.id.split(".", 1)[-1]}, frag
+
 
 def parse_frontmatter(text: str, path: Path):
-    """Parse the small YAML subset the node contract permits."""
-    if not text.startswith("---\n"):
-        raise LintError(f"{path.name}: missing YAML frontmatter")
-    end = text.find("\n---\n", 4)
-    if end == -1:
-        raise LintError(f"{path.name}: unterminated frontmatter")
-    raw, body = text[4:end], text[end + 5 :]
+    """Delegates to the one frontmatter reader (see frontmatter.py).
 
-    meta: dict = {}
-    current = None
-    for lineno, line in enumerate(raw.split("\n"), start=2):
-        if not line.strip() or line.lstrip().startswith("#"):
-            continue
-        if line.startswith((" ", "\t")):
-            item = line.strip()
-            if not item.startswith("- "):
-                # One nested map is permitted: the router's `plant:` block
-                # (schema §"The plant: block"). Its keys are read by
-                # check_plant_block by line; here they only must not break.
-                if current == "plant" and ":" in item:
-                    continue
-                raise LintError(f"{path.name}:{lineno}: expected '- item', got {line!r}")
-            if current is None:
-                raise LintError(f"{path.name}:{lineno}: list item before any key")
-            meta.setdefault(current, []).append(_scalar(item[2:]))
-            continue
-        if ":" not in line:
-            raise LintError(f"{path.name}:{lineno}: expected 'key: value', got {line!r}")
-        key, _, value = line.partition(":")
-        key, value = key.strip(), value.strip()
-        if value:
-            meta[key] = _scalar(value)
-            current = None
-        else:
-            meta[key] = []
-            current = key
-    return meta, body
+    This function used to hold its own copy of the parsing rules. Seven
+    programs held seven copies, and they disagreed: a description spilling
+    onto a second line was rejected by two and silently truncated by three.
+    The reader beside this file is this one, promoted verbatim, plus one
+    level of nesting for the plant: block.
+    """
+    try:
+        return _frontmatter.parse(text, path)
+    except _frontmatter.FrontmatterError as e:
+        raise LintError(str(e)) from None
 
 
 def _scalar(v: str):
@@ -739,6 +780,85 @@ def _tokens(text: str) -> set:
     return set(re.findall(r"[a-z0-9_]+", text.lower()))
 
 
+# --- canonical stemmer -----------------------------------------------------
+# This block is byte-identical in agent-lint.py and graph-lint.py and
+# `seed-lint.py`'s check_stemmer_sync enforces that. The two routers already
+# carried one copied scorer; the copy is why the compound-fragment fix reached
+# only one of them, and why a `STEM = 6` fold documented as handling
+# "test/tests, node/nodes" handled neither, in both files, for four releases.
+
+# Words whose trailing -s is not a plural, or whose -ed/-ing tail is not an
+# inflection. Reducing these merges unrelated routing vocabulary.
+STEM_KEEP = frozenset("""
+access address always analysis axis basis bias bus business class cross css
+devops focus gross https its less loss miss news ops pass plus press process
+progress status this
+""".split())
+
+# Irregulars the suffix rules cannot reach. Deliberately tiny: every entry is a
+# word shape this roster or a plant's node vocabulary actually uses, not a
+# general English lexicon, which is a dependency this file may not have.
+STEM_IRREGULAR = {
+    "analyses": "analysis", "indices": "index", "matrices": "matrix",
+    "vertices": "vertex", "criteria": "criterion", "schemas": "schema",
+    "schemata": "schema", "aliases": "alias",
+}
+
+# INVARIANT, relied on by both `_match` implementations as a prefilter and
+# asserted by tests/test_router_reach.py: every form `_stems(w)` returns starts
+# with the same three characters as `w`. Every rule here either strips a suffix
+# (leaving a prefix), appends `e` to a prefix, swaps a `-ies` tail for `y`, or
+# maps an irregular that shares its first three letters. Anything added that
+# breaks this makes the prefilter skip a real match, so the test is the price of
+# the optimisation.
+STEM_PREFIX = 3
+
+# (suffix, characters to drop, minimum word length). First match wins, so the
+# longer and more specific endings are listed first.
+STEM_RULES = (
+    ("ies", 3, 5), ("sses", 2, 6), ("ches", 2, 6), ("shes", 2, 6),
+    ("xes", 2, 5), ("ing", 3, 6), ("ed", 2, 5), ("es", 1, 5), ("s", 1, 4),
+)
+
+
+@lru_cache(maxsize=4096)
+def _stems(word: str) -> frozenset:
+    """The canonical forms of one word, for comparison against another word's.
+
+    A frozenset rather than a string because English drops a silent -e before
+    -ing and -ed: `routing` reduces to `rout`, but the word it inflects is
+    `route`. Both candidates are returned and a match is a non-empty
+    intersection, which keeps this function free of any vocabulary and
+    therefore symmetric — the task side and the roster side are reduced by
+    exactly the same rule, which the previous one-sided prefix probe was not.
+    """
+    if word in STEM_IRREGULAR:
+        return frozenset({STEM_IRREGULAR[word]})
+    if word in STEM_KEEP or len(word) < 4:
+        return frozenset({word})
+    for suf, cut, minlen in STEM_RULES:
+        if word.endswith(suf) and len(word) >= minlen:
+            base = word[:-3] + "y" if suf == "ies" else word[:-cut]
+            if suf in ("ing", "ed"):
+                # Undouble only a base longer than three letters. `planning`
+                # reduces to `plann` and must lose the doubled consonant, but
+                # `added` reduces to `add`, whose double IS the word — taking it
+                # to `ad` is wrong, and it also broke the three-character stem
+                # prefix the `_match` prefilter depends on. Same for `ebbed`,
+                # `egged`, `adding`.
+                if len(base) > 3 and base[-1] == base[-2]:
+                    return frozenset({base[:-1]})          # planning -> plan
+                return frozenset({base, base + "e"})       # routing -> rout|route
+            if suf in ("sses", "ches", "shes", "xes"):
+                # -ches is the plural of -ch AND of -che, and nothing in the
+                # word says which: batches -> batch, caches -> cache. Offer
+                # both rather than guess, the same way -ing does.
+                return frozenset({base, word[:-1]})        # batch|batche
+            return frozenset({base})
+    return frozenset({word})
+# --- end canonical stemmer -------------------------------------------------
+
+
 def _match(term: str, toks: set) -> int:
     """Token-match strength: 2 exact, 1 prefix-fold, 0 none. Never substring.
 
@@ -748,9 +868,60 @@ def _match(term: str, toks: set) -> int:
     """
     if term in toks:
         return 2
+    st = _stems(term)
+    # Prefilter on the shared three-character prefix before reducing each token;
+    # sound by the STEM_PREFIX invariant above, and the reason routing did not
+    # get 2.9x slower.
+    pre = {s[:STEM_PREFIX] for s in st}
+    if any(k[:STEM_PREFIX] in pre and _stems(k) & st for k in toks):
+        return 2
     if len(term) >= STEM and any(k.startswith(term[:STEM]) for k in toks):
         return 1
     return 0
+
+
+def _split_terms(text: str) -> tuple:
+    """(whole, fragment) — a hyphen fragment does not speak for its compound.
+
+    `agent-lint.py` learned this at 7.15.0 and this router received it at
+    7.16.0 -- through THIS function, not through `_tokens`, which still reads a
+    compound as two ordinary words and survives only as `Node.routable_terms`,
+    which nothing calls. A test asserted the divergence, compared `_tokens`
+    against agent-lint's live path, and passed while being false; it now asserts
+    convergence on the entry point `resolve()` actually scores with.
+    Splitting on hyphens and keeping the pieces as first-class tokens made
+    `chain`, out of `agent.security`'s trigger "assess the supply-chain and
+    secrets handling risk", score exactly like a standalone word — so "our chain
+    of language-model calls loops forever" routed to `security` at HIGH. That
+    row was still here, verbatim, in the router installed into every plant.
+
+    Measured on a real plant before this change: 60 nodes, 44 hyphenated trigger
+    compounds, 71 fragments matching their owner at FULL strength. Eighteen of
+    those are df==1, so they also took the rare-term bonus at weight 3 —
+    `chain` <- `supply-chain`, `clean` <- `clean-context`, `false` <-
+    `false-premise`, `proof` <- `proof-of-concept`, `dry` <- `dry-run`.
+
+    The compound stays whole and a fragment still matches at the near-match
+    tier, so "supply chain" written without the hyphen is not lost.
+    """
+    whole, frag = set(), set()
+    for w in re.findall(r"[a-z0-9_/*.-]+", text.lower()):
+        for part in [w, *re.split(r"[/*.]+", w)]:
+            part = part.strip("_")
+            if len(part) >= 3 and part not in STOPWORDS:
+                whole.add(part)
+        if "-" in w:
+            for part in w.split("-"):
+                part = part.strip("_")
+                if len(part) >= 3 and part not in STOPWORDS:
+                    frag.add(part)
+    return whole, frag - whole
+
+
+def _strength(term: str, whole: set, frag: set) -> int:
+    """Full strength against a whole token; capped at the fragment tier otherwise."""
+    m = _match(term, whole)
+    return m if m else min(1, _match(term, frag))
 
 
 def _terms(task: str) -> set:
@@ -784,13 +955,16 @@ def resolve(nodes: list, task: str):
 
     buckets = {}
     for n in nodes:
-        name_toks = _tokens(" ".join([n.id, n.meta.get("title", ""), str(n.meta.get("repo", ""))]))
-        lw_toks = _tokens(" ".join(n.get_list("load_when") + n.get_list("routing_triggers")))
-        buckets[n.id] = (name_toks, lw_toks)
+        name_w, name_f = _split_terms(" ".join([n.id, n.meta.get("title", ""), str(n.meta.get("repo", ""))]))
+        lw_w, lw_f = _split_terms(" ".join(n.get_list("load_when") + n.get_list("routing_triggers")))
+        buckets[n.id] = (name_w, name_f, lw_w, lw_f)
 
     df = {t: 0 for t in terms}
-    for name_toks, lw_toks in buckets.values():
-        allt = name_toks | lw_toks
+    # df stays a PRESENCE count, exactly as before: a term that reaches a node at
+    # all is documented there, and changing what counts as presence shifts every
+    # weight globally. The fragment cap belongs in scoring alone.
+    for name_w, name_f, lw_w, lw_f in buckets.values():
+        allt = name_w | name_f | lw_w | lw_f
         for t in terms:
             if _match(t, allt):
                 df[t] += 1
@@ -801,11 +975,12 @@ def resolve(nodes: list, task: str):
 
     entries = []
     for n in nodes:
-        name_toks, lw_toks = buckets[n.id]
+        name_w, name_f, lw_w, lw_f = buckets[n.id]
         score = 0
         for t in terms:
             w = weight(t)
-            score += w * max(2 * _match(t, name_toks), _match(t, lw_toks))
+            score += w * max(2 * _strength(t, name_w, name_f),
+                             _strength(t, lw_w, lw_f))
         if score:
             entries.append((score, n))
     entries.sort(key=lambda x: (-x[0], x[1].id))
@@ -840,10 +1015,19 @@ def resolve(nodes: list, task: str):
         hits = 0
         for c in kids:
             # The child's OWN vocabulary: what it knows that its parent does
-            # not. An exact hit only — a prefix fold would let "migrating the
-            # CI runner" pull in the schema-migration expertise.
-            own = c.triggers - n.triggers
-            term = next((t for t in sorted(terms) if _match(t, own) == 2), None)
+            # not. Standalone-tier hits only (== 2) — a prefix FOLD, which
+            # scores 1, would let "migrating the CI runner" pull in the
+            # schema-migration expertise. Since 7.16.0 an inflection also
+            # scores 2, deliberately: `migrations` should reach a child whose
+            # trigger says `migration`. It does not reopen the case the line
+            # above guards, because `migrating` and `migration` reduce to
+            # different stems — the fold was matching six shared letters, the
+            # stemmer matches a word.
+            cw, cf = c.trigger_terms
+            nw, nf = n.trigger_terms
+            own_whole, own_frag = cw - nw, cf - nf
+            term = next((t for t in sorted(terms)
+                         if _strength(t, own_whole, own_frag) == 2), None)
             if term:
                 hits += 1
                 stack.append((c, f'composed by {n.id} on "{term}"'))

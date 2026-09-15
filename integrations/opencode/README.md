@@ -31,6 +31,15 @@ This seed system maps to opencode as follows:
 | `templates/`             | `templates/` (kept at repo root, untouched)        |
 | `templates/docs/`        | `docs/graph/` (missing leaves added on install)    |
 
+> **The projection is taken from the graph, not from the seed.** The rows
+> above are `seed → harness` for brevity; the real path is
+> `seed → docs/graph/{agents,skills}/ → harness`, and `install.sh`'s own
+> log lines say so ("harness projection of docs/graph/skills/"). The
+> distinction is not cosmetic: it is why a plant-commissioned expert that
+> a grow run writes into `docs/graph/agents/` gets projected here too, and
+> why `tools/growth-audit.py` reports one that reached the graph but not
+> the harness as `UNGROWN` — on disk and unspawnable.
+
 ### Known gap: the agent frontmatter is Claude-Code-shaped
 
 The seed's `agents/*.md` carry Claude Code's frontmatter, and opencode's
@@ -55,11 +64,15 @@ model class and the leaf tool bound as brief-enforced on opencode, exactly as
 
 Every protocol whose node declares `command: true` in its frontmatter is
 exposed as a slash command; `install.sh` **generates** one command file per
-such node into `.opencode/commands/` — the same roster as every other
-harness, since all draw from the same `command:` field. Each is a short
+such node into `.opencode/commands/` — the same roster it generates for
+Claude Code and Prime Agent, since those three draw from the same `command:`
+field. GitHub Copilot gets that roster through a different generator
+(`.github/prompts/<name>.prompt.md`); Codex gets none of it, because
+`install_codex` never calls `generate_slash_commands` and is the one adapter
+with no command surface at all. Each is a short
 pointer into the corresponding `docs/graph/protocols/<name>.md` node (the
 single home). The user-sovereign meta-loop protocols (`graft`, `grow`,
-`harvest`) and the canonize-folded `toolcraft` carry no `command:` field and
+`harvest`) carry no `command:` field and
 are commands on no harness.
 
 ## opencode.json
@@ -123,7 +136,7 @@ Creates copies by default (`--symlink` opts into live seed links) from the seed 
 ## Bounded execution has no hook here
 
 This harness exposes no pre-tool hook, so the bounded-execution clauses of
-`protocols/toolcraft.md` § "Bounded execution" are the agent's own discipline
+`core/method/engineering-posture.md` §14 (`toolcraft.bounded-execution`) are the agent's own discipline
 rather than an enforced guard: every blocking-prone shell command — service
 control, process signalling, package managers, installers, builds, log
 followers — carries an explicit `timeout`, or is launched detached with its

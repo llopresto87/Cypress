@@ -21,6 +21,7 @@ load_when:
   - "wiki page is stale or missing"
 artifacts:
   - templates/library-page.template.md
+prevents: A dependency page nobody can tell is stale — no recorded version it was true of, so an upgrade silently turns every idiom and pitfall on it into folklore and a reader has no way to notice.
 est_tokens: 1000
 ---
 

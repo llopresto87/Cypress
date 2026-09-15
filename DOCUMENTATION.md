@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 7.15.0
+- Version documented: 7.16.0
 - Repository role: this repo is the seed, the product that is shipped
   into other projects. It is *not* a grown project itself.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -47,16 +47,23 @@ templates, and tooling that you drop into any codebase. Once installed, an AI
 coding agent (Claude Code, Prime Agent, opencode, OpenAI Codex, or GitHub
 Copilot) gains:
 
-- a senior engineering team of 19 named specialist agents;
+- a senior engineering team of 20 named specialist agents;
 - a set of named protocols (workflows) for spec-driven and test-driven work;
 - a progressive-discovery knowledge graph that keeps a large or multi-repo
   codebase inside a context window;
 - spec-driven (SDD) and test-driven (TDD) discipline by default.
 
-CYPRESS is language-agnostic, vendor-agnostic, and project-agnostic. It does
-not assume your stack, domain, deployment target, or even repository count; the
-same method governs one repo or a program of several. It assumes only that you
-want serious engineering practice on the production path.
+CYPRESS's machinery — kernel, protocols, skills, agents — is language-agnostic,
+vendor-agnostic, and project-agnostic. It does not assume your stack, domain,
+deployment target, or even repository count; the same method governs one repo
+or a program of several. It assumes only that you want serious engineering
+practice on the production path.
+
+The shipped corpora are narrower than the machinery that reads them: the
+library corpus is majority .NET/Java by page count and the legal corpus
+carries one national jurisdiction. §10 measures both; neither ships into a
+plant except on explicit request, so an adopter on a different stack runs the
+same agnostic ingest flow everyone else does.
 
 ### The "seed" metaphor
 
@@ -130,9 +137,9 @@ full statement of each rule lives in (and only in) its owning node.
 | 3.3 | **grill**      | `docs/graph/plans/grill.md` is the living plan-of-record; append, never silently rewrite. | `protocol.grill` (`rule.grill`) |
 | 3.4 | **test-first** | No production code without a failing test that authorizes it — RED → GREEN → REFACTOR → COMMIT. | `protocol.test-first` (`rule.test-first`) |
 | 3.5 | **verify**     | Gates proportional to blast radius run — and assert something — before "done"; absences recorded, never faked green. | `protocol.verify` (`rule.verify`) |
-| 3.6 | **deliver**    | Every session ends in a cold-pickup delivery with fail-closed `produced_by` attribution. | `protocol.deliver` (`rule.deliver`) |
+| 3.6 | **deliver**    | Every session ends in a cold-pickup delivery with a `produced_by` attribution assertion (detective — §6.4). | `protocol.deliver` (`rule.deliver`) |
 | 3.7 | **canonize**   | Every T2/T3 task ends with ONE docs-librarian close-out spawn that persists what the work taught — or records "nothing of interest, because …". | `protocol.canonize` (`rule.canonize`) |
-| 3.8 | **toolcraft**  | Recurring operations become durable, tested, cataloged tools; one-offs stay disposable. | `protocol.toolcraft` (`rule.toolcraft`) |
+| 3.8 | **toolcraft**  | Recurring operations become durable, tested, cataloged tools; one-offs stay disposable. | `skill.toolcraft` (`rule.toolcraft`) |
 
 Each of these eight `rule.*` keys is required to live in exactly its mapped home;
 `tests/seed-lint.py` enforces that placement.
@@ -278,7 +285,7 @@ subsystem, writing a spec, a test, code, or a doc) goes to a clean-context
 specialist from the roster. Persona simulation in the chat is not delegation;
 a real spawn with a purpose-made brief is.
 
-### 6.2 The 19 specialists
+### 6.2 The 20 specialists
 
 | Specialist | When to call |
 |------------|--------------|
@@ -301,6 +308,7 @@ a real spawn with a purpose-made brief is.
 | `growth-orchestrator` | Growth DNA: conducts grow/adopt/from-scratch end to end. |
 | `growth-scout` | Read-only per-boundary evidence gathering for graph authors. |
 | `seed-installer` | Additive seed/adapter install; verifies the host loads the kernel. |
+| `tool-smith` | Builds the durable tested tool a repeated PLANT operation earned; owns the bar and refuses below it. Never seed machinery. |
 
 Each agent is a full system prompt in `agents/*.md`, with frontmatter that makes
 it routable and enforces the delegation bounds.
@@ -323,8 +331,9 @@ or isolation — commissions an expert, spawning an Opus author to write one
 `agent-lint.py` has three commands:
 - `--route "<task>"`: rank specialists, print a band.
 - `--lint`: validate routing/delegation frontmatter (the P0/P1 gate).
-- `--eval`: run the golden routing set (`agents/_routes.golden.tsv`); assert
-  top-1 accuracy and that novel-stack phrases return LOW/NONE.
+- `--eval`: run the golden routing set (`agents/_routes.golden.tsv`), scored
+  per class (`contract`, `paraphrase`, `adversarial`, `unknown-domain`) and never averaged
+  into one number, gated on zero confident-wrong routes outside the `adversarial` class, which carries a ratcheted, shrink-only budget.
 
 ### 6.4 Bounded delegation (the hard recursion cap)
 
@@ -338,10 +347,25 @@ or isolation — commissions an expert, spawning an Opus author to write one
 - Every other agent is a Task-less leaf, and this is the one recursion cap the
   harness itself enforces. At an out-of-domain boundary a leaf STOPs and hands
   back, naming the next specialist, never doing the work itself.
-- Attribution is fail-closed: a deliver-time `produced_by` assertion
-  attributes every unit of work back to the specialist that produced it.
+- Attribution is **detective, not preventive**: a deliver-time `produced_by`
+  assertion attributes every unit of work back to the specialist that produced
+  it, and is specified to block when the attribution is missing — but the top
+  session performs it at `deliver`, and the `Stop` hook that would mechanize it
+  is deliberately unwired until real deliveries carry `produced_by`
+  (`protocols/deliver.md`). A tier-down misclassification is therefore caught by
+  a reader, not refused by a gate.
 
-The decisions are recorded in `docs/decisions/adr-0001..0003`.
+ADR-0003 is the vocabulary for all of this: **hard** (the harness refuses),
+**soft** (a contract or a tool refuses — checked statically by `agent-lint.py
+--lint` rather than by the `Task` tool at runtime), **detective** (asserted
+post-hoc from named evidence a person reads), and **judgment** (a named agent
+or person decides, and no tool can), the fourth label added by the ADR's
+2026-09-14 amendment alongside the finding that a protocol gate is almost never
+`hard` — which is why the gate tables in `graft`, `grow` and `harvest` carry no
+`hard` row. Where this document says "enforced", it means one of those four, and
+says which.
+
+The decisions are recorded in `docs/decisions/adr-0001..0008`.
 
 ### 6.5 The harness-registration boundary
 
@@ -379,7 +403,7 @@ can end: `complete`, `blocked-out-of-domain`, or `failed`.
 ## 7. Protocols (the named workflows)
 
 Protocols are the named workflows an agent enters to do work. State which
-protocol you are entering before you begin. There are 15 protocol nodes in
+protocol you are entering before you begin. There are 14 protocol nodes in
 `protocols/`.
 
 The default T3 sequence:
@@ -391,9 +415,9 @@ separate `implement` protocol).
 | Protocol | Purpose |
 |----------|---------|
 | `grow` | Canonical tool-neutral source-to-graph full-growth workflow (scouts → authors → validators). |
-| `initialize` | Optional coding-tool adapter to `grow` (e.g. a `/initialize` command). |
+| `initialize` | The entry fork: `grow` when there is source to scout, `from-scratch` when the repository is empty. Also the optional coding-tool adapter that carries it (e.g. a `/initialize` command). |
 | `from-scratch` | 9-phase bootstrap for a brand-new project. |
-| `brainstorm` | Socratic convergence to a precise problem. |
+| `brainstorm` | Converges a goal or a choice; two modes, user-facing (socratic) and internal. |
 | `specify` | Authoring an executable spec (§1–§12 stable section numbers). |
 | `grill` | Plan-of-record discipline (`grill.md` §0–§15 stable, append-only). |
 | `test-first` | RED → GREEN → REFACTOR → COMMIT, per increment. |
@@ -401,7 +425,6 @@ separate `implement` protocol).
 | `verify` | Risk-proportional gate discipline — gate depth follows blast radius. |
 | `recover` | Classified, bounded failure recovery: classify → one move per class → three attempts → escalate. Never an identical retry of a deterministic failure. |
 | `canonize` | The single close-out spawn: persist knowledge AND catalog tools in one librarian brief. |
-| `toolcraft` | Durable-tool doctrine; executes inside the canonize spawn. |
 | `deliver` | Cold-pickup session summary — compact for T0/T1, full for T2/T3. |
 | `harvest` | User-triggered-only meta-loop: plant → seed. |
 | `graft` | User-decided-only meta-loop: seed → existing plant. |
@@ -435,6 +458,9 @@ explicit in `protocols/test-first.md`.
 1. Sonnet-class scouts partition the source by real subsystem/repo/evidence
    domain and each persist ONE evidence ledger per boundary to the gitignored
    `.cypress/growth/<slug>.ledger.md`. Every claim cites a path or a symbol.
+   The orchestrator records the division itself to
+   `.cypress/growth/boundaries.md` first, so a later validator can check which
+   boundaries were planned against which ledgers exist.
 2. The orchestration plane reconciles the per-boundary ledgers into one
    coherent evidence set.
 3. Opus-class authors consume the ledger and write each artifact, mapping
@@ -465,7 +491,7 @@ explicit in `protocols/test-first.md`.
 
 ## 8. Skills, templates, and briefs
 
-### 8.1 The 14 skills
+### 8.1 The 15 skills
 
 Skills are composable procedures, one node each in `skills/`:
 
@@ -473,8 +499,10 @@ Skills are composable procedures, one node each in `skills/`:
 - Editing and prose: `holistic-editing`, `humanizer`
 - Wiki/research: `library-wiki`, `research-and-ingest`
 - Authoring: `spec-author`, `test-first`, `adr-writer`
-- Planning/convergence: `grill-planner`, `brainstorm-socratic`
-- Bootstrap/adoption: `from-scratch-bootstrap`, `adopt-existing`
+- Planning/convergence: `grill-planner`, `brainstorm-socratic` (user-facing),
+  `brainstorm-internal` (no user in the loop)
+- Tooling doctrine: `toolcraft` (the rule; `agent.tool-smith` builds)
+- Bootstrap/adoption: `adopt-existing` (greenfield entry is `protocol.from-scratch`)
 
 ### 8.2 The artifact templates
 
@@ -490,10 +518,12 @@ Per-artifact templates in `templates/` (each produces a Tier-3 artifact):
 | `prompt-contract.template.md` | `docs/graph/prompts/prompt-contracts/PROMPT-NNNN-<slug>.md` |
 | `data-contract.template.md` | `docs/graph/data/data-contracts.md` |
 | `threat-model.template.md` | `docs/graph/decisions/threat-model-<feature>.md` |
+| `agent.template.md` | `docs/graph/agents/<name>.md` (a plant-commissioned expert) |
+| `skill.template.md` | `docs/graph/skills/<name>/SKILL.md` (a plant-authored technique) |
 
-`templates/knowledge-graph/` holds the node contract (`_schema.md`), the two
-linters (`graph-lint.py`, `spec-lint.py`, `grill-lint.py`), the router (`index.md`), and the node
-template.
+`templates/knowledge-graph/` holds the node contract (`_schema.md`), the three
+linters (`graph-lint.py`, `spec-lint.py`, `grill-lint.py`), the router
+(`index.md`), and the node template.
 
 ### 8.3 The prompt/brief templates
 
@@ -566,6 +596,12 @@ them; grow/graft draw from them.
 | Optional experts | `agent-corpus/` | Candidate expert roles — the roster mirror; none loaded by default, none named in the kernel | 7 |
 | Optional procedures | `skill-corpus/` | Candidate procedures not in the core skill set | 11 |
 
+The library corpus's ecosystem mix is not even: `nuget` (22 pages) and `maven`
+(21) are 53% of its 81 pages between them, reflecting the .NET/Java estate it
+was harvested from. Full ecosystem-by-ecosystem counts and what that means for
+an adopter on a different stack: `documentation/corpora-and-integrations-reference.md`
+§A.4.1a.
+
 The corpora sit outside the roster and kernel because the always-loaded team pays
 a per-session cost in every plant. A harvested role or procedure lands in a corpus
 instead, giving it one stable home without charging the kernel budget or the
@@ -600,7 +636,12 @@ read across from a neighbour's.
 ## 11. Tool integrations
 
 CYPRESS supports five AI coding tools. Two are first-class at full parity;
-three are lighter-tier.
+three are lighter-tier. "Parity" here is placement and method coverage, not
+enforcement: `documentation/host-capability-matrix.md` classifies, for each
+of twelve capabilities (kernel loading, delegation, recursion bound, tool
+allowlists, model selection, each hook, slash commands, always-applied
+instructions), whether the host itself holds the bound mechanically, whether
+it only holds if the brief says so, or whether it is unsupported.
 
 Placement is by copy unless you pass `--symlink` (§12.3); the column below says
 what each tool needs *beyond* plain placement.
@@ -614,8 +655,12 @@ what each tool needs *beyond* plain placement.
 | GitHub Copilot | `.github/copilot-instructions.md` | `.github/` | transform (frontmatter rewrite), never a symlink | lighter |
 
 - Claude Code and Prime Agent get progressive-discovery enforcement (a
-  route-first hook/extension) plus the same `agent-lint.py` CI gate. A single
-  plant can run either, interchangeably, off one shared kernel file (one is
+  route-first hook/extension) plus the same `agent-lint.py` roster/routing
+  linter, pointed at either harness's projection. `install.sh` places that
+  linter and no workflow to run it, so a plant that wants it on every push
+  wires that itself; what asserts the two projections pass the identical
+  linter is the seed's own `tests/test-full-install.sh`. A single plant can
+  run either harness, interchangeably, off one shared kernel file (one is
   the real file, the other a project-local symlink), so the kernel never drifts.
 - Prime Agent (added in 6.7.0) uses runtime `rlm()` delegation and an
   RLM-native execution overlay (`APPEND_SYSTEM.md`) that maps the kernel's
@@ -623,8 +668,9 @@ what each tool needs *beyond* plain placement.
   continual harness, in-kernel gates). It has no registration lag.
 - GitHub Copilot files are *transformed* (not symlinked) because Copilot
   expects different frontmatter shapes; each generated file carries a
-  "GENERATED — do not edit" banner. `install.sh github-copilot --check` is a CI
-  drift gate.
+  "GENERATED — do not edit" banner. `install.sh github-copilot --check` re-runs
+  the transform and reports drift without writing a byte; it is a command, and
+  a plant that wants it on every push wires that itself.
 - opencode discovers agents by convention; a known gap is that the seed's
   `model:`/`tools:` frontmatter is Claude-Code-shaped, so on opencode those
   bounds are brief-enforced rather than harness-enforced.
@@ -654,7 +700,8 @@ workers for read-only scouting and Opus-class workers for authoring, code,
 analysis, review, and validation.
 
 If files are already installed and the tool exposes commands, `/initialize`
-remains a convenience adapter to the same workflow, though it is not the
+remains a convenience adapter, but it forks — `grow` when there is source to
+scout, `from-scratch` when the repository is empty — and it is not the
 canonical entry.
 
 ### 12.2 The shell installer
@@ -724,10 +771,10 @@ or authored facts.
 ```
 core/                 Bootstrap kernel (AGENTS.md) + method/ posture nodes
   method/               tiers, delegation, engineering/design/stewardship/prose posture
-agents/               19 specialist agents (graph nodes; projected to the harness)
+agents/               20 specialist agents (graph nodes; projected to the harness)
   _routes.golden.tsv    golden routing set for agent-lint --eval
-protocols/            15 protocol graph nodes (installed to docs/graph/protocols/)
-skills/               14 skill graph nodes (installed flat to docs/graph/skills/)
+protocols/            14 protocol graph nodes (installed to docs/graph/protocols/)
+skills/               15 skill graph nodes (installed flat to docs/graph/skills/)
 templates/            Per-artifact templates (spec, grill, ADR, etc.)
   knowledge-graph/      node contract, graph-lint.py, spec-lint.py, grill-lint.py, router, node template
   prompts/              parameterized delegation/investigation/validation briefs
@@ -740,9 +787,9 @@ skill-corpus/         Harvested optional procedures (not the core skills)
 integrations/         Per-tool overlays + config (claude-code, prime-agent, opencode, codex, github-copilot)
 tools/                graft reconciliation engine + audit (incl. --unfilled); agnosticism-lint; prose-lint; status-register; status-migrate
 docs/                 The seed's OWN decisions (ADRs) and plans
-  decisions/            adr-0001..0004
+  decisions/            adr-0001..0008
   plans/                agent-routing, pure-graph-refactor, prime-agent-integration, scouts
-tests/                run.sh + 18 shell suites + python linters/regressions
+tests/                run.sh + its shell suites + python linters/regressions
 install.sh            Drops the seed into a target project
 manifest.json         Machine-readable catalog of all seed files
 INSTALL_PROMPT.md     THE single entry point (paste into an agent chat)
@@ -764,7 +811,21 @@ Run everything before claiming anything works:
 bash tests/run.sh
 ```
 
-This runs (in order):
+This runs every suite registered in `tests/run.sh`. The walkthrough below is a
+**partial, illustrative grouping — it is not the list**, and it said "every
+suite, in order" while enumerating 22 of 41 and omitting
+`test-install-placement.sh` and `test-plant-state.sh`, the two suites that carry
+SPEC-0001's contracts. For the real roster, and for what each gate READS and the
+false green it can still produce, ask the thing that derives it:
+
+```sh
+python3 tools/gate-registry.py --summary   # how many, and what each reads
+python3 tools/gate-registry.py --table     # plus the false green each can produce
+```
+
+`gate-registry.py` parses `tests/run.sh` and refuses a step nobody has
+classified, so it cannot fall behind the way a hand-typed list did. With that
+said, grouped by what they check:
 
 1. `test-unified-graph-install.sh`: graph install shape.
 2. `test-knowledge-paths.sh`: knowledge path integrity.
@@ -811,8 +872,8 @@ This runs (in order):
 18. `test_graph_lint.py`: graph-lint CLI-contract regression (stdlib unittest),
     including the 7.0.0 status / deviation / `plant:` block rules.
 19. `agent-lint.py --lint` and `--eval` (against `agents/`).
-20. `test_agent_lint.py` (pytest; loud SKIP if pytest absent, never a silent
-    skip).
+20. `test_agent_lint.py`: agent-lint CLI-contract regression (stdlib
+    `unittest`, no third-party dependency).
 21. `seed-lint.py`: one-home-per-fact for the seed's own meta-facts.
 22. `legal-lint.py`: the eight-field-per-entry legal gate.
 
@@ -825,15 +886,32 @@ in exactly their mapped home), canonical-block byte-identity in the brief
 templates, and the per-session instruction budget of the integrations.
 
 Current status (documented run): all gates PASS.
-`agent-lint`: 19 agents valid; `--eval`: top-1 accuracy 100% (55/55), 3
-novel-stack rows checked; `seed lint: PASS`; `legal lint: PASS — 129 entries
-across 13 pages`; `test_agent_lint.py`: 44 passed, 1 skipped.
+`agent-lint`: 20 agents valid; `--eval` over 95 rows: contract consistency
+98.4% (60/61), paraphrase confident-correct 4/17 (13 abstentions), adversarial
+confident-correct 5/12, unknown-domain 5/5 correctly abstained; zero
+confident-wrong outside the adversarial class and **2 within it**, against a
+ratcheted budget of 2; `seed lint: PASS`; `legal lint: PASS — 129 entries
+across 13 pages`; `test_agent_lint.py`: 67 tests, 1 skipped.
 
-> Honesty note carried in the CHANGELOG: the routing eval is substantially
-> in-sample. 44 of the 58 labeled rows in `agents/_routes.golden.tsv` are
-> byte-identical to the expected agent's own `routing_triggers`, so the 100%
-> score reads stronger than it is. The seed states this weakness instead of
-> hiding it.
+> Honesty note carried in the CHANGELOG: `--eval` used to report one blended
+> `top-1 accuracy 100% (55/55)` number, which was arithmetically true and
+> rhetorically false, because most of those rows were a verbatim subset of
+> the agent they scored, because the corpus had been written from the triggers
+> it tests. The golden set now tags every row `contract` (drawn from an
+> agent's own triggers, a consistency check rather than a generalization score),
+> `paraphrase` (authored without reading any triggers, the real held-out
+> signal), or `unknown-domain` (must abstain), reports each class separately,
+> and never averages them. A fourth class, `adversarial`, was added in 7.16.0:
+> phrasings built to bait a plausible-but-wrong specialist.
+> `contract`'s 98.4% measures self-consistency; `paraphrase`'s 4/17 is the
+> honest generalization number for a keyword heuristic scored on phrasing it
+> was never given, and its 13 abstentions are a correct outcome rather than a
+> miss.
+> The gate that matters is confident-and-wrong. It is zero in every class
+> **except `adversarial`**, which carries a ratcheted budget of 2, because the
+> rows exist to bait the router and a bait that never succeeds is not a bait.
+> That budget may only fall; it went 3 to 2 when the routers' lexical reach was
+> repaired, without a trigger being tuned to a row.
 
 ## 15. Glossary
 
@@ -891,3 +969,7 @@ The `docs/decisions/` ADRs record the load-bearing design choices:
 - `adr-0003`: enforcement layering and honesty.
 - `adr-0004`: pure-graph architecture (6.0.0: the whole method surface installs
   into `docs/graph/` as routable nodes).
+- `adr-0005`: composable expertise as a node kind and a lazy edge, not a
+  deeper agent tree.
+- `adr-0006`: T2 gains a contained lane — a small, test-pinned change is
+  authorized by a RED test and a recorded why, not a full spec.

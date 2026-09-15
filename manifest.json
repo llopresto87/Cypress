@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft-07/schema#",
   "name": "cypress",
   "fullName": "Contextual Yield Protocol for Routed Expert Seed Systems",
-  "version": "7.15.0",
+  "version": "7.16.0",
   "supersedes": "general_expert_prompts@1.0.0",
   "created": "2026-05-23",
   "description": "CYPRESS (Contextual Yield Protocol for Routed Expert Seed Systems) — a project-agnostic multi-agent seed for single- or multi-repository programs. As of 6.0.0 it is a pure graph system: the entire method surface — protocols, skills, agent charters, method/posture nodes, and template artifacts — installs INTO the plant's unified docs/graph/ as seed-owned routable nodes (origin: seed), activated progressively by the router; the always-loaded kernel is a small bootstrap (identity, tiers, rule anchors, boundaries), and tool directories hold only harness projections (agents, skills). Its tool-neutral INSTALL_PROMPT.md keeps user chat in orchestration/planning, dispatches Sonnet-class read-only scouts and Opus-class authors/reviewers, and grows the graph without building the application or publishing Git state.",
@@ -27,7 +27,12 @@
     "core/method/engineering-posture.md": "method.engineering-posture node — general engineering principles (was operating-principles §1–§12). Installed to docs/graph/method/.",
     "core/method/design-posture.md": "method.design-posture node — SOLID/responsibility design cluster (was §13–§19). Installed to docs/graph/method/.",
     "core/method/stewardship-posture.md": "method.stewardship-posture node — records, verification, knowledge, session closure, tools (was §20–§27). Installed to docs/graph/method/.",
-    "core/method/prose-posture.md": "method.prose-posture node — prose a person reads: information contract, claim classes, genre profiles, diagnostics A–X, anti-patterns, stop conditions. Installed to docs/graph/method/."
+    "core/method/prose-posture.md": "method.prose-posture node — prose a person reads: information contract, claim classes, genre profiles, diagnostics A–X, anti-patterns, stop conditions. Installed to docs/graph/method/.",
+    "core/method/contract-posture.md": "method.contract-posture node — fail loudly on missing input, reject out-of-domain values, own the unversioned boundary. Installed to docs/graph/method/.",
+    "core/method/incident-posture.md": "method.incident-posture node — smallest reversible containment, forensic trail kept intact, remediation separate from the stop. Installed to docs/graph/method/.",
+    "core/method/release-posture.md": "method.release-posture node — promoting the attested artifact, rehearsed reversal, one governing lockfile. Installed to docs/graph/method/.",
+    "core/method/secrets-posture.md": "method.secrets-posture node — one channel in and none out, names not values, compromise means rotation. Installed to docs/graph/method/.",
+    "core/method/vcs-posture.md": "method.vcs-posture node — local commits rest, publishing is authorized by the owner, one working tree. Installed to docs/graph/method/."
   },
   "agents": [
     {
@@ -124,6 +129,11 @@
       "file": "agents/seed-installer.md",
       "name": "seed-installer",
       "role": "Additive seed/adapter install via install.sh; preserves target-owned files; verifies the host tool loads the kernel. Opus leaf."
+    },
+    {
+      "file": "agents/tool-smith.md",
+      "name": "tool-smith",
+      "role": "Builds the durable, tested tool a repeated PLANT operation has earned (data resets, client regeneration, migration drivers); owns the bar and refuses below it. Never authors seed or graph machinery; cataloging stays with the canonize close-out. Opus leaf."
     }
   ],
   "protocols": [
@@ -135,7 +145,7 @@
     {
       "file": "protocols/initialize.md",
       "name": "initialize",
-      "role": "Optional coding-tool adapter to INSTALL_PROMPT.md and grow."
+      "role": "The entry fork — grow when the target has source to scout, from-scratch when it is empty — and the optional coding-tool adapter that carries it to INSTALL_PROMPT.md."
     },
     {
       "file": "protocols/from-scratch.md",
@@ -145,7 +155,7 @@
     {
       "file": "protocols/brainstorm.md",
       "name": "brainstorm",
-      "role": "Socratic convergence to a precise problem."
+      "role": "Converges a goal or a choice to a precise problem; two modes, user-facing (socratic) and internal."
     },
     {
       "file": "protocols/specify.md",
@@ -181,11 +191,6 @@
       "file": "protocols/canonize.md",
       "name": "canonize",
       "role": "The single end-of-task close-out spawn (kernel §3.7 + §3.8): ONE docs-librarian brief persists knowledge of interest into the graph AND catalogs durable tools in docs/graph/tools. T0/T1 tasks satisfy it with a one-line self-record in the compact delivery."
-    },
-    {
-      "file": "protocols/toolcraft.md",
-      "name": "toolcraft",
-      "role": "Doctrine (kernel §3.8): defines what counts as a durable, reusable, test-authorized tool vs a disposable one-off. Executes inside the canonize close-out spawn — never a separate spawn."
     },
     {
       "file": "protocols/deliver.md",
@@ -237,6 +242,10 @@
       "name": "spec-author"
     },
     {
+      "file": "skills/toolcraft/SKILL.md",
+      "name": "toolcraft"
+    },
+    {
       "file": "skills/test-first/SKILL.md",
       "name": "test-first"
     },
@@ -249,12 +258,12 @@
       "name": "grill-planner"
     },
     {
-      "file": "skills/brainstorm-socratic/SKILL.md",
-      "name": "brainstorm-socratic"
+      "file": "skills/brainstorm-internal/SKILL.md",
+      "name": "brainstorm-internal"
     },
     {
-      "file": "skills/from-scratch-bootstrap/SKILL.md",
-      "name": "from-scratch-bootstrap"
+      "file": "skills/brainstorm-socratic/SKILL.md",
+      "name": "brainstorm-socratic"
     },
     {
       "file": "skills/adopt-existing/SKILL.md",
@@ -298,6 +307,14 @@
     {
       "file": "templates/threat-model.template.md",
       "produces": "docs/graph/decisions/threat-model-<feature>.md"
+    },
+    {
+      "file": "templates/agent.template.md",
+      "produces": "docs/graph/agents/<name>.md — a commissioned specialist, when the roster gap needs its own tools, model class, stance or isolation (prefer an expertise node otherwise)"
+    },
+    {
+      "file": "templates/skill.template.md",
+      "produces": "docs/graph/skills/<name>.md — a commissioned or harvested skill node"
     },
     {
       "file": "templates/knowledge-graph/_schema.md",
@@ -364,6 +381,12 @@
       "produces": "the standard cross-agent HANDBACK block every specialist ends its turn with; the routing-attribution carrier the deliver-time produced_by assertion reads"
     }
   ],
+  "tools": {
+    "tools/agnosticism-lint.py": "Placed into every plant at docs/graph/agnosticism-lint.py — flags project-specific vocabulary that has leaked into a node meant to stay agnostic.",
+    "tools/prose-lint.py": "Placed into every plant at docs/graph/prose-lint.py — the prose-posture checks a plant runs over its own writing.",
+    "tools/status-register.py": "Placed into every plant at docs/graph/status-register.py — the register a plant's specs and plans declare their status through.",
+    "tests/legal-lint.py": "The legal corpus's citability checker. Placed into a plant at docs/graph/legal-lint.py ONLY when --legal-corpus yes — the corpus travels with its checker, and a plant without the corpus has nothing for it to lint. Until 7.16.0 the plant received legal-corpus/_schema.md (the contract a page must satisfy) and no instrument to check it."
+  },
   "docs_skeleton": {
     "root": "templates/docs/",
     "installed_at": "docs/graph/",
@@ -379,7 +402,7 @@
     "commands": {
       "--route \"<task>\"": "rank specialists by IDF-weighted routing_triggers/name match; print a confidence band (HIGH/MEDIUM/LOW/NONE) to cite in a delegation brief.",
       "--lint": "validate agent frontmatter (routing_triggers present; can_delegate == Task-in-tools; bounded-delegation depth/allowlist invariant) — the P0/P1 gate.",
-      "--eval": "run the golden routing set; assert top-1 accuracy and that novel-stack phrases return LOW/NONE — the eval gate."
+      "--eval": "run the golden routing set; report each corpus class separately (never averaged) and assert no confident-wrong route outside the ratcheted adversarial budget, and that novel-stack phrases return LOW/NONE — the eval gate."
     },
     "frontmatter_fields_added": [
       "routing_triggers",
@@ -426,8 +449,8 @@
   "install_prompt": "INSTALL_PROMPT.md",
   "entry_points": {
     "primary": "INSTALL_PROMPT.md is the single entry point: paste it into an agent-capable chat and it runs one flow in three phases — PLACE (install.sh drops all files), HAND OFF (restart rooted at the target for the registration boundary), GROW IN FULL (execute grow under its completeness contract). install.sh and grow are its internal mechanisms.",
-    "coding_tool_adapter": "/initialize delegates to grow; it is not the primary interface.",
-    "new_project": "INSTALL_PROMPT.md → grow → from-scratch when no executable project evidence exists.",
+    "coding_tool_adapter": "/initialize is the entry fork — grow when the target has source to scout, from-scratch when it is empty; it is not the primary interface.",
+    "new_project": "INSTALL_PROMPT.md → the entry fork → from-scratch, chosen on the absence of executable project evidence. Reaching from-scratch by way of grow means the fork was skipped or read the target wrong (protocols/grow.md).",
     "existing_project": "INSTALL_PROMPT.md → grow → delegated source-first adoption/refresh.",
     "completeness": "grow.completeness-contract binds the orchestrating model to full-depth growth, and tools/growth-audit.py is its mechanical form: the scouts' findings reconcile into a stack inventory, --plan turns each item into the artifacts growth owes it and marks which need upstream documentation retrieved this run, and the lint checks every planned artifact appeared and is not a scaffold. Three of the four row sets are derived from outside the record — one per installed collection, one per roster agent declaring plant_knowledge:, and one per project-specific expert the plant's own graph carries — so a collection, a specialist, or an expert cannot be forgotten, and a graft to a newer seed surfaces what it carried but never grew. The fourth, the inventory, carries the staffing decision: a dominant domain or a core part of the stack records whether it warrants an expert of its own and why, and an expert that reaches the graph but not the harness projection is reported as what it is — on disk and unspawnable. The record is tracked at .cypress/coverage.json; grow Phase 6 and graft Phase 7 both gate on a green audit."
   }

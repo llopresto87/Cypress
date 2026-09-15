@@ -12,6 +12,7 @@ owns:
   - engineering-posture.decision-economy
   - engineering-posture.integration-over-patching
   - engineering-posture.production-boundaries
+  - toolcraft.bounded-execution
 requires:
 peers:
   - method.design-posture
@@ -24,7 +25,9 @@ load_when:
   - "which technology to pick, boring vs experimental"
   - "works locally but fails in CI or on the target host"
   - "is this abstraction or extra worker worth its cost"
-est_tokens: 3950
+  - "command hung, session stuck, wrap in a timeout, run detached"
+prevents: Work with several sources of truth, scope set by what seems useful rather than what is sufficient, and decisions re-litigated every session.
+est_tokens: 4563
 ---
 
 # Engineering posture
@@ -379,6 +382,48 @@ the privileges it needs. Whether the target is a real production system
 at all is a plant fact: `plant.environment_class` in the router's
 frontmatter answers it once, and it is read there, not re-guessed per
 run.
+
+## 14. A command that may outlive its session is bounded (`toolcraft.bounded-execution`)
+
+This discipline was filed under the toolcraft protocol because that was the
+nearest node when it was written. It is not tool-authoring doctrine — it binds
+every session that runs anything, whether or not a tool comes out of it — so it
+lives here with the rest of the engineering posture. `skill.toolcraft` points at
+it and does not restate it.
+
+A tool is only durable if the session that runs it survives it. Every command an
+agent runs is bounded, and anything that may outlive the bound is detached,
+logged to disk, and terminated by a marker:
+
+1. A foreground command carries an explicit bound. Service control, process
+   signalling and installers are the commands that hang most and get no
+   exemption.
+2. Work that may legitimately exceed the bound is never run in the
+   foreground: it is launched detached with hangup trapped, its process
+   group recorded to a file, its output written to a durable log under the
+   project, and it ends with a terminal result line and an exit-code file.
+3. Waiting is bounded polling of that log for new bytes or the marker. A
+   poll that sees no new evidence for a fixed number of intervals stops and
+   reports "no progress since T"; it never re-issues the same command.
+4. "Running" is claimed only on an observed liveness signal — the pid alive
+   and the log growing, or device utilisation — never on the launch having
+   returned.
+5. A process is stopped by its recorded pid or process group with bounded
+   escalation, never by a pattern that can match the shell issuing the kill.
+6. Completion is the marker, not the absence of output and not a timeout;
+   a liveness threshold is derived from measured durations of that task
+   class, not guessed.
+
+A timeout alone covers only the first clause. The other five are what
+distinguish "finished" from "stuck" when the work is long, and a stall is
+reported, never repeated.
+
+These clauses are delivered as a mechanism where the harness has a hook
+surface: the Claude Code integration installs a pre-tool guard
+(`.claude/bound-hook.py`) that refuses a blocking-prone shell command carrying
+neither a bound nor a detached launch, so clause 1 is enforced before it is
+read. Harnesses without a hook surface carry the clauses as the agent's own
+discipline; their integration notes say so.
 
 ## Neighbours
 

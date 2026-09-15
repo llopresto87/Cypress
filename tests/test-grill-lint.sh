@@ -22,6 +22,9 @@ printf -- '- **Status:** active\n\n### Contract: SUBMIT_VALID_FORM\n### Contract
 # The valid plan: derived from the template so the form's own prose is
 # subtracted; every section carries content; §9 in dependency order.
 write_plan() {
+# Reset the ledger directory: this writes the INLINE form, and children left by
+# a previous case would (correctly) read as orphans.
+rm -rf "$G/plans/grill"
 python3 - "$G/plans/grill.md" "$@" <<'PY'
 import sys, re
 from pathlib import Path
@@ -180,8 +183,117 @@ expect_fail '§10: not populated' 'template prose is not content'
 write_plan DEP1="increment 2"
 lint --warn >/dev/null
 
+# ---------------------------------------------------------------------------
+# The ledger form. A plan-of-record grows for as long as the project does, and
+# §9 grows fastest — every increment's contracts, RED tests, rollback path and
+# dependencies land in it. Held in one file that is loaded whole, a mature plan
+# becomes the largest thing a session reads, and the routing that exists to keep
+# a context window honest is defeated by the document describing the work.
+#
+# So §9 may instead be an INDEX: one row per increment, pointing at a file that
+# holds it. The plan stays the ledger; the increments are files under it. The
+# single-file form still lints, because every plant already has one.
+# ---------------------------------------------------------------------------
+write_ledger() {   # $1 = optional body override for increment 2's file
+python3 - "$G/plans" "${1:-}" <<'PYEOF'
+import sys, pathlib, re
+plans = pathlib.Path(sys.argv[1]); override = sys.argv[2]
+plan = (plans / "grill.md").read_text()
+# Replace §9's inline increments with an index pointing at child files.
+start = plan.index("## 9. Implementation Plan")
+end = plan.index("## 10.")
+inline = plan[start:end]
+blocks = re.split(r"(?=^### Increment )", inline, flags=re.M)[1:]
+(plans / "grill").mkdir(exist_ok=True)
+rows = []
+for b in blocks:
+    n = int(re.match(r"### Increment (\d+)", b).group(1))
+    title = re.match(r"### Increment \d+\s*[—-]?\s*(.*)", b).group(1).strip()
+    slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    rel = f"plans/grill/increment-{n:02d}-{slug}.md"
+    body = override if (override and n == 2) else b
+    (plans / "grill" / f"increment-{n:02d}-{slug}.md").write_text(body)
+    rows.append(f"| {n} | {title} | planned | `{rel}` |")
+index = ("## 9. Implementation Plan\n\n"
+         "| # | Increment | Status | Detail |\n|---|---|---|---|\n"
+         + "\n".join(rows) + "\n\n")
+(plans / "grill.md").write_text(plan[:start] + index + plan[end:])
+PYEOF
+}
+
+# 14. the ledger form lints clean, and --list still prints the increment graph
+write_plan
+write_ledger
+out="$(lint --list)" || { echo "ledger-form plan failed:"; echo "$out"; exit 1; }
+grep -q -- '2 Persist submissions  <- 1' <<<"$out" || {
+  echo "--list did not resolve increments through the index" >&2; echo "$out" >&2; exit 1; }
+
+# 15. an index row pointing at a file that does not exist
+write_plan
+write_ledger
+rm "$G/plans/grill/increment-02-persist-submissions.md"
+expect_fail 'increment 2' 'index row points at a missing file'
+
+# 16. an increment file nobody indexes — work that exists and is unreachable
+write_plan
+write_ledger
+cp "$G/plans/grill/increment-01-validate-schema.md" \
+   "$G/plans/grill/increment-07-orphaned.md"
+expect_fail 'increment-07-orphaned.md' 'orphan increment file'
+
+# 17. the required fields are enforced INSIDE the increment's own file, not
+# merely somewhere in the plan — otherwise the split loses the contract.
+write_plan
+write_ledger "### Increment 2 — Persist submissions
+- Spec contracts: SPEC-0001/SUBMIT_VALID_FORM
+- Tests to write (RED): tests/test_forms.py::test_persist
+- Rollback path: revert the commit
+"
+expect_fail 'Depends on' 'required field missing from the increment file'
+
+# 18. DOCUMENT order, not numeric. The forward-dependency check reads position
+# as "is the dependency written before the thing that needs it". A plan that
+# appends increment 3 after 1 and 2 — append-don't-renumber, which this seed
+# prescribes — is valid, and sorting the list numerically made it fail a forward
+# dependency it does not have, with no change to the plan file at all.
+write_plan
+python3 "$ROOT/tests/fixtures/grill/append_order.py" "$G/plans/grill.md"
+lint >/dev/null || { echo "append-order plan must lint clean (document order)" >&2; lint; exit 1; }
+echo "  an appended out-of-number increment lints clean — OK"
+
+# 19. an index row may not point outside plans/grill/. `Path.__truediv__`
+# discards the left side when the right is absolute, so an absolute path made
+# the lint read and bless a file nowhere near the plan.
+write_plan
+write_ledger
+sed -i.bak 's#`plans/grill/increment-02[^`]*`#`/tmp/plans/grill/x.md`#' "$G/plans/grill.md" && rm -f "$G/plans/grill.md.bak"
+expect_fail 'points outside plans/grill/' 'index row escaping the plan'
+
+# 20. the index row's number must match the file it points at, or renumbering
+# one and not the other drifts silently — the drift an index exists to catch.
+write_plan
+write_ledger
+sed -i.bak 's/^### Increment 2/### Increment 5/' "$G/plans/grill/increment-02-persist-submissions.md" && rm -f "$G/plans/grill/increment-02-persist-submissions.md.bak"
+expect_fail 'index says increment 2' 'index number disagrees with the file'
+
+# 21. an index row may be written any reasonable way — extra columns, a
+# markdown link, no backticks. A row the parser cannot see is an increment
+# nothing validates: the orphan failure arriving through the parser.
+write_plan
+write_ledger
+python3 "$ROOT/tests/fixtures/grill/link_row.py" "$G/plans/grill.md"
+lint >/dev/null || { echo "a 5-column markdown-link index row must resolve" >&2; lint; exit 1; }
+echo "  an index row with extra columns and a markdown link still resolves — OK"
+
+# 22. an orphan child under any name, at any depth.
+write_plan
+write_ledger
+mkdir -p "$G/plans/grill/2026"
+cp "$G/plans/grill/increment-01-validate-schema.md" "$G/plans/grill/2026/inc-99.md"
+expect_fail 'inc-99.md is not indexed' 'orphan under a different name and depth'
+
 # 13. no plan at all -> SKIP, exit 0
-rm "$G/plans/grill.md"
+rm -rf "$G/plans/grill" "$G/plans/grill.md"
 lint >/dev/null
 
 printf 'grill lint contract: PASS\n'

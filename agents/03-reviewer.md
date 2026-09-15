@@ -34,6 +34,7 @@ plant_knowledge:
   - libraries/
   - best-practices/
   - specs/
+prevents: Increments merged on their author's confidence, with nothing reading the diff against the plan, the wiki idioms or the project's conventions.
 est_tokens: 1550
 ---
 

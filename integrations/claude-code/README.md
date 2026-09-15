@@ -27,6 +27,15 @@ This seed system maps to Claude Code as follows:
 | `templates/`                 | `templates/` (kept at repo root, untouched)   |
 | `templates/docs/` (graph leaves) | `docs/graph/` (missing leaves added on install) |
 
+> **The projection is taken from the graph, not from the seed.** The rows
+> above are `seed → harness` for brevity; the real path is
+> `seed → docs/graph/{agents,skills}/ → harness`, and `install.sh`'s own
+> log lines say so ("harness projection of docs/graph/skills/"). The
+> distinction is not cosmetic: it is why a plant-commissioned expert that
+> a grow run writes into `docs/graph/agents/` gets projected here too, and
+> why `tools/growth-audit.py` reports one that reached the graph but not
+> the harness as `UNGROWN` — on disk and unspawnable.
+
 The agent frontmatter format used by this seed (`name`, `description`,
 `tools`, `model`) is exactly what Claude Code expects, so the files
 work unchanged.
@@ -39,7 +48,7 @@ such node into `.claude/commands/`. Each generated file is a short pointer
 that opens the corresponding `docs/graph/protocols/<name>.md` node as the
 working context — the node is the single home, the command a generated
 projection, so no per-harness copy can drift. The user-sovereign meta-loop
-protocols (`graft`, `grow`, `harvest`) and the canonize-folded `toolcraft`
+protocols (`graft`, `grow`, `harvest`)
 carry no `command:` field, so they are commands on no harness; the command
 surface is identical everywhere.
 
@@ -93,7 +102,7 @@ path inside it (not Bash, no command, unparseable stdin, internal error)
 exits 0 with one line on stderr, so a bug in the guard degrades to no guard
 and can never block every call. The pattern list is a commented constant at
 the top of the file; extending it is a one-line change. The doctrine behind
-the guard is `protocols/toolcraft.md` § "Bounded execution"; the test is
+the guard is `core/method/engineering-posture.md` §14 (`toolcraft.bounded-execution`); the test is
 `tests/test-bound-hook.sh`.
 
 ## What you do not need to do

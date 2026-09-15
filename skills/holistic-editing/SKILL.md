@@ -21,6 +21,7 @@ load_when:
   - "additive-only diff smells wrong"
   - "same bug probably exists elsewhere, fix one or all"
   - "rename crossing a serialization or wire boundary"
+prevents: Changes landed as the smallest diff that satisfies the request — bolted-on functions, _v2 names, and a file whose design is the fossil record of every past edit.
 est_tokens: 2300
 ---
 

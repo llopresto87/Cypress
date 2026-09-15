@@ -19,6 +19,7 @@ load_when:
   - "can I just edit this directly, trivial edit"
   - "small fix but no spec covers it, does it really need the full funnel"
   - "two-line bug fix in code no spec covers"
+prevents: Every task handled at the same depth, so a typo fix is routed through the full pass and a migration is treated as a one-liner.
 est_tokens: 850
 ---
 

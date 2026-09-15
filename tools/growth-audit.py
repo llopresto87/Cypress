@@ -141,6 +141,15 @@ import re
 import sys
 from pathlib import Path
 
+# The one frontmatter reader, from beside this file (byte-identical copies sit
+# next to every consumer; the linters that ship into plants are standalone
+# scripts with no package to import from).
+import importlib.util as _ilu
+_fm_spec = _ilu.spec_from_file_location(
+    "cypress_frontmatter", Path(__file__).resolve().parent / "frontmatter.py")
+_frontmatter = _ilu.module_from_spec(_fm_spec)
+_fm_spec.loader.exec_module(_frontmatter)
+
 SCHEMA = "cypress.coverage/1"
 RECORD_REL = ".cypress/coverage.json"
 STAMP_REL = ".cypress/seed.json"
@@ -367,23 +376,18 @@ def required_collections(seed):
 
 
 def parse_frontmatter(path):
-    text = path.read_text(encoding="utf-8", errors="replace")
-    m = re.match(r"\A---\n(.*?)\n---\n", text, re.DOTALL)
-    if not m:
+    """Delegates to the one frontmatter reader (see frontmatter.py beside this).
+
+    Held its own parser, one of seven — permissive by accident, dropping any
+    line its two regexes did not recognise. Returns {} on an unreadable block,
+    as before: this is an audit, and a node it cannot read is reported through
+    the audit's own rows rather than by raising here.
+    """
+    try:
+        meta, _body = _frontmatter.parse_file(path)
+    except (_frontmatter.FrontmatterError, OSError):
         return {}
-    fm, current = {}, None
-    for line in m.group(1).splitlines():
-        if re.match(r"^\s+-\s+", line) and current is not None:
-            fm[current].append(line.split("-", 1)[1].strip().strip('"'))
-            continue
-        kv = re.match(r"^([A-Za-z_]+):\s*(.*)$", line)
-        if kv:
-            key, val = kv.group(1), kv.group(2).strip()
-            if val == "":
-                fm[key], current = [], key
-            else:
-                fm[key], current = val, None
-    return fm
+    return meta
 
 
 def required_agents(seed):
@@ -1576,6 +1580,13 @@ def do_lint(plant, seed, opt):
 
 
 def main():
+    # `--help` answers on the tool's own terms. This exited 2 through the
+    # unknown-option path — the same defect U-10 recorded for graft-audit.py,
+    # in the same directory, with the same idiom; fixing one of four closed the
+    # instance and left the class.
+    if "--help" in sys.argv[1:] or "-h" in sys.argv[1:]:
+        print(__doc__ or "")
+        return 0
     plant, seed, opt = parse_args()
     if not (plant / GRAPH_HOME).is_dir():
         die(f"{plant} has no {GRAPH_HOME}/ — not a plant root; refusing a "

@@ -39,6 +39,10 @@ path = "/abs/path/to/project/.codex/skills/grill-planner/SKILL.md"
 enabled = true
 
 [[skills.config]]
+path = "/abs/path/to/project/.codex/skills/humanizer/SKILL.md"
+enabled = true
+
+[[skills.config]]
 path = "/abs/path/to/project/.codex/skills/brainstorm-socratic/SKILL.md"
 enabled = true
 
@@ -55,11 +59,15 @@ path = "/abs/path/to/project/.codex/skills/adr-writer/SKILL.md"
 enabled = true
 
 [[skills.config]]
-path = "/abs/path/to/project/.codex/skills/from-scratch-bootstrap/SKILL.md"
+path = "/abs/path/to/project/.codex/skills/adopt-existing/SKILL.md"
 enabled = true
 
 [[skills.config]]
-path = "/abs/path/to/project/.codex/skills/adopt-existing/SKILL.md"
+path = "/abs/path/to/project/.codex/skills/brainstorm-internal/SKILL.md"
+enabled = true
+
+[[skills.config]]
+path = "/abs/path/to/project/.codex/skills/toolcraft/SKILL.md"
 enabled = true
 
 [[skills.config]]

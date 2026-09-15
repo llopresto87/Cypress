@@ -316,23 +316,36 @@ def iter_files(paths):
     return list(seen.values())
 
 
-def scan(paths, relative_to=None):
+def scan(paths, relative_to=None, unreadable=None):
     """One Item per markdown file with frontmatter under `paths`, in file
     order. Files without frontmatter carry no lifecycle and are not
     items. `relative_to` trims the reported path to a root the caller
-    reports against."""
+    reports against. `unreadable`, when given a list, collects
+    (path, reason) for every file this pass could not decode or open —
+    the caller turns those into findings, since a file dropped here
+    would otherwise just be absent, and absent reads exactly like
+    status-less to `lint()`."""
     items: list[Item] = []
     for f in iter_files(paths):
+        rel = (f.relative_to(relative_to).as_posix()
+               if relative_to else f.as_posix())
         try:
             text = f.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError):
+        except (UnicodeDecodeError, OSError) as e:
+            # A silent `continue` here used to make an unreadable file
+            # indistinguishable from one this scan never had to look at,
+            # so a gate over a tree it could not fully read still printed
+            # PASS. Naming the file and the reason on stderr is where a
+            # CI log gets read from; handing it back via `unreadable` is
+            # what lets the caller fail the run on it.
+            print(f"  !! {rel}: unreadable ({e})", file=sys.stderr)
+            if unreadable is not None:
+                unreadable.append((rel, str(e)))
             continue
         parsed = parse_frontmatter(text)
         if parsed is None:
             continue
         meta, lines, body, first = parsed
-        rel = (f.relative_to(relative_to).as_posix()
-               if relative_to else f.as_posix())
         kind, source = infer_kind(meta, f)
         items.append(Item(rel, meta, lines, kind, source,
                           _body_statuses(body, first)))
@@ -530,7 +543,8 @@ def main() -> int:
         print(f"  !! matched 0 markdown files under {', '.join(roots)} — "
               f"refusing a vacuous pass")
         return 2
-    items = scan(roots)
+    unreadable: list = []
+    items = scan(roots, unreadable=unreadable)
 
     if querying:
         if args.summary:
@@ -548,6 +562,11 @@ def main() -> int:
         return 0
 
     findings = lint(items, strict_unknown=args.strict_unknown)
+    # An unreadable file is unknown, not clean: it must never be able to
+    # pass through the lint gate simply by never being read, so it joins
+    # the same D-STATUS findings list that already carries the exit code.
+    findings.extend(Finding(path, 0, "unreadable", f"file unreadable: {reason}")
+                     for path, reason in unreadable)
     if findings:
         print(f"status register: FAIL ({len(findings)} finding(s))")
         for f in findings:

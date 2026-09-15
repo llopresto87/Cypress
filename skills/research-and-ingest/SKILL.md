@@ -21,6 +21,7 @@ load_when:
   - "use context7 or deepwiki for docs"
 artifacts:
   - templates/library-page.template.md
+prevents: Sources cited from memory rather than retrieved — plausible URLs, plausible quotes, and no snapshot to check either against.
 est_tokens: 1200
 ---
 

@@ -22,6 +22,7 @@ load_when:
   - "a credential leaked into source history, rotate it or scrub the history"
   - "token TTL versus revocation list, credential lifetime and rotation"
   - "generate a fresh password or key during deploy without overwriting the live one"
+prevents: Secrets that arrive by several channels and leave by all of them — values in logs and errors, and compromise treated as a scare rather than a rotation.
 est_tokens: 1550
 ---
 

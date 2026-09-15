@@ -29,6 +29,7 @@ artifacts:
   - templates/knowledge-graph/node.template.md
   - templates/docs/nodes/_deviation.template.md
   - templates/docs/nodes/_expertise.template.md
+prevents: A node set with duplicate homes, dishonest budgets and triggers that never fire — a graph that costs context and returns nothing.
 est_tokens: 2519
 ---
 

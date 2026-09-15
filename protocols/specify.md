@@ -23,6 +23,7 @@ load_when:
   - "changing an existing feature's contract"
   - "bug revealed an implicit or missing contract"
   - "acceptance criteria, Given/When/Then, failure modes"
+prevents: Behavior whose source of truth is the implementation, so a test can only assert what the code already does and correct comes to mean unchanged.
 est_tokens: 1750
 command: true
 ---

@@ -31,6 +31,15 @@ This seed system maps to Copilot as follows:
 | `templates/`             | `templates/` (kept at repo root, untouched)          |
 | `templates/docs/`        | `docs/graph/` (missing leaves added on install)      |
 
+> **The projection is taken from the graph, not from the seed.** The rows
+> above are `seed → harness` for brevity; the real path is
+> `seed → docs/graph/{agents,skills}/ → harness`, and `install.sh`'s own
+> log lines say so ("harness projection of docs/graph/skills/"). The
+> distinction is not cosmetic: it is why a plant-commissioned expert that
+> a grow run writes into `docs/graph/agents/` gets projected here too, and
+> why `tools/growth-audit.py` reports one that reached the graph but not
+> the harness as `UNGROWN` — on disk and unspawnable.
+
 ## Why duplicates?
 
 Copilot's discovery is filename-driven and the formats are

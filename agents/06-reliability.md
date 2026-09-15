@@ -8,6 +8,7 @@ routing_triggers:
   - "configure rollback and capacity budgets for the cluster"
   - "stand up fresh infrastructure from scratch"
   - "add health checks timeouts and retries"
+  - "write the release and rollback procedure for this service"
 can_delegate: false
 id: agent.reliability
 tier: 2
@@ -25,6 +26,7 @@ peers:
 plant_knowledge:
   - runbooks/
   - tools/
+prevents: Systems that work only on the machine that built them — no bring-up from scratch, no runbook, no rollback, and cost discovered on the invoice.
 est_tokens: 1850
 ---
 

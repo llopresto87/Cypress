@@ -22,6 +22,7 @@ load_when:
   - "git worktree, parallel checkout, second clone for the same task"
   - "commit trailer, co-authored-by line, who signs the commit"
   - "which language for code comments or the deliverable"
+prevents: Work published without the owner's authorization, several working trees drifting apart, and commit identity decided per session.
 est_tokens: 1050
 ---
 

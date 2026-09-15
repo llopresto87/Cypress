@@ -11,10 +11,10 @@ that a gate instead of an aspiration:
   - a SIGNED spec (product, architect, tester ticked in §0) or a LIVE one
     has a §10 test-mapping row per contract — the specify exit condition,
     checked rather than promised;
-  - a live spec carries its sign-offs (a promotion nobody signed);
+  - a live spec carries its sign-offs, EXCEPT a back-written one, which had no promotion to sign and is refused if it carries them (a promotion nobody signed);
   - an `implemented` spec has no §10 row still `red` or `pending`.
 
-  COVERAGE — live specs only (status active / implemented):
+  COVERAGE — live specs only (status active / implemented / back-written):
   - every contract must appear in >=1 test file;
   - a slug appearing in tests but in no live spec is drift (renamed or
     retired contract still asserted somewhere) -> WARN;
@@ -44,7 +44,18 @@ TEST_GLOBS = [
     "tests/**/*.*", "test/**/*.*", "spec/**/*.*",
     "**/*_test.*", "**/*.test.*", "**/test_*.*",
 ]
-LIVE_STATUSES = {"active", "implemented"}
+# `back-written` is LIVE. It was added to this set after a review found that
+# moving two specs to `back-written` silenced every check on them: the
+# coverage pass skipped them ("0 live specs") and the SHAPE pass, gated on
+# `is_signed or live`, skipped them too because a back-written spec is also
+# unsigned. A status that means "written after the fact" must not also mean
+# "exempt from its own contracts".
+LIVE_STATUSES = {"active", "implemented", "back-written"}
+# The full vocabulary. `LIVE_STATUSES` alone was an allow-list: any word outside
+# it — `stable`, `retrofitted`, or `back_written`, a typo of the value the
+# previous fix added — silenced every check on the spec and printed
+# "0 live spec(s)". An unknown status is now a defect, not an exemption.
+KNOWN_STATUSES = LIVE_STATUSES | {"draft", "superseded"}
 # ----------------------------------------------------------------------------
 
 HERE = Path(__file__).resolve().parent          # docs/graph/
@@ -129,9 +140,27 @@ def shape(spec: Path, text: str, status: str, fails: list[str], warns: list[str]
             if slug not in declared:
                 fails.append(f"{spec.name}: §9 maps to {slug}, which is not a `### Contract:` of this spec")
     is_signed, missing = signed(text)
+    if status not in KNOWN_STATUSES:
+        fails.append(f"{spec.name}: unknown status {status!r} — a status outside "
+                     f"{sorted(KNOWN_STATUSES)} exempts the spec from every check "
+                     f"below, so it is refused rather than honoured")
     live = status in LIVE_STATUSES
-    if live and missing:
+    # `back-written` means the spec was written AFTER the behaviour, so there
+    # was no promotion for anyone to sign. Demanding signatures there is what
+    # produced a fabricated sign-off line in this repository once already —
+    # someone wrote "signed when its RED landed" to clear this check, and no
+    # RED had landed. The status carries the disclosure; the contracts below
+    # are still held. Every OTHER live status must be signed.
+    if live and missing and status != "back-written":
         fails.append(f"{spec.name}: status {status} but unsigned by {', '.join(missing)} — a promotion nobody signed")
+    if status == "back-written" and is_signed:
+        fails.append(f"{spec.name}: status back-written but carries sign-offs — "
+                     f"a back-written spec had no promotion to sign, so a "
+                     f"signature on one is a record of something that did not happen")
+    if live and not declared:
+        fails.append(f"{spec.name}: live spec with no `### Contract:` at all — "
+                     f"a spec that contracts nothing passes every coverage check "
+                     f"vacuously, which is the shape of a false green")
     if (is_signed or live) and declared:
         rows = mapping_rows(secs.get(10, ""))
         for slug in sorted(declared - set(rows)):
@@ -148,6 +177,36 @@ def shape(spec: Path, text: str, status: str, fails: list[str], warns: list[str]
 def main() -> int:
     list_mode = "--list" in sys.argv
     warn_mode = "--warn" in sys.argv
+
+    # `--specs DIR` (and `--root DIR`) exist because this linter ships INTO a
+    # plant at docs/graph/ and resolves its paths from its own location, which
+    # means that in the SEED — where it lives at templates/knowledge-graph/ —
+    # it looked for `templates/knowledge-graph/specs`, printed
+    # "SKIP — no docs/graph/specs/ directory", and exited 0. The seed's own two
+    # specs were therefore checked by nothing at all: the fabricated sign-off
+    # line this remediation calls its worst product could be put straight back
+    # with the whole gate green, and so could an invented `status:` value or a
+    # spec with no contracts. The override is what lets the seed run its own
+    # linter over its own specs.
+    specs, root = SPECS, ROOT
+    for flag, target in (("--specs", "specs"), ("--root", "root")):
+        if flag in sys.argv:
+            i = sys.argv.index(flag)
+            if i + 1 >= len(sys.argv):
+                print(f"spec lint: FAIL — {flag} needs a directory", file=sys.stderr)
+                return 1
+            chosen = Path(sys.argv[i + 1]).resolve()
+            if target == "specs":
+                specs = chosen
+            else:
+                root = chosen
+    if specs is not SPECS and not specs.is_dir():
+        # An override naming a directory that is not there must FAIL. Reusing
+        # the SKIP below would turn a typo into a pass, which is the shape of
+        # the defect this flag exists to close.
+        print(f"spec lint: FAIL — --specs {specs} is not a directory", file=sys.stderr)
+        return 1
+    globals()["SPECS"], globals()["ROOT"] = specs, root
 
     if not SPECS.is_dir():
         print("spec lint: SKIP — no docs/graph/specs/ directory")
@@ -202,7 +261,17 @@ def main() -> int:
     for f in files:
         try:
             body = f.read_text(encoding="utf-8", errors="replace")
-        except OSError:
+        except OSError as e:
+            # `errors="replace"` already tolerates bad encoding, so reaching
+            # this except means the file could not even be opened
+            # (permissions, or something removed it mid-scan). Skipping it
+            # silently let a coverage run vouch for a slug it never actually
+            # searched for; it is now a shape defect like any other, so it
+            # fails the run through the same `fails` list, and the reason
+            # goes to stderr, where a CI log gets read from.
+            print(f"  !! {f}: unreadable ({e})", file=sys.stderr)
+            fails.append(f"{f.relative_to(ROOT)}: unreadable test file ({e})"
+                         f" — coverage cannot vouch for a file it never read")
             continue
         for m in slug_union.finditer(body):
             hits[m.group(0)].append(str(f.relative_to(ROOT)))
@@ -216,11 +285,40 @@ def main() -> int:
             print(f"  {slug}  ({contracts[slug]})  ->  {where}")
 
     if uncovered:
-        print(f"spec lint: {'WARN' if warn_mode else 'FAIL'} — "
-              f"{len(uncovered)}/{len(contracts)} live contract(s) have no test:")
+        # `--uncovered-budget N` separates the two things this linter checks.
+        # SHAPE defects — a fabricated sign-off, an invented status, a live spec
+        # with no contracts — are always fatal, because each asserts something
+        # that did not happen. COVERAGE is enumerated debt: the seed's own two
+        # specs are back-written over behaviour that already shipped, so most
+        # contracts have no test carrying their slug, and that gap is real but
+        # is not a lie. Ratcheting it is what makes it shrink: the budget lives
+        # in tests/ratchets.json and may only fall, so a contract losing its
+        # test fails the gate even while the honest backlog stands.
+        budget = None
+        if "--uncovered-budget" in sys.argv:
+            i = sys.argv.index("--uncovered-budget")
+            if i + 1 >= len(sys.argv):
+                print("spec lint: FAIL — --uncovered-budget needs a number",
+                      file=sys.stderr)
+                return 1
+            budget = int(sys.argv[i + 1])
+        over = budget is None or len(uncovered) > budget
+        label = "WARN" if (warn_mode or not over) else "FAIL"
+        print(f"spec lint: {label} — "
+              f"{len(uncovered)}/{len(contracts)} live contract(s) have no test"
+              + (f" (recorded budget {budget})" if budget is not None else "") + ":")
         for slug in uncovered:
             print(f"  - {slug}  ({contracts[slug]})")
+        if budget is not None and len(uncovered) < budget:
+            print(f"spec lint: FAIL — {len(uncovered)} uncovered against a "
+                  f"recorded budget of {budget}. The debt SHRANK and the record "
+                  f"did not: lower the budget in tests/ratchets.json, or the "
+                  f"next contract to lose its test is absorbed silently.")
+            finish("", 0)
+            return 0 if warn_mode else 1
         finish("", 0)
+        if not over:
+            return 1 if fails else 0
         return 0 if warn_mode else 1
 
     return finish(f"spec lint: PASS — {len(contracts)} live contract(s) covered "

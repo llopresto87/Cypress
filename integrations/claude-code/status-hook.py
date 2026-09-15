@@ -27,6 +27,26 @@ from pathlib import Path
 CANDIDATES = (Path("docs") / "graph" / "status-register.py", Path("tools") / "status-register.py")
 
 
+# --- canonical plant-root boundary ---
+def _is_plant_root(p) -> bool:
+    """True where an upward walk must stop, that directory INCLUDED.
+
+    Unbounded, these walks ascend seven or eight levels from both the cwd and
+    the script's own directory and take the first artifact they find. A plant
+    checked out inside another checkout therefore used the ANCESTOR's — a file
+    the plant does not own, chosen by directory nesting. Reproduced from a git
+    repo at `outer/sub/child` with no roster of its own: `agent-lint.py --route`
+    returned the ancestor repository's agent at HIGH confidence, score 36, and
+    `--lint` printed OK over that foreign roster.
+
+    Callers test their candidate BEFORE calling this, so a plant whose artifact
+    sits at its own repo root is still found; only the step BEYOND the root is
+    denied.
+    """
+    return (p / ".git").exists() or (p / ".cypress").is_dir()
+# --- end canonical plant-root boundary ---
+
+
 def find_register():
     starts = [Path.cwd(), Path(__file__).resolve().parent]
     seen = set()
@@ -39,6 +59,8 @@ def find_register():
             for rel in CANDIDATES:
                 if (p / rel).exists():
                     return p / rel, p
+            if _is_plant_root(p):
+                break
             p = p.parent
     return None, Path.cwd()
 

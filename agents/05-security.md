@@ -8,6 +8,8 @@ routing_triggers:
   - "assess the supply-chain and secrets handling risk"
   - "design the authorization model for the api"
   - "check for prompt injection and data exfiltration"
+  - "assess known vulnerabilities in the dependencies and images"
+  - "plan the secret rotation path by blast radius"
 can_delegate: false
 id: agent.security
 tier: 2
@@ -28,6 +30,7 @@ plant_knowledge:
   - best-practices/
   - decisions/
   - runbooks/
+prevents: Auth, secrets, uploads, supply chain and model-call abuse handled by whoever happens to touch them, with the threat model written after the incident.
 est_tokens: 2200
 ---
 

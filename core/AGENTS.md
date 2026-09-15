@@ -13,7 +13,8 @@
 > No tool needed — just read the files. Required on every task.
 > Optional check: `python3 docs/graph/graph-lint.py --plan "<task>"`.
 > If there is no `docs/graph/` yet, use the installed
-> `EXPERT_SEED_INSTALL_PROMPT.md` (`/initialize` is only a tool adapter).
+> `EXPERT_SEED_INSTALL_PROMPT.md` (`/initialize` is only a tool adapter;
+> it forks to `protocol.grow` or `protocol.from-scratch`).
 
 This file is the **bootstrap kernel**, read on every session by Claude
 Code (as `CLAUDE.md`), Prime Agent and opencode and OpenAI Codex (as
@@ -59,7 +60,7 @@ specialist from the roster — `orchestrator`, `architect`,
 `reliability`, `data-ml`, `product`, `ui-ux-designer`, `docs-librarian`,
 `research-scout`, `devils-advocate`, `legal`, `multi-agent-architect`,
 `growth-orchestrator`,
-`growth-scout`, `seed-installer` — each an `agent.*` node routed by its
+`growth-scout`, `seed-installer`, `tool-smith` — each an `agent.*` node routed by its
 own triggers. Every brief embeds the canonical block from
 `docs/graph/templates/prompts/graph-session-bootstrap.md` **verbatim**
 plus the handback contract — the brief is the only enforcement that
@@ -109,8 +110,9 @@ Gates proportional to blast radius run — and assert something — before
 (`rule.verify`).
 
 ### 3.6 The deliver rule
-Every session ends in a cold-pickup delivery with fail-closed
-`produced_by` attribution. Owner: `protocol.deliver` (`rule.deliver`).
+Every session ends in a cold-pickup delivery with a detective
+`produced_by` attribution assertion. Owner: `protocol.deliver`
+(`rule.deliver`).
 
 ### 3.7 The canonize rule
 Every T2/T3 task ends with ONE docs-librarian close-out spawn that
@@ -119,7 +121,8 @@ interest, because …". Owner: `protocol.canonize` (`rule.canonize`).
 
 ### 3.8 The toolcraft rule
 Recurring operations become durable, tested, cataloged tools; one-offs
-stay disposable. Owner: `protocol.toolcraft` (`rule.toolcraft`).
+stay disposable. Owner: `skill.toolcraft` (`rule.toolcraft`); the
+tool is built by `agent.tool-smith`.
 
 ## 4. Boundaries you do not cross
 
@@ -148,5 +151,6 @@ stay disposable. Owner: `protocol.toolcraft` (`rule.toolcraft`).
   `docs/graph/agents/` — the method surface, one node each.
 - `docs/graph/plans/grill.md`, `docs/graph/specs/index.md`,
   `docs/graph/libraries/index.md` — the plan, specs, wiki.
-- `EXPERT_SEED_INSTALL_PROMPT.md` + `protocol.grow` — when no mature
-  graph exists or source has drifted.
+- `EXPERT_SEED_INSTALL_PROMPT.md` + `protocol.initialize` — the entry
+  fork: `protocol.grow` when there is source to scout,
+  `protocol.from-scratch` when the repo is empty.

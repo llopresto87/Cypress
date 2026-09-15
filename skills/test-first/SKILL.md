@@ -21,6 +21,7 @@ load_when:
   - "one outcome per test"
 artifacts:
   - templates/spec.template.md
+prevents: Tests written at the highest level that happens to work, named after the function rather than the contract, asserting several outcomes at once so a failure names no cause.
 est_tokens: 350
 ---
 

@@ -33,6 +33,7 @@ peers:
   - agent.docs-librarian
   - agent.seed-installer
   - agent.architect
+prevents: A growth run with no single owner of its sequencing — scouts dispatched against directory names instead of real subsystem boundaries, authoring begun before their ledgers return, and the validation gate judged by whoever is tired of the run.
 est_tokens: 1583
 ---
 
@@ -71,7 +72,15 @@ or author a node with your own hands.
    you dispatch a single scout.
 3. **Scout by real boundary, in parallel.** First ensure the plant gitignores
    `.cypress/growth/` (the ledgers are a seed organ, not committed plant
-   knowledge). Dispatch one `growth-scout` per subsystem/repository boundary on
+   knowledge), then **write the division itself** to
+   `.cypress/growth/boundaries.md`: one line per boundary with its ledger slug,
+   appended if a boundary is added mid-run. `grow.gate.scouts-ran` reads the
+   ledgers that exist against that list, and without it the gate has one
+   operand, because a plan held only in this chat's context is not something a
+   clean-context validator can check a run against. **You write it, not the
+   scouts.** Each scout's single write is its own ledger, and widening that
+   grant would break the one-writer-per-file boundary. Then dispatch one
+   `growth-scout` per subsystem/repository boundary on
    `docs/graph/templates/prompts/growth-scout-brief.md`. Each brief carries the
    graph-session bootstrap, the exact paths it may inspect, the evidence rules
    (claims tied to paths/symbols; prose is an untrusted clue), and the ledger

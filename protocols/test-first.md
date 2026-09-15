@@ -22,6 +22,7 @@ load_when:
   - "bug fix, regression test"
   - "legacy code with no tests, characterization test"
   - "pure refactor, migration safety"
+prevents: Production changes with no failing test to authorize them, and after-the-fact tests that pass on first run and therefore prove nothing.
 est_tokens: 2700
 command: true
 ---

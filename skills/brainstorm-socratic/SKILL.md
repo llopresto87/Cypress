@@ -1,28 +1,39 @@
 ---
 name: brainstorm-socratic
-description: The Socratic questioning technique that converges a vague goal — question selection, one-to-three-per-turn pacing, the reflect-every-two-answers cadence, the nine-question hard cap, and the eight-point convergence checklist that defines "converged". Applied whenever the brainstorm protocol is entered; the protocol owns entry/exit conditions and where output lands, this skill owns how to converge.
+description: The Socratic questioning technique that converges a vague goal — question selection, one-to-three-per-turn pacing, the reflect-every-two-answers cadence, the nine-question hard cap, and the eight-point convergence checklist that defines "converged". This is the USER-FACING of the brainstorm protocol's two modes — use it when the decision is the owner's to make; when it is the session's own, the mode is skill.brainstorm-internal and there is nobody to question. The protocol owns entry/exit conditions, mode selection and where output lands; this skill owns how to converge with a person.
 id: skill.brainstorm-socratic
 tier: 2
 kind: skill
 origin: seed
-title: brainstorm-socratic — the questioning technique that converges a vague goal, capped at nine questions
+title: brainstorm-socratic — the user-facing brainstorm mode: questioning that converges a goal, capped at nine questions
 owns:
   - brainstorm-socratic.method
 requires:
 peers:
   - protocol.brainstorm
+  - skill.brainstorm-internal
+  - skill.humanizer
   - skill.spec-author
 load_when:
   - "converge a vague or contested goal"
   - "socratic questioning for requirements"
   - "brainstorm a new feature idea"
   - "the goal is too fuzzy to specify"
+  - "ask the owner what they actually want"
 artifacts:
   - templates/grill.template.md
-est_tokens: 650
+prevents: A convergence pass that never converges — open-ended questioning with no cap and no checklist, which from the outside is indistinguishable from stalling.
+est_tokens: 955
 ---
 
 # brainstorm-socratic
+
+**This is the mode with a person in it.** It applies when the answer is the
+owner's to give — what to build, for whom, what counts as done, which tradeoff
+they have to live with. When the decision is the session's own, there is nobody
+to question and the technique below does not apply: use
+`docs/graph/skills/brainstorm-internal.md`. `brainstorm.mode-selection` in
+`docs/graph/protocols/brainstorm.md` owns the test.
 
 A goal that arrives as "build me a thing" is not yet ready to specify
 or plan. This skill is the questioning technique that takes it from
@@ -109,3 +120,20 @@ hand-waving:
   output.
 - `docs/graph/templates/grill.template.md` — where brainstorm output is
   recorded.
+
+## What the owner actually reads
+
+Converging is half the job. The other half is that the person can tell what they
+are agreeing to.
+
+Everything this mode puts in front of the owner — the reflections, the options,
+the problem statement they are asked to confirm — goes through
+`docs/graph/skills/humanizer.md` before it is sent. Not restyled afterwards:
+drafted as prose a person reads, carrying every fact intact.
+
+An options table is a working artifact. A person confirming "yes, that one" off
+a table has agreed to a row, not to a decision — and the difference surfaces
+later as "that isn't what I thought I picked". State what is being decided, why
+it is on the table now, what each option commits them to, and what it would cost
+to change later. The confirmation this mode waits for is only worth waiting for
+if it was informed.

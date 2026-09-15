@@ -29,6 +29,7 @@ load_when:
   - "polish the pull-request description, commit message, or delivery summary before hand-off"
   - "did the rewrite drop a fact, prose-lint --against, fact preservation after a prose edit"
   - "audit this document for prose quality without rewriting it"
+prevents: Prose that carries every fact and reads as machine output, so readers discount it — and a genre-blind rewrite that fixes the reading by changing what the document commits to.
 est_tokens: 3300
 ---
 

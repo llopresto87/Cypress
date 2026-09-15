@@ -32,7 +32,38 @@ from pathlib import Path
 CANDIDATES = (Path("docs") / "graph" / "graph-lint.py", Path("tools") / "graph-lint.py")
 
 
+# --- canonical plant-root boundary ---
+def _is_plant_root(p) -> bool:
+    """True where an upward walk must stop, that directory INCLUDED.
+
+    Unbounded, these walks ascend seven or eight levels from both the cwd and
+    the script's own directory and take the first artifact they find. A plant
+    checked out inside another checkout therefore used the ANCESTOR's — a file
+    the plant does not own, chosen by directory nesting. Reproduced from a git
+    repo at `outer/sub/child` with no roster of its own: `agent-lint.py --route`
+    returned the ancestor repository's agent at HIGH confidence, score 36, and
+    `--lint` printed OK over that foreign roster.
+
+    Callers test their candidate BEFORE calling this, so a plant whose artifact
+    sits at its own repo root is still found; only the step BEYOND the root is
+    denied.
+    """
+    return (p / ".git").exists() or (p / ".cypress").is_dir()
+# --- end canonical plant-root boundary ---
+
+
 def find_lint():
+    """Locate the plant's graph linter by walking up — but never out of the
+    plant. The walk stops at the first directory that looks like a project
+    root (`.git`, or the seed stamp `.cypress/`), that directory included.
+
+    Unbounded, the walk ascended seven levels from BOTH the cwd and the script
+    directory and executed the first graph-lint.py it found. A plant checked
+    out inside another checkout therefore ran the ANCESTOR's linter on every
+    prompt — a script the plant does not own, chosen by directory nesting.
+    Reproduced during the 7.15.0 audit: from a git repo at `outer/child`, the
+    walk resolved to `outer/docs/graph/graph-lint.py`.
+    """
     starts = [Path.cwd(), Path(__file__).resolve().parent]
     seen = set()
     for start in starts:
@@ -44,6 +75,10 @@ def find_lint():
             for rel in CANDIDATES:
                 if (p / rel).exists():
                     return p / rel, p
+            if _is_plant_root(p):
+                break
+            if p.parent == p:
+                break
             p = p.parent
     return None, Path.cwd()
 
@@ -77,7 +112,9 @@ def main() -> int:
 
     if LINT is None:
         emit("No knowledge graph found (docs/graph/). Use the canonical "
-             "INSTALL_PROMPT.md; /initialize is only a tool adapter.", event)
+             "INSTALL_PROMPT.md; /initialize is the entry fork behind it \u2014 "
+             "grow when there is source to scout, from-scratch when the "
+             "repository is empty.", event)
         return 0
 
     mandate = (

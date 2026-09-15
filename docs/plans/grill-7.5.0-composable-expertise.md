@@ -38,7 +38,30 @@ kind). Version `7.5.0`, absorbing the unreleased 7.4.0 entry; ADR-0005.
 
 ## §0.0 Handoff to the implementing session — read this first
 
-You are implementing 7.5.0 on the CYPRESS seed at `/home/okik/Cypress`. This
+> **Redacted 2026-09-14.** Four lines in this section carried operator-identifying
+> detail: the absolute seed checkout path, the filename of a local
+> assistant-memory file holding the commit-attribution rule, the location of the
+> out-of-repo handoff document, and an SSH remote naming the account. They are
+> generalized above. No instruction lost its meaning — each named *where* a thing
+> sat on one machine or *which account* held it, never *what* it said, and the
+> hazard each records still reads the same.
+>
+> The fourth was missed on the first pass and caught by review. It sat two lines
+> above one of the three that were redacted, in the same list, under a note
+> already claiming the section had been cleaned. That is worth recording rather
+> than quietly amending: a redaction note is a claim like any other, and this one
+> was briefly wrong about its own scope — including, in its first correction,
+> about where the missed line had been.
+>
+> This is the class 4.8.0 swept out of `docs/plans/agent-routing-and-delegation.md`
+> and that `protocols/harvest.md` forbids as "a path, host, port, credential, or
+> absolute install location". It survived because the agnosticism gate's scan
+> roots do not include `docs/` — a hole recorded in
+> `docs/plans/lifecycle-protocol-rework/slice-07-agnosticism-gate-covers-the-seed.md`.
+> Git history is deliberately not rewritten: these lines are in published
+> commits, and the stamp `graft` reads for provenance is a commit sha.
+
+You are implementing 7.5.0 on the CYPRESS seed at `<seed repo>`. This
 plan was authored and verified against the worktree on 2026-09-09; §E lists
 every fact that was checked and how. Treat the plan as transferred context
 and the worktree as truth: if they disagree, the worktree wins and you record
@@ -54,12 +77,12 @@ the discrepancy in §15 before proceeding.
   from the copy.
 - Local git history was rewritten and not pushed; `origin` holds older SHAs.
   Do not push. If the user asks, the safe form is a `--force-with-lease`
-  against the old SHA over the SSH URL (`git@github.com:llopresto87/Cypress.git`);
+  against the old SHA over the SSH remote, not the HTTPS one;
   the HTTPS remote has no credential helper.
-- Commit attribution follows the user's standing rule in
-  `~/.claude/projects/-home-okik-Cypress/memory/git-attribution-lopresto.md`.
-- The handoff document lives outside the repo at
-  `/home/okik/cypress-handoff-7.5.0-composable-expertise.md`; do not move it in.
+- Commit attribution follows the user's standing rule, held in the
+  operator's own assistant-memory store outside this repository.
+- The handoff document lives outside the repo, in the operator's own working
+  area; do not move it in.
 - The kernel `core/AGENTS.md` is not edited in this release; seed-lint fails
   past 8 000 bytes.
 - The canonical bootstrap block in `templates/prompts/graph-session-bootstrap.md`

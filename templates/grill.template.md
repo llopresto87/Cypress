@@ -108,6 +108,40 @@ justifying any abstraction. Rows are listed in dependency order.
 ### Increment 2 — <title>
 - ...
 
+<!--
+TWO FORMS, and a mature plan wants the second.
+
+INLINE (above) — increments written straight into §9. Right while the plan is
+small, and every existing plant uses it.
+
+LEDGER — §9 becomes an index and each increment moves to its own file under
+`docs/graph/plans/grill/`. §9 grows faster than any other section: every
+increment ever planned leaves its contracts, RED tests, rollback path and
+dependencies here permanently. A plan is read whole, so past a certain size the
+document describing the work becomes the largest single thing a session loads,
+and the progressive discovery the method rests on is defeated by its own plan.
+In ledger form a session reads the index plus the one increment it is working
+on.
+
+Switch when §9 starts dominating the file. Both forms may coexist, so a plan
+migrates one increment at a time rather than in a flag day. `grill-lint.py`
+resolves the index, and holds the same required fields inside the child file:
+
+## 9. Implementation Plan
+
+| # | Increment | Status | Detail |
+|---|---|---|---|
+| 1 | Validate schema | done | `plans/grill/increment-01-validate-schema.md` |
+| 2 | Persist submissions | in-progress | `plans/grill/increment-02-persist.md` |
+
+...with `plans/grill/increment-01-validate-schema.md` holding the block exactly
+as written above, `### Increment 1 — Validate schema` heading included.
+
+The lint refuses an index row pointing at a missing file, an increment file no
+row points at (work that exists and is unreachable), and an increment defined
+both inline and in a file.
+-->
+
 ## 10. Verification Plan
 Covered by the project's standard gates — see
 docs/graph/runbooks/verification.md. List a gate here ONLY where this

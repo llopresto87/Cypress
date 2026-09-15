@@ -1,0 +1,52 @@
+# The seed's own gate, run unasked.
+#
+# CYPRESS's thesis is that gates run before anything is called done. Until
+# 7.16.0 the seed exempted itself: the full gate (ask tools/gate-registry.py --summary for the count)
+# existed, and every one of them ran only when a person remembered to type
+# `bash tests/run.sh`. A discipline the project will not apply to itself is a
+# preference.
+#
+# Two platforms, deliberately. The installer's placement contract is mostly
+# about symlinks — link-object replacement, copy-vs-link uniformity, a
+# destination symlinked outside the target — and symlink semantics are where
+# Linux and macOS differ. A green gate on one host says nothing about the
+# other, and the seed claims to install on both.
+name: gate
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    strategy:
+      fail-fast: false          # report BOTH platforms; a macOS-only failure
+                                # is the finding this matrix exists to surface
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # No `pip install` step, and that is the contract rather than an
+      # omission: every shipped script and every default-gate test is
+      # dependency-free stdlib Python, so a gate that needed a package would
+      # mean something in the tree had broken that rule. If this job ever
+      # fails for a missing import, fix the import, not this file.
+      - name: Record the environment the numbers were measured in
+        run: |
+          python3 --version
+          bash --version | head -1
+          uname -srm
+
+      - name: Strict gate
+        run: bash tests/run.sh

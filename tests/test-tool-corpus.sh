@@ -118,7 +118,73 @@ blocks = re.findall(r"```python\n(.*?)```",
                     pathlib.Path(sys.argv[1]).read_text(), re.S)
 pathlib.Path(sys.argv[2]).write_text(max(blocks, key=len))
 PY
-if python3 -c 'import yaml' 2>/dev/null; then
+# The verifier calls `yaml.safe_load`, and PyYAML is not stdlib. This block used
+# to run only `if python3 -c 'import yaml'` and otherwise announce a SKIP and
+# print PASS — and the seed's own CI has no `pip install` step, so BOTH legs took
+# the skip branch and reported a green gate with a mandatory check unexecuted.
+# That is the sentence this release closed for pytest, surviving one file over.
+#
+# The dependency is not removable (it belongs to the shipped page, which is
+# transcribed knowledge and not ours to rewrite for a test's convenience), and
+# adding it would make a third-party package a hard requirement of the default
+# gate. So the FIXTURE supplies what the fixture needs: a stdlib `safe_load`
+# over the two files written immediately below, put on sys.path only when the
+# real parser is absent. It parses nested maps of scalars and nothing else,
+# which is exactly what these two files are — and if a future fixture outgrows
+# it, it raises rather than guessing.
+if ! python3 -c 'import yaml' 2>/dev/null; then
+  mkdir -p "$TMP/yamlshim"
+  cat > "$TMP/yamlshim/yaml.py" <<'SHIM'
+"""Enough of `yaml.safe_load` for this suite's own fixtures, in stdlib.
+
+Nested mappings, two-space indentation, `key:` and `key: scalar`. Anything else
+raises, because a shim that guesses is worse than no shim: it would let the
+verifier under test pass over input it never really parsed.
+"""
+
+
+class YAMLError(Exception):
+    pass
+
+
+def safe_load(text):
+    if hasattr(text, "read"):
+        text = text.read()
+    root = {}
+    stack = [(-1, root)]
+    for lineno, raw in enumerate(text.splitlines(), 1):
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        stripped = raw.lstrip(" ")
+        indent = len(raw) - len(stripped)
+        if raw[:indent].strip(" "):
+            raise YAMLError(f"line {lineno}: tabs are not supported by this shim")
+        if stripped.startswith("- "):
+            raise YAMLError(f"line {lineno}: sequences are not supported by this shim")
+        if ":" not in stripped:
+            raise YAMLError(f"line {lineno}: not a key: {raw!r}")
+        key, _, value = stripped.partition(":")
+        while stack and indent <= stack[-1][0]:
+            stack.pop()
+        if not stack:
+            raise YAMLError(f"line {lineno}: dedent past the document root")
+        parent = stack[-1][1]
+        value = value.strip()
+        if value:
+            parent[key.strip()] = value
+        else:
+            child = {}
+            parent[key.strip()] = child
+            stack.append((indent, child))
+    return root
+SHIM
+  export PYTHONPATH="$TMP/yamlshim${PYTHONPATH:+:$PYTHONPATH}"
+  python3 -c 'import yaml' \
+    || { echo "the stdlib YAML shim did not import — the layered-config check would silently skip" >&2; exit 1; }
+  echo "  (no PyYAML here; using the suite's own stdlib safe_load for these fixtures)"
+fi
+
+if true; then
   mkdir -p "$TMP/cfg"
   cat > "$TMP/cfg/base.yml" <<'EOF'
 services:
@@ -145,9 +211,6 @@ EOF
   grep -qi "refusing to report a pass" <<<"$out" \
     || { echo "the false-green guard did not say why it refused" >&2; echo "$out" >&2; exit 1; }
   echo "  layered-config-merge-verifier: drift caught, zero-variable run refused — OK"
-else
-  echo "[gate] SKIP layered-config-merge-verifier behaviour — its one declared" >&2
-  echo "       non-stdlib dependency (a YAML parser) is not installed here." >&2
 fi
 
 # 4. structured-secret-field-detector: the two properties that make it worth

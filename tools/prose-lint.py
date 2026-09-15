@@ -115,8 +115,9 @@ CHANGELOG_NAMES = ("changelog", "release", "migration")
 @dataclass(frozen=True)
 class Finding:
     """One tell. `rule` is the skill's section number, `severity` one of
-    strong, weak, cluster, drift. Rendering stays here so every caller
-    prints the same shape."""
+    strong, weak, cluster, drift, unreadable (`rule` is "read" for that
+    last one — there is no skill section for a file the tool never saw).
+    Rendering stays here so every caller prints the same shape."""
     path: str
     line: int
     rule: str
@@ -128,6 +129,8 @@ class Finding:
             return f"{self.path}:{self.line}: weak cluster — {self.text}"
         if self.severity == "drift":
             return f"{self.path}: fact drift — {self.text}"
+        if self.severity == "unreadable":
+            return f"{self.path}: unreadable — {self.text}"
         return (f"{self.path}:{self.line}: {self.rule} "
                 f"{self.severity} — {self.text}")
 
@@ -696,12 +699,20 @@ def scan(paths, globs=DEFAULT_GLOBS, strict=False, sample=None,
     add = findings.append
     dashes = []
     for f in iter_files(paths, globs):
-        try:
-            text = f.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError):
-            continue          # binary or unreadable: carries no prose
         rel = (f.relative_to(relative_to).as_posix()
                if relative_to else f.as_posix())
+        try:
+            text = f.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError) as e:
+            # Silently skipping an unreadable file used to make a scan that
+            # never looked at the text report the same PASS as one that
+            # judged it clean. That is a gate lying about its own coverage,
+            # so an unreadable file is now a finding like any other tell —
+            # it fails the run through the same path — and the reason goes
+            # to stderr because that is where a CI log gets read from.
+            print(f"  !! {rel}: unreadable ({e})", file=sys.stderr)
+            add(Finding(rel, 0, "read", "unreadable", str(e)))
+            continue
         mlines = mask(text)
         report.files += 1
         report.words += count_words(mlines)
@@ -751,6 +762,12 @@ def scan(paths, globs=DEFAULT_GLOBS, strict=False, sample=None,
             para_index[rel] = paragraph_ids(
                 mask(f.read_text(encoding="utf-8")))
         except (UnicodeDecodeError, OSError):
+            # Same file, same failure as the read in the main loop above,
+            # which already turned it into an `unreadable` finding and
+            # failed the run. This second read only builds the index a
+            # weak-tell cluster needs, so leaving the file out of it here
+            # does not hide anything, and reporting it twice would just be
+            # noise on top of an already-failing scan.
             continue
     clustered = defaultdict(list)
     for (rel, line), fs in by_para.items():
@@ -769,9 +786,12 @@ def scan(paths, globs=DEFAULT_GLOBS, strict=False, sample=None,
 
 def failing(report, strict=False):
     """What fails a run: every strong tell, every weak cluster, every fact
-    drift, and, under --strict, the weak tells too."""
+    drift, every unreadable input, and, under --strict, the weak tells too.
+    An unreadable input fails unconditionally — even without --strict —
+    because the tool never actually judged it: UNKNOWN must never be
+    reportable as a pass."""
     return [f for f in report.findings
-            if f.severity in ("strong", "cluster", "drift")
+            if f.severity in ("strong", "cluster", "drift", "unreadable")
             or (strict and f.severity == "weak")]
 
 
@@ -831,11 +851,16 @@ def main() -> int:
     if bad:
         clusters = sum(1 for f in bad if f.severity == "cluster")
         drift = len({f.path for f in bad if f.severity == "drift"})
-        tells = len(bad) - clusters - sum(1 for f in bad
-                                          if f.severity == "drift")
+        unreadable = sum(1 for f in bad if f.severity == "unreadable")
+        tells = (len(bad) - clusters - unreadable
+                 - sum(1 for f in bad if f.severity == "drift"))
+        # Folding an unreadable input into "tell(s)" would read as a phrase
+        # the scan actually judged; naming it separately keeps UNKNOWN from
+        # being mistaken for a verdict the scan never reached.
+        extra = f", {unreadable} unreadable input(s)" if unreadable else ""
         print(f"prose lint: FAIL — {tells} strong tell(s), "
-              f"{clusters} weak cluster(s), fact drift in {drift} file(s) "
-              f"— {tail}")
+              f"{clusters} weak cluster(s), fact drift in {drift} file(s)"
+              f"{extra} — {tail}")
         return 1
     print(f"prose lint: PASS — {tail}")
     return 0

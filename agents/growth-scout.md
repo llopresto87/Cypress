@@ -22,6 +22,7 @@ peers:
   - agent.growth-orchestrator
   - agent.docs-librarian
   - agent.research-scout
+prevents: A graph authored from what a repository says about itself rather than from its executable source, and scouts writing graph nodes directly with no evidence ledger to check them against.
 est_tokens: 1259
 ---
 

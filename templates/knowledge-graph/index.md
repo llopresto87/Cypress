@@ -77,10 +77,10 @@ test-first → verify → canonize → deliver.
 | Introducing or refreshing a dependency | `protocol.ingest-library` |
 | Increment claims "done" — run the gates | `protocol.verify` |
 | A worker, gate, or delegation failed | `protocol.recover` |
-| Task completing — persist knowledge + tools | `protocol.canonize` (doctrine: `protocol.toolcraft`) |
+| Task completing — persist knowledge + tools | `protocol.canonize` (doctrine: `skill.toolcraft`; author: `agent.tool-smith`) |
 | Session ending — the summary | `protocol.deliver` |
-| No project graph yet, or major drift | `protocol.grow` (`protocol.initialize` is the tool adapter) |
-| Project does not exist yet | `protocol.from-scratch` |
+| No project graph yet, or major drift | `protocol.initialize` — the entry fork; it selects `protocol.grow` here because there is source to scout |
+| Project does not exist yet | `protocol.initialize` — the same fork, selecting `protocol.from-scratch` because the repository is empty |
 | Loading context minimally | `skill.context-router` |
 | Authoring or linting graph nodes | `skill.knowledge-graph` |
 | Engineering and design posture — the why | `method.engineering-posture` · `method.design-posture` · `method.stewardship-posture` · `method.secrets-posture` · `method.release-posture` · `method.incident-posture` · `method.contract-posture` · `method.vcs-posture` · `method.prose-posture` |
@@ -99,8 +99,9 @@ owns the roster table. The full roster: `agent.orchestrator`,
 `agent.seed-installer`. Situational skills not routed above:
 `skill.adopt-existing` (adopting an existing codebase),
 `skill.adr-writer` (recording a decision), `skill.spec-author`,
-`skill.grill-planner`, `skill.brainstorm-socratic`,
-`skill.from-scratch-bootstrap`, `skill.holistic-editing`,
+`skill.grill-planner`, `skill.brainstorm-socratic` (user-facing) and
+`skill.brainstorm-internal` (no user in the loop),
+`skill.holistic-editing`,
 `skill.library-wiki`, `skill.research-and-ingest`,
 `skill.validate-knowledge`, `skill.test-first`.
 `harvest` and `graft` are user-sovereign — never enter them unprompted.

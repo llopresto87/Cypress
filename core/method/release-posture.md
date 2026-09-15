@@ -25,6 +25,7 @@ load_when:
   - "suppress a vulnerability advisory, upgrade now or hold the version"
   - "which increment lands first, the irreversible step and the landing order"
   - "ship the release order across services, canary the lowest-risk one then fan out"
+prevents: Promoting a rebuilt artifact instead of the attested one, with an unrehearsed rollback and the irreversible steps taken first.
 est_tokens: 2050
 ---
 

@@ -20,6 +20,7 @@ owns:
 requires:
 peers:
   - agent.growth-orchestrator
+prevents: Placement treated as finished when the files are in place, with nobody accountable for the one thing copying cannot establish — that the host tool actually LOADS the kernel, roster and skills from its own directory.
 est_tokens: 820
 ---
 

@@ -8,6 +8,8 @@ routing_triggers:
   - "diagnose runaway fan-out in the agent fleet"
   - "define the agent role tool and termination contract"
   - "review the orchestration framework and delegation caps"
+  - "make each step of the agent loop deterministic and bound the shared state"
+  - "run the pre-ship checklist for the fleet"
 can_delegate: true
 max_spawn_depth: 2
 delegates_to:
@@ -36,6 +38,7 @@ peers:
 plant_knowledge:
   - libraries/
   - prompts/
+prevents: Agentic systems designed by analogy — unbounded delegation depth, no termination proof, guardrails that fail open, and cost discovered in production.
 est_tokens: 2800
 ---
 

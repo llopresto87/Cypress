@@ -23,6 +23,7 @@ load_when:
   - "what did we change, session report"
   - "attribution, produced_by, routing evidence"
   - "decisions for the owner, options to approve, answer by number"
+prevents: A session that ends without a cold-pickup state, leaving the next one to re-derive what changed, what was gated and what is still open from a diff.
 est_tokens: 1750
 command: true
 ---
@@ -37,9 +38,11 @@ This node owns **the deliver rule** — every session ends with a
 delivery, compact for T0/T1, full for T2/T3: files changed, routing
 attribution, docs updated, decisions, gates with outcomes,
 limitations, and **one** recommended next step. The deliver-time
-attribution assertion is fail-closed: a unit of work with no
-`produced_by` is a BLOCK. If another senior engineer could pick up
-cold, you are done; if not, you are not.
+attribution assertion is **detective** (ADR-0003): a unit of work with
+no `produced_by` is a BLOCK, and the session running the assertion is
+what calls it — no harness refuses a delivery that skips the check
+(§Routing-attribution assertion). If another senior engineer could pick
+up cold, you are done; if not, you are not.
 
 ## When to invoke
 
@@ -160,7 +163,7 @@ A delivery summary that fails:
 - Pads the record with narration the next session must filter out —
   future context is a cost this summary imposes on every later turn.
 
-## Routing-attribution assertion (fail-closed)
+## Routing-attribution assertion (detective)
 
 Before you sign off, attribute every unit of work to the specialist that
 produced it, reading the `produced_by` and `route_evidence` fields from the
@@ -168,8 +171,9 @@ handback payloads (`docs/graph/templates/prompts/handback-payload.md`) the worke
 returned. Then run these checks:
 
 - **Missing `produced_by` on any unit of work → BLOCK.** A missing proof of
-  who did the work is a block, never a pass — the same fail-closed rule the
-  release gates use (a missing proof is a BLOCK, not a PASS).
+  who did the work is a block, never a pass — the same missing-proof-is-a-BLOCK
+  rule the release gates use. You call that block yourself; no hook refuses the
+  delivery on your behalf.
 - **Out-of-domain authoring → FLAG.** A `produced_by` specialist whose
   `routing_triggers` do not cover the work it authored is flagged for the
   operator to confirm or re-route.

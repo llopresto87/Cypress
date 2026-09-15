@@ -16,7 +16,7 @@ need() { [[ -e "$1" ]] || { echo "MISSING after $2 install: $1" >&2; exit 1; }; 
 # that declare `command: true`. Compute the expected set straight from that
 # frontmatter (the single home) so this test also pins install.sh's own awk
 # parser to it — and assert every harness emits exactly that set, never the
-# user-sovereign meta-loop (graft/grow/harvest) or canonize-folded toolcraft
+# user-sovereign meta-loop (graft/grow/harvest)
 # (the 6.1.0 Copilot-leak regression this guards).
 EXPECTED_CMDS="$(grep -l '^command: true' "$ROOT"/protocols/*.md \
   | while read -r f; do b="$(basename "$f")"; echo "${b%.md}"; done | sort)"
@@ -32,7 +32,10 @@ assert_cmd_roster() {  # $1=dir  $2=suffix (.md | .prompt.md)  $3=label
   [[ "$got_sorted" == "$EXPECTED_CMDS" ]] || {
     echo "$label: emitted command set != command:true roster" >&2
     diff <(printf '%s\n' "$EXPECTED_CMDS") <(printf '%s\n' "$got_sorted") >&2; exit 1; }
-  for s in graft grow harvest toolcraft; do
+  # `toolcraft` was in this list until 7.16.0, when it stopped being a
+  # protocol; asserting the absence of a file that cannot exist proves
+  # nothing, so it is gone rather than left as a vacuous pass.
+  for s in graft grow harvest; do
     [[ ! -e "$dir/$s$suffix" ]] || { echo "$label: sovereign '$s' leaked as a command" >&2; exit 1; }
   done
 }
@@ -179,6 +182,50 @@ need "$T/docs/graph/templates/prompts/graph-session-bootstrap.md" github-copilot
 need "$T/.github/prompts/recover.prompt.md" github-copilot
 [[ ! -e "$T/.github/templates" ]] || { echo "STALE .github/templates" >&2; exit 1; }
 assert_cmd_roster "$T/.github/prompts" .prompt.md "github-copilot prompts"
+
+# COPILOT_POINTER_OVERHEAD must not sit BELOW what this install just wrote.
+# The constant models the boilerplate each .github/instructions/ pointer adds on
+# top of the skill description it carries, and check_eager_surface adds it to
+# the modelled github-copilot eager surface. It was typed at 5_300 with a
+# comment saying "measured from an install, not guessed"; a real install writes
+# 5_638, so the modelled surface sat 338 bytes below what ships — the one
+# direction that comment exists to prevent. Three careful hand-derivations of
+# this number produced 5 606, 5 612 and 5 638, each differing only in how the
+# deriver defined `skill_desc`. So it is measured HERE, against the install
+# that just ran, using seed-lint's own definition of the terms it feeds.
+python3 - "$T" "$ROOT" <<'PYEOF'
+import importlib.util, pathlib, sys
+target, root = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+spec = importlib.util.spec_from_file_location("sl", root / "tests" / "seed-lint.py")
+sl = importlib.util.module_from_spec(spec); sys.modules["sl"] = sl
+spec.loader.exec_module(sl)
+skill_desc = sum(len(sl.description_of(fm))
+                 for label, fm, _b in sl.machinery_nodes()
+                 if label.startswith("skills/"))
+shipped = sum(f.stat().st_size for f in (target / ".github/instructions").glob("*"))
+if not shipped:
+    print("FAIL: no .github/instructions/ files to measure — the probe is vacuous",
+          file=sys.stderr); sys.exit(1)
+measured = shipped - skill_desc
+if measured > sl.COPILOT_POINTER_OVERHEAD:
+    print(f"FAIL: COPILOT_POINTER_OVERHEAD is {sl.COPILOT_POINTER_OVERHEAD} and a "
+          f"real install writes {measured} bytes of pointer boilerplate "
+          f"({shipped} in .github/instructions/ minus {skill_desc} of skill "
+          f"description). The modelled eager surface is then "
+          f"{measured - sl.COPILOT_POINTER_OVERHEAD} bytes BELOW what ships, "
+          f"which is the one direction the constant exists to prevent.",
+          file=sys.stderr)
+    sys.exit(1)
+slack = sl.COPILOT_POINTER_OVERHEAD - measured
+if slack > 512:
+    print(f"FAIL: COPILOT_POINTER_OVERHEAD is {sl.COPILOT_POINTER_OVERHEAD} and a "
+          f"real install writes {measured} — {slack} bytes of slack. A modelled "
+          f"figure that overstates by more than half a kilobyte is not a "
+          f"measurement; lower it to {measured}.", file=sys.stderr)
+    sys.exit(1)
+print(f"  copilot pointer overhead: modelled {sl.COPILOT_POINTER_OVERHEAD}, "
+      f"measured {measured} ({slack} B slack)")
+PYEOF
 
 "$ROOT/install.sh" prime-agent --project-dir "$T" --copy --force >/dev/null
 need "$T/AGENTS.md" prime-agent
@@ -475,7 +522,10 @@ printf 'full five-tool install contract + CC/PA coexistence: PASS\n'
 # seed before installing. It is gitignored here, so no Git-based check saw it,
 # and it landed in the plant as a tracked file — one installer's interpreter
 # version shipped as plant data.
-BTMP="$(mktemp -d)"; trap 'rm -rf "$BTMP"' EXIT
+# `trap ... EXIT` REPLACES the handler; it does not stack. Setting a second one
+# here silently dropped the top-level `rm -rf "$T"`, so every gate run left a
+# full claude-code install behind in /tmp. Clean both from one handler.
+BTMP="$(mktemp -d)"; trap 'rm -rf "$T" "$BTMP"' EXIT
 mkdir -p "$ROOT/templates/knowledge-graph/__pycache__"
 printf 'fake bytecode\n' > "$ROOT/templates/knowledge-graph/__pycache__/zz-fixture.cpython-999.pyc"
 bash "$ROOT/install.sh" claude-code --project-dir "$BTMP" >/dev/null 2>&1

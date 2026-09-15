@@ -18,6 +18,7 @@ load_when:
   - "retry or re-route, flaky failure"
   - "delegation came back wrong or ambiguous"
   - "gate red twice on the same increment"
+prevents: Unclassified reaction to failure — identical retries of a deterministic error, unbounded fallback chains, and a red gate quietly swallowed to keep momentum.
 est_tokens: 1343
 command: true
 ---

@@ -1,6 +1,6 @@
 # CYPRESS Protocols Reference
 
-This document is a complete reference for the 15 protocol nodes of the
+This document is a complete reference for the 14 protocol nodes of the
 CYPRESS seed. Each protocol is a routable graph node. It lives as a
 plain Markdown file with YAML frontmatter in `protocols/`. When a plant
 is grown, these files install into `docs/graph/protocols/`.
@@ -8,6 +8,8 @@ is grown, these files install into `docs/graph/protocols/`.
 Source of this reference: every file in `protocols/*.md`, read directly
 from disk. The default-sequence and tier facts are cited from
 `core/AGENTS.md` (the kernel).
+
+Each node also declares `prevents:` — the failure its own absence produces. It is not mirrored here; that would be a second home for one judgement per node. `python3 tools/roster-justification.py` prints it alongside the responsibility, the overlaps and the routing demand, reading each column out of the node that owns it ([ADR-0008](../docs/decisions/adr-0008-roster-justification-lives-in-the-node.md)).
 
 A protocol node is the entry point for a kind of work. The kernel rule
 (`core/AGENTS.md` §2) says: "State which protocol you are entering
@@ -18,32 +20,36 @@ before you begin." The router maps *where the work stands* to a
 
 ## Summary table
 
-All 15 protocols are tier 2 nodes with `origin: seed`, `kind: protocol`.
+All 14 protocols are tier 2 nodes with `origin: seed`, `kind: protocol`.
 
 | Protocol | id | owns (facts) | requires | peers | est_tokens |
 |----------|----|--------------|----------|-------|-----------|
-| brainstorm | `protocol.brainstorm` | `brainstorm.entry-and-exit`, `brainstorm.output-landing` | `skill.brainstorm-socratic` | specify, grill, from-scratch | 400 |
-| specify | `protocol.specify` | `rule.spec`, `specify.flow`, `specify.revision-discipline` | — | brainstorm, grill | 1500 |
-| grill | `protocol.grill` | `rule.grill`, `grill.flow`, `grill.increment-shape` | — | specify, test-first | 1200 |
-| test-first | `protocol.test-first` | `rule.test-first`, `test-first.cycle`, `test-first.characterize-first` | — | verify, specify, skill.test-first, skill.holistic-editing | 2300 |
-| verify | `protocol.verify` | `rule.verify`, `verify.gate-states`, `verify.risk-depth` | — | test-first, recover, skill.validate-knowledge | 2100 |
-| recover | `protocol.recover` | `recover.failure-classes`, `recover.three-attempt-boundary` | — | deliver, grill | 1150 |
-| canonize | `protocol.canonize` | `rule.canonize`, `canonize.close-out-flow` | `protocol.toolcraft` | deliver, harvest | 1300 |
-| toolcraft | `protocol.toolcraft` | `rule.toolcraft`, `toolcraft.durability-criteria` | — | canonize, grill, harvest | 1000 |
-| deliver | `protocol.deliver` | `rule.deliver`, `deliver.forms`, `deliver.attribution-assertion` | — | canonize, recover | 1450 |
-| ingest-library | `protocol.ingest-library` | `ingest-library.flow`, `ingest-library.corpus-first` | — | harvest, skill.library-wiki, skill.research-and-ingest | 1200 |
-| from-scratch | `protocol.from-scratch` | `from-scratch.phases` | — | brainstorm, ingest-library, skill.from-scratch-bootstrap | 1300 |
-| grow | `protocol.grow` | `grow.worker-topology`, `grow.growth-flow`, `grow.completeness-contract` | — | harvest, graft, initialize, ingest-library, canonize | 4500 |
-| harvest | `protocol.harvest` | `harvest.fold-back-flow`, `harvest.agnosticism-gate` | — | graft, grow | 7000 |
-| graft | `protocol.graft` | `graft.reconcile-flow`, `graft.user-sovereignty`, `graft.pure-graph-mandate` | — | harvest, grow | 9790 |
-| initialize | `protocol.initialize` | `initialize.adapter-edges` | `protocol.grow` | — | 230 |
+| brainstorm | `protocol.brainstorm` | `brainstorm.mode-selection`, `brainstorm.entry-and-exit`, `brainstorm.output-landing` | — | skill.brainstorm-socratic, skill.brainstorm-internal, humanizer, specify, grill, from-scratch | 901 |
+| specify | `protocol.specify` | `rule.spec`, `specify.flow`, `specify.revision-discipline` | — | brainstorm, grill | 1750 |
+| grill | `protocol.grill` | `rule.grill`, `grill.flow`, `grill.revise`, `grill.increment-shape`, `grill.press`, `grill.legal-checkpoint` | — | specify, test-first, agent.devils-advocate | 2300 |
+| test-first | `protocol.test-first` | `rule.test-first`, `test-first.cycle`, `test-first.characterize-first` | — | verify, specify, skill.test-first, skill.holistic-editing | 2700 |
+| verify | `protocol.verify` | `rule.verify`, `verify.gate-states`, `verify.risk-depth`, `verify.null-result`, `verify.composition`, `verify.silent-substitutes`, `verify.test-first`, `verify.status-evidence`, `verify.tool-faults`, `verify.characterize`, `verify.measure-integrity` | — | test-first, recover, canonize, deliver, skill.validate-knowledge | 5350 |
+| recover | `protocol.recover` | `recover.failure-classes`, `recover.three-attempt-boundary` | — | deliver, grill | 1343 |
+| canonize | `protocol.canonize` | `rule.canonize`, `canonize.close-out-flow`, `canonize.status-review`, `canonize.deviation-capture`, `canonize.why-record` | `skill.toolcraft` | agent.tool-smith, deliver, harvest, skill.adr-writer | 2724 |
+| deliver | `protocol.deliver` | `rule.deliver`, `deliver.forms`, `deliver.attribution-assertion`, `deliver.numbered-decisions` | — | canonize, recover | 1750 |
+| ingest-library | `protocol.ingest-library` | `ingest-library.flow`, `ingest-library.refresh`, `ingest-library.corpus-first` | — | harvest, skill.library-wiki, skill.research-and-ingest | 1500 |
+| from-scratch | `protocol.from-scratch` | `from-scratch.phases`, `from-scratch.entry` | — | brainstorm, grill, ingest-library, canonize, initialize | 2698 |
+| grow | `protocol.grow` | `grow.worker-topology`, `grow.write-boundaries`, `grow.knowledge-shape`, `grow.growth-flow`, `grow.completeness-contract`, `grow.gate-table`, `grow.stack-inventory`, `grow.node-authoring`, `grow.librarian-pass`, `grow.plant-facts`, `grow.legal-corpus` | `method.delegation` | harvest, graft, initialize, ingest-library, canonize, deliver, recover, from-scratch, method.engineering-posture, method.design-posture | 12981 |
+| harvest | `protocol.harvest` | `harvest.fold-back-flow`, `harvest.agnosticism-gate`, `harvest.availability-gate`, `harvest.corpus-contracts` | `method.delegation` | method.engineering-posture, skill.humanizer, canonize, graft, grow, ingest-library, skill.toolcraft | 12555 |
+| graft | `protocol.graft` | `graft.reconcile-flow`, `graft.user-sovereignty`, `graft.pure-graph-mandate`, `graft.migration`, `graft.integrity-gates`, `graft.reversibility` | `method.delegation` | grow, harvest, deliver, method.engineering-posture | 20079 |
+| initialize | `protocol.initialize` | `initialize.entry-fork`, `initialize.adapter-edges` | — | grow, from-scratch, seed-installer | 697 |
 
-Eight of the protocols also own one of the kernel's eight `rule.*`
+Six of the protocols also own one of the kernel's eight `rule.*`
 facts: `rule.spec` (specify), `rule.grill` (grill), `rule.test-first`
 (test-first), `rule.verify` (verify), `rule.deliver` (deliver),
-`rule.canonize` (canonize), `rule.toolcraft` (toolcraft). The kernel
-keeps only the one-line §3.x anchors; the depth lives in the protocol
-node.
+`rule.canonize` (canonize). The kernel keeps only the one-line §3.x anchors;
+the depth lives in the owning node. The other two live in skills:
+`rule.knowledge` in `context-router`, and `rule.toolcraft` in `toolcraft`,
+which was a protocol until 7.16.0 and became a skill when its three jobs were
+separated — the rule every session reads, the `tool-smith` agent that builds,
+and the `canonize` close-out that catalogs. So this list is six and the
+kernel's is eight. `RULE_HOMES` in `tests/seed-lint.py` is the machine-checked
+home for all eight.
 
 ---
 
@@ -108,7 +114,7 @@ How the protocols chain:
 
 The protocols below are grouped by role: the core delivery funnel
 (brainstorm → specify → grill → test-first → verify), the close-out and
-handoff protocols (recover, canonize, toolcraft, deliver), the
+handoff protocols (recover, canonize, deliver), the
 dependency and bootstrap protocols (ingest-library, from-scratch), and
 the seed meta-loop (grow, harvest, graft, initialize).
 
@@ -119,12 +125,16 @@ the seed meta-loop (grow, harvest, graft, initialize).
 *Source: `protocols/brainstorm.md`*
 
 - **id:** `protocol.brainstorm`, tier 2
-- **owns:** `brainstorm.entry-and-exit`, `brainstorm.output-landing`
-- **requires:** `skill.brainstorm-socratic`
-- **peers:** `protocol.specify`, `protocol.grill`, `protocol.from-scratch`
-- **load_when:** "goal is vague, build me a thing"; "stakeholders
-  disagree about scope"; "what should we actually build, converge the
-  idea"; "problem statement, first useful slice"
+- **owns:** `brainstorm.mode-selection`, `brainstorm.entry-and-exit`,
+  `brainstorm.output-landing`
+- **requires:** —
+- **peers:** `skill.brainstorm-socratic`, `skill.brainstorm-internal`,
+  `skill.humanizer`, `protocol.specify`, `protocol.grill`,
+  `protocol.from-scratch`
+- **load_when:** "goal is vague, build me a thing"; "stakeholders disagree
+  about scope"; "what should we actually build, converge the idea"; "problem
+  statement, first useful slice"; "generate options for a decision nobody needs
+  to confirm"; "shaped alternatives, is this mine to decide or theirs"
 
 ### What it does
 
@@ -189,12 +199,12 @@ If the project has no grill.md yet, create one from the template
 - **owns:** `rule.spec`, `specify.flow`, `specify.revision-discipline`
 - **requires:** —
 - **peers:** `protocol.brainstorm`, `protocol.grill`
+- **load_when:** "write a spec, no spec covers this behavior"; "new feature,
+  endpoint, job, or LLM interaction to define"; "changing an existing
+  feature's contract"; "bug revealed an implicit or missing contract";
+  "acceptance criteria, Given/When/Then, failure modes"
 - **artifacts:** `templates/spec.template.md`,
   `templates/knowledge-graph/spec-lint.py`
-- **load_when:** "write a spec, no spec covers this behavior"; "new
-  feature, endpoint, job, or LLM interaction to define"; "changing an
-  existing feature's contract"; "bug revealed an implicit or missing
-  contract"; "acceptance criteria, Given/When/Then, failure modes"
 
 ### What it does
 
@@ -291,12 +301,12 @@ the moment someone silences it).
 - **requires:** —
 - **peers:** `protocol.specify`, `protocol.test-first`,
   `agent.devils-advocate`
+- **load_when:** "plan the implementation, plan-of-record, grill.md"; "spec
+  exists but no plan implements it"; "scope an increment, slice the work";
+  "an increment shipped, revise the plan, record what happened"; "plan is
+  stale, assumption broke, architecture change"
 - **artifacts:** `templates/grill.template.md`,
   `templates/knowledge-graph/grill-lint.py`
-- **load_when:** "plan the implementation, plan-of-record, grill.md";
-  "spec exists but no plan implements it"; "scope an increment, slice
-  the work"; "an increment shipped, revise the plan, record what
-  happened"; "plan is stale, assumption broke, architecture change"
 
 ### What it does
 
@@ -431,9 +441,9 @@ list; a plan with no spec link.
 - **peers:** `protocol.verify`, `protocol.specify`, `skill.test-first`,
   `skill.holistic-editing`
 - **load_when:** "about to write or change production code"; "RED GREEN
-  REFACTOR, failing test first, TDD"; "bug fix, regression test";
-  "legacy code with no tests, characterization test"; "pure refactor,
-  migration safety"
+  REFACTOR, failing test first, TDD"; "bug fix, regression test"; "legacy
+  code with no tests, characterization test"; "pure refactor, migration
+  safety"
 
 ### What it does
 
@@ -542,13 +552,24 @@ trace of what it spawned); assuming dev-machine green means CI green.
 *Source: `protocols/verify.md`*
 
 - **id:** `protocol.verify`, tier 2
-- **owns:** `rule.verify`, `verify.gate-states`, `verify.risk-depth`
+- **owns:** `rule.verify`, `verify.gate-states`, `verify.risk-depth`,
+  `verify.null-result`, `verify.composition`, `verify.silent-substitutes`,
+  `verify.test-first`, `verify.status-evidence`, `verify.tool-faults`,
+  `verify.characterize`, `verify.measure-integrity`
 - **requires:** —
-- **peers:** `protocol.test-first`, `protocol.recover`, `skill.validate-knowledge`
-- **load_when:** "increment done, ready to merge or deploy"; "which
-  gates to run, verification runbook"; "tests pass but is it verified,
-  green lie"; "refactor or migration must preserve behavior"; "record a
-  missing or skipped gate"
+- **peers:** `protocol.test-first`, `protocol.recover`, `protocol.canonize`,
+  `protocol.deliver`, `skill.validate-knowledge`
+- **load_when:** "increment done, ready to merge or deploy"; "which gates to
+  run, verification runbook"; "tests pass but is it verified, green lie";
+  "gate found nothing, zero results, is that a real finding"; "refactor or
+  migration must preserve behavior"; "record a missing or skipped gate";
+  "mark it closed, what counts as status evidence"; "assert the count or the
+  composition, expected value derived from the subject"; "silent no-op,
+  empty output that looks like success"; "gate never went red, does the
+  green mean anything"; "golden master, stored oracle before a migration";
+  "gate script left half-applied state, environment failure or repository
+  failure"; "the checker disagrees with the file, fix the tool or the
+  declaration"
 
 ### What it does
 
@@ -711,9 +732,9 @@ so the debt is mechanically visible and self-retiring.
 - **owns:** `recover.failure-classes`, `recover.three-attempt-boundary`
 - **requires:** —
 - **peers:** `protocol.deliver`, `protocol.grill`
-- **load_when:** "a worker or gate failed, what now"; "retry or
-  re-route, flaky failure"; "delegation came back wrong or ambiguous";
-  "gate red twice on the same increment"
+- **load_when:** "a worker or gate failed, what now"; "retry or re-route,
+  flaky failure"; "delegation came back wrong or ambiguous"; "gate red twice
+  on the same increment"
 
 ### What it does
 
@@ -801,12 +822,18 @@ not from zero.
 *Source: `protocols/canonize.md`*
 
 - **id:** `protocol.canonize`, tier 2
-- **owns:** `rule.canonize`, `canonize.close-out-flow`
-- **requires:** `protocol.toolcraft`
-- **peers:** `protocol.deliver`, `protocol.harvest`
-- **load_when:** "task is finishing, close out, before deliver";
-  "persist what we learned into the graph"; "spawn the docs-librarian,
-  canonize"; "catalog a tool or skill the work produced"
+- **owns:** `rule.canonize`, `canonize.close-out-flow`,
+  `canonize.status-review`, `canonize.deviation-capture`,
+  `canonize.why-record`
+- **requires:** `skill.toolcraft`
+- **peers:** `agent.tool-smith`, `protocol.deliver`, `protocol.harvest`,
+  `skill.adr-writer`
+- **load_when:** "task is finishing, close out, before deliver"; "persist
+  what we learned into the graph"; "spawn the docs-librarian, canonize";
+  "catalog a tool or skill the work produced"; "status review at close-out:
+  did each register item move this session"; "we departed from the standard,
+  record the deviation and why"; "small fix with no spec, where does the why
+  get written down"
 
 ### What it does
 
@@ -930,106 +957,19 @@ T0/T1 self-record line is present).
 
 ---
 
-## toolcraft
-
-*Source: `protocols/toolcraft.md`*
-
-- **id:** `protocol.toolcraft`, tier 2 (note: no `command: true`)
-- **owns:** `rule.toolcraft`, `toolcraft.durability-criteria`
-- **requires:** —
-- **peers:** `protocol.canonize`, `protocol.grill`, `protocol.harvest`
-- **load_when:** "should this script be kept, is this a durable tool";
-  "recurring operation across sessions"; "catalog a tool, tools_built,
-  skills_built"; "throwaway prototype versus reusable tooling"
-
-### What it does
-
-Toolcraft is the doctrine (kernel §3.8) of durable, tested, cataloged
-tools versus throwaway scripts. This node owns **the toolcraft rule**
-(`rule.toolcraft`): durable tools compound; throwaway scripts are
-rework. When an operation will recur across independent sessions, the
-unit of work is a **durable, tested tool** with a stable interface,
-designed so at plan time, named in `tools_built` on every handback, and
-cataloged in `docs/graph/tools/` by the librarian inside the close-out
-spawn. Genuine one-offs and throwaway prototypes stay disposable.
-
-**This file owns the doctrine only.** The execution (cataloging the tool)
-happens inside the single close-out spawn defined in
-`docs/graph/protocols/canonize.md`, in the same librarian brief that
-persists the task's knowledge. There is no separate toolcraft spawn.
-
-### What counts as a durable tool (`toolcraft.durability-criteria`)
-
-Catalog a piece of real code that:
-- recurs across independent sessions: an agent, expert, or skill
-  will plausibly run it again (the trigger is recurrence, not size);
-- has a stable interface: a named entry point, defined inputs and
-  outputs, a documented invocation, not a copy-pasted snippet;
-- is authorized by a test (§3.4): at least one test pins what it
-  does, so a future session can trust and change it safely;
-- lives in the repository, committed where the project keeps its
-  tooling, reachable by path.
-
-### What stays disposable
-
-- a genuine one-off: needed once, no future task plausibly repeats
-  it;
-- a throwaway prototype to learn a library or shape, the blessed
-  carve-out of the test-first rule; recorded, if anywhere, as an
-  exception in grill.md §9;
-- anything embedding secrets, credentials, or production/personal data;
-- project-specific tooling aimed at the seed; that is `harvest`'s
-  agnosticism gate.
-
-### The procedure sibling — durable skills
-
-A tool is durable *code*; a **skill** is a durable *procedure*: the
-disciplined sequence for a recurring kind of work (a migration recipe,
-a release choreography, a data-reset dance). Same recurrence trigger,
-different shape: if the recurring thing is code that runs, it is a tool;
-if it is the *how*, it is a skill. When such a procedure recurs and no
-core `docs/graph/skills/` discipline covers it, author it as a project
-skill from the template. Its home is the graph node
-`docs/graph/skills/<name>.md`; the projection is also created in each
-harness dir the plant actually uses (`.claude/skills/<name>/SKILL.md` and
-kin), so the harness can load it before the next install — `install.sh`
-projects what the graph holds, and maintains it from then on. It
-**composes** disciplines by reference, never restating them.
-
-### Design-time half of the rule
-
-The doctrine cuts earlier than task end: when `grill` identifies a
-recurring operation, the plan-of-record names a durable tool (or a
-project skill, if the recurring thing is a procedure) as the unit of
-work; the capability is *designed* durable, not retrofitted. Workers
-name every tool in `tools_built` and every procedure in `skills_built`
-in their handback; those fields are what the close-out brief forwards.
-
-### Fail-closed doctrine
-
-A task is **not complete** until any durable tool it produced is
-cataloged and any repeated procedure crystallized into a project skill,
-or the close-out has explicitly recorded "no durable tool / no skill,
-because …". A task that built a reusable capability but left it
-uncaptured is a silent capability leak.
-
-Cross-project mirror: `harvest` folds **project-agnostic** tools into
-the seed's `tool-corpus/` and **project-agnostic** skills into
-`skill-corpus/`, user-triggered only.
-
----
-
 ## deliver
 
 *Source: `protocols/deliver.md`*
 
 - **id:** `protocol.deliver`, tier 2
-- **owns:** `rule.deliver`, `deliver.forms`, `deliver.attribution-assertion`
+- **owns:** `rule.deliver`, `deliver.forms`,
+  `deliver.attribution-assertion`, `deliver.numbered-decisions`
 - **requires:** —
 - **peers:** `protocol.canonize`, `protocol.recover`
-- **load_when:** "session is ending, wrap up, hand off"; "delivery
-  summary, cold pickup"; "what did we change, session report";
-  "attribution, produced_by, routing evidence"
+- **load_when:** "session is ending, wrap up, hand off"; "delivery summary,
+  cold pickup"; "what did we change, session report"; "attribution,
+  produced_by, routing evidence"; "decisions for the owner, options to
+  approve, answer by number"
 
 ### What it does
 
@@ -1039,8 +979,9 @@ up cold. This node owns **the deliver rule** (`rule.deliver`): every
 session ends with a delivery, compact for T0/T1, full for T2/T3: files
 changed, routing attribution, docs updated, decisions, gates with
 outcomes, limitations, and **one** recommended next step. The
-deliver-time attribution assertion is fail-closed: a unit of work with
-no `produced_by` is a BLOCK. A session without a delivery summary is
+deliver-time attribution assertion is **detective** (ADR-0003): a unit of
+work with no `produced_by` is a BLOCK, and the session running the
+assertion is what calls it. A session without a delivery summary is
 paused, not finished; never skip this protocol.
 
 ### When to invoke
@@ -1094,7 +1035,7 @@ whatever feels right" or five options, hides limitations behind
 optimism, or pads the record with narration the next session must
 filter out.
 
-### Routing-attribution assertion (fail-closed) (`deliver.attribution-assertion`)
+### Routing-attribution assertion (detective) (`deliver.attribution-assertion`)
 
 Before sign-off, attribute every unit of work to the specialist that
 produced it, reading `produced_by` and `route_evidence` from the
@@ -1150,11 +1091,11 @@ can't, the delivery isn't done.
 - **requires:** —
 - **peers:** `protocol.harvest`, `skill.library-wiki`,
   `skill.research-and-ingest`
+- **load_when:** "adding a new dependency, library, SDK, or API"; "no wiki
+  page for a library the code uses"; "version pin changed, refresh the
+  library page"; "security advisory on a dependency"
 - **artifacts:** `templates/library-page.template.md`,
   `templates/knowledge-graph/graph-lint.py`
-- **load_when:** "adding a new dependency, library, SDK, or API"; "no
-  wiki page for a library the code uses"; "version pin changed, refresh
-  the library page"; "security advisory on a dependency"
 
 ### What it does
 
@@ -1232,14 +1173,15 @@ features of the runtime itself (those go in
 *Source: `protocols/from-scratch.md`*
 
 - **id:** `protocol.from-scratch`, tier 2
-- **owns:** `from-scratch.phases`
+- **owns:** `from-scratch.phases`, `from-scratch.entry`
 - **requires:** —
 - **peers:** `protocol.brainstorm`, `protocol.grill`,
-  `protocol.ingest-library`, `protocol.canonize`,
-  `skill.from-scratch-bootstrap`
-- **load_when:** "start a new project, empty repo"; "greenfield,
-  bootstrap from nothing"; "no grill.md exists yet, day one setup";
-  "project skeleton, verification baseline"
+  `protocol.ingest-library`, `protocol.canonize`, `protocol.initialize`
+- **load_when:** "start a new project, empty repo"; "greenfield, bootstrap
+  from nothing"; "no grill.md exists yet, day one setup"; "project skeleton,
+  verification baseline"; "new project from the seed, nothing to scout";
+  "installed the seed into an empty repo, now what"; "mkdir a new project and
+  cd into it"
 
 ### What it does
 
@@ -1275,22 +1217,57 @@ runbooks exist and their commands run; SPEC-0001 `implemented`; the
 slice's tests and the suite green; the README explains the project; the
 close-out ran.
 
+### Entry — which route reached this protocol (`from-scratch.entry`)
+
+`protocols/from-scratch.md` §"Entry". Three routes arrive here and the protocol
+behaves the same for all three: the installer's own fork, `/initialize` on a
+repository with no executable project evidence to scout, and a bare `mkdir` plus
+a paste of `INSTALL_PROMPT.md`. The test that selects this arm rather than
+`grow` is the **absence of executable project evidence** — not the absence of
+files, and not the absence of a `docs/graph/`. The honesty rules are part of this
+section now, rather than a separate skill node: a bootstrap states what it does
+not yet know rather than inventing it. (Which node they came from is history,
+and history lives in `CHANGELOG.md` — naming a retired node here reads as a
+live reference, and `tests/test-entry-paths.sh` is right to refuse it.)
+
 ### Common ways to fail it
 
-Owned by `skill.from-scratch-bootstrap` (`from-scratch-bootstrap.method`).
+`protocols/from-scratch.md` §"Common ways to fail this protocol" carries eight
+named failure modes — skipping the brainstorm, picking the stack from memory,
+writing feature code before the gates pass, skipping ADR-0001 or SPEC-0001,
+writing code in Phase 7 instead of the spec, "we'll add tests later" in Phase 6,
+and declaring Phase 2 done because the files are there when the exit condition
+is that the host tool *loads* the machinery. Plus the structural rule the list
+cannot carry: each phase adopts a sub-protocol with its own failure modes, so
+read the phase's protocol rather than this summary.
+
+This section held one line — `Owned by protocol.from-scratch
+(from-scratch.entry)` — which was both empty and misattributed:
+`from-scratch.entry` is the §"Entry" section above, not the failure list.
 
 ## grow
 
 *Source: `protocols/grow.md`*
 
 - **id:** `protocol.grow`, tier 2 (note: no `command: true`)
-- **owns:** `grow.worker-topology`, `grow.growth-flow`, `grow.completeness-contract`
-- **requires:** —
+- **owns:** `grow.worker-topology`, `grow.write-boundaries`,
+  `grow.knowledge-shape`, `grow.growth-flow`, `grow.completeness-contract`,
+  `grow.gate-table`, `grow.stack-inventory`, `grow.node-authoring`,
+  `grow.librarian-pass`, `grow.plant-facts`, `grow.legal-corpus`
+- **requires:** `method.delegation`
 - **peers:** `protocol.harvest`, `protocol.graft`, `protocol.initialize`,
-  `protocol.ingest-library`, `protocol.canonize`
-- **load_when:** "grow the knowledge graph, first growth"; "install
-  prompt, EXPERT_SEED_INSTALL_PROMPT"; "docs/graph is missing or badly
-  drifted"; "regrow or refresh the graph after major drift"
+  `protocol.ingest-library`, `protocol.canonize`, `protocol.deliver`,
+  `protocol.recover`, `protocol.from-scratch`, `method.engineering-posture`,
+  `method.design-posture`
+- **load_when:** "grow the knowledge graph, first growth"; "install prompt,
+  EXPERT_SEED_INSTALL_PROMPT"; "docs/graph is missing or badly drifted";
+  "regrow or refresh the graph after major drift"; "declare the plant block:
+  environment class, commit attribution, languages"; "is this plant fully
+  grown, coverage record, growth audit"; "does this plant carry the legal
+  corpus, which jurisdiction, compliance scope"; "author the project nodes
+  and expertise nodes, configure graph-lint kinds"; "which gates must pass
+  before a growth can be called done"; "the growth audit reported UNGROWN,
+  HOLLOW, UNSTAFFED, STALE — what now"
 
 ### What it does
 
@@ -1298,7 +1275,9 @@ Grow is the canonical full-growth workflow: it turns an installed
 project-agnostic seed into a complete, source-grounded `docs/graph`
 knowledge system. It is invoked by `INSTALL_PROMPT.md` (installed as
 `EXPERT_SEED_INSTALL_PROMPT.md`); `docs/graph/protocols/initialize.md`
-is only a thin coding-tool adapter back to this file.
+is a coding-tool adapter to the entry fork, not to this file: the fork
+selects grow when the target has source to scout, and from-scratch
+when the repository is empty.
 
 The caller is an orchestration chat. It owns user communication,
 planning, worker selection, briefing, sequencing, and acceptance. It
@@ -1461,7 +1440,10 @@ empty/new, one repository, a workspace/monorepo, or an umbrella of
 sibling repos. Stay inside user-placed scope. Record each repo's path,
 branch, HEAD, worktree state, role, manifests, and stack without
 mutating Git. Ensure the plant gitignores `.cypress/growth/` before
-scouting. Settle spawnability here, not in Phase 2. Inventory cheaply
+scouting, then write the boundary division to
+`.cypress/growth/boundaries.md` — one line per boundary with its ledger
+slug — which is the operand `grow.gate.scouts-ran` compares the ledgers
+against. Settle spawnability here, not in Phase 2. Inventory cheaply
 before opening large files; ignore generated/vendor/cache/build dirs.
 Identify real subsystem boundaries and assign focused scouts for
 cross-cutting evidence (APIs/messages, data/migrations, platform/config,
@@ -1595,19 +1577,24 @@ is never evidence of maturity.
 *Source: `protocols/initialize.md`*
 
 - **id:** `protocol.initialize`, tier 2
-- **owns:** `initialize.adapter-edges`
-- **requires:** `protocol.grow`
-- **peers:** — (none)
-- **load_when:** "/initialize command invoked"; "set up the seed via the
-  coding tool"; "dry-run the initialization"
+- **owns:** `initialize.entry-fork`, `initialize.adapter-edges`
+- **requires:** —
+- **peers:** `protocol.grow`, `protocol.from-scratch`, `agent.seed-installer`
+- **load_when:** "/initialize command invoked"; "just installed the seed,
+  which protocol do I enter"; "empty repo or existing code, where does growth
+  start"; "set up the seed via the coding tool"; "dry-run the initialization"
 
 ### What it does
 
 `/initialize` is a convenience adapter for Claude Code, Prime Agent,
 Codex, opencode, Copilot, and similar coding tools. The primary
 tool-neutral entry point is `INSTALL_PROMPT.md`; the canonical workflow
-is `docs/graph/protocols/grow.md`. This node is the smallest of the 15
-(est_tokens 230) and delegates unchanged to grow.
+is `docs/graph/protocols/grow.md`. This node is the smallest of the 14
+(est_tokens 697) and it does not delegate unchanged: it FORKS, selecting
+grow when the target has executable project evidence to scout and
+from-scratch when the repository is empty or near-empty. The two arms are
+peers, and `tests/test-entry-paths.sh` binds each to its own table cell so
+a swap or a merge fails.
 
 When invoked, enter the orchestration role and execute the install
 prompt and grow protocol without weakening them; the orchestration,
@@ -1638,12 +1625,20 @@ references.
 *Source: `protocols/harvest.md`*
 
 - **id:** `protocol.harvest`, tier 2 (note: no `command: true`)
-- **owns:** `harvest.fold-back-flow`, `harvest.agnosticism-gate`
-- **requires:** —
-- **peers:** `protocol.graft`, `protocol.grow`
-- **load_when:** "harvest lessons back into the seed"; "fold
-  generalizable improvements upstream"; "the plant is mature, propose a
-  harvest"; "seed improvement from project experience"
+- **owns:** `harvest.fold-back-flow`, `harvest.agnosticism-gate`,
+  `harvest.availability-gate`, `harvest.corpus-contracts`
+- **requires:** `method.delegation`
+- **peers:** `method.engineering-posture`, `skill.humanizer`,
+  `protocol.canonize`, `protocol.graft`, `protocol.grow`,
+  `protocol.ingest-library`, `skill.toolcraft`
+- **load_when:** "harvest lessons back into the seed"; "fold generalizable
+  improvements upstream"; "the plant is mature, propose a harvest"; "seed
+  improvement from project experience"; "should this library, tool, skill,
+  or expert page go into the seed's corpus"; "is this lesson
+  project-agnostic enough to land in the seed"; "wire a harvested artifact
+  so install, grow, or graft actually delivers it"; "propose promoting a
+  plant-commissioned expert into the base roster"; "a harvested page is in
+  the seed but no plant can reach it"
 
 ### What it does
 
@@ -1815,7 +1810,7 @@ it had always been there. Every fold-back records provenance (plant
 lineage, generalization applied, seed files touched). A harvested
 tooling fix arrives with its regression test generalized alongside it.
 
-**Phase 4: Seed integrity gate (fail-closed).** The seed must leave
+**Phase 4: Seed integrity gate.** The seed must leave
 harvest more capable and no less agnostic:
 - Agnosticism scan: grep the *entire* diff (including CHANGELOG,
   harvest-log, provenance notes) for any plant name, domain noun, stack
@@ -1898,14 +1893,24 @@ Harvest produces two records that do **not** carry the same content:
 
 *Source: `protocols/graft.md`*
 
-- **id:** `protocol.graft`, tier 2 (note: no `command: true`); the
-  largest protocol node (est_tokens 9790)
-- **owns:** `graft.reconcile-flow`, `graft.user-sovereignty`, `graft.pure-graph-mandate`
-- **requires:** —
-- **peers:** `protocol.harvest`, `protocol.grow`
-- **load_when:** "upgrade this plant to the newer seed"; "graft the
-  seed, re-propagate machinery"; "plant grew from an older seed
-  version"; "reconcile local machinery divergence"
+- **id:** `protocol.graft`, tier 2 (note: no `command: true`)
+- **owns:** `graft.reconcile-flow`, `graft.user-sovereignty`,
+  `graft.pure-graph-mandate`, `graft.migration`, `graft.integrity-gates`,
+  `graft.reversibility`
+- **requires:** `method.delegation`
+- **peers:** `protocol.grow`, `protocol.harvest`, `protocol.deliver`,
+  `method.engineering-posture`
+- **load_when:** "upgrade this plant to the newer seed"; "graft the seed,
+  re-propagate machinery"; "plant grew from an older seed version";
+  "reconcile local machinery divergence"; "migrate a pre-6.0 plant out of
+  the tool-dir layout into docs/graph"; "move a pre-7.0.0 plant's lifecycle
+  status into frontmatter"; "this plant's plan-of-record is in a shape the
+  seed has since changed"; "the graft audit reported a buried customization,
+  a stale kernel, or an unmapped backup"; "undo a graft, restore a plant
+  from the installer's backups"; "which installer flags are safe to use on a
+  grown plant"; "does this upgraded plant carry the legal corpus, under
+  which national jurisdiction"; "switch a symlinked plant back to copies
+  before upgrading it"
 
 ### What it does
 
@@ -2235,17 +2240,22 @@ upgrade.
 
 ## Cross-references at a glance
 
-- Kernel eight rules → owning protocol: 3.1 specify (`rule.spec`),
-  3.2 context-router (not a protocol node), 3.3 grill (`rule.grill`),
-  3.4 test-first (`rule.test-first`), 3.5 verify (`rule.verify`), 3.6
-  deliver (`rule.deliver`), 3.7 canonize (`rule.canonize`), 3.8
-  toolcraft (`rule.toolcraft`).
+- Kernel eight rules → owning node: 3.1 specify (`rule.spec`),
+  3.2 context-router (`rule.knowledge`, a SKILL node), 3.3 grill
+  (`rule.grill`), 3.4 test-first (`rule.test-first`), 3.5 verify
+  (`rule.verify`), 3.6 deliver (`rule.deliver`), 3.7 canonize
+  (`rule.canonize`), 3.8 toolcraft (`rule.toolcraft`, a SKILL node —
+  `skill.toolcraft`; there is no toolcraft protocol). Six of the eight are
+  owned by protocols and two by skills, which is why this list says "owning
+  node" rather than "owning protocol" — it said the latter, and 3.8 then read
+  as the eighth protocol-owned rule while §"The eight rules" above had the
+  7.16.0 correction in full.
 - The delivery funnel: brainstorm* → specify → grill →
   ingest-library* → test-first → verify → canonize →
   deliver; recover on any failure.
 - The seed meta-loop: grow (seed → new plant), harvest (mature plant
   → seed, user-triggered), graft (enriched seed → existing plant,
-  user-triggered), initialize (coding-tool adapter → grow).
+  user-triggered), initialize (the entry fork → grow or from-scratch).
 
 *End of protocols reference. Every fact above is drawn from the files in
 `protocols/*.md`, the support tools they name under `tools/`, and the

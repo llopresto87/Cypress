@@ -54,7 +54,19 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-CORPUS = ROOT / "legal-corpus"
+# Two layouts, because this linter now ships into plants as well as running in
+# the seed. In the seed it sits at tests/ and the corpus is legal-corpus/; in a
+# plant it sits at docs/graph/ and the corpus is docs/graph/legal/corpus/.
+# Resolving from the file's own location and assuming ONE layout is the trap
+# spec-lint fell into — it looked for a directory that did not exist, printed
+# SKIP, exited 0, and the seed's own specs went unchecked for weeks. So the
+# layout is CHOSEN explicitly, `--corpus DIR` overrides it, and a corpus that is
+# nowhere is a refusal rather than a skip.
+_HERE = Path(__file__).resolve().parent
+if (_HERE / "legal" / "corpus").is_dir():
+    CORPUS = _HERE / "legal" / "corpus"          # installed into a plant
+else:
+    CORPUS = ROOT / "legal-corpus"               # running in the seed
 
 # The eight required fields, split by whether a page may supply them for its
 # entries. `id` is the entry heading itself.
@@ -334,6 +346,17 @@ def check() -> None:
 
 
 def main() -> int:
+    global CORPUS
+    if "--corpus" in sys.argv:
+        i = sys.argv.index("--corpus")
+        if i + 1 >= len(sys.argv):
+            print("legal lint: FAIL — --corpus needs a directory", file=sys.stderr)
+            return 1
+        CORPUS = Path(sys.argv[i + 1]).resolve()
+    if not CORPUS.is_dir():
+        print(f"legal lint: FAIL — no corpus at {CORPUS}. A linter that cannot "
+              f"find what it lints must say so, not pass.", file=sys.stderr)
+        return 1
     check()
     if findings:
         print(f"legal lint: FAIL ({len(findings)} finding(s))")

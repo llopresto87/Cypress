@@ -30,6 +30,7 @@ load_when:
   - "authorization check, derive the acting user from the token not the request body"
   - "soft delete, visibility predicate on every read surface, cache key leak"
   - "what to log, correlation id, never payloads or tokens"
+prevents: Interfaces that accept anything and fail late — missing input read as empty, out-of-domain values coerced, and errors that tell the caller less than it needs to act.
 est_tokens: 1900
 ---
 

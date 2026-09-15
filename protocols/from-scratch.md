@@ -8,13 +8,14 @@ origin: seed
 title: from-scratch — the nine-phase bootstrap of a project that does not exist yet
 owns:
   - from-scratch.phases
+  - from-scratch.entry
 requires:
 peers:
   - protocol.brainstorm
   - protocol.grill
   - protocol.ingest-library
   - protocol.canonize
-  - skill.from-scratch-bootstrap
+  - protocol.initialize
 artifacts:
   - templates/grill.template.md
 load_when:
@@ -22,7 +23,11 @@ load_when:
   - "greenfield, bootstrap from nothing"
   - "no grill.md exists yet, day one setup"
   - "project skeleton, verification baseline"
-est_tokens: 1500
+  - "new project from the seed, nothing to scout"
+  - "installed the seed into an empty repo, now what"
+  - "mkdir a new project and cd into it"
+prevents: A first day spent on a skeleton nobody specified, where the plan, the spec and the first test all arrive after the code they were supposed to govern.
+est_tokens: 2698
 command: true
 ---
 
@@ -35,12 +40,57 @@ turn a goal into a project that another agent can pick up cold.
 This protocol is bigger than the others because the first day matters
 disproportionately. Do not skip steps.
 
-## Entry conditions
+## Entry (`from-scratch.entry`)
+
+### When this protocol is the right one
 
 - The user has stated a goal, even vaguely.
 - There is no `docs/graph/plans/grill.md` yet.
 - The repository is empty, near-empty, or contains only a license and
   a README placeholder.
+
+There is **no executable project evidence to scout** — which is exactly the test
+`protocol.initialize` applies at the front door, and the reason the other arm of
+that fork (`protocol.grow`) does not fit: grow authors a graph *from* source,
+and here there is none. If source exists, you are in the wrong protocol.
+
+### How you got here
+
+| Route | What has already happened |
+|---|---|
+| the installer's fork — **the documented route** | `install.sh` has run. The kernel, `docs/graph/` and the host overlay are already in place |
+| `/initialize` on an empty repository | same: the adapter forks here after the seed is installed |
+| directly, from a bare `mkdir` | nothing has been installed yet |
+
+Phase 2 reads the tree rather than assuming either, so all three routes converge
+on the same postcondition.
+
+### The honesty this day needs
+
+The nine phases below say what to do. They cannot stop the first day cutting the
+corners a sequence alone does not prevent, and each of these is a way it
+silently goes wrong:
+
+- **Bootstrapping is inherently T3** (kernel §0). The full funnel is the
+  proportional response, not ceremony — never discount it because the goal
+  "sounds clear"; the brainstorm exists to surface the constraints the user did
+  not state.
+- **The skeleton phase is done only when the host tool *actually loads* the
+  machinery** — agents, protocols and skills, from its own directory — not when
+  the files merely exist. Claude Code → `.claude/` + `CLAUDE.md`; Prime Agent →
+  `.prime/agent/` + `AGENTS.md`; opencode → `.opencode/` + `AGENTS.md`; Codex →
+  `.codex/` + config entries; Copilot → `.github/` + `copilot-instructions.md`.
+- **The stack is chosen from verified research, never memory** — version,
+  maintenance signal and license confirmed and wikified before anything is
+  committed to. Research routinely invalidates a remembered option.
+- **The verification baseline passes on a clean checkout before any feature
+  code.** A test framework configured and a smoke test green come first; a slice
+  without a passing gate is a draft, not a slice.
+- **Specs before tests before code, always.** The specify phase authors the
+  spec, not the implementation.
+
+The rest of the catalog is in "Common ways to fail this protocol" at the end of
+this file; read it before Phase 1, not after Phase 9.
 
 ## Phases (`from-scratch.phases`)
 
@@ -76,7 +126,24 @@ grill.md, and proceed.
 
 ### Phase 2 — Project skeleton
 
-Once the brainstorm converges, create the project skeleton:
+Once the brainstorm converges, the project needs the skeleton below. **Read the
+tree before writing to it** — on the documented route the installer has already
+run, and re-running it over a tree it just wrote is how a phase that "always
+installs" produces a second overlay and a backup of a file nobody changed.
+
+- **If the kernel and `docs/graph/` are already present**, the skeleton is
+  already there. **Verify** it against the tree below rather than creating it:
+  record what is present, and take only what is genuinely missing. Do not
+  re-run `install.sh`. The phase's real exit condition is unchanged and is the
+  one that matters — the host tool *actually loads* the machinery from its own
+  directory, which the presence of files does not establish.
+- **If they are absent** — direct entry from a bare `mkdir` — run `install.sh`
+  and create the skeleton as described below.
+
+Either branch exits on the same postcondition, so the phase table, its `Needs`
+column and every later phase are unaffected by which one ran.
+
+The skeleton:
 
 ```
 .
@@ -105,8 +172,8 @@ Once the brainstorm converges, create the project skeleton:
 └── (language- or stack-specific files only after Phase 4)
 ```
 
-The `install.sh` in this seed system can drop the right per-tool
-overlay into `.claude/`, `.prime/agent/`, `.opencode/`, `.codex/`, or
+When Phase 2 is creating rather than verifying, the `install.sh` in this seed
+system drops the right per-tool overlay into `.claude/`, `.prime/agent/`, `.opencode/`, `.codex/`, or
 `.github/`, and
 the knowledge-graph scaffold (schema, lint, router) into `docs/graph/`.
 That overlay includes the specialist roster, which this protocol then
@@ -202,11 +269,28 @@ second slice or the next-most-valuable item from the roadmap in
 
 ## Common ways to fail this protocol
 
-The catalog of how a first day silently goes wrong — feature code before the
-gates run, code where the spec belongs, a skipped brainstorm, a stack picked
-from memory, a bootstrap with no test framework — is the honesty discipline
-owned by `skill.from-scratch-bootstrap` (`from-scratch-bootstrap.method`); read
-it alongside this protocol. And note the structural rule it cannot: **each phase
-above adopts a sub-protocol that carries its own failure modes** — brainstorm,
-ingest-library, specify, test-first, the ADR/spec-first rules — so read the
-phase's protocol, never a summary of it.
+How a first day silently goes wrong. Each of these has happened; none of them
+announces itself, and every one of them passes a phase that was judged on files
+existing rather than on the phase's exit condition.
+
+- **Skipping the brainstorm.** "It's just a CLI" — wrong; the brainstorm
+  uncovers the constraints the user did not state.
+- **Picking the stack from memory.** Verify version, maintenance signal and
+  license; wikify before committing to it.
+- **Writing feature code before the gates pass.** A slice without a passing gate
+  is a draft, not a slice.
+- **Skipping ADR-0001.** Future sessions ask "why this design" and have no
+  answer.
+- **Skipping SPEC-0001.** Future sessions learn what the slice does and never
+  what it was supposed to do.
+- **Writing code in Phase 7 instead of the spec.** Specs first, tests second,
+  code third. Always.
+- **"We'll add tests later" in Phase 6.** A bootstrap without a test framework
+  configured is not a bootstrap.
+- **Declaring Phase 2 done because the files are there.** The exit condition is
+  that the host tool *loads* the machinery — see the entry section.
+
+And the structural rule the list cannot carry: **each phase above adopts a
+sub-protocol that carries its own failure modes** — brainstorm, ingest-library,
+specify, test-first, the ADR/spec-first rules — so read the phase's protocol,
+never a summary of it.

@@ -10,6 +10,7 @@ routing_triggers:
   - "refresh the library wiki page"
   - "catalog a reusable tool the work produced"
   - "crystallize a recurring procedure into a project skill"
+  - "audit the documentation and record what is not written down"
 can_delegate: true
 max_spawn_depth: 1
 delegates_to:
@@ -32,6 +33,7 @@ plant_knowledge:
   - libraries/
   - sources/
   - tools/
+prevents: Knowledge that lands with no provenance and no owner of the close-out — nothing recording which source or symbol grounds a claim, so a later reader cannot tell a transcribed fact from a remembered one.
 est_tokens: 1750
 ---
 

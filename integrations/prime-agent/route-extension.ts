@@ -68,7 +68,9 @@ export default function routeExtension(pi: ExtensionAPI): void {
             customType: "cypress-route",
             content:
               "No knowledge graph found (docs/graph/). Use the canonical " +
-              "INSTALL_PROMPT.md; /initialize is only a tool adapter.",
+              "INSTALL_PROMPT.md; /initialize is the entry fork behind it \u2014 " +
+              "grow when there is source to scout, from-scratch when the " +
+              "repository is empty.",
             display: true,
           },
         };

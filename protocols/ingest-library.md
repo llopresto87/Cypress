@@ -23,6 +23,7 @@ load_when:
   - "no wiki page for a library the code uses"
   - "version pin changed, refresh the library page"
   - "security advisory on a dependency"
+prevents: Code written against a dependency from model memory — an unpinned version, an idiom that was correct two majors ago, and a pitfall rediscovered as a bug.
 est_tokens: 1500
 command: true
 ---

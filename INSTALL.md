@@ -43,6 +43,7 @@ From the seed system directory:
 ./install.sh <tool> [--project-dir PATH] [--symlink|--copy] [--force]
              [--environment-class CLASS] [--commit-attribution none|TRAILER]
              [--deliverable-language BCP47] [--comment-language BCP47]
+             [--legal-corpus yes|no] [--legal-jurisdiction CC] [--print-config]
 ```
 
 `<tool>` is one of:
@@ -88,7 +89,8 @@ For each tool:
 4. Ensures `docs/graph/` has the schema, linter, router, nodes directory,
    and every missing leaf collection from `templates/docs/`. Existing files
    are preserved. `INSTALL_PROMPT.md` then orchestrates source-grounded
-   growth; `/initialize` is only an optional coding-tool adapter.
+   growth; `/initialize` is the entry fork behind it — grow when there is
+   source to scout, from-scratch when the repository is empty.
 5. Installs the canonical prompt as `EXPERT_SEED_INSTALL_PROMPT.md` at the
    target root so later growth/refresh sessions remain tool-neutral.
 
@@ -109,7 +111,15 @@ views, and use `--check` to detect drift without writing:
 assert: `environment_class` (ephemeral-test, staging, real-production or mixed — it
 decides what the release posture tolerates, build-on-host included), `commit_attribution`
 (`none` or the trailer text), `deliverable_language` and `comment_language`. Pass them at
-install time with the four flags above, or fill the block by hand before grow or graft.
+install time with those four flags, or fill the block by hand before grow or graft.
+
+Two more decisions are the owner's and are **asked before a run, not settled
+during one**: `--legal-corpus yes|no`, which places the whole legal corpus or
+records that this plant carries none, and `--legal-jurisdiction CC`, which names
+the national layer. `agent.legal` can do exactly one thing until the first is
+answered — refuse — and the installer says so at the end of every run that
+leaves it undecided. This document is what an owner reads BEFORE the run, and it
+did not mention either flag.
 The installer never guesses them and never overwrites a value the plant already declares;
 whatever is still a placeholder is named as a NEXT STEP.
 
@@ -127,10 +137,18 @@ explicitly but is already the default.
 
 ## What gets backed up
 
-If a target file already exists, the installer:
-- With `--force`: silently overwrites.
-- Without `--force`: renames the existing file to
-  `<path>.bak-<timestamp>` and warns.
+If a target file already exists and differs from what is being placed,
+the installer renames it to `<path>.bak-<timestamp>` and writes the new
+body. A file that already matches is left alone — no backup, no rewrite,
+so a re-install of an unchanged plant creates nothing.
+
+`--force` suppresses the per-file warning, never the backup. The backup
+IS graft Phase 7's safety net and the input `tools/graft-audit.py` reads,
+so a flag that discarded it would leave a graft with nothing to audit and
+no way back. There is no mode that overwrites without a recovery copy.
+
+If the destination is a symlink, the LINK is moved aside — never followed.
+An install cannot modify a file outside the target directory.
 
 The installer never deletes files outside of `.claude/`,
 `.opencode/`, `.codex/`, or `.github/`. In `docs/graph/` it adds
@@ -139,7 +157,7 @@ plant-authored content (`nodes/`, `specs/`, and the rest of the
 graph you grow); the seed-owned machinery subtrees (`protocols/`,
 `skills/`, `agents/`, `method/`, `templates/`) are fast-forwarded
 to the current seed — byte-identical files are left untouched, and
-anything that differs is backed up first (unless `--force`) so
+anything that differs is backed up first so
 `tools/graft-audit.py` can prove no customization was buried.
 
 ## Verifying the install
@@ -183,7 +201,7 @@ The installer prints a path to a generated config snippet:
 ```
 
 Merge that file into your global `~/.codex/config.toml` to register
-all fourteen skills. The installer does not modify your global config
+all fifteen skills. The installer does not modify your global config
 without consent.
 
 ## Upgrading

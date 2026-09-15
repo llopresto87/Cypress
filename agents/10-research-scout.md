@@ -23,6 +23,7 @@ peers:
 plant_knowledge:
   - sources/
   - libraries/
+prevents: Retrieval that cannot be dispatched — no role to hand an unfamiliar dependency to, so the session that needs a source goes and gets it inside its own context, mixing half-read upstream pages into the work that wanted them.
 est_tokens: 700
 ---
 

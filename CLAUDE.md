@@ -7,16 +7,28 @@ There is no `docs/graph/` here; these notes replace it.
 ## Gates (run before claiming anything works)
 
 ```
-bash tests/run.sh        # 18 shell suites + agent-lint (lint/eval) + graph/agent-lint regressions + seed-lint.py + legal-lint.py
+bash tests/run.sh        # the full gate. The roster is deliberately not
+                         # restated here: it drifted twice during one session
+                         # of editing it, which is what a count in prose does.
+                         # Ask the thing that derives it:
+                         #   python3 tools/gate-registry.py --summary
+                         # for how many gates there are and what each READS,
+                         # --table for the false green each can still produce.
 ```
+
+A count in prose is a fact with two homes. Where one is unavoidable, derive it:
+`tools/gate-registry.py` parses `tests/run.sh` and refuses a step nobody has
+classified — which is also what keeps the gate honest about the gates that read
+only `tests/fixtures/`, and therefore prove a linter works while saying nothing
+about the tree the seed ships. `--summary` prints how many that currently is.
 
 `tests/seed-lint.py` is one-home-per-fact for the seed's own meta-facts:
 roster/frontmatter/manifest/README consistency, the delegator invariant,
 numeric claims, the kernel size budget (8 000 bytes), stable §3.1–§3.8
 anchors, machinery-node frontmatter (every protocol/skill/agent/method
 file is a graph node: id, kind, origin: seed, owns, load_when,
-est_tokens; owns globally unique; the eight `rule.*` keys in exactly
-their mapped homes), canonical-block byte-identity in the brief
+est_tokens, prevents; owns globally unique; the eight `rule.*` keys in
+exactly their mapped homes), canonical-block byte-identity in the brief
 templates, and the per-session instruction budget of the integrations.
 
 ## Canonical homes (edit the home, never a copy)
@@ -38,9 +50,24 @@ templates, and the per-session instruction budget of the integrations.
 - Handback contract → `templates/prompts/handback-payload.md`
   (agent files carry a 3-sentence pointer, never the full spec).
 - Close-out flow → `protocols/canonize.md` (single librarian spawn;
-  `toolcraft.md` owns only the durable-tool doctrine).
+  `skills/toolcraft/` owns only the durable-tool doctrine — `agent.tool-smith` builds, `canonize` catalogs).
 - Failure discipline → `protocols/recover.md` (classify, one move per
   class, three attempts, escalate).
+- The seed's own specs → `docs/specs/`. Kernel §3.1 says code without a spec is
+  in remediation mode, and the seed had none of its own. Two exist, covering the
+  two surfaces where the seed writes into somebody else's repository or makes a
+  quantitative claim about itself: `SPEC-0001-install-placement` (what
+  `install.sh` may do to a target) and
+  `SPEC-0002-routing-contract` (what `--route` and `--eval` may claim). Both
+  name their contracts in words rather than by letter-number label; read §4 of
+  each, and `seed-lint`'s `check_spec_test_mapping` for which test holds which.
+  **Recorded exemption — the corpora are deliberately unspecced.** A
+  `library-corpus/`, `legal-corpus/` or `tool-corpus/` page is transcribed
+  knowledge, not behavior: its contract is its `_schema.md` plus
+  `legal-lint.py` / the page-shape checks, and a §4 Given/When/Then over a
+  statute would restate the statute. The exemption is bounded to the corpora and
+  does not extend to any code path. A third spec is owed the moment a new
+  surface starts writing into a plant or reporting a number about itself.
 - Spec shape and contract coverage → `templates/knowledge-graph/spec-lint.py`
   (tested by `tests/test-spec-lint.sh`); plan-of-record shape →
   `templates/knowledge-graph/grill-lint.py` (tested by
@@ -55,7 +82,11 @@ templates, and the per-session instruction budget of the integrations.
 - The spec's `active` moment → `verify.status-evidence` (promotion lands
   with the RED); specify, spec-author, and the template point at it.
 - Roster ground truth → `agents/*.md` frontmatter (manifest, kernel
-  roster line, and README follow it; lint checks).
+  roster line, and README follow it; lint checks). Why a component is on
+  the roster → the node's own `prevents:` (the failure its absence
+  produces), never a summary page; `tools/roster-justification.py`
+  derives the table and prints evidence-of-use and class as absent
+  rather than guessing them ([ADR-0008](docs/decisions/adr-0008-roster-justification-lives-in-the-node.md)).
 - Unknown-row disclosure → `tools/growth-audit.py` (`SILENT`): every
   UNKNOWN row is named in the plant's `changelog.md` entry and put to the
   owner as a numbered decision; grow's delivery and graft's Phase 8 point.

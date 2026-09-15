@@ -26,6 +26,7 @@ load_when:
 artifacts:
   - templates/adr.template.md
   - decisions/README.md
+prevents: Choices whose reasoning exists only in the session that made them, so a later reader sees what was decided but not what was rejected or what reversing it would cost.
 est_tokens: 1850
 ---
 

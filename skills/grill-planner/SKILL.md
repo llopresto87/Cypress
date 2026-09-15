@@ -19,6 +19,7 @@ load_when:
   - "grill.md drifted from the specs, audit the plan"
 artifacts:
   - templates/grill.template.md
+prevents: A plan-of-record that drifts out of agreement with the specs, wiki and decisions it claims to implement, with nothing that detects the drift.
 est_tokens: 1150
 ---
 

@@ -49,6 +49,17 @@ RETIRED_STATUSES = {"superseded", "retired", "deprecated", "withdrawn"}
 
 SECTION_RE = re.compile(r"^##\s+(\d+)\.\s*(.*)$", re.M)
 INCREMENT_RE = re.compile(r"^###\s+Increment\s+(\d+)\b(.*)$", re.M)
+# An index row: a table row whose first cell is the increment number and whose
+# last cell names the file holding it. `| 3 | Persist | planned | `plans/grill/
+# increment-03-persist.md` |`
+# The path may sit in ANY cell, in backticks, bare, or as a markdown link, and
+# the row may have any number of columns. The first version demanded exactly
+# four columns with the path alone in the fourth, so an added Owner column, a
+# `[detail](path)` link — the idiomatic way to point at a file — or a three
+# column table all went UNSEEN. An index row nobody parses is an increment that
+# is never validated, which is the orphan failure arriving through the parser.
+INDEX_ROW_RE = re.compile(r"^\|\s*(\d+)\s*\|(.*)\|\s*$", re.M)
+INDEX_PATH_RE = re.compile(r"([\w./-]*plans/grill/[\w.-]+\.md)")
 FIELD_RE = re.compile(r"^\s*-\s*([A-Za-z][^:]{0,40}):(.*)$")
 LABEL_ONLY_RE = re.compile(r"^\s*-\s*[^:]+:\s*$")
 TABLE_SEP_RE = re.compile(r"^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$")
@@ -105,14 +116,111 @@ def fields(block: str) -> dict[str, str]:
     return out
 
 
-def increments(body: str) -> list[tuple[int, str, str]]:
-    """(number, title, block) per `### Increment N — title` in §9."""
+def increments(body: str, errs: list | None = None) -> list[tuple[int, str, str]]:
+    """(number, title, block) per increment in §9, in either form.
+
+    INLINE — `### Increment N — title` written straight into §9. Every plant
+    already has this, so it keeps working unchanged.
+
+    LEDGER — §9 is an index, one row per increment, each pointing at a file
+    under `plans/grill/` that holds it. A plan-of-record grows for as long as
+    the project does and §9 grows fastest: contracts, RED tests, rollback paths
+    and dependencies for every increment ever planned. Held in one file that is
+    read whole, a mature plan becomes the largest single thing a session loads,
+    and the progressive discovery the whole method rests on is defeated by the
+    document describing the work. The plan stays the ledger; the increments
+    become files under it, and a session reads the index plus the one increment
+    it is working on.
+
+    Both forms may appear together — that is how a plan migrates, one increment
+    at a time, without a flag day.
+    """
     out = []
     matches = list(INCREMENT_RE.finditer(body))
     for i, m in enumerate(matches):
         end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
         title = m.group(2).strip(" —-–:").strip()
         out.append((int(m.group(1)), title, body[m.end():end]))
+
+    inline_nums = {n for n, _t, _b in out}
+    seen = set(inline_nums)
+    referenced: set[str] = set()
+    for row in INDEX_ROW_RE.finditer(body):
+        path_m = INDEX_PATH_RE.search(row.group(2))
+        if not path_m:
+            continue
+        num, rel = int(row.group(1)), path_m.group(1).strip()
+        referenced.add(Path(rel).name)
+        # Containment. `Path.__truediv__` DISCARDS the left side when the right
+        # is absolute, and `..` walks out, so an index row reading
+        # `/anywhere/plans/grill/x.md` or `../../../plans/grill/x.md` made the
+        # lint read and bless a file nowhere near the plan — a plan could claim
+        # contract coverage from a file no reviewer would think to open. The
+        # increments of a plan live under that plan.
+        grill_home = (HERE / "plans" / "grill").resolve()
+        stripped = rel[len("docs/graph/"):] if rel.startswith("docs/graph/") else rel
+        target = (HERE / stripped)
+        try:
+            inside = target.resolve().is_relative_to(grill_home)
+        except (OSError, ValueError):
+            inside = False
+        if not inside:
+            if errs is not None:
+                errs.append(f"§9: increment {num} points outside plans/grill/ "
+                            f"({rel}) — an increment of this plan must live "
+                            f"under it")
+            continue
+        if not target.is_file():
+            if errs is not None:
+                errs.append(f"§9: increment {num} points at {rel}, which does "
+                            f"not exist — an index row is a promise that the "
+                            f"work is written down somewhere")
+            continue
+        child = strip_comments(target.read_text(encoding="utf-8"))
+        cm = list(INCREMENT_RE.finditer(child))
+        if not cm:
+            if errs is not None:
+                errs.append(f"§9: {rel} carries no `### Increment {num} — title` "
+                            f"heading, so the file the index points at does not "
+                            f"say which increment it is")
+            continue
+        for j, m in enumerate(cm):
+            end = cm[j + 1].start() if j + 1 < len(cm) else len(child)
+            n = int(m.group(1))
+            if j == 0 and n != num and errs is not None:
+                errs.append(f"§9: the index says increment {num} but {rel} is "
+                            f"headed `Increment {n}` — renumbering one and not "
+                            f"the other is exactly the drift an index is "
+                            f"supposed to make checkable")
+            if n in seen and errs is not None:
+                where = "inline" if n in inline_nums else "another index row"
+                errs.append(f"§9: increment {n} is defined twice — once "
+                            f"{where} and once in {rel}")
+            seen.add(n)
+            out.append((n, m.group(2).strip(" —-–:").strip(), child[m.end():end]))
+
+    # An increment file nobody indexes is work that exists and is unreachable:
+    # it will not be read, reviewed, or counted, and it looks like progress.
+    grill_dir = HERE / "plans" / "grill"
+    if errs is not None and grill_dir.is_dir():
+        # Every .md under plans/grill/, at any depth and under any name. The
+        # glob was `increment-*.md` and non-recursive, so a child called
+        # `inc-03.md`, `increment_03.md`, or filed in a subdirectory was
+        # unreachable work the orphan check could not see.
+        for f in sorted(grill_dir.rglob("*.md")):
+            if f.name not in referenced:
+                errs.append(f"plans/grill/{f.name} is not indexed by §9 — an "
+                            f"increment nobody points at is unreachable work")
+
+    # NOT sorted by number. The forward-dependency check reads position in this
+    # list as DOCUMENT order — "is the dependency written before the thing that
+    # needs it" — and §9 is the top-to-bottom order an orchestrator spawns in.
+    # Sorting numerically silently redefined that: a plan that appends increment
+    # 3 after 1 and 2 (the append-don't-renumber convention this seed itself
+    # prescribes) would start failing on a forward dependency it does not have,
+    # with no change to the plan file — a break delivered by upgrading the tool.
+    # Index rows are appended in the order §9 lists them, which is the same
+    # document order, so both forms agree.
     return out
 
 
@@ -167,9 +275,10 @@ def main() -> int:
                 fails.append(f"§1: `{ln.strip()}` has no path and no `none — <reason>` (read it; do not guess)")
 
     # --- §9: increment shape and dependency order ---------------------------
-    incs = increments(secs.get(9, ""))
+    incs = increments(secs.get(9, ""), fails)
     if 9 in secs and not incs and not any(NA_RE.match(ln) for ln in populated.get(9, [])):
-        fails.append("§9: no `### Increment N — title` rows")
+        fails.append("§9: no `### Increment N — title` rows, and no index rows "
+                     "pointing at files under plans/grill/")
     numbers = [n for n, _, _ in incs]
     known = set(numbers)
     lib_needed: dict[str, list[int]] = {}

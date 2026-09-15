@@ -22,6 +22,7 @@ requires:
 peers:
   - agent.reviewer
   - agent.pentest
+prevents: Finished claim-bearing deliverables accepted at face value, checked only against the working papers that produced them.
 est_tokens: 840
 ---
 

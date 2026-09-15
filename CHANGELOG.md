@@ -1,5 +1,987 @@
 # Changelog
 
+## 7.16.0 — the installer has one way to write, and the audit can see all of it (2026-09-13)
+
+A plant edit to `.claude/route-hook.py` was destroyed by the next install. No
+backup was left. And `tools/graft-audit.py` — the gate graft Phase 7 ratifies
+on — reported *"zero backup files — nothing was overwritten"* and *"clean — no
+plant knowledge overwritten, no customization buried."*
+
+The verdict was inverted from reality, and it was inverted for a reason worth
+stating plainly: the audit enumerates `*.bak-*`, so it can only see what the
+canonical writer produces. A write that bypassed the writer was not audited
+badly — it was invisible. The safety net reported safety **because** the defect
+went around the mechanism the net observes.
+
+`place_file` had been right all along, and about fifteen destinations used it.
+Seventeen others reached the filesystem directly, through four different idioms
+— twelve `cp`, one `cat >`, one `sed >`, three Python `open(..., "w")` — which
+expand to **86 files** in an `install.sh all`. Every one of them destroyed plant
+edits without a backup, wrote *through* a destination symlink (so an install
+into one directory could modify a file in another), and ignored `--symlink`
+while the flag reported success. The count matters less than the shape: nobody
+added a second placement path on purpose. It accreted, one call site at a time,
+each one locally reasonable, because writing a file is easy and the rules about
+writing a file lived in a function someone had to remember to call.
+
+So the second path is **removed**, not guarded. There are now three named ways
+to put a byte in a target, and one writer underneath them: `place_file` for a
+seed file with a plant twin, `place_generated` for content generated per target,
+`place_if_missing` for the add-if-missing leaves a plant owns once placed. A
+fourth, `place_state`, exists for the stamp alone and is the single recorded
+exception to recoverability — it carries a fresh `installed_at` every run, so a
+backup policy would leave one `.bak` per install for ever, which is precisely
+the churn that buries the signal this whole change exists to protect. It is
+still atomic, and still symlink-safe.
+
+`place_kernel` stopped hand-rolling placement too, which is why `--symlink`
+finally links the kernel. It had promised that in its own header comment since
+the shared-kernel design landed; the code never had a branch that could do it.
+So `--symlink` silently delivered a frozen copy of the one file loaded on every
+session, while every file around it was correctly live.
+
+**The audit can now classify everything the writer produces.** The adapter
+machinery — hooks, extensions, settings, the Prime Agent overlay, the entry
+prompt — maps to its seed source. Generated harness views map to the node they
+were projected *from*, and get their own verdict rather than a byte comparison
+against a file they are not a copy of: claiming `DELTA` there was a measurement
+the tool could not make. And an `UNMAPPED` row no longer prints beside the word
+"clean". A steward was being told both that something was unexplained and that
+nothing was, and the second line is the one that gets believed. Unknown is not
+green; it exits 1 and says `UNRESOLVED`.
+
+**`--force` means one thing.** It suppresses the per-file warning and never the
+backup. Its help text had described a prompt that does not exist, and that
+folklore had since been *implemented*: the kernel's sibling branch skipped the
+backup under `--force`, so the flag a steward reaches for when re-installing
+over a customized plant was the flag that destroyed the body it replaced. Code,
+help text, `place_file`, `place_kernel`, `place_docs_skeleton` and `INSTALL.md`
+now all say the same sentence.
+
+**A plant's record can no longer contradict its disk.** `--legal-corpus no`
+over a plant carrying the corpus used to record `"no"` while sixteen pages sat
+on disk, silently, exit 0 — and `agent.legal` answers from the corpus, not from
+the stamp, so the plant kept reasoning from instruments its own record denied
+having. The transition is refused, naming both honest ways out. Removing law a
+plant may already have reasoned from stays the owner's act; nothing here deletes
+a corpus. The completeness check also stopped counting `.bak-*` siblings as
+corpus pages, which had made backups able to mask a real shortfall.
+
+**Smaller things of the same kind.** The Codex snippet substituted the project
+path through a `sed` *replacement*, where `&` expands to the whole match: a
+target named `a&b` produced `…/a/abs/path/to/projectb/…` in all thirteen skill
+entries, silently, and the snippet is what an owner pastes into their own
+config. It is substituted literally now, with TOML escaping. `--check` reported
+"views are STALE" when the generator had in fact *crashed* — a drift verdict for
+a broken installer, with the error discarded. `graft-audit.py --help` answered
+"unknown option". And `route-hook.py` walked up seven directories from both the
+cwd and its own location and executed the first `graph-lint.py` it found: a
+plant checked out inside another checkout ran the **ancestor's** linter on every
+prompt, chosen by directory nesting. The walk stops at the project root.
+
+Two suites hold all of it, and neither lists what it checks. `test-install-placement.sh`
+**discovers** the destination set from a real install, because a hardcoded list
+is how this class survived in the first place — the installer grew destinations
+and no list was updated to cover them. Reverting a single `cp` turns it red and
+names the file. `test-plant-state.sh` pins the stamp invariants that 7.15.0
+repaired but left untested, including order independence, so they cannot regress
+in silence.
+
+Measured, before and after, over `install.sh all`: destinations that replaced a
+plant edit with no recoverable backup, **86 → 0**; destinations that wrote
+through a symlink to a file outside the target, **86 → 0**; files placed as
+copies under `--symlink` outside the recorded exception list, **92 → 0**;
+backups the audit cannot classify, **0 of 10**; backups on an identical re-run,
+**0, unchanged**. The kernel was byte-identical at 7 564 bytes when this was
+written; later slices in the same release took it to 7 742, still under the
+8 000-byte budget.
+
+**The routing metric now measures routing.** `--eval` printed `top-1 accuracy
+100.0% (55/55)` and gated at ≥90%. The number was arithmetically true and
+rhetorically false: 46 of those 55 tasks were a verbatim vocabulary subset of the
+agent they select, because the corpus had been written from the triggers it
+scores. Exactly one row shared under half its vocabulary with its target. A
+corpus co-authored with the artifact it scores measures mutual consistency, and
+calling that "accuracy" is the kind of claim this release exists to stop.
+
+The corpus now carries a class per row and the classes are reported separately,
+never averaged, each publishing the mean overlap it was measured at — so the
+accuracy and the reason to distrust it arrive on the same line. A row labelled
+`paraphrase` whose overlap with its target exceeds 0.80 **fails the gate**, which
+makes "authored without reading the triggers" a checkable claim instead of a
+promise in a comment, and refuses by name the two ways a held-out number gets
+protected rather than earned: relabelling a trigger-derived row, or shrinking the
+held-out set. The gate itself moved off top-1 and onto **confident-and-wrong = 0**.
+An abstention spends a reasoning step; a confident wrong route arrives at the
+orchestrator carrying a band the kernel tells briefs to cite *as evidence for
+that specialist*.
+
+Two router defects came out of measuring it honestly, and the interesting part is
+that the recorded diagnosis was wrong. The prior analysis said HIGH was awarded
+on near-ties and prescribed widening the margin. The actual confident-wrong —
+"our chain of language-model calls loops forever and burns money" → HIGH
+`security` — had a 5.5x margin, already far past the threshold. Widening it would
+have changed nothing. `security` carries the trigger "assess the supply-chain and
+secrets handling risk"; the tokenizer split `supply-chain` on the hyphen, and
+`chain` then scored as a free-standing concept. Reduced to two words: `--route
+"chain of calls"` → HIGH `security`. A fragment of a compound may now only match
+at the near-match tier, on both sides of the comparison, and the rare-term IDF
+bonus requires a full-strength hit rather than a graze — because "distinctive"
+should mean a confident match is rare, not that a rare word brushed something.
+
+Measured on the same twenty held-out rows, authored before the change:
+confident-and-wrong **1 → 0**, abstentions **15 → 17**, confident-correct
+**4 → 3**, contract consistency **55/55 → 54/55**. That is a trade and it is
+reported as one. Removing the confident-wrong cost two correct confident routes,
+one of them the single row in the old corpus that was *not* trigger-derived — the
+one row that had been measuring generalization is the one the fix regressed. It
+is left visible at 54/55 rather than relabelled to restore a round number.
+
+**Every surface the seed measures, it now bounds.** `est_tokens` was checked for
+honesty — within 2x of the real body — and never for a ceiling, so machinery
+could grow without limit as long as it declared the growth accurately. An honest
+number is not a budget. There is now a machinery body ceiling and a per-harness
+eager-context budget, and both were proved to fail when violated rather than
+assumed to work.
+
+**And the ceiling immediately met the case against itself.** 1 000 lines was set
+just above the largest node, which left `protocols/graft.md` with eight lines of
+headroom — so the next edit to the protocol that carries the seed onto somebody
+else's repository would fail the gate, and the obvious response was to start
+deleting from it. Two things make that the wrong response. The router selects a
+node from the `load_when:` triggers in the index and **never opens a body to
+decide whether it wants the body**, so graft's 992 lines are read only by a
+session already performing a graft — the cost a size ceiling protects against is
+not paid at that position in the graph. And the defining defect of this release
+was a graft that destroyed three plant customizations while the audit reported
+*"clean"*; trimming a destructive-operation procedure to satisfy a line count
+trades a data-loss risk for a token-budget one that does not exist.
+
+`graft`, `grow` and `harvest` — the only protocols that write into a repository
+the seed does not own — therefore answer to `LIFECYCLE_BODY_CEILING = 2500`.
+Everything else keeps 1 000. It is a second ceiling and **not an exemption**: a
+governing procedure nobody finishes reading fails the same way a truncated one
+does, and "no limit" is how graft reached 992 lines without anyone deciding it
+should. Recorded as [ADR-0007](docs/decisions/adr-0007-lifecycle-protocol-ceiling.md),
+ratcheted like every other limit, and — because a named list is exactly what
+failed three times in this remediation — proved rather than asserted: the general
+ceiling is probed against the largest node it governs, *discovered* rather than
+named, so it keeps binding when that node changes; a `LIFECYCLE_NODES` entry
+matching no node fails loudly instead of silently exempting nothing; and at a
+general ceiling below every lifecycle node, none of the three may be reported, so
+the exemption is shown to be real rather than inert.
+
+Measuring the eager surface per harness instead of in aggregate turned up
+something nobody was looking for: **github-copilot pays 121 543 bytes (~30 400
+tokens) before any routing happens — sixteen times the kernel.** All fourteen
+skill projections carry `applyTo: '**'`, so every skill *body* is always-applied
+context there, where every other harness reads only the descriptions. The seed
+budgets its kernel at 8 000 bytes on the grounds that every session of every
+plant pays it, and was meanwhile shipping 114 KB of always-on skill bodies to one
+harness, unmeasured. It is recorded as enumerated debt with zero slack — the
+number may shrink and never grow — rather than waived by raising a budget to fit
+it. Narrowing that projection changes what an installed plant receives, so it is
+the owner's decision, not this release's.
+
+### The lifecycle protocols answer for themselves
+
+ADR-0007 bought `graft`, `grow` and `harvest` room rather than demanding
+compression. Room is not a plan, so their whole recorded history was mined first
+— every release entry in this file, the plans, the ADRs, and the diff of every
+commit that touched them — and the rework was written against that rather than
+against a reading of the current text. The plan of record is
+`docs/plans/lifecycle-protocol-rework.md`, a ledger with a child per slice.
+
+**All three had grown the same way: one rule, written into N places.** Every gate
+graft added since 6.12.0 had to be written twice in the same commit, once as
+Phase 7 prose and once as an integrity-gate template row. Harvest carried each
+Phase 4 gate in five places and the agnosticism rule in eight; the heading list
+of that file is byte-identical across its entire git history while Phase 4 alone
+grew 228% and everything else gained three lines. Grow has never shrunk in ten
+commits. This is the growth engine, and it is exactly the defect these protocols
+instruct a plant to fix in its own graph: `graft.md` tells a steward to "collapse
+duplicate and competing homes into one" in a file that stated one of its own
+rules four times.
+
+Each protocol now has **one gate table**, every row carrying an id, what it
+asserts, the command, what to do on failure, and its enforcement class. Phases
+point at it. `tests/seed-lint.py`'s `check_gate_single_home()` holds the ids to
+one declaration each, rejects a dangling pointer, and checks column count —
+because a shell pipe inside a cell splits the row, and a check reading only the
+last cell will validate a class sitting in the wrong column.
+
+**The second finding is why the first one mattered.** Sorting every recorded
+defect in these three files by who found it produces a clean split: defects found
+by a person on a live run reached the protocol text almost every time, and
+defects found by the seed auditing its own tooling landed in the tool and stopped
+there. Twenty-eight of the latter. The sharpest: `protocols/graft.md`
+instructed a steward that "the installer's backup behaviour is the safety net;
+rely on it" — the exact assumption this release's defining defect falsified — and
+the installer, the audit and three test suites were rewritten around that
+sentence while the sentence itself was never touched.
+
+**Both files that carried it had the same false claim.** graft and harvest each
+said "a gate that runs but asserts nothing is a green lie; each check names its
+command and result", and each said it directly above checks that named none —
+three of ten in graft, five of eight in harvest. The claim is deleted. Its honest
+form is the table's own columns: every check names its command, or names the
+judgment and who owns it, and a blank cell is not a third state.
+
+That required a fourth label. ADR-0003 is amended: **a protocol gate is almost
+never `hard`**, because hard means the harness makes the wrong thing impossible
+and no harness prevents a steward applying an upgrade, delivering a growth or
+committing a harvest. `hard` is now refused outright in these three files. Some
+gates no tool can check at all — whether an imported artifact kept the whole of
+its donor's discipline is read by a person, and 7.15.0 recorded five defects
+passing that one — so `judgment` joins the vocabulary, and a `judgment` row must
+name its judge. Three labels for enforced things and silence about the unenforced
+ones was itself a field implying enforcement nobody provides.
+
+### Three writes that left the target
+
+The rework's review found something outside the protocols. `install.sh` states,
+as the basis of its safety argument, that "an install cannot modify anything
+outside PROJECT_DIR". That argument covers `place_file` and nothing else, and two
+destinations reached the filesystem by other means.
+
+`record_instruction_migration` guarded on `[[ ! -e "$note" ]]`, which is **false
+for a dangling symlink** — so the write branch ran and `cat >` followed the link,
+creating the file at its target. `preflight_destinations` tested
+`( -e || -L ) && ! -d`, which a symlink **to a directory** satisfies, so nothing
+flagged it, `mkdir -p` succeeded, and every later write went through it:
+`.cypress` symlinked out put the plant's stamp outside the plant. And
+`fill_plant_facts` rewrites `docs/graph/index.md` in place, that being the one
+destination the installer does not reach through `place_file`, with a call that
+follows a link: a plant fact written into a file outside the target, exit 0, no
+warning, no backup to find it by. The third was found by a review that hit its
+own rate limit and stopped after the words "confirmed a real escape", without
+saying which; it was located by re-deriving the search rather than by guessing
+at the answer.
+
+Both were reproduced before they were touched. The note path now moves a symlink
+aside as a backup rather than writing through it, the same treatment `place_file`
+gives a link object; the preflight refuses a destination symlink resolving
+outside the target, and deliberately still allows one that stays inside, because
+the invariant is about leaving the target and not about links. Pinned as **M10**
+in `tests/test-install-placement.sh`, three cases, each verified red first.
+
+### The checks that were written this release got the same treatment
+
+Every new check shipped with a negative test, after a review found that two of
+them had none — which is how their own holes survived to be found by a reader
+rather than by the gate. `check_gate_single_home()` passed vacuously on a node
+named in `LIFECYCLE_NODES` but absent from disk, so renaming `graft.md` made the
+whole check report nothing. `check_protocol_reference()` could not see a field
+stated twice in one section, because its capture stopped at the first non-field
+bullet. The verdict-vocabulary check held both protocols to `growth-audit.py`'s
+words alone, so `graft.md` could not name `GENERATED` or `UNMAPPED` — its own
+audit's classifications — and an author wrote around the linter instead of
+naming the thing; it is scoped per tool now.
+
+`seed-lint` also used to abort with a traceback when a file it reads is missing,
+losing every finding already collected. It reports and exits 1. A linter that
+crashes on the tree it is linting says nothing about the tree.
+
+`protocols/graft.md` lost its trailing newline to a hand re-wrap, and the author's
+stated verification — reading the file — is structurally unable to find that.
+`check_file_endings()` now looks.
+
+**A judgment nobody owns is not an enforcement class.** Sixteen gate rows are
+`judgment`, and fifteen named their judge in prose — which read as compliance and
+was not checkable. One named none at all and read as though it did. Every row now
+carries the literal marker `Judge: <who>`, and `check_gate_single_home()` refuses
+a `judgment` row without it. The honest limit is recorded beside the check:
+whether the name after the marker is a real, reachable judge is not verified, and
+that is exactly why the marker is the contract rather than the prose.
+
+**A gate command that died on a space and lied on an empty set.** Harvest's
+agnosticism floor enumerated its files as
+`$(git diff --name-only … | sed 's|^|--file |')`. A changed path containing a
+space word-split under the unquoted substitution and the tool exited 2 on
+`unrecognized arguments` — the gate did not skip that file, it died. With no
+changed files the substitution contributed no arguments at all, so the tool fell
+back to its default root of `.`, scanned an unrelated superset of the tree, and
+printed `PASS`, which reads as "the changed set is clean". Both reproduced. It is
+now a `git diff -z` plus `read -d ''` loop that is space- and newline-safe, and
+whose emptiness guard does double duty: it stops the vacuous scan, and it keeps
+the array expansion out of reach of `set -u` on bash 3.2, where expanding an
+empty array is an error.
+
+**Four review rounds.** Each found defects in the previous round's fixes,
+including two fixes that restated installer behaviour inaccurately, which is the
+defect class the whole rework exists to close. Where a reviewer was wrong it was
+argued down rather than complied with: the `growth-scout` charter is correct as
+written and widening its write grant to cover the boundary plan would break the
+one-writer-per-file rule; `deviation` stays in the node-kind floor because
+dropping it defers the failure to canonize months later, and deferral is the
+worse of the two.
+
+**The seed runs its own gate.** There was no CI at all: ~4 800 lines of tests and
+eighteen checks, every one of them waiting for someone to remember. A project
+whose thesis is that gates run before anything is called done had exempted
+itself, and a discipline that is not applied to itself is a preference. The gate
+now runs on Linux and macOS — two platforms deliberately, because the placement
+contract is mostly about symlink semantics and that is exactly where the
+platforms differ. There is no `pip install` step, and that is the contract: a
+gate needing a package would mean something had broken the no-third-party rule.
+
+Which is also why `tests/test_agent_lint.py` is now stdlib `unittest`. It needed
+third-party pytest, so `run.sh` probed for it and announced loudly when absent —
+but announcing is not failing, and the gate still exited 0 with a mandatory suite
+unexecuted. 45 tests before, 45 after, plus 8 new ones pinning the routing
+contract.
+
+**Three linters stopped skipping in silence.** `prose-lint`, `status-register`
+and `spec-lint` answered an unreadable file with a bare `continue`: no
+diagnostic, no effect on the exit code. A file the gate could not read was
+indistinguishable from a clean one. They now name the path and the reason and
+fail. The same defect then turned up in this release's own new code — the
+mislabelled-paraphrase check printed its complaint and exited 0 — found by
+testing the gate instead of trusting it.
+
+**Two claims corrected rather than implemented.** README described the
+`produced_by` attribution as fail-closed; ADR-0003 classifies it detective
+(post-hoc) and `protocols/deliver.md` records its `Stop` hook deliberately
+unwired. The sentence was fixed, not the code: wiring the hook to make a README
+true would be promoting a control to protect a claim. And README advertised "the
+same `agent-lint.py` CI gate" while no CI existed anywhere — it now separates
+what `install.sh` places from what an adopting project still has to wire.
+
+**An install into a repository that already has a history.** The installer had
+only ever been validated against pristine temp directories. Pointed at a target
+where `.claude` already existed as a regular file, it ran the kernel and the
+entire `docs/graph/` scaffold to completion and *then* died on a raw
+`mkdir: Not a directory` — leaving a target with both root kernel files, a full
+graph tree, and no `.claude/`. A half-installed plant looks installed, which is
+the worst available outcome. A preflight now runs once before the first write,
+collects every offending path rather than dying on the first, and is
+adapter-scoped so installing one harness is not refused over a directory it will
+never touch. The test asserts the contract that matters: not that the install
+fails, but that the target is still **empty** afterwards.
+
+The same release stops a quieter version of the same thing. Delete a node from
+an installed plant's `docs/graph/protocols/` and re-install, and it came back
+with no log line, no backup, no warning. Re-adding a seed-owned node is correct —
+the seed owns its machinery — but doing it silently means the plant cannot tell
+the fast-forward reverted a deliberate deletion. It now says so, and stays quiet
+on a first install.
+
+**Every gate says what it can still miss.** `tools/gate-registry.py` is derived
+from `tests/run.sh` rather than maintained beside it, and refuses in both
+directions: a step nobody has classified, and a classification for a step that no
+longer runs. Each gate declares what it asserts, what it **reads**,
+and which false green it remains exposed to.
+
+The distribution is the finding. **Fifteen of the gates read only
+`tests/fixtures/`** — they prove a linter works and say nothing about whether the
+tree the seed ships obeys it. Reading `run.sh` by eye had suggested six. "The
+gate exits 0" and "the seed complies with everything it checks" are different
+sentences, and the distance between them is now a number. The registry
+classifies itself too, honestly: it checks that a classification exists, not that
+it is true.
+
+**Five parsers, one input table.** Parsing this repo's frontmatter has five
+implementations, because `graph-lint.py`, `agent-lint.py`, `status-register.py`
+and the rest each install into a plant as a standalone file and cannot share an
+import without changing the set of files every plant receives. So they get an
+equivalence test instead of a shared module: one input table, all five driven
+over it, loaded from disk rather than restated (a sixth implementation would have
+been the worst possible fix).
+
+It found eight divergences, and named the two that matter rather than smoothing
+them. A `description:` with an indented continuation is now refused by every
+consumer of the shared reader, with `status-register` the one recorded exception
+that still truncates. And the claim that `graph-lint.py`'s tokenizer never
+received the compound-fragment fix was, on review, **wrong**: `resolve()` scores
+through `_split_terms`/`_strength`, which have it. The old `_tokens` survives
+only behind `Node.routable_terms`, which nothing calls, and the test named for
+the divergence compared that dead pair against the live one — so it passed while
+being false, and could not have fired. It now asserts convergence on the path
+the router runs, and reverting the cap goes red.
+
+The lesson kept is about the shape, not the two instances: a test whose NAME is
+a finding becomes a liability the moment the finding is fixed, because it then
+pins the defect and reads as evidence. This one did exactly that, against a
+function the router had stopped calling. What replaced it asserts the property
+the routers must share, on the entry point each of them actually scores with —
+so the assertion survives a refactor that moves the code, and fails if either
+router loses the cap.
+
+**A fourth round injected twelve regressions and the gate caught eleven.** The
+twelfth was the same defect twice, and it was structural rather than a bug in any
+mechanism: bloat `core/AGENTS.md` past its budget and raise `KERNEL_BUDGET` in
+the linter, and the gate goes green; break a legal page so 25 entries fail their
+citability contract and file those 25 IDs as historical `EDITION_DEBT`, and
+`legal lint: PASS — 70 carrying recorded edition debt`.
+
+Every budget, threshold and debt ledger here is a plain literal sitting in the
+same file as the check it governs. The suite proves each one *can* fire, by
+overriding it in memory; nothing proved the **shipped value** had not been
+loosened to wave a real violation through. The doctrine forbids exactly this —
+"never raise a budget so existing text fits" — and `EDITION_DEBT`'s own comment
+says "a NEW entry may not join this list". Both were sentences, and only
+sentences.
+
+`tools/ratchet-lint.py` records every limit with the direction that counts as
+tightening. A ceiling may fall and a floor may rise freely; loosening either
+fails until `tests/ratchets.json` changes too — a separate, conspicuous edit to a
+file that exists for no other purpose. It does not pretend to more than that, and
+says so in its own docstring: nothing stops someone editing both files in one
+commit; what it stops is a limit moving *silently*, inside a change that looks
+like it is about something else. A tripwire, not a vault.
+
+Writing it produced the sharpest bug of the release. The first version reported
+`current=7600` while the file on disk plainly read `8_000`: Python validates its
+bytecode cache on (mtime, size), and `8_000` and `7_600` are the same byte
+length, so restoring the file within the same second replayed the stale `.pyc`.
+For most importers that is a curiosity; for a checker whose entire job is to
+report what the shipped values *are*, reading a cache would report a loosened
+limit as unchanged — worse than having no check. It compiles from source text
+now, every time. A tool that verifies constants, defeated by a constant-length
+edit, caught by its own first run.
+
+**A third round caught the one thing that would have made the new CI red on
+arrival.** `${corpus@Q}` is a bash 4.4 parameter transformation and macOS ships
+3.2 — and it sat in the branch that repairs a corrupted stamp, so on the mac leg
+the code handling a damaged record would itself have failed with "bad
+substitution". This repo already avoids `mapfile` for exactly that reason, with
+comments saying so, and the construct got in anyway.
+
+The same round found three checks narrower than the class each named, which by
+then was the pattern rather than the surprise. Preflight reached one directory
+level, so a read-only `.claude/skills/<name>/` fell through to the late check and
+half-installed — it now walks the directories that actually exist under the
+target, at any depth, because a list cannot keep preflight's promise that a
+refusal writes nothing. The completeness sweep covered claude-code only, so
+dropping `.prime/agent/APPEND_SYSTEM.md` or `opencode.json` still printed
+"OK — 376 destinations". And the templates regression *crashed instead of
+reporting*: `find` on a missing directory fails the pipeline under `pipefail`, so
+`set -e` killed the test before its own diagnostic printed — exit 1, zero bytes
+of output. A test that fails without saying why is barely better than one that
+passes.
+
+**A clean run was printing the word FAIL.** The gate registry's own regression
+ran the real 34-entry roster against a two-line fixture, so every passing gate
+emitted thirty "registry lists X but run.sh no longer runs it" lines and a
+FAIL banner as routine noise. Never a false green — the suite still turned
+genuinely red — but a passing run that prints the word a reader scans for teaches
+them to skim past it. Zero now.
+
+**And one reported defect turned out not to be ours.** Two confident-wrong routes
+were flagged as surviving the compound work; checked against the pre-release
+commit, both route identically there. They are a standing property of a lexical
+router whose triggers contain ordinary English idioms, not something this release
+introduced. Keeping a baseline copy to hand is what made the honest answer
+distinguishable from the flattering one, and the flattering one would have been
+"we caused these".
+
+**A second review round found the worst defect of the release, and it was in a
+fix.** `--legal-corpus yes --symlink` died every single time with
+`legal corpus placed partially (0 of 16 pages)` while all sixteen pages sat
+there, correct, as symlinks — the completeness check counted `-type f`. The
+check written to prevent a partial corpus was the only thing preventing a whole
+one, and it left a half-installed target behind. `place_tree` already carries
+that exact lesson in a comment written for an earlier bug, and this code
+repeated it at four sites. They are one guarded helper now, and the suite
+exercises the corpus under both link modes — which no test had ever done.
+
+The same round beat the honesty instrument twice more. Substituting two words in
+a trigger lands at 0.67 overlap, under the 0.80 line, and four such rows moved
+the held-out headline from 2/17 to 6/21 in silence; the threshold is now **0.50,
+measured** — the genuine rows top out at 0.43 and the attacks start at 0.67, so
+the line sits in the gap between two populations rather than at a round number.
+And repeating one correct row twenty times reported **20 of 20**, a perfect
+generalization score from a single example. Rows must be distinct now. Three of
+this release's own tests broke on that guard, correctly: they had been appending
+tasks the corpus already carried.
+
+**The bigram feature introduced a confident-wrong, and the sweep that found the
+rest of them was worth more than the fix.** `"double check the design time
+constants in the config file"` routed HIGH to `security`: `design-time` is a real
+compound only because `pentest` writes it in prose, and once admitted the prefix
+fold matched it against `security`'s unrelated trigger word "design". Taking
+every one of the roster's 60 compounds, writing each spaced into a neutral
+sentence, showed 26 routing confidently — the good ones being an agent's own name
+with a space, the bad ones all metaphors lifted out of description prose. An
+inferred compound is now licensed only by a name or a trigger, matches only where
+it literally appears, and earns no rare-term bonus. A compound the router
+inferred can confirm a route; it cannot create one.
+
+Also closed: a read-only *subdirectory* still produced a raw `Permission denied`
+mid-install; the M1 completeness check enumerated graph nodes only, so skipping
+`.claude/bound-hook.py` — the one hard-enforced control in the system — left the
+suite green; a corrupt stamp silently reset a plant's recorded decisions, and an
+out-of-domain value was carried forward while the log printed something else; the
+kernel deviation notice could be bypassed by symlinking the kernel at a foreign
+file; the spec test-mapping check understood Python citations but not the shell
+ones `SPEC-0001` actually uses; and the gate registry — fixed twice by hand —
+finally has a regression of its own, holding nine invocation spellings and both
+refusal directions.
+
+**Three independent reviewers were pointed at this release, and several of the
+claims above did not survive them.** What follows is what they broke, because a
+release that only reports the defects it found itself is reporting its own
+blind spot.
+
+`install.sh all --symlink`, run twice, produced **1, then 3, then 5** backups,
+for ever. `place_kernel` decided which of `CLAUDE.md`/`AGENTS.md` held the kernel
+by testing for a plain regular file — never true in symlink mode — so each of
+the five adapters claimed its own destination and the pair flipped on every
+call. The content stayed byte-identical, so nothing but `ls -la` could see it.
+The idempotence claim above was asserted and false, because the check that
+asserted it ran only under `--copy`. It runs in both modes now.
+
+**"Every byte goes through one canonical writer" was also false**, and the spec
+said so in a contract. `place_kernel` still places the sibling link by hand.
+Worse, the spec argued that this needed no test because the safety sweeps would
+catch a bypass "by construction" — a reviewer patched `place_file` to skip one
+protocol entirely and the whole suite stayed green. The sweep discovers its file
+set from what the install *produced*, so a destination the installer stops
+writing is absent from the set and is never checked. Discovery answers "is
+everything that got written safe"; it structurally cannot answer "did everything
+that should be written get written". That second question now walks the seed's
+own inventory, and the exploit fails by name.
+
+**A spec certified a test that was never written.** `SPEC-0002` marked a
+contract **green** against a test name appearing nowhere in the repository, and
+two more contracts pointed at tests exercising a different scenario. Three real
+tests now exist, and `seed-lint.py` greps every `§10` cell against the suite, so
+a spec can no longer certify coverage nobody wrote.
+
+**The honesty instrument was gameable twice over.** Two filler words appended to
+a verbatim trigger copy dropped its overlap from 1.00 to 0.75, under the
+threshold, and it counted as held-out evidence. And padding the held-out set
+with twelve throwaway rows expecting `LOW` satisfied the row floor while
+reporting "13 of 15 confident-correct" where the honest figure was 2 of 17 —
+strictly worse than the shrinking the floor was written to prevent. Overlap is
+now measured from both ends, because padding cannot lower how much of a trigger
+a task has swallowed; and a row expecting abstention may not file itself under
+another class.
+
+Auditing that found **a contaminated row in the held-out set itself**: `"make
+the failing test pass and nothing else"` is the contract row `"make the failing
+test pass"` with three words appended, and it was one of only three rows the
+held-out number rested on. Relabelling it cost a third of the headline, and the
+floor moved **down** from 3 of 18 to 2 of 17. A floor that can only be lowered
+by finding contamination, and raised only by measuring a better router, is doing
+its job in both directions.
+
+Also found and fixed: the legal corpus was invisible to `graft-audit.py`, so
+editing any of its pages produced an unclassifiable backup *and* a false
+"plant knowledge overwrite" on a seed-owned file. The plant's record could
+contradict its disk without anyone passing a wrong flag — decide `yes`, lose the
+corpus out-of-band, install another adapter, and the stamp still said `yes` over
+an empty directory. `test-full-install.sh` leaked a complete install into `/tmp`
+on every gate run, because a second `trap ... EXIT` replaces the first rather
+than stacking. The gate registry saw 4 of 8 ordinary invocation spellings and
+reported OK — a registry that cannot see a gate fails in the quietest way
+available. And three of the new checks had no planted violation, contradicting
+their own suite's stated contract; the first attempt at one of them passed for
+the wrong reason and had to be rewritten.
+
+One reviewer was wrong, and that is recorded too: asked to make `--force`
+suppress the kernel deviation notice for consistency, the answer is no. `--force`
+silences backup chatter. It does not get to mean "and don't mention what you
+destroyed" about a deviation the plant deliberately recorded on the one file
+every session loads. A test already pinned that, which is how the change was
+caught before it shipped.
+
+**A specialist the reference did not mention.**
+`documentation/agents-reference.md` said "18 agents" and was missing `legal`
+entirely — not just from a count, but from the summary table, the delegation
+edge list, the model-class tally and the per-agent sections. The roster has had
+nineteen since 6.12.0. A reader of the reference could not have known that
+specialist existed. The same pass corrected an ADR list that stopped at 0004
+while six are on disk, three corpus inventory tables that were between half and
+a third of the real page counts, and an `--eval` methodology section still
+describing one blended figure over a corpus that has since been split.
+
+`agents/01-architect.md` had a related staleness with teeth: it still told the
+architect to withdraw `legal` from the corpus "if the roster lacks it". The
+roster has not lacked it since 6.12.0, and the real constraint is a different
+one — architect's `delegates_to` is `tester` and `research-scout`, so the honest
+default is a handback naming `legal`, not a spawn. A charter that describes a
+condition which can no longer occur teaches the wrong move for the condition that
+actually does.
+
+**What the seed claims to be agnostic about.** The machinery is stack-agnostic.
+The corpora are not, and now say so: `library-corpus` is 53% nuget and maven, a
+.NET/Java estate, and the national layer of `legal-corpus` carries exactly one
+jurisdiction. An adopter on another stack gets the machinery and populates the
+rest through the ingest flow — which is also the artifact that delivers the
+version-pinned pages the corpus rationale had been claiming for itself, while the
+pages it actually ships are deliberately unpinned. Two promises, two artifacts,
+now attached to the right ones.
+
+And `documentation/host-capability-matrix.md` replaces "tool agnostic" with
+twelve capabilities across five adapters, each cell classified in ADR-0003's
+vocabulary and derived from the installers rather than from prose. It records
+what the phrase was covering: GitHub Copilot is **degraded**, not at parity, and
+Prime Agent's absence of a static roster is a different mechanism rather than a
+missing one.
+
+**Counts in prose drift while you are editing them.** `CLAUDE.md`'s gate count
+went stale twice inside the same session that was changing it. It no longer
+states one — it points at the tool that derives it. That is the same move as
+the gate registry itself, and the reason both exist.
+
+**A list of destinations was the defect, for the second time.** The preflight
+that refuses a bad target worked from a hand-written list of the directories each
+adapter creates — and that list drifted inside the release that introduced it.
+`.github/hooks` was missing, so a target holding a file at that path still wrote
+195 files before dying on the exact raw `mkdir: Not a directory` the preflight
+exists to replace. Patching the entry would have fixed the instance and kept the
+class: the list cannot be complete, since it also does not enumerate the fourteen
+per-skill directories under `.claude/skills/` and could not without restating the
+skill roster somewhere new.
+
+So there are two layers now, and each promises only what it can keep. The
+declared areas refuse before a single byte is written. Everything else — any
+depth no list could enumerate — still fails with this tool's own error naming the
+path, because every destination `mkdir` goes through one helper instead of
+trusting the list. The test asserts both halves, and the list's honesty in the
+other direction too: a directory it declares must be one the adapter really
+creates, or the preflight is refusing over paths that do not matter.
+
+This is the same lesson as `test-install-placement.sh`, which discovers the
+destination set from a real install rather than listing it. A list of places
+where something can go wrong is a guess about the future; deriving it is not.
+
+**What a T3 costs, measured once, with the funnel losing.** The seed had no cost
+model: seventeen of nineteen agents are Opus-class, every unit of doing is a
+clean-context spawn, and nothing measured what that buys. So one task was run
+twice from the same commit — the three-linter fix above — once with a brief
+carrying the method (invariant named, red-before-green required, an eight-point
+verification list) and once with the defect described in five lines and "tell me
+how you know it works".
+
+The unguided run used 11% fewer tokens, 20% fewer tool calls and 20% less wall
+clock. It also found a **fourth** linter with the identical silent skip —
+`tools/agnosticism-lint.py`, in the gate and installed into every plant — which
+the guided run did not, because the guided brief said three and it verified three,
+thoroughly. A brief precise enough to be checkable is also precise enough to bound
+the search.
+
+The fourth instance is fixed and pinned, which is how the measurement paid for
+itself. Its skip had even carried a rationale — "binary or unreadable: carries no
+prose" — while the tool's default glob is `*.md`, so the only thing it could skip
+was a markdown file it had failed to read. A stale reason reads exactly like a
+considered one.
+
+The conditions are recorded with the number, because the task is small,
+well-localized and highly specified, which is the shape that flatters an unguided
+run, and because the comparison measures cost-to-first-delivery rather than
+cost-to-correct — nobody has shown the baseline's fixes would fail if reverted.
+It establishes that the overhead on narrow work is 10–20% rather than a multiple,
+and that a tight brief has a recall cost no amount of rigour inside the brief
+recovers. It is one observation and it will not be quoted as more.
+
+**The seed specs its own two writing surfaces.** Kernel §3.1 says code without a
+spec is in remediation mode, and the seed had none of its own.
+`docs/specs/SPEC-0001-install-placement` and `SPEC-0002-routing-contract` now
+cover the two places where it writes into somebody else's repository or makes a
+quantitative claim about itself — 29 contracts, each mapped in §10 to a test that
+exists and is green. Writing them found a defect in them: SPEC-0001 claimed
+`--force` was covered by a suite containing no reference to `--force` at all.
+That contract now has the regression it claimed to have. The corpora are
+exempted in writing and for a reason: a corpus page is transcribed knowledge, not
+behaviour, and a Given/When/Then over a statute restates the statute.
+
+### The routers could not be reached by the words people type
+
+`STEM = 6` in both routers carried the comment *"prefix length for the
+singular/plural fold (test/tests, node/nodes)"*. It handled neither. The test
+was one-sided — the **task's** word had to be at least six characters and had to
+*prefix* a roster word — and a plural never prefixes its own singular, because
+it is longer. Measured over the tree that ships: **32%** of the agent roster's
+singular routing vocabulary and **39%** of the seed's `load_when:` vocabulary
+scored zero against their own plurals, and the rest matched at half strength.
+`agents`, `nodes`, `specs`, `risks`, `claims`, `facts`, `graphs`, `models`,
+`flows` and `pages` all reached nothing.
+
+Half strength was enough to change answers. *"our penetration test report needs
+its citations checked"* routed to `pentest`; the same sentence ending `check`
+routed to `devils-advocate`, because the trigger word is `check` and `checked`
+scored zero against it. A route that turns on the tense of one word is not a
+route.
+
+Both routers now reduce **both sides** with one deterministic stemmer, so an
+inflection scores as the word it inflects. The block is byte-identical in
+`agent-lint.py` and `graph-lint.py` and `seed-lint` fails if they differ — these
+two carry one scorer by copy, which is why the compound-fragment fix reached
+only one of them, and why this fold was wrong in both files for four releases
+with nothing comparing them.
+
+A stemmer's real risk is a *false* merge, and no mechanical rule separates
+`pin`/`pinned` from `rat`/`rating`. So every collision is enumerated in
+`tests/fixtures/router/stem-collisions.json` and reviewed by a person; a new one
+fails the gate until someone looks at it. It fired twice during this change and
+was right both times.
+
+Three things surfaced that were not in the plan. **Pronouns were scoreable
+routing vocabulary** — `we` was already in three shipped triggers, so every task
+saying "we need X" paid three agents a weight-2 match, and a trigger writing
+`our` collected the *rare-term* bonus and sent "our chain of language-model
+calls loops forever" HIGH to `security` on the strength of the word "our".
+**A trigger grounded in its charter can still be wrong**: `scan` and
+`signing keys` are both squarely security's, and both cost an adversarial row
+immediately — a deploy pipeline's scan step is reliability's, and "signing keys"
+reached "signed documentation" — so they were withdrawn and recorded as debt
+with the measurement rather than an opinion. And **stale bytecode served a suite
+measuring code that was not in the file**: `("ing", 3, 6)` to `("ing", 3, 7)`
+changes neither mtime nor size, so the `.pyc` validated; the new suite compiles
+from source text, as `ratchet-lint.py` already did for the same reason.
+
+One more thing fell out of it. `documentation/agents-reference.md` mirrors each
+agent's routing triggers *and* the golden rows expecting that agent, and gated
+neither; its "Golden routing tasks" heading claims *every row expecting this
+agent* and was listing only the original contract rows — 3 of `architect`'s 5,
+2 of `legal`'s 7. A partial list presented as a complete one, in the file that
+documents the roster. Both halves are regenerated from their homes, every row
+now carries its corpus class because the classes are never merged, and
+`seed-lint` fails if either drifts again.
+
+Seven charters gained vocabulary their own bodies lean on and no task could
+route to — `docs-librarian` had no `document`, `documentation`, `written` or
+`record`; `security` had no `vulnerability`. 27 such words fell to 12, and the
+remainder is a ratcheted ledger (`CHARTER_VOCAB_DEBT`) in which each survivor is
+deliberate: `architect`/`legal` and `ui-ux-designer`/`criteria` would take a word
+another charter owns by its own words, and `security`/`scan` is there because
+adding it was measured and cost more than it bought.
+
+Reducing both sides of every comparison costs something, and the number is
+recorded rather than left for someone to discover: routing is **2.3x slower**
+than 7.15.0, ~2.3 ms against ~1.0 ms per route, after a three-character prefix
+prefilter recovered part of it. That prefilter is only sound while every stem
+shares its word's first three letters, so that invariant is asserted over both
+routers' real vocabulary and a constructed table — and it earned its keep on the
+first run by failing on `added`, which the undoubling rule was reducing to `ad`.
+`planning` → `plann` → `plan` is right; `added` → `add` already was. Undoubling
+is now guarded, which fixes `ebbed`, `egged` and `adding` too.
+
+Net, per class and never averaged: contract 55/56 → 57/58, paraphrase
+2/17 → 4/17, adversarial confident-correct 3/12 → 5/12, adversarial
+confident-wrong **3 → 2**. That last number is ratcheted, so it may only fall
+again — and it fell without a trigger being tuned to a row.
+
+**And it went back to 3 before this release shipped**, because the fall did not
+survive review and the paragraph above does not get to stand as written. `down`
+was the only directional particle missing from `STOPWORDS`, and a trigger added
+in the same release made it df=1 vocabulary owned by `docs-librarian`: it was
+donating half the score that carried one adversarial row to its expected target,
+while simultaneously routing *"the checkout page went down for nine minutes"* to
+the documentation agent at HIGH. A 2×2 ablation over the same corpus separated
+the two changes and attributed the fall to the roster additions rather than to
+the scorer repair claimed here. Closing the stopword gap kills the misroute and
+returns the class to 3, which is a **loosening** — the owner's signature, not an
+edit — and the full reasoning lives at the constant in `agent-lint.py`. The
+router is not better than 3, and a limit that says otherwise is a limit bought
+with a live misroute.
+
+The corpus itself could not see any of this, and that is recorded rather than
+fixed. Every golden row is written in the same base forms as the triggers, so 18
+hand-derived inflected rows all passed **before** the fix as well as after, and
+an exhaustive search over every single-word inflection of every contract row
+yielded 22 verdict-changing rows of which 2 are grammatical English. A class of
+18 rows where 16 pass either way is coverage to look at, not evidence, so the
+class was thrown away, the two real rows were added as ordinary contract rows,
+and the vocabulary is now measured directly and exhaustively by
+`tests/test_router_reach.py` — 0% unreachable, ratcheted — instead of sampled
+through sentences. The **baited-and-reworded** cell of the corpus is still
+empty; filling it honestly needs an author who has not read the triggers, so it
+is named in the corpus header and in
+[the plan](docs/plans/router-lexical-reach.md) rather than faked.
+
+### Four jobs the graph described and routed to nobody
+
+The roster evaluation that answered U-40 found no duplication anywhere — the
+highest routing-trigger overlap between any two components is 0.18, and
+`prevents:` overlap peaks at 0.12. What it did find, once the owner pushed back
+on three of its four recommendations, was the opposite defect: **work the method
+believes is happening, with no owner**.
+
+| The work | How the graph described it | Who it routed to |
+|---|---|---|
+| starting a new project from the seed | `protocols/from-scratch.md`, nine phases, complete | **nobody** |
+| deliberating internally, no user in the loop | — | **nobody** |
+| authoring a durable tool | `canonize` catalogs "any durable tool **it produced**" | **nobody** |
+| choosing empty-repo vs existing-code | one conditional clause at `grow.md:555` | **nobody** |
+
+[The plan](docs/plans/unrouted-work.md) carries all four.
+
+**`from-scratch` was not missing. It was unreachable.** It installs the seed,
+builds `docs/graph`, and runs to `deliver` — and the kernel never named it,
+`install.sh` told every target ("empty" included) to "discover the project", and
+`/initialize` forwarded unconditionally to `grow`, the protocol built for the
+opposite case. The one link was a clause in Phase 1 of an 869-line file calling
+it a sub-step "for intent discovery", which misdescribes a nine-phase workflow
+that ends at `deliver`.
+
+Measuring it before touching it was worth the hour: `from-scratch` **invokes and
+does not duplicate**. Against all eleven nodes it adopts it restates **1.0%** of
+its own prose; against `grow`, **0.0%** — zero identical sentences, zero shared
+8-word shingles out of 1 006 — at 18% pointer density against `grow`'s 2%. So
+there was no content to reconcile, and the inversion is the finding worth
+keeping: **the unreachable protocol is the well-factored one.**
+
+`initialize` now **forks** — source to scout → `grow`, empty → `from-scratch` —
+instead of aliasing `grow`, and the kernel names both arms. `from-scratch` owns
+its entry, Phase 2 verifies an already-installed skeleton instead of assuming it
+creates one (the documented route now arrives *after* `install.sh` has run), and
+`skill.from-scratch-bootstrap` folded into it.
+
+**Brainstorm split by audience.** The only brainstorm the seed had could not
+exit without explicit user confirmation, so CYPRESS generating options *against
+itself* had no home. The two modes share a name and almost nothing else — the
+nine-question cap, the pacing and the convergence checklist are meaningless with
+nobody to question — so `brainstorm.mode-selection` now picks, the socratic mode
+reaches the owner through `skill.humanizer` (which it had never declared), and
+`skill.brainstorm-internal` runs on preconditions and kill conditions instead of
+questions, because a session brainstorming against itself produces one real
+option and two strawmen.
+
+**Toolcraft was doctrine filed as a protocol, and it is now three things.** The
+rule (`skill.toolcraft`, read by every session), the author
+(`agent.tool-smith`, spawned mid-task when a recurrence is noticed), and the
+cataloging (`protocol.canonize`, once, at close-out). Canonize's "no separate
+toolcraft spawn" was always about *cataloging* and is narrowed, never reversed.
+`rule.toolcraft` moved to a skill rather than the agent deliberately: seven of
+the eight kernel rules live in protocols and one already lives in a skill, but a
+rule whose only home is a specialist's charter is invisible to every session
+that never spawns it. `toolcraft.bounded-execution` went to
+`method.engineering-posture`, where an execution discipline every session needs
+belongs.
+
+The tool-smith's scope is the **plant's** operations, never seed or graph
+machinery — the test is what a tool operates *on*, not who asked — and refusing
+below its bar is a normal outcome of the charter.
+
+**Two regressions the new agent caused, both fixed at the cause.** Adding a
+20th agent is not free, and the gates said so twice:
+
+- `keep` in "we keep writing this same script" is a high-frequency English verb
+  whose dominant sense is unrelated to the trigger's. It took two paraphrase
+  rows to HIGH `tool-smith` — "can we **keep** European customer records on a
+  server in Virginia" routed to a tool-builder. Reworded.
+- More interesting: **one incidental word in a description demoted a term for
+  the whole roster.** "plan-of-record" pushed `record` from df=3 to df=4, across
+  the `weight 2 → weight 1` boundary, costing `architect` two points on an
+  unrelated adversarial row and dropping it under `FLOOR = 13`. The agent never
+  entered that ranking; it changed the arithmetic everyone else is scored by.
+  IDF is global, so every roster addition reweights every term — worth knowing
+  before the 21st agent.
+
+Both were fixed by changing the cause, never the budget or the corpus. As
+shipped, per `agent-lint.py --eval --dir agents` over 96 rows: contract 60/61,
+paraphrase 4/18 with **zero** confident-wrong, adversarial 4/12 with 3 (budget
+3, zero slack), unknown-domain 5/5. The adversarial figure moved after this
+paragraph was first written, for the stopword reason recorded above; the live
+numbers are what the tool prints, and this line is a transcription of it.
+
+Net: **14 protocols, 15 skills, 20 agents** — two hollow-or-unreachable nodes
+gone, two unowned jobs given owners, and the front door gaining the branch it
+never had.
+
+### The number that judged the roster was counting how much we talk about things
+
+U-40 asked whether any of the 19 agents, 15 protocols or 14 skills merges or
+retires, and the evidence gathered for it scored each component by how often its
+name appears across the method surface, labelling the low scorers *thin*.
+
+Re-derived against routing demand — rows in `agents/_routes.golden.tsv` that
+expect that agent — those two columns give Pearson **r = 0.17** across the 19
+agents. They are unrelated, and not by accident: a name-occurrence count
+measures how much **other** prose has to talk about a component, which peaks
+where a boundary is contested and bottoms out where it is clean.
+`devils-advocate` carries seven golden rows, tied for the most in the roster,
+and was labelled thin on eight mentions. Three of the six agents flagged thin
+sit at or above the roster's median routing demand.
+
+It was also unreproducible. The record named no surface for the count, and an
+exhaustive search over all 1 023 combinations of ten candidate surfaces
+recovers at most **3 of its 19 values** — so nobody could re-derive it and
+nobody could tell when it went stale. Two of the golden-row counts printed
+beside it, which *can* be checked, had already drifted inside one session of
+editing the corpus they count.
+
+The plan of record for the evidence was to publish it as a table under
+`documentation/`. That would have been the roster's fourth home, alongside
+`manifest.json`, the kernel roster line and the reference pages, in a repository
+whose governing rule is one home per fact.
+
+So the justification went into the components instead. Every one of the **59
+machinery nodes** now carries `prevents:` — the failure its own absence
+produces, the counterfactual rather than the charter — enforced by `seed-lint`,
+which rejects one that is missing, too short to name a failure, or `title:` and
+`description:` restated in the future tense. `python3
+tools/roster-justification.py` derives the table on demand, reading every column
+out of the node that owns it, and prints **evidence of use** and **class** as
+absent rather than guessing them: the only honest signal for use is usage, usage
+happens in grown plants, and class is a conclusion that cannot be sounder than
+the evidence row above it. The name-occurrence count and its *thin* label are
+retired. [ADR-0008](docs/decisions/adr-0008-roster-justification-lives-in-the-node.md)
+records all of it.
+
+The linter can tell that a `prevents:` exists and is not a restatement. It
+cannot tell whether it is true — `tools/gate-registry.py` now records that as
+`seed-lint.py`'s **semantic** false green, where the step had previously claimed
+to produce none.
+
+Writing 59 counterfactuals turned up a defect the count had never reached:
+`protocols/initialize.md` carried no `peers:` at all, making it the only
+machinery node with no edges in either direction, inside a graph whose router
+traverses edges. Its charter is "delegates unchanged to grow" and that edge did
+not exist. Fixed, with its `documentation/protocols-reference.md` mirror.
+
+**The merge/retire question itself is still open, and stays open.** Nothing in
+this repository can settle it; that was the one part of the superseded evidence
+that held up.
+
+### The ledger that said it was authoritative had never closed a row
+
+`docs/plans/grill-7.15.0-remediation.md` opens by saying it is the authoritative
+ledger, updated at the close of every slice, and that a ledger unchanged after a
+slice is a defect in the slice. Eighteen slices landed and its status column
+still read `open` for U-01 through U-33. Closure existed — in the eighteen slice
+records, which is a second home with the authoritative one stale.
+
+It has a disposition now, in §1.3, and the interesting part is the vocabulary it
+needed. `closed` was not one status but two: **twenty-two entries are closed with
+a named regression that goes red when the fix is reverted, and thirteen are fixed
+with nothing that notices if the defect comes back.** A reviewer confirmed the
+second class by reverting U-10 and U-11 in place and watching the full gate stay
+green. Five of the thirteen are prose, which is unpinnable here by construction —
+`prose-lint.py` reads two real files in the whole gate, already classified
+`coverage` — but two are worth a decision: a host capability matrix nothing
+re-derives, and `.github/workflows/gate.yml`, which runs the gate on two
+platforms while no gate step asserts it exists.
+
+**And five ledger entries had been referenced for an entire remediation without
+ever being stated.** `U-34…U-42` was written as a range — one row, one status —
+and a range is not an enumeration: it defers and re-verifies members nobody can
+name. Exhaustive search finds no finding text anywhere in the tree for U-35,
+U-37 and U-39, and none for U-38 beyond `§2` row 13 promising it to a slice that
+delivered only its partner. The range is expanded into nine rows, and §1.2
+states all five. Two are reconstructed from evidence the tree still carries
+(U-34 from SPEC-0002 and the HANDOFF's Decision D, U-38 from its slice
+assignment). **Three are recorded as gaps rather than recovered**, in those
+words, with reopen conditions that strike them at the next ledger review if the
+source analyses never turn up. Nothing was invented into the place where an
+original stood.
+
+Three more numbers were corrected where they sat in prose rather than where they
+are derived: §7.3 of that ledger published three corpus classes and a gating
+sentence reading "confident-wrong = 0 in every class" while a fourth class,
+`adversarial`, carried every confident-wrong route the seed can demonstrate; two
+plan status lines quoted gate-step and ratchet counts that had each moved twice,
+and now name `gate-registry.py --summary` and `ratchet-lint.py --show` instead;
+and the lifecycle rework's budget table did not reproduce against the tree it
+describes. ADR-0007 is append-only and keeps its text, so its claim that 2 500 is
+"roughly 2.5× the largest of the three" is corrected in a dated amendment: it is
+**1.8×** against a 1 384-line `graft.md`, and since `grow` (875) and `harvest`
+(922) are both under the general 1 000-line ceiling, the exemption that ADR
+grants currently binds exactly one node, at 55% of it.
+
 ## 7.15.0 — the roster a session enumerates is the roster the graph holds (2026-09-13)
 
 `docs/graph/agents/` has been the one home of every agent since 6.0.0, and the

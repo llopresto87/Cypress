@@ -1,20 +1,21 @@
 ---
 name: toolcraft
-description: Doctrine (kernel §3.8) — when an operation will recur across independent sessions, the unit of work is a durable, tested, cataloged tool, not a throwaway script. Defines what counts as a durable tool and what stays disposable. EXECUTION lives in the canonize close-out (protocols/canonize.md) — the one docs-librarian spawn at task end catalogs tools and persists knowledge together; toolcraft never spawns separately.
-id: protocol.toolcraft
+description: Doctrine (kernel §3.8) — when an operation will recur across independent sessions, the unit of work is a durable, tested, cataloged tool, not a throwaway script. Defines what counts as a durable tool, what stays disposable, the procedure sibling (a project skill), and the fail-closed rule that a task is incomplete until a durable tool is cataloged or recorded absent. AUTHORING a tool is agent.tool-smith; CATALOGING one happens inside the single canonize close-out spawn. This node is the rule both of them answer to, and every session reads it.
+id: skill.toolcraft
 tier: 2
-kind: protocol
+kind: skill
 origin: seed
 title: toolcraft — the doctrine of durable, tested, cataloged tools versus throwaway scripts
 owns:
   - rule.toolcraft
   - toolcraft.durability-criteria
-  - toolcraft.bounded-execution
 requires:
 peers:
+  - agent.tool-smith
   - protocol.canonize
   - protocol.grill
   - protocol.harvest
+  - method.engineering-posture
 artifacts:
   - templates/skill.template.md
   - templates/agent.template.md
@@ -24,37 +25,45 @@ load_when:
   - "recurring operation across sessions"
   - "catalog a tool, tools_built, skills_built"
   - "throwaway prototype versus reusable tooling"
-  - "command hung, session stuck, wrap in a timeout, run detached"
-est_tokens: 1450
+  - "crystallize a repeated procedure into a project skill"
+prevents: A roster with an author for durable tools and no standard for them — nothing saying what earns durability, so every judgement about whether to build one is made fresh and no two sessions draw the line in the same place.
+est_tokens: 1240
 ---
 
-# Protocol: toolcraft — the durable-tool doctrine
+# toolcraft — the durable-tool doctrine
 
-This node owns **the toolcraft rule** — durable tools compound;
-throwaway scripts are rework. When an operation will recur across
-independent sessions, the unit of work is a **durable, tested tool**
-with a stable interface — designed so at plan time, named in
-`tools_built` on every handback, and cataloged in `docs/graph/tools/`
-by the librarian inside the close-out spawn. Genuine one-offs and
-throwaway prototypes stay disposable. A task is **not complete**
-until any durable tool is cataloged or explicitly recorded absent.
+This node owns **the toolcraft rule** (kernel §3.8) — durable tools compound;
+throwaway scripts are rework. When an operation will recur across independent
+sessions, the unit of work is a **durable, tested tool** with a stable
+interface — designed so at plan time, named in `tools_built` on every handback,
+and cataloged in `docs/graph/tools/` by the librarian inside the close-out
+spawn. Genuine one-offs and throwaway prototypes stay disposable. A task is
+**not complete** until any durable tool is cataloged or explicitly recorded
+absent.
 
-Work generates capabilities, not only knowledge. A task needs an
-operation performed — seed a fixture, migrate a schema, probe an
-endpoint, regenerate a client — and an agent writes code to do it. If
-that code dies with the session, the next task that needs the same
-operation writes it again, slightly differently, with a fresh chance to
-get it wrong. Toolcraft is the doctrine that keeps a capability once it
-is worth keeping.
+Work generates capabilities, not only knowledge. A task needs an operation
+performed — seed a fixture, migrate a schema, probe an endpoint, regenerate a
+client — and an agent writes code to do it. If that code dies with the session,
+the next task that needs the same operation writes it again, slightly
+differently, with a fresh chance to get it wrong. Toolcraft is the doctrine that
+keeps a capability once it is worth keeping.
 
-**This file owns the doctrine only.** The execution — cataloging the
-tool in `docs/graph/tools/` — happens inside the single close-out
-spawn defined in `docs/graph/protocols/canonize.md`, in the same
-librarian brief that persists the task's knowledge. There is no
-separate toolcraft spawn; a second spawn with the same bootstrap and
-lint run would be coordination waste.
+**This node is the rule, not either half of the work.** Three things used to sit
+in one file and are now separate, because they happen at different times and are
+done by different actors:
 
-## What counts as a durable tool
+| | Who | When |
+|---|---|---|
+| **the rule** — what earns durability | this node; every session reads it | always |
+| **authoring** — building the tested tool | `docs/graph/agents/tool-smith.md` | mid-task, when the recurrence is noticed |
+| **cataloging** — the page in `docs/graph/tools/` | the librarian, inside `docs/graph/protocols/canonize.md` | once, at close-out |
+
+There is still **no separate cataloging spawn**: a second spawn with the same
+bootstrap and lint run would be coordination waste, and canonize owns that rule.
+Authoring is not a close-out step and never was — canonize catalogs the tool "it
+produced", and the producer is the tool-smith.
+
+## What counts as a durable tool (`toolcraft.durability-criteria`)
 
 Catalog a piece of real code that:
 - **recurs across independent sessions** — an agent, expert, or skill
@@ -108,35 +117,6 @@ name every tool they build in `tools_built` and every recurring procedure in
 (`docs/graph/templates/prompts/handback-payload.md`); those fields are what the
 close-out brief forwards to the librarian.
 
-## Bounded execution
-
-A tool is only durable if the session that runs it survives it. Every
-command an agent runs is bounded, and anything that may outlive the bound
-is detached, logged to disk, and terminated by a marker:
-
-1. A foreground command carries an explicit bound. Service control, process
-   signalling and installers are the commands that hang most and get no
-   exemption.
-2. Work that may legitimately exceed the bound is never run in the
-   foreground: it is launched detached with hangup trapped, its process
-   group recorded to a file, its output written to a durable log under the
-   project, and it ends with a terminal result line and an exit-code file.
-3. Waiting is bounded polling of that log for new bytes or the marker. A
-   poll that sees no new evidence for a fixed number of intervals stops and
-   reports "no progress since T"; it never re-issues the same command.
-4. "Running" is claimed only on an observed liveness signal — the pid alive
-   and the log growing, or device utilisation — never on the launch having
-   returned.
-5. A process is stopped by its recorded pid or process group with bounded
-   escalation, never by a pattern that can match the shell issuing the kill.
-6. Completion is the marker, not the absence of output and not a timeout;
-   a liveness threshold is derived from measured durations of that task
-   class, not guessed.
-
-A timeout alone covers only the first clause. The other five are what
-distinguish "finished" from "stuck" when the work is long, and a stall is
-reported, never repeated.
-
 ## Fail-closed doctrine
 
 A task is **not complete** until any durable tool it produced is
@@ -148,13 +128,15 @@ built a reusable capability — a tool, or a procedure worn in by repetition —
 but left it uncaptured is a silent capability leak: the next session cannot
 find what exists, so it rewrites it.
 
-The bounded-execution clauses are delivered as a mechanism where the harness
-has a hook surface: the Claude Code integration installs a pre-tool guard
-(`.claude/bound-hook.py`) that refuses a blocking-prone shell command carrying
-neither a bound nor a detached launch, so clause 1 is enforced before it is
-read. Harnesses without a hook surface carry the clauses as the agent's own
-discipline; their integration notes say so.
-
 Cross-project mirror: `harvest` folds **project-agnostic** tools into the
 seed's `tool-corpus/` and **project-agnostic** skills into `skill-corpus/`,
 user-triggered only.
+
+## Bounded execution lives elsewhere
+
+The discipline for running a command that may outlive its session — explicit
+bounds, detached launches, a durable log, bounded polling, liveness as an
+observed signal, completion by marker — was filed here because toolcraft was the
+nearest protocol. It is an execution discipline every session needs, not
+tool-authoring doctrine, and its home is `method.engineering-posture`
+(`toolcraft.bounded-execution`).

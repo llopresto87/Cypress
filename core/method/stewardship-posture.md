@@ -22,6 +22,7 @@ load_when:
   - "which test level, unit vs integration vs e2e"
   - "ending the session, handing off in a known state"
   - "should this script become a durable tool"
+prevents: Model output treated as established fact without a second source, and example data drawn from production because no standing rule forbids it — two obligations that bind every session and sit inside no protocol's flow.
 est_tokens: 1050
 ---
 

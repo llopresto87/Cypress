@@ -1,13 +1,48 @@
-# Golden routing corpus for agent-lint.py --eval  (plan §4.3)
-# Columns: task<TAB>expected_agent
+# Golden routing corpus for agent-lint.py --eval
+#
+# Columns: task<TAB>expected_agent<TAB>class          (class optional, default `contract`)
+#
 # expected_agent is a roster agent name, OR the sentinel "LOW" meaning the
 # router must return LOW/NONE confidence (the "commission an expert" path).
-# Owned/extended by `tester` + `data-ml` (plan §4.3). This tester-authored
-# corpus is the acceptance contract for the routing_triggers the implementer
-# / data-ml add to the agent defs (18 in the current roster), and the seed
-# for the production
-# .claude/agents/_routes.golden.tsv.
 #
+# WHY THE CLASS COLUMN EXISTS. Until 7.16.0 this file was one undifferentiated
+# set and --eval printed a single number: "top-1 accuracy 100.0% (55/55)". That
+# number was true and it measured almost nothing. 46 of the 55 scored rows were
+# a verbatim vocabulary subset of the very agent they were supposed to select —
+# the tasks had been written from the triggers. Exactly one row shared less than
+# half its vocabulary with its target. A corpus co-authored with the artifact it
+# scores measures mutual consistency, not routing ability, and a single combined
+# percentage hides which one you are looking at. So the classes are reported
+# SEPARATELY and never averaged together:
+#
+#   contract        Task vocabulary drawn from the agent's own triggers. This is
+#                   an acceptance contract for the trigger set: it proves a
+#                   trigger still selects its owner. It is NOT evidence the
+#                   router generalizes, and must never be quoted as accuracy.
+#   paraphrase      Real-world phrasing of the same need, authored WITHOUT
+#                   consulting any agent's routing_triggers. This is the only
+#                   class that measures generalization. Abstention (LOW/NONE) is
+#                   a CORRECT outcome here — the router is a keyword heuristic
+#                   and saying "no clear specialist" is the designed answer when
+#                   it has no signal. What must not happen is a confident wrong
+#                   answer, because the kernel tells briefs to cite the band as
+#                   evidence.
+#   adversarial     Phrasing built to bait a plausible-but-wrong specialist.
+#   unknown-domain  Expected LOW: nothing on the roster is written for this.
+#
+# PROVENANCE of the paraphrase rows: authored 2026-09-13 during the 7.15.0
+# remediation audit, from the real-world description of each task, before the
+# router was changed and without reading the triggers of the agent each row
+# names. They were NOT adjusted afterwards to make the router look better —
+# tuning triggers against this set, or moving a failing row into `contract` to
+# protect a headline number, is the specific dishonesty the class column and
+# agent-lint's overlap check exist to prevent. The overlap check FAILS the lint
+# if a row labelled `paraphrase` is in fact a near-copy of its target's
+# vocabulary, so the label cannot be quietly wrong.
+#
+# Owned/extended by `tester` + `data-ml`. Seed for the production
+# .claude/agents/_routes.golden.tsv.
+
 # --- reviewer ---
 audit this diff against the spec	reviewer
 review the pull request before we merge	reviewer
@@ -57,18 +92,49 @@ write a proof-of-concept exploit for the upload endpoint	pentest
 # --- growth-orchestrator ---
 grow the knowledge graph from this existing codebase	growth-orchestrator
 adopt this project into the docs graph by subsystem boundary	growth-orchestrator
+
+# INFLECTION ROWS (7.16.0). Two rows below are existing contract rows with one
+# word put into a different form. They are here because the corpus could not see
+# a defect that reached a third of the router's vocabulary: `STEM = 6` tested
+# whether the TASK's word prefixed a roster word, which a plural never does, so
+# `nodes` scored zero against `node` and `checked` zero against `check`. Every
+# row in this file was written in the same base forms the triggers use, so the
+# whole corpus shared the blind spot it exists to measure.
+#
+# A whole `inflected` CLASS was built and then thrown away, and the measurement
+# is why: 18 hand-derived inflected rows all passed BEFORE the fix as well as
+# after, and an exhaustive search over every single-word inflection of every
+# contract row found 22 that change the verdict, of which exactly 2 are
+# grammatical English. A class of 18 rows where 16 pass either way is coverage
+# to look at, not evidence — so the two real ones are here as ordinary contract
+# rows, and the vocabulary itself is measured directly and exhaustively by
+# tests/test_router_reach.py, which asserts 0% of either router's vocabulary is
+# unreachable by its own plural. A sentence samples; that test enumerates.
+#
+# Still missing, and named rather than faked: the BAITED-AND-REWORDED cell.
+# `adversarial` holds 12 fixed phrasings and `paraphrase` holds reworded but
+# unbaited ones; nothing measures a bait row restated in other words, which is
+# where the router is weakest. Filling it honestly needs an author who has not
+# read the triggers — see the PROVENANCE note above — which the 7.16.0 author
+# was not. docs/plans/router-lexical-reach.md §4 S5 carries it as open work.
+checking the change is integrated and not bolted on	reviewer
+adopting this project into the docs graph by subsystem boundary	growth-orchestrator
 run the from-scratch bootstrap for a brand new project	growth-orchestrator
 # --- growth-scout ---
 gather executable evidence from this subsystem's source	growth-scout
 scout this repository boundary and return claims with paths and symbols	growth-scout
 produce the evidence ledger for adopting this codebase	growth-scout
+# --- tool-smith ---
+make this throwaway script a durable tested tool	tool-smith
+this operation recurs, build reusable tooling for it	tool-smith
+build a tested command for resetting the dev database	tool-smith
 # --- seed-installer ---
 install the expert seed system into this target project	seed-installer
 place the kernel and adapters additively for this host tool	seed-installer
 # --- novel-stack / no clear specialist -> LOW (commission path) ---
-set up a cobol batch job on the mainframe	LOW
-tune the fortran numerical solver kernel	LOW
-configure the sap abap transport request	LOW
+set up a cobol batch job on the mainframe	LOW	unknown-domain
+tune the fortran numerical solver kernel	LOW	unknown-domain
+configure the sap abap transport request	LOW	unknown-domain
 try to refute every load-bearing claim in this finished document	devils-advocate
 check this deliverable's citations against the sources they name	devils-advocate
 what single fact would break this conclusion	devils-advocate
@@ -83,3 +149,99 @@ is this obligation actually in the corpus or do we need an ingest	legal
 is this regulatory obligation actually recorded in the legal corpus or not	legal
 determine the regulatory lawful basis for this data processing	legal
 prepare an impact assessment and map the compliance obligations	legal
+
+
+# =========================================================================
+# PARAPHRASE — real-world phrasing, authored without reading any trigger set.
+# Abstention is a correct outcome here; a CONFIDENT WRONG answer is not.
+# See the provenance note in the header before touching a single row.
+# =========================================================================
+someone can read another customer's invoice by changing the number in the URL	security	paraphrase
+there is no way to prove this bug is fixed; write something that fails today	tester	paraphrase
+go over yesterday's merge and tell me what will break	reviewer	paraphrase
+the nightly job dies at 3am and nobody notices until morning	reliability	paraphrase
+our churn predictor scores 0.9 offline and does nothing useful once live	data-ml	paraphrase
+can we keep European customer records on a server in Virginia	legal	paraphrase
+find out what the official guidance actually says before we guess	research-scout	paraphrase
+we have written permission to break into the staging cluster, do it	pentest	paraphrase
+users cannot find the export button and keep calling support	ui-ux-designer	paraphrase
+write down what done means for the invoice feature so we can argue about it now	product	paraphrase
+two services both write to the same table and we keep getting conflicts	architect	paraphrase
+# Relabelled from `paraphrase` on review: this is the contract row
+# "make the failing test pass" with three words appended, so it measured
+# the trigger set, not generalization — and it was one of only three
+# confident-correct rows the held-out number rested on. The two-way
+# overlap check caught it; the one-way check it replaced could not.
+make the failing test pass and nothing else	implementer	contract
+nobody can find anything we wrote down six months ago	docs-librarian	paraphrase
+tear this finished report apart before I send it to the board	devils-advocate	paraphrase
+our chain of language-model calls loops forever and burns money	multi-agent-architect	paraphrase
+put this framework into the payments repo without wrecking what is there	seed-installer	paraphrase
+read the whole codebase and tell me what it does, change nothing	growth-scout	paraphrase
+we are storing passwords with md5	security	paraphrase
+# A function word must not be able to select an agent. `down` was df=1
+# vocabulary owned by docs-librarian and took this row at HIGH, score 24
+# against a runner-up of 2 -- the third instance of the class after `our`
+# and the reflexives. Abstention is the correct outcome here; a confident
+# pick of ANY agent on this phrasing means a closed-class word is scoring
+# again.
+the checkout page went down for nine minutes last night and we only found out from twitter	reliability	paraphrase
+the thing is broken, fix it	LOW	unknown-domain
+what is the capital of France	LOW	unknown-domain
+
+
+# =========================================================================
+# ADVERSARIAL — phrasings built to BAIT a plausible-but-wrong specialist.
+# The class was declared in CORPUS_CLASSES, in SPEC-0002 and in this header
+# and carried ZERO rows, so "confident-wrong = 0 in every class" was true of
+# it only because it was empty. Each row below leans on vocabulary that
+# belongs to one agent while the work belongs to another; the expected value
+# is the agent that should actually do it.
+# Authored 2026-09-13 by reading each agent's triggers and deliberately
+# borrowing them for a task they do not own — the opposite of the paraphrase
+# set, and the reason these are NOT held-out evidence of generalization.
+# =========================================================================
+# (this row expected `ui-ux-designer`, because the subject is a screen.
+#  But `pentest`'s description says outright that `security` "owns
+#  design-time threat models", and ui-ux-designer's charter never
+#  mentions threat modelling. The screen is what is being modelled, not
+#  the deliverable. Expected value corrected to `security` — and note
+#  the row was scoring as confident-CORRECT before, which means it was
+#  rewarding the router for taking the bait.)
+write a threat model for the new onboarding screen layout	security	adversarial
+the test for the authorization rule is flaky and times out	tester	adversarial
+# (`docs-librarian` scored 0 here and did not appear in the ranking at all —
+#  unwinnable rather than adversarial, the same defect already fixed once this
+#  round. Reworded so it has a real, losing foothold.)
+the delegation caps we agreed are written down nowhere in the graph	docs-librarian	adversarial
+our penetration test report needs its citations checked	devils-advocate	adversarial
+the data migration needs an architecture decision record	architect	adversarial
+refute the claim that this endpoint is rate limited	devils-advocate	adversarial
+# (replaced: the previous row here expected `reliability` for "the security
+#  scanner is failing to start in CI", and reliability scores literally 0
+#  on it — it does not appear in the ranking at all. A bait row whose
+#  correct answer shares no vocabulary with the task tests nothing; it is
+#  unwinnable rather than adversarial.)
+the deploy pipeline fails its security scan step every night	reliability	adversarial
+# (was a near-copy of `product`'s own trigger vocabulary at 0.60 overlap — a
+#  contract row in adversarial clothing. A bait row must borrow SOMEONE
+#  ELSE's vocabulary. This one leans legal/security and the work is product's.)
+decide what done means for the gdpr data-export screen	product	adversarial
+the model evaluation harness has a race condition	implementer	adversarial
+# (an earlier row here expected `reviewer` for "review the spec for the
+#  multi-agent fan-out limits" — but `review the orchestration framework
+#  and delegation caps` is multi-agent-architect's own trigger, so the
+#  router was right and the row was wrong. A bait row must be unfair to
+#  the router, not to the reader.)
+# (expected `reviewer` on the grounds that reviewing a merge is its job.
+#  But "review the orchestration framework and delegation caps" is
+#  multi-agent-architect's own trigger, near-verbatim, so the router's
+#  answer is the better one. This is the SECOND time this row was
+#  written unfairly; the lesson is that a bait row must be unfair to the
+#  router and fair to the reader, and checking it against every agent's
+#  triggers — not just the expected one — is how you tell.)
+check yesterday's merge for anything that breaks the delegation caps	multi-agent-architect	adversarial
+# (0.67 overlap with `research-scout`'s own vocabulary — same defect. Reworded
+#  to lean on security/architect vocabulary while the work stays retrieval.)
+we need the vendor's own signed documentation before we design with their crypto	research-scout	adversarial
+the graph router picks the wrong node for legal questions	docs-librarian	adversarial

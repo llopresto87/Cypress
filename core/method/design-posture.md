@@ -40,6 +40,7 @@ load_when:
   - "roll your own crypto or session primitive, maintained library"
   - "degraded dependency, silent fallback to a default, fail-open or fail-closed posture"
   - "destructive or stranding operation, describe-only default, explicit apply flag"
+prevents: Separation chosen by habit — layers with no responsibility, dependencies pointing whichever way was convenient, and abstractions with one implementation.
 est_tokens: 4450
 ---
 

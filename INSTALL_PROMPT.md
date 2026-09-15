@@ -5,8 +5,9 @@ into a project. There is nothing else to run first and nothing else to run after
 it installs **all** the seed's files into your target and then drives a
 **complete, full-depth growth** of the target's `docs/graph/` knowledge system.
 `install.sh` is only the placement mechanism this prompt invokes; `grow` is the
-growth doctrine it executes; `/initialize` is only a thin coding-tool adapter to
-the same flow. Paste this whole file into an agent-capable chat and follow it.
+growth doctrine it executes; `/initialize` is the entry fork that chooses between `grow` and
+`from-scratch`; on a target with source to scout it delegates here, and on an
+empty one it does not. Paste this whole file into an agent-capable chat and follow it.
 
 ---
 
@@ -72,8 +73,10 @@ back to an author. Repeat until it exits 0. Growth is not done while that gate
 is red, and a row is covered-to-evidence, absent-with-a-reason-and-the-paths-you-
 searched, or a named blocker — never blank. Phase 6 validation then passes
 against the graph, never against the file tree. Do not work from a summary and do not
-skip or collapse its phases. If the target has no executable evidence, `grow`
-routes through `from-scratch` for intent discovery.
+skip or collapse its phases. If the target has no executable evidence, `grow` is the wrong protocol for it:
+`protocol.initialize` owns the entry fork and hands an empty repository to
+`from-scratch`, a nine-phase workflow that authors the project and its graph
+and ends at `deliver`. It does not return here.
 
 Three steps are historically skipped by orchestrators optimizing for the
 checklist instead of depth, and each is a defect, not a judgment call:

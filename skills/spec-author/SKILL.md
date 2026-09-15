@@ -23,6 +23,7 @@ load_when:
   - "code and spec disagree"
 artifacts:
   - templates/spec.template.md
+prevents: A spec whose contracts no tester can encode, which turns section 10 into a list of intentions and leaves the spec unfalsifiable.
 est_tokens: 1250
 ---
 

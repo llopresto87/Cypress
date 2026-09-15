@@ -27,6 +27,7 @@ load_when:
   - "scope an increment, slice the work"
   - "an increment shipped, revise the plan, record what happened"
   - "plan is stale, assumption broke, architecture change"
+prevents: Increments chosen one at a time with no plan-of-record, so nothing says which contract an increment satisfies and a broken assumption is discovered rather than recorded.
 est_tokens: 2300
 command: true
 ---
@@ -173,6 +174,21 @@ and exits as below. A red gate twice on one increment reopens this pass
 (`protocol.recover`). Every revision ends green under `grill-lint.py`.
 
 ## Increment shape (`grill.increment-shape`)
+
+§9 may hold increments **inline**, or as a **ledger**: an index row per
+increment pointing at its own file under `docs/graph/plans/grill/`. Inline is
+right while the plan is small. Switch to the ledger when §9 starts dominating
+the file — a plan is read whole, and §9 is the section that grows for as long as
+the project does, so a mature plan held in one file becomes the largest single
+thing a session loads. That is the progressive-discovery failure this method
+exists to prevent, arriving in the document that describes the work.
+
+Both forms coexist, so a plan migrates one increment at a time. The contract is
+unchanged either way: the required fields live with the increment, in whichever
+file holds it, and `grill-lint.py` refuses an index row with no file, a file no
+row points at, and an increment defined twice.
+
+
 
 §9 is where grill earns its keep. A good increment looks like:
 

@@ -32,7 +32,8 @@ load_when:
   - "sonnet or opus, which model class"
   - "unknown agent type, specialist not registered, no such subagent"
   - "the roster was just installed, can I spawn it yet"
-est_tokens: 2690
+prevents: Specialists picked by whoever is asking, with no route, no model class, no spawn bound, and briefs too vague to verify the result against.
+est_tokens: 3273
 ---
 
 # Delegation — the team, routing, and bounds
@@ -67,6 +68,7 @@ simulation in the chat is not delegation.
 | `multi-agent-architect` | Agent-topology design/review: delegation bounds, tool contracts, fail-closed gates, evals, cost budgets. |
 | `growth-orchestrator` | Growth DNA: conducts grow/adopt/from-scratch end to end.          |
 | `growth-scout`        | Read-only per-boundary evidence gathering for graph authors.      |
+| `tool-smith`          | A plant operation done by hand enough times to have earned a durable, tested tool; owns the bar and refuses below it. Never seed machinery. |
 | `seed-installer`      | Additive seed/adapter install; verifies the host loads the kernel. |
 
 ## Route mechanically first

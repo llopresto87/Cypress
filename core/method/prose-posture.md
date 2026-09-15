@@ -30,6 +30,7 @@ load_when:
   - "should this be a list or prose; when to use a table; sentence case headings"
   - "do not fake a human voice; no planted typos, no detector chasing, no invented anecdotes"
   - "when to stop editing; difference is not improvement; over-editing stable language"
+prevents: Prose written to a style rule instead of to its meaning, with the genre ignored and the information contract broken in the name of readability.
 est_tokens: 3900
 ---
 

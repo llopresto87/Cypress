@@ -8,6 +8,7 @@ routing_triggers:
   - "which protocol should we enter for this request"
   - "coordinate the delivery across specialists"
   - "classify the request and pick the next step"
+  - "classify this into a covered or contained lane and name the expertise it needs"
 can_delegate: true
 max_spawn_depth: 3
 delegates_to:
@@ -28,6 +29,7 @@ delegates_to:
   - growth-orchestrator
   - growth-scout
   - seed-installer
+  - tool-smith
 id: agent.orchestrator
 tier: 2
 kind: agent
@@ -45,6 +47,7 @@ peers:
   - agent.implementer
   - agent.reviewer
   - agent.docs-librarian
+prevents: Nobody holding the thread of a multi-specialist request — each worker spawned against a fresh reading of the goal, none of them accountable for the tier the whole task was classified at, and the session ending when the last reply is sent rather than when the work is delivered.
 est_tokens: 2571
 ---
 

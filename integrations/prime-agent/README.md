@@ -75,11 +75,15 @@ choice; the committed single home stays `.prime/agent/agents/*.md`.
 
 Every protocol whose node declares `command: true` in its frontmatter is
 exposed as a slash command; `install.sh` **generates** one prompt-template
-file per such node into `.prime/agent/prompts/` — the same roster as every
-other harness, since all draw from the same `command:` field. Each is a
+file per such node into `.prime/agent/prompts/` — the same roster it generates
+for Claude Code and opencode, since those three draw from the same `command:`
+field. GitHub Copilot gets that roster through a different generator
+(`.github/prompts/<name>.prompt.md`); Codex gets none of it, because
+`install_codex` never calls `generate_slash_commands` and is the one adapter
+with no command surface at all. Each is a
 short pointer into the corresponding `docs/graph/protocols/<name>.md`
 node (the single home). The user-sovereign meta-loop protocols (`graft`,
-`grow`, `harvest`) and the canonize-folded `toolcraft` carry no `command:`
+`grow`, `harvest`) carry no `command:`
 field and are commands on no harness.
 
 ## Progressive-discovery enforcement (extension)
@@ -134,7 +138,7 @@ kernel; it maps the kernel's discipline onto Prime Agent's primitives:
   keep evidence in variables.
 - **Close-out** → canonize into `docs/graph/`; author any reusable TOOL or
   project SKILL **in the plant** (home `docs/graph/skills/<name>.md`, projected
-  to `.prime/agent/skills/<name>/SKILL.md`, committed) per `protocol.toolcraft`,
+  to `.prime/agent/skills/<name>/SKILL.md`, committed) per `skill.toolcraft`,
   never in the global `~/.prime/agent/skills/`; and persist reusable *operating*
   lessons with the continual harness (`refine.run(...)`) — the cross-session
   memory Claude Code lacks. A project skill is a plant deliverable, not a
