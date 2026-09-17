@@ -1,5 +1,46 @@
 # Changelog
 
+## 7.19.0 — the seed's own agnosticism gate sees where a leak lands, and learns the operator-path class (2026-09-17)
+
+The seed runs its own agnosticism gate against itself: `tests/seed-lint.py`
+calls the shared `tools/agnosticism-lint.py` over the committed tree, so a
+leaked project name, host address or operator path cannot ship inside a
+component that claims to name no single project. That gate was decorative in
+two of the ways `docs/plans/lifecycle-protocol-rework/slice-07-agnosticism-gate-covers-the-seed.md`
+names, and this release closes them for the trees where an operator path had
+actually reached the dev-plans.
+
+**The scan now reaches where a leak lands.** Its roots gained `docs/plans` and
+`tools`, and its named files gained `install.sh`, `DOCUMENTATION.md` and
+`INSTALL.md`; the scan of every root now matches `*.py` and `*.sh` as well as
+`*.md`. A hardcoded path in a script and a scratch note in a plan — exactly the
+class the earlier `*.md`-only corpus scan never opened — are now inside the
+gate. `tests/` stays out deliberately: it holds the gate's own violation
+fixtures, and scanning them would fail the gate on its own RED cases. The
+dangling-reference arm keeps its own narrower `*.md` corpus walk unchanged — it
+is link integrity, not agnosticism.
+
+**A fourth objective detector: the absolute operator home path.**
+`agnosticism-lint.py` gained a `home-path` class alongside its host-IP, CVE and
+forbidden-term arms. It flags a real operator home directory — `/home/<user>/`,
+`/Users/<user>/`, `/root/<name>` and `C:\Users\<user>\` — the same objective
+class as a leaked host address, matching the *shape* of a home path rather than
+any one account. Generic documentation placeholders (`/home/user/`,
+`/home/AGENTS.md`, a redacted `/root/` ellipsis, `C:\Users\Public\`) are
+allowed the way the RFC 5737 ranges and loopback are, and a `/home/` embedded in
+a URL host does not match, so a scanned tree stays quiet until a real operator
+location appears. The detector is stdlib `re`, dependency-free, and importable,
+so `seed-lint.py` reuses it rather than keeping a second copy.
+
+**One-way door, and what is left.** Widening what a gate covers is a behaviour
+change with a disclosure edge: a plant whose dev-plans or tooling carry an
+operator path, or an in-scope leak the narrower gate never looked at, goes red
+on the next run — a redaction to make, not a regression. This closes
+slice-07's "Hole 1" and "Hole 3" for the plan and tool trees and adds the
+operator-path detector; the broader closure it describes — `integrations/`,
+`documentation/`, the `*_PROMPT.md` files, the `--forbid` and version-pin arms —
+stays a later pass.
+
 ## 7.18.0 — the inventory owes evidence for what a project rests on, and gains a kind for what it is for (2026-09-17)
 
 `KIND_PLAN` decided what a growth pass owes each thing the project is made of,

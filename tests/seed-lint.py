@@ -176,9 +176,9 @@ LIFECYCLE_NODES = frozenset({
 
 # EAGER_BUDGET bounds what a harness loads on EVERY session before any routing
 # happens: the kernel, plus whatever roster/skill metadata that harness
-# enumerates at start-up. 32 000 bytes (~8k tokens) is four times the kernel's
-# own budget, which is the room the roster and skill descriptions need at the
-# current roster size.
+# enumerates at start-up. 41_600 bytes is about 5.2x KERNEL_BUDGET (8_000),
+# which is the room the roster and skill descriptions need at the current
+# roster size.
 EAGER_BUDGET = 41_600
 
 # Named, dated, countable exemptions — the idiom legal-lint.py uses for edition
@@ -3011,8 +3011,9 @@ def check() -> None:
 
     # -- corpus agnosticism + cross-reference scan (mechanical floor) ----
     # Catches the OBJECTIVE plant-identifier leak class the harvest
-    # agnosticism gate promises — a real host IP, a pinned CVE, a dangling
-    # corpus/template link — over the seed's shipped prose. Subtler
+    # agnosticism gate promises — a real host IP, a pinned CVE, an absolute
+    # operator home path, a dangling corpus/template link — over the
+    # seed's shipped prose. Subtler
     # fingerprints (a project name, a stack combo) remain human judgment:
     # the seed cannot hardcode plant names to blocklist without itself
     # leaking them — which is why the shared tool takes them as --forbid
@@ -3024,7 +3025,20 @@ def check() -> None:
     scan += [ROOT / f for f in ("manifest.json", "README.md", "CHANGELOG.md")
              if (ROOT / f).exists()]
     agn = load_agnosticism_lint()
-    for finding in agn.scan(scan, relative_to=ROOT):
+    # The agnosticism scan reaches BEYOND the corpus roots above, to the trees
+    # and file types where an operator leak actually lands: the dev-plans, the
+    # tooling, the installer and the top-level docs, and *.py/*.sh there as well
+    # as *.md. A hardcoded path in a script or a scratch note in a plan is
+    # exactly the leak the *.md-only corpus scan never looked at. tests/ stays
+    # OUT — its own deliberate violation fixtures live there. The
+    # dangling-reference arm below keeps its own narrower *.md corpus walk: it is
+    # link integrity, not agnosticism, and its scope is unchanged.
+    agn_scan = list(scan)
+    agn_scan += [ROOT / r for r in ("docs/plans", "tools") if (ROOT / r).is_dir()]
+    agn_scan += [ROOT / f for f in ("install.sh", "DOCUMENTATION.md", "INSTALL.md")
+                 if (ROOT / f).exists()]
+    for finding in agn.scan(agn_scan, globs=("*.md", "*.py", "*.sh"),
+                            relative_to=ROOT):
         fail(f"{finding.path}: {finding.message}")
     # The dangling-reference arm is link integrity, not agnosticism, so it
     # stays here — but it walks the same file set, through the same iterator.

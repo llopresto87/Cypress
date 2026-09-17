@@ -8,7 +8,7 @@ example silently narrows it for everyone downstream, and review misses
 those far more often than it catches them. This is the mechanical floor
 under the human judgement, over any tree, for any component.
 
-Three objective classes:
+Four objective classes:
 
   forbidden term   a caller-supplied identifier — project, product,
                    company, service, internal component, operator, path,
@@ -19,11 +19,18 @@ Three objective classes:
                    those are what an example is supposed to use
   pinned advisory  a CVE id; durable components carry surface knowledge,
                    not one release's security bulletin
+  home path        an absolute operator home directory — /home/<user>/,
+                   /Users/<user>/, /root/<name>, C:\\Users\\<user>\\ — a real
+                   filesystem location that names one machine's owner, the
+                   same objective class as a host-IP literal; generic
+                   documentation placeholders (/home/user/, /home/AGENTS.md,
+                   /root/ + ellipsis, C:\\Users\\Public\\) are allowed, the way
+                   the documentation IP ranges are
 
 What it cannot do is guess the caller's own identity: a component cannot
 enumerate the names it must not contain without containing them. That is
 what --forbid is for — the adopting tree passes its own tokens, the way
-graft-audit.py takes --tokens. Everything subtler than these three (a
+graft-audit.py takes --tokens. Everything subtler than these four (a
 domain noun, a stack combination, an identifying count) stays human
 judgement and is not faked here.
 
@@ -62,6 +69,27 @@ CVE_RE = re.compile(r"\bCVE-\d{4}-\d+\b")
 IP_ALLOWED = frozenset({"127.0.0.1", "0.0.0.0", "255.255.255.255"})
 IP_ALLOWED_PREFIXES = ("192.0.2.", "198.51.100.", "203.0.113.")
 
+# Absolute operator home paths. A real /home/<user>/, /Users/<user>/,
+# /root/<name> or C:\Users\<user>\ names one machine's owner, the same
+# objective class as a host-IP literal. The account segment must start with an
+# alphanumeric and use real account characters, which (a) keeps a generic
+# placeholder like /home/<user>/ and this module's own regex source from
+# self-matching, and (b) requires a real name after /root/, so a redacted
+# /root/... example is not a leak. A leading boundary keeps a /home/ embedded
+# in a URL host (".../home/docweb/") from matching.
+HOME_USER_RE = re.compile(
+    r"(?<![A-Za-z0-9._-])(?:/home/|/Users/)([A-Za-z0-9][A-Za-z0-9._-]*)/")
+HOME_ROOT_RE = re.compile(
+    r"(?<![A-Za-z0-9._-])/root/([A-Za-z0-9][A-Za-z0-9._-]*)")
+HOME_WIN_RE = re.compile(
+    r"(?<![A-Za-z0-9])[Cc]:\\Users\\([A-Za-z0-9][A-Za-z0-9._ -]*)\\")
+# The generic account names a placeholder is entitled to use, the way a
+# documentation IP is: an example home under one of these is not a leak.
+HOME_ALLOWED_USER = frozenset({
+    "user", "username", "you", "youruser", "example", "name", "me",
+    "public", "default", "someone",
+})
+
 DEFAULT_GLOBS = ("*.md",)
 
 
@@ -93,6 +121,21 @@ def iter_files(paths, globs=DEFAULT_GLOBS):
         elif p.is_file():
             seen.setdefault(p.resolve(), p)
     return list(seen.values())
+
+
+def _home_paths(line):
+    """Every absolute operator home path on `line`, in match order. An account
+    segment in HOME_ALLOWED_USER is a generic placeholder and is skipped; a
+    /root/<name> is always a real name (the regex already excludes the redacted
+    ellipsis form) and is always reported."""
+    hits = []
+    for rx in (HOME_USER_RE, HOME_WIN_RE):
+        for m in rx.finditer(line):
+            if m.group(1).lower() not in HOME_ALLOWED_USER:
+                hits.append(m.group(0))
+    for m in HOME_ROOT_RE.finditer(line):
+        hits.append(m.group(0))
+    return hits
 
 
 def scan(paths, forbid=(), globs=DEFAULT_GLOBS, relative_to=None):
@@ -140,6 +183,11 @@ def scan(paths, forbid=(), globs=DEFAULT_GLOBS, relative_to=None):
                     rel, n, "advisory", m.group(0),
                     f"pinned advisory '{m.group(0)}' — durability gate "
                     f"(belongs in a plant's docs, never the seed)"))
+            for hit in _home_paths(line):
+                findings.append(Finding(
+                    rel, n, "home-path", hit,
+                    f"absolute operator home path '{hit}' — agnosticism gate "
+                    f"(use a <home> placeholder, not a real operator location)"))
     return findings
 
 

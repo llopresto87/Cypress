@@ -504,6 +504,47 @@ PY
 }
 caseSHELL_FLOOR_CLAIM_MATCHES_THE_SHEBANG
 
+# 21. ADR-0004: the agnosticism scan reaches docs/plans, tools, install.sh,
+# DOCUMENTATION.md and INSTALL.md — the trees and files where an operator path
+# actually lands — and it scans *.py and *.sh there, not only *.md. Each new
+# root/file/glob is pinned by planting an operator home path and asserting the
+# gate now FAILS on it. tests/ stays OUT of scope (its own violation fixtures,
+# including this change's, live there), which the clean baseline at the top of
+# this file already proves — the fixtures carry a /home/exampleuser/ path and
+# the baseline lints clean, so the exclusion is load-bearing, not decorative.
+caseAGNOSTICISM_GATE_SCANS_DOCS_PLANS_TOOLS_INSTALLER() {
+  # a dev-plan .md under docs/plans (newly scanned root)
+  python3 -c "open('$TMP/docs/plans/scout-01-kernel.md','a').write(chr(10)+'Ran the probe from /home/exampleuser/Cypres_plant and captured the log.'+chr(10))"
+  expect_fail "absolute operator home path" "agn-scope-docs-plans"
+  restore docs/plans/scout-01-kernel.md
+  # install.sh (a newly named top-level file)
+  python3 -c "open('$TMP/install.sh','a').write(chr(10)+'# staged under /home/exampleuser/stage'+chr(10))"
+  expect_fail "absolute operator home path" "agn-scope-install-sh"
+  restore install.sh
+  # DOCUMENTATION.md and INSTALL.md (newly named top-level files)
+  python3 -c "open('$TMP/DOCUMENTATION.md','a').write(chr(10)+'Built under /home/exampleuser/build.'+chr(10))"
+  expect_fail "absolute operator home path" "agn-scope-documentation-md"
+  restore DOCUMENTATION.md
+  python3 -c "open('$TMP/INSTALL.md','a').write(chr(10)+'Installed to /home/exampleuser/opt.'+chr(10))"
+  expect_fail "absolute operator home path" "agn-scope-install-md"
+  restore INSTALL.md
+}
+caseAGNOSTICISM_GATE_SCANS_DOCS_PLANS_TOOLS_INSTALLER
+
+# 22. ADR-0004: *.py and *.sh are scanned under a scanned root, not only *.md.
+caseAGNOSTICISM_GATE_SCANS_PY_AND_SH() {
+  # a *.py under tools/ (a newly scanned root)
+  python3 -c "open('$TMP/tools/prose-lint.py','a').write(chr(10)+'# scratch: /home/exampleuser/scratch'+chr(10))"
+  expect_fail "absolute operator home path" "agn-scope-tools-py"
+  restore tools/prose-lint.py
+  # a *.sh under a scanned root. No *.sh ships under a scanned root today, so the
+  # glob's whole value is future files like this one; plant a fresh one to pin it.
+  python3 -c "open('$TMP/tools/zz-agn-fixture.sh','w').write('#!/usr/bin/env bash'+chr(10)+'OUT=/home/exampleuser/out'+chr(10))"
+  expect_fail "absolute operator home path" "agn-scope-root-sh"
+  rm -f "$TMP/tools/zz-agn-fixture.sh"
+}
+caseAGNOSTICISM_GATE_SCANS_PY_AND_SH
+
 # 17. Every check_* in seed-lint.py is either exercised above or declared here.
 # The binder is the point: the nine gaps were invisible because nothing compared
 # the two sets, so each new check silently joined them. A check added from now

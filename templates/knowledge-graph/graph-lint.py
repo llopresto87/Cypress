@@ -119,8 +119,8 @@ VERSION_RE = re.compile(r"(?<![\w./§-])(?:[vV]?[\^~]?\d+\.\d+(?:\.\d+)?(?:-[A-Z
 ARTIFACT_REVISION_RE = re.compile(r"(?:SPEC|ADR|RFC|PRD|RUNBOOK|ISSUE|PR)[-_ ]?\d+\s*$", re.I)
 # Words -> tokens, applied to the whole file and not to the half of it below
 # the fence: a loader pays for the frontmatter it opens too, and a node with
-# sixty `load_when` triggers costs those tokens on every read
-# (SPEC-0001-gate-assertion-floor §4 GRAPH_LINT_BUDGET_COUNTS_FRONTMATTER).
+# sixty `load_when` triggers costs those tokens on every read, so the budget
+# counts the whole file.
 TOKENS_PER_WORD = 1.35
 # STEM is the LAST-RESORT prefix fold, not the inflection rule. The inflection
 # rule is `_stems()` in the canonical stemmer block below, which reduces both
@@ -754,17 +754,16 @@ def check_artifacts(nodes: list, errs: list) -> None:
 
 
 # Where in the frontmatter a version token is an ASSERTION rather than a
-# routing handle. SPEC-0001-gate-assertion-floor §6 owns the table; the rule it
+# routing handle. ASSERTION_KEYS below enumerates those positions; the rule it
 # makes checkable is the router's own (docs/graph/index.md): the fact lives in
 # docs/graph/libraries/, and a release identifier may appear in a node's
 # routing surface without the node claiming anything. `load_when: draft-07` is
 # a keyword a task is matched against; `title: the JSON surface, RFC 8259` is
 # the node saying which release this project uses.
 #
-# A key nobody has classified defaults to ROUTING. The cost is recorded as
-# FRONTMATTER_UNKNOWN_KEY_UNSCANNED in that spec §7 — a disclosed residual, not
-# a caught defect — and it is the price of a linter that does not break on the
-# next key somebody adds.
+# A key nobody has classified defaults to ROUTING. That residual is disclosed
+# here, not caught as a defect — it is the price of a linter that does not
+# break on the next key somebody adds.
 ASSERTION_KEYS = ("title", "description", "prevents", "reason", "scope", "ends_when")
 
 

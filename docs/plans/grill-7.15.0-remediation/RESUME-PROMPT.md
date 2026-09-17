@@ -11,8 +11,8 @@ disagree, re-derive and fix both.
 
 ## Scope
 
-This doctrine governs work on the **CYPRESS seed** at `/home/okik/Cypress`
-(`git@github.com:llopresto87/Cypress.git`, branch `main`), and specifically the
+This doctrine governs work on the **CYPRESS seed** at `<the seed checkout>`
+(`<seed remote>`, branch `main`), and specifically the
 **review → fix → review loop over the seed's own two specifications**:
 
 - `docs/specs/SPEC-0001-install-placement.md` — what `install.sh` may do to a

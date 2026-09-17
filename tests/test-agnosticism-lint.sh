@@ -113,4 +113,28 @@ PY
 grep -q "import contract: OK" "$TMP/out" || fail "import contract assertions did not run"
 echo "  scan()/iter_files() importable — the seed-lint reuse contract — OK"
 
+# 9. The absolute operator-home-path detector (ADR-0004). A real /home/<user>/,
+#    /Users/<user>/, /root/<name> or C:\Users\<user>\ is a leak the same way a
+#    real host IP is; generic placeholders (/home/user/, /home/AGENTS.md,
+#    /root/ + ellipsis, C:\Users\Public\) and a clone URL / doc IP / loopback
+#    are not. The slug names the function that runs, not a comment.
+caseAGNOSTICISM_LINT_FLAGS_ABSOLUTE_HOME_PATH() {
+  run 1 --root "$FIX/home" --glob '*.md' --glob '*.py' --glob '*.sh'
+  grep -q "tool.py:2: absolute operator home path '/home/exampleuser/'" "$TMP/out" \
+    || fail "home path in a .py not flagged with file:line + path"
+  grep -q "plan.md:3: absolute operator home path '/home/exampleuser/'" "$TMP/out" \
+    || fail "home path in a .md not flagged"
+  grep -q "build.sh:3: absolute operator home path '/root/myproject'" "$TMP/out" \
+    || fail "/root/<name> in a .sh not flagged"
+  grep -q "FAIL (3 finding(s))" "$TMP/out" || fail "expected exactly 3 home-path findings"
+  # the placeholder page is clean: generic /home/user/, /home/AGENTS.md, a
+  # redacted /root/ ellipsis, C:\Users\Public\, a clone URL, a doc IP and
+  # loopback are all allowed.
+  run 0 --file "$FIX/home/allowed.md"
+  grep -q "agnosticism lint: PASS" "$TMP/out" \
+    || fail "a page of generic placeholders was not clean"
+  echo "  absolute operator home path flagged; generic placeholders allowed — OK"
+}
+caseAGNOSTICISM_LINT_FLAGS_ABSOLUTE_HOME_PATH
+
 echo "test-agnosticism-lint: PASS"

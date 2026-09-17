@@ -97,7 +97,7 @@ other check in this remediation was established.
 `docs/plans/grill-7.5.0-composable-expertise.md`, a committed historical plan.
 
 **Why it matters.** The repository is public
-(`github.com/llopresto87/Cypress`). The lines expose an operator's home directory
+(`<seed remote>`). The lines expose an operator's home directory
 layout and a local assistant-memory path. Separately, leaving them makes step 1
 impossible to land green without an exemption, and an exemption on the first file
 the widened gate catches is how a gate becomes decorative.
