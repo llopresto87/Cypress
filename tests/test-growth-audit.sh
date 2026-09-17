@@ -26,6 +26,765 @@ audit() { python3 "$AUDIT" "$PLANT" "$ROOT" "$@" >"$TMP/out" 2>&1 && echo 0 || e
 # same, for a plant other than the main fixture
 audit_at() { local d="$1"; shift; python3 "$AUDIT" "$d" "$ROOT" "$@" >/dev/null 2>&1 && echo 0 || echo $?; }
 
+
+# Re-invoked as `bash "$SELF" __case scn_<name>` to run ONE scenario in its own
+# process under the gate pool; each scenario builds its OWN mktemp targets.
+SELF="$ROOT/tests/test-growth-audit.sh"
+
+# ======================================================================
+# Shared helpers and every scenario/case function are defined ABOVE the
+# __case dispatch so a re-invoked scenario subprocess can reach them.
+# ======================================================================
+
+# ==========================================================================
+# 7.5.0 — expertise composes through the graph.
+#
+# A core or significant stack element owes an `expertise.*` node: the Tier-2
+# handle that says when it is in play and routes to its pin page and its
+# standards page without restating either. These cases pin the derivation
+# (who owes one, who does not), the substance (a form is not a node, and a
+# node routing to no pin home is not one either), the two-majors shape, and
+# the staffing default the node changes.
+# ==========================================================================
+
+# a planned plant carrying one dotnet item. $1 = dir, $2 = significance,
+# $3 = kind (default runtime). Leaves the --plan output in $TMP/plan-out.
+expertise_plant() {
+    local d="$1" sig="$2" kind="${3:-runtime}"
+    rm -rf "$d"; mkdir -p "$d"
+    bash "$ROOT/install.sh" claude-code --project-dir "$d" >/dev/null 2>&1
+    python3 "$AUDIT" "$d" "$ROOT" --plan >/dev/null 2>&1 || true
+    printf '<Project/>\n' > "$d/app.csproj"
+    python3 - "$d" "$sig" "$kind" <<'PY'
+import json, pathlib, sys
+f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
+r["inventory"] = [{"kind": sys.argv[3], "name": "dotnet", "version": "9.0",
+                   "significance": sys.argv[2], "evidence": ["app.csproj:1"]}]
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+    python3 "$AUDIT" "$d" "$ROOT" --plan >"$TMP/plan-out" 2>&1 || true
+}
+
+planned_paths() {   # the paths --plan wrote into the record for its inventory
+    python3 - "$1" <<'PY'
+import json, pathlib, sys
+r = json.loads((pathlib.Path(sys.argv[1])/".cypress/coverage.json").read_text())
+print("\n".join(e["path"] for i in r["inventory"] for e in i.get("expect", [])))
+PY
+}
+
+# $1 = plant dir, $2 = page stem, $3 = the `raw:` value ("" writes no raw key)
+raw_page() {
+  python3 - "$1" "$2" "$3" <<'PY'
+import pathlib, sys
+plant, stem, val = pathlib.Path(sys.argv[1]), sys.argv[2], sys.argv[3]
+head = f"---\nraw: {val}\n---\n" if val else ""
+(plant/"docs/graph/sources/normalized"/f"{stem}.md").write_text(
+    head + f"\n# {stem} docs\n\n## Fact\n\n"
+    + ("A retrieved upstream fact with its URL. " * 14) + "\n")
+PY
+}
+
+# ==========================================================================
+# 7.18.0 — the inventory owes evidence for what a project is built on, and
+# gains a kind for what it is for (ADR-0003). A `domain` row owes what every
+# other kind owes — a best-practices page, external grounding, and its own
+# `domain.{slug}` routing node — and `objective` enters as the twelfth kind,
+# what the project is FOR, its expertise grounded one hop away through
+# `grounded_by`. The migration is one-directional: `--plan` raises a domain
+# row's grounding and unions its newly owed paths, and never the reverse.
+# ==========================================================================
+
+# a planned plant carrying one domain row in the state EVERY grown plant is in:
+# grounding required:false and an expect the tool could not derive, hand-written
+# by the scout. $1 = dir. Leaves the record for the case to re-plan.
+domain_plant() {
+  local d="$1"
+  rm -rf "$d"; mkdir -p "$d"
+  bash "$ROOT/install.sh" claude-code --project-dir "$d" >/dev/null 2>&1
+  python3 "$AUDIT" "$d" "$ROOT" --plan >/dev/null 2>&1 || true
+  python3 - "$d" <<'PY'
+import json, pathlib, sys
+f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
+r["inventory"] = [{"kind": "domain", "name": "the knowledge graph",
+                   "slug": "knowledge-graph", "significance": "core",
+                   "evidence": ["docs/graph/index.md:1"],
+                   "expect": [{"path": "architecture/knowledge-graph.md",
+                               "why": "hand-written; the tool cannot derive it"}],
+                   "grounding": {"required": False, "sources": []},
+                   "expert": {"warranted": False,
+                              "why": "the docs-librarian already holds it"}}]
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+}
+
+# --- 46. an ABSENT row still owes the artifacts it declares ----------------
+caseAUDIT_ABSENT_ROW_STILL_CHECKS_DECLARED_ARTIFACTS() {
+  local out
+  rm -rf "$TMP/x46"; cp -a "$TMP/absent" "$TMP/x46"
+  python3 - "$TMP/x46" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
+# Absent, and honestly so by every rule check_row_shape knows — and still
+# naming a page it says the graph owes it. The page is not there.
+r["inventory"] = [{"kind": "framework", "name": "gfm", "slug": "gfm",
+                   "significance": "significant", "status": "ABSENT",
+                   "reason": "superseded by the markdown row",
+                   "searched": ["src/"],
+                   "evidence": ["docs/graph/index.md"],
+                   "expect": [{"path": "docs/graph/best-practices/gfm.md"}],
+                   "grounding": {"required": False, "sources": []}}]
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x46" "$ROOT" 2>&1)" || true
+  grep -q "UNGROWN" <<<"$out" \
+      || fail "an ABSENT row's missing planned artifact was not reported UNGROWN"
+  grep -q "best-practices/gfm.md — does not exist" <<<"$out" \
+      || fail "the missing artifact the ABSENT row declared was not named"
+  [[ "$(audit_at "$TMP/x46")" == 1 ]] \
+      || fail "an ABSENT row that owes a file it does not have passed the gate"
+  # And the same with HOLLOW when the page exists but is not one.
+  mkdir -p "$TMP/x46/docs/graph/best-practices"
+  printf '# gfm\n\n{{what this best practice is}}\n' \
+      > "$TMP/x46/docs/graph/best-practices/gfm.md"
+  out="$(python3 "$AUDIT" "$TMP/x46" "$ROOT" 2>&1)" || true
+  grep -q "HOLLOW" <<<"$out" \
+      || fail "an ABSENT row's placeholder-only artifact was not reported HOLLOW"
+  grep -q "best-practices/gfm.md" <<<"$out" \
+      || fail "the hollow artifact was not named"
+}
+
+# --- 47. an ABSENT row still owes its grounding ---------------------------
+caseAUDIT_ABSENT_ROW_STILL_CHECKS_GROUNDING() {
+  local out
+  rm -rf "$TMP/x47"; cp -a "$TMP/absent" "$TMP/x47"
+  python3 - "$TMP/x47" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
+r["inventory"] = [{"kind": "framework", "name": "gfm", "slug": "gfm",
+                   "significance": "significant", "status": "ABSENT",
+                   "reason": "superseded by the markdown row",
+                   "searched": ["src/"],
+                   "evidence": ["docs/graph/index.md"],
+                   "expect": [],
+                   "grounding": {"required": True, "sources": []}}]
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x47" "$ROOT" 2>&1)" || true
+  grep -q "UNGROUNDED" <<<"$out" \
+      || fail "an ABSENT row requiring grounding and citing nothing was not UNGROUNDED"
+  grep -q "framework gfm" <<<"$out" || fail "the ungrounded row was not named"
+  [[ "$(audit_at "$TMP/x47")" == 1 ]] \
+      || fail "an ABSENT row that requires grounding it has not got passed the gate"
+  # The boundary this pass deliberately does NOT cross: whether an ABSENT row
+  # must declare `expect` at all is the owner's open KIND_PLAN question
+  # (grill.md §12 row 11), so `expect: []` keeps its escape from BLANK.
+  ! grep -q "BLANK        framework gfm" <<<"$out" \
+      || fail "an ABSENT row with no expect was made to answer for planned artifacts"
+}
+
+# --- 48. an ABSENT row still owes a staffing decision ---------------------
+# `significance: core` is what makes the question owed here, not the kind:
+# needs_staffing() reads significance as well as STAFFED_KINDS, and going
+# through significance keeps this case clear of KIND_PLAN entirely.
+caseAUDIT_ABSENT_ROW_STILL_CHECKS_STAFFING() {
+  local out
+  rm -rf "$TMP/x48"; cp -a "$TMP/absent" "$TMP/x48"
+  python3 - "$TMP/x48" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
+r["inventory"] = [{"kind": "framework", "name": "gfm", "slug": "gfm",
+                   "significance": "core", "status": "ABSENT",
+                   "reason": "superseded by the markdown row",
+                   "searched": ["src/"],
+                   "evidence": ["docs/graph/index.md"],
+                   "expect": [],
+                   "grounding": {"required": False, "sources": []}}]
+                   # …and no `expert` key at all: the question is unasked.
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x48" "$ROOT" 2>&1)" || true
+  grep -q "UNSTAFFED" <<<"$out" \
+      || fail "an ABSENT core row that records no staffing decision was not UNSTAFFED"
+  grep -q "framework gfm" <<<"$out" || fail "the unstaffed row was not named"
+  [[ "$(audit_at "$TMP/x48")" == 1 ]] \
+      || fail "an ABSENT row left the staffing question unasked and passed the gate"
+}
+
+# --- 49. a record with nothing in its inventory has nothing to be held to --
+# The only non-empty guard today is a print on the --plan path; do_lint never
+# asks. An emptied inventory is therefore the cheapest possible green.
+caseAUDIT_EMPTY_INVENTORY_IS_A_FATAL_FINDING() {
+  local out
+  rm -rf "$TMP/x49"; cp -a "$TMP/absent" "$TMP/x49"
+  python3 - "$TMP/x49" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
+r["inventory"] = []
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x49" "$ROOT" 2>&1)" || true
+  [[ "$(audit_at "$TMP/x49")" == 1 ]] \
+      || fail "a record with an empty inventory passed the gate"
+  grep -q ".cypress/coverage.json" <<<"$out" \
+      || fail "the empty-inventory finding did not name the record"
+  grep -q "inventory" <<<"$out" \
+      || fail "the empty-inventory finding did not say what was empty"
+  ! grep -q "coverage complete" <<<"$out" \
+      || fail "a record holding nothing still summarised as coverage complete"
+}
+
+# --- 50. an UNKNOWN collection is carried, not dropped --------------------
+# lint_inventory has had the UNKNOWN branch since case 45; lint_collections
+# never got one, so a collection row closing UNKNOWN with a named blocker
+# reaches neither the findings list nor the summary's carried count.
+caseAUDIT_UNKNOWN_COLLECTION_ROW_IS_CARRIED() {
+  local out
+  rm -rf "$TMP/x50"; cp -a "$TMP/absent" "$TMP/x50"
+  python3 - "$TMP/x50" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
+for c in r["collections"]:
+    if c["name"] == "legal/":
+        c.update(status="UNKNOWN",
+                 blocker="regulatory applicability is the owner's determination")
+    # The changelog row has to be honest about the file this case is about to
+    # write into. $TMP/absent closed every collection ABSENT and then ran
+    # --unfilled --rename, which moved docs/graph/changelog.md aside; the
+    # disclosure below re-creates it, and lint_collections' ABSENT branch
+    # calls any live leaf in an ABSENT collection CONTRADICTED. Leaving the
+    # row ABSENT makes the disclosure itself a violation; omitting the
+    # disclosure trips SILENT. Both are fatal, so this case cannot observe
+    # the thing it exists to observe without stating the true status of a
+    # collection the plant now has. That mutual exclusion is a defect in the
+    # two checks, not in this fixture: SPEC-0001 §11 carries it as an open
+    # question. Do not read the line below as a workaround for it — a plant
+    # whose changelog holds a delivery entry DOES have a changelog.
+    if c["name"] == "changelog.md":
+        c.update(status="COVERED",
+                 reason="the delivery log this growth pass wrote",
+                 searched=["src/"], evidence=[], leaves=1)
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  # Named where the owner reads, so the disclosure duty is met and the only
+  # thing left to observe is whether the row is carried at all. It is written
+  # long enough to clear growth-audit's MIN_SUBSTANTIVE_BYTES floor, because a
+  # COVERED collection whose only leaf states no fact is CONTRADICTED in turn —
+  # a one-line entry would move the failure rather than remove it.
+  cat >> "$TMP/x50/docs/graph/changelog.md" <<'MD'
+
+## 2026-09-16 — growth
+
+- `legal/` — UNKNOWN: regulatory applicability is the owner's determination.
+  The collection stays empty until the owner rules on which regimes reach this
+  plant. Nothing in the source settles the question, the audit record is not
+  where anyone would read it, so it is put here: who decides, and by when.
+- Every other collection closed ABSENT, with the paths searched recorded in
+  the coverage record. This entry is the plant's own account of what the pass
+  established and of the one thing it left open.
+MD
+  out="$(python3 "$AUDIT" "$TMP/x50" "$ROOT" 2>&1)" || true
+  ! grep -q "SILENT" <<<"$out" \
+      || fail "the UNKNOWN collection was named in the changelog and still reported SILENT"
+  grep -q "UNKNOWN      collection legal/" <<<"$out" \
+      || fail "an UNKNOWN collection row produced no UNKNOWN finding"
+  grep -q "regulatory applicability is the owner's determination" <<<"$out" \
+      || fail "the UNKNOWN finding did not quote the blocker the row named"
+  grep -q "coverage complete (1 named blocker(s) carried)" <<<"$out" \
+      || fail "the carried blocker did not reach the summary count"
+  [[ "$(audit_at "$TMP/x50")" == 0 ]] \
+      || fail "a disclosed UNKNOWN must be carried, not enforced"
+}
+
+# --- 51. a cited line number has to exist in the file ---------------------
+# resolves() strips the `:N` and asks is_file(), so `manifest.json:999999`
+# resolves against a file whose last line is 457. A line number is the part of
+# a citation a reader actually follows.
+caseAUDIT_CITED_LINE_NUMBER_MUST_EXIST() {
+  local out lines
+  rm -rf "$TMP/x51"; cp -a "$TMP/absent" "$TMP/x51"
+  python3 - "$TMP/x51" <<'PY'
+import json, pathlib, sys
+plant = pathlib.Path(sys.argv[1])
+p = plant/".cypress/coverage.json"; r = json.loads(p.read_text())
+r["inventory"] = [{"kind": "framework", "name": "gfm", "slug": "gfm",
+                   "significance": "significant", "status": "ABSENT",
+                   "reason": "superseded by the markdown row",
+                   "searched": ["src/"],
+                   "evidence": ["docs/graph/index.md:999999"],
+                   "expect": [],
+                   "grounding": {"required": False, "sources": []}}]
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x51" "$ROOT" 2>&1)" || true
+  grep -q "DANGLING" <<<"$out" \
+      || fail "a citation past the end of a real file was not reported DANGLING"
+  grep -q "docs/graph/index.md:999999" <<<"$out" \
+      || fail "the dangling citation was not named"
+  lines="$(wc -l < "$TMP/x51/docs/graph/index.md" | tr -d ' ')"
+  grep -q "$lines" <<<"$out" \
+      || fail "the finding did not state the file's real line count ($lines)"
+  [[ "$(audit_at "$TMP/x51")" == 1 ]] \
+      || fail "a citation pointing past the end of the file passed the gate"
+  # …and the two forms that must keep resolving: an in-range line, and no
+  # line suffix at all.
+  python3 - "$TMP/x51" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
+r["inventory"][0]["evidence"] = ["docs/graph/index.md:1", "docs/graph/index.md"]
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x51" "$ROOT" 2>&1)" || true
+  ! grep -q "DANGLING" <<<"$out" \
+      || fail "an in-range citation or a bare path stopped resolving"
+}
+
+# --- 52. a named path that does not resolve is reported, sibling or not ----
+caseAUDIT_NAMED_RAW_PATH_IS_TESTED_NOT_ASSUMED() {
+  local out
+  rm -rf "$TMP/x52"; cp -a "$TMP/rawbase" "$TMP/x52"
+  raw_page "$TMP/x52" react "raw/upstream-doc-2026-09-10.html"
+  # the sibling that must NOT excuse it: same stem as the page, on disk
+  printf '<html>react</html>\n' > "$TMP/x52/docs/graph/sources/raw/react-2026-09-11.html"
+  out="$(python3 "$AUDIT" "$TMP/x52" "$ROOT" 2>&1)" || true
+  grep -q "UNJUSTIFIED  collection sources/" <<<"$out" \
+      || fail "a raw: naming a path that does not exist passed because a same-stem sibling was on disk"
+  grep -q "normalized/react.md" <<<"$out" \
+      || fail "the page whose raw: named a missing snapshot was not named"
+  grep -q "upstream-doc-2026-09-10.html" <<<"$out" \
+      || fail "the token that did not resolve was not named"
+  [[ "$(audit_at "$TMP/x52")" == 1 ]] \
+      || fail "a dangling raw: path behind a stem match passed the gate"
+}
+
+# --- 53. a named path that DOES resolve is never reported missing ----------
+# The four findings measured on this plant are all this shape: the snapshot is
+# on disk under the name the upstream document had, the page's slug is
+# something else, so the sibling scan misses and the bare-path branch asserts
+# a file is absent that nobody opened.
+caseAUDIT_EXISTING_RAW_PATH_IS_NOT_REPORTED_MISSING() {
+  local out
+  rm -rf "$TMP/x53"; cp -a "$TMP/rawbase" "$TMP/x53"
+  raw_page "$TMP/x53" react "raw/upstream-doc-2026-09-10.html"
+  printf '<html>upstream</html>\n' > "$TMP/x53/docs/graph/sources/raw/upstream-doc-2026-09-10.html"
+  out="$(python3 "$AUDIT" "$TMP/x53" "$ROOT" 2>&1)" || true
+  ! grep -q "normalized/react.md" <<<"$out" \
+      || fail "a raw: path that is on disk was reported missing (no stem sibling to save it)"
+  ! grep -q "does not exist" <<<"$out" \
+      || fail "the tool asserted a path does not exist without having opened it"
+}
+
+# --- 54. every token of a multi-token value must resolve ------------------
+caseAUDIT_EVERY_NAMED_RAW_PATH_MUST_RESOLVE() {
+  local out
+  rm -rf "$TMP/x54"; cp -a "$TMP/rawbase" "$TMP/x54"
+  raw_page "$TMP/x54" react \
+      "raw/upstream-doc-2026-09-10.html (the abstract page), raw/upstream-appendix-2026-09-10.html"
+  printf '<html>upstream</html>\n' > "$TMP/x54/docs/graph/sources/raw/upstream-doc-2026-09-10.html"
+  # the sibling that must NOT excuse the broken token: same stem as the page,
+  # on disk. Without it this case goes red against a restored sibling veto for
+  # no reason of its own — the veto never gets the chance to fire — and the
+  # header rule above is violated in the one place it was written for.
+  printf '<html>react</html>\n' > "$TMP/x54/docs/graph/sources/raw/react-2026-09-11.html"
+  out="$(python3 "$AUDIT" "$TMP/x54" "$ROOT" 2>&1)" || true
+  grep -q "UNJUSTIFIED  collection sources/" <<<"$out" \
+      || fail "a multi-token raw: with one broken token passed because the value was not a bare path"
+  grep -q "upstream-appendix-2026-09-10.html" <<<"$out" \
+      || fail "the token that did not resolve was not named"
+  ! grep -q "upstream-doc-2026-09-10.html" <<<"$out" \
+      || fail "the finding named a token that DID resolve"
+  [[ "$(audit_at "$TMP/x54")" == 1 ]] \
+      || fail "a raw: value with one unresolvable token passed the gate"
+}
+
+# --- 55. a recorded reason is still provenance ----------------------------
+# A GUARD: it states what the tightening may not break, so it passes before the
+# repair and must pass after it. Its value is measured the other way — the same
+# page with an empty value and no sibling IS reported, so the page is a live
+# subject of the check rather than one the tool skips for another reason.
+caseAUDIT_RAW_PROSE_REASON_IS_STILL_ACCEPTED() {
+  local out
+  rm -rf "$TMP/x55"; cp -a "$TMP/rawbase" "$TMP/x55"
+  raw_page "$TMP/x55" react \
+      "withheld - the Open Group copyright terms forbid redistribution; posix-spec.html is named in the index row instead"
+  out="$(python3 "$AUDIT" "$TMP/x55" "$ROOT" 2>&1)" || true
+  ! grep -q "normalized/react.md" <<<"$out" \
+      || fail "a page that recorded WHY no snapshot was kept was reported"
+  ! grep -q "posix-spec.html" <<<"$out" \
+      || fail "a filename inside the prose, with no raw/ prefix, was read as a path token and tested"
+  # the trap is live: strip the reason and the check fires on this very page
+  raw_page "$TMP/x55" react ""
+  out="$(python3 "$AUDIT" "$TMP/x55" "$ROOT" 2>&1)" || true
+  grep -q "normalized/react.md retains no raw snapshot" <<<"$out" \
+      || fail "the guard is vacuous — this page is not reached by the check at all"
+}
+
+# --- 56. the sibling scan survives for a page that names nothing -----------
+# It loses its VETO over a page that names a path; it keeps its job of
+# answering "this page named nothing — is a snapshot here anyway".
+caseAUDIT_RAW_SIBLING_SATISFIES_A_PAGE_THAT_NAMES_NO_PATH() {
+  local out
+  rm -rf "$TMP/x56"; cp -a "$TMP/rawbase" "$TMP/x56"
+  raw_page "$TMP/x56" react ""
+  printf '<html>react</html>\n' > "$TMP/x56/docs/graph/sources/raw/react-2026-09-11.html"
+  out="$(python3 "$AUDIT" "$TMP/x56" "$ROOT" 2>&1)" || true
+  ! grep -q "normalized/react.md" <<<"$out" \
+      || fail "a page naming no path, with its snapshot on disk, was reported"
+  # the trap is live: remove the sibling and the same page is reported
+  rm -f "$TMP/x56/docs/graph/sources/raw/react-2026-09-11.html"
+  out="$(python3 "$AUDIT" "$TMP/x56" "$ROOT" 2>&1)" || true
+  grep -q "normalized/react.md retains no raw snapshot" <<<"$out" \
+      || fail "the sibling scan is vacuous — the page passes with no snapshot either"
+}
+
+# --- 57. the finding names the path it actually tested --------------------
+# "does not exist under docs/graph/sources/raw/" names a DIRECTORY and leaves
+# the reader to guess the string the tool tried. The finding has to print the
+# resolved filesystem path, so `ls` on that exact string reproduces the answer.
+caseAUDIT_RAW_FINDING_NAMES_THE_PATH_IT_TESTED() {
+  local out resolved
+  rm -rf "$TMP/x57"; cp -a "$TMP/rawbase" "$TMP/x57"
+  raw_page "$TMP/x57" vue "raw/missing-snapshot-2026-09-10.html"
+  rm -f "$TMP/x57/docs/graph/sources/normalized/react.md"
+  # the sibling that must NOT excuse it: same stem as the page, on disk. The
+  # finding this case reads its message out of only exists while the sibling
+  # scan has no veto, so without this the case says nothing about the veto.
+  printf '<html>vue</html>\n' > "$TMP/x57/docs/graph/sources/raw/vue-2026-09-11.html"
+  out="$(python3 "$AUDIT" "$TMP/x57" "$ROOT" 2>&1)" || true
+  grep -q "UNJUSTIFIED  collection sources/" <<<"$out" \
+      || fail "the fixture produced no UNJUSTIFIED finding to inspect"
+  grep -q "docs/graph/sources/raw/missing-snapshot-2026-09-10.html" <<<"$out" \
+      || fail "the finding did not name the resolved path it opened, only the token and the directory"
+  # read it out of THIS page's finding, not out of some other line of the run
+  resolved="$(grep -F 'normalized/vue.md' <<<"$out" \
+              | grep -oE 'docs/graph/sources/raw/[A-Za-z0-9._-]+\.[A-Za-z0-9]{1,5}' | head -1 || true)"
+  if [[ -z "$resolved" ]]; then
+      fail "no resolved path could be read out of the finding"
+  elif [[ -e "$TMP/x57/$resolved" ]]; then
+      fail "the finding claimed a path is absent and ls on that same string finds it: $resolved"
+  fi
+}
+
+# --- 58. --plan raises a domain row's grounding from false to true ----------
+# The record is already planned, so setdefault is a no-op and the obligation
+# would never reach it: the migration has to overwrite false, in the tightening
+# direction only.
+caseAUDIT_PLAN_RAISES_DOMAIN_GROUNDING() {
+  domain_plant "$TMP/x58"
+  python3 "$AUDIT" "$TMP/x58" "$ROOT" --plan >/dev/null 2>&1 || true
+  python3 - "$TMP/x58" <<'PY' || fail "domain grounding was not raised to required by --plan"
+import json, pathlib, sys
+it = json.loads((pathlib.Path(sys.argv[1])/".cypress/coverage.json").read_text())["inventory"][0]
+assert it["grounding"]["required"] is True, it["grounding"]
+PY
+}
+
+# --- 59. --plan never lowers a grounding it finds already true --------------
+# The other direction of the same one-way rule. A domain row already required
+# stays required; an objective, whose kind does not demand grounding, keeps the
+# true a record happens to carry rather than having it dropped to false.
+caseAUDIT_PLAN_NEVER_LOWERS_GROUNDING() {
+  domain_plant "$TMP/x59"
+  python3 - "$TMP/x59" <<'PY'
+import json, pathlib, sys
+f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
+r["inventory"][0]["grounding"]["required"] = True
+r["inventory"].append({"kind": "objective", "name": "O9", "slug": "o9",
+                       "evidence": ["docs/graph/index.md:1"],
+                       "grounded_by": ["knowledge-graph"],
+                       "grounding": {"required": True, "sources": []}})
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  python3 "$AUDIT" "$TMP/x59" "$ROOT" --plan >/dev/null 2>&1 || true
+  python3 - "$TMP/x59" <<'PY' || fail "--plan lowered a grounding it found already true"
+import json, pathlib, sys
+r = json.loads((pathlib.Path(sys.argv[1])/".cypress/coverage.json").read_text())
+by_kind = {i["kind"]: i for i in r["inventory"]}
+assert by_kind["domain"]["grounding"]["required"] is True, "domain was lowered"
+assert by_kind["objective"]["grounding"]["required"] is True, "objective was lowered"
+PY
+}
+
+# --- 60. --plan unions the newly owed paths and keeps the hand-written ------
+# lint iterates the RECORDED expect and never asserts that what a kind owes is
+# a subset of it, so a new obligation reaches an already-planned plant through
+# no path unless --plan adds it. It is added as a union: the scout's
+# architecture/ page the tool cannot derive survives beside it.
+caseAUDIT_PLAN_UNIONS_HANDWRITTEN_EXPECT() {
+  domain_plant "$TMP/x60"
+  python3 "$AUDIT" "$TMP/x60" "$ROOT" --plan >/dev/null 2>&1 || true
+  python3 - "$TMP/x60" <<'PY' || fail "--plan did not union the domain row's newly owed paths onto its hand-written expect"
+import json, pathlib, sys
+it = json.loads((pathlib.Path(sys.argv[1])/".cypress/coverage.json").read_text())["inventory"][0]
+paths = [e["path"] for e in it["expect"]]
+assert "architecture/knowledge-graph.md" in paths, ("hand-written path dropped", paths)
+assert "best-practices/knowledge-graph.md" in paths, ("owed page not added", paths)
+assert "nodes/domain.knowledge-graph.md" in paths, ("owed node not added", paths)
+assert not any("expertise" in p for p in paths), ("domain minted an expertise node", paths)
+PY
+}
+
+# --- 61. a domain row owes a grounded best-practices page and its node ------
+# The gap ADR-0003 measured: a domain row that owed no external evidence and no
+# routing node, so a plant could report coverage complete with its central
+# subjects never measured against anything published. Now the row owes both,
+# and grounding besides.
+caseAUDIT_DOMAIN_ROW_OWES_GROUNDED_PAGE() {
+  local out
+  domain_plant "$TMP/x61"
+  python3 "$AUDIT" "$TMP/x61" "$ROOT" --plan >/dev/null 2>&1 || true
+  python3 - "$TMP/x61" <<'PY'
+import json, pathlib, sys
+f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
+r["inventory"][0]["status"] = "COVERED"
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x61" "$ROOT" 2>&1)" || true
+  grep -q "best-practices/knowledge-graph.md — does not exist" <<<"$out" \
+      || fail "a domain row that owes a best-practices page did not report it missing"
+  grep -q "nodes/domain.knowledge-graph.md — does not exist" <<<"$out" \
+      || fail "a domain row that owes its routing node did not report it missing"
+  grep -q "UNGROUNDED   domain the knowledge graph" <<<"$out" \
+      || fail "a domain row with grounding required and no source was not UNGROUNDED"
+  [[ "$(audit_at "$TMP/x61")" == 1 ]] \
+      || fail "a domain row owing an ungrounded page passed the gate"
+}
+
+# --- 62. an objective's one artifact must NAME the row ---------------------
+# plans/objectives.md is one file for every objective row, so substantive says
+# growth reached the file and this says the file reached THIS row. Without it,
+# one page is a false COVERED for every objective the record carries — the same
+# false green the twenty-four-row index taught (case 42).
+caseAUDIT_OBJECTIVE_ARTIFACT_MUST_NAME_THE_ROW() {
+  local out
+  rm -rf "$TMP/x62"; mkdir -p "$TMP/x62"
+  bash "$ROOT/install.sh" claude-code --project-dir "$TMP/x62" >/dev/null 2>&1
+  python3 "$AUDIT" "$TMP/x62" "$ROOT" --plan >/dev/null 2>&1 || true
+  python3 - "$TMP/x62" <<'PY'
+import json, pathlib, sys
+plant = pathlib.Path(sys.argv[1]); g = plant/"docs/graph"
+# a substantive objectives page that names O1 and nothing about O2
+(g/"plans/objectives.md").write_text(
+    "# Objectives\n\n## O1. Portability across stack and host\n\n"
+    + ("The portability objective, derived from executable source. " * 14) + "\n")
+# a domain row O2's grounded_by will rest on, grounded so the hop passes
+(g/"best-practices/kg.md").write_text(
+    "# kg\n\n" + ("A grounded idea and its retrieved source. " * 14) + "\n")
+(g/"nodes").mkdir(parents=True, exist_ok=True)
+(g/"nodes/domain.kg.md").write_text(
+    "# kg\n\n" + ("The routing node for the kg domain. " * 14) + "\n")
+(g/"sources/normalized/kg.md").write_text(
+    "---\nraw: withheld — upstream terms forbid redistribution; URL in the index\n---\n"
+    "# kg source\n\n" + ("A retrieved upstream fact with its URL. " * 14) + "\n")
+f = plant/".cypress/coverage.json"; r = json.loads(f.read_text())
+r["inventory"] = [
+    {"kind": "domain", "name": "kg", "slug": "kg", "significance": "core",
+     "status": "COVERED", "evidence": ["docs/graph/index.md:1"],
+     "expect": [{"path": "best-practices/kg.md"}, {"path": "nodes/domain.kg.md"}],
+     "grounding": {"required": True,
+                   "sources": ["docs/graph/sources/normalized/kg.md"]},
+     "expert": {"warranted": False, "why": "the librarian holds it"}},
+    {"kind": "objective", "name": "O2", "slug": "o2", "status": "COVERED",
+     "evidence": ["docs/graph/index.md:1"], "grounded_by": ["kg"],
+     "expect": [{"path": "plans/objectives.md"}],
+     "grounding": {"required": False, "sources": []}},
+]
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x62" "$ROOT" 2>&1)" || true
+  grep -q "UNGROWN      objective O2" <<<"$out" \
+      || fail "an objective whose one artifact never names it was not caught"
+  grep -q "names no section for 'O2'" <<<"$out" \
+      || fail "the objective's unnamed-row finding did not name the row it missed"
+  # name the row and the finding clears
+  python3 - "$TMP/x62" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])/"docs/graph/plans/objectives.md"
+p.write_text(p.read_text() + "\n## O2. Keep a codebase inside a context window\n\n"
+             + ("The context objective, derived from executable source. " * 14) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x62" "$ROOT" 2>&1)" || true
+  ! grep -q "objective O2" <<<"$out" \
+      || fail "an objective the file DOES name in a section was still reported"
+}
+
+# --- 63. an objective is grounded one hop away, through grounded_by ---------
+# An objective's own evidence is in-tree, so its grounding is false — but that
+# is not an opt-out. `grounded_by` names the domain rows it rests on, and each
+# must be a domain row IN THIS RECORD whose own grounding is required. A slug
+# resolves or it does not; unlike a prose "what this rests on", the hop has
+# teeth a check can hold.
+caseAUDIT_OBJECTIVE_GROUNDED_BY_RESOLVES_TO_A_REQUIRED_DOMAIN() {
+  local out
+  rm -rf "$TMP/x63"; cp -a "$TMP/x62" "$TMP/x63"
+  # (a) no grounded_by at all
+  python3 - "$TMP/x63" <<'PY'
+import json, pathlib, sys
+f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
+for it in r["inventory"]:
+    if it["kind"] == "objective":
+        it.pop("grounded_by", None)
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x63" "$ROOT" 2>&1)" || true
+  grep -q "UNGROUNDED   objective O2" <<<"$out" \
+      || fail "an objective naming no grounded_by passed"
+  grep -q "names no .grounded_by." <<<"$out" \
+      || fail "the missing-grounded_by finding did not say what was missing"
+  # (b) grounded_by naming a slug that is no domain row in the record
+  python3 - "$TMP/x63" <<'PY'
+import json, pathlib, sys
+f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
+for it in r["inventory"]:
+    if it["kind"] == "objective":
+        it["grounded_by"] = ["no-such-domain"]
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x63" "$ROOT" 2>&1)" || true
+  grep -q "no domain row in this record" <<<"$out" \
+      || fail "grounded_by naming a slug the record does not carry passed"
+  # (c) grounded_by naming a domain row whose grounding is NOT required
+  python3 - "$TMP/x63" <<'PY'
+import json, pathlib, sys
+f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
+for it in r["inventory"]:
+    if it["kind"] == "domain":
+        it["grounding"]["required"] = False
+    if it["kind"] == "objective":
+        it["grounded_by"] = ["kg"]
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x63" "$ROOT" 2>&1)" || true
+  grep -q "whose grounding is not required" <<<"$out" \
+      || fail "grounded_by resting on an ungrounded domain passed"
+}
+
+# --- 64. the twelfth kind goes green, and answers no staffing question ------
+# A gate that cannot go green on an honest plant is worse than none. A domain
+# row grounded and paged, an objective resting on it through grounded_by and
+# named by its one artifact, everything else honestly absent: the plant passes.
+# And `objective` is outside STAFFED_KINDS — its staffing is answered by the
+# domain its grounded_by names, so asking it again would put one fact in two
+# rows — so it draws no UNSTAFFED finding.
+caseAUDIT_OBJECTIVE_IS_NOT_STAFFED() {
+  local out
+  rm -rf "$TMP/x64"; mkdir -p "$TMP/x64"
+  bash "$ROOT/install.sh" claude-code --project-dir "$TMP/x64" >/dev/null 2>&1
+  python3 "$AUDIT" "$TMP/x64" "$ROOT" --plan >/dev/null 2>&1 || true
+  python3 - "$TMP/x64" <<'PY'
+import json, pathlib, sys
+plant = pathlib.Path(sys.argv[1]); g = plant/"docs/graph"
+body = lambda w: "\n" + (w + " ") * 14 + "\n"
+(g/"best-practices/kg.md").write_text("# kg" + body("A grounded idea and its retrieved source."))
+(g/"nodes").mkdir(parents=True, exist_ok=True)
+(g/"nodes/domain.kg.md").write_text("# kg" + body("The routing node for the kg domain."))
+(g/"sources/normalized/kg.md").write_text(
+    "---\nraw: withheld — upstream terms forbid redistribution; URL in the index\n---\n"
+    "# kg source" + body("A retrieved upstream fact with its URL."))
+(g/"plans/objectives.md").write_text(
+    "# Objectives\n\n## O1. Portability across stack and host"
+    + body("The portability objective, inferred from executable source."))
+f = plant/".cypress/coverage.json"; r = json.loads(f.read_text())
+for c in r["collections"]:
+    c.update(status="ABSENT", reason="the source shows no such evidence",
+             searched=["src/"], evidence=[], leaves=0)
+for a in r["agents"]:
+    a.update(status="ABSENT", reason="its collections are absent-with-reason",
+             searched=["src/"])
+r["inventory"] = [
+    {"kind": "domain", "name": "kg", "slug": "kg", "significance": "core",
+     "status": "COVERED", "evidence": ["docs/graph/index.md:1"],
+     "expect": [{"path": "best-practices/kg.md"}, {"path": "nodes/domain.kg.md"}],
+     "grounding": {"required": True,
+                   "sources": ["docs/graph/sources/normalized/kg.md"]},
+     "expert": {"warranted": False, "why": "the librarian already holds it"}},
+    {"kind": "objective", "name": "O1", "slug": "o1", "status": "COVERED",
+     "evidence": ["docs/graph/index.md:1"], "grounded_by": ["kg"],
+     "expect": [{"path": "plans/objectives.md"}],
+     "grounding": {"required": False, "sources": []}},
+]
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  # dispose the seed scaffolds sitting in the ABSENT collections, then cover the
+  # three that now hold authored leaves
+  python3 "$ROOT/tools/graft-audit.py" "$TMP/x64" "$ROOT" --unfilled --rename >/dev/null 2>&1 || true
+  python3 - "$TMP/x64" <<'PY'
+import json, pathlib, sys
+f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
+cover = {"best-practices/": "docs/graph/best-practices/kg.md",
+         "sources/": "docs/graph/sources/normalized/kg.md",
+         "plans/": "docs/graph/plans/objectives.md"}
+for c in r["collections"]:
+    if c["name"] in cover:
+        c.update(status="COVERED", evidence=[cover[c["name"]]], leaves=1,
+                 reason="", searched=[], blocker="")
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x64" "$ROOT" 2>&1)" || true
+  ! grep -q "UNSTAFFED    objective" <<<"$out" \
+      || fail "an objective was asked the staffing question its grounded_by domain answers"
+  [[ "$(audit_at "$TMP/x64")" == 0 ]] || {
+      python3 "$AUDIT" "$TMP/x64" "$ROOT" >&2
+      fail "a plant with a grounded domain and an objective resting on it could not go green"
+  }
+  grep -q "coverage complete" <<<"$out" || fail "the objective plant did not summarise as complete"
+}
+
+# --- 65. a row's plan must cover what its kind owes (residual B, ADR-0003) ---
+# lint iterates the RECORDED expect, so a KIND_PLAN obligation added after a
+# plant was planned reaches it through no path: the plant carries the old plan
+# until --plan re-unions it, and until then the new obligation is invisible.
+# The STALE stamp catches this across a seed bump; this catches it WITHIN a
+# version. Asserted as owed <= expect on an open row.
+caseAUDIT_ROW_PLAN_COVERS_WHAT_ITS_KIND_OWES() {
+  local out
+  rm -rf "$TMP/x65"; mkdir -p "$TMP/x65"
+  bash "$ROOT/install.sh" claude-code --project-dir "$TMP/x65" >/dev/null 2>&1
+  python3 "$AUDIT" "$TMP/x65" "$ROOT" --plan >/dev/null 2>&1 || true
+  python3 - "$TMP/x65" <<'PY'
+import json, pathlib, sys
+plant = pathlib.Path(sys.argv[1]); g = plant/"docs/graph"
+# the node the row DOES plan exists and is substantive; the best-practices page
+# its kind also owes is simply absent from the plan (the stale-plan shape)
+(g/"nodes").mkdir(parents=True, exist_ok=True)
+(g/"nodes/domain.kg.md").write_text("# kg\n\n" + ("The routing node for the kg domain. " * 14))
+f = plant/".cypress/coverage.json"; r = json.loads(f.read_text())
+r["inventory"] = [{"kind": "domain", "name": "kg", "slug": "kg",
+                   "significance": "core", "status": "COVERED",
+                   "evidence": ["docs/graph/index.md:1"],
+                   # missing best-practices/kg.md, which the kind now owes
+                   "expect": [{"path": "nodes/domain.kg.md"}],
+                   "grounding": {"required": False, "sources": []},
+                   "expert": {"warranted": False, "why": "the librarian holds it"}}]
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x65" "$ROOT" 2>&1)" || true
+  grep -q "BLANK        domain kg" <<<"$out" \
+      || fail "a domain row whose plan omits a path its kind owes was not caught"
+  grep -q "its plan is missing best-practices/kg.md, which its kind owes" <<<"$out" \
+      || fail "the stale-plan finding did not name the owed path the plan omits"
+  [[ "$(audit_at "$TMP/x65")" == 1 ]] \
+      || fail "a row whose plan predates its kind's obligations passed the gate"
+  # --plan unions the owed path in, and the stale-plan finding clears (a fresh
+  # UNGROWN/UNGROUNDED for the now-owed-and-unwritten page is a DIFFERENT thing)
+  python3 "$AUDIT" "$TMP/x65" "$ROOT" --plan >/dev/null 2>&1 || true
+  python3 - "$TMP/x65" <<'PY' || exit 1
+import json, pathlib, sys
+it = json.loads((pathlib.Path(sys.argv[1])/".cypress/coverage.json").read_text())["inventory"][0]
+paths = [e["path"] for e in it["expect"]]
+assert "best-practices/kg.md" in paths, ("--plan did not union the owed path", paths)
+PY
+  out="$(python3 "$AUDIT" "$TMP/x65" "$ROOT" 2>&1)" || true
+  ! grep -q "its plan is missing" <<<"$out" \
+      || fail "the stale-plan finding survived a --plan that unioned the owed path"
+}
+
+# ======================================================================
+# Scenario functions: each is one INDEPENDENT test case (or a dependency
+# chain that shares one built fixture), body VERBATIM from the original.
+# ======================================================================
+
+scn_shared() {
 mkdir -p "$PLANT"
 bash "$ROOT/install.sh" claude-code --project-dir "$PLANT" >/dev/null 2>&1
 
@@ -181,7 +940,9 @@ p.write_text(json.dumps(rec, indent=2) + "\n")
 PY
 [[ "$(audit)" == 1 ]] || fail "a record planned against an older seed still passed"
 grep -q "STALE" "$TMP/out" || fail "a stale record was not reported STALE"
+}
 
+scn_s9() {
 # --- 10. the false-green regression: every bypass the first cut allowed ----
 # A one-byte edit to the seed's own design/README.md and legal/index.md once
 # marked those collections COVERED, and their agents with them — the exact
@@ -262,7 +1023,9 @@ grep -q "DANGLING" <<<"$out12" \
 printf '{"schema": "cypress.coverage/1", "collections": "nope"}\n' \
     > "$TMP/s9/.cypress/coverage.json"
 [[ "$(audit_at "$TMP/s9")" == 2 ]] || fail "a malformed record did not exit 2"
+}
 
+scn_absent() {
 # --- 14. an honestly-empty plant passes on ABSENT rows ---------------------
 # The green case above goes green by covering everything. A real plant with no
 # user interface and no regulatory exposure must be able to pass by ESTABLISHING
@@ -300,7 +1063,23 @@ python3 "$ROOT/tools/graft-audit.py" "$TMP/absent" "$ROOT" --unfilled --rename >
     python3 "$AUDIT" "$TMP/absent" "$ROOT" >&2
     fail "an honestly-empty plant could not pass by establishing its absences"
 }
+[[ "$(audit_at "$TMP/absent")" == 0 ]] \
+    || fail "the honest-absence plant is not green, so cases 46-51 measure nothing"
+caseAUDIT_ABSENT_ROW_STILL_CHECKS_DECLARED_ARTIFACTS
+echo "  an ABSENT row is still held to the artifacts it declares — OK"
+caseAUDIT_ABSENT_ROW_STILL_CHECKS_GROUNDING
+echo "  an ABSENT row is still held to the grounding it requires — OK"
+caseAUDIT_ABSENT_ROW_STILL_CHECKS_STAFFING
+echo "  an ABSENT row still answers the staffing question — OK"
+caseAUDIT_EMPTY_INVENTORY_IS_A_FATAL_FINDING
+echo "  an empty inventory is a fatal finding, not a fast green — OK"
+caseAUDIT_UNKNOWN_COLLECTION_ROW_IS_CARRIED
+echo "  an UNKNOWN collection is carried into the summary, exit 0 — OK"
+caseAUDIT_CITED_LINE_NUMBER_MUST_EXIST
+echo "  a cited line number is checked against the file's real length — OK"
+}
 
+scn_staff() {
 # --- 15. an expert that was never projected is not a specialist -----------
 # The second half of growth's promise: it is supposed to leave behind experts
 # this project needs and the base roster lacks. Through 7.3.x nothing checked
@@ -399,7 +1178,9 @@ grep -q "declares no \`plant_knowledge:\`" <<<"$out18" \
     || fail "an expert that declares nothing to read was accepted"
 grep -q "UNJUSTIFIED  expert claims-expert" <<<"$out18" \
     || fail "an expert citing nothing that motivated it was accepted"
+}
 
+scn_nostaff() {
 # --- 19. declining to staff is a complete answer, silence is not ----------
 # A roster padded with experts nobody needed is its own failure, so the gate
 # must go green on an honest `warranted: false` — and only when it carries why.
@@ -464,7 +1245,9 @@ PY
     python3 "$AUDIT" "$TMP/nostaff" "$ROOT" >&2
     fail "a plant that honestly declined to staff its domain could not pass"
 }
+}
 
+scn_dflt() {
 # --- 20. the arm runs in the gate grow and graft actually invoke -----------
 # Cases 15-18 all pass --agents. Grow Phase 6 and graft Phase 7 run the DEFAULT
 # mode, so the expert arm could have been dead on the only path a real plant
@@ -577,7 +1360,9 @@ PY
 out24="$(python3 "$AUDIT" "$TMP/dflt" "$ROOT" --agents 2>&1)" || true
 grep -q "STALE        .cypress/seed.json" <<<"$out24" \
     || fail "a stamp recording no projection paths silently passed every expert"
+}
 
+scn_rows() {
 # --- 25. the rest of the expert row's promises ----------------------------
 rm -rf "$TMP/rows"; mkdir -p "$TMP/rows"
 bash "$ROOT/install.sh" claude-code --project-dir "$TMP/rows" >/dev/null 2>&1
@@ -670,7 +1455,9 @@ PY
 out26c="$(python3 "$AUDIT" "$TMP/rows" "$ROOT" 2>&1)" || true
 grep -q "warrants a project-specific expert and names none" <<<"$out26c" \
     || fail "a surface warranted an expert, named none, and passed"
+}
 
+scn_copy() {
 # --- 27. an untouched copy of a seed agent is a form, not an expert -------
 rm -rf "$TMP/copy"; mkdir -p "$TMP/copy"
 bash "$ROOT/install.sh" claude-code --project-dir "$TMP/copy" >/dev/null 2>&1
@@ -687,59 +1474,29 @@ PY
 out27="$(python3 "$AUDIT" "$TMP/copy" "$ROOT" --agents 2>&1)" || true
 grep -q "byte-identical to " <<<"$out27" \
     || fail "a seed agent copied under a new name passed as a project expert"
-
-# ==========================================================================
-# 7.5.0 — expertise composes through the graph.
-#
-# A core or significant stack element owes an `expertise.*` node: the Tier-2
-# handle that says when it is in play and routes to its pin page and its
-# standards page without restating either. These cases pin the derivation
-# (who owes one, who does not), the substance (a form is not a node, and a
-# node routing to no pin home is not one either), the two-majors shape, and
-# the staffing default the node changes.
-# ==========================================================================
-
-# a planned plant carrying one dotnet item. $1 = dir, $2 = significance,
-# $3 = kind (default runtime). Leaves the --plan output in $TMP/plan-out.
-expertise_plant() {
-    local d="$1" sig="$2" kind="${3:-runtime}"
-    rm -rf "$d"; mkdir -p "$d"
-    bash "$ROOT/install.sh" claude-code --project-dir "$d" >/dev/null 2>&1
-    python3 "$AUDIT" "$d" "$ROOT" --plan >/dev/null 2>&1 || true
-    printf '<Project/>\n' > "$d/app.csproj"
-    python3 - "$d" "$sig" "$kind" <<'PY'
-import json, pathlib, sys
-f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
-r["inventory"] = [{"kind": sys.argv[3], "name": "dotnet", "version": "9.0",
-                   "significance": sys.argv[2], "evidence": ["app.csproj:1"]}]
-f.write_text(json.dumps(r, indent=2) + "\n")
-PY
-    python3 "$AUDIT" "$d" "$ROOT" --plan >"$TMP/plan-out" 2>&1 || true
 }
 
+scn_x28() {
 # --- 28. a core stack element owes an expertise node ----------------------
 # Derived from the inventory like every other planned artifact, so a plant
 # cannot arrive without one by nobody having decided.
 expertise_plant "$TMP/x28" core
-planned_paths() {   # the paths --plan wrote into the record for its inventory
-    python3 - "$1" <<'PY'
-import json, pathlib, sys
-r = json.loads((pathlib.Path(sys.argv[1])/".cypress/coverage.json").read_text())
-print("\n".join(e["path"] for i in r["inventory"] for e in i.get("expect", [])))
-PY
-}
 planned_paths "$TMP/x28" | grep -q "nodes/expertise.dotnet.md" \
     || fail "--plan did not derive an expertise node for a core runtime"
 out28="$(python3 "$AUDIT" "$TMP/x28" "$ROOT" 2>&1)" || true
 grep -q "UNGROWN" <<<"$out28" || fail "an unwritten expertise node did not fail the gate"
 grep -q "nodes/expertise.dotnet.md — does not exist" <<<"$out28" \
     || fail "the missing expertise node was not named"
+}
 
+scn_x29() {
 # --- 29. a significant dependency owes one too ----------------------------
 expertise_plant "$TMP/x29" significant dependency
 planned_paths "$TMP/x29" | grep -q "nodes/expertise.dotnet.md" \
     || fail "a significant dependency was not planned an expertise node"
+}
 
+scn_x30() {
 # --- 30. an incidental item owes none, and keeps everything else ----------
 # The valve. An incidental DEPENDENCY still earns only its index line and no
 # grounding (the pre-7.5.0 rule, unchanged); an incidental item of any other
@@ -761,7 +1518,9 @@ assert paths == ["libraries/dotnet.md", "best-practices/dotnet.md"], paths
 assert it["grounding"]["required"] is True, "incidental non-dependency lost grounding"
 assert not any("expertise" in p for p in paths), paths
 PY
+}
 
+scn_x31() {
 # --- 31. a filled-in form is not an expertise node ------------------------
 # The node's form is nodes/_expertise.template.md — a leading underscore, so
 # the same-path lookup that measures every other leaf never finds it. Without
@@ -781,7 +1540,9 @@ grep -q "nodes/expertise.dotnet.md — holds .* bytes this plant wrote" <<<"$out
     || fail "a brace-stripped copy of the expertise form passed as a node"
 grep -q "inherited from its seed template" <<<"$out31" \
     || fail "the expertise form's own prose was not named as inherited content"
+}
 
+scn_x32() {
 # --- 32. a node that routes to no pin home is not a node ------------------
 # It owns applicability, never the version. Without its own library page
 # named, the version distinction has nowhere to live and the node is the
@@ -800,7 +1561,9 @@ PY
 out32="$(python3 "$AUDIT" "$TMP/x32" "$ROOT" 2>&1)" || true
 grep -q "names no .libraries: dotnet." <<<"$out32" \
     || fail "an expertise node routing to no pin home passed"
+}
 
+scn_x33() {
 # --- 33. two majors at once compose one child per major -------------------
 # The single place a version enters a node id, and derived from the inventory
 # rather than decided: applicability really does differ by major.
@@ -832,7 +1595,9 @@ for want in ("nodes/expertise.dotnet.md", "nodes/expertise.dotnet-8.md",
              "nodes/expertise.dotnet-10.md"):
     assert want in paths, (want, paths)
 PY
+}
 
+scn_x34() {
 # --- 34. a plant that owes no expertise still goes green ------------------
 # A gate that cannot go green on an honest plant is worse than none. Coverage
 # is derived per inventory item, so a plant with nothing to be expert about
@@ -880,7 +1645,9 @@ import json, pathlib, sys
 r = json.loads((pathlib.Path(sys.argv[1])/".cypress/coverage.json").read_text())
 assert not any("expertise" in e["path"] for e in r["inventory"][0]["expect"])
 PY
+}
 
+scn_x35() {
 # --- 35-37. an expert may declare the expertise it draws on ---------------
 # The seam D7 leaves open: agents reach expertise through the ROUTER, so no
 # seed agent declares it — but a plant-authored expert is itself a plant
@@ -934,7 +1701,9 @@ PY
 out35="$(python3 "$AUDIT" "$TMP/x35" "$ROOT" --agents 2>&1)" || true
 ! grep -qE "(DANGLING|CONTRADICTED) +expert netting-expert" <<<"$out35" \
     || fail "an expert reading a real expertise node was still reported"
+}
 
+scn_x38() {
 # --- 38. an agent needs what a node cannot be -----------------------------
 # The staffing default flips: every surface owes a node, so spawning ON TOP
 # of one is warranted only by something a node cannot be. Naming which is
@@ -961,7 +1730,9 @@ PY
 out38b="$(python3 "$AUDIT" "$TMP/x38" "$ROOT" 2>&1)" || true
 ! grep -q 'needs. is' <<<"$out38b" \
     || fail "a staffing decision naming its trigger was still reported"
+}
 
+scn_x39() {
 # --- 39. over-growth is a finding, and what is owed has one home ----------
 # An expertise node planned for an item that does not owe one is a routing
 # handle for something nobody writes against — the librarian would delete it.
@@ -978,7 +1749,9 @@ PY
 out39="$(python3 "$AUDIT" "$TMP/x39" "$ROOT" 2>&1)" || true
 grep -q "which this item does not owe" <<<"$out39" \
     || fail "an expertise node planned for an item that owes none was accepted"
+}
 
+scn_x40() {
 # --- 40. an expert's declared read must stand for something ---------------
 # The row exists so the one agent authored FOR this project's surface is not
 # the only one exempt from the check that asks whether it has anything to
@@ -1011,7 +1784,9 @@ grep -q "declares it reads collection 'desing/'" <<<"$out40" \
     || fail "an expert declaring a collection that does not exist was accepted"
 grep -q "declares it reads collection 'data'" <<<"$out40" \
     || fail "an expert declaring a slash-less collection name was accepted"
+}
 
+scn_x41() {
 # --- 41. an authored absence statement is not an unfilled scaffold --------
 # The gate over an ABSENT collection exists to catch the seed's own blank form
 # sitting in it: a cold agent would read that form's placeholders as facts
@@ -1091,7 +1866,9 @@ rm -f "$TMP/x41/docs/graph/api/README.md"
 }
 [[ -f "$TMP/x41/docs/graph/legal/index.md" ]] \
     || fail "the authored leaf had to be destroyed for the plant to pass"
+}
 
+scn_x42() {
 # --- 42. the index line an incidental item owes has to be in the index -----
 # A real plant shipped `tsx` COVERED with `expect: libraries/index.md` and no
 # tsx row in it — the one false COVERED in its inventory, and the audit passed
@@ -1113,7 +1890,9 @@ printf '| dotnet-tools | 1.0 | — | | | | |\n' >> "$TMP/x42b/docs/graph/librari
 out42b="$(python3 "$AUDIT" "$TMP/x42b" "$ROOT" 2>&1)" || true
 grep -q "UNGROWN      dependency dotnet" <<<"$out42b" \
     || fail "a row for a longer sibling name passed as the incidental item's own"
+}
 
+scn_x43() {
 # --- 43. a normalized source keeps its raw snapshot, or says why not -------
 # grow.md owes three things per retrieved source — raw snapshot, normalized
 # copy, index row — and the skill's "when the license permits" was the only
@@ -1168,7 +1947,9 @@ printf '<html>react</html>\n' > "$TMP/x43/docs/graph/sources/raw/react-2026-09-1
 out43="$(python3 "$AUDIT" "$TMP/x43" "$ROOT" 2>&1)" || true
 ! grep -q "collection sources/" <<<"$out43" \
     || fail "a normalized source with its raw sibling on disk was still reported"
+}
 
+scn_x44() {
 # --- 44. an absence that found something is a redirect, not an absence -----
 # A real plant marked ui-ux-designer ABSENT with the design material's real
 # paths under product/ in `searched`, then left the agent node pointing at the
@@ -1209,7 +1990,9 @@ PY
 out44="$(python3 "$AUDIT" "$TMP/x44" "$ROOT" 2>&1)" || true
 ! grep -q "CONTRADICTED agent ui-ux-designer" <<<"$out44" \
     || fail "an absence established against source paths and scaffolds was called a contradiction"
+}
 
+scn_x45() {
 # --- 45. an UNKNOWN the delivery never names was filed, not asked ---------
 # The seed's answer to "I cannot determine this" is record-and-report, and
 # the record is not where anyone reads. A real plant marked legal/ UNKNOWN —
@@ -1247,266 +2030,9 @@ printf '\n## 2026-09-10 — graft\n\n- `legal/` — UNKNOWN: regulatory applicab
     >> "$TMP/x45/docs/graph/changelog.md"
 out45="$(python3 "$AUDIT" "$TMP/x45" "$ROOT" 2>&1)" || true
 ! grep -q "SILENT" <<<"$out45" || fail "an UNKNOWN named in the changelog was still SILENT"
-
-
-# ==========================================================================
-# SPEC-0001-gate-assertion-floor (docs/graph/specs/), increments 13-15.
-#
-# The mutation that produced this work: all 30 inventory rows set ABSENT, all
-# 57 planned artifacts deleted, all 89 retrieved sources deleted — and the gate
-# printed `coverage complete` and exited 0. The cause is one `continue` at
-# lint_inventory:1298: a row that declares itself absent stops being asked
-# about the artifacts, the grounding and the staffing it is still declaring.
-# `status` is supposed to decide which of reason/searched/blocker a row owes,
-# not to excuse it from the rest.
-#
-# Each case is a shell function whose NAME is the contract slug. spec-lint.py
-# credits a slug found anywhere under Cypress/tests/, a comment included, and
-# three contracts once went "covered" on a docstring — so the slug names the
-# thing that runs.
-#
-# Every case starts from $TMP/absent, which case 14 above left GREEN by
-# establishing its absences honestly. That is the point: each mutation below
-# is one claim added to a record that passes, so the exit code moves for one
-# reason and the finding names it.
-# ==========================================================================
-
-[[ "$(audit_at "$TMP/absent")" == 0 ]] \
-    || fail "the honest-absence plant is not green, so cases 46-51 measure nothing"
-
-# --- 46. an ABSENT row still owes the artifacts it declares ----------------
-caseAUDIT_ABSENT_ROW_STILL_CHECKS_DECLARED_ARTIFACTS() {
-  local out
-  rm -rf "$TMP/x46"; cp -a "$TMP/absent" "$TMP/x46"
-  python3 - "$TMP/x46" <<'PY'
-import json, pathlib, sys
-p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
-# Absent, and honestly so by every rule check_row_shape knows — and still
-# naming a page it says the graph owes it. The page is not there.
-r["inventory"] = [{"kind": "framework", "name": "gfm", "slug": "gfm",
-                   "significance": "significant", "status": "ABSENT",
-                   "reason": "superseded by the markdown row",
-                   "searched": ["src/"],
-                   "evidence": ["docs/graph/index.md"],
-                   "expect": [{"path": "docs/graph/best-practices/gfm.md"}],
-                   "grounding": {"required": False, "sources": []}}]
-p.write_text(json.dumps(r, indent=2) + "\n")
-PY
-  out="$(python3 "$AUDIT" "$TMP/x46" "$ROOT" 2>&1)" || true
-  grep -q "UNGROWN" <<<"$out" \
-      || fail "an ABSENT row's missing planned artifact was not reported UNGROWN"
-  grep -q "best-practices/gfm.md — does not exist" <<<"$out" \
-      || fail "the missing artifact the ABSENT row declared was not named"
-  [[ "$(audit_at "$TMP/x46")" == 1 ]] \
-      || fail "an ABSENT row that owes a file it does not have passed the gate"
-  # And the same with HOLLOW when the page exists but is not one.
-  mkdir -p "$TMP/x46/docs/graph/best-practices"
-  printf '# gfm\n\n{{what this best practice is}}\n' \
-      > "$TMP/x46/docs/graph/best-practices/gfm.md"
-  out="$(python3 "$AUDIT" "$TMP/x46" "$ROOT" 2>&1)" || true
-  grep -q "HOLLOW" <<<"$out" \
-      || fail "an ABSENT row's placeholder-only artifact was not reported HOLLOW"
-  grep -q "best-practices/gfm.md" <<<"$out" \
-      || fail "the hollow artifact was not named"
 }
-caseAUDIT_ABSENT_ROW_STILL_CHECKS_DECLARED_ARTIFACTS
-echo "  an ABSENT row is still held to the artifacts it declares — OK"
 
-# --- 47. an ABSENT row still owes its grounding ---------------------------
-caseAUDIT_ABSENT_ROW_STILL_CHECKS_GROUNDING() {
-  local out
-  rm -rf "$TMP/x47"; cp -a "$TMP/absent" "$TMP/x47"
-  python3 - "$TMP/x47" <<'PY'
-import json, pathlib, sys
-p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
-r["inventory"] = [{"kind": "framework", "name": "gfm", "slug": "gfm",
-                   "significance": "significant", "status": "ABSENT",
-                   "reason": "superseded by the markdown row",
-                   "searched": ["src/"],
-                   "evidence": ["docs/graph/index.md"],
-                   "expect": [],
-                   "grounding": {"required": True, "sources": []}}]
-p.write_text(json.dumps(r, indent=2) + "\n")
-PY
-  out="$(python3 "$AUDIT" "$TMP/x47" "$ROOT" 2>&1)" || true
-  grep -q "UNGROUNDED" <<<"$out" \
-      || fail "an ABSENT row requiring grounding and citing nothing was not UNGROUNDED"
-  grep -q "framework gfm" <<<"$out" || fail "the ungrounded row was not named"
-  [[ "$(audit_at "$TMP/x47")" == 1 ]] \
-      || fail "an ABSENT row that requires grounding it has not got passed the gate"
-  # The boundary this pass deliberately does NOT cross: whether an ABSENT row
-  # must declare `expect` at all is the owner's open KIND_PLAN question
-  # (grill.md §12 row 11), so `expect: []` keeps its escape from BLANK.
-  ! grep -q "BLANK        framework gfm" <<<"$out" \
-      || fail "an ABSENT row with no expect was made to answer for planned artifacts"
-}
-caseAUDIT_ABSENT_ROW_STILL_CHECKS_GROUNDING
-echo "  an ABSENT row is still held to the grounding it requires — OK"
-
-# --- 48. an ABSENT row still owes a staffing decision ---------------------
-# `significance: core` is what makes the question owed here, not the kind:
-# needs_staffing() reads significance as well as STAFFED_KINDS, and going
-# through significance keeps this case clear of KIND_PLAN entirely.
-caseAUDIT_ABSENT_ROW_STILL_CHECKS_STAFFING() {
-  local out
-  rm -rf "$TMP/x48"; cp -a "$TMP/absent" "$TMP/x48"
-  python3 - "$TMP/x48" <<'PY'
-import json, pathlib, sys
-p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
-r["inventory"] = [{"kind": "framework", "name": "gfm", "slug": "gfm",
-                   "significance": "core", "status": "ABSENT",
-                   "reason": "superseded by the markdown row",
-                   "searched": ["src/"],
-                   "evidence": ["docs/graph/index.md"],
-                   "expect": [],
-                   "grounding": {"required": False, "sources": []}}]
-                   # …and no `expert` key at all: the question is unasked.
-p.write_text(json.dumps(r, indent=2) + "\n")
-PY
-  out="$(python3 "$AUDIT" "$TMP/x48" "$ROOT" 2>&1)" || true
-  grep -q "UNSTAFFED" <<<"$out" \
-      || fail "an ABSENT core row that records no staffing decision was not UNSTAFFED"
-  grep -q "framework gfm" <<<"$out" || fail "the unstaffed row was not named"
-  [[ "$(audit_at "$TMP/x48")" == 1 ]] \
-      || fail "an ABSENT row left the staffing question unasked and passed the gate"
-}
-caseAUDIT_ABSENT_ROW_STILL_CHECKS_STAFFING
-echo "  an ABSENT row still answers the staffing question — OK"
-
-# --- 49. a record with nothing in its inventory has nothing to be held to --
-# The only non-empty guard today is a print on the --plan path; do_lint never
-# asks. An emptied inventory is therefore the cheapest possible green.
-caseAUDIT_EMPTY_INVENTORY_IS_A_FATAL_FINDING() {
-  local out
-  rm -rf "$TMP/x49"; cp -a "$TMP/absent" "$TMP/x49"
-  python3 - "$TMP/x49" <<'PY'
-import json, pathlib, sys
-p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
-r["inventory"] = []
-p.write_text(json.dumps(r, indent=2) + "\n")
-PY
-  out="$(python3 "$AUDIT" "$TMP/x49" "$ROOT" 2>&1)" || true
-  [[ "$(audit_at "$TMP/x49")" == 1 ]] \
-      || fail "a record with an empty inventory passed the gate"
-  grep -q ".cypress/coverage.json" <<<"$out" \
-      || fail "the empty-inventory finding did not name the record"
-  grep -q "inventory" <<<"$out" \
-      || fail "the empty-inventory finding did not say what was empty"
-  ! grep -q "coverage complete" <<<"$out" \
-      || fail "a record holding nothing still summarised as coverage complete"
-}
-caseAUDIT_EMPTY_INVENTORY_IS_A_FATAL_FINDING
-echo "  an empty inventory is a fatal finding, not a fast green — OK"
-
-# --- 50. an UNKNOWN collection is carried, not dropped --------------------
-# lint_inventory has had the UNKNOWN branch since case 45; lint_collections
-# never got one, so a collection row closing UNKNOWN with a named blocker
-# reaches neither the findings list nor the summary's carried count.
-caseAUDIT_UNKNOWN_COLLECTION_ROW_IS_CARRIED() {
-  local out
-  rm -rf "$TMP/x50"; cp -a "$TMP/absent" "$TMP/x50"
-  python3 - "$TMP/x50" <<'PY'
-import json, pathlib, sys
-p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
-for c in r["collections"]:
-    if c["name"] == "legal/":
-        c.update(status="UNKNOWN",
-                 blocker="regulatory applicability is the owner's determination")
-    # The changelog row has to be honest about the file this case is about to
-    # write into. $TMP/absent closed every collection ABSENT and then ran
-    # --unfilled --rename, which moved docs/graph/changelog.md aside; the
-    # disclosure below re-creates it, and lint_collections' ABSENT branch
-    # calls any live leaf in an ABSENT collection CONTRADICTED. Leaving the
-    # row ABSENT makes the disclosure itself a violation; omitting the
-    # disclosure trips SILENT. Both are fatal, so this case cannot observe
-    # the thing it exists to observe without stating the true status of a
-    # collection the plant now has. That mutual exclusion is a defect in the
-    # two checks, not in this fixture: SPEC-0001 §11 carries it as an open
-    # question. Do not read the line below as a workaround for it — a plant
-    # whose changelog holds a delivery entry DOES have a changelog.
-    if c["name"] == "changelog.md":
-        c.update(status="COVERED",
-                 reason="the delivery log this growth pass wrote",
-                 searched=["src/"], evidence=[], leaves=1)
-p.write_text(json.dumps(r, indent=2) + "\n")
-PY
-  # Named where the owner reads, so the disclosure duty is met and the only
-  # thing left to observe is whether the row is carried at all. It is written
-  # long enough to clear growth-audit's MIN_SUBSTANTIVE_BYTES floor, because a
-  # COVERED collection whose only leaf states no fact is CONTRADICTED in turn —
-  # a one-line entry would move the failure rather than remove it.
-  cat >> "$TMP/x50/docs/graph/changelog.md" <<'MD'
-
-## 2026-09-16 — growth
-
-- `legal/` — UNKNOWN: regulatory applicability is the owner's determination.
-  The collection stays empty until the owner rules on which regimes reach this
-  plant. Nothing in the source settles the question, the audit record is not
-  where anyone would read it, so it is put here: who decides, and by when.
-- Every other collection closed ABSENT, with the paths searched recorded in
-  the coverage record. This entry is the plant's own account of what the pass
-  established and of the one thing it left open.
-MD
-  out="$(python3 "$AUDIT" "$TMP/x50" "$ROOT" 2>&1)" || true
-  ! grep -q "SILENT" <<<"$out" \
-      || fail "the UNKNOWN collection was named in the changelog and still reported SILENT"
-  grep -q "UNKNOWN      collection legal/" <<<"$out" \
-      || fail "an UNKNOWN collection row produced no UNKNOWN finding"
-  grep -q "regulatory applicability is the owner's determination" <<<"$out" \
-      || fail "the UNKNOWN finding did not quote the blocker the row named"
-  grep -q "coverage complete (1 named blocker(s) carried)" <<<"$out" \
-      || fail "the carried blocker did not reach the summary count"
-  [[ "$(audit_at "$TMP/x50")" == 0 ]] \
-      || fail "a disclosed UNKNOWN must be carried, not enforced"
-}
-caseAUDIT_UNKNOWN_COLLECTION_ROW_IS_CARRIED
-echo "  an UNKNOWN collection is carried into the summary, exit 0 — OK"
-
-# --- 51. a cited line number has to exist in the file ---------------------
-# resolves() strips the `:N` and asks is_file(), so `manifest.json:999999`
-# resolves against a file whose last line is 457. A line number is the part of
-# a citation a reader actually follows.
-caseAUDIT_CITED_LINE_NUMBER_MUST_EXIST() {
-  local out lines
-  rm -rf "$TMP/x51"; cp -a "$TMP/absent" "$TMP/x51"
-  python3 - "$TMP/x51" <<'PY'
-import json, pathlib, sys
-plant = pathlib.Path(sys.argv[1])
-p = plant/".cypress/coverage.json"; r = json.loads(p.read_text())
-r["inventory"] = [{"kind": "framework", "name": "gfm", "slug": "gfm",
-                   "significance": "significant", "status": "ABSENT",
-                   "reason": "superseded by the markdown row",
-                   "searched": ["src/"],
-                   "evidence": ["docs/graph/index.md:999999"],
-                   "expect": [],
-                   "grounding": {"required": False, "sources": []}}]
-p.write_text(json.dumps(r, indent=2) + "\n")
-PY
-  out="$(python3 "$AUDIT" "$TMP/x51" "$ROOT" 2>&1)" || true
-  grep -q "DANGLING" <<<"$out" \
-      || fail "a citation past the end of a real file was not reported DANGLING"
-  grep -q "docs/graph/index.md:999999" <<<"$out" \
-      || fail "the dangling citation was not named"
-  lines="$(wc -l < "$TMP/x51/docs/graph/index.md" | tr -d ' ')"
-  grep -q "$lines" <<<"$out" \
-      || fail "the finding did not state the file's real line count ($lines)"
-  [[ "$(audit_at "$TMP/x51")" == 1 ]] \
-      || fail "a citation pointing past the end of the file passed the gate"
-  # …and the two forms that must keep resolving: an in-range line, and no
-  # line suffix at all.
-  python3 - "$TMP/x51" <<'PY'
-import json, pathlib, sys
-p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
-r["inventory"][0]["evidence"] = ["docs/graph/index.md:1", "docs/graph/index.md"]
-p.write_text(json.dumps(r, indent=2) + "\n")
-PY
-  out="$(python3 "$AUDIT" "$TMP/x51" "$ROOT" 2>&1)" || true
-  ! grep -q "DANGLING" <<<"$out" \
-      || fail "an in-range citation or a bare path stopped resolving"
-}
-caseAUDIT_CITED_LINE_NUMBER_MUST_EXIST
-echo "  a cited line number is checked against the file's real length — OK"
-
+scn_rawbase() {
 # --- 52-57. a `raw:` line is TESTED, never assumed -------------------------
 # Case 43 above asserts that a `raw:` naming a missing snapshot is reported,
 # and it passes for a reason other than the one it states: its GREEN half
@@ -1541,520 +2067,97 @@ for c in r["collections"]:
                  evidence=["docs/graph/sources/normalized/react.md"])
 p.write_text(json.dumps(r, indent=2) + "\n")
 PY
-
-# $1 = plant dir, $2 = page stem, $3 = the `raw:` value ("" writes no raw key)
-raw_page() {
-  python3 - "$1" "$2" "$3" <<'PY'
-import pathlib, sys
-plant, stem, val = pathlib.Path(sys.argv[1]), sys.argv[2], sys.argv[3]
-head = f"---\nraw: {val}\n---\n" if val else ""
-(plant/"docs/graph/sources/normalized"/f"{stem}.md").write_text(
-    head + f"\n# {stem} docs\n\n## Fact\n\n"
-    + ("A retrieved upstream fact with its URL. " * 14) + "\n")
-PY
-}
-
-# --- 52. a named path that does not resolve is reported, sibling or not ----
-caseAUDIT_NAMED_RAW_PATH_IS_TESTED_NOT_ASSUMED() {
-  local out
-  rm -rf "$TMP/x52"; cp -a "$TMP/rawbase" "$TMP/x52"
-  raw_page "$TMP/x52" react "raw/upstream-doc-2026-09-10.html"
-  # the sibling that must NOT excuse it: same stem as the page, on disk
-  printf '<html>react</html>\n' > "$TMP/x52/docs/graph/sources/raw/react-2026-09-11.html"
-  out="$(python3 "$AUDIT" "$TMP/x52" "$ROOT" 2>&1)" || true
-  grep -q "UNJUSTIFIED  collection sources/" <<<"$out" \
-      || fail "a raw: naming a path that does not exist passed because a same-stem sibling was on disk"
-  grep -q "normalized/react.md" <<<"$out" \
-      || fail "the page whose raw: named a missing snapshot was not named"
-  grep -q "upstream-doc-2026-09-10.html" <<<"$out" \
-      || fail "the token that did not resolve was not named"
-  [[ "$(audit_at "$TMP/x52")" == 1 ]] \
-      || fail "a dangling raw: path behind a stem match passed the gate"
-}
 caseAUDIT_NAMED_RAW_PATH_IS_TESTED_NOT_ASSUMED
 echo "  a raw: path is opened even when a same-stem sibling is on disk — OK"
-
-# --- 53. a named path that DOES resolve is never reported missing ----------
-# The four findings measured on this plant are all this shape: the snapshot is
-# on disk under the name the upstream document had, the page's slug is
-# something else, so the sibling scan misses and the bare-path branch asserts
-# a file is absent that nobody opened.
-caseAUDIT_EXISTING_RAW_PATH_IS_NOT_REPORTED_MISSING() {
-  local out
-  rm -rf "$TMP/x53"; cp -a "$TMP/rawbase" "$TMP/x53"
-  raw_page "$TMP/x53" react "raw/upstream-doc-2026-09-10.html"
-  printf '<html>upstream</html>\n' > "$TMP/x53/docs/graph/sources/raw/upstream-doc-2026-09-10.html"
-  out="$(python3 "$AUDIT" "$TMP/x53" "$ROOT" 2>&1)" || true
-  ! grep -q "normalized/react.md" <<<"$out" \
-      || fail "a raw: path that is on disk was reported missing (no stem sibling to save it)"
-  ! grep -q "does not exist" <<<"$out" \
-      || fail "the tool asserted a path does not exist without having opened it"
-}
 caseAUDIT_EXISTING_RAW_PATH_IS_NOT_REPORTED_MISSING
 echo "  a raw: path that resolves is not reported missing — OK"
-
-# --- 54. every token of a multi-token value must resolve ------------------
-caseAUDIT_EVERY_NAMED_RAW_PATH_MUST_RESOLVE() {
-  local out
-  rm -rf "$TMP/x54"; cp -a "$TMP/rawbase" "$TMP/x54"
-  raw_page "$TMP/x54" react \
-      "raw/upstream-doc-2026-09-10.html (the abstract page), raw/upstream-appendix-2026-09-10.html"
-  printf '<html>upstream</html>\n' > "$TMP/x54/docs/graph/sources/raw/upstream-doc-2026-09-10.html"
-  # the sibling that must NOT excuse the broken token: same stem as the page,
-  # on disk. Without it this case goes red against a restored sibling veto for
-  # no reason of its own — the veto never gets the chance to fire — and the
-  # header rule above is violated in the one place it was written for.
-  printf '<html>react</html>\n' > "$TMP/x54/docs/graph/sources/raw/react-2026-09-11.html"
-  out="$(python3 "$AUDIT" "$TMP/x54" "$ROOT" 2>&1)" || true
-  grep -q "UNJUSTIFIED  collection sources/" <<<"$out" \
-      || fail "a multi-token raw: with one broken token passed because the value was not a bare path"
-  grep -q "upstream-appendix-2026-09-10.html" <<<"$out" \
-      || fail "the token that did not resolve was not named"
-  ! grep -q "upstream-doc-2026-09-10.html" <<<"$out" \
-      || fail "the finding named a token that DID resolve"
-  [[ "$(audit_at "$TMP/x54")" == 1 ]] \
-      || fail "a raw: value with one unresolvable token passed the gate"
-}
 caseAUDIT_EVERY_NAMED_RAW_PATH_MUST_RESOLVE
 echo "  each token of a multi-path raw: value is resolved on its own — OK"
-
-# --- 55. a recorded reason is still provenance ----------------------------
-# A GUARD: it states what the tightening may not break, so it passes before the
-# repair and must pass after it. Its value is measured the other way — the same
-# page with an empty value and no sibling IS reported, so the page is a live
-# subject of the check rather than one the tool skips for another reason.
-caseAUDIT_RAW_PROSE_REASON_IS_STILL_ACCEPTED() {
-  local out
-  rm -rf "$TMP/x55"; cp -a "$TMP/rawbase" "$TMP/x55"
-  raw_page "$TMP/x55" react \
-      "withheld - the Open Group copyright terms forbid redistribution; posix-spec.html is named in the index row instead"
-  out="$(python3 "$AUDIT" "$TMP/x55" "$ROOT" 2>&1)" || true
-  ! grep -q "normalized/react.md" <<<"$out" \
-      || fail "a page that recorded WHY no snapshot was kept was reported"
-  ! grep -q "posix-spec.html" <<<"$out" \
-      || fail "a filename inside the prose, with no raw/ prefix, was read as a path token and tested"
-  # the trap is live: strip the reason and the check fires on this very page
-  raw_page "$TMP/x55" react ""
-  out="$(python3 "$AUDIT" "$TMP/x55" "$ROOT" 2>&1)" || true
-  grep -q "normalized/react.md retains no raw snapshot" <<<"$out" \
-      || fail "the guard is vacuous — this page is not reached by the check at all"
-}
 caseAUDIT_RAW_PROSE_REASON_IS_STILL_ACCEPTED
 echo "  a raw: value carrying no path token is still accepted as a reason — OK"
-
-# --- 56. the sibling scan survives for a page that names nothing -----------
-# It loses its VETO over a page that names a path; it keeps its job of
-# answering "this page named nothing — is a snapshot here anyway".
-caseAUDIT_RAW_SIBLING_SATISFIES_A_PAGE_THAT_NAMES_NO_PATH() {
-  local out
-  rm -rf "$TMP/x56"; cp -a "$TMP/rawbase" "$TMP/x56"
-  raw_page "$TMP/x56" react ""
-  printf '<html>react</html>\n' > "$TMP/x56/docs/graph/sources/raw/react-2026-09-11.html"
-  out="$(python3 "$AUDIT" "$TMP/x56" "$ROOT" 2>&1)" || true
-  ! grep -q "normalized/react.md" <<<"$out" \
-      || fail "a page naming no path, with its snapshot on disk, was reported"
-  # the trap is live: remove the sibling and the same page is reported
-  rm -f "$TMP/x56/docs/graph/sources/raw/react-2026-09-11.html"
-  out="$(python3 "$AUDIT" "$TMP/x56" "$ROOT" 2>&1)" || true
-  grep -q "normalized/react.md retains no raw snapshot" <<<"$out" \
-      || fail "the sibling scan is vacuous — the page passes with no snapshot either"
-}
 caseAUDIT_RAW_SIBLING_SATISFIES_A_PAGE_THAT_NAMES_NO_PATH
 echo "  a page that names no path is still satisfied by its snapshot — OK"
-
-# --- 57. the finding names the path it actually tested --------------------
-# "does not exist under docs/graph/sources/raw/" names a DIRECTORY and leaves
-# the reader to guess the string the tool tried. The finding has to print the
-# resolved filesystem path, so `ls` on that exact string reproduces the answer.
-caseAUDIT_RAW_FINDING_NAMES_THE_PATH_IT_TESTED() {
-  local out resolved
-  rm -rf "$TMP/x57"; cp -a "$TMP/rawbase" "$TMP/x57"
-  raw_page "$TMP/x57" vue "raw/missing-snapshot-2026-09-10.html"
-  rm -f "$TMP/x57/docs/graph/sources/normalized/react.md"
-  # the sibling that must NOT excuse it: same stem as the page, on disk. The
-  # finding this case reads its message out of only exists while the sibling
-  # scan has no veto, so without this the case says nothing about the veto.
-  printf '<html>vue</html>\n' > "$TMP/x57/docs/graph/sources/raw/vue-2026-09-11.html"
-  out="$(python3 "$AUDIT" "$TMP/x57" "$ROOT" 2>&1)" || true
-  grep -q "UNJUSTIFIED  collection sources/" <<<"$out" \
-      || fail "the fixture produced no UNJUSTIFIED finding to inspect"
-  grep -q "docs/graph/sources/raw/missing-snapshot-2026-09-10.html" <<<"$out" \
-      || fail "the finding did not name the resolved path it opened, only the token and the directory"
-  # read it out of THIS page's finding, not out of some other line of the run
-  resolved="$(grep -F 'normalized/vue.md' <<<"$out" \
-              | grep -oE 'docs/graph/sources/raw/[A-Za-z0-9._-]+\.[A-Za-z0-9]{1,5}' | head -1 || true)"
-  if [[ -z "$resolved" ]]; then
-      fail "no resolved path could be read out of the finding"
-  elif [[ -e "$TMP/x57/$resolved" ]]; then
-      fail "the finding claimed a path is absent and ls on that same string finds it: $resolved"
-  fi
-}
 caseAUDIT_RAW_FINDING_NAMES_THE_PATH_IT_TESTED
 echo "  an UNJUSTIFIED raw: finding names the resolved path it opened — OK"
-
-# ==========================================================================
-# 7.18.0 — the inventory owes evidence for what a project is built on, and
-# gains a kind for what it is for (ADR-0003). A `domain` row owes what every
-# other kind owes — a best-practices page, external grounding, and its own
-# `domain.{slug}` routing node — and `objective` enters as the twelfth kind,
-# what the project is FOR, its expertise grounded one hop away through
-# `grounded_by`. The migration is one-directional: `--plan` raises a domain
-# row's grounding and unions its newly owed paths, and never the reverse.
-# ==========================================================================
-
-# a planned plant carrying one domain row in the state EVERY grown plant is in:
-# grounding required:false and an expect the tool could not derive, hand-written
-# by the scout. $1 = dir. Leaves the record for the case to re-plan.
-domain_plant() {
-  local d="$1"
-  rm -rf "$d"; mkdir -p "$d"
-  bash "$ROOT/install.sh" claude-code --project-dir "$d" >/dev/null 2>&1
-  python3 "$AUDIT" "$d" "$ROOT" --plan >/dev/null 2>&1 || true
-  python3 - "$d" <<'PY'
-import json, pathlib, sys
-f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
-r["inventory"] = [{"kind": "domain", "name": "the knowledge graph",
-                   "slug": "knowledge-graph", "significance": "core",
-                   "evidence": ["docs/graph/index.md:1"],
-                   "expect": [{"path": "architecture/knowledge-graph.md",
-                               "why": "hand-written; the tool cannot derive it"}],
-                   "grounding": {"required": False, "sources": []},
-                   "expert": {"warranted": False,
-                              "why": "the docs-librarian already holds it"}}]
-f.write_text(json.dumps(r, indent=2) + "\n")
-PY
 }
 
+scn_x58() {
 # --- 58. --plan raises a domain row's grounding from false to true ----------
 # The record is already planned, so setdefault is a no-op and the obligation
 # would never reach it: the migration has to overwrite false, in the tightening
 # direction only.
-caseAUDIT_PLAN_RAISES_DOMAIN_GROUNDING() {
-  domain_plant "$TMP/x58"
-  python3 "$AUDIT" "$TMP/x58" "$ROOT" --plan >/dev/null 2>&1 || true
-  python3 - "$TMP/x58" <<'PY' || fail "domain grounding was not raised to required by --plan"
-import json, pathlib, sys
-it = json.loads((pathlib.Path(sys.argv[1])/".cypress/coverage.json").read_text())["inventory"][0]
-assert it["grounding"]["required"] is True, it["grounding"]
-PY
-}
 caseAUDIT_PLAN_RAISES_DOMAIN_GROUNDING
 echo "  --plan raises a domain row's grounding from false to true — OK"
+}
 
+scn_x59() {
 # --- 59. --plan never lowers a grounding it finds already true --------------
 # The other direction of the same one-way rule. A domain row already required
 # stays required; an objective, whose kind does not demand grounding, keeps the
 # true a record happens to carry rather than having it dropped to false.
-caseAUDIT_PLAN_NEVER_LOWERS_GROUNDING() {
-  domain_plant "$TMP/x59"
-  python3 - "$TMP/x59" <<'PY'
-import json, pathlib, sys
-f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
-r["inventory"][0]["grounding"]["required"] = True
-r["inventory"].append({"kind": "objective", "name": "O9", "slug": "o9",
-                       "evidence": ["docs/graph/index.md:1"],
-                       "grounded_by": ["knowledge-graph"],
-                       "grounding": {"required": True, "sources": []}})
-f.write_text(json.dumps(r, indent=2) + "\n")
-PY
-  python3 "$AUDIT" "$TMP/x59" "$ROOT" --plan >/dev/null 2>&1 || true
-  python3 - "$TMP/x59" <<'PY' || fail "--plan lowered a grounding it found already true"
-import json, pathlib, sys
-r = json.loads((pathlib.Path(sys.argv[1])/".cypress/coverage.json").read_text())
-by_kind = {i["kind"]: i for i in r["inventory"]}
-assert by_kind["domain"]["grounding"]["required"] is True, "domain was lowered"
-assert by_kind["objective"]["grounding"]["required"] is True, "objective was lowered"
-PY
-}
 caseAUDIT_PLAN_NEVER_LOWERS_GROUNDING
 echo "  --plan never lowers a grounding it finds already true — OK"
+}
 
+scn_x60() {
 # --- 60. --plan unions the newly owed paths and keeps the hand-written ------
 # lint iterates the RECORDED expect and never asserts that what a kind owes is
 # a subset of it, so a new obligation reaches an already-planned plant through
 # no path unless --plan adds it. It is added as a union: the scout's
 # architecture/ page the tool cannot derive survives beside it.
-caseAUDIT_PLAN_UNIONS_HANDWRITTEN_EXPECT() {
-  domain_plant "$TMP/x60"
-  python3 "$AUDIT" "$TMP/x60" "$ROOT" --plan >/dev/null 2>&1 || true
-  python3 - "$TMP/x60" <<'PY' || fail "--plan did not union the domain row's newly owed paths onto its hand-written expect"
-import json, pathlib, sys
-it = json.loads((pathlib.Path(sys.argv[1])/".cypress/coverage.json").read_text())["inventory"][0]
-paths = [e["path"] for e in it["expect"]]
-assert "architecture/knowledge-graph.md" in paths, ("hand-written path dropped", paths)
-assert "best-practices/knowledge-graph.md" in paths, ("owed page not added", paths)
-assert "nodes/domain.knowledge-graph.md" in paths, ("owed node not added", paths)
-assert not any("expertise" in p for p in paths), ("domain minted an expertise node", paths)
-PY
-}
 caseAUDIT_PLAN_UNIONS_HANDWRITTEN_EXPECT
 echo "  --plan unions a domain row's owed paths and keeps the hand-written — OK"
+}
 
+scn_x61() {
 # --- 61. a domain row owes a grounded best-practices page and its node ------
 # The gap ADR-0003 measured: a domain row that owed no external evidence and no
 # routing node, so a plant could report coverage complete with its central
 # subjects never measured against anything published. Now the row owes both,
 # and grounding besides.
-caseAUDIT_DOMAIN_ROW_OWES_GROUNDED_PAGE() {
-  local out
-  domain_plant "$TMP/x61"
-  python3 "$AUDIT" "$TMP/x61" "$ROOT" --plan >/dev/null 2>&1 || true
-  python3 - "$TMP/x61" <<'PY'
-import json, pathlib, sys
-f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
-r["inventory"][0]["status"] = "COVERED"
-f.write_text(json.dumps(r, indent=2) + "\n")
-PY
-  out="$(python3 "$AUDIT" "$TMP/x61" "$ROOT" 2>&1)" || true
-  grep -q "best-practices/knowledge-graph.md — does not exist" <<<"$out" \
-      || fail "a domain row that owes a best-practices page did not report it missing"
-  grep -q "nodes/domain.knowledge-graph.md — does not exist" <<<"$out" \
-      || fail "a domain row that owes its routing node did not report it missing"
-  grep -q "UNGROUNDED   domain the knowledge graph" <<<"$out" \
-      || fail "a domain row with grounding required and no source was not UNGROUNDED"
-  [[ "$(audit_at "$TMP/x61")" == 1 ]] \
-      || fail "a domain row owing an ungrounded page passed the gate"
-}
 caseAUDIT_DOMAIN_ROW_OWES_GROUNDED_PAGE
 echo "  a domain row owes a grounded best-practices page and its own node — OK"
-
-# --- 62. an objective's one artifact must NAME the row ---------------------
-# plans/objectives.md is one file for every objective row, so substantive says
-# growth reached the file and this says the file reached THIS row. Without it,
-# one page is a false COVERED for every objective the record carries — the same
-# false green the twenty-four-row index taught (case 42).
-caseAUDIT_OBJECTIVE_ARTIFACT_MUST_NAME_THE_ROW() {
-  local out
-  rm -rf "$TMP/x62"; mkdir -p "$TMP/x62"
-  bash "$ROOT/install.sh" claude-code --project-dir "$TMP/x62" >/dev/null 2>&1
-  python3 "$AUDIT" "$TMP/x62" "$ROOT" --plan >/dev/null 2>&1 || true
-  python3 - "$TMP/x62" <<'PY'
-import json, pathlib, sys
-plant = pathlib.Path(sys.argv[1]); g = plant/"docs/graph"
-# a substantive objectives page that names O1 and nothing about O2
-(g/"plans/objectives.md").write_text(
-    "# Objectives\n\n## O1. Portability across stack and host\n\n"
-    + ("The portability objective, derived from executable source. " * 14) + "\n")
-# a domain row O2's grounded_by will rest on, grounded so the hop passes
-(g/"best-practices/kg.md").write_text(
-    "# kg\n\n" + ("A grounded idea and its retrieved source. " * 14) + "\n")
-(g/"nodes").mkdir(parents=True, exist_ok=True)
-(g/"nodes/domain.kg.md").write_text(
-    "# kg\n\n" + ("The routing node for the kg domain. " * 14) + "\n")
-(g/"sources/normalized/kg.md").write_text(
-    "---\nraw: withheld — upstream terms forbid redistribution; URL in the index\n---\n"
-    "# kg source\n\n" + ("A retrieved upstream fact with its URL. " * 14) + "\n")
-f = plant/".cypress/coverage.json"; r = json.loads(f.read_text())
-r["inventory"] = [
-    {"kind": "domain", "name": "kg", "slug": "kg", "significance": "core",
-     "status": "COVERED", "evidence": ["docs/graph/index.md:1"],
-     "expect": [{"path": "best-practices/kg.md"}, {"path": "nodes/domain.kg.md"}],
-     "grounding": {"required": True,
-                   "sources": ["docs/graph/sources/normalized/kg.md"]},
-     "expert": {"warranted": False, "why": "the librarian holds it"}},
-    {"kind": "objective", "name": "O2", "slug": "o2", "status": "COVERED",
-     "evidence": ["docs/graph/index.md:1"], "grounded_by": ["kg"],
-     "expect": [{"path": "plans/objectives.md"}],
-     "grounding": {"required": False, "sources": []}},
-]
-f.write_text(json.dumps(r, indent=2) + "\n")
-PY
-  out="$(python3 "$AUDIT" "$TMP/x62" "$ROOT" 2>&1)" || true
-  grep -q "UNGROWN      objective O2" <<<"$out" \
-      || fail "an objective whose one artifact never names it was not caught"
-  grep -q "names no section for 'O2'" <<<"$out" \
-      || fail "the objective's unnamed-row finding did not name the row it missed"
-  # name the row and the finding clears
-  python3 - "$TMP/x62" <<'PY'
-import pathlib, sys
-p = pathlib.Path(sys.argv[1])/"docs/graph/plans/objectives.md"
-p.write_text(p.read_text() + "\n## O2. Keep a codebase inside a context window\n\n"
-             + ("The context objective, derived from executable source. " * 14) + "\n")
-PY
-  out="$(python3 "$AUDIT" "$TMP/x62" "$ROOT" 2>&1)" || true
-  ! grep -q "objective O2" <<<"$out" \
-      || fail "an objective the file DOES name in a section was still reported"
 }
+
+scn_x62x63() {
 caseAUDIT_OBJECTIVE_ARTIFACT_MUST_NAME_THE_ROW
 echo "  an objective's one artifact must name the row it covers — OK"
-
-# --- 63. an objective is grounded one hop away, through grounded_by ---------
-# An objective's own evidence is in-tree, so its grounding is false — but that
-# is not an opt-out. `grounded_by` names the domain rows it rests on, and each
-# must be a domain row IN THIS RECORD whose own grounding is required. A slug
-# resolves or it does not; unlike a prose "what this rests on", the hop has
-# teeth a check can hold.
-caseAUDIT_OBJECTIVE_GROUNDED_BY_RESOLVES_TO_A_REQUIRED_DOMAIN() {
-  local out
-  rm -rf "$TMP/x63"; cp -a "$TMP/x62" "$TMP/x63"
-  # (a) no grounded_by at all
-  python3 - "$TMP/x63" <<'PY'
-import json, pathlib, sys
-f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
-for it in r["inventory"]:
-    if it["kind"] == "objective":
-        it.pop("grounded_by", None)
-f.write_text(json.dumps(r, indent=2) + "\n")
-PY
-  out="$(python3 "$AUDIT" "$TMP/x63" "$ROOT" 2>&1)" || true
-  grep -q "UNGROUNDED   objective O2" <<<"$out" \
-      || fail "an objective naming no grounded_by passed"
-  grep -q "names no .grounded_by." <<<"$out" \
-      || fail "the missing-grounded_by finding did not say what was missing"
-  # (b) grounded_by naming a slug that is no domain row in the record
-  python3 - "$TMP/x63" <<'PY'
-import json, pathlib, sys
-f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
-for it in r["inventory"]:
-    if it["kind"] == "objective":
-        it["grounded_by"] = ["no-such-domain"]
-f.write_text(json.dumps(r, indent=2) + "\n")
-PY
-  out="$(python3 "$AUDIT" "$TMP/x63" "$ROOT" 2>&1)" || true
-  grep -q "no domain row in this record" <<<"$out" \
-      || fail "grounded_by naming a slug the record does not carry passed"
-  # (c) grounded_by naming a domain row whose grounding is NOT required
-  python3 - "$TMP/x63" <<'PY'
-import json, pathlib, sys
-f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
-for it in r["inventory"]:
-    if it["kind"] == "domain":
-        it["grounding"]["required"] = False
-    if it["kind"] == "objective":
-        it["grounded_by"] = ["kg"]
-f.write_text(json.dumps(r, indent=2) + "\n")
-PY
-  out="$(python3 "$AUDIT" "$TMP/x63" "$ROOT" 2>&1)" || true
-  grep -q "whose grounding is not required" <<<"$out" \
-      || fail "grounded_by resting on an ungrounded domain passed"
-}
 caseAUDIT_OBJECTIVE_GROUNDED_BY_RESOLVES_TO_A_REQUIRED_DOMAIN
 echo "  an objective is grounded one enforced hop away through grounded_by — OK"
-
-# --- 64. the twelfth kind goes green, and answers no staffing question ------
-# A gate that cannot go green on an honest plant is worse than none. A domain
-# row grounded and paged, an objective resting on it through grounded_by and
-# named by its one artifact, everything else honestly absent: the plant passes.
-# And `objective` is outside STAFFED_KINDS — its staffing is answered by the
-# domain its grounded_by names, so asking it again would put one fact in two
-# rows — so it draws no UNSTAFFED finding.
-caseAUDIT_OBJECTIVE_IS_NOT_STAFFED() {
-  local out
-  rm -rf "$TMP/x64"; mkdir -p "$TMP/x64"
-  bash "$ROOT/install.sh" claude-code --project-dir "$TMP/x64" >/dev/null 2>&1
-  python3 "$AUDIT" "$TMP/x64" "$ROOT" --plan >/dev/null 2>&1 || true
-  python3 - "$TMP/x64" <<'PY'
-import json, pathlib, sys
-plant = pathlib.Path(sys.argv[1]); g = plant/"docs/graph"
-body = lambda w: "\n" + (w + " ") * 14 + "\n"
-(g/"best-practices/kg.md").write_text("# kg" + body("A grounded idea and its retrieved source."))
-(g/"nodes").mkdir(parents=True, exist_ok=True)
-(g/"nodes/domain.kg.md").write_text("# kg" + body("The routing node for the kg domain."))
-(g/"sources/normalized/kg.md").write_text(
-    "---\nraw: withheld — upstream terms forbid redistribution; URL in the index\n---\n"
-    "# kg source" + body("A retrieved upstream fact with its URL."))
-(g/"plans/objectives.md").write_text(
-    "# Objectives\n\n## O1. Portability across stack and host"
-    + body("The portability objective, inferred from executable source."))
-f = plant/".cypress/coverage.json"; r = json.loads(f.read_text())
-for c in r["collections"]:
-    c.update(status="ABSENT", reason="the source shows no such evidence",
-             searched=["src/"], evidence=[], leaves=0)
-for a in r["agents"]:
-    a.update(status="ABSENT", reason="its collections are absent-with-reason",
-             searched=["src/"])
-r["inventory"] = [
-    {"kind": "domain", "name": "kg", "slug": "kg", "significance": "core",
-     "status": "COVERED", "evidence": ["docs/graph/index.md:1"],
-     "expect": [{"path": "best-practices/kg.md"}, {"path": "nodes/domain.kg.md"}],
-     "grounding": {"required": True,
-                   "sources": ["docs/graph/sources/normalized/kg.md"]},
-     "expert": {"warranted": False, "why": "the librarian already holds it"}},
-    {"kind": "objective", "name": "O1", "slug": "o1", "status": "COVERED",
-     "evidence": ["docs/graph/index.md:1"], "grounded_by": ["kg"],
-     "expect": [{"path": "plans/objectives.md"}],
-     "grounding": {"required": False, "sources": []}},
-]
-f.write_text(json.dumps(r, indent=2) + "\n")
-PY
-  # dispose the seed scaffolds sitting in the ABSENT collections, then cover the
-  # three that now hold authored leaves
-  python3 "$ROOT/tools/graft-audit.py" "$TMP/x64" "$ROOT" --unfilled --rename >/dev/null 2>&1 || true
-  python3 - "$TMP/x64" <<'PY'
-import json, pathlib, sys
-f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
-cover = {"best-practices/": "docs/graph/best-practices/kg.md",
-         "sources/": "docs/graph/sources/normalized/kg.md",
-         "plans/": "docs/graph/plans/objectives.md"}
-for c in r["collections"]:
-    if c["name"] in cover:
-        c.update(status="COVERED", evidence=[cover[c["name"]]], leaves=1,
-                 reason="", searched=[], blocker="")
-f.write_text(json.dumps(r, indent=2) + "\n")
-PY
-  out="$(python3 "$AUDIT" "$TMP/x64" "$ROOT" 2>&1)" || true
-  ! grep -q "UNSTAFFED    objective" <<<"$out" \
-      || fail "an objective was asked the staffing question its grounded_by domain answers"
-  [[ "$(audit_at "$TMP/x64")" == 0 ]] || {
-      python3 "$AUDIT" "$TMP/x64" "$ROOT" >&2
-      fail "a plant with a grounded domain and an objective resting on it could not go green"
-  }
-  grep -q "coverage complete" <<<"$out" || fail "the objective plant did not summarise as complete"
 }
+
+scn_x64() {
 caseAUDIT_OBJECTIVE_IS_NOT_STAFFED
 echo "  the twelfth kind goes green and answers no staffing question — OK"
-
-
-# --- 65. a row's plan must cover what its kind owes (residual B, ADR-0003) ---
-# lint iterates the RECORDED expect, so a KIND_PLAN obligation added after a
-# plant was planned reaches it through no path: the plant carries the old plan
-# until --plan re-unions it, and until then the new obligation is invisible.
-# The STALE stamp catches this across a seed bump; this catches it WITHIN a
-# version. Asserted as owed <= expect on an open row.
-caseAUDIT_ROW_PLAN_COVERS_WHAT_ITS_KIND_OWES() {
-  local out
-  rm -rf "$TMP/x65"; mkdir -p "$TMP/x65"
-  bash "$ROOT/install.sh" claude-code --project-dir "$TMP/x65" >/dev/null 2>&1
-  python3 "$AUDIT" "$TMP/x65" "$ROOT" --plan >/dev/null 2>&1 || true
-  python3 - "$TMP/x65" <<'PY'
-import json, pathlib, sys
-plant = pathlib.Path(sys.argv[1]); g = plant/"docs/graph"
-# the node the row DOES plan exists and is substantive; the best-practices page
-# its kind also owes is simply absent from the plan (the stale-plan shape)
-(g/"nodes").mkdir(parents=True, exist_ok=True)
-(g/"nodes/domain.kg.md").write_text("# kg\n\n" + ("The routing node for the kg domain. " * 14))
-f = plant/".cypress/coverage.json"; r = json.loads(f.read_text())
-r["inventory"] = [{"kind": "domain", "name": "kg", "slug": "kg",
-                   "significance": "core", "status": "COVERED",
-                   "evidence": ["docs/graph/index.md:1"],
-                   # missing best-practices/kg.md, which the kind now owes
-                   "expect": [{"path": "nodes/domain.kg.md"}],
-                   "grounding": {"required": False, "sources": []},
-                   "expert": {"warranted": False, "why": "the librarian holds it"}}]
-f.write_text(json.dumps(r, indent=2) + "\n")
-PY
-  out="$(python3 "$AUDIT" "$TMP/x65" "$ROOT" 2>&1)" || true
-  grep -q "BLANK        domain kg" <<<"$out" \
-      || fail "a domain row whose plan omits a path its kind owes was not caught"
-  grep -q "its plan is missing best-practices/kg.md, which its kind owes" <<<"$out" \
-      || fail "the stale-plan finding did not name the owed path the plan omits"
-  [[ "$(audit_at "$TMP/x65")" == 1 ]] \
-      || fail "a row whose plan predates its kind's obligations passed the gate"
-  # --plan unions the owed path in, and the stale-plan finding clears (a fresh
-  # UNGROWN/UNGROUNDED for the now-owed-and-unwritten page is a DIFFERENT thing)
-  python3 "$AUDIT" "$TMP/x65" "$ROOT" --plan >/dev/null 2>&1 || true
-  python3 - "$TMP/x65" <<'PY' || exit 1
-import json, pathlib, sys
-it = json.loads((pathlib.Path(sys.argv[1])/".cypress/coverage.json").read_text())["inventory"][0]
-paths = [e["path"] for e in it["expect"]]
-assert "best-practices/kg.md" in paths, ("--plan did not union the owed path", paths)
-PY
-  out="$(python3 "$AUDIT" "$TMP/x65" "$ROOT" 2>&1)" || true
-  ! grep -q "its plan is missing" <<<"$out" \
-      || fail "the stale-plan finding survived a --plan that unioned the owed path"
 }
+
+scn_x65() {
 caseAUDIT_ROW_PLAN_COVERS_WHAT_ITS_KIND_OWES
 echo "  a row's plan must cover what its kind owes — OK"
+}
 
+# --- __case dispatch: run ONE scenario in isolation --------------------
+if [ "${1:-}" = "__case" ]; then
+  "$2"
+  exit $?
+fi
 
+# --- main: emit one scenario per line, run them under the gate pool ----
+SCN="$(mktemp)"
+for s in \
+    scn_shared scn_s9 scn_absent scn_staff \
+    scn_nostaff scn_dflt scn_rows scn_copy \
+    scn_x28 scn_x29 scn_x30 scn_x31 \
+    scn_x32 scn_x33 scn_x34 scn_x35 \
+    scn_x38 scn_x39 scn_x40 scn_x41 \
+    scn_x42 scn_x43 scn_x44 scn_x45 \
+    scn_rawbase scn_x58 scn_x59 scn_x60 \
+    scn_x61 scn_x62x63 scn_x64 scn_x65
+do
+  printf '%s\t%s\n' "$s" "bash \"$SELF\" __case $s" >> "$SCN"
+done
+rc=0
+python3 "$ROOT/tests/gate_pool.py" run "$SCN" || rc=$?
+rm -f "$SCN"
+[ "$rc" -eq 0 ] || { echo "test-growth-audit: FAIL" >&2; exit "$rc"; }
 printf 'growth coverage gate: PASS\n'

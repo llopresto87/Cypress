@@ -355,6 +355,27 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "also reads the REAL tests/run.sh — adding an unclassified step to it "
         "fails this suite. Verified. The real "
         "one is exercised by the step below"),
+    "test_gate_pool.py": (
+        "the shared concurrency budget clamps to [4, 64] and its cross-process "
+        "token pool caps TOTAL leaf subprocesses across every parallel suite to "
+        "that budget", REAL, "coverage",
+        "it exercises the clamp and the pool bound over synthetic scenarios "
+        "(sleep + a slot count), which is the cpu_count**2 explosion the pool "
+        "exists to prevent; it does not re-run the real suites, so a suite that "
+        "parallelised its scenarios but dropped an assertion is out of scope — "
+        "that is each suite's own row, and each suite carries a red-on-break "
+        "check. The exit-code aggregation half is pinned next door in "
+        "test_run_parallel.py, which drives the same dispatch path"),
+    "test_run_parallel.py": (
+        "the parallel dispatcher fails the whole run when ANY step fails, "
+        "aggregates every exit code rather than only the first, and names each "
+        "failed step", REAL, "coverage",
+        "it exercises the aggregation and exit-code contract over synthetic "
+        "step lists (true/false/exit N), which is the invariant a naive `cmd &` "
+        "scheme loses; it does not re-run the real 45-gate batch, so a step that "
+        "PASSES for the wrong reason is out of its scope — that is each gate's "
+        "own row above. The dispatcher itself is documented in the NON_STEP "
+        "GUARDS below, since it is the runner, not a gate"),
     "gate-registry.py --lint": (
         "every gate in tests/run.sh declares what it reads and what it can miss",
         REAL, "semantic",
@@ -417,6 +438,16 @@ def run_sh_steps() -> list[str]:
                 line):
             path, rest = m.group(2), m.group(3)
             if path.startswith("/dev/"):
+                continue
+            # tests/run-parallel.py is the RUNNER that dispatches the steps
+            # below — infrastructure, not a gate that asserts a property of the
+            # seed. It is accountable in NON_STEP_GUARDS (its false green is
+            # losing a sub-step's failure) and pinned by tests/test_run_parallel.py,
+            # so it is skipped here exactly like the analogous run.sh EXIT trap
+            # has no step line to parse. It must live under a scanned directory
+            # (runner_contract_problems refuses a runner reached from outside
+            # them), so it is named explicitly rather than hidden by shape.
+            if path == "tests/run-parallel.py":
                 continue
             name = Path(path).name
             # A tool with a reporting mode and a checking mode is two different
@@ -548,6 +579,35 @@ def cmd_summary() -> int:
 # file exists to record. A run-level EXIT trap is still a gate; it just has no
 # line for `cmd_lint` to find, so it had no row here at all.
 NON_STEP_GUARDS = {
+    "gate_pool.py (shared concurrency budget + scenario dispatcher)": (
+        "the gate's ONE concurrency knob ($GATE_JOBS clamped to [4,64], else "
+        "the I/O-oversubscribed auto default clamp(cpu*2, 8, 64)) "
+        "and its cross-process token pool, so the TOTAL leaf subprocesses across "
+        "every parallel suite stay <= the budget (never cpu_count**2), plus the "
+        "grouped-output / exit-code aggregation every internally-parallel suite "
+        "and run-parallel.py share",
+        "coverage",
+        "NOT a gate: it asserts nothing about the seed, it RUNS the scenarios "
+        "that do. Invisible to the step parser because no run.sh line names it — "
+        "the suites call it internally. Its false green is the `cmd &` one — a "
+        "failing scenario reported green — pinned by tests/test_run_parallel.py "
+        "(which drives this module's dispatch/aggregation) and by every suite's "
+        "own red-on-break check. BLIND TO: whether a scenario passed for the "
+        "right reason (each suite's own asserts own that), and it takes no seed "
+        "snapshot — the whole-run _seed_digest EXIT trap stays the single "
+        "integrity guard."),
+    "run-parallel.py (tests/run.sh step dispatcher)": (
+        "every gate step run.sh hands it runs, its exit code is aggregated, and "
+        "a single red step fails the whole gate (exit 1) with the step named — "
+        "so parallelising the run did not weaken `set -euo pipefail`'s abort",
+        "coverage",
+        "NOT a gate: it asserts nothing about the seed, it RUNS the gates that "
+        "do, so the step parser skips it by name. Its false green is the one a "
+        "`cmd &` scheme has — a failing step reported green — and that is pinned "
+        "by tests/test_run_parallel.py, a real step above. BLIND TO: whether a "
+        "step passed for the right reason (each gate's own row owns that), and "
+        "it takes no seed snapshot of its own — the whole-run _seed_digest EXIT "
+        "trap remains the single integrity guard, unchanged."),
     "_seed_digest (tests/run.sh EXIT trap)": (
         "the gate did not modify the seed it was testing — type, mode, path, "
         "bytes (sha256) and link target, over the tree and over .git",

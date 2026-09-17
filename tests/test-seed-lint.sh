@@ -11,20 +11,31 @@
 # dangling-reference arm, the harness-registration home + referrer pair, the
 # opencode config contract, and the est_tokens-vs-file budget (whole file,
 # frontmatter included, since 2026-09-17) — plus the
-# long-standing kernel-budget guard as a control.
+#
+# PARALLEL: each check runs against its OWN cheap copy of one shared hermetic
+# template, so the checks cannot collide and are dispatched concurrently through
+# the gate's shared budget (tests/gate_pool.py, $GATE_JOBS / $GATE_POOL_DIR).
+# ~60 serial full-tree lints were the floor here; now they run under one clamped
+# pool. Every planted violation is byte-for-byte what it was — a fresh copy plus
+# a template-sourced restore() is the only structural change, so the gate still
+# FAILS on each violation class exactly as before.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT
+ROOT="${ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+SELF="$ROOT/tests/test-seed-lint.sh"
 
-# Hermetic copy of the seed (seed-lint resolves ROOT from its own location, so
-# running $TMP/tests/seed-lint.py lints the copy). Exclude VCS/build cruft.
-( cd "$ROOT" && tar --exclude=.git --exclude=__pycache__ --exclude='*.pyc' \
-    --exclude=.pytest_cache -cf - . ) | ( cd "$TMP" && tar -xf - )
-
+# A fresh, disposable copy of the shared template. seed-lint resolves ROOT from
+# its own location, so running $TMP/tests/seed-lint.py lints the copy.
+fresh() {
+  local d; d="$(mktemp -d)"
+  ( cd "$SEEDLINT_TMPL" && tar -cf - . ) | ( cd "$d" && tar -xf - )
+  printf '%s' "$d"
+}
 lint() { python3 "$TMP/tests/seed-lint.py" 2>&1; }
-restore() { cp "$ROOT/$1" "$TMP/$1"; }   # revert a planted file from the pristine seed
+# The copy is disposable, so a restore just re-lays the pristine file from the
+# template — same semantics as the old `cp "$ROOT/$1"`, needed by the few checks
+# that plant, assert, restore and then assert the file is clean again.
+restore() { cp "$SEEDLINT_TMPL/$1" "$TMP/$1"; }
 
 expect_fail() {  # $1=grep-pattern  $2=label
   local out rc
@@ -33,9 +44,9 @@ expect_fail() {  # $1=grep-pattern  $2=label
   grep -q "$1" <<<"$out" || { echo "[$2] missing expected message: /$1/" >&2; echo "$out" >&2; exit 1; }
 }
 
-# 0. Baseline: the pristine copy lints clean.
-lint >/dev/null || { echo "baseline seed-lint did not pass on a clean copy" >&2; exit 1; }
-
+# --- each check, self-contained on its own fresh copy ------------------------
+case_01() {
+  local TMP; TMP="$(fresh)"
 # 1. A user-sovereign protocol must not declare `command: true`.
 python3 - "$TMP/protocols/graft.md" <<'PY'
 import re,sys; p=sys.argv[1]; t=open(p).read()
@@ -43,7 +54,10 @@ open(p,'w').write(re.sub(r'(?m)^(est_tokens:[^\n]*\n)', r'\1command: true\n', t,
 PY
 expect_fail "must not declare 'command: true'" "sovereign-command"
 restore protocols/graft.md
-
+  rm -rf "$TMP"
+}
+case_02() {
+  local TMP; TMP="$(fresh)"
 # 2. `command:` is a protocol-only field.
 python3 - "$TMP/skills/context-router/SKILL.md" <<'PY'
 import re,sys; p=sys.argv[1]; t=open(p).read()
@@ -51,7 +65,10 @@ open(p,'w').write(re.sub(r'(?m)^(est_tokens:[^\n]*\n)', r'\1command: true\n', t,
 PY
 expect_fail "protocol-only field" "command-on-skill"
 restore skills/context-router/SKILL.md
-
+  rm -rf "$TMP"
+}
+case_03() {
+  local TMP; TMP="$(fresh)"
 # 3. A requires:/peers: edge to a nonexistent node fails to resolve.
 python3 - "$TMP/protocols/verify.md" <<'PY'
 import re,sys; p=sys.argv[1]; t=open(p).read()
@@ -59,7 +76,10 @@ open(p,'w').write(re.sub(r'(?m)^requires:\s*$', 'requires:\n  - protocol.does-no
 PY
 expect_fail "unknown machinery node" "dangling-edge"
 restore protocols/verify.md
-
+  rm -rf "$TMP"
+}
+case_04() {
+  local TMP; TMP="$(fresh)"
 # 4. A cycle in the requires: relation is rejected.
 python3 - <<PY
 import re
@@ -71,12 +91,18 @@ PY
 expect_fail "requires cycle" "requires-cycle"
 restore protocols/specify.md
 restore protocols/grill.md
-
+  rm -rf "$TMP"
+}
+case_05() {
+  local TMP; TMP="$(fresh)"
 # 5. A miscounted skills claim in shipped prose is caught.
 printf '\n\nThe seed ships 99 skills.\n' >> "$TMP/README.md"
 expect_fail "claims 99 skills" "skills-count"
 restore README.md
-
+  rm -rf "$TMP"
+}
+case_06() {
+  local TMP; TMP="$(fresh)"
 # 5b. REGRESSION — the qualified "N named specialist agents" phrasing is
 # policed too: DOCUMENTATION.md shipped a release saying "17 named
 # specialist agents" while the roster had 18, and the first version of
@@ -84,7 +110,10 @@ restore README.md
 printf '\n\nA team of 99 named specialist agents.\n' >> "$TMP/DOCUMENTATION.md"
 expect_fail "99 named specialist agents" "qualified-agent-count"
 restore DOCUMENTATION.md
-
+  rm -rf "$TMP"
+}
+case_07() {
+  local TMP; TMP="$(fresh)"
 # 5c. REGRESSION — the documentation tree's version pin must match the
 # manifest: DOCUMENTATION.md/documentation/README.md sat at 6.8.0 for a
 # whole release because no gate read them.
@@ -94,7 +123,10 @@ import re; open(p,"w").write(re.sub(r"\(version \d+\.\d+\.\d+\)", "(version 0.0.
 PY
 expect_fail "documents version 0.0.1" "doc-tree-version-pin"
 restore documentation/README.md
-
+  rm -rf "$TMP"
+}
+case_08() {
+  local TMP; TMP="$(fresh)"
 # 5d. The spawn-trace contract: a brief that drops the spawn_id field breaks
 # the delegation correlation chain and must fail the lint.
 python3 - "$TMP/templates/prompts/investigation-brief.md" <<'PY'
@@ -104,7 +136,10 @@ open(p,'w').write(t.replace("spawn_id", "spawnid"))
 PY
 expect_fail "no spawn_id field" "spawn-trace-contract"
 restore templates/prompts/investigation-brief.md
-
+  rm -rf "$TMP"
+}
+case_09() {
+  local TMP; TMP="$(fresh)"
 # 6. manifest version and the top CHANGELOG entry must agree.
 python3 - "$TMP/manifest.json" <<'PY'
 import re,sys; p=sys.argv[1]; t=open(p).read()
@@ -112,12 +147,18 @@ open(p,'w').write(re.sub(r'("version":\s*")\d+\.\d+\.\d+(")', r'\g<1>0.0.0\g<2>'
 PY
 expect_fail "version drift" "version-single-source"
 restore manifest.json
-
+  rm -rf "$TMP"
+}
+case_10() {
+  local TMP; TMP="$(fresh)"
 # 7. Control: the long-standing kernel-budget guard still bites.
 python3 -c "open('$TMP/core/AGENTS.md','a').write('\n<!-- '+'x'*9000+' -->\n')"
 expect_fail "exceeds the" "kernel-budget"
 restore core/AGENTS.md
-
+  rm -rf "$TMP"
+}
+case_11() {
+  local TMP; TMP="$(fresh)"
 # 8. The agnosticism/durability scan reaches EVERY shipped corpus, not just the
 # ones it happened to be written for. A corpus added later that nobody adds to
 # `agn_roots` is scanned by nothing, and its first leak ships silently — so each
@@ -135,13 +176,19 @@ do
   expect_fail "pinned advisory" "corpus-scan-cve:${corpus_probe%%/*}"
   restore "$corpus_probe"
 done
-
+  rm -rf "$TMP"
+}
+case_12() {
+  local TMP; TMP="$(fresh)"
 # 9. A dangling cross-reference into any corpus is caught (the withdraw
 # contracts are prose pointers; a stale one silently sends a reader nowhere).
 python3 -c "open('$TMP/protocols/harvest.md','a').write('\nSee \`legal-corpus/eu/does-not-exist.md\`.\n')"
 expect_fail "dangling corpus/template reference" "dangling-corpus-ref"
 restore protocols/harvest.md
-
+  rm -rf "$TMP"
+}
+case_13() {
+  local TMP; TMP="$(fresh)"
 # 10. The "installed but not spawnable" rule keeps its single home. Moving or
 # dropping it from method.delegation would leave every dispatch/install surface
 # pointing at a fact nothing owns.
@@ -151,7 +198,10 @@ open(p,'w').write(t.replace("  - delegation.harness-registration\n", "", 1))
 PY
 expect_fail "does not own 'delegation.harness-registration'" "registration-home"
 restore core/method/delegation.md
-
+  rm -rf "$TMP"
+}
+case_14() {
+  local TMP; TMP="$(fresh)"
 # 11. A dispatch/install surface that drops the pointer is caught. This is the
 # rot mode the fix exists to prevent: the rule stays written in one place while
 # the surface that needed it quietly stops mentioning it.
@@ -161,7 +211,10 @@ open(p,'w').write(t.replace("delegation.harness-registration", "<dropped>"))
 PY
 expect_fail "never points at 'delegation.harness-registration'" "registration-referrer"
 restore protocols/grow.md
-
+  rm -rf "$TMP"
+}
+case_15() {
+  local TMP; TMP="$(fresh)"
 # 12. The opencode config contract: a stale $schema URL, a key the upstream
 # schema does not accept (additionalProperties:false makes it fatal, not
 # cosmetic), a re-declared AGENTS.md (double-loads the kernel), and a
@@ -180,7 +233,10 @@ expect_fail "kernel would load twice" "opencode-double-load"
 write_oc '{"$schema":"https://opencode.ai/config.json","subagent_depth":1}'
 expect_fail "delegation topology would be capped" "opencode-depth-cap"
 restore "$oc"
-
+  rm -rf "$TMP"
+}
+case_16() {
+  local TMP; TMP="$(fresh)"
 # 13. A machinery node whose est_tokens is more than 2x off its measured file
 # — frontmatter included, the metric graph-lint.py's check_budget uses — would
 # be REJECTED by the graph-lint.py the seed itself ships, once installed into a
@@ -193,7 +249,10 @@ open(p,'w').write(re.sub(r'(?m)^est_tokens:\s*\d+', 'est_tokens: 20', t, count=1
 PY
 expect_fail "graph-lint.py would reject this node" "est-tokens-2x"
 restore protocols/verify.md
-
+  rm -rf "$TMP"
+}
+case_17() {
+  local TMP; TMP="$(fresh)"
 # 14. The body ceiling, the eager-context budget and the spec test-mapping
 # check are new in 7.16.0 and had no planted violation here, which contradicts
 # this file's own contract ("Every seed-lint check earns a planted violation").
@@ -211,7 +270,10 @@ open(p,'w').write(t + chr(10) + chr(10).join('padding line %d' % i for i in rang
 expect_fail "machinery ceiling" "body-ceiling"
 # exercises: check_body_ceiling
 restore protocols/verify.md
-
+  rm -rf "$TMP"
+}
+case_18() {
+  local TMP; TMP="$(fresh)"
 # ...and the FRONTMATTER half of the same ceiling. A node is loaded whole, so
 # metadata is context: 2 000 frontmatter lines with the body untouched passed
 # every one of the 42 gates.
@@ -224,14 +286,20 @@ p.write_text(t[:i] + chr(10) + chr(10).join('pad_%d: x' % n for n in range(2000)
 expect_fail "frontmatter is .* lines, over the" "frontmatter-ceiling"
 # exercises: check_body_ceiling
 restore protocols/canonize.md
-
+  rm -rf "$TMP"
+}
+case_19() {
+  local TMP; TMP="$(fresh)"
 # The CI the README says runs this gate: deleting the workflow used to leave
 # every one of the 43 steps green.
 rm -f "$TMP/.github/workflows/gate.yml"
 expect_fail "workflows/gate.yml is missing" "ci-workflow"
 # exercises: check_ci_workflow
 mkdir -p "$TMP/.github/workflows" && restore .github/workflows/gate.yml
-
+  rm -rf "$TMP"
+}
+case_20() {
+  local TMP; TMP="$(fresh)"
 # A published always-loaded figure that drifts from what check_eager_surface
 # computes. These moved four times in one release, and the page that prints them
 # claimed the gate held them against the computation while nothing did.
@@ -244,7 +312,10 @@ p.write_text(t.replace(m.group(1), '99 111', 1))
 expect_fail "always-loaded surface" "published-eager-figure"
 # exercises: check_published_eager_figures
 restore documentation/host-capability-matrix.md
-
+  rm -rf "$TMP"
+}
+case_21() {
+  local TMP; TMP="$(fresh)"
 # A body-size claim in README that the measurement no longer supports. U-15 was
 # exactly this — `<500` against a 931-line body — and its fix printed four fresh
 # numbers that nothing derived.
@@ -257,7 +328,10 @@ expect_fail "largest routable body" "published-body-figure"
 # exercises: check_published_body_figures
 restore protocols/graft.md
 restore protocols/verify.md
-
+  rm -rf "$TMP"
+}
+case_22() {
+  local TMP; TMP="$(fresh)"
 python3 -c "
 import re, sys
 p = sys.argv[1]
@@ -267,7 +341,10 @@ open(p,'w').write(re.sub(r'(?m)^(description:.*)\$', lambda m: m.group(1) + ' pa
 expect_fail "eager surface" "eager-budget"
 # exercises: check_eager_surface
 restore agents/01-architect.md
-
+  rm -rf "$TMP"
+}
+case_23() {
+  local TMP; TMP="$(fresh)"
 # A spec citing a test nobody wrote — the exact defect that shipped: SPEC-0002
 # marked a contract `green` against a name that existed only in its own table.
 if [ -d "$TMP/docs/specs" ]; then
@@ -281,7 +358,10 @@ f.write_text(f.read_text() + chr(10) + '| C | test_this_name_was_never_written |
   # restore() is `cp` without -r, so name the file rather than the directory.
   restore docs/specs/SPEC-0001-install-placement.md
 fi
-
+  rm -rf "$TMP"
+}
+case_24() {
+  local TMP; TMP="$(fresh)"
 # The protocol reference restates owns/requires/peers/est_tokens for all fifteen
 # protocols by hand. When check_protocol_reference() was written, THIRTEEN of the
 # fifteen rows were stale — verify missing eight owned facts, and every
@@ -298,7 +378,10 @@ f.write_text(t)
 expect_fail "est_tokens 9790, but protocol.graft declares" "protocol-reference-stale-tokens"
 # exercises: check_protocol_reference
 restore documentation/protocols-reference.md
-
+  rm -rf "$TMP"
+}
+case_25() {
+  local TMP; TMP="$(fresh)"
 python3 -c "
 import pathlib, sys
 f = pathlib.Path(sys.argv[1])
@@ -306,7 +389,10 @@ f.write_text(f.read_text().replace('\`graft.reversibility\` |', '\`graft.reversi
 " "$TMP/documentation/protocols-reference.md"
 expect_fail "extra \['graft.invented'\]" "protocol-reference-invented-fact"
 restore documentation/protocols-reference.md
-
+  rm -rf "$TMP"
+}
+case_26() {
+  local TMP; TMP="$(fresh)"
 # check_gate_single_home() shipped with no negative test, and a review then
 # found two holes in it: a named-but-missing node passed vacuously (a renamed
 # graft.md made the whole check report nothing), and `hard` was still an
@@ -325,11 +411,17 @@ f.write_text(t)
 expect_fail "declares class .hard" "gate-class-hard-rejected"
 # exercises: check_gate_single_home
 restore protocols/graft.md
-
+  rm -rf "$TMP"
+}
+case_27() {
+  local TMP; TMP="$(fresh)"
 mv "$TMP/protocols/graft.md" "$TMP/protocols/graft-renamed.md"
 expect_fail "named in LIFECYCLE_NODES but is not a file" "gate-lifecycle-node-missing"
 mv "$TMP/protocols/graft-renamed.md" "$TMP/protocols/graft.md"
-
+  rm -rf "$TMP"
+}
+case_28() {
+  local TMP; TMP="$(fresh)"
 python3 -c "
 import pathlib, sys
 f = pathlib.Path(sys.argv[1])
@@ -337,7 +429,10 @@ f.write_text(f.read_text() + chr(10) + 'See \`grow.gate.invented-here\` for deta
 " "$TMP/protocols/grow.md"
 expect_fail "which no table row declares" "gate-dangling-reference"
 restore protocols/grow.md
-
+  rm -rf "$TMP"
+}
+case_29() {
+  local TMP; TMP="$(fresh)"
 # A `judgment` row with no judge. Fifteen of sixteen rows named one in prose
 # before the marker existed and the sixteenth read as though it did, so the
 # marker is the contract: checkable exactly, no phrase matching.
@@ -351,7 +446,10 @@ f.write_text(t[:i] + t[t.index('|', i):])
 " "$TMP/protocols/grow.md"
 expect_fail "names no judge" "gate-judgment-without-judge"
 restore protocols/grow.md
-
+  rm -rf "$TMP"
+}
+case_30() {
+  local TMP; TMP="$(fresh)"
 # The protocols-reference SECTION arm also had no fixture, which is how a
 # duplicated `load_when:` bullet in three sections passed as clean.
 python3 -c "
@@ -363,7 +461,10 @@ f.write_text(t[:m.end()] + m.group(0) + t[m.end():])
 " "$TMP/documentation/protocols-reference.md"
 expect_fail "is stated 2 times" "protocol-reference-duplicate-field"
 restore documentation/protocols-reference.md
-
+  rm -rf "$TMP"
+}
+case_31() {
+  local TMP; TMP="$(fresh)"
 # 16. Checks that had no planted violation at all. Measured, not assumed: each
 # check's call was replaced with `pass` in turn and this suite re-run, and nine
 # of thirteen deletions went unnoticed — including check_install_write_sites,
@@ -375,7 +476,10 @@ p = pathlib.Path(sys.argv[1]); p.write_text(p.read_text().rstrip(chr(10)))
 expect_fail "does not end with a newline" "file-endings"
 # exercises: check_file_endings
 restore protocols/grill.md
-
+  rm -rf "$TMP"
+}
+case_32() {
+  local TMP; TMP="$(fresh)"
 python3 -c "
 import pathlib, sys
 p = pathlib.Path(sys.argv[1])
@@ -384,7 +488,10 @@ p.write_text(p.read_text().replace('GRAPH DISCIPLINE', 'GRAPH DISCIPLINEX', 1))
 expect_fail "has drifted from the canonical copy" "canonical-block-drift"
 # exercises: check_canonical_router_blocks
 restore templates/prompts/investigation-brief.md
-
+  rm -rf "$TMP"
+}
+case_33() {
+  local TMP; TMP="$(fresh)"
 # One of the three upward walkers loses the plant-root boundary. Byte-identity
 # is the only thing holding them together, so dropping it from one file must be
 # the loudest possible failure: without it that walker reads an ancestor
@@ -401,8 +508,10 @@ p.write_text(t)
 expect_fail "plant-root boundary" "plant-root-boundary-drift"
 # exercises: check_canonical_plant_root_boundary
 restore integrations/claude-code/status-hook.py
-
-
+  rm -rf "$TMP"
+}
+case_34() {
+  local TMP; TMP="$(fresh)"
 # Two nodes claiming the SAME failure. The review brief asked five rounds running
 # for a pairwise prevents: sweep 'reported with scores' because nothing did it;
 # agent.implementer's line collided three times and returned to its origin.
@@ -417,7 +526,10 @@ p.write_text(re.sub(r'^prevents:.*\$', prev, p.read_text(), count=1, flags=re.M)
 expect_fail "claim the same failure" "prevents-collision"
 # exercises: check_prevents_are_distinct
 restore agents/03-reviewer.md
-
+  rm -rf "$TMP"
+}
+case_35() {
+  local TMP; TMP="$(fresh)"
 # A write into the target that bypasses the four named placement operations.
 python3 -c "
 import pathlib, sys
@@ -428,7 +540,10 @@ p.write_text(t.replace('place_tree() {',
 expect_fail "named placement operations" "single-writer-bypass"
 # exercises: check_install_write_sites
 restore install.sh
-
+  rm -rf "$TMP"
+}
+case_36() {
+  local TMP; TMP="$(fresh)"
 # 18. A green §10 row whose cited test stops naming its contract. The row then
 # certifies nothing a reader can check: the test exists, is in the cited file
 # and is not skipped, and none of that says it asserts THIS contract. Before the
@@ -445,7 +560,10 @@ p.write_text(t2)
 # exercises: check_spec_rows_name_their_contract
 expect_fail "does not name their contract" "spec-row-unbound"
 restore tests/test_router_reach.py
-
+  rm -rf "$TMP"
+}
+case_37() {
+  local TMP; TMP="$(fresh)"
 # 19. A copy of the frontmatter reader drifting from the canonical one. It must
 # be a COPY — graph-lint, spec-lint, grill-lint and legal-lint ship into plants
 # as standalone scripts with no package to import from — so byte-identity is the
@@ -459,21 +577,11 @@ p.write_text(p.read_text() + '\n# drifted\n')
 # exercises: check_frontmatter_reader_is_one_reader
 expect_fail "has drifted from" "frontmatter-reader-drift"
 restore tools/frontmatter.py
-
-# 20. SPEC-0001-gate-assertion-floor (docs/graph/specs/), increment 16: a
-# compatibility claim in a spec matches the shebang of the code it describes.
-#
-# The claim this pins shipped for real. §5 of SPEC-0001-install-placement read
-# "POSIX shell and `python3` only" over a tree whose 30 shell files every one
-# declare `#!/usr/bin/env bash` and whose installer uses `set -euo pipefail`,
-# a `set` option POSIX does not define. A reader who believed it would write
-# POSIX-only shell into a bash tree and find out from a runtime failure.
-#
-# The slug names the function rather than a comment: spec-lint.py credits a
-# contract from a slug found ANYWHERE under tests/, comments included, and
-# three contracts once went "covered" on a docstring that happened to name
-# them.
-caseSHELL_FLOOR_CLAIM_MATCHES_THE_SHEBANG() {
+  rm -rf "$TMP"
+}
+# 20. SPEC-0001-gate-assertion-floor: a compatibility claim matches the shebang.
+case_shell_floor() {
+  local TMP; TMP="$(fresh)"
   # Restore the historical wording in the hermetic copy. The gate must say so.
   python3 - "$TMP/docs/specs/SPEC-0001-install-placement.md" <<'PY'
 import sys
@@ -501,18 +609,11 @@ PY
     lint >&2
     exit 1
   }
+  rm -rf "$TMP"
 }
-caseSHELL_FLOOR_CLAIM_MATCHES_THE_SHEBANG
-
-# 21. ADR-0004: the agnosticism scan reaches docs/plans, tools, install.sh,
-# DOCUMENTATION.md and INSTALL.md — the trees and files where an operator path
-# actually lands — and it scans *.py and *.sh there, not only *.md. Each new
-# root/file/glob is pinned by planting an operator home path and asserting the
-# gate now FAILS on it. tests/ stays OUT of scope (its own violation fixtures,
-# including this change's, live there), which the clean baseline at the top of
-# this file already proves — the fixtures carry a /home/exampleuser/ path and
-# the baseline lints clean, so the exclusion is load-bearing, not decorative.
-caseAGNOSTICISM_GATE_SCANS_DOCS_PLANS_TOOLS_INSTALLER() {
+# 21. ADR-0004: agnosticism scan reaches docs/plans, tools, install.sh, DOC/INSTALL.
+case_agn_docs() {
+  local TMP; TMP="$(fresh)"
   # a dev-plan .md under docs/plans (newly scanned root)
   python3 -c "open('$TMP/docs/plans/scout-01-kernel.md','a').write(chr(10)+'Ran the probe from /home/exampleuser/Cypres_plant and captured the log.'+chr(10))"
   expect_fail "absolute operator home path" "agn-scope-docs-plans"
@@ -528,11 +629,11 @@ caseAGNOSTICISM_GATE_SCANS_DOCS_PLANS_TOOLS_INSTALLER() {
   python3 -c "open('$TMP/INSTALL.md','a').write(chr(10)+'Installed to /home/exampleuser/opt.'+chr(10))"
   expect_fail "absolute operator home path" "agn-scope-install-md"
   restore INSTALL.md
+  rm -rf "$TMP"
 }
-caseAGNOSTICISM_GATE_SCANS_DOCS_PLANS_TOOLS_INSTALLER
-
 # 22. ADR-0004: *.py and *.sh are scanned under a scanned root, not only *.md.
-caseAGNOSTICISM_GATE_SCANS_PY_AND_SH() {
+case_agn_py_sh() {
+  local TMP; TMP="$(fresh)"
   # a *.py under tools/ (a newly scanned root)
   python3 -c "open('$TMP/tools/prose-lint.py','a').write(chr(10)+'# scratch: /home/exampleuser/scratch'+chr(10))"
   expect_fail "absolute operator home path" "agn-scope-tools-py"
@@ -542,16 +643,40 @@ caseAGNOSTICISM_GATE_SCANS_PY_AND_SH() {
   python3 -c "open('$TMP/tools/zz-agn-fixture.sh','w').write('#!/usr/bin/env bash'+chr(10)+'OUT=/home/exampleuser/out'+chr(10))"
   expect_fail "absolute operator home path" "agn-scope-root-sh"
   rm -f "$TMP/tools/zz-agn-fixture.sh"
+  rm -rf "$TMP"
 }
-caseAGNOSTICISM_GATE_SCANS_PY_AND_SH
 
-# 17. Every check_* in seed-lint.py is either exercised above or declared here.
-# The binder is the point: the nine gaps were invisible because nothing compared
-# the two sets, so each new check silently joined them. A check added from now
-# on fails this until it is given a violation or consciously declared.
+# --- one-case subcommand, run by the parallel dispatcher ---------------------
+if [ "${1:-}" = "__case" ]; then
+  "$2"
+  exit $?
+fi
+
+# --- main: build the template once, dispatch every case in parallel ----------
+SEEDLINT_TMPL="$(mktemp -d)"
+trap 'rm -rf "$SEEDLINT_TMPL"' EXIT
+( cd "$ROOT" && tar --exclude=.git --exclude=__pycache__ --exclude='*.pyc' \
+    --exclude=.pytest_cache -cf - . ) | ( cd "$SEEDLINT_TMPL" && tar -xf - )
+export SEEDLINT_TMPL ROOT
+
+# 0. Baseline: the pristine template lints clean (once, not once per case).
+TMP="$SEEDLINT_TMPL"
+lint >/dev/null || { echo "baseline seed-lint did not pass on a clean copy" >&2; exit 1; }
+
+SCN="$(mktemp)"
+for c in case_01 case_02 case_03 case_04 case_05 case_06 case_07 case_08 case_09 case_10 case_11 case_12 case_13 case_14 case_15 case_16 case_17 case_18 case_19 case_20 case_21 case_22 case_23 case_24 case_25 case_26 case_27 case_28 case_29 case_30 case_31 case_32 case_33 case_34 case_35 case_36 case_37 case_shell_floor case_agn_docs case_agn_py_sh; do
+  printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
+done
+rc=0
+python3 "$ROOT/tests/gate_pool.py" run "$SCN" || rc=$?
+rm -f "$SCN"
+
+# 17. Every check_* in seed-lint.py is exercised above or declared (reads $ROOT).
 python3 "$ROOT/tests/check-coverage-binder.py" "$ROOT"
 
-# 15. After all restores, the copy lints clean again.
+# 15. The template still lints clean (the cases never touch it).
+TMP="$SEEDLINT_TMPL"
 lint >/dev/null || { echo "seed-lint did not return to PASS after restores" >&2; exit 1; }
 
+[ "$rc" -eq 0 ] || { echo "seed-lint contract: FAIL — a planted violation did not fire" >&2; exit "$rc"; }
 printf 'seed-lint contract: PASS\n'

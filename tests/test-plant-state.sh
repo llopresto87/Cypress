@@ -18,8 +18,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-WORK="$(mktemp -d)"
-trap 'rm -rf "$WORK"' EXIT
+SELF="$ROOT/tests/test-plant-state.sh"
+export ROOT
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 # The oracle must not be the mechanism under test. This was a `sed` capture
@@ -46,6 +46,9 @@ pages() {
         -not -name '*.bak-*' | wc -l | tr -d ' '
 }
 
+
+case_s1_s2_s5() {
+local WORK; WORK="$(mktemp -d)"
 # --- S1/S2/S5: an unrelated install must not narrow the record -------------
 T="$WORK/seq"; mkdir -p "$T"
 "$ROOT/install.sh" claude-code --legal-corpus yes --legal-jurisdiction it \
@@ -74,12 +77,22 @@ for a in claude-code prime-agent; do
         || fail "order dependence: $a absent when installed in the reverse order"
 done
 
+rm -rf "$WORK"
+}
+
+case_s4() {
+local WORK; WORK="$(mktemp -d)"
 # --- S4: silence on a FRESH plant is `undecided`, not `no` -----------------
 U="$WORK/undecided"; mkdir -p "$U"
 "$ROOT/install.sh" claude-code --project-dir "$U" >/dev/null 2>&1
 [[ "$(field "$U/.cypress/seed.json" legal_corpus)" == "undecided" ]] \
     || fail "S4: an unasked corpus decision must read 'undecided', never 'no'"
 
+rm -rf "$WORK"
+}
+
+case_s6() {
+local WORK; WORK="$(mktemp -d)"
 # --- S6: the record can never contradict the disk -------------------------
 L="$WORK/legal"; mkdir -p "$L"
 "$ROOT/install.sh" claude-code --legal-corpus no --project-dir "$L" >/dev/null 2>&1 \
@@ -114,6 +127,11 @@ rm -rf "$L/docs/graph/legal/corpus"
 [[ "$(field "$L/.cypress/seed.json" legal_corpus)" == "no" ]] \
     || fail "S6: deliberate removal then 'no' did not record 'no'"
 
+rm -rf "$WORK"
+}
+
+case_plan_records() {
+local WORK; WORK="$(mktemp -d)"
 # --- a plant's own plan records are never touched by the seed --------------
 # The plan-of-record and its ledger files hold the plant's decisions: why a
 # thing was built, what was rejected, what a steward ratified. They are the one
@@ -156,6 +174,11 @@ plan records must never reach a plant" ;;
 done
 echo "  a plant's plan records and ledger children survive every install — OK"
 
+rm -rf "$WORK"
+}
+
+case_corpus_linkmodes() {
+local WORK; WORK="$(mktemp -d)"
 # --- the corpus works in BOTH link modes ----------------------------------
 # `--legal-corpus yes --symlink` died with "placed partially (0 of 16 pages)"
 # while all sixteen pages were present and correct as symlinks: the completeness
@@ -175,6 +198,11 @@ for mode in --copy --symlink; do
 done
 echo "  the whole corpus lands under --copy AND --symlink — OK"
 
+rm -rf "$WORK"
+}
+
+case_corpus_surplus() {
+local WORK; WORK="$(mktemp -d)"
 # A plant ingest ON TOP of the whole corpus must not be reported as partial, and
 # must not make the plant uninstallable. Untested in both directions until now:
 # the code moved from -eq to -lt, the contract's Then kept saying "equals", and
@@ -193,6 +221,12 @@ grep -q "beyond the" "$WORK/surplus.log" \
     || fail "S6 surplus: the plant's own ingest was deleted by a re-install"
 echo "  a plant ingest beside the whole corpus is named, kept, and not refused — OK"
 
+rm -rf "$WORK"
+}
+
+case_drift() {
+local WORK; WORK="$(mktemp -d)"
+want="$(find "$ROOT/legal-corpus" -type f -not -name '*.bak-*' | wc -l | tr -d ' ')"
 # --- the record cannot drift from the disk WITHOUT a wrong flag -----------
 # S6 was only ever enforced on an explicit `--legal-corpus no`. A plant that
 # decided `yes`, then lost the corpus out-of-band, then had a second adapter
@@ -227,6 +261,12 @@ U="$WORK/drift-undecided"; mkdir -p "$U"
     || fail "S6/drift: an undecided plant must stay undecided"
 [[ "$(pages "$U")" -eq 0 ]] || fail "S6/drift: an undecided plant must not acquire a corpus"
 
+rm -rf "$WORK"
+}
+
+case_edited() {
+local WORK; WORK="$(mktemp -d)"
+want="$(find "$ROOT/legal-corpus" -type f -not -name '*.bak-*' | wc -l | tr -d ' ')"
 # --- a re-install over an EDITED corpus still leaves it whole --------------
 # What this pins: after a re-install that backs up four edited pages, the plant
 # holds the complete corpus AND four .bak siblings beside it.
@@ -251,6 +291,11 @@ for f in $(find "$D" -name '*.md' | head -4); do printf '\n<!-- edited -->\n' >>
 [[ "$(pages "$C")" -eq "$want" ]] \
     || fail "corpus page count must ignore .bak siblings (got $(pages "$C") want $want)"
 
+rm -rf "$WORK"
+}
+
+case_s7() {
+local WORK; WORK="$(mktemp -d)"
 # S7 — an unreadable record is refused BEFORE the first write.
 #
 # This whole class shipped with no regression at all: the guard could be deleted
@@ -305,4 +350,29 @@ T="$WORK/unreadable-control"; cp -a "$S" "$T"
 [[ "$(field "$T/.cypress/seed.json" tools)" == "claude-code codex" ]] \
     || fail "S7 control: adapters did not accumulate"
 
+rm -rf "$WORK"
+}
+
+# --- one-case subcommand, run by the parallel dispatcher ---------------------
+if [ "${1:-}" = "__case" ]; then
+  "$2"
+  exit $?
+fi
+
+# --- main: dispatch every INDEPENDENT scenario in parallel -------------------
+# Each S-section is a self-contained scenario over its OWN mktemp target. The
+# sequential-dependency sections (an install SEQUENCE into one plant: S6's
+# no->yes->refuse->remove->no, S7's setup->corrupt->refuse->control) stay whole
+# inside a single scenario; DIFFERENT S-sections are independent and run
+# concurrently under the gate's ONE shared budget (tests/gate_pool.py,
+# $GATE_JOBS / $GATE_POOL_DIR). Every assertion is byte-for-byte what it was.
+SCN="$(mktemp)"
+for c in case_s1_s2_s5 case_s4 case_s6 case_plan_records case_corpus_linkmodes case_corpus_surplus case_drift case_edited case_s7; do
+  printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
+done
+rc=0
+python3 "$ROOT/tests/gate_pool.py" run "$SCN" || rc=$?
+rm -f "$SCN"
+
+[ "$rc" -eq 0 ] || { echo "plant-state: FAIL — a scenario failed" >&2; exit "$rc"; }
 echo "plant-state: OK — decisions preserved, adapters accumulate, projections derived, record agrees with disk, an unreadable record is refused before any write"

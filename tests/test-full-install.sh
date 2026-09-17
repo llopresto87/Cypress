@@ -7,8 +7,6 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-T="$(mktemp -d)"
-trap 'rm -rf "$T"' EXIT
 
 need() { [[ -e "$1" ]] || { echo "MISSING after $2 install: $1" >&2; exit 1; }; }
 
@@ -77,6 +75,14 @@ projection_parity() {
   return 0
 }
 
+# --- independent scenarios, each self-contained in its own temp target ----
+# Every case below sets up its OWN mktemp target and runs its OWN asserts,
+# verbatim from the original serial script. main() emits one scenario line
+# per case and runs them concurrently under the gate's ONE shared budget via
+# tests/gate_pool.py (a red scenario still fails the whole suite).
+
+case_claude_code() {
+  local T; T="$(mktemp -d)"
 "$ROOT/install.sh" claude-code --project-dir "$T" --copy --force >/dev/null
 need "$T/CLAUDE.md" claude-code
 need "$T/docs/graph/templates/prompts/graph-session-bootstrap.md" claude-code
@@ -158,7 +164,10 @@ projection_parity "$ROOT/agents" "$T/.claude/agents" \
   || { echo "the install projection is not a faithful projection of the seed roster" >&2; exit 1; }
 python3 "$T/docs/graph/graph-lint.py" >/dev/null       # machinery graph lints clean
 assert_cmd_roster "$T/.claude/commands" .md "claude-code commands"
+  rm -rf "$T"
+}
 
+case_plant_facts_flags() {
 # 7.2.1: the plant facts are an explicit owner choice at install time. With the
 # four flags the router's plant: block is filled; without them the placeholders
 # stay and the installer names the missing facts as a NEXT STEP.
@@ -177,7 +186,10 @@ grep -q 'environment_class: <' "$Q/docs/graph/index.md" || { echo "plant facts: 
 grep -q 'plant facts' <<<"$OUT" || { echo "plant facts: installer must name the missing facts" >&2; exit 1; }
 rm -rf "$P" "$Q"
 echo "  plant facts: filled by flags, validated, never overwritten, named when missing — OK"
+}
 
+case_opencode() {
+  local T; T="$(mktemp -d)"
 "$ROOT/install.sh" opencode --project-dir "$T" --copy --force >/dev/null
 # 7.0.0: an edited opencode.json is backed up on re-install, never silently overwritten.
 python3 - "$T/opencode.json" <<'PY2'
@@ -211,14 +223,22 @@ assert cfg.get("skills", {}).keys() <= {"paths", "urls"}, f"bad skills shape: {c
 assert cfg["subagent_depth"] == 3, f"delegation depth capped: {cfg.get('subagent_depth')}"
 EOF
 assert_cmd_roster "$T/.opencode/commands" .md "opencode commands"
+  rm -rf "$T"
+}
 
+case_codex() {
+  local T; T="$(mktemp -d)"
 "$ROOT/install.sh" codex --project-dir "$T" --copy --force >/dev/null
 need "$T/.codex/agents/00-orchestrator.md" codex
 need "$T/docs/graph/templates/prompts/handback-payload.md" codex
 [[ ! -e "$T/.codex/protocols" ]] || { echo "STALE .codex/protocols" >&2; exit 1; }
 grep -q "context-router" "$T/.codex/codex-config-snippet.toml"
 grep -q "validate-knowledge" "$T/.codex/codex-config-snippet.toml"
+  rm -rf "$T"
+}
 
+case_github_copilot() {
+  local T; T="$(mktemp -d)"
 "$ROOT/install.sh" github-copilot --project-dir "$T" --copy --force >/dev/null
 need "$T/.github/copilot-instructions.md" github-copilot
 need "$T/docs/graph/templates/prompts/graph-session-bootstrap.md" github-copilot
@@ -269,7 +289,11 @@ if slack > 512:
 print(f"  copilot pointer overhead: modelled {sl.COPILOT_POINTER_OVERHEAD}, "
       f"measured {measured} ({slack} B slack)")
 PYEOF
+  rm -rf "$T"
+}
 
+case_prime_agent() {
+  local T; T="$(mktemp -d)"
 "$ROOT/install.sh" prime-agent --project-dir "$T" --copy --force >/dev/null
 need "$T/AGENTS.md" prime-agent
 need "$T/.prime/agent/agents/00-orchestrator.md" prime-agent
@@ -304,13 +328,16 @@ for key in ("extensions", "skills", "prompts"):
 assert "rlmMaxDepth" not in cfg, "rlmMaxDepth in project settings is silently ignored — do not ship it"
 EOF
 assert_cmd_roster "$T/.prime/agent/prompts" .md "prime-agent prompts"
+  rm -rf "$T"
+}
 
+_coexist() {
+  local order="$1"
 # --- Interchangeable Claude Code + Prime Agent in ONE plant --------------
 # The two first-class harnesses must coexist in a single plant off a shared,
 # non-drifting kernel. Install both into a FRESH dir and assert one kernel file
 # is the source of truth (the other a symlink to it), both harness trees exist,
 # and the knowledge graph is shared. Both install orders must converge.
-for order in "claude-code prime-agent" "prime-agent claude-code"; do
   D="$(mktemp -d)"
   "$ROOT/install.sh" $order --project-dir "$D" --copy --force >/dev/null
   need "$D/CLAUDE.md" "coexist($order)"
@@ -334,8 +361,9 @@ for order in "claude-code prime-agent" "prime-agent claude-code"; do
   need "$D/.prime/agent/extensions/route-extension.ts" "coexist($order)"
   need "$D/docs/graph/index.md" "coexist($order)"
   rm -rf "$D"
-done
+}
 
+case_graft_stale_kernel() {
 # REGRESSION — GRAFT over a STALE kernel must fast-forward the kernel BODY,
 # not merely re-point the CLAUDE.md<->AGENTS.md symlink. place_kernel once
 # symlinked one kernel file to the other and left the underlying STALE body
@@ -355,7 +383,9 @@ diff -q "$D/CLAUDE.md" "$ROOT/core/AGENTS.md" >/dev/null \
   || { echo "stale-kernel graft: no .bak left — graft-audit would be blind to the kernel overwrite" >&2; exit 1; }
 rm -rf "$D"
 echo "  graft over stale kernel: body fast-forwarded + backup left — OK"
+}
 
+case_idempotent_rerun() {
 # REGRESSION — idempotent re-run: a second identical install must create no
 # backups. 6.9.0 backed up and rewrote byte-identical files (hundreds of no-op
 # .bak entries per documented re-run, burying graft-audit's real signal), and
@@ -369,7 +399,9 @@ n="$(find "$D" -name '*.bak-*' | wc -l)"
 [[ "$n" -eq 0 ]] || { echo "re-run churn: $n spurious .bak file(s) created by an identical re-install" >&2; exit 1; }
 rm -rf "$D"
 echo "  idempotent re-run: zero .bak churn — OK"
+}
 
+case_glob_metachar() {
 # REGRESSION — a seed checked out under a glob-metachar path ('seed [copy]')
 # must still land files at the declared destinations: the unquoted \${f#\$src/}
 # prefix-strip treated \$src as a glob pattern, silently nesting every machinery
@@ -384,7 +416,9 @@ need "$D/docs/graph/protocols/deliver.md" "glob-metachar-seed-path"
 need "$D/docs/graph/method/tiers.md" "glob-metachar-seed-path"
 rm -rf "$D" "$SB"
 echo "  glob-metachar seed path installs to declared destinations — OK"
+}
 
+case_no_symlink_churn() {
 # REGRESSION — a platform without symlinks (ln -s fails; place_kernel's own
 # degradation path) must not churn: the pristine kernel copy was backed up and
 # re-copied on EVERY run (5 .bak per `all` re-run pre-fix). Both kernels must
@@ -400,7 +434,9 @@ diff -q "$D/CLAUDE.md" "$D/AGENTS.md" >/dev/null \
   || { echo "no-symlink kernels drifted apart" >&2; exit 1; }
 rm -rf "$D" "$SHIM"
 echo "  symlink-less platform: kernel copies converge with zero churn — OK"
+}
 
+case_universal_router() {
 # REGRESSION — the kernel mandates `python3 docs/graph/agent-lint.py --route`
 # on EVERY harness, but the router was once placed only by the claude-code
 # adapter: a single-tool opencode/codex/copilot/prime-agent plant had an
@@ -420,7 +456,9 @@ for tool in claude-code opencode codex github-copilot prime-agent; do
   rm -rf "$D"
 done
 echo "  universal agent router (--lint/--route/--eval) works on all five adapters — OK"
+}
 
+case_router_fast_forward() {
 # REGRESSION — the universal router must FAST-FORWARD: the first placement was
 # add-if-missing, so a plant kept a stale router forever while the .claude
 # projection refreshed — the kernel-mandated path was the stale one.
@@ -434,7 +472,9 @@ n="$(find "$D/docs/graph" -name 'agent-lint.py.bak-*' | wc -l)"
 [[ "$n" -eq 1 ]] || { echo "router fast-forward must back up the changed file (got $n baks)" >&2; exit 1; }
 rm -rf "$D"
 echo "  universal router fast-forwards with backup on re-install — OK"
+}
 
+case_copilot_projection_tools() {
 # REGRESSION — Copilot agent projection once granted ONE fixed tool superset
 # (editFiles/runCommands for everyone): the source allowlist is the
 # discipline. Read-only-ish agents must not gain write/run tools.
@@ -454,7 +494,9 @@ grep -q "githubRepo" "$D/.github/agents/devils-advocate.agent.md" \
   || { echo "copilot: devils-advocate (WebSearch) lost githubRepo" >&2; exit 1; }
 rm -rf "$D"
 echo "  copilot projection derives tools from each agent allowlist — OK"
+}
 
+case_seed_stamp() {
 # The seed stamp: install.sh writes it, so a plant always knows which seed it
 # carries. protocols/graft.md described this marker from 4.6.0 onward but
 # nothing wrote it, leaving every graft to guess its own merge base and leaving
@@ -492,14 +534,16 @@ assert s["version"] != "0.0.1-old", s
 PY
 echo "  re-install records installed_from — the graft's merge base — OK"
 rm -rf "$D"
+}
 
+case_plant_facts_index_no_fm() {
 # ---- the plant: block: absent is not "already declared" -------------------
 # A project grown before the block existed has no block at all, so no
 # placeholder line matched, and the installer took its else-branch and
 # announced all four facts as already declared — suppressing the write AND the
 # NEXT STEP warning that was supposed to catch it. The block stayed missing,
 # which is the exact state it exists to prevent.
-D="$T/plantfacts"; mkdir -p "$D/docs/graph"
+  local B; B="$(mktemp -d)"; local D="$B/plantfacts"; mkdir -p "$D/docs/graph"
 printf '<!--\ntemplate note\n-->\n\n# The router\n' > "$D/docs/graph/index.md"
 out="$("$ROOT/install.sh" claude-code --project-dir "$D" --copy --force \
         --environment-class staging --commit-attribution none \
@@ -518,18 +562,24 @@ for k, v in (("environment_class","staging"), ("commit_attribution","none"),
 assert "# The router" in t, "the index body was lost"
 PY
 echo "  an index with no frontmatter gains the plant: block with the passed values — OK"
+  rm -rf "$B"
+}
 
+case_plant_facts_bare() {
 # no flags: the block still appears, with placeholders, and NEXT STEP names them
-D="$T/plantfacts-bare"; mkdir -p "$D/docs/graph"
+  local B; B="$(mktemp -d)"; local D="$B/plantfacts-bare"; mkdir -p "$D/docs/graph"
 printf '<!--\nx\n-->\n\n# The router\n' > "$D/docs/graph/index.md"
 out="$("$ROOT/install.sh" claude-code --project-dir "$D" --copy --force 2>&1)"
 grep -q "plant facts still unset in docs/graph/index.md: environment_class commit_attribution deliverable_language comment_language" <<<"$out" \
   || { printf '%s\n' "$out" >&2; echo "NEXT STEP did not name every unset plant fact" >&2; exit 1; }
 grep -qE '^  environment_class: <' "$D/docs/graph/index.md" \
   || { echo "no placeholder block was written without flags" >&2; exit 1; }
+  rm -rf "$B"
+}
 
+case_plant_facts_declared() {
 # a declared value is never overwritten, and a re-run is idempotent
-D="$T/plantfacts-declared"; mkdir -p "$D/docs/graph"
+  local B; B="$(mktemp -d)"; local D="$B/plantfacts-declared"; mkdir -p "$D/docs/graph"
 printf -- '---\ngrown: true\nplant:\n  environment_class: real-production\n  commit_attribution: none\n  deliverable_language: it\n  comment_language: it\n---\n\n# The router\n' \
   > "$D/docs/graph/index.md"
 out="$("$ROOT/install.sh" claude-code --project-dir "$D" --copy --force --environment-class staging 2>&1)"
@@ -542,9 +592,12 @@ grep -q '^  environment_class: real-production$' "$D/docs/graph/index.md" \
   || { echo "a re-run duplicated the plant: block" >&2; exit 1; }
 [ "$(grep -c '^---$' "$D/docs/graph/index.md")" = 2 ] \
   || { echo "a re-run duplicated the frontmatter fence" >&2; exit 1; }
+  rm -rf "$B"
+}
 
+case_plant_facts_partial() {
 # a block that predates one key gains it, in the template's words and in order
-D="$T/plantfacts-partial"; mkdir -p "$D/docs/graph"
+  local B; B="$(mktemp -d)"; local D="$B/plantfacts-partial"; mkdir -p "$D/docs/graph"
 printf -- '---\ngrown: false\nplant:\n  environment_class: mixed\n  commit_attribution: none\n---\n\n# The router\n' \
   > "$D/docs/graph/index.md"
 "$ROOT/install.sh" claude-code --project-dir "$D" --copy --force --deliverable-language en >/dev/null 2>&1
@@ -556,29 +609,10 @@ assert keys == ["environment_class", "commit_attribution", "deliverable_language
 assert re.search(r"^  comment_language: <bcp47>$", fm, re.M), fm
 PY
 echo "  declared values survive, re-runs are idempotent, a missing key is appended in order — OK"
+  rm -rf "$B"
+}
 
-printf 'full five-tool install contract + CC/PA coexistence: PASS\n'
-
-# --- bytecode is never seed content ---------------------------------------
-# `place_tree`'s default `*` pattern copied everything under templates/,
-# including a __pycache__/ that appears the moment anyone runs a linter in the
-# seed before installing. It is gitignored here, so no Git-based check saw it,
-# and it landed in the plant as a tracked file — one installer's interpreter
-# version shipped as plant data.
-# `trap ... EXIT` REPLACES the handler; it does not stack. Setting a second one
-# here silently dropped the top-level `rm -rf "$T"`, so every gate run left a
-# full claude-code install behind in /tmp. Clean both from one handler.
-BTMP="$(mktemp -d)"; trap 'rm -rf "$T" "$BTMP"' EXIT
-mkdir -p "$ROOT/templates/knowledge-graph/__pycache__"
-printf 'fake bytecode\n' > "$ROOT/templates/knowledge-graph/__pycache__/zz-fixture.cpython-999.pyc"
-bash "$ROOT/install.sh" claude-code --project-dir "$BTMP" >/dev/null 2>&1
-rm -f "$ROOT/templates/knowledge-graph/__pycache__/zz-fixture.cpython-999.pyc"
-found="$(find "$BTMP" \( -name '*.pyc' -o -name '__pycache__' \) | wc -l | tr -d ' ')"
-[[ "$found" == "0" ]] \
-    || { find "$BTMP" \( -name '*.pyc' -o -name '__pycache__' \) >&2
-         echo "test-full-install: FAIL — $found bytecode path(s) placed into the plant" >&2; exit 1; }
-echo "  bytecode never reaches the plant — OK"
-
+caseROSTER_PROJECTION_PARITY_KEEPS_A_LIVE_HOME() {
 # --- the parity claim is relocated, not retired ---------------------------
 # SPEC-0001 ROSTER_PROJECTION_PARITY_KEEPS_A_LIVE_HOME. The predicate has to be
 # a thing that can be pointed at a directory, or the claim above cannot be
@@ -588,7 +622,8 @@ echo "  bytecode never reaches the plant — OK"
 # seed file present and identical in the host — is satisfied by a host that has
 # ADDED an agent, and a host that has added an agent is exactly the case that
 # took the gate down.
-caseROSTER_PROJECTION_PARITY_KEEPS_A_LIVE_HOME() {
+  local T; T="$(mktemp -d)"
+  "$ROOT/install.sh" claude-code --project-dir "$T" --copy --force >/dev/null
   declare -F projection_parity >/dev/null \
     || { echo "test-full-install: FAIL — projection_parity() is not defined; the parity claim has no callable home" >&2; exit 1; }
   # the real projection the gate just built must satisfy it
@@ -616,5 +651,67 @@ caseROSTER_PROJECTION_PARITY_KEEPS_A_LIVE_HOME() {
   fi
   rm -rf "$M"
   echo "  the roster projection is decided by set equality both ways plus byte identity — OK"
+  rm -rf "$T"
 }
-caseROSTER_PROJECTION_PARITY_KEEPS_A_LIVE_HOME
+
+SELF="$ROOT/tests/test-full-install.sh"
+
+# Re-invoke self to run ONE scenario in isolation (reached in a child bash
+# spawned by gate_pool). Every top-level helper and case_* function above is
+# defined before this point, so the child has them all.
+if [ "${1:-}" = "__case" ]; then
+  shift
+  "$@"
+  exit $?
+fi
+
+main() {
+  local SCN; SCN="$(mktemp)"
+  local c
+  for c in \
+    case_claude_code case_plant_facts_flags case_opencode case_codex \
+    case_github_copilot case_prime_agent case_graft_stale_kernel \
+    case_idempotent_rerun case_glob_metachar case_no_symlink_churn \
+    case_universal_router case_router_fast_forward \
+    case_copilot_projection_tools case_seed_stamp \
+    case_plant_facts_index_no_fm case_plant_facts_bare \
+    case_plant_facts_declared case_plant_facts_partial \
+    caseROSTER_PROJECTION_PARITY_KEEPS_A_LIVE_HOME; do
+    printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
+  done
+  # both CC/PA install orders (parametrized case)
+  local o
+  for o in "claude-code prime-agent" "prime-agent claude-code"; do
+    printf '%s\t%s\n' "coexist($o)" "bash \"$SELF\" __case _coexist \"$o\"" >> "$SCN"
+  done
+
+  local rc=0
+  python3 "$ROOT/tests/gate_pool.py" run "$SCN" || rc=$?
+  rm -f "$SCN"
+
+  # --- serial tail: writes into the seed, runs alone after the pool ----------
+# --- bytecode is never seed content ---------------------------------------
+# `place_tree`'s default `*` pattern copied everything under templates/,
+# including a __pycache__/ that appears the moment anyone runs a linter in the
+# seed before installing. It is gitignored here, so no Git-based check saw it,
+# and it landed in the plant as a tracked file — one installer's interpreter
+# version shipped as plant data.
+# This scenario WRITES a fixture under $ROOT, so it must run alone — never
+# inside the concurrent pool above. It runs serially here, after the pool has
+# drained, when no other install is touching the seed.
+BTMP="$(mktemp -d)"; trap 'rm -rf "$BTMP"' EXIT
+mkdir -p "$ROOT/templates/knowledge-graph/__pycache__"
+printf 'fake bytecode\n' > "$ROOT/templates/knowledge-graph/__pycache__/zz-fixture.cpython-999.pyc"
+bash "$ROOT/install.sh" claude-code --project-dir "$BTMP" >/dev/null 2>&1
+rm -f "$ROOT/templates/knowledge-graph/__pycache__/zz-fixture.cpython-999.pyc"
+found="$(find "$BTMP" \( -name '*.pyc' -o -name '__pycache__' \) | wc -l | tr -d ' ')"
+[[ "$found" == "0" ]] \
+    || { find "$BTMP" \( -name '*.pyc' -o -name '__pycache__' \) >&2
+         echo "test-full-install: FAIL — $found bytecode path(s) placed into the plant" >&2; exit 1; }
+echo "  bytecode never reaches the plant — OK"
+
+  [ "$rc" -eq 0 ] || { echo "test-full-install: FAIL" >&2; exit "$rc"; }
+  printf 'full five-tool install contract + CC/PA coexistence: PASS\n'
+}
+
+main

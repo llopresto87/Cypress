@@ -3,6 +3,24 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# --- one shared concurrency budget for the whole gate ------------------------
+# Several slow steps below are suites of INDEPENDENT scenarios (an install into
+# its own temp target; a planted-violation lint against its own temp copy) that
+# now run their scenarios concurrently. The knob and the machinery are one home,
+# tests/gate_pool.py: `GATE_JOBS` (clamped to [4, 64], default cpu_count) sets
+# how many run at once, and a CROSS-PROCESS token pool under $GATE_POOL_DIR caps
+# the TOTAL leaf subprocesses across EVERY suite that is parallel at the same
+# moment to that budget — so the ceiling is `GATE_JOBS`, flat, never
+# `cpu_count**2`. run-parallel.py (the top dispatcher) and every suite read the
+# same two variables. The pool dir holds only transient token subdirs, all
+# rmdir'd as tokens release, so it ends empty; like STEPS_FILE it is a harmless
+# stray temp and is deliberately NOT cleaned in the seed-integrity EXIT trap,
+# which stays untouched as the single whole-run guard. It lives in $TMPDIR, not
+# under $ROOT, so it is invisible to the seed digest.
+GATE_POOL_DIR="$(mktemp -d)"
+export GATE_POOL_DIR
+export GATE_JOBS="${GATE_JOBS:-}"
+
 # --- seed integrity, across the WHOLE run -----------------------------------
 # Most steps below install the seed into a temp target. An installer bug that
 # wrote back into the seed instead of the target would corrupt the repository
@@ -113,26 +131,43 @@ _seed_integrity() {
     exit $rc
 }
 trap _seed_integrity EXIT
-bash "$ROOT/tests/test-unified-graph-install.sh"
-bash "$ROOT/tests/test-knowledge-paths.sh"
-bash "$ROOT/tests/test-orchestration-entry.sh"
+
+# --- run the independent gate steps IN PARALLEL -----------------------------
+# Each step below is independent by construction: every installing suite works
+# inside its own `mktemp -d`, and the two run.sh-parsing gates read a static
+# file. `add_step` records each already-variable-expanded command line into a
+# temp list; `tests/run-parallel.py` then runs them concurrently, captures a
+# per-step log, prints them GROUPED (never interleaved), aggregates every exit
+# code, and exits 1 if ANY step failed — naming each one. A naive `cmd &` would
+# lose those failures; this does not, so `set -euo pipefail` above still aborts
+# the whole gate on a red step.
+#
+# The single whole-run seed-integrity guard is UNTOUCHED: one `_seed_digest`
+# snapshot was taken before this block and is compared in the EXIT trap that
+# fires wherever the run ends. run-parallel.py never writes into the seed and
+# takes no snapshot of its own; it only dispatches the steps between.
+STEPS_FILE="$(mktemp)"
+add_step() { printf '%s\n' "$*" >> "$STEPS_FILE"; }
+add_step bash "$ROOT/tests/test-unified-graph-install.sh"
+add_step bash "$ROOT/tests/test-knowledge-paths.sh"
+add_step bash "$ROOT/tests/test-orchestration-entry.sh"
 # The entry fork: every way in reaches the protocol that fits the target.
 # from-scratch was a complete nine-phase procedure nothing routed to — the
 # kernel never named it and /initialize forwarded every repo to grow.
-bash "$ROOT/tests/test-entry-paths.sh"
+add_step bash "$ROOT/tests/test-entry-paths.sh"
 # Brainstorm has two audiences. The seed had one, and it could not finish
 # without a user — so CYPRESS deliberating against itself had no home.
-python3 "$ROOT/tests/test_brainstorm_modes.py"
+add_step python3 "$ROOT/tests/test_brainstorm_modes.py"
 # Tool authorship has an author, the rule keeps one home, and the close-out
 # still spawns once. The rule home is the dangerous edit of that split.
-python3 "$ROOT/tests/test_tool_authorship.py"
+add_step python3 "$ROOT/tests/test_tool_authorship.py"
 # Every machinery node can answer why it is on the roster: `prevents:` present
 # and a peer edge to cross. Published as the home for that in two reference
 # docs, and until now gated by nothing.
-python3 "$ROOT/tools/roster-justification.py" --gaps
-bash "$ROOT/tests/test-tier-lanes.sh"
-bash "$ROOT/tests/test-graph-artifacts.sh"
-bash "$ROOT/tests/test-spec-lint.sh"
+add_step python3 "$ROOT/tools/roster-justification.py" --gaps
+add_step bash "$ROOT/tests/test-tier-lanes.sh"
+add_step bash "$ROOT/tests/test-graph-artifacts.sh"
+add_step bash "$ROOT/tests/test-spec-lint.sh"
 # The linter above proves itself against FIXTURES. This runs it over the seed's
 # own two specs, which nothing swept: spec-lint resolves its paths from its own
 # location, so in the seed it looked for templates/knowledge-graph/specs, printed
@@ -143,42 +178,42 @@ bash "$ROOT/tests/test-spec-lint.sh"
 # The budget is read on its own line rather than inline, because a step whose
 # invocation spans a heredoc is invisible to tools/gate-registry.py.
 SPEC_BUDGET="$(python3 -c 'import pathlib,re,sys; print((re.search(r"^SPEC_UNCOVERED_BUDGET = (\d+)", pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"), re.M) or [0,"0"])[1])' "$ROOT/tests/seed-lint.py")"
-python3 "$ROOT/templates/knowledge-graph/spec-lint.py" --specs "$ROOT/docs/specs" --root "$ROOT" --uncovered-budget "$SPEC_BUDGET"
-bash "$ROOT/tests/test-grill-lint.sh"
-bash "$ROOT/tests/test-full-install.sh"
+add_step python3 "$ROOT/templates/knowledge-graph/spec-lint.py" --specs "$ROOT/docs/specs" --root "$ROOT" --uncovered-budget "$SPEC_BUDGET"
+add_step bash "$ROOT/tests/test-grill-lint.sh"
+add_step bash "$ROOT/tests/test-full-install.sh"
 # Destination-placement contract (M2/M3/M7/M9). Discovers the placed file set
 # from a real install rather than listing it, so a destination added later is
 # held to the same contract without anyone remembering to extend the test.
-bash "$ROOT/tests/test-install-placement.sh"
+add_step bash "$ROOT/tests/test-install-placement.sh"
 # Persistent plant state (S1-S6): owner decisions survive unrelated installs,
 # adapters accumulate, projections stay derived, and the record can never
 # contradict the filesystem.
-bash "$ROOT/tests/test-plant-state.sh"
+add_step bash "$ROOT/tests/test-plant-state.sh"
 # Kernel placement (K1-K6): one body, copy mode isolates, symlink mode is live,
 # adapter order is commutative. --symlink used to place the kernel as a frozen
 # copy while every sibling was correctly linked.
-bash "$ROOT/tests/test-install-kernel-modes.sh"
+add_step bash "$ROOT/tests/test-install-kernel-modes.sh"
 # Special-character target paths, and proof the seed's own budgets can fail.
 # A budget that cannot fail is not a budget.
-bash "$ROOT/tests/test-seed-budgets.sh"
+add_step bash "$ROOT/tests/test-seed-budgets.sh"
 # Non-pristine adoption: a target that already has instructions, a partial or
 # older install, or a path in the way. The installer used to run the kernel and
 # the whole graph scaffold to completion and THEN die on a raw `mkdir: Not a
 # directory`, leaving a half-installed target.
-bash "$ROOT/tests/test-install-adoption.sh"
-bash "$ROOT/tests/test-bound-hook.sh"
-bash "$ROOT/tests/test-graft-tools.sh"
-bash "$ROOT/tests/test-growth-audit.sh"
-bash "$ROOT/tests/test-agnosticism-lint.sh"
-bash "$ROOT/tests/test-prose-lint.sh"
+add_step bash "$ROOT/tests/test-install-adoption.sh"
+add_step bash "$ROOT/tests/test-bound-hook.sh"
+add_step bash "$ROOT/tests/test-graft-tools.sh"
+add_step bash "$ROOT/tests/test-growth-audit.sh"
+add_step bash "$ROOT/tests/test-agnosticism-lint.sh"
+add_step bash "$ROOT/tests/test-prose-lint.sh"
 # Gate audibility (V5): a linter handed a file it cannot read must name the path
 # and the reason and exit non-zero. All three used to `continue` in silence, so
 # an unread input was indistinguishable from a clean one.
-bash "$ROOT/tests/test-lint-audibility.sh"
-bash "$ROOT/tests/test-nested-checkout.sh"
-bash "$ROOT/tests/test-tool-help.sh"
-bash "$ROOT/tests/test-collected-count.sh"
-python3 "$ROOT/tests/test_frontmatter_contract.py"
+add_step bash "$ROOT/tests/test-lint-audibility.sh"
+add_step bash "$ROOT/tests/test-nested-checkout.sh"
+add_step bash "$ROOT/tests/test-tool-help.sh"
+add_step bash "$ROOT/tests/test-collected-count.sh"
+add_step python3 "$ROOT/tests/test_frontmatter_contract.py"
 # test-prose-lint.sh proves the linter works; this holds the seed's own
 # front-door prose to it. Until 7.13.0 nothing did, and both files drifted:
 # README.md carried committed tool-call residue, DOCUMENTATION.md's roster
@@ -189,20 +224,20 @@ python3 "$ROOT/tests/test_frontmatter_contract.py"
 # and §20 read as repeated closers and decoration, and wiring them in before
 # that genre question is settled would reward mangling correct reference prose
 # to satisfy a meter.
-python3 "$ROOT/tools/prose-lint.py" --file "$ROOT/README.md" --file "$ROOT/DOCUMENTATION.md"
-bash "$ROOT/tests/test-status-register.sh"
-bash "$ROOT/tests/test-status-migrate.sh"
-bash "$ROOT/tests/test-seed-lint.sh"
-bash "$ROOT/tests/test-legal-lint.sh"
+add_step python3 "$ROOT/tools/prose-lint.py" --file "$ROOT/README.md" --file "$ROOT/DOCUMENTATION.md"
+add_step bash "$ROOT/tests/test-status-register.sh"
+add_step bash "$ROOT/tests/test-status-migrate.sh"
+add_step bash "$ROOT/tests/test-seed-lint.sh"
+add_step bash "$ROOT/tests/test-legal-lint.sh"
 # tool-corpus portability contract: a page that claims `Stability: portable`
 # ships code an adopting project runs as-is, so the code must at least compile
 # and the two behaviours the pages exist for must actually be demonstrated.
-bash "$ROOT/tests/test-tool-corpus.sh"
+add_step bash "$ROOT/tests/test-tool-corpus.sh"
 # graph-lint CLI-contract regression (stdlib unittest — no third-party deps,
 # matching graph-lint.py's own rule, so it always runs here).
-python3 "$ROOT/tests/test_graph_lint.py"
-python3 "$ROOT/integrations/claude-code/agent-lint.py" --lint --dir "$ROOT/agents"
-python3 "$ROOT/integrations/claude-code/agent-lint.py" --eval --dir "$ROOT/agents"
+add_step python3 "$ROOT/tests/test_graph_lint.py"
+add_step python3 "$ROOT/integrations/claude-code/agent-lint.py" --lint --dir "$ROOT/agents"
+add_step python3 "$ROOT/integrations/claude-code/agent-lint.py" --eval --dir "$ROOT/agents"
 # agent-lint CLI-contract regression. Stdlib unittest, like test_graph_lint.py
 # beside it: this suite needed third-party pytest until 7.16.0, so run.sh
 # probed for it and announced loudly when absent — but announcing is not
@@ -210,26 +245,26 @@ python3 "$ROOT/integrations/claude-code/agent-lint.py" --eval --dir "$ROOT/agent
 # green gate has to mean every required test RAN. Porting it removed the
 # question rather than adding an environment requirement, and matches the rule
 # every shipped script already follows: no third-party imports.
-python3 "$ROOT/tests/test_agent_lint.py"
+add_step python3 "$ROOT/tests/test_agent_lint.py"
 # Both routers must be reachable by the word forms people actually type. The
 # `STEM = 6` fold shipped a comment naming test/tests and node/nodes and handled
 # neither, so a third of each router's vocabulary scored zero against its own
 # plural. This derives the vocabulary from the ROSTER and the NODE SET on every
 # run rather than from a fixture, so it measures the tree that ships, and it
 # holds the reviewed stem-collision list — the one risk a stemmer adds.
-python3 "$ROOT/tests/test_router_reach.py"
+add_step python3 "$ROOT/tests/test_router_reach.py"
 # One responsibility — parse this repo's frontmatter — has five implementations,
 # because graph-lint.py, agent-lint.py, status-register.py and friends each
 # install into a plant as a STANDALONE file and cannot share an import without
 # changing the placed file set. This drives all five over one input table and
 # asserts what they agree on, in place of a shared module. Where they genuinely
 # differ, the divergence is named in a test rather than papered over.
-python3 "$ROOT/tests/test_metadata_equivalence.py"
-python3 "$ROOT/tests/seed-lint.py"
+add_step python3 "$ROOT/tests/test_metadata_equivalence.py"
+add_step python3 "$ROOT/tests/seed-lint.py"
 # legal-corpus citability contract. seed-lint scans that corpus only for
 # leaked host-IPs, pinned CVEs and dangling refs — none of which knows what a
 # legal entry is, so the eight-field contract went ungated.
-python3 "$ROOT/tests/legal-lint.py"
+add_step python3 "$ROOT/tests/legal-lint.py"
 # The gate's own self-check, last: every step above must declare what it
 # asserts, what it READS, and which false green it can still produce. Six
 # suites prove a linter works while reading only fixtures — true of the linter,
@@ -247,6 +282,23 @@ python3 "$ROOT/tests/legal-lint.py"
 # or break a legal page and file its 25 fresh failures as historical debt. The
 # recorded values live in tests/ratchets.json; a limit may tighten freely and
 # may only loosen by editing that file too, on purpose, in a diff someone reads.
-python3 "$ROOT/tools/ratchet-lint.py"
-python3 "$ROOT/tests/test_gate_registry.py"
-python3 "$ROOT/tools/gate-registry.py" --lint
+add_step python3 "$ROOT/tools/ratchet-lint.py"
+add_step python3 "$ROOT/tests/test_gate_registry.py"
+add_step python3 "$ROOT/tools/gate-registry.py" --lint
+
+# The orchestrator's own regression: it must fail the run when any sub-step
+# fails and aggregate every exit code (invariant that a `cmd &` scheme breaks).
+add_step python3 "$ROOT/tests/test_run_parallel.py"
+# The shared concurrency budget's own regression: the ONE knob clamps to
+# [4, 64], and the cross-process token pool caps TOTAL leaf subprocesses across
+# every parallel suite to that budget — so parallelising each slow suite inside
+# itself never becomes cpu_count**2 installs on the box.
+add_step python3 "$ROOT/tests/test_gate_pool.py"
+
+# Dispatch every collected step concurrently. On any failure this returns
+# non-zero, `set -e` fires the EXIT trap with that status, and the gate fails
+# while naming the step(s). STEPS_FILE is removed only on the clean path; a
+# stray temp file left on failure is harmless and never masks the exit code
+# (the trap reads `$?` before anything else runs).
+python3 "$ROOT/tests/run-parallel.py" "$STEPS_FILE"
+rm -f "$STEPS_FILE"

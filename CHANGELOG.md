@@ -1,5 +1,90 @@
 # Changelog
 
+## 7.24.0 — each slow gate suite parallelises its own scenarios under one shared budget (2026-09-18)
+
+7.23.0 made the gate's ~46 STEPS run concurrently, but the wall-clock floor was
+then set by a few very slow SINGLE steps: `test-install-placement.sh` (~42s),
+`test-seed-lint.sh` (~41s), `test-full-install.sh` (~30s) and four more, each
+running its own independent scenarios strictly SERIALLY inside one step —
+dozens of `install.sh` calls, or ~60 whole-tree lint runs, one after another.
+
+**One shared concurrency budget, `tests/gate_pool.py`.** The knob and the
+machinery now have a single home. `resolve_workers()` honours an explicit
+`$GATE_JOBS` (clamped to `[4, 64]`); with no override the AUTO default is
+`clamp(os.cpu_count() × 2, 8, 64)`. The gate is I/O-bound — each step forks
+`install.sh`, copies trees and spawns python far more than it burns CPU (a
+16-worker run drew only ~594% of 1600% CPU) — so oversubscribing cores overlaps
+that I/O wait and is faster even on a 4-core laptop, where a 4→8 worker budget
+nearly halved the wall time. The floor of 8 gives a small box that overlap; the
+64 ceiling bounds a big box. The one knob is honoured by the top-level
+dispatcher AND by every internally-parallel suite. A CROSS-PROCESS token pool (a counting semaphore
+built from atomic `os.mkdir` slot dirs, under `$GATE_POOL_DIR`) caps the TOTAL
+leaf subprocesses across EVERY suite that is parallel at the same moment to that
+budget — so N parallel suites can never become `N × budget` installs on the box,
+the `cpu_count²` explosion. Only leaf work draws a token; coordinators never
+hold one while waiting on their children, so the pool cannot deadlock. When
+`$GATE_POOL_DIR` is unset (a suite run on its own) the pool is a no-op and the
+suite's own worker count bounds it. `tests/run-parallel.py` is now a thin
+wrapper over this one dispatcher.
+
+**Seven slow suites now parallelise INSIDE themselves, each still ONE registered
+gate step.** Each splits into independent scenarios that build their OWN
+`mktemp -d` target or a cheap copy of a shared read-only template, and emits them
+to `gate_pool.py run`; every planted violation, install flag, assertion and
+message is kept byte-for-byte, and each suite carries a red-on-break check
+proving a regression still fails the gate naming the scenario:
+`test-seed-lint.sh` (~41s → ~9s, one hermetic template, a fresh copy per check),
+`test-install-placement.sh` (~44s → ~14s, distinct configs installed ONCE and
+reused for read-only asserts), `test-full-install.sh` (~30s → ~6s),
+`test-install-adoption.sh` (~22s → ~4s), `test-growth-audit.sh` (~20s → ~3s),
+`test-unified-graph-install.sh` (~17s → ~9s) and `test-plant-state.sh`
+(~15s → ~6s).
+
+**Its own regression, `tests/test_gate_pool.py`.** Eleven cases pin the clamp
+policy (floor 4, ceiling 64, cpu_count default) and the pool's bound — that the
+TOTAL concurrency across a suite, and across two separate pool processes sharing
+one directory, never exceeds the budget. The exit-code aggregation half stays
+pinned next door in `test_run_parallel.py`, which drives the same dispatch path.
+
+Nothing was weakened to go faster. `tools/gate-registry.py --lint` still
+enumerates and classifies every step (now 47, with `test_gate_pool.py` added);
+`gate_pool.py` is runner infrastructure, invisible to the step parser and
+accountable in the registry's NON_STEP_GUARDS beside `run-parallel.py`. The
+single whole-run `_seed_digest` snapshot and its EXIT trap are untouched, and no
+scenario writes into the seed — each stays in its own temp. `GATE_JOBS=4` and
+`GATE_JOBS=64` both run the whole gate green.
+
+## 7.23.0 — the full gate runs its independent steps in parallel (2026-09-18)
+
+`bash tests/run.sh` ran its ~45 gate steps strictly serially, and most of the
+cost is the suites that install the seed into a temp target one after another.
+On a warm 16-core host the whole gate took ~3m52s wall-clock, almost all of it
+spent waiting on independent installs that share nothing.
+
+**A parallel dispatcher, `tests/run-parallel.py`.** `tests/run.sh` still takes
+its ONE `_seed_digest` snapshot before any step and compares it in the single
+whole-run EXIT trap — that guard is untouched. It now records each
+already-variable-expanded step command with an `add_step` helper and hands the
+list to `run-parallel.py`, which runs them concurrently (`$GATE_JOBS` or the CPU
+count), captures a per-step log, prints them GROUPED so a failure stays legible,
+aggregates every exit code, and exits 1 naming each failed step. A naive
+`cmd &` scheme would lose those failures; this does not, so `set -euo pipefail`
+still aborts the whole gate on any red step. Every step stays a visible line in
+`tests/run.sh`, so `tools/gate-registry.py --lint` still enumerates and
+classifies all of them; the dispatcher itself is runner infrastructure, skipped
+by the step parser and accountable in the registry's NON_STEP_GUARDS.
+
+**Its own regression, `tests/test_run_parallel.py`.** The dispatcher's one
+dangerous failure mode is a `cmd &`'s — a red step reported green. Eight cases
+pin the aggregate exit code, the naming of failed steps, the all-green path, and
+that a lone failure among many at high concurrency is never dropped.
+
+Nothing was weakened to go faster: the serial `SPEC_BUDGET` prerequisite is
+still computed before its step's command line is emitted, every installing
+suite already isolates into its own `mktemp -d`, and the two run.sh-parsing
+gates read a static file. Wall-clock falls from ~3m52s to well under a minute on
+the same host, with every gate green.
+
 ## 7.22.0 — the Prime Agent overlay resolves each meta-loop phase to a model version (2026-09-17)
 
 Prime Agent can pick a model *version* per spawn, on top of the tool-neutral

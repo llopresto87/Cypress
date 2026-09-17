@@ -8,6 +8,8 @@
     "tests/test_metadata_equivalence.py": 18,
     "tests/test_router_reach.py": 9,
     "tests/test_tool_authorship.py": 12,
-    "tests/test_frontmatter_contract.py": 9
+    "tests/test_frontmatter_contract.py": 9,
+    "tests/test_run_parallel.py": 8,
+    "tests/test_gate_pool.py": 11
   }
 }

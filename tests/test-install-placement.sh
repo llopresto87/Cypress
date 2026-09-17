@@ -72,127 +72,33 @@ placed_files() {
         | sed 's|^\./||' | sort )
 }
 
+SELF="$ROOT/tests/test-install-placement.sh"
+
+# Load FILES from an 'all --copy --legal-corpus yes' tree (read-only discovery),
+# so a case running in its own process re-derives the same set main did.
+load_files() {
+    FILES=(); while IFS= read -r _l; do FILES+=("$_l"); done < <(placed_files "$1")
+}
+# Load COND_FILES (the conditional destinations) from a 'github-copilot --copy'
+# tree; FILES must already be loaded so the shared set can be subtracted.
+load_cond() {
+    COND_FILES=()
+    while IFS= read -r _l; do
+        case " ${FILES[*]} " in *" $_l "*) ;; *) COND_FILES+=("$_l") ;; esac
+    done < <(placed_files "$1")
+}
+
 # ---------------------------------------------------------------------------
 # M7 + M3: recoverability and idempotence over the COMPLETE destination set.
 # Asserts SPEC-0001 SINGLE_WRITER (the recoverability half), SPEC-0001
 # BACKUP_BEFORE_REPLACE, SPEC-0001 IDENTICAL_RERUN_IS_INERT.
 # ---------------------------------------------------------------------------
-# --legal-corpus yes on every baseline. Without it the 16 corpus destinations
-# are never in FILES, so they were outside M1/M2/M3/M7/M8/M9 entirely and the
-# headline "387 destinations recoverable, symlink-safe..." was 387 of 403.
-# Verified what that cost: replacing place_legal_corpus's `place_tree` with
-# `cp -R "$src/." "$dest/"` — which writes THROUGH a destination symlink — kept
-# this suite green, and an outside file behind a symlinked corpus page was then
-# clobbered. FILES is discovered, so covering them needs no other edit.
-T="$WORK/recover"; mkdir -p "$T"
-"$ROOT/install.sh" all --project-dir "$T" --copy --legal-corpus yes >/dev/null 2>&1 \
-    || fail "baseline install all --copy did not succeed"
-
-# `mapfile` is a bash 4 builtin and macOS ships bash 3.2, so the CI matrix
-# this suite runs under would fail on the mac leg before asserting anything.
-FILES=(); while IFS= read -r _l; do FILES+=("$_l"); done < <(placed_files "$T")
-[[ ${#FILES[@]} -gt 100 ]] || fail "discovered only ${#FILES[@]} placed files — discovery is broken"
-
-# CONDITIONAL DESTINATIONS — discovered separately, because they cannot exist here.
-#
-# Discovery from `install.sh all` is complete for the destinations `all`
-# produces, and silently empty for the ones it cannot: the Copilot hooks are
-# placed only when `.claude/settings.json` is ABSENT, which never holds under
-# `all`. Four of the seventeen destinations SPEC-0001 governs were outside every
-# M-case here, and a reviewer proved it — reverting `.github/hooks/route.json`
-# to a raw `cp` left this suite, test-full-install, test-unified-graph-install
-# and test-install-adoption all at exit 0.
-#
-# They get their own target and their own pass (below, M7b/M2b) rather than
-# joining FILES, because every M-case here resolves a path against $T.
-TC="$WORK/recover-copilot"; mkdir -p "$TC"
-"$ROOT/install.sh" github-copilot --project-dir "$TC" --copy >/dev/null 2>&1 \
-    || fail "baseline install github-copilot --copy did not succeed"
-COND_FILES=()
-while IFS= read -r _l; do
-    case " ${FILES[*]} " in *" $_l "*) ;; *) COND_FILES+=("$_l") ;; esac
-done < <(placed_files "$TC")
-for _h in .github/hooks/route-hook.py .github/hooks/route.json \
-          .github/hooks/status-hook.py .github/hooks/status.json; do
-    case " ${COND_FILES[*]} " in
-        *" $_h "*) ;;
-        *) fail "conditional destination $_h is outside the discovered set — \
-either the hooks stopped being conditional, or this leg stopped reaching them; \
-either way those destinations are covered by nothing" ;;
-    esac
-done
-
-# M1 completeness: every machinery node the SEED owns must arrive in the plant.
-#
-# The sentinel sweep below cannot catch this, and the reason is worth stating:
-# it discovers its file set from what the install PRODUCED, so a destination the
-# installer silently stopped writing is simply absent from the set and is never
-# checked. Patching place_file to skip one protocol left the entire suite green.
-# Discovery is the right way to ask "is everything that got written safe"; it is
-# structurally the wrong way to ask "did everything that should be written get
-# written". That question needs the seed's own inventory as the source of truth.
-missing_nodes=()
-for src in "$ROOT"/protocols/*.md "$ROOT"/core/method/*.md "$ROOT"/agents/*.md; do
-    [[ -e "$src" ]] || continue
-    base="$(basename "$src")"
-    case "$base" in _*) continue ;; esac
-    case "$src" in
-        */protocols/*)   want="$T/docs/graph/protocols/$base" ;;
-        */core/method/*) want="$T/docs/graph/method/$base" ;;
-        */agents/*)      want="$T/docs/graph/agents/$base" ;;
-    esac
-    [[ -e "$want" || -L "$want" ]] || missing_nodes+=("${want#"$T/"}")
-done
-for d in "$ROOT"/skills/*/; do
-    [[ -f "${d%/}/SKILL.md" ]] || continue
-    want="$T/docs/graph/skills/$(basename "${d%/}").md"
-    [[ -e "$want" || -L "$want" ]] || missing_nodes+=("${want#"$T/"}")
-done
-# The adapter machinery too. Enumerating only graph NODES left the check
-# narrower than the class it was written for: patching place_file to skip
-# `.claude/bound-hook.py` — the PreToolUse guard that is the one hard-enforced
-# control in the whole system — left this suite green. A destination is a
-# destination, whether or not it is a routable node.
-# Every adapter, not just claude-code. The first version of this list covered
-# `.claude/*` and the shared graph only, so commenting out the placement of
-# `.github/hooks/route.json` left the suite printing "OK — 376 destinations".
-# A machinery file dropped from github-copilot or prime-agent is the same defect
-# as one dropped from claude-code; it was simply invisible to the check.
-for rel in .claude/route-hook.py .claude/status-hook.py .claude/bound-hook.py \
-           .claude/agent-lint.py .claude/settings.json \
-           opencode.json \
-           .github/copilot-instructions.md \
-           .prime/agent/settings.json .prime/agent/APPEND_SYSTEM.md \
-           .prime/agent/extensions/route-extension.ts \
-           .prime/agent/extensions/status-extension.ts \
-           .codex/codex-config-snippet.toml \
-           docs/graph/agent-lint.py docs/graph/graph-lint.py \
-           docs/graph/_schema.md docs/graph/index.md \
-           EXPERT_SEED_INSTALL_PROMPT.md .cypress/seed.json; do
-    [[ -e "$T/$rel" || -L "$T/$rel" ]] || missing_nodes+=("$rel")
-done
-# ...and the template subtree, which is placed wholesale by place_tree and so
-# disappears wholesale if that call is ever dropped.
-tmpl_seed="$(find "$ROOT/templates" -name '*.md' -not -name '*.pyc' | wc -l | tr -d ' ')"
-# `[[ -d ]]` first: `find` on a MISSING directory fails the pipeline under
-# `pipefail`, and `set -e` then killed this script before it could print the
-# very diagnostic it exists to print — the templates-dropped regression exited
-# 1 with completely empty output.
-tmpl_plant=0
-if [[ -d "$T/docs/graph/templates" ]]; then
-    tmpl_plant="$(find "$T/docs/graph/templates" \( -type f -o -type l \) -name '*.md' \
-                  -not -name '*.bak-*' | wc -l | tr -d ' ')"
-fi
-[[ "$tmpl_plant" -ge "$tmpl_seed" ]] \
-    || missing_nodes+=("docs/graph/templates/ ($tmpl_plant of $tmpl_seed template files)")
-
-if [[ ${#missing_nodes[@]} -gt 0 ]]; then
-    echo "M1 VIOLATED — ${#missing_nodes[@]} node(s) the seed owns never reached the plant:" >&2
-    printf '  %s\n' "${missing_nodes[@]}" >&2
-    fail "a machinery node the installer stopped placing is invisible to any \
-check that enumerates what WAS placed"
-fi
-
+case_recover() {
+    local T; T="$WORK/recover"; mkdir -p "$T"
+    "$ROOT/install.sh" all --project-dir "$T" --copy --legal-corpus yes >/dev/null 2>&1 \
+        || fail "baseline install all --copy did not succeed"
+    FILES=(); while IFS= read -r _l; do FILES+=("$_l"); done < <(placed_files "$T")
+    [[ ${#FILES[@]} -gt 100 ]] || fail "discovered only ${#FILES[@]} placed files — discovery is broken"
 # M3 first: an identical re-run must not churn a single backup.
 "$ROOT/install.sh" all --project-dir "$T" --copy --legal-corpus yes >/dev/null 2>&1 \
     || fail "idempotent re-run did not succeed"
@@ -207,27 +113,6 @@ if [[ ${#CHURN[@]} -gt 0 ]]; then
     printf '  %s\n' "${CHURN[@]}" >&2
     fail "backup churn buries the graft-audit signal under no-op .bak entries"
 fi
-
-# ...and again under --symlink, because this check ran only in copy mode and a
-# real churn bug lived in the other one: `place_kernel` decided which of
-# CLAUDE.md/AGENTS.md held the kernel by testing for a plain regular file, which
-# is never true under --symlink, so each of the five adapters claimed its own
-# destination and the pair flipped back and forth. Backups grew 1, 3, 5 on
-# successive identical re-runs while the CONTENT stayed byte-identical — a
-# defect only `ls -la` could see, and one an all-copy test never could.
-SYM="$WORK/idem-symlink"; mkdir -p "$SYM"
-for _run in 1 2 3; do
-    "$ROOT/install.sh" all --project-dir "$SYM" --symlink >/dev/null 2>&1 \
-        || fail "M3: --symlink install (run $_run) did not succeed"
-done
-SYM_CHURN=(); while IFS= read -r _l; do SYM_CHURN+=("$_l"); done \
-    < <(find "$SYM" -name '*.bak-*' | sed "s|^$SYM/||" | sort)
-if [[ ${#SYM_CHURN[@]} -gt 0 ]]; then
-    echo "M3 VIOLATED under --symlink — ${#SYM_CHURN[@]} backup(s) after identical re-runs:" >&2
-    printf '  %s\n' "${SYM_CHURN[@]}" >&2
-    fail "idempotence must hold in BOTH link modes, not just the tested one"
-fi
-
 # Now mark every placed file and re-run once. Symlinks are skipped: appending
 # through one would write into the seed, and link placement is M9's business.
 SENTINEL='CYPRESS-PLANT-SENTINEL-DO-NOT-LOSE'
@@ -311,7 +196,32 @@ if [[ ${#lost[@]} -gt 0 ]]; then
     printf '  %s\n' "${lost[@]}" >&2
     fail "every installer destination must be recoverable (one canonical writer)"
 fi
+}
 
+case_symchurn() {
+# ...and again under --symlink, because this check ran only in copy mode and a
+# real churn bug lived in the other one: `place_kernel` decided which of
+# CLAUDE.md/AGENTS.md held the kernel by testing for a plain regular file, which
+# is never true under --symlink, so each of the five adapters claimed its own
+# destination and the pair flipped back and forth. Backups grew 1, 3, 5 on
+# successive identical re-runs while the CONTENT stayed byte-identical — a
+# defect only `ls -la` could see, and one an all-copy test never could.
+SYM="$WORK/idem-symlink"; mkdir -p "$SYM"
+for _run in 1 2 3; do
+    "$ROOT/install.sh" all --project-dir "$SYM" --symlink >/dev/null 2>&1 \
+        || fail "M3: --symlink install (run $_run) did not succeed"
+done
+SYM_CHURN=(); while IFS= read -r _l; do SYM_CHURN+=("$_l"); done \
+    < <(find "$SYM" -name '*.bak-*' | sed "s|^$SYM/||" | sort)
+if [[ ${#SYM_CHURN[@]} -gt 0 ]]; then
+    echo "M3 VIOLATED under --symlink — ${#SYM_CHURN[@]} backup(s) after identical re-runs:" >&2
+    printf '  %s\n' "${SYM_CHURN[@]}" >&2
+    fail "idempotence must hold in BOTH link modes, not just the tested one"
+fi
+}
+
+case_m2() {
+    load_files "$BASE"
 # ---------------------------------------------------------------------------
 # M2: a destination symlink must never authorize a write to its referent.
 # Asserts SPEC-0001 SYMLINK_IS_REPLACED_NOT_FOLLOWED.
@@ -413,7 +323,9 @@ fi
 # is actually tested over; it may rise, and a fall is a coverage regression.
 [[ $replaced -ge 300 ]] || fail "M2 exercised only $replaced destinations of ${#FILES[@]} (floor 300, ${#refused[@]} refused)"
 echo "  M2: $replaced destinations had the link object replaced, ${#refused[@]} refused, $(( ${#FILES[@]} - replaced - ${#refused[@]} )) add-if-missing"
+}
 
+case_m9() {
 # ---------------------------------------------------------------------------
 # M9: under --symlink every placed file is a link, or a recorded exception.
 # Asserts SPEC-0001 SYMLINK_MODE_IS_UNIFORM.
@@ -437,7 +349,9 @@ if [[ ${#not_linked[@]} -gt 0 ]]; then
     printf '  %s\n' "${not_linked[@]}" >&2
     fail "--symlink must place links, or the exception must be recorded in is_plant_owned()"
 fi
+}
 
+case_m4() {
 # ---------------------------------------------------------------------------
 # M4: --force suppresses the per-file WARNING and never the backup.
 # Asserts SPEC-0001 FORCE_SUPPRESSES_WARNING_NOT_BACKUP.
@@ -499,7 +413,9 @@ printf '\n# edit\n' >> "$G/.claude/settings.json"
 warn_out="$("$ROOT/install.sh" claude-code --project-dir "$G" --copy 2>&1 >/dev/null || true)"
 grep -q "backed up existing" <<<"$warn_out" \
     || fail "M4: without --force the backup must be announced, and was not"
+}
 
+case_m8() {
 # ---------------------------------------------------------------------------
 # M8: every backup the writer produces is classifiable by graft-audit.py.
 # Asserts SPEC-0001 EVERY_BACKUP_IS_CLASSIFIABLE.
@@ -570,8 +486,9 @@ rm -f "$unmapped"
 grep -q "UNMAPPED" <<<"$unmapped_report" \
     || fail "M8: the audit exited non-zero over an unmapped backup without naming it UNMAPPED — right exit, wrong reason"
 echo "  M8: an unclassifiable backup makes the audit exit non-zero, naming it — OK"
+}
 
-
+case_m10() {
 # ---------------------------------------------------------------------------
 # M10: no write escapes PROJECT_DIR.
 # Asserts SPEC-0001 §5's Security NFR and §9 AC-2 — no install modifies a
@@ -715,7 +632,11 @@ ln -s "$ins_tgt/elsewhere" "$ins_tgt/docs/graph/protocols"
 [[ "$(find "$ins_tgt/elsewhere" -name '*.md' | wc -l)" -gt 5 ]] \
     || fail "M10 (7): nothing was placed through the inside-the-target symlink"
 echo "  M10 (7): a symlinked directory that stays inside the target still receives its nodes — OK"
+}
 
+case_cond() {
+    load_files "$BASE"
+    load_cond "$BASECOPILOT"
 # M7b / M2b — the conditional destinations, held to the same two properties.
 #
 # One target per property, because the copilot hooks only appear while
@@ -757,5 +678,134 @@ for rel in "${COND_FILES[@]}"; do
     [[ "$(cat "$victim")" == "PRECIOUS-OUTSIDE-FILE" ]] \
         || fail "M2b VIOLATED — installing wrote THROUGH the symlink at $rel and destroyed $victim, a file outside --project-dir."
 done
+}
+
+
+# --- one-case subcommand, run by the parallel dispatcher ---------------------
+if [ "${1:-}" = "__case" ]; then
+    "$2"
+    exit $?
+fi
+
+
+# --- main: build the two shared read-only installs once, run the read-only
+#     completeness asserts serially, then dispatch every mutating/independent
+#     section concurrently under the gate's ONE shared budget. -----------------
+export ROOT
+
+# The recoverability/idempotence/attack sections each need the full `all --copy
+# --legal-corpus yes` destination set discovered from a real install. That set
+# is read-only for M1 completeness, the conditional-destination check, M2 and
+# the M7b/M2b conditional cases, so it is installed ONCE here and reused; the
+# sections that MUTATE a tree (M3 re-runs, the sentinel sweep, the symlink
+# attack) build their own fresh install inside their case.
+BASE="$WORK/base"; mkdir -p "$BASE"
+"$ROOT/install.sh" all --project-dir "$BASE" --copy --legal-corpus yes >/dev/null 2>&1 \
+    || fail "baseline install all --copy did not succeed"
+T="$BASE"
+FILES=(); while IFS= read -r _l; do FILES+=("$_l"); done < <(placed_files "$T")
+[[ ${#FILES[@]} -gt 100 ]] || fail "discovered only ${#FILES[@]} placed files — discovery is broken"
+
+BASECOPILOT="$WORK/base-copilot"; mkdir -p "$BASECOPILOT"
+TC="$BASECOPILOT"
+"$ROOT/install.sh" github-copilot --project-dir "$TC" --copy >/dev/null 2>&1 \
+    || fail "baseline install github-copilot --copy did not succeed"
+COND_FILES=()
+while IFS= read -r _l; do
+    case " ${FILES[*]} " in *" $_l "*) ;; *) COND_FILES+=("$_l") ;; esac
+done < <(placed_files "$TC")
+for _h in .github/hooks/route-hook.py .github/hooks/route.json \
+          .github/hooks/status-hook.py .github/hooks/status.json; do
+    case " ${COND_FILES[*]} " in
+        *" $_h "*) ;;
+        *) fail "conditional destination $_h is outside the discovered set — \
+either the hooks stopped being conditional, or this leg stopped reaching them; \
+either way those destinations are covered by nothing" ;;
+    esac
+done
+
+# M1 completeness: every machinery node the SEED owns must arrive in the plant.
+#
+# The sentinel sweep below cannot catch this, and the reason is worth stating:
+# it discovers its file set from what the install PRODUCED, so a destination the
+# installer silently stopped writing is simply absent from the set and is never
+# checked. Patching place_file to skip one protocol left the entire suite green.
+# Discovery is the right way to ask "is everything that got written safe"; it is
+# structurally the wrong way to ask "did everything that should be written get
+# written". That question needs the seed's own inventory as the source of truth.
+missing_nodes=()
+for src in "$ROOT"/protocols/*.md "$ROOT"/core/method/*.md "$ROOT"/agents/*.md; do
+    [[ -e "$src" ]] || continue
+    base="$(basename "$src")"
+    case "$base" in _*) continue ;; esac
+    case "$src" in
+        */protocols/*)   want="$T/docs/graph/protocols/$base" ;;
+        */core/method/*) want="$T/docs/graph/method/$base" ;;
+        */agents/*)      want="$T/docs/graph/agents/$base" ;;
+    esac
+    [[ -e "$want" || -L "$want" ]] || missing_nodes+=("${want#"$T/"}")
+done
+for d in "$ROOT"/skills/*/; do
+    [[ -f "${d%/}/SKILL.md" ]] || continue
+    want="$T/docs/graph/skills/$(basename "${d%/}").md"
+    [[ -e "$want" || -L "$want" ]] || missing_nodes+=("${want#"$T/"}")
+done
+# The adapter machinery too. Enumerating only graph NODES left the check
+# narrower than the class it was written for: patching place_file to skip
+# `.claude/bound-hook.py` — the PreToolUse guard that is the one hard-enforced
+# control in the whole system — left this suite green. A destination is a
+# destination, whether or not it is a routable node.
+# Every adapter, not just claude-code. The first version of this list covered
+# `.claude/*` and the shared graph only, so commenting out the placement of
+# `.github/hooks/route.json` left the suite printing "OK — 376 destinations".
+# A machinery file dropped from github-copilot or prime-agent is the same defect
+# as one dropped from claude-code; it was simply invisible to the check.
+for rel in .claude/route-hook.py .claude/status-hook.py .claude/bound-hook.py \
+           .claude/agent-lint.py .claude/settings.json \
+           opencode.json \
+           .github/copilot-instructions.md \
+           .prime/agent/settings.json .prime/agent/APPEND_SYSTEM.md \
+           .prime/agent/extensions/route-extension.ts \
+           .prime/agent/extensions/status-extension.ts \
+           .codex/codex-config-snippet.toml \
+           docs/graph/agent-lint.py docs/graph/graph-lint.py \
+           docs/graph/_schema.md docs/graph/index.md \
+           EXPERT_SEED_INSTALL_PROMPT.md .cypress/seed.json; do
+    [[ -e "$T/$rel" || -L "$T/$rel" ]] || missing_nodes+=("$rel")
+done
+# ...and the template subtree, which is placed wholesale by place_tree and so
+# disappears wholesale if that call is ever dropped.
+tmpl_seed="$(find "$ROOT/templates" -name '*.md' -not -name '*.pyc' | wc -l | tr -d ' ')"
+# `[[ -d ]]` first: `find` on a MISSING directory fails the pipeline under
+# `pipefail`, and `set -e` then killed this script before it could print the
+# very diagnostic it exists to print — the templates-dropped regression exited
+# 1 with completely empty output.
+tmpl_plant=0
+if [[ -d "$T/docs/graph/templates" ]]; then
+    tmpl_plant="$(find "$T/docs/graph/templates" \( -type f -o -type l \) -name '*.md' \
+                  -not -name '*.bak-*' | wc -l | tr -d ' ')"
+fi
+[[ "$tmpl_plant" -ge "$tmpl_seed" ]] \
+    || missing_nodes+=("docs/graph/templates/ ($tmpl_plant of $tmpl_seed template files)")
+
+if [[ ${#missing_nodes[@]} -gt 0 ]]; then
+    echo "M1 VIOLATED — ${#missing_nodes[@]} node(s) the seed owns never reached the plant:" >&2
+    printf '  %s\n' "${missing_nodes[@]}" >&2
+    fail "a machinery node the installer stopped placing is invisible to any \
+check that enumerates what WAS placed"
+fi
+
+export BASE BASECOPILOT
+
+# Dispatch the independent sections concurrently under the shared gate budget.
+SCN="$(mktemp)"
+for c in case_recover case_symchurn case_m2 case_m9 case_m4 case_m8 case_m10 case_cond; do
+    printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
+done
+rc=0
+python3 "$ROOT/tests/gate_pool.py" run "$SCN" || rc=$?
+rm -f "$SCN"
+
+[ "$rc" -eq 0 ] || { echo "install-placement: FAIL — a planted scenario did not pass" >&2; exit "$rc"; }
 
 echo "install-placement: OK — ${#FILES[@]} destinations plus ${#COND_FILES[@]} conditional ones recoverable, symlink-safe, idempotent, link-uniform, audit-classifiable, target-contained"
