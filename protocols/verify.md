@@ -477,8 +477,13 @@ matching, is rewritten before the check ever sees its input. Read the
 probe's **exit code**, never the emptiness of its output — a corrupted
 probe and a clean negative both come back empty, and only one of them
 means what you are about to write down. Two of your own contradictory measurements indict
-your method, not the other reader. Match the instrument's shape to the
-subject's — a line-oriented scan over multi-line constructs produces a
+your method, not the other reader — unless the subject itself changed
+between the two readings. Two honest, dated observations of a *mutable*
+system that disagree are two facts about two moments, not one wrong
+measurement: keep both with their dates, do not collapse them by
+supersession, and name the fresh observation that would settle which
+holds now as `not recorded` rather than guessing it. Match the
+instrument's shape to the subject's — a line-oriented scan over multi-line constructs produces a
 number that looks like evidence and is not. A tool that produced a false
 positive is fixed or deleted in the same change that retracts its
 output; a discredited tool left in place will be quoted again.
@@ -519,3 +524,11 @@ and three counts sharing one premise are one count.
   collection, and a tool that could not start all exit zero when nobody
   made them fail. An exit code says a process ended, not that a property
   held.
+- "The report was on disk." Was it written *this* run? A step that emits
+  per-target artifacts into a persistent or shared output root can read a
+  prior run's artifact as the current one's — present, readable, and
+  well-formed, yet entirely false. A presence check (exists and non-empty)
+  is the tempting fix for a crashed-run zero and silently swaps one false
+  green for another. The evidence is that the artifact was observed written
+  this run; without that observation the check fails closed and records a
+  stale artifact as distinct from a missing one.

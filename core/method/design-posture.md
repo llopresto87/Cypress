@@ -81,7 +81,11 @@ than their **direction** and **stability**: a few hidden dependencies are
 worse than many explicit ones. Keep coupling explicit, avoid shared mutable
 state and needless temporal ordering, and never let a dependency cycle
 stand. Prefer a direct call to indirection that only relocates the same
-coupling.
+coupling. Two values that are equal only by coincidence — a name derived
+one way that happens to match a key derived another — are a hidden
+dependency of exactly this kind: record the coincidence or make it
+explicit, because a later change to either side splits them silently and
+nothing announces the split.
 
 ## 4. Depend on stable contracts, not volatile detail
 

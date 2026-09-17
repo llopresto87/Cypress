@@ -31,10 +31,15 @@ corresponding C# language version).
   yet forward-compatible SDK selection.
 
 ## General pitfalls
-- With `rollForward: major` (or similar), the effective SDK/runtime patch at
-  build/run time is not fixed by the pin — it floats to whatever compatible
-  patch is present in the environment, so the running runtime is determined by
-  the host/image, not by repo files alone.
+- **`global.json` `rollForward` governs SDK selection at build time only, never
+  the runtime.** Running a `net<N>.0` assembly is a separate resolution that
+  needs the `net<N>` shared framework installed; if only a newer major runtime
+  is present the process fails to *start*, and for `dotnet test` the test host
+  aborts before any test is collected — easily misread as an environment or
+  daemon problem. The runtime-side fix is the environment variable
+  `DOTNET_ROLL_FORWARD=LatestMajor` (or `Major`), not a project-file change. Do
+  not read `rollForward` as a promise that the runtime "floats to whatever patch
+  is present": the matching framework may be absent.
 - The deployed ASP.NET Core runtime patch and individually-pinned
   `Microsoft.AspNetCore.*` package versions can diverge; each has its own
   version surface to reason about.

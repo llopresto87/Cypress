@@ -85,6 +85,18 @@ tree bought. Parallel work that a task genuinely needs is serialized at
 the commit boundary inside the one tree (`method.delegation` bounds the
 workers), never multiplied across trees.
 
+The ban also has a measurement rationale, and it is the sharper one. A
+second tree does not only diverge in state, it *measures differently*: a
+test that depends on a sibling checkout skips where that sibling is absent
+instead of running, so a count taken in a worktree is not comparable to
+one taken in the working directory, and comparing the two manufactures a
+regression that does not exist. A worktree created *just to measure* is
+therefore the case the ban most needs to cover, because a merge never
+happens, so nothing ever forces the divergence into the open. When a
+before/after comparison is genuinely needed, compare the identities of the
+failing checks in one tree, never counts across two (`protocol.verify`
+owns the names-not-counts rule).
+
 ## 4. Attribution and language are plant facts
 
 Who a commit says wrote it, and which human language comments and

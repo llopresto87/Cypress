@@ -207,7 +207,13 @@ written in another, run the tool for its language-independent checks only
 punctuation — and record every vocabulary-based finding as **inapplicable**
 rather than clean. A silent detector there has reported that it cannot read
 the document, never that the prose is good, and the two look identical in
-the output.
+the output. The language-independent checks are not automatically trustworthy
+either: where a genre or a companion skill *mandates* a shape — a required
+field block that reads as repeated bold labels, a required title or heading
+punctuation that inflates a whole-file dash rate — the detector fires on the
+mandated structure and cannot tell it from the tell it is named after. There
+the finding is advisory, not a defect: record why it was kept and leave the
+mandated shape, rather than editing toward the detector's label.
 
 Stock model vocabulary (`additionally`, `crucial`, `delve`, `enhance`,
 `fostering`, `highlight` as a verb, `interplay`, `intricate`, `key` as an

@@ -60,6 +60,21 @@ than the older standalone `docker-compose` binary.
   fine until the container is recreated and data is gone.
 - The v2 plugin (`docker compose`) and the legacy binary (`docker-compose`)
   differ in invocation and some behavior; confirm which is in use.
+- **`--remove-orphans` is scoped to the whole project, not to the `-f` files you
+  passed.** Plain `down` only touches services declared in the files handed to
+  the command, but `--remove-orphans` widens removal to every container of the
+  resolved project (matched by `COMPOSE_PROJECT_NAME`), regardless of which `-f`
+  subset you passed — so if several invocations manage different `-f` subsets
+  under one project name, `--remove-orphans` on one deletes containers another
+  declared, and exits 0 while doing it. It is off by default; only
+  `COMPOSE_REMOVE_ORPHANS=1` makes it implicit. `--no-deps` touches nothing
+  outside the named service, and `down` never removes named volumes without
+  `--volumes`.
+- **An unnamed top-level volume resolves to `<project>_<key>`.** Changing the
+  project name (an env var, `-p`, or the working-directory name) computes a
+  different volume name, finds none, and silently starts on empty state — the
+  old volume is orphaned, not deleted. Give a volume an explicit `name:` before
+  any project rename that must keep its data.
 
 ## Upstream docs
 - https://docs.docker.com/compose/

@@ -46,6 +46,35 @@ and local-dev workflows sit on.
 - Secrets placed in `ARG`/`ENV` or copied into a layer persist in image history
   even if later "deleted" in a subsequent layer.
 - Large or poorly ordered layers bust the cache and bloat images.
+- **With the containerd image store, `docker system df` measures the wrong
+  tree** — the graph-driver directory, not the containerd snapshot/blob store —
+  so its usage and prune figures mislead. Size a disk budget from `df` instead,
+  and reckon an image at roughly 1.4x its registry size, because the compressed
+  blob is kept alongside the unpacked snapshot.
+- **A bind-mount whose source path does not exist is created by the daemon as an
+  empty directory.** A container that expected a *file* there then fails at
+  container creation (a `not a directory` error, exit 127, RestartCount 0), so a
+  `restart:` policy never fires and the service stays down with no crash loop to
+  notice. Bake a small config file into the image rather than mounting one a
+  cleanup or reboot can delete.
+- **A create-time failure is silent** — no restart churn, no climbing
+  RestartCount, no repeating log line, the service is simply absent. A quiet
+  `docker ps` is therefore not evidence the stack is up; check for exited
+  containers by name and for `RestartCount 0`, the tell that separates a
+  creation failure from an application crash loop.
+- **`cap_add: NET_BIND_SERVICE` does not let a non-root user bind a privileged
+  (<1024) port.** The container gets the bounding/permitted/effective capability
+  sets but not the *ambient* set, and a non-root `execve` without file
+  capabilities drops permitted/effective to nothing. The mechanism that works is
+  the sysctl `net.ipv4.ip_unprivileged_port_start=0`; `setcap` file capabilities
+  are not an alternative under `no-new-privileges: true`, which is mutually
+  exclusive with them.
+- **A container's IP is assigned dynamically and is not stable across restart or
+  recreate**, and a freed address can be reassigned to a different container on
+  the same network. Reference peers by name; a component that resolves a peer's
+  address and then *trusts* it (a proxy IP fed to a forwarded-headers allow-list)
+  can silently trust the wrong container after a restart. Trust a declared
+  subnet, which is fixed at network creation, not a resolved address.
 
 ## Upstream docs
 - https://docs.docker.com/

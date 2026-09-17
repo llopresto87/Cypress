@@ -1,4 +1,4 @@
-# Suggested skill: fix-review-packet
+# Suggested skill: discardme
 
 > Optional procedure — a substantial security or compliance fix ships with a
 > **throwaway** review file that lets a non-specialist reviewer accept or

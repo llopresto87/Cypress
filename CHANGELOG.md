@@ -1,5 +1,84 @@
 # Changelog
 
+## 7.21.0 — the reference corpora learn a grown plant's container, proxy, and runtime edges (2026-09-17)
+
+Harvested from a grown plant, and mostly a refusal: the plant had already been
+harvested comprehensively one release earlier, so the survey ran against only
+what it accumulated since, and rejected the whole operations, CI, and scan
+surface as doctrine the verify protocol already owns at depth. What survived all
+three gates was net-new **reference** knowledge the corpus pages did not yet
+carry, plus a handful of one-line doctrine sharpenings.
+
+**Sixteen library-surface facts, each a bullet on an existing corpus page.** The
+container-runtime page gained the silent-failure edges a persistent host teaches:
+a missing bind-mount source recreated as an empty directory so a file mount fails
+at container creation and no restart policy fires; a create-time failure that
+leaves no crash loop to notice; the capability-set reason `NET_BIND_SERVICE` does
+not grant a non-root privileged-port bind; a dynamically-assigned address that is
+reassignable across a restart, so trust belongs to a declared subnet and not a
+resolved one; and a disk-usage tool that measures the wrong tree under the
+containerd image store. Its compose tool gained the project-wide scope of orphan
+removal (a subset invocation under one project name can evict what another
+declared, and exit zero) and the unnamed-volume rename that silently starts on
+empty state. The reverse-proxy page gained eight resolution and inheritance edges —
+header inheritance is replacement not merge, a config test performs the socket
+binds, a load-time hostname resolution that a runtime resolver avoids, and the
+self-proxy loop a network alias creates. The managed-runtime page's
+roll-forward pitfall, which over-promised that the runtime "floats to whatever
+patch is present," was corrected: roll-forward governs build-time selection only,
+and a missing shared framework fails the process at start.
+
+**Five doctrine sharpenings into existing homes.** The no-worktrees rule gained
+its sharper, measurement rationale — a second tree measures differently, so a
+count taken there is not comparable, which is exactly the case a "just to measure"
+worktree hides because no merge ever forces the divergence open. The verify
+protocol gained the stale-artifact false green (a present, well-formed artifact in
+a shared output root read as this run's evidence) alongside its existing
+absence-reads-as-pass list, and the case where two honest dated readings of a
+mutable system genuinely disagree and are two facts, not one error. The prose
+posture noted that a mechanical detector fires on structure a genre mandates, so
+that finding is advisory too, not only its vocabulary checks. The design posture
+noted that two values equal only by coincidence are a hidden dependency that
+splits silently.
+
+**One suggested-skill page renamed for clarity.** The throwaway fix-review page
+took the plainer name a reader recognises at a glance.
+
+### Harvest log
+
+```
+# Harvest — from a grown plant — 2026-09-17
+Harvested:   16 library-surface facts across four existing corpus pages (a
+             container runtime, its compose tool, a reverse proxy, a managed
+             runtime); 5 doctrine sharpenings into existing homes; 1
+             suggested-skill page renamed — no plant identity.
+Generalized: every plant/org/product name, host, port, path, credential,
+             identifying count, stack fingerprint, version pin, CVE, and tool
+             line-number stripped; before->after held per candidate in triage.
+Rejected:    the whole operations/CI/scan surface (already owned by the verify
+             protocol's green-is-not-evidence doctrine); a comprehensive
+             managed-identity page (already owned); two already-harvested
+             procedures and their post-harvest additions (present, some
+             verbatim); all pinned specifics.
+
+## Seed integrity gate (verdicts only)
+- G1 agnosticism-floor: PASS
+- G2 agnosticism-judgment: PASS
+- G3 faithful-import: PASS
+- G4 availability: PASS
+- G5 plant-untouched: PASS
+- G6 self-consistency: PASS (one pre-existing host-environment test failure,
+  reproduced on the clean tree, unrelated to this harvest)
+- G7 clean-install: PASS
+- G8 prose: PASS (genre exception recorded — the corpus and method pages carry
+  the seed's existing dash density; the rate is unchanged by the additions)
+- G9 minimum-sufficient: PASS (every fold-back is a bullet or clause on an
+  existing home; no new file)
+- G10 provenance: PASS
+- G11 no-loosened-limit: PASS
+- Version bump: 7.20.0 -> 7.21.0
+```
+
 ## 7.20.0 — knowledge-graph authoring learns where a grounded-idea best-practices page attaches (2026-09-17)
 
 Harvested from a grown plant. The `knowledge-graph` skill (`skill.knowledge-graph`)

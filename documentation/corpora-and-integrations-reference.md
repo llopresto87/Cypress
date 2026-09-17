@@ -389,7 +389,7 @@ procedure. Source: `skill-corpus/README.md`.
 | `adversarial-pentest-passes.md` | Adversarial penetration-test passes |
 | `deploy-fleet-on-remote-docker-host.md` | Deploy a fleet on a remote Docker host |
 | `drive-hosted-cicd-cli.md` | Drive a hosted CI/CD platform from its CLI: authenticate, queue a run against the right refs, prove what it built |
-| `fix-review-packet.md` | A throwaway review file that lets a non-specialist accept or reject a security/compliance fix without reading the diff |
+| `discardme.md` | A throwaway review file that lets a non-specialist accept or reject a security/compliance fix without reading the diff |
 | `framework-version-migration.md` | Behavior-preserving major framework/runtime migration |
 | `harden-docker-host.md` | Docker host hardening procedure |
 | `live-patch-stopgap.md` | Deploy an already-verified fix straight into a running instance — no push, no pipeline, no rebuild — to stop active harm |

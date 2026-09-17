@@ -42,6 +42,45 @@ services. It is configured declaratively via `nginx.conf` / server blocks.
   copy) yields blank pages or 404s that look like a build failure.
 - Forwarded/host headers must be set for upstreams that generate absolute URLs
   or enforce host checks, or proxied apps misbehave.
+- **`add_header` inheritance is replacement, not merge.** A block that declares
+  any `add_header` of its own inherits *none* of the parent scope's headers —
+  not just the same-named one, all of them. Re-declare the shared header set in
+  any location that adds a header of its own, or a security header silently
+  disappears on exactly the paths that set something else.
+- **`nginx -t` performs the socket binds.** A `listen` on an address the host
+  does not hold fails the *entire* configuration test — every server block, not
+  only the offending one. A generator that may emit an optional `listen` must
+  check the address exists and emit nothing when it does not, rather than fail
+  the whole edge closed.
+- **`stream {}` (L4 proxying) is a top-level block, a sibling of `http {}`.**
+  Because `http {}` includes `conf.d/*.conf`, a `stream` block dropped into a
+  `conf.d` fragment is parsed inside `http` and is a syntax error. Where an
+  include fragment lands decides its scope.
+- **A hostname literal in `proxy_pass` is resolved once, at config-load time**,
+  so a DNS failure at load refuses the whole config and stops the server — a
+  full outage over one unreachable name. Declare an explicit `resolver` and put
+  the target in a variable to resolve at runtime, so a transient failure
+  degrades that one upstream. Never point that `resolver` at the
+  container-embedded DNS when the upstream name is also a network alias of this
+  server: it resolves back to itself and the proxy hangs on its own address.
+- **A `map`-produced log variable is always "set".** nginx's log module renders
+  a not-found variable as `-` and a found-but-empty one as `""`; routing a log
+  field through a `map` turns every `-` into `""`. A field whose contract is
+  byte-identical output must read its source variable directly, and the probe
+  that catches the difference sends the header absent.
+- **A `log_format` declared but never referenced by an `access_log` is a silent
+  no-op**: `nginx -t` passes, the server starts, and the compiled-in default
+  keeps writing. A gate that greps for the format *name* passes on a broken
+  config; assert the directive's effect and that it is scoped once, not the
+  presence of its definition.
+- **`proxy_hide_header X` suppresses only the upstream's `X`, never this
+  server's own `add_header X`.** Keeping both is correct: the hide strips
+  whatever an upstream might send, the set adds yours.
+- **The stock `nginx:*-alpine` image does not make `/var/cache/nginx`, `/var/run`,
+  or the default pid path writable by the built-in uid 101.** Running `USER 101`
+  on the stock image is not enough — either use nginx's own unprivileged image
+  or replicate its work (make the cache dir group-writable and redirect the pid
+  file to a writable path).
 
 ## Upstream docs
 - https://nginx.org/en/docs/
