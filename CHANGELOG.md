@@ -1,5 +1,36 @@
 # Changelog
 
+## 7.20.0 — knowledge-graph authoring learns where a grounded-idea best-practices page attaches (2026-09-17)
+
+Harvested from a grown plant. The `knowledge-graph` skill (`skill.knowledge-graph`)
+gained a durable authoring rule for a question the graph kept re-deciding by
+hand: which node owns a `best-practices/` page whose subject is a discipline
+rather than a language or file format.
+
+**The rule, folded into the node contract.** A grounded-idea best-practices
+page is a leaf like any other, and the only question it raises is which node
+owns it: give it an `expertise.*` node when the subject is a stack element with
+a pin home in `docs/graph/libraries/`; attach it to an existing `domain.*` node
+when the graph already owns that concept's vocabulary and invariants (add the
+page to that node's `artifacts:` and the departure's own words to its
+`load_when:`, or the page is unreachable on the vocabulary a reader searches
+with); author a new `domain.*` only when neither holds. Page shape and the
+citation rule stay the shelf contract's (`docs/graph/best-practices/README.md`),
+not this skill's — one home per fact.
+
+**Two `load_when:` triggers** so the rule routes on the words an author types:
+"which node owns this best-practices page, expertise node or domain node" and
+"where does a new leaf attach, who gets the artifacts edge". `est_tokens`
+re-measured to the seed's own value (2519 → 3045).
+
+Provenance: harvested from a grown plant under `protocols/harvest.md`; the rule
+is version-durable, project-agnostic graph-authoring guidance and names no
+plant, host, or operator path. Gates: agnosticism floor (`tools/agnosticism-lint.py`)
+PASS over both changed files; durability and non-redundancy judged (the seed
+owned no attachment-decision home — `library-wiki` covers *when* to create a
+best-practices page, `grow` covers the growth phase, neither owns *which node
+owns it*).
+
 ## 7.19.0 — the seed's own agnosticism gate sees where a leak lands, and learns the operator-path class (2026-09-17)
 
 The seed runs its own agnosticism gate against itself: `tests/seed-lint.py`

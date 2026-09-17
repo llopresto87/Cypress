@@ -57,7 +57,7 @@ skill frontmatter carries:
 | grill-planner | `skill.grill-planner` | `grill-planner.method`, `grill-planner.audit` | `protocol.grill` | `skill.spec-author` | 1150 |
 | holistic-editing | `skill.holistic-editing` | `holistic-editing.method`, `holistic-editing.forbidden-moves`, `holistic-editing.class-sweep` | (none) | `skill.context-router`, `protocol.test-first` | 2300 |
 | humanizer | `skill.humanizer` | `humanizer.method`, `humanizer.document-contract`, `humanizer.progressive-execution`, `humanizer.fact-preservation`, `humanizer.modes`, `humanizer.scope` | `method.prose-posture` | `skill.holistic-editing`, `skill.adr-writer`, `skill.spec-author`, `agent.docs-librarian`, `protocol.deliver` | 3300 |
-| knowledge-graph | `skill.knowledge-graph` | `knowledge-graph.method`, `knowledge-graph.node-contract`, `knowledge-graph.linter` | (none) | `skill.context-router`, `skill.library-wiki`, `skill.validate-knowledge` | 2519 |
+| knowledge-graph | `skill.knowledge-graph` | `knowledge-graph.method`, `knowledge-graph.node-contract`, `knowledge-graph.linter` | (none) | `skill.context-router`, `skill.library-wiki`, `skill.validate-knowledge` | 3045 |
 | library-wiki | `skill.library-wiki` | `library-wiki.method`, `library-wiki.version-pinning` | (none) | `skill.research-and-ingest`, `protocol.ingest-library` | 1000 |
 | research-and-ingest | `skill.research-and-ingest` | `research-and-ingest.method`, `research-and-ingest.source-ranking` | (none) | `skill.library-wiki`, `agent.research-scout` | 1200 |
 | spec-author | `skill.spec-author` | `spec-author.method`, `spec-author.sign-off` | `protocol.specify` | `skill.test-first`, `skill.grill-planner`, `skill.humanizer` | 1250 |

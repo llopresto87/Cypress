@@ -22,6 +22,8 @@ load_when:
   - "add or sharpen a load_when trigger"
   - "split an oversized node"
   - "build the docs/graph structure"
+  - "which node owns this best-practices page, expertise node or domain node"
+  - "where does a new leaf attach, who gets the artifacts edge"
 artifacts:
   - templates/knowledge-graph/_schema.md
   - templates/knowledge-graph/graph-lint.py
@@ -30,7 +32,7 @@ artifacts:
   - templates/docs/nodes/_deviation.template.md
   - templates/docs/nodes/_expertise.template.md
 prevents: A node set with duplicate homes, dishonest budgets and triggers that never fire — a graph that costs context and returns nothing.
-est_tokens: 2519
+est_tokens: 3045
 ---
 
 # knowledge-graph
@@ -79,6 +81,21 @@ leaf that serves each purpose and restates none of them. Its
 specialisations hang off `composes:`, and a child that `requires:` its
 parent must appear in that parent's list — the reciprocity the linter
 checks, so a child cannot be added without the menu learning about it.
+
+**Where a grounded idea attaches.** A `best-practices/` page whose subject is
+a discipline, not a language or a file format, is a leaf like any other, and
+the only question it raises is which node owns it. Give it an `expertise.*`
+node when the subject is a stack element with a pin home in
+`docs/graph/libraries/`. Attach it to an existing `domain.*` node when the
+graph already owns that concept's vocabulary and invariants: add the page to
+that node's `artifacts:`, and add the departure's own words to that node's
+`load_when:`, or the page will be unreachable on the vocabulary a reader
+would search with. Author a new `domain.*` only when neither holds. The
+evidence is the shelf: every best-practices page about a stack element is
+owned by an `expertise.*` node, and every page about a concept the graph
+already names is owned by a `domain.*` node. The page's own shape, its
+sections and its citation rule, is the shelf's contract in
+`docs/graph/best-practices/README.md`, not this skill's.
 
 ## The rules
 
