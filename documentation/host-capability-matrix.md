@@ -66,7 +66,7 @@ Measurements section).
 | Status hook | mechanically enforced | unsupported | unsupported | projected³ | mechanically enforced |
 | Pre-tool guard | mechanically enforced | unsupported | unsupported | unsupported | unsupported |
 | Slash commands | mechanically enforced | mechanically enforced | unsupported | mechanically enforced | mechanically enforced |
-| Always-applied instructions | mechanically enforced (26 259 B) | mechanically enforced (26 259 B) | mechanically enforced (≤ 26 259 B)⁴ | mechanically enforced (31 903 B) | mechanically enforced (21 717 B) |
+| Always-applied instructions | mechanically enforced (26 259 B) | mechanically enforced (26 259 B) | mechanically enforced (≤ 26 259 B)⁴ | mechanically enforced (31 903 B) | mechanically enforced (24 093 B) |
 
 ¹ The leaf/coordinator split (who holds `Task` at all) is hard-enforced —
 a Task-less leaf mechanically cannot spawn. The *numeric* `max_spawn_depth`
@@ -340,7 +340,7 @@ function's own computation against current sources:
 | Claude Code | kernel + agent descriptions + skill descriptions | 26 259 B |
 | opencode | kernel + agent descriptions + skill descriptions | 26 259 B |
 | Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 26 259 B |
-| Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 21 717 B |
+| Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 24 093 B |
 | GitHub Copilot | kernel + agent descriptions + skill descriptions + pointer boilerplate | 31 903 B |
 
 (Component figures are not restated here. These moved four times in one release

@@ -47,6 +47,40 @@ test, code, or a doc), spawn a clean-context child instead of doing it inline:
   same family, never lower; omit `model` (inherit) only as a last resort. Never
   a weaker default for seed work, and never over-provision — a docs edit behind
   a linter gate is routine-behind-a-gate, not design.
+- **The meta-loop protocols pick the version per phase.** The table above is for
+  arbitrary tasks. `grow`, `harvest`, and `graft` tag every phase with a model
+  *class* in their own nodes — that class is the single home, and the seed's
+  tool-neutral core never names a vendor version. On Prime Agent each class
+  resolves to a version inside its OWN family, never across families; this table
+  refines the one above for those three protocols and wins where they overlap:
+
+  | Protocol · phase | Class | Model | Effort |
+  |---|---|---|---|
+  | grow · scout source discovery | sonnet | Sonnet 4.6 | low–medium |
+  | grow · research-scout, external sources | sonnet | Sonnet 5 | medium–high |
+  | grow · node authoring (behind graph-lint) | opus | Opus 4.6 | medium |
+  | grow · reconcile contradictory ledgers | opus | Opus 4.8 | high |
+  | grow · librarian final pass | opus | Opus 4.8 | high |
+  | harvest · Phase 1 survey | sonnet | Sonnet 4.6 | low–medium |
+  | harvest · Phase 2 triage (three gates, generalize) | opus | Opus 4.8 | high |
+  | harvest · Phase 3 backport authoring | opus | Opus 4.8 · Opus 5 if it lands in the kernel | high |
+  | harvest · Phase 4 G3 independent review | opus | Opus 4.8 | high |
+  | graft · Phase 1 locate plant / base | sonnet | Sonnet 4.6 | low |
+  | graft · Phase 2 survey drift | sonnet | Sonnet 4.6 | low–medium |
+  | graft · Phase 3 reconcile machinery | opus | Opus 4.8 | high |
+  | graft · Phase 4 refresh from corpus | opus | Opus 4.6 | medium |
+  | graft · Phase 5 grow new capabilities | opus | Opus 4.6 | medium |
+  | graft · Phase 6 rebalance: inventory | sonnet | Sonnet 4.6 | low–medium |
+  | graft · Phase 6 rebalance: reconstruct | opus | Opus 4.6 | medium |
+  | graft · Phase 7 apply / verify / stamp | opus | Opus 4.8 · Opus 5 (writes into a living plant) | high |
+
+  Default opus work to **Opus 4.6** — routine authoring behind a gate, about a
+  third fewer tokens than 4.8. Spend **Opus 4.8** on judgment: triage,
+  reconciliation, a 3-way merge, adversarial review. Spend **Opus 5** only on
+  the highest blast radius — an edit that lands in the kernel, or a write into a
+  living plant. Read-only survey stays **Sonnet 4.6**; source-grounded scouting
+  rises to **Sonnet 5**, the only sonnet rung above 4.6. Resolve and fall back
+  by the same rule as the generic table above.
 - **Collect handbacks by message.** A child returns results with
   `await agent_message.send(payload, receiver_role="parent")`; you fan-in on
   later turns. Use `agent_observe` to inspect a child's rollout and

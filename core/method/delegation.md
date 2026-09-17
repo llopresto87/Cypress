@@ -118,6 +118,11 @@ agent's `model:` frontmatter. It is a distinct axis from the **task tier**
 independent axes that share the word loosely — only the risk axis is written
 `T0–T3`; "model class" and "load-tier"/`tier:` name the other two.
 
+A host that can select model *versions* within a class refines each phase's
+class to a concrete version at spawn time. That version policy is host-specific
+and lives in the host's integration overlay, never in a tool-neutral node; the
+class a phase uses stays owned by that phase in its protocol node.
+
 ## Delegation is bounded
 
 Six coordinators (`orchestrator`, `multi-agent-architect`,

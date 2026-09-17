@@ -48,7 +48,7 @@ The running cost, measured rather than estimated:
 
 | | |
 |---|---|
-| Always loaded, per session | 26 259 bytes (~6 562 tokens) on Claude Code, opencode, Codex; 21 717 on Prime Agent; 31 903 on GitHub Copilot |
+| Always loaded, per session | 26 259 bytes (~6 562 tokens) on Claude Code, opencode, Codex; 24 093 on Prime Agent; 31 903 on GitHub Copilot |
 | Of that, the kernel | 7 742 bytes, under a hard 8 000-byte budget the gate enforces |
 | Everything else | routed in on demand, not loaded up front |
 | Method overhead on a small, well-specified task | 10 to 20% more tokens than an unguided session, measured once |
@@ -336,7 +336,7 @@ Always-loaded per session, before any routing happens:
 
 | Harness | Eager bytes | ~tokens |
 |---|---|---|
-| prime-agent | 21 717 | 5 427 |
+| prime-agent | 24 093 | 6 021 |
 | claude-code / opencode / codex | 26 259 | 6 562 |
 | github-copilot | 31 903 | 7 973 |
 

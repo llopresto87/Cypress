@@ -1,5 +1,36 @@
 # Changelog
 
+## 7.22.0 — the Prime Agent overlay resolves each meta-loop phase to a model version (2026-09-17)
+
+Prime Agent can pick a model *version* per spawn, on top of the tool-neutral
+sonnet-class/opus-class split the seed protocols carry. Nothing told it which
+version to pick per phase of `grow`, `harvest`, and `graft`, so the overlay
+resolved every opus phase to the same top tier and over-provisioned the routine
+authoring that runs behind a lint gate.
+
+**A per-phase model table in the Prime Agent overlay
+(`integrations/prime-agent/APPEND_SYSTEM.md`).** Each phase of the three
+meta-loop protocols now resolves its class to a concrete version inside its own
+family — never across families. Read-only survey is Sonnet 4.6; source-grounded
+scouting rises to Sonnet 5. Opus work defaults to Opus 4.6 (routine authoring
+behind a gate, about a third fewer tokens than 4.8); Opus 4.8 is spent on
+judgment (triage, reconciliation, a 3-way merge, adversarial review); and Opus 5
+only on the highest blast radius — an edit that lands in the kernel or a write
+into a living plant. Because the installer copies the overlay wholesale into a
+plant's `.prime/agent/APPEND_SYSTEM.md`, the table reaches every plant at
+install / graft / growth time; existing plants pick it up on their next install,
+not by a host-side edit.
+
+**A tool-neutral pointer in `core/method/delegation.md`.** The model-class home
+now states that a version-selecting host refines each phase's class to a version
+at spawn, that the version policy is host-specific and lives in the host's
+integration overlay, and that the class a phase uses stays owned by that phase's
+protocol node — so no vendor version name leaks into the tool-neutral core.
+
+The published always-loaded figure for Prime Agent moves from 21 717 to 24 093
+bytes (README, host-capability-matrix), still far under the 41 600-byte eager
+budget.
+
 ## 7.21.0 — the reference corpora learn a grown plant's container, proxy, and runtime edges (2026-09-17)
 
 Harvested from a grown plant, and mostly a refusal: the plant had already been
