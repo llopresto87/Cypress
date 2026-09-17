@@ -1,5 +1,84 @@
 # Changelog
 
+## 7.18.0 — the inventory owes evidence for what a project rests on, and gains a kind for what it is for (2026-09-17)
+
+`KIND_PLAN` decided what a growth pass owes each thing the project is made of,
+and its `domain` key — the ideas a project is built on — was the one key of
+eleven that owed no grounding: `("domain", ([], False, False))`. The gap was
+found by measurement, not argument. A pass retrieved 32 upstream documents for
+the language, runtime, infrastructure and external-service rows and none at all
+for the domain rows, because `lint_inventory` only reaches `UNGROUNDED` when
+`grounding.required` is true, and for `domain` it never was. A plant was grown,
+audited, and reported `coverage complete` while the subjects at the centre of it
+had never been measured against anything published outside the project. See
+ADR-0003.
+
+**A `domain` row now owes what every other kind owes.** Its triple is
+`(["best-practices/{slug}.md", "nodes/domain.{slug}.md"], True, False)`: a
+grounded best-practices page whose citation resolves to a retrieved source, and
+its own `domain.{slug}` routing node, with `grounding.required` forced true and
+no per-row opt-out. The routing node rides in the first column rather than the
+third, because the third mints `nodes/expertise.{slug}.md` and every domain slug
+already carries `nodes/domain.{slug}.md` — two routing nodes for one subject
+would break the graph's first rule, one home per fact. The tradeoff is
+uniformity against honesty, and it takes uniformity deliberately: a scout who
+found no outside literature must retrieve something or go red, because a
+recorded judgement is prose a linter cannot grade.
+
+**A twelfth kind, `objective`, records what the project is *for*.** Its triple
+is `(["plans/objectives.md"], False, False)`, its rows inferred from executable
+source with every prose purpose claim treated as a claim under test. Its
+`grounding.required` is false, but that is not the opt-out: each row carries a
+required `grounded_by` edge naming the `domain` slugs its expertise rests on,
+and each of those rows now carries `grounding.required: true` by the change
+above — so the objective is grounded one hop away, and every link in the hop is
+mechanical. `lint_inventory` holds the artifact to naming the row: the one
+artifact `plans/objectives.md` must carry a heading or table cell for this row
+or it is `UNGROWN` (extending the `index_names` check that already learned this
+lesson), and a `grounded_by` that resolves to nothing is `UNGROUNDED`.
+`objective` stays outside `STAFFED_KINDS`, because the surface under it is the
+domain its edge names, and that row answers the staffing question in its own
+record.
+
+**The migration is one-directional, and it is `do_plan` that carries it.** A
+new obligation added to `KIND_PLAN` reached an already-planned plant through no
+path at all: `grounding.required` was already present as `false` so the
+`setdefault` was a no-op, and `expect` was already non-empty so the refill guard
+never fired. `--plan` now raises a `domain` row's grounding from `false` to
+`true` where the kind demands it, and unions the newly owed paths onto `expect`
+rather than replacing it — keeping the hand-written artifacts the tool cannot
+derive. It never lowers grounding and never drops a path, because lowering the
+boolean would silently shed an obligation and replacing `expect` would discard
+authored work. Every plant with a `domain` row and no grounding on it goes red
+until the pages and nodes are authored.
+
+**Prime Agent's subagent overlay gained a model-and-effort table.** Prime Agent
+can select a model *version* per spawn where Claude Code cannot, so
+`integrations/prime-agent/APPEND_SYSTEM.md` now maps task kind to model and
+effort (watch/measure → Haiku/Sonnet at low effort; routine-behind-a-gate and
+sourced research → Opus 4.6; design and one-way doors → the top Opus tiers at
+high effort), with a resolution rule that reads the live selector through
+`rlm.find_models` and falls back to the nearest-higher available version rather
+than a stale pin. The always-loaded Prime Agent surface the gate bounds moves
+from 20 914 to 21 717 bytes, updated in `README.md` and
+`documentation/host-capability-matrix.md`.
+
+**A row's plan is now held to what its kind owes.** `lint_inventory` iterated
+the recorded `expect` and computed `owed` only to reject over-growth, never
+asserting `owed ⊆ expect`, so a `KIND_PLAN` obligation added after a plant was
+planned reached it through no path but `--plan` — invisible within a version.
+It now emits a `BLANK` naming the row and the omitted owed path
+(`its plan is missing …, which its kind owes`); the STALE stamp still catches
+the cross-version case. This closes one of ADR-0003's two disclosed residuals;
+the other, that the grounding gate cannot check a cited source *supports* its
+claim, stays open in `docs/graph/evaluations/false-green-census.md`.
+
+**The eager-surface budget was raised 32 000 → 41 600 bytes (owner decision).**
+`EAGER_BUDGET` — the always-loaded per-session context bound — was widened by
+30% and re-blessed into `tests/ratchets.json`; loosening a `max` ratchet is the
+conspicuous, recorded edit the lock exists to force, not prevent. Measured
+surfaces are unchanged and well under the new bound.
+
 ## 7.17.0 — a check opens the path it names, and a row cannot close by declaring itself closed (2026-09-17)
 
 `raw_retained` decided whether a normalized source had kept its provenance by

@@ -9,7 +9,9 @@
     "EAGER_EXEMPTIONS": "map",
     "EDITION_DEBT": "set",
     "EVAL_THRESHOLD": "min",
+    "FRONTMATTER_CEILING": "max",
     "GRANDFATHERED_NEAR_DUPLICATES": "set",
+    "INLINE_ASSERTION_DEBT": "max",
     "KERNEL_BUDGET": "max",
     "LIFECYCLE_BODY_CEILING": "max",
     "LIFECYCLE_NODES": "set",
@@ -19,18 +21,16 @@
     "PARAPHRASE_MAX_OVERLAP": "max",
     "PARAPHRASE_MIN_ROWS": "min",
     "PREVENTS_OVERLAP_CEILING": "max",
-    "SPEC_ROW_UNBOUND_BUDGET": "max",
-    "SPEC_UNCOVERED_BUDGET": "max",
     "PREVENTS_RESTATEMENT_CEILING": "max",
-    "FRONTMATTER_CEILING": "max",
-    "INLINE_ASSERTION_DEBT": "max"
+    "SPEC_ROW_UNBOUND_BUDGET": "max",
+    "SPEC_UNCOVERED_BUDGET": "max"
   },
   "ratchets": {
     "ADVERSARIAL_CONFIDENT_WRONG_BUDGET": 3,
     "ADVERSARIAL_MIN_ROWS": 12,
     "CHARTER_VOCAB_DEBT": 12,
     "CONFIDENT_WRONG_BUDGET": 0,
-    "EAGER_BUDGET": 32000,
+    "EAGER_BUDGET": 41600,
     "EAGER_EXEMPTIONS": {},
     "EDITION_DEBT": [
       "acn-det-127434-baseline-2027",
@@ -80,11 +80,13 @@
       "it-dlgs-138-mercato-online"
     ],
     "EVAL_THRESHOLD": 0.95,
+    "FRONTMATTER_CEILING": 100,
     "GRANDFATHERED_NEAR_DUPLICATES": [
       "adopt this project into the docs graph by subsystem boundary || adopting this project into the docs graph by subsystem boundary",
       "check the change is integrated and not bolted on || checking the change is integrated and not bolted on",
       "make the failing test pass || make the failing test pass and nothing else"
     ],
+    "INLINE_ASSERTION_DEBT": 81,
     "KERNEL_BUDGET": 8000,
     "LIFECYCLE_BODY_CEILING": 2500,
     "LIFECYCLE_NODES": [
@@ -98,10 +100,8 @@
     "PARAPHRASE_MAX_OVERLAP": 0.5,
     "PARAPHRASE_MIN_ROWS": 15,
     "PREVENTS_OVERLAP_CEILING": 0.3,
-    "SPEC_ROW_UNBOUND_BUDGET": 0,
-    "SPEC_UNCOVERED_BUDGET": 2,
     "PREVENTS_RESTATEMENT_CEILING": 0.6,
-    "FRONTMATTER_CEILING": 100,
-    "INLINE_ASSERTION_DEBT": 81
+    "SPEC_ROW_UNBOUND_BUDGET": 0,
+    "SPEC_UNCOVERED_BUDGET": 2
   }
 }

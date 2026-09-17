@@ -48,7 +48,7 @@ The running cost, measured rather than estimated:
 
 | | |
 |---|---|
-| Always loaded, per session | 26 259 bytes (~6 562 tokens) on Claude Code, opencode, Codex; 20 914 on Prime Agent; 31 903 on GitHub Copilot |
+| Always loaded, per session | 26 259 bytes (~6 562 tokens) on Claude Code, opencode, Codex; 21 717 on Prime Agent; 31 903 on GitHub Copilot |
 | Of that, the kernel | 7 742 bytes, under a hard 8 000-byte budget the gate enforces |
 | Everything else | routed in on demand, not loaded up front |
 | Method overhead on a small, well-specified task | 10 to 20% more tokens than an unguided session, measured once |
@@ -336,7 +336,7 @@ Always-loaded per session, before any routing happens:
 
 | Harness | Eager bytes | ~tokens |
 |---|---|---|
-| prime-agent | 20 914 | 5 226 |
+| prime-agent | 21 717 | 5 427 |
 | claude-code / opencode / codex | 26 259 | 6 562 |
 | github-copilot | 31 903 | 7 973 |
 
@@ -351,9 +351,10 @@ disclosure, and 7.16.0 fixed it rather than recording it: the projections are
 now pointers, each carrying the description that lets a session decide whether
 a skill applies and the path to the node holding the discipline. The remaining
 gap is that pointer boilerplate. `EAGER_EXEMPTIONS` in `tests/seed-lint.py` is
-consequently **empty**, and the `EAGER_BUDGET` ratchet has no slack: every
-harness is now under the same 32 000-byte bound, and the number may shrink,
-never grow.
+consequently **empty**. The `EAGER_BUDGET` ratchet was raised from 32 000 to
+41 600 bytes by owner decision (2026-09-17); every harness is under that bound,
+and loosening it further still takes a conspicuous, blessed edit to
+`tests/ratchets.json`, the same tripwire set at a higher line.
 
 Routable node bodies run from a handful of lines to 1 384
 (`protocols/graft.md`), with a median of 166. `tests/seed-lint.py` enforces two

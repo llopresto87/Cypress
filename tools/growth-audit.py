@@ -205,9 +205,15 @@ PLACEHOLDER_PROSE = re.compile(r"^[A-Za-z][A-Za-z0-9 ,'/-]*$")
 # The third column says whether the item also owes an EXPERTISE NODE — the
 # Tier-2 handle that says when this stack element is in play, what must not be
 # done without it, and which sub-expertises apply under which condition. Six
-# kinds owe one because they are the stack a worker writes against; the other
-# four already have a routable owner for their depth (prompts/, design/,
-# legal/, architecture/) and would gain a pass-through node, not a home.
+# kinds owe one because they are the stack a worker writes against. Five more
+# already have a routable owner for their depth (prompts/, design/, legal/,
+# architecture/, plans/) and would gain a pass-through node, not a home.
+# `domain` is neither: it owes a best-practices page and its own
+# `domain.{slug}` routing node — carried in the first column — so it mints no
+# second `expertise.{slug}` home for a subject the graph already routes, which
+# is why its third column is false. `objective` is what the project is FOR; its
+# rows are inferred from executable source, its one artifact is plans/objectives.md,
+# and its grounding is one hop away through the `grounded_by` edge (SPEC-0001 §6).
 KIND_PLAN = {
     "language":            (["libraries/{slug}.md", "best-practices/{slug}.md"], True, True),
     "runtime":             (["libraries/{slug}.md", "best-practices/{slug}.md"], True, True),
@@ -219,7 +225,8 @@ KIND_PLAN = {
     "ai-provider":         (["prompts/{slug}.md", "evaluations/{slug}.md"], True, False),
     "design-surface":      (["design/{slug}.md"], True, False),
     "regulatory-exposure": (["legal/{slug}.md"], True, False),
-    "domain":              ([], False, False),
+    "domain":              (["best-practices/{slug}.md", "nodes/domain.{slug}.md"], True, False),
+    "objective":           (["plans/objectives.md"], False, False),
 }
 # An incidental dependency earns an index line, not a page of its own, and
 # nothing is retrieved for it. Significance is the scout's call, recorded.
@@ -645,6 +652,31 @@ def index_names(plant, rel, *names):
     return False
 
 
+def file_names_row(plant, rel, *names):
+    """Whether the file at `rel` names one of `names` — in a table row (via
+    `index_names`) or a Markdown heading. `plans/objectives.md` is one file for
+    every `objective` row, so a row it does not name is a false COVERED exactly
+    like the twenty-four-row index that named none of an incidental item: one
+    artifact satisfies eight rows only if each row can point at the section that
+    is its own. A heading token is matched whole, never as a substring, for the
+    same reason `index_names` matches a whole cell — `o1` must not answer for a
+    heading that only mentions `o10`."""
+    if index_names(plant, rel, *names):
+        return True
+    f = plant / GRAPH_HOME / rel
+    if not f.is_file():
+        return False
+    want = {n.strip().lower() for n in names if n and n.strip()}
+    for line in f.read_text(encoding="utf-8", errors="replace").splitlines():
+        s = line.lstrip()
+        if not s.startswith("#"):
+            continue
+        tokens = {t.lower() for t in re.findall(r"[A-Za-z0-9-]+", s.lstrip("#"))}
+        if want & tokens:
+            return True
+    return False
+
+
 # A snapshot path named inside a `raw:` value, per SPEC-0001 §6: a maximal run
 # of `[A-Za-z0-9._/-]` that BEGINS `raw/` and ends in a 1-5 character extension.
 # The lookbehind is what makes the run maximal, and it is why a long-form
@@ -882,10 +914,29 @@ def do_plan(plant, seed, opt):
         if slug not in majors:
             majors[slug] = majors_in_play(rec, slug)
         expect, ground = planned_artifacts(item, majors[slug])
-        if not item.get("expect"):
-            item["expect"] = expect
+        # Migration is one-directional in both columns. `expect` is a UNION:
+        # a kind that gains an obligation (a `domain` row that now owes its
+        # best-practices page) reaches an already-planned record through no
+        # other path — lint iterates the recorded `expect` and never asserts
+        # that what a kind owes is a subset of it — so the newly owed paths are
+        # added here, and the hand-written ones the tool cannot derive are kept.
+        existing = item.get("expect") or []
+        have = {(row.get("path") if isinstance(row, dict) else str(row))
+                for row in existing}
+        for row in expect:
+            if row.get("path") not in have:
+                existing.append(row)
+        item["expect"] = existing
         item.setdefault("grounding", {})
-        item["grounding"].setdefault("required", ground)
+        # Grounding only ever RISES. A kind that now demands external evidence
+        # (a `domain` row, false on every grown plant) is raised to required;
+        # a kind that does not keeps whatever the record carried. Lowering it
+        # would silently drop an obligation, so `ground` false never overwrites
+        # a recorded true.
+        if ground:
+            item["grounding"]["required"] = True
+        else:
+            item["grounding"].setdefault("required", ground)
         item["grounding"].setdefault("sources", [])
         if needs_staffing(item):
             item.setdefault("expert", {})
@@ -894,11 +945,19 @@ def do_plan(plant, seed, opt):
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(rec, indent=2, ensure_ascii=False) + "\n",
                    encoding="utf-8")
-    # A `domain` item has no mechanical mapping — what a dominant domain owes
-    # the graph is whatever its evidence names. Say so here rather than letting
-    # the lint reject, as an unexplained BLANK, the very plan this just wrote.
-    handwritten = [i.get("name") for i in rec["inventory"]
-                   if i.get("kind") == "domain" and not i.get("expect")]
+    # A `domain` row now carries a mechanical plan (its best-practices page and
+    # its `domain.{slug}` node), so `expect` is never empty and the old
+    # empty-expect prompt would never fire. The hand work a domain owes moved to
+    # its grounding: retrieve the upstream literature and cite it. Re-key the
+    # prompt on the kind and the empty `sources`, or it dies silently.
+    ungrounded = [i.get("name") for i in rec["inventory"]
+                  if i.get("kind") == "domain"
+                  and not (i.get("grounding") or {}).get("sources")]
+    # An `objective` row's expertise is grounded one hop away, through the
+    # `grounded_by` edge naming the domain rows it rests on. The tool cannot
+    # derive that edge from source, so it prompts for it.
+    ungrounded_by = [i.get("name") for i in rec["inventory"]
+                     if i.get("kind") == "objective" and not i.get("grounded_by")]
     blank = [c["name"] for c in rec["collections"] if not c.get("status")]
     blank += [f"agent:{a['name']}" for a in rec["agents"] if not a.get("status")]
     print(f"  planned {out}")
@@ -911,12 +970,18 @@ def do_plan(plant, seed, opt):
         print("  !! the inventory is empty — growth has nothing to be held to. "
               "Fill it from the scouts' reconciled ledgers (one row per "
               "language, runtime, framework, dependency, infrastructure "
-              "component, datastore, external/AI service, design surface, and "
-              "regulatory exposure the source shows) and re-run --plan.")
+              "component, datastore, external/AI service, design surface, "
+              "regulatory exposure, domain, and objective the source shows) and "
+              "re-run --plan.")
         return 1
-    for name in handwritten:
-        print(f"  NEEDS EXPECT domain {name} — name the artifacts this domain "
-              f"owes the graph; the tool cannot derive them")
+    for name in ungrounded:
+        print(f"  NEEDS GROUNDING domain {name} — this domain now owes external "
+              f"grounding; dispatch a research-scout for the upstream "
+              f"literature, normalize it under sources/, and cite it")
+    for name in ungrounded_by:
+        print(f"  NEEDS GROUNDED_BY objective {name} — name the domain slugs in "
+              f"this record whose expertise this objective rests on; each must "
+              f"be a domain row whose own grounding is required")
     for item in rec["inventory"]:
         slug = item.get("slug", "")
         if majors.get(slug) and KIND_PLAN.get(item.get("kind", ""), ((), False, False))[2]:
@@ -1415,6 +1480,31 @@ def lint_inventory(plant, rec, templates, findings):
                                     "no planned artifacts — every inventory "
                                     "item owes the graph something, or says "
                                     "ABSENT with a reason"))
+        if expect and not closed:
+            # `owed` is what the CURRENT KIND_PLAN says this kind owes; `expect`
+            # is what the record was planned with. lint iterates the recorded
+            # `expect`, so a KIND_PLAN obligation added after the record was
+            # planned reaches it through no path — the plant carries the old
+            # plan until `--plan` re-unions it, and until then the new
+            # obligation is invisible. Asserting `owed <= expect` closes that:
+            # a row whose plan predates its kind's obligations is named, within
+            # a version, not only across a seed bump the STALE stamp catches.
+            # Scoped to an open row with a plan, to stay clear of the ABSENT
+            # escape above (grill.md §12 row 11) and to leave the orchestrator
+            # free to EXTEND a plan beyond what the table derives.
+            recorded = set()
+            for planned in expect:
+                p = planned.get("path", "") if isinstance(planned, dict) else str(planned)
+                p = p[len(GRAPH_HOME) + 1:] if p.startswith(GRAPH_HOME + "/") else p
+                recorded.add(p)
+            missing = owed - recorded
+            if missing:
+                findings.append(Finding("BLANK", label,
+                                        f"its plan is missing "
+                                        f"{', '.join(sorted(missing))}, which "
+                                        f"its kind owes — a KIND_PLAN obligation "
+                                        f"the record predates; re-run --plan to "
+                                        f"union it in"))
         for planned in expect:
             rel = planned.get("path", "") if isinstance(planned, dict) else str(planned)
             rel = rel[len(GRAPH_HOME) + 1:] if rel.startswith(GRAPH_HOME + "/") else rel
@@ -1458,6 +1548,18 @@ def lint_inventory(plant, rec, templates, findings):
                 verdict = "UNGROWN" if why == "does not exist" else "HOLLOW"
                 findings.append(Finding(verdict, label,
                                         f"{GRAPH_HOME}/{rel} — {why}"))
+                continue
+            if kind == "objective" and not file_names_row(
+                    plant, rel, item.get("name"), item.get("slug")):
+                # `plans/objectives.md` is one file for every objective row.
+                # Substantive says growth reached the file; this says the file
+                # reached THIS row. Without it, one page is a false COVERED for
+                # every objective the record carries.
+                findings.append(Finding("UNGROWN", label,
+                                        f"{GRAPH_HOME}/{rel} names no section "
+                                        f"for {name!r} — one file answers every "
+                                        f"objective row, so a row it never "
+                                        f"names is not covered by it"))
                 continue
             if rel.startswith("nodes/expertise.") and kind in PINNED_KINDS:
                 # The node owns applicability, never the pin. If it does not
@@ -1553,6 +1655,37 @@ def lint_inventory(plant, rec, templates, findings):
                                         "— dispatch a research-scout for the "
                                         "upstream documentation and normalize "
                                         "it there"))
+        if kind == "objective":
+            # An objective's own evidence is in-tree (Cypress/...:line); its
+            # EXPERTISE is grounded one hop away, through `grounded_by` naming
+            # the domain rows it rests on, each of which now carries required
+            # grounding. The hop is mechanical, which is why it is a check and
+            # a prose "what this rests on" is not: a slug resolves to a domain
+            # row in this record whose grounding is required, or it does not.
+            by = item.get("grounded_by")
+            domains = {i.get("slug"): i for i in inventory
+                       if i.get("kind") == "domain"}
+            if not isinstance(by, list) or not by:
+                findings.append(Finding("UNGROUNDED", label,
+                                        "an objective names no `grounded_by` — "
+                                        "list the domain slugs in this record "
+                                        "whose expertise it rests on, so its "
+                                        "grounding is one enforced hop away"))
+            else:
+                for s in by:
+                    row = domains.get(s)
+                    if row is None:
+                        findings.append(Finding("UNGROUNDED", label,
+                                                f"`grounded_by` names {s!r}, "
+                                                f"which is no domain row in this "
+                                                f"record — the hop resolves to "
+                                                f"nothing"))
+                    elif not (row.get("grounding") or {}).get("required"):
+                        findings.append(Finding("UNGROUNDED", label,
+                                                f"`grounded_by` names domain "
+                                                f"{s!r} whose grounding is not "
+                                                f"required — the objective rests "
+                                                f"on expertise nobody grounded"))
 
 
 def unknown_rows(rec):

@@ -27,11 +27,26 @@ test, code, or a doc), spawn a clean-context child instead of doing it inline:
   single-scoped children and spawn them in one turn (several `rlm()` calls),
   each owning one facet and writing its own report file. Never hand one broad
   child the whole job. Then end the turn; do not poll with sleep.
-- **Model policy (from the roster's `model:` field).** Read-only
-  scouting / inventory / extraction / evidence → Sonnet-class, floor
-  `anthropic/claude-sonnet-4-6`. Authoring / synthesis / architecture / code →
-  Opus-class (`anthropic/claude-opus-4-5`+). Never a weaker default for seed
-  work. Resolve with `await rlm.find_models(...)`.
+- **Model + effort policy — Prime Agent picks model VERSIONS per spawn (Claude
+  Code cannot), so match the spawn to the task kind and set thinking/effort to
+  the tier.** The roster brief's `model:` field is the class floor; this refines
+  it by task kind:
+
+  | Task kind | Model | Effort |
+  |---|---|---|
+  | Watching logs, polling, trivial checks | Haiku 4.5 | low |
+  | Read-only inventory, measurement, counting | Sonnet 5 | low–medium |
+  | Research & scouting with sources | Opus 4.6 | medium–high |
+  | Routine implementation behind a gate | Opus 4.6 | medium |
+  | Planning, ADR drafting, design | Opus 4.8 | high |
+  | Crypto, token issuer, one-way doors | Opus 5 | high |
+
+  Resolve the selector at spawn with `await rlm.find_models("<family/version>")`
+  and pass the returned `.selector` to `rlm(..., model=...)`. If a named version
+  is absent from the catalog, fall back to the nearest-HIGHER available in the
+  same family, never lower; omit `model` (inherit) only as a last resort. Never
+  a weaker default for seed work, and never over-provision — a docs edit behind
+  a linter gate is routine-behind-a-gate, not design.
 - **Collect handbacks by message.** A child returns results with
   `await agent_message.send(payload, receiver_role="parent")`; you fan-in on
   later turns. Use `agent_observe` to inspect a child's rollout and

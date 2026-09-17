@@ -432,21 +432,31 @@ python3 - "$TMP/nostaff" <<'PY'
 import json, pathlib, sys
 f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; rec = json.loads(f.read_text())
 rec["inventory"][0]["expert"]["why"] = "ordinary etl; the base roster covers it"
-rec["inventory"][0]["expect"] = [{"path": "architecture/etl.md", "why": "domain"}]
+# A domain row owes its best-practices page and its own node (ADR-0003); the
+# hand-written architecture/ page rides alongside them.
+rec["inventory"][0]["expect"] = [{"path": "architecture/etl.md", "why": "domain"},
+                                 {"path": "best-practices/batch-etl.md"},
+                                 {"path": "nodes/domain.batch-etl.md"}]
 f.write_text(json.dumps(rec, indent=2) + "\n")
 PY
 python3 - "$TMP/nostaff" <<'PY'
 import pathlib, sys
-p = pathlib.Path(sys.argv[1])/"docs/graph/architecture/etl.md"
-p.write_text("# etl\n\n" + ("The batch pipeline and where its stages live. " * 14))
+g = pathlib.Path(sys.argv[1])/"docs/graph"
+body = lambda w: "\n\n" + (w + " ") * 14
+(g/"architecture/etl.md").write_text("# etl" + body("The batch pipeline and where its stages live."))
+(g/"best-practices/batch-etl.md").write_text("# batch etl" + body("The etl standard and this project's stance against it."))
+(g/"nodes").mkdir(parents=True, exist_ok=True)
+(g/"nodes/domain.batch-etl.md").write_text("# batch etl" + body("The routing node for the batch-etl domain."))
 PY
 python3 "$ROOT/tools/graft-audit.py" "$TMP/nostaff" "$ROOT" --unfilled --rename >/dev/null 2>&1 || true
 python3 - "$TMP/nostaff" <<'PY'
 import json, pathlib, sys
 f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; rec = json.loads(f.read_text())
+cover = {"architecture/": "docs/graph/architecture/etl.md",
+         "best-practices/": "docs/graph/best-practices/batch-etl.md"}
 for c in rec["collections"]:
-    if c["name"] == "architecture/":
-        c.update(status="COVERED", evidence=["docs/graph/architecture/etl.md"],
+    if c["name"] in cover:
+        c.update(status="COVERED", evidence=[cover[c["name"]]],
                  reason="", searched=[], leaves=1)
 f.write_text(json.dumps(rec, indent=2) + "\n")
 PY
@@ -1681,5 +1691,370 @@ caseAUDIT_RAW_FINDING_NAMES_THE_PATH_IT_TESTED() {
 }
 caseAUDIT_RAW_FINDING_NAMES_THE_PATH_IT_TESTED
 echo "  an UNJUSTIFIED raw: finding names the resolved path it opened — OK"
+
+# ==========================================================================
+# 7.18.0 — the inventory owes evidence for what a project is built on, and
+# gains a kind for what it is for (ADR-0003). A `domain` row owes what every
+# other kind owes — a best-practices page, external grounding, and its own
+# `domain.{slug}` routing node — and `objective` enters as the twelfth kind,
+# what the project is FOR, its expertise grounded one hop away through
+# `grounded_by`. The migration is one-directional: `--plan` raises a domain
+# row's grounding and unions its newly owed paths, and never the reverse.
+# ==========================================================================
+
+# a planned plant carrying one domain row in the state EVERY grown plant is in:
+# grounding required:false and an expect the tool could not derive, hand-written
+# by the scout. $1 = dir. Leaves the record for the case to re-plan.
+domain_plant() {
+  local d="$1"
+  rm -rf "$d"; mkdir -p "$d"
+  bash "$ROOT/install.sh" claude-code --project-dir "$d" >/dev/null 2>&1
+  python3 "$AUDIT" "$d" "$ROOT" --plan >/dev/null 2>&1 || true
+  python3 - "$d" <<'PY'
+import json, pathlib, sys
+f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
+r["inventory"] = [{"kind": "domain", "name": "the knowledge graph",
+                   "slug": "knowledge-graph", "significance": "core",
+                   "evidence": ["docs/graph/index.md:1"],
+                   "expect": [{"path": "architecture/knowledge-graph.md",
+                               "why": "hand-written; the tool cannot derive it"}],
+                   "grounding": {"required": False, "sources": []},
+                   "expert": {"warranted": False,
+                              "why": "the docs-librarian already holds it"}}]
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+}
+
+# --- 58. --plan raises a domain row's grounding from false to true ----------
+# The record is already planned, so setdefault is a no-op and the obligation
+# would never reach it: the migration has to overwrite false, in the tightening
+# direction only.
+caseAUDIT_PLAN_RAISES_DOMAIN_GROUNDING() {
+  domain_plant "$TMP/x58"
+  python3 "$AUDIT" "$TMP/x58" "$ROOT" --plan >/dev/null 2>&1 || true
+  python3 - "$TMP/x58" <<'PY' || fail "domain grounding was not raised to required by --plan"
+import json, pathlib, sys
+it = json.loads((pathlib.Path(sys.argv[1])/".cypress/coverage.json").read_text())["inventory"][0]
+assert it["grounding"]["required"] is True, it["grounding"]
+PY
+}
+caseAUDIT_PLAN_RAISES_DOMAIN_GROUNDING
+echo "  --plan raises a domain row's grounding from false to true — OK"
+
+# --- 59. --plan never lowers a grounding it finds already true --------------
+# The other direction of the same one-way rule. A domain row already required
+# stays required; an objective, whose kind does not demand grounding, keeps the
+# true a record happens to carry rather than having it dropped to false.
+caseAUDIT_PLAN_NEVER_LOWERS_GROUNDING() {
+  domain_plant "$TMP/x59"
+  python3 - "$TMP/x59" <<'PY'
+import json, pathlib, sys
+f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
+r["inventory"][0]["grounding"]["required"] = True
+r["inventory"].append({"kind": "objective", "name": "O9", "slug": "o9",
+                       "evidence": ["docs/graph/index.md:1"],
+                       "grounded_by": ["knowledge-graph"],
+                       "grounding": {"required": True, "sources": []}})
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  python3 "$AUDIT" "$TMP/x59" "$ROOT" --plan >/dev/null 2>&1 || true
+  python3 - "$TMP/x59" <<'PY' || fail "--plan lowered a grounding it found already true"
+import json, pathlib, sys
+r = json.loads((pathlib.Path(sys.argv[1])/".cypress/coverage.json").read_text())
+by_kind = {i["kind"]: i for i in r["inventory"]}
+assert by_kind["domain"]["grounding"]["required"] is True, "domain was lowered"
+assert by_kind["objective"]["grounding"]["required"] is True, "objective was lowered"
+PY
+}
+caseAUDIT_PLAN_NEVER_LOWERS_GROUNDING
+echo "  --plan never lowers a grounding it finds already true — OK"
+
+# --- 60. --plan unions the newly owed paths and keeps the hand-written ------
+# lint iterates the RECORDED expect and never asserts that what a kind owes is
+# a subset of it, so a new obligation reaches an already-planned plant through
+# no path unless --plan adds it. It is added as a union: the scout's
+# architecture/ page the tool cannot derive survives beside it.
+caseAUDIT_PLAN_UNIONS_HANDWRITTEN_EXPECT() {
+  domain_plant "$TMP/x60"
+  python3 "$AUDIT" "$TMP/x60" "$ROOT" --plan >/dev/null 2>&1 || true
+  python3 - "$TMP/x60" <<'PY' || fail "--plan did not union the domain row's newly owed paths onto its hand-written expect"
+import json, pathlib, sys
+it = json.loads((pathlib.Path(sys.argv[1])/".cypress/coverage.json").read_text())["inventory"][0]
+paths = [e["path"] for e in it["expect"]]
+assert "architecture/knowledge-graph.md" in paths, ("hand-written path dropped", paths)
+assert "best-practices/knowledge-graph.md" in paths, ("owed page not added", paths)
+assert "nodes/domain.knowledge-graph.md" in paths, ("owed node not added", paths)
+assert not any("expertise" in p for p in paths), ("domain minted an expertise node", paths)
+PY
+}
+caseAUDIT_PLAN_UNIONS_HANDWRITTEN_EXPECT
+echo "  --plan unions a domain row's owed paths and keeps the hand-written — OK"
+
+# --- 61. a domain row owes a grounded best-practices page and its node ------
+# The gap ADR-0003 measured: a domain row that owed no external evidence and no
+# routing node, so a plant could report coverage complete with its central
+# subjects never measured against anything published. Now the row owes both,
+# and grounding besides.
+caseAUDIT_DOMAIN_ROW_OWES_GROUNDED_PAGE() {
+  local out
+  domain_plant "$TMP/x61"
+  python3 "$AUDIT" "$TMP/x61" "$ROOT" --plan >/dev/null 2>&1 || true
+  python3 - "$TMP/x61" <<'PY'
+import json, pathlib, sys
+f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
+r["inventory"][0]["status"] = "COVERED"
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x61" "$ROOT" 2>&1)" || true
+  grep -q "best-practices/knowledge-graph.md — does not exist" <<<"$out" \
+      || fail "a domain row that owes a best-practices page did not report it missing"
+  grep -q "nodes/domain.knowledge-graph.md — does not exist" <<<"$out" \
+      || fail "a domain row that owes its routing node did not report it missing"
+  grep -q "UNGROUNDED   domain the knowledge graph" <<<"$out" \
+      || fail "a domain row with grounding required and no source was not UNGROUNDED"
+  [[ "$(audit_at "$TMP/x61")" == 1 ]] \
+      || fail "a domain row owing an ungrounded page passed the gate"
+}
+caseAUDIT_DOMAIN_ROW_OWES_GROUNDED_PAGE
+echo "  a domain row owes a grounded best-practices page and its own node — OK"
+
+# --- 62. an objective's one artifact must NAME the row ---------------------
+# plans/objectives.md is one file for every objective row, so substantive says
+# growth reached the file and this says the file reached THIS row. Without it,
+# one page is a false COVERED for every objective the record carries — the same
+# false green the twenty-four-row index taught (case 42).
+caseAUDIT_OBJECTIVE_ARTIFACT_MUST_NAME_THE_ROW() {
+  local out
+  rm -rf "$TMP/x62"; mkdir -p "$TMP/x62"
+  bash "$ROOT/install.sh" claude-code --project-dir "$TMP/x62" >/dev/null 2>&1
+  python3 "$AUDIT" "$TMP/x62" "$ROOT" --plan >/dev/null 2>&1 || true
+  python3 - "$TMP/x62" <<'PY'
+import json, pathlib, sys
+plant = pathlib.Path(sys.argv[1]); g = plant/"docs/graph"
+# a substantive objectives page that names O1 and nothing about O2
+(g/"plans/objectives.md").write_text(
+    "# Objectives\n\n## O1. Portability across stack and host\n\n"
+    + ("The portability objective, derived from executable source. " * 14) + "\n")
+# a domain row O2's grounded_by will rest on, grounded so the hop passes
+(g/"best-practices/kg.md").write_text(
+    "# kg\n\n" + ("A grounded idea and its retrieved source. " * 14) + "\n")
+(g/"nodes").mkdir(parents=True, exist_ok=True)
+(g/"nodes/domain.kg.md").write_text(
+    "# kg\n\n" + ("The routing node for the kg domain. " * 14) + "\n")
+(g/"sources/normalized/kg.md").write_text(
+    "---\nraw: withheld — upstream terms forbid redistribution; URL in the index\n---\n"
+    "# kg source\n\n" + ("A retrieved upstream fact with its URL. " * 14) + "\n")
+f = plant/".cypress/coverage.json"; r = json.loads(f.read_text())
+r["inventory"] = [
+    {"kind": "domain", "name": "kg", "slug": "kg", "significance": "core",
+     "status": "COVERED", "evidence": ["docs/graph/index.md:1"],
+     "expect": [{"path": "best-practices/kg.md"}, {"path": "nodes/domain.kg.md"}],
+     "grounding": {"required": True,
+                   "sources": ["docs/graph/sources/normalized/kg.md"]},
+     "expert": {"warranted": False, "why": "the librarian holds it"}},
+    {"kind": "objective", "name": "O2", "slug": "o2", "status": "COVERED",
+     "evidence": ["docs/graph/index.md:1"], "grounded_by": ["kg"],
+     "expect": [{"path": "plans/objectives.md"}],
+     "grounding": {"required": False, "sources": []}},
+]
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x62" "$ROOT" 2>&1)" || true
+  grep -q "UNGROWN      objective O2" <<<"$out" \
+      || fail "an objective whose one artifact never names it was not caught"
+  grep -q "names no section for 'O2'" <<<"$out" \
+      || fail "the objective's unnamed-row finding did not name the row it missed"
+  # name the row and the finding clears
+  python3 - "$TMP/x62" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])/"docs/graph/plans/objectives.md"
+p.write_text(p.read_text() + "\n## O2. Keep a codebase inside a context window\n\n"
+             + ("The context objective, derived from executable source. " * 14) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x62" "$ROOT" 2>&1)" || true
+  ! grep -q "objective O2" <<<"$out" \
+      || fail "an objective the file DOES name in a section was still reported"
+}
+caseAUDIT_OBJECTIVE_ARTIFACT_MUST_NAME_THE_ROW
+echo "  an objective's one artifact must name the row it covers — OK"
+
+# --- 63. an objective is grounded one hop away, through grounded_by ---------
+# An objective's own evidence is in-tree, so its grounding is false — but that
+# is not an opt-out. `grounded_by` names the domain rows it rests on, and each
+# must be a domain row IN THIS RECORD whose own grounding is required. A slug
+# resolves or it does not; unlike a prose "what this rests on", the hop has
+# teeth a check can hold.
+caseAUDIT_OBJECTIVE_GROUNDED_BY_RESOLVES_TO_A_REQUIRED_DOMAIN() {
+  local out
+  rm -rf "$TMP/x63"; cp -a "$TMP/x62" "$TMP/x63"
+  # (a) no grounded_by at all
+  python3 - "$TMP/x63" <<'PY'
+import json, pathlib, sys
+f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
+for it in r["inventory"]:
+    if it["kind"] == "objective":
+        it.pop("grounded_by", None)
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x63" "$ROOT" 2>&1)" || true
+  grep -q "UNGROUNDED   objective O2" <<<"$out" \
+      || fail "an objective naming no grounded_by passed"
+  grep -q "names no .grounded_by." <<<"$out" \
+      || fail "the missing-grounded_by finding did not say what was missing"
+  # (b) grounded_by naming a slug that is no domain row in the record
+  python3 - "$TMP/x63" <<'PY'
+import json, pathlib, sys
+f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
+for it in r["inventory"]:
+    if it["kind"] == "objective":
+        it["grounded_by"] = ["no-such-domain"]
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x63" "$ROOT" 2>&1)" || true
+  grep -q "no domain row in this record" <<<"$out" \
+      || fail "grounded_by naming a slug the record does not carry passed"
+  # (c) grounded_by naming a domain row whose grounding is NOT required
+  python3 - "$TMP/x63" <<'PY'
+import json, pathlib, sys
+f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
+for it in r["inventory"]:
+    if it["kind"] == "domain":
+        it["grounding"]["required"] = False
+    if it["kind"] == "objective":
+        it["grounded_by"] = ["kg"]
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x63" "$ROOT" 2>&1)" || true
+  grep -q "whose grounding is not required" <<<"$out" \
+      || fail "grounded_by resting on an ungrounded domain passed"
+}
+caseAUDIT_OBJECTIVE_GROUNDED_BY_RESOLVES_TO_A_REQUIRED_DOMAIN
+echo "  an objective is grounded one enforced hop away through grounded_by — OK"
+
+# --- 64. the twelfth kind goes green, and answers no staffing question ------
+# A gate that cannot go green on an honest plant is worse than none. A domain
+# row grounded and paged, an objective resting on it through grounded_by and
+# named by its one artifact, everything else honestly absent: the plant passes.
+# And `objective` is outside STAFFED_KINDS — its staffing is answered by the
+# domain its grounded_by names, so asking it again would put one fact in two
+# rows — so it draws no UNSTAFFED finding.
+caseAUDIT_OBJECTIVE_IS_NOT_STAFFED() {
+  local out
+  rm -rf "$TMP/x64"; mkdir -p "$TMP/x64"
+  bash "$ROOT/install.sh" claude-code --project-dir "$TMP/x64" >/dev/null 2>&1
+  python3 "$AUDIT" "$TMP/x64" "$ROOT" --plan >/dev/null 2>&1 || true
+  python3 - "$TMP/x64" <<'PY'
+import json, pathlib, sys
+plant = pathlib.Path(sys.argv[1]); g = plant/"docs/graph"
+body = lambda w: "\n" + (w + " ") * 14 + "\n"
+(g/"best-practices/kg.md").write_text("# kg" + body("A grounded idea and its retrieved source."))
+(g/"nodes").mkdir(parents=True, exist_ok=True)
+(g/"nodes/domain.kg.md").write_text("# kg" + body("The routing node for the kg domain."))
+(g/"sources/normalized/kg.md").write_text(
+    "---\nraw: withheld — upstream terms forbid redistribution; URL in the index\n---\n"
+    "# kg source" + body("A retrieved upstream fact with its URL."))
+(g/"plans/objectives.md").write_text(
+    "# Objectives\n\n## O1. Portability across stack and host"
+    + body("The portability objective, inferred from executable source."))
+f = plant/".cypress/coverage.json"; r = json.loads(f.read_text())
+for c in r["collections"]:
+    c.update(status="ABSENT", reason="the source shows no such evidence",
+             searched=["src/"], evidence=[], leaves=0)
+for a in r["agents"]:
+    a.update(status="ABSENT", reason="its collections are absent-with-reason",
+             searched=["src/"])
+r["inventory"] = [
+    {"kind": "domain", "name": "kg", "slug": "kg", "significance": "core",
+     "status": "COVERED", "evidence": ["docs/graph/index.md:1"],
+     "expect": [{"path": "best-practices/kg.md"}, {"path": "nodes/domain.kg.md"}],
+     "grounding": {"required": True,
+                   "sources": ["docs/graph/sources/normalized/kg.md"]},
+     "expert": {"warranted": False, "why": "the librarian already holds it"}},
+    {"kind": "objective", "name": "O1", "slug": "o1", "status": "COVERED",
+     "evidence": ["docs/graph/index.md:1"], "grounded_by": ["kg"],
+     "expect": [{"path": "plans/objectives.md"}],
+     "grounding": {"required": False, "sources": []}},
+]
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  # dispose the seed scaffolds sitting in the ABSENT collections, then cover the
+  # three that now hold authored leaves
+  python3 "$ROOT/tools/graft-audit.py" "$TMP/x64" "$ROOT" --unfilled --rename >/dev/null 2>&1 || true
+  python3 - "$TMP/x64" <<'PY'
+import json, pathlib, sys
+f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
+cover = {"best-practices/": "docs/graph/best-practices/kg.md",
+         "sources/": "docs/graph/sources/normalized/kg.md",
+         "plans/": "docs/graph/plans/objectives.md"}
+for c in r["collections"]:
+    if c["name"] in cover:
+        c.update(status="COVERED", evidence=[cover[c["name"]]], leaves=1,
+                 reason="", searched=[], blocker="")
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x64" "$ROOT" 2>&1)" || true
+  ! grep -q "UNSTAFFED    objective" <<<"$out" \
+      || fail "an objective was asked the staffing question its grounded_by domain answers"
+  [[ "$(audit_at "$TMP/x64")" == 0 ]] || {
+      python3 "$AUDIT" "$TMP/x64" "$ROOT" >&2
+      fail "a plant with a grounded domain and an objective resting on it could not go green"
+  }
+  grep -q "coverage complete" <<<"$out" || fail "the objective plant did not summarise as complete"
+}
+caseAUDIT_OBJECTIVE_IS_NOT_STAFFED
+echo "  the twelfth kind goes green and answers no staffing question — OK"
+
+
+# --- 65. a row's plan must cover what its kind owes (residual B, ADR-0003) ---
+# lint iterates the RECORDED expect, so a KIND_PLAN obligation added after a
+# plant was planned reaches it through no path: the plant carries the old plan
+# until --plan re-unions it, and until then the new obligation is invisible.
+# The STALE stamp catches this across a seed bump; this catches it WITHIN a
+# version. Asserted as owed <= expect on an open row.
+caseAUDIT_ROW_PLAN_COVERS_WHAT_ITS_KIND_OWES() {
+  local out
+  rm -rf "$TMP/x65"; mkdir -p "$TMP/x65"
+  bash "$ROOT/install.sh" claude-code --project-dir "$TMP/x65" >/dev/null 2>&1
+  python3 "$AUDIT" "$TMP/x65" "$ROOT" --plan >/dev/null 2>&1 || true
+  python3 - "$TMP/x65" <<'PY'
+import json, pathlib, sys
+plant = pathlib.Path(sys.argv[1]); g = plant/"docs/graph"
+# the node the row DOES plan exists and is substantive; the best-practices page
+# its kind also owes is simply absent from the plan (the stale-plan shape)
+(g/"nodes").mkdir(parents=True, exist_ok=True)
+(g/"nodes/domain.kg.md").write_text("# kg\n\n" + ("The routing node for the kg domain. " * 14))
+f = plant/".cypress/coverage.json"; r = json.loads(f.read_text())
+r["inventory"] = [{"kind": "domain", "name": "kg", "slug": "kg",
+                   "significance": "core", "status": "COVERED",
+                   "evidence": ["docs/graph/index.md:1"],
+                   # missing best-practices/kg.md, which the kind now owes
+                   "expect": [{"path": "nodes/domain.kg.md"}],
+                   "grounding": {"required": False, "sources": []},
+                   "expert": {"warranted": False, "why": "the librarian holds it"}}]
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x65" "$ROOT" 2>&1)" || true
+  grep -q "BLANK        domain kg" <<<"$out" \
+      || fail "a domain row whose plan omits a path its kind owes was not caught"
+  grep -q "its plan is missing best-practices/kg.md, which its kind owes" <<<"$out" \
+      || fail "the stale-plan finding did not name the owed path the plan omits"
+  [[ "$(audit_at "$TMP/x65")" == 1 ]] \
+      || fail "a row whose plan predates its kind's obligations passed the gate"
+  # --plan unions the owed path in, and the stale-plan finding clears (a fresh
+  # UNGROWN/UNGROUNDED for the now-owed-and-unwritten page is a DIFFERENT thing)
+  python3 "$AUDIT" "$TMP/x65" "$ROOT" --plan >/dev/null 2>&1 || true
+  python3 - "$TMP/x65" <<'PY' || exit 1
+import json, pathlib, sys
+it = json.loads((pathlib.Path(sys.argv[1])/".cypress/coverage.json").read_text())["inventory"][0]
+paths = [e["path"] for e in it["expect"]]
+assert "best-practices/kg.md" in paths, ("--plan did not union the owed path", paths)
+PY
+  out="$(python3 "$AUDIT" "$TMP/x65" "$ROOT" 2>&1)" || true
+  ! grep -q "its plan is missing" <<<"$out" \
+      || fail "the stale-plan finding survived a --plan that unioned the owed path"
+}
+caseAUDIT_ROW_PLAN_COVERS_WHAT_ITS_KIND_OWES
+echo "  a row's plan must cover what its kind owes — OK"
+
 
 printf 'growth coverage gate: PASS\n'

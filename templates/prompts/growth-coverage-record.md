@@ -181,7 +181,8 @@ collection row is `UNJUSTIFIED` otherwise.
 | `ai-provider` | `prompts/<slug>.md`, `evaluations/<slug>.md` | no | yes |
 | `design-surface` | `design/<slug>.md` | no | yes |
 | `regulatory-exposure` | `legal/<slug>.md` | no | yes |
-| `domain` | whatever the evidence names | no | no |
+| `domain` | `best-practices/<slug>.md`, `nodes/domain.<slug>.md` | no (its `domain.<slug>` node is the routing owner) | yes |
+| `objective` | one section of `plans/objectives.md` that names this row | no | no (grounded one hop away by `grounded_by`) |
 
 An expertise node is `nodes/expertise.<slug>.md`. When the inventory carries
 one slug at two majors, the node composes one child per major
@@ -192,6 +193,15 @@ what was retrieved, and where this project observably stands against it —
 including the things the standard says not to do that this project does. "Here
 is what the project happens to do" alone is description and belongs in
 `architecture/`.
+
+A `domain` row owes external grounding with no per-row opt-out (ADR-0003): its
+`best-practices/<slug>.md` is written from retrieved literature and its
+`grounding.required` is `true`. An `objective` row is what the project is FOR —
+inferred from executable source, one row per objective, all resolving to
+`plans/objectives.md`. Its own evidence is in-tree, so its grounding is `false`,
+but that is earned, not an exemption: it carries `grounded_by`, a list of the
+`domain` slugs in this same record whose expertise it rests on, and each of
+those must itself be a grounded domain row. `objective` is not staffed.
 
 ## Shape
 

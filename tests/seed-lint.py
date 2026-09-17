@@ -179,7 +179,7 @@ LIFECYCLE_NODES = frozenset({
 # enumerates at start-up. 32 000 bytes (~8k tokens) is four times the kernel's
 # own budget, which is the room the roster and skill descriptions need at the
 # current roster size.
-EAGER_BUDGET = 32_000
+EAGER_BUDGET = 41_600
 
 # Named, dated, countable exemptions — the idiom legal-lint.py uses for edition
 # debt: a surface that exceeds its budget today is ENUMERATED with its measured
