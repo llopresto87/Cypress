@@ -1,5 +1,203 @@
 # Changelog
 
+## 7.17.0 — a check opens the path it names, and a row cannot close by declaring itself closed (2026-09-17)
+
+`raw_retained` decided whether a normalized source had kept its provenance by
+scanning `docs/graph/sources/raw/` for a file whose stem matched the **page's**
+stem, and it returned before it ever opened the path the page's `raw:` line
+actually named. Both halves of that shipped. Four pages of a plant whose
+snapshots were every one on disk were reported `UNJUSTIFIED`, because their
+filenames came from the upstream document rather than from the page's slug; and
+a page pointing at a snapshot that genuinely was not there passed, silently, on
+a same-stem coincidence with an unrelated file.
+
+The `raw:` value is read first now. Every path token in it — a maximal run of
+`[A-Za-z0-9._/-]` that begins `raw/` and ends in a one-to-five-character
+extension — is resolved under `docs/graph/sources/` and opened. A value that
+names one or more tokens is decided by those tokens alone: every one must
+resolve, and the sibling scan no longer holds a veto over a page that did name
+something. A value that names none behaves byte-for-byte as before, because the
+sibling scan keeps its own job — *this page named nothing, is a snapshot here
+anyway*. Prose, bare URLs and backticked filenames without the `raw/` prefix
+carry no existence claim and are never opened. Every finding prints the
+filesystem path it resolved to, so `ls` on that exact string reproduces the
+verdict.
+
+**A citation's line number is part of the citation.** The resolver stripped
+`:12` and `:12:5` and then forgot them, so `manifest.json:999999` — against a
+file whose last line is 457 — was a reference that resolved. `cite_problem`
+replaces the boolean and returns the reason instead: the path is not a file
+inside the plant, or it holds fewer lines than the citation names, and the
+`DANGLING` finding says which. Anchors (`path#section`) are still stripped and
+not checked; there is no cheap check for an anchor, and inventing one is a
+different job.
+
+**A row that declares itself absent stops being exempt from the rest of the
+row.** `lint_inventory` read an item's `status` and, on `ABSENT` or `UNKNOWN`,
+`continue`d — past the planned-artifact check, past grounding, past staffing.
+What `status` was meant to decide is *which* of reason/searched/blocker the row
+owes, never whether the rest of the row is read. Measured on a real record: 30
+rows set `ABSENT`, 57 planned artifacts deleted, and the tool still printed
+`coverage complete`. A row is held to what it **declares** now, absent or not.
+Two exemptions stay, deliberately and narrowly, because withdrawing them would
+answer a question nobody has answered — what a row of a given kind owes *once*
+it has established its absence: a closed row may still declare no planned
+artifacts, and it answers the staffing question only where it declares core
+significance.
+
+**An audit of no rows is not a green.** The only non-empty guard in the tool
+was a print on the `--plan` path, so emptying the `inventory` was the cheapest
+possible `coverage complete`: nothing in a record can be wrong when the record
+claims nothing at all. An empty inventory is a `MISSING` finding against the
+record, naming the way out — re-run `--plan` and fill it from the scouts'
+reconciled ledgers.
+
+**And a collection row could close `UNKNOWN` and leave no trace at all.** The
+branch the inventory reader has carried since the disclosure duty landed was
+never grown in the collection reader. A collection closing `UNKNOWN` with a
+named blocker becomes a non-fatal finding now, so it reaches the summary's
+carried count and the `SILENT` check that puts every UNKNOWN in front of the
+owner, instead of vanishing between them.
+
+**`status-register.py` stopped answering for wherever it was run from.** Its
+default scope was `.`, so the verdict was a function of where the caller
+happened to stand, and a project that vendors another project answered for that
+project's markdown too. The default is `docs/graph/` when there is one — the
+set of files a plant declares this register speaks about — and the working
+directory otherwise. A root the caller names with `--root` is honoured
+verbatim: every exclusion below is a property of the scope the tool picks for
+itself, never of one somebody declared, which is what keeps `--root` pointed at
+a fixtures path able to prove the linter fires. On the default sweep only, a
+`tests/fixtures/` pair at any depth is skipped, because a linter's own
+deliberate counter-examples, counted as findings about the tree, teach a reader
+that the tool cries wolf — and a tool nobody runs asserts nothing.
+
+Its PASS line also says what the PASS covers. `230 file(s) scanned` read as 230
+files certified when one of them carried a status; the verdict now names the
+scope it read and whether that scope was declared or defaulted, gives the
+status-carrying share the verdict is about, and states plainly that it says
+nothing about the rest.
+
+**The graph linter's version rule stopped at the frontmatter fence.**
+`check_version_leakage` read the body only, so moving a pin up three lines was
+a way to make the check stop seeing it. It reads the frontmatter keys where a
+version token is an **assertion** rather than a routing handle as well —
+`title`, `description`, `prevents`, `reason`, `scope`, `ends_when`. A key
+nobody has classified defaults to routing, on purpose: `load_when: draft-07` is
+a keyword a task is matched against, and a linter that breaks on the next key
+somebody adds is worse than one that misses a key. Fenced and inline code stay
+exempt, and a project-artifact revision directly before the token (`SPEC-12`,
+`ADR-3`) is still a citation rather than a pin.
+
+The version pattern also learned the undotted forms a standard is named by:
+`draft-07`, `RFC 8259`, `STD 90`. *The wire format is RFC 8259* is the same
+assertion as *json 2.7.2*, made in the vocabulary the standards bodies use, and
+it went unseen for as long as a dotted-numeric core was required.
+
+**And `est_tokens` measures the file a loader opens.** The budget was computed
+over the body alone, so a node could carry a routing surface several times the
+size of its prose and stay in band on a number describing less than half of
+what it costs. Frontmatter counts now, and the out-of-band message says which
+it measured.
+
+**A spec's stated compatibility floor is checked against the code it
+describes.** `docs/specs/SPEC-0001-install-placement.md` §5 read "POSIX shell
+and `python3` only" over a tree whose 30 shell files every one declare
+`#!/usr/bin/env bash`, and whose installer uses `set -euo pipefail` — an option
+POSIX's `set` does not define. Nothing compared the claim with the shebang, so
+a reader who believed it would write POSIX-only shell into a bash tree and find
+out at runtime. Per the kernel's rule that a spec is never silently changed to
+match code, §5 was corrected deliberately, the original wording is quoted in a
+new §12 changelog on that spec, and its `status_date` moved with the entry. The
+new `seed-lint.py` class reads the floor where a spec *states* it — the first
+sentence of the `**Compatibility:**` bullet — and leaves alone every sentence
+that discusses the distinction or records what the line used to say, because a
+spec that RECORDS an old claim is not making it.
+
+`tests/check-coverage-binder.py` anchored its `# exercises:` marker at column
+zero, which was not a rule anybody wrote down; it was true only because every
+case in the suite happened to be top level. The first case written inside a
+function indented its marker along with the code it labels, the binder did not
+see it, and the check it named read as unprotected. Leading whitespace is
+allowed: the marker belongs beside the mutation it annotates, and where that
+sits on the line is not the binder's business.
+
+**The seed's own suite resolves everything inside the seed.**
+`tests/test_agent_lint.py` preferred a host's `.claude/` copy of the tool and
+`.claude/agents` as the roster, on the theory that the installed path is the
+one a session runs. But that copy belongs to whatever the seed happens to be
+checked out inside — a file the seed does not ship and cannot fix. Checked out
+inside a grown plant, `bash tests/run.sh` aborted at its agent-lint step with
+`golden corpus does not cover: [...]` naming an agent of the host's roster and,
+under `set -e`, left every later step unrun. The suite reads the seed's own
+`agents/` and the one `_routes.golden.tsv` that lives there, whatever sits
+above the seed. The intent the preference served — home and installed
+projection agreeing — keeps a live home in `tests/test-full-install.sh`, which
+decides it against an install that gate builds; here the parity case skips with
+its reason named, rather than passing vacuously on a single copy. Both roster
+assertions name the roster they were read against and the rule that picked it,
+and the suite prints that line once at import, because a green that does not
+say which roster it read is a green about a roster the reader has not
+identified.
+
+**`CYPRESS_ROSTER_DIR`** is the one override, and it is written down here
+because it is an operator surface rather than an implementation detail. Set it
+and the suite reads that directory as the roster, verbatim — no fallback, no
+substitution, and the two refusal guards that apply to the default apply to it
+unchanged. Unset, the roster is `<seed>/agents`. It is recorded in
+`DOCUMENTATION.md` §14 as well.
+
+**The seed's own lint mirrored a budget it no longer shared.** `tests/seed-lint.py`
+carried its own copy of the `est_tokens` rule, computed over the body after the
+frontmatter, while `graph-lint.py` had moved to the whole file. A node could pass
+the seed's gate and then be rejected by the linter the installer places, which is
+the one direction a mirror must never fail in. It measures the whole file now and
+names which it measured.
+
+**The schema an author reads still described the old metric.** `_schema.md` told
+whoever writes a node that `est_tokens` estimates "the node's own body" and is
+checked "within 2× of the measured body size". Both sentences were true until this
+release, and that file is the contract a human reads before any linter sees the
+work. Corrected in all three copies: the seed's template, the plant's template, and
+`docs/graph/_schema.md`, which is the one `tools/graft-audit.py` diffs for currency.
+
+**`INSTALL.md` asked for a POSIX shell.** `install.sh` declares
+`#!/usr/bin/env bash` and runs `set -euo pipefail`, an option POSIX's `set` does not
+define, so a reader who satisfied the stated prerequisite with `dash` failed at
+`:69`. The prerequisite now names bash, its 3.2 floor, and why. The regression check
+that catches this class still scans `docs/specs/**` compatibility bullets only;
+whether a prerequisite line is a floor claim a gate should assert is left open.
+
+**The router could not reach the librarian for curation work.** `docs-librarian`
+owns reconciling an index against what a collection actually holds, but nothing in
+its `routing_triggers` said so in those words, and tasks phrased that way ranked
+`research-scout` or `growth-scout` instead. Three triggers added, mirrored into
+`documentation/agents-reference.md`, which `seed-lint` holds to the frontmatter. The
+routing eval is unchanged at 98.4% contract consistency, with the same three
+adversarial misses inside a budget of three.
+
+**Upgrade note — verdicts move in both directions on an existing plant.** This
+release makes `tools/growth-audit.py` fail things it used to pass. A `raw:`
+line naming a snapshot that is not on disk now fails where a same-stem sibling
+used to hide it; a citation whose line number is past the end of its file is
+`DANGLING`; an empty `inventory` is `MISSING`; and inventory rows set `ABSENT`
+or `UNKNOWN` are held to their artifact, grounding and staffing obligations.
+Each of those is the defect surfacing, not a regression — the remedy is to fill
+the record, never to loosen the check. `graph-lint.py` may newly report a
+version pin that sits in frontmatter, and an `est_tokens` value tuned against
+the body alone may fall outside the 2x band now that frontmatter is counted.
+The seed's own `tests/seed-lint.py` now rejects a node whose `est_tokens` was
+tuned against the body alone, matching the linter it mirrors. `status-register.py` run with no `--root` audits `docs/graph/` rather than the
+working directory, so a sweep that relied on the old default has to name its
+root. A long-form `docs/graph/sources/raw/x.html` written inside a `raw:` value
+is deliberately **not** matched and carries no existence claim; that residual
+is disclosed in the tool rather than fixed.
+
+A plant stamped at an earlier seed reports `STALE` against this one until its
+coverage record is re-planned and its stamp re-written by the installer. That
+is the stamp doing its job, and the fix is the plant's re-plan, not an edit to
+the record.
+
 ## 7.16.1 — a fragment of a path is a fragment too (2026-09-16)
 
 The compound-fragment fix discounted the hyphen and nothing else, and the TASK

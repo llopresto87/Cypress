@@ -42,6 +42,7 @@ Contract map (P0 acceptance, plan §6):
 
 from __future__ import annotations
 
+import os
 import re
 import json
 import shutil
@@ -60,37 +61,63 @@ HERE = Path(__file__).resolve().parent   # <seed>/tests
 SEED = HERE.parent                        # the seed root (this repo)
 REPO = SEED.parent                        # the host project the seed is installed into, if any
 
-# The tool: prefer the live install (where --route/--eval actually run in a
-# session, plan §4.2/§5); fall back to the seed source. Either satisfies RED.
+# NOTHING this suite reads is resolved through REPO. It survives only as the
+# `cwd` a handful of --route/--eval cases run the tool from, where the roster is
+# pinned by ROSTER_ARGS and the cwd decides nothing (SPEC-0001 §7,
+# ROSTER_SUITE_CWD_IS_THE_HOST — a disclosed residual, narrowed in the same
+# pass that ever removes a --dir pin, never before).
+
+# The tool under test is the SEED's copy. It used to prefer REPO/.claude/, on
+# the theory that the installed path is the one a session runs — but that copy
+# belongs to whatever the seed happens to be checked out inside, so the suite
+# tested a file the seed does not ship and cannot fix. test-full-install.sh is
+# where the INSTALLED tool is exercised, against an install that gate builds.
 AGENT_LINT_CANDIDATES = [
-    REPO / ".claude" / "agent-lint.py",
     SEED / "integrations" / "claude-code" / "agent-lint.py",
 ]
-# The roster's HOME is the seed's own agents/ directory; REPO/.claude/agents is
-# only a harness PROJECTION of it, and it exists solely when the seed happens to
-# be installed into its own parent directory. Resolving the roster to the
-# projection alone made this whole suite pass in that one layout and fail in a
-# standalone seed checkout — which is how the seed itself is worked on
-# (CLAUDE.md: "this repository IS the seed"). Prefer the projection when it is
-# really there (it exercises the installed path), else fall back to the home.
-ROSTER = next(
-    (p for p in (REPO / ".claude" / "agents", SEED / "agents") if p.is_dir()),
-    SEED / "agents",
-)
+
+# The roster's HOME is the seed's own agents/ directory; a host's
+# `.claude/agents` is only a harness PROJECTION of it, and it exists solely
+# when the seed happens to be checked out inside a plant that installed it.
+# This suite used to PREFER that projection when it was there. That preference
+# is retired, not repaired, and the reason is worth keeping: a directory that
+# satisfies SPEC-0001 §6's projection predicate is byte-identical to the seed's
+# own roster, so reading it exercises nothing the seed home does not — while a
+# projection that has DRIFTED (every grown plant adds agents of its own) fed
+# this suite names the seed does not ship. That is not a hypothetical: nested
+# inside such a plant, `bash tests/run.sh` aborted at its agent-lint step with
+# "golden corpus does not cover: ['<the plant's agent>']" and, under `set -e`,
+# left every later step unrun. The intent the preference served — that home and
+# installed projection agree — keeps a live home in tests/test-full-install.sh,
+# which decides it with the §6 predicate against an install it builds itself.
+#
+# So: the seed's own agents/, whatever sits above it. A caller who means a
+# different roster names it, and it is honoured verbatim with no fallback and
+# no substitution; the two refusal guards in _roster_names() below apply to it
+# exactly as they apply to the default.
+_ROSTER_ENV = "CYPRESS_ROSTER_DIR"
+_roster_override = (os.environ.get(_ROSTER_ENV) or "").strip()
+if _roster_override:
+    ROSTER = Path(_roster_override)
+    ROSTER_RULE = f"explicit — ${_ROSTER_ENV}"
+else:
+    ROSTER = SEED / "agents"
+    ROSTER_RULE = "default — <seed>/agents"
 LIVE_AGENTS = ROSTER
 
-# The golden routing corpus has ONE home: the seed's agents/ dir. install.sh
+# A green that does not say which roster it read is a green about a roster the
+# reader has not identified. Stated once, at import, before any case runs.
+print(f"roster: {ROSTER}  (rule: {ROSTER_RULE})", file=sys.stderr)
+
+# The golden routing corpus has ONE home: the roster's own directory. install.sh
 # copies it to .claude/agents/ as a projection. This suite reads the home
 # directly — it used to keep a third copy under tests/agent_router/, which is a
 # second home by definition and had already drifted (its header still claimed
 # "13 agent defs" while the roster had grown well past that). Parity between
 # home and installed projection is asserted in tests/test-full-install.sh,
 # where a projection actually exists.
-CORPUS_TSV = SEED / "agents" / "_routes.golden.tsv"
-GOLDEN_COPIES = list(dict.fromkeys([
-    REPO / ".claude" / "agents" / "_routes.golden.tsv",
-    CORPUS_TSV,
-]))
+CORPUS_TSV = ROSTER / "_routes.golden.tsv"
+GOLDEN_COPIES = list(dict.fromkeys([CORPUS_TSV]))
 
 # Tests that exercise the REAL roster pin it explicitly. Relying on the tool's
 # walk-up discovery made them pass only when the seed sat inside an installed
@@ -927,7 +954,7 @@ class EvalTests(unittest.TestCase):
         ))
 
     def test_eval_real_golden_meets_threshold(self):
-        """--eval over the real install (reads .claude/agents/_routes.golden.tsv)."""
+        """--eval over the roster this suite resolved and its own corpus."""
         lint = require_lint()
         r = run(lint, ["--eval", *ROSTER_ARGS], cwd=REPO)
         self.assertEqual(r.returncode, 0, (
@@ -959,10 +986,11 @@ class BannerTests(unittest.TestCase):
 #    behavior contract — passes independent of the tool).
 #
 # 9. Golden corpus parity across its shipped copies (one-home-per-fact, kernel
-#    §3.2). The install copy (.claude/agents/), the seed copy (expert-seed-
-#    system/agents/), and this test fixture must be byte-identical, or --eval
-#    can pass on the shipped copy while the fixture rots (or vice versa).
-#    Robust to install layout: paths that are absent are skipped, not errors.
+#    §3.2): the home and its installed projection must be byte-identical, or
+#    --eval can pass on one while the other rots. The seed resolves exactly ONE
+#    copy — its roster's own — so that comparison cannot execute here and the
+#    check skips with its reason named; tests/test-full-install.sh decides it
+#    against a projection that gate builds (SPEC-0001 §6).
 # ==========================================================================
 class CorpusHonestyTests(unittest.TestCase):
     """The reporting contract, not the router.
@@ -1509,9 +1537,16 @@ class GoldenCorpusTests(unittest.TestCase):
         self.assertTrue(rows, f"golden corpus is empty: {CORPUS_TSV}")
         covered = {a for _, a, _ in rows if a != "LOW"}
         unknown = covered - ALL_AGENTS
-        self.assertFalse(unknown, f"golden corpus names non-roster agents: {sorted(unknown)}")
+        # Both messages name the roster they are about: "does not cover:
+        # ['<name>']" sent a reader hunting through the seed for an agent that
+        # was never in it, because the roster being read was a host plant's.
+        self.assertFalse(unknown, f"golden corpus {CORPUS_TSV} names agents "
+                                  f"absent from the roster it is read against, "
+                                  f"{ROSTER} ({ROSTER_RULE}): {sorted(unknown)}")
         missing = (ALL_AGENTS - {"orchestrator"}) - covered
-        self.assertFalse(missing, f"golden corpus does not cover: {sorted(missing)}")
+        self.assertFalse(missing, f"golden corpus {CORPUS_TSV} does not cover "
+                                  f"agent(s) of the roster it is read against, "
+                                  f"{ROSTER} ({ROSTER_RULE}): {sorted(missing)}")
         self.assertGreaterEqual(sum(1 for _, a, _ in rows if a == "LOW"), 3,
             "golden corpus needs >=3 novel-stack (LOW) rows (plan §4.3)")
         # Every class named must be one the tool knows, or --eval refuses the
@@ -1528,28 +1563,32 @@ class GoldenCorpusTests(unittest.TestCase):
             "how a held-out number gets protected instead of earned")
 
     def test_golden_corpus_copies_are_byte_identical(self):
-        present = [(p, p.read_bytes()) for p in GOLDEN_COPIES if p.exists()]
-        if len(present) < 2:
-            # In THIS repo (the seed itself, not an installed plant) only one
-            # copy of the golden corpus exists — there is no .claude/agents/
-            # projection to compare against — so the parity check has nothing
-            # to compare and cannot execute here. Skip rather than pass
-            # vacuously; test-full-install.sh exercises this for real once a
-            # projection exists.
-            raise unittest.SkipTest(
-                "fewer than two golden-corpus copies present to compare: "
-                + (", ".join(str(p) for p, _ in present) or "<none>")
-            )
-        ref_path, ref_bytes = present[0]
-        for p, data in present[1:]:
-            with self.subTest(path=str(p)):
-                self.assertEqual(data, ref_bytes, (
-                    f"golden routing corpus drift (one-home-per-fact, kernel §3.2):\n"
-                    f"  {p} ({len(data)} bytes)\n"
-                    f"differs from\n"
-                    f"  {ref_path} ({len(ref_bytes)} bytes)\n"
-                    "the three shipped copies must be kept byte-identical."
-                ))
+        # The seed holds ONE copy of the golden corpus: its roster's own.
+        # Since the suite stopped resolving anything through whatever sits
+        # above the seed (SPEC-0001 ROSTER_DEFAULT_RESOLVES_INSIDE_THE_SEED)
+        # there is no second copy here to compare it against, and a parity
+        # claim needs two. Skip with the reason named rather than pass
+        # vacuously: a vacuous green would retire the claim while looking
+        # like coverage. Its live home is tests/test-full-install.sh, which
+        # decides SPEC-0001 §6's projection predicate against an install
+        # that gate builds — set equality BOTH ways plus byte identity,
+        # over every agent file and not one `cmp`. If that assertion is
+        # ever deleted the claim loses its last home and this skip becomes
+        # a hole; SPEC-0001 ROSTER_PROJECTION_PARITY_KEEPS_A_LIVE_HOME is
+        # what holds the pair together.
+        #
+        # GOLDEN_COPIES derives from ROSTER alone, so it is one-element BY
+        # CONSTRUCTION: the skip is unconditional, and `present` survives only
+        # to name in the reason which copy was found. A second copy cannot
+        # reappear without that derivation changing, so the comparison this
+        # once guarded is gone rather than kept unreachable "to be safe"
+        # (skill.holistic-editing). Reviving parity here means reviving the
+        # second home too, and the contract above says where it lives instead.
+        present = [c for c in GOLDEN_COPIES if c.exists()]
+        raise unittest.SkipTest(
+            "fewer than two golden-corpus copies present to compare: "
+            + (", ".join(str(c) for c in present) or "<none>")
+        )
 
 
 if __name__ == "__main__":

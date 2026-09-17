@@ -1238,4 +1238,448 @@ printf '\n## 2026-09-10 — graft\n\n- `legal/` — UNKNOWN: regulatory applicab
 out45="$(python3 "$AUDIT" "$TMP/x45" "$ROOT" 2>&1)" || true
 ! grep -q "SILENT" <<<"$out45" || fail "an UNKNOWN named in the changelog was still SILENT"
 
+
+# ==========================================================================
+# SPEC-0001-gate-assertion-floor (docs/graph/specs/), increments 13-15.
+#
+# The mutation that produced this work: all 30 inventory rows set ABSENT, all
+# 57 planned artifacts deleted, all 89 retrieved sources deleted — and the gate
+# printed `coverage complete` and exited 0. The cause is one `continue` at
+# lint_inventory:1298: a row that declares itself absent stops being asked
+# about the artifacts, the grounding and the staffing it is still declaring.
+# `status` is supposed to decide which of reason/searched/blocker a row owes,
+# not to excuse it from the rest.
+#
+# Each case is a shell function whose NAME is the contract slug. spec-lint.py
+# credits a slug found anywhere under Cypress/tests/, a comment included, and
+# three contracts once went "covered" on a docstring — so the slug names the
+# thing that runs.
+#
+# Every case starts from $TMP/absent, which case 14 above left GREEN by
+# establishing its absences honestly. That is the point: each mutation below
+# is one claim added to a record that passes, so the exit code moves for one
+# reason and the finding names it.
+# ==========================================================================
+
+[[ "$(audit_at "$TMP/absent")" == 0 ]] \
+    || fail "the honest-absence plant is not green, so cases 46-51 measure nothing"
+
+# --- 46. an ABSENT row still owes the artifacts it declares ----------------
+caseAUDIT_ABSENT_ROW_STILL_CHECKS_DECLARED_ARTIFACTS() {
+  local out
+  rm -rf "$TMP/x46"; cp -a "$TMP/absent" "$TMP/x46"
+  python3 - "$TMP/x46" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
+# Absent, and honestly so by every rule check_row_shape knows — and still
+# naming a page it says the graph owes it. The page is not there.
+r["inventory"] = [{"kind": "framework", "name": "gfm", "slug": "gfm",
+                   "significance": "significant", "status": "ABSENT",
+                   "reason": "superseded by the markdown row",
+                   "searched": ["src/"],
+                   "evidence": ["docs/graph/index.md"],
+                   "expect": [{"path": "docs/graph/best-practices/gfm.md"}],
+                   "grounding": {"required": False, "sources": []}}]
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x46" "$ROOT" 2>&1)" || true
+  grep -q "UNGROWN" <<<"$out" \
+      || fail "an ABSENT row's missing planned artifact was not reported UNGROWN"
+  grep -q "best-practices/gfm.md — does not exist" <<<"$out" \
+      || fail "the missing artifact the ABSENT row declared was not named"
+  [[ "$(audit_at "$TMP/x46")" == 1 ]] \
+      || fail "an ABSENT row that owes a file it does not have passed the gate"
+  # And the same with HOLLOW when the page exists but is not one.
+  mkdir -p "$TMP/x46/docs/graph/best-practices"
+  printf '# gfm\n\n{{what this best practice is}}\n' \
+      > "$TMP/x46/docs/graph/best-practices/gfm.md"
+  out="$(python3 "$AUDIT" "$TMP/x46" "$ROOT" 2>&1)" || true
+  grep -q "HOLLOW" <<<"$out" \
+      || fail "an ABSENT row's placeholder-only artifact was not reported HOLLOW"
+  grep -q "best-practices/gfm.md" <<<"$out" \
+      || fail "the hollow artifact was not named"
+}
+caseAUDIT_ABSENT_ROW_STILL_CHECKS_DECLARED_ARTIFACTS
+echo "  an ABSENT row is still held to the artifacts it declares — OK"
+
+# --- 47. an ABSENT row still owes its grounding ---------------------------
+caseAUDIT_ABSENT_ROW_STILL_CHECKS_GROUNDING() {
+  local out
+  rm -rf "$TMP/x47"; cp -a "$TMP/absent" "$TMP/x47"
+  python3 - "$TMP/x47" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
+r["inventory"] = [{"kind": "framework", "name": "gfm", "slug": "gfm",
+                   "significance": "significant", "status": "ABSENT",
+                   "reason": "superseded by the markdown row",
+                   "searched": ["src/"],
+                   "evidence": ["docs/graph/index.md"],
+                   "expect": [],
+                   "grounding": {"required": True, "sources": []}}]
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x47" "$ROOT" 2>&1)" || true
+  grep -q "UNGROUNDED" <<<"$out" \
+      || fail "an ABSENT row requiring grounding and citing nothing was not UNGROUNDED"
+  grep -q "framework gfm" <<<"$out" || fail "the ungrounded row was not named"
+  [[ "$(audit_at "$TMP/x47")" == 1 ]] \
+      || fail "an ABSENT row that requires grounding it has not got passed the gate"
+  # The boundary this pass deliberately does NOT cross: whether an ABSENT row
+  # must declare `expect` at all is the owner's open KIND_PLAN question
+  # (grill.md §12 row 11), so `expect: []` keeps its escape from BLANK.
+  ! grep -q "BLANK        framework gfm" <<<"$out" \
+      || fail "an ABSENT row with no expect was made to answer for planned artifacts"
+}
+caseAUDIT_ABSENT_ROW_STILL_CHECKS_GROUNDING
+echo "  an ABSENT row is still held to the grounding it requires — OK"
+
+# --- 48. an ABSENT row still owes a staffing decision ---------------------
+# `significance: core` is what makes the question owed here, not the kind:
+# needs_staffing() reads significance as well as STAFFED_KINDS, and going
+# through significance keeps this case clear of KIND_PLAN entirely.
+caseAUDIT_ABSENT_ROW_STILL_CHECKS_STAFFING() {
+  local out
+  rm -rf "$TMP/x48"; cp -a "$TMP/absent" "$TMP/x48"
+  python3 - "$TMP/x48" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
+r["inventory"] = [{"kind": "framework", "name": "gfm", "slug": "gfm",
+                   "significance": "core", "status": "ABSENT",
+                   "reason": "superseded by the markdown row",
+                   "searched": ["src/"],
+                   "evidence": ["docs/graph/index.md"],
+                   "expect": [],
+                   "grounding": {"required": False, "sources": []}}]
+                   # …and no `expert` key at all: the question is unasked.
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x48" "$ROOT" 2>&1)" || true
+  grep -q "UNSTAFFED" <<<"$out" \
+      || fail "an ABSENT core row that records no staffing decision was not UNSTAFFED"
+  grep -q "framework gfm" <<<"$out" || fail "the unstaffed row was not named"
+  [[ "$(audit_at "$TMP/x48")" == 1 ]] \
+      || fail "an ABSENT row left the staffing question unasked and passed the gate"
+}
+caseAUDIT_ABSENT_ROW_STILL_CHECKS_STAFFING
+echo "  an ABSENT row still answers the staffing question — OK"
+
+# --- 49. a record with nothing in its inventory has nothing to be held to --
+# The only non-empty guard today is a print on the --plan path; do_lint never
+# asks. An emptied inventory is therefore the cheapest possible green.
+caseAUDIT_EMPTY_INVENTORY_IS_A_FATAL_FINDING() {
+  local out
+  rm -rf "$TMP/x49"; cp -a "$TMP/absent" "$TMP/x49"
+  python3 - "$TMP/x49" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
+r["inventory"] = []
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x49" "$ROOT" 2>&1)" || true
+  [[ "$(audit_at "$TMP/x49")" == 1 ]] \
+      || fail "a record with an empty inventory passed the gate"
+  grep -q ".cypress/coverage.json" <<<"$out" \
+      || fail "the empty-inventory finding did not name the record"
+  grep -q "inventory" <<<"$out" \
+      || fail "the empty-inventory finding did not say what was empty"
+  ! grep -q "coverage complete" <<<"$out" \
+      || fail "a record holding nothing still summarised as coverage complete"
+}
+caseAUDIT_EMPTY_INVENTORY_IS_A_FATAL_FINDING
+echo "  an empty inventory is a fatal finding, not a fast green — OK"
+
+# --- 50. an UNKNOWN collection is carried, not dropped --------------------
+# lint_inventory has had the UNKNOWN branch since case 45; lint_collections
+# never got one, so a collection row closing UNKNOWN with a named blocker
+# reaches neither the findings list nor the summary's carried count.
+caseAUDIT_UNKNOWN_COLLECTION_ROW_IS_CARRIED() {
+  local out
+  rm -rf "$TMP/x50"; cp -a "$TMP/absent" "$TMP/x50"
+  python3 - "$TMP/x50" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
+for c in r["collections"]:
+    if c["name"] == "legal/":
+        c.update(status="UNKNOWN",
+                 blocker="regulatory applicability is the owner's determination")
+    # The changelog row has to be honest about the file this case is about to
+    # write into. $TMP/absent closed every collection ABSENT and then ran
+    # --unfilled --rename, which moved docs/graph/changelog.md aside; the
+    # disclosure below re-creates it, and lint_collections' ABSENT branch
+    # calls any live leaf in an ABSENT collection CONTRADICTED. Leaving the
+    # row ABSENT makes the disclosure itself a violation; omitting the
+    # disclosure trips SILENT. Both are fatal, so this case cannot observe
+    # the thing it exists to observe without stating the true status of a
+    # collection the plant now has. That mutual exclusion is a defect in the
+    # two checks, not in this fixture: SPEC-0001 §11 carries it as an open
+    # question. Do not read the line below as a workaround for it — a plant
+    # whose changelog holds a delivery entry DOES have a changelog.
+    if c["name"] == "changelog.md":
+        c.update(status="COVERED",
+                 reason="the delivery log this growth pass wrote",
+                 searched=["src/"], evidence=[], leaves=1)
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  # Named where the owner reads, so the disclosure duty is met and the only
+  # thing left to observe is whether the row is carried at all. It is written
+  # long enough to clear growth-audit's MIN_SUBSTANTIVE_BYTES floor, because a
+  # COVERED collection whose only leaf states no fact is CONTRADICTED in turn —
+  # a one-line entry would move the failure rather than remove it.
+  cat >> "$TMP/x50/docs/graph/changelog.md" <<'MD'
+
+## 2026-09-16 — growth
+
+- `legal/` — UNKNOWN: regulatory applicability is the owner's determination.
+  The collection stays empty until the owner rules on which regimes reach this
+  plant. Nothing in the source settles the question, the audit record is not
+  where anyone would read it, so it is put here: who decides, and by when.
+- Every other collection closed ABSENT, with the paths searched recorded in
+  the coverage record. This entry is the plant's own account of what the pass
+  established and of the one thing it left open.
+MD
+  out="$(python3 "$AUDIT" "$TMP/x50" "$ROOT" 2>&1)" || true
+  ! grep -q "SILENT" <<<"$out" \
+      || fail "the UNKNOWN collection was named in the changelog and still reported SILENT"
+  grep -q "UNKNOWN      collection legal/" <<<"$out" \
+      || fail "an UNKNOWN collection row produced no UNKNOWN finding"
+  grep -q "regulatory applicability is the owner's determination" <<<"$out" \
+      || fail "the UNKNOWN finding did not quote the blocker the row named"
+  grep -q "coverage complete (1 named blocker(s) carried)" <<<"$out" \
+      || fail "the carried blocker did not reach the summary count"
+  [[ "$(audit_at "$TMP/x50")" == 0 ]] \
+      || fail "a disclosed UNKNOWN must be carried, not enforced"
+}
+caseAUDIT_UNKNOWN_COLLECTION_ROW_IS_CARRIED
+echo "  an UNKNOWN collection is carried into the summary, exit 0 — OK"
+
+# --- 51. a cited line number has to exist in the file ---------------------
+# resolves() strips the `:N` and asks is_file(), so `manifest.json:999999`
+# resolves against a file whose last line is 457. A line number is the part of
+# a citation a reader actually follows.
+caseAUDIT_CITED_LINE_NUMBER_MUST_EXIST() {
+  local out lines
+  rm -rf "$TMP/x51"; cp -a "$TMP/absent" "$TMP/x51"
+  python3 - "$TMP/x51" <<'PY'
+import json, pathlib, sys
+plant = pathlib.Path(sys.argv[1])
+p = plant/".cypress/coverage.json"; r = json.loads(p.read_text())
+r["inventory"] = [{"kind": "framework", "name": "gfm", "slug": "gfm",
+                   "significance": "significant", "status": "ABSENT",
+                   "reason": "superseded by the markdown row",
+                   "searched": ["src/"],
+                   "evidence": ["docs/graph/index.md:999999"],
+                   "expect": [],
+                   "grounding": {"required": False, "sources": []}}]
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x51" "$ROOT" 2>&1)" || true
+  grep -q "DANGLING" <<<"$out" \
+      || fail "a citation past the end of a real file was not reported DANGLING"
+  grep -q "docs/graph/index.md:999999" <<<"$out" \
+      || fail "the dangling citation was not named"
+  lines="$(wc -l < "$TMP/x51/docs/graph/index.md" | tr -d ' ')"
+  grep -q "$lines" <<<"$out" \
+      || fail "the finding did not state the file's real line count ($lines)"
+  [[ "$(audit_at "$TMP/x51")" == 1 ]] \
+      || fail "a citation pointing past the end of the file passed the gate"
+  # …and the two forms that must keep resolving: an in-range line, and no
+  # line suffix at all.
+  python3 - "$TMP/x51" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
+r["inventory"][0]["evidence"] = ["docs/graph/index.md:1", "docs/graph/index.md"]
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x51" "$ROOT" 2>&1)" || true
+  ! grep -q "DANGLING" <<<"$out" \
+      || fail "an in-range citation or a bare path stopped resolving"
+}
+caseAUDIT_CITED_LINE_NUMBER_MUST_EXIST
+echo "  a cited line number is checked against the file's real length — OK"
+
+# --- 52-57. a `raw:` line is TESTED, never assumed -------------------------
+# Case 43 above asserts that a `raw:` naming a missing snapshot is reported,
+# and it passes for a reason other than the one it states: its GREEN half
+# writes `raw/react-2026-09-10.html` for a page whose stem is `react`, so the
+# stem-matching sibling scan at growth-audit.py:659-661 satisfies the check and
+# the named path is never opened at all. Both halves of that defect shipped:
+# four pages of this plant whose snapshots are all on disk were reported
+# UNJUSTIFIED because their filenames come from the upstream document rather
+# than the page's slug, and a page whose `raw:` was repointed at a snapshot
+# that genuinely does not exist was named by no finding because a same-stem
+# sibling happened to be there. SPEC-0001 §6 writes the token grammar and the
+# resolution rule down; these six cases hold the tool to it.
+#
+# EVERY dangling-path case below therefore plants a stem-matching sibling, or
+# it proves nothing: without one it would pass on today's code for the wrong
+# reason, which is exactly case 43's mistake.
+
+# One installed, planned fixture plant with a COVERED sources/ collection;
+# each case copies it and writes the page shape it is about.
+rm -rf "$TMP/rawbase"; mkdir -p "$TMP/rawbase"
+bash "$ROOT/install.sh" claude-code --project-dir "$TMP/rawbase" >/dev/null 2>&1
+python3 "$AUDIT" "$TMP/rawbase" "$ROOT" --plan >/dev/null 2>&1 || true
+python3 - "$TMP/rawbase" <<'PY'
+import json, pathlib, sys
+plant = pathlib.Path(sys.argv[1]); g = plant/"docs/graph"
+(g/"sources/normalized").mkdir(parents=True, exist_ok=True)
+(g/"sources/raw").mkdir(parents=True, exist_ok=True)
+p = plant/".cypress/coverage.json"; r = json.loads(p.read_text())
+for c in r["collections"]:
+    if c["name"] == "sources/":
+        c.update(status="COVERED", leaves=1,
+                 evidence=["docs/graph/sources/normalized/react.md"])
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+
+# $1 = plant dir, $2 = page stem, $3 = the `raw:` value ("" writes no raw key)
+raw_page() {
+  python3 - "$1" "$2" "$3" <<'PY'
+import pathlib, sys
+plant, stem, val = pathlib.Path(sys.argv[1]), sys.argv[2], sys.argv[3]
+head = f"---\nraw: {val}\n---\n" if val else ""
+(plant/"docs/graph/sources/normalized"/f"{stem}.md").write_text(
+    head + f"\n# {stem} docs\n\n## Fact\n\n"
+    + ("A retrieved upstream fact with its URL. " * 14) + "\n")
+PY
+}
+
+# --- 52. a named path that does not resolve is reported, sibling or not ----
+caseAUDIT_NAMED_RAW_PATH_IS_TESTED_NOT_ASSUMED() {
+  local out
+  rm -rf "$TMP/x52"; cp -a "$TMP/rawbase" "$TMP/x52"
+  raw_page "$TMP/x52" react "raw/upstream-doc-2026-09-10.html"
+  # the sibling that must NOT excuse it: same stem as the page, on disk
+  printf '<html>react</html>\n' > "$TMP/x52/docs/graph/sources/raw/react-2026-09-11.html"
+  out="$(python3 "$AUDIT" "$TMP/x52" "$ROOT" 2>&1)" || true
+  grep -q "UNJUSTIFIED  collection sources/" <<<"$out" \
+      || fail "a raw: naming a path that does not exist passed because a same-stem sibling was on disk"
+  grep -q "normalized/react.md" <<<"$out" \
+      || fail "the page whose raw: named a missing snapshot was not named"
+  grep -q "upstream-doc-2026-09-10.html" <<<"$out" \
+      || fail "the token that did not resolve was not named"
+  [[ "$(audit_at "$TMP/x52")" == 1 ]] \
+      || fail "a dangling raw: path behind a stem match passed the gate"
+}
+caseAUDIT_NAMED_RAW_PATH_IS_TESTED_NOT_ASSUMED
+echo "  a raw: path is opened even when a same-stem sibling is on disk — OK"
+
+# --- 53. a named path that DOES resolve is never reported missing ----------
+# The four findings measured on this plant are all this shape: the snapshot is
+# on disk under the name the upstream document had, the page's slug is
+# something else, so the sibling scan misses and the bare-path branch asserts
+# a file is absent that nobody opened.
+caseAUDIT_EXISTING_RAW_PATH_IS_NOT_REPORTED_MISSING() {
+  local out
+  rm -rf "$TMP/x53"; cp -a "$TMP/rawbase" "$TMP/x53"
+  raw_page "$TMP/x53" react "raw/upstream-doc-2026-09-10.html"
+  printf '<html>upstream</html>\n' > "$TMP/x53/docs/graph/sources/raw/upstream-doc-2026-09-10.html"
+  out="$(python3 "$AUDIT" "$TMP/x53" "$ROOT" 2>&1)" || true
+  ! grep -q "normalized/react.md" <<<"$out" \
+      || fail "a raw: path that is on disk was reported missing (no stem sibling to save it)"
+  ! grep -q "does not exist" <<<"$out" \
+      || fail "the tool asserted a path does not exist without having opened it"
+}
+caseAUDIT_EXISTING_RAW_PATH_IS_NOT_REPORTED_MISSING
+echo "  a raw: path that resolves is not reported missing — OK"
+
+# --- 54. every token of a multi-token value must resolve ------------------
+caseAUDIT_EVERY_NAMED_RAW_PATH_MUST_RESOLVE() {
+  local out
+  rm -rf "$TMP/x54"; cp -a "$TMP/rawbase" "$TMP/x54"
+  raw_page "$TMP/x54" react \
+      "raw/upstream-doc-2026-09-10.html (the abstract page), raw/upstream-appendix-2026-09-10.html"
+  printf '<html>upstream</html>\n' > "$TMP/x54/docs/graph/sources/raw/upstream-doc-2026-09-10.html"
+  # the sibling that must NOT excuse the broken token: same stem as the page,
+  # on disk. Without it this case goes red against a restored sibling veto for
+  # no reason of its own — the veto never gets the chance to fire — and the
+  # header rule above is violated in the one place it was written for.
+  printf '<html>react</html>\n' > "$TMP/x54/docs/graph/sources/raw/react-2026-09-11.html"
+  out="$(python3 "$AUDIT" "$TMP/x54" "$ROOT" 2>&1)" || true
+  grep -q "UNJUSTIFIED  collection sources/" <<<"$out" \
+      || fail "a multi-token raw: with one broken token passed because the value was not a bare path"
+  grep -q "upstream-appendix-2026-09-10.html" <<<"$out" \
+      || fail "the token that did not resolve was not named"
+  ! grep -q "upstream-doc-2026-09-10.html" <<<"$out" \
+      || fail "the finding named a token that DID resolve"
+  [[ "$(audit_at "$TMP/x54")" == 1 ]] \
+      || fail "a raw: value with one unresolvable token passed the gate"
+}
+caseAUDIT_EVERY_NAMED_RAW_PATH_MUST_RESOLVE
+echo "  each token of a multi-path raw: value is resolved on its own — OK"
+
+# --- 55. a recorded reason is still provenance ----------------------------
+# A GUARD: it states what the tightening may not break, so it passes before the
+# repair and must pass after it. Its value is measured the other way — the same
+# page with an empty value and no sibling IS reported, so the page is a live
+# subject of the check rather than one the tool skips for another reason.
+caseAUDIT_RAW_PROSE_REASON_IS_STILL_ACCEPTED() {
+  local out
+  rm -rf "$TMP/x55"; cp -a "$TMP/rawbase" "$TMP/x55"
+  raw_page "$TMP/x55" react \
+      "withheld - the Open Group copyright terms forbid redistribution; posix-spec.html is named in the index row instead"
+  out="$(python3 "$AUDIT" "$TMP/x55" "$ROOT" 2>&1)" || true
+  ! grep -q "normalized/react.md" <<<"$out" \
+      || fail "a page that recorded WHY no snapshot was kept was reported"
+  ! grep -q "posix-spec.html" <<<"$out" \
+      || fail "a filename inside the prose, with no raw/ prefix, was read as a path token and tested"
+  # the trap is live: strip the reason and the check fires on this very page
+  raw_page "$TMP/x55" react ""
+  out="$(python3 "$AUDIT" "$TMP/x55" "$ROOT" 2>&1)" || true
+  grep -q "normalized/react.md retains no raw snapshot" <<<"$out" \
+      || fail "the guard is vacuous — this page is not reached by the check at all"
+}
+caseAUDIT_RAW_PROSE_REASON_IS_STILL_ACCEPTED
+echo "  a raw: value carrying no path token is still accepted as a reason — OK"
+
+# --- 56. the sibling scan survives for a page that names nothing -----------
+# It loses its VETO over a page that names a path; it keeps its job of
+# answering "this page named nothing — is a snapshot here anyway".
+caseAUDIT_RAW_SIBLING_SATISFIES_A_PAGE_THAT_NAMES_NO_PATH() {
+  local out
+  rm -rf "$TMP/x56"; cp -a "$TMP/rawbase" "$TMP/x56"
+  raw_page "$TMP/x56" react ""
+  printf '<html>react</html>\n' > "$TMP/x56/docs/graph/sources/raw/react-2026-09-11.html"
+  out="$(python3 "$AUDIT" "$TMP/x56" "$ROOT" 2>&1)" || true
+  ! grep -q "normalized/react.md" <<<"$out" \
+      || fail "a page naming no path, with its snapshot on disk, was reported"
+  # the trap is live: remove the sibling and the same page is reported
+  rm -f "$TMP/x56/docs/graph/sources/raw/react-2026-09-11.html"
+  out="$(python3 "$AUDIT" "$TMP/x56" "$ROOT" 2>&1)" || true
+  grep -q "normalized/react.md retains no raw snapshot" <<<"$out" \
+      || fail "the sibling scan is vacuous — the page passes with no snapshot either"
+}
+caseAUDIT_RAW_SIBLING_SATISFIES_A_PAGE_THAT_NAMES_NO_PATH
+echo "  a page that names no path is still satisfied by its snapshot — OK"
+
+# --- 57. the finding names the path it actually tested --------------------
+# "does not exist under docs/graph/sources/raw/" names a DIRECTORY and leaves
+# the reader to guess the string the tool tried. The finding has to print the
+# resolved filesystem path, so `ls` on that exact string reproduces the answer.
+caseAUDIT_RAW_FINDING_NAMES_THE_PATH_IT_TESTED() {
+  local out resolved
+  rm -rf "$TMP/x57"; cp -a "$TMP/rawbase" "$TMP/x57"
+  raw_page "$TMP/x57" vue "raw/missing-snapshot-2026-09-10.html"
+  rm -f "$TMP/x57/docs/graph/sources/normalized/react.md"
+  # the sibling that must NOT excuse it: same stem as the page, on disk. The
+  # finding this case reads its message out of only exists while the sibling
+  # scan has no veto, so without this the case says nothing about the veto.
+  printf '<html>vue</html>\n' > "$TMP/x57/docs/graph/sources/raw/vue-2026-09-11.html"
+  out="$(python3 "$AUDIT" "$TMP/x57" "$ROOT" 2>&1)" || true
+  grep -q "UNJUSTIFIED  collection sources/" <<<"$out" \
+      || fail "the fixture produced no UNJUSTIFIED finding to inspect"
+  grep -q "docs/graph/sources/raw/missing-snapshot-2026-09-10.html" <<<"$out" \
+      || fail "the finding did not name the resolved path it opened, only the token and the directory"
+  # read it out of THIS page's finding, not out of some other line of the run
+  resolved="$(grep -F 'normalized/vue.md' <<<"$out" \
+              | grep -oE 'docs/graph/sources/raw/[A-Za-z0-9._-]+\.[A-Za-z0-9]{1,5}' | head -1 || true)"
+  if [[ -z "$resolved" ]]; then
+      fail "no resolved path could be read out of the finding"
+  elif [[ -e "$TMP/x57/$resolved" ]]; then
+      fail "the finding claimed a path is absent and ls on that same string finds it: $resolved"
+  fi
+}
+caseAUDIT_RAW_FINDING_NAMES_THE_PATH_IT_TESTED
+echo "  an UNJUSTIFIED raw: finding names the resolved path it opened — OK"
+
 printf 'growth coverage gate: PASS\n'

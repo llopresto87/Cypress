@@ -369,6 +369,9 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "catalog a reusable tool the work produced"
   - "crystallize a recurring procedure into a project skill"
   - "audit the documentation and record what is not written down"
+  - "register the sources a retrieval pass left unregistered"
+  - "the index disagrees with what the collection actually holds"
+  - "reconcile a stale count or a stale table in a README"
 - **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `docs-librarian`, with its class — the classes measure different things and are never merged):
   - "author a graph node for the auth subsystem" — `contract`
   - "fix the wiki page that fails graph validation" — `contract`

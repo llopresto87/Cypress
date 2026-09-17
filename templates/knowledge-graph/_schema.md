@@ -243,7 +243,8 @@ roster uses) substitutes for `load_when` — the linter accepts either;
 all shipped agent nodes use `routing_triggers`.
 Write the phrases a developer would actually type, including globs.
 
-**`est_tokens`** — honest estimate of the node's own body. The router
+**`est_tokens`** — honest estimate of the whole file, frontmatter
+included: what a loader pays to open it, not the prose alone. The router
 sums these to report context cost before work starts.
 
 ## Body
@@ -279,8 +280,9 @@ needs more room is restating a leaf.
    `*.version`/`*.versions` fact-key. Versions belong in
    `docs/graph/libraries/`. Fenced and inline code are exempt —
    quoting a real config line is not restating a fact.
-11. `est_tokens` is within 2× of the measured body size; body under the
-    line ceiling.
+11. `est_tokens` is within 2× of the measured file size — `graph-lint.py`
+    measures the whole file, frontmatter included, not the body alone;
+    body under the line ceiling.
 12. `status`, where present, is a vocabulary value for the node's kind and
     carries its required companions (`owner`, `reopen_when`, `superseded_by`,
     `status_evidence`, `ends_when`); a body `## Status` value never disagrees.

@@ -105,6 +105,10 @@ STATUS_ORDER = ("hotfix", "open", "deferred", "standing", "proposed", "draft",
                 "active", "accepted", "implemented", "back-written",
                 "rejected", "superseded", "closed")
 
+# Where a plant keeps the knowledge this register speaks about. It is the
+# scope a run with no --root resolves to; see default_roots().
+GRAPH_HOME = "docs/graph"
+
 DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 HEADING_RE = re.compile(r"^#{1,6}\s*(?:\d+[.)]?\s*)?status\s*$", re.I)
 ANY_HEADING_RE = re.compile(r"^#{1,6}\s")
@@ -295,9 +299,35 @@ def infer_kind(meta: dict, path: Path):
     return None, None
 
 
-def iter_files(paths):
+def default_roots(cwd="."):
+    """The scope this tool picks when nobody declares one: the graph under the
+    working directory when there is one, the working directory otherwise.
+
+    `.` was the default, so the verdict was a function of wherever the caller
+    happened to stand — a plant that vendors another project answered for that
+    project's markdown too. `docs/graph/` is the set of files a plant declares
+    this register speaks about; everything else beneath the CWD is somebody's
+    business, not this one's."""
+    graph = Path(cwd) / GRAPH_HOME
+    return [graph.as_posix()] if graph.is_dir() else [str(cwd)]
+
+
+def _in_violation_fixtures(rel_parts) -> bool:
+    """Whether a path passes through a `tests/fixtures/` pair at any depth.
+
+    That is where a linter keeps its own counter-examples: files that are
+    wrong on purpose, so that the suite can prove the linter fires. Counting
+    them as findings about the tree teaches the reader that this tool cries
+    wolf, and a tool nobody runs asserts nothing."""
+    return any(a == "tests" and b == "fixtures"
+               for a, b in zip(rel_parts, rel_parts[1:]))
+
+
+def iter_files(paths, skip_fixtures=False):
     """Every *.md under each directory (a file contributes itself), sorted
-    per root and de-duplicated by real path."""
+    per root and de-duplicated by real path. `skip_fixtures` drops any
+    `tests/fixtures/` subtree — the default sweep does, a root the caller
+    named never does."""
     seen: dict = {}
     for p in paths:
         p = Path(p)
@@ -309,6 +339,8 @@ def iter_files(paths):
                 rel_parts = f.relative_to(p).parts
                 if "templates" in rel_parts[:-1] or f.name.startswith("_") or f.name.endswith(".template.md"):
                     continue
+                if skip_fixtures and _in_violation_fixtures(rel_parts):
+                    continue
                 if f.is_file():
                     seen.setdefault(f.resolve(), f)
         elif p.is_file():
@@ -316,7 +348,7 @@ def iter_files(paths):
     return list(seen.values())
 
 
-def scan(paths, relative_to=None, unreadable=None):
+def scan(paths, relative_to=None, unreadable=None, skip_fixtures=False):
     """One Item per markdown file with frontmatter under `paths`, in file
     order. Files without frontmatter carry no lifecycle and are not
     items. `relative_to` trims the reported path to a root the caller
@@ -324,9 +356,11 @@ def scan(paths, relative_to=None, unreadable=None):
     (path, reason) for every file this pass could not decode or open —
     the caller turns those into findings, since a file dropped here
     would otherwise just be absent, and absent reads exactly like
-    status-less to `lint()`."""
+    status-less to `lint()`. `skip_fixtures` is passed straight to
+    `iter_files`, so a caller scanning a scope nobody declared drops the
+    deliberate violations a linter keeps under `tests/fixtures/`."""
     items: list[Item] = []
-    for f in iter_files(paths):
+    for f in iter_files(paths, skip_fixtures=skip_fixtures):
         rel = (f.relative_to(relative_to).as_posix()
                if relative_to else f.as_posix())
         try:
@@ -523,7 +557,12 @@ def main() -> int:
                    help="emit the query result as JSON")
     args = ap.parse_args()
 
-    roots = args.root or ["."]
+    # A root the caller NAMED is honoured verbatim — every exclusion below is
+    # a property of the scope this tool picks for itself, never of one somebody
+    # declared. That is what keeps `--root <a fixtures path>` able to prove the
+    # linter fires.
+    declared = bool(args.root)
+    roots = args.root if declared else default_roots()
     missing = [p for p in roots if not Path(p).exists()]
     if missing:
         for p in missing:
@@ -535,7 +574,7 @@ def main() -> int:
 
     querying = bool(args.statuses or args.by_kind or args.since
                     or args.summary or args.json)
-    files = iter_files(roots)
+    files = iter_files(roots, skip_fixtures=not declared)
     if not files and not querying:
         # A lint over an empty set is a green lie: a mistyped --root would
         # otherwise print the PASS a real scan earns. A query may be empty
@@ -544,7 +583,7 @@ def main() -> int:
               f"refusing a vacuous pass")
         return 2
     unreadable: list = []
-    items = scan(roots, unreadable=unreadable)
+    items = scan(roots, unreadable=unreadable, skip_fixtures=not declared)
 
     if querying:
         if args.summary:
@@ -575,6 +614,14 @@ def main() -> int:
     carrying = sum(1 for it in items if it.status is not None)
     print(f"status register: PASS — {len(files)} file(s) scanned, "
           f"{carrying} status-carrying")
+    # …and what that PASS covers. `230 file(s) scanned` reads as 230 files
+    # certified when one of them carried a status, so the line names the scope
+    # it read and the share of it this verdict is about.
+    print(f"  scope: {', '.join(roots)}"
+          f"{'' if declared else ' (default)'} — the verdict covers the "
+          f"{carrying} status-carrying file(s); the other "
+          f"{len(files) - carrying} declare no lifecycle and it says nothing "
+          f"about them")
     return 0
 
 

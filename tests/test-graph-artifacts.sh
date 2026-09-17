@@ -1,4 +1,14 @@
 #!/usr/bin/env bash
+# graph-lint artifacts-edge contract. Installs a plant into a temp dir, drops
+# in fixtures/root.md (whose `artifacts:` names architecture/README.md), and
+# asserts the linter PASSES while that file exists and FAILS once it is moved
+# away. Nothing here asserts anything about token budgets: the fixture's
+# `est_tokens` is an INPUT, chosen so the first run is clean and the second
+# run's non-zero exit is attributable to the artifacts edge alone. It was
+# raised from 10 to the whole-file measure when graph-lint's budget metric
+# moved from body-only to frontmatter+body under
+# SPEC-0001-gate-assertion-floor (GRAPH_LINT_BUDGET_COUNTS_FRONTMATTER).
+# Re-measure, do not guess, and never relax the 2x band to make a fixture fit.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

@@ -9,7 +9,8 @@
 # miscounted-prose scan, the version single-source check, the corpus
 # agnosticism/durability scan (once per shipped corpus root) and its
 # dangling-reference arm, the harness-registration home + referrer pair, the
-# opencode config contract, and the est_tokens-vs-body budget — plus the
+# opencode config contract, and the est_tokens-vs-file budget (whole file,
+# frontmatter included, since 2026-09-17) — plus the
 # long-standing kernel-budget guard as a control.
 set -euo pipefail
 
@@ -180,9 +181,12 @@ write_oc '{"$schema":"https://opencode.ai/config.json","subagent_depth":1}'
 expect_fail "delegation topology would be capped" "opencode-depth-cap"
 restore "$oc"
 
-# 13. A machinery node whose est_tokens is more than 2x off its measured body
-# would be REJECTED by the graph-lint.py the seed itself ships, once installed
-# into a plant. The seed never checked its own nodes against that rule.
+# 13. A machinery node whose est_tokens is more than 2x off its measured file
+# — frontmatter included, the metric graph-lint.py's check_budget uses — would
+# be REJECTED by the graph-lint.py the seed itself ships, once installed into a
+# plant. The seed never checked its own nodes against that rule, and until
+# 2026-09-17 it mirrored the rule against the body alone, which was weaker than
+# the thing it mirrored.
 python3 - "$TMP/protocols/verify.md" <<'PY'
 import re,sys; p=sys.argv[1]; t=open(p).read()
 open(p,'w').write(re.sub(r'(?m)^est_tokens:\s*\d+', 'est_tokens: 20', t, count=1))
@@ -455,6 +459,50 @@ p.write_text(p.read_text() + '\n# drifted\n')
 # exercises: check_frontmatter_reader_is_one_reader
 expect_fail "has drifted from" "frontmatter-reader-drift"
 restore tools/frontmatter.py
+
+# 20. SPEC-0001-gate-assertion-floor (docs/graph/specs/), increment 16: a
+# compatibility claim in a spec matches the shebang of the code it describes.
+#
+# The claim this pins shipped for real. §5 of SPEC-0001-install-placement read
+# "POSIX shell and `python3` only" over a tree whose 30 shell files every one
+# declare `#!/usr/bin/env bash` and whose installer uses `set -euo pipefail`,
+# a `set` option POSIX does not define. A reader who believed it would write
+# POSIX-only shell into a bash tree and find out from a runtime failure.
+#
+# The slug names the function rather than a comment: spec-lint.py credits a
+# contract from a slug found ANYWHERE under tests/, comments included, and
+# three contracts once went "covered" on a docstring that happened to name
+# them.
+caseSHELL_FLOOR_CLAIM_MATCHES_THE_SHEBANG() {
+  # Restore the historical wording in the hermetic copy. The gate must say so.
+  python3 - "$TMP/docs/specs/SPEC-0001-install-placement.md" <<'PY'
+import sys
+p = sys.argv[1]
+t = open(p, encoding="utf-8").read()
+old = "- **Compatibility:** bash and `python3` only; no third-party imports."
+assert old in t, "the corrected §5 line is not where this mutant expects it"
+open(p, "w", encoding="utf-8").write(t.replace(
+    old,
+    "- **Compatibility:** POSIX shell and `python3` only; no third-party imports.",
+    1))
+PY
+  # exercises: check_shell_floor_claim_matches_the_shebang
+  expect_fail "POSIX shell floor" "shell-floor-claim"
+  restore docs/specs/SPEC-0001-install-placement.md
+
+  # And the shipped text passes. This half is not decoration: §5 still carries
+  # the parenthetical "This line claimed a POSIX shell floor until 2026-09-16"
+  # and §12 quotes the old wording in full, so a check that greps the file for
+  # the phrase turns the tree red on its own correction history. What is
+  # forbidden is the CLAIM, not the word.
+  lint >/dev/null || {
+    echo "[shell-floor-claim] the corrected §5 — which names the bash floor and"\
+         "records the old claim in §12 — must lint clean" >&2
+    lint >&2
+    exit 1
+  }
+}
+caseSHELL_FLOOR_CLAIM_MATCHES_THE_SHEBANG
 
 # 17. Every check_* in seed-lint.py is either exercised above or declared here.
 # The binder is the point: the nine gaps were invisible because nothing compared

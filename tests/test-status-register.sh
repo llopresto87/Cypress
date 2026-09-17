@@ -24,7 +24,8 @@ REG="$ROOT/tools/status-register.py"
 FIX="$ROOT/tests/fixtures/status"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
-fail() { echo "FAIL: $*" >&2; [ -f "$TMP/out" ] && cat "$TMP/out" >&2; exit 1; }
+CASE=""     # the contract slug the current case carries, named in every failure
+fail() { echo "FAIL: ${CASE:+[$CASE] }$*" >&2; [ -f "$TMP/out" ] && cat "$TMP/out" >&2; exit 1; }
 
 # run <expected-rc> <args...> -> output in $TMP/out
 run() {
@@ -32,6 +33,33 @@ run() {
   local rc=0
   python3 "$REG" "$@" >"$TMP/out" 2>&1 || rc=$?
   [ "$rc" -eq "$want" ] || fail "expected exit $want, got $rc (args: $*)"
+}
+
+# run_at <dir> <expected-rc> <args...> -> output in $TMP/out
+# The tool run FROM <dir>, which is the only way to exercise what it does when
+# nobody passes --root. `run` above always names one, so every case written
+# with it says nothing about the scope the tool picks for itself.
+run_at() {
+  local dir="$1" want="$2"; shift 2
+  local rc=0
+  ( cd "$dir" && python3 "$REG" "$@" ) >"$TMP/out" 2>&1 || rc=$?
+  [ "$rc" -eq "$want" ] || fail "expected exit $want, got $rc (cwd: $dir, args: $*)"
+}
+
+# clean_item <path> — a markdown file this linter has nothing to say about.
+clean_item() {
+  mkdir -p "$(dirname "$1")"
+  cat >"$1" <<'CLEANITEM'
+---
+id: adr.clean
+kind: adr
+title: a decision with nothing wrong with it
+status: accepted
+status_date: 2026-09-16
+---
+
+# a decision with nothing wrong with it
+CLEANITEM
 }
 
 # 1. A clean tree passes: every base status with its companion, an ADR
@@ -221,5 +249,125 @@ print("import contract: OK")
 PY
 grep -q "import contract: OK" "$TMP/out" || fail "import contract assertions did not run"
 echo "  scan()/lint()/summarize() importable — the hook reuse contract — OK"
+
+
+# ==========================================================================
+# SPEC-0001-gate-assertion-floor, increment 9 — the declared default scope.
+#
+# Cases 1-11 above every one name a --root. That is why the tool could ship
+# with a default scope of `.` and nobody notice: no case in this suite had
+# ever run it the way a session runs it. The four cases below are RED until
+# `docs/graph/status-register.py` / `Cypress/tools/status-register.py` gain a
+# default root, a default-sweep exclusion and a scoped PASS line.
+#
+# Each case is a shell function whose NAME is the contract slug, because
+# spec-lint.py credits coverage from the slug appearing anywhere under
+# Cypress/tests/ — including inside a comment. A slug that lives only in a
+# comment is the `coverage` false green the census records; a slug that names
+# the thing that executes is not.
+# ==========================================================================
+
+# --- 12. the default scope is the graph, not whatever the CWD contains -----
+caseREGISTER_DEFAULT_ROOT_PREFERS_THE_GRAPH() {
+  CASE=REGISTER_DEFAULT_ROOT_PREFERS_THE_GRAPH
+  local d="$TMP/default-root"; rm -rf "$d"
+  clean_item "$d/docs/graph/decisions/adr-0001-clean.md"
+  # A markdown file that is somebody's business, but not this tool's: it sits
+  # beside the declared graph, not in it.
+  cp "$FIX/violations/open-no-owner.md" "$d/outside-the-graph.md"
+  run_at "$d" 0
+  grep -q "status register: PASS" "$TMP/out" \
+    || fail "a tree whose docs/graph/ is clean did not pass with no --root"
+  ! grep -q "outside-the-graph" "$TMP/out" \
+    || fail "the default sweep reached a file outside docs/graph/"
+
+  # And with no docs/graph/ beneath it, the default root stays the working
+  # directory, exactly as today — this half must not change.
+  local e="$TMP/default-root-nograph"; rm -rf "$e"; mkdir -p "$e"
+  cp "$FIX/violations/open-no-owner.md" "$e/"
+  run_at "$e" 1
+  grep -q "open-no-owner.md:5: status 'open' requires \`owner\`" "$TMP/out" \
+    || fail "with no docs/graph/ present the default root stopped being the CWD"
+  CASE=""
+}
+caseREGISTER_DEFAULT_ROOT_PREFERS_THE_GRAPH
+echo "  the default root is docs/graph/ when there is one, the CWD when there is not — OK"
+
+# --- 13. a default sweep is not decided by somebody else's violations ------
+# `tests/fixtures/` is where a linter's own counter-examples live. A tool that
+# counts them as findings about the tree teaches its reader that it cries
+# wolf, and a tool nobody runs asserts nothing.
+caseREGISTER_DEFAULT_SWEEP_SKIPS_VIOLATION_FIXTURES() {
+  CASE=REGISTER_DEFAULT_SWEEP_SKIPS_VIOLATION_FIXTURES
+  local d="$TMP/sweep"; rm -rf "$d"
+  clean_item "$d/decisions/adr-0001-clean.md"
+  # Two depths, because the contract says "at any depth": one nested inside a
+  # vendored project, one directly beneath the root being swept.
+  mkdir -p "$d/Cypress/tests/fixtures/status" "$d/tests/fixtures"
+  cp "$FIX/violations/open-no-owner.md" "$d/Cypress/tests/fixtures/status/"
+  cp "$FIX/violations/bad-vocabulary.md" "$d/tests/fixtures/"
+  run_at "$d" 0
+  grep -q "status register: PASS" "$TMP/out" \
+    || fail "deliberate violation fixtures decided the verdict of a default sweep"
+  ! grep -q "fixtures/" "$TMP/out" \
+    || fail "a finding originated inside a tests/fixtures/ subtree"
+  CASE=""
+}
+caseREGISTER_DEFAULT_SWEEP_SKIPS_VIOLATION_FIXTURES
+echo "  a default sweep skips tests/fixtures/ at any depth — OK"
+
+# --- 14. naming a root is a declaration of scope, not a suggestion ---------
+# The exclusion case 13 pins must not reach an explicit --root, or this whole
+# suite stops being able to prove the linter fires: cases 2-5 aim straight at
+# $FIX, which is a tests/fixtures/ path.
+caseREGISTER_EXPLICIT_ROOT_IS_HONOURED_VERBATIM() {
+  CASE=REGISTER_EXPLICIT_ROOT_IS_HONOURED_VERBATIM
+  local d="$TMP/explicit"; rm -rf "$d"
+  clean_item "$d/decisions/adr-0001-clean.md"
+  mkdir -p "$d/Cypress/tests/fixtures/status"
+  cp "$FIX/violations/open-no-owner.md" "$FIX/violations/bad-vocabulary.md" \
+     "$d/Cypress/tests/fixtures/status/"
+  # Skipped by the default sweep…
+  run_at "$d" 0
+  ! grep -q "open-no-owner" "$TMP/out" \
+    || fail "the default sweep reported a fixture violation, so 'verbatim' has nothing to mean"
+  # …and reported, every one, when the root names them.
+  run 1 --root "$d/Cypress/tests/fixtures/status"
+  grep -q "open-no-owner.md:5: status 'open' requires \`owner\`" "$TMP/out" \
+    || fail "an explicit --root at a fixtures path stopped reporting its violations"
+  grep -q "bad-vocabulary.md:5: status 'wip' is not in the vocabulary for kind risk" "$TMP/out" \
+    || fail "an explicit --root at a fixtures path dropped a second violation"
+  grep -q "FAIL (2 finding(s))" "$TMP/out" \
+    || fail "an explicit root reported a different number of findings than it holds"
+  # And the vacuous-pass refusal still fires when an explicit root matches no
+  # markdown at all: honouring a root verbatim includes honouring an empty one.
+  mkdir -p "$d/empty"
+  run 2 --root "$d/empty"
+  grep -q "refusing a vacuous pass" "$TMP/out" \
+    || fail "the vacuous-pass refusal stopped firing on an explicit empty root"
+  CASE=""
+}
+caseREGISTER_EXPLICIT_ROOT_IS_HONOURED_VERBATIM
+echo "  an explicit --root is honoured verbatim, exclusion and all — OK"
+
+# --- 15. the PASS line says what it covers ---------------------------------
+# "230 file(s) scanned" reads as 230 files certified. One of them carried a
+# status. The line has to say which root it read and what the verdict covers,
+# or the number is an invitation to misread it.
+caseREGISTER_PASS_LINE_STATES_ITS_SCOPE() {
+  CASE=REGISTER_PASS_LINE_STATES_ITS_SCOPE
+  run 0 --root "$FIX/clean"
+  # The counts case 1 pins stay: this contract adds scope, it does not replace
+  # the figures.
+  grep -q "12 file(s) scanned, 9 status-carrying" "$TMP/out" \
+    || fail "the k-of-n figures case 1 pins must survive the scope sentence"
+  grep -q "$FIX/clean" "$TMP/out" \
+    || fail "the PASS line does not name the root it actually scanned"
+  grep -qi "covers" "$TMP/out" \
+    || fail "the PASS line does not state that the verdict covers the status-carrying files only"
+  CASE=""
+}
+caseREGISTER_PASS_LINE_STATES_ITS_SCOPE
+echo "  the PASS line names its root and states what it covers — OK"
 
 echo "test-status-register: PASS"

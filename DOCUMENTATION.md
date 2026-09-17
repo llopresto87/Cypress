@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 7.16.1
+- Version documented: 7.17.0
 - Repository role: this repo is the seed, the product that is shipped
   into other projects. It is *not* a grown project itself.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -876,6 +876,19 @@ said, grouped by what they check:
     `unittest`, no third-party dependency).
 21. `seed-lint.py`: one-home-per-fact for the seed's own meta-facts.
 22. `legal-lint.py`: the eight-field-per-entry legal gate.
+
+Steps 19 and 20 read the seed's own `agents/` directory as the roster, and the
+one `_routes.golden.tsv` that lives there, whatever directory the seed is
+checked out inside. Nothing in `test_agent_lint.py` resolves through the
+parent: a host's `.claude/agents` is a projection of the roster, not a second
+home for it, and parity between the home and an installed projection is decided
+in `test-full-install.sh` against an install that gate builds. One override
+exists. `CYPRESS_ROSTER_DIR` names a roster directory and is honoured verbatim
+— no fallback and no substitution if it is wrong, and the suite's two refusal
+guards apply to it exactly as they apply to the default. The suite prints the
+roster it resolved and the rule that picked it before any case runs, because a
+green that does not say which roster it read is a green about a roster the
+reader has not identified.
 
 `tests/seed-lint.py` is the seed's self-consistency gate. It enforces:
 roster/frontmatter/manifest/README consistency, the delegator invariant, numeric

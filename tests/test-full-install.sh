@@ -40,6 +40,43 @@ assert_cmd_roster() {  # $1=dir  $2=suffix (.md | .prompt.md)  $3=label
   done
 }
 
+# Is $2 a faithful projection of the roster home $1? SPEC-0001 §6's predicate,
+# and it is a function rather than an inline `cmp` so it can be pointed at a
+# directory — a check nobody can aim at a known-bad tree is a check nobody can
+# tell from a check that compares one file. Three conditions, all required:
+# the set of non-underscore `*.md` filenames equal in BOTH directions, the
+# golden corpus present in both, and every filename they share byte-identical.
+#
+# Both directions is the load-bearing half. A one-way rule — every seed file
+# present and identical in the host — accepts a host that has ADDED an agent,
+# which is the live shape of every grown plant and exactly the case that took
+# the nested gate down. Silent, because `cmp`ing `_routes.golden.tsv` alone
+# never opened the agent files that corpus is a projection of.
+projection_parity() {
+  local home="$1" proj="$2" f
+  local -a shared=()
+  for f in _routes.golden.tsv; do
+    [[ -f "$home/$f" && -f "$proj/$f" ]] || { echo "projection_parity: $f missing from $home or $proj" >&2; return 1; }
+    shared+=("$f")
+  done
+  local home_set proj_set
+  # `|| true`: an empty directory makes both `ls` and `grep` exit non-zero, and
+  # an absent projection is a verdict this function owes, not an abort.
+  home_set="$(cd "$home" && ls -1 *.md 2>/dev/null | grep -v '^_' | LC_ALL=C sort || true)"
+  proj_set="$(cd "$proj" && ls -1 *.md 2>/dev/null | grep -v '^_' | LC_ALL=C sort || true)"
+  if [[ "$home_set" != "$proj_set" ]]; then
+    echo "projection_parity: agent set differs between $home and $proj" >&2
+    diff <(printf '%s\n' "$home_set") <(printf '%s\n' "$proj_set") >&2 || true
+    return 1
+  fi
+  [[ -n "$home_set" ]] || { echo "projection_parity: neither $home nor $proj holds an agent file — the comparison would be vacuous" >&2; return 1; }
+  while IFS= read -r f; do shared+=("$f"); done <<< "$home_set"
+  for f in "${shared[@]}"; do
+    cmp -s "$home/$f" "$proj/$f" || { echo "projection_parity: $f differs between $home and $proj" >&2; return 1; }
+  done
+  return 0
+}
+
 "$ROOT/install.sh" claude-code --project-dir "$T" --copy --force >/dev/null
 need "$T/CLAUDE.md" claude-code
 need "$T/docs/graph/templates/prompts/graph-session-bootstrap.md" claude-code
@@ -107,12 +144,18 @@ for gone in .claude/protocols .claude/templates .claude/core; do
   [[ ! -e "$T/$gone" ]] || { echo "STALE tool-dir surface installed: $gone" >&2; exit 1; }
 done
 python3 "$T/.claude/agent-lint.py" --lint >/dev/null   # roster valid in-plant
-# The golden routing corpus has one home (agents/_routes.golden.tsv); the
-# installed copy is a projection of it. Asserted here because this is the only
-# gate where a projection actually exists — tests/test_agent_lint.py used to
-# keep a third copy for this purpose and it had silently drifted.
-cmp -s "$ROOT/agents/_routes.golden.tsv" "$T/.claude/agents/_routes.golden.tsv" \
-  || { echo "golden routing corpus drifted between seed home and install projection" >&2; exit 1; }
+# The roster has one home (agents/); the installed .claude/agents/ is a
+# projection of it. Asserted here because this is the only gate where a
+# projection actually exists — tests/test_agent_lint.py used to keep a third
+# copy for this purpose and it had silently drifted, and once the seed suite's
+# roster is scoped to the seed (SPEC-0001 ROSTER_DEFAULT_RESOLVES_INSIDE_THE_SEED)
+# its copy of this claim can no longer reach a projection at all. This is the
+# claim's LAST live home, so it is decided by SPEC-0001 §6's projection
+# predicate — set equality in BOTH directions plus byte identity — and not by
+# comparing one file. `cmp`ing `_routes.golden.tsv` alone never opened the
+# twenty agent .md files it is a projection of.
+projection_parity "$ROOT/agents" "$T/.claude/agents" \
+  || { echo "the install projection is not a faithful projection of the seed roster" >&2; exit 1; }
 python3 "$T/docs/graph/graph-lint.py" >/dev/null       # machinery graph lints clean
 assert_cmd_roster "$T/.claude/commands" .md "claude-code commands"
 
@@ -535,3 +578,43 @@ found="$(find "$BTMP" \( -name '*.pyc' -o -name '__pycache__' \) | wc -l | tr -d
     || { find "$BTMP" \( -name '*.pyc' -o -name '__pycache__' \) >&2
          echo "test-full-install: FAIL — $found bytecode path(s) placed into the plant" >&2; exit 1; }
 echo "  bytecode never reaches the plant — OK"
+
+# --- the parity claim is relocated, not retired ---------------------------
+# SPEC-0001 ROSTER_PROJECTION_PARITY_KEEPS_A_LIVE_HOME. The predicate has to be
+# a thing that can be pointed at a directory, or the claim above cannot be
+# exercised against anything but the one projection the gate happens to build,
+# and nobody can tell a working check from a check that compares one file.
+# Equality in BOTH directions is the load-bearing half: a one-way rule — every
+# seed file present and identical in the host — is satisfied by a host that has
+# ADDED an agent, and a host that has added an agent is exactly the case that
+# took the gate down.
+caseROSTER_PROJECTION_PARITY_KEEPS_A_LIVE_HOME() {
+  declare -F projection_parity >/dev/null \
+    || { echo "test-full-install: FAIL — projection_parity() is not defined; the parity claim has no callable home" >&2; exit 1; }
+  # the real projection the gate just built must satisfy it
+  projection_parity "$ROOT/agents" "$T/.claude/agents" \
+    || { echo "test-full-install: FAIL — the install's own projection was rejected by the predicate" >&2; exit 1; }
+  local M
+  # superset: the host holds a file the seed does not. `cmp` of one file
+  # accepts this, and this is the live shape of every grown plant.
+  M="$(mktemp -d)"; cp -a "$T/.claude/agents/." "$M/"
+  printf -- '---\nname: host-only\n---\nbody\n' > "$M/99-host-only.md"
+  if projection_parity "$ROOT/agents" "$M"; then
+    rm -rf "$M"; echo "test-full-install: FAIL — a projection holding an agent the seed does not have was accepted" >&2; exit 1
+  fi
+  rm -rf "$M"
+  # stale: the seed holds a file the host does not
+  M="$(mktemp -d)"; cp -a "$T/.claude/agents/." "$M/"; rm -f "$M/03-reviewer.md"
+  if projection_parity "$ROOT/agents" "$M"; then
+    rm -rf "$M"; echo "test-full-install: FAIL — a projection missing one of the seed's agents was accepted" >&2; exit 1
+  fi
+  rm -rf "$M"
+  # forked: a shared filename differs by a byte
+  M="$(mktemp -d)"; cp -a "$T/.claude/agents/." "$M/"; printf '\n' >> "$M/03-reviewer.md"
+  if projection_parity "$ROOT/agents" "$M"; then
+    rm -rf "$M"; echo "test-full-install: FAIL — a projection whose agent file drifted by a byte was accepted" >&2; exit 1
+  fi
+  rm -rf "$M"
+  echo "  the roster projection is decided by set equality both ways plus byte identity — OK"
+}
+caseROSTER_PROJECTION_PARITY_KEEPS_A_LIVE_HOME

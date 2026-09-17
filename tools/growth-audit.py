@@ -562,23 +562,50 @@ def _is_collection_descriptor(name, path):
     return name.endswith("/") and path.stem.lower() in ("index", "readme")
 
 
-def resolves(plant, ref):
-    """A cited path resolves when it names a real file INSIDE the plant. Line
-    and anchor suffixes (`path:12`, `path#section`, `path:12:5`) are stripped
-    first — a citation points at a place in a file, and the file is what must
-    exist. A directory is not a citation (`docs/graph/sources/` names where the
-    evidence would live, not any evidence), and an absolute path is not a claim
-    about this plant at all."""
+MISSING_CITATION = "does not exist in the plant"
+
+
+def cite_problem(plant, ref):
+    """Why a cited path does not resolve, as a phrase — or None when it does.
+
+    A citation names a real file INSIDE the plant, and the line it names is in
+    that file. Anchor suffixes (`path#section`) are stripped and not checked:
+    there is no cheap check for an anchor, and inventing one is a different
+    job. A line suffix IS checked, because the line number is the part of a
+    citation a reader actually follows — `manifest.json:999999` resolved
+    against a file whose last line is 457 for as long as the suffix was
+    stripped and forgotten. A directory is not a citation
+    (`docs/graph/sources/` names where the evidence would live, not any
+    evidence), and an absolute path is not a claim about this plant at all."""
     raw = str(ref).split("#", 1)[0]
+    m = re.search(r":(\d+)(?::\d+)?(-\d+)?$", raw)
+    cited_line = int(m.group(1)) if m else None
     raw = re.sub(r":\d+(?::\d+)?(-\d+)?$", "", raw).strip()
     if not raw or Path(raw).is_absolute():
-        return False
+        return MISSING_CITATION
     target = plant / raw
     try:
         target.resolve().relative_to(plant.resolve())
     except (ValueError, OSError):
-        return False
-    return target.is_file()
+        return MISSING_CITATION
+    if not target.is_file():
+        return MISSING_CITATION
+    if cited_line:
+        try:
+            held = len(target.read_text(encoding="utf-8",
+                                        errors="replace").splitlines())
+        except OSError:
+            return MISSING_CITATION
+        if cited_line > held:
+            return (f"names line {cited_line} of a file that holds "
+                    f"{held} lines")
+    return None
+
+
+def resolves(plant, ref):
+    """Whether a cited path resolves — the yes/no reading of cite_problem,
+    for the callers that do not report a reason."""
+    return cite_problem(plant, ref) is None
 
 
 def graph_leaf_filled(plant, ref, templates):
@@ -618,23 +645,61 @@ def index_names(plant, rel, *names):
     return False
 
 
+# A snapshot path named inside a `raw:` value, per SPEC-0001 §6: a maximal run
+# of `[A-Za-z0-9._/-]` that BEGINS `raw/` and ends in a 1-5 character extension.
+# The lookbehind is what makes the run maximal, and it is why a long-form
+# `docs/graph/sources/raw/x.html` carries no existence claim (the disclosed
+# residual AUDIT_RAW_PATH_WRITTEN_LONG_FORM_IS_UNSCANNED); backticks, brackets,
+# parentheses and a trailing `.,;)]` fall outside the class, so they delimit the
+# run rather than join it. A prose filename, a bare URL and a backticked
+# `claude-code.md` never begin `raw/`, so none of them is opened.
+RAW_TOKEN_RE = re.compile(
+    r"(?<![A-Za-z0-9._/-])raw/[A-Za-z0-9._/-]*\.[A-Za-z0-9]{1,5}(?![A-Za-z0-9])")
+# `raw/` is relative to the PARENT of RAW_DIR, because RAW_DIR is `sources/raw`.
+RAW_TOKEN_BASE = Path(RAW_DIR).parent.as_posix()
+
+
 def raw_retained(plant, rel):
-    """Whether a normalized snapshot keeps its provenance: a raw sibling under
-    sources/raw/ (`<stem>-<date>.<ext>` or `<stem>.<ext>`), or a `raw:` line in
-    its metadata block naming the snapshot kept or the reason none was.
+    """Whether a normalized snapshot keeps its provenance: a `raw:` line in its
+    metadata block naming the snapshot(s) kept — each of which is OPENED, never
+    assumed — or the reason none was, or, for a page that names no path at all,
+    a raw sibling under sources/raw/ (`<stem>-<date>.<ext>` or `<stem>.<ext>`).
 
     "When the license permits" was the research skill's only out, and an out
     nobody has to record is one every scout takes: the plant this closed on
     cited 23 library pages to one retrieval date with not a single artifact
-    behind it, and the next graft audited a pass it could not re-inspect."""
+    behind it, and the next graft audited a pass it could not re-inspect.
+
+    SPEC-0001 §6 fixes the evaluation order, and the order IS the contract. A
+    value that names paths is decided by those paths alone: the sibling scan
+    keeps its job — "this page named nothing, is a snapshot here anyway" — and
+    loses its veto over a page that did name something. It held that veto
+    silently, and both halves shipped: four pages of a plant whose snapshots
+    were all on disk were reported missing because the filenames came from the
+    upstream document rather than the page's slug, while a page pointing at a
+    snapshot that genuinely was not there passed on a same-stem coincidence."""
     f = plant / GRAPH_HOME / rel
+    val = parse_frontmatter(f).get(RAW_KEY)
+    val = (val if isinstance(val, str) else " ".join(val or [])).strip()
+
+    tokens = list(dict.fromkeys(RAW_TOKEN_RE.findall(val)))
+    if tokens:
+        # Every token must resolve, and the finding names the filesystem path
+        # that was opened, so a reader can `ls` the same string the tool tested.
+        missing = [(t, f"{GRAPH_HOME}/{RAW_TOKEN_BASE}/{t}") for t in tokens
+                   if not (plant / GRAPH_HOME / RAW_TOKEN_BASE / t).is_file()]
+        if missing:
+            return False, "names " + "; ".join(
+                f"`{RAW_KEY}: {t}`, which does not exist — resolved to {p}"
+                for t, p in missing)
+        return True, ""
+
+    # No path named: byte-for-byte the behaviour that shipped.
     raw_dir = plant / GRAPH_HOME / RAW_DIR
     if raw_dir.is_dir() and any(
             q.is_file() and (q.stem == f.stem or q.name.startswith(f.stem + "-"))
             for q in raw_dir.iterdir()):
         return True, ""
-    val = parse_frontmatter(f).get(RAW_KEY)
-    val = (val if isinstance(val, str) else " ".join(val or [])).strip()
     if not val:
         return False, (f"retains no raw snapshot under {GRAPH_HOME}/{RAW_DIR}/ "
                        f"and states no reason — its metadata block's `{RAW_KEY}:` "
@@ -642,9 +707,10 @@ def raw_retained(plant, rel):
                        f"license, a host without fetch, an MCP summary with no "
                        f"page behind it)")
     if re.fullmatch(r"[\w./-]+\.[A-Za-z0-9]{1,5}", val):
-        # A path, and the sibling scan above found nothing by that name.
-        return False, (f"names `{RAW_KEY}: {val}`, which does not exist under "
-                       f"{GRAPH_HOME}/{RAW_DIR}/")
+        # One bare token, no `raw/` prefix: today's resolution against
+        # sources/raw/, kept verbatim so no existing plant changes meaning.
+        return False, (f"names `{RAW_KEY}: {val}`, which does not exist — "
+                       f"resolved to {GRAPH_HOME}/{RAW_DIR}/{val}")
     return True, ""
 
 
@@ -744,8 +810,17 @@ def plant_experts(plant, seed):
     return out
 
 
-def needs_staffing(item):
-    """Whether an inventory item has to answer the staffing question at all."""
+def needs_staffing(item, closed=False):
+    """Whether an inventory item has to answer the staffing question at all.
+
+    `closed` is a row that has declared itself ABSENT or UNKNOWN. Such a row is
+    held to what it DECLARES — core significance asks the staffing question
+    wherever it is written — but not to the kind-derived arm: what a row of a
+    given kind owes once it has established its absence is the open question
+    behind KIND_PLAN (grill.md §12 row 11), and answering it here in passing is
+    exactly the decision this pass declined to make."""
+    if closed:
+        return item.get("significance") == "core"
     return (item.get("kind") in STAFFED_KINDS
             or item.get("significance") == "core")
 
@@ -908,6 +983,13 @@ def lint_collections(plant, seed, rec, templates, findings):
         status = check_row_shape(label, row, findings)
         if status is None:
             continue
+        if status == "UNKNOWN" and (row.get("blocker") or "").strip():
+            # The branch lint_inventory has carried since the disclosure duty
+            # landed, and this reader never got: a row closing UNKNOWN with a
+            # named blocker becomes a non-fatal finding, so it reaches the
+            # summary's carried count and lint_disclosure's SILENT check
+            # instead of leaving no trace at all.
+            findings.append(Finding("UNKNOWN", label, row["blocker"]))
         live, unfilled = collection_leaves(plant, name)
         if status == "COVERED":
             substantive = [p for p in live
@@ -924,10 +1006,10 @@ def lint_collections(plant, seed, rec, templates, findings):
                                f"it declined to fill them")
                 findings.append(Finding("CONTRADICTED", label, detail))
             for ref in row.get("evidence", []):
-                if not resolves(plant, ref):
+                why = cite_problem(plant, ref)
+                if why:
                     findings.append(Finding("DANGLING", label,
-                                            f"cites {ref!r}, which does not "
-                                            f"exist in the plant"))
+                                            f"cites {ref!r}, which {why}"))
             if name == "sources/":
                 lint_sources(plant, label, templates, findings)
         if status == "ABSENT" and live:
@@ -1257,7 +1339,19 @@ def lint_experts(plant, seed, rec, templates, findings):
 def lint_inventory(plant, rec, templates, findings):
     """The heart of it: every item the scouts found the project to be made of
     names the artifacts growth owed it, and each one is present or it is not."""
-    for item in rec.get("inventory", []):
+    inventory = rec.get("inventory") or []
+    if not inventory:
+        # An audit of no rows is not a green. The only non-empty guard was a
+        # print on the `--plan` path, so emptying the inventory was the
+        # cheapest possible `coverage complete`: nothing here can be wrong when
+        # the record claims nothing at all.
+        findings.append(Finding("MISSING", RECORD_REL,
+                                "its `inventory` is empty, so this record "
+                                "holds nothing growth can be held to — re-run "
+                                "--plan and fill the inventory from the "
+                                "scouts' reconciled ledgers"))
+        return
+    for item in inventory:
         name = item.get("name") or item.get("slug") or "<unnamed>"
         kind = item.get("kind", "")
         label = f"{kind or 'item'} {name}"
@@ -1281,21 +1375,28 @@ def lint_inventory(plant, rec, templates, findings):
                                     "finding about the source, not a guess"))
         else:
             for ref in item["evidence"]:
-                if not resolves(plant, ref):
+                why = cite_problem(plant, ref)
+                if why:
                     findings.append(Finding("DANGLING", label,
-                                            f"evidence {ref!r} does not exist "
-                                            f"in the plant"))
+                                            f"evidence {ref!r} {why}"))
         status = (item.get("status") or "").strip().upper()
-        if status in ("UNKNOWN", "ABSENT"):
+        closed = status in ("UNKNOWN", "ABSENT")
+        if closed:
             # An inventory row closes on the same terms as a collection or an
             # agent row: an absence names its reason and where it looked, a
             # blocker is named. Waving one through with a bare `UNKNOWN` was
             # how a design surface or a regulatory exposure could leave the
             # inventory without ever being answered.
+            #
+            # What `status` decides is WHICH of reason/searched/blocker the row
+            # owes — never whether the rest of the row is read. This used to
+            # `continue`, so a row could stop the artifact, grounding and
+            # staffing checks by declaring itself absent: 30 rows set ABSENT
+            # with 57 planned artifacts deleted still printed `coverage
+            # complete`. A row is held to what it DECLARES, absent or not.
             if (check_row_shape(label, item, findings) == "UNKNOWN"
                     and (item.get("blocker") or "").strip()):
                 findings.append(Finding("UNKNOWN", label, item["blocker"]))
-            continue
         expect = item.get("expect") or []
         # What this item owes, asked of the one function that owns the answer.
         # The orchestrator may extend a plan from evidence, so `expect` is not
@@ -1304,7 +1405,12 @@ def lint_inventory(plant, rec, templates, findings):
         # copy of the rule.
         owed = {row["path"] for row in
                 planned_artifacts(item, majors_in_play(rec, item.get("slug", "")))[0]}
-        if not expect:
+        if not expect and not closed:
+            # The ABSENT-shaped escape this check keeps. Whether a closed row
+            # must declare artifacts at all is a statement about what each kind
+            # owes — the owner's open KIND_PLAN question (grill.md §12 row 11)
+            # — so this one stays where it was while the rest of the row stops
+            # hiding behind the same word.
             findings.append(Finding("BLANK", label,
                                     "no planned artifacts — every inventory "
                                     "item owes the graph something, or says "
@@ -1370,7 +1476,7 @@ def lint_inventory(plant, rec, templates, findings):
                                             f"home rather than restating it, so "
                                             f"without that edge it routes to "
                                             f"nothing"))
-        if needs_staffing(item):
+        if needs_staffing(item, closed):
             # The decision ledger §9 was always supposed to force, recorded
             # where it survives the run. A dominant domain or a core part of
             # the stack either earns a project-specific expert or is recorded

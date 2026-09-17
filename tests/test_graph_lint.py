@@ -27,6 +27,7 @@ Contract map:
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import sys
@@ -61,17 +62,36 @@ def run_lint(graph_dir: Path) -> subprocess.CompletedProcess:
 
 def node_md(node_id: str, kind: str, *, requires=(), owns=None, peers=(),
             composes=(), libraries=(), artifacts=(), load_when=None) -> str:
-    """A minimal, schema-valid tier-2 node. est_tokens is derived from the body
-    word count so the budget check (within-2x) always passes.
+    """A minimal, schema-valid tier-2 node. `est_tokens` is derived from the
+    WHOLE rendered node — frontmatter and body — because the whole file is
+    what a loader pays for, which is the figure SPEC-0001 §4
+    GRAPH_LINT_BUDGET_COUNTS_FRONTMATTER puts the budget check on.
+
+    The body is deliberately longer, in words, than any frontmatter this
+    helper emits. That is load-bearing: the within-2x band is symmetric
+    (`measured > 2*est or est > 2*measured`), so a single figure sits in band
+    under BOTH measurements only while frontmatter words <= body words. Every
+    fixture here therefore lints clean whether the budget proxy counts the
+    body alone (today) or the whole file (once the contract above is
+    implemented), and no case goes red for a reason its own test never meant
+    to assert. Shortening this paragraph, or adding a caller with a
+    frontmatter longer than it, breaks that and is the thing to re-check
+    first when a clean-fixture case starts failing on est_tokens.
 
     The optional edge and trigger keys are what the composes/descent cases
     need: `libraries` satisfies an expertise node's depth-edge rule, and
     `load_when` is the vocabulary descent matches a task against."""
     body = (
         f"This node documents the {kind} boundary for testing the lint "
-        "contract in a hermetic graph fixture with a handful of plain words."
+        "contract in a hermetic graph fixture with a handful of plain words. "
+        "The paragraph runs on past the point a single sentence would stop "
+        "for one reason only, and the docstring above states it: the node "
+        "needs more words below the fence than above it, so that one honest "
+        "token figure can describe the body and the whole file at once and "
+        "stay inside the tolerance either reading of the budget applies. "
+        "Nothing else here is meaningful, and no assertion in this suite "
+        "reads a word of it."
     )
-    est = int(len(body.split()) * 1.35)
     owns = owns if owns is not None else [f"{node_id}.overview"]
     load_when = load_when if load_when is not None else [f"work on {node_id}"]
     lines = [
@@ -93,13 +113,19 @@ def node_md(node_id: str, kind: str, *, requires=(), owns=None, peers=(),
     lines += [
         "load_when:",
         *(f"  - {t}" for t in load_when),
-        f"est_tokens: {est}",
+        "est_tokens: 0",          # placeholder, substituted below
         "---",
         "",
         body,
         "",
     ]
-    return "\n".join(lines)
+    text = "\n".join(lines)
+    # Counted on the placeholder, substituted after: the figure occupies
+    # exactly one whitespace-separated word whatever its digits, so the count
+    # taken here is the count of the file that is finally written. 1.35 is
+    # graph-lint.py's own BODY_TOKENS_PER_WORD.
+    est = int(len(text.split()) * 1.35)
+    return text.replace("est_tokens: 0", f"est_tokens: {est}", 1)
 
 
 def build_graph(tmp: Path, nodes: dict, *, config_line: str | None = None,
@@ -1183,6 +1209,293 @@ class DescentTests(unittest.TestCase):
                 section.append(line.split()[0])
         self.assertEqual(set(load), {"subsystem.orders", "stack.dotnet"})
         self.assertEqual(set(not_loaded), {"subsystem.billing"})
+
+
+# ==========================================================================
+# SPEC-0001-gate-assertion-floor (docs/graph/specs/), increments 10-12.
+#
+# The version-leakage rule is "every version FACT lives in libraries/", and
+# docs/graph/index.md:66-74 states it with the boundary that makes it
+# checkable: a release identifier MAY sit in a node's ROUTING surface as a
+# keyword without the node asserting anything. check_version_leakage reads
+# `n.body` and nothing else, so the rule holds in the body and evaporates one
+# line up; and VERSION_RE wants a dotted-numeric core, so `RFC 8259` in a body
+# is a fact nothing sees.
+#
+# Each test's NAME carries the contract slug. spec-lint.py credits a slug found
+# anywhere under Cypress/tests/, comments included, and three contracts once
+# went "covered" on a docstring — so the slug goes where the code is. The
+# leading `test` with no underscore before the slug is deliberate: spec-lint's
+# boundary is `(?<![A-Z0-9_])`, and `test_GRAPH_LINT_...` would not match.
+# ==========================================================================
+
+
+def node_with_frontmatter_key(node_id: str, kind: str, key: str, value: str) -> str:
+    """A schema-valid node carrying `key: value` in its frontmatter, with the
+    body left saying nothing about any version."""
+    text = node_md(node_id, kind)
+    if key == "title":
+        return text.replace(f"title: {node_id} node", f"title: {value}", 1)
+    return text.replace("load_when:", f"{key}: {value}\nload_when:", 1)
+
+
+class FrontmatterVersionPositionTests(unittest.TestCase):
+    """SPEC-0001-gate-assertion-floor §4/§6: where a version token is written
+    decides whether it is an assertion or a routing handle."""
+
+    def setUp(self):
+        self.assertTrue(GRAPH_LINT.exists(), f"missing tool: {GRAPH_LINT}")
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def _lint(self, alpha: str):
+        nodes = {
+            "root": node_md("root", "root", requires=["subsystem.alpha"]),
+            "subsystem.alpha": alpha,
+        }
+        return run_lint(build_graph(self.tmp, nodes))
+
+    def testGRAPH_LINT_FRONTMATTER_ASSERTION_PIN_IS_A_LEAK(self):
+        """A pin in `title:` is a claim the node is making, and the one-home
+        rule does not stop at the frontmatter fence. Moving a body pin up three
+        lines is today a way to make the check stop seeing it."""
+        alpha = node_with_frontmatter_key(
+            "subsystem.alpha", "subsystem", "title",
+            "the alpha surface, pinned at 2.7.2")
+        r = self._lint(alpha)
+        out = r.stdout + r.stderr
+        self.assertNotEqual(r.returncode, 0,
+                            f"a version pin in an assertion-position "
+                            f"frontmatter key must fail:\n{out}")
+        self.assertIn("version pin", out, out)
+        self.assertIn("subsystem.alpha", out, out)
+        self.assertIn("title", out,
+                      f"the finding must name the frontmatter key, not a body "
+                      f"line:\n{out}")
+
+    def testGRAPH_LINT_LOAD_WHEN_KEYWORD_IS_NOT_A_LEAK(self):
+        """`load_when:` is routing. expertise.json carries `draft-07` and
+        expertise.bash carries `bash 3.2 floor` so that a task naming either
+        routes somewhere; neither node asserts what the project uses.
+
+        This is the guard, not the catch: it is green before the change and
+        must stay green after it. A check that scanned the whole frontmatter
+        would turn this plant's own graph red on two live nodes, and `3.2` is
+        a token today's VERSION_RE already matches — asserted below, so this
+        green is a statement about position and not about an empty fixture."""
+        src = GRAPH_LINT.read_text(encoding="utf-8")
+        version_re = re.compile(
+            re.search(r'^VERSION_RE = re\.compile\(r"(.+)"\)$', src,
+                      re.M).group(1))
+        self.assertTrue(version_re.search("bash 3.2 floor"),
+                        "the fixture below is only a trap if VERSION_RE can "
+                        "match the token it hides in load_when")
+
+        for value in ('["json, $schema, draft-07"]', '["bash 3.2 floor"]'):
+            with self.subTest(load_when=value):
+                alpha = node_md("subsystem.alpha", "subsystem")
+                alpha = alpha.replace(
+                    "load_when:\n  - work on subsystem.alpha",
+                    f"load_when: {value}", 1)
+                r = self._lint(alpha)
+                out = r.stdout + r.stderr
+                self.assertNotIn("version pin", out,
+                                 f"a release identifier used as a routing "
+                                 f"keyword is not a leak:\n{out}")
+                self.assertEqual(r.returncode, 0, out)
+
+    def testGRAPH_LINT_NON_DOTTED_RELEASE_IN_BODY_IS_A_LEAK(self):
+        """A release identifier with no dotted-numeric core is still a release
+        identifier. `draft-07`, `RFC 8259` and `STD 90` are asserted in bodies
+        today and nothing sees them.
+
+        `0.29-gfm` is the control: §6 files it under `undotted`, but its
+        `0.29` core means VERSION_RE already catches it, so it must be caught
+        before and after — it is what tells a reader this test ran at all."""
+        for token in ("draft-07", "RFC 8259", "STD 90", "0.29-gfm"):
+            with self.subTest(token=token):
+                alpha = node_md("subsystem.alpha", "subsystem")
+                alpha = alpha.replace(
+                    "plain words.", f"plain words. The wire format is {token} here.", 1)
+                r = self._lint(alpha)
+                out = r.stdout + r.stderr
+                self.assertNotEqual(r.returncode, 0,
+                                    f"{token!r} asserted in a body is a leak:\n{out}")
+                self.assertIn("version pin", out, out)
+                self.assertIn(token, out,
+                              f"the finding must name the identifier it found:\n{out}")
+
+    def testGRAPH_LINT_NON_DOTTED_RELEASE_IN_A_CODE_SPAN_IS_STILL_EXEMPT(self):
+        """The `And` of the contract above: quoting a real config line is not
+        restating a fact, so the same identifier inside a code span passes.
+        Green before and after — it is the guard on the widened regex."""
+        alpha = node_md("subsystem.alpha", "subsystem")
+        alpha = alpha.replace(
+            "plain words.",
+            "plain words. The schema line reads `\"$schema\": draft-07` verbatim.", 1)
+        r = self._lint(alpha)
+        self.assertEqual(r.returncode, 0,
+                         f"a code span must stay exempt:\n{r.stdout}\n{r.stderr}")
+
+
+class BudgetMeasuresTheWholeFileTests(unittest.TestCase):
+    """SPEC-0001-gate-assertion-floor §4 GRAPH_LINT_BUDGET_COUNTS_FRONTMATTER:
+    `est_tokens` is the budget for the file a loader reads, and the proxy
+    measures the body only. A node can carry a large frontmatter and stay in
+    band on a figure that describes less than half of what it costs."""
+
+    def setUp(self):
+        self.assertTrue(GRAPH_LINT.exists(), f"missing tool: {GRAPH_LINT}")
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def testGRAPH_LINT_BUDGET_COUNTS_FRONTMATTER(self):
+        # A node whose routing surface dwarfs its body: 60 load_when triggers,
+        # a short paragraph. Nothing here is malformed; it is simply a file a
+        # loader pays several hundred tokens for while `est_tokens` describes
+        # the paragraph.
+        triggers = [f"routing trigger number {i} for the alpha surface"
+                    for i in range(60)]
+        alpha = node_md("subsystem.alpha", "subsystem", load_when=triggers)
+        head, _, body = alpha.partition("\n---\n\n")
+        frontmatter_text = head + "\n---\n"
+        body_tokens = int(len(body.split()) * 1.35)
+        whole_tokens = int(len((frontmatter_text + body).split()) * 1.35)
+        self.assertGreater(whole_tokens, 2 * body_tokens,
+                           "the fixture must actually separate the two "
+                           "measurements, or this test proves nothing")
+
+        # est_tokens is set to the BODY figure — in band today, out of band the
+        # moment the frontmatter a loader reads is counted.
+        alpha = re.sub(r"^est_tokens: \d+$", f"est_tokens: {body_tokens}",
+                       alpha, count=1, flags=re.M)
+        nodes = {
+            "root": node_md("root", "root", requires=["subsystem.alpha"]),
+            "subsystem.alpha": alpha,
+        }
+        r = run_lint(build_graph(self.tmp, nodes))
+        out = r.stdout + r.stderr
+        self.assertNotEqual(
+            r.returncode, 0,
+            f"est_tokens={body_tokens} describes the body; the file measures "
+            f"~{whole_tokens} and must be judged against that:\n{out}")
+        measured = re.search(r"est_tokens=\d+ but .*?~(\d+)", out)
+        self.assertIsNotNone(measured, f"no measured figure in the verdict:\n{out}")
+        self.assertEqual(int(measured.group(1)), whole_tokens,
+                         f"the figure compared against est_tokens must be the "
+                         f"whole-file one ({whole_tokens}):\n{out}")
+        self.assertNotIn(
+            "body measures", out,
+            "the verdict must not describe a whole-file figure as the body's, "
+            "or est_tokens goes on being read as a body-only number")
+
+
+class SeedAndPlantCopyAgreeTests(unittest.TestCase):
+    """SPEC-0001-gate-assertion-floor §4 GRAPH_LINT_SEED_COPY_AGREES_WITH_PLANT_COPY:
+    the engine ships twice — templates/knowledge-graph/graph-lint.py, and the
+    copy install.sh writes into a plant's docs/graph/. Increment 10 edits one
+    of them and increment 12 ports it, so the window in between is exactly when
+    the two disagree.
+
+    The contract is behavioural, not byte-level: the two differ today only by a
+    line-wrap of KINDS, which is not a failure. And agreement alone is the
+    weaker half — two copies that both ignore the rule agree perfectly, which
+    is the warning the census hangs on test_metadata_equivalence.py. So the
+    fixture tree is one the contracts above say must FAIL, and the assertion is
+    that both copies fail it the same way."""
+
+    def setUp(self):
+        self.assertTrue(GRAPH_LINT.exists(), f"missing tool: {GRAPH_LINT}")
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def _installed_copy(self) -> Path:
+        """The plant-side copy, taken from a disposable install of this seed
+        rather than from a path outside the tree under test. A suite that
+        resolved its input from the host it happens to sit inside is the defect
+        grill.md §12 row 10 is open on; this one stays hermetic."""
+        plant = self.tmp / "plant"
+        plant.mkdir(parents=True, exist_ok=True)
+        r = subprocess.run(["bash", str(SEED / "install.sh"), "claude-code",
+                            "--project-dir", str(plant)],
+                           capture_output=True, text=True, timeout=300)
+        self.assertEqual(r.returncode, 0, f"install failed:\n{r.stdout}\n{r.stderr}")
+        copy = plant / "docs" / "graph" / "graph-lint.py"
+        self.assertTrue(copy.is_file(), f"no installed graph-lint at {copy}")
+        return copy
+
+    def _beside(self, tool: Path, graph: Path, name: str) -> Path:
+        """Put `tool` INSIDE `graph` and hand back the path there.
+
+        `graph-lint.py:68` is `HERE = Path(__file__).resolve().parent`: the
+        tool lints the graph beside ITSELF and ignores the working directory.
+        Running the installed copy where it was installed therefore lints the
+        freshly installed plant graph, not the fixture — two engines reading
+        two different trees, which is a comparison of nothing. The engine is a
+        single self-contained stdlib file, so relocating it is the whole of
+        what it takes to point both at one tree; the copy still comes out of
+        the disposable install, so the provenance the docstring above argues
+        for survives."""
+        dest = graph / name
+        shutil.copy(tool, dest)
+        return dest
+
+    def testGRAPH_LINT_SEED_COPY_AGREES_WITH_PLANT_COPY(self):
+        alpha = node_md("subsystem.alpha", "subsystem")
+        alpha = alpha.replace(f"title: subsystem.alpha node",
+                              "title: the alpha surface, pinned at 2.7.2", 1)
+        alpha = alpha.replace("plain words.",
+                              "plain words. The wire format is RFC 8259 here.", 1)
+        nodes = {
+            "root": node_md("root", "root", requires=["subsystem.alpha"]),
+            "subsystem.alpha": alpha,
+        }
+        graph = build_graph(self.tmp, nodes)          # carries the seed copy
+        plant_copy = self._beside(self._installed_copy(), graph,
+                                  "graph-lint-installed.py")
+
+        def verdict(tool: Path):
+            r = subprocess.run([sys.executable, str(tool)], cwd=str(graph),
+                               capture_output=True, text=True, timeout=60)
+            # graph-lint prints one error per line as `  \u2717 <text>`
+            # (graph-lint.py:1174) and one warning as `  ! warning: <text>`
+            # (:1170). This filter looked for a leading "-", which no line of
+            # either tool has ever carried, so the error-set assertion below
+            # compared two empty sets and could not fail. Warnings are left
+            # out deliberately: the fixture graph has no `plant:` block and
+            # both copies say so, which is noise about the fixture rather
+            # than a difference between the engines.
+            errs = {ln.strip().lstrip("\u2717").strip()
+                    for ln in (r.stdout + r.stderr).splitlines()
+                    if ln.strip().startswith("\u2717")}
+            return r.returncode, errs
+
+        seed_rc, seed_errs = verdict(graph / "graph-lint.py")
+        plant_rc, plant_errs = verdict(plant_copy)
+
+        self.assertEqual(seed_rc, plant_rc,
+                         f"the two copies disagree on the exit code: "
+                         f"seed={seed_rc} plant={plant_rc}")
+        self.assertEqual(seed_errs, plant_errs,
+                         f"the two copies disagree on the error set:\n"
+                         f"  seed only:  {sorted(seed_errs - plant_errs)}\n"
+                         f"  plant only: {sorted(plant_errs - seed_errs)}")
+        self.assertTrue(
+            seed_errs,
+            "both copies exited non-zero and neither printed a line this test "
+            "could read as an error. The set comparison above then passes on "
+            "two empty sets, which is the vacuous-agreement failure this case "
+            "exists to refuse — check the verdict parser against "
+            "graph-lint.py's output format before trusting any green here")
+        self.assertNotEqual(
+            seed_rc, 0,
+            "both copies agreed that a node asserting `2.7.2` in `title:` and "
+            "`RFC 8259` in its body is clean. Agreement between two copies "
+            "that both ignore the rule is agreement about nothing")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

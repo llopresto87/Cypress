@@ -105,15 +105,23 @@ ENVIRONMENT_CLASSES = {"ephemeral-test", "staging", "real-production", "mixed"}
 STATUS_LINE_RE = re.compile(r"^##\s+Status\s*$", re.M)
 _ALL_STATUS_WORDS = STATUS_BASE | set().union(*STATUS_EXT.values())
 
-# A version pin: 2.7.2, v2.7.2, ^15.0.0, ~4.8.2, 0.0.13-SNAPSHOT, 8.0.31.
+# A release identifier: 2.7.2, v2.7.2, ^15.0.0, ~4.8.2, 0.0.13-SNAPSHOT, 8.0.31
+# — and the undotted forms a standard is named by, draft-07, RFC 8259, STD 90.
+# A version with no dotted-numeric core is still a version: `the wire format is
+# RFC 8259` is the same assertion as `json 2.7.2`, made in the vocabulary the
+# standards bodies use, and it went unseen for as long as the core was required.
 # The lookbehind excludes `§5.4` (a section reference) and any digit/word/
 # path character so `docs/v2.1` and `1.2.3` inside a word don't match; the
 # optional leading v is part of the match so `v2.7.2` cannot hide behind it.
-VERSION_RE = re.compile(r"(?<![\w./§-])[vV]?[\^~]?\d+\.\d+(\.\d+)?(-[A-Za-z0-9]+)?(?![\w.])")
+VERSION_RE = re.compile(r"(?<![\w./§-])(?:[vV]?[\^~]?\d+\.\d+(?:\.\d+)?(?:-[A-Za-z0-9]+)?|[Dd]raft-\d+|RFC \d+|STD \d+)(?![\w.])")
 # A project-artifact identifier directly before a version token: the token is a
 # revision citation, not a library pin.
 ARTIFACT_REVISION_RE = re.compile(r"(?:SPEC|ADR|RFC|PRD|RUNBOOK|ISSUE|PR)[-_ ]?\d+\s*$", re.I)
-BODY_TOKENS_PER_WORD = 1.35
+# Words -> tokens, applied to the whole file and not to the half of it below
+# the fence: a loader pays for the frontmatter it opens too, and a node with
+# sixty `load_when` triggers costs those tokens on every read
+# (SPEC-0001-gate-assertion-floor §4 GRAPH_LINT_BUDGET_COUNTS_FRONTMATTER).
+TOKENS_PER_WORD = 1.35
 # STEM is the LAST-RESORT prefix fold, not the inflection rule. The inflection
 # rule is `_stems()` in the canonical stemmer block below, which reduces both
 # sides of the comparison; this only catches long words that share a six-letter
@@ -175,6 +183,7 @@ class Node:
     path: Path
     meta: dict
     body: str
+    text: str                     # the file as written: fences, frontmatter and body
     dir_kind: str | None = None   # set for machinery nodes: the kind their dir implies
 
     @property
@@ -187,11 +196,19 @@ class Node:
 
     @property
     def words(self) -> int:
-        return len(self.body.split())
+        """Every word in the file, frontmatter included — what a read costs.
+
+        `est_tokens` is a budget for the file a loader opens, so the figure it
+        is judged against has to be the whole of that file. Measured on the
+        body alone, a node could carry a routing surface several times the
+        size of its prose and stay in band on a number describing less than
+        half of what it costs.
+        """
+        return len(self.text.split())
 
     @property
     def measured_tokens(self) -> int:
-        return int(self.words * BODY_TOKENS_PER_WORD)
+        return int(self.words * TOKENS_PER_WORD)
 
     def get_list(self, key: str) -> list:
         v = self.meta.get(key, [])
@@ -275,8 +292,9 @@ def load_nodes() -> list:
         for p in sorted(directory.glob("*.md")):
             if p.name.startswith("_") or p.name == "index.md":
                 continue
-            meta, body = parse_frontmatter(p.read_text(encoding="utf-8"), p)
-            nodes.append(Node(p, meta, body, dir_kind))
+            text = p.read_text(encoding="utf-8")
+            meta, body = parse_frontmatter(text, p)
+            nodes.append(Node(p, meta, body, text, dir_kind))
     if not nodes:
         raise LintError("no nodes found")
     return nodes
@@ -735,8 +753,27 @@ def check_artifacts(nodes: list, errs: list) -> None:
                 errs.append(f"{n.id}: artifacts → missing docs/graph/{artifact}")
 
 
+# Where in the frontmatter a version token is an ASSERTION rather than a
+# routing handle. SPEC-0001-gate-assertion-floor §6 owns the table; the rule it
+# makes checkable is the router's own (docs/graph/index.md): the fact lives in
+# docs/graph/libraries/, and a release identifier may appear in a node's
+# routing surface without the node claiming anything. `load_when: draft-07` is
+# a keyword a task is matched against; `title: the JSON surface, RFC 8259` is
+# the node saying which release this project uses.
+#
+# A key nobody has classified defaults to ROUTING. The cost is recorded as
+# FRONTMATTER_UNKNOWN_KEY_UNSCANNED in that spec §7 — a disclosed residual, not
+# a caught defect — and it is the price of a linter that does not break on the
+# next key somebody adds.
+ASSERTION_KEYS = ("title", "description", "prevents", "reason", "scope", "ends_when")
+
+
 def check_version_leakage(nodes: list, errs: list) -> None:
     """Version pins live in docs/graph/libraries/ unless the node owns *.versions.
+
+    The rule does not stop at the frontmatter fence: it reads the assertion
+    positions of ASSERTION_KEYS as well as the body, because moving a pin up
+    three lines was a way to make this check stop seeing it.
 
     Fenced code and inline code are exempt: quoting a real config line is
     not restating a fact.
@@ -746,6 +783,16 @@ def check_version_leakage(nodes: list, errs: list) -> None:
             continue
         if any(f.endswith(".version") or f.endswith(".versions") for f in n.get_list("owns")):
             continue
+        for key in ASSERTION_KEYS:
+            for value in n.get_list(key):
+                if not isinstance(value, str):
+                    continue
+                for m in VERSION_RE.finditer(value):
+                    if ARTIFACT_REVISION_RE.search(value[max(0, m.start() - 24): m.start()]):
+                        continue
+                    errs.append(
+                        f"{n.id}: version pin {m.group(0)!r} (frontmatter key `{key}`) — versions belong in docs/graph/libraries/; link instead"
+                    )
         body = re.sub(r"```.*?```", "", n.body, flags=re.S)
         body = re.sub(r"`[^`\n]*`", "", body)
         body = re.sub(r"^\s*[-*]?\s*\[[^\]]+\]\([^)]*\)", "", body, flags=re.M)
@@ -768,7 +815,10 @@ def check_budget(nodes: list, errs: list) -> None:
             continue
         measured = n.measured_tokens
         if measured > 2 * est or est > 2 * max(measured, 1):
-            errs.append(f"{n.id}: est_tokens={est} but body measures ~{measured} (must be within 2x)")
+            errs.append(
+                f"{n.id}: est_tokens={est} but the file measures ~{measured} "
+                f"(frontmatter and body; must be within 2x)"
+            )
         if not n.is_machinery and len(n.body.strip("\n").splitlines()) > 170:
             errs.append(f"{n.id}: body is {n.body.count(chr(10))} lines — over the 170-line ceiling (aim ~150); split it")
 

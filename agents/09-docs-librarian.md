@@ -11,6 +11,9 @@ routing_triggers:
   - "catalog a reusable tool the work produced"
   - "crystallize a recurring procedure into a project skill"
   - "audit the documentation and record what is not written down"
+  - "register the sources a retrieval pass left unregistered"
+  - "the index disagrees with what the collection actually holds"
+  - "reconcile a stale count or a stale table in a README"
 can_delegate: true
 max_spawn_depth: 1
 delegates_to:

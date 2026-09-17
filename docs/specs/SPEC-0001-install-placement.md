@@ -1,6 +1,6 @@
 ---
 status: back-written
-status_date: 2026-09-13
+status_date: 2026-09-16
 owner: seed-installer
 status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tests/test-install-kernel-modes.sh, tests/test-install-adoption.sh (all wired into tests/run.sh)
 ---
@@ -240,7 +240,15 @@ Nothing outside the named project directory is ever modified.
 
 ## 5. Non-functional requirements
 
-- **Compatibility:** POSIX shell and `python3` only; no third-party imports.
+- **Compatibility:** bash and `python3` only; no third-party imports. The
+  binding shell floor is bash, not the POSIX subset: `install.sh:1` declares
+  `#!/usr/bin/env bash`, `:69` uses `set -euo pipefail` whose `pipefail` POSIX's
+  `set` does not define, and every shell file in this tree declares a bash
+  shebang. The in-tree constraint that is recorded is the bash 3.2 floor
+  (`install.sh:1824`, `:2192`). The two floors are different and a grown
+  plant's graph owns the distinction at `docs/graph/best-practices/bash.md`
+  §"Two floors, not one"; it is not restated here. (This line claimed a POSIX
+  shell floor until 2026-09-16 — see §12.)
   Placement is exercised on Linux and macOS in CI, because symlink semantics are
   where the platforms differ.
 - **Reliability:** generation completes before replacement, so a failed
@@ -385,3 +393,26 @@ narrower M2 above.
 | Question | Why it matters | Current assumption | Owner | Resolves by |
 |---|---|---|---|---|
 | PARTIAL_CORPUS has no regression | The check was corrected from `-ge` over files to `-eq` over pages, but `place_tree` never fails partway, so no public-interface sequence produces the partial corpus the old check waved through | The correction is right and untested; it becomes testable when placement can fail mid-tree (ENOSPC, permission fault) | seed-installer | a fault-injection harness, if one is ever justified |
+
+## 12. Changelog
+
+This section did not exist before 2026-09-16. It was added with the entry
+below rather than the correction being made silently, because a spec that is
+edited to match the code without saying so is the drift kernel §4 forbids.
+The file carries no version field; `status_date` in the frontmatter is the
+only version surface it has, and it moves with each entry here.
+
+- 2026-09-13 — written as `back-written` over existing installer behaviour.
+  Sign-offs recorded as not owed; see §0.
+- 2026-09-16 — §5 **Compatibility** corrected. The line read "POSIX shell and
+  `python3` only", which was false about the code: `install.sh:1` is
+  `#!/usr/bin/env bash` and `:69` uses `set -euo pipefail`, whose `pipefail`
+  POSIX's `set` does not define, and all 30 shell files in this tree declare a
+  bash shebang. Per the kernel's rule that a spec is never silently changed to
+  match code, this is the SPEC being wrong about the code: the claim was
+  corrected deliberately, `status_date` moved to this date, and the original
+  wording is quoted above so the correction is not silently absorbed. No
+  contract in §4, no data shape in §6 and no failure mode in §7 changed. The
+  bash-versus-POSIX distinction itself is owned by a grown plant's
+  `docs/graph/best-practices/bash.md` §"Two floors, not one" and is linked,
+  not restated.

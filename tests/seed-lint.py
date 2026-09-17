@@ -21,6 +21,9 @@ This linter makes that failure class deterministic to catch:
      judgment, since the seed cannot enumerate plant names without naming
      them). The scan itself is `tools/agnosticism-lint.py`, shared machinery
      any agnostic tree can run; this file calls it, it does not copy it.
+ 10. spec compatibility claims: a stated shell floor is the one the code it
+     describes actually holds (the claim, never the word — a spec that
+     RECORDS an old claim is not making it)
 
 Dependency-free; exit 0 clean, 1 with findings.
 """
@@ -1912,6 +1915,56 @@ def check_frontmatter_reader_is_one_reader() -> None:
                  f"byte-identical: seven divergent readers is what this replaced.")
 
 
+def check_shell_floor_claim_matches_the_shebang() -> None:
+    """A spec's stated shell floor is the one its code actually holds.
+
+    SPEC-0001 §5 read "POSIX shell and `python3` only" over a tree whose 30
+    shell files every one declare `#!/usr/bin/env bash`, and whose installer
+    uses `set -euo pipefail` — a `set` option POSIX does not define. Nothing
+    compared the claim with the shebang, so a reader who believed it would
+    write POSIX-only shell into a bash tree and learn otherwise at runtime.
+
+    What is forbidden is the CLAIM, not the word. §5 now records that it
+    claimed a POSIX floor until 2026-09-16 and §12 quotes the old wording in
+    full, so a check that grepped the file for the phrase would fail the tree
+    on its own correction history. This reads the floor where a spec STATES
+    it — the first sentence of the `**Compatibility:**` bullet — and leaves
+    every sentence that discusses the distinction, or records what the line
+    used to say, alone.
+    """
+    specs = ROOT / "docs" / "specs"
+    install = ROOT / "install.sh"
+    if not specs.is_dir() or not install.is_file():
+        return
+    shebang = install.read_text(encoding="utf-8").splitlines()[0]
+    if "bash" not in shebang:
+        # A POSIX claim over a POSIX shebang is true, and this check has
+        # nothing to say about it.
+        return
+    for path in sorted(specs.rglob("*.md")):
+        lines = path.read_text(encoding="utf-8").splitlines()
+        for i, line in enumerate(lines, 1):
+            m = re.match(r"\s*-\s*\*\*Compatibility:?\*\*:?\s*(.*)$", line)
+            if not m:
+                continue
+            # The bullet as one paragraph, then its first sentence: the floor
+            # is stated there, and what follows is commentary about it.
+            claim = [m.group(1)]
+            for nxt in lines[i:]:
+                if not nxt.strip() or re.match(r"\s*[-*]\s|#", nxt):
+                    break
+                claim.append(nxt.strip())
+            stated = re.split(r"(?<=\.)\s", " ".join(claim), maxsplit=1)[0]
+            if "POSIX" in stated and re.search(r"\bsh(ell)?\b", stated):
+                fail(f"{path.relative_to(ROOT).as_posix()}:{i}: the "
+                     f"**Compatibility:** bullet claims a POSIX shell floor, "
+                     f"and install.sh:1 declares `{shebang}`. A spec states "
+                     f"the floor its code holds; the bash-versus-POSIX "
+                     f"distinction itself is owned by a grown plant's "
+                     f"docs/graph/best-practices/bash.md §\"Two floors, not "
+                     f"one\" and is linked, not restated.")
+
+
 def check_install_write_sites() -> None:
     """SINGLE_WRITER is true of the four placers and a NAMED, COUNTED set of exceptions.
 
@@ -2338,6 +2391,7 @@ def check() -> None:
     check_spec_rows_name_their_contract()
     check_frontmatter_reader_is_one_reader()
     check_install_write_sites()
+    check_shell_floor_claim_matches_the_shebang()
     check_plan_ledgers()
     check_protocol_reference()
     check_gate_single_home()
@@ -2487,17 +2541,23 @@ def check() -> None:
             fail(f"{rel}: est_tokens must be an integer (got {est!r})")
         else:
             # Every machinery node installs into a plant, where graph-lint.py's
-            # check_budget enforces est_tokens within 2x of the measured body
-            # (words * BODY_TOKENS_PER_WORD). The seed never checked it, so it
-            # could ship a node that fails the very linter it also ships.
-            # Mirrored here with the same metric.
-            body = p.read_text(encoding="utf-8").split("\n---\n", 1)[-1]
-            measured = int(len(body.split()) * 1.35)
+            # check_budget enforces est_tokens within 2x of the WHOLE FILE —
+            # `len(text.split()) * TOKENS_PER_WORD`, frontmatter included,
+            # because a loader pays for the routing surface it opens as well as
+            # the prose. The seed never checked it, so it could ship a node that
+            # fails the very linter it also ships. Mirrored here with the same
+            # metric. It was measured on the body alone until 2026-09-17, which
+            # made this mirror WEAKER than the thing it mirrors: a node whose
+            # frontmatter pushes the file out of band passed here and failed
+            # graph-lint the moment it was installed. Measured with a probe node
+            # (71-word body, 14-entry load_when): silent here, rejected there at
+            # est_tokens=95 against a file measuring ~437.
+            measured = int(len(p.read_text(encoding="utf-8").split()) * 1.35)
             declared = int(est)
             if measured > 2 * declared or declared > 2 * max(measured, 1):
-                fail(f"{rel}: est_tokens={declared} but body measures ~{measured} "
-                     f"— graph-lint.py would reject this node once installed "
-                     f"(must be within 2x)")
+                fail(f"{rel}: est_tokens={declared} but the file measures "
+                     f"~{measured} (frontmatter and body) — graph-lint.py would "
+                     f"reject this node once installed (must be within 2x)")
         for fact in fm.get("owns", []) or []:
             if fact in owns_home:
                 fail(f"{rel}: fact-key {fact!r} already owned by "

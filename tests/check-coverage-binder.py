@@ -44,6 +44,7 @@ COVERED = {
     "check_ci_workflow",
     "check_published_eager_figures",
     "check_published_body_figures",
+    "check_shell_floor_claim_matches_the_shebang",
 }
 
 
@@ -62,7 +63,14 @@ def main(root: pathlib.Path) -> int:
     # all — so adding a no-op check and declaring it COVERED printed
     # "10 exercised" with nothing planted anywhere. The printed number measured
     # this file agreeing with itself.
-    marked = set(re.findall(r"^# exercises: (check_[a-z0-9_]+)$", suite, re.M))
+    # Leading whitespace is allowed. The anchor used to be column 0, which was
+    # not a rule anybody wrote down — it was true only because every case in
+    # the suite happened to be top-level. The first case written inside a
+    # `case<NAME>()` function indented its marker with the code it labels, the
+    # binder did not see it, and the check it named read as unprotected. The
+    # marker belongs beside the mutation it annotates; where that sits on the
+    # line is not this file's business.
+    marked = set(re.findall(r"^\s*# exercises: (check_[a-z0-9_]+)$", suite, re.M))
     if marked != COVERED:
         missing = sorted(COVERED - marked)
         extra = sorted(marked - COVERED)

@@ -16,7 +16,12 @@ around that one flow.
 
 ## Prerequisites
 
-- A POSIX shell (bash on macOS/Linux/WSL; Git Bash on Windows).
+- **bash** 3.2 or newer (macOS/Linux/WSL; Git Bash on Windows). Not any
+  POSIX shell: `install.sh` declares `#!/usr/bin/env bash` (`:1`) and
+  runs `set -euo pipefail` (`:69`), an option POSIX's `set` does not
+  define, so `dash` and other strict `/bin/sh` implementations fail. The
+  3.2 floor is what the script holds itself to (`install.sh:1824`,
+  `:2192`, which avoid bash 4+ constructs for macOS).
 - `python3` (for the GitHub Copilot frontmatter transformation only).
 - The seed system unzipped or cloned somewhere stable. In the default
   copy mode the seed path is only read at install time; in `--symlink`
