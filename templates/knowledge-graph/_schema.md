@@ -298,6 +298,12 @@ needs more room is restating a leaf.
 18. An expertise node has at least one `libraries` or `artifacts` edge.
 19. An expertise id ending in `-<digits>` is composed by the id without the
     suffix.
+20. Every frontmatter value also parses under a strict-YAML loader, not only
+    the lenient reader: a top-level unquoted, non-list scalar carries no inner
+    `: ` (colon-space) and no trailing bare `:`. A strict-YAML host (e.g. Prime
+    Agent) reads an inner `: ` as a nested mapping and drops the node; the
+    lenient reader keeps it, so the two hosts diverge silently. Quote the value
+    or reword the clause.
 
 ```sh
 python3 docs/graph/graph-lint.py            # lint

@@ -48,16 +48,16 @@ The running cost, measured rather than estimated:
 
 | | |
 |---|---|
-| Always loaded, per session | 26 259 bytes (~6 562 tokens) on Claude Code, opencode, Codex; 24 093 on Prime Agent; 31 903 on GitHub Copilot |
+| Always loaded, per session | 26 261 bytes (~6 562 tokens) on Claude Code, opencode, Codex; 24 094 on Prime Agent; 31 905 on GitHub Copilot |
 | Of that, the kernel | 7 742 bytes, under a hard 8 000-byte budget the gate enforces |
 | Everything else | routed in on demand, not loaded up front |
 | Method overhead on a small, well-specified task | 10 to 20% more tokens than an unguided session, measured once |
 
 GitHub Copilot used to be the outlier: its skill projections were
 always-applied rather than discovered, so every skill BODY counted against
-every session, at 138 535 bytes against 26 259 everywhere else. 7.16.0 narrowed
+every session, at 138 535 bytes against 26 261 everywhere else. 7.16.0 narrowed
 them to pointers (a description and the path to the node), which brings it to
-31 903 and models it like every other harness. The gap that remains is the
+31 905 and models it like every other harness. The gap that remains is the
 pointer boilerplate each file carries, not the discipline behind it.
 [`documentation/host-capability-matrix.md`](documentation/host-capability-matrix.md)
 says what every host does and does not enforce.
@@ -336,9 +336,9 @@ Always-loaded per session, before any routing happens:
 
 | Harness | Eager bytes | ~tokens |
 |---|---|---|
-| prime-agent | 24 093 | 6 021 |
-| claude-code / opencode / codex | 26 259 | 6 562 |
-| github-copilot | 31 903 | 7 973 |
+| prime-agent | 24 094 | 6 021 |
+| claude-code / opencode / codex | 26 261 | 6 562 |
+| github-copilot | 31 905 | 7 973 |
 
 The bootstrap kernel is 7 742 bytes of that, under a hard 8 000-byte budget.
 The rest is the roster and skill metadata each harness enumerates at start-up.
@@ -346,7 +346,7 @@ The rest is the roster and skill metadata each harness enumerates at start-up.
 `github-copilot` is the reason this table exists. Its skill projections carried
 `applyTo: '**'`, so every skill *body* was always-applied context there rather
 than the descriptions every other harness reads, at **138 535 bytes against
-26 259**, on the one harness that pays for it. That contradicted progressive
+26 261**, on the one harness that pays for it. That contradicted progressive
 disclosure, and 7.16.0 fixed it rather than recording it: the projections are
 now pointers, each carrying the description that lets a session decide whether
 a skill applies and the path to the node holding the discipline. The remaining

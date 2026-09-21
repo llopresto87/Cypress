@@ -1121,6 +1121,49 @@ def resolve(nodes: list, task: str):
     return loaded, not_loaded, notices
 
 
+def check_frontmatter_portable(nodes: list, errs: list) -> None:
+    """Every node's frontmatter also parses under a strict-YAML loader.
+
+    The reader beside this file (frontmatter.py) is deliberately lenient: it
+    splits `key: value` on the FIRST colon and keeps the rest verbatim, so an
+    unquoted value carrying an inner ': ' (colon-space) reads fine here, and a
+    host that reads the graph through the same reader (Claude Code) loads it.
+    A host whose loader parses frontmatter as STRICT YAML (Prime Agent) reads
+    that inner ': ' as a nested mapping and REJECTS the whole block, dropping
+    the node on one of two supported hosts with no error the plant ever sees.
+
+    So a node authored into this plant — by grow, by graft, or by hand — must
+    stay on the two readers' overlap: a top-level unquoted, non-list scalar
+    value may not contain ': ' nor end in a bare ':'. Quote the value or reword
+    the clause. Mirrors seed-lint's check_frontmatter_is_portable_yaml, which
+    holds the seed's own nodes to the same rule before they are installed here.
+    """
+    for n in nodes:
+        text = n.text
+        lines = text.split("\n")
+        try:
+            start = lines.index("---")
+            end = lines.index("---", start + 1)
+        except ValueError:
+            continue
+        for line in lines[start + 1:end]:
+            if not line or line[:1] in " \t#":          # nested / comment / blank
+                continue
+            if ":" not in line:
+                continue
+            key, _, value = line.partition(":")
+            value = value.strip()
+            if not value or value[:1] in "\"'[":         # list/mapping opener, quoted, inline list
+                continue
+            scalar_value = value.split("  #", 1)[0].rstrip()   # reader strips '  #comment'
+            if re.search(r":(?:\s|$)", scalar_value):
+                errs.append(
+                    f"{n.id or n.path}: frontmatter `{key.strip()}` value carries an "
+                    f"inner ': ' ({scalar_value!r}) — the lenient reader keeps it but a "
+                    f"strict-YAML loader (e.g. Prime Agent) reads it as a nested mapping "
+                    f"and drops the node. Quote it or reword the clause.")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--graph", action="store_true", help="print the requires-DAG")
@@ -1180,6 +1223,7 @@ def main() -> int:
     check_libraries(nodes, errs)
     check_artifacts(nodes, errs)
     check_version_leakage(nodes, errs)
+    check_frontmatter_portable(nodes, errs)
     check_budget(nodes, errs)
 
     for w in warns:

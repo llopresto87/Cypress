@@ -1885,6 +1885,54 @@ FRONTMATTER_COPIES = (
 )
 
 
+def check_frontmatter_is_portable_yaml() -> None:
+    """Every SHIPPED node's frontmatter is also a strict-YAML document.
+
+    The seed's reader (`tests/frontmatter.py`, and its byte-identical copies)
+    is deliberately NOT a YAML library: it splits a `key: value` on the FIRST
+    colon and keeps the rest verbatim, so an unquoted value carrying an inner
+    `: ` (colon-space) reads fine. Claude Code's integration uses that same
+    lenient reader, so it loads such a header without complaint. Prime Agent's
+    skill loader parses SKILL.md frontmatter as STRICT YAML, which reads the
+    inner `: ` as a nested mapping and REJECTS the whole block ("Nested mappings
+    are not allowed in compact mappings") — the skill is silently dropped on one
+    of two supported hosts. This check keeps the two readers on their overlap:
+    an unquoted, non-list scalar value must not contain `: ` (nor end in a bare
+    `:`). Quote the value or reword the clause.
+
+    Scoped to the nodes install.sh ships — protocols, method, agents, skills —
+    the same set `machinery_nodes()` walks. Templates and corpora are OUT: a
+    `templates/docs/nodes/_expertise.template.md` carries `{{ ... }}`
+    placeholders that are not YAML and are never loaded as a skill, and a
+    `_schema.md` is authored prose, not a routed header a strict loader opens.
+    """
+    node_paths = []
+    for sub in ("protocols", "core/method", "agents"):
+        node_paths += [f for f in sorted((ROOT / sub).glob("*.md"))
+                       if not f.name.startswith("_")]
+    for d in sorted((ROOT / "skills").iterdir()):
+        f = d / "SKILL.md"
+        if f.is_file():
+            node_paths.append(f)
+    for path in node_paths:
+        for line in frontmatter_block(path).split("\n"):
+            if not line or line[:1] in " \t#":     # nested / comment / blank
+                continue
+            if ":" not in line:
+                continue
+            key, _, value = line.partition(":")
+            value = value.strip()
+            if not value or value[:1] in "\"'[":    # list/mapping opener, quoted, inline list
+                continue
+            scalar_value = value.split("  #", 1)[0].rstrip()   # reader strips '  #comment'
+            if re.search(r":(?:\s|$)", scalar_value):
+                fail(f"{path.relative_to(ROOT)}: frontmatter {key.strip()!r} value "
+                     f"carries an inner ': ' ({scalar_value!r}) — the lenient reader "
+                     f"keeps it but a strict-YAML skill loader (Prime Agent) reads it "
+                     f"as a nested mapping and drops the node. Quote it or reword the "
+                     f"clause.")
+
+
 def check_frontmatter_reader_is_one_reader() -> None:
     """Every copy of the frontmatter reader is byte-identical to the canonical one.
 
@@ -2390,6 +2438,7 @@ def check() -> None:
     check_spec_test_mapping()
     check_spec_rows_name_their_contract()
     check_frontmatter_reader_is_one_reader()
+    check_frontmatter_is_portable_yaml()
     check_install_write_sites()
     check_shell_floor_claim_matches_the_shebang()
     check_plan_ledgers()

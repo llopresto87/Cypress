@@ -1,5 +1,42 @@
 # Changelog
 
+## 7.25.0 — frontmatter must parse under a strict-YAML skill loader, not only the lenient reader (2026-09-18)
+
+The seed's frontmatter reader (`tests/frontmatter.py` and its byte-identical
+copies, including the Claude Code integration's) splits `key: value` on the
+FIRST colon and keeps the rest verbatim, so an unquoted value carrying an inner
+`: ` (colon-space) reads fine. Prime Agent's skill loader parses SKILL.md
+frontmatter as STRICT YAML, which reads that inner `: ` as a nested mapping and
+REJECTS the whole block — the skill is silently dropped on one of two supported
+hosts. Four shipped nodes tripped it: `skills/brainstorm-socratic` and
+`core/method/prose-posture` (in `title:`), `skills/brainstorm-internal` and
+`agents/tool-smith` (in `description:`). Their clauses are reworded so the inner
+`: ` becomes ` — `, which both readers accept.
+
+**New gate: `check_frontmatter_is_portable_yaml` in `tests/seed-lint.py`.** It
+holds every SHIPPED node (protocols, method, agents, skills — the set
+`machinery_nodes()` walks) to the two readers' overlap: an unquoted, non-list
+scalar value may not contain `: ` nor end in a bare `:`. Templates and corpora
+are OUT — an `_expertise.template.md` carries `{{ ... }}` placeholders that are
+not YAML and are never loaded as a skill. Dependency-free, in the seed's own
+style: it names the exact divergence rather than importing a YAML library.
+
+The reworded `description:` on two nodes moved the always-loaded-surface
+character counts `check_eager_surface` derives, so the published figures in
+`README.md` and `documentation/host-capability-matrix.md` are updated to match
+(26 259 → 26 261 on Claude Code / opencode / Codex, 24 093 → 24 094 on Prime
+Agent, 31 903 → 31 905 on GitHub Copilot). Historical figures are left as-is.
+
+**Same rule on the plant side: `check_frontmatter_portable` in
+`templates/knowledge-graph/graph-lint.py`.** seed-lint guards the seed's own
+nodes before install; graph-lint is what a PLANT runs, and it read frontmatter
+through the same lenient reader with no portability check — so a node authored
+by `grow`, moved by `graft`, or written by hand could carry an inner `: ` and be
+dropped by a strict-YAML host in the plant with nothing catching it. The plant
+linter now mirrors the check over every node (seed-installed and
+`origin: project` alike), planted in `tests/test_graph_lint.py` and documented
+as rule 20 in `templates/knowledge-graph/_schema.md`.
+
 ## 7.24.0 — each slow gate suite parallelises its own scenarios under one shared budget (2026-09-18)
 
 7.23.0 made the gate's ~46 STEPS run concurrently, but the wall-clock floor was

@@ -3,7 +3,7 @@ id: method.prose-posture
 tier: 2
 kind: method
 origin: seed
-title: prose posture — prose a person reads is written by judgment: meaning governs style, the information contract is preserved, genre outranks generic advice
+title: prose posture — prose a person reads is written by judgment — meaning governs style, the information contract is preserved, genre outranks generic advice
 owns:
   - prose-posture.meaning-governs-style
   - prose-posture.information-contract

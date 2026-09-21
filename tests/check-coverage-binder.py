@@ -45,6 +45,7 @@ COVERED = {
     "check_published_eager_figures",
     "check_published_body_figures",
     "check_shell_floor_claim_matches_the_shebang",
+    "check_frontmatter_is_portable_yaml",
 }
 
 

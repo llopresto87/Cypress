@@ -1,6 +1,6 @@
 ---
 name: brainstorm-internal
-description: The divergence technique CYPRESS applies to itself, with no user in the loop — generating genuinely distinct options against evidence already in hand, stating what would have to be true for each, and naming the one fact that would kill each. Use when a choice is the session's to make and the user has nothing to add to it: filling grill.md §7, assembling an ADR's rejected alternatives, choosing between two implementations that satisfy the same contract, or deciding how to sequence work. The user-facing mode is brainstorm-socratic; the protocol owns which mode you are in.
+description: The divergence technique CYPRESS applies to itself, with no user in the loop — generating genuinely distinct options against evidence already in hand, stating what would have to be true for each, and naming the one fact that would kill each. Use when a choice is the session's to make and the user has nothing to add to it - filling grill.md §7, assembling an ADR's rejected alternatives, choosing between two implementations that satisfy the same contract, or deciding how to sequence work. The user-facing mode is brainstorm-socratic; the protocol owns which mode you are in.
 id: skill.brainstorm-internal
 tier: 2
 kind: skill

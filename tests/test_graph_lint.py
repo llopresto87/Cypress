@@ -1497,5 +1497,40 @@ class SeedAndPlantCopyAgreeTests(unittest.TestCase):
             "that both ignore the rule is agreement about nothing")
 
 
+class FrontmatterPortableTests(unittest.TestCase):
+    """A plant node's frontmatter must parse under a strict-YAML loader too, not
+    only the lenient reader. Mirrors seed-lint's check_frontmatter_is_portable_yaml
+    so a node authored into a plant by grow, graft or by hand cannot carry an
+    inner ': ' that a strict-YAML host (Prime Agent) reads as a nested mapping
+    and drops."""
+
+    def setUp(self):
+        self.assertTrue(GRAPH_LINT.exists(), f"missing tool: {GRAPH_LINT}")
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def _graph_with_title(self, title_line: str) -> Path:
+        node = node_md("subsystem.alpha", "subsystem")
+        node = node.replace("title: subsystem.alpha node", title_line)
+        nodes = {
+            "root": node_md("root", "root", requires=["subsystem.alpha"]),
+            "subsystem.alpha": node,
+        }
+        return build_graph(self.tmp, nodes)
+
+    def test_inner_colon_space_in_title_is_caught(self):
+        """An unquoted title carrying an inner ': ' fails the portability check."""
+        r = run_lint(self._graph_with_title("title: subsystem.alpha node: the boundary"))
+        out = r.stdout + r.stderr
+        self.assertNotEqual(r.returncode, 0, f"inner ': ' must fail:\n{out}")
+        self.assertIn("strict-YAML loader", out, out)
+
+    def test_reworded_title_passes(self):
+        """The same clause reworded to an ASCII dash is on the readers' overlap."""
+        r = run_lint(self._graph_with_title("title: subsystem.alpha node - the boundary"))
+        self.assertEqual(r.returncode, 0, f"reworded title must pass:\n{r.stdout}\n{r.stderr}")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

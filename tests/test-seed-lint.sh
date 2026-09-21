@@ -646,6 +646,27 @@ case_agn_py_sh() {
   rm -rf "$TMP"
 }
 
+case_frontmatter_portable() {
+  local TMP; TMP="$(fresh)"
+  # 23. A shipped node whose unquoted title/description carries an inner ': '.
+  # The seed's lenient reader keeps it; a strict-YAML skill loader (Prime Agent)
+  # reads it as a nested mapping and drops the whole node. Claude Code's
+  # integration uses the lenient reader, so the two hosts diverge silently.
+  python3 - "$TMP/core/method/prose-posture.md" <<'PY'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1])
+t = p.read_text()
+old = "genre outranks generic advice"
+new = "genre outranks generic advice: always"
+assert old in t, "fixture drifted: prose-posture title tail changed"
+p.write_text(t.replace(old, new, 1))
+PY
+  # exercises: check_frontmatter_is_portable_yaml
+  expect_fail "strict-YAML skill loader" "frontmatter-inner-colon"
+  restore core/method/prose-posture.md
+  rm -rf "$TMP"
+}
+
 # --- one-case subcommand, run by the parallel dispatcher ---------------------
 if [ "${1:-}" = "__case" ]; then
   "$2"
@@ -664,7 +685,7 @@ TMP="$SEEDLINT_TMPL"
 lint >/dev/null || { echo "baseline seed-lint did not pass on a clean copy" >&2; exit 1; }
 
 SCN="$(mktemp)"
-for c in case_01 case_02 case_03 case_04 case_05 case_06 case_07 case_08 case_09 case_10 case_11 case_12 case_13 case_14 case_15 case_16 case_17 case_18 case_19 case_20 case_21 case_22 case_23 case_24 case_25 case_26 case_27 case_28 case_29 case_30 case_31 case_32 case_33 case_34 case_35 case_36 case_37 case_shell_floor case_agn_docs case_agn_py_sh; do
+for c in case_01 case_02 case_03 case_04 case_05 case_06 case_07 case_08 case_09 case_10 case_11 case_12 case_13 case_14 case_15 case_16 case_17 case_18 case_19 case_20 case_21 case_22 case_23 case_24 case_25 case_26 case_27 case_28 case_29 case_30 case_31 case_32 case_33 case_34 case_35 case_36 case_37 case_shell_floor case_agn_docs case_agn_py_sh case_frontmatter_portable; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0

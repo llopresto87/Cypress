@@ -5,7 +5,7 @@ id: skill.brainstorm-socratic
 tier: 2
 kind: skill
 origin: seed
-title: brainstorm-socratic — the user-facing brainstorm mode: questioning that converges a goal, capped at nine questions
+title: brainstorm-socratic — the user-facing brainstorm mode — questioning that converges a goal, capped at nine questions
 owns:
   - brainstorm-socratic.method
 requires:
