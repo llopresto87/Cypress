@@ -31,6 +31,39 @@ est_tokens, prevents; owns globally unique; the eight `rule.*` keys in
 exactly their mapped homes), canonical-block byte-identity in the brief
 templates, and the per-session instruction budget of the integrations.
 
+## Release (GitHub, tag-triggered)
+
+`tools/prepare-release.py` is seed-only — absent from `manifest.json`'s
+`tools` map, so it never ships to a plant. It stages
+`.github/RELEASE_NOTES.md` from the `CHANGELOG.md` entry for the current
+`manifest.json` version, taken verbatim rather than re-drafted: the entry
+already passed canonize's `skills/humanizer` prose pass, so re-authoring it
+here would be a second home for the same release, in the same voice, for
+the same reader. The staged file is `skill-corpus/discardme.md`-shaped
+scaffolding — produced this session, consumed by the pipeline below,
+superseded (not explicitly deleted) the next time the script runs for the
+following version, since a same-turn cleanup commit back to the default
+branch would race whatever lands on it next for no benefit a release reader
+gets.
+
+Flow, once the version bump and its `CHANGELOG.md` entry are committed:
+
+1. `python3 tools/prepare-release.py` — writes `.github/RELEASE_NOTES.md`
+   and prints the exact commands for the next step.
+2. `bash tests/run.sh` green, then commit the staged file with the rest of
+   the change.
+3. `git tag -a vX.Y.Z -m vX.Y.Z && git push && git push origin vX.Y.Z` —
+   pushing the tag is a publish and needs the same explicit go-ahead as any
+   other push (`core/method/vcs-posture.md`'s `vcs-posture.publish-authorization`).
+
+`.github/workflows/release.yml` triggers on that `vX.Y.Z` tag push, checks
+it against `manifest.json`, and runs `gh release create` with the staged
+file as the body, unedited. It writes no prose of its own: CI has no access
+to the judgment `skills/humanizer` and `skill-corpus/discardme.md` both
+require. `tests/seed-lint.py`'s `check_release_workflow` holds the
+workflow's shape; `tests/test_prepare_release.py` holds the script's
+extraction and CLI behavior.
+
 ## Canonical homes (edit the home, never a copy)
 
 - The seed IS a graph (6.0.0): every protocol, skill, agent, and

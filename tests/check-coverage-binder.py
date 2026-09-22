@@ -42,6 +42,7 @@ COVERED = {
     "check_frontmatter_reader_is_one_reader",
     "check_canonical_plant_root_boundary",
     "check_ci_workflow",
+    "check_release_workflow",
     "check_published_eager_figures",
     "check_published_body_figures",
     "check_shell_floor_claim_matches_the_shebang",

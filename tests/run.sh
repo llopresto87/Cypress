@@ -161,6 +161,9 @@ add_step python3 "$ROOT/tests/test_brainstorm_modes.py"
 # Tool authorship has an author, the rule keeps one home, and the close-out
 # still spawns once. The rule home is the dangerous edit of that split.
 add_step python3 "$ROOT/tests/test_tool_authorship.py"
+# tools/prepare-release.py's own regression: the CHANGELOG-section extraction
+# it stages into .github/RELEASE_NOTES.md for release.yml to publish verbatim.
+add_step python3 "$ROOT/tests/test_prepare_release.py"
 # Every machinery node can answer why it is on the roster: `prevents:` present
 # and a peer edge to cross. Published as the home for that in two reference
 # docs, and until now gated by nothing.
