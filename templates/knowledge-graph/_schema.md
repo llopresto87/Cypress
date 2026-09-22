@@ -315,8 +315,18 @@ needs more room is restating a leaf.
     omission it exists to catch. Those words are the contract; `graph-lint.py`
     reads every other section and skips these.
 
+A machinery upgrade can install a rule this graph has never been linted
+against, and a plant that was green the day before goes red on work nobody
+asked it for. `--warn` is the staged window for that: it prints every finding
+in full and exits 0, so the findings are visible while the plant closes them
+and the check is never quietly weakened to buy the time. `grill-lint.py`
+carries the same flag with the same meaning, so there is one adoption mode
+across both linters. Run the plain form once the window closes; a plant that
+leaves `--warn` in its gate has a gate that cannot fail.
+
 ```sh
 python3 docs/graph/graph-lint.py            # lint
+python3 docs/graph/graph-lint.py --warn     # report every finding, exit 0 (staged adoption)
 python3 docs/graph/graph-lint.py --graph    # print the edges: `→` requires, `~>` composes
 python3 docs/graph/graph-lint.py --plan "<task>"   # dry-run the router
 ```

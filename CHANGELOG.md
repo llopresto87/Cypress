@@ -59,7 +59,13 @@ that establish it, under the same evidence bar as any other status.
 **Two of these fixes make a gate quieter**, which is the shape of a weakened
 gate and is said plainly here for that reason: a check that reported a file it
 had never looked for now looks, and a name rule that failed an ordering prefix
-now strips it. Both were reporting things they had not established.
+now strips it. Both were reporting things they had not established. Neither
+narrowing is taken on trust: each arrives paired with the case that fires the
+gate on the genuine defect, so what shrank is the false positive and not the
+catch. Remove the snapshot and the first still reports, with the resolved path
+a reader can list; declare a name that disagrees with its file for real and the
+second still fails. A narrowing whose true-positive half is not asserted in the
+same change is a weakening with better manners.
 
 **Doctrine the plant's operations proved, and the seed did not own.** A gate
 found incapable of failing never worked, so the window in which its verdict
@@ -121,11 +127,16 @@ diff, the same fact with its provenance deleted.
 
 ### Landing this in a project
 
-Two new checks can turn a currently-green project red, correctly. A plan citing
-a decision that was never filed will now fail, and the plan linter's `--warn`
-mode exists for staged adoption. A library index whose rows do not register
-their pages will now fail, with the pending-section vocabulary stated in the
-graph schema.
+Two new checks can turn a currently-green project red, correctly: a plan citing
+a decision that was never filed, and a library index whose rows do not register
+their pages. A machinery upgrade installing a rule a graph has never been linted
+against is not the project's fault, so both now share one staged-adoption mode.
+The plan linter already had `--warn`; the graph linter gains it here, with the
+same meaning in both — every finding printed in full, exit code held back, the
+check itself untouched. A window is the honest way to buy time; a quieter check
+is not. Run the plain form once the window closes, since a gate left in `--warn`
+is a gate that cannot fail. The pending-section vocabulary that decides whether
+an index row registers a page is stated in the graph schema.
 
 ## 7.25.0 — frontmatter must parse under a strict-YAML skill loader, not only the lenient reader (2026-09-18)
 
