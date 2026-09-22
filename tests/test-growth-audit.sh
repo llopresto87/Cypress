@@ -118,6 +118,50 @@ f.write_text(json.dumps(r, indent=2) + "\n")
 PY
 }
 
+# --- 66. a reference the grammar does not recognise is said to be one ------
+# "does not exist in the plant" is a claim about the filesystem, and a
+# reference that never parsed as a path never reached the filesystem to earn
+# it. Every unrecognised shape collapsed into that one phrase, so a citation
+# with a trailing note over a file that is sitting right there sent the reader
+# hunting for a missing file instead of a stray parenthesis.
+caseAUDIT_MALFORMED_CITATION_IS_NOT_A_MISSING_FILE() {
+  local out
+  rm -rf "$TMP/x66"; cp -a "$TMP/absent" "$TMP/x66"
+  python3 - "$TMP/x66" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
+r["inventory"] = [{"kind": "framework", "name": "gfm", "slug": "gfm",
+                   "significance": "significant", "status": "ABSENT",
+                   "reason": "superseded by the markdown row",
+                   "searched": ["src/"],
+                   "evidence": ['docs/graph/index.md:1 (the note that broke it)'],
+                   "expect": [],
+                   "grounding": {"required": False, "sources": []}}]
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x66" "$ROOT" 2>&1)" || true
+  grep -q "is not a path citation" <<<"$out" \
+      || fail "a reference that does not parse was not reported as one"
+  grep -q "(the note that broke it)" <<<"$out" \
+      || fail "the malformed-reference finding did not name the part that did not parse"
+  ! grep -q "does not exist in the plant" <<<"$out" \
+      || fail "a malformed citation over a file that exists was called a missing file"
+  # …and an ordinary missing file still says so, over the same fixture.
+  python3 - "$TMP/x66" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
+r["inventory"][0]["evidence"] = ["docs/graph/never-written.md"]
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x66" "$ROOT" 2>&1)" || true
+  grep -q "does not exist in the plant" <<<"$out" \
+      || fail "a genuinely missing citation stopped being reported as missing"
+  ! grep -q "is not a path citation" <<<"$out" \
+      || fail "a well-formed citation was reported as unparseable"
+  [[ "$(audit_at "$TMP/x66")" == 1 ]] \
+      || fail "a dangling citation passed the gate"
+}
+
 # --- 46. an ABSENT row still owes the artifacts it declares ----------------
 caseAUDIT_ABSENT_ROW_STILL_CHECKS_DECLARED_ARTIFACTS() {
   local out
@@ -435,6 +479,33 @@ caseAUDIT_RAW_SIBLING_SATISFIES_A_PAGE_THAT_NAMES_NO_PATH() {
   out="$(python3 "$AUDIT" "$TMP/x56" "$ROOT" 2>&1)" || true
   grep -q "normalized/react.md retains no raw snapshot" <<<"$out" \
       || fail "the sibling scan is vacuous — the page passes with no snapshot either"
+}
+
+# --- 67. a bare token is opened too, not only a prefixed one --------------
+# A `raw:` value naming one bare filename resolves against sources/raw/, and
+# that branch printed "which does not exist" without ever opening the path,
+# while the branch beside it — for a `raw/`-prefixed token — opens its own.
+# Two branches printing the same existence verdict owe the same check: the
+# false one reports a snapshot missing while it sits exactly where the message
+# says it is not. The page's stem differs from the snapshot's, so the sibling
+# scan cannot satisfy this and the branch is the only thing under test.
+caseAUDIT_BARE_RAW_TOKEN_IS_TESTED_NOT_ASSUMED() {
+  local out
+  rm -rf "$TMP/x67"; cp -a "$TMP/rawbase" "$TMP/x67"
+  raw_page "$TMP/x67" vue "upstream-guide-2026-09-10.html"
+  printf '<html>guide</html>\n' \
+      > "$TMP/x67/docs/graph/sources/raw/upstream-guide-2026-09-10.html"
+  out="$(python3 "$AUDIT" "$TMP/x67" "$ROOT" 2>&1)" || true
+  ! grep -q "normalized/vue.md" <<<"$out" \
+      || fail "a bare raw: token whose snapshot is on disk was reported missing"
+  # the trap is live: remove the snapshot and the same page is reported, with
+  # the resolved path a reader can `ls`.
+  rm -f "$TMP/x67/docs/graph/sources/raw/upstream-guide-2026-09-10.html"
+  out="$(python3 "$AUDIT" "$TMP/x67" "$ROOT" 2>&1)" || true
+  grep -q "docs/graph/sources/raw/upstream-guide-2026-09-10.html" <<<"$out" \
+      || fail "a bare raw: token naming a snapshot that is not there went unreported"
+  [[ "$(audit_at "$TMP/x67")" == 1 ]] \
+      || fail "a normalized page whose named snapshot is absent passed the gate"
 }
 
 # --- 57. the finding names the path it actually tested --------------------
@@ -1077,6 +1148,8 @@ caseAUDIT_UNKNOWN_COLLECTION_ROW_IS_CARRIED
 echo "  an UNKNOWN collection is carried into the summary, exit 0 — OK"
 caseAUDIT_CITED_LINE_NUMBER_MUST_EXIST
 echo "  a cited line number is checked against the file's real length — OK"
+caseAUDIT_MALFORMED_CITATION_IS_NOT_A_MISSING_FILE
+echo "  a reference that does not parse is said not to parse — OK"
 }
 
 scn_staff() {
@@ -1336,7 +1409,15 @@ grep -q "expert fraud-expert" <<<"$out22" \
     || fail "an expert declaring origin: seed made itself invisible to the gate"
 rm -f "$TMP/dflt/docs/graph/agents/fraud-expert.md"
 
-# --- 23. the filename is what the harness spawns --------------------------
+# --- 23. the declared name and the filename have to agree -----------------
+# Harnesses disagree about which identifier they spawn by: one calls a subagent
+# by its frontmatter `name`, another discovers the roster by filename and its
+# projection carries no name at all. Neither settles it alone, so what the
+# check owes is that the two AGREE — with the ordering prefix a file may carry
+# for its reader taken off first, which is the relationship the seed's own
+# roster keeps. Stated as "the harness spawns by filename", the rule was false
+# of every numbered file in the seed's own agents/, and only the expert arm's
+# scope — which never sees them — kept that from showing.
 python3 - "$TMP/dflt" <<'PY'
 import pathlib, sys
 p = pathlib.Path(sys.argv[1])
@@ -1345,8 +1426,57 @@ a.write_text(a.read_text().replace("name: claims-expert", "name: claims-adjudica
 (p/".claude/agents/claims-expert.md").write_text(a.read_text())
 PY
 out23="$(python3 "$AUDIT" "$TMP/dflt" "$ROOT" --agents 2>&1)" || true
-grep -q "spawns by filename" <<<"$out23" \
+grep -q "HOLLOW       expert claims-expert" <<<"$out23" \
     || fail "a frontmatter name disagreeing with the filename was accepted"
+grep -q "only some of them can call" <<<"$out23" \
+    || fail "the name disagreement was not reported as the callability defect it is"
+python3 - "$TMP/dflt" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+a = p/"docs/graph/agents/claims-expert.md"
+a.write_text(a.read_text().replace("name: claims-adjudicator", "name: claims-expert"))
+(p/".claude/agents/claims-expert.md").write_text(a.read_text())
+PY
+
+# --- 23b. an ordering prefix is presentation, not identity ----------------
+# The rule the seed's own roster keeps, asked of a plant that keeps it too.
+python3 - "$TMP/dflt" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+body = "\n\n## Charter\n\n" + ("It owns settlement timing in this project. " * 13) + "\n"
+node = ("---\nname: ordered-expert\norigin: project\nplant_knowledge:\n"
+        "  - architecture/\n---\n# Ordered expert" + body)
+(p/"docs/graph/agents/20-ordered-expert.md").write_text(node)
+(p/".claude/agents/20-ordered-expert.md").write_text(node)
+PY
+python3 "$AUDIT" "$TMP/dflt" "$ROOT" --plan >/dev/null 2>&1 || true
+python3 - "$TMP/dflt" <<'PY'
+import json, pathlib, sys
+f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
+for e in r["experts"]:
+    e.update(status="COVERED", motivated_by=["src/A.cs:1"])
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+out23b="$(python3 "$AUDIT" "$TMP/dflt" "$ROOT" --agents 2>&1)" || true
+! grep -q "only some of them can call" <<<"$out23b" \
+    || fail "a numbered file declaring the name with its prefix off was failed"
+# and the rule is tested against the one roster known to be correct: the seed's
+# own. A rule its reference implementation fails is not a rule, and exempting
+# the reference implementation is how that goes unnoticed.
+python3 - "$ROOT" <<'PY' || fail "the name rule does not hold of the seed's own roster"
+import importlib.util, pathlib, sys
+seed = pathlib.Path(sys.argv[1])
+spec = importlib.util.spec_from_file_location("ga", seed/"tools/growth-audit.py")
+ga = importlib.util.module_from_spec(spec); spec.loader.exec_module(ga)
+files = sorted((seed/"agents").glob("*.md"))
+assert files, "the seed carries no agents/ to test the rule against"
+bad = [(p.name, n) for p in files
+       for n in [str(ga.parse_frontmatter(p).get("name") or "").strip()]
+       if n and n != ga.spawn_name(p.stem)]
+assert not bad, f"the seed's own roster fails the rule the audit applies: {bad}"
+PY
+rm -f "$TMP/dflt/docs/graph/agents/20-ordered-expert.md" \
+      "$TMP/dflt/.claude/agents/20-ordered-expert.md"
 
 # --- 24. a plant whose stamp cannot say where a roster is spawnable from ---
 # The projection paths live in the stamp install.sh writes. A stamp that
@@ -2079,6 +2209,8 @@ caseAUDIT_RAW_SIBLING_SATISFIES_A_PAGE_THAT_NAMES_NO_PATH
 echo "  a page that names no path is still satisfied by its snapshot — OK"
 caseAUDIT_RAW_FINDING_NAMES_THE_PATH_IT_TESTED
 echo "  an UNJUSTIFIED raw: finding names the resolved path it opened — OK"
+caseAUDIT_BARE_RAW_TOKEN_IS_TESTED_NOT_ASSUMED
+echo "  a bare raw: token is opened, not asserted missing unopened — OK"
 }
 
 scn_x58() {
@@ -2136,6 +2268,107 @@ caseAUDIT_ROW_PLAN_COVERS_WHAT_ITS_KIND_OWES
 echo "  a row's plan must cover what its kind owes — OK"
 }
 
+scn_x68() {
+# --- 68. a declaration a project answers severally, not jointly -----------
+# An agent declares the collections it must be able to read, and a project may
+# genuinely have the subject of some and not of others. Pooled all-of — which
+# is right, and stays right — such a row had no honest state left: COVERED is
+# contradicted by the empty entry, ABSENT is false of the filled ones, and what
+# remained was the status that means nobody looked. An agent whose material
+# half exists was recorded exactly like an agent nobody audited, at the row
+# where the distinction between ungrown and absent is worth the most. The
+# remedy is to establish the absence where it is true, per collection, and it
+# closes a row rather than opening a way past one.
+  local out agent filled empty
+  rm -rf "$TMP/x68"; mkdir -p "$TMP/x68"
+  bash "$ROOT/install.sh" claude-code --project-dir "$TMP/x68" >/dev/null 2>&1
+  python3 "$AUDIT" "$TMP/x68" "$ROOT" --plan >/dev/null 2>&1 || true
+  # Derived from the seed's own roster, never named here: the first agent
+  # declaring two collections, one of which this fixture fills.
+  python3 - "$TMP/x68" "$ROOT" > "$TMP/x68.pick" <<'PY'
+import importlib.util, json, pathlib, sys
+plant, seed = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+spec = importlib.util.spec_from_file_location("ga", seed/"tools/growth-audit.py")
+ga = importlib.util.module_from_spec(spec); spec.loader.exec_module(ga)
+pick = next((n, [e for e in r if e.endswith("/")])
+            for n, r in sorted(ga.required_agents(seed).items())
+            if len([e for e in r if e.endswith("/")]) >= 2)
+name, (filled, empty) = pick[0], pick[1][:2]
+leaf = plant/"docs/graph"/filled/"authored.md"
+leaf.parent.mkdir(parents=True, exist_ok=True)
+leaf.write_text("# authored\n\n" + ("A fact this project wrote down itself. " * 14))
+f = plant/".cypress/coverage.json"; r = json.loads(f.read_text())
+for a in r["agents"]:
+    if a["name"] == name:
+        a.update(status="COVERED",
+                 evidence=[f"docs/graph/{filled}authored.md"])
+f.write_text(json.dumps(r, indent=2) + "\n")
+print(name); print(filled); print(empty)
+PY
+  agent="$(sed -n 1p "$TMP/x68.pick")"
+  filled="$(sed -n 2p "$TMP/x68.pick")"
+  empty="$(sed -n 3p "$TMP/x68.pick")"
+  out="$(python3 "$AUDIT" "$TMP/x68" "$ROOT" --agents 2>&1)" || true
+  grep -q "CONTRADICTED agent $agent" <<<"$out" \
+      || fail "a row claiming COVERED over an empty declared collection was accepted"
+
+  # Establish the one absence where it is true, and the rest of the row stands
+  # on its own terms.
+  absent_row() { python3 - "$TMP/x68" "$agent" "$1" <<'PY'
+import json, pathlib, sys
+f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
+for a in r["agents"]:
+    if a["name"] == sys.argv[2]:
+        a["absent"] = json.loads(sys.argv[3])
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  }
+  python3 - "$TMP/x68" "$agent" "$filled" <<'PY'
+import json, pathlib, sys
+f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
+for a in r["agents"]:
+    if a["name"] == sys.argv[2]:
+        a["absent"] = {e: {"reason": "this project has no such subject",
+                           "searched": ["src/"]}
+                       for e in a["reads"] if e != sys.argv[3]}
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x68" "$ROOT" --agents 2>&1)" || true
+  ! grep -q "agent $agent" <<<"$out" \
+      || fail "a row that established its inapplicable collections still could not close"
+
+  # It closes a row, so it is not a way past one. Each guard, one at a time.
+  absent_row "{\"$empty\": {\"searched\": [\"src/\"]}}"
+  out="$(python3 "$AUDIT" "$TMP/x68" "$ROOT" --agents 2>&1)" || true
+  grep -q "absent by design with no reason" <<<"$out" \
+      || fail "an absence by design with no reason was accepted"
+  absent_row "{\"$empty\": {\"reason\": \"no such subject\"}}"
+  out="$(python3 "$AUDIT" "$TMP/x68" "$ROOT" --agents 2>&1)" || true
+  grep -q "absent by design with a reason but no searched paths" <<<"$out" \
+      || fail "an absence by design naming nowhere it looked was accepted"
+  absent_row "{\"$filled\": {\"reason\": \"no such subject\", \"searched\": [\"src/\"]}}"
+  out="$(python3 "$AUDIT" "$TMP/x68" "$ROOT" --agents 2>&1)" || true
+  grep -q "is one it wrote in" <<<"$out" \
+      || fail "a collection this plant wrote in was allowed to be absent by design"
+  absent_row "{\"nowhere/\": {\"reason\": \"no such subject\", \"searched\": [\"src/\"]}}"
+  out="$(python3 "$AUDIT" "$TMP/x68" "$ROOT" --agents 2>&1)" || true
+  grep -q "does not declare it reads it" <<<"$out" \
+      || fail "an absence was accepted for a collection the agent never declared"
+  python3 - "$TMP/x68" "$agent" <<'PY'
+import json, pathlib, sys
+f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
+for a in r["agents"]:
+    if a["name"] == sys.argv[2]:
+        a["absent"] = {e: {"reason": "no such subject", "searched": ["src/"]}
+                       for e in a["reads"]}
+f.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  out="$(python3 "$AUDIT" "$TMP/x68" "$ROOT" --agents 2>&1)" || true
+  grep -q "no declaration is left for the coverage to be about" <<<"$out" \
+      || fail "a row absented every collection it declares and still claimed coverage"
+  echo "  a declaration is answered per collection, and closes nothing else — OK"
+}
+
 # --- __case dispatch: run ONE scenario in isolation --------------------
 if [ "${1:-}" = "__case" ]; then
   "$2"
@@ -2152,7 +2385,8 @@ for s in \
     scn_x38 scn_x39 scn_x40 scn_x41 \
     scn_x42 scn_x43 scn_x44 scn_x45 \
     scn_rawbase scn_x58 scn_x59 scn_x60 \
-    scn_x61 scn_x62x63 scn_x64 scn_x65
+    scn_x61 scn_x62x63 scn_x64 scn_x65 \
+    scn_x68
 do
   printf '%s\t%s\n' "$s" "bash \"$SELF\" __case $s" >> "$SCN"
 done

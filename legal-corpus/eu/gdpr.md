@@ -25,7 +25,7 @@ a further set of entries verified **2026-08-05** (see each entry).
 Most entries were re-derived from the full EUR-Lex GDPR text (EN and IT)
 retrieved by routing `curl` through the `r.jina.ai` read-only rendering proxy
 (the schema requires naming the proxy for any `proxy-sourced` grade). The page
-is therefore **split into three provenance groups**, and flattening it back to a
+is therefore **split into four provenance groups**, and flattening it back to a
 single banner would be the exact falsification `../_schema.md` rule 4 forbids:
 
 | Group | Provenance | Quotable? |
@@ -33,6 +33,7 @@ single banner would be the exact falsification `../_schema.md` rule 4 forbids:
 | **Group A** — Arts. 5, 6, 9, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24, 25, 28, 30, 32, 33, 34, 35, 36, 44, 45, 46, 47, 77, 82 | `proxy-sourced` from EUR-Lex | **Only where the entry's own `text_form` says `verbatim`** and its `text` carries the quoted wording. Group A is a *provenance* group, not a promise of quotability: some Group A entries record a `normalized summary` instead, and those may never be quoted. **Read the entry's `text_form`. Never quote from this row.** |
 | **Group B** — Arts. 4, 7, 49 | `mirror-corroborated` from a site republishing the OJ text, `text_form: normalized summary` | **No** — cite substance and id only |
 | **Group C** — Art. 42 | `secondary-corroborated` from an unofficial consolidation | **No**, and weakest on the page |
+| **Group D** — Art. 87 | `primary-fetched` direct from the Publications Office of the European Union, both editions read and compared | **Yes**, as a quotation |
 
 Consequences, which are not negotiable:
 
@@ -44,6 +45,16 @@ Consequences, which are not negotiable:
   the entry id.
 - Upgrading anything here to `primary-fetched` requires a new retrieval of the
   OJ text itself, recorded with its own date.
+- **A direct route to the publisher now exists, and Group A has not been
+  re-derived through it.** The `eur-lex.europa.eu` front end was re-probed on
+  2026-09-22 and still refuses non-browser clients (HTTP 202, an
+  `x-amzn-waf-action: challenge` header, empty body). The Publications Office's
+  own CELLAR resource endpoint at `publications.europa.eu`, which is the same
+  publisher rather than a proxy, answers a plain content-negotiated request and
+  served both editions of this Regulation in that pass — the route Group D was
+  fetched through. That is an opportunity, not an upgrade: every Group A grade
+  stands until the entry is re-read from this route and re-recorded with its own
+  date.
 
 **A retrieval lesson worth more than any single entry.** A summarizing
 `WebFetch`-style fetch of the *same* proxied URL truncated this ~360 KB document
@@ -53,8 +64,9 @@ proxied URL to a file and read it directly for anything beyond a few pages.
 
 ## Entry index (navigation only — read the entry for status and caveats)
 
-**Grade column:** `P` = proxy-sourced/verbatim · `M` = mirror-corroborated
-summary · `S` = secondary-corroborated.
+**Grade column:** `D` = primary-fetched direct from the publisher · `P` =
+proxy-sourced/verbatim · `M` = mirror-corroborated summary · `S` =
+secondary-corroborated.
 
 | id | provision | topic | Grade |
 |---|---|---|---|
@@ -115,6 +127,7 @@ summary · `S` = secondary-corroborated.
 | `gdpr-art-49-1` | Art. 49(1) | transfers — derogations | M |
 | `gdpr-art-77` | Art. 77 | right to lodge a complaint | P |
 | `gdpr-art-82` | Art. 82 | right to compensation and liability | P |
+| `gdpr-art-87` | Art. 87 | **national identification number — a Member State enabling clause** | D |
 
 Standing fields, identical on every **Group A** entry below unless the entry
 says otherwise:
@@ -1597,6 +1610,72 @@ own entries below.
   found in a data processing agreement. Para. 6 routes the forum through
   Art. 79(2).
 
+## Specific processing situations
+
+Chapter IX of the Regulation, "Provisions relating to specific processing
+situations". Its articles are **enabling clauses addressed to Member States**
+rather than obligations on a controller, which is the one thing a citation from
+this section must carry with it.
+
+### `gdpr-art-87`
+
+- **instrument:** Regulation (EU) 2016/679 (GDPR) — *regulation*
+- **provision:** Article 87, "Processing of the national identification number",
+  in Chapter IX. The article is a single unnumbered paragraph of two sentences.
+- **text_form:** **verbatim**
+- **text (EN):** "Member States may further determine the specific conditions
+  for the processing of a national identification number or any other identifier
+  of general application. In that case the national identification number or any
+  other identifier of general application shall be used only under appropriate
+  safeguards for the rights and freedoms of the data subject pursuant to this
+  Regulation."
+- **official_url:** act as adopted, OJ L 119, 4.5.2016, p. 1 —
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679 ·
+  consolidated text —
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02016R0679-20160504
+- **consulted:** both editions retrieved on 2026-09-22 from the Publications
+  Office of the European Union's own CELLAR resource endpoint
+  (`https://publications.europa.eu/resource/celex/32016R0679` and
+  `https://publications.europa.eu/resource/celex/02016R0679-20160504`,
+  content-negotiated with `Accept: application/xhtml+xml` and
+  `Accept-Language: eng`), each written to a file and read from the file rather
+  than summarized in flight — **verification_grade:** `primary-fetched`. That
+  endpoint is the publisher's own repository, not a proxy or a mirror. The
+  `eur-lex.europa.eu` front end was re-probed in the same pass and still refuses
+  non-browser clients: HTTP 202, an `x-amzn-waf-action: challenge` header, and an
+  empty body.
+- **language_version:** English. **Both editions were read and compared**: the
+  act as adopted, CELEX `32016R0679`, and the **consolidated** text, CELEX
+  `02016R0679-20160504`, consolidated **as at 4 May 2016** and stamped
+  `02016R0679 — EN — 04.05.2016 — 000.002`, whose header records the one
+  correction to date, the Corrigendum at OJ L 127, 23.5.2018, p. 2. **Article 87
+  reads character-for-character the same in the two**, so this entry is citable
+  on either. The corrigendum's three `►C1` markers in the consolidated text sit
+  at Arts. 43(3) and 65(1)(a), not here — which settles for this provision the
+  question the page header leaves open for the rest.
+- **verified:** 2026-09-22
+- **legal_status:** `in force`. Taken from the publisher rather than assumed: the
+  CELLAR metadata notice for CELEX `32016R0679`, retrieved in the same pass,
+  carries `RESOURCE_LEGAL_IN-FORCE` with the value `true`, an end-of-validity
+  date of the open-ended `9999-12-31` sentinel, entry into force 24 May 2016 and
+  date of application 25 May 2018.
+- **notes — what a consumer must not over-claim, and it is the whole of the
+  article.** This provision **grounds no obligation and no prohibition on its
+  own.** Its first sentence is a permission addressed to Member States; its
+  second bites only where a Member State has exercised that permission, and then
+  binds whatever conditions that State laid down. A citation of Art. 87 alone
+  therefore supports no conclusion about any particular identifier in any
+  particular country. What is enforceable is the **national measure**, and a
+  national measure lives in this corpus's `../national/` scope or it is not
+  citable from here at all. Whether any given Member State has adopted one was
+  **not searched in this pass**, so the absence of a national page beside this
+  entry is an unexamined gap rather than a verified absence. Two adjacent
+  distinctions the wording itself makes: the article reaches "any other
+  identifier of general application" and not only a state-issued personal number,
+  and it says "appropriate safeguards" without naming any, so it defers the
+  content of those safeguards to the national measure and to the Regulation's own
+  Arts. 5, 25 and 32 rather than supplying it.
+
 ---
 
 ## Not transcribed — known coverage gaps
@@ -1615,7 +1694,19 @@ own entries below.
   `proxy-sourced` to `primary-fetched`. Blocked at the time of writing by the
   publisher's WAF challenge against non-browser clients (HTTP 202 plus a WAF
   action header). The blockage is itself a durable fact — the next pass should
-  not have to rediscover it.
+  not have to rediscover it. **Re-probed 2026-09-22, and it has gone stale in
+  the helpful direction:** the `eur-lex.europa.eu` front end still answers 202
+  with the challenge header, but the Publications Office's CELLAR resource
+  endpoint at `publications.europa.eu` serves both editions to a plain
+  content-negotiated request (the route recorded on `gdpr-art-87`). Group A can
+  now be re-derived, article by article, from the publisher itself. Until an
+  entry is actually re-read that way and re-recorded with its own date, its
+  grade stands where it is.
+- **The rest of Chapter IX.** Arts. 85, 86, 88, 89, 90 and 91 sit beside
+  `gdpr-art-87` in the fetched text and are `not recorded` here. Art. 88
+  (employment) is the one most likely to be wanted next. Whether any national
+  page in this corpus was adopted under a Chapter IX enabling clause was not
+  established in this pass, so no such linkage is asserted.
 
 ## Neighbours
 

@@ -45,12 +45,15 @@ DEFAULT_PRESERVE = ("ROOT_ID", "KINDS", "KIND_PREFIX")
 def grab_assignment(text: str, name: str):
     """Return the full source of a top-level `NAME = <value>` assignment,
     consuming continuation lines until brackets balance (handles multi-line
-    dict/set/list literals). None if not found."""
+    dict/set/list literals) and carrying the contiguous comment block directly
+    above it. A value preserved without the comment above it preserves the
+    decision and drops the argument for it, leaving the next reader a local
+    value that disagrees with the default and no reason not to clean it up.
+    None if not found."""
     m = re.search(rf"^{name}\s*=.*$", text, re.M)
     if not m:
         return None
-    start = m.start()
-    lines = text[start:].splitlines(keepends=True)
+    lines = text[m.start():].splitlines(keepends=True)
     buf, depth = "", 0
     for ln in lines:
         buf += ln
@@ -58,7 +61,26 @@ def grab_assignment(text: str, name: str):
         depth -= ln.count("}") + ln.count("]") + ln.count(")")
         if depth <= 0:
             break
-    return buf.rstrip("\n")
+    return (leading_comment(text, m.start()) + buf).rstrip("\n")
+
+
+def leading_comment(text: str, start: int) -> str:
+    """The `#` block immediately above `start`, stopping at a blank line and at
+    any line of code — a backward walk that keeps going swallows an unrelated
+    module comment that happens to sit directly above."""
+    head, out = text[:start].splitlines(keepends=True), []
+    while head and head[-1].lstrip().startswith("#"):
+        out.append(head.pop())
+    return "".join(reversed(out))
+
+
+def split_comment(asg: str):
+    """An assignment source as (its leading comment block, the assignment)."""
+    lines = asg.splitlines(keepends=True)
+    i = 0
+    while i < len(lines) and lines[i].lstrip().startswith("#"):
+        i += 1
+    return "".join(lines[:i]), "".join(lines[i:])
 
 
 def strip_inline_comment(line: str) -> str:
@@ -94,8 +116,8 @@ def engine_body(text: str, preserve) -> set:
 
 def _rhs(asg: str) -> str:
     """The right-hand side of an assignment source (everything after the first
-    '='), whitespace-stripped."""
-    return asg.split("=", 1)[1].strip()
+    '=' of the assignment itself), whitespace-stripped."""
+    return split_comment(asg)[1].split("=", 1)[1].strip()
 
 
 def is_set_literal(rhs: str) -> bool:
@@ -166,17 +188,22 @@ def main() -> int:
             print(f"  adopted seed default {name} (plant predated it)")
             continue
         p_rhs, s_rhs = _rhs(p_asg), _rhs(s_asg)
+        # the reason for the value travels with the value: the plant's own
+        # comment where it wrote one, else the seed's — a knob that arrives
+        # with no argument for it is a knob the next reader tidies away.
+        lead, p_body = split_comment(p_asg)
+        lead = lead or split_comment(s_asg)[0]
         if is_set_literal(p_rhs) and is_set_literal(s_rhs):
             # additive-vocabulary knob (e.g. KINDS): union so the seed's new
             # members AND the plant's own members both survive.
-            new_asg = f"{name} = {union_set(p_rhs, s_rhs)}"
+            new_asg = f"{lead}{name} = {union_set(p_rhs, s_rhs)}"
             merged = merged.replace(s_asg, new_asg, 1)
             seed_new = [m for m in set_members(s_rhs) if m not in set_members(p_rhs)]
             plant_own = [m for m in set_members(p_rhs) if m not in set_members(s_rhs)]
             if seed_new or plant_own:
                 print(f"  unioned {name}: added seed {seed_new or '[]'}, kept plant {plant_own or '[]'}")
         else:
-            merged = merged.replace(s_asg, p_asg, 1)
+            merged = merged.replace(s_asg, lead + p_body.rstrip("\n"), 1)
             if p_asg.strip() != s_asg.strip():
                 print(f"  kept plant {name}")
 

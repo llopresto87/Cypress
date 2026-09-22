@@ -304,6 +304,16 @@ needs more room is restating a leaf.
     Agent) reads an inner `: ` as a nested mapping and drops the node; the
     lenient reader keeps it, so the two hosts diverge silently. Quote the value
     or reword the clause.
+21. An ingested library page, meaning one carrying a `## 0. Pin` heading, is
+    registered by `libraries/index.md`: a link whose target resolves to it, or
+    a table cell holding its name or stem whole. Case does not matter; a page
+    an index titles the way the library's own docs do is the same page. What
+    does matter is WHICH section the row sits in. A row under a heading marked
+    **pending**, **planned**, **unwritten**, **not yet**, **to ingest**,
+    **backlog** or **TODO** records that the page has *not* been written, so it
+    registers nothing: counting it would make the check green on precisely the
+    omission it exists to catch. Those words are the contract; `graph-lint.py`
+    reads every other section and skips these.
 
 ```sh
 python3 docs/graph/graph-lint.py            # lint

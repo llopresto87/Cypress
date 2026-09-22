@@ -24,11 +24,13 @@ const TRIVIAL = new Set([
   "", "yes", "no", "ok", "thanks", "thank you", "go", "continue", "y", "n",
 ]);
 
-// The graph linter lives at docs/graph/graph-lint.py (the scaffold the installer
-// drops) or tools/graph-lint.py. Walk up from cwd to find the project root.
+// The graph linter lives at docs/graph/graph-lint.py — the scaffold the
+// installer drops, and the only path it writes. Walk up from cwd to find the
+// project root. A candidate no writer produces is not a fallback: the only file
+// it could ever select is one this project did not put there, so a path is
+// listed here only while something writes it (mirrors route-hook.py).
 const CANDIDATES = [
   ["docs", "graph", "graph-lint.py"],
-  ["tools", "graph-lint.py"],
 ];
 
 function findLint(startDir: string): { lint: string; root: string } | null {

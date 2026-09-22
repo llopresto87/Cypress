@@ -28,7 +28,12 @@ export PYTHON_COLORS=0
 plain() { sed -e 's/\x1b\[[0-9;]*[A-Za-z]//g'; }
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-WORK="$(mktemp -d)"
+# The same principle, one input further along. `mktemp -d` may hand back a
+# route through a symlink, and the tool under test resolves whatever path it
+# is handed, so a fixture root that was never resolved compares two spellings
+# of one directory and reads as a roster the seed does not own. Resolve it
+# where it is created and every assertion below is against the same string.
+WORK="$(cd "$(mktemp -d)" && pwd -P)"
 trap 'rm -rf "$WORK"' EXIT
 fails=0
 fail() { echo "FAIL: $*" >&2; fails=$((fails + 1)); }

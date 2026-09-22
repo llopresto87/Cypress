@@ -111,13 +111,22 @@ tags, rolling-branch consumption being an opted-in, recorded risk.
 ## 4. Never suppress an advisory; decide upgrades on measured reachability
 
 Vulnerability advisories are promoted to build errors, never suppressed;
-suppressions are replaced by explicit remediation pins, and a scan bypass
-is a logged risk acceptance on the register (`method.incident-posture`),
-not a passing gate. Each upgrade or deliberate non-upgrade is decided on
-whether the advisory is actually reachable in this codebase and whether
-the newer version is genuinely better — measured, since a newer release
-can carry more findings or fail to boot — and every non-upgrade is
-recorded with the measurement that justified it. An archived or
+suppressions are replaced by explicit remediation pins, and a scan
+bypass is a logged risk acceptance on the register
+(`method.incident-posture`), not a passing gate. Each upgrade or
+deliberate non-upgrade is decided on whether the advisory is actually
+reachable in this codebase and whether the newer version is genuinely
+better — measured, since a newer release can carry more findings or fail
+to boot — and every non-upgrade is recorded with the measurement that
+justified it. That recording carries the condition its justification
+rests on, whether a support window it assumes or an upstream state it
+measured, and is re-measured, never inherited, before the condition
+lapses: an upstream constraint whose own report has since closed is a
+citation that no longer cites anything. Currency is a standing
+obligation and not an arrival: the lapse that left a line unsupported is
+available to reproduce itself on the line that replaced it, so the work
+closes with a recurring check and a named owner instead of a migration
+marked done. An archived or
 commercially relicensed upstream is a production blocker regardless of
 current exposure: record the escape hatch before you need it, and the
 licence option a multi-licensed dependency is used under. Dependencies
@@ -125,13 +134,13 @@ whose upgrade could silently change computed results are held constant
 behind a golden-value characterization test (`protocol.test-first`). Do
 not stack two risky upgrades on one change: the proven line on the
 production path, the newer as a separately reversible fast-follow
-(`method.engineering-posture`: boring on the production path); forced off
-an end-of-life generation, target the supported line with the longest
-runway, and budget the upgrade by the hand-written rewrites it may spend.
-Four supply-chain gates run in CI — advisories failing on high severity,
-committed-secret scanning, static analysis for injection patterns, image
-scanning under the pinned-tag policy — each with the positive control
-`protocol.verify` requires of a zero.
+(`method.engineering-posture`: boring on the production path); forced
+off an end-of-life generation, target the supported line with the
+longest runway, and budget the upgrade by the hand-written rewrites it
+may spend. Four supply-chain gates run in CI — advisories failing on
+high severity, committed-secret scanning, static analysis for injection
+patterns, image scanning under the pinned-tag policy — each with the
+positive control `protocol.verify` requires of a zero.
 
 ## 5. Land the reversible parts first; gate the one-way step on their evidence
 

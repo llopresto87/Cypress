@@ -1475,6 +1475,137 @@ class ClassFloorTests(unittest.TestCase):
             f"a legacy two-column corpus must still pass:\n{r.stdout}\n{r.stderr}")
 
 
+class MeasuredRosterTests(unittest.TestCase):
+    """An absolute floor is a statement about the roster it was measured over.
+
+    `PARAPHRASE_FLOOR` counts confident-correct held-out answers, and scoring is
+    relative to the set of agents being ranked: an agent added to a roster
+    raises the document frequency of ordinary words, lowers every term's weight,
+    and can push a still-correct top pick below the confidence band, where it is
+    counted as an abstention. Growing the roster is what the growth protocols
+    exist to do, so a floor keyed to whatever roster is on disk fails on the
+    mandated path. The floor is therefore keyed to the roster it was measured
+    over — every node of it `origin: seed` — and reports rather than gates
+    anywhere else. The two rosters below score the SAME corpus to opposite
+    verdicts, which is the whole of the scoping.
+    """
+
+    GATED = "below the recorded floor"
+    REPORTED = "Reported, not gated"
+
+    def setUp(self):
+        self.tmp_path = Path(tempfile.mkdtemp(prefix="cypress-roster-"))
+        self.addCleanup(shutil.rmtree, self.tmp_path, ignore_errors=True)
+        self.roster = self.tmp_path / "agents"
+        self.roster.mkdir()
+        for f in ROSTER.glob("*.md"):
+            shutil.copy(f, self.roster / f.name)
+
+    def _eval(self):
+        return run(require_lint(), ["--eval", "--dir", str(self.roster)],
+                   cwd=self.tmp_path)
+
+    def _neutered_corpus(self) -> str:
+        """The shipped corpus with every paraphrase task replaced by vocabulary
+        no agent carries, so the class abstains throughout and lands under the
+        floor. Each replacement is disjoint from the others, so the duplicate
+        and near-duplicate checks see distinct evidence and the only thing left
+        for the gate to turn on is the floor itself."""
+        out, n = [], 0
+        for line in CORPUS_TSV.read_text(encoding="utf-8").splitlines():
+            parts = line.split("\t")
+            if len(parts) > 2 and parts[2].strip() == "paraphrase":
+                n += 1
+                parts[0] = " ".join(f"{w}{n}" for w in
+                                    ("zyzzogeton", "brillig", "slithy", "borogove"))
+                line = "\t".join(parts)
+            out.append(line)
+        assert n, "no paraphrase rows in the shipped corpus to neuter"
+        return "\n".join(out) + "\n"
+
+    def _grow(self):
+        """Add a specialist the seed did not ship, the way a plant commissions
+        one: an ordinary well-formed agent carrying the project ownership
+        marker. Its vocabulary is its own, so it steals no existing route and
+        the only thing it changes is what the roster is made of."""
+        (self.roster / "zz-plant-expert.md").write_text(
+            agent_md("plant-expert",
+                     description="owns the mimsy borogove pipeline",
+                     triggers=("tune the mimsy borogove pipeline",)
+                     ).replace("name: plant-expert",
+                               "name: plant-expert\norigin: project"),
+            encoding="utf-8")
+
+    def test_the_measured_roster_still_gates_on_the_paraphrase_floor(self):
+        """Asserts SPEC-0002 AN_ABSOLUTE_FLOOR_IS_KEYED_TO_ITS_ROSTER's Except.
+
+        The seed's own roster is entirely seed-owned, so it IS the measured one
+        and the floor is live on it. Without this, scoping the floor would be
+        indistinguishable from deleting it.
+        """
+        (self.roster / "_routes.golden.tsv").write_text(
+            self._neutered_corpus(), encoding="utf-8")
+        r = self._eval()
+        self.assertNotEqual(r.returncode, 0,
+            f"a corpus under the floor must fail on the roster the floor was "
+            f"measured over:\n{r.stdout}\n{r.stderr}")
+        self.assertIn(self.GATED, r.stderr,
+            f"the refusal must name the floor it fell below:\n{r.stderr}")
+        self.assertNotIn(self.REPORTED, r.stdout,
+            f"the measured roster must not take the reporting exemption:"
+            f"\n{r.stdout}")
+
+    def test_a_grown_roster_reports_the_paraphrase_floor_instead_of_gating_on_it(self):
+        """Asserts SPEC-0002 AN_ABSOLUTE_FLOOR_IS_KEYED_TO_ITS_ROSTER.
+
+        The same corpus that fails above must not fail here. A plant that
+        commissions its first expert has done what the growth protocols tell it
+        to do, and a count measured against a roster it no longer has is
+        evidence to read, not a verdict to fail on.
+        """
+        (self.roster / "_routes.golden.tsv").write_text(
+            self._neutered_corpus(), encoding="utf-8")
+        self._grow()
+        r = self._eval()
+        self.assertNotIn(self.GATED, r.stderr,
+            f"the floor must not gate a roster it was not measured over:"
+            f"\n{r.stdout}\n{r.stderr}")
+        self.assertIn(self.REPORTED, r.stdout,
+            f"the number must still be printed, or scoping the floor is the "
+            f"same as deleting it:\n{r.stdout}")
+        self.assertEqual(r.returncode, 0,
+            f"nothing else in this corpus is a failure:\n{r.stdout}\n{r.stderr}")
+
+    def test_scoping_the_floor_did_not_move_its_recorded_value(self):
+        """Asserts SPEC-0002 AN_ABSOLUTE_FLOOR_IS_KEYED_TO_ITS_ROSTER's second
+        `And`: scoping says what a number is measured over and is not a route to
+        moving the number. The value stays the ratchet `tools/ratchet-lint.py`
+        records, and only the owner widens a ratchet."""
+        recorded = json.loads(
+            (HERE / "ratchets.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            lint_constant("PARAPHRASE_FLOOR"), recorded["ratchets"]["PARAPHRASE_FLOOR"],
+            "the shipped floor and the recorded ratchet disagree — keying the "
+            "floor to a roster must not change the floor")
+
+    def test_the_shipped_roster_is_the_measured_one(self):
+        """The exemption is keyed on an input, so it is reachable by changing
+        that input. What keeps it shut for the seed is that every node the seed
+        ships carries the ownership marker the floor is keyed to."""
+        src = require_lint().read_text(encoding="utf-8")
+        m = re.search(r'^MEASURED_ROSTER_ORIGIN\s*=\s*"([a-z]+)"', src, re.M)
+        self.assertIsNotNone(m, "MEASURED_ROSTER_ORIGIN is not a module-level "
+                                "string in the shipped tool")
+        for f in sorted(ROSTER.glob("*.md")):
+            if f.name.startswith("_"):
+                continue
+            head = f.read_text(encoding="utf-8").split("\n---\n", 1)[0]
+            self.assertIn(f"origin: {m.group(1)}", head,
+                f"{f.name} carries no `origin: {m.group(1)}`, so the roster the "
+                f"floor was measured over is not recognisable as itself and the "
+                f"gate stops being live where the number was measured")
+
+
 class CompoundFragmentTests(unittest.TestCase):
     """A fragment of a hyphenated compound may not speak for the compound.
 

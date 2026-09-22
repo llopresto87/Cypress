@@ -357,7 +357,7 @@ and loosening it further still takes a conspicuous, blessed edit to
 `tests/ratchets.json`, the same tripwire set at a higher line.
 
 Routable node bodies run from a handful of lines to 1 384
-(`protocols/graft.md`), with a median of 166. `tests/seed-lint.py` enforces two
+(`protocols/graft.md`), with a median of 169. `tests/seed-lint.py` enforces two
 ceilings: 1 000 lines for any routable node, and 2 500 for the three
 cross-project meta-loop protocols — `graft`, `grow`, `harvest` — which are the
 only ones that write into a repository the seed does not own, and which a

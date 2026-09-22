@@ -17,7 +17,10 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-WORK="$(mktemp -d)"
+# install.sh canonicalises the project directory it is given, and `mktemp -d`
+# may hand back a route through a symlink, so a root resolved only on one
+# side fails a round-trip the installer passed.
+WORK="$(cd "$(mktemp -d)" && pwd -P)"
 trap 'rm -rf "$WORK"' EXIT
 
 fail() { echo "FAIL: $*" >&2; exit 1; }

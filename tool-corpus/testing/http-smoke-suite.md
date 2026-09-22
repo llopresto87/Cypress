@@ -57,7 +57,11 @@ rather than page contents, e.g.:
 - The health/liveness path returns healthy; the app root serves.
 - An endpoint that must require auth **rejects** an unauthenticated request
   (assert the 401/403 — verify the guard is *enforced*, not merely that authed
-  requests work).
+  requests work). The same assertion doubles as a **route-existence proof**: a
+  rejection can only come from a route the edge actually has, whereas a
+  not-found is ambiguous between a route that is missing and a route that is
+  hidden and reads as the good news either way, so asserting the rejection makes
+  a silently-dropped route fail the suite instead of passing it.
 - A realtime/upgrade handshake (e.g. a WebSocket upgrade) reaches its backend and
   gets the expected switching-protocols response.
 - A surface that must be **closed** serves nothing at all — the negative
@@ -150,6 +154,9 @@ assert bugs "KNOWN_BUG_x (expected to flip when fixed)" known_bug_x
   code review must catch that.
 - **Asserting only the happy path for auth** proves nothing; assert that the
   unauthenticated request is *rejected*.
+- **Reading a not-found as "the route is protected."** It is equally consistent
+  with the route having disappeared from the edge configuration, and only a
+  rejection tells the two apart.
 - **Accepting an error status as proof that a surface is closed.** A 500 or 403
   from a supposedly-removed route is a *failing* assertion, not a passing one —
   see the negative assertion in §3.
@@ -194,3 +201,6 @@ section's checks while keeping the same aggregate exit behavior.
   the section-selectable + JSON-emitting harness (§2's interface and the
   skeleton's `assert` wrapper), and the self-evidencing-instrument pitfall with
   its prove-it-can-go-RED meta-test (§5–§6), by docs-librarian.
+- 2026-09-22 — folded in the auth-sweep's second reading: the same rejection
+  assertion is also a route-existence proof (§3), with the read-a-not-found-as-
+  protected pitfall it closes (§5), by docs-librarian.

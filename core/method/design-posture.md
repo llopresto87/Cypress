@@ -183,7 +183,13 @@ State the invariant the rule may not violate, in the same change that
 introduces the rule. A guard whose baseline is written down can be
 tested (see `protocol.verify`: a gate asserts something or it is not a
 gate); one that lives only in the author's head is rediscovered by
-whoever it breaks.
+whoever it breaks. An invariant can also be supplied by an absence
+rather than by a rule, and the same change records that too: a safety
+property holding only because some capability does not exist yet is
+conditional, not structural, so name the property, the absence that
+currently supplies it, and the change that would end it. Closing the gap
+then closes both halves at once, instead of reintroducing the risk the
+absence had been absorbing unnoticed.
 
 **A silent fallback is a fail-open.** Every degraded or optional path
 has a decided posture — fail-open or fail-closed, chosen and written

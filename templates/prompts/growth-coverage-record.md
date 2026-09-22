@@ -91,7 +91,14 @@ Exactly one of, on every collection, agent, and expert row:
   expert row, `searched` names where the material would be and was not; a
   filled leaf of this plant's graph listed there is a redirect, not an
   absence (`CONTRADICTED`) — re-home the material into the collection the
-  agent reads, or cite the source paths instead.
+  agent reads, or cite the source paths instead. An agent or expert
+  declares several collections, and a project may have the subject of some
+  and not of others; record the ones it has not got in the row's `absent`
+  map, each with the `reason` and the `searched` paths that establish it,
+  and the remaining entries are then covered, or found empty, on their own
+  terms. An excused entry obeys the same evidence bar as the status: without
+  a reason and searched paths it is `UNJUSTIFIED`, and a collection the
+  plant actually wrote in is `CONTRADICTED`.
 - **UNKNOWN** — a named `blocker` (unreachable source, a two-round
   non-converging `recover` finding, an evidence gap the scouts could not close)
   prevents coverage. The only legitimate way a row stays uncovered, and it
@@ -239,14 +246,15 @@ those must itself be a grounded domain row. `objective` is not staffed.
   "agents": [
     {"name": "ui-ux-designer", "reads": ["design/", "best-practices/"],
      "status": "COVERED", "artifacts": ["docs/graph/design/checkout.md"],
-     "reason": "", "searched": [], "blocker": ""}
+     "reason": "", "searched": [], "blocker": "", "absent": {}}
   ],
   "experts": [
     {"name": "claims-adjudication-expert", "status": "COVERED",
      "home": "docs/graph/agents/claims-adjudication-expert.md",
      "reads": ["architecture/", "best-practices/"],
      "motivated_by": ["src/Claims/Adjudicator.cs:88"],
-     "evidence": [], "reason": "", "searched": [], "blocker": ""}
+     "evidence": [], "reason": "", "searched": [], "blocker": "",
+     "absent": {}}
   ]
 }
 ```

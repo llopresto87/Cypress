@@ -88,8 +88,11 @@ LOW_ABSOLUTE = 17
 # record. That left TWO rows of slack: half of the only class that measures
 # generalization could break with ratchet-lint, --eval and the whole gate green.
 # It also made the first sentence above false of its own constant. Tightening a
-# floor is free — no code changes, no behaviour change, no risk to any plant —
-# so the slack had no defender, and 4 is what the router does.
+# floor costs nothing WHERE IT WAS MEASURED — no code changes, no behaviour
+# change — so the slack had no defender, and 4 is what the router does against
+# the roster this floor was measured over: the seed's own, every node of it
+# `origin: seed`. It is free there and nowhere else, which is what
+# MEASURED_ROSTER_ORIGIN below exists to say.
 #
 # It moved DOWN from 3 of 18 during review, and the direction is the point: a
 # two-way overlap check found that one of the eighteen was the contract row
@@ -99,6 +102,27 @@ LOW_ABSOLUTE = 17
 # be lowered by finding contamination, and only raised by measuring a better
 # router, is doing its job in both directions.
 PARAPHRASE_FLOOR = 4
+# ...and the floor is an ABSOLUTE count, so it has a denominator nobody wrote
+# down: the roster it was measured over. Scoring is relative to the set of
+# agents being ranked, so every agent a roster gains raises the document
+# frequency of ordinary words, lowers every term's weight, and can push a top
+# pick that is still CORRECT below the confidence band — where it counts as an
+# abstention. Enlarging the roster is what `grow` and `graft` are for, so that
+# shift is the mandated path rather than an edge case, and a floor keyed to
+# whatever roster is on disk is a penalty for taking it. EVAL_THRESHOLD above
+# was set with documented headroom for exactly this shift; this floor was set
+# with none, which is the asymmetry the scoping closes.
+#
+# So the floor is keyed to the roster it was measured against — the one the
+# seed ships, every node of it carrying the `origin: seed` ownership marker —
+# the same way the class floors above are keyed to a corpus that declares
+# classes. On a roster carrying anything else the count is REPORTED and not
+# gated on, because a floor measured somewhere else is evidence rather than a
+# verdict. Like the `classed` exemption, this one is keyed on the INPUT and is
+# therefore reachable by changing it; what closes it for the seed's own roster
+# is that the seed's roster is entirely seed-owned, so the gate is always live
+# where the number was measured.
+MEASURED_ROSTER_ORIGIN = "seed"
 # The gate that matters. An abstention costs a session one reasoning step; a
 # CONFIDENT wrong answer sends work to the wrong specialist with the band cited
 # in the brief as evidence for doing so. Zero, in every class.
@@ -303,6 +327,14 @@ class Agent:
     @property
     def description(self) -> str:
         return str(self.meta.get("description", ""))
+
+    @property
+    def origin(self) -> str:
+        """The graph's ownership marker: `seed` for a node the seed ships,
+        anything else (or nothing) for one a project authored or adopted. The
+        roster projections are file copies of docs/graph/agents/, so the marker
+        travels with the node and a roster can be asked what it is made of."""
+        return str(self.meta.get("origin", "")).strip()
 
     @property
     def can_delegate(self) -> bool:
@@ -1032,6 +1064,11 @@ def cmd_eval(agents: list, adir: Path) -> int:
     """
     rows, classed = load_golden(adir)
     by_name = {a.name: a for a in agents}
+    # The roster the absolute floor was measured over (MEASURED_ROSTER_ORIGIN).
+    # `classed` asks whether the corpus is the one the class floors were written
+    # for; this asks the same question of the other input the floor depends on.
+    measured_roster = bool(agents) and all(
+        a.origin == MEASURED_ROSTER_ORIGIN for a in agents)
 
     # X2: a row may not claim to be a paraphrase while being a near-copy of its
     # target's own vocabulary. Checked before anything is scored, because a
@@ -1180,10 +1217,18 @@ def cmd_eval(agents: list, adir: Path) -> int:
             f"paraphrase set has {para['n']} rows, below the {PARAPHRASE_MIN_ROWS} "
             f"minimum — the held-out set may not be emptied to dodge its floor")
     if classed and para["hit"] < PARAPHRASE_FLOOR:
-        failures.append(
-            f"paraphrase confident-correct {para['hit']} below the recorded floor "
-            f"{PARAPHRASE_FLOOR} — raise the floor by improving the router and "
-            f"re-measuring, never by editing a row")
+        if measured_roster:
+            failures.append(
+                f"paraphrase confident-correct {para['hit']} below the recorded floor "
+                f"{PARAPHRASE_FLOOR} — raise the floor by improving the router and "
+                f"re-measuring, never by editing a row")
+        else:
+            print(f"  · paraphrase confident-correct {para['hit']}, under the "
+                  f"recorded floor {PARAPHRASE_FLOOR}. Reported, not gated: this "
+                  f"roster is not the one the floor was measured over, and an "
+                  f"absolute count falls as a roster grows without the router "
+                  f"getting worse. Re-measure against this roster before reading "
+                  f"the number as a regression")
 
     if failures:
         for f in failures:

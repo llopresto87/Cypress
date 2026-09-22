@@ -41,27 +41,32 @@ auto-loaded, never scattered as inline blobs across many files. At start
 they are materialized onto ephemeral storage from that source, never
 bind-mounted from a shared host; they reach a child process on stdin or
 through a scoped environment, never on the command line; each step's
-environment is limited to the variables that step needs, so a crash trace
-cannot dump the whole set; and an authenticated call is made in-process
-rather than by shelling out with the secret in argv. They leave through
-nothing — not logs, not error bodies, not client payloads, not serialized
-records, not committed artifacts. Automation that handles secrets
-structurally refuses debug modes that would print them (a shell trace
-flag, a verbose variable dump) and offers targeted output instead. The
-repository holds the example/template environment file; a populated one
-is never committed and never printed. Exclusion from version control is
-not encryption and not authorization: an unencrypted ignored file is one
-forced add from being history. Where two independent gates can enforce
-the secret-at-rest invariant (staging and publication), both fail closed,
-so one bypassed gate cannot publish plaintext. A capture, interception,
-or debug service holding real credential material (a mail sink with
-reset tokens) is a sensitive store even in staging: internal-only, absent
-from production. Whole-system configuration dumps are secret-bearing by
-default — restricted paths, suppressed from task logs — rather than
-judged field by field. `plant.environment_class` (`docs/graph/index.md`)
-decides what "disposable" means here: a generated throwaway credential is
-correct under `ephemeral-test` and a defect under `real-production`; the
-rule is the same, the class supplies the verdict.
+environment is limited to the variables that step needs, so a crash
+trace cannot dump the whole set; and an authenticated call is made
+in-process rather than by shelling out with the secret in argv. They
+leave through nothing — not logs, not error bodies, not client payloads,
+not serialized records, not committed artifacts. Automation that handles
+secrets structurally refuses debug modes that would print them (a shell
+trace flag, a verbose variable dump) and offers targeted output instead.
+The repository holds the example/template environment file; a populated
+one is never committed and never printed. Exclusion from version control
+is not encryption and not authorization: an unencrypted ignored file is
+one forced add from being history. Redaction is not storage either: a
+component that hides a credential from its own responses, logs, or
+diagnostics has made a claim about those channels and none other, and a
+value it reads from a file committed beside the code is exposed in the
+repository however thoroughly every surface that renders it masks it.
+Where two independent gates can enforce the secret-at-rest invariant
+(staging and publication), both fail closed, so one bypassed gate cannot
+publish plaintext. A capture, interception, or debug service holding
+real credential material (a mail sink with reset tokens) is a sensitive
+store even in staging: internal-only, absent from production.
+Whole-system configuration dumps are secret-bearing by default —
+restricted paths, suppressed from task logs — rather than judged field
+by field. `plant.environment_class` (`docs/graph/index.md`) decides what
+"disposable" means here: a generated throwaway credential is correct
+under `ephemeral-test` and a defect under `real-production`; the rule is
+the same, the class supplies the verdict.
 
 ## 2. Record a secret by name and location only
 
@@ -111,9 +116,14 @@ credential for a bounded time records that as a `deviation` node whose
 Prefer short credential lifetimes to revocation lists: a denylist covers
 only the compromises someone reports; a short TTL bounds every
 compromise, including the silent ones. Where a denylist exists anyway,
-key it on the credential's stable identifier claims, not on a hash of the
-malleable serialized form. Generate secrets fresh at the point of use,
-before anything is provisioned or listens on a network — standing a
+key it on the credential's stable identifier claims, not on a hash of
+the malleable serialized form. A lifetime bounds the credential and not
+its wake, so a credential minted for one operation carries a marker that
+everything it creates carries too, and the artifacts it touched are
+enumerated and removed afterwards rather than remembered. Revocation
+closes against that set, and the marker itself is recorded by name,
+never the credential it marks. Generate secrets fresh at the point of
+use, before anything is provisioned or listens on a network — standing a
 system up on old values rebuilds the exposure into the new environment —
 and never echo the generated value into a log or transcript; an
 environment's own secret files are read-only during an automated change.

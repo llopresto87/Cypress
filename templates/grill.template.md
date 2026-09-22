@@ -71,6 +71,9 @@ and every library, spec, or API a §6 decision rests on — or one line,
 | Decision | Rationale | Evidence | Reversibility | ADR | Date |
 |---|---|---|---|---|---|
 
+Reversibility takes the same graduated value here as it does in an ADR,
+under the same rule. Depth: `docs/graph/templates/adr.template.md`.
+
 ## 7. Options Considered
 | Option | Benefits | Costs | Risks | Outcome |
 |---|---|---|---|---|
@@ -150,8 +153,8 @@ standard gate deliberately skipped and why); grill.md is read every
 session and must not duplicate the runbook it points at.
 
 ## 11. Risks and Mitigations
-| Risk | Probability | Impact | Mitigation | Verification |
-|---|---:|---:|---|---|
+| Risk | Probability | Impact | Mitigation | Owner | Verification |
+|---|---:|---:|---|---|---|
 
 ## 12. Open Questions
 | # | Question | Why it matters | Current assumption | How to resolve | Owner | Pinned by |

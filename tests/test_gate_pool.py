@@ -79,7 +79,7 @@ class TokenPoolTests(unittest.TestCase):
         pooldir = tempfile.mkdtemp()
         scn = tempfile.NamedTemporaryFile("w", suffix=".scn", delete=False)
         for i in range(40):
-            scn.write("s%d\tn=$(ls -d %s/tok.* 2>/dev/null | wc -l); "
+            scn.write("s%d\tn=$(ls -d %s/tok.* 2>/dev/null | wc -l | tr -d ' '); "
                       "echo CONC=$n; sleep 0.03\n" % (i, pooldir))
         scn.close()
         env = dict(os.environ, GATE_JOBS="4", GATE_POOL_DIR=pooldir)
@@ -104,7 +104,7 @@ class TokenPoolTests(unittest.TestCase):
         for tag in ("a", "b"):
             f = tempfile.NamedTemporaryFile("w", suffix=".scn", delete=False)
             for i in range(15):
-                f.write("%s%d\tn=$(ls -d %s/tok.* 2>/dev/null | wc -l); "
+                f.write("%s%d\tn=$(ls -d %s/tok.* 2>/dev/null | wc -l | tr -d ' '); "
                         "echo CONC=$n; sleep 0.05\n" % (tag, i, pooldir))
             f.close()
             files.append(f.name)

@@ -531,8 +531,8 @@ class LibraryIndexRowBoundaryTests(unittest.TestCase):
         (graph / "libraries" / "index.md").write_text(index_body, encoding="utf-8")
         return graph
 
-    HEAD = ("# Libraries index\n\n"
-            "| Library | Version | Page | Last reviewed |\n|---|---|---|---|\n")
+    TABLE = "| Library | Version | Page | Last reviewed |\n|---|---|---|---|\n"
+    HEAD = "# Libraries index\n\n" + TABLE
 
     def test_substring_of_a_longer_sibling_row_is_not_a_row(self):
         """THE DEFECT: `zamber` has no row, but `zamber-lattice` does, and the
@@ -588,6 +588,82 @@ class LibraryIndexRowBoundaryTests(unittest.TestCase):
             self.HEAD + "| `zamber` | 1.4.0 | not written yet | 2026-09-09 |\n")
         r = run_lint(graph)
         self.assertEqual(r.returncode, 0, f"named cell must count:\n{r.stdout}\n{r.stderr}")
+
+    def test_a_row_under_a_pending_heading_is_not_registration(self):
+        """THE DEFECT, arriving through the structure instead of the string. A
+        row in a pending table exists to record that the page has NOT been
+        written, so reading it as registration makes the check green on
+        precisely the omission it exists to catch — the same failure the
+        substring test produced, one level up."""
+        for heading in ("## Pending ingests", "## Planned", "## Unwritten",
+                        "### Not yet ingested", "## To ingest", "## Backlog",
+                        "## TODO"):
+            with self.subTest(heading=heading):
+                graph = self._graph(
+                    {"zamber": True},
+                    "# Libraries index\n\n" + heading + "\n\n" + self.TABLE
+                    + "| zamber | — | [zamber](zamber.md) | — |\n")
+                r = run_lint(graph)
+                out = r.stdout + r.stderr
+                self.assertNotEqual(r.returncode, 0,
+                    f"a row under {heading!r} records the page's ABSENCE:\n{out}")
+                self.assertIn("libraries/zamber.md: no row", out, out)
+
+    def test_a_section_after_a_pending_one_registers_again(self):
+        """Only the pending sections are skipped. A heading ends the section
+        before it, so a real row below one still registers — otherwise the fix
+        would turn every index with a backlog into a permanent red."""
+        graph = self._graph(
+            {"zamber": True},
+            "# Libraries index\n\n## Pending ingests\n\n"
+            + self.TABLE + "| something-else | — | — | — |\n\n"
+            + "## Ingested\n\n" + self.TABLE
+            + "| zamber | 1.4.0 | [zamber](zamber.md) | 2026-09-09 |\n")
+        r = run_lint(graph)
+        self.assertEqual(r.returncode, 0,
+            f"a row outside the pending section is still a row:\n{r.stdout}\n{r.stderr}")
+
+    def test_an_index_with_no_headings_registers_as_before(self):
+        """The section rule adds a skip, never a requirement. An index that is
+        one bare table — which is what the template ships — is unaffected."""
+        graph = self._graph(
+            {"zamber": True},
+            self.HEAD + "| zamber | 1.4.0 | [zamber](zamber.md) | 2026-09-09 |\n")
+        r = run_lint(graph)
+        self.assertEqual(r.returncode, 0,
+            f"a heading-less index must register exactly as before:\n{r.stdout}\n{r.stderr}")
+
+    def test_a_differently_cased_row_still_counts(self):
+        """An index is prose a person writes, and a row that titles the library
+        the way its own docs do is the same row. Reading it case-sensitively
+        reported no row where one plainly existed — the mirror of the substring
+        hazard, and equally good at teaching a reader to stop believing the
+        check. Both the cell form and the link target fold."""
+        for row in ("| Zamber | 1.4.0 | not written yet | 2026-09-09 |",
+                    "| the wiki | 1.4.0 | [wiki page](Zamber.md) | 2026-09-09 |"):
+            with self.subTest(row=row):
+                graph = self._graph({"zamber": True}, self.HEAD + row + "\n")
+                r = run_lint(graph)
+                self.assertEqual(r.returncode, 0,
+                    f"a differently-cased row is the same row:\n{r.stdout}\n{r.stderr}")
+
+    def test_the_pending_vocabulary_is_stated_in_the_schema(self):
+        """The linter must not invent the vocabulary it keys on. `_schema.md` is
+        what an author reads; a word the tool skips on and the contract never
+        names is a rule nobody can follow."""
+        src = GRAPH_LINT.read_text(encoding="utf-8")
+        m = re.search(r"^PENDING_HEADINGS\s*=\s*\((.*?)\)", src, re.M | re.S)
+        self.assertIsNotNone(m, "PENDING_HEADINGS is not a module-level tuple "
+                                "in the shipped tool")
+        words = re.findall(r'"([^"]+)"', m.group(1))
+        self.assertTrue(words,
+                        "the tool skips no section, so this check is vacuous")
+        low = (GRAPH_LINT.parent / "_schema.md").read_text(
+            encoding="utf-8").lower()
+        for word in words:
+            self.assertIn(word, low,
+                f"graph-lint.py skips a section headed {word!r} and "
+                f"templates/knowledge-graph/_schema.md never says so")
 
 
 class ReachabilityBoundaryTests(unittest.TestCase):

@@ -66,6 +66,42 @@ python3 "$ENGINE" "$TMP/super.py" "$TMP/seed-lint.py" 2>&1 | grep -q "KEEP-PLANT
 grep -q "extra_capability" "$TMP/super.py" || fail "superset engine mutated (must be untouched)"
 echo "  superset detection (KEEP-PLANT, unchanged) — OK"
 
+# a preserved config value keeps the comment that explains it: carrying the
+# value alone preserves the decision and drops the argument for it, leaving a
+# local value that disagrees with the default and no reason not to tidy it away.
+# The backward walk stops at a blank line, so an unrelated module note above
+# the config does not travel with it.
+cat > "$TMP/cseed.py" <<'PY'
+# a module note about the engine as a whole, not about any one knob
+
+ROOT_ID = "root"
+KINDS = {"root", "subsystem", "stack"}
+KIND_PREFIX = {}
+def check():
+    return 1
+PY
+cat > "$TMP/cplant.py" <<'PY'
+# a module note about the engine as a whole, not about any one knob
+
+# the root id is the deploy name rather than the repo name: the router keys on it
+ROOT_ID = "app"
+# 'operator' is this project's own kind; the seed does not ship it
+KINDS = {"root", "subsystem", "operator"}
+KIND_PREFIX = {}
+PY
+python3 "$ENGINE" "$TMP/cplant.py" "$TMP/cseed.py" >"$TMP/cout" 2>&1 || fail "commented config merge exit"
+grep -q "def check" "$TMP/cplant.py" || fail "engine body not adopted alongside commented config"
+grep -A1 "the root id is the deploy name" "$TMP/cplant.py" | grep -q '^ROOT_ID = "app"$' \
+  || { cat "$TMP/cplant.py"; fail "the comment explaining a kept value did not travel with it"; }
+grep -A1 "own kind; the seed does not ship it" "$TMP/cplant.py" | grep -q '^KINDS = {"root", "subsystem", "stack", "operator"}$' \
+  || { cat "$TMP/cplant.py"; fail "the comment explaining a unioned value did not travel with it"; }
+[ "$(grep -c "a module note about the engine" "$TMP/cplant.py")" -eq 1 ] \
+  || { cat "$TMP/cplant.py"; fail "an unrelated module comment was swallowed by the backward walk"; }
+cp "$TMP/cplant.py" "$TMP/cplant.before"
+python3 "$ENGINE" "$TMP/cplant.py" "$TMP/cseed.py" 2>&1 | grep -q "already current" || fail "commented merge not idempotent"
+cmp -s "$TMP/cplant.py" "$TMP/cplant.before" || fail "a second pass rewrote a file it called current"
+echo "  preserved config carries its comment; unrelated module comment untouched — OK"
+
 # ---- graft-audit.py -------------------------------------------------------
 # 6.0.0 plant layout: machinery home is docs/graph/{protocols,skills,agents,
 # method,templates}/ (seed-owned); tool dirs hold only agent/skill projections;
@@ -147,6 +183,23 @@ set -e
 grep -q "wrong --date" "$TMP/aout5" || { cat "$TMP/aout5"; fail "wrong --date not flagged"; }
 [ "$rc5" -eq 1 ] || fail "audit must exit 1 on a date that audited nothing while backups exist (got $rc5)"
 echo "  audit refuses a vacuous audit under a wrong --date (exit 1) — OK"
+
+# REGRESSION — a graft and the remedies it triggers land on the same day, and
+# --date read only the day segment of a stamp that records the time too: two
+# passes collapsed into one and the audit could not separate what each wrote.
+# --date is a PREFIX of YYYYMMDD-HHMMSS, so the day form still selects the day.
+PD=20260601
+printf 'seed body v1\nolder generic seed prose\n' > "$TMP/plant/docs/graph/agents/c.md.bak-$PD-160000"
+printf 'seed body v1\nolder generic seed prose\n' > "$TMP/plant/docs/graph/agents/c.md.bak-$PD-170000"
+set +e
+python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=$PD --tokens=widgetco >"$TMP/dout1" 2>&1; drc1=$?
+python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=$PD-16 --tokens=widgetco >"$TMP/dout2" 2>&1; drc2=$?
+set -e
+grep -q "backups audited: 2" "$TMP/dout1" || { cat "$TMP/dout1"; fail "the day form must still audit the whole day"; }
+grep -q "backups audited: 1" "$TMP/dout2" || { cat "$TMP/dout2"; fail "a stamp prefix must narrow to the one pass"; }
+[ "$drc1" -eq 0 ] && [ "$drc2" -eq 0 ] || { cat "$TMP/dout2"; fail "a clean audit under either form must exit 0 ($drc1/$drc2)"; }
+rm -f "$TMP/plant/docs/graph/agents/c.md.bak-$PD-"*
+echo "  audit --date accepts the stamp at the granularity the filename records — OK"
 
 # REGRESSION — space-form options: `--tokens acme` once silently dropped the
 # value into the positionals (audited with DEFAULT tokens; a plant
@@ -475,6 +528,32 @@ grep -q "FF-overwritten plant customization" <<<"$out" \
     || { printf '%s\n' "$out" >&2; fail "a generic phrase absent from the seed source stopped being reported"; }
 echo "  explicit tokens and seed-absent generic phrases still fire — OK"
 
+# ...and a short explicit token is a substring of ordinary words before it is a
+# name. Matched without word edges it reports a page nobody customized, which
+# teaches a steward to ratify without looking — the same failure, arriving
+# through the token list the block above exempted from the rule.
+cat > "$TMP/sig/plant/docs/graph/protocols/alpha.md.bak-20260104-000000" <<'MD'
+# Alpha
+Write in this project's idiom; the pins are often old on purpose.
+A brand new seed sentence that the old body did not have.
+The rollback step is replaced during a release.
+MD
+out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260104 --tokens=ace 2>&1)" || true
+grep -q "FF-overwritten plant customization" <<<"$out" \
+    && { printf '%s\n' "$out" >&2; fail "a token matched inside an ordinary word was reported as a buried customization"; }
+cat > "$TMP/sig/plant/docs/graph/protocols/alpha.md.bak-20260105-000000" <<'MD'
+# Alpha
+Write in this project's idiom; the pins are often old on purpose.
+A brand new seed sentence that the old body did not have.
+The ace gateway is pinned one minor behind.
+MD
+out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260105 --tokens=ace 2>&1)" || true
+grep -q "FF-overwritten plant customization" <<<"$out" \
+    || { printf '%s\n' "$out" >&2; fail "a token standing as its own word stopped being reported"; }
+grep -q "signal: ace" <<<"$out" \
+    || { printf '%s\n' "$out" >&2; fail "the finding must name the token that matched"; }
+echo "  an explicit token matches at word edges, not inside a word — OK"
+
 # ---- --engine refuses to report a check it did not run --------------------
 # A malformed pair was swallowed and announced as a parenthetical skip, so the
 # gate silently did not run while the audit still exited on its other checks.
@@ -498,8 +577,25 @@ echo "  malformed --engine fails loudly; omitted stays silent — OK"
 mkdir -p "$TMP/sig/seedroot/templates/knowledge-graph"
 cat > "$TMP/sig/seedroot/templates/knowledge-graph/_schema.md" <<'MD'
 # Schema
+
+## Frontmatter
+
+Every node begins with YAML frontmatter.
+
+```yaml
+id: {{kind}}.{{name}}
+kind: {{kind}}
+status: open
+```
+
 ## Lifecycle status
-open | deferred | hotfix | rejected | superseded | closed
+
+Anything that can be open carries its status in frontmatter, never in prose.
+
+| value | means |
+|---|---|
+| `open` | live, unresolved |
+| `closed` | resolved with evidence |
 MD
 cp "$TMP/sig/seedroot/templates/knowledge-graph/_schema.md" "$TMP/sig/plant/docs/graph/_schema.md"
 out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" || true
@@ -514,5 +610,60 @@ out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&
 grep -q "node schema: current" <<<"$out" || fail "a plant extension was misread as staleness"
 [ "${rc:-0}" -eq 0 ] || fail "schema currency must report, not gate"
 echo "  schema currency: current / STALE / extended, reports without gating — OK"
+
+# REGRESSION — a contract is what it requires, not the sentences it requires it
+# in. Compared line by line, a schema somebody re-integrated in their own words
+# read as an absence per line, and the only edit that cleared the message was
+# the verbatim paste the check's own posture exists to avoid.
+cat > "$TMP/sig/plant/docs/graph/_schema.md" <<'MD'
+# This project's node contract
+
+## Frontmatter
+
+Each node opens with a small YAML header, keys only — no nested maps:
+
+```yaml
+id: subsystem.billing
+kind: subsystem
+status: open
+```
+
+## Lifecycle status
+
+We keep the state in the header and never in the body, so an agent reads a
+field instead of inferring one.
+
+| value | what it means here |
+|---|---|
+| `open` | somebody still owes work on it |
+| `closed` | done, with the evidence named |
+MD
+out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" || true
+grep -q "node schema: current" <<<"$out" \
+  || { printf '%s\n' "$out" >&2; fail "a re-integrated schema keeping every contract term was reported stale"; }
+# ...and a term the contract genuinely lost is named, not counted
+cat > "$TMP/sig/plant/docs/graph/_schema.md" <<'MD'
+# This project's node contract
+
+## Frontmatter
+
+Each node opens with a small YAML header:
+
+```yaml
+id: subsystem.billing
+kind: subsystem
+```
+
+## Lifecycle status
+
+| value | what it means here |
+|---|---|
+| `open` | somebody still owes work on it |
+MD
+out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" || true
+grep -q "node schema STALE" <<<"$out" || { printf '%s\n' "$out" >&2; fail "a genuinely missing contract term was not reported"; }
+grep -q "status" <<<"$out" && grep -q "closed" <<<"$out" \
+  || { printf '%s\n' "$out" >&2; fail "the missing terms must be named, not counted"; }
+echo "  schema currency compares what the contract names, not its sentences — OK"
 
 echo "test-graft-tools: PASS"

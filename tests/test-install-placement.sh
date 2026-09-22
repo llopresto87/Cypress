@@ -795,6 +795,65 @@ if [[ ${#missing_nodes[@]} -gt 0 ]]; then
 check that enumerates what WAS placed"
 fi
 
+# M11: every path the route resolvers may SELECT is a path the installer writes.
+#
+# M1 above asks whether everything the seed owns arrived. This asks the mirror
+# question of the two resolvers that go looking: a candidate list is a claim
+# about where an artifact is written, so a candidate no writer produces is not a
+# fallback. The only file it could ever select is one this project did not put
+# there — the unbounded reach the plant-root boundary exists to close, arriving
+# through the list instead of through the walk. Derived from the resolvers' own
+# source against the discovered install, so a candidate re-added without a
+# writer fails here rather than on some plant's next prompt.
+stray_candidates=()
+while IFS= read -r rel; do
+    [[ -n "$rel" ]] || continue
+    [[ -e "$T/$rel" || -L "$T/$rel" ]] || stray_candidates+=("$rel")
+done < <(python3 - "$ROOT" <<'PY'
+import re, sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+seen = []
+
+
+def emit(parts):
+    rel = "/".join(parts)
+    if rel and rel not in seen:
+        seen.append(rel)
+
+
+hook = (root / "integrations" / "claude-code" / "route-hook.py").read_text(
+    encoding="utf-8")
+m = re.search(r"^CANDIDATES\s*=\s*\((.*?)\)\s*$", hook, re.M | re.S)
+if not m:
+    sys.exit("route-hook.py: no CANDIDATES tuple to read — the resolver moved "
+             "and this check is asserting nothing")
+for element in m.group(1).split(","):
+    emit(re.findall(r'"([^"]+)"', element))
+
+ext = (root / "integrations" / "prime-agent" / "route-extension.ts").read_text(
+    encoding="utf-8")
+m = re.search(r"^const CANDIDATES\s*=\s*\[(.*?)\];\s*$", ext, re.M | re.S)
+if not m:
+    sys.exit("route-extension.ts: no CANDIDATES array to read — the resolver "
+             "moved and this check is asserting nothing")
+for element in re.findall(r"\[([^\]]*)\]", m.group(1)):
+    emit(re.findall(r'"([^"]+)"', element))
+
+if not seen:
+    sys.exit("neither resolver yielded a candidate path — a vacuous pass")
+print("\n".join(seen))
+PY
+) || fail "could not read the route resolvers' candidate lists"
+if [[ ${#stray_candidates[@]} -gt 0 ]]; then
+    echo "M11 VIOLATED — ${#stray_candidates[@]} resolver candidate(s) no install produces:" >&2
+    printf '  %s\n' "${stray_candidates[@]}" >&2
+    fail "a resolver may select a path the installer never writes — the only \
+file it could find there is one this project did not put there"
+fi
+echo "  M11: every route-resolver candidate is a path the installer writes — OK"
+
 export BASE BASECOPILOT
 
 # Dispatch the independent sections concurrently under the shared gate budget.

@@ -43,7 +43,9 @@ that names the central tradeoff.
 What changes as a result of this decision. Include:
 - New constraints downstream.
 - Migration or rewrite cost if the decision is reversed.
-- Effect on the verification plan.
+- Effect on the verification plan: name the one test that would fail
+  if this decision were silently reversed. A decision no test pins is
+  one a future session re-argues instead of checking.
 - Effect on the wiki (new libraries to wikify, idioms to record).
 
 ## Alternatives considered

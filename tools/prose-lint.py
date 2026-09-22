@@ -41,7 +41,8 @@ What it can judge:
                     conclusion language (V), synthetic friendliness (W)
                     and meta-writing residue (X)
   shape tells       a rate of dashes per 1,000 prose words (§8), a run of
-                    three bold-labelled list items (§19), decorative
+                    three bold-labelled list items whose bodies are
+                    sentences rather than field values (§19), decorative
                     headings, emoji, arrows and rule stacks (§20), a
                     heading restated by the sentence under it (§24), a
                     closer repeated after two or more sections (§2), and
@@ -376,6 +377,11 @@ SENTENCE_END_RE = re.compile(r"[.!?][\"')\]”’]*\s+")
 LIST_ITEM_RE = re.compile(r"^[ \t]*(?:[-*+]|\d+[.)])[ \t]+")
 BOLD_LABEL_RE = re.compile(
     r"^[ \t]*(?:[-*+]|\d+[.)])[ \t]+\*\*[^*\n]{1,60}?:?\*\*:?")
+# How a bullet written as running prose closes: a sentence terminator, or the
+# semicolon that chains one clause of a broken-up sentence to the next. A field
+# value closes with neither, and that is the whole difference between a record
+# and a §19 run.
+PROSE_CLOSE_RE = re.compile(r"[.!?;][\"')\]”’*_`]*[ \t]*$")
 HEADING_RE = re.compile(r"^[ \t]*(#+)[ \t]+(.*\S)")
 HRULE_RE = re.compile(r"^[ \t]*(?:-{3,}|\*{3,}|_{3,})[ \t]*$")
 EMOJI_RE = re.compile(
@@ -499,10 +505,19 @@ def structural(rel, mlines, add):
                         f"paragraph open with a connective: "
                         f"{', '.join(opens)}"))
 
-    # §19 three or more consecutive bold-labelled list items.
+    # §19 three or more consecutive bold-labelled list items, where the
+    # label stands in for the argument the writer did not make. A record
+    # sets its fields down in the same shape and means something else by
+    # it: a metadata block, a Given/When/Then contract and a failure mode
+    # are a table written vertically, which is why mask() blanks a table
+    # row before any detector runs at all. What separates the two is
+    # punctuation rather than boldness — a sentence closes and a field
+    # value does not — so a bullet joins the run only when it is
+    # punctuated as prose, and a field is what it looks like: an ordinary
+    # list item, which neither joins a run nor makes one.
     run = []
     for n, line in enumerate(mlines, 1):
-        if BOLD_LABEL_RE.match(line):
+        if BOLD_LABEL_RE.match(line) and PROSE_CLOSE_RE.search(line):
             run.append((n, line))
             continue
         if LIST_ITEM_RE.match(line):

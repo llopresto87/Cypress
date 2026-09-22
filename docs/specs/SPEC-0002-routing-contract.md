@@ -151,6 +151,35 @@ mistake self-consistency for skill.
   correct per row and insufficient in aggregate. This is the mirror of
   `THE_ADVERSARIAL_BUDGET_IS_RATCHETED_NOT_ZERO`: one bounds confident-wrong
   from above, the other bounds confident-correct from below.
+- **And:** that floor is an absolute count, so it is bounded by the roster it
+  was measured over — `AN_ABSOLUTE_FLOOR_IS_KEYED_TO_ITS_ROSTER` below.
+
+### Contract: AN_ABSOLUTE_FLOOR_IS_KEYED_TO_ITS_ROSTER
+- **Given:** `PARAPHRASE_FLOOR`, an absolute count of confident-correct
+  held-out answers
+- **When:** the roster being scored is not the one the floor was measured over,
+  meaning every node of it carrying the `origin: seed` ownership marker, named
+  by `MEASURED_ROSTER_ORIGIN`
+- **Then:** the count is reported and the gate does not turn on it
+- **And:** the floor's recorded VALUE is unchanged by this scoping. Scoping
+  says what the number is measured over; it is not a route to moving the
+  number, which stays a ratchet in `tests/ratchets.json` and the owner's to
+  widen
+- **And:** the reason is that scoring is relative to the set of agents being
+  ranked. Every agent a roster gains raises the document frequency of ordinary
+  words and lowers every term's weight, so a top pick that is still correct can
+  fall below the confidence band and be counted as an abstention. Enlarging the
+  roster is what the growth protocols exist to do, so a floor keyed to whatever
+  roster is on disk is a penalty for taking the path the seed mandates.
+  `EVAL_THRESHOLD` was set with documented headroom for exactly that shift and
+  this floor was set with none, which is the asymmetry being closed
+- **Except:** the seed's own roster, which is entirely seed-owned and therefore
+  always the measured one, so the gate is live wherever the number was
+  measured. Like the `classed` exemption above, this one is keyed on an INPUT
+  and is reachable by changing that input, and a roster that declares no origin
+  at all takes it too. That is the fail-open side of the same trade: an
+  unrecognised roster yields a number to read rather than a verdict nobody can
+  act on.
 
 ### Contract: CONTRACT_ROW_ABSTENTION_IS_A_DEFECT
 - **Given:** a row labelled `contract`
@@ -318,6 +347,8 @@ ROUTE (ranked, confidence: HIGH)     # the compound itself still routes
       AN_INFLECTION_MATCHES_THE_WORD_IT_INFLECTS,
       A_STEM_COLLISION_IS_REVIEWED_BEFORE_IT_SHIPS,
       A_WORD_EVERY_TASK_WRITES_CANNOT_SELECT_AN_AGENT
+- [x] AC-7: an absolute limit gates only where it was measured — maps to
+      AN_ABSOLUTE_FLOOR_IS_KEYED_TO_ITS_ROSTER
 
 ## 10. Test mapping
 
@@ -355,6 +386,9 @@ ROUTE (ranked, confidence: HIGH)     # the compound itself still routes
 | COMPOUND_FRAGMENT_IS_WEAK_EVIDENCE | test_a_de_hyphenated_compound_still_reaches_its_owner | tests/test_agent_lint.py | integration | green |
 | COMPOUND_FRAGMENT_IS_WEAK_EVIDENCE | test_an_invented_compound_earns_nothing | tests/test_agent_lint.py | integration | green |
 | VACUOUS_CORPUS_IS_REFUSED | test_a_corpus_that_asks_for_no_routes_is_vacuous | tests/test_agent_lint.py | integration | green |
+| AN_ABSOLUTE_FLOOR_IS_KEYED_TO_ITS_ROSTER | test_a_grown_roster_reports_the_paraphrase_floor_instead_of_gating_on_it | tests/test_agent_lint.py | integration | green |
+| AN_ABSOLUTE_FLOOR_IS_KEYED_TO_ITS_ROSTER | test_the_measured_roster_still_gates_on_the_paraphrase_floor | tests/test_agent_lint.py | integration | green |
+| AN_ABSOLUTE_FLOOR_IS_KEYED_TO_ITS_ROSTER | test_scoping_the_floor_did_not_move_its_recorded_value | tests/test_agent_lint.py | integration | green |
 
 ## 11. Open questions
 
@@ -380,18 +414,25 @@ every gate would stay green. The row now reads `pending`. Closing it means a
 test that plants an abstaining contract row and asserts the report names it.
 
 
-**Recorded debt: most contracts here carry no test naming them.** Running the
-seed's own `spec-lint.py` against `docs/specs/` (it cannot reach them in place —
-its `SPECS` path resolves inside `templates/knowledge-graph/`, which
-`tools/gate-registry.py` discloses as a scope gap) reports **26 of 30 live
-contracts across both specs have no test file containing their slug**. Four do:
-`COMPOUND_FRAGMENT_IS_WEAK_EVIDENCE`, `RARITY_AMPLIFIES_ONLY_A_CONFIDENT_MATCH`, `THE_ADVERSARIAL_BUDGET_IS_RATCHETED_NOT_ZERO`, `UNKNOWN_DOMAIN_MUST_ABSTAIN`.
+**Recorded debt: how many contracts here carry no test naming them is not
+written down.** Running the seed's own `spec-lint.py` against `docs/specs/` (it
+cannot reach them in place — its `SPECS` path resolves inside
+`templates/knowledge-graph/`, which `tools/gate-registry.py` discloses as a
+scope gap) names the contracts with no test, and `seed-lint`'s
+`check_spec_rows_name_their_contract` holds the stricter figure — whether THIS
+row's test names THIS contract — against a recorded budget.
 
-This figure has shipped wrong twice — once because a contract was mapped
-and the numerator moved, once because a contract was added in the same
-edit and the denominator did not. It is a count in prose with no
-deriving command, which is the defect CLAUDE.md names; re-derive it with
-a grep of each `### Contract:` slug across `tests/` before trusting it.
+The figure used to sit here as a sentence, and it shipped wrong three times:
+once because a contract was mapped and the numerator moved, once because a
+contract was added in the same edit and the denominator did not, and once
+because tests were renamed to carry their slugs and nobody came back to the
+prose. It was a count with no deriving home, which is the defect CLAUDE.md
+names, so it has no home here either. Derive it:
+
+```sh
+python3 templates/knowledge-graph/spec-lint.py --specs docs/specs
+grep -c '^### Contract:' docs/specs/SPEC-*.md
+```
 
 This does not mean the behaviour is untested — §10 maps each contract to a test
 that exists and passes, and those tests were checked by hand. It means the
