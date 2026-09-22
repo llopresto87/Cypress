@@ -12,6 +12,7 @@ project's own node kinds and root id.
 
 Usage:
     python3 graph-lint.py                 # lint; exit 1 on error
+    python3 graph-lint.py --warn          # report every error, always exit 0
     python3 graph-lint.py --graph         # print the edges (-> requires, ~> composes)
     python3 graph-lint.py --plan "TASK"   # dry-run the context router:
                                           # what loads, what does not, and why
@@ -1205,6 +1206,10 @@ def check_frontmatter_portable(nodes: list, errs: list) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--graph", action="store_true", help="print the requires-DAG")
+    ap.add_argument("--warn", action="store_true",
+                    help="report every error but exit 0 — the staged-adoption "
+                         "mode a plant runs while it closes findings a newly "
+                         "installed check surfaced")
     ap.add_argument("--plan", metavar="TASK", help="dry-run the context router for TASK")
     args = ap.parse_args()
 
@@ -1267,10 +1272,20 @@ def main() -> int:
     for w in warns:
         print(f"  ! warning: {w}", file=sys.stderr)
     if errs:
-        print(f"graph-lint: {len(errs)} error(s) in {len(nodes)} node(s)\n", file=sys.stderr)
+        # `--warn` prints the same findings and exits 0. A machinery upgrade can
+        # install a check the plant has never run, and a plant that was green
+        # the day before goes red on work it has not been asked for yet. The
+        # honest handling is a staged window, not a quieter check: the findings
+        # are printed in full either way, and only the exit code moves. This
+        # mirrors grill-lint's own `--warn`, so a plant has ONE adoption mode
+        # across both linters rather than a different answer per tool.
+        label = "warning" if args.warn else "error"
+        print(f"graph-lint: {len(errs)} {label}(s) in {len(nodes)} node(s)\n", file=sys.stderr)
         for e in errs:
-            print(f"  ✗ {e}", file=sys.stderr)
-        return 1
+            print(f"  {'!' if args.warn else '✗'} {e}", file=sys.stderr)
+        if args.warn:
+            print("graph-lint: --warn — reported, not enforced", file=sys.stderr)
+        return 0 if args.warn else 1
 
     total = sum(n.meta.get("est_tokens", 0) for n in nodes)
     print(f"graph-lint: OK — {len(nodes)} nodes, ~{total} tokens if fully loaded")

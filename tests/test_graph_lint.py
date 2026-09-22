@@ -48,11 +48,12 @@ GRAPH_LINT = SEED / "templates" / "knowledge-graph" / "graph-lint.py"
 DEFAULT_CONFIG_LINE = "KIND_PREFIX = {}"
 
 
-def run_lint(graph_dir: Path) -> subprocess.CompletedProcess:
+def run_lint(graph_dir: Path, *args: str) -> subprocess.CompletedProcess:
     """Run graph-lint.py against a copy of itself sitting inside graph_dir
-    (mirrors the real install, where the tool lives next to index.md/nodes/)."""
+    (mirrors the real install, where the tool lives next to index.md/nodes/).
+    Extra `args` are passed through, so a caller can exercise a flag."""
     return subprocess.run(
-        [sys.executable, str(graph_dir / "graph-lint.py")],
+        [sys.executable, str(graph_dir / "graph-lint.py"), *args],
         cwd=str(graph_dir),
         capture_output=True,
         text=True,
@@ -488,6 +489,63 @@ class LibraryPageShapeTests(unittest.TestCase):
         out = r.stdout + r.stderr
         self.assertNotEqual(r.returncode, 0, f"unregistered page must fail:\n{out}")
         self.assertIn("no row in libraries/index.md", out, out)
+
+
+class StagedAdoptionTests(unittest.TestCase):
+    """A machinery upgrade can install a check the plant has never run, and a
+    plant that was green the day before goes red on work nobody has asked it
+    for. `--warn` is the staged window: the same findings, printed in full,
+    with the exit code held back. The failure this guards against is a quieter
+    CHECK being used where a staged EXIT was meant — so both halves are
+    asserted, and the findings must be identical between the two modes."""
+
+    def setUp(self):
+        self.assertTrue(GRAPH_LINT.exists(), f"missing tool: {GRAPH_LINT}")
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def _unregistered(self) -> Path:
+        """A template-shaped library page with no row in the index: the check
+        this harvest installed, and the one most likely to be newly red."""
+        graph = build_graph(self.tmp, {"root": node_md("root", "root")},
+                            libraries=["zamber"])
+        (graph / "libraries" / "zamber.md").write_text(
+            "# Library: zamber\n\n## 0. Pin\n\n"
+            "| Major | Exact version | Projects / paths | Notes |\n|---|---|---|---|\n"
+            "| 1 | 1.4.0 | src/ | — |\n\n"
+            "- **Name:** zamber\n- **Last reviewed:** 2026-09-09 by scout\n\n"
+            "## 1. Role in this project\n\nWords.\n", encoding="utf-8")
+        (graph / "libraries" / "index.md").write_text(
+            "# Libraries index\n\n| Library | Version | Page | Last reviewed |\n"
+            "|---|---|---|---|\n", encoding="utf-8")
+        return graph
+
+    def test_default_mode_fails(self):
+        graph = self._unregistered()
+        r = run_lint(graph)
+        out = r.stdout + r.stderr
+        self.assertNotEqual(r.returncode, 0, f"the check must fail by default:\n{out}")
+        self.assertIn("no row in libraries/index.md", out, out)
+
+    def test_warn_reports_the_same_finding_and_exits_zero(self):
+        graph = self._unregistered()
+        r = run_lint(graph, "--warn")
+        out = r.stdout + r.stderr
+        self.assertEqual(r.returncode, 0, f"--warn must exit 0:\n{out}")
+        self.assertIn("no row in libraries/index.md", out,
+                      "--warn must PRINT the finding; a staged exit is not a "
+                      f"quieter check:\n{out}")
+        self.assertIn("reported, not enforced", out, out)
+
+    def test_warn_does_not_invent_a_pass(self):
+        """A clean graph under --warn still reports OK, not a warning banner."""
+        graph = build_graph(self.tmp, {"root": node_md("root", "root")})
+        r = run_lint(graph, "--warn")
+        out = r.stdout + r.stderr
+        self.assertEqual(r.returncode, 0, out)
+        self.assertIn("graph-lint: OK", out, out)
+        self.assertNotIn("reported, not enforced", out, out)
 
 
 class LibraryIndexRowBoundaryTests(unittest.TestCase):
