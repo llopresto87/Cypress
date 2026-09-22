@@ -2190,6 +2190,42 @@ def check_ci_workflow() -> None:
                  f"needs the matrix")
 
 
+def check_release_workflow() -> None:
+    """`.github/workflows/release.yml` still points at what it promises.
+
+    Syntactic, like `check_ci_workflow` beside it: this cannot prove the
+    workflow actually publishes a correct release, only that the pieces
+    CLAUDE.md's Release section and `tools/prepare-release.py` describe are
+    still wired together — the tag pattern, the write permission the release
+    API needs, the staged-notes path both files agree on, and the manifest
+    version it must not diverge from.
+    """
+    wf = ROOT / ".github" / "workflows" / "release.yml"
+    if not wf.is_file():
+        fail(".github/workflows/release.yml is missing — CLAUDE.md's Release "
+             "section and tools/prepare-release.py both describe a tag-triggered "
+             "publish workflow that would no longer exist")
+        return
+    text = "\n".join(re.sub(r"#.*$", "", line)
+                      for line in wf.read_text(encoding="utf-8", errors="replace").splitlines())
+    if not re.search(r"tags:\s*\[.*v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+.*\]", text):
+        fail(".github/workflows/release.yml no longer triggers on a vX.Y.Z tag "
+             "push — tools/prepare-release.py's printed next-step tags exactly "
+             "that pattern")
+    if "contents: write" not in text:
+        fail(".github/workflows/release.yml lost `contents: write` — "
+             "`gh release create` needs it")
+    if ".github/RELEASE_NOTES.md" not in text:
+        fail(".github/workflows/release.yml no longer reads "
+             ".github/RELEASE_NOTES.md — that path is the one "
+             "tools/prepare-release.py stages")
+    if "manifest.json" not in text:
+        fail(".github/workflows/release.yml dropped its manifest.json version "
+             "check — the guard against a stray tag publishing the wrong notes")
+    if "gh release create" not in text:
+        fail(".github/workflows/release.yml no longer calls `gh release create`")
+
+
 def check_body_ceiling() -> None:
     """No routable node grows without a limit.
 
@@ -2449,6 +2485,7 @@ def check() -> None:
     check_canonical_plant_root_boundary()
     check_published_body_figures()
     check_ci_workflow()
+    check_release_workflow()
     check_charter_vocabulary()
     check_agents_reference()
     check_skills_reference()

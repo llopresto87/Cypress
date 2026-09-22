@@ -199,6 +199,17 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "its opposite. It cannot tell whether the tool-smith APPLIES its bar "
         "honestly: building on two instances and a hunch, or refusing one that "
         "had earned building, passes every check here"),
+    "test_prepare_release.py": (
+        "tools/prepare-release.py stages the right CHANGELOG.md section into "
+        ".github/RELEASE_NOTES.md, and refuses loudly on a missing entry or an "
+        "already-tagged version", REAL, "semantic",
+        "it exercises the extraction and the CLI against disposable temp repos, "
+        "never the seed's own CHANGELOG.md — so a real entry's prose drifting "
+        "from what canonize's humanizer pass produced is out of scope here; "
+        "that pass is asserted where it runs, in canonize's own gate. It also "
+        "cannot execute .github/workflows/release.yml, which only GitHub "
+        "Actions can run; seed-lint's check_release_workflow holds that file's "
+        "shape structurally instead"),
     "test_brainstorm_modes.py": (
         "both brainstorm modes exist, are reachable, and differ where it matters",
         REAL, "semantic",

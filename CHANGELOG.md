@@ -125,6 +125,20 @@ sections the durability gate names as rejects, and stripping the version labels
 off a migration diff does not make it durable — it makes it an undated migration
 diff, the same fact with its provenance deleted.
 
+**The seed's own release gained a mechanism.** A version shipped by hand-tagging,
+and nothing published a GitHub Release when it did. `tools/prepare-release.py` —
+seed-only, absent from the plant-facing manifest — now stages
+`.github/RELEASE_NOTES.md` from this entry's own text, taken verbatim rather
+than redrafted: the entry already passed canonize's humanizer pass, and a second
+draft for the same reader would be a second home for one fact.
+`.github/workflows/release.yml` reads that staged file when a `vX.Y.Z` tag
+matching `manifest.json`'s version is pushed, and hands it to `gh release create`
+unedited — it authors nothing, since CI has no access to the judgment
+`skills/humanizer` and `skill-corpus/discardme.md` both require. The staged file
+is discardme-shaped: produced at commit time, consumed by the pipeline,
+superseded rather than deleted by the next version's run. Publishing the tag
+stays a human decision, the same as any other push.
+
 ### Landing this in a project
 
 Two new checks can turn a currently-green project red, correctly: a plan citing

@@ -579,6 +579,17 @@ expect_fail "has drifted from" "frontmatter-reader-drift"
 restore tools/frontmatter.py
   rm -rf "$TMP"
 }
+case_38() {
+  local TMP; TMP="$(fresh)"
+# The tag-triggered release workflow: deleting it used to leave every other
+# check green while CLAUDE.md's Release section and tools/prepare-release.py
+# both went on describing a publish pipeline that no longer existed.
+rm -f "$TMP/.github/workflows/release.yml"
+expect_fail "workflows/release.yml is missing" "release-workflow"
+# exercises: check_release_workflow
+mkdir -p "$TMP/.github/workflows" && restore .github/workflows/release.yml
+  rm -rf "$TMP"
+}
 # 20. SPEC-0001-gate-assertion-floor: a compatibility claim matches the shebang.
 case_shell_floor() {
   local TMP; TMP="$(fresh)"
@@ -685,7 +696,7 @@ TMP="$SEEDLINT_TMPL"
 lint >/dev/null || { echo "baseline seed-lint did not pass on a clean copy" >&2; exit 1; }
 
 SCN="$(mktemp)"
-for c in case_01 case_02 case_03 case_04 case_05 case_06 case_07 case_08 case_09 case_10 case_11 case_12 case_13 case_14 case_15 case_16 case_17 case_18 case_19 case_20 case_21 case_22 case_23 case_24 case_25 case_26 case_27 case_28 case_29 case_30 case_31 case_32 case_33 case_34 case_35 case_36 case_37 case_shell_floor case_agn_docs case_agn_py_sh case_frontmatter_portable; do
+for c in case_01 case_02 case_03 case_04 case_05 case_06 case_07 case_08 case_09 case_10 case_11 case_12 case_13 case_14 case_15 case_16 case_17 case_18 case_19 case_20 case_21 case_22 case_23 case_24 case_25 case_26 case_27 case_28 case_29 case_30 case_31 case_32 case_33 case_34 case_35 case_36 case_37 case_38 case_shell_floor case_agn_docs case_agn_py_sh case_frontmatter_portable; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0
