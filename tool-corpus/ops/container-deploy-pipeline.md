@@ -175,6 +175,14 @@ esac
 - **Silent partial builds.** `--partial` reusing a stale cached layer can hide a
   dependency change; use clean builds for release candidates, partial only for
   fast local iteration.
+- **A deploy record states intent, not outcome.** A green pipeline log, a
+  recorded tag and a successful promotion all describe what was *asked for*;
+  what is running is a property of the runtime, and it is one command away:
+  read the artifact's own identity from inside the running container and compare
+  it to the digest the deploy pinned. A rollback that repointed a tag without
+  restarting, a stale layer, and a hand-patched host all look identical in the
+  log and different in the container. (`protocols/verify.md` owns the general
+  rule this is an instance of: evidence is what was observed *this run*.)
 
 ## 6. Tests that cover it
 
@@ -195,3 +203,6 @@ healthcheck loop times out (not hangs) when health never turns green.
 ## 8. Changelog
 
 - 2026-07-16 — created from harvested, generalized capability, by docs-librarian.
+- 2026-09-22 — folded in the deploy-provenance pitfall: a deploy record states
+  intent, and what is running is read from the running artifact (§5), by
+  docs-librarian.

@@ -67,6 +67,13 @@ is not a version. When the project upgrades, the page updates the
 pin and adds an §8 (Upgrade path) entry summarizing what changed
 between the previous and current pin.
 
+A pin is not by itself a currency claim. Where the page says the
+dependency is current, it names the version *and* the support phase
+of the line that version belongs to. "On the latest release" and
+"supported" are two claims: a line that has left active support
+satisfies the first while failing the second, and a pin recorded
+without its phase reads as currency to every later reader.
+
 ### 3. Cite, don't paraphrase
 
 Every claim on the page has a citation in §10 (References) — a URL,

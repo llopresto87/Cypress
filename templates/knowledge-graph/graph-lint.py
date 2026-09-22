@@ -651,9 +651,30 @@ LIB_CELL_LINK_RE = re.compile(r"\[([^\]]*)\]\([^)]*\)")
 
 
 def _cell_text(cell: str) -> str:
-    """A table cell reduced to the words it shows: link text instead of link
-    syntax, without inline code, emphasis, or padding."""
-    return LIB_CELL_LINK_RE.sub(r"\1", cell).strip().strip("`*_ ").strip()
+    """A table cell reduced to the words it shows, case-folded: link text
+    instead of link syntax, without inline code, emphasis, or padding.
+
+    Folded because an index is prose a person writes, and a row that titles the
+    library the way its own docs do — capitalised — is the same row. Comparing
+    it case-sensitively reported no row where one plainly existed, which is the
+    substring hazard `index_registers` guards against arriving as its mirror
+    image: a false RED instead of a false green, and the two are equally good at
+    teaching a reader to stop believing the check."""
+    return LIB_CELL_LINK_RE.sub(r"\1", cell).strip().strip("`*_ ").strip().lower()
+
+
+# Headings under which a row records that a page has NOT been written. The
+# vocabulary is a contract, not this file's invention: `_schema.md` states the
+# same list where an author reads it, and `tests/test_graph_lint.py` holds the
+# two together.
+PENDING_HEADINGS = ("pending", "planned", "unwritten", "not yet", "to ingest",
+                    "backlog", "todo")
+HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s+(.*?)\s*#*\s*$")
+
+
+def _is_pending_heading(text: str) -> bool:
+    low = text.lower()
+    return any(w in low for w in PENDING_HEADINGS)
 
 
 def _is_rule_row(line: str) -> bool:
@@ -680,14 +701,30 @@ def index_registers(index_text: str, page: Path) -> bool:
 
     Separator rows and header rows are excluded from (2): a header is the
     table's vocabulary, never a statement about a page.
+
+    And both are read SECTION by section, because an index has sections that
+    mean opposite things. A row under a pending heading exists to record that
+    the page has not been written, so counting it as registration makes the
+    gate green on precisely the omission it exists to catch — the same failure
+    the substring test produces, arriving through the structure instead of the
+    string. `PENDING_HEADINGS` names those sections, `_schema.md` states the
+    same list where an author reads it, and nothing else is skipped: an index
+    with no headings at all registers exactly as it always did.
     """
-    targets = {page.name, page.stem}
-    for m in LIB_LINK_RE.finditer(index_text):
-        dest = (m.group(1) or m.group(2) or "").split("#", 1)[0].split("?", 1)[0]
-        if dest.rsplit("/", 1)[-1] in targets:
-            return True
+    targets = {page.name.lower(), page.stem.lower()}
+    pending = False
     lines = index_text.splitlines()
     for i, line in enumerate(lines):
+        head = HEADING_RE.match(line)
+        if head:
+            pending = _is_pending_heading(head.group(1))
+            continue
+        if pending:
+            continue
+        for m in LIB_LINK_RE.finditer(line):
+            dest = (m.group(1) or m.group(2) or "").split("#", 1)[0].split("?", 1)[0]
+            if dest.rsplit("/", 1)[-1].lower() in targets:
+                return True
         if "|" not in line or _is_rule_row(line):
             continue
         nxt = next((s for s in lines[i + 1:] if s.strip()), "")
@@ -731,8 +768,9 @@ def check_libraries(nodes: list, errs: list) -> None:
         if not rv or not re.match(r"\d{4}-\d{2}-\d{2}$", rv.group(1)):
             errs.append(f"libraries/{page.name}: §0 `Last reviewed` is not a date")
         if index is not None and not index_registers(index, page):
-            errs.append(f"libraries/{page.name}: no row in libraries/index.md — "
-                        f"the close-out librarian registers every drafted page")
+            errs.append(f"libraries/{page.name}: no row in libraries/index.md "
+                        f"outside its pending sections — the close-out "
+                        f"librarian registers every drafted page")
 
 
 def check_artifacts(nodes: list, errs: list) -> None:

@@ -50,7 +50,9 @@ decision a model makes silently in its own head.
 LINT (the default mode) reads the plan back after the work and checks, per row,
 that every planned artifact exists, is substantive rather than a scaffold, and
 that every grounding obligation resolves to a real retrieved source. What is
-genuinely absent must say so with a reason and the paths that were searched.
+genuinely absent must say so with a reason and the paths that were searched —
+per collection where an agent declares several and this project has the subject
+of only some, because that is where the absence is true.
 Nothing here is a matter of judgment: a planned artifact is present or it is
 not.
 
@@ -570,6 +572,33 @@ def _is_collection_descriptor(name, path):
 
 
 MISSING_CITATION = "does not exist in the plant"
+MALFORMED_CITATION = "is not a path citation"
+
+# The shape a citation may take: a relative path, an optional `:line` (or
+# `:line:col`, or `:line-line`) suffix, and — stripped before this is ever
+# asked — a `#anchor`. A segment may hold a space, because a repository path
+# may; what it may not hold is the punctuation prose arrives with, which is
+# what makes a trailing note detectable as one.
+_CITE_SEG = r"[^\s/:'\"()\[\]{}<>|*?=,;]+(?: [^\s/:'\"()\[\]{}<>|*?=,;]+)*"
+CITATION_RE = re.compile(
+    rf"{_CITE_SEG}(?:/{_CITE_SEG})*/?(?::\d+(?::\d+)?(?:-\d+)?)?")
+
+
+def _shape_problem(ref):
+    """The part of a reference that never was a path, as a phrase — or None
+    when the whole of it parses as a citation.
+
+    Asked only of a reference the filesystem could not answer for, because
+    wherever a path resolves its shape is past arguing about. A reference
+    carrying a trailing note, a quoted value or a parenthetical named no file
+    to begin with, and reporting it as a missing one asserts a fact about the
+    filesystem that was never tested: it sends the reader hunting for a file
+    that is sitting exactly where the message says it is not."""
+    m = CITATION_RE.match(ref)
+    rest = (ref[m.end():] if m else ref).strip()
+    if not rest:
+        return None
+    return f"{MALFORMED_CITATION} — {rest!r} is not part of a path"
 
 
 def cite_problem(plant, ref):
@@ -583,12 +612,20 @@ def cite_problem(plant, ref):
     against a file whose last line is 457 for as long as the suffix was
     stripped and forgotten. A directory is not a citation
     (`docs/graph/sources/` names where the evidence would live, not any
-    evidence), and an absolute path is not a claim about this plant at all."""
-    raw = str(ref).split("#", 1)[0]
-    m = re.search(r":(\d+)(?::\d+)?(-\d+)?$", raw)
+    evidence), and an absolute path is not a claim about this plant at all.
+
+    A reference that is not a citation at all is reported as one. "This file
+    does not exist" is a claim about the filesystem, and a reference that never
+    parsed as a path never reached the filesystem to earn it — every shape the
+    grammar did not recognise collapsed into that one phrase, and the reader
+    went looking for the wrong defect."""
+    cited = str(ref).split("#", 1)[0].strip()
+    m = re.search(r":(\d+)(?::\d+)?(-\d+)?$", cited)
     cited_line = int(m.group(1)) if m else None
-    raw = re.sub(r":\d+(?::\d+)?(-\d+)?$", "", raw).strip()
-    if not raw or Path(raw).is_absolute():
+    raw = re.sub(r":\d+(?::\d+)?(-\d+)?$", "", cited).strip()
+    if not raw:
+        return f"{MALFORMED_CITATION} — it names no path"
+    if Path(raw).is_absolute():
         return MISSING_CITATION
     target = plant / raw
     try:
@@ -596,7 +633,7 @@ def cite_problem(plant, ref):
     except (ValueError, OSError):
         return MISSING_CITATION
     if not target.is_file():
-        return MISSING_CITATION
+        return _shape_problem(cited) or MISSING_CITATION
     if cited_line:
         try:
             held = len(target.read_text(encoding="utf-8",
@@ -739,8 +776,15 @@ def raw_retained(plant, rel):
                        f"license, a host without fetch, an MCP summary with no "
                        f"page behind it)")
     if re.fullmatch(r"[\w./-]+\.[A-Za-z0-9]{1,5}", val):
-        # One bare token, no `raw/` prefix: today's resolution against
-        # sources/raw/, kept verbatim so no existing plant changes meaning.
+        # One bare token, no `raw/` prefix: resolved against sources/raw/, the
+        # resolution that shipped and is kept verbatim so no existing plant
+        # changes meaning. What it resolves to is OPENED, exactly as a prefixed
+        # token's is — the two branches print the same existence verdict, so
+        # they owe the same check, and a branch that prints the verdict without
+        # performing it reports a snapshot missing while it sits at the path
+        # the message names.
+        if (plant / GRAPH_HOME / RAW_DIR / val).is_file():
+            return True, ""
         return False, (f"names `{RAW_KEY}: {val}`, which does not exist — "
                        f"resolved to {GRAPH_HOME}/{RAW_DIR}/{val}")
     return True, ""
@@ -807,6 +851,26 @@ def plant_projections(plant):
             out.append((str(entry.get("tool") or "a harness"),
                         str(entry["path"]), bool(entry.get("verbatim"))))
     return out
+
+
+# An ordering prefix on a roster filename is presentation, not identity, and
+# `install.sh`'s Copilot transform strips exactly this much when it writes the
+# harness file.
+ORDER_PREFIX_RE = re.compile(r"^\d+-")
+
+
+def spawn_name(stem):
+    """The name an agent file is callable by, from its filename.
+
+    Harnesses disagree about which identifier that is, so neither one settles
+    it alone: one spawns a subagent by the frontmatter `name`, another
+    discovers the roster by filename and its projection carries no `name` at
+    all, and a third has no `name` key in its agent contract to read. What
+    every one of them needs is that the two AGREE, with the ordering prefix a
+    file may carry for its reader taken off first — which is the relationship
+    the seed's own roster keeps, and the rule a check applied to somebody
+    else's roster has to encode."""
+    return ORDER_PREFIX_RE.sub("", stem)
 
 
 def plant_experts(plant, seed):
@@ -892,6 +956,9 @@ def do_plan(plant, seed, opt):
             added.append(f"agent {name}")
         else:
             ags[name]["reads"] = reads      # the seed owns this fact, not the record
+        # A declared collection whose subject this project has not got is
+        # closed here, one entry at a time, rather than pinning the row open.
+        ags[name].setdefault("absent", {})
     rec["agents"] = [ags[k] for k in sorted(ags)]
 
     # The expert set comes from the plant's own graph, so an expert authored in
@@ -903,6 +970,7 @@ def do_plan(plant, seed, opt):
                                   home=f"{GRAPH_HOME}/agents/{name}.md")
             added.append(f"expert {name}")
         exs[name]["reads"] = info["reads"]   # the agent file owns this fact
+        exs[name].setdefault("absent", {})
     rec["experts"] = [exs[k] for k in sorted(exs)]
 
     majors = {}
@@ -1201,7 +1269,11 @@ def empty_reads(plant, reads, templates):
     page written for the implementer mark the ui-ux-designer covered with an
     empty `design/` — the row would pass on exactly the plant it was built to
     catch. Shared by the roster arm and the expert arm, which ask the same
-    question of two different row sets."""
+    question of two different row sets.
+
+    Both ask it of the declaration minus whatever the row established absent
+    by design (`absent_by_design`), so all-of holds over the entries this
+    project could have had rather than over the ones it never could."""
     out = []
     for entry in reads:
         live = read_target(plant, entry)
@@ -1209,6 +1281,67 @@ def empty_reads(plant, reads, templates):
                 plant, q.relative_to(plant / GRAPH_HOME).as_posix(),
                 templates)[0] for q in live):
             out.append(entry)
+    return out
+
+
+def absent_by_design(plant, label, row, reads, templates, findings):
+    """The declared entries this row establishes as absent one at a time, each
+    held to the bar a row-level absence is held to.
+
+    A row answers for an agent, and an agent declares several collections a
+    project may have severally rather than jointly. Where it has the subject of
+    some and not of others, the row had no honest status left: all-of correctly
+    refuses COVERED, a filled sibling refuses ABSENT, and what remained was the
+    status that means nobody looked — so an agent whose material half exists
+    was recorded exactly like an agent nobody audited, at the row where the
+    distinction between ungrown and absent is most worth having. Absence is
+    established where it is true, which is per collection. An `absent` map on
+    the row (`{"<entry>": {"reason": …, "searched": [...]}}`) closes the
+    entries whose subject this project has not got, and the entries left over
+    answer for themselves.
+
+    It closes a row, so it is not a way past one: an entry absent by design
+    names its reason and where it looked, must be an entry the agent actually
+    declares, must not be the collection this plant wrote in, and cannot be
+    claimed of every entry at once by a row that also claims coverage."""
+    declared = row.get("absent")
+    if not isinstance(declared, dict):
+        return set()
+    out = set()
+    for entry, claim in sorted(declared.items()):
+        claim = claim if isinstance(claim, dict) else {}
+        if entry not in reads:
+            findings.append(Finding("UNJUSTIFIED", label,
+                                    f"records {entry!r} absent by design and "
+                                    f"does not declare it reads it — an "
+                                    f"absence answers a declaration, and there "
+                                    f"is no declaration here to answer"))
+            continue
+        out.add(entry)
+        if not (claim.get("reason") or "").strip():
+            findings.append(Finding("UNJUSTIFIED", label,
+                                    f"records {entry!r} absent by design with "
+                                    f"no reason — an absence is a fact only "
+                                    f"when it is established"))
+        elif not claim.get("searched"):
+            findings.append(Finding("UNJUSTIFIED", label,
+                                    f"records {entry!r} absent by design with "
+                                    f"a reason but no searched paths — name "
+                                    f"where you looked"))
+        if not empty_reads(plant, [entry], templates):
+            findings.append(Finding("CONTRADICTED", label,
+                                    f"records {entry!r} absent by design, and "
+                                    f"it holds a filled leaf of this plant's "
+                                    f"graph — the collection this project was "
+                                    f"said not to have is one it wrote in"))
+        absence_found_something(plant, label, claim, templates, findings)
+    if out and not [e for e in reads if e not in out] \
+            and (row.get("status") or "").strip().upper() == "COVERED":
+        findings.append(Finding("CONTRADICTED", label,
+                                "claims COVERED and records every collection "
+                                "it declares as absent by design — no "
+                                "declaration is left for the coverage to be "
+                                "about"))
     return out
 
 
@@ -1230,9 +1363,11 @@ def lint_agents(plant, seed, rec, templates, findings):
         status = check_row_shape(label, row, findings)
         if status == "ABSENT":
             absence_found_something(plant, label, row, templates, findings)
+        excused = absent_by_design(plant, label, row, reads, templates, findings)
         if status != "COVERED":
             continue
-        empty = empty_reads(plant, reads, templates)
+        empty = empty_reads(plant, [e for e in reads if e not in excused],
+                            templates)
         if empty:
             findings.append(Finding("CONTRADICTED", label,
                                     f"claimed COVERED but "
@@ -1315,18 +1450,23 @@ def lint_experts(plant, seed, rec, templates, findings):
         if not ok:
             findings.append(Finding("HOLLOW", label,
                                     f"{GRAPH_HOME}/{rel} — {why}"))
-        if info["declared_name"] and info["declared_name"] != name:
+        if info["declared_name"] and info["declared_name"] != spawn_name(name):
             findings.append(Finding("HOLLOW", label,
                                     f"its frontmatter name is "
-                                    f"{info['declared_name']!r} while the file "
-                                    f"is {name}.md — the harness projects and "
-                                    f"spawns by filename, so a disagreement "
-                                    f"names an agent nobody can call"))
+                                    f"{info['declared_name']!r} while "
+                                    f"{name}.md is callable as "
+                                    f"{spawn_name(name)!r} — one harness spawns "
+                                    f"by the declared name and another "
+                                    f"discovers by filename and projects no "
+                                    f"name at all, so a disagreement names an "
+                                    f"agent that only some of them can call"))
         if info["origin"] != "project":
             findings.append(Finding("HOLLOW", label,
                                     "carries no `origin: project`, so a graft "
                                     "cannot tell this plant's own expert from "
                                     "the seed machinery it replaces"))
+        excused = absent_by_design(plant, label, row, info["reads"], templates,
+                                   findings)
         if not info["reads"]:
             findings.append(Finding("HOLLOW", label,
                                     "declares no `plant_knowledge:` — the one "
@@ -1344,6 +1484,8 @@ def lint_experts(plant, seed, rec, templates, findings):
             # different name.
             resolvable = []
             for entry in info["reads"]:
+                if entry in excused:
+                    continue
                 if read_target(plant, entry):
                     resolvable.append(entry)
                     continue

@@ -113,18 +113,23 @@ spawns come out of order. This skill's own workflow is the audit.
 Run this when grill.md feels out of sync. First the mechanical part:
 `python3 docs/graph/grill-lint.py` checks the shape (every section
 populated, §1 lines cited, §9 rows complete and in dependency order,
-§5 covering the library pages §9 depends on, §14 a single action) and
-the plan→spec half of the alignment check (every contract an increment
+§5 covering the library pages §9 depends on, §14 a single action), the
+plan→spec half of the alignment check (every contract an increment
 names exists in a live spec; every contract of those specs appears in
-an increment). Then the judgment the lint cannot make:
+an increment), and every decision the plan cites by identifier against
+`docs/graph/decisions/`, because a decision not yet accepted is filed
+with the status that says so rather than left as a number in a table.
+Then the judgment the lint cannot make:
 
 - Every active spec in `docs/graph/specs/` is referenced from §3 or §9.
 - Every ADR in `docs/graph/decisions/` matches a row in §6, and no §6
-  row that changed a boundary is missing its ADR.
+  row that changed a boundary is missing its ADR. (The reverse
+  direction is mechanical and is checked above.)
 - Every gate named in §10 is a genuine divergence from
   `docs/graph/runbooks/verification.md`, not a duplicate of it.
 - Every §11 row has a verification that would actually detect the
-  risk; every §12 row has an owner who can resolve it.
+  risk, and a mitigation owner who can carry it out; every §12 row has
+  an owner who can resolve it.
 - A `no external dependency` line in §5 is true — the lint sees only
   what §9 names.
 

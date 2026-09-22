@@ -30,7 +30,9 @@ the plant engine is STALE (missing engine lines the seed has).
 
 "Plant-signal" = the plant's own name/paths PLUS generic self-reference that a
 customization uses without naming the plant ("this project's", "this program",
-"our stack"). Pass the plant's known tokens with --tokens.
+"our stack"). Pass the plant's known tokens with --tokens; each is matched at
+word boundaries, because a short token is a substring of ordinary words before
+it is a name.
 
 MODE 2 — unfilled scaffolds (--unfilled)
 
@@ -54,10 +56,14 @@ so a verification runbook identical to its template and carrying no executed
 gate is unfilled like any other scaffold.
 
 Usage:
-  graft-audit.py <plant-root> <seed-root> [--date YYYYMMDD] [--tokens t1,t2,...]
+  graft-audit.py <plant-root> <seed-root> [--date YYYYMMDD[-HHMMSS]]
+                 [--tokens t1,t2,...]
                  [--engine <plant-graph-lint.py>:<seed-graph-lint.py>]
   graft-audit.py <plant-root> <seed-root> --unfilled [--rename | --prune]
---date defaults to today's UTC date via the newest .bak stamp found.
+--date is a PREFIX of the backup stamp install.sh writes (YYYYMMDD-HHMMSS), so
+`--date 20260101` audits a whole day and `--date 20260101-1632` audits the one
+pass — a graft and the remedy it triggers land on the same day more often than
+not. It defaults to the newest day a .bak stamp in the plant carries.
 Backup audit: exit 0 if clean/only-DELTA; 1 if any CUSTOMIZED or docs
 overwrite (a gate hit). Unfilled: exit 1 while unfilled scaffolds remain and
 neither --rename nor --prune was requested (a gate); 0 once none remain or
@@ -255,9 +261,21 @@ EXECUTED_TOKEN = re.compile(r"(?<!not )(?<!never )(?<!un-)\bexecuted\b", re.IGNO
 GATE_ROW = re.compile(r"^(\||[-*+]\s|\d+\.\s)")
 
 
-def plant_rel(bak: Path, plant: Path, date: str) -> str:
+BAK_STAMP = re.compile(r"\.bak-(\d{8}-\d+)")
+
+
+def bak_stamp(bak: Path) -> str:
+    """The `YYYYMMDD-HHMMSS` stamp install.sh wrote into a backup's name, whole.
+    The time is the finest distinction a later audit can make, so it is read at
+    the granularity the filename records it and narrowed by the caller, never
+    thrown away here."""
+    m = BAK_STAMP.search(bak.name)
+    return m.group(1) if m else ""
+
+
+def plant_rel(bak: Path, plant: Path) -> str:
     rel = bak.relative_to(plant).as_posix()
-    return re.sub(rf"\.bak-{date}-\d+$", "", rel)
+    return re.sub(r"\.bak-\d{8}-\d+$", "", rel)
 
 
 def seed_source_for(rel: str, seed: Path):
@@ -393,7 +411,9 @@ def audit_unfilled(plant: Path, seed: Path, action) -> int:
 def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
     """MODE 1: map every fresh .bak to its seed source and classify what the
     fast-forward replaced."""
-    # Explicit --tokens are the plant's own name and paths: always signal.
+    # Explicit --tokens are the plant's own name and paths, matched at WORD
+    # BOUNDARIES: a supplied token is scanned against prose, and a short one is
+    # a substring of ordinary words long before it is a name.
     # GENERIC_SIGNALS are ordinary self-reference ("this project's"), which the
     # SEED itself uses in its shipped charters — so a pristine machinery file,
     # replaced by a reworded version of itself, matched one and was reported as
@@ -401,21 +421,25 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
     # a steward to ratify without looking, which is the failure the
     # reconcile-before-overwrite gate exists to prevent. A generic phrase
     # therefore counts only when the seed source does NOT also carry it.
-    explicit = [t.lower() for t in opt.get("tokens", [])]
+    explicit = [(t.lower(), re.compile(r"(?<![A-Za-z0-9])" + re.escape(t) +
+                                       r"(?![A-Za-z0-9])", re.I))
+                for t in opt.get("tokens", [])]
     generic = [t.lower() for t in GENERIC_SIGNALS]
 
     date = opt.get("date")
     if not date:
-        stamps = sorted(re.findall(r"\.bak-(\d{8})-\d+",
-                        " ".join(p.name for p in plant.rglob("*.bak-*"))))
-        date = stamps[-1] if stamps else "00000000"
+        # the newest DAY rather than the newest stamp: one graft writes its
+        # backups over several seconds and the whole pass is one audit.
+        stamps = sorted(s for s in (bak_stamp(p) for p in plant.rglob("*.bak-*")) if s)
+        date = stamps[-1][:8] if stamps else "00000000"
 
-    baks = [p for p in plant.rglob(f"*.bak-{date}-*") if p.is_file() and not p.is_symlink()]
+    baks = [p for p in plant.rglob("*.bak-*")
+            if p.is_file() and not p.is_symlink() and bak_stamp(p).startswith(date)]
     counts = {"IDENTICAL": 0, "DELTA": 0, "CUSTOMIZED": 0,
               "GENERATED": 0, "UNMAPPED": 0}
     customized, knowledge_hits, unmapped = [], [], []
     for b in baks:
-        rel = plant_rel(b, plant, date)
+        rel = plant_rel(b, plant)
         src = seed_source_for(rel, seed)
         seed_backed = bool(src and src.exists())
         # a real knowledge overwrite is a backup over PLANT-AUTHORED
@@ -438,7 +462,7 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
                 bt = b.read_text(errors="replace")
                 low = bt.lower()
                 gen_low = gen.read_text(errors="replace").lower()
-                hit = [x for x in explicit if x in low]
+                hit = [x for x, rx in explicit if rx.search(low)]
                 hit += [x for x in generic if x in low and x not in gen_low]
                 if hit:
                     counts["CUSTOMIZED"] += 1
@@ -456,7 +480,7 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
         else:
             uniq = "\n".join(l[1:] for l in _diff_added(st, bt))
             low, st_low = uniq.lower(), st.lower()
-            hit = [t for t in explicit if t in low]
+            hit = [t for t, rx in explicit if rx.search(low)]
             hit += [t for t in generic if t in low and t not in st_low]
             if hit:
                 counts["CUSTOMIZED"] += 1
@@ -476,12 +500,13 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
         # OTHER date stamps mean the requested date audited nothing
         # while the real fast-forward went unexamined: fail, do not
         # print the same "clean" verdict a real audit earns.
-        other = sorted({m.group(1) for p in plant.rglob("*.bak-*")
-                        for m in [re.search(r"\.bak-(\d{8})-\d+$", p.name)]
-                        if m and m.group(1) != date})
+        other = sorted({s for p in plant.rglob("*.bak-*")
+                        for s in [bak_stamp(p)]
+                        if s and not s.startswith(date)})
         if other:
+            shown = ", ".join(other[:6]) + (" …" if len(other) > 6 else "")
             print(f"  !! zero backups for date {date}, but backups exist "
-                  f"for {', '.join(other)} — wrong --date? refusing a "
+                  f"for {shown} — wrong --date? refusing a "
                   f"vacuous audit")
             return 1
         print("  note: zero backup files — nothing was overwritten; "
@@ -667,6 +692,33 @@ def _strip_config_assignments(text: str) -> str:
     return "\n".join(out)
 
 
+SCHEMA_HEADING_RE = re.compile(r"^#{2,6}\s+(.+?)\s*$")
+SCHEMA_KEY_RE = re.compile(r"^([a-z_][a-z0-9_]*):")
+SCHEMA_TERM_RE = re.compile(r"^[|-]\s*`([^`]+)`")
+
+
+def _schema_names(text: str) -> dict:
+    """What the node contract NAMES, as {comparable: as-written}: the sections
+    it is organised into, the frontmatter keys it declares in its fenced
+    example, and the vocabulary it defines in a table row or a definition
+    bullet — anything whose row or bullet opens with a backticked term. Those
+    are the terms every other check is written against; the prose around them
+    is the plant's to re-integrate in its own words."""
+    names, fenced = {}, False
+    for line in text.splitlines():
+        s = line.strip()
+        if s.startswith("```"):
+            fenced = not fenced
+            continue
+        m = SCHEMA_KEY_RE.match(s) if fenced else (SCHEMA_HEADING_RE.match(s) or
+                                                   SCHEMA_TERM_RE.match(s))
+        if m:
+            # `composes` and `composes:` are the same term named twice —
+            # once as a key, once as an edge the prose defines.
+            names.setdefault(m.group(1).casefold().rstrip(":"), m.group(1))
+    return names
+
+
 def _schema_currency(plant: Path, seed: Path) -> bool:
     """Report whether the plant's node schema still matches the seed's.
 
@@ -680,22 +732,29 @@ def _schema_currency(plant: Path, seed: Path) -> bool:
     Reports, never rewrites, and does not gate — the same posture the engine
     check takes on staleness. The schema is the plant's own file and a plant
     may legitimately extend it; blocking would push a steward to overwrite
-    authored content to clear a gate. Returns True always; the verdict is the
+    authored content to clear a gate. The comparison is over what the contract
+    NAMES and not over the sentences it names them in, for the same reason: a
+    schema somebody re-integrated in their own words reads as hundreds of
+    absent lines, and the one edit that clears that message is the verbatim
+    paste this posture exists to avoid. Returns True always; the verdict is the
     output."""
     ss = seed / "templates/knowledge-graph/_schema.md"
     ps = plant / "docs/graph/_schema.md"
     if not ss.is_file() or not ps.is_file():
         return True
-    seed_lines = [l.strip() for l in ss.read_text(errors="replace").splitlines()]
-    plant_lines = {l.strip() for l in ps.read_text(errors="replace").splitlines()}
-    missing = [l for l in seed_lines if l and l not in plant_lines]
+    seed_names = _schema_names(ss.read_text(errors="replace"))
+    plant_names = _schema_names(ps.read_text(errors="replace"))
+    missing = [d for n, d in seed_names.items() if n not in plant_names]
     if missing:
-        print(f"  !! node schema STALE: {len(missing)} seed schema line(s) absent "
-              f"from docs/graph/_schema.md — the plant is linted against a "
-              f"contract older than the machinery it now runs; reconcile it "
-              f"(the plant's own extensions stay)")
+        shown = ", ".join(missing[:12]) + (" …" if len(missing) > 12 else "")
+        print(f"  !! node schema STALE: {len(missing)} term(s) the seed contract "
+              f"names have no counterpart in docs/graph/_schema.md — the plant "
+              f"is linted against a contract older than the machinery it now "
+              f"runs; reconcile it (the plant's own wording and extensions "
+              f"stay): {shown}")
     else:
-        print("  node schema: current (no seed schema line missing from plant)")
+        print("  node schema: current (every term the seed contract names "
+              "has a home in the plant's)")
     return True
 
 

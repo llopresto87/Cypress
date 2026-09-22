@@ -136,6 +136,14 @@ the tests you know exist. The control proves the instrument was live
 and aimed where you think it was aimed; only then does the empty result
 carry information.
 
+The control settles the instrument, not the subject. A negative result
+is evidence about the exact subject that was presented and about nothing
+that merely resembles it: a rejection collected by submitting a fresh,
+equivalent input proves the system rejects that input, never that the
+one you claim is dead is dead. Where the claim is about a specific
+artifact, identifier, or credential, the run that proves it presents
+that one.
+
 A checker you own goes further: it counts what it examined and **fails
 when that count is zero inside its perimeter** — a glob that matched
 nothing, a suite that collected no tests. An empty subject set genuinely
@@ -310,7 +318,13 @@ rule; this section is about what a recorded assertion can have proved.
    offender, and the plant's removal has turned it green again; that
    demonstration is part of the gate's record, and is repeated after any
    refactor around the assertion — a surviving tautology is worse than a
-   deleted check.
+   deleted check. A gate later found to have been incapable of failing
+   did not stop working; it never worked, so its greens are retracted
+   rather than superseded. Record beside the gate the window in which
+   its verdict meant nothing, so the increments it appeared to authorize
+   can be re-read. Repairing the wiring without recording the window
+   leaves every past pass standing as evidence for a property nobody
+   measured.
 
    A gate that *does* execute and *does* assert can still lie by not
    discriminating what it claims. A recorded verdict uses only the words

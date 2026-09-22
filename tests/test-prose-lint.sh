@@ -65,6 +65,16 @@ grep -q "telly.md:5: §8 strong" "$TMP/out" || fail "§8 dash over the allowance
 grep -q "prose lint: FAIL" "$TMP/out" || fail "planted tells did not FAIL"
 echo "  planted §1/§4/§8/§12/§19/§22 + W/X each named with file:line — OK"
 
+# 3b. §19 is a prose tell, not a record one. The seed's own spec template carries
+#     a mandated metadata block and mandated Given/When/Then contracts in exactly
+#     the bullet shape §19 watches for; reporting those would set this linter
+#     against spec-lint over the same bytes, while step 3 above proves the tell
+#     still fires on a bold-label run written as sentences. It cannot use `run`:
+#     that file exits 1 on unrelated §8/§20 findings.
+python3 "$LINT" --file "$ROOT/templates/spec.template.md" >"$TMP/out" 2>&1 || true
+grep -q "§19" "$TMP/out" && fail "a mandated metadata/contract block reported as a §19 run"
+echo "  a record's fields are not a bold-label run; prose still is — OK"
+
 # 4. A weak tell alone is printed and forgiven; three in one paragraph are a
 #    cluster and fail. This is the skill's own "weak alone needs company" rule.
 run 0 --file "$FIX/weak-alone.md"

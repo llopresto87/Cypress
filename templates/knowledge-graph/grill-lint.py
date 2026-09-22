@@ -19,6 +19,9 @@ gated. This makes the shape a gate:
   - §5 covers every docs/graph/libraries/ page a §9 row depends on — the
     research set is derived from the plan, not judged — and every library
     page the plan names exists;
+  - every decision the plan cites by identifier is filed under
+    docs/graph/decisions/ — a number that reaches no record authorizes
+    work by a citation nobody can read;
   - the plan↔spec alignment check, mechanically: every contract a §9 row
     names is declared in a live spec, and every contract of those specs
     appears in some increment;
@@ -44,6 +47,7 @@ PLAN = HERE / "plans" / "grill.md"
 TEMPLATE = HERE / "templates" / "grill.template.md"
 SPECS = HERE / "specs"
 LIBRARIES = HERE / "libraries"
+DECISIONS = HERE / "decisions"
 REQUIRED_SECTIONS = range(0, 16)
 RETIRED_STATUSES = {"superseded", "retired", "deprecated", "withdrawn"}
 
@@ -64,6 +68,8 @@ FIELD_RE = re.compile(r"^\s*-\s*([A-Za-z][^:]{0,40}):(.*)$")
 LABEL_ONLY_RE = re.compile(r"^\s*-\s*[^:]+:\s*$")
 TABLE_SEP_RE = re.compile(r"^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$")
 LIB_REF_RE = re.compile(r"docs/graph/libraries/([\w.\-]+)\.md")
+ADR_REF_RE = re.compile(r"\bADR-(\d{4})\b")
+ADR_FILE_RE = re.compile(r"^(?:adr-)?(\d{4})\b")
 INC_REF_RE = re.compile(r"\bincrement\s+(\d+)", re.I)
 CONTRACT_REF_RE = re.compile(r"(SPEC-\d{4})[\w\-]*/([A-Z][A-Z0-9_]{2,})")
 CONTRACT_DECL_RE = re.compile(r"^###\s+Contract:\s*([A-Z][A-Z0-9_]{2,})\s*$", re.M)
@@ -236,6 +242,21 @@ def spec_files() -> dict[str, tuple[Path, str]]:
     return out
 
 
+def decision_files() -> dict[str, Path]:
+    """ADR-NNNN -> path for every decision filed on disk.
+
+    Both filename forms this seed has shipped resolve: `adr-NNNN-<slug>.md`,
+    which the ADR template prescribes, and a bare `NNNN-<slug>.md`.
+    """
+    out: dict[str, Path] = {}
+    if DECISIONS.is_dir():
+        for p in sorted(DECISIONS.glob("*.md")):
+            m = ADR_FILE_RE.match(p.name)
+            if m:
+                out[f"ADR-{m.group(1)}"] = p
+    return out
+
+
 def main() -> int:
     argv = sys.argv[1:]
     list_mode = "--list" in argv
@@ -318,6 +339,15 @@ def main() -> int:
     for lib in sorted(set(LIB_REF_RE.findall(text))):
         if LIBRARIES.is_dir() and not (LIBRARIES / f"{lib}.md").is_file():
             fails.append(f"docs/graph/libraries/{lib}.md is named by the plan but does not exist (ingest-library)")
+
+    # --- every decision the plan cites resolves to a filed decision ---------
+    decisions = decision_files()
+    for num in sorted(set(ADR_REF_RE.findall(text))):
+        if f"ADR-{num}" not in decisions:
+            fails.append(f"ADR-{num} is named by the plan but is not filed in "
+                         f"docs/graph/decisions/ — a decision that is not yet "
+                         f"accepted is filed with the status that says so "
+                         f"(`status: proposed`), not left as a number in a table")
 
     # --- plan <-> spec alignment ---------------------------------------------
     specs = spec_files()

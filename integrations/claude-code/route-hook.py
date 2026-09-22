@@ -28,8 +28,15 @@ from pathlib import Path
 # The same script may live at .claude/route-hook.py or
 # .github/hooks/route-hook.py (different depths), so find the project
 # root by walking up for the graph linter rather than assuming a depth.
-# Check both the standard seed layout and the tools/ layout.
-CANDIDATES = (Path("docs") / "graph" / "graph-lint.py", Path("tools") / "graph-lint.py")
+#
+# One candidate, and it is the one the installer writes. A candidate list is a
+# claim about where the artifact is written, so a path no writer produces is
+# not a fallback: the only file it could ever select is one this project did
+# not put there. That is the unbounded reach `_is_plant_root` below bounds,
+# arriving through the list instead of through the walk. A path is listed here
+# only while something writes it, and is deleted in the change that retires
+# the writer.
+CANDIDATES = (Path("docs") / "graph" / "graph-lint.py",)
 
 
 # --- canonical plant-root boundary ---

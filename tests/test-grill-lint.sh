@@ -292,6 +292,22 @@ mkdir -p "$G/plans/grill/2026"
 cp "$G/plans/grill/increment-01-validate-schema.md" "$G/plans/grill/2026/inc-99.md"
 expect_fail 'inc-99.md is not indexed' 'orphan under a different name and depth'
 
+# 23. a decision the plan cites by identifier that is not filed. §6 names a
+# decision by number and nothing resolves it: the plan authorizes work by an
+# identifier that reaches no record, and a reader cannot tell an unfiled
+# decision from a rejected one. Both filename forms the seed ships resolve.
+write_plan "sub:| Decision | Evidence | Reversibility |=| Decision | Evidence | Reversibility | ADR |" \
+           "sub:| Use the existing session factory | src/db.py | two-way |=| Use the existing session factory | src/db.py | two-way | ADR-0002 |"
+expect_fail 'ADR-0002 is named by the plan but is not filed' 'unfiled decision'
+mkdir -p "$G/decisions"
+printf -- '---\nstatus: proposed\nstatus_date: 2026-09-09\nowner: architect\n---\n\n# ADR-0002: session factory\n' \
+  > "$G/decisions/adr-0002-session-factory.md"
+lint >/dev/null || { echo "a filed decision must resolve" >&2; lint; exit 1; }
+mv "$G/decisions/adr-0002-session-factory.md" "$G/decisions/0002-session-factory.md"
+lint >/dev/null || { echo "the bare NNNN-<slug>.md filename form must resolve too" >&2; lint; exit 1; }
+rm -rf "$G/decisions"
+echo "  a filed decision resolves under either filename form — OK"
+
 # 13. no plan at all -> SKIP, exit 0
 rm -rf "$G/plans/grill" "$G/plans/grill.md"
 lint >/dev/null

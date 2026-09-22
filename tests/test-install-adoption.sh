@@ -318,6 +318,97 @@ case_check_stale() {
   echo "  --check tells a broken generator from a drifted view, and shows the cause — OK"
 }
 
+case_migration_date() {
+  W="$(mktemp -d)"
+  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
+  # A ledger row states when the replacement HAPPENED, not when the row was
+  # written. The orphan sweep re-files backups taken on runs long past, and
+  # stamping those with the sweep's own date makes recoverable history
+  # unrecoverable — a false claim put in front of the librarian by the same
+  # mechanism the sweep's own suffix guard exists to stop, with the true value
+  # sitting in the filename the guard already matched.
+  D="$W/migdate"; mkdir -p "$D"
+  printf '# Our team rules\n\nAlways rebase, never merge.\n' >"$D/AGENTS.md"
+  "$ROOT/install.sh" claude-code --project-dir "$D" >/dev/null 2>&1 \
+      || fail "migration-date setup install failed"
+  NOTE="$D/docs/graph/plans/adopted-instructions.md"
+  [[ -f "$NOTE" ]] || fail "migration-date: setup produced no migration note"
+  # An orphaned backup from a run long past: on disk, with no ledger row.
+  OLD="AGENTS.md.bak-20240102-030405"
+  printf '# Rules from a much earlier run\n' >"$D/$OLD"
+  "$ROOT/install.sh" opencode --project-dir "$D" >/dev/null 2>&1 \
+      || fail "migration-date: the sweeping re-install failed"
+  row="$(grep -F "$OLD" "$NOTE" || true)"
+  [[ -n "$row" ]] || fail "migration-date: the orphaned backup was never re-filed"
+  grep -qF "on 2024-01-02" <<<"$row" \
+      || fail "migration-date: the row must carry the backup's own date, not the \
+sweep's. Got: $row"
+  TODAY="$(date -u +%Y-%m-%d)"
+  grep -qF "$TODAY" <<<"$row" \
+      && fail "migration-date: the re-filed row was stamped with this run's date \
+($TODAY), which is the false claim. Got: $row"
+  # ...and a LIVE replacement still records the day it happened, which is today.
+  F="$W/migdate-live"; mkdir -p "$F"
+  printf '# Our team rules\n' >"$F/AGENTS.md"
+  "$ROOT/install.sh" claude-code --project-dir "$F" >/dev/null 2>&1 \
+      || fail "migration-date: live-replacement install failed"
+  grep -qF "on $TODAY" "$F/docs/graph/plans/adopted-instructions.md" \
+      || fail "migration-date: a replacement made now must be dated now"
+  echo "  a re-filed migration row carries the backup's date, not the sweep's — OK"
+}
+
+case_check_backups() {
+  W="$(mktemp -d)"
+  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
+  # A drift check compares what a run would generate against what is on disk,
+  # so everything on disk the run does not generate has to be excluded — the
+  # installer's own backups included. Without that, a target reads STALE from
+  # its second install onward whatever the views say, and no re-run clears it.
+  B="$W/check-baks"; mkdir -p "$B"
+  "$ROOT/install.sh" github-copilot --project-dir "$B" >/dev/null 2>&1 \
+      || fail "--check backup-case setup failed"
+  victim="$(find "$B/.github/prompts" -name '*.prompt.md' | head -1)"
+  [[ -n "$victim" ]] || fail "--check backup case: no generated prompt to edit"
+  printf '\n<!-- edited by hand -->\n' >> "$victim"
+  "$ROOT/install.sh" github-copilot --project-dir "$B" --force >/dev/null 2>&1 \
+      || fail "--check backup case: the regenerating re-install failed"
+  n="$(find "$B/.github" -name '*.bak-*' | wc -l | tr -d ' ')"
+  [[ "$n" -ge 1 ]] || fail "--check backup case: the re-install left no backup \
+under .github/, so this case is asserting nothing"
+  out="$("$ROOT/install.sh" github-copilot --check --project-dir "$B" 2>&1)" && rc=0 || rc=$?
+  [[ $rc -eq 0 ]] || fail "--check must exit 0 over its own backups; got $rc: $out"
+  grep -q "up to date" <<<"$out" \
+      || fail "--check reported drift over backups it wrote itself: $out"
+  echo "  --check ignores the backups the installer itself leaves behind — OK"
+}
+
+case_stray_prompt() {
+  W="$(mktemp -d)"
+  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
+  # An installer that generates a directory owns the files it wrote and nothing
+  # else. A leftover from a generator that no longer runs is not its to delete
+  # — deleting by inference destroys work somebody meant to keep — but leaving
+  # it unmentioned lets a stale command surface go on being offered as current.
+  S="$W/stray"; mkdir -p "$S/.github/prompts"
+  printf -- '---\nmode: %s\n---\n\nbody\n' "'agent'" \
+      >"$S/.github/prompts/retired-command.prompt.md"
+  out="$("$ROOT/install.sh" github-copilot --project-dir "$S" 2>&1)" \
+      || fail "stray-prompt install failed"
+  [[ -f "$S/.github/prompts/retired-command.prompt.md" ]] \
+      || fail "the installer DELETED a prompt it did not write — it may only name it"
+  grep -qF "retired-command.prompt.md" <<<"$out" \
+      || fail "a prompt this run did not generate must be named in the output: $out"
+  # ...and a prompt this run DID generate is never named as a leftover.
+  live="$(basename "$(find "$S/.github/prompts" -name '*.prompt.md' \
+         -not -name 'retired-command.prompt.md' | head -1)")"
+  [[ -n "$live" ]] || fail "stray-prompt: the run generated no prompts at all"
+  out2="$("$ROOT/install.sh" github-copilot --project-dir "$S" 2>&1)" \
+      || fail "stray-prompt re-install failed"
+  grep -E "not generated by this seed" <<<"$out2" | grep -qF "$live" \
+      && fail "a prompt this run generated was reported as a leftover: $out2"
+  echo "  a prompt the run did not generate is named and left in place — OK"
+}
+
 case_hook_order() {
   W="$(mktemp -d)"
   trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
@@ -401,7 +492,7 @@ fi
 # --- main: dispatch every independent scenario in parallel -------------------
 export ROOT
 SCN="$(mktemp)"
-for c in case_agents case_claude case_both case_index case_d1_file case_d1_ro case_d2 case_idem case_block_declared case_block_deep case_block_readonly case_adopted case_adapter_dirs case_check_broken case_check_stale case_hook_order case_hook_retire case_nostamp case_freshquiet; do
+for c in case_agents case_claude case_both case_index case_d1_file case_d1_ro case_d2 case_idem case_block_declared case_block_deep case_block_readonly case_adopted case_adapter_dirs case_check_broken case_check_stale case_migration_date case_check_backups case_stray_prompt case_hook_order case_hook_retire case_nostamp case_freshquiet; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0

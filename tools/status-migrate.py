@@ -70,15 +70,21 @@ def frontmatter_has_status(text: str) -> bool:
 
 
 def detect(kind: str, text: str):
-    """Return (old_status_raw, superseded_by, owner, date) or None."""
+    """Return (old_status_raw, superseded_by, owner, date) or None.
+
+    A status is written either as a section heading or as a metadata bullet,
+    and which one an artifact uses is its author's habit rather than its kind:
+    an ADR states it both ways in the wild. Read the form the kind prefers —
+    the heading stays authoritative for an ADR, so nothing already migrated
+    changes meaning — then fall through to the other, and keep `None` for an
+    artifact that states a status in neither."""
     if kind == "adr":
         m = ADR_STATUS_LINE.search(text)
-        if not m:
-            return None
-        raw = m.group(1).strip()
-        d = ADR_DATE_SECTION.search(text)
-        date = d.group(1) if d and DATE_RE.fullmatch(d.group(1)) else None
-        return raw, None, None, date
+        if m:
+            raw = m.group(1).strip()
+            d = ADR_DATE_SECTION.search(text)
+            date = d.group(1) if d and DATE_RE.fullmatch(d.group(1)) else None
+            return raw, None, None, date
     m = BULLET_STATUS.search(text)
     if not m:
         return None
@@ -157,7 +163,7 @@ def rewrite(kind: str, text: str, new_status: str, companions: dict, owner, date
         text = "---\n" + head.rstrip("\n") + "\n" + "\n".join(lines) + "\n---\n" + rest
     else:
         text = block + text
-    if kind == "adr":
+    if kind == "adr" and ADR_STATUS_LINE.search(text):
         text = ADR_STATUS_LINE.sub("## Status\n\n" + POINTER, text, count=1)
     else:
         text = BULLET_STATUS.sub("- **Status:** see frontmatter (single home)", text, count=1)

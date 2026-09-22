@@ -785,8 +785,8 @@ adversarial `stance`, or context `isolation`), and every
 inventory item of kind `domain` or marked `significance: core` closes its
 `expert` decision in the coverage record with `warranted`, a `why`, and, when
 true, the `needs` it names. A decision nobody recorded reads exactly like a §9
-nobody opened. Where an agent is warranted, check the seed's `agent-corpus/`
-first, author from `docs/graph/templates/agent.template.md` and the cited
+nobody opened. Where an agent is warranted, check the seed's
+`agent-corpus/<name>.md` first, author from `docs/graph/templates/agent.template.md` and the cited
 evidence, mark it `origin: project`, declare its `plant_knowledge:`
 (collections or the expertise nodes it draws on), cite what motivated it, and
 project it to every path this plant's `.cypress/seed.json` records;

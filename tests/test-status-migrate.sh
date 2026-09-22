@@ -4,7 +4,9 @@
 #   a dry run lists work and exits 1; --write applies and a second run finds nothing;
 #   "superseded by ADR-NNNN" becomes superseded + superseded_by; deprecated becomes
 #   superseded with a `not recorded` successor (named, not invented); the body
-#   status line becomes the pointer; an already-migrated file is untouched.
+#   status line becomes the pointer; an already-migrated file is untouched;
+#   and either written form of a status is read — a `## Status` section or a
+#   `- **Status:**` metadata bullet — whichever kind the artifact is.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TOOL="$ROOT/tools/status-migrate.py"
@@ -14,9 +16,9 @@ cp -R "$SRC" "$TMP/graph"
 fail() { echo "FAIL: $*" >&2; [ -f "$TMP/out" ] && cat "$TMP/out" >&2; exit 1; }
 run() { local want="$1"; shift; set +e; python3 "$TOOL" "$@" >"$TMP/out" 2>&1; local rc=$?; set -e; [ "$rc" = "$want" ] || fail "expected exit $want, got $rc (args: $*)"; }
 
-# 1. dry run finds 4, exits 1, writes nothing
+# 1. dry run lists the work, exits 1, writes nothing
 run 1 --root "$TMP/graph" --today 2026-09-06
-grep -q "5 to migrate, 1 already in frontmatter, 1 need a decision" "$TMP/out" || fail "dry-run count"
+grep -q "6 to migrate, 1 already in frontmatter, 1 need a decision" "$TMP/out" || fail "dry-run count"
 grep -q '^status:' "$TMP/graph/decisions/adr-0001-old.md" && fail "dry run must not write"
 echo "  dry run lists work, exits 1, writes nothing — OK"
 
@@ -41,12 +43,25 @@ grep -q '^status: active$' "$s3" || fail "annotated status must map on its leadi
 grep -q '^status_note: INC-0..INC-3 implemented and verified 2026-07-11; promotes to `implemented` after staging$' "$s3" || fail "annotation must be carried as status_note, not dropped"
 grep -q '^status:' "$TMP/graph/specs/SPEC-0004-wrongvocab.md" && fail "a spec using ADR vocabulary (ACCEPTED) is a real inconsistency and must stay a decision, not be migrated"
 echo "  annotated status split into token + status_note; wrong-vocabulary spec left for a decision — OK"
+# REGRESSION — an ADR may state its status as a metadata bullet instead of a
+# `## Status` section. Deciding which form to read from the KIND skipped every
+# such record with "no status line found" — the tool could not read the very
+# artifacts it exists to migrate, while reading the same bullet fine for specs.
+a4="$TMP/graph/decisions/adr-0004-bullets.md"
+grep -q '^status: accepted$' "$a4" || fail "an ADR stating its status as a metadata bullet must migrate"
+grep -q '^status_date: 2026-06-01$' "$a4" || fail "adr-0004 date from the bullet"
+grep -q '^owner: acme-architect$' "$a4" || fail "adr-0004 owner from the bullet"
+grep -q 'Status:\*\* see frontmatter' "$a4" || fail "the bullet an ADR was read from must become the pointer"
+grep -q '^- \*\*Status:\*\* accepted$' "$a4" && fail "adr-0004 old body value still present — two homes"
+grep -q '^status:' "$TMP/graph/decisions/adr-0005-silent.md" && fail "a record stating no status in either form must not be migrated"
+grep -q "adr-0005-silent.md: skipped — no status line found" "$TMP/out" || fail "a record stating no status in either form must still be reported skipped"
+echo "  both written forms read; a record stating neither is skipped, not invented — OK"
 cmp -s "$SRC/specs/SPEC-0002-done.md" "$TMP/graph/specs/SPEC-0002-done.md" || fail "already-migrated file must be untouched"
 echo "  mappings exact; not-recorded never invented; pointer written; migrated file untouched — OK"
 
 # 3. idempotent: second run finds nothing
 run 0 --root "$TMP/graph" --today 2026-09-06
-grep -q "0 to migrate, 6 already in frontmatter, 1 need a decision" "$TMP/out" || fail "second run must find nothing"
+grep -q "0 to migrate, 7 already in frontmatter, 1 need a decision" "$TMP/out" || fail "second run must find nothing"
 echo "  idempotent — OK"
 
 # 4. the migrated tree passes the status linter, if it is present

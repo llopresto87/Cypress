@@ -16,6 +16,34 @@ The first things to do when something is wrong in production, in order.
 - Dashboards: `<links>`
 - Escalation path: `<who, when>`
 
+## What shapes an incident here
+
+The loop below is generic; these facts decide how it is actually run
+here. Each is recorded, or marked `not recorded` — never left implied.
+
+- What tells you an incident has started: the signal, or its absence.
+  Where nothing alerts, the first step of the loop is a person noticing,
+  and the clock starts late by an unknown amount.
+- How long the evidence lives: the retention window of the logs,
+  metrics and traces the loop asks you to preserve. A short window makes
+  "capture before you contain" an ordering constraint rather than good
+  practice.
+- Which containment actions also destroy evidence. Where a restart, a
+  redeploy or a rebuild clears the record that explains the fault,
+  capture is a precondition of containment and not a parallel task.
+  Name them here.
+- What the failure domains actually are. Where one component sits
+  underneath several unrelated failure paths, or where containing one
+  unit and containing everything are the same act, the smallest
+  reversible containment is larger than it looks and the loop must say
+  so.
+- Who may authorize the destructive path, and how they are reached, with
+  the reaching itself recorded: an escalation path nobody has walked is
+  an assumption.
+
+Keep this section to what changes the loop's execution; it is not an
+architecture summary.
+
 ## The loop
 
 1. **Contain without destroying evidence.** Stop the unsafe process; do not
