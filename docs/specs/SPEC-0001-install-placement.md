@@ -424,7 +424,7 @@ $ echo $?
 | ALL_NAMES_SKIPPED_FROZEN_HOSTS | S8 caseALL_NAMES_SKIPPED_FROZEN_HOSTS: the skip and its refresh command named, `.codex/` byte-identical, stamp keeps codex | tests/test-plant-state.sh | integration | green |
 | FROZEN_PROJECTION_LEFT_STALE | S8 caseALL_NAMES_SKIPPED_FROZEN_HOSTS (the same case holds the warning and the untouched tree) | tests/test-plant-state.sh | integration | green |
 | CHECK_WITHOUT_COPILOT_SAYS_SO | D3 caseCHECK_WITHOUT_COPILOT_SAYS_SO: `all --check` exits 0 and says no generated views are in scope | tests/test-install-adoption.sh | integration | green |
-| HOST_TIERS_AGREE | E4 caseHOST_TIERS_AGREE: the matrix moves opencode to frozen, and `check_host_tiers` fails naming both files | tests/test-seed-lint.sh | unit | red |
+| HOST_TIERS_AGREE | E4 caseHOST_TIERS_AGREE: the matrix moves opencode to frozen, and `check_host_tiers` fails naming both files | tests/test-seed-lint.sh | unit | green |
 
 Coverage note, so the table is not read as more than it is.
 

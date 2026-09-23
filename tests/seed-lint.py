@@ -2013,6 +2013,92 @@ def check_shell_floor_claim_matches_the_shebang() -> None:
                      f"one\" and is linked, not restated.")
 
 
+def check_host_tiers() -> None:
+    """The published tier table is the installer's tier arrays, and `all` is the maintained two.
+
+    ADR-0009 gives the host support tiers one home: FIRST_CLASS_TOOLS,
+    SUPPORTED_TOOLS and FROZEN_TOOLS in install.sh, which the `all` expansion
+    and the deprecation notice act on. documentation/host-capability-matrix.md
+    publishes the same assignment under its "Support tiers" heading for a reader
+    who never opens the installer. A published copy nothing compares is a
+    second home, and the first edit to either one is the drift: moving a host
+    between tiers in the matrix alone would tell every reader a maintenance
+    commitment the installer does not act on.
+
+    Three things are held. Each host sits in one tier only. The matrix table
+    names the same hosts per tier as the arrays. And `all` installs exactly the
+    first-class and supported hosts, since the installer writes that list out
+    rather than deriving it (the derivation would reorder install).
+    """
+    install = ROOT / "install.sh"
+    matrix = ROOT / "documentation" / "host-capability-matrix.md"
+    if not install.is_file() or not matrix.is_file():
+        return
+    where = "documentation/host-capability-matrix.md and install.sh"
+    src = install.read_text(encoding="utf-8")
+    arrays: dict[str, list[str]] = {}
+    for tier, var in (("first-class", "FIRST_CLASS_TOOLS"),
+                      ("supported", "SUPPORTED_TOOLS"),
+                      ("frozen", "FROZEN_TOOLS")):
+        m = re.search(rf"^{var}=\(([^)]*)\)", src, re.M)
+        if not m:
+            fail(f"install.sh: no {var}=(...) array. The tier assignment has "
+                 f"lost its one home, so {where} can no longer be compared")
+            return
+        arrays[tier] = m.group(1).split()
+    seen: dict[str, str] = {}
+    for tier, hosts in arrays.items():
+        for host in hosts:
+            if host in seen:
+                fail(f"install.sh: {host} is in both the {seen[host]} and the "
+                     f"{tier} tier; a host has one tier (ADR-0009)")
+            seen.setdefault(host, tier)
+    maintained = arrays["first-class"] + arrays["supported"]
+    m = re.search(r"^\s*all\)\s*expanded\+=\(([^)]*)\)", src, re.M)
+    if not m:
+        fail("install.sh: no `all) expanded+=(...)` line, so what `all` "
+             "installs cannot be held to the tier arrays")
+    elif sorted(m.group(1).split()) != sorted(maintained):
+        fail(f"install.sh: `all` expands to {m.group(1).split()}, and the "
+             f"first-class and supported tiers are {sorted(maintained)}. `all` "
+             f"installs the maintained hosts and no other (ADR-0009)")
+
+    lines = matrix.read_text(encoding="utf-8").splitlines()
+    start = next((i for i, ln in enumerate(lines)
+                  if re.match(r"^#+\s.*Support tiers", ln)), None)
+    if start is None:
+        fail("documentation/host-capability-matrix.md: no 'Support tiers' "
+             "section, so the tier arrays in install.sh are published nowhere")
+        return
+    level = len(lines[start]) - len(lines[start].lstrip("#"))
+    published: dict[str, list[str]] = {}
+    rows = 0
+    for ln in lines[start + 1:]:
+        if re.match(rf"^#{{1,{level}}}\s", ln):
+            break
+        if not ln.lstrip().startswith("|"):
+            if rows:
+                break                     # the section's first table only
+            continue
+        rows += 1
+        if rows <= 2:
+            continue                      # header and separator
+        cells = ln.split("|")
+        if len(cells) < 4:
+            continue
+        tier = cells[1].strip().strip("`").strip().lower()
+        published[tier] = [h.strip().strip("`").strip()
+                           for h in cells[2].split(",") if h.strip()]
+    for tier in sorted(set(arrays) | set(published)):
+        want = sorted(arrays.get(tier, []))
+        got = sorted(published.get(tier, []))
+        if want != got:
+            fail(f"{where} disagree on the {tier} tier: the matrix's Support "
+                 f"tiers table says {got}, the {tier} array in install.sh says "
+                 f"{want}. install.sh is the one home; correct the table, or "
+                 f"move the host in the array through an ADR")
+
+
 def check_install_write_sites() -> None:
     """SINGLE_WRITER is true of the four placers and a NAMED, COUNTED set of exceptions.
 
@@ -2296,6 +2382,10 @@ def check_eager_surface(kernel_bytes: int) -> None:
     # per-adapter installers are the source of truth for these shapes;
     # prime-agent enumerates no static roster (delegation is a runtime rlm()
     # spawn), and copilot's instruction files are always-applied.
+    # All five stay here on purpose, the two frozen hosts included: a plant that
+    # names one still pays its surface on every session. A frozen host alone
+    # over budget is a removal trigger under ADR-0009, taken to the owner, and
+    # never an EAGER_EXEMPTIONS entry.
     surfaces = {
         "claude-code": kernel_bytes + agent_desc + skill_desc,
         "opencode": kernel_bytes + agent_desc + skill_desc,
@@ -2477,6 +2567,7 @@ def check() -> None:
     check_frontmatter_is_portable_yaml()
     check_install_write_sites()
     check_shell_floor_claim_matches_the_shebang()
+    check_host_tiers()
     check_plan_ledgers()
     check_protocol_reference()
     check_gate_single_home()
