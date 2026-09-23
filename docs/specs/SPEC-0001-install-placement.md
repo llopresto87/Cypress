@@ -300,7 +300,11 @@ whose record carries github-copilot, because checking writes nothing.
 - **And:** it fails, naming the matrix, when the tier table has two rows for one
   tier or lists a host in two rows
 - **And:** it fails, naming `install.sh`, when the three arrays together are not
-  exactly the tools the adapter dispatch `case` installs
+  exactly the labels of the adapter dispatch `case "$tool"` block, whatever
+  shape an arm's command takes, or when a label there is not a bare tool name
+- **And:** it fails, naming `install.sh`, when the argument parser's
+  `case "$1"` arms that append to `TOOLS` accept anything but the three
+  arrays' hosts plus `all`
 - **And:** it fails, naming the suite, when the `EVERY_HOST` literal in
   `tests/test-full-install.sh`, `tests/test-install-placement.sh` or
   `tests/test-unified-graph-install.sh` names a different set of tools than
@@ -446,8 +450,8 @@ $ echo $?
 | ALL_NAMES_SKIPPED_FROZEN_HOSTS | S8 caseALL_NAMES_SKIPPED_FROZEN_HOSTS: the skip and its refresh command named, `.codex/` byte-identical, stamp keeps codex | tests/test-plant-state.sh | integration | green |
 | FROZEN_PROJECTION_LEFT_STALE | S8 caseALL_NAMES_SKIPPED_FROZEN_HOSTS (the same case holds the warning and the untouched tree) | tests/test-plant-state.sh | integration | green |
 | CHECK_WITHOUT_COPILOT_SAYS_SO | D3 caseCHECK_WITHOUT_COPILOT_SAYS_SO: `all --check` exits 0 and says no generated views are in scope | tests/test-install-adoption.sh | integration | green |
-| ALL_CHECK_INCLUDES_RECORDED_COPILOT | D4 caseALL_CHECK_INCLUDES_RECORDED_COPILOT: a Copilot-recording plant is checked by `all --check`, in sync exits 0 with "up to date", drifted exits non-zero with STALE, no not-refreshed warning | tests/test-install-adoption.sh | integration | green |
-| HOST_TIERS_AGREE | E4 caseHOST_TIERS_AGREE: the matrix moves opencode to frozen, a tier row is duplicated, codex leaves every tier while still dispatched, each suite's EVERY_HOST drops a host; `check_host_tiers` fails naming the files | tests/test-seed-lint.sh | unit | green |
+| ALL_CHECK_INCLUDES_RECORDED_COPILOT | D4 caseALL_CHECK_INCLUDES_RECORDED_COPILOT: a Copilot-recording plant is checked by `all --check`, in sync exits 0 with "up to date", drifted exits non-zero with STALE, no not-refreshed warning, exactly one DEPRECATED line on stderr in each arm | tests/test-install-adoption.sh | integration | green |
+| HOST_TIERS_AGREE | E4 caseHOST_TIERS_AGREE: the matrix moves opencode to frozen, a tier row is duplicated, codex leaves every tier while still dispatched, each suite's EVERY_HOST drops a host, the dispatch gains a `cursor` arm whose command is not a bare `install_cursor ;;`, the argument parser accepts `cursor`, a dispatch label is quoted; `check_host_tiers` fails naming the files; a dispatch arm split over two lines passes | tests/test-seed-lint.sh | unit | green |
 
 Coverage note, so the table is not read as more than it is.
 
@@ -526,3 +530,10 @@ only version surface it has, and it moves with each entry here.
   the two suites that already held contracts here and were missing from it.
   The status stays `back-written`; the owner decision in the entry above is
   still pending.
+- 2026-09-23: review minor m1. HOST_TIERS_AGREE's dispatch clause reads every
+  label of the `case "$tool"` block rather than lines shaped
+  `<tool>) install_<tool> ;;`, which left `cursor) install_cursor || true ;;`
+  green, and refuses a label that is not a bare tool name. A new And-clause
+  holds the argument parser's accepted tools to the arrays plus `all`.
+  Review minor m2: §10's ALL_CHECK_INCLUDES_RECORDED_COPILOT row now names
+  the assertion that pins "fires, once". No other contract changed.

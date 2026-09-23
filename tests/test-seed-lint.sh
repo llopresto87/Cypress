@@ -781,6 +781,70 @@ PY
     expect_fail "$(basename "$suite")" "host-tiers-every-host ($suite)"
     restore "$suite"
   done
+
+  # (d) review m1: an arm the dispatch `case` runs, written in a shape other than
+  # `<tool>) install_<tool> ;;`. `cursor) install_cursor || true ;;` dispatches a
+  # host that sits in no tier; a line-shaped regex does not see it, and the lint
+  # stayed green. The dispatch universe is every label of the `case "$tool"` block.
+python3 - "$TMP/install.sh" <<'PY'
+import re, sys
+p = sys.argv[1]
+s = open(p, encoding="utf-8").read()
+s2, n = re.subn(r"(?m)^(\s*)(prime-agent\)\s+install_prime_agent\s*;;)",
+                r"\1cursor) install_cursor || true ;;\n\1\2", s)
+assert n == 1, "HOST_TIERS_AGREE (d): no `prime-agent) install_prime_agent ;;` dispatch arm — the fixture has drifted"
+open(p, "w", encoding="utf-8").write(s2)
+PY
+  # exercises: check_host_tiers
+  expect_fail "untiered \['cursor'\]" "host-tiers-dispatch-any-arm-shape"
+  restore install.sh
+
+  # (e) review m1: the argument parser's accepted-tool pattern is a third literal
+  # list of hosts. A tool it accepts and no tier holds is a host the installer
+  # takes on the command line with no maintenance commitment behind it.
+python3 - "$TMP/install.sh" <<'PY'
+import re, sys
+p = sys.argv[1]
+s = open(p, encoding="utf-8").read()
+s2, n = re.subn(r"(?m)^(\s*claude-code\|opencode\|codex\|github-copilot\|prime-agent\|)(all\)\s*TOOLS\+=)",
+                r"\1cursor|\2", s)
+assert n == 1, "HOST_TIERS_AGREE (e): the argument parser's tool pattern is not where this mutant expects it — the fixture has drifted"
+open(p, "w", encoding="utf-8").write(s2)
+PY
+  # exercises: check_host_tiers
+  expect_fail "argument parser.*cursor" "host-tiers-argparser-accepts-untiered"
+  restore install.sh
+
+  # (f) safe direction kept: a quoted dispatch label is not read as a bare tool
+  # name; the lint refuses it rather than guessing.
+python3 - "$TMP/install.sh" <<'PY'
+import re, sys
+p = sys.argv[1]
+s = open(p, encoding="utf-8").read()
+s2, n = re.subn(r"(?m)^(\s*)codex\)(\s+install_codex\s*;;)", r'\1"codex")\2', s)
+assert n == 1, "HOST_TIERS_AGREE (f): no `codex) install_codex ;;` dispatch arm — the fixture has drifted"
+open(p, "w", encoding="utf-8").write(s2)
+PY
+  # exercises: check_host_tiers
+  expect_fail "install.sh" "host-tiers-quoted-label-refused"
+  restore install.sh
+
+  # (g) safe direction kept: an arm whose command sits on the line after its
+  # label is the same dispatch, and the tree still lints clean.
+python3 - "$TMP/install.sh" <<'PY'
+import re, sys
+p = sys.argv[1]
+s = open(p, encoding="utf-8").read()
+s2, n = re.subn(r"(?m)^(\s*)codex\)\s+(install_codex\s*;;)", r"\1codex)\n\1    \2", s)
+assert n == 1, "HOST_TIERS_AGREE (g): no `codex) install_codex ;;` dispatch arm — the fixture has drifted"
+open(p, "w", encoding="utf-8").write(s2)
+PY
+  lint >/dev/null || {
+    echo "[host-tiers-multiline-arm] a dispatch arm split across two lines must lint clean" >&2
+    lint >&2
+    exit 1
+  }
+  restore install.sh
   rm -rf "$TMP"
 }
 
