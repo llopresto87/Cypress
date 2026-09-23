@@ -20,6 +20,13 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Every host the installer can place, named explicitly (ADR-0009). A call that
+# exists to cover the complete destination set, or that asserts a frozen host's
+# files, installs these five by name so the frozen adapters stay under
+# regression; `all` names only the maintained hosts. Unquoted at each call on
+# purpose: it word-splits into five positional tool arguments.
+EVERY_HOST="claude-code opencode codex github-copilot prime-agent"
 WORK="$(mktemp -d)"
 trap 'chmod -R u+w "$WORK" 2>/dev/null; rm -rf "$WORK"' EXIT
 
@@ -95,12 +102,12 @@ load_cond() {
 # ---------------------------------------------------------------------------
 case_recover() {
     local T; T="$WORK/recover"; mkdir -p "$T"
-    "$ROOT/install.sh" all --project-dir "$T" --copy --legal-corpus yes >/dev/null 2>&1 \
+    "$ROOT/install.sh" $EVERY_HOST --project-dir "$T" --copy --legal-corpus yes >/dev/null 2>&1 \
         || fail "baseline install all --copy did not succeed"
     FILES=(); while IFS= read -r _l; do FILES+=("$_l"); done < <(placed_files "$T")
     [[ ${#FILES[@]} -gt 100 ]] || fail "discovered only ${#FILES[@]} placed files — discovery is broken"
 # M3 first: an identical re-run must not churn a single backup.
-"$ROOT/install.sh" all --project-dir "$T" --copy --legal-corpus yes >/dev/null 2>&1 \
+"$ROOT/install.sh" $EVERY_HOST --project-dir "$T" --copy --legal-corpus yes >/dev/null 2>&1 \
     || fail "idempotent re-run did not succeed"
 # Name the churned files, never just count them. An idempotence failure that
 # reports only a number is unreproducible by construction: it was observed once
@@ -140,7 +147,7 @@ for rel in "${FILES[@]}"; do
 done
 [[ "$marked" -gt 100 ]] || fail "marked only $marked files — the sweep is not covering the install"
 
-"$ROOT/install.sh" all --project-dir "$T" --copy --legal-corpus yes >"$WORK/m7-rerun.log" 2>&1 \
+"$ROOT/install.sh" $EVERY_HOST --project-dir "$T" --copy --legal-corpus yes >"$WORK/m7-rerun.log" 2>&1 \
     || { tail -25 "$WORK/m7-rerun.log" >&2; fail "re-run over a customized plant did not succeed"; }
 
 lost=(); unmaintained=(); unrecoverable=()
@@ -208,7 +215,7 @@ case_symchurn() {
 # defect only `ls -la` could see, and one an all-copy test never could.
 SYM="$WORK/idem-symlink"; mkdir -p "$SYM"
 for _run in 1 2 3; do
-    "$ROOT/install.sh" all --project-dir "$SYM" --symlink >/dev/null 2>&1 \
+    "$ROOT/install.sh" $EVERY_HOST --project-dir "$SYM" --symlink >/dev/null 2>&1 \
         || fail "M3: --symlink install (run $_run) did not succeed"
 done
 SYM_CHURN=(); while IFS= read -r _l; do SYM_CHURN+=("$_l"); done \
@@ -254,7 +261,7 @@ refused=()
 attempts=0
 while :; do
     attempts=$((attempts + 1))
-    "$ROOT/install.sh" all --project-dir "$A" --copy --legal-corpus yes >"$WORK/m2.log" 2>&1 && break
+    "$ROOT/install.sh" $EVERY_HOST --project-dir "$A" --copy --legal-corpus yes >"$WORK/m2.log" 2>&1 && break
     [[ $attempts -le 40 ]] || fail "M2: the installer never completed against a hostile target in $attempts attempts"
     # `|| true`: under `set -o pipefail` a non-matching grep makes the whole
     # assignment exit 1, and `set -e` kills the script HERE — before the branch
@@ -331,7 +338,7 @@ case_m9() {
 # Asserts SPEC-0001 SYMLINK_MODE_IS_UNIFORM.
 # ---------------------------------------------------------------------------
 S="$WORK/linked"; mkdir -p "$S"
-"$ROOT/install.sh" all --project-dir "$S" --symlink >/dev/null 2>&1 \
+"$ROOT/install.sh" $EVERY_HOST --project-dir "$S" --symlink >/dev/null 2>&1 \
     || fail "install all --symlink did not succeed"
 
 not_linked=()
@@ -425,7 +432,7 @@ case_m8() {
 # customization gets ratified.
 # ---------------------------------------------------------------------------
 AUD="$WORK/audit"; mkdir -p "$AUD"
-"$ROOT/install.sh" all --project-dir "$AUD" --copy --legal-corpus yes >/dev/null 2>&1 \
+"$ROOT/install.sh" $EVERY_HOST --project-dir "$AUD" --copy --legal-corpus yes >/dev/null 2>&1 \
     || fail "audit-totality install did not succeed"
 while IFS= read -r rel; do
     [[ -L "$AUD/$rel" ]] && continue
@@ -433,7 +440,7 @@ while IFS= read -r rel; do
     is_plant_owned "$rel" && continue
     printf '\n# edited by the plant\n' >> "$AUD/$rel"
 done < <(placed_files "$AUD")
-"$ROOT/install.sh" all --project-dir "$AUD" --copy --legal-corpus yes >/dev/null 2>&1 \
+"$ROOT/install.sh" $EVERY_HOST --project-dir "$AUD" --copy --legal-corpus yes >/dev/null 2>&1 \
     || fail "audit-totality re-run did not succeed"
 
 # The exit code is the contract's **And** — "an unclassifiable backup makes the
@@ -700,7 +707,7 @@ export ROOT
 # sections that MUTATE a tree (M3 re-runs, the sentinel sweep, the symlink
 # attack) build their own fresh install inside their case.
 BASE="$WORK/base"; mkdir -p "$BASE"
-"$ROOT/install.sh" all --project-dir "$BASE" --copy --legal-corpus yes >/dev/null 2>&1 \
+"$ROOT/install.sh" $EVERY_HOST --project-dir "$BASE" --copy --legal-corpus yes >/dev/null 2>&1 \
     || fail "baseline install all --copy did not succeed"
 T="$BASE"
 FILES=(); while IFS= read -r _l; do FILES+=("$_l"); done < <(placed_files "$T")
