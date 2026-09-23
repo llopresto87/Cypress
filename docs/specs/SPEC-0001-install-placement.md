@@ -1,6 +1,6 @@
 ---
 status: back-written
-status_date: 2026-09-16
+status_date: 2026-09-23
 owner: seed-installer
 status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tests/test-install-kernel-modes.sh, tests/test-install-adoption.sh (all wired into tests/run.sh)
 ---
@@ -24,7 +24,7 @@ status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tes
 - **Date:** 2026-09-13
 - **Last reviewed:** 2026-09-13
 - **Related grill section:** docs/plans/grill-7.15.0-remediation.md §3, §5
-- **Related ADRs:** adr-0003-enforcement-layering-honesty
+- **Related ADRs:** adr-0003-enforcement-layering-honesty, adr-0009-host-support-tiers
 - **Supersedes:** —
 - **Superseded by:** —
 
@@ -47,6 +47,7 @@ and the record the installer keeps cannot contradict the filesystem.
   - `.cypress/seed.json` as the plant's persistent record
   - the legal corpus as a whole-or-nothing artifact
   - preflight refusal before any write
+  - which hosts `all` installs, and the deprecation notice a frozen host prints
 - **Out of scope:**
   - what the placed files MEAN (the graph schema, the kernel's content)
   - `grow`, `graft` and `harvest`, which are user-sovereign flows over an
@@ -61,6 +62,9 @@ path is in the way. Running it again over an unchanged project does nothing and
 says nothing. Running it over a project someone has edited replaces the seed's
 own files, leaves a timestamped copy of every body it replaced, and names them.
 Nothing outside the named project directory is ever modified.
+`all` installs the maintained hosts: claude-code, opencode and prime-agent. A
+frozen host (codex, github-copilot) still installs when it is named, and says
+that it is deprecated.
 
 ## 4. Functional contracts
 
@@ -238,6 +242,51 @@ Nothing outside the named project directory is ever modified.
   beneath it — the last two walked rather than listed, so they do not depend on
   anyone remembering to add a path.
 
+### Contract: ALL_EXCLUDES_LEGACY_HOSTS
+- **Given:** an empty target
+- **When:** `install.sh all` runs
+- **Then:** `.claude/`, `.opencode/` and `.prime/agent/` exist, and `.codex/` and
+  `.github/` do not
+- **And:** the stamp's `tools` is exactly `claude-code opencode prime-agent`
+
+### Contract: LEGACY_INSTALL_PRINTS_DEPRECATED
+- **Given:** an empty target
+- **When:** `install.sh codex` or `install.sh github-copilot` runs
+- **Then:** stderr carries exactly one `DEPRECATED` line, naming that tool and
+  ADR-0009
+- **And:** `install.sh opencode` prints no such line
+
+### Contract: LEGACY_INSTALL_STILL_SUCCEEDS
+- **Given:** an empty target
+- **When:** a frozen host is named
+- **Then:** the install exits 0 and places that host's destinations as 7.26.0 did
+- **And:** `codex --print-config` keeps the notice off stdout, which carries
+  config a user pastes, and still prints it on stderr
+
+### Contract: ALL_NAMES_SKIPPED_FROZEN_HOSTS
+- **Given:** a plant whose stamp records `codex`
+- **When:** `install.sh all` runs
+- **Then:** stderr names `codex` as not refreshed, together with the command that
+  refreshes it, `install.sh all codex`
+- **And:** `.codex/` is byte-identical before and after, and the stamp still
+  lists `codex` (ADAPTERS_ACCUMULATE)
+
+### Contract: CHECK_WITHOUT_COPILOT_SAYS_SO
+- **Given:** any target
+- **When:** `install.sh all --check` runs
+- **Then:** it exits 0 and prints that no generated views are in scope
+- **And:** silence is the failure, because a CI job reading only the exit code
+  would take it for "in sync"
+
+### Contract: HOST_TIERS_AGREE
+- **Given:** the tier arrays in `install.sh` (the one home of the assignment)
+  and the tier table in `documentation/host-capability-matrix.md`
+- **When:** `seed-lint` runs
+- **Then:** it fails, naming both files, when the two disagree, when a host sits
+  in two tiers, or when `all` expands to anything but the first-class and
+  supported hosts
+- **And:** the unmutated tree passes
+
 ## 5. Non-functional requirements
 
 - **Compatibility:** bash and `python3` only; no third-party imports. The
@@ -297,6 +346,13 @@ agent_projections:    { type: array, derived_from: tools }
 - **Response:** `die` — a subset makes a missing instrument indistinguishable
   from one that does not apply
 - **Recovery:** re-run; investigate placement if it recurs
+
+### Failure: FROZEN_PROJECTION_LEFT_STALE
+- **Trigger:** the stamp records a frozen host and `install.sh all` runs
+- **Response:** one warning per such host on stderr: its files were not
+  refreshed, and `install.sh all <host>` refreshes them
+- **Side effects:** none; the frozen host's tree is left exactly as it was
+- **Recovery:** re-run with the host named
 
 ## 8. Examples
 
@@ -362,6 +418,13 @@ $ echo $?
 | DESTINATION_PATH_OCCUPIED | D1 destination occupied by a non-directory | tests/test-install-adoption.sh | integration | green |
 | TARGET_NOT_WRITABLE | D1 target directory not writable | tests/test-install-adoption.sh | integration | green |
 | PARTIAL_CORPUS | (no behavioural test — see §11) | — | — | pending |
+| ALL_EXCLUDES_LEGACY_HOSTS | E1 caseALL_EXCLUDES_LEGACY_HOSTS: `all` places three hosts, and the stamp lists exactly those | tests/test-full-install.sh | integration | green |
+| LEGACY_INSTALL_PRINTS_DEPRECATED | E2 case_codex, case_github_copilot: one DEPRECATED line naming the tool and ADR-0009; case_opencode: none | tests/test-full-install.sh | integration | green |
+| LEGACY_INSTALL_STILL_SUCCEEDS | E3 case_codex, case_github_copilot: exit 0, 7.26.0 destinations, `--print-config` stdout clean | tests/test-full-install.sh | integration | green |
+| ALL_NAMES_SKIPPED_FROZEN_HOSTS | S8 caseALL_NAMES_SKIPPED_FROZEN_HOSTS: the skip and its refresh command named, `.codex/` byte-identical, stamp keeps codex | tests/test-plant-state.sh | integration | green |
+| FROZEN_PROJECTION_LEFT_STALE | S8 caseALL_NAMES_SKIPPED_FROZEN_HOSTS (the same case holds the warning and the untouched tree) | tests/test-plant-state.sh | integration | green |
+| CHECK_WITHOUT_COPILOT_SAYS_SO | D3 caseCHECK_WITHOUT_COPILOT_SAYS_SO: `all --check` exits 0 and says no generated views are in scope | tests/test-install-adoption.sh | integration | green |
+| HOST_TIERS_AGREE | E4 caseHOST_TIERS_AGREE: the matrix moves opencode to frozen, and `check_host_tiers` fails naming both files | tests/test-seed-lint.sh | unit | red |
 
 Coverage note, so the table is not read as more than it is.
 
@@ -416,3 +479,14 @@ only version surface it has, and it moves with each entry here.
   bash-versus-POSIX distinction itself is owned by a grown plant's
   `docs/graph/best-practices/bash.md` §"Two floors, not one" and is linked,
   not restated.
+- 2026-09-23 — host support tiers,
+  [ADR-0009](../decisions/adr-0009-host-support-tiers.md). §2 and §3 name
+  which hosts `all` installs; §4 gains six contracts written ahead of the code,
+  with their RED at `9ca5900` (ALL_EXCLUDES_LEGACY_HOSTS,
+  LEGACY_INSTALL_PRINTS_DEPRECATED, LEGACY_INSTALL_STILL_SUCCEEDS,
+  ALL_NAMES_SKIPPED_FROZEN_HOSTS, CHECK_WITHOUT_COPILOT_SAYS_SO,
+  HOST_TIERS_AGREE); §7 gains FROZEN_PROJECTION_LEFT_STALE; §10 binds each to
+  its case. No existing contract changed. The status stays `back-written`
+  for now: `active` needs product, architect and tester sign-offs under
+  spec-lint, none is recorded for this increment, and §0 already records what
+  a sign-off written to satisfy the linter did to this spec once before.

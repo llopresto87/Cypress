@@ -82,12 +82,13 @@ rm -rf "$WORK"
 
 caseALL_NAMES_SKIPPED_FROZEN_HOSTS() {
 local WORK; WORK="$(mktemp -d)"
-# --- ALL_NAMES_SKIPPED_FROZEN_HOSTS (SPEC-0001, ADR-0009) ------------------
+# --- S8: ALL_NAMES_SKIPPED_FROZEN_HOSTS (SPEC-0001, ADR-0009) --------------
 # A plant that carries a frozen host, re-run with `all`, is not refreshed for
 # that host. Saying nothing would leave its projections at the old seed version
 # unannounced; touching them would be work on a host `all` no longer names.
 # So: the skip is named with the command that refreshes it, the frozen tree is
 # left byte-identical, and the stamp keeps the host (ADAPTERS_ACCUMULATE).
+# That warning is SPEC-0001's failure mode FROZEN_PROJECTION_LEFT_STALE.
 P="$WORK/frozen"; mkdir -p "$P"
 "$ROOT/install.sh" codex --project-dir "$P" >/dev/null 2>&1 || fail "codex install failed"
 [[ "$(field "$P/.cypress/seed.json" tools)" == *codex* ]] \

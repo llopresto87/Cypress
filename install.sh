@@ -14,11 +14,19 @@
 #   opencode           — Drop AGENTS.md + .opencode/ + opencode.json.
 #                         (one config file; opencode auto-discovers
 #                          .opencode/{agents,commands,skills}/ by convention)
-#   codex              — Drop AGENTS.md + .codex/; print ~/.codex/config.toml hints.
-#   github-copilot     — Generate .github/ from sources (transformed; not symlinked).
+#   codex              — DEPRECATED (frozen, ADR-0009). Drop AGENTS.md + .codex/;
+#                         print ~/.codex/config.toml hints.
+#   github-copilot     — DEPRECATED (frozen, ADR-0009). Generate .github/ from
+#                         sources (transformed; not symlinked).
 #   prime-agent        — Drop AGENTS.md + .prime/agent/ (skills, prompts, agents,
 #                         route-extension, settings).
-#   all                — Run claude-code, opencode, codex, github-copilot, and prime-agent.
+#   all                — Run claude-code, opencode and prime-agent. Name codex or
+#                         github-copilot as well to install a frozen host.
+#
+# Hosts sit in three support tiers (docs/decisions/adr-0009-host-support-tiers.md):
+# first-class claude-code, prime-agent; supported opencode; frozen codex,
+# github-copilot. A frozen host still installs when named and prints a
+# DEPRECATED notice on stderr.
 #
 # Options:
 #   --project-dir PATH   Target project directory (default: $PWD).
@@ -91,6 +99,11 @@ RECREATED_NODES=()
 die() { printf "ERROR: %s\n" "$*" >&2; exit 1; }
 log() { printf "[seed] %s\n" "$*"; }
 warn() { printf "[seed] WARNING: %s\n" "$*" >&2; }
+# deprecated TOOL — the one notice a frozen host's install carries. On stderr,
+# like warn, so `codex --print-config` keeps a stdout a user can paste.
+deprecated() {
+    printf "[seed] DEPRECATED: %s is a frozen host (docs/decisions/adr-0009-host-support-tiers.md). It still installs and gets no new features.\n" "$1" >&2
+}
 
 # One scratch directory for the whole run, reclaimed on every exit path.
 # Generated content is built HERE and then placed, so a destination is never
@@ -1714,13 +1727,40 @@ corpus_jurisdictions() {
 [[ "$PROJECT_DIR" != "$SEED_ROOT" ]] || die \
     "refusing to install the seed system into itself; pass --project-dir"
 
+# Host support tiers — the one home of the assignment (ADR-0009,
+# docs/decisions/adr-0009-host-support-tiers.md). documentation/host-capability-matrix.md
+# publishes it, and tests/seed-lint.py (check_host_tiers) holds that table to
+# these arrays and `all` to the first two. `all` below is written out rather
+# than concatenated from them: the concatenation would put prime-agent ahead of
+# opencode and change install order for no reason.
+FIRST_CLASS_TOOLS=(claude-code prime-agent)
+SUPPORTED_TOOLS=(opencode)
+FROZEN_TOOLS=(codex github-copilot)
+
 # Expand 'all'
 expanded=()
 for t in "${TOOLS[@]}"; do
     case "$t" in
-        all) expanded+=(claude-code opencode codex github-copilot prime-agent) ;;
+        all) expanded+=(claude-code opencode prime-agent) ;;
         *)   expanded+=("$t") ;;
     esac
+done
+
+# Frozen hosts, announced once each, here and not inside install_codex /
+# install_github_copilot: this point is ahead of the --check branch, so the
+# notice reaches a --check run too, and the frozen adapters stay byte-unchanged.
+# A plant whose record carries a frozen host that `all` no longer names would
+# otherwise keep that host's projections at the old seed version unannounced
+# (SPEC-0001, FROZEN_PROJECTION_LEFT_STALE); its tree is left exactly as it is.
+_recorded_tools=" $(stamp_field "$PROJECT_DIR/.cypress/seed.json" tools) "
+for t in "${FROZEN_TOOLS[@]}"; do
+    if [[ " ${expanded[*]} " == *" $t "* ]]; then
+        deprecated "$t"
+    elif [[ " ${TOOLS[*]} " == *" all "* && "$_recorded_tools" == *" $t "* ]]; then
+        warn "$t not refreshed: .cypress/seed.json records it, and \`all\` no longer"
+        warn "  installs a frozen host (ADR-0009), so its files stay as they were."
+        warn "  Refresh them with: install.sh all $t"
+    fi
 done
 
 # PRIOR_INSTALL — snapshotted HERE, before this run places a single byte, so
@@ -2015,8 +2055,16 @@ report_recreated_nodes() {
 # --check: verify generated views are in sync, write nothing. Only the
 # github-copilot views are generated (transformed) rather than symlinked,
 # so they are the only ones that can drift; the others are safe by
-# construction. Regenerate to a temp dir and diff.
+# construction. Regenerate to a temp dir and diff. Without github-copilot in
+# the run — `all` has not named it since ADR-0009 — there is nothing to
+# check, and a CI job relying on the exit 0 is told so rather than handed a
+# silent green.
 if [[ ${CHECK:-0} -eq 1 ]]; then
+    if [[ " ${expanded[*]} " != *" github-copilot "* ]]; then
+        log "--check: no generated views are in scope (only github-copilot generates"
+        log "  views, and this run does not name it). Nothing was checked."
+        exit 0
+    fi
     stale=0
     for tool in "${expanded[@]}"; do
         [[ "$tool" == "github-copilot" ]] || continue
