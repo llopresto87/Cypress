@@ -5,6 +5,13 @@
 # of the way (exit 0) everywhere else — including when it cannot understand its
 # own input. Guards the class of defect where a guard hook either lets the
 # hanging command through or, worse, bricks a session by blocking on a bug.
+#
+# The scope widens past the guard to every Claude Code hook that reaches another
+# host: VS Code's Copilot agent hooks read `.claude/settings.json`, so
+# route-hook.py and status-hook.py run under Copilot too, on an envelope with no
+# `session_id`, `source` fixed at "new" and fields Claude Code never sends.
+# Copilot is a frozen host (ADR-0009): the seed stops designing for it, and
+# these hooks must keep failing open on it anyway (the last section below).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -136,5 +143,57 @@ grep -qE 'setsid|nohup' <<<"$ERR" || fail "block reason must show the detached f
 grep -q '\$!' <<<"$ERR" || fail "the detached form must record a pid: $ERR"
 grep -q '\.pid' <<<"$ERR" || fail "the detached form must name a pid file: $ERR"
 echo "  a block names both accepted forms for the offending command — OK"
+
+# --- CLAUDE_HOOKS_FAIL_OPEN_ON_COPILOT_ENVELOPE (ADR-0009) -----------------
+# Given the shipped route-hook.py and status-hook.py, placed where the installer
+# puts them (.claude/), when each is fed a Copilot-shaped stdin (no session_id,
+# source "new", an unknown extra field) and also an empty stdin, then each exits
+# 0 and writes nothing to stderr. A non-zero exit or a traceback on stderr is
+# what a host reads as a failed or blocking hook. Two plants: one with no graph
+# (the degrade path) and one whose linter and register answer (the inject path).
+FO="$(mktemp -d)"
+trap 'rm -rf "$FO"' EXIT
+for plant in bare graph; do
+  mkdir -p "$FO/$plant/.cypress" "$FO/$plant/.claude"
+  cp "$ROOT/integrations/claude-code/route-hook.py" "$ROOT/integrations/claude-code/status-hook.py" \
+     "$FO/$plant/.claude/"
+done
+mkdir -p "$FO/graph/docs/graph"
+printf '#!/usr/bin/env python3\nprint("task: stub")\nprint()\nprint("LOAD (1 node): root")\n' \
+  >"$FO/graph/docs/graph/graph-lint.py"
+printf '#!/usr/bin/env python3\nprint("0 open, 0 hotfix, 0 deferred")\n' \
+  >"$FO/graph/docs/graph/status-register.py"
+
+copilot_envelope() {  # $1 = hook event name  $2 = plant dir
+  python3 - "$1" "$2" <<'PY'
+import json, sys
+event, cwd = sys.argv[1], sys.argv[2]
+env = {"hook_event_name": event, "source": "new", "cwd": cwd,
+       "copilotRequestId": "not-a-claude-code-field", "timestamp": "2026-09-23T00:00:00Z"}
+if event == "UserPromptSubmit":
+    env["prompt"] = "write failing tests for the installer host support tiers"
+print(json.dumps(env))   # deliberately no session_id
+PY
+}
+
+fail_open() {  # $1 = plant  $2 = hook file  $3 = raw stdin  $4 = label
+  local rc err
+  set +e
+  err="$(cd "$FO/$1" && printf '%s' "$3" | python3 ".claude/$2" 2>&1 >/dev/null)"
+  rc=$?
+  set -e
+  [[ "$rc" == 0 ]] \
+    || fail "CLAUDE_HOOKS_FAIL_OPEN_ON_COPILOT_ENVELOPE: $2 ($1 plant, $4) exited $rc — stderr: $err"
+  [[ -z "$err" ]] \
+    || fail "CLAUDE_HOOKS_FAIL_OPEN_ON_COPILOT_ENVELOPE: $2 ($1 plant, $4) wrote to stderr: $err"
+}
+
+for plant in bare graph; do
+  fail_open "$plant" route-hook.py  "$(copilot_envelope UserPromptSubmit "$FO/$plant")" "Copilot envelope"
+  fail_open "$plant" status-hook.py "$(copilot_envelope SessionStart "$FO/$plant")"     "Copilot envelope"
+  fail_open "$plant" route-hook.py  "" "empty stdin"
+  fail_open "$plant" status-hook.py "" "empty stdin"
+done
+echo "  CLAUDE_HOOKS_FAIL_OPEN_ON_COPILOT_ENVELOPE: route-hook and status-hook fail open on a Copilot envelope and on empty stdin — OK"
 
 echo "test-bound-hook: PASS"

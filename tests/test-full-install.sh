@@ -82,6 +82,19 @@ projection_parity() {
   return 0
 }
 
+# LEGACY_INSTALL_PRINTS_DEPRECATED: $1 is a captured stderr, $2 the frozen tool.
+# Exactly one DEPRECATED line, and that line names both the tool and ADR-0009.
+assert_one_deprecated_line() {
+  local err="$1" tool="$2" n line
+  n="$(grep -c 'DEPRECATED' "$err" || true)"
+  [[ "$n" -eq 1 ]] || { echo "LEGACY_INSTALL_PRINTS_DEPRECATED: install.sh $tool printed $n DEPRECATED line(s) on stderr, expected exactly 1:" >&2; cat "$err" >&2; exit 1; }
+  line="$(grep 'DEPRECATED' "$err")"
+  grep -qF -- "$tool" <<<"$line" \
+    || { echo "LEGACY_INSTALL_PRINTS_DEPRECATED: the DEPRECATED line does not name $tool: $line" >&2; exit 1; }
+  grep -qi 'adr-0009' <<<"$line" \
+    || { echo "LEGACY_INSTALL_PRINTS_DEPRECATED: the DEPRECATED line does not name ADR-0009: $line" >&2; exit 1; }
+}
+
 # --- independent scenarios, each self-contained in its own temp target ----
 # Every case below sets up its OWN mktemp target and runs its OWN asserts,
 # verbatim from the original serial script. main() emits one scenario line
@@ -197,7 +210,15 @@ echo "  plant facts: filled by flags, validated, never overwritten, named when m
 
 case_opencode() {
   local T; T="$(mktemp -d)"
-"$ROOT/install.sh" opencode --project-dir "$T" --copy --force >/dev/null
+  local ERR; ERR="$(mktemp)"
+"$ROOT/install.sh" opencode --project-dir "$T" --copy --force >/dev/null 2>"$ERR"
+# LEGACY_INSTALL_PRINTS_DEPRECATED (negative arm): a maintained host is not
+# deprecated, so its install carries no notice (ADR-0009).
+if grep -q 'DEPRECATED' "$ERR"; then
+  echo "LEGACY_INSTALL_PRINTS_DEPRECATED: install.sh opencode printed a DEPRECATED notice; opencode is a supported host:" >&2
+  cat "$ERR" >&2; exit 1
+fi
+rm -f "$ERR"
 # 7.0.0: an edited opencode.json is backed up on re-install, never silently overwritten.
 python3 - "$T/opencode.json" <<'PY2'
 import json,sys; p=sys.argv[1]; c=json.load(open(p)); c["_plant_local_marker"]="keep-me"; json.dump(c,open(p,"w"),indent=2)
@@ -235,18 +256,47 @@ assert_cmd_roster "$T/.opencode/commands" .md "opencode commands"
 
 case_codex() {
   local T; T="$(mktemp -d)"
-"$ROOT/install.sh" codex --project-dir "$T" --copy --force >/dev/null
+  local ERR; ERR="$(mktemp)"
+# LEGACY_INSTALL_STILL_SUCCEEDS: a frozen host named explicitly still installs
+# and exits 0 (ADR-0009).
+"$ROOT/install.sh" codex --project-dir "$T" --copy --force >/dev/null 2>"$ERR" \
+  || { echo "LEGACY_INSTALL_STILL_SUCCEEDS: install.sh codex exited non-zero:" >&2; cat "$ERR" >&2; exit 1; }
+# LEGACY_INSTALL_PRINTS_DEPRECATED: exactly one DEPRECATED line on stderr,
+# naming the tool and ADR-0009.
+assert_one_deprecated_line "$ERR" codex
+# LEGACY_INSTALL_STILL_SUCCEEDS: its destinations are placed as at 7.26.0.
 need "$T/.codex/agents/00-orchestrator.md" codex
 need "$T/docs/graph/templates/prompts/handback-payload.md" codex
 [[ ! -e "$T/.codex/protocols" ]] || { echo "STALE .codex/protocols" >&2; exit 1; }
 grep -q "context-router" "$T/.codex/codex-config-snippet.toml"
 grep -q "validate-knowledge" "$T/.codex/codex-config-snippet.toml"
-  rm -rf "$T"
+# LEGACY_INSTALL_STILL_SUCCEEDS: `codex --print-config` stdout is config a user
+# pastes, so the notice must not reach it. The notice must still reach stderr
+# in the same run, or "stdout carries no DEPRECATED" would hold vacuously.
+local OUT; OUT="$(mktemp)"
+"$ROOT/install.sh" codex --project-dir "$T" --print-config >"$OUT" 2>"$ERR" \
+  || { echo "LEGACY_INSTALL_STILL_SUCCEEDS: install.sh codex --print-config exited non-zero:" >&2; cat "$ERR" >&2; exit 1; }
+if grep -q 'DEPRECATED' "$OUT"; then
+  echo "LEGACY_INSTALL_STILL_SUCCEEDS: codex --print-config wrote the DEPRECATED notice to stdout:" >&2
+  grep 'DEPRECATED' "$OUT" >&2; exit 1
+fi
+grep -q 'DEPRECATED' "$ERR" \
+  || { echo "LEGACY_INSTALL_STILL_SUCCEEDS: codex --print-config printed no DEPRECATED notice on stderr, so its clean stdout proves nothing:" >&2; cat "$ERR" >&2; exit 1; }
+  rm -rf "$T" "$ERR" "$OUT"
 }
 
 case_github_copilot() {
   local T; T="$(mktemp -d)"
-"$ROOT/install.sh" github-copilot --project-dir "$T" --copy --force >/dev/null
+  local ERR; ERR="$(mktemp)"
+# LEGACY_INSTALL_STILL_SUCCEEDS: a frozen host named explicitly still installs
+# and exits 0 (ADR-0009).
+"$ROOT/install.sh" github-copilot --project-dir "$T" --copy --force >/dev/null 2>"$ERR" \
+  || { echo "LEGACY_INSTALL_STILL_SUCCEEDS: install.sh github-copilot exited non-zero:" >&2; cat "$ERR" >&2; exit 1; }
+# LEGACY_INSTALL_PRINTS_DEPRECATED: exactly one DEPRECATED line on stderr,
+# naming the tool and ADR-0009.
+assert_one_deprecated_line "$ERR" github-copilot
+rm -f "$ERR"
+# LEGACY_INSTALL_STILL_SUCCEEDS: its destinations are placed as at 7.26.0.
 need "$T/.github/copilot-instructions.md" github-copilot
 need "$T/docs/graph/templates/prompts/graph-session-bootstrap.md" github-copilot
 need "$T/.github/prompts/recover.prompt.md" github-copilot
@@ -543,6 +593,30 @@ echo "  re-install records installed_from — the graft's merge base — OK"
 rm -rf "$D"
 }
 
+caseALL_EXCLUDES_LEGACY_HOSTS() {
+# ALL_EXCLUDES_LEGACY_HOSTS (SPEC-0001, ADR-0009): `all` installs the maintained
+# hosts only. The frozen pair installs when named, never by default.
+local D; D="$(mktemp -d)"
+"$ROOT/install.sh" all --project-dir "$D" --copy >/dev/null 2>&1 \
+  || { echo "ALL_EXCLUDES_LEGACY_HOSTS: install.sh all failed" >&2; exit 1; }
+local d
+for d in .claude .opencode .prime/agent; do
+  [[ -d "$D/$d" ]] || { echo "ALL_EXCLUDES_LEGACY_HOSTS: install.sh all did not place $d/" >&2; exit 1; }
+done
+for d in .codex .github; do
+  [[ ! -e "$D/$d" ]] || { echo "ALL_EXCLUDES_LEGACY_HOSTS: install.sh all placed $d/, which belongs to a frozen host" >&2; exit 1; }
+done
+python3 - "$D/.cypress/seed.json" <<'PY'
+import json, sys
+tools = json.load(open(sys.argv[1], encoding="utf-8"))["tools"]
+want = "claude-code opencode prime-agent"
+if tools != want:
+    sys.exit(f"ALL_EXCLUDES_LEGACY_HOSTS: stamp tools is {tools!r}, expected exactly {want!r}")
+PY
+rm -rf "$D"
+echo "  ALL_EXCLUDES_LEGACY_HOSTS: all installs claude-code, opencode and prime-agent only — OK"
+}
+
 case_plant_facts_index_no_fm() {
 # ---- the plant: block: absent is not "already declared" -------------------
 # A project grown before the block existed has no block at all, so no
@@ -680,7 +754,7 @@ main() {
     case_github_copilot case_prime_agent case_graft_stale_kernel \
     case_idempotent_rerun case_glob_metachar case_no_symlink_churn \
     case_universal_router case_router_fast_forward \
-    case_copilot_projection_tools case_seed_stamp \
+    case_copilot_projection_tools case_seed_stamp caseALL_EXCLUDES_LEGACY_HOSTS \
     case_plant_facts_index_no_fm case_plant_facts_bare \
     case_plant_facts_declared case_plant_facts_partial \
     caseROSTER_PROJECTION_PARITY_KEEPS_A_LIVE_HOME; do

@@ -80,6 +80,55 @@ done
 rm -rf "$WORK"
 }
 
+caseALL_NAMES_SKIPPED_FROZEN_HOSTS() {
+local WORK; WORK="$(mktemp -d)"
+# --- ALL_NAMES_SKIPPED_FROZEN_HOSTS (SPEC-0001, ADR-0009) ------------------
+# A plant that carries a frozen host, re-run with `all`, is not refreshed for
+# that host. Saying nothing would leave its projections at the old seed version
+# unannounced; touching them would be work on a host `all` no longer names.
+# So: the skip is named with the command that refreshes it, the frozen tree is
+# left byte-identical, and the stamp keeps the host (ADAPTERS_ACCUMULATE).
+P="$WORK/frozen"; mkdir -p "$P"
+"$ROOT/install.sh" codex --project-dir "$P" >/dev/null 2>&1 || fail "codex install failed"
+[[ "$(field "$P/.cypress/seed.json" tools)" == *codex* ]] \
+    || fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: setup — the stamp does not record codex"
+[[ -d "$P/.codex" ]] || fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: setup — no .codex/ to compare"
+tree_digest() {  # $1=dir — every entry's path, type, link target or content hash
+    python3 - "$1" <<'PYEOF'
+import hashlib, os, sys
+root = sys.argv[1]
+for dirpath, dirnames, filenames in os.walk(root):
+    dirnames.sort()
+    for name in sorted(dirnames + filenames):
+        full = os.path.join(dirpath, name)
+        rel = os.path.relpath(full, root)
+        if os.path.islink(full):
+            print("L", rel, os.readlink(full))
+        elif os.path.isdir(full):
+            print("D", rel)
+        else:
+            with open(full, "rb") as fh:
+                print("F", rel, hashlib.sha256(fh.read()).hexdigest())
+PYEOF
+}
+before="$(tree_digest "$P/.codex")"
+err="$WORK/all.err"
+"$ROOT/install.sh" all --project-dir "$P" >/dev/null 2>"$err" \
+    || { cat "$err" >&2; fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: install.sh all failed"; }
+grep -i 'not refreshed' "$err" | grep -qF 'codex' \
+    || { cat "$err" >&2; fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: stderr does not name codex as not refreshed"; }
+grep -qF 'install.sh all codex' "$err" \
+    || { cat "$err" >&2; fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: stderr does not name the command that refreshes codex (install.sh all codex)"; }
+after="$(tree_digest "$P/.codex")"
+[[ "$before" == "$after" ]] \
+    || { diff <(printf '%s\n' "$before") <(printf '%s\n' "$after") >&2 || true
+         fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: install.sh all changed .codex/, which it no longer installs"; }
+[[ " $(field "$P/.cypress/seed.json" tools) " == *" codex "* ]] \
+    || fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: the stamp forgot codex (ADAPTERS_ACCUMULATE)"
+echo "  ALL_NAMES_SKIPPED_FROZEN_HOSTS: all names the skipped frozen host and leaves it untouched — OK"
+rm -rf "$WORK"
+}
+
 case_s4() {
 local WORK; WORK="$(mktemp -d)"
 # --- S4: silence on a FRESH plant is `undecided`, not `no` -----------------
@@ -367,7 +416,7 @@ fi
 # concurrently under the gate's ONE shared budget (tests/gate_pool.py,
 # $GATE_JOBS / $GATE_POOL_DIR). Every assertion is byte-for-byte what it was.
 SCN="$(mktemp)"
-for c in case_s1_s2_s5 case_s4 case_s6 case_plan_records case_corpus_linkmodes case_corpus_surplus case_drift case_edited case_s7; do
+for c in case_s1_s2_s5 caseALL_NAMES_SKIPPED_FROZEN_HOSTS case_s4 case_s6 case_plan_records case_corpus_linkmodes case_corpus_surplus case_drift case_edited case_s7; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0
