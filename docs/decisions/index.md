@@ -16,6 +16,7 @@ which is the installed *application* knowledge graph. ADR bodies use
 | [0006](adr-0006-t2-contained-lane.md) | T2 gains a contained lane — a small change is authorized by a test and a why, not a spec | accepted | 2026-09-13 | grill-7.14.0-t2-contained-lane.md | 7.14.0 |
 | [0007](adr-0007-lifecycle-protocol-ceiling.md) | The cross-project meta-loop answers to a larger body ceiling than the rest of the graph | accepted | 2026-09-14 | grill-7.15.0-remediation.md | 7.16.0 |
 | [0008](adr-0008-roster-justification-lives-in-the-node.md) | A component's justification lives in the component (`prevents:`), derived not published; the name-occurrence count is retired | accepted | 2026-09-14 | grill-7.15.0-remediation.md | 7.16.0 |
+| [0009](adr-0009-host-support-tiers.md) | Hosts sit in three support tiers (first-class, supported, frozen); `install.sh all` installs only the first two | proposed | 2026-09-23 | grill-7.27.0-host-support-tiers.md | 7.27.0 |
 
 ADRs **0001–0003** were decided inline in the plan-of-record
 [`../plans/agent-routing-and-delegation.md`](../plans/agent-routing-and-delegation.md)
