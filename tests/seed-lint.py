@@ -1232,6 +1232,127 @@ def check_canonical_plant_root_boundary() -> None:
         names=("plant-root boundary",))
 
 
+# SPEC-0003 I-8: the per-prompt hooks, and the Prime Agent overlay section
+# beside them, point at the kernel and restate none of it.
+HOOK_TEXT_FILES = ("integrations/claude-code/route-hook.py",
+                   "integrations/prime-agent/route-extension.ts")
+PRIME_OVERLAY = "integrations/prime-agent/APPEND_SYSTEM.md"
+PRIME_OVERLAY_SECTION = "## Surfaced nodes"
+KERNEL_RUN = 4          # consecutive kernel tokens that count as a restatement
+TIER_TOKEN = re.compile(r"\bT[0-3]\b")
+
+
+def _decode_escapes(text: str) -> str:
+    return re.sub(r"\\u([0-9a-fA-F]{4})", lambda m: chr(int(m.group(1), 16)), text)
+
+
+def _kernel_tokens(text: str) -> list:
+    """The shared normalisation: escapes decoded, markdown `*` and backticks
+    dropped, lowercased, split into runs of [a-z0-9]."""
+    text = _decode_escapes(text).replace("*", "").replace("`", "").lower()
+    return re.findall(r"[a-z0-9]+", text)
+
+
+def _kernel_rule_text(kernel: str) -> list:
+    """The §0 "The task is…" cells and the FIRST MOVE numbered steps, as text."""
+    lines = kernel.splitlines()
+    cells = []
+    head = next((i for i, l in enumerate(lines)
+                 if l.startswith("|") and "The task is" in l), None)
+    if head is not None:
+        header = [c.strip() for c in lines[head].strip("|").split("|")]
+        col = next(i for i, c in enumerate(header) if "The task is" in c)
+        for line in lines[head + 1:]:
+            if not line.startswith("|"):
+                break
+            row = [c.strip() for c in line.strip("|").split("|")]
+            if len(row) > col and not re.fullmatch(r":?-+:?", row[col]):
+                cells.append(row[col])
+    steps = []
+    start = next((i for i, l in enumerate(lines)
+                  if l.startswith(">") and "FIRST MOVE" in l), None)
+    if start is not None:
+        open_step = False
+        for line in lines[start + 1:]:
+            if not line.startswith(">"):
+                break
+            body = line[1:]
+            m = re.match(r"\s*\d+\.\s+(.*)", body)
+            if m:
+                steps.append(m.group(1))
+                open_step = True
+            elif open_step and re.match(r"\s{2,}\S", body):
+                steps[-1] += " " + body.strip()
+            else:
+                open_step = False
+    return cells + steps
+
+
+def _kernel_run_in(tokens: list, runs: set):
+    for i in range(len(tokens) - KERNEL_RUN + 1):
+        run = tuple(tokens[i:i + KERNEL_RUN])
+        if run in runs:
+            return " ".join(run)
+    return None
+
+
+def _overlay_section(text: str):
+    lines = text.splitlines(keepends=True)
+    heads = [i for i, l in enumerate(lines) if l.rstrip() == PRIME_OVERLAY_SECTION]
+    if len(heads) != 1:
+        return None
+    end = heads[0] + 1
+    while end < len(lines) and not lines[end].startswith("## "):
+        end += 1
+    return "".join(lines[heads[0]:end])
+
+
+# One check, two slugs: HOOK_TEXT_RESTATES_NO_KERNEL_RULE over the whole of each
+# hook file, and PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE over the overlay section.
+def check_hook_text_restates_no_kernel_rule() -> None:
+    """Per-prompt text points at the kernel; it does not carry a copy of it.
+
+    The route hook injected a paragraph that paraphrased the tier table and the
+    FIRST MOVE steps on every prompt: a second home for the kernel's rules,
+    free to drift from the first and paid for again with every message. The
+    pointer line replaced it, and this check keeps copies from creeping back,
+    in comments and docstrings too, since a comment is where the next copy
+    starts. Two rules: any run of KERNEL_RUN consecutive tokens taken from a §0
+    "The task is…" cell or a FIRST MOVE step, under one normalisation for both
+    sides; and any bare tier token, read case-sensitively, which catches a
+    paraphrase of the tier table that shares no such run.
+    """
+    kernel = (ROOT / "core" / "AGENTS.md").read_text(encoding="utf-8")
+    rule_text = _kernel_rule_text(kernel)
+    runs = set()
+    for text in rule_text:
+        toks = _kernel_tokens(text)
+        runs.update(tuple(toks[i:i + KERNEL_RUN]) for i in range(len(toks) - KERNEL_RUN + 1))
+    if len(rule_text) < 6 or not runs:
+        fail(f"HOOK_TEXT_RESTATES_NO_KERNEL_RULE: found {len(rule_text)} §0 cells and "
+             f"FIRST MOVE steps in core/AGENTS.md; the kernel's shape moved, so this "
+             f"check would compare against nothing")
+        return
+    scanned = [(rel, (ROOT / rel).read_text(encoding="utf-8"), "HOOK_TEXT_RESTATES_NO_KERNEL_RULE")
+               for rel in HOOK_TEXT_FILES]
+    overlay = ROOT / PRIME_OVERLAY
+    section = _overlay_section(overlay.read_text(encoding="utf-8")) if overlay.is_file() else None
+    if section is not None:
+        scanned.append((f"{PRIME_OVERLAY} ({PRIME_OVERLAY_SECTION})", section,
+                        "PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE"))
+    for where, text, slug in scanned:
+        run = _kernel_run_in(_kernel_tokens(text), runs)
+        if run:
+            fail(f"{slug}: {where} restates the kernel ('{run}' is a run of "
+                 f"{KERNEL_RUN} tokens from a §0 cell or a FIRST MOVE step). "
+                 f"Point at the kernel instead of copying it (SPEC-0003 I-8)")
+        tier = TIER_TOKEN.search(_decode_escapes(text))
+        if tier:
+            fail(f"{slug}: {where} names the tier token '{tier.group(0)}', which "
+                 f"restates the kernel's §0 table. Point at the kernel instead "
+                 f"(SPEC-0003 I-8)")
+
+
 def check_spec_test_mapping() -> None:
     """Every test a spec's §10 cites must exist.
 
@@ -2695,6 +2816,7 @@ def check() -> None:
     check_file_endings()
     check_canonical_router_blocks()
     check_canonical_plant_root_boundary()
+    check_hook_text_restates_no_kernel_rule()
     check_published_body_figures()
     check_ci_workflow()
     check_release_workflow()
