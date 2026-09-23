@@ -67,6 +67,11 @@ grep -q 'contained' "$ROOT/core/AGENTS.md" \
   || fail "kernel §3.1 must carry the exception; the kernel is always loaded"
 
 # -- every surface that routes a task knows the lane exists -------------
+# The per-prompt hooks (integrations/claude-code/route-hook.py and
+# integrations/prime-agent/route-extension.ts) are not on this list: their text
+# points at kernel §0 and restates none of it (SPEC-0003
+# HOOK_TEXT_RESTATES_NO_KERNEL_RULE, I-8), so they no longer name the lane. The
+# kernel, which they point at, is asserted to carry it at the grep above.
 for f in core/AGENTS.md \
          agents/00-orchestrator.md \
          agents/02-implementer.md \
@@ -76,9 +81,7 @@ for f in core/AGENTS.md \
          manifest.json \
          README.md \
          DOCUMENTATION.md \
-         documentation/protocols-reference.md \
-         integrations/claude-code/route-hook.py \
-         integrations/prime-agent/route-extension.ts; do
+         documentation/protocols-reference.md; do
   grep -qi 'contained' "$ROOT/$f" || fail "$f never mentions the contained lane"
 done
 

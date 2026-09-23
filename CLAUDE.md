@@ -94,6 +94,10 @@ extraction and CLI behavior.
   `SPEC-0002-routing-contract` (what `--route` and `--eval` may claim). Both
   name their contracts in words rather than by letter-number label; read §4 of
   each, and `seed-lint`'s `check_spec_test_mapping` for which test holds which.
+  A third, `SPEC-0003-per-prompt-injection` (what the per-prompt hooks inject,
+  and the session ledger the Claude Code hook writes into a plant), is
+  `active`: forward-written for the 7.28.0 context-residency increment, and
+  promoted in the commit that landed its RED cases.
   **Recorded exemption — the corpora are deliberately unspecced.** A
   `library-corpus/`, `legal-corpus/` or `tool-corpus/` page is transcribed
   knowledge, not behavior: its contract is its `_schema.md` plus

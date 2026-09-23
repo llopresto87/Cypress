@@ -116,6 +116,34 @@ if ! grep -q "03-reviewer" <<<"$lint_out"; then
   fail "the boundary denied the plant its own roster at its own repo root: $lint_out"
 fi
 
+# status-hook.py now loads its sibling route-hook.py for the SPEC-0003 ledger
+# reset (STATUS_HOOK_RESET_OWNS_NO_PATH_RULE), so its reach is route-hook's: the
+# reset must land in the NESTED plant's own `.cypress/session/`, never in the
+# ancestor's. Identical ledgers in both; only the plant's may change.
+printf 'print("task: x")\n' > "$WORK/outer/sub/child/docs/graph/graph-lint.py"
+sid="nested-checkout-session"
+for d in "$WORK/outer" "$WORK/outer/sub/child"; do
+  mkdir -p "$d/.cypress/session"
+  chmod 700 "$d/.cypress/session"
+  printf '*\n' > "$d/.cypress/session/.gitignore"
+  printf '{"version": 1, "session_id": "%s", "prompt_count": 3, "surfaced": ["root"], "peers_seen": [], "last_reset": null}' \
+    "$sid" > "$d/.cypress/session/$sid.json"
+  chmod 600 "$d/.cypress/session/$sid.json"
+done
+ancestor_before=$(cat "$WORK/outer/.cypress/session/$sid.json")
+printf '{"hook_event_name": "SessionStart", "session_id": "%s", "source": "startup"}' "$sid" \
+  | python3 ../../../.claude/status-hook.py >/dev/null 2>&1 || true
+if [[ "$(cat "$WORK/outer/.cypress/session/$sid.json")" != "$ancestor_before" ]]; then
+  fail "status-hook's sibling reset crossed the .git boundary into the ANCESTOR's ledger"
+fi
+if ! python3 - "$WORK/outer/sub/child/.cypress/session/$sid.json" <<'PY'
+import json, sys
+sys.exit(0 if json.load(open(sys.argv[1])).get("prompt_count") == 0 else 1)
+PY
+then
+  fail "status-hook's sibling load did not resolve inside the plant: the nested plant's ledger was not reset"
+fi
+
 # ===========================================================================
 # The FOURTH upward walk: the seed's own test harness.
 # ===========================================================================

@@ -657,6 +657,64 @@ case_agn_py_sh() {
   rm -rf "$TMP"
 }
 
+# X201 HOOK_TEXT_RESTATES_NO_KERNEL_RULE (SPEC-0003, I-8): the per-prompt hook
+# text points at the kernel and restates none of it. A run of four tokens from a
+# §0 "The task is…" cell, or a bare tier token, in either hook source fails the
+# check. Two plants, one per rule, so both are shown to fire on their own: the
+# cell carries no tier token, and the tier token shares no four-token run.
+case_x201() {
+  local TMP; TMP="$(fresh)"
+  printf '\n# %s\n' "change beyond what that holds — architecture, contracts, dependencies, ambiguity" \
+    >> "$TMP/integrations/claude-code/route-hook.py"
+  # exercises: check_hook_text_restates_no_kernel_rule
+  expect_fail "HOOK_TEXT_RESTATES_NO_KERNEL_RULE" "X201-planted-tier-cell"
+  restore integrations/claude-code/route-hook.py
+  printf '\n// the %s lane\n' "T2" >> "$TMP/integrations/prime-agent/route-extension.ts"
+  expect_fail "HOOK_TEXT_RESTATES_NO_KERNEL_RULE" "X201-planted-tier-token"
+  restore integrations/prime-agent/route-extension.ts
+  echo "  X201 HOOK_TEXT_RESTATES_NO_KERNEL_RULE: a planted §0 cell and a planted T2 each fail the check — OK"
+  rm -rf "$TMP"
+}
+# X202 PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE (SPEC-0003, I-8): the same check
+# reaches the `## Surfaced nodes` section of the Prime Agent overlay, and only
+# that section. A FIRST MOVE step planted inside it fails; the same step
+# planted before the first `## ` heading, outside it, draws no such finding.
+# Growing the overlay also moves the published eager figures, so the second
+# half asserts the ABSENCE of this finding rather than a clean lint.
+case_x202() {
+  local TMP out; TMP="$(fresh)"
+  local STEP='Name the **2–3 nodes** that match the task; read **only** those (and their `requires:` closure).'
+  python3 - "$TMP/integrations/prime-agent/APPEND_SYSTEM.md" "$STEP" inside <<'PY2'
+import sys
+p, step, where = sys.argv[1], sys.argv[2], sys.argv[3]
+lines = open(p, encoding="utf-8").read().split("\n")
+heads = [i for i, l in enumerate(lines) if l.rstrip() == "## Surfaced nodes"]
+if len(heads) != 1:
+    sys.exit(f"X202: the overlay has {len(heads)} `## Surfaced nodes` sections; exactly one is needed to plant into")
+at = heads[0] + 1 if where == "inside" else next(i for i, l in enumerate(lines) if l.startswith("## "))
+lines[at:at] = ["", step, ""]
+open(p, "w", encoding="utf-8").write("\n".join(lines))
+PY2
+  expect_fail "PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE" "X202-step-inside-section"
+  restore integrations/prime-agent/APPEND_SYSTEM.md
+  python3 - "$TMP/integrations/prime-agent/APPEND_SYSTEM.md" "$STEP" outside <<'PY2'
+import sys
+p, step = sys.argv[1], sys.argv[2]
+lines = open(p, encoding="utf-8").read().split("\n")
+at = next(i for i, l in enumerate(lines) if l.startswith("## "))
+lines[at:at] = ["", step, ""]
+open(p, "w", encoding="utf-8").write("\n".join(lines))
+PY2
+  out="$(lint)" || true
+  if grep -q "PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE" <<<"$out"; then
+    echo "[X202-step-outside-section] a FIRST MOVE step outside the section drew the finding" >&2
+    echo "$out" >&2; exit 1
+  fi
+  restore integrations/prime-agent/APPEND_SYSTEM.md
+  echo "  X202 PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE: a FIRST MOVE step fails inside the section, not outside it — OK"
+  rm -rf "$TMP"
+}
+
 case_frontmatter_portable() {
   local TMP; TMP="$(fresh)"
   # 23. A shipped node whose unquoted title/description carries an inner ': '.
@@ -865,7 +923,7 @@ TMP="$SEEDLINT_TMPL"
 lint >/dev/null || { echo "baseline seed-lint did not pass on a clean copy" >&2; exit 1; }
 
 SCN="$(mktemp)"
-for c in case_01 case_02 case_03 case_04 case_05 case_06 case_07 case_08 case_09 case_10 case_11 case_12 case_13 case_14 case_15 case_16 case_17 case_18 case_19 case_20 case_21 case_22 case_23 case_24 case_25 case_26 case_27 case_28 case_29 case_30 case_31 case_32 case_33 case_34 case_35 case_36 case_37 case_38 case_shell_floor case_agn_docs case_agn_py_sh case_frontmatter_portable caseHOST_TIERS_AGREE; do
+for c in case_01 case_02 case_03 case_04 case_05 case_06 case_07 case_08 case_09 case_10 case_11 case_12 case_13 case_14 case_15 case_16 case_17 case_18 case_19 case_20 case_21 case_22 case_23 case_24 case_25 case_26 case_27 case_28 case_29 case_30 case_31 case_32 case_33 case_34 case_35 case_36 case_37 case_38 case_shell_floor case_agn_docs case_agn_py_sh case_x201 case_x202 case_frontmatter_portable caseHOST_TIERS_AGREE; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0
