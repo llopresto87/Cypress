@@ -590,7 +590,7 @@ expect_fail "workflows/release.yml is missing" "release-workflow"
 mkdir -p "$TMP/.github/workflows" && restore .github/workflows/release.yml
   rm -rf "$TMP"
 }
-# 20. SPEC-0001-gate-assertion-floor: a compatibility claim matches the shebang.
+# 20. SPEC-0001-gate-assertion-floor SHELL_FLOOR_CLAIM_MATCHES_THE_SHEBANG: a compatibility claim matches the shebang.
 case_shell_floor() {
   local TMP; TMP="$(fresh)"
   # Restore the historical wording in the hermetic copy. The gate must say so.
@@ -622,7 +622,7 @@ PY
   }
   rm -rf "$TMP"
 }
-# 21. ADR-0004: agnosticism scan reaches docs/plans, tools, install.sh, DOC/INSTALL.
+# 21. ADR-0004 AGNOSTICISM_GATE_SCANS_DOCS_PLANS_TOOLS_INSTALLER: agnosticism scan reaches docs/plans, tools, install.sh, DOC/INSTALL.
 case_agn_docs() {
   local TMP; TMP="$(fresh)"
   # a dev-plan .md under docs/plans (newly scanned root)
@@ -642,7 +642,7 @@ case_agn_docs() {
   restore INSTALL.md
   rm -rf "$TMP"
 }
-# 22. ADR-0004: *.py and *.sh are scanned under a scanned root, not only *.md.
+# 22. ADR-0004 AGNOSTICISM_GATE_SCANS_PY_AND_SH: *.py and *.sh are scanned under a scanned root, not only *.md.
 case_agn_py_sh() {
   local TMP; TMP="$(fresh)"
   # a *.py under tools/ (a newly scanned root)
