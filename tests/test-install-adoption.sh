@@ -433,9 +433,15 @@ caseALL_CHECK_INCLUDES_RECORDED_COPILOT() {
   grep -q 'github-copilot' "$P/.cypress/seed.json" \
       || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: setup — the record does not carry github-copilot"
   # (1) In sync: the check ran and says so, and it is not the out-of-scope notice.
-  out="$("$ROOT/install.sh" all --check --project-dir "$P" 2>&1)" && rc=0 || rc=$?
+  out="$("$ROOT/install.sh" all --check --project-dir "$P" 2>"$W/err")" && rc=0 || rc=$?
+  err="$(cat "$W/err")"; out="$out"$'\n'"$err"
   [[ $rc -eq 0 ]] \
       || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check on an in-sync Copilot-recording plant must exit 0; got $rc: $out"
+  # SPEC-0001 says the DEPRECATED notice fires once for this run (review m2):
+  # exactly one such line on stderr, not zero and not one per pass over the host.
+  n="$(grep -c 'DEPRECATED' <<<"$err" || true)"
+  [[ "$n" -eq 1 ]] \
+      || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check on an in-sync plant printed $n DEPRECATED lines on stderr; the contract says the notice fires once: $err"
   grep -qi 'no generated views' <<<"$out" \
       && fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check said no generated views are in scope on a plant that records github-copilot — the Copilot views were not checked: $out"
   grep -q 'Copilot views up to date' <<<"$out" \
@@ -451,9 +457,15 @@ caseALL_CHECK_INCLUDES_RECORDED_COPILOT() {
   own="$("$ROOT/install.sh" github-copilot --check --project-dir "$P" 2>&1)" && own_rc=0 || own_rc=$?
   [[ $own_rc -ne 0 ]] \
       || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: setup — github-copilot --check does not see the drift, so this arm asserts nothing: $own"
-  out="$("$ROOT/install.sh" all --check --project-dir "$P" 2>&1)" && rc=0 || rc=$?
+  out="$("$ROOT/install.sh" all --check --project-dir "$P" 2>"$W/err")" && rc=0 || rc=$?
+  err="$(cat "$W/err")"; out="$out"$'\n'"$err"
   [[ $rc -ne 0 ]] \
       || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check exited 0 on a drifted Copilot-recording plant (github-copilot --check exits $own_rc): $out"
+  # SPEC-0001 says the DEPRECATED notice fires once for this run (review m2):
+  # exactly one such line on stderr, not zero and not one per pass over the host.
+  n="$(grep -c 'DEPRECATED' <<<"$err" || true)"
+  [[ "$n" -eq 1 ]] \
+      || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check on a drifted plant printed $n DEPRECATED lines on stderr; the contract says the notice fires once: $err"
   grep -q 'STALE' <<<"$out" \
       || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check failed on a drifted plant without naming the drift (STALE): $out"
   grep -qi 'not refreshed' <<<"$out" \

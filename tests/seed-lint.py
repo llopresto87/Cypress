@@ -2013,6 +2013,45 @@ def check_shell_floor_claim_matches_the_shebang() -> None:
                      f"one\" and is linked, not restated.")
 
 
+def _case_arms(src: str, header: str) -> list | None:
+    """The arms of the first bash `case … in … esac` whose opening line matches `header`.
+
+    Returns [(patterns, body)] for each arm at the block's own depth, or None
+    when no line matches. An arm is what bash reads: a pattern list up to the
+    first `)`, alternatives split on `|`, then a body up to `;;`, `;&` or
+    `;;&`. Full-line comments are dropped first; a nested `case` inside an arm
+    is carried whole in that arm's body. The labels come back verbatim, so a
+    caller can refuse a quoted or globbed label instead of guessing at it.
+    """
+    lines = src.splitlines()
+    start = next((i for i, ln in enumerate(lines) if re.search(header, ln)),
+                 None)
+    if start is None:
+        return None
+    opener = re.compile(r"(?:^|[\s;(])case\s+\S.*?\s+in(?:\s|$)")
+    closer = re.compile(r"(?:^|[\s;])esac(?:\s|;|$)")
+    head = lines[start]
+    rest = head[opener.search(head).end():] if opener.search(head) else ""
+    depth, text = 0, []
+    for ln in [rest] + lines[start + 1:]:
+        if ln.lstrip().startswith("#"):
+            continue
+        opens, closes = len(opener.findall(ln)), len(closer.findall(ln))
+        if depth == 0 and closes > opens:
+            text.append(ln[:closer.search(ln).start()])
+            break
+        depth += opens - closes
+        text.append(ln)
+    arms: list = []
+    chunks = re.split(r";;&|;;|;&", "\n".join(text)) if depth == 0 else []
+    for chunk in chunks:
+        m = re.match(r"\s*\(?\s*([^)]*?)\s*\)(.*)\Z", chunk, re.S)
+        if m:
+            arms.append(([a.strip() for a in m.group(1).split("|")],
+                         m.group(2)))
+    return arms
+
+
 def check_host_tiers() -> None:
     """The published tier table is the installer's tier arrays, and `all` is the maintained two.
 
@@ -2026,13 +2065,15 @@ def check_host_tiers() -> None:
     would tell every reader a maintenance commitment the installer does not act
     on.
 
-    Five things are held. Each host sits in one tier only, in the arrays and in
+    Six things are held. Each host sits in one tier only, in the arrays and in
     the table, and the table has one row per tier. The matrix table names the
     same hosts per tier as the arrays. `all` installs exactly the first-class
     and supported hosts, since the installer writes that list out rather than
     deriving it (the derivation would reorder install). The three arrays
-    together are exactly the tools the adapter dispatch `case` installs, so no
-    installable host sits in no tier. And each suite that keeps every adapter
+    together are exactly the labels of the adapter dispatch `case "$tool"`
+    block, read arm by arm, so no installable host sits in no tier. The
+    argument parser's `case "$1"` arms that append to TOOLS accept exactly
+    those hosts plus `all`. And each suite that keeps every adapter
     under regression names that same set in its EVERY_HOST literal, so a suite
     that drops a host stops covering it out loud rather than silently.
     """
@@ -2069,17 +2110,50 @@ def check_host_tiers() -> None:
              f"first-class and supported tiers are {sorted(maintained)}. `all` "
              f"installs the maintained hosts and no other (ADR-0009)")
 
-    dispatched = sorted(re.findall(
-        r"^\s*([a-z][a-z-]*)\)\s+install_[a-z_]+\s*;;", src, re.M))
-    if not dispatched:
-        fail("install.sh: no `<tool>) install_<tool> ;;` dispatch lines, so "
+    # The dispatch universe is every label of the `case "$tool"` block that
+    # installs `expanded`, whatever each arm's command looks like: a
+    # line-shaped regex missed `cursor) install_cursor || true ;;` (review m1).
+    # A label that is not a bare tool name is refused, not guessed at.
+    dispatched: list[str] = []
+    arms = _case_arms(src, r'^\s*case\s+"\$tool"\s+in\b')
+    if not arms:
+        fail("install.sh: no `case \"$tool\" in … esac` adapter dispatch, so "
              "the tools it installs cannot be held to the tier arrays")
-    elif sorted(seen) != dispatched:
+    else:
+        for labels, _ in arms:
+            for label in labels:
+                if label == "*":
+                    continue
+                if not re.fullmatch(r"[a-z][a-z-]*", label):
+                    fail(f"install.sh: the adapter dispatch has the label "
+                         f"{label!r}, which is not a bare tool name, so the "
+                         f"tool it installs cannot be held to the tier arrays")
+                    continue
+                dispatched.append(label)
+        dispatched = sorted(set(dispatched))
+    if arms and sorted(seen) != dispatched:
         fail(f"install.sh: the tier arrays hold {sorted(seen)}, and the "
              f"adapter dispatch installs {dispatched}. Every tool install.sh "
              f"installs sits in exactly one tier (ADR-0009): "
              f"untiered {sorted(set(dispatched) - set(seen))}, "
              f"tiered but not installable {sorted(set(seen) - set(dispatched))}")
+
+    # The argument parser's accepted-tool pattern is the third literal host
+    # list: every arm of `case "$1"` that appends to TOOLS. It accepts the
+    # tiered hosts plus `all`, and nothing else.
+    parser = _case_arms(src, r'^\s*case\s+"\$1"\s+in\b')
+    accepted = sorted({label for labels, body in (parser or [])
+                       if re.search(r"\bTOOLS\+=", body) for label in labels})
+    if not accepted:
+        fail("install.sh: no `case \"$1\"` arm appends to TOOLS, so the tools "
+             "the argument parser accepts cannot be held to the tier arrays")
+    elif accepted != sorted(set(seen) | {"all"}):
+        want = set(seen) | {"all"}
+        fail(f"install.sh: the argument parser accepts {accepted}, and the "
+             f"tier arrays plus `all` are {sorted(want)}. The command line "
+             f"takes a host only if a tier holds it (ADR-0009): "
+             f"untiered {sorted(set(accepted) - want)}, "
+             f"tiered but refused {sorted(want - set(accepted))}")
     for suite in ("test-full-install.sh", "test-install-placement.sh",
                   "test-unified-graph-install.sh"):
         path = ROOT / "tests" / suite
