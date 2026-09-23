@@ -597,8 +597,17 @@ caseALL_EXCLUDES_LEGACY_HOSTS() {
 # E1 ALL_EXCLUDES_LEGACY_HOSTS (SPEC-0001, ADR-0009): `all` installs the maintained
 # hosts only. The frozen pair installs when named, never by default.
 local D; D="$(mktemp -d)"
-"$ROOT/install.sh" all --project-dir "$D" --copy >/dev/null 2>&1 \
+local all_out
+all_out="$("$ROOT/install.sh" all --project-dir "$D" --copy 2>&1)" \
   || { echo "ALL_EXCLUDES_LEGACY_HOSTS: install.sh all failed" >&2; exit 1; }
+# Negative arm: `all` names no frozen host, so it has nothing to call deprecated.
+# A DEPRECATED line here would tell a user of the maintained hosts that they
+# installed something the seed no longer develops.
+if grep -q 'DEPRECATED' <<<"$all_out"; then
+  echo "ALL_EXCLUDES_LEGACY_HOSTS: install.sh all printed a DEPRECATED line, and it installs no frozen host:" >&2
+  grep 'DEPRECATED' <<<"$all_out" >&2
+  exit 1
+fi
 local d
 for d in .claude .opencode .prime/agent; do
   [[ -d "$D/$d" ]] || { echo "ALL_EXCLUDES_LEGACY_HOSTS: install.sh all did not place $d/" >&2; exit 1; }

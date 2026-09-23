@@ -120,6 +120,15 @@ grep -i 'not refreshed' "$err" | grep -qF 'codex' \
     || { cat "$err" >&2; fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: stderr does not name codex as not refreshed"; }
 grep -qF 'install.sh all codex' "$err" \
     || { cat "$err" >&2; fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: stderr does not name the command that refreshes codex (install.sh all codex)"; }
+# The skip is a WARNING, not the deprecation notice: `all` did not install
+# codex, so a line saying codex "still installs" and is deprecated would claim an
+# install that did not happen, and would let the notice stand in for the warning.
+grep -i 'not refreshed' "$err" | grep -qF 'WARNING' \
+    || { cat "$err" >&2; fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: the skip is not printed as a WARNING"; }
+if grep -q 'DEPRECATED' "$err"; then
+    cat "$err" >&2
+    fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: the skip path printed the DEPRECATED notice for a host that all did not install"
+fi
 after="$(tree_digest "$P/.codex")"
 [[ "$before" == "$after" ]] \
     || { diff <(printf '%s\n' "$before") <(printf '%s\n' "$after") >&2 || true
