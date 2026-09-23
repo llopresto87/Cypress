@@ -1959,7 +1959,12 @@ def check_spec_rows_name_their_contract() -> None:
         if not f.is_file():
             continue                 # the cited-file check owns this case
         body = f.read_text(encoding="utf-8", errors="replace")
-        m = re.search(rf"^\s*def {re.escape(test)}\b", body, re.M)
+        # `[ \t]*`, not `\s*`: under re.M a `\s*` crosses the blank lines above
+        # a top-level def, the match starts on the first of them, and the
+        # scope below collapses to one newline, so no top-level function could
+        # bind a row (found at SPEC-0003 RED; pinned by
+        # case_spec_row_toplevel_def in tests/test-seed-lint.sh).
+        m = re.search(rf"^[ \t]*def {re.escape(test)}\b", body, re.M)
         if m:
             rest = body[m.start():]
             nxt = re.search(r"\n\s*(?:def |class )", rest[1:])
