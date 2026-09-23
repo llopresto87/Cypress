@@ -10,6 +10,7 @@ owns:
   - rule.knowledge
   - context-router.method
   - context-router.declaration
+  - context-router.residency
 requires:
   - skill.knowledge-graph
 peers:
@@ -26,7 +27,7 @@ artifacts:
   - templates/knowledge-graph/_schema.md
   - templates/knowledge-graph/index.md
 prevents: A session that opens source files before deciding which few facts the task needs, and never declares what it skipped, so nobody downstream can tell an informed omission from an unread node.
-est_tokens: 2779
+est_tokens: 3430
 ---
 
 # context-router
@@ -268,6 +269,27 @@ closure is the rule, not your comfort.
   are near-identical, what they share belongs in a shared node; read
   that instead. Needing a second sibling to infer a convention means
   the convention is missing from where it should live — add it there.
+
+### Residency
+
+Loading minimally decides *which* text enters a session; residency
+decides how long it stays. Every text that can enter a session belongs
+to exactly one of four classes, placed by the test, not by file type:
+
+| Class | Test | How it is held |
+|---|---|---|
+| **1. Resident, full** | Every task needs it. | Loaded once at session start, in full. Nothing restates it, per-prompt hooks included. Only the kernel. |
+| **2. Resident, pointer** | The model must know it exists before it can know it needs it. | Always visible as one line naming *when* to reach for it; the explanation lives in the body. |
+| **3. Once per session** | Some tasks need it, and may need it again. | Protocol and skill bodies. Surfaced when first routed, then named by id as surfaced earlier, not re-suggested in full, until a reset or refresh. |
+| **4. Per lookup** | It is consulted for a fact, not followed as a procedure. | Never resident. Reference corpora: read the section, cite, move on. |
+
+An item that fits two classes takes the smaller resident footprint, and
+you say why. **Spawn-boundary exception:** repetition across a subagent
+spawn is not duplication. A spawned agent starts empty, so the brief's
+canonical block stays verbatim; dedup applies within one context, never
+across a spawn. A hook can know what it *surfaced*, never what the
+model *read*. How the per-prompt hooks hold to this is the CYPRESS
+seed's own spec `SPEC-0003-per-prompt-injection`.
 
 ## Anti-patterns
 

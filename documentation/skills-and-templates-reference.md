@@ -53,7 +53,7 @@ skill frontmatter carries:
 | adr-writer | `skill.adr-writer` | `adr-writer.method`, `adr-writer.reversibility`, `adr-writer.numbering` | (none) | `skill.grill-planner`, `agent.architect`, `skill.humanizer` | 1850 |
 | brainstorm-internal | `skill.brainstorm-internal` | `brainstorm-internal.method` | (none) | `protocol.brainstorm`, `skill.brainstorm-socratic`, `skill.adr-writer`, `skill.grill-planner` | 900 |
 | brainstorm-socratic | `skill.brainstorm-socratic` | `brainstorm-socratic.method` | (none) | `protocol.brainstorm`, `skill.brainstorm-internal`, `skill.humanizer`, `skill.spec-author` | 955 |
-| context-router | `skill.context-router` | `rule.knowledge`, `context-router.method`, `context-router.declaration` | `skill.knowledge-graph` | `skill.validate-knowledge` | 2779 |
+| context-router | `skill.context-router` | `rule.knowledge`, `context-router.method`, `context-router.declaration`, `context-router.residency` | `skill.knowledge-graph` | `skill.validate-knowledge` | 3430 |
 | grill-planner | `skill.grill-planner` | `grill-planner.method`, `grill-planner.audit` | `protocol.grill` | `skill.spec-author` | 1150 |
 | holistic-editing | `skill.holistic-editing` | `holistic-editing.method`, `holistic-editing.forbidden-moves`, `holistic-editing.class-sweep` | (none) | `skill.context-router`, `protocol.test-first` | 2300 |
 | humanizer | `skill.humanizer` | `humanizer.method`, `humanizer.document-contract`, `humanizer.progressive-execution`, `humanizer.fact-preservation`, `humanizer.modes`, `humanizer.scope` | `method.prose-posture` | `skill.holistic-editing`, `skill.adr-writer`, `skill.spec-author`, `agent.docs-librarian`, `protocol.deliver` | 3300 |
@@ -280,7 +280,8 @@ framework, or committing to architecture. Applied inside
 Source: `skills/context-router/SKILL.md`
 
 **id:** `skill.context-router` · **owns:** `rule.knowledge`,
-`context-router.method`, `context-router.declaration` · **requires:**
+`context-router.method`, `context-router.declaration`,
+`context-router.residency` · **requires:**
 `skill.knowledge-graph` · **peers:** `skill.validate-knowledge`
 
 **load_when:** what should I load for this task · resolve the minimal node
