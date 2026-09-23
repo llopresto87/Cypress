@@ -4,6 +4,7 @@
 # protocol, spec-lint, and the tool-specific surfaces. Guards the class of
 # defect where plant-facing prose references files the installer never
 # placed (the pre-v5 templates/ hole).
+# E family (SPEC-0001, ADR-0009 host tiers): E1-E3 below; E4 is in test-seed-lint.sh.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

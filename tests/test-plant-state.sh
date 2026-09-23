@@ -15,6 +15,10 @@
 #       — asserts SPEC-0001 RECORD_AGREES_WITH_DISK,
 #         SPEC-0001 CORPUS_IS_WHOLE_OR_ABSENT and
 #         SPEC-0001 CONTRADICTORY_CORPUS_TRANSITION
+#   S7  an unreadable record is refused before the first write
+#   S8  a frozen host the record carries, skipped by `all`, is named as not
+#       refreshed in a WARNING and left byte-identical
+#       — asserts SPEC-0001 ALL_NAMES_SKIPPED_FROZEN_HOSTS
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

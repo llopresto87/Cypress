@@ -8,6 +8,12 @@ the 7.27.0 increment planned in
 [`../plans/grill-7.27.0-host-support-tiers.md`](../plans/grill-7.27.0-host-support-tiers.md)
 lands with its tests green. It supersedes no earlier ADR.
 
+Amended 2026-09-23, before ratification (review F1): `install.sh all --check`
+also checks the Copilot views when the plant's `.cypress/seed.json` records
+`github-copilot`. Checking writes nothing, so it adds no feature to a frozen
+host. The consequence below about `all --check` having nothing in scope holds
+only for a plant whose record lacks `github-copilot`.
+
 ## Date
 
 2026-09-23
@@ -59,9 +65,12 @@ to the first two only.**
 `install.sh all` becomes `claude-code opencode prime-agent`, in that order,
 which is today's order with the two frozen hosts removed.
 
-The tier assignment has one home: three arrays in `install.sh`, read by both
-the `all` expansion and the deprecation notice. The host matrix publishes the
-tier table and `tests/seed-lint.py` holds the published table to those arrays.
+The tier assignment has one home: three arrays in `install.sh`. The
+deprecation notice reads the frozen array. The `all` expansion is a separate
+literal, written out to keep install order, and `tests/seed-lint.py`
+(`check_host_tiers`) holds it to the first-class and supported arrays. The host
+matrix publishes the tier table, and the same check holds that table to the
+arrays.
 
 ## Consequences
 

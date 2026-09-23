@@ -2,7 +2,7 @@
 status: back-written
 status_date: 2026-09-23
 owner: seed-installer
-status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tests/test-install-kernel-modes.sh, tests/test-install-adoption.sh (all wired into tests/run.sh)
+status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tests/test-install-kernel-modes.sh, tests/test-install-adoption.sh, tests/test-full-install.sh, tests/test-seed-lint.sh (all wired into tests/run.sh)
 ---
 
 # SPEC-0001: install placement
@@ -22,7 +22,7 @@ status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tes
 
 - **Owner:** seed-installer
 - **Date:** 2026-09-13
-- **Last reviewed:** 2026-09-13
+- **Last reviewed:** 2026-09-23
 - **Related grill section:** docs/plans/grill-7.15.0-remediation.md §3, §5
 - **Related ADRs:** adr-0003-enforcement-layering-honesty, adr-0009-host-support-tiers
 - **Supersedes:** —
@@ -64,7 +64,8 @@ own files, leaves a timestamped copy of every body it replaced, and names them.
 Nothing outside the named project directory is ever modified.
 `all` installs the maintained hosts: claude-code, opencode and prime-agent. A
 frozen host (codex, github-copilot) still installs when it is named, and says
-that it is deprecated.
+that it is deprecated. `all --check` still checks the Copilot views of a plant
+whose record carries github-copilot, because checking writes nothing.
 
 ## 4. Functional contracts
 
@@ -272,11 +273,22 @@ that it is deprecated.
   lists `codex` (ADAPTERS_ACCUMULATE)
 
 ### Contract: CHECK_WITHOUT_COPILOT_SAYS_SO
-- **Given:** any target
+- **Given:** a target whose record does not carry github-copilot
 - **When:** `install.sh all --check` runs
 - **Then:** it exits 0 and prints that no generated views are in scope
 - **And:** silence is the failure, because a CI job reading only the exit code
   would take it for "in sync"
+
+### Contract: ALL_CHECK_INCLUDES_RECORDED_COPILOT
+- **Given:** a plant whose `.cypress/seed.json` records github-copilot
+- **When:** `install.sh all --check` runs
+- **Then:** the Copilot views are checked as `install.sh github-copilot --check`
+  checks them: in sync, it exits 0 and reports them up to date; drifted, it
+  exits non-zero and names them STALE
+- **And:** the not-refreshed warning of FROZEN_PROJECTION_LEFT_STALE does not
+  fire for github-copilot, which this run checks. The DEPRECATED notice does
+  fire, once, because the run acts on a frozen host, the same as a `--check`
+  that names it
 
 ### Contract: HOST_TIERS_AGREE
 - **Given:** the tier arrays in `install.sh` (the one home of the assignment)
@@ -285,6 +297,14 @@ that it is deprecated.
 - **Then:** it fails, naming both files, when the two disagree, when a host sits
   in two tiers, or when `all` expands to anything but the first-class and
   supported hosts
+- **And:** it fails, naming the matrix, when the tier table has two rows for one
+  tier or lists a host in two rows
+- **And:** it fails, naming `install.sh`, when the three arrays together are not
+  exactly the tools the adapter dispatch `case` installs
+- **And:** it fails, naming the suite, when the `EVERY_HOST` literal in
+  `tests/test-full-install.sh`, `tests/test-install-placement.sh` or
+  `tests/test-unified-graph-install.sh` names a different set of tools than
+  the dispatch installs
 - **And:** the unmutated tree passes
 
 ## 5. Non-functional requirements
@@ -349,7 +369,9 @@ agent_projections:    { type: array, derived_from: tools }
 
 ### Failure: FROZEN_PROJECTION_LEFT_STALE
 - **Trigger:** the stamp records a frozen host and `install.sh all` runs
-- **Response:** one warning per such host on stderr: its files were not
+  without acting on it (a github-copilot that `all --check` checks is acted on;
+  see ALL_CHECK_INCLUDES_RECORDED_COPILOT)
+- **Response:** one `WARNING` line per such host on stderr: its files were not
   refreshed, and `install.sh all <host>` refreshes them
 - **Side effects:** none; the frozen host's tree is left exactly as it was
 - **Recovery:** re-run with the host named
@@ -424,7 +446,8 @@ $ echo $?
 | ALL_NAMES_SKIPPED_FROZEN_HOSTS | S8 caseALL_NAMES_SKIPPED_FROZEN_HOSTS: the skip and its refresh command named, `.codex/` byte-identical, stamp keeps codex | tests/test-plant-state.sh | integration | green |
 | FROZEN_PROJECTION_LEFT_STALE | S8 caseALL_NAMES_SKIPPED_FROZEN_HOSTS (the same case holds the warning and the untouched tree) | tests/test-plant-state.sh | integration | green |
 | CHECK_WITHOUT_COPILOT_SAYS_SO | D3 caseCHECK_WITHOUT_COPILOT_SAYS_SO: `all --check` exits 0 and says no generated views are in scope | tests/test-install-adoption.sh | integration | green |
-| HOST_TIERS_AGREE | E4 caseHOST_TIERS_AGREE: the matrix moves opencode to frozen, and `check_host_tiers` fails naming both files | tests/test-seed-lint.sh | unit | green |
+| ALL_CHECK_INCLUDES_RECORDED_COPILOT | D4 caseALL_CHECK_INCLUDES_RECORDED_COPILOT: a Copilot-recording plant is checked by `all --check`, in sync exits 0 with "up to date", drifted exits non-zero with STALE, no not-refreshed warning | tests/test-install-adoption.sh | integration | green |
+| HOST_TIERS_AGREE | E4 caseHOST_TIERS_AGREE: the matrix moves opencode to frozen, a tier row is duplicated, codex leaves every tier while still dispatched, each suite's EVERY_HOST drops a host; `check_host_tiers` fails naming the files | tests/test-seed-lint.sh | unit | green |
 
 Coverage note, so the table is not read as more than it is.
 
@@ -490,3 +513,16 @@ only version surface it has, and it moves with each entry here.
   for now: `active` needs product, architect and tester sign-offs under
   spec-lint, none is recorded for this increment, and §0 already records what
   a sign-off written to satisfy the linter did to this spec once before.
+- 2026-09-23: review fixes, RED at `dd3e65c`. §4 gains
+  ALL_CHECK_INCLUDES_RECORDED_COPILOT: `all --check` checks the Copilot views
+  of a plant whose record carries github-copilot, so a CI job that ran it
+  before 7.27.0 still fails on drift, and the DEPRECATED notice fires for that
+  run because it acts on a frozen host. CHECK_WITHOUT_COPILOT_SAYS_SO's Given
+  narrows from any target to a target whose record lacks github-copilot; the
+  earlier Given blessed an exit 0 that hid a real check. HOST_TIERS_AGREE
+  gains the duplicate-row, dispatchable-tool and `EVERY_HOST` clauses. §7
+  FROZEN_PROJECTION_LEFT_STALE now says what the code prints, one `WARNING`
+  line per host, and excludes a host the run checks. `status_evidence` names
+  the two suites that already held contracts here and were missing from it.
+  The status stays `back-written`; the owner decision in the entry above is
+  still pending.

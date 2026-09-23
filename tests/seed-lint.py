@@ -2017,18 +2017,24 @@ def check_host_tiers() -> None:
     """The published tier table is the installer's tier arrays, and `all` is the maintained two.
 
     ADR-0009 gives the host support tiers one home: FIRST_CLASS_TOOLS,
-    SUPPORTED_TOOLS and FROZEN_TOOLS in install.sh, which the `all` expansion
-    and the deprecation notice act on. documentation/host-capability-matrix.md
-    publishes the same assignment under its "Support tiers" heading for a reader
-    who never opens the installer. A published copy nothing compares is a
-    second home, and the first edit to either one is the drift: moving a host
-    between tiers in the matrix alone would tell every reader a maintenance
-    commitment the installer does not act on.
+    SUPPORTED_TOOLS and FROZEN_TOOLS in install.sh. The deprecation notice reads
+    FROZEN_TOOLS; `all` is a separate literal, held to the arrays here.
+    documentation/host-capability-matrix.md publishes the same assignment under
+    its "Support tiers" heading for a reader who never opens the installer. A
+    published copy nothing compares is a second home, and the first edit to
+    either one is the drift: moving a host between tiers in the matrix alone
+    would tell every reader a maintenance commitment the installer does not act
+    on.
 
-    Three things are held. Each host sits in one tier only. The matrix table
-    names the same hosts per tier as the arrays. And `all` installs exactly the
-    first-class and supported hosts, since the installer writes that list out
-    rather than deriving it (the derivation would reorder install).
+    Five things are held. Each host sits in one tier only, in the arrays and in
+    the table, and the table has one row per tier. The matrix table names the
+    same hosts per tier as the arrays. `all` installs exactly the first-class
+    and supported hosts, since the installer writes that list out rather than
+    deriving it (the derivation would reorder install). The three arrays
+    together are exactly the tools the adapter dispatch `case` installs, so no
+    installable host sits in no tier. And each suite that keeps every adapter
+    under regression names that same set in its EVERY_HOST literal, so a suite
+    that drops a host stops covering it out loud rather than silently.
     """
     install = ROOT / "install.sh"
     matrix = ROOT / "documentation" / "host-capability-matrix.md"
@@ -2063,6 +2069,33 @@ def check_host_tiers() -> None:
              f"first-class and supported tiers are {sorted(maintained)}. `all` "
              f"installs the maintained hosts and no other (ADR-0009)")
 
+    dispatched = sorted(re.findall(
+        r"^\s*([a-z][a-z-]*)\)\s+install_[a-z_]+\s*;;", src, re.M))
+    if not dispatched:
+        fail("install.sh: no `<tool>) install_<tool> ;;` dispatch lines, so "
+             "the tools it installs cannot be held to the tier arrays")
+    elif sorted(seen) != dispatched:
+        fail(f"install.sh: the tier arrays hold {sorted(seen)}, and the "
+             f"adapter dispatch installs {dispatched}. Every tool install.sh "
+             f"installs sits in exactly one tier (ADR-0009): "
+             f"untiered {sorted(set(dispatched) - set(seen))}, "
+             f"tiered but not installable {sorted(set(seen) - set(dispatched))}")
+    for suite in ("test-full-install.sh", "test-install-placement.sh",
+                  "test-unified-graph-install.sh"):
+        path = ROOT / "tests" / suite
+        if not path.is_file():
+            continue
+        m = re.search(r'^EVERY_HOST="([^"]*)"', path.read_text(encoding="utf-8"),
+                      re.M)
+        if not m:
+            fail(f"tests/{suite}: no EVERY_HOST=\"...\" literal, so nothing "
+                 f"says which adapters this suite keeps under regression")
+        elif dispatched and sorted(m.group(1).split()) != dispatched:
+            fail(f"tests/{suite}: EVERY_HOST is {sorted(m.group(1).split())}, "
+                 f"and install.sh dispatches {dispatched}. The suite keeps "
+                 f"every adapter under regression, frozen ones included "
+                 f"(ADR-0009), so it names every dispatchable tool")
+
     lines = matrix.read_text(encoding="utf-8").splitlines()
     start = next((i for i, ln in enumerate(lines)
                   if re.match(r"^#+\s.*Support tiers", ln)), None)
@@ -2087,8 +2120,19 @@ def check_host_tiers() -> None:
         if len(cells) < 4:
             continue
         tier = cells[1].strip().strip("`").strip().lower()
-        published[tier] = [h.strip().strip("`").strip()
-                           for h in cells[2].split(",") if h.strip()]
+        hosts = [h.strip().strip("`").strip()
+                 for h in cells[2].split(",") if h.strip()]
+        if tier in published:
+            fail(f"documentation/host-capability-matrix.md: the Support tiers "
+                 f"table has a second {tier} row; a tier has one row, and a "
+                 f"second one lets the table say two things at once")
+        for host in hosts:
+            other = next((t for t, hs in published.items() if host in hs), None)
+            if other is not None and other != tier:
+                fail(f"documentation/host-capability-matrix.md: {host} is in "
+                     f"both the {other} and the {tier} row of the Support "
+                     f"tiers table; a host has one tier (ADR-0009)")
+        published.setdefault(tier, []).extend(hosts)
     for tier in sorted(set(arrays) | set(published)):
         want = sorted(arrays.get(tier, []))
         got = sorted(published.get(tier, []))

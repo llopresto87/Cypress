@@ -12,6 +12,9 @@ instead of worked around; Codex and Copilot are `frozen`. `install.sh all` now
 runs claude-code, opencode and prime-agent, in that order. The assignment lives
 in three arrays in `install.sh`, the host matrix publishes it under a new
 Support tiers section, and a new `seed-lint` check fails when the two disagree.
+The same check fails on a tier row written twice, on a tool the installer
+dispatches that sits in no tier, and on an `EVERY_HOST` list in the three
+suites that keep every adapter under regression that drops a host.
 
 **A frozen host still installs, and says it is deprecated.** Name it, as in
 `install.sh codex` or `install.sh all github-copilot`, and it installs exactly
@@ -26,10 +29,16 @@ the installer warns that the host was not refreshed and prints the command
 that refreshes it, `install.sh all <host>`. The frozen host's files are left
 exactly as they were, and the stamp keeps it.
 
-**`install.sh all --check` says when it had nothing to check.** Only the
-Copilot views are generated, so without Copilot in the run the check has no
-subject. It now prints that no generated views are in scope and exits 0,
-so a CI job reading only the exit code is not handed a silent green.
+**`install.sh all --check` still checks a plant that records Copilot.** Only
+the Copilot views are generated, so they are the only thing `--check` can
+check. When `.cypress/seed.json` records github-copilot, `all --check` checks
+them as `install.sh github-copilot --check` does: a CI job that ran it before
+this release still exits non-zero on drift, and the run prints the
+`DEPRECATED` line because it acts on a frozen host. The not-refreshed warning
+does not fire for a host the run checks. On a plant whose record lacks
+Copilot, `all --check` has no subject, prints that no generated views are in
+scope, and exits 0, so a CI job reading only the exit code is not handed a
+silent green.
 
 **Upstream Codex documents hooks, and the seed wires none.** A host research
 pass found that Codex CLI now documents `SessionStart`, `UserPromptSubmit` and
@@ -40,7 +49,7 @@ Copilot, frozen or not, still reads `.claude/settings.json`, so a regression
 test now pins that the Claude Code route and status hooks fail open on a
 Copilot-shaped envelope.
 
-SPEC-0001 gains six contracts and one failure mode for this behaviour, each
+SPEC-0001 gains seven contracts and one failure mode for this behaviour, each
 bound to its test. Its status stays `back-written` until the sign-offs `active`
 requires are recorded, and ADR-0009 stays `proposed` until the owner ratifies it.
 

@@ -81,7 +81,7 @@ placed_files() {
 
 SELF="$ROOT/tests/test-install-placement.sh"
 
-# Load FILES from an 'all --copy --legal-corpus yes' tree (read-only discovery),
+# Load FILES from an '$EVERY_HOST --copy --legal-corpus yes' tree (read-only discovery),
 # so a case running in its own process re-derives the same set main did.
 load_files() {
     FILES=(); while IFS= read -r _l; do FILES+=("$_l"); done < <(placed_files "$1")
@@ -103,7 +103,7 @@ load_cond() {
 case_recover() {
     local T; T="$WORK/recover"; mkdir -p "$T"
     "$ROOT/install.sh" $EVERY_HOST --project-dir "$T" --copy --legal-corpus yes >/dev/null 2>&1 \
-        || fail "baseline install all --copy did not succeed"
+        || fail "baseline install \$EVERY_HOST --copy did not succeed"
     FILES=(); while IFS= read -r _l; do FILES+=("$_l"); done < <(placed_files "$T")
     [[ ${#FILES[@]} -gt 100 ]] || fail "discovered only ${#FILES[@]} placed files — discovery is broken"
 # M3 first: an identical re-run must not churn a single backup.
@@ -339,7 +339,7 @@ case_m9() {
 # ---------------------------------------------------------------------------
 S="$WORK/linked"; mkdir -p "$S"
 "$ROOT/install.sh" $EVERY_HOST --project-dir "$S" --symlink >/dev/null 2>&1 \
-    || fail "install all --symlink did not succeed"
+    || fail "install \$EVERY_HOST --symlink did not succeed"
 
 not_linked=()
 while IFS= read -r rel; do
@@ -700,7 +700,7 @@ fi
 #     section concurrently under the gate's ONE shared budget. -----------------
 export ROOT
 
-# The recoverability/idempotence/attack sections each need the full `all --copy
+# The recoverability/idempotence/attack sections each need the full `$EVERY_HOST --copy
 # --legal-corpus yes` destination set discovered from a real install. That set
 # is read-only for M1 completeness, the conditional-destination check, M2 and
 # the M7b/M2b conditional cases, so it is installed ONCE here and reused; the
@@ -708,7 +708,7 @@ export ROOT
 # attack) build their own fresh install inside their case.
 BASE="$WORK/base"; mkdir -p "$BASE"
 "$ROOT/install.sh" $EVERY_HOST --project-dir "$BASE" --copy --legal-corpus yes >/dev/null 2>&1 \
-    || fail "baseline install all --copy did not succeed"
+    || fail "baseline install \$EVERY_HOST --copy did not succeed"
 T="$BASE"
 FILES=(); while IFS= read -r _l; do FILES+=("$_l"); done < <(placed_files "$T")
 [[ ${#FILES[@]} -gt 100 ]] || fail "discovered only ${#FILES[@]} placed files — discovery is broken"
