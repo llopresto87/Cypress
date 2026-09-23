@@ -1,5 +1,49 @@
 # Changelog
 
+## 7.27.0 — hosts sit in three support tiers, and `install.sh all` installs the maintained three (2026-09-23)
+
+**`all` no longer installs Codex CLI or GitHub Copilot.** The owner set three
+host support tiers, recorded in
+[ADR-0009](docs/decisions/adr-0009-host-support-tiers.md): Claude Code and
+Prime Agent are `first-class`, with feature parity as the target; opencode is
+`supported`, keeps its install surfaces as they are, and gets a feature only
+where the host carries it natively, with any gap recorded in the host matrix
+instead of worked around; Codex and Copilot are `frozen`. `install.sh all` now
+runs claude-code, opencode and prime-agent, in that order. The assignment lives
+in three arrays in `install.sh`, the host matrix publishes it under a new
+Support tiers section, and a new `seed-lint` check fails when the two disagree.
+
+**A frozen host still installs, and says it is deprecated.** Name it, as in
+`install.sh codex` or `install.sh all github-copilot`, and it installs exactly
+as 7.26.0 did, with one `DEPRECATED` line on stderr naming ADR-0009. The line
+goes to stderr so `codex --print-config` still prints config you can paste.
+Neither adapter changed apart from a notice in its README, and their suites
+keep running as regression.
+
+**A plant that already carries a frozen host is told when `all` skips it.**
+If `.cypress/seed.json` records codex or github-copilot and the run is `all`,
+the installer warns that the host was not refreshed and prints the command
+that refreshes it, `install.sh all <host>`. The frozen host's files are left
+exactly as they were, and the stamp keeps it.
+
+**`install.sh all --check` says when it had nothing to check.** Only the
+Copilot views are generated, so without Copilot in the run the check has no
+subject. It now prints that no generated views are in scope and exits 0,
+so a CI job reading only the exit code is not handed a silent green.
+
+**Upstream Codex documents hooks, and the seed wires none.** A host research
+pass found that Codex CLI now documents `SessionStart`, `UserPromptSubmit` and
+`PreCompact` hooks, which the matrix's "no hook surface" line did not know. The
+cell stays `unsupported`, which is still true of what the seed ships, and the
+evidence line now says why: wiring hooks would be new work on a frozen host.
+Copilot, frozen or not, still reads `.claude/settings.json`, so a regression
+test now pins that the Claude Code route and status hooks fail open on a
+Copilot-shaped envelope.
+
+SPEC-0001 gains six contracts and one failure mode for this behaviour, each
+bound to its test. Its status stays `back-written` until the sign-offs `active`
+requires are recorded, and ADR-0009 stays `proposed` until the owner ratifies it.
+
 ## 7.26.0 — a harvest: the gates a grown plant proved wrong, and two corpus entries fetched from their publisher (2026-09-22)
 
 A mature plant was harvested back into the seed. What follows is the generalized
