@@ -151,6 +151,7 @@ These are transcribed from the owner and are not re-opened here.
    the gap is recorded in `documentation/host-capability-matrix.md`. codex and
    github-copilot are frozen and get nothing new, but the Claude Code hooks must
    keep failing open for Copilot, which reads `.claude/settings.json`.
+   *Amended 2026-09-23 for prime-agent by a later owner decision; see §16.*
 4. **Harness-native selection measurement: proposed NOT RUN.** Neither the eager
    surface nor the first-prompt router suggestion changes materially. The only
    first-prompt change is the mandate becoming a pointer. Recorded as an absence
@@ -570,6 +571,11 @@ suite runs `route-extension.ts`, only greps and parses its source
 pinned by a source assertion, not by behaviour, and §14 records it at that
 strength.
 
+*Amended 2026-09-23 (§16):* the prime-agent row still ships no dedup in
+`route-extension.ts`, which injects in full on every prompt. The owner added a
+model-kept surfaced set in the IPython kernel, instructed by the
+`APPEND_SYSTEM.md` overlay, at enforcement class soft.
+
 ## §6 Slice E: the Residency Rule
 
 **Does `skill.context-router` own context economics? Yes.** Its `owns:` is
@@ -696,6 +702,9 @@ Their authority is this plan and the ADR from §10. See §13.4.
   kernel, descriptions, eval corpus and eager surface are all untouched. If
   `tools/ratchet-lint.py --show` differs from baseline at close, the moved limit
   is lowered, never raised, and the move is recorded in §14.
+  *Amended 2026-09-23 (§16):* the prime-agent eager surface does move. The
+  overlay gains a `## Surfaced nodes` section of at most 512 B, and the matrix
+  and README figures move with it.
 - **`CHANGELOG.md`:** a `## 7.28.0` entry: echo fix, pointer line, session
   ledger and its reset, the Copilot behaviour, the Prime Agent gap, the
   Residency Rule, the parked slices and why.
@@ -743,6 +752,9 @@ Their authority is this plan and the ADR from §10. See §13.4.
    while the evidence says long descriptions carry routing.
 5. **An I-8 audit of the Prime Agent `APPEND_SYSTEM.md` overlay** (L-12,
    7,912 B, eager). This plan applies I-8 to per-prompt text only.
+   *Amended 2026-09-23 (§16):* plus the one new `## Surfaced nodes` section,
+   which SPEC-0003 holds to I-6 and I-8. The rest of the overlay stays out of
+   scope.
 6. **`route-extension.ts` `findLint` has no plant-root boundary.** It walks up
    seven levels without the `_is_plant_root` stop the Python hooks carry
    (`route-extension.ts:36-48` against `route-hook.py:43-58`). This is the
@@ -761,6 +773,8 @@ Their authority is this plan and the ADR from §10. See §13.4.
    **Recommendation:** accept it as a follow-up slice. It would be pinned only
    structurally, since the gate has no TypeScript runtime. Default if the owner
    is silent: the recorded gap.
+   **Answered 2026-09-23 (§16):** neither option. The recommendation above is
+   not taken.
 2. **Reset on every `SessionStart` source** (§4.5) rather than only `resume`,
    `clear` and `compact`. This goes further than the brief, toward inclusion.
    Confirm.
@@ -787,3 +801,85 @@ Empty until P0 lands.
 ## §15 Review rounds
 
 Empty.
+
+## §16 Decisions of 2026-09-23: the Prime Agent surfaced set and SPEC-0003 status
+
+Appended; the earlier sections keep their text, with amendment notes that
+point here.
+
+**Owner decision on Prime Agent (after the host research pass).** The Prime
+Agent record of surfaced nodes is a Python variable, `_cypress_surfaced`, in
+the session's IPython kernel, kept by the model under a new `## Surfaced
+nodes` section of `integrations/prime-agent/APPEND_SYSTEM.md`. It replaces the
+module-scope `let` in `route-extension.ts` that SPEC-0003's first draft
+specified, and it answers §13.1 with neither the recorded gap nor the
+in-memory ledger recommended there.
+
+Research facts it rests on, with the research pass's classifications (the
+sources and line numbers are in SPEC-0003 §6):
+
+- one kernel per session, created lazily; kernel state survives compaction;
+  `rlm()` children get their own kernel (Documented)
+- no extension API reads or writes the kernel, and no Python-side per-prompt
+  hook exists (Documented absence)
+- `session_start` reason ∈ `startup`, `reload`, `new`, `resume`, `fork`; the
+  compaction events carry reason `manual`, `threshold` or `overflow`
+  (Documented). This confirms the `session_compact` name in §0.5, which the
+  design no longer needs
+
+Consequences, specified in SPEC-0003:
+
+| # | Consequence | Where |
+|---|---|---|
+| 1 | Enforcement class is soft under ADR-0003; nothing calls it enforced | SPEC-0003 §4 Prime Agent heading, §6 |
+| 2 | `route-extension.ts` keeps injecting in full on every prompt, with the echo fix and the pointer line at parity with `route-hook.py`. Its injection-byte saving is a recorded gap | `ROUTE_EXTENSION_HOLDS_NO_LEDGER_STATE`, §5 Cost |
+| 3 | An id in the set means "surfaced earlier this session; re-open it if its content is not in view", never "loaded" | `PRIME_OVERLAY_KEEPS_SURFACED_SET`, `PRIME_OVERLAY_NEVER_SAYS_LOADED`, `PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE` |
+| 4 | The section is brief and counted in the prime-agent eager surface | `PRIME_OVERLAY_SECTION_WITHIN_CEILING` (512 B), `PRIME_EAGER_SURFACE_WITHIN_BUDGET` |
+| 5 | An `rlm()` child starts with its own empty kernel and re-reads what it needs, inside the spawn-boundary exception (I-2) | SPEC-0003 §6 |
+| 6 | The four `ROUTE_EXTENSION_*` state and reset contracts and `PRIME_RESET_EVENT_MISSED` are removed; `PRIME_MODEL_IGNORES_SURFACED_INSTRUCTION` and `PRIME_SURFACED_SET_TRUSTED_WHILE_STALE` are added | SPEC-0003 §4, §7, §12 |
+
+Cells elsewhere in this plan that this decision overtakes, left in place:
+§1.2 CR-6 ("recorded gap"); §5 matrix-edit prime-agent cell, which stays
+`unsupported` for injection dedup, while the class of the model-kept set is
+for the matrix row's author to place in the matrix's own vocabulary; §10
+slice D's contract list, which is now the eight Prime Agent structural
+contracts plus `PRIME_EAGER_SURFACE_WITHIN_BUDGET`. I-7 in §3 describes the
+Claude Code file ledger only. The seed writes no Prime Agent state, and the
+host may snapshot the kernel namespace, set included, outside the plant.
+
+**Reversibility:** `reversible`. The section is one block of an overlay the
+installer places, and the extension loses no capability it had shipped.
+
+**Draft-status decision (orchestrator).** SPEC-0003 stays uncommitted in the
+worktree until the commit that lands its RED cases and moves it to `active`.
+No `seed-lint` change. Recorded as resolved in SPEC-0003 §11.
+
+## §17 SPEC-0003 sign-off round 1 (2026-09-23): what changes in this plan
+
+Appended. The product, security and tester reviews of SPEC-0003, and the
+orchestrator's decisions on the points they left open, change the plan cells
+below. The earlier sections keep their text; SPEC-0003 is the home of each
+rule, and this table only says which plan cell it overtakes.
+
+| # | Change | Plan cell overtaken | Reversibility |
+|---|---|---|---|
+| 1 | Reminder header `Not suggested, not listed before (cross only if needed):` (product C3); Claude Code reminder tail `— open if not in view.`, Prime Agent keeps "re-open" (product C6) | §4.2 injection texts, items 4 and 5 | reversible |
+| 2 | Router output without the exact `task: <prompt>` and blank-line prefix, or whose remainder contains the prompt, is a router failure: the pointer line alone, never raw output (security F3, tester R1, orchestrator decision 1) | §4.2 "Router output, parsed" | reversible |
+| 3 | Ledger I/O through directory descriptors opened `O_NOFOLLOW`; the session directory and ledger refused when owned by another user or writable by group or others; `.gitignore` created only when absent and never rewritten (security F1, F2) | §4.2 validation ("checked with `lstat`"); §4.6 ("writes … atomically") | reversible |
+| 4 | GC runs only when a ledger is created, reads at most `GC_SCAN_MAX` = 256 entries, and sweeps temp files older than `TEMP_MAX_AGE` = 1 h; new constants `ROUTER_TIMEOUT`, `GC_SCAN_MAX`, `TEMP_PREFIX`, `TEMP_MAX_AGE` (security F4, tester R16) | §4.2 constants; §4.8 bound | reversible |
+| 5 | `SessionStart` with no ledger writes nothing; an absent `source` is stored as `"unknown"` (tester R9, orchestrator decision 2) | §4.5 | reversible |
+| 6 | `REFRESH_EVERY` is a module-level integer literal ≥ 2, set to 10; the §4.7 measurement record may change it without re-opening SPEC-0003 (orchestrator decision 5). §4.7 is also the evidence of SPEC-0003 AC-9 | §4.7 | reversible |
+| 7 | The I-2 verify record is `git diff --quiet` of the two brief templates against the 7.27.0 release commit, the parent of Slice A's first commit, not a sha256 against `measure/brief-baseline.sha` (tester R17, orchestrator decision 9) | §10 close, "Verify records" | reversible |
+| 8 | Test home stays `tests/test-bound-hook.sh` with fixed-width labels `X101` on, and `X201` on in `tests/test-seed-lint.sh`. The tester's recommended Python unittest module is declined: the harvest forbids new gate files, and a new module would need a new `run.sh` step (orchestrator decision 4) | §8 | reversible |
+| 9 | The threat model security owes for the ledger is written into ADR-0010 at close (orchestrator decision 7) | §10 close, ADR-0010 | reversible |
+| 10 | SPEC-0003 grows from 39 to 45 contracts; the RED commit carries all 45 slugs or `SPEC_UNCOVERED_BUDGET` fails | §8 RED table, §10 slice A | reversible |
+
+Sign-off state after this round: architect ticked; product, tester and
+security re-check their own items and tick in a follow-up pass. SPEC-0003
+stays `draft` until its RED commit.
+
+*Amended 2026-09-23, final pass (security S1):* row 2's clause "or whose
+remainder contains the prompt" is retracted. It fired on short prompts that
+are substrings of node ids and suppressed routing, against I-1. The exact
+prefix check alone decides a router failure. All four SPEC-0003 sign-offs are
+ticked, the tester's conditional on E1 to E3 (SPEC-0003 §12).
