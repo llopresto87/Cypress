@@ -724,8 +724,9 @@ recorded as `undecided` in `.cypress/seed.json`. A plant that was never asked
 and a plant whose owner declined are different facts, and a later graft reads
 the difference.
 
-`<tool>` is one of `claude-code`, `opencode`, `codex`, `github-copilot`,
-`prime-agent`, or `all`. For each tool it:
+`<tool>` is one of `claude-code`, `opencode`, `prime-agent`, the deprecated
+`codex` and `github-copilot` (frozen hosts, ADR-0009), or `all`, which covers
+claude-code, opencode and prime-agent. For each tool it:
 
 1. drops the bootstrap kernel at the expected path;
 2. installs the entire method surface INTO the graph (protocols, flattened

@@ -1,5 +1,13 @@
 # GitHub Copilot integration (VS Code & GitHub.com)
 
+> **Deprecated.** GitHub Copilot is a frozen host
+> ([ADR-0009](../../docs/decisions/adr-0009-host-support-tiers.md)). It still
+> installs when named (`install.sh github-copilot`, or
+> `install.sh all github-copilot`), prints a `DEPRECATED` notice, and gets no
+> new features. `install.sh all` no longer includes it. Copilot reads
+> `.claude/settings.json`, so the Claude Code hooks still reach it there and
+> fail open.
+
 GitHub Copilot reads several customization layers, each with its own
 file format:
 
