@@ -1256,7 +1256,7 @@ Techniques the cases rely on:
 | ROUTE_HOOK_UNPASSABLE_PROMPT_FAILS_OPEN | X103; red on arrival (no pointer line yet); the spec's mutation (router call moved outside the guard) was also run against a scratch GREEN and fails it | tests/test-bound-hook.sh | integration | green |
 | ROUTER_OUTPUT_WITHOUT_ECHO_PREFIX_POINTER_ONLY | X104 | tests/test-bound-hook.sh | integration | green |
 | ROUTE_HOOK_POINTS_AT_KERNEL | X105 | tests/test-bound-hook.sh | integration | green |
-| HOOK_TEXT_RESTATES_NO_KERNEL_RULE | check_hook_text_restates_no_kernel_rule | tests/seed-lint.py | unit; a new check, entered in COVERED in tests/check-coverage-binder.py; red at RED (the check did not exist, so X201 drew no finding and the binder named it), green at GREEN; it binds as green because a comment line sits directly above its `def`, so the `^\s*def` match in `check_spec_rows_name_their_contract` starts on the def line and the top-level-def scope defect reported at RED does not reach it | green |
+| HOOK_TEXT_RESTATES_NO_KERNEL_RULE | check_hook_text_restates_no_kernel_rule | tests/seed-lint.py | unit; a new check, entered in COVERED in tests/check-coverage-binder.py; red at RED (the check did not exist, so X201 drew no finding and the binder named it), green at GREEN; the function names the slug in its own body, in the finding it raises (the comment above its `def` is documentation, outside the bound scope) | green |
 | HOOK_TEXT_RESTATES_NO_KERNEL_RULE | X201; planted §0 cell and planted `T2`, tagged `# exercises: check_hook_text_restates_no_kernel_rule` | tests/test-seed-lint.sh | integration | green |
 | LEDGER_FIRST_PROMPT_FULL | X106 | tests/test-bound-hook.sh | integration | green |
 | LEDGER_LATER_PROMPT_REMINDER | X107 | tests/test-bound-hook.sh | integration | green |
@@ -1287,17 +1287,17 @@ Techniques the cases rely on:
 | LEDGER_NO_CYPRESS_DIR_NO_WRITE | X132; red on arrival (no pointer line, no stderr line yet) | tests/test-bound-hook.sh | integration | green |
 | LEDGER_WRITE_FAILURE_FAILS_OPEN | X133; chmod case skipped as root, and says so; `runpy` case runs as root | tests/test-bound-hook.sh | integration | green |
 | LEDGER_GC_BOUNDED | X134 | tests/test-bound-hook.sh | integration | green |
-| BRIEF_TEMPLATES_BYTE_IDENTICAL | check | tests/seed-lint.py | verify gate; the slug sits in a comment beside the existing GRAPH DISCIPLINE identity check in `check` (not `main`, which holds no such check), and the verify record is `git diff --quiet ac61a3f -- templates/prompts/graph-session-bootstrap.md templates/prompts/handback-payload.md`, where `ac61a3f` is the 7.27.0 release commit, the parent of Slice A's first commit. Green on arrival (exit 0 at RED); RED shown by mutation (a byte appended to either template gives exit 1, and a drifted embedded block fails the identity check) Row held at `pending`, not `green`: `check_spec_rows_name_their_contract` cannot bind a green row to a top-level seed-lint function (its `^\s*def NAME\b` match starts on the blank line above the def, so the scope it searches is one newline). Reported at RED as a gate defect; the row moves to green when that is fixed | pending |
+| BRIEF_TEMPLATES_BYTE_IDENTICAL | check | tests/seed-lint.py | verify gate; the slug sits in a comment beside the existing GRAPH DISCIPLINE identity check in `check` (not `main`, which holds no such check), and the verify record is `git diff --quiet ac61a3f -- templates/prompts/graph-session-bootstrap.md templates/prompts/handback-payload.md`, where `ac61a3f` is the 7.27.0 release commit, the parent of Slice A's first commit. Green on arrival (exit 0 at RED); RED shown by mutation (a byte appended to either template gives exit 1, and a drifted embedded block fails the identity check). Held at `pending` until the top-level-def scope defect in `check_spec_rows_name_their_contract` was fixed (§12); green since, and binding (the slug found inside the function) | green |
 | ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX | X135; structural | tests/test-bound-hook.sh | unit | green |
 | ROUTE_EXTENSION_PASSES_PROMPT_AS_ONE_OPTION_VALUE | X136; structural; fails when no inline argv literal is found | tests/test-bound-hook.sh | unit | green |
 | ROUTE_EXTENSION_TEXT_MATCHES_ROUTE_HOOK | X137; structural, escapes decoded, single literals | tests/test-bound-hook.sh | unit | green |
 | ROUTE_EXTENSION_HOLDS_NO_LEDGER_STATE | X138; structural; red on arrival (module-scope `MANDATE`). Mutations run against a scratch GREEN: a module-scope `const SEEN = new Set<string>()` and a `pi.on("session_start", …)` each turn it red | tests/test-bound-hook.sh | unit | green |
 | PRIME_OVERLAY_KEEPS_SURFACED_SET | X139; structural, reads `integrations/prime-agent/APPEND_SYSTEM.md`, case-sensitive | tests/test-bound-hook.sh | unit | green |
 | PRIME_OVERLAY_NEVER_SAYS_LOADED | X140; structural; fails on an absent section | tests/test-bound-hook.sh | unit | green |
-| PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE | check_hook_text_restates_no_kernel_rule | tests/seed-lint.py | unit; the same check, extended to the section; red at RED, green at GREEN; it binds as green because a comment line sits directly above its `def`, so the `^\s*def` match in `check_spec_rows_name_their_contract` starts on the def line and the top-level-def scope defect reported at RED does not reach it | green |
+| PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE | check_hook_text_restates_no_kernel_rule | tests/seed-lint.py | unit; the same check, extended to the section; red at RED, green at GREEN; the function names the slug in its own body, in the finding it raises (the comment above its `def` is documentation, outside the bound scope) | green |
 | PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE | X202; planted case in a scratch overlay's section | tests/test-seed-lint.sh | integration | green |
 | PRIME_OVERLAY_SECTION_WITHIN_CEILING | X141; structural; holds `OVERLAY_SECTION_MAX_BYTES` | tests/test-bound-hook.sh | unit | green |
-| PRIME_EAGER_SURFACE_WITHIN_BUDGET | check_eager_surface | tests/seed-lint.py | unit; an existing check, run with check_published_eager_figures; green on arrival, and red on the section's arrival until the matrix figures are updated. RED shown by mutation (the overlay grown in a scratch copy fails the published-figures check) Row held at `pending`, not `green`: `check_spec_rows_name_their_contract` cannot bind a green row to a top-level seed-lint function (its `^\s*def NAME\b` match starts on the blank line above the def, so the scope it searches is one newline). Reported at RED as a gate defect; the row moves to green when that is fixed | pending |
+| PRIME_EAGER_SURFACE_WITHIN_BUDGET | check_eager_surface | tests/seed-lint.py | unit; an existing check, run with check_published_eager_figures; green on arrival, and red on the section's arrival until the matrix figures are updated. RED shown by mutation (the overlay grown in a scratch copy fails the published-figures check). Held at `pending` until the top-level-def scope defect in `check_spec_rows_name_their_contract` was fixed (§12); green since, and binding (the slug found inside the function) | green |
 | ROUTER_FAILED | X142; non-zero exit, empty output, and timeout with `ROUTER_TIMEOUT` rewritten to 1 | tests/test-bound-hook.sh | integration | green |
 | SESSION_ID_REFUSED | X119, the case of LEDGER_INVALID_SESSION_ID_FULL | tests/test-bound-hook.sh | integration; its cases pass at GREEN (2026-09-23). Row held at `pending`, not `green`: no case in the cited file names this failure slug, so `check_spec_rows_name_their_contract` cannot bind it. Naming it in those cases is a tester edit; the row moves to green then | pending |
 | LEDGER_UNUSABLE | X120, X121, X122, X130 (file symlink and FIFO) and X131, the cases of the contracts named there | tests/test-bound-hook.sh | integration; its cases pass at GREEN (2026-09-23). Row held at `pending`, not `green`: no case in the cited file names this failure slug, so `check_spec_rows_name_their_contract` cannot bind it. Naming it in those cases is a tester edit; the row moves to green then | pending |
@@ -1486,3 +1486,20 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
   such slug, so `check_spec_rows_name_their_contract` cannot bind them (a
   tester edit); and, unchanged, the two rows the tester held for the
   top-level-def scope defect, which stays a separate RED/GREEN pair.
+- 2026-09-23, gate defect fixed (tester), no contract changed.
+  `check_spec_rows_name_their_contract` in `tests/seed-lint.py` found a cited
+  function with `^\s*def NAME\b` under `re.M`. The `\s*` crossed the blank
+  lines above a top-level `def`, so the bound scope was one newline and no
+  top-level seed-lint function could bind a green row. RED: the planted case
+  `case_spec_row_toplevel_def` in `tests/test-seed-lint.sh` (a green row citing
+  a top-level function, under two blank lines, that names its slug) failed with
+  the "does not name their contract" finding. GREEN: the anchor is now
+  `^[ \t]*def`. The case's second half, where only the next function names the
+  slug, still fails, so the scope is the function body and not the file.
+  `BRIEF_TEMPLATES_BYTE_IDENTICAL` and `PRIME_EAGER_SURFACE_WITHIN_BUDGET` move
+  `pending` → `green`, and both bind: removing the slug from `check_eager_surface`
+  in a scratch copy fails the check. No row of SPEC-0001, SPEC-0002 or any
+  other SPEC-0003 row changes binding under the fix; the SPEC-0002 method
+  scopes only lose one leading newline. The comment above
+  `check_hook_text_restates_no_kernel_rule` stays as documentation, and the two
+  Level notes that credited it with the binding are corrected.

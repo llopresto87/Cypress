@@ -562,6 +562,59 @@ expect_fail "does not name their contract" "spec-row-unbound"
 restore tests/test_router_reach.py
   rm -rf "$TMP"
 }
+# 18b. A green §10 row citing a TOP-LEVEL seed-lint function binds against that
+# function's body. The `def` of a top-level function sits under two blank lines,
+# and a `^\s*def` match let `\s*` swallow them: the match began on the blank
+# line and the scope searched was one newline, so no top-level function could
+# bind a green row however plainly it named its slug (found at SPEC-0003 RED;
+# BRIEF_TEMPLATES_BYTE_IDENTICAL and PRIME_EAGER_SURFACE_WITHIN_BUDGET were held
+# at pending for it). The second half pins the other edge: the slug named only
+# in the NEXT function does not bind, so the scope is the body, not the file.
+case_spec_row_toplevel_def() {
+  local TMP; TMP="$(fresh)"
+python3 - "$TMP/tests/seed-lint.py" "$TMP/docs/specs/SPEC-0003-per-prompt-injection.md" <<'PY'
+import sys
+lint, spec = sys.argv[1], sys.argv[2]
+fx = ('\n\ndef zz_row_binding_fixture() -> None:\n'
+      '    """Asserts ZZ_PLANTED_TOPLEVEL_SLUG."""\n'
+      '    fail("never called")\n')
+open(lint, "a", encoding="utf-8").write(fx)
+t = open(spec, encoding="utf-8").read()
+i = t.index("| UNEXPECTED_EXCEPTION |")
+j = t.index("\n", i) + 1
+row = "| ZZ_PLANTED_TOPLEVEL_SLUG | zz_row_binding_fixture | tests/seed-lint.py | unit | green |\n"
+open(spec, "w", encoding="utf-8").write(t[:j] + row + t[j:])
+PY
+  # exercises: check_spec_rows_name_their_contract
+  lint >/dev/null || {
+    echo "[spec-row-toplevel-def] a green row citing a top-level function, under"\
+         "blank lines, that names its slug must lint clean" >&2
+    lint >&2
+    exit 1
+  }
+  restore tests/seed-lint.py
+  restore docs/specs/SPEC-0003-per-prompt-injection.md
+python3 - "$TMP/tests/seed-lint.py" "$TMP/docs/specs/SPEC-0003-per-prompt-injection.md" <<'PY'
+import sys
+lint, spec = sys.argv[1], sys.argv[2]
+fx = ('\n\ndef zz_row_binding_fixture() -> None:\n'
+      '    """Asserts nothing it names."""\n'
+      '    fail("never called")\n'
+      '\n\ndef zz_row_binding_neighbour() -> None:\n'
+      '    """Asserts ZZ_PLANTED_TOPLEVEL_SLUG."""\n'
+      '    fail("never called")\n')
+open(lint, "a", encoding="utf-8").write(fx)
+t = open(spec, encoding="utf-8").read()
+i = t.index("| UNEXPECTED_EXCEPTION |")
+j = t.index("\n", i) + 1
+row = "| ZZ_PLANTED_TOPLEVEL_SLUG | zz_row_binding_fixture | tests/seed-lint.py | unit | green |\n"
+open(spec, "w", encoding="utf-8").write(t[:j] + row + t[j:])
+PY
+  expect_fail "does not name their contract" "spec-row-toplevel-def-neighbour"
+  restore tests/seed-lint.py
+  restore docs/specs/SPEC-0003-per-prompt-injection.md
+  rm -rf "$TMP"
+}
 case_37() {
   local TMP; TMP="$(fresh)"
 # 19. A copy of the frontmatter reader drifting from the canonical one. It must
@@ -923,7 +976,7 @@ TMP="$SEEDLINT_TMPL"
 lint >/dev/null || { echo "baseline seed-lint did not pass on a clean copy" >&2; exit 1; }
 
 SCN="$(mktemp)"
-for c in case_01 case_02 case_03 case_04 case_05 case_06 case_07 case_08 case_09 case_10 case_11 case_12 case_13 case_14 case_15 case_16 case_17 case_18 case_19 case_20 case_21 case_22 case_23 case_24 case_25 case_26 case_27 case_28 case_29 case_30 case_31 case_32 case_33 case_34 case_35 case_36 case_37 case_38 case_shell_floor case_agn_docs case_agn_py_sh case_x201 case_x202 case_frontmatter_portable caseHOST_TIERS_AGREE; do
+for c in case_01 case_02 case_03 case_04 case_05 case_06 case_07 case_08 case_09 case_10 case_11 case_12 case_13 case_14 case_15 case_16 case_17 case_18 case_19 case_20 case_21 case_22 case_23 case_24 case_25 case_26 case_27 case_28 case_29 case_30 case_31 case_32 case_33 case_34 case_35 case_36 case_spec_row_toplevel_def case_37 case_38 case_shell_floor case_agn_docs case_agn_py_sh case_x201 case_x202 case_frontmatter_portable caseHOST_TIERS_AGREE; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0
