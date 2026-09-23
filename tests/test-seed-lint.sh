@@ -679,6 +679,47 @@ PY
 }
 
 # --- one-case subcommand, run by the parallel dispatcher ---------------------
+# HOST_TIERS_AGREE (SPEC-0001, ADR-0009): the tier assignment has one home, the
+# three arrays in install.sh, and the host matrix publishes it. A published table
+# that disagrees with the arrays is a second home drifting. The unmutated tree
+# passing is the suite's baseline lint above; this case plants the drift.
+caseHOST_TIERS_AGREE() {
+  local TMP; TMP="$(fresh)"
+python3 - "$TMP/documentation/host-capability-matrix.md" <<'PY'
+import re, sys
+p = sys.argv[1]
+lines = open(p, encoding="utf-8").read().split("\n")
+start = next((i for i, l in enumerate(lines)
+              if re.match(r"^#+\s.*Support tiers", l)), None)
+assert start is not None, ("HOST_TIERS_AGREE: the matrix has no 'Support tiers' "
+                           "section to mutate — the fixture has drifted")
+level = len(lines[start]) - len(lines[start].lstrip("#"))
+end = next((j for j in range(start + 1, len(lines))
+            if re.match(r"^#{1,%d}\s" % level, lines[j])), len(lines))
+rows = {}
+for i in range(start + 1, end):
+    if lines[i].lstrip().startswith("|"):
+        cells = lines[i].split("|")
+        if len(cells) > 3:
+            rows[cells[1].strip().strip("`").strip().lower()] = i
+assert "supported" in rows and "frozen" in rows, \
+    f"HOST_TIERS_AGREE: no supported/frozen rows in the tier table: {sorted(rows)}"
+sup = lines[rows["supported"]].split("|")
+assert "opencode" in sup[2], f"HOST_TIERS_AGREE: opencode is not in the supported row: {sup[2]!r}"
+sup[2] = " " + re.sub(r"`?opencode`?\s*,?\s*", "", sup[2]).strip(" ,") + " "
+lines[rows["supported"]] = "|".join(sup)
+fro = lines[rows["frozen"]].split("|")
+fro[2] = " " + fro[2].strip() + ", `opencode` "
+lines[rows["frozen"]] = "|".join(fro)
+open(p, "w", encoding="utf-8").write("\n".join(lines))
+PY
+  # exercises: check_host_tiers
+  expect_fail "host-capability-matrix.md" "host-tiers-agree"
+  expect_fail "install.sh" "host-tiers-agree (names both files)"
+  restore documentation/host-capability-matrix.md
+  rm -rf "$TMP"
+}
+
 if [ "${1:-}" = "__case" ]; then
   "$2"
   exit $?
@@ -696,7 +737,7 @@ TMP="$SEEDLINT_TMPL"
 lint >/dev/null || { echo "baseline seed-lint did not pass on a clean copy" >&2; exit 1; }
 
 SCN="$(mktemp)"
-for c in case_01 case_02 case_03 case_04 case_05 case_06 case_07 case_08 case_09 case_10 case_11 case_12 case_13 case_14 case_15 case_16 case_17 case_18 case_19 case_20 case_21 case_22 case_23 case_24 case_25 case_26 case_27 case_28 case_29 case_30 case_31 case_32 case_33 case_34 case_35 case_36 case_37 case_38 case_shell_floor case_agn_docs case_agn_py_sh case_frontmatter_portable; do
+for c in case_01 case_02 case_03 case_04 case_05 case_06 case_07 case_08 case_09 case_10 case_11 case_12 case_13 case_14 case_15 case_16 case_17 case_18 case_19 case_20 case_21 case_22 case_23 case_24 case_25 case_26 case_27 case_28 case_29 case_30 case_31 case_32 case_33 case_34 case_35 case_36 case_37 case_38 case_shell_floor case_agn_docs case_agn_py_sh case_frontmatter_portable caseHOST_TIERS_AGREE; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0

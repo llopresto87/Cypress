@@ -382,6 +382,22 @@ under .github/, so this case is asserting nothing"
   echo "  --check ignores the backups the installer itself leaves behind — OK"
 }
 
+caseCHECK_WITHOUT_COPILOT_SAYS_SO() {
+  W="$(mktemp -d)"
+  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
+  # CHECK_WITHOUT_COPILOT_SAYS_SO (SPEC-0001, ADR-0009): `--check` verifies the
+  # github-copilot generated views, and `all` no longer expands to that host. A
+  # CI job running `install.sh all --check` must then be told it checked
+  # nothing, not handed a silent exit 0 that reads as "in sync".
+  E="$W/check-no-copilot"; mkdir -p "$E"
+  out="$("$ROOT/install.sh" all --check --project-dir "$E" 2>&1)" && rc=0 || rc=$?
+  [[ $rc -eq 0 ]] \
+      || fail "CHECK_WITHOUT_COPILOT_SAYS_SO: all --check must exit 0 when no generated views are in scope; got $rc: $out"
+  grep -qi 'no generated views' <<<"$out" \
+      || fail "CHECK_WITHOUT_COPILOT_SAYS_SO: all --check did not say that no generated views are in scope — silence is the failure: $out"
+  echo "  CHECK_WITHOUT_COPILOT_SAYS_SO: all --check says no generated views are in scope — OK"
+}
+
 case_stray_prompt() {
   W="$(mktemp -d)"
   trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
@@ -492,7 +508,7 @@ fi
 # --- main: dispatch every independent scenario in parallel -------------------
 export ROOT
 SCN="$(mktemp)"
-for c in case_agents case_claude case_both case_index case_d1_file case_d1_ro case_d2 case_idem case_block_declared case_block_deep case_block_readonly case_adopted case_adapter_dirs case_check_broken case_check_stale case_migration_date case_check_backups case_stray_prompt case_hook_order case_hook_retire case_nostamp case_freshquiet; do
+for c in case_agents case_claude case_both case_index case_d1_file case_d1_ro case_d2 case_idem case_block_declared case_block_deep case_block_readonly case_adopted case_adapter_dirs case_check_broken case_check_stale case_migration_date case_check_backups caseCHECK_WITHOUT_COPILOT_SAYS_SO case_stray_prompt case_hook_order case_hook_retire case_nostamp case_freshquiet; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0
