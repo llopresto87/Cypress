@@ -717,6 +717,69 @@ PY
   expect_fail "host-capability-matrix.md" "host-tiers-agree"
   expect_fail "install.sh" "host-tiers-agree (names both files)"
   restore documentation/host-capability-matrix.md
+
+  # (a) review F2: a DUPLICATED tier row. A second `frozen` row listing opencode,
+  # inserted above the real one, used to be overwritten by the real row when the
+  # table was read into a dict, so the published table said opencode is frozen
+  # and supported at once and the lint passed. A tier has one row.
+python3 - "$TMP/documentation/host-capability-matrix.md" <<'PY'
+import re, sys
+p = sys.argv[1]
+lines = open(p, encoding="utf-8").read().split("\n")
+i = next((i for i, l in enumerate(lines) if re.match(r"^\|\s*`?frozen`?\s*\|", l)), None)
+assert i is not None, "HOST_TIERS_AGREE (a): no frozen row to duplicate — the fixture has drifted"
+lines.insert(i, "| `frozen` | `opencode` | A duplicated row planted by the test. |")
+open(p, "w", encoding="utf-8").write("\n".join(lines))
+PY
+  # exercises: check_host_tiers
+  expect_fail "host-capability-matrix.md.*frozen\|frozen.*host-capability-matrix.md" "host-tiers-duplicate-row"
+  restore documentation/host-capability-matrix.md
+
+  # (b) review F2: a host dropped from FROZEN_TOOLS AND from the matrix's frozen
+  # row. Arrays and table still agree with each other, and `all` is untouched, so
+  # the old three comparisons all pass; but codex is still a tool the dispatch
+  # `case` installs, and now sits in no tier. The union of the three arrays must
+  # equal the tools install.sh dispatches.
+python3 - "$TMP/install.sh" "$TMP/documentation/host-capability-matrix.md" <<'PY'
+import re, sys
+inst, matrix = sys.argv[1], sys.argv[2]
+s = open(inst, encoding="utf-8").read()
+s2, n = re.subn(r"(?m)^FROZEN_TOOLS=\(codex github-copilot\)", "FROZEN_TOOLS=(github-copilot)", s)
+assert n == 1, "HOST_TIERS_AGREE (b): FROZEN_TOOLS is not (codex github-copilot) — the fixture has drifted"
+assert re.search(r"(?m)^\s*codex\)\s+install_codex\s*;;", s2), \
+    "HOST_TIERS_AGREE (b): the dispatch no longer installs codex — the fixture has drifted"
+open(inst, "w", encoding="utf-8").write(s2)
+m = open(matrix, encoding="utf-8").read()
+m2, n = re.subn(r"(?m)^(\|\s*`frozen`\s*\|\s*)`codex`,\s*", r"\1", m)
+assert n == 1, "HOST_TIERS_AGREE (b): the matrix's frozen row does not start with `codex`, — the fixture has drifted"
+open(matrix, "w", encoding="utf-8").write(m2)
+PY
+  # exercises: check_host_tiers
+  expect_fail "codex" "host-tiers-universe (a dispatchable tool in no tier)"
+  expect_fail "install.sh" "host-tiers-universe (names install.sh)"
+  restore install.sh
+  restore documentation/host-capability-matrix.md
+
+  # (c) review F2: the three suites that keep the frozen adapters under
+  # regression each carry an EVERY_HOST literal (grill-7.27.0 §4). Nothing held
+  # them to the tools install.sh dispatches, so a suite could drop a host and
+  # silently stop covering it. Each literal is planted separately, so a check
+  # that reads only one of the three files still leaves two of these red.
+  local suite
+  for suite in tests/test-full-install.sh tests/test-install-placement.sh tests/test-unified-graph-install.sh; do
+python3 - "$TMP/$suite" <<'PY'
+import re, sys
+p = sys.argv[1]
+s = open(p, encoding="utf-8").read()
+s2, n = re.subn(r'(?m)^EVERY_HOST="claude-code opencode codex github-copilot prime-agent"$',
+                'EVERY_HOST="claude-code opencode github-copilot prime-agent"', s)
+assert n == 1, f"HOST_TIERS_AGREE (c): {p} has no five-host EVERY_HOST literal — the fixture has drifted"
+open(p, "w", encoding="utf-8").write(s2)
+PY
+    # exercises: check_host_tiers
+    expect_fail "$(basename "$suite")" "host-tiers-every-host ($suite)"
+    restore "$suite"
+  done
   rm -rf "$TMP"
 }
 

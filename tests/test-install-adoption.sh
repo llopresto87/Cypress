@@ -387,15 +387,74 @@ caseCHECK_WITHOUT_COPILOT_SAYS_SO() {
   trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
   # D3 CHECK_WITHOUT_COPILOT_SAYS_SO (SPEC-0001, ADR-0009): `--check` verifies the
   # github-copilot generated views, and `all` no longer expands to that host. A
-  # CI job running `install.sh all --check` must then be told it checked
-  # nothing, not handed a silent exit 0 that reads as "in sync".
+  # CI job running `install.sh all --check` on a target whose record does NOT
+  # carry github-copilot must be told it checked nothing, not handed a silent
+  # exit 0 that reads as "in sync". The Given is narrowed on purpose: a target
+  # whose .cypress/seed.json records github-copilot is checked, and exit 0 is
+  # not blessed there (ALL_CHECK_INCLUDES_RECORDED_COPILOT, below).
+  # (1) no record at all.
   E="$W/check-no-copilot"; mkdir -p "$E"
   out="$("$ROOT/install.sh" all --check --project-dir "$E" 2>&1)" && rc=0 || rc=$?
   [[ $rc -eq 0 ]] \
       || fail "CHECK_WITHOUT_COPILOT_SAYS_SO: all --check must exit 0 when no generated views are in scope; got $rc: $out"
   grep -qi 'no generated views' <<<"$out" \
       || fail "CHECK_WITHOUT_COPILOT_SAYS_SO: all --check did not say that no generated views are in scope — silence is the failure: $out"
-  echo "  CHECK_WITHOUT_COPILOT_SAYS_SO: all --check says no generated views are in scope — OK"
+  # (2) a record that carries a frozen host, but not github-copilot.
+  F="$W/check-codex-only"; mkdir -p "$F"
+  "$ROOT/install.sh" all codex --project-dir "$F" >/dev/null 2>&1 \
+      || fail "CHECK_WITHOUT_COPILOT_SAYS_SO: setup — install.sh all codex failed"
+  grep -q 'github-copilot' "$F/.cypress/seed.json" \
+      && fail "CHECK_WITHOUT_COPILOT_SAYS_SO: setup — the record carries github-copilot, so this arm asserts nothing"
+  out="$("$ROOT/install.sh" all --check --project-dir "$F" 2>&1)" && rc=0 || rc=$?
+  [[ $rc -eq 0 ]] \
+      || fail "CHECK_WITHOUT_COPILOT_SAYS_SO: all --check on a plant recording codex but not github-copilot must exit 0; got $rc: $out"
+  grep -qi 'no generated views' <<<"$out" \
+      || fail "CHECK_WITHOUT_COPILOT_SAYS_SO: all --check on a plant without github-copilot in its record did not say that no generated views are in scope: $out"
+  echo "  CHECK_WITHOUT_COPILOT_SAYS_SO: all --check without github-copilot recorded says no generated views are in scope — OK"
+}
+
+caseALL_CHECK_INCLUDES_RECORDED_COPILOT() {
+  W="$(mktemp -d)"
+  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
+  # D4 ALL_CHECK_INCLUDES_RECORDED_COPILOT (SPEC-0001, ADR-0009, review F1): when
+  # the plant's .cypress/seed.json records github-copilot, `all --check` checks
+  # its generated views. Checking is read-only, so it is not a new feature on a
+  # frozen host, and a CI job that ran `all --check` before 7.27.0 keeps exiting
+  # non-zero on drift. Before this contract, `all --check` exited 0 ("no
+  # generated views are in scope") while `github-copilot --check` on the same
+  # drifted plant exited 1: a real check hidden behind a green.
+  P="$W/copilot-plant"; mkdir -p "$P"
+  "$ROOT/install.sh" all github-copilot --project-dir "$P" >/dev/null 2>&1 \
+      || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: setup — install.sh all github-copilot failed"
+  grep -q 'github-copilot' "$P/.cypress/seed.json" \
+      || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: setup — the record does not carry github-copilot"
+  # (1) In sync: the check ran and says so, and it is not the out-of-scope notice.
+  out="$("$ROOT/install.sh" all --check --project-dir "$P" 2>&1)" && rc=0 || rc=$?
+  [[ $rc -eq 0 ]] \
+      || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check on an in-sync Copilot-recording plant must exit 0; got $rc: $out"
+  grep -qi 'no generated views' <<<"$out" \
+      && fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check said no generated views are in scope on a plant that records github-copilot — the Copilot views were not checked: $out"
+  grep -q 'Copilot views up to date' <<<"$out" \
+      || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check on an in-sync Copilot-recording plant did not report the views as checked and up to date: $out"
+  # The host IS checked, so the "not refreshed ... Refresh them with: install.sh
+  # all github-copilot" warning (which names a writing command) must not fire.
+  grep -qi 'not refreshed' <<<"$out" \
+      && fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check printed the not-refreshed warning for github-copilot, which it checks, and advised a writing command under --check: $out"
+  # (2) Drifted: the same exit a github-copilot --check gives, and the drift named.
+  victim="$(find "$P/.github/agents" -name '*.agent.md' | head -1)"
+  [[ -n "$victim" ]] || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: setup — no .github/agents view to drift"
+  printf '\n<!-- drifted by hand -->\n' >> "$victim"
+  own="$("$ROOT/install.sh" github-copilot --check --project-dir "$P" 2>&1)" && own_rc=0 || own_rc=$?
+  [[ $own_rc -ne 0 ]] \
+      || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: setup — github-copilot --check does not see the drift, so this arm asserts nothing: $own"
+  out="$("$ROOT/install.sh" all --check --project-dir "$P" 2>&1)" && rc=0 || rc=$?
+  [[ $rc -ne 0 ]] \
+      || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check exited 0 on a drifted Copilot-recording plant (github-copilot --check exits $own_rc): $out"
+  grep -q 'STALE' <<<"$out" \
+      || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check failed on a drifted plant without naming the drift (STALE): $out"
+  grep -qi 'not refreshed' <<<"$out" \
+      && fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check printed the not-refreshed warning on a drifted plant it checks: $out"
+  echo "  ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check checks the Copilot views a plant records, and drift exits non-zero — OK"
 }
 
 case_stray_prompt() {
@@ -508,7 +567,7 @@ fi
 # --- main: dispatch every independent scenario in parallel -------------------
 export ROOT
 SCN="$(mktemp)"
-for c in case_agents case_claude case_both case_index case_d1_file case_d1_ro case_d2 case_idem case_block_declared case_block_deep case_block_readonly case_adopted case_adapter_dirs case_check_broken case_check_stale case_migration_date case_check_backups caseCHECK_WITHOUT_COPILOT_SAYS_SO case_stray_prompt case_hook_order case_hook_retire case_nostamp case_freshquiet; do
+for c in case_agents case_claude case_both case_index case_d1_file case_d1_ro case_d2 case_idem case_block_declared case_block_deep case_block_readonly case_adopted case_adapter_dirs case_check_broken case_check_stale case_migration_date case_check_backups caseCHECK_WITHOUT_COPILOT_SAYS_SO caseALL_CHECK_INCLUDES_RECORDED_COPILOT case_stray_prompt case_hook_order case_hook_retire case_nostamp case_freshquiet; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0
