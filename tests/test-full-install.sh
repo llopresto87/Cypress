@@ -8,6 +8,13 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# Every host the installer can place, named explicitly (ADR-0009). A call that
+# exists to cover the complete destination set, or that asserts a frozen host's
+# files, installs these five by name so the frozen adapters stay under
+# regression; `all` names only the maintained hosts. Unquoted at each call on
+# purpose: it word-splits into five positional tool arguments.
+EVERY_HOST="claude-code opencode codex github-copilot prime-agent"
+
 need() { [[ -e "$1" ]] || { echo "MISSING after $2 install: $1" >&2; exit 1; }; }
 
 # The slash-command roster is a GENERATED projection of the protocol nodes
@@ -393,8 +400,8 @@ case_idempotent_rerun() {
 # used place_kernel — the two ping-ponged the kernel file into fresh churn on
 # every run of `install.sh all`.
 D="$(mktemp -d)"
-"$ROOT/install.sh" all --project-dir "$D" --copy >/dev/null
-"$ROOT/install.sh" all --project-dir "$D" --copy >/dev/null
+"$ROOT/install.sh" $EVERY_HOST --project-dir "$D" --copy >/dev/null
+"$ROOT/install.sh" $EVERY_HOST --project-dir "$D" --copy >/dev/null
 n="$(find "$D" -name '*.bak-*' | wc -l)"
 [[ "$n" -eq 0 ]] || { echo "re-run churn: $n spurious .bak file(s) created by an identical re-install" >&2; exit 1; }
 rm -rf "$D"
@@ -421,13 +428,13 @@ echo "  glob-metachar seed path installs to declared destinations — OK"
 case_no_symlink_churn() {
 # REGRESSION — a platform without symlinks (ln -s fails; place_kernel's own
 # degradation path) must not churn: the pristine kernel copy was backed up and
-# re-copied on EVERY run (5 .bak per `all` re-run pre-fix). Both kernels must
+# re-copied on EVERY run (5 .bak per five-host re-run pre-fix). Both kernels must
 # stay byte-identical independent copies.
 SHIM="$(mktemp -d)"
 printf '#!/bin/sh\nexit 1\n' > "$SHIM/ln"; chmod +x "$SHIM/ln"
 D="$(mktemp -d)"
-PATH="$SHIM:$PATH" "$ROOT/install.sh" all --project-dir "$D" --copy >/dev/null
-PATH="$SHIM:$PATH" "$ROOT/install.sh" all --project-dir "$D" --copy >/dev/null
+PATH="$SHIM:$PATH" "$ROOT/install.sh" $EVERY_HOST --project-dir "$D" --copy >/dev/null
+PATH="$SHIM:$PATH" "$ROOT/install.sh" $EVERY_HOST --project-dir "$D" --copy >/dev/null
 n="$(find "$D" -name '*.bak-*' | wc -l)"
 [[ "$n" -eq 0 ]] || { echo "no-symlink kernel churn: $n .bak file(s) on identical re-runs" >&2; exit 1; }
 diff -q "$D/CLAUDE.md" "$D/AGENTS.md" >/dev/null \

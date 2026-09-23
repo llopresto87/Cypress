@@ -2,6 +2,13 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Every host the installer can place, named explicitly (ADR-0009). A call that
+# exists to cover the complete destination set, or that asserts a frozen host's
+# files, installs these five by name so the frozen adapters stay under
+# regression; `all` names only the maintained hosts. Unquoted at each call on
+# purpose: it word-splits into five positional tool arguments.
+EVERY_HOST="claude-code opencode codex github-copilot prime-agent"
 SELF="$ROOT/tests/test-unified-graph-install.sh"
 
 # Per-process temp cleanup: every scenario runs in its own re-invocation of this
@@ -250,7 +257,7 @@ AGENT
   mkdir -p "$CHK/docs/graph/agents/notes"
   printf 'working notes\n'  > "$CHK/docs/graph/agents/notes/todo.md"
   printf '# skills index\n' > "$CHK/docs/graph/skills/index.md"
-  "$ROOT/install.sh" all --project-dir "$CHK" --copy --force >/dev/null 2>&1
+  "$ROOT/install.sh" $EVERY_HOST --project-dir "$CHK" --copy --force >/dev/null 2>&1
   [[ -z "$(find "$CHK/.claude" "$CHK/.codex" "$CHK/.github" -name 'todo*' 2>/dev/null)" ]] || {
     echo "a note under the agent home was projected as a spawnable agent" >&2; exit 1; }
   [[ ! -e "$CHK/.claude/skills/index/SKILL.md" ]] || {
