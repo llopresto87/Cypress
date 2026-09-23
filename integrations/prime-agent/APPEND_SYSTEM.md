@@ -94,6 +94,14 @@ IPython kernel (`bash tests/run.sh`, the linters, the test suite) and keep the
 evidence in variables. That is your native tool; use it instead of asking a
 harness to shell out.
 
+## Surfaced nodes
+
+Keep a Python set of graph node ids, `_cypress_surfaced`, in the IPython
+kernel, and add each id whose node body you open. Before opening a body the
+router suggests, check the set. An id in it means surfaced earlier this
+session: re-open it if its content is not in view. IPython state outlives
+compaction; your context does not.
+
 ## Close-out — three destinations, routed by what the artifact IS
 
 A reusable win has exactly one correct home; the three do not overlap.

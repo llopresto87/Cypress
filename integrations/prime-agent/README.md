@@ -97,12 +97,17 @@ event bus:
 - `route-extension.ts` subscribes to **`before_agent_start`** (fired
   after the user submits a prompt, before the agent loop; it can inject
   a message and modify the system prompt). It runs the graph router
-  (`python3 docs/graph/graph-lint.py --plan "<prompt>"`) on the actual
-  prompt and injects the route-first mandate plus the router's suggested
-  node set — the same behaviour as the cross-tool `route-hook.py`, using
-  Prime Agent's native extension API instead of a shell hook.
+  (`python3 docs/graph/graph-lint.py --plan=<prompt>`, one argv value) on
+  the actual prompt and injects a one-line pointer at the kernel plus the
+  router's suggested node set, with the prompt's echo removed — the same
+  text as the full mode of the cross-tool `route-hook.py`, using Prime
+  Agent's native extension API instead of a shell hook.
+- It keeps no state, so every routed prompt gets that full text. The
+  `## Surfaced nodes` section of `APPEND_SYSTEM.md` asks the model to keep
+  the ids it has opened in `_cypress_surfaced`, a Python set in its IPython
+  kernel; that is soft and model-kept, and nothing checks it (SPEC-0003).
 - It is **fail-open**: any error (missing graph, router failure) degrades
-  to the bare mandate or to silence, and it never blocks a prompt.
+  to the pointer line or to silence, and it never blocks a prompt.
 - It is auto-discovered from `.prime/agent/extensions/`. The bundled
   `settings.json` also lists it explicitly so it still loads if a project
   disables convention discovery.

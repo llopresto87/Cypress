@@ -88,9 +88,10 @@ opencode under that rule, and targets no frozen host.
 | Session-start hook | mechanically enforced | unsupported | unsupported | projected³ | mechanically enforced |
 | Routing hook | mechanically enforced | unsupported | unsupported | projected³ | mechanically enforced |
 | Status hook | mechanically enforced | unsupported | unsupported | projected³ | mechanically enforced |
+| Per-session injection dedup | mechanically enforced | unsupported | unsupported | degraded | unsupported⁵ |
 | Pre-tool guard | mechanically enforced | unsupported | unsupported | unsupported | unsupported |
 | Slash commands | mechanically enforced | mechanically enforced | unsupported | mechanically enforced | mechanically enforced |
-| Always-applied instructions | mechanically enforced (26 261 B) | mechanically enforced (26 261 B) | mechanically enforced (≤ 26 261 B)⁴ | mechanically enforced (31 905 B) | mechanically enforced (24 094 B) |
+| Always-applied instructions | mechanically enforced (26 261 B) | mechanically enforced (26 261 B) | mechanically enforced (≤ 26 261 B)⁴ | mechanically enforced (31 905 B) | mechanically enforced (24 444 B) |
 
 ¹ The leaf/coordinator split (who holds `Task` at all) is hard-enforced —
 a Task-less leaf mechanically cannot spawn. The *numeric* `max_spawn_depth`
@@ -115,6 +116,14 @@ The budget therefore holds Codex to a number larger than it spends, which is
 the safe direction for a ratchet and the wrong direction for a claim — hence
 the `≤`. Correcting the model means editing `check_eager_surface()`, which
 would move the one home of these figures.
+
+⁵ No injection dedup ships: `route-extension.ts` keeps no state and injects in
+full on every prompt. What Prime Agent has instead is a model-kept set of
+surfaced node ids, `_cypress_surfaced`, in the session's IPython kernel, which
+the overlay asks the model to keep. Its ADR-0003 label is `soft`, and it is
+model-cooperative: no harness reads it, and it holds only while the model
+follows the overlay. That is not one of the six classes, so it is recorded
+here and not in the cell (see "Per-session injection dedup" below).
 
 ## Per-capability evidence
 
@@ -285,7 +294,8 @@ parity here; the differences are budget mechanics, not enforcement.
 These three are grouped because their per-host story is identical: a
 harness either has an automatic pre-turn or session-start injection point
 or it doesn't, and where it exists the seed wires the *same two* payloads
-onto it (the route-first mandate, and the status-register summary).
+onto it (the route-first pointer with the router's suggestion, and the
+status-register summary).
 
 - **Claude Code**: `UserPromptSubmit` → `route-hook.py` (routing hook,
   fail-open `|| true`); `SessionStart` → `status-hook.py` (status hook,
@@ -317,8 +327,8 @@ onto it (the route-first mandate, and the status-register summary).
   process-local first-prompt flag to emulate session-start. Both are real,
   natively auto-discovered (`.prime/agent/extensions/`, transpiled at
   runtime, no build step) — **mechanically enforced** — and, like Claude
-  Code's hooks, explicitly never block: "any error … degrades to the bare
-  mandate or to silence" (`route-extension.ts` header comment).
+  Code's hooks, explicitly never block: "any error … degrades to the
+  pointer line or to silence" (`route-extension.ts` header comment).
 
 ### Pre-tool guard
 
@@ -355,6 +365,36 @@ anywhere in the matrix beyond the Task-tool allowlist itself.
   produces no prompt/command directory at all — the only adapter with zero
   command surface. **unsupported**.
 
+### Per-session injection dedup
+
+Whether a later prompt in the same session is spared text an earlier prompt
+already injected (SPEC-0003).
+
+- **Claude Code**: `route-hook.py` keeps a session ledger under
+  `.cypress/session/`, keyed on the `session_id` the host sends, and
+  `status-hook.py` resets it on every `SessionStart`. A node already
+  suggested this session is named by id, not repeated in full, with a full
+  injection after each reset, every `REFRESH_EVERY` routed prompts, and on
+  any doubt about the record. Class: **mechanically enforced**.
+- **opencode**: no per-prompt injection ships, so there is nothing to dedup.
+  Class: **unsupported**.
+- **Codex CLI**: frozen under ADR-0009, and nothing ships. Class:
+  **unsupported**.
+- **GitHub Copilot**: it runs the same `route-hook.py`, but its envelope
+  carries no `session_id`, so every prompt takes the full injection and no
+  dedup is delivered. Class: **degraded**.
+- **Prime Agent**: `before_agent_start` carries no session id, and
+  `route-extension.ts` keeps no state, so every routed prompt is injected in
+  full and no saving in injected bytes is claimed. Class: **unsupported**,
+  for the injection itself. The overlay's `## Surfaced nodes` section asks the model
+  to keep `_cypress_surfaced`, a Python set in its IPython kernel, and not to
+  re-open a node whose content is still in view. That set is model-kept and
+  unenforced: `soft` under ADR-0003, model-cooperative, with nothing observing
+  whether the model complies. Any saving is in node bodies not re-read, and it
+  is not measured. What every Prime Agent session pays for the instruction is
+  the section itself, 350 bytes on the eager surface (the always-applied
+  figure below includes it).
+
 ### Always-applied instructions
 
 What loads into every session or every skill invocation regardless of
@@ -367,7 +407,7 @@ function's own computation against current sources:
 | Claude Code | kernel + agent descriptions + skill descriptions | 26 261 B |
 | opencode | kernel + agent descriptions + skill descriptions | 26 261 B |
 | Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 26 261 B |
-| Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 24 094 B |
+| Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 24 444 B |
 | GitHub Copilot | kernel + agent descriptions + skill descriptions + pointer boilerplate | 31 905 B |
 
 (Component figures are not restated here. These moved four times in one release
