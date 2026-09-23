@@ -197,7 +197,7 @@ done
 echo "  CLAUDE_HOOKS_FAIL_OPEN_ON_COPILOT_ENVELOPE: route-hook and status-hook fail open on a Copilot envelope and on empty stdin — OK"
 
 
-# --- SPEC-0003 per-prompt injection: the Claude Code hooks (X101-X134, X142, X143)
+# --- SPEC-0003 per-prompt injection: the Claude Code hooks (X101-X134, X142-X149)
 # One case per contract of docs/specs/SPEC-0003-per-prompt-injection.md §4 and
 # per tested failure of §7, bound by the fixed-width labels its §10 reserves.
 # Every case prints `X1NN <SLUG>: … — OK`, so a label and its slug sit together.
@@ -320,9 +320,22 @@ def _refuse(*a, **k):
     if kind == "perm":
         raise PermissionError(errno.EACCES, "injected by the SPEC-0003 fault wrapper")
     raise OSError(errno.EIO, "injected by the SPEC-0003 fault wrapper")
-os.replace = _refuse
-if kind != "perm":
-    os.rename = _refuse
+if kind == "statfail":                    # X147: the ledger stat fails as a real one would,
+    _real_stat = os.stat                  # carrying the file name in the exception
+    def _stat(path, *a, dir_fd=None, **k):
+        if dir_fd is not None and str(path).endswith(".json"):
+            raise OSError(errno.EIO, os.strerror(errno.EIO), path)
+        return _real_stat(path, *a, dir_fd=dir_fd, **k)
+    os.stat = _stat
+elif kind == "scandirfail":               # X149: GC's directory scan fails
+    def _scandir(*a, **k):
+        raise OSError(errno.EIO, os.strerror(errno.EIO))
+    os.supports_fd.add(_scandir)          # the hook's capability probe looks it up here
+    os.scandir = _scandir
+else:
+    os.replace = _refuse
+    if kind != "perm":
+        os.rename = _refuse
 sys.argv = [hook]
 runpy.run_path(hook, run_name="__main__")
 ''')
@@ -865,13 +878,16 @@ def x118(base):
     prompt = "zq-sentinel-0118 widget ledger work"
     copilot = {"hook_event_name": "UserPromptSubmit", "source": "new", "cwd": str(p.dir),
                "copilotRequestId": "not-a-claude-code-field", "prompt": prompt}
-    for what, env in (("Copilot envelope", copilot), ("sessionId spelling", dict(copilot, sessionId=SID))):
+    # `"session_id": null` is absent, not refused: Copilot's fail-open intent,
+    # so no stderr line (review of 2deda6a..343445f, nit).
+    for what, env in (("Copilot envelope", copilot), ("sessionId spelling", dict(copilot, sessionId=SID)),
+                      ("session_id null", dict(copilot, session_id=None))):
         for turn in (1, 2):
             r = route(p, prompt, envelope=env)
             expect_full(r, f"{what}, prompt {turn}")
             check(r.err == "", f"{what}, prompt {turn}: expected no stderr — {r.ctx()}")
             check(not p.sess.exists(), f"{what}: something was created under .cypress/session/")
-    return "no `session_id` key: full mode every time, no file, no stderr"
+    return "no `session_id` key, or a null one: full mode every time, no file, no stderr"
 
 
 INVALID_SIDS = ["../../escape", "a/b", ".hidden", "", "a" * 129, 12345, "ab\x00cd"]
@@ -1277,6 +1293,140 @@ def x142(base):
     return "non-zero exit, empty output, timeout: pointer line alone, ledger untouched"
 
 
+# ---------------------------------------------------------------- review of 2deda6a..343445f
+# Fail-open regressions found by the reviewer. Each case names the contract or
+# §7 failure it holds; X144 and X145 are the first cases of UNEXPECTED_EXCEPTION.
+def no_traceback(r, what):
+    check("Traceback" not in r.err, f"{what}: a traceback reached stderr — {r.ctx()}")
+
+
+def at_most_one_err(r, what):
+    check(r.err == "" or one_err_line(r), f"{what}: expected at most one stderr line — {r.ctx()}")
+
+
+@case("X144", "UNEXPECTED_EXCEPTION")
+def x144(base):
+    p = Plant(base, register=True)
+    (p.dir / "docs" / "graph" / "status-register.py").write_text(
+        "import sys\nsys.stdout.buffer.write(b'\\xff\\xfe 3 open, \\xc3\\x28 hotfix\\n')\n")
+    r = run_hook(p, json.dumps({"hook_event_name": "SessionStart", "session_id": SID,
+                                "source": "startup", "cwd": str(p.dir)}), hook=p.hook("status-hook.py"))
+    check(r.rc == 0, f"a register printing non-UTF-8 bytes: status-hook must exit 0 — {r.ctx()}")
+    no_traceback(r, "non-UTF-8 register output")
+    at_most_one_err(r, "non-UTF-8 register output")
+    check(r.out.strip() == "" or r.envelope_ok,
+          f"non-UTF-8 register output: stdout is neither empty nor one hook envelope — {r.ctx()}")
+    return "status register printing non-UTF-8 bytes: exit 0, no traceback, at most one stderr line"
+
+
+@case("X145", "UNEXPECTED_EXCEPTION")
+def x145(base):
+    nested = "[" * 100_000
+    p = Plant(base, register=True)
+
+    def route_half():
+        r = run_hook(p, nested)
+        check(r.rc == 0, f"route-hook, 100 000 nested `[` on stdin: must exit 0 — {r.ctx()}")
+        no_traceback(r, "route-hook, nested stdin")
+        check(r.envelope_ok and is_pointer_only(r),
+              f"route-hook, nested stdin: graph-lint.py resolves, so the pointer line is owed — {r.ctx()}")
+        expect_one_err(r, "route-hook, nested stdin")
+
+    def status_half():
+        s = run_hook(p, nested, hook=p.hook("status-hook.py"))
+        check(s.rc == 0, f"status-hook, 100 000 nested `[` on stdin: must exit 0 — {s.ctx()}")
+        no_traceback(s, "status-hook, nested stdin")
+        check(s.inj is not None and "0 open, 0 hotfix, 0 deferred" in s.inj,
+              f"status-hook, nested stdin: the summary can still be built and is owed — {s.ctx()}")
+        at_most_one_err(s, "status-hook, nested stdin")
+
+    problems = []
+    for half in (route_half, status_half):
+        try:
+            half()
+        except CaseFail as e:
+            problems.append(str(e))
+    check(not problems, " || ".join(problems))
+    return "stdin nested past the parser: both hooks exit 0; route-hook keeps the pointer, status-hook the summary"
+
+
+@case("X146", "ROUTE_HOOK_STRIPS_MULTILINE_PROMPT_ECHO")
+def x146(base):
+    words = ("tighten the", "ledger gc please")
+    lf = Plant(base, name="lf")
+    ref = route(lf, "\n".join(words), sid=MISSING)
+    check(is_full(ref), f"harness: the `\\n` prompt did not get full mode — {ref.ctx()}")
+    problems = []
+    for i, sep in enumerate(("\r\n", "\r")):
+        p = Plant(base, name=f"cr{i}")
+        r = route(p, sep.join(words))
+        if not is_full(r):
+            problems.append(f"{sep!r} prompt: expected the full routing a `\\n` prompt gets — {r.ctx()}")
+        elif r.inj != ref.inj:
+            problems.append(f"{sep!r} prompt: the suggestion differs from the `\\n` prompt's")
+        if any(w in (r.inj or "") for w in words):
+            problems.append(f"{sep!r} prompt: a prompt line was echoed into the injection")
+        if not p.ledger().is_file():
+            problems.append(f"{sep!r} prompt: no ledger was written for a routed first prompt")
+    check(not problems, "; ".join(problems))
+    return "a prompt with CRLF or a lone CR is routed like its `\\n` twin, with no echo"
+
+
+@case("X147", "RESET_NOT_WRITTEN")
+def x147(base):
+    p = Plant(base, register=True)
+    write_ledger(p, prompt_count=3)
+    r = status(p, source="startup", wrapper="statfail")
+    no_traceback(r, "ledger stat fails")
+    check(r.inj is not None and "0 open, 0 hotfix, 0 deferred" in r.inj, f"no status summary — {r.ctx()}")
+    expect_one_err(r, "ledger stat fails")
+    check(SID not in r.err, f"the reset's stderr line carries the raw session id — {r.ctx()}")
+    return "the ledger stat fails: summary injected, one stderr line, no raw session id"
+
+
+@case("X148", "LEDGER_WRITE_FAILURE_FAILS_OPEN")
+def x148(base):
+    # Node ids at the pattern's upper length, enough of them that the ledger the
+    # hook would write is over LEDGER_MAX_BYTES while each list is within 512.
+    def nid(kind, i):
+        return f"{kind}.{i:04d}." + "x" * 110
+    load = [nid("load", i) for i in range(300)]
+    nl = [nid("peer", i) for i in range(300)]
+    body = (f"LOAD ({len(load)} nodes, ~9 tokens):\n" + "".join(f"  {n}  a\n" for n in load)
+            + "\nNOT LOADED (with the reason; cross only if the task requires it):\n"
+            + "".join(f"  {n}  b\n" for n in nl))
+    projected = len(json.dumps(ledger_doc(surfaced=load, peers_seen=nl)).encode()) + 1
+    check(projected > LEDGER_MAX_BYTES, f"harness: the projected ledger is only {projected} B")
+    p = Plant(base, body=body)
+    runs = []
+    for turn in (1, 2, 3):
+        r = route(p, f"zq-sentinel-0148 widget ledger work, prompt {turn}")
+        expect_full(r, f"prompt {turn}", remainder=body)
+        check(not p.ledger().exists(), f"prompt {turn}: a ledger of "
+              f"{p.ledger().stat().st_size if p.ledger().exists() else 0} B was written, which the "
+              f"next read refuses as oversized")
+        expect_one_err(r, f"prompt {turn}: a ledger over LEDGER_MAX_BYTES is refused, not written")
+        stray = [n for n in os.listdir(p.sess) if n != ".gitignore"] if p.sess.is_dir() else []
+        check(not stray, f"prompt {turn}: files left in .cypress/session/: {stray}")
+        runs.append(r.err)
+    check(len(set(runs)) == 1, f"the outcome flip-flops between prompts: {runs!r}")
+    return "a ledger over LEDGER_MAX_BYTES is never written; every prompt the same full mode and one line"
+
+
+@case("X149", "LEDGER_GC_BOUNDED")
+def x149(base):
+    p = Plant(base)
+    r1 = route(p, "zq-sentinel-0149 widget ledger work", wrapper="scandirfail")
+    expect_full(r1, "first prompt, GC scan fails")
+    at_most_one_err(r1, "first prompt, GC scan fails")
+    check(p.ledger().is_file(), f"a failed GC blocked the ledger write — {r1.ctx()}")
+    check(not ledger_problems(p.ledger()), f"the ledger is malformed: {ledger_problems(p.ledger())}")
+    check(read_ledger(p)["prompt_count"] == 1, f"prompt_count {read_ledger(p)['prompt_count']}, not 1")
+    r2 = route(p, "zq-sentinel-0149 second widget prompt", wrapper="scandirfail")
+    check(is_reminder(r2), f"second prompt: expected reminder mode — {r2.ctx()}")
+    return "GC failing on creation still writes the ledger; the next prompt is a reminder"
+
+
 failed = []
 for label, slug, fn in CASES:
     if ONLY and label not in ONLY:
@@ -1489,6 +1639,23 @@ def x135():
     else:
         check(lo < sl.start() < hi, "the remainder is taken outside the startsWith branch")
     return "exact `task: ${prompt}\\n\\n` prefix, startsWith, slice(prefix.length), header only in that branch"
+
+
+@case("X150", "ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX")
+def x150():
+    # The Prime Agent twin of X146. route-hook.py lost the echo of a CRLF prompt
+    # to universal-newline decoding; the extension must compare the exec result's
+    # stdout as it arrived. Structural only: what pi.exec does to line endings
+    # before it returns is not observed here.
+    m = re.search(r"(?:const|let)\s+(\w+)\s*=\s*await\s+pi\.exec\(", EXT)
+    check(m, "the pi.exec result is not bound to a name")
+    res = m.group(1)
+    check(re.search(rf"\b{res}\.stdout\.startsWith\(\s*\w+\s*\)", EXT),
+          f"the echo prefix is not tested against the raw `{res}.stdout`")
+    check(not re.search(rf"\b{res}\.stdout\s*=[^=]", EXT), f"`{res}.stdout` is reassigned before the test")
+    check("\\r" not in EXT and not re.search(r"\bEOL\b|\.normalize\(", EXT),
+          "the router output is newline-normalised, so a CRLF prompt's echo no longer matches")
+    return "the echo prefix is tested against the exec result's stdout as it arrived, no CR rewriting"
 
 
 @case("X136", "ROUTE_EXTENSION_PASSES_PROMPT_AS_ONE_OPTION_VALUE")

@@ -767,6 +767,30 @@ PY2
   echo "  X202 PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE: a FIRST MOVE step fails inside the section, not outside it — OK"
   rm -rf "$TMP"
 }
+# X203 PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE (SPEC-0003, I-8; review of
+# 2deda6a..343445f): renaming the section heading must not switch the check
+# off. The overlay copy gets `## Surfaced  nodes` (two spaces) and a planted
+# `T2` under it, and seed-lint must fail on its own, naming the slug, rather
+# than skip a section it can no longer find.
+case_x203() {
+  local TMP; TMP="$(fresh)"
+  python3 - "$TMP/integrations/prime-agent/APPEND_SYSTEM.md" <<'PY2'
+import sys
+p = sys.argv[1]
+lines = open(p, encoding="utf-8").read().split("\n")
+heads = [i for i, l in enumerate(lines) if l.rstrip() == "## Surfaced nodes"]
+if len(heads) != 1:
+    sys.exit(f"X203: the overlay has {len(heads)} `## Surfaced nodes` sections; exactly one is needed to rename")
+lines[heads[0]] = "## Surfaced  nodes"
+lines[heads[0] + 1:heads[0] + 1] = ["", "Take the T2 lane for these.", ""]
+open(p, "w", encoding="utf-8").write("\n".join(lines))
+PY2
+  # exercises: check_hook_text_restates_no_kernel_rule
+  expect_fail "PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE" "X203-renamed-heading-planted-T2"
+  restore integrations/prime-agent/APPEND_SYSTEM.md
+  echo "  X203 PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE: a renamed section heading does not switch the check off — OK"
+  rm -rf "$TMP"
+}
 
 case_frontmatter_portable() {
   local TMP; TMP="$(fresh)"
@@ -976,7 +1000,7 @@ TMP="$SEEDLINT_TMPL"
 lint >/dev/null || { echo "baseline seed-lint did not pass on a clean copy" >&2; exit 1; }
 
 SCN="$(mktemp)"
-for c in case_01 case_02 case_03 case_04 case_05 case_06 case_07 case_08 case_09 case_10 case_11 case_12 case_13 case_14 case_15 case_16 case_17 case_18 case_19 case_20 case_21 case_22 case_23 case_24 case_25 case_26 case_27 case_28 case_29 case_30 case_31 case_32 case_33 case_34 case_35 case_36 case_spec_row_toplevel_def case_37 case_38 case_shell_floor case_agn_docs case_agn_py_sh case_x201 case_x202 case_frontmatter_portable caseHOST_TIERS_AGREE; do
+for c in case_01 case_02 case_03 case_04 case_05 case_06 case_07 case_08 case_09 case_10 case_11 case_12 case_13 case_14 case_15 case_16 case_17 case_18 case_19 case_20 case_21 case_22 case_23 case_24 case_25 case_26 case_27 case_28 case_29 case_30 case_31 case_32 case_33 case_34 case_35 case_36 case_spec_row_toplevel_def case_37 case_38 case_shell_floor case_agn_docs case_agn_py_sh case_x201 case_x202 case_x203 case_frontmatter_portable caseHOST_TIERS_AGREE; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0
