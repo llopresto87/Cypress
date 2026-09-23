@@ -2518,6 +2518,9 @@ def check_eager_surface(kernel_bytes: int) -> None:
         # like every other harness, plus the pointer boilerplate each file adds.
         "github-copilot": kernel_bytes + agent_desc + skill_desc + COPILOT_POINTER_OVERHEAD,
     }
+    # SPEC-0003 PRIME_EAGER_SURFACE_WITHIN_BUDGET: the prime-agent surface counts
+    # the whole overlay, so the `## Surfaced nodes` section is paid here on every
+    # Prime Agent session and held to EAGER_BUDGET like every other harness.
     for harness, measured in sorted(surfaces.items()):
         if harness in EAGER_EXEMPTIONS:
             allowed, reason = EAGER_EXEMPTIONS[harness]
@@ -2708,6 +2711,11 @@ def check() -> None:
     else:
         # the fenced block is the one home; embedding templates must carry
         # it byte-identical (the deliberate runtime-brief exception)
+        # SPEC-0003 BRIEF_TEMPLATES_BYTE_IDENTICAL (I-2): spawned workers see
+        # exactly what they saw before. This identity check is its gate half;
+        # the other half is the verify record `git diff --quiet ac61a3f --
+        # templates/prompts/graph-session-bootstrap.md
+        # templates/prompts/handback-payload.md` (SPEC-0003 §10).
         m = re.search(r"```\n(GRAPH DISCIPLINE.*?)```", canonical.read_text(encoding="utf-8"), re.DOTALL)
         if not m:
             fail(f"{canonical}: no fenced GRAPH DISCIPLINE block found")
