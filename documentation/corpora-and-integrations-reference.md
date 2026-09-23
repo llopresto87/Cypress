@@ -497,11 +497,14 @@ Claude Code reads on every session: `CLAUDE.md` (project memory at repo root),
   `.claude/` already has custom content, the installer prompts; conflicts are
   reported, not silently overwritten.
 - **Enforcement:** `.claude/route-hook.py` runs on `UserPromptSubmit`, runs the
-  graph router (`docs/graph/graph-lint.py --plan "<prompt>"`) on the actual
-  prompt, and injects the route-first mandate plus the suggested node set as
-  `hookSpecificOutput.additionalContext`. It is fail-open (trailing
-  `|| true`; any error degrades to the mandate or silence; a hook must never
-  block a prompt). The frontmatter format (`name`, `description`, `tools`,
+  graph router (`docs/graph/graph-lint.py --plan=<prompt>`) on the actual
+  prompt, and injects a one-line pointer at the kernel plus the suggested node
+  set as `hookSpecificOutput.additionalContext`, with the prompt's echo
+  removed. A session ledger under `.cypress/session/` lets later prompts name
+  already-suggested nodes by id; `status-hook.py` resets it on every
+  `SessionStart` (SPEC-0003). It is fail-open (trailing `|| true`; any error
+  degrades to the full injection, the pointer line, or silence; a hook must
+  never block a prompt). The frontmatter format (`name`, `description`, `tools`,
   `model`) is exactly what Claude Code expects, so the files work unchanged.
 - **Bounded execution before every shell call:** `.claude/bound-hook.py` (`PreToolUse`, matcher `Bash`) refuses a blocking-prone command that carries neither an explicit bound nor a detached launch, printing both accepted forms; it is the one hook wired without `|| true`, because a guard that cannot block is not a guard. Doctrine: `core/method/engineering-posture.md` §14, "A command that may outlive its session is bounded" (`toolcraft.bounded-execution`).
 - **Status register at session start:** `.claude/status-hook.py` runs once on

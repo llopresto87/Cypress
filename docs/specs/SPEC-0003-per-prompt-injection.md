@@ -1251,42 +1251,42 @@ Techniques the cases rely on:
 
 | Contract / Failure | Test case | Test file | Level | Status |
 |---|---|---|---|---|
-| ROUTE_HOOK_STRIPS_MULTILINE_PROMPT_ECHO | X101 | tests/test-bound-hook.sh | integration | red |
-| ROUTE_HOOK_PASSES_PROMPT_AS_ONE_OPTION_VALUE | X102 | tests/test-bound-hook.sh | integration | red |
-| ROUTE_HOOK_UNPASSABLE_PROMPT_FAILS_OPEN | X103; red on arrival (no pointer line yet); the spec's mutation (router call moved outside the guard) was also run against a scratch GREEN and fails it | tests/test-bound-hook.sh | integration | red |
-| ROUTER_OUTPUT_WITHOUT_ECHO_PREFIX_POINTER_ONLY | X104 | tests/test-bound-hook.sh | integration | red |
-| ROUTE_HOOK_POINTS_AT_KERNEL | X105 | tests/test-bound-hook.sh | integration | red |
+| ROUTE_HOOK_STRIPS_MULTILINE_PROMPT_ECHO | X101 | tests/test-bound-hook.sh | integration | green |
+| ROUTE_HOOK_PASSES_PROMPT_AS_ONE_OPTION_VALUE | X102 | tests/test-bound-hook.sh | integration | green |
+| ROUTE_HOOK_UNPASSABLE_PROMPT_FAILS_OPEN | X103; red on arrival (no pointer line yet); the spec's mutation (router call moved outside the guard) was also run against a scratch GREEN and fails it | tests/test-bound-hook.sh | integration | green |
+| ROUTER_OUTPUT_WITHOUT_ECHO_PREFIX_POINTER_ONLY | X104 | tests/test-bound-hook.sh | integration | green |
+| ROUTE_HOOK_POINTS_AT_KERNEL | X105 | tests/test-bound-hook.sh | integration | green |
 | HOOK_TEXT_RESTATES_NO_KERNEL_RULE | check_hook_text_restates_no_kernel_rule | tests/seed-lint.py | unit; a new check, entered in COVERED in tests/check-coverage-binder.py; red: the check does not exist yet, so X201 draws no finding and the binder names it | red |
 | HOOK_TEXT_RESTATES_NO_KERNEL_RULE | X201; planted §0 cell and planted `T2`, tagged `# exercises: check_hook_text_restates_no_kernel_rule` | tests/test-seed-lint.sh | integration | red |
-| LEDGER_FIRST_PROMPT_FULL | X106 | tests/test-bound-hook.sh | integration | red |
-| LEDGER_LATER_PROMPT_REMINDER | X107 | tests/test-bound-hook.sh | integration | red |
-| REMINDER_KEEPS_NOTICE_LINES | X108 | tests/test-bound-hook.sh | integration | red |
-| REMINDER_SAYS_SURFACED_NEVER_LOADED | X109 | tests/test-bound-hook.sh | integration | red |
-| LEDGER_NEW_IDS_LISTED | X110 | tests/test-bound-hook.sh | integration | red |
-| REMINDER_DROPS_PEERS_ALREADY_SHOWN | X111 | tests/test-bound-hook.sh | integration | red |
-| LEDGER_EVERY_LOAD_ID_NAMED | X112; the six ledger states of the contract | tests/test-bound-hook.sh | integration | red |
-| LEDGER_REFRESH_EVERY_N | X113; constant read by regex, copy rewritten to 3 | tests/test-bound-hook.sh | integration | red |
+| LEDGER_FIRST_PROMPT_FULL | X106 | tests/test-bound-hook.sh | integration | green |
+| LEDGER_LATER_PROMPT_REMINDER | X107 | tests/test-bound-hook.sh | integration | green |
+| REMINDER_KEEPS_NOTICE_LINES | X108 | tests/test-bound-hook.sh | integration | green |
+| REMINDER_SAYS_SURFACED_NEVER_LOADED | X109 | tests/test-bound-hook.sh | integration | green |
+| LEDGER_NEW_IDS_LISTED | X110 | tests/test-bound-hook.sh | integration | green |
+| REMINDER_DROPS_PEERS_ALREADY_SHOWN | X111 | tests/test-bound-hook.sh | integration | green |
+| LEDGER_EVERY_LOAD_ID_NAMED | X112; the six ledger states of the contract | tests/test-bound-hook.sh | integration | green |
+| LEDGER_REFRESH_EVERY_N | X113; constant read by regex, copy rewritten to 3 | tests/test-bound-hook.sh | integration | green |
 | LEDGER_TRIVIAL_PROMPT_UNTOUCHED | X114; green on arrival; RED shown by mutation (trivial-prompt early return removed) | tests/test-bound-hook.sh | integration | green |
 | LEDGER_UNUSED_WITHOUT_GRAPH | X115; green on arrival; RED shown by mutation (no-graph path creating a file under `.cypress/session/`) | tests/test-bound-hook.sh | integration | green |
 | LEDGER_NEVER_EMITS_UNROUTED_ID | X116; green on arrival; RED shown by mutation (ledger content appended to the injection) | tests/test-bound-hook.sh | integration | green |
-| UNPARSEABLE_ROUTER_OUTPUT_FULL | X117 | tests/test-bound-hook.sh | integration | red |
-| LEDGER_ABSENT_SESSION_ID_FULL | X118; extends the CLAUDE_HOOKS_FAIL_OPEN_ON_COPILOT_ENVELOPE section; red on arrival (no pointer line yet) | tests/test-bound-hook.sh | integration | red |
-| LEDGER_INVALID_SESSION_ID_FULL | X119; tree snapshot before and after | tests/test-bound-hook.sh | integration | red |
-| LEDGER_CORRUPT_FULL | X120 | tests/test-bound-hook.sh | integration | red |
-| LEDGER_UNKNOWN_VERSION_FULL | X121 | tests/test-bound-hook.sh | integration | red |
-| LEDGER_EXPIRED_FULL | X122 | tests/test-bound-hook.sh | integration | red |
-| STATUS_HOOK_RESETS_LEDGER | X123 | tests/test-bound-hook.sh | integration | red |
-| STATUS_HOOK_NO_LEDGER_WRITES_NOTHING | X124 | tests/test-bound-hook.sh | integration | red |
-| STATUS_HOOK_RESETS_WITHOUT_REGISTER | X125 | tests/test-bound-hook.sh | integration | red |
-| STATUS_HOOK_RESET_OWNS_NO_PATH_RULE | X126; source assertion | tests/test-bound-hook.sh | unit | red |
-| STATUS_HOOK_WITHOUT_SIBLING_LEAVES_LEDGER | X127 | tests/test-bound-hook.sh | integration | red |
-| LEDGER_GITIGNORED | X128 | tests/test-bound-hook.sh | integration | red |
-| LEDGER_WRITE_IS_ATOMIC | X129; hard link, and fault injection through `runpy` | tests/test-bound-hook.sh | integration | red |
-| LEDGER_SYMLINK_REFUSED | X130; five cases under a 5 s timeout | tests/test-bound-hook.sh | integration | red |
-| LEDGER_FOREIGN_OR_WRITABLE_REFUSED | X131; runs as root too | tests/test-bound-hook.sh | integration | red |
-| LEDGER_NO_CYPRESS_DIR_NO_WRITE | X132; red on arrival (no pointer line, no stderr line yet) | tests/test-bound-hook.sh | integration | red |
-| LEDGER_WRITE_FAILURE_FAILS_OPEN | X133; chmod case skipped as root, and says so; `runpy` case runs as root | tests/test-bound-hook.sh | integration | red |
-| LEDGER_GC_BOUNDED | X134 | tests/test-bound-hook.sh | integration | red |
+| UNPARSEABLE_ROUTER_OUTPUT_FULL | X117 | tests/test-bound-hook.sh | integration | green |
+| LEDGER_ABSENT_SESSION_ID_FULL | X118; extends the CLAUDE_HOOKS_FAIL_OPEN_ON_COPILOT_ENVELOPE section; red on arrival (no pointer line yet) | tests/test-bound-hook.sh | integration | green |
+| LEDGER_INVALID_SESSION_ID_FULL | X119; tree snapshot before and after | tests/test-bound-hook.sh | integration | green |
+| LEDGER_CORRUPT_FULL | X120 | tests/test-bound-hook.sh | integration | green |
+| LEDGER_UNKNOWN_VERSION_FULL | X121 | tests/test-bound-hook.sh | integration | green |
+| LEDGER_EXPIRED_FULL | X122 | tests/test-bound-hook.sh | integration | green |
+| STATUS_HOOK_RESETS_LEDGER | X123 | tests/test-bound-hook.sh | integration | green |
+| STATUS_HOOK_NO_LEDGER_WRITES_NOTHING | X124 | tests/test-bound-hook.sh | integration | green |
+| STATUS_HOOK_RESETS_WITHOUT_REGISTER | X125 | tests/test-bound-hook.sh | integration | green |
+| STATUS_HOOK_RESET_OWNS_NO_PATH_RULE | X126; source assertion | tests/test-bound-hook.sh | unit | green |
+| STATUS_HOOK_WITHOUT_SIBLING_LEAVES_LEDGER | X127 | tests/test-bound-hook.sh | integration | green |
+| LEDGER_GITIGNORED | X128 | tests/test-bound-hook.sh | integration | green |
+| LEDGER_WRITE_IS_ATOMIC | X129; hard link, and fault injection through `runpy` | tests/test-bound-hook.sh | integration | green |
+| LEDGER_SYMLINK_REFUSED | X130; five cases under a 5 s timeout | tests/test-bound-hook.sh | integration | green |
+| LEDGER_FOREIGN_OR_WRITABLE_REFUSED | X131; runs as root too | tests/test-bound-hook.sh | integration | green |
+| LEDGER_NO_CYPRESS_DIR_NO_WRITE | X132; red on arrival (no pointer line, no stderr line yet) | tests/test-bound-hook.sh | integration | green |
+| LEDGER_WRITE_FAILURE_FAILS_OPEN | X133; chmod case skipped as root, and says so; `runpy` case runs as root | tests/test-bound-hook.sh | integration | green |
+| LEDGER_GC_BOUNDED | X134 | tests/test-bound-hook.sh | integration | green |
 | BRIEF_TEMPLATES_BYTE_IDENTICAL | check | tests/seed-lint.py | verify gate; the slug sits in a comment beside the existing GRAPH DISCIPLINE identity check in `check` (not `main`, which holds no such check), and the verify record is `git diff --quiet ac61a3f -- templates/prompts/graph-session-bootstrap.md templates/prompts/handback-payload.md`, where `ac61a3f` is the 7.27.0 release commit, the parent of Slice A's first commit. Green on arrival (exit 0 at RED); RED shown by mutation (a byte appended to either template gives exit 1, and a drifted embedded block fails the identity check) Row held at `pending`, not `green`: `check_spec_rows_name_their_contract` cannot bind a green row to a top-level seed-lint function (its `^\s*def NAME\b` match starts on the blank line above the def, so the scope it searches is one newline). Reported at RED as a gate defect; the row moves to green when that is fixed | pending |
 | ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX | X135; structural | tests/test-bound-hook.sh | unit | red |
 | ROUTE_EXTENSION_PASSES_PROMPT_AS_ONE_OPTION_VALUE | X136; structural; fails when no inline argv literal is found | tests/test-bound-hook.sh | unit | red |
@@ -1298,11 +1298,11 @@ Techniques the cases rely on:
 | PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE | X202; planted case in a scratch overlay's section | tests/test-seed-lint.sh | integration | red |
 | PRIME_OVERLAY_SECTION_WITHIN_CEILING | X141; structural; holds `OVERLAY_SECTION_MAX_BYTES` | tests/test-bound-hook.sh | unit | red |
 | PRIME_EAGER_SURFACE_WITHIN_BUDGET | check_eager_surface | tests/seed-lint.py | unit; an existing check, run with check_published_eager_figures; green on arrival, and red on the section's arrival until the matrix figures are updated. RED shown by mutation (the overlay grown in a scratch copy fails the published-figures check) Row held at `pending`, not `green`: `check_spec_rows_name_their_contract` cannot bind a green row to a top-level seed-lint function (its `^\s*def NAME\b` match starts on the blank line above the def, so the scope it searches is one newline). Reported at RED as a gate defect; the row moves to green when that is fixed | pending |
-| ROUTER_FAILED | X142; non-zero exit, empty output, and timeout with `ROUTER_TIMEOUT` rewritten to 1 | tests/test-bound-hook.sh | integration | red |
-| SESSION_ID_REFUSED | X119, the case of LEDGER_INVALID_SESSION_ID_FULL | tests/test-bound-hook.sh | integration | red |
-| LEDGER_UNUSABLE | X120, X121, X122, X130 (file symlink and FIFO) and X131, the cases of the contracts named there | tests/test-bound-hook.sh | integration | red |
-| LEDGER_DIR_UNUSABLE | X130, X131 and X132, the cases of the contracts named there | tests/test-bound-hook.sh | integration | red |
-| RESET_NOT_WRITTEN | X143, for the write-fails trigger; the sibling-missing trigger is X127 | tests/test-bound-hook.sh | integration | red |
+| ROUTER_FAILED | X142; non-zero exit, empty output, and timeout with `ROUTER_TIMEOUT` rewritten to 1 | tests/test-bound-hook.sh | integration | green |
+| SESSION_ID_REFUSED | X119, the case of LEDGER_INVALID_SESSION_ID_FULL | tests/test-bound-hook.sh | integration; its cases pass at GREEN (2026-09-23). Row held at `pending`, not `green`: no case in the cited file names this failure slug, so `check_spec_rows_name_their_contract` cannot bind it. Naming it in those cases is a tester edit; the row moves to green then | pending |
+| LEDGER_UNUSABLE | X120, X121, X122, X130 (file symlink and FIFO) and X131, the cases of the contracts named there | tests/test-bound-hook.sh | integration; its cases pass at GREEN (2026-09-23). Row held at `pending`, not `green`: no case in the cited file names this failure slug, so `check_spec_rows_name_their_contract` cannot bind it. Naming it in those cases is a tester edit; the row moves to green then | pending |
+| LEDGER_DIR_UNUSABLE | X130, X131 and X132, the cases of the contracts named there | tests/test-bound-hook.sh | integration; its cases pass at GREEN (2026-09-23). Row held at `pending`, not `green`: no case in the cited file names this failure slug, so `check_spec_rows_name_their_contract` cannot bind it. Naming it in those cases is a tester edit; the row moves to green then | pending |
+| RESET_NOT_WRITTEN | X143, for the write-fails trigger; the sibling-missing trigger is X127 | tests/test-bound-hook.sh | integration | green |
 | PRIME_MODEL_IGNORES_SURFACED_INSTRUCTION | no test; model behaviour, soft (§11). The no-omission half rests on ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX and ROUTE_EXTENSION_HOLDS_NO_LEDGER_STATE | — | — | pending |
 | PRIME_SURFACED_SET_TRUSTED_WHILE_STALE | no test; model behaviour (§11) | — | — | pending |
 | UNEXPECTED_EXCEPTION | no test; covered only by the fail-open cases above | — | — | pending |
