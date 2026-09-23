@@ -201,6 +201,8 @@ echo "  CLAUDE_HOOKS_FAIL_OPEN_ON_COPILOT_ENVELOPE: route-hook and status-hook f
 # One case per contract of docs/specs/SPEC-0003-per-prompt-injection.md §4 and
 # per tested failure of §7, bound by the fixed-width labels its §10 reserves.
 # Every case prints `X1NN <SLUG>: … — OK`, so a label and its slug sit together.
+# A case that also exercises a §7 failure mode names it after the contract,
+# `X1NN <SLUG>; failure <FAILURE_SLUG>: …`, on its OK and its FAIL line alike.
 # This extends the CLAUDE_HOOKS_FAIL_OPEN_ON_COPILOT_ENVELOPE section above: the
 # same shipped hooks, copied into `.claude/` of a temp plant (a directory
 # holding `.git/`, `.cypress/` and a stub `docs/graph/graph-lint.py`).
@@ -875,7 +877,7 @@ def x118(base):
 INVALID_SIDS = ["../../escape", "a/b", ".hidden", "", "a" * 129, 12345, "ab\x00cd"]
 
 
-@case("X119", "LEDGER_INVALID_SESSION_ID_FULL")
+@case("X119", "LEDGER_INVALID_SESSION_ID_FULL; failure SESSION_ID_REFUSED")
 def x119(base):
     p = Plant(base)
     for sid in INVALID_SIDS:
@@ -890,7 +892,7 @@ def x119(base):
     return "seven unsafe ids: full mode, one stderr line without the id, nothing written"
 
 
-@case("X120", "LEDGER_CORRUPT_FULL")
+@case("X120", "LEDGER_CORRUPT_FULL; failure LEDGER_UNUSABLE")
 def x120(base):
     p = Plant(base)
     good = ledger_doc()
@@ -912,7 +914,7 @@ def x120(base):
     return "six corrupt ledgers: full mode, one stderr line, replaced by a valid v1 ledger"
 
 
-@case("X121", "LEDGER_UNKNOWN_VERSION_FULL")
+@case("X121", "LEDGER_UNKNOWN_VERSION_FULL; failure LEDGER_UNUSABLE")
 def x121(base):
     p = Plant(base)
     write_ledger(p, version=2, prompt_count=3)
@@ -925,7 +927,7 @@ def x121(base):
     return "version 2: full mode, one stderr line, replaced with a v1 ledger at count 1"
 
 
-@case("X122", "LEDGER_EXPIRED_FULL")
+@case("X122", "LEDGER_EXPIRED_FULL; failure LEDGER_UNUSABLE")
 def x122(base):
     p = Plant(base)
     write_ledger(p, prompt_count=3, age=DAY)            # older than LEDGER_TTL (12 h)
@@ -1086,7 +1088,7 @@ def x129(base):
     return "the ledger is replaced, not rewritten; a failed replace leaves it intact"
 
 
-@case("X130", "LEDGER_SYMLINK_REFUSED")
+@case("X130", "LEDGER_SYMLINK_REFUSED; failures LEDGER_UNUSABLE, LEDGER_DIR_UNUSABLE")
 def x130(base):
     def reminder_ledger(path):
         path.write_text(json.dumps(ledger_doc()))
@@ -1138,7 +1140,7 @@ def x130(base):
     return "five link/FIFO shapes: exit 0 within 5 s, outside untouched, full, one stderr line"
 
 
-@case("X131", "LEDGER_FOREIGN_OR_WRITABLE_REFUSED")
+@case("X131", "LEDGER_FOREIGN_OR_WRITABLE_REFUSED; failures LEDGER_UNUSABLE, LEDGER_DIR_UNUSABLE")
 def x131(base):
     p = Plant(base, name="dir0777")
     write_ledger(p)
@@ -1163,7 +1165,7 @@ def x131(base):
     return "group/other-writable dir or ledger refused; created dir 0700, ledger 0600"
 
 
-@case("X132", "LEDGER_NO_CYPRESS_DIR_NO_WRITE")
+@case("X132", "LEDGER_NO_CYPRESS_DIR_NO_WRITE; failure LEDGER_DIR_UNUSABLE")
 def x132(base):
     p = Plant(base, cypress=False)
     r = route(p, "zq-sentinel-0132 widget ledger work")

@@ -1299,9 +1299,9 @@ Techniques the cases rely on:
 | PRIME_OVERLAY_SECTION_WITHIN_CEILING | X141; structural; holds `OVERLAY_SECTION_MAX_BYTES` | tests/test-bound-hook.sh | unit | green |
 | PRIME_EAGER_SURFACE_WITHIN_BUDGET | check_eager_surface | tests/seed-lint.py | unit; an existing check, run with check_published_eager_figures; green on arrival, and red on the section's arrival until the matrix figures are updated. RED shown by mutation (the overlay grown in a scratch copy fails the published-figures check). Held at `pending` until the top-level-def scope defect in `check_spec_rows_name_their_contract` was fixed (§12); green since, and binding (the slug found inside the function) | green |
 | ROUTER_FAILED | X142; non-zero exit, empty output, and timeout with `ROUTER_TIMEOUT` rewritten to 1 | tests/test-bound-hook.sh | integration | green |
-| SESSION_ID_REFUSED | X119, the case of LEDGER_INVALID_SESSION_ID_FULL | tests/test-bound-hook.sh | integration; its cases pass at GREEN (2026-09-23). Row held at `pending`, not `green`: no case in the cited file names this failure slug, so `check_spec_rows_name_their_contract` cannot bind it. Naming it in those cases is a tester edit; the row moves to green then | pending |
-| LEDGER_UNUSABLE | X120, X121, X122, X130 (file symlink and FIFO) and X131, the cases of the contracts named there | tests/test-bound-hook.sh | integration; its cases pass at GREEN (2026-09-23). Row held at `pending`, not `green`: no case in the cited file names this failure slug, so `check_spec_rows_name_their_contract` cannot bind it. Naming it in those cases is a tester edit; the row moves to green then | pending |
-| LEDGER_DIR_UNUSABLE | X130, X131 and X132, the cases of the contracts named there | tests/test-bound-hook.sh | integration; its cases pass at GREEN (2026-09-23). Row held at `pending`, not `green`: no case in the cited file names this failure slug, so `check_spec_rows_name_their_contract` cannot bind it. Naming it in those cases is a tester edit; the row moves to green then | pending |
+| SESSION_ID_REFUSED | X119, the case of LEDGER_INVALID_SESSION_ID_FULL | tests/test-bound-hook.sh | integration; its cases pass at GREEN (2026-09-23), and each names this failure slug after its contract slug, on its OK and FAIL lines (`X1NN <SLUG>; failure …`) | green |
+| LEDGER_UNUSABLE | X120, X121, X122, X130 (file symlink and FIFO) and X131, the cases of the contracts named there | tests/test-bound-hook.sh | integration; its cases pass at GREEN (2026-09-23), and each names this failure slug after its contract slug, on its OK and FAIL lines (`X1NN <SLUG>; failure …`) | green |
+| LEDGER_DIR_UNUSABLE | X130, X131 and X132, the cases of the contracts named there | tests/test-bound-hook.sh | integration; its cases pass at GREEN (2026-09-23), and each names this failure slug after its contract slug, on its OK and FAIL lines (`X1NN <SLUG>; failure …`) | green |
 | RESET_NOT_WRITTEN | X143, for the write-fails trigger; the sibling-missing trigger is X127 | tests/test-bound-hook.sh | integration | green |
 | PRIME_MODEL_IGNORES_SURFACED_INSTRUCTION | no test; model behaviour, soft (§11). The no-omission half rests on ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX and ROUTE_EXTENSION_HOLDS_NO_LEDGER_STATE | — | — | pending |
 | PRIME_SURFACED_SET_TRUSTED_WHILE_STALE | no test; model behaviour (§11) | — | — | pending |
@@ -1503,3 +1503,12 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
   scopes only lose one leading newline. The comment above
   `check_hook_text_restates_no_kernel_rule` stays as documentation, and the two
   Level notes that credited it with the binding are corrected.
+- 2026-09-23, failure slugs named (tester), test text only, no assertion
+  changed. The cases that exercise `SESSION_ID_REFUSED` (`X119`),
+  `LEDGER_UNUSABLE` (`X120`, `X121`, `X122`, `X130`, `X131`) and
+  `LEDGER_DIR_UNUSABLE` (`X130`, `X131`, `X132`) in `tests/test-bound-hook.sh`
+  now name the failure slug in their `@case` slug, so it prints on the case's
+  OK and FAIL lines as `X1NN <SLUG>; failure <FAILURE_SLUG>: …`. The three rows
+  move `pending` → `green`. Left at `pending`, with no test by design:
+  `PRIME_MODEL_IGNORES_SURFACED_INSTRUCTION`,
+  `PRIME_SURFACED_SET_TRUSTED_WHILE_STALE` and `UNEXPECTED_EXCEPTION`.
