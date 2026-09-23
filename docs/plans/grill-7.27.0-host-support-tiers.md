@@ -1,6 +1,6 @@
 # grill — host support tiers (7.27.0)
 
-**Status:** planned, nothing implemented. ADR-0009 is `proposed`.
+**Status:** implemented and reviewed on `hosts/support-tiers` (2026-09-23); gate green at `361c4bc`. ADR-0009 is `proposed` and SPEC-0001 is `back-written`, both awaiting the owner (§9). The status line read "planned, nothing implemented" until this update.
 **Baseline commit:** `5a1ca2c` (7.26.0)
 **Tier:** T3. It changes what `install.sh all` writes into a target, adds
 installer output, and adds contracts to SPEC-0001.
@@ -30,6 +30,10 @@ line is quoted as a range, the range is the edit's anchor.
 
 Gate result at baseline: not recorded by this plan. The implementing session
 runs `bash tests/run.sh` before its first edit and records the result here.
+
+*Recorded 2026-09-23 by the orchestrator:* `bash tests/run.sh` at `5a1ca2c`,
+non-root, exit 0, "all 48 steps passed in 34.2s". The known-red
+`test-install-adoption.sh` `case_check_broken` passed at this commit.
 
 ## §1 Owner decision and the ledger it opens
 
@@ -223,8 +227,47 @@ S-0 lands first so that no suite is narrowed by S-1 even for one commit.
 
 ## §7 Slice records
 
-Empty until S-0 lands.
+| Slice | Commit | What landed | Gate after |
+|---|---|---|---|
+| plan | `c8b99ed` | ADR-0009 (proposed), this plan | seed-lint PASS |
+| S-0 | `2a709e1` | `$EVERY_HOST` at every §4 site, `install.sh` untouched | 48/48 green |
+| RED | `9ca5900` | the seven §3 contracts; six seen failing, the Copilot fail-open case green on arrival and shown failable by two reverted mutations | 4 of 48 red, only the new cases and the coverage binder |
+| S-1 | `5574e1c` | tier arrays, `all`, one DEPRECATED notice at the dispatch point, the skipped-host warning, the `--check` notice, SPEC-0001 rows | green on the S-1 contracts |
+| S-2 | none | no code change; the fail-open case needed nothing | |
+| S-3 | `dcf300d` | `check_host_tiers`, the matrix's Support tiers section | |
+| S-4 | `d2f8c31` | README, INSTALL, DOCUMENTATION and adapter READMEs | |
+| release | `a84dc58` | manifest 7.27.0, CHANGELOG entry | 48/48 green (implementer and orchestrator, independently) |
+| RED (review) | `dd3e65c` | F1 and F2 cases, E1 and S8 negative arms | test-install-adoption and test-seed-lint red, as intended |
+| GREEN (review) | `51fa1b3` | F1: `all --check` checks a stamp-recorded Copilot; F2: duplicate rows, host-in-two-rows, dispatch universe, `EVERY_HOST` literals; the reviewer's minors | 48/48 green |
+| m1/m2 | `361c4bc` | the tier check parses the dispatch and argument-parser `case` blocks whatever the arm's shape; D4 pins one DEPRECATED line | 48/48 green |
 
 ## §8 Review rounds
 
-Empty.
+1. **Round 1** (reviewer, `5a1ca2c..a84dc58`): approve-with-fixes. F1 `all --check`
+   exited 0 on a drifted Copilot plant; F2 `check_host_tiers` passed a duplicate
+   tier row and an untiered dispatchable host; F3 this plan not kept; F4
+   SPEC-0001 status incoherent. Four minors, four nits.
+2. **Round 2** (reviewer, `a84dc58..51fa1b3`): approve conditional on F3 and F4.
+   F1, F2 and every minor closed, verified by execution and by the two earlier
+   mutation probes. New minors m1 (a dispatch arm in another shape was invisible)
+   and m2 (the notice count was unpinned), both closed in `361c4bc` by tester.
+3. **F3** is closed by this update. **F4** is carried to §9.
+
+## §9 Dispositions, appended 2026-09-23 by the orchestrator
+
+§6 answers, taken by the orchestrator where the question was not the owner's:
+
+1. **SPEC-0001 status:** it stays `back-written`, with the forward-written
+   contracts disclosed in its §12. Moving it to `active` needs recorded product,
+   architect and tester sign-off passes, and ticking the boxes without them
+   would be the fabricated sign-off SPEC-0001 §0 already records once. **Owner
+   decision pending:** run the three sign-off passes and move it to `active`,
+   or leave it.
+2. **Harvest targeting:** no `protocols/harvest.md` edit, as recommended.
+3. **Copilot README line:** allowed, as one factual line inside the notice,
+   narrowed in round 1 to the route and status hooks, because `bound-hook.py`
+   is a guard and deliberately not fail-open.
+
+The plan said ADR-0009 flips to `accepted` once §3 is green. It was left
+`proposed` on purpose: ratification is the owner's, and the CHANGELOG says so.
+This is a recorded divergence from §2, not a silent one.
