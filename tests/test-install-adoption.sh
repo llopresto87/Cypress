@@ -385,7 +385,7 @@ under .github/, so this case is asserting nothing"
 caseCHECK_WITHOUT_COPILOT_SAYS_SO() {
   W="$(mktemp -d)"
   trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  # CHECK_WITHOUT_COPILOT_SAYS_SO (SPEC-0001, ADR-0009): `--check` verifies the
+  # D3 CHECK_WITHOUT_COPILOT_SAYS_SO (SPEC-0001, ADR-0009): `--check` verifies the
   # github-copilot generated views, and `all` no longer expands to that host. A
   # CI job running `install.sh all --check` must then be told it checked
   # nothing, not handed a silent exit 0 that reads as "in sync".

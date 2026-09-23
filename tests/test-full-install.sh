@@ -82,7 +82,7 @@ projection_parity() {
   return 0
 }
 
-# LEGACY_INSTALL_PRINTS_DEPRECATED: $1 is a captured stderr, $2 the frozen tool.
+# E2 LEGACY_INSTALL_PRINTS_DEPRECATED: $1 is a captured stderr, $2 the frozen tool.
 # Exactly one DEPRECATED line, and that line names both the tool and ADR-0009.
 assert_one_deprecated_line() {
   local err="$1" tool="$2" n line
@@ -257,7 +257,7 @@ assert_cmd_roster "$T/.opencode/commands" .md "opencode commands"
 case_codex() {
   local T; T="$(mktemp -d)"
   local ERR; ERR="$(mktemp)"
-# LEGACY_INSTALL_STILL_SUCCEEDS: a frozen host named explicitly still installs
+# E3 LEGACY_INSTALL_STILL_SUCCEEDS: a frozen host named explicitly still installs
 # and exits 0 (ADR-0009).
 "$ROOT/install.sh" codex --project-dir "$T" --copy --force >/dev/null 2>"$ERR" \
   || { echo "LEGACY_INSTALL_STILL_SUCCEEDS: install.sh codex exited non-zero:" >&2; cat "$ERR" >&2; exit 1; }
@@ -594,7 +594,7 @@ rm -rf "$D"
 }
 
 caseALL_EXCLUDES_LEGACY_HOSTS() {
-# ALL_EXCLUDES_LEGACY_HOSTS (SPEC-0001, ADR-0009): `all` installs the maintained
+# E1 ALL_EXCLUDES_LEGACY_HOSTS (SPEC-0001, ADR-0009): `all` installs the maintained
 # hosts only. The frozen pair installs when named, never by default.
 local D; D="$(mktemp -d)"
 "$ROOT/install.sh" all --project-dir "$D" --copy >/dev/null 2>&1 \
