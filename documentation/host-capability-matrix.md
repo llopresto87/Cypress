@@ -8,8 +8,9 @@ guarantee the source frontmatter claims. This document keeps three things
 distinct that a single "supported / not supported" table would blur:
 
 - **Method parity** — does the adapter carry the same protocols, skills,
-  and agent charters? (Yes, on all five — `install.sh`'s five `install_*`
-  functions place or project the identical seed sources.)
+  and agent charters? (Yes, on all five, two of them frozen, see Support
+  tiers. `install.sh`'s five `install_*` functions place or project the
+  identical seed sources.)
 - **Artifact parity** — does the adapter's *projection* of a source file
   preserve every field (frontmatter included)? (No — Codex and GitHub
   Copilot both drop fields the source carries; see "model selection" and
@@ -50,6 +51,29 @@ wiring: each adapter's `integrations/<name>/settings.json` (or `.ts`
 extension, or `.toml` example) and its `README.md`. Version measured:
 manifest.json's current version at the time of this pass (see the
 Measurements section).
+
+## Support tiers (ADR-0009)
+
+A tier is a maintenance commitment, set by
+[ADR-0009](../docs/decisions/adr-0009-host-support-tiers.md). It says what the
+seed owes each host on the next change; the matrix below says what each harness
+holds today, so the two do not replace each other and no cell below moved when
+the tiers were set. The assignment's one home is the three tier arrays in
+`install.sh`, and `tests/seed-lint.py` (`check_host_tiers`) holds this table to
+them. `install.sh all` installs the first-class and supported hosts; a frozen
+host installs only when it is named, as in `install.sh all codex`, and prints a
+`DEPRECATED` notice.
+
+| Tier | Hosts | What the seed commits to |
+|---|---|---|
+| `first-class` | `claude-code`, `prime-agent` | Feature parity is the target. A feature that ships on one is owed to the other, or its absence is recorded as a defect to close. |
+| `supported` | `opencode` | Installed by `all`, with its install surfaces unchanged. |
+| `frozen` | `codex`, `github-copilot` | Still installable by name, with a `DEPRECATED` notice. No new features; the existing tests run as regression. |
+
+A feature reaches opencode only where the host carries it natively; where it
+cannot, the gap is recorded in this matrix and no workaround is built. A
+harvest generalises a feature for the first-class hosts, carries it to
+opencode under that rule, and targets no frozen host.
 
 ## The matrix
 
@@ -274,7 +298,10 @@ onto it (the route-first mandate, and the status-register summary).
   (`integrations/opencode/README.md`: "the config schema rejects unknown
   keys outright"). **unsupported**, all three.
 - **Codex CLI**: no hook surface appears in `config.toml.example` or its
-  README. **unsupported**, all three.
+  README. **unsupported**, all three. Upstream Codex CLI does document
+  `SessionStart`, `UserPromptSubmit` and `PreCompact` hooks, and the seed wires
+  none of them, because Codex is a frozen host
+  ([ADR-0009](../docs/decisions/adr-0009-host-support-tiers.md)).
 - **GitHub Copilot**: VS Code Agent Hooks (Preview) reuses Claude Code's
   own `route-hook.py` / `status-hook.py` scripts under `.github/hooks/`,
   wired via `.github/hooks/route.json` / `status.json`
