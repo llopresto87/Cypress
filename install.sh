@@ -1746,20 +1746,30 @@ for t in "${TOOLS[@]}"; do
     esac
 done
 
+# `all --check` also checks the Copilot views of a plant whose record carries
+# github-copilot (SPEC-0001, ALL_CHECK_INCLUDES_RECORDED_COPILOT). Checking
+# writes nothing, so it is no new feature on a frozen host, and a CI job that
+# ran `all --check` before ADR-0009 keeps failing on drift instead of turning
+# green because `all` stopped naming the only host --check can check.
+_recorded_tools=" $(stamp_field "$PROJECT_DIR/.cypress/seed.json" tools) "
+if [[ $CHECK -eq 1 && " ${TOOLS[*]} " == *" all "* \
+      && " ${expanded[*]} " != *" github-copilot "* \
+      && "$_recorded_tools" == *" github-copilot "* ]]; then
+    expanded+=(github-copilot)
+fi
+
 # Frozen hosts, announced once each, here and not inside install_codex /
 # install_github_copilot: this point is ahead of the --check branch, so the
-# notice reaches a --check run too, and the frozen adapters stay byte-unchanged.
-# A plant whose record carries a frozen host that `all` no longer names would
-# otherwise keep that host's projections at the old seed version unannounced
-# (SPEC-0001, FROZEN_PROJECTION_LEFT_STALE); its tree is left exactly as it is.
-_recorded_tools=" $(stamp_field "$PROJECT_DIR/.cypress/seed.json" tools) "
+# notice reaches every run that acts on a frozen host, a --check included, and
+# the frozen adapters stay byte-unchanged. A plant whose record carries a frozen
+# host that `all` no longer names would otherwise keep that host's projections
+# at the old seed version unannounced (SPEC-0001, FROZEN_PROJECTION_LEFT_STALE);
+# its tree is left exactly as it is.
 for t in "${FROZEN_TOOLS[@]}"; do
     if [[ " ${expanded[*]} " == *" $t "* ]]; then
         deprecated "$t"
     elif [[ " ${TOOLS[*]} " == *" all "* && "$_recorded_tools" == *" $t "* ]]; then
-        warn "$t not refreshed: .cypress/seed.json records it, and \`all\` no longer"
-        warn "  installs a frozen host (ADR-0009), so its files stay as they were."
-        warn "  Refresh them with: install.sh all $t"
+        warn "$t not refreshed: .cypress/seed.json records it, and \`all\` no longer installs a frozen host (ADR-0009), so its files stay as they were. Refresh them with: install.sh all $t"
     fi
 done
 
@@ -2056,9 +2066,9 @@ report_recreated_nodes() {
 # github-copilot views are generated (transformed) rather than symlinked,
 # so they are the only ones that can drift; the others are safe by
 # construction. Regenerate to a temp dir and diff. Without github-copilot in
-# the run — `all` has not named it since ADR-0009 — there is nothing to
-# check, and a CI job relying on the exit 0 is told so rather than handed a
-# silent green.
+# the run — `all` has not named it since ADR-0009, and adds it back under
+# --check only when the plant records it — there is nothing to check, and a CI
+# job relying on the exit 0 is told so rather than handed a silent green.
 if [[ ${CHECK:-0} -eq 1 ]]; then
     if [[ " ${expanded[*]} " != *" github-copilot "* ]]; then
         log "--check: no generated views are in scope (only github-copilot generates"

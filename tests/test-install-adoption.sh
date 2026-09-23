@@ -12,6 +12,10 @@
 #       silently restored it: correct behaviour (the seed owns its
 #       machinery), announced nowhere, so a deliberate deletion was reverted
 #       with no trace and no way to tell "restored" from "always there".
+#   D3  asserts SPEC-0001 CHECK_WITHOUT_COPILOT_SAYS_SO: `all --check` on a
+#       target whose record lacks github-copilot says it checked nothing.
+#   D4  asserts SPEC-0001 ALL_CHECK_INCLUDES_RECORDED_COPILOT: `all --check`
+#       checks the Copilot views a plant records, and drift exits non-zero.
 # Alongside those: the ADOPTION cases place_kernel and place_file already
 # handle correctly (a hand-written kernel backed up, a plant-authored graph
 # leaf left alone) are pinned here too, so a future change to either cannot

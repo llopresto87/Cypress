@@ -679,6 +679,7 @@ PY
 }
 
 # --- one-case subcommand, run by the parallel dispatcher ---------------------
+# E family (ADR-0009 host tiers): E1-E3 are in test-full-install.sh; E4 is here.
 # E4 HOST_TIERS_AGREE (SPEC-0001, ADR-0009): the tier assignment has one home, the
 # three arrays in install.sh, and the host matrix publishes it. A published table
 # that disagrees with the arrays is a second home drifting. The unmutated tree

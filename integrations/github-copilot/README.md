@@ -5,8 +5,8 @@
 > installs when named (`install.sh github-copilot`, or
 > `install.sh all github-copilot`), prints a `DEPRECATED` notice, and gets no
 > new features. `install.sh all` no longer includes it. Copilot reads
-> `.claude/settings.json`, so the Claude Code hooks still reach it there and
-> fail open.
+> `.claude/settings.json`, so the Claude Code route and status hooks still
+> reach it there and fail open.
 
 GitHub Copilot reads several customization layers, each with its own
 file format:
