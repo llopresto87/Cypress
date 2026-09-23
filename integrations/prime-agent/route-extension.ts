@@ -2,9 +2,19 @@
 //
 // The Prime Agent parity of Claude Code's route-hook.py. It subscribes to the
 // `before_agent_start` event (fired after the user submits a prompt, before the
-// agent loop) and injects the route-first mandate plus the graph router's
-// suggested node set as a prepended message — the same behaviour, using Prime
-// Agent's native extension API instead of a shell hook.
+// agent loop) and injects a one-line pointer at the kernel plus the graph
+// router's suggested node set as a prepended message — the same text as the
+// hook's full mode, using Prime Agent's native extension API instead of a
+// shell hook (SPEC-0003).
+//
+// The prompt reaches the router as one `--plan=` argv value (pi.exec spawns
+// without a shell), and router output that does not begin with the exact echo
+// of the prompt is dropped, so the prompt is never passed back in.
+//
+// It keeps no state. With no session id on this event there is nothing to
+// key a record on, so every routed prompt gets the full text. Remembering
+// which nodes were already surfaced is the model's job here, in its IPython
+// kernel, as the `## Surfaced nodes` section of APPEND_SYSTEM.md asks.
 //
 // Installed to `.prime/agent/extensions/route-extension.ts` by
 // `install.sh prime-agent`. Prime Agent auto-discovers `.prime/agent/extensions/`
@@ -12,7 +22,7 @@
 // `.prime/agent/settings.json` also lists it explicitly for locked-down configs.
 //
 // It NEVER blocks: any error (missing graph, router failure, timeout) degrades
-// to the bare mandate or to silence. The kernel's own FIRST-MOVE mandate is the
+// to the pointer line or to silence. The kernel's own FIRST MOVE is the
 // non-extension floor, so route-first holds even with this extension disabled.
 
 import * as fs from "node:fs";
@@ -47,15 +57,9 @@ function findLint(startDir: string): { lint: string; root: string } | null {
   return null;
 }
 
-const MANDATE =
-  "PROGRESSIVE DISCOVERY IS REQUIRED. Before reading source or writing " +
-  "anything, open docs/graph/index.md, load only the nodes this task needs, " +
-  "and state which you loaded and which you deliberately skipped. Do not " +
-  "bulk-read to orient. Then classify the task tier out loud (kernel " +
-  "\u00a70: T0 question / T1 trivial non-behavioral edit / T2 contained " +
-  "change \u2014 spec-covered, or small, local and reversible with a RED " +
-  "test and a recorded why / T3 everything else) \u2014 process follows " +
-  "the tier.";
+// The same two literals as route-hook.py, so the hosts cannot drift apart.
+const POINTER = "Route first: the kernel's FIRST MOVE and \u00a70 apply to this prompt.";
+const SUGGESTION_HEADER = "Router suggestion (a keyword heuristic \u2014 reason over it):";
 
 export default function routeExtension(pi: ExtensionAPI): void {
   pi.on("before_agent_start", async (event, ctx) => {
@@ -78,23 +82,21 @@ export default function routeExtension(pi: ExtensionAPI): void {
         };
       }
 
-      let content = MANDATE;
+      let content = POINTER;
       try {
-        const r = await pi.exec("python3", [found.lint, "--plan", prompt], {
+        const r = await pi.exec("python3", [found.lint, `--plan=${prompt}`], {
           timeout: 15_000,
           cwd: found.root,
         });
-        if (r.code === 0 && r.stdout.trim()) {
-          // graph-lint --plan prints a 2-line header, then the suggested nodes.
-          const body = r.stdout.split("\n").slice(2).join("\n").trim();
-          if (body) {
-            content +=
-              "\n\nRouter suggestion (a keyword heuristic \u2014 reason over it):\n" +
-              body;
-          }
+        // graph-lint --plan echoes the prompt as `task: <prompt>` and a blank
+        // line; anything else is a router failure and keeps the pointer alone.
+        const prefix = `task: ${prompt}\n\n`;
+        if (r.code === 0 && r.stdout.startsWith(prefix)) {
+          const remainder = r.stdout.slice(prefix.length).trim();
+          content += "\n\n" + SUGGESTION_HEADER + "\n" + remainder;
         }
       } catch {
-        // fail open: keep the bare mandate
+        // fail open: keep the pointer line
       }
 
       return { message: { customType: "cypress-route", content, display: true } };
