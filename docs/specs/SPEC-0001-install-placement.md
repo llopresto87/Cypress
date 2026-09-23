@@ -479,7 +479,7 @@ only version surface it has, and it moves with each entry here.
   bash-versus-POSIX distinction itself is owned by a grown plant's
   `docs/graph/best-practices/bash.md` §"Two floors, not one" and is linked,
   not restated.
-- 2026-09-23 — host support tiers,
+- 2026-09-23: host support tiers,
   [ADR-0009](../decisions/adr-0009-host-support-tiers.md). §2 and §3 name
   which hosts `all` installs; §4 gains six contracts written ahead of the code,
   with their RED at `9ca5900` (ALL_EXCLUDES_LEGACY_HOSTS,

@@ -110,4 +110,4 @@ the guard is `core/method/engineering-posture.md` §14 (`toolcraft.bounded-execu
 You do not need to edit the agents or skills to fit Claude Code —
 they were written to its conventions and the other tools'
 conventions simultaneously. The kernel and team are the same across
-all five supported tools.
+every host the seed installs.

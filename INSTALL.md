@@ -54,13 +54,16 @@ From the seed system directory:
 `<tool>` is one of:
 - `claude-code` — drops `CLAUDE.md` + `.claude/`.
 - `opencode` — drops `AGENTS.md` + `.opencode/` + `opencode.json`.
-- `codex` — drops `AGENTS.md` + `.codex/`; prints
-  `~/.codex/config.toml` hints.
-- `github-copilot` — generates `.github/` from sources (transformed,
-  not symlinked).
+- `codex` — deprecated, a frozen host
+  ([ADR-0009](docs/decisions/adr-0009-host-support-tiers.md)); drops
+  `AGENTS.md` + `.codex/`; prints `~/.codex/config.toml` hints.
+- `github-copilot` — deprecated, a frozen host
+  ([ADR-0009](docs/decisions/adr-0009-host-support-tiers.md)); generates
+  `.github/` from sources (transformed, not symlinked).
 - `prime-agent` — drops `AGENTS.md` + `.prime/agent/` (skills, prompts,
   agents, `route-extension.ts`, `settings.json`).
-- `all` — runs all five.
+- `all` — runs claude-code, opencode and prime-agent. Name `codex` or
+  `github-copilot` as well to install a frozen host.
 
 ### Examples
 
@@ -68,7 +71,7 @@ From the seed system directory:
 # Claude Code, current directory
 ./install.sh claude-code
 
-# All five tools, explicit target
+# The three maintained tools, explicit target
 ./install.sh all --project-dir ~/code/my-project
 
 # Force overwrite without backups
@@ -277,12 +280,13 @@ Recommended order if installing all five:
 ```sh
 ./install.sh claude-code      # CLAUDE.md, no conflict with AGENTS.md
 ./install.sh opencode         # AGENTS.md (fresh)
-./install.sh codex            # AGENTS.md (already present and identical — left untouched)
-./install.sh github-copilot   # .github/copilot-instructions.md (no conflict)
+./install.sh codex            # frozen host; AGENTS.md (already present and identical — left untouched)
+./install.sh github-copilot   # frozen host; .github/copilot-instructions.md (no conflict)
 ./install.sh prime-agent      # AGENTS.md (present and identical — untouched); adds .prime/agent/
 ```
 
-Or simply `./install.sh all`.
+`./install.sh all` covers the three maintained tools; `./install.sh all codex
+github-copilot` adds the two frozen ones.
 
 ## Troubleshooting
 

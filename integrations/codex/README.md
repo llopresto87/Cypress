@@ -1,5 +1,11 @@
 # OpenAI Codex CLI integration
 
+> **Deprecated.** Codex is a frozen host
+> ([ADR-0009](../../docs/decisions/adr-0009-host-support-tiers.md)). It still
+> installs when named (`install.sh codex`, or `install.sh all codex`), prints a
+> `DEPRECATED` notice, and gets no new features. `install.sh all` no longer
+> includes it.
+
 Codex reads:
 1. `AGENTS.md` files, walking up from the working directory to the
    project root (the directory containing `.git` by default). Files

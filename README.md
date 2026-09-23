@@ -3,9 +3,8 @@
 **CYPRESS**, the **C**ontextual **Y**ield **P**rotocol for **R**outed
 **E**xpert **S**eed **S**ystems, is a multi-agent seed for general
 programming projects. Drop it into any codebase and an AI coding agent
-(Claude Code, Prime Agent, opencode, OpenAI Codex, or GitHub Copilot) gains
-a senior
-team, a set of named protocols, a progressive-discovery knowledge graph
+(Claude Code, Prime Agent or opencode; OpenAI Codex and GitHub Copilot are
+deprecated) gains a senior team, a set of named protocols, a progressive-discovery knowledge graph
 that keeps the codebase inside a context window, and a spec-driven,
 test-driven discipline by default.
 
@@ -163,12 +162,12 @@ claim are below. You do not need any of it to run the two commands above.
   workflow, so running it on every push is the adopting project's to wire.
   The seed runs its own gate in CI on Linux and macOS
   (`.github/workflows/gate.yml`). Method parity across all five adapters
-  does not mean identical enforcement — see
+  (two of them frozen) does not mean identical enforcement — see
   `documentation/host-capability-matrix.md` for which bounds each host
   actually holds mechanically versus which stay brief-enforced or
   unsupported.
-- `install.sh` drops the seed into a target project for any
-  one tool or all five, copying by default; pass `--symlink` for live
+- `install.sh` drops the seed into a target project for one tool, or
+  `all` for the three maintained ones, copying by default; pass `--symlink` for live
   seed links so updates to the seed propagate.
 
 ## Core ideas

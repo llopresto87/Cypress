@@ -424,8 +424,8 @@ procedure. Source: `skill-corpus/README.md`.
 # Part B — The Integrations
 
 CYPRESS ships one kernel, one roster, one skill set, and one protocol set, and
-projects them onto five host harnesses through per-tool adapters under
-`integrations/`. Source: `integrations/*/README.md`, `README.md`, `INSTALL.md`,
+projects them onto five host harnesses, two of them frozen (ADR-0009), through
+per-tool adapters under `integrations/`. Source: `integrations/*/README.md`, `README.md`, `INSTALL.md`,
 `tests/test-full-install.sh`.
 
 The universal source of truth is:
@@ -441,7 +441,7 @@ The universal source of truth is:
 - `templates/docs/`: the `docs/graph/` knowledge-graph leaves.
 
 `install.sh <tool> [<tool> …]` drops the seed into a target project for one
-tool or all five, copying by default (`--symlink` opts into live seed
+tool, or `all` for the three maintained ones, copying by default (`--symlink` opts into live seed
 links); machinery re-installs fast-forward: identical files untouched,
 changed ones backed up. The install also delivers `docs/graph/prose-lint.py`,
 the prose gate under the `humanizer` skill, as fast-forward machinery.

@@ -1,5 +1,12 @@
 # opencode integration
 
+opencode is a `supported` host
+([ADR-0009](../../docs/decisions/adr-0009-host-support-tiers.md)):
+`install.sh all` installs it, with its install surfaces unchanged. A feature reaches
+opencode only where the host carries it natively; where it cannot, the gap is
+recorded in `documentation/host-capability-matrix.md` and no workaround is
+built.
+
 opencode reads:
 1. `AGENTS.md` (project rules — its preferred filename) OR `CLAUDE.md` as fallback.
 2. `.opencode/agents/*.md` (agent definitions with YAML frontmatter).
