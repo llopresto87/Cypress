@@ -2239,10 +2239,20 @@ write_seed_stamp() {
 
     # Adapters accumulate: the union of what the plant already carried and what
     # this run installed, de-duplicated, in first-seen order.
+    #
+    # `${tools[@]}` is guarded on a non-empty count rather than expanded
+    # directly: bash 3.2 (macOS's system bash) treats the all-elements
+    # expansion of a still-empty array as an unset parameter under `set -u`
+    # and dies with "tools[@]: unbound variable" on this loop's first pass —
+    # fixed in bash 4.4, not present here. `${#tools[@]}` (a count, not an
+    # expansion) never has this problem, which is why the guard above it
+    # (`${#bad[@]}`, `${#RECREATED_NODES[@]}`) never needed one.
     local tools=() t seen
     for t in $prev_tools "${expanded[@]}"; do
         seen=0
-        local u; for u in "${tools[@]}"; do [[ "$u" == "$t" ]] && seen=1; done
+        if [[ ${#tools[@]} -gt 0 ]]; then
+            local u; for u in "${tools[@]}"; do [[ "$u" == "$t" ]] && seen=1; done
+        fi
         [[ $seen -eq 0 ]] && tools+=("$t")
     done
 
