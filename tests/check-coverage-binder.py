@@ -49,6 +49,8 @@ COVERED = {
     "check_frontmatter_is_portable_yaml",
     "check_host_tiers",
     "check_hook_text_restates_no_kernel_rule",
+    "check_agent_spawn_grants",
+    "check_hook_reach_phrases",
     # SPEC-0004, the front door: one check per seed-lint contract, each
     # planted on the conforming fixture in tests/fixtures/front-door/.
     "check_fd_first_screen_order", "check_fd_install_section_names_target_paths",

@@ -828,6 +828,48 @@ PY
   rm -rf "$TMP"
 }
 
+case_agent_grant_undeclared() {
+  local TMP; TMP="$(fresh)"
+  # 24. A leaf granted the spawn tool under its canonical name, `Agent`, while
+  # declaring can_delegate: false. The reader saw only `Task`, so this passed.
+  python3 - "$TMP/agents/02-implementer.md" <<'PY'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1]); t = p.read_text()
+old = "tools: [Read, Write, Edit, Glob, Grep, Bash]"
+assert old in t, "fixture drifted: implementer tools line changed"
+p.write_text(t.replace(old, "tools: [Read, Write, Edit, Glob, Grep, Bash, Agent]", 1))
+PY
+  # exercises: check_agent_spawn_grants
+  expect_fail "agents/02-implementer.md: can_delegate=false but the spawn tool" "agent-grant-undeclared"
+  rm -rf "$TMP"
+}
+case_tools_omitted() {
+  local TMP; TMP="$(fresh)"
+  # 25. A leaf with no `tools:` line inherits every tool, the spawn tool
+  # included, so "cannot spawn" is untrue of it. The reader took the absent line
+  # for "no Task" and passed it.
+  python3 - "$TMP/agents/02-implementer.md" <<'PY'
+import re, sys, pathlib
+p = pathlib.Path(sys.argv[1]); t = p.read_text()
+t2, n = re.subn(r"(?m)^tools: \[[^\n]*\]\n", "", t, count=1)
+assert n == 1, "fixture drifted: implementer has no inline tools line"
+p.write_text(t2)
+PY
+  # exercises: check_agent_spawn_grants
+  expect_fail "agents/02-implementer.md: omits its tools: line" "tools-omitted"
+  rm -rf "$TMP"
+}
+case_hook_reach_phrase() {
+  local TMP; TMP="$(fresh)"
+  # 26. The absolute claim that hooks do not reach subagents, planted in a
+  # shipped method node. Tool hooks fire inside a subagent on the host, so the
+  # sentence is false wherever it ships.
+  printf '\nHooks do not reach subagents.\n' >> "$TMP/core/method/delegation.md"
+  # exercises: check_hook_reach_phrases
+  expect_fail "core/method/delegation.md:[0-9]*: says hooks do not reach" "hook-reach-phrase"
+  rm -rf "$TMP"
+}
+
 # --- one-case subcommand, run by the parallel dispatcher ---------------------
 # E family (ADR-0009 host tiers): E1-E3 are in test-full-install.sh; E4 is here.
 # E4 HOST_TIERS_AGREE (SPEC-0001, ADR-0009): the tier assignment has one home, the
@@ -2659,7 +2701,7 @@ TMP="$SEEDLINT_TMPL"
 lint >/dev/null || { echo "baseline seed-lint did not pass on a clean copy" >&2; exit 1; }
 
 SCN="$(mktemp)"
-for c in case_01 case_02 case_03 case_04 case_05 case_06 case_07 case_08 case_09 case_10 case_11 case_12 case_13 case_14 case_15 case_16 case_17 case_18 case_19 case_20 case_21 case_22 case_23 case_24 case_25 case_26 case_27 case_28 case_29 case_30 case_31 case_32 case_33 case_34 case_35 case_36 case_spec_row_toplevel_def case_37 case_38 case_shell_floor case_agn_docs case_agn_py_sh case_x201 case_x202 case_x203 case_frontmatter_portable caseHOST_TIERS_AGREE \
+for c in case_01 case_02 case_03 case_04 case_05 case_06 case_07 case_08 case_09 case_10 case_11 case_12 case_13 case_14 case_15 case_16 case_17 case_18 case_19 case_20 case_21 case_22 case_23 case_24 case_25 case_26 case_27 case_28 case_29 case_30 case_31 case_32 case_33 case_34 case_35 case_36 case_spec_row_toplevel_def case_37 case_38 case_shell_floor case_agn_docs case_agn_py_sh case_x201 case_x202 case_x203 case_frontmatter_portable caseHOST_TIERS_AGREE case_agent_grant_undeclared case_tools_omitted case_hook_reach_phrase \
     case_fd_fixture_clean case_fd_first_screen_order case_fd_first_screen_budget case_fd_first_command_line case_fd_what_you_get_heading case_fd_first_screen_caps case_fd_later_sections_order case_fd_install_target_paths case_fd_install_seed_path case_fd_where_next case_fd_glossary_absent case_fd_glossary_fields case_fd_glossary_closed_values case_fd_glossary_required_term case_fd_glossary_paths case_fd_glossary_install_literal case_fd_definition_links case_fd_term_linked case_fd_one_home case_fd_reference_opener case_fd_enforcement_row case_fd_enforcement_required_row case_fd_enforcement_row_residuals case_fd_mechanism_traced case_fd_mechanism_overclaim case_fd_mechanism_surfaces case_fd_hook_firing case_fd_limits_hard_row case_fd_limits_required_rows case_fd_limits_unmeasured case_fd_catalogs case_fd_adr_range case_fd_cost_scope case_fd_cost_provenance case_fd_cost_measured_derived case_fd_cost_no_derived case_fd_measured_evidence case_fd_eager_published case_fd_body_home case_fd_body_figure_elsewhere case_fd_body_project_node case_fd_anchor_resolves case_fd_anchor_duplicate case_fd_headings case_fd_link_text case_fd_table_header case_fd_pending_stale case_fd_pending_unknown_slug case_fd_pending_holds_exit case_fd_pending_implemented case_fd_pending_release case_fd_absent_inputs case_fd_unreadable_input case_fd_check_raised; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done

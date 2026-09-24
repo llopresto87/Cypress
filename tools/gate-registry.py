@@ -289,7 +289,7 @@ GATES: dict[str, tuple[str, str, str, str]] = {
     "test_graph_lint.py": (
         "the graph linter's CLI contract", FIXTURES, "scope", ""),
     "agent-lint.py --lint": (
-        "roster frontmatter, and can_delegate == (Task in tools)", REAL, "none", ""),
+        "roster frontmatter, and can_delegate == (spawn tool in tools)", REAL, "none", ""),
     "agent-lint.py --eval": (
         "routing, per corpus class, gated on confident-wrong = 0", REAL, "self-reference",
         "the contract class is co-authored with the triggers it scores and is "

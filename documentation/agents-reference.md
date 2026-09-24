@@ -14,7 +14,7 @@ Source: `core/method/delegation.md`.
 
 The host session is the `orchestrator`. It routes, plans, briefs, verifies, communicates, and accepts. Whether it also *does* the work is decided by the task's tier (`method.tiers`). The specialists live in `docs/graph/agents/`, each a full system prompt. You invoke one by spawning a clean-context worker with a purpose-made brief. Simulating a specialist persona in the chat is not delegation.
 
-Because hooks do not reach a subagent, the brief is the only enforcement that crosses the boundary. Whatever discipline the brief omits, the worker does not have. Every brief embeds the canonical graph-session block verbatim, carries the routing evidence, and requires the handback payload.
+The brief is the only carrier of the discipline across the boundary, because no hook the seed installs carries it into a worker's turn ([delegation node](../core/method/delegation.md#every-brief-carries-the-graph-discipline)). Whatever discipline the brief omits, the worker does not have. Every brief embeds the canonical graph-session block verbatim, carries the routing evidence, and requires the handback payload.
 
 ## 2. Mechanical routing (`agent-lint.py --route`)
 
@@ -53,7 +53,7 @@ Six coordinators hold a depth-capped `Task` tool and may spawn only within their
 
 The deepest legal chain is depth 3 (through the `orchestrator`).
 
-Every other agent is a Task-less leaf. The leaf has no `Task` tool, so it cannot spawn. This is the one recursion cap the harness itself enforces whenever the specialist was registered as a type. At an out-of-domain boundary a leaf STOPs and hands back, naming the next specialist, and never does the work itself. `agent-lint --lint` enforces these frontmatter invariants.
+Every other agent is a Task-less leaf. The leaf has no `Task` tool, so it cannot spawn. This is one of the harness's own recursion caps whenever the specialist was registered as a type; the host's nesting limit is the other ([delegation bounds](../core/method/delegation.md#delegation-is-bounded)). At an out-of-domain boundary a leaf STOPs and hands back, naming the next specialist, and never does the work itself. `agent-lint --lint` enforces these frontmatter invariants.
 
 Attribution runs through `produced_by`. Every worker ends with the handback payload (`docs/graph/templates/prompts/handback-payload.md`). `produced_by` and `route_evidence` feed the deliver-time attribution assertion (`protocol.deliver`); a missing `produced_by` is a BLOCK. A worker hands back exactly once per spawn, on `complete`, `blocked-out-of-domain`, or `failed`, and never once per tool call.
 
