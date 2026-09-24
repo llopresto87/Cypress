@@ -277,15 +277,15 @@ WORD_NUMS = {"two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
              "sixteen": 16, "seventeen": 17}
 
 # SPEC-0004, the front door: the limits its checks hold (§6 "Constants"). The
-# three first-screen ceilings sit at their caps until the README increment
-# records the measured lines; the caps themselves live only in the spec's §6
-# table, which check_fd_first_screen_order reads, so raising a cap is a spec
-# change a lock edit cannot make.
+# first-screen marker and the first install.sh command are recorded at the
+# lines the README increment measured, with no headroom; the caps themselves
+# live only in the spec's §6 table, which check_fd_first_screen_order reads, so
+# raising a cap is a spec change a lock edit cannot make.
 FRONT_DOOR_SPEC = "docs/specs/SPEC-0004-front-door.md"
 FIRST_SCREEN_MARKER = "<!-- first-screen-end -->"
 FIRST_HEADING_MAX_LINE = 6
-FIRST_SCREEN_MAX_LINES = 100
-FIRST_COMMAND_LINE = 80
+FIRST_SCREEN_MAX_LINES = 53
+FIRST_COMMAND_LINE = 46
 FRONT_DOOR_RELEASE = "7.29.0"   # from this manifest version the ledger is empty
 README_CATALOG_CEILING = 3      # distinct names per category README may name
 LIMITS_MIN_REQUESTED = 3
@@ -306,16 +306,7 @@ PROJECT_NODE_LINE_FIGURES = frozenset({150, 170})
 # tests/ratchets.json (`set`: members only leave), and empty once SPEC-0004 is
 # `implemented` or the manifest reaches FRONT_DOOR_RELEASE.
 FRONT_DOOR_PENDING = frozenset({
-    "BODY_FIGURES_HAVE_A_REQUIRED_HOME",
-    "CATALOGS_OUT_OF_README",
-    "COST_FIGURES_SCOPED",
-    "FIRST_SCREEN_ORDER",
-    "INSTALL_SECTION_NAMES_TARGET_PATHS",
-    "LIMITS_SECTION_PRESENT",
     "MECHANISM_CLAIMS_TRACED",
-    "TABLES_HAVE_HEADER_ROWS",
-    "TERM_LINKED_ON_FIRST_USE",
-    "WHERE_NEXT_LINKS_THE_REFERENCES",
 })
 
 findings: list[str] = []
@@ -2474,48 +2465,58 @@ def check_install_write_sites() -> None:
 
 
 def check_published_body_figures() -> None:
-    """The body-size claims in README derive from the same measurement the
-    ceilings do, or they are not printed.
+    """The body-size claims derive from the same measurement the ceilings do,
+    and they have one required home, BODY_FIGURE_HOME.
 
     U-15 was "README claimed `<500`-line bodies while three protocols sat
     between 658 and 931". The repair replaced `<500` with `1 384`, `median of
     166`, `1 000` and `2 500` — four numbers, all true on the day, and NONE of
     them derived. Appending sixty lines to `protocols/graft.md` left seed-lint
-    PASS with the README still saying 1 384; tightening MACHINERY_BODY_CEILING
+    PASS with the page still saying 1 384; tightening MACHINERY_BODY_CEILING
     to 900 left it still saying 1 000. That is U-15's own class — a reader-facing
     body-size number that nothing derives — reopened by its own fix.
 
-    `EAGER_EXEMPTIONS` gets the same treatment: README says the dict is "empty"
-    and the budget has "no slack", and re-adding an exemption with the
-    documented `--bless` signature left both sentences standing and the full
-    gate green.
+    The figures used to live in README, and this check returned silently when
+    README was absent, so moving the text would have left the fact held by
+    nothing. SPEC-0004 (C5) moved them to BODY_FIGURE_HOME and made an absent
+    home, or a home missing any of the four, a finding.
+
+    `EAGER_EXEMPTIONS` gets the same treatment: a page that says the dict is
+    "empty" or the budget has "no slack" fails when an exemption is re-added
+    with the documented `--bless` signature. The phrase rules read every
+    front-door file, not one page, so the sentence cannot move out of reach.
     """
-    readme = ROOT / "README.md"
-    if not readme.is_file():
-        return
-    text = readme.read_text(encoding="utf-8", errors="replace")
+    home = ROOT / BODY_FIGURE_HOME
+    if not home.is_file():
+        fail(f"{BODY_FIGURE_HOME} is missing, and it is the one home of the four "
+             f"body-size figures (SPEC-0004 BODY_FIGURE_HOME)")
+    else:
+        text = home.read_text(encoding="utf-8", errors="replace")
+        for value, what, largest_label in routable_body_figures():
+            if not any(form in text for form in grouped_forms(value)):
+                fail(f"{BODY_FIGURE_HOME} states no figure matching {what} ({value}). "
+                     f"These four numbers are the ones U-15 was about, and the fix that "
+                     f"replaced `<500` left them derived by nothing — correct the "
+                     f"claim in their one home (largest is {largest_label})")
 
-    for value, what, largest_label in routable_body_figures():
-        if not any(form in text for form in grouped_forms(value)):
-            fail(f"README.md states no figure matching {what} ({value}). These "
-                 f"four numbers are the ones U-15 was about, and the fix that "
-                 f"replaced `<500` left them derived by nothing — correct the "
-                 f"claim, or stop printing a number the gate does not hold "
-                 f"(largest is {largest_label})")
-
-    empty_claim = any(p in text for p in EAGER_EMPTY_PHRASES)
-    if empty_claim and EAGER_EXEMPTIONS:
-        fail(f"README.md says EAGER_EXEMPTIONS is 'consequently empty' and it "
-             f"holds {sorted(EAGER_EXEMPTIONS)}. An exemption is a debt; the "
-             f"page that says there is none has to fail when one is added")
-    if EAGER_NO_SLACK_PHRASE in text and EAGER_EXEMPTIONS:
-        fail("README.md claims the EAGER_BUDGET ratchet has 'no slack' while "
-             "EAGER_EXEMPTIONS is non-empty")
+    for rel in fd_front_door_files():
+        page = ROOT / rel
+        if not page.is_file():
+            continue
+        text = page.read_text(encoding="utf-8", errors="replace")
+        empty_claim = any(p in text for p in EAGER_EMPTY_PHRASES)
+        if empty_claim and EAGER_EXEMPTIONS:
+            fail(f"{rel} says EAGER_EXEMPTIONS is 'consequently empty' and it "
+                 f"holds {sorted(EAGER_EXEMPTIONS)}. An exemption is a debt; the "
+                 f"page that says there is none has to fail when one is added")
+        if EAGER_NO_SLACK_PHRASE in text and EAGER_EXEMPTIONS:
+            fail(f"{rel} claims the EAGER_BUDGET ratchet has 'no slack' while "
+                 f"EAGER_EXEMPTIONS is non-empty")
 
 
 # The two phrases that claim EAGER_EXEMPTIONS holds nothing. One home, because
-# check_published_body_figures holds them in README and SPEC-0004's
-# BODY_FIGURES_HAVE_A_REQUIRED_HOME holds them in every front-door file.
+# check_published_body_figures and SPEC-0004's BODY_FIGURES_HAVE_A_REQUIRED_HOME
+# both hold them in every front-door file.
 EAGER_EMPTY_PHRASES = ("consequently **empty**", "is consequently empty")
 EAGER_NO_SLACK_PHRASE = "no slack"
 
@@ -2546,11 +2547,12 @@ def routable_body_figures() -> list:
 
 
 def check_ci_workflow() -> None:
-    """The CI that the README says runs this gate actually exists and runs it.
+    """The CI that the seed's own-gate row (DOCUMENTATION.md#enf-seed-gate) and
+    DOCUMENTATION §14 say runs this gate actually exists and runs it.
 
     U-25 was closed by adding `.github/workflows/gate.yml`, and nothing in the
-    gate asserted it: deleting the file left all 42 steps green while README
-    went on saying the seed runs its own gate in CI. A claim about a mechanism,
+    gate asserted it: deleting the file left all 42 steps green while the front
+    door went on saying the seed runs its own gate in CI. A claim about a mechanism,
     with the mechanism unpinned, is the shape this release spent eighteen slices
     on.
 
@@ -2560,9 +2562,9 @@ def check_ci_workflow() -> None:
     """
     wf = ROOT / ".github" / "workflows" / "gate.yml"
     if not wf.is_file():
-        fail(".github/workflows/gate.yml is missing — README says the seed runs "
-             "its own gate in CI, and nothing else in this suite would notice "
-             "its absence")
+        fail(".github/workflows/gate.yml is missing — the enf-seed-gate row "
+             "(DOCUMENTATION.md#enf-seed-gate) says the seed runs its own gate in "
+             "CI, and nothing else in this suite would notice its absence")
         return
     raw = wf.read_text(encoding="utf-8", errors="replace")
     # Comments stripped before the content checks: the file's own comment
@@ -2580,8 +2582,8 @@ def check_ci_workflow() -> None:
     for platform in ("ubuntu", "macos"):
         if platform not in raw:
             fail(f".github/workflows/gate.yml no longer names {platform}; the "
-                 f"README claims both platforms, and a claim about a matrix "
-                 f"needs the matrix")
+                 f"enf-seed-gate row (DOCUMENTATION.md#enf-seed-gate) and §14 claim "
+                 f"both platforms, and a claim about a matrix needs the matrix")
 
 
 def check_release_workflow() -> None:
@@ -2751,10 +2753,12 @@ def check_published_eager_figures(surfaces: dict) -> None:
 
     The published form is `NN NNN` (thin-space grouped) or `NNNNN`, so both are
     matched, and a figure that appears nowhere is not an error — this holds the
-    copies that exist, it does not require any.
+    copies that exist, it does not require any. It reads every front-door file
+    (SPEC-0004 C5), not only the EAGER_PUBLISHED pair, so a figure moved anywhere
+    in the front door stays held.
     """
     live = set(surfaces.values()) | {EAGER_BUDGET}
-    for rel in EAGER_PUBLISHED:
+    for rel in fd_front_door_files():
         path = ROOT / rel
         if not path.is_file():
             continue
@@ -2768,9 +2772,9 @@ def check_published_eager_figures(surfaces: dict) -> None:
                  f"stop printing a figure nothing derives")
 
 
-# The pages check_published_eager_figures has always held. SPEC-0004's
-# EAGER_FIGURES_CHECKED_WHEREVER_PUBLISHED widens the same rule to every
-# front-door file and never lets FRONT_DOOR_PENDING hold these two.
+# The pages check_published_eager_figures held before SPEC-0004 widened it to
+# every front-door file. EAGER_FIGURES_CHECKED_WHEREVER_PUBLISHED never lets
+# FRONT_DOOR_PENDING hold a finding on these two.
 EAGER_PUBLISHED = ("README.md", "documentation/host-capability-matrix.md")
 # A five-digit figure in a byte context is a claim about the always-loaded
 # surface, and must equal what the computation produces. `was`/`before`/

@@ -79,6 +79,15 @@ same agnostic ingest flow everyone else does.
 The name is a backronym: the system still *routes expert teams* over a project's
 knowledge graph, *yielding* project-specific knowledge as it goes.
 
+### Heritage
+
+CYPRESS extends the language-agnostic expert-prompts archive with spec-driven and
+test-driven development as foundational protocols, the LLM-wiki pattern for
+library docs, the brainstorm, grill and from-scratch protocols from the
+[Superpowers](https://claude.com/plugins/superpowers) framework generalized to
+the five major coding agents, and progressive disclosure throughout for context
+efficiency.
+
 ## 2. The core mental model
 
 CYPRESS is built on a small number of interlocking ideas. Understanding these
@@ -366,7 +375,7 @@ or person decides, and no tool can), the fourth label added by the ADR's
 `hard` row. Where this document says "enforced", it means one of those four, and
 says which.
 
-The decisions are recorded in `docs/decisions/adr-0001..0008`.
+The decisions are listed, with their status, in the [decision index](docs/decisions/index.md).
 
 ### 6.5 The harness-registration boundary
 
@@ -789,7 +798,7 @@ skill-corpus/         Harvested optional procedures (not the core skills)
 integrations/         Per-tool overlays + config (claude-code, prime-agent, opencode, codex, github-copilot)
 tools/                graft reconciliation engine + audit (incl. --unfilled); agnosticism-lint; prose-lint; status-register; status-migrate
 docs/                 The seed's OWN decisions (ADRs) and plans
-  decisions/            adr-0001..0008
+  decisions/            ADR records, listed in index.md
   plans/                agent-routing, pure-graph-refactor, prime-agent-integration, scouts
 tests/                run.sh + its shell suites + python linters/regressions
 install.sh            Drops the seed into a target project
@@ -813,7 +822,12 @@ Run everything before claiming anything works:
 bash tests/run.sh
 ```
 
-This runs every suite registered in `tests/run.sh`. The walkthrough below is a
+The same gate runs in CI on Linux and macOS (`.github/workflows/gate.yml`) for
+the seed's own changes. An install places no CI workflow into a plant, so running
+a plant's linters on every push is the adopting project's to wire (the
+[own-gate row](#enf-seed-gate)).
+
+That command runs every suite registered in `tests/run.sh`. The walkthrough below is a
 **partial, illustrative grouping — it is not the list**, and it said "every
 suite, in order" while enumerating 22 of 41 and omitting
 `test-install-placement.sh` and `test-plant-state.sh`, the two suites that carry
@@ -927,6 +941,8 @@ across 13 pages`; `test_agent_lint.py`: 67 tests, 1 skipped.
 > rows exist to bait the router and a bait that never succeeds is not a bait.
 > That budget may only fall; it went 3 to 2 when the routers' lexical reach was
 > repaired, without a trigger being tuned to a row.
+
+Routable body sizes, computed by `tests/seed-lint.py` from the method files on every run: the largest routable body is 1 384 lines (`protocols/graft.md`) and the median is 169 lines, against a ceiling of 1 000 lines for any routable node and 2 500 lines for the three cross-project protocols, `graft`, `grow` and `harvest`. Those three are the only protocols that write into a repository the seed does not own, and a session loads one only while it performs that operation ([ADR-0007](docs/decisions/adr-0007-lifecycle-protocol-ceiling.md)). Both ceilings are ratchets: they may fall freely, and raising either is an owner decision recorded in `tests/ratchets.json`. The always-loaded budget has the same shape, and `EAGER_EXEMPTIONS` in `tests/seed-lint.py` is consequently **empty**: every harness sits under `EAGER_BUDGET`, and the per-harness figures are in the [host capability matrix](documentation/host-capability-matrix.md).
 
 ## 15. Glossary
 <a id="glossary"></a>

@@ -89,21 +89,12 @@
       "it-dlgs-138-mercato-online"
     ],
     "EVAL_THRESHOLD": 0.95,
-    "FIRST_COMMAND_LINE": 80,
+    "FIRST_COMMAND_LINE": 46,
     "FIRST_HEADING_MAX_LINE": 6,
-    "FIRST_SCREEN_MAX_LINES": 100,
+    "FIRST_SCREEN_MAX_LINES": 53,
     "FRONTMATTER_CEILING": 100,
     "FRONT_DOOR_PENDING": [
-      "BODY_FIGURES_HAVE_A_REQUIRED_HOME",
-      "CATALOGS_OUT_OF_README",
-      "COST_FIGURES_SCOPED",
-      "FIRST_SCREEN_ORDER",
-      "INSTALL_SECTION_NAMES_TARGET_PATHS",
-      "LIMITS_SECTION_PRESENT",
-      "MECHANISM_CLAIMS_TRACED",
-      "TABLES_HAVE_HEADER_ROWS",
-      "TERM_LINKED_ON_FIRST_USE",
-      "WHERE_NEXT_LINKS_THE_REFERENCES"
+      "MECHANISM_CLAIMS_TRACED"
     ],
     "GRANDFATHERED_NEAR_DUPLICATES": [
       "adopt this project into the docs graph by subsystem boundary || adopting this project into the docs graph by subsystem boundary",
