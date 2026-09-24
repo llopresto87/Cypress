@@ -1397,12 +1397,14 @@ repo's own `CLAUDE.md`:
   `core/method/tiers.md`; roster/routing/brief depth → `core/method/delegation.md`;
   posture → `core/method/{engineering,design,stewardship,prose}-posture.md`.
 - Behavior change ⇒ bump `manifest.json` version + add a `CHANGELOG.md` entry
-  (append-only; supersede, don't rewrite).
+  (append-only; supersede, don't rewrite). One scoped exception:
+  [`CLAUDE.md` Conventions](CLAUDE.md).
 - The kernel is loaded on every session of every plant. Additions there must
   earn their per-session rent; lint fails past the 8000-byte budget. Depth belongs
   in a machinery node, never the kernel.
 - Append-only artifacts: `CHANGELOG.md` and `docs/decisions/`. Everything
-  else: integrate, don't bolt on.
+  else: integrate, don't bolt on. One scoped exception:
+  [`CLAUDE.md` Conventions](CLAUDE.md).
 - `harvest`/`graft` are user-sovereign; nothing in the seed may trigger them
   automatically.
 

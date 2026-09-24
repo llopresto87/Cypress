@@ -1409,8 +1409,8 @@ class FrontmatterVersionPositionTests(unittest.TestCase):
                       f"line:\n{out}")
 
     def testGRAPH_LINT_LOAD_WHEN_KEYWORD_IS_NOT_A_LEAK(self):
-        """`load_when:` is routing. expertise.json carries `draft-07` and
-        expertise.bash carries `bash 3.2 floor` so that a task naming either
+        """`load_when:` is routing. expertise.schema carries `draft-07` and
+        expertise.shell carries `bash 3.2 floor` so that a task naming either
         routes somewhere; neither node asserts what the project uses.
 
         This is the guard, not the catch: it is green before the change and
