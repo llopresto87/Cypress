@@ -6,7 +6,8 @@
 > `DEPRECATED` notice, and gets no new features. `install.sh all` no longer
 > includes it.
 
-Codex reads:
+This page says where an install puts the seed's files for Codex and what you
+merge by hand. Codex reads:
 1. `AGENTS.md` files, walking up from the working directory to the
    project root (the directory containing `.git` by default). Files
    merge top-down.

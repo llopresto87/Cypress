@@ -1,27 +1,28 @@
 # Prime Agent integration
 
 [Prime Agent](https://app.primeintellect.ai) is an RLM-native coding and
-research harness built around a persistent IPython kernel, recursive
-subagents (`rlm()`), durable sessions, and a continual-harness state
-ledger. This adapter makes the seed a first-class Prime Agent citizen.
+research harness built around a persistent IPython kernel (a live Python
+process, not the seed's kernel file), recursive subagents (`rlm()`), durable
+sessions, and a continual-harness state ledger. This adapter makes the seed a
+first-class Prime Agent citizen, and this page says where each seed file lands.
 
 Prime Agent discovers resources by convention (verified against
 prime-agent 0.8.1 `README.md` + `docs/`):
 
-1. **Context files (the kernel)** — `AGENTS.md` **or** `CLAUDE.md`,
+1. **Context files (the kernel)**: `AGENTS.md` **or** `CLAUDE.md`,
    auto-loaded from `~/.prime/agent/`, every parent directory of the
    cwd, and the cwd itself. All matches are concatenated. The kernel
    goes here.
-2. **Prompt templates (slash commands)** — `.prime/agent/prompts/<name>.md`,
+2. **Prompt templates (slash commands)**: `.prime/agent/prompts/<name>.md`,
    invoked as `/<name>`. Frontmatter carries `description`. The protocols
    go here.
-3. **Skills** — `.prime/agent/skills/<name>/SKILL.md`, auto-discovered
+3. **Skills**: `.prime/agent/skills/<name>/SKILL.md`, auto-discovered
    and also invokable as `/skill:<name>`. Same Agent-Skills `SKILL.md`
    shape the seed already ships, so no transform is needed.
-4. **Extensions** — `.prime/agent/extensions/*.ts`, TypeScript modules
+4. **Extensions**: `.prime/agent/extensions/*.ts`, TypeScript modules
    that subscribe to lifecycle events. The routing pointer that prompts
    progressive discovery lives here ([routing pointer](../../DOCUMENTATION.md#enf-route-hook)).
-5. **Settings** — `.prime/agent/settings.json` (project scope), which
+5. **Settings**: `.prime/agent/settings.json` (project scope), which
    overrides `~/.prime/agent/settings.json` (global).
 
 This seed system maps to Prime Agent as follows:

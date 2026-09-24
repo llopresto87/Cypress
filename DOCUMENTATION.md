@@ -43,19 +43,20 @@
 
 **CYPRESS** stands for **C**ontextual **Y**ield **P**rotocol for **R**outed
 **E**xpert **S**eed **S**ystems. It is a multi-agent [seed](#term-seed) for general
-programming projects: a bundle of instructions, agent charters, workflows,
-templates, and tooling that you drop into any codebase. Once installed, an AI
-coding agent (Claude Code, Prime Agent, opencode, OpenAI Codex, or GitHub
-Copilot) gains:
+programming projects: a bundle of instructions, agent charters (one file per
+role), workflows, templates, and tooling that you drop into any codebase. Once
+it is installed, the AI coding tool you work in (Claude Code, Prime Agent,
+opencode, OpenAI Codex, or GitHub Copilot; the last two are deprecated) gains:
 
-- a senior engineering team of 20 named specialist agents;
+- 20 named specialist agents, a senior engineering team to hand work to;
 - a set of named [protocols](#term-protocol) for spec-driven and test-driven work;
-- a progressive-discovery knowledge graph that keeps a large or multi-repo
-  codebase inside a context window;
+- a knowledge graph of your project, read a few notes at a time
+  (progressive discovery), which keeps a large or multi-repo codebase inside
+  a context window;
 - spec-driven (SDD) and test-driven (TDD) discipline by default.
 
-CYPRESS's machinery — kernel, protocols, skills, agents — is language-agnostic,
-vendor-agnostic, and project-agnostic. It does not assume your stack, domain,
+CYPRESS's machinery (the kernel, protocols, skills and agents) is
+language-agnostic, vendor-agnostic, and project-agnostic. It does not assume your stack, domain,
 deployment target, or even repository count; the same method governs one repo
 or a program of several. It assumes only that you want serious engineering
 practice on the production path.
@@ -74,8 +75,9 @@ The project borrows its words from gardening. Each has one entry in the
 [growth](#term-growth), and the [reverse loop](#term-reverse-loop) with its
 [harvest](#term-harvest) and [graft](#term-graft).
 
-The name is a backronym: the system still *routes expert teams* over a project's
-knowledge graph, *yielding* project-specific knowledge as it goes.
+The name is a backronym, and it still describes the system: it *routes expert
+teams* over a project's knowledge graph, *yielding* project-specific knowledge as
+it goes.
 
 ### Heritage
 
@@ -88,8 +90,7 @@ efficiency.
 
 ## 2. The core mental model
 
-CYPRESS is built on a small number of interlocking ideas. Understanding these
-five ideas is enough to understand the whole system.
+Five interlocking ideas are enough to understand the whole system.
 
 ### 2.1 One bootstrap kernel, everything else on demand
 
@@ -127,7 +128,7 @@ meta-facts ([own-gate row](#enf-seed-gate)).
 
 ### 2.5 Knowledge flows back (the reverse loop)
 
-The seed compounds because knowledge returns to it through the
+The seed improves over time because what projects learn returns to it through the
 [reverse loop](#term-reverse-loop): [canonize](#term-canonize),
 [harvest](#term-harvest) and [graft](#term-graft). See
 [§9](#9-the-reverse-loop-canonize-harvest-graft).
@@ -952,7 +953,7 @@ Routable body sizes, computed by `tests/seed-lint.py` from the method files on e
 ## 15. Glossary
 <a id="glossary"></a>
 
-Each entry covers one word the front door uses. It lists the forms of the word it covers, then six labelled fields in a fixed order: what the word means here, what it usually means in the field, where it is implemented, its enforcement class, how far the two meanings diverge, and the record behind the choice. A Field status says how its source was reached: *verified* means the page was fetched and read on the retrieval date, *secondhand* means the claim came from a secondary page or a search summary, and *not recorded* means no source was found or sought. The research behind every Field is kept in the [field-definition sources](docs/plans/grill-7.29.0-front-door/field-definition-sources.md), which records each location without a scheme; the glossary adds `https://` to it. The one arXiv preprint is recorded by its identifier, and its address here is that identifier's `arxiv.org/abs/` page. Where a fact depends on the coding host, such as which events reach a worker or what the spawn tool is called, the entry says it is host-dependent and links the [host capability matrix](documentation/host-capability-matrix.md).
+Each entry covers one word that the front door (the README, the install guide, this manual, its reference pages and the per-harness notes) uses. Where a word here means something other than it does elsewhere in software, its entry says so. An entry lists the forms of the word it covers, then six labelled fields in a fixed order: what the word means here, what it usually means in the field, where it is implemented, its enforcement class, how far the two meanings diverge, and the record behind the choice. A Field status says how its source was reached: *verified* means the page was fetched and read on the retrieval date, *secondhand* means the claim came from a secondary page or a search summary, and *not recorded* means no source was found or sought. The research behind every Field is kept in the [field-definition sources](docs/plans/grill-7.29.0-front-door/field-definition-sources.md), which records each location without a scheme; the glossary adds `https://` to it. The one arXiv preprint is recorded by its identifier, and its address here is that identifier's `arxiv.org/abs/` page. Where a fact depends on the coding host, such as which events reach a worker or what the spawn tool is called, the entry says it is host-dependent and links the [host capability matrix](documentation/host-capability-matrix.md).
 
 ### agent
 <a id="term-agent"></a>
@@ -1423,7 +1424,7 @@ status.
 ## 17. What is enforced, and how
 <a id="enforcement"></a>
 
-Each row below names one kind of mechanism, the file that implements it, its class, what it can miss, and where its detail lives. The classes are [ADR-0003](docs/decisions/adr-0003-enforcement-layering-honesty.md)'s: **hard** means the harness itself refuses, **soft** means a contract or a tool refuses when it is run, **detective** means the fault is caught after the fact, **judgment** means a named person or agent decides because no check can, and **not a control** means nothing is held at all. A row that holds differently on different hosts, or in different cases, carries each class it has, and it is judged by the weakest of them across the hosts `install.sh all` installs. What each host holds is not repeated here: those rows link the [host capability matrix](documentation/host-capability-matrix.md), which records it per host. The [glossary](#glossary) links a row wherever an entry's class depends on one.
+This section answers which rules a tool holds and which the method only asks the model to follow. Each row below names one kind of mechanism, the file that implements it, its class, what it can miss, and where its detail lives. The classes are [ADR-0003](docs/decisions/adr-0003-enforcement-layering-honesty.md)'s: **hard** means the harness itself refuses, **soft** means a contract or a tool refuses when it is run, **detective** means the fault is caught after the fact, **judgment** means a named person or agent decides because no check can, and **not a control** means nothing is held at all. A row that holds differently on different hosts, or in different cases, carries each class it has, and it is judged by the weakest of them across the hosts `install.sh all` installs. What each host holds is not repeated here: those rows link the [host capability matrix](documentation/host-capability-matrix.md), which records it per host. The [glossary](#glossary) links a row wherever an entry's class depends on one.
 
 | Mechanism | Artifact | Class | What it can miss | Detail |
 |---|---|---|---|---|
