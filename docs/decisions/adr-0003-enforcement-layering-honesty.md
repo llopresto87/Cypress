@@ -108,7 +108,7 @@ provides. `tests/seed-lint.py`'s `check_gate_single_home()` holds every row in
 The original three-class decision above is unchanged and still governs the
 delegation controls it was written for.
 
-## Amendment — 2026-09-24: the size of the delegating set is read from the lint
+## Amendment of 2026-09-24: the size of the delegating set is read from the lint
 
 §Decision's first bullet and §Consequences' known limitation give the size of
 the delegating set as a fixed number. The roster has grown since, as
@@ -120,7 +120,7 @@ and `integrations/claude-code/agent-lint.py --lint` holds that set equal to
 the agents whose `tools:` line carries the grant §Decision names. The classes,
 the decision and the rest of this body are unchanged.
 
-## Amendment — 2026-09-24: hooks inside subagents, and the spawn tool's two names
+## Amendment of 2026-09-24: hooks inside subagents, and the spawn tool's two names
 
 §Context says the one hook "cannot reach subagents". That holds for the route
 hook's top-session firing, not for the seed's hooks in general: on Claude Code,
