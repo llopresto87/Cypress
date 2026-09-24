@@ -108,6 +108,40 @@ provides. `tests/seed-lint.py`'s `check_gate_single_home()` holds every row in
 The original three-class decision above is unchanged and still governs the
 delegation controls it was written for.
 
+## Amendment of 2026-09-24: the size of the delegating set is read from the lint
+
+§Decision's first bullet and §Consequences' known limitation give the size of
+the delegating set as a fixed number. The roster has grown since, as
+ADR-0002's 2026-07-23 amendment records, so that number no longer matches the
+roster. This amendment corrects the count and nothing else, and it prints no
+new number, because a number written here would go stale the same way. The
+current holders are the agents whose frontmatter sets `can_delegate: true`,
+and `integrations/claude-code/agent-lint.py --lint` holds that set equal to
+the agents whose `tools:` line carries the grant §Decision names. The classes,
+the decision and the rest of this body are unchanged.
+
+## Amendment of 2026-09-24: hooks inside subagents, and the spawn tool's two names
+
+§Context says the one hook "cannot reach subagents". That holds for the route
+hook's top-session firing, not for the seed's hooks in general: on Claude Code,
+tool events fire inside a subagent, so the seed's `PreToolUse` guard
+(`bound-hook.py`) runs on a subagent's Bash calls. §Consequences names "a
+subagent-reaching PreToolUse hook" as a precondition still to come; the host
+already provides that mechanism, and the hook input names the subagent. The
+caps stay soft because the seed wires no hook on the spawn tool that reads
+`delegates_to`, not because the host cannot run one; promoting them is a
+separate decision. The spawn tool's canonical name is `Agent`, with `Task` an
+accepted alias, and in a subagent definition the host ignores a parenthesized
+type list. So §Decision's hard class reads as "the spawn tool, under either
+name, absent from an explicit `tools:` line" (an omitted line inherits every
+tool), and the §Consequences invariant reads as `can_delegate == (spawn tool ∈
+tools)` under either name, which is how both lints now read it. The mechanism
+is in `core/method/delegation.md` (§"Delegation is bounded" and §"Every brief
+carries the graph discipline"); upstream sources, retrieved 2026-09-24:
+<https://code.claude.com/docs/en/hooks> and
+<https://code.claude.com/docs/en/sub-agents>. The classes and the decision are
+unchanged.
+
 ## References
 
 - Plan (source of the decision): `../plans/agent-routing-and-delegation.md`

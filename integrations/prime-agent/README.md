@@ -1,27 +1,28 @@
 # Prime Agent integration
 
 [Prime Agent](https://app.primeintellect.ai) is an RLM-native coding and
-research harness built around a persistent IPython kernel, recursive
-subagents (`rlm()`), durable sessions, and a continual-harness state
-ledger. This adapter makes the seed a first-class Prime Agent citizen.
+research harness built around a persistent IPython kernel (a live Python
+process, not the seed's kernel file), recursive subagents (`rlm()`), durable
+sessions, and a continual-harness state ledger. This adapter makes the seed a
+first-class Prime Agent citizen, and this page says where each seed file lands.
 
 Prime Agent discovers resources by convention (verified against
 prime-agent 0.8.1 `README.md` + `docs/`):
 
-1. **Context files (the kernel)** — `AGENTS.md` **or** `CLAUDE.md`,
+1. **Context files (the kernel)**: `AGENTS.md` **or** `CLAUDE.md`,
    auto-loaded from `~/.prime/agent/`, every parent directory of the
    cwd, and the cwd itself. All matches are concatenated. The kernel
    goes here.
-2. **Prompt templates (slash commands)** — `.prime/agent/prompts/<name>.md`,
+2. **Prompt templates (slash commands)**: `.prime/agent/prompts/<name>.md`,
    invoked as `/<name>`. Frontmatter carries `description`. The protocols
    go here.
-3. **Skills** — `.prime/agent/skills/<name>/SKILL.md`, auto-discovered
+3. **Skills**: `.prime/agent/skills/<name>/SKILL.md`, auto-discovered
    and also invokable as `/skill:<name>`. Same Agent-Skills `SKILL.md`
    shape the seed already ships, so no transform is needed.
-4. **Extensions** — `.prime/agent/extensions/*.ts`, TypeScript modules
-   that subscribe to lifecycle events. The progressive-discovery
-   enforcement lives here.
-5. **Settings** — `.prime/agent/settings.json` (project scope), which
+4. **Extensions**: `.prime/agent/extensions/*.ts`, TypeScript modules
+   that subscribe to lifecycle events. The routing pointer that prompts
+   progressive discovery lives here ([routing pointer](../../DOCUMENTATION.md#enf-route-hook)).
+5. **Settings**: `.prime/agent/settings.json` (project scope), which
    overrides `~/.prime/agent/settings.json` (global).
 
 This seed system maps to Prime Agent as follows:
@@ -32,9 +33,9 @@ This seed system maps to Prime Agent as follows:
 | `agents/*.md`                | `.prime/agent/agents/*.md` (brief sources — see below) |
 | `skills/*/SKILL.md`          | `.prime/agent/skills/*/SKILL.md`                   |
 | protocols → slash commands   | `.prime/agent/prompts/*.md` (generated projections) |
-| route enforcement            | `.prime/agent/extensions/route-extension.ts`       |
+| routing pointer              | `.prime/agent/extensions/route-extension.ts`       |
 | status register (once/session) | `.prime/agent/extensions/status-extension.ts`     |
-| `templates/`                 | `templates/` (kept at repo root, untouched)        |
+| `templates/`                 | `docs/graph/templates/` (graph nodes)        |
 | `templates/docs/` (graph leaves) | `docs/graph/` (missing leaves added on install) |
 
 ## Delegation: no static roster, so no registration lag
@@ -54,17 +55,17 @@ Two consequences:
 - The seed's `agents/*.md` are installed to `.prime/agent/agents/*.md`
   as **brief sources**. The orchestrator reads the relevant roster file
   and passes its persona + tool bound + delegation contract into the
-  `rlm()` call — exactly the brief-enforced role emulation that
+  `rlm()` call — exactly the brief-carried role emulation that
   `docs/graph/method/delegation.md` (`delegation.harness-registration`)
-  already prescribes for any harness whose native registration cannot
+  already prescribes for any harness whose native registration does not
   carry the seed's model class or tool bound.
 - Because there is no session-start enumeration, the **"installed but
   not spawnable" trap does not exist on Prime Agent**. A roster brief
   written to disk — by an install, a graft, or a freshly commissioned
   expert — is usable by the very next `rlm()` call in the same session;
-  no restart is required. The recorded fallback in
+  no restart is needed. The recorded fallback in
   `delegation.harness-registration` is therefore the *normal* path here,
-  never a workaround.
+  not a workaround.
 
 If you want the roster reachable as reusable specs across sessions,
 persist the briefs as continual-harness subagent specifications
@@ -79,20 +80,21 @@ file per such node into `.prime/agent/prompts/` — the same roster it generates
 for Claude Code and opencode, since those three draw from the same `command:`
 field. GitHub Copilot gets that roster through a different generator
 (`.github/prompts/<name>.prompt.md`); Codex gets none of it, because
-`install_codex` never calls `generate_slash_commands` and is the one adapter
+`install_codex` does not call `generate_slash_commands` and is the one adapter
 with no command surface at all. Each is a
 short pointer into the corresponding `docs/graph/protocols/<name>.md`
 node (the single home). The user-sovereign meta-loop protocols (`graft`,
 `grow`, `harvest`) carry no `command:`
 field and are commands on no harness.
 
-## Progressive-discovery enforcement (extension)
+## Progressive-discovery pointer (extension)
 
 Progressive discovery — open the graph router, load only the nodes a task
 needs, declare what you skipped, then classify the tier — is guidance a
-capable model follows and a weaker one skips. Prime Agent lets you enforce
-it deterministically the same way Claude Code does, through its extension
-event bus:
+capable model follows and a weaker one skips. Prime Agent can add the
+routing pointer to every prompt, as Claude Code's hook does, through its
+extension event bus; like the hook, it adds text and holds nothing
+([routing pointer](../../DOCUMENTATION.md#enf-route-hook)):
 
 - `route-extension.ts` subscribes to **`before_agent_start`** (fired
   after the user submits a prompt, before the agent loop; it can inject
@@ -107,7 +109,8 @@ event bus:
   the ids it has opened in `_cypress_surfaced`, a Python set in its IPython
   kernel; that is soft and model-kept, and nothing checks it (SPEC-0003).
 - It is **fail-open**: any error (missing graph, router failure) degrades
-  to the pointer line or to silence, and it never blocks a prompt.
+  to the pointer line or to silence, and it never blocks a prompt
+  ([routing pointer](../../DOCUMENTATION.md#enf-route-hook)).
 - It is auto-discovered from `.prime/agent/extensions/`. The bundled
   `settings.json` also lists it explicitly so it still loads if a project
   disables convention discovery.
@@ -128,23 +131,23 @@ seed as "Claude Code with different paths."
 
 That guidance ships as **`.prime/agent/APPEND_SYSTEM.md`** — a native-execution
 overlay the installer drops in. Prime Agent **appends it to the system prompt on
-every session**, and Claude Code never reads it (it is not `CLAUDE.md`/`AGENTS.md`
+every session**, and Claude Code does not read it (it is not `CLAUDE.md`/`AGENTS.md`
 and lives under `.prime/agent/`). It does not replace or contradict the shared
 kernel; it maps the kernel's discipline onto Prime Agent's primitives:
 
 - **Delegation** → read a `.prime/agent/agents/<role>.md` brief and spawn
   `await rlm(brief + task, name=role, model=...)`; fan out MULTIPLE
-  single-scoped children in parallel (never one broad worker); collect handbacks
+  single-scoped children in parallel (not one broad worker); collect handbacks
   via `agent_message`; supervise with `agent_observe`.
 - **Model policy** → Sonnet-class (floor `claude-sonnet-4-6`) for read-only
   scouting, Opus-class for authoring — straight from each roster brief's
   `model:` field.
-- **Gates** → run `bash tests/run.sh` and the linters directly in the kernel;
+- **Checks** → run `bash tests/run.sh` and the linters directly in the kernel;
   keep evidence in variables.
 - **Close-out** → canonize into `docs/graph/`; author any reusable TOOL or
   project SKILL **in the plant** (home `docs/graph/skills/<name>.md`, projected
   to `.prime/agent/skills/<name>/SKILL.md`, committed) per `skill.toolcraft`,
-  never in the global `~/.prime/agent/skills/`; and persist reusable *operating*
+  not in the global `~/.prime/agent/skills/`; and persist reusable *operating*
   lessons with the continual harness (`refine.run(...)`) — the cross-session
   memory Claude Code lacks. A project skill is a plant deliverable, not a
   private harness entry.
@@ -198,9 +201,10 @@ by ONE of:
   projects;
 - `RLM_MAX_DEPTH=3` — environment, for a non-interactive/CI run.
 
-The seed's per-role depth bounds themselves stay brief-enforced
+The seed's per-role depth bounds themselves stay carried by the brief
 (`agents/*.md` `max_spawn_depth`), read straight from the roster brief the
-orchestrator spawns — the runtime limit is only the outer ceiling.
+orchestrator spawns — the runtime limit is only the outer ceiling
+([delegation fields](../../DOCUMENTATION.md#enf-delegation-frontmatter)).
 
 ## Install
 
@@ -208,7 +212,7 @@ orchestrator spawns — the runtime limit is only the outer ceiling.
 /path/to/cypress/install.sh prime-agent
 ```
 
-Creates (symlinks by default under `--symlink`, copies otherwise):
+Creates (copies by default; `--symlink` opts into live seed links):
 - `AGENTS.md` → `core/AGENTS.md` (bootstrap kernel, auto-loaded)
 - `.prime/agent/agents/*.md` → `agents/*.md` (roster brief sources)
 - `.prime/agent/skills/<name>/SKILL.md` → `skills/<name>/SKILL.md`
@@ -216,8 +220,8 @@ Creates (symlinks by default under `--symlink`, copies otherwise):
   `command: true`
 - `.prime/agent/extensions/status-extension.ts` → copied (injects
   `status-register.py --summary` on the first prompt of the session)
-- `.prime/agent/extensions/route-extension.ts` → copied (progressive-
-  discovery enforcement)
+- `.prime/agent/extensions/route-extension.ts` → copied (the progressive-
+  discovery pointer)
 - `.prime/agent/settings.json` → copied (so the project can edit it)
 - `.prime/agent/APPEND_SYSTEM.md` → copied (RLM-native execution overlay,
   appended to the system prompt every session)
@@ -225,7 +229,8 @@ Creates (symlinks by default under `--symlink`, copies otherwise):
 
 ### CI parity
 
-Gate the roster in the plant's CI the same way Claude Code does:
+Check the roster in the plant's CI the same way as on Claude Code
+([agent-lint row](../../DOCUMENTATION.md#enf-agent-lint)):
 
 ```sh
 python3 docs/graph/agent-lint.py --lint --eval --dir .prime/agent/agents
@@ -254,14 +259,15 @@ What you get in that plant:
   CLAUDE.md` or the reverse, depending on order). Editing the kernel updates
   both harnesses at once. On a platform without symlinks the second file
   degrades to an independent copy (identical at install; keep them in sync by
-  hand). `tests/test-full-install.sh` gates this coexistence in both orders.
+  hand). `tests/test-full-install.sh` checks this coexistence in both orders,
+  in the seed's own test run ([own-gate row](../../DOCUMENTATION.md#enf-seed-gate)).
 - **Parallel harness trees, no collision.** `.claude/{agents,skills,commands}`
   and `.prime/agent/{agents,skills,prompts,extensions}` sit side by side; each
   harness reads only its own. The roster, skills, and command set are the same
   because both are projections of the same `docs/graph/` nodes.
 - **One shared knowledge graph.** `docs/graph/` is installed once and read by
   both — the single home for all project knowledge.
-- **Enforcement per session type.** A Claude Code session fires
+- **One routing pointer per session type.** A Claude Code session fires
   `.claude/route-hook.py` (UserPromptSubmit); a Prime Agent session fires
   `.prime/agent/extensions/route-extension.ts` (`before_agent_start`). They run
   in different session types, so there is no double-firing.

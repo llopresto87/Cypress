@@ -6,7 +6,8 @@
 > `DEPRECATED` notice, and gets no new features. `install.sh all` no longer
 > includes it.
 
-Codex reads:
+This page says where an install puts the seed's files for Codex and what you
+merge by hand. Codex reads:
 1. `AGENTS.md` files, walking up from the working directory to the
    project root (the directory containing `.git` by default). Files
    merge top-down.
@@ -28,11 +29,11 @@ This seed system maps to Codex as follows:
 
 | Seed file                | Codex destination                                |
 |--------------------------|--------------------------------------------------|
-| `core/AGENTS.md`         | `AGENTS.md` at repo root (with sub-agents inlined or referenced) |
-| `agents/*.md`            | `.codex/agents/*.md` (referenced from AGENTS.md) |
+| `core/AGENTS.md`         | `AGENTS.md` at repo root (the kernel; it neither inlines nor references the sub-agents) |
+| `agents/*.md`            | `.codex/agents/*.md` (reference copies, not registered) |
 | `skills/*/SKILL.md`      | `.codex/skills/*/SKILL.md` (registered in `~/.codex/config.toml`) |
 | `protocols/*.md`         | `docs/graph/protocols/*.md` (graph nodes; no `.codex/` copy) |
-| `templates/`             | `templates/` (kept at repo root, untouched)      |
+| `templates/`             | `docs/graph/templates/` (graph nodes)      |
 | `templates/docs/`        | `docs/graph/` (missing leaves added on install)  |
 
 > **The projection is taken from the graph, not from the seed.** The rows
@@ -47,9 +48,11 @@ This seed system maps to Codex as follows:
 ## AGENTS.md size budget
 
 Codex truncates `AGENTS.md` at `project_doc_max_bytes` (default
-32 KiB). The seed system's `AGENTS.md` is intentionally short —
-under the 8 000-byte budget `seed-lint` enforces, so roughly a
-quarter of the limit; the depth lives in the referenced files. To avoid
+32 KiB). The seed system's `AGENTS.md` is intentionally short: it
+stays under the byte budget that `seed-lint` checks in the seed's own
+test run ([kernel budget](../../DOCUMENTATION.md#enf-kernel-budget)), which
+keeps it well under Codex's default limit, and the depth lives in the
+referenced files. To avoid
 truncation, do not paste agent and protocol bodies into
 `AGENTS.md` — keep them in `.codex/` and let the agent open them
 on demand.
@@ -97,26 +100,31 @@ Creates (copies by default; `--symlink` opts into live seed links):
   the user needs to add for skill registration (the installer
   does not modify global user config without consent).
 
-Both of those land after the current session began, so nothing installed here is
-addressable until a new session starts — the global-config merge doubly so.
+Both of those land after the current session began. Whether a running Codex
+session picks either up is not recorded in the
+[host capability matrix](../../documentation/host-capability-matrix.md#specialist-discoveryregistration),
+so check before relying on them.
 `docs/graph/method/delegation.md` (`delegation.harness-registration`) owns that
 rule and its recorded fallback.
 
 ## Bounded execution has no hook here
 
-This harness exposes no pre-tool hook, so the bounded-execution clauses of
+The seed wires no pre-tool hook for Codex, so the bounded-execution clauses of
 `core/method/engineering-posture.md` §14 (`toolcraft.bounded-execution`) are the agent's own discipline
-rather than an enforced guard: every blocking-prone shell command — service
+rather than a hook's check: every shell command that can hang (service
 control, process signalling, package managers, installers, builds, log
-followers — carries an explicit `timeout`, or is launched detached with its
+followers) carries an explicit `timeout`, or is launched detached with its
 output in a durable log, its pid recorded, and a terminal result line. The
 worst offenders in practice are process-signalling commands issued from the
-exec tool, which can match the shell issuing them: stop a process by its
-recorded pid, never by a name pattern.
+exec tool, which can match the shell issuing them: end a process by its
+recorded pid, not by a name pattern. The
+[pre-Bash check row](../../DOCUMENTATION.md#enf-pre-bash-guard) records which
+hosts fire a hook for this.
 
 ## Approval modes and the verify rule
 
 Codex has three approval modes: `untrusted`, `on-request`, `never`.
-The seed system's `verify` protocol assumes the agent can run gate
-commands; pick `on-request` for interactive sessions and `never` for
-non-interactive CI runs (the latter requires a hardened sandbox).
+The seed system's `verify` protocol assumes the agent can run the checks it
+selects; pick `on-request` for interactive sessions and `never` for
+non-interactive CI runs, and run the latter only inside a hardened sandbox
+([verify gates](../../DOCUMENTATION.md#enf-verify-gates)).

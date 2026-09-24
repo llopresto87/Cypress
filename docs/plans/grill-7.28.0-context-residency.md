@@ -67,7 +67,7 @@ plant's `.claude/route-hook.py` by `measure/session.py`:
 Every non-trivial row repeats the same mandate paragraph (about 0.5 KB by
 inspection; the script gives the exact count). The router's LOAD set repeats
 across rows: `root` and `skill.knowledge-graph` appear in 14 of the 15 rows
-read, `subsystem.graph-linters` in most. The NOT LOADED list is the largest
+read, `[redacted]` in most. The NOT LOADED list is the largest
 block in most rows and repeats the same peers.
 
 ### §0.4 Defects found
@@ -273,8 +273,8 @@ where `ROOT` is the directory `find_lint()` already resolves.
   "version": 1,
   "session_id": "3b9f1c2e-5d4a-4e8b-9a61-0c7f2d8e1a44",
   "prompt_count": 4,
-  "surfaced": ["root", "skill.knowledge-graph", "subsystem.graph-linters"],
-  "peers_seen": ["agent.implementer", "domain.frontmatter"],
+  "surfaced": ["root", "skill.knowledge-graph", "[redacted]"],
+  "peers_seen": ["agent.implementer", "[redacted]"],
   "last_reset": {"source": "compact", "at": "2026-09-23T10:00:00Z"}
 }
 ```
@@ -801,6 +801,8 @@ Empty until P0 lands.
 ## §15 Review rounds
 
 Empty.
+
+- 2026-09-24 (appended by the 7.29.0 front-door harvest, increment 8): donor-identifying tokens were replaced in place in this record under the one scoped exception to append-only in `CLAUDE.md` Conventions ([ADR-0011](../decisions/adr-0011-donor-token-redaction.md), `proposed`). Class of token removed: node ids of the project the seed was harvested from, three spans in §0.3 and §4.2, each span replaced by the one placeholder `[redacted]`; no sentence was reworded or deleted. The original text remains at tag v7.28.0 and in history. History was not rewritten, and published tags and Releases keep it.
 
 ## §16 Decisions of 2026-09-23: the Prime Agent surfaced set and SPEC-0003 status
 

@@ -3,9 +3,10 @@ Template: prompts/handback-payload.md
 Used: ONCE per spawn, at the moment a worker returns control to its caller —
 delegating or leaf, and on all three endings (complete, blocked-out-of-domain,
 failed). Not per tool call. "Turn" is defined in docs/graph/method/delegation.md
-(delegation.turn). This hands control back across the subagent boundary — where hooks do not reach, so
-this block is the only reliable carrier.
-A LEAF worker (no Task tool) that hits an out-of-domain boundary returns
+(delegation.turn). This hands control back across the subagent boundary. No
+hook the seed installs reads a worker's result, so this block is the only
+reliable carrier (docs/graph/method/delegation.md).
+A LEAF worker (no spawn tool) that hits an out-of-domain boundary returns
 this instead of doing the work itself: it names the specialist, it does
 not spawn one. A DELEGATOR returns it when it STOPs rather than spawning.
 Fill the {{PLACEHOLDERS}} and return the body verbatim to the caller.
@@ -66,8 +67,8 @@ HANDBACK
   routable target. On a final turn with nothing left, "none — session
   ends here" is the defined value.
 - **A leaf worker recommends; it does not spawn.** Leaf agents carry no
-  `Task` tool by design (the recursion cap the harness enforces for a
-  registered specialist). At an out-of-domain boundary you STOP and
+  spawn tool by design: for a registered specialist that is one of the
+  harness's two recursion caps, the host's nesting limit being the other. At an out-of-domain boundary you STOP and
   return this payload — you do not do the work. Under role emulation the
   same cap holds by brief instead of by frontmatter, and
   `harness_override` is what makes that visible at `deliver`.

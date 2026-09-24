@@ -7,7 +7,8 @@ seed's meta-documentation, and its duplicated facts drifted (README said
 This linter makes that failure class deterministic to catch:
 
   1. roster: agents/ frontmatter <-> manifest.json <-> kernel §1 table
-  2. delegator invariant: can_delegate == (Task in tools); allowlists resolve
+  2. delegator invariant: can_delegate == (spawn tool in tools), read by
+     agent-lint's own predicate; tools: listed; allowlists resolve
   3. numeric claims: "N-agent team" and "N coordinators" match reality
   4. kernel budget: core/AGENTS.md stays under KERNEL_BUDGET bytes
   5. kernel anchors: §3.1–§3.8 headings exist (cited seed-wide)
@@ -27,6 +28,7 @@ This linter makes that failure class deterministic to catch:
 
 Dependency-free; exit 0 clean, 1 with findings.
 """
+import contextlib
 import importlib.util
 import json
 import re
@@ -230,8 +232,9 @@ RULE_HOMES = {
     "rule.canonize": "protocols/canonize.md",
     "rule.toolcraft": "skills/toolcraft/SKILL.md",
 }
-# 6.4.0: "installed but not spawnable" — a harness registers agent types when a
-# SESSION STARTS, so the session that installs a roster cannot spawn it. The rule
+# 6.4.0: "installed but not spawnable" — a host may not register agent types
+# written mid-session (host-dependent; 7.29.0 corrected the "only at session
+# start" reading), so the session that installs a roster may not spawn it. The rule
 # has one home and a fixed set of referrers: every surface that dispatches a
 # specialist by name or installs the projection they come from. A referrer that
 # drops the pointer silently re-opens the trap, so the fact key IS the
@@ -274,6 +277,37 @@ WORD_NUMS = {"two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
              "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11,
              "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15,
              "sixteen": 16, "seventeen": 17}
+
+# SPEC-0004, the front door: the limits its checks hold (§6 "Constants"). The
+# first-screen marker and the first install.sh command are recorded at the
+# lines the README increment measured, with no headroom; the caps themselves
+# live only in the spec's §6 table, which check_fd_first_screen_order reads, so
+# raising a cap is a spec change a lock edit cannot make.
+FRONT_DOOR_SPEC = "docs/specs/SPEC-0004-front-door.md"
+FIRST_SCREEN_MARKER = "<!-- first-screen-end -->"
+FIRST_HEADING_MAX_LINE = 6
+FIRST_SCREEN_MAX_LINES = 53
+FIRST_COMMAND_LINE = 46
+FRONT_DOOR_RELEASE = "7.29.0"   # from this manifest version the ledger is empty
+README_CATALOG_CEILING = 3      # distinct names per category README may name
+LIMITS_MIN_REQUESTED = 3
+LIMITS_MIN_UNMEASURED = 2
+DEFINITION_OVERLAP_CEILING = 0.50
+DEFINITION_SHINGLE = 3          # content tokens per shingle
+DEFINITION_MIN_TOKENS = 5       # below this a definition is compared whole
+BODY_FIGURE_HOME = "DOCUMENTATION.md"
+# The project-node body ceiling in templates/knowledge-graph/graph-lint.py, a
+# different fact from the seed's own body figures; each value must still occur
+# there as a literal, so the exemption cannot outlive the ceiling it names.
+PROJECT_NODE_LINE_FIGURES = frozenset({150, 170})
+
+# The pending ledger: every SPEC-0004 contract observed failing on the shipped
+# tree while the front-door prose is rewritten. A member prints one PENDING line
+# and leaves the exit status alone; a member whose check finds nothing is itself
+# a finding, so a slug leaves in the commit that clears it. Mirrored in
+# tests/ratchets.json (`set`: members only leave), and empty once SPEC-0004 is
+# `implemented` or the manifest reaches FRONT_DOOR_RELEASE.
+FRONT_DOOR_PENDING = frozenset()
 
 findings: list[str] = []
 
@@ -1312,6 +1346,85 @@ def _overlay_section(text: str):
 
 # One check, two slugs: HOOK_TEXT_RESTATES_NO_KERNEL_RULE over the whole of each
 # hook file, and PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE over the overlay section.
+# The absolute claim that hooks do not reach subagents. The host runs tool
+# hooks inside a subagent (docs/graph/method/delegation.md, "Every brief
+# carries the graph discipline"), so the claim is false wherever it ships.
+# The claim is a class of sentence, not a word: a subject naming hooks in
+# general, a negated reach / fire / cross / run, and subagents or the spawn
+# boundary later in the same clause. A subject word naming one hook or a
+# prompt or session event makes a true, narrower sentence ("The route hook
+# does not reach a subagent's turn."); a singular hook counts only when a
+# class word qualifies it ("a tool hook").
+HOOK_REACH_PHRASE = re.compile(
+    r"(?:\b(?P<qual>[\w-]+)\s+)?\b(?P<hook>hooks?)\s+"
+    r"(?:do(?:es)?\s+not|do(?:es)?n['’]t|cannot|can['’]t|never|will\s+not|won['’]t)\s+"
+    r"(?:reach|fire|cross|run)(?:es|s)?\b"
+    r"|\bno\s+(?P<nohook>hooks?)\s+(?:reach|fire|cross|run)(?:es|s)?\b", re.I)
+HOOK_REACH_OBJECT = re.compile(r"sub-?agent|spawn\s+boundary|\bworkers?\b", re.I)
+HOOK_REACH_CLAUSE_END = re.compile(r"[.;:!?)]\s|[.;:!?)]$")
+# Qualifiers that make the subject the class of hooks the host runs in a subagent.
+HOOK_CLASS_QUALIFIERS = {"tool", "settings", "pretooluse", "posttooluse", "subagent",
+                         "sub-agent", "configured"}
+# Substrings of a qualifier naming one hook or a prompt or session event.
+HOOK_NAMED_QUALIFIERS = ("route", "routing", "status", "bound", "prompt", "session",
+                         "inject", "stop", "this", "that", "these", "those", "one")
+# What install.sh places, plus the front door. Records (docs/decisions/,
+# docs/plans/, docs/specs/, CHANGELOG.md) keep what they said when written.
+HOOK_REACH_ROOTS = ("core", "agents", "protocols", "skills", "templates", "integrations")
+HOOK_REACH_FILES = ("DOCUMENTATION.md",)
+
+
+def _hook_reach_claim(line: str, following: str) -> str | None:
+    """The matched text when LINE says hooks as a class do not reach subagents.
+
+    The clause may wrap, so its object is looked for in the rest of LINE and in
+    FOLLOWING, the next line, up to the first clause-ending punctuation.
+    """
+    for m in HOOK_REACH_PHRASE.finditer(line):
+        qual = (m.group("qual") or "").lower()
+        if m.group("hook"):
+            if any(w in qual for w in HOOK_NAMED_QUALIFIERS):
+                continue
+            if m.group("hook").lower() == "hook" and qual not in HOOK_CLASS_QUALIFIERS:
+                continue
+        rest = line[m.end():] + " " + following.strip()
+        end = HOOK_REACH_CLAUSE_END.search(rest)
+        rest = rest[:end.start()] if end else rest
+        if qual in ("subagent", "sub-agent") or HOOK_REACH_OBJECT.search(rest):
+            return m.group(0).strip()
+    return None
+
+
+def check_hook_reach_phrases() -> None:
+    """No shipped or front-door file says hooks do not reach subagents.
+
+    Six method and reference files and the orchestrator charter said it, and
+    it was the stated reason the brief is "the only enforcement" across the
+    spawn boundary. The brief is still the only carrier of the discipline, but
+    for a narrower reason: no hook the seed installs carries it into a worker's
+    turn. Rewordings that followed ("do not cross the spawn boundary",
+    "subagent hooks do not fire", one in a shipped hook's docstring) widened the
+    pattern to the class of claim and the scan to integrations/; a claim
+    phrased outside that class still goes to review.
+    """
+    paths = [ROOT / f for f in HOOK_REACH_FILES]
+    paths += sorted((ROOT / "documentation").glob("*.md"))
+    for top in HOOK_REACH_ROOTS:
+        paths += sorted(p for p in (ROOT / top).rglob("*") if p.is_file()
+                        and p.suffix in (".md", ".py", ".sh", ".json", ".ts"))
+    for path in paths:
+        if not path.is_file():
+            continue
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        for n, line in enumerate(lines, 1):
+            claim = _hook_reach_claim(line, lines[n] if n < len(lines) else "")
+            if claim:
+                fail(f"{path.relative_to(ROOT).as_posix()}:{n}: says hooks do not "
+                     f"reach subagents ('{claim}'); tool hooks fire inside a "
+                     f"subagent. Say what the seed's hooks carry, and link "
+                     f"docs/graph/method/delegation.md")
+
+
 def check_hook_text_restates_no_kernel_rule() -> None:
     """Per-prompt text points at the kernel; it does not carry a copy of it.
 
@@ -2431,71 +2544,94 @@ def check_install_write_sites() -> None:
 
 
 def check_published_body_figures() -> None:
-    """The body-size claims in README derive from the same measurement the
-    ceilings do, or they are not printed.
+    """The body-size claims derive from the same measurement the ceilings do,
+    and they have one required home, BODY_FIGURE_HOME.
 
     U-15 was "README claimed `<500`-line bodies while three protocols sat
     between 658 and 931". The repair replaced `<500` with `1 384`, `median of
     166`, `1 000` and `2 500` — four numbers, all true on the day, and NONE of
     them derived. Appending sixty lines to `protocols/graft.md` left seed-lint
-    PASS with the README still saying 1 384; tightening MACHINERY_BODY_CEILING
+    PASS with the page still saying 1 384; tightening MACHINERY_BODY_CEILING
     to 900 left it still saying 1 000. That is U-15's own class — a reader-facing
     body-size number that nothing derives — reopened by its own fix.
 
-    `EAGER_EXEMPTIONS` gets the same treatment: README says the dict is "empty"
-    and the budget has "no slack", and re-adding an exemption with the
-    documented `--bless` signature left both sentences standing and the full
-    gate green.
-    """
-    readme = ROOT / "README.md"
-    if not readme.is_file():
-        return
-    text = readme.read_text(encoding="utf-8", errors="replace")
+    The figures used to live in README, and this check returned silently when
+    README was absent, so moving the text would have left the fact held by
+    nothing. SPEC-0004 (C5) moved them to BODY_FIGURE_HOME and made an absent
+    home, or a home missing any of the four, a finding.
 
-    sizes = []
-    for label, _fm, body in machinery_nodes():
-        sizes.append((len(body.strip("\n").splitlines()), label))
-    sizes.sort()
+    `EAGER_EXEMPTIONS` gets the same treatment: a page that says the dict is
+    "empty" or the budget has "no slack" fails when an exemption is re-added
+    with the documented `--bless` signature. The phrase rules read every
+    front-door file, not one page, so the sentence cannot move out of reach.
+    """
+    home = ROOT / BODY_FIGURE_HOME
+    if not home.is_file():
+        fail(f"{BODY_FIGURE_HOME} is missing, and it is the one home of the four "
+             f"body-size figures (SPEC-0004 BODY_FIGURE_HOME)")
+    else:
+        text = home.read_text(encoding="utf-8", errors="replace")
+        for value, what, largest_label in routable_body_figures():
+            if not any(form in text for form in grouped_forms(value)):
+                fail(f"{BODY_FIGURE_HOME} states no figure matching {what} ({value}). "
+                     f"These four numbers are the ones U-15 was about, and the fix that "
+                     f"replaced `<500` left them derived by nothing — correct the "
+                     f"claim in their one home (largest is {largest_label})")
+
+    for rel in fd_front_door_files():
+        page = ROOT / rel
+        if not page.is_file():
+            continue
+        text = page.read_text(encoding="utf-8", errors="replace")
+        empty_claim = any(p in text for p in EAGER_EMPTY_PHRASES)
+        if empty_claim and EAGER_EXEMPTIONS:
+            fail(f"{rel} says EAGER_EXEMPTIONS is 'consequently empty' and it "
+                 f"holds {sorted(EAGER_EXEMPTIONS)}. An exemption is a debt; the "
+                 f"page that says there is none has to fail when one is added")
+        if EAGER_NO_SLACK_PHRASE in text and EAGER_EXEMPTIONS:
+            fail(f"{rel} claims the EAGER_BUDGET ratchet has 'no slack' while "
+                 f"EAGER_EXEMPTIONS is non-empty")
+
+
+# The two phrases that claim EAGER_EXEMPTIONS holds nothing. One home, because
+# check_published_body_figures and SPEC-0004's BODY_FIGURES_HAVE_A_REQUIRED_HOME
+# both hold them in every front-door file.
+EAGER_EMPTY_PHRASES = ("consequently **empty**", "is consequently empty")
+EAGER_NO_SLACK_PHRASE = "no slack"
+
+
+def grouped_forms(n: int) -> tuple:
+    """Every spelling the prose actually uses. The page groups thousands
+    with a NARROW NO-BREAK SPACE (U+202F), and a check that only knew about
+    an ordinary space reported the figure missing while it was on screen."""
+    plain = f"{n:,}"
+    return (str(n), plain.replace(",", " "), plain.replace(",", "\u202f"),
+            plain.replace(",", "\u2009"), plain.replace(",", "\u00a0"))
+
+
+def routable_body_figures() -> list:
+    """The four body-size figures a reader is shown, as (value, what, largest
+    node): the largest and median routable body, measured here, and the two
+    ceilings that bound them. One computation for every page that prints them."""
+    sizes = sorted((len(body.strip("\n").splitlines()), label)
+                   for label, _fm, body in machinery_nodes())
     largest, largest_label = sizes[-1]
     mid = len(sizes) // 2
     median = (sizes[mid][0] if len(sizes) % 2
               else (sizes[mid - 1][0] + sizes[mid][0]) // 2)
-
-    def grouped(n: int) -> tuple:
-        """Every spelling the prose actually uses. The page groups thousands
-        with a NARROW NO-BREAK SPACE (U+202F), and a check that only knew about
-        an ordinary space reported the figure missing while it was on screen."""
-        plain = f"{n:,}"
-        return (str(n), plain.replace(",", " "), plain.replace(",", "\u202f"),
-                plain.replace(",", "\u2009"), plain.replace(",", "\u00a0"))
-
-    for value, what in ((largest, "the largest routable body"),
-                        (median, "the median routable body"),
-                        (MACHINERY_BODY_CEILING, "MACHINERY_BODY_CEILING"),
-                        (LIFECYCLE_BODY_CEILING, "LIFECYCLE_BODY_CEILING")):
-        if not any(form in text for form in grouped(value)):
-            fail(f"README.md states no figure matching {what} ({value}). These "
-                 f"four numbers are the ones U-15 was about, and the fix that "
-                 f"replaced `<500` left them derived by nothing — correct the "
-                 f"claim, or stop printing a number the gate does not hold "
-                 f"(largest is {largest_label})")
-
-    empty_claim = "consequently **empty**" in text or "is consequently empty" in text
-    if empty_claim and EAGER_EXEMPTIONS:
-        fail(f"README.md says EAGER_EXEMPTIONS is 'consequently empty' and it "
-             f"holds {sorted(EAGER_EXEMPTIONS)}. An exemption is a debt; the "
-             f"page that says there is none has to fail when one is added")
-    if "no slack" in text and EAGER_EXEMPTIONS:
-        fail("README.md claims the EAGER_BUDGET ratchet has 'no slack' while "
-             "EAGER_EXEMPTIONS is non-empty")
+    return [(largest, "the largest routable body", largest_label),
+            (median, "the median routable body", largest_label),
+            (MACHINERY_BODY_CEILING, "MACHINERY_BODY_CEILING", largest_label),
+            (LIFECYCLE_BODY_CEILING, "LIFECYCLE_BODY_CEILING", largest_label)]
 
 
 def check_ci_workflow() -> None:
-    """The CI that the README says runs this gate actually exists and runs it.
+    """The CI that the seed's own-gate row (DOCUMENTATION.md#enf-seed-gate) and
+    DOCUMENTATION §14 say runs this gate actually exists and runs it.
 
     U-25 was closed by adding `.github/workflows/gate.yml`, and nothing in the
-    gate asserted it: deleting the file left all 42 steps green while README
-    went on saying the seed runs its own gate in CI. A claim about a mechanism,
+    gate asserted it: deleting the file left all 42 steps green while the front
+    door went on saying the seed runs its own gate in CI. A claim about a mechanism,
     with the mechanism unpinned, is the shape this release spent eighteen slices
     on.
 
@@ -2505,9 +2641,9 @@ def check_ci_workflow() -> None:
     """
     wf = ROOT / ".github" / "workflows" / "gate.yml"
     if not wf.is_file():
-        fail(".github/workflows/gate.yml is missing — README says the seed runs "
-             "its own gate in CI, and nothing else in this suite would notice "
-             "its absence")
+        fail(".github/workflows/gate.yml is missing — the enf-seed-gate row "
+             "(DOCUMENTATION.md#enf-seed-gate) says the seed runs its own gate in "
+             "CI, and nothing else in this suite would notice its absence")
         return
     raw = wf.read_text(encoding="utf-8", errors="replace")
     # Comments stripped before the content checks: the file's own comment
@@ -2525,8 +2661,8 @@ def check_ci_workflow() -> None:
     for platform in ("ubuntu", "macos"):
         if platform not in raw:
             fail(f".github/workflows/gate.yml no longer names {platform}; the "
-                 f"README claims both platforms, and a claim about a matrix "
-                 f"needs the matrix")
+                 f"enf-seed-gate row (DOCUMENTATION.md#enf-seed-gate) and §14 claim "
+                 f"both platforms, and a claim about a matrix needs the matrix")
 
 
 def check_release_workflow() -> None:
@@ -2620,6 +2756,32 @@ def check_eager_surface(kernel_bytes: int) -> None:
     `applyTo: '**'`. Measured here from the seed sources the projections are
     taken from, so the number cannot drift from what install.sh places.
     """
+    surfaces = eager_surfaces(kernel_bytes)
+    # SPEC-0003 PRIME_EAGER_SURFACE_WITHIN_BUDGET: the prime-agent surface counts
+    # the whole overlay, so the `## Surfaced nodes` section is paid here on every
+    # Prime Agent session and held to EAGER_BUDGET like every other harness.
+    for harness, measured in sorted(surfaces.items()):
+        if harness in EAGER_EXEMPTIONS:
+            allowed, reason = EAGER_EXEMPTIONS[harness]
+            # A recorded exemption may shrink, never grow. This is the one
+            # direction that keeps enumerated debt honest.
+            if measured > allowed:
+                fail(f"eager surface [{harness}]: {measured} bytes exceeds its "
+                     f"RECORDED exemption of {allowed} ({reason}). An exemption "
+                     f"is a debt that may only shrink — do not raise it to fit "
+                     f"new text; reduce the surface or take it to the owner")
+            continue
+        if measured > EAGER_BUDGET:
+            fail(f"eager surface [{harness}]: {measured} bytes exceeds the "
+                 f"{EAGER_BUDGET}-byte budget — this is paid on every session "
+                 f"of every plant before any routing happens")
+    check_published_eager_figures(surfaces)
+
+
+def eager_surfaces(kernel_bytes: int) -> dict:
+    """What each harness loads on every session, in bytes, measured from the
+    seed sources the projections are taken from (check_eager_surface's
+    computation, and the one home of the figures every page publishes)."""
     agent_desc = sum(
         len(description_of(fm))
         for label, fm, _b in machinery_nodes() if label.startswith("agents/"))
@@ -2653,25 +2815,7 @@ def check_eager_surface(kernel_bytes: int) -> None:
         # like every other harness, plus the pointer boilerplate each file adds.
         "github-copilot": kernel_bytes + agent_desc + skill_desc + COPILOT_POINTER_OVERHEAD,
     }
-    # SPEC-0003 PRIME_EAGER_SURFACE_WITHIN_BUDGET: the prime-agent surface counts
-    # the whole overlay, so the `## Surfaced nodes` section is paid here on every
-    # Prime Agent session and held to EAGER_BUDGET like every other harness.
-    for harness, measured in sorted(surfaces.items()):
-        if harness in EAGER_EXEMPTIONS:
-            allowed, reason = EAGER_EXEMPTIONS[harness]
-            # A recorded exemption may shrink, never grow. This is the one
-            # direction that keeps enumerated debt honest.
-            if measured > allowed:
-                fail(f"eager surface [{harness}]: {measured} bytes exceeds its "
-                     f"RECORDED exemption of {allowed} ({reason}). An exemption "
-                     f"is a debt that may only shrink — do not raise it to fit "
-                     f"new text; reduce the surface or take it to the owner")
-            continue
-        if measured > EAGER_BUDGET:
-            fail(f"eager surface [{harness}]: {measured} bytes exceeds the "
-                 f"{EAGER_BUDGET}-byte budget — this is paid on every session "
-                 f"of every plant before any routing happens")
-    check_published_eager_figures(surfaces)
+    return surfaces
 
 
 def check_published_eager_figures(surfaces: dict) -> None:
@@ -2688,35 +2832,113 @@ def check_published_eager_figures(surfaces: dict) -> None:
 
     The published form is `NN NNN` (thin-space grouped) or `NNNNN`, so both are
     matched, and a figure that appears nowhere is not an error — this holds the
-    copies that exist, it does not require any.
+    copies that exist, it does not require any. It reads every front-door file
+    (SPEC-0004 C5), not only the EAGER_PUBLISHED pair, so a figure moved anywhere
+    in the front door stays held.
+
+    Being some live figure is not enough on a line that names one harness: the
+    figure must be that harness's own. README's Claude Code figure once carried
+    the Prime Agent number and passed, because any computed value did.
     """
-    published = ("README.md", "documentation/host-capability-matrix.md")
     live = set(surfaces.values()) | {EAGER_BUDGET}
-    # A five-digit figure in a byte context on these pages is a claim about the
-    # always-loaded surface, and must equal what the computation above produces.
-    # `was`/`before`/`historical`/`budget`/`ceiling`/`max` on the same line mark
-    # a figure that is deliberately NOT current — the 138 535 bytes Copilot used
-    # to pay, for instance — and those are left alone.
-    figure = re.compile(r"\b(\d{2}[  \u2009]?\d{3})\s*(?:B\b|bytes\b)")
-    historical = re.compile(r"\b(was|were|before|until|historical|budget|ceiling"
-                            r"|max|limit|previously)\b", re.I)
-    for rel in published:
+    for rel in fd_front_door_files():
         path = ROOT / rel
         if not path.is_file():
             continue
-        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
-            if historical.search(line):
-                continue
-            for m in figure.finditer(line):
-                value = int(re.sub(r"[  \u2009]", "", m.group(1)))
-                if value in live:
-                    continue
-                closest = min(live, key=lambda v: abs(v - value))
-                fail(f"{rel}: publishes {m.group(1)} bytes as an always-loaded "
-                     f"surface, and check_eager_surface computes no such figure "
-                     f"(nearest: {closest}). These numbers have one home and it "
-                     f"is not this page — correct it, mark it as historical, or "
-                     f"stop printing a figure nothing derives")
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for _n, m, value in stale_eager_figures(text, live):
+            closest = min(live, key=lambda v: abs(v - value))
+            fail(f"{rel}: publishes {m.group(1)} bytes as an always-loaded "
+                 f"surface, and check_eager_surface computes no such figure "
+                 f"(nearest: {closest}). These numbers have one home and it "
+                 f"is not this page — correct it, mark it as historical, or "
+                 f"stop printing a figure nothing derives")
+        for n, m, value, harness in misattributed_eager_figures(text, surfaces):
+            fail(f"{rel}:{n}: publishes {m.group(1)} bytes for {harness}, and "
+                 f"check_eager_surface computes {surfaces[harness]} for that "
+                 f"harness. A line that names one harness prints that harness's "
+                 f"figure")
+
+
+# The pages check_published_eager_figures held before SPEC-0004 widened it to
+# every front-door file. EAGER_FIGURES_CHECKED_WHEREVER_PUBLISHED never lets
+# FRONT_DOOR_PENDING hold a finding on these two.
+EAGER_PUBLISHED = ("README.md", "documentation/host-capability-matrix.md")
+# A five-digit figure in a byte context is a claim about the always-loaded
+# surface, and must equal what the computation produces. `was`/`before`/
+# `historical`/`budget`/`ceiling`/`max` on the same line mark a figure that is
+# deliberately NOT current — the 138 535 bytes Copilot used to pay, for
+# instance — and those are left alone.
+EAGER_FIGURE = re.compile(r"\b(\d{2}[  \u2009]?\d{3})\s*(?:B\b|bytes\b)")
+EAGER_HISTORICAL = re.compile(r"\b(was|were|before|until|historical|budget|ceiling"
+                              r"|max|limit|previously)\b", re.I)
+
+
+def stale_eager_figures(text: str, live: set) -> list:
+    """(line number, match, value) for each always-loaded byte figure in the
+    text that the computation does not produce, historical lines skipped."""
+    stale = []
+    for n, line in enumerate(text.splitlines(), 1):
+        if EAGER_HISTORICAL.search(line):
+            continue
+        for m in EAGER_FIGURE.finditer(line):
+            value = int(re.sub(r"[  \u2009]", "", m.group(1)))
+            if value not in live:
+                stale.append((n, m, value))
+    return stale
+
+
+# How a front-door line names each harness whose eager surface is computed.
+EAGER_HARNESS_NAMES = {"claude-code": "Claude Code", "opencode": "opencode",
+                       "codex": "Codex", "prime-agent": "Prime Agent",
+                       "github-copilot": "Copilot"}
+
+
+def misattributed_eager_figures(text: str, surfaces: dict) -> list:
+    """(line number, match, value, harness) for each always-loaded byte figure
+    on a line that names exactly one harness and differs from that harness's
+    computed surface, historical lines skipped. A line naming several harnesses,
+    such as a matrix header row, is left to stale_eager_figures."""
+    wrong = []
+    for n, line in enumerate(text.splitlines(), 1):
+        if EAGER_HISTORICAL.search(line):
+            continue
+        named = [h for h, name in EAGER_HARNESS_NAMES.items()
+                 if h in surfaces and re.search(rf"\b{re.escape(name)}\b", line, re.I)]
+        if len(named) != 1:
+            continue
+        for m in EAGER_FIGURE.finditer(line):
+            value = int(re.sub(r"[  \u2009]", "", m.group(1)))
+            if value != surfaces[named[0]]:
+                wrong.append((n, m, value, named[0]))
+    return wrong
+
+
+def check_agent_spawn_grants(agents: dict) -> None:
+    """The delegator invariant: can_delegate == (spawn tool in tools).
+
+    The grant is read by agent-lint's own `grants_spawn`, so the seed and every
+    plant hold one reading: `Agent` or its alias `Task`, bare or parenthesized.
+    This copy once matched the literal `Task` only, and read an omitted
+    `tools:` line as "no Task", while the host gives an agent without that line
+    every tool, the spawn tool included.
+    """
+    grants_spawn = load_tool("integrations/claude-code/agent-lint.py").grants_spawn
+    for a in agents.values():
+        fm, rel = a["fm"], a["path"].relative_to(ROOT).as_posix()
+        declares = str(fm.get("can_delegate", "false")).lower() == "true"
+        if "tools" not in fm:
+            fail(f"{rel}: omits its tools: line, so it inherits every tool, the "
+                 f"spawn tool included; list the tools it may use")
+        elif grants_spawn(fm["tools"]) != declares:
+            fail(f"{rel}: can_delegate={str(declares).lower()} but the spawn tool "
+                 f"(`Agent`, alias `Task`) {'is not' if declares else 'is'} in tools")
+        if declares:
+            if "max_spawn_depth" not in fm:
+                fail(f"{rel}: delegator without max_spawn_depth")
+            for target in fm.get("delegates_to", []):
+                if target not in agents:
+                    fail(f"{rel}: delegates_to unknown agent '{target}'")
 
 
 def check() -> None:
@@ -2731,21 +2953,9 @@ def check() -> None:
             continue
         agents[name] = {"path": p, "fm": fm}
 
-    delegators = set()
-    for name, a in agents.items():
-        fm = a["fm"]
-        tools = fm.get("tools", "")
-        has_task = "Task" in tools if isinstance(tools, str) else "Task" in tools
-        declares = str(fm.get("can_delegate", "false")).lower() == "true"
-        if has_task != declares:
-            fail(f"{a['path']}: can_delegate={declares} but Task-in-tools={has_task}")
-        if declares:
-            delegators.add(name)
-            if "max_spawn_depth" not in fm:
-                fail(f"{a['path']}: delegator without max_spawn_depth")
-            for target in fm.get("delegates_to", []):
-                if target not in agents:
-                    fail(f"{a['path']}: delegates_to unknown agent '{target}'")
+    check_agent_spawn_grants(agents)
+    delegators = {name for name, a in agents.items()
+                  if str(a["fm"].get("can_delegate", "false")).lower() == "true"}
 
     # -- manifest <-> disk ----------------------------------------------
     manifest = json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))
@@ -2831,6 +3041,7 @@ def check() -> None:
     check_canonical_router_blocks()
     check_canonical_plant_root_boundary()
     check_hook_text_restates_no_kernel_rule()
+    check_hook_reach_phrases()
     check_published_body_figures()
     check_ci_workflow()
     check_release_workflow()
@@ -3502,6 +3713,1693 @@ def check() -> None:
                 fail(f"{rel}: dangling corpus/template reference '{ref}'")
 
 
+# --- SPEC-0004: the front door ------------------------------------------------
+# README.md, DOCUMENTATION.md (its glossary and enforcement regions), the
+# references in documentation/, INSTALL.md and each integrations/*/README.md are
+# read by one parser and held by one check_fd_* per SPEC-0004 §4 contract. Every
+# finding goes through fd_fail, which reports it or, while its slug is in
+# FRONT_DOOR_PENDING, holds it for that slug's PENDING line; every check runs
+# inside fd_guard, so a check that raises is reported and fails the run instead
+# of taking the other checks down with it. The §6 data shapes below are the
+# spec's, restated only as far as code has to hold them.
+
+FD_LEDGER_SLUG = "PENDING_LEDGER_HOLDS_ONLY_FAILING_CONTRACTS"
+FD_README_HEADINGS = (
+    "## What CYPRESS is",
+    "## Who it is for and not for",
+    "## What installing does to your repository",
+    "## What it costs",
+    "## Try it",
+    "## How it works",
+    "## Why it is built this way",
+    "## What it does not do",
+    "## Where to go next",
+)
+FD_INSTALL_SECTION = FD_README_HEADINGS[2]
+FD_COST_SECTION = FD_README_HEADINGS[3]
+FD_TRY_SECTION = FD_README_HEADINGS[4]
+FD_LIMITS_SECTION = FD_README_HEADINGS[7]
+FD_WHERE_SECTION = FD_README_HEADINGS[8]
+FD_RETIRED_HEADING = "## What you get"
+FD_CAPS = (("FIRST_HEADING_MAX_LINE", "FIRST_HEADING_CAP"),
+           ("FIRST_SCREEN_MAX_LINES", "FIRST_SCREEN_CAP"),
+           ("FIRST_COMMAND_LINE", "FIRST_COMMAND_CAP"))
+FD_INSTALL_TARGETS = ("CLAUDE.md", "AGENTS.md", ".claude/", "docs/graph/", ".cypress/seed.json")
+FD_BACKUP_ROW = "enf-backup-before-replace"
+FD_SEED_SOURCE_PREFIXES = ("core/", "agents/", "skills/", "integrations/", "protocols/",
+                           "templates/", "tools/", "tests/")
+FD_WHERE_NEXT = ("DOCUMENTATION.md", "DOCUMENTATION.md#glossary", "DOCUMENTATION.md#enforcement",
+                 "documentation/agents-reference.md", "documentation/protocols-reference.md",
+                 "documentation/skills-and-templates-reference.md",
+                 "documentation/host-capability-matrix.md", "docs/decisions/index.md", "INSTALL.md")
+
+FD_GLOSSARY_HEADING = "## 15. Glossary"
+FD_ENFORCEMENT_HEADING = "## 17. What is enforced, and how"
+FD_FIELDS = ("Forms", "Here", "Field", "Implemented at", "Enforcement", "Divergence", "Why")
+FD_CLASS_ORDER = ("hard", "soft", "detective", "judgment", "not a control")  # strongest first
+FD_NOT_A_CONTROL = FD_CLASS_ORDER[-1]
+FD_DIVERGENCES = ("same", "narrower", "broader", "different", "no standard meaning")
+FD_WHY = re.compile(r"\bADR-\d{4}\b|\bSPEC-\d{4}\b|docs/plans/\S+|`[0-9a-f]{7,40}`"
+                    r"|\S+\.[a-z]{1,4}:\d+|kernel §\d+(\.\d+)?|^not recorded$")
+FD_REQUIRED_TERMS = {
+    "agent": "term-agent", "subagent": "term-subagent", "orchestrator": "term-orchestrator",
+    "workflow": "term-workflow", "skill": "term-skill", "tool": "term-tool", "hook": "term-hook",
+    "kernel": "term-kernel", "context window": "term-context-window",
+    "progressive disclosure": "term-progressive-disclosure",
+    "knowledge graph": "term-knowledge-graph", "node": "term-node", "router": "term-router",
+    "routing": "term-routing", "specification": "term-specification",
+    "test-first development": "term-test-first", "gate": "term-gate", "linter": "term-linter",
+    "harness": "term-harness", "seed": "term-seed", "plant": "term-plant", "growth": "term-growth",
+    "graft": "term-graft", "harvest": "term-harvest", "canonize": "term-canonize",
+    "tier": "term-tier", "protocol": "term-protocol", "corpus": "term-corpus",
+    "handback": "term-handback", "coordinator": "term-coordinator", "leaf": "term-leaf",
+    "specialist": "term-specialist", "expert": "term-expert", "steward": "term-steward",
+    "one home per fact": "term-one-home-per-fact", "turn": "term-turn",
+    "toolcraft": "term-toolcraft", "machinery": "term-machinery", "brief": "term-brief",
+    "reverse loop": "term-reverse-loop",
+}
+FD_REQUIRED_ROWS = (
+    "enf-kernel-load", "enf-kernel-budget", "enf-tool-allowlist", "enf-leaf-cannot-spawn",
+    "enf-delegation-frontmatter", "enf-route-hook", "enf-status-hook", "enf-pre-bash-guard",
+    "enf-injection-dedup", "enf-backup-before-replace", "enf-plant-files-kept",
+    "enf-install-preflight", "enf-install-stamp", "enf-registration-notice", "enf-graph-lint",
+    "enf-spec-lint", "enf-grill-lint", "enf-agent-lint", "enf-prose-lint",
+    "enf-agnosticism-lint", "enf-status-register", "enf-growth-audit", "enf-graft-audit",
+    "enf-tier-classification", "enf-protocol-order", "enf-spec-before-code",
+    "enf-test-before-code", "enf-verify-gates", "enf-canonize", "enf-attribution",
+    "enf-brief-block", "enf-charter-duties", "enf-lifecycle-gate-rows", "enf-steward-only",
+    "enf-seed-gate", "enf-ratchets",
+)
+# Row-specific residuals security named (§6): each What it can miss pattern with
+# the words a finding shows, and the class rule the row's Class cell meets.
+FD_PRE_BASH_HARD = "**hard** for a matched command on a host that fires the hook"
+FD_ROW_RESIDUALS = {
+    "enf-tool-allowlist": ([(r"\bBash\b", "Bash"), (r"role emulation", "role emulation"),
+                            (r"`?tools:`?", "an omitted `tools:` line")], "not-hard"),
+    "enf-leaf-cannot-spawn": ([(r"spawn[- ]tool", "another name for the spawn tool"),
+                               (r"role emulation", "role emulation"),
+                               (r"`?tools:`?", "an omitted `tools:` line")], "not-hard"),
+    "enf-pre-bash-guard": ([(r"fails? open", "fails open"),
+                            (r"(indirection|evasion|evade)", "indirection or evasion"),
+                            (r"\bhosts?\b", "hosts")], "not-hard-scoped"),
+    "enf-backup-before-replace": ([(r"`?\.cypress/seed\.json`?", ".cypress/seed.json")], None),
+    "enf-route-hook": ([], "not-a-control"),
+    "enf-status-hook": ([], "not-a-control"),
+}
+FD_MATRIX = "documentation/host-capability-matrix.md"
+FD_REFERENCE_OPENERS = (
+    ("documentation/agents-reference.md", r"^An agent is\b", "An agent is",
+     "../DOCUMENTATION.md#term-skill"),
+    ("documentation/skills-and-templates-reference.md", r"^A skill is\b", "A skill is",
+     "../DOCUMENTATION.md#term-skill"),
+    ("documentation/protocols-reference.md", r"^A protocol( node)? is\b", "A protocol is",
+     "../DOCUMENTATION.md#term-protocol"),
+)
+FD_MECHANISM_VERB = re.compile(
+    r"(?i)\b(enforc\w*|ensur\w*|prevent\w*|requir\w*|block\w*|guarantee\w*|gates?|gated"
+    r"|gating|refus\w*|reject\w*|forbid\w*|guard\w*|stops?|cannot|can't|never|hard"
+    r"|prove[ns]?|proven)\b")
+FD_STRONG_CLAIM = re.compile(
+    r"(?i)\b(hard|cannot|can't|guarantee\w*|ensur\w*|prevent\w*|block\w*|refus\w*|stops?)\b")
+FD_NEGATORS = frozenset({"not", "no", "nothing", "none", "never", "without"})
+FD_GUARD_MISNOMER = re.compile(r"(?i)\b(secur\w*|sandbox\w*|protect\w*)\b")
+FD_PRE_BASH_ROW = "enf-pre-bash-guard"
+FD_ADR_RANGE = re.compile(r"(?i)\badr-?\d{4}\s*(?:\.\.|–|—|to|through)\s*(?:adr-?)?\d{4}\b")
+_FD_NUM = r"\d{1,3}(?:[    ,]\d{3})+|\d+(?:\.\d+)?"
+FD_FIGURE = re.compile(rf"(?<![\w.])({_FD_NUM})(?:\s*(?:to|–|-)\s*({_FD_NUM}))?"
+                       r"\s*-?\s*(bytes?\b|B\b|KB\b|KiB\b|tokens?\b|%)")
+FD_LINE_FIGURE = re.compile(r"(?<![\w.])\d[\d    ,]*\s*-?\s*lines?\b")
+FD_MEASUR_WORD = re.compile(r"(?i)(?<!\bnot )(?<!\bnot yet )(?<!\bnever )"
+                            r"\bmeasur(?:ed|es|ing|ement|ements|e)?\b")
+FD_MEASURED_CLAIM = re.compile(r"(?i)measured (?:once|\d{4}-\d{2}-\d{2})")
+FD_SCOPE_MARKERS = ("per session", "per task", "per prompt", "per spawn", "one-time",
+                    "Claude Code", "Prime Agent", "opencode", "Codex", "GitHub Copilot",
+                    "budget", "ceiling")
+FD_LIMIT_WORDS = re.compile(r"(?i)\b(budget|ceiling|limit)\b")
+FD_UNMEASURED_PHRASES = ("not recorded", "not measured", "measured once")
+FD_LIMITS_SUBSECTIONS = ("### Requested, not enforced", "### Not yet measured")
+FD_LIMITS_REQUIRED_ROWS = ("enf-tier-classification", "enf-spec-before-code",
+                           "enf-test-before-code")
+FD_GENERIC_LINK_TEXTS = frozenset({"here", "this", "link", "click here", "this link",
+                                   "read more", "more"})
+FD_STOPWORDS = frozenset("""
+a an the and or of to in on for by with as at from is are was were be been it its
+this that these those which who whose not no but if then so than into per each
+every any one""".split())
+
+FD_FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
+FD_ATX = re.compile(r"^(#{1,6})(?:\s|$)")
+FD_LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+")
+FD_TABLE_SEP = re.compile(r"^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$")
+FD_ANCHOR_TAG = re.compile(r'<a id="([^"]*)"></a>')
+FD_CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)", re.S)
+FD_LINK = re.compile(r"(?<!!)\[([^\]]*)\]\(([^()\s]*)\)")
+FD_BOLD = re.compile(r"\*\*(.+?)\*\*")
+FD_FIELD_LINE = re.compile(r"^- \*\*([^*]+?):\*\*\s?(.*)$")
+FD_SENTENCE_END = re.compile(r"[.!?](?=\s+[A-Z\[`*(])")
+FD_NO_SPLIT_AFTER = ("e.g.", "i.e.", "etc.", "vs.")
+
+_fd_texts: dict = {}
+_fd_docs: dict = {}
+_fd_ran: list = []
+_fd_raised: set = set()
+_fd_observed: dict = {}
+_fd_held: dict = {}
+
+
+def fd_fail(slug: str, path: str, line: int, message: str, pendable: bool = True) -> None:
+    """The one reporting path for SPEC-0004. A finding is enforced unless its
+    slug is in FRONT_DOOR_PENDING, when it is held for that slug's PENDING line.
+    The ledger's own slug is never held, nor is a finding its contract says the
+    ledger may not hold (`pendable=False`).
+
+    The assertions are the fd_fail() sites inside the check_fd_* functions,
+    plus ten required-input findings raised from the fd_* helpers (fd_text,
+    fd_rows, fd_glossary, fd_section, fd_link_scopes) when an input the
+    contracts read is missing or unshaped. It appends to `findings` rather
+    than calling fail() because the coverage binder counts fail() sites
+    outside named checks as inline assertion debt, and a reporting path is not
+    an assertion. The binder does not count fd_fail() sites at all (grill
+    §12)."""
+    text = f"{path}:{line}: {message}"
+    _fd_observed.setdefault(slug, []).append(text)
+    if pendable and slug in FRONT_DOOR_PENDING and slug != FD_LEDGER_SLUG:
+        _fd_held.setdefault(slug, []).append(text)
+    else:
+        findings.append(f"front-door: {slug}: {text}")
+
+
+@contextlib.contextmanager
+def fd_guard(slug: str):
+    """Run one front-door check. An exception is reported as
+    `front-door: <SLUG>: RAISED <type>: <message>` and fails the run whether or
+    not the slug is pending, because a check that could not run observed
+    nothing; the ledger then counts the slug as neither stale nor failing."""
+    _fd_ran.append(slug)
+    _fd_observed.setdefault(slug, [])
+    try:
+        yield
+    except Exception as e:                       # noqa: BLE001 — reported, never swallowed
+        _fd_raised.add(slug)
+        findings.append(f"front-door: {slug}: RAISED {type(e).__name__}: {e}")
+
+
+def fd_text(slug: str, rel: str, what: str = "") -> str | None:
+    """A front-door input's text, or None after a line-0 finding under `slug`
+    naming why it could not be read. Absence and undecodable bytes are
+    findings, never a skip."""
+    if rel not in _fd_texts:
+        path = ROOT / rel
+        try:
+            _fd_texts[rel] = ("ok", path.read_bytes().decode("utf-8"))
+        except FileNotFoundError:
+            _fd_texts[rel] = ("missing", None)
+        except UnicodeDecodeError as e:
+            _fd_texts[rel] = ("utf8", f"{e.reason} at byte {e.start}")
+        except OSError as e:
+            _fd_texts[rel] = ("oserror", f"{type(e).__name__}: {e}")
+    state, value = _fd_texts[rel]
+    if state == "ok":
+        return value
+    if state == "missing":
+        fd_fail(slug, rel, 0, f"missing required input: {what or rel} does not exist")
+    elif state == "utf8":
+        fd_fail(slug, rel, 0, f"cannot be read as UTF-8 ({value}); an unreadable "
+                              f"input is a finding, never a skip")
+    else:
+        fd_fail(slug, rel, 0, f"cannot be read ({value})")
+    return None
+
+
+def fd_doc(slug: str, rel: str, what: str = ""):
+    """(lines, kinds) for a front-door file: kinds marks each line `body`,
+    `blank`, `fence`, `heading`, `comment` or `anchor` (SPEC-0004 §6 body
+    text). None after fd_text's finding."""
+    text = fd_text(slug, rel, what)
+    if text is None:
+        return None
+    if rel not in _fd_docs:
+        lines = text.splitlines()
+        kinds, fence, comment = [], None, False
+        for line in lines:
+            stripped = line.strip()
+            if fence:
+                kinds.append("fence")
+                m = FD_FENCE.match(line)
+                if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence) \
+                        and not m.group(2).strip():
+                    fence = None
+            elif FD_FENCE.match(line):
+                fence = FD_FENCE.match(line).group(1)
+                kinds.append("fence")
+            elif comment or stripped.startswith("<!--"):
+                kinds.append("comment")
+                comment = "-->" not in stripped
+            elif FD_ANCHOR_TAG.fullmatch(stripped):
+                kinds.append("anchor")
+            elif FD_ATX.match(line):
+                kinds.append("heading")
+            else:
+                kinds.append("body" if stripped else "blank")
+        _fd_docs[rel] = (lines, kinds)
+    return _fd_docs[rel]
+
+
+def fd_units(doc, lo: int = 0, hi: int | None = None) -> list:
+    """[(line, text)] of body text between line indexes lo and hi: a paragraph
+    runs over non-blank body lines; a list item and a table row each start
+    their own unit, and a table's delimiter row is none."""
+    lines, kinds = doc
+    hi = len(lines) if hi is None else hi
+    units, cur, cur_row = [], None, False
+    for i in range(lo, hi):
+        if kinds[i] != "body":
+            cur = None
+            continue
+        line = lines[i]
+        row = line.lstrip().startswith("|")
+        if row and FD_TABLE_SEP.match(line.strip()):
+            cur = None
+            continue
+        if cur is None or row or cur_row or FD_LIST_ITEM.match(line):
+            cur = [i + 1, [line]]
+            units.append(cur)
+        else:
+            cur[1].append(line)
+        cur_row = row
+    return [(n, "\n".join(ls)) for n, ls in units]
+
+
+def fd_code_spans(text: str) -> list:
+    return [(m.start(), m.end(), m.group(2)) for m in FD_CODE_SPAN.finditer(text)]
+
+
+def fd_links(text: str) -> list:
+    """[(text, target, start, end, text_start, text_end)] for every inline link
+    outside a code span. Reference-style links are not links here."""
+    spans = fd_code_spans(text)
+    out = []
+    for m in FD_LINK.finditer(text):
+        if any(a <= m.start() < b for a, b, _c in spans):
+            continue
+        out.append((m.group(1), m.group(2), m.start(), m.end(), m.start(1), m.end(1)))
+    return out
+
+
+def fd_mask(text: str) -> str:
+    """Code spans, link targets and anchor tags blanked, positions kept."""
+    chars = list(text)
+
+    def blank(a, b):
+        for k in range(a, b):
+            if chars[k] != "\n":
+                chars[k] = " "
+    for a, b, _c in fd_code_spans(text):
+        blank(a, b)
+    for _t, _g, _a, end, _ts, text_end in fd_links(text):
+        blank(text_end + 1, end)
+    for m in FD_ANCHOR_TAG.finditer(text):
+        blank(m.start(), m.end())
+    return "".join(chars)
+
+
+def fd_line_of(unit_line: int, text: str, pos: int) -> int:
+    return unit_line + text.count("\n", 0, pos)
+
+
+def fd_resolve(from_rel: str, target: str):
+    """(file relative to the seed root, fragment) a link target names, or None
+    for an external link. An empty path is the linking file itself."""
+    if re.match(r"^[a-z][a-z0-9+.-]*:", target, re.I):
+        return None
+    path, _, frag = target.partition("#")
+    if not path:
+        return from_rel, frag
+    base = pathlib.PurePosixPath(from_rel).parent
+    parts = []
+    for part in (base / path).parts:
+        if part == "..":
+            if parts and parts[-1] != "..":
+                parts.pop()
+            else:
+                parts.append(part)
+        elif part != ".":
+            parts.append(part)
+    return "/".join(parts), frag
+
+
+def fd_row_links(from_rel: str, text: str) -> list:
+    """The `enf-` row ids a unit links, in order."""
+    ids = []
+    for _t, target, *_r in fd_links(text):
+        hit = fd_resolve(from_rel, target)
+        if hit and hit[0] == "DOCUMENTATION.md" and hit[1].startswith("enf-"):
+            ids.append(hit[1])
+    return ids
+
+
+def fd_region(doc, heading: str):
+    """(first, end) line indexes of the region from `heading` to the next `##`."""
+    lines, kinds = doc
+    at = [i for i, line in enumerate(lines) if line.rstrip() == heading and kinds[i] == "heading"]
+    if not at:
+        return None
+    end = next((j for j in range(at[0] + 1, len(lines))
+                if kinds[j] == "heading" and lines[j].startswith("## ")), len(lines))
+    return at[0], end
+
+
+def fd_headings(doc) -> list:
+    """[(line, level, line text)] of ATX headings outside fenced blocks."""
+    lines, kinds = doc
+    return [(i + 1, len(FD_ATX.match(line).group(1)), line.rstrip())
+            for i, line in enumerate(lines) if kinds[i] == "heading"]
+
+
+def fd_anchors(doc) -> dict:
+    """{id: [lines]} of the explicit anchors outside fenced blocks."""
+    lines, kinds = doc
+    out: dict = {}
+    for i, line in enumerate(lines):
+        if kinds[i] != "fence":
+            for m in FD_ANCHOR_TAG.finditer(line):
+                out.setdefault(m.group(1), []).append(i + 1)
+    return out
+
+
+def fd_cells(line: str) -> list:
+    s = line.strip()
+    s = s[1:] if s.startswith("|") else s
+    s = s[:-1] if s.endswith("|") and not s.endswith("\\|") else s
+    return [c.strip() for c in re.split(r"(?<!\\)\|", s)]
+
+
+def fd_tables(doc, lo: int = 0, hi: int | None = None) -> list:
+    """[(header line, header cells, [(line, cells)])] per table: consecutive
+    lines beginning `|` whose second line is a delimiter row."""
+    lines, kinds = doc
+    hi = len(lines) if hi is None else hi
+    tables, i = [], lo
+    while i < hi:
+        if kinds[i] == "body" and lines[i].lstrip().startswith("|"):
+            j = i
+            while j < hi and kinds[j] == "body" and lines[j].lstrip().startswith("|"):
+                j += 1
+            if j - i >= 2 and FD_TABLE_SEP.match(lines[i + 1].strip()):
+                tables.append((i + 1, fd_cells(lines[i]),
+                               [(k + 1, fd_cells(lines[k])) for k in range(i + 2, j)]))
+            i = j
+        else:
+            i += 1
+    return tables
+
+
+def fd_bold(text: str) -> list:
+    return [b.strip() for b in FD_BOLD.findall(text)]
+
+
+def fd_weakest(classes) -> str | None:
+    ranked = [c for c in classes if c in FD_CLASS_ORDER]
+    return max(ranked, key=FD_CLASS_ORDER.index) if ranked else None
+
+
+def fd_strip_markup(text: str) -> str:
+    return re.sub(r"[*_`]", "", text).strip()
+
+
+def fd_path_like(token: str) -> bool:
+    bare = re.sub(r":\d+(?:-\d+)?$", "", token)
+    return "/" in bare or bare.endswith((".md", ".py", ".sh", ".json", ".ts", ".tsv",
+                                         ".yml", ".toml"))
+
+
+def fd_seed_path_problem(token: str) -> str | None:
+    """Why a seed path does not resolve under the seed root (§6 seed-path
+    rule), or None: `<...>` reads as `*`, one level of `{a,b}` is expanded,
+    and a `:N` or `:N-M` suffix must lie within the file."""
+    m = re.match(r"^(.*?)(?::(\d+)(?:-(\d+))?)?$", token)
+    path, lo, hi = m.group(1), m.group(2), m.group(3)
+    pattern = re.sub(r"<[^>]*>", "*", path).strip("/") or "."
+    brace = re.search(r"\{([^{}]*)\}", pattern)
+    expansions = ([pattern[:brace.start()] + alt + pattern[brace.end():]
+                   for alt in brace.group(1).split(",")] if brace else [pattern])
+    for exp in expansions:
+        hits = sorted(ROOT.glob(exp)) if any(c in exp for c in "*?[") else (
+            [ROOT / exp] if (ROOT / exp).exists() else [])
+        if not hits:
+            return f"`{token}` does not resolve under the seed root"
+        if lo is not None:
+            if not hits[0].is_file():
+                return f"`{token}` names lines of something that is not a file"
+            count = len(hits[0].read_text(encoding="utf-8", errors="replace").splitlines())
+            n, top = int(lo), int(hi or lo)
+            if not (n <= top <= count):
+                return f"`{token}` names lines outside the file ({count} lines)"
+    return None
+
+
+def fd_install_literal_problem(token: str, install: str) -> str | None:
+    """Why a target path is not the installer's (§6 install-literal rule)."""
+    prefix = re.split(r"[<*{]", token, maxsplit=1)[0]
+    prefix = prefix[2:] if prefix.startswith("./") else prefix
+    if len(prefix) < 4:
+        return f"`{token}` has a literal prefix shorter than 4 characters"
+    if prefix not in install:
+        return f"`{token}` does not occur in install.sh"
+    return None
+
+
+def fd_sentences(text: str) -> list:
+    """[(start, sentence)] split at [.!?] + whitespace + [A-Z [ ` * (]."""
+    out, start = [], 0
+    for m in FD_SENTENCE_END.finditer(text):
+        if text[:m.end()].endswith(FD_NO_SPLIT_AFTER):
+            continue
+        out.append((start, text[start:m.end()].strip()))
+        start = m.end()
+    tail = text[start:].strip()
+    if tail:
+        out.append((start, tail))
+    return out
+
+
+def fd_front_door_files() -> list:
+    """SPEC-0004 §2: README.md, DOCUMENTATION.md, documentation/*.md,
+    INSTALL.md and integrations/*/README.md."""
+    rels = ["README.md", "DOCUMENTATION.md"]
+    rels += sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "documentation").glob("*.md"))
+    rels += ["INSTALL.md"]
+    rels += sorted(p.relative_to(ROOT).as_posix()
+                   for p in (ROOT / "integrations").glob("*/README.md"))
+    return rels
+
+
+def fd_section(slug: str, doc, heading: str):
+    """A README section's (first, end) line indexes, or None after a line-0
+    finding naming the heading."""
+    region = fd_region(doc, heading)
+    if region is None:
+        fd_fail(slug, "README.md", 0, f"missing required input: no section `{heading}`")
+    return region
+
+
+def fd_glossary(slug: str):
+    """(DOCUMENTATION doc, region, entries) with a line-0 finding when the
+    region is missing or parses to no entries; None when DOCUMENTATION.md
+    cannot be read. Each entry is a dict: head, line, anchor (id, line) or
+    None, fields [(label, value, line)], and the derived id, forms, field()."""
+    doc = fd_doc(slug, "DOCUMENTATION.md")
+    if doc is None:
+        return None
+    lines, kinds = doc
+    region = fd_region(doc, FD_GLOSSARY_HEADING)
+    if region is None:
+        fd_fail(slug, "DOCUMENTATION.md", 0,
+                f"missing required input: no glossary region `{FD_GLOSSARY_HEADING}`")
+        return doc, None, []
+    entries, cur, field = [], None, None
+    for i in range(region[0] + 1, region[1]):
+        line = lines[i]
+        if kinds[i] == "heading" and line.startswith("### "):
+            cur = {"head": line[4:].strip(), "line": i + 1, "anchor": None,
+                   "anchor_next": False, "fields": []}
+            entries.append(cur)
+            field = None
+            continue
+        if cur is None or kinds[i] == "fence":
+            continue
+        m = FD_ANCHOR_TAG.fullmatch(line.strip())
+        if m and cur["anchor"] is None and not cur["fields"]:
+            cur["anchor"] = (m.group(1), i + 1)
+            cur["anchor_next"] = i == cur["line"]
+            continue
+        m = FD_FIELD_LINE.match(line)
+        if m:
+            field = [m.group(1).strip(), m.group(2).strip(), i + 1]
+            cur["fields"].append(field)
+        elif field is not None and line[:1] in (" ", "\t") and line.strip():
+            field[1] = (field[1] + " " + line.strip()).strip()   # an indented continuation
+        elif line.strip():
+            field = None
+    for e in entries:
+        e["id"] = e["anchor"][0] if e["anchor"] else None
+        values = {}
+        for label, value, n in e["fields"]:
+            values.setdefault(label, (value, n))
+        e["values"] = values
+        forms = values.get("Forms", ("", 0))[0]
+        e["forms"] = [f.strip() for f in forms.split(",") if f.strip()]
+    if not entries:
+        fd_fail(slug, "DOCUMENTATION.md", 0,
+                "missing required input: the glossary region parses to no entries "
+                "(`### <headword>` with its seven labelled fields)")
+    return doc, region, entries
+
+
+def fd_field(entry: dict, label: str):
+    return entry["values"].get(label, ("", entry["line"]))
+
+
+def fd_rows(slug: str, required: bool = True):
+    """(DOCUMENTATION doc, region, {id: row}, [rows]) for the enforcement
+    region, with line-0 findings for a missing region, table or body row when
+    the region is one of the check's required inputs; None when
+    DOCUMENTATION.md cannot be read. A row is (line, cells, id)."""
+    doc = fd_doc(slug, "DOCUMENTATION.md")
+    if doc is None:
+        return None
+    region = fd_region(doc, FD_ENFORCEMENT_HEADING)
+    if region is None:
+        if required:
+            fd_fail(slug, "DOCUMENTATION.md", 0, f"missing required input: no enforcement "
+                                                 f"region `{FD_ENFORCEMENT_HEADING}`")
+        return doc, None, {}, []
+    tables = fd_tables(doc, region[0] + 1, region[1])
+    if not tables:
+        if required:
+            fd_fail(slug, "DOCUMENTATION.md", region[0] + 1,
+                    "missing required input: the enforcement region holds no table")
+        return doc, region, {}, []
+    rows = []
+    for n, cells in tables[0][2]:
+        m = FD_ANCHOR_TAG.match(cells[0]) if cells else None
+        rid = m.group(1) if m and m.group(1).startswith("enf-") else None
+        rows.append((n, cells, rid))
+    if not rows and required:
+        fd_fail(slug, "DOCUMENTATION.md", tables[0][0],
+                "missing required input: the enforcement table has no body row")
+    return doc, region, {r[2]: r for r in rows if r[2]}, rows
+
+
+def fd_row_class(row) -> list:
+    return fd_bold(row[1][2]) if len(row[1]) > 2 else []
+
+
+def fd_term_matcher(entries: list):
+    """(regex, {form: entry}) matching every entry's forms, longest first, so
+    at one position the longest form wins and a nested form is no occurrence."""
+    by_form = {}
+    for e in entries:
+        for f in e["forms"]:
+            by_form.setdefault(re.sub(r"\s+", " ", f.lower()), e)
+    if not by_form:
+        return None, by_form
+    alts = sorted(by_form, key=len, reverse=True)
+    rx = re.compile(r"(?<![A-Za-z0-9_-])(?:"
+                    + "|".join(re.escape(f).replace(r"\ ", r"\s+") for f in alts)
+                    + r")(?![A-Za-z0-9_-])", re.I)
+    return rx, by_form
+
+
+def fd_occurrences(rx, by_form: dict, masked: str) -> list:
+    """[(start, end, entry)] of term occurrences in masked text."""
+    if rx is None:
+        return []
+    return [(m.start(), m.end(), by_form[re.sub(r"\s+", " ", m.group(0).lower())])
+            for m in rx.finditer(masked)]
+
+
+def fd_linked_to(text: str, pos: int, from_rel: str):
+    """The resolved (file, fragment) of the link whose text holds `pos`."""
+    for _t, target, _s, _e, ts, te in fd_links(text):
+        if ts <= pos < te:
+            return fd_resolve(from_rel, target) or ("", "")
+    return None
+
+
+def fd_content_tokens(text: str) -> list:
+    text = FD_LINK.sub(lambda m: m.group(1), text)
+    text = FD_CODE_SPAN.sub(lambda m: m.group(2), text)
+    text = re.sub(r"[*_`]", "", text).lower()
+    return [t for t in re.findall(r"[a-z0-9]+", text) if t not in FD_STOPWORDS]
+
+
+def fd_overlap(definition: list, candidate: list) -> float:
+    """Containment of a definition's shingles in a candidate (§6 metric)."""
+    if len(definition) < DEFINITION_MIN_TOKENS:
+        n = len(definition)
+        return 1.0 if n and any(candidate[k:k + n] == definition
+                                for k in range(len(candidate) - n + 1)) else 0.0
+    k = DEFINITION_SHINGLE
+    dset = {tuple(definition[i:i + k]) for i in range(len(definition) - k + 1)}
+    cset = {tuple(candidate[i:i + k]) for i in range(len(candidate) - k + 1)}
+    return len(dset & cset) / len(dset)
+
+
+def fd_assignment_line(name: str) -> int:
+    """The line of `name`'s top-level assignment in this file."""
+    src = Path(__file__).read_text(encoding="utf-8")
+    m = re.search(rf"(?m)^{name}\s*(?::[^=\n]+)?=", src)
+    return src.count("\n", 0, m.start()) + 1 if m else 0
+
+
+def fd_version(text: str):
+    return tuple(int(p) for p in text.split("."))
+
+
+def fd_negated(masked: str, pos: int) -> bool:
+    """A strong-claim word with a negator among the three words before it."""
+    before = re.findall(r"[A-Za-z']+", masked[:pos])[-3:]
+    return any(w.lower() in FD_NEGATORS or w.lower().endswith("n't") for w in before)
+
+
+def check_fd_first_screen_order() -> None:
+    """SPEC-0004 FIRST_SCREEN_ORDER: the first screen answers what, for whom,
+    what it writes, what it costs and how to try it, in that order and within
+    its line budgets, and those budgets stay under the spec's caps."""
+    slug = "FIRST_SCREEN_ORDER"
+    spec = fd_text(slug, FRONT_DOOR_SPEC)
+    if spec is not None:
+        for const, cap_name in FD_CAPS:
+            caps = re.findall(rf"(?m)^\| `{cap_name}` \| (\d+) \|", spec)
+            if len(caps) != 1:
+                fd_fail(slug, FRONT_DOOR_SPEC, 0,
+                        f"missing required input: the §6 constants table has "
+                        f"{len(caps)} rows for {cap_name}, not one")
+                continue
+            value, cap = globals()[const], int(caps[0])
+            if value > cap:
+                fd_fail(slug, "tests/seed-lint.py", fd_assignment_line(const),
+                        f"{const} {value} exceeds {cap_name} {cap}; a ratchet raised "
+                        f"with its lock is refused until the spec's cap changes first")
+    doc = fd_doc(slug, "README.md")
+    if doc is None:
+        return
+    lines, kinds = doc
+    level2 = [(n, text) for n, level, text in fd_headings(doc) if level == 2]
+    if not level2:
+        fd_fail(slug, "README.md", 0, "missing required input: README has no `##` heading")
+    first = FD_README_HEADINGS[:5]
+    for k, (n, text) in enumerate(level2[:5]):
+        if text == first[k]:
+            continue
+        if text in first:
+            fd_fail(slug, "README.md", n, f"`{text}` is out of order: position {k + 1} "
+                                          f"of the first screen is `{first[k]}`")
+        else:
+            fd_fail(slug, "README.md", n, f"`{text}` sits among the first-screen headings; "
+                                          f"position {k + 1} is `{first[k]}`")
+    for k in range(len(level2), 5):
+        fd_fail(slug, "README.md", 0, f"the first screen lacks `{first[k]}`")
+    if level2 and level2[0][0] > FIRST_HEADING_MAX_LINE:
+        fd_fail(slug, "README.md", level2[0][0],
+                f"the first `##` heading sits on line {level2[0][0]}, past "
+                f"FIRST_HEADING_MAX_LINE {FIRST_HEADING_MAX_LINE}")
+    markers = [i + 1 for i, line in enumerate(lines) if line == FIRST_SCREEN_MARKER]
+    if not markers:
+        fd_fail(slug, "README.md", 0, f"no `{FIRST_SCREEN_MARKER}` line ends the first screen")
+    for extra in markers[1:]:
+        fd_fail(slug, "README.md", extra, f"a second `{FIRST_SCREEN_MARKER}` line; "
+                                          f"exactly one ends the first screen")
+    if markers:
+        mark = markers[0]
+        fifth = level2[4][0] if len(level2) >= 5 else None
+        if fifth is None or mark < fifth or any(fifth < n < mark for n, _t in level2):
+            fd_fail(slug, "README.md", mark, f"`{FIRST_SCREEN_MARKER}` must sit after the "
+                                             f"fifth `##` heading and before the next one")
+        if mark > FIRST_SCREEN_MAX_LINES:
+            fd_fail(slug, "README.md", mark, f"`{FIRST_SCREEN_MARKER}` sits on line {mark}, "
+                                             f"past FIRST_SCREEN_MAX_LINES {FIRST_SCREEN_MAX_LINES}")
+        later = [(n, t) for n, t in level2 if n > mark]
+        firsts = []
+        for heading in FD_README_HEADINGS[5:]:
+            at = [n for n, t in later if t == heading]
+            if not at:
+                fd_fail(slug, "README.md", 0, f"`{heading}` is missing after the first screen")
+                continue
+            for dup in at[1:]:
+                fd_fail(slug, "README.md", dup, f"`{heading}` appears {len(at)} times; "
+                                                f"exactly once after the first screen")
+            firsts.append((at[0], heading))
+        for (n_a, h_a), (n_b, h_b) in zip(firsts, firsts[1:]):
+            if n_b < n_a:
+                fd_fail(slug, "README.md", n_b, f"`{h_b}` is out of order: it must follow `{h_a}`")
+    fence, inside = None, False
+    for i, line in enumerate(lines):
+        opener = FD_FENCE.match(line) if kinds[i] == "fence" else None
+        if kinds[i] != "fence":
+            inside = False
+        elif not inside:
+            inside = True
+            if opener and opener.group(2).strip() == "sh":
+                fence = i
+                break
+        elif opener and not opener.group(2).strip():
+            inside = False
+    if fence is None:
+        fd_fail(slug, "README.md", 0, f"no fenced `sh` block opens under `{FD_TRY_SECTION}`")
+    else:
+        under = next((t for n, t in reversed(level2) if n < fence + 1), None)
+        if under != FD_TRY_SECTION:
+            fd_fail(slug, "README.md", fence + 1, f"the first fenced `sh` block opens under "
+                                                  f"`{under}`, not `{FD_TRY_SECTION}`")
+        cmd = next((j for j in range(fence + 1, len(lines))
+                    if kinds[j] == "fence" and "install.sh" in lines[j]), None)
+        if cmd is None:
+            fd_fail(slug, "README.md", fence + 1, "the first fenced `sh` block runs no install.sh")
+        elif cmd + 1 > FIRST_COMMAND_LINE:
+            fd_fail(slug, "README.md", cmd + 1, f"the first install.sh command sits on line "
+                                                f"{cmd + 1}, past FIRST_COMMAND_LINE {FIRST_COMMAND_LINE}")
+    for n, _l, text in fd_headings(doc):
+        if text == FD_RETIRED_HEADING:
+            fd_fail(slug, "README.md", n, f"`{FD_RETIRED_HEADING}` is a retired heading")
+
+
+def check_fd_install_section_names_target_paths() -> None:
+    """SPEC-0004 INSTALL_SECTION_NAMES_TARGET_PATHS: the install section names
+    what lands in a project, by the installer's own paths, and never the
+    seed's source tree."""
+    slug = "INSTALL_SECTION_NAMES_TARGET_PATHS"
+    install = fd_text(slug, "install.sh")
+    doc = fd_doc(slug, "README.md")
+    if doc is None:
+        return
+    region = fd_section(slug, doc, FD_INSTALL_SECTION)
+    if region is None:
+        return
+    units = fd_units(doc, region[0] + 1, region[1])
+    tokens = [(fd_line_of(n, t, a), c.strip()) for n, t in units for a, _b, c in fd_code_spans(t)]
+    names = {c for _n, c in tokens}
+    for target in FD_INSTALL_TARGETS:
+        if target not in names:
+            fd_fail(slug, "README.md", region[0] + 1, f"does not name the target `{target}`")
+    for n, token in tokens:
+        if token.startswith(FD_SEED_SOURCE_PREFIXES):
+            prefix = next(p for p in FD_SEED_SOURCE_PREFIXES if token.startswith(p))
+            fd_fail(slug, "README.md", n, f"`{token}` is a seed-source path ({prefix}); "
+                                          f"the section names what lands in a project")
+        elif install is not None and token != "install.sh" and fd_path_like(token):
+            problem = fd_install_literal_problem(token, install)
+            if problem:
+                fd_fail(slug, "README.md", n, problem)
+    if not any(".cypress/seed.json" in t and any(
+            (fd_resolve("README.md", g) or ("", ""))[0] == "DOCUMENTATION.md"
+            and (fd_resolve("README.md", g) or ("", ""))[1] == FD_BACKUP_ROW
+            for _x, g, *_r in fd_links(t)) for _n, t in units):
+        fd_fail(slug, "README.md", region[0] + 1,
+                f"no unit names `.cypress/seed.json` and links "
+                f"`DOCUMENTATION.md#{FD_BACKUP_ROW}`")
+
+
+def check_fd_where_next_links_the_references() -> None:
+    """SPEC-0004 WHERE_NEXT_LINKS_THE_REFERENCES: the closing section links
+    every reference a reader continues to, and every link resolves."""
+    slug = "WHERE_NEXT_LINKS_THE_REFERENCES"
+    doc = fd_doc(slug, "README.md")
+    if doc is None:
+        return
+    region = fd_section(slug, doc, FD_WHERE_SECTION)
+    if region is None:
+        return
+    seen = set()
+    for n, text in fd_units(doc, region[0] + 1, region[1]):
+        for _t, target, start, *_r in fd_links(text):
+            seen.add(target)
+            line = fd_line_of(n, text, start)
+            hit = fd_resolve("README.md", target)
+            if hit is None:
+                continue
+            path, frag = hit
+            if not (ROOT / path).exists():
+                fd_fail(slug, "README.md", line, f"`{target}` does not resolve under the seed root")
+            elif frag:
+                target_doc = fd_doc(slug, path)
+                if target_doc is not None and len(fd_anchors(target_doc).get(frag, [])) != 1:
+                    fd_fail(slug, "README.md", line,
+                            f"`{target}`: #{frag} names no single explicit anchor in {path}")
+    for target in FD_WHERE_NEXT:
+        if target not in seen:
+            fd_fail(slug, "README.md", region[0] + 1, f"no link to `{target}`")
+
+
+def check_fd_glossary_entry_complete() -> None:
+    """SPEC-0004 GLOSSARY_ENTRY_COMPLETE: every entry carries its anchor and
+    its seven fields in order, with closed-set values, and every required
+    headword has one."""
+    slug = "GLOSSARY_ENTRY_COMPLETE"
+    parsed = fd_glossary(slug)
+    if parsed is None or parsed[1] is None or not parsed[2]:
+        return
+    _doc, _region, entries = parsed
+    for e in entries:
+        head, hl = e["head"], e["line"]
+        if e["anchor"] is None:
+            fd_fail(slug, "DOCUMENTATION.md", hl, f"`### {head}` has no `term-` anchor")
+        elif not e["anchor_next"]:
+            fd_fail(slug, "DOCUMENTATION.md", hl, f"anchor `{e['id']}` must sit on the line "
+                                                  f"after `### {head}`")
+        if e["id"] is not None and not re.fullmatch(r"term-[a-z0-9]+(-[a-z0-9]+)*", e["id"]):
+            fd_fail(slug, "DOCUMENTATION.md", hl, f"anchor `{e['id']}` is not a `term-` id")
+        labels = [f[0] for f in e["fields"]]
+        for label in FD_FIELDS:
+            count = labels.count(label)
+            if count != 1:
+                fd_fail(slug, "DOCUMENTATION.md", hl,
+                        f"`{head}` has {count} {label} fields; exactly one is required")
+        known = [lab for lab in labels if lab in FD_FIELDS]
+        if known != [lab for lab in FD_FIELDS if lab in known] or \
+                any(lab not in FD_FIELDS for lab in labels):
+            fd_fail(slug, "DOCUMENTATION.md", hl, f"`{head}` fields are out of order or "
+                                                  f"unknown: {labels}; the order is {list(FD_FIELDS)}")
+        for label, value, n in e["fields"]:
+            if not value:
+                fd_fail(slug, "DOCUMENTATION.md", n, f"`{head}` {label} is empty")
+        if e["forms"] and head.lower() not in [f.lower() for f in e["forms"]]:
+            fd_fail(slug, "DOCUMENTATION.md", hl, f"`{head}` Forms does not include the headword")
+        enf, en = fd_field(e, "Enforcement")
+        classes = fd_bold(enf)
+        if "Enforcement" in e["values"] and not classes:
+            fd_fail(slug, "DOCUMENTATION.md", en, f"`{head}` Enforcement carries no bolded class")
+        for c in classes:
+            if c not in FD_CLASS_ORDER:
+                fd_fail(slug, "DOCUMENTATION.md", en,
+                        f"`{head}` Enforcement value **{c}** is not in the class set")
+        div, dn = fd_field(e, "Divergence")
+        values = fd_bold(div)
+        if "Divergence" in e["values"] and not values:
+            fd_fail(slug, "DOCUMENTATION.md", dn, f"`{head}` Divergence carries no bolded value")
+        for v in values:
+            if v not in FD_DIVERGENCES:
+                fd_fail(slug, "DOCUMENTATION.md", dn,
+                        f"`{head}` Divergence value **{v}** is not in the divergence set")
+        field, fn = fd_field(e, "Field")
+        if "Field" in e["values"]:
+            statuses = re.findall(r"status: (verified|secondhand|not recorded)", field)
+            if "no standard meaning" not in field and not statuses:
+                fd_fail(slug, "DOCUMENTATION.md", fn,
+                        f"`{head}` Field says neither `no standard meaning` nor a status")
+            if "verified" in statuses and not (re.search(r"https://\S+", field)
+                                              and re.search(r"\b\d{4}-\d{2}-\d{2}\b", field)):
+                fd_fail(slug, "DOCUMENTATION.md", fn, f"`{head}` Field says status: verified "
+                                                      f"without an https:// URL and a date")
+        why, wn = fd_field(e, "Why")
+        if "Why" in e["values"] and not FD_WHY.search(why.strip()):
+            fd_fail(slug, "DOCUMENTATION.md", wn,
+                    f"`{head}` Why names no ADR, spec, plan, commit, path:line or `not recorded`")
+    by_head = {e["head"]: e for e in entries}
+    for head, rid in FD_REQUIRED_TERMS.items():
+        if head not in by_head:
+            fd_fail(slug, "DOCUMENTATION.md", 0, f"no entry for required headword '{head}'")
+        elif by_head[head]["id"] not in (None, rid):
+            fd_fail(slug, "DOCUMENTATION.md", by_head[head]["line"],
+                    f"required headword '{head}' must carry anchor `{rid}`")
+
+
+def check_fd_glossary_paths_exist() -> None:
+    """SPEC-0004 GLOSSARY_PATHS_EXIST: every Implemented at path resolves in
+    the seed, and every install target and function is the installer's."""
+    slug = "GLOSSARY_PATHS_EXIST"
+    parsed = fd_glossary(slug)
+    install = fd_text(slug, "install.sh")
+    if parsed is None or not parsed[2]:
+        return
+    functions = set(re.findall(r"(?m)^([a-z_][a-z0-9_]*)\(\)", install or ""))
+    for e in parsed[2]:
+        value, n = fd_field(e, "Implemented at")
+        if "Implemented at" not in e["values"]:
+            continue
+        masked = fd_mask(value)
+        clause = masked.find("An install produces")
+        clause_end = len(value)
+        if clause >= 0:
+            end = re.search(r"[.!?](?=\s+[A-Z\[`*(]|\s*$)", masked[clause:])
+            clause_end = clause + end.end() if end else len(value)
+        spans = fd_code_spans(value)
+        if not any(fd_path_like(c.strip()) for _a, _b, c in spans) and \
+                not value.startswith("n/a"):
+            fd_fail(slug, "DOCUMENTATION.md", n,
+                    f"`{e['head']}` Implemented at names no path and does not begin `n/a`")
+        for a, _b, code in spans:
+            token = code.strip()
+            inside = clause >= 0 and clause <= a < clause_end
+            if inside and fd_path_like(token):
+                if install is not None:
+                    problem = fd_install_literal_problem(token, install)
+                    if problem:
+                        fd_fail(slug, "DOCUMENTATION.md", n, f"`{e['head']}`: {problem}")
+            elif inside and re.fullmatch(r"[a-z_][a-z0-9_]*", token):
+                if install is not None and token not in functions:
+                    fd_fail(slug, "DOCUMENTATION.md", n,
+                            f"`{e['head']}`: `{token}` is not a function install.sh defines")
+            elif not inside and fd_path_like(token):
+                problem = fd_seed_path_problem(token)
+                if problem:
+                    fd_fail(slug, "DOCUMENTATION.md", n, f"`{e['head']}`: {problem}")
+
+
+def check_fd_no_unlinked_project_term_in_definition() -> None:
+    """SPEC-0004 NO_UNLINKED_PROJECT_TERM_IN_DEFINITION: a definition that
+    uses another coined term links that term's entry at its first use."""
+    slug = "NO_UNLINKED_PROJECT_TERM_IN_DEFINITION"
+    parsed = fd_glossary(slug)
+    if parsed is None or not parsed[2]:
+        return
+    entries = parsed[2]
+    project = [e for e in entries if "**no standard meaning**" in fd_field(e, "Divergence")[0]]
+    if not project:
+        fd_fail(slug, "DOCUMENTATION.md", 0,
+                "missing required input: no entry's Divergence is **no standard meaning**")
+        return
+    rx, by_form = fd_term_matcher(project)
+    for e in entries:
+        here, n = fd_field(e, "Here")
+        seen = set()
+        for start, _end, other in fd_occurrences(rx, by_form, fd_mask(here)):
+            if other is e or other["head"] in seen:
+                continue
+            seen.add(other["head"])
+            hit = fd_linked_to(here, start, "DOCUMENTATION.md")
+            want = ("DOCUMENTATION.md", other["id"])
+            if hit != want:
+                got = f"links #{hit[1]}" if hit else "is not linked"
+                fd_fail(slug, "DOCUMENTATION.md", n,
+                        f"`{e['head']}` Here: the first '{here[start:_end]}' {got}; "
+                        f"it must link #{other['id']}")
+
+
+def check_fd_term_linked_on_first_use() -> None:
+    """SPEC-0004 TERM_LINKED_ON_FIRST_USE: README links a term whose meaning
+    departs from the field's the first time it uses it."""
+    slug = "TERM_LINKED_ON_FIRST_USE"
+    parsed = fd_glossary(slug)
+    doc = fd_doc(slug, "README.md")
+    if parsed is None or not parsed[2]:
+        return
+    checked = [e for e in parsed[2] if fd_field(e, "Divergence")[0].strip() != "**same**"]
+    if not checked:
+        fd_fail(slug, "DOCUMENTATION.md", 0,
+                "missing required input: no glossary entry diverges from its field meaning")
+        return
+    if doc is None:
+        return
+    rx, by_form = fd_term_matcher(checked)
+    done = set()
+    for n, text in fd_units(doc):
+        for start, end, e in fd_occurrences(rx, by_form, fd_mask(text)):
+            if e["head"] in done:
+                continue
+            done.add(e["head"])
+            hit = fd_linked_to(text, start, "README.md")
+            if hit != ("DOCUMENTATION.md", e["id"]):
+                got = f"links #{hit[1]}" if hit else "is not linked"
+                fd_fail(slug, "README.md", fd_line_of(n, text, start),
+                        f"the first '{text[start:end]}' {got}; it must link "
+                        f"DOCUMENTATION.md#{e['id']}")
+
+
+def check_fd_definition_has_one_home() -> None:
+    """SPEC-0004 DEFINITION_HAS_ONE_HOME: no front-door unit outside the
+    glossary restates an entry's definition."""
+    slug = "DEFINITION_HAS_ONE_HOME"
+    parsed = fd_glossary(slug)
+    if parsed is None or not parsed[2]:
+        return
+    entries, region = parsed[2], parsed[1]
+    defs = []
+    for e in entries:
+        for _s, sentence in fd_sentences(fd_field(e, "Here")[0]):
+            tokens = fd_content_tokens(sentence)
+            if tokens:
+                defs.append((e, tokens))
+    if not defs:
+        fd_fail(slug, "DOCUMENTATION.md", 0,
+                "missing required input: no glossary entry has a Here sentence")
+        return
+    rx, by_form = fd_term_matcher(entries)
+    for rel in fd_front_door_files():
+        doc = fd_doc(slug, rel)
+        if doc is None:
+            continue
+        for n, text in fd_units(doc):
+            if rel == "DOCUMENTATION.md" and region[0] < n <= region[1]:
+                continue
+            present = {id(e) for _a, _b, e in fd_occurrences(rx, by_form, fd_mask(text))}
+            if not present:
+                continue
+            candidate = fd_content_tokens(text)
+            worst = {}
+            for e, tokens in defs:
+                if id(e) in present:
+                    worst[e["head"]] = max(worst.get(e["head"], 0.0), fd_overlap(tokens, candidate))
+            for head, ov in worst.items():
+                if ov >= DEFINITION_OVERLAP_CEILING:
+                    fd_fail(slug, rel, n, f"restates the glossary definition of '{head}' "
+                                          f"(overlap {ov:.2f}, ceiling "
+                                          f"{DEFINITION_OVERLAP_CEILING:.2f})")
+
+
+def check_fd_reference_opens_with_its_definition() -> None:
+    """SPEC-0004 REFERENCE_OPENS_WITH_ITS_DEFINITION: each reference says
+    what its subject is before its tables, and links the glossary entry."""
+    slug = "REFERENCE_OPENS_WITH_ITS_DEFINITION"
+    for rel, pattern, words, link in FD_REFERENCE_OPENERS:
+        doc = fd_doc(slug, rel)
+        if doc is None:
+            continue
+        titles = [n for n, level, _t in fd_headings(doc) if level == 1]
+        if not titles:
+            fd_fail(slug, rel, 0, "missing required input: no `#` title")
+            continue
+        unit = next(((n, t) for n, t in fd_units(doc) if n > titles[0]), None)
+        if unit is None:
+            fd_fail(slug, rel, 0, "missing required input: no paragraph after the `#` title")
+            continue
+        n, text = unit
+        sentences = fd_sentences(text)
+        if not sentences or not re.search(pattern, sentences[0][1]):
+            fd_fail(slug, rel, n, f"the first paragraph does not open with `{words}`")
+        if link not in [target for _t, target, *_r in fd_links(text)]:
+            fd_fail(slug, rel, n, f"the first paragraph does not link `{link}`")
+
+
+def check_fd_enforcement_row_complete() -> None:
+    """SPEC-0004 ENFORCEMENT_ROW_COMPLETE: every row names its mechanism,
+    artifact, class and residual; the required rows exist; the rows security
+    named state their residuals and class rules; and the matrix's class table
+    cannot map a hook that only injects text to `hard`."""
+    slug = "ENFORCEMENT_ROW_COMPLETE"
+    parsed = fd_rows(slug)
+    matrix = fd_doc(slug, FD_MATRIX)
+    if matrix is not None:
+        row = next(((n, cells) for _h, _c, body in fd_tables(matrix) for n, cells in body
+                    if cells and cells[0] == "**mechanically enforced**"), None)
+        if row is None:
+            fd_fail(slug, FD_MATRIX, 0, "missing required input: no class-table row whose "
+                                        "first cell is `**mechanically enforced**`")
+        else:
+            n, cells = row
+            if len(cells) < 2 or "injects" not in cells[1]:
+                fd_fail(slug, FD_MATRIX, n, "the `**mechanically enforced**` Meaning cell does "
+                                            "not say a hook that only injects text holds nothing")
+            if len(cells) < 3 or "not a control" not in cells[2]:
+                fd_fail(slug, FD_MATRIX, n, "the `**mechanically enforced**` ADR-0003 cell does "
+                                            "not class an inject-only hook `not a control`")
+    if parsed is None or parsed[1] is None:
+        return
+    _doc, _region, by_id, rows = parsed
+    for n, cells, rid in rows:
+        name = rid or "a row"
+        if len(cells) != 5:
+            fd_fail(slug, "DOCUMENTATION.md", n, f"{name} has {len(cells)} cells, not 5")
+            continue
+        for label, cell in zip(("Mechanism", "Artifact", "Class", "What it can miss",
+                                "Detail"), cells):
+            if not FD_ANCHOR_TAG.sub("", cell).strip():
+                fd_fail(slug, "DOCUMENTATION.md", n, f"{name}: the {label} cell is empty")
+        if rid is None:
+            fd_fail(slug, "DOCUMENTATION.md", n, "the row's first cell does not begin with "
+                                                 "an `enf-` anchor")
+        classes = fd_bold(cells[2])
+        if not classes:
+            fd_fail(slug, "DOCUMENTATION.md", n, f"{name}: the Class cell carries no bolded class")
+        for c in classes:
+            if c not in FD_CLASS_ORDER:
+                fd_fail(slug, "DOCUMENTATION.md", n, f"{name}: Class **{c}** is not in the class set")
+        artifacts = [c.strip() for _a, _b, c in fd_code_spans(cells[1]) if fd_path_like(c.strip())]
+        if not artifacts:
+            fd_fail(slug, "DOCUMENTATION.md", n, f"{name}: the Artifact cell names no seed path")
+        for token in artifacts:
+            problem = fd_seed_path_problem(token)
+            if problem:
+                fd_fail(slug, "DOCUMENTATION.md", n, f"{name}: {problem}")
+        patterns, rule = FD_ROW_RESIDUALS.get(rid, ([], None))
+        for pattern, words in patterns:
+            if not re.search(pattern, cells[3], re.I):
+                fd_fail(slug, "DOCUMENTATION.md", n,
+                        f"{rid}: What it can miss does not name {words}")
+        weakest = fd_weakest(classes)
+        if rule in ("not-hard", "not-hard-scoped") and weakest == "hard":
+            fd_fail(slug, "DOCUMENTATION.md", n,
+                    f"{rid}: weakest class is hard; this row's weakest class must not be hard")
+        if rule == "not-hard-scoped" and \
+                cells[2].count("**hard**") != cells[2].count(FD_PRE_BASH_HARD):
+            fd_fail(slug, "DOCUMENTATION.md", n,
+                    f"{rid}: **hard** appears only as `{FD_PRE_BASH_HARD}`")
+        if rule == "not-a-control" and f"**{FD_NOT_A_CONTROL}**" not in cells[2]:
+            fd_fail(slug, "DOCUMENTATION.md", n,
+                    f"{rid}: a hook that only injects text is **{FD_NOT_A_CONTROL}**")
+    for rid in FD_REQUIRED_ROWS:
+        if rid not in by_id:
+            fd_fail(slug, "DOCUMENTATION.md", 0, f"no required row `{rid}`")
+
+
+def check_fd_mechanism_claims_traced() -> None:
+    """SPEC-0004 MECHANISM_CLAIMS_TRACED: a mechanism claim on a traced
+    surface links the row that holds it; a strong claim that links rows links
+    only hard ones; a glossary class agrees with its rows; and nothing that
+    links the command guard calls it security."""
+    slug = "MECHANISM_CLAIMS_TRACED"
+    rows = fd_rows(slug)
+    glossary = fd_glossary(slug)
+    by_id = rows[2] if rows else {}
+    region = rows[1] if rows else None
+    entries = glossary[2] if glossary else []
+    hosts = sorted(p.relative_to(ROOT).as_posix()
+                   for p in (ROOT / "integrations").glob("*/README.md"))
+    if not hosts:
+        fd_fail(slug, "integrations", 0, "missing required input: no integrations/*/README.md")
+    traced_fields = {e["values"][label][1] for e in entries
+                     for label in ("Here", "Enforcement") if label in e["values"]}
+    for rel in fd_front_door_files():
+        doc = fd_doc(slug, rel)
+        if doc is None:
+            continue
+        traced = rel in ("README.md", "INSTALL.md") or rel in hosts
+        for n, text in fd_units(doc):
+            in_region = rel == "DOCUMENTATION.md" and region is not None and \
+                region[0] < n <= region[1]
+            masked = fd_mask(text)
+            linked = fd_row_links(rel, text)
+            if rel == "DOCUMENTATION.md" and n in traced_fields:
+                # A glossary field's own label (`**Enforcement:**`) is no claim.
+                label = FD_FIELD_LINE.match(text)
+                masked = " " * label.start(2) + masked[label.start(2):] if label else masked
+                trace = True
+            else:
+                trace = traced
+            verbs = list(FD_MECHANISM_VERB.finditer(masked))
+            if verbs and trace:
+                unknown = [r for r in linked if r not in by_id]
+                if unknown:
+                    fd_fail(slug, rel, n, f"links {', '.join(unknown)}, which is no "
+                                          f"enforcement row")
+                elif not linked:
+                    said = ", ".join(dict.fromkeys(f"'{v.group(0)}'" for v in verbs))
+                    fd_fail(slug, rel, fd_line_of(n, text, verbs[0].start()),
+                            f"{said}: a mechanism claim that links no enforcement row")
+            if not in_region and linked:
+                strong = [m for m in FD_STRONG_CLAIM.finditer(masked)
+                          if not fd_negated(masked, m.start())]
+                if strong:
+                    weak = [(r, fd_weakest(fd_row_class(by_id[r]))) for r in linked if r in by_id]
+                    weak = [(r, c) for r, c in weak if c != "hard"]
+                    if weak:
+                        fd_fail(slug, rel, n, f"overclaim: says '{strong[0].group(0)}' and links "
+                                              + ", ".join(f"{r} (weakest class: {c})"
+                                                          for r, c in weak))
+            if FD_PRE_BASH_ROW in linked:
+                bad = FD_GUARD_MISNOMER.search(masked)
+                if bad:
+                    fd_fail(slug, rel, n, f"links {FD_PRE_BASH_ROW} and calls it "
+                                          f"'{bad.group(0)}'; a pattern hook is no security "
+                                          f"control, sandbox or protection")
+    for e in entries:
+        if "Enforcement" not in e["values"]:
+            continue
+        value, n = fd_field(e, "Enforcement")
+        classes = [c for c in fd_bold(value) if c in FD_CLASS_ORDER]
+        links = fd_row_links("DOCUMENTATION.md", value)
+        known = [r for r in links if r in by_id]
+        if any(c != FD_NOT_A_CONTROL for c in classes) and not links:
+            fd_fail(slug, "DOCUMENTATION.md", n, f"`{e['head']}` Enforcement names a class "
+                                                 f"and links no `enf-` row")
+        for c in classes:
+            if known and not any(c in fd_row_class(by_id[r]) for r in known):
+                fd_fail(slug, "DOCUMENTATION.md", n, f"`{e['head']}` Enforcement says **{c}**, "
+                                                     f"which no row it links carries")
+        if "hard" in classes and known and not any(
+                fd_weakest(fd_row_class(by_id[r])) == "hard" for r in known):
+            fd_fail(slug, "DOCUMENTATION.md", n, f"`{e['head']}` Enforcement says **hard** and "
+                                                 f"links no row whose weakest class is hard")
+
+
+def check_fd_limits_section_present() -> None:
+    """SPEC-0004 LIMITS_SECTION_PRESENT: README says what is only requested,
+    each item linking a row that is not hard, and what is not yet measured."""
+    slug = "LIMITS_SECTION_PRESENT"
+    doc = fd_doc(slug, "README.md")
+    if doc is None:
+        return
+    region = fd_section(slug, doc, FD_LIMITS_SECTION)
+    if region is None:
+        return
+    lines, kinds = doc
+    subs = [(i, lines[i].rstrip()) for i in range(region[0] + 1, region[1])
+            if kinds[i] == "heading" and lines[i].startswith("### ")]
+    if [t for _i, t in subs] != list(FD_LIMITS_SUBSECTIONS):
+        fd_fail(slug, "README.md", region[0] + 1,
+                f"the section must hold exactly `{FD_LIMITS_SUBSECTIONS[0]}` then "
+                f"`{FD_LIMITS_SUBSECTIONS[1]}`; it holds {[t for _i, t in subs]}")
+    parsed = fd_rows(slug, required=False)
+    by_id = parsed[2] if parsed else {}
+    bounds = [i for i, _t in subs] + [region[1]]
+    for k, (i, title) in enumerate(subs):
+        items = [(n, t) for n, t in fd_units(doc, i + 1, bounds[k + 1])
+                 if FD_LIST_ITEM.match(t)]
+        if title == FD_LIMITS_SUBSECTIONS[0]:
+            if len(items) < LIMITS_MIN_REQUESTED:
+                fd_fail(slug, "README.md", i + 1, f"`{title}` holds {len(items)} items; "
+                                                  f"LIMITS_MIN_REQUESTED is {LIMITS_MIN_REQUESTED}")
+            linked_all = set()
+            for n, text in items:
+                ids = fd_row_links("README.md", text)
+                linked_all.update(ids)
+                known = [r for r in ids if r in by_id]
+                if not known:
+                    fd_fail(slug, "README.md", n, "the item links no existing `enf-` row")
+                elif not any(c != "hard" for r in known for c in fd_row_class(by_id[r])):
+                    fd_fail(slug, "README.md", n, f"the item links only rows classed **hard** "
+                                                  f"({', '.join(known)}); a requested limit is "
+                                                  f"held by a row that is not hard")
+            for rid in FD_LIMITS_REQUIRED_ROWS:
+                if rid not in linked_all:
+                    fd_fail(slug, "README.md", i + 1, f"no `{title}` item links `{rid}`")
+        elif title == FD_LIMITS_SUBSECTIONS[1]:
+            if len(items) < LIMITS_MIN_UNMEASURED:
+                fd_fail(slug, "README.md", i + 1, f"`{title}` holds {len(items)} items; "
+                                                  f"LIMITS_MIN_UNMEASURED is {LIMITS_MIN_UNMEASURED}")
+            for n, text in items:
+                if not any(p in text.lower() for p in FD_UNMEASURED_PHRASES):
+                    fd_fail(slug, "README.md", n, "the item says none of 'not recorded', "
+                                                  "'not measured' or 'measured once'")
+
+
+def check_fd_catalogs_out_of_readme() -> None:
+    """SPEC-0004 CATALOGS_OUT_OF_README: README names a few examples per
+    category, never the catalog, and no front-door file prints an ADR range."""
+    slug = "CATALOGS_OUT_OF_README"
+    agent_files = {}
+    for p in sorted((ROOT / "agents").glob("*.md")):
+        m = re.search(r"(?m)^name:\s*(\S+)", frontmatter_block(p))
+        if m:
+            agent_files[p.stem] = m.group(1).strip("'\"")
+    sets = {
+        "agents": set(agent_files.values()),
+        "protocols": {p.stem for p in (ROOT / "protocols").glob("*.md")},
+        "skills": {p.parent.name for p in (ROOT / "skills").glob("*/SKILL.md")},
+        "templates": {p.name for p in (ROOT / "templates").glob("*.template.md")},
+        "adrs": {m.group(1) for p in (ROOT / "docs" / "decisions").glob("*.md")
+                 for m in [re.match(r"(?i)adr-(\d{4})", p.name)] if m},
+    }
+    for cat, names in sets.items():
+        if not names:
+            fd_fail(slug, cat, 0, f"missing required input: no {cat} name on disk")
+    doc = fd_doc(slug, "README.md")
+    if doc is not None:
+        found = {cat: {} for cat in sets}
+
+        def add(cat, name, line):
+            if name in sets[cat]:
+                found[cat].setdefault(name, line)
+        for n, text in fd_units(doc):
+            bare = list(text)
+            for _t, _g, _s, end, _ts, te in fd_links(text):
+                bare[te + 1:end] = " " * (end - te - 1)
+            bare = "".join(bare)
+            for a, _b, code in fd_code_spans(text):
+                for cat in ("agents", "protocols", "skills"):
+                    add(cat, code.strip(), fd_line_of(n, text, a))
+            for m in re.finditer(r"\b(agent|protocol|skill)\.([A-Za-z0-9_-]+)", bare):
+                add(m.group(1) + "s", m.group(2), fd_line_of(n, text, m.start()))
+            for m in re.finditer(r"(?<![\w/.-])agents/([\w.-]+)\.md", bare):
+                add("agents", agent_files.get(m.group(1), ""), fd_line_of(n, text, m.start()))
+            for m in re.finditer(r"(?<![\w/.-])protocols/([\w.-]+)\.md", bare):
+                add("protocols", m.group(1), fd_line_of(n, text, m.start()))
+            for m in re.finditer(r"(?<![\w/.-])skills/([\w.-]+)/", bare):
+                add("skills", m.group(1), fd_line_of(n, text, m.start()))
+            for name in sets["templates"]:
+                for m in re.finditer(re.escape(name), bare):
+                    add("templates", name, fd_line_of(n, text, m.start()))
+            for m in re.finditer(r"(?i)\badr-(\d{4})\b", bare):
+                add("adrs", m.group(1), fd_line_of(n, text, m.start()))
+        for cat, named in found.items():
+            if len(named) > README_CATALOG_CEILING:
+                at = sorted(named.values())[README_CATALOG_CEILING]
+                fd_fail(slug, "README.md", at,
+                        f"names {len(named)} {cat} ({', '.join(sorted(named))}); "
+                        f"README_CATALOG_CEILING is {README_CATALOG_CEILING} per category, "
+                        f"and the catalog lives in the references")
+    for rel in fd_front_door_files():
+        text = fd_text(slug, rel)
+        if text is None:
+            continue
+        for n, line in enumerate(text.splitlines(), 1):
+            for m in FD_ADR_RANGE.finditer(line):
+                fd_fail(slug, rel, n, f"`{m.group(0)}` is an ADR range; a range goes stale "
+                                      f"with the next decision, so link the decision index")
+
+
+def fd_number(text: str) -> float:
+    return float(re.sub(r"[    ,]", "", text))
+
+
+def fd_figure_form(number: str, unit: str) -> str:
+    """A figure as §6 normalization writes it: `11%`, `8000 bytes`, `5 tokens`."""
+    digits = re.sub(r"[    ,]", "", number)
+    if unit == "%":
+        return f"{digits}%"
+    if unit in ("B", "byte", "bytes"):
+        return f"{digits} bytes"
+    if unit.startswith("token"):
+        return f"{digits} tokens"
+    return f"{digits} {unit}"
+
+
+def fd_record_holds(record: str, form: str) -> bool:
+    norm = re.sub(r"(?<=\d)[    ,](?=\d)", "", record)
+    norm = re.sub(r"(\d)\s*(?:bytes?|B)\b", r"\1 bytes", norm)
+    norm = re.sub(r"(\d)\s*tokens?\b", r"\1 tokens", norm)
+    norm = re.sub(r"(\d)\s+%", r"\1%", norm)
+    return form in norm or form.replace(" ", "") in norm
+
+
+def check_fd_cost_figures_scoped() -> None:
+    """SPEC-0004 COST_FIGURES_SCOPED: every cost figure in README says what
+    it covers, and is either computed by this gate or measured with an
+    evidence record that holds it."""
+    slug = "COST_FIGURES_SCOPED"
+    doc = fd_doc(slug, "README.md")
+    if doc is None:
+        return
+    region = fd_section(slug, doc, FD_COST_SECTION)
+    kernel = KERNEL.stat().st_size
+    limits = {EAGER_BUDGET, KERNEL_BUDGET, MACHINERY_BODY_CEILING, LIFECYCLE_BODY_CEILING}
+    derived = (set(eager_surfaces(kernel).values()) | limits | {kernel}
+               | {value for value, _w, _l in routable_body_figures()})
+    derived_in_section = 0
+    for n, text in fd_units(doc):
+        in_section = region is not None and region[0] < n <= region[1]
+        masked = fd_mask(text)
+        evidence = []
+        for _t, target, *_r in fd_links(text):
+            hit = fd_resolve("README.md", target)
+            if hit and hit[0].startswith("docs/") and (ROOT / hit[0]).is_file():
+                evidence.append(hit[0])
+        unit_derived = False
+        for m in FD_FIGURE.finditer(masked):
+            unit = m.group(3)
+            ends = [m.group(1)] + ([m.group(2)] if m.group(2) else [])
+            line = fd_line_of(n, text, m.start())
+            shown = re.sub(r"\s+", " ", m.group(0)).strip()
+            if not any(k.lower() in masked.lower() for k in FD_SCOPE_MARKERS):
+                fd_fail(slug, "README.md", line, f"figure '{shown}' names no scope "
+                                                 f"(per session, per task, a host, budget, ...)")
+            if unit in ("B", "byte", "bytes") and all(
+                    (fd_number(e) in derived and re.search(r"(?i)\bcomputed\b", masked))
+                    or (fd_number(e) in limits and FD_LIMIT_WORDS.search(masked)) for e in ends):
+                unit_derived = True
+                derived_in_section += in_section
+                continue
+            if FD_MEASURED_CLAIM.search(masked):
+                if not evidence:
+                    fd_fail(slug, "README.md", line, f"figure '{shown}' is called measured and "
+                                                     f"links no evidence record under docs/")
+                for record in evidence:
+                    body = fd_text(slug, record)
+                    for e in ends:
+                        form = fd_figure_form(e, unit)
+                        if body is not None and not fd_record_holds(body, form):
+                            fd_fail(slug, "README.md", line, f"'{form}' does not occur in {record}")
+                continue
+            fd_fail(slug, "README.md", line,
+                    f"figure '{shown}' is neither derived (a value this gate computes, said "
+                    f"to be computed, or a limit said to be one) nor measured with an "
+                    f"evidence record")
+        measur = FD_MEASUR_WORD.search(masked)
+        if unit_derived and measur:
+            fd_fail(slug, "README.md", fd_line_of(n, text, measur.start()),
+                    f"'{measur.group(0)}' in a unit holding a derived figure; a derived "
+                    f"figure is computed, not measured")
+        if in_section and measur and not evidence:
+            fd_fail(slug, "README.md", fd_line_of(n, text, measur.start()),
+                    f"'{measur.group(0)}' with no evidence record in this unit")
+    if region is not None and not derived_in_section:
+        fd_fail(slug, "README.md", 0, f"missing required input: `{FD_COST_SECTION}` holds no "
+                                      f"derived figure")
+
+
+def check_fd_eager_figures_checked_wherever_published() -> None:
+    """SPEC-0004 EAGER_FIGURES_CHECKED_WHEREVER_PUBLISHED: an always-loaded
+    figure is computed wherever the front door prints it. The pair
+    check_published_eager_figures has always held is never pending."""
+    slug = "EAGER_FIGURES_CHECKED_WHEREVER_PUBLISHED"
+    live = set(eager_surfaces(KERNEL.stat().st_size).values()) | {EAGER_BUDGET}
+    for rel in fd_front_door_files():
+        text = fd_text(slug, rel)
+        if text is None:
+            continue
+        for n, m, value in stale_eager_figures(text, live):
+            closest = min(live, key=lambda v: abs(v - value))
+            fd_fail(slug, rel, n, f"publishes {m.group(1)} bytes as an always-loaded surface, "
+                                  f"and check_eager_surface computes no such figure "
+                                  f"(nearest: {closest})", pendable=rel not in EAGER_PUBLISHED)
+
+
+def check_fd_body_figures_have_a_required_home() -> None:
+    """SPEC-0004 BODY_FIGURES_HAVE_A_REQUIRED_HOME: the body-size figures have
+    one required home, the EAGER_EXEMPTIONS phrases hold on every front-door
+    page, and the project-node exemption stays bound to graph-lint.py."""
+    slug = "BODY_FIGURES_HAVE_A_REQUIRED_HOME"
+    home = fd_text(slug, BODY_FIGURE_HOME)
+    if home is not None:
+        for value, what, _label in routable_body_figures():
+            if not any(re.search(rf"(?<![\d.]){re.escape(form)}(?!\d)", home)
+                       for form in grouped_forms(value)):
+                fd_fail(slug, BODY_FIGURE_HOME, 0, f"missing required input: states no figure "
+                                                   f"matching {what} ({value})")
+    graph_lint = "templates/knowledge-graph/graph-lint.py"
+    source = fd_text(slug, graph_lint)
+    if source is not None:
+        for value in sorted(PROJECT_NODE_LINE_FIGURES):
+            if not re.search(rf"(?<![\w.]){value}(?![\w.])", source):
+                fd_fail(slug, graph_lint, 0, f"holds no {value} literal, so "
+                                             f"PROJECT_NODE_LINE_FIGURES exempts a ceiling that "
+                                             f"no longer exists")
+    for rel in fd_front_door_files():
+        doc = fd_doc(slug, rel)
+        if doc is None:
+            continue
+        for n, line in enumerate(doc[0], 1):
+            if EAGER_EXEMPTIONS and any(p in line for p in EAGER_EMPTY_PHRASES):
+                fd_fail(slug, rel, n, f"says EAGER_EXEMPTIONS is consequently empty, and it "
+                                      f"holds {sorted(EAGER_EXEMPTIONS)}")
+            if EAGER_EXEMPTIONS and EAGER_NO_SLACK_PHRASE in line:
+                fd_fail(slug, rel, n, "says the EAGER_BUDGET ratchet has 'no slack' while "
+                                      "EAGER_EXEMPTIONS is non-empty")
+        if rel == BODY_FIGURE_HOME:
+            continue
+        for n, text in fd_units(doc):
+            masked = fd_mask(text)
+            if not re.search(r"(?i)\bbod(?:y|ies)\b", masked):
+                continue
+            for m in FD_LINE_FIGURE.finditer(masked):
+                if int(re.sub(r"\D", "", m.group(0))) not in PROJECT_NODE_LINE_FIGURES:
+                    fd_fail(slug, rel, fd_line_of(n, text, m.start()),
+                            f"a body figure '{m.group(0).strip()}' outside {BODY_FIGURE_HOME}, "
+                            f"its one home")
+
+
+def check_fd_front_door_anchors_resolve() -> None:
+    """SPEC-0004 FRONT_DOOR_ANCHORS_RESOLVE: every term, row and region link
+    lands on exactly one explicit anchor, and README's relative links resolve."""
+    slug = "FRONT_DOOR_ANCHORS_RESOLVE"
+    docu = fd_doc(slug, "DOCUMENTATION.md")
+    if docu is not None:
+        anchors = fd_anchors(docu)
+        for rid in ("glossary", "enforcement"):
+            if rid not in anchors:
+                fd_fail(slug, "DOCUMENTATION.md", 0,
+                        f"missing required input: no explicit anchor `{rid}` for the {rid} region")
+        for aid, at in sorted(anchors.items()):
+            for dup in at[1:]:
+                fd_fail(slug, "DOCUMENTATION.md", dup,
+                        f"anchor id `{aid}` is not unique (first at line {at[0]})")
+    for rel in fd_front_door_files():
+        doc = fd_doc(slug, rel)
+        if doc is None:
+            continue
+        for n, text in fd_units(doc):
+            for _t, target, start, *_r in fd_links(text):
+                hit = fd_resolve(rel, target)
+                if hit is None:
+                    continue
+                path, frag = hit
+                line = fd_line_of(n, text, start)
+                if rel == "README.md" and not (ROOT / path).exists():
+                    fd_fail(slug, rel, line, f"`{target}` does not resolve to a file under the "
+                                             f"seed root")
+                    continue
+                if frag.startswith(("term-", "enf-")) or frag in ("glossary", "enforcement"):
+                    target_doc = fd_doc(slug, path) if (ROOT / path).is_file() else None
+                    count = len(fd_anchors(target_doc).get(frag, [])) if target_doc else 0
+                    if count != 1:
+                        fd_fail(slug, rel, line, f"`{target}`: #{frag} names {count} explicit "
+                                                 f"anchors in {path}, not one")
+
+
+def check_fd_front_door_headings_well_formed() -> None:
+    """SPEC-0004 FRONT_DOOR_HEADINGS_WELL_FORMED: one level-1 title first,
+    and no heading level skipped on the way down."""
+    slug = "FRONT_DOOR_HEADINGS_WELL_FORMED"
+    for rel in ("README.md", "DOCUMENTATION.md") + tuple(r for r, *_x in FD_REFERENCE_OPENERS):
+        doc = fd_doc(slug, rel)
+        if doc is None:
+            continue
+        heads = fd_headings(doc)
+        if not heads:
+            fd_fail(slug, rel, 0, "missing required input: no ATX heading")
+            continue
+        if heads[0][1] != 1:
+            fd_fail(slug, rel, heads[0][0], f"the first heading is level {heads[0][1]}; the "
+                                            f"first heading is the one level-1 title")
+        for n, level, text in heads[1:]:
+            if level == 1:
+                fd_fail(slug, rel, n, f"`{text}` is a second level-1 heading")
+        if not any(level == 1 for _n, level, _t in heads):
+            fd_fail(slug, rel, 0, "no level-1 heading")
+        for (_pn, prev, _pt), (n, level, _t) in zip(heads, heads[1:]):
+            if level > prev + 1:
+                fd_fail(slug, rel, n, f"heading level jumps from {prev} to {level}")
+
+
+def fd_link_scopes(slug: str) -> list:
+    """(file, doc, first, end) for README and the glossary and enforcement
+    regions, with a line-0 finding for a missing region."""
+    scopes = []
+    readme = fd_doc(slug, "README.md")
+    if readme is not None:
+        scopes.append(("README.md", readme, 0, len(readme[0])))
+    docu = fd_doc(slug, "DOCUMENTATION.md")
+    if docu is not None:
+        for heading, name in ((FD_GLOSSARY_HEADING, "glossary"),
+                              (FD_ENFORCEMENT_HEADING, "enforcement")):
+            region = fd_region(docu, heading)
+            if region is None:
+                fd_fail(slug, "DOCUMENTATION.md", 0,
+                        f"missing required input: no {name} region `{heading}`")
+            else:
+                scopes.append(("DOCUMENTATION.md", docu, region[0] + 1, region[1]))
+    return scopes
+
+
+def check_fd_link_text_stands_alone() -> None:
+    """SPEC-0004 LINK_TEXT_STANDS_ALONE: a link's text says where it goes."""
+    slug = "LINK_TEXT_STANDS_ALONE"
+    for rel, doc, lo, hi in fd_link_scopes(slug):
+        for n, text in fd_units(doc, lo, hi):
+            for t, _g, start, *_r in fd_links(text):
+                shown = fd_strip_markup(t)
+                line = fd_line_of(n, text, start)
+                if not shown:
+                    fd_fail(slug, rel, line, "link text is empty")
+                elif shown.lower() in FD_GENERIC_LINK_TEXTS:
+                    fd_fail(slug, rel, line, f"link text '{shown}' does not say where it goes")
+                elif shown.lower().startswith(("http://", "https://", "www.")):
+                    fd_fail(slug, rel, line, f"link text '{shown}' is a bare URL")
+
+
+def check_fd_tables_have_header_rows() -> None:
+    """SPEC-0004 TABLES_HAVE_HEADER_ROWS: every table names its columns."""
+    slug = "TABLES_HAVE_HEADER_ROWS"
+    for rel, doc, lo, hi in fd_link_scopes(slug):
+        for n, header, _body in fd_tables(doc, lo, hi):
+            for k, cell in enumerate(header, 1):
+                if not fd_strip_markup(cell):
+                    fd_fail(slug, rel, n, f"header cell {k} of the table is empty")
+
+
+def check_fd_pending_ledger_holds_only_failing_contracts() -> None:
+    """SPEC-0004 PENDING_LEDGER_HOLDS_ONLY_FAILING_CONTRACTS: the ledger holds
+    only contracts observed failing, is mirrored in tests/ratchets.json, and is
+    empty once SPEC-0004 is implemented or the release carries the front door.
+    Runs last: it reads what every other front-door check observed."""
+    slug = FD_LEDGER_SLUG
+    at = fd_assignment_line("FRONT_DOOR_PENDING")
+    spec = fd_text(slug, FRONT_DOOR_SPEC)
+    contracts = set(re.findall(r"(?m)^### Contract: ([A-Z0-9_]+)\s*$", spec or ""))
+    if spec is not None and not contracts:
+        fd_fail(slug, FRONT_DOOR_SPEC, 0, "missing required input: no `### Contract:` heading")
+    for member in sorted(FRONT_DOOR_PENDING):
+        if member == slug:
+            fd_fail(slug, "tests/seed-lint.py", at, f"{member} is this contract's own slug and "
+                                                    f"cannot be pending")
+        elif member not in contracts or member not in _fd_ran:
+            fd_fail(slug, "tests/seed-lint.py", at, f"{member} is not a `### Contract:` slug of "
+                                                    f"SPEC-0004 that seed-lint checks")
+        elif member not in _fd_raised and not _fd_observed.get(member):
+            fd_fail(slug, "tests/seed-lint.py", at, f"{member}: stale pending entry: remove it "
+                                                    f"(its check found nothing)")
+    lock = fd_text(slug, "tests/ratchets.json")
+    if lock is not None:
+        mirror = json.loads(lock).get("ratchets", {}).get("FRONT_DOOR_PENDING")
+        if mirror is None:
+            fd_fail(slug, "tests/seed-lint.py", at, "FRONT_DOOR_PENDING is not mirrored in "
+                                                    "tests/ratchets.json")
+        else:
+            for member in sorted(set(FRONT_DOOR_PENDING) ^ set(mirror)):
+                fd_fail(slug, "tests/seed-lint.py", at, f"{member} is in one of FRONT_DOOR_PENDING "
+                                                        f"and its tests/ratchets.json mirror only")
+    status = (parse_frontmatter(ROOT / FRONT_DOOR_SPEC).get("status") if spec is not None
+              else None)
+    if status == "implemented" and FRONT_DOOR_PENDING:
+        fd_fail(slug, "tests/seed-lint.py", at, f"ledger must be empty once SPEC-0004 is "
+                                                f"implemented; it holds {sorted(FRONT_DOOR_PENDING)}")
+    manifest = fd_text(slug, "manifest.json")
+    if manifest is not None:
+        version = str(json.loads(manifest).get("version", ""))
+        try:
+            released = fd_version(version) >= fd_version(FRONT_DOOR_RELEASE)
+        except ValueError:
+            fd_fail(slug, "manifest.json", 0, f"version {version!r} is not X.Y.Z")
+            released = False
+        if released and FRONT_DOOR_PENDING:
+            fd_fail(slug, "tests/seed-lint.py", at, f"ledger must be empty from "
+                                                    f"{FRONT_DOOR_RELEASE}; manifest.json is "
+                                                    f"{version} and it holds "
+                                                    f"{sorted(FRONT_DOOR_PENDING)}")
+    for member in sorted(FRONT_DOOR_PENDING):
+        held = _fd_held.get(member, [])
+        if held and member not in _fd_raised:
+            print(f"front-door: PENDING {member}: {len(held)} finding(s); first: {held[0]}")
+
+
+def front_door_checks() -> None:
+    """SPEC-0004's dispatcher: one guarded call per contract, each on its own
+    line so the coverage binder sees every check live, and the ledger last."""
+    with fd_guard("FIRST_SCREEN_ORDER"):
+        check_fd_first_screen_order()
+    with fd_guard("INSTALL_SECTION_NAMES_TARGET_PATHS"):
+        check_fd_install_section_names_target_paths()
+    with fd_guard("WHERE_NEXT_LINKS_THE_REFERENCES"):
+        check_fd_where_next_links_the_references()
+    with fd_guard("GLOSSARY_ENTRY_COMPLETE"):
+        check_fd_glossary_entry_complete()
+    with fd_guard("GLOSSARY_PATHS_EXIST"):
+        check_fd_glossary_paths_exist()
+    with fd_guard("NO_UNLINKED_PROJECT_TERM_IN_DEFINITION"):
+        check_fd_no_unlinked_project_term_in_definition()
+    with fd_guard("TERM_LINKED_ON_FIRST_USE"):
+        check_fd_term_linked_on_first_use()
+    with fd_guard("DEFINITION_HAS_ONE_HOME"):
+        check_fd_definition_has_one_home()
+    with fd_guard("REFERENCE_OPENS_WITH_ITS_DEFINITION"):
+        check_fd_reference_opens_with_its_definition()
+    with fd_guard("ENFORCEMENT_ROW_COMPLETE"):
+        check_fd_enforcement_row_complete()
+    with fd_guard("MECHANISM_CLAIMS_TRACED"):
+        check_fd_mechanism_claims_traced()
+    with fd_guard("LIMITS_SECTION_PRESENT"):
+        check_fd_limits_section_present()
+    with fd_guard("CATALOGS_OUT_OF_README"):
+        check_fd_catalogs_out_of_readme()
+    with fd_guard("COST_FIGURES_SCOPED"):
+        check_fd_cost_figures_scoped()
+    with fd_guard("EAGER_FIGURES_CHECKED_WHEREVER_PUBLISHED"):
+        check_fd_eager_figures_checked_wherever_published()
+    with fd_guard("BODY_FIGURES_HAVE_A_REQUIRED_HOME"):
+        check_fd_body_figures_have_a_required_home()
+    with fd_guard("FRONT_DOOR_ANCHORS_RESOLVE"):
+        check_fd_front_door_anchors_resolve()
+    with fd_guard("FRONT_DOOR_HEADINGS_WELL_FORMED"):
+        check_fd_front_door_headings_well_formed()
+    with fd_guard("LINK_TEXT_STANDS_ALONE"):
+        check_fd_link_text_stands_alone()
+    with fd_guard("TABLES_HAVE_HEADER_ROWS"):
+        check_fd_tables_have_header_rows()
+    with fd_guard(FD_LEDGER_SLUG):
+        check_fd_pending_ledger_holds_only_failing_contracts()
+
+
 def main() -> int:
     # A missing or unreadable file used to abort the run with a traceback, and
     # every finding already collected went unprinted — so the operator saw a
@@ -3528,6 +5426,10 @@ def main() -> int:
     except Exception as e:                       # noqa: BLE001 — see below
         findings.append(f"seed-lint could not complete: {type(e).__name__}: {e} "
                         f"— the findings above are everything that ran before it")
+    # SPEC-0004's front door runs after the checks above and outside their
+    # handler, so a check that raised on a front-door file (an undecodable
+    # INSTALL.md, say) cannot stop it; each of its checks is guarded on its own.
+    front_door_checks()
     if findings:
         print(f"seed lint: FAIL ({len(findings)} finding(s))")
         for f in findings:

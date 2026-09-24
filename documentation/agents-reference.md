@@ -1,10 +1,12 @@
 # CYPRESS specialist agents — complete reference
 
+An agent is a system prompt with frontmatter that the session starts as a worker for one piece of work; the glossary's [agent entry](../DOCUMENTATION.md#term-agent) defines it, and its [skill entry](../DOCUMENTATION.md#term-skill) sets it beside a skill.
+
 This document describes all 20 specialist agents shipped by the CYPRESS seed. Each agent is a fully-formed system prompt with YAML frontmatter, stored in `agents/*.md`. At install time these files are projected into the host tool's agent directory (for example `.claude/agents/`, `.prime/agent/agents/`, `.opencode/agents/`, `.codex/agents/`).
 
 Sources for this reference: `agents/*.md` (the 20 agent definitions), `agents/_routes.golden.tsv` (the golden routing corpus), and `core/method/delegation.md` (the delegation model).
 
-Each node also declares `prevents:` — the failure its own absence produces. It is not mirrored here; that would be a second home for sixty judgements. `python3 tools/roster-justification.py` prints it alongside the responsibility, the overlaps and the routing demand, reading each column out of the node that owns it ([ADR-0008](../docs/decisions/adr-0008-roster-justification-lives-in-the-node.md)).
+Each node also declares `prevents:` — the failure its own absence produces. It is not mirrored here; that would be a second home for every node's judgement. `python3 tools/roster-justification.py` prints it alongside the responsibility, the overlaps and the routing demand, reading each column out of the node that owns it ([ADR-0008](../docs/decisions/adr-0008-roster-justification-lives-in-the-node.md)).
 
 ## 1. The sessions-route, workers-do model
 
@@ -12,7 +14,7 @@ Source: `core/method/delegation.md`.
 
 The host session is the `orchestrator`. It routes, plans, briefs, verifies, communicates, and accepts. Whether it also *does* the work is decided by the task's tier (`method.tiers`). The specialists live in `docs/graph/agents/`, each a full system prompt. You invoke one by spawning a clean-context worker with a purpose-made brief. Simulating a specialist persona in the chat is not delegation.
 
-Because hooks do not reach a subagent, the brief is the only enforcement that crosses the boundary. Whatever discipline the brief omits, the worker does not have. Every brief embeds the canonical graph-session block verbatim, carries the routing evidence, and requires the handback payload.
+The brief is the only carrier of the discipline across the boundary, because no hook the seed installs carries it into a worker's turn ([delegation node](../core/method/delegation.md#every-brief-carries-the-graph-discipline)). Whatever discipline the brief omits, the worker does not have. Every brief embeds the canonical graph-session block verbatim, carries the routing evidence, and requires the handback payload.
 
 ## 2. Mechanical routing (`agent-lint.py --route`)
 
@@ -51,11 +53,11 @@ Six coordinators hold a depth-capped `Task` tool and may spawn only within their
 
 The deepest legal chain is depth 3 (through the `orchestrator`).
 
-Every other agent is a Task-less leaf. The leaf has no `Task` tool, so it cannot spawn. This is the one recursion cap the harness itself enforces whenever the specialist was registered as a type. At an out-of-domain boundary a leaf STOPs and hands back, naming the next specialist, and never does the work itself. `agent-lint --lint` enforces these frontmatter invariants.
+Every other agent is a spawn-less leaf: its `tools:` line is present and grants no spawn tool (`Agent`, or its alias `Task`), so it cannot spawn. That missing grant is one of the harness's own recursion caps whenever the specialist was registered as a type; the host's nesting limit is the other ([delegation bounds](../core/method/delegation.md#delegation-is-bounded)). At an out-of-domain boundary a leaf STOPs and hands back, naming the next specialist, and never does the work itself. `agent-lint --lint` enforces these frontmatter invariants.
 
 Attribution runs through `produced_by`. Every worker ends with the handback payload (`docs/graph/templates/prompts/handback-payload.md`). `produced_by` and `route_evidence` feed the deliver-time attribution assertion (`protocol.deliver`); a missing `produced_by` is a BLOCK. A worker hands back exactly once per spawn, on `complete`, `blocked-out-of-domain`, or `failed`, and never once per tool call.
 
-At the harness-registration boundary, a specialist is spawnable by name only once the host has registered it. `docs/graph/agents/` is the home; the spawnable form is the host's *projection* of it, enumerated when a session starts. Spawning by name therefore needs two preconditions: the session's project root is the plant, and the projection already existed at startup. Anything that *writes* a projection mid-session, such as the install, a graft's roster delta, or a freshly commissioned expert, is on disk but unspawnable until a new session starts. The router preflights once per protocol with a throwaway dispatch; `agent-lint --route` does not answer registration (it globs the on-disk projection and can name types an unregistered session cannot spawn). Prime Agent is the exception: it has no session-start roster enumeration, so a brief written mid-session is spawnable immediately.
+At the harness-registration boundary, a specialist is spawnable by name only once the host has registered it. `docs/graph/agents/` is the home; the spawnable form is the host's *projection* of it, and when a host sees a file written there mid-session is host-dependent ([registration](../core/method/delegation.md#a-specialist-is-spawnable-only-once-the-host-registered-it)). Spawning by name therefore needs two preconditions: the session's project root is the plant, and the host registered the projection. Anything that *writes* a projection mid-session, such as the install, a graft's roster delta, or a freshly commissioned expert, can be on disk and not yet spawnable. The router preflights once per protocol with a throwaway dispatch; `agent-lint --route` does not answer registration (it globs the on-disk projection and can name types an unregistered session cannot spawn). Prime Agent is the exception: it has no session-start roster enumeration, so a brief written mid-session is spawnable immediately.
 
 Role emulation is the fallback. When neither remedy (re-enter from the plant root, or reload the agent directory) is available, the router spawns the host's generic worker and rebuilds the specialist inside the brief. It pins the specialist's `model:` class, embeds `docs/graph/agents/<name>.md` verbatim as the role, and restates in prose every bound the frontmatter no longer enforces: the `tools:` allowlist as an explicit prohibition, the leaf stop-and-hand-back rule, and for a coordinator its `delegates_to` allowlist and `max_spawn_depth` ceiling. The worker is stamped `produced_by: <role>` plus `harness_override: role-emulated (<reason>)`. Role emulation degrades the guarantees: on a generic worker the leaf recursion cap and the read-only bound drop from harness-enforced to brief-requested, so it is scoped to the phase that needs it and reported as a recorded deviation.
 
@@ -90,7 +92,7 @@ Spec authoring is split across three agents: `product` writes the user-facing la
 | 19 | `legal` | `agent.legal` | opus | leaf (no Task) | `legal.charter`, `legal.corpus-rule`, `legal.four-part-finding`, `legal.qualification-boundary`, `legal.citation-ledger` |
 | 20 | `tool-smith` | `agent.tool-smith` | opus | leaf (no Task) | `tool-smith.charter`, `tool-smith.authoring-bar`, `tool-smith.plant-scope` |
 
-`legal` ships on request (`install.sh --legal-corpus yes`) and carries no default `delegates_to` edge from any coordinator: `architect.legal-checkpoint` (`agents/01-architect.md`) reaches it only if the plant-local roster and `architect`'s `delegates_to` were both extended to include it at instantiation time; absent that extension, `architect` stops and hands back naming `legal` as `recommended_next` rather than spawning it. It is not in the edge-list table below for that reason — every row there is a shipped default.
+`legal` ships in every install, its corpus only on request (`install.sh --legal-corpus yes`), and it carries no default `delegates_to` edge from any coordinator: `architect.legal-checkpoint` (`agents/01-architect.md`) reaches it only if the plant-local roster and `architect`'s `delegates_to` were both extended to include it at instantiation time; absent that extension, `architect` stops and hands back naming `legal` as `recommended_next` rather than spawning it. It is not in the edge-list table below for that reason — every row there is a shipped default.
 
 Coordinators as an edge list of `delegates_to` allowlists:
 

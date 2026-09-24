@@ -1,6 +1,6 @@
 # CYPRESS Documentation
 
-Human-readable documentation for the CYPRESS seed system (version 7.28.0).
+Human-readable documentation for the CYPRESS seed system (version 7.29.0).
 
 ## Start here
 
@@ -17,7 +17,7 @@ Human-readable documentation for the CYPRESS seed system (version 7.28.0).
 | **[protocols-reference.md](protocols-reference.md)** | All 14 protocols — owned facts, edges, triggers, and a detailed step-by-step walkthrough of each workflow. |
 | **[skills-and-templates-reference.md](skills-and-templates-reference.md)** | The 15 skills, the 10 artifact templates, the knowledge-graph node contract and linters, and the 9 delegation/brief templates. |
 | **[corpora-and-integrations-reference.md](corpora-and-integrations-reference.md)** | The 5 harvested corpora (library, legal, tool, agent, skill) with inventories, and the 5 tool integrations (Claude Code, Prime Agent, opencode, Codex, GitHub Copilot). |
-| **[host-capability-matrix.md](host-capability-matrix.md)** | The same 5 hosts against 12 capabilities (kernel loading, delegation, recursion bound, hooks, tool allowlists, model selection, …), each cell classified as mechanically enforced, brief-enforced, degraded, projected, observed, or unsupported — method parity is not enforcement parity. |
+| **[host-capability-matrix.md](host-capability-matrix.md)** | The same 5 hosts against each capability it tracks (kernel loading, delegation, recursion bound, hooks, tool allowlists, model selection, …), each cell classified as mechanically enforced, brief-enforced, degraded, projected, observed, or unsupported — method parity is not enforcement parity. |
 
 ## Authoritative sources
 

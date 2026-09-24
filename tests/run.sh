@@ -227,7 +227,11 @@ add_step python3 "$ROOT/tests/test_frontmatter_contract.py"
 # and §20 read as repeated closers and decoration, and wiring them in before
 # that genre question is settled would reward mangling correct reference prose
 # to satisfy a meter.
-add_step python3 "$ROOT/tools/prose-lint.py" --file "$ROOT/README.md" --file "$ROOT/DOCUMENTATION.md"
+# One step per file (SPEC-0004 PROSE_FLOOR_HELD_PER_FILE): the dash allowance
+# is a rate, and held over both files one file's excess hid in the other's
+# slack. gate-registry.py --lint refuses a line with two --file arguments.
+add_step python3 "$ROOT/tools/prose-lint.py" --file "$ROOT/README.md"
+add_step python3 "$ROOT/tools/prose-lint.py" --file "$ROOT/DOCUMENTATION.md"
 add_step bash "$ROOT/tests/test-status-register.sh"
 add_step bash "$ROOT/tests/test-status-migrate.sh"
 add_step bash "$ROOT/tests/test-seed-lint.sh"
