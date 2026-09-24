@@ -1248,13 +1248,21 @@ def lay(root):
             die("DOCUMENTATION.md holds an ADR range the fixture does not patch")
     write(root / "DOCUMENTATION.md", doc)
 
-    for rel, opener in (("documentation/agents-reference.md", "opener-agents.md"),
-                        ("documentation/skills-and-templates-reference.md", "opener-skills.md"),
-                        ("documentation/protocols-reference.md", "opener-protocols.md")):
+    # The shipped references carry their own one-line opener from increment 4
+    # on; the fixture's replaces it, as the part headings below accept either
+    # level, so a case that deletes the fixture's opener leaves none behind.
+    for rel, opener, head in (("documentation/agents-reference.md", "opener-agents.md",
+                               r"An agent is\b"),
+                              ("documentation/skills-and-templates-reference.md",
+                               "opener-skills.md", r"A skill is\b"),
+                              ("documentation/protocols-reference.md", "opener-protocols.md",
+                               r"A protocol( node)? is\b")):
         lines = read(root / rel).splitlines(keepends=True)
         if not lines or not lines[0].startswith("# "):
             die(f"{rel}: the first line is not its '#' title")
-        lines[1:1] = ["\n", read(fx / opener)]
+        shipped = (len(lines) > 3 and lines[1] == "\n" and re.match(head, lines[2])
+                   and lines[3] == "\n")
+        lines[1:3 if shipped else 1] = ["\n", read(fx / opener)]
         write(root / rel, "".join(lines))
     for rel, title in (("documentation/skills-and-templates-reference.md", "Part A — Skills"),
                        ("documentation/skills-and-templates-reference.md",

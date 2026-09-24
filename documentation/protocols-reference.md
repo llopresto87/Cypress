@@ -1,5 +1,7 @@
 # CYPRESS Protocols Reference
 
+A protocol node is the entry point for a kind of work; see the glossary's [protocol entry](../DOCUMENTATION.md#term-protocol).
+
 This document is a complete reference for the 14 protocol nodes of the
 CYPRESS seed. Each protocol is a routable graph node. It lives as a
 plain Markdown file with YAML frontmatter in `protocols/`. When a plant
@@ -11,7 +13,7 @@ from disk. The default-sequence and tier facts are cited from
 
 Each node also declares `prevents:` — the failure its own absence produces. It is not mirrored here; that would be a second home for one judgement per node. `python3 tools/roster-justification.py` prints it alongside the responsibility, the overlaps and the routing demand, reading each column out of the node that owns it ([ADR-0008](../docs/decisions/adr-0008-roster-justification-lives-in-the-node.md)).
 
-A protocol node is the entry point for a kind of work. The kernel rule
+The kernel rule
 (`core/AGENTS.md` §2) says: "State which protocol you are entering
 before you begin." The router maps *where the work stands* to a
 `protocol.*` node.
@@ -110,7 +112,7 @@ How the protocols chain:
 
 ---
 
-# Per-protocol reference
+## Per-protocol reference
 
 The protocols below are grouped by role: the core delivery funnel
 (brainstorm → specify → grill → test-first → verify), the close-out and
