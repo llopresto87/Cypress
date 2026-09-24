@@ -1409,14 +1409,14 @@ class FrontmatterVersionPositionTests(unittest.TestCase):
                       f"line:\n{out}")
 
     def testGRAPH_LINT_LOAD_WHEN_KEYWORD_IS_NOT_A_LEAK(self):
-        """`load_when:` is routing. expertise.schema carries `draft-07` and
-        expertise.shell carries `bash 3.2 floor` so that a task naming either
-        routes somewhere; neither node asserts what the project uses.
+        """`load_when:` is routing. An expertise node may carry `draft-07` or
+        `bash 3.2 floor` so that a task naming either routes to it; the node
+        asserts nothing about what the project uses.
 
         This is the guard, not the catch: it is green before the change and
         must stay green after it. A check that scanned the whole frontmatter
-        would turn any graph with such routing keywords red, and `3.2` is
-        a token today's VERSION_RE already matches — asserted below, so this
+        would turn any graph whose expertise nodes route on such keywords red;
+        `3.2` is a token today's VERSION_RE already matches — asserted below, so this
         green is a statement about position and not about an empty fixture."""
         src = GRAPH_LINT.read_text(encoding="utf-8")
         version_re = re.compile(

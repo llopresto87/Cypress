@@ -148,7 +148,9 @@ extraction and CLI behavior.
   - The one exception ([ADR-0011](docs/decisions/adr-0011-donor-token-redaction.md)):
     a token that identifies a project the seed was harvested from may be
     replaced in an append-only record, by owner decision only, never in an
-    ADR body, and always disclosed. Four limits: (a) each token span becomes
+    ADR body, and always disclosed. The records it has reached are a plan of
+    record, append-only by the grill rule, and a spec's changelog,
+    append-only by the spec rule. Four limits: (a) each token span becomes
     the one fixed placeholder `[redacted]`, and no sentence is reworded or
     deleted; (b) the release's CHANGELOG entry names each edited record and
     the class of token removed, never the token, and says the original text
