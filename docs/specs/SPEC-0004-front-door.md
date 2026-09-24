@@ -321,8 +321,6 @@ its path from the repository root, so one file's excess cannot hide behind
 another file's slack and two files with the same name cannot merge into one
 step. The maintainer can decide from one gate run what is left to rewrite.
 
----
-
 ## 4. Functional contracts
 
 (Authored by `architect`. Reviewed by `tester` for testability.)
@@ -1643,7 +1641,7 @@ now names the §6 caps, and AC-28 the release clause. The contract count is
       judgment; a README "refuses" linked to a soft row; a glossary
       Enforcement field saying `**hard**` whose linked rows are all weaker.
       Planted cases that pass: "No tool blocks code written before its spec"
-      linked to a judgment row (negated), and "nothing here is hard".
+      with its link on a judgment row (negated), and "nothing here is hard".
       Contracts: maps to MECHANISM_CLAIMS_TRACED.
 - [ ] **AC-11.** README's "what it does not do" section holds exactly two
       subsections, `### Requested, not enforced` then `### Not yet measured`.
@@ -1956,8 +1954,6 @@ a gate, and none has a §10 row.
 
 Twenty-two contracts, each accepted by at least one criterion. Every name on
 a `Contracts:` line above is a `### Contract:` of §4.
-
----
 
 ## 10. Test mapping
 
