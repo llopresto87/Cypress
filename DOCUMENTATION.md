@@ -106,8 +106,8 @@ activates only when the router resolves it for the task at hand.
 
 Before reading code or writing anything, an agent is asked to open the
 [router](#term-router), which covers *all* knowledge, both project facts and the
-method surface, then name the 2–3 nodes that match the task, reads only those plus their required
-closure, and declares what it loaded and what it skipped. A task touching one
+method surface, then to name the 2–3 nodes that match the task, read only those plus their required
+closure, and declare what it loaded and what it skipped. A task touching one
 subsystem loads a handful of nodes, not the whole tree.
 
 ### 2.3 Process is proportional to risk (the tiers)
@@ -120,8 +120,8 @@ discipline. See [§4](#4-risk-proportional-tiers-t0t3).
 ### 2.4 One home per fact
 
 [One home per fact](#term-one-home-per-fact) is the central anti-drift
-invariant. `graph-lint.py` checks it for a plant when someone runs it
-([graph lint](#enf-graph-lint)), and `tests/seed-lint.py` checks the seed's own
+invariant. `graph-lint.py` checks that each `owns:` key has one home in a
+plant's graph when someone runs it ([graph lint](#enf-graph-lint)), and `tests/seed-lint.py` checks the seed's own
 meta-facts ([own-gate row](#enf-seed-gate)).
 
 ### 2.5 Knowledge flows back (the reverse loop)

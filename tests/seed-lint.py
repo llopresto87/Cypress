@@ -2754,20 +2754,29 @@ def check_published_eager_figures(surfaces: dict) -> None:
     copies that exist, it does not require any. It reads every front-door file
     (SPEC-0004 C5), not only the EAGER_PUBLISHED pair, so a figure moved anywhere
     in the front door stays held.
+
+    Being some live figure is not enough on a line that names one harness: the
+    figure must be that harness's own. README's Claude Code figure once carried
+    the Prime Agent number and passed, because any computed value did.
     """
     live = set(surfaces.values()) | {EAGER_BUDGET}
     for rel in fd_front_door_files():
         path = ROOT / rel
         if not path.is_file():
             continue
-        for _n, m, value in stale_eager_figures(
-                path.read_text(encoding="utf-8", errors="replace"), live):
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for _n, m, value in stale_eager_figures(text, live):
             closest = min(live, key=lambda v: abs(v - value))
             fail(f"{rel}: publishes {m.group(1)} bytes as an always-loaded "
                  f"surface, and check_eager_surface computes no such figure "
                  f"(nearest: {closest}). These numbers have one home and it "
                  f"is not this page — correct it, mark it as historical, or "
                  f"stop printing a figure nothing derives")
+        for n, m, value, harness in misattributed_eager_figures(text, surfaces):
+            fail(f"{rel}:{n}: publishes {m.group(1)} bytes for {harness}, and "
+                 f"check_eager_surface computes {surfaces[harness]} for that "
+                 f"harness. A line that names one harness prints that harness's "
+                 f"figure")
 
 
 # The pages check_published_eager_figures held before SPEC-0004 widened it to
@@ -2796,6 +2805,32 @@ def stale_eager_figures(text: str, live: set) -> list:
             if value not in live:
                 stale.append((n, m, value))
     return stale
+
+
+# How a front-door line names each harness whose eager surface is computed.
+EAGER_HARNESS_NAMES = {"claude-code": "Claude Code", "opencode": "opencode",
+                       "codex": "Codex", "prime-agent": "Prime Agent",
+                       "github-copilot": "Copilot"}
+
+
+def misattributed_eager_figures(text: str, surfaces: dict) -> list:
+    """(line number, match, value, harness) for each always-loaded byte figure
+    on a line that names exactly one harness and differs from that harness's
+    computed surface, historical lines skipped. A line naming several harnesses,
+    such as a matrix header row, is left to stale_eager_figures."""
+    wrong = []
+    for n, line in enumerate(text.splitlines(), 1):
+        if EAGER_HISTORICAL.search(line):
+            continue
+        named = [h for h, name in EAGER_HARNESS_NAMES.items()
+                 if h in surfaces and re.search(rf"\b{re.escape(name)}\b", line, re.I)]
+        if len(named) != 1:
+            continue
+        for m in EAGER_FIGURE.finditer(line):
+            value = int(re.sub(r"[  \u2009]", "", m.group(1)))
+            if value != surfaces[named[0]]:
+                wrong.append((n, m, value, named[0]))
+    return wrong
 
 
 def check() -> None:

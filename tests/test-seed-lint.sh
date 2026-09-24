@@ -312,6 +312,21 @@ p.write_text(t.replace(m.group(1), '99 111', 1))
 expect_fail "always-loaded surface" "published-eager-figure"
 # exercises: check_published_eager_figures
 restore documentation/host-capability-matrix.md
+# A figure that names one harness and prints another harness's live figure. Any
+# live figure used to pass, so README's Claude Code figure could carry the Prime
+# Agent number and the gate stayed green.
+python3 -c "
+import pathlib, re, sys
+root = pathlib.Path(sys.argv[1])
+matrix = (root / 'documentation/host-capability-matrix.md').read_text()
+other = re.search(r'(?m)^\| Prime Agent \|.*?(\d{2} \d{3}) B', matrix).group(1)
+p = root / 'README.md'; t = p.read_text()
+m = re.search(r'(\d{2} \d{3}) bytes \| per session on Claude Code', t)
+assert m and m.group(1) != other
+p.write_text(t.replace(m.group(0), m.group(0).replace(m.group(1), other), 1))
+" "$TMP"
+expect_fail "README.md:[0-9]*: publishes .* bytes for claude-code" "published-eager-figure-harness"
+restore README.md
   rm -rf "$TMP"
 }
 case_21() {
