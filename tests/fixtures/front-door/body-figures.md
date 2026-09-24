@@ -1,0 +1,1 @@
+Routable body sizes, computed by the test run of this repository: the largest routable body is {{LARGEST_BODY}} lines and the median routable body is {{MEDIAN_BODY}} lines, against a machinery ceiling of {{MACHINERY_BODY_CEILING}} lines and a lifecycle ceiling of {{LIFECYCLE_BODY_CEILING}} lines.

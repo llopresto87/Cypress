@@ -1,0 +1,1 @@
+| **mechanically enforced** | The harness itself reads this and holds the bound at runtime, or automatically fires the mechanism (a wired hook). A hook that only injects text into the context fires and holds nothing. | `hard`; `n/a — not a control` for a hook that only injects text |

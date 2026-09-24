@@ -18,6 +18,7 @@ which is the installed *application* knowledge graph. ADR bodies use
 | [0008](adr-0008-roster-justification-lives-in-the-node.md) | A component's justification lives in the component (`prevents:`), derived not published; the name-occurrence count is retired | accepted | 2026-09-14 | grill-7.15.0-remediation.md | 7.16.0 |
 | [0009](adr-0009-host-support-tiers.md) | Hosts sit in three support tiers (first-class, supported, frozen); `install.sh all` installs only the first two | proposed | 2026-09-23 | grill-7.27.0-host-support-tiers.md | 7.27.0 |
 | [0010](adr-0010-context-residency.md) | Text enters a session once, at the lowest residency class that serves it; the per-prompt hooks hold to that per host, and the ledger's threat model | proposed | 2026-09-23 | grill-7.28.0-context-residency.md | 7.28.0 |
+| [0011](adr-0011-donor-token-redaction.md) | Donor-identifying tokens in append-only seed records are replaced in place, under one scoped exception whose home is `CLAUDE.md` Conventions | proposed | 2026-09-24 | grill-7.29.0-front-door.md | 7.29.0 |
 
 ADRs **0001–0003** were decided inline in the plan-of-record
 [`../plans/agent-routing-and-delegation.md`](../plans/agent-routing-and-delegation.md)

@@ -252,7 +252,7 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "V5: an unreadable input is named and is fatal, in four linters",
         FIXTURES, "none", "the input set IS unreadable files; fixtures are the "
         "only way to produce one"),
-    "prose-lint.py --file README --file DOCUMENTATION": (
+    "prose-lint.py --file README.md --file DOCUMENTATION.md": (
         "the seed's own front-door prose meets the floor", REAL, "coverage",
         "2 of ~340 markdown files; documentation/*-reference.md are exempt by a "
         "recorded genre decision in run.sh"),
@@ -351,7 +351,13 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "exempted WHOLESALE until 7.16.0, so a raw write hidden inside "
         "`place_file` destroyed a file outside the target with this gate green. "
         "They are counted rows now, but the check still sees only writes it can "
-        "attribute to a function it can find"),
+        "attribute to a function it can find. SPEC-0004's front-door checks add "
+        "five: a restated definition reworded below DEFINITION_OVERLAP_CEILING, "
+        "an enforcement claim phrased without a listed mechanism verb, a term "
+        "used in a form its glossary entry does not list, and an install target "
+        "install.sh names only in a comment or message all pass; and a slug in "
+        "FRONT_DOOR_PENDING is reported on its PENDING line, not enforced, until "
+        "the increment that clears it removes it"),
     "ratchet-lint.py": (
         "no budget, threshold or debt ledger has been loosened since it was "
         "recorded", REAL, "evidence",
@@ -469,7 +475,12 @@ def run_sh_steps() -> list[str]:
             if flag:
                 name = f"{name} --{flag.group(1)}"
             elif name == "prose-lint.py":
-                name = "prose-lint.py --file README --file DOCUMENTATION"
+                # Named by each `--file` argument's path from the repository
+                # root (SPEC-0004 PROSE_FLOOR_HELD_PER_FILE), so README.md and
+                # integrations/<host>/README.md can never share a step name
+                # the way a basename rule would make them.
+                files = re.findall(r'--file\s+"?(?:\$\{?ROOT\}?/)?([^"\s]+)"?', rest)
+                name = " ".join([name] + [f"--file {f}" for f in files])
             if name not in steps:
                 steps.append(name)
     return steps
