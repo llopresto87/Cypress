@@ -35,7 +35,7 @@ This seed system maps to opencode as follows:
 | `agents/*.md`            | `.opencode/agents/*.md`                            |
 | `skills/*/SKILL.md`      | `.opencode/skills/*/SKILL.md`                      |
 | protocols → commands     | `.opencode/commands/*.md`                          |
-| `templates/`             | `templates/` (kept at repo root, untouched)        |
+| `templates/`             | `docs/graph/templates/` (graph nodes)        |
 | `templates/docs/`        | `docs/graph/` (missing leaves added on install)    |
 
 > **The projection is taken from the graph, not from the seed.** The rows
@@ -145,7 +145,7 @@ Creates copies by default (`--symlink` opts into live seed links) from the seed 
 
 ## Bounded execution has no hook here
 
-This harness exposes no pre-tool hook, so the bounded-execution clauses of
+The seed wires no pre-tool hook for opencode, so the bounded-execution clauses of
 `core/method/engineering-posture.md` §14 (`toolcraft.bounded-execution`) are the agent's own discipline
 rather than a hook's check: every shell command that can hang (service
 control, process signalling, package managers, installers, builds, log

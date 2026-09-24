@@ -197,7 +197,7 @@ parity here; the differences are budget mechanics, not enforcement.
   (`integrations/prime-agent/APPEND_SYSTEM.md`, "Delegation — recursive
   subagents, not a Task tool"). This is not a weaker version of
   registration: there is no "installed but not yet spawnable" lag the way
-  there is on Claude Code/opencode after a fresh install
+  there can be on Claude Code after a first install (opencode: not recorded)
   (`core/method/delegation.md`, `delegation.harness-registration`). It is
   a different mechanism verified to work, which is exactly what "observed"
   is for.
@@ -238,8 +238,8 @@ parity here; the differences are budget mechanics, not enforcement.
   separate, harness-held ceiling the seed does not set
   ([`delegation.bounds`](../core/method/delegation.md#delegation-is-bounded)).
 - opencode: `subagent_depth` in `opencode.json` is "the load-bearing key".
-  opencode defaults it to 1 (which "prevents subagents from launching
-  subagents"), and the seed ships it set to 3 to reach its deepest chain;
+  opencode defaults it to 1 ("a depth at which subagents do not launch
+  subagents of their own"), and the seed ships it set to 3 to reach its deepest chain;
   `tests/seed-lint.py` asserts the two agree
   (`integrations/opencode/README.md`). **mechanically enforced**, and
   numerically real: the one host where the seed's actual delegation depth
@@ -267,9 +267,9 @@ parity here; the differences are budget mechanics, not enforcement.
   records. **mechanically enforced**.
 - opencode: explicitly **degraded**. `integrations/opencode/README.md`'s
   gap table: the seed ships `tools: [Read, Glob, Grep, Bash]` (a list);
-  opencode expects `permission: {edit: deny, bash: deny}` (`tools` as a
-  list is deprecated). Consequence stated verbatim: "a read-only leaf's
-  tool bound is not enforced by the harness." Until `install.sh` emits a
+  opencode expects `permission: {edit: deny, bash: deny}` (the `tools`
+  object is deprecated). Consequence stated verbatim: "the harness does not
+  hold a read-only leaf's tool bound". Until `install.sh` emits a
   transformed projection for opencode (as it already does for Copilot),
   this is brief-enforced at best in practice.
 - Codex CLI: no evidence of a per-agent tool-restriction surface in this
@@ -328,8 +328,8 @@ status-register summary).
   [delegation node](../core/method/delegation.md#every-brief-carries-the-graph-discipline).
 - **opencode**: `install_opencode()` in `install.sh` places no hook
   file of any kind, and no config key exists for one either
-  (`integrations/opencode/README.md`: "the config schema rejects unknown
-  keys outright"). **unsupported**, all three.
+  (`integrations/opencode/README.md`: "the config schema allows no unknown
+  key at all"). **unsupported**, all three.
 - **Codex CLI**: no hook surface appears in `config.toml.example` or its
   README. **unsupported**, all three. Upstream Codex CLI does document
   `SessionStart`, `UserPromptSubmit` and `PreCompact` hooks, and the seed wires
@@ -369,14 +369,15 @@ fires it. Its classes, `hard` for a matched command on this host and
 subagent's Bash calls is recorded in the
 [delegation node](../core/method/delegation.md#every-brief-carries-the-graph-discipline).
 
-- opencode: "This harness exposes no pre-tool hook … the bounded-execution
-  clauses … are the agent's own discipline rather than an enforced guard"
-  (`integrations/opencode/README.md`, "Bounded execution has no hook
-  here"). **unsupported**.
+- opencode: "The seed wires no pre-tool hook for opencode, so the
+  bounded-execution clauses … are the agent's own discipline rather than a
+  hook's check" (`integrations/opencode/README.md`, "Bounded execution has
+  no hook here"). **unsupported**.
 - Codex CLI, GitHub Copilot, Prime Agent: no equivalent shipped for any of
-  the three. Copilot's hook set stops at route/status, Codex has no hook
-  surface at all, and Prime Agent's two extensions cover only routing and
-  status, never a tool-call gate. **unsupported** on all three.
+  the three. Copilot's hook set stops at route/status, the seed wires no
+  Codex hook at all (see the session-start hook section above), and Prime
+  Agent's two extensions cover only routing and status, never a tool-call
+  gate. **unsupported** on all three.
 
 ### Slash commands
 

@@ -61,10 +61,11 @@ or a program of several. It assumes only that you want serious engineering
 practice on the production path.
 
 The shipped corpora are narrower than the machinery that reads them: the
-library corpus is majority .NET/Java by page count and the legal corpus
-carries one national jurisdiction. §10 measures both; neither ships into a
-plant except on explicit request, so an adopter on a different stack runs the
-same agnostic ingest flow everyone else does.
+library corpus is majority .NET/Java by page count, and the legal corpus
+carries one national jurisdiction; §10 describes both and links their counts.
+The library corpus is never placed in a plant, and the legal corpus only on
+explicit request, so an adopter on a different stack runs the same agnostic
+ingest flow everyone else does.
 
 ### The "seed" metaphor
 
@@ -600,19 +601,21 @@ The corpora are harvested, durable, project-agnostic reference material that
 plants can draw from but that is not loaded by default. Harvest deposits into
 them; grow/graft draw from them.
 
-| Corpus | Location | Holds | Count |
-|--------|----------|-------|-------|
-| Library docs | `library-corpus/` | Version-durable surface notes per dependency, by ecosystem (npm, nuget, maven, pypi, container, language, platform) | 81 pages |
-| Legal citations | `legal-corpus/` | Law/standards citations by jurisdiction (eu, national, international, case-law); graded **per entry, never per page** | 13 instrument pages / 129 entries |
-| Reusable tools | `tool-corpus/` | Durable tested tools by category (ops, testing); `tests/test-tool-corpus.sh` compiles every shell and Python implementation on a page claiming `Stability: portable`, and exercises the behaviour of the ones that ship one | 14 |
-| Optional experts | `agent-corpus/` | Candidate expert roles — the roster mirror; none loaded by default, none named in the kernel | 7 |
-| Optional procedures | `skill-corpus/` | Candidate procedures not in the core skill set | 11 |
+| Corpus | Location | Holds |
+|--------|----------|-------|
+| Library docs | `library-corpus/` | Version-durable surface notes per dependency, by ecosystem (npm, nuget, maven, pypi, container, language, platform) |
+| Legal citations | `legal-corpus/` | Law/standards citations by jurisdiction (eu, national, international, case-law); graded **per entry, never per page** |
+| Reusable tools | `tool-corpus/` | Durable tested tools by category (ops, testing); `tests/test-tool-corpus.sh` compiles every shell and Python implementation on a page claiming `Stability: portable`, and exercises the behaviour of the ones that ship one |
+| Optional experts | `agent-corpus/` | Candidate expert roles, mirroring the roster; none loaded by default, none named in the kernel |
+| Optional procedures | `skill-corpus/` | Candidate procedures not in the core skill set |
 
-The library corpus's ecosystem mix is not even: `nuget` (22 pages) and `maven`
-(21) are 53% of its 81 pages between them, reflecting the .NET/Java estate it
-was harvested from. Full ecosystem-by-ecosystem counts and what that means for
-an adopter on a different stack: `documentation/corpora-and-integrations-reference.md`
-§A.4.1a.
+The entry counts of each corpus are in the corpora reference's
+[inventory](documentation/corpora-and-integrations-reference.md#a4-inventory),
+and `python3 tests/legal-lint.py` prints the legal corpus's entry and page
+counts on every run. The library corpus's ecosystem mix is not even: `nuget`
+and `maven` together hold more than half its pages, reflecting the .NET/Java
+estate it was harvested from. What that means for an adopter on a different
+stack: `documentation/corpora-and-integrations-reference.md` §A.4.1a.
 
 The corpora sit outside the roster and kernel because the always-loaded team pays
 a per-session cost in every plant. A harvested role or procedure lands in a corpus
@@ -829,12 +832,11 @@ the seed's own changes. An install places no CI workflow into a plant, so runnin
 a plant's linters on every push is the adopting project's to wire (the
 [own-gate row](#enf-seed-gate)).
 
-That command runs every suite registered in `tests/run.sh`. The walkthrough below is a
-**partial, illustrative grouping — it is not the list**, and it said "every
-suite, in order" while enumerating 22 of 41 and omitting
-`test-install-placement.sh` and `test-plant-state.sh`, the two suites that carry
-SPEC-0001's contracts. For the real roster, and for what each gate READS and the
-false green it can still produce, ask the thing that derives it:
+That command runs every suite registered in `tests/run.sh`. The walkthrough
+below is a **partial, illustrative grouping, not the list**: it omits, among
+others, `test-install-placement.sh` and `test-plant-state.sh`, the two suites
+that carry SPEC-0001's contracts. For the real roster, and for what each gate
+READS and the false green it can still produce, ask the thing that derives it:
 
 ```sh
 python3 tools/gate-registry.py --summary   # how many, and what each reads
@@ -910,19 +912,18 @@ reader has not identified.
 
 `tests/seed-lint.py` is the seed's self-consistency gate. It enforces:
 roster/frontmatter/manifest/README consistency, the delegator invariant, numeric
-claims, the kernel size budget (8000 bytes), stable §3.1–§3.8 anchors,
+claims, the kernel size budget (`KERNEL_BUDGET`, recorded in
+`tests/ratchets.json`), stable §3.1–§3.8 anchors,
 machinery-node frontmatter (every protocol/skill/agent/method file is a graph
 node with the right fields; `owns` globally unique; the eight `rule.*` keys each
 in exactly their mapped home), canonical-block byte-identity in the brief
 templates, and the per-session instruction budget of the integrations.
 
-Current status (documented run): all gates PASS.
-`agent-lint`: 20 agents valid; `--eval` over 95 rows: contract consistency
-98.4% (60/61), paraphrase confident-correct 4/17 (13 abstentions), adversarial
-confident-correct 5/12, unknown-domain 5/5 correctly abstained; zero
-confident-wrong outside the adversarial class and **2 within it**, against a
-ratcheted budget of 2; `seed lint: PASS`; `legal lint: PASS — 129 entries
-across 13 pages`; `test_agent_lint.py`: 67 tests, 1 skipped.
+The current figures are printed by the gate itself, not kept here, because
+they move with the roster, the routing corpus and the legal corpus:
+`agent-lint --eval` prints each class's counts and the adversarial budget,
+`legal-lint.py` its entry and page counts, and `test_agent_lint.py` its test
+count.
 
 > Honesty note carried in the CHANGELOG: `--eval` used to report one blended
 > `top-1 accuracy 100% (55/55)` number, which was arithmetically true and
@@ -934,15 +935,17 @@ across 13 pages`; `test_agent_lint.py`: 67 tests, 1 skipped.
 > signal), or `unknown-domain` (must abstain), reports each class separately,
 > and never averages them. A fourth class, `adversarial`, was added in 7.16.0:
 > phrasings built to bait a plausible-but-wrong specialist.
-> `contract`'s 98.4% measures self-consistency; `paraphrase`'s 4/17 is the
-> honest generalization number for a keyword heuristic scored on phrasing it
-> was never given, and its 13 abstentions are a correct outcome rather than a
-> miss.
+> `contract`'s score measures self-consistency; `paraphrase`'s confident-correct
+> count is the honest generalization number for a keyword heuristic scored on
+> phrasing it was never given, and its abstentions are a correct outcome rather
+> than a miss.
 > The gate that matters is confident-and-wrong. It is zero in every class
-> **except `adversarial`**, which carries a ratcheted budget of 2, because the
+> **except `adversarial`**, which carries a ratcheted budget
+> (`ADVERSARIAL_CONFIDENT_WRONG_BUDGET` in `tests/ratchets.json`), because the
 > rows exist to bait the router and a bait that never succeeds is not a bait.
-> That budget may only fall; it went 3 to 2 when the routers' lexical reach was
-> repaired, without a trigger being tuned to a row.
+> The budget may fall freely, and raising it is an owner decision recorded in
+> `tests/ratchets.json`; the comment beside the constant in
+> `integrations/claude-code/agent-lint.py` records why it stands where it does.
 
 Routable body sizes, computed by `tests/seed-lint.py` from the method files on every run: the largest routable body is 1 384 lines (`protocols/graft.md`) and the median is 169 lines, against a ceiling of 1 000 lines for any routable node and 2 500 lines for the three cross-project protocols, `graft`, `grow` and `harvest`. Those three are the only protocols that write into a repository the seed does not own, and a session loads one only while it performs that operation ([ADR-0007](docs/decisions/adr-0007-lifecycle-protocol-ceiling.md)). Both ceilings are ratchets: they may fall freely, and raising either is an owner decision recorded in `tests/ratchets.json`. The always-loaded budget has the same shape, and `EAGER_EXEMPTIONS` in `tests/seed-lint.py` is consequently **empty**: every harness sits under `EAGER_BUDGET`, and the per-harness figures are in the [host capability matrix](documentation/host-capability-matrix.md).
 
@@ -1405,7 +1408,7 @@ repo's own `CLAUDE.md`:
   (append-only; supersede, don't rewrite). One scoped exception to append-only:
   [`CLAUDE.md` Conventions](CLAUDE.md#conventions).
 - The kernel is loaded on every session of every plant. Additions there must
-  earn their per-session rent; lint fails past the 8000-byte budget. Depth belongs
+  earn their per-session rent; lint fails past the byte budget (`KERNEL_BUDGET`). Depth belongs
   in a machinery node, never the kernel.
 - Append-only artifacts: `CHANGELOG.md` and `docs/decisions/`. Everything
   else: integrate, don't bolt on. One scoped exception to append-only:

@@ -42,9 +42,9 @@ Every spawned worker runs the plant's graph router before reading plant source:
 command/output, the loaded closure, and deliberate skips.
 
 A graft installs a **roster delta** — specialists the seed added or renamed since
-the plant's base — and those types are not spawnable in this session, because the
-host enumerated its agent directory before the graft wrote them. A plant grafted
-across a roster rename hits that every time. Preflight before the phases that
+the plant's base — and whether this session can spawn those types is
+host-dependent, because the graft writes them mid-session. A graft across a
+roster rename always produces such a delta. Preflight before the phases that
 dispatch by name, and take the remedy or the recorded fallback in
 `docs/graph/method/delegation.md` (`delegation.harness-registration`). Run this
 chat rooted at the **plant**, never at the seed.

@@ -18,8 +18,8 @@ file format:
 2. **Path-scoped instructions** —
    `.github/instructions/<name>.instructions.md`, each with a YAML
    `applyTo:` glob. Auto-applied when the user is working in a
-   matching file path. We use these for specialist guidance that's
-   relevant only in specific areas (e.g. test files, docs/).
+   matching file path. We use these for the skills, each with a
+   match-all glob (see below).
 3. **Prompt files** — `.github/prompts/<name>.prompt.md`, each with
    YAML frontmatter (mode, description, tools). Surface as slash
    commands in Copilot Chat. We use these for the protocols.
@@ -36,7 +36,7 @@ This seed system maps to Copilot as follows:
 | `agents/*.md`            | `.github/agents/*.agent.md` (transformed)            |
 | `skills/*/SKILL.md`      | `.github/instructions/*-skill.instructions.md` (transformed) |
 | `protocols/*.md`         | `.github/prompts/*.prompt.md` (transformed)          |
-| `templates/`             | `templates/` (kept at repo root, untouched)          |
+| `templates/`             | `docs/graph/templates/` (graph nodes)          |
 | `templates/docs/`        | `docs/graph/` (missing leaves added on install)      |
 
 > **The projection is taken from the graph, not from the seed.** The rows
@@ -133,8 +133,9 @@ applyTo: '**'
 /path/to/cypress/install.sh github-copilot
 ```
 
-This generates `.github/` and `AGENTS.md` from the source. Re-run
-after editing any source file.
+This generates `.github/` and `AGENTS.md` from the source, with
+`CLAUDE.md` beside it as a symlink to `AGENTS.md`. Re-run after editing
+any source file.
 
 ## Conflict with existing `.github/copilot-instructions.md`
 
@@ -143,8 +144,8 @@ installer:
 1. Backs up the existing file to
    `.github/copilot-instructions.md.bak-<timestamp>`.
 2. Writes the kernel.
-3. Prints a diff so the maintainer can merge custom content back
-   in.
+3. Prints the backup's path, so the maintainer can merge custom
+   content back in by hand.
 
 ## VS Code settings
 

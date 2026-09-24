@@ -2185,7 +2185,7 @@ place_file "$SEED_ROOT/INSTALL_PROMPT.md" "$PROJECT_DIR/EXPERT_SEED_INSTALL_PROM
 # transient scratch and stays ignored.
 # Where each adapter expects to find a SPAWNABLE agent. `docs/graph/agents/` is
 # the home of every agent node; these are projections of it, and the host reads
-# its roster from them when a session starts — so an agent that exists only in
+# its roster from them, not from the graph — so an agent that exists only in
 # the graph is on disk and unspawnable. This is the ONE home of that mapping:
 # it is recorded into the plant's stamp below, and the growth audit reads it
 # from there rather than keeping a copy that could drift.
@@ -2369,8 +2369,9 @@ fi
 log "done. FILES ARE PLACED — the project is NOT grown yet."
 log ""
 log "Next step (the HAND OFF phase): open a NEW agent-capable chat ROOTED AT the"
-log "target directory (never the seed — the roster registers at session start,"
-log "see delegation.harness-registration) and paste the one entry prompt from:"
+log "target directory (never the seed — a first install's roster may not be"
+log "registered until then, see delegation.harness-registration) and paste the"
+log "one entry prompt from:"
 log ""
 log "    $PROJECT_DIR/EXPERT_SEED_INSTALL_PROMPT.md"
 log ""
