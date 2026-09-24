@@ -2087,7 +2087,7 @@ case_fd_mechanism_traced() {
 
 case_fd_mechanism_overclaim() {
   local TMP L KB; TMP="$(fd_fresh)"
-  # X312 MECHANISM_CLAIMS_TRACED: "hard" linked only to the soft enf-kernel-budget row (AC-10, §8)
+  # X312 MECHANISM_CLAIMS_TRACED: "hard" linked only to the soft enf-kernel-budget row (AC-10, §8; §7 OVERCLAIM)
   KB="$(fd_py val "$TMP" KERNEL_BUDGET --grouped)"
   fd_py insert_before "$TMP/README.md" '## Why it is built this way' "The kernel sits under a hard ${KB}-byte [budget](DOCUMENTATION.md#enf-kernel-budget)."$'\n'
   L="$(fd_py line "$TMP/README.md" 'The kernel sits under a hard')"
@@ -2298,7 +2298,7 @@ case_fd_measured_evidence() {
 case_fd_eager_published() {
   local TMP L S; TMP="$(fd_fresh)"
   S="$(fd_py stale "$TMP")"
-  # X318 EAGER_FIGURES_CHECKED_WHEREVER_PUBLISHED (a) an always-loaded figure nothing computes, in a reference (AC-17)
+  # X318 EAGER_FIGURES_CHECKED_WHEREVER_PUBLISHED (a) an always-loaded figure nothing computes, in a reference (AC-17; §7 FIGURE_MOVED_WITHOUT_ITS_CHECK)
   fd_py append "$TMP/documentation/agents-reference.md" $'\n'"The always-loaded surface is ${S} bytes per session."
   L="$(fd_py line "$TMP/documentation/agents-reference.md" "The always-loaded surface is ${S} bytes")"
   # exercises: check_fd_eager_figures_checked_wherever_published
@@ -2341,7 +2341,7 @@ case_fd_body_home() {
 
 case_fd_body_figure_elsewhere() {
   local TMP L; TMP="$(fd_fresh)"
-  # X319 BODY_FIGURES_HAVE_A_REQUIRED_HOME: a body line figure outside its home (AC-17)
+  # X319 BODY_FIGURES_HAVE_A_REQUIRED_HOME: a body line figure outside its home (AC-17; §7 FIGURE_MOVED_WITHOUT_ITS_CHECK)
   fd_py append "$TMP/INSTALL.md" $'\nThe largest body is 1 384 lines.'
   L="$(fd_py line "$TMP/INSTALL.md" 'The largest body is 1 384 lines.')"
   # exercises: check_fd_body_figures_have_a_required_home

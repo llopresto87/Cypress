@@ -252,9 +252,13 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "V5: an unreadable input is named and is fatal, in four linters",
         FIXTURES, "none", "the input set IS unreadable files; fixtures are the "
         "only way to produce one"),
-    "prose-lint.py --file README.md --file DOCUMENTATION.md": (
-        "the seed's own front-door prose meets the floor", REAL, "coverage",
-        "2 of ~340 markdown files; documentation/*-reference.md are exempt by a "
+    "prose-lint.py --file README.md": (
+        "README.md on its own meets the prose floor", REAL, "coverage",
+        "1 of ~340 markdown files; documentation/*-reference.md are exempt by a "
+        "recorded genre decision in run.sh"),
+    "prose-lint.py --file DOCUMENTATION.md": (
+        "DOCUMENTATION.md on its own meets the prose floor", REAL, "coverage",
+        "1 of ~340 markdown files; documentation/*-reference.md are exempt by a "
         "recorded genre decision in run.sh"),
     "test-status-register.sh": (
         "the status vocabulary is controlled and queryable", FIXTURES, "scope", ""),
@@ -408,8 +412,28 @@ GATES: dict[str, tuple[str, str, str, str]] = {
 }
 
 
-def run_sh_steps() -> list[str]:
-    """The gate steps tests/run.sh actually executes, in order.
+def _run_sh_lines(raw: str):
+    """tests/run.sh as (line number, logical line) pairs: a backslash
+    continuation is joined onto the line it continues, which keeps that line's
+    number, so a finding can name where the step starts."""
+    start, buf = None, ""
+    for n, line in enumerate(raw.splitlines(), 1):
+        if start is None:
+            start, buf = n, line
+        else:
+            buf += " " + line.lstrip()
+        if buf.endswith("\\"):
+            buf = buf[:-1].rstrip()
+            continue
+        yield start, buf
+        start, buf = None, ""
+    if start is not None:
+        yield start, buf
+
+
+def run_sh_invocations() -> list[tuple[int, str]]:
+    """Every gate invocation in tests/run.sh as (line, step name), in order,
+    repeats kept.
 
     The parser is deliberately forgiving about SHAPE and strict about coverage.
     An earlier version anchored the interpreter to the start of the line and
@@ -425,10 +449,8 @@ def run_sh_steps() -> list[str]:
     rather than at its start, and accept a path with or without `$ROOT`.
     """
     raw = RUN_SH.read_text(encoding="utf-8")
-    # Join backslash continuations before anything else looks at lines.
-    raw = re.sub(r"\\\n\s*", " ", raw)
-    steps = []
-    for line in raw.splitlines():
+    found = []
+    for n, line in _run_sh_lines(raw):
         line = line.strip()
         if not line or line.startswith("#"):
             continue
@@ -481,9 +503,46 @@ def run_sh_steps() -> list[str]:
                 # the way a basename rule would make them.
                 files = re.findall(r'--file\s+"?(?:\$\{?ROOT\}?/)?([^"\s]+)"?', rest)
                 name = " ".join([name] + [f"--file {f}" for f in files])
-            if name not in steps:
-                steps.append(name)
+            found.append((n, name))
+    return found
+
+
+def run_sh_steps() -> list[str]:
+    """The gate steps tests/run.sh actually executes, in order, each once."""
+    steps = []
+    for _n, name in run_sh_invocations():
+        if name not in steps:
+            steps.append(name)
     return steps
+
+
+def prose_step_problems() -> list[str]:
+    """SPEC-0004 PROSE_FLOOR_HELD_PER_FILE: one prose-lint step per file.
+
+    prose-lint's dash allowance is a rate, so a line handing it two files lets
+    one file's excess hide in the other's slack. And `run_sh_steps()` lists a
+    name once, so a second line resolving to the same name would merge into
+    the first and never be seen. Both are refused here. The refusal is scoped
+    to prose-lint; whether any other tool may appear twice is not decided.
+    """
+    problems, first = [], {}
+    for n, name in run_sh_invocations():
+        if not name.startswith("prose-lint.py"):
+            continue
+        count = name.count("--file ")
+        if count > 1:
+            problems.append(
+                f"tests/run.sh:{n} hands {count} --file arguments to one "
+                f"prose-lint step; the dash rate is then held over the files "
+                f"together, so give each file its own add_step line")
+        if name in first:
+            problems.append(
+                f"tests/run.sh:{first[name]} and tests/run.sh:{n} both resolve "
+                f"to the step '{name}'; the second would merge into the first "
+                f"and never count as a step of its own")
+        else:
+            first[name] = n
+    return problems
 
 
 def runner_contract_problems() -> list[str]:
@@ -535,7 +594,7 @@ def cmd_lint() -> int:
         print("gate-registry: FAIL — parsed zero steps out of tests/run.sh; the "
               "parser and the runner have diverged", file=sys.stderr)
         return 1
-    problems = runner_contract_problems()
+    problems = runner_contract_problems() + prose_step_problems()
     for s in steps:
         if s not in GATES:
             problems.append(
