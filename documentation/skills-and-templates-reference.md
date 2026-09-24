@@ -1391,9 +1391,10 @@ template's own lines, so the form never counts as the plan):
 Source: `templates/prompts/*.md` (9 files).
 
 These are the **delegation briefs**: the runtime prompts an orchestrator or a
-growth run hands to a spawned worker. Because hooks do not reach a subagent's
-clean context, the brief is the only enforcement that crosses the delegation
-boundary. Several briefs embed the same canonical graph-session bootstrap
+growth run hands to a spawned worker. No hook the seed installs carries the
+discipline into a subagent's clean context, so the brief is its only carrier
+across the delegation boundary
+([delegation node](../core/method/delegation.md#every-brief-carries-the-graph-discipline)). Several briefs embed the same canonical graph-session bootstrap
 block verbatim; every static seed file references it instead of paraphrasing.
 
 ## Summary table — prompt/brief templates

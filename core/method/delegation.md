@@ -127,30 +127,52 @@ class a phase uses stays owned by that phase in its protocol node.
 
 Six coordinators (`orchestrator`, `multi-agent-architect`,
 `growth-orchestrator`, `architect`, `reviewer`, `docs-librarian`) hold
-a depth-capped `Task` and spawn only within their `delegates_to`
-allowlist (deepest legal chain: depth 3). Every other agent is a
-Task-less leaf — the one recursion cap the harness itself enforces
-whenever the specialist was registered as a type (see the next section
-for the case where it was not): at an out-of-domain boundary a leaf
-STOPs and hands back, naming the next specialist, never doing the work
-itself. `agent-lint --lint` enforces the frontmatter invariants.
+the spawn tool and spawn only within their `delegates_to` allowlist.
+On Claude Code the spawn tool is named `Agent`, and `Task`, the name the
+shipped agents list, is its accepted alias; either grants it, bare or
+parenthesized, and in a subagent definition the host ignores the
+parenthesized type list, so the allowlist and `max_spawn_depth` are the
+seed's own soft caps, read only by `agent-lint --lint`. The deepest
+legal chain, depth 3, is likewise the seed's design ceiling, not the
+host's.
+
+Two caps are the harness's own. Every other agent is a spawn-less
+leaf: its `tools:` line is present and names neither `Agent` nor
+`Task` (a missing line inherits every tool, the spawn tool included),
+which holds whenever the specialist was registered as a type (see the
+next section for the case where it was not). And the host limits how
+deep subagents may spawn subagents: the limit is configurable by
+environment, its default is on the host's
+[sub-agents page](https://code.claude.com/docs/en/sub-agents)
+(retrieved 2026-09-24), and at the limit the host withholds the spawn
+tool from every subagent except a fork. At an out-of-domain boundary a
+leaf STOPs and hands back, naming the next specialist, never doing the
+work itself. `agent-lint --lint` enforces the frontmatter invariants.
 
 ## A specialist is spawnable only once the host registered it
 
 `docs/graph/agents/` is the home; a *spawnable* specialist is the host's
 **projection** of it (`.claude/agents/`, `.opencode/agents/`,
-`.codex/agents/`, `.github/agents/`), and a host enumerates that
-directory when a session **starts**. Spawning a specialist by name
-therefore has two preconditions: the session's project root is the
-plant, and the projection already existed at startup. (**Prime Agent is
+`.codex/agents/`, `.github/agents/`), and when a host sees a file
+written there mid-session is host-dependent. Claude Code watches its
+project and user agent directories and uses a file added or edited
+mid-session for the next delegation, with no restart, except in three
+cases its sub-agents page names: the first file written into an
+`agents/` directory new in that session, directories added with
+`--add-dir`, and sessions started with slash commands disabled. A first
+install into a plant with no `.claude/agents/` creates that directory
+mid-session, so it is the first case. Other hosts are not recorded
+here. Spawning a specialist by name therefore has two preconditions:
+the session's project root is the plant, and the host registered the
+projection. (**Prime Agent is
 the exception that proves the rule:** it has no session-start roster
 enumeration — its projection `.prime/agent/agents/` is a set of *brief
 sources* the orchestrator reads and passes into a runtime `rlm()` spawn,
 so a brief written mid-session is spawnable immediately and the trap
 below never arises there.) Anything that
 *writes* a projection mid-session — the install, a graft's roster delta,
-a newly commissioned expert (above) — produces a specialist that is on
-disk and unspawnable. Check; never assume.
+a newly commissioned expert (above) — can produce a specialist that is
+on disk and not yet spawnable. Check; never assume.
 
 **Preflight once per protocol, before the first dispatch.** Attempt one
 throwaway dispatch of the type with a trivial task, or read the host's
@@ -176,7 +198,7 @@ the host's generic worker and rebuild the specialist inside the brief:
 - embed `docs/graph/agents/<name>.md` **verbatim** as the worker's role;
 - restore in prose every bound the frontmatter no longer enforces — the
   `tools:` allowlist as an explicit prohibition; for a leaf
-  (`can_delegate: false`) "you hold no `Task`: at an out-of-domain
+  (`can_delegate: false`) "you hold no spawn tool: at an out-of-domain
   boundary STOP and hand back"; and for a **coordinator**, its
   `delegates_to` allowlist and `max_spawn_depth` as a named ceiling,
   and the sequencing rule below. An emulated coordinator with no
@@ -192,7 +214,7 @@ the host's generic worker and rebuild the specialist inside the brief:
   role alone makes the two identical.
 
 Role emulation is a **degradation, not an equivalence**: a generic
-worker carries `Task` and write tools, so the leaf recursion cap and the
+worker carries the spawn tool and write tools, so the leaf recursion cap and the
 read-only bound drop from harness-enforced to brief-requested. Scope it
 to the phase that needed it, and report it in the delivery as a recorded
 deviation (`protocol.deliver`) — never as a silent substitution.
@@ -224,8 +246,20 @@ the caller re-reads the payload" for a caller-side read.
 
 ## Every brief carries the graph discipline
 
-Hooks do not reach subagents, so the brief is the only enforcement that
-crosses the boundary. Embed the canonical block from
+No hook the seed installs carries this discipline or the routing
+context into a worker's turn, so the brief is their only carrier across
+the boundary. On Claude Code, hooks configured in settings also run
+inside a subagent: its tool calls fire the same `PreToolUse` and
+`PostToolUse` hooks as the main conversation, with the subagent named in
+the hook input, and `SubagentStart` and `SubagentStop` mark its spawn
+and finish ([hooks reference](https://code.claude.com/docs/en/hooks),
+retrieved 2026-09-24). The seed's pre-Bash guard therefore fires on a
+worker's Bash calls, but it guards commands and carries no routing
+context. The route hook is prompt-scoped (`UserPromptSubmit`); the
+hooks reference does not say that event fires for a subagent's turn,
+and one observed run saw no prompt-injected text reach one. No hook the
+seed installs reads a worker's result either, so the handback block is
+the only reliable carrier back. Embed the canonical block from
 `docs/graph/templates/prompts/graph-session-bootstrap.md` verbatim,
 plus the routing evidence and the handback requirement
 (`docs/graph/templates/prompts/handback-payload.md` — `produced_by` and

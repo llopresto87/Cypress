@@ -351,8 +351,9 @@ or isolation — commissions an expert, spawning an Opus author to write one
   their `delegates_to` allowlist: `orchestrator`, `multi-agent-architect`,
   `growth-orchestrator`, `architect`, `reviewer`, `docs-librarian`. Deepest legal
   chain is depth 3.
-- Every other agent is a Task-less leaf, and this is the one recursion cap the
-  harness itself enforces. At an out-of-domain boundary a leaf STOPs and hands
+- Every other agent is a spawn-less leaf, one of the two recursion caps the
+  harness holds itself; the other is the host's own nesting limit
+  ([delegation bounds](core/method/delegation.md#delegation-is-bounded)). At an out-of-domain boundary a leaf STOPs and hands
   back, naming the next specialist, never doing the work itself.
 - Attribution is **detective, not preventive**: a deliver-time `produced_by`
   assertion attributes every unit of work back to the specialist that produced
@@ -364,7 +365,7 @@ or isolation — commissions an expert, spawning an Opus author to write one
 
 ADR-0003 is the vocabulary for all of this: **hard** (the harness refuses),
 **soft** (a contract or a tool refuses — checked statically by `agent-lint.py
---lint` rather than by the `Task` tool at runtime), **detective** (asserted
+--lint` rather than by the spawn tool at runtime), **detective** (asserted
 post-hoc from named evidence a person reads), and **judgment** (a named agent
 or person decides, and no tool can), the fourth label added by the ADR's
 2026-09-14 amendment alongside the finding that a protocol gate is almost never
@@ -396,8 +397,11 @@ substitution.
 
 ### 6.6 Every brief carries the graph discipline
 
-Hooks do not reach subagents, so the brief is the only enforcement that crosses
-the spawn boundary. Every brief embeds the canonical block from
+The brief is the only carrier of the discipline across the spawn boundary: no
+hook the seed installs carries it into a worker's turn. Which hooks run inside a
+worker is host-dependent, and
+[the delegation node](core/method/delegation.md#every-brief-carries-the-graph-discipline)
+records it. Every brief embeds the canonical block from
 `templates/prompts/graph-session-bootstrap.md` verbatim, plus the routing
 evidence and the handback contract (`templates/prompts/handback-payload.md`).
 
@@ -1422,7 +1426,7 @@ Each row below names one kind of mechanism, the file that implements it, its cla
 | <a id="enf-kernel-load"></a>The kernel is loaded at the start of every session | `core/AGENTS.md`, `install.sh` (`place_kernel`) | **hard** for loading the file, on a host that reads it; **judgment** for whether the model follows it (the session, then whoever reads its delivery) | The model can read the kernel and not act on it. Whether the text survives when a host compacts a long session is not recorded | [host capability matrix, Root kernel loading](documentation/host-capability-matrix.md) |
 | <a id="enf-kernel-budget"></a>The kernel stays within a byte budget | `tests/seed-lint.py`, `tests/ratchets.json` | **soft**, and only in the seed's own gate | Nothing re-measures a plant's kernel after install. A raised budget recorded in `tests/ratchets.json` in the same change passes | [§14 Tests and gates](#14-tests-and-gates) |
 | <a id="enf-tool-allowlist"></a>Each agent works with the tools its `tools:` line lists | `agents/*.md`, `install.sh` (`project_agents`) | **hard** where the host reads the `tools:` line and withholds a tool it does not list; **soft** where only the brief carries the list | A worker granted `Bash` can reach through the shell much of what its list leaves out. Role emulation: a session can do a worker's job itself, with its own tools, and no list is consulted. An agent file that omits its `tools:` line is outside this row, and what a host grants it then is host-dependent | [host capability matrix, Tool allowlists](documentation/host-capability-matrix.md) |
-| <a id="enf-leaf-cannot-spawn"></a>A leaf agent holds no spawn tool | `agents/*.md`, `integrations/claude-code/agent-lint.py` | **hard** where the host reads the `tools:` line and withholds a tool it does not list; **soft** where only the brief holds the split | The lint looks for the spawn tool by the one name it knows; a spawn tool reached under another name, and how a host names or grants it, are host-dependent. A leaf granted a shell can start a new model session from it through any command-line client on the machine, and no `tools:` line governs that. Role emulation: a leaf can do the coordinator's work itself instead of handing it back. The lint reads an agent file with no `tools:` line as holding no spawn tool, so a file that omits the line passes it | [host capability matrix, Recursion bound](documentation/host-capability-matrix.md) |
+| <a id="enf-leaf-cannot-spawn"></a>A leaf agent holds no spawn tool | `agents/*.md`, `integrations/claude-code/agent-lint.py` | **hard** where the host reads the `tools:` line and withholds a tool it does not list; **soft** where only the brief holds the split | The lint reads the spawn tool under the two names Claude Code accepts, `Agent` and `Task`, bare or parenthesized; how another host names or grants it is host-dependent. A leaf granted a shell can start a new model session from it through any command-line client on the machine, and no `tools:` line governs that. Role emulation: a leaf can do the coordinator's work itself instead of handing it back. An agent file with no `tools:` line inherits every tool on the host; the lint refuses such a file, and a file outside the lint's reach keeps the gap | [host capability matrix, Recursion bound](documentation/host-capability-matrix.md) |
 | <a id="enf-delegation-frontmatter"></a>The delegation fields `can_delegate`, `delegates_to` and `max_spawn_depth` | `agents/*.md`, `integrations/claude-code/agent-lint.py` | **soft**: `agent-lint.py --lint` checks their values, and beyond that only prose and briefs carry them | ADR-0003 records that the host's spawn tool does not read these fields, so a delegating agent can start one its list leaves out. How deep a host lets spawns nest is host-dependent. A plant runs the lint only when a session or the plant's own CI runs it | [host capability matrix, Recursion bound](documentation/host-capability-matrix.md) |
 | <a id="enf-route-hook"></a>A routing pointer is added to each prompt | `integrations/claude-code/route-hook.py`, `integrations/claude-code/settings.json`, `integrations/prime-agent/route-extension.ts` | **not a control**: the hook fires and adds text, and holds nothing. Following the pointer is **judgment** (the session) | It fails open, so a broken script adds nothing and the prompt goes on. The suggestion comes from `graph-lint.py --plan`, a keyword heuristic that exits 0 whatever it suggests. Which turns a host runs it on is host-dependent | [host capability matrix, Routing hook](documentation/host-capability-matrix.md) |
 | <a id="enf-status-hook"></a>A lifecycle status summary is added when a session starts | `integrations/claude-code/status-hook.py`, `integrations/prime-agent/status-extension.ts`, `tools/status-register.py` | **not a control**: the hook fires and adds text, and holds nothing | It fails open and is silent on error. Acting on the summary is left to the session | [host capability matrix, Status hook](documentation/host-capability-matrix.md) |

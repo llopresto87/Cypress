@@ -7,7 +7,8 @@ seed's meta-documentation, and its duplicated facts drifted (README said
 This linter makes that failure class deterministic to catch:
 
   1. roster: agents/ frontmatter <-> manifest.json <-> kernel §1 table
-  2. delegator invariant: can_delegate == (Task in tools); allowlists resolve
+  2. delegator invariant: can_delegate == (spawn tool in tools), read by
+     agent-lint's own predicate; tools: listed; allowlists resolve
   3. numeric claims: "N-agent team" and "N coordinators" match reality
   4. kernel budget: core/AGENTS.md stays under KERNEL_BUDGET bytes
   5. kernel anchors: §3.1–§3.8 headings exist (cited seed-wide)
@@ -1344,6 +1345,44 @@ def _overlay_section(text: str):
 
 # One check, two slugs: HOOK_TEXT_RESTATES_NO_KERNEL_RULE over the whole of each
 # hook file, and PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE over the overlay section.
+# The absolute claim that hooks do not reach subagents. The host runs tool
+# hooks inside a subagent (docs/graph/method/delegation.md, "Every brief
+# carries the graph discipline"), so the claim is false wherever it ships.
+HOOK_REACH_PHRASE = re.compile(
+    r"\b(?:hooks? (?:do(?:es)? not|cannot|can't) reach|no hooks? reach(?:es)?)\b", re.I)
+# What install.sh places, plus the front door. Records (docs/decisions/,
+# docs/plans/, docs/specs/, CHANGELOG.md) keep what they said when written.
+HOOK_REACH_ROOTS = ("core", "agents", "protocols", "skills", "templates")
+HOOK_REACH_FILES = ("DOCUMENTATION.md",)
+
+
+def check_hook_reach_phrases() -> None:
+    """No shipped or front-door file says hooks do not reach subagents.
+
+    Six method and reference files and the orchestrator charter said it, and
+    it was the stated reason the brief is "the only enforcement" across the
+    spawn boundary. The brief is still the only carrier of the discipline, but
+    for a narrower reason: no hook the seed installs carries it into a worker's
+    turn. A reworded absolute claim is outside this pattern and goes to review.
+    """
+    paths = [ROOT / f for f in HOOK_REACH_FILES]
+    paths += sorted((ROOT / "documentation").glob("*.md"))
+    for top in HOOK_REACH_ROOTS:
+        paths += sorted(p for p in (ROOT / top).rglob("*") if p.is_file()
+                        and p.suffix in (".md", ".py", ".sh", ".json", ".ts"))
+    for path in paths:
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for n, line in enumerate(text.splitlines(), 1):
+            m = HOOK_REACH_PHRASE.search(line)
+            if m:
+                fail(f"{path.relative_to(ROOT).as_posix()}:{n}: says hooks do not "
+                     f"reach subagents ('{m.group(0)}'); tool hooks fire inside a "
+                     f"subagent. Say what the seed's hooks carry, and link "
+                     f"docs/graph/method/delegation.md")
+
+
 def check_hook_text_restates_no_kernel_rule() -> None:
     """Per-prompt text points at the kernel; it does not carry a copy of it.
 
@@ -2833,6 +2872,33 @@ def misattributed_eager_figures(text: str, surfaces: dict) -> list:
     return wrong
 
 
+def check_agent_spawn_grants(agents: dict) -> None:
+    """The delegator invariant: can_delegate == (spawn tool in tools).
+
+    The grant is read by agent-lint's own `grants_spawn`, so the seed and every
+    plant hold one reading: `Agent` or its alias `Task`, bare or parenthesized.
+    This copy once matched the literal `Task` only, and read an omitted
+    `tools:` line as "no Task", while the host gives an agent without that line
+    every tool, the spawn tool included.
+    """
+    grants_spawn = load_tool("integrations/claude-code/agent-lint.py").grants_spawn
+    for a in agents.values():
+        fm, rel = a["fm"], a["path"].relative_to(ROOT).as_posix()
+        declares = str(fm.get("can_delegate", "false")).lower() == "true"
+        if "tools" not in fm:
+            fail(f"{rel}: omits its tools: line, so it inherits every tool, the "
+                 f"spawn tool included; list the tools it may use")
+        elif grants_spawn(fm["tools"]) != declares:
+            fail(f"{rel}: can_delegate={str(declares).lower()} but the spawn tool "
+                 f"(`Agent`, alias `Task`) {'is not' if declares else 'is'} in tools")
+        if declares:
+            if "max_spawn_depth" not in fm:
+                fail(f"{rel}: delegator without max_spawn_depth")
+            for target in fm.get("delegates_to", []):
+                if target not in agents:
+                    fail(f"{rel}: delegates_to unknown agent '{target}'")
+
+
 def check() -> None:
     # -- gather ground truth from agents/ frontmatter -------------------
     agent_files = sorted(p for p in (ROOT / "agents").glob("*.md"))
@@ -2845,21 +2911,9 @@ def check() -> None:
             continue
         agents[name] = {"path": p, "fm": fm}
 
-    delegators = set()
-    for name, a in agents.items():
-        fm = a["fm"]
-        tools = fm.get("tools", "")
-        has_task = "Task" in tools if isinstance(tools, str) else "Task" in tools
-        declares = str(fm.get("can_delegate", "false")).lower() == "true"
-        if has_task != declares:
-            fail(f"{a['path']}: can_delegate={declares} but Task-in-tools={has_task}")
-        if declares:
-            delegators.add(name)
-            if "max_spawn_depth" not in fm:
-                fail(f"{a['path']}: delegator without max_spawn_depth")
-            for target in fm.get("delegates_to", []):
-                if target not in agents:
-                    fail(f"{a['path']}: delegates_to unknown agent '{target}'")
+    check_agent_spawn_grants(agents)
+    delegators = {name for name, a in agents.items()
+                  if str(a["fm"].get("can_delegate", "false")).lower() == "true"}
 
     # -- manifest <-> disk ----------------------------------------------
     manifest = json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))
@@ -2945,6 +2999,7 @@ def check() -> None:
     check_canonical_router_blocks()
     check_canonical_plant_root_boundary()
     check_hook_text_restates_no_kernel_rule()
+    check_hook_reach_phrases()
     check_published_body_figures()
     check_ci_workflow()
     check_release_workflow()

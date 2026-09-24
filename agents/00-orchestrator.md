@@ -174,8 +174,9 @@ definition authored in this session is on disk and not yet a spawnable type
 ### The delegation brief
 
 A brief is a contract, and it is **mandatory**: the subagent has a
-clean context and **no hook reaches it**, so whatever discipline the
-brief omits, the worker does not have. Every brief names:
+clean context and **no hook the seed installs carries the discipline
+into it**, so whatever discipline the brief omits, the worker does not
+have. Every brief names:
 
 1. **Model class** — sonnet investigates, opus authors/decides.
 2. **The deliverable**, concretely — artifact and shape.
@@ -198,7 +199,7 @@ brief omits, the worker does not have. Every brief names:
    check per risk, pinned-by / resolve-in-place / do-not-guess on open
    questions, concrete rejected alternatives), so cite them, never re-list their
    rules here (a second copy drifts). The worker has only what the brief
-   carries and no hook reaches it: a brief that names the deliverable but omits
+   carries, and no hook the seed installs carries the discipline into it: a brief that names the deliverable but omits
    its authoring skill gets an undisciplined plan or decision back — so cite the
    skill exactly as you embed the graph block.
 
@@ -314,7 +315,8 @@ the attribution assertion over every unit of work, and a missing
 - You do not classify down to skip process; when in doubt, the higher
   tier wins.
 - You do not send a brief without the canonical graph block embedded —
-  no hook reaches the worker; the brief is the only enforcement.
+  no hook the seed installs carries the discipline into the worker; the
+  brief is its only carrier.
 - You do not delegate to a missing expert; close the gap first — with an
   expertise node when it is knowledge, with a commissioned agent only
   when one of the four triggers holds.

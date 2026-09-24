@@ -93,14 +93,17 @@ opencode under that rule, and targets no frozen host.
 | Slash commands | mechanically enforced | mechanically enforced | unsupported | mechanically enforced | mechanically enforced |
 | Always-applied instructions | mechanically enforced (26 261 B) | mechanically enforced (26 261 B) | mechanically enforced (≤ 26 261 B)⁴ | mechanically enforced (31 905 B) | mechanically enforced (24 444 B) |
 
-¹ The leaf/coordinator split (who holds `Task` at all) is read by the
+¹ The leaf/coordinator split (who holds the spawn tool at all: `Agent` on Claude Code, `Task` accepted) is read by the
 harness from each agent's `tools:` line, and ADR-0003 classes that read
 `hard` for what the harness reads and nothing wider. What the split leaves
 open is recorded in the [leaf spawn row of the enforcement table](../DOCUMENTATION.md#enf-leaf-cannot-spawn).
 The *numeric* `max_spawn_depth`
 ceiling is not read by the harness at all; only `agent-lint.py --lint`
-checks it statically. The cell reflects the numeric ceiling, since that is
-what "recursion bound" asks for a coordinator that does hold `Task`.
+checks it statically. The host's own nesting limit on subagents spawning
+subagents is a separate, harness-held ceiling that the seed does not set
+([`delegation.bounds`](../core/method/delegation.md#delegation-is-bounded)). The cell reflects the
+numeric ceiling, since that is what "recursion bound" asks for a coordinator
+that does hold the spawn tool.
 
 ² Real runtime ceiling (`RLM_MAX_DEPTH`), but its **default is 2**, one
 short of the seed's deepest chain (3), and it is not settable from a
@@ -158,8 +161,10 @@ parity here; the differences are budget mechanics, not enforcement.
 ### Specialist discovery/registration
 
 - **Claude Code: mechanically enforced.** `.claude/agents/*.md` is a
-  native Claude Code convention; the harness enumerates it at session
-  start and spawns by name via `Task`.
+  native Claude Code convention; the harness registers it and spawns by
+  name via `Agent` (`Task` accepted). When a file written mid-session is
+  picked up is in
+  [`delegation.harness-registration`](../core/method/delegation.md#a-specialist-is-spawnable-only-once-the-host-registered-it).
 - **opencode: degraded.** `.opencode/agents/*.md` is discovered the same
   way, but opencode's agent-markdown contract is not a superset of the
   seed's frontmatter: it does not recognize the seed's `model:` or `tools:`
@@ -199,7 +204,7 @@ parity here; the differences are budget mechanics, not enforcement.
 
 ### Delegation mechanism
 
-- Claude Code: the native `Task` tool, granted only to 6 coordinator agents
+- Claude Code: the native spawn tool, `Agent` (`Task` accepted), granted only to 6 coordinator agents
   (`tools:` frontmatter). **mechanically enforced**: ADR-0003 `hard` for the
   grant the harness reads from the `tools:` line, and for nothing wider; what
   it leaves open is in the [leaf spawn row of the enforcement table](../DOCUMENTATION.md#enf-leaf-cannot-spawn).
@@ -207,7 +212,7 @@ parity here; the differences are budget mechanics, not enforcement.
   `subagent_depth` from `opencode.json` natively: **mechanically
   enforced** as a mechanism, though which agents may act as coordinators is
   not distinguished by the harness (see "tool allowlists").
-- Codex CLI: no working Task-equivalent is wired by this integration (see
+- Codex CLI: no working spawn-tool equivalent is wired by this integration (see
   discovery, above): **unsupported**.
 - GitHub Copilot: `install_github_copilot()` in `install.sh` states it outright in a comment:
   "`Task` (subagent spawning) has no Copilot equivalent and is not
@@ -229,6 +234,9 @@ parity here; the differences are budget mechanics, not enforcement.
   nothing at runtime; only `agent-lint.py --lint`
   checks it statically (`core/method/delegation.md`,
   `delegation.bounds`). **brief-enforced** for the number that matters.
+  The host's own nesting limit on subagents spawning subagents is a
+  separate, harness-held ceiling the seed does not set
+  ([`delegation.bounds`](../core/method/delegation.md#delegation-is-bounded)).
 - opencode: `subagent_depth` in `opencode.json` is "the load-bearing key".
   opencode defaults it to 1 (which "prevents subagents from launching
   subagents"), and the seed ships it set to 3 to reach its deepest chain;
@@ -283,7 +291,7 @@ parity here; the differences are budget mechanics, not enforcement.
 ### Model selection
 
 - Claude Code: `model: opus` / `model: sonnet` in frontmatter is read
-  natively by the `Task` tool. **mechanically enforced**.
+  natively by the spawn tool (`Agent`, `Task` accepted). **mechanically enforced**.
 - opencode: explicitly **degraded**. Same gap table: opencode expects
   `provider/model` (e.g. `anthropic/claude-sonnet-4-5`); fed `opus` or
   `sonnet` instead, "the seed's model-class policy is not applied; agents
@@ -315,7 +323,9 @@ status-register summary).
   fail-open); `.claude/settings.json`. Both are real, harness-invoked hook
   points (**mechanically enforced**), fail-open by design (a broken script
   degrades to no injection, never to a blocked prompt; that asymmetry with
-  the pre-tool guard is deliberate, see below).
+  the pre-tool guard is deliberate, see below). Both are prompt- or
+  session-scoped; whether either fires for a subagent's turn is in the
+  [delegation node](../core/method/delegation.md#every-brief-carries-the-graph-discipline).
 - **opencode**: `install_opencode()` in `install.sh` places no hook
   file of any kind, and no config key exists for one either
   (`integrations/opencode/README.md`: "the config schema rejects unknown
@@ -355,7 +365,9 @@ list, a call made by indirection passes, and it holds only on a host that
 fires it. Its classes, `hard` for a matched command on this host and
 `not a control` otherwise, are in the
 [pre-Bash guard row of the enforcement table](../DOCUMENTATION.md#enf-pre-bash-guard).
-**mechanically enforced**, on Claude Code alone.
+**mechanically enforced**, on Claude Code alone. On that host it also fires on a
+subagent's Bash calls, since tool hooks run inside a subagent
+([delegation node](../core/method/delegation.md#every-brief-carries-the-graph-discipline)).
 
 - opencode: "This harness exposes no pre-tool hook … the bounded-execution
   clauses … are the agent's own discipline rather than an enforced guard"

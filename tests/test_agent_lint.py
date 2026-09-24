@@ -283,9 +283,13 @@ def agent_md(
     (`tools: [a, b]`) — the parser gap this router must close.
     `triggers=None` omits the block entirely; `triggers=()` emits an empty
     `routing_triggers:` — the two malformations the linter must reject.
+    `tools=None` omits the `tools:` line, which on the host means the agent
+    inherits every tool, the spawn tool included.
     """
-    out = ["---", f"name: {name}", f"description: {description}",
-           f"tools: {tools}", f"model: {model}"]
+    out = ["---", f"name: {name}", f"description: {description}"]
+    if tools is not None:
+        out.append(f"tools: {tools}")
+    out.append(f"model: {model}")
     if triggers is not None:
         out.append("routing_triggers:")
         for t in triggers:
@@ -564,6 +568,63 @@ class InlineToolsTests(unittest.TestCase):
             "can_delegate:true without Task in tools must fail --lint (§4.1 rule 2):\n"
             f"stdout:\n{r.stdout}\nstderr:\n{r.stderr}"
         ))
+
+    def _lint(self, agents):
+        root, dst = build_project(self.tmp_path, agents)
+        return run(dst, ["--lint"], cwd=root)
+
+    def test_agent_grant_without_can_delegate_fails_lint(self):
+        """The spawn tool's canonical name is `Agent`, with `Task` its alias.
+        Granting `Agent` while declaring can_delegate:false fails --lint and
+        names the spawn tool, as the `Task` case above does."""
+        r = self._lint({
+            "boss": agent_md("boss", tools="[Read, Write, Agent]",
+                             triggers=["coordinate the work"], can_delegate=False),
+            "leaf": agent_md("leaf", triggers=["do the leaf work"], can_delegate=False),
+        })
+        self.assertNotEqual(r.returncode, 0, (
+            "can_delegate:false while Agent is in the inline tools list must fail "
+            f"--lint:\nstdout:\n{r.stdout}\nstderr:\n{r.stderr}"))
+        self.assertIn("spawn tool", r.stdout + r.stderr, r.stdout + r.stderr)
+
+    def test_agent_grant_with_can_delegate_passes_lint(self):
+        """The same grant with can_delegate:true is a well-formed delegator, so
+        a fix that refuses `Agent` outright fails here."""
+        r = self._lint({
+            "boss": agent_md("boss", tools="[Read, Write, Bash, Agent]",
+                             triggers=["coordinate the work"],
+                             can_delegate=True, max_spawn_depth=1,
+                             delegates_to=["leaf"]),
+            "leaf": agent_md("leaf", tools="[Read, Grep]",
+                             triggers=["do the leaf work"], can_delegate=False),
+        })
+        self.assertEqual(r.returncode, 0, (
+            "--lint should accept a delegator granted the spawn tool as Agent:\n"
+            f"stdout:\n{r.stdout}\nstderr:\n{r.stderr}"))
+
+    def test_parenthesized_agent_grant_counts_as_spawn(self):
+        """`Agent(type)` grants the whole spawn tool in a subagent definition
+        (the type list is ignored there), so it is a grant like the bare name."""
+        r = self._lint({
+            "boss": agent_md("boss", tools="[Read, Agent(leaf)]",
+                             triggers=["coordinate the work"], can_delegate=False),
+            "leaf": agent_md("leaf", triggers=["do the leaf work"], can_delegate=False),
+        })
+        self.assertNotEqual(r.returncode, 0, (
+            "can_delegate:false with a parenthesized Agent grant must fail --lint:\n"
+            f"stdout:\n{r.stdout}\nstderr:\n{r.stderr}"))
+
+    def test_omitted_tools_fails_lint(self):
+        """An agent with no `tools:` line inherits every tool, the spawn tool
+        included, so can_delegate:false is untrue for it."""
+        r = self._lint({
+            "boss": agent_md("boss", tools=None,
+                             triggers=["coordinate the work"], can_delegate=False),
+            "leaf": agent_md("leaf", triggers=["do the leaf work"], can_delegate=False),
+        })
+        self.assertNotEqual(r.returncode, 0, (
+            "an agent that omits its tools: line must fail --lint:\n"
+            f"stdout:\n{r.stdout}\nstderr:\n{r.stderr}"))
 
     def test_triggers_parse_from_real_agent_def(self):
         """Triggers + the real inline `tools:` line parse from a REAL agent def.

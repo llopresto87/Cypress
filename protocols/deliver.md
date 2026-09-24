@@ -189,8 +189,9 @@ returned. Then run these checks:
   carries weaker bounds than its frontmatter claims
   (`delegation.harness-registration`). Report the count in the delivery.
 
-This assertion runs in the top session at `deliver` — the one place a hook
-can reach, since subagent hooks do not fire. A top-session `Stop` hook that
+This assertion runs in the top session at `deliver`, where the whole
+delivery is in view; no hook the seed installs reads a worker's result
+(`delegation.briefs`). A top-session `Stop` hook that
 greps the delivery / grill.md §15 for attributions stays **deliberately
 unwired until this plant's real deliveries carry `produced_by`** — a gate
 landed before the thing it checks either checks nothing or blocks
