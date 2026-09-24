@@ -19,7 +19,7 @@ status_evidence: tests/test-bound-hook.sh, tests/test-seed-lint.sh, tests/seed-l
 - **Date:** 2026-09-23
 - **Last reviewed:** 2026-09-23
 - **Related grill section:** docs/plans/grill-7.28.0-context-residency.md §3, §4, §5, §8, §16, §17
-- **Related ADRs:** adr-0003-enforcement-layering-honesty (the enforcement classes); adr-0009-host-support-tiers; ADR-0010 (the Residency Rule and this spec's threat model, owed at the plan's §10 close, not written yet)
+- **Related ADRs:** adr-0003-enforcement-layering-honesty (the enforcement classes); adr-0009-host-support-tiers; adr-0010-context-residency (the Residency Rule and this spec's threat model)
 - **Supersedes:** —
 - **Superseded by:** —
 
@@ -744,7 +744,7 @@ the hook would write a file its next read refuses as oversized. A refused
 write is a ledger failure: full mode and one stderr line. The state is then
 steady: a first prompt leaves no file, a later one leaves the earlier ledger
 as it was, so every prompt that would grow past the bound gets the same full
-injection and the same one line, and no temp file is left behind.
+injection and the same one line, and no temp file is left behind. Because a refused write leaves the earlier ledger in place, `prompt_count` stops advancing, so the periodic refresh never fires and the session stays on full injections until the next SessionStart. That is the inclusive direction, and it is reachable only when node ids average well over 60 characters; real graph ids run 20 to 30.
 
 **Descriptor discipline.** All ledger I/O goes through directory file
 descriptors. The hook opens `<ROOT>/.cypress` with
@@ -808,7 +808,7 @@ In the Prime Agent structural block of `tests/test-bound-hook.sh`, its one home:
 
 | Name | Value |
 |---|---|
-| `OVERLAY_SECTION_MAX_BYTES` | 512 (the proposed text below is about 350 B) |
+| `OVERLAY_SECTION_MAX_BYTES` | 512, the ceiling. The section's own size is not restated here; `PRIME_OVERLAY_SECTION_WITHIN_CEILING` holds it under this value |
 
 ### Router output grammar (input, not changed)
 
@@ -1586,3 +1586,8 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
     skipping. The host capability matrix drops its unchecked "350 bytes" for
     `OVERLAY_SECTION_MAX_BYTES` and footnotes the Copilot dedup cell ³, the
     Routing hook row's install condition.
+- 2026-09-24, close (architect), no contract changed. §6 Constants: the
+  `OVERLAY_SECTION_MAX_BYTES` row dropped "about 350 B", a figure for the
+  section that no check holds (reviewer finding, the same figure the host
+  matrix dropped in the review fixes). The row now names the ceiling and the
+  contract that holds the section under it. ADR-0010 is written, `proposed`.

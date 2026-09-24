@@ -883,3 +883,125 @@ remainder contains the prompt" is retracted. It fired on short prompts that
 are substrings of node ids and suppressed routing, against I-1. The exact
 prefix check alone decides a router failure. All four SPEC-0003 sign-offs are
 ticked, the tester's conditional on E1 to E3 (SPEC-0003 §12).
+
+## §18 Close record (2026-09-24)
+
+Appended at close by the architect. Earlier sections keep their text; where
+this record overtakes a cell, it says which. ADR-0010 is written, `proposed`,
+and awaits the owner. The full gate, `seed-lint` and `prose-lint` over this
+close are run by the orchestrator, and their results are recorded in the close
+commit, not here.
+
+### §18.1 Measurement (§4.7, SPEC-0003 AC-9)
+
+The scripted 20-prompt session, total bytes injected, against the 69,408 B
+baseline of §0.3:
+
+| `REFRESH_EVERY` | No resets | Resets at prompts 8 and 15 |
+|---|---|---|
+| 5 | 29,666 B | 35,224 B |
+| 10 | 22,301 B (−68%) | 26,958 B (−61%) |
+| 20 | 16,972 B | 26,958 B |
+
+Every total is below the baseline, which is AC-9 (a). The per-prompt bytes of
+each run and the AC-9 (b) to (d) observations are not recorded in this close
+record; the orchestrator holds the measurement output.
+
+The echo fix, measured on its own: a 6,010 B multi-line prompt went from a
+10,070 B injection carrying the prompt to 3,653 B with no echo.
+
+Eager surface at close: claude-code, opencode and codex 26,261 B, unchanged;
+github-copilot 31,905 B, unchanged; prime-agent 24,444 B, up 350 B from 24,094 B
+for the `## Surfaced nodes` overlay section (§16).
+
+*Appended 2026-09-24 by the orchestrator, AC-9 per-prompt record.* Bytes per prompt, prompts 1 to 20 in plan order, at `fc129a8` with N=10:
+
+| Run | Per-prompt bytes | Total |
+|---|---|---|
+| baseline (5a1ca2c) | 4037, 3122, 3330, 4003, 3795, 4012, 3887, 4561, 2882, 3283, 0, 3707, 2298, 3433, 3831, 3006, 4646, 3533, 3840, 4202 | 69,408 |
+| N=10, no resets | 3619, 828, 757, 1718, 998, 1002, 1313, 1331, 334, 221, 0, 3289, 1514, 930, 729, 802, 1328, 646, 653, 289 | 22,301 |
+| N=10, resets before 8 and 15 | 3619, 828, 757, 1718, 998, 1002, 1313, 4143, 589, 1013, 0, 1055, 1229, 930, 3413, 802, 1819, 646, 653, 431 | 26,958 |
+
+AC-9 (b): prompts 1 and 12 (prompt 12 is the eleventh routed prompt, since the trivial prompt 11 is not counted, so it is the first after ten in the cycle) and each prompt after a reset are full mode. (c): every reminder prompt is smaller than its full-mode counterpart in the baseline. (d): no injection carries prompt text and none says `loaded`; every hook exited 0 with empty stderr.
+
+### §18.2 The chosen N and its basis
+
+`REFRESH_EVERY` stays 10. By the §4.7 rule, N = 5 would have been taken only
+if it cost less than 10% more than N = 10 on both runs; it cost 33% more
+without resets and 31% more with them. Against N = 20, N = 10 gives the same
+total once resets occur (26,958 B each) and bounds how far a reminder can drift
+from a full injection to 9 prompts, where N = 20 allows 19. SPEC-0003 is not
+re-opened (§17 row 6).
+
+### §18.3 Ratchets
+
+`EAGER_BUDGET` stays at 41,600. This harvest made no eager reduction to
+tighten it to: the only eager move is the +350 B on prime-agent, and the owner
+raised the budget deliberately on 2026-09-17. No pointer ceiling is added,
+because Slices B and C, which would have produced pointer descriptions, are
+parked. Tightening is allowed at any time, but there is no measured reduction
+here to tighten to. This overtakes the §10 close expectation that none would
+move, only in the prime-agent figure §16 already amended.
+
+### §18.4 Ledger rows (§2.2), final status
+
+| # | Source | Final status |
+|---|---|---|
+| L-1 | Kernel | out-of-scope, untouched |
+| L-2 | Agent descriptions | parked (Slice B) |
+| L-3 | Skill descriptions | parked (Slice C) |
+| L-4 | Per-prompt mandate | closed on claude-code and prime-agent: one pointer line; held by `HOOK_TEXT_RESTATES_NO_KERNEL_RULE` and `ROUTE_HOOK_POINTS_AT_KERNEL` |
+| L-5 | Router suggestion | closed on claude-code by the session ledger. On prime-agent the injection stays full on every prompt, and the model-kept set is soft (§16); no injected-byte saving there |
+| L-6 | Prompt echo | closed on claude-code (behavioural tests) and prime-agent (structural tests) |
+| L-7 | Status summary | closed: text unchanged, `status-hook.py` gained the ledger reset only |
+| L-8 | Protocol and skill bodies | out-of-scope, already on demand |
+| L-9 | Corpora | out-of-scope, already on demand |
+| L-10 | Delegation brief block | out-of-scope; byte-identical to `ac61a3f` (I-2) |
+| L-11 | Handback template | out-of-scope; byte-identical to `ac61a3f` (I-2) |
+| L-12 | Prime Agent overlay | out-of-scope, except the new `## Surfaced nodes` section, which SPEC-0003 holds to I-6, I-8 and a 512 B ceiling |
+| L-13 | Copilot pointer files | out-of-scope, frozen host |
+| L-14 | No-graph message | out-of-scope, unchanged |
+
+The §1.2 entries: CR-1, CR-2, CR-4 and CR-7 closed; CR-3 closed on
+claude-code and answered soft on prime-agent (§16); CR-5 closed by the
+Residency section in `skills/context-router/SKILL.md`, fixed and unpinned;
+CR-6 answered by the owner (§16), with no dedup in the extension; CR-8 parked.
+
+Other verify records: `agent-lint --eval` output is byte-identical to its
+baseline (I-5). Both brief templates are byte-identical to `ac61a3f` (I-2).
+The harness-native selection measurement was not run, as §11 proposed and the
+owner did not override: neither the eager surface nor the first-prompt router
+suggestion changed materially.
+
+### §18.5 Out of scope, for the owner
+
+1. **Slices B and C, parked.** Cutting agent descriptions to 120 characters
+   moved `--eval` from rc 0 to rc 1 (paraphrase confident-correct 4 to 2
+   against a floor of 4; adversarial confident-wrong 3 to 4 against a budget
+   of 3), and 14 charter words are covered only by the description under
+   `CHARTER_VOCAB_DEBT` 12 at zero slack. Three options stay open: (a) the
+   router scores a body section the description moves into; (b) skills only;
+   (c) leave both.
+2. **The Codex hooks contradiction.** Upstream Codex documents
+   `SessionStart`, `UserPromptSubmit` and `PreCompact`; the matrix cell stays
+   `unsupported` for what the seed ships. Frozen host, nothing wired
+   (ADR-0009).
+3. **Three live-fetched sources, not ingested**: the opencode plugins page,
+   the Codex hooks page, and the VS Code Copilot hooks reference with its
+   customization page, all fetched 2026-09-23 and listed in §12 item 3. The
+   Copilot and Codex rows of §0.5 and the opencode plugin note rest on them.
+4. **`templates/agent.template.md:46`** asks for a "pushy" one-paragraph
+   `description` with a "Use whenever" clause, which contradicts pointer
+   descriptions. It stays until B or C is un-parked.
+5. **`route-extension.ts` `findLint` has no plant-root bound.** It walks up
+   seven levels without the `_is_plant_root` stop the Python hooks carry: the
+   7.15.0 U-11 defect in the TypeScript twin (§12 item 6).
+6. **README eager figures without a unit.** `README.md:50` and `:338` carry
+   the prime-agent eager figure with no `B` or `bytes`, so
+   `check_published_eager_figures` does not match them and they can go stale
+   with the gate green. They were updated by hand this release.
+7. The `agent_projection_for` check still reads with a single-line regex.
+8. **SPEC-0001 is still `back-written`**, pending the owner's sign-offs.
+
+Item 5 of §12 (an I-8 audit of the rest of the Prime Agent overlay) also
+stays open.
