@@ -54,7 +54,7 @@ On a first install, a harness may need a fresh session before it can start the a
 
 ## How it works
 
-CYPRESS is a written [workflow](DOCUMENTATION.md#term-workflow), not a program. The agent reads which steps a task needs and in what order, carries them out itself, and hands the steps that need a clean context to subagents, while a few hooks and linters check parts of the work and the rest is left to the model and to you.
+CYPRESS is a written [workflow](DOCUMENTATION.md#term-workflow), not a program. The session reads which steps a task needs and in what order, carries them out itself, and hands the steps that need a clean context to subagents. A few hooks and linters check parts of the work; the rest is left to the model and to you.
 
 The steps are written down as [protocols](DOCUMENTATION.md#term-protocol), procedures a session follows in order, and the [protocols reference](documentation/protocols-reference.md) lists them. The method asks each task to be sorted into a risk [tier](DOCUMENTATION.md#term-tier) first, from a question (T0) to a change to architecture or contracts (T3), and the tier decides how much process the task gets. A T3 change gets a specification, a failing test before the code ([test-first development](DOCUMENTATION.md#term-test-first)), and review by separate workers.
 
@@ -66,7 +66,7 @@ Once grown, your repository is a [plant](DOCUMENTATION.md#term-plant) of the [se
 
 ## Why it is built this way
 
-A coding agent works inside a fixed context window, and an agent that has read everything has no signal about what matters. So the always-loaded part stays small and the rest is looked up when a task needs it. Process is sized to risk so that a typo fix does not pay a feature's coordination cost. Specifications and tests come first so that a reviewer can check the work against something written before it. Steps that need a clean context go to separate workers so that one step's reading does not crowd out the next.
+A coding session works inside a fixed context window, and a session that has read everything has no signal about what matters. The always-loaded part therefore stays small, and the rest is looked up when a task needs it. Process is sized to risk, which spares a typo fix a feature's coordination cost. Specifications and tests come first, so a reviewer can check the work against something written before it. Steps that need a clean context go to separate workers, and one step's reading then does not crowd out the next.
 
 Each of these choices has a decision record, and the [decision index](docs/decisions/index.md) lists them with their status.
 

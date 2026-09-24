@@ -6,7 +6,7 @@ This document describes all 20 specialist agents shipped by the CYPRESS seed. Ea
 
 Sources for this reference: `agents/*.md` (the 20 agent definitions), `agents/_routes.golden.tsv` (the golden routing corpus), and `core/method/delegation.md` (the delegation model).
 
-Each node also declares `prevents:` — the failure its own absence produces. It is not mirrored here; that would be a second home for sixty judgements. `python3 tools/roster-justification.py` prints it alongside the responsibility, the overlaps and the routing demand, reading each column out of the node that owns it ([ADR-0008](../docs/decisions/adr-0008-roster-justification-lives-in-the-node.md)).
+Each node also declares `prevents:` — the failure its own absence produces. It is not mirrored here; that would be a second home for every node's judgement. `python3 tools/roster-justification.py` prints it alongside the responsibility, the overlaps and the routing demand, reading each column out of the node that owns it ([ADR-0008](../docs/decisions/adr-0008-roster-justification-lives-in-the-node.md)).
 
 ## 1. The sessions-route, workers-do model
 
@@ -92,7 +92,7 @@ Spec authoring is split across three agents: `product` writes the user-facing la
 | 19 | `legal` | `agent.legal` | opus | leaf (no Task) | `legal.charter`, `legal.corpus-rule`, `legal.four-part-finding`, `legal.qualification-boundary`, `legal.citation-ledger` |
 | 20 | `tool-smith` | `agent.tool-smith` | opus | leaf (no Task) | `tool-smith.charter`, `tool-smith.authoring-bar`, `tool-smith.plant-scope` |
 
-`legal` ships on request (`install.sh --legal-corpus yes`) and carries no default `delegates_to` edge from any coordinator: `architect.legal-checkpoint` (`agents/01-architect.md`) reaches it only if the plant-local roster and `architect`'s `delegates_to` were both extended to include it at instantiation time; absent that extension, `architect` stops and hands back naming `legal` as `recommended_next` rather than spawning it. It is not in the edge-list table below for that reason — every row there is a shipped default.
+`legal` ships in every install, its corpus only on request (`install.sh --legal-corpus yes`), and it carries no default `delegates_to` edge from any coordinator: `architect.legal-checkpoint` (`agents/01-architect.md`) reaches it only if the plant-local roster and `architect`'s `delegates_to` were both extended to include it at instantiation time; absent that extension, `architect` stops and hands back naming `legal` as `recommended_next` rather than spawning it. It is not in the edge-list table below for that reason — every row there is a shipped default.
 
 Coordinators as an edge list of `delegates_to` allowlists:
 

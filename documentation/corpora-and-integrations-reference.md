@@ -69,7 +69,7 @@ roster. Instead:
   seed's one-home-per-fact roster.
 - The kernel is loaded on every session of every plant, so additions there
   must earn roughly 2k-token-per-session rent, and `tests/seed-lint.py` fails
-  the build past the kernel size budget (8 000 bytes). Depth belongs in a
+  the build past the kernel size budget (`KERNEL_BUDGET`). Depth belongs in a
   machinery node or a corpus, never the kernel (source: `CLAUDE.md`).
 
 ## A.2 The steward-only promotion rule
@@ -243,11 +243,11 @@ Keyed by `legal-corpus/<scope>/<instrument-slug>.md`, one page per instrument
 
 | Scope (subfolder) | Entry count | Instruments |
 |---|---|---|
-| `eu` | 8 | `gdpr.md`, `cra.md`, `nis2.md`, `eprivacy-directive.md`, `eu-scope-definitions.md`, `eu-us-dpf-adequacy.md`, `scc-2021-914.md`, `edpb-guidelines-07-2020.md` |
+| `eu` | 9 | `gdpr.md`, `cra.md`, `nis2.md`, `eprivacy-directive.md`, `eu-scope-definitions.md`, `eu-us-dpf-adequacy.md`, `scc-2021-914.md`, `edpb-guidelines-07-2020.md`, `a29wp-opinion-05-2014-anonymisation.md` |
 | `international` | 1 | `iso-27001.md` |
 | `national` | 3 | `it-codice-privacy.md`, `it-workers-statute.md`, `it-accounting-retention.md` |
 | `case-law` | 1 file | `index.md` — a multi-entry router page (see below) |
-| **Total (instrument pages)** | **12** | plus the multi-entry `case-law/index.md` |
+| **Total (instrument pages)** | **13** | plus the multi-entry `case-law/index.md` |
 
 The four scopes are: `eu` (Union-level instruments), `national`
 (country-code-prefixed statutes, e.g. `it-…`; a second jurisdiction would
@@ -323,9 +323,9 @@ Keyed by `tool-corpus/<category>/<name>.md`, one page per tool. Source:
 
 | Category (subfolder) | Entry count | Entries |
 |---|---|---|
-| `ops` | 9 | `config-driven-server-response-harness.md`, `container-deploy-pipeline.md`, `declared-variable-existence-auditor.md`, `disposable-test-identity-provisioner.md`, `env-secret-rotation.md`, `large-artifact-stager.md`, `layered-config-merge-verifier.md`, `self-signed-tls-cert.md`, `structured-secret-field-detector.md` |
+| `ops` | 10 | `config-driven-server-response-harness.md`, `container-deploy-pipeline.md`, `declared-variable-existence-auditor.md`, `disposable-test-identity-provisioner.md`, `env-secret-rotation.md`, `large-artifact-stager.md`, `layered-config-merge-verifier.md`, `renamed-config-key-auditor.md`, `self-signed-tls-cert.md`, `structured-secret-field-detector.md` |
 | `testing` | 5 | `auth-parity-oracle.md`, `ci-runner-local-simulator.md`, `failure-signature-triage.md`, `http-smoke-suite.md`, `working-tree-snapshot.md` |
-| **Total** | **14** | |
+| **Total** | **15** | |
 
 - **Belongs here:** the capability and the recurring operation; the interface
   shape (invocation, inputs, outputs) in the general; the portable
@@ -698,9 +698,9 @@ agents (`.github/agents/<name>.agent.md`).
   session there.
 - **Enforcement (Agent Hooks, Preview):** the same cross-tool `route-hook.py`
   runs on `UserPromptSubmit`, emits JSON (`hookSpecificOutput.
-  additionalContext`; plain-text stdout is not injected by Copilot), and uses a
-  relative command path (not `$CLAUDE_PROJECT_DIR`, which is Claude-only) so it
-  resolves in both hosts. VS Code reads `.claude/settings.json` hooks directly,
+  additionalContext`; plain-text stdout is not injected by Copilot), and its
+  command uses `${CLAUDE_PROJECT_DIR:-$PWD}`, which Copilot, not setting the
+  variable, resolves to `$PWD`, so it resolves in both hosts. VS Code reads `.claude/settings.json` hooks directly,
   so a project with the Claude Code install picks up the same hook with nothing
   extra; a Copilot-only install drops `.github/hooks/route.json` +
   `.github/hooks/route-hook.py` (and `status.json` + `status-hook.py` for the

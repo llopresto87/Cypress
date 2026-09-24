@@ -671,10 +671,10 @@ merged file arrives whole, integrated as if it had always read that way, never
 a seed block bolted beside a plant block. Each reconciliation records its
 provenance: base state, decision, and what the plant kept.
 
-**The roster delta is not spawnable in this session.** Reconciling the agent
-nodes rewrites the harness projection, but the host enumerated that directory
-before this graft ran, so every specialist the seed *added or renamed* since
-the plant's base is on disk and unspawnable for the phases that follow.
+**The roster delta may not be spawnable in this session.** Reconciling the agent
+nodes rewrites the harness projection mid-session, and when a host sees such a
+write is host-dependent, so every specialist the seed *added or renamed* since
+the plant's base is on disk and may be unspawnable for the phases that follow.
 Preflight before dispatching by name, and take the remedy or the recorded
 fallback in `docs/graph/method/delegation.md`
 (`delegation.harness-registration`). Carry the delta forward as a named list;
@@ -1325,7 +1325,7 @@ State the summary in the chat, and record a provenance entry in the plant's own
 - Unbacked write to docs/graph/index.md: <git diff of the `plant:` block, or "unchanged">; pre-run copy captured: <yes / no — and if no, say so plainly>
 - Destination symlinks the installer moved aside: <path → .bak-, or none>
 - Re-created nodes: <path> — deliberate deletion re-applied / ratified (N-A on a stampless plant: the installer prints no notice)
-- Roster delta (unspawnable until the plant's next session): <specialists added or renamed>
+- Roster delta (not assumed spawnable until the preflight confirms it): <specialists added or renamed>
 - Flags used: <--force / --symlink / --copy / none>, and what that means for this record
 
 ## Shape migrations proposed (plant-authored artifacts in a superseded form; N/A if none)

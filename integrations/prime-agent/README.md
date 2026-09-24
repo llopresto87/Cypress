@@ -34,7 +34,7 @@ This seed system maps to Prime Agent as follows:
 | protocols → slash commands   | `.prime/agent/prompts/*.md` (generated projections) |
 | routing pointer              | `.prime/agent/extensions/route-extension.ts`       |
 | status register (once/session) | `.prime/agent/extensions/status-extension.ts`     |
-| `templates/`                 | `templates/` (kept at repo root, untouched)        |
+| `templates/`                 | `docs/graph/templates/` (graph nodes)        |
 | `templates/docs/` (graph leaves) | `docs/graph/` (missing leaves added on install) |
 
 ## Delegation: no static roster, so no registration lag
@@ -211,7 +211,7 @@ orchestrator spawns — the runtime limit is only the outer ceiling
 /path/to/cypress/install.sh prime-agent
 ```
 
-Creates (symlinks by default under `--symlink`, copies otherwise):
+Creates (copies by default; `--symlink` opts into live seed links):
 - `AGENTS.md` → `core/AGENTS.md` (bootstrap kernel, auto-loaded)
 - `.prime/agent/agents/*.md` → `agents/*.md` (roster brief sources)
 - `.prime/agent/skills/<name>/SKILL.md` → `skills/<name>/SKILL.md`

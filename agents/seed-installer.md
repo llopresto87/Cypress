@@ -74,9 +74,10 @@ do not push Git state.
   agents/protocols/skills — a skeleton that doesn't end with the kernel loaded is
   incomplete.
 - **State the registration boundary.** You wrote the harness projection
-  (`.claude/agents/` and kin), but the host enumerated that directory before you
-  ran: report how many roster files you placed, that the calling session's
-  registry predates them, and the remedy the caller must take before dispatching
+  (`.claude/agents/` and kin) mid-session, and whether the calling session sees
+  them is host-dependent (a first install creates the directory, which a host
+  may not pick up): report how many roster files you placed, that the calling
+  session may not have registered them, and the remedy the caller must take before dispatching
   a specialist by name — `docs/graph/method/delegation.md`
   (`delegation.harness-registration`) is the single home for that rule. An
   install that leaves the caller to discover this through a failed spawn is

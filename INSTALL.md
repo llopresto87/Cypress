@@ -17,12 +17,14 @@ around that one flow.
 ## Prerequisites
 
 - **bash** 3.2 or newer (macOS/Linux/WSL; Git Bash on Windows). Not any
-  POSIX shell: `install.sh` declares `#!/usr/bin/env bash` (`:1`) and
-  runs `set -euo pipefail` (`:69`), an option POSIX's `set` does not
-  define, so `dash` and other strict `/bin/sh` implementations fail. The
-  3.2 floor is what the script holds itself to (`install.sh:1824`,
-  `:2192`, which avoid bash 4+ constructs for macOS).
-- `python3` (for the GitHub Copilot frontmatter transformation only).
+  POSIX shell: `install.sh` declares `#!/usr/bin/env bash` on its first line
+  and runs `set -euo pipefail`, an option POSIX's `set` does not define, so
+  `dash` and other strict `/bin/sh` implementations fail. The 3.2 floor is
+  what the script holds itself to: its comments name the bash 4+ constructs
+  it avoids for macOS.
+- `python3`. The installer runs short Python snippets to read an existing
+  install stamp, fill the `plant:` entries of `docs/graph/index.md`, and write
+  the Codex and GitHub Copilot files.
 - The seed system unzipped or cloned somewhere stable. In the default
   copy mode the seed path is only read at install time; in `--symlink`
   mode the placed files reference it, so don't move it after install.
@@ -34,8 +36,9 @@ paste [`INSTALL_PROMPT.md`](INSTALL_PROMPT.md) into an agent-capable chat. That
 prompt runs one flow in three phases: **PLACE** (invoke `install.sh` to drop
 every seed file into the target — this phase may run from a chat rooted at the
 seed), **HAND OFF** (re-enter the prompt in a fresh session rooted at the target,
-because a host registers its agent roster at session start — see
-`docs/graph/method/delegation.md`, `delegation.harness-registration`), and
+because on a first install the session that placed the roster may not have
+registered it; see `docs/graph/method/delegation.md`,
+`delegation.harness-registration`), and
 **GROW IN FULL** (execute `docs/graph/protocols/grow.md` end to end, honoring its
 completeness contract so every evidence-backed collection is covered). The chat
 remains the orchestration/planning plane and spawns Sonnet-class scouts plus
@@ -65,6 +68,9 @@ From the seed system directory:
 - `all` — runs claude-code, opencode and prime-agent. Name `codex` or
   `github-copilot` as well to install a frozen host.
 
+Every tool also gets the kernel under both names, `CLAUDE.md` and
+`AGENTS.md`: the first one placed holds it, and the other is a symlink to it.
+
 ### Examples
 
 ```sh
@@ -85,8 +91,10 @@ From the seed system directory:
 
 For each tool:
 1. Drops the bootstrap kernel at the expected path (`CLAUDE.md` for
-   Claude Code; `AGENTS.md` for the others). The kernel is small by
-   design: everything else activates progressively through the graph.
+   Claude Code; `AGENTS.md` for the others), with the other name beside it
+   as a symlink, or a copy where symlinks are unavailable. The kernel is
+   small by design, and everything else activates progressively through the
+   graph.
 2. Installs the entire method surface INTO the graph — protocols,
    skills (flattened `<name>.md`), agents, `method/` posture nodes, and
    the Tier-3 template artifacts — as seed-owned routable nodes under
@@ -127,8 +135,7 @@ records that this plant carries none, and `--legal-jurisdiction CC`, which names
 the national layer. `agent.legal` can do exactly one thing until the first is
 answered, which is to decline the work
 ([charter duties](DOCUMENTATION.md#enf-charter-duties)), and the installer says
-so at the end of every run that leaves it undecided. This document is what an owner reads BEFORE the run, and it
-did not mention either flag.
+so at the end of every run that leaves it undecided.
 The installer does not guess them, and it leaves any value the plant already declares
 as it is; whatever is still a placeholder is named as a NEXT STEP.
 
@@ -163,7 +170,9 @@ install does not modify a file outside the target directory
 ([backup before replace](DOCUMENTATION.md#enf-backup-before-replace)).
 
 The installer never deletes files outside of `.claude/`,
-`.opencode/`, `.codex/`, or `.github/`. In `docs/graph/` it adds
+`.opencode/`, `.codex/`, or `.github/`, with one exception: a second kernel
+file identical to the seed kernel is removed and replaced by the symlink to
+the first. In `docs/graph/` it adds
 missing scaffold and template leaves only and never touches
 plant-authored content (`nodes/`, `specs/`, and the rest of the
 graph you grow); the seed-owned machinery subtrees (`protocols/`,
@@ -240,31 +249,31 @@ operation is one shell line per tool:
 
 ```sh
 # Claude Code
-rm -rf CLAUDE.md .claude/
+rm -rf CLAUDE.md AGENTS.md .claude/
 
 # opencode
-rm -rf AGENTS.md .opencode/ opencode.json
+rm -rf AGENTS.md CLAUDE.md .opencode/ opencode.json
 
 # Codex
-rm -rf AGENTS.md .codex/
+rm -rf AGENTS.md CLAUDE.md .codex/
 # Then remove the [[skills.config]] entries from ~/.codex/config.toml.
 
 # GitHub Copilot
-rm -rf .github/copilot-instructions.md .github/agents \
-        .github/prompts .github/instructions .github/templates \
-        .github/hooks
-# If AGENTS.md was also installed for Copilot, remove it too.
+rm -rf AGENTS.md CLAUDE.md .github/copilot-instructions.md .github/agents \
+        .github/prompts .github/instructions .github/hooks
 ```
 
-Your existing `docs/graph/` knowledge files are untouched.
+`CLAUDE.md` and `AGENTS.md` are the kernel pair every tool shares, so keep
+them while another tool stays installed. The lines above leave
+`.cypress/seed.json`, `EXPERT_SEED_INSTALL_PROMPT.md` and everything under
+`docs/graph/` in place, your knowledge files included.
 
 ## Multi-tool projects
 
 Installing multiple tools is supported and common. They share the
-same kernel (`AGENTS.md` / `CLAUDE.md`) and unified graph. If
-the kernel target conflicts (e.g. opencode installs `AGENTS.md`
-then Codex installs `AGENTS.md` over the same path), the installer
-warns and backs up.
+same kernel (`AGENTS.md` / `CLAUDE.md`) and unified graph. If a kernel
+file already in place differs from the seed kernel, the installer backs it
+up and warns.
 
 **Claude Code + Prime Agent, interchangeably.** These two are the
 first-class harnesses, and one plant can run either. Install both:
@@ -285,11 +294,11 @@ in sync by hand.)
 Recommended order if installing all five:
 
 ```sh
-./install.sh claude-code      # CLAUDE.md, no conflict with AGENTS.md
-./install.sh opencode         # AGENTS.md (fresh)
-./install.sh codex            # frozen host; AGENTS.md (already present and identical — left untouched)
-./install.sh github-copilot   # frozen host; .github/copilot-instructions.md (no conflict)
-./install.sh prime-agent      # AGENTS.md (present and identical — untouched); adds .prime/agent/
+./install.sh claude-code      # CLAUDE.md, with AGENTS.md as a symlink to it
+./install.sh opencode         # kernel pair already current, left untouched
+./install.sh codex            # frozen host; kernel pair left untouched
+./install.sh github-copilot   # frozen host; adds .github/copilot-instructions.md
+./install.sh prime-agent      # kernel pair left untouched; adds .prime/agent/
 ```
 
 `./install.sh all` covers the three maintained tools; `./install.sh all codex

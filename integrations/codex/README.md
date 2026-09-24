@@ -28,11 +28,11 @@ This seed system maps to Codex as follows:
 
 | Seed file                | Codex destination                                |
 |--------------------------|--------------------------------------------------|
-| `core/AGENTS.md`         | `AGENTS.md` at repo root (with sub-agents inlined or referenced) |
-| `agents/*.md`            | `.codex/agents/*.md` (referenced from AGENTS.md) |
+| `core/AGENTS.md`         | `AGENTS.md` at repo root (the kernel; it neither inlines nor references the sub-agents) |
+| `agents/*.md`            | `.codex/agents/*.md` (reference copies, not registered) |
 | `skills/*/SKILL.md`      | `.codex/skills/*/SKILL.md` (registered in `~/.codex/config.toml`) |
 | `protocols/*.md`         | `docs/graph/protocols/*.md` (graph nodes; no `.codex/` copy) |
-| `templates/`             | `templates/` (kept at repo root, untouched)      |
+| `templates/`             | `docs/graph/templates/` (graph nodes)      |
 | `templates/docs/`        | `docs/graph/` (missing leaves added on install)  |
 
 > **The projection is taken from the graph, not from the seed.** The rows
@@ -47,10 +47,11 @@ This seed system maps to Codex as follows:
 ## AGENTS.md size budget
 
 Codex truncates `AGENTS.md` at `project_doc_max_bytes` (default
-32 KiB). The seed system's `AGENTS.md` is intentionally short,
-under the 8 000-byte budget that `seed-lint` checks in the seed's own
-test run ([kernel budget](../../DOCUMENTATION.md#enf-kernel-budget)), so
-roughly a quarter of the limit; the depth lives in the referenced files. To avoid
+32 KiB). The seed system's `AGENTS.md` is intentionally short: it
+stays under the byte budget that `seed-lint` checks in the seed's own
+test run ([kernel budget](../../DOCUMENTATION.md#enf-kernel-budget)), which
+keeps it well under Codex's default limit, and the depth lives in the
+referenced files. To avoid
 truncation, do not paste agent and protocol bodies into
 `AGENTS.md` — keep them in `.codex/` and let the agent open them
 on demand.
@@ -98,14 +99,16 @@ Creates (copies by default; `--symlink` opts into live seed links):
   the user needs to add for skill registration (the installer
   does not modify global user config without consent).
 
-Both of those land after the current session began, so nothing installed here is
-addressable until a new session starts — the global-config merge doubly so.
+Both of those land after the current session began. Whether a running Codex
+session picks either up is not recorded in the
+[host capability matrix](../../documentation/host-capability-matrix.md#specialist-discoveryregistration),
+so check before relying on them.
 `docs/graph/method/delegation.md` (`delegation.harness-registration`) owns that
 rule and its recorded fallback.
 
 ## Bounded execution has no hook here
 
-This harness exposes no pre-tool hook, so the bounded-execution clauses of
+The seed wires no pre-tool hook for Codex, so the bounded-execution clauses of
 `core/method/engineering-posture.md` §14 (`toolcraft.bounded-execution`) are the agent's own discipline
 rather than a hook's check: every shell command that can hang (service
 control, process signalling, package managers, installers, builds, log
