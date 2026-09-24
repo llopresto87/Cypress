@@ -8,20 +8,20 @@ recorded in `documentation/host-capability-matrix.md` and no workaround is
 built.
 
 opencode reads:
-1. `AGENTS.md` (project rules — its preferred filename) OR `CLAUDE.md` as fallback.
+1. `AGENTS.md` (project rules; its preferred filename) OR `CLAUDE.md` as fallback.
 2. `.opencode/agents/*.md` (agent definitions with YAML frontmatter).
 3. `.opencode/commands/*.md` (custom slash commands).
 4. `.opencode/skills/<name>/SKILL.md` (or `.claude/skills/`, `~/.claude/skills/`
    as Claude-Code-compatible fallbacks).
 5. `opencode.json` (project config; can also define agents and commands
-   inline under the `agent` / `command` keys — the seed does not, because the
+   inline under the `agent` / `command` keys, which the seed does not do, because the
    markdown files above are their single home). The seed ships only the
    `.json` form, not a `.jsonc` twin; the reason is below.
 
 All four directory locations above are discovered **by convention**. No config
 key sets them, and the config schema allows no unknown key at all
-(`additionalProperties: false`), so a config that tries to declare them is not
-merely redundant — it is invalid.
+(`additionalProperties: false`), so a config that tries to declare them is invalid,
+not merely redundant.
 
 opencode is Claude-Code-compatible by default: if no opencode-native
 files exist, it reads `CLAUDE.md` and `~/.claude/skills/`. This means

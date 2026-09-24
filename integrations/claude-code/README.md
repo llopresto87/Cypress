@@ -1,16 +1,18 @@
 # Claude Code integration
 
-Claude Code reads these on every session:
+This page says where an install puts the seed's files for Claude Code and how
+Claude Code picks them up. Claude Code reads these on every session:
 1. `CLAUDE.md` (project memory, at repo root).
 2. `.claude/agents/*.md` (subagent definitions, YAML frontmatter).
 3. `.claude/skills/*/SKILL.md` (loadable skills, progressive disclosure).
 4. `.claude/commands/*.md` (custom slash commands).
 
-"On every session" is also the sharp edge. When the host picks up agent files
-written during a running session, by an install, a graft or a freshly
-commissioned expert, is host-dependent; the
+"On every session" is also the sharp edge. Agent files can be written while a
+session is running, by an install, a graft or a freshly commissioned expert,
+and when the host picks them up is host-dependent; the
 [host capability matrix](../../documentation/host-capability-matrix.md) records
-it per host; a session rooted at the seed does not carry a plant's roster at all.
+it per host. A session rooted at the seed does not carry a plant's roster (the
+agents installed in your project) at all.
 `docs/graph/method/delegation.md` (`delegation.harness-registration`) owns the
 preflight, the remedy, and the recorded fallback.
 

@@ -2,13 +2,13 @@
 
 ## What CYPRESS is
 
-CYPRESS is an installer. It copies instruction files, a method written in Markdown and a few small Python scripts that need only the standard library into your repository, for the AI coding [tool](DOCUMENTATION.md#term-tool) you already use. It is not a library your code imports, not a service and not a model.
+CYPRESS is an installer that gives the AI coding [tool](DOCUMENTATION.md#term-tool) you already use a written way of working on your repository. It copies three kinds of file into the repository: instruction files, the method itself in Markdown, and a few small Python scripts that need only the standard library. It is not a library your code imports, not a service and not a model. Installing only places those files; the work starts when you paste one prompt into a session of your tool, and that session reads your repository and builds its [knowledge graph](DOCUMENTATION.md#term-knowledge-graph): short linked notes about your project that later sessions open a few at a time instead of rereading the code.
 
-Installing only places files. A separate session, started when you paste one prompt, reads your repository and builds its [knowledge graph](DOCUMENTATION.md#term-knowledge-graph): short linked notes about your project that a session opens a few at a time instead of rereading the code. The method in those files asks the session to size its process to each task's risk, to write a [specification](DOCUMENTATION.md#term-specification) and a failing test before the code, and to hand steps that need a clean context to separate [agents](DOCUMENTATION.md#term-agent).
+From then on, the method in those files asks each session to size its process to the task's risk, to write a [specification](DOCUMENTATION.md#term-specification) and a failing test before the code, and to hand steps that need a clean context to separate [agents](DOCUMENTATION.md#term-agent); the glossary's [skill](DOCUMENTATION.md#term-skill) entry says how an agent differs from a skill. Most of this is asked of the model, and only part of it is checked by a tool: [What it does not do](#what-it-does-not-do) says which part is which.
 
 ## Who it is for and not for
 
-It is for developers who work in a code repository through a coding [harness](DOCUMENTATION.md#term-harness) the installer supports: Claude Code, Prime Agent, opencode, Codex or GitHub Copilot. Support is not the same on every harness, and some of them are deprecated. The [host capability matrix's support table](documentation/host-capability-matrix.md#support-tiers-adr-0009) and the [host support decision record](docs/decisions/adr-0009-host-support-tiers.md) say which is which.
+It is for developers who work in a code repository through a coding [harness](DOCUMENTATION.md#term-harness) the installer supports: Claude Code, Prime Agent, opencode, Codex or GitHub Copilot. Support is not the same on each: Claude Code and Prime Agent are first-class, opencode is supported, and Codex and GitHub Copilot are deprecated, installed only when you name them and given no new features. The [host capability matrix's support table](documentation/host-capability-matrix.md#support-tiers-adr-0009) and the [host support decision record](docs/decisions/adr-0009-host-support-tiers.md) say what each level means.
 
 The method assumes no language, framework or stack. The reference [corpora](DOCUMENTATION.md#term-corpus) that ship with it are narrower: the library notes lean toward .NET and Java, and the legal citations cover one national jurisdiction. The library notes are not placed in your project, and the legal citations are placed only when you ask for them. The [corpora reference](documentation/corpora-and-integrations-reference.md) has the breakdown.
 
@@ -16,7 +16,7 @@ It is not for someone who does not use an AI coding [tool](DOCUMENTATION.md#term
 
 ## What installing does to your repository
 
-An install for Claude Code writes these into your project:
+An install for Claude Code writes the files below into your project. If one of them is already there and differs, your version is kept beside it as a timestamped copy before the new one replaces it, and nothing is merged; the install stamp is the one exception.
 
 - the [kernel](DOCUMENTATION.md#term-kernel), a short instruction file the harness reads at the start of every session: `CLAUDE.md` at the project root, with `AGENTS.md` beside it as a symlink to it (a copy where symlinks are unavailable); on the other harnesses, or where your project already has a plain `AGENTS.md` and no `CLAUDE.md`, `AGENTS.md` holds the kernel and `CLAUDE.md` is the symlink;
 - the harness directory `.claude/`, holding the agent definitions, the [skills](DOCUMENTATION.md#term-skill), slash commands, hook scripts and settings;
@@ -26,7 +26,7 @@ An install for Claude Code writes these into your project:
 
 Other harnesses get their own directory in place of `.claude/`, such as `.opencode/` or `.prime/agent/`, and the [install guide](INSTALL.md) lists each one.
 
-A file already in place that differs from the new one is kept beside itself as a timestamped copy and then replaced, not merged. A file that already matches is left alone. The one file replaced without a copy is the install stamp `.cypress/seed.json` ([backup before replace](DOCUMENTATION.md#enf-backup-before-replace)). Files under `docs/graph/` that belong to your project, such as the graph's index, are only added where missing ([project files kept](DOCUMENTATION.md#enf-plant-files-kept)). The one exception is the `plant:` entry of `docs/graph/index.md`, which the installer rewrites in place, also without a copy: it adds the entry if it is absent and puts each value you pass on the command line into a line still left as a placeholder, keeping any value already declared.
+A file that already matches is left alone. The install stamp `.cypress/seed.json` is replaced without a copy ([backup before replace](DOCUMENTATION.md#enf-backup-before-replace)). Files under `docs/graph/` that belong to your project, such as the graph's index, are only added where missing ([project files kept](DOCUMENTATION.md#enf-plant-files-kept)), with one exception: the installer rewrites the `plant:` entry of `docs/graph/index.md` in place, also without a copy. It adds the entry if it is absent and writes each value you pass on the command line into a line still left as a placeholder, keeping any value already declared.
 
 The install does not touch your application source, `.gitignore`, git history or CI.
 
@@ -46,7 +46,7 @@ git clone https://github.com/llopresto87/Cypress
 ./Cypress/install.sh claude-code --project-dir /path/to/your/project
 ```
 
-The clone takes whatever the default branch holds when you run it, not a tagged release. The second command only places files, and it does not edit your code. Then open a session rooted at your project and paste [`INSTALL_PROMPT.md`](INSTALL_PROMPT.md) into it. That starts the one-time [growth](DOCUMENTATION.md#term-growth) pass, which reads your repository and builds its graph. None of these steps asks you to learn the project's vocabulary first.
+The clone takes whatever the default branch holds when you run it, not a tagged release. In the second command, put your repository's path in place of the placeholder. That command only places files and does not edit your code; its last line says the files are placed and the project's graph is not built yet. Then open a session rooted at your project and paste [`INSTALL_PROMPT.md`](INSTALL_PROMPT.md) into it. That starts the one-time [growth](DOCUMENTATION.md#term-growth) pass, which reads your repository and builds its graph. None of these steps asks you to learn the project's vocabulary first.
 
 On a first install, a harness may need a fresh session before it can start the agents that were just placed; the [delegation notes](core/method/delegation.md) record when, under `delegation.harness-registration`.
 

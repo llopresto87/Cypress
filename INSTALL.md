@@ -1,18 +1,18 @@
 # INSTALL.md
 
-How to drop CYPRESS into a project, keep it up-to-date, and remove it when no
-longer wanted.
+How to put CYPRESS into a project, keep it up to date, and take it out again.
 
 **There is one entry point: [`INSTALL_PROMPT.md`](INSTALL_PROMPT.md).** Paste it
-into an agent-capable chat and it does the whole job — it *places* every seed
-file into your target and then *grows* the target into a complete, full-depth
-`docs/graph/` knowledge system. `install.sh` (documented below) is only the
-placement mechanism that prompt invokes; `docs/graph/protocols/grow.md` is the
-growth doctrine it executes, including the **completeness contract**
-(`grow.completeness-contract`) that binds the orchestrating model to grow every
-evidence-backed node and leaf — not a skeleton. This page is the reference for
-the shell installer and the housekeeping (upgrade, uninstall, troubleshooting)
-around that one flow.
+into an agent-capable chat, meaning a coding tool's chat that can run commands
+in your repository, and it does the whole job in two parts. First it *places*
+every seed file (the files this repository ships) into your project; then it
+*grows* your project's `docs/graph/` into a complete, full-depth knowledge
+graph. `install.sh`, documented below, is only the placement step that prompt
+runs. The growth follows `docs/graph/protocols/grow.md`, including its
+**completeness contract** (`grow.completeness-contract`), which binds the model
+running the growth to write every node and leaf your code gives evidence for,
+not a skeleton. This page is the reference for the shell installer and for the
+housekeeping around that one flow: upgrade, uninstall and troubleshooting.
 
 ## Prerequisites
 
@@ -31,19 +31,23 @@ around that one flow.
 
 ## One-shot install and grow
 
-The primary, coding-tool-neutral way to install **and grow** the seed is to
-paste [`INSTALL_PROMPT.md`](INSTALL_PROMPT.md) into an agent-capable chat. That
-prompt runs one flow in three phases: **PLACE** (invoke `install.sh` to drop
-every seed file into the target — this phase may run from a chat rooted at the
-seed), **HAND OFF** (re-enter the prompt in a fresh session rooted at the target,
-because on a first install the session that placed the roster may not have
-registered it; see `docs/graph/method/delegation.md`,
-`delegation.harness-registration`), and
-**GROW IN FULL** (execute `docs/graph/protocols/grow.md` end to end, honoring its
-completeness contract so every evidence-backed collection is covered). The chat
-remains the orchestration/planning plane and spawns Sonnet-class scouts plus
-Opus-class authors. The shell installer below is the PLACE-phase mechanism; you
-rarely call it directly.
+The main way to install **and grow** the seed, whichever coding tool you use,
+is to paste [`INSTALL_PROMPT.md`](INSTALL_PROMPT.md) into an agent-capable chat.
+That prompt runs one flow in three phases:
+
+- **PLACE**: it runs `install.sh` to copy every seed file into your project.
+  This phase may run from a chat rooted at the seed.
+- **HAND OFF**: the prompt is entered again in a fresh session rooted at your
+  project, because on a first install the session that placed the agents may
+  not have registered them; see `docs/graph/method/delegation.md`,
+  `delegation.harness-registration`.
+- **GROW IN FULL**: the session carries out `docs/graph/protocols/grow.md` end
+  to end, honoring its completeness contract so that every collection your code
+  gives evidence for is covered.
+
+The chat stays where the work is planned and coordinated, and it starts
+Sonnet-class scouts and Opus-class authors to do it. The shell installer below
+is the PLACE-phase mechanism, and you rarely call it directly.
 
 From the seed system directory:
 
@@ -55,17 +59,17 @@ From the seed system directory:
 ```
 
 `<tool>` is one of:
-- `claude-code` — drops `CLAUDE.md` + `.claude/`.
-- `opencode` — drops `AGENTS.md` + `.opencode/` + `opencode.json`.
-- `codex` — deprecated, a frozen host
+- `claude-code`: drops `CLAUDE.md` + `.claude/`.
+- `opencode`: drops `AGENTS.md` + `.opencode/` + `opencode.json`.
+- `codex`: deprecated, a frozen host
   ([ADR-0009](docs/decisions/adr-0009-host-support-tiers.md)); drops
   `AGENTS.md` + `.codex/`; prints `~/.codex/config.toml` hints.
-- `github-copilot` — deprecated, a frozen host
+- `github-copilot`: deprecated, a frozen host
   ([ADR-0009](docs/decisions/adr-0009-host-support-tiers.md)); generates
   `.github/` from sources (transformed, not symlinked).
-- `prime-agent` — drops `AGENTS.md` + `.prime/agent/` (skills, prompts,
+- `prime-agent`: drops `AGENTS.md` + `.prime/agent/` (skills, prompts,
   agents, `route-extension.ts`, `settings.json`).
-- `all` — runs claude-code, opencode and prime-agent. Name `codex` or
+- `all`: runs claude-code, opencode and prime-agent. Name `codex` or
   `github-copilot` as well to install a frozen host.
 
 Every tool also gets the kernel under both names, `CLAUDE.md` and
@@ -95,17 +99,17 @@ For each tool:
    as a symlink, or a copy where symlinks are unavailable. The kernel is
    small by design, and everything else activates progressively through the
    graph.
-2. Installs the entire method surface INTO the graph — protocols,
-   skills (flattened `<name>.md`), agents, `method/` posture nodes, and
-   the Tier-3 template artifacts — as seed-owned routable nodes under
+2. Installs the entire method surface into the graph (protocols, skills
+   flattened to `<name>.md`, agents, `method/` posture nodes and the Tier-3
+   template artifacts) as seed-owned nodes the router can reach, under
    `docs/graph/{protocols,skills,agents,method,templates}/`.
 3. Copies (or, with `--symlink`, links) harness projections where the
-   tool demands a fixed location — agents and skills only — plus
+   tool expects a fixed location, for agents and skills only, plus
    tool-specific files (slash commands, settings, config).
 4. Places in `docs/graph/` the schema, linter, router, nodes directory,
    and every missing leaf collection from `templates/docs/`. Existing files
    are preserved ([plant files kept](DOCUMENTATION.md#enf-plant-files-kept)). `INSTALL_PROMPT.md` then orchestrates source-grounded
-   growth; `/initialize` is the entry fork behind it — grow when there is
+   growth. `/initialize` is the entry fork behind it: grow when there is
    source to scout, from-scratch when the repository is empty.
 5. Installs the canonical prompt as `EXPERT_SEED_INSTALL_PROMPT.md` at the
    target root so later growth/refresh sessions remain tool-neutral.
@@ -124,7 +128,7 @@ views, and use `--check` to detect drift without writing:
 ## The plant facts are yours to state
 
 `docs/graph/index.md` carries a `plant:` section with four facts only the owner can
-assert: `environment_class` (ephemeral-test, staging, real-production or mixed — it
+assert: `environment_class` (ephemeral-test, staging, real-production or mixed; it
 decides what the release posture tolerates, build-on-host included), `commit_attribution`
 (`none` or the trailer text), `deliverable_language` and `comment_language`. Pass them at
 install time with those four flags, or fill the section by hand before grow or graft.
@@ -155,8 +159,8 @@ explicitly but is already the default.
 
 If a target file already exists and differs from what is being placed,
 the installer renames it to `<path>.bak-<timestamp>` and writes the new
-body. A file that already matches is left alone — no backup, no rewrite,
-so a re-install of an unchanged plant creates nothing.
+body. A file that already matches is left alone, with no backup and no rewrite,
+so re-installing over an unchanged project creates nothing.
 
 `--force` suppresses the per-file warning, never the backup
 ([backup before replace](DOCUMENTATION.md#enf-backup-before-replace)). The
@@ -177,8 +181,8 @@ missing scaffold and template leaves only and never touches
 plant-authored content (`nodes/`, `specs/`, and the rest of the
 graph you grow); the seed-owned machinery subtrees (`protocols/`,
 `skills/`, `agents/`, `method/`, `templates/`) are fast-forwarded
-to the current seed — byte-identical files are left untouched, and
-anything that differs is backed up first so
+to the current seed: byte-identical files are left untouched, and
+anything that differs is backed up first, so
 `tools/graft-audit.py` can prove no customization was buried
 ([plant files kept](DOCUMENTATION.md#enf-plant-files-kept),
 [graft audit](DOCUMENTATION.md#enf-graft-audit)).
@@ -204,7 +208,8 @@ ls .claude/agents/     # or .opencode/agents/  or .codex/agents/
 #   appear
 ```
 
-`ls` shows the files are placed; it does not show that the tool can start
+The head command prints the start of the kernel, whose title names CYPRESS, and
+`ls` lists the placed agent files. That shows the files are placed; it does not show that the tool can start
 them. When a host picks up agent files placed during a running session is
 host-dependent (the [host capability matrix](documentation/host-capability-matrix.md)
 records it per host), and a session rooted at the seed does not hold the
@@ -236,8 +241,8 @@ If you copied (the default), re-run the installer to pull seed updates:
 ./install.sh <tool> --force
 ```
 
-If you used `--symlink`, edits to the seed propagate automatically —
-just `git pull` or update the seed source; no re-install needed.
+If you used `--symlink`, edits to the seed propagate automatically:
+`git pull` or otherwise update the seed source, and no re-install is needed.
 
 `--force` skips the backup chatter when you know the existing files
 are just outdated copies.
@@ -283,8 +288,8 @@ first-class harnesses, and one plant can run either. Install both:
 ```
 
 The installer collapses `CLAUDE.md` (Claude Code) and `AGENTS.md`
-(Prime Agent) into a **single shared kernel file** — one is the real
-file, the other a project-local symlink to it — so editing the kernel
+(Prime Agent) into a **single shared kernel file**, one the real file and the
+other a project-local symlink to it, so editing the kernel
 updates both harnesses and the two do not drift apart. `.claude/` and
 `.prime/agent/` sit side by side; `docs/graph/` is shared. Switching
 harness is just opening the plant in the other tool. (On a platform

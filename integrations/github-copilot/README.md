@@ -8,22 +8,22 @@
 > `.claude/settings.json`, so the Claude Code route and status hooks still
 > reach it there and fail open.
 
-GitHub Copilot reads several customization layers, each with its own
-file format:
+This page says which Copilot file each seed file becomes. GitHub Copilot reads
+several customization layers, each with its own file format:
 
-1. **Repository instructions** —
+1. **Repository instructions**:
    `.github/copilot-instructions.md` OR `AGENTS.md` at the repo
    root. Auto-applied to every Copilot Chat request in the
    workspace. The kernel goes here.
-2. **Path-scoped instructions** —
+2. **Path-scoped instructions**:
    `.github/instructions/<name>.instructions.md`, each with a YAML
    `applyTo:` glob. Auto-applied when the user is working in a
    matching file path. We use these for the skills, each with a
    match-all glob (see below).
-3. **Prompt files** — `.github/prompts/<name>.prompt.md`, each with
+3. **Prompt files**: `.github/prompts/<name>.prompt.md`, each with
    YAML frontmatter (mode, description, tools). Surface as slash
    commands in Copilot Chat. We use these for the protocols.
-4. **Custom agents** — `.github/agents/<name>.agent.md` (formerly
+4. **Custom agents**: `.github/agents/<name>.agent.md` (formerly
    `.github/chatmodes/<name>.chatmode.md`). Surface in the Copilot
    Chat agent picker. We use these for the specialist personas.
 
