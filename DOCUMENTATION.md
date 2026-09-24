@@ -37,6 +37,7 @@
 14. [Tests and gates](#14-tests-and-gates)
 15. [Glossary](#15-glossary)
 16. [Contributing to the seed](#16-contributing-to-the-seed)
+17. [What is enforced, and how](#17-what-is-enforced-and-how)
 
 ## 1. What CYPRESS is
 
@@ -939,7 +940,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** A named role, defined in one Markdown file, that a session hands one piece of work to. The file's frontmatter lists the role's tools, its model class and the task words that route work to it, and each role the [seed](#term-seed) ships is a [specialist](#term-specialist). How an agent differs from a [skill](#term-skill) is set out once, in the skill entry.
 - **Field:** In agent tooling, a system in which the model directs its own process and tool use instead of following a fixed code path (Anthropic, "Building effective agents", https://anthropic.com/engineering/building-effective-agents, retrieved 2026-09-24; status: verified). In classical AI, anything that perceives its environment and acts on it (Russell and Norvig, *Artificial Intelligence: A Modern Approach*, ch. 2; status: secondhand, page not recorded)
 - **Implemented at:** `agents/*.md`, `agents/_routes.golden.tsv`, `core/method/delegation.md`, `integrations/claude-code/agent-lint.py`. An install produces `docs/graph/agents/<name>.md` (`place_graph_machinery`) and, for Claude Code, `.claude/agents/<name>.md` (`project_agents`)
-- **Enforcement:** **not a control**. The word names a kind of file; the checks on those files are not classed here yet
+- **Enforcement:** **not a control**. The word names a kind of file. The checks on those files are classed in the [tool allow-list row](#enf-tool-allowlist), the [leaf spawn row](#enf-leaf-cannot-spawn) and the [agent-lint row](#enf-agent-lint)
 - **Divergence:** **narrower**: a seed agent is a role-scoped worker acting on a written brief, not a free-running autonomous system
 - **Why:** ADR-0001 and ADR-0002
 
@@ -961,7 +962,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** The name covers the role of the top session, which routes, plans, briefs, verifies and accepts work and leaves the domain work of T2 and T3 tasks to workers, and also the roster [agent](#term-agent) `orchestrator`, whose charter describes that role.
 - **Field:** In agent patterns, a central model that splits a task at run time, delegates the parts to worker models and combines their results (Anthropic, "Building effective agents", https://anthropic.com/engineering/building-effective-agents, retrieved 2026-09-24; status: verified). In data and CI engineering, the component that runs a predefined workflow and tracks the state of its tasks (Kestra, "What is an orchestrator?", https://kestra.io/resources/data/orchestrator; status: secondhand)
 - **Implemented at:** `agents/00-orchestrator.md`, `core/AGENTS.md`
-- **Enforcement:** **not a control**. The word names a role; the checks around it are not classed here yet
+- **Enforcement:** The word names a role and is not a control. What the role is asked to do is **judgment** in the [tier-classification row](#enf-tier-classification) and the [protocol-order row](#enf-protocol-order), and **detective** in the [attribution row](#enf-attribution)
 - **Divergence:** **narrower** than the agent-pattern sense, because written protocols guide how the task is split; **different** from the data-engineering sense
 - **Why:** kernel §1 and ADR-0002
 
@@ -972,7 +973,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** The [seed](#term-seed) calls its [protocols](#term-protocol) its named workflows: steps written in prose that the model reads and carries out one at a time, choosing each next step itself. The word also names the GitHub Actions file `.github/workflows/gate.yml`, which runs the seed's own checks in CI.
 - **Field:** In the agent-patterns framing, models and tools run along predefined code paths, in contrast to an agent, which picks its own path at run time (Anthropic, "Building effective agents", https://anthropic.com/engineering/building-effective-agents, retrieved 2026-09-24; status: verified). The general business-process sense has no recorded source (status: not recorded)
 - **Implemented at:** `protocols/*.md`, `.github/workflows/gate.yml`
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** The word itself is not a control. The protocols are **judgment**, in the [protocol-order row](#enf-protocol-order), and the CI workflow is **soft**, in the [seed-gate row](#enf-seed-gate)
 - **Divergence:** **different**: the steps are predefined in prose, not code, and the model decides each next step by reading them
 - **Why:** Calling the protocols workflows: not recorded. ADR-0004 supports it only indirectly, by installing every protocol as a routable node (`docs/decisions/adr-0004-pure-graph-architecture.md:34-37`)
 
@@ -994,7 +995,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** The word carries three senses in this repository. The first is a capability named in an [agent](#term-agent)'s `tools:` list, such as reading a file or running a shell command. The second is a durable, tested script the project keeps and catalogs under the [toolcraft](#term-toolcraft) rule. The third is the coding host itself, as in "AI coding tool", which this glossary calls the [harness](#term-harness). README uses the second and third senses.
 - **Field:** An action the model can invoke, such as reading a file, running a command or calling a service, whose result it can act on next (Claude Code glossary, https://code.claude.com/docs/en/glossary, retrieved 2026-09-24; status: verified)
 - **Implemented at:** `agents/*.md`, `tools/*.py`, `tool-corpus/`, `templates/tool-page.template.md`, `skills/toolcraft/SKILL.md`, `integrations/*/`
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** The word itself is not a control. In the first sense, the `tools:` line is **soft** where only a brief carries it, and held by the harness on hosts that read it and withhold what it leaves out, as the [tool allow-list row](#enf-tool-allowlist) records
 - **Divergence:** **same** in the first sense; **broader** overall, because the second and third senses are the seed's own
 - **Why:** kernel §3.8 for the second sense. Why the host is also called a tool: not recorded
 
@@ -1005,7 +1006,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** A script the host runs automatically when a fixed event happens, such as a prompt being submitted or a shell command about to run, whatever the model decides. The [seed](#term-seed) ships three for Claude Code: one adds a routing pointer to each prompt, one adds a status summary when a session starts, and one checks a shell command before it runs. Which events a host offers, and which of them reach a worker's turn, are host-dependent; see the [host capability matrix](documentation/host-capability-matrix.md).
 - **Field:** A user-defined handler that fires at a fixed point in an agent's lifecycle whatever the model decides; its defining property is that it always fires (Claude Code glossary, https://code.claude.com/docs/en/glossary; Claude Code, "Automate actions with hooks", https://code.claude.com/docs/en/hooks-guide; both retrieved 2026-09-24; status: verified)
 - **Implemented at:** `integrations/claude-code/{route-hook.py,status-hook.py,bound-hook.py,settings.json}`, `integrations/prime-agent/{route-extension.ts,status-extension.ts}`, `integrations/github-copilot/hooks/{route.json,status.json}`. An install produces `.claude/settings.json`, `.claude/route-hook.py`, `.claude/status-hook.py` and `.claude/bound-hook.py` (`install_claude_code`)
-- **Enforcement:** **not a control** for the word itself. A hook that only adds text holds nothing; the class of the shell-command check is not recorded here yet
+- **Enforcement:** **not a control** for the word itself, and for a hook that only adds text: see the [routing-hook row](#enf-route-hook) and the [status-hook row](#enf-status-hook). The shell-command check carries its own classes in the [pre-Bash guard row](#enf-pre-bash-guard)
 - **Divergence:** **same**
 - **Why:** ADR-0003 and ADR-0010
 
@@ -1016,7 +1017,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** The one instruction file every session reads first. It holds the project's identity, the [tier](#term-tier) table, the anchors of the eight rules and the boundaries, within a byte budget, and everything else is routed in on demand. The host loads it as project instructions, and the file name it looks for depends on the host; see the [host capability matrix](documentation/host-capability-matrix.md). It is not the model's system prompt.
 - **Field:** No agent-tooling sense was found, and the operating-system sense is unrelated (status: not recorded). The nearest field term, system prompt, means the instructions given to a model before the conversation and is used without a formal definition sentence (Anthropic, "Prompting best practices", https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices, retrieved 2026-09-24; status: verified, for usage only)
 - **Implemented at:** `core/AGENTS.md`. An install produces `CLAUDE.md` (`place_kernel`) or `AGENTS.md`, depending on the host, from one shared body
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** The word itself is not a control. Following the file is **judgment**, in the [kernel-load row](#enf-kernel-load), and its byte budget is **soft**, in the [kernel-budget row](#enf-kernel-budget)
 - **Divergence:** **no standard meaning**; as a file the kernel is **different** from a system prompt
 - **Why:** ADR-0004
 
@@ -1027,7 +1028,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** The working memory that one session or one worker has. The [seed](#term-seed) is built to keep it small: little is loaded up front, and the rest is routed in when a task calls for it.
 - **Field:** The span of tokens a model can refer back to while generating, distinct from its training data (Anthropic, Claude platform glossary, https://platform.claude.com/docs/en/about-claude/glossary; Claude Code glossary, https://code.claude.com/docs/en/glossary, for the session overlay; both retrieved 2026-09-24; status: verified)
 - **Implemented at:** The window belongs to the host and model. The seed measures its own always-loaded share in `tests/seed-lint.py` (`check_eager_surface`)
-- **Enforcement:** **not a control**. The window is a property of the host and model; the budget on the seed's always-loaded share is not classed here yet
+- **Enforcement:** The window is a property of the host and model, and is not a control. The budget on the seed's always-loaded share is **soft**, computed in the seed's own gate, as the [seed-gate row](#enf-seed-gate) records
 - **Divergence:** **same**
 - **Why:** ADR-0010
 
@@ -1049,7 +1050,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** The `docs/graph/` directory inside a [plant](#term-plant): Markdown [nodes](#term-node) with frontmatter, typed edges between them (`requires`, `peers`, `artifacts`), one [router](#term-router) index and a standard-library linter. It has no embeddings, no vector store and no graph database.
 - **Field:** A graph of data meant to accumulate and convey knowledge of the world, whose nodes are entities and whose edges are relations; its authors call the definition contested (Hogan et al., "Knowledge Graphs", *ACM Computing Surveys* 54(4), 2021, preprint arXiv:2003.02320v6, https://arxiv.org/abs/2003.02320v6, retrieved 2026-09-24; status: verified)
 - **Implemented at:** `templates/knowledge-graph/{_schema.md,index.md,node.template.md,graph-lint.py,frontmatter.py}`, `skills/knowledge-graph/SKILL.md`. An install produces `docs/graph/_schema.md`, `docs/graph/index.md` and `docs/graph/graph-lint.py`, each only where missing (`place_graph_scaffold`, `place_if_missing`)
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** **not a control** for the word itself. The graph's contract is classed in the [graph-lint row](#enf-graph-lint)
 - **Divergence:** **different**: its nodes are units of documentation, not entities in the world
 - **Why:** ADR-0004
 
@@ -1060,7 +1061,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** One subject in one Markdown file, and the unit the [router](#term-router) loads. Its frontmatter carries `id`, `tier`, `kind`, `owns`, `requires`, `load_when` and `est_tokens`, and the [graph schema](templates/knowledge-graph/_schema.md), which ships into every [plant](#term-plant), is the only home of that contract.
 - **Field:** In graph theory, a vertex of a graph (no source sought; status: not recorded). In a knowledge graph, an entity (Hogan et al., "Knowledge Graphs", preprint arXiv:2003.02320v6, https://arxiv.org/abs/2003.02320v6, retrieved 2026-09-24; status: verified)
 - **Implemented at:** `templates/knowledge-graph/_schema.md`, `templates/knowledge-graph/node.template.md`
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** **not a control** for the word itself. The node contract is classed in the [graph-lint row](#enf-graph-lint)
 - **Divergence:** **different**: a node is a document, not an entity
 - **Why:** ADR-0004
 
@@ -1071,7 +1072,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** The file `docs/graph/index.md`, the one index a session opens first on every task. It lists each [node](#term-node) with a short summary, and the session reads only the few that match the task. The word also names the two keyword commands described under [routing](#term-routing).
 - **Field:** A component that directs each incoming item to one of several destinations (field usage; status: not recorded)
 - **Implemented at:** `templates/knowledge-graph/index.md`. An install produces `docs/graph/index.md` only where missing (`place_graph_scaffold`)
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** **not a control** for the word itself. Reading only the nodes it names is left to the session, and the graph it indexes is classed in the [graph-lint row](#enf-graph-lint)
 - **Divergence:** **different**: here the router is a document a reader consults, not a component that moves traffic
 - **Why:** ADR-0004
 
@@ -1082,7 +1083,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** Two keyword heuristics that recommend and do nothing else. Context routing, `graph-lint.py --plan "<task>"`, names the [nodes](#term-node) to read; agent routing, `agent-lint.py --route "<task>"`, names the [agent](#term-agent) that should do the work. Both print their answer and exit 0 whatever they recommend, and the model makes the dispatch.
 - **Field:** An agent pattern that classifies an input and sends it to a specialized follow-up instead of treating every input alike (Anthropic, "Building effective agents", https://anthropic.com/engineering/building-effective-agents, retrieved 2026-09-24; status: verified)
 - **Implemented at:** `templates/knowledge-graph/graph-lint.py`, `integrations/claude-code/agent-lint.py`, `skills/context-router/SKILL.md`, `agents/_routes.golden.tsv`
-- **Enforcement:** **not a control**. The printout is evidence; the scored budget on the golden routing corpus is not classed here yet
+- **Enforcement:** **not a control**. The printout is evidence. The scores on the golden routing corpus are classed in the [agent-lint row](#enf-agent-lint)
 - **Divergence:** **narrower**: it classifies and recommends, and leaves the dispatch to the model
 - **Why:** ADR-0001 and SPEC-0002
 
@@ -1093,7 +1094,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** A `SPEC-NNNN-<name>.md` file, written before the code, that binds each contract it names to the test that checks it. The [specify protocol](protocols/specify.md) owns the rule, its exceptions and the file's sections.
 - **Field:** A statement of what a system should do, apart from how it is built; specification by example writes it as concrete examples that run as self-checking tests (Adzic, "Specification by Example, 10 years later", https://gojko.net/2020/03/17/sbe-10-years.html; Fowler, "SpecificationByExample", https://martinfowler.com/bliki/SpecificationByExample.html; both retrieved 2026-09-24; status: verified, the Fowler page in part). The book's own claims are secondhand (status: secondhand), and the IEEE requirements sense was not sought (status: not recorded)
 - **Implemented at:** `templates/spec.template.md`, `protocols/specify.md`, `skills/spec-author/SKILL.md`, `templates/knowledge-graph/spec-lint.py`, `docs/specs/`
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** The word itself is not a control. Writing one first is **judgment** and its shape is **soft**, in the [spec-before-code row](#enf-spec-before-code) and the [spec-lint row](#enf-spec-lint)
 - **Divergence:** **narrower**: contracts plus a test map, in a fixed layout
 - **Why:** kernel §3.1
 
@@ -1104,7 +1105,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** No production code is written without a failing test that authorizes it. The [test-first protocol](protocols/test-first.md) owns the cycle and the rule for code that has no tests yet.
 - **Field:** A failing test is written before the code that passes it, in a short cycle of red, green and refactor (Fowler, "Test Driven Development", https://martinfowler.com/bliki/TestDrivenDevelopment.html, retrieved 2026-09-24; status: verified. Beck, *Test-Driven Development: By Example*, 2002; status: secondhand, the book was not opened)
 - **Implemented at:** `protocols/test-first.md`, `skills/test-first/SKILL.md`
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** The word itself is not a control. The order of test and code is **judgment**, in the [test-before-code row](#enf-test-before-code)
 - **Divergence:** **broader**: it adds the COMMIT step and characterization before change
 - **Why:** kernel §3.4 and ADR-0006
 
@@ -1115,7 +1116,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** A check that must pass before work counts as done. The word has three uses: a step of the [seed](#term-seed)'s own `tests/run.sh`, which is what README means; a row named `<protocol>.gate.<slug>` in the tables of the lifecycle protocols; and the checks, sized to the change, that the verify protocol asks a project task to run.
 - **Field:** No standard body owns the term. Vendors use "quality gate" for a set of pass or fail conditions a build must meet, and no such page was fetched (status: not recorded)
 - **Implemented at:** `tests/run.sh`, `tools/gate-registry.py`, `protocols/verify.md`, `protocols/{grow,graft,harvest}.md`
-- **Enforcement:** **not a control** for the word itself. Each step and each row carries its own class, not recorded here yet
+- **Enforcement:** The word itself is not a control. Each step and each row carries its own class: the seed's steps are **soft** ([seed-gate row](#enf-seed-gate)), a lifecycle row is **soft**, **detective** or **judgment** ([lifecycle gate-row row](#enf-lifecycle-gate-rows)), and choosing which gates run is **judgment** ([verify-gates row](#enf-verify-gates))
 - **Divergence:** **no standard meaning**
 - **Why:** ADR-0003
 
@@ -1126,7 +1127,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** A standard-library script that reads files without running them and exits non-zero when it finds a violation. The [seed](#term-seed)'s linters check the graph, specs, plans, the agent roster, prose and agnosticism.
 - **Field:** A static-analysis tool that flags errors, style problems and suspect constructs without running the code (SonarSource, "What is a linter?", https://sonarsource.com/resources/library/linter/, retrieved 2026-09-24; status: verified. Johnson, "Lint, a C Program Checker", Bell Labs CSTR 65, 1978; status: secondhand)
 - **Implemented at:** `templates/knowledge-graph/{graph-lint.py,spec-lint.py,grill-lint.py}`, `integrations/claude-code/agent-lint.py`, `tools/prose-lint.py`, `tools/agnosticism-lint.py`
-- **Enforcement:** **not a control** for the word itself. Each linter's class is not recorded here yet
+- **Enforcement:** **not a control** for the word itself. Each linter has its own row: [graph-lint](#enf-graph-lint), [spec-lint](#enf-spec-lint), [grill-lint](#enf-grill-lint), [agent-lint](#enf-agent-lint), [prose-lint](#enf-prose-lint) and [agnosticism-lint](#enf-agnosticism-lint)
 - **Divergence:** **same**
 - **Why:** ADR-0003
 
@@ -1170,7 +1171,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** The one-time pass that builds a [plant](#term-plant)'s [knowledge graph](#term-knowledge-graph) from what its source shows. The [grow protocol](protocols/grow.md), which ships into every plant, owns its phases.
 - **Field:** no standard meaning
 - **Implemented at:** `protocols/grow.md`, `protocols/initialize.md`, `INSTALL_PROMPT.md`, `tools/growth-audit.py`, `templates/prompts/growth-*.md`
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** The word itself is not a control. The growth's audit is **soft**, in the [growth-audit row](#enf-growth-audit)
 - **Divergence:** **no standard meaning**
 - **Why:** `protocols/grow.md:434-437`
 
@@ -1181,7 +1182,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** Carrying a newer [seed](#term-seed) onto an existing [plant](#term-plant). It updates the seed-owned [machinery](#term-machinery), backs up every file it replaces, and leaves the plant's source and its own facts as they were. Only the [steward](#term-steward) starts a graft.
 - **Field:** no standard meaning; the name is a horticultural metaphor
 - **Implemented at:** `protocols/graft.md`, `GRAFT_PROMPT.md`, `tools/graft-audit.py`, `tools/graft-graph-engine.py`
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** The word itself is not a control. Its audit is **soft** ([graft-audit row](#enf-graft-audit)), its stamp is **detective** ([install-stamp row](#enf-install-stamp)), and starting one is **judgment** ([steward-only row](#enf-steward-only))
 - **Divergence:** **no standard meaning**
 - **Why:** `protocols/graft.md:58-63`
 
@@ -1192,7 +1193,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** The inverse of a [graft](#term-graft): lessons from a mature [plant](#term-plant) that hold for any project are proposed back into the [seed](#term-seed) and land only when the [steward](#term-steward) ratifies them. The [harvest protocol](protocols/harvest.md) owns the procedure and its admission checks.
 - **Field:** no standard meaning
 - **Implemented at:** `protocols/harvest.md`, `HARVEST_PROMPT.md`, `tools/agnosticism-lint.py`
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** The word itself is not a control. Starting one is **judgment** ([steward-only row](#enf-steward-only)), and its token scan is **soft** ([agnosticism-lint row](#enf-agnosticism-lint))
 - **Divergence:** **no standard meaning**
 - **Why:** `protocols/graft.md:58-63`
 
@@ -1203,7 +1204,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** The one close-out spawn that ends every T2 and T3 task and records in the [knowledge graph](#term-knowledge-graph) what the work taught. The [canonize protocol](protocols/canonize.md) owns the rule.
 - **Field:** no standard meaning; the ecclesiastical and literary senses do not apply
 - **Implemented at:** `protocols/canonize.md`, `core/AGENTS.md`, `agents/09-docs-librarian.md`
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** The word itself is not a control. The close-out is **judgment**, in the [canonize row](#enf-canonize)
 - **Divergence:** **no standard meaning**
 - **Why:** kernel §3.7 and `protocols/canonize.md:42-46`
 
@@ -1214,7 +1215,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** The word is shared loosely by four axes. The task tier, T0–T3, classifies a task by risk and sets how much process it gets; the [tiers node](core/method/tiers.md) is its only home. The load-tier is a node's `tier:` value, 1 to 3, for the router, the fact owners and the [leaf](#term-leaf) documents. The model class of an agent, its `model:` value of sonnet or opus, is a separate axis, and the [delegation node](core/method/delegation.md) owns the distinction between these three. The support tier of a host (first-class, supported or frozen) is the fourth. README uses the task tier and the load-tier.
 - **Field:** no standard meaning
 - **Implemented at:** `core/AGENTS.md`, `core/method/tiers.md`, `core/method/delegation.md`, `install.sh`
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** The word itself is not a control. Classifying the task tier is **judgment**, in the [tier-classification row](#enf-tier-classification)
 - **Divergence:** **no standard meaning**
 - **Why:** kernel §0, ADR-0006 and ADR-0009
 
@@ -1225,7 +1226,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** A Markdown node that is the entry point for one kind of work, such as specify, grill, test-first, verify or deliver. A session names the protocol it is entering before it begins, and some protocols are also slash commands.
 - **Field:** In networking and communication, a set of rules for an exchange (no source fetched; status: not recorded)
 - **Implemented at:** `protocols/*.md`. An install produces `docs/graph/protocols/<name>.md` (`place_graph_machinery`) and, for Claude Code, `.claude/commands/<name>.md` for each protocol marked as a command (`generate_slash_commands`)
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** The word itself is not a control. Entering work through a protocol is **judgment**, in the [protocol-order row](#enf-protocol-order)
 - **Divergence:** **different**: a protocol here is a written procedure the model follows, not a message format
 - **Why:** ADR-0004
 
@@ -1236,7 +1237,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** README's sense is the five withdraw-only reference collections (library, legal, tool, suggested-expert and suggested-skill), which hold material that applies to any project and any version and are not installed by default. The second sense is the golden routing corpus, the table of task lines that `agent-lint.py --eval` scores the roster against.
 - **Field:** A body of texts collected for study, in the linguistics sense (no source fetched; status: not recorded)
 - **Implemented at:** `library-corpus/`, `legal-corpus/`, `tool-corpus/`, `agent-corpus/`, `skill-corpus/`, `agents/_routes.golden.tsv`
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** **not a control** for the word itself. The corpora's own checks have no row yet in the [mechanism table of §17](#enforcement)
 - **Divergence:** **narrower**
 - **Why:** `protocols/harvest.md:576-581`
 
@@ -1247,7 +1248,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** The one payload a worker returns per spawn, at the end of its [turn](#term-turn), whether it finished, met work outside its domain or failed. It names who produced it (`produced_by`), its status, the work done, the checks it ran and what it needs from outside its domain; the [handback template](templates/prompts/handback-payload.md) is its only home.
 - **Field:** no standard meaning
 - **Implemented at:** `templates/prompts/handback-payload.md`, `protocols/deliver.md`
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** The word itself is not a control. The `produced_by` assertion is **detective**, in the [attribution row](#enf-attribution)
 - **Divergence:** **no standard meaning**
 - **Why:** kernel §3.6
 
@@ -1258,7 +1259,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** An [agent](#term-agent) whose tool list grants the host's spawn tool, so it can start other agents. Its frontmatter names the agents it may spawn (`delegates_to`) and its depth (`max_spawn_depth`). The [delegation node](core/method/delegation.md) names the coordinators and owns the rule. What the spawn tool is called, and how deep the host lets spawns nest, are host-dependent; see the [host capability matrix](documentation/host-capability-matrix.md).
 - **Field:** no standard meaning
 - **Implemented at:** `core/method/delegation.md`, `agents/{00-orchestrator,01-architect,03-reviewer,09-docs-librarian,growth-orchestrator,multi-agent-architect}.md`, `integrations/claude-code/agent-lint.py`
-- **Enforcement:** **not a control** for the word itself. The spawn bound in its frontmatter is soft in ADR-0003's terms: `agent-lint.py` checks the values, and the prose and each [brief](#term-brief) ask the session to keep to them. No `enf-` row for it is recorded yet
+- **Enforcement:** The word itself is not a control. The spawn bound in its frontmatter is **soft** in ADR-0003's terms: `agent-lint.py` checks the values, and the prose and each [brief](#term-brief) ask the session to keep to them ([delegation-fields row](#enf-delegation-frontmatter)). The leaf side of the split is in the [leaf spawn row](#enf-leaf-cannot-spawn)
 - **Divergence:** **no standard meaning**
 - **Why:** ADR-0002
 
@@ -1269,7 +1270,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** In README's first sense, an [agent](#term-agent) with no spawn tool in its tool list, which hands work outside its domain back to its caller and names who should do it; the [delegation node](core/method/delegation.md) owns this sense. In the graph sense, a [load-tier](#term-tier) 3 document such as a wiki page or a runbook, reached from the node that owns it through an `artifacts:` or `libraries:` edge.
 - **Field:** In graph theory, a vertex with no children, or of degree one (no source fetched; status: not recorded)
 - **Implemented at:** `agents/*.md`, `core/method/delegation.md`, `templates/knowledge-graph/_schema.md`, `templates/docs/`
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** The word itself is not a control. In the agent sense, the missing spawn tool is **soft** where only a brief holds it, and held by the harness on hosts that read the `tools:` line and withhold a tool it does not list, as the [leaf spawn row](#enf-leaf-cannot-spawn) records
 - **Divergence:** **same** in the graph sense; **no standard meaning** in the agent sense
 - **Why:** ADR-0002 for the agent sense and ADR-0004 for the graph sense
 
@@ -1302,7 +1303,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** The person who owns a [plant](#term-plant), acting in that role. Only the steward starts a [graft](#term-graft) or a [harvest](#term-harvest), and only the steward ratifies what lands; the [graft protocol](protocols/graft.md) owns the definition.
 - **Field:** no standard meaning in agent tooling. Data governance uses "data steward" for the person accountable for a dataset (no source fetched; status: not recorded)
 - **Implemented at:** `protocols/graft.md:66-69`, `protocols/harvest.md`
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** The word itself is not a control. Starting a graft or a harvest is **judgment**, in the [steward-only row](#enf-steward-only)
 - **Divergence:** **no standard meaning**
 - **Why:** `protocols/graft.md:66-69`
 
@@ -1313,7 +1314,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** Every fact lives in exactly one [node](#term-node)'s `owns:` list, and every other place that needs the fact links there. The [kernel](#term-kernel) states it as the knowledge rule, which the [context-router skill](skills/context-router/SKILL.md) owns.
 - **Field:** no standard meaning. The nearest field phrase is "single source of truth" (no source fetched; status: not recorded)
 - **Implemented at:** `core/AGENTS.md`, `skills/context-router/SKILL.md`, `skills/knowledge-graph/SKILL.md`, `templates/knowledge-graph/graph-lint.py`
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** **not a control** for the word itself. One home per `owns:` key is classed in the [graph-lint row](#enf-graph-lint)
 - **Divergence:** **no standard meaning**
 - **Why:** kernel §3.2 and ADR-0004
 
@@ -1335,7 +1336,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** The rule that an operation done by hand again and again becomes a durable, tested, cataloged tool, while one-off scripts stay disposable. The [toolcraft skill](skills/toolcraft/SKILL.md) owns it.
 - **Field:** no standard meaning
 - **Implemented at:** `skills/toolcraft/SKILL.md`, `templates/tool-page.template.md`, `agents/tool-smith.md`
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** **not a control** for the word itself. No row in the [mechanism table of §17](#enforcement) covers the toolcraft rule, and following it is left to the session
 - **Divergence:** **no standard meaning**
 - **Why:** kernel §3.8
 
@@ -1346,7 +1347,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** The [seed](#term-seed)'s method surface as it lives inside a [knowledge graph](#term-knowledge-graph): the [kernel](#term-kernel), protocols, skills, agent charters, method nodes and templates. A [graft](#term-graft) updates it, and a project's own facts are not part of it. The [graph schema](templates/knowledge-graph/_schema.md) owns the definition.
 - **Field:** no standard meaning
 - **Implemented at:** `protocols/`, `skills/`, `agents/`, `core/method/`, `templates/`, `templates/knowledge-graph/_schema.md`. An install produces `docs/graph/protocols/`, `docs/graph/skills/`, `docs/graph/agents/` and `docs/graph/method/` (`place_graph_machinery`)
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** The word itself is not a control. Placing it is **soft**, in the [backup-before-replace row](#enf-backup-before-replace) and the [plant-files-kept row](#enf-plant-files-kept)
 - **Divergence:** **no standard meaning**
 - **Why:** ADR-0004
 
@@ -1354,10 +1355,10 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 <a id="term-brief"></a>
 
 - **Forms:** brief, briefs
-- **Here:** The written task a session hands a worker when it spawns one. It embeds the graph-discipline block verbatim, the routing evidence and the [handback](#term-handback) contract, and the [delegation node](core/method/delegation.md) owns the rule. It is how the routing context reaches a worker; whether anything else from the session reaches a worker's turn is host-dependent, so see the [host capability matrix](documentation/host-capability-matrix.md).
+- **Here:** The written task a session hands a worker when it spawns one. It embeds the canonical graph-discipline text word for word ([brief row](#enf-brief-block)), the routing evidence and the [handback](#term-handback) contract, and the [delegation node](core/method/delegation.md) owns the rule. It is how the routing context reaches a worker; whether anything else from the session reaches a worker's turn is host-dependent, so see the [host capability matrix](documentation/host-capability-matrix.md).
 - **Field:** A set of instructions for a task, in general usage (field usage; status: not recorded)
 - **Implemented at:** `core/method/delegation.md`, `templates/prompts/graph-session-bootstrap.md`, `templates/prompts/handback-payload.md`
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** The word itself is not a control. The canonical text a brief embeds is **soft** in the seed's templates and **judgment** in a brief a session writes, as the [brief row of the enforcement table](#enf-brief-block) records
 - **Divergence:** **narrower**
 - **Why:** kernel §1
 
@@ -1368,7 +1369,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Here:** The paths by which knowledge flows back. [Canonize](#term-canonize) records each task's lessons in a [plant](#term-plant)'s graph, [harvest](#term-harvest) lifts lessons that hold everywhere into the [seed](#term-seed), and [graft](#term-graft) carries the improved seed out to plants that already exist.
 - **Field:** no standard meaning
 - **Implemented at:** `protocols/canonize.md`, `protocols/harvest.md`, `protocols/graft.md`
-- **Enforcement:** **not a control** for the word itself; the checks behind it are not classed here yet
+- **Enforcement:** The word itself is not a control. Its steps are **judgment**, in the [canonize row](#enf-canonize) and the [steward-only row](#enf-steward-only)
 - **Divergence:** **no standard meaning**
 - **Why:** `protocols/graft.md:58-63` and `protocols/canonize.md:42-46`
 
@@ -1403,3 +1404,47 @@ The `docs/decisions/` ADRs record the load-bearing design choices:
   deeper agent tree.
 - `adr-0006`: T2 gains a contained lane — a small, test-pinned change is
   authorized by a RED test and a recorded why, not a full spec.
+
+## 17. What is enforced, and how
+<a id="enforcement"></a>
+
+Each row below names one kind of mechanism, the file that implements it, its class, what it can miss, and where its detail lives. The classes are [ADR-0003](docs/decisions/adr-0003-enforcement-layering-honesty.md)'s: **hard** means the harness itself refuses, **soft** means a contract or a tool refuses when it is run, **detective** means the fault is caught after the fact, **judgment** means a named person or agent decides because no check can, and **not a control** means nothing is held at all. A row that holds differently on different hosts, or in different cases, carries each class it has, and it is judged by the weakest of them across the hosts `install.sh all` installs. What each host holds is not repeated here: those rows link the [host capability matrix](documentation/host-capability-matrix.md), which records it per host. The [glossary](#glossary) links a row wherever an entry's class depends on one.
+
+| Mechanism | Artifact | Class | What it can miss | Detail |
+|---|---|---|---|---|
+| <a id="enf-kernel-load"></a>The kernel is loaded at the start of every session | `core/AGENTS.md`, `install.sh` (`place_kernel`) | **hard** for loading the file, on a host that reads it; **judgment** for whether the model follows it (the session, then whoever reads its delivery) | The model can read the kernel and not act on it. Whether the text survives when a host compacts a long session is not recorded | [host capability matrix, Root kernel loading](documentation/host-capability-matrix.md) |
+| <a id="enf-kernel-budget"></a>The kernel stays within a byte budget | `tests/seed-lint.py`, `tests/ratchets.json` | **soft**, and only in the seed's own gate | Nothing re-measures a plant's kernel after install. A raised budget recorded in `tests/ratchets.json` in the same change passes | [§14 Tests and gates](#14-tests-and-gates) |
+| <a id="enf-tool-allowlist"></a>Each agent works with the tools its `tools:` line lists | `agents/*.md`, `install.sh` (`project_agents`) | **hard** where the host reads the `tools:` line and withholds a tool it does not list; **soft** where only the brief carries the list | A worker granted `Bash` can reach through the shell much of what its list leaves out. Role emulation: a session can do a worker's job itself, with its own tools, and no list is consulted. An agent file that omits its `tools:` line is outside this row, and what a host grants it then is host-dependent | [host capability matrix, Tool allowlists](documentation/host-capability-matrix.md) |
+| <a id="enf-leaf-cannot-spawn"></a>A leaf agent holds no spawn tool | `agents/*.md`, `integrations/claude-code/agent-lint.py` | **hard** where the host reads the `tools:` line and withholds a tool it does not list; **soft** where only the brief holds the split | The lint looks for the spawn tool by the one name it knows; a spawn tool reached under another name, and how a host names or grants it, are host-dependent. A leaf granted a shell can start a new model session from it through any command-line client on the machine, and no `tools:` line governs that. Role emulation: a leaf can do the coordinator's work itself instead of handing it back. The lint reads an agent file with no `tools:` line as holding no spawn tool, so a file that omits the line passes it | [host capability matrix, Recursion bound](documentation/host-capability-matrix.md) |
+| <a id="enf-delegation-frontmatter"></a>The delegation fields `can_delegate`, `delegates_to` and `max_spawn_depth` | `agents/*.md`, `integrations/claude-code/agent-lint.py` | **soft**: `agent-lint.py --lint` checks their values, and beyond that only prose and briefs carry them | ADR-0003 records that the host's spawn tool does not read these fields, so a delegating agent can start one its list leaves out. How deep a host lets spawns nest is host-dependent. A plant runs the lint only when a session or the plant's own CI runs it | [host capability matrix, Recursion bound](documentation/host-capability-matrix.md) |
+| <a id="enf-route-hook"></a>A routing pointer is added to each prompt | `integrations/claude-code/route-hook.py`, `integrations/claude-code/settings.json`, `integrations/prime-agent/route-extension.ts` | **not a control**: the hook fires and adds text, and holds nothing. Following the pointer is **judgment** (the session) | It fails open, so a broken script adds nothing and the prompt goes on. The suggestion comes from `graph-lint.py --plan`, a keyword heuristic that exits 0 whatever it suggests. Which turns a host runs it on is host-dependent | [host capability matrix, Routing hook](documentation/host-capability-matrix.md) |
+| <a id="enf-status-hook"></a>A lifecycle status summary is added when a session starts | `integrations/claude-code/status-hook.py`, `integrations/prime-agent/status-extension.ts`, `tools/status-register.py` | **not a control**: the hook fires and adds text, and holds nothing | It fails open and is silent on error. Acting on the summary is left to the session | [host capability matrix, Status hook](documentation/host-capability-matrix.md) |
+| <a id="enf-pre-bash-guard"></a>A shell command is checked for an unbounded blocking-prone call before it runs | `integrations/claude-code/bound-hook.py`, `integrations/claude-code/settings.json` | **hard** for a matched command on a host that fires the hook; **not a control** for any other command, and on a host that does not fire it | It fails open: an internal error, unreadable input or a missing command is allowed through. It matches command words against a fixed list, so a call made by indirection, such as a script file whose name is on no list, passes; evasion takes no effort. It reads the shell tool's calls only. Which hosts fire it is host-dependent | [host capability matrix, Pre-tool guard](documentation/host-capability-matrix.md) |
+| <a id="enf-injection-dedup"></a>Text already injected in a session is named by id, not repeated | `integrations/claude-code/route-hook.py`, `docs/specs/SPEC-0003-per-prompt-injection.md` | **not a control**: it saves repeated text and binds nothing | On any doubt about its ledger it injects in full. Whether a host sends the session id it keys on is host-dependent | [host capability matrix, Per-session injection dedup](documentation/host-capability-matrix.md) |
+| <a id="enf-backup-before-replace"></a>A file the installer replaces is backed up first, and an identical rerun changes nothing | `install.sh` (`place_file`), `tests/test-install-placement.sh` | **soft**: the installer's own code, held by SPEC-0001's tests | `.cypress/seed.json` is replaced without a backup, by design (`place_state`) | [SPEC-0001](docs/specs/SPEC-0001-install-placement.md) |
+| <a id="enf-plant-files-kept"></a>A plant-owned file is placed only where it is missing | `install.sh` (`place_if_missing`) | **soft** | A kept file is not refreshed, so a plant's copy of a graph engine can fall behind the seed until a graft reconciles it | [SPEC-0001](docs/specs/SPEC-0001-install-placement.md) |
+| <a id="enf-install-preflight"></a>The installer checks its destinations before it writes | `install.sh` (`preflight_destinations`, `preflight_state_record`) | **soft** | It refuses only the conditions it models; any other fault shows up when a write fails, or not at all | [§12 Installation and growth](#12-installation-and-growth) |
+| <a id="enf-install-stamp"></a>The install records its version and flags in a stamp file | `install.sh` (`write_seed_stamp`) | **detective**: graft and the audits read it later | It records what was installed, not what the plant changed afterwards | [graft protocol](protocols/graft.md) |
+| <a id="enf-registration-notice"></a>The installer prints a notice about when new agents become usable | `install.sh` (`log_registration_notice`) | **not a control**: advice, printed at install | It checks nothing. When a host picks up newly placed agent files is host-dependent | [host capability matrix, Specialist discovery/registration](documentation/host-capability-matrix.md) |
+| <a id="enf-graph-lint"></a>A graph node's contract, and one home per `owns:` key | `templates/knowledge-graph/graph-lint.py` | **soft** in its lint mode; **not a control** for `--plan`, `--graph` and `--warn`, which exit 0 | A well-formed node that states something false passes. In a plant it holds only when someone runs it | [knowledge-graph skill](skills/knowledge-graph/SKILL.md) |
+| <a id="enf-spec-lint"></a>A spec's shape, and each live contract's test coverage | `templates/knowledge-graph/spec-lint.py` | **soft** | A contract slug found anywhere in a test file, a comment included, counts as covered | [specify protocol](protocols/specify.md) |
+| <a id="enf-grill-lint"></a>The plan-of-record's shape | `templates/knowledge-graph/grill-lint.py` | **soft** | With no plan present it prints SKIP and exits 0. Whether an edit appended to the plan or rewrote it is not checked; a reviewer judges that | [grill protocol](protocols/grill.md) |
+| <a id="enf-agent-lint"></a>The roster's frontmatter, and the routing corpus's scores | `integrations/claude-code/agent-lint.py`, `agents/_routes.golden.tsv` | **soft** for `--lint` and `--eval`; **not a control** for `--route`, which prints and exits 0 | It reads the agent files on disk, not what a host registered | [§14 Tests and gates](#14-tests-and-gates) |
+| <a id="enf-prose-lint"></a>The prose floor under the humanizer skill | `tools/prose-lint.py` | **soft** | It catches only the tells a pattern can decide. Its rate thresholds are computed over all the files passed in one run, so one file's excess can hide in another's slack | [§14 Tests and gates](#14-tests-and-gates) |
+| <a id="enf-agnosticism-lint"></a>No leaked identity, address or vulnerability id in shipped text | `tools/agnosticism-lint.py` | **soft** | It finds IP addresses, CVE ids and the terms passed with `--forbid`; a name nobody listed passes. Its default glob reads Markdown only | [harvest protocol](protocols/harvest.md) |
+| <a id="enf-status-register"></a>One lifecycle status vocabulary in frontmatter | `tools/status-register.py` | **soft** in lint mode; **not a control** for the query flags, which print only | It checks the vocabulary and the agreement between frontmatter and body, not whether a status is true | [§14 Tests and gates](#14-tests-and-gates) |
+| <a id="enf-growth-audit"></a>A growth's planned artifacts are present and substantive | `tools/growth-audit.py` | **soft**: exit 1 on a finding | It checks record shape, grounding paths and a byte floor for authored leaves, not whether the prose is true | [grow protocol](protocols/grow.md) |
+| <a id="enf-graft-audit"></a>A graft's backups are classified before anything is discarded | `tools/graft-audit.py` | **soft**: exit 1 on a customization | Its default tokens miss a plant's own vocabulary unless `--tokens` supplies it | [graft protocol](protocols/graft.md) |
+| <a id="enf-tier-classification"></a>Each task is classified T0 to T3 before work starts | `core/AGENTS.md`, `core/method/tiers.md` | **judgment**: the session, then whoever reads its delivery | No tool sees a tier chosen too low | [tiers node](core/method/tiers.md) |
+| <a id="enf-protocol-order"></a>Work enters through a named protocol, in order | `core/AGENTS.md`, `protocols/*.md` | **judgment**: the session | Nothing reads which protocol a session entered, or which it skipped | [protocols reference](documentation/protocols-reference.md) |
+| <a id="enf-spec-before-code"></a>A spec is written before the code it covers | `protocols/specify.md`, `templates/knowledge-graph/spec-lint.py` | **judgment** for whether a behavior needed a spec first (the session); **soft** for a written spec's shape | No tool sees whether the spec came before the code | [specify protocol](protocols/specify.md) |
+| <a id="enf-test-before-code"></a>A failing test is written before the code it authorizes | `protocols/test-first.md` | **judgment**: the session, then the reviewer | No tool sees the order in which a test and its code were written | [test-first protocol](protocols/test-first.md) |
+| <a id="enf-verify-gates"></a>Gates sized to the change run before work is called done | `protocols/verify.md` | **soft** for each gate that is run; **judgment** for which gates run (the session) | A gate that was not run shows no red | [verify protocol](protocols/verify.md) |
+| <a id="enf-canonize"></a>Each T2 or T3 task ends with one close-out spawn | `protocols/canonize.md`, `agents/09-docs-librarian.md` | **judgment**: the session reports the close-out line, and whoever reads the delivery weighs it | Nothing checks that the close-out spawn ran, or what it recorded | [canonize protocol](protocols/canonize.md) |
+| <a id="enf-attribution"></a>Each unit of delivered work names the specialist that produced it | `protocols/deliver.md`, `templates/prompts/handback-payload.md` | **detective**: the assertion runs at delivery, after the work | The top session runs the assertion on its own work. The `Stop` hook that could hold it is not wired, on purpose (ADR-0003) | [deliver protocol](protocols/deliver.md) |
+| <a id="enf-brief-block"></a>Each brief embeds the canonical graph-discipline text verbatim | `templates/prompts/graph-session-bootstrap.md`, `tests/seed-lint.py` | **soft** for byte identity in the seed's templates; **judgment** for a brief a session writes (the session) | Seed-lint compares the templates in the seed, never the briefs a session writes from them | [delegation node](core/method/delegation.md) |
+| <a id="enf-charter-duties"></a>An agent keeps the duties its charter states, such as the legal agent reasoning only from its corpus | `agents/*.md` | **soft**: a contract in the agent's prose | The model can depart from its charter, and nothing reads its output against it | [agents reference](documentation/agents-reference.md) |
+| <a id="enf-lifecycle-gate-rows"></a>Each gate row of the grow, graft and harvest tables declares its class | `protocols/grow.md`, `protocols/graft.md`, `protocols/harvest.md`, `tests/seed-lint.py` | **soft**, **detective** or **judgment**, as each row states | Seed-lint checks each row's class against the vocabulary, not whether the class is true | [graft protocol](protocols/graft.md) |
+| <a id="enf-steward-only"></a>Graft and harvest start only on the steward's word | `protocols/graft.md`, `protocols/harvest.md` | **judgment**: the steward | Nothing stops a model that starts one unprompted | [harvest protocol](protocols/harvest.md) |
+| <a id="enf-seed-gate"></a>The seed's own gate runs before a change counts as done | `tests/run.sh`, `tools/gate-registry.py`, `.github/workflows/gate.yml` | **soft** | It runs in the seed, and an install places no CI into a plant. Seed-lint checks the workflow file's shape. Whether a merge requires a green run is not recorded | [§14 Tests and gates](#14-tests-and-gates) |
+| <a id="enf-ratchets"></a>Recorded ceilings and floors move only in their tightening direction | `tools/ratchet-lint.py`, `tests/ratchets.json` | **soft** | A value loosened in `tests/ratchets.json` in the same change passes. `--bless` rewrites the lock from the current values, and `--show` exits 0 | [§14 Tests and gates](#14-tests-and-gates) |
