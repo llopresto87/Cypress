@@ -18,7 +18,7 @@ It is not for someone who does not use an agent-capable coding [tool](DOCUMENTAT
 
 An install for Claude Code writes these into your project:
 
-- the [kernel](DOCUMENTATION.md#term-kernel), a short instruction file the harness reads at the start of every session: `CLAUDE.md` at the project root, or `AGENTS.md` on the other harnesses;
+- the [kernel](DOCUMENTATION.md#term-kernel), a short instruction file the harness reads at the start of every session: `CLAUDE.md` at the project root, with `AGENTS.md` beside it as a symlink to it (a copy where symlinks are unavailable); on the other harnesses `AGENTS.md` holds the kernel and `CLAUDE.md` is the symlink;
 - the harness directory `.claude/`, holding the agent definitions, the [skills](DOCUMENTATION.md#term-skill), slash commands, hook scripts and settings;
 - `docs/graph/`, where the knowledge graph lives: the method's own notes, and a skeleton that the first session fills in from your code;
 - the install stamp `.cypress/seed.json`, which records the version and options of the install;
@@ -26,7 +26,7 @@ An install for Claude Code writes these into your project:
 
 Other harnesses get their own directory in place of `.claude/`, such as `.opencode/` or `.prime/agent/`, and the [install guide](INSTALL.md) lists each one.
 
-A file already in place that differs from the new one is kept beside itself as a timestamped copy and then replaced, not merged. A file that already matches is left alone. The one file replaced without a copy is the install stamp `.cypress/seed.json` ([backup before replace](DOCUMENTATION.md#enf-backup-before-replace)).
+A file already in place that differs from the new one is kept beside itself as a timestamped copy and then replaced, not merged. A file that already matches is left alone. The one file replaced without a copy is the install stamp `.cypress/seed.json` ([backup before replace](DOCUMENTATION.md#enf-backup-before-replace)). Files under `docs/graph/` that belong to your project, such as the graph's index, are only added where missing ([project files kept](DOCUMENTATION.md#enf-plant-files-kept)). The one exception is the `plant:` entry of `docs/graph/index.md`, which the installer rewrites in place, also without a copy: it adds the entry if it is absent and puts each value you pass on the command line into a line still left as a placeholder, keeping any value already declared.
 
 The install does not touch your application source, `.gitignore`, git history or CI.
 
@@ -34,7 +34,7 @@ The install does not touch your application source, `.gitignore`, git history or
 
 | Figure | What it covers, and how it was obtained |
 |---|---|
-| 26 261 bytes | per session on Claude Code: the files every session loads before it looks anything up, computed from the installed files by this repository's test run; a lower bound, not a live reading |
+| 26 261 bytes | per session on Claude Code: the kernel plus the one-line description of every agent and skill, computed from the [seed](DOCUMENTATION.md#term-seed)'s files by this repository's test run; a lower bound, not a live reading |
 | 11% more tokens | per task, against a session with no method, on one small, well-specified task; measured once ([evidence record](docs/plans/grill-7.29.0-front-door/method-overhead-evidence.md)) |
 
 The always-loaded figure leaves out the notes a session opens on demand, each worker it starts, the text the hooks add to each prompt, and the one-time pass that builds the graph. The [host capability matrix](documentation/host-capability-matrix.md) gives the figure for each other harness. No money figure exists.
@@ -48,13 +48,13 @@ git clone https://github.com/llopresto87/Cypress
 
 The clone takes whatever the default branch holds when you run it, not a tagged release. The second command only places files, and it does not edit your code. Then open an agent session rooted at your project and paste [`INSTALL_PROMPT.md`](INSTALL_PROMPT.md) into it. That starts the one-time [growth](DOCUMENTATION.md#term-growth) pass, which reads your repository and builds its graph. None of these steps asks you to learn the project's vocabulary first.
 
-On a first install, a harness may need a fresh session before it can start the agents that were just placed; `delegation.harness-registration`, in the delegation notes, records when.
+On a first install, a harness may need a fresh session before it can start the agents that were just placed; the [delegation notes](core/method/delegation.md) record when, under `delegation.harness-registration`.
 
 <!-- first-screen-end -->
 
 ## How it works
 
-CYPRESS is a written [workflow](DOCUMENTATION.md#term-workflow), not a program. The agent reads which steps a task needs and in what order, carries them out itself, and hands the steps that need a clean context to subagents, while a few hooks and linters check parts of the work and the rest rests on the model and on you.
+CYPRESS is a written [workflow](DOCUMENTATION.md#term-workflow), not a program. The agent reads which steps a task needs and in what order, carries them out itself, and hands the steps that need a clean context to subagents, while a few hooks and linters check parts of the work and the rest is left to the model and to you.
 
 The steps are written down as [protocols](DOCUMENTATION.md#term-protocol), procedures a session follows in order, and the [protocols reference](documentation/protocols-reference.md) lists them. The method asks each task to be sorted into a risk [tier](DOCUMENTATION.md#term-tier) first, from a question (T0) to a change to architecture or contracts (T3), and the tier decides how much process the task gets. A T3 change gets a specification, a failing test before the code ([test-first development](DOCUMENTATION.md#term-test-first)), and review by separate workers.
 

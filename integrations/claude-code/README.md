@@ -8,9 +8,9 @@ Claude Code reads these on every session:
 
 "On every session" is also the sharp edge. When the host picks up agent files
 written during a running session, by an install, a graft or a freshly
-commissioned expert, has exceptions, and the
+commissioned expert, is host-dependent; the
 [host capability matrix](../../documentation/host-capability-matrix.md) records
-them; a session rooted at the seed does not carry a plant's roster at all.
+it per host; a session rooted at the seed does not carry a plant's roster at all.
 `docs/graph/method/delegation.md` (`delegation.harness-registration`) owns the
 preflight, the remedy, and the recorded fallback.
 

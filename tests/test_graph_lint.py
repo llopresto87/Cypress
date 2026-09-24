@@ -1415,7 +1415,7 @@ class FrontmatterVersionPositionTests(unittest.TestCase):
 
         This is the guard, not the catch: it is green before the change and
         must stay green after it. A check that scanned the whole frontmatter
-        would turn this plant's own graph red on two live nodes, and `3.2` is
+        would turn any graph with such routing keywords red, and `3.2` is
         a token today's VERSION_RE already matches — asserted below, so this
         green is a statement about position and not about an empty fixture."""
         src = GRAPH_LINT.read_text(encoding="utf-8")
