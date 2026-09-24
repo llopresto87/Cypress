@@ -1008,17 +1008,27 @@ place_graph_scaffold() {
 # overwritten. Whatever is still a placeholder afterwards is named as a NEXT
 # STEP, because an agent otherwise re-asks or guesses it.
 fill_plant_facts() {
-    local idx="$1" out
+    local idx="$1" out_log
+    out_log="$(stage "plant-facts.log")"
     # Three states, not two. A project grown before the `plant:` block existed
     # has no block at all — no placeholder line to match — and the old code
     # read that as "already declared", suppressed the write AND the NEXT STEP
     # warning, and left the block missing. "Absent" and "already declared" are
     # opposite states. The canonical block shape is read from the index
     # template so it keeps one home.
-    out="$(PLANT_ENV="${PLANT_ENV:-}" PLANT_ATTR="${PLANT_ATTR:-}" \
-           PLANT_DLANG="${PLANT_DLANG:-}" PLANT_CLANG="${PLANT_CLANG:-}" \
-           PROJECT_DIR="$PROJECT_DIR" \
-           python3 - "$idx" "$SEED_ROOT/templates/knowledge-graph/index.md" <<'PYEOF'
+    #
+    # Writes to a staged file rather than capturing via `$(...)` around its own
+    # heredoc: bash 3.2 (macOS's system bash, the gate's other CI leg) misparses
+    # a heredoc nested inside a command substitution once another heredoc
+    # follows later in the same script — install_github_copilot's skill loop,
+    # ~400 lines down, was read as shell text instead of heredoc data.
+    # Reproduced under bash 3.2.25 and 3.2.57 with `bash -n`; gone the moment
+    # this heredoc's `$(...)` wrapper is removed.
+    PLANT_ENV="${PLANT_ENV:-}" PLANT_ATTR="${PLANT_ATTR:-}" \
+        PLANT_DLANG="${PLANT_DLANG:-}" PLANT_CLANG="${PLANT_CLANG:-}" \
+        PROJECT_DIR="$PROJECT_DIR" \
+        python3 - "$idx" "$SEED_ROOT/templates/knowledge-graph/index.md" \
+        > "$out_log" <<'PYEOF' || die "could not write the plant: block into $idx"
 import os, re, sys
 from pathlib import Path
 
@@ -1139,8 +1149,7 @@ if still_unset:
     log.append("  --comment-language) or fill the plant: block before grow or graft.")
 print("\n".join(log))
 PYEOF
-    )" || die "could not write the plant: block into $idx"
-    while IFS= read -r line; do log "$line"; done <<<"$out"
+    while IFS= read -r line; do log "$line"; done < "$out_log"
 }
 
 # command_protocols: print the basename of every protocol node that
