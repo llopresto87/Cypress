@@ -1,473 +1,112 @@
 # CYPRESS
 
-**CYPRESS**, the **C**ontextual **Y**ield **P**rotocol for **R**outed
-**E**xpert **S**eed **S**ystems, is a multi-agent seed for general
-programming projects. Drop it into any codebase and an AI coding agent
-(Claude Code, Prime Agent or opencode; OpenAI Codex and GitHub Copilot are
-deprecated) gains a senior team, a set of named protocols, a progressive-discovery knowledge graph
-that keeps the codebase inside a context window, and a spec-driven,
-test-driven discipline by default.
+## What CYPRESS is
 
-The name is a backronym, and it describes the mechanism: the seed grows and
-*routes* *expert* teams over a project's knowledge graph, *yielding*
-project-specific knowledge as it goes.
+CYPRESS is an installer. It copies instruction files, a method written in Markdown and a few small Python scripts that need only the standard library into your repository, for the AI coding [agent](DOCUMENTATION.md#term-agent) you already use. It is not a library your code imports, not a service and not a model.
 
-CYPRESS's machinery (the kernel, protocols, skills, and agents) is
-language-agnostic, vendor-agnostic, and project-agnostic. It does not assume
-your stack, your domain, your deployment target, or even your repository
-count; the same method governs a single repo or a program of several. It
-assumes only that you want serious engineering practice on the production
-path.
+Installing only places files. A separate agent session, started when you paste one prompt, reads your repository and builds its [knowledge graph](DOCUMENTATION.md#term-knowledge-graph): short linked notes about your project that a session opens a few at a time instead of rereading the code. The method in those files asks the agent to size its process to each task's risk, to write a [specification](DOCUMENTATION.md#term-specification) and a failing test before the code, and to hand steps that need a clean context to separate workers.
 
-The seed's shipped reference material is narrower than the method that reads
-it. The library corpus (81 pages) was harvested from a .NET/Java estate:
-`nuget` and `maven` together are 53% of it. The legal corpus carries
-exactly one national jurisdiction (`it`). Neither corpus installs into a
-plant by default (only `legal-corpus/`, and only on `--legal-corpus yes`); an
-adopter on any other stack gets the identical agnostic machinery and runs
-`ingest-library` fresh from upstream, exactly as a .NET project does for any
-dependency its corpus doesn't carry either. See
-[`documentation/corpora-and-integrations-reference.md`](documentation/corpora-and-integrations-reference.md),
-§A.4.1a, for the measured breakdown.
+## Who it is for and not for
 
-## Try it, and what it costs
+It is for developers who work in a code repository through an agent [harness](DOCUMENTATION.md#term-harness) the installer supports: Claude Code, Prime Agent, opencode, Codex or GitHub Copilot. Support is not the same on every harness, and some of them are deprecated. The [host capability matrix's support table](documentation/host-capability-matrix.md#support-tiers-adr-0009) and the [host support decision record](docs/decisions/adr-0009-host-support-tiers.md) say which is which.
+
+The method assumes no language, framework or stack. The reference [corpora](DOCUMENTATION.md#term-corpus) that ship with it are narrower: the library notes lean toward .NET and Java, and the legal citations cover one national jurisdiction. The library notes are not placed in your project, and the legal citations are placed only when you ask for them. The [corpora reference](documentation/corpora-and-integrations-reference.md) has the breakdown.
+
+It is not for someone who does not use an agent-capable coding [tool](DOCUMENTATION.md#term-tool), because nothing in the install acts until an agent session reads it.
+
+## What installing does to your repository
+
+An install for Claude Code writes these into your project:
+
+- the [kernel](DOCUMENTATION.md#term-kernel), a short instruction file the harness reads at the start of every session: `CLAUDE.md` at the project root, or `AGENTS.md` on the other harnesses;
+- the harness directory `.claude/`, holding the agent definitions, the [skills](DOCUMENTATION.md#term-skill), slash commands, hook scripts and settings;
+- `docs/graph/`, where the knowledge graph lives: the method's own notes, and a skeleton that the first session fills in from your code;
+- the install stamp `.cypress/seed.json`, which records the version and options of the install;
+- `EXPERT_SEED_INSTALL_PROMPT.md`, a local copy of the entry prompt for later sessions.
+
+Other harnesses get their own directory in place of `.claude/`, such as `.opencode/` or `.prime/agent/`, and the [install guide](INSTALL.md) lists each one.
+
+A file already in place that differs from the new one is kept beside itself as a timestamped copy and then replaced, not merged. A file that already matches is left alone. The one file replaced without a copy is the install stamp `.cypress/seed.json` ([backup before replace](DOCUMENTATION.md#enf-backup-before-replace)).
+
+The install does not touch your application source, `.gitignore`, git history or CI.
+
+## What it costs
+
+| Figure | What it covers, and how it was obtained |
+|---|---|
+| 26 261 bytes | per session on Claude Code: the files every session loads before it looks anything up, computed from the installed files by this repository's test run; a lower bound, not a live reading |
+| 11% more tokens | per task, against a session with no method, on one small, well-specified task; measured once ([evidence record](docs/plans/grill-7.29.0-front-door/method-overhead-evidence.md)) |
+
+The always-loaded figure leaves out the notes a session opens on demand, each worker it starts, the text the hooks add to each prompt, and the one-time pass that builds the graph. The [host capability matrix](documentation/host-capability-matrix.md) gives the figure for each other harness. No money figure exists.
+
+## Try it
 
 ```sh
 git clone https://github.com/llopresto87/Cypress
 ./Cypress/install.sh claude-code --project-dir /path/to/your/project
 ```
 
-That places the files. It does not change your code, and every file it
-replaces is left beside itself as a timestamped copy. Then open an agent
-session rooted at your project and paste
-[`INSTALL_PROMPT.md`](INSTALL_PROMPT.md), which drives the one-time growth
-pass that reads your repository and builds its knowledge graph.
+The clone takes whatever the default branch holds when you run it, not a tagged release. The second command only places files, and it does not edit your code. Then open an agent session rooted at your project and paste [`INSTALL_PROMPT.md`](INSTALL_PROMPT.md) into it. That starts the one-time [growth](DOCUMENTATION.md#term-growth) pass, which reads your repository and builds its graph. None of these steps asks you to learn the project's vocabulary first.
 
-The running cost, measured rather than estimated:
+On a first install, a harness may need a fresh session before it can start the agents that were just placed; `delegation.harness-registration`, in the delegation notes, records when.
 
-| | |
-|---|---|
-| Always loaded, per session | 26 261 bytes (~6 562 tokens) on Claude Code, opencode, Codex; 24 444 on Prime Agent; 31 905 on GitHub Copilot |
-| Of that, the kernel | 7 742 bytes, under a hard 8 000-byte budget the gate enforces |
-| Everything else | routed in on demand, not loaded up front |
-| Method overhead on a small, well-specified task | 10 to 20% more tokens than an unguided session, measured once |
+<!-- first-screen-end -->
 
-GitHub Copilot used to be the outlier: its skill projections were
-always-applied rather than discovered, so every skill BODY counted against
-every session, at 138 535 bytes against 26 261 everywhere else. 7.16.0 narrowed
-them to pointers (a description and the path to the node), which brings it to
-31 905 and models it like every other harness. The gap that remains is the
-pointer boilerplate each file carries, not the discipline behind it.
-[`documentation/host-capability-matrix.md`](documentation/host-capability-matrix.md)
-says what every host does and does not enforce.
+## How it works
 
-The method itself, why it is shaped this way, and the evidence behind each
-claim are below. You do not need any of it to run the two commands above.
+CYPRESS is a written [workflow](DOCUMENTATION.md#term-workflow), not a program. The agent reads which steps a task needs and in what order, carries them out itself, and hands the steps that need a clean context to subagents, while a few hooks and linters check parts of the work and the rest rests on the model and on you.
 
-## What you get
+The steps are written down as [protocols](DOCUMENTATION.md#term-protocol), procedures a session follows in order, and the [protocols reference](documentation/protocols-reference.md) lists them. The method asks each task to be sorted into a risk [tier](DOCUMENTATION.md#term-tier) first, from a question (T0) to a change to architecture or contracts (T3), and the tier decides how much process the task gets. A T3 change gets a specification, a failing test before the code ([test-first development](DOCUMENTATION.md#term-test-first)), and review by separate workers.
 
-> This section is a human overview, not a source of truth. The authoritative
-> catalog is `manifest.json` (roster, protocols, skills, templates) and each
-> node's own frontmatter (`title`, `owns`, `routing_triggers`); counts here are
-> lint-checked against the tree, but for the canonical list read those homes or
-> the router at `docs/graph/index.md`.
+Those workers are [specialists](DOCUMENTATION.md#term-specialist): roles such as `architect`, `tester` and `reviewer`, each defined in one file that names its tools and its model class. The [agents reference](documentation/agents-reference.md) lists all of them.
 
-- A bootstrap kernel (`core/AGENTS.md`), read by every supported
-  AI coding tool on every session. ~7 KB and deliberately nothing more:
-  identity, the first move (open the router), the tier table, the eight
-  rules as one-line anchors, and the boundaries. Everything else (every
-  protocol, skill, agent charter, posture principle, and template) is
-  a routable node inside the plant's `docs/graph/` and activates only
-  when the router resolves it for the task at hand. `tests/seed-lint.py`
-  enforces a hard size budget, so kernel growth is a lint failure, not
-  a drift.
-- A 20-agent team under `agents/`:
-  - `orchestrator` (first contact, routing)
-  - `architect`, `implementer`, `reviewer`, `tester`
-  - `security`, `pentest`, `reliability`, `data-ml`, `product`
-  - `docs-librarian`, `research-scout`
-  - `ui-ux-designer` (interface and interaction design)
-  - `devils-advocate` (hostile refutation of a finished deliverable's claims)
-  - `legal` (regulatory compliance: corpus-bound reasoning, citation ledger)
-  - `multi-agent-architect` (agent-topology design and review)
-  - `growth-orchestrator`, `growth-scout`, `seed-installer` (growth DNA)
-  - `tool-smith` (builds the durable tool a repeated plant operation earned)
-- Named protocols under `protocols/`:
-  - `grow` (canonical tool-neutral source-to-graph full-growth workflow)
-  - `initialize` (the entry fork: `grow` if there is source to scout, `from-scratch` if not)
-  - `from-scratch` (9-phase bootstrap)
-  - `brainstorm` (convergence, two modes: user-facing and internal)
-  - `specify` (executable spec authoring)
-  - `grill` (plan-of-record discipline)
-  - `test-first` (RED-GREEN-REFACTOR-COMMIT)
-  - `ingest-library` (build the wiki)
-  - `verify` (risk-proportional gate discipline)
-  - `recover` (classified, bounded failure recovery: never an identical
-    retry of a deterministic failure, three attempts, then escalate)
-  - `canonize` (the single close-out spawn: persist knowledge AND
-    catalog tools in one librarian brief)
-  - `deliver` (cold-pickup summary: compact for T0/T1, full for T2/T3)
-  - `harvest` (cross-project meta-loop, user-triggered only: folds one
-    plant's lessons up into the seed)
-  - `graft` (cross-project meta-loop, user-decided only: carries the enriched
-    seed back out onto an existing plant)
-- Fifteen composable skills under `skills/`:
-  - `knowledge-graph`, `context-router`, `validate-knowledge`
-  - `holistic-editing`, `humanizer`
-  - `library-wiki`, `research-and-ingest`
-  - `spec-author`, `test-first`, `adr-writer`
-  - `grill-planner`, `brainstorm-socratic`, `brainstorm-internal`
-  - `toolcraft` (durable-tool doctrine; the rule every session reads)
-  - `adopt-existing`
-- Ten templates under `templates/`:
-  - `spec.template.md`: executable spec
-  - `grill.template.md`: plan-of-record
-  - `library-page.template.md`: wiki page
-  - `adr.template.md`: decision record
-  - `prompt-contract.template.md`: LLM/VLM prompt
-  - `data-contract.template.md`: dataset contract
-  - `threat-model.template.md`: security threat model
-  - `agent.template.md`: commissioned specialist agent
-  - `skill.template.md`: project-specific procedure
-  - `tool-page.template.md`: durable-tool catalog card
-- A mechanical agent-router (`docs/graph/agent-lint.py`, projected
-  to `.claude/agent-lint.py` on Claude Code), the
-  specialist-selection analog of the knowledge router. `--route "<task>"`
-  ranks specialists by their `routing_triggers` frontmatter and prints a
-  confidence band to cite in the delegation brief; `--lint` validates the
-  routing/delegation frontmatter; `--eval` runs a golden routing set.
-  Delegation is bounded: only six coordinator agents carry a depth-capped
-  `Task`, every leaf worker is Task-less (the hard recursion cap), and each
-  turn ends with a handback payload that attributes the work.
-- A populated unified `docs/graph/` skeleton the installer adds to
-  projects without overwriting existing knowledge.
-- The legal corpus, on request. `agent.legal` reasons only from a verified
-  citation corpus and refuses where it has none, so `install.sh
-  --legal-corpus yes` places `legal-corpus/` into the plant at
-  `docs/graph/legal/corpus/`, **whole, or not at all**, because an analyst
-  with no web access cannot tell a page nobody copied from an instrument that
-  does not exist. Which instruments bear on the project is written as a scope
-  instruction in `docs/graph/legal/index.md`, never as a subset on disk.
-  `--legal-jurisdiction <cc>` names the national law: the EU and international
-  layers are jurisdiction-neutral, the national layer is only as wide as what
-  has been ingested, and a code the corpus does not carry is recorded as an
-  ingest request the analyst can act on.
-- Per-tool integration layers under `integrations/` for Claude
-  Code, Prime Agent, opencode, Codex, and GitHub Copilot, each with the
-  right config files and tool-specific overlays. Claude Code and Prime
-  Agent are first-class citizens at full parity: a progressive-discovery
-  hook on Claude Code and the equivalent extension on Prime Agent, and the
-  same `agent-lint.py` roster/routing gate pointed at either harness's
-  projection. `install.sh` places that linter; it does not place a CI
-  workflow, so running it on every push is the adopting project's to wire.
-  The seed runs its own gate in CI on Linux and macOS
-  (`.github/workflows/gate.yml`). Method parity across all five adapters
-  (two of them frozen) does not mean identical enforcement — see
-  `documentation/host-capability-matrix.md` for which bounds each host
-  actually holds mechanically versus which stay brief-enforced or
-  unsupported.
-- `install.sh` drops the seed into a target project for one tool, or
-  `all` for the three maintained ones, copying by default; pass `--symlink` for live
-  seed links so updates to the seed propagate.
+Before reading code, a session is asked to open the graph's [router](DOCUMENTATION.md#term-router), an index that points to the few [nodes](DOCUMENTATION.md#term-node) a task needs, and to load only those. This is [progressive disclosure](DOCUMENTATION.md#term-progressive-disclosure) applied to your own project. Each fact is meant to live in one node, with every other node linking to it ([one home per fact](DOCUMENTATION.md#term-one-home-per-fact)).
 
-## Core ideas
+Once grown, your repository is a [plant](DOCUMENTATION.md#term-plant) of the [seed](DOCUMENTATION.md#term-seed), which is this repository. Lessons can travel between them later: [harvest](DOCUMENTATION.md#term-harvest) proposes a plant's lessons back to the seed, and [graft](DOCUMENTATION.md#term-graft) carries an updated seed onto a plant grown earlier. The method starts neither unless the [steward](DOCUMENTATION.md#term-steward) asks ([steward only](DOCUMENTATION.md#enf-steward-only)).
 
-### Risk-proportional tiers
+## Why it is built this way
 
-Process is proportional to risk, never to habit. Every task is
-classified before acting: **T0** a question (read minimally, answer
-with citations, no spawn), **T1** a trivial edit with no behavior,
-contract, or spec surface (the one in-session authoring exception, one
-focused gate, compact delivery), **T2** a contained change (minimal
-worker set, focused gates, close-out), reached either by an active
-spec and plan, the *covered lane*, or by being small, local and
-reversible with no spec over the surface, the *contained lane*, where a
-failing test and a recorded why are the proportional authorization,
-and **T3** anything spec-bearing (the full delegated funnel). The tier
-edges are load-bearing: misclassifying *down* is the violation;
-escalating up mid-task is normal and cheap. This keeps a typo fix, and
-a three-line defect fix, from paying a feature's coordination cost
-while keeping every consequential change inside the full discipline
-(kernel §0).
+A coding agent works inside a fixed context window, and an agent that has read everything has no signal about what matters. So the always-loaded part stays small and the rest is looked up when a task needs it. Process is sized to risk so that a typo fix does not pay a feature's coordination cost. Specifications and tests come first so that a reviewer can check the work against something written before it. Steps that need a clean context go to separate workers so that one step's reading does not crowd out the next.
 
-### Spec-driven (SDD)
+Each of these choices has a decision record, and the [decision index](docs/decisions/index.md) lists them with their status.
 
-Every non-trivial behavior has a spec at `docs/graph/specs/SPEC-NNNN-*.md`
-authored jointly by product, architect, and tester. Specs use stable
-section numbers (§1–§12) so agents and tooling can index into them.
-Code that exists without a spec is in remediation mode; specs that
-exist without code are unimplemented features. The one exception is
-T2's contained lane, where a small, reversible, single-surface change
-with no spec over it is pinned by its failing test and its recorded
-why. The two stay in sync
-because every increment in `docs/graph/plans/grill.md` §9 names the spec
-contracts it implements.
+## What it does not do
 
-### Test-driven (TDD)
+The method is written for the model to follow, and most of it is a request. For each mechanism, the manual's table of [what each control holds and misses](DOCUMENTATION.md#enforcement) names its class and its gaps.
 
-No production code is written without a failing test that authorizes
-it. The cycle is RED → GREEN → REFACTOR → COMMIT, run per increment.
-Tests name spec contracts: the reviewer reading the test list
-reconstructs the spec. Bug fixes start with a regression test that
-stays in the suite forever. The few documented exceptions
-(throwaway prototypes, type-only changes, pure config) are explicit
-in `protocols/test-first.md`.
+### Requested, not enforced
 
-### One knowledge system: progressive discovery + graph + LLM wiki
+- Choosing a task's tier is the model's own call, and no tool sees a tier chosen too low ([tier classification](DOCUMENTATION.md#enf-tier-classification)).
+- Writing a specification before the code is asked of the model. A linter checks a written specification's shape, not when it was written ([spec before code](DOCUMENTATION.md#enf-spec-before-code)).
+- Writing a failing test before the code is asked of the model, and no tool sees the order ([test before code](DOCUMENTATION.md#enf-test-before-code)).
+- Opening the router first and working through a protocol are asked of the model. The [routing](DOCUMENTATION.md#term-routing) hook adds a pointer to each prompt and holds nothing ([protocol order](DOCUMENTATION.md#enf-protocol-order), [prompt pointer](DOCUMENTATION.md#enf-route-hook)).
+- The linters report a fault only when someone runs them, and the install adds no CI to your project ([graph lint](DOCUMENTATION.md#enf-graph-lint), [this repository's own checks](DOCUMENTATION.md#enf-seed-gate)).
+- The kernel's byte budget is checked only in this repository's own test run, and nothing re-measures the copy in your project ([kernel budget](DOCUMENTATION.md#enf-kernel-budget)).
 
-A large or multi-repo codebase does not fit in a context window, and an
-agent that has read everything has no signal about what matters. So
-CYPRESS keeps all maintained project knowledge at `docs/graph/`:
-Tier-1 routing, Tier-2 fact-owning nodes, and Tier-3 wiki leaves for
-dependencies, sources, product, architecture, APIs, data, prompts,
-evaluations, plans, runbooks, specs, and decisions. Before
-touching code, an agent opens the router (`docs/graph/index.md`),
-resolves the few nodes its task needs (entry nodes plus their required
-closure), and declares what it loaded and what it deliberately
-skipped. A task touching one subsystem loads a handful of nodes, not
-the whole tree.
+### Not yet measured
 
-`graph-lint.py` (a dependency-free linter scaffolded into
-`docs/graph/`) enforces two invariants. First, one home per fact: every
-fact lives in exactly one node, everything else links, so it is updated in one
-place instead of drifting. Second, every detailed leaf resolves through
-an owning node's edge. The `context-router` skill walks the graph; the
-`knowledge-graph` skill builds it; `validate-knowledge` proves it works
-with clean-context test agents.
+- The overhead on a large task, one with a specification, several files and a rollback path: not measured. The one overhead figure above was measured once, on a small task.
+- The tokens the one-time growth pass spends on a repository: not measured.
+- Whether the method improves the quality of the work: not measured.
+- Whether a host keeps the kernel's text after it compacts a long session: not recorded.
 
-### LLM wiki depth
+## Where to go next
 
-`docs/graph/libraries/` is a project-local, version-pinned, agent-maintained
-wiki of every external dependency, one specialized Tier-3 collection
-inside the same graph. Other collections provide the same source-backed
-depth for project architecture and operations. Built using the
-[llm-wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f),
-it compounds: every time the project uses a library in a new way, the
-page records the idiom. Agent memory of library APIs is unreliable
-across versions; the wiki is not. Built via the `ingest-library`
-protocol, optionally accelerated by an MCP server like
-[Context7](https://github.com/upstash/context7).
-
-### Integrate, don't patch
-
-When an agent changes a file, the unit of work is the whole file, not
-the smallest diff. A change is complete only when the file reads as if
-the requirement had always existed, with no appended functions, no `_v2`
-wrappers, and no dead code left behind. Deleting and consolidating are
-first-class outcomes; an additive-only diff is a red flag. (The deliberate
-exception is append-only artifacts: the plan history, ADRs, and
-changelogs.) See `skills/holistic-editing/`.
-
-### Plan-of-record
-
-`docs/graph/plans/grill.md` is the living plan, and the orchestrator opens it
-first thing every session. Its sections 0–15 are stable, it links out to specs,
-ADRs, and the graph, and it is appended to rather than silently rewritten.
-
-### Mechanical routing + bounded delegation
-
-The knowledge router mechanized the cheap decision (which docs to read); the
-seed also mechanizes the expensive one (which expert does the work).
-`agent-lint.py --route` gives specialist selection the same executable floor,
-confidence signal, and citable evidence. It is a heuristic to reason over, never
-an oracle. Only six opus coordinators (orchestrator, multi-agent-architect,
-growth-orchestrator, architect, reviewer, docs-librarian) hold a depth-capped `Task`; the leaves are
-Task-less, which is the one hard, harness-enforced recursion cap. A deliver-time
-`produced_by` assertion attributes every unit of work back to the specialist
-that produced it: specified to block when the attribution is missing, but
-**detective rather than preventive**: the top session performs it at `deliver`,
-and the `Stop` hook that would mechanize it is deliberately unwired until real
-deliveries carry `produced_by` (`protocols/deliver.md`). So a tier-down
-misclassification is caught by a reviewer reading the assertion, not by a gate
-refusing the delivery.
-
-That distinction is the point of `docs/decisions/adr-0003`, which sorts every
-control in the seed into **hard** (the harness refuses: which agents hold
-`Task`), **soft** (a contract or a tool refuses: `can_delegate`,
-`max_spawn_depth`, `delegates_to`, checked statically by `agent-lint.py
---lint`, not by the `Task` tool at runtime), **detective** (asserted post-hoc
-from named evidence a person reads: the `produced_by` assertion) and
-**judgment** (a named agent or person decides, and no tool can — most of the
-rows in the lifecycle protocols' gate tables). The fourth label is the ADR's
-2026-09-14 amendment, which also settled that a protocol gate is almost never
-`hard`. Where this README says a thing is enforced, that is the vocabulary it
-means. The decisions are recorded as `docs/decisions/adr-0001..0008`.
-
-### Reverse loop: canonize + harvest + graft
-
-The seed compounds because knowledge flows back. `canonize` (kernel
-§3.7 + §3.8) is the single close-out spawn: one docs-librarian
-brief that makes a task incomplete until its knowledge of interest
-(new or changed facts, sharp edges, corrected assumptions, provenance,
-failed `load_when:` triggers) is persisted into `docs/graph/` AND any
-durable tool it produced is cataloged in `docs/graph/tools/` (the
-`toolcraft` doctrine), or each is explicitly recorded empty. It runs
-before `deliver`. T0/T1 tasks satisfy it with a one-line self-record. `harvest` is the
-inverse of `grow`: once a plant is mature, its project-agnostic lessons
-and its version-durable library, legal-citation, tool, expert and skill
-corpora are proposed back into the seed for
-human ratification. Harvest is user-triggered only and never automatic;
-the system may at most propose a harvest and stop, and nothing lands until
-you are satisfied. Its standalone entry is `HARVEST_PROMPT.md`.
-
-`graft` is harvest's outward complement: it distributes what harvest
-collects. Where harvest folds one plant's lessons *up into* the seed, graft
-carries the enriched seed *back out onto* an existing, already-grown plant: it
-three-way-reconciles the plant's seed-owned machinery (adopting what advanced,
-preserving the plant's own divergences, re-integrating true conflicts) and
-refreshes the plant's library/legal/tool surfaces from the corpora. It does so
-additively, reversibly, and without touching the plant's own source or authored
-facts, so one plant's harvested fruit reaches all the others. Graft is
-user-decided and never automatic; the most the system does is propose one
-(typically right after a harvest) and stop. Its standalone entry is
-`GRAFT_PROMPT.md`.
-
-### Progressive disclosure
-
-The seed follows Anthropic's progressive-disclosure discipline: tight
-`name`/`description` frontmatter always in context, bodies loaded on
-trigger, and deeper references bundled and loaded only when needed. The
-knowledge graph applies the same principle to the *project's own* facts,
-not just the seed's files.
-
-The numbers, because a discipline that is not measured is a preference.
-Always-loaded per session, before any routing happens:
-
-| Harness | Eager bytes | ~tokens |
-|---|---|---|
-| prime-agent | 24 444 | 6 108 |
-| claude-code / opencode / codex | 26 261 | 6 562 |
-| github-copilot | 31 905 | 7 973 |
-
-The bootstrap kernel is 7 742 bytes of that, under a hard 8 000-byte budget.
-The rest is the roster and skill metadata each harness enumerates at start-up.
-
-`github-copilot` is the reason this table exists. Its skill projections carried
-`applyTo: '**'`, so every skill *body* was always-applied context there rather
-than the descriptions every other harness reads, at **138 535 bytes against
-26 261**, on the one harness that pays for it. That contradicted progressive
-disclosure, and 7.16.0 fixed it rather than recording it: the projections are
-now pointers, each carrying the description that lets a session decide whether
-a skill applies and the path to the node holding the discipline. The remaining
-gap is that pointer boilerplate. `EAGER_EXEMPTIONS` in `tests/seed-lint.py` is
-consequently **empty**. The `EAGER_BUDGET` ratchet was raised from 32 000 to
-41 600 bytes by owner decision (2026-09-17); every harness is under that bound,
-and loosening it further still takes a conspicuous, blessed edit to
-`tests/ratchets.json`, the same tripwire set at a higher line.
-
-Routable node bodies run from a handful of lines to 1 384
-(`protocols/graft.md`), with a median of 169. `tests/seed-lint.py` enforces two
-ceilings: 1 000 lines for any routable node, and 2 500 for the three
-cross-project meta-loop protocols — `graft`, `grow`, `harvest` — which are the
-only ones that write into a repository the seed does not own, and which a
-session loads only when it is already performing that operation
-([ADR-0007](docs/decisions/adr-0007-lifecycle-protocol-ceiling.md)). Both
-ratchet: they may fall freely, and raising either is an owner decision recorded
-in `tests/ratchets.json`. This paragraph used to claim `<500`-line bodies, which
-was true of most nodes and not of the largest ones.
-
-## Quick start
-
-There is one entry point: paste [`INSTALL_PROMPT.md`](INSTALL_PROMPT.md) into
-an agent-capable chat. It runs one flow in three named phases:
-
-1. PLACE: invoke `install.sh` to drop every seed file into the target. This
-   phase may run from a chat rooted at the seed (the seed is only a source to
-   copy from).
-2. HAND OFF: re-enter the prompt in a fresh session rooted at the target,
-   because a harness registers agent types when a session *starts*, so growth
-   cannot dispatch specialists by name until then
-   (`core/method/delegation.md` → `delegation.harness-registration` owns that
-   rule). The installer keeps a target-local mirror named
-   `EXPERT_SEED_INSTALL_PROMPT.md` for this re-entry and later refreshes.
-3. GROW IN FULL: execute the tool-neutral `grow` protocol end to end under
-   its completeness contract (`grow.completeness-contract`). Every
-   evidence-backed knowledge collection is grown to full depth, proven by a
-   coverage record and a green `growth-audit.py`, never a skeleton.
-
-Throughout, the chat stays in orchestration/planning, spawning Sonnet-class
-workers for read-only scouting and Opus-class workers for every authoring, code,
-deep analysis, review, and validation task. Every worker executes
-`docs/graph/graph-lint.py --plan` with its exact task inside its own session,
-loads that route, and returns routing evidence.
-
-If files are already installed and the coding tool exposes commands,
-`/initialize` remains a convenience adapter, but it forks: `grow` when there is source to scout, `from-scratch` when the repository is empty. It is not
-the canonical entry point.
-
-On an existing project, growth ends with an orchestrator that can navigate a
-source-grounded graph, and a report naming the evidence gaps it found and the
-single highest-leverage next step. From there every change runs the normal
-flow: specify, grill, test-first, verify, deliver.
-
-On a new project, growth enters `from-scratch`'s 9-phase bootstrap and walks
-you from brainstorm through specify and test-first to your first useful slice.
-
-## Per-tool details
-
-- [Claude Code integration](integrations/claude-code/README.md)
-- [Prime Agent integration](integrations/prime-agent/README.md)
-- [opencode integration](integrations/opencode/README.md)
-- [Codex integration](integrations/codex/README.md)
-- [GitHub Copilot integration](integrations/github-copilot/README.md)
-
-## Repository layout
-
-```
-core/                 Bootstrap kernel (AGENTS.md) + method/ posture nodes
-agents/               20 specialist agents (graph nodes; projected to the harness)
-protocols/            Protocol graph nodes (installed to docs/graph/protocols/)
-skills/               15 skill graph nodes (installed flat to docs/graph/skills/)
-templates/            Per-artifact templates (spec, grill, ADR, etc.; Tier-3 artifacts)
-templates/knowledge-graph/  Node contract, the three linters (graph-lint.py,
-                            spec-lint.py, grill-lint.py), router, node template
-templates/prompts/    Parameterized delegation/investigation/validation briefs
-templates/docs/       Leaf collections installed beneath docs/graph/
-library-corpus/       Harvested library/language surface notes (by ecosystem)
-legal-corpus/         Harvested law/standards citations (by jurisdiction)
-tool-corpus/          Harvested reusable tools (by category)
-agent-corpus/         Harvested optional expert roles (not the base roster)
-skill-corpus/         Harvested optional procedures (not the core skills)
-integrations/         Per-tool overlays + config + slash commands
-install.sh            Drops the seed into a target project
-manifest.json         Machine-readable catalog of all seed files
-README.md             You are here
-INSTALL.md            Detailed install/upgrade/uninstall instructions
-CHANGELOG.md          Seed-system changes
-```
-
-## Updating the seed
-
-The installer copies by default. Re-running `install.sh` in the target
-project fast-forwards the machinery (kernel, protocols, agents, skills,
-method, templates, the agent router): identical files are untouched,
-changed ones are backed up first. It does NOT refresh the knowledge-graph
-engines or your instantiated `_schema.md`/`index.md`; those are
-add-if-missing, and upgrading a grown plant properly is the graft
-protocol's job (engine reconciliation included). For installs made with
-`--symlink`, edits to the seed propagate automatically.
-
-For a principled, reconciled upgrade of an existing grown plant, use
-the [`graft`](protocols/graft.md) protocol via [`GRAFT_PROMPT.md`](GRAFT_PROMPT.md).
-Graft adopts what the seed advanced, preserves the plant's own local machinery
-divergences (and flags them back as harvest candidates), re-integrates true
-conflicts, and refreshes the plant's library/legal/tool surfaces from the
-enriched corpora while leaving the plant's own source and authored facts
-untouched. It is how the fruits of a `harvest` reach the plants that were grown
-before the seed learned them.
-
-## Heritage
-
-CYPRESS extends the language-agnostic expert-prompts archive
-with: SDD/TDD as foundational protocols, the LLM-wiki pattern for
-library docs, the brainstorm/grill/from-scratch protocols from the
-[Superpowers](https://claude.com/plugins/superpowers) framework
-generalized to the five major coding agents, and progressive
-disclosure throughout for context efficiency.
+- [The manual](DOCUMENTATION.md), the long-form guide
+- [The glossary](DOCUMENTATION.md#glossary), one entry per project word
+- [What each control holds and misses](DOCUMENTATION.md#enforcement)
+- [Agents reference](documentation/agents-reference.md)
+- [Protocols reference](documentation/protocols-reference.md)
+- [Skills and templates reference](documentation/skills-and-templates-reference.md)
+- [Host capability matrix](documentation/host-capability-matrix.md)
+- [Decision index](docs/decisions/index.md)
+- [Install guide](INSTALL.md), including upgrade and removal
+- Per-harness notes: [Claude Code](integrations/claude-code/README.md), [Prime Agent](integrations/prime-agent/README.md), [opencode](integrations/opencode/README.md), [Codex](integrations/codex/README.md), [GitHub Copilot](integrations/github-copilot/README.md)
+- To upgrade a plant grown earlier, the [graft prompt](GRAFT_PROMPT.md); to fold a plant's lessons back, the [harvest prompt](HARVEST_PROMPT.md)
+- What changed in each release: the [changelog](CHANGELOG.md)
 
 ## License
 
 CYPRESS is released under the MIT License. See [`LICENSE`](LICENSE).
 
 Copyright (c) 2026 Luigi Lopresto.
-

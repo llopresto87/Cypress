@@ -1234,9 +1234,19 @@ def lay(root):
     doc = replace_region(doc, "## 15. Glossary", read(fx / "glossary.md"), True, "glossary region")
     doc = replace_region(doc, "## 17. What is enforced, and how", read(fx / "enforcement.md"),
                          False, "enforcement region")
-    doc = sub1(doc, "\n## 15. Glossary\n",
-               "\n" + fill(read(fx / "body-figures.md"), vals) + "\n## 15. Glossary\n",
-               "body-figure paragraph")
+    # From increment 5 the shipped DOCUMENTATION.md holds its own body-figure
+    # paragraph, one line opening with the fixture's words; the fixture's
+    # replaces it, so a case that edits the fixture's figures leaves no shipped
+    # copy behind to satisfy the check.
+    body = fill(read(fx / "body-figures.md"), vals)
+    shipped = re.findall(r"(?m)^Routable body sizes, computed by .*\n", doc)
+    if len(shipped) > 1:
+        die(f"DOCUMENTATION.md holds {len(shipped)} body-figure paragraphs, not one")
+    if shipped:
+        doc = sub1(doc, shipped[0], body, "body-figure paragraph")
+    else:
+        doc = sub1(doc, "\n## 15. Glossary\n", "\n" + body + "\n## 15. Glossary\n",
+                   "body-figure paragraph")
     if ADR_RANGE.search(doc):
         doc = sub1(doc, "The decisions are recorded in `docs/decisions/adr-0001..0008`.",
                    "The decisions are recorded in the decision index, `docs/decisions/index.md`.",
@@ -1624,16 +1634,14 @@ fd_bind() {
 case_fd_fixture_clean() {
   local TMP; TMP="$(fd_fresh)"
   # X300 (fixture guard, no slug): the conforming fixture yields no front-door
-  # line and no RAISED line. Until increment 5 the only other findings allowed
-  # are check_published_body_figures' README lines (SPEC-0004 §6 clean_case);
-  # increment 5 strengthens this case to assert exit 0.
+  # line and no RAISED line, and from increment 5, when check_published_body_figures
+  # moved to BODY_FIGURE_HOME, seed-lint exits 0 on it (SPEC-0004 §6 clean_case).
   fd_lint_full
   fd_refuse_raised "fd-fixture-clean"
   if grep -qF 'front-door: ' <<<"$FD_OUT"; then
     echo "[fd-fixture-clean] the conforming fixture produced front-door lines" >&2; fd_show; exit 1
   fi
-  local other; other="$(grep -E '^  - ' <<<"$FD_OUT" | grep -vF 'README.md states no figure matching' || true)"
-  [ -z "$other" ] || { echo "[fd-fixture-clean] findings besides the README body-figure lines:" >&2; echo "$other" >&2; exit 1; }
+  [ "$FD_RC" -eq 0 ] || { echo "[fd-fixture-clean] expected exit 0, got $FD_RC" >&2; echo "$FD_OUT" >&2; exit 1; }
   rm -rf "$TMP"
 }
 
