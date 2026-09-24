@@ -2103,7 +2103,7 @@ case_fd_mechanism_surfaces() {
   L="$(fd_py entry_line "$TMP" kernel Enforcement)"
   fd_expect "fd-mechanism-surfaces (d1)" "$(fd_at MECHANISM_CLAIMS_TRACED DOCUMENTATION.md "$L")" 'detective'
   fd_restore DOCUMENTATION.md
-  # ... and a class other than n/a with no enf- link
+  # ... and a class other than not a control with no enf- link
   fd_py entry_field "$TMP" node Enforcement '**soft**'
   L="$(fd_py entry_line "$TMP" node Enforcement)"
   fd_expect "fd-mechanism-surfaces (d2)" "$(fd_at MECHANISM_CLAIMS_TRACED DOCUMENTATION.md "$L")" 'enf-'
@@ -2139,13 +2139,13 @@ case_fd_hook_firing() {
   local TMP L; TMP="$(fd_fresh)"
   # X313 ENFORCEMENT_ROW_COMPLETE (a) enf-route-hook classed **hard** (AC-27)
   L="$(fd_py row_line "$TMP" enf-route-hook)"
-  fd_py row_sub "$TMP" enf-route-hook '**n/a — not a control**' '**hard**'
+  fd_py row_sub "$TMP" enf-route-hook '**not a control**' '**hard**'
   # exercises: check_fd_enforcement_row_complete
   fd_expect "fd-hook-firing (a)" "$(fd_at ENFORCEMENT_ROW_COMPLETE DOCUMENTATION.md "$L")" 'enf-route-hook' 'not a control'
   fd_restore DOCUMENTATION.md
   # X313 ENFORCEMENT_ROW_COMPLETE (b) `not a control` removed from the matrix row's ADR-0003 cell (AC-27, P9)
   L="$(fd_py line "$TMP/documentation/host-capability-matrix.md" '| **mechanically enforced** |')"
-  fd_py sub "$TMP/documentation/host-capability-matrix.md" '`hard`; `n/a — not a control` for a hook that only injects text |' '`hard` |'
+  fd_py sub "$TMP/documentation/host-capability-matrix.md" '`hard`; `not a control` for a hook that only injects text |' '`hard` |'
   fd_expect "fd-hook-firing (b)" "$(fd_at ENFORCEMENT_ROW_COMPLETE documentation/host-capability-matrix.md "$L")" 'not a control'
   fd_restore documentation/host-capability-matrix.md
   # X313 ENFORCEMENT_ROW_COMPLETE (c) `injects` removed from that row's Meaning cell
@@ -2154,7 +2154,7 @@ case_fd_hook_firing() {
   fd_restore documentation/host-capability-matrix.md
   # X313 ENFORCEMENT_ROW_COMPLETE (d) enf-status-hook classed **soft**
   L="$(fd_py row_line "$TMP" enf-status-hook)"
-  fd_py row_sub "$TMP" enf-status-hook '**n/a — not a control**' '**soft**'
+  fd_py row_sub "$TMP" enf-status-hook '**not a control**' '**soft**'
   fd_expect "fd-hook-firing (d)" "$(fd_at ENFORCEMENT_ROW_COMPLETE DOCUMENTATION.md "$L")" 'enf-status-hook' 'not a control'
   rm -rf "$TMP"
 }

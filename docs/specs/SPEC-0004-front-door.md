@@ -204,7 +204,7 @@ unrecorded prerequisite named in §3.5). The entry first lists the forms of the 
   "no standard meaning".
 - **Implemented at.** Seed paths that exist. Where relevant, it also gives
   "an install produces …" lines naming paths in the reader's repository.
-- **Enforcement.** One of the enforcement classes, or "n/a — not a control".
+- **Enforcement.** One of the enforcement classes, or "not a control".
 - **Divergence.** Same, narrower, broader, different, or no standard meaning.
 - **Why.** A decision record, plan, commit or code location, or the literal
   words "not recorded".
@@ -492,7 +492,7 @@ produces no `front-door: ` line.
 - **And:** every row named in the §6 row-specific table carries, in its What
   it can miss cell, a match for each pattern that table lists for it, and
   meets that table's class rule; this includes `enf-route-hook` and
-  `enf-status-hook`, whose Class cells contain `**n/a — not a control**`
+  `enf-status-hook`, whose Class cells contain `**not a control**`
 - **And:** in the class table of `documentation/host-capability-matrix.md`,
   the row whose first cell is `**mechanically enforced**` has a Meaning cell
   containing `injects` and an ADR-0003 cell containing `not a control`, so the
@@ -516,7 +516,7 @@ produces no `front-door: ` line.
   is `hard`; otherwise the finding reads as an overclaim and names each linked
   row with its weakest class
 - **And:** a glossary Enforcement field carrying any bolded class other than
-  `n/a — not a control` links at least one `enf-` row; every bolded class in
+  `not a control` links at least one `enf-` row; every bolded class in
   the field occurs in the Class cell of a row it links; and `**hard**` in the
   field requires a linked row whose weakest class is `hard`
 - **And:** no unit that links `enf-pre-bash-guard` matches the §6
@@ -826,8 +826,8 @@ number.
 A field continues on indented lines until the next label.
 
 ```yaml
-class_set:      ["hard", "soft", "detective", "judgment", "n/a — not a control"]
-class_order:    hard > soft > detective > judgment > n/a — not a control     # strongest first
+class_set:      ["hard", "soft", "detective", "judgment", "not a control"]
+class_order:    hard > soft > detective > judgment > not a control     # strongest first
 weakest_class:  the lowest class in class_order among the bolded class values of one cell or field;
                 a row carrying several classes (per host, per case) is judged by its weakest
 divergence_set: ["same", "narrower", "broader", "different", "no standard meaning"]
@@ -909,8 +909,8 @@ true; the Class column is signed row by row by `security` against ADR-0003
 | `enf-leaf-cannot-spawn` | `spawn[- ]tool` (another name for the spawn tool); `role emulation`; `` `?tools:`? `` | weakest class is not `hard` |
 | `enf-pre-bash-guard` | `fails? open`; `(indirection\|evasion\|evade)`; `\bhosts?\b` | weakest class is not `hard`; `**hard**` may appear only for "a matched command on a host that fires the hook" |
 | `enf-backup-before-replace` | `` `?\.cypress/seed\.json`? `` | none |
-| `enf-route-hook` | none | Class cell contains `**n/a — not a control**` |
-| `enf-status-hook` | none | Class cell contains `**n/a — not a control**` |
+| `enf-route-hook` | none | Class cell contains `**not a control**` |
+| `enf-status-hook` | none | Class cell contains `**not a control**` |
 
 The last two rows came from the former `HOOK_FIRING_IS_NOT_HOLDING`
 (2026-09-24, D1). A hook that only injects text fires and holds nothing, and
@@ -1425,7 +1425,7 @@ Field values below are fragments and carry no closing period.
 - **Here:** a repository after the [seed](#term-seed) was installed into it and [grown](#term-growth).
 - **Field:** no standard meaning.
 - **Implemented at:** `install.sh`, `protocols/grow.md`. An install produces `.cypress/seed.json` (`write_seed_stamp`).
-- **Enforcement:** **n/a — not a control**
+- **Enforcement:** **not a control**
 - **Divergence:** **no standard meaning**
 - **Why:** not recorded
 ```
@@ -1563,7 +1563,7 @@ now names the §6 caps, and AC-28 the release clause. The contract count is
       Enforcement, Divergence, Why:
       - Forms includes the headword itself, case-insensitively.
       - Enforcement carries at least one bolded class, and every bolded token
-        in it is one of hard, soft, detective, judgment, n/a — not a control.
+        in it is one of hard, soft, detective, judgment, not a control.
       - Divergence carries at least one bolded value, and every bolded token
         in it is one of same, narrower, broader, different, no standard
         meaning.
@@ -1630,10 +1630,10 @@ now names the §6 caps, and AC-28 the release clause. The contract count is
       the three words before it) and links at least one `enf-` row, links
       only rows whose weakest class is `hard`. The weakest class is the
       lowest bolded class in the row's Class cell, by the order hard, soft,
-      detective, judgment, n/a — not a control. Otherwise it fails as an
+      detective, judgment, not a control. Otherwise it fails as an
       overclaim naming each linked row with its weakest class. "Never" and
       "only" are not strong claims (§6 `not_strong`). A glossary Enforcement
-      field that carries any bolded class other than "n/a — not a control"
+      field that carries any bolded class other than "not a control"
       links at least one `enf-` row, every class it names occurs in the Class
       cell of a row it links, and a field saying `**hard**` links a row whose
       weakest class is hard. Planted cases that fail: README "a hard 8
@@ -1850,8 +1850,8 @@ now names the §6 caps, and AC-28 the release clause. The contract count is
       mechanical: `security` signs the class column row by row at verify
       (§7 CLASS_CELL_UNTRUE).
       Contracts: maps to ENFORCEMENT_ROW_COMPLETE, MECHANISM_CLAIMS_TRACED.
-- [ ] **AC-27.** The route-hook and status-hook rows are classed "n/a — not
-      a control" (their Class cells contain `**n/a — not a control**`). In
+- [ ] **AC-27.** The route-hook and status-hook rows are classed "not a
+      control" (their Class cells contain `**not a control**`). In
       the class table of `documentation/host-capability-matrix.md`, the row
       whose first cell is `**mechanically enforced**` has a Meaning cell
       that says `injects` and an ADR-0003 cell that says `not a control`, so
@@ -1992,6 +1992,13 @@ PENDING line while that slug is in the ledger, whereas a raise is reported by
 `fd_guard` outside the ledger and fails the run whether or not its slug is
 pending.
 
+**Status as increment 2 lands (2026-09-24).** Four more rows are `green`:
+GLOSSARY_ENTRY_COMPLETE (X305), GLOSSARY_PATHS_EXIST (X306),
+NO_UNLINKED_PROJECT_TERM_IN_DEFINITION (X307) and DEFINITION_HAS_ONE_HOME
+(X309). Increment 2's glossary clears them on the real tree, so their slugs
+have left `FRONT_DOOR_PENDING`. The rule above is unchanged: every row whose
+slug is still in the ledger stays `red`.
+
 **Binding.** Each row citing `tests/test-seed-lint.sh` opens its Test case
 cell with one fixed-width label, `X300` to `X335` (`X325` is unassigned).
 SPEC-0003 holds `X101` to `X203`. `check_spec_test_mapping` binds only the
@@ -2071,11 +2078,11 @@ case a §9 criterion names has a sub-plant below, in that criterion's words.
 | FIRST_SCREEN_ORDER | X334 case_fd_first_screen_caps · `check_fd_first_screen_order` | tests/test-seed-lint.sh | fixture (scope); the line-cap clause (§6 "Caps", press P7); `tools/ratchet-lint.py` alone accepts the raise when `tests/ratchets.json` changes in the same diff, so this case is the refusal | red |
 | INSTALL_SECTION_NAMES_TARGET_PATHS | X303 case_fd_install_target_paths, case_fd_install_seed_path · `check_fd_install_section_names_target_paths` | tests/test-seed-lint.sh | fixture (scope) | red |
 | WHERE_NEXT_LINKS_THE_REFERENCES | X304 case_fd_where_next · `check_fd_where_next_links_the_references` | tests/test-seed-lint.sh | fixture (scope) | red |
-| GLOSSARY_ENTRY_COMPLETE | X305 case_fd_glossary_absent, case_fd_glossary_fields, case_fd_glossary_closed_values, case_fd_glossary_required_term · `check_fd_glossary_entry_complete` | tests/test-seed-lint.sh | fixture (scope) | red |
-| GLOSSARY_PATHS_EXIST | X306 case_fd_glossary_paths, case_fd_glossary_install_literal · `check_fd_glossary_paths_exist` | tests/test-seed-lint.sh | fixture (scope) | red |
-| NO_UNLINKED_PROJECT_TERM_IN_DEFINITION | X307 case_fd_definition_links · `check_fd_no_unlinked_project_term_in_definition` | tests/test-seed-lint.sh | fixture (scope) | red |
+| GLOSSARY_ENTRY_COMPLETE | X305 case_fd_glossary_absent, case_fd_glossary_fields, case_fd_glossary_closed_values, case_fd_glossary_required_term · `check_fd_glossary_entry_complete` | tests/test-seed-lint.sh | fixture (scope) | green |
+| GLOSSARY_PATHS_EXIST | X306 case_fd_glossary_paths, case_fd_glossary_install_literal · `check_fd_glossary_paths_exist` | tests/test-seed-lint.sh | fixture (scope) | green |
+| NO_UNLINKED_PROJECT_TERM_IN_DEFINITION | X307 case_fd_definition_links · `check_fd_no_unlinked_project_term_in_definition` | tests/test-seed-lint.sh | fixture (scope) | green |
 | TERM_LINKED_ON_FIRST_USE | X308 case_fd_term_linked · `check_fd_term_linked_on_first_use` | tests/test-seed-lint.sh | fixture (scope) | red |
-| DEFINITION_HAS_ONE_HOME | X309 case_fd_one_home · `check_fd_definition_has_one_home` | tests/test-seed-lint.sh | fixture (scope) | red |
+| DEFINITION_HAS_ONE_HOME | X309 case_fd_one_home · `check_fd_definition_has_one_home` | tests/test-seed-lint.sh | fixture (scope) | green |
 | REFERENCE_OPENS_WITH_ITS_DEFINITION | X310 case_fd_reference_opener · `check_fd_reference_opens_with_its_definition` | tests/test-seed-lint.sh | fixture (scope); C5 RED for the four reference-table checks, with X321 (§6 C5 table). Three of them are UNPROTECTED in the coverage binder, so their green after increment 4's heading demotion also rests on that increment's recorded mutation probe | red |
 | ENFORCEMENT_ROW_COMPLETE | X311 case_fd_enforcement_row, case_fd_enforcement_required_row · `check_fd_enforcement_row_complete` | tests/test-seed-lint.sh | fixture (scope) | red |
 | ENFORCEMENT_ROW_COMPLETE | X329 case_fd_enforcement_row_residuals · `check_fd_enforcement_row_complete` | tests/test-seed-lint.sh | fixture (scope); the §6 row-specific table (AC-26) | red |
@@ -2245,7 +2252,7 @@ the tables above leave them open:
 | ~~Would minimum sufficient (G9) return any contract?~~ | resolved 2026-09-24 by steward decision D1: three contracts folded (`HOOK_FIRING_IS_NOT_HOLDING` into `ENFORCEMENT_ROW_COMPLETE` and the §6 row-specific table; `README_LATER_SECTIONS_ORDER` into `FIRST_SCREEN_ORDER`; `MEASURED_FIGURE_MATCHES_ITS_EVIDENCE` into `COST_FIGURES_SCOPED`'s measured branch). Twenty-two contracts; every RED case keeps its plant under the absorbing slug. Product re-maps AC-1, AC-13, AC-27 and the coverage table; tester re-keys §10 | — | steward | closed |
 | Does the publishing host resolve an explicit `<a id>` fragment in rendered Markdown? | Every `term-`/`enf-` link, and the legacy-anchor option, assumes it; no check can see a rendered page (§7 `ANCHOR_NOT_RENDERED_BY_HOST`) | Not recorded. Do not guess: before increment 2 the steward observes one rendered fragment on the publishing host (for example on the pushed branch). If it resolves, the explicit-anchor design stands and legacy anchors become product's option. If it does not, the anchor design is reopened before any entry lands (grill §6) | steward (observation); architect (reopen if negative) | before increment 2 |
 | Which convention governs a ratified seed ADR: supersede only, or supersede or amend? | `skills/adr-writer/SKILL.md:85-86` says the supersede flip is "the only edit a ratified ADR ever receives"; `docs/decisions/index.md:45` says "supersede or amend, never rewrite", and ADR-0002 (2026-07-23) and ADR-0003 (2026-09-14) already carry appended amendments | Not resolved here. Increment 3's ADR-0003 amendment follows `docs/decisions/index.md:45` and its two precedents. The skill's paths are `docs/graph/decisions/` in an installed project, while `docs/decisions/index.md:3-6` places the seed's own ADRs outside `docs/graph/` on purpose. The amendment corrects a count and leaves the decision alone, so it needs no new ADR. Whether the skill's rule should also bind the seed's self-docs, or the index should narrow, is the docs-librarian's call | docs-librarian | canonize of this harvest |
-| The matrix classes a hook that only injects text as `hard` (`documentation/host-capability-matrix.md:36`, applied at `:89-90`) and the leaf's spawn bar as `hard` with no scope (`:96-97`, `:199-200`), against this spec's rows (press P9) | The front door's rows link the matrix as their detail, so the two would contradict each other one click apart | Reconcile, don't record a residual: increment 3 changes class wording only, adding no host fact. The ADR-0003 cell of `:36` gains `n/a — not a control` for a hook that only injects (held by `ENFORCEMENT_ROW_COMPLETE`); `:96-97` and `:199-200` scope "hard" and link `enf-leaf-cannot-spawn` with no strong-claim word (reviewer at verify). A residual would leave the reader's detail page contradicting the row that sends them there | architect (design); implementer (edit); reviewer | verify of increment 3 |
+| The matrix classes a hook that only injects text as `hard` (`documentation/host-capability-matrix.md:36`, applied at `:89-90`) and the leaf's spawn bar as `hard` with no scope (`:96-97`, `:199-200`), against this spec's rows (press P9) | The front door's rows link the matrix as their detail, so the two would contradict each other one click apart | Reconcile, don't record a residual: increment 3 changes class wording only, adding no host fact. The ADR-0003 cell of `:36` gains `not a control` for a hook that only injects (held by `ENFORCEMENT_ROW_COMPLETE`); `:96-97` and `:199-200` scope "hard" and link `enf-leaf-cannot-spawn` with no strong-claim word (reviewer at verify). A residual would leave the reader's detail page contradicting the row that sends them there | architect (design); implementer (edit); reviewer | verify of increment 3 |
 
 ## 12. Changelog
 
@@ -2312,3 +2319,15 @@ the tables above leave them open:
   CHECK_RAISED, LEDGER_REGROWS_AFTER_IMPLEMENTED, RELEASE_WITH_PENDING_LEDGER)
   are `green`: they are enforced on the shipped tree from this commit. The
   other rows stay `red` until their slug leaves the ledger.
+- 2026-09-24 — class value renamed `n/a — not a control` → `not a control`
+  (dash-free, so the required value does not trip the prose floor; no
+  semantic change). The session's ruling, applied by `implementer` (spawn
+  orchestrator.30) in §4, §6, §7, §8, §9 and §10; the class set is now
+  {hard, soft, detective, judgment, not a control}. The Divergence set
+  carries no dash and is unchanged.
+- 2026-09-24 — increment 2: §10 rows GLOSSARY_ENTRY_COMPLETE (X305),
+  GLOSSARY_PATHS_EXIST (X306), NO_UNLINKED_PROJECT_TERM_IN_DEFINITION (X307)
+  and DEFINITION_HAS_ONE_HOME (X309) flipped `red` → `green`, because their
+  slugs left `FRONT_DOOR_PENDING` when the glossary landed. Status column
+  only; no contract changed. Applied by `docs-librarian` (spawn
+  orchestrator.32) after reviewer orchestrator.31.
