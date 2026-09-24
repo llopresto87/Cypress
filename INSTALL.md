@@ -84,7 +84,7 @@ Every tool also gets the kernel under both names, `CLAUDE.md` and
 # The three maintained tools, explicit target
 ./install.sh all --project-dir ~/code/my-project
 
-# Force overwrite without backups
+# Replace without the per-file warning (the backup is still made)
 ./install.sh opencode --force
 
 # Opt into symlink mode (edits to placed files write back into the seed)
