@@ -1,8 +1,12 @@
 <!--
 Template: prompts/graph-session-bootstrap.md
 THE CANONICAL HOME of the graph-session discipline. Every delegation
-brief EMBEDS the block below verbatim (hooks do not reach subagents, so
-the brief is the only enforcement that crosses the boundary). Every
+brief EMBEDS the block below verbatim (no hook the seed installs carries
+this discipline or the routing context into a worker's turn; tool hooks
+such as the pre-Bash guard fire on a worker's tool calls but carry
+neither, so the brief is the only carrier across the boundary; the
+mechanism and its upstream source live in docs/graph/method/delegation.md,
+'Every brief carries the graph discipline'). Every
 other seed file — kernel, agents, protocols, skills — REFERENCES this
 file instead of paraphrasing the discipline; a paraphrase is a second
 home for the same rule, and duplicated rules rot asymmetrically.

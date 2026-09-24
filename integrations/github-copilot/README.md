@@ -8,22 +8,22 @@
 > `.claude/settings.json`, so the Claude Code route and status hooks still
 > reach it there and fail open.
 
-GitHub Copilot reads several customization layers, each with its own
-file format:
+This page says which Copilot file each seed file becomes. GitHub Copilot reads
+several customization layers, each with its own file format:
 
-1. **Repository instructions** —
+1. **Repository instructions**:
    `.github/copilot-instructions.md` OR `AGENTS.md` at the repo
    root. Auto-applied to every Copilot Chat request in the
    workspace. The kernel goes here.
-2. **Path-scoped instructions** —
+2. **Path-scoped instructions**:
    `.github/instructions/<name>.instructions.md`, each with a YAML
    `applyTo:` glob. Auto-applied when the user is working in a
-   matching file path. We use these for specialist guidance that's
-   relevant only in specific areas (e.g. test files, docs/).
-3. **Prompt files** — `.github/prompts/<name>.prompt.md`, each with
+   matching file path. We use these for the skills, each with a
+   match-all glob (see below).
+3. **Prompt files**: `.github/prompts/<name>.prompt.md`, each with
    YAML frontmatter (mode, description, tools). Surface as slash
    commands in Copilot Chat. We use these for the protocols.
-4. **Custom agents** — `.github/agents/<name>.agent.md` (formerly
+4. **Custom agents**: `.github/agents/<name>.agent.md` (formerly
    `.github/chatmodes/<name>.chatmode.md`). Surface in the Copilot
    Chat agent picker. We use these for the specialist personas.
 
@@ -36,7 +36,7 @@ This seed system maps to Copilot as follows:
 | `agents/*.md`            | `.github/agents/*.agent.md` (transformed)            |
 | `skills/*/SKILL.md`      | `.github/instructions/*-skill.instructions.md` (transformed) |
 | `protocols/*.md`         | `.github/prompts/*.prompt.md` (transformed)          |
-| `templates/`             | `templates/` (kept at repo root, untouched)          |
+| `templates/`             | `docs/graph/templates/` (graph nodes)          |
 | `templates/docs/`        | `docs/graph/` (missing leaves added on install)      |
 
 > **The projection is taken from the graph, not from the seed.** The rows
@@ -95,7 +95,7 @@ agent must stay write-less on Copilot too):
 - `Write` / `Edit` → `editFiles`
 - `Bash` → `runTasks` (the workspace task runner)
 - `WebSearch` / `WebFetch` → `fetch`, `githubRepo` (both are REMOTE
-  reach; `githubRepo` searches GitHub, so it is web-gated, not part of
+  reach; `githubRepo` searches GitHub, so it reaches the web and is not part of
   the local read set)
 
 Two fields are deliberately NOT projected:
@@ -106,7 +106,7 @@ Two fields are deliberately NOT projected:
   delegation flows (including the kernel's close-out-spawn mandate)
   degrade to the single session on Copilot: do the work sequentially
   in-session and record the deviation, rather than simulating personas
-  in-chat (which the kernel forbids).
+  in-chat (which the kernel rules out).
 
 ### Source protocol → `.github/prompts/<name>.prompt.md`
 
@@ -133,8 +133,9 @@ applyTo: '**'
 /path/to/cypress/install.sh github-copilot
 ```
 
-This generates `.github/` and `AGENTS.md` from the source. Re-run
-after editing any source file.
+This generates `.github/` and `AGENTS.md` from the source, with
+`CLAUDE.md` beside it as a symlink to `AGENTS.md`. Re-run after editing
+any source file.
 
 ## Conflict with existing `.github/copilot-instructions.md`
 
@@ -143,8 +144,8 @@ installer:
 1. Backs up the existing file to
    `.github/copilot-instructions.md.bak-<timestamp>`.
 2. Writes the kernel.
-3. Prints a diff so the maintainer can merge custom content back
-   in.
+3. Prints the backup's path, so the maintainer can merge custom
+   content back in by hand.
 
 ## VS Code settings
 
@@ -153,14 +154,16 @@ sub-folder of the repo, enable
 `chat.useCustomizationsInParentRepositories` so Copilot discovers
 the seed's `.github/` from a parent.
 
-## Enforcing progressive discovery in Copilot (Agent Hooks)
+## Progressive discovery in Copilot (Agent Hooks)
 
 Progressive discovery — open the graph router, load only the nodes a
 task needs, declare what you skipped — is guidance a capable model
 follows and a small local model (e.g. an Ollama model behind Copilot)
-often skips. You do not have to rely on the model following it: **VS
-Code Agent Hooks (Preview) can enforce it deterministically**, the same
-way Claude Code does, because the two share a hook format.
+often skips. You do not have to rely on the model remembering it: **VS
+Code Agent Hooks (Preview) can add the routing pointer to every prompt**,
+as Claude Code's hook does, because the two share a hook format. The hook
+adds text and holds nothing, so following the pointer stays the model's call
+([routing pointer](../../DOCUMENTATION.md#enf-route-hook)).
 
 - **Two hooks, both cross-tool.** `status-hook.py` runs on `SessionStart` and
   injects the plant's lifecycle-status register once per session
@@ -188,8 +191,8 @@ Hooks are the strongest lever, but two more help, especially with a weak
 model:
 
 1. **Use a capable model** — a 7–8B local model may still not act well on
-   the injected context; the hook guarantees the context is *present*,
-   not that the model reasons well over it.
+   the injected context; the hook puts the context *in front of* the model,
+   and that says nothing about how well the model reasons over it.
 2. **Fresh chat, don't attach the whole workspace** (`#codebase` /
    `@workspace`) — Copilot's own context-gathering fills the window
    before the model reasons, which is orthogonal to the graph.

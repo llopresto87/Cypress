@@ -279,9 +279,31 @@ STOPWORDS = frozenset(
 )
 # --- end canonical stopwords -----------------------------------------------
 
-# Task is the one tool whose presence is harness-enforced delegation capability
-# (plan ADR-C): can_delegate MUST equal (Task in tools).
-DELEGATE_TOOL = "Task"
+# The spawn tool is the one tool whose presence is harness-enforced delegation
+# capability (plan ADR-C): can_delegate MUST equal (spawn tool in tools). Its
+# canonical name is `Agent` and `Task` is its alias; either grants it, bare or
+# parenthesized (`Agent(type, …)`, whose type list a subagent definition
+# ignores). docs/graph/method/delegation.md records the host mechanism.
+SPAWN_TOOLS = ("Agent", "Task")
+SPAWN_TOOL_LABEL = "the spawn tool (`Agent`, alias `Task`)"
+
+
+def grants_spawn(tools) -> bool:
+    """Whether a parsed `tools:` value grants the spawn tool.
+
+    `None` is an omitted `tools:` line, and an agent without one inherits every
+    tool, the spawn tool included. An entry counts when it is a spawn-tool name
+    or starts with one followed by `(`; the prefix test also holds when the
+    inline-list split cuts `Agent(a, b)` into `Agent(a` and `b)`. A raw string
+    is read as the inline list it spells, so its outer brackets are dropped
+    before the split rather than left on the first and last entries."""
+    if tools is None:
+        return True
+    entries = tools.strip().strip("[]").split(",") if isinstance(tools, str) else tools
+    for entry in (str(e).strip() for e in entries):
+        if entry in SPAWN_TOOLS or entry.startswith(tuple(f"{n}(" for n in SPAWN_TOOLS)):
+            return True
+    return False
 
 
 class LintError(Exception):
@@ -341,8 +363,12 @@ class Agent:
         return str(self.meta.get("can_delegate", "")).strip().lower() == "true"
 
     @property
-    def has_task(self) -> bool:
-        return DELEGATE_TOOL in self.tools
+    def declares_tools(self) -> bool:
+        return "tools" in self.meta
+
+    @property
+    def can_spawn(self) -> bool:
+        return grants_spawn(self.meta.get("tools"))
 
     @property
     def max_spawn_depth(self):
@@ -366,7 +392,7 @@ def _scalar(v: str):
 
     Extends graph-lint's `_scalar` with inline-list parsing (`[a, b, c]`), the
     form the agent `tools:` (and any inline `routing_triggers`) line uses — the
-    parser gap the router must close so the Task⟺can_delegate rule can be checked.
+    parser gap the router must close so the spawn-tool⟺can_delegate rule can be checked.
     """
     v = v.strip()
     # Strip a trailing `  # comment` on unquoted, non-list values only.
@@ -854,12 +880,18 @@ def cmd_lint(agents: list) -> int:
         if not a.triggers:
             errs.append(f"{a.ident}: routing_triggers missing or empty (§4.1 rule 1)")
 
-        # Rule 2: can_delegate == (Task in tools). No dormant-but-enabled drift.
-        if a.can_delegate != a.has_task:
+        # Rule 2: can_delegate == (spawn tool in tools). No dormant-but-enabled
+        # drift. An omitted tools: line inherits the spawn tool, so "cannot
+        # spawn" holds only for an agent that lists its tools.
+        if not a.declares_tools:
+            errs.append(f"{a.ident}: omits its tools: line, so it inherits every "
+                        f"tool, {SPAWN_TOOL_LABEL} included — list the tools it "
+                        f"may use (§4.1 rule 2)")
+        elif a.can_delegate != a.can_spawn:
             errs.append(
                 f"{a.ident}: can_delegate={str(a.can_delegate).lower()} but "
-                f"{'Task is' if a.has_task else 'Task is not'} in tools — "
-                f"can_delegate must equal (Task ∈ tools) (§4.1 rule 2)"
+                f"{SPAWN_TOOL_LABEL} {'is' if a.can_spawn else 'is not'} in tools — "
+                f"can_delegate must equal (spawn tool ∈ tools) (§4.1 rule 2)"
             )
 
         # Rule 3: delegation caps present and coherent iff can_delegate.

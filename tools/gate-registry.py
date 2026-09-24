@@ -252,9 +252,13 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "V5: an unreadable input is named and is fatal, in four linters",
         FIXTURES, "none", "the input set IS unreadable files; fixtures are the "
         "only way to produce one"),
-    "prose-lint.py --file README --file DOCUMENTATION": (
-        "the seed's own front-door prose meets the floor", REAL, "coverage",
-        "2 of ~340 markdown files; documentation/*-reference.md are exempt by a "
+    "prose-lint.py --file README.md": (
+        "README.md on its own meets the prose floor", REAL, "coverage",
+        "1 of ~340 markdown files; documentation/*-reference.md are exempt by a "
+        "recorded genre decision in run.sh"),
+    "prose-lint.py --file DOCUMENTATION.md": (
+        "DOCUMENTATION.md on its own meets the prose floor", REAL, "coverage",
+        "1 of ~340 markdown files; documentation/*-reference.md are exempt by a "
         "recorded genre decision in run.sh"),
     "test-status-register.sh": (
         "the status vocabulary is controlled and queryable", FIXTURES, "scope", ""),
@@ -285,7 +289,7 @@ GATES: dict[str, tuple[str, str, str, str]] = {
     "test_graph_lint.py": (
         "the graph linter's CLI contract", FIXTURES, "scope", ""),
     "agent-lint.py --lint": (
-        "roster frontmatter, and can_delegate == (Task in tools)", REAL, "none", ""),
+        "roster frontmatter, and can_delegate == (spawn tool in tools)", REAL, "none", ""),
     "agent-lint.py --eval": (
         "routing, per corpus class, gated on confident-wrong = 0", REAL, "self-reference",
         "the contract class is co-authored with the triggers it scores and is "
@@ -351,7 +355,13 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "exempted WHOLESALE until 7.16.0, so a raw write hidden inside "
         "`place_file` destroyed a file outside the target with this gate green. "
         "They are counted rows now, but the check still sees only writes it can "
-        "attribute to a function it can find"),
+        "attribute to a function it can find. SPEC-0004's front-door checks add "
+        "five: a restated definition reworded below DEFINITION_OVERLAP_CEILING, "
+        "an enforcement claim phrased without a listed mechanism verb, a term "
+        "used in a form its glossary entry does not list, and an install target "
+        "install.sh names only in a comment or message all pass; and a slug in "
+        "FRONT_DOOR_PENDING is reported on its PENDING line, not enforced, until "
+        "the increment that clears it removes it"),
     "ratchet-lint.py": (
         "no budget, threshold or debt ledger has been loosened since it was "
         "recorded", REAL, "evidence",
@@ -402,8 +412,28 @@ GATES: dict[str, tuple[str, str, str, str]] = {
 }
 
 
-def run_sh_steps() -> list[str]:
-    """The gate steps tests/run.sh actually executes, in order.
+def _run_sh_lines(raw: str):
+    """tests/run.sh as (line number, logical line) pairs: a backslash
+    continuation is joined onto the line it continues, which keeps that line's
+    number, so a finding can name where the step starts."""
+    start, buf = None, ""
+    for n, line in enumerate(raw.splitlines(), 1):
+        if start is None:
+            start, buf = n, line
+        else:
+            buf += " " + line.lstrip()
+        if buf.endswith("\\"):
+            buf = buf[:-1].rstrip()
+            continue
+        yield start, buf
+        start, buf = None, ""
+    if start is not None:
+        yield start, buf
+
+
+def run_sh_invocations() -> list[tuple[int, str]]:
+    """Every gate invocation in tests/run.sh as (line, step name), in order,
+    repeats kept.
 
     The parser is deliberately forgiving about SHAPE and strict about coverage.
     An earlier version anchored the interpreter to the start of the line and
@@ -419,10 +449,8 @@ def run_sh_steps() -> list[str]:
     rather than at its start, and accept a path with or without `$ROOT`.
     """
     raw = RUN_SH.read_text(encoding="utf-8")
-    # Join backslash continuations before anything else looks at lines.
-    raw = re.sub(r"\\\n\s*", " ", raw)
-    steps = []
-    for line in raw.splitlines():
+    found = []
+    for n, line in _run_sh_lines(raw):
         line = line.strip()
         if not line or line.startswith("#"):
             continue
@@ -469,10 +497,68 @@ def run_sh_steps() -> list[str]:
             if flag:
                 name = f"{name} --{flag.group(1)}"
             elif name == "prose-lint.py":
-                name = "prose-lint.py --file README --file DOCUMENTATION"
-            if name not in steps:
-                steps.append(name)
+                # Named by each `--file` argument's path from the repository
+                # root (SPEC-0004 PROSE_FLOOR_HELD_PER_FILE), so README.md and
+                # integrations/<host>/README.md can never share a step name
+                # the way a basename rule would make them. Every path argument
+                # is kept in the name with its own spelling (`--file=`,
+                # `--root`, `--glob`), so prose_step_problems() can refuse the
+                # forms that are not one `--file PATH`. A flag given no value
+                # (`--root` last on the line, or followed by another flag)
+                # keeps its bare name, so it is refused like the valued form.
+                args = re.findall(r'--(file|root|glob)\b(?:(=|\s+)(?!-)"?(?:\$\{?ROOT\}?/)?'
+                                  r'([^"\s]+)"?)?', rest)
+                name = " ".join([name] + [f"--{flag}" + (f"{'=' if sep == '=' else ' '}{value}"
+                                                         if value else "")
+                                          for flag, sep, value in args])
+            found.append((n, name))
+    return found
+
+
+def run_sh_steps() -> list[str]:
+    """The gate steps tests/run.sh actually executes, in order, each once."""
+    steps = []
+    for _n, name in run_sh_invocations():
+        if name not in steps:
+            steps.append(name)
     return steps
+
+
+def prose_step_problems() -> list[str]:
+    """SPEC-0004 PROSE_FLOOR_HELD_PER_FILE: one prose-lint step per file.
+
+    prose-lint's dash allowance is a rate, so a line handing it two files lets
+    one file's excess hide in the other's slack. And `run_sh_steps()` lists a
+    name once, so a second line resolving to the same name would merge into
+    the first and never be seen. Both are refused here. So is any path
+    argument other than `--file PATH`: `--root` and `--glob` scan files the
+    step name does not show, and `--file=PATH` is the spelling the parser once
+    missed, which let two files pass as one step. The refusal is scoped to
+    prose-lint; whether any other tool may appear twice is not decided.
+    """
+    problems, first = [], {}
+    for n, name in run_sh_invocations():
+        if not name.startswith("prose-lint.py"):
+            continue
+        other = re.findall(r"--(?:root|glob)\b|--file=", name)
+        if other:
+            problems.append(
+                f"tests/run.sh:{n} passes {', '.join(dict.fromkeys(other))} to "
+                f"prose-lint; a prose step names its one file as `--file PATH`")
+        count = len(re.findall(r"--file[ =]", name))
+        if count > 1:
+            problems.append(
+                f"tests/run.sh:{n} hands {count} --file arguments to one "
+                f"prose-lint step; the dash rate is then held over the files "
+                f"together, so give each file its own add_step line")
+        if name in first:
+            problems.append(
+                f"tests/run.sh:{first[name]} and tests/run.sh:{n} both resolve "
+                f"to the step '{name}'; the second would merge into the first "
+                f"and never count as a step of its own")
+        else:
+            first[name] = n
+    return problems
 
 
 def runner_contract_problems() -> list[str]:
@@ -524,7 +610,7 @@ def cmd_lint() -> int:
         print("gate-registry: FAIL — parsed zero steps out of tests/run.sh; the "
               "parser and the runner have diverged", file=sys.stderr)
         return 1
-    problems = runner_contract_problems()
+    problems = runner_contract_problems() + prose_step_problems()
     for s in steps:
         if s not in GATES:
             problems.append(

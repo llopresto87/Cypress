@@ -1113,16 +1113,16 @@ Route first: the kernel's FIRST MOVE and §0 apply to this prompt.
 Surfaced earlier this session: root, skill.knowledge-graph — open if not in view.
 ```
 
-Edge, third prompt whose router adds `subsystem.graph-linters` to LOAD and
-`domain.frontmatter` to NOT LOADED:
+Edge, third prompt whose router adds `[redacted]` to LOAD and
+`[redacted]` to NOT LOADED:
 
 ```
 Route first: the kernel's FIRST MOVE and §0 apply to this prompt.
-New for this task: subsystem.graph-linters
-  subsystem.graph-linters      graph linters
+New for this task: [redacted]
+  [redacted]      graph linters
 Surfaced earlier this session: root, skill.knowledge-graph — open if not in view.
 Not suggested, not listed before (cross only if needed):
-  domain.frontmatter           peer of subsystem.graph-linters
+  [redacted]           peer of [redacted]
 ```
 
 Failure, `session_id` `../../escape`: full mode as in the first example, no
@@ -1478,7 +1478,7 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
     discard in `ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX` are dropped. The rule
     fired on ordinary short prompts that are substrings of node ids
     (`canonize` in `protocol.canonize`, `graph-lint` in
-    `subsystem.graph-linters`) and suppressed routing, against I-1. The exact
+    `[redacted]`) and suppressed routing, against I-1. The exact
     prefix check alone suffices, since the router echoes the prompt only on
     its `task:` line (`graph-lint.py:1225`).
   - Security S2: GC iterates `os.scandir(session_fd)` and stops at
@@ -1591,3 +1591,12 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
   section that no check holds (reviewer finding, the same figure the host
   matrix dropped in the review fixes). The row now names the ceiling and the
   contract that holds the section under it. ADR-0010 is written, `proposed`.
+- 2026-09-24 (appended by the 7.29.0 front-door harvest, increment 8):
+  donor-identifying tokens were replaced in place in this record under the one
+  scoped exception to append-only in `CLAUDE.md` Conventions
+  ([ADR-0011](../decisions/adr-0011-donor-token-redaction.md), `proposed`).
+  Class of token removed: node ids of the project the seed was harvested from,
+  seven spans in §8 and §12, each span replaced by the one placeholder
+  `[redacted]`; no sentence was reworded or deleted. The original text remains
+  at tag v7.28.0 and in history. History was not rewritten, and published tags
+  and Releases keep it.

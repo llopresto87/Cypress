@@ -5,16 +5,23 @@
     "ADVERSARIAL_MIN_ROWS": "min",
     "CHARTER_VOCAB_DEBT": "max",
     "CONFIDENT_WRONG_BUDGET": "max",
+    "DEFINITION_OVERLAP_CEILING": "max",
     "EAGER_BUDGET": "max",
     "EAGER_EXEMPTIONS": "map",
     "EDITION_DEBT": "set",
     "EVAL_THRESHOLD": "min",
+    "FIRST_COMMAND_LINE": "max",
+    "FIRST_HEADING_MAX_LINE": "max",
+    "FIRST_SCREEN_MAX_LINES": "max",
     "FRONTMATTER_CEILING": "max",
+    "FRONT_DOOR_PENDING": "set",
     "GRANDFATHERED_NEAR_DUPLICATES": "set",
     "INLINE_ASSERTION_DEBT": "max",
     "KERNEL_BUDGET": "max",
     "LIFECYCLE_BODY_CEILING": "max",
     "LIFECYCLE_NODES": "set",
+    "LIMITS_MIN_REQUESTED": "min",
+    "LIMITS_MIN_UNMEASURED": "min",
     "MACHINERY_BODY_CEILING": "max",
     "NEAR_DUPLICATE_CEILING": "max",
     "PARAPHRASE_FLOOR": "min",
@@ -22,6 +29,7 @@
     "PARAPHRASE_MIN_ROWS": "min",
     "PREVENTS_OVERLAP_CEILING": "max",
     "PREVENTS_RESTATEMENT_CEILING": "max",
+    "README_CATALOG_CEILING": "max",
     "SPEC_ROW_UNBOUND_BUDGET": "max",
     "SPEC_UNCOVERED_BUDGET": "max"
   },
@@ -30,6 +38,7 @@
     "ADVERSARIAL_MIN_ROWS": 12,
     "CHARTER_VOCAB_DEBT": 12,
     "CONFIDENT_WRONG_BUDGET": 0,
+    "DEFINITION_OVERLAP_CEILING": 0.5,
     "EAGER_BUDGET": 41600,
     "EAGER_EXEMPTIONS": {},
     "EDITION_DEBT": [
@@ -80,7 +89,11 @@
       "it-dlgs-138-mercato-online"
     ],
     "EVAL_THRESHOLD": 0.95,
+    "FIRST_COMMAND_LINE": 46,
+    "FIRST_HEADING_MAX_LINE": 6,
+    "FIRST_SCREEN_MAX_LINES": 53,
     "FRONTMATTER_CEILING": 100,
+    "FRONT_DOOR_PENDING": [],
     "GRANDFATHERED_NEAR_DUPLICATES": [
       "adopt this project into the docs graph by subsystem boundary || adopting this project into the docs graph by subsystem boundary",
       "check the change is integrated and not bolted on || checking the change is integrated and not bolted on",
@@ -94,6 +107,8 @@
       "protocols/grow.md",
       "protocols/harvest.md"
     ],
+    "LIMITS_MIN_REQUESTED": 3,
+    "LIMITS_MIN_UNMEASURED": 2,
     "MACHINERY_BODY_CEILING": 1000,
     "NEAR_DUPLICATE_CEILING": 0.6,
     "PARAPHRASE_FLOOR": 4,
@@ -101,6 +116,7 @@
     "PARAPHRASE_MIN_ROWS": 15,
     "PREVENTS_OVERLAP_CEILING": 0.3,
     "PREVENTS_RESTATEMENT_CEILING": 0.6,
+    "README_CATALOG_CEILING": 3,
     "SPEC_ROW_UNBOUND_BUDGET": 0,
     "SPEC_UNCOVERED_BUDGET": 2
   }

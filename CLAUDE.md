@@ -109,6 +109,12 @@ extraction and CLI behavior.
   (tested by `tests/test-spec-lint.sh`); plan-of-record shape →
   `templates/knowledge-graph/grill-lint.py` (tested by
   `tests/test-grill-lint.sh`).
+- Front-door word definitions → `DOCUMENTATION.md` §15, the glossary (one
+  anchored entry per term; README, the manual and the references link an
+  entry, never restate it). What each mechanism holds and misses, with its
+  ADR-0003 class → `DOCUMENTATION.md` §17, the enforcement section (one row per
+  mechanism kind; a front-door claim of enforcement links its row).
+  `SPEC-0004-front-door` holds both through `tests/seed-lint.py`.
 - Spawn order of a pass → its protocol's phase table (`grill.flow`,
   `specify.flow`, `test-first.cycle`, `ingest-library.flow`,
   `from-scratch.phases`); the generic sequencing rule →
@@ -119,7 +125,7 @@ extraction and CLI behavior.
 - The spec's `active` moment → `verify.status-evidence` (promotion lands
   with the RED); specify, spec-author, and the template point at it.
 - Roster ground truth → `agents/*.md` frontmatter (manifest, kernel
-  roster line, and README follow it; lint checks). Why a component is on
+  roster line, and the agents reference follow it; lint checks). Why a component is on
   the roster → the node's own `prevents:` (the failure its absence
   produces), never a summary page; `tools/roster-justification.py`
   derives the table and prints evidence-of-use and class as absent
@@ -139,5 +145,18 @@ extraction and CLI behavior.
   Depth belongs in a machinery node, never the kernel.
 - Append-only artifacts: CHANGELOG.md, docs/decisions/. Everything else:
   integrate, don't bolt on.
+  - The one exception ([ADR-0011](docs/decisions/adr-0011-donor-token-redaction.md)):
+    a token that identifies a project the seed was harvested from may be
+    replaced in an append-only record, by owner decision only, never in an
+    ADR body, and always disclosed. The records it has reached are a plan of
+    record, append-only by the grill rule, and a spec's changelog,
+    append-only by the spec rule. Four limits: (a) each token span becomes
+    the one fixed placeholder `[redacted]`, and no sentence is reworded or
+    deleted; (b) the release's CHANGELOG entry names each edited record and
+    the class of token removed, never the token, and says the original text
+    remains at the prior tag and in history, that history was not rewritten,
+    and that published tags and Releases keep it; (c) the same statement is
+    a dated line in each edited plan's or spec's changelog; (d) no
+    force-push and no tag move.
 - `harvest`/`graft` are user-sovereign; nothing in the seed may trigger
   them automatically.

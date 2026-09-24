@@ -64,6 +64,17 @@ RATCHETS = {
     "PREVENTS_OVERLAP_CEILING": ("tests/seed-lint.py", "PREVENTS_OVERLAP_CEILING", "max"),
     "PREVENTS_RESTATEMENT_CEILING": ("tests/seed-lint.py", "PREVENTS_RESTATEMENT_CEILING", "max"),
     "FRONTMATTER_CEILING": ("tests/seed-lint.py", "FRONTMATTER_CEILING", "max"),
+    # SPEC-0004, the front door: the first-screen line budgets (each also held
+    # under its spec cap by seed-lint), the README catalog ceiling, the limits
+    # section's floors, the definition-overlap ceiling, and the pending ledger.
+    "FIRST_HEADING_MAX_LINE": ("tests/seed-lint.py", "FIRST_HEADING_MAX_LINE", "max"),
+    "FIRST_SCREEN_MAX_LINES": ("tests/seed-lint.py", "FIRST_SCREEN_MAX_LINES", "max"),
+    "FIRST_COMMAND_LINE":     ("tests/seed-lint.py", "FIRST_COMMAND_LINE", "max"),
+    "README_CATALOG_CEILING": ("tests/seed-lint.py", "README_CATALOG_CEILING", "max"),
+    "LIMITS_MIN_REQUESTED":   ("tests/seed-lint.py", "LIMITS_MIN_REQUESTED", "min"),
+    "LIMITS_MIN_UNMEASURED":  ("tests/seed-lint.py", "LIMITS_MIN_UNMEASURED", "min"),
+    "DEFINITION_OVERLAP_CEILING": ("tests/seed-lint.py", "DEFINITION_OVERLAP_CEILING", "max"),
+    "FRONT_DOOR_PENDING":     ("tests/seed-lint.py", "FRONT_DOOR_PENDING", "set"),
     "INLINE_ASSERTION_DEBT": ("tests/check-coverage-binder.py", "INLINE_ASSERTION_DEBT", "max"),
     "EDITION_DEBT":           ("tests/legal-lint.py", "EDITION_DEBT", "set"),
     "PARAPHRASE_MAX_OVERLAP": ("integrations/claude-code/agent-lint.py",

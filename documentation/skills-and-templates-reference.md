@@ -1,5 +1,7 @@
 # CYPRESS Seed — Skills and Templates Reference
 
+A skill is a procedure kept in a `SKILL.md` file, which a working session loads when a task calls for it; the glossary's [skill entry](../DOCUMENTATION.md#term-skill) defines it and holds its contrast with an agent.
+
 This document describes the skills and templates shipped in the
 CYPRESS seed. The seed is a project-agnostic multi-agent coding-assistant
 system. It installs itself into a target project as a knowledge graph
@@ -26,7 +28,7 @@ inside a file.
 
 ---
 
-# Part A — Skills
+## Part A — Skills
 
 Source: `skills/<name>/SKILL.md` (15 files).
 
@@ -865,7 +867,7 @@ before relying on the graph to route work.
 
 ---
 
-# Part B — Artifact and knowledge-graph templates
+## Part B — Artifact and knowledge-graph templates
 
 Sources: `templates/*.template.md` (10 files) and
 `templates/knowledge-graph/` (6 files).
@@ -1384,14 +1386,15 @@ template's own lines, so the form never counts as the plan):
 
 ---
 
-# Part C — Prompt and brief templates
+## Part C — Prompt and brief templates
 
 Source: `templates/prompts/*.md` (9 files).
 
 These are the **delegation briefs**: the runtime prompts an orchestrator or a
-growth run hands to a spawned worker. Because hooks do not reach a subagent's
-clean context, the brief is the only enforcement that crosses the delegation
-boundary. Several briefs embed the same canonical graph-session bootstrap
+growth run hands to a spawned worker. No hook the seed installs carries the
+discipline into a subagent's clean context, so the brief is its only carrier
+across the delegation boundary
+([delegation node](../core/method/delegation.md#every-brief-carries-the-graph-discipline)). Several briefs embed the same canonical graph-session bootstrap
 block verbatim; every static seed file references it instead of paraphrasing.
 
 ## Summary table — prompt/brief templates

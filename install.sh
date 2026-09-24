@@ -115,23 +115,27 @@ trap 'rm -rf "$STAGE"' EXIT
 stage() { mkdir -p "$STAGE/$(dirname "$1")"; printf '%s\n' "$STAGE/$1"; }
 
 # log_registration_notice AGENT_DIR
-# Every supported harness enumerates its agent directory when a SESSION
-# STARTS, so the session that ran this installer holds a registry from
-# before the projection existed and cannot spawn the roster by name — the
-# "installed but not spawnable" trap that stalls a first growth. One home
-# for the rule: core/method/delegation.md, fact
+# When a host sees an agent file written mid-session is host-dependent. Claude
+# Code uses a file added to an agent directory it already watches for the next
+# delegation, but not the first file in a directory that is new in that
+# session, and a first install creates that directory; other hosts are not
+# recorded. So the session that ran this installer may not spawn the roster by
+# name: the "installed but not spawnable" trap that stalls a first growth. One
+# home for the rule: core/method/delegation.md, fact
 # delegation.harness-registration; this is only its install-time notice.
 log_registration_notice() {
     local agent_dir="$1"
     log ""
-    log "NEXT STEP — placed, but not yet spawnable in the session that ran this"
-    log "  installer: the harness enumerated $agent_dir when that session"
-    log "  started. Before running grow/graft or dispatching a specialist by"
-    log "  name, start a NEW agent session rooted at:"
+    log "NEXT STEP — placed, but the session that ran this installer may not"
+    log "  spawn the roster in $agent_dir by name yet: whether a host sees an"
+    log "  agent directory written mid-session is host-dependent, and a first"
+    log "  install creates it. On a first install, before running grow/graft or"
+    log "  dispatching a specialist by name, start a NEW agent session rooted at:"
     log "    $PROJECT_DIR"
-    log "  (the plant — never the seed directory). If a restart is impossible,"
-    log "  use the recorded role-emulation fallback in"
-    log "  docs/graph/method/delegation.md (delegation.harness-registration)."
+    log "  (the plant — never the seed directory). The preflight that checks"
+    log "  registration, and the role-emulation fallback when a restart is"
+    log "  impossible, are in docs/graph/method/delegation.md"
+    log "  (delegation.harness-registration)."
 }
 
 # stamp_field STAMP KEY — read one scalar string field out of an existing stamp.
@@ -2181,7 +2185,7 @@ place_file "$SEED_ROOT/INSTALL_PROMPT.md" "$PROJECT_DIR/EXPERT_SEED_INSTALL_PROM
 # transient scratch and stays ignored.
 # Where each adapter expects to find a SPAWNABLE agent. `docs/graph/agents/` is
 # the home of every agent node; these are projections of it, and the host reads
-# its roster from them when a session starts — so an agent that exists only in
+# its roster from them, not from the graph — so an agent that exists only in
 # the graph is on disk and unspawnable. This is the ONE home of that mapping:
 # it is recorded into the plant's stamp below, and the growth audit reads it
 # from there rather than keeping a copy that could drift.
@@ -2365,8 +2369,9 @@ fi
 log "done. FILES ARE PLACED — the project is NOT grown yet."
 log ""
 log "Next step (the HAND OFF phase): open a NEW agent-capable chat ROOTED AT the"
-log "target directory (never the seed — the roster registers at session start,"
-log "see delegation.harness-registration) and paste the one entry prompt from:"
+log "target directory (never the seed — a first install's roster may not be"
+log "registered until then, see delegation.harness-registration) and paste the"
+log "one entry prompt from:"
 log ""
 log "    $PROJECT_DIR/EXPERT_SEED_INSTALL_PROMPT.md"
 log ""

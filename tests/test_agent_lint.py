@@ -200,6 +200,24 @@ def require_lint() -> Path:
     return lint
 
 
+def _load_lint_module():
+    """agent-lint as a module, compiled from its current source text.
+
+    Executed from text for the reason `lint_constant` reads text: an import
+    can serve a stale bytecode cache.
+    """
+    import types
+    path = require_lint()
+    mod = types.ModuleType("agent_lint_under_test")
+    mod.__file__ = str(path)
+    sys.modules[mod.__name__] = mod
+    try:
+        exec(compile(path.read_text(encoding="utf-8"), str(path), "exec"), mod.__dict__)
+    finally:
+        sys.modules.pop(mod.__name__, None)
+    return mod
+
+
 def run(script: Path, args, cwd: Path) -> subprocess.CompletedProcess:
     # NOTE: planted-malformation tests deliberately rely on the tool walking up
     # from their tmp project root, so this must NOT inject --dir. The
@@ -283,9 +301,13 @@ def agent_md(
     (`tools: [a, b]`) — the parser gap this router must close.
     `triggers=None` omits the block entirely; `triggers=()` emits an empty
     `routing_triggers:` — the two malformations the linter must reject.
+    `tools=None` omits the `tools:` line, which on the host means the agent
+    inherits every tool, the spawn tool included.
     """
-    out = ["---", f"name: {name}", f"description: {description}",
-           f"tools: {tools}", f"model: {model}"]
+    out = ["---", f"name: {name}", f"description: {description}"]
+    if tools is not None:
+        out.append(f"tools: {tools}")
+    out.append(f"model: {model}")
     if triggers is not None:
         out.append("routing_triggers:")
         for t in triggers:
@@ -564,6 +586,90 @@ class InlineToolsTests(unittest.TestCase):
             "can_delegate:true without Task in tools must fail --lint (§4.1 rule 2):\n"
             f"stdout:\n{r.stdout}\nstderr:\n{r.stderr}"
         ))
+
+    def _lint(self, agents):
+        root, dst = build_project(self.tmp_path, agents)
+        return run(dst, ["--lint"], cwd=root)
+
+    def test_agent_grant_without_can_delegate_fails_lint(self):
+        """The spawn tool's canonical name is `Agent`, with `Task` its alias.
+        Granting `Agent` while declaring can_delegate:false fails --lint and
+        names the spawn tool, as the `Task` case above does."""
+        r = self._lint({
+            "boss": agent_md("boss", tools="[Read, Write, Agent]",
+                             triggers=["coordinate the work"], can_delegate=False),
+            "leaf": agent_md("leaf", triggers=["do the leaf work"], can_delegate=False),
+        })
+        self.assertNotEqual(r.returncode, 0, (
+            "can_delegate:false while Agent is in the inline tools list must fail "
+            f"--lint:\nstdout:\n{r.stdout}\nstderr:\n{r.stderr}"))
+        self.assertIn("spawn tool", r.stdout + r.stderr, r.stdout + r.stderr)
+
+    def test_agent_grant_with_can_delegate_passes_lint(self):
+        """The same grant with can_delegate:true is a well-formed delegator, so
+        a fix that refuses `Agent` outright fails here."""
+        r = self._lint({
+            "boss": agent_md("boss", tools="[Read, Write, Bash, Agent]",
+                             triggers=["coordinate the work"],
+                             can_delegate=True, max_spawn_depth=1,
+                             delegates_to=["leaf"]),
+            "leaf": agent_md("leaf", tools="[Read, Grep]",
+                             triggers=["do the leaf work"], can_delegate=False),
+        })
+        self.assertEqual(r.returncode, 0, (
+            "--lint should accept a delegator granted the spawn tool as Agent:\n"
+            f"stdout:\n{r.stdout}\nstderr:\n{r.stderr}"))
+
+    def test_parenthesized_agent_grant_counts_as_spawn(self):
+        """`Agent(type)` grants the whole spawn tool in a subagent definition
+        (the type list is ignored there), so it is a grant like the bare name."""
+        r = self._lint({
+            "boss": agent_md("boss", tools="[Read, Agent(leaf)]",
+                             triggers=["coordinate the work"], can_delegate=False),
+            "leaf": agent_md("leaf", triggers=["do the leaf work"], can_delegate=False),
+        })
+        self.assertNotEqual(r.returncode, 0, (
+            "can_delegate:false with a parenthesized Agent grant must fail --lint:\n"
+            f"stdout:\n{r.stdout}\nstderr:\n{r.stderr}"))
+
+    def test_omitted_tools_fails_lint(self):
+        """An agent with no `tools:` line inherits every tool, the spawn tool
+        included, so can_delegate:false is untrue for it."""
+        r = self._lint({
+            "boss": agent_md("boss", tools=None,
+                             triggers=["coordinate the work"], can_delegate=False),
+            "leaf": agent_md("leaf", triggers=["do the leaf work"], can_delegate=False),
+        })
+        self.assertNotEqual(r.returncode, 0, (
+            "an agent that omits its tools: line must fail --lint:\n"
+            f"stdout:\n{r.stdout}\nstderr:\n{r.stderr}"))
+
+    def test_delegator_without_tools_line_fails_through_the_omission_branch(self):
+        """A delegator that omits `tools:` inherits the spawn tool, so it would
+        pass the can_delegate == spawn-grant rule. It must still fail, and
+        through the omission message, not by luck of another rule."""
+        r = self._lint({
+            "boss": agent_md("boss", tools=None,
+                             triggers=["coordinate the work"],
+                             can_delegate=True, max_spawn_depth=1,
+                             delegates_to=["leaf"]),
+            "leaf": agent_md("leaf", tools="[Read, Grep]",
+                             triggers=["do the leaf work"], can_delegate=False),
+        })
+        out = r.stdout + r.stderr
+        self.assertNotEqual(r.returncode, 0, (
+            "a delegator that omits its tools: line must fail --lint:\n" + out))
+        self.assertIn("boss", out, out)
+        self.assertIn("omits its tools: line", out, out)
+
+    def test_grants_spawn_reads_a_raw_inline_list(self):
+        """Given the raw `[a, b]` string rather than a parsed list, the bracket
+        must not cling to the first or last entry and hide the grant."""
+        grants_spawn = _load_lint_module().grants_spawn
+        for raw, want in (("[Read, Task]", True), ("[Agent, Read]", True),
+                          ("[Agent(leaf)]", True), ("Task", True),
+                          ("[Read, Grep]", False), ("[]", False)):
+            self.assertIs(grants_spawn(raw), want, raw)
 
     def test_triggers_parse_from_real_agent_def(self):
         """Triggers + the real inline `tools:` line parse from a REAL agent def.

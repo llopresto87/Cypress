@@ -1390,7 +1390,7 @@ def lint_experts(plant, seed, rec, templates, findings):
     agent. Through 7.3.x nothing checked that it happened, and worse, nothing
     checked that it took: an expert authored into `docs/graph/agents/` and
     never projected into the harness is on disk and unspawnable, because the
-    host reads its roster from the projection directory when a session starts.
+    host reads its roster from the projection directory, not from the graph.
     Growth would report a specialist the plant could never call.
 
     Every expert the plant's graph carries, plus every expert an inventory row
@@ -1533,8 +1533,8 @@ def lint_experts(plant, seed, rec, templates, findings):
                                         f"{projected} — authored into the "
                                         f"graph and never projected, so no "
                                         f"{tool} session can spawn it: the "
-                                        f"host reads its roster from there when "
-                                        f"a session starts"))
+                                        f"host reads its roster from there, "
+                                        f"not from the graph"))
             elif verbatim and proj.read_bytes() != info["path"].read_bytes():
                 findings.append(Finding("CONTRADICTED", label,
                                         f"{projected} has drifted from its "

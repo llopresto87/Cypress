@@ -72,6 +72,10 @@ grep -q 'contained' "$ROOT/core/AGENTS.md" \
 # points at kernel §0 and restates none of it (SPEC-0003
 # HOOK_TEXT_RESTATES_NO_KERNEL_RULE, I-8), so they no longer name the lane. The
 # kernel, which they point at, is asserted to carry it at the grep above.
+# README.md left this list in 7.29.0 (SPEC-0004 C4): it no longer restates the
+# tier rules and links the manual instead, whose §4.1 is the lane's reader-facing
+# home: the loop below holds DOCUMENTATION.md, and the grep after it holds §4.1's
+# heading, so the lane cannot survive only as a passing mention elsewhere.
 for f in core/AGENTS.md \
          agents/00-orchestrator.md \
          agents/02-implementer.md \
@@ -79,11 +83,12 @@ for f in core/AGENTS.md \
          protocols/deliver.md \
          protocols/grill.md \
          manifest.json \
-         README.md \
          DOCUMENTATION.md \
          documentation/protocols-reference.md; do
   grep -qi 'contained' "$ROOT/$f" || fail "$f never mentions the contained lane"
 done
+grep -qF "### 4.1 T2's contained lane" "$ROOT/DOCUMENTATION.md" \
+  || fail "DOCUMENTATION.md lost its §4.1 heading, the contained lane's reader-facing home"
 
 # -- the superseded absolutist edge is gone from shipped prose ----------
 if grep -rn 'however small it looks' "$ROOT"/{core,protocols,agents,skills,templates,integrations,documentation} \
