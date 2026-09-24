@@ -679,7 +679,7 @@ PY
 case_agn_docs() {
   local TMP; TMP="$(fresh)"
   # a dev-plan .md under docs/plans (newly scanned root)
-  python3 -c "open('$TMP/docs/plans/scout-01-kernel.md','a').write(chr(10)+'Ran the probe from /home/exampleuser/Cypres_plant and captured the log.'+chr(10))"
+  python3 -c "open('$TMP/docs/plans/scout-01-kernel.md','a').write(chr(10)+'Ran the probe from /home/exampleuser/Widget_stock and captured the log.'+chr(10))"
   expect_fail "absolute operator home path" "agn-scope-docs-plans"
   restore docs/plans/scout-01-kernel.md
   # install.sh (a newly named top-level file)

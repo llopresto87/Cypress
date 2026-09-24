@@ -106,10 +106,10 @@ domain_plant() {
   python3 - "$d" <<'PY'
 import json, pathlib, sys
 f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_text())
-r["inventory"] = [{"kind": "domain", "name": "the knowledge graph",
-                   "slug": "knowledge-graph", "significance": "core",
+r["inventory"] = [{"kind": "domain", "name": "the widget catalog",
+                   "slug": "widget-catalog", "significance": "core",
                    "evidence": ["docs/graph/index.md:1"],
-                   "expect": [{"path": "architecture/knowledge-graph.md",
+                   "expect": [{"path": "architecture/widget-catalog.md",
                                "why": "hand-written; the tool cannot derive it"}],
                    "grounding": {"required": False, "sources": []},
                    "expert": {"warranted": False,
@@ -562,7 +562,7 @@ f = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(f.read_te
 r["inventory"][0]["grounding"]["required"] = True
 r["inventory"].append({"kind": "objective", "name": "O9", "slug": "o9",
                        "evidence": ["docs/graph/index.md:1"],
-                       "grounded_by": ["knowledge-graph"],
+                       "grounded_by": ["widget-catalog"],
                        "grounding": {"required": True, "sources": []}})
 f.write_text(json.dumps(r, indent=2) + "\n")
 PY
@@ -588,9 +588,9 @@ caseAUDIT_PLAN_UNIONS_HANDWRITTEN_EXPECT() {
 import json, pathlib, sys
 it = json.loads((pathlib.Path(sys.argv[1])/".cypress/coverage.json").read_text())["inventory"][0]
 paths = [e["path"] for e in it["expect"]]
-assert "architecture/knowledge-graph.md" in paths, ("hand-written path dropped", paths)
-assert "best-practices/knowledge-graph.md" in paths, ("owed page not added", paths)
-assert "nodes/domain.knowledge-graph.md" in paths, ("owed node not added", paths)
+assert "architecture/widget-catalog.md" in paths, ("hand-written path dropped", paths)
+assert "best-practices/widget-catalog.md" in paths, ("owed page not added", paths)
+assert "nodes/domain.widget-catalog.md" in paths, ("owed node not added", paths)
 assert not any("expertise" in p for p in paths), ("domain minted an expertise node", paths)
 PY
 }
@@ -611,11 +611,11 @@ r["inventory"][0]["status"] = "COVERED"
 f.write_text(json.dumps(r, indent=2) + "\n")
 PY
   out="$(python3 "$AUDIT" "$TMP/x61" "$ROOT" 2>&1)" || true
-  grep -q "best-practices/knowledge-graph.md — does not exist" <<<"$out" \
+  grep -q "best-practices/widget-catalog.md — does not exist" <<<"$out" \
       || fail "a domain row that owes a best-practices page did not report it missing"
-  grep -q "nodes/domain.knowledge-graph.md — does not exist" <<<"$out" \
+  grep -q "nodes/domain.widget-catalog.md — does not exist" <<<"$out" \
       || fail "a domain row that owes its routing node did not report it missing"
-  grep -q "UNGROUNDED   domain the knowledge graph" <<<"$out" \
+  grep -q "UNGROUNDED   domain the widget catalog" <<<"$out" \
       || fail "a domain row with grounding required and no source was not UNGROUNDED"
   [[ "$(audit_at "$TMP/x61")" == 1 ]] \
       || fail "a domain row owing an ungrounded page passed the gate"

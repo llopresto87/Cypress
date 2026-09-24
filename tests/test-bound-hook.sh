@@ -256,7 +256,7 @@ BODY = (
     "\n"
     "NOT LOADED (with the reason; cross only if the task requires it):\n"
     "  agent.implementer            peer of skill.knowledge-graph\n"
-    "  domain.frontmatter           peer of skill.knowledge-graph\n")
+    "  domain.sprocketry            peer of skill.knowledge-graph\n")
 NOTICES = ["  ! notice one: the widget terms matched nothing specific",
            "  ! notice two: consider the index before the nodes"]
 NOTICE_BODY = "\n".join(NOTICES) + "\n\n" + BODY
@@ -772,9 +772,9 @@ def x111(base):
     lines = r.inj.split("\n")
     check(PEERS_HEADER in lines, f"no `{PEERS_HEADER}` line — {r.ctx()}")
     i = lines.index(PEERS_HEADER)
-    check(dict(NL)["domain.frontmatter"] in lines[i + 1:], f"the unseen peer's entry line is missing — {r.ctx()}")
+    check(dict(NL)["domain.sprocketry"] in lines[i + 1:], f"the unseen peer's entry line is missing — {r.ctx()}")
     check(not any("agent.implementer" in l for l in lines), f"a peer already shown was repeated — {r.ctx()}")
-    check("domain.frontmatter" in read_ledger(p).get("peers_seen", []), "the unseen peer was not added to peers_seen")
+    check("domain.sprocketry" in read_ledger(p).get("peers_seen", []), "the unseen peer was not added to peers_seen")
     return "a peer already shown is dropped; the unseen one is listed and recorded"
 
 

@@ -43,4 +43,5 @@ name-occurrence count that had been standing in for evidence of use, which
 measured how much other prose discusses a component rather than whether anything
 needs it. Verified
 gate results for each implementation are recorded once, in the owning plan's
-changelog. ADRs are append-only: supersede or amend, never rewrite.
+changelog. ADRs are append-only: supersede or amend, never rewrite. One scoped
+exception to append-only, for other records: [`CLAUDE.md` Conventions](../../CLAUDE.md).

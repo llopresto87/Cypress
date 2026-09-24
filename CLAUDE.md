@@ -145,5 +145,16 @@ extraction and CLI behavior.
   Depth belongs in a machinery node, never the kernel.
 - Append-only artifacts: CHANGELOG.md, docs/decisions/. Everything else:
   integrate, don't bolt on.
+  - The one exception ([ADR-0011](docs/decisions/adr-0011-donor-token-redaction.md)):
+    a token that identifies a project the seed was harvested from may be
+    replaced in an append-only record, by owner decision only, never in an
+    ADR body, and always disclosed. Four limits: (a) each token span becomes
+    the one fixed placeholder `[redacted]`, and no sentence is reworded or
+    deleted; (b) the release's CHANGELOG entry names each edited record and
+    the class of token removed, never the token, and says the original text
+    remains at the prior tag and in history, that history was not rewritten,
+    and that published tags and Releases keep it; (c) the same statement is
+    a dated line in each edited plan's or spec's changelog; (d) no
+    force-push and no tag move.
 - `harvest`/`graft` are user-sovereign; nothing in the seed may trigger
   them automatically.
