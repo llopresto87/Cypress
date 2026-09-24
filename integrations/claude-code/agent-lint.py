@@ -294,10 +294,12 @@ def grants_spawn(tools) -> bool:
     `None` is an omitted `tools:` line, and an agent without one inherits every
     tool, the spawn tool included. An entry counts when it is a spawn-tool name
     or starts with one followed by `(`; the prefix test also holds when the
-    inline-list split cuts `Agent(a, b)` into `Agent(a` and `b)`."""
+    inline-list split cuts `Agent(a, b)` into `Agent(a` and `b)`. A raw string
+    is read as the inline list it spells, so its outer brackets are dropped
+    before the split rather than left on the first and last entries."""
     if tools is None:
         return True
-    entries = tools.split(",") if isinstance(tools, str) else tools
+    entries = tools.strip().strip("[]").split(",") if isinstance(tools, str) else tools
     for entry in (str(e).strip() for e in entries):
         if entry in SPAWN_TOOLS or entry.startswith(tuple(f"{n}(" for n in SPAWN_TOOLS)):
             return True

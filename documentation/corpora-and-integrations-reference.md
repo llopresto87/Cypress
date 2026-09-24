@@ -511,13 +511,14 @@ Claude Code reads on every session: `CLAUDE.md` (project memory at repo root),
   `SessionStart`, runs `docs/graph/status-register.py --summary` (a frontmatter
   scan that counts `open` / `hotfix` / `deferred` items and the oldest of them)
   and injects it as `additionalContext`, so lifecycle debt is in front of the
-  model before it plans without a line in any brief. Fail-open; subagents
-  receive nothing (hooks do not cross the spawn boundary).
-- **Known gap / sharp edge:** the roster is enumerated when the session
-  starts. A roster written mid-session (by an install, graft, or freshly
-  commissioned expert) is on disk but not spawnable until a new session, and
-  a session rooted at the seed never carries a plant's roster. The preflight,
-  remedy, and recorded fallback are owned by `docs/graph/method/delegation.md`
+  model before it plans without a line in any brief. Fail-open. What any
+  hook carries into a subagent's turn is recorded in
+  `docs/graph/method/delegation.md` (`delegation.briefs`).
+- **Known gap / sharp edge:** a roster written mid-session (by an install,
+  graft, or freshly commissioned expert) can be on disk and not yet
+  spawnable, and a session rooted at the seed never carries a plant's
+  roster. When the host registers such a file, the preflight, the remedy,
+  and the recorded fallback are owned by `docs/graph/method/delegation.md`
   (`delegation.harness-registration`).
 
 ## B.3 Prime Agent

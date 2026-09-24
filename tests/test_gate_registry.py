@@ -233,7 +233,10 @@ class ProseFloorPerFileTests(unittest.TestCase):
         show, so each is refused on any prose-lint line."""
         for arg in ('--file="$ROOT/README.md"',
                     '--root "$ROOT/docs"',
-                    '--glob "*.md" --file "$ROOT/README.md"'):
+                    '--glob "*.md" --file "$ROOT/README.md"',
+                    # a bare flag with no value: the name must still show it
+                    '--root',
+                    '--file "$ROOT/README.md" --root'):
             with self.subTest(arg=arg):
                 self._run_sh([f'{self.PROSE} {arg}'])
                 rc, text = self._lint_classified()

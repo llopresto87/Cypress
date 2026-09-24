@@ -200,6 +200,24 @@ def require_lint() -> Path:
     return lint
 
 
+def _load_lint_module():
+    """agent-lint as a module, compiled from its current source text.
+
+    Executed from text for the reason `lint_constant` reads text: an import
+    can serve a stale bytecode cache.
+    """
+    import types
+    path = require_lint()
+    mod = types.ModuleType("agent_lint_under_test")
+    mod.__file__ = str(path)
+    sys.modules[mod.__name__] = mod
+    try:
+        exec(compile(path.read_text(encoding="utf-8"), str(path), "exec"), mod.__dict__)
+    finally:
+        sys.modules.pop(mod.__name__, None)
+    return mod
+
+
 def run(script: Path, args, cwd: Path) -> subprocess.CompletedProcess:
     # NOTE: planted-malformation tests deliberately rely on the tool walking up
     # from their tmp project root, so this must NOT inject --dir. The
@@ -625,6 +643,33 @@ class InlineToolsTests(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0, (
             "an agent that omits its tools: line must fail --lint:\n"
             f"stdout:\n{r.stdout}\nstderr:\n{r.stderr}"))
+
+    def test_delegator_without_tools_line_fails_through_the_omission_branch(self):
+        """A delegator that omits `tools:` inherits the spawn tool, so it would
+        pass the can_delegate == spawn-grant rule. It must still fail, and
+        through the omission message, not by luck of another rule."""
+        r = self._lint({
+            "boss": agent_md("boss", tools=None,
+                             triggers=["coordinate the work"],
+                             can_delegate=True, max_spawn_depth=1,
+                             delegates_to=["leaf"]),
+            "leaf": agent_md("leaf", tools="[Read, Grep]",
+                             triggers=["do the leaf work"], can_delegate=False),
+        })
+        out = r.stdout + r.stderr
+        self.assertNotEqual(r.returncode, 0, (
+            "a delegator that omits its tools: line must fail --lint:\n" + out))
+        self.assertIn("boss", out, out)
+        self.assertIn("omits its tools: line", out, out)
+
+    def test_grants_spawn_reads_a_raw_inline_list(self):
+        """Given the raw `[a, b]` string rather than a parsed list, the bracket
+        must not cling to the first or last entry and hide the grant."""
+        grants_spawn = _load_lint_module().grants_spawn
+        for raw, want in (("[Read, Task]", True), ("[Agent, Read]", True),
+                          ("[Agent(leaf)]", True), ("Task", True),
+                          ("[Read, Grep]", False), ("[]", False)):
+            self.assertIs(grants_spawn(raw), want, raw)
 
     def test_triggers_parse_from_real_agent_def(self):
         """Triggers + the real inline `tools:` line parse from a REAL agent def.

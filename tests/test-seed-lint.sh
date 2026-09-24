@@ -869,6 +869,47 @@ case_hook_reach_phrase() {
   expect_fail "core/method/delegation.md:[0-9]*: says hooks do not reach" "hook-reach-phrase"
   rm -rf "$TMP"
 }
+case_hook_reach_rewordings() {
+  local TMP out rc n ir loc f; TMP="$(fresh)"
+  # 26b. The same false claim reworded, one variant per line, plus one planted
+  # under integrations/, which ships hook files. Each planted line must be
+  # reported at its own line number.
+  f="$TMP/core/method/delegation.md"; n="$(wc -l < "$f")"
+  printf '%s\n' \
+    'Subagents receive nothing (hooks do not cross the spawn boundary).' \
+    'This runs in the top session, since subagent hooks do not fire.' \
+    "Hooks don't reach subagents." \
+    'Settings hooks never reach a subagent.' >> "$f"
+  printf '\nTool hooks cannot run inside a subagent.\n' >> "$TMP/integrations/claude-code/README.md"
+  ir="$(wc -l < "$TMP/integrations/claude-code/README.md")"
+  # exercises: check_hook_reach_phrases
+  out="$(lint)" && rc=0 || rc=$?
+  [[ $rc -eq 1 ]] || { echo "[hook-reach-rewordings] expected exit 1, got $rc" >&2; echo "$out" >&2; exit 1; }
+  for loc in "core/method/delegation.md:$((n + 1))" "core/method/delegation.md:$((n + 2))" \
+             "core/method/delegation.md:$((n + 3))" "core/method/delegation.md:$((n + 4))" \
+             "integrations/claude-code/README.md:$ir"; do
+    grep -qF "$loc: says hooks do not reach" <<<"$out" || {
+      echo "[hook-reach-rewordings] not reported: $loc" >&2; echo "$out" >&2; exit 1; }
+  done
+  rm -rf "$TMP"
+}
+case_hook_reach_true_claims() {
+  local TMP out rc; TMP="$(fresh)"
+  # 26c. True sentences the check must leave alone: a named or prompt-injecting
+  # hook not reaching a subagent's turn (observed, plan 7.29.0 §16.8), and
+  # "reach" in a sense that has nothing to do with subagents.
+  printf '%s\n' \
+    "The route hook does not reach a subagent's turn." \
+    "Prompt-injecting hooks do not reach a subagent's turn." \
+    'The hook does not reach its timeout.' >> "$TMP/core/method/delegation.md"
+  # exercises: check_hook_reach_phrases
+  out="$(lint)" && rc=0 || rc=$?
+  [[ $rc -le 1 ]] || { echo "[hook-reach-true-claims] lint crashed ($rc)" >&2; echo "$out" >&2; exit 1; }
+  if grep -q "says hooks do not reach" <<<"$out"; then
+    echo "[hook-reach-true-claims] a true sentence was refused" >&2; echo "$out" >&2; exit 1
+  fi
+  rm -rf "$TMP"
+}
 
 # --- one-case subcommand, run by the parallel dispatcher ---------------------
 # E family (ADR-0009 host tiers): E1-E3 are in test-full-install.sh; E4 is here.
@@ -2701,7 +2742,7 @@ TMP="$SEEDLINT_TMPL"
 lint >/dev/null || { echo "baseline seed-lint did not pass on a clean copy" >&2; exit 1; }
 
 SCN="$(mktemp)"
-for c in case_01 case_02 case_03 case_04 case_05 case_06 case_07 case_08 case_09 case_10 case_11 case_12 case_13 case_14 case_15 case_16 case_17 case_18 case_19 case_20 case_21 case_22 case_23 case_24 case_25 case_26 case_27 case_28 case_29 case_30 case_31 case_32 case_33 case_34 case_35 case_36 case_spec_row_toplevel_def case_37 case_38 case_shell_floor case_agn_docs case_agn_py_sh case_x201 case_x202 case_x203 case_frontmatter_portable caseHOST_TIERS_AGREE case_agent_grant_undeclared case_tools_omitted case_hook_reach_phrase \
+for c in case_01 case_02 case_03 case_04 case_05 case_06 case_07 case_08 case_09 case_10 case_11 case_12 case_13 case_14 case_15 case_16 case_17 case_18 case_19 case_20 case_21 case_22 case_23 case_24 case_25 case_26 case_27 case_28 case_29 case_30 case_31 case_32 case_33 case_34 case_35 case_36 case_spec_row_toplevel_def case_37 case_38 case_shell_floor case_agn_docs case_agn_py_sh case_x201 case_x202 case_x203 case_frontmatter_portable caseHOST_TIERS_AGREE case_agent_grant_undeclared case_tools_omitted case_hook_reach_phrase case_hook_reach_rewordings case_hook_reach_true_claims \
     case_fd_fixture_clean case_fd_first_screen_order case_fd_first_screen_budget case_fd_first_command_line case_fd_what_you_get_heading case_fd_first_screen_caps case_fd_later_sections_order case_fd_install_target_paths case_fd_install_seed_path case_fd_where_next case_fd_glossary_absent case_fd_glossary_fields case_fd_glossary_closed_values case_fd_glossary_required_term case_fd_glossary_paths case_fd_glossary_install_literal case_fd_definition_links case_fd_term_linked case_fd_one_home case_fd_reference_opener case_fd_enforcement_row case_fd_enforcement_required_row case_fd_enforcement_row_residuals case_fd_mechanism_traced case_fd_mechanism_overclaim case_fd_mechanism_surfaces case_fd_hook_firing case_fd_limits_hard_row case_fd_limits_required_rows case_fd_limits_unmeasured case_fd_catalogs case_fd_adr_range case_fd_cost_scope case_fd_cost_provenance case_fd_cost_measured_derived case_fd_cost_no_derived case_fd_measured_evidence case_fd_eager_published case_fd_body_home case_fd_body_figure_elsewhere case_fd_body_project_node case_fd_anchor_resolves case_fd_anchor_duplicate case_fd_headings case_fd_link_text case_fd_table_header case_fd_pending_stale case_fd_pending_unknown_slug case_fd_pending_holds_exit case_fd_pending_implemented case_fd_pending_release case_fd_absent_inputs case_fd_unreadable_input case_fd_check_raised; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done

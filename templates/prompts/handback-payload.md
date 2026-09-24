@@ -67,8 +67,8 @@ HANDBACK
   routable target. On a final turn with nothing left, "none — session
   ends here" is the defined value.
 - **A leaf worker recommends; it does not spawn.** Leaf agents carry no
-  spawn tool by design (the recursion cap the harness enforces for a
-  registered specialist). At an out-of-domain boundary you STOP and
+  spawn tool by design: for a registered specialist that is one of the
+  harness's two recursion caps, the host's nesting limit being the other. At an out-of-domain boundary you STOP and
   return this payload — you do not do the work. Under role emulation the
   same cap holds by brief instead of by frontmatter, and
   `harness_override` is what makes that visible at `deliver`.
