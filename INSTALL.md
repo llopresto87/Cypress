@@ -94,9 +94,9 @@ For each tool:
 3. Copies (or, with `--symlink`, links) harness projections where the
    tool demands a fixed location — agents and skills only — plus
    tool-specific files (slash commands, settings, config).
-4. Ensures `docs/graph/` has the schema, linter, router, nodes directory,
+4. Places in `docs/graph/` the schema, linter, router, nodes directory,
    and every missing leaf collection from `templates/docs/`. Existing files
-   are preserved. `INSTALL_PROMPT.md` then orchestrates source-grounded
+   are preserved ([plant files kept](DOCUMENTATION.md#enf-plant-files-kept)). `INSTALL_PROMPT.md` then orchestrates source-grounded
    growth; `/initialize` is the entry fork behind it — grow when there is
    source to scout, from-scratch when the repository is empty.
 5. Installs the canonical prompt as `EXPERT_SEED_INSTALL_PROMPT.md` at the
@@ -115,27 +115,28 @@ views, and use `--check` to detect drift without writing:
 
 ## The plant facts are yours to state
 
-`docs/graph/index.md` carries a `plant:` block with four facts only the owner can
+`docs/graph/index.md` carries a `plant:` section with four facts only the owner can
 assert: `environment_class` (ephemeral-test, staging, real-production or mixed — it
 decides what the release posture tolerates, build-on-host included), `commit_attribution`
 (`none` or the trailer text), `deliverable_language` and `comment_language`. Pass them at
-install time with those four flags, or fill the block by hand before grow or graft.
+install time with those four flags, or fill the section by hand before grow or graft.
 
 Two more decisions are the owner's and are **asked before a run, not settled
 during one**: `--legal-corpus yes|no`, which places the whole legal corpus or
 records that this plant carries none, and `--legal-jurisdiction CC`, which names
 the national layer. `agent.legal` can do exactly one thing until the first is
-answered — refuse — and the installer says so at the end of every run that
-leaves it undecided. This document is what an owner reads BEFORE the run, and it
+answered, which is to decline the work
+([charter duties](DOCUMENTATION.md#enf-charter-duties)), and the installer says
+so at the end of every run that leaves it undecided. This document is what an owner reads BEFORE the run, and it
 did not mention either flag.
-The installer never guesses them and never overwrites a value the plant already declares;
-whatever is still a placeholder is named as a NEXT STEP.
+The installer does not guess them, and it leaves any value the plant already declares
+as it is; whatever is still a placeholder is named as a NEXT STEP.
 
 ## Copy mode vs symlink mode
 
 | Mode    | When                 | Pros                                                          | Cons                                                        |
 |---------|----------------------|--------------------------------------------------------------|------------------------------------------------------------|
-| copy    | Default (all OS)     | Project stays isolated; project edits never write back into the seed | Must re-run the installer to pull seed updates             |
+| copy    | Default (all OS)     | Project stays isolated; project edits do not write back into the seed | Must re-run the installer to pull seed updates             |
 | symlink | Opt-in (`--symlink`) | Edits to the seed propagate instantly                        | Seed path must stay stable; project edits write back into the seed |
 
 Copy is the default so a project can customize its placed agents,
@@ -150,13 +151,16 @@ the installer renames it to `<path>.bak-<timestamp>` and writes the new
 body. A file that already matches is left alone — no backup, no rewrite,
 so a re-install of an unchanged plant creates nothing.
 
-`--force` suppresses the per-file warning, never the backup. The backup
-IS graft Phase 7's safety net and the input `tools/graft-audit.py` reads,
-so a flag that discarded it would leave a graft with nothing to audit and
-no way back. There is no mode that overwrites without a recovery copy.
+`--force` suppresses the per-file warning, never the backup
+([backup before replace](DOCUMENTATION.md#enf-backup-before-replace)). The
+backup IS graft Phase 7's safety net and the input `tools/graft-audit.py`
+reads, so a flag that discarded it would leave a graft with nothing to audit
+and no way back. No mode overwrites without a recovery copy; the one file
+replaced without a copy is the install stamp `.cypress/seed.json`, by design.
 
-If the destination is a symlink, the LINK is moved aside — never followed.
-An install cannot modify a file outside the target directory.
+If the destination is a symlink, the LINK is moved aside, not followed, so an
+install does not modify a file outside the target directory
+([backup before replace](DOCUMENTATION.md#enf-backup-before-replace)).
 
 The installer never deletes files outside of `.claude/`,
 `.opencode/`, `.codex/`, or `.github/`. In `docs/graph/` it adds
@@ -166,7 +170,9 @@ graph you grow); the seed-owned machinery subtrees (`protocols/`,
 `skills/`, `agents/`, `method/`, `templates/`) are fast-forwarded
 to the current seed — byte-identical files are left untouched, and
 anything that differs is backed up first so
-`tools/graft-audit.py` can prove no customization was buried.
+`tools/graft-audit.py` can prove no customization was buried
+([plant files kept](DOCUMENTATION.md#enf-plant-files-kept),
+[graft audit](DOCUMENTATION.md#enf-graft-audit)).
 
 ## Verifying the install
 
@@ -189,13 +195,14 @@ ls .claude/agents/     # or .opencode/agents/  or .codex/agents/
 #   appear
 ```
 
-`ls` proves the files are placed; it does not prove the tool can spawn
-them. Every supported harness enumerates its agent directory when a
-session *starts*, so the session that ran the installer still holds the
-registry from before it — and a session rooted at the seed never holds
-the project's roster at all. **Start a new session rooted at the project**
+`ls` shows the files are placed; it does not show that the tool can start
+them. When a host picks up agent files placed during a running session is
+host-dependent (the [host capability matrix](documentation/host-capability-matrix.md)
+records it per host), and a session rooted at the seed does not hold the
+project's roster at all. **Start a new session rooted at the project**
 before running `grow` / `graft` or dispatching a specialist by name. The
-installer prints this as its NEXT STEP; the full rule, including the
+installer prints this as its NEXT STEP
+([registration notice](DOCUMENTATION.md#enf-registration-notice)); the full rule, including the
 role-emulation fallback for when a restart is impossible, lives in
 `docs/graph/method/delegation.md` (`delegation.harness-registration`).
 
@@ -269,7 +276,7 @@ first-class harnesses, and one plant can run either. Install both:
 The installer collapses `CLAUDE.md` (Claude Code) and `AGENTS.md`
 (Prime Agent) into a **single shared kernel file** — one is the real
 file, the other a project-local symlink to it — so editing the kernel
-updates both harnesses and they never drift. `.claude/` and
+updates both harnesses and the two do not drift apart. `.claude/` and
 `.prime/agent/` sit side by side; `docs/graph/` is shared. Switching
 harness is just opening the plant in the other tool. (On a platform
 without symlinks the second kernel is an independent copy; keep the two
@@ -290,7 +297,7 @@ github-copilot` adds the two frozen ones.
 
 ## Troubleshooting
 
-**"refusing to install the seed system into itself"**
+**`refusing to install the seed system into itself`**
 You ran the installer from inside the seed directory with no
 `--project-dir`. Pass `--project-dir` to a target project.
 
@@ -308,10 +315,11 @@ Raise `project_doc_max_bytes` in `~/.codex/config.toml`. The
 provided snippet sets it to 64 KiB.
 
 **Agents not triggering in opencode**
-`opencode.json` does not (and cannot) list the agent directory — opencode
+`opencode.json` has no key for the agent directory; opencode
 discovers `.opencode/agents/*.md` by convention. Confirm the files are there,
 then confirm the session started *after* they were placed
 (`docs/graph/method/delegation.md`, `delegation.harness-registration`). Note the
 known gap in `integrations/opencode/README.md`: the seed's `model:` and `tools:`
 frontmatter are Claude-Code-shaped, so on opencode the model class and a leaf's
-tool bound are brief-enforced rather than harness-enforced.
+tool bound are carried by the brief rather than held by the harness
+([tool allow-list](DOCUMENTATION.md#enf-tool-allowlist)).

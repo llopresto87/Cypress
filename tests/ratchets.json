@@ -93,9 +93,7 @@
     "FIRST_HEADING_MAX_LINE": 6,
     "FIRST_SCREEN_MAX_LINES": 53,
     "FRONTMATTER_CEILING": 100,
-    "FRONT_DOOR_PENDING": [
-      "MECHANISM_CLAIMS_TRACED"
-    ],
+    "FRONT_DOOR_PENDING": [],
     "GRANDFATHERED_NEAR_DUPLICATES": [
       "adopt this project into the docs graph by subsystem boundary || adopting this project into the docs graph by subsystem boundary",
       "check the change is integrated and not bolted on || checking the change is integrated and not bolted on",

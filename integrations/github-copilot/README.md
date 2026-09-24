@@ -95,7 +95,7 @@ agent must stay write-less on Copilot too):
 - `Write` / `Edit` → `editFiles`
 - `Bash` → `runTasks` (the workspace task runner)
 - `WebSearch` / `WebFetch` → `fetch`, `githubRepo` (both are REMOTE
-  reach; `githubRepo` searches GitHub, so it is web-gated, not part of
+  reach; `githubRepo` searches GitHub, so it reaches the web and is not part of
   the local read set)
 
 Two fields are deliberately NOT projected:
@@ -106,7 +106,7 @@ Two fields are deliberately NOT projected:
   delegation flows (including the kernel's close-out-spawn mandate)
   degrade to the single session on Copilot: do the work sequentially
   in-session and record the deviation, rather than simulating personas
-  in-chat (which the kernel forbids).
+  in-chat (which the kernel rules out).
 
 ### Source protocol → `.github/prompts/<name>.prompt.md`
 
@@ -153,14 +153,16 @@ sub-folder of the repo, enable
 `chat.useCustomizationsInParentRepositories` so Copilot discovers
 the seed's `.github/` from a parent.
 
-## Enforcing progressive discovery in Copilot (Agent Hooks)
+## Progressive discovery in Copilot (Agent Hooks)
 
 Progressive discovery — open the graph router, load only the nodes a
 task needs, declare what you skipped — is guidance a capable model
 follows and a small local model (e.g. an Ollama model behind Copilot)
-often skips. You do not have to rely on the model following it: **VS
-Code Agent Hooks (Preview) can enforce it deterministically**, the same
-way Claude Code does, because the two share a hook format.
+often skips. You do not have to rely on the model remembering it: **VS
+Code Agent Hooks (Preview) can add the routing pointer to every prompt**,
+as Claude Code's hook does, because the two share a hook format. The hook
+adds text and holds nothing, so following the pointer stays the model's call
+([routing pointer](../../DOCUMENTATION.md#enf-route-hook)).
 
 - **Two hooks, both cross-tool.** `status-hook.py` runs on `SessionStart` and
   injects the plant's lifecycle-status register once per session
@@ -188,8 +190,8 @@ Hooks are the strongest lever, but two more help, especially with a weak
 model:
 
 1. **Use a capable model** — a 7–8B local model may still not act well on
-   the injected context; the hook guarantees the context is *present*,
-   not that the model reasons well over it.
+   the injected context; the hook puts the context *in front of* the model,
+   and that says nothing about how well the model reasons over it.
 2. **Fresh chat, don't attach the whole workspace** (`#codebase` /
    `@workspace`) — Copilot's own context-gathering fills the window
    before the model reasons, which is orthogonal to the graph.
