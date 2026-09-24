@@ -1,93 +1,85 @@
-## 7.28.0 — context residency: the per-prompt hooks stop repeating what a session already has (2026-09-24)
+## 7.29.0 — a harvest: the front door in reader order, and host facts corrected (2026-09-24)
 
-**The Claude Code route hook now injects less than a third of what it did.**
-Over the scripted 20-prompt session the harvest measured against, per-prompt
-injection fell from 69,408 B to 22,301 B (−68%), and to 26,958 B (−61%) with
-session resets at prompts 8 and 15. The hook keeps a session ledger of the node
-ids it has already shown. A later prompt gets the pointer line, the full entry
-line of each node new to the session, one `Surfaced earlier this session:` line
-naming the rest by id, and only the peers not listed before. Every node the
-router suggests is still named on every prompt. The full injection comes back
-after any `SessionStart` (startup, resume, clear, compact, fork, or a source the
-hook does not know), every 10 routed prompts, and whenever the ledger is
-missing, unreadable, expired, oversized or from another session. The hook
-never says a node was loaded or read, because it cannot know that; it knows
-only what it showed.
+A grown plant was harvested back into the seed. What follows is the generalized
+residue: no plant identity, no stack, no counts belonging to any project.
 
-**The refresh interval is 10 prompts, and the measurement chose it.** N = 5
-gave 29,666 B without resets and 35,224 B with them; N = 20 gave 16,972 B and
-26,958 B. N = 10 matches N = 20 once resets occur, and keeps a reminder at most
-9 prompts away from a full injection. N = 5 cost more than 30% over N = 10 on
-both runs, well past the 10% the plan allowed for preferring the shorter window.
+**README is rewritten in the order a newcomer reads it.** It answers what the
+seed is, who it is for, what installing writes, what it costs and how to try
+it, all on the first screen, and then how it works, why, what it does not do
+and where to go next. The agent, skill and protocol catalogs, the tier prose
+and the release narration moved out by link. Two README anchors were removed
+with their sections, `#what-you-get` and `#try-it-and-what-it-costs`; a link
+from outside the repository to either now lands at the top of the page. The
+first-screen ceilings were re-measured and lowered: `FIRST_SCREEN_MAX_LINES`
+from 100 to 53, and `FIRST_COMMAND_LINE` from 80 to 46.
 
-**Multi-line prompts are no longer pasted back into the session.** The hook
-stripped two lines of router output, so a prompt of several lines came back as
-part of its own injection. A 6,010 B multi-line prompt used to produce a
-10,070 B injection carrying the prompt verbatim; it now produces 3,653 B with
-no echo. The hook removes the exact `task: <prompt>` prefix it expects, and
-router output that lacks it is treated as a router failure and yields the
-pointer line alone, so a secret pasted into a prompt is not duplicated. The
-prompt now reaches the router as one `--plan=` value, so a prompt starting
-with `--` cannot be read as an option. Prime Agent's extension had the same
-echo and got the same fix.
+**The manual gains a glossary and a table of what each control holds.**
+`DOCUMENTATION.md` §15 defines each project term once, with its everyday
+sense, and every other page links it on first use. §17 gives each mechanism
+one row: what holds it, its ADR-0003 class, and what it misses. README's
+limits section and the integration READMEs link those rows instead of
+asserting enforcement in their own words. The three references open with
+their definitions. Body-size and always-loaded figures have one home each and
+are computed, not typed; a line that names one harness must now print that
+harness's figure, not any live one.
 
-**The mandate paragraph is one pointer line.** Each routed prompt used to
-restate the kernel's FIRST MOVE and §0 tier table. It now says `Route first:
-the kernel's FIRST MOVE and §0 apply to this prompt.` A new `seed-lint` check,
-`check_hook_text_restates_no_kernel_rule`, derives the kernel's §0 cells and
-FIRST MOVE steps from `core/AGENTS.md` and fails when either per-prompt surface,
-or the new Prime Agent overlay section, repeats four words of them in a row or
-names a tier.
+**`tests/seed-lint.py` holds the front door.** SPEC-0004's 22 contracts are
+checks over README, the manual, the references, `INSTALL.md` and the
+integration READMEs, with a pending ledger that a release version refuses
+unless it is empty. The prose floor runs once per file, and
+`tools/gate-registry.py --lint` refuses a prose step that passes two files, or
+any `--file=`, `--root` or `--glob` argument.
 
-**The ledger stays out of git and out of harm's way.** It lives at
-`.cypress/session/<session_id>.json`. Installed plants do not ignore
-`.cypress/`, so the hook writes a `.gitignore` of `*` into that directory the
-first time it creates it and never edits a plant's own `.gitignore`. All
-ledger I/O goes through directory descriptors that follow no symlink, a ledger
-or directory owned by another user or writable by group or others is refused,
-and garbage collection is bounded. `status-hook.py` resets the ledger on every
-`SessionStart`. The threat model is in
-[ADR-0010](docs/decisions/adr-0010-context-residency.md).
+**Host facts corrected.** Hooks configured in settings run inside a subagent on
+Claude Code: its tool calls fire the same `PreToolUse` and `PostToolUse` hooks,
+so the seed's pre-Bash guard fires on a worker's Bash calls. What still holds
+is narrower: no hook the seed installs carries the graph discipline or the
+routing context into a worker's turn, or reads a worker's result, so the brief
+and the handback block remain their only carriers, and the templates now say
+exactly that. The spawn tool is named `Agent`, with `Task` its accepted alias;
+`agent-lint.py` and `seed-lint.py` read either name, bare or parenthesized,
+through one predicate, and refuse an agent file with no `tools:` line, which on
+the host inherits every tool. The host's own nesting limit is recorded as a
+harness-held ceiling separate from the seed's soft `max_spawn_depth`, and a
+file written into an agents directory mid-session is picked up without a
+restart except in the cases the delegation node names. A new check refuses
+"hooks do not reach subagents" in shipped and front-door files. ADR-0003 gains
+a dated amendment; its body is unchanged. The shipped agents keep `Task`.
 
-**Prime Agent gets the echo fix and the pointer line, and a surfaced set that
-nothing enforces.** `route-extension.ts` keeps no state and still injects in
-full on every prompt, so no saving in injected bytes is claimed for Prime
-Agent. The `APPEND_SYSTEM.md` overlay gains a `## Surfaced nodes` section
-asking the model to keep `_cypress_surfaced`, a Python set of the node ids it
-has opened, in the session's IPython kernel, and not to re-open one whose
-content is still in view. That is the owner's choice, and it is soft under
-ADR-0003: model-kept, unenforced and unmeasured. The section costs every Prime
-Agent session 350 B: its eager surface goes from 24,094 B to 24,444 B.
+**Disclosed redaction of append-only records.** Two records were edited under
+the exception in `CLAUDE.md` Conventions (ADR-0011, proposed):
+`docs/specs/SPEC-0003-per-prompt-injection.md` and
+`docs/plans/grill-7.28.0-context-residency.md`. The class of token removed is
+the node ids of the project the seed was harvested from; each span became
+`[redacted]` and no sentence was reworded. The original text remains at tag
+v7.28.0 and in git history. History was not rewritten, and published tags and
+Releases keep it. This file was not redacted.
 
-**Every other host's eager surface is unchanged.** Claude Code stays at
-26,261 B. Shortening agent and skill descriptions to pointers was planned and
-parked by the owner: `agent-lint` scores the agent `description`, and cutting
-agent descriptions to 120 characters broke `--eval`. No pointer was shortened, so
-none had to be lengthened back. opencode ships no per-prompt hook, so it has
-nothing to dedup, and the gap is recorded in the host matrix. Codex and Copilot
-are frozen and get nothing new; Copilot, which runs the Claude Code hooks
-through `.claude/settings.json` and whose docs make the session id optional,
-gets the full injection whenever it sends none.
+```
+# Harvest — from a grown plant — 2026-09-24
+Harvested:   a front-door rewrite (README order, a glossary, an enforcement
+             table, reference openers, one home per figure) with its checks;
+             a per-file prose floor; a disclosed legacy-token cleanup; host
+             facts corrected in method nodes, templates and both lints — no
+             plant identity.
+Generalized: every plant name, path, host, user, node id and identifying count
+             stripped; the forbid list was derived outside the seed and never
+             committed.
+Rejected:    plant-local evidence ledgers, survey and triage records, and the
+             ratification proposal (they stay outside the seed).
 
-**What stayed byte-identical.** `agent-lint --eval` output, and the two brief
-templates every spawn carries, compared against the 7.27.0 release commit
-`ac61a3f`. A spawned worker starts empty and receives no hook output, so it
-sees exactly what it saw before. The harness-native selection measurement was
-not run: neither the eager surface nor the first-prompt router suggestion
-changed materially, since the only first-prompt change is the mandate
-becoming the pointer line and the echo going away.
-
-**The Residency Rule has a home.** `skills/context-router/SKILL.md` gains a
-Residency section, fact key `context-router.residency`: text enters a session
-once, at the lowest of four classes that serves it, and stays by reference
-until a reset, with repetition across a spawn exempt. ADR-0010 records the
-reasoning and stays `proposed` until the owner ratifies it.
-
-**Also in this release.** Three contract slugs of the plant spec
-`SPEC-0001-gate-assertion-floor`, lost from `tests/test-seed-lint.sh` when
-7.23.0 renamed the cases that carried them, are restored as comments, so that
-plant's `spec-lint` is green again. `check_spec_rows_name_their_contract` bound
-a top-level function's scope to a single newline, so no top-level `seed-lint`
-function could bind a green spec row; its anchor is fixed, with a planted case.
-`SPEC-0003-per-prompt-injection` is `active` with 45 contracts, signed by
-product, architect, tester and security.
+### Seed integrity gate (verdicts only)
+- G1 agnosticism-floor: PASS (the agnosticism linter's own detector fixtures
+  excepted by path)
+- G2 agnosticism-judgment: PENDING (steward, at ratification)
+- G3 faithful-import: PENDING (reviewer, audit of the final commits)
+- G4 availability: PASS
+- G5 plant-untouched: PENDING (steward, at ratification)
+- G6 self-consistency: PASS
+- G7 clean-install: PASS
+- G8 prose: PASS (genre exception recorded for the three references)
+- G9 minimum-sufficient: PENDING (steward, at ratification)
+- G10 provenance: PASS
+- G11 no-loosened-limit: PASS
+- Version bump: 7.28.0 → 7.29.0
+```
