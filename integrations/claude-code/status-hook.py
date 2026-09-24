@@ -10,9 +10,9 @@ without a line in any brief or a step the model must remember.
 Installed to `.claude/status-hook.py` and wired in `.claude/settings.json`
 under hooks.SessionStart. The host passes `{"session_id", "hook_event_name",
 "source"}` on stdin; whatever `additionalContext` this returns is injected as a
-prepended message. Subagents receive nothing: hooks do not cross the spawn
-boundary, and a bounded worker reads one node's frontmatter when it needs one
-item's status.
+prepended message. As a SessionStart hook it is not recorded to reach a
+subagent's turn (docs/graph/method/delegation.md, delegation.briefs), so a
+bounded worker reads one node's frontmatter when it needs one item's status.
 
 The reset runs on every source (startup, resume, clear, compact, fork, and
 anything else), because each one can leave the model without context the

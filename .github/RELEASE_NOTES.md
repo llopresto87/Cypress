@@ -69,15 +69,14 @@ Rejected:    plant-local evidence ledgers, survey and triage records, and the
              ratification proposal (they stay outside the seed).
 
 ### Seed integrity gate (verdicts only)
-- G1 agnosticism-floor: PASS (the agnosticism linter's own detector fixtures
-  excepted by path)
+- G1 agnosticism-floor: PASS
 - G2 agnosticism-judgment: PENDING (steward, at ratification)
-- G3 faithful-import: PENDING (reviewer, audit of the final commits)
+- G3 faithful-import: PASS
 - G4 availability: PASS
 - G5 plant-untouched: PENDING (steward, at ratification)
 - G6 self-consistency: PASS
 - G7 clean-install: PASS
-- G8 prose: PASS (genre exception recorded for the three references)
+- G8 prose: PASS
 - G9 minimum-sufficient: PENDING (steward, at ratification)
 - G10 provenance: PASS
 - G11 no-loosened-limit: PASS

@@ -365,9 +365,9 @@ list, a call made by indirection passes, and it holds only on a host that
 fires it. Its classes, `hard` for a matched command on this host and
 `not a control` otherwise, are in the
 [pre-Bash guard row of the enforcement table](../DOCUMENTATION.md#enf-pre-bash-guard).
-**mechanically enforced**, on Claude Code alone. On that host it also fires on a
-subagent's Bash calls, since tool hooks run inside a subagent
-([delegation node](../core/method/delegation.md#every-brief-carries-the-graph-discipline)).
+**mechanically enforced**, on Claude Code alone. Whether it fires on a
+subagent's Bash calls is recorded in the
+[delegation node](../core/method/delegation.md#every-brief-carries-the-graph-discipline).
 
 - opencode: "This harness exposes no pre-tool hook … the bounded-execution
   clauses … are the agent's own discipline rather than an enforced guard"

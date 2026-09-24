@@ -503,10 +503,13 @@ def run_sh_invocations() -> list[tuple[int, str]]:
                 # the way a basename rule would make them. Every path argument
                 # is kept in the name with its own spelling (`--file=`,
                 # `--root`, `--glob`), so prose_step_problems() can refuse the
-                # forms that are not one `--file PATH`.
-                args = re.findall(r'--(file|root|glob)(=|\s+)"?(?:\$\{?ROOT\}?/)?([^"\s]+)"?',
-                                  rest)
-                name = " ".join([name] + [f"--{flag}{'=' if sep == '=' else ' '}{value}"
+                # forms that are not one `--file PATH`. A flag given no value
+                # (`--root` last on the line, or followed by another flag)
+                # keeps its bare name, so it is refused like the valued form.
+                args = re.findall(r'--(file|root|glob)\b(?:(=|\s+)(?!-)"?(?:\$\{?ROOT\}?/)?'
+                                  r'([^"\s]+)"?)?', rest)
+                name = " ".join([name] + [f"--{flag}" + (f"{'=' if sep == '=' else ' '}{value}"
+                                                         if value else "")
                                           for flag, sep, value in args])
             found.append((n, name))
     return found

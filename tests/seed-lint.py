@@ -232,8 +232,9 @@ RULE_HOMES = {
     "rule.canonize": "protocols/canonize.md",
     "rule.toolcraft": "skills/toolcraft/SKILL.md",
 }
-# 6.4.0: "installed but not spawnable" — a harness registers agent types when a
-# SESSION STARTS, so the session that installs a roster cannot spawn it. The rule
+# 6.4.0: "installed but not spawnable" — a host may not register agent types
+# written mid-session (host-dependent; 7.29.0 corrected the "only at session
+# start" reading), so the session that installs a roster may not spawn it. The rule
 # has one home and a fixed set of referrers: every surface that dispatches a
 # specialist by name or installs the projection they come from. A referrer that
 # drops the pointer silently re-opens the trap, so the fact key IS the
@@ -1348,12 +1349,50 @@ def _overlay_section(text: str):
 # The absolute claim that hooks do not reach subagents. The host runs tool
 # hooks inside a subagent (docs/graph/method/delegation.md, "Every brief
 # carries the graph discipline"), so the claim is false wherever it ships.
+# The claim is a class of sentence, not a word: a subject naming hooks in
+# general, a negated reach / fire / cross / run, and subagents or the spawn
+# boundary later in the same clause. A subject word naming one hook or a
+# prompt or session event makes a true, narrower sentence ("The route hook
+# does not reach a subagent's turn."); a singular hook counts only when a
+# class word qualifies it ("a tool hook").
 HOOK_REACH_PHRASE = re.compile(
-    r"\b(?:hooks? (?:do(?:es)? not|cannot|can't) reach|no hooks? reach(?:es)?)\b", re.I)
+    r"(?:\b(?P<qual>[\w-]+)\s+)?\b(?P<hook>hooks?)\s+"
+    r"(?:do(?:es)?\s+not|do(?:es)?n['’]t|cannot|can['’]t|never|will\s+not|won['’]t)\s+"
+    r"(?:reach|fire|cross|run)(?:es|s)?\b"
+    r"|\bno\s+(?P<nohook>hooks?)\s+(?:reach|fire|cross|run)(?:es|s)?\b", re.I)
+HOOK_REACH_OBJECT = re.compile(r"sub-?agent|spawn\s+boundary|\bworkers?\b", re.I)
+HOOK_REACH_CLAUSE_END = re.compile(r"[.;:!?)]\s|[.;:!?)]$")
+# Qualifiers that make the subject the class of hooks the host runs in a subagent.
+HOOK_CLASS_QUALIFIERS = {"tool", "settings", "pretooluse", "posttooluse", "subagent",
+                         "sub-agent", "configured"}
+# Substrings of a qualifier naming one hook or a prompt or session event.
+HOOK_NAMED_QUALIFIERS = ("route", "routing", "status", "bound", "prompt", "session",
+                         "inject", "stop", "this", "that", "these", "those", "one")
 # What install.sh places, plus the front door. Records (docs/decisions/,
 # docs/plans/, docs/specs/, CHANGELOG.md) keep what they said when written.
-HOOK_REACH_ROOTS = ("core", "agents", "protocols", "skills", "templates")
+HOOK_REACH_ROOTS = ("core", "agents", "protocols", "skills", "templates", "integrations")
 HOOK_REACH_FILES = ("DOCUMENTATION.md",)
+
+
+def _hook_reach_claim(line: str, following: str) -> str | None:
+    """The matched text when LINE says hooks as a class do not reach subagents.
+
+    The clause may wrap, so its object is looked for in the rest of LINE and in
+    FOLLOWING, the next line, up to the first clause-ending punctuation.
+    """
+    for m in HOOK_REACH_PHRASE.finditer(line):
+        qual = (m.group("qual") or "").lower()
+        if m.group("hook"):
+            if any(w in qual for w in HOOK_NAMED_QUALIFIERS):
+                continue
+            if m.group("hook").lower() == "hook" and qual not in HOOK_CLASS_QUALIFIERS:
+                continue
+        rest = line[m.end():] + " " + following.strip()
+        end = HOOK_REACH_CLAUSE_END.search(rest)
+        rest = rest[:end.start()] if end else rest
+        if qual in ("subagent", "sub-agent") or HOOK_REACH_OBJECT.search(rest):
+            return m.group(0).strip()
+    return None
 
 
 def check_hook_reach_phrases() -> None:
@@ -1363,7 +1402,10 @@ def check_hook_reach_phrases() -> None:
     it was the stated reason the brief is "the only enforcement" across the
     spawn boundary. The brief is still the only carrier of the discipline, but
     for a narrower reason: no hook the seed installs carries it into a worker's
-    turn. A reworded absolute claim is outside this pattern and goes to review.
+    turn. Rewordings that followed ("do not cross the spawn boundary",
+    "subagent hooks do not fire", one in a shipped hook's docstring) widened the
+    pattern to the class of claim and the scan to integrations/; a claim
+    phrased outside that class still goes to review.
     """
     paths = [ROOT / f for f in HOOK_REACH_FILES]
     paths += sorted((ROOT / "documentation").glob("*.md"))
@@ -1373,12 +1415,12 @@ def check_hook_reach_phrases() -> None:
     for path in paths:
         if not path.is_file():
             continue
-        text = path.read_text(encoding="utf-8", errors="replace")
-        for n, line in enumerate(text.splitlines(), 1):
-            m = HOOK_REACH_PHRASE.search(line)
-            if m:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        for n, line in enumerate(lines, 1):
+            claim = _hook_reach_claim(line, lines[n] if n < len(lines) else "")
+            if claim:
                 fail(f"{path.relative_to(ROOT).as_posix()}:{n}: says hooks do not "
-                     f"reach subagents ('{m.group(0)}'); tool hooks fire inside a "
+                     f"reach subagents ('{claim}'); tool hooks fire inside a "
                      f"subagent. Say what the seed's hooks carry, and link "
                      f"docs/graph/method/delegation.md")
 

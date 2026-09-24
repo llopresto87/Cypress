@@ -1054,9 +1054,9 @@ handback payloads. Then:
   `harness_override: role-emulated (<reason>)` in its handback. Report
   the count in the delivery.
 
-This assertion runs in the top session at `deliver`, the one place a
-hook can reach, since subagent hooks do not fire. A top-session Stop
-hook that greps the delivery for attributions stays **deliberately
+This assertion runs in the top session at `deliver`, where the whole
+delivery is in view; no hook the seed installs reads a worker's result
+(`delegation.briefs`). A top-session Stop hook that greps the delivery for attributions stays **deliberately
 unwired until this plant's real deliveries carry `produced_by`** (a
 gate landed before the thing it checks either checks nothing or blocks
 everything; kernel §3.5, the green-lie rule). Once deliveries carry the

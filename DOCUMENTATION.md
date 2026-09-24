@@ -377,13 +377,14 @@ The decisions are listed, with their status, in the [decision index](docs/decisi
 
 ### 6.5 The harness-registration boundary
 
-A host tool enumerates its agent directory when a session starts. So a
-specialist is spawnable by name only once (a) the session's root is the plant and
-(b) the projection existed at startup. Anything that *writes* a projection
+A specialist is spawnable by name only once (a) the session's root is the plant
+and (b) the host has registered the projection. When a host sees an agent file
+written mid-session is host-dependent, so anything that *writes* a projection
 mid-session (the install, a graft roster delta, a freshly commissioned expert)
-produces a specialist that is on disk but unspawnable until the next session.
-This is why growth must run from a session rooted at the target, not the seed.
-The rule lives in `method.delegation` (`delegation.harness-registration`).
+can leave a specialist on disk and not yet spawnable. This is why growth must
+run from a session rooted at the target, not the seed. The rule, and what each
+host is recorded to do, lives in `method.delegation`
+(`delegation.harness-registration`).
 
 > Prime Agent is the exception: it has no session-start roster enumeration.
 > Its agent files are *brief sources* the orchestrator reads and passes into a
@@ -498,7 +499,7 @@ explicit in `protocols/test-first.md`.
    `origin: project` and `plant_knowledge:`, cites the source that earned it,
    and is projected into every harness directory the plant carries —
    unprojected, it is on disk and unspawnable, because the host reads its
-   roster from there when a session starts.
+   roster from there.
 
 ## 8. Skills, templates, and briefs
 
@@ -1033,7 +1034,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 - **Forms:** kernel, bootstrap kernel
 - **Here:** The one instruction file every session reads first. It holds the project's identity, the [tier](#term-tier) table, the anchors of the eight rules and the boundaries, within a byte budget, and everything else is routed in on demand. The host loads it as project instructions, and the file name it looks for depends on the host; see the [host capability matrix](documentation/host-capability-matrix.md). It is not the model's system prompt.
 - **Field:** No agent-tooling sense was found, and the operating-system sense is unrelated (status: not recorded). The nearest field term, system prompt, means the instructions given to a model before the conversation and is used without a formal definition sentence (Anthropic, "Prompting best practices", https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices, retrieved 2026-09-24; status: verified, for usage only)
-- **Implemented at:** `core/AGENTS.md`. An install produces `CLAUDE.md` (`place_kernel`) or `AGENTS.md`, depending on the host, from one shared body
+- **Implemented at:** `core/AGENTS.md`. An install produces both `CLAUDE.md` and `AGENTS.md` (`place_kernel`): one holds the kernel and the other is a symlink to it, or a copy where symlinks are unavailable
 - **Enforcement:** The word itself is not a control. Following the file is **judgment**, in the [kernel-load row](#enf-kernel-load), and its byte budget is **soft**, in the [kernel-budget row](#enf-kernel-budget)
 - **Divergence:** **no standard meaning**; as a file the kernel is **different** from a system prompt
 - **Why:** ADR-0004
