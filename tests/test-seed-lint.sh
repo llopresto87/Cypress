@@ -874,14 +874,14 @@ case_hook_reach_rewordings() {
   # 26b. The same false claim reworded, one variant per line, plus one planted
   # under integrations/, which ships hook files. Each planted line must be
   # reported at its own line number.
-  f="$TMP/core/method/delegation.md"; n="$(wc -l < "$f")"
+  f="$TMP/core/method/delegation.md"; n="$(wc -l < "$f" | tr -d ' ')"
   printf '%s\n' \
     'Subagents receive nothing (hooks do not cross the spawn boundary).' \
     'This runs in the top session, since subagent hooks do not fire.' \
     "Hooks don't reach subagents." \
     'Settings hooks never reach a subagent.' >> "$f"
   printf '\nTool hooks cannot run inside a subagent.\n' >> "$TMP/integrations/claude-code/README.md"
-  ir="$(wc -l < "$TMP/integrations/claude-code/README.md")"
+  ir="$(wc -l < "$TMP/integrations/claude-code/README.md" | tr -d ' ')"
   # exercises: check_hook_reach_phrases
   out="$(lint)" && rc=0 || rc=$?
   [[ $rc -eq 1 ]] || { echo "[hook-reach-rewordings] expected exit 1, got $rc" >&2; echo "$out" >&2; exit 1; }
