@@ -653,7 +653,10 @@ as graph nodes → `docs/graph/protocols/*.md` (no `.codex/` copy);
 - **Known gaps:**
   - **AGENTS.md size budget:** Codex truncates `AGENTS.md` at
     `project_doc_max_bytes` (default 32 KiB). The seed's `AGENTS.md` is
-    intentionally short (7 742 bytes, under a hard 8 000-byte budget the gate enforces); depth lives in referenced files. Do not paste
+    intentionally short; its size is whatever [`core/AGENTS.md`](../core/AGENTS.md)
+    measures, and the byte budget it sits under is soft, checked only in the
+    seed's own gate ([kernel-budget row](../DOCUMENTATION.md#enf-kernel-budget)).
+    Depth lives in referenced files. Do not paste
     agent/protocol bodies into `AGENTS.md`. Raise via
     `project_doc_max_bytes = 65536` if needed.
   - **Skills not auto-discovered:** each must be listed one `[[skills.config]]`
