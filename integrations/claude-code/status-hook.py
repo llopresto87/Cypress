@@ -21,9 +21,9 @@ from the sibling route-hook.py, and this file carries no copy of its path
 rule or session-id pattern (SPEC-0003).
 
 It never blocks: a missing register, a missing graph, a timeout, or a broken
-tool degrades to silence, and a reset that cannot run costs one stderr line.
-Exit 0 always. Context injection REQUIRES JSON on stdout — plain text is not
-injected by Copilot.
+tool degrades to silence, and a reset that cannot run, or stdin nested past the
+JSON parser, costs one stderr line. Exit 0 always. Context injection REQUIRES
+JSON on stdout — plain text is not injected by Copilot.
 """
 
 import importlib.util
@@ -87,7 +87,10 @@ def emit(text: str, event: str) -> None:
 def reset_session_ledger(data: dict) -> None:
     """Reset this session's ledger through the sibling route-hook.py, its one
     owner. Any failure, the sibling missing included, is one stderr line and
-    leaves the summary to run."""
+    leaves the summary to run. That line carries the sibling's LedgerUnusable
+    message, which is safe as it is, and only the type name of anything else,
+    whose text can hold a file name and so the raw session id."""
+    route_hook = None
     try:
         sibling = Path(__file__).resolve().with_name("route-hook.py")
         spec = importlib.util.spec_from_file_location("cypress_route_hook", sibling)
@@ -97,14 +100,18 @@ def reset_session_ledger(data: dict) -> None:
         spec.loader.exec_module(route_hook)
         route_hook.reset_ledger(data.get("session_id"), data.get("source"))
     except Exception as e:                        # noqa: BLE001 — a reset never blocks the session
-        print(f"status-hook: session ledger not reset ({type(e).__name__}: {e})",
-              file=sys.stderr)
+        safe = route_hook is not None and isinstance(e, getattr(route_hook, "LedgerUnusable", ()))
+        why = f"{type(e).__name__}: {e}" if safe else type(e).__name__
+        print(f"status-hook: session ledger not reset ({why})", file=sys.stderr)
 
 
 def main() -> int:
     try:
         data = json.load(sys.stdin)
-    except ValueError:
+    except RecursionError:                        # nested past the parser: no session to reset
+        print("status-hook: stdin nested past the JSON parser's limit; no reset", file=sys.stderr)
+        data = {}
+    except Exception:                             # noqa: BLE001 — not JSON, empty stdin included: silent
         data = {}
     if not isinstance(data, dict):
         data = {}
@@ -118,8 +125,8 @@ def main() -> int:
             [sys.executable, str(register), "--summary", "--root", str(root / "docs" / "graph")],
             capture_output=True, text=True, timeout=15, cwd=str(root),
         )
-    except (OSError, subprocess.SubprocessError):
-        return 0
+    except Exception:                             # noqa: BLE001 — a broken register is silence,
+        return 0                                  # output that does not decode included
     summary = (out.stdout or "").strip()
     if out.returncode not in (0, 1) or not summary:
         return 0

@@ -1297,14 +1297,17 @@ def _kernel_run_in(tokens: list, runs: set):
 
 
 def _overlay_section(text: str):
+    """The overlay's one PRIME_OVERLAY_SECTION, heading to the next `## `, and
+    how many such headings the text holds. The section is None unless there is
+    exactly one."""
     lines = text.splitlines(keepends=True)
     heads = [i for i, l in enumerate(lines) if l.rstrip() == PRIME_OVERLAY_SECTION]
     if len(heads) != 1:
-        return None
+        return None, len(heads)
     end = heads[0] + 1
     while end < len(lines) and not lines[end].startswith("## "):
         end += 1
-    return "".join(lines[heads[0]:end])
+    return "".join(lines[heads[0]:end]), 1
 
 
 # One check, two slugs: HOOK_TEXT_RESTATES_NO_KERNEL_RULE over the whole of each
@@ -1336,8 +1339,14 @@ def check_hook_text_restates_no_kernel_rule() -> None:
     scanned = [(rel, (ROOT / rel).read_text(encoding="utf-8"), "HOOK_TEXT_RESTATES_NO_KERNEL_RULE")
                for rel in HOOK_TEXT_FILES]
     overlay = ROOT / PRIME_OVERLAY
-    section = _overlay_section(overlay.read_text(encoding="utf-8")) if overlay.is_file() else None
-    if section is not None:
+    section, heads = (_overlay_section(overlay.read_text(encoding="utf-8"))
+                      if overlay.is_file() else (None, 0))
+    if section is None:
+        # A renamed or doubled heading must not switch the overlay half off.
+        fail(f"PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE: {PRIME_OVERLAY} has {heads} "
+             f"`{PRIME_OVERLAY_SECTION}` sections, so the section cannot be checked; "
+             f"exactly one is required (SPEC-0003 I-8)")
+    else:
         scanned.append((f"{PRIME_OVERLAY} ({PRIME_OVERLAY_SECTION})", section,
                         "PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE"))
     for where, text, slug in scanned:
