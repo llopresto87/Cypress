@@ -88,7 +88,7 @@ opencode under that rule, and targets no frozen host.
 | Session-start hook | mechanically enforced | unsupported | unsupported | projected³ | mechanically enforced |
 | Routing hook | mechanically enforced | unsupported | unsupported | projected³ | mechanically enforced |
 | Status hook | mechanically enforced | unsupported | unsupported | projected³ | mechanically enforced |
-| Per-session injection dedup | mechanically enforced | unsupported | unsupported | degraded | unsupported⁵ |
+| Per-session injection dedup | mechanically enforced | unsupported | unsupported | degraded³ | unsupported⁵ |
 | Pre-tool guard | mechanically enforced | unsupported | unsupported | unsupported | unsupported |
 | Slash commands | mechanically enforced | mechanically enforced | unsupported | mechanically enforced | mechanically enforced |
 | Always-applied instructions | mechanically enforced (26 261 B) | mechanically enforced (26 261 B) | mechanically enforced (≤ 26 261 B)⁴ | mechanically enforced (31 905 B) | mechanically enforced (24 444 B) |
@@ -382,7 +382,8 @@ already injected (SPEC-0003).
   **unsupported**.
 - **GitHub Copilot**: it runs the same `route-hook.py`, but its envelope
   carries no `session_id`, so every prompt takes the full injection and no
-  dedup is delivered. Class: **degraded**.
+  dedup is delivered. Class: **degraded**, and only where the hook is
+  installed at all: the Routing hook row's **projected**³ condition applies.
 - **Prime Agent**: `before_agent_start` carries no session id, and
   `route-extension.ts` keeps no state, so every routed prompt is injected in
   full and no saving in injected bytes is claimed. Class: **unsupported**,
@@ -392,8 +393,8 @@ already injected (SPEC-0003).
   unenforced: `soft` under ADR-0003, model-cooperative, with nothing observing
   whether the model complies. Any saving is in node bodies not re-read, and it
   is not measured. What every Prime Agent session pays for the instruction is
-  the section itself, 350 bytes on the eager surface (the always-applied
-  figure below includes it).
+  the section itself, at most `OVERLAY_SECTION_MAX_BYTES` (512 B) on the
+  eager surface (the always-applied figure below includes it).
 
 ### Always-applied instructions
 

@@ -342,8 +342,9 @@ Every contract also requires exit code 0. Tests run with umask 022.
 
 ### Contract: LEDGER_ABSENT_SESSION_ID_FULL
 - **Given:** in turn, a Copilot-shaped envelope (no `session_id`, `source`
-  `"new"`, an unknown extra field) and the same envelope carrying `sessionId`
-  set to a value that passes the §6 session-id pattern
+  `"new"`, an unknown extra field), the same envelope carrying `sessionId`
+  set to a value that passes the §6 session-id pattern, and the same envelope
+  carrying `session_id` set to JSON `null`
 - **When:** the hook runs on the same prompt twice
 - **Then:** both injections are full mode, no file is created under
   `.cypress/session/`, and there is no stderr, so ADR-0009's
@@ -683,11 +684,11 @@ section is collapsed to one space, so a line wrap cannot hide a phrase.
 user_prompt_submit_stdin:      # Claude Code; Copilot sends a subset plus extras
   prompt:          { type: string }                  # or initialPrompt
   hook_event_name: { type: string, optional: true }  # or hookEventName
-  session_id:      { type: string, optional: true }  # this exact key only; sessionId and other spellings are ignored
+  session_id:      { type: string, optional: true }  # this exact key only; sessionId and other spellings are ignored; null is absent
   extra fields:    ignored
 
 session_start_stdin:
-  session_id:      { type: string, optional: true }  # this exact key only
+  session_id:      { type: string, optional: true }  # this exact key only; null is absent
   source:          { type: string, optional: true }  # startup|resume|clear|compact|fork on Claude Code; "new" on Copilot; absent or off-pattern is stored as "unknown"
 
 hook_stdout:                     # unchanged shape
@@ -734,6 +735,17 @@ Any rule failing makes the ledger **unusable**, and an unusable ledger is
 treated as absent (I-1). A parse that raises, `RecursionError` included, is a
 failed rule.
 
+**Size on write.** `write_ledger` serializes the document first and refuses
+one over `LEDGER_MAX_BYTES` before any temp file exists, so the write side
+and the read side hold the same bound. The two list caps do not imply it:
+`SURFACED_MAX` ids at the node-id pattern's full length, in both lists,
+serialize to more than `LEDGER_MAX_BYTES`, and without the write-side check
+the hook would write a file its next read refuses as oversized. A refused
+write is a ledger failure: full mode and one stderr line. The state is then
+steady: a first prompt leaves no file, a later one leaves the earlier ledger
+as it was, so every prompt that would grow past the bound gets the same full
+injection and the same one line, and no temp file is left behind.
+
 **Descriptor discipline.** All ledger I/O goes through directory file
 descriptors. The hook opens `<ROOT>/.cypress` with
 `O_RDONLY|O_DIRECTORY|O_NOFOLLOW`, creates `session` inside it with
@@ -769,6 +781,10 @@ session's ledger name before the write. It reads entries by iterating
 ledger files by mtime until at most `GC_MAX_FILES` ledger files remain. It
 never deletes the current session's ledger, `.gitignore`, or any name matching
 neither pattern.
+
+GC is housekeeping and is kept apart from the write. When it fails (the scan,
+a stat, or an unlink raises), the prompt costs at most one stderr line, and
+the ledger is still written and the chosen text still emitted.
 
 ### Constants
 
@@ -853,6 +869,7 @@ full when any of:
   - prompt_count == 0            # a reset was recorded
   - prompt_count >= REFRESH_EVERY
   - router output unparseable after the prefix   # the ledger is not updated
+  - the reminder's surfaced or peers_seen would exceed SURFACED_MAX   # a refresh
 otherwise: reminder
 after full:     prompt_count = 1; surfaced = load; peers_seen = not_loaded - load
 after reminder: prompt_count += 1; surfaced |= load; peers_seen |= (not_loaded - surfaced)
@@ -865,6 +882,11 @@ only when the whole block succeeds. If any step of the block fails, the
 full-mode text already in hand is emitted with one stderr line, so a ledger
 failure can neither drop the injection nor leave a reminder that no ledger
 records.
+
+The `SURFACED_MAX` line is deliberate. A reminder only adds ids, so a long
+session could grow a list past the cap that `ledger_problem` enforces on
+read; instead that prompt takes the full injection, which rebuilds both lists
+from the current router output alone.
 
 This decision runs on Claude Code only. On Prime Agent the extension has no
 ledger to decide with, so its mode is full on every routed prompt whose output
@@ -943,6 +965,11 @@ wording says to re-open what is out of view.
 
 Field values below are fragments and carry no closing period.
 
+One rule holds for every failure below: no stderr line either hook writes
+carries a raw session id, valid or not. A line built from an `OSError` uses
+its `strerror`, or the exception's type name when it has none, and never the
+exception's text, which names the file, and a ledger's file name is the id.
+
 ### Failure: ROUTER_FAILED
 - **Trigger:** `graph-lint.py` exits non-zero, runs past `ROUTER_TIMEOUT`, or
   prints nothing; the prompt holds a NUL byte or exceeds the OS argument
@@ -953,8 +980,9 @@ Field values below are fragments and carry no closing period.
 - **Recovery:** the next prompt tries again
 
 ### Failure: SESSION_ID_REFUSED
-- **Trigger:** `session_id` present but failing the §6 pattern, a non-string
-  included
+- **Trigger:** `session_id` present, not `null`, and failing the §6 pattern,
+  a non-string included. A `null` id is absent (§6), so
+  `LEDGER_ABSENT_SESSION_ID_FULL` holds and no stderr line is written
 - **Response:** full mode, and one stderr line that does not contain the raw id
 - **Side effects:** no path is built from the id, and nothing is written
 - **Recovery:** none needed, as every prompt of that session is full mode
@@ -980,11 +1008,13 @@ Field values below are fragments and carry no closing period.
   echo
 
 ### Failure: RESET_NOT_WRITTEN
-- **Trigger:** `status-hook.py` cannot load `reset_ledger` from its sibling, or
+- **Trigger:** `status-hook.py` cannot load `reset_ledger` from its sibling;
+  the stat of this session's ledger fails with any error but not-found; or
   the reset write fails
 - **Response:** the status summary is still injected, with one stderr line
 - **Side effects:** by trigger. Sibling missing: the ledger is untouched,
-  because `status-hook.py` owns no path rule. Write fails: `reset_ledger`
+  because `status-hook.py` owns no path rule. Stat fails: the ledger is
+  untouched, and nothing is written. Write fails: `reset_ledger`
   falls back to unlinking the file. Write and unlink both fail: a stale ledger
   stays
 - **Recovery:** bounded by `REFRESH_EVERY` and `LEDGER_TTL`. This is the one
@@ -1023,9 +1053,14 @@ Field values below are fragments and carry no closing period.
 - **Response:** exit 0. Once `graph-lint.py` has resolved, `route-hook.py`
   emits at least the pointer line, and the full-mode text when the router
   output was already in hand, with one stderr line; before that, nothing.
-  `status-hook.py` emits its summary when built, with one stderr line. The
-  extension's outer guard returns nothing, as at 7.27.0, and its inner guard
-  keeps the pointer line
+  Stdin nested past the JSON parser's limit (`RecursionError`) leaves no
+  prompt to route, so `route-hook.py` emits the pointer line alone with one
+  stderr line; stdin that is plainly not JSON, empty stdin included, stays
+  silent, as Copilot's fail-open case needs. `status-hook.py` emits its
+  summary when built, with at most one stderr line: nested stdin costs that
+  line and the summary still runs, and a register that fails or prints
+  output that does not decode is silence. The extension's outer guard returns
+  nothing, as at 7.27.0, and its inner guard keeps the pointer line
 - **Side effects:** none beyond an atomic write that either completed or did
   not
 - **Recovery:** none needed
@@ -1209,11 +1244,12 @@ its Test case cell, which the cited file contains.
 Binding, fixed at this revision (tester R22):
 
 - Rows citing `tests/test-bound-hook.sh` use the fixed-width labels `X101` to
-  `X143` reserved below, one per contract. Each case's OK line reads
+  `X143` reserved below, one per contract, and `X144` to `X150` for the cases
+  the review of 2deda6a..343445f added. Each case's OK line reads
   `X1NN <SLUG>: … — OK`, so both the label and the slug appear in that case.
   Fixed width keeps one label from matching inside another. When the case is
   written, the row gets the bare path.
-- Rows citing `tests/test-seed-lint.sh` use `X201` and `X202` the same way.
+- Rows citing `tests/test-seed-lint.sh` use `X201` to `X203` the same way.
 - Rows citing `tests/seed-lint.py` carry exactly the bare function name in the
   Test case cell, and nothing else, once the row leaves `pending`. Any text
   after the name makes `_spec_green_rows` fall back to a search of the whole
@@ -1270,7 +1306,7 @@ Techniques the cases rely on:
 | LEDGER_UNUSED_WITHOUT_GRAPH | X115; green on arrival; RED shown by mutation (no-graph path creating a file under `.cypress/session/`) | tests/test-bound-hook.sh | integration | green |
 | LEDGER_NEVER_EMITS_UNROUTED_ID | X116; green on arrival; RED shown by mutation (ledger content appended to the injection) | tests/test-bound-hook.sh | integration | green |
 | UNPARSEABLE_ROUTER_OUTPUT_FULL | X117 | tests/test-bound-hook.sh | integration | green |
-| LEDGER_ABSENT_SESSION_ID_FULL | X118; extends the CLAUDE_HOOKS_FAIL_OPEN_ON_COPILOT_ENVELOPE section; red on arrival (no pointer line yet) | tests/test-bound-hook.sh | integration | green |
+| LEDGER_ABSENT_SESSION_ID_FULL | X118; extends the CLAUDE_HOOKS_FAIL_OPEN_ON_COPILOT_ENVELOPE section; red on arrival (no pointer line yet); the `session_id: null` variant added at the review RED, red on arrival (refused with a stderr line) | tests/test-bound-hook.sh | integration | green |
 | LEDGER_INVALID_SESSION_ID_FULL | X119; tree snapshot before and after | tests/test-bound-hook.sh | integration | green |
 | LEDGER_CORRUPT_FULL | X120 | tests/test-bound-hook.sh | integration | green |
 | LEDGER_UNKNOWN_VERSION_FULL | X121 | tests/test-bound-hook.sh | integration | green |
@@ -1296,6 +1332,7 @@ Techniques the cases rely on:
 | PRIME_OVERLAY_NEVER_SAYS_LOADED | X140; structural; fails on an absent section | tests/test-bound-hook.sh | unit | green |
 | PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE | check_hook_text_restates_no_kernel_rule | tests/seed-lint.py | unit; the same check, extended to the section; red at RED, green at GREEN; the function names the slug in its own body, in the finding it raises (the comment above its `def` is documentation, outside the bound scope) | green |
 | PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE | X202; planted case in a scratch overlay's section | tests/test-seed-lint.sh | integration | green |
+| PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE | X203; the section heading renamed and a `T2` planted under it; red on arrival (the check skipped a section it could not find) | tests/test-seed-lint.sh | integration | green |
 | PRIME_OVERLAY_SECTION_WITHIN_CEILING | X141; structural; holds `OVERLAY_SECTION_MAX_BYTES` | tests/test-bound-hook.sh | unit | green |
 | PRIME_EAGER_SURFACE_WITHIN_BUDGET | check_eager_surface | tests/seed-lint.py | unit; an existing check, run with check_published_eager_figures; green on arrival, and red on the section's arrival until the matrix figures are updated. RED shown by mutation (the overlay grown in a scratch copy fails the published-figures check). Held at `pending` until the top-level-def scope defect in `check_spec_rows_name_their_contract` was fixed (§12); green since, and binding (the slug found inside the function) | green |
 | ROUTER_FAILED | X142; non-zero exit, empty output, and timeout with `ROUTER_TIMEOUT` rewritten to 1 | tests/test-bound-hook.sh | integration | green |
@@ -1305,7 +1342,13 @@ Techniques the cases rely on:
 | RESET_NOT_WRITTEN | X143, for the write-fails trigger; the sibling-missing trigger is X127 | tests/test-bound-hook.sh | integration | green |
 | PRIME_MODEL_IGNORES_SURFACED_INSTRUCTION | no test; model behaviour, soft (§11). The no-omission half rests on ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX and ROUTE_EXTENSION_HOLDS_NO_LEDGER_STATE | — | — | pending |
 | PRIME_SURFACED_SET_TRUSTED_WHILE_STALE | no test; model behaviour (§11) | — | — | pending |
-| UNEXPECTED_EXCEPTION | no test; covered only by the fail-open cases above | — | — | pending |
+| UNEXPECTED_EXCEPTION | X144; a status register printing non-UTF-8 bytes; red on arrival (a traceback) | tests/test-bound-hook.sh | integration | green |
+| UNEXPECTED_EXCEPTION | X145; 100 000 nested `[` on stdin, both hooks; red on arrival (a traceback, no pointer line) | tests/test-bound-hook.sh | integration | green |
+| ROUTE_HOOK_STRIPS_MULTILINE_PROMPT_ECHO | X146; CRLF and lone-CR prompts against their `\n` twin; red on arrival (newline translation broke the echo match) | tests/test-bound-hook.sh | integration | green |
+| RESET_NOT_WRITTEN | X147; the ledger stat fails through the `statfail` wrapper; red on arrival (the raw session id on stderr) | tests/test-bound-hook.sh | integration | green |
+| LEDGER_WRITE_FAILURE_FAILS_OPEN | X148; a ledger over `LEDGER_MAX_BYTES`, three prompts; red on arrival (the oversized file was written) | tests/test-bound-hook.sh | integration | green |
+| LEDGER_GC_BOUNDED | X149; GC's scan fails through the `scandirfail` wrapper; red on arrival (no ledger written) | tests/test-bound-hook.sh | integration | green |
+| ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX | X150; structural, the twin of X146; green on arrival, red under a stdout-normalising mutation (§11) | tests/test-bound-hook.sh | unit | green |
 
 Existing tests that must change in the same commit as the RED cases (plan §9):
 `tests/test-tier-lanes.sh` drops `route-hook.py` and `route-extension.ts` from
@@ -1337,6 +1380,7 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
 | The prime-agent eager figure in `README.md:50` and `:338` | `check_published_eager_figures` matches only a figure followed by `B` or `bytes`, and these two lines carry none, so they can go stale with the gate green | updated by hand in the commit that adds the section | implementer | residual; a check change is outside this spec |
 | A ledger or session directory owned by another user | The owner test of §6 has no gate case, since it needs a second account | the mode cases run in the gate (`LEDGER_FOREIGN_OR_WRITABLE_REFUSED`); the owner half is shown by reading the code at review | security | residual |
 | A future `st_nlink == 1` rule on the ledger | `LEDGER_WRITE_IS_ATOMIC` (X129) hard-links the old ledger, which gives it `st_nlink` 2, so such a rule would make that ledger unusable and change what X129 observes | no link-count rule exists today. Any change that adds one must also change X129's Given | architect | residual |
+| How `pi.exec` decodes the child's line endings before it returns | X150 proves only that `route-extension.ts` compares the exec result's stdout as it arrived. If `pi.exec` itself rewrites CR or CRLF, a CRLF prompt's echo stops matching and the extension falls back to the pointer line alone | not recorded. X150 is structural only, and no runtime test observes `pi.exec` | architect | Unknown |
 | The Claude Code default hook timeout | If the host kills the hook first, nothing is injected, not even the pointer line | not recorded. The seed sets none; `ROUTER_TIMEOUT` is 15 s and GC is bounded by `GC_SCAN_MAX` (plan §4.8, §11) | reliability | Unknown |
 | The reminder header, renamed in the first draft from the plan's `Not loaded, not listed before:` to `Peers not listed before:` | The plan's header contained "loaded", which contradicts I-6; the first rename lost the router's "not suggested" meaning | **Resolved, product 2026-09-23:** renamed to `Not suggested, not listed before (cross only if needed):` so the header keeps the router's "not suggested" meaning | product | resolved |
 | The reminder tail on Claude Code | On Claude Code "surfaced" means suggested, not opened, so "re-open" assumed a read | **Resolved, product 2026-09-23 (optional C6, taken):** `— open if not in view.` on Claude Code; the Prime Agent section keeps "re-open", where membership does mean the model opened the node | product | resolved |
@@ -1512,3 +1556,33 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
   move `pending` → `green`. Left at `pending`, with no test by design:
   `PRIME_MODEL_IGNORES_SURFACED_INSTRUCTION`,
   `PRIME_SURFACED_SET_TRUSTED_WHILE_STALE` and `UNEXPECTED_EXCEPTION`.
+- 2026-09-23, review fixes (implementer), with the orchestrator's decisions
+  of 2026-09-23 on the review of 2deda6a..343445f. No assertion edited. RED
+  was `X144`–`X150` and the extended `X118` in `tests/test-bound-hook.sh`, and
+  `X203` in `tests/test-seed-lint.sh`.
+  - (a) `"session_id": null` is absent: §6 envelopes say so,
+    `SESSION_ID_REFUSED` excludes it, and `LEDGER_ABSENT_SESSION_ID_FULL`
+    gains the null variant.
+  - (b) `UNEXPECTED_EXCEPTION`: nested stdin gives `route-hook.py` the
+    pointer line and one stderr line; plain invalid JSON stays silent;
+    `status-hook.py` owes at most one stderr line, and its register call is
+    guarded broadly again, so output that does not decode is silence.
+  - (c) A §7 rule: no stderr line carries a raw session id, valid or not.
+    `RESET_NOT_WRITTEN` gains the stat-failure trigger.
+  - (d) §6: `write_ledger` enforces `LEDGER_MAX_BYTES`, the steady state is
+    recorded, and so is why the list caps do not imply the byte cap.
+  - (e) §6: a GC failure is isolated from the write, at most one stderr line.
+    GC now reads at most `GC_SCAN_MAX` entries; it fetched one past the cap.
+  - (f) §6: the `SURFACED_MAX` overflow refresh in the mode decision is now
+    written down, not only coded.
+  - (g) §10: rows for `X144`–`X150` and `X203`; `UNEXPECTED_EXCEPTION` moves
+    `pending` → `green`.
+  - (h) §11: how `pi.exec` decodes line endings is an Unknown; `X150` is
+    structural only.
+  - Code: the router's output is decoded as UTF-8 with no newline
+    translation, so a CRLF or lone-CR prompt routes like its `\n` twin.
+    `seed-lint.py` fails `PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE` when the
+    overlay holds zero or several `## Surfaced nodes` sections instead of
+    skipping. The host capability matrix drops its unchecked "350 bytes" for
+    `OVERLAY_SECTION_MAX_BYTES` and footnotes the Copilot dedup cell ³, the
+    Routing hook row's install condition.

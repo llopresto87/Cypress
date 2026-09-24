@@ -35,6 +35,7 @@ Context injection REQUIRES JSON on stdout — plain text is not injected by
 Copilot.
 """
 
+import itertools
 import json
 import os
 import re
@@ -173,6 +174,13 @@ def warn(message: str) -> None:
     print(f"route-hook: {message}", file=sys.stderr)
 
 
+def reason(e: OSError) -> str:
+    """Why an OS call failed, for a stderr line: the strerror, else the type
+    name. Never str(e), which carries the file name, and a ledger's file name
+    is the raw session id."""
+    return e.strerror or type(e).__name__
+
+
 # --- the router call -------------------------------------------------------
 class Entry(NamedTuple):
     node: str
@@ -189,18 +197,23 @@ def run_router(prompt: str):
     """The router's output with the exact echo prefix removed, or None when the
     router failed: a non-zero exit, a timeout, no output, a prompt the OS
     cannot pass as an argument (a NUL byte, over the argument limit), or output
-    that does not begin with `task: <prompt>` and a blank line."""
+    that does not begin with `task: <prompt>` and a blank line.
+
+    The output is decoded here, with no newline translation: text mode would
+    turn the echo of a CRLF or lone-CR prompt into `\n`, and it would no longer
+    match the prompt it echoes."""
     try:
         out = subprocess.run(
             [sys.executable, str(LINT), "--plan=" + prompt],
-            capture_output=True, text=True, timeout=ROUTER_TIMEOUT, cwd=str(ROOT),
+            capture_output=True, timeout=ROUTER_TIMEOUT, cwd=str(ROOT),
         )
     except (OSError, ValueError, subprocess.SubprocessError):
         return None
+    stdout = out.stdout.decode("utf-8", errors="replace")
     prefix = f"task: {prompt}\n\n"
-    if out.returncode != 0 or not out.stdout.startswith(prefix):
+    if out.returncode != 0 or not stdout.startswith(prefix):
         return None
-    return out.stdout[len(prefix):]
+    return stdout[len(prefix):]
 
 
 def parse_suggestion(remainder: str):
@@ -342,7 +355,7 @@ def open_session_dir(create: bool):
             return None
         raise LedgerUnusable(f"{top_name}/ is missing, and this hook never creates it")
     except OSError as e:
-        raise LedgerUnusable(f"{top_name}/ unusable ({e.strerror})")
+        raise LedgerUnusable(f"{top_name}/ unusable ({reason(e)})")
     where = "/".join(SESSION_DIR)
     try:
         if create:
@@ -356,7 +369,7 @@ def open_session_dir(create: bool):
             return None
         raise LedgerUnusable(f"{where}/ could not be created")
     except OSError as e:
-        raise LedgerUnusable(f"{where}/ unusable ({e.strerror})")
+        raise LedgerUnusable(f"{where}/ unusable ({reason(e)})")
     finally:
         os.close(top)
     try:
@@ -374,6 +387,9 @@ def open_session_dir(create: bool):
                     os.write(ignore, b"*\n")
                 finally:
                     os.close(ignore)
+    except OSError as e:
+        os.close(fd)
+        raise LedgerUnusable(f"{where}/ unusable ({reason(e)})") from None
     except BaseException:
         os.close(fd)
         raise
@@ -390,7 +406,7 @@ def read_ledger(dir_fd: int, session_id: str, now: float):
     except FileNotFoundError:
         return None
     except OSError as e:
-        raise LedgerUnusable(f"session ledger unusable ({e.strerror})")
+        raise LedgerUnusable(f"session ledger unusable ({reason(e)})")
     try:
         st = os.fstat(fd)
         if not stat.S_ISREG(st.st_mode):
@@ -422,15 +438,23 @@ def read_ledger(dir_fd: int, session_id: str, now: float):
 def write_ledger(dir_fd: int, doc: dict) -> None:
     """Replace this session's ledger atomically: a 0600 temp file created
     exclusively, then os.replace onto the name. On any failure the temp file is
-    removed and the old ledger, if any, stays as it was."""
+    removed and the old ledger, if any, stays as it was.
+
+    A document over LEDGER_MAX_BYTES is refused before any file is made:
+    SURFACED_MAX ids at the pattern's full length serialize past it, and
+    read_ledger would refuse the file as oversized on the next prompt."""
     problem = ledger_problem(doc, doc.get("session_id"))
     if problem:
         raise LedgerUnusable(f"refusing to write a ledger that breaks its schema ({problem})")
+    data = (json.dumps(doc) + "\n").encode()
+    if len(data) > LEDGER_MAX_BYTES:
+        raise LedgerUnusable(f"refusing to write a ledger of {len(data)} B, over "
+                             f"LEDGER_MAX_BYTES; not written")
     tmp = TEMP_PREFIX + secrets.token_hex(8)
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=dir_fd)
     try:
         try:
-            os.write(fd, (json.dumps(doc) + "\n").encode())
+            os.write(fd, data)
         finally:
             os.close(fd)
         os.replace(tmp, doc["session_id"] + ".json", src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
@@ -456,9 +480,7 @@ def collect_garbage(dir_fd: int, keep: str, now: float) -> None:
     one will make GC_MAX_FILES. Any other name is never touched."""
     ledgers = []
     with os.scandir(dir_fd) as entries:
-        for scanned, entry in enumerate(entries):
-            if scanned >= GC_SCAN_MAX:
-                break
+        for entry in itertools.islice(entries, GC_SCAN_MAX):
             name = entry.name
             is_ledger = name.endswith(".json") and bool(SESSION_ID.match(name[:-5]))
             if name == keep or not (is_ledger or TEMP_NAME.match(name)):
@@ -479,7 +501,8 @@ def inject_with_ledger(session_id: str, suggestion: Suggestion, full: str):
     """Read the ledger, decide, compose, write. Returns (text, note), where a
     note is the one stderr line this prompt owes. Raises on any failure, and
     the caller then falls back to `full`, so a reminder is only ever emitted
-    when a ledger records it."""
+    when a ledger records it. Garbage collection is housekeeping, not part of
+    that record: its failure is the note, and the write still runs."""
     now = time.time()
     dir_fd = open_session_dir(create=True)
     try:
@@ -493,7 +516,10 @@ def inject_with_ledger(session_id: str, suggestion: Suggestion, full: str):
         text = full if mode == "full" else reminder_text(ledger, suggestion)
         last_reset = ledger["last_reset"] if ledger else None
         if created:
-            collect_garbage(dir_fd, session_id + ".json", now)
+            try:
+                collect_garbage(dir_fd, session_id + ".json", now)
+            except OSError as e:
+                note = f"session ledger GC skipped ({reason(e)})"
         write_ledger(dir_fd, ledger_doc(session_id, count, surfaced, peers, last_reset))
     finally:
         os.close(dir_fd)
@@ -506,9 +532,10 @@ def reset_ledger(session_id, source) -> None:
 
     Called by status-hook.py on every SessionStart source, so the ledger keeps
     one owner. Writes nothing when there is no session id, no graph, or no
-    ledger for this session. Raises LedgerUnusable for a refused id or an
-    unusable directory; when the write fails the ledger is unlinked instead,
-    and it still raises, since the caller owes a stderr line either way.
+    ledger for this session. Raises LedgerUnusable for a refused id, an
+    unusable directory, or a ledger that cannot be stat'ed; when the write
+    fails the ledger is unlinked instead, and it still raises, since the caller
+    owes a stderr line either way. Every message is safe to print as it is.
     """
     if session_id is None or LINT is None:
         return
@@ -525,6 +552,8 @@ def reset_ledger(session_id, source) -> None:
             os.stat(name, dir_fd=dir_fd, follow_symlinks=False)
         except FileNotFoundError:
             return
+        except OSError as e:
+            raise LedgerUnusable(f"session ledger unusable ({reason(e)}); no reset") from None
         at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         try:
             write_ledger(dir_fd, ledger_doc(session_id, 0, (), (), {"source": source, "at": at}))
@@ -532,9 +561,9 @@ def reset_ledger(session_id, source) -> None:
             try:
                 os.unlink(name, dir_fd=dir_fd)
             except OSError as gone:
-                raise LedgerUnusable(f"reset not written ({e.strerror}) and the stale "
-                                     f"ledger could not be removed ({gone.strerror})")
-            raise LedgerUnusable(f"reset not written ({e.strerror}); ledger removed instead")
+                raise LedgerUnusable(f"reset not written ({reason(e)}) and the stale "
+                                     f"ledger could not be removed ({reason(gone)})") from None
+            raise LedgerUnusable(f"reset not written ({reason(e)}); ledger removed instead") from None
     finally:
         os.close(dir_fd)
 
@@ -543,7 +572,12 @@ def reset_ledger(session_id, source) -> None:
 def main() -> int:
     try:
         data = json.load(sys.stdin)
-    except ValueError:
+    except RecursionError:                        # nested past the parser: no prompt to route
+        warn("stdin nested past the JSON parser's limit; pointer line only")
+        if LINT is not None:
+            emit(POINTER, "UserPromptSubmit")
+        return 0
+    except ValueError:                            # not JSON, empty stdin included: silent
         return 0
     if not isinstance(data, dict):
         return 0
@@ -567,8 +601,8 @@ def main() -> int:
     full = full_text(remainder)
 
     text, note = full, None
-    if "session_id" in data:                      # the exact key only; Copilot sends none
-        session_id = data["session_id"]
+    session_id = data.get("session_id")          # the exact key only; null is absent
+    if session_id is not None:
         suggestion = parse_suggestion(remainder)
         if not valid_session_id(session_id):
             note = "session_id refused (not a safe filename); full injection"
@@ -580,7 +614,7 @@ def main() -> int:
             except LedgerUnusable as e:
                 text, note = full, f"{e}; full injection"
             except OSError as e:
-                text, note = full, f"session ledger not written ({e.strerror}); full injection"
+                text, note = full, f"session ledger not written ({reason(e)}); full injection"
             except Exception as e:                # noqa: BLE001 — fail open to the full text
                 text, note = full, f"session ledger step failed ({type(e).__name__}); full injection"
     if note:
