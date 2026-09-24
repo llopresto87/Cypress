@@ -1,8 +1,8 @@
 ---
-status: active
+status: implemented
 status_date: 2026-09-24
 owner: architect
-status_evidence: tests/test-seed-lint.sh, tests/fixtures/front-door/, tests/seed-lint.py, tests/test_gate_registry.py (RED landed with this promotion; §10 says which rows are red)
+status_evidence: tests/test-seed-lint.sh, tests/fixtures/front-door/, tests/seed-lint.py, tests/test_gate_registry.py (every §10 row green or a named residual; FRONT_DOOR_PENDING empty; all wired into tests/run.sh)
 ---
 
 # SPEC-0004: the front door
@@ -1999,6 +1999,16 @@ NO_UNLINKED_PROJECT_TERM_IN_DEFINITION (X307) and DEFINITION_HAS_ONE_HOME
 have left `FRONT_DOOR_PENDING`. The rule above is unchanged: every row whose
 slug is still in the ledger stays `red`.
 
+**Status as increment 7 lands (2026-09-24).** Every row is `green` or a named
+`residual`, and the spec is `implemented`. Increments 3 to 6 emptied
+`FRONT_DOOR_PENDING` without flipping their rows; their 31 `red` rows and the
+X300 guard's `pending` go `green` here, since each slug's real-tree finding
+count is zero and its planted case fires. Increment 7 turns the rest green:
+the three PROSE_FLOOR_HELD_PER_FILE rows, BLENDED_PROSE_STEP and
+PROSE_STEP_NAME_COLLISION, whose `test_prose_lint_*` tests pass with their
+`expectedFailure` markers removed. From this commit the ledger-empty clause of
+PENDING_LEDGER_HOLDS_ONLY_FAILING_CONTRACTS binds.
+
 **Binding.** Each row citing `tests/test-seed-lint.sh` opens its Test case
 cell with one fixed-width label, `X300` to `X335` (`X325` is unassigned).
 SPEC-0003 holds `X101` to `X203`. `check_spec_test_mapping` binds only the
@@ -2072,62 +2082,62 @@ case a §9 criterion names has a sub-plant below, in that criterion's words.
 
 | Contract / Failure | Test case | Test file | Level | Status |
 |---|---|---|---|---|
-| (fixture guard, no slug) | X300 case_fd_fixture_clean: the conforming fixture produces no `front-door: ` line and no `: RAISED ` line; from increment 5 seed-lint also exits 0 on it (case table) | tests/test-seed-lint.sh | fixture (scope); guard, cannot go red before the checks exist | pending |
-| FIRST_SCREEN_ORDER | X301 case_fd_first_screen_order, case_fd_first_screen_budget, case_fd_first_command_line, case_fd_what_you_get_heading · `check_fd_first_screen_order` | tests/test-seed-lint.sh | fixture (scope) | red |
-| FIRST_SCREEN_ORDER | X302 case_fd_later_sections_order · `check_fd_first_screen_order` | tests/test-seed-lint.sh | fixture (scope); the later-sections clause (AC-1), re-keyed from the folded `README_LATER_SECTIONS_ORDER` | red |
-| FIRST_SCREEN_ORDER | X334 case_fd_first_screen_caps · `check_fd_first_screen_order` | tests/test-seed-lint.sh | fixture (scope); the line-cap clause (§6 "Caps", press P7); `tools/ratchet-lint.py` alone accepts the raise when `tests/ratchets.json` changes in the same diff, so this case is the refusal | red |
-| INSTALL_SECTION_NAMES_TARGET_PATHS | X303 case_fd_install_target_paths, case_fd_install_seed_path · `check_fd_install_section_names_target_paths` | tests/test-seed-lint.sh | fixture (scope) | red |
-| WHERE_NEXT_LINKS_THE_REFERENCES | X304 case_fd_where_next · `check_fd_where_next_links_the_references` | tests/test-seed-lint.sh | fixture (scope) | red |
+| (fixture guard, no slug) | X300 case_fd_fixture_clean: the conforming fixture produces no `front-door: ` line and no `: RAISED ` line; from increment 5 seed-lint also exits 0 on it (case table) | tests/test-seed-lint.sh | fixture (scope); guard, cannot go red before the checks exist | green |
+| FIRST_SCREEN_ORDER | X301 case_fd_first_screen_order, case_fd_first_screen_budget, case_fd_first_command_line, case_fd_what_you_get_heading · `check_fd_first_screen_order` | tests/test-seed-lint.sh | fixture (scope) | green |
+| FIRST_SCREEN_ORDER | X302 case_fd_later_sections_order · `check_fd_first_screen_order` | tests/test-seed-lint.sh | fixture (scope); the later-sections clause (AC-1), re-keyed from the folded `README_LATER_SECTIONS_ORDER` | green |
+| FIRST_SCREEN_ORDER | X334 case_fd_first_screen_caps · `check_fd_first_screen_order` | tests/test-seed-lint.sh | fixture (scope); the line-cap clause (§6 "Caps", press P7); `tools/ratchet-lint.py` alone accepts the raise when `tests/ratchets.json` changes in the same diff, so this case is the refusal | green |
+| INSTALL_SECTION_NAMES_TARGET_PATHS | X303 case_fd_install_target_paths, case_fd_install_seed_path · `check_fd_install_section_names_target_paths` | tests/test-seed-lint.sh | fixture (scope) | green |
+| WHERE_NEXT_LINKS_THE_REFERENCES | X304 case_fd_where_next · `check_fd_where_next_links_the_references` | tests/test-seed-lint.sh | fixture (scope) | green |
 | GLOSSARY_ENTRY_COMPLETE | X305 case_fd_glossary_absent, case_fd_glossary_fields, case_fd_glossary_closed_values, case_fd_glossary_required_term · `check_fd_glossary_entry_complete` | tests/test-seed-lint.sh | fixture (scope) | green |
 | GLOSSARY_PATHS_EXIST | X306 case_fd_glossary_paths, case_fd_glossary_install_literal · `check_fd_glossary_paths_exist` | tests/test-seed-lint.sh | fixture (scope) | green |
 | NO_UNLINKED_PROJECT_TERM_IN_DEFINITION | X307 case_fd_definition_links · `check_fd_no_unlinked_project_term_in_definition` | tests/test-seed-lint.sh | fixture (scope) | green |
-| TERM_LINKED_ON_FIRST_USE | X308 case_fd_term_linked · `check_fd_term_linked_on_first_use` | tests/test-seed-lint.sh | fixture (scope) | red |
+| TERM_LINKED_ON_FIRST_USE | X308 case_fd_term_linked · `check_fd_term_linked_on_first_use` | tests/test-seed-lint.sh | fixture (scope) | green |
 | DEFINITION_HAS_ONE_HOME | X309 case_fd_one_home · `check_fd_definition_has_one_home` | tests/test-seed-lint.sh | fixture (scope) | green |
-| REFERENCE_OPENS_WITH_ITS_DEFINITION | X310 case_fd_reference_opener · `check_fd_reference_opens_with_its_definition` | tests/test-seed-lint.sh | fixture (scope); C5 RED for the four reference-table checks, with X321 (§6 C5 table). Three of them are UNPROTECTED in the coverage binder, so their green after increment 4's heading demotion also rests on that increment's recorded mutation probe | red |
-| ENFORCEMENT_ROW_COMPLETE | X311 case_fd_enforcement_row, case_fd_enforcement_required_row · `check_fd_enforcement_row_complete` | tests/test-seed-lint.sh | fixture (scope) | red |
-| ENFORCEMENT_ROW_COMPLETE | X329 case_fd_enforcement_row_residuals · `check_fd_enforcement_row_complete` | tests/test-seed-lint.sh | fixture (scope); the §6 row-specific table (AC-26) | red |
-| MECHANISM_CLAIMS_TRACED | X312 case_fd_mechanism_traced, case_fd_mechanism_overclaim · `check_fd_mechanism_claims_traced` | tests/test-seed-lint.sh | fixture (scope) | red |
-| MECHANISM_CLAIMS_TRACED | X330 case_fd_mechanism_surfaces · `check_fd_mechanism_claims_traced` | tests/test-seed-lint.sh | fixture (scope); traced surfaces beyond README, overclaim scope, glossary Enforcement fields, `guard_misnomer` (AC-9, AC-10, AC-26) | red |
-| ENFORCEMENT_ROW_COMPLETE | X313 case_fd_hook_firing · `check_fd_enforcement_row_complete` | tests/test-seed-lint.sh | fixture (scope); the `enf-route-hook` and `enf-status-hook` lines of the §6 row-specific table and the matrix clause (AC-27), re-keyed from the folded `HOOK_FIRING_IS_NOT_HOLDING` | red |
-| LIMITS_SECTION_PRESENT | X314 case_fd_limits_hard_row, case_fd_limits_required_rows, case_fd_limits_unmeasured · `check_fd_limits_section_present` | tests/test-seed-lint.sh | fixture (scope) | red |
-| CATALOGS_OUT_OF_README | X315 case_fd_catalogs, case_fd_adr_range · `check_fd_catalogs_out_of_readme` | tests/test-seed-lint.sh | fixture (scope); C5 RED for the numeric-claims scan; case_05 and case_06 unchanged | red |
-| COST_FIGURES_SCOPED | X316 case_fd_cost_scope, case_fd_cost_provenance, case_fd_cost_measured_derived · `check_fd_cost_figures_scoped` | tests/test-seed-lint.sh | fixture (scope) | red |
-| COST_FIGURES_SCOPED | X331 case_fd_cost_no_derived · `check_fd_cost_figures_scoped` | tests/test-seed-lint.sh | fixture (scope); the one-derived-figure required input | red |
-| COST_FIGURES_SCOPED | X317 case_fd_measured_evidence · `check_fd_cost_figures_scoped` | tests/test-seed-lint.sh | fixture (scope); the measured branch (AC-13), re-keyed from the folded `MEASURED_FIGURE_MATCHES_ITS_EVIDENCE` | red |
+| REFERENCE_OPENS_WITH_ITS_DEFINITION | X310 case_fd_reference_opener · `check_fd_reference_opens_with_its_definition` | tests/test-seed-lint.sh | fixture (scope); C5 RED for the four reference-table checks, with X321 (§6 C5 table). Three of them are UNPROTECTED in the coverage binder, so their green after increment 4's heading demotion also rests on that increment's recorded mutation probe | green |
+| ENFORCEMENT_ROW_COMPLETE | X311 case_fd_enforcement_row, case_fd_enforcement_required_row · `check_fd_enforcement_row_complete` | tests/test-seed-lint.sh | fixture (scope) | green |
+| ENFORCEMENT_ROW_COMPLETE | X329 case_fd_enforcement_row_residuals · `check_fd_enforcement_row_complete` | tests/test-seed-lint.sh | fixture (scope); the §6 row-specific table (AC-26) | green |
+| MECHANISM_CLAIMS_TRACED | X312 case_fd_mechanism_traced, case_fd_mechanism_overclaim · `check_fd_mechanism_claims_traced` | tests/test-seed-lint.sh | fixture (scope) | green |
+| MECHANISM_CLAIMS_TRACED | X330 case_fd_mechanism_surfaces · `check_fd_mechanism_claims_traced` | tests/test-seed-lint.sh | fixture (scope); traced surfaces beyond README, overclaim scope, glossary Enforcement fields, `guard_misnomer` (AC-9, AC-10, AC-26) | green |
+| ENFORCEMENT_ROW_COMPLETE | X313 case_fd_hook_firing · `check_fd_enforcement_row_complete` | tests/test-seed-lint.sh | fixture (scope); the `enf-route-hook` and `enf-status-hook` lines of the §6 row-specific table and the matrix clause (AC-27), re-keyed from the folded `HOOK_FIRING_IS_NOT_HOLDING` | green |
+| LIMITS_SECTION_PRESENT | X314 case_fd_limits_hard_row, case_fd_limits_required_rows, case_fd_limits_unmeasured · `check_fd_limits_section_present` | tests/test-seed-lint.sh | fixture (scope) | green |
+| CATALOGS_OUT_OF_README | X315 case_fd_catalogs, case_fd_adr_range · `check_fd_catalogs_out_of_readme` | tests/test-seed-lint.sh | fixture (scope); C5 RED for the numeric-claims scan; case_05 and case_06 unchanged | green |
+| COST_FIGURES_SCOPED | X316 case_fd_cost_scope, case_fd_cost_provenance, case_fd_cost_measured_derived · `check_fd_cost_figures_scoped` | tests/test-seed-lint.sh | fixture (scope) | green |
+| COST_FIGURES_SCOPED | X331 case_fd_cost_no_derived · `check_fd_cost_figures_scoped` | tests/test-seed-lint.sh | fixture (scope); the one-derived-figure required input | green |
+| COST_FIGURES_SCOPED | X317 case_fd_measured_evidence · `check_fd_cost_figures_scoped` | tests/test-seed-lint.sh | fixture (scope); the measured branch (AC-13), re-keyed from the folded `MEASURED_FIGURE_MATCHES_ITS_EVIDENCE` | green |
 | EAGER_FIGURES_CHECKED_WHEREVER_PUBLISHED | X318 case_fd_eager_published · `check_fd_eager_figures_checked_wherever_published` (grill §8; `check_published_eager_figures` is re-pointed in increment 5, not duplicated) | tests/test-seed-lint.sh | fixture (scope); C5 RED for `check_published_eager_figures`. Predicted to pass on the real tree at `ee4cd95`, so enforced from increment 1 and never pending | green |
-| BODY_FIGURES_HAVE_A_REQUIRED_HOME | X319 case_fd_body_home, case_fd_body_figure_elsewhere · `check_fd_body_figures_have_a_required_home` (grill §8; `check_published_body_figures` is re-pointed in increment 5, not duplicated) | tests/test-seed-lint.sh | fixture (scope); C5 RED for `check_published_body_figures`; case_21 unchanged | red |
-| BODY_FIGURES_HAVE_A_REQUIRED_HOME | X332 case_fd_body_project_node · `check_fd_body_figures_have_a_required_home` | tests/test-seed-lint.sh | fixture (scope); the `PROJECT_NODE_LINE_FIGURES` exemption and its binding to `graph-lint.py` | red |
-| FRONT_DOOR_ANCHORS_RESOLVE | X320 case_fd_anchor_resolves, case_fd_anchor_duplicate · `check_fd_front_door_anchors_resolve` | tests/test-seed-lint.sh | fixture (scope) | red |
-| FRONT_DOOR_HEADINGS_WELL_FORMED | X321 case_fd_headings · `check_fd_front_door_headings_well_formed` | tests/test-seed-lint.sh | fixture (scope) | red |
-| LINK_TEXT_STANDS_ALONE | X322 case_fd_link_text · `check_fd_link_text_stands_alone` | tests/test-seed-lint.sh | fixture (scope) | red |
-| TABLES_HAVE_HEADER_ROWS | X323 case_fd_table_header · `check_fd_tables_have_header_rows` | tests/test-seed-lint.sh | fixture (scope) | red |
+| BODY_FIGURES_HAVE_A_REQUIRED_HOME | X319 case_fd_body_home, case_fd_body_figure_elsewhere · `check_fd_body_figures_have_a_required_home` (grill §8; `check_published_body_figures` is re-pointed in increment 5, not duplicated) | tests/test-seed-lint.sh | fixture (scope); C5 RED for `check_published_body_figures`; case_21 unchanged | green |
+| BODY_FIGURES_HAVE_A_REQUIRED_HOME | X332 case_fd_body_project_node · `check_fd_body_figures_have_a_required_home` | tests/test-seed-lint.sh | fixture (scope); the `PROJECT_NODE_LINE_FIGURES` exemption and its binding to `graph-lint.py` | green |
+| FRONT_DOOR_ANCHORS_RESOLVE | X320 case_fd_anchor_resolves, case_fd_anchor_duplicate · `check_fd_front_door_anchors_resolve` | tests/test-seed-lint.sh | fixture (scope) | green |
+| FRONT_DOOR_HEADINGS_WELL_FORMED | X321 case_fd_headings · `check_fd_front_door_headings_well_formed` | tests/test-seed-lint.sh | fixture (scope) | green |
+| LINK_TEXT_STANDS_ALONE | X322 case_fd_link_text · `check_fd_link_text_stands_alone` | tests/test-seed-lint.sh | fixture (scope) | green |
+| TABLES_HAVE_HEADER_ROWS | X323 case_fd_table_header · `check_fd_tables_have_header_rows` | tests/test-seed-lint.sh | fixture (scope) | green |
 | PENDING_LEDGER_HOLDS_ONLY_FAILING_CONTRACTS | X324 case_fd_pending_stale, case_fd_pending_unknown_slug, case_fd_pending_holds_exit · `check_fd_pending_ledger_holds_only_failing_contracts` | tests/test-seed-lint.sh | fixture (scope) and real-tree (copy) (scope); ledger growth is also held by `tools/ratchet-lint.py` (`set`) | green |
 | PENDING_LEDGER_HOLDS_ONLY_FAILING_CONTRACTS | X333 case_fd_pending_implemented · `check_fd_pending_ledger_holds_only_failing_contracts` | tests/test-seed-lint.sh | fixture (scope); the empty-when-`implemented` clause (AC-28) | green |
 | PENDING_LEDGER_HOLDS_ONLY_FAILING_CONTRACTS | X335 case_fd_pending_release · `check_fd_pending_ledger_holds_only_failing_contracts` | tests/test-seed-lint.sh | fixture (scope); the empty-from-`FRONT_DOOR_RELEASE` clause (AC-28, press P4) | green |
-| PROSE_FLOOR_HELD_PER_FILE | test_prose_lint_one_step_per_file | tests/test_gate_registry.py | unit (scope), `expectedFailure` until increment 7; C5 RED for the prose-lint step split | red |
-| PROSE_FLOOR_HELD_PER_FILE | test_prose_lint_multi_file_refused | tests/test_gate_registry.py | unit (scope), `expectedFailure` until increment 7 | red |
-| PROSE_FLOOR_HELD_PER_FILE | test_prose_lint_same_name_refused | tests/test_gate_registry.py | unit (scope), `expectedFailure` until increment 7 (AC-29) | red |
-| VACUOUS_PASS_ON_ABSENT_TEXT | X326 case_fd_absent_inputs; also X305 case_fd_glossary_absent, X319 case_fd_body_home, X331 case_fd_cost_no_derived | tests/test-seed-lint.sh | fixture (scope) | red |
+| PROSE_FLOOR_HELD_PER_FILE | test_prose_lint_one_step_per_file | tests/test_gate_registry.py | unit (scope), `expectedFailure` until increment 7; C5 RED for the prose-lint step split | green |
+| PROSE_FLOOR_HELD_PER_FILE | test_prose_lint_multi_file_refused | tests/test_gate_registry.py | unit (scope), `expectedFailure` until increment 7 | green |
+| PROSE_FLOOR_HELD_PER_FILE | test_prose_lint_same_name_refused | tests/test_gate_registry.py | unit (scope), `expectedFailure` until increment 7 (AC-29) | green |
+| VACUOUS_PASS_ON_ABSENT_TEXT | X326 case_fd_absent_inputs; also X305 case_fd_glossary_absent, X319 case_fd_body_home, X331 case_fd_cost_no_derived | tests/test-seed-lint.sh | fixture (scope) | green |
 | FIXTURE_ONLY_COVERAGE | X324 case_fd_pending_holds_exit | tests/test-seed-lint.sh | real-tree (copy) (scope), partnered by the real-tree `seed-lint.py` step (semantic) | green |
 | PENDING_LEDGER_MASKS_A_REGRESSION | none: counted in the PENDING line, never enforced | none | residual, bounded by the empty-ledger done criterion, by X333 (`implemented`) and by X335 (`FRONT_DOOR_RELEASE`); each increment's handback records every slug's PENDING count (grill §9) | residual |
 | ANCHOR_NOT_RENDERED_BY_HOST | none: every check reads the file, not the rendered page; no honest test exists and none is faked | none | residual, prevented not detected; judge: the steward observes one rendered `<a id>` fragment on the publishing host before increment 2 (grill §9 increment 2), recorded in that increment's handback; a fragment that does not resolve reopens the anchor design | residual |
-| ANCHOR_DRIFT | X320 case_fd_anchor_resolves, case_fd_anchor_duplicate; X308 case_fd_term_linked (b); X304 case_fd_where_next (b) | tests/test-seed-lint.sh | fixture (scope) | red |
-| FIGURE_MOVED_WITHOUT_ITS_CHECK | X318 case_fd_eager_published; X319 case_fd_body_figure_elsewhere | tests/test-seed-lint.sh | fixture (scope); outside the front-door files it is a residual | red |
-| OVERCLAIM | X312 case_fd_mechanism_overclaim; also X330 case_fd_mechanism_surfaces (a) to (d) | tests/test-seed-lint.sh | fixture (scope) | red |
-| MEASURED_WORD_ON_A_DERIVED_FIGURE | X316 case_fd_cost_measured_derived | tests/test-seed-lint.sh | fixture (scope) | red |
-| EVIDENCE_DISAGREES | X317 case_fd_measured_evidence | tests/test-seed-lint.sh | fixture (scope); the other-context match is a residual | red |
+| ANCHOR_DRIFT | X320 case_fd_anchor_resolves, case_fd_anchor_duplicate; X308 case_fd_term_linked (b); X304 case_fd_where_next (b) | tests/test-seed-lint.sh | fixture (scope) | green |
+| FIGURE_MOVED_WITHOUT_ITS_CHECK | X318 case_fd_eager_published; X319 case_fd_body_figure_elsewhere | tests/test-seed-lint.sh | fixture (scope); outside the front-door files it is a residual | green |
+| OVERCLAIM | X312 case_fd_mechanism_overclaim; also X330 case_fd_mechanism_surfaces (a) to (d) | tests/test-seed-lint.sh | fixture (scope) | green |
+| MEASURED_WORD_ON_A_DERIVED_FIGURE | X316 case_fd_cost_measured_derived | tests/test-seed-lint.sh | fixture (scope) | green |
+| EVIDENCE_DISAGREES | X317 case_fd_measured_evidence | tests/test-seed-lint.sh | fixture (scope); the other-context match is a residual | green |
 | CLAIM_WITHOUT_A_LISTED_VERB | none: passes by design | none | residual, semantic; reviewer at verify | residual |
 | PARAPHRASE_BELOW_CEILING | none: passes by design | none | residual, semantic; reviewer at verify | residual |
 | UNLISTED_SURFACE_FORM | none: passes by design | none | residual, semantic; reviewer at verify | residual |
 | INSTALL_LITERAL_IS_NOT_A_WRITE | none: passes by design; SPEC-0001 placement tests hold writes | none | residual | residual |
 | CATALOG_IN_BARE_WORDS | none: passes by design | none | residual, semantic; reviewer at verify | residual |
-| BLENDED_PROSE_STEP | test_prose_lint_multi_file_refused | tests/test_gate_registry.py | unit (scope) | red |
-| UNREADABLE_INPUT | X327 case_fd_unreadable_input | tests/test-seed-lint.sh | fixture (scope) | red |
+| BLENDED_PROSE_STEP | test_prose_lint_multi_file_refused | tests/test_gate_registry.py | unit (scope) | green |
+| UNREADABLE_INPUT | X327 case_fd_unreadable_input | tests/test-seed-lint.sh | fixture (scope) | green |
 | CHECK_RAISED | X328 case_fd_check_raised | tests/test-seed-lint.sh | fixture (scope) | green |
 | LEDGER_REGROWS_AFTER_IMPLEMENTED | X333 case_fd_pending_implemented | tests/test-seed-lint.sh | fixture (scope); `tools/ratchet-lint.py` alone accepts the regrowth when `tests/ratchets.json` changes in the same diff, so this case is the refusal | green |
 | RELEASE_WITH_PENDING_LEDGER | X335 case_fd_pending_release | tests/test-seed-lint.sh | fixture (scope); a release numbered below `FRONT_DOOR_RELEASE` from a partly merged tree is the §7 residual, held by the steward's single merge | green |
-| LINE_CEILING_RAISED_PAST_CAP | X334 case_fd_first_screen_caps | tests/test-seed-lint.sh | fixture (scope) | red |
-| PROSE_STEP_NAME_COLLISION | test_prose_lint_same_name_refused | tests/test_gate_registry.py | unit (scope), `expectedFailure` until increment 7 | red |
+| LINE_CEILING_RAISED_PAST_CAP | X334 case_fd_first_screen_caps | tests/test-seed-lint.sh | fixture (scope) | green |
+| PROSE_STEP_NAME_COLLISION | test_prose_lint_same_name_refused | tests/test_gate_registry.py | unit (scope), `expectedFailure` until increment 7 | green |
 | STRONG_CLAIM_IN_MANUAL_PROSE | none: passes by design. The held half, a manual strong claim that links a row, is X330 case_fd_mechanism_surfaces (e); the boundary is pinned by its "passes" sub-plant (h) | none | residual, semantic; judge: `reviewer` at verify | residual |
 | CLASS_CELL_UNTRUE | none mechanical. The closed class set, the row-specific patterns and class rules, the matrix class-table clause, and strong claims against the class as written are X311, X329, X313, X312 and X330 | none | residual, judgment; judge: `security` signs the Class column row by row against ADR-0003 at verify of increment 3, recorded in that increment's handback; the `reviewer` reads the matrix's footnote ¹ and delegation note at verify of the same increment (§7, P9) | residual |
 | HOST_FACT_RESTATED | none: no contract (§2 scope) | none | residual, judgment; judge: `reviewer` at verify of increments 2, 3, 5 and 6, over every hit of the §7 pattern in those files | residual |
@@ -2331,3 +2341,10 @@ the tables above leave them open:
   slugs left `FRONT_DOOR_PENDING` when the glossary landed. Status column
   only; no contract changed. Applied by `docs-librarian` (spawn
   orchestrator.32) after reviewer orchestrator.31.
+- 2026-09-24 — increment 7: status goes from `active` to `implemented`. §10's
+  remaining 36 `red` rows and the X300 guard's `pending` flipped to `green`
+  (status column only; the §10 increment-7 paragraph says which increment
+  cleared each). `tests/run.sh` runs prose-lint once per file, and
+  `tools/gate-registry.py --lint` refuses a prose-lint line with two `--file`
+  arguments and two lines resolving to one step name. No contract changed.
+  Applied by `implementer` (spawn orchestrator.38).

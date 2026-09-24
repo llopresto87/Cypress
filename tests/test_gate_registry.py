@@ -169,9 +169,6 @@ class ProseFloorPerFileTests(unittest.TestCase):
     """SPEC-0004 PROSE_FLOOR_HELD_PER_FILE: one prose-lint step per file, named
     by its path from the repository root, so one file's excess cannot hide in
     another's slack and two files with one basename cannot merge into one step.
-
-    All three stay `expectedFailure` until increment 7 of the front-door plan
-    splits the step (grill §9); that increment removes the markers.
     """
 
     PROSE = 'add_step python3 "$ROOT/tools/prose-lint.py"'
@@ -198,7 +195,6 @@ class ProseFloorPerFileTests(unittest.TestCase):
             rc = self.mod.cmd_lint()
         return rc, buf_err.getvalue() + buf_out.getvalue()
 
-    @unittest.expectedFailure
     def test_prose_lint_one_step_per_file(self):
         """PROSE_FLOOR_HELD_PER_FILE: each invocation is its own step, named
         `prose-lint.py --file <path>`; and the real tests/run.sh has one step
@@ -214,7 +210,6 @@ class ProseFloorPerFileTests(unittest.TestCase):
         self.assertIn("prose-lint.py --file DOCUMENTATION.md", real,
                       "the real tests/run.sh must run prose-lint over DOCUMENTATION.md alone")
 
-    @unittest.expectedFailure
     def test_prose_lint_multi_file_refused(self):
         """PROSE_FLOOR_HELD_PER_FILE and §7 BLENDED_PROSE_STEP: a line passing
         two --file arguments makes --lint exit 1 naming the line."""
@@ -224,7 +219,6 @@ class ProseFloorPerFileTests(unittest.TestCase):
         self.assertEqual(rc, 1, "a prose-lint line with two --file arguments must be refused")
         self.assertIn("run.sh:4", text, "the refusal must name the offending line")
 
-    @unittest.expectedFailure
     def test_prose_lint_same_name_refused(self):
         """PROSE_FLOOR_HELD_PER_FILE and §7 PROSE_STEP_NAME_COLLISION: two
         prose-lint lines resolving to one step name make --lint exit 1 naming
