@@ -309,18 +309,14 @@ FRONT_DOOR_PENDING = frozenset({
     "BODY_FIGURES_HAVE_A_REQUIRED_HOME",
     "CATALOGS_OUT_OF_README",
     "COST_FIGURES_SCOPED",
-    "DEFINITION_HAS_ONE_HOME",
     "ENFORCEMENT_ROW_COMPLETE",
     "FIRST_SCREEN_ORDER",
     "FRONT_DOOR_ANCHORS_RESOLVE",
     "FRONT_DOOR_HEADINGS_WELL_FORMED",
-    "GLOSSARY_ENTRY_COMPLETE",
-    "GLOSSARY_PATHS_EXIST",
     "INSTALL_SECTION_NAMES_TARGET_PATHS",
     "LIMITS_SECTION_PRESENT",
     "LINK_TEXT_STANDS_ALONE",
     "MECHANISM_CLAIMS_TRACED",
-    "NO_UNLINKED_PROJECT_TERM_IN_DEFINITION",
     "REFERENCE_OPENS_WITH_ITS_DEFINITION",
     "TABLES_HAVE_HEADER_ROWS",
     "TERM_LINKED_ON_FIRST_USE",
@@ -3631,7 +3627,7 @@ FD_WHERE_NEXT = ("DOCUMENTATION.md", "DOCUMENTATION.md#glossary", "DOCUMENTATION
 FD_GLOSSARY_HEADING = "## 15. Glossary"
 FD_ENFORCEMENT_HEADING = "## 17. What is enforced, and how"
 FD_FIELDS = ("Forms", "Here", "Field", "Implemented at", "Enforcement", "Divergence", "Why")
-FD_CLASS_ORDER = ("hard", "soft", "detective", "judgment", "n/a — not a control")  # strongest first
+FD_CLASS_ORDER = ("hard", "soft", "detective", "judgment", "not a control")  # strongest first
 FD_NOT_A_CONTROL = FD_CLASS_ORDER[-1]
 FD_DIVERGENCES = ("same", "narrower", "broader", "different", "no standard meaning")
 FD_WHY = re.compile(r"\bADR-\d{4}\b|\bSPEC-\d{4}\b|docs/plans/\S+|`[0-9a-f]{7,40}`"
