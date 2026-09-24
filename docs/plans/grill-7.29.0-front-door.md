@@ -486,6 +486,25 @@ diverges, is listed here. The case-level mapping is SPEC-0004 §10.
   delegation note to the reviewer at verify of increment 3. Each is a
   residual row in SPEC-0004 §10.
 
+- **Genre exception for the three references (2026-09-24, increment 6, G8).**
+  `documentation/agents-reference.md`, `documentation/skills-and-templates-reference.md`
+  and `documentation/protocols-reference.md` fail `prose-lint.py --file` on tells
+  that predate this branch, and a dash-and-rule pass does not bring any of them
+  to a pass, because most of what fails is the record shape the reference genre
+  (§6 enforcement-section row) and the reference checks rely on. agents-reference
+  (150 §8 at 25.0/1000, 24 §2): 91 golden-row lines in the quoted-task, dash, class
+  form that `check_agents_reference` parses, 11 empty `—` markers it accepts, and
+  20 `*Source file: …*` lines it uses as section anchors. skills-and-templates-reference
+  (38 §8 at 3.6/1000, 99 §2): 34 per-entry `Source:` lines, 44 rules and the
+  `(installs to …)` and `**Usage.**` record lines. protocols-reference (72 §8 at
+  4.9/1000, 32 §2): 14 `*Source: …*` lines and five per-protocol metadata records
+  that `check_protocol_reference` parses and that read alike once code spans are
+  masked. Passing would mean changing a checked format or dropping a per-entry
+  provenance line, so the three files keep their text; the counts above are the
+  baseline, and `--against HEAD` has nothing to compare because increment 6 does
+  not edit them. The per-file prose floor of increment 7 covers README and
+  DOCUMENTATION only.
+
 ## 11. Risks and Mitigations
 Phase 6, security (rows 1–15) and reliability (rows 16–32), merged by the session; each row names the check that verifies it.
 
@@ -852,3 +871,4 @@ The §16.4 probe was run once on Claude Code, in a project that wires a `UserPro
 - 2026-09-24: increment 3 landed (enforcement section, 36 rows; matrix class cells reconciled and three untraced overclaims fixed; ADR-0003 count-only amendment). Security signed the Class column (orchestrator.34), changing two rows. Cleared ENFORCEMENT_ROW_COMPLETE, FRONT_DOOR_ANCHORS_RESOLVE, LINK_TEXT_STANDS_ALONE; MECHANISM 68→66, TABLES 3→2.
 - 2026-09-24: increment 4 landed (reference openers, part headings demoted, M10 count dropped; fixture `lay()` now replaces a shipped opener so the planted no-definition case still fires). Cleared FRONT_DOOR_HEADINGS_WELL_FORMED, REFERENCE_OPENS_WITH_ITS_DEFINITION. The three references fail the prose floor on pre-existing tells (G8): handled in increment 6 or recorded as a genre exception.
 - 2026-09-24: increment 5 landed (README in the nine reader-order sections; catalogs, tier prose, class vocabulary, release narration and kernel-size restatements moved out by link; heritage and the CI-platform sentence moved to `DOCUMENTATION.md` §1 and §14; body figures at their one home, `DOCUMENTATION.md` §14; both ADR ranges linked to the decision index). Checks re-pointed (C5): `check_published_body_figures` reads `BODY_FIGURE_HOME`, absence a finding, phrase rules over every front-door file; `check_published_eager_figures` reads every front-door file; `check_ci_workflow` names `enf-seed-gate`; `tests/test-tier-lanes.sh` drops README from its contained-lane surfaces, since README no longer restates the tier rules and `DOCUMENTATION.md` (§4.1) stays on the list; the fixture replaces the shipped body-figure line and its clean case asserts exit 0. `FIRST_SCREEN_MAX_LINES` 100→53 and `FIRST_COMMAND_LINE` 80→46, measured. The overhead figure's clean evidence record is [`method-overhead-evidence.md`](grill-7.29.0-front-door/method-overhead-evidence.md) (figure, method, date, revision only). Cleared BODY_FIGURES_HAVE_A_REQUIRED_HOME, CATALOGS_OUT_OF_README, COST_FIGURES_SCOPED, FIRST_SCREEN_ORDER, INSTALL_SECTION_NAMES_TARGET_PATHS, LIMITS_SECTION_PRESENT, TABLES_HAVE_HEADER_ROWS, TERM_LINKED_ON_FIRST_USE, WHERE_NEXT_LINKS_THE_REFERENCES; MECHANISM 66→46.
+- 2026-09-24: increment 6 landed (dependent cleanup). `INSTALL.md` and the five integration READMEs: every mechanism-verb unit links its `enf-` row or is reworded where the verb claimed no mechanism, strong claims are rescoped (the Copilot and Prime Agent routing hooks now add a pointer and hold nothing; the pre-Bash hook exits 2 rather than "refusing"), and two host-fact restatements met in edited units (`INSTALL.md` "Verifying the install", `integrations/claude-code/README.md` "On every session") became links to the host capability matrix. `DOCUMENTATION.md` §1, §1.1, §2 and §6.7 link their glossary entries instead of restating them, the §16 ADR list is a link to `docs/decisions/index.md`, and the `tier` entry's README clause is corrected to the task tier. `CLAUDE.md` Canonical homes registers the glossary (§15) and the enforcement section (§17), and its roster line names the agents reference in place of README. Cleared MECHANISM_CLAIMS_TRACED (46→0); `FRONT_DOOR_PENDING` is empty. G8: the three references keep their text under the dated genre exception in §10.

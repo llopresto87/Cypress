@@ -109,6 +109,12 @@ extraction and CLI behavior.
   (tested by `tests/test-spec-lint.sh`); plan-of-record shape →
   `templates/knowledge-graph/grill-lint.py` (tested by
   `tests/test-grill-lint.sh`).
+- Front-door word definitions → `DOCUMENTATION.md` §15, the glossary (one
+  anchored entry per term; README, the manual and the references link an
+  entry, never restate it). What each mechanism holds and misses, with its
+  ADR-0003 class → `DOCUMENTATION.md` §17, the enforcement section (one row per
+  mechanism kind; a front-door claim of enforcement links its row).
+  `SPEC-0004-front-door` holds both through `tests/seed-lint.py`.
 - Spawn order of a pass → its protocol's phase table (`grill.flow`,
   `specify.flow`, `test-first.cycle`, `ingest-library.flow`,
   `from-scratch.phases`); the generic sequencing rule →
@@ -119,7 +125,7 @@ extraction and CLI behavior.
 - The spec's `active` moment → `verify.status-evidence` (promotion lands
   with the RED); specify, spec-author, and the template point at it.
 - Roster ground truth → `agents/*.md` frontmatter (manifest, kernel
-  roster line, and README follow it; lint checks). Why a component is on
+  roster line, and the agents reference follow it; lint checks). Why a component is on
   the roster → the node's own `prevents:` (the failure its absence
   produces), never a summary page; `tools/roster-justification.py`
   derives the table and prints evidence-of-use and class as absent

@@ -305,9 +305,7 @@ PROJECT_NODE_LINE_FIGURES = frozenset({150, 170})
 # a finding, so a slug leaves in the commit that clears it. Mirrored in
 # tests/ratchets.json (`set`: members only leave), and empty once SPEC-0004 is
 # `implemented` or the manifest reaches FRONT_DOOR_RELEASE.
-FRONT_DOOR_PENDING = frozenset({
-    "MECHANISM_CLAIMS_TRACED",
-})
+FRONT_DOOR_PENDING = frozenset()
 
 findings: list[str] = []
 

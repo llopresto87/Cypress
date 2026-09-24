@@ -6,12 +6,13 @@ Claude Code reads these on every session:
 3. `.claude/skills/*/SKILL.md` (loadable skills, progressive disclosure).
 4. `.claude/commands/*.md` (custom slash commands).
 
-"On every session" is also the sharp edge: item 2 is enumerated when the session
-**starts**, from the project root. A roster written mid-session — by an install,
-a graft, or a freshly commissioned expert — is on disk and not spawnable until a
-new session, and a session rooted at the seed never carries a plant's roster at
-all. `docs/graph/method/delegation.md` (`delegation.harness-registration`) owns
-the preflight, the remedy, and the recorded fallback.
+"On every session" is also the sharp edge. When the host picks up agent files
+written during a running session, by an install, a graft or a freshly
+commissioned expert, has exceptions, and the
+[host capability matrix](../../documentation/host-capability-matrix.md) records
+them; a session rooted at the seed does not carry a plant's roster at all.
+`docs/graph/method/delegation.md` (`delegation.harness-registration`) owns the
+preflight, the remedy, and the recorded fallback.
 
 Project-scoped config in `.claude/` overrides user-scoped config in
 `~/.claude/`. Both check into git when team-shared.
@@ -85,12 +86,16 @@ backup — see INSTALL.md "What gets backed up".
 
 Three hooks ship in `settings.json`. `route-hook.py` (UserPromptSubmit) and
 `status-hook.py` (SessionStart) inject context and are wired fail-open with
-`|| true`: a context hook must never block a prompt. `bound-hook.py`
-(PreToolUse, matcher `Bash`) is a guard and is wired without `|| true`: it
-exits 2 to refuse a blocking-prone shell command — service control, process
-signalling, package managers, installers, builds, log followers — that carries
-neither an explicit bound nor a detached launch, and prints both accepted
-forms for the offending command on stderr:
+`|| true`: a context hook must never block a prompt
+([routing pointer](../../DOCUMENTATION.md#enf-route-hook),
+[status summary](../../DOCUMENTATION.md#enf-status-hook)).
+
+`bound-hook.py` (PreToolUse, matcher `Bash`) is a guard and is wired without
+`|| true`. It exits 2, and the host then does not run the command, when a shell
+command that can hang (service control, process signalling, package managers,
+installers, builds, log followers) carries neither an explicit bound nor a
+detached launch. It prints both accepted forms for the offending command on
+stderr ([pre-Bash check](../../DOCUMENTATION.md#enf-pre-bash-guard)):
 
 - bounded: `timeout 30 systemctl --user daemon-reload`
 - detached: `setsid nohup ./job.sh > job.log 2>&1 & echo $! > job.pid`
@@ -103,7 +108,8 @@ exits 0 with one line on stderr, so a bug in the guard degrades to no guard
 and can never block every call. The pattern list is a commented constant at
 the top of the file; extending it is a one-line change. The doctrine behind
 the guard is `core/method/engineering-posture.md` §14 (`toolcraft.bounded-execution`); the test is
-`tests/test-bound-hook.sh`.
+`tests/test-bound-hook.sh`. What the pattern match can miss is listed in the
+[pre-Bash check row](../../DOCUMENTATION.md#enf-pre-bash-guard).
 
 ## What you do not need to do
 

@@ -42,14 +42,14 @@
 ## 1. What CYPRESS is
 
 **CYPRESS** stands for **C**ontextual **Y**ield **P**rotocol for **R**outed
-**E**xpert **S**eed **S**ystems. It is a multi-agent seed for general
+**E**xpert **S**eed **S**ystems. It is a multi-agent [seed](#term-seed) for general
 programming projects: a bundle of instructions, agent charters, workflows,
 templates, and tooling that you drop into any codebase. Once installed, an AI
 coding agent (Claude Code, Prime Agent, opencode, OpenAI Codex, or GitHub
 Copilot) gains:
 
 - a senior engineering team of 20 named specialist agents;
-- a set of named protocols (workflows) for spec-driven and test-driven work;
+- a set of named [protocols](#term-protocol) for spec-driven and test-driven work;
 - a progressive-discovery knowledge graph that keeps a large or multi-repo
   codebase inside a context window;
 - spec-driven (SDD) and test-driven (TDD) discipline by default.
@@ -68,13 +68,10 @@ same agnostic ingest flow everyone else does.
 
 ### The "seed" metaphor
 
-- The **seed** is this repository: the shippable product.
-- A **plant** is a target project after the seed has been installed and *grown*
-  into it.
-- **Growth** is the one-time process that reads the target's source and builds a
-  complete, source-grounded `docs/graph/` knowledge system inside it.
-- The **reverse loop** (`harvest` / `graft`) lets a mature plant feed lessons
-  back into the seed, and lets the enriched seed reach plants grown earlier.
+The project borrows its words from gardening. Each has one entry in the
+[glossary](#glossary): the [seed](#term-seed), a [plant](#term-plant),
+[growth](#term-growth), and the [reverse loop](#term-reverse-loop) with its
+[harvest](#term-harvest) and [graft](#term-graft).
 
 The name is a backronym: the system still *routes expert teams* over a project's
 knowledge graph, *yielding* project-specific knowledge as it goes.
@@ -95,44 +92,44 @@ five ideas is enough to understand the whole system.
 
 ### 2.1 One bootstrap kernel, everything else on demand
 
-Every supported tool reads exactly one file on every session: the kernel
-(`core/AGENTS.md`, installed as `CLAUDE.md` for Claude Code or
-`.github/copilot-instructions.md` for Copilot). The kernel is small (~7 KB, hard
-size budget enforced by `tests/seed-lint.py`) and holds only what must bind
-*before any routing happens*: identity, the first move, the tier table, the
-eight rule anchors, and the boundaries.
+Every supported tool reads one file first on every session: the
+[kernel](#term-kernel), `core/AGENTS.md` in the seed, installed under the file
+name each host looks for. It holds only what must bind *before any routing
+happens*, the first move among them, within a byte budget that the seed's own
+test run checks ([kernel budget](#enf-kernel-budget)).
 
 Everything else (every protocol, skill, agent charter, posture principle, and
 template) lives as a routable node inside the plant's `docs/graph/` and
-activates only when the router resolves it for the task at hand. Kernel growth is
-a lint failure, not a drift.
+activates only when the router resolves it for the task at hand.
 
 ### 2.2 The first move is always: open the router
 
-Before reading code or writing anything, an agent opens `docs/graph/index.md`
-(the router over *all* knowledge, both project facts and the method surface),
-names the 2–3 nodes that match the task, reads only those plus their required
+Before reading code or writing anything, an agent is asked to open the
+[router](#term-router), which covers *all* knowledge, both project facts and the
+method surface, then name the 2–3 nodes that match the task, reads only those plus their required
 closure, and declares what it loaded and what it skipped. A task touching one
 subsystem loads a handful of nodes, not the whole tree.
 
 ### 2.3 Process is proportional to risk (the tiers)
 
-Every task is classified T0–T3 before acting. A typo fix does not pay a
+The method asks for every task to be classified by [tier](#term-tier), T0–T3,
+before acting ([tier classification](#enf-tier-classification)). A typo fix does not pay a
 feature's coordination cost; a consequential change does not escape the full
 discipline. See [§4](#4-risk-proportional-tiers-t0t3).
 
 ### 2.4 One home per fact
 
-Every fact lives in exactly one node; everything else links to it. This is the
-central anti-drift invariant. `graph-lint.py` enforces it for a plant, and
-`tests/seed-lint.py` for the seed's own meta-facts.
+[One home per fact](#term-one-home-per-fact) is the central anti-drift
+invariant. `graph-lint.py` checks it for a plant when someone runs it
+([graph lint](#enf-graph-lint)), and `tests/seed-lint.py` checks the seed's own
+meta-facts ([own-gate row](#enf-seed-gate)).
 
 ### 2.5 Knowledge flows back (the reverse loop)
 
-The seed compounds because knowledge returns to it. `canonize` persists what each
-task taught into the graph. `harvest` folds a mature plant's project-agnostic
-lessons up into the seed. `graft` carries the enriched seed back out onto plants
-grown earlier. See [§9](#9-the-reverse-loop-canonize-harvest-graft).
+The seed compounds because knowledge returns to it through the
+[reverse loop](#term-reverse-loop): [canonize](#term-canonize),
+[harvest](#term-harvest) and [graft](#term-graft). See
+[§9](#9-the-reverse-loop-canonize-harvest-graft).
 
 ## 3. The eight rules
 
@@ -406,9 +403,9 @@ evidence and the handback contract (`templates/prompts/handback-payload.md`).
 
 ### 6.7 What a "turn" is
 
-A **turn** is one spawn → return cycle of a single worker. A worker hands
-back exactly once per spawn (never per tool call), on all three ways a turn
-can end: `complete`, `blocked-out-of-domain`, or `failed`.
+A worker hands back exactly once per [turn](#term-turn) (never per tool call),
+on all three ways a turn can end: `complete`, `blocked-out-of-domain`, or
+`failed`.
 
 ## 7. Protocols (the named workflows)
 
@@ -1228,7 +1225,7 @@ Each entry covers one word the front door uses. It lists the forms of the word i
 <a id="term-tier"></a>
 
 - **Forms:** tier, tiers, task tier, load-tier, support tier
-- **Here:** The word is shared loosely by four axes. The task tier, T0–T3, classifies a task by risk and sets how much process it gets; the [tiers node](core/method/tiers.md) is its only home. The load-tier is a node's `tier:` value, 1 to 3, for the router, the fact owners and the [leaf](#term-leaf) documents. The model class of an agent, its `model:` value of sonnet or opus, is a separate axis, and the [delegation node](core/method/delegation.md) owns the distinction between these three. The support tier of a host (first-class, supported or frozen) is the fourth. README uses the task tier and the load-tier.
+- **Here:** The word is shared loosely by four axes. The task tier, T0–T3, classifies a task by risk and sets how much process it gets; the [tiers node](core/method/tiers.md) is its only home. The load-tier is a node's `tier:` value, 1 to 3, for the router, the fact owners and the [leaf](#term-leaf) documents. The model class of an agent, its `model:` value of sonnet or opus, is a separate axis, and the [delegation node](core/method/delegation.md) owns the distinction between these three. The support tier of a host (first-class, supported or frozen) is the fourth. README uses the task tier.
 - **Field:** no standard meaning
 - **Implemented at:** `core/AGENTS.md`, `core/method/tiers.md`, `core/method/delegation.md`, `install.sh`
 - **Enforcement:** The word itself is not a control. Classifying the task tier is **judgment**, in the [tier-classification row](#enf-tier-classification)
@@ -1409,17 +1406,9 @@ repo's own `CLAUDE.md`:
 - `harvest`/`graft` are user-sovereign; nothing in the seed may trigger them
   automatically.
 
-The `docs/decisions/` ADRs record the load-bearing design choices:
-
-- `adr-0001`: mechanical agent router.
-- `adr-0002`: bounded delegation (the coordinator/leaf hybrid).
-- `adr-0003`: enforcement layering and honesty.
-- `adr-0004`: pure-graph architecture (6.0.0: the whole method surface installs
-  into `docs/graph/` as routable nodes).
-- `adr-0005`: composable expertise as a node kind and a lazy edge, not a
-  deeper agent tree.
-- `adr-0006`: T2 gains a contained lane — a small, test-pinned change is
-  authorized by a RED test and a recorded why, not a full spec.
+The ADRs in `docs/decisions/` record the load-bearing design choices, and the
+[decision index](docs/decisions/index.md) lists every one with its title and
+status.
 
 ## 17. What is enforced, and how
 <a id="enforcement"></a>
