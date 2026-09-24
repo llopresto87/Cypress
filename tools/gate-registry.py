@@ -500,9 +500,14 @@ def run_sh_invocations() -> list[tuple[int, str]]:
                 # Named by each `--file` argument's path from the repository
                 # root (SPEC-0004 PROSE_FLOOR_HELD_PER_FILE), so README.md and
                 # integrations/<host>/README.md can never share a step name
-                # the way a basename rule would make them.
-                files = re.findall(r'--file\s+"?(?:\$\{?ROOT\}?/)?([^"\s]+)"?', rest)
-                name = " ".join([name] + [f"--file {f}" for f in files])
+                # the way a basename rule would make them. Every path argument
+                # is kept in the name with its own spelling (`--file=`,
+                # `--root`, `--glob`), so prose_step_problems() can refuse the
+                # forms that are not one `--file PATH`.
+                args = re.findall(r'--(file|root|glob)(=|\s+)"?(?:\$\{?ROOT\}?/)?([^"\s]+)"?',
+                                  rest)
+                name = " ".join([name] + [f"--{flag}{'=' if sep == '=' else ' '}{value}"
+                                          for flag, sep, value in args])
             found.append((n, name))
     return found
 
@@ -522,14 +527,22 @@ def prose_step_problems() -> list[str]:
     prose-lint's dash allowance is a rate, so a line handing it two files lets
     one file's excess hide in the other's slack. And `run_sh_steps()` lists a
     name once, so a second line resolving to the same name would merge into
-    the first and never be seen. Both are refused here. The refusal is scoped
-    to prose-lint; whether any other tool may appear twice is not decided.
+    the first and never be seen. Both are refused here. So is any path
+    argument other than `--file PATH`: `--root` and `--glob` scan files the
+    step name does not show, and `--file=PATH` is the spelling the parser once
+    missed, which let two files pass as one step. The refusal is scoped to
+    prose-lint; whether any other tool may appear twice is not decided.
     """
     problems, first = [], {}
     for n, name in run_sh_invocations():
         if not name.startswith("prose-lint.py"):
             continue
-        count = name.count("--file ")
+        other = re.findall(r"--(?:root|glob)\b|--file=", name)
+        if other:
+            problems.append(
+                f"tests/run.sh:{n} passes {', '.join(dict.fromkeys(other))} to "
+                f"prose-lint; a prose step names its one file as `--file PATH`")
+        count = len(re.findall(r"--file[ =]", name))
         if count > 1:
             problems.append(
                 f"tests/run.sh:{n} hands {count} --file arguments to one "

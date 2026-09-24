@@ -218,6 +218,27 @@ class ProseFloorPerFileTests(unittest.TestCase):
         rc, text = self._lint_classified()
         self.assertEqual(rc, 1, "a prose-lint line with two --file arguments must be refused")
         self.assertIn("run.sh:4", text, "the refusal must name the offending line")
+        # The `--file=PATH` spelling is the same two files on one line; the
+        # parser once read only `--file PATH`, so this form passed --lint.
+        self._run_sh(['bash "$ROOT/tests/test-other.sh"',
+                      f'{self.PROSE} --file="$ROOT/README.md" --file="$ROOT/DOCUMENTATION.md"'])
+        rc, text = self._lint_classified()
+        self.assertEqual(rc, 1, "two --file= arguments on one prose-lint line must be refused")
+        self.assertIn("run.sh:4", text, "the refusal must name the offending line")
+
+    def test_prose_lint_other_argument_forms_refused(self):
+        """PROSE_FLOOR_HELD_PER_FILE: a prose-lint step names its one file as
+        `--file PATH`. `--file=`,
+        `--root` and `--glob` each let a line scan files its step name does not
+        show, so each is refused on any prose-lint line."""
+        for arg in ('--file="$ROOT/README.md"',
+                    '--root "$ROOT/docs"',
+                    '--glob "*.md" --file "$ROOT/README.md"'):
+            with self.subTest(arg=arg):
+                self._run_sh([f'{self.PROSE} {arg}'])
+                rc, text = self._lint_classified()
+                self.assertEqual(rc, 1, f"a prose-lint line with {arg} must be refused")
+                self.assertIn("run.sh:3", text, "the refusal must name the offending line")
 
     def test_prose_lint_same_name_refused(self):
         """PROSE_FLOOR_HELD_PER_FILE and §7 PROSE_STEP_NAME_COLLISION: two
