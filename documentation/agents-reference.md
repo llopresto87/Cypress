@@ -1,5 +1,7 @@
 # CYPRESS specialist agents — complete reference
 
+An agent is a system prompt with frontmatter that the session starts as a worker for one piece of work; the glossary's [agent entry](../DOCUMENTATION.md#term-agent) defines it, and its [skill entry](../DOCUMENTATION.md#term-skill) sets it beside a skill.
+
 This document describes all 20 specialist agents shipped by the CYPRESS seed. Each agent is a fully-formed system prompt with YAML frontmatter, stored in `agents/*.md`. At install time these files are projected into the host tool's agent directory (for example `.claude/agents/`, `.prime/agent/agents/`, `.opencode/agents/`, `.codex/agents/`).
 
 Sources for this reference: `agents/*.md` (the 20 agent definitions), `agents/_routes.golden.tsv` (the golden routing corpus), and `core/method/delegation.md` (the delegation model).
