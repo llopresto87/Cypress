@@ -55,6 +55,21 @@ the node ids of the project the seed was harvested from; each span became
 v7.28.0 and in git history. History was not rewritten, and published tags and
 Releases keep it. This file was not redacted.
 
+**The installer was unusable on macOS's own bash.** `install.sh` failed to
+parse at all under bash 3.2 — the system `bash` on every default macOS
+install — because `fill_plant_facts` captured a python heredoc's output
+through a `$(...)` wrapper, and bash 3.2 misreads a heredoc nested inside a
+command substitution once another heredoc follows later in the same script;
+`install_github_copilot`'s three loops do. The failure surfaced as a plain
+`syntax error near unexpected token '('` pointing at a line of Python regex,
+for every adapter, before a single file was written — reproduced under bash
+3.2.25 and 3.2.57. The heredoc now writes to a staged log file instead of
+through `$(...)`; `tests/seed-lint.py`'s SINGLE_WRITER check gained the one
+new write site the change added. A second, unrelated bug the same gate run
+surfaced — `test-install-adoption.sh`'s `case_check_broken` passed an
+indented first line to `python3 -c`, which Python itself refuses regardless
+of host — is fixed alongside it.
+
 ```
 # Harvest — from a grown plant — 2026-09-24
 Harvested:   a front-door rewrite (README order, a glossary, an enforcement

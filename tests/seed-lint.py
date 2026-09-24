@@ -1725,6 +1725,12 @@ INSTALL_WRITE_EXCEPTIONS = {
         "exempted wholesale"),
 
     # --- into a TEMP tree only; these never touch PROJECT_DIR ---
+    ("fill_plant_facts", ">"): (1, "temp",
+        "captures the embedded heredoc's log lines into a staged file rather "
+        "than a `$(...)` capture around the heredoc itself — bash 3.2 (macOS's "
+        "system bash) misparses a heredoc nested inside a command substitution "
+        "once another heredoc follows later in the script, which install_github_"
+        "copilot's skill loop does"),
     ("stage", "mkdir"): (1, "temp", "creates the staging directory under $tmp"),
     ("<main>", "mkdir"): (2, "temp", "creates the verification tree under $tmp"),
     ("generate_slash_commands", "cat"): (1, "temp", "writes a command file into $tmp"),

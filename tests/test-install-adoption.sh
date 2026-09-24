@@ -289,7 +289,7 @@ case_check_broken() {
   "$ROOT/install.sh" github-copilot --project-dir "$CHK" >/dev/null 2>&1 \
       || fail "--check setup install failed"
   python3 -c "
-  open('$CHK/docs/graph/agents/50-plant-expert.md','wb').write(
+open('$CHK/docs/graph/agents/50-plant-expert.md','wb').write(
     '---\ndescription: caf\xe9 domain expert\ntools: [Read]\n---\nbody\n'.encode('latin-1'))"
 
   chk_out="$("$ROOT/install.sh" github-copilot --check --project-dir "$CHK" 2>&1)" && chk_rc=0 || chk_rc=$?
