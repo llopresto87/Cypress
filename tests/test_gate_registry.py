@@ -165,6 +165,86 @@ class RefusalTests(unittest.TestCase):
         self.assertEqual(rc, 0, "a run.sh and registry that agree must pass")
 
 
+class ProseFloorPerFileTests(unittest.TestCase):
+    """SPEC-0004 PROSE_FLOOR_HELD_PER_FILE: one prose-lint step per file, named
+    by its path from the repository root, so one file's excess cannot hide in
+    another's slack and two files with one basename cannot merge into one step.
+
+    All three stay `expectedFailure` until increment 7 of the front-door plan
+    splits the step (grill §9); that increment removes the markers.
+    """
+
+    PROSE = 'add_step python3 "$ROOT/tools/prose-lint.py"'
+
+    def setUp(self):
+        self.mod = load_tool()
+        self.tmp = Path(tempfile.mkdtemp(prefix="cypress-gatereg3-"))
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+
+    def _run_sh(self, lines):
+        run_sh = self.tmp / "run.sh"
+        run_sh.write_text("#!/usr/bin/env bash\nset -euo pipefail\n"
+                          + "\n".join(lines) + "\n", encoding="utf-8")
+        self.mod.RUN_SH = run_sh
+        return run_sh
+
+    def _lint_classified(self):
+        """cmd_lint with every parsed step classified, so the only refusal
+        left to fire is the one under test."""
+        self.mod.GATES = {s: ("x", self.mod.REAL, "coverage", "")
+                          for s in self.mod.run_sh_steps()}
+        buf_out, buf_err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(buf_out), contextlib.redirect_stderr(buf_err):
+            rc = self.mod.cmd_lint()
+        return rc, buf_err.getvalue() + buf_out.getvalue()
+
+    @unittest.expectedFailure
+    def test_prose_lint_one_step_per_file(self):
+        """PROSE_FLOOR_HELD_PER_FILE: each invocation is its own step, named
+        `prose-lint.py --file <path>`; and the real tests/run.sh has one step
+        for README.md and one for DOCUMENTATION.md."""
+        self._run_sh([f'{self.PROSE} --file "$ROOT/README.md"',
+                      f'{self.PROSE} --file "$ROOT/DOCUMENTATION.md"'])
+        steps = self.mod.run_sh_steps()
+        self.assertIn("prose-lint.py --file README.md", steps)
+        self.assertIn("prose-lint.py --file DOCUMENTATION.md", steps)
+        real = load_tool().run_sh_steps()
+        self.assertIn("prose-lint.py --file README.md", real,
+                      "the real tests/run.sh must run prose-lint over README.md alone")
+        self.assertIn("prose-lint.py --file DOCUMENTATION.md", real,
+                      "the real tests/run.sh must run prose-lint over DOCUMENTATION.md alone")
+
+    @unittest.expectedFailure
+    def test_prose_lint_multi_file_refused(self):
+        """PROSE_FLOOR_HELD_PER_FILE and §7 BLENDED_PROSE_STEP: a line passing
+        two --file arguments makes --lint exit 1 naming the line."""
+        self._run_sh(['bash "$ROOT/tests/test-other.sh"',
+                      f'{self.PROSE} --file "$ROOT/README.md" --file "$ROOT/DOCUMENTATION.md"'])
+        rc, text = self._lint_classified()
+        self.assertEqual(rc, 1, "a prose-lint line with two --file arguments must be refused")
+        self.assertIn("run.sh:4", text, "the refusal must name the offending line")
+
+    @unittest.expectedFailure
+    def test_prose_lint_same_name_refused(self):
+        """PROSE_FLOOR_HELD_PER_FILE and §7 PROSE_STEP_NAME_COLLISION: two
+        prose-lint lines resolving to one step name make --lint exit 1 naming
+        both lines, instead of merging the second into the first; README.md and
+        integrations/example/README.md are two steps (AC-29)."""
+        self._run_sh([f'{self.PROSE} --file "$ROOT/README.md"',
+                      f'{self.PROSE} --file "$ROOT/README.md"'])
+        rc, text = self._lint_classified()
+        self.assertEqual(rc, 1, "two prose-lint lines with one step name must be refused")
+        self.assertIn("run.sh:3", text, "the refusal must name the first line")
+        self.assertIn("run.sh:4", text, "the refusal must name the second line")
+        self._run_sh([f'{self.PROSE} --file "$ROOT/README.md"',
+                      f'{self.PROSE} --file "$ROOT/integrations/example/README.md"'])
+        steps = self.mod.run_sh_steps()
+        self.assertIn("prose-lint.py --file README.md", steps)
+        self.assertIn("prose-lint.py --file integrations/example/README.md", steps)
+        rc, text = self._lint_classified()
+        self.assertEqual(rc, 0, f"two distinct prose steps must lint clean: {text}")
+
+
 class RealTreeTests(unittest.TestCase):
     def test_the_shipped_registry_is_clean(self):
         mod = load_tool()

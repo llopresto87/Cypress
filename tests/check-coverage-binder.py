@@ -49,6 +49,20 @@ COVERED = {
     "check_frontmatter_is_portable_yaml",
     "check_host_tiers",
     "check_hook_text_restates_no_kernel_rule",
+    # SPEC-0004, the front door: one check per seed-lint contract, each
+    # planted on the conforming fixture in tests/fixtures/front-door/.
+    "check_fd_first_screen_order", "check_fd_install_section_names_target_paths",
+    "check_fd_where_next_links_the_references", "check_fd_glossary_entry_complete",
+    "check_fd_glossary_paths_exist", "check_fd_no_unlinked_project_term_in_definition",
+    "check_fd_term_linked_on_first_use", "check_fd_definition_has_one_home",
+    "check_fd_reference_opens_with_its_definition", "check_fd_enforcement_row_complete",
+    "check_fd_mechanism_claims_traced", "check_fd_limits_section_present",
+    "check_fd_catalogs_out_of_readme", "check_fd_cost_figures_scoped",
+    "check_fd_eager_figures_checked_wherever_published",
+    "check_fd_body_figures_have_a_required_home", "check_fd_front_door_anchors_resolve",
+    "check_fd_front_door_headings_well_formed", "check_fd_link_text_stands_alone",
+    "check_fd_tables_have_header_rows",
+    "check_fd_pending_ledger_holds_only_failing_contracts",
 }
 
 
