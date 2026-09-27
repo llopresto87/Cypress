@@ -25,8 +25,10 @@ load_when:
   - "prioritize the remediation backlog, which vulnerability or exposure first"
   - "out of scope finding, park it as a residual with an owner and a trigger"
   - "risk register row, accepted risk, can this risk be closed"
+  - "new defect found during a fix, new finding id or widen the old one"
+  - "a request widens the increment in flight, defer it or do it now"
 prevents: Containment that destroys the evidence, remediation sequenced by what is easy rather than by exposure, and residual risk nobody owns.
-est_tokens: 1750
+est_tokens: 2160
 ---
 
 # Incident posture
@@ -114,7 +116,11 @@ radius, the trigger that restarts it, and the owner who carries it — in
 frontmatter as `status: deferred` with `owner` and `reopen_when` (schema
 §Lifecycle status), so `status-register.py --deferred` can list it and
 the plan's open-questions section (`protocol.grill` §12) can point at it
-rather than restate it. Dropping a capability from scope is an explicit
+rather than restate it. A request that would widen an increment in
+flight is the same case: answer it in a sentence or two (what it
+touches, why it can wait), record the deferral with its `reopen_when`
+(`not recorded` when no date was given), and finish the increment. Do
+not stop to ask who should own the new work. Dropping a capability from scope is an explicit
 decision with an owner's confirmation; the same outcome reached by
 omission is a defect. A legitimate-but-unneeded option is recorded
 deferred with its trigger, not rejected on principle, so the case is not
@@ -141,7 +147,15 @@ written human attestation held in the repository — `closed` with
 does not become an accepted one because nobody looked. Resolved rows
 stay visible with what closed them; corrections are appended, not
 deleted; a fix that changed the shape of a problem without removing it
-is recorded as "still open, different shape". An owner's declined fix is
+is recorded as "still open, different shape". A defect found during a
+fix is raised under a new register id, with a `caused_by` link where
+one exists (a pre-existing cause, or the commit that introduced it),
+and is never folded into a neighbouring finding: a silent scope
+extension, or a reopen of the nearest row, hides who created the defect
+and how. Ids are minted against the register itself, never from
+memory. A collision found after an id has been cited is recorded, not
+silently renamed, because renaming a cited id is the owner's call. An
+owner's declined fix is
 an accepted residual: dated, with its reachability argument and the
 escalation that fires if the reason stops holding — and where the
 acceptance is standing, it is a `deviation` node with `ends_when`, so a

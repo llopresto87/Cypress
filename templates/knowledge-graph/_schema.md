@@ -243,6 +243,30 @@ roster uses) substitutes for `load_when` — the linter accepts either;
 all shipped agent nodes use `routing_triggers`.
 Write the phrases a developer would actually type, including globs.
 
+On a `kind: expertise` node, each entry is split on commas into pieces.
+A piece with no whitespace that contains `*` or `/` is a **file
+pattern**; any other piece is a trigger phrase. The router loads the
+node when the task names a path the pattern matches: `*.tf`,
+`**/.terraform.lock.hcl`, and a manifest or lockfile written as a
+pattern, such as `**/package.json`. A pattern with no `/` matches the
+path's last segment, and `*` also crosses `/`. Three rules for writing
+them:
+
+- **One pattern per piece.** Brace expansion is not supported.
+  `*.{ts,tsx}` splits at the comma into `*.{ts`, which matches nothing,
+  and `tsx}`, a trigger phrase that loads the node on any task naming a
+  `.tsx` path. Write `*.ts, *.tsx`.
+- **No all-wildcard pattern.** A pattern carries at least one literal
+  character besides `*`, `?` and `/`. A pattern like `**/*` matches
+  every path and floods every task that names one. No lint catches it.
+- **A bare name without an extension is not a path.** A task naming
+  `Dockerfile` infers nothing; the task writes `./Dockerfile`.
+
+A trigger phrase that selects a version carries the whole version token,
+such as `net10.0`, because the router drops phrase parts under three
+characters: `dotnet 10 target` reads as `dotnet target` and matches
+every major.
+
 **`est_tokens`** — honest estimate of the whole file, frontmatter
 included: what a loader pays to open it, not the prose alone. The router
 sums these to report context cost before work starts.
@@ -262,6 +286,14 @@ applies under) · **version in play** (a pointer to
 `libraries/<slug>.md`, never a version) · **depth** (which leaf serves
 which purpose). The same ceiling applies, and is generous: a node that
 needs more room is restating a leaf.
+
+A **branch** node (the router index, a hub, a subsystem or domain node,
+or a thin parent) is a menu. Its body is a `## Leaves` section listing
+each leaf as `` - `<node id or graph-relative path>`: load when <text> ``,
+plus only the doctrine that binds every leaf and cannot live in one. It
+owns `<slug>.menu`: which leaf answers which need. The doctrine, and
+the leaf rule it pairs with, is `knowledge-graph.branch-shape`
+(`docs/graph/skills/knowledge-graph.md` §4).
 
 ## The rules the linter enforces
 
@@ -344,7 +376,9 @@ python3 docs/graph/graph-lint.py --plan "<task>"   # dry-run the router
   `stack.*` node.
 - **An expertise node that restates its own leaf** — it owns when the
   depth is in play, not what the depth says.
-- **A node with no `owns`** — a link farm; delete it.
+- **A node with no `owns`** — a link farm; delete it. A branch owns
+  its menu (`<slug>.menu`, "Body"), so a menu with a "load when" per
+  item is not one.
 - **Growing a node instead of splitting it** at the line ceiling.
 - **Filling an unknown with a guess** — write "not recorded".
 - **A status stated in prose** — a state nobody can query is a state

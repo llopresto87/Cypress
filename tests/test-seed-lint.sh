@@ -190,14 +190,20 @@ restore protocols/harvest.md
 case_13() {
   local TMP; TMP="$(fresh)"
 # 10. The "installed but not spawnable" rule keeps its single home. Moving or
-# dropping it from method.delegation would leave every dispatch/install surface
-# pointing at a fact nothing owns.
-python3 - "$TMP/core/method/delegation.md" <<'PY'
+# dropping it from method.delegation-bounds would leave every dispatch/install
+# surface pointing at a fact nothing owns.
+# X346 DELEGATION_SPLIT_INTO_SIBLINGS
+# Asserts SPEC-0005 DELEGATION_SPLIT_INTO_SIBLINGS: REGISTRATION_HOME is
+# core/method/delegation-bounds.md and the registration check runs against it.
+[ -f "$TMP/core/method/delegation-bounds.md" ] || {
+  echo "[registration-home] split not landed: core/method/delegation-bounds.md is absent (SPEC-0005 DELEGATION_SPLIT_INTO_SIBLINGS)" >&2; exit 1; }
+python3 - "$TMP/core/method/delegation-bounds.md" <<'PY'
 import sys; p=sys.argv[1]; t=open(p).read()
+assert "  - delegation.harness-registration\n" in t, "delegation-bounds.md does not own delegation.harness-registration"
 open(p,'w').write(t.replace("  - delegation.harness-registration\n", "", 1))
 PY
-expect_fail "does not own 'delegation.harness-registration'" "registration-home"
-restore core/method/delegation.md
+expect_fail "core/method/delegation-bounds.md: does not own 'delegation.harness-registration'" "registration-home"
+restore core/method/delegation-bounds.md
   rm -rf "$TMP"
 }
 case_14() {
@@ -2725,6 +2731,556 @@ case_fd_check_raised() {
   rm -rf "$TMP"
 }
 
+# --- SPEC-0005: the leaf ceiling ledger and the delegation split --------------
+# Every case_ce_* runs on its own fresh copy, like the numbered cases. Until
+# the check it plants against exists, a case stops with an explicit
+# "check missing" or "split not landed" line, never a traceback. Each finding is
+# matched on ONE output line that holds every expected piece: the file (or key),
+# and the SPEC-0005 §6 "Finding fragments" text for the contract. Line counts
+# are computed from the copy the way check_body_ceiling counts a body, never
+# written as literals. The bash 3.2 floor holds: every planted edit goes through
+# ce_py; no in-place stream edits.
+ce_py() {  # ce_py <subcommand> <args...>: the one fixture helper for case_ce_*
+python3 - "$@" <<'PY'
+import ast, re, sys
+from pathlib import Path
+
+def die(msg):
+    print(f"ce_py: {msg}", file=sys.stderr); sys.exit(2)
+
+def split_fm(t):
+    m = re.match(r"^---\n.*?\n---\n", t, re.S)
+    return (t[:m.end()], t[m.end():]) if m else ("", t)
+
+def body_lines(p):
+    return len(split_fm(Path(p).read_text(encoding="utf-8"))[1].strip("\n").splitlines())
+
+def scope(root):
+    r = Path(root)
+    fs = [f for sub in ("core/method", "protocols") for f in sorted((r / sub).glob("*.md"))
+          if not f.name.startswith("_")]
+    fs += [d / "SKILL.md" for d in sorted((r / "skills").iterdir()) if (d / "SKILL.md").is_file()]
+    return [f.relative_to(r).as_posix() for f in fs]
+
+def assign(src, name):
+    for node in ast.parse(src).body:
+        tgt = node.targets[0] if isinstance(node, ast.Assign) else getattr(node, "target", None)
+        if isinstance(tgt, ast.Name) and tgt.id == name and node.value is not None:
+            return node.value
+    return None
+
+def segment(src, node):
+    lines = src.splitlines(keepends=True)
+    start = sum(len(l) for l in lines[:node.lineno - 1]) + node.col_offset
+    end = sum(len(l) for l in lines[:node.end_lineno - 1]) + node.end_col_offset
+    return start, end
+
+def members(src):
+    v = assign(src, "OVERSIZED_LEAVES")
+    if v is None:
+        die("tests/seed-lint.py has no OVERSIZED_LEAVES assignment")
+    if isinstance(v, ast.Call) and v.args:
+        v = v.args[0]
+    if isinstance(v, ast.Call) and not v.args:
+        return set()
+    try:
+        return set(ast.literal_eval(v))
+    except ValueError:
+        die("OVERSIZED_LEAVES is not a literal set of paths")
+
+cmd, a = sys.argv[1], sys.argv[2:]
+if cmd == "body":                        # FILE -> body line count
+    print(body_lines(a[0]))
+elif cmd == "pad":                       # FILE TARGET: pad the body to TARGET lines
+    p = Path(a[0]); t = p.read_text(encoding="utf-8").rstrip("\n") + "\n"
+    n = int(a[1]) - body_lines(p)
+    if n <= 0:
+        die(f"{a[0]}: body already at {body_lines(p)} lines, not under {a[1]}")
+    p.write_text(t + "".join(f"planted leaf padding line {i}\n" for i in range(n)), encoding="utf-8")
+elif cmd == "truncate":                  # FILE N: keep the first N body lines
+    p = Path(a[0]); fm, body = split_fm(p.read_text(encoding="utf-8"))
+    p.write_text(fm + "\n".join(body.strip("\n").splitlines()[:int(a[1])]) + "\n", encoding="utf-8")
+elif cmd == "first_member":              # ROOT -> the first OVERSIZED_LEAVES member on disk
+    r = Path(a[0])
+    print(next((m for m in sorted(members((r / "tests/seed-lint.py").read_text(encoding="utf-8")))
+                if (r / m).is_file()), ""))
+elif cmd == "is_member":                 # ROOT FILE -> exit 0 when FILE is a member
+    sys.exit(0 if a[1] in members((Path(a[0]) / "tests/seed-lint.py").read_text(encoding="utf-8")) else 1)
+elif cmd == "smallest":                  # ROOT -> the in-scope leaf with the fewest body lines
+    r = Path(a[0])
+    print(min(scope(r), key=lambda rel: (body_lines(r / rel), rel)))
+elif cmd == "const":                     # ROOT NAME -> an int constant's value
+    v = assign((Path(a[0]) / "tests/seed-lint.py").read_text(encoding="utf-8"), a[1])
+    if v is None:
+        die(f"tests/seed-lint.py has no {a[1]} assignment")
+    print(ast.literal_eval(v))
+elif cmd == "setconst":                  # ROOT NAME VALUE: replace a constant's value
+    p = Path(a[0]) / "tests/seed-lint.py"; src = p.read_text(encoding="utf-8")
+    v = assign(src, a[1])
+    if v is None:
+        die(f"tests/seed-lint.py has no {a[1]} assignment")
+    s, e = segment(src, v); p.write_text(src[:s] + a[2] + src[e:], encoding="utf-8")
+elif cmd == "setadd":                    # ROOT ENTRY...: add members to OVERSIZED_LEAVES
+    p = Path(a[0]) / "tests/seed-lint.py"; src = p.read_text(encoding="utf-8")
+    new = sorted(members(src) | set(a[1:]))
+    s, e = segment(src, assign(src, "OVERSIZED_LEAVES"))
+    p.write_text(src[:s] + "frozenset({" + ", ".join(repr(m) for m in new) + "})" + src[e:],
+                 encoding="utf-8")
+elif cmd == "clone":                     # SRC DST NEWID: a new leaf, owning nothing
+    t = Path(a[0]).read_text(encoding="utf-8"); fm, body = split_fm(t)
+    fm = re.sub(r"(?m)^id:.*$", f"id: {a[2]}", fm, count=1)
+    fm = re.sub(r"(?m)^owns:\n(?:  - .*\n)+", "owns:\n", fm, count=1)
+    Path(a[1]).write_text(fm + body, encoding="utf-8")
+elif cmd in ("drop_item", "add_item"):   # FILE FIELD ITEM: a frontmatter block-list item
+    p = Path(a[0]); fm, body = split_fm(p.read_text(encoding="utf-8"))
+    m = re.search(rf"(?m)^{re.escape(a[1])}:[ \t]*\n((?:  - .*\n)*)", fm)
+    if not m:
+        die(f"{a[0]}: no `{a[1]}:` block list in the frontmatter")
+    items = m.group(1)
+    line = f"  - {a[2]}\n"
+    if cmd == "drop_item":
+        if line not in items:
+            die(f"{a[0]}: `{a[1]}:` does not list {a[2]}")
+        items = items.replace(line, "", 1)
+    else:
+        items += line
+    p.write_text(fm[:m.start(1)] + items + fm[m.end(1):] + body, encoding="utf-8")
+elif cmd == "drop_neighbour":            # FILE ID: remove the ## Neighbours item naming ID
+    p = Path(a[0]); t = p.read_text(encoding="utf-8")
+    m = re.search(r"(?m)^## Neighbours[ \t]*\n", t)
+    if not m:
+        die(f"{a[0]}: no `## Neighbours` section")
+    end = re.search(r"(?m)^## ", t[m.end():])
+    sec = t[m.end(): m.end() + end.start() if end else len(t)]
+    item = re.search(rf"(?m)^- [^\n]*`{re.escape(a[1])}`[^\n]*\n(?:[ \t]+\S[^\n]*\n)*", sec)
+    if not item:
+        die(f"{a[0]}: `## Neighbours` names no `{a[1]}`")
+    sec2 = sec[:item.start()] + sec[item.end():]
+    p.write_text(t[:m.end()] + sec2 + t[m.end() + len(sec):], encoding="utf-8")
+elif cmd == "append":                    # FILE TEXT: append TEXT as its own paragraph
+    p = Path(a[0]); p.write_text(p.read_text(encoding="utf-8").rstrip("\n") + "\n\n" + a[1] + "\n",
+                                 encoding="utf-8")
+elif cmd == "lineno":                    # FILE SUBSTR -> the 1-based line holding SUBSTR
+    for i, ln in enumerate(Path(a[0]).read_text(encoding="utf-8").splitlines(), 1):
+        if a[1] in ln:
+            print(i); break
+    else:
+        die(f"{a[0]}: no line holds {a[1]!r}")
+elif cmd == "drop_handback":             # ROOT FIELD: drop `- FIELD:` from the HANDBACK block
+    # Exit 3 when the block has no such line, so the case can say the template
+    # change has not landed rather than fail inside the helper.
+    p = Path(a[0]) / "templates/prompts/handback-payload.md"; t = p.read_text(encoding="utf-8")
+    m = re.search(r"(?ms)^```[^\n]*\nHANDBACK\n(.*?)^```", t)
+    if not m:
+        die(f"{p}: no fenced HANDBACK block")
+    blk = m.group(1)
+    f = re.search(rf"(?m)^- {re.escape(a[1])}:[^\n]*\n(?:[ \t]+[^\n]*\n)*", blk)
+    if not f:
+        sys.exit(3)
+    blk = blk[:f.start()] + blk[f.end():]
+    p.write_text(t[:m.start(1)] + blk + t[m.end(1):], encoding="utf-8")
+elif cmd == "step2":                     # ROOT MODE [TEXT]: rewrite step 2 in all six copies alike
+    # MODE reword: replace step 2 (from `2. ` to the line before `3. `) with TEXT.
+    # MODE rewrap: the same words, re-wrapped at 38 columns under a 3-space hang.
+    r = Path(a[0]); mode = a[1]
+    files = sorted(f for f in (r / "templates/prompts").glob("*.md")
+                   if "GRAPH DISCIPLINE" in f.read_text(encoding="utf-8"))
+    if len(files) != 6:
+        die(f"expected the canonical block in six templates, found {len(files)}: "
+            + ", ".join(f.name for f in files))
+    for f in files:
+        t = f.read_text(encoding="utf-8")
+        m = re.compile(r"(?ms)^2\. .*?(?=^3\. )").search(t, t.index("GRAPH DISCIPLINE"))
+        if not m:
+            die(f"{f}: no step 2 followed by a step 3")
+        if mode == "reword":
+            new = a[2].rstrip("\n") + "\n"
+        else:
+            words = m.group(0).split()
+            lines, cur = [], ""
+            for w in words:
+                if cur and len(cur) + 1 + len(w) > 38:
+                    lines.append(cur); cur = "   " + w
+                else:
+                    cur = f"{cur} {w}" if cur else w
+            lines.append(cur)
+            new = "\n".join(lines) + "\n"
+            if new == m.group(0):
+                die(f"{f}: the re-wrap left step 2 unchanged")
+        f.write_text(t[:m.start()] + new + t[m.end():], encoding="utf-8")
+elif cmd == "line":                      # SUBSTR...: $CE_OUT has a line holding every SUBSTR
+    # A SUBSTR may list alternatives separated by `|`; any one of them counts.
+    # The output comes through the environment: this script is itself stdin.
+    import os
+    want = [s.split("|") for s in a]
+    ok = any(all(any(alt in ln for alt in alts) for alts in want)
+             for ln in os.environ.get("CE_OUT", "").splitlines())
+    sys.exit(0 if ok else 1)
+else:
+    die(f"unknown subcommand {cmd}")
+PY
+}
+
+ce_need_leaf() {  # $1=label
+  grep -q '^LEAF_BODY_CEILING[ :=]' "$TMP/tests/seed-lint.py" \
+    && grep -q '^def check_leaf_body_ceiling(' "$TMP/tests/seed-lint.py" || {
+    echo "[$1] check missing: tests/seed-lint.py has no LEAF_BODY_CEILING and check_leaf_body_ceiling (SPEC-0005 LEAF_BODY_CEILING_HELD)" >&2; exit 1; }
+}
+ce_need_split() {  # $1=label
+  [ -f "$TMP/core/method/delegation-bounds.md" ] || {
+    echo "[$1] split not landed: core/method/delegation-bounds.md is absent (SPEC-0005 DELEGATION_SPLIT_INTO_SIBLINGS)" >&2; exit 1; }
+  grep -q '^def check_delegation_split(' "$TMP/tests/seed-lint.py" || {
+    echo "[$1] check missing: tests/seed-lint.py has no check_delegation_split (SPEC-0005 DELEGATION_SPLIT_INTO_SIBLINGS)" >&2; exit 1; }
+}
+ce_expect() {  # $1=label, $2...=pieces one seed-lint output line must hold
+  local label="$1" out rc; shift
+  out="$(lint)" && rc=0 || rc=$?
+  [[ $rc -eq 1 ]] || { echo "[$label] ${CE_WHY:+$CE_WHY: }expected exit 1, got $rc" >&2; echo "$out" >&2; exit 1; }
+  CE_OUT="$out" ce_py line "$@" || {
+    echo "[$label] ${CE_WHY:+$CE_WHY: }no finding line holds all of: $*" >&2; echo "$out" >&2; exit 1; }
+}
+ce_expect_ratchet() {  # $1=label, $2...=pieces one ratchet-lint output line must hold
+  local label="$1" out rc; shift
+  out="$(python3 "$TMP/tools/ratchet-lint.py" 2>&1)" && rc=0 || rc=$?
+  [[ $rc -eq 1 ]] || { echo "[$label] expected ratchet-lint exit 1, got $rc" >&2; echo "$out" >&2; exit 1; }
+  CE_OUT="$out" ce_py line "$@" || {
+    echo "[$label] no ratchet-lint line holds all of: $*" >&2; echo "$out" >&2; exit 1; }
+}
+
+case_ce_leaf_new_oversized() {
+  local TMP F N; TMP="$(fresh)"
+  # X336 LEAF_BODY_CEILING_HELD
+  # Asserts SPEC-0005 LEAF_BODY_CEILING_HELD.
+  # A new in-scope leaf whose body is over the ceiling, and not in
+  # OVERSIZED_LEAVES, is a finding naming the file, its count and the ceiling.
+  ce_need_leaf "ce-leaf-new-oversized"
+  F="core/method/ce-planted-leaf.md"
+  ce_py clone "$TMP/core/method/tiers.md" "$TMP/$F" method.ce-planted-leaf
+  ce_py pad "$TMP/$F" 200
+  N="$(ce_py body "$TMP/$F")"
+  # exercises: check_leaf_body_ceiling
+  ce_expect "ce-leaf-new-oversized" "$F" "$N" "over the 170-line leaf ceiling"
+  rm -rf "$TMP"
+}
+case_ce_leaf_stale_member() {
+  local TMP F; TMP="$(fresh)"
+  # X337 LEAF_BODY_CEILING_HELD
+  # Asserts SPEC-0005 LEAF_BODY_CEILING_HELD.
+  # A member of OVERSIZED_LEAVES whose body is at or below the ceiling is a
+  # finding, so the set only shrinks. The member is read from the copy.
+  ce_need_leaf "ce-leaf-stale-member"
+  F="$(ce_py first_member "$TMP")"
+  [ -n "$F" ] || { echo "[ce-leaf-stale-member] OVERSIZED_LEAVES names no file on disk to shrink" >&2; exit 1; }
+  ce_py truncate "$TMP/$F" 150
+  # exercises: check_leaf_body_ceiling
+  ce_expect "ce-leaf-stale-member" "$F" "stale oversized entry: remove it"
+  rm -rf "$TMP"
+}
+case_ce_leaf_unknown_member() {
+  local TMP; TMP="$(fresh)"
+  # X338 LEAF_BODY_CEILING_HELD
+  # Asserts SPEC-0005 LEAF_BODY_CEILING_HELD.
+  # A member that is not a file in the leaf scope is a finding: one that names
+  # no file, and one that names a file outside the scope (agents are out).
+  ce_need_leaf "ce-leaf-unknown-member"
+  ce_py setadd "$TMP" protocols/ce-no-such-leaf.md agents/04-tester.md
+  # exercises: check_leaf_body_ceiling
+  ce_expect "ce-leaf-unknown-member (absent)" "protocols/ce-no-such-leaf.md" "not a file in the leaf scope"
+  ce_expect "ce-leaf-unknown-member (out of scope)" "agents/04-tester.md" "not a file in the leaf scope"
+  rm -rf "$TMP"
+}
+case_ce_leaf_ratchet_ceiling_raised() {
+  local TMP V; TMP="$(fresh)"
+  # X339 LEAF_BODY_CEILING_HELD
+  # Asserts SPEC-0005 LEAF_BODY_CEILING_HELD.
+  # tools/ratchet-lint.py knows LEAF_BODY_CEILING (direction max): raising it
+  # fails the ratchet, naming the key.
+  ce_need_leaf "ce-leaf-ratchet-ceiling-raised"
+  V="$(ce_py const "$TMP" LEAF_BODY_CEILING)"
+  ce_py setconst "$TMP" LEAF_BODY_CEILING "$((V + 1))"
+  ce_expect_ratchet "ce-leaf-ratchet-ceiling-raised" "LEAF_BODY_CEILING" "LOOSENED"
+  rm -rf "$TMP"
+}
+case_ce_leaf_ratchet_member_added() {
+  local TMP F; TMP="$(fresh)"
+  # X340 LEDGER_REGROWS
+  # Asserts SPEC-0005 LEDGER_REGROWS.
+  # tools/ratchet-lint.py knows OVERSIZED_LEAVES (direction set): a member
+  # added to fit new text fails the ratchet, naming the key.
+  ce_need_leaf "ce-leaf-ratchet-member-added"
+  F="$(ce_py smallest "$TMP")"
+  ce_py setadd "$TMP" "$F"
+  ce_expect_ratchet "ce-leaf-ratchet-member-added" "OVERSIZED_LEAVES" "GREW"
+  rm -rf "$TMP"
+}
+case_ce_leaf_sibling_over() {
+  local TMP F N rc; TMP="$(fresh)"
+  # X341 SIBLING_OVER_CEILING
+  # Asserts SPEC-0005 SIBLING_OVER_CEILING.
+  # Prose pushes a non-member leaf past the ceiling (protocols/specify.md sat
+  # at 162): seed-lint fails naming the file.
+  ce_need_leaf "ce-leaf-sibling-over"
+  F="protocols/specify.md"
+  ce_py is_member "$TMP" "$F" && rc=0 || rc=$?
+  [ "$rc" -eq 1 ] || {
+    echo "[ce-leaf-sibling-over] $F is in OVERSIZED_LEAVES (or the set is unreadable); SPEC-0005 names it a non-member" >&2; exit 1; }
+  ce_py pad "$TMP/$F" 180
+  N="$(ce_py body "$TMP/$F")"
+  # exercises: check_leaf_body_ceiling
+  ce_expect "ce-leaf-sibling-over" "$F" "$N" "over the 170-line leaf ceiling"
+  rm -rf "$TMP"
+}
+case_ce_split_sibling_missing() {
+  local TMP; TMP="$(fresh)"
+  # X342 DELEGATION_SPLIT_INTO_SIBLINGS
+  # Asserts SPEC-0005 DELEGATION_SPLIT_INTO_SIBLINGS.
+  # Each of the six delegation leaves exists: one gone is a finding naming it.
+  ce_need_split "ce-split-sibling-missing"
+  rm -f "$TMP/core/method/delegation-sequencing.md"
+  # exercises: check_delegation_split
+  ce_expect "ce-split-sibling-missing" "core/method/delegation-sequencing.md" "delegation split"
+  rm -rf "$TMP"
+}
+case_ce_split_key_wrong_home() {
+  local TMP; TMP="$(fresh)"
+  # X343 DELEGATION_SPLIT_INTO_SIBLINGS
+  # Asserts SPEC-0005 DELEGATION_SPLIT_INTO_SIBLINGS.
+  # Each of the thirteen pre-split keys is owned by exactly the sibling §6
+  # names: delegation.step-scope moved from cycle economy to briefs is a finding.
+  ce_need_split "ce-split-key-wrong-home"
+  ce_py drop_item "$TMP/core/method/delegation-cycle-economy.md" owns delegation.step-scope
+  ce_py add_item "$TMP/core/method/delegation-briefs.md" owns delegation.step-scope
+  # exercises: check_delegation_split
+  ce_expect "ce-split-key-wrong-home" "delegation.step-scope" "delegation split"
+  rm -rf "$TMP"
+}
+case_ce_split_peer_dropped() {
+  local TMP; TMP="$(fresh)"
+  # X344 DELEGATION_SPLIT_INTO_SIBLINGS
+  # Asserts SPEC-0005 DELEGATION_SPLIT_INTO_SIBLINGS.
+  # core/method/delegation.md lists the other five sibling ids in `peers:`.
+  ce_need_split "ce-split-peer-dropped"
+  ce_py drop_item "$TMP/core/method/delegation.md" peers method.delegation-bounds
+  # exercises: check_delegation_split
+  ce_expect "ce-split-peer-dropped" "method.delegation-bounds|core/method/delegation-bounds.md" "delegation split"
+  rm -rf "$TMP"
+}
+case_ce_split_neighbour_missing() {
+  local TMP; TMP="$(fresh)"
+  # X345 DELEGATION_SPLIT_INTO_SIBLINGS
+  # Asserts SPEC-0005 DELEGATION_SPLIT_INTO_SIBLINGS.
+  # core/method/delegation.md's `## Neighbours` section names each sibling.
+  ce_need_split "ce-split-neighbour-missing"
+  ce_py drop_neighbour "$TMP/core/method/delegation.md" method.delegation-sequencing
+  # exercises: check_delegation_split
+  ce_expect "ce-split-neighbour-missing" "method.delegation-sequencing|core/method/delegation-sequencing.md" "delegation split"
+  rm -rf "$TMP"
+}
+
+
+ce_need() {  # $1=label $2=check function: stop with "check missing" until seed-lint defines it
+  grep -q "^def $2(" "$TMP/tests/seed-lint.py" || {
+    echo "[$1] check missing: tests/seed-lint.py has no $2 (SPEC-0005)" >&2; exit 1; }
+}
+ce_expect_none() {  # $1=label, $2=fragment: seed-lint exits 0 and no line holds it
+  local label="$1" out rc; out="$(lint)" && rc=0 || rc=$?
+  if CE_OUT="$out" ce_py line "$2"; then
+    echo "[$label] ${CE_WHY:+$CE_WHY: }unexpected finding: /$2/" >&2; echo "$out" >&2; exit 1; fi
+  [[ $rc -eq 0 ]] || { echo "[$label] ${CE_WHY:+$CE_WHY: }expected exit 0, got $rc" >&2; echo "$out" >&2; exit 1; }
+}
+
+case_ce_home_key_owned_twice() {
+  local TMP; TMP="$(fresh)"
+  # X347 ADOPTED_RULE_HOMES
+  # Asserts SPEC-0005 ADOPTED_RULE_HOMES.
+  # A key from §6 "Adopted rule homes" owned by a second node is a finding:
+  # test-first.no-lint-only-tests joins protocols/test-first.md's owns.
+  ce_need "ce-home-key-owned-twice" check_adopted_rule_homes
+  ce_py add_item "$TMP/protocols/test-first.md" owns test-first.no-lint-only-tests
+  # exercises: check_adopted_rule_homes
+  ce_expect "ce-home-key-owned-twice" "test-first.no-lint-only-tests" "owned by more than one node"
+  rm -rf "$TMP"
+}
+case_ce_home_key_missing() {
+  local TMP; TMP="$(fresh)"
+  # X348 ADOPTED_RULE_HOMES
+  # Asserts SPEC-0005 ADOPTED_RULE_HOMES.
+  # A key the table homes in skills/test-first/SKILL.md, dropped from its owns,
+  # is a finding naming the key and the file that must own it.
+  ce_need "ce-home-key-missing" check_adopted_rule_homes
+  ce_py drop_item "$TMP/skills/test-first/SKILL.md" owns test-first.no-lint-only-tests
+  # exercises: check_adopted_rule_homes
+  ce_expect "ce-home-key-missing" "test-first.no-lint-only-tests" "skills/test-first/SKILL.md"
+  rm -rf "$TMP"
+}
+case_ce_stale_pointer() {
+  local TMP F L; TMP="$(fresh)"
+  # X349 STALE_POINTER
+  # Asserts SPEC-0005 STALE_POINTER (contract ADOPTED_RULE_HOMES).
+  # A shipped line naming method/delegation.md beside a key §6 homes in a
+  # sibling is a finding naming the file, the line and the sibling.
+  ce_need "ce-stale-pointer" check_adopted_rule_homes
+  F="protocols/grow.md"
+  ce_py append "$TMP/$F" 'Brief rules: `docs/graph/method/delegation.md` (`delegation.briefs`).'
+  L="$(ce_py lineno "$TMP/$F" '(`delegation.briefs`).')"
+  # exercises: check_adopted_rule_homes
+  ce_expect "ce-stale-pointer" "$F:$L|$F line $L" \
+    "names method/delegation.md beside delegation.briefs; point at" "delegation-briefs"
+  rm -rf "$TMP"
+}
+case_ce_stale_pointer_wrapped() {
+  local TMP F L; TMP="$(fresh)"
+  # X356 ADOPTED_RULE_HOMES
+  # Asserts SPEC-0005 ADOPTED_RULE_HOMES (a stale pointer wrapped across two lines).
+  # The path ends one line and the key opens the next; the check reads each
+  # line joined with the one after it, so the wrapped pointer is still one
+  # finding, naming the file, the line and the sibling.
+  F="protocols/grow.md"
+  ce_py append "$TMP/$F" $'Planted wrapped pointer, one writer per file set: see `docs/graph/method/delegation.md`\n(`delegation.lanes`) for the lane rule.'
+  L="$(ce_py lineno "$TMP/$F" 'Planted wrapped pointer')"
+  # exercises: check_adopted_rule_homes
+  # Reported once, at the line where the pointer starts: the path's line.
+  CE_WHY="wrap join missing" ce_expect "ce-stale-pointer-wrapped" "$F:$L|$F line $L" \
+    "names method/delegation.md beside delegation.lanes; point at" "delegation-sequencing"
+  rm -rf "$TMP"
+}
+case_ce_stale_pointer_front_door() {
+  local TMP F L; TMP="$(fresh)"
+  # X357 ADOPTED_RULE_HOMES
+  # Asserts SPEC-0005 ADOPTED_RULE_HOMES (the widened scan roots).
+  # A stale pointer in README.md, INSTALL.md and a documentation/ page, each
+  # a root the widened scan reads, is a finding in each file.
+  for F in README.md INSTALL.md documentation/protocols-reference.md; do
+    [ -f "$TMP/$F" ] || { echo "[ce-stale-pointer-front-door] probe file missing: $F" >&2; exit 1; }
+    ce_py append "$TMP/$F" 'Planted front-door brief rules: `docs/graph/method/delegation.md` (`delegation.briefs`).'
+  done
+  # exercises: check_adopted_rule_homes
+  for F in README.md INSTALL.md documentation/protocols-reference.md; do
+    L="$(ce_py lineno "$TMP/$F" 'Planted front-door brief rules:')"
+    CE_WHY="scan not widened to $F" ce_expect "ce-stale-pointer-front-door ($F)" "$F:$L|$F line $L" \
+      "names method/delegation.md beside delegation.briefs; point at" "delegation-briefs"
+  done
+  rm -rf "$TMP"
+}
+case_ce_stale_pointer_root_prompt() {
+  local TMP F L; TMP="$(fresh)"
+  # X358 ADOPTED_RULE_HOMES
+  # Asserts SPEC-0005 ADOPTED_RULE_HOMES (a root *_PROMPT.md is in the scan).
+  # Guard: a stale pointer in INSTALL_PROMPT.md is a finding.
+  F="INSTALL_PROMPT.md"
+  [ -f "$TMP/$F" ] || { echo "[ce-stale-pointer-root-prompt] probe file missing: $F" >&2; exit 1; }
+  ce_py append "$TMP/$F" 'Planted front-door brief rules: `docs/graph/method/delegation.md` (`delegation.briefs`).'
+  L="$(ce_py lineno "$TMP/$F" 'Planted front-door brief rules:')"
+  # exercises: check_adopted_rule_homes
+  CE_WHY="root prompt not scanned" ce_expect "ce-stale-pointer-root-prompt" "$F:$L|$F line $L" \
+    "names method/delegation.md beside delegation.briefs; point at" "delegation-briefs"
+  rm -rf "$TMP"
+}
+case_ce_stale_pointer_wrapped_key_first() {
+  local TMP F L; TMP="$(fresh)"
+  # X359 ADOPTED_RULE_HOMES
+  # Asserts SPEC-0005 ADOPTED_RULE_HOMES (a key-first wrap).
+  # Guard: the key ends one line and the path opens the next;
+  # the pointer starts at the key's line and is reported there.
+  F="protocols/grow.md"
+  ce_py append "$TMP/$F" $'Planted key-first pointer (`delegation.lanes`) lives in\n`docs/graph/method/delegation.md` for the lane rule.'
+  L="$(ce_py lineno "$TMP/$F" 'Planted key-first pointer')"
+  # exercises: check_adopted_rule_homes
+  CE_WHY="key-first wrap missed" ce_expect "ce-stale-pointer-wrapped-key-first" "$F:$L|$F line $L" \
+    "names method/delegation.md beside delegation.lanes; point at" "delegation-sequencing"
+  rm -rf "$TMP"
+}
+case_ce_adjacent_correct_pointers_pass() {
+  local TMP F; TMP="$(fresh)"
+  # X360 ADOPTED_RULE_HOMES
+  # Asserts SPEC-0005 ADOPTED_RULE_HOMES (no false positive).
+  # A hub pointer for a hub key on one line and a correct sibling pointer on
+  # the next are two correct pointers: the wrap join must not pair the
+  # sibling's key with the hub's path. Seed-lint stays clean.
+  F="protocols/grow.md"
+  ce_py append "$TMP/$F" $'Planted menu: roster in `docs/graph/method/delegation.md` (`delegation.roster`),\nlanes in `docs/graph/method/delegation-sequencing.md` (`delegation.lanes`).'
+  # exercises: check_adopted_rule_homes
+  CE_WHY="adjacent correct pointers paired as stale" \
+    ce_expect_none "ce-adjacent-correct-pointers-pass" "names method/delegation.md beside"
+  rm -rf "$TMP"
+}
+ce_handback_case() {  # $1=label $2=field
+  local TMP rc; TMP="$(fresh)"
+  ce_need "$1" check_handback_fields
+  ce_py drop_handback "$TMP" "$2" && rc=0 || rc=$?
+  [ "$rc" -ne 3 ] || { echo "[$1] template not landed: the HANDBACK block in templates/prompts/handback-payload.md has no \`- $2:\` line to remove" >&2; exit 1; }
+  [ "$rc" -eq 0 ] || exit "$rc"
+  ce_expect "$1" "handback block has no \`- $2:\` line"
+  rm -rf "$TMP"
+}
+case_ce_handback_effort_removed() {
+  # X350 HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP
+  # Asserts SPEC-0005 HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP.
+  # exercises: check_handback_fields
+  ce_handback_case "ce-handback-effort-removed" effort
+}
+case_ce_handback_gap_removed() {
+  # X351 HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP
+  # Asserts SPEC-0005 HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP.
+  # exercises: check_handback_fields
+  ce_handback_case "ce-handback-gap-removed" expertise_gap
+}
+case_ce_step2_reworded() {
+  local TMP; TMP="$(fresh)"
+  # X352 BOOTSTRAP_STEP2_LOADS_A_MENU
+  # Asserts SPEC-0005 BOOTSTRAP_STEP2_LOADS_A_MENU.
+  # All six copies reworded alike, so the byte-identity check stays quiet and
+  # only the new check can fire: its fragment is the one grepped.
+  ce_need "ce-step2-reworded" check_bootstrap_step2
+  ce_py step2 "$TMP" reword '2. Load every reported node and every node it lists.'
+  # exercises: check_bootstrap_step2
+  ce_expect "ce-step2-reworded" "step 2 differs from SPEC-0005"
+  rm -rf "$TMP"
+}
+case_ce_step2_rewrapped_passes() {
+  local TMP; TMP="$(fresh)"
+  # X353 BOOTSTRAP_STEP2_LOADS_A_MENU
+  # Asserts SPEC-0005 BOOTSTRAP_STEP2_LOADS_A_MENU (guard).
+  # All six copies re-wrapped alike: the comparison collapses whitespace, so
+  # seed-lint stays clean. Green before and after the check lands.
+  ce_py step2 "$TMP" rewrap
+  # exercises: check_bootstrap_step2
+  ce_expect_none "ce-step2-rewrapped-passes" "step 2 differs from SPEC-0005"
+  rm -rf "$TMP"
+}
+case_ce_pending_phrase_planted() {
+  local TMP F P; TMP="$(fresh)"
+  # X354 ADOPTED_RULES_NOT_PENDING
+  # Asserts SPEC-0005 ADOPTED_RULES_NOT_PENDING.
+  # One plant per §6 "Pending phrases" entry, each on a clean copy of the
+  # file: the finding names the file and the phrase.
+  ce_need "ce-pending-phrase-planted" check_adopted_rules_not_pending
+  F="core/method/tiers.md"
+  for P in "recommended rather than required" "pending the owner's confirmation" \
+           "pending the seed owner's confirmation" "until it is confirmed" \
+           "recommends naming the stack expertise"; do
+    restore "$F"
+    ce_py append "$TMP/$F" "This planted rule is $P."
+    # exercises: check_adopted_rules_not_pending
+    ce_expect "ce-pending-phrase-planted ($P)" "$F" "adopted rule still reads as pending" "$P"
+  done
+  rm -rf "$TMP"
+}
+case_ce_pending_phrase_wrapped() {
+  local TMP F; TMP="$(fresh)"
+  # X355 ADOPTED_RULES_NOT_PENDING
+  # Asserts SPEC-0005 ADOPTED_RULES_NOT_PENDING.
+  # The match is case-insensitive and whitespace-collapsed: a phrase broken
+  # across lines, in other case, is still a finding.
+  ce_need "ce-pending-phrase-wrapped" check_adopted_rules_not_pending
+  F="protocols/grow.md"
+  ce_py append "$TMP/$F" $'This planted rule is Recommended rather\n  than REQUIRED here.'
+  # exercises: check_adopted_rules_not_pending
+  ce_expect "ce-pending-phrase-wrapped" "$F" "adopted rule still reads as pending" \
+    "recommended rather than required"
+  rm -rf "$TMP"
+}
+
 if [ "${1:-}" = "__case" ]; then
   "$2"
   exit $?
@@ -2743,7 +3299,11 @@ lint >/dev/null || { echo "baseline seed-lint did not pass on a clean copy" >&2;
 
 SCN="$(mktemp)"
 for c in case_01 case_02 case_03 case_04 case_05 case_06 case_07 case_08 case_09 case_10 case_11 case_12 case_13 case_14 case_15 case_16 case_17 case_18 case_19 case_20 case_21 case_22 case_23 case_24 case_25 case_26 case_27 case_28 case_29 case_30 case_31 case_32 case_33 case_34 case_35 case_36 case_spec_row_toplevel_def case_37 case_38 case_shell_floor case_agn_docs case_agn_py_sh case_x201 case_x202 case_x203 case_frontmatter_portable caseHOST_TIERS_AGREE case_agent_grant_undeclared case_tools_omitted case_hook_reach_phrase case_hook_reach_rewordings case_hook_reach_true_claims \
-    case_fd_fixture_clean case_fd_first_screen_order case_fd_first_screen_budget case_fd_first_command_line case_fd_what_you_get_heading case_fd_first_screen_caps case_fd_later_sections_order case_fd_install_target_paths case_fd_install_seed_path case_fd_where_next case_fd_glossary_absent case_fd_glossary_fields case_fd_glossary_closed_values case_fd_glossary_required_term case_fd_glossary_paths case_fd_glossary_install_literal case_fd_definition_links case_fd_term_linked case_fd_one_home case_fd_reference_opener case_fd_enforcement_row case_fd_enforcement_required_row case_fd_enforcement_row_residuals case_fd_mechanism_traced case_fd_mechanism_overclaim case_fd_mechanism_surfaces case_fd_hook_firing case_fd_limits_hard_row case_fd_limits_required_rows case_fd_limits_unmeasured case_fd_catalogs case_fd_adr_range case_fd_cost_scope case_fd_cost_provenance case_fd_cost_measured_derived case_fd_cost_no_derived case_fd_measured_evidence case_fd_eager_published case_fd_body_home case_fd_body_figure_elsewhere case_fd_body_project_node case_fd_anchor_resolves case_fd_anchor_duplicate case_fd_headings case_fd_link_text case_fd_table_header case_fd_pending_stale case_fd_pending_unknown_slug case_fd_pending_holds_exit case_fd_pending_implemented case_fd_pending_release case_fd_absent_inputs case_fd_unreadable_input case_fd_check_raised; do
+    case_fd_fixture_clean case_fd_first_screen_order case_fd_first_screen_budget case_fd_first_command_line case_fd_what_you_get_heading case_fd_first_screen_caps case_fd_later_sections_order case_fd_install_target_paths case_fd_install_seed_path case_fd_where_next case_fd_glossary_absent case_fd_glossary_fields case_fd_glossary_closed_values case_fd_glossary_required_term case_fd_glossary_paths case_fd_glossary_install_literal case_fd_definition_links case_fd_term_linked case_fd_one_home case_fd_reference_opener case_fd_enforcement_row case_fd_enforcement_required_row case_fd_enforcement_row_residuals case_fd_mechanism_traced case_fd_mechanism_overclaim case_fd_mechanism_surfaces case_fd_hook_firing case_fd_limits_hard_row case_fd_limits_required_rows case_fd_limits_unmeasured case_fd_catalogs case_fd_adr_range case_fd_cost_scope case_fd_cost_provenance case_fd_cost_measured_derived case_fd_cost_no_derived case_fd_measured_evidence case_fd_eager_published case_fd_body_home case_fd_body_figure_elsewhere case_fd_body_project_node case_fd_anchor_resolves case_fd_anchor_duplicate case_fd_headings case_fd_link_text case_fd_table_header case_fd_pending_stale case_fd_pending_unknown_slug case_fd_pending_holds_exit case_fd_pending_implemented case_fd_pending_release case_fd_absent_inputs case_fd_unreadable_input case_fd_check_raised \
+    case_ce_leaf_new_oversized case_ce_leaf_stale_member case_ce_leaf_unknown_member case_ce_leaf_ratchet_ceiling_raised case_ce_leaf_ratchet_member_added case_ce_leaf_sibling_over case_ce_split_sibling_missing case_ce_split_key_wrong_home case_ce_split_peer_dropped case_ce_split_neighbour_missing \
+    case_ce_home_key_owned_twice case_ce_home_key_missing case_ce_stale_pointer case_ce_handback_effort_removed case_ce_handback_gap_removed case_ce_step2_reworded case_ce_step2_rewrapped_passes case_ce_pending_phrase_planted case_ce_pending_phrase_wrapped \
+    case_ce_stale_pointer_wrapped case_ce_stale_pointer_front_door \
+    case_ce_stale_pointer_root_prompt case_ce_stale_pointer_wrapped_key_first case_ce_adjacent_correct_pointers_pass; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0

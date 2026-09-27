@@ -65,6 +65,13 @@ COVERED = {
     "check_fd_front_door_headings_well_formed", "check_fd_link_text_stands_alone",
     "check_fd_tables_have_header_rows",
     "check_fd_pending_ledger_holds_only_failing_contracts",
+    # SPEC-0005, cycle economy: the leaf ceiling ledger and the delegation
+    # split, each planted by the case_ce_* cases.
+    "check_leaf_body_ceiling", "check_delegation_split",
+    # SPEC-0005: rule homes and stale pointers, the handback fields, bootstrap
+    # step 2 and the pending phrases, each planted by the case_ce_* cases.
+    "check_adopted_rule_homes", "check_handback_fields",
+    "check_bootstrap_step2", "check_adopted_rules_not_pending",
 }
 
 

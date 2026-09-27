@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Findings report — example project</title>
+<!--
+  TEMPLATE: findings report (security | compliance).
+  Self-contained: no external dependency, no CDN, styles and script inline.
+  The generation contract (field → markup, badge vocabularies, markers):
+  ./findings-report.template.md
+  Report kind: <body data-report="security"> or <body data-report="compliance">.
+  Every finding, repository, path and quotation below is a synthetic placeholder.
+-->
+<style>
+/* ============================================================
+   1. TOKENS — one home for every value. Light theme is the default.
+   ============================================================ */
+:root{
+  /* surfaces and text */
+  --bg:#ffffff;
+  --bg-elev:#fbfbfd;
+  --bg-sunken:#f4f5f8;
+  --ink:#1a1d23;
+  --ink-dim:#565d6b;
+  --ink-faint:#6b7280;
+  --line:#dcdfe6;
+  --line-strong:#b9bec9;
+  --accent:#1f5f9c;
+  --focus:#1f5f9c;
+
+  /* severity — CRITICAL */
+  --sev-critical-bg:#fceced;
+  --sev-critical-ink:#8a1020;
+  --sev-critical-line:#b42318;
+  /* severity — HIGH */
+  --sev-high-bg:#fdf3e0;
+  --sev-high-ink:#6d4004;
+  --sev-high-line:#b26a06;
+  /* severity — MEDIUM */
+  --sev-medium-bg:#fbf6d9;
+  --sev-medium-ink:#554600;
+  --sev-medium-line:#9a8200;
+  /* severity — LOW */
+  --sev-low-bg:#e8f0f8;
+  --sev-low-ink:#1f4466;
+  --sev-low-line:#4f7aa6;
+
+  /* status (neutral: the glyph and the label carry the meaning) */
+  --status-bg:#eef0f4;
+  --status-ink:#3a4150;
+  --status-line:#c3c8d2;
+
+  /* type */
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --fs-xs:.6875rem;   /* 11px — uppercase labels */
+  --fs-sm:.8125rem;   /* 13px — mono, notes, excluded list */
+  --fs-base:.9375rem; /* 15px — body */
+  --fs-lead:1.0625rem;/* 17px — concrete harm */
+  --fs-h3:1.0625rem;
+  --fs-h2:1.25rem;
+  --fs-h1:1.75rem;
+
+  /* spacing, radii */
+  --sp-1:.25rem; --sp-2:.5rem; --sp-3:.75rem; --sp-4:1rem;
+  --sp-5:1.5rem; --sp-6:2.25rem;
+  --r-sm:5px; --r-md:9px; --r-pill:999px;
+  --stripe:6px; /* width of the severity bar on the card's left edge */
+}
+
+/* Automatic dark theme, overridden by data-theme="light" */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#12141a;
+    --bg-elev:#191c23;
+    --bg-sunken:#0d0f14;
+    --ink:#e7e9f0;
+    --ink-dim:#a3abba;
+    --ink-faint:#8d95a5;
+    --line:#2a2f3a;
+    --line-strong:#3c4351;
+    --accent:#7ab5e8;
+    --focus:#7ab5e8;
+    --sev-critical-bg:#3d151c;
+    --sev-critical-ink:#ffb0b8;
+    --sev-critical-line:#e26a6a;
+    --sev-high-bg:#3b2a0e;
+    --sev-high-ink:#ffca7a;
+    --sev-high-line:#d99a3c;
+    --sev-medium-bg:#332c0a;
+    --sev-medium-ink:#f0dc7a;
+    --sev-medium-line:#c9ad3a;
+    --sev-low-bg:#16263a;
+    --sev-low-ink:#a9c8ea;
+    --sev-low-line:#6f9bc9;
+    --status-bg:#22262f;
+    --status-ink:#ccd3e0;
+    --status-line:#3c4351;
+  }
+}
+/* Forced dark theme */
+[data-theme="dark"]{
+  --bg:#12141a;
+  --bg-elev:#191c23;
+  --bg-sunken:#0d0f14;
+  --ink:#e7e9f0;
+  --ink-dim:#a3abba;
+  --ink-faint:#8d95a5;
+  --line:#2a2f3a;
+  --line-strong:#3c4351;
+  --accent:#7ab5e8;
+  --focus:#7ab5e8;
+  --sev-critical-bg:#3d151c;
+  --sev-critical-ink:#ffb0b8;
+  --sev-critical-line:#e26a6a;
+  --sev-high-bg:#3b2a0e;
+  --sev-high-ink:#ffca7a;
+  --sev-high-line:#d99a3c;
+  --sev-medium-bg:#332c0a;
+  --sev-medium-ink:#f0dc7a;
+  --sev-medium-line:#c9ad3a;
+  --sev-low-bg:#16263a;
+  --sev-low-ink:#a9c8ea;
+  --sev-low-line:#6f9bc9;
+  --status-bg:#22262f;
+  --status-ink:#ccd3e0;
+  --status-line:#3c4351;
+}
+
+/* ============================================================
+   2. BASE
+   ============================================================ */
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font:var(--fs-base)/1.6 var(--sans);
+  overflow-wrap:break-word;
+}
+.wrap{max-width:60rem;margin:0 auto;padding:var(--sp-5) var(--sp-4) var(--sp-6)}
+h1,h2,h3{line-height:1.25;margin:0}
+h1{font-size:var(--fs-h1);letter-spacing:-.01em}
+h2{font-size:var(--fs-h2)}
+h3{font-size:var(--fs-h3)}
+p{margin:0 0 var(--sp-3)}
+p:last-child{margin-bottom:0}
+a{color:var(--accent)}
+a:hover{text-decoration-thickness:2px}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:2px}
+.mono{font-family:var(--mono);font-size:var(--fs-sm);overflow-wrap:anywhere}
+.vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
+    clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+.skip{position:absolute;left:-9999px;top:0;background:var(--bg-elev);color:var(--ink);
+      padding:var(--sp-2) var(--sp-3);border:1px solid var(--line-strong);border-radius:var(--r-sm);z-index:10}
+.skip:focus{left:var(--sp-4);top:var(--sp-2)}
+
+/* ============================================================
+   3. HEADER
+   ============================================================ */
+.rep-head{border-bottom:2px solid var(--line-strong);padding-bottom:var(--sp-4);margin-bottom:var(--sp-5)}
+.rep-kicker{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.1em;color:var(--ink-dim);margin-bottom:var(--sp-2)}
+.rep-sub{color:var(--ink-dim);font-size:var(--fs-sm);margin-top:var(--sp-2)}
+.head-bar{display:flex;flex-wrap:wrap;gap:var(--sp-3);align-items:flex-start;justify-content:space-between}
+.theme-toggle{font:inherit;font-size:var(--fs-sm);color:var(--ink-dim);background:var(--bg-elev);
+  border:1px solid var(--line-strong);border-radius:var(--r-pill);padding:var(--sp-1) var(--sp-3);cursor:pointer}
+.theme-toggle:hover{color:var(--ink)}
+
+.notice{border:1px solid var(--line-strong);border-left:var(--stripe) solid var(--accent);
+  background:var(--bg-elev);border-radius:var(--r-sm);padding:var(--sp-3) var(--sp-4);margin:var(--sp-4) 0;font-size:var(--fs-sm)}
+
+table.meta{width:100%;border-collapse:collapse;margin:var(--sp-4) 0;font-size:var(--fs-sm)}
+table.meta caption{text-align:left;font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.09em;
+  color:var(--ink-dim);padding-bottom:var(--sp-2)}
+table.meta th,table.meta td{text-align:left;padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--line);vertical-align:top}
+table.meta thead th{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.07em;color:var(--ink-dim);
+  border-bottom:1px solid var(--line-strong)}
+table.meta td.mono{white-space:nowrap}
+
+nav.toc{font-size:var(--fs-sm);margin:var(--sp-4) 0}
+nav.toc ol{list-style:none;display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-4);margin:var(--sp-2) 0 0;padding:0}
+nav.toc .toc-label{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.09em;color:var(--ink-dim)}
+
+/* ============================================================
+   4. LEGEND
+   ============================================================ */
+.legend{border:1px solid var(--line);border-radius:var(--r-md);background:var(--bg-elev);
+  padding:var(--sp-4);margin:var(--sp-5) 0}
+.legend h2{font-size:var(--fs-h3)}
+.legend-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:var(--sp-4);margin-top:var(--sp-3)}
+.legend-grid h3{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.09em;color:var(--ink-dim);margin-bottom:var(--sp-2)}
+.legend-grid ul{list-style:none;margin:0;padding:0}
+.legend-grid li{display:flex;gap:var(--sp-2);align-items:baseline;margin-bottom:var(--sp-2);font-size:var(--fs-sm)}
+.legend-note{font-size:var(--fs-sm);color:var(--ink-dim);margin-top:var(--sp-3)}
+.sample-stripe{display:inline-block;width:var(--stripe);min-width:var(--stripe);height:1.1em;border-radius:2px;
+  transform:translateY(.15em);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.sample-stripe.critical{background:var(--sev-critical-line)}
+.sample-stripe.high{background:repeating-linear-gradient(180deg,var(--sev-high-line) 0 3px,transparent 3px 6px)}
+.sample-stripe.medium{background:repeating-linear-gradient(180deg,var(--sev-medium-line) 0 1px,transparent 1px 3px)}
+.sample-stripe.low{background:transparent;box-shadow:inset 0 0 0 1.5px var(--sev-low-line)}
+
+/* ============================================================
+   5. SECTIONS
+   ============================================================ */
+.sec{margin:var(--sp-6) 0 0}
+.sec-head{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-3);align-items:baseline;
+  border-bottom:1px solid var(--line-strong);padding-bottom:var(--sp-2);margin-bottom:var(--sp-4)}
+.sec-count{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.08em;color:var(--ink-dim);
+  border:1px solid var(--line);border-radius:var(--r-pill);padding:var(--sp-1) var(--sp-2)}
+.sec-hint{font-size:var(--fs-sm);color:var(--ink-dim);margin:0 0 var(--sp-4)}
+
+/* ============================================================
+   6. FINDING CARD
+   ============================================================ */
+.finding{
+  position:relative;
+  background:var(--bg-elev);
+  border:1px solid var(--line);
+  border-radius:var(--r-md);
+  padding:var(--sp-4) var(--sp-4) var(--sp-4) calc(var(--sp-4) + var(--stripe));
+  margin:0 0 var(--sp-4);
+}
+/* severity bar: colour + pattern (solid, dashed, dotted, hollow) = two channels */
+.finding::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:var(--stripe);
+  border-radius:var(--r-md) 0 0 var(--r-md);
+  background:var(--card-accent,var(--line-strong));
+  -webkit-print-color-adjust:exact;print-color-adjust:exact;
+}
+.finding--critical{--card-accent:var(--sev-critical-line);border-color:var(--sev-critical-line)}
+.finding--high{--card-accent:repeating-linear-gradient(180deg,var(--sev-high-line) 0 4px,transparent 4px 8px);
+  border-color:var(--line-strong)}
+.finding--medium{--card-accent:repeating-linear-gradient(180deg,var(--sev-medium-line) 0 2px,transparent 2px 5px)}
+.finding--low{--card-accent:transparent}
+.finding--low::before{box-shadow:inset 0 0 0 2px var(--sev-low-line)}
+
+.f-top{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-3);align-items:baseline;margin-bottom:var(--sp-2)}
+.f-id{font-family:var(--mono);font-size:var(--fs-sm);font-weight:700;white-space:nowrap;
+  background:var(--bg-sunken);border:1px solid var(--line-strong);border-radius:var(--r-sm);
+  padding:var(--sp-1) var(--sp-2)}
+.f-title{flex:1 1 20rem;min-width:0;font-size:var(--fs-h3);font-weight:650}
+
+.f-badges{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin:var(--sp-3) 0}
+.badge{display:inline-flex;align-items:baseline;gap:var(--sp-1);white-space:nowrap;
+  font-size:var(--fs-xs);font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  border-radius:var(--r-pill);padding:var(--sp-1) var(--sp-2);border:1px solid currentColor;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
+.badge .g{font-weight:400;font-size:1em;line-height:1}
+.sev-critical{background:var(--sev-critical-bg);color:var(--sev-critical-ink)}
+.sev-high{background:var(--sev-high-bg);color:var(--sev-high-ink)}
+.sev-medium{background:var(--sev-medium-bg);color:var(--sev-medium-ink)}
+.sev-low{background:var(--sev-low-bg);color:var(--sev-low-ink)}
+.st-open,.st-partial,.st-blocked,.st-closed-residual{background:var(--status-bg);color:var(--status-ink)}
+.st-closed-residual{text-transform:none;letter-spacing:0}
+.loc-app,.loc-platform{background:transparent;color:var(--ink-dim);text-transform:none;letter-spacing:0;font-weight:600}
+.eff{background:transparent;color:var(--ink-dim);text-transform:none;letter-spacing:0;font-weight:600;cursor:help}
+.eff strong{font-family:var(--mono);font-weight:700}
+
+.f-fields{margin:0}
+.f-label{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.09em;color:var(--ink-dim);
+  margin-top:var(--sp-3)}
+.f-body{margin:var(--sp-1) 0 0}
+
+.f-loc{font-family:var(--mono);font-size:var(--fs-sm);list-style:none;margin:var(--sp-1) 0 0;padding:0}
+.f-loc li{overflow-wrap:anywhere;margin-bottom:2px}
+.f-loc li::before{content:"› ";color:var(--ink-faint)}
+
+/* the concrete harm is the heart of the card: heaviest type, never compressed */
+dd.f-harm{font-size:var(--fs-lead);line-height:1.55;color:var(--ink);
+  border-left:2px solid var(--line-strong);padding-left:var(--sp-3);margin:var(--sp-2) 0 0}
+dt.f-label-harm{color:var(--ink);font-weight:700}
+
+blockquote.f-obligation{margin:var(--sp-2) 0 0;padding:var(--sp-3);background:var(--bg-sunken);
+  border:1px solid var(--line);border-left:3px solid var(--line-strong);border-radius:var(--r-sm);
+  font-size:var(--fs-sm);font-style:italic}
+blockquote.f-obligation cite{display:block;font-style:normal;font-weight:700;font-size:var(--fs-xs);
+  text-transform:uppercase;letter-spacing:.06em;color:var(--ink-dim);margin-bottom:var(--sp-1)}
+/* report-kind switch: the security report does not show the obligation field */
+body[data-report="security"] .f-obligation-row{display:none}
+
+.f-decision{font-size:var(--fs-sm);color:var(--ink-dim)}
+.f-decision.is-absent{font-style:italic}
+
+.f-code{margin:var(--sp-2) 0 0;padding:var(--sp-3);background:var(--bg-sunken);
+  border:1px solid var(--line);border-radius:var(--r-sm);max-width:100%;overflow-x:auto}
+.f-code code{display:block;font-family:var(--mono);font-size:var(--fs-sm);white-space:pre;color:var(--ink)}
+
+.f-xref{margin:var(--sp-3) 0 0;padding:var(--sp-2) var(--sp-3);font-size:var(--fs-sm);
+  background:var(--bg-sunken);border:1px dashed var(--line-strong);border-radius:var(--r-sm);color:var(--ink-dim)}
+.f-xref .g{color:var(--ink-faint)}
+
+/* ============================================================
+   7. CLOSING — low visual weight: these are not findings
+   ============================================================ */
+.closing{margin-top:var(--sp-6);border-top:1px solid var(--line-strong);padding-top:var(--sp-4)}
+.closing h2{font-size:var(--fs-h3)}
+.closing h3{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.09em;color:var(--ink-dim);
+  margin-top:var(--sp-4)}
+.closing-note{font-size:var(--fs-sm);color:var(--ink-dim);margin:var(--sp-2) 0 0}
+.excluded{font-size:var(--fs-sm);color:var(--ink-dim);margin:var(--sp-2) 0 0;padding-left:1.1rem}
+.excluded li{margin-bottom:var(--sp-1)}
+.excluded .mono{color:var(--ink-dim)}
+.xref-list{font-size:var(--fs-sm);margin:var(--sp-2) 0 0;padding-left:1.1rem}
+.rep-foot{margin-top:var(--sp-5);font-size:var(--fs-sm);color:var(--ink-faint);border-top:1px solid var(--line);padding-top:var(--sp-3)}
+
+/* ============================================================
+   8. PRINT — light theme forced, colours kept, cards never split
+   ============================================================ */
+@media print{
+  :root,:root[data-theme="dark"],:root[data-theme="light"]{
+    --bg:#fff; --bg-elev:#fff; --bg-sunken:#f4f5f8;
+    --ink:#000; --ink-dim:#3a3a3a; --ink-faint:#4a4a4a;
+    --line:#9a9a9a; --line-strong:#4a4a4a; --accent:#0b4a80;
+    --sev-critical-bg:#fceced; --sev-critical-ink:#7a0f1c; --sev-critical-line:#8a1020;
+    --sev-high-bg:#fdf3e0; --sev-high-ink:#5c3603; --sev-high-line:#7a4a04;
+    --sev-medium-bg:#fbf6d9; --sev-medium-ink:#453900; --sev-medium-line:#6b5a00;
+    --sev-low-bg:#e8f0f8; --sev-low-ink:#173652; --sev-low-line:#2f5680;
+    --status-bg:#f0f0f0; --status-ink:#222; --status-line:#666;
+  }
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{font-size:10.5pt}
+  .wrap{max-width:none;padding:0}
+  .theme-toggle,.skip,nav.toc{display:none}
+  .finding,.legend,.notice,table.meta{break-inside:avoid;page-break-inside:avoid}
+  .sec-head,h2,h3{break-after:avoid;page-break-after:avoid}
+  .finding{border:1pt solid var(--line-strong)}
+  .finding--critical{border-width:2pt}
+  .f-code code{white-space:pre-wrap}   /* in print nothing is clipped */
+  a{color:var(--ink);text-decoration:underline}
+}
+</style>
+</head>
+
+<!-- data-report="compliance" shows "Obligation breached"; data-report="security" hides it. -->
+<body data-report="compliance">
+<a class="skip" href="#content">Skip to content</a>
+<div class="wrap">
+
+<!-- HEADER -->
+<header class="rep-head">
+  <div class="head-bar">
+    <div>
+      <p class="rep-kicker">Example project · Audit report</p>
+      <h1>Compliance findings report</h1>
+      <p class="rep-sub">Generated on <time datetime="2000-01-01">1 January 2000</time> · report revision <span class="mono">r1</span> · audience: delivery owner, technical owners.</p>
+    </div>
+    <button type="button" id="theme-toggle" class="theme-toggle" aria-pressed="false" hidden>Dark theme</button>
+  </div>
+
+  <div class="notice">
+    <strong>Sample document.</strong> The three findings below are generic <em>placeholders</em>, there only to show the format. They are not verified findings about any system. The process that fills the report replaces the cards and the metadata rows and keeps the structure and the class names.
+  </div>
+
+  <table class="meta">
+    <caption>Scope verified — repositories and reference commits</caption>
+    <thead>
+      <tr><th scope="col">Repository / surface</th><th scope="col">Branch</th><th scope="col">Commit verified</th><th scope="col">Date verified</th></tr>
+    </thead>
+    <tbody>
+      <!-- META-ROW-TEMPLATE-START -->
+      <tr><td>example-api</td><td class="mono">release/example</td><td class="mono">0000000</td><td class="mono">2000-01-01</td></tr>
+      <!-- META-ROW-TEMPLATE-END -->
+      <tr><td>example-web</td><td class="mono">release/example</td><td class="mono">0000000</td><td class="mono">2000-01-01</td></tr>
+      <tr><td>example-infra (platform layer)</td><td class="mono">release/example</td><td class="mono">0000000</td><td class="mono">2000-01-01</td></tr>
+    </tbody>
+  </table>
+
+  <section aria-labelledby="method-h">
+    <h2 id="method-h" class="vh">Method note</h2>
+    <p><strong>Method note.</strong> Each finding comes from reading the code and the deploy surfaces directly, at the commits listed above, without sending traffic to a real environment. The file:line reference is the evidence, not an illustration. Only findings at or above the <strong>HIGH</strong> severity floor are carded here. Entries below the floor stay traceable under “Considered and excluded”. The cards appear in the order the data already decided (severity descending, then effort ascending), and this document keeps that order. Where a value was not established, the report says “not recorded” and does not guess.</p>
+  </section>
+
+  <nav class="toc" aria-labelledby="toc-h">
+    <span class="toc-label" id="toc-h">Contents</span>
+    <ol>
+      <li><a href="#legend">Legend</a></li>
+      <li><a href="#sec-app">Application code</a></li>
+      <li><a href="#sec-platform">Platform layer</a></li>
+      <li><a href="#excluded">Considered and excluded</a></li>
+      <li><a href="#cross-reference">Cross-reference</a></li>
+    </ol>
+  </nav>
+</header>
+
+<main id="content">
+
+<!-- LEGEND -->
+<section class="legend" id="legend" aria-labelledby="legend-h">
+  <h2 id="legend-h">Legend</h2>
+  <div class="legend-grid">
+    <div>
+      <h3>Severity</h3>
+      <ul>
+        <li><span class="sample-stripe critical" aria-hidden="true"></span>
+            <span><span class="badge sev-critical"><span class="g" aria-hidden="true">◆</span>Critical</span> — solid bar, heavy card border. The harm is possible today, with no special precondition.</span></li>
+        <li><span class="sample-stripe high" aria-hidden="true"></span>
+            <span><span class="badge sev-high"><span class="g" aria-hidden="true">▲</span>High</span> — dashed bar. Serious harm, but it depends on a condition or on access already obtained.</span></li>
+        <li><span class="sample-stripe medium" aria-hidden="true"></span>
+            <span><span class="badge sev-medium"><span class="g" aria-hidden="true">◇</span>Medium</span> — dotted bar. Limited harm, or harm that needs several conditions at once.</span></li>
+        <li><span class="sample-stripe low" aria-hidden="true"></span>
+            <span><span class="badge sev-low"><span class="g" aria-hidden="true">△</span>Low</span> — hollow bar. A weakness with no practical harm on its own.</span></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Status</h3>
+      <ul>
+        <li><span class="badge st-open"><span class="g" aria-hidden="true">●</span>Open</span> <span>no fix in place.</span></li>
+        <li><span class="badge st-partial"><span class="g" aria-hidden="true">◐</span>Partial</span> <span>part of the fix is in place.</span></li>
+        <li><span class="badge st-blocked"><span class="g" aria-hidden="true">■</span>Blocked</span> <span>waiting on an external dependency.</span></li>
+        <li><span class="badge st-closed-residual"><span class="g" aria-hidden="true">○</span>Closed with residual</span> <span>fixed, with a declared residual risk.</span></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Effort</h3>
+      <ul>
+        <li><span class="badge eff"><strong>XS</strong> · up to 1 hour</span></li>
+        <li><span class="badge eff"><strong>S</strong> · half a day</span></li>
+        <li><span class="badge eff"><strong>M</strong> · 1–2 days</span></li>
+        <li><span class="badge eff"><strong>L</strong> · 3 days or more</span></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Where to fix</h3>
+      <ul>
+        <li><span class="badge loc-app"><span class="g" aria-hidden="true">▣</span>Application code</span> <span>a fix in an application's source.</span></li>
+        <li><span class="badge loc-platform"><span class="g" aria-hidden="true">◈</span>Platform layer</span> <span>a fix in a build file, a pipeline, environment settings or the edge.</span></li>
+      </ul>
+    </div>
+  </div>
+  <p class="legend-note">Severity never relies on colour alone. Each card carries the colour, the glyph (◆ ▲ ◇ △), the written label, and the pattern of the side bar (solid, dashed, dotted, hollow). The document stays readable in greyscale and in print.</p>
+</section>
+
+<!-- SECTION: APP -->
+<section class="sec" id="sec-app" aria-labelledby="sec-app-h">
+  <div class="sec-head">
+    <h2 id="sec-app-h">Application code</h2>
+    <span class="sec-count">2 findings</span>
+  </div>
+  <p class="sec-hint">Fixes that live in an application's source and travel with its pull request.</p>
+
+  <!-- CARD-TEMPLATE-START
+       Canonical card: it holds EVERY field, the optional ones included.
+       Duplicate this block once per finding and replace its content.
+       Optional fields: .f-obligation-row (compliance report only) and .f-xref
+       (only when a cross-reference to the twin report exists). When a field does
+       not apply, remove the whole <dt>/<dd> pair. Never leave it empty.
+       Allowed classes: ./findings-report.template.md
+  -->
+  <article class="finding finding--critical" id="f-AUD-37" aria-labelledby="f-AUD-37-h">
+    <div class="f-top">
+      <span class="f-id">AUD-37</span>
+      <h3 class="f-title" id="f-AUD-37-h">The bulk export returns another tenant's records when the tenant parameter in the query string is edited</h3>
+    </div>
+
+    <div class="f-badges">
+      <span class="badge sev-critical"><span class="g" aria-hidden="true">◆</span><span class="vh">Severity: </span>Critical</span>
+      <span class="badge st-open"><span class="g" aria-hidden="true">●</span><span class="vh">Status: </span>Open</span>
+      <span class="badge loc-app"><span class="g" aria-hidden="true">▣</span><span class="vh">Where to fix: </span>Application code: example-api</span>
+      <span class="badge eff" title="S — about half a day of work"><span class="vh">Effort: </span><strong>S</strong> · half a day</span>
+    </div>
+
+    <dl class="f-fields">
+      <dt class="f-label">Code references</dt>
+      <dd class="f-body">
+        <ul class="f-loc">
+          <li>internal/export/handler.go:57-66</li>
+          <li>internal/authz/scope.go:19</li>
+        </ul>
+      </dd>
+
+      <dt class="f-label f-label-harm">Concrete harm</dt>
+      <dd class="f-body f-harm">The handler takes the tenant from the request instead of from the signed-in session. Any user of one tenant can download the complete export of every other tenant by changing a single parameter. Each request is authenticated, so nothing in the access log marks it as unusual, and the disclosure is invisible after the fact.</dd>
+
+      <!-- optional: compliance report only -->
+      <div class="f-obligation-row">
+        <dt class="f-label">Obligation breached</dt>
+        <dd class="f-body">
+          <blockquote class="f-obligation">
+            <cite>Source instrument, article and clause</cite>
+            “The obligation, quoted verbatim from a retrieved copy of the source.”
+          </blockquote>
+        </dd>
+      </div>
+
+      <dt class="f-label">Related decision / spec</dt>
+      <dd class="f-body f-decision">The decision record that makes the session the only source of tenant scope; the spec clause that pins it down.</dd>
+
+      <dt class="f-label">Minimal suggested fix</dt>
+      <dd class="f-body">
+        <p>Read the tenant from the verified session and ignore any tenant value the request carries. A session with no tenant is refused.</p>
+        <pre class="f-code"><code>// export handler: tenant scope comes from the session, never from the request
+tenant := authz.TenantFromSession(r.Context())
+if tenant == "" {
+    http.Error(w, "no tenant in session", http.StatusForbidden)
+    return
+}
+rows, err := store.ExportRows(r.Context(), tenant)</code></pre>
+      </dd>
+    </dl>
+
+    <!-- optional: present only when a cross-reference to the twin report exists -->
+    <p class="f-xref"><span class="g" aria-hidden="true">⇄ </span><strong>Cross-reference:</strong> see <span class="mono">VULN-12</span> in the security report, which covers the same export from the access-control side.</p>
+  </article>
+  <!-- CARD-TEMPLATE-END -->
+
+  <article class="finding finding--high" id="f-AUD-46" aria-labelledby="f-AUD-46-h">
+    <div class="f-top">
+      <span class="f-id">AUD-46</span>
+      <h3 class="f-title" id="f-AUD-46-h">The API echoes any Origin header back and allows credentials on cross-origin requests</h3>
+    </div>
+
+    <div class="f-badges">
+      <span class="badge sev-high"><span class="g" aria-hidden="true">▲</span><span class="vh">Severity: </span>High</span>
+      <span class="badge st-partial"><span class="g" aria-hidden="true">◐</span><span class="vh">Status: </span>Partial</span>
+      <span class="badge loc-app"><span class="g" aria-hidden="true">▣</span><span class="vh">Where to fix: </span>Application code: example-web</span>
+      <span class="badge eff" title="M — about 1–2 days of work"><span class="vh">Effort: </span><strong>M</strong> · 1–2 days</span>
+    </div>
+
+    <dl class="f-fields">
+      <dt class="f-label">Code references</dt>
+      <dd class="f-body">
+        <ul class="f-loc">
+          <li>server/middleware/cors.ts:31-39</li>
+        </ul>
+      </dd>
+
+      <dt class="f-label f-label-harm">Concrete harm</dt>
+      <dd class="f-body f-harm">Any web page a signed-in user happens to open can call the API with that user's cookies and read the answers, profile and account data included. The user sees nothing. The admin routes already check an allowlist; the account routes still echo whatever origin asks.</dd>
+
+      <div class="f-obligation-row">
+        <dt class="f-label">Obligation breached</dt>
+        <dd class="f-body">
+          <blockquote class="f-obligation">
+            <cite>Source instrument, article and clause</cite>
+            “The obligation, quoted verbatim from a retrieved copy of the source.”
+          </blockquote>
+        </dd>
+      </div>
+
+      <dt class="f-label">Related decision / spec</dt>
+      <dd class="f-body f-decision is-absent">No related decision recorded.</dd>
+
+      <dt class="f-label">Minimal suggested fix</dt>
+      <dd class="f-body">
+        <p>Move the account routes onto the allowlist the admin routes already use, answer an unlisted origin with no CORS headers at all, and add a test that sends a foreign origin and expects no <span class="mono">Access-Control-Allow-Origin</span> in the reply.</p>
+      </dd>
+    </dl>
+  </article>
+</section>
+
+<!-- SECTION: PLATFORM -->
+<section class="sec" id="sec-platform" aria-labelledby="sec-platform-h">
+  <div class="sec-head">
+    <h2 id="sec-platform-h">Platform layer</h2>
+    <span class="sec-count">1 finding</span>
+  </div>
+  <p class="sec-hint">Fixes that live in build files, pipelines, environment settings or edge configuration. No line of application code changes.</p>
+
+  <article class="finding finding--high" id="f-AUD-52" aria-labelledby="f-AUD-52-h">
+    <div class="f-top">
+      <span class="f-id">AUD-52</span>
+      <h3 class="f-title" id="f-AUD-52-h">The release image builds from a floating base tag, so a rebuild of the same commit can ship code nobody reviewed</h3>
+    </div>
+
+    <div class="f-badges">
+      <span class="badge sev-high"><span class="g" aria-hidden="true">▲</span><span class="vh">Severity: </span>High</span>
+      <span class="badge st-blocked"><span class="g" aria-hidden="true">■</span><span class="vh">Status: </span>Blocked</span>
+      <span class="badge loc-platform"><span class="g" aria-hidden="true">◈</span><span class="vh">Where to fix: </span>Platform layer: example-infra</span>
+      <span class="badge eff" title="L — 3 days of work or more"><span class="vh">Effort: </span><strong>L</strong> · 3 days or more</span>
+    </div>
+
+    <dl class="f-fields">
+      <dt class="f-label">Code references</dt>
+      <dd class="f-body">
+        <ul class="f-loc">
+          <li>build/Containerfile:1</li>
+          <li>ci/release.yaml:33-35</li>
+        </ul>
+      </dd>
+
+      <dt class="f-label f-label-harm">Concrete harm</dt>
+      <dd class="f-body f-harm">Every build pulls whatever the upstream tag points to that day. Two releases of the same commit can differ, the build record cannot say which base image went out, and a tampered upstream tag would reach production with no review step in between. The audit trail for a release therefore proves less than it claims. Pinning waits on an internal mirror of the base image, which another team owns.</dd>
+
+      <div class="f-obligation-row">
+        <dt class="f-label">Obligation breached</dt>
+        <dd class="f-body">
+          <blockquote class="f-obligation">
+            <cite>Source instrument, article and clause</cite>
+            “The obligation, quoted verbatim from a retrieved copy of the source.”
+          </blockquote>
+        </dd>
+      </div>
+
+      <dt class="f-label">Related decision / spec</dt>
+      <dd class="f-body f-decision">The spec section that defines how release artifacts are built and recorded.</dd>
+
+      <dt class="f-label">Minimal suggested fix</dt>
+      <dd class="f-body">
+        <p>Pin the base image by digest and make the release job refuse an unpinned reference, so a floating tag fails the build instead of shipping.</p>
+        <pre class="f-code"><code># Containerfile: a tag alone moves; the digest is what was reviewed
+FROM registry.example.org/runtime/base:stable@sha256:&lt;digest recorded at review&gt;</code></pre>
+      </dd>
+    </dl>
+
+    <p class="f-xref"><span class="g" aria-hidden="true">⇄ </span><strong>Cross-reference:</strong> see <span class="mono">VULN-29</span> in the security report for the same build step seen from the supply-chain side.</p>
+  </article>
+</section>
+
+<!-- CLOSING -->
+<section class="closing" id="closing" aria-labelledby="closing-h">
+  <h2 id="closing-h" class="vh">Closing</h2>
+
+  <h3 id="excluded">Considered and excluded</h3>
+  <p class="closing-note">These are not findings. They are entries that were examined and downgraded, listed only as a trace of the review.</p>
+  <ul class="excluded">
+    <!-- EXCLUDED-ROW-TEMPLATE-START -->
+    <li><span class="mono">AUD-58</span> — an open redirect on the sign-out page, limited by an allowlist to the project's own domains: it cannot send a user off the project's domains, so it stays on record as a note.</li>
+    <!-- EXCLUDED-ROW-TEMPLATE-END -->
+    <li><span class="mono">AUD-61</span> — a password-reset token valid for 24 hours instead of the one hour the design asks for: single use and bound to the account, kept as a hardening item.</li>
+    <li><span class="mono">AUD-64</span> — the backup encryption setting could not be read at the verified commit: held open until the platform owner supplies the evidence.</li>
+  </ul>
+
+  <h3 id="cross-reference">Cross-reference</h3>
+  <p class="closing-note">Entries also covered in the twin report. Each anchor points to the matching card.</p>
+  <ul class="xref-list">
+    <!-- XREF-ROW-TEMPLATE-START -->
+    <li><span class="mono">AUD-37</span> ⇄ <a href="security-findings.html#f-VULN-12"><span class="mono">VULN-12</span></a> — the same export, from the access-control side.</li>
+    <!-- XREF-ROW-TEMPLATE-END -->
+    <li><span class="mono">AUD-52</span> ⇄ <a href="security-findings.html#f-VULN-29"><span class="mono">VULN-29</span></a> — the same build step, from the supply-chain side.</li>
+  </ul>
+</section>
+
+</main>
+
+<footer class="rep-foot">
+  <p>Report generated from <span class="mono">findings-report.template.html</span>. Self-contained document: no external resource, fit to send as an attachment and to print to PDF. The entries in this sample are placeholders.</p>
+</footer>
+
+</div>
+
+<script>
+/* Theme switch: writes data-theme on <html>. Without JavaScript the button
+   stays hidden and the operating system's preference applies. */
+(function () {
+  var btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  btn.hidden = false;
+  function apply(theme) {
+    if (theme) { document.documentElement.setAttribute('data-theme', theme); }
+    else { document.documentElement.removeAttribute('data-theme'); }
+    var mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+    var isDark = theme === 'dark' || (!theme && mq && mq.matches);
+    btn.setAttribute('aria-pressed', String(isDark));
+    btn.textContent = isDark ? 'Light theme' : 'Dark theme';
+  }
+  apply(null);
+  btn.addEventListener('click', function () {
+    apply(btn.getAttribute('aria-pressed') === 'true' ? 'light' : 'dark');
+  });
+})();
+</script>
+</body>
+</html>

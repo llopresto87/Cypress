@@ -3,37 +3,24 @@ id: method.delegation
 tier: 2
 kind: method
 origin: seed
-title: delegation — the specialist roster, mechanical routing, model classes, bounds, briefs
+title: delegation — the specialist roster, mechanical routing, shared spec authoring, and the sibling leaves
 owns:
   - delegation.roster
   - delegation.routing
-  - delegation.model-classes
-  - delegation.bounds
-  - delegation.harness-registration
-  - delegation.briefs
-  - delegation.step-scope
-  - delegation.sequencing
-  - delegation.turn
-  - delegation.tracing
   - delegation.spec-authoring
 requires:
 peers:
+  - method.delegation-model-classes
+  - method.delegation-cycle-economy
+  - method.delegation-briefs
+  - method.delegation-sequencing
+  - method.delegation-bounds
   - method.tiers
-artifacts:
-  - templates/prompts/graph-session-bootstrap.md
-  - templates/prompts/handback-payload.md
-  - templates/agent.template.md
 load_when:
   - "who should do this, which specialist, which agent"
-  - "spawn a worker, write a delegation brief"
   - "route the task, agent routing, roster"
-  - "delegation depth, allowlist, can this agent spawn"
-  - "spawn order, parallel or sequential, which spawn waits for which"
-  - "sonnet or opus, which model class"
-  - "unknown agent type, specialist not registered, no such subagent"
-  - "the roster was just installed, can I spawn it yet"
-prevents: Specialists picked by whoever is asking, with no route, no model class, no spawn bound, and briefs too vague to verify the result against.
-est_tokens: 3273
+prevents: Specialists picked by whoever is asking, with no ranked route, no named knowledge-or-judgment gap, and no shared sign-off on a spec.
+est_tokens: 1132
 ---
 
 # Delegation — the team, routing, and bounds
@@ -105,240 +92,8 @@ roster, never the seed's. The words are otherwise interchangeable.) The
 *new expert's* `model:` frontmatter is sonnet if it only investigates,
 opus if it authors; the definition author itself is always opus. A
 definition authored mid-session is not yet a spawnable type — see
-`delegation.harness-registration` below before delegating to it.
-
-## Route by model class
-
-Read-only investigation and mechanical retrieval/normalization →
-**sonnet-class** (draft artifacts are finalized by an opus librarian);
-authoring, implementation, judgment-heavy design, review, or adversarial
-validation → **opus-class**. This **model class** lives in each
-agent's `model:` frontmatter. It is a distinct axis from the **task tier**
-(T0–T3, kernel §0) and the graph **load-tier** (the node `tier:` field): three
-independent axes that share the word loosely — only the risk axis is written
-`T0–T3`; "model class" and "load-tier"/`tier:` name the other two.
-
-A host that can select model *versions* within a class refines each phase's
-class to a concrete version at spawn time. That version policy is host-specific
-and lives in the host's integration overlay, never in a tool-neutral node; the
-class a phase uses stays owned by that phase in its protocol node.
-
-## Delegation is bounded
-
-Six coordinators (`orchestrator`, `multi-agent-architect`,
-`growth-orchestrator`, `architect`, `reviewer`, `docs-librarian`) hold
-the spawn tool and spawn only within their `delegates_to` allowlist.
-On Claude Code the spawn tool is named `Agent`, and `Task`, the name the
-shipped agents list, is its accepted alias; either grants it, bare or
-parenthesized, and in a subagent definition the host ignores the
-parenthesized type list, so the allowlist and `max_spawn_depth` are the
-seed's own soft caps, read only by `agent-lint --lint`. The deepest
-legal chain, depth 3, is likewise the seed's design ceiling, not the
-host's.
-
-Two caps are the harness's own. Every other agent is a spawn-less
-leaf: its `tools:` line is present and names neither `Agent` nor
-`Task` (a missing line inherits every tool, the spawn tool included),
-which holds whenever the specialist was registered as a type (see the
-next section for the case where it was not). And the host limits how
-deep subagents may spawn subagents: the limit is configurable by
-environment, its default is on the host's
-[sub-agents page](https://code.claude.com/docs/en/sub-agents)
-(retrieved 2026-09-24), and at the limit the host withholds the spawn
-tool from every subagent except a fork. At an out-of-domain boundary a
-leaf STOPs and hands back, naming the next specialist, never doing the
-work itself. `agent-lint --lint` enforces the frontmatter invariants.
-
-## A specialist is spawnable only once the host registered it
-
-`docs/graph/agents/` is the home; a *spawnable* specialist is the host's
-**projection** of it (`.claude/agents/`, `.opencode/agents/`,
-`.codex/agents/`, `.github/agents/`), and when a host sees a file
-written there mid-session is host-dependent. Claude Code watches its
-project and user agent directories and uses a file added or edited
-mid-session for the next delegation, with no restart, except in three
-cases its sub-agents page names: the first file written into an
-`agents/` directory new in that session, directories added with
-`--add-dir`, and sessions started with slash commands disabled. A first
-install into a plant with no `.claude/agents/` creates that directory
-mid-session, so it is the first case. Other hosts are not recorded
-here. Spawning a specialist by name therefore has two preconditions:
-the session's project root is the plant, and the host registered the
-projection. (**Prime Agent is
-the exception that proves the rule:** it has no session-start roster
-enumeration — its projection `.prime/agent/agents/` is a set of *brief
-sources* the orchestrator reads and passes into a runtime `rlm()` spawn,
-so a brief written mid-session is spawnable immediately and the trap
-below never arises there.) Anything that
-*writes* a projection mid-session — the install, a graft's roster delta,
-a newly commissioned expert (above) — can produce a specialist that is
-on disk and not yet spawnable. Check; never assume.
-
-**Preflight once per protocol, before the first dispatch.** Attempt one
-throwaway dispatch of the type with a trivial task, or read the host's
-own agent-listing surface if it has one. What does **not** answer this:
-`agent-lint --route`. It globs the on-disk projection, so it names — at
-HIGH confidence — exactly the types an unregistered session cannot
-spawn. A route band is evidence about *fit*, never about registration.
-
-**Remedy, in order.** (1) Re-enter the protocol from a session rooted at
-the *plant* — the directory that owns the projection (for an umbrella,
-the umbrella root, not a sibling repo). That also loads the plant's
-kernel and route hook, which the install was supposed to guarantee
-anyway. A session rooted at the **seed** never registers a plant's
-roster however often it restarts: the seed is a source to copy from, not
-a root to work in. (2) If your host offers an explicit reload of its
-agent directory, that is cheaper — but re-run the preflight afterward,
-because an unverified reload is not a remedy.
-
-**Fallback — role emulation.** When neither remedy is available, spawn
-the host's generic worker and rebuild the specialist inside the brief:
-
-- pin the model to the specialist's `model:` class (above);
-- embed `docs/graph/agents/<name>.md` **verbatim** as the worker's role;
-- restore in prose every bound the frontmatter no longer enforces — the
-  `tools:` allowlist as an explicit prohibition; for a leaf
-  (`can_delegate: false`) "you hold no spawn tool: at an out-of-domain
-  boundary STOP and hand back"; and for a **coordinator**, its
-  `delegates_to` allowlist and `max_spawn_depth` as a named ceiling,
-  and the sequencing rule below. An emulated coordinator with no
-  restated ceiling is an uncapped spawner; one with no restated
-  sequence issues every spawn at once;
-- **carry this section down.** An emulated coordinator will reach its own
-  by-name dispatches inside a subagent that cannot restart the session,
-  so its brief must hand it both the preflight and this fallback for its
-  children;
-- stamp `produced_by: <role>` — the role, never the generic type — plus
-  `harness_override: role-emulated (<reason>)`, so `protocol.deliver`
-  can tell a recorded emulation from a silent substitution. Stamping the
-  role alone makes the two identical.
-
-Role emulation is a **degradation, not an equivalence**: a generic
-worker carries the spawn tool and write tools, so the leaf recursion cap and the
-read-only bound drop from harness-enforced to brief-requested. Scope it
-to the phase that needed it, and report it in the delivery as a recorded
-deviation (`protocol.deliver`) — never as a silent substitution.
-
-## What a "turn" is
-
-A **turn** is one **spawn → return cycle of a single worker**: the caller
-spawns it, it works for as many tool calls as it needs, and it returns control
-once. That return ends the turn. A turn is *not* one tool call, not one
-assistant message, and not one exchange with the user.
-
-A worker therefore hands back **exactly once per spawn** — never per tool call.
-It hands back on all three ways a turn can end: it finished (`complete`), it hit
-work outside its domain (`blocked-out-of-domain`), or it failed (`failed`). The
-payload is required in all three; a leaf that stops at a domain boundary still
-returns it, naming the next specialist rather than doing the work.
-
-Because the turn ends at that return, a worker whose run has **completed** is
-not a correspondent: sending it more work does not resume it. Continuing that
-line of work means spawning a fresh worker with a full brief, and the new one
-inherits none of the old one's context — so whatever the finished worker
-established has to be carried forward in the brief, not assumed. A caller who
-treats a completed worker as re-taskable loses the follow-up silently: the work
-is neither done nor refused, it was never spawned.
-
-Where a document means something else, it says so in words rather than reusing
-this term — "per exchange with the user" for a conversational round, "each time
-the caller re-reads the payload" for a caller-side read.
-
-## Every brief carries the graph discipline
-
-No hook the seed installs carries this discipline or the routing
-context into a worker's turn, so the brief is their only carrier across
-the boundary. On Claude Code, hooks configured in settings also run
-inside a subagent: its tool calls fire the same `PreToolUse` and
-`PostToolUse` hooks as the main conversation, with the subagent named in
-the hook input, and `SubagentStart` and `SubagentStop` mark its spawn
-and finish ([hooks reference](https://code.claude.com/docs/en/hooks),
-retrieved 2026-09-24). The seed's pre-Bash guard therefore fires on a
-worker's Bash calls, but it guards commands and carries no routing
-context. The route hook is prompt-scoped (`UserPromptSubmit`); the
-hooks reference does not say that event fires for a subagent's turn,
-and one observed run saw no prompt-injected text reach one. No hook the
-seed installs reads a worker's result either, so the handback block is
-the only reliable carrier back. Embed the canonical block from
-`docs/graph/templates/prompts/graph-session-bootstrap.md` verbatim,
-plus the routing evidence and the handback requirement
-(`docs/graph/templates/prompts/handback-payload.md` — `produced_by` and
-`route_evidence` feed the deliver-time attribution assertion,
-`protocol.deliver`). Write that brief's task line in the domain's own
-words — it is the string the worker hands to `--plan`, so the terms it
-names are what compose the worker's expertise closure, and a task line
-vaguer than the work loads a graph vaguer than the work. Parameterized
-briefs live in `docs/graph/templates/prompts/`; use them.
-
-**A fact the brief supplies is a lead, not evidence.** A path, a line number,
-an identifier or a prior finding handed down in a brief is what the caller
-believed when it wrote the brief; the worker confirms it against the artifact or
-the register before building on it, and reports the correction when it does not
-hold. The duty runs both ways: a correction to a supplied fact carries the same
-burden of proof as the claim it corrects, so "the brief is wrong" is itself a
-claim that cites the artifact.
-
-**Carry each constraint at its stated strength.** "Avoid X where you
-can" is a preference the worker weighs against the goal; "no X" is a
-bound it does not cross; "prefer Y" ranks options without excluding
-the rest. Restating any of them as another is a brief-fidelity defect,
-and it is the expensive kind: the worker inherits the distortion, not
-the instruction, and reports a blocker that exists only in the brief.
-Hardening a preference is as much a corruption as relaxing a bound —
-tightening is not the safe direction, it is the direction that stalls
-work nobody prohibited.
-
-### One step per spawn
-
-A funnel worker (`tester`, `implementer`, `reviewer`) brief names **one**
-well-defined step and embeds its inputs — the contract text, the test
-paths, the diff — so the worker spends its tokens on the work, not on
-rediscovering context. An oversized step is re-sliced by the orchestrator
-*before* spawning, per `docs/graph/plans/grill.md` §9 (increment
-shape); it is never handed whole to the worker to absorb.
-
-**At the boundary, stop.** A worker that discovers mid-spawn that the
-step is bigger than briefed finishes the briefed step (or the coherent
-part it can finish), then STOPS and hands back naming the remainder in
-its handback — the caller re-slices and re-spawns. Absorbing the
-overflow in-place is the unbounded-spawn anti-pattern; the step scope
-only bounds anything if overrunning it has this one defined outcome.
-
-## Spawns are sequenced by dependency
-
-When work spans specialists, decide by **independence**: units that
-touch disjoint files/contracts and consume none of each other's outputs
-may be spawned in parallel, each with its own complete brief and all of
-them named in the plan. Units where one's output feeds the next are
-sequenced — never spawned together and merged by hand. Genuine
-parallelism is wall-clock you keep; false parallelism is a merge
-conflict you scheduled.
-
-The sequence is read, not improvised. A protocol pass takes it from
-the protocol's phase table (`grill.flow` is the model: each phase names
-what it needs and the one phase it may run beside); implementation
-takes it from grill.md §9, whose rows are listed in dependency order
-and whose `Depends on:` field is what "independent" means. A caller
-issues a spawn only after every handback that spawn needs has
-returned; the `spawn_id` ordinals it mints (below) are then the record
-of the order it actually used, and a §15 entry cites them in that
-order. A flat numbered list is not a sequence — it says nothing about
-which edges are dependencies — so a document that only has one is not
-yet a source to spawn from.
-
-## Every spawn is traced
-
-Every delegation carries a **`spawn_id`** — a dot-chained correlation id
-the CALLER mints by extending its own: the session's first spawns are
-`orchestrator.1`, `orchestrator.2`, …; a coordinator spawned as
-`orchestrator.3` mints `orchestrator.3.architect.1` for its own first
-child, and so on. The brief states it; the handback echoes it verbatim
-(`spawn_id:` field, `templates/prompts/handback-payload.md`); the
-delivery record and grill.md §15 cite it wherever a spawn's work is
-referenced. The chain IS the trace: any handback's id reconstructs the
-full delegation path without any infrastructure, and an id deeper than
-the caller's `max_spawn_depth` allows is a bound violation on its face.
-Leaves never mint one — a leaf has no children to trace.
+`delegation.harness-registration` (`method.delegation-bounds`) before
+delegating to it.
 
 ## Spec authoring is shared
 
@@ -350,3 +105,13 @@ all three signed off on the same document.
 
 - `method.tiers` — decides whether to delegate at all — cross when
   classifying, before choosing workers.
+- `method.delegation-model-classes`: load when sonnet or opus, which
+  model class.
+- `method.delegation-cycle-economy`: load when how many increments per
+  spawn, batch size.
+- `method.delegation-briefs`: load when spawn a worker, write a
+  delegation brief.
+- `method.delegation-sequencing`: load when spawn order, parallel or
+  sequential, which spawn waits for which.
+- `method.delegation-bounds`: load when delegation depth, allowlist, can
+  this agent spawn.

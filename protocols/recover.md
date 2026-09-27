@@ -18,8 +18,10 @@ load_when:
   - "retry or re-route, flaky failure"
   - "delegation came back wrong or ambiguous"
   - "gate red twice on the same increment"
+  - "permission guard refused an action the owner directed"
+  - "failure cause unknown, cheapest probe first"
 prevents: Unclassified reaction to failure — identical retries of a deterministic error, unbounded fallback chains, and a red gate quietly swallowed to keep momentum.
-est_tokens: 1343
+est_tokens: 1958
 command: true
 ---
 
@@ -40,14 +42,22 @@ clocks are aligned via a log line that carries both processes' own
 timestamps, then anchor conclusions to absolute timestamps rather than
 relative or elapsed ones.
 
+When the evidence does not yet settle the class, the first move is the
+cheapest probe that tells the classes apart, and it needs no code: one
+unchanged re-run (it counts against the transient budget below), a
+read-only reachability probe, or fetching the dependency ahead of the
+step that needs it. Start the probes beside the fix work, not after
+it, and record what each one showed. A probe is how the evidence
+gets gathered, so it never stands in for recording that evidence.
+
 | Class          | Recognize it by                                                          | The one allowed move                                                   |
 |----------------|--------------------------------------------------------------------------|------------------------------------------------------------------------|
 | **Transient**  | Environment flake: network, rate limit, race, resource exhaustion.       | Retry as-is, **max 2**, backing off. Third failure is not transient — reclassify. |
-| **Deterministic** | Same input reliably produces the same failure: compile error, failing assertion, lint, schema rejection. | **Never retry unchanged.** Change the input (the code, the test, the config) and re-run. |
+| **Deterministic** | Same input reliably produces the same failure: compile error, failing assertion, lint, schema rejection. | **Never retry unchanged.** Change the input (the code, the test, the config) and re-run. A second theory that failed is the signal to read the upstream documentation (the dependency's library page, or `protocol.ingest-library` when it has none) before trying a third. |
 | **Capability** | The worker is the wrong instrument: wrong specialist, missing expertise, out-of-domain handback, LOW/NONE route band in hindsight. | Re-route: run `agent-lint --route` again with the *sharper* task statement — stated in the domain's own words, which also composes the expertise the worker lacked. A knowledge gap closes as an `expertise.*` node; commission an agent only when the work needs its own tools, model class, stance, or isolation (kernel §1). Do not re-brief the same agent harder. |
-| **Ambiguity**  | The worker asked the brief a question, guessed, or two artifacts contradict (spec vs code, plan vs node). | Fix the **cheapest upstream artifact that owns the confusion** — brief first, then plan (grill §), then spec — and re-delegate. Widening the worker's context is not the fix; the contradiction will still be there. |
-| **Systemic**   | The harness or the system itself: wedged delegation, depth cap hit, missing tool, broken gate infrastructure. | Stop the line. Record in grill.md §12 and report to the human with the exact evidence. No workaround that hides it. |
-| **Unregistered** | The specialist exists on disk but the host has no such type: the session predates the projection (install, graft roster delta, freshly commissioned expert), or it is rooted at the seed rather than the plant. Reads like Systemic — it is not. | Apply `delegation.harness-registration` (`docs/graph/method/delegation.md`): preflight, re-enter rooted at the plant, or role-emulate **and record it**. Do not stop the line, and do not commission a second definition — this one already exists, and a duplicate is a second home for the same charter. |
+| **Ambiguity**  | The worker asked the brief a question, guessed, or two artifacts contradict (spec vs code, plan vs node). | Fix the **cheapest upstream artifact that owns the confusion** — brief first, then plan (grill §), then spec — and re-delegate. Widening the worker's context is not the fix; the contradiction will still be there. Inside a batch, the worker writes the question to the batch's question file and goes on with work it does not touch; the architect's ruling pass at the batch boundary answers it (`delegation.question-file`). |
+| **Systemic**   | The harness or the system itself: wedged delegation, depth cap hit, missing tool, broken gate infrastructure. A permission guard that refuses an action the owner directed belongs here too, because neither a worker nor the session can clear it. | Stop the line. Record in grill.md §12 and report to the human with the exact evidence. No workaround that hides it. After a permission refusal, a retry claims the refusal was transient and a re-route claims it was the worker's; before either, show that something the guard reads has changed, since otherwise the refusal repeats or merely moves. Hand the owner the exact step in a form that survives a paste: one short command, or a script at a short, stable path run by one command, with any credential read from the environment and no secret printed, and nothing the shell reinterprets (a long line that wraps, a leading `!`). A prompt the owner denied is a different case: if the denial contradicts what they just asked for, say so in one line and ask once. |
+| **Unregistered** | The specialist exists on disk but the host has no such type: the session predates the projection (install, graft roster delta, freshly commissioned expert), or it is rooted at the seed rather than the plant. Reads like Systemic — it is not. | Apply `delegation.harness-registration` (`docs/graph/method/delegation-bounds.md`): preflight, re-enter rooted at the plant, or role-emulate **and record it**. Do not stop the line, and do not commission a second definition — this one already exists, and a duplicate is a second home for the same charter. |
 
 An intermittent or probabilistic failure is confirmed **fixed** only on
 mechanism-level evidence — a trace or observation proving the causal
@@ -112,5 +122,7 @@ work and rediscovering it is the rework this protocol exists to kill.
   capability — re-route, compose the missing expertise, or commission an
   agent when the work needs its own context.
 - You do not widen context to cure ambiguity — fix the owning artifact.
-- You do not work around a systemic failure quietly.
+- You do not work around a systemic failure quietly, and you do not
+  retry or re-route an action a permission guard refused without
+  showing that what the guard reads has changed.
 - You do not make a fourth attempt.

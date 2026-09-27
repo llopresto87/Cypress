@@ -179,7 +179,7 @@ the knowledge-graph scaffold (schema, lint, router) into `docs/graph/`.
 That overlay includes the specialist roster, which this protocol then
 dispatches **by name** in later phases — from the same session that just
 wrote it. Settle spawnability before the first named hand-off:
-`delegation.harness-registration` in `docs/graph/method/delegation.md`.
+`delegation.harness-registration` in `docs/graph/method/delegation-bounds.md`.
 
 A new project's graph starts tiny — one root node — and grows a node
 per subsystem as the architecture (Phase 5) takes shape. It is not

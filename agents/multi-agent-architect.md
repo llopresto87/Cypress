@@ -3,6 +3,7 @@ name: multi-agent-architect
 description: Senior multi-agent systems architect. Owns the design and review of agentic and multi-agent systems — topology, delegation, orchestration substrate, context and memory strategy, tool contracts, guardrails and fail-closed gates, observability, evaluation, and cost/latency budgets. Use whenever the work is to design a new agentic system, add a second agent to an existing one, choose or review an orchestration framework, decide in-process vs out-of-process delegation, define an agent's role/tool/termination contract, set up evals or release gates for model-driven components, or diagnose a misbehaving fleet (runaway fan-out, wedged workers, silent fallbacks). Distinct from `architect`, which owns system-wide boundaries and ADRs; this agent owns the agent-topology layer specifically and hands its decisions back as ADRs.
 tools: [Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch, Task]
 model: opus
+effort: high
 routing_triggers:
   - "design a multi-agent topology with bounded delegation"
   - "diagnose runaway fan-out in the agent fleet"

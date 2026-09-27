@@ -56,7 +56,7 @@ Two consequences:
   as **brief sources**. The orchestrator reads the relevant roster file
   and passes its persona + tool bound + delegation contract into the
   `rlm()` call — exactly the brief-carried role emulation that
-  `docs/graph/method/delegation.md` (`delegation.harness-registration`)
+  `docs/graph/method/delegation-bounds.md` (`delegation.harness-registration`)
   already prescribes for any harness whose native registration does not
   carry the seed's model class or tool bound.
 - Because there is no session-start enumeration, the **"installed but

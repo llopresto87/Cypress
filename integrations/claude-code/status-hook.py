@@ -11,7 +11,7 @@ Installed to `.claude/status-hook.py` and wired in `.claude/settings.json`
 under hooks.SessionStart. The host passes `{"session_id", "hook_event_name",
 "source"}` on stdin; whatever `additionalContext` this returns is injected as a
 prepended message. As a SessionStart hook it is not recorded to reach a
-subagent's turn (docs/graph/method/delegation.md, delegation.briefs), so a
+subagent's turn (docs/graph/method/delegation-briefs.md, delegation.briefs), so a
 bounded worker reads one node's frontmatter when it needs one item's status.
 
 The reset runs on every source (startup, resume, clear, compact, fork, and

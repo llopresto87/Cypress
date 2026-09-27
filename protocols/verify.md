@@ -14,10 +14,6 @@ owns:
   - verify.composition
   - verify.silent-substitutes
   - verify.test-first
-  - verify.status-evidence
-  - verify.tool-faults
-  - verify.characterize
-  - verify.measure-integrity
 requires:
 peers:
   - protocol.test-first
@@ -25,22 +21,23 @@ peers:
   - protocol.canonize
   - protocol.deliver
   - skill.validate-knowledge
+  - protocol.verify-new-gates
+  - protocol.verify-disagreement
 load_when:
   - "increment done, ready to merge or deploy"
   - "which gates to run, verification runbook"
   - "tests pass but is it verified, green lie"
   - "gate found nothing, zero results, is that a real finding"
-  - "refactor or migration must preserve behavior"
   - "record a missing or skipped gate"
-  - "mark it closed, what counts as status evidence"
   - "assert the count or the composition, expected value derived from the subject"
   - "silent no-op, empty output that looks like success"
   - "gate never went red, does the green mean anything"
-  - "golden master, stored oracle before a migration"
-  - "gate script left half-applied state, environment failure or repository failure"
-  - "the checker disagrees with the file, fix the tool or the declaration"
+  - "scanner configuration or suppression file passed, was the input applied"
+  - "grep count inflated by comments and prose that quote the identifier"
+  - "chronic red gate, always red for an unrelated cause"
+  - "tests whose subject is outside the shipped perimeter, excluded or skipped"
 prevents: Gates that run and assert nothing, so green means the command exited zero rather than that the behavior holds.
-est_tokens: 5350
+est_tokens: 5786
 command: true
 ---
 
@@ -69,6 +66,11 @@ deploy gates) in its own context and reports outcomes in its handback;
 the runbook entry is part of that worker's write scope. The
 grill.md §15 record (step 8) is the session's — the plan-of-record is a
 session-owned operational artifact (§3.3).
+
+When each gate runs is `delegation.tip-cadence` (per increment, then the
+full suite at the batch tip) and `delegation.mutation-at-end` (one
+mutation pass per spec), both in
+`docs/graph/method/delegation-cycle-economy.md`.
 
 ## The gates
 
@@ -134,7 +136,13 @@ the same run.** Point the scanner at a known-vulnerable fixture, grep
 for a string you know is present, assert the discovery run collected
 the tests you know exist. The control proves the instrument was live
 and aimed where you think it was aimed; only then does the empty result
-carry information.
+carry information. Run the check with the same privilege as the
+operation it checks: a probe with less access than the copy, the
+migration, or the scan it verifies silently skips what it cannot read,
+and the shortfall reads as a defect in the subject. And never read
+absence from output that was cut short for reading: a search piped
+through a line cap is a sample, and a sample that missed the item is
+not a search that proved it missing.
 
 The control settles the instrument, not the subject. A negative result
 is evidence about the exact subject that was presented and about nothing
@@ -149,11 +157,22 @@ when that count is zero inside its perimeter** — a glob that matched
 nothing, a suite that collected no tests. An empty subject set genuinely
 outside the repository is an honest skip; inside it, an environment
 failure. The empty-input pass is the false green that hides every other
-one.
+one. It also reports every violation in its perimeter in one pass: a
+checker that halts at the first makes each fix cost another run, and
+its count of one says nothing about how many remain.
 
 State the coverage the control establishes, not more. "No secrets
 found by <tool> across <paths>, control fixture detected" is a
 finding. "No secrets" is a hope with a command-line history.
+
+A non-zero count has the mirror problem: it can be inflated by text
+that only mentions what it counts. In a commented tree, prose and
+comments quote the very identifiers being counted, so a bare pattern
+counts the explanation along with the thing. Anchor the pattern to the
+declaration form, filter comments out, or parse the file; for history,
+read a name-only listing rather than output that also prints commit
+messages. When a worker's count differs from yours, recheck your own
+pattern first.
 
 Order protects the reading the same way the control does. The criterion
 that decides a change is written before the measurement runs; a result
@@ -191,7 +210,7 @@ the substitute it was meant to catch.
 
 ## An assertion is only as strong as its shape
 
-A gate that executes and asserts can still be tautological. Three
+A gate that executes and asserts can still be tautological. Four
 questions decide whether an assertion is a witness or an echo:
 
 - **Composition, or a count?** An aggregate total passes again the
@@ -210,6 +229,10 @@ questions decide whether an assertion is a witness or an echo:
   The test for any duplicate is the same: if one coordinated edit could
   change both copies with nothing failing, the copy is not an
   independent witness — and a copy that *is* one is kept on purpose.
+  The worst dependent expectation **defends the defect**: a fixture
+  literal copied from what the code produced makes the assertion true
+  only because the production code is wrong, so fixing the defect turns
+  the test red. Ask of each expected literal where it came from.
 - **Does a failure say what drifted?** Assert each dimension under its
   own name so a red identifies the property that moved, and choose a
   witness sensitive to the change you guard against — a projection only
@@ -218,6 +241,15 @@ questions decide whether an assertion is a witness or an echo:
   code stops calling the collaborator for an unrelated, wrong reason.
   Assert on the destination, content, or argument passed, which cannot
   go vacuous the way a bare count can.
+- **Value, or spelling?** A configuration contract asserts the
+  effective value, read from whatever form it is written in (a literal,
+  an interpolation, an interpolation with a default), never a required
+  syntactic form. A rule about form can forbid the correct value
+  written the other way, and can pass a wrong value written the
+  expected way. When a refactor moves a value somewhere else, ask of
+  each assertion left behind whether it can still fail; one that cannot
+  is moved to where the value now lives, in the same change, because a
+  tautological survivor is a green lie that a deleted check is not.
 
 Whether a *test* discriminates the change it covers is `test-first`'s
 rule; this section is about what a recorded assertion can have proved.
@@ -232,7 +264,7 @@ rule; this section is about what a recorded assertion can have proved.
    re-test the same property; verification stops when the mandatory
    gates pass and the remaining uncertainty cannot materially change
    the result (proportionate verification —
-   `docs/graph/method/engineering-posture.md`) — not when every
+   `docs/graph/method/decision-economy.md`) — not when every
    possible gate has run.
 2. **Run them in order**, cheapest and most syntactic first (formatter,
    linter, type check) and only proceed to slower gates if the cheap
@@ -299,7 +331,20 @@ rule; this section is about what a recorded assertion can have proved.
    contract may not rest on such a row without saying so in the contract's
    own text, because an unmeasured assumption surrounded by measured ones
    is the one place in a verification record where being wrong costs
-   nothing.
+   nothing. So every `discovered` or `absent` row also says what it would
+   have caught, in the form "unmeasured: X; if X is false, Y ships
+   broken". A bare "not run, no container here" hides the belief;
+   writing the sentence out states it, and a stated belief invites the
+   few minutes of measurement that would refute it.
+
+   A skip count reads as work pending; an exclusion states the
+   perimeter. So before claiming that a suite's totals describe the
+   perimeter that ships, show that none of its skips is a test whose
+   subject does not exist inside that perimeter. The evidence for such
+   a test is its removal from collection, with a written justification
+   for it and the check that established that its subject is absent; a
+   standing skip in its place leaves the totals describing work that
+   will never arrive.
 
    Adopting an existing codebase with no test or gate infrastructure is
    not an excuse to leave the runbook empty: record each standard gate
@@ -325,6 +370,19 @@ rule; this section is about what a recorded assertion can have proved.
    can be re-read. Repairing the wiring without recording the window
    leaves every past pass standing as evidence for a property nobody
    measured.
+
+   The mirror of the vacuous green is the **chronic red**: a gate that
+   is always red for a reason unrelated to the property it guards (a
+   permission error in its cleanup step, a stale cache, a teardown that
+   never succeeds). It is a defect, not noise, because it trains every
+   reader to ignore that colour, and the next genuine failure then
+   arrives unnoticed. A red that reproduces every time is not flakiness,
+   so before calling a red flaky or noise, show that it fails to
+   reproduce. And before reading the rest of a run's colours as
+   meaningful beside a chronic red, show the runbook entry that names it
+   chronically red since a date, for a named reason, with an owner; that
+   entry is what keeps the colour's meaning for everything else in the
+   run.
 
    A gate that *does* execute and *does* assert can still lie by not
    discriminating what it claims. A recorded verdict uses only the words
@@ -363,163 +421,6 @@ rule; this section is about what a recorded assertion can have proved.
    hand to `canonize` (close-out) to persist what the work taught, then
    to `deliver` for the handoff package.
 
-## `closed` means evidenced
-
-A lifecycle status is a gate on a record the way a test is a gate on
-code, and it lies the same way. `closed` means *resolved with evidence*:
-`status_evidence` names a path#anchor, a commit, or a gate-run id that a
-reader can open — the same thing an `executed` runbook entry records.
-When that evidence does not exist yet, the honest states are `hotfix`
-(resolved improperly, a proper fix owed) and `deferred` (parked, with
-the condition that reopens it), each with an owner, so nothing rests as
-"done" on a promise. A `closed` without evidence is the green lie one
-level up: a gate without an assertion says the check ran and proved
-nothing; a `closed` without evidence says the work finished and proves
-nothing, and is trusted just as readily.
-
-Promotion is the same gate at the other end of a record's life. A
-specification is not promoted to a live status until executable
-assertions covering its contracts exist and pass, and the promotion
-lands in the same change that adds them; a live status over an empty
-assertion set is a false green.
-
-The vocabulary and each status's required companions live in
-`docs/graph/_schema.md` §"Lifecycle status" — read them there, never
-restate them. The enforcement is the delivered
-`docs/graph/status-register.py` in its lint role: a `closed` with no
-companion fails the run with ``status 'closed' requires
-`status_evidence` ``, exactly as a missing gate fails this protocol.
-Reviewing what is still `open` or `hotfix` at close-out is `canonize`'s.
-
-## Adding a new gate
-
-If verification reveals a kind of bug that no existing gate would have
-caught, add a gate. New gates:
-- Pick the lowest level that catches the bug.
-- Get a test case that reproduces the bug (RED).
-- Get added to the verification runbook in the same increment.
-- Get added to CI in the next reliability-owned increment.
-
-A gate is a tool, and a tool that can fail halfway is a second thing to
-verify. Any gate or verification script you author is **all-or-nothing**:
-it validates everything it will touch before it writes anything, so a
-failure never leaves a half-applied state; it runs under strict error
-and unset-variable handling and resolves its own root from its location,
-never from the working directory; and it keeps **environment failures
-distinct from repository failures** in both remedy text and exit status
-— a missing interpreter, an absent fixture, or a tool that could not
-start never degrades into a skip or an empty success, or a broken
-environment reads as a clean tree. Fixtures raise on an environment
-fault and reserve the empty result for a genuine empty success. Fail
-closed by default; a soft mode for local troubleshooting is an explicit,
-documented switch. Whether a check deserves to become a cataloged tool
-at all is `toolcraft`'s doctrine.
-
-## Behavior-preserving changes (refactors, migrations, dependency bumps)
-
-When a change must preserve observable behavior — a refactor, a framework
-or dependency migration, a re-platforming — "it builds and the tests pass"
-is not the gate; **unchanged behavior** is. Two disciplines make that
-mechanically checkable:
-
-- **Characterize first, then change — and land the oracle as its own
-  slice.** Before touching the code, capture a stored oracle of the
-  current observable behavior (endpoint responses, persisted shapes,
-  message payloads, computed outputs), one golden master per consumer,
-  normalized to mask only volatile leaves (timestamps, ids, tokens).
-  Capture it read-only: once a migration has overwritten the system,
-  that evidence is unrecoverable. The oracle must exist and pass on the
-  *pre-change* code and land **before any code change**, or the
-  preservation claim is unfalsifiable; a new guard is seeded green from
-  today's state and tightened only in the increment that can prove the
-  tightening safe. On a codebase with no tests this baseline is often
-  the only executable gate — say so, and treat effort estimates as
-  floors carrying that risk. The test-shaped form of the same move — the
-  characterization test that becomes your RED — is
-  `docs/graph/protocols/test-first.md`'s characterize-first rule.
-- **Diff against the baseline; allow only an enumerated intended-delta
-  list.** After the change, re-capture and diff. The gate passes only if
-  everything matches the baseline *except* an explicit list of intended
-  deltas — each row naming the change and why the flip is a deliberate
-  strengthening, not a convenience relaxation. Byte-identical output is the
-  wrong contract; observable-behavior preservation is. An unexplained diff,
-  or an additive-only edit to the pinning tests, is a red flag to justify
-  before the gate is green — never a silent re-baseline.
-
-## Tolerating a known defect (the self-expiring exception)
-
-When a suite must pass while a confirmed bug still lives, do not weaken or
-skip the gate. Assert *today's broken behavior on purpose* under a named
-marker (a `KNOWN_BUG_<id>` assertion) and record the trigger that should
-tighten it — e.g. "accept a 500 on this path until the auth bug is fixed →
-then require 401". The assertion passes while the bug lives and flips to
-FAIL the moment the bug is fixed without the assertion being tightened, so
-the debt is mechanically visible and self-retiring. A silently-relaxed gate
-hides a known hole; a `KNOWN_BUG_*` assertion advertises it and dates its
-own removal.
-
-## When the check and its subject disagree
-
-What a gate measures is the **effective state** — the resolved, merged,
-deployed reality, read back through the same path a real client takes —
-never a declaration, a source file, a tool's own change report, or an
-exit code that says the state *should* have converged; a slice that
-mocks a layer has not proven the architecture, and a check that reaches
-the service by a shortcut cannot see faults in the path it skipped. The
-same holds for a control: verify its flag value and its wiring on every
-code path that can produce the outcome, not the presence of the
-implementing code, the documentation, or the fact that the system works
-— and state the strength it actually enforces, never the strength its
-name implies; present-but-unwired permission machinery is protection
-that does not exist. Establish that wiring by following the invocation
-chain itself — definition to build step to entry point to lifecycle hook
-— rather than searching the repository for the gate's name: a component's
-automation can be defined in a different repository than the code it
-guards, and a gate can be invoked by a hook that never names it, so a
-name search answers a question about text while reporting an answer about
-behavior.
-
-When the check and its subject disagree, **the instrument is the first
-suspect.** Put the prior on the checker: read the raw source at the
-cited location and verify a tool's finding against the underlying data
-before recording it. Suspect it earlier than its output, too — a probe
-can be corrupted *before it runs*, because a shell expands the command
-you typed rather than the command you meant: a variable reference
-immediately followed by a delimiter the shell also reads as an expansion
-modifier, or a pattern handed unquoted to a program that does its own
-matching, is rewritten before the check ever sees its input. Read the
-probe's **exit code**, never the emptiness of its output — a corrupted
-probe and a clean negative both come back empty, and only one of them
-means what you are about to write down. Two of your own contradictory measurements indict
-your method, not the other reader — unless the subject itself changed
-between the two readings. Two honest, dated observations of a *mutable*
-system that disagree are two facts about two moments, not one wrong
-measurement: keep both with their dates, do not collapse them by
-supersession, and name the fresh observation that would settle which
-holds now as `not recorded` rather than guessing it. Match the
-instrument's shape to the subject's — a line-oriented scan over multi-line constructs produces a
-number that looks like evidence and is not. A tool that produced a false
-positive is fixed or deleted in the same change that retracts its
-output; a discredited tool left in place will be quoted again.
-
-Never satisfy a check by changing what it measures: not by removing the
-thing it observes (retiring an observed value is a separate, argued
-decision from making it correct), not by falsifying the declaration the
-tool reads (fix the tool, so the declaration keeps meaning intent), not
-by reverting the change that tripped it. When an assertion fails because
-the product *deliberately* changed, update the assertion — but never
-revert a deliberate change, least of all a security revocation, to make
-a suite green. When it fails because it found a real defect, pin the
-broken behavior as a characterization and route it to a decision owner
-rather than adjusting the test until it passes; and when the test you
-discount was a contract's only verifier, record the coverage loss with
-the discount.
-
-A second measurement confirms the first only if it **re-derives the
-result from the artifact by a different method** — a recount that reuses
-the upstream number or premise is the same measurement written twice,
-and three counts sharing one premise are one count.
-
 ## Anti-patterns
 
 - "All gates green, but I disabled the flaky one." Either fix the
@@ -538,6 +439,18 @@ and three counts sharing one premise are one count.
   collection, and a tool that could not start all exit zero when nobody
   made them fail. An exit code says a process ended, not that a property
   held.
+- "The configuration was passed." Passed is not applied. A suppression
+  list, a policy file, or a rules file handed to a tool can be rejected
+  on every run while the tool carries on without it, and the record
+  says the suppressions took effect. Before recording that an input took
+  effect, show that the tool accepted it: a cheap offline check against
+  the tool at the version the project pins, one that fails if the tool
+  ignores or rejects the input, is that evidence (the inert item
+  announcing itself, `method.restrictive-policy` §8). Likewise, before filing
+  a non-zero exit as findings from a tool whose exit code means both
+  "fatal error" and "findings", show which of the two it was; a wrapper
+  that makes the two exit differently answers that on every run, and
+  without it a crash reads as a finding.
 - "The report was on disk." Was it written *this* run? A step that emits
   per-target artifacts into a persistent or shared output root can read a
   prior run's artifact as the current one's — present, readable, and
@@ -546,3 +459,11 @@ and three counts sharing one premise are one count.
   green for another. The evidence is that the artifact was observed written
   this run; without that observation the check fails closed and records a
   stale artifact as distinct from a missing one.
+
+## Neighbours
+
+- `protocol.verify-new-gates`: load when marking work closed, or adding
+  a new gate.
+- `protocol.verify-disagreement`: load when a check and its subject
+  disagree, a change must preserve behavior, or a known defect is
+  tolerated.

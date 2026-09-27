@@ -45,12 +45,17 @@ library-corpus/<ecosystem>/<library>.md
 
 - Keyed by **library, not version** — one page per library.
 - `<ecosystem>` — one of `language`, `npm`, `nuget`, `pypi`, `maven`,
-  `container`, `platform` (add more as harvested: `cargo`, `go`, `gem`, …).
+  `container`, `platform`, `cli` (add more as harvested: `cargo`, `go`, `gem`, …).
   `container` holds container-runtime tooling (engine, compose, and images
   serving as a runtime stage) rather than an installable package registry;
   `platform` holds the hosted-platform surfaces the last rule below admits —
-  a platform's own CLI or declarative pipeline/config DSL, which has no
-  installable package and no version to pin.
+  a platform's own CLI, its REST API, or its declarative pipeline/config DSL,
+  none of which has an installable package or a version to pin.
+  `cli` holds general-purpose command-line tools (`git`, `curl`, …) that
+  scripts and agents drive directly. They do have versions, but the host or
+  base image supplies the version, not a project lockfile, so a page names the
+  behaviors that differ across releases and the project records the version
+  its machines run.
 - `<library>` — the canonical id, lowercased, scope slash removed
   (`@microsoft/signalr` → `microsoft-signalr`).
 
@@ -64,11 +69,13 @@ library-corpus/<ecosystem>/<library>.md
 - **Orientation, not gospel.** A surface page ages slowly but an API redesign
   across a major line can outdate it. Confirm against upstream; never read a
   pinned fact from here (there are none to read).
-- **Hosted-platform DSLs may earn a page without a package.** A hosted
+- **Hosted-platform DSLs and APIs may earn a page without a package.** A hosted
   platform's declarative pipeline/config DSL (e.g. a CI platform's YAML schema,
-  a deploy platform's manifest format) has no installable package and no
-  version number, yet its surface — the schema shape, its idioms, its
-  conceptual pitfalls — is just as reusable. Such a surface may get a
+  a deploy platform's manifest format) or its REST API has no installable
+  package and no version number of its own (a REST API's `api-version`
+  parameter is the caller's pin, recorded in the project's page, not here), yet
+  its surface — the schema or wire shape, its idioms, its conceptual pitfalls —
+  is just as reusable. Such a surface may get a
   library-wiki page under a platform ecosystem bucket, pinned by
   **retrieval-date** (when the surface was last confirmed against upstream)
   instead of a version number, since there is no version to pin.

@@ -247,4 +247,262 @@ else:
 print("  structured-secret-field-detector: exact-name only, missing subtree raises — OK")
 PY
 
+# 5. parallel-suite-runner: a parallel run is only worth trusting if it reports
+# the same failures a serial run would, and if every way it can go wrong fails
+# CLOSED. The properties the page exists for: modules really run in separate,
+# concurrent processes; a failure is judged against a known-failing baseline BY
+# TEST ID, so a carried id passes and a new id fails whatever the counts say; a
+# shard that timed out is re-run once, and a timeout is never itself reported
+# as a failing test id; and a shard whose outcome cannot be read (it crashed,
+# printed no run line, or timed out on the re-run too) fails the run even when
+# every id it might have produced is in the baseline. A missing or malformed
+# baseline is a usage error, never an empty baseline that lets everything pass.
+# A run in which no test ran at all is a failure, never a vacuous PASS. A
+# timeout kills the shard's whole process group, so a process the test itself
+# spawned dies with it rather than outliving the run. A shard whose FAIL/ERROR
+# ids do not account for its failures+errors count has lost an id, and a lost
+# id is an unreadable outcome.
+#
+# The fixture is a synthetic stdlib-unittest package; the implementation is the
+# largest ```python block on the page, driven only through its command line.
+PSR_PAGE="$ROOT/tool-corpus/testing/parallel-suite-runner.md"
+[[ -f "$PSR_PAGE" ]] || { echo "parallel-suite-runner: page not found: $PSR_PAGE" >&2; exit 1; }
+python3 - "$PSR_PAGE" "$TMP/psr.py" <<'PY'
+import re, sys, pathlib
+text = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+if not re.search(r"\*\*Stability:\*\*\s*\*\*portable", text):
+    sys.exit("parallel-suite-runner: the page does not claim portable stability, "
+             "so section 1 never compiles its implementation")
+blocks = re.findall(r"```python\n(.*?)```", text, re.S)
+if not blocks:
+    sys.exit("parallel-suite-runner: the page embeds no ```python implementation")
+pathlib.Path(sys.argv[2]).write_text(max(blocks, key=len))
+PY
+python3 - "$TMP/psr.py" "$TMP/psr" <<'PY'
+import os, re, signal, subprocess, sys, textwrap, time, pathlib
+
+TOOL, WORK = sys.argv[1], pathlib.Path(sys.argv[2])
+SEP = "=" * 70
+ID = re.compile(r"^(FAIL|ERROR): .+$")
+
+BASE = {
+    # Importable only if the start dir is on sys.path, as `discover -s` puts it.
+    "helper.py": "VALUE = 42\n",
+    "test_pass.py": """
+        import os, unittest, helper
+        class P(unittest.TestCase):
+            def test_one(self): self.assertEqual(helper.VALUE, 42)
+            def test_cwd_is_repo(self): self.assertTrue(os.path.isfile("MARKER"))
+    """,
+    "test_known.py": """
+        import unittest
+        class K(unittest.TestCase):
+            def test_known_fail(self): self.fail("known")
+            def test_error(self): raise RuntimeError("boom")
+    """,
+}
+n = 0
+def repo(extra=None, base=True):
+    global n
+    n += 1
+    r = WORK / f"r{n}"
+    (r / "tests").mkdir(parents=True)
+    (r / "MARKER").write_text("")
+    for name, body in {**(BASE if base else {}), **(extra or {})}.items():
+        (r / "tests" / name).write_text(textwrap.dedent(body))
+    return r
+
+def serial_ids(r):
+    p = subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", "tests",
+                        "-p", "test_*.py"], cwd=r, capture_output=True, text=True)
+    lines = p.stderr.splitlines()
+    return {l for i, l in enumerate(lines) if i and lines[i - 1] == SEP and ID.match(l)}
+
+def run(r, *args):
+    logs = r.parent / (r.name + "-logs")
+    p = subprocess.run([sys.executable, TOOL, "--repo", str(r), "-s", "tests",
+                        "--logs", str(logs), *args],
+                       capture_output=True, text=True, timeout=120)
+    out = p.stdout + p.stderr
+    ids_file = logs / "failing-ids.txt"
+    ids = set(filter(None, ids_file.read_text().splitlines())) if ids_file.exists() else None
+    return p.returncode, out, ids
+
+def check(cond, msg, out=""):
+    if not cond:
+        sys.exit(f"parallel-suite-runner: {msg}\n--- tool output ---\n{out}")
+
+# The failing ids a parallel run reports are exactly the ids a serial run reports.
+r = repo()
+known = serial_ids(r)
+assert len(known) == 2, f"fixture drifted: {known}"
+rc, out, ids = run(r, "-j", "2")
+check(ids == known, f"failing ids {ids} differ from a serial discover run {known}", out)
+check(rc == 1, f"no baseline given, so every failure is new, yet exit {rc}", out)
+
+# Shards run in parallel: one process per module, and their lifetimes overlap.
+slow = """
+    import os, time, unittest
+    class T(unittest.TestCase):
+        def test_slow(self):
+            t0 = time.time(); time.sleep(1.5)
+            with open("stamps.txt", "a") as f:
+                f.write(f"{os.getpid()} {t0} {time.time()}\\n")
+"""
+r = repo({f"test_slow{i}.py": slow for i in range(3)})
+base = WORK / "base-par.txt"; base.write_text("\n".join(sorted(known)) + "\n")
+rc, out, _ = run(r, "-j", "4", "--baseline", str(base))
+check(rc == 0, f"a clean parallel run with a covering baseline exited {rc}", out)
+stamps = [l.split() for l in (r / "stamps.txt").read_text().splitlines()]
+check(len(stamps) == 3, f"expected 3 slow tests to run, got {len(stamps)}", out)
+check(len({s[0] for s in stamps}) == 3, "the slow modules shared a process", out)
+check(max(float(s[1]) for s in stamps) < min(float(s[2]) for s in stamps),
+      "the slow modules ran one after another, not in parallel", out)
+
+# Baseline BY ID: carried ids pass, a new id fails and is named.
+r = repo()
+base = WORK / "base-all.txt"; base.write_text("\n".join(sorted(known)) + "\n")
+rc, out, _ = run(r, "--baseline", str(base))
+check(rc == 0, f"every failing id is in the baseline, yet exit {rc}", out)
+check("new failing ids: 0" in out, "a fully baselined run did not report zero new ids", out)
+base = WORK / "base-part.txt"
+base.write_text("".join(i + "\n" for i in sorted(known) if "test_error" not in i))
+rc, out, _ = run(r, "--baseline", str(base))
+check(rc == 1, f"an id outside the baseline did not fail the run (exit {rc})", out)
+new_block = out.split("new failing ids: 1\n", 1)
+check(len(new_block) == 2 and "test_error" in new_block[1].split("\n", 1)[0],
+      "the one new id was not listed under 'new failing ids'", out)
+# The same number of failures with a DIFFERENT id is still a new failure.
+r = repo({"test_known.py": """
+    import unittest
+    class K(unittest.TestCase):
+        def test_known_fail(self): self.fail("known")
+        def test_error_renamed(self): raise RuntimeError("boom")
+"""})
+rc, out, _ = run(r, "--baseline", str(WORK / "base-all.txt"))
+check(rc == 1, "an equal failure COUNT with a new id passed: ids were not compared", out)
+
+# A timed-out shard is re-run once; a timeout is never a failing test id.
+flaky = """
+    import os, time, unittest
+    class F(unittest.TestCase):
+        def test_first_run_hangs(self):
+            with open("attempts-flaky.txt", "a") as f: f.write("x")
+            if len(open("attempts-flaky.txt").read()) == 1: time.sleep(60)
+"""
+r = repo({"test_flaky.py": flaky})
+rc, out, ids = run(r, "--timeout", "3", "--baseline", str(WORK / "base-all.txt"))
+attempts = len((r / "attempts-flaky.txt").read_text())
+check(attempts == 2, f"a timed-out shard ran {attempts} time(s); expected one re-run", out)
+check(rc == 0, f"a shard that timed out once and then passed failed the run (exit {rc})", out)
+check(ids is not None and not any("test_flaky" in i or "test_first_run_hangs" in i for i in ids),
+      f"a timeout was counted as a failing test id: {ids}", out)
+rerun_block = out.split("re-run after a timeout: 1\n", 1)
+check(len(rerun_block) == 2 and "test_flaky" in rerun_block[1].split("\n", 1)[0],
+      "the re-run shard was not reported under 're-run after a timeout: 1'", out)
+
+# Unreadable shards fail closed, even with every failing id baselined.
+# Each attempt also spawns a grandchild `sleep 60` and records its pid: the kill
+# must reach the whole process group, not only the shard process.
+hang = """
+    import subprocess, time, unittest
+    class H(unittest.TestCase):
+        def test_hang(self):
+            with open("attempts-hang.txt", "a") as f: f.write("x")
+            child = subprocess.Popen(["sleep", "60"])
+            with open("grandchild-pids.txt", "a") as f: f.write(f"{child.pid}\\n")
+            time.sleep(60)
+"""
+r = repo({"test_hang.py": hang})
+rc, out, ids = run(r, "--timeout", "3", "--baseline", str(WORK / "base-all.txt"))
+attempts = len((r / "attempts-hang.txt").read_text())
+check(attempts == 2, f"a persistently hung shard ran {attempts} time(s); expected exactly 2", out)
+check(rc == 1, f"a shard that timed out twice did not fail the run (exit {rc})", out)
+check("test_hang: timed out" in out, "the hung shard was not named as timed out", out)
+check(ids is not None and not any("test_hang" in i for i in ids),
+      f"a timeout was counted as a failing test id: {ids}", out)
+
+def alive(pid):
+    try:
+        state = pathlib.Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0]
+        return state != "Z"  # a zombie awaiting its reaper is already dead
+    except (FileNotFoundError, ProcessLookupError, IndexError):
+        pass
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return not pathlib.Path("/proc").is_dir()
+
+gpids = [int(p) for p in (r / "grandchild-pids.txt").read_text().split()]
+check(len(gpids) == 2, f"expected one grandchild per attempt, got {gpids}", out)
+deadline = time.time() + 5
+while time.time() < deadline and any(alive(p) for p in gpids):
+    time.sleep(0.1)
+survivors = [p for p in gpids if alive(p)]
+for p in survivors:  # never leak the fixture's own processes, even on failure
+    try: os.kill(p, signal.SIGKILL)
+    except ProcessLookupError: pass
+check(not survivors, f"a timed-out shard's grandchild outlived the run (pids {survivors}): "
+      "the kill did not reach the process group", out)
+
+r = repo({"test_crash.py": "import os\nos._exit(3)\n"})
+rc, out, _ = run(r, "--baseline", str(WORK / "base-all.txt"))
+check(rc == 1, f"a shard that crashed before its run line did not fail closed (exit {rc})", out)
+check("test_crash:" in out, "the crashed shard was not named", out)
+
+r = repo({"test_late_exit.py": """
+    import atexit, os, unittest
+    atexit.register(lambda: os._exit(3))
+    class L(unittest.TestCase):
+        def test_ok(self): pass
+"""})
+rc, out, _ = run(r, "--baseline", str(WORK / "base-all.txt"))
+check(rc == 1, f"an abnormal exit after a complete run did not fail closed (exit {rc})", out)
+check("test_late_exit: exit 3" in out, "the abnormal exit was not named with its code", out)
+
+# A shard whose parsed ids do not account for its failures+errors count has
+# lost an id: fail closed, even though the one id it did print is baselined.
+# The fixture rewrites its own ERROR header so that no id follows the separator,
+# which is how a mangled or interleaved log loses an id.
+r = repo({"test_lostid.py": """
+    import unittest
+    _desc = unittest.TextTestResult.getDescription
+    def _lose(self, test):
+        d = _desc(self, test)
+        return "\\n" + d if "test_lost_error" in test.id() else d
+    unittest.TextTestResult.getDescription = _lose
+    class L(unittest.TestCase):
+        def test_visible_fail(self): self.fail("visible")
+        def test_lost_error(self): raise RuntimeError("lost")
+"""})
+lostbase = WORK / "base-lost.txt"
+lostbase.write_text("\n".join(sorted(known)) + "\nFAIL: test_visible_fail (test_lostid.L.test_visible_fail)\n")
+rc, out, ids = run(r, "--baseline", str(lostbase))
+check(ids is not None and "FAIL: test_visible_fail (test_lostid.L.test_visible_fail)" in ids
+      and not any("test_lost_error" in i for i in ids),
+      f"fixture drifted: the lost-id shard parsed {ids}", out)
+check(rc == 1, f"a shard with 2 failures+errors but 1 parsed id passed (exit {rc})", out)
+check("test_lostid:" in out, "the shard that lost an id was not named", out)
+
+# A run in which no test ran at all is not a pass.
+r = repo({"test_empty.py": "import unittest\n"}, base=False)
+rc, out, _ = run(r)
+check(rc == 1, f"a suite where zero tests ran exited {rc}, not 1", out)
+check("no tests ran" in out, "a zero-test run did not say 'no tests ran'", out)
+
+# A baseline that cannot be read is a usage error, never an empty baseline.
+r = repo()
+rc, out, _ = run(r, "--baseline", str(WORK / "no-such-baseline.txt"))
+check(rc == 2, f"a missing baseline file exited {rc}, not the usage error 2", out)
+bad = WORK / "base-bad.txt"; bad.write_text("test_foo (x.Y.test_foo)\n")
+rc, out, _ = run(r, "--baseline", str(bad))
+check(rc == 2, f"a malformed baseline line exited {rc}, not the usage error 2", out)
+
+print("  parallel-suite-runner: parallel, id-baselined, timeout re-run once, "
+      "unreadable shards fail closed — OK")
+PY
+
 printf 'tool-corpus portability: PASS\n'

@@ -165,6 +165,13 @@ mkdir -p "$RJ"
     | ( cd "$RJ" && tar -xf - )
 out="$(python3 "$RJ/tools/roster-justification.py" --gaps 2>&1)" && rc=0 || rc=$?
 [ "$rc" -eq 0 ] || fail "roster-justification: a clean copy must pass, got $rc ($out)"
+# Derive the expected total from this clean-copy run rather than pinning a
+# number: the roster's node count changes as nodes are added, and a pinned
+# count breaks every time it does without telling us anything new.
+clean_count="$(sed -n 's/^.*of \([0-9][0-9]*\).*$/\1/p' <<<"$out")"
+[ -n "$clean_count" ] \
+    || fail "roster-justification: could not parse the node count from the clean-copy run ($out)"
+expected_count=$((clean_count - 1))
 make_unreadable "$RJ/agents/05-security.md"
 out="$(python3 "$RJ/tools/roster-justification.py" --gaps 2>&1)" && rc=0 || rc=$?
 [ "$rc" -ne 0 ] || fail "roster-justification: an unreadable node must not pass, got 0 ($out)"
@@ -172,8 +179,8 @@ grep -q "05-security.md" <<<"$out" \
     || fail "roster-justification: the diagnostic must name the path ($out)"
 grep -qi "could not be read\|unreadable" <<<"$out" \
     || fail "roster-justification: the diagnostic must give the reason ($out)"
-grep -q "of 59" <<<"$out" \
-    || fail "roster-justification: the count should still show the node is missing ($out)"
+grep -q "of $expected_count" <<<"$out" \
+    || fail "roster-justification: the count should show the node missing from the total (expected $expected_count, i.e. clean count $clean_count minus the unreadable node; got: $out)"
 echo "  roster-justification: unreadable node exits non-zero and names path + reason — OK"
 
 echo "test-lint-audibility: PASS"

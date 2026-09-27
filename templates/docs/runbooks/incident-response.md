@@ -40,6 +40,12 @@ here. Each is recorded, or marked `not recorded` — never left implied.
 - Who may authorize the destructive path, and how they are reached, with
   the reaching itself recorded: an escalation path nobody has walked is
   an assumption.
+- Which failures of the build and deploy machinery look like failures of
+  the thing being built. A runner that fills its disk or loses its
+  connection mid-job presents as a failed build; name the log line that
+  tells the two apart. Say too whether a run's overall status aggregates
+  jobs that do not matter equally. Where it does, read the per-stage
+  result before concluding that a deploy did or did not happen.
 
 Keep this section to what changes the loop's execution; it is not an
 architecture summary.

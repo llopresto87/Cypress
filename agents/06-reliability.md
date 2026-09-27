@@ -3,6 +3,7 @@ name: reliability
 description: Senior reliability, platform, and delivery engineer. Owns standing infrastructure up from scratch, deployment, observability, rollback, capacity, cost, and the operational runbooks. Use whenever the project must be brought up on fresh infrastructure, run continuously, integrate with external systems, deploy to a cloud or edge environment, depend on AI providers, or meet a latency, throughput, or cost budget.
 tools: [Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch]
 model: opus
+effort: medium
 routing_triggers:
   - "the deploy is flaking under load, add observability"
   - "configure rollback and capacity budgets for the cluster"

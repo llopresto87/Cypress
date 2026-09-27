@@ -64,6 +64,10 @@ RATCHETS = {
     "PREVENTS_OVERLAP_CEILING": ("tests/seed-lint.py", "PREVENTS_OVERLAP_CEILING", "max"),
     "PREVENTS_RESTATEMENT_CEILING": ("tests/seed-lint.py", "PREVENTS_RESTATEMENT_CEILING", "max"),
     "FRONTMATTER_CEILING": ("tests/seed-lint.py", "FRONTMATTER_CEILING", "max"),
+    # SPEC-0005, the leaf rule: the leaf ceiling and the ledger of leaves that
+    # were over it when the check landed, which may only shrink.
+    "LEAF_BODY_CEILING":      ("tests/seed-lint.py", "LEAF_BODY_CEILING", "max"),
+    "OVERSIZED_LEAVES":       ("tests/seed-lint.py", "OVERSIZED_LEAVES", "set"),
     # SPEC-0004, the front door: the first-screen line budgets (each also held
     # under its spec cap by seed-lint), the README catalog ceiling, the limits
     # section's floors, the definition-overlap ceiling, and the pending ledger.

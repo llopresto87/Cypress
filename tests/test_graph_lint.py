@@ -1175,9 +1175,17 @@ class DescentTests(unittest.TestCase):
         self.assertRegex(out, r"expertise\.serilog\s+composed by .*no task term")
 
     def test_plan_descent_never_folds(self):
-        """Seeding folds prefixes; descent does not. `migrating` is a
+        """Asserts SPEC-0005 DESCENT_TEST_NOW_SEEDS_THE_CHILD.
+
+        Seeding folds prefixes; descent does not. `migrating` is a
         six-character prefix of the child's `migration`, and must not compose
-        it — otherwise "migrating the CI runner" drags in schema knowledge."""
+        it — otherwise "migrating the CI runner" drags in schema knowledge.
+
+        The task names `dbcontext`, a WHOLE piece of
+        ef-core's `load_when`, which SPEC-0005 promotes on, so ef-core would
+        arrive promoted rather than composed. `mapping` is not a whole piece
+        (`entity mapping` needs `entity` too), so ef-core is still selected by
+        descent and the fold assertion keeps a descended parent."""
         nodes = expertise_family()
         nodes["expertise.ef-core"] = node_md(
             "expertise.ef-core", "expertise", requires=["expertise.dotnet"],
@@ -1190,14 +1198,19 @@ class DescentTests(unittest.TestCase):
             owns=["ef-migrations.applicability"],
             load_when=["add a migration, migration script"])
         out = self.plan(
-            "in the orders service, editing the dbcontext, migrating the runner",
+            "in the orders service, fix the mapping, migrating the runner",
             nodes)
-        self.assertIn('composed by expertise.dotnet on "dbcontext"', out)
+        self.assertIn('composed by expertise.dotnet on "mapping"', out)
         self.assertRegex(out, r"expertise\.ef-migrations\s+composed by .*no task term")
 
     def test_plan_descends_two_levels_each_on_own_term(self):
-        """Recursion falls out of the rule: the child becomes the parent for
-        its own children, and each level needs its own specific term."""
+        """Asserts SPEC-0005 DESCENT_TEST_NOW_SEEDS_THE_CHILD.
+
+        Recursion falls out of the rule: the child becomes the parent for
+        its own children, and each level needs its own specific term.
+
+        `dbcontext` is a whole piece SPEC-0005
+        promotes on; the first level descends on `mapping`, which is not."""
         nodes = expertise_family()
         nodes["expertise.ef-core"] = node_md(
             "expertise.ef-core", "expertise", requires=["expertise.dotnet"],
@@ -1220,18 +1233,26 @@ class DescentTests(unittest.TestCase):
         # this test is about DESCENT, so it uses a term the child holds in its
         # `load_when` and not in its name.
         out = self.plan(
-            "in the orders service, editing the dbcontext, run the script",
+            "in the orders service, fix the mapping, run the script",
             nodes)
-        self.assertIn('composed by expertise.dotnet on "dbcontext"', out)
+        self.assertIn('composed by expertise.dotnet on "mapping"', out)
         self.assertIn('composed by expertise.ef-core on "script"', out)
 
     def test_plan_selects_major_by_tfm_token(self):
-        """Two majors in play: the unversioned parent composes one child per
+        """Asserts SPEC-0005 DESCENT_TEST_NOW_SEEDS_THE_CHILD.
+
+        Two majors in play: the unversioned parent composes one child per
         major, and the target-framework token the developer types picks it.
 
         The task names the subsystem's path glob deliberately. Without it the
         pre-7.5.0 tool SEEDS `expertise.dotnet-10` on this fixture (measured),
-        and the assertion below would pass with descent deleted."""
+        and the assertion below would pass with descent deleted.
+
+        By the `promoted on` arm, `net10.0` is a
+        whole piece of dotnet-10's `load_when`, and the child's only own
+        standalone term is that token, so no task term can select the major by
+        descent without also being a whole piece. The case still asserts the
+        major the TFM token selected, now by promotion; dotnet-8 stays out."""
         nodes = expertise_family()
         nodes["expertise.dotnet"] = node_md(
             "expertise.dotnet", "expertise",
@@ -1245,17 +1266,21 @@ class DescentTests(unittest.TestCase):
                 requires=["expertise.dotnet"], libraries=["dotnet"],
                 owns=[f"dotnet-{major}.applicability"],
                 load_when=[f"net{major}.0, dotnet {major} target"])
+        tfm = "net10.0"
         out = self.plan(
-            "in the orders service, editing src/Orders/**, target net10.0", nodes)
-        # The WHOLE token, not a piece of it. This read `"net10"` while the
-        # load_when says `net10.0`: the router split on `.` and kept both
-        # pieces at full strength, so a child could be descended into on half
-        # of its own version token — the same shape that let `chain`, taken
-        # from `supply-chain`, speak for the security agent. `net10` still
-        # matches at the fragment tier, so a task that writes it without the
-        # `.0` is not lost; it simply cannot clear the standalone bar descent
-        # requires on its own.
-        self.assertIn('composed by expertise.dotnet on "net10.0"', out)
+            f"in the orders service, editing src/Orders/**, target {tfm}", nodes)
+        # The matched term is the WHOLE TFM token. dotnet-10 is an entry here,
+        # promoted (SPEC-0005 §6 "Trigger phrase"), so it prints no
+        # `composed by`. Its piece `net10.0` is one whole router token, so
+        # the suffix naming that piece names the term the task
+        # matched, and it must equal the token the task wrote. Half of it
+        # (`net10`) selects nothing: that is
+        # PromotionTests.test_plan_partial_version_token_does_not_promote.
+        line = load_section(out).get("expertise.dotnet-10")
+        self.assertIsNotNone(line, f"the TFM token did not select dotnet-10:\n{out}")
+        self.assertTrue(line.rstrip().endswith(f'<- promoted on "{tfm}"'),
+                        f"dotnet-10 must load promoted on the whole TFM token "
+                        f"{tfm!r} the task wrote:\n  {line}")
         self.assertRegex(out, r"expertise\.dotnet-8\s+composed by .*no task term")
 
     def test_plan_reports_not_loaded_with_reason(self):
@@ -1286,10 +1311,18 @@ class DescentTests(unittest.TestCase):
         self.assertNotIn("composed by", line)
 
     def test_plan_warns_on_wide_descent(self):
-        """A parent handing over most of a real menu at once says the task or
+        """Asserts SPEC-0005 DESCENT_TEST_NOW_SEEDS_THE_CHILD.
+
+        A parent handing over most of a real menu at once says the task or
         the triggers are too generic, and the notice is what makes that
         visible instead of merely expensive. A single-child parent must NOT
-        trip it — that is an ordinary descent, not a symptom."""
+        trip it — that is an ordinary descent, not a symptom.
+
+        The task names `retry policy`, a whole piece
+        of polly's `load_when` that SPEC-0005 promotes on. `breaker` is polly's
+        own term and not a whole piece (`circuit breaker`), so all three
+        children are still selected by descent and the count keeps its
+        meaning."""
         nodes = expertise_family()
         nodes["expertise.dotnet"] = node_md(
             "expertise.dotnet", "expertise",
@@ -1301,7 +1334,7 @@ class DescentTests(unittest.TestCase):
             libraries=["dotnet"], owns=["polly.applicability"],
             load_when=["retry policy, circuit breaker"])
         out = self.plan("in the orders service, the mapping, the sink, the "
-                        "retry policy", nodes)
+                        "breaker", nodes)
         self.assertIn("wide descent from expertise.dotnet: 3 of 3 children", out)
 
         narrow = expertise_family()
@@ -1343,6 +1376,992 @@ class DescentTests(unittest.TestCase):
                 section.append(line.split()[0])
         self.assertEqual(set(load), {"subsystem.orders", "stack.dotnet"})
         self.assertEqual(set(not_loaded), {"subsystem.billing"})
+
+
+# ==========================================================================
+# SPEC-0005-cycle-economy (docs/specs/), increments 1 and 2 — RED.
+#
+# Contract map:
+#   PromotionTests        -> PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE and
+#                            PROMOTION_FLOODS_LOAD: an expertise node whose
+#                            whole trigger PHRASE the task names loads beside
+#                            the scored top-3 cut, with a `promoted on` suffix.
+#   InferenceTests        -> PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES and its
+#                            failure modes (HOSTILE_TASK_LINE,
+#                            TASK_LINE_WITHOUT_PATHS, PATTERN_BRACE_SPLIT,
+#                            EXTENSIONLESS_BARE_NAME): a path-like task token
+#                            matching a `load_when` FILE PATTERN infers the
+#                            expertise node, by string matching only.
+#   PromotedClosureTests  -> PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE: requires
+#                            and descent run from promoted entries; the §6
+#                            suffix precedence.
+#   ListedNodeEdgesTests  -> LISTED_NODE_EDGES_REACH, SIBLING_UNREACHABLE_
+#                            AFTER_GRAFT, ORPHAN_ISLAND.
+#   DelegationRoutingTests-> DELEGATION_LEAVES_ROUTE on a fresh install.
+#
+# Every method's first docstring line is `Asserts SPEC-0005 <SLUG>.` — the
+# form spec-lint credits (SPEC-0005 §10 preamble). A case marked "guard"
+# passes on the unmodified tool and is held by a named mutant (plan §10),
+# not by an observed red.
+#
+# Every fixture is measured on the UNMODIFIED tool (graph-lint.py as of
+# harvest/7.30.0 0613d09): the expertise node a positive case asserts on is
+# NOT in LOAD there, so the case can only pass through promotion or
+# inference, never through the scored cut. Each fixture's docstring records
+# the measurement.
+# ==========================================================================
+
+
+def plan_output(graph: Path, task: str, *, tool: Path | None = None,
+                prelude: str | None = None) -> subprocess.CompletedProcess:
+    """Run `--plan TASK` against `graph`. `prelude`, when given, is Python run
+    in the same interpreter BEFORE the tool (via runpy) — the only way a
+    black-box CLI case can plant a fault inside the tool's own call path."""
+    tool = tool or (graph / "graph-lint.py")
+    if prelude is None:
+        argv = [sys.executable, str(tool), "--plan", task]
+    else:
+        argv = [sys.executable, "-c", prelude + _RUN_TOOL, str(tool), "--plan", task]
+    return subprocess.run(argv, cwd=str(graph), capture_output=True, text=True,
+                          timeout=120)
+
+
+_RUN_TOOL = """
+import os as _os, runpy as _runpy, sys as _sys
+_tool = _sys.argv[1]
+_sys.argv = [_tool] + _sys.argv[2:]
+_sys.path.insert(0, _os.path.dirname(_tool))
+_runpy.run_path(_tool, run_name="__main__")
+"""
+
+# SPEC-0005 §6 pins the match to `fnmatch.fnmatchcase(path, pattern.lower())`.
+# Replacing it with a raiser is therefore a fault INSIDE inference, reached on
+# any task with a path-like token and a file pattern in the graph, and nowhere
+# else in `--plan` (the unmodified tool never calls it: measured, this prelude
+# leaves its output byte-identical).
+_FAULT_TEMPLATE = """
+import fnmatch as _fnmatch
+class {name}({base}):
+    pass
+def _raise(*_a, **_k):
+    raise {name}("planted by test_graph_lint")
+_fnmatch.fnmatchcase = _raise
+"""
+_FAULT_IN_FNMATCH = _FAULT_TEMPLATE.format(name="InjectedFault", base="RuntimeError")
+# A handler narrowed to `except RuntimeError` still
+# catches the fault above. This one derives from Exception directly, so only a
+# handler as broad as §6 requires ("never raise on any str task") catches it.
+_PLAIN_FAULT_IN_FNMATCH = _FAULT_TEMPLATE.format(name="InjectedPlainFault",
+                                                 base="Exception")
+
+
+def load_section(out: str) -> dict:
+    """{node id: the whole LOAD line} — the LOAD section only."""
+    lines, on = {}, False
+    for line in out.splitlines():
+        if line.startswith("LOAD ("):
+            on = True
+            continue
+        if on:
+            if not line.startswith("  "):
+                break
+            lines[line.split()[0]] = line
+    return lines
+
+
+def not_loaded_section(out: str) -> set:
+    ids, on = set(), False
+    for line in out.splitlines():
+        if line.startswith("NOT LOADED"):
+            on = True
+            continue
+        if on and line.startswith("  "):
+            ids.add(line.split()[0])
+    return ids
+
+
+class _PlanCase(unittest.TestCase):
+    """Shared set-up and the one assertion shape every positive case uses:
+    the suffix on the node's OWN LOAD line, never bare membership."""
+
+    def setUp(self):
+        self.assertTrue(GRAPH_LINT.exists(), f"missing tool: {GRAPH_LINT}")
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def plan(self, nodes: dict, task: str, **kw) -> str:
+        g = build_graph(self.tmp, nodes)
+        r = plan_output(g, task, **kw)
+        self.assertEqual(r.returncode, 0,
+                         f"--plan {task!r} exited {r.returncode}:\n{r.stdout}\n{r.stderr}")
+        return r.stdout
+
+    def assertLoadSuffix(self, out: str, node_id: str, suffix: str, task: str):
+        line = load_section(out).get(node_id)
+        self.assertIsNotNone(
+            line, f"--plan {task!r}: {node_id} is not in LOAD; expected it with "
+                  f"the suffix {suffix!r}. Output:\n{out}")
+        self.assertTrue(
+            line.rstrip().endswith(suffix),
+            f"--plan {task!r}: {node_id}'s LOAD line does not end with "
+            f"{suffix!r}:\n  {line}\nOutput:\n{out}")
+
+
+# --------------------------------------------------------------------------
+# Promotion
+# --------------------------------------------------------------------------
+
+def promotion_graph() -> dict:
+    """Three non-expertise nodes NAMED `pipeline` whose trigger is the phrase
+    `pipeline yaml`, one more non-expertise node carrying the same phrase
+    under a neutral name, and the expertise node whose FIRST piece is
+    `pipeline yaml` under a neutral name.
+
+    Measured on the unmodified tool, task "pipeline yaml": LOAD is exactly
+    platform.pipeline, stack.pipeline and subsystem.pipeline (the name doubles
+    their `pipeline` hit, so they take the top-three cut); expertise.ci-config
+    and crosscut.release are out."""
+    return {
+        "root": node_md("root", "root", requires=["subsystem.pipeline"],
+                        owns=["root.map"]),
+        "subsystem.pipeline": node_md("subsystem.pipeline", "subsystem",
+                                      load_when=["pipeline yaml"]),
+        "stack.pipeline": node_md("stack.pipeline", "stack",
+                                  load_when=["pipeline yaml"]),
+        "platform.pipeline": node_md("platform.pipeline", "platform",
+                                     load_when=["pipeline yaml"]),
+        "crosscut.release": node_md("crosscut.release", "crosscut",
+                                    load_when=["pipeline yaml"]),
+        "expertise.ci-config": node_md(
+            "expertise.ci-config", "expertise", libraries=["ci"],
+            load_when=["pipeline yaml, build definitions"]),
+    }
+
+
+class PromotionTests(_PlanCase):
+
+    def test_plan_promotes_expertise_past_the_scored_cut(self):
+        """Asserts SPEC-0005 PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE.
+
+        The Then: the expertise node the scored cut leaves out (measured, see
+        `promotion_graph`) loads with `<- promoted on "pipeline yaml"`."""
+        out = self.plan(promotion_graph(), "pipeline yaml")
+        self.assertLoadSuffix(out, "expertise.ci-config",
+                              '<- promoted on "pipeline yaml"', "pipeline yaml")
+
+    def test_plan_partial_phrase_does_not_promote(self):
+        """Asserts SPEC-0005 PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE.
+
+        Guard. A hit is EVERY token of the phrase; one word of `pipeline yaml`
+        is not one. Measured on the unmodified tool, task "pipeline": the three
+        pipeline-named nodes take the cut and expertise.ci-config is out. Held
+        by the mutant "any token instead of every token"."""
+        task = "pipeline"
+        out = self.plan(promotion_graph(), task)
+        self.assertNotIn("expertise.ci-config", load_section(out),
+                         f"--plan {task!r} names one word of a two-word "
+                         f"phrase and still loaded the node:\n{out}")
+
+    def test_plan_full_hit_on_non_expertise_stays_under_the_cut(self):
+        """Asserts SPEC-0005 PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE.
+
+        Guard. crosscut.release hits `pipeline yaml` in full but is not
+        `kind: expertise`, so the entry budget binds it as before. Held by the
+        mutant "drop the kind: expertise filter"."""
+        out = self.plan(promotion_graph(), "pipeline yaml")
+        self.assertNotIn("crosscut.release", load_section(out),
+                         f"a non-expertise node outside the scored cut loaded:\n{out}")
+
+    def test_plan_without_hit_or_path_is_unchanged(self):
+        """Asserts SPEC-0005 PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE.
+
+        Guard, golden over ID sets. No phrase hit and no path-like token:
+        LOAD and NOT LOADED are the sets the unmodified tool gives on this
+        fixture (captured from it, 0613d09). The existing
+        DescentTests.test_plan_without_composes_is_unchanged holds the
+        composes-free golden alongside."""
+        out = self.plan(promotion_graph(), "tune the pipeline runner")
+        self.assertEqual(set(load_section(out)),
+                         {"platform.pipeline", "stack.pipeline", "subsystem.pipeline"},
+                         out)
+        self.assertEqual(not_loaded_section(out), set(), out)
+
+    def test_plan_promotes_one_word_phrase_uncapped(self):
+        """Asserts SPEC-0005 PROMOTION_FLOODS_LOAD.
+
+        Five expertise nodes share the one-word phrase `python`; three
+        non-expertise nodes named `python` outscore every one of them.
+        Measured on the unmodified tool, task "python tooling": LOAD is the
+        three decoys, none of the five. The owner's decision is
+        that every hit loads, uncapped."""
+        nodes = {
+            "root": node_md("root", "root", requires=["subsystem.python"],
+                            owns=["root.map"]),
+            "subsystem.python": node_md("subsystem.python", "subsystem",
+                                        load_when=["python tooling"]),
+            "stack.python": node_md("stack.python", "stack",
+                                    load_when=["python tooling"]),
+            "platform.python": node_md("platform.python", "platform",
+                                       load_when=["python tooling"]),
+        }
+        langs = [f"expertise.lang-{c}" for c in "abcde"]
+        for nid in langs:
+            nodes[nid] = node_md(nid, "expertise", libraries=["python"],
+                                 load_when=["python"])
+        out = self.plan(nodes, "python tooling")
+        for nid in langs:
+            with self.subTest(node=nid):
+                self.assertLoadSuffix(out, nid, '<- promoted on "python"',
+                                      "python tooling")
+
+    # ---- RED and survivor guards --------
+
+    def test_plan_partial_version_token_does_not_promote(self):
+        """Asserts SPEC-0005 PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE.
+
+        A phrase's tokens are the
+        router's WHOLE tokens (§6 "Trigger phrase", v0.6), so `net10.0` is one
+        token and a task must name all of it. `target net10` names half of it
+        and must not promote; `target net10.0` names it whole and does. Decoys
+        named `target` over `target net10 net10.0` take the scored cut on both
+        tasks."""
+        extra = {"expertise.runtime-ten": node_md(
+            "expertise.runtime-ten", "expertise", libraries=["runtime"],
+            load_when=["net10.0"])}
+        nodes = guard_graph(extra, "target net10 net10.0", name="target")
+        with self.subTest(task="target net10"):
+            out = self.plan(nodes, "target net10")
+            line = load_section(out).get("expertise.runtime-ten", "")
+            self.assertNotIn(
+                "promoted on", line,
+                f"half of the version token `net10.0` promoted the node:\n{out}")
+        with self.subTest(task="target net10.0"):
+            self.assertLoadSuffix(self.plan(nodes, "target net10.0"),
+                                  "expertise.runtime-ten",
+                                  '<- promoted on "net10.0"', "target net10.0")
+
+    def test_plan_dotted_compound_named_whole_promotes(self):
+        """Asserts SPEC-0005 PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE.
+
+        Guard: the positive twin of the partial-
+        version case. `aspnet-core.mvc` is one whole token, and a task naming
+        all of it promotes the node. The router never forms the mid-level
+        compound `aspnet-core` from the task word, so a rule that also demands
+        the phrase's fragments or dotted segments loses this promotion."""
+        extra = {"expertise.aspnet-mvc": node_md(
+            "expertise.aspnet-mvc", "expertise", libraries=["aspnet"],
+            load_when=["aspnet-core.mvc"])}
+        task = "upgrade aspnet-core.mvc"
+        out = self.plan(guard_graph(extra, task, name="upgrade"), task)
+        self.assertLoadSuffix(out, "expertise.aspnet-mvc",
+                              '<- promoted on "aspnet-core.mvc"', task)
+
+    def test_plan_phrase_with_a_slash_still_promotes(self):
+        """Asserts SPEC-0005 PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE.
+
+        Guard: a piece holding `/` but also whitespace is a
+        phrase, not a pattern: whitespace disqualifies a pattern."""
+        extra = {"expertise.delivery": node_md(
+            "expertise.delivery", "expertise", libraries=["ci"],
+            load_when=["ci/cd pipeline yaml"])}
+        task = "ci/cd pipeline yaml"
+        out = self.plan(guard_graph(extra, "ci/cd pipeline yaml", name="pipeline"),
+                        task)
+        self.assertLoadSuffix(out, "expertise.delivery",
+                              '<- promoted on "ci/cd pipeline yaml"', task)
+
+    def test_plan_promotion_reports_first_hitting_piece(self):
+        """Asserts SPEC-0005 PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE.
+
+        Guard: the task hits both of ci-config's pieces; the
+        suffix names the first in `load_when` order. The pipeline-named
+        decoys also carry `build definitions`, so ci-config stays outside
+        the scored cut."""
+        nodes = promotion_graph()
+        for nid in ("subsystem.pipeline", "stack.pipeline", "platform.pipeline"):
+            kind = nid.split(".")[0]
+            nodes[nid] = node_md(nid, kind,
+                                 load_when=["pipeline yaml build definitions"])
+        task = "pipeline yaml build definitions"
+        self.assertLoadSuffix(self.plan(nodes, task), "expertise.ci-config",
+                              '<- promoted on "pipeline yaml"', task)
+
+    def test_plan_short_words_are_not_phrase_tokens(self):
+        """Asserts SPEC-0005 PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE.
+
+        Guard: `go` is under three characters, so it is not a
+        token of `go toolchain`, and a task naming only `toolchain` hits."""
+        extra = {"expertise.golang": node_md(
+            "expertise.golang", "expertise", libraries=["go"],
+            load_when=["go toolchain"])}
+        task = "toolchain upgrade"
+        out = self.plan(guard_graph(extra, "toolchain upgrade", name="toolchain"),
+                        task)
+        self.assertLoadSuffix(out, "expertise.golang",
+                              '<- promoted on "go toolchain"', task)
+
+    def test_plan_stopwords_are_not_phrase_tokens(self):
+        """Asserts SPEC-0005 PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE.
+
+        Guard: `and` is in STOPWORDS, so it is not a token of
+        `build and release`; a task naming `release build` hits."""
+        extra = {"expertise.shipping": node_md(
+            "expertise.shipping", "expertise", libraries=["ci"],
+            load_when=["build and release"])}
+        task = "release build"
+        out = self.plan(guard_graph(extra, "release build", name="release"), task)
+        self.assertLoadSuffix(out, "expertise.shipping",
+                              '<- promoted on "build and release"', task)
+
+    def test_plan_prefix_fold_does_not_promote(self):
+        """Asserts SPEC-0005 PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE.
+
+        Guard, note N1. `migrating` reaches `migration` only by the six-letter
+        prefix fold (strength 1), which is not a hit."""
+        extra = {"expertise.schema": node_md(
+            "expertise.schema", "expertise", libraries=["db"],
+            load_when=["migration tooling"])}
+        task = "migrating tooling"
+        out = self.plan(guard_graph(extra, "migrating tooling", name="tooling"),
+                        task)
+        self.assertNotIn("expertise.schema", load_section(out),
+                         f"a prefix fold promoted the node:\n{out}")
+
+
+# --------------------------------------------------------------------------
+# Inference
+# --------------------------------------------------------------------------
+
+DECOY_VOCABULARY = ("edit bump update web infra main app package json lock tsx "
+                    "dockerfile docker terraform output deploy otel yaml wire "
+                    "metrics exporter sink")
+
+
+def decoys(vocabulary: str = DECOY_VOCABULARY, name: str = "workbench") -> dict:
+    """Three non-expertise nodes carrying, as whole words, every word the
+    inference and closure tasks use. They take the whole scored cut on each
+    of those tasks, so an expertise node can load only by promotion or
+    inference — a positive case can never pass through the score.
+    `vocabulary` and `name` let a fix-batch case supply its own words; a
+    `name` the task also uses doubles the decoys' score on it."""
+    return {
+        f"{kind}.{name}": node_md(f"{kind}.{name}", kind,
+                                  load_when=[vocabulary])
+        for kind in ("subsystem", "stack", "platform")
+    }
+
+
+def guard_graph(extra: dict, vocabulary: str = DECOY_VOCABULARY,
+                name: str = "workbench") -> dict:
+    """A root, three decoys over `vocabulary`, and the `extra` nodes."""
+    nodes = {"root": node_md("root", "root", requires=[f"subsystem.{name}"],
+                             owns=["root.map"])}
+    nodes.update(decoys(vocabulary, name))
+    nodes.update(extra)
+    return nodes
+
+
+def inference_graph() -> dict:
+    """The decoys plus four expertise nodes whose `load_when` holds FILE
+    PATTERNS only (SPEC-0005 §4 Given, and the §7 brace and Dockerfile rows).
+
+    Measured on the unmodified tool: on every task these cases run, LOAD is
+    the three decoys and none of the four expertise nodes."""
+    nodes = {"root": node_md("root", "root", requires=["subsystem.workbench"],
+                             owns=["root.map"])}
+    nodes.update(decoys())
+    nodes.update({
+        "expertise.terraform": node_md(
+            "expertise.terraform", "expertise", libraries=["terraform"],
+            load_when=["*.tf, **/.terraform.lock.hcl"]),
+        "expertise.node-js": node_md(
+            "expertise.node-js", "expertise", libraries=["node"],
+            load_when=["**/package.json, **/package-lock.json"]),
+        "expertise.containers": node_md(
+            "expertise.containers", "expertise", libraries=["containers"],
+            load_when=["**/Dockerfile"]),
+        "expertise.frontend": node_md(
+            "expertise.frontend", "expertise", libraries=["frontend"],
+            load_when=["*.{ts,tsx}"]),
+    })
+    return nodes
+
+
+def inferred_lines(out: str) -> dict:
+    return {nid: line for nid, line in load_section(out).items()
+            if "inferred from" in line}
+
+
+class InferenceTests(_PlanCase):
+
+    def test_plan_infers_from_extension(self):
+        """Asserts SPEC-0005 PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES.
+
+        A pattern with no `/` matches the path's last segment."""
+        task = "edit infra/main.tf"
+        out = self.plan(inference_graph(), task)
+        self.assertLoadSuffix(out, "expertise.terraform",
+                              '<- inferred from "infra/main.tf" via "*.tf"', task)
+
+    def test_plan_infers_from_nested_lockfile(self):
+        """Asserts SPEC-0005 PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES.
+
+        `**/package-lock.json` loses its leading `**/` and matches the path
+        through the `*/` + p arm; the echoed pattern is the piece as written."""
+        task = "bump web/package-lock.json"
+        out = self.plan(inference_graph(), task)
+        self.assertLoadSuffix(
+            out, "expertise.node-js",
+            '<- inferred from "web/package-lock.json" via "**/package-lock.json"',
+            task)
+
+    def test_plan_infers_from_bare_manifest(self):
+        """Asserts SPEC-0005 PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES.
+
+        `package.json` has no `/` but has an extension, so it is path-like,
+        and matches `**/package.json` through the bare-p arm."""
+        task = "bump package.json"
+        out = self.plan(inference_graph(), task)
+        self.assertLoadSuffix(
+            out, "expertise.node-js",
+            '<- inferred from "package.json" via "**/package.json"', task)
+
+    def test_plan_inferred_path_echo_is_normalized_and_sanitized(self):
+        """Asserts SPEC-0005 PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES.
+
+        The Then's `<path>` is the token after §6 stripping and normalization
+        (lowercase, one leading `./` removed) and echo sanitizing (cut to 80
+        characters plus `…`, anything outside `[a-z0-9_./~+-]` shown as `?`).
+        Not a separate §10 row before this spawn; added to §10 in the handback."""
+        long_dir = "d" * 90
+        cases = [
+            ("edit ./Infra/Main.TF", "infra/main.tf"),
+            ("edit `infra/main.tf`,", "infra/main.tf"),
+            ("edit infra/ma$in.tf", "infra/ma?in.tf"),
+            (f"edit {long_dir}/main.tf", "d" * 80 + "…"),
+            # the strip repeats until stable
+            ("edit (infra/main.tf).", "infra/main.tf"),
+            # `\` folds to `/` in a token that is already
+            # path-like through its `/`
+            ("edit infra/sub\\main.tf", "infra/sub/main.tf"),
+        ]
+        for task, echoed in cases:
+            with self.subTest(task=task[:40]):
+                out = self.plan(inference_graph(), task)
+                self.assertLoadSuffix(
+                    out, "expertise.terraform",
+                    f'<- inferred from "{echoed}" via "*.tf"', task)
+
+    def test_plan_pattern_text_as_words_does_not_promote(self):
+        """Asserts SPEC-0005 PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES.
+
+        Guard. A file pattern is never a trigger phrase: a task repeating the
+        words of `**/package-lock.json` and `**/.terraform.lock.hcl` promotes
+        nothing. Held by the mutant "classify a file pattern as a phrase"."""
+        task = "update the package lock json and the terraform lock hcl"
+        out = self.plan(inference_graph(), task)
+        self.assertNotIn("promoted on", out,
+                         f"a file pattern's words promoted a node:\n{out}")
+
+    def test_plan_task_text_is_never_a_pattern(self):
+        """Asserts SPEC-0005 PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES.
+
+        Adversarial. The task token is always the NAME and the piece
+        always the PATTERN; nothing touches the filesystem. `*/*` and
+        `a-z]*/**` would match `*/package.json` and `*.{ts` if the arguments
+        were swapped; `../../nowhere/x.tf` exists nowhere and infers exactly
+        as an existing path would; it comes first in task order, so it is the
+        one echoed."""
+        task = "* */* [a-z]*/** ../../nowhere/x.tf /abs/y.tf"
+        out = self.plan(inference_graph(), task)
+        self.assertLoadSuffix(out, "expertise.terraform",
+                              '<- inferred from "../../nowhere/x.tf" via "*.tf"',
+                              task)
+        self.assertEqual(set(inferred_lines(out)), {"expertise.terraform"},
+                         f"task text was used as a pattern:\n{out}")
+
+    def test_plan_hostile_task_line_never_raises(self):
+        """Asserts SPEC-0005 HOSTILE_TASK_LINE.
+
+        Three outcomes of one failure mode, one subTest each:
+        - the token cap: of the path-like tokens, only the first 64 are
+          considered — the 64th still infers, the 65th does not;
+        - the length skip: a token over 256 characters is skipped, and the
+          next path-like token is the one that infers and is echoed;
+        - an error inside inference (a raising `fnmatch.fnmatchcase`, planted
+          by `_FAULT_IN_FNMATCH`) prints `  ! inference skipped: <class>`
+          before LOAD, keeps the scored entries, and exits 0. Two fault
+          classes: one under RuntimeError and one directly under Exception,
+          so a narrowed handler is caught."""
+        junk = [f"a/b{i}" for i in range(64)]
+        with self.subTest(case="64th path-like token is considered"):
+            task = " ".join(junk[:63] + ["infra/main.tf"])
+            out = self.plan(inference_graph(), task)
+            self.assertLoadSuffix(out, "expertise.terraform",
+                                  '<- inferred from "infra/main.tf" via "*.tf"',
+                                  "63 junk paths + infra/main.tf")
+        with self.subTest(case="65th path-like token is not"):
+            task = " ".join(junk + ["infra/main.tf"])
+            out = self.plan(inference_graph(), task)
+            self.assertEqual(inferred_lines(out), {},
+                             f"a path-like token past the first 64 inferred:\n{out}")
+        with self.subTest(case="token over 256 characters is skipped"):
+            task = "edit " + "x" * 300 + ".tf infra/main.tf"
+            out = self.plan(inference_graph(), task)
+            self.assertLoadSuffix(out, "expertise.terraform",
+                                  '<- inferred from "infra/main.tf" via "*.tf"',
+                                  "a 303-character .tf token, then infra/main.tf")
+        for fault, prelude in (("InjectedFault", _FAULT_IN_FNMATCH),
+                               ("InjectedPlainFault", _PLAIN_FAULT_IN_FNMATCH)):
+          with self.subTest(case=f"an error inside inference ({fault})"):
+            g = build_graph(self.tmp, inference_graph())
+            r = plan_output(g, "edit infra/main.tf", prelude=prelude)
+            out = r.stdout + r.stderr
+            self.assertEqual(r.returncode, 0,
+                             f"an inference error changed the exit status:\n{out}")
+            lines = r.stdout.splitlines()
+            notice = next((i for i, l in enumerate(lines)
+                           if l.startswith("  ! inference skipped: ")), None)
+            load = next((i for i, l in enumerate(lines) if l.startswith("LOAD (")), None)
+            self.assertIsNotNone(
+                notice, f"no '  ! inference skipped: <exception class>' line "
+                        f"after a fault inside inference:\n{out}")
+            self.assertIn(fault, lines[notice], lines[notice])
+            self.assertIsNotNone(load, out)
+            self.assertLess(notice, load, f"the notice must precede LOAD:\n{out}")
+            self.assertEqual(
+                set(load_section(r.stdout)),
+                {"platform.workbench", "stack.workbench", "subsystem.workbench"},
+                f"the fallback is the scored entries alone:\n{out}")
+
+    def test_plan_infers_nothing_without_a_path_token(self):
+        """Asserts SPEC-0005 TASK_LINE_WITHOUT_PATHS.
+
+        Guard. No path-like token, nothing inferred — including a URL, whose
+        `://` token is skipped (§6)."""
+        for task in ("terraform plan output",
+                     "see https://example.com/infra/main.tf"):
+            with self.subTest(task=task):
+                out = self.plan(inference_graph(), task)
+                self.assertNotIn("inferred from", out, out)
+
+    def test_plan_brace_pattern_tail_promotes(self):
+        """Asserts SPEC-0005 PATTERN_BRACE_SPLIT.
+
+        `*.{ts,tsx}` splits at the comma into `*.{ts` (a
+        pattern that matches nothing) and `tsx}` (a one-token phrase). A task
+        naming a `.tsx` path therefore PROMOTES the node on the tail piece;
+        promotion outranks inference in the suffix, and the head piece infers
+        nothing to outrank."""
+        task = "edit web/app.tsx"
+        out = self.plan(inference_graph(), task)
+        self.assertLoadSuffix(out, "expertise.frontend",
+                              '<- promoted on "tsx}"', task)
+
+    def test_plan_bare_dockerfile_infers_nothing(self):
+        """Asserts SPEC-0005 EXTENSIONLESS_BARE_NAME.
+
+        Guard. `Dockerfile` with no directory is not path-like. Held by the
+        mutant "treat a bare extensionless name as path-like"."""
+        out = self.plan(inference_graph(), "edit Dockerfile")
+        self.assertEqual(inferred_lines(out), {}, out)
+
+    def test_plan_dotted_dockerfile_infers(self):
+        """Asserts SPEC-0005 EXTENSIONLESS_BARE_NAME.
+
+        Written with a directory it is path-like: `./Dockerfile` normalizes to
+        `dockerfile` and `docker/Dockerfile` to `docker/dockerfile`; both
+        match `**/Dockerfile`, echoed as written."""
+        for task, echoed in (("edit ./Dockerfile", "dockerfile"),
+                             ("edit docker/Dockerfile", "docker/dockerfile")):
+            with self.subTest(task=task):
+                out = self.plan(inference_graph(), task)
+                self.assertLoadSuffix(
+                    out, "expertise.containers",
+                    f'<- inferred from "{echoed}" via "**/Dockerfile"', task)
+
+    # ---- survivor guards -------------------
+
+    def test_plan_task_wildcard_never_matches_a_slash_pattern(self):
+        """Asserts SPEC-0005 PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES.
+
+        Guard: the pattern `ci/pipeline.yml` keeps its `/`
+        and reaches the whole-path arm; the task token `ci/*` is the NAME
+        there, never the pattern, so it matches nothing."""
+        extra = {"expertise.ci": node_md(
+            "expertise.ci", "expertise", libraries=["ci"],
+            load_when=["ci/pipeline.yml"])}
+        out = self.plan(guard_graph(extra), "edit ci/*")
+        self.assertEqual(inferred_lines(out), {},
+                         f"task text was used as a pattern on the whole-path arm:\n{out}")
+
+    def test_plan_infers_through_a_slash_pattern(self):
+        """Asserts SPEC-0005 PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES.
+
+        Guard, the positive companion: `infra/*.tf` matches the
+        whole path `infra/main.tf`."""
+        extra = {"expertise.infra": node_md(
+            "expertise.infra", "expertise", libraries=["terraform"],
+            load_when=["infra/*.tf"])}
+        task = "edit infra/main.tf"
+        self.assertLoadSuffix(self.plan(guard_graph(extra), task), "expertise.infra",
+                              '<- inferred from "infra/main.tf" via "infra/*.tf"', task)
+
+    def test_plan_infers_literal_name_pattern_in_a_subdirectory(self):
+        """Asserts SPEC-0005 PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES.
+
+        Guard: a pattern with no `/` matches the path's LAST
+        SEGMENT, so a pattern that begins with a literal file name matches it
+        in any directory; matched against the whole path it would not.
+
+        The bare piece `requirements.txt` would not serve: under §6 a piece
+        with neither `*` nor `/` is a trigger PHRASE (measured: it promotes),
+        so the pattern here is `requirements*.txt`."""
+        extra = {"expertise.pydeps": node_md(
+            "expertise.pydeps", "expertise", libraries=["python"],
+            load_when=["requirements*.txt"])}
+        task = "bump svc/requirements.txt"
+        out = self.plan(guard_graph(extra, DECOY_VOCABULARY + " svc requirements txt"),
+                        task)
+        self.assertLoadSuffix(
+            out, "expertise.pydeps",
+            '<- inferred from "svc/requirements.txt" via "requirements*.txt"', task)
+
+    def test_plan_slash_piece_without_star_is_a_pattern(self):
+        """Asserts SPEC-0005 PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES.
+
+        Guard: `/` alone marks a pattern: `ci/pipelines.yml`
+        holds no `*` and is still a pattern, so the node is inferred, not
+        promoted."""
+        extra = {"expertise.ci": node_md(
+            "expertise.ci", "expertise", libraries=["ci"],
+            load_when=["ci/pipelines.yml"])}
+        task = "edit ci/pipelines.yml"
+        out = self.plan(guard_graph(extra, "edit ci/pipelines.yml pipelines yml",
+                                    name="pipelines"), task)
+        self.assertLoadSuffix(
+            out, "expertise.ci",
+            '<- inferred from "ci/pipelines.yml" via "ci/pipelines.yml"', task)
+
+    def test_plan_inference_reports_first_path_in_task_order(self):
+        """Asserts SPEC-0005 PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES.
+
+        Guard: two task paths match two of terraform's
+        patterns; the suffix names the first PATH in task order, then its
+        first matching pattern."""
+        task = "edit .terraform.lock.hcl infra/main.tf"
+        self.assertLoadSuffix(
+            self.plan(inference_graph(), task), "expertise.terraform",
+            '<- inferred from ".terraform.lock.hcl" via "**/.terraform.lock.hcl"',
+            task)
+
+    def test_plan_backslash_only_token_is_not_path_like(self):
+        """Asserts SPEC-0005 PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES.
+
+        Guard: the path-like test runs on the stripped
+        token before normalization, and `\\` is outside the extension form,
+        so `infra\\main.tf` is not path-like and infers nothing."""
+        out = self.plan(inference_graph(), "edit infra\\main.tf")
+        self.assertEqual(inferred_lines(out), {}, out)
+
+    def test_plan_long_token_flood_does_not_use_the_cap(self):
+        """Asserts SPEC-0005 HOSTILE_TASK_LINE.
+
+        Guard: over-long tokens are skipped BEFORE the
+        count, so 64 of them cannot use the cap up."""
+        task = " ".join(["x" * 300 + ".tf"] * 64 + ["infra/main.tf"])
+        self.assertLoadSuffix(self.plan(inference_graph(), task),
+                              "expertise.terraform",
+                              '<- inferred from "infra/main.tf" via "*.tf"',
+                              "64 over-long .tf tokens, then infra/main.tf")
+
+    def test_plan_cap_counts_only_path_like_tokens(self):
+        """Asserts SPEC-0005 HOSTILE_TASK_LINE.
+
+        Guard: the cap is 64 PATH-LIKE tokens; 70 plain words
+        before the path do not count against it."""
+        task = " ".join([f"word{i}" for i in range(70)] + ["infra/main.tf"])
+        self.assertLoadSuffix(self.plan(inference_graph(), task),
+                              "expertise.terraform",
+                              '<- inferred from "infra/main.tf" via "*.tf"',
+                              "70 plain words, then infra/main.tf")
+
+    def test_plan_token_of_exactly_256_is_considered(self):
+        """Asserts SPEC-0005 HOSTILE_TASK_LINE.
+
+        Guard: the skip is for tokens LONGER than 256: one of
+        exactly 256 characters is considered, one of 257 is not."""
+        for length, inferred in ((256, True), (257, False)):
+            token = "x" * (length - 3) + ".tf"
+            self.assertEqual(len(token), length)
+            with self.subTest(length=length):
+                out = self.plan(inference_graph(), f"edit {token}")
+                self.assertEqual(
+                    "expertise.terraform" in inferred_lines(out), inferred,
+                    f"a {length}-character token: expected inferred={inferred}:\n{out}")
+
+
+# --------------------------------------------------------------------------
+# Promoted closure
+# --------------------------------------------------------------------------
+
+def closure_graph(with_decoys: bool = True) -> dict:
+    """expertise.alpha composes expertise.beta; expertise.beta requires alpha,
+    composes expertise.gamma, and carries the phrase `metrics exporter` and
+    the pattern `**/otel.yaml`; gamma's pieces are `structured logging` and
+    `log sink`.
+
+    Measured on the unmodified tool with the decoys, task "wire the metrics
+    exporter into the sink": LOAD is the three decoys; alpha, beta and gamma
+    are all out. Without the decoys, task "metrics exporter": beta is the top
+    scored entry and alpha loads by requires."""
+    nodes = {"root": node_md("root", "root", requires=["expertise.alpha"],
+                             owns=["root.map"])}
+    if with_decoys:
+        nodes.update(decoys())
+    nodes.update({
+        "expertise.alpha": node_md(
+            "expertise.alpha", "expertise", composes=["expertise.beta"],
+            libraries=["alpha"], load_when=["runtime platform"]),
+        "expertise.beta": node_md(
+            "expertise.beta", "expertise", requires=["expertise.alpha"],
+            composes=["expertise.gamma"], libraries=["alpha"],
+            load_when=["metrics exporter, **/otel.yaml"]),
+        "expertise.gamma": node_md(
+            "expertise.gamma", "expertise", requires=["expertise.beta"],
+            libraries=["alpha"], load_when=["structured logging, log sink"]),
+    })
+    return nodes
+
+
+class PromotedClosureTests(_PlanCase):
+    TASK = "wire the metrics exporter into the sink"
+
+    def test_plan_promoted_node_brings_required_parent(self):
+        """Asserts SPEC-0005 PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE.
+
+        `requires:` runs from a promoted entry as from any entry."""
+        out = self.plan(closure_graph(), self.TASK)
+        self.assertLoadSuffix(out, "expertise.beta",
+                              '<- promoted on "metrics exporter"', self.TASK)
+        self.assertIn("expertise.alpha", load_section(out),
+                      f"the promoted node's requires: parent did not load:\n{out}")
+
+    def test_plan_promoted_node_descends_to_named_child(self):
+        """Asserts SPEC-0005 PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE.
+
+        The task names `sink`, a term of gamma's that is not
+        a whole piece (`log sink` needs `log` too), so gamma is not itself
+        promoted and arrives by descent from the promoted beta."""
+        out = self.plan(closure_graph(), self.TASK)
+        self.assertLoadSuffix(out, "expertise.gamma",
+                              '<- composed by expertise.beta on "sink"', self.TASK)
+
+    def test_plan_scored_and_hit_prints_no_suffix(self):
+        """Asserts SPEC-0005 PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE.
+
+        Guard. Precedence rule 1: a node that is both a scored entry and a
+        phrase hit prints no suffix. Held by the mutant "a suffix on a scored
+        entry"."""
+        out = self.plan(closure_graph(with_decoys=False), "metrics exporter")
+        line = load_section(out).get("expertise.beta")
+        self.assertIsNotNone(line, out)
+        self.assertNotIn("<-", line, f"a scored entry printed a suffix:\n  {line}")
+
+    def test_plan_promoted_and_inferred_prints_promotion_only(self):
+        """Asserts SPEC-0005 PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE.
+
+        Precedence rule 2 over 3: beta hits `metrics exporter` AND the task
+        names `deploy/otel.yaml`; only the promotion suffix prints."""
+        task = "wire the metrics exporter in deploy/otel.yaml"
+        out = self.plan(closure_graph(), task)
+        self.assertLoadSuffix(out, "expertise.beta",
+                              '<- promoted on "metrics exporter"', task)
+        self.assertNotIn("inferred from", load_section(out)["expertise.beta"])
+
+    def test_plan_seed_closure_is_accounted_before_promotion(self):
+        """Asserts SPEC-0005 PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE.
+
+        Guard: expertise.cache is reached both by the scored
+        seed subsystem.orders's `requires:` and by descent from the promoted
+        expertise.metrics (the task names `flush`, cache's own term). The
+        scored closure is walked first, so cache is accounted as required,
+        with no `composed by` suffix — exactly as before promotion existed."""
+        nodes = guard_graph({
+            "expertise.metrics": node_md(
+                "expertise.metrics", "expertise", composes=["expertise.cache"],
+                libraries=["metrics"], load_when=["metrics exporter"]),
+            "expertise.cache": node_md(
+                "expertise.cache", "expertise", requires=["expertise.metrics"],
+                libraries=["metrics"], load_when=["flush interval, cache warmup"]),
+        }, "orders service metrics exporter flush", name="orders")
+        nodes["subsystem.orders"] = node_md(
+            "subsystem.orders", "subsystem", requires=["expertise.cache"],
+            load_when=["orders service metrics exporter flush"])
+        task = "orders service metrics exporter flush"
+        out = self.plan(nodes, task)
+        self.assertLoadSuffix(out, "expertise.metrics",
+                              '<- promoted on "metrics exporter"', task)
+        line = load_section(out).get("expertise.cache")
+        self.assertIsNotNone(line, out)
+        self.assertNotIn("composed by", line,
+                         f"the promoted node's descent accounted a node the "
+                         f"scored closure reaches:\n  {line}")
+
+
+# --------------------------------------------------------------------------
+# Reachability through listed nodes' edges
+# --------------------------------------------------------------------------
+
+class ListedNodeEdgesTests(unittest.TestCase):
+
+    def setUp(self):
+        self.assertTrue(GRAPH_LINT.exists(), f"missing tool: {GRAPH_LINT}")
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def lint(self, *, island: bool) -> subprocess.CompletedProcess:
+        """Rooted graph. index.md lists root, subsystem.main and
+        subsystem.listed (A). The root reaches subsystem.main only, never A.
+        subsystem.hidden (B) is named by no index row and
+        reached only by A's `peers:`. With `island`, two unlisted nodes peer
+        each other and nothing else reaches them."""
+        nodes = {
+            "root": node_md("root", "root", requires=["subsystem.main"],
+                            owns=["root.map"]),
+            "subsystem.main": node_md("subsystem.main", "subsystem"),
+            "subsystem.listed": node_md("subsystem.listed", "subsystem",
+                                        peers=["subsystem.hidden"]),
+            "subsystem.hidden": node_md("subsystem.hidden", "subsystem"),
+        }
+        if island:
+            nodes["subsystem.isle-x"] = node_md("subsystem.isle-x", "subsystem",
+                                                peers=["subsystem.isle-y"])
+            nodes["subsystem.isle-y"] = node_md("subsystem.isle-y", "subsystem",
+                                                peers=["subsystem.isle-x"])
+        return run_lint(build_graph(
+            self.tmp, nodes,
+            listed=["root", "subsystem.main", "subsystem.listed"]))
+
+    def test_listed_node_peer_is_reachable(self):
+        """Asserts SPEC-0005 LISTED_NODE_EDGES_REACH.
+
+        Also covers SIBLING_UNREACHABLE_AFTER_GRAFT: a plant-owned index that
+        lists `method.delegation` but not its new siblings is this shape.
+        Measured on the unmodified tool: exit 1, `subsystem.hidden:
+        unreachable from 'root' and unlisted in index.md`."""
+        r = self.lint(island=False)
+        out = r.stdout + r.stderr
+        self.assertNotRegex(
+            out, r"subsystem\.hidden\b[^\n]*unreachable",
+            f"a node reached by a listed node's peers: edge was reported "
+            f"unreachable:\n{out}")
+        # the fixture is otherwise clean, so the whole lint passes.
+        self.assertEqual(r.returncode, 0, out)
+
+    def test_unlisted_peer_island_still_unreachable(self):
+        """Asserts SPEC-0005 ORPHAN_ISLAND.
+
+        Guard. Following a LISTED node's edges must not become following
+        every node's: two mutually peering, unlisted, unreached nodes are
+        each still reported. Held by the mutant "union every node's edges"."""
+        r = self.lint(island=True)
+        out = r.stdout + r.stderr
+        self.assertNotEqual(r.returncode, 0, out)
+        for nid in ("subsystem.isle-x", "subsystem.isle-y"):
+            with self.subTest(node=nid):
+                self.assertRegex(out, re.escape(nid) + r"[^\n]*unreachable", out)
+
+
+# --------------------------------------------------------------------------
+# Delegation leaves route on the installed graph
+# --------------------------------------------------------------------------
+
+# SPEC-0005 §6 "Delegation leaves", first and last columns.
+DELEGATION_SIBLINGS = (
+    ("method.delegation", "who should do this, which specialist, which agent"),
+    ("method.delegation-model-classes", "sonnet or opus, which model class"),
+    ("method.delegation-cycle-economy", "how many increments per spawn, batch size"),
+    ("method.delegation-briefs", "spawn a worker, write a delegation brief"),
+    ("method.delegation-sequencing",
+     "spawn order, parallel or sequential, which spawn waits for which"),
+    ("method.delegation-bounds", "delegation depth, allowlist, can this agent spawn"),
+)
+
+
+class DelegationRoutingTests(unittest.TestCase):
+    """One fresh install of this seed (as SeedAndPlantCopyAgreeTests builds
+    one), shared by every case: the installed router over the installed graph."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._tmp = tempfile.TemporaryDirectory()
+        cls.plant = Path(cls._tmp.name) / "plant"
+        cls.plant.mkdir(parents=True)
+        cls.install = subprocess.run(
+            ["bash", str(SEED / "install.sh"), "claude-code",
+             "--project-dir", str(cls.plant)],
+            capture_output=True, text=True, timeout=300)
+        cls.graph = cls.plant / "docs" / "graph"
+        cls.nodes = {}
+        sys.path.insert(0, str(SEED / "templates" / "knowledge-graph"))
+        try:
+            import frontmatter as fm
+        finally:
+            sys.path.pop(0)
+        for md in cls.graph.rglob("*.md"):
+            text = md.read_text(encoding="utf-8")
+            if not text.startswith("---\n"):
+                continue
+            try:
+                meta, _ = fm.parse(text, md)
+            except Exception:
+                continue
+            if isinstance(meta, dict) and meta.get("id"):
+                cls.nodes.setdefault(meta["id"], meta)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._tmp.cleanup()
+
+    def setUp(self):
+        self.assertEqual(self.install.returncode, 0,
+                         f"install failed:\n{self.install.stdout}\n{self.install.stderr}")
+
+    def sibling(self, nid: str) -> dict:
+        meta = self.nodes.get(nid)
+        self.assertIsNotNone(
+            meta, f"{nid} is not in the installed graph: SPEC-0005 §6 "
+                  f"'Delegation leaves' names it as a sibling of the split")
+        return meta
+
+    def test_delegation_sibling_routes_on_its_phrase(self):
+        """Asserts SPEC-0005 DELEGATION_LEAVES_ROUTE.
+
+        `--plan` on each sibling's representative phrase lists that sibling
+        in LOAD."""
+        for nid, phrase in DELEGATION_SIBLINGS:
+            with self.subTest(sibling=nid):
+                self.sibling(nid)
+                r = plan_output(self.graph, phrase)
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertIn(nid, load_section(r.stdout),
+                              f"--plan {phrase!r} did not load {nid}:\n{r.stdout}")
+
+    def test_delegation_phrase_is_a_load_when_entry(self):
+        """Asserts SPEC-0005 DELEGATION_LEAVES_ROUTE.
+
+        The And: each representative phrase is, verbatim, one of that
+        sibling's `load_when` entries."""
+        for nid, phrase in DELEGATION_SIBLINGS:
+            with self.subTest(sibling=nid):
+                meta = self.sibling(nid)
+                load_when = meta.get("load_when") or []
+                self.assertIn(phrase, load_when,
+                              f"{nid}'s load_when does not carry {phrase!r} "
+                              f"verbatim: {load_when}")
 
 
 # ==========================================================================

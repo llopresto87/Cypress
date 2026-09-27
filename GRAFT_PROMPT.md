@@ -46,7 +46,7 @@ the plant's base — and whether this session can spawn those types is
 host-dependent, because the graft writes them mid-session. A graft across a
 roster rename always produces such a delta. Preflight before the phases that
 dispatch by name, and take the remedy or the recorded fallback in
-`docs/graph/method/delegation.md` (`delegation.harness-registration`). Run this
+`docs/graph/method/delegation-bounds.md` (`delegation.harness-registration`). Run this
 chat rooted at the **plant**, never at the seed.
 
 Hold the **rootstock line** throughout: graft upgrades seed-owned machinery

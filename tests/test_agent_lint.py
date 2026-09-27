@@ -289,6 +289,8 @@ def agent_md(
     description="handles project work",
     tools="[Read, Write, Edit, Glob, Grep, Bash]",
     model="opus",
+    effort="medium",
+    origin=None,
     triggers=("do the work",),
     can_delegate=False,
     max_spawn_depth=None,
@@ -303,11 +305,19 @@ def agent_md(
     `routing_triggers:` — the two malformations the linter must reject.
     `tools=None` omits the `tools:` line, which on the host means the agent
     inherits every tool, the spawn tool included.
+    `effort` defaults to `medium`, a member of SPEC-0005 §6's closed set, so a
+    fixture that is not about effort stays well-formed once agent-lint requires
+    the key; `effort=None` omits the line. `origin=None` omits the ownership
+    marker; `origin="project"` builds a plant's own agent.
     """
     out = ["---", f"name: {name}", f"description: {description}"]
+    if origin is not None:
+        out.append(f"origin: {origin}")
     if tools is not None:
         out.append(f"tools: {tools}")
     out.append(f"model: {model}")
+    if effort is not None:
+        out.append(f"effort: {effort}")
     if triggers is not None:
         out.append("routing_triggers:")
         for t in triggers:
@@ -757,6 +767,153 @@ class LintTriggersTests(unittest.TestCase):
             "--lint must pass over the real agent defs once P0 frontmatter lands:\n"
             f"stdout:\n{r.stdout}\nstderr:\n{r.stderr}"
         ))
+
+
+# ==========================================================================
+# 5a. --lint holds every agent to a declared `effort:` from a closed set
+#     (SPEC-0005 AGENT_DECLARES_EFFORT; failure AGENT_WITHOUT_EFFORT_AFTER_GRAFT).
+#     The closed set and the per-agent defaults have one home, SPEC-0005 §6
+#     "Effort"; the roster test reads the table from there rather than copying
+#     it, so a spec change and a roster change cannot drift apart silently.
+# ==========================================================================
+SPEC_0005 = SEED / "docs" / "specs" / "SPEC-0005-cycle-economy.md"
+
+
+def _spec_effort_table() -> dict:
+    """{agent name: effort} from SPEC-0005 §6 "Effort", the default table.
+
+    The table is the one whose header row is `| Agent | \\`effort:\\` | ...`;
+    its rows are `| \\`<name>\\` | <value> | ...`. Parsing stops at the next
+    heading, so the per-spawn derivation table below it is not read.
+    """
+    assert SPEC_0005.exists(), (
+        f"SPEC-0005 not found at {SPEC_0005}: the effort default table has no "
+        f"home to read, so the roster cannot be compared against it")
+    text = SPEC_0005.read_text(encoding="utf-8")
+    start = text.find("### Effort (`delegation.effort`")
+    assert start >= 0, "SPEC-0005 §6 has no `### Effort (`delegation.effort`` section"
+    end = text.find("\n### ", start + 4)
+    section = text[start:end if end >= 0 else len(text)]
+    table = {}
+    for m in re.finditer(r"^\|\s*`([a-z][a-z-]*)`\s*\|\s*([a-z-]+)\s*\|", section, re.M):
+        table[m.group(1)] = m.group(2)
+    assert table, "SPEC-0005 §6 \"Effort\" holds no parsable default-table rows"
+    return table
+
+
+def _roster_efforts() -> dict:
+    """{agent name: effort or None} read from each shipped agent's frontmatter."""
+    out = {}
+    for f in sorted(ROSTER.glob("*.md")):
+        if f.name.startswith("_"):
+            continue
+        text = f.read_text(encoding="utf-8")
+        head = text[4:text.index("\n---\n", 3)] if text.startswith("---\n") else ""
+        name = re.search(r"^name:\s*(\S+)", head, re.M)
+        eff = re.search(r"^effort:\s*(\S+)", head, re.M)
+        out[name.group(1) if name else f.stem] = eff.group(1) if eff else None
+    return out
+
+
+class LintEffortTests(unittest.TestCase):
+    """SPEC-0005 AGENT_DECLARES_EFFORT: agent-lint --lint refuses an agent with
+    no `effort:` and one whose value is outside {low, medium, high}, whoever
+    owns the agent, and the shipped roster carries SPEC-0005 §6's defaults."""
+
+    def setUp(self):
+        self.tmp_path = Path(tempfile.mkdtemp(prefix="agent-lint-effort-"))
+        self.addCleanup(shutil.rmtree, self.tmp_path, ignore_errors=True)
+
+    def _lint(self, agents):
+        root, dst = build_project(self.tmp_path, agents)
+        return run(dst, ["--lint"], cwd=root)
+
+    def test_lint_accepts_each_value_in_the_closed_set(self):
+        """Asserts SPEC-0005 AGENT_DECLARES_EFFORT.
+
+        Guard: `low`, `medium` and `high` are each accepted, so a rule that
+        refuses more than the closed set's complement fails here."""
+        r = self._lint({
+            "slow": agent_md("slow", effort="low", triggers=["sweep the lint warnings"]),
+            "mid": agent_md("mid", effort="medium", triggers=["write the failing test"]),
+            "deep": agent_md("deep", effort="high", triggers=["design the data model"]),
+        })
+        self.assertEqual(r.returncode, 0, (
+            "--lint must accept every value of the closed set low/medium/high:\n"
+            f"stdout:\n{r.stdout}\nstderr:\n{r.stderr}"))
+
+    def test_lint_fails_on_missing_effort(self):
+        """Asserts SPEC-0005 AGENT_DECLARES_EFFORT.
+
+        An agent with no `effort:` key fails --lint, and the error names the
+        agent and the rule (the `effort` key)."""
+        agents = _valid_roster()
+        agents["lazy"] = agent_md("lazy", effort=None, triggers=["tidy the imports"])
+        r = self._lint(agents)
+        out = r.stdout + r.stderr
+        self.assertNotEqual(r.returncode, 0, (
+            "check missing: agent-lint --lint accepted an agent with no `effort:` "
+            f"key (SPEC-0005 AGENT_DECLARES_EFFORT):\n{out}"))
+        line = next((ln for ln in out.splitlines() if "lazy" in ln), "")
+        self.assertTrue(line, f"--lint must name the agent with no effort:\n{out}")
+        self.assertIn("effort", line,
+                      f"the error naming `lazy` must name the effort rule:\n{out}")
+
+    def test_lint_fails_on_effort_outside_the_set(self):
+        """Asserts SPEC-0005 AGENT_DECLARES_EFFORT.
+
+        `xhigh` is a value the host accepts and the seed's closed set does not;
+        --lint refuses it and names the value."""
+        agents = _valid_roster()
+        agents["eager"] = agent_md("eager", effort="xhigh", triggers=["tidy the imports"])
+        r = self._lint(agents)
+        out = r.stdout + r.stderr
+        self.assertNotEqual(r.returncode, 0, (
+            "check missing: agent-lint --lint accepted `effort: xhigh`, outside "
+            f"the closed set low/medium/high (SPEC-0005 AGENT_DECLARES_EFFORT):\n{out}"))
+        self.assertIn("xhigh", out, f"--lint must name the refused value:\n{out}")
+        self.assertIn("eager", out, f"--lint must name the agent:\n{out}")
+
+    def test_lint_fails_on_plant_agent_without_effort(self):
+        """Asserts SPEC-0005 AGENT_WITHOUT_EFFORT_AFTER_GRAFT.
+
+        A plant's own agent (`origin: project`), authored before this release
+        with no `effort:`, is held to the same rule: --lint exits 1
+        naming it."""
+        agents = _valid_roster()
+        agents["zz-plant-expert"] = agent_md(
+            "plant-expert", origin="project", effort=None,
+            description="owns the mimsy borogove pipeline",
+            triggers=["tune the mimsy borogove pipeline"])
+        r = self._lint(agents)
+        out = r.stdout + r.stderr
+        self.assertEqual(r.returncode, 1, (
+            "check missing: agent-lint --lint accepted a plant agent "
+            "(`origin: project`) with no `effort:` (SPEC-0005 "
+            f"AGENT_WITHOUT_EFFORT_AFTER_GRAFT):\n{out}"))
+        line = next((ln for ln in out.splitlines() if "plant-expert" in ln), "")
+        self.assertTrue(line, f"--lint must name the plant agent:\n{out}")
+        self.assertIn("effort", line,
+                      f"the error naming `plant-expert` must name the effort rule:\n{out}")
+
+    def test_lint_real_roster_effort_matches_the_table(self):
+        """Asserts SPEC-0005 AGENT_DECLARES_EFFORT.
+
+        Each shipped agent's `effort:` equals its row in SPEC-0005 §6's default
+        table, and the table has a row for every shipped agent. (That the
+        shipped roster passes --lint is held by
+        LintTriggersTests.test_lint_real_roster_passes.)"""
+        table = _spec_effort_table()
+        roster = _roster_efforts()
+        self.assertEqual(sorted(set(roster) - set(table)), [], (
+            "shipped agents with no row in SPEC-0005 §6 \"Effort\"; the table "
+            "must cover the roster"))
+        wrong = {n: (roster[n], table[n]) for n in sorted(roster)
+                 if roster[n] != table[n]}
+        self.assertEqual(wrong, {}, (
+            "effort not landed: shipped agent `effort:` (got, want per SPEC-0005 "
+            "§6) differs for: " + ", ".join(
+                f"{n} ({g!r} != {w!r})" for n, (g, w) in wrong.items())))
 
 
 # ==========================================================================

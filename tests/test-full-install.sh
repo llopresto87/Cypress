@@ -163,7 +163,10 @@ grep -q '"SessionStart"' "$T/.claude/settings.json" \
 python3 "$T/docs/graph/agnosticism-lint.py" --root "$T/docs/graph/protocols" >/dev/null \
   || { echo "installed agnosticism-lint.py does not run in the plant" >&2; exit 1; }
 # the prose floor is DELIVERED too: a plant runs it on its own deliverables.
-python3 "$T/docs/graph/prose-lint.py" --file "$T/docs/graph/skills/humanizer.md" >/dev/null 2>&1; prc=$?
+# Findings (exit 1) are the tool working; only exit 2 means it cannot run.
+# `|| prc=$?` keeps a findings exit from tripping set -e before prc is read.
+prc=0
+python3 "$T/docs/graph/prose-lint.py" --file "$T/docs/graph/skills/humanizer.md" >/dev/null 2>&1 || prc=$?
 [ "$prc" -ne 2 ] || { echo "installed prose-lint.py does not run in the plant" >&2; exit 1; }
 need "$T/EXPERT_SEED_INSTALL_PROMPT.md" claude-code
 # 6.0.0: protocols/templates/method are graph-only — no tool-dir copies.

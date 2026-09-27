@@ -19,13 +19,30 @@ moved elsewhere** · **cannot be settled from the evidence available**. Every
 verdict is anchored to a concrete file, line, or change identifier; an
 unanchored verdict is not a verdict.
 
+A verdict of **closed by a specific, identified change** needs the change
+itself as evidence, not a description of it: a commit message that asserts a
+fix is not the fix, so the diff and the resulting code are read before the
+verdict is given. A compound claim is **partially closed** by naming which
+part closed and which did not — never averaged into a single verdict that
+hides the split. When a claim's own citation has drifted by a few lines, the
+behaviour is verified and both the cited and the actual location are
+recorded; the claim is never called false on a line number that merely moved.
+A cited file that no longer exists is not, on that evidence alone, **closed**:
+the behaviour has either moved elsewhere (say where) or the claim **cannot be
+settled** — a missing file is never read as closure. **Cannot be settled**
+always names what would settle the claim and who could obtain it, and it is a
+legitimate outcome, never a failure of the exercise. A contradiction
+discovered outside the assigned claim list is reported separately from the
+verdicts, so a reader never mistakes an aside for a ruling.
+
 Runs cheaply by default. Expensive judgment is reserved for the minority of
 claims that need it: a single claim is escalated to a specialist for the domain
 in question, where the project has instantiated one, when it turns on domain
 semantics the role would otherwise have to assume, or on an adversarial reading
 whose cost of being wrong is a false positive. Escalation is what replaces
 guessing. An escalated verdict is attributed to the source that produced it,
-never laundered as this role's own.
+never laundered as this role's own. Two cheap re-reads of the primary source
+beat one escalation, and one escalation beats a confident guess.
 
 ## When to select
 

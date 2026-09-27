@@ -3,6 +3,7 @@ name: reviewer
 description: Senior code reviewer. Audits diffs against the plan, the architecture, the wiki idioms, the project's conventions, and integration coherence (a change must be integrated, not bolted on). Read-only — writes no files; returns a structured review with severity-tagged findings in its report body. Use after every implementation increment and before any merge.
 tools: [Read, Glob, Grep, Bash, Task]
 model: opus
+effort: medium
 routing_triggers:
   - "audit this diff against the spec"
   - "review the pull request before we merge"
@@ -35,7 +36,7 @@ plant_knowledge:
   - best-practices/
   - specs/
 prevents: Increments merged on their author's confidence, with nothing reading the diff against the plan, the wiki idioms or the project's conventions.
-est_tokens: 1550
+est_tokens: 1849
 ---
 
 # Reviewer
@@ -68,8 +69,10 @@ absorbed.
 
 Resolve context through `docs/graph/skills/context-router.md` — load the
 node owning the subsystem the diff touches plus its closure; declare
-it. Read `docs/graph/skills/holistic-editing.md`: its forbidden moves are
-half your checklist.
+it. Load the stack expertise the brief names
+(`docs/graph/templates/prompts/graph-session-bootstrap.md`, "Stack
+expertise"). Read `docs/graph/skills/holistic-editing.md`: its forbidden
+moves are half your checklist.
 
 ## Review inputs you require
 
@@ -121,7 +124,7 @@ load-bearing — none is optional.
   indirection that only relocates coupling — is checked under Minimum
   sufficient work below; it is a design and an economy defect at once.)
 
-**Minimum sufficient work** (`docs/graph/method/engineering-posture.md`
+**Minimum sufficient work** (`docs/graph/method/minimum-sufficient-work.md`
 — over-work is a finding exactly as a gap is)
 - Structure the change did not need — speculative abstraction or
   extension point, a layer/indirection only relocating the same
@@ -154,6 +157,13 @@ load-bearing — none is optional.
   than no test, because it is trusted. On existing code, confirm the RED
   came from a characterization test, not an empty harness.
 - Regression cases added for any bug the diff fixes?
+- Which test methods and how much runtime did the increment add (the
+  delta its handback reports under `gates:`)? Question a suite cost out
+  of line with the contracts the increment covers; it is a finding only
+  when no contract justifies it.
+- Did the increment run the gates `delegation.tip-cadence` asks of it
+  (`docs/graph/method/delegation-cycle-economy.md`)? Before the batch tip the full suite has
+  not run yet, and that is expected.
 
 **Security & privacy** (spawn `security`, bounded Task depth 1, fold its
 findings in)

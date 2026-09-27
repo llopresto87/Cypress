@@ -43,10 +43,21 @@ declared-variable-audit \
 
 - **Inputs:** the project's own declaration of required names (its single source
   of truth for "what must exist"); the store scope to query; credentials from the
-  environment, never from a flag or a file path passed on the command line.
+  environment, never from a flag or a file path passed on the command line. A
+  declaration may also mark a name as required-secret; that is a second,
+  independent assertion from "must exist" and is checked separately (see
+  Outputs).
 - **Outputs:** one line per declared name — present, absent, or unknown — and a
   summary. The secret flag is reported as a flag; **no value is ever read,
-  printed, logged, or returned**, including in the JSON form.
+  printed, logged, or returned**, including in the JSON form. A declared name
+  that is marked required-secret, exists, but is **not** flagged secret by the
+  store is reported as a **violation** — never as a pass — because an
+  unflagged secret is one the store will happily print or log elsewhere.
+- **A second, differently-authenticated entry point onto the same store** (for
+  example, an interactive operator credential alongside the automation
+  credential the primary path uses) **reuses** the redirect refusal and the
+  single print-sanitization site rather than re-implementing either. A second
+  copy of either is a second place for the same hazard to be reintroduced.
 - **Exit codes:** a **closed vocabulary** — see §3. Adding an outcome means
   adding a code, not overloading one.
 - **Preconditions:** network reach to the store; a credential with permission to
@@ -82,6 +93,16 @@ through the program terminates in exactly one of the declared codes, and there i
 no catch-all. Collapsing (2) into (1) is the dangerous one: it reports missing
 variables that are, in fact, present and merely unreadable, and it does so with
 the confident wording of an authoritative answer.
+
+### List the whole scope, then confirm each missing name individually
+
+List the store's entire scope **unfiltered** on every run, then perform one
+targeted lookup for each name that the unfiltered list did not show. Do not
+optimize this into a single server-side filtered query: a filter would hand
+the **store** the decision of which names the audit gets to examine, which is
+exactly the authority the audit exists to check independently. The two calls
+are not interchangeable, and only the pairing — one unfiltered census, one
+targeted confirmation per apparent gap — gives an honest picture of the scope.
 
 ### Hard refusal to follow redirects
 
@@ -148,6 +169,19 @@ Read the automation marker from the environment the runner sets, and check it
   reads a value, it becomes a thing that must not be logged, cached, printed on
   failure, or included in a diagnostic dump — and one of those will eventually
   happen. Keep the capability it does not have.
+- **Existence is not authorization.** Many stores answer an unauthorized
+  consumer with an empty value rather than an error, so a name the audit finds
+  present proves nothing about whether the thing that will actually consume it
+  is entitled to a usable value. The audit's green covers *the declared name
+  exists somewhere in scope*, never *and this consumer may read it*.
+- **A permission remedy fires only on an explicit refusal status.** It never
+  fires on a redirect (that is outcome (2), handled separately) and never on a
+  malformed or revoked credential presented as if it were a permission gap —
+  conflating the two sends whoever reads the remedy down the wrong fix.
+- **A remedy line never names a vendor role or permission that nobody
+  verified.** A maintainer follows that sentence literally; a plausible-sounding
+  but unconfirmed role name turns the remedy into a wrong instruction with the
+  tool's own authority behind it.
 
 ## 6. Tests that cover it
 
@@ -158,7 +192,15 @@ followed and is classified as refused, with the credential proven not to have
 been re-sent; no code path returns or logs a value, including on the error paths;
 no credential and no automation marker exits as a clean skip; the automation
 marker set with an empty token is a **hard failure**, not a skip; every
-terminating path maps to one of the declared codes and no other.
+terminating path maps to one of the declared codes and no other; a name marked
+required-secret that exists unflagged yields the violation outcome, not a pass.
+
+A second entry point built by reusing the primary path's redirect refusal and
+print-sanitization site is not, by that reuse alone, tested: reused internals
+carry the primary path's test coverage for those internals only, and the
+wrapper's **own** paths (its own argument handling, its own credential read,
+its own dispatch into the shared pieces) need their own cases before a green
+run there is treated as proof rather than as evidence.
 
 - **How to run the tests:** `<the plant's test command for its implementation>`
 
@@ -175,3 +217,8 @@ terminating path maps to one of the declared codes and no other.
 ## 8. Changelog
 
 - 2026-09-13 — created from harvested, generalized capability, by docs-librarian.
+- 2026-09-26 — folded in the unfiltered-list-then-targeted-lookup idiom (§3),
+  the required-secret-flag violation outcome and second-entry-point reuse note
+  (§2), the existence-is-not-authorization and unverified-remedy-name pitfalls
+  (§5), and the reused-internals-are-not-a-tested-wrapper test note (§6), by
+  docs-librarian.

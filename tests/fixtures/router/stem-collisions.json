@@ -127,6 +127,10 @@
    "authoring"
   ],
   [
+   "authorize",
+   "authorizes"
+  ],
+  [
    "backup",
    "backups"
   ],
@@ -173,6 +177,10 @@
    "coding"
   ],
   [
+   "commit",
+   "commits"
+  ],
+  [
    "contract",
    "contracts"
   ],
@@ -193,6 +201,14 @@
    "decisions"
   ],
   [
+   "declare",
+   "declared"
+  ],
+  [
+   "defer",
+   "deferred"
+  ],
+  [
    "deliver",
    "delivers"
   ],
@@ -201,12 +217,20 @@
    "dependency"
   ],
   [
+   "deploy",
+   "deployed"
+  ],
+  [
    "derive",
    "derived"
   ],
   [
    "design",
    "designs"
+  ],
+  [
+   "direct",
+   "directed"
   ],
   [
    "disagree",
@@ -219,6 +243,10 @@
   [
    "edit",
    "editing"
+  ],
+  [
+   "end",
+   "ending"
   ],
   [
    "existing",
@@ -247,6 +275,10 @@
    "finishing"
   ],
   [
+   "fixture",
+   "fixtures"
+  ],
+  [
    "flag",
    "flags"
   ],
@@ -271,13 +303,30 @@
    "improvements"
   ],
   [
+   "increment",
+   "increments"
+  ],
+  [
+   "investigate",
+   "investigating"
+  ],
+  [
+   "keep",
+   "keeps"
+  ],
+  [
    "label",
    "labels"
   ],
   [
    "land",
+   "landed",
    "landing",
    "lands"
+  ],
+  [
+   "landed",
+   "landing"
   ],
   [
    "language",
@@ -301,6 +350,19 @@
    "loaded"
   ],
   [
+   "maintained",
+   "maintains"
+  ],
+  [
+   "merge",
+   "merged",
+   "merging"
+  ],
+  [
+   "merged",
+   "merging"
+  ],
+  [
    "needed",
    "needs"
   ],
@@ -321,6 +383,10 @@
    "owns"
   ],
   [
+   "path",
+   "paths"
+  ],
+  [
    "payload",
    "payloads"
   ],
@@ -331,6 +397,10 @@
   [
    "plant",
    "planted"
+  ],
+  [
+   "print",
+   "printing"
   ],
   [
    "promote",
@@ -375,6 +445,23 @@
    "routing"
   ],
   [
+   "rule",
+   "rules",
+   "ruling"
+  ],
+  [
+   "scope",
+   "scoped"
+  ],
+  [
+   "script",
+   "scripts"
+  ],
+  [
+   "seed",
+   "seeded"
+  ],
+  [
    "session",
    "sessions"
   ],
@@ -397,6 +484,10 @@
   [
    "source",
    "sources"
+  ],
+  [
+   "spawn",
+   "spawns"
   ],
   [
    "spec",
@@ -440,9 +531,21 @@
    "values"
   ],
   [
+   "widen",
+   "widens"
+  ],
+  [
    "work",
    "working",
    "works"
+  ],
+  [
+   "write",
+   "writes"
+  ],
+  [
+   "writer",
+   "writers"
   ]
  ]
 }

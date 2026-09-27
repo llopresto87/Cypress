@@ -61,7 +61,7 @@ The source of truth remains the universal files in `agents/`,
 file, re-run `install.sh github-copilot` to regenerate the
 transformed copies — then reload, because a regenerated
 `.github/agents/*.agent.md` does not appear in the picker of the session that
-regenerated it (`docs/graph/method/delegation.md`,
+regenerated it (`docs/graph/method/delegation-bounds.md`,
 `delegation.harness-registration`).
 
 ## Frontmatter mapping

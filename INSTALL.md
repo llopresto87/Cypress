@@ -39,7 +39,7 @@ That prompt runs one flow in three phases:
   This phase may run from a chat rooted at the seed.
 - **HAND OFF**: the prompt is entered again in a fresh session rooted at your
   project, because on a first install the session that placed the agents may
-  not have registered them; see `docs/graph/method/delegation.md`,
+  not have registered them; see `docs/graph/method/delegation-bounds.md`,
   `delegation.harness-registration`.
 - **GROW IN FULL**: the session carries out `docs/graph/protocols/grow.md` end
   to end, honoring its completeness contract so that every collection your code
@@ -218,7 +218,7 @@ before running `grow` / `graft` or dispatching a specialist by name. The
 installer prints this as its NEXT STEP
 ([registration notice](DOCUMENTATION.md#enf-registration-notice)); the full rule, including the
 role-emulation fallback for when a restart is impossible, lives in
-`docs/graph/method/delegation.md` (`delegation.harness-registration`).
+`docs/graph/method/delegation-bounds.md` (`delegation.harness-registration`).
 
 ## Codex post-install
 
@@ -332,7 +332,7 @@ provided snippet sets it to 64 KiB.
 `opencode.json` has no key for the agent directory; opencode
 discovers `.opencode/agents/*.md` by convention. Confirm the files are there,
 then confirm the session started *after* they were placed
-(`docs/graph/method/delegation.md`, `delegation.harness-registration`). Note the
+(`docs/graph/method/delegation-bounds.md`, `delegation.harness-registration`). Note the
 known gap in `integrations/opencode/README.md`: the seed's `model:` and `tools:`
 frontmatter are Claude-Code-shaped, so on opencode the model class and a leaf's
 tool bound are carried by the brief rather than held by the harness

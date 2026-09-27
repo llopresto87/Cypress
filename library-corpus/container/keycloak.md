@@ -1,14 +1,14 @@
 # keycloak — container
 
 > Project-agnostic, version-durable surface notes, folded into CYPRESS by the
-> harvest protocol. Orientation for a tool, NOT a version-pinned page — for
+> harvest protocol. Orientation for a tool, NOT a version-pinned page. For
 > exact pins, CVEs, and per-release behavior, run `ingest-library` against the
 > project's own lockfile / base-image tag.
 
 ## What it is
 Keycloak is an open-source identity and access management server: an OAuth 2.0 /
 OpenID Connect provider and SAML identity provider that owns users, credentials,
-login flows, and token issuance for everything in front of it — browser
+login flows, and token issuance for everything in front of it: browser
 applications, mobile clients, and machine-to-machine callers. It is distributed
 as a container image and configured declaratively, so in a containerized stack it
 is normally a service of its own rather than a library linked into an
@@ -16,7 +16,7 @@ application.
 
 The unit of isolation is the **realm**: a self-contained tenant holding users,
 groups, roles, clients, client scopes, authentication flows, required actions,
-themes, and mail settings. Applications register as **clients** — *public*
+themes, and mail settings. Applications register as **clients**, either *public*
 (a browser or mobile app that cannot keep a secret) or *confidential* (a
 server-side app or service account that can).
 
@@ -36,7 +36,7 @@ server-side app or service account that can).
   field=value` applies partial updates, `-f <file>` submits a whole
   representation. The admin REST API exposes the same resources for scripting.
 - **Configuration.** Options are supplied interchangeably as CLI flags, `KC_*`
-  environment variables, or a configuration file — hostname, proxy and TLS
+  environment variables, or a configuration file: hostname, proxy and TLS
   behavior, database, health and metrics endpoints, logging.
 - **Build-time vs runtime options.** The server distinguishes options baked into
   an optimized image by a build step from options read at start-up. Which
@@ -46,17 +46,22 @@ server-side app or service account that can).
   holding a secret literally; a file-based vault resolves the reference from a
   mounted file named by realm and key.
 - **SPI providers.** Most subsystems are pluggable behind a service provider
-  interface — email sender, authenticators, event listeners, user federation. A
+  interface: email sender, authenticators, event listeners, user federation. A
   provider is packaged as a jar, placed in the server's providers directory, and
   selected with `--spi-<spi>-provider=<id>`.
 - **Themes.** Login, email, and account templates are overridable per realm.
+- **Client scopes and protocol mappers.** What goes into a token is decided per
+  client by protocol mappers, and a client scope bundles mappers and role scope
+  so clients can share them. A realm's **default** client scopes apply to every
+  token automatically; **optional** ones apply only when the request's `scope`
+  parameter asks for them.
 
 ## Idioms & best practices
 - **Build a derived image when you need providers or themes**, rather than
   bolting them onto the stock image at run time. Compile a provider against the
   jars copied out of *the same server image that will run it* (a multi-stage
   build copying the server's own libraries), so there is no package-repository
-  dependency and provider/server drift is impossible by construction — an
+  dependency and provider/server drift is impossible by construction. An
   incompatibility then surfaces at image-build time instead of as mail that
   silently never sends.
 - **Treat realm import as bootstrap-only.** Startup import skips a realm that
@@ -66,18 +71,41 @@ server-side app or service account that can).
   REST, and keep the seed and the migration set as one artifact.
 - **Give each migration a durable idempotence marker** stored on the object it
   changes (a realm or client attribute, say), rather than re-deriving "has this
-  already run?" from the state the migration itself sets — re-derivation breaks
-  the moment an operator changes that state by hand.
+  already run?" from the state the migration itself sets. Re-derivation breaks
+  the moment an operator changes that state by hand. Not every place that looks
+  like it can hold a marker does: a **user attribute** is silently dropped when
+  the realm's declarative user profile does not admit unmanaged attributes, and
+  a **required action** clears when the user completes it, so it cannot tell
+  "never applied" from "applied and done". A realm attribute survives both.
+- **Put a reverse proxy in front and expose only the public surface.** Expose
+  the realm, well-known and static-resource paths (`/realms/`, `/.well-known/`,
+  `/resources/`) publicly; keep `/admin/` and the master realm
+  (`/realms/master/`) internal; block health and metrics at the proxy. Better
+  still, serve the admin console and admin REST API on a separate hostname or
+  context path from the public frontend URLs, so the proxy rule becomes a
+  hostname split instead of a path list.
+- **Forwarded headers are opt-in and must be overwritten, not appended.** The
+  server trusts `X-Forwarded-*` / `Forwarded` only when its proxy-headers option
+  is set explicitly. The proxy in front must **overwrite** those headers with its
+  own values, so a client cannot inject a false address, and the server's
+  trusted-proxy-addresses option (a list of addresses or CIDRs) then narrows
+  whose headers it believes. Trust a declared subnet, not a resolved container
+  address (see [`docker.md`](./docker.md)).
+- **Plan production for more than one instance.** Run two or more instances,
+  wire a readiness check to the readiness health endpoint, and set a limit on
+  queued HTTP requests explicitly; left unset, the queue is unbounded, so
+  overload shows up as latency growing without limit instead of fast rejection. If a single instance is the declared shape, say so
+  where the deployment is described, so the gap reads as a decision.
 - **Never update a realm with a whole-document PUT.** Submitting a full realm
   representation replaces it wholesale and silently drops whatever the submitted
-  document omits — password policy, brute-force settings, token lifespans. Use
+  document omits: password policy, brute-force settings, token lifespans. Use
   per-field updates.
 - **Keep secrets out of the environment.** Put a vault reference in the realm and
   mount the value; an SMTP or client secret in a plain environment variable is
   visible to anything that can inspect the container.
 - **Decide the hostname configuration deliberately**, because the configured
   hostname is what the server stamps as the token issuer even for requests that
-  arrive on an internal address. Every validator — browser-facing and internal —
+  arrive on an internal address. Every validator, browser-facing and internal,
   has to agree on that issuer string.
 - **Enable brute-force protection and keep action-token lifespans short.**
   Invitation, verify-email, and reset-credential tokens are bearer credentials
@@ -93,7 +121,7 @@ server-side app or service account that can).
   internally; validation fails on one side or the other. Reconcile front-channel
   and back-channel URLs explicitly instead of letting each hop guess.
 - **A realm export stamps the version of the server that produced it** inside the
-  JSON. That is export metadata, not the running server's version — never read a
+  JSON. That is export metadata, not the running server's version. Never read a
   pin from it.
 - **Recreating the container re-runs the entrypoint**, including any realm
   reconciliation it performs. Everything the entrypoint does must be idempotent,
@@ -110,7 +138,7 @@ server-side app or service account that can).
   ships those relaxations with it.
 - **Older major lines exposed configuration, hostname handling, and the
   build/runtime split differently.** Recipes found in the wild are frequently
-  written against a different line than the one you are running — confirm against
+  written against a different line than the one you are running. Confirm against
   the pin in use.
 
 ## Upstream docs

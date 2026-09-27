@@ -308,6 +308,121 @@ lint >/dev/null || { echo "the bare NNNN-<slug>.md filename form must resolve to
 rm -rf "$G/decisions"
 echo "  a filed decision resolves under either filename form — OK"
 
+# 24. control: a fenced `### Increment` is an example of the shape, not an
+# increment. Inside §9 it must not be parsed as a third increment; in a later
+# section it must not trip the outside-§9 check in case 25.
+FENCE=$'```markdown\n### Increment 3 — example of the shape\n- Spec contracts: SPEC-0001/EXAMPLE\n```\n\n'
+write_plan "sub:## 10. Verification Plan=${FENCE}## 10. Verification Plan"
+lint >/dev/null || { echo "a fenced increment heading inside §9 must stay green" >&2; lint; exit 1; }
+write_plan "sub:- 2026-09-09: grill pass; spawns orchestrator.1 (research-scout), orchestrator.2 (architect).=- 2026-09-09: grill pass; spawns orchestrator.1 (research-scout), orchestrator.2 (architect).
+
+## 16. Notes
+
+${FENCE}"
+lint >/dev/null || { echo "a fenced increment heading outside §9 must stay green" >&2; lint; exit 1; }
+echo "  a fenced increment heading is not an increment — OK"
+
+# 25. an increment heading outside §9 is invisible to every plan check: its
+# dependencies, contracts and required fields go unread and the plan still
+# passes. A plan for a second spec appended as a new top-level section is the
+# common way to get there. The heading below is well formed, so its location
+# is the only thing wrong with it.
+write_plan "sub:- 2026-09-09: grill pass; spawns orchestrator.1 (research-scout), orchestrator.2 (architect).=- 2026-09-09: grill pass; spawns orchestrator.1 (research-scout), orchestrator.2 (architect).
+
+## 16. Plan for a second spec
+
+### Increment 9 — orphan
+- Spec contracts: SPEC-0001/SUBMIT_VALID_FORM
+- Files touched: src/forms/export.py
+- Tests to write (RED): test_export_orphan
+- Behavior added: export
+- Gate: unit tests
+- Rollback path: revert
+- Effort: 1 cycle
+- Depends on: none
+"
+expect_fail 'outside §9' 'increment heading outside §9'
+
+# ---------------------------------------------------------------------------
+# The code-fence rules. A fence is an example, not the plan, and the rules for
+# where one opens and closes follow CommonMark. Each case below plants a fence
+# whose misreading would expose (or hide) plan structure, so the lint's verdict
+# changes if the rule is broken. Cases 27-32 run before 26 so that every rule
+# is checked even while 26 is red.
+# ---------------------------------------------------------------------------
+expect_pass() {  # $1 = description
+  local out
+  out="$(lint 2>&1)" || { echo "expected PASS ($1)" >&2; echo "$out" >&2; exit 1; }
+}
+EXAMPLE_HEAD=$'### Increment 3 — example of the shape\n'
+CHANGELOG='- 2026-09-09: grill pass; spawns orchestrator.1 (research-scout), orchestrator.2 (architect).'
+
+# 27. a fence closes only on its own character: `~~~` inside a ``` fence, and
+# a lone ``` inside a `~~~` fence, are content. And `~~~` opens a fence at all.
+FENCE=$'```markdown\n~~~\n'"$EXAMPLE_HEAD"$'~~~\n```\n\n'
+write_plan "sub:## 10. Verification Plan=${FENCE}## 10. Verification Plan"
+expect_pass '~~~ inside a ``` fence does not close it'
+FENCE=$'~~~markdown\n```\n'"$EXAMPLE_HEAD"$'~~~\n\n'
+write_plan "sub:## 10. Verification Plan=${FENCE}## 10. Verification Plan"
+expect_pass '``` inside a ~~~ fence does not close it'
+echo "  a fence closes only on its own character — OK"
+
+# 28. a closing run shorter than the opener does not close the fence.
+FENCE=$'````markdown\n```\n'"$EXAMPLE_HEAD"$'```\n````\n\n'
+write_plan "sub:## 10. Verification Plan=${FENCE}## 10. Verification Plan"
+expect_pass 'a ``` run does not close a ```` fence'
+echo "  a shorter closing run does not close — OK"
+
+# 29. a line with an info string after the run opens nothing and closes nothing
+# inside a fence: only a bare run closes.
+FENCE=$'```\n```python\n'"$EXAMPLE_HEAD"$'```\n\n'
+write_plan "sub:## 10. Verification Plan=${FENCE}## 10. Verification Plan"
+expect_pass 'a run with an info string does not close'
+echo "  a closing line with an info string does not close — OK"
+
+# 30. an unclosed fence runs to the end of the file, as CommonMark reads it:
+# the heading under it is an example, not an increment outside §9.
+write_plan "sub:${CHANGELOG}=${CHANGELOG}
+
+\`\`\`markdown
+### Increment 9 — example, never closed
+- Spec contracts: SPEC-0001/EXAMPLE
+"
+expect_pass 'an unclosed fence runs to EOF'
+echo "  an unclosed fence runs to the end — OK"
+
+# 31. CRLF line endings: the same plan, fence and all, lints the same.
+FENCE=$'```markdown\n'"$EXAMPLE_HEAD"$'```\n\n'
+write_plan "sub:## 10. Verification Plan=${FENCE}## 10. Verification Plan"
+python3 -c 'import sys,pathlib; p=pathlib.Path(sys.argv[1]); p.write_bytes(p.read_bytes().replace(b"\n", b"\r\n"))' "$G/plans/grill.md"
+expect_pass 'a CRLF plan with a fenced example'
+echo "  a CRLF plan lints like an LF plan — OK"
+
+# 32. a `## 9.` header inside a fence opens no section: §9 stays the real one.
+write_plan "sub:${CHANGELOG}=${CHANGELOG}
+
+\`\`\`markdown
+## 9. Implementation Plan
+an example of the header, not the plan
+\`\`\`
+"
+expect_pass 'a fenced ## 9. header is not a section'
+echo "  a fenced section header is not a section — OK"
+
+# 26. a field whose value is a fenced block is not blank. A RED command written
+# as a fence under its label is the natural way to give the exact invocation,
+# and reading the masked text made the value vanish: a false "is blank".
+# Case 24 guards the other side: a fenced `- Label:` line is still no field.
+write_plan "sub:- Tests to write (RED): test_reject_bad_schema=- Tests to write (RED):
+  \`\`\`bash
+  pytest tests/test_forms.py::test_reject_bad_schema
+  \`\`\`"
+out="$(lint 2>&1)" && rc=0 || rc=$?
+if [[ $rc -ne 0 ]] || grep -q 'is blank' <<<"$out"; then
+  echo "a fenced field value must not read as blank (exit $rc)" >&2; echo "$out" >&2; exit 1
+fi
+echo "  a fenced field value is a value — OK"
+
 # 13. no plan at all -> SKIP, exit 0
 rm -rf "$G/plans/grill" "$G/plans/grill.md"
 lint >/dev/null

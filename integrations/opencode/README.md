@@ -64,7 +64,7 @@ Neither is fixable in `opencode.json` — the fix is for `install.sh` to emit a
 **transformed** projection for opencode the way it already does for Copilot
 (`install_github_copilot` rewrites frontmatter per agent). Until then, treat the
 model class and the leaf tool bound as carried by the brief on opencode, exactly as
-`docs/graph/method/delegation.md` describes for role emulation
+`docs/graph/method/delegation-bounds.md` describes for role emulation
 (`delegation.harness-registration`); the
 [tool allow-list row](../../DOCUMENTATION.md#enf-tool-allowlist) records the gap.
 
@@ -146,7 +146,7 @@ Creates copies by default (`--symlink` opts into live seed links) from the seed 
 ## Bounded execution has no hook here
 
 The seed wires no pre-tool hook for opencode, so the bounded-execution clauses of
-`core/method/engineering-posture.md` §14 (`toolcraft.bounded-execution`) are the agent's own discipline
+`core/method/bounded-execution.md` (`toolcraft.bounded-execution`) are the agent's own discipline
 rather than a hook's check: every shell command that can hang (service
 control, process signalling, package managers, installers, builds, log
 followers) carries an explicit `timeout`, or is launched detached with its

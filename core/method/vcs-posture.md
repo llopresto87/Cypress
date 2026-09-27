@@ -20,10 +20,14 @@ load_when:
   - "open a PR, publish the branch, merge to the default branch"
   - "who authorizes a push, a deploy, or lifting a no-change rule"
   - "git worktree, parallel checkout, second clone for the same task"
+  - "a worktree just to measure a baseline across two commits"
+  - "two workstreams in one uncommitted tree, split a working tree into two commits"
+  - "abandon the old branch, re-derive the work on a new branch, unmerged commits left behind"
+  - "test an unmerged branch in CI without merging, per-run source ref override"
   - "commit trailer, co-authored-by line, who signs the commit"
   - "which language for code comments or the deliverable"
 prevents: Work published without the owner's authorization, several working trees drifting apart, and commit identity decided per session.
-est_tokens: 1050
+est_tokens: 1900
 ---
 
 # VCS posture
@@ -46,6 +50,18 @@ uncommitted is a lapse with no known-good state to return to.
 Parking work is the same discipline seen sideways: record the pin
 commit, keep the patch outside the tree, verify the tree is
 byte-identical to the pin afterwards, and say where the work went.
+
+Splitting one uncommitted tree into two commits is the same rule under
+load. An uncommitted tree is a shared mutable surface: two unrelated
+workstreams left in it couple silently, and every day they stay there
+widens the entanglement. The split is a method, not a guess. Back up the
+shared files first. Strip the other workstream's blocks **by exact
+content match, never by line number**, because in interleaved work the
+first removed block moves every line number after it. Commit the first
+half, restore the shared files from the backup, and commit the second
+half. Then **prove every shared file byte-identical to its backup**
+before anything is published. Without that proof the two commits are a
+claim; with it they are a measurement.
 
 ## 2. Publishing is a separate authorization — MANDATE
 
@@ -82,8 +98,20 @@ compounds through local commits. State diverges silently between trees —
 each looks clean and passes its own gates, and the divergence surfaces
 only at merge, where the recovery cost exceeds any parallelism the second
 tree bought. Parallel work that a task genuinely needs is serialized at
-the commit boundary inside the one tree (`method.delegation` bounds the
-workers), never multiplied across trees.
+the commit boundary inside the one tree (`method.delegation-bounds`
+bounds the workers), never multiplied across trees.
+
+When work is re-derived onto a new branch instead of compounding on the
+old one, the old branch is swept before it is left behind. A scope filter
+drawn on the list of findings or tasks does not filter the branch: a fix
+committed there and never merged is lost silently, and nothing in the
+new round's process will notice. The sweep is mechanical. For every
+commit on the old branch that the new one lacks, check ancestry against
+the new tip (`git merge-base --is-ancestor <sha> HEAD`), then check
+whether the change it made, or an independent twin of it, was
+re-implemented on the new branch. What remains is the list of work
+actually still open, and it is usually far shorter than the count of
+unmerged commits suggests. Record it rather than infer it.
 
 The ban also has a measurement rationale, and it is the sharper one. A
 second tree does not only diverge in state, it *measures differently*: a
@@ -127,7 +155,12 @@ commit; the ask belongs to grow Phase 1 / adopt-existing.
   exists only in CI is recorded as unexecuted in the delivery, not
   turned into an authorization.
 - Opening a pull request publishes the branch: it needs the push
-  authorization it implies.
+  authorization it implies. Merging to get code tested is publishing
+  too (§2). To exercise an unmerged branch in CI, parameterize the run's
+  source ref (the platform's per-run branch or repository override)
+  and leave the default branch alone. Record the parameter recipe where
+  the next session will find it; a run that depends on such an override
+  is borrowed, not deployed (`method.release-posture` §1).
 
 ## Neighbours
 

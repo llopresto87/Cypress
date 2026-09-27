@@ -25,11 +25,14 @@ distinct that a single "supported / not supported" table would blur:
   agent or person decides and no tool can, the fourth label its 2026-09-14
   amendment added), extended here across all five hosts.
 
-Every cell below is one of exactly six classes. They are not a second
-vocabulary: they are ADR-0003's labels split by *why* a host lands where it
-does, because one "supported / not supported" column would blur a missing
-feature, a lossy transform, and a field the harness never reads. The
-right-hand column says which ADR-0003 label each class is.
+Every cell below is one of exactly six classes, with one deliberate
+exception: the Effort override row uses `not recorded` where whether the host
+reads the field at all has never been confirmed either way (footnote 6). The
+six classes are not a second vocabulary: they are ADR-0003's labels split by
+*why* a host lands where it does, because one "supported / not supported"
+column would blur a missing feature, a lossy transform, and a field the
+harness never reads. The right-hand column says which ADR-0003 label each
+class is.
 
 | Class | Meaning | ADR-0003 |
 |---|---|---|
@@ -85,13 +88,14 @@ opencode under that rule, and targets no frozen host.
 | Recursion bound | brief-enforced¹ | mechanically enforced | unsupported | unsupported | mechanically enforced² |
 | Tool allowlists | mechanically enforced | degraded | unsupported | projected | brief-enforced |
 | Model selection | mechanically enforced | degraded | unsupported | unsupported | brief-enforced |
+| Effort override (agent-frontmatter `effort:` key) | mechanically enforced | not recorded⁶ | not recorded⁶ | not recorded⁶ | not recorded⁶ |
 | Session-start hook | mechanically enforced | unsupported | unsupported | projected³ | mechanically enforced |
 | Routing hook | mechanically enforced | unsupported | unsupported | projected³ | mechanically enforced |
 | Status hook | mechanically enforced | unsupported | unsupported | projected³ | mechanically enforced |
 | Per-session injection dedup | mechanically enforced | unsupported | unsupported | degraded³ | unsupported⁵ |
 | Pre-tool guard | mechanically enforced | unsupported | unsupported | unsupported | unsupported |
 | Slash commands | mechanically enforced | mechanically enforced | unsupported | mechanically enforced | mechanically enforced |
-| Always-applied instructions | mechanically enforced (26 261 B) | mechanically enforced (26 261 B) | mechanically enforced (≤ 26 261 B)⁴ | mechanically enforced (31 905 B) | mechanically enforced (24 444 B) |
+| Always-applied instructions | mechanically enforced (26 261 B) | mechanically enforced (26 261 B) | mechanically enforced (≤ 26 261 B)⁴ | mechanically enforced (31 905 B) | mechanically enforced (24 627 B) |
 
 ¹ The leaf/coordinator split (who holds the spawn tool at all: `Agent` on Claude Code, `Task` accepted) is read by the
 harness from each agent's `tools:` line, and ADR-0003 classes that read
@@ -101,7 +105,7 @@ The *numeric* `max_spawn_depth`
 ceiling is not read by the harness at all; only `agent-lint.py --lint`
 checks it statically. The host's own nesting limit on subagents spawning
 subagents is a separate, harness-held ceiling that the seed does not set
-([`delegation.bounds`](../core/method/delegation.md#delegation-is-bounded)). The cell reflects the
+([`delegation.bounds`](../core/method/delegation-bounds.md#delegation-is-bounded)). The cell reflects the
 numeric ceiling, since that is what "recursion bound" asks for a coordinator
 that does hold the spawn tool.
 
@@ -130,6 +134,16 @@ the overlay asks the model to keep. Its ADR-0003 label is `soft`, and it is
 model-cooperative: no harness reads it, and it holds only while the model
 follows the overlay. That is not one of the six classes, so it is recorded
 here and not in the cell (see "Per-session injection dedup" below).
+
+⁶ Whether opencode, Codex CLI, GitHub Copilot or Prime Agent read an `effort`
+key from agent frontmatter at all is not established
+(`docs/specs/SPEC-0005-cycle-economy.md` §6, "Effort";
+`core/method/delegation-model-classes.md`, `delegation.effort`). "not
+recorded" is not one of the six classes above: it names an open question, not
+a confirmed capability gap, so no cell here reads "unsupported" on the
+strength of a guess. Whether Claude Code itself offers a per-spawn override on
+top of the frontmatter key is likewise not recorded
+(`integrations/claude-code/README.md`, "Effort").
 
 ## Per-capability evidence
 
@@ -164,7 +178,7 @@ parity here; the differences are budget mechanics, not enforcement.
   native Claude Code convention; the harness registers it and spawns by
   name via `Agent` (`Task` accepted). When a file written mid-session is
   picked up is in
-  [`delegation.harness-registration`](../core/method/delegation.md#a-specialist-is-spawnable-only-once-the-host-registered-it).
+  [`delegation.harness-registration`](../core/method/delegation-bounds.md#a-specialist-is-spawnable-only-once-the-host-registered-it).
 - **opencode: degraded.** `.opencode/agents/*.md` is discovered the same
   way, but opencode's agent-markdown contract is not a superset of the
   seed's frontmatter: it does not recognize the seed's `model:` or `tools:`
@@ -198,7 +212,7 @@ parity here; the differences are budget mechanics, not enforcement.
   subagents, not a Task tool"). This is not a weaker version of
   registration: there is no "installed but not yet spawnable" lag the way
   there can be on Claude Code after a first install (opencode: not recorded)
-  (`core/method/delegation.md`, `delegation.harness-registration`). It is
+  (`core/method/delegation-bounds.md`, `delegation.harness-registration`). It is
   a different mechanism verified to work, which is exactly what "observed"
   is for.
 
@@ -232,11 +246,11 @@ parity here; the differences are budget mechanics, not enforcement.
   [leaf spawn row of the enforcement table](../DOCUMENTATION.md#enf-leaf-cannot-spawn)
   records. The *numeric* `max_spawn_depth` on a coordinator is read by
   nothing at runtime; only `agent-lint.py --lint`
-  checks it statically (`core/method/delegation.md`,
+  checks it statically (`core/method/delegation-bounds.md`,
   `delegation.bounds`). **brief-enforced** for the number that matters.
   The host's own nesting limit on subagents spawning subagents is a
   separate, harness-held ceiling the seed does not set
-  ([`delegation.bounds`](../core/method/delegation.md#delegation-is-bounded)).
+  ([`delegation.bounds`](../core/method/delegation-bounds.md#delegation-is-bounded)).
 - opencode: `subagent_depth` in `opencode.json` is "the load-bearing key".
   opencode defaults it to 1 ("a depth at which subagents do not launch
   subagents of their own"), and the seed ships it set to 3 to reach its deepest chain;
@@ -310,6 +324,28 @@ parity here; the differences are budget mechanics, not enforcement.
   instruction correctly on every spawn, and nothing forces it.
   **brief-enforced**.
 
+### Effort override
+
+- Claude Code: reads an `effort` key from subagent frontmatter (`low`,
+  `medium`, `high`, `xhigh` and `max`; the level it accepts depends on the
+  model), overriding the session's effort level for every spawn of that
+  definition; a subagent
+  with no `effort` key inherits the session's level. The seed ships only the
+  three lower values in `agents/*.md`
+  (`integrations/claude-code/README.md`, "Effort";
+  `core/method/delegation-model-classes.md`, `delegation.effort`).
+  **mechanically enforced**. This cell rests on the vendor page that
+  `integrations/claude-code/README.md` cites until the fresh-install gate
+  observes it. Whether Claude Code additionally offers a
+  per-spawn override on top of the frontmatter key: not recorded.
+- Every host: the per-spawn derived effort (`delegation.effort`) is
+  **brief-enforced**. The brief records it; no host applies it.
+- opencode, Codex CLI, GitHub Copilot, Prime Agent: whether the host reads an
+  `effort` key from agent frontmatter at all is **not recorded**
+  (`docs/specs/SPEC-0005-cycle-economy.md` §6, "Effort"). This sits outside
+  the six classes above by design (see footnote 6): an unconfirmed read is
+  not the same claim as a confirmed absence, and the matrix does not guess.
+
 ### Session-start hook / Routing hook / Status hook
 
 These three are grouped because their per-host story is identical: a
@@ -325,7 +361,7 @@ status-register summary).
   degrades to no injection, never to a blocked prompt; that asymmetry with
   the pre-tool guard is deliberate, see below). Both are prompt- or
   session-scoped; whether either fires for a subagent's turn is in the
-  [delegation node](../core/method/delegation.md#every-brief-carries-the-graph-discipline).
+  [delegation node](../core/method/delegation-briefs.md#every-brief-carries-the-graph-discipline).
 - **opencode**: `install_opencode()` in `install.sh` places no hook
   file of any kind, and no config key exists for one either
   (`integrations/opencode/README.md`: "the config schema allows no unknown
@@ -367,7 +403,7 @@ fires it. Its classes, `hard` for a matched command on this host and
 [pre-Bash guard row of the enforcement table](../DOCUMENTATION.md#enf-pre-bash-guard).
 **mechanically enforced**, on Claude Code alone. Whether it fires on a
 subagent's Bash calls is recorded in the
-[delegation node](../core/method/delegation.md#every-brief-carries-the-graph-discipline).
+[delegation node](../core/method/delegation-briefs.md#every-brief-carries-the-graph-discipline).
 
 - opencode: "The seed wires no pre-tool hook for opencode, so the
   bounded-execution clauses … are the agent's own discipline rather than a
@@ -439,7 +475,7 @@ function's own computation against current sources:
 | Claude Code | kernel + agent descriptions + skill descriptions | 26 261 B |
 | opencode | kernel + agent descriptions + skill descriptions | 26 261 B |
 | Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 26 261 B |
-| Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 24 444 B |
+| Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 24 627 B |
 | GitHub Copilot | kernel + agent descriptions + skill descriptions + pointer boilerplate | 31 905 B |
 
 (Component figures are not restated here. These moved four times in one release

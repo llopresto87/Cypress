@@ -51,7 +51,12 @@ belongs outside the current scope.
 - Security constraints:
 - Privacy constraints:
 - Data constraints:
-- Cost constraints:
+- Cost constraints: <running cost>
+  - Plan approval (`grill.plan-approval`), <date, or "skipped: the plan
+    did not go to the owner">. Levers this plan uses (any cost lever the
+    plant's doctrine defines, or "none defined"): <lever: the owner's
+    answer, or "default: <value>">
+  - Owner-only prerequisites: <step, the increment that needs it, status>
 - Latency constraints:
 - Compliance constraints:
 - Maintenance constraints:
@@ -70,6 +75,11 @@ and every library, spec, or API a §6 decision rests on — or one line,
 ## 6. Decisions Made
 | Decision | Rationale | Evidence | Reversibility | ADR | Date |
 |---|---|---|---|---|---|
+| Design latitude: <creative / balanced / simple> | <what the answer allows this change> | <the owner's quote, or the session's recorded reason> | reversible | — | <date> |
+
+The `Design latitude:` row is asked once, before the spec's §3, and
+every later step is held to it. Depth: `specify.design-latitude` in
+`docs/graph/protocols/specify-joint-pass.md`.
 
 Reversibility takes the same graduated value here as it does in an ADR,
 under the same rule. Depth: `docs/graph/templates/adr.template.md`.
@@ -92,11 +102,17 @@ under the same rule. Depth: `docs/graph/templates/adr.template.md`.
 
 Each increment names: spec contracts satisfied, files touched, tests
 to write (RED), behavior added, gate that proves it done, rollback
-path, estimated effort, dependencies (the earlier increments it builds
-on and the docs/graph/libraries/ pages it relies on; `none` if neither)
+path, effort (one label), phase (`RED`, `GREEN` or `prose`; the labels,
+and the batch sizes the two set, are `delegation.effort-scale` in
+docs/graph/method/delegation-cycle-economy.md),
+dependencies (the earlier increments it builds on and the
+docs/graph/libraries/ pages it relies on; `none` if neither)
 — and, when it adds structure (a module, layer, interface, service),
 the single responsibility that structure owns and the present variation
 justifying any abstraction. Rows are listed in dependency order.
+Increments live here and only here: grill-lint reads §9 and nothing
+else, so a plan for a second spec is more rows below, never a new
+top-level section.
 
 ### Increment 1 — <title>
 - Spec contracts: <SPEC-NNNN/contract-slug, ...>
@@ -106,10 +122,29 @@ justifying any abstraction. Rows are listed in dependency order.
 - Gate:
 - Rollback path:
 - Effort:
+- Phase:
 - Depends on:
 
 ### Increment 2 — <title>
 - ...
+
+### Increment N — Consolidate the tests this spec added
+- Spec contracts: <every contract whose tests this pass touches>
+- Files touched: <the test files the spec added, and the older ones they overlap>
+- Tests to write (RED): none — consolidation
+- Behavior added: none; survey the spec's tests and their overlaps, rule on each, then merge or delete under `skill.test-first`
+- Gate: the suite stays green and no contract loses its test
+- Rollback path: revert the consolidation commit
+- Effort:
+- Phase:
+- Depends on: <the last feature increment>
+
+<!--
+The consolidation increment is a default, not a gate. Keep it last when
+this spec added many tests. Drop it when the spec added few, and write
+the reason where the row was (`no consolidation: <reason>`). Never run
+it mid-spec. Depth: `grill.increment-shape` in protocols/grill.md.
+-->
 
 <!--
 TWO FORMS, and a mature plan wants the second.
@@ -181,8 +216,10 @@ One action.
 Append, don't fork. When a follow-up investigation or ad-hoc deep-dive
 grows past a changelog line, capture it as a new top-level numbered
 section appended here (§16, §17, …) rather than spawning a separate
-document. One file stays the definitive state of the plan, consistent
-with §15's append-only discipline: earlier sections are struck through
+document. An appended section holds findings, never increments:
+grill-lint checks increments in §9 only, so new plan work goes into §9
+as more rows or ledger files. One file stays the definitive state of
+the plan, consistent with §15's append-only discipline: earlier sections are struck through
 when superseded, never silently rewritten or split off.
 -->
 

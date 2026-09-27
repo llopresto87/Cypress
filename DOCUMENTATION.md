@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 7.29.0
+- Version documented: 7.30.0
 - Repository role: this repo is the seed, the product that is shipped
   into other projects. It is *not* a grown project itself.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -222,6 +222,36 @@ and cheap.
 > field), and the model class (sonnet/opus). Only the risk axis is written
 > `T0–T3`.
 
+### 4.2 The posture leaves
+
+The engineering and design postures load in parts. Engineering posture was
+split into five files and design posture into four, so a task opens only the
+part it needs. The first four leaves below sit beside
+`core/method/engineering-posture.md`, the last three beside
+`core/method/design-posture.md`:
+
+- [Minimum sufficient work](core/method/minimum-sufficient-work.md): how much
+  work a task deserves, which goal wins when goals conflict, the effort level
+  the owner declares, and increments kept homogeneous in risk.
+- [Decision economy](core/method/decision-economy.md): every operation serves
+  a decision, work stops when the result is trusted, and the choice between
+  asking and assuming.
+- [Host parity](core/method/host-parity.md): the authoring host is not the
+  execution target, so a change is validated where it runs; inspecting a
+  shared host writes nothing.
+- [Bounded execution](core/method/bounded-execution.md): a command that may
+  outlive its session is detached, logged, polled with a bound and ended by a
+  marker.
+- [Restrictive policy](core/method/restrictive-policy.md): a rule that
+  restricts must not deny the default; fallbacks are decided in advance, and
+  destructive operations run report-only.
+- [Maintenance contracts](core/method/maintenance-contracts.md): who
+  maintains each artifact, what a generated one owes, and which copy wins
+  when two drift.
+- [Design governance](core/method/design-governance.md): the project's own
+  contract outranks the brief and the industry default, and security-critical
+  machinery uses maintained primitives.
+
 ## 5. The knowledge graph
 
 CYPRESS keeps all maintained project knowledge at `docs/graph/`, structured
@@ -283,6 +313,59 @@ and compounds: every time the project uses a library in a new way, the page
 records the idiom. Agent memory of library APIs is unreliable across versions;
 the wiki is not. Built via the `ingest-library` protocol, optionally accelerated
 by an MCP server like Context7.
+
+### 5.6 Nodes are menus, and leaves stay small
+
+A loaded node's `requires:` closure loads in full. Everything else the node
+lists (leaves, children, links, neighbours, index rows) is a menu. The session
+opens an item only when that item's one-line "load when" serves the task, one
+item at a time, and names each item it passed over as skipped. The rule lives
+in the [context-router skill](skills/context-router/SKILL.md), and step 2 of the
+canonical brief block (`templates/prompts/graph-session-bootstrap.md`) carries
+it into every worker.
+
+The [knowledge-graph skill](skills/knowledge-graph/SKILL.md) owns the shape this
+reading assumes. A leaf holds one topic, and a leaf whose topics load
+separately divides into sibling leaves linked by `peers:`. A branch node (the
+router index, a hub, a subsystem or domain node) is a `## Leaves` menu with a
+one-line "load when" per leaf, plus only the doctrine every leaf needs. A
+branch that carries no routing information owns no fact, and it is deleted as
+a link farm.
+
+Leaves have a size limit. A plant's `graph-lint.py` fails a project node past
+170 lines. In the seed, `tests/seed-lint.py` holds every method, protocol and
+skill body to the same 170 lines (`LEAF_BODY_CEILING`). The files that were
+already longer when the check landed are listed in `OVERSIZED_LEAVES`, and that
+ledger only shrinks: seed-lint fails an entry whose file has fallen to the
+ceiling, and `tools/ratchet-lint.py` fails a new entry. Text that would push a
+leaf over the line moves into a sibling leaf; it is never cut to fit.
+
+### 5.7 Expertise reaches the worker that needs it
+
+`graph-lint.py --plan` scores nodes against the task and loads the top of the
+ranking. Two further routes load an `expertise.*` node beside that cut, with
+no cap on how many.
+
+The first is promotion. When the task names every token of one of the node's
+`load_when` phrases (exactly, or by the same stem), the node loads even though
+its score fell past the cut. The per-prompt route hook runs the same code, so
+promotion reaches a plant's prompts too.
+
+The second is inference from file paths. A `load_when` piece with no
+whitespace that contains `/` or `*` is a file pattern, and a file path the task
+names that matches it loads the node. The match is on strings alone: a path
+from the task is only ever the name compared against a pattern, never a pattern
+itself, and nothing touches the filesystem. At most 64 path-like tokens are
+read, and any token longer than 256 characters is skipped. If promotion or
+inference fails internally, `--plan` prints `inference skipped` and falls back
+to the scored entries instead of raising.
+
+Each node loaded this way says why on its LOAD line, `promoted on "<phrase>"` or
+`inferred from "<path>"`. Reachability also follows the edges of the nodes the
+index lists, so a plant's own `index.md`, which graft leaves untouched, reaches
+new leaves through its existing rows. A worker that finds mid-task it needs
+expertise no node covers names the gap in its handback's `expertise_gap:`
+field, so the caller can ask `research-scout` to build the node.
 
 ## 6. The agent roster and delegation
 
@@ -355,7 +438,7 @@ or isolation — commissions an expert, spawning an Opus author to write one
   chain is depth 3.
 - Every other agent is a spawn-less leaf, one of the two recursion caps the
   harness holds itself; the other is the host's own nesting limit
-  ([delegation bounds](core/method/delegation.md#delegation-is-bounded)). At an out-of-domain boundary a leaf STOPs and hands
+  ([delegation bounds](core/method/delegation-bounds.md#delegation-is-bounded)). At an out-of-domain boundary a leaf STOPs and hands
   back, naming the next specialist, never doing the work itself.
 - Attribution is **detective, not preventive**: a deliver-time `produced_by`
   assertion attributes every unit of work back to the specialist that produced
@@ -385,7 +468,7 @@ written mid-session is host-dependent, so anything that *writes* a projection
 mid-session (the install, a graft roster delta, a freshly commissioned expert)
 can leave a specialist on disk and not yet spawnable. This is why growth must
 run from a session rooted at the target, not the seed. The rule, and what each
-host is recorded to do, lives in `method.delegation`
+host is recorded to do, lives in `method.delegation-bounds`
 (`delegation.harness-registration`).
 
 > Prime Agent is the exception: it has no session-start roster enumeration.
@@ -403,7 +486,7 @@ substitution.
 The brief is the only carrier of the discipline across the spawn boundary: no
 hook the seed installs carries it into a worker's turn. Which hooks run inside a
 worker is host-dependent, and
-[the delegation node](core/method/delegation.md#every-brief-carries-the-graph-discipline)
+[the delegation node](core/method/delegation-briefs.md#every-brief-carries-the-graph-discipline)
 records it. Every brief embeds the canonical block from
 `templates/prompts/graph-session-bootstrap.md` verbatim, plus the routing
 evidence and the handback contract (`templates/prompts/handback-payload.md`).
@@ -414,10 +497,100 @@ A worker hands back exactly once per [turn](#term-turn) (never per tool call),
 on all three ways a turn can end: `complete`, `blocked-out-of-domain`, or
 `failed`.
 
+### 6.8 The delegation leaves
+
+The delegation doctrine is six files: the branch node `delegation.md` and five
+sibling leaves, split from one file with the text moved verbatim. Open the one
+that answers the question in hand.
+
+| File | What it owns |
+|---|---|
+| [`delegation.md`](core/method/delegation.md) | the roster, mechanical routing, the knowledge-or-judgment question on a LOW band, and shared spec authoring; its Neighbours list is the menu of the other five |
+| [`delegation-model-classes.md`](core/method/delegation-model-classes.md) | the model class and reasoning effort each step kind runs on, light variants, and the `effort:` key |
+| [`delegation-cycle-economy.md`](core/method/delegation-cycle-economy.md) | one step per spawn, effort labels and batch sizes, GREEN running its own tests, the batch-tip cadence, mutation at the end, the question file and the ruling pass |
+| [`delegation-briefs.md`](core/method/delegation-briefs.md) | what every brief carries across the spawn boundary |
+| [`delegation-sequencing.md`](core/method/delegation-sequencing.md) | spawn order by dependency, and one writer per file set |
+| [`delegation-bounds.md`](core/method/delegation-bounds.md) | spawn allowlists and depth, host registration, what a turn is, and the spawn trace |
+
+### 6.9 The cycle economy
+
+SPEC-0005 made the development cycle cheaper. Its home is the
+[delegation cycle economy](core/method/delegation-cycle-economy.md) leaf.
+
+**Batches are sized from effort, never fixed.** Every increment in the plan's
+§9 carries an `Effort:` label (`low`, `medium-low`, `medium`, `medium-hard` or
+`hard`) and a `Phase:` (`RED`, `GREEN` or `prose`). A batch is sized by its
+hardest increment, from a scale the owner set: a `tester` spawn writes five to
+seven or more REDs, an `implementer` spawn takes one to five GREENs, and
+security or concurrency code is always a GREEN batch of one. Dependent
+increments share a spawn only in dependency order, one commit each, and a RED
+never shares a spawn with its own GREEN.
+
+**GREEN runs its own tests.** The implementer runs the RED tests itself, with
+no separate tester spawn, and never edits a test or fixture file, in REFACTOR
+included. When the orchestrator observes a RED, it records a `sha256sum` of
+every test and fixture file the RED spawn wrote. It re-checks those hashes
+before it commits a GREEN file set and before the batch-tip run, and a mismatch
+sends the GREEN back to be re-briefed from the recorded RED.
+
+**The full suite runs once per batch.** Each increment runs its targeted tests
+and the gates its files touch. The full suite runs at the batch tip and has to
+pass before anything leaves the branch. Until then, a landed increment is
+"landed, tip pending".
+
+**Questions wait for one ruling pass.** A worker that meets an ambiguity
+appends it to the batch's question file,
+`docs/graph/plans/<unit of work>/questions/batch-<N>.md`, and carries on with
+the work the question does not touch. Once every spawn of the batch has handed
+back, and before the next batch starts, the architect rules on every entry in a
+single pass. A ruling that relaxes or removes a contract, or that amends one on
+a security, data-integrity or money surface, goes to the owner first, and to
+`security` as well for a security surface.
+
+**Mutation runs at the end.** One mutation pass runs per spec, after its last
+increment. It is mandatory for security, data-integrity and money contracts
+and sampled elsewhere.
+
+### 6.10 Spawn effort
+
+Effort here is reasoning effort: a host setting that refines a model class, and
+not a fourth axis. It is a different thing from the effort level an owner
+declares for a task ([minimum sufficient work](core/method/minimum-sufficient-work.md))
+and from an increment's `Effort:` label. Its home is the
+[delegation model classes](core/method/delegation-model-classes.md) leaf.
+
+Every agent definition declares a default `effort:` of `low`, `medium` or
+`high`, and `agent-lint.py --lint` fails a definition with a missing or unknown
+value. The [agents reference](documentation/agents-reference.md) lists each
+agent's default.
+
+A spawn's own effort comes from the first matching row of a five-row
+derivation. A security surface, spec contracts, architecture, rulings, one-way
+doors, threat models, a `devils-advocate` pass, a harvest's faithful-import review
+and diagnosing a red gate are `high`. A light variant is `low`. A spawn that
+carries increments takes the hardest label in its batch. Failing those, the
+step kind's default applies, and last the definition's own. The brief records
+one line, `effort: <value> (row <n>: <reason>)`, and the handback echoes it in
+its `effort:` field.
+
+Claude Code reads `effort` from agent frontmatter. Whether it offers a
+per-spawn override is not recorded, and neither is whether opencode, Codex or
+GitHub Copilot read the key at all. When the derived value differs from the
+definition's default on a host with no recorded per-spawn setting, the brief
+line adds `host applies: definition default <value>` to make the departure
+visible. For a
+`high` step the departure is not accepted: the step goes to a definition whose
+default is `high`, or its output takes a review at `high` before it lands.
+
+A light variant is the low end of that scale. The
+caller keeps it off every security surface before routing, and the variant's
+own escalation conditions are the backstop. A light reviewer stays independent
+of the work it reviews.
+
 ## 7. Protocols (the named workflows)
 
 Protocols are the named workflows an agent enters to do work. State which
-protocol you are entering before you begin. There are 14 protocol nodes in
+protocol you are entering before you begin. There are 17 protocol nodes in
 `protocols/`.
 
 The default T3 sequence:
@@ -433,10 +606,13 @@ separate `implement` protocol).
 | `from-scratch` | 9-phase bootstrap for a brand-new project. |
 | `brainstorm` | Converges a goal or a choice; two modes, user-facing (socratic) and internal. |
 | `specify` | Authoring an executable spec (§1–§12 stable section numbers). |
+| `specify-joint-pass` | Spec and plan written in one pass, after the owner is asked once how much design latitude the change has. |
 | `grill` | Plan-of-record discipline (`grill.md` §0–§15 stable, append-only). |
 | `test-first` | RED → GREEN → REFACTOR → COMMIT, per increment. |
 | `ingest-library` | Build/refresh the LLM wiki. |
 | `verify` | Risk-proportional gate discipline — gate depth follows blast radius. |
+| `verify-new-gates` | A sibling leaf of `verify`: what makes a closed status honest, and what a new gate owes. |
+| `verify-disagreement` | A sibling leaf of `verify`: a check that disagrees with its subject, behavior-preserving changes, and a suite that passes over a known defect. |
 | `recover` | Classified, bounded failure recovery: classify → one move per class → three attempts → escalate. Never an identical retry of a deterministic failure. |
 | `canonize` | The single close-out spawn: persist knowledge AND catalog tools in one librarian brief. |
 | `deliver` | Cold-pickup session summary — compact for T0/T1, full for T2/T3. |
@@ -502,6 +678,32 @@ explicit in `protocols/test-first.md`.
    and is projected into every harness directory the plant carries —
    unprojected, it is on disk and unspawnable, because the host reads its
    roster from there.
+
+### 7.4 The joint specify and grill pass
+
+When a change needs both a new spec and a new plan-of-record,
+[`specify-joint-pass`](protocols/specify-joint-pass.md) runs the two as one
+pass, and each specialist writes its spec part and its plan part in the same
+spawn. Section ownership does not change.
+
+Before any of it, the session asks the owner once how much design latitude the
+change has. `creative` lets the design propose new structure, concepts or
+scope, each recorded as a decision the owner can refuse. `balanced` allows new
+structure where the change needs it and no concept the goal did not ask for.
+`simple` is the smallest design that meets the goal: when it is unclear whether
+something is in scope, it is not. The answer is recorded as a
+`Design latitude:` row in the plan's §6. The press, each ruling pass and every
+brief are held to it by judgment, since no tool reads the row. Anything outside
+the latitude goes to the question file, and only the owner can widen it.
+
+`verify` was split the same way. Its gate discipline stays in
+[`verify`](protocols/verify.md);
+[`verify-new-gates`](protocols/verify-new-gates.md) covers when a closed status
+is honest and what a new gate owes after verification finds a bug no gate
+would have caught; and
+[`verify-disagreement`](protocols/verify-disagreement.md) covers a check that
+disagrees with its subject, a change that must preserve behavior, and a suite
+that has to pass while a known defect lives.
 
 ## 8. Skills, templates, and briefs
 
@@ -790,7 +992,7 @@ core/                 Bootstrap kernel (AGENTS.md) + method/ posture nodes
   method/               tiers, delegation, engineering/design/stewardship/prose posture
 agents/               20 specialist agents (graph nodes; projected to the harness)
   _routes.golden.tsv    golden routing set for agent-lint --eval
-protocols/            14 protocol graph nodes (installed to docs/graph/protocols/)
+protocols/            17 protocol graph nodes (installed to docs/graph/protocols/)
 skills/               15 skill graph nodes (installed flat to docs/graph/skills/)
 templates/            Per-artifact templates (spec, grill, ADR, etc.)
   knowledge-graph/      node contract, graph-lint.py, spec-lint.py, grill-lint.py, router, node template
@@ -920,6 +1122,33 @@ node with the right fields; `owns` globally unique; the eight `rule.*` keys each
 in exactly their mapped home), canonical-block byte-identity in the brief
 templates, and the per-session instruction budget of the integrations.
 
+SPEC-0005 added seven checks. `agent-lint.py --lint` gained rule 5: every agent
+file declares `effort:` as `low`, `medium` or `high`. The installer
+fast-forwards `agent-lint.py` on a re-install, so after a graft or a re-install
+the rule applies to a plant's own commissioned experts and light variants too.
+`tests/seed-lint.py` gained six:
+
+1. The leaf ceiling. Each method, protocol and skill body stays within
+   `LEAF_BODY_CEILING` unless `OVERSIZED_LEAVES` already lists it, and an entry
+   whose file has fallen to the ceiling is itself a finding.
+2. The delegation split. The six delegation files exist, each key moved out of
+   the branch is owned by its sibling (read from each file's `owns:`), and the
+   branch's `peers:` and `## Neighbours` name every sibling.
+3. Adopted rule homes. Each key in `ADOPTED_RULE_HOMES` has exactly its one
+   owner. The same check scans the shipped trees, the reference pages, the
+   front door and `install.sh` for a line that sends a reader to the delegation
+   branch's path beside a key a sibling now owns. A pointer that names only a
+   heading or a section number is left to review.
+4. Handback fields. The HANDBACK block in
+   `templates/prompts/handback-payload.md` carries exactly one `- effort:` line
+   and one `- expertise_gap:` line.
+5. Bootstrap step 2. Step 2 of the canonical block in
+   `templates/prompts/graph-session-bootstrap.md` is the menu step word for
+   word, with only the wrapping free to differ.
+6. Adopted, not pending. The shipped Markdown carries none of the phrases in
+   `PENDING_PHRASES`, the wording that had left adopted rules reading as
+   proposals.
+
 The current figures are printed by the gate itself, not kept here, because
 they move with the roster, the routing corpus and the legal corpus:
 `agent-lint --eval` prints each class's counts and the adversarial budget,
@@ -948,7 +1177,7 @@ count.
 > `tests/ratchets.json`; the comment beside the constant in
 > `integrations/claude-code/agent-lint.py` records why it stands where it does.
 
-Routable body sizes, computed by `tests/seed-lint.py` from the method files on every run: the largest routable body is 1 384 lines (`protocols/graft.md`) and the median is 169 lines, against a ceiling of 1 000 lines for any routable node and 2 500 lines for the three cross-project protocols, `graft`, `grow` and `harvest`. Those three are the only protocols that write into a repository the seed does not own, and a session loads one only while it performs that operation ([ADR-0007](docs/decisions/adr-0007-lifecycle-protocol-ceiling.md)). Both ceilings are ratchets: they may fall freely, and raising either is an owner decision recorded in `tests/ratchets.json`. The always-loaded budget has the same shape, and `EAGER_EXEMPTIONS` in `tests/seed-lint.py` is consequently **empty**: every harness sits under `EAGER_BUDGET`, and the per-harness figures are in the [host capability matrix](documentation/host-capability-matrix.md).
+Routable body sizes, computed by `tests/seed-lint.py` from the method files on every run: the largest routable body is 1 384 lines (`protocols/graft.md`) and the median is 140 lines, against a ceiling of 1 000 lines for any routable node and 2 500 lines for the three cross-project protocols, `graft`, `grow` and `harvest`. Those three are the only protocols that write into a repository the seed does not own, and a session loads one only while it performs that operation ([ADR-0007](docs/decisions/adr-0007-lifecycle-protocol-ceiling.md)). Both ceilings are ratchets: they may fall freely, and raising either is an owner decision recorded in `tests/ratchets.json`. The always-loaded budget has the same shape, and `EAGER_EXEMPTIONS` in `tests/seed-lint.py` is consequently **empty**: every harness sits under `EAGER_BUDGET`, and the per-harness figures are in the [host capability matrix](documentation/host-capability-matrix.md).
 
 ## 15. Glossary
 <a id="glossary"></a>
@@ -972,7 +1201,7 @@ Each entry covers one word that the front door (the README, the install guide, t
 - **Forms:** subagent, subagents
 - **Here:** The host's word for a worker that one session starts to do a delegated task in a context of its own. The [seed](#term-seed)'s prose calls the same thing a worker or a [specialist](#term-specialist). What a subagent inherits from its caller, and which host events reach it, are host-dependent; see the [host capability matrix](documentation/host-capability-matrix.md).
 - **Field:** A secondary assistant instance that a primary session starts for a delegated task, with its own context and a summary-only return to the caller (Claude Code glossary, https://code.claude.com/docs/en/glossary; Claude Code, "Create custom subagents", https://code.claude.com/docs/en/sub-agents; OpenCode, "Agents", https://opencode.ai/docs/agents/; all retrieved 2026-09-24; status: verified)
-- **Implemented at:** `core/method/delegation.md`, `templates/prompts/handback-payload.md`
+- **Implemented at:** `core/method/delegation-briefs.md`, `templates/prompts/handback-payload.md`
 - **Enforcement:** **not a control**. The word names a running instance, not a check
 - **Divergence:** **same**
 - **Why:** kernel §1 and ADR-0002
@@ -1234,9 +1463,9 @@ Each entry covers one word that the front door (the README, the install guide, t
 <a id="term-tier"></a>
 
 - **Forms:** tier, tiers, task tier, load-tier, support tier
-- **Here:** The word is shared loosely by four axes. The task tier, T0–T3, classifies a task by risk and sets how much process it gets; the [tiers node](core/method/tiers.md) is its only home. The load-tier is a node's `tier:` value, 1 to 3, for the router, the fact owners and the [leaf](#term-leaf) documents. The model class of an agent, its `model:` value of sonnet or opus, is a separate axis, and the [delegation node](core/method/delegation.md) owns the distinction between these three. The support tier of a host (first-class, supported or frozen) is the fourth. README uses the task tier.
+- **Here:** The word is shared loosely by four axes. The task tier, T0–T3, classifies a task by risk and sets how much process it gets; the [tiers node](core/method/tiers.md) is its only home. The load-tier is a node's `tier:` value, 1 to 3, for the router, the fact owners and the [leaf](#term-leaf) documents. The model class of an agent, its `model:` value of sonnet or opus, is a separate axis, and the [delegation node](core/method/delegation-model-classes.md) owns the distinction between these three. The support tier of a host (first-class, supported or frozen) is the fourth. README uses the task tier.
 - **Field:** no standard meaning
-- **Implemented at:** `core/AGENTS.md`, `core/method/tiers.md`, `core/method/delegation.md`, `install.sh`
+- **Implemented at:** `core/AGENTS.md`, `core/method/tiers.md`, `core/method/delegation-model-classes.md`, `install.sh`
 - **Enforcement:** The word itself is not a control. Classifying the task tier is **judgment**, in the [tier-classification row](#enf-tier-classification)
 - **Divergence:** **no standard meaning**
 - **Why:** kernel §0, ADR-0006 and ADR-0009
@@ -1278,9 +1507,9 @@ Each entry covers one word that the front door (the README, the install guide, t
 <a id="term-coordinator"></a>
 
 - **Forms:** coordinator, coordinators
-- **Here:** An [agent](#term-agent) whose tool list grants the host's spawn tool, so it can start other agents. Its frontmatter names the agents it may spawn (`delegates_to`) and its depth (`max_spawn_depth`). The [delegation node](core/method/delegation.md) names the coordinators and owns the rule. What the spawn tool is called, and how deep the host lets spawns nest, are host-dependent; see the [host capability matrix](documentation/host-capability-matrix.md).
+- **Here:** An [agent](#term-agent) whose tool list grants the host's spawn tool, so it can start other agents. Its frontmatter names the agents it may spawn (`delegates_to`) and its depth (`max_spawn_depth`). The [delegation node](core/method/delegation-bounds.md) names the coordinators and owns the rule. What the spawn tool is called, and how deep the host lets spawns nest, are host-dependent; see the [host capability matrix](documentation/host-capability-matrix.md).
 - **Field:** no standard meaning
-- **Implemented at:** `core/method/delegation.md`, `agents/{00-orchestrator,01-architect,03-reviewer,09-docs-librarian,growth-orchestrator,multi-agent-architect}.md`, `integrations/claude-code/agent-lint.py`
+- **Implemented at:** `core/method/delegation-bounds.md`, `agents/{00-orchestrator,01-architect,03-reviewer,09-docs-librarian,growth-orchestrator,multi-agent-architect}.md`, `integrations/claude-code/agent-lint.py`
 - **Enforcement:** The word itself is not a control. The spawn bound in its frontmatter is **soft** in ADR-0003's terms: `agent-lint.py` checks the values, and the prose and each [brief](#term-brief) ask the session to keep to them ([delegation-fields row](#enf-delegation-frontmatter)). The leaf side of the split is in the [leaf spawn row](#enf-leaf-cannot-spawn)
 - **Divergence:** **no standard meaning**
 - **Why:** ADR-0002
@@ -1289,9 +1518,9 @@ Each entry covers one word that the front door (the README, the install guide, t
 <a id="term-leaf"></a>
 
 - **Forms:** leaf
-- **Here:** In README's first sense, an [agent](#term-agent) with no spawn tool in its tool list, which hands work outside its domain back to its caller and names who should do it; the [delegation node](core/method/delegation.md) owns this sense. In the graph sense, a [load-tier](#term-tier) 3 document such as a wiki page or a runbook, reached from the node that owns it through an `artifacts:` or `libraries:` edge.
+- **Here:** In README's first sense, an [agent](#term-agent) with no spawn tool in its tool list, which hands work outside its domain back to its caller and names who should do it; the [delegation node](core/method/delegation-bounds.md) owns this sense. In the graph sense, a [load-tier](#term-tier) 3 document such as a wiki page or a runbook, reached from the node that owns it through an `artifacts:` or `libraries:` edge.
 - **Field:** In graph theory, a vertex with no children, or of degree one (no source fetched; status: not recorded)
-- **Implemented at:** `agents/*.md`, `core/method/delegation.md`, `templates/knowledge-graph/_schema.md`, `templates/docs/`
+- **Implemented at:** `agents/*.md`, `core/method/delegation-bounds.md`, `templates/knowledge-graph/_schema.md`, `templates/docs/`
 - **Enforcement:** The word itself is not a control. In the agent sense, the missing spawn tool is **soft** where only a brief holds it, and held by the harness on hosts that read the `tools:` line and withhold a tool it does not list, as the [leaf spawn row](#enf-leaf-cannot-spawn) records
 - **Divergence:** **same** in the graph sense; **no standard meaning** in the agent sense
 - **Why:** ADR-0002 for the agent sense and ADR-0004 for the graph sense
@@ -1317,6 +1546,17 @@ Each entry covers one word that the front door (the README, the install guide, t
 - **Enforcement:** **not a control**. The word names a role, not a check
 - **Divergence:** **no standard meaning**
 - **Why:** ADR-0005
+
+### light variant
+<a id="term-light-variant"></a>
+
+- **Forms:** light variant, light variants
+- **Here:** A lower-budget copy of a shipped [specialist](#term-specialist), commissioned by a [plant](#term-plant) for small, mechanical work with the base agent's mandate unchanged. It reads only the ranges its [brief](#term-brief) names and hands anything outside them back to the base agent; the [model classes node](core/method/delegation-model-classes.md) owns the definition.
+- **Field:** no standard meaning
+- **Implemented at:** `core/method/delegation-model-classes.md`, `templates/agent.template.md`
+- **Enforcement:** **not a control**. The word names a budget, not a check
+- **Divergence:** **no standard meaning**
+- **Why:** SPEC-0005
 
 ### steward
 <a id="term-steward"></a>
@@ -1344,12 +1584,12 @@ Each entry covers one word that the front door (the README, the install guide, t
 <a id="term-turn"></a>
 
 - **Forms:** turn, turns
-- **Here:** One spawn-and-return cycle of a single worker: the caller starts it, it works through as many tool calls as it needs, and it returns control once. The [delegation node](core/method/delegation.md) owns the definition.
+- **Here:** One spawn-and-return cycle of a single worker: the caller starts it, it works through as many tool calls as it needs, and it returns control once. The [delegation node](core/method/delegation-bounds.md) owns the definition.
 - **Field:** In chat models, one exchange of a user message and the model's reply (field usage; status: not recorded)
-- **Implemented at:** `core/method/delegation.md`, `templates/prompts/handback-payload.md`
+- **Implemented at:** `core/method/delegation-bounds.md`, `templates/prompts/handback-payload.md`
 - **Enforcement:** **not a control**. The word names a unit of work, not a check
 - **Divergence:** **different**: a turn here spans many tool calls and ends only when the worker returns
-- **Why:** `core/method/delegation.md:202-205`
+- **Why:** `core/method/delegation-bounds.md:126-129`
 
 ### toolcraft
 <a id="term-toolcraft"></a>
@@ -1377,9 +1617,9 @@ Each entry covers one word that the front door (the README, the install guide, t
 <a id="term-brief"></a>
 
 - **Forms:** brief, briefs
-- **Here:** The written task a session hands a worker when it spawns one. It embeds the canonical graph-discipline text word for word ([brief row](#enf-brief-block)), the routing evidence and the [handback](#term-handback) contract, and the [delegation node](core/method/delegation.md) owns the rule. It is how the routing context reaches a worker; whether anything else from the session reaches a worker's turn is host-dependent, so see the [host capability matrix](documentation/host-capability-matrix.md).
+- **Here:** The written task a session hands a worker when it spawns one. It embeds the canonical graph-discipline text word for word ([brief row](#enf-brief-block)), the routing evidence and the [handback](#term-handback) contract, and the [delegation node](core/method/delegation-briefs.md) owns the rule. It is how the routing context reaches a worker; whether anything else from the session reaches a worker's turn is host-dependent, so see the [host capability matrix](documentation/host-capability-matrix.md).
 - **Field:** A set of instructions for a task, in general usage (field usage; status: not recorded)
-- **Implemented at:** `core/method/delegation.md`, `templates/prompts/graph-session-bootstrap.md`, `templates/prompts/handback-payload.md`
+- **Implemented at:** `core/method/delegation-briefs.md`, `templates/prompts/graph-session-bootstrap.md`, `templates/prompts/handback-payload.md`
 - **Enforcement:** The word itself is not a control. The canonical text a brief embeds is **soft** in the seed's templates and **judgment** in a brief a session writes, as the [brief row of the enforcement table](#enf-brief-block) records
 - **Divergence:** **narrower**
 - **Why:** kernel §1
@@ -1403,7 +1643,8 @@ repo's own `CLAUDE.md`:
 - Run the gates before claiming anything works: `bash tests/run.sh`.
 - Edit the home, never a copy. Each of the eight rules lives in its owning
   node's `rule.*` fact; the kernel keeps only the §3.x anchors. Tier depth →
-  `core/method/tiers.md`; roster/routing/brief depth → `core/method/delegation.md`;
+  `core/method/tiers.md`; roster/routing → `core/method/delegation.md`;
+  brief depth → `core/method/delegation-briefs.md`;
   posture → `core/method/{engineering,design,stewardship,prose}-posture.md`.
 - Behavior change ⇒ bump `manifest.json` version + add a `CHANGELOG.md` entry
   (append-only; supersede, don't rewrite). One scoped exception to append-only:
@@ -1458,9 +1699,18 @@ This section answers which rules a tool holds and which the method only asks the
 | <a id="enf-verify-gates"></a>Gates sized to the change run before work is called done | `protocols/verify.md` | **soft** for each gate that is run; **judgment** for which gates run (the session) | A gate that was not run shows no red | [verify protocol](protocols/verify.md) |
 | <a id="enf-canonize"></a>Each T2 or T3 task ends with one close-out spawn | `protocols/canonize.md`, `agents/09-docs-librarian.md` | **judgment**: the session reports the close-out line, and whoever reads the delivery weighs it | Nothing checks that the close-out spawn ran, or what it recorded | [canonize protocol](protocols/canonize.md) |
 | <a id="enf-attribution"></a>Each unit of delivered work names the specialist that produced it | `protocols/deliver.md`, `templates/prompts/handback-payload.md` | **detective**: the assertion runs at delivery, after the work | The top session runs the assertion on its own work. The `Stop` hook that could hold it is not wired, on purpose (ADR-0003) | [deliver protocol](protocols/deliver.md) |
-| <a id="enf-brief-block"></a>Each brief embeds the canonical graph-discipline text verbatim | `templates/prompts/graph-session-bootstrap.md`, `tests/seed-lint.py` | **soft** for byte identity in the seed's templates; **judgment** for a brief a session writes (the session) | Seed-lint compares the templates in the seed, never the briefs a session writes from them | [delegation node](core/method/delegation.md) |
+| <a id="enf-brief-block"></a>Each brief embeds the canonical graph-discipline text verbatim | `templates/prompts/graph-session-bootstrap.md`, `tests/seed-lint.py` | **soft** for byte identity in the seed's templates; **judgment** for a brief a session writes (the session) | Seed-lint compares the templates in the seed, never the briefs a session writes from them | [delegation node](core/method/delegation-briefs.md) |
 | <a id="enf-charter-duties"></a>An agent keeps the duties its charter states, such as the legal agent reasoning only from its corpus | `agents/*.md` | **soft**: a contract in the agent's prose | The model can depart from its charter, and nothing reads its output against it | [agents reference](documentation/agents-reference.md) |
 | <a id="enf-lifecycle-gate-rows"></a>Each gate row of the grow, graft and harvest tables declares its class | `protocols/grow.md`, `protocols/graft.md`, `protocols/harvest.md`, `tests/seed-lint.py` | **soft**, **detective** or **judgment**, as each row states | Seed-lint checks each row's class against the vocabulary, not whether the class is true | [graft protocol](protocols/graft.md) |
 | <a id="enf-steward-only"></a>Graft and harvest start only on the steward's word | `protocols/graft.md`, `protocols/harvest.md` | **judgment**: the steward | Nothing stops a model that starts one unprompted | [harvest protocol](protocols/harvest.md) |
 | <a id="enf-seed-gate"></a>The seed's own gate runs before a change counts as done | `tests/run.sh`, `tools/gate-registry.py`, `.github/workflows/gate.yml` | **soft** | It runs in the seed, and an install places no CI into a plant. Seed-lint checks the workflow file's shape. Whether a merge requires a green run is not recorded | [§14 Tests and gates](#14-tests-and-gates) |
 | <a id="enf-ratchets"></a>Recorded ceilings and floors move only in their tightening direction | `tools/ratchet-lint.py`, `tests/ratchets.json` | **soft** | A value loosened in `tests/ratchets.json` in the same change passes. `--bless` rewrites the lock from the current values, and `--show` exits 0 | [§14 Tests and gates](#14-tests-and-gates) |
+| <a id="enf-agent-effort"></a>Each agent definition declares a default `effort:` of `low`, `medium` or `high` | `agents/*.md`, `integrations/claude-code/agent-lint.py` | **soft**: `agent-lint.py --lint` exits 1 on a missing or unknown value | It checks that a value is present and in the set, not that it fits the agent's work. Claude Code reads the key from agent frontmatter; whether other hosts read it is not recorded. A plant runs the lint only when a session or the plant's own CI runs it | [delegation model classes](core/method/delegation-model-classes.md) |
+| <a id="enf-spawn-effort"></a>Each spawn's effort is derived from its step and recorded in the brief | `core/method/delegation-model-classes.md`, `templates/prompts/handback-payload.md` | **soft** where the brief carries the value, a contract the worker echoes rather than a setting it applies; **judgment** for which row of the derivation applies (the session) | No tool derives the value or reads the brief line. On a host with no recorded per-spawn setting the worker runs at whatever effort the host applies, and the `host applies:` note records the departure without changing it. The handback's `effort:` echo is a record for whoever reads the delivery; nothing compares it | [delegation model classes](core/method/delegation-model-classes.md) |
+| <a id="enf-leaf-ceiling"></a>A method, protocol or skill body stays within the leaf ceiling | `tests/seed-lint.py` (`LEAF_BODY_CEILING`, `OVERSIZED_LEAVES`), `tools/ratchet-lint.py`, `tests/ratchets.json` | **soft**, and only in the seed's own gate | A file already in `OVERSIZED_LEAVES` passes until it shrinks. A name added to the ledger and to `tests/ratchets.json` in the same change passes, as the [ratchet row](#enf-ratchets) records. Agent files are outside its scope, and a plant's own nodes are held by `graph-lint.py`'s project-node limit instead | [knowledge-graph skill](skills/knowledge-graph/SKILL.md) |
+| <a id="enf-rule-homes"></a>Each rule SPEC-0005 adopted has one home, and the delegation split holds | `tests/seed-lint.py` (`DELEGATION_SPLIT`, `ADOPTED_RULE_HOMES`) | **soft**, and only in the seed's own gate | A stale pointer that names a moved heading or a section number, with no fact key beside the branch's path, passes; review holds those. Only the keys `ADOPTED_RULE_HOMES` lists are checked here, and any other key is held by the general one-home check alone | [§14 Tests and gates](#14-tests-and-gates) |
+| <a id="enf-template-lines"></a>The handback template carries `effort:` and `expertise_gap:`, and the brief block's step 2 is the menu step | `templates/prompts/handback-payload.md`, `templates/prompts/graph-session-bootstrap.md`, `tests/seed-lint.py` | **soft** for the seed's templates; **judgment** for a brief or handback a session writes (the session) | Seed-lint compares the templates in the seed, never the briefs a session writes from them or the handbacks workers return. Step 2 is compared with whitespace collapsed, so a re-wrap passes | [delegation briefs](core/method/delegation-briefs.md) |
+| <a id="enf-adopted-not-pending"></a>An adopted rule is not worded as still pending | `tests/seed-lint.py` (`PENDING_PHRASES`) | **soft**, and only in the seed's own gate | It matches a fixed list of phrases in the shipped Markdown; pending wording outside that list passes | [§14 Tests and gates](#14-tests-and-gates) |
+| <a id="enf-menu-rule"></a>A session opens a listed leaf only when its "load when" serves the task | `skills/context-router/SKILL.md`, `templates/prompts/graph-session-bootstrap.md` | **judgment**: the session, then whoever reads its NOT LOADED list | Nothing counts what a session opened. `graph-lint.py --plan` suggests a load set and exits 0 | [context-router skill](skills/context-router/SKILL.md) |
+| <a id="enf-red-hashes"></a>A GREEN spawn leaves the RED tests unchanged | `core/method/delegation-cycle-economy.md` | **detective**: the orchestrator compares its recorded `sha256sum` of each RED test and fixture file before a GREEN commit and before the batch-tip run; **judgment** for whether it records and compares them (the session) | No tool records or compares the hashes, so a session that skips the step sees no red | [delegation cycle economy](core/method/delegation-cycle-economy.md) |
+| <a id="enf-design-latitude"></a>Work stays within the design latitude the owner gave | `protocols/specify-joint-pass.md` | **judgment**: the press, each ruling pass and each brief | No tool reads the `Design latitude:` row or compares a design with it | [specify joint pass](protocols/specify-joint-pass.md) |

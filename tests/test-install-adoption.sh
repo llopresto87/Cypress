@@ -161,7 +161,8 @@ case_d2() {
       < <(ls "$T"/docs/graph/protocols/*.md | head -3)
   [[ ${#deleted[@]} -eq 3 ]] || fail "D2: could not find 3 protocol files to delete"
   rm -f "${deleted[@]}"
-  out="$("$ROOT/install.sh" claude-code --project-dir "$T" --copy 2>&1)"; rc=$?
+  rc=0
+  out="$("$ROOT/install.sh" claude-code --project-dir "$T" --copy 2>&1)" || rc=$?
   [[ $rc -eq 0 ]] || fail "D2: re-install after deleting protocol files did not exit 0: $out"
   for f in "${deleted[@]}"; do
       [[ -f "$f" ]] || fail "D2: $f was not restored"
@@ -325,6 +326,13 @@ case_check_stale() {
 case_migration_date() {
   W="$(mktemp -d)"
   trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
+  # install.sh stamps backups and ledger rows in LOCAL time (see bak_path()'s
+  # "Local time throughout"). Pin TZ for this whole case so the installer's
+  # local time and this case's own `date` calls read the same clock —
+  # independent of the host's zone and of where local midnight falls in it.
+  # This only affects this case's own bash process (see the __case dispatch
+  # above), not sibling cases running concurrently.
+  export TZ=UTC
   # A ledger row states when the replacement HAPPENED, not when the row was
   # written. The orphan sweep re-files backups taken on runs long past, and
   # stamping those with the sweep's own date makes recoverable history
@@ -347,17 +355,25 @@ case_migration_date() {
   grep -qF "on 2024-01-02" <<<"$row" \
       || fail "migration-date: the row must carry the backup's own date, not the \
 sweep's. Got: $row"
-  TODAY="$(date -u +%Y-%m-%d)"
-  grep -qF "$TODAY" <<<"$row" \
+  SWEEP_DAY="$(date +%Y-%m-%d)"
+  grep -qF "$SWEEP_DAY" <<<"$row" \
       && fail "migration-date: the re-filed row was stamped with this run's date \
-($TODAY), which is the false claim. Got: $row"
-  # ...and a LIVE replacement still records the day it happened, which is today.
+($SWEEP_DAY), which is the false claim. Got: $row"
+  # ...and a LIVE replacement still records the day it happened, which is
+  # today. Read "today" once right before AND once right after the install
+  # call: same clock as the installer (the TZ pin above), so a midnight
+  # rollover landing between the two `date` calls still passes — either day
+  # is the honest one.
   F="$W/migdate-live"; mkdir -p "$F"
   printf '# Our team rules\n' >"$F/AGENTS.md"
+  BEFORE_LIVE="$(date +%Y-%m-%d)"
   "$ROOT/install.sh" claude-code --project-dir "$F" >/dev/null 2>&1 \
       || fail "migration-date: live-replacement install failed"
-  grep -qF "on $TODAY" "$F/docs/graph/plans/adopted-instructions.md" \
-      || fail "migration-date: a replacement made now must be dated now"
+  AFTER_LIVE="$(date +%Y-%m-%d)"
+  LIVE_NOTE="$F/docs/graph/plans/adopted-instructions.md"
+  { grep -qF "on $BEFORE_LIVE" "$LIVE_NOTE" || grep -qF "on $AFTER_LIVE" "$LIVE_NOTE"; } \
+      || fail "migration-date: a replacement made now must be dated now \
+(expected $BEFORE_LIVE or $AFTER_LIVE). Got: $(grep -F 'on ' "$LIVE_NOTE" || true)"
   echo "  a re-filed migration row carries the backup's date, not the sweep's — OK"
 }
 

@@ -3,6 +3,7 @@ name: docs-librarian
 description: Senior knowledge-graph architect. Owns the unified system at docs/graph/ — progressive-discovery router, fact-owning nodes, source provenance, detailed project leaves, dependency wiki, the reusable-tool catalog, the project-skill catalog (docs/graph/skills/, projected to the harness dirs), specs, decisions, plans, and runbooks. Keeps it source-grounded, current, reachable, and deduplicated with one home per fact. Use whenever graph knowledge is created, refreshed, audited, reorganized, fails validation, or a recurring procedure should crystallize into a project skill.
 tools: [Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch, Task]
 model: opus
+effort: medium
 routing_triggers:
   - "author a graph node for the subsystem"
   - "fix the wiki page that fails graph validation"

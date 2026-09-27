@@ -27,6 +27,9 @@ GRAPH DISCIPLINE — execute before reading any source:
    evidence (context routing — NOT the `route_evidence` field, which
    carries the agent-routing line from your brief).
 2. Load ONLY the reported nodes plus their `requires:` closure.
+   Everything else a loaded node lists (leaves, children, links,
+   neighbours) is a menu: open an item only when its one-line
+   "load when" serves your task, and list the rest as skipped.
 3. Declare what you loaded, what you deliberately skipped, and any
    later widening (with the reason it became necessary).
 4. One home per fact: never duplicate a fact the graph owns — link to
@@ -37,7 +40,8 @@ GRAPH DISCIPLINE — execute before reading any source:
    your delegated deliverable — smallest sufficient evidence, cheapest
    reliable method; stop when the deliverable is complete and trusted.
    Return findings, not raw dumps; produce nothing your parent does
-   not need. Depth: `docs/graph/method/engineering-posture.md` §5–§8.
+   not need. Depth: `method.minimum-sufficient-work`,
+   `method.decision-economy`, `method.engineering-posture` §8.
 6. If the graph has no nodes yet (bootstrap pass), report the failed
    probe and stay inside the exact paths named in this brief.
 ```
@@ -64,6 +68,14 @@ GRAPH DISCIPLINE — execute before reading any source:
 - **Say "not found" rather than guessing.** Accuracy matters more than
   completeness — a gap you name is useful (the no-fabrication rule is
   GRAPH DISCIPLINE 4, above).
+- **If what this brief assumes exists does not, say so and stop.** A
+  brief that asks you to restore something from history, or to find
+  where something is set, assumes that it exists or once did. When the
+  search shows it does not, or never did, report that result with what
+  you searched (every branch, deleted and renamed paths, a content
+  search over history) and stop. Do not write the missing thing: an
+  invention handed back in place of a negative result reads like a
+  recovery.
 - **Read-only.** Do not create, edit, or run anything that mutates
   state.
 - Be terse. Bullets and tables. This feeds a system prompt / a node, so

@@ -20,7 +20,7 @@ Each entry lists the forms of a word, what it means in this repository, what it 
 - **Forms:** subagent, subagents
 - **Here:** A worker started by another session rather than by the person at the keyboard, running with a context of its own.
 - **Field:** a secondary assistant delegated a task by a primary one (host documentation; status: not recorded)
-- **Implemented at:** `core/method/delegation.md`
+- **Implemented at:** `core/method/delegation-bounds.md`
 - **Enforcement:** **not a control**
 - **Divergence:** **same**
 - **Why:** not recorded
@@ -328,7 +328,7 @@ Each entry lists the forms of a word, what it means in this repository, what it 
 - **Forms:** coordinator, coordinators
 - **Here:** An agent allowed to start other workers, up to a fixed depth written in its frontmatter.
 - **Field:** a person or process that organizes others (field usage; status: not recorded)
-- **Implemented at:** `core/method/delegation.md`
+- **Implemented at:** `core/method/delegation-bounds.md`
 - **Enforcement:** **not a control**
 - **Divergence:** **narrower**
 - **Why:** ADR-0002
@@ -394,7 +394,7 @@ Each entry lists the forms of a word, what it means in this repository, what it 
 - **Forms:** turn, turns
 - **Here:** The span from one worker being started to its handback arriving, counted for a single worker.
 - **Field:** one exchange in a conversation with a model (field usage; status: not recorded)
-- **Implemented at:** `core/method/delegation.md`
+- **Implemented at:** `core/method/delegation-bounds.md`
 - **Enforcement:** **not a control**
 - **Divergence:** **different**
 - **Why:** not recorded

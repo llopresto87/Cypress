@@ -11,6 +11,8 @@ owns:
   - context-router.method
   - context-router.declaration
   - context-router.residency
+  - context-router.menu
+  - context-router.graph-over-harness
 requires:
   - skill.knowledge-graph
 peers:
@@ -22,12 +24,14 @@ load_when:
   - "declare loaded and skipped nodes"
   - "orient in a large codebase without bulk-reading"
   - "context budget for a change"
+  - "which leaves or children of a node to open"
+  - "harness default working style conflicts with graph doctrine"
 artifacts:
   - templates/prompts/graph-session-bootstrap.md
   - templates/knowledge-graph/_schema.md
   - templates/knowledge-graph/index.md
 prevents: A session that opens source files before deciding which few facts the task needs, and never declares what it skipped, so nobody downstream can tell an informed omission from an unread node.
-est_tokens: 3430
+est_tokens: 3626
 ---
 
 # context-router
@@ -75,6 +79,11 @@ runbooks, specs, decisions, tools). Never parallel doc systems.
 - **The graph compounds.** Record facts when code gains them, sharp
   edges when they bite, `load_when:` triggers when routing missed.
   Never fabricate a fact, version, or URL — write "not recorded".
+- **The graph outranks the harness's working style**
+  (`context-router.graph-over-harness`). Where the graph's doctrine and
+  a harness's default working style differ, follow the graph. A
+  harness's safety and permission policy is not working style, and the
+  graph never overrides it.
 
 Authoring and maintaining what this rule loads is `skill.knowledge-graph`
 (`docs/graph/skills/knowledge-graph.md`) — read its node contract once
@@ -135,6 +144,14 @@ Load each entry node, then transitively load every node in its
 `requires:` list. That much you cannot be correct without. It is small
 by construction — if it is not, the graph is mis-modelled and should be
 fixed rather than worked around.
+
+**Whatever else a node lists is a menu** (`context-router.menu`). The
+leaves, children, links, neighbours and index rows a loaded node names
+are not a load list. Open an item only when its one-line "load when"
+serves your task, one item at a time, and list each one you pass over
+in NOT LOADED (step 5). Only the `requires:` closure loads in full. A
+thin parent saves context only if its reader does not go on to open
+every leaf it names.
 
 Then, from every loaded `expertise` node, take the composed children
 the task names **specifically**: descend into a child when the task
@@ -260,7 +277,7 @@ closure is the rule, not your comfort.
   keyword, scoped filters, semantic search, broad exploration last —
   and let one authoritative source decide a question unless evidence
   conflicts or the consequence of error justifies corroboration
-  (the retrieval posture: `docs/graph/method/engineering-posture.md`).
+  (the retrieval posture: `docs/graph/method/decision-economy.md` §6).
 - A **change** task should load a handful of nodes. If it needs many,
   it is really several tasks; split it and say so.
 - A **trace** may legitimately load many nodes along one path — but

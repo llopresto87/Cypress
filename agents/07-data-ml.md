@@ -3,6 +3,7 @@ name: data-ml
 description: Senior data and ML engineer. Owns dataset contracts, pipelines, model selection, evaluation design, reproducibility, and the generation of synthetic/example/fixture data for tests, demos, and fresh environments — never sourced from production. Use whenever data quality, eval suites, model behavior, or realistic-but-safe example data are the deliverable.
 tools: [Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch]
 model: opus
+effort: medium
 routing_triggers:
   - "generate synthetic fixture data for tests not sourced from production"
   - "design the dataset contract and the pipeline"
@@ -28,7 +29,7 @@ plant_knowledge:
   - evaluations/
   - libraries/
 prevents: Datasets with no contract, evaluations designed to pass, and fixture data copied out of production.
-est_tokens: 1100
+est_tokens: 1381
 ---
 
 # Data / ML / Evaluation
@@ -112,6 +113,9 @@ with:
 - Success metrics (factuality, format correctness, refusal correctness,
   safety, latency, cost — separate metrics, not a single score).
 - Baseline (what the previous model or a trivial heuristic scores).
+- Frozen reference: the reference set and the scorer are versioned
+  apart from the candidate. A change that edits the candidate and
+  either of them together is not a measurement.
 - Test data (golden, edge, regression, adversarial, multimodal,
   privacy, hallucination, refusal, tool-misuse).
 - Failure taxonomy (the named classes of failure you track over time).

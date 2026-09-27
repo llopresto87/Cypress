@@ -154,7 +154,15 @@ permission check and its cached approximation.
   not whether some parser was invoked. A guard can extract a token that cannot
   possibly validate, and a test written against "did the parser run?" goes red
   on values that were never a bypass, which teaches the next reader to distrust
-  the gate.
+  the gate. Keep one corpus row dedicated to exactly this distinction, and pin
+  a case requiring that "extracted but not accepted" class to stay non-empty —
+  if it ever empties out, the fixture has stopped testing the one thing it was
+  built to separate.
+- **Parity is a fact about the version the fixture actually loads, not about
+  the authenticator in the abstract.** Pin an assertion against that loaded
+  version. A dependency bump that changes how the authenticator parses a
+  credential should turn the fixture red and force re-verification, instead of
+  passing on the strength of a version nobody checked.
 - **A mocked oracle is just the expectation table wearing a costume.** If the
   authenticator's decision is stubbed, the test has returned to comparing an
   author's belief with itself, with more machinery.
@@ -185,6 +193,12 @@ itself rejects a known-bad value, proving it is not a permissive stub; the oracl
 is constructed with no network call, verified by running the fixture with the
 network unavailable.
 
+**A fixture that arrives green after the fix it pins has already landed is a
+regression pin, not evidence that the fix works.** Say so explicitly wherever
+the fixture is presented: it protects the fix from recurring, and it is not,
+by itself, proof the fix was correct in the first place. Evidence for that
+comes from watching the fixture go red against the pre-fix code, separately.
+
 - **How to run the tests:** `<the plant's test command for its implementation>`
 
 ## 7. References & neighbours
@@ -201,3 +215,6 @@ network unavailable.
 ## 8. Changelog
 
 - 2026-09-13 — created from harvested, generalized capability, by docs-librarian.
+- 2026-09-26 — folded in the non-empty extracted-not-accepted class requirement
+  and the loaded-version parity pin (§5), and the green-on-arrival regression-
+  pin caveat (§6), by docs-librarian.

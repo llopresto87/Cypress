@@ -3,31 +3,27 @@ id: method.engineering-posture
 tier: 2
 kind: method
 origin: seed
-title: engineering posture — sources of truth, minimum sufficient work, decision economy, integration
+title: engineering posture — sources of truth, context economy, structure that earns its cost, integration
 owns:
   - engineering-posture.sources-of-truth
-  - engineering-posture.host-parity
   - engineering-posture.context-economy
-  - engineering-posture.minimum-sufficient-work
-  - engineering-posture.decision-economy
   - engineering-posture.integration-over-patching
   - engineering-posture.production-boundaries
-  - toolcraft.bounded-execution
 requires:
 peers:
   - method.design-posture
   - method.stewardship-posture
+  - method.minimum-sufficient-work
+  - method.decision-economy
+  - method.host-parity
+  - method.bounded-execution
 load_when:
-  - "how much work does this task actually need, minimum sufficient work"
   - "should I read more files first, how much context to load"
-  - "am I done yet, when to stop investigating or validating"
   - "how do I make this change cleanly, integrate not bolt on"
   - "which technology to pick, boring vs experimental"
-  - "works locally but fails in CI or on the target host"
   - "is this abstraction or extra worker worth its cost"
-  - "command hung, session stuck, wrap in a timeout, run detached"
-prevents: Work with several sources of truth, scope set by what seems useful rather than what is sufficient, and decisions re-litigated every session.
-est_tokens: 4563
+prevents: Work with several sources of truth, context loaded in bulk, structure that does not earn its cost, and changes bolted on instead of integrated.
+est_tokens: 2254
 ---
 
 # Engineering posture
@@ -108,142 +104,6 @@ facts before re-asking, re-reading, or recomputing them; update only
 the regions the delta invalidates, and re-verify only the behavior
 that changed.
 
-## 5. Do the minimum sufficient work
-
-The governing objective of every task is the smallest body of work
-that reliably delivers the required result. Efficiency means
-eliminating work that does not materially improve correctness, safety,
-required completeness, user-intent alignment, maintainability,
-recoverability, or trust — it is never brevity for its own sake. A
-short wrong answer is waste, and so is a long process that does not
-change the result; optimize the whole path from request to validated
-outcome.
-
-Precedence when goals conflict: safety, security, privacy, and
-authorization first; then explicit requirements and binding contracts;
-then correctness, data integrity, and compatibility; then reliable
-completion; then the validation needed to trust the result; then
-efficiency; and only then optional completeness, exploration, and
-polish. Efficiency may strip optional work. It may never justify
-inventing information, concealing uncertainty, skipping a required
-check, weakening a security boundary, suppressing a material failure,
-claiming an action that did not occur, discarding evidence needed for
-recovery or audit, or omitting a requirement because it is expensive.
-An optional side effect — notification, telemetry, a non-critical
-integration — that fails must degrade to a logged warning; it may
-never fail the required path.
-
-The execution shape: define the smallest deliverable that fully
-satisfies the request; identify the decisions it needs and the minimum
-evidence for them; reuse what is already established; acquire only the
-missing decision-relevant evidence with the cheapest reliable
-operation; act once uncertainty is below the risk threshold; validate
-the assumptions capable of invalidating the result; stop. Effort
-scales with uncertainty and consequence — never with apparent
-complexity, input size, or the capability that happens to be
-available. The task tiers (`method.tiers`) are this rule's instrument:
-the tier authorizes the maximum process, and this principle selects the
-minimum within it. Do not solve a larger problem than the one asked,
-and do not investigate broadly before proving broad investigation
-necessary.
-
-Cut the work into increments that are small and *homogeneous in risk*:
-each is bounded to what it can prove in one pass, and none mixes a risk
-class — a new dependency, an architectural choice, a deploy coupling, a
-hardening change whose purpose is to break insecure environments — into
-trivial reversible edits; that item gets its own increment, scheduled
-with the owner where it will break something on purpose. Infrastructure,
-content, and enforcement land separately so each is observed working
-before the next depends on it — the check first, then the gate that
-blocks on it. Each increment's files-touched list, gate command,
-expected outcome, and rollback path are the plan of record's shape
-(`protocol.grill`). And a pass whose job is to understand, map, or
-restore a system carries no improvement work: mixing them makes every
-failure ambiguous between "did not restore" and "the change broke it",
-and on a codebase with no regression net the absence of tests is itself
-the argument against touching code while still learning it. Fixes
-discovered on such a pass are proposed to the owner, not applied
-opportunistically.
-
-## 6. Every operation serves a decision
-
-Before any read, search, tool call, or spawn, name the unresolved
-decision its result can change. An operation is justified when it
-resolves a material ambiguity, confirms or rejects a consequential
-assumption, produces part of the deliverable, detects a meaningful
-failure, satisfies a mandatory requirement, or unblocks the next step
-— never because it is related, interesting, conventional, reassuring,
-or part of a habitual workflow. The marginal-value rule governs
-continuation: another action is worth taking only while its expected
-improvement exceeds its total cost, counting latency, added failure
-modes, review burden, and the weight it leaves in future turns.
-
-Retrieve progressively: indexes, metadata, headings, symbols, and
-diffs before regions; regions before excerpts; a complete source only
-when exactness demands it. Query in order of precision — exact
-identifier, exact phrase, constrained keyword, scoped filters,
-semantic search, broad exploration last. One authoritative source
-decides a question unless corroboration is genuinely required:
-conflicting evidence, a source that may be incomplete, or a
-consequence of error that justifies confirmation.
-
-Prefer direct execution over speculation when the action is
-authorized, bounded, reversible, and cheap: a targeted test over a
-predicted behavior, a measurement over an estimate, compilation over
-imagined correctness. Batch operations that are independently
-required; do not batch when an early result can eliminate the later
-work. Never repeat a failed operation unchanged — a retry needs a
-changed theory of failure or a changed condition (the recover
-discipline holds the classification).
-
-## 7. Stop when the result is sufficiently trusted
-
-Stop investigating, executing, validating, and explaining when the
-mandatory requirements are satisfied, the deliverable is complete, the
-critical assumptions are validated, and the remaining uncertainty
-cannot materially change the result — when the next check would test a
-property already tested and the next revision would be cosmetic. Do
-not add a final review, summary, alternative, source, or agent merely
-because one remains possible.
-
-Escalate — more retrieval, deeper reasoning, another worker, broader
-gates — only in service of a named unresolved decision: a material
-ambiguity, conflicting evidence, an unverified mandatory requirement,
-an error that could cause real harm, an irreversible action, a
-security or authorization boundary, or missing information that blocks
-the next step. Never for curiosity, reassurance, or completeness
-theater. Before finalizing substantial work, run one bounded audit —
-any operation that served no decision? any dead branch, duplicated
-validation, unused artifact? has the stopping condition already been
-reached? — apply only the clear, material improvements, and do not
-audit the audit.
-
-Make bounded assumptions rather than asking when the detail is
-low-consequence, a reasonable default exists, and the action stays
-reversible — and state the assumption. Ask only when interpretations
-diverge materially, the operation is irreversible, authorization is
-unclear, or no safe default exists. Do not ask to avoid an ordinary
-decision, and do not fabricate certainty where an assumption remains
-material.
-
-Where a request rests on a premise the evidence contradicts, neither
-silent compliance nor refusal is the answer: say so in the same turn,
-with the evidence and a corrected proposal, and then proceed on the
-corrected footing. Implementing a request whose stated premise you have
-already disproved produces work that is correct against the words and
-wrong against the goal.
-
-A question of intent, legal standing, ownership, or scope is not the
-implementer's to decide, whatever the analysis recommends. Route it to
-the owner and leave it open: record why it matters, the working
-assumption, who resolves it and how, flagged do-not-guess. Later
-analysis may recommend — a decision record held at `proposed`, a spec
-held at `draft` — but must not close it; the owner does, and the record
-that closes it names the question it resolves. The plan of record's
-open-questions table is the home (`protocol.grill`); the lifecycle
-vocabulary is the graph schema's, and `status-register.py --open`
-surfaces what is still waiting.
-
 ## 8. Structure, artifacts, and delegation earn their rent
 
 Every abstraction, layer, agent, artifact, and instruction carries a
@@ -274,18 +134,17 @@ make them meaningfully distinct, eliminate the dominated ones, and
 recommend one.
 
 Instructions and prompts maximize behavioral effect per byte: one home
-per rule, precedence stated once, generalize an existing rule instead
-of appending a sibling, no repetition for emphasis, no rule the
-runtime already guarantees. An instruction surface whose size
-obstructs the work it governs is defective — the kernel byte budget is
-this rule, enforced. And use the cheapest competent method throughout:
-deterministic code, rules, and templates before model calls; the
-smaller model class for bounded read-only work (`method.delegation`);
-a stronger model never compensates for poor scoping or unnecessary
-context. Weigh the future cost of output as part of its cost: prefer
-results that are immediately usable, isolate changes, and keep the
-next delta cheap — local efficiency that creates downstream burden is
-not efficiency.
+per rule, precedence stated once, generalize an existing rule instead of
+appending a sibling, no repetition for emphasis, no rule the runtime
+already guarantees. An instruction surface whose size obstructs the work
+it governs is defective — the kernel byte budget is this rule, enforced.
+And use the cheapest competent method throughout: deterministic code,
+rules, and templates before model calls; the smaller model class for
+bounded read-only work (`method.delegation-model-classes`); a stronger
+model never compensates for poor scoping or unnecessary context. Weigh
+the future cost of output as part of its cost: prefer results that are
+immediately usable, isolate changes, and keep the next delta cheap —
+local efficiency that creates downstream burden is not efficiency.
 
 ## 9. Integrate; do not patch
 
@@ -342,92 +201,11 @@ bad artifact for inspection, recover to a safe empty or partial state,
 and surface the fault — never fail silently, and never silently
 discard.
 
-## 13. The machine you build on is not the machine it runs on
-
-Where a change is authored and where it executes are different systems
-with different shells, tool versions, path layouts, package names, line
-endings, locales, and privileges. A green result on the authoring host
-is evidence about the authoring host. It is not evidence about the
-target, and presenting it as such is a sources-of-truth error (§1): the
-target is authoritative for claims about the target, exactly as the
-spec is authoritative for claims about intent.
-
-Two corollaries carry most of the failures:
-
-- **Validate where it runs, or say that you did not.** Exercise the
-  change on the execution target, in a faithful container, or in CI.
-  Where none of those is available, the honest report is "verified on
-  the authoring host only; unverified on <target>" — which is useful.
-  Silence, which reads as verified, is not.
-- **Existing locally is not existing.** A file the build resolves from
-  the working tree but that is untracked, ignored, or unpushed does not
-  exist for CI, for a teammate, or for the deployed artifact. Before
-  claiming delivery, confirm the artifact is where the *consumer* will
-  look for it, not merely where you left it.
-
-The same reasoning governs a local model, a local service, or a local
-credential standing in for a remote one: the substitute is a
-convenience for iteration, never the evidence.
-
-When the target is live infrastructure, classify the blast radius before
-running anything — local, read, artifact-producing, or mutating —
-because a "dry run" still authenticates, reads, scans, and writes local
-artifacts, and a read-shaped endpoint can allocate from a finite pool.
-Validate the whole declared change set for self-lockout before executing
-any part of it (the guard sits before the first mutation, not between
-mutations); confirm the target is the project's own, by an ownership
-marker, before acting on it; and exclude the automation's own access
-path and identity from the set it manages while still asserting it keeps
-the privileges it needs. Whether the target is a real production system
-at all is a plant fact: `plant.environment_class` in the router's
-frontmatter answers it once, and it is read there, not re-guessed per
-run.
-
-## 14. A command that may outlive its session is bounded (`toolcraft.bounded-execution`)
-
-This discipline was filed under the toolcraft protocol because that was the
-nearest node when it was written. It is not tool-authoring doctrine — it binds
-every session that runs anything, whether or not a tool comes out of it — so it
-lives here with the rest of the engineering posture. `skill.toolcraft` points at
-it and does not restate it.
-
-A tool is only durable if the session that runs it survives it. Every command an
-agent runs is bounded, and anything that may outlive the bound is detached,
-logged to disk, and terminated by a marker:
-
-1. A foreground command carries an explicit bound. Service control, process
-   signalling and installers are the commands that hang most and get no
-   exemption.
-2. Work that may legitimately exceed the bound is never run in the
-   foreground: it is launched detached with hangup trapped, its process
-   group recorded to a file, its output written to a durable log under the
-   project, and it ends with a terminal result line and an exit-code file.
-3. Waiting is bounded polling of that log for new bytes or the marker. A
-   poll that sees no new evidence for a fixed number of intervals stops and
-   reports "no progress since T"; it never re-issues the same command.
-4. "Running" is claimed only on an observed liveness signal — the pid alive
-   and the log growing, or device utilisation — never on the launch having
-   returned.
-5. A process is stopped by its recorded pid or process group with bounded
-   escalation, never by a pattern that can match the shell issuing the kill.
-6. Completion is the marker, not the absence of output and not a timeout;
-   a liveness threshold is derived from measured durations of that task
-   class, not guessed.
-
-A timeout alone covers only the first clause. The other five are what
-distinguish "finished" from "stuck" when the work is long, and a stall is
-reported, never repeated.
-
-These clauses are delivered as a mechanism where the harness has a hook
-surface: the Claude Code integration installs a pre-tool guard
-(`.claude/bound-hook.py`) that refuses a blocking-prone shell command carrying
-neither a bound nor a detached launch, so clause 1 is enforced before it is
-read. Harnesses without a hook surface carry the clauses as the agent's own
-discipline; their integration notes say so.
-
 ## Neighbours
 
-- `method.design-posture` — the SOLID/responsibility design cluster —
-  cross when the question is how to structure the code itself.
-- `method.stewardship-posture` — record, verify, persist, and hand
-  off — cross when the work is closing or knowledge must survive it.
+- `method.minimum-sufficient-work`: load when the question is how much work a task deserves, the owner's declared effort level, or how to cut increments.
+- `method.decision-economy`: load when the question is whether an operation is worth running, when to stop, whether to ask or assume, or what an instruction's verb authorizes.
+- `method.host-parity`: load when a result on the authoring host must stand for the target, inspection touches a shared host, or a loop is made to continue past a failure.
+- `method.bounded-execution`: load when a command may hang or outlive its session, or a run must be judged running, stuck or finished.
+- `method.design-posture`: load when the question is how to structure the code itself.
+- `method.stewardship-posture`: load when the work is closing or knowledge must survive it.

@@ -52,19 +52,19 @@ skill frontmatter carries:
 | Skill | id | owns | requires | peers | est_tokens |
 |---|---|---|---|---|---|
 | adopt-existing | `skill.adopt-existing` | `adopt-existing.method`, `adopt-existing.refresh`, `adopt-existing.validation` | `protocol.grow` | `protocol.initialize`, `skill.knowledge-graph`, `protocol.from-scratch` | 1614 |
-| adr-writer | `skill.adr-writer` | `adr-writer.method`, `adr-writer.reversibility`, `adr-writer.numbering` | (none) | `skill.grill-planner`, `agent.architect`, `skill.humanizer` | 1850 |
+| adr-writer | `skill.adr-writer` | `adr-writer.method`, `adr-writer.reversibility`, `adr-writer.numbering` | (none) | `skill.grill-planner`, `agent.architect`, `skill.humanizer` | 3000 |
 | brainstorm-internal | `skill.brainstorm-internal` | `brainstorm-internal.method` | (none) | `protocol.brainstorm`, `skill.brainstorm-socratic`, `skill.adr-writer`, `skill.grill-planner` | 900 |
 | brainstorm-socratic | `skill.brainstorm-socratic` | `brainstorm-socratic.method` | (none) | `protocol.brainstorm`, `skill.brainstorm-internal`, `skill.humanizer`, `skill.spec-author` | 955 |
-| context-router | `skill.context-router` | `rule.knowledge`, `context-router.method`, `context-router.declaration`, `context-router.residency` | `skill.knowledge-graph` | `skill.validate-knowledge` | 3430 |
+| context-router | `skill.context-router` | `rule.knowledge`, `context-router.method`, `context-router.declaration`, `context-router.residency`, `context-router.menu`, `context-router.graph-over-harness` | `skill.knowledge-graph` | `skill.validate-knowledge` | 3626 |
 | grill-planner | `skill.grill-planner` | `grill-planner.method`, `grill-planner.audit` | `protocol.grill` | `skill.spec-author` | 1150 |
-| holistic-editing | `skill.holistic-editing` | `holistic-editing.method`, `holistic-editing.forbidden-moves`, `holistic-editing.class-sweep` | (none) | `skill.context-router`, `protocol.test-first` | 2300 |
-| humanizer | `skill.humanizer` | `humanizer.method`, `humanizer.document-contract`, `humanizer.progressive-execution`, `humanizer.fact-preservation`, `humanizer.modes`, `humanizer.scope` | `method.prose-posture` | `skill.holistic-editing`, `skill.adr-writer`, `skill.spec-author`, `agent.docs-librarian`, `protocol.deliver` | 3300 |
-| knowledge-graph | `skill.knowledge-graph` | `knowledge-graph.method`, `knowledge-graph.node-contract`, `knowledge-graph.linter` | (none) | `skill.context-router`, `skill.library-wiki`, `skill.validate-knowledge` | 3045 |
+| holistic-editing | `skill.holistic-editing` | `holistic-editing.method`, `holistic-editing.forbidden-moves`, `holistic-editing.class-sweep` | (none) | `skill.context-router`, `protocol.test-first` | 2890 |
+| humanizer | `skill.humanizer` | `humanizer.method`, `humanizer.document-contract`, `humanizer.progressive-execution`, `humanizer.fact-preservation`, `humanizer.modes`, `humanizer.scope` | `method.prose-posture` | `skill.holistic-editing`, `skill.adr-writer`, `skill.spec-author`, `agent.docs-librarian`, `protocol.deliver` | 9200 |
+| knowledge-graph | `skill.knowledge-graph` | `knowledge-graph.method`, `knowledge-graph.node-contract`, `knowledge-graph.linter`, `knowledge-graph.branch-shape` | (none) | `skill.context-router`, `skill.library-wiki`, `skill.validate-knowledge` | 3393 |
 | library-wiki | `skill.library-wiki` | `library-wiki.method`, `library-wiki.version-pinning` | (none) | `skill.research-and-ingest`, `protocol.ingest-library` | 1000 |
 | research-and-ingest | `skill.research-and-ingest` | `research-and-ingest.method`, `research-and-ingest.source-ranking` | (none) | `skill.library-wiki`, `agent.research-scout` | 1200 |
 | spec-author | `skill.spec-author` | `spec-author.method`, `spec-author.sign-off` | `protocol.specify` | `skill.test-first`, `skill.grill-planner`, `skill.humanizer` | 1250 |
-| test-first | `skill.test-first` | `test-first.shaping`, `test-first.level-selection` | `protocol.test-first` | `skill.spec-author` | 350 |
-| toolcraft | `skill.toolcraft` | `rule.toolcraft`, `toolcraft.durability-criteria` | (none) | `agent.tool-smith`, `protocol.canonize`, `protocol.grill`, `protocol.harvest`, `method.engineering-posture` | 1240 |
+| test-first | `skill.test-first` | `test-first.shaping`, `test-first.level-selection`, `test-first.lean-suite`, `test-first.no-lint-only-tests` | `protocol.test-first` | `skill.spec-author` | 1286 |
+| toolcraft | `skill.toolcraft` | `rule.toolcraft`, `toolcraft.durability-criteria` | (none) | `agent.tool-smith`, `protocol.canonize`, `protocol.grill`, `protocol.harvest`, `method.bounded-execution` | 1672 |
 | validate-knowledge | `skill.validate-knowledge` | `validate-knowledge.method`, `validate-knowledge.adversarial-questions` | (none) | `skill.knowledge-graph`, `skill.context-router` | 1050 |
 
 Roles at a glance:
@@ -283,13 +283,15 @@ Source: `skills/context-router/SKILL.md`
 
 **id:** `skill.context-router` · **owns:** `rule.knowledge`,
 `context-router.method`, `context-router.declaration`,
-`context-router.residency` · **requires:**
+`context-router.residency`, `context-router.menu`,
+`context-router.graph-over-harness` · **requires:**
 `skill.knowledge-graph` · **peers:** `skill.validate-knowledge`
 
 **load_when:** what should I load for this task · resolve the minimal node
 set before working · route a task through the knowledge graph · declare
 loaded and skipped nodes · orient in a large codebase without bulk-reading ·
-context budget for a change.
+context budget for a change · which leaves or children of a node to open ·
+harness default working style conflicts with graph doctrine.
 
 **What it does.** Resolves the minimum set of graph nodes a task needs
 *before reading any source file*. This is the mechanism that keeps a large
@@ -300,7 +302,10 @@ rule and the traversal that makes it executable.
 system at `docs/graph/`: Tier 1 routes, Tier 2 nodes own concise facts,
 Tier 3 leaves hold source-backed depth. Load minimally and declare it. One
 home per fact. Graph before code, ahead of memory. The graph compounds.
-Never fabricate a fact, version, or URL; write "not recorded".
+Never fabricate a fact, version, or URL; write "not recorded". Where the
+graph's doctrine and a harness's default working style differ, the graph
+wins; a harness's safety and permission policy is not working style
+(`context-router.graph-over-harness`).
 
 **The algorithm.**
 
@@ -313,7 +318,10 @@ Never fabricate a fact, version, or URL; write "not recorded".
    specific. Watch for aliased names across layers: the Tier-1 router index
    must carry a naming-divergence note listing aliases.
 3. **Take the required closure**: each entry node plus its transitive
-   `requires`. It is small by construction.
+   `requires`. It is small by construction. Everything else a node lists
+   (leaves, children, links, neighbours, index rows) is a menu: open an
+   item only when its one-line "load when" serves the task, and list the
+   rest as skipped (`context-router.menu`).
 4. **Do not take `peers`** unless the task crosses into them (a trace is the
    exception).
 5. **Declare before you work**: print the resolved LOAD / NOT LOADED /
@@ -549,13 +557,16 @@ notices are kept at `skills/humanizer/LICENSE.upstream`.
 Source: `skills/knowledge-graph/SKILL.md`
 
 **id:** `skill.knowledge-graph` · **owns:** `knowledge-graph.method`,
-`knowledge-graph.node-contract`, `knowledge-graph.linter` · **requires:**
+`knowledge-graph.node-contract`, `knowledge-graph.linter`,
+`knowledge-graph.branch-shape` · **requires:**
 (none) · **peers:** `skill.context-router`, `skill.library-wiki`,
 `skill.validate-knowledge`
 
 **load_when:** author or edit a graph node · one home per fact violation ·
 graph-lint fails · add or sharpen a load_when trigger · split an oversized
-node · build the docs/graph structure.
+node · build the docs/graph structure · which node owns this best-practices
+page, expertise node or domain node · where does a new leaf attach, who gets
+the artifacts edge · branch node shape, a menu of leaves.
 
 **What it does.** Builds and maintains the tiered node graph the router
 traverses. `context-router` reads the graph; this skill authors it.
@@ -579,7 +590,14 @@ node's list, project-wide.
    observed from audited; add an "observed absences / what this page
    is NOT" note where scope is partial.
 4. **Bodies stay small**: under ~150 lines; `est_tokens` within 2× of the
-   real body.
+   real body. A leaf holds one topic and divides into sibling leaves when
+   tasks load its topics independently; protocols, postures and the
+   delegation files are leaves. A branch node is a menu, a `## Leaves` list
+   with a one-line "load when" per leaf, and owns `<slug>.menu`; a list
+   without that routing is a link farm and is deleted
+   (`knowledge-graph.branch-shape`). The seed holds its own method, protocol
+   and skill files to 170 lines through `LEAF_BODY_CEILING`, with the
+   shrink-only `OVERSIZED_LEAVES` ledger in `tests/seed-lint.py`.
 5. **Compound, don't restart**: add facts, sharp edges, and triggers as the
    project earns them. When a recorded fact is later found false, add a dated
    Correction note *alongside* the original, keeping the wrong reasoning.
@@ -756,11 +774,15 @@ satisfy.
 Source: `skills/test-first/SKILL.md`
 
 **id:** `skill.test-first` · **owns:** `test-first.shaping`,
-`test-first.level-selection` · **requires:** `protocol.test-first` ·
-**peers:** `skill.spec-author`
+`test-first.level-selection`, `test-first.lean-suite`,
+`test-first.no-lint-only-tests` · **requires:**
+`protocol.test-first` · **peers:** `skill.spec-author`
 
 **load_when:** shape a new test · pick a test level · name a test after a spec
-contract · unit vs integration vs e2e choice · one outcome per test.
+contract · unit vs integration vs e2e choice · one outcome per test ·
+consolidate or shrink a test suite, duplicate or expensive tests ·
+project-specific test, generic or synthetic fixture · coverage lint wants a
+test for a contract.
 
 **What it does.** The test-*shaping* technique. The RED → GREEN → REFACTOR →
 COMMIT cycle and its gates live in `docs/graph/protocols/test-first.md`; this
@@ -781,7 +803,21 @@ skill owns the craft of shaping each test.
 **Test shape.** The name names the spec §4 contract slug (in the language's
 convention); the body is Given/When/Then; one outcome per test.
 
-**When to use.** When shaping any new test or choosing its level.
+**No test only to turn a lint green (`test-first.no-lint-only-tests`).** A
+coverage lint that reports an unnamed contract is never answered with a test
+that asserts nothing new; cite the slug in the existing test that asserts the
+contract, or write the test the contract lacks.
+
+**Keeping the suite lean (`test-first.lean-suite`).** A suite only grows
+unless someone shrinks it on purpose. Consolidate by the expensive action
+several tests share, not by a safe-looking fold; treat a size target as a
+direction, never a quota; every deleted test names the survivor that still
+kills its mutants; schedule consolidation as its own increment, never mid-spec;
+and review for the smells `tool-corpus/testing/test-hygiene-lint.md` catalogs
+— byte-identical bodies, repeated expensive helpers, expensive per-test setup.
+
+**When to use.** When shaping any new test or choosing its level, or when a
+suite has grown enough to warrant a consolidation pass.
 
 ---
 
@@ -791,7 +827,7 @@ Source: `skills/toolcraft/SKILL.md`
 **id:** `skill.toolcraft` · **owns:** `rule.toolcraft`,
 `toolcraft.durability-criteria` · **requires:** (none) · **peers:**
 `agent.tool-smith`, `protocol.canonize`, `protocol.grill`, `protocol.harvest`,
-`method.engineering-posture`
+`method.bounded-execution`
 
 **load_when:** should this script be kept, is this a durable tool · recurring
 operation across sessions · catalog a tool, tools_built, skills_built ·
@@ -815,7 +851,7 @@ node, which is why the doctrine required a tool to be produced and named nobody
 to produce one.
 
 **Bounded execution lives elsewhere.** The discipline for a command that may
-outlive its session moved to `method.engineering-posture`
+outlive its session moved to `method.bounded-execution`
 (`toolcraft.bounded-execution`): it binds every session that runs anything, not
 only one producing a tool, and it was filed under toolcraft because toolcraft
 was the nearest node when it was written.
@@ -1174,11 +1210,17 @@ exactly one node's list project-wide. `requires` is a hard, minimal, acyclic
 dependency. `peers` is soft adjacency (printed as "not loaded"). `artifacts`
 are progressive-discovery edges to leaves (relative to `docs/graph/`, must
 resolve); `libraries` is the specialized wiki edge. `load_when` is what the
-router matches. `est_tokens` is an honest body estimate.
+router matches; on an expertise node, a comma-separated piece with no
+whitespace that contains `*` or `/` is a file pattern the router matches
+against paths the task names, written one pattern per piece (no brace
+expansion) and never all-wildcard (`**/*`). `est_tokens` is an honest body
+estimate.
 
 **Body order.** what this is (2–3 sentences) · what you must know · sharp
 edges (dated) · where the code is (concrete paths) · neighbours. Under ~150
-lines; a longer node is two nodes.
+lines; a longer node is two nodes. A branch node is a menu: a `## Leaves`
+section listing each leaf with a one-line "load when", owning
+`<slug>.menu`.
 
 **The linter rules (as stated in `_schema.md`, which is the home for all of them).**
 
@@ -1198,7 +1240,8 @@ lines; a longer node is two nodes.
 
 **Anti-patterns.** A node that restates a version; a node that `requires`
 everything; a subsystem node that explains the language/framework (that is a
-`stack.*` node); a node with no `owns` (a link farm); growing a node instead
+`stack.*` node); a node with no `owns` (a link farm; a branch owns its
+menu, so it is not one); growing a node instead
 of splitting it; filling an unknown with a guess.
 
 ---
@@ -1216,7 +1259,8 @@ specified in `skills/context-router.md` and is executable via
   entry node (root, roster, subsystem, data, auth, secrets, testing, deploy,
   config).
 - **Method — how we work**: the pre-filled machinery routing table (task
-  state → machinery entry node): `method.tiers`, `method.delegation`, the
+  state → machinery entry node): `method.tiers`, the delegation row's six
+  leaves (`method.delegation` and its five `method.delegation-*` siblings), the
   protocols (brainstorm → specify → grill → test-first → ingest-library →
   verify → recover → canonize → deliver → grow/initialize → from-scratch), the
   graph skills, the posture method nodes, and the user-sovereign
@@ -1310,42 +1354,57 @@ prints `graph-lint: OK — N nodes, ~T tokens if fully loaded` and reminds that
 Source: `templates/knowledge-graph/spec-lint.py` (installs to `docs/graph/spec-lint.py`)
 
 A dependency-free Python 3 gate that makes "specs are executable" (kernel
-§3.1) mechanical, in two passes.
+§3.1) mechanical, in two passes plus a reader.
 
 **Usage.**
 
 ```sh
-python3 docs/graph/spec-lint.py           # gate: exit 1 on a defect
-python3 docs/graph/spec-lint.py --list    # dump contract -> tests map
-python3 docs/graph/spec-lint.py --warn    # report but always exit 0
+python3 docs/graph/spec-lint.py                                     # gate: exit 1 on a defect
+python3 docs/graph/spec-lint.py --list                              # dump contract -> tests map
+python3 docs/graph/spec-lint.py --warn                              # report but always exit 0
+python3 docs/graph/spec-lint.py --slice [--refs] [--lines] SLUG...  # print one contract's slice, never a check
 ```
 
 **Configuration.** `TEST_GLOBS` (the project's test file patterns) and
-`LIVE_STATUSES` = `{"active", "implemented"}`.
+`LIVE_STATUSES` = `{"active", "implemented", "back-written"}`.
 
 **Shape — every spec on disk, whatever its status.** Contract slugs are
 unique; a §9 criterion that "maps to" a slug maps to a declared one; a
 *signed* spec (product, architect, tester ticked in §0) or a live one has a
 §10 test-mapping row per contract (`pending` is a value); a live spec
-carries its sign-offs (a promotion nobody signed FAILs); an `implemented`
-spec has no §10 row still `red` or `pending`; a spec with no `### Failure:`
-mode WARNs. Status is read from frontmatter first — the schema's single
-home — and the template's body line "see frontmatter" is never a status
-(the old body-only scan read it as `see` and dropped every
-template-conformant spec from coverage).
+carries its sign-offs, except a back-written one, which had no promotion to
+sign and is refused if it carries them anyway (a promotion nobody signed); an
+`implemented` spec has no §10 row still `red` or `pending`. Status is read
+from frontmatter first — the schema's single home — and the template's body
+line "see frontmatter" is never a status (the old body-only scan read it as
+`see` and dropped every template-conformant spec from coverage).
 
 **Coverage — live specs only.** For every `### Contract: SLUG` of an
-active/implemented spec, the test files (skipping `.git`, `node_modules`,
-`.venv`, etc., and the specs dir) must name the slug, boundary-guarded and
-longest-first:
+active/implemented/back-written spec, the test files (skipping `.git`,
+`node_modules`, `.venv`, etc., and the specs dir) must name the slug,
+boundary-guarded and longest-first:
 
 - Every live contract must appear in ≥1 test file, or the gate FAILs.
 - A slug in tests but in no live spec is drift → a WARN.
 - Live contracts + zero matching test files is a "green lie": it FAILs
   loudly, never a vacuous pass.
 
-A draft is shape-checked and not counted: it turns `active` in the change
-that lands its RED tests, so a spec in authoring never reports uncovered.
+**Drafts are shape-checked, not coverage-checked.** A draft turns `active` in
+the change that lands its RED tests (test-first COMMIT), so a spec in
+authoring never reports uncovered — and the headline names every draft it
+left out of coverage rather than staying silent about the exclusion. A draft
+whose slugs the tests already carry, with no live spec declaring them, earns
+its own WARN: the RED landed and the promotion to `active` did not.
+
+**`--slice SLUG...` is a reader, not a check.** It prints only the
+`### Contract:`/`### Failure:` block a worker needs (a heading inside a ```
+or ~~~ fence is text, the same CommonMark fence rule grill-lint uses), the
+slug's §10 row(s), and, with `--refs`, the `file:line` pointers its block
+cites. A slug declared in more than one spec is sliced from each, with a
+stderr note naming every file it was found in, so no single block is mistaken
+for the only one. Exit 0 when every named slug was found (the ones that were
+still print); 1 when at least one is missing; 2 on a usage error — none of
+the three doubles as a pass/fail verdict on the spec itself.
 
 ---
 
@@ -1381,8 +1440,16 @@ template's own lines, so the form never counts as the plan):
 - Alignment: every `SPEC-NNNN/SLUG` a §9 row names is a `### Contract:` of a
   spec on disk, and every contract of those specs appears in some increment.
 - No `[verify]` in §9 or §13 (FAIL); in §6/§8/§11 it only WARNs.
+- No `### Increment N` heading sits outside §9 (FAIL) — that is where none of
+  the increment checks above would read it.
 - §14 is one action.
 - No plan at all → SKIP, exit 0.
+
+**Fenced code is an example, not the plan.** A heading inside a ``` or ~~~
+fence opens no section and no increment, and its `- Label:` lines are no
+fields; a fence indented under a field is that field's *value*, not a blank
+— the same masking discipline spec-lint's `--slice` uses to keep an example
+block from being read as the contract it merely quotes.
 
 ---
 
@@ -1394,7 +1461,7 @@ These are the **delegation briefs**: the runtime prompts an orchestrator or a
 growth run hands to a spawned worker. No hook the seed installs carries the
 discipline into a subagent's clean context, so the brief is its only carrier
 across the delegation boundary
-([delegation node](../core/method/delegation.md#every-brief-carries-the-graph-discipline)). Several briefs embed the same canonical graph-session bootstrap
+([delegation-briefs node](../core/method/delegation-briefs.md#every-brief-carries-the-graph-discipline)). Several briefs embed the same canonical graph-session bootstrap
 block verbatim; every static seed file references it instead of paraphrasing.
 
 ## Summary table — prompt/brief templates
@@ -1437,7 +1504,12 @@ has six numbered steps:
 Companion requirements every brief also carries: routing evidence
 (paste the `agent-lint --route` ranked line and confidence band; the worker
 echoes it back as `route_evidence`) and handback (the worker ends with the
-handback-payload block).
+handback-payload block). One companion is *recommended* rather than required,
+and this file is its one home: **Stack expertise**, for work that touches
+code, configuration or a pipeline, names the stack elements the worker's
+files use and the `expertise.*` nodes that cover them (or says none apply),
+so the worker loads them with its route instead of falling back on memory of
+an API that step 4 ranks below the graph.
 
 **Why embedding, not referencing, at the boundary.** Subagents start with a
 clean context and no hooks fire for them; a reference the worker may never

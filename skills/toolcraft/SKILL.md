@@ -15,7 +15,7 @@ peers:
   - protocol.canonize
   - protocol.grill
   - protocol.harvest
-  - method.engineering-posture
+  - method.bounded-execution
 artifacts:
   - templates/skill.template.md
   - templates/agent.template.md
@@ -25,16 +25,18 @@ load_when:
   - "recurring operation across sessions"
   - "catalog a tool, tools_built, skills_built"
   - "throwaway prototype versus reusable tooling"
+  - "scratch scripts piling up, same script written a third time"
   - "crystallize a repeated procedure into a project skill"
 prevents: A roster with an author for durable tools and no standard for them — nothing saying what earns durability, so every judgement about whether to build one is made fresh and no two sessions draw the line in the same place.
-est_tokens: 1240
+est_tokens: 1672
 ---
 
 # toolcraft — the durable-tool doctrine
 
 This node owns **the toolcraft rule** (kernel §3.8) — durable tools compound;
 throwaway scripts are rework. When an operation will recur across independent
-sessions, the unit of work is a **durable, tested tool** with a stable
+sessions (or has already recurred inside one), the unit of work is a
+**durable, tested tool** with a stable
 interface — designed so at plan time, named in `tools_built` on every handback,
 and cataloged in `docs/graph/tools/` by the librarian inside the close-out
 spawn. Genuine one-offs and throwaway prototypes stay disposable. A task is
@@ -68,7 +70,15 @@ produced", and the producer is the tool-smith.
 Catalog a piece of real code that:
 - **recurs across independent sessions** — an agent, expert, or skill
   will plausibly run it again in a future task (the trigger is
-  recurrence, not size);
+  recurrence, not size). Recurrence also counts inside one long
+  session, and scratch space is where the copies pile up uncounted:
+  each worker writes its own variant, none is promoted, and the session
+  ends with dozens of near-duplicates. So the third-time rule
+  (`agent.tool-smith`'s bar) fires on scratch code too. At each
+  delivery metrics checkpoint (`protocol.deliver`) or at session end the
+  orchestrator counts the scratch scripts by purpose; a
+  purpose with three or more variants is a recurrence and goes to
+  `tool-smith`, not to a fourth copy;
 - has a **stable interface** — a named entry point, defined inputs and
   outputs, a documented invocation, not a copy-pasted snippet;
 - is **authorized by a test** (§3.4) — at least one test pins what it
@@ -138,5 +148,5 @@ The discipline for running a command that may outlive its session — explicit
 bounds, detached launches, a durable log, bounded polling, liveness as an
 observed signal, completion by marker — was filed here because toolcraft was the
 nearest protocol. It is an execution discipline every session needs, not
-tool-authoring doctrine, and its home is `method.engineering-posture`
+tool-authoring doctrine, and its home is `method.bounded-execution`
 (`toolcraft.bounded-execution`).

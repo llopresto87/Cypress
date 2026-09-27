@@ -1,6 +1,6 @@
 # Suggested skill: drive-hosted-cicd-cli
 
-> Optional procedure — **a template, vendor-neutral**. Driving a hosted CI/CD
+> Optional procedure, **a template, vendor-neutral**. Driving a hosted CI/CD
 > platform from its command-line client: authenticating once, queueing a run
 > against the right refs, proving what the run actually built, and registering
 > a pipeline that so far exists only as a committed definition. Not a core
@@ -8,19 +8,24 @@
 > into the harness dirs the plant uses) from `templates/skill.template.md` if
 > selected. **Composes** `core/method/release-posture.md` (artifact identity,
 > rollout ordering), `core/method/secrets-posture.md` (credential handling),
-> and `core/method/vcs-posture.md` (the publishing boundary) **by reference and
-> restates none of them**. What it adds is the two-branch trap and the way to
-> prove which ref a run actually operated on.
+> `core/method/vcs-posture.md` (the publishing boundary), and
+> `core/method/bounded-execution.md` (`toolcraft.bounded-execution`: run
+> identity and liveness evidence) **by reference and restates none of them**.
+> What it adds is the two-branch trap, testing unmerged work through run
+> parameters, and the way to prove which ref a run actually operated on.
 
 **Instantiate by supplying:** `<CLI>`, `<ORG>`/`<PROJECT>` or the platform
 equivalent, `<CREDENTIAL_ENV_VAR>`, the pipeline/workflow id table, the
-per-target override parameter name(s), and the preview/dry-run call if the
-platform has one.
+per-target override parameter name(s), the parameter recipe that runs an
+unmerged branch, and the preview/dry-run call if the platform has one.
 
 ## When to apply
 
 - A pipeline must be queued, inspected, or registered from a terminal rather
-  than from the platform's web interface.
+  than from the platform's web interface. For a consequential run the terminal
+  is the better surface anyway: a command can be read before it is sent and
+  re-run after, and a sequence of web-form clicks can be neither.
+- Work on a branch that is not merged must be exercised in CI.
 - A run must be proven to have built a specific ref of a specific subject
   repository, not merely to have been asked to.
 - A workflow definition has been committed but no runnable object exists for
@@ -31,7 +36,7 @@ platform has one.
 Authenticate **once per shell session**, from a credential already in the
 environment (`<CREDENTIAL_ENV_VAR>`). The credential is never echoed, never
 placed in a URL, and never passed on a command line where a process list or a
-shell trace would capture it — `core/method/secrets-posture.md`
+shell trace would capture it. `core/method/secrets-posture.md`
 (`secrets-posture.channel`, `secrets-posture.recording`) owns how it enters
 and how it is written about, and this page adds nothing to that.
 
@@ -41,7 +46,12 @@ configured default happens to be, and the call succeeds against the wrong
 scope. Explicit pinning converts a silent wrong-scope success into a loud
 failure.
 
-## 2. The two-branch trap — the reason this page exists
+**Pin the pipeline the same way.** Two definitions whose names or ids differ by
+one suffix or one digit can deploy to different environments. When a request
+could mean either ("the production bootstrap"), ask which one is meant; never
+settle it by inference from the wording.
+
+## 2. The two-branch trap: the reason this page exists
 
 A triggered run resolves **two independent branch questions** from **two
 different inputs**:
@@ -58,13 +68,13 @@ the code it builds, and every summary field will look correct.
 **Omitting the definition-ref does not mean "the branch I am on".** It means
 the *definition's own configured default*, which is usually the trunk. If the
 definition file you are trying to run exists only on a feature branch, the run
-never starts at all — and that is the lucky case, because the error names the
+never starts at all. That is the lucky case, because the error names the
 file, the repository and the ref, so the mistake is visible. The unlucky case
 is a definition that *does* exist on the default branch in an older form: it
 compiles, it runs, and it is not the pipeline you edited.
 
 Read the flag's own help with suspicion. The wording platforms use for this
-input — "the branch on which the run is to be queued", or similar — reads
+input ("the branch on which the run is to be queued", or similar) reads
 exactly like the branch that gets built. It is not; it is the branch the
 definition is read from. Naming the ref explicitly on every call costs one
 flag and removes the whole class.
@@ -81,6 +91,17 @@ that separates the ref a workflow definition is read from from the ref it
 operates on. An instantiated copy of this page names its own platform's two
 inputs; the trap survives the renaming.
 
+**Testing work that is not merged.** The two inputs above are also how an
+unmerged branch gets tested, and they are the only sanctioned way. Queue the
+run with the definition-ref pointing at the branch that holds the edited
+definition, and with the per-target parameters pointing the subject
+repositories at the branches under test. The default branch is left alone.
+Merging to get code tested, or opening a change request so that a merge-gated
+run fires, is publishing; `core/method/vcs-posture.md` ("Sharp edges") owns
+that boundary. Both branch questions apply to such a run, so prove it with
+fact 5 before trusting its result. Record the exact parameter recipe in the
+instantiated page, so the next session reruns it instead of rediscovering it.
+
 ## 3. Per-pipeline parameter surfaces differ
 
 **Read each pipeline's own declared parameter set before composing a call.**
@@ -89,7 +110,7 @@ parameter name that means one thing in one pipeline can mean another
 elsewhere.
 
 **Never "simplify" an unusual-looking default without reading why it is set
-that way.** A default can be maximal by design — a list that names everything
+that way.** A default can be maximal by design: a list that names everything
 precisely so that the pipeline's exclusion logic has something to subtract
 from. Blanking it silently re-includes what was deliberately excluded, and the
 run succeeds while building more than anyone asked for.
@@ -98,23 +119,50 @@ run succeeds while building more than anyone asked for.
 
 Use the platform's **free, non-mutating preview/validate call before every
 consequential queue**. It compiles the definition and validates every
-parameter without creating a run, and — the reason it belongs here — it
+parameter without creating a run. The reason it belongs here is that it
 **checks both branch questions at once**, before anything executes.
 
 A preview call that a platform does not offer is recorded as absent in the
 instantiated page, not silently skipped: the instantiation says what
 compensates for it.
 
-## 5. Proving what a run actually built
+## 5. Identifying the run, and proving what it built
+
+**Address the run by the id the queue call returned.** Record that id when the
+call returns, and make every later status check, log fetch and cancel go to
+that id. A run listing sorted "newest first" is not evidence of which run is
+yours: a trigger, a retry or a chained tool can queue another run between your
+call and your listing. Reading the top row as "my run" can conclude that a
+run never started when it did, and a re-queue on that conclusion makes a
+duplicate. On a deploy pipeline a duplicate is a second deploy.
+`core/method/bounded-execution.md` (`toolcraft.bounded-execution`, clause 4)
+owns the identity rule; this is where it bites on a hosted platform.
+
+**"Stuck" is a claim about that run's own progress output.** Before cancelling
+a run, or killing the tool that queued it, read the run's own timeline or its
+growing log. A tool that has gone quiet in your terminal may be waiting on a
+run that is working normally. Killing it and queueing again turns one run into
+two.
+
+**Queued is not delivered.** The queue call returns once the run is accepted,
+not when it finishes, and a finished run is still not a release;
+`core/method/release-posture.md` owns what delivery means.
+
+**A run's exit status describes the command, not the platform.** A run can
+report success after doing something other than what was intended, for
+example removing a service it was never asked to touch. After a consequential
+run, check the target's own state (the services that should be up, answering
+where they should) before calling the platform healthy.
 
 A run's summary fields answer only **"what was asked for"**. They are the
 request, echoed back.
 
 To prove **what landed on the executing agent**, open the execution log of the
-specific step that performs the **real per-target checkout** — not the summary
+specific step that performs the **real per-target checkout**, not the summary
 step, and not the initial checkout display from fact 2. That log is the only
 place the resolved ref appears as an observed fact rather than as a restated
-input.
+input. Reach that log through the run's timeline (or job listing), which pairs
+each step's record with its log id; never guess a log by its index.
 
 The identity discipline this feeds is `core/method/release-posture.md`'s
 (`release-posture.artifact-identity`): what shipped is the artifact that was
@@ -140,17 +188,25 @@ When one must be created:
 
 Opening a change request (pull/merge request) from `<CLI>` **publishes the
 branch**. It carries the same publishing authorization boundary as any other
-push — `core/method/vcs-posture.md` (`vcs-posture.publish-authorization`) owns
+push. `core/method/vcs-posture.md` (`vcs-posture.publish-authorization`) owns
 it, and this page does not restate it. Convenience of the client is not a
-grant.
+grant. The request's title and description are subject to the plant's
+attribution setting exactly as a commit is (`vcs-posture.plant-settings`).
 
 ## Anti-patterns
 
 - Authenticating per command, or interpolating the credential into a URL.
 - Omitting the organization/project pin and trusting the client's default.
+- Picking between two near-identical pipelines by inference instead of asking.
+- Merging a branch, or opening a change request, so that CI will test it.
 - Reading the initial-checkout step's displayed name as proof of what was
   built.
 - Treating the run summary as evidence of the ref that landed.
+- Reading the top row of a run listing as the run you just queued.
+- Cancelling a "stuck" run, or killing the tool that queued it, without that
+  run's own progress output, then queueing a duplicate.
+- Treating a queued run as a delivered release.
+- Reading a green run as proof that the platform is up.
 - Blanking an unusual default to "simplify the call".
 - Queueing a consequential run without the free preview.
 - Copying a pipeline identifier from another project because the name matched.
@@ -159,10 +215,13 @@ grant.
 
 ## Reference files
 
-- `core/method/release-posture.md` (artifact identity and rollout ordering —
+- `core/method/release-posture.md` (artifact identity and rollout ordering:
   what fact 5's proof is in service of)
 - `core/method/secrets-posture.md` (how `<CREDENTIAL_ENV_VAR>` enters, and why
   it never reaches a log, a URL, or a command line)
-- `core/method/vcs-posture.md` (`vcs-posture.publish-authorization` — fact 7)
+- `core/method/vcs-posture.md` (`vcs-posture.publish-authorization`, fact 7;
+  "Sharp edges", testing unmerged work without merging, fact 2)
+- `core/method/bounded-execution.md` (`toolcraft.bounded-execution`: run
+  identity and liveness evidence, fact 5)
 - `protocols/verify.md` (the gate results a run's output is read as, and the
   null-result control a green run owes)

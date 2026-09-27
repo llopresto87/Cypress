@@ -134,6 +134,9 @@ or gates, record their handles/output locations, end the turn, and read results
 when replies arrive. Use `goal` to hold the objective across turns and
 `rlm_heartbeat` when the user asks for scheduled progress. Give the user concise
 progress updates at milestones.
+A `goal` or heartbeat exits when every open step is the user's: list those steps
+once, numbered, then stop (`docs/graph/protocols/deliver.md`, "When every open
+step is the owner's").
 
 ## What stays identical to Claude Code
 

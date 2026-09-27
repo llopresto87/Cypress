@@ -24,7 +24,7 @@ load_when:
   - "version pin changed, refresh the library page"
   - "security advisory on a dependency"
 prevents: Code written against a dependency from model memory — an unpinned version, an idiom that was correct two majors ago, and a pitfall rediscovered as a bug.
-est_tokens: 1500
+est_tokens: 1748
 command: true
 ---
 
@@ -55,11 +55,11 @@ One of:
 The pass is a sequence of phases with a named owner each. **The table is
 the spawn order**: a phase's spawn is issued only after the handback it
 needs has returned (`delegation.sequencing`,
-`docs/graph/method/delegation.md`). Two callers hold it: the
+`docs/graph/method/delegation-sequencing.md`). Two callers hold it: the
 orchestrator inside grill phase 3 (one scout spawn per dependency
 without a page), and the `docs-librarian` during a close-out or a docs
 audit (its one `delegates_to` entry). In both, the scout drafts and the
-librarian finalizes — a sonnet-class worker's writes are mechanical
+librarian finalizes: a sonnet-class worker's writes are mechanical
 normalization, and the opus-class librarian owns the page
 (`delegation.model-classes`).
 
@@ -76,7 +76,7 @@ What the table cannot hold:
 
 - **Phase 2 fetches**: the version's release notes, the quickstart, the
   public API reference, the security policy and recent advisories, the
-  license — and for LLM/VLM SDKs, pricing-relevant behavior, rate
+  license, and for LLM/VLM SDKs, pricing-relevant behavior, rate
   limits, structured-output features, safety policies. Raw snapshots
   go to `docs/graph/sources/raw/` (license permitting), normalized
   Markdown to `docs/graph/sources/normalized/`. Where the source is
@@ -87,7 +87,7 @@ What the table cannot hold:
   is not a separate spawn here.
 - **The draft page is brutally specific.** §0–§3 and §10 on creation;
   §4–§12 demand-grown as the project meets each idiom, pitfall,
-  deprecation, or upgrade — never a fabricated "none" row. The API
+  deprecation, or upgrade, never a fabricated "none" row. The API
   surface covers only the slice this project uses. A private dependency
   records that resolution needs registry credentials in the build/CI
   environment.
@@ -106,14 +106,16 @@ What the table cannot hold:
 Once the library's exact name, version, and ecosystem are known, and
 **when you are working in the seed repo or the plant has harvested the
 library corpus** (otherwise phase 1 is a no-op), check the
-library-documentation corpus before re-downloading — the pages
+library-documentation corpus before re-downloading: the pages
 `harvest` folded back from earlier plants
 (`library-corpus/<ecosystem>/<library>.md`, keyed by library and **not
 by version**; the corpus keeps the version-durable orientation layer,
-`docs/graph/protocols/harvest.md`). If the page exists, seed
+`docs/graph/protocols/harvest.md`). A command-line tool that the host or a
+base image supplies, not a lockfile, lives under `cli`, and its pin is the
+version on the machine that runs it. If the page exists, seed
 `docs/graph/libraries/<name>.md` from it, then pin and validate the
 version-specific layer (API deltas, deprecations, CVEs) against this
-project's actual lockfile version from upstream — the corpus never
+project's actual pinned version from upstream; the corpus never
 substitutes for the pin check. If it is absent, ingest from upstream as
 usual; the fresh page's version-durable surface becomes a harvest
 candidate for the next plant. Reuse the corpus, re-download only the
@@ -131,7 +133,7 @@ changed, §6 for the new pin's deprecations, §7 from the advisory feed;
 phase 3 re-runs the smoke test at the new pin; phase 5 updates the
 index row. Between full passes, the cheap reconciliation of resolved
 versions against recorded pins is
-`skill.research-and-ingest`'s drift check — it decides *whether* a
+`skill.research-and-ingest`'s drift check. It decides *whether* a
 refresh is due, it does not perform one.
 
 ## Exit conditions

@@ -52,7 +52,7 @@ before growth dispatches anything; this is expected and is not a failure. The
 target now carries `EXPERT_SEED_INSTALL_PROMPT.md`, a copy of this prompt, for
 exactly this re-entry and for later refreshes. If a restart is truly impossible,
 use the recorded role-emulation fallback and report it in the delivery.
-`docs/graph/method/delegation.md` (`delegation.harness-registration`) is the
+`docs/graph/method/delegation-bounds.md` (`delegation.harness-registration`) is the
 single home for both the remedy and the fallback. Silently substituting a
 generic worker for a named specialist is the one response that is not allowed.
 

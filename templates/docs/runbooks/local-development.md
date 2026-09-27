@@ -9,6 +9,14 @@ increment as the underlying change.
 - <runtime version>
 - <package manager version>
 - <other tools>
+- <invocation prerequisite, if any: the env file to source, the vault to
+  unlock, the wrapper every command runs under>
+
+An invocation prerequisite applies to **every** command below, not only
+the first. Write it into each command, or into one wrapper script the
+commands call. A prerequisite stated once at the top gets dropped by
+whoever copies the third command on its own, and the failure it causes
+looks like a bug in the command.
 
 ## Setup
 ```sh

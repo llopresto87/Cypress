@@ -13,7 +13,7 @@ and when the host picks them up is host-dependent; the
 [host capability matrix](../../documentation/host-capability-matrix.md) records
 it per host. A session rooted at the seed does not carry a plant's roster (the
 agents installed in your project) at all.
-`docs/graph/method/delegation.md` (`delegation.harness-registration`) owns the
+`docs/graph/method/delegation-bounds.md` (`delegation.harness-registration`) owns the
 preflight, the remedy, and the recorded fallback.
 
 Project-scoped config in `.claude/` overrides user-scoped config in
@@ -65,6 +65,15 @@ delegate to, so descriptions in `agents/*.md` are written to be
 "pushy" — they explicitly say WHEN to use the agent, not just what
 it does.
 
+## Effort
+
+How Claude Code reads the `effort` key in subagent frontmatter, the values
+it accepts, the override and inherit behaviour, the source and the seed's
+closed set are recorded once, in `core/method/delegation-model-classes.md`
+(`delegation.effort`). A plant has it as
+`docs/graph/method/delegation-model-classes.md`, so a plant session reaches
+those facts from its own graph.
+
 ## Install
 
 Run `install.sh claude-code` from the seed root in the target project:
@@ -110,9 +119,13 @@ path inside it (not Bash, no command, unparseable stdin, internal error)
 exits 0 with one line on stderr, so a bug in the guard degrades to no guard
 and can never block every call. The pattern list is a commented constant at
 the top of the file; extending it is a one-line change. The doctrine behind
-the guard is `core/method/engineering-posture.md` §14 (`toolcraft.bounded-execution`); the test is
+the guard is `core/method/bounded-execution.md` (`toolcraft.bounded-execution`); the test is
 `tests/test-bound-hook.sh`. What the pattern match can miss is listed in the
 [pre-Bash check row](../../DOCUMENTATION.md#enf-pre-bash-guard).
+
+A hook or loop you add yourself exits when every open step is the owner's;
+`docs/graph/protocols/deliver.md` ("When every open step is the owner's") owns
+that rule.
 
 ## What you do not need to do
 

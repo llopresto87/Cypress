@@ -121,7 +121,7 @@ stage() { mkdir -p "$STAGE/$(dirname "$1")"; printf '%s\n' "$STAGE/$1"; }
 # session, and a first install creates that directory; other hosts are not
 # recorded. So the session that ran this installer may not spawn the roster by
 # name: the "installed but not spawnable" trap that stalls a first growth. One
-# home for the rule: core/method/delegation.md, fact
+# home for the rule: core/method/delegation-bounds.md, fact
 # delegation.harness-registration; this is only its install-time notice.
 log_registration_notice() {
     local agent_dir="$1"
@@ -134,7 +134,7 @@ log_registration_notice() {
     log "    $PROJECT_DIR"
     log "  (the plant — never the seed directory). The preflight that checks"
     log "  registration, and the role-emulation fallback when a restart is"
-    log "  impossible, are in docs/graph/method/delegation.md"
+    log "  impossible, are in docs/graph/method/delegation-bounds.md"
     log "  (delegation.harness-registration)."
 }
 
@@ -1629,11 +1629,11 @@ install_prime_agent() {
     # session start, so there is no "installed but not spawnable" lag here: a
     # brief written to .prime/agent/agents/ is usable by the very next rlm()
     # call in the same session. One home for the rule and why it does not bite
-    # here: core/method/delegation.md (delegation.harness-registration).
+    # here: core/method/delegation-bounds.md (delegation.harness-registration).
     log ""
     log "NOTE: no roster-registration restart is needed on Prime Agent — the"
     log "  briefs in .prime/agent/agents/ are usable IMMEDIATELY by rlm()"
-    log "  (docs/graph/method/delegation.md, delegation.harness-registration)."
+    log "  (docs/graph/method/delegation-bounds.md, delegation.harness-registration)."
 }
 
 # --- args ------------------------------------------------------------

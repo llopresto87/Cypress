@@ -24,6 +24,7 @@ No third-party dependencies: it must run on a bare python3.
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import re
 import sys
 from dataclasses import dataclass
@@ -594,53 +595,38 @@ def check_composition_triggers(nodes: list, warns: list) -> None:
 
 def check_reachability(nodes: list, errs: list) -> None:
     by_id = {n.id: n for n in nodes}
-    if ROOT_ID not in by_id:
-        # Pre-growth grace: a fresh install carries only machinery nodes.
-        # The root becomes mandatory the moment the first project node lands.
-        if any(not n.is_machinery for n in nodes):
-            errs.append(f"missing root node {ROOT_ID!r}")
-        else:
-            index_text = INDEX.read_text(encoding="utf-8") if INDEX.exists() else ""
-            # same boundary rule as the root branch below, then a REAL
-            # traversal seeded by the index-listed nodes: the old version
-            # unioned EVERY node's outgoing edges into `seen`, so two
-            # mutually-peering ghost nodes marked each other reachable
-            # (an orphan island always passed)
-            listed = {n.id for n in nodes if re.search(
-                rf"(?<![\w.-]){re.escape(n.id)}(?![\w-])(?!\.[\w-])", index_text)}
-            by = {n.id: n for n in nodes}
-            seen, stack2 = set(), list(listed)
-            while stack2:
-                cur = stack2.pop()
-                if cur in seen or cur not in by:
-                    continue
-                seen.add(cur)
-                stack2.extend(by[cur].out_edges())
-            for n in nodes:
-                if n.id not in seen:
-                    errs.append(f"{n.id}: unreachable — no root yet, not listed in index.md, and no listed node reaches it")
+    rooted = ROOT_ID in by_id
+    # Pre-growth grace: a fresh install carries only machinery nodes. The root
+    # becomes mandatory the moment the first project node lands.
+    if not rooted and any(not n.is_machinery for n in nodes):
+        errs.append(f"missing root node {ROOT_ID!r}")
         return
-    seen = set()
-    stack = [ROOT_ID]
+    index_text = INDEX.read_text(encoding="utf-8") if INDEX.exists() else ""
+    # Boundary match: a plain substring test lets an orphan pass whenever its
+    # id merely prefixes an unrelated longer id — including a dotted child
+    # (`x.orphan` vs `x.orphan.child`); a trailing sentence period
+    # (`x.orphan.`) still counts.
+    listed = {n.id for n in nodes if re.search(
+        rf"(?<![\w.-]){re.escape(n.id)}(?![\w-])(?!\.[\w-])", index_text)}
+    # ONE real traversal, seeded by the root and every index-listed node: a
+    # listed node is an entry point, so what its edges reach is reachable too
+    # (a plant-owned index that lists a node but not the siblings it points
+    # at). Only listed nodes' edges are followed, never every node's: the old
+    # rootless version unioned all outgoing edges into `seen`, so two
+    # mutually-peering ghost nodes marked each other reachable (an orphan
+    # island always passed).
+    seen, stack = set(), [*listed, *([ROOT_ID] if rooted else [])]
     while stack:
         cur = stack.pop()
         if cur in seen or cur not in by_id:
             continue
         seen.add(cur)
         stack.extend(by_id[cur].out_edges())
-    if INDEX.exists():
-        index_text = INDEX.read_text(encoding="utf-8")
-        for n in nodes:
-            # boundary match: a plain substring test lets an orphan pass
-            # whenever its id merely prefixes an unrelated longer id —
-            # including a dotted child (`x.orphan` vs `x.orphan.child`);
-            # a trailing sentence period (`x.orphan.`) still counts
-            if re.search(rf"(?<![\w.-]){re.escape(n.id)}(?![\w-])(?!\.[\w-])",
-                         index_text):
-                seen.add(n.id)
+    why = (f"unreachable from {ROOT_ID!r} and unlisted in index.md" if rooted else
+           "unreachable — no root yet, not listed in index.md, and no listed node reaches it")
     for n in nodes:
         if n.id not in seen:
-            errs.append(f"{n.id}: unreachable from {ROOT_ID!r} and unlisted in index.md")
+            errs.append(f"{n.id}: {why}")
 
 
 LIB_PIN_ROW_RE = re.compile(r"^\|\s*[^|]*\|\s*([^|]*)\|", re.M)
@@ -1041,6 +1027,113 @@ def _terms(task: str) -> set:
     return out
 
 
+# --- expertise promotion and stack inference -------------------------------
+# A whole trigger phrase the task names, or a file the task names that one of
+# the node's file patterns matches, loads a `kind: expertise` node BESIDE the
+# scored cut, where the entry budget would otherwise leave it out. The task is
+# a raw user prompt (the route hook feeds every prompt through `--plan`), so it
+# is untrusted input: its tokens are only ever the NAME given to
+# `fnmatch.fnmatchcase`, never a pattern, and never touch the filesystem.
+PATH_TOKEN_MAX = 256        # a longer whitespace token is skipped, uncounted
+PATH_TOKENS_MAX = 64        # path-like tokens considered, in task order
+PATH_ECHO_MAX = 80          # characters of a path echoed on a LOAD line
+PATH_STRIP = "`'\"()[]<>,;:"
+PATH_LIKE_RE = re.compile(r"[A-Za-z0-9_.-]*\.[A-Za-z0-9]{1,10}")
+PATH_ECHO_UNSAFE_RE = re.compile(r"[^a-z0-9_./~+-]")
+
+
+def _load_when_pieces(n) -> tuple:
+    """(phrases, patterns) — a node's `load_when` split on commas.
+
+    A piece with no whitespace holding `*` or `/` is a file pattern and is
+    never also a phrase, so a task repeating `**/package-lock.json` as words
+    does not promote. Any other piece is a phrase: its tokens are the
+    router's WHOLE tokens (`_split_terms`), so a dotted or hyphenated word
+    stays one token and must be named whole — `target net10` does not hit
+    `net10.0`, as `chain` does not speak for `supply-chain`. A piece with no
+    tokens is ignored. Brace expansion is not a thing here:
+    `*.{ts,tsx}` is the pattern `*.{ts` and the phrase `tsx}`."""
+    phrases, patterns = [], []
+    for entry in n.get_list("load_when"):
+        for piece in str(entry).split(","):
+            piece = piece.strip()
+            if len(piece.split()) == 1 and ("*" in piece or "/" in piece):
+                patterns.append(piece)
+                continue
+            toks = _split_terms(piece)[0]
+            if toks:
+                phrases.append((piece, toks))
+    return phrases, patterns
+
+
+def _task_paths(task: str) -> list:
+    """The task's path-like tokens, normalized, in task order, at most
+    PATH_TOKENS_MAX of them. The length skip comes before the count, so a
+    flood of over-long tokens cannot use the cap up."""
+    paths = []
+    for tok in task.split():
+        if len(tok) > PATH_TOKEN_MAX:
+            continue
+        # One pass is not enough: `(infra/main.tf).` needs the `.` gone before
+        # the `)` is trailing.
+        prev = None
+        while tok != prev:
+            prev = tok
+            tok = tok.strip(PATH_STRIP).rstrip(".")
+        if "://" in tok or not ("/" in tok or PATH_LIKE_RE.fullmatch(tok)):
+            continue
+        if len(paths) == PATH_TOKENS_MAX:
+            break
+        path = tok.lower().replace("\\", "/")
+        paths.append(path[2:] if path.startswith("./") else path)
+    return paths
+
+
+def _path_matches(path: str, pattern: str) -> bool:
+    """String matching only; `path` is always the name. A pattern with no `/`
+    matches the last segment; one with `/` drops its leading `**/` and matches
+    the whole path or any `*/`-prefixed tail (fnmatch's `*` crosses `/`)."""
+    pat = pattern.lower()
+    if "/" not in pat:
+        return fnmatch.fnmatchcase(path.rsplit("/", 1)[-1], pat)
+    while pat.startswith("**/"):
+        pat = pat[3:]
+    return fnmatch.fnmatchcase(path, pat) or fnmatch.fnmatchcase(path, "*/" + pat)
+
+
+def _echo(path: str) -> str:
+    """A task path as it may appear in hook-injected context: cut, and every
+    character outside a plain path alphabet shown as `?`."""
+    cut = PATH_ECHO_UNSAFE_RE.sub("?", path[:PATH_ECHO_MAX])
+    return cut + ("…" if len(path) > PATH_ECHO_MAX else "")
+
+
+def _promoted_and_inferred(nodes: list, task: str, terms: set) -> dict:
+    """{expertise id: how} for every phrase hit and path match, uncapped.
+
+    A hit is every token of one phrase matching a task term at the standalone
+    tier (exact or same stem; a prefix fold does not count). A node that hits
+    reports the first hitting piece and is not also reported as inferred; a
+    path match reports the first path in task order, then the first pattern
+    in `load_when` order."""
+    paths = _task_paths(task)
+    found = {}
+    for n in nodes:
+        if n.meta.get("kind") != "expertise":
+            continue
+        phrases, patterns = _load_when_pieces(n)
+        hit = next((piece for piece, toks in phrases
+                    if all(_match(t, terms) == 2 for t in toks)), None)
+        if hit is not None:
+            found[n.id] = f'promoted on "{hit}"'
+            continue
+        named = next(((p, pat) for p in paths for pat in patterns
+                      if _path_matches(p, pat)), None)
+        if named:
+            found[n.id] = f'inferred from "{_echo(named[0])}" via "{named[1]}"'
+    return found
+
+
 def resolve(nodes: list, task: str):
     """Mirror the traversal in skills/context-router/SKILL.md.
 
@@ -1052,9 +1145,13 @@ def resolve(nodes: list, task: str):
     vocabulary therefore cannot drag a library page into every task about
     the stack, which is the whole reason the lazy edge exists.
 
+    Beside the scored entries, and not counted against their cut, every
+    expertise node the task promotes or infers (`_promoted_and_inferred`) is
+    an entry too, and takes its closure like any other.
+
     Returns (loaded, not_loaded, notices): `loaded` pairs each node with how
     it got there, `not_loaded` pairs each node with why it stayed out, and
-    `notices` carries the wide-descent warnings.
+    `notices` carries the wide-descent warnings and any inference fallback.
     """
     by_id = {n.id: n for n in nodes}
     terms = _terms(task)
@@ -1101,22 +1198,36 @@ def resolve(nodes: list, task: str):
     # pre-growth graphs have no root yet: fall back to nothing rather than crash
     seeds = [n for s, n in entries[:3] if s >= floor] or ([by_id[ROOT_ID]] if ROOT_ID in by_id else [])
 
-    loaded: list = []          # [(Node, how)] — how: entry / requires / composed
+    loaded: list = []          # [(Node, how)] — how: entry / promoted / inferred / requires / composed
     seen: set = set()
     reasons: dict = {}         # id -> why it is NOT loaded
     notices: list = []
-    # A seed is a seed however it is reached. The stack is LIFO over seeds
+    try:
+        extra = _promoted_and_inferred(nodes, task, terms)
+    except Exception as e:
+        # Broad on purpose: the task is any str, and the route hook runs this
+        # on every prompt, where a raise would cost the plant its routing.
+        # Reported, not swallowed: the fallback is the scored entries alone,
+        # and the notice says so before LOAD.
+        extra = {}
+        notices.append(f"inference skipped: {type(e).__name__}")
+    # An entry is an entry however it is reached. The stack is LIFO over seeds
     # sorted best-first, so a child that outscores its own subsystem is popped
     # through the parent chain and would otherwise be reported as composed —
-    # a true load set with a false account of why.
-    entry_ids = {n.id for n in seeds}
-    stack = [(n, "entry") for n in seeds]
+    # a true load set with a false account of why. A scored entry prints no
+    # reason, so it outranks a promotion or an inference of the same node.
+    entry_how = {n.id: "entry" for n in seeds}
+    for i, how in extra.items():
+        entry_how.setdefault(i, how)
+    # Promoted and inferred entries go under the seeds, so the scored closure
+    # is walked first and accounted for exactly as before.
+    stack = [(by_id[i], how) for i, how in extra.items()] + [(n, "entry") for n in seeds]
     while stack:
         n, how = stack.pop()
         if n.id in seen:
             continue
         seen.add(n.id)
-        loaded.append((n, "entry" if n.id in entry_ids else how))
+        loaded.append((n, entry_how.get(n.id, how)))
         for r in n.get_list("requires"):
             if r in by_id:
                 stack.append((by_id[r], f"requires of {n.id}"))
@@ -1230,7 +1341,7 @@ def main() -> int:
         print(f"LOAD ({len(loaded)} nodes, ~{total} tokens):")
         for n, how in sorted(loaded, key=lambda x: x[0].id):
             line = f"  {n.id:<28} {n.meta.get('title','')}"
-            if how.startswith("composed by"):
+            if how.startswith(("promoted on", "inferred from", "composed by")):
                 line += f"   <- {how}"
             print(line)
         if not_loaded:

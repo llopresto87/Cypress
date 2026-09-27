@@ -14,7 +14,7 @@ Source: `core/method/delegation.md`.
 
 The host session is the `orchestrator`. It routes, plans, briefs, verifies, communicates, and accepts. Whether it also *does* the work is decided by the task's tier (`method.tiers`). The specialists live in `docs/graph/agents/`, each a full system prompt. You invoke one by spawning a clean-context worker with a purpose-made brief. Simulating a specialist persona in the chat is not delegation.
 
-The brief is the only carrier of the discipline across the boundary, because no hook the seed installs carries it into a worker's turn ([delegation node](../core/method/delegation.md#every-brief-carries-the-graph-discipline)). Whatever discipline the brief omits, the worker does not have. Every brief embeds the canonical graph-session block verbatim, carries the routing evidence, and requires the handback payload.
+The brief is the only carrier of the discipline across the boundary, because no hook the seed installs carries it into a worker's turn ([delegation-briefs node](../core/method/delegation-briefs.md#every-brief-carries-the-graph-discipline)). Whatever discipline the brief omits, the worker does not have. Every brief embeds the canonical graph-session block verbatim, carries the routing evidence, and requires the handback payload.
 
 ## 2. Mechanical routing (`agent-lint.py --route`)
 
@@ -28,15 +28,17 @@ The routing_triggers in each agent's frontmatter are the keyword phrases the rou
 
 ## 3. Model classes
 
-Source: `core/method/delegation.md`.
+Source: `core/method/delegation-model-classes.md`.
 
 Each agent's `model:` frontmatter field is its model class: sonnet-class for read-only investigation, opus-class for authoring, implementation, and judgment-heavy design.
 
 Only two agents run on sonnet: `research-scout` and `growth-scout`, the two scout roles (growth-scout writes only its evidence ledger; research-scout's drafts are mechanical normalization finalized by the librarian). The other 18 run on opus. Model class is a distinct axis from the task tier (T0–T3, kernel §0) and the graph load-tier (the node `tier:` field). Only the risk axis is written `T0–T3`.
 
+Each agent's `effort:` frontmatter field is its default reasoning effort, one of `low`, `medium` or `high`. Effort refines the model class and is not a fourth axis; it is also not the effort level an owner declares for a task. Eight agents default to `high`: `orchestrator`, `architect`, `multi-agent-architect`, `security`, `pentest`, `devils-advocate`, `legal` and `growth-orchestrator`. The other twelve default to `medium`, and none ships at `low`. `agent-lint.py --lint` fails an agent file whose value is missing or outside that set. A spawn can run at a different effort than its default; the derivation, and what each host is recorded to read, are in `core/method/delegation-model-classes.md`.
+
 ## 4. Bounded delegation
 
-Source: `core/method/delegation.md`.
+Source: `core/method/delegation-bounds.md`.
 
 Delegation is bounded so a fleet cannot fan out without limit.
 
@@ -53,11 +55,11 @@ Six coordinators hold a depth-capped `Task` tool and may spawn only within their
 
 The deepest legal chain is depth 3 (through the `orchestrator`).
 
-Every other agent is a spawn-less leaf: its `tools:` line is present and grants no spawn tool (`Agent`, or its alias `Task`), so it cannot spawn. That missing grant is one of the harness's own recursion caps whenever the specialist was registered as a type; the host's nesting limit is the other ([delegation bounds](../core/method/delegation.md#delegation-is-bounded)). At an out-of-domain boundary a leaf STOPs and hands back, naming the next specialist, and never does the work itself. `agent-lint --lint` enforces these frontmatter invariants.
+Every other agent is a spawn-less leaf: its `tools:` line is present and grants no spawn tool (`Agent`, or its alias `Task`), so it cannot spawn. That missing grant is one of the harness's own recursion caps whenever the specialist was registered as a type; the host's nesting limit is the other ([delegation bounds](../core/method/delegation-bounds.md#delegation-is-bounded)). At an out-of-domain boundary a leaf STOPs and hands back, naming the next specialist, and never does the work itself. `agent-lint --lint` enforces these frontmatter invariants.
 
 Attribution runs through `produced_by`. Every worker ends with the handback payload (`docs/graph/templates/prompts/handback-payload.md`). `produced_by` and `route_evidence` feed the deliver-time attribution assertion (`protocol.deliver`); a missing `produced_by` is a BLOCK. A worker hands back exactly once per spawn, on `complete`, `blocked-out-of-domain`, or `failed`, and never once per tool call.
 
-At the harness-registration boundary, a specialist is spawnable by name only once the host has registered it. `docs/graph/agents/` is the home; the spawnable form is the host's *projection* of it, and when a host sees a file written there mid-session is host-dependent ([registration](../core/method/delegation.md#a-specialist-is-spawnable-only-once-the-host-registered-it)). Spawning by name therefore needs two preconditions: the session's project root is the plant, and the host registered the projection. Anything that *writes* a projection mid-session, such as the install, a graft's roster delta, or a freshly commissioned expert, can be on disk and not yet spawnable. The router preflights once per protocol with a throwaway dispatch; `agent-lint --route` does not answer registration (it globs the on-disk projection and can name types an unregistered session cannot spawn). Prime Agent is the exception: it has no session-start roster enumeration, so a brief written mid-session is spawnable immediately.
+At the harness-registration boundary, a specialist is spawnable by name only once the host has registered it. `docs/graph/agents/` is the home; the spawnable form is the host's *projection* of it, and when a host sees a file written there mid-session is host-dependent ([registration](../core/method/delegation-bounds.md#a-specialist-is-spawnable-only-once-the-host-registered-it)). Spawning by name therefore needs two preconditions: the session's project root is the plant, and the host registered the projection. Anything that *writes* a projection mid-session, such as the install, a graft's roster delta, or a freshly commissioned expert, can be on disk and not yet spawnable. The router preflights once per protocol with a throwaway dispatch; `agent-lint --route` does not answer registration (it globs the on-disk projection and can name types an unregistered session cannot spawn). Prime Agent is the exception: it has no session-start roster enumeration, so a brief written mid-session is spawnable immediately.
 
 Role emulation is the fallback. When neither remedy (re-enter from the plant root, or reload the agent directory) is available, the router spawns the host's generic worker and rebuilds the specialist inside the brief. It pins the specialist's `model:` class, embeds `docs/graph/agents/<name>.md` verbatim as the role, and restates in prose every bound the frontmatter no longer enforces: the `tools:` allowlist as an explicit prohibition, the leaf stop-and-hand-back rule, and for a coordinator its `delegates_to` allowlist and `max_spawn_depth` ceiling. The worker is stamped `produced_by: <role>` plus `harness_override: role-emulated (<reason>)`. Role emulation degrades the guarantees: on a generic worker the leaf recursion cap and the read-only bound drop from harness-enforced to brief-requested, so it is scoped to the phase that needs it and reported as a recorded deviation.
 
@@ -116,6 +118,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **id:** `agent.orchestrator`
 - **Role:** Default agent. First contact for any request. Classifies the task tier (kernel §0), picks the right protocol, delegates to the right specialists, owns the grill.md plan-of-record, enforces spec-first and test-first, and runs the close-out and delivery rules at the end.
 - **model class:** `opus`
+- **effort (default):** `high`
 - **Delegation:** coordinator with `can_delegate: true`, `max_spawn_depth: 3`, `delegates_to:` `architect`, `implementer`, `reviewer`, `tester`, `security`, `reliability`, `data-ml`, `product`, `docs-librarian`, `research-scout`, `devils-advocate`, `pentest`, `multi-agent-architect`, `growth-orchestrator`, `growth-scout`, `seed-installer`, `ui-ux-designer`, `tool-smith`
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`, `WebSearch`, `WebFetch`, `Task`
 - **tier (graph load-tier):** 2
@@ -138,6 +141,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **id:** `agent.architect`
 - **Role:** Senior system architect. Owns boundaries, interfaces, data flow, dependency choices, and Architecture Decision Records (ADRs).
 - **model class:** `opus`
+- **effort (default):** `high`
 - **Delegation:** coordinator with `can_delegate: true`, `max_spawn_depth: 1`, `delegates_to:` `tester`, `research-scout`
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `WebSearch`, `WebFetch`, `Task`
 - **tier (graph load-tier):** 2
@@ -165,6 +169,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **id:** `agent.implementer`
 - **Role:** Senior implementer. Writes the code that turns a failing test green — the minimum new behavior, integrated into the file's existing design rather than bolted on as the smallest diff — after a spec has been authored and tests have been written.
 - **model class:** `opus`
+- **effort (default):** `medium`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`
 - **tier (graph load-tier):** 2
@@ -192,6 +197,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **id:** `agent.reviewer`
 - **Role:** Senior code reviewer. Audits diffs against the plan, the architecture, the wiki idioms, the project's conventions, and integration coherence (a change must be integrated, not bolted on).
 - **model class:** `opus`
+- **effort (default):** `medium`
 - **Delegation:** coordinator with `can_delegate: true`, `max_spawn_depth: 1`, `delegates_to:` `security`, `reliability`
 - **tools:** `Read`, `Glob`, `Grep`, `Bash`, `Task`
 - **tier (graph load-tier):** 2
@@ -219,6 +225,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **id:** `agent.tester`
 - **Role:** Senior test engineer. Translates spec contracts into failing tests, runs the RED-GREEN-REFACTOR cycle, owns the verification gates and the evaluation suites for AI behavior, and maintains the regression corpus.
 - **model class:** `opus`
+- **effort (default):** `medium`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`
 - **tier (graph load-tier):** 2
@@ -246,6 +253,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **id:** `agent.security`
 - **Role:** Senior security, privacy, and abuse-resistance engineer. Owns threat models, auth and authorization design, secrets handling, supply-chain risk, file-upload safety, and AI-specific abuse (prompt injection, tool hijacking, data exfiltration).
 - **model class:** `opus`
+- **effort (default):** `high`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`, `WebSearch`, `WebFetch`
 - **tier (graph load-tier):** 2
@@ -276,6 +284,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **id:** `agent.reliability`
 - **Role:** Senior reliability, platform, and delivery engineer. Owns standing infrastructure up from scratch, deployment, observability, rollback, capacity, cost, and the operational runbooks.
 - **model class:** `opus`
+- **effort (default):** `medium`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`, `WebSearch`, `WebFetch`
 - **tier (graph load-tier):** 2
@@ -305,6 +314,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **id:** `agent.data-ml`
 - **Role:** Senior data and ML engineer. Owns dataset contracts, pipelines, model selection, evaluation design, reproducibility, and the generation of synthetic/example/fixture data for tests, demos, and fresh environments — never sourced from production.
 - **model class:** `opus`
+- **effort (default):** `medium`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`, `WebSearch`, `WebFetch`
 - **tier (graph load-tier):** 2
@@ -331,6 +341,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **id:** `agent.product`
 - **Role:** Senior product-minded technical lead. Authors §3 (User-facing behavior) and §9 (Acceptance criteria) of every spec.
 - **model class:** `opus`
+- **effort (default):** `medium`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `WebSearch`, `WebFetch`
 - **tier (graph load-tier):** 2
@@ -357,6 +368,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **id:** `agent.docs-librarian`
 - **Role:** Senior knowledge-graph architect. Owns the unified system at docs/graph/ — progressive-discovery router, fact-owning nodes, source provenance, detailed project leaves, dependency wiki, the reusable-tool catalog, the project-skill catalog (.claude/skills/), specs, decisions, plans, and runbooks.
 - **model class:** `opus`
+- **effort (default):** `medium`
 - **Delegation:** coordinator with `can_delegate: true`, `max_spawn_depth: 1`, `delegates_to:` `research-scout`
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`, `WebSearch`, `WebFetch`, `Task`
 - **tier (graph load-tier):** 2
@@ -395,6 +407,7 @@ tell and no dropped fact under `--against HEAD`?
 - **id:** `agent.research-scout`
 - **Role:** Senior research scout. Goes to the internet, finds authoritative sources, downloads them when allowed, normalizes them, and hands them to the docs-librarian for the wiki.
 - **model class:** `sonnet`
+- **effort (default):** `medium`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`, `WebSearch`, `WebFetch`
 - **tier (graph load-tier):** 2
@@ -420,6 +433,7 @@ tell and no dropped fact under `--against HEAD`?
 - **id:** `agent.pentest`
 - **Role:** Senior offensive-and-defensive security engineer. Drives authorized penetration testing of the project's own systems, triages what it finds, and drives the fixes to closure.
 - **model class:** `opus`
+- **effort (default):** `high`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`, `WebSearch`, `WebFetch`
 - **tier (graph load-tier):** 2
@@ -444,6 +458,7 @@ tell and no dropped fact under `--against HEAD`?
 - **id:** `agent.devils-advocate`
 - **Role:** Hostile second pass over a FINISHED, claim-bearing deliverable — a report, spec, ADR, security finding, audit result, or migration plan — whose sole job is to try to REFUTE each load-bearing claim from primary sources only, never the working papers that produced it.
 - **model class:** `opus`
+- **effort (default):** `high`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
 - **tools:** `Read`, `Glob`, `Grep`, `WebSearch`, `WebFetch`
 - **tier (graph load-tier):** 2
@@ -473,6 +488,7 @@ tell and no dropped fact under `--against HEAD`?
 - **id:** `agent.growth-orchestrator`
 - **Role:** Senior growth conductor. Owns running the grow / adopt-existing / from-scratch flow end to end — detect the project's shape, dispatch growth-scouts by real subsystem/repository boundary, sequence the authoring of the unified docs/graph from their evidence ledgers, and gate on knowledge validation before delivery.
 - **model class:** `opus`
+- **effort (default):** `high`
 - **Delegation:** coordinator with `can_delegate: true`, `max_spawn_depth: 2`, `delegates_to:` `growth-scout`, `seed-installer`, `docs-librarian`, `architect`, `research-scout`, `tester`, `ui-ux-designer`
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`, `Task`
 - **tier (graph load-tier):** 2
@@ -499,6 +515,7 @@ tell and no dropped fact under `--against HEAD`?
 - **id:** `agent.growth-scout`
 - **Role:** Senior growth scout. The read-only evidence-gatherer of the grow/adopt flow: dispatched at ONE real subsystem or repository boundary, it inspects executable source directly and returns claims tied to paths and symbols — the ledger the graph authors build from.
 - **model class:** `sonnet`
+- **effort (default):** `medium`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
 - **tools:** `Read`, `Write`, `Glob`, `Grep`, `Bash`
 - **tier (graph load-tier):** 2
@@ -525,6 +542,7 @@ tell and no dropped fact under `--against HEAD`?
 - **id:** `agent.multi-agent-architect`
 - **Role:** Senior multi-agent systems architect. Owns the design and review of agentic and multi-agent systems — topology, delegation, orchestration substrate, context and memory strategy, tool contracts, guardrails and fail-closed gates, observability, evaluation, and cost/latency budgets.
 - **model class:** `opus`
+- **effort (default):** `high`
 - **Delegation:** coordinator with `can_delegate: true`, `max_spawn_depth: 2`, `delegates_to:` `architect`, `tester`, `implementer`, `reviewer`, `data-ml`, `security`, `reliability`
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`, `WebSearch`, `WebFetch`, `Task`
 - **tier (graph load-tier):** 2
@@ -554,6 +572,7 @@ tell and no dropped fact under `--against HEAD`?
 - **id:** `agent.seed-installer`
 - **Role:** Senior seed-install engineer. Owns placing CYPRESS into a target project — running install.sh's place_file/place_tree mechanics, selecting only the host adapters actually used, backing up rather than overwriting, and verifying the host tool truly loads the kernel, agents, protocols, and skills.
 - **model class:** `opus`
+- **effort (default):** `medium`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`
 - **tier (graph load-tier):** 2
@@ -580,6 +599,7 @@ tell and no dropped fact under `--against HEAD`?
 - **id:** `agent.ui-ux-designer`
 - **Role:** Senior interface & interaction designer. The definitive authority on information architecture, screen/flow design, interaction states, design tokens and the component system, visual hierarchy, and usability-heuristics audits — and on HOW the accessibility floor is met in the interface.
 - **model class:** `opus`
+- **effort (default):** `medium`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `WebSearch`, `WebFetch`
 - **tier (graph load-tier):** 2
@@ -607,6 +627,7 @@ tell and no dropped fact under `--against HEAD`?
 - **id:** `agent.legal`
 - **Role:** Senior regulatory-compliance analyst. Owns reasoning about externally-authored rules (regulatory codes, standards catalogs, compliance requirements) against a curated, verified legal corpus as its only knowledge source — never live search, never model memory. Every claim is bound to a corpus entry; a corpus gap produces an explicit refusal, never a reconstructed citation.
 - **model class:** `opus`
+- **effort (default):** `high`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary. No coordinator's default `delegates_to` names it — see §6 — so it is only reached today via `architect.legal-checkpoint`'s conditional extension, or by a session dispatching it directly if the host projection registered it.
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`
 - **tier (graph load-tier):** 2
@@ -643,6 +664,7 @@ tell and no dropped fact under `--against HEAD`?
 - **id:** `agent.tool-smith`
 - **Role:** Senior tooling engineer for the plant's own operations. Builds the durable, tested, documented tool when a project operation has been done by hand enough times to have earned one — a database reset, a client regeneration, a fixture seed, a release choreography, an export reconciliation. Owns the bar that separates a tool worth keeping from a script worth throwing away, and refuses work below it.
 - **model class:** `opus`
+- **effort (default):** `medium`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; an unfamiliar test harness is a handback finding, never a reason to ship untested
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`
 - **tier (graph load-tier):** 2
