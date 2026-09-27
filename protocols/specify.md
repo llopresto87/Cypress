@@ -14,6 +14,7 @@ requires:
 peers:
   - protocol.brainstorm
   - protocol.grill
+  - protocol.specify-joint-pass
 artifacts:
   - templates/spec.template.md
   - templates/knowledge-graph/spec-lint.py
@@ -80,7 +81,7 @@ The pass is a sequence of phases, each filling named sections with a
 named owner. **The table is the spawn order**: a phase's spawn is issued
 only after every handback it needs has returned, and two phases run
 side by side only where the last column says so
-(`delegation.sequencing`, `docs/graph/method/delegation.md`). This is
+(`delegation.sequencing`, `docs/graph/method/delegation-sequencing.md`). This is
 spawned, clean-context work: if the host cannot spawn workers of the
 required model classes, stop and report the unsupported operating model
 — never simulate the personas in the orchestration chat. A specialist
@@ -89,7 +90,7 @@ the pass (`delegation.harness-registration`).
 
 | Phase | Sections | Owner | Needs | Parallel with |
 |---|---|---|---|---|
-| 0 | identifier; §0 Metadata, §1 Summary, §2 Scope | orchestrator, in-session | brainstorm output or the clear goal | — |
+| 0 | the design-latitude ask (`specify.design-latitude`); identifier; §0 Metadata, §1 Summary, §2 Scope | orchestrator, in-session | brainstorm output or the clear goal | — |
 | 1 | §3 User-facing behavior | `product` | §2 | — |
 | 2 | §4 Contracts, §5 NFRs, §6 Data shapes, §7 Failure modes, §8 Examples | `architect` | §3 | — |
 | 3 | §9 Acceptance criteria | `product` — each criterion maps to §4 slugs | §4 | phase 4 |
@@ -99,6 +100,10 @@ the pass (`delegation.harness-registration`).
 
 What the table cannot hold:
 
+- **One pass when the plan is new too.** When no plan-of-record implements
+  this work yet, the spec and the plan are written in one joint pass, and
+  phase 0's latitude question is asked there (`specify.joint-pass`,
+  `docs/graph/protocols/specify-joint-pass.md`).
 - **The identifier comes from disk.** `SPEC-NNNN-<slug>` takes the next
   free number among `docs/graph/specs/SPEC-*.md`; the catalog row in
   `docs/graph/specs/index.md` is a fact-bearing surface the

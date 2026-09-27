@@ -52,10 +52,14 @@ tool-corpus/<category>/<name>.md
   (deploy pipelines, secret rotation, cert generation, disposable test-identity
   provisioning, layered-config merge verification, declared-variable existence
   auditing, structured-secret field detection, large-artifact staging,
-  config-driven server response harnessing) and `testing` (smoke suites,
+  config-driven server response harnessing, declared-consumer link generation,
+  chained pipeline-run driving, session cost profiling, registry digest
+  resolution, hashed-lock closure checking) and `testing` (smoke suites,
   CI-runner simulation, failure-signature triage, working-tree snapshots,
-  authentication-parity oracles). Further categories such as `scaffolding`,
-  `codegen`, `data`, and `analysis` are added as they are harvested.
+  authentication-parity oracles, parallel suite running, static config-contract
+  gating, cross-implementation parity verification, test-hygiene linting).
+  Further categories such as `scaffolding`, `codegen`, `data`, and `analysis`
+  are added as they are harvested.
 - `<name>` — the canonical id, lowercased, kebab-case.
 
 ## Rules

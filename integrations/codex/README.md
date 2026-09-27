@@ -104,13 +104,13 @@ Both of those land after the current session began. Whether a running Codex
 session picks either up is not recorded in the
 [host capability matrix](../../documentation/host-capability-matrix.md#specialist-discoveryregistration),
 so check before relying on them.
-`docs/graph/method/delegation.md` (`delegation.harness-registration`) owns that
+`docs/graph/method/delegation-bounds.md` (`delegation.harness-registration`) owns that
 rule and its recorded fallback.
 
 ## Bounded execution has no hook here
 
 The seed wires no pre-tool hook for Codex, so the bounded-execution clauses of
-`core/method/engineering-posture.md` §14 (`toolcraft.bounded-execution`) are the agent's own discipline
+`core/method/bounded-execution.md` (`toolcraft.bounded-execution`) are the agent's own discipline
 rather than a hook's check: every shell command that can hang (service
 control, process signalling, package managers, installers, builds, log
 followers) carries an explicit `timeout`, or is launched detached with its

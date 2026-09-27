@@ -23,11 +23,12 @@ load_when:
   - "which ADRs are still open, hotfix, or deferred"
   - "ADR status: proposed, accepted, superseded_by"
   - "opening a one-way door decision"
+  - "accepted risk, declined fix, or an owner-declared no-go area"
 artifacts:
   - templates/adr.template.md
   - decisions/README.md
 prevents: Choices whose reasoning exists only in the session that made them, so a later reader sees what was decided but not what was rejected or what reversing it would cost.
-est_tokens: 1850
+est_tokens: 3000
 ---
 
 # adr-writer
@@ -62,7 +63,17 @@ This skill encodes the discipline of writing them well.
 ## ADR numbering and status
 
 ADRs are numbered monotonically: `adr-NNNN-short-slug.md`. Find the
-next free number in `docs/graph/decisions/`. **Never reuse a number.**
+next free number in `docs/graph/decisions/` and in the index, because a
+number can be taken without a file. **Never reuse a number.**
+
+A number allocated to a decision that is owed but not yet written (a
+spec reserves it, or the owner has not ruled yet) gets an index row
+marked reserved or owed, naming who owes the body, and **no stub
+file**: a stub ADR is fiction that satisfies a linter. The reservation
+holds even when the decision is abandoned. Where a program keeps more
+than one ADR series (one per repository, say), a citation names the
+series as well as the number, so two ADRs with the same number cannot
+be confused.
 
 Status lives in **frontmatter**, in the schema's lifecycle vocabulary
 (`docs/graph/_schema.md` §"Lifecycle status" is the home — read it for
@@ -108,6 +119,14 @@ restarts. Grill.md §4 caps p95 latency at 200ms and cost at
 $X/month. The current implementation uses an in-memory map,
 which loses state on restart. We need to choose a persistent
 store."
+
+When the owner states how an external arrangement works (a partner
+handles a class of requests, a contract covers a duty), record it as a
+declaration attributed to them, in their words where they matter, and
+say what it does not settle. The ADR does not turn the declaration
+into a conclusion of its own, least of all a legal one: that is
+`agent.legal`'s to reach against its corpus, and until it does, the
+ADR says the question is owed.
 
 ### Decision
 
@@ -170,7 +189,8 @@ turns up no genuine decisions, the index stays empty and says so — a
 fabricated ADR is worse than a missing one, because the next agent
 trusts it.
 
-Two decisions people forget to record because they feel like inaction:
+Four decisions people forget to record, because they feel like
+inaction:
 
 - **"Do nothing now" is a decision.** Ratifying a destination while
   taking no code yet — deferring the first increment behind a named,
@@ -184,6 +204,30 @@ Two decisions people forget to record because they feel like inaction:
   risks an irreversible incident; wrong on Y costs a bounded,
   recoverable delay" — and let the asymmetry decide, rather than
   arguing which option is abstractly "best".
+- **Declining a fix is a decision.** When the owner accepts a residual
+  risk instead of remediating it, the ADR says plainly that nothing is
+  remediated by it; what it changes is the finding's standing, not the
+  measurement. It separates exactly what is declined from what is not
+  (a control that is implemented but was never verified is not an
+  unremediated one, and a record that blurs the two misleads both
+  ways). It names the residual in plain terms and its register row,
+  lists any compensating control with what that control does not
+  cover, and quotes the owner's constraints and the attesting person.
+  It states the revisit trigger, or states that there is none; a
+  qualifier like "for now" in the acceptance is kept, because it makes
+  the standing expire. What a declined fix is in the register, and
+  when a standing acceptance becomes a `deviation` node, is
+  `method.incident-posture` §6; link it, do not restate it.
+- **A declared no-go area is a decision.** When the owner puts a
+  repository, system, or environment off limits, the ADR states the
+  boundary exactly: which commands are barred (read-only ones
+  included, if the owner said so), and which nearby configuration that
+  lives elsewhere stays in scope. A contradiction seen inside the
+  boundary before it closed is recorded `not recorded`, never settled
+  by probing it. The consequences say that the graph's facts about the
+  area are frozen at their last pin and must be presented as
+  historical. Its standing form is a `deviation` node
+  (`docs/graph/nodes/_deviation.template.md`).
 
 ## Workflow
 
@@ -211,7 +255,11 @@ Two decisions people forget to record because they feel like inaction:
 10. Add a row to `docs/graph/decisions/README.md` (the index).
 11. Add a row to grill.md §6 with the ADR's identifier; when the owner
     ratifies, flip the frontmatter to `accepted` with a fresh
-    `status_date`.
+    `status_date`. If what shipped departs from a `proposed` ADR, it is
+    not flipped to `accepted` as written: record the difference between
+    as-written and as-shipped next to it (its index row) and owe the
+    amendment to the ADR's author. A close-out does not rewrite the
+    body.
 12. Before the status flips to `accepted`: the body is prose a person reads
     in a year. Apply `docs/graph/skills/humanizer.md` in file mode and run
     `python3 docs/graph/prose-lint.py --file <adr> --against HEAD`; a strong

@@ -3,6 +3,7 @@ name: product
 description: Senior product-minded technical lead. Authors §3 (User-facing behavior) and §9 (Acceptance criteria) of every spec. Owns the user outcome, user flows, accessibility floor, and the upstream of every spec. Use whenever the project has unclear requirements, user-facing flows, onboarding, dashboards, or complex product tradeoffs; interface and interaction design itself belongs to ui-ux-designer.
 tools: [Read, Write, Edit, Glob, Grep, WebSearch, WebFetch]
 model: opus
+effort: medium
 routing_triggers:
   - "write the acceptance criteria and the user flow"
   - "define onboarding and the accessibility floor"

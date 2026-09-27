@@ -71,7 +71,7 @@ never re-listed here.
 The adapter adds only these edges of its own, and they bind both arms:
 - the roster this adapter installs is not spawnable in the session that
   installed it — preflight and remedy per `delegation.harness-registration`
-  (`docs/graph/method/delegation.md`) before any by-name dispatch;
+  (`docs/graph/method/delegation-bounds.md`) before any by-name dispatch;
 - initialization does not run application builds or application test suites;
 - initialization does not push, fetch, pull, switch, or commit Git;
 - it does not modify application code or fabricate normative records.

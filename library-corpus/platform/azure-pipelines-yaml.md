@@ -3,7 +3,8 @@
 > Project-agnostic, version-durable surface notes, folded into CYPRESS by the
 > harvest protocol. This is a **hosted-platform surface**: there is no installable
 > package and no version to pin, so it is pinned by **retrieval date** — the
-> surface below was last confirmed against upstream documentation **2026-07-27**.
+> surface below was last confirmed against upstream documentation **2026-07-27**
+> (the secret-variable and parameter-validation notes **2026-09-13**).
 > Orientation only: for a project's own agent pools, service connections,
 > variable groups, and governance checks, run `ingest-library` against the
 > project itself, and re-confirm anything load-bearing against current upstream
@@ -90,6 +91,21 @@ literal pairs requires list syntax.
   from each pipeline, so the group list has a single home. Read the compile-order
   pitfall first: per-pipeline authorization of a group does **not** travel with
   the template.
+- **Settle it before the run as a parameter; let it vary per run as a
+  variable.** Before a pipeline runs, templates and their parameters become
+  constants. Anything the platform needs as a constant (a checkout ref, a
+  template path, a stage list) must therefore be a parameter, and a variable
+  cannot stand in for it. A parameter with a `values:` enumeration restricts the
+  choice, for a pool or an environment, to a fixed list.
+- **Queue-time parameter validation makes a typo loud; lean on it.** Runtime
+  parameters are checked when the run is queued, before anything executes. A
+  parameter the pipeline does not declare is rejected, a non-boolean value for a
+  `boolean` parameter is rejected (observed: `yes` fails, while `true`, `True`,
+  `TRUE`, `false` and `False` pass, and the run records the value back as `True`
+  or `False`). A mistyped flag
+  is therefore an error at queue time, not a silent no-op. A template that
+  compares a boolean against string literals should normalize case first rather
+  than trust the recorded spelling.
 - **Choose the expression context deliberately** — the three are not
   interchangeable and they fail differently:
 
@@ -152,6 +168,28 @@ literal pairs requires list syntax.
   pipeline-level alias does not help — only a step-level `env:` entry mapping the
   secret to a name does. Changing *how* the secret is sourced (a vault-linked
   group, federated identity) does not change *that* it still needs the mapping.
+  A vault-linked group maps only the secret *names* into the group; the values
+  stay in the vault and are fetched for the run. Map a secret into an
+  environment variable; never pass it as a command-line argument, which some
+  operating systems log.
+- **Masking is best effort, and it never covers substrings.** The platform masks
+  a secret's whole value in the log, but a fragment of it (one field of a JSON
+  blob, a line of a certificate, a decoded half of a credential pair) prints in
+  clear. So a secret should never hold structured data: store each part as its
+  own secret. A masked value is also no proof that a value exists, so do not use
+  the log to check that a secret is set. Setting a secret from a script with the
+  `task.setvariable` logging command and `issecret=true` is, in upstream's own
+  words, the least secure way to create one; prefer defining it in the pipeline
+  settings or a variable group.
+- **An empty string is not a valid value for a `string` parameter.** Queueing
+  with `''` is rejected, so "unset" cannot be spelled as empty. Either omit the
+  parameter and let its default apply, or give it a sentinel default (a single
+  space, say) that the template trims before use, and document why the default
+  looks odd, because it is load-bearing.
+- **A variable group is read when the run is queued** (observed behavior; an
+  upstream citation is not recorded). A run already in flight never sees a later
+  edit to the group, so a failure right after a fix may be reporting the old
+  state. Queue a fresh run before concluding the fix did not work.
 - **Non-secret variables auto-inject with a name transform that is also a
   footgun.** They arrive in the process environment uppercased with every `.`
   turned into `_`, so two variables differing only by case or by `.` versus `_`
@@ -212,5 +250,7 @@ literal pairs requires list syntax.
   https://learn.microsoft.com/azure/devops/pipelines/process/
 - Security guidance for pipelines and templates:
   https://learn.microsoft.com/azure/devops/pipelines/security/
+- Secret variables (mapping, masking, vault-linked groups):
+  https://learn.microsoft.com/azure/devops/pipelines/process/set-secret-variables
 - Agents, caching, multi-repo checkout:
   https://learn.microsoft.com/azure/devops/pipelines/agents/agents

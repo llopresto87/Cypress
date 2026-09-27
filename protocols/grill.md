@@ -12,10 +12,12 @@ owns:
   - grill.revise
   - grill.increment-shape
   - grill.press
+  - grill.plan-approval
   - grill.legal-checkpoint
 requires:
 peers:
   - protocol.specify
+  - protocol.specify-joint-pass
   - protocol.test-first
   - agent.devils-advocate
 artifacts:
@@ -28,7 +30,7 @@ load_when:
   - "an increment shipped, revise the plan, record what happened"
   - "plan is stale, assumption broke, architecture change"
 prevents: Increments chosen one at a time with no plan-of-record, so nothing says which contract an increment satisfies and a broken assumption is discovered rather than recorded.
-est_tokens: 2300
+est_tokens: 3964
 command: true
 ---
 
@@ -86,9 +88,12 @@ issued only after every handback it needs has returned; two phases run
 side by side only where the last column says so. The general rule —
 sequence by dependency, parallelize by independence, never merge by
 hand — is `delegation.sequencing` in
-`docs/graph/method/delegation.md`. The §15 entry for the pass lists its
+`docs/graph/method/delegation-sequencing.md`. The §15 entry for the pass lists its
 spawns by `spawn_id` in the order they were issued, which is what makes
-the order auditable afterwards.
+the order auditable afterwards. When the spec is being written in the
+same pass, run the joint pass instead (`specify.joint-pass`,
+`docs/graph/protocols/specify-joint-pass.md`); the table below applies
+when only the plan is being written.
 
 | Phase | Sections | Owner | Needs | Parallel with |
 |---|---|---|---|---|
@@ -188,7 +193,12 @@ unchanged either way: the required fields live with the increment, in whichever
 file holds it, and `grill-lint.py` refuses an index row with no file, a file no
 row points at, and an increment defined twice.
 
-
+Increments live under §9 and nowhere else, because §9 is the only place
+`grill-lint.py` reads them. A plan for a second spec, or a later phase of
+the same one, is new §9 rows or new ledger files, never a top-level
+section appended after §15. The plan checks (dependency order, required
+fields, spec alignment) run on §9 alone, so an increment written anywhere
+else is never checked, and its coverage falls back to reading by hand.
 
 §9 is where grill earns its keep. A good increment looks like:
 
@@ -204,9 +214,14 @@ row points at, and an increment defined twice.
 - Gate: integration test against the test database; the suite stays
   green
 - Rollback path: revert; no data migration
-- Effort: ~1 RED-GREEN-REFACTOR cycle (~30 min)
+- Effort: medium
+- Phase: GREEN
 - Depends on: increment 2 (schema validation); docs/graph/libraries/sqlalchemy.md
 ```
+
+`Effort:` takes one label and `Phase:` one of `RED`, `GREEN` or `prose`.
+Both vocabularies, and the batch sizes they set, are
+`delegation.effort-scale` in `docs/graph/method/delegation-cycle-economy.md`.
 
 `Depends on:` names both kinds of dependency — the earlier increments
 this one builds on, and the `docs/graph/libraries/` pages it relies on
@@ -221,11 +236,30 @@ test from the row as written. One that fails any of those — vague
 tests, no contract, no rollback, blank dependencies, a test the tester
 cannot write — is re-sliced.
 
+**The consolidation increment.** A spec whose increments added many
+tests ends its §9 with one more increment, planned from the start:
+survey the tests the spec added and the older tests they overlap, rule
+on each overlap, then merge or delete under the lean-suite rules in
+`skill.test-first`. Its `Spec contracts:` are the contracts whose tests
+it touches, and its `Tests to write (RED):` reads `none — consolidation`.
+Its gate is the suite staying green with no contract losing its test.
+The template carries this row by default. The planner may drop it for a
+spec that added few tests, and records the reason in the row's place.
+It is never a mid-spec detour: run beside the critical path, a
+consolidation pass competes with the work it should follow, and it
+cannot see the whole set of tests until the last feature increment has
+landed.
+
 ## Press the plan (`grill.press`)
 
 Filling the sections produces a document; this phase turns it into a
 plan. It runs after §9 and §11 exist and before §14 is written, and in
 a revision pass it presses only what moved.
+
+**Design latitude.** Check every §6 decision and every §9 increment
+against the plan's `Design latitude:` row. What the latitude allows,
+and what the press does with anything outside it, is
+`specify.design-latitude` in `docs/graph/protocols/specify-joint-pass.md`.
 
 **Spec ↔ plan alignment.** Every contract in the spec's §4 appears in
 at least one increment; every acceptance criterion in the spec's §9
@@ -252,6 +286,36 @@ row. This is one spawn per pass, not a standing gate, and no T2
 work incurs it — a covered-lane revision or a contained-lane change
 adds its grill.md line and moves on.
 
+## Plan approval (`grill.plan-approval`)
+
+This step runs when the pressed plan goes to the owner for approval
+before the first RED; a plan that does not go to the owner skips it.
+When it runs, that message asks **once** for everything only the owner
+can give. It is one numbered list with two parts:
+
+1. **The cost levers this plan uses.** Any cost lever the plant's
+   doctrine defines: a setting that decides how much each increment
+   costs or how fast the work moves. Ask only for the levers the plan
+   actually pulls, and give the default the plan assumes for each, so
+   the owner can answer "defaults" in one word. Where the doctrine
+   defines none, this part is empty and says so.
+2. **Every owner-only prerequisite.** Each step in §9 that only the
+   owner can take: a platform setting, an approval, a merge, a
+   credentialed call, access to an environment. Name the increment
+   that needs it.
+
+Record the answers in §4 under "Cost constraints", dated, and cite them
+from the briefs of the workers they bind. Asked up front, the
+prerequisites land while the code is being built, instead of stalling
+the increment that reaches them. A lever set before the first spawn
+goes into every brief from the start. A lever set later has to be
+relayed to workers already running, and each relay costs a message and
+risks a worker that never got it. A lever the owner leaves open keeps
+the plan's stated default; that is recorded too, so nobody asks again.
+
+A revision pass asks again only when the plan gained a lever or a
+prerequisite the owner has not already answered.
+
 ## Exit conditions
 
 "Populated" means every section §0–§15 carries either content or an
@@ -268,6 +332,9 @@ nothing after it is neither.
 - Every §9 increment fits the shape — contracts, RED tests, rollback,
   dependencies — and the rows are in dependency order.
 - Spec ↔ plan alignment holds; no `[verify]` survives in §9 or §13.
+- Where the plan went to the owner for approval, the plan-approval ask
+  went out as one message, and §4 "Cost constraints" records its
+  answers or the defaults left in force.
 - §14 names a single next action.
 - `python3 docs/graph/grill-lint.py` exits 0.
 
@@ -284,6 +351,11 @@ nothing after it is neither.
   Slice them.
 - **A risk table with three rows that all say "manageable".** Be
   specific about probability and impact.
+- **Rules that arrive mid-flight.** A cost lever or an owner-only step
+  discovered after the workers are running. Where the plan goes to the
+  owner, ask for it at plan approval.
+- **A consolidation pass in the middle of the spec.** It belongs at the
+  end of §9, planned.
 - **A "next step" that is actually a list of next steps.** Pick the
   one that unblocks the most.
 - **Plan with no spec link.** That's not a plan; that's a wish.

@@ -14,6 +14,21 @@ How to get back to a known-good state, how fast, and what data is preserved.
   is a different, lower gate than a data restore (destructive, lossy). Never
   reach for the destructive path when the reversible one recovers the fault.
 
+## Recorded before each release
+
+What the pre-release record must hold is set by `method.release-posture`
+§2; these are its fields, filled per release before deploying.
+
+- Previous build identifiers: `<artifact@digest per component>`
+- Migration compatibility: `<reversible | irreversible, and whether
+  deployment auto-applies it>`
+- Message-schema compatibility: `<can the previous artifact read what the
+  new one writes>`
+- Derived state: `<caches, search or vector indexes, materialized views;
+  can the previous artifact use what the new one built>`. Reverting code
+  over a derived store the newer version built is a mixed-version state
+  too, and Path A below does not undo it.
+
 ## Path A — config / artifact rollback (reversible, no data migration)
 
 1. Repoint to the previous immutable artifact reference: `<cmd>`

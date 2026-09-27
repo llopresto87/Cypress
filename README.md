@@ -48,7 +48,7 @@ git clone https://github.com/llopresto87/Cypress
 
 The clone takes whatever the default branch holds when you run it, not a tagged release. In the second command, put your repository's path in place of the placeholder. That command only places files and does not edit your code; its last line says the files are placed and the project's graph is not built yet. Then open a session rooted at your project and paste [`INSTALL_PROMPT.md`](INSTALL_PROMPT.md) into it. That starts the one-time [growth](DOCUMENTATION.md#term-growth) pass, which reads your repository and builds its graph. None of these steps asks you to learn the project's vocabulary first.
 
-On a first install, a harness may need a fresh session before it can start the agents that were just placed; the [delegation notes](core/method/delegation.md) record when, under `delegation.harness-registration`.
+On a first install, a harness may need a fresh session before it can start the agents that were just placed; the [delegation notes](core/method/delegation-bounds.md) record when, under `delegation.harness-registration`.
 
 <!-- first-screen-end -->
 

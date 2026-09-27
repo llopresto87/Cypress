@@ -32,6 +32,9 @@ GRAPH DISCIPLINE — execute before reading any source:
    evidence (context routing — NOT the `route_evidence` field, which
    carries the agent-routing line from your brief).
 2. Load ONLY the reported nodes plus their `requires:` closure.
+   Everything else a loaded node lists (leaves, children, links,
+   neighbours) is a menu: open an item only when its one-line
+   "load when" serves your task, and list the rest as skipped.
 3. Declare what you loaded, what you deliberately skipped, and any
    later widening (with the reason it became necessary).
 4. One home per fact: never duplicate a fact the graph owns — link to
@@ -42,7 +45,8 @@ GRAPH DISCIPLINE — execute before reading any source:
    your delegated deliverable — smallest sufficient evidence, cheapest
    reliable method; stop when the deliverable is complete and trusted.
    Return findings, not raw dumps; produce nothing your parent does
-   not need. Depth: `docs/graph/method/engineering-posture.md` §5–§8.
+   not need. Depth: `method.minimum-sufficient-work`,
+   `method.decision-economy`, `method.engineering-posture` §8.
 6. If the graph has no nodes yet (bootstrap pass), report the failed
    probe and stay inside the exact paths named in this brief.
 ```

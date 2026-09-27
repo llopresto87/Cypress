@@ -54,6 +54,12 @@ GOLDEN_NAME = "_routes.golden.tsv"
 # Delegation-depth bounds (plan ADR-B): 1 <= max_spawn_depth <= 3.
 MIN_DEPTH, MAX_DEPTH = 1, 3
 
+# Closed set for an agent definition's `effort:` key (SPEC-0005 §6 "Effort",
+# home docs/graph/core/method/delegation-model-classes.md, delegation.effort).
+# The host (Claude Code) also accepts `xhigh` and `max`; the seed ships only
+# these three so every accepted value has a recorded per-spawn derivation.
+EFFORT_LEVELS = ("low", "medium", "high")
+
 # Confidence-band calibration (plan §4.2 — tunable, calibrated to the golden
 # corpus). A single distinctive trigger double-hit scores weight(3)*2*2 = 12; a
 # genuine multi-term route scores far higher, while a novel task that only grazes
@@ -357,6 +363,10 @@ class Agent:
         roster projections are file copies of docs/graph/agents/, so the marker
         travels with the node and a roster can be asked what it is made of."""
         return str(self.meta.get("origin", "")).strip()
+
+    @property
+    def effort(self) -> str:
+        return str(self.meta.get("effort", "")).strip()
 
     @property
     def can_delegate(self) -> bool:
@@ -846,7 +856,7 @@ def cmd_route(agents: list, task: str) -> int:
     # it will name a specialist a just-installed session is unable to spawn.
     print("NOTE: fit only, not registration — this reads .claude/agents/ off "
           "disk, not the host's session registry. Preflight the type before "
-          "dispatch (docs/graph/method/delegation.md, "
+          "dispatch (docs/graph/method/delegation-bounds.md, "
           "delegation.harness-registration).")
     return 0
 
@@ -920,6 +930,20 @@ def cmd_lint(agents: list) -> int:
             if a.delegates_to:
                 errs.append(f"{a.ident}: delegates_to is set but can_delegate is "
                             f"false — leaves carry no allowlist (§4.1 rule 3)")
+
+        # Rule 5: effort declared, in the closed set low/medium/high (the
+        # seed's SPEC-0005 AGENT_DECLARES_EFFORT, rule home delegation.effort).
+        # Held for every agent regardless of origin — a plant's own
+        # `origin: project` agent is not exempt
+        # (AGENT_WITHOUT_EFFORT_AFTER_GRAFT).
+        if "effort" not in a.meta:
+            errs.append(f"{a.ident}: effort missing — declare one of "
+                        f"{EFFORT_LEVELS} (the seed's SPEC-0005 "
+                        f"AGENT_DECLARES_EFFORT; rule: delegation.effort)")
+        elif a.effort not in EFFORT_LEVELS:
+            errs.append(f"{a.ident}: effort={a.effort!r} is outside the closed "
+                        f"set {EFFORT_LEVELS} (the seed's SPEC-0005 "
+                        f"AGENT_DECLARES_EFFORT; rule: delegation.effort)")
 
     for w in _distinctiveness_warnings(agents):
         print(f"agent-lint: warning: {w}", file=sys.stderr)
@@ -1300,7 +1324,8 @@ def main() -> int:
               "  If you are rooted in the SEED repo rather than a plant, that is "
               "expected — the seed ships no roster projection of its own, and a "
               "seed-rooted session can spawn no plant specialist. Re-enter rooted "
-              "at the plant (delegation.harness-registration).", file=sys.stderr)
+              "at the plant (docs/graph/method/delegation-bounds.md, "
+              "delegation.harness-registration).", file=sys.stderr)
         return 2
     try:
         agents = load_agents(adir)

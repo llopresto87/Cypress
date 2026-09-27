@@ -3,6 +3,7 @@ name: research-scout
 description: Senior research scout. Goes to the internet, finds authoritative sources, downloads them when allowed, normalizes them, and hands them to the docs-librarian for the wiki. Pairs with docs-librarian on every ingest-library run. Use whenever a new library, framework, API, spec, or model is being evaluated or added, and whenever official documentation must be retrieved or refreshed.
 tools: [Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch]
 model: sonnet
+effort: medium
 routing_triggers:
   - "retrieve the authoritative upstream documentation for a new library"
   - "find and normalize the official spec for this dependency"
@@ -85,7 +86,8 @@ date and the MCP server name.
 Your writes are **mechanical normalization**, not authoring: you transcribe
 and structure what the sources say. Every draft is finalized by the
 opus-class `docs-librarian`, which is why a sonnet-class scout is the right
-model here (`docs/graph/method/delegation.md`, model-class rule).
+model here (`delegation.model-classes`, in
+`docs/graph/method/delegation-model-classes.md`).
 
 **Legal ingest is different.** When the target is a law, regulation,
 standard, court decision, or regulator publication, the artifact is a

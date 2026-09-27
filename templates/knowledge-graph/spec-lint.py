@@ -23,9 +23,23 @@ that a gate instead of an aspiration:
 
 A draft is shape-checked and not counted for coverage: it turns active in
 the change that lands its RED tests (test-first COMMIT), so a spec in
-authoring never reports uncovered. Status is read from frontmatter first —
+authoring never reports uncovered. Leaving it out is said out loud: the
+headline names every draft it did not coverage-check, and a draft whose
+slugs the tests already carry, and no live spec declares, is a WARN, because
+its RED landed and the promotion did not. Status is read from frontmatter first —
 the schema's single home — and from a body `**Status:**` only when the
 frontmatter has none (the template's body line says "see frontmatter").
+
+SLICE — `--slice SLUG...` is a reader, not a check. It prints only what one
+contract needs, so a worker briefed on a slug loads that and not the whole
+spec: the `### Contract:` or `### Failure:` block up to the next heading of
+the same or a higher level, the slug's §10 row(s) each under its table
+header, and with --refs `file:line` pointers to the §6/§7 headings the block
+cites (pointers, never their text). --lines prints `file:start-end` ranges
+instead of text. Headings inside ``` or ~~~ fences are text (the CommonMark
+fence rule grill-lint uses). A slug declared in several specs is sliced from
+each, with a stderr note naming every file. Exit 0 every slug found; 1 a slug
+is missing (the found ones still print); 2 usage error.
 
 Installed at docs/graph/spec-lint.py by install.sh (like graph-lint.py).
 Dependency-free. Set TEST_GLOBS for the project's layout.
@@ -34,7 +48,10 @@ Usage:
   python3 docs/graph/spec-lint.py           # gate: exit 1 on a defect
   python3 docs/graph/spec-lint.py --list    # dump contract -> tests map
   python3 docs/graph/spec-lint.py --warn    # report but always exit 0
+  python3 docs/graph/spec-lint.py --slice [--refs] [--lines] SLUG...
 """
+from __future__ import annotations
+
 import re
 import sys
 from pathlib import Path
@@ -72,6 +89,16 @@ SIGNOFF_RE = re.compile(r"\*\*Sign-offs:\*\*(.*)")
 SLUG_RE = re.compile(r"(?<![A-Z0-9_])[A-Z][A-Z0-9_]{2,}(?![A-Z0-9_])")
 SIGNERS = ("product", "architect", "tester")
 STILL_OPEN = {"red", "pending"}
+# --slice reads the spec as headings rather than as text, because a block's
+# end is the next heading of its level and a heading inside a fence is not one.
+HEADING_RE = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
+# The CommonMark fence opener, identical to grill-lint.py's FENCE_RE: at most
+# three spaces of indent, then a run of three or more backticks or tildes.
+FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+NUMBER_RE = re.compile(r"^§?(\d+(?:\.\d+)*)\.?(?:\s|$)")
+CITE_RE = re.compile(r"§\s?(\d+(?:\.\d+)*)")
+REF_TOPS = ("6", "7")          # the template's data-shape and failure-mode sections
+Head = tuple[int, int, str]    # (1-based line, level, text)
 
 
 def test_files() -> list[Path]:
@@ -174,6 +201,146 @@ def shape(spec: Path, text: str, status: str, fails: list[str], warns: list[str]
             warns.append(f"{spec.name}: no `### Failure:` mode — a happy-path-only spec is half a spec")
 
 
+def headings(lines: list[str]) -> list[Head]:
+    """Every heading outside a fence. The fence rule is grill-lint.py's
+    mask_fences, ported rather than imported because the two linters install
+    as separate files; keep them identical. A fence closes only on a run of
+    its own character at least as long as the opener with nothing after it,
+    and an unclosed fence runs to the end, as CommonMark reads it. A toggle on
+    any fence line once let a `~~~` inside a ``` block close it, which sliced
+    the fenced example and made the real heading after it unsliceable."""
+    out: list[Head] = []
+    fence = ""                                  # the opening run, while inside
+    for n, ln in enumerate(lines, 1):
+        m = FENCE_RE.match(ln)
+        if not fence and m:
+            fence = m.group(1)
+        elif fence and m and m.group(1).startswith(fence) and not ln[m.end():].strip():
+            fence = ""
+        elif not fence and (h := HEADING_RE.match(ln)):
+            out.append((n, len(h.group(1)), h.group(2)))
+    return out
+
+
+def section_end(heads: list[Head], head: Head, nlines: int) -> int:
+    """Last line of head's section: before the next heading of its level or higher."""
+    return next((n - 1 for n, level, _ in heads if n > head[0] and level <= head[1]), nlines)
+
+
+def numbered(heads: list[Head]) -> dict[str, Head]:
+    """Section number -> its heading ("6.2 The record" -> "6.2")."""
+    out: dict[str, Head] = {}
+    for h in heads:
+        if m := NUMBER_RE.match(h[2]):
+            out.setdefault(m.group(1), h)
+    return out
+
+
+def slice_rows(lines: list[str], sec10: Head | None,
+               heads: list[Head], slug: str) -> list[tuple[int, list[int]]]:
+    """[(table header line, [row lines])] for the slug's rows inside §10.
+    §10 alone: the same slug in an open-questions table is not a mapping."""
+    if sec10 is None:
+        return []
+    groups: list[tuple[int, list[int]]] = []
+    header = None
+    for n in range(sec10[0] + 1, section_end(heads, sec10, len(lines)) + 1):
+        ln = lines[n - 1].strip()
+        if not ln.startswith("|"):
+            header = None
+            continue
+        if header is None:
+            header = n                  # a table's first line is its header
+            continue
+        cells = [c.strip().strip("`").strip() for c in ln.strip("|").split("|")]
+        if cells[0] != slug:
+            continue
+        if groups and groups[-1][0] == header:
+            groups[-1][1].append(n)
+        else:
+            groups.append((header, [n]))
+    return groups
+
+
+def cited_refs(block: str, nums: dict[str, Head]) -> list[Head]:
+    """Headings of the §6/§7 sections a block cites. §6.3.1 with no heading of
+    its own falls back to §6.3, then §6."""
+    refs: list[Head] = []
+    for m in CITE_RE.finditer(block):
+        parts = m.group(1).split(".")
+        if parts[0] not in REF_TOPS:
+            continue
+        while parts and ".".join(parts) not in nums:
+            parts.pop()
+        if parts and nums[".".join(parts)] not in refs:
+            refs.append(nums[".".join(parts)])
+    return sorted(refs)
+
+
+def slice_specs(slugs: list[str], refs: bool, as_lines: bool) -> int:
+    """--slice: print each slug's block, §10 rows and, with refs, pointers.
+    A heading is matched by the same CONTRACT_RE / FAILURE_RE the gate uses,
+    but the two do not read the same text: the reader skips headings inside
+    fences, and the coverage gate matches over the whole file, fences
+    included. A contract heading shown only inside a fenced example is
+    counted by the gate and is unsliceable here.
+    A slug declared in more than one spec is sliced from each, and stderr
+    names the slug and every file, so no one block is taken for the only one."""
+    out: list[str] = []
+    missing = set(slugs)
+    found_in: dict[str, list[str]] = {slug: [] for slug in slugs}
+    for spec in sorted(SPECS.glob("SPEC-*.md")):
+        lines = spec.read_text(encoding="utf-8", errors="replace").splitlines()
+        heads = headings(lines)
+        nums = numbered(heads)
+        name = spec.relative_to(ROOT) if ROOT in spec.parents else spec
+        declared: dict[str, tuple[str, Head]] = {}
+        for h in heads:
+            head_line = lines[h[0] - 1]
+            for kind, rx in (("contract", CONTRACT_RE), ("failure", FAILURE_RE)):
+                if m := rx.match(head_line):
+                    declared.setdefault(m.group(1), (kind, h))
+        for slug in slugs:
+            if slug not in declared:
+                continue
+            missing.discard(slug)
+            found_in[slug].append(str(name))
+            kind, h = declared[slug]
+            end = section_end(heads, h, len(lines))
+            while end > h[0] and not lines[end - 1].strip():
+                end -= 1                # trailing blank lines are not the block
+            rows = slice_rows(lines, nums.get("10"), heads, slug)
+            if as_lines:
+                out.append(f"{name}:{h[0]}-{end}\t{slug} {kind} block")
+                for header, ns in rows:
+                    out.append(f"{name}:{header}-{header + 1}\t{slug} §10 table header")
+                    out += [f"{name}:{n}-{n}\t{slug} §10 row" for n in ns]
+            else:
+                if out:
+                    out.append("")
+                out.append(f"<!-- {name}:{h[0]}-{end} -->")
+                out += lines[h[0] - 1:end]
+                for header, ns in rows:
+                    out += ["", f"<!-- §10 {name}:{header} -->", lines[header - 1], lines[header]]
+                    out += [lines[n - 1] for n in ns]
+            if not rows:
+                out.append(f"# note: {slug} has no §10 test-mapping row in {name}")
+            if refs:
+                for n, level, text in cited_refs("\n".join(lines[h[0] - 1:end]), nums):
+                    out.append(f"{name}:{n}\t{'#' * level} {text}")
+    for slug in slugs:
+        if slug in missing:
+            print(f"spec lint: no `### Contract: {slug}` or `### Failure: {slug}` "
+                  f"heading in {SPECS}", file=sys.stderr)
+        elif len(found_in[slug]) > 1:
+            print(f"spec lint: note — {slug} is declared in {len(found_in[slug])} "
+                  f"specs, each sliced: {', '.join(found_in[slug])}",
+                  file=sys.stderr)
+    if out:
+        print("\n".join(out))
+    return 1 if missing else 0
+
+
 def main() -> int:
     list_mode = "--list" in sys.argv
     warn_mode = "--warn" in sys.argv
@@ -208,6 +375,15 @@ def main() -> int:
         return 1
     globals()["SPECS"], globals()["ROOT"] = specs, root
 
+    if "--slice" in sys.argv:
+        valued = {"--specs", "--root", "--uncovered-budget"}
+        slugs = [a for i, a in enumerate(sys.argv[1:], 1)
+                 if not a.startswith("--") and sys.argv[i - 1] not in valued]
+        if not slugs:
+            print("spec lint: usage — --slice [--refs] [--lines] SLUG...", file=sys.stderr)
+            return 2
+        return slice_specs(slugs, "--refs" in sys.argv, "--lines" in sys.argv)
+
     if not SPECS.is_dir():
         print("spec lint: SKIP — no docs/graph/specs/ directory")
         return 0
@@ -215,16 +391,24 @@ def main() -> int:
     fails: list[str] = []
     warns: list[str] = []
     contracts: dict[str, str] = {}          # slug -> spec file (live only)
+    drafts: dict[str, list[str]] = {}       # draft spec file -> its slugs
     live_specs = 0
     for spec in sorted(SPECS.glob("SPEC-*.md")):
         text = spec.read_text(encoding="utf-8", errors="replace")
         status = status_of(text)
         shape(spec, text, status, fails, warns)
+        if status == "draft":
+            drafts[spec.name] = CONTRACT_RE.findall(text)
         if status not in LIVE_STATUSES:
             continue
         live_specs += 1
         for slug in CONTRACT_RE.findall(text):
             contracts[slug] = spec.name
+    # A draft is left out of coverage, and a headline that says so only by
+    # omission read "PASS — no live contracts to cover" over a spec already in
+    # implementation, which a report then quoted as zero findings. Every
+    # headline names what it did not check.
+    unchecked = f"; not coverage-checked: {', '.join(drafts)} (draft)" if drafts else ""
 
     def finish(headline: str, rc: int) -> int:
         for w in warns:
@@ -238,25 +422,24 @@ def main() -> int:
             print(headline)
         return 0 if warn_mode else rc
 
-    if not contracts:
-        return finish(f"spec lint: PASS — no live contracts to cover ({live_specs} live spec(s))", 0)
-
-    files = test_files()
-    if not files:
+    draft_slugs = {slug for slugs in drafts.values() for slug in slugs}
+    files = test_files() if contracts or draft_slugs else []
+    if contracts and not files:
         print(f"spec lint: FAIL — {len(contracts)} live contract(s) but the "
               f"test globs matched ZERO files. A coverage check over an "
               f"empty set is a green lie; fix TEST_GLOBS or write the tests.")
         finish("", 0)
         return 0 if warn_mode else 1
 
-    hits: dict[str, list[str]] = {slug: [] for slug in contracts}
-    tested_slugs: set[str] = set()
+    # Draft slugs are scanned too, never counted: a test already carrying one
+    # means the RED landed and the promotion did not.
+    hits: dict[str, list[str]] = {slug: [] for slug in draft_slugs | set(contracts)}
     # Boundary-guarded and longest-first: a bare substring scan let a
     # prefix slug steal the match from PARSE_JSON_STRICT and let an
     # UNREGISTERED extension (PARSE_JSON_V2 in a test) credit PARSE_JSON.
     slug_union = re.compile(
         "(?<![A-Z0-9_])(?:"
-        + "|".join(re.escape(s) for s in sorted(contracts, key=len, reverse=True))
+        + "|".join(re.escape(s) for s in sorted(hits, key=len, reverse=True))
         + ")(?![A-Z0-9_])")
     for f in files:
         try:
@@ -275,7 +458,17 @@ def main() -> int:
             continue
         for m in slug_union.finditer(body):
             hits[m.group(0)].append(str(f.relative_to(ROOT)))
-            tested_slugs.add(m.group(0))
+    # A draft slug a live spec also declares is skipped: the test carrying it
+    # proves the live contract, and says nothing about the draft's promotion.
+    for name, slugs in drafts.items():
+        if tested := [s for s in slugs if hits[s] and s not in contracts]:
+            warns.append(f"{name}: draft, but tests already carry {', '.join(tested)} — "
+                         f"its RED landed and its promotion to active did not "
+                         f"(test-first COMMIT), so its coverage is not checked")
+
+    if not contracts:
+        return finish(f"spec lint: PASS — no live contracts to cover "
+                      f"({live_specs} live spec(s)){unchecked}", 0)
 
     uncovered = sorted(s for s in contracts if not hits[s])
 
@@ -306,7 +499,8 @@ def main() -> int:
         label = "WARN" if (warn_mode or not over) else "FAIL"
         print(f"spec lint: {label} — "
               f"{len(uncovered)}/{len(contracts)} live contract(s) have no test"
-              + (f" (recorded budget {budget})" if budget is not None else "") + ":")
+              + (f" (recorded budget {budget})" if budget is not None else "")
+              + unchecked + ":")
         for slug in uncovered:
             print(f"  - {slug}  ({contracts[slug]})")
         if budget is not None and len(uncovered) < budget:
@@ -322,7 +516,7 @@ def main() -> int:
         return 0 if warn_mode else 1
 
     return finish(f"spec lint: PASS — {len(contracts)} live contract(s) covered "
-                  f"across {len(files)} test file(s)", 0)
+                  f"across {len(files)} test file(s){unchecked}", 0)
 
 
 if __name__ == "__main__":

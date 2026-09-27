@@ -18,6 +18,12 @@ keeps a **fail-closed**
 guard so a missing required secret stops the boot rather than degrading
 silently. Records variable names and locations, **never values**.
 
+When a required variable comes back unresolved, sorting it into the bucket
+that decides the fix — dead config to remove, a value blank-safe enough to
+default, or a genuine secret that must never be defaulted — is a procedure in
+its own right, owned by `skill-corpus/triage-unresolved-required-variable.md`.
+This role selects and applies that procedure; it is not restated here.
+
 ## When to select
 
 - Config/secret facts are split across committed files, env files, and
@@ -41,3 +47,5 @@ silently. Records variable names and locations, **never values**.
 - "trace an env var from app config through the deploy manifests to the pipeline"
 - "reconcile which secrets each service actually requires vs what's supplied"
 - "find where a profile's default silently breaks a component"
+- "classify an unresolved required variable as dead config, blank-safe, or a real secret"
+- "a deploy still fails after a variable's value was saved — check whether the run was queued before the save"

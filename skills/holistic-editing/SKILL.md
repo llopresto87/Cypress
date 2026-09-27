@@ -21,8 +21,9 @@ load_when:
   - "additive-only diff smells wrong"
   - "same bug probably exists elsewhere, fix one or all"
   - "rename crossing a serialization or wire boundary"
+  - "nothing uses this, delete dead code or an unused file"
 prevents: Changes landed as the smallest diff that satisfies the request — bolted-on functions, _v2 names, and a file whose design is the fossil record of every past edit.
-est_tokens: 2300
+est_tokens: 2890
 ---
 
 # holistic-editing
@@ -170,6 +171,20 @@ Those follow supersede-don't-delete. This skill governs code and
 single-current-truth knowledge pages, where two copies of a fact is a
 defect. Know which kind of file you are in before you start.
 
+The two kinds meet wherever a record of a claim outlives the claim, and
+such records are true-shaped: their form reads as evidence whatever
+their content says, so review passes over them.
+
+- **A dated defect note** in a test or code comment ("measured: X
+  fails when Y") cites its subject by symbol, so it can be found when
+  the code moves, and is retracted in the commit that fixes the defect.
+  Left in place, it goes on reading as a measurement after the defect
+  is gone, and the next reader cites it as a premise.
+- **An archived copy of a retracted claim**, kept because the reasoning
+  error is itself the finding, is struck in the same edit that
+  retracts it. Keeping the original is right; leaving it unstruck in
+  the present tense is a second live claim.
+
 ## Self-check, run before you answer
 
 - Did I read and account for the **entire** file, or only the region
@@ -184,7 +199,14 @@ defect. Know which kind of file you are in before you start.
   half-removed feature — when auditing for dead code, check type, enum,
   and import references separately from executable call sites, because
   the call sites can all be gone while the import quietly survives.
-- Do all names, comments, and docs still tell the truth?
+- Before I delete something as unused, did I search for **each file by
+  name across the whole tree**? A "nothing uses this" verdict covers
+  only the consumers that were traced. "Is this entry point wired?" and
+  "is this file referenced?" are different questions, and a deletion
+  depends on the second. State the blast radius per file, not per path
+  or feature.
+- Do all names, comments, and docs still tell the truth, including a
+  dated defect note this change just made false?
 - Could a reader tell where the patch was stitched in? (Goal: no.)
 
 ## Output format

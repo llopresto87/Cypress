@@ -11,14 +11,14 @@ PostgreSQL instance in a container for the lifetime of a test run and hands
 back its connection string. The trade is deliberate: container startup cost and
 a Docker dependency, in exchange for testing against the real engine instead of
 an in-memory or fake provider whose behavior diverges from PostgreSQL on
-exactly the things integration tests exist to catch — SQL dialect, constraints,
+exactly the things integration tests exist to catch: SQL dialect, constraints,
 transactions, concurrency, and provider-specific types.
 
 ## Core API / usage shape
 - A builder configures the instance:
   `new PostgreSqlBuilder().WithImage(...).WithDatabase(...).Build()`, plus
   further `With...` calls for user, password, and other container settings.
-- `StartAsync()` starts the container and `DisposeAsync()` tears it down —
+- `StartAsync()` starts the container and `DisposeAsync()` tears it down,
   typically owned by a test fixture's lifecycle rather than called inline in a
   test.
 - `GetConnectionString()` returns the connection string for the running
@@ -28,8 +28,8 @@ transactions, concurrency, and provider-specific types.
 ## Idioms & best practices
 - Own the container in a shared test fixture rather than starting one per test
   (`xunit.md` owns the collection-fixture mechanism), then isolate tests from
-  each other by resetting or namespacing data — transaction rollback, per-test
-  schema, or truncation (`Respawn.md`) — rather than by restarting the
+  each other by resetting or namespacing data (transaction rollback, per-test
+  schema, or truncation (`Respawn.md`)) rather than by restarting the
   container.
 - Let the module assign the host port and read every connection detail off the
   running container at start time; bind and hard-code nothing fixed, so
@@ -40,8 +40,13 @@ transactions, concurrency, and provider-specific types.
   fail in CI whenever the pipeline has no daemon provisioned, and the failure
   surfaces as an opaque connection error rather than a clear "Docker missing."
 - Container startup dominates first-test latency, and the cost is paid per
-  container started — which is what turns a per-test container into a slow
+  container started, which is what turns a per-test container into a slow
   suite.
+- The image passed to `WithImage(...)` decides which server version the suite
+  witnesses. An exact minor pinned here while deployment floats on a moving tag
+  means a green suite is evidence about a version that is not deployed. Keep
+  the test image and the deployed image on the same version line; the rule is
+  owned by `../container/postgres.md`.
 
 ## Upstream docs
 - https://dotnet.testcontainers.org/

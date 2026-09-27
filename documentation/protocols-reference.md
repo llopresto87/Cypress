@@ -2,7 +2,7 @@
 
 A protocol node is the entry point for a kind of work; see the glossary's [protocol entry](../DOCUMENTATION.md#term-protocol).
 
-This document is a complete reference for the 14 protocol nodes of the
+This document is a complete reference for the 17 protocol nodes of the
 CYPRESS seed. Each protocol is a routable graph node. It lives as a
 plain Markdown file with YAML frontmatter in `protocols/`. When a plant
 is grown, these files install into `docs/graph/protocols/`.
@@ -22,22 +22,25 @@ before you begin." The router maps *where the work stands* to a
 
 ## Summary table
 
-All 14 protocols are tier 2 nodes with `origin: seed`, `kind: protocol`.
+All 17 protocols are tier 2 nodes with `origin: seed`, `kind: protocol`.
 
 | Protocol | id | owns (facts) | requires | peers | est_tokens |
 |----------|----|--------------|----------|-------|-----------|
 | brainstorm | `protocol.brainstorm` | `brainstorm.mode-selection`, `brainstorm.entry-and-exit`, `brainstorm.output-landing` | — | skill.brainstorm-socratic, skill.brainstorm-internal, humanizer, specify, grill, from-scratch | 901 |
-| specify | `protocol.specify` | `rule.spec`, `specify.flow`, `specify.revision-discipline` | — | brainstorm, grill | 1750 |
-| grill | `protocol.grill` | `rule.grill`, `grill.flow`, `grill.revise`, `grill.increment-shape`, `grill.press`, `grill.legal-checkpoint` | — | specify, test-first, agent.devils-advocate | 2300 |
+| specify | `protocol.specify` | `rule.spec`, `specify.flow`, `specify.revision-discipline` | — | brainstorm, grill, specify-joint-pass | 1750 |
+| specify-joint-pass | `protocol.specify-joint-pass` | `specify.joint-pass`, `specify.design-latitude` | — | specify, grill | 1058 |
+| grill | `protocol.grill` | `rule.grill`, `grill.flow`, `grill.revise`, `grill.increment-shape`, `grill.press`, `grill.plan-approval`, `grill.legal-checkpoint` | — | specify, specify-joint-pass, test-first, agent.devils-advocate | 3964 |
 | test-first | `protocol.test-first` | `rule.test-first`, `test-first.cycle`, `test-first.characterize-first` | — | verify, specify, skill.test-first, skill.holistic-editing | 2700 |
-| verify | `protocol.verify` | `rule.verify`, `verify.gate-states`, `verify.risk-depth`, `verify.null-result`, `verify.composition`, `verify.silent-substitutes`, `verify.test-first`, `verify.status-evidence`, `verify.tool-faults`, `verify.characterize`, `verify.measure-integrity` | — | test-first, recover, canonize, deliver, skill.validate-knowledge | 5350 |
-| recover | `protocol.recover` | `recover.failure-classes`, `recover.three-attempt-boundary` | — | deliver, grill | 1343 |
-| canonize | `protocol.canonize` | `rule.canonize`, `canonize.close-out-flow`, `canonize.status-review`, `canonize.deviation-capture`, `canonize.why-record` | `skill.toolcraft` | agent.tool-smith, deliver, harvest, skill.adr-writer | 2724 |
-| deliver | `protocol.deliver` | `rule.deliver`, `deliver.forms`, `deliver.attribution-assertion`, `deliver.numbered-decisions` | — | canonize, recover | 1750 |
-| ingest-library | `protocol.ingest-library` | `ingest-library.flow`, `ingest-library.refresh`, `ingest-library.corpus-first` | — | harvest, skill.library-wiki, skill.research-and-ingest | 1500 |
+| verify | `protocol.verify` | `rule.verify`, `verify.gate-states`, `verify.risk-depth`, `verify.null-result`, `verify.composition`, `verify.silent-substitutes`, `verify.test-first` | — | test-first, recover, canonize, deliver, skill.validate-knowledge, verify-new-gates, verify-disagreement | 5786 |
+| verify-new-gates | `protocol.verify-new-gates` | `verify.status-evidence`, `verify.tool-faults` | — | verify, verify-disagreement | 877 |
+| verify-disagreement | `protocol.verify-disagreement` | `verify.characterize`, `verify.measure-integrity` | — | verify, verify-new-gates | 1840 |
+| recover | `protocol.recover` | `recover.failure-classes`, `recover.three-attempt-boundary` | — | deliver, grill | 1958 |
+| canonize | `protocol.canonize` | `rule.canonize`, `canonize.close-out-flow`, `canonize.status-review`, `canonize.deviation-capture`, `canonize.why-record` | `skill.toolcraft` | agent.tool-smith, deliver, harvest, skill.adr-writer | 3368 |
+| deliver | `protocol.deliver` | `rule.deliver`, `deliver.forms`, `deliver.attribution-assertion`, `deliver.numbered-decisions` | — | canonize, recover | 2681 |
+| ingest-library | `protocol.ingest-library` | `ingest-library.flow`, `ingest-library.refresh`, `ingest-library.corpus-first` | — | harvest, skill.library-wiki, skill.research-and-ingest | 1748 |
 | from-scratch | `protocol.from-scratch` | `from-scratch.phases`, `from-scratch.entry` | — | brainstorm, grill, ingest-library, canonize, initialize | 2698 |
 | grow | `protocol.grow` | `grow.worker-topology`, `grow.write-boundaries`, `grow.knowledge-shape`, `grow.growth-flow`, `grow.completeness-contract`, `grow.gate-table`, `grow.stack-inventory`, `grow.node-authoring`, `grow.librarian-pass`, `grow.plant-facts`, `grow.legal-corpus` | `method.delegation` | harvest, graft, initialize, ingest-library, canonize, deliver, recover, from-scratch, method.engineering-posture, method.design-posture | 12981 |
-| harvest | `protocol.harvest` | `harvest.fold-back-flow`, `harvest.agnosticism-gate`, `harvest.availability-gate`, `harvest.corpus-contracts` | `method.delegation` | method.engineering-posture, skill.humanizer, canonize, graft, grow, ingest-library, skill.toolcraft | 12555 |
+| harvest | `protocol.harvest` | `harvest.fold-back-flow`, `harvest.agnosticism-gate`, `harvest.availability-gate`, `harvest.corpus-contracts` | `method.delegation` | method.minimum-sufficient-work, skill.humanizer, canonize, graft, grow, ingest-library, skill.toolcraft | 12555 |
 | graft | `protocol.graft` | `graft.reconcile-flow`, `graft.user-sovereignty`, `graft.pure-graph-mandate`, `graft.migration`, `graft.integrity-gates`, `graft.reversibility` | `method.delegation` | grow, harvest, deliver, method.engineering-posture | 20079 |
 | initialize | `protocol.initialize` | `initialize.entry-fork`, `initialize.adapter-edges` | — | grow, from-scratch, seed-installer | 697 |
 
@@ -115,7 +118,9 @@ How the protocols chain:
 ## Per-protocol reference
 
 The protocols below are grouped by role: the core delivery funnel
-(brainstorm → specify → grill → test-first → verify), the close-out and
+(brainstorm → specify → grill → test-first → verify, with the sibling
+leaves specify-joint-pass, verify-new-gates and verify-disagreement
+beside their parents), the close-out and
 handoff protocols (recover, canonize, deliver), the
 dependency and bootstrap protocols (ingest-library, from-scratch), and
 the seed meta-loop (grow, harvest, graft, initialize).
@@ -200,7 +205,8 @@ If the project has no grill.md yet, create one from the template
 - **id:** `protocol.specify`, tier 2
 - **owns:** `rule.spec`, `specify.flow`, `specify.revision-discipline`
 - **requires:** —
-- **peers:** `protocol.brainstorm`, `protocol.grill`
+- **peers:** `protocol.brainstorm`, `protocol.grill`,
+  `protocol.specify-joint-pass`
 - **load_when:** "write a spec, no spec covers this behavior"; "new feature,
   endpoint, job, or LLM interaction to define"; "changing an existing
   feature's contract"; "bug revealed an implicit or missing contract";
@@ -247,7 +253,7 @@ cannot spawn the required model classes, stop and report; a missing
 
 | Phase | Sections | Owner | Needs | Parallel with |
 |---|---|---|---|---|
-| 0 | identifier; §0 §1 §2 | orchestrator | the goal | — |
+| 0 | the design-latitude ask; identifier; §0 §1 §2 | orchestrator | the goal | — |
 | 1 | §3 | `product` | §2 | — |
 | 2 | §4 §5 §6 §7 §8 | `architect` | §3 | — |
 | 3 | §9 (maps to §4 slugs) | `product` | §4 | 4 |
@@ -265,7 +271,9 @@ spec is `draft`; `active` lands with the first RED (`test-first`
 COMMIT, owned by `verify.status-evidence`), `implemented` when every
 contract is green — `spec-lint.py` counts only live specs, so a signed
 draft is planned against and encoded, never reported uncovered. A
-signed draft is what `grill` plans against.
+signed draft is what `grill` plans against. When no plan exists yet
+either, the spec and the plan come from one joint pass
+(`protocol.specify-joint-pass`).
 
 ### Revising an existing spec
 
@@ -293,16 +301,64 @@ that did not exist yet); **promoted at sign-off** (an `active` spec with
 no test is a red gate for the whole test-first phase and a false green
 the moment someone silences it).
 
+## specify-joint-pass
+
+- **id:** `protocol.specify-joint-pass`, tier 2, from `protocols/specify-joint-pass.md`
+- **owns:** `specify.joint-pass`, `specify.design-latitude`
+- **requires:** none
+- **peers:** `protocol.specify`, `protocol.grill`
+- **load_when:** "write the spec and the plan together, joint specify and
+  grill pass"; "design latitude, creative balanced or simple, how much
+  design freedom"; "out of scope under simple, the owner did not ask for
+  it"
+- **command:** none; it is entered from `specify` or `grill`
+
+### What it does
+
+Writes the spec and the plan-of-record in one pass, in which each
+specialist writes its spec part and its plan part in the same spawn.
+Before any of it, the session asks the owner once how much design
+latitude the change has.
+
+### Design latitude (`specify.design-latitude`)
+
+`creative` lets the design propose new structure, concepts or scope,
+each surfaced as a decision the owner can refuse. `balanced` allows new
+structure where the change needs it and no concept the goal did not ask
+for. `simple` is the smallest design that meets the goal: no new gates,
+kinds, agents or renamed concepts, and when in doubt a thing is out of
+scope. The answer is a plan §6 row whose first cell begins
+`Design latitude:`, with the owner's quote or the session's reason and
+the date. Judgment checks it at the press, at each ruling pass and in
+every brief; anything outside it goes to the question file, and only the
+owner widens the scope.
+
+### The joint pass (`specify.joint-pass`)
+
+| Step | Owner | Writes | Needs | Parallel with |
+|---|---|---|---|---|
+| 0 | session | latitude ask; spec §0–§2; plan §0, §2–§4, §1 | — | `research-scout` (plan §5) |
+| 1 | `product` | spec §3 | 0 | the scouts |
+| 2 | `architect` | spec §4–§8; plan §5 synthesis, §6–§9 with effort labels, phases, batch plan | 1, the scouts | — |
+| 3 | `product` ∥ `tester` ∥ `security` (sensitive surface) ∥ `reliability` | spec §9, §10, §5/§7; plan §10, §11 | 2 | each other |
+| 4 | `devils-advocate` | beside plan §6 and §11 | 3 | — |
+| 5 | session | spec §11, §12, sign-offs; plan §12–§15 | 4 | — |
+
+Section ownership does not change. A testability failure in step 3 is a
+`recover` attempt back to the architect. When only one document is
+being written, `specify.flow` and `grill.flow` apply.
+
 ## grill
 
 *Source: `protocols/grill.md`*
 
 - **id:** `protocol.grill`, tier 2
 - **owns:** `rule.grill`, `grill.flow`, `grill.revise`,
-  `grill.increment-shape`, `grill.press`, `grill.legal-checkpoint`
+  `grill.increment-shape`, `grill.press`, `grill.plan-approval`,
+  `grill.legal-checkpoint`
 - **requires:** —
-- **peers:** `protocol.specify`, `protocol.test-first`,
-  `agent.devils-advocate`
+- **peers:** `protocol.specify`, `protocol.specify-joint-pass`,
+  `protocol.test-first`, `agent.devils-advocate`
 - **load_when:** "plan the implementation, plan-of-record, grill.md"; "spec
   exists but no plan implements it"; "scope an increment, slice the work";
   "an increment shipped, revise the plan, record what happened"; "plan is
@@ -348,7 +404,8 @@ A phase table with a named owner per phase; **the table is the spawn
 order.** A phase's spawn is issued only after every handback it needs
 has returned, and two phases run side by side only where the table says
 so (`delegation.sequencing`). The §15 entry lists the pass's spawns by
-`spawn_id` in issue order.
+`spawn_id` in issue order. When the spec is written in the same pass,
+the joint pass replaces this table (`specify.joint-pass`).
 
 | Phase | Sections | Owner | Needs | Parallel with |
 |---|---|---|---|---|
@@ -392,7 +449,9 @@ green under `grill-lint.py`.
 ### Increment shape (`grill.increment-shape`)
 
 A good increment names: spec contracts, files touched, RED tests,
-behavior added, the gate, the rollback path, effort, and `Depends on:`
+behavior added, the gate, the rollback path, `Effort:` (one label) and
+`Phase:` (`RED`, `GREEN` or `prose`), both from `delegation.effort-scale`,
+and `Depends on:`
 — both the earlier increments it builds on and the
 `docs/graph/libraries/` pages it relies on (`none` is a value; blank is
 not). Rows are listed in dependency order. An increment is ready when
@@ -410,6 +469,8 @@ what moved.
   invalidates it, recorded as a §11 row with a verification or a §12
   row with a resolution path; no `[verify]` survives in §9 or §13;
   human-input values are do-not-guess.
+- **Design latitude:** every §6 decision and §9 increment is checked
+  against the plan's `Design latitude:` row (`specify.design-latitude`).
 - **Refutation:** on a T3 plan, one-way doors and the top risk go to
   `devils-advocate` for one bounded pass; `refuted` reopens the owning
   phase; `could-not-refute` is recorded beside the row.
@@ -486,12 +547,14 @@ One cycle per increment, in grill.md §9 order. **The table is the spawn
 order**: a phase's spawn is issued only after the handback it needs has
 returned; the next increment's RED waits for this increment's COMMIT
 unless §9's `Depends on:` rows say they are independent
-(`delegation.sequencing`).
+(`delegation.sequencing`). One spawn may carry a batch of increments
+sized by their effort labels (`delegation.step-scope`,
+`delegation.effort-scale`).
 
 | Phase | Owner | Needs | Hands back |
 |---|---|---|---|
 | RED | `tester` | §9 row, contract text, target test paths | failing tests, right reason; §10 rows `red` |
-| GREEN → REFACTOR | `implementer` | the RED handback | green, integrated diff; affected gates run; §10 rows `green` |
+| GREEN → REFACTOR | `implementer` | the RED handback | green, integrated diff; the implementer runs the RED tests itself, edits no test or fixture, and writes a doubtful test up as a question (`delegation.green-self-test`); affected gates run; §10 rows `green` |
 | REVIEW | `reviewer` | the diff, the §9 row | severity findings; Critical/Major → `implementer` once more, an attempt under `recover` |
 | COMMIT | the session | a clean review | grill.md §15 entry with the `spawn_id`s in order; the commit; the spec's status advanced |
 
@@ -534,8 +597,10 @@ generated code) — each in grill.md §9 with a rationale and a date.
 
 ### Exit conditions
 
-Every contract for the increment has a passing test named for it; the
-suite is green; the increment's gate ran and the full `verify` pass ran
+Every contract for the increment has a passing test named for it; its
+targeted tests and the cross-cutting gates its files hit pass, and the
+full suite runs once at the batch tip (`delegation.tip-cadence`); the
+increment's gate ran and the full `verify` pass ran
 before close-out; the review is clean; grill.md §15 carries the
 increment with its `spawn_id`s, spec §10 carries the tests, the spec's
 status is `active` (or `implemented`); `spec-lint.py` and
@@ -556,22 +621,21 @@ trace of what it spawned); assuming dev-machine green means CI green.
 - **id:** `protocol.verify`, tier 2
 - **owns:** `rule.verify`, `verify.gate-states`, `verify.risk-depth`,
   `verify.null-result`, `verify.composition`, `verify.silent-substitutes`,
-  `verify.test-first`, `verify.status-evidence`, `verify.tool-faults`,
-  `verify.characterize`, `verify.measure-integrity`
+  `verify.test-first`
 - **requires:** —
 - **peers:** `protocol.test-first`, `protocol.recover`, `protocol.canonize`,
-  `protocol.deliver`, `skill.validate-knowledge`
+  `protocol.deliver`, `skill.validate-knowledge`,
+  `protocol.verify-new-gates`, `protocol.verify-disagreement`
 - **load_when:** "increment done, ready to merge or deploy"; "which gates to
   run, verification runbook"; "tests pass but is it verified, green lie";
-  "gate found nothing, zero results, is that a real finding"; "refactor or
-  migration must preserve behavior"; "record a missing or skipped gate";
-  "mark it closed, what counts as status evidence"; "assert the count or the
-  composition, expected value derived from the subject"; "silent no-op,
-  empty output that looks like success"; "gate never went red, does the
-  green mean anything"; "golden master, stored oracle before a migration";
-  "gate script left half-applied state, environment failure or repository
-  failure"; "the checker disagrees with the file, fix the tool or the
-  declaration"
+  "gate found nothing, zero results, is that a real finding"; "record a
+  missing or skipped gate"; "assert the count or the composition, expected
+  value derived from the subject"; "silent no-op, empty output that looks
+  like success"; "gate never went red, does the green mean anything";
+  "scanner configuration or suppression file passed, was the
+  input applied"; "grep count inflated by comments and prose that quote the
+  identifier"; "chronic red gate, always red for an unrelated cause"; "tests
+  whose subject is outside the shipped perimeter, excluded or skipped"
 
 ### What it does
 
@@ -591,7 +655,8 @@ Actor: `tester` runs the gates (`reliability` for operational and
 deploy gates) in its own context and reports outcomes in its handback;
 the runbook entry is part of that worker's write scope. The grill.md
 §15 record (step 8) is the session's; the plan-of-record is a
-session-owned operational artifact.
+session-owned operational artifact. When each gate runs is
+`delegation.tip-cadence` and `delegation.mutation-at-end`.
 
 ### The gate menu
 
@@ -683,12 +748,57 @@ content, or argument instead.
    cost as metrics.
 8. Update grill.md §15 with the date and verification outcome.
 
+### Anti-patterns
+
+- "All gates green, but I disabled the flaky one."
+- "Tests pass locally, didn't run them in CI." If the gate isn't in
+  CI, it isn't a gate; it's a hope.
+- "We don't have time for the eval suite this increment." That is the
+  signal to merge a smaller increment, not to skip the gate.
+
+## verify-new-gates
+
+- **id:** `protocol.verify-new-gates`, tier 2, from `protocols/verify-new-gates.md`
+- **owns:** `verify.status-evidence`, `verify.tool-faults`
+- **requires:** none
+- **peers:** `protocol.verify`, `protocol.verify-disagreement`
+- **load_when:** "mark it closed, what counts as status evidence"; "gate
+  script left half-applied state, environment failure or repository
+  failure"; "adding a new gate or check"
+- **command:** none; it is entered from `verify`
+
+### `closed` means evidenced
+
+`closed` means resolved with evidence: `status_evidence` names a
+path#anchor, a commit or a gate-run id a reader can open. Without it the
+honest states are `hotfix` and `deferred`, each with an owner. A spec is
+promoted to a live status only in the change that adds passing
+assertions for its contracts. The vocabulary lives in
+`docs/graph/_schema.md`; `status-register.py` enforces it.
+
 ### Adding a new gate
 
 If verification reveals a bug no existing gate would have caught: pick
 the lowest level that catches it; get a RED test case that reproduces
 it; add it to the verification runbook in the same increment; add it to
 CI in the next reliability-owned increment.
+
+A gate script you author is all-or-nothing, runs under strict error
+handling, resolves its own root, and keeps environment failures distinct
+from repository failures in remedy text and exit status.
+
+## verify-disagreement
+
+- **id:** `protocol.verify-disagreement`, tier 2, from `protocols/verify-disagreement.md`
+- **owns:** `verify.characterize`, `verify.measure-integrity`
+- **requires:** none
+- **peers:** `protocol.verify`, `protocol.verify-new-gates`
+- **load_when:** "refactor or migration must preserve behavior"; "golden
+  master, stored oracle before a migration"; "the checker disagrees with
+  the file, fix the tool or the declaration"; "tolerate a known defect,
+  known bug marker"; "a gate fails and the code looks right, which one is
+  wrong"
+- **command:** none; it is entered from `verify`
 
 ### Behavior-preserving changes (refactors, migrations, dependency bumps)
 
@@ -716,13 +826,15 @@ require 401"). The assertion passes while the bug lives and flips to
 FAIL the moment the bug is fixed without the assertion being tightened,
 so the debt is mechanically visible and self-retiring.
 
-### Anti-patterns
+### When the check and its subject disagree
 
-- "All gates green, but I disabled the flaky one."
-- "Tests pass locally, didn't run them in CI." If the gate isn't in
-  CI, it isn't a gate; it's a hope.
-- "We don't have time for the eval suite this increment." That is the
-  signal to merge a smaller increment, not to skip the gate.
+A gate measures the effective state, read back through the path a real
+client takes. When the check and its subject disagree, the instrument is
+the first suspect: read the raw source, read the probe's exit code
+rather than the emptiness of its output, and prefer the format's own
+resolver to a parser you write. Never satisfy a check by changing what
+it measures. A second measurement confirms the first only if it
+re-derives the result by a different method.
 
 ---
 
@@ -736,7 +848,8 @@ so the debt is mechanically visible and self-retiring.
 - **peers:** `protocol.deliver`, `protocol.grill`
 - **load_when:** "a worker or gate failed, what now"; "retry or re-route,
   flaky failure"; "delegation came back wrong or ambiguous"; "gate red twice
-  on the same increment"
+  on the same increment"; "permission guard refused an action the owner
+  directed"; "failure cause unknown, cheapest probe first"
 
 ### What it does
 
@@ -763,7 +876,7 @@ ones.
 | **Transient** | Environment flake: network, rate limit, race, resource exhaustion | Retry as-is, **max 2**, backing off. Third failure is not transient — reclassify. |
 | **Deterministic** | Same input reliably produces the same failure: compile error, failing assertion, lint, schema rejection | **Never retry unchanged.** Change the input (code, test, config) and re-run. |
 | **Capability** | The worker is the wrong instrument: wrong specialist, missing expertise, out-of-domain handback, LOW/NONE route band in hindsight | Re-route: run `agent-lint --route` with a *sharper* task statement, written in the domain's own words so it also composes the expertise the worker lacked. A knowledge gap closes as an `expertise.*` node; commission an agent only when the work needs its own tools, model class, stance, or isolation (kernel §1). Do not re-brief the same agent harder. |
-| **Ambiguity** | The worker asked the brief a question, guessed, or two artifacts contradict (spec vs code, plan vs node) | Fix the **cheapest upstream artifact that owns the confusion** — brief first, then plan (grill §), then spec — and re-delegate. Widening context is not the fix. |
+| **Ambiguity** | The worker asked the brief a question, guessed, or two artifacts contradict (spec vs code, plan vs node) | Fix the **cheapest upstream artifact that owns the confusion** — brief first, then plan (grill §), then spec — and re-delegate. Widening context is not the fix. Inside a batch, the question goes to the batch's question file and the architect's ruling pass answers it (`delegation.question-file`). |
 | **Systemic** | The harness or system itself: wedged delegation, depth cap hit, missing tool, broken gate infrastructure | Stop the line. Record in grill.md §12 and report to the human with the exact evidence. No workaround that hides it. |
 | **Unregistered** | The specialist exists on disk but the host has no such type: the session predates the projection, or it is rooted at the seed rather than the plant. Reads like Systemic — it is not. | Apply `delegation.harness-registration`: preflight, re-enter rooted at the plant, or role-emulate **and record it**. Do not stop the line, and do not commission a second definition. |
 
@@ -835,7 +948,7 @@ not from zero.
   "catalog a tool or skill the work produced"; "status review at close-out:
   did each register item move this session"; "we departed from the standard,
   record the deviation and why"; "small fix with no spec, where does the why
-  get written down"
+  get written down"; "handback overflow notes, read them at close-out"
 
 ### What it does
 
@@ -971,7 +1084,9 @@ T0/T1 self-record line is present).
 - **load_when:** "session is ending, wrap up, hand off"; "delivery summary,
   cold pickup"; "what did we change, session report"; "attribution,
   produced_by, routing evidence"; "decisions for the owner, options to
-  approve, answer by number"
+  approve, answer by number"; "every remaining step is the owner's, goal
+  loop or stop hook keeps firing"; "session metrics after each increment,
+  cost and quality so far"
 
 ### What it does
 
@@ -1630,7 +1745,7 @@ references.
 - **owns:** `harvest.fold-back-flow`, `harvest.agnosticism-gate`,
   `harvest.availability-gate`, `harvest.corpus-contracts`
 - **requires:** `method.delegation`
-- **peers:** `method.engineering-posture`, `skill.humanizer`,
+- **peers:** `method.minimum-sufficient-work`, `skill.humanizer`,
   `protocol.canonize`, `protocol.graft`, `protocol.grow`,
   `protocol.ingest-library`, `skill.toolcraft`
 - **load_when:** "harvest lessons back into the seed"; "fold generalizable

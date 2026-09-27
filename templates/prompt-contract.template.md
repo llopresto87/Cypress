@@ -57,6 +57,15 @@ fields:
 What deterministic code asserts about the model's output before the
 output reaches the user or another tool.
 
+- **Fallback:** what the caller receives when the output fails
+  validation or the model is unavailable. A fallback result carries an
+  explicit degraded status the consumer can see and test, never a
+  default that reads like a normal answer.
+- **Deterministic rules stay separate:** an alert or decision that
+  rule-based code can compute is raised by that code on its own path,
+  never routed through the model's output or merged into it, so a model
+  failure cannot suppress it.
+
 ## 7. Refusal or escalation conditions
 When the model should refuse, ask for confirmation, or escalate to a
 human. Map to spec failure modes.
@@ -89,7 +98,7 @@ Reference to `docs/graph/evaluations/<task>.md`. Minimum coverage:
 |---|---|---|---|
 
 ## 12. Prompt body
-The prompt itself, fenced. Treat as code — diffable, reviewable,
+The prompt itself, fenced. Treat it as code: diffable, reviewable,
 testable.
 
 ```text

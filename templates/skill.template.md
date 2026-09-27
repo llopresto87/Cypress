@@ -13,7 +13,7 @@ sequence of steps, it is a skill.
 -->
 ---
 name: <kebab-case-id>
-description: <one line — what procedure this skill packages, and the exact triggers that should invoke it. This is what the router matches on, so name the recurring situation concretely.>
+description: <one line: what procedure this skill packages, and the exact triggers that should invoke it. This is what the router matches on, so name the recurring situation concretely.>
 ---
 
 # <skill name>
@@ -26,15 +26,25 @@ repeatable, and why doing it ad-hoc each time is a mistake.>
 - <the recurring trigger situation, concretely>
 - <...>
 
+## Where it runs
+
+<Only for a skill that dispatches project-defined agents or runs
+project-defined tools; delete this section otherwise. Name the root the
+skill must be started from. A harness loads agents from the directory the
+session starts in, so the same skill started one directory up can pass its
+early steps and then find no agent to hand the next step to. Make step 1
+of the procedure confirm that each agent it dispatches is in that root's
+harness roster, and that each tool it runs exists on the branch in use.>
+
 ## The procedure
 
 <The disciplined steps, in order. Each step names its concrete move and
 the gate/check that proves it done. Compose existing protocols and skills
-by reference (e.g. "characterize first — `verify` behavior-preservation
-gate") rather than restating their rules here — a skill orchestrates
-disciplines, it does not duplicate them.>
+by reference (e.g. "characterize first: the `verify` behavior-preservation
+gate") rather than restating their rules here. A skill orchestrates
+disciplines; it does not duplicate them.>
 
-1. <step — move + the check that proves it>
+1. <step: the move, plus the check that proves it>
 2. <...>
 
 ## Anti-patterns

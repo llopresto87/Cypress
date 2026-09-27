@@ -10,10 +10,18 @@ nobody on the roster is written for — is an expertise node instead
 (docs/graph/nodes/_expertise.template.md); the router composes it into
 whichever worker's task names it, with no roster row and no registration.
 Author here only once one of the four triggers holds, and say which.
+A LIGHT VARIANT of an existing specialist (same mandate, a smaller
+budget) is authored from this template too: its trigger is the model
+class, it `requires:` the base agent, and its reading and escalation
+bounds are `delegation.light-variants`
+(docs/graph/method/delegation-model-classes.md).
 
 Frontmatter uses the extended routing schema (agent-routing plan §4.1):
   Required on EVERY agent, in this order: name, description, tools, model,
-    routing_triggers, can_delegate.
+    effort, routing_triggers, can_delegate. `effort:` is enforced by
+    agent-lint (the seed's SPEC-0005, AGENT_DECLARES_EFFORT): every agent declares one,
+    origin: project agents included — there is no exemption for a plant's
+    own expert.
   can_delegate MUST equal (Task ∈ tools) — no dormant-but-enabled drift.
   Required ONLY when can_delegate is true (omit entirely when false):
     max_spawn_depth (1..3) and delegates_to (an allowlist naming only
@@ -59,6 +67,11 @@ routing_triggers:
   - "{{another distinctive trigger}}"
 can_delegate: {{true if Task is in tools above, otherwise false —
   the two MUST match}}
+effort: {{low|medium|high — the closed set agent-lint holds
+  (`delegation.effort`); which other values a host accepts is recorded
+  in the same section of docs/graph/method/delegation-model-classes.md.
+  Pick the step kind this expert mostly runs from that file's
+  model-class table, `medium` if none of its rows fit.}}
 # Add the next two keys ONLY when can_delegate is true (delete otherwise):
 # max_spawn_depth: {{1..3}}
 # delegates_to:
@@ -107,8 +120,8 @@ Before doing anything, obey the executable graph discipline from AGENTS.md
 - Read the wiki page for any library before you use it; if none exists,
   say so rather than reasoning from memory.
 - One home per fact: link to the owning node, do not copy its facts.
-- Do the minimum sufficient work (`docs/graph/method/engineering-posture.md`
-  §5–§8): every operation serves your delegated deliverable, with the
+- Do the minimum sufficient work
+  (`method.minimum-sufficient-work`, `method.decision-economy`, `method.engineering-posture` §8): every operation serves your delegated deliverable, with the
   smallest sufficient evidence and the cheapest reliable method; stop
   when it is complete and trusted, and return only what the parent
   task needs.

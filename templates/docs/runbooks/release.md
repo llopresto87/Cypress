@@ -16,6 +16,19 @@ human and the procedure.
 - **Deliberately excluded** — list what this release does NOT include
   (deferred hardening, known limitations); shipping config-complete is not the
   same as hardened, and the gap is stated, not implied.
+- **Evaluations are compared with the checked-in baseline** where behaviour
+  is model-driven, and the comparison is linked here the way the
+  verification increment is.
+
+## Boundaries and expected non-green outcomes
+
+Written the way `operations.md` writes them. List what this procedure may
+not touch and where its credential comes from, then each red it produces
+by design with the field that proves it is the designed verdict.
+
+- Off limits: `<environments, hosts, credential groups>`
+- Credential: `<source; read in process, never printed>`
+- Expected red: `<step>`, designed, proven by `<field or log line>`
 
 ## Procedure (named commands)
 

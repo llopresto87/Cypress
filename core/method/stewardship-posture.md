@@ -22,8 +22,9 @@ load_when:
   - "which test level, unit vs integration vs e2e"
   - "ending the session, handing off in a known state"
   - "should this script become a durable tool"
+  - "the owner said remember, where does a standing rule go, harness memory or the graph"
 prevents: Model output treated as established fact without a second source, and example data drawn from production because no standing rule forbids it — two obligations that bind every session and sit inside no protocol's flow.
-est_tokens: 1050
+est_tokens: 1486
 ---
 
 # Stewardship posture
@@ -85,6 +86,21 @@ place instead of drifting across many. When graph and memory disagree,
 the graph is right. Specs are the analogous local source of truth for
 *project behavior*; when memory of "what we built" disagrees with the
 spec catalog, the spec catalog is right.
+
+The same holds for the rules the owner gives. A rule stated for good
+("remember …", "from now on …", "always …") is standing and
+cross-session: the owner should not have to say it again, so it is
+persisted in the graph, in the node that owns its topic, or in a skill
+when it is a procedure. An owner's working rule specific to this plant
+goes to the plant's `crosscut.operator` node
+(`templates/docs/nodes/_operator.template.md`) rather than into doctrine. Harness memory
+(the per-tool memory files some harnesses keep between sessions) holds
+at most a one-line pointer to that home, plus transient resume state:
+where a paused task stood, what to pick up next. A rule that lives only
+in one harness's memory is invisible to every other harness and every
+fresh-context worker, and it drifts from the graph the day either
+changes. When harness memory is found holding a durable rule, move the
+rule to its graph home and leave the pointer.
 
 ## 7. End every session in a known state
 

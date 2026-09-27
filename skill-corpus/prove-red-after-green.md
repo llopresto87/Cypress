@@ -1,13 +1,13 @@
 # Suggested skill: prove-red-after-green
 
-> Optional procedure — recover the missing RED for a fix that landed before its
+> Optional procedure: recover the missing RED for a fix that landed before its
 > test was ever seen failing, by parking the fix on purpose and requiring the
 > named rows to fail without it. Not a core skill; instantiate into
 > `docs/graph/skills/<name>.md` (its home, projected into the harness dirs the
 > plant uses) from `templates/skill.template.md` if selected.
-> `protocols/verify.md` states the obligation — a gate whose test never went
+> `protocols/verify.md` states the obligation (a gate whose test never went
 > red has authorized nothing, and the runbook entry records the red before the
-> green — and delegates the *how* to `protocols/test-first.md`, which carries
+> green) and delegates the *how* to `protocols/test-first.md`, which carries
 > only the **adoption-time** analog: an inherited suite, proven by reintroducing
 > a historical defect. This page is the **same-session sibling** of that move,
 > for a fix written in this session whose RED nobody watched. It composes both
@@ -18,10 +18,11 @@
 ## When to apply
 
 The RED goes missing in exactly three ways, and each is ordinary rather than
-shameful — what is not ordinary is calling the result verified:
+shameful. What is not ordinary is calling the result verified:
 
-- **The implementer overtook the tester.** The fix and its test were written in
-  one pass, and the test first ran against code that already worked.
+- **The implementer overtook the tester.** The RED and the GREEN that
+  implements it ran side by side, or the fix and its test were written in one
+  pass, and the test first ran against code that already worked.
 - **The suite was green on arrival.** The rows that encode the contract already
   existed and already passed, so nothing was ever observed to fail.
 - **The bug was fixed while writing the reproduction.** Reproducing the defect
@@ -30,11 +31,21 @@ shameful — what is not ordinary is calling the result verified:
 
 In all three the green run proves the **state of the tree**, not the strength
 of the test. Until the procedure below has actually been observed, the
-increment's status is **unproven green** — say those words in the handback and
+increment's status is **unproven green**. Say those words in the handback and
 in the runbook entry; do not write PASS.
 
-When the subject is not a parkable fix — an inherited suite, a checker, a
-configuration artifact — use `skill-corpus/mutation-verify.md` instead: mutate
+The moments to catch it are the ones where a green is about to be spent: a
+handback reports GREEN and names no observed RED; the tests for a
+characterization passed on their first run; a spec §10 row is about to move
+from `red` to `green` on the strength of one run.
+
+The first cause is the one worth preventing rather than recovering. A RED is
+never spawned beside the GREEN that implements it: the spawn order that stops
+it is `protocols/test-first.md`'s cycle table, where each phase waits for the
+handback it needs. This page is for when that order was broken anyway.
+
+When the subject is not a parkable fix (an inherited suite, a checker, a
+configuration artifact), use `skill-corpus/mutation-verify.md` instead: mutate
 what you cannot park.
 
 ## The procedure
@@ -43,17 +54,19 @@ what you cannot park.
 
 Record two lists first:
 
-- `<CONTRACT_FILTER>` — the selector for the rows that claim the contract, and
+- `<CONTRACT_FILTER>`: the selector for the rows that claim the contract, and
   for each row, **the failure it must produce** with the fix removed, in the
   words you expect to see.
-- `<PRODUCTION_PATHS>` — the non-test paths the fix touched.
+- `<PRODUCTION_PATHS>`: the non-test paths the fix touched.
 
 A prediction written after the run is scored against whatever happened.
 
 ### 2. Park the production paths only
 
 Put the fix aside with `<VCS_PARK_MECHANISM>`, restricted to
-`<PRODUCTION_PATHS>`. Every test file stays in place, untouched.
+`<PRODUCTION_PATHS>`. Every test file stays in place, untouched. Before
+running, confirm the test files are still present and still hold their new
+content; a park that caught one by accident is found here or not at all.
 
 **Parking a test file proves nothing.** A row that disappears with its file
 cannot fail, and a suite that no longer collects the row reports a green that
@@ -61,10 +74,26 @@ means only that nobody asked the question. The whole point of the exercise is
 to run *this* test against *unfixed* code; removing the test removes the
 experiment.
 
-The parking mechanics themselves — record the pin commit, keep the patch
-outside the tree, verify the tree afterwards, say where the work went — are
+The parking mechanics themselves (record the pin commit, keep the patch
+outside the tree, verify the tree afterwards, say where the work went) are
 `core/method/vcs-posture.md`'s discipline. Follow it there. What this page adds
-is only the selection rule: production paths, never test paths.
+is the selection rule: production paths, never test paths.
+
+**When the fix is already committed**, the working tree holds nothing to park.
+The state the RED should have run against is the last commit before the fix
+with the new tests copied in: pre-fix production code, post-fix tests. Build
+that state inside the one working tree. Start from a clean tree at the pin
+(the current commit, recorded), then undo only the fix's own changes to
+`<PRODUCTION_PATHS>`, which means reversing the fix's diff restricted to those
+paths. Rolling the paths back wholesale to an older revision also undoes any
+later commit that touched them, and the measurement then covers changes it was
+never meant to. The test files stay exactly as the pin has them.
+
+Do not build that state in a second checkout, a worktree, or a scratch clone.
+`core/method/vcs-posture.md` §3 bans the second tree, and its measurement
+rationale applies here with full force: a second tree can skip, cache or
+resolve differently, so a RED observed there and a GREEN observed in the
+working tree are two questions asked of two environments, not a pair.
 
 ### 3. Run the contract filter and read rows, not totals
 
@@ -72,7 +101,7 @@ Run `<CONTRACT_FILTER>` against the parked tree. Read the result **row by
 row**, against the predictions from step 1.
 
 A suite in which many rows fail for environment reasons unrelated to the change
-— an absent service, a missing runtime, a fixture that needs credentials — is
+(an absent service, a missing runtime, a fixture that needs credentials) is
 common and is not a blocker here. The suite total is unreadable in that state
 and must not be quoted. The filter's rows are what is read: the question is
 whether *these named rows* fail for *this named reason*, and the surrounding
@@ -86,7 +115,7 @@ claims. It is green against the defect it is named for, which means it would
 have been green against the defect in production. Stop: that row is the defect
 now.
 
-Fix the row before restoring — write the assertion that fails against the
+Fix the row before restoring: write the assertion that fails against the
 parked tree, watch it fail, and only then continue. A row repaired in this
 state has had its RED observed by construction, which is the whole objective.
 Do not restore first and repair afterwards; the parked tree is the only place
@@ -97,8 +126,9 @@ diagnosis and the cut are `skill-corpus/mutation-verify.md`'s.
 
 ### 5. Restore, confirm the tree is clean, re-run
 
-Restore the parked patch. **Confirm the tree is clean and byte-identical to the
-pin** before reading anything into the next run — an unrestored hunk, a
+Restore the parked patch; for a committed fix, return `<PRODUCTION_PATHS>` to
+the pin. **Confirm the tree is clean and byte-identical to the
+pin** before reading anything into the next run. An unrestored hunk, a
 conflict resolved by hand, or a stray edit makes the green that follows a
 statement about a tree nobody has seen. Then re-run the **same**
 `<CONTRACT_FILTER>`, unchanged: every named row green.
@@ -120,10 +150,20 @@ assertion-free suite produces, and it is the shape of report this procedure
 exists to replace. Until the pair is in the record, the increment is unproven
 green and the delivery says so.
 
+The pair proves the test. It does not turn the increment into one that followed
+the cycle. The record says the RED was recovered after the GREEN, and why it
+went missing, so the departure from `protocols/test-first.md` stays visible.
+
 ## Anti-patterns
 
 - Reporting "tests pass" for a fix whose RED nobody watched.
-- Parking a test file — or the whole change — instead of the production paths.
+- Parking a test file, or the whole change, instead of the production paths.
+- Reverting the whole fix commit instead of the fix's changes to the production
+  paths: it takes the tests with it, and it is harder to restore exactly.
+- Proving the RED in a second checkout or worktree of the pre-fix commit and
+  pairing it with a GREEN from the working tree.
+- Reasoning about what would have failed instead of observing it. "It would
+  obviously have thrown" is a prediction; this procedure turns it into a result.
 - Predicting the failures after seeing them.
 - Quoting the suite total on a suite with unrelated environment failures,
   instead of reading the contract filter's rows.
@@ -133,6 +173,7 @@ green and the delivery says so.
   produced the red.
 - Skipping the clean-tree confirmation and reading the restored green as proof.
 - Treating a row that passed with the fix removed as good news.
+- Recording the recovered pair as if the cycle had run in order.
 
 ## Reference files
 
@@ -140,10 +181,13 @@ green and the delivery says so.
   has authorized nothing, and the runbook records the red with its failure text
   before the green; also the three gate states this page's environment failures
   are recorded under)
-- `protocols/test-first.md` (owns the cycle this page retrofits, and the
-  adoption-time analog — an inherited suite proven by reintroducing a historical
-  defect — of which this is the same-session sibling)
+- `protocols/test-first.md` (owns the cycle this page retrofits, including the
+  spawn order that keeps a RED from running beside its GREEN, and the
+  adoption-time analog, an inherited suite proven by reintroducing a historical
+  defect, of which this is the same-session sibling)
 - `core/method/vcs-posture.md` (owns the parking discipline: the pin commit, the
-  patch outside the tree, the byte-identical check afterwards)
+  patch outside the tree, the byte-identical check afterwards; and the one
+  working tree, which is why a committed fix is un-applied in place rather than
+  re-checked-out elsewhere)
 - `skill-corpus/mutation-verify.md` (the move for a subject that cannot be
   parked, and the diagnosis for a row that passes without the fix)

@@ -69,13 +69,16 @@ test-first → verify → canonize → deliver.
 | Where the work stands | Entry node |
 |---|---|
 | Which tier is this task? Execution paths | `method.tiers` |
-| Who does this? Routing, model classes, briefs, delegation bounds | `method.delegation` |
+| Who does this? Routing, model classes, briefs, delegation bounds | `method.delegation` · `method.delegation-model-classes` · `method.delegation-cycle-economy` · `method.delegation-briefs` · `method.delegation-sequencing` · `method.delegation-bounds` |
 | Goal vague or contested | `protocol.brainstorm` |
 | Goal clear, no executable spec covers it | `protocol.specify` |
 | Spec exists; need the plan-of-record | `protocol.grill` |
+| Need a new spec and a new plan-of-record in one pass, or must ask/record the owner's design latitude | `protocol.specify-joint-pass` |
 | About to write or change code | `protocol.test-first` |
 | Introducing or refreshing a dependency | `protocol.ingest-library` |
 | Increment claims "done" — run the gates | `protocol.verify` |
+| Marking work closed, or a gate found a bug no gate would have caught | `protocol.verify-new-gates` |
+| A check disagrees with its subject, a refactor/migration must preserve behavior, or a known defect must be tolerated | `protocol.verify-disagreement` |
 | A worker, gate, or delegation failed | `protocol.recover` |
 | Task completing — persist knowledge + tools | `protocol.canonize` (doctrine: `skill.toolcraft`; author: `agent.tool-smith`) |
 | Session ending — the summary | `protocol.deliver` |
@@ -83,7 +86,7 @@ test-first → verify → canonize → deliver.
 | Project does not exist yet | `protocol.initialize` — the same fork, selecting `protocol.from-scratch` because the repository is empty |
 | Loading context minimally | `skill.context-router` |
 | Authoring or linting graph nodes | `skill.knowledge-graph` |
-| Engineering and design posture — the why | `method.engineering-posture` · `method.design-posture` · `method.stewardship-posture` · `method.secrets-posture` · `method.release-posture` · `method.incident-posture` · `method.contract-posture` · `method.vcs-posture` · `method.prose-posture` |
+| Engineering and design posture — the why | `method.engineering-posture` · `method.minimum-sufficient-work` · `method.decision-economy` · `method.host-parity` · `method.bounded-execution` · `method.design-posture` · `method.restrictive-policy` · `method.maintenance-contracts` · `method.design-governance` · `method.stewardship-posture` · `method.secrets-posture` · `method.release-posture` · `method.incident-posture` · `method.contract-posture` · `method.vcs-posture` · `method.prose-posture` |
 | Prose a person will read: documentation, README, ADR or spec body, runbook, PR text, delivery summary, or a draft that reads like a model wrote it | `skill.humanizer` (procedure) · `method.prose-posture` (doctrine) |
 | Fold lessons into the seed / carry the seed onto a plant | `protocol.harvest` / `protocol.graft` — **user-sovereign, never automatic** |
 

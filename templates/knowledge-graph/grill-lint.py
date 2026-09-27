@@ -26,7 +26,13 @@ gated. This makes the shape a gate:
     names is declared in a live spec, and every contract of those specs
     appears in some increment;
   - no `[verify]` survives in §9 or §13 (an assumption with no home);
+  - no `### Increment N` heading sits outside §9, where none of the checks
+    above would read it;
   - §14 is one action.
+
+A fenced code block (``` or ~~~) is an example, not the plan: a heading inside
+one opens no section and no increment, and its `- Label:` lines are no fields.
+A fence indented under a field is that field's value, not a blank.
 
 Installed at docs/graph/grill-lint.py by install.sh (like spec-lint.py).
 Dependency-free. No project config: the plan's path and the spec heading
@@ -51,6 +57,7 @@ DECISIONS = HERE / "decisions"
 REQUIRED_SECTIONS = range(0, 16)
 RETIRED_STATUSES = {"superseded", "retired", "deprecated", "withdrawn"}
 
+FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 SECTION_RE = re.compile(r"^##\s+(\d+)\.\s*(.*)$", re.M)
 INCREMENT_RE = re.compile(r"^###\s+Increment\s+(\d+)\b(.*)$", re.M)
 # An index row: a table row whose first cell is the increment number and whose
@@ -82,14 +89,47 @@ def strip_comments(text: str) -> str:
     return re.sub(r"<!--.*?-->", "", text, flags=re.S)
 
 
-def sections(text: str) -> dict[int, str]:
-    """Section number -> body text (header excluded), for `## N. Title` headers."""
-    out: dict[int, str] = {}
-    matches = list(SECTION_RE.finditer(text))
-    for i, m in enumerate(matches):
-        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-        out[int(m.group(1))] = text[m.end():end]
+def fenced(lines: list[str]) -> list[bool]:
+    """Per line: is it part of a fenced code block, fence lines included? A
+    fence closes on a run of its own character at least as long as the one
+    that opened it; an unclosed fence runs to the end, as CommonMark reads it."""
+    out: list[bool] = []
+    fence = ""                                  # the opening run, while inside
+    for ln in lines:
+        body = ln.rstrip("\r\n")
+        m = FENCE_RE.match(body)
+        out.append(bool(fence) or m is not None)
+        if not fence and m:
+            fence = m.group(1)
+        elif fence and m and m.group(1).startswith(fence) and not body[m.end():].strip():
+            fence = ""
     return out
+
+
+def mask_fences(text: str) -> str:
+    """The text with every fenced code block blanked to spaces, fence lines
+    included. Length and line breaks are kept, so an offset found in the mask
+    is the same offset in the text."""
+    lines = text.splitlines(keepends=True)
+    out: list[str] = []
+    for ln, inside in zip(lines, fenced(lines)):
+        body = ln.rstrip("\r\n")
+        out.append(" " * len(body) + ln[len(body):] if inside else ln)
+    return "".join(out)
+
+
+def section_spans(text: str) -> list[tuple[int, int, int]]:
+    """(number, body start, body end) per `## N. Title` header outside a fence."""
+    matches = list(SECTION_RE.finditer(mask_fences(text)))
+    return [(int(m.group(1)), m.end(),
+             matches[i + 1].start() if i + 1 < len(matches) else len(text))
+            for i, m in enumerate(matches)]
+
+
+def sections(text: str) -> dict[int, str]:
+    """Section number -> body text (header excluded). The body keeps its
+    fenced blocks: an example is still content that populates a section."""
+    return {n: text[start:end] for n, start, end in section_spans(text)}
 
 
 def content_lines(body: str, template_lines: set[str]) -> list[str]:
@@ -109,11 +149,17 @@ def content_lines(body: str, template_lines: set[str]) -> list[str]:
 
 def fields(block: str) -> dict[str, str]:
     """`- Label: value` fields of an increment block; a value continues on
-    indented lines until the next label."""
+    indented lines until the next label. Strikethrough markers are dropped.
+
+    A `- Label:` line inside a fence is an example, not a field; an indented
+    fenced line is still text of the current value, so a RED command written
+    as a fence under its label is a value and not a blank."""
     out: dict[str, str] = {}
     current = None
-    for ln in block.splitlines():
-        m = FIELD_RE.match(ln)
+    lines = block.splitlines()
+    for raw, inside in zip(lines, fenced(lines)):
+        ln = raw.replace("~~", "")
+        m = None if inside else FIELD_RE.match(ln)
         if m:
             current = m.group(1).strip()
             out[current] = m.group(2).strip()
@@ -139,10 +185,13 @@ def increments(body: str, errs: list | None = None) -> list[tuple[int, str, str]
     it is working on.
 
     Both forms may appear together — that is how a plan migrates, one increment
-    at a time, without a flag day.
+    at a time, without a flag day. Neither form is read inside a fence: blocks
+    are sliced at offsets found in the masked text, and each block is returned
+    unmasked, because a fence under a field is that field's value.
     """
+    masked = mask_fences(body)
     out = []
-    matches = list(INCREMENT_RE.finditer(body))
+    matches = list(INCREMENT_RE.finditer(masked))
     for i, m in enumerate(matches):
         end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
         title = m.group(2).strip(" —-–:").strip()
@@ -151,7 +200,7 @@ def increments(body: str, errs: list | None = None) -> list[tuple[int, str, str]
     inline_nums = {n for n, _t, _b in out}
     seen = set(inline_nums)
     referenced: set[str] = set()
-    for row in INDEX_ROW_RE.finditer(body):
+    for row in INDEX_ROW_RE.finditer(masked):
         path_m = INDEX_PATH_RE.search(row.group(2))
         if not path_m:
             continue
@@ -183,7 +232,7 @@ def increments(body: str, errs: list | None = None) -> list[tuple[int, str, str]
                             f"work is written down somewhere")
             continue
         child = strip_comments(target.read_text(encoding="utf-8"))
-        cm = list(INCREMENT_RE.finditer(child))
+        cm = list(INCREMENT_RE.finditer(mask_fences(child)))
         if not cm:
             if errs is not None:
                 errs.append(f"§9: {rel} carries no `### Increment {num} — title` "
@@ -296,6 +345,15 @@ def main() -> int:
                 fails.append(f"§1: `{ln.strip()}` has no path and no `none — <reason>` (read it; do not guess)")
 
     # --- §9: increment shape and dependency order ---------------------------
+    # A heading outside §9 is well formed and read by nothing: its fields,
+    # dependencies and contracts all go unchecked while the plan passes.
+    spans = section_spans(text)
+    for m in INCREMENT_RE.finditer(mask_fences(text)):
+        where = next((n for n, start, end in spans if start <= m.start() < end), None)
+        if where != 9:
+            fails.append(f"{'§' + str(where) if where is not None else 'before §0'}: "
+                         f"`### Increment {m.group(1)}` — increment heading outside §9 — "
+                         f"invisible to the plan checks; move it into §9 or the ledger")
     incs = increments(secs.get(9, ""), fails)
     if 9 in secs and not incs and not any(NA_RE.match(ln) for ln in populated.get(9, [])):
         fails.append("§9: no `### Increment N — title` rows, and no index rows "
@@ -306,7 +364,7 @@ def main() -> int:
     contract_refs: dict[str, dict[str, list[int]]] = {}
     graph: list[tuple[int, str, list[int], list[str], list[str]]] = []
     for n, title, block in incs:
-        f = fields(block.replace("~~", ""))
+        f = fields(block)
         for name in REQUIRED_FIELDS:
             if not f.get(name, "").strip():
                 fails.append(f"§9 increment {n}: `{name}:` is blank (`none` is a value; blank is not)")
@@ -327,7 +385,7 @@ def main() -> int:
         for spec, slug in refs:
             contract_refs.setdefault(spec, {}).setdefault(slug, []).append(n)
         graph.append((n, title, inc_deps, libs, [f"{s}/{c}" for s, c in refs]))
-        if "[verify]" in block:
+        if "[verify]" in mask_fences(block):
             fails.append(f"§9 increment {n}: carries `[verify]` — an assumption with no home; resolve it or move it to §12")
 
     # --- §5 is derived from §9; every library page named exists -------------

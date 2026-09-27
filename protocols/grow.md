@@ -125,7 +125,7 @@ collapse delegated work into the main chat. If it can spawn them but a named
 specialist is **not registered as a spawnable type** (the ordinary state of the
 session that just installed the roster), that is *not* the fatal condition:
 preflight it before the first dispatch and apply the remedy, or the recorded
-role-emulation fallback, from `docs/graph/method/delegation.md`
+role-emulation fallback, from `docs/graph/method/delegation-bounds.md`
 (`delegation.harness-registration`). Emulating a specialist without recording it
 is the failure; discovering the gap mid-phase is the avoidable cost.
 
@@ -516,7 +516,7 @@ Settle spawnability here too, not in Phase 2. A session that just installed the
 seed holds an agent registry from before the install, and a session rooted at
 the seed rather than the plant never holds the plant's roster at all, so
 preflight one roster type now and take the remedy or the recorded fallback
-(`docs/graph/method/delegation.md`, `delegation.harness-registration`). Scouting
+(`docs/graph/method/delegation-bounds.md`, `delegation.harness-registration`). Scouting
 is the wrong place to learn that no scout can be spawned.
 
 Inventory cheaply before opening large files. Ignore generated, vendor,

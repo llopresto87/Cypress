@@ -11,7 +11,7 @@
 - **Name:** large-artifact-stager
 - **Language / runtime:** any (typically a shell driver plus a container build
   and a transport client)
-- **Stability:** **blueprint only** — no portable implementation; the value is
+- **Stability:** **blueprint only**: no portable implementation; the value is
   four build-and-transfer idioms and the guarded-root rule
 
 ## 1. What it does
@@ -30,22 +30,56 @@ consuming account can actually read.
 ## 2. Interface & invocation
 
 ```sh
-stage-artifacts \
+stage-artifacts status [--only LIST] [--root DIR]
+stage-artifacts verify [--only LIST] [--root DIR] [--online]
+stage-artifacts stage \
   --manifest <what to stage, and where each item goes> \
-  --target <host or destination selector> \
+  --source-id <the exact upstream identity being staged, no default> \
   --root <the one directory every write must resolve under> \
   [--dry-run]
+stage-artifacts push --target <host or destination selector> [--dry-run]
+stage-artifacts clean --only LIST --yes [--force] [--root DIR] [--dry-run]
 ```
 
 - **Inputs:** a declarative manifest of artifacts and destinations; the target
   selector; the guarded root; credentials for the source, supplied at build time
-  and never written into the staged tree.
+  and never written into the staged tree; the source's exact upstream identity
+  (repository, revision, or origin id), required explicitly **with no default
+  and no fallback** wherever the project keeps no other record of it: a
+  plausible guess ships the wrong bytes under a name that looks right, and
+  nothing downstream catches it.
+- **`status` and `verify` without `--online` are read-only**: no network, no
+  container runtime.
+  That is what lets the isolated host that will consume the artifacts run them
+  directly — before a transfer, to check what is already there, and after, to
+  check what landed. `stage`, `push`, and `clean` need the build/transport
+  machinery.
+- **The two-hop shape for a target with no route to the source:** `stage` runs
+  on a host that can reach the source, `push` moves the built tree onward, and
+  `verify` runs **again on the far side**. A `push` that exits 0 is not proof
+  of anything by itself; the far-side `verify` is the oracle that closes the
+  loop, and a transfer that reports success but that `verify` disagrees with is
+  reported as a failure immediately, not discovered later at the consuming
+  service's first start.
 - **Outputs:** per-artifact transfer result and a post-transfer readability
   verdict for each destination; non-zero on any failed transfer, any unreadable
-  destination, or any path that escapes the guarded root.
+  destination, or any path that escapes the guarded root. A claim that an
+  artifact is already present by some other means (baked into a base image, for
+  example) carries its own confidence grade in the output line — confirmed by a
+  direct check, inferred from documentation, or unconfirmed — rather than being
+  asserted flatly.
 - **Preconditions:** a container runtime able to **build**; a transport to the
   target; the consuming account's identity known **before** staging, since it is
-  what the verification step checks against.
+  what the verification step checks against. Where more than one process
+  resolves the guarded root independently (each expanding a home directory, an
+  environment variable, or another indirection on its own), the root is passed
+  to both **explicitly** rather than trusted to agree: two independent
+  resolutions of "the same" path are not guaranteed to land on the same value,
+  especially across machines or accounts.
+- **`clean` refuses to run without an explicit `--yes`**, and refuses to remove
+  a **complete**, verified artifact without the stronger `--force`. Deleting a
+  good copy is a different risk than deleting a partial one, and the two need
+  different amounts of caller intent.
 
 ## 3. Approach / algorithm
 
@@ -83,8 +117,8 @@ image while every log line says the new one.
 ### 3. Verify readability after every transfer, by the consuming account
 
 After each transfer, check that the written tree is **readable by the account
-that will consume it** — not by root, not by the invoking user, but by the
-service identity. Check the directory traversal bits along the whole path, not
+that will consume it**: the service identity. Root and the invoking user can
+both read files the service cannot, so neither check counts. Check the directory traversal bits along the whole path, not
 only the leaf file: a readable file under a directory the account cannot enter is
 unreadable in practice, and is the most common way this fails.
 
@@ -133,7 +167,7 @@ is where a root-escaping path does the most damage.
   a path that does not exist yet at check time. Do both, and re-check immediately
   before the operation rather than at manifest-parse time.
 - **Credentials must not survive into the staged tree.** They belong to the
-  transfer step and to nothing that is written to the destination — not in a
+  transfer step and to nothing that is written to the destination: not in a
   config file copied alongside, not in a cached credential helper directory that
   happens to sit under the root.
 - **Partial staging is a valid outcome and must be reported as one.** Large
@@ -142,6 +176,11 @@ is where a root-escaping path does the most damage.
 - **Idempotence is worth designing in.** Staging jobs are re-run after failures;
   re-transferring an artifact already present and readable should be cheap and
   safe, and must not delete the good copy before confirming the replacement.
+- **Three more pitfalls are stated once, in §2, where the interface enforces
+  them:** a guessed source identity (the no-default `--source-id`), two
+  processes deriving the guarded root separately (the explicit shared root),
+  and a flat "already present" claim (the confidence grade on the output
+  line).
 
 ## 6. Tests that cover it
 
@@ -171,3 +210,10 @@ is a safe no-op.
 ## 8. Changelog
 
 - 2026-09-13 — created from harvested, generalized capability, by docs-librarian.
+- 2026-09-26 — folded in the read-only status/verify split, the two-hop
+  stage-push-verify shape with verify as the far-side oracle, the no-default
+  source identity, the explicit-shared-root note for independently resolving
+  processes, the confidence-graded presence claim, and the two-flag `clean`
+  refusal (§2, §5), by docs-librarian.
+- 2026-09-26 — `status`/`verify` are read-only only without `--online`; the
+  three pitfalls §2 already stated were folded into §2 as their one home.

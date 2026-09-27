@@ -23,10 +23,13 @@ load_when:
   - "is this release ready, rehearsed rollback and a verified restore point"
   - "lockfile checked in, pin transitive dependencies, base image, and the toolchain"
   - "suppress a vulnerability advisory, upgrade now or hold the version"
+  - "fix deployed by a per-run branch override, not merged, reverted by the next rebuild"
+  - "hashed lock missing a package, resolve the lock in a clean environment"
+  - "same scan on several paths, parity, missing report read as zero, expired suppression"
   - "which increment lands first, the irreversible step and the landing order"
   - "ship the release order across services, canary the lowest-risk one then fan out"
 prevents: Promoting a rebuilt artifact instead of the attested one, with an unrehearsed rollback and the irreversible steps taken first.
-est_tokens: 2050
+est_tokens: 2940
 ---
 
 # Release posture
@@ -46,7 +49,18 @@ invalidates every gate that ran before it. The artifact carries no
 environment identity (a client bundle addresses its serving edge by
 relative path, no host baked in). A commit id proves authorship, not
 deployment — a claim that a fix or control ships carries an ancestry
-check against the shipping reference. Every externally supplied
+check against the shipping reference. A fix running only because
+one run was given a per-run source override (a branch or repository
+substituted for that run alone) is **borrowed, not deployed**: the
+override lives in the run, not the repository, so the next run that
+omits it rebuilds from the ordinary branch and reverts the fix silently,
+and both runs report green because both deployed what they were told.
+Prefer merging; an override is a bridge to a merge, not a substitute
+for one. While one is live, record it (repository, ref, the change it
+waits on) where the next operator looks. Before any full rebuild, list
+the live overrides and either merge or carry each one, and after the
+rebuild re-check the original symptom rather than the run's status.
+Every externally supplied
 identifier written into a deployment file (an image tag, a version) is
 verified to resolve before it is committed. Enforce the pin with a
 tag-policy lint that fails the build.
@@ -72,8 +86,11 @@ reference rows are intact). An assumed backup is not a rollback point; an
 untested rollback is not a rollback; a teardown script is not a reversal;
 never write a recovery procedure you have not run — an invented rollback
 is believed exactly when it matters most. Before each release record the
-previous build identifiers and the migration and message-schema
-compatibility; refuse a generic rollback across an irreversible
+previous build identifiers, the migration and message-schema
+compatibility, and whether derived state (caches, search or vector
+indexes, materialized views) built by the new version is still readable
+by the previous artifact: reverting code over a derived store the newer
+version rebuilt is a mixed-version state too; refuse a generic rollback across an irreversible
 migration; where deployments auto-apply migrations, record that reverting
 the artifact does not revert the schema; removing a migration's reverse
 path is a recorded decision in the rollback runbook. A release checklist
@@ -103,7 +120,13 @@ recorded on the dependency's library page (`protocol.ingest-library`),
 never applied silently in a build file — and a pin is verified to reach
 the resolved graph, because an override at the wrong layer is silently
 ineffective and a pin whose transitive reach is off is where version
-splits come from. Where a version is the mitigation for a vulnerability
+splits come from. A lock is resolved in an empty environment for the
+target platform: a resolver report taken where packages are already
+installed silently omits them, so a hashed lock computed that way is not
+closed and fails only at install time on a clean target. Whenever a pin
+changes, resolve and check lock closure from a clean environment with
+the target platform's markers (the package manager's flags for it
+belong on its library page). Where a version is the mitigation for a vulnerability
 class, record the floor as forbidden-to-downgrade and enforce it with an
 automated check; shared build templates are consumed at pinned release
 tags, rolling-branch consumption being an opted-in, recorded risk.
@@ -113,7 +136,21 @@ tags, rolling-branch consumption being an opted-in, recorded risk.
 Vulnerability advisories are promoted to build errors, never suppressed;
 suppressions are replaced by explicit remediation pins, and a scan
 bypass is a logged risk acceptance on the register
-(`method.incident-posture`), not a passing gate. Each upgrade or
+(`method.incident-posture`), not a passing gate. A scanner
+exploitability statement that marks a finding not affected is a
+suppression in effect, and it is held to that bar: it is counted in the
+verdict by severity and attributable there (what it suppressed, on
+which target, who declared it, when it is reviewed), so an "allow" that
+holds only because a statement hid a critical says so; one with no
+declared author or expiry, or past its expiry, suppresses nothing and
+is listed as ignored. Where one check
+runs on several paths (a local suite, a pipeline, a deploy-time scan),
+the paths share one contract: each derives its targets from the same
+declaration, and a parity check compares the resolved target sets and
+per-target outcomes, never only the finding counts. A missing report
+renders as unavailable, never as zero, and only a run that covered the
+full declared scope is release evidence; a narrower path says it is
+narrower in every artifact it writes. Each upgrade or
 deliberate non-upgrade is decided on whether the advisory is actually
 reachable in this codebase and whether the newer version is genuinely
 better — measured, since a newer release can carry more findings or fail

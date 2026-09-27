@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft-07/schema#",
   "name": "cypress",
   "fullName": "Contextual Yield Protocol for Routed Expert Seed Systems",
-  "version": "7.29.0",
+  "version": "7.30.0",
   "supersedes": "general_expert_prompts@1.0.0",
   "created": "2026-05-23",
   "description": "CYPRESS (Contextual Yield Protocol for Routed Expert Seed Systems) — a project-agnostic multi-agent seed for single- or multi-repository programs. As of 6.0.0 it is a pure graph system: the entire method surface — protocols, skills, agent charters, method/posture nodes, and template artifacts — installs INTO the plant's unified docs/graph/ as seed-owned routable nodes (origin: seed), activated progressively by the router; the always-loaded kernel is a small bootstrap (identity, tiers, rule anchors, boundaries), and tool directories hold only harness projections (agents, skills). Its tool-neutral INSTALL_PROMPT.md keeps user chat in orchestration/planning, dispatches Sonnet-class read-only scouts and Opus-class authors/reviewers, and grows the graph without building the application or publishing Git state.",
@@ -17,15 +17,27 @@
     "Scale-agnostic: the same method governs a single repo or a program of several.",
     "Tool-agnostic: the same kernel runs in Claude Code, opencode, Codex, Copilot, and Prime Agent.",
     "Toolcraft: when an operation recurs across sessions, build a durable, tested tool and catalog it in docs/graph/tools/; never reinvent throwaway scripts.",
-    "Minimum sufficient work: produce the smallest body of work that reliably delivers the required result — every operation serves a named decision, effort scales with uncertainty and consequence (the tiers), structure/artifacts/delegation earn their lifecycle rent, and work stops when the result is sufficiently trusted. Depth in docs/graph/method/engineering-posture.md; grow, graft, and harvest each audit their own additions against it.",
+    "Minimum sufficient work: produce the smallest body of work that reliably delivers the required result — every operation serves a named decision, effort scales with uncertainty and consequence (the tiers), structure/artifacts/delegation earn their lifecycle rent, and work stops when the result is sufficiently trusted. Depth in docs/graph/method/minimum-sufficient-work.md, docs/graph/method/decision-economy.md and docs/graph/method/engineering-posture.md §8; grow, graft, and harvest each audit their own additions against it.",
     "Design for responsibility: give each part one coherent responsibility, keep cohesive things together, and point dependencies at stable contracts rather than volatile detail — but prefer the smallest structure that fits; correct separation is the goal, never maximum. Structure is named at plan time (grill §9) and audited at review. Depth in docs/graph/method/design-posture.md."
   ],
   "kernel": {
     "core/AGENTS.md": "Bootstrap kernel — the ONLY always-loaded instruction file, read on every session by every supported tool: identity, first move (the router), tier table, the eight rule anchors, boundaries. Full statements live in the graph machinery nodes.",
     "core/method/tiers.md": "method.tiers node — tier depth, hard edges, execution paths. Installed to docs/graph/method/.",
-    "core/method/delegation.md": "method.delegation node — roster, mechanical routing, model classes, delegation bounds, brief discipline. Installed to docs/graph/method/.",
+    "core/method/delegation.md": "method.delegation node — the roster, mechanical routing and shared spec authoring; hub over the five delegation siblings. Installed to docs/graph/method/.",
+    "core/method/delegation-model-classes.md": "method.delegation-model-classes node — the class and reasoning effort each step runs on, and light variants. Installed to docs/graph/method/.",
+    "core/method/delegation-cycle-economy.md": "method.delegation-cycle-economy node — effort-sized batches, GREEN self-test, tip cadence, the question file and ruling pass, mutation at the end. Installed to docs/graph/method/.",
+    "core/method/delegation-briefs.md": "method.delegation-briefs node — what every brief carries across the spawn boundary. Installed to docs/graph/method/.",
+    "core/method/delegation-sequencing.md": "method.delegation-sequencing node — spawn order by dependency, and one writer per file set. Installed to docs/graph/method/.",
+    "core/method/delegation-bounds.md": "method.delegation-bounds node — spawn allowlists and depth, host registration, the turn, and the spawn trace. Installed to docs/graph/method/.",
     "core/method/engineering-posture.md": "method.engineering-posture node — general engineering principles (was operating-principles §1–§12). Installed to docs/graph/method/.",
+    "core/method/minimum-sufficient-work.md": "method.minimum-sufficient-work node — how much work a task deserves, the declared effort level, risk-homogeneous increments (engineering-posture §5, split P1). Installed to docs/graph/method/.",
+    "core/method/decision-economy.md": "method.decision-economy node — every operation serves a decision, stop when trusted, ask or assume (engineering-posture §6–§7, split P1). Installed to docs/graph/method/.",
+    "core/method/host-parity.md": "method.host-parity node — authoring host is not the execution target, real CI for works claims, inspection writes nothing (engineering-posture §13, split P1). Installed to docs/graph/method/.",
+    "core/method/bounded-execution.md": "method.bounded-execution node — a command that may outlive its session is detached, logged and ended by a marker (engineering-posture §14, split P1). Installed to docs/graph/method/.",
     "core/method/design-posture.md": "method.design-posture node — SOLID/responsibility design cluster (was §13–§19). Installed to docs/graph/method/.",
+    "core/method/restrictive-policy.md": "method.restrictive-policy node — a rule that restricts must not deny the default; decided fallbacks, report-only destructive operations (design-posture §8, split P2). Installed to docs/graph/method/.",
+    "core/method/maintenance-contracts.md": "method.maintenance-contracts node — one maintenance contract per artifact, what a generated artifact owes, doc-versus-code precedence (design-posture §12–§13, split P2). Installed to docs/graph/method/.",
+    "core/method/design-governance.md": "method.design-governance node — the project's contract outranks the brief and the industry default; maintained primitives for security-critical machinery (design-posture §14–§15, split P2). Installed to docs/graph/method/.",
     "core/method/stewardship-posture.md": "method.stewardship-posture node — records, verification, knowledge, session closure, tools (was §20–§27). Installed to docs/graph/method/.",
     "core/method/prose-posture.md": "method.prose-posture node — prose a person reads: information contract, claim classes, genre profiles, diagnostics A–X, anti-patterns, stop conditions. Installed to docs/graph/method/.",
     "core/method/contract-posture.md": "method.contract-posture node — fail loudly on missing input, reject out-of-domain values, own the unversioned boundary. Installed to docs/graph/method/.",
@@ -163,6 +175,11 @@
       "role": "Authoring an executable spec."
     },
     {
+      "file": "protocols/specify-joint-pass.md",
+      "name": "specify-joint-pass",
+      "role": "One joint specify-and-grill pass, held to the design latitude (creative, balanced or simple) asked once and recorded in the plan."
+    },
+    {
       "file": "protocols/grill.md",
       "name": "grill",
       "role": "Plan-of-record discipline."
@@ -181,6 +198,16 @@
       "file": "protocols/verify.md",
       "name": "verify",
       "role": "Risk-proportional gate discipline: gate depth follows the change's blast radius, from one focused check (T1) to the broad battery (contracts, security, migrations, concurrency)."
+    },
+    {
+      "file": "protocols/verify-new-gates.md",
+      "name": "verify-new-gates",
+      "role": "closed means evidenced, and what a new gate or verification script owes (all-or-nothing, environment faults kept apart from repository faults)."
+    },
+    {
+      "file": "protocols/verify-disagreement.md",
+      "name": "verify-disagreement",
+      "role": "Behavior-preserving changes, the self-expiring known-defect exception, and what to do when a check and its subject disagree."
     },
     {
       "file": "protocols/recover.md",
@@ -295,6 +322,10 @@
     {
       "file": "templates/adr.template.md",
       "produces": "docs/graph/decisions/adr-NNNN-<slug>.md"
+    },
+    {
+      "file": "templates/findings-report.template.md",
+      "produces": "a standalone findings report (.html) from templates/findings-report.template.html"
     },
     {
       "file": "templates/prompt-contract.template.md",

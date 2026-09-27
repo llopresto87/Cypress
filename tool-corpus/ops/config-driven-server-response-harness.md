@@ -77,6 +77,23 @@ production, so the list of them is part of the result, not an implementation
 detail. If the table ever needs to touch a directive that participates in the
 property under test, the harness is no longer measuring that property.
 
+**Apply the rewrite table recursively through the whole include chain**, not
+only to the top-level file. A configuration that includes other files, which
+in turn include others, carries the same path-dependent directives at every
+level, and a rewrite that stops at the entry file leaves a dangling reference
+inside a nested include. That either fails the syntax check outright — the
+better outcome, because it stops the run — or, worse, resolves against
+whatever the host machine happens to have at that path, so the harness
+silently measures the **host's own** configuration instead of the one under
+test.
+
+**A configuration fragment that is itself generated is rendered by the shipped
+generator, at the same revision as the configuration being measured, never
+hand-written for the occasion.** Hand-writing a stand-in for a generated
+fragment turns the harness back into the static-analysis reasoning it exists
+to replace, and it silently stops exercising whatever floor or validation the
+real generator enforces.
+
 ### 2. Validate with the binary's own syntax-check mode
 
 Before starting anything, run the server's own configuration check against the
@@ -167,7 +184,23 @@ honest.
   under-specified matrix produces a green with a silent gap.
 - **Leaving the scratch server running poisons later runs.** Bind to a
   caller-chosen port, and tear down unconditionally, including on failure paths,
-  so a second run does not measure the first run's process.
+  so a second run does not measure the first run's process. **A multi-process
+  server must be stopped with the graceful signal to its master, run with only
+  one worker.** A hard kill of the master orphans workers that keep holding the
+  port, and the *next* run then finds no free port — the failure surfaces one
+  run later and looks unrelated to its cause.
+- **A version gap between the local binary and the one actually shipped is a
+  silent way to invalidate the measurement.** Print both the locally installed
+  binary's version and the shipped version — derived from the project's own
+  build file, never hardcoded — on every run. For a directive whose behaviour
+  differs between the two versions, a measurement taken on the local binary is
+  not proof of what the shipped one does; say so rather than letting the two be
+  read as interchangeable.
+- **A self-test must assert that the neutralization actually held, not merely
+  that the harness ran.** Include a case that fails if any proxied route ever
+  answers with success: a success response there means the upstream was not
+  actually severed, and the whole worst-case argument in §3 depends on every
+  measured response coming from the server's own dead-upstream error path.
 
 ## 6. Tests that cover it
 
@@ -197,3 +230,7 @@ server is torn down even when a request fails.
 ## 8. Changelog
 
 - 2026-09-13 — created from harvested, generalized capability, by docs-librarian.
+- 2026-09-26 — folded in the recursive-include-chain rewrite and the
+  shipped-generator-only rule for generated fragments (§3 step 1), and the
+  version-skew printing, graceful-shutdown, and neutralization self-test
+  pitfalls (§5), by docs-librarian.

@@ -323,9 +323,9 @@ Keyed by `tool-corpus/<category>/<name>.md`, one page per tool. Source:
 
 | Category (subfolder) | Entry count | Entries |
 |---|---|---|
-| `ops` | 10 | `config-driven-server-response-harness.md`, `container-deploy-pipeline.md`, `declared-variable-existence-auditor.md`, `disposable-test-identity-provisioner.md`, `env-secret-rotation.md`, `large-artifact-stager.md`, `layered-config-merge-verifier.md`, `renamed-config-key-auditor.md`, `self-signed-tls-cert.md`, `structured-secret-field-detector.md` |
-| `testing` | 5 | `auth-parity-oracle.md`, `ci-runner-local-simulator.md`, `failure-signature-triage.md`, `http-smoke-suite.md`, `working-tree-snapshot.md` |
-| **Total** | **15** | |
+| `ops` | 15 | `chained-pipeline-run-driver.md`, `config-driven-server-response-harness.md`, `container-deploy-pipeline.md`, `declared-consumer-link-generator.md`, `declared-variable-existence-auditor.md`, `disposable-test-identity-provisioner.md`, `env-secret-rotation.md`, `hashed-lock-closure-check.md`, `large-artifact-stager.md`, `layered-config-merge-verifier.md`, `registry-digest-resolver.md`, `renamed-config-key-auditor.md`, `self-signed-tls-cert.md`, `session-cost-profiler.md`, `structured-secret-field-detector.md` |
+| `testing` | 9 | `auth-parity-oracle.md`, `ci-runner-local-simulator.md`, `cross-implementation-parity-verifier.md`, `failure-signature-triage.md`, `http-smoke-suite.md`, `parallel-suite-runner.md`, `static-config-contract-gate.md`, `test-hygiene-lint.md`, `working-tree-snapshot.md` |
+| **Total** | **24** | |
 
 - **Belongs here:** the capability and the recurring operation; the interface
   shape (invocation, inputs, outputs) in the general; the portable
@@ -397,7 +397,8 @@ procedure. Source: `skill-corpus/README.md`.
 | `operator-compressed-fix-path.md` | The disciplined form of a compressed-ceremony fix, for a small diff whose root cause is already known |
 | `prove-red-after-green.md` | Recover the missing RED for a fix that landed before its test was ever seen failing |
 | `release.md` | A numbered, resumable acceptance round across a multi-component delivery |
-| **Total** | **11** |
+| `triage-unresolved-required-variable.md` | Sort an unresolved required configuration variable into the bucket that decides its fix before touching the pipeline |
+| **Total** | **12** |
 
 - A skill is a procedure (the disciplined sequence for a recurring kind of
   work), as opposed to an *agent* (a role) or a *tool* (an artifact). The
@@ -506,19 +507,19 @@ Claude Code reads on every session: `CLAUDE.md` (project memory at repo root),
   degrades to the full injection, the pointer line, or silence; a hook must
   never block a prompt). The frontmatter format (`name`, `description`, `tools`,
   `model`) is exactly what Claude Code expects, so the files work unchanged.
-- **Bounded execution before every shell call:** `.claude/bound-hook.py` (`PreToolUse`, matcher `Bash`) refuses a blocking-prone command that carries neither an explicit bound nor a detached launch, printing both accepted forms; it is the one hook wired without `|| true`, because a guard that cannot block is not a guard. Doctrine: `core/method/engineering-posture.md` §14, "A command that may outlive its session is bounded" (`toolcraft.bounded-execution`).
+- **Bounded execution before every shell call:** `.claude/bound-hook.py` (`PreToolUse`, matcher `Bash`) refuses a blocking-prone command that carries neither an explicit bound nor a detached launch, printing both accepted forms; it is the one hook wired without `|| true`, because a guard that cannot block is not a guard. Doctrine: `core/method/bounded-execution.md` §14, "A command that may outlive its session is bounded" (`toolcraft.bounded-execution`).
 - **Status register at session start:** `.claude/status-hook.py` runs once on
   `SessionStart`, runs `docs/graph/status-register.py --summary` (a frontmatter
   scan that counts `open` / `hotfix` / `deferred` items and the oldest of them)
   and injects it as `additionalContext`, so lifecycle debt is in front of the
   model before it plans without a line in any brief. Fail-open. What any
   hook carries into a subagent's turn is recorded in
-  `docs/graph/method/delegation.md` (`delegation.briefs`).
+  `docs/graph/method/delegation-briefs.md` (`delegation.briefs`).
 - **Known gap / sharp edge:** a roster written mid-session (by an install,
   graft, or freshly commissioned expert) can be on disk and not yet
   spawnable, and a session rooted at the seed never carries a plant's
   roster. When the host registers such a file, the preflight, the remedy,
-  and the recorded fallback are owned by `docs/graph/method/delegation.md`
+  and the recorded fallback are owned by `docs/graph/method/delegation-bounds.md`
   (`delegation.harness-registration`).
 
 ## B.3 Prime Agent

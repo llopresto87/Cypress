@@ -92,6 +92,45 @@ MACHINERY_BODY_CEILING = 1_000
 # through the lifecycle rework that took graft to 1 384.
 LIFECYCLE_BODY_CEILING = 2_500
 
+# The leaf rule (SPEC-0005): a protocol, a posture, a delegation file or a skill
+# is a LEAF, one topic sized to what a typical task loads, and a leaf whose
+# separable topics are loaded independently divides into sibling leaves. The
+# ceiling is graph-lint.py's project-node line, applied to the leaf scope that
+# graph-lint exempts: `core/method/*.md`, `protocols/*.md`, `skills/*/SKILL.md`.
+# Agents are out, because their bodies are system prompts. Counted as
+# check_body_ceiling counts a body, and it ratchets like every other limit.
+LEAF_BODY_CEILING = 170
+
+# Every in-scope leaf that was over LEAF_BODY_CEILING when the check landed,
+# derived by check_leaf_body_ceiling's own count at that commit, never counted
+# by hand and never re-derived to fit new text. It freezes MEMBERSHIP, not
+# size: MACHINERY_BODY_CEILING and LIFECYCLE_BODY_CEILING still bound every
+# member. A member that falls to the ceiling or below is a finding until it is
+# removed, and ratchet-lint refuses a new one, so the set only shrinks.
+OVERSIZED_LEAVES = frozenset({
+    "core/method/contract-posture.md",
+    "core/method/design-posture.md",
+    "core/method/engineering-posture.md",
+    "core/method/prose-posture.md",
+    "core/method/release-posture.md",
+    "protocols/canonize.md",
+    "protocols/deliver.md",
+    "protocols/from-scratch.md",
+    "protocols/graft.md",
+    "protocols/grill.md",
+    "protocols/grow.md",
+    "protocols/harvest.md",
+    "protocols/test-first.md",
+    "protocols/verify.md",
+    "skills/adr-writer/SKILL.md",
+    "skills/context-router/SKILL.md",
+    "skills/holistic-editing/SKILL.md",
+    "skills/humanizer/SKILL.md",
+    "skills/knowledge-graph/SKILL.md",
+    "skills/research-and-ingest/SKILL.md",
+    "skills/spec-author/SKILL.md",
+})
+
 # CHARTER_VOCAB_DEBT bounds how many words an agent's own charter uses heavily
 # and distinctively while NO task can route on them — they appear in the body
 
@@ -241,7 +280,7 @@ RULE_HOMES = {
 # machine-checkable pointer (the same referenced-never-paraphrased discipline the
 # bootstrap-block check enforces).
 REGISTRATION_FACT = "delegation.harness-registration"
-REGISTRATION_HOME = "core/method/delegation.md"
+REGISTRATION_HOME = "core/method/delegation-bounds.md"
 REGISTRATION_REFERRERS = (
     # protocols that install the projection and/or dispatch by name
     "protocols/grow.md",
@@ -272,6 +311,72 @@ REGISTRATION_REFERRERS = (
     "integrations/codex/README.md",
     "integrations/github-copilot/README.md",
     "integrations/prime-agent/README.md",
+)
+# SPEC-0005: core/method/delegation.md split into six sibling leaves by
+# separable topic, each loaded on its own. Each of the thirteen keys the
+# pre-split file owned has exactly the home named here, and the retained
+# `method.delegation` cross-links every sibling in its `peers:` and its
+# `## Neighbours` menu, so a task that lands on it can still reach the rest.
+DELEGATION_HUB = "core/method/delegation.md"
+DELEGATION_SPLIT = {
+    DELEGATION_HUB: ("delegation.roster", "delegation.routing",
+                     "delegation.spec-authoring"),
+    "core/method/delegation-model-classes.md": ("delegation.model-classes",
+                                                "delegation.light-variants"),
+    "core/method/delegation-cycle-economy.md": ("delegation.step-scope",),
+    "core/method/delegation-briefs.md": ("delegation.briefs",),
+    "core/method/delegation-sequencing.md": ("delegation.sequencing",
+                                             "delegation.lanes"),
+    REGISTRATION_HOME: ("delegation.bounds", REGISTRATION_FACT,
+                        "delegation.turn", "delegation.tracing"),
+}
+# SPEC-0005 §6 "Adopted rule homes": each rule the owner adopted this round has
+# exactly one home, and no other node owns its key. The thirteen split keys
+# above are held by check_delegation_split, not repeated here.
+ADOPTED_RULE_HOMES = {
+    "delegation.effort": "core/method/delegation-model-classes.md",
+    "delegation.effort-scale": "core/method/delegation-cycle-economy.md",
+    "delegation.green-self-test": "core/method/delegation-cycle-economy.md",
+    "delegation.tip-cadence": "core/method/delegation-cycle-economy.md",
+    "delegation.mutation-at-end": "core/method/delegation-cycle-economy.md",
+    "delegation.question-file": "core/method/delegation-cycle-economy.md",
+    "delegation.ruling-amendment": "core/method/delegation-cycle-economy.md",
+    "specify.design-latitude": "protocols/specify-joint-pass.md",
+    "specify.joint-pass": "protocols/specify-joint-pass.md",
+    "engineering-posture.no-write-inspection": "core/method/host-parity.md",
+    "context-router.menu": "skills/context-router/SKILL.md",
+    "context-router.graph-over-harness": "skills/context-router/SKILL.md",
+    "knowledge-graph.branch-shape": "skills/knowledge-graph/SKILL.md",
+    "test-first.no-lint-only-tests": "skills/test-first/SKILL.md",
+}
+# The shipped surfaces that state or point at a rule: every tree a plant
+# receives. check_adopted_rules_not_pending reads their Markdown.
+SHIPPED_RULE_ROOTS = ("core", "agents", "protocols", "skills", "templates",
+                      "integrations")
+# Where a line pointing at `method/delegation.md` beside a `delegation.*` key
+# can sit: the shipped surfaces, the reference pages, the front door and the
+# installer (SPEC-0005 ADOPTED_RULE_HOMES). Root `*_PROMPT.md` files are
+# globbed, so a new entry prompt is read the day it lands.
+POINTER_SCAN_ROOTS = SHIPPED_RULE_ROOTS + ("documentation",)
+POINTER_SCAN_FILES = ("install.sh", "README.md", "INSTALL.md",
+                      "DOCUMENTATION.md", "CLAUDE.md")
+# SPEC-0005 §6 "Handback fields": the two fields every HANDBACK block carries.
+HANDBACK_FIELDS = ("effort", "expertise_gap")
+# SPEC-0005 §6 "Bootstrap step 2": step 2 of the canonical GRAPH DISCIPLINE
+# block, compared with every run of whitespace collapsed, so a re-wrap passes
+# and a rewording fails.
+BOOTSTRAP_STEP2 = """2. Load ONLY the reported nodes plus their `requires:` closure.
+   Everything else a loaded node lists (leaves, children, links,
+   neighbours) is a menu: open an item only when its one-line
+   "load when" serves your task, and list the rest as skipped."""
+# SPEC-0005 §6 "Pending phrases": wording that left an adopted rule reading as
+# a proposal. Matched case-insensitively with whitespace collapsed.
+PENDING_PHRASES = (
+    "recommended rather than required",
+    "pending the owner's confirmation",
+    "pending the seed owner's confirmation",
+    "until it is confirmed",
+    "recommends naming the stack expertise",
 )
 WORD_NUMS = {"two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
              "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11,
@@ -1658,6 +1763,13 @@ def body_of(path: Path) -> str:
     return text[m.end():] if m else text
 
 
+def body_lines(body: str) -> int:
+    """A body's line count as every body ceiling reads it: `wc -l` minus the
+    frontmatter, with the body's trailing newlines stripped. One count, so the
+    number a reader compares against is the one each check uses."""
+    return len(body.strip("\n").splitlines())
+
+
 # Every raw write in install.sh that does NOT go through one of the four named
 # placement operations, keyed by the function that holds it and the command
 # word that performs it. SPEC-0001's SINGLE_WRITER asserts the four operations
@@ -2619,7 +2731,7 @@ def routable_body_figures() -> list:
     """The four body-size figures a reader is shown, as (value, what, largest
     node): the largest and median routable body, measured here, and the two
     ceilings that bound them. One computation for every page that prints them."""
-    sizes = sorted((len(body.strip("\n").splitlines()), label)
+    sizes = sorted((body_lines(body), label)
                    for label, _fm, body in machinery_nodes())
     largest, largest_label = sizes[-1]
     mid = len(sizes) // 2
@@ -2736,7 +2848,7 @@ def check_body_ceiling() -> None:
                  f"{FRONTMATTER_CEILING}-line ceiling. A node is loaded whole, "
                  f"so metadata is context too — this is not the place to put a "
                  f"body the body ceiling would have refused")
-        lines = len(body.strip("\n").splitlines())
+        lines = body_lines(body)
         lifecycle = label in LIFECYCLE_NODES
         ceiling = LIFECYCLE_BODY_CEILING if lifecycle else MACHINERY_BODY_CEILING
         if lines > ceiling:
@@ -2746,6 +2858,194 @@ def check_body_ceiling() -> None:
                  f"{ceiling}-line {which} ceiling — split it "
                  f"along a declared `owns:` fact, or raise the ceiling with a "
                  f"recorded owner decision (never to fit new text)")
+
+
+def check_leaf_body_ceiling() -> None:
+    """No leaf outgrows LEAF_BODY_CEILING unless the ledger already held it.
+
+    The scope is read from the tree the way machinery_nodes() reads it, never
+    from a list, so a leaf added tomorrow is in scope the day it lands. A
+    member is only ever removed: one at the ceiling or below is stale, and one
+    that names no in-scope file is a ledger entry guarding nothing.
+    """
+    sizes = {label: body_lines(body) for label, _fm, body in machinery_nodes()
+             if not label.startswith("agents/")}
+    for label, lines in sorted(sizes.items()):
+        if lines > LEAF_BODY_CEILING and label not in OVERSIZED_LEAVES:
+            fail(f"{label}: body is {lines} lines, over the "
+                 f"{LEAF_BODY_CEILING}-line leaf ceiling — divide it into "
+                 f"sibling leaves by separable topic, moving the text verbatim; "
+                 f"never shorten doctrine to fit, and never add it to "
+                 f"OVERSIZED_LEAVES")
+    for label in sorted(OVERSIZED_LEAVES):
+        if label not in sizes:
+            fail(f"OVERSIZED_LEAVES names {label}, which is not a file in the "
+                 f"leaf scope (core/method/*.md, protocols/*.md, "
+                 f"skills/*/SKILL.md)")
+        elif sizes[label] <= LEAF_BODY_CEILING:
+            fail(f"{label}: body is {sizes[label]} lines, at or under the "
+                 f"{LEAF_BODY_CEILING}-line leaf ceiling, and still in "
+                 f"OVERSIZED_LEAVES — stale oversized entry: remove it")
+
+
+def check_delegation_split() -> None:
+    """The delegation split holds: six leaves, each key in its one sibling,
+    and the hub still pointing at every sibling.
+
+    The owners are read from each sibling's `owns:`, never assumed from the
+    table, so a key moved to the wrong sibling is a finding even when every
+    file still exists and the one-home check is satisfied.
+    """
+    owners: dict[str, list] = {}
+    for rel in DELEGATION_SPLIT:
+        path = ROOT / rel
+        if not path.is_file():
+            fail(f"{rel}: missing — the delegation split (SPEC-0005) names it "
+                 f"a sibling leaf of {DELEGATION_HUB}")
+            continue
+        for key in parse_frontmatter(path).get("owns") or []:
+            owners.setdefault(key, []).append(rel)
+    for rel, keys in DELEGATION_SPLIT.items():
+        for key in keys:
+            if owners.get(key) != [rel]:
+                fail(f"{key}: owned by {owners.get(key) or 'no delegation leaf'}, "
+                     f"expected {rel} — the delegation split homes it there")
+    hub = ROOT / DELEGATION_HUB
+    if not hub.is_file():
+        return
+    peers = parse_frontmatter(hub).get("peers") or []
+    text = body_of(hub)
+    m = re.search(r"(?m)^## Neighbours[ \t]*\n", text)
+    end = re.search(r"(?m)^## ", text[m.end():]) if m else None
+    neighbours = (text[m.end(): m.end() + end.start() if end else len(text)]
+                  if m else "")
+    for rel in DELEGATION_SPLIT:
+        if rel == DELEGATION_HUB:
+            continue
+        nid = "method." + Path(rel).stem
+        if nid not in peers:
+            fail(f"{DELEGATION_HUB}: `peers:` does not list {nid} — the "
+                 f"delegation split cross-links every sibling from the hub")
+        if f"`{nid}`" not in neighbours:
+            fail(f"{DELEGATION_HUB}: `## Neighbours` does not name {nid} — "
+                 f"the delegation split lists every sibling in the hub's menu")
+
+
+def check_adopted_rule_homes() -> None:
+    """Each adopted rule is owned by its one home, and no shipped line still
+    sends a reader to `method/delegation.md` for a key a sibling now owns.
+
+    A pointer naming only a moved heading or a section number, with no key,
+    is not caught here; review holds those (SPEC-0005 STALE_POINTER).
+    """
+    owners: dict[str, list] = {}
+    for label, fm, _body in machinery_nodes():
+        for key in fm.get("owns") or []:
+            owners.setdefault(key, []).append(label)
+    for key, home in ADOPTED_RULE_HOMES.items():
+        found = owners.get(key, [])
+        if len(found) > 1:
+            fail(f"{key}: owned by more than one node ({', '.join(found)}) — "
+                 f"its one home is {home}")
+        elif found != [home]:
+            fail(f"{key}: not owned by {home}, its one home under SPEC-0005 "
+                 f"(owned by {found[0] if found else 'no node'})")
+
+    moved = {key: rel for rel, keys in DELEGATION_SPLIT.items()
+             if rel != DELEGATION_HUB for key in keys}
+    moved.update({key: rel for key, rel in ADOPTED_RULE_HOMES.items()
+                  if key.startswith("delegation.")})
+    files = [ROOT / rel for rel in POINTER_SCAN_FILES]
+    files += sorted(ROOT.glob("*_PROMPT.md"))
+    for sub in POINTER_SCAN_ROOTS:
+        files += sorted(f for f in (ROOT / sub).rglob("*")
+                        if f.is_file() and "__pycache__" not in f.parts)
+    path_rx = re.compile(r"method/delegation\.md")
+    key_rx = re.compile(r"delegation\.[a-z][a-z-]*")
+    sibling_rx = re.compile(r"method/delegation-[a-z-]+\.md")
+    for path in files:
+        if not path.is_file():
+            continue
+        rel = path.relative_to(ROOT).as_posix()
+        text = path.read_text(encoding="utf-8", errors="replace")
+        if "method/delegation.md" not in text:
+            continue
+        # Each line is read joined with the next, so a pointer wrapped across
+        # two lines is one pointer. It is reported once, at the line where it
+        # starts, whichever of the two lines holds the path and the key. A key
+        # whose own line already names a sibling path is that line's pointer,
+        # never paired with a hub path on the neighbouring line.
+        lines = text.splitlines()
+        seen = set()
+        for i, line in enumerate(lines):
+            nxt = lines[i + 1] if i + 1 < len(lines) else ""
+            path_at = [n for n, ln in ((i, line), (i + 1, nxt)) if path_rx.search(ln)]
+            if not path_at:
+                continue
+            for n, ln in ((i, line), (i + 1, nxt)):
+                if n != path_at[0] and sibling_rx.search(ln):
+                    continue
+                for key in key_rx.findall(ln):
+                    at = (key, min(n, path_at[0]), max(n, path_at[0]))
+                    if key in moved and at not in seen:
+                        seen.add(at)
+                        fail(f"{rel}:{at[1] + 1}: names method/delegation.md "
+                             f"beside {key}; point at {moved[key]}")
+
+
+def check_handback_fields() -> None:
+    """The HANDBACK block carries one `- effort:` and one `- expertise_gap:`
+    line, so every worker echoes the budget it ran on and the stack element
+    it met with no expertise node."""
+    rel = "templates/prompts/handback-payload.md"
+    path = ROOT / rel
+    if not path.is_file():
+        fail(f"{rel}: missing — it holds the fenced HANDBACK block")
+        return
+    m = re.search(r"(?ms)^```[^\n]*\nHANDBACK\n(.*?)^```",
+                  path.read_text(encoding="utf-8"))
+    if not m:
+        fail(f"{rel}: no fenced HANDBACK block")
+        return
+    lines = m.group(1).splitlines()
+    for field in HANDBACK_FIELDS:
+        count = sum(1 for ln in lines if ln.startswith(f"- {field}:"))
+        if count != 1:
+            fail(f"{rel}: handback block has no `- {field}:` line"
+                 if not count else
+                 f"{rel}: handback block has {count} `- {field}:` lines, "
+                 f"expected one")
+
+
+def check_bootstrap_step2() -> None:
+    """Step 2 of the canonical GRAPH DISCIPLINE block is SPEC-0005's menu
+    step, word for word; only the wrapping may differ."""
+    rel = "templates/prompts/graph-session-bootstrap.md"
+    path = ROOT / rel
+    text = path.read_text(encoding="utf-8") if path.is_file() else ""
+    start = text.find("GRAPH DISCIPLINE")
+    m = (re.compile(r"(?ms)^2\. .*?(?=^3\. )").search(text, start)
+         if start >= 0 else None)
+    if not m:
+        fail(f"{rel}: no step 2 followed by a step 3 in the GRAPH DISCIPLINE "
+             f"block — step 2 differs from SPEC-0005")
+        return
+    if " ".join(m.group(0).split()) != " ".join(BOOTSTRAP_STEP2.split()):
+        fail(f"{rel}: step 2 differs from SPEC-0005 §6 \"Bootstrap step 2\" "
+             f"(compared with whitespace collapsed)")
+
+
+def check_adopted_rules_not_pending() -> None:
+    """No shipped Markdown still words an adopted rule as awaiting a decision."""
+    for sub in SHIPPED_RULE_ROOTS:
+        for path in sorted((ROOT / sub).rglob("*.md")):
+            rel = path.relative_to(ROOT).as_posix()
+            flat = " ".join(path.read_text(encoding="utf-8",
+                                           errors="replace").split()).lower()
+            for phrase in PENDING_PHRASES:
+                if phrase in flat:
+                    fail(f"{rel}: adopted rule still reads as pending: "
+                         f"\"{phrase}\"")
 
 
 def description_of(fm: dict) -> str:
@@ -3032,6 +3332,12 @@ def check() -> None:
         fail(f"core/AGENTS.md: {size} bytes exceeds the {KERNEL_BUDGET}-byte budget "
              f"(every session of every plant pays this file)")
     check_body_ceiling()
+    check_leaf_body_ceiling()
+    check_delegation_split()
+    check_adopted_rule_homes()
+    check_handback_fields()
+    check_bootstrap_step2()
+    check_adopted_rules_not_pending()
     check_eager_surface(size)
     check_spec_test_mapping()
     check_spec_rows_name_their_contract()

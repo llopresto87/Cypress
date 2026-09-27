@@ -23,8 +23,10 @@ load_when:
   - "what did we change, session report"
   - "attribution, produced_by, routing evidence"
   - "decisions for the owner, options to approve, answer by number"
+  - "every remaining step is the owner's, goal loop or stop hook keeps firing"
+  - "session metrics after each increment, cost and quality so far"
 prevents: A session that ends without a cold-pickup state, leaving the next one to re-derive what changed, what was gated and what is still open from a diff.
-est_tokens: 1750
+est_tokens: 2681
 command: true
 ---
 
@@ -109,10 +111,14 @@ section 15.
 
 ## Session metrics
 - Tier: <T0-T3; for T2 name the lane: covered | contained> (reclassified: <none, or T1→T2 + why>)
-- Spawns: <N> (<agent×count, ...>)
+- Spawns: <N> (<agent×count with model class/reasoning effort, ...>)
 - Route bands: <HIGH×n MEDIUM×n LOW×n> — overrides: <none, or count + why>
 - Retries: <none, or class×count per docs/graph/protocols/recover.md>
 - Gates: <run/failed-then-fixed counts>
+- Full-suite runs: <N> (<how many were red>)
+- Serial waits: <spawns issued only after another's handback returned, read from spawn_id issue order>
+- Overflow notes: <none, or count + paths of handback overflow notes>
+- Quality: <review Critical/Major per increment; red full-suite runs and bisects; mutants killed/total, or "no mutation pass">
 
 ## Recommended next step
 <single highest-leverage action, named specifically>
@@ -125,14 +131,32 @@ specialists, a ratification), it arrives as a numbered list of
 individually approvable items, so the owner answers "1 and 3, not 2"
 instead of re-describing each. That holds for the Key decisions still
 open, for a limitation that needs a call, and for the next step when it
-needs a go/no-go. Default on; the owner may waive it.
+needs a go/no-go. Every item names each branch, environment, or
+resource by its exact identifier, never by a nickname
+or a shorthand, and an environment name never stands in for a branch name:
+an approval given against an ambiguous name can land on the wrong
+target. Default on; the owner may waive it.
 
-The metrics block is five lines of telemetry, not prose. It is what
-lets the system improve on evidence instead of anecdote: `harvest`
-aggregates these across deliveries to find *systemic* seed problems —
-recurring misroutes mean a specialist's `routing_triggers` need
-sharpening, frequent tier reclassifications mean the tier edges need
-tuning, repeated transient retries in one area is a reliability signal.
+The metrics block is nine lines of telemetry, not prose, and the
+orchestrator fills every line from its own trace (spawn ids, handbacks,
+gate runs), with no transcript access. It is what lets the system
+improve on evidence instead of anecdote: `harvest` aggregates these
+across deliveries to find *systemic* seed problems — recurring
+misroutes mean a specialist's `routing_triggers` need sharpening,
+frequent tier reclassifications mean the tier edges need tuning,
+repeated transient retries in one area is a reliability signal. The
+Quality line sits beside the cost lines on purpose. A cost figure read
+alone would endorse any change that made a session cheaper by making
+it worse, so a cheaper session counts as progress only when its quality
+line held.
+
+In a long session, take the block after each landed increment as well
+as at the end, and append it to the grill.md §15 entry that increment's
+revision pass writes.
+The cost curve is then visible while it can still change, not only in
+a retrospective after the money is spent. Where the host exposes
+tokens and wall time per spawn, add them to the Spawns line; the block
+does not depend on them.
 
 ## Quality bar
 
@@ -152,7 +176,7 @@ A delivery summary that passes:
   trust: material caveats and risks stay in; process narration,
   restated requests, and recaps of settled context stay out
   (proportionate communication —
-  `docs/graph/method/engineering-posture.md`).
+  `docs/graph/method/decision-economy.md`).
 
 A delivery summary that fails:
 - Says "implemented X" without naming the files.
@@ -198,6 +222,20 @@ landed before the thing it checks either checks nothing or blocks
 everything (kernel §3.5, the green-lie rule). Once deliveries carry the
 field, wire it warn-first, then block.
 
+## When every open step is the owner's
+
+When every open step is the owner's (a merge, an approval, a check or
+credential only they can create), the session has reached its end, not
+a wait. State those steps once, as a numbered list with the exact
+command to run or control to click for each, each target named by its
+exact identifier, then deliver and stop. Do not restate the list turn
+after turn. An autonomous continuation (a goal condition, a stop hook, a
+heartbeat, a scheduled loop) treats that state as its exit: it ends, or
+is reshaped so that its exit message names the owner-only steps, and it
+never re-fires on a state that only the owner can change. A loop that
+keeps firing there makes no progress and spends a main-loop turn on
+every firing.
+
 ## The cold-pickup test
 
 The standard for "is this delivery complete?" is the cold-pickup test:
@@ -220,5 +258,7 @@ If they can't, the delivery isn't done.
 - You do not deliver a unit of work with no `produced_by`; a missing
   attribution is a BLOCK, not a pass.
 - You do not deliver without updating grill.md.
+- You do not leave a loop re-firing on steps only the owner can take;
+  list them once, numbered, and stop.
 - You do not deliver a half-finished increment as if it's done; mark
   it WIP and recommend resuming it as the next step.

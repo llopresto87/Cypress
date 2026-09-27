@@ -74,8 +74,9 @@ extraction and CLI behavior.
   (3.1 specify, 3.2 context-router, 3.3 grill, 3.4 test-first,
   3.5 verify, 3.6 deliver, 3.7 canonize, 3.8 toolcraft); the kernel
   keeps only the one-line §3.x anchors.
-- Tier depth → `core/method/tiers.md`; roster/routing/brief depth →
-  `core/method/delegation.md`; engineering/design/stewardship posture →
+- Tier depth → `core/method/tiers.md`; roster/routing →
+  `core/method/delegation.md`; brief depth →
+  `core/method/delegation-briefs.md`; engineering/design/stewardship posture →
   `core/method/{engineering,design,stewardship}-posture.md`
   (`core/operating-principles.md` is a tombstone).
 - Graph-session discipline → `templates/prompts/graph-session-bootstrap.md`
@@ -118,7 +119,7 @@ extraction and CLI behavior.
 - Spawn order of a pass → its protocol's phase table (`grill.flow`,
   `specify.flow`, `test-first.cycle`, `ingest-library.flow`,
   `from-scratch.phases`); the generic sequencing rule →
-  `core/method/delegation.md` (`delegation.sequencing`). Skills, agents,
+  `core/method/delegation-sequencing.md` (`delegation.sequencing`). Skills, agents,
   and the orchestrator point, never re-list.
 - Source ranking, retrieval steps, conflict rule → `skills/research-and-ingest`;
   page-section discipline → `skills/library-wiki`; the scout charter points.

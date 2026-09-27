@@ -44,11 +44,30 @@ Then move this gate's `Trusted since` to the new date. The window is the
 useful artifact: it is the list of increments whose verification record now
 has a hole in it.
 
+### When a gate is always red for a reason unrelated to what it guards
+
+Why this is a defect and when to file it: the chronic red in
+`protocol.verify`, Workflow item 5. Record it here, next to the gates.
+
+- Chronically red: `<gate>`: red since `<when>` for `<reason unrelated
+  to the property>`; owner `<who>`
+
 ## Per-increment records
 
 ### Increment <title> (YYYY-MM-DD)
+- Baseline of record: `<the tree unmodified: each check already failing
+  before this increment, by name>`
 - Formatter: `<command>` — PASS
 - Linter: `<command>` — PASS
 - ...
+- Pre-existing, named and not absorbed: `<each failure this increment
+  found and did not cause, reproduced, left untouched>`
+- Absent / carried (recorded, not faked green): `<each check not run or
+  weaker than it should be, and why, including "not verified against a
+  running system" where that holds>`
+- Mutation register (where mutation was run): `<mutants killed / alive>`;
+  control `<the mutant that must stay alive, and did>`; withdrawn
+  `<any mutant ruled out, and why; for example it broke the parse rather
+  than the behaviour>`
 
 <!-- Append a section per increment as it ships. -->

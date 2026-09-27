@@ -10,6 +10,7 @@ owns:
   - knowledge-graph.method
   - knowledge-graph.node-contract
   - knowledge-graph.linter
+  - knowledge-graph.branch-shape
 requires:
 peers:
   - skill.context-router
@@ -24,6 +25,7 @@ load_when:
   - "build the docs/graph structure"
   - "which node owns this best-practices page, expertise node or domain node"
   - "where does a new leaf attach, who gets the artifacts edge"
+  - "branch node shape, a menu of leaves"
 artifacts:
   - templates/knowledge-graph/_schema.md
   - templates/knowledge-graph/graph-lint.py
@@ -32,7 +34,7 @@ artifacts:
   - templates/docs/nodes/_deviation.template.md
   - templates/docs/nodes/_expertise.template.md
 prevents: A node set with duplicate homes, dishonest budgets and triggers that never fire — a graph that costs context and returns nothing.
-est_tokens: 3045
+est_tokens: 3393
 ---
 
 # knowledge-graph
@@ -153,12 +155,38 @@ asserts that the thing exists.
 ### 4. Bodies stay small
 
 A node body stays under ~150 lines. A node that wants to be longer is
-two nodes — split, never grow. A node that owns no fact is a link farm:
-delete it rather than pad it. A leaf collection stays homogeneous in
+two nodes — split, never grow. A leaf collection stays homogeneous in
 kind; an artifact of another kind is filed where its kind lives.
 `est_tokens` stays within 2× of the real body size — the router sums
 these to report context cost before work starts, so a lie here corrupts
 every plan.
+
+**Leaves and branches** (`knowledge-graph.branch-shape`). Review judges
+this shape; no lint checks it.
+
+- **A leaf holds one topic**, sized to what a typical task loads. A leaf
+  whose separable topics are loaded independently divides into sibling
+  leaves, each routable by its own `load_when` and linked to the others
+  by `peers:`. A leaf whose topics are loaded together stays whole.
+  Protocols, postures and the delegation files are leaves.
+- **A branch is a menu.** A branch node (the router index, a hub, a
+  subsystem or domain node, or a new thin parent) has a `## Leaves`
+  section that lists each leaf with a one-line "load when", in the form
+  `_schema.md` gives under "Body". Beyond the list it holds only the
+  doctrine that binds every leaf and cannot live in any one of them.
+- **A branch is not a link farm.** A node that owns no fact is a link
+  farm: delete it rather than pad it. A branch owns its menu, meaning
+  which leaf answers which need, under the fact key `<slug>.menu`. A
+  list without that routing information is still a link farm and is
+  still deleted. This reconciliation covers branch nodes only.
+
+The linter rejects a project node past 170 lines. The seed holds its
+own method, protocol and skill files to that line through
+`LEAF_BODY_CEILING` in `tests/seed-lint.py`. A
+file that was already over it when the check landed is listed in the
+`OVERSIZED_LEAVES` ledger beside it, and that ledger only shrinks. Text
+that would push a leaf over the line is never shortened to fit: its
+topic divides into a sibling leaf.
 
 ### 5. Compound, don't restart
 

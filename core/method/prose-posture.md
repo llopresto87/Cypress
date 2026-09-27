@@ -31,7 +31,7 @@ load_when:
   - "do not fake a human voice; no planted typos, no detector chasing, no invented anecdotes"
   - "when to stop editing; difference is not improvement; over-editing stable language"
 prevents: Prose written to a style rule instead of to its meaning, with the genre ignored and the information contract broken in the name of readability.
-est_tokens: 3900
+est_tokens: 4400
 ---
 
 # Prose posture
@@ -142,7 +142,10 @@ genres this system produces:
 Write for a specific reader, even an implied one: an operator's document
 privileges action and failure conditions; an owner's brief privileges
 decisions, consequences, evidence, and tradeoffs; an engineer's document
-needs mechanisms, interfaces, and edge cases.
+needs mechanisms, interfaces, and edge cases. Anything handed to the
+owner expands project- or agent-internal shorthand (increment ids, lane
+names, finding codes, spawn ids) on first use: the reader was not in
+the session that coined it.
 
 ## 6. Voice is a constraint, not decoration
 

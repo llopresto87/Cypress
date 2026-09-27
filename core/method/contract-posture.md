@@ -30,8 +30,10 @@ load_when:
   - "authorization check, derive the acting user from the token not the request body"
   - "soft delete, visibility predicate on every read surface, cache key leak"
   - "what to log, correlation id, never payloads or tokens"
+  - "a failed build left no log, discard stderr or keep the step's output"
+  - "print external text into a CI log, log command injection, sanitize before printing"
 prevents: Interfaces that accept anything and fail late — missing input read as empty, out-of-domain values coerced, and errors that tell the caller less than it needs to act.
-est_tokens: 1900
+est_tokens: 2872
 ---
 
 # Contract posture
@@ -121,6 +123,20 @@ acceptance produces client retry loops that re-send committed work.
 Internal errors become one bounded envelope only at the API boundary,
 where an unknown failure returns a generic code and leaks nothing.
 
+A failure also stays readable after the fact. A step that does work
+(builds, pulls, scans, runs a step, pushes) writes its output to a
+durable place a later reader can reach, and it does so even when the
+step is allowed to fail or swallows its own exit status; the log a
+build failure leaves is how its cause is found. A query whose parsed
+stdout is the result, and whose failure already surfaces as a named
+outcome, may discard its stderr, and so may housekeeping. The line is
+drawn by what the process does, not by which binary it is: the same
+tool can be a query in one call and work in the next. A failure that
+left no log can only be guessed at by the next run, and a repeated
+blind failure costs a full run each time where one read of the log
+would have named the cause. The retained output passes through the same
+redaction as any log (§8).
+
 ## 6. Authorize server-side from the verified credential, once, and reuse it
 
 The acting identity is derived server-side from the verified credential
@@ -162,19 +178,47 @@ non-enumerable, and never publicly listable.
 ## 8. Log structured facts and identifiers, never payloads
 
 Emit structured logs to a single stream with a correlation identifier on
-every request, job, and delegation (`method.delegation`'s `spawn_id`),
-carrying outcome and reason — actor handle, result, rejection reason,
-size — and never the payload, credential, token, or private field that
-caused it. Ad-hoc console output in application code is banned; tracing
-uses a vendor-neutral API so the backend stays swappable; redaction
-applies to traces and operational inspection exactly as to logging — a
-trace is a data sink like any other. Any mechanism that displaces a
-human-supplied value announces the name and the displacing mechanism
-before the value is lost — one value-free line per overridden name,
-silent when nothing changed — with a provenance view separating supplied
-from effective values. A diagnostic capture window is anchored to the
-event under investigation: a window that can hold more than one
-occurrence yields a sample, not a trace.
+every request, job, and delegation (the `spawn_id` of
+`delegation.tracing` in `method.delegation-bounds`), carrying outcome
+and reason — actor handle, result, rejection reason, size — and never
+the payload, credential, token, or private field that caused it. Ad-hoc
+console output in application code is banned; tracing uses a
+vendor-neutral API so the backend stays swappable; redaction applies to
+traces and operational inspection exactly as to logging — a trace is a
+data sink like any other. Any mechanism that displaces a human-supplied
+value announces the name and the displacing mechanism before the value
+is lost — one value-free line per overridden name, silent when nothing
+changed — with a provenance view separating supplied from effective
+values. A diagnostic capture window is anchored to the event under
+investigation: a window that can hold more than one occurrence yields a
+sample, not a trace.
+
+Where a log is also a command channel, printing is an input to it. Some
+CI runners interpret specially marked output lines as instructions (set
+a variable, change the step's result, prepend a path), so externally
+controlled text printed there hands that channel to whoever controls the
+text: a value whose first character is a newline can forge a whole line,
+mark a failing gate as passed, alter later steps, or, on a non-ephemeral
+runner, move toward code execution. ANSI escape sequences and other C0
+control characters in the same text spoof what the log shows, even where
+no line is interpreted. Neutralize such text before it is printed, with
+a control shaped by where the data comes from: data read from a server
+is projected through an allowlist at one choke point (a non-conforming
+value becomes a fixed placeholder plus its length), and data declared in
+the repository is checked by a narrower safety predicate that refuses
+when unsafe, substituting nothing. The two controls differ because a
+false positive costs something different on each side: on the server
+side it costs a placeholder in the output, so a strict allowlist is
+affordable, while on the declaration side it refuses the run, so only
+a value that is unsafe to print is refused. The declaration needs a check at all
+because it is usually transcribed from the same external system, so it
+carries text from the same adversaries. Every printed identifier needs
+the check, not only the one field a gate happened to validate. An output
+grammar an adversary can forge is not a security control. Log text
+copied into files agents later load as context is persistent prompt
+injection, so the same neutralization applies before it is filed. The
+platform's own marker syntax and which of its steps already neutralize
+it belong on that platform's library page.
 
 ## Neighbours
 

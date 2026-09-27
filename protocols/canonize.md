@@ -33,8 +33,9 @@ load_when:
   - "status review at close-out: did each register item move this session"
   - "we departed from the standard, record the deviation and why"
   - "small fix with no spec, where does the why get written down"
+  - "handback overflow notes, read them at close-out"
 prevents: Knowledge that dies with the session that produced it, and durable tools reinvented as throwaway scripts because nothing cataloged the last one.
-est_tokens: 2724
+est_tokens: 3368
 command: true
 ---
 
@@ -117,6 +118,15 @@ that did not move is left alone: the librarian records the session's
 moves, it does not close what the work did not close. The brief carries
 the instruction, not the register's output.
 
+**Session metrics** — before the hand-back says the session's metrics
+are on record, the librarian shows the entry that carries them: the
+most recent T2/T3 delivery entry in `docs/graph/changelog.md` (the
+delivery this close-out follows), holding the Session metrics block
+`docs/graph/protocols/deliver.md` defines. When that entry has no such
+block, the hand-back says so; the librarian does not reconstruct the
+missing numbers. A block that is defined but never read leaves
+`harvest` nothing to aggregate.
+
 **Deviation candidates** (`canonize.deviation-capture`) — every
 decision made this session that departs from a standard the graph owns
 (a fact key, a posture node, a `best-practices/` leaf, an external norm
@@ -167,14 +177,21 @@ agnosticism gate), throwaway prototypes or genuine one-offs.
    + invocation + covering test, every decision that departed from a
    graph-owned standard, each with the standard it departs from, and —
    on the T2 contained lane — the why-record's defect, cause, fix, and
-   pinning test.
+   pinning test. Include every overflow note a worker wrote when its
+   handback did not fit, at
+   `docs/graph/plans/<unit of work>/overflow/<spawn_id>.md`
+   (`docs/graph/templates/prompts/handback-payload.md` owns its shape):
+   the brief names each one, and the
+   librarian reads each as candidate evidence. A handback carries only
+   the decision content, so the caveats and dead ends that did not fit
+   live in the note and nowhere else.
 2. **Spawn the docs-librarian once** (Opus-class; it owns `docs/graph/`)
    with a brief that embeds the canonical block from
    `docs/graph/templates/prompts/graph-session-bootstrap.md` plus both candidate
    lists. This spawn is fail-closed, and a `grow`/`graft` session reaches it in
    the same session that installed the roster — so if the host has no such type,
    apply `delegation.harness-registration`
-   (`docs/graph/method/delegation.md`): re-enter rooted at the plant or
+   (`docs/graph/method/delegation-bounds.md`): re-enter rooted at the plant or
    role-emulate and record it. Skipping the close-out because the type would not
    resolve is not one of the options.
 3. **The librarian persists and catalogs in one pass:** each fact lands
@@ -202,7 +219,8 @@ agnosticism gate), throwaway prototypes or genuine one-offs.
    touched, tool cards written, status items moved (id → new status +
    evidence), and deviation nodes written — or an explicit "nothing of
    interest, because …" / "no durable tool, because …" / "no status
-   moved" / "no deviation" — with the lint results.
+   moved" / "no deviation". It also hands back the lint results and
+   each overflow note it read with whether anything in it was persisted.
 
 ## Fail-closed doctrine
 

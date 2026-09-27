@@ -14,7 +14,7 @@ owns:
 requires:
   - method.delegation
 peers:
-  - method.engineering-posture
+  - method.minimum-sufficient-work
   - skill.humanizer
   - protocol.canonize
   - protocol.graft
@@ -340,7 +340,7 @@ column. The cell holds exactly that one word, which `seed-lint.py`'s
 | G6 | `harvest.gate.self-consistency` | The seed's own FULL gate is green and every registry is in sync | `bash tests/run.sh`, every lint and suite, never a hand-picked subset | BLOCK | soft |
 | G7 | `harvest.gate.clean-install` | A by-hand install of the working tree into a fresh directory succeeds, and its owner-facing output says what this harvest expects | `bash install.sh claude-code --project-dir "$(mktemp -d)"` (the harness is POSITIONAL; there is no `--harness` flag and the parser dies on one). Read the warnings, the re-created-node notices and the NEXT STEP lines. The install suites are G6's and are not re-run here | BLOCK | soft |
 | G8 | `harvest.gate.prose` | Imported prose reads as the seed's own writing and lost no fact in the rewrite | `python3 tools/prose-lint.py --file <changed .md>` and `--against <pre-harvest rev>`; the judgment above it is `skill.humanizer` | BLOCK, or record the genre exception in the proposal | soft |
-| G9 | `harvest.gate.minimum-sufficient` | The fold-back is the smallest edit that reaches its audience, in the cheapest surface that reaches it | No command exists. Weighed against `method.engineering-posture` §5 and the surface ladder below. Judge: the steward at ratification | RETURNED as a smaller edit, not blocked | judgment |
+| G9 | `harvest.gate.minimum-sufficient` | The fold-back is the smallest edit that reaches its audience, in the cheapest surface that reaches it | No command exists. Weighed against `method.minimum-sufficient-work` and the surface ladder below. Judge: the steward at ratification | RETURNED as a smaller edit, not blocked | judgment |
 | G10 | `harvest.gate.provenance` | The version is bumped, the CHANGELOG entry and harvest-log row exist, and every seed change carries a test or lint proof | `git diff --stat` shows `manifest.json` and `CHANGELOG.md`, read by a person; `python3 tests/seed-lint.py` holds the manifest, the kernel roster line and README to the agent frontmatter | NOT RELEASABLE | detective |
 | G11 | `harvest.gate.no-loosened-limit` | No budget, ceiling, or debt ledger was widened to make a fold-back fit | `python3 tools/ratchet-lint.py`, the bare invocation `tests/run.sh` runs and G6 therefore covers. It is the only form that can fail, and it names each widened limit (`was LOOSENED`, `GREW by`). `--show` prints `recorded=… current=…` for every ratchet, says of none of them that it moved, and always exits 0: a reading aid, never a check. A loosening is an owner decision stated in the proposal | BLOCK pending the owner | soft |
 
@@ -355,7 +355,7 @@ absolute.
 surface that still reaches its audience: a reference or corpus page before a
 skill, a skill before a protocol, a protocol before the kernel. A new rule,
 file, or section is the last resort, and kernel bytes cost every session of
-every plant. `method.engineering-posture` §5 owns *minimum sufficient work*;
+every plant. `method.minimum-sufficient-work` owns *minimum sufficient work*;
 this ladder is harvest's own ordering of the seed's surfaces, and the seed has
 no other home for it.
 

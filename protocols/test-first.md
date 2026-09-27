@@ -89,12 +89,15 @@ and **the table is the spawn order**: a phase's spawn is issued only
 after the handback it needs has returned; the next increment's RED is
 not spawned until this increment's COMMIT is recorded, unless §9's
 `Depends on:` rows say the two are independent
-(`delegation.sequencing`, `docs/graph/method/delegation.md`).
+(`delegation.sequencing`, `docs/graph/method/delegation-sequencing.md`).
+One spawn may carry a batch of increments, sized by their effort labels
+(`delegation.step-scope` and `delegation.effort-scale` in
+`docs/graph/method/delegation-cycle-economy.md`).
 
 | Phase | Owner | Needs | Hands back |
 |---|---|---|---|
 | RED | `tester` | the §9 row, the contract text, the target test paths | failing tests that fail for the right reason; spec §10 rows `red` |
-| GREEN → REFACTOR | `implementer` | the RED handback (test paths, contract slugs, files) | a green, integrated diff; affected gates run locally; spec §10 rows `green` |
+| GREEN → REFACTOR | `implementer` | the RED handback (test paths, contract slugs, files) | a green, integrated diff; the RED tests run by the implementer itself, with no separate tester spawn and no test or fixture file edited, and a test that looks wrong written up as a question (`delegation.green-self-test`); affected gates run locally; spec §10 rows `green` |
 | REVIEW | `reviewer` | the diff, the §9 row | severity-tagged findings; Critical/Major return to `implementer`, one more spawn, an attempt under `protocol.recover` |
 | COMMIT | the session | a clean review | grill.md §15 entry with the `spawn_id`s in issue order; the commit; the spec's status advanced |
 
@@ -246,8 +249,9 @@ special case:
 5. If any existing test breaks, either: (a) you changed behavior
    accidentally and must roll back, or (b) the test was testing
    implementation rather than behavior, and either the test is
-   wrong (fix it) or the refactor is changing the spec (back up
-   to `specify`).
+   wrong (a question for the next tester spawn; the implementer
+   never edits it, `delegation.green-self-test`) or the refactor
+   is changing the spec (back up to `specify`).
 
 ## Migration safety gate
 
@@ -282,7 +286,9 @@ orchestrator so the team can address it directly.
 ## Exit conditions
 
 - Every spec contract for the increment has a passing test, named for
-  the contract; the full suite is green.
+  the contract; its targeted tests and every cross-cutting gate its
+  files hit pass. The full suite runs once, at the batch tip
+  (`delegation.tip-cadence`).
 - The increment's named gate ran; the full `verify` pass ran before
   close-out, recorded in the runbook by the tester that ran it.
 - The review is clean (no Critical or Major open).
