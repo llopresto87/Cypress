@@ -1,8 +1,8 @@
 ---
 status: back-written
-status_date: 2026-09-23
+status_date: 2026-09-28
 owner: seed-installer
-status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tests/test-install-kernel-modes.sh, tests/test-install-adoption.sh, tests/test-full-install.sh, tests/test-seed-lint.sh (all wired into tests/run.sh)
+status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tests/test-install-kernel-modes.sh, tests/test-install-adoption.sh, tests/test-full-install.sh, tests/test-seed-lint.sh, tests/test-graft-tools.sh (all wired into tests/run.sh)
 ---
 
 # SPEC-0001: install placement
@@ -519,15 +519,15 @@ $ echo $?
 | ALL_CHECK_INCLUDES_RECORDED_COPILOT | D4 caseALL_CHECK_INCLUDES_RECORDED_COPILOT: a Copilot-recording plant is checked by `all --check`, in sync exits 0 with "up to date", drifted exits non-zero with STALE, no not-refreshed warning, exactly one DEPRECATED line on stderr in each arm | tests/test-install-adoption.sh | integration | green |
 | HOST_TIERS_AGREE | E4 caseHOST_TIERS_AGREE: the matrix moves opencode to frozen, a tier row is duplicated, codex leaves every tier while still dispatched, each suite's EVERY_HOST drops a host, the dispatch gains a `cursor` arm whose command is not a bare `install_cursor ;;`, the argument parser accepts `cursor`, a dispatch label is quoted; `check_host_tiers` fails naming the files; a dispatch arm split over two lines passes | tests/test-seed-lint.sh | unit | green |
 | SESSION_RECORD_FORM_IS_PLACED | S9 case_session_records: a fresh `install.sh claude-code` holds `docs/graph/plans/sessions/_session-record.template.md` byte-identical to the seed's form; after a plant record and an edit to the placed form, `install.sh all` leaves both byte-identical, with no backup beside either. Written before the form exists (7.31.0): it fails on its first assertion until the form ships | tests/test-plant-state.sh | integration | green |
-| ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE | X383 case_engine_reconcile_stale_grill_lint: a stale `grill-lint.py` (the seed's copy with every line naming `waves` removed), reconciled with no `--preserve`, exits 0, equals the seed's file byte for byte, and leaves one `.bak-*` holding the older body | tests/test-graft-tools.sh | unit | red |
-| ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE | X384 case_engine_reconcile_spec_lint_keeps_test_globs: a `spec-lint.py` with the plant's own `TEST_GLOBS` and an older body, reconciled with no `--preserve`, exits 0, keeps the plant's `TEST_GLOBS` and adopts the seed's body | tests/test-graft-tools.sh | unit | red |
+| ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE | X383 case_engine_reconcile_stale_grill_lint: a stale `grill-lint.py` (the seed's copy with every line naming `waves` removed), reconciled with no `--preserve`, exits 0, equals the seed's file byte for byte, and leaves one `.bak-*` holding the older body | tests/test-graft-tools.sh | unit | green |
+| ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE | X384 case_engine_reconcile_spec_lint_keeps_test_globs: a `spec-lint.py` with the plant's own `TEST_GLOBS` and an older body, reconciled with no `--preserve`, exits 0, keeps the plant's `TEST_GLOBS` and adopts the seed's body | tests/test-graft-tools.sh | unit | green |
 | ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE | X385 case_engine_reconcile_explicit_preserve_wins: `--preserve=ROOT_ID` on a `graph-lint.py` whose plant changed `ROOT_ID` and `KIND_PREFIX` keeps the plant's `ROOT_ID` and takes the seed's `KIND_PREFIX`; guard | tests/test-graft-tools.sh | unit | green |
 | ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE | X386 case_engine_reconcile_other_name_takes_graph_lint_set: the same plant file named `project-lint.py`, reconciled with no `--preserve`, exits 0 and keeps both `ROOT_ID` and `KIND_PREFIX`; guard | tests/test-graft-tools.sh | unit | green |
-| ENGINE_AUDIT_CHECKS_EVERY_PAIR | X387 case_engine_audit_one_line_per_pair: `graft-audit.py` with two `--engine` pairs, a current `graph-lint.py` and a stale `grill-lint.py`, prints two engine-currency lines, the current one naming `graph-lint.py` and the `graph engine STALE` one naming `grill-lint.py` | tests/test-graft-tools.sh | unit | red |
+| ENGINE_AUDIT_CHECKS_EVERY_PAIR | X387 case_engine_audit_one_line_per_pair: `graft-audit.py` with two `--engine` pairs, a current `graph-lint.py` and a stale `grill-lint.py`, prints two engine-currency lines, the current one naming `graph-lint.py` and the `graph engine STALE` one naming `grill-lint.py` | tests/test-graft-tools.sh | unit | green |
 | ENGINE_AUDIT_CHECKS_EVERY_PAIR | X388 case_engine_audit_malformed_second_pair_fails: a current pair then a malformed one exits non-zero and says `--engine wants <plant-file>:<seed-file>`, where the current pair alone exits 0; guard | tests/test-graft-tools.sh | unit | green |
-| ENGINE_AUDIT_CHECKS_EVERY_PAIR | X389 case_engine_audit_malformed_first_pair_fails: a malformed pair then a current one exits non-zero and says `--engine wants <plant-file>:<seed-file>` | tests/test-graft-tools.sh | unit | red |
-| EXISTING_PLANT_RECEIVES_CURRENT_ENGINES | (none yet) `case_engine_upgrade` in `tests/test-plant-state.sh`, written by its own RED: re-install leaves the older `grill-lint.py`; the reconcile of the three engines exits 0; `grill-lint.py` equals the seed's with one backup; `--waves` prints `waves:`; the audit reports every engine current | — | integration | pending |
-| ENGINE_LEFT_STALE_BY_GRAFT | X387 case_engine_audit_one_line_per_pair: the stale pair's `graph engine STALE` line names `grill-lint.py`, beside the current pair's line | tests/test-graft-tools.sh | unit | red |
+| ENGINE_AUDIT_CHECKS_EVERY_PAIR | X389 case_engine_audit_malformed_first_pair_fails: a malformed pair then a current one exits non-zero and says `--engine wants <plant-file>:<seed-file>` | tests/test-graft-tools.sh | unit | green |
+| EXISTING_PLANT_RECEIVES_CURRENT_ENGINES | S10 case_engine_upgrade: re-install leaves the older `grill-lint.py`; the reconcile of the three engines exits 0; `grill-lint.py` equals the seed's with one backup; `--waves` prints `waves:`; the audit reports every engine current | tests/test-plant-state.sh | integration | green |
+| ENGINE_LEFT_STALE_BY_GRAFT | X387 case_engine_audit_one_line_per_pair: the stale pair's `graph engine STALE` line names `grill-lint.py`, beside the current pair's line | tests/test-graft-tools.sh | unit | green |
 
 Coverage note, so the table is not read as more than it is.
 
@@ -536,8 +536,9 @@ every existing case of `tests/test-graft-tools.sh`, so each label shows its own
 result in one run. A row marked guard passes on the unmodified tools and is held
 by a named mutant instead of an observed red: X385 by an explicit `--preserve`
 ignored, X386 by an unknown engine name given no preserve set, X388 by a later
-malformed pair skipped. EXISTING_PLANT_RECEIVES_CURRENT_ENGINES is `pending` with no test file until its
-case lands in `tests/test-plant-state.sh` with its own RED.
+malformed pair skipped. EXISTING_PLANT_RECEIVES_CURRENT_ENGINES is held by S10
+`case_engine_upgrade` in `tests/test-plant-state.sh`, one plant carried from
+re-install through graft.
 
 **M1 shares a label with a different invariant.** `tests/test-install-placement.sh`
 carries cases headed `M1 completeness` and exits `M1 VIOLATED`, but what they
@@ -645,3 +646,16 @@ only version surface it has, and it moves with each entry here.
   green on arrival. EXISTING_PLANT_RECEIVES_CURRENT_ENGINES carries a `pending`
   row until its RED lands in `tests/test-plant-state.sh`, and
   ENGINE_LEFT_STALE_BY_GRAFT has a row of its own.
+- 2026-09-28: 7.31.0 final status pass. The graft-tool increment landed, and
+  the final tip ran every step green with nothing carried or left unrun. X383,
+  X384, X387 and X389 flip `red` → `green`; the guards X385, X386 and X388 stay
+  `green`; EXISTING_PLANT_RECEIVES_CURRENT_ENGINES is bound by S10
+  `case_engine_upgrade` in `tests/test-plant-state.sh` and is `green`, and so
+  is ENGINE_LEFT_STALE_BY_GRAFT through X387. `status_date` moves to this entry,
+  and `status_evidence` gains `tests/test-graft-tools.sh`, which holds three
+  of the engine contracts and the failure row. One recorded limit: X386's
+  mutant is first killed by an older case of `tests/test-graft-tools.sh` that
+  exercises the same fallback and aborts before the collecting block, so the
+  suite run does not show X386 killing it on its own (verified by hand). A
+  candidate for a later round converts the older cases to the collecting
+  pattern. No contract changed; the status stays `back-written`.
