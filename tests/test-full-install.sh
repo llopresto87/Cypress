@@ -634,12 +634,18 @@ echo "  ALL_EXCLUDES_LEGACY_HOSTS: all installs claude-code, opencode and prime-
 # E5 PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX (SPEC-0001, ADR-0017):
 # the pointer to the install prompt and protocol.initialize lives in one
 # delimited block of the placeholder docs/graph/index.md, which grow removes;
-# the kernel, loaded by every session of a grown plant, names neither.
-case_pre_growth_block_in_index() {
+# the kernel, loaded by every session of a grown plant, names neither. One
+# install serves three named checks: the block in the index, the kernel that
+# names neither, and (guard) a re-install over an index with no pre-growth
+# block leaves it byte-identical, because the index is plant-owned. A failed
+# check does not hide the next; the case fails at its end.
+case_pre_growth_pointer() {
 local D; D="$(mktemp -d)"
+local bad=0
 "$ROOT/install.sh" claude-code --project-dir "$D" --copy >/dev/null 2>&1 \
-  || { echo "E5: install.sh claude-code failed" >&2; exit 1; }
-python3 - "$D/docs/graph/index.md" <<'PY' || { rm -rf "$D"; exit 1; }
+  || { echo "E5: install.sh claude-code failed" >&2; rm -rf "$D"; exit 1; }
+# E5 case_pre_growth_block_in_index
+if python3 - "$D/docs/graph/index.md" <<'PY'
 import sys
 lines = open(sys.argv[1], encoding="utf-8").read().splitlines()
 opens = [i for i, l in enumerate(lines) if l == "<!-- pre-growth: grow removes this block -->"]
@@ -652,32 +658,27 @@ for name in ("EXPERT_SEED_INSTALL_PROMPT.md", "protocol.initialize"):
     if name not in block:
         sys.exit(f"E5: the pre-growth block does not name {name}")
 PY
-rm -rf "$D"
-echo "  E5: the placeholder index holds one delimited pre-growth block naming the install prompt and protocol.initialize — OK"
-}
-
-case_pre_growth_kernel_names_neither() {
-local D; D="$(mktemp -d)"
-"$ROOT/install.sh" claude-code --project-dir "$D" --copy >/dev/null 2>&1 \
-  || { echo "E5 (kernel): install.sh claude-code failed" >&2; exit 1; }
-local name
+then
+  echo "  E5: the placeholder index holds one delimited pre-growth block naming the install prompt and protocol.initialize — OK"
+else
+  bad=1
+fi
+# E5 case_pre_growth_kernel_names_neither
+local name kbad=0
 for name in EXPERT_SEED_INSTALL_PROMPT.md protocol.initialize; do
   if grep -qF "$name" "$D/CLAUDE.md"; then
     echo "E5 (kernel): the placed kernel CLAUDE.md names $name, a pre-growth pointer every session of a grown plant would load" >&2
-    rm -rf "$D"; exit 1
+    kbad=1
   fi
 done
-rm -rf "$D"
-echo "  E5: the placed kernel names neither the install prompt nor protocol.initialize — OK"
-}
-
-case_pre_growth_index_is_plant_owned() {
-# guard: the index is plant-owned, so a re-install over an index with no
-# pre-growth block leaves it byte-identical.
-local D; D="$(mktemp -d)"
-"$ROOT/install.sh" claude-code --project-dir "$D" --copy >/dev/null 2>&1 \
-  || { echo "E5 (re-install): install.sh claude-code failed" >&2; exit 1; }
-python3 - "$D/docs/graph/index.md" <<'PY'
+if [ "$kbad" -eq 0 ]; then
+  echo "  E5: the placed kernel names neither the install prompt nor protocol.initialize — OK"
+else
+  bad=1
+fi
+# E5 case_pre_growth_index_is_plant_owned (guard): the index is plant-owned, so
+# a re-install over an index with no pre-growth block leaves it byte-identical.
+if python3 - "$D/docs/graph/index.md" <<'PY'
 import sys
 p = sys.argv[1]
 out, skip = [], False
@@ -691,48 +692,58 @@ for l in open(p, encoding="utf-8").read().splitlines(True):
 out.append("\nA grown plant's own router line.\n")
 open(p, "w", encoding="utf-8").write("".join(out))
 PY
-cp "$D/docs/graph/index.md" "$D/index.before"
-"$ROOT/install.sh" claude-code --project-dir "$D" --copy >/dev/null 2>&1 \
-  || { echo "E5 (re-install): the re-install failed" >&2; exit 1; }
-cmp -s "$D/index.before" "$D/docs/graph/index.md" \
-  || { echo "E5 (re-install): a re-install changed a plant-owned index.md that has no pre-growth block" >&2; rm -rf "$D"; exit 1; }
+then
+  cp "$D/docs/graph/index.md" "$D/index.before"
+  if ! "$ROOT/install.sh" claude-code --project-dir "$D" --copy >/dev/null 2>&1; then
+    echo "E5 (re-install): the re-install failed" >&2; bad=1
+  elif ! cmp -s "$D/index.before" "$D/docs/graph/index.md"; then
+    echo "E5 (re-install): a re-install changed a plant-owned index.md that has no pre-growth block" >&2; bad=1
+  else
+    echo "  E5: a re-install leaves a plant-owned index with no pre-growth block byte-identical — OK"
+  fi
+else
+  echo "E5 (re-install): could not strip the pre-growth block from the index" >&2; bad=1
+fi
 rm -rf "$D"
-echo "  E5: a re-install leaves a plant-owned index with no pre-growth block byte-identical — OK"
+exit "$bad"
 }
 
 # E6 CODE_ANCHOR_TOOL_IS_PLACED (SPEC-0001, ADR-0018): every plant receives
 # docs/graph/code-anchor.py, the tool the session-start hooks call, and the
-# installer writes no anchor: only canonize records one.
-case_code_anchor_tool_placed() {
+# installer writes no anchor: only canonize records one. One fresh install
+# serves both named checks: the tool placed with no anchor written, then a
+# re-install over an older tool leaves one backup and the seed's tool.
+case_code_anchor_tool() {
 local D; D="$(mktemp -d)"
+local bad=0
 "$ROOT/install.sh" all --project-dir "$D" --copy >/dev/null 2>&1 \
-  || { echo "E6: install.sh all failed" >&2; exit 1; }
-[[ -f "$D/docs/graph/code-anchor.py" ]] \
-  || { echo "E6: install.sh all did not place docs/graph/code-anchor.py" >&2; rm -rf "$D"; exit 1; }
-cmp -s "$ROOT/tools/code-anchor.py" "$D/docs/graph/code-anchor.py" \
-  || { echo "E6: docs/graph/code-anchor.py is not byte-identical to the seed's tools/code-anchor.py" >&2; rm -rf "$D"; exit 1; }
-[[ ! -e "$D/.cypress/anchor.json" ]] \
-  || { echo "E6: install.sh wrote .cypress/anchor.json; only canonize records an anchor" >&2; rm -rf "$D"; exit 1; }
-rm -rf "$D"
-echo "  E6: install.sh all places docs/graph/code-anchor.py byte-identical to the seed's and writes no anchor — OK"
-}
-
-case_code_anchor_tool_fast_forwards() {
-local D; D="$(mktemp -d)"
-"$ROOT/install.sh" all --project-dir "$D" --copy >/dev/null 2>&1 \
-  || { echo "E6 (re-install): install.sh all failed" >&2; exit 1; }
+  || { echo "E6: install.sh all failed" >&2; rm -rf "$D"; exit 1; }
+# E6 case_code_anchor_tool_placed
+if [[ ! -f "$D/docs/graph/code-anchor.py" ]]; then
+  echo "E6: install.sh all did not place docs/graph/code-anchor.py" >&2; bad=1
+elif ! cmp -s "$ROOT/tools/code-anchor.py" "$D/docs/graph/code-anchor.py"; then
+  echo "E6: docs/graph/code-anchor.py is not byte-identical to the seed's tools/code-anchor.py" >&2; bad=1
+elif [[ -e "$D/.cypress/anchor.json" ]]; then
+  echo "E6: install.sh wrote .cypress/anchor.json; only canonize records an anchor" >&2; bad=1
+else
+  echo "  E6: install.sh all places docs/graph/code-anchor.py byte-identical to the seed's and writes no anchor — OK"
+fi
+# E6 case_code_anchor_tool_fast_forwards
 printf '# OLDER CODE ANCHOR TOOL\n' > "$D/docs/graph/code-anchor.py"
-"$ROOT/install.sh" all --project-dir "$D" --copy >/dev/null 2>&1 \
-  || { echo "E6 (re-install): the re-install failed" >&2; exit 1; }
-local n; n="$(find "$D/docs/graph" -maxdepth 1 -name 'code-anchor.py.bak-*' | wc -l | tr -d ' ')"
-[[ "$n" -eq 1 ]] \
-  || { echo "E6 (re-install): a re-install over an older docs/graph/code-anchor.py left $n backup(s), expected one" >&2; rm -rf "$D"; exit 1; }
-grep -q 'OLDER CODE ANCHOR TOOL' "$D"/docs/graph/code-anchor.py.bak-* \
-  || { echo "E6 (re-install): the backup does not hold the older tool" >&2; rm -rf "$D"; exit 1; }
-cmp -s "$ROOT/tools/code-anchor.py" "$D/docs/graph/code-anchor.py" \
-  || { echo "E6 (re-install): the older tool was not replaced by the seed's" >&2; rm -rf "$D"; exit 1; }
+local n=0
+if ! "$ROOT/install.sh" all --project-dir "$D" --copy >/dev/null 2>&1; then
+  echo "E6 (re-install): the re-install failed" >&2; bad=1
+elif n="$(find "$D/docs/graph" -maxdepth 1 -name 'code-anchor.py.bak-*' | wc -l | tr -d ' ')"; [[ "$n" -ne 1 ]]; then
+  echo "E6 (re-install): a re-install over an older docs/graph/code-anchor.py left $n backup(s), expected one" >&2; bad=1
+elif ! grep -q 'OLDER CODE ANCHOR TOOL' "$D"/docs/graph/code-anchor.py.bak-*; then
+  echo "E6 (re-install): the backup does not hold the older tool" >&2; bad=1
+elif ! cmp -s "$ROOT/tools/code-anchor.py" "$D/docs/graph/code-anchor.py"; then
+  echo "E6 (re-install): the older tool was not replaced by the seed's" >&2; bad=1
+else
+  echo "  E6: a re-install replaces an older code-anchor.py with one backup — OK"
+fi
 rm -rf "$D"
-echo "  E6: a re-install replaces an older code-anchor.py with one backup — OK"
+exit "$bad"
 }
 
 case_plant_facts_index_no_fm() {
@@ -876,9 +887,7 @@ main() {
     case_plant_facts_index_no_fm case_plant_facts_bare \
     case_plant_facts_declared case_plant_facts_partial \
     caseROSTER_PROJECTION_PARITY_KEEPS_A_LIVE_HOME \
-    case_pre_growth_block_in_index case_pre_growth_kernel_names_neither \
-    case_pre_growth_index_is_plant_owned case_code_anchor_tool_placed \
-    case_code_anchor_tool_fast_forwards; do
+    case_pre_growth_pointer case_code_anchor_tool; do
     printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
   done
   # both CC/PA install orders (parametrized case)

@@ -18,9 +18,31 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
+# Every case is a function run by collect_case: it prints `  <label> <what an OK
+# run shows> — OK`, or `FAIL <label>: <why>` and the suite exits 1 at its end,
+# so one red case never hides the next. The case runs in a command substitution,
+# a subshell: `fail` ends that case only, and a case that starts with `set -e`
+# (the older GT cases) fails on its first failing command; such a case ends in
+# `return 0`, so a closing `grep ... && fail` that finds nothing is a pass. Cases run in file
+# order, and a later case may build on the files an earlier one left.
+CASE_FAILED=0
+collect_case() {  # $1 label, $2 case function, $3 what an OK run shows
+  local why rc
+  set +e; why="$("$2" 2>&1)"; rc=$?; set -e
+  if [ "$rc" -eq 0 ]; then
+    echo "  $1 $3 — OK"
+  else
+    echo "FAIL $1 (exit $rc): $why" >&2
+    CASE_FAILED=1
+  fi
+}
+
 # ---- graft-graph-engine.py ------------------------------------------------
 # seed engine: new helper line + default KINDS + KIND_PREFIX
-cat > "$TMP/seed-lint.py" <<'PY'
+case_engine_merge_adopts_body_unions_kinds() {
+  # GT01
+  set -e
+  cat > "$TMP/seed-lint.py" <<'PY'
 ROOT_ID = "root"
 KINDS = {"root", "subsystem", "stack"}
 KIND_PREFIX = {}
@@ -29,29 +51,39 @@ def new_helper():  # engine improvement absent from the old plant
 def check():
     return new_helper()
 PY
-# plant engine: OLD (no new_helper), custom KINDS (adds 'devops', LACKS the
-# seed's newer 'stack'), no KIND_PREFIX at all
-cat > "$TMP/plant-lint.py" <<'PY'
+  # plant engine: OLD (no new_helper), custom KINDS (adds 'devops', LACKS the
+  # seed's newer 'stack'), no KIND_PREFIX at all
+  cat > "$TMP/plant-lint.py" <<'PY'
 ROOT_ID = "root"
 KINDS = {"root", "subsystem", "devops"}
 def check():
     return 0
 PY
-python3 "$ENGINE" "$TMP/plant-lint.py" "$TMP/seed-lint.py" >"$TMP/out" 2>&1 || fail "engine merge exit"
-grep -q "new_helper" "$TMP/plant-lint.py" || fail "engine body not adopted"
-# KINDS is an additive-vocabulary set: the union must keep the plant's own
-# 'devops' AND gain the seed's newer 'stack' — keeping the plant's set
-# wholesale would drop 'stack' and every node of that kind would fail lint.
-grep -q 'KINDS = {"root", "subsystem", "stack", "devops"}' "$TMP/plant-lint.py" || fail "plant KINDS not unioned with the seed's new members"
-grep -q "KIND_PREFIX = {}" "$TMP/plant-lint.py" || fail "seed-default KIND_PREFIX not adopted"
-echo "  engine merge: adopted body, UNIONED KINDS (kept plant + gained seed), adopted default KIND_PREFIX — OK"
+  python3 "$ENGINE" "$TMP/plant-lint.py" "$TMP/seed-lint.py" >"$TMP/out" 2>&1 || fail "engine merge exit"
+  grep -q "new_helper" "$TMP/plant-lint.py" || fail "engine body not adopted"
+  # KINDS is an additive-vocabulary set: the union must keep the plant's own
+  # 'devops' AND gain the seed's newer 'stack' — keeping the plant's set
+  # wholesale would drop 'stack' and every node of that kind would fail lint.
+  grep -q 'KINDS = {"root", "subsystem", "stack", "devops"}' "$TMP/plant-lint.py" || fail "plant KINDS not unioned with the seed's new members"
+  grep -q "KIND_PREFIX = {}" "$TMP/plant-lint.py" || fail "seed-default KIND_PREFIX not adopted"
+  return 0
+}
+collect_case GT01 case_engine_merge_adopts_body_unions_kinds "engine merge: adopted body, UNIONED KINDS (kept plant + gained seed), adopted default KIND_PREFIX"
 
 # idempotent: second run is a no-op
-python3 "$ENGINE" "$TMP/plant-lint.py" "$TMP/seed-lint.py" 2>&1 | grep -q "already current" || fail "engine merge not idempotent"
-echo "  engine merge idempotent — OK"
+case_engine_merge_idempotent() {
+  # GT02
+  set -e
+  python3 "$ENGINE" "$TMP/plant-lint.py" "$TMP/seed-lint.py" 2>&1 | grep -q "already current" || fail "engine merge not idempotent"
+  return 0
+}
+collect_case GT02 case_engine_merge_idempotent "engine merge idempotent"
 
 # superset: plant already has everything seed has, plus extra -> KEEP-PLANT
-cat > "$TMP/super.py" <<'PY'
+case_engine_merge_superset_keep_plant() {
+  # GT03
+  set -e
+  cat > "$TMP/super.py" <<'PY'
 ROOT_ID = "root"
 KINDS = {"root", "subsystem", "stack"}
 KIND_PREFIX = {}
@@ -62,16 +94,21 @@ def check():
 def extra_capability():
     return 2
 PY
-python3 "$ENGINE" "$TMP/super.py" "$TMP/seed-lint.py" 2>&1 | grep -q "KEEP-PLANT" || fail "superset not detected"
-grep -q "extra_capability" "$TMP/super.py" || fail "superset engine mutated (must be untouched)"
-echo "  superset detection (KEEP-PLANT, unchanged) — OK"
+  python3 "$ENGINE" "$TMP/super.py" "$TMP/seed-lint.py" 2>&1 | grep -q "KEEP-PLANT" || fail "superset not detected"
+  grep -q "extra_capability" "$TMP/super.py" || fail "superset engine mutated (must be untouched)"
+  return 0
+}
+collect_case GT03 case_engine_merge_superset_keep_plant "superset detection (KEEP-PLANT, unchanged)"
 
 # a preserved config value keeps the comment that explains it: carrying the
 # value alone preserves the decision and drops the argument for it, leaving a
 # local value that disagrees with the default and no reason not to tidy it away.
 # The backward walk stops at a blank line, so an unrelated module note above
 # the config does not travel with it.
-cat > "$TMP/cseed.py" <<'PY'
+case_engine_merge_config_keeps_its_comment() {
+  # GT04
+  set -e
+  cat > "$TMP/cseed.py" <<'PY'
 # a module note about the engine as a whole, not about any one knob
 
 ROOT_ID = "root"
@@ -80,7 +117,7 @@ KIND_PREFIX = {}
 def check():
     return 1
 PY
-cat > "$TMP/cplant.py" <<'PY'
+  cat > "$TMP/cplant.py" <<'PY'
 # a module note about the engine as a whole, not about any one knob
 
 # the root id is the deploy name rather than the repo name: the router keys on it
@@ -89,117 +126,149 @@ ROOT_ID = "app"
 KINDS = {"root", "subsystem", "operator"}
 KIND_PREFIX = {}
 PY
-python3 "$ENGINE" "$TMP/cplant.py" "$TMP/cseed.py" >"$TMP/cout" 2>&1 || fail "commented config merge exit"
-grep -q "def check" "$TMP/cplant.py" || fail "engine body not adopted alongside commented config"
-grep -A1 "the root id is the deploy name" "$TMP/cplant.py" | grep -q '^ROOT_ID = "app"$' \
-  || { cat "$TMP/cplant.py"; fail "the comment explaining a kept value did not travel with it"; }
-grep -A1 "own kind; the seed does not ship it" "$TMP/cplant.py" | grep -q '^KINDS = {"root", "subsystem", "stack", "operator"}$' \
-  || { cat "$TMP/cplant.py"; fail "the comment explaining a unioned value did not travel with it"; }
-[ "$(grep -c "a module note about the engine" "$TMP/cplant.py")" -eq 1 ] \
-  || { cat "$TMP/cplant.py"; fail "an unrelated module comment was swallowed by the backward walk"; }
-cp "$TMP/cplant.py" "$TMP/cplant.before"
-python3 "$ENGINE" "$TMP/cplant.py" "$TMP/cseed.py" 2>&1 | grep -q "already current" || fail "commented merge not idempotent"
-cmp -s "$TMP/cplant.py" "$TMP/cplant.before" || fail "a second pass rewrote a file it called current"
-echo "  preserved config carries its comment; unrelated module comment untouched — OK"
+  python3 "$ENGINE" "$TMP/cplant.py" "$TMP/cseed.py" >"$TMP/cout" 2>&1 || fail "commented config merge exit"
+  grep -q "def check" "$TMP/cplant.py" || fail "engine body not adopted alongside commented config"
+  grep -A1 "the root id is the deploy name" "$TMP/cplant.py" | grep -q '^ROOT_ID = "app"$' \
+    || { cat "$TMP/cplant.py"; fail "the comment explaining a kept value did not travel with it"; }
+  grep -A1 "own kind; the seed does not ship it" "$TMP/cplant.py" | grep -q '^KINDS = {"root", "subsystem", "stack", "operator"}$' \
+    || { cat "$TMP/cplant.py"; fail "the comment explaining a unioned value did not travel with it"; }
+  [ "$(grep -c "a module note about the engine" "$TMP/cplant.py")" -eq 1 ] \
+    || { cat "$TMP/cplant.py"; fail "an unrelated module comment was swallowed by the backward walk"; }
+  cp "$TMP/cplant.py" "$TMP/cplant.before"
+  python3 "$ENGINE" "$TMP/cplant.py" "$TMP/cseed.py" 2>&1 | grep -q "already current" || fail "commented merge not idempotent"
+  cmp -s "$TMP/cplant.py" "$TMP/cplant.before" || fail "a second pass rewrote a file it called current"
+  return 0
+}
+collect_case GT04 case_engine_merge_config_keeps_its_comment "preserved config carries its comment; unrelated module comment untouched"
 
 # ---- graft-audit.py -------------------------------------------------------
 # 6.0.0 plant layout: machinery home is docs/graph/{protocols,skills,agents,
 # method,templates}/ (seed-owned); tool dirs hold only agent/skill projections;
 # everything else under docs/graph/ is plant-authored knowledge.
 DATE=20260101
-mkdir -p "$TMP/seed/agents" "$TMP/seed/skills/foo" \
-         "$TMP/plant/docs/graph/agents" "$TMP/plant/docs/graph/skills" \
-         "$TMP/plant/.claude/agents"
-echo "seed body line one"                      > "$TMP/seed/agents/a.md"   # -> IDENTICAL
-printf 'seed body\ngeneric seed line\n'         > "$TMP/seed/agents/b.md"   # generic seed content
-printf 'seed body v2\nmore generic seed prose\n' > "$TMP/seed/agents/c.md"
-printf 'seed skill body\n'                       > "$TMP/seed/skills/foo/SKILL.md"
+case_audit_classifies_and_gates_buried_customization() {
+  # GT05
+  set -e
+  mkdir -p "$TMP/seed/agents" "$TMP/seed/skills/foo" \
+           "$TMP/plant/docs/graph/agents" "$TMP/plant/docs/graph/skills" \
+           "$TMP/plant/.claude/agents"
+  echo "seed body line one"                      > "$TMP/seed/agents/a.md"   # -> IDENTICAL
+  printf 'seed body\ngeneric seed line\n'         > "$TMP/seed/agents/b.md"   # generic seed content
+  printf 'seed body v2\nmore generic seed prose\n' > "$TMP/seed/agents/c.md"
+  printf 'seed skill body\n'                       > "$TMP/seed/skills/foo/SKILL.md"
 
-# plant live files (post-FF = seed copies) + backups (pre-FF = what was replaced)
-cp "$TMP/seed/agents/a.md" "$TMP/plant/docs/graph/agents/a.md"
-cp "$TMP/seed/agents/a.md" "$TMP/plant/docs/graph/agents/a.md.bak-$DATE-000000"  # IDENTICAL
-# b.bak = seed content PLUS a plant customization line unique to the backup
-# (token 'widgetco' + generic 'this project') -> CUSTOMIZED
-printf 'seed body\ngeneric seed line\nplant added: this project uses widgetco\n' > "$TMP/plant/docs/graph/agents/b.md.bak-$DATE-000000"
-# c.bak is just an older seed version, no plant signal -> DELTA
-printf 'seed body v1\nolder generic seed prose\n' > "$TMP/plant/docs/graph/agents/c.md.bak-$DATE-000000"
-# flattened skill (docs/graph/skills/foo.md <- seed skills/foo/SKILL.md) -> IDENTICAL
-cp "$TMP/seed/skills/foo/SKILL.md" "$TMP/plant/docs/graph/skills/foo.md.bak-$DATE-000000"
-# harness projection (.claude/agents/ <- seed agents/) -> IDENTICAL
-cp "$TMP/seed/agents/a.md" "$TMP/plant/.claude/agents/a.md.bak-$DATE-000000"
+  # plant live files (post-FF = seed copies) + backups (pre-FF = what was replaced)
+  cp "$TMP/seed/agents/a.md" "$TMP/plant/docs/graph/agents/a.md"
+  cp "$TMP/seed/agents/a.md" "$TMP/plant/docs/graph/agents/a.md.bak-$DATE-000000"  # IDENTICAL
+  # b.bak = seed content PLUS a plant customization line unique to the backup
+  # (token 'widgetco' + generic 'this project') -> CUSTOMIZED
+  printf 'seed body\ngeneric seed line\nplant added: this project uses widgetco\n' > "$TMP/plant/docs/graph/agents/b.md.bak-$DATE-000000"
+  # c.bak is just an older seed version, no plant signal -> DELTA
+  printf 'seed body v1\nolder generic seed prose\n' > "$TMP/plant/docs/graph/agents/c.md.bak-$DATE-000000"
+  # flattened skill (docs/graph/skills/foo.md <- seed skills/foo/SKILL.md) -> IDENTICAL
+  cp "$TMP/seed/skills/foo/SKILL.md" "$TMP/plant/docs/graph/skills/foo.md.bak-$DATE-000000"
+  # harness projection (.claude/agents/ <- seed agents/) -> IDENTICAL
+  cp "$TMP/seed/agents/a.md" "$TMP/plant/.claude/agents/a.md.bak-$DATE-000000"
 
-set +e
-python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=$DATE --tokens=widgetco >"$TMP/aout" 2>&1
-rc=$?
-set -e
-grep -q "'CUSTOMIZED': 1" "$TMP/aout" || { cat "$TMP/aout"; fail "did not flag the one customization"; }
-grep -q "'DELTA': 1" "$TMP/aout" || { cat "$TMP/aout"; fail "did not classify the version delta"; }
-grep -q "'IDENTICAL': 3" "$TMP/aout" || { cat "$TMP/aout"; fail "did not map graph home + flattened skill + projection to their seed sources"; }
-grep -q "knowledge overwrite" "$TMP/aout" && { cat "$TMP/aout"; fail "seed-owned machinery under docs/graph/ wrongly flagged as knowledge"; }
-[ "$rc" -eq 1 ] || fail "audit must exit 1 when a customization is buried (got $rc)"
-echo "  audit classification + gate exit(1) on buried customization — OK"
+  set +e
+  python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=$DATE --tokens=widgetco >"$TMP/aout" 2>&1
+  rc=$?
+  set -e
+  grep -q "'CUSTOMIZED': 1" "$TMP/aout" || { cat "$TMP/aout"; fail "did not flag the one customization"; }
+  grep -q "'DELTA': 1" "$TMP/aout" || { cat "$TMP/aout"; fail "did not classify the version delta"; }
+  grep -q "'IDENTICAL': 3" "$TMP/aout" || { cat "$TMP/aout"; fail "did not map graph home + flattened skill + projection to their seed sources"; }
+  grep -q "knowledge overwrite" "$TMP/aout" && { cat "$TMP/aout"; fail "seed-owned machinery under docs/graph/ wrongly flagged as knowledge"; }
+  [ "$rc" -eq 1 ] || fail "audit must exit 1 when a customization is buried (got $rc)"
+  return 0
+}
+collect_case GT05 case_audit_classifies_and_gates_buried_customization "audit classification + gate exit(1) on buried customization"
 
 # clean FF (no customization): exit 0
-rm -f "$TMP/plant/docs/graph/agents/b.md.bak-$DATE-000000"
-set +e
-python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=$DATE --tokens=widgetco >"$TMP/aout2" 2>&1
-rc2=$?
-set -e
-[ "$rc2" -eq 0 ] || { cat "$TMP/aout2"; fail "clean FF must exit 0 (got $rc2)"; }
-echo "  audit passes a clean fast-forward (exit 0) — OK"
+case_audit_clean_fast_forward_exits_0() {
+  # GT06
+  set -e
+  rm -f "$TMP/plant/docs/graph/agents/b.md.bak-$DATE-000000"
+  set +e
+  python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=$DATE --tokens=widgetco >"$TMP/aout2" 2>&1
+  rc2=$?
+  set -e
+  [ "$rc2" -eq 0 ] || { cat "$TMP/aout2"; fail "clean FF must exit 0 (got $rc2)"; }
+  return 0
+}
+collect_case GT06 case_audit_clean_fast_forward_exits_0 "audit passes a clean fast-forward (exit 0)"
 
 # plant-authored graph content overwritten (backup outside the machinery
 # subtrees, e.g. nodes/) -> knowledge overwrite, exit 1
-mkdir -p "$TMP/plant/docs/graph/nodes"
-printf 'plant-authored node fact\n' > "$TMP/plant/docs/graph/nodes/api.md.bak-$DATE-000000"
-set +e
-python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=$DATE --tokens=widgetco >"$TMP/aout3" 2>&1
-rc3=$?
-set -e
-grep -q "knowledge overwrite" "$TMP/aout3" || { cat "$TMP/aout3"; fail "plant-authored graph overwrite not flagged"; }
-[ "$rc3" -eq 1 ] || fail "audit must exit 1 on a plant-authored knowledge overwrite (got $rc3)"
-echo "  audit flags plant-authored docs/graph/ overwrite (seed-owned vs plant-owned) — OK"
+case_audit_flags_plant_graph_overwrite() {
+  # GT07
+  set -e
+  mkdir -p "$TMP/plant/docs/graph/nodes"
+  printf 'plant-authored node fact\n' > "$TMP/plant/docs/graph/nodes/api.md.bak-$DATE-000000"
+  set +e
+  python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=$DATE --tokens=widgetco >"$TMP/aout3" 2>&1
+  rc3=$?
+  set -e
+  grep -q "knowledge overwrite" "$TMP/aout3" || { cat "$TMP/aout3"; fail "plant-authored graph overwrite not flagged"; }
+  [ "$rc3" -eq 1 ] || fail "audit must exit 1 on a plant-authored knowledge overwrite (got $rc3)"
+  return 0
+}
+collect_case GT07 case_audit_flags_plant_graph_overwrite "audit flags plant-authored docs/graph/ overwrite (seed-owned vs plant-owned)"
 
 # REGRESSION — a wrong plant root must not read as a clean audit. Zero backups
 # under a directory with no docs/graph/ once printed the same "clean" line and
 # exit 0 a real audit earns; auditing nothing proves nothing.
-mkdir -p "$TMP/notaplant"
-set +e
-python3 "$AUDIT" "$TMP/notaplant" "$TMP/seed" --date=$DATE >"$TMP/aout4" 2>&1
-rc4=$?
-set -e
-grep -q "not a plant root" "$TMP/aout4" || { cat "$TMP/aout4"; fail "wrong root not refused"; }
-[ "$rc4" -eq 1 ] || fail "audit must exit 1 on a non-plant root (got $rc4)"
-echo "  audit refuses a vacuous run against a non-plant root (exit 1) — OK"
+case_audit_refuses_non_plant_root() {
+  # GT08
+  set -e
+  mkdir -p "$TMP/notaplant"
+  set +e
+  python3 "$AUDIT" "$TMP/notaplant" "$TMP/seed" --date=$DATE >"$TMP/aout4" 2>&1
+  rc4=$?
+  set -e
+  grep -q "not a plant root" "$TMP/aout4" || { cat "$TMP/aout4"; fail "wrong root not refused"; }
+  [ "$rc4" -eq 1 ] || fail "audit must exit 1 on a non-plant root (got $rc4)"
+  return 0
+}
+collect_case GT08 case_audit_refuses_non_plant_root "audit refuses a vacuous run against a non-plant root (exit 1)"
 
 # REGRESSION — zero backups for the REQUESTED date while backups exist for
 # another date is a wrong --date, not a clean graft: the real fast-forward
 # went unexamined. (Zero backups anywhere stays a legitimate no-op graft —
 # idempotent installs make that the normal case.)
-set +e
-python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=19990101 --tokens=widgetco >"$TMP/aout5" 2>&1
-rc5=$?
-set -e
-grep -q "wrong --date" "$TMP/aout5" || { cat "$TMP/aout5"; fail "wrong --date not flagged"; }
-[ "$rc5" -eq 1 ] || fail "audit must exit 1 on a date that audited nothing while backups exist (got $rc5)"
-echo "  audit refuses a vacuous audit under a wrong --date (exit 1) — OK"
+case_audit_refuses_wrong_date() {
+  # GT09
+  set -e
+  set +e
+  python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=19990101 --tokens=widgetco >"$TMP/aout5" 2>&1
+  rc5=$?
+  set -e
+  grep -q "wrong --date" "$TMP/aout5" || { cat "$TMP/aout5"; fail "wrong --date not flagged"; }
+  [ "$rc5" -eq 1 ] || fail "audit must exit 1 on a date that audited nothing while backups exist (got $rc5)"
+  return 0
+}
+collect_case GT09 case_audit_refuses_wrong_date "audit refuses a vacuous audit under a wrong --date (exit 1)"
 
 # REGRESSION — a graft and the remedies it triggers land on the same day, and
 # --date read only the day segment of a stamp that records the time too: two
 # passes collapsed into one and the audit could not separate what each wrote.
 # --date is a PREFIX of YYYYMMDD-HHMMSS, so the day form still selects the day.
-PD=20260601
-printf 'seed body v1\nolder generic seed prose\n' > "$TMP/plant/docs/graph/agents/c.md.bak-$PD-160000"
-printf 'seed body v1\nolder generic seed prose\n' > "$TMP/plant/docs/graph/agents/c.md.bak-$PD-170000"
-set +e
-python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=$PD --tokens=widgetco >"$TMP/dout1" 2>&1; drc1=$?
-python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=$PD-16 --tokens=widgetco >"$TMP/dout2" 2>&1; drc2=$?
-set -e
-grep -q "backups audited: 2" "$TMP/dout1" || { cat "$TMP/dout1"; fail "the day form must still audit the whole day"; }
-grep -q "backups audited: 1" "$TMP/dout2" || { cat "$TMP/dout2"; fail "a stamp prefix must narrow to the one pass"; }
-[ "$drc1" -eq 0 ] && [ "$drc2" -eq 0 ] || { cat "$TMP/dout2"; fail "a clean audit under either form must exit 0 ($drc1/$drc2)"; }
-rm -f "$TMP/plant/docs/graph/agents/c.md.bak-$PD-"*
-echo "  audit --date accepts the stamp at the granularity the filename records — OK"
+case_audit_date_is_stamp_prefix() {
+  # GT10
+  set -e
+  PD=20260601
+  printf 'seed body v1\nolder generic seed prose\n' > "$TMP/plant/docs/graph/agents/c.md.bak-$PD-160000"
+  printf 'seed body v1\nolder generic seed prose\n' > "$TMP/plant/docs/graph/agents/c.md.bak-$PD-170000"
+  set +e
+  python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=$PD --tokens=widgetco >"$TMP/dout1" 2>&1; drc1=$?
+  python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=$PD-16 --tokens=widgetco >"$TMP/dout2" 2>&1; drc2=$?
+  set -e
+  grep -q "backups audited: 2" "$TMP/dout1" || { cat "$TMP/dout1"; fail "the day form must still audit the whole day"; }
+  grep -q "backups audited: 1" "$TMP/dout2" || { cat "$TMP/dout2"; fail "a stamp prefix must narrow to the one pass"; }
+  [ "$drc1" -eq 0 ] && [ "$drc2" -eq 0 ] || { cat "$TMP/dout2"; fail "a clean audit under either form must exit 0 ($drc1/$drc2)"; }
+  rm -f "$TMP/plant/docs/graph/agents/c.md.bak-$PD-"*
+  return 0
+}
+collect_case GT10 case_audit_date_is_stamp_prefix "audit --date accepts the stamp at the granularity the filename records"
 
 # REGRESSION — space-form options: `--tokens acme` once silently dropped the
 # value into the positionals (audited with DEFAULT tokens; a plant
@@ -207,67 +276,90 @@ echo "  audit --date accepts the stamp at the granularity the filename records �
 # the audit printed clean/exit 0). Both forms must behave identically now,
 # and stray positionals must fail. Plant a token-only line (no generic
 # signal words) so the explicit token is load-bearing.
-rm -f "$TMP/plant/docs/graph/nodes/api.md.bak-$DATE-000000"
-printf 'seed body\ngeneric seed line\nwidgetco special retention rule\n' > "$TMP/plant/docs/graph/agents/b.md.bak-$DATE-000000"
-set +e
-python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date "$DATE" --tokens widgetco >"$TMP/aout6" 2>&1
-rc6=$?
-set -e
-grep -q "CUSTOMIZED': 1" "$TMP/aout6" || { cat "$TMP/aout6"; fail "space-form --tokens not honored"; }
-[ "$rc6" -eq 1 ] || fail "space-form flags must classify identically (got $rc6)"
-rm -f "$TMP/plant/docs/graph/agents/b.md.bak-$DATE-000000"
-set +e
-python3 "$AUDIT" "$TMP/plant" "$TMP/seed" stray-arg --date=$DATE >"$TMP/aout7" 2>&1
-rc7=$?
-set -e
-[ "$rc7" -eq 2 ] || { cat "$TMP/aout7"; fail "stray positional must exit 2 (got $rc7)"; }
-echo "  audit accepts --flag value form; stray positionals fail loudly — OK"
+case_audit_space_form_flags_and_stray_positional() {
+  # GT11
+  set -e
+  rm -f "$TMP/plant/docs/graph/nodes/api.md.bak-$DATE-000000"
+  printf 'seed body\ngeneric seed line\nwidgetco special retention rule\n' > "$TMP/plant/docs/graph/agents/b.md.bak-$DATE-000000"
+  set +e
+  python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date "$DATE" --tokens widgetco >"$TMP/aout6" 2>&1
+  rc6=$?
+  set -e
+  grep -q "CUSTOMIZED': 1" "$TMP/aout6" || { cat "$TMP/aout6"; fail "space-form --tokens not honored"; }
+  [ "$rc6" -eq 1 ] || fail "space-form flags must classify identically (got $rc6)"
+  rm -f "$TMP/plant/docs/graph/agents/b.md.bak-$DATE-000000"
+  set +e
+  python3 "$AUDIT" "$TMP/plant" "$TMP/seed" stray-arg --date=$DATE >"$TMP/aout7" 2>&1
+  rc7=$?
+  set -e
+  [ "$rc7" -eq 2 ] || { cat "$TMP/aout7"; fail "stray positional must exit 2 (got $rc7)"; }
+  return 0
+}
+collect_case GT11 case_audit_space_form_flags_and_stray_positional "audit accepts --flag value form; stray positionals fail loudly"
 
 # REGRESSION — _schema.md and index.md are project-instantiated (plant-owned):
 # a backup over docs/graph/_schema.md is a knowledge overwrite, not exempt
 # machinery (graft.md: copying the seed template would regress placeholders).
-printf 'plant-instantiated schema\n' > "$TMP/plant/docs/graph/_schema.md.bak-$DATE-000000"
-set +e
-python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=$DATE --tokens=widgetco >"$TMP/aout8" 2>&1
-rc8=$?
-set -e
-grep -q "knowledge overwrite" "$TMP/aout8" || { cat "$TMP/aout8"; fail "_schema.md overwrite not flagged as knowledge"; }
-[ "$rc8" -eq 1 ] || fail "audit must exit 1 on a schema overwrite (got $rc8)"
-rm -f "$TMP/plant/docs/graph/_schema.md.bak-$DATE-000000"
-echo "  audit flags _schema.md/index.md overwrites as plant knowledge — OK"
+case_audit_schema_index_overwrite_is_knowledge() {
+  # GT12
+  set -e
+  printf 'plant-instantiated schema\n' > "$TMP/plant/docs/graph/_schema.md.bak-$DATE-000000"
+  set +e
+  python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=$DATE --tokens=widgetco >"$TMP/aout8" 2>&1
+  rc8=$?
+  set -e
+  grep -q "knowledge overwrite" "$TMP/aout8" || { cat "$TMP/aout8"; fail "_schema.md overwrite not flagged as knowledge"; }
+  [ "$rc8" -eq 1 ] || fail "audit must exit 1 on a schema overwrite (got $rc8)"
+  rm -f "$TMP/plant/docs/graph/_schema.md.bak-$DATE-000000"
+  return 0
+}
+collect_case GT12 case_audit_schema_index_overwrite_is_knowledge "audit flags _schema.md/index.md overwrites as plant knowledge"
 
 # REGRESSION — plant-AUTHORED project skills live under docs/graph/skills/
 # too; the wholesale machinery-subtree exemption hid their overwrites
 # (UNMAPPED, never scanned, "clean"). A machinery-shaped path with no seed
 # source is plant knowledge.
-printf 'plant-authored skill body\n' > "$TMP/plant/docs/graph/skills/deploy-widgetco.md.bak-$DATE-000000"
-set +e
-python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=$DATE --tokens=widgetco >"$TMP/aout9" 2>&1
-rc9=$?
-set -e
-grep -q "knowledge overwrite" "$TMP/aout9" || { cat "$TMP/aout9"; fail "plant-authored skill overwrite not flagged"; }
-grep -q "UNMAPPED backup" "$TMP/aout9" || { cat "$TMP/aout9"; fail "unmapped backups not listed"; }
-[ "$rc9" -eq 1 ] || fail "audit must exit 1 on a plant-skill overwrite (got $rc9)"
-rm -f "$TMP/plant/docs/graph/skills/deploy-widgetco.md.bak-$DATE-000000"
-echo "  audit flags plant-authored docs/graph/skills/ overwrites; lists UNMAPPED — OK"
+case_audit_plant_skill_overwrite_is_knowledge() {
+  # GT13
+  set -e
+  printf 'plant-authored skill body\n' > "$TMP/plant/docs/graph/skills/deploy-widgetco.md.bak-$DATE-000000"
+  set +e
+  python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=$DATE --tokens=widgetco >"$TMP/aout9" 2>&1
+  rc9=$?
+  set -e
+  grep -q "knowledge overwrite" "$TMP/aout9" || { cat "$TMP/aout9"; fail "plant-authored skill overwrite not flagged"; }
+  grep -q "UNMAPPED backup" "$TMP/aout9" || { cat "$TMP/aout9"; fail "unmapped backups not listed"; }
+  [ "$rc9" -eq 1 ] || fail "audit must exit 1 on a plant-skill overwrite (got $rc9)"
+  rm -f "$TMP/plant/docs/graph/skills/deploy-widgetco.md.bak-$DATE-000000"
+  return 0
+}
+collect_case GT13 case_audit_plant_skill_overwrite_is_knowledge "audit flags plant-authored docs/graph/skills/ overwrites; lists UNMAPPED"
 
 # REGRESSION — a flag must never swallow a flag: `--tokens --engine=x` once
 # consumed "--engine=x" as the token value and audited with defaults.
-set +e
-python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --tokens --engine=x >"$TMP/aout10" 2>&1
-rc10=$?
-set -e
-[ "$rc10" -eq 2 ] || { cat "$TMP/aout10"; fail "flag-swallowed-flag must exit 2 (got $rc10)"; }
-echo "  audit rejects a flag consumed as a value (exit 2) — OK"
+case_audit_rejects_flag_swallowing_flag() {
+  # GT14
+  set -e
+  set +e
+  python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --tokens --engine=x >"$TMP/aout10" 2>&1
+  rc10=$?
+  set -e
+  [ "$rc10" -eq 2 ] || { cat "$TMP/aout10"; fail "flag-swallowed-flag must exit 2 (got $rc10)"; }
+  return 0
+}
+collect_case GT14 case_audit_rejects_flag_swallowing_flag "audit rejects a flag consumed as a value (exit 2)"
 
 # ---- delivered-tool registry: status-register.py (7.0.0) -------------------
 # install.sh delivers tools/status-register.py as docs/graph/status-register.py
 # (config-free fast-forward machinery, the agent-lint class). The audit must
 # map that path to its seed source, or every fast-forward of it reads as an
 # UNMAPPED knowledge overwrite of docs/graph/.
-mkdir -p "$TMP/seed/tools"
-printf 'seed status register body\n' > "$TMP/seed/tools/status-register.py"
-python3 - "$AUDIT" "$TMP/seed" <<'PY'
+case_audit_status_register_is_registered() {
+  # GT15
+  set -e
+  mkdir -p "$TMP/seed/tools"
+  printf 'seed status register body\n' > "$TMP/seed/tools/status-register.py"
+  python3 - "$AUDIT" "$TMP/seed" <<'PY'
 import importlib.util, sys
 from pathlib import Path
 spec = importlib.util.spec_from_file_location("graft_audit", sys.argv[1])
@@ -281,16 +373,18 @@ assert m.seed_source_for("docs/graph/prose-lint.py", seed) == seed / "tools/pros
 assert "prose-lint.py" in m.SCAFFOLD_FILES, m.SCAFFOLD_FILES
 assert m.is_seed_owned_graph_path("docs/graph/status-register.py")
 PY
-cp "$TMP/seed/tools/status-register.py" "$TMP/plant/docs/graph/status-register.py.bak-$DATE-000000"
-set +e
-python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=$DATE --tokens=widgetco >"$TMP/aout11" 2>&1
-rc11=$?
-set -e
-grep -q "'IDENTICAL': 4" "$TMP/aout11" || { cat "$TMP/aout11"; fail "status-register.py backup not mapped to tools/status-register.py"; }
-grep -q "knowledge overwrite" "$TMP/aout11" && { cat "$TMP/aout11"; fail "status-register.py fast-forward wrongly flagged as knowledge"; }
-[ "$rc11" -eq 0 ] || { cat "$TMP/aout11"; fail "identical status-register.py backup must audit clean (got $rc11)"; }
-rm -f "$TMP/plant/docs/graph/status-register.py.bak-$DATE-000000"
-echo "  status-register.py registered: seed_source_for + SCAFFOLD_FILES + clean FF — OK"
+  cp "$TMP/seed/tools/status-register.py" "$TMP/plant/docs/graph/status-register.py.bak-$DATE-000000"
+  set +e
+  python3 "$AUDIT" "$TMP/plant" "$TMP/seed" --date=$DATE --tokens=widgetco >"$TMP/aout11" 2>&1
+  rc11=$?
+  set -e
+  grep -q "'IDENTICAL': 4" "$TMP/aout11" || { cat "$TMP/aout11"; fail "status-register.py backup not mapped to tools/status-register.py"; }
+  grep -q "knowledge overwrite" "$TMP/aout11" && { cat "$TMP/aout11"; fail "status-register.py fast-forward wrongly flagged as knowledge"; }
+  [ "$rc11" -eq 0 ] || { cat "$TMP/aout11"; fail "identical status-register.py backup must audit clean (got $rc11)"; }
+  rm -f "$TMP/plant/docs/graph/status-register.py.bak-$DATE-000000"
+  return 0
+}
+collect_case GT15 case_audit_status_register_is_registered "status-register.py registered: seed_source_for + SCAFFOLD_FILES + clean FF"
 
 # ---- --unfilled: template scaffolds never filled (D-SCAFFOLD, 7.0.0) --------
 # install.sh copies templates/docs/<rel> to docs/graph/<rel> when missing; a
@@ -299,97 +393,126 @@ echo "  status-register.py registered: seed_source_for + SCAFFOLD_FILES + clean 
 # filled, a plant node with no counterpart, api/README.md absent in the plant.
 FIX="$ROOT/tests/fixtures/graft"
 unfilled_plant() { rm -rf "$TMP/uplant"; cp -R "$FIX/plant" "$TMP/uplant"; }
+case_unfilled_reports_identical_scaffold() {
+  # GT16
+  set -e
 
-# report only: exactly the identical leaf, exit 1 (a gate), nothing touched
-unfilled_plant
-set +e
-python3 "$AUDIT" "$TMP/uplant" "$FIX/seed" --unfilled >"$TMP/uout1" 2>&1
-urc1=$?
-set -e
-grep -q "^  UNFILLED docs/graph/runbooks/rollback.md" "$TMP/uout1" || { cat "$TMP/uout1"; fail "identical scaffold not reported UNFILLED"; }
-[ "$(grep -c '^  UNFILLED ' "$TMP/uout1")" -eq 1 ] || { cat "$TMP/uout1"; fail "expected exactly one UNFILLED line"; }
-grep -q "unfilled scaffolds: 1 reported" "$TMP/uout1" || { cat "$TMP/uout1"; fail "summary count missing"; }
-[ "$urc1" -eq 1 ] || { cat "$TMP/uout1"; fail "--unfilled must exit 1 while unfilled scaffolds remain (got $urc1)"; }
-[ -f "$TMP/uplant/docs/graph/runbooks/rollback.md" ] || fail "report-only run must not touch the plant"
-[ ! -e "$TMP/uplant/docs/graph/runbooks/rollback.unfilled.md" ] || fail "report-only run must not rename"
-echo "  --unfilled reports exactly the byte-identical scaffold, exit 1, plant untouched — OK"
+  # report only: exactly the identical leaf, exit 1 (a gate), nothing touched
+  unfilled_plant
+  set +e
+  python3 "$AUDIT" "$TMP/uplant" "$FIX/seed" --unfilled >"$TMP/uout1" 2>&1
+  urc1=$?
+  set -e
+  grep -q "^  UNFILLED docs/graph/runbooks/rollback.md" "$TMP/uout1" || { cat "$TMP/uout1"; fail "identical scaffold not reported UNFILLED"; }
+  [ "$(grep -c '^  UNFILLED ' "$TMP/uout1")" -eq 1 ] || { cat "$TMP/uout1"; fail "expected exactly one UNFILLED line"; }
+  grep -q "unfilled scaffolds: 1 reported" "$TMP/uout1" || { cat "$TMP/uout1"; fail "summary count missing"; }
+  [ "$urc1" -eq 1 ] || { cat "$TMP/uout1"; fail "--unfilled must exit 1 while unfilled scaffolds remain (got $urc1)"; }
+  [ -f "$TMP/uplant/docs/graph/runbooks/rollback.md" ] || fail "report-only run must not touch the plant"
+  [ ! -e "$TMP/uplant/docs/graph/runbooks/rollback.unfilled.md" ] || fail "report-only run must not rename"
+  return 0
+}
+collect_case GT16 case_unfilled_reports_identical_scaffold "--unfilled reports exactly the byte-identical scaffold, exit 1, plant untouched"
 
 # --rename: <name>.unfilled.md, exit 0; a second pass finds nothing
-set +e
-python3 "$AUDIT" "$TMP/uplant" "$FIX/seed" --unfilled --rename >"$TMP/uout2" 2>&1
-urc2=$?
-set -e
-[ "$urc2" -eq 0 ] || { cat "$TMP/uout2"; fail "--unfilled --rename must exit 0 (got $urc2)"; }
-[ -f "$TMP/uplant/docs/graph/runbooks/rollback.unfilled.md" ] || { cat "$TMP/uout2"; fail "unfilled scaffold not renamed to rollback.unfilled.md"; }
-[ ! -e "$TMP/uplant/docs/graph/runbooks/rollback.md" ] || fail "original left behind after --rename"
-cmp -s "$TMP/uplant/docs/graph/runbooks/rollback.unfilled.md" "$FIX/seed/templates/docs/runbooks/rollback.md" || fail "rename altered the file body"
-cmp -s "$TMP/uplant/docs/graph/runbooks/release.md" "$FIX/plant/docs/graph/runbooks/release.md" || fail "filled runbook must be untouched"
-[ -f "$TMP/uplant/docs/graph/nodes/acme-api.md" ] || fail "plant node with no template counterpart must be untouched"
-grep -q "unfilled scaffolds: 1 renamed" "$TMP/uout2" || { cat "$TMP/uout2"; fail "rename summary missing"; }
-set +e
-python3 "$AUDIT" "$TMP/uplant" "$FIX/seed" --unfilled >"$TMP/uout3" 2>&1
-urc3=$?
-set -e
-[ "$urc3" -eq 0 ] || { cat "$TMP/uout3"; fail "after --rename a report-only pass must be clean (got $urc3)"; }
-grep -q "unfilled scaffolds: 0" "$TMP/uout3" || { cat "$TMP/uout3"; fail "clean pass must report a zero count"; }
-echo "  --unfilled --rename -> <name>.unfilled.md, exit 0, filled + plant files untouched — OK"
+case_unfilled_rename() {
+  # GT17
+  set -e
+  set +e
+  python3 "$AUDIT" "$TMP/uplant" "$FIX/seed" --unfilled --rename >"$TMP/uout2" 2>&1
+  urc2=$?
+  set -e
+  [ "$urc2" -eq 0 ] || { cat "$TMP/uout2"; fail "--unfilled --rename must exit 0 (got $urc2)"; }
+  [ -f "$TMP/uplant/docs/graph/runbooks/rollback.unfilled.md" ] || { cat "$TMP/uout2"; fail "unfilled scaffold not renamed to rollback.unfilled.md"; }
+  [ ! -e "$TMP/uplant/docs/graph/runbooks/rollback.md" ] || fail "original left behind after --rename"
+  cmp -s "$TMP/uplant/docs/graph/runbooks/rollback.unfilled.md" "$FIX/seed/templates/docs/runbooks/rollback.md" || fail "rename altered the file body"
+  cmp -s "$TMP/uplant/docs/graph/runbooks/release.md" "$FIX/plant/docs/graph/runbooks/release.md" || fail "filled runbook must be untouched"
+  [ -f "$TMP/uplant/docs/graph/nodes/acme-api.md" ] || fail "plant node with no template counterpart must be untouched"
+  grep -q "unfilled scaffolds: 1 renamed" "$TMP/uout2" || { cat "$TMP/uout2"; fail "rename summary missing"; }
+  set +e
+  python3 "$AUDIT" "$TMP/uplant" "$FIX/seed" --unfilled >"$TMP/uout3" 2>&1
+  urc3=$?
+  set -e
+  [ "$urc3" -eq 0 ] || { cat "$TMP/uout3"; fail "after --rename a report-only pass must be clean (got $urc3)"; }
+  grep -q "unfilled scaffolds: 0" "$TMP/uout3" || { cat "$TMP/uout3"; fail "clean pass must report a zero count"; }
+  return 0
+}
+collect_case GT17 case_unfilled_rename "--unfilled --rename -> <name>.unfilled.md, exit 0, filled + plant files untouched"
 
 # --prune: removed outright, exit 0
-unfilled_plant
-set +e
-python3 "$AUDIT" "$TMP/uplant" "$FIX/seed" --unfilled --prune >"$TMP/uout4" 2>&1
-urc4=$?
-set -e
-[ "$urc4" -eq 0 ] || { cat "$TMP/uout4"; fail "--unfilled --prune must exit 0 (got $urc4)"; }
-[ ! -e "$TMP/uplant/docs/graph/runbooks/rollback.md" ] || fail "--prune left the unfilled scaffold"
-[ ! -e "$TMP/uplant/docs/graph/runbooks/rollback.unfilled.md" ] || fail "--prune must remove, not rename"
-[ -f "$TMP/uplant/docs/graph/runbooks/release.md" ] || fail "--prune removed a filled runbook"
-grep -q "unfilled scaffolds: 1 removed" "$TMP/uout4" || { cat "$TMP/uout4"; fail "prune summary missing"; }
-echo "  --unfilled --prune removes the scaffold, exit 0 — OK"
+case_unfilled_prune() {
+  # GT18
+  set -e
+  unfilled_plant
+  set +e
+  python3 "$AUDIT" "$TMP/uplant" "$FIX/seed" --unfilled --prune >"$TMP/uout4" 2>&1
+  urc4=$?
+  set -e
+  [ "$urc4" -eq 0 ] || { cat "$TMP/uout4"; fail "--unfilled --prune must exit 0 (got $urc4)"; }
+  [ ! -e "$TMP/uplant/docs/graph/runbooks/rollback.md" ] || fail "--prune left the unfilled scaffold"
+  [ ! -e "$TMP/uplant/docs/graph/runbooks/rollback.unfilled.md" ] || fail "--prune must remove, not rename"
+  [ -f "$TMP/uplant/docs/graph/runbooks/release.md" ] || fail "--prune removed a filled runbook"
+  grep -q "unfilled scaffolds: 1 removed" "$TMP/uout4" || { cat "$TMP/uout4"; fail "prune summary missing"; }
+  return 0
+}
+collect_case GT18 case_unfilled_prune "--unfilled --prune removes the scaffold, exit 0"
 
 # verification.md exemption, both ways: byte-identical WITHOUT an executed
 # gate row is unfilled like any scaffold; byte-identical WITH one (the seed
 # template itself carries a `**executed <date>**` row) is exempt.
-rm -rf "$TMP/vplant"; mkdir -p "$TMP/vplant/docs/graph/runbooks"
-cp "$FIX/seed/templates/docs/runbooks/verification.md" "$TMP/vplant/docs/graph/runbooks/verification.md"
-set +e
-python3 "$AUDIT" "$TMP/vplant" "$FIX/seed" --unfilled >"$TMP/uout5" 2>&1
-urc5=$?
-set -e
-grep -q "^  UNFILLED docs/graph/runbooks/verification.md" "$TMP/uout5" || { cat "$TMP/uout5"; fail "verification.md with no executed gate not reported"; }
-[ "$urc5" -eq 1 ] || { cat "$TMP/uout5"; fail "verification.md without an executed row must gate (got $urc5)"; }
-cp "$FIX/seed-executed/templates/docs/runbooks/verification.md" "$TMP/vplant/docs/graph/runbooks/verification.md"
-set +e
-python3 "$AUDIT" "$TMP/vplant" "$FIX/seed-executed" --unfilled >"$TMP/uout6" 2>&1
-urc6=$?
-set -e
-grep -q "UNFILLED" "$TMP/uout6" && { cat "$TMP/uout6"; fail "verification.md carrying an executed gate row must be exempt"; }
-[ "$urc6" -eq 0 ] || { cat "$TMP/uout6"; fail "exempt verification.md must not gate (got $urc6)"; }
-echo "  verification.md: unfilled without an executed gate row, exempt with one — OK"
+case_unfilled_verification_exemption() {
+  # GT19
+  set -e
+  rm -rf "$TMP/vplant"; mkdir -p "$TMP/vplant/docs/graph/runbooks"
+  cp "$FIX/seed/templates/docs/runbooks/verification.md" "$TMP/vplant/docs/graph/runbooks/verification.md"
+  set +e
+  python3 "$AUDIT" "$TMP/vplant" "$FIX/seed" --unfilled >"$TMP/uout5" 2>&1
+  urc5=$?
+  set -e
+  grep -q "^  UNFILLED docs/graph/runbooks/verification.md" "$TMP/uout5" || { cat "$TMP/uout5"; fail "verification.md with no executed gate not reported"; }
+  [ "$urc5" -eq 1 ] || { cat "$TMP/uout5"; fail "verification.md without an executed row must gate (got $urc5)"; }
+  cp "$FIX/seed-executed/templates/docs/runbooks/verification.md" "$TMP/vplant/docs/graph/runbooks/verification.md"
+  set +e
+  python3 "$AUDIT" "$TMP/vplant" "$FIX/seed-executed" --unfilled >"$TMP/uout6" 2>&1
+  urc6=$?
+  set -e
+  grep -q "UNFILLED" "$TMP/uout6" && { cat "$TMP/uout6"; fail "verification.md carrying an executed gate row must be exempt"; }
+  [ "$urc6" -eq 0 ] || { cat "$TMP/uout6"; fail "exempt verification.md must not gate (got $urc6)"; }
+  return 0
+}
+collect_case GT19 case_unfilled_verification_exemption "verification.md: unfilled without an executed gate row, exempt with one"
 
 # the real seed layout: templates/docs/<rel> mirrors docs/graph/<rel>
-rm -rf "$TMP/rplant"; mkdir -p "$TMP/rplant/docs/graph/runbooks"
-cp "$ROOT/templates/docs/runbooks/rollback.md" "$TMP/rplant/docs/graph/runbooks/rollback.md"
-set +e
-python3 "$AUDIT" "$TMP/rplant" "$ROOT" --unfilled >"$TMP/uout7" 2>&1
-urc7=$?
-set -e
-grep -q "^  UNFILLED docs/graph/runbooks/rollback.md" "$TMP/uout7" || { cat "$TMP/uout7"; fail "real seed template not mirrored to docs/graph/"; }
-[ "$urc7" -eq 1 ] || { cat "$TMP/uout7"; fail "real-seed unfilled scaffold must gate (got $urc7)"; }
-echo "  --unfilled mirrors the real seed's templates/docs/ onto docs/graph/ — OK"
+case_unfilled_real_seed_layout() {
+  # GT20
+  set -e
+  rm -rf "$TMP/rplant"; mkdir -p "$TMP/rplant/docs/graph/runbooks"
+  cp "$ROOT/templates/docs/runbooks/rollback.md" "$TMP/rplant/docs/graph/runbooks/rollback.md"
+  set +e
+  python3 "$AUDIT" "$TMP/rplant" "$ROOT" --unfilled >"$TMP/uout7" 2>&1
+  urc7=$?
+  set -e
+  grep -q "^  UNFILLED docs/graph/runbooks/rollback.md" "$TMP/uout7" || { cat "$TMP/uout7"; fail "real seed template not mirrored to docs/graph/"; }
+  [ "$urc7" -eq 1 ] || { cat "$TMP/uout7"; fail "real-seed unfilled scaffold must gate (got $urc7)"; }
+  return 0
+}
+collect_case GT20 case_unfilled_real_seed_layout "--unfilled mirrors the real seed's templates/docs/ onto docs/graph/"
 
 # flag discipline: --rename/--prune act only on --unfilled findings, and never both
-set +e
-python3 "$AUDIT" "$TMP/uplant" "$FIX/seed" --prune >"$TMP/uout8" 2>&1; urc8=$?
-python3 "$AUDIT" "$TMP/uplant" "$FIX/seed" --unfilled --rename --prune >"$TMP/uout9" 2>&1; urc9=$?
-python3 "$AUDIT" "$TMP/uplant" "$TMP/notaplant" --unfilled >"$TMP/uout10" 2>&1; urc10=$?
-set -e
-[ "$urc8" -eq 2 ] || { cat "$TMP/uout8"; fail "--prune without --unfilled must exit 2 (got $urc8)"; }
-[ "$urc9" -eq 2 ] || { cat "$TMP/uout9"; fail "--rename with --prune must exit 2 (got $urc9)"; }
-[ "$urc10" -eq 1 ] || { cat "$TMP/uout10"; fail "a seed root without templates/docs/ must be refused (got $urc10)"; }
-grep -q "templates/docs" "$TMP/uout10" || { cat "$TMP/uout10"; fail "seed-root refusal must name templates/docs/"; }
-echo "  --unfilled flag discipline (prune needs unfilled; rename xor prune; seed root checked) — OK"
-
+case_unfilled_flag_discipline() {
+  # GT21
+  set -e
+  set +e
+  python3 "$AUDIT" "$TMP/uplant" "$FIX/seed" --prune >"$TMP/uout8" 2>&1; urc8=$?
+  python3 "$AUDIT" "$TMP/uplant" "$FIX/seed" --unfilled --rename --prune >"$TMP/uout9" 2>&1; urc9=$?
+  python3 "$AUDIT" "$TMP/uplant" "$TMP/notaplant" --unfilled >"$TMP/uout10" 2>&1; urc10=$?
+  set -e
+  [ "$urc8" -eq 2 ] || { cat "$TMP/uout8"; fail "--prune without --unfilled must exit 2 (got $urc8)"; }
+  [ "$urc9" -eq 2 ] || { cat "$TMP/uout9"; fail "--rename with --prune must exit 2 (got $urc9)"; }
+  [ "$urc10" -eq 1 ] || { cat "$TMP/uout10"; fail "a seed root without templates/docs/ must be refused (got $urc10)"; }
+  grep -q "templates/docs" "$TMP/uout10" || { cat "$TMP/uout10"; fail "seed-root refusal must name templates/docs/"; }
+  return 0
+}
+collect_case GT21 case_unfilled_flag_discipline "--unfilled flag discipline (prune needs unfilled; rename xor prune; seed root checked)"
 
 # ---- kernel currency: STALE vs plant-extended vs standing deviation (7.0.1) ----
 # The kernel body loads on every session. Byte-identity was the only "current"
@@ -398,23 +521,26 @@ echo "  --unfilled flag discipline (prune needs unfilled; rename xor prune; seed
 # a seed-current body PLUS plant-authored lines is EXTENDED — it blocks unless a
 # standing deviation node (departs_from: kernel.body) records the boundary.
 KD="20260907"
-rm -rf "$TMP/kseed" "$TMP/kplant"
-mkdir -p "$TMP/kseed/core" "$TMP/kseed/templates/docs" "$TMP/kplant/docs/graph/nodes"
-printf '# kernel\nline one\nline two\nline three\n' > "$TMP/kseed/core/AGENTS.md"
 kaudit() { set +e; python3 "$AUDIT" "$TMP/kplant" "$TMP/kseed" --date=$KD --tokens=widgetco >"$TMP/kout" 2>&1; krc=$?; set -e; }
-# identical -> current, exit 0
-cp "$TMP/kseed/core/AGENTS.md" "$TMP/kplant/AGENTS.md"
-kaudit; [ "$krc" -eq 0 ] && grep -q "kernel: current" "$TMP/kout" || { cat "$TMP/kout"; fail "identical kernel must read current, exit 0 (got $krc)"; }
-# old body (a seed line missing) -> STALE, exit 1
-printf '# kernel\nline one\nline three\n' > "$TMP/kplant/AGENTS.md"
-kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL STALE" "$TMP/kout" || { cat "$TMP/kout"; fail "old kernel body must be STALE and exit 1 (got $krc)"; }
-# seed body + 2 plant lines, no deviation -> EXTENDED, exit 1, never STALE
-printf '# kernel\nline one\nline two\nline three\n- plant rule a\n- plant rule b\n' > "$TMP/kplant/AGENTS.md"
-kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL EXTENDED" "$TMP/kout" && ! grep -q "KERNEL STALE" "$TMP/kout" \
-  || { cat "$TMP/kout"; fail "extended kernel without a deviation must be EXTENDED (not STALE), exit 1 (got $krc)"; }
-grep -q "2 plant-authored line" "$TMP/kout" || { cat "$TMP/kout"; fail "EXTENDED must count the plant lines"; }
-# a deviation node that is NOT standing, or covers another fact -> still EXTENDED
-cat > "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md" <<'MD'
+case_audit_kernel_currency() {
+  # GT22
+  set -e
+  rm -rf "$TMP/kseed" "$TMP/kplant"
+  mkdir -p "$TMP/kseed/core" "$TMP/kseed/templates/docs" "$TMP/kplant/docs/graph/nodes"
+  printf '# kernel\nline one\nline two\nline three\n' > "$TMP/kseed/core/AGENTS.md"
+  # identical -> current, exit 0
+  cp "$TMP/kseed/core/AGENTS.md" "$TMP/kplant/AGENTS.md"
+  kaudit; [ "$krc" -eq 0 ] && grep -q "kernel: current" "$TMP/kout" || { cat "$TMP/kout"; fail "identical kernel must read current, exit 0 (got $krc)"; }
+  # old body (a seed line missing) -> STALE, exit 1
+  printf '# kernel\nline one\nline three\n' > "$TMP/kplant/AGENTS.md"
+  kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL STALE" "$TMP/kout" || { cat "$TMP/kout"; fail "old kernel body must be STALE and exit 1 (got $krc)"; }
+  # seed body + 2 plant lines, no deviation -> EXTENDED, exit 1, never STALE
+  printf '# kernel\nline one\nline two\nline three\n- plant rule a\n- plant rule b\n' > "$TMP/kplant/AGENTS.md"
+  kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL EXTENDED" "$TMP/kout" && ! grep -q "KERNEL STALE" "$TMP/kout" \
+    || { cat "$TMP/kout"; fail "extended kernel without a deviation must be EXTENDED (not STALE), exit 1 (got $krc)"; }
+  grep -q "2 plant-authored line" "$TMP/kout" || { cat "$TMP/kout"; fail "EXTENDED must count the plant lines"; }
+  # a deviation node that is NOT standing, or covers another fact -> still EXTENDED
+  cat > "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md" <<'MD'
 ---
 id: deviation.kernel-boundary
 kind: deviation
@@ -423,23 +549,24 @@ departs_from: kernel.body
 ends_when: the lines have a graph home
 ---
 MD
-kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL EXTENDED" "$TMP/kout" || { cat "$TMP/kout"; fail "a closed deviation must not cover the kernel (got $krc)"; }
-sed -i.bak 's/^status: closed$/status: standing/; s/^departs_from: kernel.body$/departs_from: secrets-posture.lifetime/' "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md" && rm -f "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md.bak"
-kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL EXTENDED" "$TMP/kout" || { cat "$TMP/kout"; fail "a deviation on another fact must not cover the kernel (got $krc)"; }
-# standing deviation on kernel.body -> recognised, exit 0, no !! line
-sed -i.bak 's/^departs_from: .*$/departs_from: kernel.body   # the plant kernel carries lines the seed does not/' "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md" && rm -f "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md.bak"
-kaudit; [ "$krc" -eq 0 ] && grep -q "standing deviation deviation.kernel-boundary" "$TMP/kout" && ! grep -q "!! KERNEL" "$TMP/kout" \
-  || { cat "$TMP/kout"; fail "standing kernel.body deviation must clear the kernel check, exit 0 (got $krc)"; }
-grep -q "ends_when: the lines have a graph home" "$TMP/kout" || { cat "$TMP/kout"; fail "the recognised deviation must surface its ends_when"; }
-# the deviation covers ADDITIONS only: an old body stays STALE even with the node
-printf '# kernel\nline one\nline three\n- plant rule a\n' > "$TMP/kplant/AGENTS.md"
-kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL STALE" "$TMP/kout" || { cat "$TMP/kout"; fail "a deviation must not excuse an old kernel body (got $krc)"; }
-# a blank form (_deviation.template.md) never counts as a deviation
-printf '# kernel\nline one\nline two\nline three\n- plant rule a\n' > "$TMP/kplant/AGENTS.md"
-mv "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md" "$TMP/kplant/docs/graph/nodes/_deviation.template.md"
-kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL EXTENDED" "$TMP/kout" || { cat "$TMP/kout"; fail "a blank template must not read as a deviation (got $krc)"; }
-echo "  kernel currency: STALE blocks, EXTENDED blocks, standing kernel.body deviation clears — OK"
-
+  kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL EXTENDED" "$TMP/kout" || { cat "$TMP/kout"; fail "a closed deviation must not cover the kernel (got $krc)"; }
+  sed -i.bak 's/^status: closed$/status: standing/; s/^departs_from: kernel.body$/departs_from: secrets-posture.lifetime/' "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md" && rm -f "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md.bak"
+  kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL EXTENDED" "$TMP/kout" || { cat "$TMP/kout"; fail "a deviation on another fact must not cover the kernel (got $krc)"; }
+  # standing deviation on kernel.body -> recognised, exit 0, no !! line
+  sed -i.bak 's/^departs_from: .*$/departs_from: kernel.body   # the plant kernel carries lines the seed does not/' "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md" && rm -f "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md.bak"
+  kaudit; [ "$krc" -eq 0 ] && grep -q "standing deviation deviation.kernel-boundary" "$TMP/kout" && ! grep -q "!! KERNEL" "$TMP/kout" \
+    || { cat "$TMP/kout"; fail "standing kernel.body deviation must clear the kernel check, exit 0 (got $krc)"; }
+  grep -q "ends_when: the lines have a graph home" "$TMP/kout" || { cat "$TMP/kout"; fail "the recognised deviation must surface its ends_when"; }
+  # the deviation covers ADDITIONS only: an old body stays STALE even with the node
+  printf '# kernel\nline one\nline three\n- plant rule a\n' > "$TMP/kplant/AGENTS.md"
+  kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL STALE" "$TMP/kout" || { cat "$TMP/kout"; fail "a deviation must not excuse an old kernel body (got $krc)"; }
+  # a blank form (_deviation.template.md) never counts as a deviation
+  printf '# kernel\nline one\nline two\nline three\n- plant rule a\n' > "$TMP/kplant/AGENTS.md"
+  mv "$TMP/kplant/docs/graph/nodes/deviation.kernel-boundary.md" "$TMP/kplant/docs/graph/nodes/_deviation.template.md"
+  kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL EXTENDED" "$TMP/kout" || { cat "$TMP/kout"; fail "a blank template must not read as a deviation (got $krc)"; }
+  return 0
+}
+collect_case GT22 case_audit_kernel_currency "kernel currency: STALE blocks, EXTENDED blocks, standing kernel.body deviation clears"
 
 # ---- engine currency: a multi-line config assignment is not a stale line ----
 # The PROJECT CONFIG assignments are legitimately plant-specific, so the audit
@@ -447,21 +574,24 @@ echo "  kernel currency: STALE blocks, EXTENDED blocks, standing kernel.body dev
 # plant (or the reverse): only the first line matches the config-key pattern, so
 # the continuation lines used to read as seed engine lines missing from the
 # plant, i.e. a false STALE on a gate that BLOCKS a graft.
-rm -rf "$TMP/ec"; mkdir -p "$TMP/ec"
-cat > "$TMP/ec/seed.py" <<'PY2'
+case_audit_engine_currency_multiline_config() {
+  # GT23
+  set -e
+  rm -rf "$TMP/ec"; mkdir -p "$TMP/ec"
+  cat > "$TMP/ec/seed.py" <<'PY2'
 ROOT_ID = "root"
 KINDS = {"root", "subsystem",
          "deviation", "method"}
 def shared():
     return 1
 PY2
-cat > "$TMP/ec/plant.py" <<'PY2'
+  cat > "$TMP/ec/plant.py" <<'PY2'
 ROOT_ID = "app"
 KINDS = {"root", "subsystem", "deviation", "method", "operator"}
 def shared():
     return 1
 PY2
-python3 - "$AUDIT" "$TMP/ec" <<'PY2'
+  python3 - "$AUDIT" "$TMP/ec" <<'PY2'
 import importlib.util, sys
 from pathlib import Path
 spec = importlib.util.spec_from_file_location("ga", sys.argv[1])
@@ -481,7 +611,9 @@ with contextlib.redirect_stdout(buf):
 out = buf.getvalue()
 assert "STALE" in out and "2 seed engine line" in out, f"real drift not reported: {out!r}"
 PY2
-echo "  engine currency: multi-line config excluded, real drift still STALE — OK"
+  return 0
+}
+collect_case GT23 case_audit_engine_currency_multiline_config "engine currency: multi-line config excluded, real drift still STALE"
 
 # ---- the customization audit must not cry wolf on a pristine file ---------
 # GENERIC_SIGNALS are ordinary self-reference the SEED itself writes in its
@@ -489,93 +621,116 @@ echo "  engine currency: multi-line config excluded, real drift still STALE — 
 # file — replaced by a reworded version of itself — as a buried customization.
 # A gate that fires on untouched files teaches a steward to ratify without
 # looking, which is the failure this gate exists to prevent.
-rm -rf "$TMP/sig"; mkdir -p "$TMP/sig/seedroot/protocols" "$TMP/sig/plant/docs/graph/protocols"
-cat > "$TMP/sig/seedroot/protocols/alpha.md" <<'MD'
+case_audit_generic_seed_phrase_is_not_signal() {
+  # GT24
+  set -e
+  rm -rf "$TMP/sig"; mkdir -p "$TMP/sig/seedroot/protocols" "$TMP/sig/plant/docs/graph/protocols"
+  cat > "$TMP/sig/seedroot/protocols/alpha.md" <<'MD'
 # Alpha
 Write in this project's idiom; the pins are often old on purpose.
 A brand new seed sentence that the old body did not have.
 MD
-# the backup: the SAME generic phrase, differently worded around it, and no
-# plant-specific content whatsoever.
-cat > "$TMP/sig/plant/docs/graph/protocols/alpha.md.bak-20260101-000000" <<'MD'
+  # the backup: the SAME generic phrase, differently worded around it, and no
+  # plant-specific content whatsoever.
+  cat > "$TMP/sig/plant/docs/graph/protocols/alpha.md.bak-20260101-000000" <<'MD'
 # Alpha
 Write in this project's idiom — the pins are often old on purpose.
 MD
-out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" || true
-grep -q "FF-overwritten plant customization" <<<"$out" \
-    && { printf '%s\n' "$out" >&2; fail "a phrase the seed itself ships was read as plant signal"; }
-echo "  a generic phrase the seed also ships is not plant signal — OK"
+  out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" || true
+  grep -q "FF-overwritten plant customization" <<<"$out" \
+      && { printf '%s\n' "$out" >&2; fail "a phrase the seed itself ships was read as plant signal"; }
+  return 0
+}
+collect_case GT24 case_audit_generic_seed_phrase_is_not_signal "a generic phrase the seed also ships is not plant signal"
 
 # the true positives must still fire: an explicit --tokens match, and a generic
 # phrase that appears in the backup but NOT in the seed source.
-cat > "$TMP/sig/plant/docs/graph/protocols/alpha.md.bak-20260102-000000" <<'MD'
+case_audit_true_signals_still_fire() {
+  # GT25
+  set -e
+  cat > "$TMP/sig/plant/docs/graph/protocols/alpha.md.bak-20260102-000000" <<'MD'
 # Alpha
 Write in this project's idiom; the pins are often old on purpose.
 A brand new seed sentence that the old body did not have.
 Deploy notes for zamber-corp live beside this file.
 MD
-out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260102 --tokens=zamber-corp 2>&1)" || true
-grep -q "FF-overwritten plant customization" <<<"$out" \
-    || { printf '%s\n' "$out" >&2; fail "an explicit plant token stopped being reported"; }
-cat > "$TMP/sig/plant/docs/graph/protocols/alpha.md.bak-20260103-000000" <<'MD'
+  out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260102 --tokens=zamber-corp 2>&1)" || true
+  grep -q "FF-overwritten plant customization" <<<"$out" \
+      || { printf '%s\n' "$out" >&2; fail "an explicit plant token stopped being reported"; }
+  cat > "$TMP/sig/plant/docs/graph/protocols/alpha.md.bak-20260103-000000" <<'MD'
 # Alpha
 Write in this project's idiom; the pins are often old on purpose.
 A brand new seed sentence that the old body did not have.
 Our stack pins the broker one minor behind on purpose.
 MD
-out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260103 2>&1)" || true
-grep -q "FF-overwritten plant customization" <<<"$out" \
-    || { printf '%s\n' "$out" >&2; fail "a generic phrase absent from the seed source stopped being reported"; }
-echo "  explicit tokens and seed-absent generic phrases still fire — OK"
+  out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260103 2>&1)" || true
+  grep -q "FF-overwritten plant customization" <<<"$out" \
+      || { printf '%s\n' "$out" >&2; fail "a generic phrase absent from the seed source stopped being reported"; }
+  return 0
+}
+collect_case GT25 case_audit_true_signals_still_fire "explicit tokens and seed-absent generic phrases still fire"
 
 # ...and a short explicit token is a substring of ordinary words before it is a
 # name. Matched without word edges it reports a page nobody customized, which
 # teaches a steward to ratify without looking — the same failure, arriving
 # through the token list the block above exempted from the rule.
-cat > "$TMP/sig/plant/docs/graph/protocols/alpha.md.bak-20260104-000000" <<'MD'
+case_audit_token_matches_at_word_edges() {
+  # GT26
+  set -e
+  cat > "$TMP/sig/plant/docs/graph/protocols/alpha.md.bak-20260104-000000" <<'MD'
 # Alpha
 Write in this project's idiom; the pins are often old on purpose.
 A brand new seed sentence that the old body did not have.
 The rollback step is replaced during a release.
 MD
-out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260104 --tokens=ace 2>&1)" || true
-grep -q "FF-overwritten plant customization" <<<"$out" \
-    && { printf '%s\n' "$out" >&2; fail "a token matched inside an ordinary word was reported as a buried customization"; }
-cat > "$TMP/sig/plant/docs/graph/protocols/alpha.md.bak-20260105-000000" <<'MD'
+  out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260104 --tokens=ace 2>&1)" || true
+  grep -q "FF-overwritten plant customization" <<<"$out" \
+      && { printf '%s\n' "$out" >&2; fail "a token matched inside an ordinary word was reported as a buried customization"; }
+  cat > "$TMP/sig/plant/docs/graph/protocols/alpha.md.bak-20260105-000000" <<'MD'
 # Alpha
 Write in this project's idiom; the pins are often old on purpose.
 A brand new seed sentence that the old body did not have.
 The ace gateway is pinned one minor behind.
 MD
-out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260105 --tokens=ace 2>&1)" || true
-grep -q "FF-overwritten plant customization" <<<"$out" \
-    || { printf '%s\n' "$out" >&2; fail "a token standing as its own word stopped being reported"; }
-grep -q "signal: ace" <<<"$out" \
-    || { printf '%s\n' "$out" >&2; fail "the finding must name the token that matched"; }
-echo "  an explicit token matches at word edges, not inside a word — OK"
+  out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260105 --tokens=ace 2>&1)" || true
+  grep -q "FF-overwritten plant customization" <<<"$out" \
+      || { printf '%s\n' "$out" >&2; fail "a token standing as its own word stopped being reported"; }
+  grep -q "signal: ace" <<<"$out" \
+      || { printf '%s\n' "$out" >&2; fail "the finding must name the token that matched"; }
+  return 0
+}
+collect_case GT26 case_audit_token_matches_at_word_edges "an explicit token matches at word edges, not inside a word"
 
 # ---- --engine refuses to report a check it did not run --------------------
 # A malformed pair was swallowed and announced as a parenthetical skip, so the
 # gate silently did not run while the audit still exited on its other checks.
-out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 \
-        --engine="$TMP/sig/seedroot/protocols/alpha.md" 2>&1)" && rc=0 || rc=$?
-[ "${rc:-0}" -ne 0 ] || fail "a malformed --engine did not fail"
-grep -q -- "--engine wants <plant-file>:<seed-file>" <<<"$out" \
-    || { printf '%s\n' "$out" >&2; fail "a malformed --engine did not say what was wrong"; }
-grep -q "engine check skipped" <<<"$out" \
-    && fail "a malformed --engine still announced itself as a skip"
-out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 \
-        --engine="$TMP/nope.py:$TMP/also-nope.py" 2>&1)" && rc=0 || rc=$?
-[ "${rc:-0}" -ne 0 ] || fail "an --engine naming a missing file did not fail"
-out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" || true
-grep -qi "graph engine" <<<"$out" && fail "--engine omitted still reported an engine verdict"
-echo "  malformed --engine fails loudly; omitted stays silent — OK"
+case_audit_malformed_engine_fails_loudly() {
+  # GT27
+  set -e
+  out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 \
+          --engine="$TMP/sig/seedroot/protocols/alpha.md" 2>&1)" && rc=0 || rc=$?
+  [ "${rc:-0}" -ne 0 ] || fail "a malformed --engine did not fail"
+  grep -q -- "--engine wants <plant-file>:<seed-file>" <<<"$out" \
+      || { printf '%s\n' "$out" >&2; fail "a malformed --engine did not say what was wrong"; }
+  grep -q "engine check skipped" <<<"$out" \
+      && fail "a malformed --engine still announced itself as a skip"
+  out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 \
+          --engine="$TMP/nope.py:$TMP/also-nope.py" 2>&1)" && rc=0 || rc=$?
+  [ "${rc:-0}" -ne 0 ] || fail "an --engine naming a missing file did not fail"
+  out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" || true
+  grep -qi "graph engine" <<<"$out" && fail "--engine omitted still reported an engine verdict"
+  return 0
+}
+collect_case GT27 case_audit_malformed_engine_fails_loudly "malformed --engine fails loudly; omitted stays silent"
 
 # ---- the node schema is machinery too, and can cross a graft stale --------
 # _schema.md is placed add-if-missing, so a plant keeps its copy forever. It is
 # the contract every other check is written against; a stale one went unreported.
-mkdir -p "$TMP/sig/seedroot/templates/knowledge-graph"
-cat > "$TMP/sig/seedroot/templates/knowledge-graph/_schema.md" <<'MD'
+case_audit_schema_currency() {
+  # GT28
+  set -e
+  mkdir -p "$TMP/sig/seedroot/templates/knowledge-graph"
+  cat > "$TMP/sig/seedroot/templates/knowledge-graph/_schema.md" <<'MD'
 # Schema
 
 ## Frontmatter
@@ -597,25 +752,30 @@ Anything that can be open carries its status in frontmatter, never in prose.
 | `open` | live, unresolved |
 | `closed` | resolved with evidence |
 MD
-cp "$TMP/sig/seedroot/templates/knowledge-graph/_schema.md" "$TMP/sig/plant/docs/graph/_schema.md"
-out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" || true
-grep -q "node schema: current" <<<"$out" || { printf '%s\n' "$out" >&2; fail "a current schema was not reported current"; }
-printf '# Schema\n' > "$TMP/sig/plant/docs/graph/_schema.md"
-out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" || true
-grep -q "node schema STALE" <<<"$out" || { printf '%s\n' "$out" >&2; fail "a stale schema was not reported"; }
-# a plant that EXTENDS the schema is not stale, and staleness does not gate
-{ cat "$TMP/sig/seedroot/templates/knowledge-graph/_schema.md"; printf 'A line this plant added.\n'; } \
-  > "$TMP/sig/plant/docs/graph/_schema.md"
-out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" && rc=0 || rc=$?
-grep -q "node schema: current" <<<"$out" || fail "a plant extension was misread as staleness"
-[ "${rc:-0}" -eq 0 ] || fail "schema currency must report, not gate"
-echo "  schema currency: current / STALE / extended, reports without gating — OK"
+  cp "$TMP/sig/seedroot/templates/knowledge-graph/_schema.md" "$TMP/sig/plant/docs/graph/_schema.md"
+  out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" || true
+  grep -q "node schema: current" <<<"$out" || { printf '%s\n' "$out" >&2; fail "a current schema was not reported current"; }
+  printf '# Schema\n' > "$TMP/sig/plant/docs/graph/_schema.md"
+  out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" || true
+  grep -q "node schema STALE" <<<"$out" || { printf '%s\n' "$out" >&2; fail "a stale schema was not reported"; }
+  # a plant that EXTENDS the schema is not stale, and staleness does not gate
+  { cat "$TMP/sig/seedroot/templates/knowledge-graph/_schema.md"; printf 'A line this plant added.\n'; } \
+    > "$TMP/sig/plant/docs/graph/_schema.md"
+  out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" && rc=0 || rc=$?
+  grep -q "node schema: current" <<<"$out" || fail "a plant extension was misread as staleness"
+  [ "${rc:-0}" -eq 0 ] || fail "schema currency must report, not gate"
+  return 0
+}
+collect_case GT28 case_audit_schema_currency "schema currency: current / STALE / extended, reports without gating"
 
 # REGRESSION — a contract is what it requires, not the sentences it requires it
 # in. Compared line by line, a schema somebody re-integrated in their own words
 # read as an absence per line, and the only edit that cleared the message was
 # the verbatim paste the check's own posture exists to avoid.
-cat > "$TMP/sig/plant/docs/graph/_schema.md" <<'MD'
+case_audit_schema_currency_by_contract_terms() {
+  # GT29
+  set -e
+  cat > "$TMP/sig/plant/docs/graph/_schema.md" <<'MD'
 # This project's node contract
 
 ## Frontmatter
@@ -638,11 +798,11 @@ field instead of inferring one.
 | `open` | somebody still owes work on it |
 | `closed` | done, with the evidence named |
 MD
-out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" || true
-grep -q "node schema: current" <<<"$out" \
-  || { printf '%s\n' "$out" >&2; fail "a re-integrated schema keeping every contract term was reported stale"; }
-# ...and a term the contract genuinely lost is named, not counted
-cat > "$TMP/sig/plant/docs/graph/_schema.md" <<'MD'
+  out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" || true
+  grep -q "node schema: current" <<<"$out" \
+    || { printf '%s\n' "$out" >&2; fail "a re-integrated schema keeping every contract term was reported stale"; }
+  # ...and a term the contract genuinely lost is named, not counted
+  cat > "$TMP/sig/plant/docs/graph/_schema.md" <<'MD'
 # This project's node contract
 
 ## Frontmatter
@@ -660,32 +820,22 @@ kind: subsystem
 |---|---|
 | `open` | somebody still owes work on it |
 MD
-out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" || true
-grep -q "node schema STALE" <<<"$out" || { printf '%s\n' "$out" >&2; fail "a genuinely missing contract term was not reported"; }
-grep -q "status" <<<"$out" && grep -q "closed" <<<"$out" \
-  || { printf '%s\n' "$out" >&2; fail "the missing terms must be named, not counted"; }
-echo "  schema currency compares what the contract names, not its sentences — OK"
+  out="$(python3 "$AUDIT" "$TMP/sig/plant" "$TMP/sig/seedroot" --date 20260101 2>&1)" || true
+  grep -q "node schema STALE" <<<"$out" || { printf '%s\n' "$out" >&2; fail "a genuinely missing contract term was not reported"; }
+  grep -q "status" <<<"$out" && grep -q "closed" <<<"$out" \
+    || { printf '%s\n' "$out" >&2; fail "the missing terms must be named, not counted"; }
+  return 0
+}
+collect_case GT29 case_audit_schema_currency_by_contract_terms "schema currency compares what the contract names, not its sentences"
 
 # ---- every graph engine is reconciled with its own config (7.31.0) --------
 # A graft reconciles three engines, and each carries a different config:
 # graph-lint.py ROOT_ID/KINDS/KIND_PREFIX, spec-lint.py TEST_GLOBS, grill-lint.py
 # none. With the graph-lint set as the only default, the tool refused the other
 # two, so a plant kept an old grill-lint.py (no --waves) through every graft.
-# The plants are built here from the seed's real engines. One collecting block:
-# each case prints `FAIL <label>: <why>` and the block exits 1 at its end, so
-# one red case never hides the next.
+# The plants are built here from the seed's real engines.
 KG="$ROOT/templates/knowledge-graph"
 EW="$TMP/engines"; mkdir -p "$EW"
-ENGINE_FAILED=0
-engine_case() {  # $1 label, $2 case function, $3 what an OK run shows
-  local why
-  if why="$("$2" 2>&1)"; then
-    echo "  $1 $3 — OK"
-  else
-    echo "FAIL $1: $why" >&2
-    ENGINE_FAILED=1
-  fi
-}
 # a graph-lint.py whose config the plant changed (ROOT_ID, KIND_PREFIX), body current
 configured_graph_lint() {
   sed -e 's/^ROOT_ID = "root"$/ROOT_ID = "app"/' \
@@ -798,20 +948,16 @@ case_engine_audit_malformed_first_pair_fails() {
     || { echo "a malformed first --engine pair did not say what was wrong: $(tr '\n' ' ' <<<"$out")"; return 1; }
 }
 
-engine_case X383 case_engine_reconcile_stale_grill_lint "a stale grill-lint.py adopts the seed's body with no --preserve, one backup"
-engine_case X384 case_engine_reconcile_spec_lint_keeps_test_globs "spec-lint.py keeps the plant's TEST_GLOBS with no --preserve"
-engine_case X385 case_engine_reconcile_explicit_preserve_wins "an explicit --preserve wins over the per-engine set"
-engine_case X386 case_engine_reconcile_other_name_takes_graph_lint_set "an engine under another name takes the graph-lint.py set"
-engine_case X387 case_engine_audit_one_line_per_pair "two --engine pairs print two lines, each naming its plant file"
-engine_case X388 case_engine_audit_malformed_second_pair_fails "a malformed second --engine pair exits non-zero"
-engine_case X389 case_engine_audit_malformed_first_pair_fails "a malformed first --engine pair exits non-zero"
-[ "$ENGINE_FAILED" -eq 0 ] \
-  || { echo "test-graft-tools: FAIL — the engine reconciliation block has failing cases (above)" >&2; exit 1; }
+collect_case X383 case_engine_reconcile_stale_grill_lint "a stale grill-lint.py adopts the seed's body with no --preserve, one backup"
+collect_case X384 case_engine_reconcile_spec_lint_keeps_test_globs "spec-lint.py keeps the plant's TEST_GLOBS with no --preserve"
+collect_case X385 case_engine_reconcile_explicit_preserve_wins "an explicit --preserve wins over the per-engine set"
+collect_case X386 case_engine_reconcile_other_name_takes_graph_lint_set "an engine under another name takes the graph-lint.py set"
+collect_case X387 case_engine_audit_one_line_per_pair "two --engine pairs print two lines, each naming its plant file"
+collect_case X388 case_engine_audit_malformed_second_pair_fails "a malformed second --engine pair exits non-zero"
+collect_case X389 case_engine_audit_malformed_first_pair_fails "a malformed first --engine pair exits non-zero"
 
 # ---- round 7.32.0: graft-audit false alarms, graft ledger, graft run -------
-# One collecting block, after every older case: each case prints
-# `FAIL <label>: <why>` and the block exits 1 at its end, so one red case never
-# hides the next. Labels: GA-C1..GA-C4 are graft-audit's four false alarms
+# Labels: GA-C1..GA-C4 are graft-audit's four false alarms
 # (GA-C3 runs under X390 and asserts SPEC-0001 EVERY_BACKUP_IS_CLASSIFIABLE, as
 # X391 and X392 do for the other projections of a plant-owned node; the others
 # are contained, no spec owns them); GL-a..GL-d are tools/graft-ledger.py;
@@ -819,16 +965,6 @@ engine_case X389 case_engine_audit_malformed_first_pair_fails "a malformed first
 LEDGER="$ROOT/tools/graft-ledger.py"
 RUN="$ROOT/tools/graft-run.py"
 RW="$TMP/round"; mkdir -p "$RW"
-ROUND_FAILED=0
-round_case() {  # $1 label, $2 case function, $3 what an OK run shows
-  local why
-  if why="$("$2" 2>&1)"; then
-    echo "  $1 $3 — OK"
-  else
-    echo "FAIL $1: $why" >&2
-    ROUND_FAILED=1
-  fi
-}
 flat() { tr '\n' ' ' <"$1"; }
 # git for the synthetic repositories only: no user or system config is read
 sgit() { GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 git -c user.name=fixture \
@@ -1302,23 +1438,23 @@ for (gid, cls), line in zip(gates, tail):
 PY
 }
 
-round_case GA-C1 case_audit_base_identical_is_delta "a backup byte-identical to the seed at --base is DELTA; without --base it stays CUSTOMIZED"
-round_case GA-C2 case_audit_engine_signal_survives "an engine backup whose signal lines survive in the current engine is not CUSTOMIZED"
-round_case X390 case_audit_plant_agent_projection "GA-C3: a plant-owned agent's projection backup is a named exclusion, exit 0"
-round_case X391 case_audit_plant_skill_projection "a plant-owned skill's projection backup is not UNMAPPED, exit 0"
-round_case X392 case_audit_plant_agent_copilot_view "a plant-owned agent's Copilot view backup is not UNMAPPED, exit 0"
-round_case GA-C4 case_audit_skips_nested_plant_copy "backups under a nested .cypress/seed.json directory are not counted"
-round_case GL-a case_ledger_classifies_three_ways "the ledger prints one class per seed-owned machinery file"
-round_case GL-b case_ledger_harvested_is_not_merge "a plant addition the seed already carries is HARVESTED"
-round_case GL-c case_ledger_base_from_tag "--base prints the stamped version's tag, from the tag"
-round_case GL-d case_ledger_base_inferred_by_lineage "--base with no tag prints the lineage commit, its match count, inferred"
-round_case GR-a case_run_refuses_stage_inside_plant "a stage inside the plant is refused, exit 2, nothing written"
-round_case GR-b case_run_leaves_plant_byte_identical "the plant tree is byte-identical after a run"
-round_case GR-c case_run_stage_holds_installed_copy_and_log "the stage holds an installed copy of the plant and the install log"
-round_case GR-d case_run_reconciles_three_engines "the three engines in the stage are reconciled"
-round_case GR-e case_run_derives_tokens_from_plant "the --tokens list is derived from the plant"
-round_case GR-f case_run_prints_gate_table "stdout ends with the Phase 7 gate table"
-[ "$ROUND_FAILED" -eq 0 ] \
-  || { echo "test-graft-tools: FAIL — the 7.32.0 block has failing cases (above)" >&2; exit 1; }
+collect_case GA-C1 case_audit_base_identical_is_delta "a backup byte-identical to the seed at --base is DELTA; without --base it stays CUSTOMIZED"
+collect_case GA-C2 case_audit_engine_signal_survives "an engine backup whose signal lines survive in the current engine is not CUSTOMIZED"
+collect_case X390 case_audit_plant_agent_projection "GA-C3: a plant-owned agent's projection backup is a named exclusion, exit 0"
+collect_case X391 case_audit_plant_skill_projection "a plant-owned skill's projection backup is not UNMAPPED, exit 0"
+collect_case X392 case_audit_plant_agent_copilot_view "a plant-owned agent's Copilot view backup is not UNMAPPED, exit 0"
+collect_case GA-C4 case_audit_skips_nested_plant_copy "backups under a nested .cypress/seed.json directory are not counted"
+collect_case GL-a case_ledger_classifies_three_ways "the ledger prints one class per seed-owned machinery file"
+collect_case GL-b case_ledger_harvested_is_not_merge "a plant addition the seed already carries is HARVESTED"
+collect_case GL-c case_ledger_base_from_tag "--base prints the stamped version's tag, from the tag"
+collect_case GL-d case_ledger_base_inferred_by_lineage "--base with no tag prints the lineage commit, its match count, inferred"
+collect_case GR-a case_run_refuses_stage_inside_plant "a stage inside the plant is refused, exit 2, nothing written"
+collect_case GR-b case_run_leaves_plant_byte_identical "the plant tree is byte-identical after a run"
+collect_case GR-c case_run_stage_holds_installed_copy_and_log "the stage holds an installed copy of the plant and the install log"
+collect_case GR-d case_run_reconciles_three_engines "the three engines in the stage are reconciled"
+collect_case GR-e case_run_derives_tokens_from_plant "the --tokens list is derived from the plant"
+collect_case GR-f case_run_prints_gate_table "stdout ends with the Phase 7 gate table"
+[ "$CASE_FAILED" -eq 0 ] \
+  || { echo "test-graft-tools: FAIL — failing cases (above)" >&2; exit 1; }
 
 echo "test-graft-tools: PASS"

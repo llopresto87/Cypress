@@ -609,6 +609,9 @@ d5_assert_header() {  # $1=label $2=first line of the list file
 }
 
 case_d5_recreated_list() {
+  # One plant serves both D5 checks: a run that re-creates twelve nodes, then a
+  # run that re-creates nothing. Each check runs in its own subshell, so a
+  # failed first check does not hide the second; the case fails at its end.
   W="$(mktemp -d)"
   trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
   T="$W/d5-twelve"; mkdir -p "$T"
@@ -618,48 +621,40 @@ case_d5_recreated_list() {
       < <(ls "$T"/docs/graph/protocols/*.md | sort | head -12)
   [[ ${#deleted[@]} -eq 12 ]] || fail "D5: could not find 12 seed-owned protocol nodes to delete"
   for rel in "${deleted[@]}"; do rm -f "$T/$rel"; done
-  rc=0
-  out="$("$ROOT/install.sh" claude-code --project-dir "$T" --copy 2>&1)" || rc=$?
-  [[ $rc -eq 0 ]] || fail "D5: re-install after deleting twelve nodes did not exit 0: $out"
   list="$T/.cypress/recreated-nodes.txt"
-  [[ -f "$list" ]] || fail "D5: .cypress/recreated-nodes.txt is absent after a run that re-created twelve nodes"
-  d5_assert_header "D5" "$(head -1 "$list")"
-  want="$(printf '%s\n' "${deleted[@]}" | sort -u)"
-  got="$(tail -n +2 "$list")"
-  [[ "$got" == "$want" ]] \
-      || fail "D5: the list file does not hold exactly the twelve re-created paths, sorted and unique. Got: $got"
-  shown=0
-  plain="$(sed 's/^\[seed\] //' <<<"$out")"   # the installer's log prefix
-  for rel in "${deleted[@]}"; do
-      grep -qxF "  $rel" <<<"$plain" && shown=$((shown + 1))
-  done
-  [[ $shown -eq 10 ]] || fail "D5: the console notice printed $shown of the twelve paths, expected ten"
-  grep -qF ".cypress/recreated-nodes.txt" <<<"$out" \
-      || fail "D5: the console notice does not name .cypress/recreated-nodes.txt, the file that holds the whole list"
-  ok "D5: twelve re-created nodes are all in .cypress/recreated-nodes.txt; the console shows ten and names the file"
-}
-
-case_d5_clean_rewrite() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  T="$W/d5-clean"; mkdir -p "$T"
-  "$ROOT/install.sh" claude-code --project-dir "$T" --copy >/dev/null 2>&1 \
-      || fail "D5 (clean): baseline install failed"
-  victim="$(ls "$T"/docs/graph/protocols/*.md | sort | head -1)"
-  rm -f "$victim"
-  "$ROOT/install.sh" claude-code --project-dir "$T" --copy >/dev/null 2>&1 \
-      || fail "D5 (clean): the re-install that re-creates one node failed"
-  list="$T/.cypress/recreated-nodes.txt"
-  [[ -f "$list" ]] || fail "D5 (clean): .cypress/recreated-nodes.txt is absent after a run that re-created a node"
-  grep -qxF "${victim#"$T"/}" "$list" \
-      || fail "D5 (clean): the list file does not name the one re-created node"
-  "$ROOT/install.sh" claude-code --project-dir "$T" --copy >/dev/null 2>&1 \
-      || fail "D5 (clean): the clean re-install failed"
-  [[ -f "$list" ]] || fail "D5 (clean): a clean re-install removed .cypress/recreated-nodes.txt"
-  [[ "$(wc -l < "$list" | tr -d ' ')" -eq 1 ]] \
-      || fail "D5 (clean): a re-install that re-created nothing left more than the header: $(cat "$list")"
-  d5_assert_header "D5 (clean)" "$(head -1 "$list")"
-  ok "D5: a re-install that re-creates nothing rewrites the list file with the header alone"
+  local bad=0
+  (
+    rc=0
+    out="$("$ROOT/install.sh" claude-code --project-dir "$T" --copy 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] || fail "D5: re-install after deleting twelve nodes did not exit 0: $out"
+    [[ -f "$list" ]] || fail "D5: .cypress/recreated-nodes.txt is absent after a run that re-created twelve nodes"
+    d5_assert_header "D5" "$(head -1 "$list")"
+    want="$(printf '%s\n' "${deleted[@]}" | sort -u)"
+    got="$(tail -n +2 "$list")"
+    [[ "$got" == "$want" ]] \
+        || fail "D5: the list file does not hold exactly the twelve re-created paths, sorted and unique. Got: $got"
+    shown=0
+    plain="$(sed 's/^\[seed\] //' <<<"$out")"   # the installer's log prefix
+    for rel in "${deleted[@]}"; do
+        grep -qxF "  $rel" <<<"$plain" && shown=$((shown + 1))
+    done
+    [[ $shown -eq 10 ]] || fail "D5: the console notice printed $shown of the twelve paths, expected ten"
+    grep -qF ".cypress/recreated-nodes.txt" <<<"$out" \
+        || fail "D5: the console notice does not name .cypress/recreated-nodes.txt, the file that holds the whole list"
+    ok "D5: twelve re-created nodes are all in .cypress/recreated-nodes.txt; the console shows ten and names the file"
+  ) || bad=1
+  (
+    # D5 case_d5_clean_rewrite: the run above re-created twelve nodes; a run
+    # that re-creates nothing rewrites the file with the header alone.
+    "$ROOT/install.sh" claude-code --project-dir "$T" --copy >/dev/null 2>&1 \
+        || fail "D5 (clean): the clean re-install failed"
+    [[ -f "$list" ]] || fail "D5 (clean): a clean re-install removed .cypress/recreated-nodes.txt"
+    [[ "$(wc -l < "$list" | tr -d ' ')" -eq 1 ]] \
+        || fail "D5 (clean): a re-install that re-created nothing left more than the header: $(cat "$list")"
+    d5_assert_header "D5 (clean)" "$(head -1 "$list")"
+    ok "D5: a re-install that re-creates nothing rewrites the list file with the header alone"
+  ) || bad=1
+  return "$bad"
 }
 
 # --- one-case subcommand, run by the parallel dispatcher ---------------------
@@ -671,7 +666,7 @@ fi
 # --- main: dispatch every independent scenario in parallel -------------------
 export ROOT
 SCN="$(mktemp)"
-for c in case_agents case_claude case_both case_index case_d1_file case_d1_ro case_d2 case_idem case_block_declared case_block_deep case_block_readonly case_adopted case_adapter_dirs case_check_broken case_check_stale case_migration_date case_check_backups caseCHECK_WITHOUT_COPILOT_SAYS_SO caseALL_CHECK_INCLUDES_RECORDED_COPILOT case_stray_prompt case_hook_order case_hook_retire case_nostamp case_freshquiet case_d5_recreated_list case_d5_clean_rewrite; do
+for c in case_agents case_claude case_both case_index case_d1_file case_d1_ro case_d2 case_idem case_block_declared case_block_deep case_block_readonly case_adopted case_adapter_dirs case_check_broken case_check_stale case_migration_date case_check_backups caseCHECK_WITHOUT_COPILOT_SAYS_SO caseALL_CHECK_INCLUDES_RECORDED_COPILOT case_stray_prompt case_hook_order case_hook_retire case_nostamp case_freshquiet case_d5_recreated_list; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0
