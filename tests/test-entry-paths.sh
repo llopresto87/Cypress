@@ -131,19 +131,29 @@ if [[ $bare_adapter -gt 0 ]]; then
   fail "$bare_adapter surface(s) call /initialize an adapter without naming the fork it carries — the fix landed in one view and not the others"
 fi
 
-# -- structural: the kernel names the second entry protocol ----------------
-kline="$(grep -n 'from-scratch' "$ROOT/core/AGENTS.md" || true)"
-[[ -n "$kline" ]] \
-  || fail "core/AGENTS.md never names from-scratch — a session cannot route to a protocol it is not told exists"
-if grep -qiE "historical note|an earlier draft" "$ROOT/core/AGENTS.md"; then
-  fail "core/AGENTS.md mentions from-scratch only in a historical aside"
+# -- structural: the empty case still reaches from-scratch -----------------
+# ADR-0017 moved the pre-growth pointer out of the kernel. The kernel's FIRST
+# MOVE opens index.md; the placeholder index's pre-growth block (which grow
+# removes) and the router's Method row now carry the entry fork. The checks
+# keep their strength there: named as a destination, tied to the empty case,
+# not a historical aside. The kernel may not re-grow the line.
+idx="$ROOT/templates/knowledge-graph/index.md"
+pre="$(sed -n '/<!-- pre-growth/,/<!-- \/pre-growth -->/p' "$idx")"
+method_row="$(grep -E '^\| Project does not exist yet' "$idx" || true)"
+grep -q 'protocol\.from-scratch' <<<"$pre" \
+  || fail "index.md pre-growth block never names protocol.from-scratch - a fresh session cannot route to a protocol it is not told exists"
+if grep -qiE "historical note|an earlier draft" <<<"$pre$method_row"; then
+  fail "index.md mentions from-scratch only in a historical aside"
 fi
-# and it must name it as a DESTINATION, not as something unreachable
-if grep -qiE 'from-scratch[^\n]*(is unreachable|not entered|never entered|no longer)' "$ROOT/core/AGENTS.md"; then
-  fail "core/AGENTS.md names from-scratch only to say it is not reachable"
+if grep -qiE 'from-scratch[^\n]*(is unreachable|not entered|never entered|no longer)' <<<"$pre$method_row"; then
+  fail "index.md names from-scratch only to say it is not reachable"
 fi
-grep -qE 'from-scratch.{0,40}empty|empty.{0,40}from-scratch' "$ROOT/core/AGENTS.md" \
-  || fail "core/AGENTS.md does not tie from-scratch to the empty-repository case — naming it is not routing to it"
+{ tr '\n' ' ' <<<"$pre" | grep -qE 'from-scratch.{0,40}empty|empty.{0,40}from-scratch' \
+  || grep -qE 'from-scratch.{0,40}empty|empty.{0,40}from-scratch' <<<"$method_row"; } \
+  || fail "index.md does not tie from-scratch to the empty-repository case - naming it is not routing to it"
+# 8a: the pointer left the kernel and does not come back
+grep -q 'EXPERT_SEED_INSTALL_PROMPT.md' "$ROOT/core/AGENTS.md" \
+  && fail "core/AGENTS.md names EXPERT_SEED_INSTALL_PROMPT.md - the pre-growth pointer left the kernel (ADR-0017)"
 
 # -- structural: the installer's post-install line names BOTH arms ---------
 #    (asserting the absence of one phrasing is defeated by a comma; assert the
@@ -236,4 +246,4 @@ if (( fails > 0 )); then
   echo "entry-paths: FAIL — ${fails} finding(s)"
   exit 1
 fi
-echo "entry-paths: OK — the fork is named in the kernel, the adapter, the installer and grow, and an installed plant routes both arms (${size}-byte kernel)"
+echo "entry-paths: OK — the fork is named in the placeholder index, the adapter, the installer and grow, and an installed plant routes both arms (${size}-byte kernel)"
