@@ -642,6 +642,234 @@ section is collapsed to one space, so a line wrap cannot hide a phrase.
   `check_published_eager_figures` passes, so the prime-agent figures in
   `documentation/host-capability-matrix.md` equal the new computation
 
+### Pending amendments, 7.32.0 (not yet contracts)
+
+This block holds what the 7.32.0 plan adds to this spec. None of it is a
+contract yet. Each heading below becomes a `### Contract:` or `### Failure:`
+heading, moved into §4 or §7, in the commit that lands its RED test
+(`verify.status-evidence`). Until then `spec-lint.py` counts none of them. The
+plan of record is `docs/plans/grill-7.32.0-harvest.md`; its §9 names the RED
+increment that promotes each one. The decision behind the anchor is
+[ADR-0018](../decisions/adr-0018-code-fact-freshness-anchor.md); the one behind
+the path column is decision 9 of that plan's §6.
+
+On promotion the spec's title stays, and §1 and §2 widen by one surface each:
+- **The session-start line.** `status-hook.py` on `SessionStart` and
+  `status-extension.ts` on the first prompt also inject the code-anchor line
+  that `docs/graph/code-anchor.py --compare` prints. The anchor file
+  `.cypress/anchor.json` that `code-anchor.py --record` writes at canonize is
+  in scope as state a hook reads, under the same persistence rules as the
+  ledger (I-7). The status summary text itself stays out of scope.
+- **The path column.** The router's entry line carries the node's file path, so
+  the §2 exclusion "the router's ranking and its output format" narrows to the
+  ranking. The hooks pass the path through; the ledger still stores ids only.
+- **No new hook event.** Both additions ride on the events already wired, so
+  the §5 Reliability sentence holds. §5 Cost gains one subprocess per session
+  start, bounded by `ANCHOR_TIMEOUT`.
+
+opencode, which has no hook, reads the same line from the newest session record
+(`canonize` writes it there), so no contract here covers it. codex and
+github-copilot stay frozen; Copilot runs `status-hook.py` through
+`.claude/settings.json`, and its only obligation stays failing open.
+
+#### Pending contract: PLAN_ENTRY_NAMES_THE_NODE_FILE
+- **Given:** a graph whose node `root` lives at `docs/graph/nodes/root.md`
+- **When:** `python3 docs/graph/graph-lint.py --plan "<task>"` runs from the
+  plant root
+- **Then:** every entry line under `LOAD (` and `NOT LOADED (` is two spaces,
+  the node id, whitespace, the node's file path relative to the plant root,
+  whitespace, then the text the line carried before 7.32.0
+- **And:** the id is still the line's first token, so a parser that reads only
+  the id is unaffected
+
+#### Pending contract: ROUTE_HOOK_KEEPS_THE_PATH
+- **Given:** the stub router prints entry lines in the pathed grammar
+- **When:** `route-hook.py` runs for a first prompt and then a later prompt
+- **Then:** the full injection holds every entry line verbatim, path included,
+  and each entry line under `New for this task:` in the reminder holds its path
+- **And:** the ledger's `surfaced` and `peers_seen` hold node ids only
+
+#### Pending contract: ANCHOR_RECORD_NAMES_EVERY_REPOSITORY
+- **Given:** a plant that is a Git work tree with one commit and one modified
+  tracked file, holding a nested Git work tree that one node names in `repo:`
+- **When:** `python3 docs/graph/code-anchor.py --record` runs from the plant root
+- **Then:** `.cypress/anchor.json` holds one entry per repository in the §6
+  shape: the path, the branch, the commit, and each uncommitted path with its
+  content hash
+- **And:** stdout is the one session-record line of §6, and the exit code is 0
+
+#### Pending contract: ANCHOR_QUIET_WHEN_NOTHING_MOVED
+- **Given:** an anchor recorded as above, and no commit, checkout or file edit
+  since
+- **When:** `code-anchor.py --compare` runs
+- **Then:** stdout is exactly the one quiet line of §6, at most
+  `ANCHOR_QUIET_MAX_BYTES` bytes, and nothing else
+
+#### Pending contract: ANCHOR_NAMES_PATHS_WHEN_THE_COMMIT_MOVED
+- **Given:** an anchor, then a new commit that changes `src/a.py` and
+  `docs/graph/nodes/x.md`
+- **When:** `code-anchor.py --compare` runs
+- **Then:** stdout is the moved header of §6 and one repository line naming the
+  old and new short commits and `src/a.py`
+- **And:** no line names `docs/graph/nodes/x.md`, because paths under
+  `docs/graph/` and `.cypress/` are the graph and its state, not code
+
+#### Pending contract: ANCHOR_NAMES_BOTH_BRANCHES_WHEN_THE_BRANCH_MOVED
+- **Given:** an anchor recorded on branch `main`, then a checkout of a branch
+  `topic` whose tip changes `src/b.py`
+- **When:** `code-anchor.py --compare` runs
+- **Then:** the repository line names `main -> topic` and `src/b.py`
+
+#### Pending contract: ANCHOR_NAMES_NEW_UNCOMMITTED_WORK
+- **Given:** an anchor recorded while `src/a.py` carried uncommitted work
+- **When:** `src/a.py` is edited again and `src/c.py` is created, and
+  `code-anchor.py --compare` runs
+- **Then:** the repository line names `src/a.py` and `src/c.py` as uncommitted
+- **And:** given instead that `src/a.py` was committed unchanged since the
+  anchor, no line names it, because its content equals what the graph was
+  reconciled against
+
+#### Pending contract: ANCHOR_ABSENT_FAILS_TOWARD_INCLUSION
+- **Given:** in turn: no `.cypress/anchor.json`; one that is not JSON; one with
+  an unknown `version`; a recorded commit this clone does not have; `git`
+  absent from `PATH`
+- **When:** `code-anchor.py --compare` runs
+- **Then:** stdout is the not-recorded line of §6 with the matching reason (for
+  the missing commit, the repository line of that reason), and the exit code
+  is 0
+- **And:** no file is written
+
+#### Pending contract: ANCHOR_OUTPUT_WITHIN_BUDGET
+- **Given:** an anchor, then a commit that changes 300 code paths
+- **When:** `code-anchor.py --compare` runs
+- **Then:** stdout is at most `ANCHOR_MAX_BYTES` bytes, names at most
+  `ANCHOR_MAX_PATHS` paths, and ends with the more-paths line of §6
+- **And:** `code-anchor.py --compare --all` names all 300
+
+#### Pending contract: ANCHOR_COMPARE_WRITES_NOTHING
+- **Given:** any plant state above
+- **When:** `code-anchor.py --compare` runs
+- **Then:** no file under the plant root is created or modified, and the Git
+  index is byte-identical
+
+#### Pending contract: ANCHOR_RECORD_REFUSES_A_SYMLINK
+- **Given:** `.cypress/anchor.json` is a symlink to a file outside the plant,
+  and in turn `.cypress/` does not exist
+- **When:** `code-anchor.py --record` runs
+- **Then:** the outside file is byte-identical, the symlink is not followed, no
+  `.cypress/` is created, stderr has one line, and the exit code is non-zero
+- **And:** a successful record replaces the anchor atomically: a reader sees
+  the old file or the new one, never a partial one
+
+#### Pending contract: STATUS_HOOK_INJECTS_THE_ANCHOR_LINE
+- **Given:** a plant with `docs/graph/code-anchor.py`, and in turn with and
+  without `docs/graph/status-register.py`
+- **When:** `status-hook.py` runs on `SessionStart`
+- **Then:** `additionalContext` ends with the line `code-anchor.py --compare`
+  prints, after the status summary when there is one, and the hook exits 0
+- **And:** the ledger reset of `STATUS_HOOK_RESETS_LEDGER` is unchanged
+
+#### Pending contract: STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION
+- **Given:** `code-anchor.py` is absent, exits non-zero, prints nothing, or
+  runs past `ANCHOR_TIMEOUT`
+- **When:** `status-hook.py` runs on `SessionStart`
+- **Then:** `additionalContext` carries the not-checked line of §6, and the hook
+  exits 0
+
+#### Pending contract: STATUS_EXTENSION_INJECTS_THE_ANCHOR_LINE
+- **Given:** `integrations/prime-agent/status-extension.ts`, read as text
+- **When:** its source is checked
+- **Then:** on its one injection it runs `docs/graph/code-anchor.py --compare`
+  through `pi.exec` with an argument array, and injects that output, or the
+  not-checked line when the call fails, whether or not a status register exists
+- **Note:** structural, as every Prime Agent contract here; it proves the
+  source, not what the host runs
+
+#### Pending amendment: BRIEF_TEMPLATES_BYTE_IDENTICAL
+Owner rule R5 of the 7.32.0 plan puts two sentences into step 4 of the
+canonical `GRAPH DISCIPLINE` block, so the template cannot stay identical to
+its 7.27.0 baseline. In the commit that lands those sentences, the contract's
+baseline revision becomes that commit, and §10 records its SHA. The seed-lint
+identity check across the five embedding templates is unchanged.
+
+#### Pending failure: ANCHOR_UNUSABLE
+- **Contracts:** ANCHOR_ABSENT_FAILS_TOWARD_INCLUSION
+- **Trigger:** the anchor is missing, not JSON, of another version, or refused
+  by the persistence rules
+- **Response:** the not-recorded line, exit 0
+- **Side effects:** none
+- **Recovery:** the next canonize records a new anchor
+
+#### Pending failure: ANCHOR_COMMIT_UNREACHABLE
+- **Contracts:** ANCHOR_ABSENT_FAILS_TOWARD_INCLUSION
+- **Trigger:** a recorded commit is not in this clone (a shallow clone, a
+  rewritten branch, a fresh clone of a fork)
+- **Response:** that repository's line says its code facts are unverified
+- **Side effects:** none
+- **Recovery:** fetch the commit, or let the next canonize re-anchor
+
+#### Pending failure: ANCHOR_CHECK_DID_NOT_RUN
+- **Contracts:** STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION,
+  STATUS_EXTENSION_INJECTS_THE_ANCHOR_LINE
+- **Trigger:** the tool is missing, fails or times out
+- **Response:** the not-checked line; the session is never blocked
+- **Side effects:** none
+- **Recovery:** re-install or graft, which places the tool
+
+#### Pending data shapes (§6 on promotion)
+
+```yaml
+anchor_file:                       # <ROOT>/.cypress/anchor.json, written only by --record
+  required: [version, recorded_at, repositories]
+  additional_keys: forbidden
+  fields:
+    version:      { type: integer, const: 1 }
+    recorded_at:  { type: string, format: iso8601_utc }
+    repositories:
+      type: array
+      of:
+        path:            { type: string }        # relative to ROOT; "." is the plant root
+        branch:          { type: [string, null] } # null when HEAD is detached
+        commit:          { type: string, pattern: '^[0-9a-f]{40}$' }
+        dirty:           { type: object, of: { path: git blob hash, or "deleted" } }
+        dirty_overflow:  { type: boolean }        # more than ANCHOR_DIRTY_MAX paths; compare treats every path as moved
+  file: written 0644, atomically, never through a symlink; `.cypress/` is never created
+```
+
+Governed repositories are the plant root, when it is a Git work tree, plus each
+distinct `repo:` value in node frontmatter under `docs/graph/` that resolves,
+inside the plant root, to a directory holding `.git`. `--record` finds them;
+`--compare` reads the list from the anchor.
+
+A path counts as moved when it is not under `docs/graph/` or `.cypress/` and
+any of these holds: it changed between the recorded commit and `HEAD`; it is
+uncommitted now and was not uncommitted at the anchor; or its current content
+hash differs from the one recorded for it. A path whose current content equals
+its recorded hash has not moved.
+
+| Constant | Value | Holds |
+|---|---|---|
+| `ANCHOR_QUIET_MAX_BYTES` | 160 | the quiet line |
+| `ANCHOR_MAX_PATHS` | 20 | paths named before the more-paths line |
+| `ANCHOR_MAX_BYTES` | 2048 | the whole `--compare` output |
+| `ANCHOR_DIRTY_MAX` | 256 | uncommitted paths recorded per repository |
+| `ANCHOR_TIMEOUT` | 15 s | the hook's wait for the tool; each Git call inside the tool waits at most 10 s |
+
+Exact texts (`<n>`, `<reason>` and the bracketed parts are filled in):
+
+```text
+quiet:         Code anchor: no code changed since the last canonize (repositories: <n>). The graph's facts about code are current.
+moved header:  Code anchor: code changed since the last canonize. Facts about the paths below may be stale; check them against the code. Every other fact stands as the graph states it.
+repo line:     - <repo>: <commit <old7>..<new7> | branch <old> -> <new> | uncommitted>: <path>, <path>, ...
+more-paths:    - and <k> more path(s): python3 docs/graph/code-anchor.py --compare --all
+not recorded:  Code anchor: not recorded (<reason>). Facts about code in the graph are unverified until the next canonize records one; settled facts stay settled.
+not checked:   Code anchor: not checked this session (the comparison did not run). Facts about code in the graph are unverified.
+record line:   Code anchor recorded <UTC>: <repo> <branch>@<sha7> (<k> uncommitted); ...
+```
+
+The entry line of the `--plan` grammar becomes
+`  <node id>  <path relative to the plant root>  <rest as before>`.
+
 ## 5. Non-functional requirements
 
 - **Compatibility:** `route-hook.py` and `status-hook.py` stay stdlib
@@ -1600,3 +1828,12 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
   `[redacted]`; no sentence was reworded or deleted. The original text remains
   at tag v7.28.0 and in history. History was not rewritten, and published tags
   and Releases keep it.
+- 2026-09-28: 7.32.0 harvest, written ahead of its RED tests. §4 gains a block
+  of pending amendments: the code-anchor line at session start
+  ([ADR-0018](../decisions/adr-0018-code-fact-freshness-anchor.md): twelve
+  anchor and hook contracts, three failure modes, the anchor file's shape, its
+  constants and exact texts), the path column of the router's entry line (two
+  contracts), and a pending amendment to BRIEF_TEMPLATES_BYTE_IDENTICAL's
+  baseline for owner rule R5. They are headed so that `spec-lint.py` counts
+  none of them; each moves into §4 or §7 in the commit that lands its RED
+  (`verify.status-evidence`), with its §10 row. No live contract changed.
