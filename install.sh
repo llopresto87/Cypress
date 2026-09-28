@@ -547,6 +547,42 @@ HEADER
     warn "    docs/graph/plans/adopted-instructions.md"
 }
 
+# earlier_seed_kernel FILE
+# Succeeds when FILE holds, byte for byte, `core/AGENTS.md` as it stood at a
+# commit of the seed checkout this installer runs from. The callers ask only
+# after the body differed from the CURRENT kernel, so a success means an
+# earlier seed kernel: a body the seed wrote and the plant never edited.
+# Replacing it is a fast-forward, not a migration, and filing it for
+# docs-librarian put work in front of the librarian that was always empty.
+# The history is read once per run. A shallow checkout holds fewer revisions
+# and so matches fewer bodies; that errs toward filing, never toward a lost
+# instruction. With no history (the seed root is not itself a Git work tree,
+# or `git` is not on PATH) nothing matches, as before 7.32.0, and the log says
+# so once per run. The work-tree test compares the top level with the seed
+# root, so a seed copy nested inside some other repository does not read that
+# repository's history.
+SEED_KERNEL_HISTORY=""   # "", then "git" or "none" once read
+SEED_KERNEL_BLOBS=""     # one blob id per line, every revision of core/AGENTS.md
+earlier_seed_kernel() {
+    local f="$1" top blob
+    if [[ -z "$SEED_KERNEL_HISTORY" ]]; then
+        SEED_KERNEL_HISTORY="none"
+        if command -v git >/dev/null 2>&1 \
+            && top="$(git -C "$SEED_ROOT" rev-parse --show-toplevel 2>/dev/null)" \
+            && [[ "$(cd "$top" && pwd -P)" == "$(cd "$SEED_ROOT" && pwd -P)" ]]; then
+            SEED_KERNEL_HISTORY="git"
+            SEED_KERNEL_BLOBS="$(git -C "$SEED_ROOT" log --format='%H:core/AGENTS.md' -- core/AGENTS.md 2>/dev/null \
+                | git -C "$SEED_ROOT" cat-file --batch-check='%(objectname)' 2>/dev/null \
+                | grep -E '^[0-9a-f]{40,64}$')" || true
+        else
+            log "kernel: the seed checkout's history is unavailable (not a Git work tree, or no git on PATH); comparing with the current seed kernel only"
+        fi
+    fi
+    [[ "$SEED_KERNEL_HISTORY" == "git" && -n "$SEED_KERNEL_BLOBS" ]] || return 1
+    blob="$(git -C "$SEED_ROOT" hash-object --stdin < "$f" 2>/dev/null)" || return 1
+    grep -qxF -- "$blob" <<<"$SEED_KERNEL_BLOBS"
+}
+
 # sweep_orphaned_instruction_backups
 # A kernel backup with no ledger entry is a project's own instructions, on
 # disk, with nothing anywhere saying they exist. It happened once for a real
@@ -569,6 +605,8 @@ sweep_orphaned_instruction_backups() {
         [[ "$f" =~ \.bak-[0-9]{8}-[0-9]{6}$ ]] || continue
         # A backup of the seed kernel itself carries nothing the plant wrote.
         cmp -s "$SEED_ROOT/core/AGENTS.md" "$f" && continue
+        # Nor does a backup of an earlier seed kernel.
+        earlier_seed_kernel "$f" && continue
         local kernel="${f%%.bak-*}"
         record_instruction_migration "$kernel" "$f"
     done
@@ -655,6 +693,12 @@ place_kernel() {
             cmp -s "$seed_kernel" "$realfile" 2>/dev/null || deviated=1
         fi
     fi
+    # A body that differs only by being an EARLIER seed kernel carries nothing
+    # the plant wrote: it is fast-forwarded with its backup, and not filed.
+    local earlier=0
+    if [[ $deviated -eq 1 ]] && earlier_seed_kernel "$realfile"; then
+        deviated=0; earlier=1
+    fi
     place_file "$seed_kernel" "$realfile"
     # This announcement deliberately IGNORES --force, and it is the one place
     # that should. --force silences backup CHATTER ("backed up existing X"),
@@ -671,6 +715,8 @@ place_kernel() {
         warn "  previous body: $_bak"
         warn "  any recorded deviation on the kernel body is NOT in the new body."
         record_instruction_migration "$realfile" "$_bak"
+    elif [[ $earlier -eq 1 ]]; then
+        log "kernel: $(basename "$realfile") held an earlier seed kernel; fast-forwarded, previous body in $(ls -1dt "$realfile".bak-* 2>/dev/null | head -1)"
     fi
     log "kernel: $(basename "$realfile") is current with the seed kernel"
 
@@ -697,7 +743,11 @@ place_kernel() {
         # was recorded as migration work. The second survived as a .bak and
         # vanished from the ledger — the precise failure this feature exists to
         # prevent, for exactly one of the two files.
-        record_instruction_migration "$other" "$bak2"
+        if earlier_seed_kernel "$bak2"; then
+            log "kernel: $(basename "$other") held an earlier seed kernel; fast-forwarded, previous body in $bak2"
+        else
+            record_instruction_migration "$other" "$bak2"
+        fi
     fi
     rm -f "$other"
     if ln -s "$(basename "$realfile")" "$other" 2>/dev/null; then
@@ -1383,12 +1433,16 @@ install_github_copilot() {
     # place_kernel. The sweep did not reach it either (it globs the repo root),
     # so it was a permanent gap rather than a race something later closes.
     local _cop="$PROJECT_DIR/.github/copilot-instructions.md" _cop_had=0
+    # An earlier seed kernel there (_cop_had=2) is a fast-forward, not work.
     [[ -f "$_cop" && ! -L "$_cop" ]] && ! cmp -s "$SEED_ROOT/core/AGENTS.md" "$_cop" \
         && _cop_had=1
+    [[ $_cop_had -eq 1 ]] && earlier_seed_kernel "$_cop" && _cop_had=2
     place_file "$SEED_ROOT/core/AGENTS.md" "$_cop"
     if [[ $_cop_had -eq 1 ]]; then
         record_instruction_migration "$_cop" \
             "$(ls -1dt "$_cop".bak-* 2>/dev/null | head -1)"
+    elif [[ $_cop_had -eq 2 ]]; then
+        log "kernel: .github/copilot-instructions.md held an earlier seed kernel; fast-forwarded, previous body in $(ls -1dt "$_cop".bak-* 2>/dev/null | head -1)"
     fi
     place_kernel "$PROJECT_DIR/AGENTS.md"   # NOT raw place_file: the kernel
     # may already be the CLAUDE.md-shared file; bypassing place_kernel made
@@ -2052,11 +2106,17 @@ preflight_destinations() {
 # report_recreated_nodes — D2 SILENT RESTORE, the announcement half. See
 # place_file and place_graph_machinery for how RECREATED_NODES is filled;
 # this is the one place it is read, so the tree is walked exactly once.
+# recreated_nodes_sorted prints this run's re-created nodes, sorted and
+# unique, one per line: the console notice below and the whole list the stamp
+# step writes to .cypress/recreated-nodes.txt read the same list.
+recreated_nodes_sorted() {
+    [[ ${#RECREATED_NODES[@]} -eq 0 ]] && return 0
+    printf '%s\n' "${RECREATED_NODES[@]}" | sort -u
+}
 report_recreated_nodes() {
     [[ ${#RECREATED_NODES[@]} -eq 0 ]] && return 0
     local uniq=()
-    while IFS= read -r rel; do uniq+=("$rel"); done \
-        < <(printf '%s\n' "${RECREATED_NODES[@]}" | sort -u)
+    while IFS= read -r rel; do uniq+=("$rel"); done < <(recreated_nodes_sorted)
     log ""
     log "NOTICE — ${#uniq[@]} seed-owned graph node(s) were RE-CREATED: this plant"
     log "  already carried the seed (.cypress/seed.json predates this run) but was"
@@ -2073,6 +2133,8 @@ report_recreated_nodes() {
         fi
         log "  $rel"
     done
+    # The notice stops at ten; the file holds them all, for graft's gate.
+    log "  The whole list is in .cypress/recreated-nodes.txt."
 }
 
 # --check: verify generated views are in sync, write nothing. Only the
@@ -2224,6 +2286,7 @@ write_seed_stamp() {
     # not retract the other four, forget where the plant came from, or reset the
     # owner's corpus decisions to `undecided`. Every field below is therefore
     # "what this run states, else what the stamp already held".
+    local now; now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     local prev prev_from prev_tools prev_corpus prev_juris
     prev="$(stamp_field "$stamp" version)"
     prev_from="$(stamp_field "$stamp" installed_from)"
@@ -2318,7 +2381,7 @@ write_seed_stamp() {
         printf '{\n'
         printf '  "seed": "cypress",\n'
         printf '  "version": "%s",\n' "$version"
-        printf '  "installed_at": "%s",\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        printf '  "installed_at": "%s",\n' "$now"
         [[ -n "$from" ]] && printf '  "installed_from": "%s",\n' "$from"
         printf '  "tools": "%s",\n' "${tools[*]}"
         printf '  "legal_corpus": "%s",\n' "$corpus"
@@ -2342,6 +2405,15 @@ write_seed_stamp() {
     # adapter. Rendering to scratch first makes the transition all-or-nothing.
     place_state "$tmp" "$stamp"
     log "  .cypress/seed.json     (seed stamp: cypress $version — commit it)"
+    # The whole list of this run's re-created nodes, written by every run that
+    # writes the stamp, so it always describes that run: a run that re-created
+    # nothing leaves the header alone. The console notice stops at ten paths;
+    # graft's re-created-nodes gate reads this file. It is derived state like
+    # the stamp, so it goes through place_state (no backup); the process
+    # substitution is its source, so no staged copy is written by hand.
+    place_state <(printf '# install.sh %s %s: seed-owned graph nodes re-created by this run\n' \
+                         "$version" "$now"; recreated_nodes_sorted) \
+                "$PROJECT_DIR/.cypress/recreated-nodes.txt"
 }
 write_seed_stamp
 
