@@ -14,15 +14,16 @@ Placed in a plant as `docs/graph/code-anchor.py` and run from the plant root:
     python3 docs/graph/code-anchor.py --compare         # session start: one short report
     python3 docs/graph/code-anchor.py --compare --all   # every moved path, no budget
 
-Governed repositories are the plant root, when it is a Git work tree, plus
-each distinct `repo:` value in node frontmatter under `docs/graph/` that
-resolves, inside the plant root, to a directory holding `.git`. `--record`
-finds them and stores, per repository, the branch, the commit and each
-uncommitted code path with its Git blob hash in `.cypress/anchor.json`.
-`--compare` reads the list from the anchor and names the paths that moved:
-changed between the recorded commit and HEAD, uncommitted now and not at the
-anchor, or holding content other than the recorded hash. A path whose content
-equals its recorded hash has not moved.
+Governed repositories are the plant root, when it is a Git work tree, plus each
+distinct `repo:` value in node frontmatter under `docs/graph/` that resolves,
+inside the plant root, to a directory holding `.git`, as read by the one
+frontmatter reader, `frontmatter.py` beside this file (the installer places
+both in `docs/graph/`). `--record` finds them and stores, per repository, the
+branch, the commit and each uncommitted code path with its Git blob hash in
+`.cypress/anchor.json`. `--compare` reads the list from the anchor and names
+the paths that moved: changed between the recorded commit and HEAD, uncommitted
+now and not at the anchor, or holding content other than the recorded hash. A
+path whose content equals its recorded hash has not moved.
 
 Every doubt resolves toward checking the code. `--compare` always exits 0: an
 anchor that is missing, unreadable or of another version, or no `git` on
@@ -48,6 +49,11 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+import importlib.util as _ilu
+_fm_spec = _ilu.spec_from_file_location(
+    "cypress_frontmatter", Path(__file__).resolve().parent / "frontmatter.py")
+_frontmatter = _ilu.module_from_spec(_fm_spec)
+_fm_spec.loader.exec_module(_frontmatter)
 
 # --- constants and texts (SPEC-0003 §6): this file is their one home. ---
 # ANCHOR_TIMEOUT and the not-checked line are the callers': the hooks print
@@ -79,7 +85,6 @@ DELETED = "deleted"
 DETACHED = "(detached)"
 TEMP_PREFIX = ".tmp-anchor-"
 SHA1 = re.compile(r"^[0-9a-f]{40}$")
-REPO_VALUE = re.compile(r"^repo:[ \t]*(.*?)[ \t]*$")
 ISO_UTC = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?(Z|\+00:00)$")
 
 # Every anchor file call is relative to a descriptor on `.cypress/`. A platform
@@ -197,25 +202,19 @@ def content_state(repo: Path, path: str):
 
 # --- governed repositories ---------------------------------------------------
 def repo_values(graph: Path):
-    """Each `repo:` value in the frontmatter of a node under `graph`."""
+    """Each string `repo:` value the one frontmatter reader returns for a node
+    under `graph`. A node it refuses, or an unreadable file, is skipped."""
     for dirpath, dirnames, filenames in os.walk(graph):
         for name in filenames:
             if not name.endswith(".md"):
                 continue
             try:
-                with open(os.path.join(dirpath, name), encoding="utf-8", errors="replace") as f:
-                    if f.readline().rstrip("\r\n") != "---":
-                        continue
-                    for line in f:
-                        line = line.rstrip("\r\n")
-                        if line == "---":
-                            break
-                        m = REPO_VALUE.match(line)
-                        value = m.group(1).split(" #", 1)[0].strip().strip("'\"") if m else ""
-                        if value:
-                            yield value
-            except OSError:
+                meta, _ = _frontmatter.parse_file(os.path.join(dirpath, name))
+            except (OSError, _frontmatter.FrontmatterError):
                 continue
+            value = meta.get("repo")
+            if isinstance(value, str) and value:
+                yield value
 
 
 def governed_repositories(root: Path) -> list:

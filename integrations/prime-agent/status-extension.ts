@@ -51,7 +51,7 @@ async function codeAnchor(pi: ExtensionAPI, cwd: string): Promise<string> {
     const a = await pi.exec(
       "python3",
       [anchor.tool, "--compare"],
-      { timeout: 15_000, cwd: anchor.root },
+      { timeout: 5_000, cwd: anchor.root },
     );
     const line = (a.stdout || "").trim();
     if (a.code !== 0 || !line) return ANCHOR_NOT_CHECKED;

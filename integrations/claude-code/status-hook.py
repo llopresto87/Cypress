@@ -40,7 +40,7 @@ from pathlib import Path
 
 CANDIDATES = (Path("docs") / "graph" / "status-register.py", Path("tools") / "status-register.py")
 ANCHOR_CANDIDATES = (Path("docs") / "graph" / "code-anchor.py",)
-ANCHOR_TIMEOUT = 15                               # s; the hook's wait for code-anchor.py (SPEC-0003 §6)
+ANCHOR_TIMEOUT = 5                                # s; the hook's wait for code-anchor.py (SPEC-0003 §6)
 ANCHOR_NOT_CHECKED = ("Code anchor: not checked this session (the comparison did not run). "
                       "Facts about code in the graph are unverified.")
 

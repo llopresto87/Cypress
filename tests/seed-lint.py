@@ -3408,7 +3408,7 @@ def check() -> None:
         # it byte-identical (the deliberate runtime-brief exception)
         # SPEC-0003 BRIEF_TEMPLATES_BYTE_IDENTICAL (I-2): spawned workers see
         # exactly what they saw before. This identity check is its gate half;
-        # the other half is the verify record `git diff --quiet ac61a3f --
+        # the other half is the verify record `git diff --quiet 9ba5b4b --
         # templates/prompts/graph-session-bootstrap.md
         # templates/prompts/handback-payload.md` (SPEC-0003 §10).
         m = re.search(r"```\n(GRAPH DISCIPLINE.*?)```", canonical.read_text(encoding="utf-8"), re.DOTALL)
