@@ -72,6 +72,9 @@ COVERED = {
     # step 2 and the pending phrases, each planted by the case_ce_* cases.
     "check_adopted_rule_homes", "check_handback_fields",
     "check_bootstrap_step2", "check_adopted_rules_not_pending",
+    # SPEC-0005: the kernel's §3.2 session-record pointer and the form
+    # directory, planted by case_ce_kernel_session_record_pointer.
+    "check_kernel_points_at_the_session_record",
 }
 
 
