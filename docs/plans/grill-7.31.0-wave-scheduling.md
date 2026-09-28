@@ -293,248 +293,29 @@ A ruling pass with nothing to rule is recorded `no questions` and skipped, and n
 
 **Questions.** An implementer that finds a test wrong writes a question and does not edit the test. A writer whose text would push a non-member leaf past 170 body lines, or a new `load_when` phrase that collides in `tests/fixtures/router/stem-collisions.json`, stops and writes a question; the fixture is never edited to fit.
 
-### Increment 1 — RED: the wave report
-- Spec contracts: SPEC-0005/GRILL_WAVES_LEVELS_FROM_DEPENDS_ON, SPEC-0005/GRILL_WAVES_OVERLAP_IS_A_WARNING, SPEC-0005/GRILL_WAVES_UNSCHEDULED_WITHOUT_PHASE, SPEC-0005/GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT, SPEC-0005/GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED
-- Files touched: `tests/test-grill-lint.sh` (new wave cases; the existing plan cases also run with `--waves` and compare exit status and plain lines), new helpers under `tests/fixtures/grill/` (the scheduled fixture plan of SPEC-0005 §6 "Wave report"; the golden plain output of the fixture plan), `tools/gate-registry.py` (R0.5: the one `test-grill-lint.sh` entry, :97-100, says the step also reads the frozen `docs/plans/grill-7.30.0-cycle-economy.md`; nothing else in the file)
-- Tests to write (RED): the §10 rows X361–X379 plus the duplicate-number case (R0.13) and the plain-lines-and-no-traceback clause (R0.7), each carrying its invariant label; the golden plain output, captured from the unmodified tool (a guard, green on arrival); the 7.30.0-plan case, which reads `docs/plans/grill-7.30.0-cycle-economy.md` under `--plan … --warn`. ~~Every new case runs after every existing case and before the final SKIP case (case 13)~~ (R0.3:) the wave cases run in one collecting block after every existing case, case 13 included. Each case checks its own conditions without relying on `set -e`, prints `FAIL <label>: <why>`, and the block exits 1 after its last case if any failed
-- Behavior added: none (tests only)
-- Gate: ~~`bash tests/test-grill-lint.sh` runs every existing case green and stops at the first new wave case~~ (R0.3:) `bash tests/test-grill-lint.sh` runs every existing case green, then the collecting block prints one `FAIL <label>` line per non-guard wave case, each on the missing report line and none on a traceback (the unmodified tool ignores an unknown flag), and exits 1; every guard passes; `python3 tools/gate-registry.py --summary` still classifies every step
-- Rollback path: drop the new cases and helpers
-- Effort: medium
-- Phase: RED
-- Depends on: none
-
-### Increment 2 — RED: the rule home of `delegation.waves`
-- Spec contracts: SPEC-0005/ADOPTED_RULE_HOMES
-- Files touched: `tests/seed-lint.py` (one entry in `ADOPTED_RULE_HOMES`: `"delegation.waves": "core/method/delegation-sequencing.md"`, and nothing else)
-- Tests to write (RED): no new case. The entry is the assertion, and the existing generic cases X347 and X348 hold the check itself. Observed red: `python3 tests/seed-lint.py` reports `delegation.waves: not owned by core/method/delegation-sequencing.md`
-- Behavior added: none
-- Gate: seed-lint's only new finding is that line, compared with a baseline run on a scratch copy of the file (copy and `diff`; never `git stash`). (R0.4:) while the entry is carried, `tests/test-seed-lint.sh` fails its clean-copy baseline and runs no case. Each tip records the baseline line as expected-red and the rest of that script as `not run`, in words, until increment 6 commits
-- Rollback path: drop the entry
-- Effort: low
-- Phase: RED
-- Depends on: none
-
-### Increment 3 — Prose: the ruling gate narrowed, and the tip's expected-red pointer
-- Spec contracts: none — doctrine accepted by review (SPEC-0005 AC-19, which product amends at step 3, and product's new readiness-and-carry criterion)
-- Files touched: `core/method/delegation-cycle-economy.md`: the ruling-pass paragraph of `delegation.question-file` becomes SPEC-0005 §6's "Ruling pass." text as re-ruled at ruling pass 0: one pass per cycle, after the clean GREEN wave, over every flag of the cycle; it rules on held increments only, by pointer to `delegation.waves` in the sequencing leaf. The `delegation.tip-cadence` paragraph gains the pointer clause of SPEC-0005 §6: the tip once per cycle after its GREEN wave, expected-red, and `not run`; `est_tokens` re-measured. No `owns:` change and no new `load_when`
-- Tests to write (RED): none — prose increment
-- Behavior added: the ruling pass stops holding clean work; it rules once per cycle on what was flagged
-- Gate: `python3 tests/seed-lint.py` (leaf ceiling: the body stays at or under 170 lines; prevents overlap); `python3 tools/prose-lint.py --file core/method/delegation-cycle-economy.md` against its baseline count
-- Rollback path: revert
-- Effort: medium-low
-- Phase: prose
-- Depends on: none
-
-### Increment 4 — Prose: pointers in the test-first cycle and the orchestrator's charter
-- Spec contracts: none — accepted by review (product's readiness-and-carry criterion: `protocol.test-first`'s cycle points at `delegation.waves`)
-- Files touched: `protocols/test-first.md` (`test-first.cycle`, the early-RED clause at :89-92 gains a pointer to `delegation.waves` in the sequencing leaf; an `OVERSIZED_LEAVES` member, so the clause is rewrapped within its paragraph and the body does not grow past `MACHINERY_BODY_CEILING`), `agents/00-orchestrator.md` (:261-274: one sentence saying work runs in cycles, a RED wave then a clean GREEN wave, holds are per increment, and early REDs are carried as expected-red at the tip, by pointer to `delegation.waves`; the words "the architect's ruling pass at each batch boundary" at :272 become "the architect's one ruling pass per cycle"), `agents/01-architect.md` (:194-199: "At a batch boundary, one ruling pass over the batch's question file" becomes "Once per cycle, after its clean GREEN wave, one ruling pass over every flag the cycle raised (`delegation.question-file`, `delegation.waves`)")
-- Tests to write (RED): none — prose increment
-- Behavior added: the two places a session reads its dispatch order point at the rule
-- Gate: `python3 tests/seed-lint.py` (machinery body ceiling, stale pointers); `python3 tools/prose-lint.py --file <each file>` against its baseline count
-- Rollback path: revert
-- Effort: low
-- Phase: prose
-- Depends on: none
-
-### Increment 5 — GREEN: `--waves` in grill-lint
-- Spec contracts: SPEC-0005/GRILL_WAVES_LEVELS_FROM_DEPENDS_ON, SPEC-0005/GRILL_WAVES_OVERLAP_IS_A_WARNING, SPEC-0005/GRILL_WAVES_UNSCHEDULED_WITHOUT_PHASE, SPEC-0005/GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT, SPEC-0005/GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED
-- Files touched: `templates/knowledge-graph/grill-lint.py` (the module docstring's usage and check list; a wave-report function beside the `--list` printer; `main()` reads `--waves` the way it reads the other flags; the dependency loop notes whether it found a dependency defect; no existing check or message changes)
-- Tests to write (RED): none new; increment 1's cases
-- Behavior added: SPEC-0005 §6 "Wave report": the header, wave lines, phase and overlap warnings, path tokens and same-file rule; the exit status is always the plain lint's
-- Structure: ~~one function, the report, whose one responsibility is turning §9's parsed increments into waves and warnings. It reuses `increments()` and `fields()` and adds no abstraction~~ (R2.8, as built and reviewed:) three functions, each with one responsibility: `path_pieces` (a `Files touched:` value into path tokens, braces expanded), `shared_file` (the same-file rule, returning the path to print) and `wave_report` (levels and warnings, returning lines only, never an exit status). They reuse `increments()` and `fields()` and add no abstraction
-- GREEN constraints: overlap matching goes through `fnmatch.fnmatchcase`; no `Files touched:` token is opened, resolved or stat'ed; without `--waves` the code path prints exactly what it prints today
-- Gate: `bash tests/test-grill-lint.sh`; cross-cutting: `python3 tests/seed-lint.py`, `bash tests/test-full-install.sh` (the installed `docs/graph/grill-lint.py` copy); the RED hash re-check before the commit
-- Rollback path: revert; increment 1's cases go red again
-- Effort: medium
-- Phase: GREEN
-- Depends on: increment 1
-
-### Increment 6 — Prose: the home of `delegation.waves`
-- Spec contracts: SPEC-0005/ADOPTED_RULE_HOMES (increment 2's entry turns green); the rule's text is doctrine accepted by review (SPEC-0005 AC-14 as product amends it, and product's readiness-and-carry criterion)
-- Files touched: `core/method/delegation-sequencing.md`: a new `##` section after "Lanes", headed "Waves: RED ahead of GREEN" with the key `delegation.waves` in the heading, stating every row of SPEC-0005 §6 "Waves" and naming `grill-lint.py --waves` as where the session reads the schedule; frontmatter: `owns` gains `delegation.waves`, `title` gains "waves", one new `load_when` entry on RED waves ahead of GREEN (the representative phrase stays verbatim), `est_tokens` re-measured. (S3:) In the "Lanes" section (`delegation.lanes`), one short paragraph states §6 row S3: on a shared tree a worker runs no command that moves other writers' uncommitted files (`git stash`, `checkout`, `restore`, `reset`); for a baseline it copies the file or reads `git show HEAD:<path>`; the orchestrator commits each lane by pathspec. No `owns:` change for it
-- Tests to write (RED): none new; increment 2's entry (the S3 paragraph is doctrine accepted by review)
-- Behavior added: the rule has its one home
-- Gate: `python3 tests/seed-lint.py` with no `delegation.waves` finding (plus the leaf ceiling and prevents overlap); `python3 -m unittest tests.test_router_reach tests.test_graph_lint` (the delegation routing cases; a stem collision is a question, not a fixture edit); `python3 tools/prose-lint.py --file core/method/delegation-sequencing.md`; the RED hash re-check before the commit
-- Rollback path: revert with increment 2's entry
-- Effort: medium
-- Phase: prose
-- Depends on: increment 2
-
-### Increment 10 — RED: the session-record rule homes and the kernel pointer
-- Spec contracts: SPEC-0005/ADOPTED_RULE_HOMES, SPEC-0005/KERNEL_POINTS_AT_THE_SESSION_RECORD
-- Files touched: `tests/seed-lint.py`: two `ADOPTED_RULE_HOMES` entries, `"stewardship-posture.session-record": "core/method/stewardship-posture.md"` and `"canonize.session-record": "protocols/canonize.md"`; and the kernel check of SPEC-0005 §4 `KERNEL_POINTS_AT_THE_SESSION_RECORD`, beside the §3.1–§3.8 heading check (:3327-3329). The check takes the §3.2 block from its `### 3.2 ` heading to the next `### ` heading. It fails when the block lacks either literal, or when `templates/docs/plans/sessions/` holds no file. Each failure line names `core/AGENTS.md §3.2` or `templates/docs/plans/sessions/`. `tests/test-seed-lint.sh`: one planted-violation case with an invariant label. It removes the sentence from a copy's kernel and expects the §3.2 line. It then moves the sentence from §3.2 to §5 in a copy and expects the same line, which kills a check that reads the whole kernel. Last, it empties a copy's `templates/docs/plans/sessions/` and expects the other line. `tests/check-coverage-binder.py`: one `COVERED` entry for the kernel check (session lane decision on Q0.11; an inline assertion would break the shrink-only `INLINE_ASSERTION_DEBT`)
-- Tests to write (RED): the two entries and the check. Observed red: `python3 tests/seed-lint.py` reports `stewardship-posture.session-record: not owned by core/method/stewardship-posture.md …`, `canonize.session-record: not owned by protocols/canonize.md …`, and the kernel check's two lines (§3.2 lacks the path; `templates/docs/plans/sessions/` holds no form). The planted-violation case is `not run` while `tests/test-seed-lint.sh`'s baseline is red (R0.4, R0.12), and it is green once its baseline passes
-- Behavior added: none (tests only)
-- Gate: seed-lint's only new findings are those four lines beside increment 2's one line, compared with a baseline run on a scratch copy (copy and `diff`; never `git stash`); `python3 tools/gate-registry.py --summary` still classifies every step
-- Rollback path: drop the two entries, the check and the case
-- Effort: medium-low
-- Phase: RED
-- Depends on: none
-
-### Increment 11 — RED: every plant receives the session-record form, and keeps its records
-- Spec contracts: SPEC-0001/SESSION_RECORD_FORM_IS_PLACED
-- Files touched: `tests/test-plant-state.sh`: one new case, `case_session_records`, called after every existing case, so a red stops nothing after it. It builds its own `mktemp -d` target. The comment at :201-202 ("ships an empty grill.md scaffold into plans/ and nothing else") becomes true again: it names the session-record form as the second leaf
-- Tests to write (RED): the case, with an invariant label. A fresh `install.sh claude-code --project-dir <t>` must hold `docs/graph/plans/sessions/_session-record.template.md`, byte-identical to the seed's `templates/docs/plans/sessions/_session-record.template.md`. The case then writes a plant record `docs/graph/plans/sessions/2026-01-01-example.md` (synthetic text) and edits the placed form, re-installs with `install.sh all`, and requires both files byte-identical and no `.bak-*` beside either. Observed red: the first assertion, because the form does not exist
-- Behavior added: none (tests only)
-- Gate: `bash tests/test-plant-state.sh` runs every existing case green and fails only on the new case's label
-- Rollback path: drop the case and restore the comment
-- Effort: low
-- Phase: RED
-- Depends on: none
-
-### Increment 19 — RED: growth-audit reads the session-record form as a form
-- Spec contracts: SPEC-0005/SESSION_RECORD_FORM_IS_NOT_A_SCAFFOLD
-- Files touched: `tests/test-growth-audit.sh`: one new scenario with an invariant label, after every existing one, in its own installed target; `tools/gate-registry.py` only if the step's "Reads" line becomes false (the R0.5 precedent)
-- Tests to write (RED): an installed plant whose coverage record claims `plans/` ABSENT with a reason, whose `plans/` holds the placed `sessions/_session-record.template.md` and whose `grill.md` scaffold is renamed `.unfilled.md`: growth-audit prints no CONTRADICTED line naming the form. And in the same run a non-underscore leaf byte-identical to its seed scaffold in an ABSENT collection is still named. Observed red: the CONTRADICTED line for `_session-record.template.md`. The four scenarios already red at the cycle-1 tip (scn_absent, scn_nostaff, scn_x34, scn_x41) are the same defect and are not edited
-- Behavior added: none (tests only)
-- Gate: `bash tests/test-growth-audit.sh` fails only on the new label and the four known scenarios
-- Rollback path: drop the scenario
-- Effort: low
-- Phase: RED
-- Depends on: none
-
-### Increment 20 — GREEN: growth-audit skips the underscore forms, as graft-audit does
-- Spec contracts: SPEC-0005/SESSION_RECORD_FORM_IS_NOT_A_SCAFFOLD
-- Files touched: `tools/growth-audit.py`: `collection_leaves` (:551-563) skips a leaf whose name starts with `_` or ends in `.template.md`, the exclusion `tools/graft-audit.py` uses (:380, :603); nothing else
-- Tests to write (RED): none new; increment 19
-- Behavior added: R2.1; ADR-0013's placement claim holds for growth-audit
-- Gate: `bash tests/test-growth-audit.sh` all green (the new scenario and the four); `python3 tests/seed-lint.py`; the RED hash re-check before the commit
-- Rollback path: revert; increment 19 and the four scenarios go red again
-- Effort: low
-- Phase: GREEN
-- Depends on: increment 19
-
-### Increment 21 — Prose: grill-lint's docstring points at the rule, not the seed's spec
-- Spec contracts: none — a comment in a shipped file, accepted by review (R2.4 (b))
-- Files touched: `templates/knowledge-graph/grill-lint.py` :42 only: "(SPEC-0005 §6 "Wave report")" becomes "(`delegation.waves`, `docs/graph/method/delegation-sequencing.md`)", because the file ships to plants, where a bare SPEC slug names the plant's own spec
-- Tests to write (RED): none — no behavior
-- Behavior added: none
-- Gate: `bash tests/test-grill-lint.sh` green (the golden plain output does not include the docstring); `bash tests/test-full-install.sh`; `python3 tests/seed-lint.py`
-- Rollback path: revert
-- Effort: low
-- Phase: prose
-- Depends on: increment 5
-
-### Increment 12 — Prose: the session-record rule, canonize filing it, and the form
-- Spec contracts: SPEC-0005/ADOPTED_RULE_HOMES (increment 10's two entries turn green), SPEC-0001/SESSION_RECORD_FORM_IS_PLACED (increment 11 turns green); the rule's text is doctrine accepted by review against SPEC-0005 §6 "Session record"
-- Files touched: `core/method/stewardship-posture.md` §6: "plus transient resume state" leaves the harness-memory allowance; a new paragraph headed with the key `stewardship-posture.session-record` states SPEC-0005 §6 "Session record" in prose: what counts as a learning, when it is written, who writes it, the path and shape, reading the newest record at session start, and migrating a harness that already holds memories (listed in the record, placed at canonize, deleted only when the owner names the entry, kernel §4). Frontmatter: `owns` gains the key; one new `load_when` on the session record and resuming where the last session stopped; `est_tokens` re-measured; the body stays at or under 170 lines. `protocols/canonize.md`: a "**Session record** (`canonize.session-record`)" paragraph in "What the one brief carries", stated from SPEC-0005 §6 "Session record" (canonize); flow step 1 names the record, and step 4 hands back items placed, items not placed with the reason, and the harness entries that can be retired; the session-owned exception (:59-62) names the session records beside `grill.md` and `changelog.md`, with the librarian's status lines as its one append. Frontmatter: `owns` gains the key; one new `load_when`; `est_tokens` re-measured; `description:` unchanged. `templates/docs/plans/sessions/_session-record.template.md` (new): the form of SPEC-0005 §6 "Session record", with bare-angle placeholders and a leading comment naming its home, `Lives at:` path and writer, and no frontmatter `status:`. `documentation/protocols-reference.md`: the canonize row (:38) and section (:940-951), only what `check_protocol_reference` needs. (R2.5, the cycle-2 re-issue, written and reviewed in cycle 1 otherwise:) `protocols/canonize.md` :256, the orphaned "It" at a line end, and flow step 1 (:205-207), an over-long line; nothing else
-- Tests to write (RED): none new; increments 10 and 11
-- Behavior added: the rule has its home, canonize reads the record, and every plant receives the form
-- Gate: `python3 tests/seed-lint.py` with no finding for either key, leaf ceiling and protocol-reference clean (increment 10's kernel lines stay red until 13, and are expected); `bash tests/test-plant-state.sh` green; `bash tests/test-graft-tools.sh` and `bash tests/test-growth-audit.sh` green (the form is neither an unfilled scaffold nor a new collection row); `bash tests/test-tier-lanes.sh` green; `python3 -m unittest tests.test_router_reach tests.test_graph_lint` (a stem collision is a question, not a fixture edit); `python3 tools/prose-lint.py --file <each file>` against its baseline count; the RED hash re-check before the commit
-- Rollback path: revert, together with increments 10 and 11
-- Effort: medium
-- Phase: prose
-- Depends on: increment 10, increment 11, increment 20
-
-### Increment 13 — Prose: the kernel sentence, the eager figures, and the Prime Agent overlay
-- Spec contracts: SPEC-0005/KERNEL_POINTS_AT_THE_SESSION_RECORD (increment 10's kernel lines turn green); the overlay text is doctrine accepted by review
-- Files touched: `core/AGENTS.md`: after §3.2's last line (":96 `skill.knowledge-graph`."), the sentence of §6 M2, verbatim, and nothing else. `wc -c` is taken before and after: 7,752 before, 7,931 after, and never over 8,000. `integrations/prime-agent/APPEND_SYSTEM.md` :120-125: the "cross-session OPERATING lesson" bullet sends an owner rule, a corrected assumption and where paused work stands to the plant's session record (`method.stewardship-posture`), which canonize files; the continual harness keeps at most a pointer; nothing outside that bullet changes, and the `## Surfaced nodes` section is untouched. `integrations/prime-agent/README.md` :147-153: the "Close-out" bullet says the same, and "the cross-session memory Claude Code lacks" goes. `README.md` :37 and `documentation/host-capability-matrix.md` :98, :475-479, :498, :500: every eager figure re-derived from `python3 tests/seed-lint.py`'s computation after the two edits above (expected +179 bytes for every harness; Prime Agent also moves by the overlay's own delta). The figures are never computed by hand. (R2.3, the cycle-2 re-issue, the reviewer's Major:) `integrations/prime-agent/README.md` :124-127 keeps the continual harness as a Prime Agent primitive but drops "for cross-session memory" and the claim that Claude Code lacks it, and adds "(operating lessons still go to the plant's session record; see Close-out)"; nothing else. `README.md` of the integration is not an eager term, so no figure moves
-- Tests to write (RED): none new; increment 10's kernel check
-- Behavior added: every session, in every harness, is told where its learnings go; no shipped surface sends a lesson to a harness's own memory
-- Gate: `python3 tests/seed-lint.py` fully clean except findings owned by increments still carried (budget, anchors, eager surface, published figures, the hook and overlay restatement checks); `bash tests/test-seed-budgets.sh`; `bash tests/test-install-kernel-modes.sh`; `bash tests/test-seed-lint.sh` (its baseline passes once 6 and 12 have also committed); `python3 tools/prose-lint.py --file <each file>` against its baseline count; the RED hash re-check before the commit
-- Rollback path: revert; increment 10's kernel lines go red again, and the figures revert with it
-- Effort: medium-low
-- Phase: prose
-- Depends on: increment 10, increment 12
-
-### Increment 14 — Prose: explain before asking the owner, and the seed's no-residue convention
-- Spec contracts: none — doctrine accepted by review (§6 rows S1 and S2)
-- Files touched: `protocols/deliver.md` (`deliver.numbered-decisions` :127-138: ~~two sentences stating §6 row S1~~ (R2.9, the owner's answer:) a lead sentence in the owner's principle — a question to the owner is as understandable as possible — then S1's method as how it is met, in at most three sentences; no `owns:` change; `est_tokens` re-measured; `description:` unchanged); `documentation/protocols-reference.md` (the deliver row and section, only if `check_protocol_reference` names them); `CLAUDE.md`, the seed's own and never shipped: one Conventions bullet stating §6 row S2. It runs after increment 12 in the same writer, because both write `documentation/protocols-reference.md`
-- Tests to write (RED): none — prose increment
-- Behavior added: an owner decision arrives explained; seed text stays free of session residue
-- Gate: `python3 tests/seed-lint.py` (protocol reference, machinery body ceiling, pending phrases); `python3 tools/prose-lint.py --file <each file>` against its baseline count
-- Rollback path: revert
-- Effort: low
-- Phase: prose
-- Depends on: increment 12
-
-### Increment 15 — RED: the engine tool picks each engine's config, and the audit checks every engine
-- Spec contracts: SPEC-0001/ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE, SPEC-0001/ENGINE_AUDIT_CHECKS_EVERY_PAIR
-- Files touched: `tests/test-graft-tools.sh`: new cases after every existing one, each with an invariant label. They build their plant files in the script's temp directory from the seed's real `templates/knowledge-graph/{graph-lint,spec-lint,grill-lint}.py`. `tools/gate-registry.py`: the one `test-graft-tools.sh` entry, only if its "Reads" line is no longer true once the cases read the seed's engines (the R0.5 precedent)
-- Tests to write (RED): (a) a stale `grill-lint.py` (the seed copy with every line containing `waves` removed), reconciled with no `--preserve`, exits 0, equals the seed's file byte for byte, and leaves one `.bak-*`; (b) a `spec-lint.py` whose `TEST_GLOBS` the plant changed, reconciled with no `--preserve`, exits 0 and keeps the plant's `TEST_GLOBS`; (c) an explicit `--preserve=ROOT_ID` on a graph-lint-shaped pair still wins; (d) `graft-audit.py <plant> <seed>` given two `--engine` pairs, one current and one stale, prints one currency line per pair, each naming its plant file; (e) the same run with a malformed second pair exits non-zero. Observed red: (a) and (b) exit 2 with `REFUSE: seed engine lacks config 'ROOT_ID'`; (d) prints one line
-- Behavior added: none (tests only)
-- Gate: `bash tests/test-graft-tools.sh` runs every existing case green and fails first on the new cases' labels; `python3 tools/gate-registry.py --summary` still classifies every step
-- Rollback path: drop the new cases (and the registry line, if changed)
-- Effort: medium-low
-- Phase: RED
-- Depends on: none
-
-### Increment 16 — RED: an existing plant receives the current engines through graft
-- Spec contracts: SPEC-0001/EXISTING_PLANT_RECEIVES_CURRENT_ENGINES
-- Files touched: `tests/test-plant-state.sh`: one new case, `case_engine_upgrade`, called after every existing case (after increment 11's `case_session_records`), in its own `mktemp -d` target
-- Tests to write (RED): install `claude-code`, then overwrite `docs/graph/grill-lint.py` with an older body (the seed copy with every line containing `waves` removed). Re-run `install.sh claude-code`: `docs/graph/grill-lint.py` is unchanged (the engines stay plant-owned). Run `tools/graft-graph-engine.py` with no `--preserve` over each of the three engines: every run exits 0; `docs/graph/grill-lint.py` is byte-identical to the seed's; one `.bak-*` holds the older body; `python3 docs/graph/grill-lint.py --waves` prints a line starting `waves:`; and `tools/graft-audit.py <plant> <seed>` with the three `--engine` pairs reports every engine current. Observed red: the reconciliation of `grill-lint.py` exits 2
-- Behavior added: none (tests only)
-- Gate: `bash tests/test-plant-state.sh` runs every existing case green and fails only on the new case's label
-- Rollback path: drop the case
-- Effort: medium-low
-- Phase: RED
-- Depends on: increment 12
-
-### Increment 17 — GREEN: per-engine config in the engine tool, every pair in the audit
-- Spec contracts: SPEC-0001/ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE, SPEC-0001/ENGINE_AUDIT_CHECKS_EVERY_PAIR, SPEC-0001/EXISTING_PLANT_RECEIVES_CURRENT_ENGINES
-- Files touched: `tools/graft-graph-engine.py`: with no `--preserve`, the preserve set is chosen by the plant file's name (`graph-lint.py`: `ROOT_ID,KINDS,KIND_PREFIX`; `spec-lint.py`: `TEST_GLOBS`; `grill-lint.py`: none; any other name: the `graph-lint.py` set); an explicit `--preserve` still wins; the docstring's engine list and usage say so. `tools/graft-audit.py`: `--engine` may be given more than once, each pair is checked and printed, and any malformed or unreadable pair still refuses; the usage line says it may repeat
-- Tests to write (RED): none new; increments 15 and 16
-- Behavior added: ADR-0014: graft carries every graph engine, its own config preserved
-- Structure: one table in `graft-graph-engine.py` from engine name to preserve set, beside `DEFAULT_PRESERVE`; `parse_args` in `graft-audit.py` collects `--engine` values into a list, the only option that repeats; no new abstraction
-- Gate: `bash tests/test-graft-tools.sh`; `bash tests/test-plant-state.sh`; `python3 tests/seed-lint.py`; the RED hash re-check before the commit
-- Rollback path: revert; increments 15 and 16 go red again
-- Effort: medium-low
-- Phase: GREEN
-- Depends on: increment 15, increment 16
-
-### Increment 18 — Prose: graft and grow carry 7.31.0 to plants
-- Spec contracts: none — doctrine accepted by review (ADR-0013, ADR-0014; SPEC-0005 §6 "Session record", its Migration row as amended for 7.31.0)
-- Files touched: `protocols/graft.md` (body about 1,380 lines, under the 2,500-line lifecycle ceiling of adr-0007; the additions are about 40):
-  - the ownership list (:132-135) names `grill-lint.py` beside `graph-lint.py` and `spec-lint.py`;
-  - Phase 3's engine paragraph (:683-714) names the three engines and the config each carries (`grill-lint.py`: none), and says the tool takes that set by itself when no `--preserve` is given;
-  - `graft.gate.customization` and `graft.gate.engine` (:971, :974) pass the three `--engine` pairs;
-  - `graft.gate.rootstock` (:970) names `docs/graph/plans/sessions/_session-record.template.md` as an expected new file under `plans/`, placed by the scaffold walk, not a rootstock breach;
-  - a fourth migration, after the shape migration: "Memory migration: harness memory → a session record". Graft reads the harness memory it can reach, read-only; where each host keeps it is the host's fact. It writes a first session record in `docs/graph/plans/sessions/`, listing every entry in "Harness memories to migrate". The graft's own canonize close-out files the record. Retiring or deleting a harness entry goes to the owner as a numbered decision, by name (kernel §4). It also says that the kernel's §3.2 sentence arrives with the kernel fast-forward, which `graft.gate.kernel` already checks, and that the new sentence is expected in the kernel diff. The migrations' opening sentence ("The three subsections below") counts four;
-  - one Output-format section, "Harness memories moved to a session record (N/A if none)".
-  - `protocols/grow.md`, in "Delivery and maturity" (:890-894), gains one sentence. The growth session keeps its own session record from Phase 1. If the host already holds memories for this project, the record lists them for the close-out it already runs (`stewardship-posture.session-record`).
-  - `documentation/protocols-reference.md`: the graft and grow rows and sections, only what `check_protocol_reference` needs (`est_tokens`).
-  - In both protocols: no `owns` change, `est_tokens` re-measured, and no new `load_when` unless the writer finds the memory migration unroutable, in which case the stem table is checked first
-- Tests to write (RED): none — prose increment
-- Behavior added: an existing plant's steward is told how 7.31.0 arrives (engines, kernel sentence, form, memory migration); a new plant starts its first record at grow
-- Gate: `python3 tests/seed-lint.py` (the lifecycle body ceiling, protocol reference, pending phrases, the `REGISTRATION_REFERRERS` pointers `graft.md` and `grow.md` must keep); `python3 tools/prose-lint.py --file <each file>` against its baseline count
-- Rollback path: revert
-- Effort: medium
-- Phase: prose
-- Depends on: increment 12, increment 13, increment 17
-
-### Increment 7 — Prose: mirrors and the version
-- Spec contracts: none — mirrors held by seed-lint's existing checks and by review
-- Files touched: `DOCUMENTATION.md` (§6.8's `delegation-sequencing.md` row; §6.9's "Questions wait for one ruling pass" paragraph rewritten to the cycle (a RED wave, a clean GREEN wave, one ruling pass per cycle over what was flagged, per-increment holds), and its "full suite runs once per batch" paragraph to "once per cycle, after its GREEN wave"; the `enf-grill-lint` row :1688 says `--waves` is a report whose lines never fail; the line at :1059 describing the grill-lint test script), `documentation/skills-and-templates-reference.md` (B.16's usage block and check list gain `--waves`), `documentation/protocols-reference.md` (the `test-first.cycle` mirror :546-552), `manifest.json` (`version` 7.31.0; the `delegation-sequencing.md` description :30; the grill-lint `produces` text :364). (M1:) Also `DOCUMENTATION.md` :145, the §3.2 row of the rule table, which gains "harness memory is not a home (session records)"; and whatever mirror of `canonize.session-record`, `stewardship-posture.session-record` or the S1 and S3 sentences seed-lint's reference checks still name after increments 12 to 14 (those increments already bring the protocols-reference rows they break). (Ruling pass 1:) `protocols/recover.md:58` reads "the architect's one ruling pass per cycle answers it (`delegation.question-file`)" (R1.1); `DOCUMENTATION.md:545` ("before the next batch starts, the architect rules") is the §6.9 line the rewrite above replaces (R2.4 (f)); and the three seed-lint mirror findings carried since cycle 1 are closed here: the protocols-reference test-first row's `est_tokens`, the median routable-body figure (149 at the cycle-1 tip; re-derived, never typed from this note) and its `BODY_FIGURES_HAVE_A_REQUIRED_HOME` twin (R1.4). With them, `tests/test-seed-lint.sh`'s baseline turns green and its cases run
-- Tests to write (RED): none — prose increment
-- Behavior added: the front door and the references agree with the leaves
-- Gate: `python3 tests/seed-lint.py` (manifest, reference mirrors, the SPEC-0004 front-door checks, numeric claims); `python3 tools/prose-lint.py --file <each file>`
-- Rollback path: revert
-- Effort: medium-low
-- Phase: prose
-- Depends on: increment 3, increment 4, increment 5, increment 6, increment 12, increment 13, increment 14, increment 18
-
-### Increment 8 — Prose: the CHANGELOG entry
-- Spec contracts: none — the release record
-- Files touched: `CHANGELOG.md` (the 7.31.0 entry: waves, `--waves`, ADR-0012, and that it supersedes in part the 7.30.0 decision declining a RED ahead of its GREEN; (M1:) the memory-residency track, ADR-0013: the kernel's §3.2 sentence, the session record and its form, canonize filing it, the Prime Agent overlay no longer storing lessons in its own memory, and that existing plants receive it by graft; the S1 explain-first rule, the S3 shared-tree rule and the S2 seed convention; records outside the seed are cited as kept with the round's working records, never by path)
-- Tests to write (RED): none — prose increment
-- Behavior added: none
-- Gate: `python3 tests/seed-lint.py` (manifest version and changelog agree); the `skills/humanizer` pass at canonize
-- Rollback path: revert
-- Effort: low
-- Phase: prose
-- Depends on: increment 7
-
-### Increment 9 — Consolidate the tests this spec added
-- Spec contracts: SPEC-0005/GRILL_WAVES_LEVELS_FROM_DEPENDS_ON, SPEC-0005/GRILL_WAVES_OVERLAP_IS_A_WARNING, SPEC-0005/GRILL_WAVES_UNSCHEDULED_WITHOUT_PHASE, SPEC-0005/GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT, SPEC-0005/GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED
-- Files touched: `tests/test-grill-lint.sh`, the helpers increment 1 added under `tests/fixtures/grill/`; (M1:) `tests/test-seed-lint.sh` and `tests/test-plant-state.sh`, only the cases increment 10 and 11 added
-- Tests to write (RED): none — consolidation
-- Behavior added: none; survey the wave cases against case 1 (`--list`) and case 14 (the ledger form) and against any cases ruling pass 2 adds for mutation survivors, rule on each overlap, then merge or delete under `skill.test-first`. (M1:) Survey increment 10's planted-violation case against the existing §3.1–§3.8 heading case, and increment 11's case against `case_plan_records`, and do the same
-- Gate: the suite stays green, no contract loses its test, and every §10 row still binds to its label
-- Rollback path: revert the consolidation commit
-- Effort: low
-- Phase: RED (a tester lane; the suite stays green)
-- Depends on: increment 5, increment 12, increment 13
+| # | Increment | Status | Detail |
+|---|---|---|---|
+| 1 | RED: the wave report | done | `docs/plans/grill-7.31.0-wave-scheduling/increment-01-red-wave-report.md` |
+| 2 | RED: the rule home of `delegation.waves` | done | `docs/plans/grill-7.31.0-wave-scheduling/increment-02-red-rule-home-delegation-waves.md` |
+| 3 | Prose: the ruling gate narrowed, and the tip's expected-red pointer | done | `docs/plans/grill-7.31.0-wave-scheduling/increment-03-prose-ruling-gate-narrowed-tip-expected.md` |
+| 4 | Prose: pointers in the test-first cycle and the orchestrator's charter | done | `docs/plans/grill-7.31.0-wave-scheduling/increment-04-prose-pointers-test-first-cycle-orchestrator.md` |
+| 5 | GREEN: `--waves` in grill-lint | done | `docs/plans/grill-7.31.0-wave-scheduling/increment-05-green-waves-grill-lint.md` |
+| 6 | Prose: the home of `delegation.waves` | done | `docs/plans/grill-7.31.0-wave-scheduling/increment-06-prose-home-delegation-waves.md` |
+| 10 | RED: the session-record rule homes and the kernel pointer | done | `docs/plans/grill-7.31.0-wave-scheduling/increment-10-red-session-record-rule-homes-kernel.md` |
+| 11 | RED: every plant receives the session-record form, and keeps its records | done | `docs/plans/grill-7.31.0-wave-scheduling/increment-11-red-every-plant-receives-session-record.md` |
+| 19 | RED: growth-audit reads the session-record form as a form | done | `docs/plans/grill-7.31.0-wave-scheduling/increment-19-red-growth-audit-reads-session-record.md` |
+| 20 | GREEN: growth-audit skips the underscore forms, as graft-audit does | done | `docs/plans/grill-7.31.0-wave-scheduling/increment-20-green-growth-audit-skips-underscore-forms.md` |
+| 21 | Prose: grill-lint's docstring points at the rule, not the seed's spec | done | `docs/plans/grill-7.31.0-wave-scheduling/increment-21-prose-grill-lint-docstring-points-at.md` |
+| 12 | Prose: the session-record rule, canonize filing it, and the form | done | `docs/plans/grill-7.31.0-wave-scheduling/increment-12-prose-session-record-rule-canonize-filing.md` |
+| 13 | Prose: the kernel sentence, the eager figures, and the Prime Agent overlay | done | `docs/plans/grill-7.31.0-wave-scheduling/increment-13-prose-kernel-sentence-eager-figures-prime.md` |
+| 14 | Prose: explain before asking the owner, and the seed's no-residue convention | done | `docs/plans/grill-7.31.0-wave-scheduling/increment-14-prose-explain-before-asking-owner-seed.md` |
+| 15 | RED: the engine tool picks each engine's config, and the audit checks every engine | done | `docs/plans/grill-7.31.0-wave-scheduling/increment-15-red-engine-tool-picks-each-engine.md` |
+| 16 | RED: an existing plant receives the current engines through graft | done | `docs/plans/grill-7.31.0-wave-scheduling/increment-16-red-existing-plant-receives-current-engines.md` |
+| 17 | GREEN: per-engine config in the engine tool, every pair in the audit | done | `docs/plans/grill-7.31.0-wave-scheduling/increment-17-green-per-engine-config-engine-tool.md` |
+| 18 | Prose: graft and grow carry 7.31.0 to plants | done | `docs/plans/grill-7.31.0-wave-scheduling/increment-18-prose-graft-grow-carry-7-31.md` |
+| 7 | Prose: mirrors and the version | done | `docs/plans/grill-7.31.0-wave-scheduling/increment-07-prose-mirrors-version.md` |
+| 8 | Prose: the CHANGELOG entry | done | `docs/plans/grill-7.31.0-wave-scheduling/increment-08-prose-changelog-entry.md` |
+| 9 | Consolidate the tests this spec added | done | `docs/plans/grill-7.31.0-wave-scheduling/increment-09-consolidate-tests-this-spec-added.md` |
 
 ## 10. Verification Plan
 Standard gates per `runbooks/verification.md` apply; this plan records only what it adds or schedules. The cycle, the tips and the ruling passes are §9's cycle table; this section gives what each of them checks.

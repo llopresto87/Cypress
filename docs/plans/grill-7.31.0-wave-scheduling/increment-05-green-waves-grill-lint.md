@@ -1,0 +1,12 @@
+### Increment 5 — GREEN: `--waves` in grill-lint
+- Spec contracts: SPEC-0005/GRILL_WAVES_LEVELS_FROM_DEPENDS_ON, SPEC-0005/GRILL_WAVES_OVERLAP_IS_A_WARNING, SPEC-0005/GRILL_WAVES_UNSCHEDULED_WITHOUT_PHASE, SPEC-0005/GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT, SPEC-0005/GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED
+- Files touched: `templates/knowledge-graph/grill-lint.py` (the module docstring's usage and check list; a wave-report function beside the `--list` printer; `main()` reads `--waves` the way it reads the other flags; the dependency loop notes whether it found a dependency defect; no existing check or message changes)
+- Tests to write (RED): none new; increment 1's cases
+- Behavior added: SPEC-0005 §6 "Wave report": the header, wave lines, phase and overlap warnings, path tokens and same-file rule; the exit status is always the plain lint's
+- Structure: ~~one function, the report, whose one responsibility is turning §9's parsed increments into waves and warnings. It reuses `increments()` and `fields()` and adds no abstraction~~ (R2.8, as built and reviewed:) three functions, each with one responsibility: `path_pieces` (a `Files touched:` value into path tokens, braces expanded), `shared_file` (the same-file rule, returning the path to print) and `wave_report` (levels and warnings, returning lines only, never an exit status). They reuse `increments()` and `fields()` and add no abstraction
+- GREEN constraints: overlap matching goes through `fnmatch.fnmatchcase`; no `Files touched:` token is opened, resolved or stat'ed; without `--waves` the code path prints exactly what it prints today
+- Gate: `bash tests/test-grill-lint.sh`; cross-cutting: `python3 tests/seed-lint.py`, `bash tests/test-full-install.sh` (the installed `docs/graph/grill-lint.py` copy); the RED hash re-check before the commit
+- Rollback path: revert; increment 1's cases go red again
+- Effort: medium
+- Phase: GREEN
+- Depends on: increment 1

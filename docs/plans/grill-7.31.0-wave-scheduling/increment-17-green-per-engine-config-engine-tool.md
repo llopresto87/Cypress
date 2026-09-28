@@ -1,0 +1,11 @@
+### Increment 17 — GREEN: per-engine config in the engine tool, every pair in the audit
+- Spec contracts: SPEC-0001/ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE, SPEC-0001/ENGINE_AUDIT_CHECKS_EVERY_PAIR, SPEC-0001/EXISTING_PLANT_RECEIVES_CURRENT_ENGINES
+- Files touched: `tools/graft-graph-engine.py`: with no `--preserve`, the preserve set is chosen by the plant file's name (`graph-lint.py`: `ROOT_ID,KINDS,KIND_PREFIX`; `spec-lint.py`: `TEST_GLOBS`; `grill-lint.py`: none; any other name: the `graph-lint.py` set); an explicit `--preserve` still wins; the docstring's engine list and usage say so. `tools/graft-audit.py`: `--engine` may be given more than once, each pair is checked and printed, and any malformed or unreadable pair still refuses; the usage line says it may repeat
+- Tests to write (RED): none new; increments 15 and 16
+- Behavior added: ADR-0014: graft carries every graph engine, its own config preserved
+- Structure: one table in `graft-graph-engine.py` from engine name to preserve set, beside `DEFAULT_PRESERVE`; `parse_args` in `graft-audit.py` collects `--engine` values into a list, the only option that repeats; no new abstraction
+- Gate: `bash tests/test-graft-tools.sh`; `bash tests/test-plant-state.sh`; `python3 tests/seed-lint.py`; the RED hash re-check before the commit
+- Rollback path: revert; increments 15 and 16 go red again
+- Effort: medium-low
+- Phase: GREEN
+- Depends on: increment 15, increment 16

@@ -1,0 +1,11 @@
+### Increment 12 — Prose: cycle-economy and model-class doctrine
+- Spec contracts: none — doctrine accepted by review (SPEC-0005 AC-14, AC-15, AC-18, AC-19); its keys are held by increment 25
+- Files touched: `core/method/delegation-cycle-economy.md` (every row of SPEC-0005 §6 "Cycle-economy rules" except the moved section, including the RED hash rule, the self-amendment limits, the append-only rule and the mutation scope; the step-scope amendment), `core/method/delegation-model-classes.md` (the `delegation.effort` section with the security-surface definition and the fail-closed row-1 rule; the adopted light-variant rewording; the `engineering-posture §5` pointer repointed to `method.minimum-sufficient-work`)
+- Files touched (ruling pass 2; amends the line above): also `core/method/delegation.md`, `delegation-bounds.md`, `delegation-sequencing.md` and `delegation-briefs.md`, for the moved text that still points "below" or "above" across files: the hub's "see `delegation.harness-registration` below", bounds' "a newly commissioned expert (above)", "`model:` class (above)" and "the sequencing rule below", sequencing's "the `spawn_id` ordinals it mints (below)". Each becomes a pointer by id or fact key to the sibling that now holds the text; nothing else in those four files changes. The new `owns:` keys (`delegation.effort`, the six new cycle-economy keys) are added here too. No new `load_when` entries beyond SPEC-0005 §6; a new trigger word that collides in the stem table is a question, not a fixture edit
+- Tests to write (RED): none — prose increment
+- Behavior added: the owner's cycle rules and effort regulation, each in one home
+- Gate: `python3 tests/seed-lint.py` (leaf ceiling, prevents overlap); `python3 -m unittest tests.test_router_reach`; `python3 tools/prose-lint.py --file <each file>` against its baseline count
+- Rollback path: revert
+- Effort: medium-hard
+- Phase: prose
+- Depends on: increment 11

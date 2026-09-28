@@ -1,0 +1,11 @@
+### Increment 26 — Prose: documentation figures and manifest descriptions
+- Spec contracts: none — seed-lint's existing front-door and body-figure checks hold the mirrors
+- Files touched: `DOCUMENTATION.md` (largest and median routable body), `documentation/host-capability-matrix.md` (the effort key, per host: Claude Code recorded, others not recorded), `manifest.json` (descriptions for the new method leaves)
+- Tests to write (RED): none — prose increment
+- Files touched (ruling pass 3; amends the line above): also the mirror rows the earlier writers handed back: `manifest.json` (method-leaf and hub descriptions), `templates/knowledge-graph/index.md` (the posture row gains the design-posture leaves; the Method rows name the three new protocol leaves), `DOCUMENTATION.md` (:420 and :793 protocol counts 14 → 17), `documentation/README.md` (:17), `documentation/skills-and-templates-reference.md` (:854)
+- Behavior added: the published figures match the tree
+- Gate: `python3 tests/seed-lint.py` green; `python3 tools/prose-lint.py --file DOCUMENTATION.md` at or below baseline
+- Rollback path: revert
+- Effort: medium-low
+- Phase: prose
+- Depends on: increment 15, increment 19, increment 21, increment 25

@@ -1,0 +1,10 @@
+### Increment 1 — RED: the wave report
+- Spec contracts: SPEC-0005/GRILL_WAVES_LEVELS_FROM_DEPENDS_ON, SPEC-0005/GRILL_WAVES_OVERLAP_IS_A_WARNING, SPEC-0005/GRILL_WAVES_UNSCHEDULED_WITHOUT_PHASE, SPEC-0005/GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT, SPEC-0005/GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED
+- Files touched: `tests/test-grill-lint.sh` (new wave cases; the existing plan cases also run with `--waves` and compare exit status and plain lines), new helpers under `tests/fixtures/grill/` (the scheduled fixture plan of SPEC-0005 §6 "Wave report"; the golden plain output of the fixture plan), `tools/gate-registry.py` (R0.5: the one `test-grill-lint.sh` entry, :97-100, says the step also reads the frozen `docs/plans/grill-7.30.0-cycle-economy.md`; nothing else in the file)
+- Tests to write (RED): the §10 rows X361–X379 plus the duplicate-number case (R0.13) and the plain-lines-and-no-traceback clause (R0.7), each carrying its invariant label; the golden plain output, captured from the unmodified tool (a guard, green on arrival); the 7.30.0-plan case, which reads `docs/plans/grill-7.30.0-cycle-economy.md` under `--plan … --warn`. ~~Every new case runs after every existing case and before the final SKIP case (case 13)~~ (R0.3:) the wave cases run in one collecting block after every existing case, case 13 included. Each case checks its own conditions without relying on `set -e`, prints `FAIL <label>: <why>`, and the block exits 1 after its last case if any failed
+- Behavior added: none (tests only)
+- Gate: ~~`bash tests/test-grill-lint.sh` runs every existing case green and stops at the first new wave case~~ (R0.3:) `bash tests/test-grill-lint.sh` runs every existing case green, then the collecting block prints one `FAIL <label>` line per non-guard wave case, each on the missing report line and none on a traceback (the unmodified tool ignores an unknown flag), and exits 1; every guard passes; `python3 tools/gate-registry.py --summary` still classifies every step
+- Rollback path: drop the new cases and helpers
+- Effort: medium
+- Phase: RED
+- Depends on: none
