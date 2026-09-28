@@ -1600,7 +1600,7 @@ if failed:
     sys.exit(1)
 PY
 
-# --- SPEC-0003 per-prompt injection: Prime Agent, structural (X135-X141, X150, X163)
+# --- SPEC-0003 per-prompt injection: Prime Agent, structural (X135-X141, X150, X163-X165)
 # The gate has no TypeScript runtime and no model in the loop, so these read
 # `integrations/prime-agent/route-extension.ts` and `APPEND_SYSTEM.md` as text,
 # in the style of the resolver read in tests/test-install-placement.sh. They
@@ -1926,6 +1926,62 @@ def x163():
     return "pi.exec runs code-anchor.py --compare with an argv array; its stdout is read; the not-checked literal; no register gate"
 
 
+# 7.32.0: the anchor runs once per session, and its wait is one value (SPEC-0003
+# §4 And clauses, §6 ANCHOR_TIMEOUT). Structural guards over the seed's sources.
+def status_hook_events(rel):
+    """The hook events of a hooks JSON file whose commands name status-hook.py."""
+    import json
+    doc = json.loads((SEED / rel).read_text(encoding="utf-8"))
+    hooks = doc.get("hooks")
+    check(isinstance(hooks, dict), f"{rel} has no `hooks` object")
+    return sorted(ev for ev, entries in hooks.items() if "status-hook.py" in json.dumps(entries))
+
+
+@case("X164", "STATUS_HOOK_INJECTS_THE_ANCHOR_LINE, STATUS_EXTENSION_INJECTS_THE_ANCHOR_LINE; once per session")
+def x164():
+    for rel in ("integrations/claude-code/route-hook.py", "integrations/claude-code/bound-hook.py",
+                "integrations/prime-agent/route-extension.ts"):
+        src = (SEED / rel).read_text(encoding="utf-8")
+        check("code-anchor.py" not in src, f"{rel} names `code-anchor.py`: only a session-start hook runs it")
+        check("Code anchor" not in src, f"{rel} carries a `Code anchor` literal: only a session-start hook injects it")
+    for rel in ("integrations/claude-code/settings.json", "integrations/github-copilot/hooks/status.json"):
+        events = status_hook_events(rel)
+        check(events == ["SessionStart"], f"{rel} wires status-hook.py under {events}, not under SessionStart alone")
+    return ("route-hook, bound-hook and route-extension name no code-anchor.py and no `Code anchor`; "
+            "status-hook.py is wired under SessionStart alone in settings.json and the Copilot status.json")
+
+
+@case("X165", "STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION; ANCHOR_TIMEOUT is one value")
+def x165():
+    spec = (SEED / "docs" / "specs" / "SPEC-0003-per-prompt-injection.md").read_text(encoding="utf-8")
+    rows = re.findall(r"^\|\s*`ANCHOR_TIMEOUT`\s*\|\s*(\d+(?:\.\d+)?)\s*s\s*\|", spec, re.M)
+    check(len(rows) == 1, f"SPEC-0003 §6 holds {len(rows)} `ANCHOR_TIMEOUT` rows with a value in s, not one")
+    spec_s = float(rows[0])
+    hook_src = (SEED / "integrations" / "claude-code" / "status-hook.py").read_text(encoding="utf-8")
+    hook_vals = [n.value.value for n in ast.parse(hook_src).body
+                 if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "ANCHOR_TIMEOUT"
+                                                      for t in n.targets)
+                 and isinstance(n.value, ast.Constant) and isinstance(n.value.value, (int, float))]
+    check(len(hook_vals) == 1, f"status-hook.py holds {len(hook_vals)} module-level numeric `ANCHOR_TIMEOUT`, not one")
+    hook_s = float(hook_vals[0])
+    src = STATUS_EXT
+    runs = []
+    for m in re.finditer(r"\bpi\.exec\(", src):
+        _, close = block_after(src, m.end() - 1)
+        args = split_top(src[m.end():close])
+        if len(args) >= 3 and args[1].startswith("[") and any(
+                e in ('"--compare"', "'--compare'", "`--compare`") for e in split_top(args[1][1:-1])):
+            runs.append(args[2])
+    check(len(runs) == 1, f"expected one `pi.exec(` running --compare with an options argument, found {len(runs)}")
+    t = re.search(r"\btimeout\s*:\s*([\d_]+(?:\.\d+)?)\s*[,}]", runs[0])
+    check(t, f"the anchor's pi.exec options carry no numeric `timeout`: {runs[0]!r}")
+    ext_s = float(t.group(1).replace("_", "")) / 1000
+    check(spec_s == hook_s == ext_s,
+          f"ANCHOR_TIMEOUT differs: SPEC-0003 §6 {spec_s:g} s, status-hook.py {hook_s:g} s, "
+          f"status-extension.ts {ext_s:g} s (its pi.exec timeout in ms / 1000)")
+    return f"SPEC-0003 §6, status-hook.py and the anchor's pi.exec agree: {spec_s:g} s"
+
+
 
 failed = []
 for label, slug, fn in CASES:
@@ -1961,6 +2017,7 @@ from pathlib import Path
 SEED = Path(sys.argv[1])
 WORK = Path(sys.argv[2])
 TOOL = SEED / "tools" / "code-anchor.py"
+READER = SEED / "templates" / "knowledge-graph" / "frontmatter.py"
 ONLY = {s.strip() for s in os.environ.get("ANCHOR_ONLY", "").split(",") if s.strip()}
 os.umask(0o022)
 
@@ -2012,8 +2069,15 @@ def check(cond, msg):
         raise CaseFail(msg)
 
 
+# The fixture's own Git calls start no background maintenance or gc, whose
+# lock could land under the plant while X159 snapshots it. ENV stays as it is:
+# the tool runs under ENV, so X159 still sees any write the tool itself causes.
+FIXTURE_GIT = ("-c", "maintenance.auto=false", "-c", "gc.auto=0")
+
+
 def git(cwd, *args):
-    r = subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True, timeout=30, env=ENV)
+    r = subprocess.run(["git", *FIXTURE_GIT, *args], cwd=str(cwd), capture_output=True, text=True, timeout=30,
+                       env=ENV)
     if r.returncode != 0:
         raise HarnessFail(f"git {' '.join(args)} in {cwd}: exit {r.returncode}: {r.stderr.strip()}")
     return r.stdout
@@ -2066,6 +2130,9 @@ class Plant:
             git(lib, "commit", "-qm", "nested fixture")
         check(TOOL.is_file(), f"tools/code-anchor.py does not exist in the seed ({TOOL})")
         shutil.copy(TOOL, self.dir / "docs" / "graph" / "code-anchor.py")
+        # install.sh places the canonical frontmatter reader beside the tool.
+        check(READER.is_file(), f"the seed's frontmatter reader does not exist ({READER})")
+        shutil.copy(READER, self.dir / "docs" / "graph" / "frontmatter.py")
         git(self.dir, "add", "-A")
         git(self.dir, "commit", "-qm", "fixture")
 
