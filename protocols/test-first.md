@@ -126,7 +126,8 @@ worker, writes grill.md — the plan-of-record is session-owned
      achieved RED.
 4. If you cannot get RED for the right reason, the test is wrong or
    the contract is wrong. Fix the test or revisit the spec.
-5. Update the spec §10 (Test mapping) row: status `red`.
+5. Update the spec §10 (Test mapping) row: status `red`. A tester's RED
+   spawn stops here and hands back (`tester.spawn-scope`).
 
 **Inherited suites — prove RED by mutation.** A suite you inherited
 that was authored without test-first, and that is green the moment you

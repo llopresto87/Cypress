@@ -90,7 +90,7 @@ the pass (`delegation.harness-registration`).
 
 | Phase | Sections | Owner | Needs | Parallel with |
 |---|---|---|---|---|
-| 0 | the design-latitude ask (`specify.design-latitude`); identifier; §0 Metadata, §1 Summary, §2 Scope | orchestrator, in-session | brainstorm output or the clear goal | — |
+| 0 | the design-latitude classification (`specify.design-latitude`); identifier; §0 Metadata, §1 Summary, §2 Scope | orchestrator, in-session | brainstorm output or the clear goal | — |
 | 1 | §3 User-facing behavior | `product` | §2 | — |
 | 2 | §4 Contracts, §5 NFRs, §6 Data shapes, §7 Failure modes, §8 Examples | `architect` | §3 | — |
 | 3 | §9 Acceptance criteria | `product` — each criterion maps to §4 slugs | §4 | phase 4 |
@@ -102,7 +102,7 @@ What the table cannot hold:
 
 - **One pass when the plan is new too.** When no plan-of-record implements
   this work yet, the spec and the plan are written in one joint pass, and
-  phase 0's latitude question is asked there (`specify.joint-pass`,
+  phase 0's latitude is classified there (`specify.joint-pass`,
   `docs/graph/protocols/specify-joint-pass.md`).
 - **The identifier comes from disk.** `SPEC-NNNN-<slug>` takes the next
   free number among `docs/graph/specs/SPEC-*.md`; the catalog row in

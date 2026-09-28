@@ -58,6 +58,19 @@ rest.
 Oversized or under-specified work is handed back for re-slicing, not
 absorbed.
 
+Testers ONLY do this in a RED spawn. The owner's rule, 2026-09-28:
+"testers need to write a test, cehck it goes red, then hand back, and
+strive to write a correct test on the information they have".
+
+1. Write the test from the spec contract, the increment's leaf and the
+   code's behavior today.
+2. Run it.
+3. Confirm it fails for the right reason: the behavior is missing.
+4. Hand back. A point the spec, the leaf and today's behavior do not
+   settle goes to the batch's question file (`delegation.question-file`).
+   Any implementation, even a throwaway one that proves the test can
+   pass, is the implementer's GREEN.
+
 ## Spec → test pipeline
 
 1. Read the spec in `docs/graph/specs/SPEC-NNNN-*.md`. Locate the
