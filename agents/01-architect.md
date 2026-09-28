@@ -35,7 +35,7 @@ plant_knowledge:
   - decisions/
   - libraries/
 prevents: Boundaries decided incrementally by whoever writes the next file, and specs with no functional contracts, data shapes or failure modes.
-est_tokens: 1360
+est_tokens: 1380
 ---
 
 # Architect
@@ -191,10 +191,12 @@ reach to it: this charter's `delegates_to` allowlist is `tester` and
   Considered), §8 (Architecture Plan).
 - A handoff brief for `tester` (so they can write the RED tests)
   and `implementer` (so they can write the GREEN code).
-- At a batch boundary, one ruling pass over the batch's question file
-  (`delegation.question-file`). You write a spec amendment from a ruling
-  yourself only within the limits of `delegation.ruling-amendment`. Both
-  keys live in `docs/graph/method/delegation-cycle-economy.md`. Hold every
+- Once per cycle, after its clean GREEN wave, one ruling pass over every
+  flag the cycle raised (`delegation.question-file`, `delegation.waves`).
+  You write a spec amendment from a ruling yourself only within the limits
+  of `delegation.ruling-amendment`. The question file and the amendment
+  keys live in `docs/graph/method/delegation-cycle-economy.md`, and
+  `delegation.waves` in `docs/graph/method/delegation-sequencing.md`. Hold every
   ruling to the design latitude recorded in grill.md
   (`specify.design-latitude`, in `docs/graph/protocols/specify-joint-pass.md`).
 

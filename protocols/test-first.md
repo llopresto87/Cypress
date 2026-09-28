@@ -23,7 +23,7 @@ load_when:
   - "legacy code with no tests, characterization test"
   - "pure refactor, migration safety"
 prevents: Production changes with no failing test to authorize them, and after-the-fact tests that pass on first run and therefore prove nothing.
-est_tokens: 2700
+est_tokens: 2723
 command: true
 ---
 
@@ -88,8 +88,9 @@ One cycle per increment, in grill.md §9 order. Each phase has an owner,
 and **the table is the spawn order**: a phase's spawn is issued only
 after the handback it needs has returned; the next increment's RED is
 not spawned until this increment's COMMIT is recorded, unless §9's
-`Depends on:` rows say the two are independent
-(`delegation.sequencing`, `docs/graph/method/delegation-sequencing.md`).
+`Depends on:` rows say the two are independent (`delegation.sequencing`,
+`docs/graph/method/delegation-sequencing.md`). How independent REDs run ahead
+in a RED wave, and which GREENs follow them, is `delegation.waves` there.
 One spawn may carry a batch of increments, sized by their effort labels
 (`delegation.step-scope` and `delegation.effort-scale` in
 `docs/graph/method/delegation-cycle-economy.md`).
