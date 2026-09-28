@@ -808,4 +808,453 @@ engine_case X389 case_engine_audit_malformed_first_pair_fails "a malformed first
 [ "$ENGINE_FAILED" -eq 0 ] \
   || { echo "test-graft-tools: FAIL — the engine reconciliation block has failing cases (above)" >&2; exit 1; }
 
+# ---- round 7.32.0: graft-audit false alarms, graft ledger, graft run -------
+# One collecting block, after every older case: each case prints
+# `FAIL <label>: <why>` and the block exits 1 at its end, so one red case never
+# hides the next. Labels: GA-C1..GA-C4 are graft-audit's four false alarms
+# (GA-C3 asserts SPEC-0001 EVERY_BACKUP_IS_CLASSIFIABLE; the others are
+# contained, no spec owns them); GL-a..GL-d are tools/graft-ledger.py;
+# GR-a..GR-f are tools/graft-run.py. Every fixture is synthetic.
+LEDGER="$ROOT/tools/graft-ledger.py"
+RUN="$ROOT/tools/graft-run.py"
+RW="$TMP/round"; mkdir -p "$RW"
+ROUND_FAILED=0
+round_case() {  # $1 label, $2 case function, $3 what an OK run shows
+  local why
+  if why="$("$2" 2>&1)"; then
+    echo "  $1 $3 — OK"
+  else
+    echo "FAIL $1: $why" >&2
+    ROUND_FAILED=1
+  fi
+}
+flat() { tr '\n' ' ' <"$1"; }
+# git for the synthetic repositories only: no user or system config is read
+sgit() { GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 git -c user.name=fixture \
+           -c user.email=fixture@example.invalid -c init.defaultBranch=main \
+           -c commit.gpgsign=false -c tag.gpgsign=false "$@"; }
+
+# -- GA-C1: a backup byte-identical to the seed at --base <rev> is DELTA ------
+case_audit_base_identical_is_delta() {
+  local s="$RW/c1seed" p="$RW/c1plant" base rc
+  mkdir -p "$s/protocols" "$p/docs/graph/protocols"
+  printf '# Alpha\nRun the cypress checks before a release.\n' > "$s/protocols/alpha.md"
+  sgit -C "$s" init -q && sgit -C "$s" add -A && sgit -C "$s" commit -q -m base \
+    || { echo "fixture: the synthetic seed repository could not be committed"; return 1; }
+  base="$(sgit -C "$s" rev-parse HEAD)"
+  printf '# Alpha\nRun the release checks.\nA newer seed line.\n' > "$s/protocols/alpha.md"
+  sgit -C "$s" commit -q -am head || { echo "fixture: second seed commit failed"; return 1; }
+  cp "$s/protocols/alpha.md" "$p/docs/graph/protocols/alpha.md"
+  sgit -C "$s" show "$base:protocols/alpha.md" > "$p/docs/graph/protocols/alpha.md.bak-20260301-000000"
+  # without --base: today's verdict, kept (the default stays conservative)
+  python3 "$AUDIT" "$p" "$s" --date=20260301 --tokens=cypress >"$RW/c1.nobase" 2>&1 && rc=0 || rc=$?
+  grep -q "'CUSTOMIZED': 1" "$RW/c1.nobase" && [ "$rc" -eq 1 ] \
+    || { echo "control: without --base the base-identical backup must stay CUSTOMIZED, exit 1 (got $rc): $(flat "$RW/c1.nobase")"; return 1; }
+  # with --base: the backup is the seed at that revision, so the plant authored nothing in it
+  python3 "$AUDIT" "$p" "$s" --date=20260301 --tokens=cypress --base "$base" >"$RW/c1.base" 2>&1 && rc=0 || rc=$?
+  grep -q "'DELTA': 1" "$RW/c1.base" && grep -q "'CUSTOMIZED': 0" "$RW/c1.base" \
+    || { echo "a backup byte-identical to the seed at --base was not classed DELTA: $(flat "$RW/c1.base")"; return 1; }
+  [ "$rc" -eq 0 ] || { echo "a base-identical backup under --base must audit clean, exit 0 (got $rc): $(flat "$RW/c1.base")"; return 1; }
+  # guard: --base is no blanket pardon; a plant line absent from the base still fires
+  { sgit -C "$s" show "$base:protocols/alpha.md"; printf 'The cypress mirror lives on the build host.\n'; } \
+    > "$p/docs/graph/protocols/alpha.md.bak-20260302-000000"
+  python3 "$AUDIT" "$p" "$s" --date=20260302 --tokens=cypress --base "$base" >"$RW/c1.guard" 2>&1 && rc=0 || rc=$?
+  grep -q "'CUSTOMIZED': 1" "$RW/c1.guard" && [ "$rc" -eq 1 ] \
+    || { echo "under --base, a backup carrying a plant line the base lacks must stay CUSTOMIZED, exit 1 (got $rc): $(flat "$RW/c1.guard")"; return 1; }
+}
+
+# -- GA-C2: an engine backup whose signal lines survive in the current engine --
+case_audit_engine_signal_survives() {
+  local s="$RW/c2seed" p="$RW/c2plant" b rc
+  mkdir -p "$s/templates/knowledge-graph" "$p/docs/graph"
+  cat > "$s/templates/knowledge-graph/graph-lint.py" <<'PY'
+ROOT_ID = "root"
+KINDS = {"root", "subsystem"}
+KIND_PREFIX = {}
+def check():
+    return helper()
+def helper():
+    return 0
+PY
+  # the plant's engine before the graft: an older body and a commented config
+  cat > "$p/docs/graph/graph-lint.py" <<'PY'
+# zamber: this plant routes on the deploy name, not the repository name
+ROOT_ID = "app"
+KINDS = {"root", "subsystem"}
+KIND_PREFIX = {}
+def check():
+    return 0
+PY
+  python3 "$ENGINE" "$p/docs/graph/graph-lint.py" "$s/templates/knowledge-graph/graph-lint.py" >"$RW/c2.engine" 2>&1 \
+    || { echo "fixture: graft-graph-engine.py did not reconcile the engine: $(flat "$RW/c2.engine")"; return 1; }
+  grep -q "zamber: this plant routes" "$p/docs/graph/graph-lint.py" && grep -q "def helper" "$p/docs/graph/graph-lint.py" \
+    || { echo "fixture: the reconciled engine lost its config comment or did not adopt the body"; return 1; }
+  b="$(ls "$p/docs/graph/" | grep '^graph-lint\.py\.bak-' | head -1)"
+  [ -n "$b" ] || { echo "fixture: the engine tool wrote no backup"; return 1; }
+  python3 "$AUDIT" "$p" "$s" --date="${b#graph-lint.py.bak-}" --tokens=zamber >"$RW/c2.out" 2>&1 && rc=0 || rc=$?
+  grep -q "'CUSTOMIZED': 0" "$RW/c2.out" \
+    || { echo "an engine backup whose every signal line survives in the plant's current engine was classed CUSTOMIZED: $(flat "$RW/c2.out")"; return 1; }
+  [ "$rc" -eq 0 ] || { echo "an engine backup with nothing lost must audit clean, exit 0 (got $rc): $(flat "$RW/c2.out")"; return 1; }
+  # guard: a signal line the current engine does not carry is still a buried customization
+  { cat "$p/docs/graph/$b"; printf '# zamber keeps a local retention rule here\n'; } \
+    > "$p/docs/graph/graph-lint.py.bak-20260303-000000"
+  python3 "$AUDIT" "$p" "$s" --date=20260303 --tokens=zamber >"$RW/c2.guard" 2>&1 && rc=0 || rc=$?
+  grep -q "'CUSTOMIZED': 1" "$RW/c2.guard" && [ "$rc" -eq 1 ] \
+    || { echo "an engine backup carrying a signal line the current engine lost must stay CUSTOMIZED, exit 1 (got $rc): $(flat "$RW/c2.guard")"; return 1; }
+}
+
+# -- GA-C3: the projection of a plant-owned agent is a named exclusion ---------
+case_audit_plant_agent_projection() {
+  # Asserts SPEC-0001 EVERY_BACKUP_IS_CLASSIFIABLE.
+  local s="$RW/c3seed" p="$RW/c3plant" rc
+  mkdir -p "$s/agents" "$p/docs/graph/agents" "$p/.claude/agents"
+  printf 'seed agent body\n' > "$s/agents/reviewer.md"
+  cat > "$p/docs/graph/agents/billing-auditor.md" <<'MD'
+---
+name: billing-auditor
+id: agent.billing-auditor
+kind: agent
+origin: project
+---
+# Billing auditor
+MD
+  cp "$p/docs/graph/agents/billing-auditor.md" "$p/.claude/agents/billing-auditor.md"
+  printf -- '---\nname: billing-auditor\norigin: project\n---\n# Billing auditor, older\n' \
+    > "$p/.claude/agents/billing-auditor.md.bak-20260304-000000"
+  python3 "$AUDIT" "$p" "$s" --date=20260304 >"$RW/c3.out" 2>&1 && rc=0 || rc=$?
+  grep -q "backups audited: 1" "$RW/c3.out" || { echo "fixture: expected one backup audited: $(flat "$RW/c3.out")"; return 1; }
+  grep -q "'UNMAPPED': 0" "$RW/c3.out" && ! grep -q "UNMAPPED backup" "$RW/c3.out" \
+    || { echo "the projection of an origin: project agent was reported UNMAPPED: $(flat "$RW/c3.out")"; return 1; }
+  [ "$rc" -eq 0 ] || { echo "a plant-owned agent's projection backup must audit exit 0 (got $rc): $(flat "$RW/c3.out")"; return 1; }
+  # guard: a projection with no plant node behind it is still unclassifiable, exit 1
+  printf 'an agent nobody owns\n' > "$p/.claude/agents/ghost.md.bak-20260305-000000"
+  python3 "$AUDIT" "$p" "$s" --date=20260305 >"$RW/c3.guard" 2>&1 && rc=0 || rc=$?
+  grep -q "'UNMAPPED': 1" "$RW/c3.guard" && [ "$rc" -eq 1 ] \
+    || { echo "a projection backup with no seed source and no plant node must stay UNMAPPED, exit 1 (got $rc): $(flat "$RW/c3.guard")"; return 1; }
+}
+
+# -- GA-C4: backups inside a nested plant copy are not this plant's -----------
+case_audit_skips_nested_plant_copy() {
+  local s="$RW/c4seed" p="$RW/c4plant" n rc
+  mkdir -p "$s/agents" "$p/docs/graph/agents" "$p/.cypress"
+  printf '{"seed": "cypress", "version": "1.0.0"}\n' > "$p/.cypress/seed.json"
+  printf 'seed agent body\n' > "$s/agents/reviewer.md"
+  cp "$s/agents/reviewer.md" "$p/docs/graph/agents/reviewer.md"
+  cp "$s/agents/reviewer.md" "$p/docs/graph/agents/reviewer.md.bak-20260306-000000"
+  # a scratch copy of a plant under this plant's root, with backups of its own
+  n="$p/.scratch/plant-copy"
+  mkdir -p "$n/.cypress" "$n/docs/graph/agents" "$n/docs/graph/nodes"
+  cp "$p/.cypress/seed.json" "$n/.cypress/seed.json"
+  printf 'nested copy body\n' > "$n/docs/graph/agents/other.md.bak-20260306-000000"
+  printf 'nested plant fact\n' > "$n/docs/graph/nodes/api.md.bak-20260306-000000"
+  printf 'nested plant fact, later\n' > "$n/docs/graph/nodes/api.md.bak-20260307-000000"
+  python3 "$AUDIT" "$p" "$s" --date=20260306 >"$RW/c4.out" 2>&1 && rc=0 || rc=$?
+  grep -q "backups audited: 1 " "$RW/c4.out" \
+    || { echo "backups inside a directory holding its own .cypress/seed.json were counted: $(flat "$RW/c4.out")"; return 1; }
+  ! grep -q "UNMAPPED backup\|knowledge overwrite" "$RW/c4.out" \
+    || { echo "a nested copy's backups were classified as this plant's: $(flat "$RW/c4.out")"; return 1; }
+  [ "$rc" -eq 0 ] || { echo "the plant's own clean backup must audit exit 0 (got $rc): $(flat "$RW/c4.out")"; return 1; }
+  # the default --date is this plant's newest stamp, not a nested copy's
+  python3 "$AUDIT" "$p" "$s" >"$RW/c4.dflt" 2>&1 && rc=0 || rc=$?
+  grep -q "backups audited: 1 " "$RW/c4.dflt" && [ "$rc" -eq 0 ] \
+    || { echo "with --date omitted, a nested copy's newer stamp chose the day audited (exit $rc): $(flat "$RW/c4.dflt")"; return 1; }
+}
+
+# -- GL: the graft ledger ------------------------------------------------------
+# A synthetic seed repository with three tagged releases, and a plant stamped at
+# the second. Each seed file is set so that one class is the only right answer:
+#   file                        v1.0.0   v1.1.0 (base)  v1.2.0 (seed)   plant
+#   protocols/ff.md             ff1      ff2            ff3             ff2            FAST-FORWARD
+#   protocols/ff2.md            gg1      gg2            gg3             gg2            FAST-FORWARD
+#   protocols/keep.md           k1       k1             k1              k1 + plant     KEEP-PLANT
+#   protocols/merge.md          m1       m1             m1 + seed       m1 + plant     MERGE
+#   protocols/current.md        c1       c1             c1              c1             CURRENT
+#   core/method/moved.md        v1       v1             v2              v2             CURRENT
+#   protocols/new.md            -        -              n1              -              SEED-NEW
+#   agents/harvested.md         h1       h1             h1 + plant + s  h1 + plant     HARVESTED
+# docs/graph/nodes/own.md is the plant's own node: no row. Byte-equal files at
+# v1.1.0: ff.md, ff2.md, current.md (3); at v1.2.0: current.md, moved.md (2);
+# at v1.0.0: current.md, moved.md (2). So content lineage finds v1.1.0, from 3.
+GL_SEED="$RW/glseed"; GL_PLANT="$RW/glplant"
+gl_release() {  # $1 version; the files are written by the caller
+  printf '{"name": "cypress", "version": "%s"}\n' "$1" > "$GL_SEED/manifest.json"
+  sgit -C "$GL_SEED" add -A && sgit -C "$GL_SEED" commit -q -m "release $1" && sgit -C "$GL_SEED" tag "v$1"
+}
+gl_fixture() {
+  [ -f "$RW/gl.ready" ] && return 0
+  local s="$GL_SEED" p="$GL_PLANT"
+  mkdir -p "$s/protocols" "$s/core/method" "$s/agents"
+  sgit -C "$s" init -q || { echo "fixture: git init failed"; return 1; }
+  printf 'ff1\n' > "$s/protocols/ff.md"; printf 'gg1\n' > "$s/protocols/ff2.md"
+  printf 'k1\n' > "$s/protocols/keep.md"; printf 'm1\n' > "$s/protocols/merge.md"
+  printf 'c1\n' > "$s/protocols/current.md"; printf 'v1\n' > "$s/core/method/moved.md"
+  printf 'h1\n' > "$s/agents/harvested.md"
+  gl_release 1.0.0 || { echo "fixture: release 1.0.0 failed"; return 1; }
+  printf 'ff2\n' > "$s/protocols/ff.md"; printf 'gg2\n' > "$s/protocols/ff2.md"
+  gl_release 1.1.0 || { echo "fixture: release 1.1.0 failed"; return 1; }
+  # the plant, as the v1.1.0 install left it, then edited by the plant
+  mkdir -p "$p/.cypress" "$p/docs/graph/protocols" "$p/docs/graph/method" "$p/docs/graph/agents" "$p/docs/graph/nodes"
+  printf '{"seed": "cypress", "version": "1.1.0", "tools": "claude-code"}\n' > "$p/.cypress/seed.json"
+  for f in ff ff2 keep merge current; do cp "$s/protocols/$f.md" "$p/docs/graph/protocols/$f.md"; done
+  cp "$s/agents/harvested.md" "$p/docs/graph/agents/harvested.md"
+  printf 'k1\na plant rule\n' > "$p/docs/graph/protocols/keep.md"
+  printf 'm1\na plant merge line\n' > "$p/docs/graph/protocols/merge.md"
+  printf 'h1\na plant addition\n' > "$p/docs/graph/agents/harvested.md"
+  printf 'v2\n' > "$p/docs/graph/method/moved.md"
+  printf -- '---\nid: subsystem.own\n---\n# own\n' > "$p/docs/graph/nodes/own.md"
+  # v1.2.0: the seed moves on, and harvests the plant's addition
+  printf 'ff3\n' > "$s/protocols/ff.md"; printf 'gg3\n' > "$s/protocols/ff2.md"
+  printf 'm1\na seed merge line\n' > "$s/protocols/merge.md"
+  printf 'v2\n' > "$s/core/method/moved.md"; printf 'n1\n' > "$s/protocols/new.md"
+  printf 'h1\na plant addition\na later seed line\n' > "$s/agents/harvested.md"
+  gl_release 1.2.0 || { echo "fixture: release 1.2.0 failed"; return 1; }
+  touch "$RW/gl.ready"
+}
+gl_need() { [ -f "$LEDGER" ] || { echo "tools/graft-ledger.py does not exist"; return 1; }; }
+# the one class on the one row that names a file (its plant path, or its seed path)
+gl_class_of() {  # $1 output file, $2 plant path, $3 seed path
+  python3 - "$1" "$2" "$3" <<'PY'
+import re, sys
+text = open(sys.argv[1]).read().splitlines()
+want = {sys.argv[2], sys.argv[3]}
+classes = re.compile(r"(?<![A-Z-])(FAST-FORWARD|KEEP-PLANT|MERGE|CURRENT|SEED-NEW|HARVESTED)(?![A-Z-])")
+rows = [l for l in text if want & set(re.split(r"[\s|,`]+", l))]
+if len(rows) != 1:
+    print(f"{len(rows)} rows name {sys.argv[2]}"); sys.exit(1)
+found = classes.findall(rows[0])
+if len(found) != 1:
+    print(f"the row for {sys.argv[2]} carries {len(found)} classes: {rows[0]!r}"); sys.exit(1)
+print(found[0])
+PY
+}
+
+case_ledger_classifies_three_ways() {
+  local rc got want row path seedpath
+  gl_need || return 1; gl_fixture || return 1
+  python3 "$LEDGER" "$GL_PLANT" "$GL_SEED" >"$RW/gla.out" 2>&1 && rc=0 || rc=$?
+  [ "$rc" -eq 0 ] || { echo "graft-ledger.py exited $rc: $(flat "$RW/gla.out")"; return 1; }
+  for row in \
+      "docs/graph/protocols/ff.md protocols/ff.md FAST-FORWARD" \
+      "docs/graph/protocols/ff2.md protocols/ff2.md FAST-FORWARD" \
+      "docs/graph/protocols/keep.md protocols/keep.md KEEP-PLANT" \
+      "docs/graph/protocols/merge.md protocols/merge.md MERGE" \
+      "docs/graph/protocols/current.md protocols/current.md CURRENT" \
+      "docs/graph/method/moved.md core/method/moved.md CURRENT" \
+      "docs/graph/protocols/new.md protocols/new.md SEED-NEW"; do
+    set -- $row; path="$1"; seedpath="$2"; want="$3"
+    got="$(gl_class_of "$RW/gla.out" "$path" "$seedpath")" || { echo "$got: $(flat "$RW/gla.out")"; return 1; }
+    [ "$got" = "$want" ] || { echo "$path classed $got, want $want: $(flat "$RW/gla.out")"; return 1; }
+  done
+  ! grep -q "nodes/own\.md" "$RW/gla.out" || { echo "the plant's own node got a machinery row: $(flat "$RW/gla.out")"; return 1; }
+}
+
+case_ledger_harvested_is_not_merge() {
+  local rc got
+  gl_need || return 1; gl_fixture || return 1
+  python3 "$LEDGER" "$GL_PLANT" "$GL_SEED" >"$RW/glb.out" 2>&1 && rc=0 || rc=$?
+  [ "$rc" -eq 0 ] || { echo "graft-ledger.py exited $rc: $(flat "$RW/glb.out")"; return 1; }
+  got="$(gl_class_of "$RW/glb.out" docs/graph/agents/harvested.md agents/harvested.md)" \
+    || { echo "$got: $(flat "$RW/glb.out")"; return 1; }
+  [ "$got" = "HARVESTED" ] || { echo "a plant addition the seed already carries was classed $got, want HARVESTED: $(flat "$RW/glb.out")"; return 1; }
+}
+
+case_ledger_base_from_tag() {
+  local rc
+  gl_need || return 1; gl_fixture || return 1
+  python3 "$LEDGER" "$GL_PLANT" "$GL_SEED" --base >"$RW/glc.out" 2>&1 && rc=0 || rc=$?
+  [ "$rc" -eq 0 ] || { echo "graft-ledger.py --base exited $rc: $(flat "$RW/glc.out")"; return 1; }
+  grep -q "v1\.1\.0" "$RW/glc.out" || { echo "--base did not print the stamped version's tag v1.1.0: $(flat "$RW/glc.out")"; return 1; }
+  grep -qi "tag" "$RW/glc.out" && ! grep -qi "inferred" "$RW/glc.out" \
+    || { echo "--base did not say the base came from the tag: $(flat "$RW/glc.out")"; return 1; }
+}
+
+case_ledger_base_inferred_by_lineage() {
+  local rc s="$RW/glseed-untagged" want other
+  gl_need || return 1; gl_fixture || return 1
+  rm -rf "$s"; cp -R "$GL_SEED" "$s"
+  sgit -C "$s" tag -d v1.1.0 >/dev/null || { echo "fixture: could not delete the tag in the copy"; return 1; }
+  want="$(sgit -C "$s" rev-parse 'HEAD~1')"
+  python3 "$LEDGER" "$GL_PLANT" "$s" --base >"$RW/gld.out" 2>&1 && rc=0 || rc=$?
+  [ "$rc" -eq 0 ] || { echo "graft-ledger.py --base with the tag gone exited $rc: $(flat "$RW/gld.out")"; return 1; }
+  python3 - "$RW/gld.out" "$want" "$(sgit -C "$s" rev-parse HEAD)" "$(sgit -C "$s" rev-parse 'HEAD~2')" <<'PY' || return 1
+import re, sys
+out = open(sys.argv[1]).read()
+want, others = sys.argv[2], sys.argv[3:]
+hexes = set(re.findall(r"\b[0-9a-f]{7,40}\b", out))
+if not any(want.startswith(h) for h in hexes):
+    print(f"the commit content lineage finds ({want[:12]}) is not printed: {out!r}"); sys.exit(1)
+if any(o.startswith(h) for h in hexes for o in others):
+    print(f"another release's commit is printed as the base: {out!r}"); sys.exit(1)
+if not re.search(r"\binferred\b", out, re.I):
+    print(f"the base is not said to be inferred: {out!r}"); sys.exit(1)
+if not any(re.search(r"\b3\b", l) and re.search(r"match", l, re.I) for l in out.splitlines()):
+    print(f"the number of files that matched (3) is not printed on a line about matching: {out!r}"); sys.exit(1)
+PY
+}
+
+# -- GR: the graft run driver ---------------------------------------------------
+# A plant installed from this seed, then edited so a graft has mechanical work:
+# a stale grill-lint.py, a graph-lint.py whose KIND_PREFIX the plant set, a
+# seed protocol node deleted (the installer re-creates it), and a plant node of
+# its own. It is a Git repository, so the checksum covers .git as well. The
+# stage for a normal run is a SIBLING whose name extends the plant's, so a
+# refusal that compared path strings by prefix would refuse it.
+GR="$RW/gr"; GR_PLANT="$GR/zephyrplant"; GR_STAGE="$GR/zephyrplant-stage"
+gr_need() { [ -f "$RUN" ] || { echo "tools/graft-run.py does not exist"; return 1; }; }
+gr_sum() {  # a checksum of every entry under $1, .git included, symlinks not followed
+  python3 - "$1" <<'PY'
+import hashlib, os, sys
+root, h = sys.argv[1], hashlib.sha256()
+for d, dirs, files in os.walk(root, followlinks=False):
+    dirs.sort()
+    for n in sorted(dirs + files):
+        p = os.path.join(d, n); rel = os.path.relpath(p, root)
+        if os.path.islink(p):
+            h.update(b"L" + rel.encode() + b"\0" + os.readlink(p).encode() + b"\0")
+        elif os.path.isfile(p):
+            h.update(b"F" + rel.encode() + b"\0" + open(p, "rb").read() + b"\0")
+        else:
+            h.update(b"D" + rel.encode() + b"\0")
+print(h.hexdigest())
+PY
+}
+gr_fixture() {
+  [ -f "$GR/ready" ] && return 0
+  local p="$GR_PLANT"
+  mkdir -p "$p"
+  bash "$ROOT/install.sh" claude-code --project-dir "$p" >"$GR/fixture-install.log" 2>&1 \
+    || { echo "fixture: install.sh into the synthetic plant failed: $(tail -3 "$GR/fixture-install.log" | tr '\n' ' ')"; return 1; }
+  grep -v waves "$KG/grill-lint.py" > "$p/docs/graph/grill-lint.py"
+  sed -e 's/^KIND_PREFIX = {}$/KIND_PREFIX = {"operator": "op."}/' "$KG/graph-lint.py" > "$p/docs/graph/graph-lint.py"
+  grep -qx 'KIND_PREFIX = {"operator": "op."}' "$p/docs/graph/graph-lint.py" \
+    || { echo "fixture: the seed's graph-lint.py no longer carries KIND_PREFIX = {}"; return 1; }
+  [ -f "$p/docs/graph/protocols/brainstorm.md" ] || { echo "fixture: no docs/graph/protocols/brainstorm.md placed"; return 1; }
+  rm -f "$p/docs/graph/protocols/brainstorm.md"
+  mkdir -p "$p/docs/graph/nodes"
+  printf -- '---\nid: subsystem.quokka-ledger\nkind: subsystem\n---\n# Quokka ledger\n' \
+    > "$p/docs/graph/nodes/subsystem.quokka-ledger.md"
+  sgit -C "$p" init -q && sgit -C "$p" add -A && sgit -C "$p" commit -q -m plant \
+    || { echo "fixture: the synthetic plant could not be committed"; return 1; }
+  gr_sum "$p" > "$GR/sum.before"
+  touch "$GR/ready"
+}
+gr_run_once() {  # one run for GR-b..GR-f; stdout and stderr kept apart
+  [ -f "$GR/run.rc" ] && return 0
+  python3 "$RUN" "$GR_PLANT" "$ROOT" --stage "$GR_STAGE" >"$GR/run.out" 2>"$GR/run.err" && echo 0 >"$GR/run.rc" || echo $? >"$GR/run.rc"
+  gr_sum "$GR_PLANT" > "$GR/sum.after"
+}
+gr_copy() {  # the plant copy inside the stage: the directory holding the plant's own node
+  find "$GR_STAGE" -path '*/docs/graph/nodes/subsystem.quokka-ledger.md' 2>/dev/null | head -1 | sed 's#/docs/graph/nodes/subsystem.quokka-ledger.md$##'
+}
+
+case_run_refuses_stage_inside_plant() {
+  local rc before
+  gr_need || return 1; gr_fixture || return 1
+  before="$(cat "$GR/sum.before")"
+  python3 "$RUN" "$GR_PLANT" "$ROOT" --stage "$GR_PLANT/.graft-stage" >"$GR/a1.out" 2>&1 && rc=0 || rc=$?
+  [ "$rc" -eq 2 ] || { echo "a stage inside the plant exited $rc, want 2: $(flat "$GR/a1.out")"; return 1; }
+  grep -qi "inside" "$GR/a1.out" || { echo "the refusal does not say the stage is inside the plant: $(flat "$GR/a1.out")"; return 1; }
+  [ ! -e "$GR_PLANT/.graft-stage" ] && [ "$(gr_sum "$GR_PLANT")" = "$before" ] \
+    || { echo "a refused run wrote into the plant"; return 1; }
+  # a stage path that reaches the plant through a symlink is inside it too
+  ln -s "$GR_PLANT" "$GR/plant-link"
+  python3 "$RUN" "$GR_PLANT" "$ROOT" --stage "$GR/plant-link/stage" >"$GR/a2.out" 2>&1 && rc=0 || rc=$?
+  [ "$rc" -eq 2 ] || { echo "a stage reaching the plant through a symlink exited $rc, want 2: $(flat "$GR/a2.out")"; return 1; }
+  [ ! -e "$GR_PLANT/stage" ] && [ "$(gr_sum "$GR_PLANT")" = "$before" ] \
+    || { echo "a refused run (symlinked stage) wrote into the plant"; return 1; }
+}
+
+case_run_leaves_plant_byte_identical() {
+  gr_need || return 1; gr_fixture || return 1; gr_run_once
+  [ "$(cat "$GR/run.rc")" != 2 ] || { echo "a stage outside the plant (a sibling whose name extends the plant's) was refused: $(flat "$GR/run.err")"; return 1; }
+  [ -d "$GR_STAGE" ] || { echo "the run made no stage at $GR_STAGE: $(flat "$GR/run.err")"; return 1; }
+  cmp -s "$GR/sum.before" "$GR/sum.after" || { echo "the plant tree (.git included) changed during the run"; return 1; }
+}
+
+case_run_stage_holds_installed_copy_and_log() {
+  local c
+  gr_need || return 1; gr_fixture || return 1; gr_run_once
+  c="$(gr_copy)"
+  [ -n "$c" ] || { echo "no copy of the plant (its node subsystem.quokka-ledger.md) in the stage: $(flat "$GR/run.err")"; return 1; }
+  cmp -s "$c/docs/graph/protocols/brainstorm.md" "$ROOT/protocols/brainstorm.md" \
+    || { echo "the installer did not run in the stage copy: docs/graph/protocols/brainstorm.md was not re-placed"; return 1; }
+  grep -rlq '^\[seed\] done\.' "$GR_STAGE" 2>/dev/null \
+    || { echo "no captured install log (the installer's '[seed] done.' line) in the stage"; return 1; }
+}
+
+case_run_reconciles_three_engines() {
+  local c e pairs
+  gr_need || return 1; gr_fixture || return 1; gr_run_once
+  c="$(gr_copy)"; [ -n "$c" ] || { echo "no copy of the plant in the stage"; return 1; }
+  pairs=""
+  for e in graph-lint.py spec-lint.py grill-lint.py; do pairs="$pairs --engine=$c/docs/graph/$e:$KG/$e"; done
+  python3 "$AUDIT" "$c" "$ROOT" $pairs >"$GR/d.out" 2>&1 || true
+  [ "$(grep -c "graph engine: current" "$GR/d.out")" -eq 3 ] \
+    || { echo "the three engines in the stage are not all current: $(grep "graph engine" "$GR/d.out" | tr '\n' ' ')"; return 1; }
+  grep -qx 'KIND_PREFIX = {"operator": "op."}' "$c/docs/graph/graph-lint.py" \
+    || { echo "the plant's KIND_PREFIX was not preserved by the reconcile"; return 1; }
+}
+
+case_run_derives_tokens_from_plant() {
+  gr_need || return 1; gr_fixture || return 1; gr_run_once
+  python3 - "$GR/run.out" <<'PY' || return 1
+import re, sys
+out = open(sys.argv[1]).read()
+m = re.findall(r"--tokens[= ]([^\s]+)", out)
+if not m:
+    print(f"no --tokens list printed: {out[-600:]!r}"); sys.exit(1)
+toks = {t.strip("'\"").lower() for x in m for t in x.split(",")}
+miss = [w for w, alts in (("the plant's name", {"zephyrplant"}),
+                          ("a node id", {"subsystem.quokka-ledger", "quokka-ledger"}),
+                          ("the stamp's seed name", {"cypress"}))
+        if not toks & alts]
+if miss:
+    print(f"the --tokens list lacks {', '.join(miss)}: {sorted(toks)}"); sys.exit(1)
+PY
+}
+
+case_run_prints_gate_table() {
+  gr_need || return 1; gr_fixture || return 1; gr_run_once
+  python3 - "$GR/run.out" "$ROOT/protocols/graft.md" <<'PY' || return 1
+import re, sys
+out = [l for l in open(sys.argv[1]).read().splitlines() if l.strip()]
+gates = []
+for l in open(sys.argv[2]).read().splitlines():
+    m = re.match(r"\| `(graft\.gate\.[a-z-]+)` \|.*\| (hard|soft|detective|judgment) \|\s*$", l)
+    if m:
+        gates.append(m.groups())
+if len(gates) < 10:
+    print(f"fixture: only {len(gates)} gate rows parsed from protocols/graft.md"); sys.exit(1)
+tail = out[-len(gates):]
+if len(tail) < len(gates):
+    print(f"stdout has {len(out)} lines, fewer than the {len(gates)} gate rows"); sys.exit(1)
+for (gid, cls), line in zip(gates, tail):
+    if not line.strip().startswith(gid + ":"):
+        print(f"stdout does not end with the gate table in its order: want {gid!r}, got {line!r}"); sys.exit(1)
+    rest = line.strip()[len(gid) + 1:].strip()
+    if cls == "judgment":
+        if not re.search(r"not run", rest, re.I) or rest.startswith("PASS"):
+            print(f"judgment gate {gid} is not marked as not run by the tool: {line!r}"); sys.exit(1)
+    elif not re.match(r"(PASS|BLOCK|N-A)\b", rest):
+        print(f"mechanical gate {gid} carries no PASS / BLOCK / N-A: {line!r}"); sys.exit(1)
+PY
+}
+
+round_case GA-C1 case_audit_base_identical_is_delta "a backup byte-identical to the seed at --base is DELTA; without --base it stays CUSTOMIZED"
+round_case GA-C2 case_audit_engine_signal_survives "an engine backup whose signal lines survive in the current engine is not CUSTOMIZED"
+round_case GA-C3 case_audit_plant_agent_projection "a plant-owned agent's projection backup is a named exclusion, exit 0"
+round_case GA-C4 case_audit_skips_nested_plant_copy "backups under a nested .cypress/seed.json directory are not counted"
+round_case GL-a case_ledger_classifies_three_ways "the ledger prints one class per seed-owned machinery file"
+round_case GL-b case_ledger_harvested_is_not_merge "a plant addition the seed already carries is HARVESTED"
+round_case GL-c case_ledger_base_from_tag "--base prints the stamped version's tag, from the tag"
+round_case GL-d case_ledger_base_inferred_by_lineage "--base with no tag prints the lineage commit, its match count, inferred"
+round_case GR-a case_run_refuses_stage_inside_plant "a stage inside the plant is refused, exit 2, nothing written"
+round_case GR-b case_run_leaves_plant_byte_identical "the plant tree is byte-identical after a run"
+round_case GR-c case_run_stage_holds_installed_copy_and_log "the stage holds an installed copy of the plant and the install log"
+round_case GR-d case_run_reconciles_three_engines "the three engines in the stage are reconciled"
+round_case GR-e case_run_derives_tokens_from_plant "the --tokens list is derived from the plant"
+round_case GR-f case_run_prints_gate_table "stdout ends with the Phase 7 gate table"
+[ "$ROUND_FAILED" -eq 0 ] \
+  || { echo "test-graft-tools: FAIL — the 7.32.0 block has failing cases (above)" >&2; exit 1; }
+
 echo "test-graft-tools: PASS"
