@@ -283,6 +283,23 @@ write_ledger
 sed -i.bak 's#`plans/grill/increment-02[^`]*`#`/tmp/plans/grill/x.md`#' "$G/plans/grill.md" && rm -f "$G/plans/grill.md.bak"
 expect_fail 'points outside plans/grill/' 'index row escaping the plan'
 
+# 19b. outside plans/grill/ but inside plans/: an index row reading
+# `other/grill/x.md` joins to plans/other/grill/x.md, beside the ledger, not in
+# it. Containment is the ledger directory, not the plan's directory, so a real
+# file there is still refused.
+write_plan
+write_ledger
+mkdir -p "$G/plans/other/grill"
+cp "$G/plans/grill/increment-02-persist-submissions.md" "$G/plans/other/grill/"
+python3 - "$G/plans/grill.md" <<'PY'
+import re, sys
+p = sys.argv[1]; s = open(p).read()
+s2 = re.sub(r"`plans/grill/(increment-02[^`]*)`", r"`other/grill/\1`", s)
+assert s2 != s, "fixture: no increment-02 index row to repoint"
+open(p, "w").write(s2)
+PY
+expect_fail 'points outside plans/grill/' 'index row inside plans/ but outside the ledger'
+
 # 20. the index row's number must match the file it points at, or renumbering
 # one and not the other drifts silently — the drift an index exists to catch.
 write_plan

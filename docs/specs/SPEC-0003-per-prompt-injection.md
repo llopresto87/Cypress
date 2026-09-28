@@ -1636,6 +1636,7 @@ Techniques the cases rely on:
 | ANCHOR_OUTPUT_WITHIN_BUDGET | X158; 300 changed paths; red on arrival (no tool) | tests/test-bound-hook.sh | integration | green |
 | ANCHOR_COMPARE_WRITES_NOTHING | X159; five plant states with a stale index; red on arrival (no tool) | tests/test-bound-hook.sh | integration | green |
 | ANCHOR_RECORD_REFUSES_A_SYMLINK | X160; hard link, and fault injection through `runpy`; red on arrival (no tool) | tests/test-bound-hook.sh | integration | green |
+| ANCHOR_RECORD_REFUSES_A_SYMLINK | X166; a directory at the anchor name is refused as not a regular file, stderr one line, nothing written (§6 anchor file: never through a symlink; the tool refuses any name that is not a regular file); guard, green on arrival, red under a mutant that refuses only a symlink | tests/test-bound-hook.sh | integration | green |
 | STATUS_HOOK_INJECTS_THE_ANCHOR_LINE | X161; with and without a register; red on arrival (no anchor line); its ledger-reset assertion is a guard, green on arrival | tests/test-bound-hook.sh | integration | green |
 | STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION | X162; four causes, with and without a register; red on arrival (no not-checked line, no `ANCHOR_TIMEOUT`) | tests/test-bound-hook.sh | integration | green |
 | STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION | X165; structural: `ANCHOR_TIMEOUT` in §6, in `status-hook.py` and in `status-extension.ts` state one value; red on arrival of the 5 s §6 value, green with increment 61 | tests/test-bound-hook.sh | unit | green |

@@ -29,6 +29,8 @@
 #       stamp that is not one JSON object is backed up and named
 #       — asserts SPEC-0001 UNKNOWN_STAMP_KEYS_SURVIVE and
 #         SPEC-0001 STAMP_NOT_AN_OBJECT
+#   S12 a stamp cut off inside a field, or not UTF-8, takes the preflight
+#       refusal, not the STAMP_NOT_AN_OBJECT backup
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -590,6 +592,51 @@ echo "  S11: keys the installer does not own survive in order after its own; a s
 rm -rf "$WORK"
 }
 
+case_s12_unparseable_stamp() {
+local WORK; WORK="$(mktemp -d)"
+# --- S12: an unparseable stamp takes the preflight refusal (SPEC-0001) -------
+# By the owner's ruling on STAMP_NOT_AN_OBJECT, only a stamp that parses as
+# JSON with a top level that is not an object is moved to a backup. A stamp
+# that does not parse stays refused before any write by the preflight. S7
+# holds four shapes of that; S12 adds the two its shapes miss: a stamp cut
+# off inside a field, and a stamp whose bytes are not UTF-8 (JSON text is
+# UTF-8). Each arm asserts the same outcome: exit non-zero, the preflight's
+# own refusal line, the stamp byte-identical, no seed.json.bak-*, the file
+# listing unchanged. Each arm runs in its own subshell, so one red arm does not hide
+# the other; the case fails at its end.
+local S="$WORK/s12"; mkdir -p "$S"
+"$ROOT/install.sh" claude-code --legal-corpus yes --legal-jurisdiction it \
+    --project-dir "$S" >/dev/null 2>&1 || fail "S12 setup install failed"
+local bad=0 shape
+for shape in truncated not-utf8; do
+  (
+    T="$WORK/s12-$shape"
+    cp -a "$S" "$T"
+    case "$shape" in
+      truncated) printf '{"seed": "cypress", "legal_corpus": "ye' > "$T/.cypress/seed.json" ;;
+      not-utf8)  printf '{"seed": "cypress", "legal_corpus": "yes", "note": "caf\351"}\n' \
+                     > "$T/.cypress/seed.json" ;;
+    esac
+    cp "$T/.cypress/seed.json" "$WORK/stamp-$shape"
+    before="$(find "$T" \( -type f -o -type l \) | sort)"
+    rc=0
+    out="$("$ROOT/install.sh" codex --project-dir "$T" 2>&1)" || rc=$?
+    [[ $rc -ne 0 ]] || fail "S12/$shape: an unparseable .cypress/seed.json was accepted (exit 0)"
+    after="$(find "$T" \( -type f -o -type l \) | sort)"
+    [[ "$before" == "$after" ]] || fail "S12/$shape: the refusal changed the plant's file listing"
+    cmp -s "$T/.cypress/seed.json" "$WORK/stamp-$shape" \
+        || fail "S12/$shape: the stamp's bytes changed; it is refused, not backed up or rewritten"
+    [[ -z "$(find "$T/.cypress" -maxdepth 1 -name 'seed.json.bak-*')" ]] \
+        || fail "S12/$shape: the stamp was moved to a seed.json.bak-*, the STAMP_NOT_AN_OBJECT path, which is for a stamp that parses"
+    grep -qF 'refusing to install: .cypress/seed.json' <<<"$out" \
+        || fail "S12/$shape: the run did not stop with the preflight's refusal line. Output ends: $(tail -3 <<<"$out" | tr '\n' ' ')"
+    echo "  S12/$shape: an unparseable stamp is refused by the preflight; nothing written — OK"
+  ) || bad=1
+done
+rm -rf "$WORK"
+return "$bad"
+}
+
 # --- one-case subcommand, run by the parallel dispatcher ---------------------
 if [ "${1:-}" = "__case" ]; then
   "$2"
@@ -604,7 +651,7 @@ fi
 # concurrently under the gate's ONE shared budget (tests/gate_pool.py,
 # $GATE_JOBS / $GATE_POOL_DIR). Every assertion is byte-for-byte what it was.
 SCN="$(mktemp)"
-for c in case_s1_s2_s5 caseALL_NAMES_SKIPPED_FROZEN_HOSTS case_s4 case_s6 case_plan_records case_corpus_linkmodes case_corpus_surplus case_drift case_edited case_s7 case_session_records case_engine_upgrade case_stamp_keys; do
+for c in case_s1_s2_s5 caseALL_NAMES_SKIPPED_FROZEN_HOSTS case_s4 case_s6 case_plan_records case_corpus_linkmodes case_corpus_surplus case_drift case_edited case_s7 case_session_records case_engine_upgrade case_stamp_keys case_s12_unparseable_stamp; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0
