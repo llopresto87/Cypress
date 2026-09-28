@@ -19,6 +19,9 @@
 #   S8  a frozen host the record carries, skipped by `all`, is named as not
 #       refreshed in a WARNING and left byte-identical
 #       — asserts SPEC-0001 ALL_NAMES_SKIPPED_FROZEN_HOSTS
+#   S9  every plant receives the session-record form, and a re-install keeps
+#       the plant's own records and its edited form byte-identical
+#       — asserts SPEC-0001 SESSION_RECORD_FORM_IS_PLACED
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -198,8 +201,9 @@ local WORK; WORK="$(mktemp -d)"
 # --- a plant's own plan records are never touched by the seed --------------
 # The plan-of-record and its ledger files hold the plant's decisions: why a
 # thing was built, what was rejected, what a steward ratified. They are the one
-# artifact a project cannot reconstruct. The seed ships an empty grill.md
-# scaffold into plans/ and nothing else, `plans/` is deliberately absent from
+# artifact a project cannot reconstruct. The seed ships two leaves into plans/
+# and nothing else: an empty grill.md scaffold and the session-record form,
+# sessions/_session-record.template.md (S9). `plans/` is deliberately absent from
 # graft-audit's MACHINERY_SUBTREES so it counts as plant knowledge, and an
 # install must leave every byte of it alone — including the ledger children,
 # which are new and which nothing in the seed knows the names of.
@@ -227,10 +231,12 @@ after="$(cat "$P/docs/graph/plans/grill.md" \
 a project cannot reconstruct"
 [[ "$(find "$P/docs/graph/plans" -name '*.bak-*' | wc -l | tr -d ' ')" -eq 0 ]] \
     || fail "an install backed up (therefore replaced) a plant plan record"
-# ...and nothing from the seed's own eighteen plans came along.
+# ...and nothing from the seed's own eighteen plans came along. `sessions` is
+# the directory that holds the placed session-record form, which every plant
+# must receive (SPEC-0001 SESSION_RECORD_FORM_IS_PLACED, S9).
 for leaked in $(ls "$P/docs/graph/plans"); do
     case "$leaked" in
-        grill|grill.md|our-other-plan.md|adopted-instructions.md) ;;
+        grill|grill.md|our-other-plan.md|adopted-instructions.md|sessions) ;;
         *) fail "the seed leaked '$leaked' into the plant's plans/ — the seed's own \
 plan records must never reach a plant" ;;
     esac
@@ -416,6 +422,42 @@ T="$WORK/unreadable-control"; cp -a "$S" "$T"
 rm -rf "$WORK"
 }
 
+case_session_records() {
+local WORK; WORK="$(mktemp -d)"
+# --- S9: SESSION_RECORD_FORM_IS_PLACED (SPEC-0001) ---------------------------
+# Harness memory is not a home: a session writes what it learns to a record
+# under docs/graph/plans/sessions/, and canonize files it. Every plant receives
+# the blank form there, and a re-install never touches the plant's own records
+# or the form once the plant has edited it. Called last, so a red here stops
+# nothing after it.
+local FORM="docs/graph/plans/sessions/_session-record.template.md"
+local SEED_FORM="$ROOT/templates/docs/plans/sessions/_session-record.template.md"
+local REC="docs/graph/plans/sessions/2026-01-01-example.md"
+P="$WORK/sessions"; mkdir -p "$P"
+"$ROOT/install.sh" claude-code --project-dir "$P" >/dev/null 2>&1 \
+    || fail "S9: the fresh claude-code install failed"
+[[ -f "$P/$FORM" ]] || fail "S9: a fresh install holds no $FORM"
+[[ -f "$SEED_FORM" ]] || fail "S9: the seed holds no templates/docs/plans/sessions/_session-record.template.md"
+cmp -s "$SEED_FORM" "$P/$FORM" \
+    || fail "S9: the placed $FORM is not byte-identical to the seed's form"
+
+# A plant record (synthetic text) and an edit to the placed form.
+printf '# Session record: 2026-01-01, example\nA synthetic record written by the plant-state suite.\n' >"$P/$REC"
+printf '\n<!-- edited by the plant -->\n' >>"$P/$FORM"
+rec_before="$(cksum <"$P/$REC")"
+form_before="$(cksum <"$P/$FORM")"
+"$ROOT/install.sh" all --project-dir "$P" >/dev/null 2>&1 \
+    || fail "S9: install.sh all over the plant failed"
+[[ "$(cksum <"$P/$REC")" == "$rec_before" ]] \
+    || fail "S9: install.sh all changed the plant's own session record $REC"
+[[ "$(cksum <"$P/$FORM")" == "$form_before" ]] \
+    || fail "S9: install.sh all changed the plant's edited $FORM"
+[[ "$(find "$P/docs/graph/plans/sessions" -name '*.bak-*' | wc -l | tr -d ' ')" -eq 0 ]] \
+    || fail "S9: install.sh all wrote a backup beside a session record or the form"
+echo "  S9: the session-record form is placed, and the plant's records and edited form survive a re-install — OK"
+rm -rf "$WORK"
+}
+
 # --- one-case subcommand, run by the parallel dispatcher ---------------------
 if [ "${1:-}" = "__case" ]; then
   "$2"
@@ -430,7 +472,7 @@ fi
 # concurrently under the gate's ONE shared budget (tests/gate_pool.py,
 # $GATE_JOBS / $GATE_POOL_DIR). Every assertion is byte-for-byte what it was.
 SCN="$(mktemp)"
-for c in case_s1_s2_s5 caseALL_NAMES_SKIPPED_FROZEN_HOSTS case_s4 case_s6 case_plan_records case_corpus_linkmodes case_corpus_surplus case_drift case_edited case_s7; do
+for c in case_s1_s2_s5 caseALL_NAMES_SKIPPED_FROZEN_HOSTS case_s4 case_s6 case_plan_records case_corpus_linkmodes case_corpus_surplus case_drift case_edited case_s7 case_session_records; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0
