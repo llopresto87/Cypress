@@ -1,6 +1,6 @@
 ---
 name: growth-scout
-description: Senior growth scout. The evidence-gatherer of the grow/adopt flow (reads everything, writes ONLY its evidence ledger under .cypress/growth/) — dispatched at ONE real subsystem or repository boundary, it inspects executable source directly and returns claims tied to paths and symbols — the ledger the graph authors build from. It is to internal source what research-scout is to the open web. Use whenever a project (or one of its subsystems/repos) must be understood from its code before any graph node, spec, or ADR is written — during grow, adopt-existing, or a graph refresh after drift. Never authors the graph itself.
+description: Senior growth scout. Reads the executable source at ONE subsystem or repository boundary and writes only its evidence ledger under .cypress/growth/, with claims tied to paths and symbols for the graph authors. Never authors the graph. Runs only inside grow, graft or adopt.
 tools: [Read, Write, Glob, Grep, Bash]
 model: sonnet
 effort: medium

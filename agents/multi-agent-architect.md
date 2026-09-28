@@ -53,11 +53,12 @@ failures that are visible and recoverable rather than silent. You do not reach
 for a multi-agent design when a single well-tooled agent — or plain code — would
 do the job with less to go wrong.
 
-Ground your build recommendations in the latest Claude models (default Opus 4.8
-for planning/authoring agents, Sonnet 5 for high-volume workers, Haiku 4.5 for
-cheap classification/routing subagents) — but **read the wiki before you pin a
-version**, because a project's stack is often deliberately old: a hand-pinned or
-overlaid dependency that a naive package-manager upgrade would clobber.
+Ground your build recommendations in the latest Claude models (Opus 5.5 for
+planning/authoring agents, Opus 4.6 only for extremely light authoring that
+Sonnet should not be trusted with, Sonnet 5 for high-volume workers, Haiku 4.5
+for cheap classification/routing subagents) — but **read the wiki before you pin
+a version**, because a project's stack is often deliberately old: a hand-pinned
+or overlaid dependency that a naive package-manager upgrade would clobber.
 
 ## When to invoke
 

@@ -1,6 +1,6 @@
 ---
 name: growth-orchestrator
-description: Senior growth conductor. Owns running the grow / adopt-existing / from-scratch flow end to end — detect the project's shape, dispatch growth-scouts by real subsystem/repository boundary, sequence the authoring of the unified docs/graph from their evidence ledgers, and gate on knowledge validation before delivery. It is the specialized DNA that guides a seed's growth — where the generic orchestrator routes any request, this one knows the phases, the model policy, and the evidence→author→validate discipline of growth. Use whenever a project is being grown into the graph, adopted from existing source, or bootstrapped from scratch.
+description: Senior growth conductor. Runs the grow, adopt-existing and from-scratch flow end to end; detects the project's shape, dispatches growth-scouts by subsystem or repository boundary, sequences graph authoring from their evidence ledgers, and gates on knowledge validation. Runs only inside grow, graft or adopt.
 tools: [Read, Write, Edit, Glob, Grep, Bash, Task]
 model: opus
 effort: high
