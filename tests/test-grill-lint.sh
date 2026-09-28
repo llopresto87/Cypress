@@ -253,7 +253,7 @@ write_plan
 write_ledger
 cp "$G/plans/grill/increment-01-validate-schema.md" \
    "$G/plans/grill/increment-07-orphaned.md"
-expect_fail 'increment-07-orphaned.md' 'orphan increment file'
+expect_fail 'plans/grill/increment-07-orphaned\.md is not indexed' 'orphan increment file'
 
 # 17. the required fields are enforced INSIDE the increment's own file, not
 # merely somewhere in the plan — otherwise the split loses the contract.
@@ -841,17 +841,13 @@ case_seed_ledger_decision_from_decisions_flag() {
 }
 case_plant_layout_unchanged() {
   # G3f (increment 2f, guard): the plant layout (plans/grill.md, plans/grill/)
-  # lints exactly as before: the ledger form passes with the golden headline,
-  # and an unindexed child is still an orphan.
+  # lints exactly as before: the ledger form passes with the golden headline.
+  # That an unindexed child is still an orphan is case 16 above.
   local L=G3f
   { write_plan && write_ledger; } || { wfail $L "harness: the ledger form was not written"; return; }
   wrun
   [ "$WRC" -eq 0 ] || { wfail $L "the plant ledger form: expected exit 0, got $WRC"; return; }
-  [ "$WOUT" = "$(cat "$GOLDEN")" ] || { wfail $L "the plant ledger form's output differs from the golden copy"; return; }
-  cp "$G/plans/grill/increment-01-validate-schema.md" "$G/plans/grill/increment-07-orphaned.md"
-  wrun
-  [ "$WRC" -eq 1 ] || { wfail $L "an orphan child: expected exit 1, got $WRC"; return; }
-  has_re "$WOUT" 'plans/grill/increment-07-orphaned\.md is not indexed' || wfail $L "the orphan child is not named"
+  [ "$WOUT" = "$(cat "$GOLDEN")" ] || wfail $L "the plant ledger form's output differs from the golden copy"
 }
 
 # ---------------------------------------------------------------------------
@@ -887,27 +883,9 @@ case_external_decision_once() {
   [ "$WRC" -eq 0 ] || { wfail $L "expected exit 0, got $WRC: $(grep -m1 'ADR-0009' <<<"$WOUT")"; return; }
   [ "$(grep -c 'seed:ADR-0009' <<<"$WOUT")" -eq 1 ] || wfail $L "expected exactly one line naming seed:ADR-0009"
 }
-case_bare_decision_still_unfiled() {
-  # G1c (increment 3c, guard): a bare ADR-0009 with no local file is still the
-  # existing "not filed" finding.
-  local L=G1c
-  rm -rf "$G/decisions"
-  write_plan "$ADR_COL_H" "$(adr_row 'ADR-0009')" || { wfail $L "harness: the plan was not written"; return; }
-  wrun
-  [ "$WRC" -eq 1 ] || { wfail $L "expected exit 1, got $WRC"; return; }
-  has_re "$WOUT" 'ADR-0009 is named by the plan but is not filed' || wfail $L "no 'ADR-0009 is named by the plan but is not filed'"
-}
-case_bare_decision_still_resolves() {
-  # G1d (increment 3d, guard): a bare ADR-0001 with a local file resolves.
-  local L=G1d
-  rm -rf "$G/decisions"; mkdir -p "$G/decisions"
-  printf -- '---\nstatus: proposed\nstatus_date: 2026-09-28\nowner: architect\n---\n\n# ADR-0001: local\n' \
-    > "$G/decisions/adr-0001-local.md"
-  write_plan "$ADR_COL_H" "$(adr_row 'ADR-0001')" || { wfail $L "harness: the plan was not written"; rm -rf "$G/decisions"; return; }
-  wrun
-  rm -rf "$G/decisions"
-  [ "$WRC" -eq 0 ] || wfail $L "expected exit 0, got $WRC: $(first_line "$WOUT")"
-}
+# G1c and G1d (a bare ADR with no local file is still "not filed"; a bare ADR
+# with a local file resolves) were guards for increment 3. Case 23 above
+# asserts both on the same decision-table shape, so it is their survivor.
 
 # ---------------------------------------------------------------------------
 # The ledger verification tool (plan increment 4): tools/verify-ledger.py
@@ -932,16 +910,6 @@ vlrun() {
 }
 has_word() { grep -qE "(^|[^0-9])$2([^0-9]|$)" <<<"$1"; }
 
-case_verify_ledger_exact_rebuild() {
-  # D5a (increment 4a): the ledger and leaves rebuild the monolith exactly:
-  # exit 0 and the rebuilt file's byte count printed.
-  local L=D5a n
-  vlfx || { wfail $L "harness: the verify-ledger fixture is missing"; return; }
-  n="$(wc -c < "$VLFX/monolith.md" | tr -d ' ')"
-  vlrun
-  [ "$WRC" -eq 0 ] || { wfail $L "expected exit 0, got $WRC: $(first_line "$WOUT")"; return; }
-  has_word "$WOUT" "$n" || wfail $L "the byte count $n is not printed"
-}
 case_verify_ledger_changed_byte() {
   # D5b (increment 4b): one changed byte in a leaf exits 1 and names the leaf
   # and the first differing byte offset (0-based; the offset in the rebuilt
@@ -976,7 +944,9 @@ case_verify_ledger_unindexed_leaf() {
 }
 case_verify_ledger_counts_utf8_bytes() {
   # D5d (increment 4d): a multibyte character counts as its UTF-8 bytes. The
-  # fixture holds several, so its byte and character counts differ.
+  # fixture holds several, so its byte and character counts differ. It is also
+  # the survivor of D5a (increment 4a): the unchanged ledger and leaves rebuild
+  # the monolith exactly, exit 0, and the rebuilt file's byte count is printed.
   local L=D5d nb nc
   vlfx || { wfail $L "harness: the verify-ledger fixture is missing"; return; }
   nb="$(wc -c < "$VLFX/monolith.md" | tr -d ' ')"
@@ -992,8 +962,7 @@ for c in case_seed_ledger_lints_in_place case_seed_ledger_orphan_leaf \
          case_seed_ledger_row_outside_refused case_seed_ledger_contract_from_specs_flag \
          case_seed_ledger_decision_from_decisions_flag case_plant_layout_unchanged \
          case_external_decision_reported case_external_decision_once \
-         case_bare_decision_still_unfiled case_bare_decision_still_resolves \
-         case_verify_ledger_exact_rebuild case_verify_ledger_changed_byte \
+         case_verify_ledger_changed_byte \
          case_verify_ledger_unindexed_leaf case_verify_ledger_counts_utf8_bytes; do
   "$c"
 done
