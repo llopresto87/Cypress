@@ -644,22 +644,24 @@ $ echo $?
 | PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION | K7 case_k7_plant_line_is_still_filed: an earlier seed kernel with one plant line added is filed and announced `OVERWRITTEN`; guard | tests/test-install-kernel-modes.sh | integration | green |
 | SEED_HISTORY_UNAVAILABLE | K7 case_k7_no_history_falls_back: from a seed copy with no `.git`, an earlier seed kernel is filed for migration and exactly one log line names the missing history | tests/test-install-kernel-modes.sh | integration | green |
 | RECREATED_LIST_IS_COMPLETE | D5 case_d5_recreated_list: twelve deleted protocol nodes re-created; `.cypress/recreated-nodes.txt` holds the §6 header and all twelve paths, sorted and unique; the console prints ten and names the file | tests/test-install-adoption.sh | integration | green |
-| RECREATED_LIST_IS_COMPLETE | D5 case_d5_clean_rewrite: after a run that re-created one node, a run that re-creates nothing rewrites the file with the header line alone | tests/test-install-adoption.sh | integration | green |
+| RECREATED_LIST_IS_COMPLETE | D5 case_d5_fresh_list, the first check of case_d5_recreated_list: a first install writes `.cypress/recreated-nodes.txt` with the §6 header alone; guard, red under a mutant that records nodes on a first install | tests/test-install-adoption.sh | integration | green |
+| RECREATED_LIST_IS_COMPLETE | D5 case_d5_recreated_list, third check: after the run that re-created twelve nodes, a run that re-creates nothing rewrites the file with the header line alone | tests/test-install-adoption.sh | integration | green |
 | UNKNOWN_STAMP_KEYS_SURVIVE | S11 case_stamp_keys: a string key and an object key the installer does not own survive `install.sh all` JSON-equal, in their original order, after the installer's keys; `legal_corpus` and `tools` keep their own rules | tests/test-plant-state.sh | integration | green |
 | STAMP_NOT_AN_OBJECT | S11 case_stamp_keys, second arm: a stamp that is a JSON array is moved to a `seed.json.bak-*`, a stamp is written from the installer's keys, one line names the backup. The arm runs after the first, so its red is not observed until the first arm is green | tests/test-plant-state.sh | integration | green |
-| PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX | E5 case_pre_growth_block_in_index: a fresh `install.sh claude-code` gives `docs/graph/index.md` one pre-growth block, delimited as §6 gives, naming `EXPERT_SEED_INSTALL_PROMPT.md` and `protocol.initialize` | tests/test-full-install.sh | integration | green |
-| PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX | E5 case_pre_growth_kernel_names_neither: the placed `CLAUDE.md` names neither `EXPERT_SEED_INSTALL_PROMPT.md` nor `protocol.initialize` | tests/test-full-install.sh | integration | green |
-| PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX | E5 case_pre_growth_index_is_plant_owned: a re-install over an index with no pre-growth block leaves it byte-identical; guard | tests/test-full-install.sh | integration | green |
-| CODE_ANCHOR_TOOL_IS_PLACED | E6 case_code_anchor_tool_placed: a fresh `install.sh all` places `docs/graph/code-anchor.py` byte-identical to `tools/code-anchor.py` and writes no `.cypress/anchor.json` | tests/test-full-install.sh | integration | green |
-| CODE_ANCHOR_TOOL_IS_PLACED | E6 case_code_anchor_tool_fast_forwards: a re-install over an older `docs/graph/code-anchor.py` leaves one backup holding it and the seed's tool in place | tests/test-full-install.sh | integration | green |
+| STAMP_NOT_AN_OBJECT | S12 case_s12_unparseable_stamp: a stamp that does not parse (cut off inside a field; bytes that are not UTF-8) is not the trigger: the run exits non-zero with the preflight's refusal line, the stamp is byte-identical, no `seed.json.bak-*` is made, the file listing is unchanged. The truncated arm is a guard; the not-UTF-8 arm is red: the preflight's reader stops on a Python traceback, not its refusal | tests/test-plant-state.sh | integration | green |
+| PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX | E5 case_pre_growth_pointer, first check: a fresh `install.sh claude-code` gives `docs/graph/index.md` one pre-growth block, delimited as §6 gives, naming `EXPERT_SEED_INSTALL_PROMPT.md` and `protocol.initialize` | tests/test-full-install.sh | integration | green |
+| PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX | E5 case_pre_growth_pointer, second check: the placed `CLAUDE.md` names neither `EXPERT_SEED_INSTALL_PROMPT.md` nor `protocol.initialize` | tests/test-full-install.sh | integration | green |
+| PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX | E5 case_pre_growth_pointer, third check: a re-install over an index with no pre-growth block leaves it byte-identical; guard | tests/test-full-install.sh | integration | green |
+| CODE_ANCHOR_TOOL_IS_PLACED | E6 case_code_anchor_tool, first check: a fresh `install.sh all` places `docs/graph/code-anchor.py` byte-identical to `tools/code-anchor.py` and writes no `.cypress/anchor.json` | tests/test-full-install.sh | integration | green |
+| CODE_ANCHOR_TOOL_IS_PLACED | E6 case_code_anchor_tool, second check: a re-install over an older `docs/graph/code-anchor.py` leaves one backup holding it and the seed's tool in place | tests/test-full-install.sh | integration | green |
 | EVERY_BACKUP_IS_CLASSIFIABLE | X390 case_audit_plant_agent_projection (GA-C3): a `.claude/agents/<name>.md` backup whose plant node `docs/graph/agents/<name>.md` has `origin: project` is not UNMAPPED and the audit exits 0; a projection backup with no seed source and no plant node stays UNMAPPED, exit 1 | tests/test-graft-tools.sh | unit | green |
 | EVERY_BACKUP_IS_CLASSIFIABLE | X391 case_audit_plant_skill_projection: a `.claude/skills/<name>/SKILL.md` backup whose plant node `docs/graph/skills/<name>.md` has `origin: project` is not UNMAPPED and the audit exits 0; a skill projection backup with no plant node stays UNMAPPED, exit 1 | tests/test-graft-tools.sh | unit | green |
 | EVERY_BACKUP_IS_CLASSIFIABLE | X392 case_audit_plant_agent_copilot_view: a `.github/agents/<name>.agent.md` backup whose plant node `docs/graph/agents/<name>.md` has `origin: project` is not UNMAPPED and the audit exits 0; a Copilot agent view backup with no seed agent and no plant node stays UNMAPPED, exit 1 | tests/test-graft-tools.sh | unit | green |
 
 Coverage note, so the table is not read as more than it is.
 
-**The engine rows (7.31.0).** X383 to X389 run in one collecting block after
-every existing case of `tests/test-graft-tools.sh`, so each label shows its own
+**The engine rows (7.31.0).** Every case of `tests/test-graft-tools.sh`, X383
+to X389 among them, runs under one collector, so each label shows its own
 result in one run. A row marked guard passes on the unmodified tools and is held
 by a named mutant instead of an observed red: X385 by an explicit `--preserve`
 ignored, X386 by an unknown engine name given no preserve set, X388 by a later
@@ -671,7 +673,8 @@ re-install through graft.
 contracts and two failures promoted from the 7.32.0 pending block. K7's four
 cases run in one collecting block at the end of
 `tests/test-install-kernel-modes.sh`, so each shows its own result; the other
-suites run each case as its own scenario. A row marked guard passes on the
+suites run each case as its own scenario. E5, E6 and D5 are one scenario per
+contract, and each check in it reports its own result. A row marked guard passes on the
 unmodified installer. K7's seed is a temp clone of the real seed; when the
 checkout is shallow and holds no earlier kernel, the clone gains an earlier
 body and the current one as two commits, so the case still has a history to

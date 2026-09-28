@@ -609,20 +609,30 @@ d5_assert_header() {  # $1=label $2=first line of the list file
 }
 
 case_d5_recreated_list() {
-  # One plant serves both D5 checks: a run that re-creates twelve nodes, then a
-  # run that re-creates nothing. Each check runs in its own subshell, so a
+  # One plant serves the three D5 checks: the first install, a run that
+  # re-creates twelve nodes, then a run that re-creates nothing. Each check runs in its own subshell, so a
   # failed first check does not hide the second; the case fails at its end.
   W="$(mktemp -d)"
   trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
   T="$W/d5-twelve"; mkdir -p "$T"
   "$ROOT/install.sh" claude-code --project-dir "$T" --copy >/dev/null 2>&1 \
       || fail "D5: baseline install failed"
+  list="$T/.cypress/recreated-nodes.txt"
+  local bad=0
+  (
+    # D5 case_d5_fresh_list: a first install places every node, and none of
+    # them is re-created (the plant carried no stamp before the run), so the
+    # file that describes this run holds the header alone.
+    [[ -f "$list" ]] || fail "D5 (fresh): a first install wrote no .cypress/recreated-nodes.txt"
+    [[ "$(wc -l < "$list" | tr -d ' ')" -eq 1 ]] \
+        || fail "D5 (fresh): a first install listed nodes as re-created: $(head -4 "$list" | tr '\n' ' ')"
+    d5_assert_header "D5 (fresh)" "$(head -1 "$list")"
+    ok "D5: a first install writes the list file with the header alone"
+  ) || bad=1
   deleted=(); while IFS= read -r _l; do deleted+=("${_l#"$T"/}"); done \
       < <(ls "$T"/docs/graph/protocols/*.md | sort | head -12)
   [[ ${#deleted[@]} -eq 12 ]] || fail "D5: could not find 12 seed-owned protocol nodes to delete"
   for rel in "${deleted[@]}"; do rm -f "$T/$rel"; done
-  list="$T/.cypress/recreated-nodes.txt"
-  local bad=0
   (
     rc=0
     out="$("$ROOT/install.sh" claude-code --project-dir "$T" --copy 2>&1)" || rc=$?

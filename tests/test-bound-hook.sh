@@ -1998,7 +1998,7 @@ if failed:
     sys.exit(1)
 PY
 
-# --- SPEC-0003 code anchor: the tool (X152-X160, 7.32.0) ---------------------
+# --- SPEC-0003 code anchor: the tool (X152-X160, X166, 7.32.0) ---------------
 # `docs/graph/code-anchor.py` records the branch, commit and uncommitted work of
 # every governed repository at canonize (`--record`, into `.cypress/anchor.json`)
 # and compares it once per session (`--compare`). One case per contract of
@@ -2482,6 +2482,34 @@ def x160(base):
         problems.append(f"a record whose replace fails changed the anchor — {r.ctx()}")
     check(not problems, " || ".join(problems))
     return "a symlinked anchor and a missing .cypress/ are refused; a record replaces the file atomically"
+
+
+@case("X166", "ANCHOR_RECORD_REFUSES_A_SYMLINK")
+def x166(base):
+    # A directory at the anchor name is refused as a name that is not a regular
+    # file, before any write, as a symlink is (SPEC-0003 §6 anchor file: never
+    # written through a symlink; the tool refuses any name that is not a
+    # regular file). A failed replace onto the directory would also exit
+    # non-zero with one line, so the line must name the refusal, not a write
+    # that failed and left "the old anchor".
+    problems = []
+    p = Plant(base, name="dir-anchor")
+    p.anchor.mkdir()
+    (p.anchor / "zq-sentinel-0166").write_text("inside the directory\n")
+    before = sorted(os.listdir(p.anchor.parent))
+    r = tool(p, "--record")
+    if r.rc == 0:
+        problems.append(f"directory at the anchor name: --record exited 0 — {r.ctx()}")
+    if not one_err_line(r):
+        problems.append(f"directory at the anchor name: stderr is not one line — {r.ctx()}")
+    if "not a regular file" not in r.err:
+        problems.append(f"directory at the anchor name: stderr does not refuse it as not a regular file — {r.ctx()}")
+    if not p.anchor.is_dir() or os.listdir(p.anchor) != ["zq-sentinel-0166"]:
+        problems.append("directory at the anchor name: the directory was changed")
+    if sorted(os.listdir(p.anchor.parent)) != before:
+        problems.append(f"directory at the anchor name: .cypress/ changed: {sorted(os.listdir(p.anchor.parent))}")
+    check(not problems, " || ".join(problems))
+    return "a directory at the anchor name is refused as not a regular file; nothing written"
 
 
 failed = []

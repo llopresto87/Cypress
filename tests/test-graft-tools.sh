@@ -961,7 +961,7 @@ collect_case X389 case_engine_audit_malformed_first_pair_fails "a malformed firs
 # (GA-C3 runs under X390 and asserts SPEC-0001 EVERY_BACKUP_IS_CLASSIFIABLE, as
 # X391 and X392 do for the other projections of a plant-owned node; the others
 # are contained, no spec owns them); GL-a..GL-d are tools/graft-ledger.py;
-# GR-a..GR-f are tools/graft-run.py. Every fixture is synthetic.
+# GR-a..GR-g are tools/graft-run.py. Every fixture is synthetic.
 LEDGER="$ROOT/tools/graft-ledger.py"
 RUN="$ROOT/tools/graft-run.py"
 RW="$TMP/round"; mkdir -p "$RW"
@@ -1438,6 +1438,17 @@ for (gid, cls), line in zip(gates, tail):
 PY
 }
 
+case_run_exits_1_when_a_gate_blocks() {
+  # graft-run.py's usage: "Exit 0 when every mechanical gate is PASS or N-A; 1
+  # when a gate BLOCKs". The fixture deletes a seed node the install re-creates,
+  # so the run's gate table holds a BLOCK row; the exit code must say so.
+  gr_need || return 1; gr_fixture || return 1; gr_run_once
+  grep -Eq '^[[:space:]]*graft\.gate\.[a-z-]+:[[:space:]]*BLOCK' "$GR/run.out" \
+    || { echo "fixture: no gate row of the run says BLOCK: $(tail -5 "$GR/run.out" | tr '\n' ' ')"; return 1; }
+  [ "$(cat "$GR/run.rc")" = 1 ] \
+    || { echo "a run whose gate table holds a BLOCK exited $(cat "$GR/run.rc"), want 1"; return 1; }
+}
+
 collect_case GA-C1 case_audit_base_identical_is_delta "a backup byte-identical to the seed at --base is DELTA; without --base it stays CUSTOMIZED"
 collect_case GA-C2 case_audit_engine_signal_survives "an engine backup whose signal lines survive in the current engine is not CUSTOMIZED"
 collect_case X390 case_audit_plant_agent_projection "GA-C3: a plant-owned agent's projection backup is a named exclusion, exit 0"
@@ -1454,6 +1465,7 @@ collect_case GR-c case_run_stage_holds_installed_copy_and_log "the stage holds a
 collect_case GR-d case_run_reconciles_three_engines "the three engines in the stage are reconciled"
 collect_case GR-e case_run_derives_tokens_from_plant "the --tokens list is derived from the plant"
 collect_case GR-f case_run_prints_gate_table "stdout ends with the Phase 7 gate table"
+collect_case GR-g case_run_exits_1_when_a_gate_blocks "a run whose gate table holds a BLOCK exits 1"
 [ "$CASE_FAILED" -eq 0 ] \
   || { echo "test-graft-tools: FAIL — failing cases (above)" >&2; exit 1; }
 

@@ -200,6 +200,9 @@ try:
 except OSError as exc:
     print(f"cannot be read ({exc.strerror})")
     raise SystemExit(0)
+except UnicodeDecodeError as exc:
+    print(f"is not UTF-8 text (byte {exc.start}: {exc.reason})")
+    raise SystemExit(0)
 if not raw.strip():
     print("is empty — the shape an interrupted write leaves behind")
     raise SystemExit(0)
