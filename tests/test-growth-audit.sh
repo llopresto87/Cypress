@@ -2369,6 +2369,59 @@ PY
   echo "  a declaration is answered per collection, and closes nothing else — OK"
 }
 
+scn_x382() {
+# X382 SESSION_RECORD_FORM_IS_NOT_A_SCAFFOLD
+# Asserts SPEC-0005 SESSION_RECORD_FORM_IS_NOT_A_SCAFFOLD.
+# Every plant receives the session-record form at
+# plans/sessions/_session-record.template.md. It is a blank form, as
+# graft-audit's --unfilled reads it (a leading `_` or a `.template.md` name is
+# never a leaf), so a plant that honestly claims plans/ ABSENT must pass with
+# the form still in place: the remedy the audit names would never rename it.
+# The exclusion is by name, not by byte-identity: a seed scaffold without such
+# a name, left untouched in an ABSENT collection, is still named.
+local d="$TMP/x382" form="docs/graph/plans/sessions/_session-record.template.md"
+rm -rf "$d"; mkdir -p "$d"
+bash "$ROOT/install.sh" claude-code --project-dir "$d" >/dev/null 2>&1
+python3 "$AUDIT" "$d" "$ROOT" --plan >/dev/null 2>&1 || true
+python3 - "$d" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
+for c in r["collections"]:
+    c.update(status="ABSENT", reason="the source shows no such evidence",
+             searched=["src/"], evidence=[], leaves=0)
+for a in r["agents"]:
+    a.update(status="ABSENT", reason="its collections are absent-with-reason",
+             searched=["src/"])
+r["inventory"] = [{"kind": "domain", "name": "batch etl", "status": "ABSENT",
+                   "reason": "no artifact of its own; the architecture node owns it",
+                   "searched": ["src/"], "evidence": ["docs/graph/index.md"],
+                   "expect": [], "grounding": {"required": False, "sources": []}}]
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+# The remedy the audit names renames every unfilled scaffold; it leaves the form.
+python3 "$ROOT/tools/graft-audit.py" "$d" "$ROOT" --unfilled --rename >/dev/null 2>&1 || true
+# Given: the form placed and untouched, the grill.md scaffold renamed, so plans/
+# holds no other seed scaffold ...
+cmp -s "$d/$form" "$ROOT/templates/docs/plans/sessions/_session-record.template.md" \
+    || fail "X382: the installed plant does not hold the seed's session-record form at $form"
+[ -f "$d/docs/graph/plans/grill.unfilled.md" ] && [ ! -e "$d/docs/graph/plans/grill.md" ] \
+    || fail "X382: the grill.md scaffold was not renamed to grill.unfilled.md"
+# ... and one non-underscore scaffold put back untouched in another ABSENT row.
+mv "$d/docs/graph/runbooks/rollback.unfilled.md" "$d/docs/graph/runbooks/rollback.md" \
+    || fail "X382: runbooks/rollback.md was not renamed, so it cannot be put back"
+out="$(python3 "$AUDIT" "$d" "$ROOT" 2>&1)" || true
+# And: the non-underscore scaffold in an ABSENT collection is still named.
+grep -q "CONTRADICTED collection runbooks/rollback.md" <<<"$out" \
+  && grep -q "still carries the seed's unfilled scaffold (rollback.md)" <<<"$out" \
+    || { printf '%s\n' "$out" >&2; fail "X382: an untouched rollback.md scaffold in an ABSENT row was not named"; }
+# Then: no CONTRADICTED line names the form, and the ABSENT plans/ row is accepted.
+if grep -q "_session-record.template.md" <<<"$out" || grep -q "collection plans/" <<<"$out"; then
+    printf '%s\n' "$out" >&2
+    fail "X382: the session-record form was read as an unfilled scaffold of the ABSENT plans/ row"
+fi
+echo "  the session-record form is a form, not a scaffold; a named scaffold still is — OK"
+}
+
 # --- __case dispatch: run ONE scenario in isolation --------------------
 if [ "${1:-}" = "__case" ]; then
   "$2"
@@ -2386,7 +2439,7 @@ for s in \
     scn_x42 scn_x43 scn_x44 scn_x45 \
     scn_rawbase scn_x58 scn_x59 scn_x60 \
     scn_x61 scn_x62x63 scn_x64 scn_x65 \
-    scn_x68
+    scn_x68 scn_x382
 do
   printf '%s\t%s\n' "$s" "bash \"$SELF\" __case $s" >> "$SCN"
 done
