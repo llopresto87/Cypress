@@ -43,7 +43,7 @@ load_when:
   - "which gates must pass before a growth can be called done"
   - "the growth audit reported UNGROWN, HOLLOW, UNSTAFFED, STALE — what now"
 prevents: An installed seed that never becomes a graph — the method is present, the project knowledge it routes to is not, and every session reads source from scratch.
-est_tokens: 12981
+est_tokens: 13518
 ---
 
 # Protocol: grow
@@ -891,7 +891,10 @@ Before reporting, close the growth session itself through
 `docs/graph/protocols/canonize.md` (§3.7): its single librarian close-out
 spawn records what the growth learned (sharp edges met, contradictions
 resolved, tools discovered), so the plant's first working session inherits
-it. Growth that ends without canonize leaks its own lessons.
+it. Growth that ends without canonize leaks its own lessons. The growth session
+keeps its own session record in `docs/graph/plans/sessions/` from Phase 1,
+listing any memories the host already holds for this project so that close-out
+can file them (`stewardship-posture.session-record`).
 
 The orchestration chat reports target boundary/revisions, worker assignments,
 evidence inspected, artifacts created/refreshed, the Phase 5 librarian

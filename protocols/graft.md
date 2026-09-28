@@ -34,7 +34,7 @@ load_when:
   - "does this upgraded plant carry the legal corpus, under which national jurisdiction"
   - "switch a symlinked plant back to copies before upgrading it"
 prevents: An enriched seed that reaches no existing plant — improvements pile up in the seed while every grown project stays at the version it was installed at — and, when carried by hand instead, a plant's own customizations overwritten with no backup and no record.
-est_tokens: 20079
+est_tokens: 21236
 ---
 
 # Protocol: graft
@@ -129,11 +129,11 @@ Two territories, and graft writes to exactly one of them:
   equivalents, and `.github/`'s transformed views); the tool-specific commands,
   settings, and hooks; the shared router script `docs/graph/agent-lint.py`
   (also projected to `.claude/agent-lint.py` on Claude Code installs); and the
-  graph engine scripts `docs/graph/{graph-lint.py,spec-lint.py}` (and the
-  config-free `agent-lint.py` / `agnosticism-lint.py` / `prose-lint.py` /
-  `status-register.py`, which fast-forward), preserving the plant's configured
-  `TEST_GLOBS`. Graft carries the seed's newest version of these onto the
-  plant. `_schema.md` and `index.md` are NOT in this list: they are
+  graph engine scripts `docs/graph/{graph-lint.py,spec-lint.py,grill-lint.py}`
+  (and the config-free `agent-lint.py` / `agnosticism-lint.py` /
+  `prose-lint.py` / `status-register.py`, which fast-forward), preserving the
+  config each engine carries. Graft carries the seed's newest version of these
+  onto the plant. `_schema.md` and `index.md` are NOT in this list: they are
   project-instantiated and stay the plant's (see the engine-vs-instance rule
   below).
 - **The plant's own life (graft preserves, always).** The rootstock: the
@@ -468,9 +468,10 @@ until corroborated against the installed files.
 A plant can be behind the seed in ways no file-for-file fast-forward reaches.
 Its machinery may sit in a layout the seed has replaced; its lifecycle state
 may be recorded where nothing can query it; its own artifacts may carry a form
-the seed has since redefined. The three subsections below are one fact and one
+the seed has since redefined; what its sessions learned may sit in harness
+memory instead of the plant. The four subsections below are one fact and one
 slot in the flow, and they are independent of each other: a plant may owe all
-three, one, or none. Each is proposed, ratified, and recorded separately.
+four, one, or none. Each is proposed, ratified, and recorded separately.
 
 #### Layout migration: 5.x → 6.0.0
 
@@ -662,6 +663,36 @@ plant carry, what does the new form buy it, and what is the conversion**,
 asked about the plant's content, answered in the graft record, decided by the
 steward.
 
+#### Memory migration: from harness memory to a session record (7.31.0)
+
+From 7.31.0 the kernel's §3.2 says harness memory is not a home: a session
+starts from the newest record in `docs/graph/plans/sessions/` and writes what
+it learns there for canonize (`stewardship-posture.session-record`). A plant
+grown from an older seed may keep what its sessions learned in the host's
+memory, which lives outside the plant, so no fast-forward reaches it. The
+graft moves it once:
+
+1. Read the harness memory this session can reach, **read-only**. Where each
+   host keeps it is that host's fact, not this protocol's.
+2. Write the plant's first session record in `docs/graph/plans/sessions/`,
+   from the seed's form
+   (`templates/docs/plans/sessions/_session-record.template.md`; the plant's
+   own copy arrives only with the installer re-run), listing every entry in
+   its "Harness memories to migrate" table. Like every migration here, it is
+   proposed first and written once the steward ratifies it.
+3. The graft's own canonize close-out files the record
+   (`canonize.session-record`). What happens to each harness entry after that
+   is `stewardship-posture.session-record`'s, and retiring one is the
+   steward's decision, by name. The graft itself never edits harness memory.
+
+A plant whose host holds no memory for it owes this migration nothing. The
+rest of the change needs no migration. The §3.2 sentence arrives with the
+kernel fast-forward, so a kernel diff that adds it is expected, and
+`graft.gate.kernel` checks the result. The form,
+`docs/graph/plans/sessions/_session-record.template.md`, is added by the
+installer's scaffold walk because it is missing, and `graft.gate.rootstock`
+reads it as an expected new file.
+
 ### Phase 3: Reconcile the machinery (Opus authors)
 
 For each seed-owned artifact, apply the three-way reconciliation above and
@@ -680,20 +711,26 @@ fallback in `docs/graph/method/delegation-bounds.md`
 (`delegation.harness-registration`). Carry the delta forward as a named list;
 Phase 7 reports it.
 
-**The graph engine is machinery too, and the installer will not fast-forward
-it.** The installer drops the knowledge-graph scaffold (`graph-lint.py`,
-`spec-lint.py`, `_schema.md`, `index.md`) *only if absent*, so a plant that
-already has them keeps its OLD engine across a graft and silently misses every
-linter improvement since it grew. (The agent router `docs/graph/agent-lint.py`
-is the exception: it carries no project config, so the installer fast-forwards
-it like any machinery file (identical untouched, changed backed up for the
-audit) and it needs no engine-style reconciliation.) **A graft that leaves a
-plant on a stale graph engine is not a true upgrade.** Reconcile the engine
-explicitly, as a config-preserving fast-forward: adopt the seed's current
-engine body and re-inject the plant's own PROJECT CONFIG (`ROOT_ID` / `KINDS` /
-`KIND_PREFIX` in `graph-lint.py`; `TEST_GLOBS` in `spec-lint.py`). The plant
-gains the engine, keeps its configured identity, and a knob it predates adopts
-the seed default. **A config knob the seed has *extended* since the base is
+**The graph engines are machinery too, and the installer will not
+fast-forward them.** The installer drops the knowledge-graph scaffold
+(`graph-lint.py`, `spec-lint.py`, `grill-lint.py`, `_schema.md`, `index.md`)
+*only if absent*, so a plant that already has them keeps its OLD engines
+across a graft and silently misses every linter improvement since it grew. A
+plain re-install never overwrites a placed engine: an existing plant receives
+a new engine by graft only, and this step is where it does. (The agent router
+`docs/graph/agent-lint.py` is the exception: it carries no project config, so
+the installer fast-forwards it like any machinery file (identical untouched,
+changed backed up for the audit) and it needs no engine-style
+reconciliation.) **A graft that leaves a plant on a stale graph engine is not
+a true upgrade.** Reconcile all three engines explicitly, as a
+config-preserving fast-forward: adopt the seed's current engine body and
+re-inject the PROJECT CONFIG that engine carries (`ROOT_ID` / `KINDS` /
+`KIND_PREFIX` in `graph-lint.py`; `TEST_GLOBS` in `spec-lint.py`; none in
+`grill-lint.py`, whose reconciliation is a plain fast-forward with a backup).
+`tools/graft-graph-engine.py` picks that set from the plant file's name when
+no `--preserve` is given, and an explicit `--preserve` wins. The plant gains
+the engine, keeps its configured identity, and a knob it predates adopts the
+seed default. **A config knob the seed has *extended* since the base is
 UNIONED, not re-injected wholesale.** The load-bearing case is `KINDS`: 6.0.0
 added the machinery kinds `protocol`/`skill`/`agent`/`method`, so keeping the
 plant's older `KINDS` set verbatim would drop them and every newly-installed
@@ -967,11 +1004,11 @@ dates.
 | Gate | Asserts | Command | On failure | Class |
 |---|---|---|---|---|
 | `graft.gate.backups` | every file `place_file` replaced is recoverable from a timestamped sibling. It does **not** assert that the backup set accounts for every byte the run destroyed: three writers replace with no backup, and *The installer is the hand that applies it* names all three | `tools/graft-audit.py <plant> <seed> --date=<this run's stamp>` classifies every fresh `.bak` and refuses a vacuous audit (zero for the named date while others exist); the totality property (M7) is proven seed-side by `tests/test-install-placement.sh` over a *discovered* destination set, whose sole exception is `is_installer_state()` and whose scope is stated with it | BLOCK: do not ratify an upgrade whose replaced files cannot be found. A no-backup replacement outside those three is a defect of the installer, not a class to accept | soft |
-| `graft.gate.rootstock` | the rootstock line held: every plant-authored fact survived, and each write into plant-authored material was value-preserving and ratified | the same audit's *knowledge overwrite* count over `docs/graph/`, plus `git -C <plant> status --porcelain` scoped to non-machinery paths, plus `git -C <plant> diff docs/graph/index.md` by name, for the reason *The installer is the hand that applies it* gives | BLOCK: restore from the backup and re-reconcile | soft |
-| `graft.gate.customization` | no plant divergence was buried by a blind fast-forward | `tools/graft-audit.py <plant> <seed> --date=<this run's stamp> --tokens=<plant tokens> --engine=<plant>/docs/graph/graph-lint.py:<seed>/templates/knowledge-graph/graph-lint.py` — `--date` is not optional here, for the ordering reason above | BLOCK: re-integrate each hit into the FF'd file as a holistic MERGE, or ratify it explicitly | soft |
+| `graft.gate.rootstock` | the rootstock line held: every plant-authored fact survived, and each write into plant-authored material was value-preserving and ratified | the same audit's *knowledge overwrite* count over `docs/graph/`, plus `git -C <plant> status --porcelain` scoped to non-machinery paths, plus `git -C <plant> diff docs/graph/index.md` by name, for the reason *The installer is the hand that applies it* gives. One new file under `plans/` is expected and is no breach: `docs/graph/plans/sessions/_session-record.template.md`, placed by the scaffold walk (the memory migration) | BLOCK: restore from the backup and re-reconcile | soft |
+| `graft.gate.customization` | no plant divergence was buried by a blind fast-forward | `tools/graft-audit.py <plant> <seed> --date=<this run's stamp> --tokens=<plant tokens> --engine=<plant>/docs/graph/graph-lint.py:<seed>/templates/knowledge-graph/graph-lint.py --engine=<plant>/docs/graph/spec-lint.py:<seed>/templates/knowledge-graph/spec-lint.py --engine=<plant>/docs/graph/grill-lint.py:<seed>/templates/knowledge-graph/grill-lint.py`, one pair per engine — `--date` is not optional here, for the ordering reason above | BLOCK: re-integrate each hit into the FF'd file as a holistic MERGE, or ratify it explicitly | soft |
 | `graft.gate.kernel` | every kernel destination this plant carries holds the seed's `core/AGENTS.md` body | the same audit's kernel-currency check gates the exit code, but it reads exactly two files, `<plant>/AGENTS.md` and `<plant>/CLAUDE.md`. A plant whose stamp lists `github-copilot` has a third, and the audit is silent on it: add `cmp <plant>/.github/copilot-instructions.md <seed>/core/AGENTS.md` | BLOCK: see *When a gate blocks* | soft |
 | `graft.gate.schema` | the plant's `_schema.md` still describes the machinery this graft installed | the same audit's node-schema line | report: it does **not** gate the exit code, so read the line; the remedy is a ratified MERGE (Phase 3) | detective |
-| `graft.gate.engine` | the plant runs the seed's current graph engine, its own config preserved | the same audit's engine-currency check, via `--engine=<plant>:<seed>` — the **pair**; a single path is malformed and the audit refuses it rather than skipping the check | report: a `graph engine STALE` line does **not** gate the exit code, exactly as `graft.gate.schema` does not, so read the line. The one thing here that gates is a malformed or unreadable `--engine` pair, and it gates because the check did not run. Reconcile with `tools/graft-graph-engine.py`, or record a superset as KEEP-PLANT; this protocol's own contract is that a stale engine is not ratified | detective |
+| `graft.gate.engine` | the plant runs the seed's current graph engines, each with its own config preserved | the same audit's engine-currency check, via the three `--engine=<plant>:<seed>` pairs `graft.gate.customization` passes, each reported on its own line naming its plant file. Each value is a **pair**; a single path is malformed and the audit refuses it rather than skipping the check | report: a `graph engine STALE` line does **not** gate the exit code, exactly as `graft.gate.schema` does not, so read the line. The one thing here that gates is a malformed or unreadable `--engine` pair, and it gates because the check did not run. Reconcile with `tools/graft-graph-engine.py`, or record a superset as KEEP-PLANT; this protocol's own contract is that a stale engine is not ratified | detective |
 | `graft.gate.scaffolds` | no `docs/graph/` leaf is still byte-identical to its `templates/docs/**` template | `tools/graft-audit.py <plant> <seed> --unfilled` | BLOCK: see *When a gate blocks* | soft |
 | `graft.gate.coverage` | every capability this graft carried was grown, or is answered | `python3 <seed>/tools/growth-audit.py <plant> <seed>` — non-zero blocks | BLOCK: see *When a gate blocks* | soft |
 | `graft.gate.routes` | the upgraded graph routes and the agent router is clean | `python3 docs/graph/graph-lint.py`, a representative `--plan`, `python3 docs/graph/agent-lint.py --lint` and `--eval` where installed | BLOCK: fix the node, not the linter | soft |
@@ -1201,7 +1238,9 @@ find <plant> -name '*.bak-<date>-??????'          # must print nothing
 python3 <plant>/docs/graph/graph-lint.py
 # 3. the restored tree matches the seed the plant came from
 tools/graft-audit.py <plant> <seed-at-base> --date=<date> \
-    --engine=<plant>/docs/graph/graph-lint.py:<seed-at-base>/templates/knowledge-graph/graph-lint.py
+    --engine=<plant>/docs/graph/graph-lint.py:<seed-at-base>/templates/knowledge-graph/graph-lint.py \
+    --engine=<plant>/docs/graph/spec-lint.py:<seed-at-base>/templates/knowledge-graph/spec-lint.py \
+    --engine=<plant>/docs/graph/grill-lint.py:<seed-at-base>/templates/knowledge-graph/grill-lint.py
 ```
 
 `<seed-at-base>` is a checkout of the seed at the version in the *restored*
@@ -1214,9 +1253,10 @@ That line proves nothing about the restore. What proves it is the rest of the
 same run, and the two halves of it are not worth the same. **Kernel-currency
 gates the exit code**, and it now has to read the *base* seed as current, so a
 non-zero exit here is a real finding about the restore. **Engine-currency does
-not gate** (`graft.gate.engine`): it prints a line and returns success whatever
-it finds, so a green exit code is not evidence the engine came back. Read its
-line with your own eyes. Then confirm the stamp reads the base version, and
+not gate** (`graft.gate.engine`): it prints a line per engine and returns
+success whatever it finds, so a green exit code is not evidence the engines
+came back. Read each line with your own eyes, and drop the pair for an engine
+the base seed did not ship. Then confirm the stamp reads the base version, and
 record the unwind in the plant's `docs/graph/changelog.md` the way the graft
 itself was recorded.
 
@@ -1333,6 +1373,9 @@ State the summary in the chat, and record a provenance entry in the plant's own
 
 ## Status migrated (pre-7.0.0 plant; N/A otherwise)
 - <status-migrate.py table: path — old value → `status` + companions; items reported-not-migrated, with the steward's `--map` decision>
+
+## Harness memories moved to a session record (N/A if none)
+- <the session record's path; each harness entry → the home canonize gave it, or why not; the entries put to the steward for retirement, by name>
 
 ## Integrity gate
 <One line per row of the gate table, in its order, by its gate id — no row
