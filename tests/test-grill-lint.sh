@@ -753,8 +753,252 @@ for c in case_waves_levels_scheduled_plan case_waves_levels_red_without_dependen
          case_waves_plain_output_has_no_report_lines case_waves_plain_output_golden; do
   "$c"
 done
+
+# ---------------------------------------------------------------------------
+# The seed layout (plan increment 2, ADR-0020). A seed round plan lives at
+# docs/plans/<stem>.md, its ledger in docs/plans/<stem>/ beside it, and its
+# specs and decisions in docs/specs/ and docs/decisions/, named by --specs and
+# --decisions. The fixture tree is tests/fixtures/grill/seed-ledger/; each case
+# lints a fresh copy of it. No spec owns this (plan increment 2).
+# ---------------------------------------------------------------------------
+SEEDFX_SRC="$ROOT/tests/fixtures/grill/seed-ledger"
+SEEDFX="$TMP/seed-ledger"
+seedfx() {  # a fresh copy of the seed-shaped fixture at $SEEDFX
+  rm -rf "$SEEDFX"
+  [ -f "$SEEDFX_SRC/docs/plans/round.md" ] || return 1
+  cp -R "$SEEDFX_SRC" "$SEEDFX"
+}
+# lint the fixture plan with its spec and decision homes, from the fixture root
+seedlint() {
+  WOUT="$(cd "$SEEDFX" && python3 "$G/grill-lint.py" --plan "$SEEDFX/docs/plans/round.md" \
+    --specs "$SEEDFX/docs/specs" --decisions "$SEEDFX/docs/decisions" "$@" 2>&1)"
+  WRC=$?
+}
+first_line() { printf '%s' "$1" | head -1; }
+
+case_seed_ledger_lints_in_place() {
+  # G3a (increment 2a): a plan at docs/plans/round.md, its ledger rows reading
+  # docs/plans/round/increment-NN-x.md, lints PASS with --specs and --decisions.
+  local L=G3a
+  seedfx || { wfail $L "harness: tests/fixtures/grill/seed-ledger is missing"; return; }
+  seedlint --list
+  [ "$WRC" -eq 0 ] || { wfail $L "expected exit 0, got $WRC: $(first_line "$WOUT")"; return; }
+  has_re "$WOUT" '^ *2 Persist the round +<- 1' || wfail $L "--list did not resolve increment 2 through the index"
+}
+case_seed_ledger_orphan_leaf() {
+  # G3b (increment 2b): a file in docs/plans/round/ that no row indexes is an
+  # orphan finding naming it.
+  local L=G3b
+  seedfx || { wfail $L "harness: tests/fixtures/grill/seed-ledger is missing"; return; }
+  cp "$SEEDFX/docs/plans/round/increment-01-a.md" "$SEEDFX/docs/plans/round/increment-09-stray.md"
+  seedlint
+  [ "$WRC" -eq 1 ] || { wfail $L "expected exit 1, got $WRC"; return; }
+  has_re "$WOUT" 'increment-09-stray\.md is not indexed' || wfail $L "no finding 'increment-09-stray.md is not indexed'"
+}
+case_seed_ledger_row_outside_refused() {
+  # G3c (increment 2c): a row pointing outside docs/plans/round/ is refused. The
+  # path still ends round/<file>.md, so only its location is wrong (as case 19).
+  local L=G3c
+  seedfx || { wfail $L "harness: tests/fixtures/grill/seed-ledger is missing"; return; }
+  sed -i.bak 's#`docs/plans/round/increment-02-b.md`#`/tmp/docs/plans/round/increment-02-b.md`#' \
+    "$SEEDFX/docs/plans/round.md" && rm -f "$SEEDFX/docs/plans/round.md.bak"
+  grep -q '/tmp/docs/plans/round/increment-02-b.md' "$SEEDFX/docs/plans/round.md" \
+    || { wfail $L "harness: the row was not rewritten"; return; }
+  seedlint
+  [ "$WRC" -eq 1 ] || { wfail $L "expected exit 1, got $WRC"; return; }
+  has_re "$WOUT" 'increment 2 points outside' || wfail $L "no finding 'increment 2 points outside'"
+}
+case_seed_ledger_contract_from_specs_flag() {
+  # G3d (increment 2d): a contract declared only in the --specs directory
+  # resolves; one declared nowhere is the "invents a contract" finding. A decoy
+  # SPEC-0042 beside the linter declares neither, so reading the specs beside
+  # the tool instead of --specs cannot pass.
+  local L=G3d
+  seedfx || { wfail $L "harness: tests/fixtures/grill/seed-ledger is missing"; return; }
+  printf -- '- **Status:** active\n\n### Contract: DECOY_ONLY\n' > "$G/specs/SPEC-0042-decoy.md"
+  seedlint
+  if [ "$WRC" -ne 0 ] || has_re "$WOUT" 'SPEC-0042'; then
+    wfail $L "a contract declared only in --specs did not resolve (exit $WRC): $(grep -m1 -E 'SPEC-0042|§9|FAIL' <<<"$WOUT")"
+    rm -f "$G/specs/SPEC-0042-decoy.md"; return
+  fi
+  sed -i.bak 's#SPEC-0042/ROUND_ALPHA#SPEC-0042/ROUND_NOWHERE#' "$SEEDFX/docs/plans/round/increment-01-a.md" \
+    && rm -f "$SEEDFX/docs/plans/round/increment-01-a.md.bak"
+  seedlint
+  rm -f "$G/specs/SPEC-0042-decoy.md"
+  [ "$WRC" -eq 1 ] || { wfail $L "a contract declared nowhere: expected exit 1, got $WRC"; return; }
+  has_re "$WOUT" 'SPEC-0042/ROUND_NOWHERE is not a .*invents a contract' \
+    || wfail $L "no 'invents a contract' finding for SPEC-0042/ROUND_NOWHERE"
+}
+case_seed_ledger_decision_from_decisions_flag() {
+  # G3e (increment 2e): an ADR filed only in the --decisions directory resolves.
+  local L=G3e
+  seedfx || { wfail $L "harness: tests/fixtures/grill/seed-ledger is missing"; return; }
+  rm -rf "$G/decisions"
+  seedlint
+  ! has_re "$WOUT" 'ADR-0007 is named by the plan but is not filed' \
+    || { wfail $L "ADR-0007, filed only in --decisions, did not resolve"; return; }
+  [ "$WRC" -eq 0 ] || wfail $L "expected exit 0, got $WRC: $(first_line "$WOUT")"
+}
+case_plant_layout_unchanged() {
+  # G3f (increment 2f, guard): the plant layout (plans/grill.md, plans/grill/)
+  # lints exactly as before: the ledger form passes with the golden headline,
+  # and an unindexed child is still an orphan.
+  local L=G3f
+  { write_plan && write_ledger; } || { wfail $L "harness: the ledger form was not written"; return; }
+  wrun
+  [ "$WRC" -eq 0 ] || { wfail $L "the plant ledger form: expected exit 0, got $WRC"; return; }
+  [ "$WOUT" = "$(cat "$GOLDEN")" ] || { wfail $L "the plant ledger form's output differs from the golden copy"; return; }
+  cp "$G/plans/grill/increment-01-validate-schema.md" "$G/plans/grill/increment-07-orphaned.md"
+  wrun
+  [ "$WRC" -eq 1 ] || { wfail $L "an orphan child: expected exit 1, got $WRC"; return; }
+  has_re "$WOUT" 'plans/grill/increment-07-orphaned\.md is not indexed' || wfail $L "the orphan child is not named"
+}
+
+# ---------------------------------------------------------------------------
+# Qualified decision references (plan increment 3, ADR-0015). `<name>:ADR-NNNN`
+# cites another repository's decision: reported once as external and not
+# checked, never resolved against the plan's own decisions. No spec owns this.
+# ---------------------------------------------------------------------------
+ADR_COL_H='sub:| Decision | Evidence | Reversibility |=| Decision | Evidence | Reversibility | ADR |'
+adr_row() { printf 'sub:| Use the existing session factory | src/db.py | two-way |=| Use the existing session factory | src/db.py | two-way | %s |' "$1"; }
+
+case_external_decision_reported() {
+  # G1a (increment 3a): seed:ADR-0009 with no local ADR-0009 lints PASS and
+  # prints one line naming it as external and not checked.
+  local L=G1a
+  rm -rf "$G/decisions"
+  write_plan "$ADR_COL_H" "$(adr_row 'seed:ADR-0009')" || { wfail $L "harness: the plan was not written"; return; }
+  wrun
+  [ "$WRC" -eq 0 ] || { wfail $L "expected exit 0, got $WRC: $(grep -m1 'ADR-0009' <<<"$WOUT")"; return; }
+  [ "$(grep -c 'seed:ADR-0009' <<<"$WOUT")" -eq 1 ] || { wfail $L "expected one line naming seed:ADR-0009"; return; }
+  grep 'seed:ADR-0009' <<<"$WOUT" | grep -q 'external' && grep 'seed:ADR-0009' <<<"$WOUT" | grep -q 'not checked' \
+    || wfail $L "the seed:ADR-0009 line does not say external and not checked"
+}
+case_external_decision_once() {
+  # G1b (increment 3b): the same qualified reference twice prints one line.
+  local L=G1b
+  rm -rf "$G/decisions"
+  write_plan "$ADR_COL_H" "$(adr_row 'seed:ADR-0009')" \
+    "sub:Persist valid submissions; reject bad schemas with 422.=Persist valid submissions; reject bad schemas with 422 (seed:ADR-0009)." \
+    || { wfail $L "harness: the plan was not written"; return; }
+  [ "$(grep -o 'seed:ADR-0009' "$G/plans/grill.md" | wc -l | tr -d ' ')" -eq 2 ] \
+    || { wfail $L "harness: the plan does not cite seed:ADR-0009 twice"; return; }
+  wrun
+  [ "$WRC" -eq 0 ] || { wfail $L "expected exit 0, got $WRC: $(grep -m1 'ADR-0009' <<<"$WOUT")"; return; }
+  [ "$(grep -c 'seed:ADR-0009' <<<"$WOUT")" -eq 1 ] || wfail $L "expected exactly one line naming seed:ADR-0009"
+}
+case_bare_decision_still_unfiled() {
+  # G1c (increment 3c, guard): a bare ADR-0009 with no local file is still the
+  # existing "not filed" finding.
+  local L=G1c
+  rm -rf "$G/decisions"
+  write_plan "$ADR_COL_H" "$(adr_row 'ADR-0009')" || { wfail $L "harness: the plan was not written"; return; }
+  wrun
+  [ "$WRC" -eq 1 ] || { wfail $L "expected exit 1, got $WRC"; return; }
+  has_re "$WOUT" 'ADR-0009 is named by the plan but is not filed' || wfail $L "no 'ADR-0009 is named by the plan but is not filed'"
+}
+case_bare_decision_still_resolves() {
+  # G1d (increment 3d, guard): a bare ADR-0001 with a local file resolves.
+  local L=G1d
+  rm -rf "$G/decisions"; mkdir -p "$G/decisions"
+  printf -- '---\nstatus: proposed\nstatus_date: 2026-09-28\nowner: architect\n---\n\n# ADR-0001: local\n' \
+    > "$G/decisions/adr-0001-local.md"
+  write_plan "$ADR_COL_H" "$(adr_row 'ADR-0001')" || { wfail $L "harness: the plan was not written"; rm -rf "$G/decisions"; return; }
+  wrun
+  rm -rf "$G/decisions"
+  [ "$WRC" -eq 0 ] || wfail $L "expected exit 0, got $WRC: $(first_line "$WOUT")"
+}
+
+# ---------------------------------------------------------------------------
+# The ledger verification tool (plan increment 4): tools/verify-ledger.py
+# rebuilds a monolith from a ledger plan and its leaves and compares bytes. The
+# fixture: tests/fixtures/grill/seed-ledger.monolith.md is
+# seed-ledger/docs/plans/round.md with its §9 index table replaced by the
+# leaves, in row order, one blank line between them. No spec owns this.
+# ---------------------------------------------------------------------------
+VL="$ROOT/tools/verify-ledger.py"
+VLFX="$TMP/verify-ledger"
+vlfx() {
+  rm -rf "$VLFX"
+  [ -f "$ROOT/tests/fixtures/grill/seed-ledger.monolith.md" ] && [ -d "$SEEDFX_SRC/docs/plans/round" ] || return 1
+  mkdir -p "$VLFX"
+  cp "$ROOT/tests/fixtures/grill/seed-ledger.monolith.md" "$VLFX/monolith.md"
+  cp "$SEEDFX_SRC/docs/plans/round.md" "$VLFX/round.md"
+  cp -R "$SEEDFX_SRC/docs/plans/round" "$VLFX/round"
+}
+vlrun() {
+  WOUT="$(python3 "$VL" --monolith "$VLFX/monolith.md" --ledger "$VLFX/round.md" --leaves "$VLFX/round" 2>&1)"
+  WRC=$?
+}
+has_word() { grep -qE "(^|[^0-9])$2([^0-9]|$)" <<<"$1"; }
+
+case_verify_ledger_exact_rebuild() {
+  # D5a (increment 4a): the ledger and leaves rebuild the monolith exactly:
+  # exit 0 and the rebuilt file's byte count printed.
+  local L=D5a n
+  vlfx || { wfail $L "harness: the verify-ledger fixture is missing"; return; }
+  n="$(wc -c < "$VLFX/monolith.md" | tr -d ' ')"
+  vlrun
+  [ "$WRC" -eq 0 ] || { wfail $L "expected exit 0, got $WRC: $(first_line "$WOUT")"; return; }
+  has_word "$WOUT" "$n" || wfail $L "the byte count $n is not printed"
+}
+case_verify_ledger_changed_byte() {
+  # D5b (increment 4b): one changed byte in a leaf exits 1 and names the leaf
+  # and the first differing byte offset (0-based; the offset in the rebuilt
+  # file or in the leaf both name the byte).
+  local L=D5b offs om ol
+  vlfx || { wfail $L "harness: the verify-ledger fixture is missing"; return; }
+  offs="$(python3 - "$VLFX/monolith.md" "$VLFX/round/increment-02-b.md" <<'PY'
+import sys
+m = open(sys.argv[1], "rb").read(); leaf_path = sys.argv[2]
+leaf = open(leaf_path, "rb").read()
+old = "rows kept as written".encode(); new = "rows kept as writteN".encode()
+at_leaf = leaf.index(old) + len(old) - 1
+open(leaf_path, "wb").write(leaf.replace(old, new, 1))
+at_mono = m.index(old) + len(old) - 1
+print(at_mono, at_leaf)
+PY
+)" || { wfail $L "harness: the leaf was not changed"; return; }
+  om="${offs% *}"; ol="${offs#* }"
+  vlrun
+  [ "$WRC" -eq 1 ] || { wfail $L "expected exit 1, got $WRC: $(first_line "$WOUT")"; return; }
+  grep -q 'increment-02-b.md' <<<"$WOUT" || { wfail $L "the changed leaf increment-02-b.md is not named"; return; }
+  has_word "$WOUT" "$om" || has_word "$WOUT" "$ol" || wfail $L "the first differing byte offset ($om in the rebuild, $ol in the leaf) is not named"
+}
+case_verify_ledger_unindexed_leaf() {
+  # D5c (increment 4c): a leaf no index row points at exits 1 and names it.
+  local L=D5c
+  vlfx || { wfail $L "harness: the verify-ledger fixture is missing"; return; }
+  cp "$VLFX/round/increment-01-a.md" "$VLFX/round/increment-03-stray.md"
+  vlrun
+  [ "$WRC" -eq 1 ] || { wfail $L "expected exit 1, got $WRC: $(first_line "$WOUT")"; return; }
+  grep -q 'increment-03-stray.md' <<<"$WOUT" || wfail $L "the unindexed leaf increment-03-stray.md is not named"
+}
+case_verify_ledger_counts_utf8_bytes() {
+  # D5d (increment 4d): a multibyte character counts as its UTF-8 bytes. The
+  # fixture holds several, so its byte and character counts differ.
+  local L=D5d nb nc
+  vlfx || { wfail $L "harness: the verify-ledger fixture is missing"; return; }
+  nb="$(wc -c < "$VLFX/monolith.md" | tr -d ' ')"
+  nc="$(python3 -c 'import sys; print(len(open(sys.argv[1], encoding="utf-8").read()))' "$VLFX/monolith.md")"
+  [ "$nb" -ne "$nc" ] || { wfail $L "harness: the fixture has no multibyte character"; return; }
+  vlrun
+  [ "$WRC" -eq 0 ] || { wfail $L "expected exit 0, got $WRC: $(first_line "$WOUT")"; return; }
+  has_word "$WOUT" "$nb" || { wfail $L "the UTF-8 byte count $nb is not printed"; return; }
+  ! has_word "$WOUT" "$nc" || wfail $L "the character count $nc is printed as if it were bytes"
+}
+
+for c in case_seed_ledger_lints_in_place case_seed_ledger_orphan_leaf \
+         case_seed_ledger_row_outside_refused case_seed_ledger_contract_from_specs_flag \
+         case_seed_ledger_decision_from_decisions_flag case_plant_layout_unchanged \
+         case_external_decision_reported case_external_decision_once \
+         case_bare_decision_still_unfiled case_bare_decision_still_resolves \
+         case_verify_ledger_exact_rebuild case_verify_ledger_changed_byte \
+         case_verify_ledger_unindexed_leaf case_verify_ledger_counts_utf8_bytes; do
+  "$c"
+done
 if [ "$WAVES_FAILED" -ne 0 ]; then
-  printf 'grill lint contract: FAIL — the wave report block has failing cases (above)\n'
+  printf 'grill lint contract: FAIL — the collecting block has failing cases (above)\n'
   exit 1
 fi
 

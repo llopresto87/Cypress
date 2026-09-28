@@ -21,7 +21,12 @@ gated. This makes the shape a gate:
     page the plan names exists;
   - every decision the plan cites by identifier is filed under
     docs/graph/decisions/ — a number that reaches no record authorizes
-    work by a citation nobody can read;
+    work by a citation nobody can read. A bare `ADR-NNNN` names no
+    repository, so it is always read as this plan's own: a number that
+    collides with another repository's decision resolves here and passes.
+    Cite another repository's decision as `<name>:ADR-NNNN` (`seed:ADR-0009`);
+    it is reported once as external and not checked, never resolved against
+    this plan's decisions;
   - the plan↔spec alignment check, mechanically: every contract a §9 row
     names is declared in a live spec, and every contract of those specs
     appears in some increment;
@@ -47,9 +52,17 @@ edge is worse than none. `Files touched:` is free text, so its paths are
 matched as strings only — nothing named there is opened or resolved — and an
 overlap is a warning.
 
+The ledger of a plan is the directory beside it named for its stem:
+plans/grill.md keeps its increments in plans/grill/, and a plan at
+docs/plans/<stem>.md keeps them in docs/plans/<stem>/. An index row's path
+ends `<stem>/<file>.md`; it is read from the plan's side, so both
+`plans/grill/x.md` and `docs/graph/plans/grill/x.md` reach plans/grill/x.md.
+
 Installed at docs/graph/grill-lint.py by install.sh (like spec-lint.py).
 Dependency-free. No project config: the plan's path and the spec heading
-form are the seed's own contract.
+form are the seed's own contract. A plan kept outside docs/graph/ (the
+seed's own round plans) names its spec and decision homes with --specs and
+--decisions.
 
 Usage:
   python3 docs/graph/grill-lint.py             # gate: exit 1 on a defect
@@ -57,6 +70,8 @@ Usage:
   python3 docs/graph/grill-lint.py --waves     # also print the §9 wave schedule
   python3 docs/graph/grill-lint.py --warn      # report but always exit 0
   python3 docs/graph/grill-lint.py --plan P    # lint another plan file
+  python3 docs/graph/grill-lint.py --specs D   # read specs from D, not docs/graph/specs/
+  python3 docs/graph/grill-lint.py --decisions D   # read decisions from D
 """
 import fnmatch
 import re
@@ -85,12 +100,15 @@ INCREMENT_RE = re.compile(r"^###\s+Increment\s+(\d+)\b(.*)$", re.M)
 # column table all went UNSEEN. An index row nobody parses is an increment that
 # is never validated, which is the orphan failure arriving through the parser.
 INDEX_ROW_RE = re.compile(r"^\|\s*(\d+)\s*\|(.*)\|\s*$", re.M)
-INDEX_PATH_RE = re.compile(r"([\w./-]*plans/grill/[\w.-]+\.md)")
+# The path ends `<stem>/<file>.md`, the plan's ledger (`index_path_re`).
 FIELD_RE = re.compile(r"^\s*-\s*([A-Za-z][^:]{0,40}):(.*)$")
 LABEL_ONLY_RE = re.compile(r"^\s*-\s*[^:]+:\s*$")
 TABLE_SEP_RE = re.compile(r"^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$")
 LIB_REF_RE = re.compile(r"docs/graph/libraries/([\w.\-]+)\.md")
-ADR_REF_RE = re.compile(r"\bADR-(\d{4})\b")
+# A bare reference is one no `<name>:` qualifies; the qualified form cites
+# another repository's decision and is never read as a bare number.
+ADR_REF_RE = re.compile(r"(?<![\w.-]:)\bADR-(\d{4})\b")
+QUALIFIED_ADR_RE = re.compile(r"(?<![\w.-])([A-Za-z0-9_][\w.-]*):ADR-(\d{4})\b")
 ADR_FILE_RE = re.compile(r"^(?:adr-)?(\d{4})\b")
 INC_REF_RE = re.compile(r"\bincrement\s+(\d+)", re.I)
 CONTRACT_REF_RE = re.compile(r"(SPEC-\d{4})[\w\-]*/([A-Z][A-Z0-9_]{2,})")
@@ -192,14 +210,37 @@ def fields(block: str) -> dict[str, str]:
     return out
 
 
-def increments(body: str, errs: list | None = None) -> list[tuple[int, str, str]]:
+def index_path_re(plan: Path) -> re.Pattern:
+    """An index row's path: it ends `<stem>/<file>.md`, the plan's ledger."""
+    return re.compile(r"(?<![\w.-])((?:[\w./-]*/)?" + re.escape(plan.stem) + r"/[\w.-]+\.md)")
+
+
+def ledger_target(rel: str, plan: Path) -> Path:
+    """The file an index row's path names, read from the plan's side.
+
+    The path's part before `<stem>/` is where the row writer stood: nothing
+    (`grill/x.md`), the plan's directory (`plans/grill/x.md`), or more of the
+    path above it (`docs/graph/plans/grill/x.md`). When that part is the tail
+    of the plan's directory, the row names the plan's own ledger. Anything else
+    is joined to the plan's directory as written, and the containment check
+    decides."""
+    path = Path(rel)
+    k = len(path.parts) - 2                     # the stem, before the file name
+    here = plan.parent.parts
+    if not path.is_absolute() and k <= len(here) and path.parts[:k] == here[len(here) - k:]:
+        return plan.parent / Path(*path.parts[k:])
+    return plan.parent / path
+
+
+def increments(body: str, errs: list | None = None,
+               plan: Path = PLAN) -> list[tuple[int, str, str]]:
     """(number, title, block) per increment in §9, in either form.
 
     INLINE — `### Increment N — title` written straight into §9. Every plant
     already has this, so it keeps working unchanged.
 
     LEDGER — §9 is an index, one row per increment, each pointing at a file
-    under `plans/grill/` that holds it. A plan-of-record grows for as long as
+    in the plan's ledger (`plans/grill/` for `plans/grill.md`) that holds it. A plan-of-record grows for as long as
     the project does and §9 grows fastest: contracts, RED tests, rollback paths
     and dependencies for every increment ever planned. Held in one file that is
     read whole, a mature plan becomes the largest single thing a session loads,
@@ -224,8 +265,11 @@ def increments(body: str, errs: list | None = None) -> list[tuple[int, str, str]
     inline_nums = {n for n, _t, _b in out}
     seen = set(inline_nums)
     referenced: set[str] = set()
+    grill_dir = plan.parent / plan.stem
+    shown = f"{plan.parent.name}/{plan.stem}/"      # plans/grill/ for the plant
+    path_re = index_path_re(plan)
     for row in INDEX_ROW_RE.finditer(masked):
-        path_m = INDEX_PATH_RE.search(row.group(2))
+        path_m = path_re.search(row.group(2))
         if not path_m:
             continue
         num, rel = int(row.group(1)), path_m.group(1).strip()
@@ -236,16 +280,14 @@ def increments(body: str, errs: list | None = None) -> list[tuple[int, str, str]
         # lint read and bless a file nowhere near the plan — a plan could claim
         # contract coverage from a file no reviewer would think to open. The
         # increments of a plan live under that plan.
-        grill_home = (HERE / "plans" / "grill").resolve()
-        stripped = rel[len("docs/graph/"):] if rel.startswith("docs/graph/") else rel
-        target = (HERE / stripped)
+        target = ledger_target(rel, plan)
         try:
-            inside = target.resolve().is_relative_to(grill_home)
+            inside = target.resolve().is_relative_to(grill_dir.resolve())
         except (OSError, ValueError):
             inside = False
         if not inside:
             if errs is not None:
-                errs.append(f"§9: increment {num} points outside plans/grill/ "
+                errs.append(f"§9: increment {num} points outside {shown} "
                             f"({rel}) — an increment of this plan must live "
                             f"under it")
             continue
@@ -280,15 +322,14 @@ def increments(body: str, errs: list | None = None) -> list[tuple[int, str, str]
 
     # An increment file nobody indexes is work that exists and is unreachable:
     # it will not be read, reviewed, or counted, and it looks like progress.
-    grill_dir = HERE / "plans" / "grill"
     if errs is not None and grill_dir.is_dir():
-        # Every .md under plans/grill/, at any depth and under any name. The
+        # Every .md in the ledger, at any depth and under any name. The
         # glob was `increment-*.md` and non-recursive, so a child called
         # `inc-03.md`, `increment_03.md`, or filed in a subdirectory was
         # unreachable work the orphan check could not see.
         for f in sorted(grill_dir.rglob("*.md")):
             if f.name not in referenced:
-                errs.append(f"plans/grill/{f.name} is not indexed by §9 — an "
+                errs.append(f"{shown}{f.name} is not indexed by §9 — an "
                             f"increment nobody points at is unreachable work")
 
     # NOT sorted by number. The forward-dependency check reads position in this
@@ -303,11 +344,11 @@ def increments(body: str, errs: list | None = None) -> list[tuple[int, str, str]
     return out
 
 
-def spec_files() -> dict[str, tuple[Path, str]]:
+def spec_files(specs: Path = SPECS) -> dict[str, tuple[Path, str]]:
     """SPEC-NNNN -> (path, status) for every spec on disk."""
     out: dict[str, tuple[Path, str]] = {}
-    if SPECS.is_dir():
-        for p in sorted(SPECS.glob("SPEC-*.md")):
+    if specs.is_dir():
+        for p in sorted(specs.glob("SPEC-*.md")):
             key = p.name[:9]
             text = p.read_text(encoding="utf-8", errors="replace")
             m = STATUS_RE.search(text)
@@ -315,15 +356,15 @@ def spec_files() -> dict[str, tuple[Path, str]]:
     return out
 
 
-def decision_files() -> dict[str, Path]:
+def decision_files(decisions: Path = DECISIONS) -> dict[str, Path]:
     """ADR-NNNN -> path for every decision filed on disk.
 
     Both filename forms this seed has shipped resolve: `adr-NNNN-<slug>.md`,
     which the ADR template prescribes, and a bare `NNNN-<slug>.md`.
     """
     out: dict[str, Path] = {}
-    if DECISIONS.is_dir():
-        for p in sorted(DECISIONS.glob("*.md")):
+    if decisions.is_dir():
+        for p in sorted(decisions.glob("*.md")):
             m = ADR_FILE_RE.match(p.name)
             if m:
                 out[f"ADR-{m.group(1)}"] = p
@@ -445,6 +486,14 @@ def main() -> int:
     plan = PLAN
     if "--plan" in argv:
         plan = Path(argv[argv.index("--plan") + 1]).resolve()
+    specs_dir, specs_shown = SPECS, "docs/graph/specs/"
+    if "--specs" in argv:
+        specs_shown = argv[argv.index("--specs") + 1]
+        specs_dir, specs_shown = Path(specs_shown).resolve(), specs_shown.rstrip("/") + "/"
+    decisions_dir, decisions_shown = DECISIONS, "docs/graph/decisions/"
+    if "--decisions" in argv:
+        decisions_shown = argv[argv.index("--decisions") + 1]
+        decisions_dir, decisions_shown = Path(decisions_shown).resolve(), decisions_shown.rstrip("/") + "/"
 
     if not plan.is_file():
         print(f"grill lint: SKIP — no plan at {plan}")
@@ -486,10 +535,10 @@ def main() -> int:
             fails.append(f"{'§' + str(where) if where is not None else 'before §0'}: "
                          f"`### Increment {m.group(1)}` — increment heading outside §9 — "
                          f"invisible to the plan checks; move it into §9 or the ledger")
-    incs = increments(secs.get(9, ""), fails)
+    incs = increments(secs.get(9, ""), fails, plan)
     if 9 in secs and not incs and not any(NA_RE.match(ln) for ln in populated.get(9, [])):
         fails.append("§9: no `### Increment N — title` rows, and no index rows "
-                     "pointing at files under plans/grill/")
+                     f"pointing at files under {plan.parent.name}/{plan.stem}/")
     numbers = [n for n, _, _ in incs]
     known = set(numbers)
     lib_needed: dict[str, list[int]] = {}
@@ -537,19 +586,24 @@ def main() -> int:
             fails.append(f"docs/graph/libraries/{lib}.md is named by the plan but does not exist (ingest-library)")
 
     # --- every decision the plan cites resolves to a filed decision ---------
-    decisions = decision_files()
+    decisions = decision_files(decisions_dir)
     for num in sorted(set(ADR_REF_RE.findall(text))):
         if f"ADR-{num}" not in decisions:
             fails.append(f"ADR-{num} is named by the plan but is not filed in "
-                         f"docs/graph/decisions/ — a decision that is not yet "
+                         f"{decisions_shown} — a decision that is not yet "
                          f"accepted is filed with the status that says so "
                          f"(`status: proposed`), not left as a number in a table")
+    # Another repository's decision: its number is that repository's, so a
+    # local file of the same number proves nothing. Named once, never checked.
+    external = dict.fromkeys(f"{name}:ADR-{num}" for name, num in QUALIFIED_ADR_RE.findall(text))
+    notes = [f"{ref} is external (another repository's decision): not checked here"
+             for ref in external]
 
     # --- plan <-> spec alignment ---------------------------------------------
-    specs = spec_files()
+    specs = spec_files(specs_dir)
     for spec, slugs in sorted(contract_refs.items()):
         if spec not in specs:
-            fails.append(f"§9 names {spec}, which is not in docs/graph/specs/")
+            fails.append(f"§9 names {spec}, which is not in {specs_shown}")
             continue
         path, status = specs[spec]
         declared = set(CONTRACT_DECL_RE.findall(path.read_text(encoding="utf-8", errors="replace")))
@@ -587,6 +641,8 @@ def main() -> int:
 
     for w in warns:
         print(f"  WARN {w}")
+    for n in notes:
+        print(f"  NOTE {n}")
     if fails:
         print(f"grill lint: {'WARN' if warn_mode else 'FAIL'} — {len(fails)} defect(s) in {plan.name}:")
         for f in fails:
