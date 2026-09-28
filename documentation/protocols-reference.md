@@ -30,18 +30,18 @@ All 17 protocols are tier 2 nodes with `origin: seed`, `kind: protocol`.
 | specify | `protocol.specify` | `rule.spec`, `specify.flow`, `specify.revision-discipline` | — | brainstorm, grill, specify-joint-pass | 1750 |
 | specify-joint-pass | `protocol.specify-joint-pass` | `specify.joint-pass`, `specify.design-latitude` | — | specify, grill | 1058 |
 | grill | `protocol.grill` | `rule.grill`, `grill.flow`, `grill.revise`, `grill.increment-shape`, `grill.press`, `grill.plan-approval`, `grill.legal-checkpoint` | — | specify, specify-joint-pass, test-first, agent.devils-advocate | 3964 |
-| test-first | `protocol.test-first` | `rule.test-first`, `test-first.cycle`, `test-first.characterize-first` | — | verify, specify, skill.test-first, skill.holistic-editing | 2700 |
+| test-first | `protocol.test-first` | `rule.test-first`, `test-first.cycle`, `test-first.characterize-first` | — | verify, specify, skill.test-first, skill.holistic-editing | 2723 |
 | verify | `protocol.verify` | `rule.verify`, `verify.gate-states`, `verify.risk-depth`, `verify.null-result`, `verify.composition`, `verify.silent-substitutes`, `verify.test-first` | — | test-first, recover, canonize, deliver, skill.validate-knowledge, verify-new-gates, verify-disagreement | 5786 |
 | verify-new-gates | `protocol.verify-new-gates` | `verify.status-evidence`, `verify.tool-faults` | — | verify, verify-disagreement | 877 |
 | verify-disagreement | `protocol.verify-disagreement` | `verify.characterize`, `verify.measure-integrity` | — | verify, verify-new-gates | 1840 |
 | recover | `protocol.recover` | `recover.failure-classes`, `recover.three-attempt-boundary` | — | deliver, grill | 1958 |
 | canonize | `protocol.canonize` | `rule.canonize`, `canonize.close-out-flow`, `canonize.status-review`, `canonize.deviation-capture`, `canonize.why-record`, `canonize.session-record` | `skill.toolcraft` | agent.tool-smith, deliver, harvest, skill.adr-writer | 3823 |
-| deliver | `protocol.deliver` | `rule.deliver`, `deliver.forms`, `deliver.attribution-assertion`, `deliver.numbered-decisions` | — | canonize, recover | 2681 |
+| deliver | `protocol.deliver` | `rule.deliver`, `deliver.forms`, `deliver.attribution-assertion`, `deliver.numbered-decisions` | — | canonize, recover | 2793 |
 | ingest-library | `protocol.ingest-library` | `ingest-library.flow`, `ingest-library.refresh`, `ingest-library.corpus-first` | — | harvest, skill.library-wiki, skill.research-and-ingest | 1748 |
 | from-scratch | `protocol.from-scratch` | `from-scratch.phases`, `from-scratch.entry` | — | brainstorm, grill, ingest-library, canonize, initialize | 2698 |
-| grow | `protocol.grow` | `grow.worker-topology`, `grow.write-boundaries`, `grow.knowledge-shape`, `grow.growth-flow`, `grow.completeness-contract`, `grow.gate-table`, `grow.stack-inventory`, `grow.node-authoring`, `grow.librarian-pass`, `grow.plant-facts`, `grow.legal-corpus` | `method.delegation` | harvest, graft, initialize, ingest-library, canonize, deliver, recover, from-scratch, method.engineering-posture, method.design-posture | 12981 |
+| grow | `protocol.grow` | `grow.worker-topology`, `grow.write-boundaries`, `grow.knowledge-shape`, `grow.growth-flow`, `grow.completeness-contract`, `grow.gate-table`, `grow.stack-inventory`, `grow.node-authoring`, `grow.librarian-pass`, `grow.plant-facts`, `grow.legal-corpus` | `method.delegation` | harvest, graft, initialize, ingest-library, canonize, deliver, recover, from-scratch, method.engineering-posture, method.design-posture | 13518 |
 | harvest | `protocol.harvest` | `harvest.fold-back-flow`, `harvest.agnosticism-gate`, `harvest.availability-gate`, `harvest.corpus-contracts` | `method.delegation` | method.minimum-sufficient-work, skill.humanizer, canonize, graft, grow, ingest-library, skill.toolcraft | 12555 |
-| graft | `protocol.graft` | `graft.reconcile-flow`, `graft.user-sovereignty`, `graft.pure-graph-mandate`, `graft.migration`, `graft.integrity-gates`, `graft.reversibility` | `method.delegation` | grow, harvest, deliver, method.engineering-posture | 20079 |
+| graft | `protocol.graft` | `graft.reconcile-flow`, `graft.user-sovereignty`, `graft.pure-graph-mandate`, `graft.migration`, `graft.integrity-gates`, `graft.reversibility` | `method.delegation` | grow, harvest, deliver, method.engineering-posture | 21236 |
 | initialize | `protocol.initialize` | `initialize.entry-fork`, `initialize.adapter-edges` | — | grow, from-scratch, seed-installer | 697 |
 
 Six of the protocols also own one of the kernel's eight `rule.*`
@@ -547,7 +547,8 @@ One cycle per increment, in grill.md §9 order. **The table is the spawn
 order**: a phase's spawn is issued only after the handback it needs has
 returned; the next increment's RED waits for this increment's COMMIT
 unless §9's `Depends on:` rows say they are independent
-(`delegation.sequencing`). One spawn may carry a batch of increments
+(`delegation.sequencing`). Independent REDs run ahead in a RED wave, and
+the GREENs that follow them are `delegation.waves`. One spawn may carry a batch of increments
 sized by their effort labels (`delegation.step-scope`,
 `delegation.effort-scale`).
 
@@ -1669,7 +1670,10 @@ evidence is fresh.
 ### Delivery and maturity
 
 Growth closes through `canonize` (§3.7) before reporting, so its own
-lessons land in the graph. The orchestration chat reports target
+lessons land in the graph. The growth session keeps its own session
+record in `docs/graph/plans/sessions/` from Phase 1, listing any
+memories the host already holds for the project for that close-out.
+The orchestration chat reports target
 boundary/revisions, worker
 assignments, evidence inspected, artifacts created/refreshed, the Phase
 5 librarian rebalance report, validation
@@ -2090,8 +2094,9 @@ Two territories, and graft writes to exactly one:
   `.github/` equivalents); tool-specific commands/settings/hooks; the
   shared router script `docs/graph/agent-lint.py`; the config-free scripts
   that fast-forward with it, now including `docs/graph/prose-lint.py`; and
-  the graph engine scripts `docs/graph/{graph-lint.py,spec-lint.py}`
-  (preserving the plant's configured `TEST_GLOBS`). `_schema.md` and `index.md` are
+  the graph engine scripts
+  `docs/graph/{graph-lint.py,spec-lint.py,grill-lint.py}` (each keeping the
+  config it carries). `_schema.md` and `index.md` are
   project-instantiated and stay the plant's, always.
 - The plant's own life (graft preserves, always): the plant's
   application source, and every knowledge fact the plant authored under
@@ -2202,6 +2207,15 @@ the plant's actual source to inventory facts missing from the graph,
 cross-checked against existing nodes, and hand confirmed findings to
 Opus authors to weave into the owning node.
 
+**Memory migration** (7.31.0, when the host holds memories for the
+plant): read the harness memory read-only, write the plant's first
+session record in `docs/graph/plans/sessions/` listing every entry to
+migrate, and let the graft's own canonize close-out file it. Retiring
+or deleting a harness entry is the steward's numbered decision, by name
+(kernel §4). The kernel's §3.2 sentence arrives with the kernel
+fast-forward, and the session-record form is an expected new file
+under `plans/`.
+
 **Phase 3: Reconcile the machinery (Opus authors).** For each
 seed-owned artifact apply the three-way reconciliation: adopt on
 FAST-FORWARD; retain and raise a harvest candidate on KEEP-PLANT; author
@@ -2209,17 +2223,20 @@ one holistic re-integration on MERGE. Every merged file arrives whole,
 never a seed block bolted beside a plant block. **The roster delta is
 not spawnable in this session**: preflight and take the remedy
 (`delegation.harness-registration`); carry the delta forward as a named
-list for Phase 7. **The graph engine is machinery too**: the installer
-drops the scaffold only if absent, so a plant that already has them
-keeps its OLD engine and misses every linter improvement. Reconcile the
-engine as a config-preserving fast-forward: adopt the seed's current
-engine body and re-inject the plant's PROJECT CONFIG (`ROOT_ID` /
-`KINDS` / `KIND_PREFIX` in `graph-lint.py`; `TEST_GLOBS` in
-`spec-lint.py`). A config knob the seed has *extended* is **UNIONED**,
+list for Phase 7. **The graph engines are machinery too**: the installer
+drops the scaffold only if absent, and a plain re-install never
+overwrites a placed engine, so an existing plant receives a new engine by
+graft only. Reconcile all three as a config-preserving fast-forward:
+adopt the seed's current engine body and re-inject the config that
+engine carries (`ROOT_ID` / `KINDS` / `KIND_PREFIX` in `graph-lint.py`;
+`TEST_GLOBS` in `spec-lint.py`; none in `grill-lint.py`). With no
+`--preserve`, `tools/graft-graph-engine.py` picks the set from the plant
+file's name; an explicit `--preserve` wins. A config knob the seed has *extended* is **UNIONED**,
 not re-injected wholesale; the load-bearing case is `KINDS` (6.0.0
 added `protocol`/`skill`/`agent`/`method`; keeping the plant's older set
 verbatim would fail every new machinery node with `kind not in KINDS`).
-`tools/graft-graph-engine.py` performs this merge.
+`tools/graft-graph-engine.py` performs this merge, and Phase 7 audits
+all three with one `--engine` pair each.
 `_schema.md`/`index.md` stay the plant's (project-instantiated). **The
 installer fast-forwards blindly**: a mandatory post-FF audit (Phase 7,
 `tools/graft-audit.py`) catches any local divergence a blind FF buried.

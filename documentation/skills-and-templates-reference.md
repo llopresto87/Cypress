@@ -1420,6 +1420,7 @@ sequence spawns from, not a form.
 ```sh
 python3 docs/graph/grill-lint.py             # gate: exit 1 on a defect
 python3 docs/graph/grill-lint.py --list      # print the §9 increment graph
+python3 docs/graph/grill-lint.py --waves     # also print the §9 wave schedule
 python3 docs/graph/grill-lint.py --warn      # report but always exit 0
 python3 docs/graph/grill-lint.py --plan P    # lint another plan file
 ```
@@ -1444,6 +1445,16 @@ template's own lines, so the form never counts as the plan):
   the increment checks above would read it.
 - §14 is one action.
 - No plan at all → SKIP, exit 0.
+
+**`--waves` is a report beside the gate, never part of it.** Every check above
+runs unchanged and decides the exit status. The report levels the §9
+increments into waves (1 for an increment that depends on none, else one after
+its latest dependency), prints each with its `Phase:`, and warns when two
+increments that no dependency path orders name one file in `Files touched:`.
+The schedule is static: it reads §9 alone, never §15 or what is committed. A
+plan no `Phase:` reaches is `unscheduled`; a dependency defect, or two
+increments sharing one number, leaves it `not computed`. How a session works
+the schedule is `delegation.waves`.
 
 **Fenced code is an example, not the plan.** A heading inside a ``` or ~~~
 fence opens no section and no increment, and its `- Label:` lines are no
