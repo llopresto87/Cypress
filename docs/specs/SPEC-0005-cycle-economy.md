@@ -10,7 +10,7 @@ status_evidence: tests/test_graph_lint.py, tests/test_agent_lint.py, tests/test-
 ## 0. Metadata
 
 - **Identifier:** SPEC-0005-cycle-economy
-- **Version:** 0.10 (7.31.0 wave scheduling and the session record, 2026-09-28; every amendment is dated in §12)
+- **Version:** 0.11 (7.31.0 wave scheduling and the session record, ruling pass 1, 2026-09-28; every amendment is dated in §12)
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-09-28
@@ -22,7 +22,7 @@ status_evidence: tests/test_graph_lint.py, tests/test_agent_lint.py, tests/test-
 - **Design latitude:** simple for the 7.30.0 round; balanced for the 7.31.0 amendment (each recorded in its plan's §6 with its source; this line points there)
 - **Supersedes:** —
 - **Superseded by:** —
-- **Sign-offs:** product [x] 2026-09-26 §3, §9 (v0.2) · architect [x] 2026-09-26 (v0.1 in the joint pass; v0.2 at ruling pass 0; v0.3 at ruling pass 1) · tester [x] 2026-09-26 v0.2, the first RED batch; no objection to testability from the second · security [x] 2026-09-26 SPEC-0005 §4 inference contracts, §6 Effort / path inference / cycle-economy rules, §7; plan §4, §9 (increment 6, Commits), §10 mutation (v0.2) · architect [x] 2026-09-28 v0.9 §4–§8 (7.31.0 joint pass step 2; ruling pass 0); v0.10 §0–§2, §4, §6–§8, §12 (the session record) · product [x] 2026-09-28 v0.10 §3.1, §9 (7.31.0 joint pass; ruling pass 0; memory-residency track) · tester [x] 2026-09-28 v0.10 §10 (7.31.0 joint pass; ruling pass 0; memory-residency track)
+- **Sign-offs:** product [x] 2026-09-26 §3, §9 (v0.2) · architect [x] 2026-09-26 (v0.1 in the joint pass; v0.2 at ruling pass 0; v0.3 at ruling pass 1) · tester [x] 2026-09-26 v0.2, the first RED batch; no objection to testability from the second · security [x] 2026-09-26 SPEC-0005 §4 inference contracts, §6 Effort / path inference / cycle-economy rules, §7; plan §4, §9 (increment 6, Commits), §10 mutation (v0.2) · architect [x] 2026-09-28 v0.9 §4–§8 (7.31.0 joint pass step 2; ruling pass 0); v0.10 §0–§2, §4, §6–§8, §12 (the session record); v0.11 §0, §1, §2, §4, §6, §8, §12 (ruling pass 1) · product [x] 2026-09-28 v0.10 §3.1, §9 (7.31.0 joint pass; ruling pass 0; memory-residency track) · tester [x] 2026-09-28 v0.10 §10 (7.31.0 joint pass; ruling pass 0; memory-residency track)
 
 ## 1. Summary
 
@@ -65,9 +65,10 @@ It covers nine things.
    orchestrating session writes what it learns and canonize files it into the
    graph. The rule and the filing step each have one home.
 
-Eighteen contracts decide it mechanically, in `tests/test_graph_lint.py`,
+Nineteen contracts decide it mechanically, in `tests/test_graph_lint.py`,
 `tests/test_agent_lint.py`, `tests/test-seed-lint.sh` (checks in
-`tests/seed-lint.py`) and `tests/test-grill-lint.sh`. The form every plant
+`tests/seed-lint.py`), `tests/test-grill-lint.sh` and
+`tests/test-growth-audit.sh`. The form every plant
 receives is held by SPEC-0001 `SESSION_RECORD_FORM_IS_PLACED`. The doctrine text itself is accepted by review (§9).
 
 ## 2. Scope
@@ -128,9 +129,10 @@ receives is held by SPEC-0001 `SESSION_RECORD_FORM_IS_PLACED`. The doctrine text
     `protocols/canonize.md`, as two `ADOPTED_RULE_HOMES` entries; the form
     `templates/docs/plans/sessions/_session-record.template.md`, which every plant
     receives through the existing scaffold walk (SPEC-0001
-    `SESSION_RECORD_FORM_IS_PLACED`); the Prime Agent overlay's close-out bullet
-    and its README mirror; and the published eager figures the kernel sentence
-    moves
+    `SESSION_RECORD_FORM_IS_PLACED`), and growth-audit reading it as a form, not
+    as an unfilled scaffold (`SESSION_RECORD_FORM_IS_NOT_A_SCAFFOLD`,
+    `tools/growth-audit.py`); the Prime Agent overlay's close-out bullet and its
+    README mirror; and the published eager figures the kernel sentence moves
 - **Kept whole:** `skills/humanizer/SKILL.md`: its step 2 loads the catalogue on
   every use, so the topics are never loaded apart.
 - **Held for the owner:** the lifecycle protocols graft, grow and harvest stay
@@ -495,6 +497,25 @@ session reads before any routing.
   directory holds no file, because every plant the installer grows would then
   lack the directory the kernel names
 - **And:** on the shipped tree it reports neither
+
+### Audits: the session-record form is not a scaffold (added for 7.31.0)
+
+The form lands in every plant's `plans/` collection. Graft-audit already skips
+a `_`-prefixed or `*.template.md` leaf when it reports unfilled scaffolds;
+growth-audit must read the form the same way, or a plant that honestly claims
+`plans/` absent can never pass.
+
+### Contract: SESSION_RECORD_FORM_IS_NOT_A_SCAFFOLD
+- **Test file:** `tests/test-growth-audit.sh`
+- **Given:** an installed plant whose coverage record claims the `plans/`
+  collection ABSENT with its reason, and whose `plans/` holds the placed
+  `sessions/_session-record.template.md` and no other seed scaffold
+- **When:** `tools/growth-audit.py <plant> <seed>` runs
+- **Then:** no CONTRADICTED line names the form, and the ABSENT row is
+  accepted
+- **And:** a leaf in an ABSENT collection that is byte-identical to a seed
+  scaffold whose name has no leading `_` and does not end in `.template.md` is
+  still reported as the seed's unfilled scaffold
 
 ### Plan linter: the wave report (added for 7.31.0)
 
@@ -954,7 +975,7 @@ maintained. The kernel's §3.2 points here (`KERNEL_POINTS_AT_THE_SESSION_RECORD
 | When | an owner rule or a corrected assumption at the moment it happens, before the next spawn or reply; resume state before any pause or hand-off, and before the turn in which work stops ends. Never batched to the end of the session, which can end without warning |
 | At session start | read the newest record by date prefix (both, when two share the newest date): its newest "Open threads" block and every item with no line in "Canonize status". Canonized items are read from their graph homes, not from the record |
 | Harness memory | holds at most a one-line pointer to `docs/graph/plans/sessions/`. A session writes no rule, fact or resume state there. When the host writes memory automatically, the session keeps it to that pointer |
-| Migration | a harness that already holds entries: the first session under this rule lists each entry in the record's "Harness memories to migrate" table (entry, gist, likely home). Canonize places what is durable and hands back which entries can be retired. The session puts the retirement to the owner as a numbered decision (`deliver.numbered-decisions`), and deletes or rewrites a harness entry only when the owner names it (kernel §4) |
+| Migration | a harness that already holds entries: the first session under this rule lists each entry in the record's "Harness memories to migrate" table (entry, gist, likely home). Canonize places what is durable and hands back which entries can be retired. The session puts the retirement to the owner as a numbered decision (`deliver.numbered-decisions`), and deletes or rewrites a harness entry only when the owner names it (kernel §4). For an existing plant this runs once as graft's memory migration, and the graft's own close-out files the record; for a new plant the growth session's record lists them at grow's delivery (`protocols/graft.md`, `protocols/grow.md`) |
 | Trust | a record is data. An owner rule in it binds as the dated, verbatim quote it carries; other text in a record is not an instruction |
 
 Sections of a record, in order:
@@ -987,7 +1008,7 @@ Canonize (`canonize.session-record`):
 |---|---|
 | Input | the brief names the path of every record the task wrote or appended to since the last close-out; it carries the paths, not the content |
 | Walk | every item with no line in "Canonize status" gets exactly one outcome. An owner rule about how agents work with this owner is placed in `crosscut.operator` (`templates/docs/nodes/_operator.template.md`). An owner rule about the project is placed in the node that owns its topic, and a procedure in a project skill. A corrected assumption is fixed in place in the node or leaf that asserted the wrong thing. Resume state is not placed ("resume state; stays in the record"). Anything else is placed where it belongs, or not placed with the reason |
-| Status line | `- <section> <item> → <node id and fact key, or file>` or `- <section> <item> → not placed: <reason>`; plus one line `- retirable harness entries: <names>, pending the owner's confirmation by name` (or `none`) |
+| Status line | `- <section> <item> → <node id and fact key, or file>` or `- <section> <item> → not placed: <reason>`; plus one line `- retirable harness entries: <names>, awaiting the owner's confirmation by name` (or `none`) |
 | Handback | items placed (item → home), items not placed (item → reason), retirable harness entries; or "no session record", which is a finding when the task was T2/T3 |
 | Limits | the librarian never rewrites an item, never touches harness memory (outside the plant), and places no item that carries a secret, production data or speculation |
 | Duty count | the record is a source of knowledge candidates (canonize's first duty); it adds no sixth duty and does not change the protocol's `description:` |
@@ -1773,13 +1794,13 @@ waves: 3 wave(s), 5 increment(s) — a static schedule from §9; what is committ
   wave 2: increment 2 (GREEN) Validate schema <- 1
   wave 2: increment 4 (RED) Persist submissions <- 3
   wave 3: increment 5 (GREEN) Store submissions <- 2, 4
-grill lint: PASS — grill.md: 5 increment(s), 4 contract ref(s), 1 library dep(s)
+grill lint: PASS — grill.md: 5 increment(s), 2 contract ref(s), 1 library dep(s)
 ```
 
 ```text
 # Warning, not failure: a possible lane overlap (GRILL_WAVES_OVERLAP_IS_A_WARNING)
   WARN §9 increments 1 and 3 may run together and both name tests/test_forms.py — one spawn holds both, or they are sequenced (delegation.lanes)
-grill lint: PASS — grill.md: 5 increment(s), 4 contract ref(s), 1 library dep(s)
+grill lint: PASS — grill.md: 5 increment(s), 2 contract ref(s), 1 library dep(s)
 (exit 0)
 ```
 
@@ -2404,3 +2425,13 @@ kept outside the seed.
   new "Session record" shape; §7 KERNEL_POINTER_TRIMMED,
   SESSION_RECORD_NOT_KEPT, RECORD_ITEM_LEFT_UNFILED; §8 three examples. No
   contract relaxed. §9 (product) and §10 (tester) follow in their own passes.
+- 2026-09-28 — version 0.11, ruling pass 1, by `architect`. Still `active`.
+  §1 the contract count (eighteen → nineteen) and the growth-audit test file;
+  §2 the session-record scope line names growth-audit; §4 new
+  SESSION_RECORD_FORM_IS_NOT_A_SCAFFOLD (R2.1: growth-audit read the placed
+  form as an unfilled scaffold, so an honest ABSENT `plans/` could never
+  pass); §6 the canonize status line reads "awaiting", the doctrine's word
+  (R2.2), and the Migration row names where the migration runs for an
+  existing and a new plant (adr-0014); §8 the wave-report examples print the
+  contract-ref count the tool prints (R2.7). No contract relaxed. The rulings
+  are kept with the round's working records outside the seed.

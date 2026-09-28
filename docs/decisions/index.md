@@ -21,6 +21,7 @@ which is the installed *application* knowledge graph. ADR bodies use
 | [0011](adr-0011-donor-token-redaction.md) | Donor-identifying tokens in append-only seed records are replaced in place, under one scoped exception whose home is `CLAUDE.md` Conventions | proposed | 2026-09-24 | grill-7.29.0-front-door.md | 7.29.0 |
 | [0012](adr-0012-red-waves-ahead-of-green.md) | Work runs in cycles of a RED wave and a clean GREEN wave; holds are per increment; one ruling pass per cycle rules on what was flagged; `grill-lint.py --waves` reports the schedule | accepted | 2026-09-28 | grill-7.31.0-wave-scheduling.md | 7.31.0 |
 | [0013](adr-0013-harness-memory-is-not-a-home.md) | Harness memory is not a home: a session writes what it learns to a session record in the plant (`docs/graph/plans/sessions/`), which canonize files; the kernel's §3.2 points there | accepted | 2026-09-28 | grill-7.31.0-wave-scheduling.md | 7.31.0 |
+| [0014](adr-0014-graft-reconciles-every-graph-engine.md) | Graft reconciles every graph engine with the config each one carries (the tool picks it per engine; the audit checks every pair); the installer keeps engines plant-owned | accepted | 2026-09-28 | grill-7.31.0-wave-scheduling.md | 7.31.0 |
 
 ADRs **0001–0003** were decided inline in the plan-of-record
 [`../plans/agent-routing-and-delegation.md`](../plans/agent-routing-and-delegation.md)
