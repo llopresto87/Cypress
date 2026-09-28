@@ -2422,6 +2422,103 @@ fi
 echo "  the session-record form is a form, not a scaffold; a named scaffold still is — OK"
 }
 
+# ==========================================================================
+# 7.32.0 — the audit's walk stays inside THIS plant. A directory holding its
+# own .cypress/seed.json is another plant (a scratch copy, a nested seed
+# workspace), and a symlinked directory is another tree: neither is walked. A
+# symlinked seed checkout under a plant once turned every corpus row DANGLING.
+# An ordinary subdirectory is still walked. Each scenario builds a plant whose
+# every row is honestly ABSENT, so any leaf the walk finds is a CONTRADICTED
+# row naming it.
+# ==========================================================================
+
+# $1 = dir. A plant with every row ABSENT-with-reason and its scaffolds renamed,
+# which audits clean.
+walk_plant() {
+  local d="$1"
+  rm -rf "$d"; mkdir -p "$d"
+  bash "$ROOT/install.sh" claude-code --project-dir "$d" >/dev/null 2>&1
+  python3 "$AUDIT" "$d" "$ROOT" --plan >/dev/null 2>&1 || true
+  python3 - "$d" <<'PY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])/".cypress/coverage.json"; r = json.loads(p.read_text())
+for c in r["collections"]:
+    c.update(status="ABSENT", reason="the source shows no such evidence",
+             searched=["src/"], evidence=[], leaves=0)
+for a in r["agents"]:
+    a.update(status="ABSENT", reason="its collections are absent-with-reason",
+             searched=["src/"])
+r["inventory"] = [{"kind": "domain", "name": "batch etl", "status": "ABSENT",
+                   "reason": "no artifact of its own; the architecture node owns it",
+                   "searched": ["src/"], "evidence": ["docs/graph/index.md"],
+                   "expect": [], "grounding": {"required": False, "sources": []}}]
+p.write_text(json.dumps(r, indent=2) + "\n")
+PY
+  python3 "$ROOT/tools/graft-audit.py" "$d" "$ROOT" --unfilled --rename >/dev/null 2>&1 || true
+  python3 "$AUDIT" "$d" "$ROOT" >"$d.base-out" 2>&1 \
+    || { cat "$d.base-out" >&2; fail "fixture: the all-ABSENT plant does not audit clean before the scenario"; }
+}
+
+# $1 = file, $2 = a word the leaf is about. A leaf that states a fact.
+walk_leaf() {
+  mkdir -p "$(dirname "$1")"
+  { printf '# %s\n\n' "$2"
+    for i in 1 2 3 4 5 6 7 8; do
+      printf 'The %s service keeps its ledger in a write-ahead log with nightly compaction.\n' "$2"
+    done; } > "$1"
+}
+
+scn_walk_nested() {
+# (a) a nested directory with its own .cypress/seed.json: no row from inside it
+local d="$TMP/wnested" out rc
+walk_plant "$d"
+mkdir -p "$d/docs/graph/architecture/plant-copy/.cypress"
+cp "$d/.cypress/seed.json" "$d/docs/graph/architecture/plant-copy/.cypress/seed.json"
+walk_leaf "$d/docs/graph/architecture/plant-copy/docs/graph/architecture/nestedleaf.md" nestedleaf
+out="$(python3 "$AUDIT" "$d" "$ROOT" 2>&1)" && rc=0 || rc=$?
+if grep -q "nestedleaf\|plant-copy" <<<"$out" || grep -q "collection architecture/" <<<"$out"; then
+  printf '%s\n' "$out" >&2
+  fail "a directory holding its own .cypress/seed.json was walked as part of the plant"
+fi
+[ "$rc" -eq 0 ] || { printf '%s\n' "$out" >&2; fail "a plant whose only extra leaf is inside a nested plant copy must audit clean (got $rc)"; }
+echo "  a nested plant copy is not walked — OK"
+}
+
+scn_walk_symlink() {
+# (b) a symlinked subtree is not walked: a symlinked directory inside a
+# collection, and a collection directory that is itself a symlink
+local d="$TMP/wsymlink" o="$TMP/wsymlink-outside" out rc
+walk_plant "$d"
+rm -rf "$o"; mkdir -p "$o"
+walk_leaf "$o/linked/linkedleaf.md" linkedleaf
+ln -s "$o/linked" "$d/docs/graph/design/linked"
+mv "$d/docs/graph/product" "$o/product"
+walk_leaf "$o/product/prodleaf.md" prodleaf
+ln -s "$o/product" "$d/docs/graph/product"
+out="$(python3 "$AUDIT" "$d" "$ROOT" 2>&1)" && rc=0 || rc=$?
+if grep -q "linkedleaf\|collection design/" <<<"$out"; then
+  printf '%s\n' "$out" >&2
+  fail "a symlinked directory inside a collection was walked"
+fi
+if grep -q "prodleaf\|collection product/" <<<"$out"; then
+  printf '%s\n' "$out" >&2
+  fail "a collection directory that is a symlink was walked"
+fi
+[ "$rc" -eq 0 ] || { printf '%s\n' "$out" >&2; fail "a plant whose only extra leaves are behind symlinks must audit clean (got $rc)"; }
+echo "  a symlinked subtree is not walked — OK"
+}
+
+scn_walk_plain() {
+# (c) guard: an ordinary subdirectory is still walked
+local d="$TMP/wplain" out
+walk_plant "$d"
+walk_leaf "$d/docs/graph/data/sub/plainleaf.md" plainleaf
+out="$(python3 "$AUDIT" "$d" "$ROOT" 2>&1)" || true
+grep -q "CONTRADICTED collection data/" <<<"$out" && grep -q "plainleaf.md" <<<"$out" \
+  || { printf '%s\n' "$out" >&2; fail "an authored leaf in an ordinary subdirectory of an ABSENT collection was not found"; }
+echo "  an ordinary subdirectory is still walked — OK"
+}
+
 # --- __case dispatch: run ONE scenario in isolation --------------------
 if [ "${1:-}" = "__case" ]; then
   "$2"
@@ -2439,7 +2536,8 @@ for s in \
     scn_x42 scn_x43 scn_x44 scn_x45 \
     scn_rawbase scn_x58 scn_x59 scn_x60 \
     scn_x61 scn_x62x63 scn_x64 scn_x65 \
-    scn_x68 scn_x382
+    scn_x68 scn_x382 \
+    scn_walk_nested scn_walk_symlink scn_walk_plain
 do
   printf '%s\t%s\n' "$s" "bash \"$SELF\" __case $s" >> "$SCN"
 done
