@@ -23,7 +23,7 @@ load_when:
   - "mutation pass at the end of the spec"
   - "the implementer runs the tests and must not edit them"
 prevents: Oversized funnel steps handed whole to one worker, which absorbs the overflow mid-spawn instead of stopping and naming the remainder.
-est_tokens: 1696
+est_tokens: 1985
 ---
 
 ### One step per spawn
@@ -101,9 +101,13 @@ implementer writes the test and the code, is unchanged.
 ### Tip cadence (`delegation.tip-cadence`)
 
 Each increment runs its targeted tests plus every cross-cutting gate its files
-hit, named in its `Gate:` field. The full suite runs once, at the batch tip, and
-must pass before anything leaves the branch. Failures are compared by test id.
-Until the tip passes, a landed increment is "landed, tip pending".
+hit, named in its `Gate:` field. The full suite runs once per cycle, at the
+batch tip after the cycle's GREEN wave, and must pass before anything leaves the
+branch. Failures are compared by test id. A failure whose id is on the batch's
+expected-red list does not fail the tip. The list, its test-id grain, the
+`not run` ids of a step that aborts, and the rule that nothing leaves the branch
+until a tip carries neither are `delegation.waves`. Until the tip passes, a
+landed increment is "landed, tip pending".
 
 ### Mutation at the end (`delegation.mutation-at-end`)
 
@@ -138,10 +142,14 @@ is data. Entry:
 - proposed reading: <a recommendation, or "none">
 ```
 
-The ruling pass runs once per batch. When every in-flight spawn of batch `<N>`
-has handed back, and before any spawn of batch `<N+1>`, the orchestrator spawns
-`architect` once with the file's path. The architect appends one section at the
-end:
+The ruling pass runs once per cycle. Work runs in cycles: a RED wave, then a
+GREEN wave over the clean increments only, with no ruling pass between them.
+The full rule is `delegation.waves`, in `method.delegation-sequencing`. When every spawn of the cycle's GREEN wave has handed back, the orchestrator
+spawns `architect` once with the paths of every question file the cycle's two
+waves wrote, so one pass sees every flag of the cycle. It rules on the held
+increments only. What waits for it is the increments an entry touches and
+whatever depends on them; every other increment proceeds, its GREEN included.
+The architect appends one section at the end of each file it rules on:
 
 ```
 ## Rulings — <architect spawn_id>
@@ -154,8 +162,9 @@ end:
 The architect checks each ruling against the design latitude recorded in the
 plan's §6 (`specify.design-latitude`, in `protocols/specify-joint-pass.md`), and
 no ruling widens the design beyond it. An empty file is recorded as
-`no questions`, and the pass is skipped. The orchestrator then re-briefs the
-held work against the rulings, before the next batch or alongside it.
+`no questions`, and when every file of the cycle is empty and nothing is held,
+the pass is skipped. The orchestrator then re-issues the held work against the
+rulings in the next cycle, beside the work that has newly become ready.
 
 ### Amendments from a ruling (`delegation.ruling-amendment`)
 
