@@ -22,7 +22,7 @@ status_evidence: tests/test_graph_lint.py, tests/test_agent_lint.py, tests/test-
 - **Design latitude:** simple for the 7.30.0 round; balanced for the 7.31.0 amendment (each recorded in its plan's §6 with its source; this line points there)
 - **Supersedes:** —
 - **Superseded by:** —
-- **Sign-offs:** product [x] 2026-09-26 §3, §9 (v0.2) · architect [x] 2026-09-26 (v0.1 in the joint pass; v0.2 at ruling pass 0; v0.3 at ruling pass 1) · tester [x] 2026-09-26 v0.2, the first RED batch; no objection to testability from the second · security [x] 2026-09-26 SPEC-0005 §4 inference contracts, §6 Effort / path inference / cycle-economy rules, §7; plan §4, §9 (increment 6, Commits), §10 mutation (v0.2) · architect [x] 2026-09-28 v0.9 §4–§8 (7.31.0 joint pass step 2; ruling pass 0); v0.10 §0–§2, §4, §6–§8, §12 (the session record); v0.11 §0, §1, §2, §4, §6, §8, §12 (ruling pass 1) · product [x] 2026-09-28 v0.10 §3.1, §9 (7.31.0 joint pass; ruling pass 0; memory-residency track) · tester [x] 2026-09-28 v0.10 §10 (7.31.0 joint pass; ruling pass 0; memory-residency track)
+- **Sign-offs:** product [x] 2026-09-26 §3, §9 (v0.2) · architect [x] 2026-09-26 (v0.1 in the joint pass; v0.2 at ruling pass 0; v0.3 at ruling pass 1) · tester [x] 2026-09-26 v0.2, the first RED batch; no objection to testability from the second · security [x] 2026-09-26 SPEC-0005 §4 inference contracts, §6 Effort / path inference / cycle-economy rules, §7; plan §4, §9 (increment 6, Commits), §10 mutation (v0.2) · architect [x] 2026-09-28 v0.9 §4–§8 (7.31.0 joint pass step 2; ruling pass 0); v0.10 §0–§2, §4, §6–§8, §12 (the session record); v0.11 §0, §1, §2, §4, §6, §8, §12 (ruling pass 1) · product [x] 2026-09-28 v0.11 §3.1, §9 (7.31.0; ruling pass 1) · tester [x] 2026-09-28 v0.10 §10 (7.31.0 joint pass; ruling pass 0; memory-residency track)
 
 ## 1. Summary
 
@@ -2064,7 +2064,9 @@ who judges it.)
       It says the session reads the schedule from `grill-lint.py --waves` and
       live state from the plan's §15, the commit log and the batch record.
       `protocol.test-first`'s cycle and the orchestrator's charter point at
-      `delegation.waves` and do not restate it.
+      `delegation.waves` and do not restate it: a charter may carry one
+      sentence that names the rule and ends in its pointer; more than that
+      restates.
       Contracts: none; detective, judged by the reviewer at verify.
 - [ ] **AC-27.** `method.delegation-sequencing` states the expected-red rule
       (R0.1, R0.12), and `delegation.tip-cadence` points at it: at each tip,
@@ -2115,6 +2117,14 @@ who judges it.)
       `integrations/prime-agent/README.md` no longer says Claude Code lacks
       cross-session memory.
       Contracts: none; detective, judged by the reviewer at verify.
+- [ ] **AC-32.** A plant whose coverage record claims its `plans/` collection
+      absent, with its reason, still passes growth-audit although the placed
+      session-record form sits in `plans/sessions/`: no contradiction line
+      names the form, and the absent row is accepted. A leaf in an absent
+      collection that is byte-identical to a seed scaffold whose name neither
+      starts with `_` nor ends in `.template.md` is still reported as the
+      seed's unfilled scaffold.
+      Contracts: maps to SESSION_RECORD_FORM_IS_NOT_A_SCAFFOLD
 
 ## 10. Test mapping
 
@@ -2170,6 +2180,21 @@ case names it and `KERNEL_POINTER_TRIMMED`, so both rows bind once they are
 `green`. AC-28 and AC-29 are covered through the contracts they map to. AC-30
 is held by SPEC-0001's `SESSION_RECORD_FORM_IS_PLACED` row. AC-31 maps to no
 contract and is judged by the reviewer at verify, so it has no row.
+
+**Cycle 1 observed, and ruling pass 1 (2026-09-28, v0.11).** The cycle-1 tip
+observed every wave case green once increment 5 landed, so X361 to X380 and the
+failure rows that cite them are `green`, as is the `delegation.waves` entry of
+`ADOPTED_RULE_HOMES`. The two session-record entries and the kernel check's
+real-tree row were observed `red`, and stay `red` until the doctrine and kernel
+increments that answer them commit. X381 stays `pending`: it is `not run` until
+`tests/test-seed-lint.sh` runs past its baseline. R2.1 added
+`SESSION_RECORD_FORM_IS_NOT_A_SCAFFOLD`, which AC-32 maps to. Its case X382 is a
+scenario of `tests/test-growth-audit.sh` in its own installed target, placed
+after every existing scenario. It is `red` until the growth-audit exclusion
+lands. Its first assertion, that the untouched `rollback.md` scaffold is still
+named, passes today; the form clause is the one observed failing. The four
+scenarios that already fail on the same CONTRADICTED line (scn_absent,
+scn_nostaff, scn_x34, scn_x41) are not rows of this spec and are not edited.
 
 | Contract / Failure | Test case | Test file | Level | Status |
 |---|---|---|---|---|
@@ -2258,31 +2283,31 @@ contract and is judged by the reviewer at verify, so it has no row.
 | QUESTION_ENTRY_LOST | (none) the orchestrator's entry count before the ruling pass | — | process record | pending |
 | WORKER_GUESSES | (none) reader | — | review | pending |
 | RULING_PASS_SKIPPED | (none) reader | — | review | pending |
-| GRILL_WAVES_LEVELS_FROM_DEPENDS_ON | X361 case_waves_levels_scheduled_plan: the full §6 header, then exactly the five wave lines in wave-then-document order, exit 0; increment 2 depends on a library page and stays in wave 2 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope), `--waves` on the scheduled fixture plan | pending |
-| GRILL_WAVES_LEVELS_FROM_DEPENDS_ON | X362 case_waves_levels_red_without_dependency_rises: increment 4's `Depends on:` set to `none` prints it in wave 1 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | pending |
-| GRILL_WAVES_LEVELS_FROM_DEPENDS_ON | X363 case_waves_levels_ledger_form: after `write_ledger`, the same wave lines (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | pending |
-| GRILL_WAVES_LEVELS_FROM_DEPENDS_ON | X364 case_waves_levels_library_only_dependency: increment 3's `Depends on:` set to the library page alone keeps increment 3 in wave 1 and increment 4 in wave 2 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | pending |
-| GRILL_WAVES_LEVELS_FROM_DEPENDS_ON | X365 case_waves_levels_seed_plan_7_30_0: `--plan docs/plans/grill-7.30.0-cycle-economy.md --waves --warn` prints `wave 1: increment 23 (RED)`, exit 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | real-tree read of one frozen plan (R0.5) | pending |
-| GRILL_WAVES_OVERLAP_IS_A_WARNING | X366 case_waves_overlap_brace_pair: with increment 3's files set to `tests/test_{forms,store}.py`, exactly one overlap warning, for increments 1 and 3 on `tests/test_forms.py`, none for 3 and 4; exit 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | pending |
-| GRILL_WAVES_OVERLAP_IS_A_WARNING | X367 case_waves_overlap_glob_token: increment 3's `tests/*.py` gives the full line `WARN §9 increments 1 and 3 may run together and both name tests/test_forms.py` (R0.6; in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | pending |
-| GRILL_WAVES_OVERLAP_IS_A_WARNING | X368 case_waves_overlap_bare_name: increment 3's `test_forms.py` gives the full line `WARN §9 increments 1 and 3 may run together and both name tests/test_forms.py` (R0.6; in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | pending |
-| GRILL_WAVES_OVERLAP_IS_A_WARNING | X369 case_waves_overlap_words_and_keys_silent: the header prints, and neither prose words nor `forms.submit`, named by two independent increments, give an overlap warning (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | pending |
-| GRILL_WAVES_OVERLAP_IS_A_WARNING | X370 case_waves_overlap_plain_lint_silent: plain `grill-lint.py` on the brace-pair plan prints no overlap line, exit 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope); guard | pending |
-| GRILL_WAVES_UNSCHEDULED_WITHOUT_PHASE | X371 case_waves_unscheduled_without_phase: the fixture plan prints the unscheduled header, no wave line and no warning, exit 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | pending |
-| GRILL_WAVES_UNSCHEDULED_WITHOUT_PHASE | X372 case_waves_partial_phase_warns: only increment 1 carries `Phase: RED`; increment 2 prints `(no phase)` and one `WARN §9 increment 2: no Phase: field`, exit 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | pending |
-| GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT | X373 case_waves_not_computed_forward_dependency: the not-computed header, no wave line, exit 1, and the plain lint's forward-dependency line (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | pending |
-| GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT | X374 case_waves_not_computed_missing_dependency: the same for a dependency on an increment that does not exist (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | pending |
-| GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT | X375 case_waves_not_computed_under_warn: the not-computed header prints and `--warn` exits 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | pending |
-| GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT | X376 case_waves_other_defect_still_reports: the invented contract of case 7 leaves the wave lines printed, exit 1 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | pending |
-| GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT | X380 case_waves_not_computed_duplicate_numbers: two inline increments carrying one number print `waves: not computed — §9 has duplicate increment numbers`, no wave line, and the plain lint's exit status (R0.13; in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | pending |
-| GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED | X377 case_waves_existing_plans_same_exit: the `lint` helper records each plan and flag set cases 1 to 32 lint; the block lints each again with and without `--waves` and asserts the same exit status, every plain line present in the `--waves` output in the same relative order, and no line beginning `Traceback` (R0.7; in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope); guard | pending |
-| GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED | X378 case_waves_plain_output_has_no_report_lines: no plain run of a recorded plan prints a `waves:` line, a `  wave ` line, an overlap warning or a phase warning (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope); guard | pending |
-| GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED | X379 case_waves_plain_output_golden: the plain output on the fixture plan equals the golden copy captured from the unmodified tool (in the collecting block, R0.3) | tests/test-grill-lint.sh | golden, `tests/fixtures/grill/`; guard | pending |
-| ADOPTED_RULE_HOMES | (none) the `delegation.waves` entry in `ADOPTED_RULE_HOMES` (increment 2); red id: the finding line `delegation.waves: not owned by core/method/delegation-sequencing.md, its one home under SPEC-0005 (owned by no node)`; the check itself is held by X347 and X348. While the entry is carried, `tests/test-seed-lint.sh` stops at its clean-copy baseline, so each tip lists that baseline line as expected-red and the rest of the script as `not run` (R0.4) | tests/seed-lint.py | real-tree, `check_adopted_rule_homes` | pending |
+| GRILL_WAVES_LEVELS_FROM_DEPENDS_ON | X361 case_waves_levels_scheduled_plan: the full §6 header, then exactly the five wave lines in wave-then-document order, exit 0; increment 2 depends on a library page and stays in wave 2 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope), `--waves` on the scheduled fixture plan | green |
+| GRILL_WAVES_LEVELS_FROM_DEPENDS_ON | X362 case_waves_levels_red_without_dependency_rises: increment 4's `Depends on:` set to `none` prints it in wave 1 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_LEVELS_FROM_DEPENDS_ON | X363 case_waves_levels_ledger_form: after `write_ledger`, the same wave lines (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_LEVELS_FROM_DEPENDS_ON | X364 case_waves_levels_library_only_dependency: increment 3's `Depends on:` set to the library page alone keeps increment 3 in wave 1 and increment 4 in wave 2 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_LEVELS_FROM_DEPENDS_ON | X365 case_waves_levels_seed_plan_7_30_0: `--plan docs/plans/grill-7.30.0-cycle-economy.md --waves --warn` prints `wave 1: increment 23 (RED)`, exit 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | real-tree read of one frozen plan (R0.5) | green |
+| GRILL_WAVES_OVERLAP_IS_A_WARNING | X366 case_waves_overlap_brace_pair: with increment 3's files set to `tests/test_{forms,store}.py`, exactly one overlap warning, for increments 1 and 3 on `tests/test_forms.py`, none for 3 and 4; exit 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_OVERLAP_IS_A_WARNING | X367 case_waves_overlap_glob_token: increment 3's `tests/*.py` gives the full line `WARN §9 increments 1 and 3 may run together and both name tests/test_forms.py` (R0.6; in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_OVERLAP_IS_A_WARNING | X368 case_waves_overlap_bare_name: increment 3's `test_forms.py` gives the full line `WARN §9 increments 1 and 3 may run together and both name tests/test_forms.py` (R0.6; in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_OVERLAP_IS_A_WARNING | X369 case_waves_overlap_words_and_keys_silent: the header prints, and neither prose words nor `forms.submit`, named by two independent increments, give an overlap warning (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_OVERLAP_IS_A_WARNING | X370 case_waves_overlap_plain_lint_silent: plain `grill-lint.py` on the brace-pair plan prints no overlap line, exit 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope); guard | green |
+| GRILL_WAVES_UNSCHEDULED_WITHOUT_PHASE | X371 case_waves_unscheduled_without_phase: the fixture plan prints the unscheduled header, no wave line and no warning, exit 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_UNSCHEDULED_WITHOUT_PHASE | X372 case_waves_partial_phase_warns: only increment 1 carries `Phase: RED`; increment 2 prints `(no phase)` and one `WARN §9 increment 2: no Phase: field`, exit 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT | X373 case_waves_not_computed_forward_dependency: the not-computed header, no wave line, exit 1, and the plain lint's forward-dependency line (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT | X374 case_waves_not_computed_missing_dependency: the same for a dependency on an increment that does not exist (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT | X375 case_waves_not_computed_under_warn: the not-computed header prints and `--warn` exits 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT | X376 case_waves_other_defect_still_reports: the invented contract of case 7 leaves the wave lines printed, exit 1 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT | X380 case_waves_not_computed_duplicate_numbers: two inline increments carrying one number print `waves: not computed — §9 has duplicate increment numbers`, no wave line, and the plain lint's exit status (R0.13; in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED | X377 case_waves_existing_plans_same_exit: the `lint` helper records each plan and flag set cases 1 to 32 lint; the block lints each again with and without `--waves` and asserts the same exit status, every plain line present in the `--waves` output in the same relative order, and no line beginning `Traceback` (R0.7; in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope); guard | green |
+| GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED | X378 case_waves_plain_output_has_no_report_lines: no plain run of a recorded plan prints a `waves:` line, a `  wave ` line, an overlap warning or a phase warning (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope); guard | green |
+| GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED | X379 case_waves_plain_output_golden: the plain output on the fixture plan equals the golden copy captured from the unmodified tool (in the collecting block, R0.3) | tests/test-grill-lint.sh | golden, `tests/fixtures/grill/`; guard | green |
+| ADOPTED_RULE_HOMES | (none) the `delegation.waves` entry in `ADOPTED_RULE_HOMES` (increment 2); red id: the finding line `delegation.waves: not owned by core/method/delegation-sequencing.md, its one home under SPEC-0005 (owned by no node)`; the check itself is held by X347 and X348. While the entry is carried, `tests/test-seed-lint.sh` stops at its clean-copy baseline, so each tip lists that baseline line as expected-red and the rest of the script as `not run` (R0.4) | tests/seed-lint.py | real-tree, `check_adopted_rule_homes` | green |
 | UNDECLARED_DEPENDENCY | (none) the orchestrator's check at RED observation that the test fails for the right reason, and the reviewer | — | review | pending |
-| FALSE_OVERLAP | X368 case_waves_overlap_bare_name: a bare name warns whatever directory it really sits in, and the exit status does not change | tests/test-grill-lint.sh | fixture (scope) | pending |
-| MISSED_OVERLAP | X369 case_waves_overlap_words_and_keys_silent: a file named only in prose gives no warning | tests/test-grill-lint.sh | fixture (scope) | pending |
-| STALE_SCHEDULE | X361 case_waves_levels_scheduled_plan: the header says the schedule is static and that what is committed is not read | tests/test-grill-lint.sh | fixture (scope) | pending |
+| FALSE_OVERLAP | X368 case_waves_overlap_bare_name: a bare name warns whatever directory it really sits in, and the exit status does not change | tests/test-grill-lint.sh | fixture (scope) | green |
+| MISSED_OVERLAP | X369 case_waves_overlap_words_and_keys_silent: a file named only in prose gives no warning | tests/test-grill-lint.sh | fixture (scope) | green |
+| STALE_SCHEDULE | X361 case_waves_levels_scheduled_plan: the header says the schedule is static and that what is committed is not read | tests/test-grill-lint.sh | fixture (scope) | green |
 | EARLY_RED_CONTRACT_AMENDED | (none) the RED hash re-check before the GREEN commit (`soft`), and the old and new hashes recorded beside the ruling id | — | commit boundary | pending |
 | EXPECTED_RED_MASKS_A_REGRESSION | (none) `judgment`: the orchestrator compares the tip's failing ids with the expected-red list by hand, in the batch record (R0.14) | — | tip record | pending |
 | EXPECTED_RED_PASSES_EARLY | (none) the orchestrator's tip comparison by test id; the id goes to the question file | — | tip record | pending |
@@ -2290,12 +2315,13 @@ contract and is judged by the reviewer at verify, so it has no row.
 | ABORTED_STEP_HIDES_CASES | (none) the tip record's `not run` list (R0.12); for `tests/test-grill-lint.sh`, the collecting block (R0.3), which X361 to X380 run in | — | tip record | pending |
 | RED_WRITES_A_HELD_TEST_FILE | (none) the orchestrator's dispatch check that an early RED's files are disjoint from every live lane, backed by the RED hash re-check (`soft`) | — | dispatch record | pending |
 | BATCH_PAUSED_FOR_ONE_INCREMENT | (none) the reviewer at verify, against the batch record's per-increment holds | — | review | pending |
-| KERNEL_POINTS_AT_THE_SESSION_RECORD | (none) seed-lint on the real tree (increment 10's check); red ids: the finding line naming `core/AGENTS.md §3.2` and the finding line naming `templates/docs/plans/sessions/`; the "shipped tree reports neither" clause turns green when increments 12 and 13 have committed | tests/seed-lint.py | real-tree, the kernel check | pending |
+| KERNEL_POINTS_AT_THE_SESSION_RECORD | (none) seed-lint on the real tree (increment 10's check); red ids: the finding line naming `core/AGENTS.md §3.2` and the finding line naming `templates/docs/plans/sessions/`; the "shipped tree reports neither" clause turns green when increments 12 and 13 have committed | tests/seed-lint.py | real-tree, the kernel check | red |
 | KERNEL_POINTS_AT_THE_SESSION_RECORD | X381 case_ce_kernel_session_record_pointer: on copies, the sentence removed from §3.2 gives the `core/AGENTS.md §3.2` line; the sentence moved from §3.2 to §5 gives the same line; `templates/docs/plans/sessions/` emptied gives the `templates/docs/plans/sessions/` line; `not run` while the script's baseline is red (R0.4, R0.12) | tests/test-seed-lint.sh | fixture (scope), the kernel check | pending |
-| ADOPTED_RULE_HOMES | (none) the `stewardship-posture.session-record` and `canonize.session-record` entries in `ADOPTED_RULE_HOMES` (increment 10); red ids: `stewardship-posture.session-record: not owned by core/method/stewardship-posture.md, its one home under SPEC-0005 (owned by no node)` and `canonize.session-record: not owned by protocols/canonize.md, its one home under SPEC-0005 (owned by no node)`; the check itself is held by X347 and X348 | tests/seed-lint.py | real-tree, `check_adopted_rule_homes` | pending |
+| ADOPTED_RULE_HOMES | (none) the `stewardship-posture.session-record` and `canonize.session-record` entries in `ADOPTED_RULE_HOMES` (increment 10); red ids: `stewardship-posture.session-record: not owned by core/method/stewardship-posture.md, its one home under SPEC-0005 (owned by no node)` and `canonize.session-record: not owned by protocols/canonize.md, its one home under SPEC-0005 (owned by no node)`; the check itself is held by X347 and X348 | tests/seed-lint.py | real-tree, `check_adopted_rule_homes` | red |
 | KERNEL_POINTER_TRIMMED | X381 case_ce_kernel_session_record_pointer: dropping the sentence, or moving it out of §3.2, fails naming `core/AGENTS.md §3.2` | tests/test-seed-lint.sh | fixture (scope) | pending |
 | SESSION_RECORD_NOT_KEPT | (none) `judgment`: canonize's walk, and the librarian's "no session record" or missing-item finding, which the delivery shows | — | review | pending |
 | RECORD_ITEM_LEFT_UNFILED | (none) `judgment`, with the next session's start read as the `detective` backstop: items with no "Canonize status" line are named in its newest "Open threads" block | — | review | pending |
+| SESSION_RECORD_FORM_IS_NOT_A_SCAFFOLD | X382 scn_x382: an installed plant whose coverage record claims `plans/` ABSENT with its reason, whose `plans/` holds the placed `sessions/_session-record.template.md` and whose `grill.md` scaffold is renamed `.unfilled.md`, gives no CONTRADICTED line naming the form and no finding on `plans/`; in the same run an untouched `runbooks/rollback.md` scaffold in an ABSENT row is still named as the seed's unfilled scaffold | tests/test-growth-audit.sh | integration | red |
 
 
 ## 11. Open questions
@@ -2435,3 +2461,11 @@ kept outside the seed.
   existing and a new plant (adr-0014); §8 the wave-report examples print the
   contract-ref count the tool prints (R2.7). No contract relaxed. The rulings
   are kept with the round's working records outside the seed.
+- 2026-09-28 — version 0.11, the product and tester passes. Still `active`.
+  §9 (product): AC-26 allows a charter one sentence that names the wave rule
+  and ends in its pointer; new AC-32 holds SESSION_RECORD_FORM_IS_NOT_A_SCAFFOLD.
+  §10 (tester): X361 to X380, their failure rows and the `delegation.waves`
+  rule-home row flip to `green` (cycle 1's GREEN); the session-record rule
+  homes and the real-tree kernel check stay `red` until their doctrine commits;
+  new X382 `red`, in `tests/test-growth-audit.sh`. Product and tester re-signed
+  at v0.11.
