@@ -121,7 +121,21 @@ out.write_text(plan)
 PY
 }
 
-lint() { python3 "$G/grill-lint.py" "$@"; }
+# Every plan state and flag set cases 1 to 32 lint is recorded, so the wave
+# block at the end can lint each again with and without --waves (X377, X378).
+REC="$TMP/lint-records"
+mkdir -p "$REC"
+record_lint() {
+  local n d a
+  n="$(ls "$REC" | wc -l | tr -d ' ')"
+  d="$REC/$(printf '%03d' "$n")"
+  mkdir -p "$d/state"
+  if [ -d "$G/plans" ]; then cp -R "$G/plans" "$d/state/plans"; fi
+  if [ -d "$G/decisions" ]; then cp -R "$G/decisions" "$d/state/decisions"; fi
+  : > "$d/args"
+  for a in "$@"; do printf '%s\0' "$a" >> "$d/args"; done
+}
+lint() { record_lint "$@"; python3 "$G/grill-lint.py" "$@"; }
 expect_fail() {  # $1 = pattern the report must name, then a description
   local pat="$1" why="$2" out rc
   out="$(lint 2>&1)" && rc=0 || rc=$?
@@ -426,5 +440,322 @@ echo "  a fenced field value is a value — OK"
 # 13. no plan at all -> SKIP, exit 0
 rm -rf "$G/plans/grill" "$G/plans/grill.md"
 lint >/dev/null
+
+# ---------------------------------------------------------------------------
+# The wave report, `grill-lint.py --waves` (SPEC-0005 §6 "Wave report"). One
+# collecting block after every case above, case 13 included: each case checks
+# its own conditions without relying on `set -e`, prints `FAIL <label>: <why>`
+# when it fails, and the block exits 1 after its last case if any failed, so
+# every label shows its own result in one run and none hides another. The
+# report is read-only and never changes an exit status.
+# ---------------------------------------------------------------------------
+set +e
+WAVES_FAILED=0
+SCHED="$ROOT/tests/fixtures/grill/scheduled_plan.py"
+GOLDEN="$ROOT/tests/fixtures/grill/fixture-plan.plain.golden"
+HEADER_3='waves: 3 wave(s), 5 increment(s) — a static schedule from §9; what is committed is not read'
+WAVES_5='  wave 1: increment 1 (RED) Reject bad schemas
+  wave 1: increment 3 (prose) Document the form
+  wave 2: increment 2 (GREEN) Validate schema <- 1
+  wave 2: increment 4 (RED) Persist submissions <- 3
+  wave 3: increment 5 (GREEN) Store submissions <- 2, 4'
+OVERLAP_1_3='^ *WARN §9 increments 1 and 3 may run together and both name tests/test_forms\.py( — .*)?$'
+
+wfail() { printf 'FAIL %s: %s\n' "$1" "$2"; WAVES_FAILED=1; }
+# run the tool unrecorded: WOUT holds stdout and stderr, WRC the exit status
+wrun() { WOUT="$(python3 "$G/grill-lint.py" "$@" 2>&1)"; WRC=$?; }
+# the scheduled fixture plan, with KEY=VALUE edits (see scheduled_plan.py)
+sched() { write_plan && python3 "$SCHED" "$G/plans/grill.md" "$@"; }
+has_line() { grep -qxF -- "$2" <<<"$1"; }
+has_re() { grep -qE -- "$2" <<<"$1"; }
+wave_lines() { grep -E '^  wave ' <<<"$1"; }
+no_traceback() { ! grep -q '^Traceback' <<<"$1"; }
+# every line of $1 appears in $2, in the same relative order
+in_order() {
+  python3 -c 'import sys
+want = sys.argv[1].splitlines(); have = iter(sys.argv[2].splitlines())
+sys.exit(0 if all(any(w == h for h in have) for w in want) else 1)' "$1" "$2"
+}
+# report lines that must never appear without --waves
+report_line() {
+  grep -E '^waves:|^  wave |may run together and both name|: no Phase: field|is not RED, GREEN or prose' <<<"$1"
+}
+# lay a recorded plan state back under $G, and load its flags into ARGS
+replay() {
+  rm -rf "$G/plans" "$G/decisions"
+  if [ -d "$1/state/plans" ]; then cp -R "$1/state/plans" "$G/plans"; else mkdir -p "$G/plans"; fi
+  if [ -d "$1/state/decisions" ]; then cp -R "$1/state/decisions" "$G/decisions"; fi
+  ARGS=()
+  local a
+  while IFS= read -r -d '' a; do ARGS+=("$a"); done < "$1/args"
+}
+
+case_waves_levels_scheduled_plan() {
+  # X361 GRILL_WAVES_LEVELS_FROM_DEPENDS_ON
+  # Asserts SPEC-0005 GRILL_WAVES_LEVELS_FROM_DEPENDS_ON; holds STALE_SCHEDULE
+  # (the header says the schedule is static and what is committed is not read).
+  # Increment 2 also depends on a library page and still sits in wave 2.
+  local L=X361
+  sched || { wfail $L "harness: the scheduled fixture plan was not written"; return; }
+  wrun --waves
+  has_line "$WOUT" "$HEADER_3" || { wfail $L "no header line '$HEADER_3'"; return; }
+  [ "$(wave_lines "$WOUT")" = "$WAVES_5" ] || { wfail $L "the wave lines are not exactly the five of §6, in wave-then-document order"; return; }
+  [ "$WRC" -eq 0 ] || wfail $L "expected exit 0, got $WRC"
+}
+case_waves_levels_red_without_dependency_rises() {
+  # X362 GRILL_WAVES_LEVELS_FROM_DEPENDS_ON
+  # Asserts SPEC-0005 GRILL_WAVES_LEVELS_FROM_DEPENDS_ON: a RED with no
+  # dependency rises to wave 1, although §9 lists it after a GREEN.
+  local L=X362
+  sched D4=none || { wfail $L "harness: the scheduled fixture plan was not written"; return; }
+  wrun --waves
+  has_line "$WOUT" '  wave 1: increment 4 (RED) Persist submissions' \
+    || wfail $L "no line '  wave 1: increment 4 (RED) Persist submissions'"
+}
+case_waves_levels_ledger_form() {
+  # X363 GRILL_WAVES_LEVELS_FROM_DEPENDS_ON
+  # Asserts SPEC-0005 GRILL_WAVES_LEVELS_FROM_DEPENDS_ON: the ledger form of the
+  # scheduled plan prints the same wave lines.
+  local L=X363
+  { sched && write_ledger; } || { wfail $L "harness: the ledger form was not written"; return; }
+  wrun --waves
+  [ "$(wave_lines "$WOUT")" = "$WAVES_5" ] || wfail $L "the ledger form does not print the five wave lines of the inline form"
+}
+case_waves_levels_library_only_dependency() {
+  # X364 GRILL_WAVES_LEVELS_FROM_DEPENDS_ON
+  # Asserts SPEC-0005 GRILL_WAVES_LEVELS_FROM_DEPENDS_ON: a library page is not
+  # an increment, so it does not move a wave.
+  local L=X364
+  sched D3=docs/graph/libraries/sqlalchemy.md || { wfail $L "harness: the scheduled fixture plan was not written"; return; }
+  wrun --waves
+  has_line "$WOUT" '  wave 1: increment 3 (prose) Document the form' \
+    || { wfail $L "no line '  wave 1: increment 3 (prose) Document the form'"; return; }
+  has_line "$WOUT" '  wave 2: increment 4 (RED) Persist submissions <- 3' \
+    || wfail $L "no line '  wave 2: increment 4 (RED) Persist submissions <- 3'"
+}
+case_waves_levels_seed_plan_7_30_0() {
+  # X365 GRILL_WAVES_LEVELS_FROM_DEPENDS_ON
+  # Asserts SPEC-0005 GRILL_WAVES_LEVELS_FROM_DEPENDS_ON on the seed's own frozen
+  # docs/plans/grill-7.30.0-cycle-economy.md (read only; its specs do not resolve
+  # here, which is not a dependency defect, so the report still prints).
+  local L=X365
+  write_plan || { wfail $L "harness: the fixture plan was not written"; return; }
+  wrun --plan "$ROOT/docs/plans/grill-7.30.0-cycle-economy.md" --waves --warn
+  has_re "$WOUT" '^  wave 1: increment 23 \(RED\)' || { wfail $L "no line beginning '  wave 1: increment 23 (RED)'"; return; }
+  [ "$WRC" -eq 0 ] || wfail $L "expected exit 0 under --warn, got $WRC"
+}
+case_waves_overlap_brace_pair() {
+  # X366 GRILL_WAVES_OVERLAP_IS_A_WARNING
+  # Asserts SPEC-0005 GRILL_WAVES_OVERLAP_IS_A_WARNING: one brace group expands;
+  # 1 and 3 may run together, 3 and 4 may not (4 depends on 3).
+  local L=X366
+  sched 'F3=`tests/test_{forms,store}.py`' || { wfail $L "harness: the scheduled fixture plan was not written"; return; }
+  wrun --waves
+  has_re "$WOUT" "$OVERLAP_1_3" || { wfail $L "no overlap warning for increments 1 and 3 naming tests/test_forms.py"; return; }
+  [ "$(grep -c 'may run together' <<<"$WOUT")" -eq 1 ] || { wfail $L "expected exactly one overlap warning"; return; }
+  ! has_re "$WOUT" 'increments 3 and 4 may run together' || { wfail $L "warned for increments 3 and 4, which are sequenced"; return; }
+  [ "$WRC" -eq 0 ] || wfail $L "expected exit 0, got $WRC"
+}
+case_waves_overlap_glob_token() {
+  # X367 GRILL_WAVES_OVERLAP_IS_A_WARNING
+  # Asserts SPEC-0005 GRILL_WAVES_OVERLAP_IS_A_WARNING: a glob overlaps the path
+  # it matches, and the warning names the path, not the glob (R0.6).
+  local L=X367
+  sched 'F3=`tests/*.py`' || { wfail $L "harness: the scheduled fixture plan was not written"; return; }
+  wrun --waves
+  has_re "$WOUT" "$OVERLAP_1_3" || { wfail $L "no line 'WARN §9 increments 1 and 3 may run together and both name tests/test_forms.py'"; return; }
+  [ "$WRC" -eq 0 ] || wfail $L "expected exit 0, got $WRC"
+}
+case_waves_overlap_bare_name() {
+  # X368 GRILL_WAVES_OVERLAP_IS_A_WARNING
+  # Asserts SPEC-0005 GRILL_WAVES_OVERLAP_IS_A_WARNING; holds FALSE_OVERLAP: a
+  # bare name overlaps the path it ends, whatever directory it sits in, the
+  # warning names the slashed path (R0.6), and the exit status does not change.
+  local L=X368 prc
+  sched 'F3=`test_forms.py`' || { wfail $L "harness: the scheduled fixture plan was not written"; return; }
+  wrun; prc=$WRC
+  wrun --waves
+  has_re "$WOUT" "$OVERLAP_1_3" || { wfail $L "no line 'WARN §9 increments 1 and 3 may run together and both name tests/test_forms.py'"; return; }
+  [ "$WRC" -eq "$prc" ] || { wfail $L "exit $WRC with --waves, $prc without"; return; }
+  [ "$WRC" -eq 0 ] || wfail $L "expected exit 0, got $WRC"
+}
+case_waves_overlap_words_and_keys_silent() {
+  # X369 GRILL_WAVES_OVERLAP_IS_A_WARNING
+  # Asserts SPEC-0005 GRILL_WAVES_OVERLAP_IS_A_WARNING; holds MISSED_OVERLAP (a
+  # file named only in prose gives no warning): prose words, `§6`, `resolve()`
+  # and a dotted fact key two independent increments both name are not paths.
+  local L=X369
+  sched 'F1=`tests/test_forms.py` (the forms.submit key; see §6 and resolve())' \
+        'F3=`docs/forms.md` (the forms.submit key; see §6 and resolve())' \
+    || { wfail $L "harness: the scheduled fixture plan was not written"; return; }
+  wrun --waves
+  has_line "$WOUT" "$HEADER_3" || { wfail $L "no header line '$HEADER_3'"; return; }
+  ! has_re "$WOUT" 'may run together' || wfail $L "a prose word or a dotted key produced an overlap warning"
+}
+case_waves_overlap_plain_lint_silent() {
+  # X370 GRILL_WAVES_OVERLAP_IS_A_WARNING (guard)
+  # Asserts SPEC-0005 GRILL_WAVES_OVERLAP_IS_A_WARNING: without --waves the same
+  # brace-pair plan prints no overlap line and exits 0.
+  local L=X370
+  sched 'F3=`tests/test_{forms,store}.py`' || { wfail $L "harness: the scheduled fixture plan was not written"; return; }
+  wrun
+  ! has_re "$WOUT" 'may run together' || { wfail $L "the plain lint printed an overlap line"; return; }
+  [ "$WRC" -eq 0 ] || wfail $L "expected exit 0, got $WRC"
+}
+case_waves_unscheduled_without_phase() {
+  # X371 GRILL_WAVES_UNSCHEDULED_WITHOUT_PHASE
+  # Asserts SPEC-0005 GRILL_WAVES_UNSCHEDULED_WITHOUT_PHASE: an older plant's
+  # plan, with no Phase: field anywhere, is unscheduled and nothing more.
+  local L=X371
+  write_plan || { wfail $L "harness: the fixture plan was not written"; return; }
+  wrun --waves
+  has_line "$WOUT" 'waves: unscheduled — no §9 increment carries a Phase: field' \
+    || { wfail $L "no line 'waves: unscheduled — no §9 increment carries a Phase: field'"; return; }
+  [ -z "$(wave_lines "$WOUT")" ] || { wfail $L "printed a wave line"; return; }
+  ! has_re "$WOUT" 'WARN' || { wfail $L "printed a warning"; return; }
+  [ "$WRC" -eq 0 ] || wfail $L "expected exit 0, got $WRC"
+}
+case_waves_partial_phase_warns() {
+  # X372 GRILL_WAVES_UNSCHEDULED_WITHOUT_PHASE
+  # Asserts SPEC-0005 GRILL_WAVES_UNSCHEDULED_WITHOUT_PHASE: when only increment 1
+  # carries a phase, increment 2 prints `(no phase)` and one warning names it.
+  local L=X372
+  write_plan $'sub:- Depends on: none=- Phase: RED\n- Depends on: none' \
+    || { wfail $L "harness: the fixture plan was not written"; return; }
+  wrun --waves
+  has_re "$WOUT" '^  wave 1: increment 1 \(RED\)' || { wfail $L "no wave line for increment 1 (RED)"; return; }
+  has_re "$WOUT" '^  wave 2: increment 2 \(no phase\)' || { wfail $L "no line beginning '  wave 2: increment 2 (no phase)'"; return; }
+  [ "$(grep -c 'WARN §9 increment 2: no Phase: field' <<<"$WOUT")" -eq 1 ] \
+    || { wfail $L "expected exactly one 'WARN §9 increment 2: no Phase: field'"; return; }
+  ! has_re "$WOUT" 'increment 1: no Phase: field' || { wfail $L "warned for increment 1, which carries a phase"; return; }
+  [ "$WRC" -eq 0 ] || wfail $L "expected exit 0, got $WRC"
+}
+case_waves_not_computed_forward_dependency() {
+  # X373 GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT
+  # Asserts SPEC-0005 GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT: a forward
+  # dependency stops the report; the plain lint's defect line still prints.
+  local L=X373
+  sched 'D1=increment 2' || { wfail $L "harness: the scheduled fixture plan was not written"; return; }
+  wrun --waves
+  has_re "$WOUT" '^waves: not computed — §9 has dependency defects' \
+    || { wfail $L "no line beginning 'waves: not computed — §9 has dependency defects'"; return; }
+  [ -z "$(wave_lines "$WOUT")" ] || { wfail $L "printed a wave line"; return; }
+  has_re "$WOUT" 'increment 1: depends on increment 2, listed after it' || { wfail $L "the plain lint's forward-dependency line is missing"; return; }
+  [ "$WRC" -eq 1 ] || wfail $L "expected exit 1, got $WRC"
+}
+case_waves_not_computed_missing_dependency() {
+  # X374 GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT
+  # Asserts SPEC-0005 GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT: the same for
+  # a dependency on an increment that does not exist.
+  local L=X374
+  sched 'D1=increment 9' || { wfail $L "harness: the scheduled fixture plan was not written"; return; }
+  wrun --waves
+  has_re "$WOUT" '^waves: not computed — §9 has dependency defects' \
+    || { wfail $L "no line beginning 'waves: not computed — §9 has dependency defects'"; return; }
+  [ -z "$(wave_lines "$WOUT")" ] || { wfail $L "printed a wave line"; return; }
+  has_re "$WOUT" 'increment 9, which does not exist' || { wfail $L "the plain lint's missing-dependency line is missing"; return; }
+  [ "$WRC" -eq 1 ] || wfail $L "expected exit 1, got $WRC"
+}
+case_waves_not_computed_under_warn() {
+  # X375 GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT
+  # Asserts SPEC-0005 GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT: under --warn
+  # the not-computed report exits 0.
+  local L=X375
+  sched 'D1=increment 2' || { wfail $L "harness: the scheduled fixture plan was not written"; return; }
+  wrun --waves --warn
+  has_re "$WOUT" '^waves: not computed — §9 has dependency defects' \
+    || { wfail $L "no line beginning 'waves: not computed — §9 has dependency defects'"; return; }
+  [ "$WRC" -eq 0 ] || wfail $L "expected exit 0 under --warn, got $WRC"
+}
+case_waves_other_defect_still_reports() {
+  # X376 GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT
+  # Asserts SPEC-0005 GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT: a defect that
+  # is not a dependency defect (case 7's invented contract) leaves the wave
+  # lines printed, and the exit is the plain lint's 1.
+  local L=X376
+  sched C1=SPEC-0001/REJECT_EVERYTHING C2=SPEC-0001/REJECT_EVERYTHING \
+    || { wfail $L "harness: the scheduled fixture plan was not written"; return; }
+  wrun --waves
+  [ "$(wave_lines "$WOUT")" = "$WAVES_5" ] || { wfail $L "the five wave lines did not print beside a non-dependency defect"; return; }
+  ! has_re "$WOUT" '^waves: not computed' || { wfail $L "a non-dependency defect stopped the report"; return; }
+  [ "$WRC" -eq 1 ] || wfail $L "expected the plain lint's exit 1, got $WRC"
+}
+case_waves_not_computed_duplicate_numbers() {
+  # X380 GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT
+  # Asserts SPEC-0005 GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT (R0.13): two
+  # inline increments carrying one number get no wave map, and the exit stays
+  # the plain lint's. Increment 4 depends on nothing, so no dependency defect
+  # hides the duplicate.
+  local L=X380 prc
+  sched N3=1 D4=none || { wfail $L "harness: the scheduled fixture plan was not written"; return; }
+  wrun; prc=$WRC
+  wrun --waves
+  has_line "$WOUT" 'waves: not computed — §9 has duplicate increment numbers' \
+    || { wfail $L "no line 'waves: not computed — §9 has duplicate increment numbers'"; return; }
+  [ -z "$(wave_lines "$WOUT")" ] || { wfail $L "printed a wave line"; return; }
+  [ "$WRC" -eq "$prc" ] || wfail $L "exit $WRC with --waves, $prc without"
+}
+case_waves_existing_plans_same_exit() {
+  # X377 GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED (guard)
+  # Asserts SPEC-0005 GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED: every plan and flag set
+  # cases 1 to 32 linted, linted again with and without --waves: the same exit
+  # status, every plain line in the --waves output in the same order, and no
+  # line beginning `Traceback` (R0.7).
+  local L=X377 d n=0 pout prc
+  for d in "$REC"/*; do
+    [ -d "$d" ] || continue
+    n=$((n + 1))
+    replay "$d"
+    wrun ${ARGS[@]+"${ARGS[@]}"}; pout="$WOUT"; prc=$WRC
+    wrun ${ARGS[@]+"${ARGS[@]}"} --waves
+    no_traceback "$WOUT" || { wfail $L "a traceback with --waves on record $(basename "$d")"; return; }
+    [ "$WRC" -eq "$prc" ] || { wfail $L "record $(basename "$d"): exit $WRC with --waves, $prc without"; return; }
+    in_order "$pout" "$WOUT" || { wfail $L "record $(basename "$d"): the plain lines are not all in the --waves output, in order"; return; }
+  done
+  [ "$n" -gt 0 ] || wfail $L "harness: no lint call of cases 1 to 32 was recorded"
+}
+case_waves_plain_output_has_no_report_lines() {
+  # X378 GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED (guard)
+  # Asserts SPEC-0005 GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED: without --waves no
+  # recorded plan prints a `waves:` line, a `  wave ` line, an overlap warning
+  # or a phase warning.
+  local L=X378 d n=0
+  for d in "$REC"/*; do
+    [ -d "$d" ] || continue
+    n=$((n + 1))
+    replay "$d"
+    wrun ${ARGS[@]+"${ARGS[@]}"}
+    [ -z "$(report_line "$WOUT")" ] || { wfail $L "record $(basename "$d"): the plain lint printed a report line"; return; }
+  done
+  [ "$n" -gt 0 ] || wfail $L "harness: no lint call of cases 1 to 32 was recorded"
+}
+case_waves_plain_output_golden() {
+  # X379 GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED (guard)
+  # Asserts SPEC-0005 GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED: the plain output on
+  # the fixture plan equals the golden copy captured from the unmodified tool.
+  local L=X379
+  [ -f "$GOLDEN" ] || { wfail $L "harness: no golden copy at tests/fixtures/grill/fixture-plan.plain.golden"; return; }
+  write_plan || { wfail $L "harness: the fixture plan was not written"; return; }
+  wrun
+  [ "$WOUT" = "$(cat "$GOLDEN")" ] || { wfail $L "the plain output differs from the golden copy"; return; }
+  [ "$WRC" -eq 0 ] || wfail $L "expected exit 0, got $WRC"
+}
+
+for c in case_waves_levels_scheduled_plan case_waves_levels_red_without_dependency_rises \
+         case_waves_levels_ledger_form case_waves_levels_library_only_dependency \
+         case_waves_levels_seed_plan_7_30_0 case_waves_overlap_brace_pair \
+         case_waves_overlap_glob_token case_waves_overlap_bare_name \
+         case_waves_overlap_words_and_keys_silent case_waves_overlap_plain_lint_silent \
+         case_waves_unscheduled_without_phase case_waves_partial_phase_warns \
+         case_waves_not_computed_forward_dependency case_waves_not_computed_missing_dependency \
+         case_waves_not_computed_under_warn case_waves_other_defect_still_reports \
+         case_waves_not_computed_duplicate_numbers case_waves_existing_plans_same_exit \
+         case_waves_plain_output_has_no_report_lines case_waves_plain_output_golden; do
+  "$c"
+done
+if [ "$WAVES_FAILED" -ne 0 ]; then
+  printf 'grill lint contract: FAIL — the wave report block has failing cases (above)\n'
+  exit 1
+fi
 
 printf 'grill lint contract: PASS\n'

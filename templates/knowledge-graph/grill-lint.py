@@ -34,6 +34,18 @@ A fenced code block (``` or ~~~) is an example, not the plan: a heading inside
 one opens no section and no increment, and its `- Label:` lines are no fields.
 A fence indented under a field is that field's value, not a blank.
 
+`--waves` is a report beside the gate, never part of it: every check above
+runs unchanged and decides the exit status. It levels the §9 increments into
+waves (1 for an increment that depends on no increment, else one after its
+latest dependency), prints each with its `Phase:`, and warns when two
+increments no dependency path orders both name one file in `Files touched:`
+(SPEC-0005 §6 "Wave report"). The schedule is static: it reads §9 alone,
+never §15 or what is committed. A plan no `Phase:` reaches is `unscheduled`;
+a dependency defect, or two increments sharing one number, leaves it
+`not computed`, because a wave keyed on a wrong edge is worse than none.
+`Files touched:` is free text, so its paths are matched as strings only —
+nothing named there is opened or resolved — and an overlap is a warning.
+
 Installed at docs/graph/grill-lint.py by install.sh (like spec-lint.py).
 Dependency-free. No project config: the plan's path and the spec heading
 form are the seed's own contract.
@@ -41,9 +53,11 @@ form are the seed's own contract.
 Usage:
   python3 docs/graph/grill-lint.py             # gate: exit 1 on a defect
   python3 docs/graph/grill-lint.py --list      # print the §9 increment graph
+  python3 docs/graph/grill-lint.py --waves     # also print the §9 wave schedule
   python3 docs/graph/grill-lint.py --warn      # report but always exit 0
   python3 docs/graph/grill-lint.py --plan P    # lint another plan file
 """
+import fnmatch
 import re
 import sys
 from pathlib import Path
@@ -83,6 +97,15 @@ CONTRACT_DECL_RE = re.compile(r"^###\s+Contract:\s*([A-Z][A-Z0-9_]{2,})\s*$", re
 STATUS_RE = re.compile(r"\*\*Status:\*\*\s*([\w-]+)")
 NA_RE = re.compile(r"^\s*(not applicable|n/?a|none)\b", re.I)
 REQUIRED_FIELDS = ("Spec contracts", "Tests to write (RED)", "Rollback path", "Depends on")
+PHASES = ("RED", "GREEN", "prose")
+# Path tokens of a `Files touched:` value. One brace group, not nested, per
+# whitespace-free chunk; a trailing `:12` or `:12-40` line reference; the
+# characters prose wraps a path in; a bare file name, wildcards allowed.
+BRACE_RE = re.compile(r"([^{}]*)\{([^{}]*)\}([^{}]*)")
+LINE_REF_RE = re.compile(r":\d+(?:-\d+)?$")
+PATH_EDGE = "'\"()[]<>:"
+BARE_NAME_RE = re.compile(r"^[A-Za-z0-9_.*?-]*\.[A-Za-z0-9*]{1,10}$")
+GLOB_RE = re.compile(r"[*?\[]")
 
 
 def strip_comments(text: str) -> str:
@@ -306,9 +329,117 @@ def decision_files() -> dict[str, Path]:
     return out
 
 
+def path_pieces(value: str) -> list[str]:
+    """Candidate path tokens of a `Files touched:` value, which is free text.
+
+    Backticks go; one brace group per whitespace-free chunk expands
+    (`a{b,c}d` gives `abd` and `acd`); the chunk splits on `,` and `;`; each
+    piece loses its line reference and wrapping punctuation until stable, then
+    one leading `./`. A URL is no path. Which bare names count is the plan's
+    to decide (`wave_report`), so they are all returned here."""
+    out: list[str] = []
+    for chunk in value.replace("`", "").split():
+        m = BRACE_RE.fullmatch(chunk)
+        for alt in (m.group(2).split(",") if m else [None]):
+            for piece in re.split(r"[,;]", chunk if alt is None else m.group(1) + alt + m.group(3)):
+                before = None
+                while piece != before:
+                    before = piece
+                    piece = LINE_REF_RE.sub("", piece).strip(PATH_EDGE).rstrip(".")
+                piece = piece[2:] if piece.startswith("./") else piece
+                if piece and "://" not in piece:
+                    out.append(piece)
+    return out
+
+
+def shared_file(x: str, y: str) -> str | None:
+    """The file two path tokens both name, or None. They name one file when
+    they are equal, when one is a glob `fnmatch` matches the other against,
+    when one is a bare name equal to the other's last segment, or when one is a
+    directory (a trailing `/`) the other sits under. The rule leans toward a
+    false overlap: that costs a warning line, a missed one costs a lane race.
+
+    The name printed is the more specific token: the one without a wildcard;
+    else the one with a `/`; else `x`."""
+    for a, b in ((x, y), (y, x)):
+        if (a == b or (GLOB_RE.search(a) and fnmatch.fnmatchcase(b, a))
+                or ("/" not in a and a == b.rsplit("/", 1)[-1])
+                or (a.endswith("/") and b.startswith(a))):
+            break
+    else:
+        return None
+    if bool(GLOB_RE.search(x)) != bool(GLOB_RE.search(y)):
+        return y if GLOB_RE.search(x) else x
+    if ("/" in x) != ("/" in y):
+        return x if "/" in x else y
+    return x
+
+
+def wave_report(graph: list[tuple], dependency_defect: bool) -> tuple[list[str], list[str]]:
+    """The `--waves` report of §9: (lines to print, WARN lines to add).
+
+    Reads each increment's title, `Phase:`, increment dependencies and
+    `Files touched:` from the graph the checks built, and nothing else. It
+    changes no verdict, so it cannot fail: a plan it cannot level gets a
+    header saying why, and no wave line."""
+    if not any(phase for *_, phase, _files in graph):
+        return ["waves: unscheduled — no §9 increment carries a Phase: field"], []
+    warns: list[str] = []
+    for n, *_, phase, _files in graph:
+        if not phase:
+            warns.append(f"§9 increment {n}: no Phase: field")
+        elif phase.split()[0] not in PHASES:
+            warns.append(f"§9 increment {n}: Phase: {phase} is not RED, GREEN or prose")
+    numbers = [n for n, *_ in graph]
+    # A number carried twice makes every `Depends on:` naming it ambiguous; a
+    # map keyed by number would level one of the two by the other's edges.
+    if len(set(numbers)) < len(numbers):
+        return ["waves: not computed — §9 has duplicate increment numbers"], warns
+    if dependency_defect:
+        return ["waves: not computed — §9 has dependency defects (see below)"], warns
+
+    # The checks above refused every forward, missing and self dependency, so
+    # what is left is acyclic in document order and one pass levels it.
+    wave: dict[int, int] = {}
+    after: dict[int, set[int]] = {}             # every increment n transitively depends on
+    for n, _title, deps, *_ in graph:
+        wave[n] = 1 + max((wave[d] for d in deps), default=0)
+        after[n] = set(deps).union(*(after[d] for d in deps))
+    lines = [f"waves: {max(wave.values())} wave(s), {len(graph)} increment(s) — "
+             f"a static schedule from §9; what is committed is not read"]
+    for _, (n, title, deps, _libs, _refs, phase, _files) in sorted(
+            enumerate(graph), key=lambda e: (wave[e[1][0]], e[0])):
+        arrows = f" <- {', '.join(map(str, dict.fromkeys(deps)))}" if deps else ""
+        lines.append(f"  wave {wave[n]}: increment {n} "
+                     f"({phase.split()[0] if phase else 'no phase'}) {title or '(untitled)'}{arrows}")
+
+    # A bare name is a path only when its extension ends a slashed path of this
+    # plan: a dotted fact key (`delegation.waves`) has a file name's shape, and a
+    # warning that fires on keys trains its reader to ignore it.
+    pieces = {n: path_pieces(files) for n, *_, files in graph}
+    slashed = [p.lower() for ps in pieces.values() for p in ps if "/" in p]
+    tokens = {n: [p for p in ps if "/" in p or (
+                  BARE_NAME_RE.match(p) and any(s.endswith("." + p.rsplit(".", 1)[1].lower()) for s in slashed))]
+              for n, ps in pieces.items()}
+    # Two increments no dependency path orders can be live at once, in one wave
+    # or not; only a path from the earlier to the later can exist here.
+    for i, a in enumerate(numbers):
+        for b in numbers[i + 1:]:
+            if a in after[b]:
+                continue
+            shared = dict.fromkeys(name for x in tokens[a] for y in tokens[b]
+                                   if (name := shared_file(x, y)))
+            if shared:
+                warns.append(f"§9 increments {a} and {b} may run together and both name "
+                             f"{', '.join(shared)} — one spawn holds both, or they are "
+                             f"sequenced (delegation.lanes)")
+    return lines, warns
+
+
 def main() -> int:
     argv = sys.argv[1:]
     list_mode = "--list" in argv
+    waves_mode = "--waves" in argv
     warn_mode = "--warn" in argv
     plan = PLAN
     if "--plan" in argv:
@@ -362,7 +493,9 @@ def main() -> int:
     known = set(numbers)
     lib_needed: dict[str, list[int]] = {}
     contract_refs: dict[str, dict[str, list[int]]] = {}
-    graph: list[tuple[int, str, list[int], list[str], list[str]]] = []
+    # (number, title, increment deps, library deps, contracts, Phase:, Files touched:)
+    graph: list[tuple[int, str, list[int], list[str], list[str], str, str]] = []
+    dependency_defect = False
     for n, title, block in incs:
         f = fields(block)
         for name in REQUIRED_FIELDS:
@@ -378,13 +511,17 @@ def main() -> int:
             elif numbers.index(d) > numbers.index(n):
                 fails.append(f"§9 increment {n}: depends on increment {d}, listed after it — "
                              f"rows are in dependency order; an orchestrator reads a later row as independent")
+            else:
+                continue
+            dependency_defect = True            # every branch above; --waves will not level over it
         libs = LIB_REF_RE.findall(dep)
         for lib in libs:
             lib_needed.setdefault(lib, []).append(n)
         refs = CONTRACT_REF_RE.findall(f.get("Spec contracts", ""))
         for spec, slug in refs:
             contract_refs.setdefault(spec, {}).setdefault(slug, []).append(n)
-        graph.append((n, title, inc_deps, libs, [f"{s}/{c}" for s, c in refs]))
+        graph.append((n, title, inc_deps, libs, [f"{s}/{c}" for s, c in refs],
+                      f.get("Phase", "").strip(), f.get("Files touched", "")))
         if "[verify]" in mask_fences(block):
             fails.append(f"§9 increment {n}: carries `[verify]` — an assumption with no home; resolve it or move it to §12")
 
@@ -437,11 +574,15 @@ def main() -> int:
             warns.append(f"§{n}: carries `[verify]` — fine while the pass is open; the press resolves it")
 
     if list_mode:
-        for n, title, deps, libs, refs in graph:
+        for n, title, deps, libs, refs, _phase, _files in graph:
             arrows = ", ".join(f"<- {d}" for d in deps) or "<- (root)"
             print(f"  {n:>2} {title or '(untitled)'}  {arrows}"
                   f"{'  libs: ' + ', '.join(libs) if libs else ''}"
                   f"{'  contracts: ' + ', '.join(refs) if refs else ''}")
+    if waves_mode:
+        report, report_warns = wave_report(graph, dependency_defect)
+        print("\n".join(report))
+        warns.extend(report_warns)
 
     for w in warns:
         print(f"  WARN {w}")
