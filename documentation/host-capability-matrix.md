@@ -95,7 +95,7 @@ opencode under that rule, and targets no frozen host.
 | Per-session injection dedup | mechanically enforced | unsupported | unsupported | degraded³ | unsupported⁵ |
 | Pre-tool guard | mechanically enforced | unsupported | unsupported | unsupported | unsupported |
 | Slash commands | mechanically enforced | mechanically enforced | unsupported | mechanically enforced | mechanically enforced |
-| Always-applied instructions | mechanically enforced (26 440 B) | mechanically enforced (26 440 B) | mechanically enforced (≤ 26 440 B)⁴ | mechanically enforced (32 084 B) | mechanically enforced (24 810 B) |
+| Always-applied instructions | mechanically enforced (25 401 B) | mechanically enforced (25 401 B) | mechanically enforced (≤ 25 401 B)⁴ | mechanically enforced (31 045 B) | mechanically enforced (22 295 B) |
 
 ¹ The leaf/coordinator split (who holds the spawn tool at all: `Agent` on Claude Code, `Task` accepted) is read by the
 harness from each agent's `tools:` line, and ADR-0003 classes that read
@@ -351,8 +351,13 @@ parity here; the differences are budget mechanics, not enforcement.
 These three are grouped because their per-host story is identical: a
 harness either has an automatic pre-turn or session-start injection point
 or it doesn't, and where it exists the seed wires the *same two* payloads
-onto it (the route-first pointer with the router's suggestion, and the
-status-register summary).
+onto it (the route-first pointer with the router's suggestion, each node
+beside its file, and, once per session, the status-register summary followed
+by the code-anchor line). The anchor line is what `docs/graph/code-anchor.py
+--compare` prints: whether the code moved since canonize recorded the anchor,
+and which paths. It fails toward checking: a comparison that does not finish
+within 5 s, or does not run, gives a line saying code facts are unverified.
+Only the session-start hook runs it, never the per-prompt one.
 
 - **Claude Code**: `UserPromptSubmit` → `route-hook.py` (routing hook,
   fail-open `|| true`); `SessionStart` → `status-hook.py` (status hook,
@@ -365,7 +370,9 @@ status-register summary).
 - **opencode**: `install_opencode()` in `install.sh` places no hook
   file of any kind, and no config key exists for one either
   (`integrations/opencode/README.md`: "the config schema allows no unknown
-  key at all"). **unsupported**, all three.
+  key at all"). **unsupported**, all three. The code-anchor line reaches an
+  opencode session only through the newest session record, where canonize
+  writes it.
 - **Codex CLI**: no hook surface appears in `config.toml.example` or its
   README. **unsupported**, all three. Upstream Codex CLI does document
   `SessionStart`, `UserPromptSubmit` and `PreCompact` hooks, and the seed wires
@@ -472,11 +479,11 @@ function's own computation against current sources:
 
 | Harness | Formula | Measured |
 |---|---|---|
-| Claude Code | kernel + agent descriptions + skill descriptions | 26 440 B |
-| opencode | kernel + agent descriptions + skill descriptions | 26 440 B |
-| Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 26 440 B |
-| Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 24 810 B |
-| GitHub Copilot | kernel + agent descriptions + skill descriptions + pointer boilerplate | 32 084 B |
+| Claude Code | kernel + agent descriptions + skill descriptions | 25 401 B |
+| opencode | kernel + agent descriptions + skill descriptions | 25 401 B |
+| Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 25 401 B |
+| Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 22 295 B |
+| GitHub Copilot | kernel + agent descriptions + skill descriptions + pointer boilerplate | 31 045 B |
 
 (Component figures are not restated here. These moved four times in one release
 and were wrong three of those times, including once while the correction to the
@@ -495,9 +502,9 @@ the same shape since 7.16.0.
 
 GitHub Copilot **was** the outlier. Its skill projections carried
 `applyTo: '**'`, so every skill body was always-applied context there:
-138 535 bytes against 26 440 everywhere else. 7.16.0 narrowed them to
+138 535 bytes against 25 401 everywhere else. 7.16.0 narrowed them to
 pointers, `EAGER_EXEMPTIONS` is consequently empty, and the harness is
-modelled like every other one at 32 084 B. The residue is the pointer
+modelled like every other one at 31 045 B. The residue is the pointer
 boilerplate each file carries, not the discipline behind it.
 
 ## Measurements

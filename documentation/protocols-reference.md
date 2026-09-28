@@ -253,7 +253,7 @@ cannot spawn the required model classes, stop and report; a missing
 
 | Phase | Sections | Owner | Needs | Parallel with |
 |---|---|---|---|---|
-| 0 | the design-latitude ask; identifier; §0 §1 §2 | orchestrator | the goal | — |
+| 0 | the design-latitude classification; identifier; §0 §1 §2 | orchestrator | the goal | — |
 | 1 | §3 | `product` | §2 | — |
 | 2 | §4 §5 §6 §7 §8 | `architect` | §3 | — |
 | 3 | §9 (maps to §4 slugs) | `product` | §4 | 4 |
@@ -317,8 +317,8 @@ the moment someone silences it).
 
 Writes the spec and the plan-of-record in one pass, in which each
 specialist writes its spec part and its plan part in the same spawn.
-Before any of it, the session asks the owner once how much design
-latitude the change has.
+Before any of it, the session classifies how much design latitude the
+change has, and every later step is held to that value.
 
 ### Design latitude (`specify.design-latitude`)
 
@@ -327,9 +327,12 @@ each surfaced as a decision the owner can refuse. `balanced` allows new
 structure where the change needs it and no concept the goal did not ask
 for. `simple` is the smallest design that meets the goal: no new gates,
 kinds, agents or renamed concepts, and when in doubt a thing is out of
-scope. The answer is a plan §6 row whose first cell begins
-`Design latitude:`, with the owner's quote or the session's reason and
-the date. Judgment checks it at the press, at each ruling pass and in
+scope. The session classifies the value the way it classifies a tier,
+from the request, its tone and what the work is for, and states it with
+its reason. It asks the owner only when the request leaves the value in
+doubt, once, at the start of the spec definition. The value is a plan §6
+row whose first cell begins `Design latitude:`, with the session's reason
+or the owner's quote and the date. Judgment checks it at the press, at each ruling pass and in
 every brief; anything outside it goes to the question file, and only the
 owner widens the scope.
 
@@ -337,7 +340,7 @@ owner widens the scope.
 
 | Step | Owner | Writes | Needs | Parallel with |
 |---|---|---|---|---|
-| 0 | session | latitude ask; spec §0–§2; plan §0, §2–§4, §1 | — | `research-scout` (plan §5) |
+| 0 | session | latitude classification; spec §0–§2; plan §0, §2–§4, §1 | — | `research-scout` (plan §5) |
 | 1 | `product` | spec §3 | 0 | the scouts |
 | 2 | `architect` | spec §4–§8; plan §5 synthesis, §6–§9 with effort labels, phases, batch plan | 1, the scouts | — |
 | 3 | `product` ∥ `tester` ∥ `security` (sensitive surface) ∥ `reliability` | spec §9, §10, §5/§7; plan §10, §11 | 2 | each other |
@@ -569,7 +572,10 @@ grill.md.
   they fail because the *behavior* is missing (not an import or a
   name); if RED for the right reason is unreachable, the test or the
   contract is wrong. Inherited green suites are proven by mutation
-  before they are trusted.
+  before they are trusted. A tester's RED spawn stops once the §10 rows
+  read `red` and hands back. Any implementation, even a throwaway one
+  that proves the test can pass, is the implementer's GREEN
+  (`tester.spawn-scope`).
 - **GREEN**: the minimum new behavior — minimum in behavior, not diff
   size — integrated into the file's design; the surrounding tests stay
   green.
@@ -1038,9 +1044,17 @@ agnosticism gate), throwaway prototypes or genuine one-offs.
    prose pass: `humanizer` in file mode, then `python3
    docs/graph/prose-lint.py --file <path> --against HEAD` before the
    graph-lint pass. One `graph-lint` run confirms the graph stays clean.
+   With the graph reconciled, the librarian runs `python3
+   docs/graph/code-anchor.py --record` once. It writes
+   `.cypress/anchor.json` (the branch, the commit and the uncommitted
+   code paths of each repository the plant governs), and the line it
+   prints goes into the newest session record's "Canonize status". The
+   next session compares against the anchor once, at its start; nothing
+   runs the tool per prompt or per tool call.
 4. Confirm or record-empty. The librarian hands back nodes/fact-keys
    touched and tool cards written, or an explicit "nothing of interest,
-   because …" / "no durable tool, because …", with the lint result.
+   because …" / "no durable tool, because …", with the code-anchor line
+   (or its refusal) and the lint result.
 
 ### Fail-closed doctrine
 
@@ -1491,8 +1505,10 @@ elsewhere.
 
 ### The completeness contract (`grow.completeness-contract`)
 
-Growth is **complete or it is not done**. A first growth that stops at
-a skeleton (a root node, a router, and a handful of leaves) is a failed
+Growth is **complete or it is not done**. It establishes the plant's
+facts so that no later session has to: a fact the graph states is
+settled (`rule.knowledge`), and a fact growth left out is re-derived in
+every session after it. A first growth that stops at a skeleton (a root node, a router, and a handful of leaves) is a failed
 growth reported as a success, and it is the single most common way this
 protocol is mis-run. The contract is binding on whatever model
 orchestrates growth; it does not soften with model size, context
@@ -1663,8 +1679,10 @@ over-growth. Route findings to bounded Opus authors and repeat
 validation, **bounded by the recover discipline**: a finding surviving
 two author-fix → revalidate rounds is not converging; stop, record it as
 an honest unknown or defect, hand the decision to the user. Do not
-weaken the linter or loop a fourth time. Also configure the
-spec-coverage gate (`TEST_GLOBS` in `spec-lint.py`) while the stack
+weaken the linter or loop a fourth time. When validation passes, set
+`grown: true` in the frontmatter of `docs/graph/index.md` and, in the
+same edit, remove the placeholder's pre-growth block, which a grown
+plant has no reader for. Also configure the spec-coverage gate (`TEST_GLOBS` in `spec-lint.py`) while the stack
 evidence is fresh.
 
 ### Delivery and maturity
@@ -2109,7 +2127,8 @@ Two territories, and graft writes to exactly one:
 > `docs/graph/` facts stay as the plant left them. If an upgrade cannot
 > land without rewriting something the plant authored, it stops at the
 > line and becomes a proposal for the steward, never a silent
-> overwrite.
+> overwrite. A plant fact the graft corrects keeps its old value as one
+> dated line of history.
 
 The one nuance: a plant's library and tool **pages** are plant-owned,
 yet graft may refresh their *surface* from the enriched corpus (Phase
@@ -2143,9 +2162,8 @@ gets audited and rebalanced as Phase 6, every graft.
 A plant is not a blank target; its steward may have locally sharpened a
 protocol, adjusted a setting, or fixed a script. Graft reconciles three
 versions of every seed-owned artifact:
-- base: the seed revision the plant grew from (read from the seed
-  stamp; reconstructed from install backups or content lineage on a
-  first graft);
+- base: the seed revision the plant grew from (the tag of the stamped
+  version, else inferred by content lineage; Phase 1 prints it);
 - theirs: the artifact in the seed today;
 - ours: the artifact as it stands in the plant.
 
@@ -2173,18 +2191,26 @@ validation. Every worker runs the plant's router
 **Phase 1: Locate the plant and establish the base (session + Sonnet).**
 Identify the plant or sibling set; record path, host integration,
 branch, HEAD, worktree cleanliness (provenance, no Git mutation). Read
-the plant's **seed stamp**; on a first graft with no stamp, reconstruct
-the base from install backups (`*.bak-*`) or content lineage. Confirm
+the plant's **seed stamp**; `python3 <seed>/tools/graft-ledger.py
+<plant> <seed> --base` prints the base: the stamped version's tag, or
+else the seed commit the plant's machinery matches best, with the match
+count. With no stamp the base is that inference, and this graft
+establishes the stamp. Confirm
 the seed's version and what changed between base and now (its CHANGELOG
 and harvest log are the map of available fruit).
 
-**Phase 2: Survey the drift (Sonnet scouts, read-only).** Inventory
-every seed-owned artifact and classify its three-way state as a first
-guess at FAST-FORWARD / KEEP-PLANT / MERGE. In parallel, inventory the
+**Phase 2: Survey the drift (Sonnet scouts, read-only).** The
+machinery half is a command, not a guess: `python3
+<seed>/tools/graft-ledger.py <plant> <seed>` prints one row per
+seed-owned file with its three-way class. Read-only scouts inventory the
 **fruit the plant can withdraw**: libraries, tools, and legal
 instruments the plant reasons against for which the corpus now holds a
-page the plant predates or lacks. Return a **graft ledger**, one row
-per artifact or withdrawable page.
+page the plant predates or lacks. The **graft ledger** is the tool's
+table plus one row per withdrawable page.
+
+Before the graft calls any migration below optional, it reads the
+plant's operator node (`crosscut.operator`): an owner rule recorded
+there can make that migration owed.
 
 **Layout migration 5.x → 6.0.0** (between survey and reconcile, when the
 survey finds a pre-6.0 plant whose machinery lives in
@@ -2216,9 +2242,10 @@ or deleting a harness entry is the steward's numbered decision, by name
 fast-forward, and the session-record form is an expected new file
 under `plans/`.
 
-**Phase 3: Reconcile the machinery (Opus authors).** For each
-seed-owned artifact apply the three-way reconciliation: adopt on
-FAST-FORWARD; retain and raise a harvest candidate on KEEP-PLANT; author
+**Phase 3: Reconcile the machinery (Opus authors).** For each ledger
+row, act on its class: nothing on CURRENT; adopt on FAST-FORWARD and
+SEED-NEW, and on HARVESTED, whose plant lines a harvest already carried
+into the seed, so it raises no candidate; retain and raise a harvest candidate on KEEP-PLANT; author
 one holistic re-integration on MERGE. Every merged file arrives whole,
 never a seed block bolted beside a plant block. **The roster delta is
 not spawnable in this session**: preflight and take the remedy
@@ -2285,12 +2312,17 @@ remediation.
 
 **Phase 7: Apply, verify, and stamp (Opus authors; session gates).**
 Apply the ratified upgrade **additively**, backing up every replaced
-file first. Then prove the plant is left more capable and no less
-itself:
+file first. `python3 <seed>/tools/graft-run.py <plant> <seed> --stage
+<dir>` rehearses the mechanical half on a copy outside the plant (the
+ledger, the install with its log, the engines, the audits and the
+lints) and prints the gate table's result column, with each judgment
+row `not run`. It writes nothing in the plant and ratifies nothing. Then
+prove the plant is left more capable and no less itself:
 - Rootstock intact: the plant's source and authored facts are
   byte-for-byte unchanged outside machinery and the deliberately
   refreshed surfaces. Any unexpected change BLOCKS.
-- Customization audit (`tools/graft-audit.py`): any seed-owned file
+- Customization audit (`tools/graft-audit.py`, with `--base` set to the
+  base Phase 1 printed): any seed-owned file
   whose backup differs from the seed *and* carries plant-signal content
   is a divergence the blind FF overwrote; re-integrate or ratify. An
   un-reintegrated, un-ratified customization BLOCKS.

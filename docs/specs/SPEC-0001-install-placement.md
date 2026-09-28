@@ -148,8 +148,9 @@ whose record carries github-copilot, because checking writes nothing.
 - **Given:** a destination that exists and differs from what is being placed
 - **When:** the installer replaces it
 - **Then:** the previous body is recoverable at `<path>.bak-<timestamp>`
-- **And:** the only exception is `.cypress/seed.json`, which is installer-owned
-  derived state, never authored by hand, and would otherwise accrue one backup
+- **And:** the two exceptions are `.cypress/seed.json` and
+  `.cypress/recreated-nodes.txt`, both written by `place_state`: installer-owned
+  derived state, never authored by hand, that would otherwise accrue one backup
   per run
 
 ### Contract: FORCE_SUPPRESSES_WARNING_NOT_BACKUP
@@ -834,3 +835,9 @@ only version surface it has, and it moves with each entry here.
   `green`. X391 (the skill projection of a plant skill node) and X392 (the
   Copilot view of a plant agent node) are `red`: the audit reports each backup
   UNMAPPED. No contract changed; the status stays `back-written`.
+- 2026-09-28: 7.32.0 docs pass, no installer behaviour changed.
+  BACKUP_BEFORE_REPLACE's And-clause named `.cypress/seed.json` as the only
+  exception, while `place_state` also writes `.cypress/recreated-nodes.txt`
+  with no backup (RECREATED_LIST_IS_COMPLETE; ruling Q2.1 of the round's second
+  question batch). The clause now names both. The spec was wrong about the code;
+  no other contract changed, and the status stays `back-written`.

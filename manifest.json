@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft-07/schema#",
   "name": "cypress",
   "fullName": "Contextual Yield Protocol for Routed Expert Seed Systems",
-  "version": "7.31.0",
+  "version": "7.32.0",
   "supersedes": "general_expert_prompts@1.0.0",
   "created": "2026-05-23",
   "description": "CYPRESS (Contextual Yield Protocol for Routed Expert Seed Systems) — a project-agnostic multi-agent seed for single- or multi-repository programs. As of 6.0.0 it is a pure graph system: the entire method surface — protocols, skills, agent charters, method/posture nodes, and template artifacts — installs INTO the plant's unified docs/graph/ as seed-owned routable nodes (origin: seed), activated progressively by the router; the always-loaded kernel is a small bootstrap (identity, tiers, rule anchors, boundaries), and tool directories hold only harness projections (agents, skills). Its tool-neutral INSTALL_PROMPT.md keeps user chat in orchestration/planning, dispatches Sonnet-class read-only scouts and Opus-class authors/reviewers, and grows the graph without building the application or publishing Git state.",
@@ -18,7 +18,8 @@
     "Tool-agnostic: the same kernel runs in Claude Code, opencode, Codex, Copilot, and Prime Agent.",
     "Toolcraft: when an operation recurs across sessions, build a durable, tested tool and catalog it in docs/graph/tools/; never reinvent throwaway scripts.",
     "Minimum sufficient work: produce the smallest body of work that reliably delivers the required result — every operation serves a named decision, effort scales with uncertainty and consequence (the tiers), structure/artifacts/delegation earn their lifecycle rent, and work stops when the result is sufficiently trusted. Depth in docs/graph/method/minimum-sufficient-work.md, docs/graph/method/decision-economy.md and docs/graph/method/engineering-posture.md §8; grow, graft, and harvest each audit their own additions against it.",
-    "Design for responsibility: give each part one coherent responsibility, keep cohesive things together, and point dependencies at stable contracts rather than volatile detail — but prefer the smallest structure that fits; correct separation is the goal, never maximum. Structure is named at plan time (grill §9) and audited at review. Depth in docs/graph/method/design-posture.md."
+    "Design for responsibility: give each part one coherent responsibility, keep cohesive things together, and point dependencies at stable contracts rather than volatile detail — but prefer the smallest structure that fits; correct separation is the goal, never maximum. Structure is named at plan time (grill §9) and audited at review. Depth in docs/graph/method/design-posture.md.",
+    "Settled facts, for the plant: everything the seed ships serves the plant it grows. Where a model would otherwise work something out, the seed ships the answer, a tool that prints it or a fact recorded at a known path, and a session uses a fact the graph states instead of re-deriving or re-checking it. Only facts about the plant's own code can go stale: canonize records the code anchor, the session-start hook compares against it once, and where the code moved, the code wins and the node is fixed in the same change. Depth in docs/graph/skills/context-router.md (rule.knowledge)."
   ],
   "kernel": {
     "core/AGENTS.md": "Bootstrap kernel — the ONLY always-loaded instruction file, read on every session by every supported tool: identity, first move (the router), tier table, the eight rule anchors, boundaries. Full statements live in the graph machinery nodes.",
@@ -70,7 +71,7 @@
     {
       "file": "agents/04-tester.md",
       "name": "tester",
-      "role": "Spec→test translation, RED phase, eval suites, regression corpus."
+      "role": "Spec→test translation, RED phase (write the test, confirm it fails, hand back; no implementation), eval suites, regression corpus."
     },
     {
       "file": "agents/05-security.md",
@@ -130,17 +131,17 @@
     {
       "file": "agents/growth-orchestrator.md",
       "name": "growth-orchestrator",
-      "role": "Growth DNA: conducts grow/adopt/from-scratch — detect shape, dispatch scouts by boundary, sequence authors, gate on knowledge validation. Delegator, depth 2."
+      "role": "Growth DNA: conducts grow/adopt/from-scratch — detect shape, dispatch scouts by boundary, sequence authors, gate on knowledge validation. Runs only inside grow, graft or adopt. Delegator, depth 2."
     },
     {
       "file": "agents/growth-scout.md",
       "name": "growth-scout",
-      "role": "Read-only per-boundary evidence gatherer; returns claims tied to paths/symbols for the graph authors. Sonnet leaf."
+      "role": "Read-only per-boundary evidence gatherer; returns claims tied to paths/symbols for the graph authors. Runs only inside grow, graft or adopt. Sonnet leaf."
     },
     {
       "file": "agents/seed-installer.md",
       "name": "seed-installer",
-      "role": "Additive seed/adapter install via install.sh; preserves target-owned files; verifies the host tool loads the kernel. Opus leaf."
+      "role": "Additive seed/adapter install via install.sh; preserves target-owned files; verifies the host tool loads the kernel. Runs only inside grow, graft or adopt. Opus leaf."
     },
     {
       "file": "agents/tool-smith.md",
@@ -177,7 +178,7 @@
     {
       "file": "protocols/specify-joint-pass.md",
       "name": "specify-joint-pass",
-      "role": "One joint specify-and-grill pass, held to the design latitude (creative, balanced or simple) asked once and recorded in the plan."
+      "role": "One joint specify-and-grill pass, held to a design latitude (creative, balanced or simple) the session classifies like a tier, asks the owner about only in doubt, and records in the plan."
     },
     {
       "file": "protocols/grill.md",
@@ -416,6 +417,7 @@
     "tools/agnosticism-lint.py": "Placed into every plant at docs/graph/agnosticism-lint.py — flags project-specific vocabulary that has leaked into a node meant to stay agnostic.",
     "tools/prose-lint.py": "Placed into every plant at docs/graph/prose-lint.py — the prose-posture checks a plant runs over its own writing.",
     "tools/status-register.py": "Placed into every plant at docs/graph/status-register.py — the register a plant's specs and plans declare their status through.",
+    "tools/code-anchor.py": "Placed into every plant at docs/graph/code-anchor.py: canonize runs --record to write .cypress/anchor.json (the branch, the commit and the uncommitted code paths of each repository the plant governs), and the session-start hooks run --compare once per session to say which facts about code may be stale. The installer writes no anchor.",
     "tests/legal-lint.py": "The legal corpus's citability checker. Placed into a plant at docs/graph/legal-lint.py ONLY when --legal-corpus yes — the corpus travels with its checker, and a plant without the corpus has nothing for it to lint. Until 7.16.0 the plant received legal-corpus/_schema.md (the contract a page must satisfy) and no instrument to check it."
   },
   "docs_skeleton": {

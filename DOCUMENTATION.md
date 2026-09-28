@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 7.31.0
+- Version documented: 7.32.0
 - Repository role: this repo is the seed, the product that is shipped
   into other projects. It is *not* a grown project itself.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -142,7 +142,7 @@ full statement of each rule lives in (and only in) its owning node.
 | #   | Rule        | One-line statement | Owner node |
 |-----|-------------|--------------------|------------|
 | 3.1 | **spec**       | Every non-trivial behavior has an executable spec in `docs/graph/specs/`, written before the code — except a T2 contained change, pinned by its RED test and why-record instead ([§4.1](#41-t2s-contained-lane)). | `protocol.specify` (`rule.spec`) |
-| 3.2 | **knowledge**  | `docs/graph/` is the single source of truth — one home per fact, loaded minimally and declared, ahead of memory. Harness memory is not a home: what a session learns goes to a session record in `docs/graph/plans/sessions/` (`stewardship-posture.session-record`). | `skill.context-router` (`rule.knowledge`) |
+| 3.2 | **knowledge**  | `docs/graph/` is the single source of truth — one home per fact, loaded minimally and declared, ahead of memory. A fact the graph states is settled; facts about code are current unless the session-start code-anchor line names their paths, and there the code wins. Harness memory is not a home: what a session learns goes to a session record in `docs/graph/plans/sessions/` (`stewardship-posture.session-record`). | `skill.context-router` (`rule.knowledge`) |
 | 3.3 | **grill**      | `docs/graph/plans/grill.md` is the living plan-of-record; append, never silently rewrite. | `protocol.grill` (`rule.grill`) |
 | 3.4 | **test-first** | No production code without a failing test that authorizes it — RED → GREEN → REFACTOR → COMMIT. | `protocol.test-first` (`rule.test-first`) |
 | 3.5 | **verify**     | Gates proportional to blast radius run — and assert something — before "done"; absences recorded, never faked green. | `protocol.verify` (`rule.verify`) |
@@ -490,6 +490,10 @@ worker is host-dependent, and
 records it. Every brief embeds the canonical block from
 `templates/prompts/graph-session-bootstrap.md` verbatim, plus the routing
 evidence and the handback contract (`templates/prompts/handback-payload.md`).
+Step 4 of that block carries the settled-facts rule in a worker's form,
+because a worker starts clean and sees no session-start output: a fact the
+graph states is settled, and facts about code are current only where the brief
+carries a code-anchor line saying no code changed.
 
 ### 6.7 What a "turn" is
 
@@ -531,7 +535,10 @@ no separate tester spawn, and never edits a test or fixture file, in REFACTOR
 included. When the orchestrator observes a RED, it records a `sha256sum` of
 every test and fixture file the RED spawn wrote. It re-checks those hashes
 before it commits a GREEN file set and before the batch-tip run, and a mismatch
-sends the GREEN back to be re-briefed from the recorded RED.
+sends the GREEN back to be re-briefed from the recorded RED. A tester's RED
+spawn writes the test, confirms it fails for the right reason and hands back;
+any implementation, even a throwaway one that proves the test can pass, is the
+implementer's GREEN (`tester.spawn-scope`).
 
 **The full suite runs once per cycle, after its GREEN wave.** Each increment
 runs its targeted tests and the gates its files touch. The full suite runs at
@@ -613,7 +620,7 @@ separate `implement` protocol).
 | `from-scratch` | 9-phase bootstrap for a brand-new project. |
 | `brainstorm` | Converges a goal or a choice; two modes, user-facing (socratic) and internal. |
 | `specify` | Authoring an executable spec (§1–§12 stable section numbers). |
-| `specify-joint-pass` | Spec and plan written in one pass, after the owner is asked once how much design latitude the change has. |
+| `specify-joint-pass` | Spec and plan written in one pass, held to a design latitude the session classifies like a tier and asks the owner about only in doubt. |
 | `grill` | Plan-of-record discipline (`grill.md` §0–§15 stable, append-only). |
 | `test-first` | RED → GREEN → REFACTOR → COMMIT, per increment. |
 | `ingest-library` | Build/refresh the LLM wiki. |
@@ -693,12 +700,14 @@ When a change needs both a new spec and a new plan-of-record,
 pass, and each specialist writes its spec part and its plan part in the same
 spawn. Section ownership does not change.
 
-Before any of it, the session asks the owner once how much design latitude the
-change has. `creative` lets the design propose new structure, concepts or
+Before any of it, the session classifies how much design latitude the change
+has, the way it classifies a tier: from the request, its tone and what the
+work is for. It asks the owner only when the request leaves the value in
+doubt, once, at the start of the spec definition. `creative` lets the design propose new structure, concepts or
 scope, each recorded as a decision the owner can refuse. `balanced` allows new
 structure where the change needs it and no concept the goal did not ask for.
 `simple` is the smallest design that meets the goal: when it is unclear whether
-something is in scope, it is not. The answer is recorded as a
+something is in scope, it is not. The value is recorded as a
 `Design latitude:` row in the plan's §6. The press, each ruling pass and every
 brief are held to it by judgment, since no tool reads the row. Anything outside
 the latitude goes to the question file, and only the owner can widen it.
@@ -777,7 +786,12 @@ edges, corrected assumptions, provenance, failed `load_when:` triggers) is
 persisted into `docs/graph/` **and** any durable tool it produced is cataloged in
 `docs/graph/tools/` (the `toolcraft` doctrine), or each is explicitly recorded
 empty. It runs *before* `deliver`. T0/T1 tasks satisfy it with a one-line
-self-record.
+self-record. Its last step records the code anchor: `docs/graph/code-anchor.py
+--record` writes the branch, the commit and the uncommitted code paths of each
+repository the plant governs to `.cypress/anchor.json`. The next session
+compares against it once, at its start, and so knows which facts about code
+may be stale; a fact the graph states about anything else is settled
+(`rule.knowledge`).
 
 ### 9.2 harvest (plant → seed, user-triggered only)
 
@@ -802,8 +816,12 @@ the enriched seed back out onto an existing, already-grown plant. It:
 
 So one plant's harvested fruit reaches all the others. Graft is user-decided and
 never automatic; the most the system does is propose one (typically right after
-a harvest) and stop. Its standalone entry is `GRAFT_PROMPT.md`. The reconciliation
-engine lives in `tools/graft-graph-engine.py` and `tools/graft-audit.py`.
+a harvest) and stop. Its standalone entry is `GRAFT_PROMPT.md`. Its mechanical
+steps run from the seed, and none of these tools is placed into a plant:
+`tools/graft-ledger.py` prints the base and each machinery file's three-way
+class, `tools/graft-run.py` rehearses the install, engines, audits and lints on
+a copy outside the plant and prints the gate table, `tools/graft-graph-engine.py`
+reconciles the engines, and `tools/graft-audit.py` classifies the backups.
 
 ## 10. The corpora
 
@@ -960,12 +978,19 @@ claude-code, opencode and prime-agent. For each tool it:
 3. copies (or, with `--symlink`, links) harness projections where the tool
    demands a fixed location (agents and skills only), plus tool-specific config;
 4. ensures `docs/graph/` has the schema, linter, router, nodes dir, and every
-   missing leaf, while preserving existing files;
+   missing leaf, while preserving existing files, and places the config-free
+   tools beside them: `agnosticism-lint.py`, `prose-lint.py`,
+   `status-register.py` and `code-anchor.py`, which writes no anchor at
+   install;
 5. installs the canonical prompt as `EXPERT_SEED_INSTALL_PROMPT.md` at the target
    root;
 6. writes the seed stamp `.cypress/seed.json` (version, date, the adapters
    installed, the harness projection paths, and the two legal decisions), which
-   is what gives a later graft a real base to reconcile against;
+   is what gives a later graft a real base to reconcile against. The stamp
+   keeps every key the installer does not own. A stamp that parses as JSON
+   with a top level that is not an object is backed up and replaced, with one
+   warning. Beside it, `.cypress/recreated-nodes.txt` lists every seed node
+   this run re-created; the console notice names at most ten;
 7. places `legal-corpus/` at `docs/graph/legal/corpus/` when
    `--legal-corpus yes`, whole, refusing a partial placement.
 
@@ -1011,7 +1036,7 @@ tool-corpus/          Harvested reusable tools (by category)
 agent-corpus/         Harvested optional expert roles (not the base roster)
 skill-corpus/         Harvested optional procedures (not the core skills)
 integrations/         Per-tool overlays + config (claude-code, prime-agent, opencode, codex, github-copilot)
-tools/                graft reconciliation engine + audit (incl. --unfilled); agnosticism-lint; prose-lint; status-register; status-migrate
+tools/                graft ledger, run driver, engine reconciliation + audit (incl. --unfilled); agnosticism-lint; prose-lint; status-register; status-migrate; code-anchor; verify-ledger
 docs/                 The seed's OWN decisions (ADRs) and plans
   decisions/            ADR records, listed in index.md
   plans/                agent-routing, pure-graph-refactor, prime-agent-integration, scouts
@@ -1062,14 +1087,21 @@ said, grouped by what they check:
 3. `test-orchestration-entry.sh`: pins the single three-phase entry + the
    completeness contract in prose.
 4. `test-graph-artifacts.sh`: graph artifact presence.
-5. `test-spec-lint.sh`: the spec gate: shape of every spec, coverage of live ones.
+5. `test-spec-lint.sh`: the spec gate: shape of every spec, coverage of live
+   ones, and a table row whose cell count differs from its header.
 6. `test-grill-lint.sh`: the plan-of-record gate (`grill-lint.py`): section
-   shape, §9 dependency order, §5 derived from §9, plan↔spec alignment, and
-   the `--waves` report.
+   shape, §9 dependency order, §5 derived from §9, plan↔spec alignment, the
+   `--waves` report, a ledger plan read from its leaves beside it, and a
+   decision in another repository, cited as `<name>:ADR-NNNN`, reported as
+   external. The same step file proves `tools/verify-ledger.py`, which
+   rebuilds a plan converted to a ledger byte for byte. The gate also runs
+   `grill-lint.py` over the active round's own plan.
 7. `test-full-install.sh`: full install across tools, roster parity, the
    Claude-Code + Prime-Agent coexistence, CI parity gate.
-8. `test-bound-hook.sh`: the Claude-Code delegation-bound hook.
-9. `test-graft-tools.sh`: graft reconciliation engine.
+8. `test-bound-hook.sh`: the Claude-Code delegation-bound hook, the
+   session-start hooks and `tools/code-anchor.py`, which only they run.
+9. `test-graft-tools.sh`: the graft tools: the engine reconciliation, the
+   backup audit, the three-way ledger and the run driver.
 10. `test-growth-audit.sh`: the coverage gate (`tools/growth-audit.py`): every
     planned artifact present and substantive, every declared read filled, every
     absence established, every UNKNOWN named where the owner reads.
@@ -1101,7 +1133,8 @@ said, grouped by what they check:
     selected almost nothing — code an adopting project is invited to run as-is,
     that nobody has run, is a claim, not a tool.
 18. `test_graph_lint.py`: graph-lint CLI-contract regression (stdlib unittest),
-    including the 7.0.0 status / deviation / `plant:` block rules.
+    including the 7.0.0 status / deviation / `plant:` block rules and the
+    `--plan` entry that prints each node's file beside its id.
 19. `agent-lint.py --lint` and `--eval` (against `agents/`).
 20. `test_agent_lint.py`: agent-lint CLI-contract regression (stdlib
     `unittest`, no third-party dependency).
@@ -1128,7 +1161,9 @@ claims, the kernel size budget (`KERNEL_BUDGET`, recorded in
 machinery-node frontmatter (every protocol/skill/agent/method file is a graph
 node with the right fields; `owns` globally unique; the eight `rule.*` keys each
 in exactly their mapped home), canonical-block byte-identity in the brief
-templates, and the per-session instruction budget of the integrations.
+templates, the per-session instruction budget of the integrations, and the
+shell contract of `tests/run.sh` (`set -euo pipefail`, bound above the first
+step).
 
 SPEC-0005 added seven checks. `agent-lint.py --lint` gained rule 5: every agent
 file declares `effort:` as `low`, `medium` or `high`. The installer
@@ -1185,7 +1220,7 @@ count.
 > `tests/ratchets.json`; the comment beside the constant in
 > `integrations/claude-code/agent-lint.py` records why it stands where it does.
 
-Routable body sizes, computed by `tests/seed-lint.py` from the method files on every run: the largest routable body is 1 427 lines (`protocols/graft.md`) and the median is 149 lines, against a ceiling of 1 000 lines for any routable node and 2 500 lines for the three cross-project protocols, `graft`, `grow` and `harvest`. Those three are the only protocols that write into a repository the seed does not own, and a session loads one only while it performs that operation ([ADR-0007](docs/decisions/adr-0007-lifecycle-protocol-ceiling.md)). Both ceilings are ratchets: they may fall freely, and raising either is an owner decision recorded in `tests/ratchets.json`. The always-loaded budget has the same shape, and `EAGER_EXEMPTIONS` in `tests/seed-lint.py` is consequently **empty**: every harness sits under `EAGER_BUDGET`, and the per-harness figures are in the [host capability matrix](documentation/host-capability-matrix.md).
+Routable body sizes, computed by `tests/seed-lint.py` from the method files on every run: the largest routable body is 1 450 lines (`protocols/graft.md`) and the median is 149 lines, against a ceiling of 1 000 lines for any routable node and 2 500 lines for the three cross-project protocols, `graft`, `grow` and `harvest`. Those three are the only protocols that write into a repository the seed does not own, and a session loads one only while it performs that operation ([ADR-0007](docs/decisions/adr-0007-lifecycle-protocol-ceiling.md)). Both ceilings are ratchets: they may fall freely, and raising either is an owner decision recorded in `tests/ratchets.json`. The always-loaded budget has the same shape, and `EAGER_EXEMPTIONS` in `tests/seed-lint.py` is consequently **empty**: every harness sits under `EAGER_BUDGET`, and the per-harness figures are in the [host capability matrix](documentation/host-capability-matrix.md).
 
 ## 15. Glossary
 <a id="glossary"></a>
@@ -1683,7 +1718,7 @@ This section answers which rules a tool holds and which the method only asks the
 | <a id="enf-leaf-cannot-spawn"></a>A leaf agent holds no spawn tool | `agents/*.md`, `integrations/claude-code/agent-lint.py` | **hard** where the host reads the `tools:` line and withholds a tool it does not list; **soft** where only the brief holds the split | The lint reads the spawn tool under the two names Claude Code accepts, `Agent` and `Task`, bare or parenthesized; how another host names or grants it is host-dependent. A leaf granted a shell can start a new model session from it through any command-line client on the machine, and no `tools:` line governs that. Role emulation: a leaf can do the coordinator's work itself instead of handing it back. An agent file with no `tools:` line inherits every tool on the host; the lint refuses such a file, and a file outside the lint's reach keeps the gap | [host capability matrix, Recursion bound](documentation/host-capability-matrix.md) |
 | <a id="enf-delegation-frontmatter"></a>The delegation fields `can_delegate`, `delegates_to` and `max_spawn_depth` | `agents/*.md`, `integrations/claude-code/agent-lint.py` | **soft**: `agent-lint.py --lint` checks their values, and beyond that only prose and briefs carry them | ADR-0003 records that the host's spawn tool does not read these fields, so a delegating agent can start one its list leaves out. How deep a host lets spawns nest is host-dependent. A plant runs the lint only when a session or the plant's own CI runs it | [host capability matrix, Recursion bound](documentation/host-capability-matrix.md) |
 | <a id="enf-route-hook"></a>A routing pointer is added to each prompt | `integrations/claude-code/route-hook.py`, `integrations/claude-code/settings.json`, `integrations/prime-agent/route-extension.ts` | **not a control**: the hook fires and adds text, and holds nothing. Following the pointer is **judgment** (the session) | It fails open, so a broken script adds nothing and the prompt goes on. The suggestion comes from `graph-lint.py --plan`, a keyword heuristic that exits 0 whatever it suggests. Which turns a host runs it on is host-dependent | [host capability matrix, Routing hook](documentation/host-capability-matrix.md) |
-| <a id="enf-status-hook"></a>A lifecycle status summary is added when a session starts | `integrations/claude-code/status-hook.py`, `integrations/prime-agent/status-extension.ts`, `tools/status-register.py` | **not a control**: the hook fires and adds text, and holds nothing | It fails open and is silent on error. Acting on the summary is left to the session | [host capability matrix, Status hook](documentation/host-capability-matrix.md) |
+| <a id="enf-status-hook"></a>A lifecycle status summary and the code-anchor line are added when a session starts | `integrations/claude-code/status-hook.py`, `integrations/prime-agent/status-extension.ts`, `tools/status-register.py`, `tools/code-anchor.py` | **not a control**: the hook fires and adds text, and holds nothing | It fails open and is silent on a register error. The anchor line fails toward checking instead: no anchor, an unreadable one, or a comparison that did not finish within 5 s gives a line saying code facts are unverified. Acting on either line is left to the session, and a worker sees neither unless its brief carries the anchor line. opencode has no hook and reads the line from the newest session record | [host capability matrix, Status hook](documentation/host-capability-matrix.md) |
 | <a id="enf-pre-bash-guard"></a>A shell command is checked for an unbounded blocking-prone call before it runs | `integrations/claude-code/bound-hook.py`, `integrations/claude-code/settings.json` | **hard** for a matched command on a host that fires the hook; **not a control** for any other command, and on a host that does not fire it | It fails open: an internal error, unreadable input or a missing command is allowed through. It matches command words against a fixed list, so a call made by indirection, such as a script file whose name is on no list, passes; evasion takes no effort. It reads the shell tool's calls only. Which hosts fire it is host-dependent | [host capability matrix, Pre-tool guard](documentation/host-capability-matrix.md) |
 | <a id="enf-injection-dedup"></a>Text already injected in a session is named by id, not repeated | `integrations/claude-code/route-hook.py`, `docs/specs/SPEC-0003-per-prompt-injection.md` | **not a control**: it saves repeated text and binds nothing | On any doubt about its ledger it injects in full. Whether a host sends the session id it keys on is host-dependent | [host capability matrix, Per-session injection dedup](documentation/host-capability-matrix.md) |
 | <a id="enf-backup-before-replace"></a>A file the installer replaces is backed up first, and an identical rerun changes nothing | `install.sh` (`place_file`), `tests/test-install-placement.sh` | **soft**: the installer's own code, held by SPEC-0001's tests | `.cypress/seed.json` is replaced without a backup, by design (`place_state`) | [SPEC-0001](docs/specs/SPEC-0001-install-placement.md) |
@@ -1721,4 +1756,4 @@ This section answers which rules a tool holds and which the method only asks the
 | <a id="enf-adopted-not-pending"></a>An adopted rule is not worded as still pending | `tests/seed-lint.py` (`PENDING_PHRASES`) | **soft**, and only in the seed's own gate | It matches a fixed list of phrases in the shipped Markdown; pending wording outside that list passes | [§14 Tests and gates](#14-tests-and-gates) |
 | <a id="enf-menu-rule"></a>A session opens a listed leaf only when its "load when" serves the task | `skills/context-router/SKILL.md`, `templates/prompts/graph-session-bootstrap.md` | **judgment**: the session, then whoever reads its NOT LOADED list | Nothing counts what a session opened. `graph-lint.py --plan` suggests a load set and exits 0 | [context-router skill](skills/context-router/SKILL.md) |
 | <a id="enf-red-hashes"></a>A GREEN spawn leaves the RED tests unchanged | `core/method/delegation-cycle-economy.md` | **detective**: the orchestrator compares its recorded `sha256sum` of each RED test and fixture file before a GREEN commit and before the batch-tip run; **judgment** for whether it records and compares them (the session) | No tool records or compares the hashes, so a session that skips the step sees no red | [delegation cycle economy](core/method/delegation-cycle-economy.md) |
-| <a id="enf-design-latitude"></a>Work stays within the design latitude the owner gave | `protocols/specify-joint-pass.md` | **judgment**: the press, each ruling pass and each brief | No tool reads the `Design latitude:` row or compares a design with it | [specify joint pass](protocols/specify-joint-pass.md) |
+| <a id="enf-design-latitude"></a>Work stays within the recorded design latitude | `protocols/specify-joint-pass.md` | **judgment**: the press, each ruling pass and each brief | No tool reads the `Design latitude:` row or compares a design with it | [specify joint pass](protocols/specify-joint-pass.md) |

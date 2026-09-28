@@ -500,8 +500,8 @@ Claude Code reads on every session: `CLAUDE.md` (project memory at repo root),
 - **Enforcement:** `.claude/route-hook.py` runs on `UserPromptSubmit`, runs the
   graph router (`docs/graph/graph-lint.py --plan=<prompt>`) on the actual
   prompt, and injects a one-line pointer at the kernel plus the suggested node
-  set as `hookSpecificOutput.additionalContext`, with the prompt's echo
-  removed. A session ledger under `.cypress/session/` lets later prompts name
+  set, each id beside its node file, as `hookSpecificOutput.additionalContext`,
+  with the prompt's echo removed. A session ledger under `.cypress/session/` lets later prompts name
   already-suggested nodes by id; `status-hook.py` resets it on every
   `SessionStart` (SPEC-0003). It is fail-open (trailing `|| true`; any error
   degrades to the full injection, the pointer line, or silence; a hook must
@@ -512,7 +512,12 @@ Claude Code reads on every session: `CLAUDE.md` (project memory at repo root),
   `SessionStart`, runs `docs/graph/status-register.py --summary` (a frontmatter
   scan that counts `open` / `hotfix` / `deferred` items and the oldest of them)
   and injects it as `additionalContext`, so lifecycle debt is in front of the
-  model before it plans without a line in any brief. Fail-open. What any
+  model before it plans without a line in any brief. Fail-open. It ends the
+  injection with the line `docs/graph/code-anchor.py --compare` prints: whether
+  the code moved since canonize recorded the anchor, and which paths. That
+  comparison fails toward checking instead: when it does not run or does not
+  finish within 5 s, the line says code facts are unverified. No other hook
+  runs the anchor. What any
   hook carries into a subagent's turn is recorded in
   `docs/graph/method/delegation-briefs.md` (`delegation.briefs`).
 - **Known gap / sharp edge:** a roster written mid-session (by an install,
@@ -556,8 +561,8 @@ SKILL.md`), extensions (`.prime/agent/extensions/*.ts`), and settings
   mandate plus suggested node set via Prime Agent's native extension API. It is
   fail-open and auto-discovered from `.prime/agent/extensions/`.
   `status-extension.ts` uses the same event with a process-local first-prompt
-  guard to inject `status-register.py --summary` once per session; that is the
-  parity of Claude Code's `SessionStart` hook
+  guard to inject `status-register.py --summary` and the code-anchor line once
+  per session; that is the parity of Claude Code's `SessionStart` hook
   (`settings.json` also lists it for locked-down configs). The kernel's own
   blunt "FIRST MOVE" mandate is the non-extension floor.
 - **Delegation advantage (no registration lag):** Prime Agent has no
@@ -569,7 +574,8 @@ SKILL.md`), extensions (`.prime/agent/extensions/*.ts`), and settings
 - **Native-execution overlay:** `.prime/agent/APPEND_SYSTEM.md` is appended to
   the system prompt every session (Claude Code never reads it). It maps the
   kernel's discipline onto Prime Agent primitives (fan-out `rlm()` delegation,
-  model policy, kernel-run gates, canonize + continual-harness close-out,
+  a model policy that maps each class to one version and carries no version
+  table, kernel-run gates, canonize + continual-harness close-out,
   nonblocking `goal` / `rlm_heartbeat` loops). A project can edit it; a global
   `~/.prime/agent/APPEND_SYSTEM.md` is superseded inside the plant.
 - **settings.json:** lists only the seed's own resource dirs with bare

@@ -101,6 +101,12 @@ Three hooks ship in `settings.json`. `route-hook.py` (UserPromptSubmit) and
 `|| true`: a context hook must never block a prompt
 ([routing pointer](../../DOCUMENTATION.md#enf-route-hook),
 [status summary](../../DOCUMENTATION.md#enf-status-hook)).
+The route hook names the router's nodes for the prompt, each id beside its
+node file. The status hook runs once per session: it injects the status
+register's summary and ends with the line `docs/graph/code-anchor.py
+--compare` prints, which says whether the code moved since canonize last
+recorded the anchor. When the comparison does not finish within 5 s, that
+line says the code was not checked. No other hook runs the anchor.
 
 `bound-hook.py` (PreToolUse, matcher `Bash`) is a guard and is wired without
 `|| true`. It exits 2, and the host then does not run the command, when a shell

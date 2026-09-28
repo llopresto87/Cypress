@@ -301,8 +301,13 @@ rule and the traversal that makes it executable.
 **The knowledge rule.** The project keeps one LLM-maintained knowledge
 system at `docs/graph/`: Tier 1 routes, Tier 2 nodes own concise facts,
 Tier 3 leaves hold source-backed depth. Load minimally and declare it. One
-home per fact. Graph before code, ahead of memory. The graph compounds.
-Never fabricate a fact, version, or URL; write "not recorded". Where the
+home per fact. Graph before code, ahead of memory. A fact the graph states
+is settled: use it, never re-derive or re-check it. Only a fact about the
+plant's own code can go stale, and only when that code moved. Canonize
+records a code anchor, and one comparison at session start says which paths
+moved; there the code wins, and the node is fixed in the same change. A worker sees no session-start line, so its code facts are current
+only where its brief carries that line saying no code changed. The graph
+compounds. Never fabricate a fact, version, or URL; write "not recorded". Where the
 graph's doctrine and a harness's default working style differ, the graph
 wins; a harness's safety and permission policy is not working style
 (`context-router.graph-over-harness`).
@@ -1253,7 +1258,11 @@ Tier 1: the router every task opens first, and the only index. Match the task
 against the triggers, load the entry node plus its `requires:` closure, and do
 not load `peers:` unless the task crosses into them. The traversal is
 specified in `skills/context-router.md` and is executable via
-`graph-lint.py --plan "<task>"`. Blocks:
+`graph-lint.py --plan "<task>"`, which prints each node's file beside its id.
+Until growth, the template also carries a pre-growth block that points a
+session at the installed `EXPERT_SEED_INSTALL_PROMPT.md` and the entry fork;
+grow removes it when it sets `grown: true`. Those lines left the kernel in
+7.32.0. Blocks:
 
 - **Start here by task shape**: a table mapping common task phrasings to the
   entry node (root, roster, subsystem, data, auth, secrets, testing, deploy,

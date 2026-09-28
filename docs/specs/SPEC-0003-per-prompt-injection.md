@@ -1148,7 +1148,7 @@ anchor_file:                       # <ROOT>/.cypress/anchor.json, written only b
         commit:          { type: string, pattern: '^[0-9a-f]{40}$' }
         dirty:           { type: object, of: { path: git blob hash, or "deleted" } }
         dirty_overflow:  { type: boolean }        # more than ANCHOR_DIRTY_MAX paths; compare treats every path as moved
-  file: written 0644, atomically, never through a symlink; `.cypress/` is never created
+  file: written 0644, atomically, never through a symlink; an existing name that is not a regular file (a symlink, a directory, a FIFO) is refused and left as it is; `.cypress/` is never created
 ```
 
 Governed repositories are the plant root, when it is a Git work tree, plus each
@@ -1941,3 +1941,8 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
   7.27.0 baseline `ac61a3f` had already stopped matching: `git diff --quiet
   ac61a3f` exits 1 on the two templates as they stood before this change. The
   seed-lint identity check is unchanged.
+- 2026-09-28: 7.32.0 docs pass, ruling Q2 of the round's test-kill questions.
+  §6's anchor file line said only that the file is never written through a
+  symlink, while `tools/code-anchor.py` refuses any existing anchor name that is
+  not a regular file (`write_anchor`). The line now says so. Spec text only: no
+  contract changed, and no FIFO case was added; X166 already covers a directory.
