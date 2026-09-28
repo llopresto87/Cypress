@@ -197,7 +197,7 @@ done
 echo "  CLAUDE_HOOKS_FAIL_OPEN_ON_COPILOT_ENVELOPE: route-hook and status-hook fail open on a Copilot envelope and on empty stdin — OK"
 
 
-# --- SPEC-0003 per-prompt injection: the Claude Code hooks (X101-X134, X142-X149)
+# --- SPEC-0003 per-prompt injection: the Claude Code hooks (X101-X134, X142-X149, X151, X161-X162)
 # One case per contract of docs/specs/SPEC-0003-per-prompt-injection.md §4 and
 # per tested failure of §7, bound by the fixed-width labels its §10 reserves.
 # Every case prints `X1NN <SLUG>: … — OK`, so a label and its slug sit together.
@@ -1000,8 +1000,11 @@ def x125(base):
     write_ledger(p, prompt_count=3)
     r = status(p, source="startup")
     expect_reset(p, "startup", "no register")
-    check(r.out == "", f"expected nothing on stdout — {r.ctx()}")
-    return "no register: the ledger still resets, stdout stays empty"
+    lines = [l for l in (r.inj or "").split("\n") if l]
+    check(r.out == "" or r.envelope_ok, f"stdout is neither empty nor one hook envelope — {r.ctx()}")
+    check(all(l.startswith("Code anchor: ") for l in lines),
+          f"no register: stdout carries more than the code-anchor line — {r.ctx()}")
+    return "no register: the ledger still resets; no status summary, at most the code-anchor line"
 
 
 @case("X126", "STATUS_HOOK_RESET_OWNS_NO_PATH_RULE")
@@ -1427,6 +1430,157 @@ def x149(base):
     return "GC failing on creation still writes the ledger; the next prompt is a reminder"
 
 
+# ---------------------------------------------------------------- 7.32.0: the path column
+# The router's entry line carries the node's file after its id (SPEC-0003 §6,
+# 7.32.0). The hook reads the id as the first token and passes lines through,
+# so this case may pass on arrival; the §10 row says which.
+PATH_FIRST_BODY = (
+    "LOAD (1 nodes, ~400 tokens):\n"
+    "  root                         docs/graph/nodes/root.md  knowledge graph router\n"
+    "\n"
+    "NOT LOADED (with the reason; cross only if the task requires it):\n"
+    "  agent.implementer            docs/graph/agents/03-implementer.md  peer of root\n")
+PATH_BODY = (
+    "LOAD (2 nodes, ~900 tokens):\n"
+    "  root                         docs/graph/nodes/root.md  knowledge graph router\n"
+    "  skill.knowledge-graph        docs/graph/skills/knowledge-graph.md  knowledge-graph authoring\n"
+    "\n"
+    "NOT LOADED (with the reason; cross only if the task requires it):\n"
+    "  agent.implementer            docs/graph/agents/03-implementer.md  peer of skill.knowledge-graph\n"
+    "  domain.sprocketry            docs/graph/nodes/domain.sprocketry.md  peer of skill.knowledge-graph\n")
+
+
+@case("X151", "ROUTE_HOOK_KEEPS_THE_PATH")
+def x151(base):
+    p = Plant(base, body=PATH_FIRST_BODY)
+    first = route(p, "zq-sentinel-0151a first widget prompt")
+    expect_full(first, "first prompt, pathed entry lines", PATH_FIRST_BODY)
+    for _, line in sum(parse_body(PATH_FIRST_BODY)[1:], []):
+        check(line in first.inj.split("\n"), f"first prompt: the entry line {line!r} is not verbatim "
+              f"in the full injection — {first.ctx()}")
+    p.stub(body=PATH_BODY)
+    r = route(p, "zq-sentinel-0151b second widget prompt")
+    check(is_reminder(r), f"second prompt: expected reminder mode — {r.ctx()}")
+    lines = r.inj.split("\n")
+    _, load, nl = parse_body(PATH_BODY)
+    head = NEW_PREFIX + "skill.knowledge-graph"
+    check(head in lines, f"no `{head}` line — {r.ctx()}")
+    i = lines.index(head)
+    check(lines[i + 1:i + 2] == [dict(load)["skill.knowledge-graph"]],
+          f"the new id's entry line does not follow verbatim, path included — {r.ctx()}")
+    check(dict(nl)["domain.sprocketry"] in lines,
+          f"the unseen peer's entry line is not verbatim, path included — {r.ctx()}")
+    d = read_ledger(p)
+    for k, want in (("surfaced", ["root", "skill.knowledge-graph"]),
+                    ("peers_seen", ["agent.implementer", "domain.sprocketry"])):
+        check(d.get(k) == want, f"ledger {k} {d.get(k)!r} != {want!r}: it must hold node ids only")
+    check(not any("/" in x or x.endswith(".md") for k in ("surfaced", "peers_seen") for x in d.get(k, [])),
+          f"a path reached the ledger: {d!r}")
+    return "pathed entry lines: verbatim in full mode and under `New for this task:`; the ledger holds ids only"
+
+
+# ---------------------------------------------------------------- 7.32.0: the anchor line at session start
+# status-hook.py runs `docs/graph/code-anchor.py --compare` once on SessionStart
+# and injects its line (SPEC-0003 §6, 7.32.0). A stub tool stands in here: it
+# logs its argv and prints a fixed line only when run as `--compare`. The tool
+# itself is held by X152-X160 in the code-anchor block below.
+ANCHOR_LINE = "Code anchor: zq-sentinel-0161 a fixed line from the test's stub tool."
+NOT_CHECKED = ("Code anchor: not checked this session (the comparison did not run). "
+               "Facts about code in the graph are unverified.")
+SUMMARY = "0 open, 0 hotfix, 0 deferred"
+ANCHOR_STUB = r"""#!/usr/bin/env python3
+import json, sys, time
+from pathlib import Path
+MODE = %r
+LINE = %r
+Path(__file__).with_name("anchor-argv.json").write_text(json.dumps(sys.argv[1:]))
+if MODE == "sleep":
+    time.sleep(3)
+if MODE == "empty":
+    sys.exit(0)
+args = sys.argv[1:]
+if "--compare" in args and "--record" not in args and "--all" not in args:
+    print(LINE)
+else:
+    print("Code anchor: zq-wrong-mode-0161 the stub was not run as --compare alone")
+sys.exit(1 if MODE == "exit1" else 0)
+"""
+
+
+def anchor_stub(plant, mode="line"):
+    (plant.dir / "docs" / "graph" / "code-anchor.py").write_text(ANCHOR_STUB % (mode, ANCHOR_LINE))
+
+
+def collect(problems, fn):
+    try:
+        fn()
+    except CaseFail as e:
+        problems.append(str(e))
+
+
+@case("X161", "STATUS_HOOK_INJECTS_THE_ANCHOR_LINE")
+def x161(base):
+    problems = []
+    for i, reg in enumerate((True, False)):
+        what = "with a status register" if reg else "without a status register"
+
+        def one():
+            p = Plant(base, name=f"plant{i}", register=reg)
+            anchor_stub(p)
+            write_ledger(p, prompt_count=3)
+            r = status(p, source="startup")
+            lines = (r.inj or "").rstrip("\n").split("\n")
+            check(r.inj is not None and lines[-1] == ANCHOR_LINE,
+                  f"{what}: additionalContext does not end with the line the tool printed — {r.ctx()}")
+            check((p.dir / "docs" / "graph" / "anchor-argv.json").is_file(),
+                  f"{what}: the anchor tool was never run — {r.ctx()}")
+            if reg:
+                s = [k for k, l in enumerate(lines) if SUMMARY in l]
+                check(s and s[0] < len(lines) - 1,
+                      f"{what}: the status summary is not injected before the anchor line — {r.ctx()}")
+            expect_reset(p, "startup", what)
+        collect(problems, one)
+    check(not problems, " || ".join(problems))
+    return "with and without a register: the injection ends with the tool's line, after the summary; the reset holds"
+
+
+@case("X162", "STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION; failure ANCHOR_CHECK_DID_NOT_RUN")
+def x162(base):
+    problems = []
+    t = read_constant(HOOKS / "status-hook.py", "ANCHOR_TIMEOUT")
+    modes = [("absent", "the tool is absent"), ("exit1", "the tool exits non-zero"),
+             ("empty", "the tool prints nothing")]
+    if t:
+        modes.append(("sleep", "the tool runs past ANCHOR_TIMEOUT (rewritten to 1)"))
+    else:
+        problems.append("ANCHOR_TIMEOUT: no module-level literal in status-hook.py")
+    n = 0
+    for mode, how in modes:
+        for reg in (True, False):
+            what = f"{how}, {'with' if reg else 'without'} a status register"
+            n += 1
+
+            def one():
+                p = Plant(base, name=f"plant{n}", register=reg)
+                if mode != "absent":
+                    anchor_stub(p, mode)
+                if mode == "sleep":
+                    rewrite_constant(p.hook("status-hook.py"), "ANCHOR_TIMEOUT", 1)
+                r = status(p, source="startup")
+                check(not r.timed_out, f"{what}: the hook did not return — {r.ctx()}")
+                lines = (r.inj or "").split("\n")
+                check(NOT_CHECKED in lines, f"{what}: no not-checked line in additionalContext — {r.ctx()}")
+                check(ANCHOR_LINE not in (r.inj or ""),
+                      f"{what}: the output of a tool that failed was injected — {r.ctx()}")
+                if reg:
+                    check(any(SUMMARY in l for l in lines), f"{what}: the status summary is gone — {r.ctx()}")
+            collect(problems, one)
+    check(not problems, " || ".join(problems))
+    return "absent, non-zero, silent, timed out; with and without a register: the not-checked line, exit 0"
+
+
+
+
 failed = []
 for label, slug, fn in CASES:
     if ONLY and label not in ONLY:
@@ -1446,7 +1600,7 @@ if failed:
     sys.exit(1)
 PY
 
-# --- SPEC-0003 per-prompt injection: Prime Agent, structural (X135-X141) ------
+# --- SPEC-0003 per-prompt injection: Prime Agent, structural (X135-X141, X150, X163)
 # The gate has no TypeScript runtime and no model in the loop, so these read
 # `integrations/prime-agent/route-extension.ts` and `APPEND_SYSTEM.md` as text,
 # in the style of the resolver read in tests/test-install-placement.sh. They
@@ -1735,6 +1889,44 @@ def x141():
     return f"the section is {n} B, within {OVERLAY_SECTION_MAX_BYTES}"
 
 
+# 7.32.0: the anchor line on Prime Agent (SPEC-0003 §6). Structural, as every
+# Prime Agent case here: it reads status-extension.ts and proves the source.
+STATUS_EXT = (SEED / "integrations" / "prime-agent" / "status-extension.ts").read_text(encoding="utf-8")
+NOT_CHECKED = ("Code anchor: not checked this session (the comparison did not run). "
+               "Facts about code in the graph are unverified.")
+
+
+@case("X163", "STATUS_EXTENSION_INJECTS_THE_ANCHOR_LINE; failure ANCHOR_CHECK_DID_NOT_RUN")
+def x163():
+    src = STATUS_EXT
+    check(any(v == "code-anchor.py" or v.endswith("/code-anchor.py") for v, _, _ in ts_literals(src)),
+          "status-extension.ts names no `code-anchor.py` in a string literal")
+    runs = []
+    for m in re.finditer(r"\bpi\.exec\(", src):
+        _, close = block_after(src, m.end() - 1)
+        args = split_top(src[m.end():close])
+        if len(args) >= 2 and args[1].startswith("[") and args[1].endswith("]"):
+            elems = split_top(args[1][1:-1])
+            if any(e in ('"--compare"', "'--compare'", "`--compare`") for e in elems):
+                runs.append((m.start(), elems))
+    check(len(runs) == 1, f"expected one `pi.exec(` whose inline argv array holds `--compare`, found {len(runs)}")
+    at, elems = runs[0]
+    for flag in ("--record", "--all"):
+        check(not any(flag in e for e in elems), f"the anchor's argv carries {flag}: {elems}")
+    bound = re.search(r"(?:const|let)\s+(\w+)\s*=\s*await\s*$", src[:at])
+    check(bound, "the anchor's pi.exec result is not bound to a name")
+    res = bound.group(1)
+    check(re.search(rf"\b{res}\.stdout\b", src[at:]), f"the anchor's output `{res}.stdout` is never read")
+    check(single_ts_literal(src, NOT_CHECKED), "the not-checked line of §6 is not one string literal in the source")
+    reg = re.search(r"(?:const|let)\s+(\w+)\s*=\s*findRegister\(", src)
+    if reg:
+        early = re.search(rf"if\s*\(\s*!\s*{reg.group(1)}\s*\)\s*return\b", src[:at])
+        check(not early, "a missing status register returns before the anchor runs, so a plant "
+                         "without a register gets no anchor line")
+    return "pi.exec runs code-anchor.py --compare with an argv array; its stdout is read; the not-checked literal; no register gate"
+
+
+
 failed = []
 for label, slug, fn in CASES:
     try:
@@ -1750,7 +1942,501 @@ if failed:
     sys.exit(1)
 PY
 
-[[ "$SPEC3_RC" == 0 && "$PRIME_RC" == 0 ]] \
+# --- SPEC-0003 code anchor: the tool (X152-X160, 7.32.0) ---------------------
+# `docs/graph/code-anchor.py` records the branch, commit and uncommitted work of
+# every governed repository at canonize (`--record`, into `.cypress/anchor.json`)
+# and compares it once per session (`--compare`). One case per contract of
+# SPEC-0003 §4 "Code anchor" and per tested failure of §7, each against Git
+# repositories built here from synthetic files. The seed's `tools/code-anchor.py`
+# is copied to where the installer places it, `<plant>/docs/graph/`, and run
+# from the plant root as the contract says. Git runs with a HOME of its own, so
+# no user or system configuration reaches a fixture. Every case runs; the block
+# fails if any did. `ANCHOR_ONLY=X152,X159` runs a subset.
+ANCHOR_RC=0
+mkdir -p "$FO/anchor"
+python3 - "$ROOT" "$FO/anchor" <<'PY' || ANCHOR_RC=1
+import hashlib, json, os, re, shutil, stat, subprocess, sys, tempfile, time, traceback
+from pathlib import Path
+
+SEED = Path(sys.argv[1])
+WORK = Path(sys.argv[2])
+TOOL = SEED / "tools" / "code-anchor.py"
+ONLY = {s.strip() for s in os.environ.get("ANCHOR_ONLY", "").split(",") if s.strip()}
+os.umask(0o022)
+
+# §6 constants and texts, used by value; tools/code-anchor.py is their one home.
+ANCHOR_QUIET_MAX_BYTES = 160
+ANCHOR_MAX_PATHS = 20
+ANCHOR_MAX_BYTES = 2048
+QUIET = ("Code anchor: no code changed since the last canonize (repositories: {n}). "
+         "The graph's facts about code are current.")
+MOVED_HEADER = ("Code anchor: code changed since the last canonize. Facts about the paths "
+                "below may be stale; check them against the code. Every other fact stands "
+                "as the graph states it.")
+MORE_RE = re.compile(r"^- and (\d+) more path\(s\): python3 docs/graph/code-anchor\.py --compare --all$")
+NOT_RECORDED_RE = re.compile(r"^Code anchor: not recorded \((.+)\)\. Facts about code in the graph are "
+                             r"unverified until the next canonize records one; settled facts stay settled\.$")
+ISO_RE = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?(Z|\+00:00)$")
+HOME = WORK / "home"
+HOME.mkdir(exist_ok=True)
+EMPTY_PATH = WORK / "empty-path"
+EMPTY_PATH.mkdir(exist_ok=True)
+ENV = {k: v for k, v in os.environ.items()
+       if not k.startswith("GIT_") and k not in ("HOME", "XDG_CONFIG_HOME")}
+ENV.update(HOME=str(HOME), XDG_CONFIG_HOME=str(HOME / ".config"), GIT_CONFIG_NOSYSTEM="1",
+           GIT_TERMINAL_PROMPT="0", GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@example.invalid",
+           GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@example.invalid")
+WRAPPER = WORK / "replace-fault.py"
+WRAPPER.write_text(r"""
+import errno, os, runpy, sys
+def _refuse(*a, **k):
+    raise OSError(errno.EIO, "injected by the code-anchor fault wrapper")
+os.replace = _refuse
+os.rename = _refuse
+tool = sys.argv[1]
+sys.argv = [tool] + sys.argv[2:]
+runpy.run_path(tool, run_name="__main__")
+""")
+
+
+class CaseFail(Exception):
+    pass
+
+
+class HarnessFail(Exception):
+    pass
+
+
+def check(cond, msg):
+    if not cond:
+        raise CaseFail(msg)
+
+
+def git(cwd, *args):
+    r = subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True, timeout=30, env=ENV)
+    if r.returncode != 0:
+        raise HarnessFail(f"git {' '.join(args)} in {cwd}: exit {r.returncode}: {r.stderr.strip()}")
+    return r.stdout
+
+
+def write(root, rel, text):
+    p = Path(root) / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(text)
+    return p
+
+
+def init_repo(d, branch):
+    d.mkdir(parents=True, exist_ok=True)
+    git(d, "init", "-q")
+    git(d, "symbolic-ref", "HEAD", f"refs/heads/{branch}")
+
+
+def node(nid, repo=None):
+    return (f"---\nid: {nid}\ntier: 2\nkind: subsystem\ntitle: {nid} node\nowns: [{nid}.core]\n"
+            f"requires: [root]\n" + (f"repo: {repo}\n" if repo else "")
+            + "load_when: [\"widgets\"]\nest_tokens: 100\n---\n# node\n")
+
+
+class Plant:
+    """A plant that is a Git work tree on `main` with one commit: synthetic code
+    under `src/`, a graph under `docs/graph/` holding the copied tool, and a
+    committed `.cypress/seed.json`. With `nested`, `vendor/lib` is a second work
+    tree on `trunk` (ignored by the plant's own repository) that one node names
+    in `repo:`, and another node names a `repo:` that resolves to nothing."""
+
+    def __init__(self, base, name="plant", nested=False, cypress=True):
+        self.dir = base / name
+        init_repo(self.dir, "main")
+        write(self.dir, "src/a.py", "A = 1\n")
+        write(self.dir, "src/b.py", "B = 1\n")
+        write(self.dir, "README.md", "# a synthetic plant\n")
+        write(self.dir, "docs/graph/nodes/x.md", node("subsystem.x"))
+        write(self.dir, "docs/graph/nodes/root.md", node("root").replace("requires: [root]\n", "requires: []\n"))
+        if cypress:
+            write(self.dir, ".cypress/seed.json", "{}\n")
+        if nested:
+            write(self.dir, ".gitignore", "/vendor/\n")
+            write(self.dir, "docs/graph/nodes/subsystem.lib.md", node("subsystem.lib", repo="vendor/lib"))
+            write(self.dir, "docs/graph/nodes/subsystem.gone.md", node("subsystem.gone", repo="vendor/gone"))
+            lib = self.dir / "vendor" / "lib"
+            init_repo(lib, "trunk")
+            write(lib, "lib.py", "L = 1\n")
+            git(lib, "add", "-A")
+            git(lib, "commit", "-qm", "nested fixture")
+        check(TOOL.is_file(), f"tools/code-anchor.py does not exist in the seed ({TOOL})")
+        shutil.copy(TOOL, self.dir / "docs" / "graph" / "code-anchor.py")
+        git(self.dir, "add", "-A")
+        git(self.dir, "commit", "-qm", "fixture")
+
+    @property
+    def anchor(self):
+        return self.dir / ".cypress" / "anchor.json"
+
+    def head(self, rel="."):
+        return git(self.dir / rel, "rev-parse", "HEAD").strip()
+
+    def blob(self, rel):
+        return git(self.dir, "hash-object", rel).strip()
+
+    def commit(self, *paths, msg="change"):
+        git(self.dir, "add", "--", *paths)
+        git(self.dir, "commit", "-qm", msg)
+
+
+class Run:
+    def __init__(self, rc, out, err):
+        self.rc, self.out, self.err = rc, out, err
+
+    def lines(self):
+        return self.out.rstrip("\n").split("\n") if self.out else []
+
+    def ctx(self):
+        return f"exit {self.rc}; stdout {self.out[:900]!r}; stderr {self.err[:600]!r}"
+
+
+def tool(plant, *args, env=None, wrapper=False):
+    cmd = [sys.executable, "docs/graph/code-anchor.py", *args]
+    if wrapper:
+        cmd = [sys.executable, str(WRAPPER), "docs/graph/code-anchor.py", *args]
+    r = subprocess.run(cmd, cwd=str(plant.dir), capture_output=True, text=True, timeout=60,
+                       env=env or ENV)
+    return Run(r.returncode, r.stdout, r.stderr)
+
+
+def record(plant):
+    r = tool(plant, "--record")
+    check(r.rc == 0, f"--record must exit 0 on a usable plant — {r.ctx()}")
+    check(plant.anchor.is_file(), f"--record wrote no .cypress/anchor.json — {r.ctx()}")
+    return r
+
+
+def one_err_line(r):
+    return r.err.count("\n") == 1 and r.err.endswith("\n")
+
+
+def snapshot(root):
+    snap = {}
+    for dp, dns, fns in os.walk(root, followlinks=False):
+        dns[:] = [d for d in dns if d != "__pycache__"]
+        for n in dns + fns:
+            p = os.path.join(dp, n)
+            rel = os.path.relpath(p, root)
+            st = os.lstat(p)
+            if stat.S_ISREG(st.st_mode):
+                snap[rel] = ("f", stat.S_IMODE(st.st_mode), hashlib.sha256(Path(p).read_bytes()).hexdigest(),
+                             st.st_mtime_ns)
+            elif stat.S_ISLNK(st.st_mode):
+                snap[rel] = ("l", os.readlink(p))
+            else:
+                snap[rel] = ("d", stat.S_IMODE(st.st_mode))
+    return snap
+
+
+def snap_diff(a, b):
+    return sorted(k for k in set(a) | set(b) if a.get(k) != b.get(k))
+
+
+def repo_lines(r):
+    return [l for l in r.lines() if l.startswith("- ") and not MORE_RE.match(l)]
+
+
+def named_paths(line):
+    """The paths of a §6 repository line: everything after its last `: `."""
+    return [p.strip() for p in line.rsplit(": ", 1)[-1].split(",") if p.strip()]
+
+
+def anchor_doc(plant, commit=None, version=1, branch="main"):
+    return {"version": version, "recorded_at": "2026-09-28T00:00:00Z",
+            "repositories": [{"path": ".", "branch": branch, "commit": commit or plant.head(),
+                              "dirty": {}, "dirty_overflow": False}]}
+
+
+CASES = []
+
+
+def case(label, slug):
+    def deco(fn):
+        CASES.append((label, slug, fn))
+        return fn
+    return deco
+
+
+@case("X152", "ANCHOR_RECORD_NAMES_EVERY_REPOSITORY")
+def x152(base):
+    p = Plant(base, nested=True)
+    write(p.dir, "src/a.py", "A = 2  # uncommitted work\n")
+    r = tool(p, "--record")
+    check(r.rc == 0, f"--record must exit 0 — {r.ctx()}")
+    check(p.anchor.is_file() and not p.anchor.is_symlink(), f"no regular .cypress/anchor.json — {r.ctx()}")
+    check(stat.S_IMODE(p.anchor.stat().st_mode) == 0o644,
+          f"the anchor is mode {oct(stat.S_IMODE(p.anchor.stat().st_mode))}, not 0644")
+    d = json.loads(p.anchor.read_text())
+    check(isinstance(d, dict) and set(d) == {"version", "recorded_at", "repositories"},
+          f"top-level keys {sorted(d) if isinstance(d, dict) else d!r} != the §6 three")
+    check(d["version"] == 1 and type(d["version"]) is int, f"version {d['version']!r}, not integer 1")
+    check(isinstance(d["recorded_at"], str) and ISO_RE.match(d["recorded_at"]),
+          f"recorded_at {d['recorded_at']!r} is not ISO 8601 UTC")
+    repos = d["repositories"]
+    check(isinstance(repos, list) and all(isinstance(e, dict) for e in repos), f"repositories {repos!r}")
+    by = {e.get("path"): e for e in repos}
+    check(sorted(by) == [".", "vendor/lib"] and len(repos) == 2,
+          f"expected one entry each for `.` and `vendor/lib` (and none for a repo: that resolves to "
+          f"nothing), got paths {[e.get('path') for e in repos]}")
+    for e in repos:
+        missing = {"path", "branch", "commit", "dirty", "dirty_overflow"} - set(e)
+        check(not missing, f"{e.get('path')}: missing §6 field(s) {sorted(missing)}")
+    root, lib = by["."], by["vendor/lib"]
+    check(root["branch"] == "main" and root["commit"] == p.head(),
+          f"`.`: branch/commit {root['branch']!r}/{root['commit']!r} != main/{p.head()}")
+    check(lib["branch"] == "trunk" and lib["commit"] == p.head("vendor/lib"),
+          f"`vendor/lib`: branch/commit {lib['branch']!r}/{lib['commit']!r} != trunk/{p.head('vendor/lib')}")
+    code = {k: v for k, v in root["dirty"].items() if not k.startswith(("docs/graph/", ".cypress/"))}
+    check(code == {"src/a.py": p.blob("src/a.py")},
+          f"`.`: uncommitted code {code!r} != src/a.py with its blob hash {p.blob('src/a.py')}")
+    check(lib["dirty"] == {} and root["dirty_overflow"] is False and lib["dirty_overflow"] is False,
+          f"dirty/dirty_overflow wrong: {repos!r}")
+    lines = r.lines()
+    check(len(lines) == 1 and lines[0].startswith("Code anchor recorded "),
+          f"stdout is not the one §6 record line — {r.ctx()}")
+    for want in (f". main@{p.head()[:7]} (1 uncommitted)",
+                 f"vendor/lib trunk@{p.head('vendor/lib')[:7]} (0 uncommitted)"):
+        check(want in lines[0], f"the record line lacks {want!r} — {r.ctx()}")
+    return "two governed repositories in the §6 shape, the uncommitted path hashed; one record line; exit 0"
+
+
+@case("X153", "ANCHOR_QUIET_WHEN_NOTHING_MOVED")
+def x153(base):
+    p = Plant(base, nested=True)
+    write(p.dir, "src/a.py", "A = 2  # uncommitted work\n")
+    record(p)
+    r = tool(p, "--compare")
+    check(r.out.rstrip("\n") == QUIET.format(n=2) and len(r.lines()) == 1,
+          f"expected exactly the quiet line for two repositories — {r.ctx()}")
+    n = len(r.out.rstrip("\n").encode("utf-8"))
+    check(n <= ANCHOR_QUIET_MAX_BYTES, f"the quiet line is {n} B, over ANCHOR_QUIET_MAX_BYTES")
+    return f"nothing moved: exactly the quiet line ({n} B)"
+
+
+@case("X154", "ANCHOR_NAMES_PATHS_WHEN_THE_COMMIT_MOVED")
+def x154(base):
+    p = Plant(base)
+    record(p)
+    old = p.head()
+    write(p.dir, "src/a.py", "A = 3\n")
+    write(p.dir, "docs/graph/nodes/x.md", node("subsystem.x") + "\nA graph edit.\n")
+    p.commit("src/a.py", "docs/graph/nodes/x.md")
+    new = p.head()
+    r = tool(p, "--compare")
+    lines = r.lines()
+    check(lines[:1] == [MOVED_HEADER], f"the first line is not the moved header — {r.ctx()}")
+    rl = repo_lines(r)
+    check(len(rl) == 1, f"expected one repository line — {r.ctx()}")
+    check(rl[0].startswith(f"- .: commit {old[:7]}..{new[:7]}: "),
+          f"the repository line does not name `commit {old[:7]}..{new[:7]}` — {r.ctx()}")
+    check(named_paths(rl[0]) == ["src/a.py"], f"the line names {named_paths(rl[0])}, not src/a.py alone")
+    check(not any("docs/graph/nodes/x.md" in l for l in lines), f"a line names the graph file — {r.ctx()}")
+    return "a new commit: the moved header, `commit old..new: src/a.py`, the graph edit unnamed"
+
+
+@case("X155", "ANCHOR_NAMES_BOTH_BRANCHES_WHEN_THE_BRANCH_MOVED")
+def x155(base):
+    p = Plant(base)
+    record(p)
+    git(p.dir, "checkout", "-q", "-b", "topic")
+    write(p.dir, "src/b.py", "B = 2\n")
+    p.commit("src/b.py")
+    r = tool(p, "--compare")
+    rl = repo_lines(r)
+    check(any(l.startswith("- .: ") and "branch main -> topic" in l and "src/b.py" in named_paths(l)
+              for l in rl),
+          f"no repository line names `branch main -> topic` and src/b.py — {r.ctx()}")
+    return "a checkout of `topic`: the line names `main -> topic` and src/b.py"
+
+
+@case("X156", "ANCHOR_NAMES_NEW_UNCOMMITTED_WORK")
+def x156(base):
+    p = Plant(base, name="edited")
+    write(p.dir, "src/a.py", "A = 2  # uncommitted at the anchor\n")
+    record(p)
+    write(p.dir, "src/a.py", "A = 3  # edited again since\n")
+    write(p.dir, "src/c.py", "C = 1\n")
+    r = tool(p, "--compare")
+    rl = [l for l in repo_lines(r) if l.startswith("- .: uncommitted: ")]
+    check(rl, f"no `- .: uncommitted: ` line — {r.ctx()}")
+    got = named_paths(rl[0])
+    check("src/a.py" in got and "src/c.py" in got, f"the uncommitted line names {got}, not src/a.py and src/c.py")
+    q = Plant(base, name="committed")
+    write(q.dir, "src/a.py", "A = 2  # uncommitted at the anchor\n")
+    record(q)
+    q.commit("src/a.py", msg="commit the anchored work unchanged")
+    r2 = tool(q, "--compare")
+    check("src/a.py" not in r2.out, f"src/a.py, committed unchanged since the anchor, is named — {r2.ctx()}")
+    return "new work on src/a.py and a new src/c.py are named; the same content committed is not"
+
+
+@case("X157", "ANCHOR_ABSENT_FAILS_TOWARD_INCLUSION; failures ANCHOR_UNUSABLE, ANCHOR_COMMIT_UNREACHABLE")
+def x157(base):
+    problems, reasons = [], {}
+    variants = ["no anchor", "not JSON", "unknown version", "commit not in this clone", "git absent from PATH"]
+    for i, what in enumerate(variants):
+        p = Plant(base, name=f"plant{i}")
+        env = None
+        if what == "not JSON":
+            p.anchor.write_text("{not json")
+        elif what == "unknown version":
+            p.anchor.write_text(json.dumps(anchor_doc(p, version=2)))
+        elif what == "commit not in this clone":
+            p.anchor.write_text(json.dumps(anchor_doc(p, commit="deadbeef" * 5)))
+        elif what == "git absent from PATH":
+            p.anchor.write_text(json.dumps(anchor_doc(p)))
+            env = dict(ENV, PATH=str(EMPTY_PATH))
+        before = snapshot(p.dir)
+        r = tool(p, "--compare", env=env)
+        if r.rc != 0:
+            problems.append(f"{what}: exit {r.rc}, not 0 — {r.ctx()}")
+        if what == "commit not in this clone":
+            if not any(l.startswith("- .: ") and "unverified" in l for l in r.lines()):
+                problems.append(f"{what}: no `- .: ` line saying its code facts are unverified — {r.ctx()}")
+        else:
+            m = NOT_RECORDED_RE.match(r.out.rstrip("\n")) if len(r.lines()) == 1 else None
+            if not m:
+                problems.append(f"{what}: stdout is not the one not-recorded line of §6 — {r.ctx()}")
+            else:
+                reasons[what] = m.group(1)
+        diff = snap_diff(before, snapshot(p.dir))
+        if diff:
+            problems.append(f"{what}: files were written: {diff}")
+    if len(reasons) == 4 and len(set(reasons.values())) != 4:
+        problems.append(f"the not-recorded reasons do not tell the four causes apart: {reasons}")
+    check(not problems, " || ".join(problems))
+    return "missing, not JSON, version 2, unreachable commit, no git: the not-recorded or unverified line, exit 0, nothing written"
+
+
+@case("X158", "ANCHOR_OUTPUT_WITHIN_BUDGET")
+def x158(base):
+    p = Plant(base)
+    record(p)
+    names = [f"src/gen/f{i:03d}.py" for i in range(300)]
+    for n in names:
+        write(p.dir, n, f"G = {n!r}\n")
+    p.commit("src/gen")
+    r = tool(p, "--compare")
+    size = len(r.out.encode("utf-8"))
+    check(size <= ANCHOR_MAX_BYTES, f"--compare printed {size} B, over ANCHOR_MAX_BYTES — {r.ctx()}")
+    shown = [n for n in names if n in r.out]
+    check(len(shown) <= ANCHOR_MAX_PATHS, f"--compare names {len(shown)} paths, over ANCHOR_MAX_PATHS")
+    m = MORE_RE.match(r.lines()[-1]) if r.lines() else None
+    check(m, f"the output does not end with the more-paths line — {r.ctx()}")
+    check(int(m.group(1)) + len(shown) == 300, f"{len(shown)} named plus {m.group(1)} more is not 300")
+    a = tool(p, "--compare", "--all")
+    missing = [n for n in names if n not in a.out]
+    check(not missing, f"--compare --all leaves {len(missing)} of 300 paths unnamed, e.g. {missing[:3]}")
+    return f"300 changed paths: {size} B, {len(shown)} named, the more-paths line; --all names all 300"
+
+
+@case("X159", "ANCHOR_COMPARE_WRITES_NOTHING")
+def x159(base):
+    problems = []
+    states = ["quiet", "commit moved", "new uncommitted work", "no anchor", "not JSON"]
+    for i, what in enumerate(states):
+        p = Plant(base, name=f"plant{i}")
+        if what != "no anchor":
+            record(p)
+        if what == "commit moved":
+            write(p.dir, "src/a.py", "A = 3\n")
+            p.commit("src/a.py")
+        elif what == "new uncommitted work":
+            write(p.dir, "src/c.py", "C = 1\n")
+        elif what == "not JSON":
+            p.anchor.write_text("{not json")
+        # A stale stat cache: `git status` without --no-optional-locks would
+        # rewrite the index here, which is the write this contract forbids.
+        t = time.time() + 5
+        os.utime(p.dir / "src" / "b.py", (t, t))
+        index = (p.dir / ".git" / "index").read_bytes()
+        before = snapshot(p.dir)
+        r = tool(p, "--compare")
+        if (p.dir / ".git" / "index").read_bytes() != index:
+            problems.append(f"{what}: the Git index changed — {r.ctx()}")
+        diff = snap_diff(before, snapshot(p.dir))
+        if diff:
+            problems.append(f"{what}: files under the plant root were created or modified: {diff[:6]}")
+        if not r.out.strip():
+            problems.append(f"{what}: --compare printed nothing — {r.ctx()}")
+    check(not problems, " || ".join(problems))
+    return "five plant states with a stale index: --compare writes no file and leaves the index byte-identical"
+
+
+@case("X160", "ANCHOR_RECORD_REFUSES_A_SYMLINK")
+def x160(base):
+    problems = []
+    p = Plant(base, name="linked")
+    outside = base / "outside.json"
+    outside.write_text('{"zq-sentinel-0160": "outside the plant"}\n')
+    before = outside.read_bytes()
+    p.anchor.symlink_to(outside)
+    r = tool(p, "--record")
+    if r.rc == 0:
+        problems.append(f"symlinked anchor: --record exited 0 — {r.ctx()}")
+    if not one_err_line(r):
+        problems.append(f"symlinked anchor: stderr is not one line — {r.ctx()}")
+    if outside.read_bytes() != before:
+        problems.append("symlinked anchor: the file outside the plant changed")
+    if not p.anchor.is_symlink() or os.readlink(p.anchor) != str(outside):
+        problems.append("symlinked anchor: the link was not left as it was")
+    q = Plant(base, name="no-cypress", cypress=False)
+    r = tool(q, "--record")
+    if r.rc == 0:
+        problems.append(f"no .cypress/: --record exited 0 — {r.ctx()}")
+    if not one_err_line(r):
+        problems.append(f"no .cypress/: stderr is not one line — {r.ctx()}")
+    if (q.dir / ".cypress").exists():
+        problems.append("no .cypress/: --record created .cypress/")
+    s = Plant(base, name="replaced")
+    record(s)
+    old = s.anchor.read_bytes()
+    link = s.dir / "anchor-hardlink.json"
+    os.link(s.anchor, link)
+    write(s.dir, "src/a.py", "A = 9  # new work before the second record\n")
+    r = tool(s, "--record")
+    if r.rc != 0 or not s.anchor.is_file():
+        problems.append(f"second record failed — {r.ctx()}")
+    elif os.stat(s.anchor).st_ino == os.stat(link).st_ino:
+        problems.append("the anchor was rewritten in place, not replaced")
+    if link.read_bytes() != old:
+        problems.append("the hard-linked old anchor changed, so a reader could see a partial file")
+    f = Plant(base, name="faulted")
+    record(f)
+    old = f.anchor.read_bytes()
+    write(f.dir, "src/a.py", "A = 9  # new work before a record whose replace fails\n")
+    r = tool(f, "--record", wrapper=True)
+    if f.anchor.read_bytes() != old:
+        problems.append(f"a record whose replace fails changed the anchor — {r.ctx()}")
+    check(not problems, " || ".join(problems))
+    return "a symlinked anchor and a missing .cypress/ are refused; a record replaces the file atomically"
+
+
+failed = []
+for label, slug, fn in CASES:
+    if ONLY and label not in ONLY:
+        continue
+    base = Path(tempfile.mkdtemp(prefix=f"{label}-", dir=WORK))
+    try:
+        note = fn(base)
+        print(f"  {label} {slug}: {note} \u2014 OK")
+    except CaseFail as e:
+        failed.append(label)
+        print(f"FAIL: {label} {slug}: {e}", file=sys.stderr)
+    except Exception:                               # noqa: BLE001 — a harness bug, said as one
+        failed.append(label)
+        print(f"HARNESS ERROR: {label} {slug}:\n{traceback.format_exc()}", file=sys.stderr)
+if failed:
+    print(f"SPEC-0003 code-anchor cases: FAIL — {len(failed)} case(s): {', '.join(failed)}", file=sys.stderr)
+    sys.exit(1)
+PY
+
+[[ "$SPEC3_RC" == 0 && "$PRIME_RC" == 0 && "$ANCHOR_RC" == 0 ]] \
   || fail "SPEC-0003 per-prompt injection: the case(s) named above failed"
 
 echo "test-bound-hook: PASS"
