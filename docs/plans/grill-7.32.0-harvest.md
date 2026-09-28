@@ -64,6 +64,10 @@ What each item gives a grown plant (R4), and where it lands:
 | D5 ledger verification tool | S | provable ledger conversions | 4, 27 |
 | decision 7 older plans converted | S | the seed's plans all follow one rule | 47 |
 | R3, R5 as a seed principle | S | the manifest and README say it once | 52 |
+| Owner's tester rule (2026-09-28) | P | a tester that stops at a confirmed red and asks instead of prototyping | 54 |
+| Owner's latitude rule (2026-09-28) | P | a session that names the design latitude with its reason, as it names a tier, and asks only when in doubt | 55 |
+| C3 widened (cycle 1 ruling pass) | S | a graft audit that also names the projection of a plant's own skill and the Copilot view of its own agent | 57, 58 |
+| F hardened (cycle 1 ruling pass) | P | a steady anchor test, the once-per-session rule under test, a shorter session-start wait, and one frontmatter reader | 56, 59 to 62 |
 
 Success means every item above lands with its gate green, the round adds no byte to any always-loaded plant surface (the kernel, the Prime Agent overlay and the always-listed descriptions all shrink or hold), and a plant receives the round at install or at its next graft. Out of scope: anything not in the ratified proposal; the routing redesign, whose decisions 2 to 4 are still the owner's; any staleness tool or lint (decision 11, withdrawn); Codex and Copilot, which are frozen.
 
@@ -119,6 +123,7 @@ no external dependency: the work is stdlib Python, bash, Markdown and the Git co
 | A10: one shared walk, `tools/plant_walk.py`, for graft-audit and growth-audit | two callers today had the same defect | the triage of the round, kept outside the seed | reversible | none | 2026-09-28 |
 | A11: the tests of T1, T2 and T3 go into `tests/test-graft-tools.sh`, the anchor's into `tests/test-bound-hook.sh`, and the ledger tool's into `tests/test-grill-lint.sh` | existing gate steps, so only increment 49 edits `tests/run.sh` | `tests/run.sh` :185, :207, :208 | reversible | none | 2026-09-28 |
 | A12: docs once (owner rule): the published eager figures and the manifest's tool catalog are written only in increment 52; the seed-lint lines they leave red are expected-red at every tip before it, attributed to increment 52 | the owner's rule is explicit; the cost is a longer expected-red list | the owner's rules for the round, kept outside the seed; §12 question 4 | reversible | none | 2026-09-28 |
+| Design latitude: simple, classified by the session under the owner's latitude rule of 2026-09-28 (increment 55; the first row of this table stays as the earlier record) | the scope is fully ratified and itemized, and each later answer of the owner chose the smallest change: decision 11 withdrawn ("no don't create a new mechanical"), option A for the stamp, the tester rule. The request leaves no doubt, so the owner is not asked | the owner's ratification and answers of 2026-09-28 (§2); the owner's rule: "the 3 values needs to be present and those postures/modes need to go akin to Tiers mode - need to be engaged based on request/tone/what we are trying to accomplish - or when in doubt asked to use at the beginning of the spec definition/request" | reversible | none | 2026-09-28 |
 
 ## 7. Options Considered
 | Option | Benefits | Costs | Risks | Outcome |
@@ -197,6 +202,12 @@ This plan is a ledger from its first increment (the owner's rule; ADR-0020). The
 | P5 docs-librarian | `protocols/graft.md` (after P1), `docs/plans/grill-7.30.0-cycle-economy*`, `docs/plans/grill-7.31.0-wave-scheduling*` | 46, 47 |
 | G session | `tests/run.sh`, `tools/gate-registry.py` | 49 |
 | M measurement | none in the seed | 19, 48 |
+| P6 docs-librarian | `agents/04-tester.md`, `protocols/test-first.md` | 54 |
+| P7 docs-librarian | `protocols/specify-joint-pass.md`, `core/method/tiers.md` | 55 |
+| L11 tester | `tests/test-bound-hook.sh`, `docs/specs/SPEC-0003-per-prompt-injection.md` (after P4 commits, and after the session writes the §6 amendment of increment 60) | 56, 59, 60 |
+| L3 tester, again | `tests/test-graft-tools.sh` (still the live lane L3 file), `docs/specs/SPEC-0001-install-placement.md` (§10 rows and one §12 line) | 57 |
+| L8 implementer, again | `tools/graft-audit.py` | 58 |
+| L7 implementer, again | `integrations/claude-code/status-hook.py`, `integrations/prime-agent/status-extension.ts`, `tools/code-anchor.py` | 61, 62 |
 
 **Cycles.** A cycle is one RED wave, one GREEN wave over the clean increments, the tip, and one ruling pass over every flag both waves raised (`delegation.waves`). Spawn sizes are `delegation.effort-scale`'s. Every Opus-class spawn runs on `anthropic/claude-opus-5-5` (R7).
 
@@ -209,6 +220,7 @@ This plan is a ledger from its first increment (the owner's rule; ADR-0020). The
 | Cycle 1 · prose | prose | docs-librarian P2 (after 19), P3 (40, after 16 is clean and 19 is done) | 21, 22, 40 | one set each | medium |
 | Cycle 1 · tip and ruling pass | n/a | the orchestrator runs `bash tests/run.sh`; the architect rules once over the cycle's flags | n/a | n/a | high for the ruling pass |
 | Cycle 2 · GREEN and prose | GREEN, prose | L9 (34), L10 (39), P3 (42, 43), P4 (44, 45), P5 (47), M (48) | 34, 39, 42 to 45, 47, 48 | L9 medium-hard, 1 of 2; L10 low, 1 of 5 | each at its label |
+| Cycle 2 · from the cycle 1 ruling pass | RED, then GREEN; prose | tester L11 (56, 59, 60) ∥ tester L3 (57) ∥ docs-librarian P6 (54) ∥ P7 (55); then implementers L8 (58) ∥ L7 (61, 62) | 54 to 62 | L11 low, 3 of 7; L3 medium-low, 1 of 7; L8 medium-low, 1 of 3; L7 low, 2 of 5; P6 and P7 one set each | each spawn at its hardest label; 62 lands before the mutation pass below |
 | Cycle 2 · mutation | mutation | tester, read-only, scratch copies only: mandatory over `install.sh` (36 to 39) and `tools/code-anchor.py` (30), sampled over the rest | n/a | n/a | medium |
 | Cycle 3 · GREEN and prose | GREEN, prose | L9 (35, a batch of one: hard), then P5 (46) and G (49) | 35, 46, 49 | L9 hard, 1 of 1 | hard for 35 |
 | Cycle 4 | RED, prose | tester (50), then the harvest gates (51) with an independent Opus reviewer, then one docs writer (52), then the final tip (53) | 50 to 53 | n/a | medium |
@@ -268,10 +280,21 @@ This plan is a ledger from its first increment (the owner's rule; ADR-0020). The
 | 47 | Prose: the 7.30.0 and 7.31.0 plans become ledgers, verbatim | planned | `docs/plans/grill-7.32.0-harvest/increment-47-prose-convert-plans.md` |
 | 48 | Prose: the measured-cost gate for decision 8 | planned (owner-only prerequisite, §4) | `docs/plans/grill-7.32.0-harvest/increment-48-measure-after.md` |
 | 49 | GREEN: the gate lints the active round plan | planned | `docs/plans/grill-7.32.0-harvest/increment-49-green-gate-lints-the-plan.md` |
+| 54 | Prose: a tester's RED spawn writes the test, confirms the red, and hands back | planned | `docs/plans/grill-7.32.0-harvest/increment-54-prose-tester-red-only.md` |
+| 55 | Prose: the session classifies the design latitude the way it classifies a tier | planned | `docs/plans/grill-7.32.0-harvest/increment-55-prose-latitude-classified.md` |
+| 56 | RED: the anchor fixture leaves no background Git writer and matches a placed plant | planned | `docs/plans/grill-7.32.0-harvest/increment-56-red-anchor-fixture.md` |
+| 57 | RED: graft-audit classes every projection of a plant-owned node, and the contract rows bind | planned | `docs/plans/grill-7.32.0-harvest/increment-57-red-plant-owned-projections.md` |
+| 58 | GREEN: graft-audit names the plant-owned skill projection and Copilot agent view | planned | `docs/plans/grill-7.32.0-harvest/increment-58-green-plant-owned-projections.md` |
+| 59 | RED: only the session-start hooks run the code anchor | planned | `docs/plans/grill-7.32.0-harvest/increment-59-red-anchor-once-per-session.md` |
+| 60 | RED: the session-start wait for the anchor is one value, 5 s, in every home | planned | `docs/plans/grill-7.32.0-harvest/increment-60-red-anchor-timeout.md` |
+| 61 | GREEN: the session-start hooks wait 5 s for the anchor | planned | `docs/plans/grill-7.32.0-harvest/increment-61-green-anchor-timeout.md` |
+| 62 | GREEN: the code-anchor tool reads `repo:` through the one frontmatter reader | planned | `docs/plans/grill-7.32.0-harvest/increment-62-green-anchor-one-reader.md` |
 | 50 | Consolidate the tests this round added | planned | `docs/plans/grill-7.32.0-harvest/increment-50-consolidate-tests.md` |
 | 51 | Prose: the harvest's integrity gates G1 to G11 | planned | `docs/plans/grill-7.32.0-harvest/increment-51-harvest-integrity-gates.md` |
 | 52 | Prose: docs once, at the end, by one writer | planned | `docs/plans/grill-7.32.0-harvest/increment-52-docs-once.md` |
 | 53 | Prose: the final tip and the status pass | planned | `docs/plans/grill-7.32.0-harvest/increment-53-final-tip.md` |
+
+Note, 2026-09-28, cycle 1 ruling pass: increments 54 to 62 sit before 50 in this index, because 50 to 53 close the round and depend on them. From 54 on, an increment's number is not its position; the index order is still the dependency order `grill-lint.py` reads.
 
 ## 10. Verification Plan
 The standard gates hold (`CLAUDE.md` Gates: `bash tests/run.sh`, and `python3 tools/gate-registry.py --summary` for what each step reads). This plan diverges in six places:
@@ -297,6 +320,7 @@ The standard gates hold (`CLAUDE.md` Gates: `bash tests/run.sh`, and `python3 to
 | Pending references keep this plan's lint red longer than planned | medium | low | increment 49 depends on every promotion; the expected lines are listed | orchestrator | increment 49 |
 | The docs-once rule leaves seed-lint red at every tip for most of the round | high | low | the lines are expected-red by id; §12 question 4 | orchestrator | each tip record |
 | T3's staged run writes into the plant by mistake | low | high | refusal of a stage inside the plant root; a byte checksum of the plant before and after in its RED; the mutation pass samples it | tester | increment 11 |
+| The Prime Agent extensions' upward walk (`findTool` in `status-extension.ts`, the same seven-level walk in `route-extension.ts`) has no plant-root boundary, unlike the Python hooks' `_is_plant_root`; a session in a checkout nested under another plant can read that plant's anchor | low | medium | carried to a later round, found by the cycle 1 ruling pass: the walk predates this round, one fix must cover both extensions with one RED, and the gate has no TypeScript runtime (SPEC-0003 records a structural strength for these files); outside this round's ratified items under simple latitude | architect | a later round's plan |
 
 ## 12. Open Questions
 | # | Question | Why it matters | Current assumption | How to resolve | Owner | Pinned by |
@@ -326,3 +350,4 @@ Show the owner this plan for approval (`grill.plan-approval`) with §4's three p
 
 ## 15. Changelog
 - 2026-09-28: joint specify and grill pass (increment 1), by the architect on the owner's ratified scope. Written: this plan as a ledger of 53 increments; the pending blocks of SPEC-0001 (five contracts, two failures) and SPEC-0003 (fourteen contracts, three failures, one baseline amendment); ADR-0015 to ADR-0020, `proposed`; six rows in `docs/decisions/index.md`. Gates: `tests/seed-lint.py` PASS; `spec-lint.py` over `docs/specs` unchanged at 2 of 128 live contracts uncovered; prose-lint on every file written; grill-lint through the staged layout of §10, with the pending-reference lines as its only findings.
+- 2026-09-28: cycle 1 ruling pass, by the architect, after the cycle 1 tip (45 of 49 steps green; the four red steps all on the expected list). Added: 54 (the owner's tester rule; its one home is the tester charter, and test-first points at it), 55 (the owner's latitude rule; this round's latitude restated as simple under it, §6), 56 to 62 from the cycle's flags (the anchor fixture, the plant-owned projections with bindable X labels, the once-per-session guard, a 5 s anchor wait, one frontmatter reader for the anchor tool); lanes P6, P7, L11 and three second visits; one cycle 2 row; one §11 row (the extensions' walk, carried). Changed leaves: 47 (Gate), 50 and 51 (Depends on). Landed at that tip, with the tip still pending: 2 to 8, 12 to 18, 20, 23 to 33, 36 to 39, 41; the REDs of 9 to 11 wait for 35 in `tests/test-graft-tools.sh`.
