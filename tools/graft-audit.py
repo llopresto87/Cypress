@@ -17,8 +17,9 @@ classifies:
   CUSTOMIZED  differs AND carries plant-signal content -> a divergence the FF overwrote;
               it must be RE-INTEGRATED into the FF'd file or ratified, never left buried
   GENERATED   a harness view generated from a seed node, with no plant-signal content
-  PLANT-OWNED the harness projection of the plant's own `origin: project` agent node;
-              the installer re-projected it from the graph, so no seed file backs it
+  PLANT-OWNED the harness projection of the plant's own `origin: project` agent or skill
+              node (its skill projection and Copilot agent view included); the installer
+              re-projected it from the graph, so no seed file backs it
 
 A backup line counts as plant content only when the seed does not carry it. With
 `--base <rev>` the seed at that revision counts too, so a backup byte-identical
@@ -367,16 +368,27 @@ def projected_sub(rel: str):
 
 
 def plant_owned_node(rel: str, plant: Path):
-    """The plant's own agent node a harness projection was taken from, or None.
-    install.sh projects the roster FROM the graph, so an agent the plant
-    authored (`origin: project`) reaches every harness directory with no seed
-    file behind it. A backup of that projection is the plant's own content,
-    replaced by a fresh projection of the plant's own node: a named exclusion,
-    not a backup nobody can classify."""
+    """The plant's own node a harness projection was taken from, or None.
+    install.sh projects the roster and the skill set FROM the graph, so an
+    agent or skill the plant authored (`origin: project`) reaches every harness
+    directory with no seed file behind it: `<adapter>/agents/<name>.md` from
+    `docs/graph/agents/<name>.md`, `<adapter>/skills/<name>/SKILL.md` from
+    `docs/graph/skills/<name>.md`, and the Copilot view
+    `.github/agents/<name>.agent.md` from `docs/graph/agents/<name>.md`. A
+    backup of that projection is the plant's own content, replaced by a fresh
+    projection of the plant's own node: a named exclusion, not a backup nobody
+    can classify."""
     sub = projected_sub(rel)
-    if not (sub and sub.startswith("agents/")):
+    parts = Path(sub).parts if sub else ()
+    if parts[:1] == ("agents",):
+        node = plant / GRAPH_HOME / sub
+    elif len(parts) == 3 and parts[0] == "skills" and parts[2] == "SKILL.md":
+        node = plant / GRAPH_HOME / "skills" / f"{parts[1]}.md"
+    elif rel.startswith(".github/agents/") and rel.endswith(".agent.md") \
+            and "/" not in rel[len(".github/agents/"):]:
+        node = plant / GRAPH_HOME / "agents" / (Path(rel).name[:-len(".agent.md")] + ".md")
+    else:
         return None
-    node = plant / GRAPH_HOME / sub
     if node.is_file() and _fm_value(_frontmatter(node), "origin") == "project":
         return node
     return None
