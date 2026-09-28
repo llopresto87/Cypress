@@ -49,7 +49,7 @@ peers:
   - agent.reviewer
   - agent.docs-librarian
 prevents: Nobody holding the thread of a multi-specialist request — each worker spawned against a fresh reading of the goal, none of them accountable for the tier the whole task was classified at, and the session ending when the last reply is sent rather than when the work is delivered.
-est_tokens: 3446
+est_tokens: 3495
 ---
 
 # Orchestrator
@@ -264,12 +264,14 @@ implementation follows grill.md §9 in dependency order, and a spawn is
 issued only after the handbacks it needs have returned
 (`delegation.sequencing` in `docs/graph/method/delegation-sequencing.md`).
 Parallel only where the table or the `Depends on:` rows say the units are
-independent.
+independent. Work runs in cycles, a RED wave then a clean GREEN wave; a
+problem holds only its own increment and what depends on it, and early
+REDs are carried as expected-red at the tip (`delegation.waves`, same file).
 
 A spawn may carry a batch of increments. The cycle rules live in
 `docs/graph/method/delegation-cycle-economy.md`; apply them from there:
 batch size by effort label (`delegation.effort-scale`), the question file
-and the architect's ruling pass at each batch boundary
+and the architect's one ruling pass per cycle
 (`delegation.question-file`), and the RED hash record you check before a
 GREEN commit and the tip run (`delegation.green-self-test`).
 
