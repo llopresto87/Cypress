@@ -60,12 +60,11 @@ the same bootstrap and the same lint run would be pure coordination
 waste. The librarian owns the graph's **fact-bearing surfaces** —
 nodes, wiki pages, the tool catalog — and one-home-per-fact; the
 session never edits those. The session-owned operational artifacts
-under the same root — grill.md, changelog.md and the session records in
-`plans/sessions/` — are the deliberate exception: the session writes
-them directly, the librarian's one write to a session record is the
-status lines it appends, and the verification
-runbook is written by the tester worker that ran the gates
-(`docs/graph/protocols/verify.md` and
+under the same root (grill.md, changelog.md and the session records in
+`plans/sessions/`) are the deliberate exception: the session writes
+them directly. The librarian's one write to a session record is the
+status lines it appends. The verification runbook is written by the
+tester worker that ran the gates (`docs/graph/protocols/verify.md` and
 `docs/graph/agents/04-tester.md` agree on that). A delivery that
 changed understanding but left the graph
 untouched is a silent knowledge leak — the same failure class as a
@@ -206,11 +205,10 @@ agnosticism gate), throwaway prototypes or genuine one-offs.
    records in `docs/graph/plans/sessions/` (named by path), and the
    workers' handback payloads: facts with evidence, tools with path +
    entry point + invocation + covering test, every decision that
-   departed from a graph-owned standard, each with the standard it
-   departs from, and —
-   on the T2 contained lane — the why-record's defect, cause, fix, and
-   pinning test. Include every overflow note a worker wrote when its
-   handback did not fit, at
+   departed from a graph-owned standard (each with the standard it
+   departs from), and, on the T2 contained lane, the why-record's
+   defect, cause, fix, and pinning test. Include every overflow note a
+   worker wrote when its handback did not fit, at
    `docs/graph/plans/<unit of work>/overflow/<spawn_id>.md`
    (`docs/graph/templates/prompts/handback-payload.md` owns its shape):
    the brief names each one, and the

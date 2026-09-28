@@ -125,8 +125,8 @@ Prime Agent is RLM-native, with primitives Claude Code does not have: recursive
 `rlm()` subagents you spawn and fan out from the IPython kernel, a persistent
 kernel that *is* your tool, `agent_message` / `agent_observe` for coordinating
 children, and goals / heartbeats for long-running work. It also has a
-**continual harness** (`refine`, memories, reusable subagent specs) (operating
-lessons still go to the plant's session record; see Close-out). A first-class
+**continual harness** (`refine`, memories, reusable subagent specs), though
+operating lessons still go to the plant's session record (see Close-out). A first-class
 integration should exploit these, not run the seed as "Claude Code with
 different paths."
 

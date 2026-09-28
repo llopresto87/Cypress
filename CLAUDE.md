@@ -161,3 +161,8 @@ extraction and CLI behavior.
     force-push and no tag move.
 - `harvest`/`graft` are user-sovereign; nothing in the seed may trigger
   them automatically.
+- Seed text (specs, plans, ADRs, doctrine) carries no session residue: no
+  session identifier (a spawn id, a worker label) and no path to a round's
+  working records outside the seed. A ruling is cited by its id, and its
+  source is described in words, for example "kept with the round's working
+  records outside the seed".
