@@ -76,6 +76,20 @@ runbooks, specs, decisions, tools). Never parallel doc systems.
 - **Graph before code, ahead of memory.** Memory of APIs and versions
   is unreliable; the graph is local and source-grounded. No wiki page
   for a library you're about to use → run `ingest-library`.
+- **A fact the graph states is settled.** Use it; never re-derive or
+  re-check it. Grow, `ingest-library` and canonize establish facts so
+  that no later session has to: a library's behaviour, a best practice,
+  a known bug, a decision, an owner rule. Only a fact about the plant's
+  own code can go stale, and only when that code moved. Canonize records
+  a code anchor (`docs/graph/code-anchor.py --record`), and one
+  comparison at session start prints one line. A quiet line: code facts
+  are current. A line naming paths: facts about those paths may be
+  stale, the code wins there, and the node is fixed in the same change.
+  A not-recorded or not-checked line: check the code facts you rely on
+  against the code. Settled facts stay settled either way. A worker sees
+  no session-start line, so its code facts are current only where its
+  brief carries that line saying no code changed. Paths under
+  `docs/graph/` and `.cypress/` are the graph and its state, not code.
 - **The graph compounds.** Record facts when code gains them, sharp
   edges when they bite, `load_when:` triggers when routing missed.
   Never fabricate a fact, version, or URL — write "not recorded".

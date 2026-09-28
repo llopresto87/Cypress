@@ -110,8 +110,9 @@ appends one line to "Canonize status",
 `- <section> <item> → <node id and fact key, or file>` or
 `- <section> <item> → not placed: <reason>`, then one line
 `- retirable harness entries: <names>, awaiting the owner's confirmation by name`
-(or `none`). It never rewrites an item, never touches harness memory,
-which sits outside the plant, and places nothing that carries a secret,
+(or `none`), and last the code-anchor line of flow step 3. It never
+rewrites an item, never touches harness memory, which sits outside the
+plant, and places nothing that carries a secret,
 production data or speculation. Retiring a harness entry stays the
 owner's decision, taken by name (kernel §4). The record is a source of
 knowledge candidates, so it adds no sixth duty to this close-out. A
@@ -244,7 +245,17 @@ agnosticism gate), throwaway prototypes or genuine one-offs.
    moved; and writes each deviation candidate as ADR entry + `deviation.`
    node once its *why* is on record. One `graph-lint` run plus the
    register's lint role (`python3 docs/graph/status-register.py --root
-   docs/graph`) confirm the graph stays clean.
+   docs/graph`) confirm the graph stays clean. With the graph reconciled,
+   the librarian runs `python3 docs/graph/code-anchor.py --record` once.
+   It writes `.cypress/anchor.json`: the branch, the commit and the
+   uncommitted code paths of each repository the plant governs. The
+   line it prints goes into the newest session record's "Canonize
+   status" as a bullet of its own, as printed: it already begins
+   `Code anchor recorded`. The next session compares against
+   the anchor once at its start: its session-start hook runs `--compare`,
+   and a host with no hook reads that line. A refusal (exit 1) leaves
+   the old anchor standing, and its stderr line takes the place of the
+   printed line. Nothing runs the tool per prompt or per tool call.
 4. **Confirm or record-empty.** The librarian hands back nodes/fact-keys
    touched, tool cards written, status items moved (id → new status +
    evidence), and deviation nodes written — or an explicit "nothing of
@@ -252,7 +263,8 @@ agnosticism gate), throwaway prototypes or genuine one-offs.
    moved" / "no deviation". For each session record it hands back the
    items placed (item → home), the items not placed (item → reason), and
    the harness entries that can be retired; with no record, it hands back
-   "no session record". It also hands back the lint results and each
+   "no session record". It also hands back the code-anchor line or its
+   refusal, the lint results and each
    overflow note it read with whether anything in it was persisted.
 
 ## Fail-closed doctrine
