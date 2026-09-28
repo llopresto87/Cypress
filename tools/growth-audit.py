@@ -151,6 +151,12 @@ _fm_spec = _ilu.spec_from_file_location(
     "cypress_frontmatter", Path(__file__).resolve().parent / "frontmatter.py")
 _frontmatter = _ilu.module_from_spec(_fm_spec)
 _fm_spec.loader.exec_module(_frontmatter)
+# The walk that stops at a plant's edge, shared with graft-audit.py: a nested
+# plant (its own .cypress/seed.json) and a symlinked directory are not walked.
+_pw_spec = _ilu.spec_from_file_location(
+    "cypress_plant_walk", Path(__file__).resolve().parent / "plant_walk.py")
+plant_walk = _ilu.module_from_spec(_pw_spec)
+_pw_spec.loader.exec_module(plant_walk)
 
 SCHEMA = "cypress.coverage/1"
 RECORD_REL = ".cypress/coverage.json"
@@ -366,7 +372,7 @@ def required_collections(seed):
     if not troot.is_dir():
         die(f"{seed} has no {TEMPLATE_DOCS}/ — not a seed root")
     rows = set()
-    for t in sorted(p for p in troot.rglob("*") if p.is_file()):
+    for t in sorted(p for p in plant_walk.files(seed, TEMPLATE_DOCS) if p.is_file()):
         rel = t.relative_to(troot).as_posix()
         parts = rel.split("/")
         if len(parts) == 1:
@@ -442,7 +448,7 @@ class Templates(dict):
         troot = seed / TEMPLATE_DOCS
         super().__init__(
             (p.relative_to(troot).as_posix(), p.read_bytes())
-            for p in troot.rglob("*") if p.is_file())
+            for p in plant_walk.files(seed, TEMPLATE_DOCS) if p.is_file())
         self.seed = seed
 
 
@@ -554,10 +560,11 @@ def collection_leaves(plant, name):
     or `*.template.md` file is outside the collection's judgment: the
     seed-wide name convention for a delivered blank form, the same exclusion
     `graft-audit.py`'s scaffold audit applies. The filter reads names only,
-    never content."""
+    never content. A directory collection is walked to this plant's edge: a
+    nested plant and a symlinked directory, the collection's own included,
+    are another tree and hold none of its leaves (tools/plant_walk.py)."""
     if name.endswith("/"):
-        d = plant / GRAPH_HOME / name.rstrip("/")
-        files = sorted(p for p in d.rglob("*.md")) if d.is_dir() else []
+        files = sorted(plant_walk.files(plant, f"{GRAPH_HOME}/{name.rstrip('/')}", "*.md"))
     else:
         f = plant / GRAPH_HOME / name
         marker = f.with_name(f.stem + UNFILLED_SUFFIX)

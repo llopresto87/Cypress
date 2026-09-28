@@ -16,6 +16,24 @@ classifies:
   DELTA       differs, no plant-signal -> normal version advance (older machinery); safe
   CUSTOMIZED  differs AND carries plant-signal content -> a divergence the FF overwrote;
               it must be RE-INTEGRATED into the FF'd file or ratified, never left buried
+  GENERATED   a harness view generated from a seed node, with no plant-signal content
+  PLANT-OWNED the harness projection of the plant's own `origin: project` agent node;
+              the installer re-projected it from the graph, so no seed file backs it
+
+A backup line counts as plant content only when the seed does not carry it. With
+`--base <rev>` the seed at that revision counts too, so a backup byte-identical
+to the seed the plant was installed from is DELTA: it carries nothing the plant
+authored. The revision is the steward's to supply; without it the audit compares
+with the seed as it stands, which is the conservative reading. An engine backup
+(graph-lint.py, spec-lint.py, grill-lint.py) is also read against the plant's
+current engine of the same name: graft-graph-engine.py carries the plant's
+config and comments into the new body, so a line that survives there was
+preserved, not lost.
+
+The walk for backups covers this plant only. A directory holding its own
+.cypress/seed.json is another plant (a scratch copy, a nested seed workspace),
+and a symlinked directory is another tree; neither is walked, and neither
+chooses the default --date (tools/plant_walk.py).
 
 It also flags any backup over PLANT-AUTHORED docs/graph/ content (a knowledge
 overwrite — should be none; knowledge is add-if-missing). The seed-owned graph
@@ -57,7 +75,7 @@ gate is unfilled like any other scaffold.
 
 Usage:
   graft-audit.py <plant-root> <seed-root> [--date YYYYMMDD[-HHMMSS]]
-                 [--tokens t1,t2,...]
+                 [--tokens t1,t2,...] [--base <rev>]
                  [--engine <plant-engine>:<seed-engine>]...
   graft-audit.py <plant-root> <seed-root> --unfilled [--rename | --prune]
 --date is a PREFIX of the backup stamp install.sh writes (YYYYMMDD-HHMMSS), so
@@ -67,6 +85,9 @@ not. It defaults to the newest day a .bak stamp in the plant carries.
 --engine is the one option that repeats: a graft passes one pair per engine
 (graph-lint.py, spec-lint.py, grill-lint.py), and every pair is checked and
 reported on its own line.
+--base names a revision of the seed checkout (a tag or a commit); the seed root
+must be a Git work tree for it, and a revision Git cannot resolve is refused
+(exit 1).
 Backup audit: exit 0 if clean/only-DELTA; 1 if any CUSTOMIZED or docs
 overwrite (a gate hit). Unfilled: exit 1 while unfilled scaffolds remain and
 neither --rename nor --prune was requested (a gate); 0 once none remain or
@@ -75,13 +96,22 @@ Dependency-free.
 """
 import difflib
 import re
+import subprocess
 import sys
 from pathlib import Path
+
+# The walk that stops at this plant's edge, from beside this file (graft-audit
+# and growth-audit share it; neither is a package to import from).
+import importlib.util as _ilu
+_pw_spec = _ilu.spec_from_file_location(
+    "cypress_plant_walk", Path(__file__).resolve().parent / "plant_walk.py")
+plant_walk = _ilu.module_from_spec(_pw_spec)
+_pw_spec.loader.exec_module(plant_walk)
 
 GENERIC_SIGNALS = ("this project's", "this program", "our stack", "our program",
                    "this plant", "our deploy", "in this program")
 
-VALUE_OPTIONS = ("date", "tokens", "engine")
+VALUE_OPTIONS = ("date", "tokens", "engine", "base")
 FLAG_OPTIONS = ("unfilled", "rename", "prune")
 
 
@@ -185,7 +215,11 @@ DELIVERED_TOOLS = {
     "prose-lint.py": "tools/prose-lint.py",
     "status-register.py": "tools/status-register.py",
 }
-SCAFFOLD_FILES = ("graph-lint.py", "spec-lint.py", "grill-lint.py") + tuple(DELIVERED_TOOLS)
+# the graph engines: placed add-if-missing, then reconciled by
+# graft-graph-engine.py, which keeps the plant's config and comments
+ENGINE_FILES = ("graph-lint.py", "spec-lint.py", "grill-lint.py")
+ENGINE_PATHS = tuple("docs/graph/" + e for e in ENGINE_FILES)
+SCAFFOLD_FILES = ENGINE_FILES + tuple(DELIVERED_TOOLS)
 
 # Seed machinery the installer places OUTSIDE docs/graph/, into the harness
 # adapter directories: hooks, extensions, settings, the system-prompt overlay,
@@ -312,16 +346,38 @@ def seed_source_for(rel: str, seed: Path):
         return None  # plant-authored graph content — never seed-mapped
     if rel in ADAPTER_MACHINERY:
         return seed / ADAPTER_MACHINERY[rel]
-    for adapter in (".claude/", ".codex/", ".opencode/", ".prime/agent/"):
+    sub = projected_sub(rel)
+    # a projection keeps the seed's agents/<name>.md and skills/<name>/SKILL.md shape
+    return seed / sub if sub else None
+
+
+# The harness directories install.sh projects docs/graph/{agents,skills}/ into.
+ADAPTER_HOMES = (".claude/", ".codex/", ".opencode/", ".prime/agent/")
+
+
+def projected_sub(rel: str):
+    """The adapter-relative path of a harness projection of the graph's roster
+    or skill set (`agents/<name>.md`, `skills/<name>/SKILL.md`), or None."""
+    for adapter in ADAPTER_HOMES:
         if rel.startswith(adapter):
             sub = rel[len(adapter):]
-            # harness projections of docs/graph/{agents,skills}/
-            if sub.startswith("agents/"):
-                return seed / "agents" / sub[len("agents/"):]
-            if sub.startswith("skills/"):
-                # projection keeps skills/<name>/SKILL.md shape
-                return seed / "skills" / sub[len("skills/"):]
-            return None
+            return sub if sub.startswith(("agents/", "skills/")) else None
+    return None
+
+
+def plant_owned_node(rel: str, plant: Path):
+    """The plant's own agent node a harness projection was taken from, or None.
+    install.sh projects the roster FROM the graph, so an agent the plant
+    authored (`origin: project`) reaches every harness directory with no seed
+    file behind it. A backup of that projection is the plant's own content,
+    replaced by a fresh projection of the plant's own node: a named exclusion,
+    not a backup nobody can classify."""
+    sub = projected_sub(rel)
+    if not (sub and sub.startswith("agents/")):
+        return None
+    node = plant / GRAPH_HOME / sub
+    if node.is_file() and _fm_value(_frontmatter(node), "origin") == "project":
+        return node
     return None
 
 
@@ -425,23 +481,45 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
     # a buried customization. A gate that cries wolf on untouched files teaches
     # a steward to ratify without looking, which is the failure the
     # reconcile-before-overwrite gate exists to prevent. A generic phrase
-    # therefore counts only when the seed source does NOT also carry it.
+    # therefore counts only when no seed text carries it too: the seed source,
+    # its --base version, or the generator of a harness view.
     explicit = [(t.lower(), re.compile(r"(?<![A-Za-z0-9])" + re.escape(t) +
                                        r"(?![A-Za-z0-9])", re.I))
                 for t in opt.get("tokens", [])]
     generic = [t.lower() for t in GENERIC_SIGNALS]
 
+    def signals(text: str, seed_texts) -> list:
+        """The customization signals `text` carries: every explicit token, and
+        each generic phrase no seed text carries itself."""
+        low, seed_low = text.lower(), [s.lower() for s in seed_texts]
+        hit = [t for t, rx in explicit if rx.search(low)]
+        hit += [t for t in generic if t in low and not any(t in s for s in seed_low)]
+        return sorted(set(hit))[:4]
+
+    base = None
+    if opt.get("base"):
+        base = _seed_revision(seed, opt["base"])
+        if base is None:
+            print(f"  !! --base {opt['base']!r} is not a revision of the seed "
+                  f"checkout at {seed}; refusing to read backups against a "
+                  f"seed version that could not be found")
+            return 1
+
+    # this plant's backups only: tools/plant_walk.py skips a nested plant
+    # (its own .cypress/seed.json) and a symlinked directory, so neither is
+    # counted nor chooses the default --date
+    stamped = [(p, bak_stamp(p)) for p in plant_walk.files(plant, pattern="*.bak-*")]
     date = opt.get("date")
     if not date:
         # the newest DAY rather than the newest stamp: one graft writes its
         # backups over several seconds and the whole pass is one audit.
-        stamps = sorted(s for s in (bak_stamp(p) for p in plant.rglob("*.bak-*")) if s)
+        stamps = sorted(s for _, s in stamped if s)
         date = stamps[-1][:8] if stamps else "00000000"
 
-    baks = [p for p in plant.rglob("*.bak-*")
-            if p.is_file() and not p.is_symlink() and bak_stamp(p).startswith(date)]
+    baks = [p for p, s in stamped
+            if p.is_file() and not p.is_symlink() and s.startswith(date)]
     counts = {"IDENTICAL": 0, "DELTA": 0, "CUSTOMIZED": 0,
-              "GENERATED": 0, "UNMAPPED": 0}
+              "GENERATED": 0, "PLANT-OWNED": 0, "UNMAPPED": 0}
     customized, knowledge_hits, unmapped = [], [], []
     for b in baks:
         rel = plant_rel(b, plant)
@@ -464,34 +542,38 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
             # replaced body carry a plant customization signal?
             gen = generator_for(rel, seed)
             if gen is not None and gen.exists():
-                bt = b.read_text(errors="replace")
-                low = bt.lower()
-                gen_low = gen.read_text(errors="replace").lower()
-                hit = [x for x, rx in explicit if rx.search(low)]
-                hit += [x for x in generic if x in low and x not in gen_low]
+                hit = signals(b.read_text(errors="replace"),
+                              [gen.read_text(errors="replace")])
                 if hit:
                     counts["CUSTOMIZED"] += 1
-                    customized.append(
-                        (b.relative_to(plant).as_posix(), sorted(set(hit))[:4]))
+                    customized.append((b.relative_to(plant).as_posix(), hit))
                 else:
                     counts["GENERATED"] += 1
-                continue
-            counts["UNMAPPED"] += 1
-            unmapped.append(b.relative_to(plant).as_posix())
+            elif plant_owned_node(rel, plant):
+                counts["PLANT-OWNED"] += 1
+            else:
+                counts["UNMAPPED"] += 1
+                unmapped.append(b.relative_to(plant).as_posix())
             continue
         bt, st = b.read_text(errors="replace"), src.read_text(errors="replace")
         if bt == st:
             counts["IDENTICAL"] += 1
+            continue
+        # The plant authored a line only if no seed version carries it: the
+        # seed as it stands, and the seed at --base, the one it was installed
+        # from. It was LOST only if the file that replaced it lacks it too; an
+        # engine keeps its config and comments through graft-graph-engine.py,
+        # so a line still in the plant's current engine was preserved.
+        seed_texts = [st] + ([_seed_text_at(seed, base, src)] if base else [])
+        kept = list(seed_texts)
+        if rel in ENGINE_PATHS and (plant / rel).is_file():
+            kept.append((plant / rel).read_text(errors="replace"))
+        hit = signals("\n".join(_added_lines(bt, kept)), seed_texts)
+        if hit:
+            counts["CUSTOMIZED"] += 1
+            customized.append((b.relative_to(plant).as_posix(), hit))
         else:
-            uniq = "\n".join(l[1:] for l in _diff_added(st, bt))
-            low, st_low = uniq.lower(), st.lower()
-            hit = [t for t, rx in explicit if rx.search(low)]
-            hit += [t for t in generic if t in low and t not in st_low]
-            if hit:
-                counts["CUSTOMIZED"] += 1
-                customized.append((b.relative_to(plant).as_posix(), sorted(set(hit))[:4]))
-            else:
-                counts["DELTA"] += 1
+            counts["DELTA"] += 1
 
     print(f"  backups audited: {len(baks)} -> {counts}")
     if unmapped:
@@ -505,9 +587,7 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
         # OTHER date stamps mean the requested date audited nothing
         # while the real fast-forward went unexamined: fail, do not
         # print the same "clean" verdict a real audit earns.
-        other = sorted({s for p in plant.rglob("*.bak-*")
-                        for s in [bak_stamp(p)]
-                        if s and not s.startswith(date)})
+        other = sorted({s for _, s in stamped if s and not s.startswith(date)})
         if other:
             shown = ", ".join(other[:6]) + (" …" if len(other) > 6 else "")
             print(f"  !! zero backups for date {date}, but backups exist "
@@ -544,11 +624,32 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
     return 0
 
 
-def _diff_added(seed_text: str, bak_text: str):
-    """Lines present in the backup but not the seed (a cheap set difference —
-    enough to surface unique plant content for signal scanning)."""
-    seed_lines = set(seed_text.splitlines())
-    return ["+" + l for l in bak_text.splitlines() if l not in seed_lines and l.strip()]
+def _added_lines(bak_text: str, kept_texts) -> list:
+    """Lines present in the backup and in none of `kept_texts` (a cheap set
+    difference — enough to surface unique plant content for signal scanning)."""
+    kept = {l for t in kept_texts for l in t.splitlines()}
+    return [l for l in bak_text.splitlines() if l not in kept and l.strip()]
+
+
+def _seed_revision(seed: Path, rev: str):
+    """The commit `rev` names in the seed checkout, or None when Git cannot
+    resolve it (no such revision, no Git work tree, no git)."""
+    try:
+        r = subprocess.run(["git", "-C", str(seed), "rev-parse", "--verify",
+                            "--quiet", "--end-of-options", f"{rev}^{{commit}}"],
+                           capture_output=True, text=True)
+    except OSError:
+        return None
+    return r.stdout.strip() if r.returncode == 0 else None
+
+
+def _seed_text_at(seed: Path, commit: str, src: Path) -> str:
+    """The seed file `src` as it was at `commit`, or "" where it did not exist
+    yet. Read from the object store, so it writes nothing, `.git/index` included."""
+    r = subprocess.run(["git", "-C", str(seed), "cat-file", "blob",
+                        f"{commit}:{src.relative_to(seed).as_posix()}"],
+                       capture_output=True)
+    return r.stdout.decode(errors="replace") if r.returncode == 0 else ""
 
 
 def _strip_inline_comment(line: str) -> str:
@@ -590,6 +691,12 @@ def _plant_added_lines(seed_lines, plant_lines):
     return added
 
 
+def _frontmatter(path: Path) -> str:
+    """The text of a node's leading `---` block, or "" when it has none."""
+    m = re.match(r"^---\n(.*?)\n---", path.read_text(errors="replace"), re.S)
+    return m.group(1) if m else ""
+
+
 def _fm_value(fm: str, key: str) -> str:
     m = re.search(rf"^{re.escape(key)}:[ \t]*(.*?)[ \t]*$", fm, re.M)
     if not m:
@@ -607,10 +714,7 @@ def _standing_kernel_deviation(plant: Path):
     for f in sorted(nodes.glob("deviation.*.md")):
         if f.name.startswith("_") or f.name.endswith(".template.md"):
             continue
-        m = re.match(r"^---\n(.*?)\n---", f.read_text(errors="replace"), re.S)
-        if not m:
-            continue
-        fm = m.group(1)
+        fm = _frontmatter(f)
         if (_fm_value(fm, "kind") == "deviation"
                 and _fm_value(fm, "status") == "standing"
                 and _fm_value(fm, "departs_from") == KERNEL_DEVIATION_KEY):
