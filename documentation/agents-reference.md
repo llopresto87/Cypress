@@ -244,7 +244,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "there is no way to prove this bug is fixed; write something that fails today" — `paraphrase`
   - "the test for the authorization rule is flaky and times out" — `adversarial`
 
-**Charter.** The tester translates spec contracts into executable tests and runs the RED-GREEN-REFACTOR cycle. Every increment begins with the tester writing a failing test that encodes a contract, with the test name as the contract slug so a reviewer can reconstruct the spec from the test list. It owns the verification gates, the AI-behavior evaluation suites, and the regression corpus. It is a Task-less leaf.
+**Charter.** The tester translates spec contracts into executable tests and runs the RED-GREEN-REFACTOR cycle. Every increment begins with the tester writing a failing test that encodes a contract, with the test name as the contract slug so a reviewer can reconstruct the spec from the test list. It owns the verification gates, the AI-behavior evaluation suites, and the regression corpus. In a RED spawn it only writes the test, confirms it fails for the right reason and hands back; any implementation, even a throwaway one, is the implementer's GREEN (`tester.spawn-scope`). It is a Task-less leaf.
 
 ### 7.6 `security`
 
@@ -486,7 +486,7 @@ tell and no dropped fact under `--against HEAD`?
 *Source file: `agents/growth-orchestrator.md`*
 
 - **id:** `agent.growth-orchestrator`
-- **Role:** Senior growth conductor. Owns running the grow / adopt-existing / from-scratch flow end to end — detect the project's shape, dispatch growth-scouts by real subsystem/repository boundary, sequence the authoring of the unified docs/graph from their evidence ledgers, and gate on knowledge validation before delivery.
+- **Role:** Senior growth conductor. Runs the grow, adopt-existing and from-scratch flow end to end; detects the project's shape, dispatches growth-scouts by subsystem or repository boundary, sequences graph authoring from their evidence ledgers, and gates on knowledge validation. Runs only inside grow, graft or adopt.
 - **model class:** `opus`
 - **effort (default):** `high`
 - **Delegation:** coordinator with `can_delegate: true`, `max_spawn_depth: 2`, `delegates_to:` `growth-scout`, `seed-installer`, `docs-librarian`, `architect`, `research-scout`, `tester`, `ui-ux-designer`
@@ -513,7 +513,7 @@ tell and no dropped fact under `--against HEAD`?
 *Source file: `agents/growth-scout.md`*
 
 - **id:** `agent.growth-scout`
-- **Role:** Senior growth scout. The read-only evidence-gatherer of the grow/adopt flow: dispatched at ONE real subsystem or repository boundary, it inspects executable source directly and returns claims tied to paths and symbols — the ledger the graph authors build from.
+- **Role:** Senior growth scout. Reads the executable source at ONE subsystem or repository boundary and writes only its evidence ledger under .cypress/growth/, with claims tied to paths and symbols for the graph authors. Never authors the graph. Runs only inside grow, graft or adopt.
 - **model class:** `sonnet`
 - **effort (default):** `medium`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
@@ -570,7 +570,7 @@ tell and no dropped fact under `--against HEAD`?
 *Source file: `agents/seed-installer.md`*
 
 - **id:** `agent.seed-installer`
-- **Role:** Senior seed-install engineer. Owns placing CYPRESS into a target project — running install.sh's place_file/place_tree mechanics, selecting only the host adapters actually used, backing up rather than overwriting, and verifying the host tool truly loads the kernel, agents, protocols, and skills.
+- **Role:** Senior seed-install engineer. Places CYPRESS into a target project with install.sh, additively and reversibly; wires only the host adapters in use, backs up rather than overwrites, and verifies the host loads the kernel, agents, protocols and skills. Never touches application files. Runs only inside grow, graft or adopt.
 - **model class:** `opus`
 - **effort (default):** `medium`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
@@ -683,4 +683,4 @@ tell and no dropped fact under `--against HEAD`?
 
 **Charter.** `skill.toolcraft` owns the *rule* — what counts as durable, what stays disposable, and the fail-closed requirement that a task is incomplete until a durable tool is cataloged or recorded absent. The tool-smith owns *doing it*. Three actors, three moments: the skill rules, the tool-smith builds mid-task when the recurrence is noticed, and `protocol.canonize` catalogs once at close-out. Before this agent existed the close-out catalogued "any durable tool it produced" and the producer was never named, so the operation got rewritten by hand each session — the failure `rule.toolcraft` exists to prevent, reproduced inside the doctrine that prevents it.
 
-Its scope is the **plant's operations**, never the machinery: it does not author linters, the router, graph tooling, or install and graft mechanics. The test is what the tool operates *on*, not who asked. That boundary is the whole defence against becoming a general "write me a script" route. Its bar has five clauses — recurrence observed (three instances, or named in the plan), a stable interface, a test that can pin it, no embedded secrets or production data, and plant scope — and **refusing is a normal outcome of the charter, not a failure of it**.
+Its scope is the **plant's operations**, never the machinery: it does not author linters, the router, graph tooling, or install and graft mechanics. The test is what the tool operates *on*, not who asked. That boundary is the whole defence against becoming a general "write me a script" route. Its bar has five clauses — recurrence observed (three instances, or named in the plan), a stable interface, a test that can pin it, no embedded secrets or production data, and plant scope — and **refusing is a normal outcome of the charter, not a failure of it**. It ends every turn with the handback payload: `tools_built` names each tool with the test that pins it, or the bar clause a refusal failed. It writes no catalog page under `docs/graph/tools/` and spawns no librarian; the close-out catalogs what it names.

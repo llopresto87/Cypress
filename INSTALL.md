@@ -166,8 +166,12 @@ so re-installing over an unchanged project creates nothing.
 ([backup before replace](DOCUMENTATION.md#enf-backup-before-replace)). The
 backup IS graft Phase 7's safety net and the input `tools/graft-audit.py`
 reads, so a flag that discarded it would leave a graft with nothing to audit
-and no way back. No mode overwrites without a recovery copy; the one file
-replaced without a copy is the install stamp `.cypress/seed.json`, by design.
+and no way back. No mode overwrites without a recovery copy. Two files are
+replaced without a copy, by design: the install stamp `.cypress/seed.json`,
+which keeps every key the installer does not own, and
+`.cypress/recreated-nodes.txt`, the whole list of seed nodes the last run
+re-created. Both are derived, never authored, so a copy would carry no
+recovery value.
 
 If the destination is a symlink, the LINK is moved aside, not followed, so an
 install does not modify a file outside the target directory
@@ -269,8 +273,9 @@ rm -rf AGENTS.md CLAUDE.md .github/copilot-instructions.md .github/agents \
 ```
 
 `CLAUDE.md` and `AGENTS.md` are the kernel pair every tool shares, so keep
-them while another tool stays installed. The lines above leave
-`.cypress/seed.json`, `EXPERT_SEED_INSTALL_PROMPT.md` and everything under
+them while another tool stays installed. The lines above leave `.cypress/`
+(the install stamp and the files beside it), `EXPERT_SEED_INSTALL_PROMPT.md`
+and everything under
 `docs/graph/` in place, your knowledge files included.
 
 ## Multi-tool projects

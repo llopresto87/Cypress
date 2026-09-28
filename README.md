@@ -16,17 +16,17 @@ It is not for someone who does not use an AI coding [tool](DOCUMENTATION.md#term
 
 ## What installing does to your repository
 
-An install for Claude Code writes the files below into your project. If one of them is already there and differs, your version is kept beside it as a timestamped copy before the new one replaces it, and nothing is merged; the install stamp is the one exception.
+An install for Claude Code writes the files below into your project. If one of them is already there and differs, your version is kept beside it as a timestamped copy before the new one replaces it, and nothing is merged; the install stamp and the list beside it are the exceptions.
 
 - the [kernel](DOCUMENTATION.md#term-kernel), a short instruction file the harness reads at the start of every session: `CLAUDE.md` at the project root, with `AGENTS.md` beside it as a symlink to it (a copy where symlinks are unavailable); on the other harnesses, or where your project already has a plain `AGENTS.md` and no `CLAUDE.md`, `AGENTS.md` holds the kernel and `CLAUDE.md` is the symlink;
 - the harness directory `.claude/`, holding the agent definitions, the [skills](DOCUMENTATION.md#term-skill), slash commands, hook scripts and settings;
 - `docs/graph/`, where the knowledge graph lives: the method's own notes, and a skeleton that the first session fills in from your code;
-- the install stamp `.cypress/seed.json`, which records the version and options of the install;
+- the install stamp `.cypress/seed.json`, which records the version and options of the install and keeps any key the installer does not own, and beside it `.cypress/recreated-nodes.txt`, which lists the method's notes this install had to put back because they were missing;
 - `EXPERT_SEED_INSTALL_PROMPT.md`, a local copy of the entry prompt for later sessions.
 
 Other harnesses get their own directory in place of `.claude/`, such as `.opencode/` or `.prime/agent/`, and the [install guide](INSTALL.md) lists each one.
 
-A file that already matches is left alone. The install stamp `.cypress/seed.json` is replaced without a copy ([backup before replace](DOCUMENTATION.md#enf-backup-before-replace)). Files under `docs/graph/` that belong to your project, such as the graph's index, are only added where missing ([project files kept](DOCUMENTATION.md#enf-plant-files-kept)), with one exception: the installer rewrites the `plant:` entry of `docs/graph/index.md` in place, also without a copy. It adds the entry if it is absent and writes each value you pass on the command line into a line still left as a placeholder, keeping any value already declared.
+A file that already matches is left alone. The install stamp `.cypress/seed.json` and the list beside it are replaced without a copy ([backup before replace](DOCUMENTATION.md#enf-backup-before-replace)). Files under `docs/graph/` that belong to your project, such as the graph's index, are only added where missing ([project files kept](DOCUMENTATION.md#enf-plant-files-kept)), with one exception: the installer rewrites the `plant:` entry of `docs/graph/index.md` in place, also without a copy. It adds the entry if it is absent and writes each value you pass on the command line into a line still left as a placeholder, keeping any value already declared.
 
 The install does not touch your application source, `.gitignore`, git history or CI.
 
@@ -34,7 +34,7 @@ The install does not touch your application source, `.gitignore`, git history or
 
 | Figure | What it covers, and how it was obtained |
 |---|---|
-| 26 440 bytes | per session on Claude Code: the kernel plus the one-line description of every agent and skill, computed from the [seed](DOCUMENTATION.md#term-seed)'s files by this repository's test run; a lower bound, not a live reading |
+| 25 401 bytes | per session on Claude Code: the kernel plus the one-line description of every agent and skill, computed from the [seed](DOCUMENTATION.md#term-seed)'s files by this repository's test run; a lower bound, not a live reading |
 | 11% more tokens | per task, against a session with no method, on one small, well-specified task; measured once ([evidence record](docs/plans/grill-7.29.0-front-door/method-overhead-evidence.md)) |
 
 The always-loaded figure leaves out the notes a session opens on demand, each worker it starts, the text the hooks add to each prompt, and the one-time pass that builds the graph. The [host capability matrix](documentation/host-capability-matrix.md) gives the figure for each other harness. No money figure exists.
@@ -66,7 +66,7 @@ Once grown, your repository is a [plant](DOCUMENTATION.md#term-plant) of the [se
 
 ## Why it is built this way
 
-A coding session works inside a fixed context window, and a session that has read everything has no signal about what matters. The always-loaded part therefore stays small, and the rest is looked up when a task needs it. Process is sized to risk, which spares a typo fix a feature's coordination cost. Specifications and tests come first, so a reviewer can check the work against something written before it. Steps that need a clean context go to separate workers, and one step's reading then does not crowd out the next.
+A coding session works inside a fixed context window, and a session that has read everything has no signal about what matters. The always-loaded part therefore stays small, and the rest is looked up when a task needs it. Process is sized to risk, which spares a typo fix a feature's coordination cost. Specifications and tests come first, so a reviewer can check the work against something written before it. Steps that need a clean context go to separate workers, and one step's reading then does not crowd out the next. What the graph states is meant to be settled, so a later session uses it instead of working it out again. Only facts about your code can go stale, and a session checks those once, at its start, against the branch, commit and uncommitted changes recorded at the last [canonize](DOCUMENTATION.md#term-canonize) close-out.
 
 Each of these choices has a decision record, and the [decision index](docs/decisions/index.md) lists them with their status.
 

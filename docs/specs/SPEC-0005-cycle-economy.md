@@ -10,7 +10,7 @@ status_evidence: tests/test_graph_lint.py, tests/test_agent_lint.py, tests/test-
 ## 0. Metadata
 
 - **Identifier:** SPEC-0005-cycle-economy
-- **Version:** 0.12 (7.31.0 wave scheduling and the session record, final status pass, 2026-09-28; every amendment is dated in §12)
+- **Version:** 0.13 (7.32.0: the design latitude is classified like a tier and asked only in doubt, 2026-09-28; every amendment is dated in §12)
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-09-28
@@ -2501,3 +2501,6 @@ kept outside the seed.
   AC-16's wording changes the same way. No test covers it: it is
   detective, judged by the reviewer at verify, and it holds against
   `protocols/specify-joint-pass.md` as it reads now.
+- 2026-09-28 — version 0.13, by `docs-librarian`. The latitude amendment in the
+  entry above is this version, and §0's Version line now says so. Nothing else
+  changed.

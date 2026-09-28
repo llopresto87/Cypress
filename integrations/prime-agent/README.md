@@ -34,7 +34,7 @@ This seed system maps to Prime Agent as follows:
 | `skills/*/SKILL.md`          | `.prime/agent/skills/*/SKILL.md`                   |
 | protocols → slash commands   | `.prime/agent/prompts/*.md` (generated projections) |
 | routing pointer              | `.prime/agent/extensions/route-extension.ts`       |
-| status register (once/session) | `.prime/agent/extensions/status-extension.ts`     |
+| status register and code anchor (once/session) | `.prime/agent/extensions/status-extension.ts` |
 | `templates/`                 | `docs/graph/templates/` (graph nodes)        |
 | `templates/docs/` (graph leaves) | `docs/graph/` (missing leaves added on install) |
 
@@ -101,7 +101,8 @@ extension event bus; like the hook, it adds text and holds nothing
   a message and modify the system prompt). It runs the graph router
   (`python3 docs/graph/graph-lint.py --plan=<prompt>`, one argv value) on
   the actual prompt and injects a one-line pointer at the kernel plus the
-  router's suggested node set, with the prompt's echo removed — the same
+  router's suggested node set, each id beside its node file, with the
+  prompt's echo removed — the same
   text as the full mode of the cross-tool `route-hook.py`, using Prime
   Agent's native extension API instead of a shell hook.
 - It keeps no state, so every routed prompt gets that full text. The
@@ -140,9 +141,12 @@ kernel; it maps the kernel's discipline onto Prime Agent's primitives:
   `await rlm(brief + task, name=role, model=...)`; fan out MULTIPLE
   single-scoped children in parallel (not one broad worker); collect handbacks
   via `agent_message`; supervise with `agent_observe`.
-- **Model policy** → Sonnet-class (floor `claude-sonnet-4-6`) for read-only
-  scouting, Opus-class for authoring — straight from each roster brief's
-  `model:` field.
+- **Model policy** → each roster brief's `model:` field gives the class:
+  Sonnet-class (floor `claude-sonnet-4-6`) for read-only scouting, Opus-class
+  for authoring. The overlay maps a class to a version and carries no version
+  table. Opus-class work runs on Opus 5.5, and on Opus 4.6 only for extremely
+  light authoring that Sonnet should not be trusted with. `grow`, `harvest`
+  and `graft` name each phase's class in their own nodes.
 - **Checks** → run `bash tests/run.sh` and the linters directly in the kernel;
   keep evidence in variables.
 - **Close-out** → canonize into `docs/graph/`; author any reusable TOOL or
@@ -221,8 +225,10 @@ Creates (copies by default; `--symlink` opts into live seed links):
 - `.prime/agent/skills/<name>/SKILL.md` → `skills/<name>/SKILL.md`
 - `.prime/agent/prompts/*.md` → generated, one per protocol node with
   `command: true`
-- `.prime/agent/extensions/status-extension.ts` → copied (injects
-  `status-register.py --summary` on the first prompt of the session)
+- `.prime/agent/extensions/status-extension.ts` → copied (on the first
+  prompt of the session, injects `status-register.py --summary` and the line
+  `docs/graph/code-anchor.py --compare` prints, or the not-checked line when
+  the comparison did not run within 5 s)
 - `.prime/agent/extensions/route-extension.ts` → copied (the progressive-
   discovery pointer)
 - `.prime/agent/settings.json` → copied (so the project can edit it)
