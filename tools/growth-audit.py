@@ -550,10 +550,11 @@ def is_substantive(plant, rel, templates):
 
 def collection_leaves(plant, name):
     """Files under a collection, split into the ones that carry knowledge and
-    the `.unfilled.md` markers that record a deliberate blank. A delivered
-    blank form (name starts with `_` or ends in `.template.md`, the same
-    exclusion `graft-audit.py`'s scaffold audit applies) is byte-identical to
-    its seed template by design and is not a leaf a collection is judged by."""
+    the `.unfilled.md` markers that record a deliberate blank. Any `_`-named
+    or `*.template.md` file is outside the collection's judgment: the
+    seed-wide name convention for a delivered blank form, the same exclusion
+    `graft-audit.py`'s scaffold audit applies. The filter reads names only,
+    never content."""
     if name.endswith("/"):
         d = plant / GRAPH_HOME / name.rstrip("/")
         files = sorted(p for p in d.rglob("*.md")) if d.is_dir() else []
