@@ -1338,16 +1338,27 @@ def main() -> int:
             print(f"  ! {note}")
         if notices:
             print()
+        # Each entry names its node's file beside the id, relative to the plant
+        # root, so no session searches for a file the router already found
+        # (SPEC-0003 PLAN_ENTRY_NAMES_THE_NODE_FILE). The id stays the first token.
+        plant = HERE.parent.parent
+
+        def where(n) -> str:
+            try:
+                return n.path.relative_to(plant).as_posix()
+            except ValueError:
+                return n.path.as_posix()
+
         print(f"LOAD ({len(loaded)} nodes, ~{total} tokens):")
         for n, how in sorted(loaded, key=lambda x: x[0].id):
-            line = f"  {n.id:<28} {n.meta.get('title','')}"
+            line = f"  {n.id:<28} {where(n)}  {n.meta.get('title','')}"
             if how.startswith(("promoted on", "inferred from", "composed by")):
                 line += f"   <- {how}"
             print(line)
         if not_loaded:
             print("\nNOT LOADED (with the reason; cross only if the task requires it):")
             for n, reason in sorted(not_loaded, key=lambda x: x[0].id):
-                print(f"  {n.id:<28} {reason}")
+                print(f"  {n.id:<28} {where(n)}  {reason}")
         return 0
 
     if args.graph:

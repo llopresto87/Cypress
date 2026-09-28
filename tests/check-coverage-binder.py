@@ -48,6 +48,7 @@ COVERED = {
     "check_shell_floor_claim_matches_the_shebang",
     "check_frontmatter_is_portable_yaml",
     "check_host_tiers",
+    "check_run_sh_shell_contract",
     "check_hook_text_restates_no_kernel_rule",
     "check_agent_spawn_grants",
     "check_hook_reach_phrases",

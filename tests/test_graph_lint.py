@@ -1149,7 +1149,7 @@ class DescentTests(unittest.TestCase):
     def test_plan_leaves_the_unnamed_sibling_with_a_reason(self):
         out = self.plan("in the orders service, fix the mapping")
         self.assertRegex(
-            out, r"expertise\.serilog\s+composed by expertise\.dotnet; "
+            out, r"expertise\.serilog\s+\S+\s+composed by expertise\.dotnet; "
                  r"no task term specific to it")
 
     def test_plan_descends_from_required_node(self):
@@ -1172,7 +1172,7 @@ class DescentTests(unittest.TestCase):
             load_when=["structured logging, log sink", "dotnet logging"])
         out = self.plan("in the orders service, fix the dotnet mapping", nodes)
         self.assertNotIn("composed by expertise.dotnet on \"dotnet\"", out)
-        self.assertRegex(out, r"expertise\.serilog\s+composed by .*no task term")
+        self.assertRegex(out, r"expertise\.serilog\s+\S+\s+composed by .*no task term")
 
     def test_plan_descent_never_folds(self):
         """Asserts SPEC-0005 DESCENT_TEST_NOW_SEEDS_THE_CHILD.
@@ -1201,7 +1201,7 @@ class DescentTests(unittest.TestCase):
             "in the orders service, fix the mapping, migrating the runner",
             nodes)
         self.assertIn('composed by expertise.dotnet on "mapping"', out)
-        self.assertRegex(out, r"expertise\.ef-migrations\s+composed by .*no task term")
+        self.assertRegex(out, r"expertise\.ef-migrations\s+\S+\s+composed by .*no task term")
 
     def test_plan_descends_two_levels_each_on_own_term(self):
         """Asserts SPEC-0005 DESCENT_TEST_NOW_SEEDS_THE_CHILD.
@@ -1281,7 +1281,7 @@ class DescentTests(unittest.TestCase):
         self.assertTrue(line.rstrip().endswith(f'<- promoted on "{tfm}"'),
                         f"dotnet-10 must load promoted on the whole TFM token "
                         f"{tfm!r} the task wrote:\n  {line}")
-        self.assertRegex(out, r"expertise\.dotnet-8\s+composed by .*no task term")
+        self.assertRegex(out, r"expertise\.dotnet-8\s+\S+\s+composed by .*no task term")
 
     def test_plan_reports_not_loaded_with_reason(self):
         """Peers and un-composed children share one NOT LOADED section, each
@@ -1296,8 +1296,8 @@ class DescentTests(unittest.TestCase):
             load_when=["billing service"])
         out = self.plan("in the orders service, fix the mapping", nodes)
         self.assertIn("NOT LOADED (with the reason", out)
-        self.assertRegex(out, r"subsystem\.billing\s+peer of subsystem\.orders")
-        self.assertRegex(out, r"expertise\.serilog\s+composed by .*no task term")
+        self.assertRegex(out, r"subsystem\.billing\s+\S+\s+peer of subsystem\.orders")
+        self.assertRegex(out, r"expertise\.serilog\s+\S+\s+composed by .*no task term")
 
     def test_plan_reports_a_top_scoring_seed_as_an_entry(self):
         """A seed is a seed however it is reached. The closure stack is LIFO
@@ -2683,6 +2683,105 @@ class FrontmatterPortableTests(unittest.TestCase):
         """The same clause reworded to an ASCII dash is on the readers' overlap."""
         r = run_lint(self._graph_with_title("title: subsystem.alpha node - the boundary"))
         self.assertEqual(r.returncode, 0, f"reworded title must pass:\n{r.stdout}\n{r.stderr}")
+
+
+class PlanEntryPathTests(unittest.TestCase):
+    """SPEC-0003 PLAN_ENTRY_NAMES_THE_NODE_FILE (7.32.0, decision 9): `--plan`
+    prints each node's file, relative to the plant root, beside its id, so no
+    session spends turns finding the file the router already found.
+
+    The fixture is a plant, not a bare graph: the tool sits at
+    `<plant>/docs/graph/graph-lint.py` and runs from `<plant>`, as the contract
+    says. One machinery node lives at `docs/graph/agents/04-tester.md`, a path
+    the id `agent.tester` does not spell, so a path rebuilt from the id as
+    `docs/graph/nodes/<id>.md` fails here. Measured against the pre-7.32.0
+    tool, this fixture gives three LOAD lines and one NOT LOADED line, each
+    `  <id> <text>` with no path."""
+
+    TASK = "write widget ledger tests"
+
+    def setUp(self):
+        self.assertTrue(GRAPH_LINT.exists(), f"missing tool: {GRAPH_LINT}")
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def _plant(self) -> tuple:
+        nodes = {
+            "root": node_md("root", "root", load_when=["widget ledger"]),
+            "subsystem.alpha": node_md("subsystem.alpha", "subsystem", requires=["root"],
+                                       peers=["subsystem.beta"], load_when=["widget ledger"]),
+            "subsystem.beta": node_md("subsystem.beta", "subsystem", requires=["root"],
+                                      load_when=["sprocket gearing"]),
+        }
+        built = build_graph(self.tmp, nodes)
+        plant = self.tmp / "plant"
+        (plant / "docs").mkdir(parents=True)
+        graph = plant / "docs" / "graph"
+        shutil.move(str(built), str(graph))
+        (graph / "agents").mkdir()
+        (graph / "agents" / "04-tester.md").write_text(
+            node_md("agent.tester", "agent", requires=["root"],
+                    load_when=["widget ledger tests"]), encoding="utf-8")
+        with (graph / "index.md").open("a", encoding="utf-8") as f:
+            f.write("- agent.tester\n")
+        files = {
+            "root": "docs/graph/nodes/root.md",
+            "subsystem.alpha": "docs/graph/nodes/subsystem.alpha.md",
+            "subsystem.beta": "docs/graph/nodes/subsystem.beta.md",
+            "agent.tester": "docs/graph/agents/04-tester.md",
+        }
+        titles = {nid: f"{nid} node" for nid in files}
+        return plant, files, titles
+
+    def test_plan_entry_names_the_node_file(self):
+        """PLAN_ENTRY_NAMES_THE_NODE_FILE: every entry line under `LOAD (` and
+        `NOT LOADED (` is two spaces, the id, whitespace, the node's file path
+        relative to the plant root, whitespace, then the text it carried before
+        (a LOAD line's title, a NOT LOADED line's reason). The id stays the
+        first token, so a parser that reads only the id is unaffected."""
+        plant, files, titles = self._plant()
+        for rel in files.values():
+            self.assertTrue((plant / rel).is_file(), f"harness: fixture file {rel} is missing")
+        r = subprocess.run([sys.executable, "docs/graph/graph-lint.py", "--plan", self.TASK],
+                           cwd=str(plant), capture_output=True, text=True, timeout=120)
+        out = r.stdout
+        self.assertEqual(r.returncode, 0, f"--plan exited {r.returncode}:\n{out}\n{r.stderr}")
+        entries, section = [], None
+        for line in out.splitlines():
+            if line.startswith("LOAD ("):
+                section = "LOAD"
+                continue
+            if line.startswith("NOT LOADED ("):
+                section = "NOT LOADED"
+                continue
+            if section and line.startswith("  ") and not line.startswith("  ! "):
+                entries.append((section, line))
+        load_ids = [l.split()[0] for s, l in entries if s == "LOAD"]
+        nl_ids = [l.split()[0] for s, l in entries if s == "NOT LOADED"]
+        self.assertEqual(sorted(load_ids), ["agent.tester", "root", "subsystem.alpha"],
+                         f"harness: the fixture no longer routes as measured. Output:\n{out}")
+        self.assertEqual(nl_ids, ["subsystem.beta"],
+                         f"harness: the fixture no longer routes as measured. Output:\n{out}")
+        problems = []
+        for section, line in entries:
+            m = re.match(r"^  (\S+)\s+(\S+)\s+(\S.*)$", line)
+            if not m:
+                problems.append(f"{section}: {line!r} is not `  <id>  <path>  <text>`")
+                continue
+            nid, path, rest = m.groups()
+            if path != files.get(nid):
+                problems.append(f"{section}: {line!r}: second token {path!r}, expected the "
+                                f"node's file {files.get(nid)!r}")
+                continue
+            if section == "LOAD" and not rest.startswith(titles[nid]):
+                problems.append(f"{section}: {line!r}: the text after the path is not the "
+                                f"title {titles[nid]!r} the line carried before")
+            if section == "NOT LOADED" and not rest.startswith("peer of subsystem.alpha"):
+                problems.append(f"{section}: {line!r}: the text after the path is not the "
+                                f"reason the line carried before")
+        self.assertFalse(problems, "PLAN_ENTRY_NAMES_THE_NODE_FILE:\n  "
+                         + "\n  ".join(problems) + f"\nOutput:\n{out}")
 
 
 if __name__ == "__main__":
