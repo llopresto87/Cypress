@@ -12,6 +12,7 @@ owns:
   - canonize.status-review
   - canonize.deviation-capture
   - canonize.why-record
+  - canonize.session-record
 requires:
   - skill.toolcraft
 peers:
@@ -34,8 +35,9 @@ load_when:
   - "we departed from the standard, record the deviation and why"
   - "small fix with no spec, where does the why get written down"
   - "handback overflow notes, read them at close-out"
+  - "file the session record, which harness memory entries can be retired"
 prevents: Knowledge that dies with the session that produced it, and durable tools reinvented as throwaway scripts because nothing cataloged the last one.
-est_tokens: 3368
+est_tokens: 3823
 command: true
 ---
 
@@ -58,8 +60,10 @@ the same bootstrap and the same lint run would be pure coordination
 waste. The librarian owns the graph's **fact-bearing surfaces** —
 nodes, wiki pages, the tool catalog — and one-home-per-fact; the
 session never edits those. The session-owned operational artifacts
-under the same root — grill.md and changelog.md — are the deliberate
-exception: the session writes them directly, and the verification
+under the same root — grill.md, changelog.md and the session records in
+`plans/sessions/` — are the deliberate exception: the session writes
+them directly, the librarian's one write to a session record is the
+status lines it appends, and the verification
 runbook is written by the tester worker that ran the gates
 (`docs/graph/protocols/verify.md` and
 `docs/graph/agents/04-tester.md` agree on that). A delivery that
@@ -88,6 +92,32 @@ green lie.
 - provenance for a claim (the source/path/symbol that grounds it);
 - a `load_when:` trigger that should have matched this task and didn't;
 - a new library idiom or pitfall learned while using a dependency.
+
+**Session record** (`canonize.session-record`): what the orchestrating
+session itself learned, which no handback carries. The record and its
+shape belong to `method.stewardship-posture`
+(`stewardship-posture.session-record`). The brief names the path of every
+record the task wrote or appended to since the last close-out; it
+carries the paths, never the content. The librarian walks every item
+that has no line in the record's "Canonize status" and gives each exactly
+one outcome. An owner rule about how agents work with this owner goes to
+`crosscut.operator` (`docs/graph/nodes/_operator.template.md`); an owner
+rule about the project goes to the node that owns its topic, and a
+procedure to a project skill. A corrected assumption is fixed in place,
+in the node or leaf that asserted the wrong thing. Resume state is not
+placed ("resume state; stays in the record"). Anything else is placed
+where it belongs, or not placed with the reason. Per item the librarian
+appends one line to "Canonize status",
+`- <section> <item> → <node id and fact key, or file>` or
+`- <section> <item> → not placed: <reason>`, then one line
+`- retirable harness entries: <names>, awaiting the owner's confirmation by name`
+(or `none`). It never rewrites an item, never touches harness memory,
+which sits outside the plant, and places nothing that carries a secret,
+production data or speculation. Retiring a harness entry stays the
+owner's decision, taken by name (kernel §4). The record is a source of
+knowledge candidates, so it adds no sixth duty to this close-out. A
+T2/T3 task that wrote no record is handed back as the finding "no
+session record".
 
 **Tool candidates** (§3.8, `docs/graph/skills/toolcraft.md` owns the doctrine) —
 catalog any durable tool the work produced: recurs across sessions,
@@ -172,10 +202,12 @@ agnosticism gate), throwaway prototypes or genuine one-offs.
 
 ## The flow (one spawn)
 
-1. **Assemble candidates** from the finished work and the workers'
-   handback payloads: facts with evidence, tools with path + entry point
-   + invocation + covering test, every decision that departed from a
-   graph-owned standard, each with the standard it departs from, and —
+1. **Assemble candidates** from the finished work, the session's
+   records in `docs/graph/plans/sessions/` (named by path), and the
+   workers' handback payloads: facts with evidence, tools with path +
+   entry point + invocation + covering test, every decision that
+   departed from a graph-owned standard, each with the standard it
+   departs from, and —
    on the T2 contained lane — the why-record's defect, cause, fix, and
    pinning test. Include every overflow note a worker wrote when its
    handback did not fit, at
@@ -219,8 +251,11 @@ agnosticism gate), throwaway prototypes or genuine one-offs.
    touched, tool cards written, status items moved (id → new status +
    evidence), and deviation nodes written — or an explicit "nothing of
    interest, because …" / "no durable tool, because …" / "no status
-   moved" / "no deviation". It also hands back the lint results and
-   each overflow note it read with whether anything in it was persisted.
+   moved" / "no deviation". For each session record it hands back the
+   items placed (item → home), the items not placed (item → reason), and
+   the harness entries that can be retired; with no record, it hands back
+   "no session record". It also hands back the lint results and each
+   overflow note it read with whether anything in it was persisted.
 
 ## Fail-closed doctrine
 

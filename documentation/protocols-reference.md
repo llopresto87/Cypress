@@ -35,7 +35,7 @@ All 17 protocols are tier 2 nodes with `origin: seed`, `kind: protocol`.
 | verify-new-gates | `protocol.verify-new-gates` | `verify.status-evidence`, `verify.tool-faults` | — | verify, verify-disagreement | 877 |
 | verify-disagreement | `protocol.verify-disagreement` | `verify.characterize`, `verify.measure-integrity` | — | verify, verify-new-gates | 1840 |
 | recover | `protocol.recover` | `recover.failure-classes`, `recover.three-attempt-boundary` | — | deliver, grill | 1958 |
-| canonize | `protocol.canonize` | `rule.canonize`, `canonize.close-out-flow`, `canonize.status-review`, `canonize.deviation-capture`, `canonize.why-record` | `skill.toolcraft` | agent.tool-smith, deliver, harvest, skill.adr-writer | 3368 |
+| canonize | `protocol.canonize` | `rule.canonize`, `canonize.close-out-flow`, `canonize.status-review`, `canonize.deviation-capture`, `canonize.why-record`, `canonize.session-record` | `skill.toolcraft` | agent.tool-smith, deliver, harvest, skill.adr-writer | 3823 |
 | deliver | `protocol.deliver` | `rule.deliver`, `deliver.forms`, `deliver.attribution-assertion`, `deliver.numbered-decisions` | — | canonize, recover | 2681 |
 | ingest-library | `protocol.ingest-library` | `ingest-library.flow`, `ingest-library.refresh`, `ingest-library.corpus-first` | — | harvest, skill.library-wiki, skill.research-and-ingest | 1748 |
 | from-scratch | `protocol.from-scratch` | `from-scratch.phases`, `from-scratch.entry` | — | brainstorm, grill, ingest-library, canonize, initialize | 2698 |
@@ -939,7 +939,7 @@ not from zero.
 - **id:** `protocol.canonize`, tier 2
 - **owns:** `rule.canonize`, `canonize.close-out-flow`,
   `canonize.status-review`, `canonize.deviation-capture`,
-  `canonize.why-record`
+  `canonize.why-record`, `canonize.session-record`
 - **requires:** `skill.toolcraft`
 - **peers:** `agent.tool-smith`, `protocol.deliver`, `protocol.harvest`,
   `skill.adr-writer`
@@ -948,7 +948,8 @@ not from zero.
   "catalog a tool or skill the work produced"; "status review at close-out:
   did each register item move this session"; "we departed from the standard,
   record the deviation and why"; "small fix with no spec, where does the why
-  get written down"; "handback overflow notes, read them at close-out"
+  get written down"; "handback overflow notes, read them at close-out";
+  "file the session record, which harness memory entries can be retired"
 
 ### What it does
 
