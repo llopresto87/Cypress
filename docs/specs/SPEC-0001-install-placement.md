@@ -24,7 +24,7 @@ status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tes
 - **Date:** 2026-09-13
 - **Last reviewed:** 2026-09-28
 - **Related grill section:** docs/plans/grill-7.15.0-remediation.md §3, §5
-- **Related ADRs:** adr-0003-enforcement-layering-honesty, adr-0009-host-support-tiers, adr-0013-harness-memory-is-not-a-home, adr-0014-graft-reconciles-every-graph-engine, adr-0016-stamp-carries-keys-it-does-not-own, adr-0017-pre-growth-pointers-leave-the-kernel, adr-0018-code-fact-freshness-anchor (the last three pending, §4)
+- **Related ADRs:** adr-0003-enforcement-layering-honesty, adr-0009-host-support-tiers, adr-0013-harness-memory-is-not-a-home, adr-0014-graft-reconciles-every-graph-engine, adr-0016-stamp-carries-keys-it-does-not-own, adr-0017-pre-growth-pointers-leave-the-kernel, adr-0018-code-fact-freshness-anchor (the last three proposed)
 - **Supersedes:** —
 - **Superseded by:** —
 
@@ -55,7 +55,14 @@ add-if-missing, and the audit that says whether each engine is current.
     plant's placed engines (`graph-lint.py`, `spec-lint.py`, `grill-lint.py`),
     and the engine-currency check of `tools/graft-audit.py --engine`
     (adr-0014)
+  - the list of re-created nodes written to `.cypress/recreated-nodes.txt`
+  - the keys of `.cypress/seed.json` that the installer does not own
+    (adr-0016)
+  - the placement of `docs/graph/code-anchor.py` (adr-0018)
 - **Out of scope:**
+  - the anchor file `docs/graph/code-anchor.py` writes: SPEC-0003 owns it,
+    because the session-start hooks read it and canonize writes it; the
+    installer never writes it
   - what the placed files MEAN (the graph schema, the kernel's content)
   - `grow`, `graft` and `harvest`, which are user-sovereign flows over an
     already-installed plant, apart from the engine reconciliation above
@@ -366,27 +373,7 @@ whose record carries github-copilot, because checking writes nothing.
 - **And:** `tools/graft-audit.py` with the three `--engine` pairs reports
   every engine current
 
-### Pending amendments, 7.32.0 (not yet contracts)
-
-This block holds the contracts the 7.32.0 plan adds to this spec. None is a
-contract yet. Each heading below becomes a `### Contract:` or `### Failure:`
-heading, moved into §4 or §7, in the commit that lands its RED test, which is
-the moment `verify.status-evidence` names for a contract going live. Until then
-`spec-lint.py` counts none of them, so the live coverage figure stays what the
-tests support. The plan of record is `docs/plans/grill-7.32.0-harvest.md`; its
-§9 names the RED increment that promotes each one. The decisions behind them
-are [ADR-0016](../decisions/adr-0016-stamp-carries-keys-it-does-not-own.md),
-[ADR-0017](../decisions/adr-0017-pre-growth-pointers-leave-the-kernel.md) and
-[ADR-0018](../decisions/adr-0018-code-fact-freshness-anchor.md).
-
-On promotion, §2 **In scope** gains three lines: the list of re-created nodes
-written to `.cypress/recreated-nodes.txt`; the keys of `.cypress/seed.json`
-that the installer does not own; and the placement of
-`docs/graph/code-anchor.py`. The anchor file that tool writes is out of scope
-here. SPEC-0003 owns it, because the session-start hooks read it and canonize
-writes it; the installer never writes it.
-
-#### Pending contract: PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION
+### Contract: PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION
 - **Given:** a target whose `CLAUDE.md` (or `AGENTS.md`) is byte-identical to
   `core/AGENTS.md` at an earlier commit of the seed checkout the installer runs
   from, and differs from the current `core/AGENTS.md`
@@ -400,7 +387,7 @@ writes it; the installer never writes it.
 - **And:** a kernel body that matches no seed kernel in that history is filed
   exactly as today
 
-#### Pending contract: RECREATED_LIST_IS_COMPLETE
+### Contract: RECREATED_LIST_IS_COMPLETE
 - **Given:** an installed plant whose `.cypress/seed.json` predates the run and
   from which twelve seed-owned graph nodes were deleted
 - **When:** `install.sh claude-code --project-dir <target>` runs again
@@ -411,7 +398,7 @@ writes it; the installer never writes it.
 - **And:** a later run that re-creates nothing rewrites the file with the header
   line alone, so the file always describes the run that last wrote the stamp
 
-#### Pending contract: UNKNOWN_STAMP_KEYS_SURVIVE
+### Contract: UNKNOWN_STAMP_KEYS_SURVIVE
 - **Given:** a `.cypress/seed.json` that holds the installer's own keys plus two
   keys the installer does not own, one a string and one an object
 - **When:** `install.sh all --project-dir <target>` runs with no flag
@@ -420,7 +407,7 @@ writes it; the installer never writes it.
 - **And:** the installer's own keys follow their existing rules
   (`DECISIONS_SURVIVE_SILENCE`, `ADAPTERS_ACCUMULATE`)
 
-#### Pending contract: PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX
+### Contract: PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX
 - **Given:** a fresh target directory
 - **When:** `install.sh claude-code --project-dir <target>` runs
 - **Then:** `docs/graph/index.md` holds one pre-growth block, delimited as §6
@@ -430,7 +417,7 @@ writes it; the installer never writes it.
 - **And:** a re-install over a plant whose `index.md` has no such block leaves
   that `index.md` byte-identical, because the index is plant-owned
 
-#### Pending contract: CODE_ANCHOR_TOOL_IS_PLACED
+### Contract: CODE_ANCHOR_TOOL_IS_PLACED
 - **Given:** a fresh target directory
 - **When:** `install.sh all --project-dir <target>` runs
 - **Then:** `docs/graph/code-anchor.py` exists and is byte-identical to the
@@ -439,46 +426,6 @@ writes it; the installer never writes it.
   anchor
 - **And:** a re-install over an older copy of the tool replaces it with a
   backup, as it does `docs/graph/status-register.py`
-
-#### Pending failure: SEED_HISTORY_UNAVAILABLE
-- **Contracts:** PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION
-- **Trigger:** the seed root is not a Git work tree, or `git` is not on `PATH`
-- **Response:** the kernel is compared with the current `core/AGENTS.md` only,
-  as before 7.32.0, and the log says so in one line
-- **Side effects:** a pristine older kernel body is filed for migration: work
-  for `docs-librarian` that turns out to be empty, never a lost instruction
-- **Recovery:** none needed; the librarian strikes the row
-
-#### Pending failure: STAMP_NOT_AN_OBJECT
-- **Contracts:** UNKNOWN_STAMP_KEYS_SURVIVE
-- **Trigger:** `.cypress/seed.json` exists and does not parse as one JSON object
-- **Response:** the installer moves it aside to a `.bak-<ts>` sibling, writes a
-  stamp from its own keys as before 7.32.0, and prints one warning that names
-  the backup and says the keys it does not own could not be carried
-- **Side effects:** those keys are in the backup only
-- **Recovery:** the owner copies them back by hand
-
-#### Pending data shapes (§6 on promotion)
-
-The stamp gains one rule, not one key: any key the installer does not own is
-carried forward unchanged.
-
-```yaml
-# .cypress/seed.json, additions to the shape above
-additional_keys:      { carried: unchanged, order: kept, after: installer keys }
-```
-
-```text
-# .cypress/recreated-nodes.txt: written by every run that writes the stamp
-# install.sh <version> <UTC rfc3339>: seed-owned graph nodes re-created by this run
-docs/graph/protocols/grill.md
-docs/graph/skills/humanizer/SKILL.md
-```
-
-The pre-growth block in the placeholder `docs/graph/index.md` opens with the
-line `<!-- pre-growth: grow removes this block -->` and closes with the line
-`<!-- /pre-growth -->`. `protocol.grow` removes it in the phase that sets
-`grown: true`.
 
 ## 5. Non-functional requirements
 
@@ -510,6 +457,26 @@ legal_corpus:         { enum: [yes, no, undecided] }
 legal_jurisdiction:   { type: string }            # two-letter code, or "undecided"
 agent_projections:    { type: array, derived_from: tools }
 ```
+
+Beyond the keys above, the stamp has one rule: any key the installer does not
+own is carried forward unchanged.
+
+```yaml
+# .cypress/seed.json, additions to the shape above
+additional_keys:      { carried: unchanged, order: kept, after: installer keys }
+```
+
+```text
+# .cypress/recreated-nodes.txt: written by every run that writes the stamp
+# install.sh <version> <UTC rfc3339>: seed-owned graph nodes re-created by this run
+docs/graph/protocols/grill.md
+docs/graph/skills/humanizer/SKILL.md
+```
+
+The pre-growth block in the placeholder `docs/graph/index.md` opens with the
+line `<!-- pre-growth: grow removes this block -->` and closes with the line
+`<!-- /pre-growth -->`. `protocol.grow` removes it in the phase that sets
+`grown: true`.
 
 ## 7. Failure modes
 
@@ -560,6 +527,25 @@ agent_projections:    { type: array, derived_from: tools }
 - **Recovery:** run `tools/graft-graph-engine.py` over the named engine, or
   record a superset as KEEP-PLANT
 
+### Failure: SEED_HISTORY_UNAVAILABLE
+- **Contracts:** PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION
+- **Trigger:** the seed root is not a Git work tree, or `git` is not on `PATH`
+- **Response:** the kernel is compared with the current `core/AGENTS.md` only,
+  as before 7.32.0, and the log says so in one line
+- **Side effects:** a pristine older kernel body is filed for migration: work
+  for `docs-librarian` that turns out to be empty, never a lost instruction
+- **Recovery:** none needed; the librarian strikes the row
+
+### Failure: STAMP_NOT_AN_OBJECT
+- **Contracts:** UNKNOWN_STAMP_KEYS_SURVIVE
+- **Trigger:** `.cypress/seed.json` parses as JSON but its top level is not an
+  object (an array, a string, a number, `true`, `false` or `null`)
+- **Response:** the installer moves it aside to a `.bak-<ts>` sibling, writes a
+  stamp from its own keys as before 7.32.0, and prints one warning that names
+  the backup and says the keys it does not own could not be carried
+- **Side effects:** those keys are in the backup only
+- **Recovery:** the owner copies them back by hand
+
 ## 8. Examples
 
 ```
@@ -598,6 +584,17 @@ $ echo $?
       RECORD_AGREES_WITH_DISK, CORPUS_IS_WHOLE_OR_ABSENT
 - [x] AC-8: a bad target is refused before any write — maps to
       PREFLIGHT_REFUSES_BEFORE_WRITING
+- [ ] AC-9: an upgrade over a pristine earlier seed kernel files no migration
+      work, and a kernel with a plant line is still filed — maps to
+      PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION
+- [ ] AC-10: the graft's re-created-nodes evidence is complete — maps to
+      RECREATED_LIST_IS_COMPLETE
+- [ ] AC-11: a stamp annotation survives every install — maps to
+      UNKNOWN_STAMP_KEYS_SURVIVE
+- [ ] AC-12: a grown plant's kernel carries no pre-growth pointer — maps to
+      PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX
+- [ ] AC-13: every plant has the anchor tool the hooks call, and no install
+      writes an anchor — maps to CODE_ANCHOR_TOOL_IS_PLACED
 
 ## 10. Test mapping
 
@@ -642,6 +639,19 @@ $ echo $?
 | ENGINE_AUDIT_CHECKS_EVERY_PAIR | X389 case_engine_audit_malformed_first_pair_fails: a malformed pair then a current one exits non-zero and says `--engine wants <plant-file>:<seed-file>` | tests/test-graft-tools.sh | unit | green |
 | EXISTING_PLANT_RECEIVES_CURRENT_ENGINES | S10 case_engine_upgrade: re-install leaves the older `grill-lint.py`; the reconcile of the three engines exits 0; `grill-lint.py` equals the seed's with one backup; `--waves` prints `waves:`; the audit reports every engine current | tests/test-plant-state.sh | integration | green |
 | ENGINE_LEFT_STALE_BY_GRAFT | X387 case_engine_audit_one_line_per_pair: the stale pair's `graph engine STALE` line names `grill-lint.py`, beside the current pair's line | tests/test-graft-tools.sh | unit | green |
+| PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION | K7 case_k7_prior_kernel_fast_forwards: a kernel byte-identical to `core/AGENTS.md` at an earlier commit of a temp `git clone --local` of the seed is replaced with one backup holding it, no adopted-instructions row for that backup, no `OVERWRITTEN` line, a log line naming an earlier seed kernel; a second run files no row | tests/test-install-kernel-modes.sh | integration | red |
+| PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION | K7 case_k7_sweep_skips_prior_kernel_backup: a `CLAUDE.md.bak-*` holding an earlier seed kernel beside an installed plant gets no row from the next run's orphan sweep | tests/test-install-kernel-modes.sh | integration | red |
+| PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION | K7 case_k7_plant_line_is_still_filed: an earlier seed kernel with one plant line added is filed and announced `OVERWRITTEN`; guard | tests/test-install-kernel-modes.sh | integration | green |
+| SEED_HISTORY_UNAVAILABLE | K7 case_k7_no_history_falls_back: from a seed copy with no `.git`, an earlier seed kernel is filed for migration and exactly one log line names the missing history | tests/test-install-kernel-modes.sh | integration | red |
+| RECREATED_LIST_IS_COMPLETE | D5 case_d5_recreated_list: twelve deleted protocol nodes re-created; `.cypress/recreated-nodes.txt` holds the §6 header and all twelve paths, sorted and unique; the console prints ten and names the file | tests/test-install-adoption.sh | integration | red |
+| RECREATED_LIST_IS_COMPLETE | D5 case_d5_clean_rewrite: after a run that re-created one node, a run that re-creates nothing rewrites the file with the header line alone | tests/test-install-adoption.sh | integration | red |
+| UNKNOWN_STAMP_KEYS_SURVIVE | S11 case_stamp_keys: a string key and an object key the installer does not own survive `install.sh all` JSON-equal, in their original order, after the installer's keys; `legal_corpus` and `tools` keep their own rules | tests/test-plant-state.sh | integration | red |
+| STAMP_NOT_AN_OBJECT | S11 case_stamp_keys, second arm: a stamp that is a JSON array is moved to a `seed.json.bak-*`, a stamp is written from the installer's keys, one line names the backup. The arm runs after the first, so its red is not observed until the first arm is green | tests/test-plant-state.sh | integration | red |
+| PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX | E5 case_pre_growth_block_in_index: a fresh `install.sh claude-code` gives `docs/graph/index.md` one pre-growth block, delimited as §6 gives, naming `EXPERT_SEED_INSTALL_PROMPT.md` and `protocol.initialize` | tests/test-full-install.sh | integration | red |
+| PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX | E5 case_pre_growth_kernel_names_neither: the placed `CLAUDE.md` names neither `EXPERT_SEED_INSTALL_PROMPT.md` nor `protocol.initialize` | tests/test-full-install.sh | integration | red |
+| PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX | E5 case_pre_growth_index_is_plant_owned: a re-install over an index with no pre-growth block leaves it byte-identical; guard | tests/test-full-install.sh | integration | green |
+| CODE_ANCHOR_TOOL_IS_PLACED | E6 case_code_anchor_tool_placed: a fresh `install.sh all` places `docs/graph/code-anchor.py` byte-identical to `tools/code-anchor.py` and writes no `.cypress/anchor.json` | tests/test-full-install.sh | integration | red |
+| CODE_ANCHOR_TOOL_IS_PLACED | E6 case_code_anchor_tool_fast_forwards: a re-install over an older `docs/graph/code-anchor.py` leaves one backup holding it and the seed's tool in place | tests/test-full-install.sh | integration | red |
 
 Coverage note, so the table is not read as more than it is.
 
@@ -653,6 +663,16 @@ ignored, X386 by an unknown engine name given no preserve set, X388 by a later
 malformed pair skipped. EXISTING_PLANT_RECEIVES_CURRENT_ENGINES is held by S10
 `case_engine_upgrade` in `tests/test-plant-state.sh`, one plant carried from
 re-install through graft.
+
+**The 7.32.0 rows.** K7, D5, S11, E5 and E6 are the RED of the five
+contracts and two failures promoted from the 7.32.0 pending block. K7's four
+cases run in one collecting block at the end of
+`tests/test-install-kernel-modes.sh`, so each shows its own result; the other
+suites run each case as its own scenario. A row marked guard passes on the
+unmodified installer. K7's seed is a temp clone of the real seed; when the
+checkout is shallow and holds no earlier kernel, the clone gains an earlier
+body and the current one as two commits, so the case still has a history to
+walk.
 
 **M1 shares a label with a different invariant.** `tests/test-install-placement.sh`
 carries cases headed `M1 completeness` and exits `M1 VIOLATED`, but what they
@@ -785,3 +805,20 @@ only version surface it has, and it moves with each entry here.
   practice, which wrote contracts live ahead of their RED and carried the
   over-budget coverage line as expected-red at each tip. No existing contract
   changed; the status stays `back-written`.
+- 2026-09-28: 7.32.0 RED. The pending block of §4 is gone: its five
+  contracts are now `### Contract:` headings in §4
+  (PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION, RECREATED_LIST_IS_COMPLETE,
+  UNKNOWN_STAMP_KEYS_SURVIVE, PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX,
+  CODE_ANCHOR_TOOL_IS_PLACED), its two failures are in §7
+  (SEED_HISTORY_UNAVAILABLE, STAMP_NOT_AN_OBJECT), its shapes are in §6, and §2
+  gains the three scope lines it named. §10 binds each to its RED case: K7,
+  D5, S11, E5 and E6, `red` except the two guards. The contract text did not
+  change in the move. No installer behaviour changed; the status stays
+  `back-written`.
+- 2026-09-28: 7.32.0 rulings on the RED, no installer behaviour changed. By
+  the owner's decision, STAMP_NOT_AN_OBJECT's trigger narrows to a stamp that
+  parses as JSON with a top level that is not an object. An empty stamp, a
+  stamp that is not JSON, and one whose owned keys have the wrong type stay
+  refused before any write by the installer's preflight (S7 unchanged).
+  §9 gains AC-9 to AC-13 for the five contracts that left the pending block.
+  The status stays `back-written`.
