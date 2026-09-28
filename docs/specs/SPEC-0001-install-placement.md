@@ -24,7 +24,7 @@ status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tes
 - **Date:** 2026-09-13
 - **Last reviewed:** 2026-09-28
 - **Related grill section:** docs/plans/grill-7.15.0-remediation.md §3, §5
-- **Related ADRs:** adr-0003-enforcement-layering-honesty, adr-0009-host-support-tiers, adr-0013-harness-memory-is-not-a-home, adr-0014-graft-reconciles-every-graph-engine
+- **Related ADRs:** adr-0003-enforcement-layering-honesty, adr-0009-host-support-tiers, adr-0013-harness-memory-is-not-a-home, adr-0014-graft-reconciles-every-graph-engine, adr-0016-stamp-carries-keys-it-does-not-own, adr-0017-pre-growth-pointers-leave-the-kernel, adr-0018-code-fact-freshness-anchor (the last three pending, §4)
 - **Supersedes:** —
 - **Superseded by:** —
 
@@ -366,6 +366,120 @@ whose record carries github-copilot, because checking writes nothing.
 - **And:** `tools/graft-audit.py` with the three `--engine` pairs reports
   every engine current
 
+### Pending amendments, 7.32.0 (not yet contracts)
+
+This block holds the contracts the 7.32.0 plan adds to this spec. None is a
+contract yet. Each heading below becomes a `### Contract:` or `### Failure:`
+heading, moved into §4 or §7, in the commit that lands its RED test, which is
+the moment `verify.status-evidence` names for a contract going live. Until then
+`spec-lint.py` counts none of them, so the live coverage figure stays what the
+tests support. The plan of record is `docs/plans/grill-7.32.0-harvest.md`; its
+§9 names the RED increment that promotes each one. The decisions behind them
+are [ADR-0016](../decisions/adr-0016-stamp-carries-keys-it-does-not-own.md),
+[ADR-0017](../decisions/adr-0017-pre-growth-pointers-leave-the-kernel.md) and
+[ADR-0018](../decisions/adr-0018-code-fact-freshness-anchor.md).
+
+On promotion, §2 **In scope** gains three lines: the list of re-created nodes
+written to `.cypress/recreated-nodes.txt`; the keys of `.cypress/seed.json`
+that the installer does not own; and the placement of
+`docs/graph/code-anchor.py`. The anchor file that tool writes is out of scope
+here. SPEC-0003 owns it, because the session-start hooks read it and canonize
+writes it; the installer never writes it.
+
+#### Pending contract: PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION
+- **Given:** a target whose `CLAUDE.md` (or `AGENTS.md`) is byte-identical to
+  `core/AGENTS.md` at an earlier commit of the seed checkout the installer runs
+  from, and differs from the current `core/AGENTS.md`
+- **When:** `install.sh claude-code --project-dir <target>` runs
+- **Then:** the kernel is replaced with a backup, as `BACKUP_BEFORE_REPLACE`
+  requires, and `docs/graph/plans/adopted-instructions.md` gains no row for
+  that backup
+- **And:** stderr carries no `OVERWRITTEN` line for it; the log names the
+  replacement as a fast-forward from an earlier seed kernel
+- **And:** a later run's orphan sweep files no row for that backup either
+- **And:** a kernel body that matches no seed kernel in that history is filed
+  exactly as today
+
+#### Pending contract: RECREATED_LIST_IS_COMPLETE
+- **Given:** an installed plant whose `.cypress/seed.json` predates the run and
+  from which twelve seed-owned graph nodes were deleted
+- **When:** `install.sh claude-code --project-dir <target>` runs again
+- **Then:** `.cypress/recreated-nodes.txt` lists all twelve paths, one per line,
+  sorted and unique, under the header line §6 gives
+- **And:** the console notice still prints at most ten paths, and it names the
+  file that holds the whole list
+- **And:** a later run that re-creates nothing rewrites the file with the header
+  line alone, so the file always describes the run that last wrote the stamp
+
+#### Pending contract: UNKNOWN_STAMP_KEYS_SURVIVE
+- **Given:** a `.cypress/seed.json` that holds the installer's own keys plus two
+  keys the installer does not own, one a string and one an object
+- **When:** `install.sh all --project-dir <target>` runs with no flag
+- **Then:** both keys are in the new stamp with JSON-equal values, in their
+  original order, after the installer's own keys
+- **And:** the installer's own keys follow their existing rules
+  (`DECISIONS_SURVIVE_SILENCE`, `ADAPTERS_ACCUMULATE`)
+
+#### Pending contract: PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX
+- **Given:** a fresh target directory
+- **When:** `install.sh claude-code --project-dir <target>` runs
+- **Then:** `docs/graph/index.md` holds one pre-growth block, delimited as §6
+  gives, that names `EXPERT_SEED_INSTALL_PROMPT.md` and `protocol.initialize`
+- **And:** the placed kernel, `CLAUDE.md`, names neither
+  `EXPERT_SEED_INSTALL_PROMPT.md` nor `protocol.initialize`
+- **And:** a re-install over a plant whose `index.md` has no such block leaves
+  that `index.md` byte-identical, because the index is plant-owned
+
+#### Pending contract: CODE_ANCHOR_TOOL_IS_PLACED
+- **Given:** a fresh target directory
+- **When:** `install.sh all --project-dir <target>` runs
+- **Then:** `docs/graph/code-anchor.py` exists and is byte-identical to the
+  seed's `tools/code-anchor.py`
+- **And:** no `.cypress/anchor.json` exists, because only canonize records an
+  anchor
+- **And:** a re-install over an older copy of the tool replaces it with a
+  backup, as it does `docs/graph/status-register.py`
+
+#### Pending failure: SEED_HISTORY_UNAVAILABLE
+- **Contracts:** PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION
+- **Trigger:** the seed root is not a Git work tree, or `git` is not on `PATH`
+- **Response:** the kernel is compared with the current `core/AGENTS.md` only,
+  as before 7.32.0, and the log says so in one line
+- **Side effects:** a pristine older kernel body is filed for migration: work
+  for `docs-librarian` that turns out to be empty, never a lost instruction
+- **Recovery:** none needed; the librarian strikes the row
+
+#### Pending failure: STAMP_NOT_AN_OBJECT
+- **Contracts:** UNKNOWN_STAMP_KEYS_SURVIVE
+- **Trigger:** `.cypress/seed.json` exists and does not parse as one JSON object
+- **Response:** the installer moves it aside to a `.bak-<ts>` sibling, writes a
+  stamp from its own keys as before 7.32.0, and prints one warning that names
+  the backup and says the keys it does not own could not be carried
+- **Side effects:** those keys are in the backup only
+- **Recovery:** the owner copies them back by hand
+
+#### Pending data shapes (§6 on promotion)
+
+The stamp gains one rule, not one key: any key the installer does not own is
+carried forward unchanged.
+
+```yaml
+# .cypress/seed.json, additions to the shape above
+additional_keys:      { carried: unchanged, order: kept, after: installer keys }
+```
+
+```text
+# .cypress/recreated-nodes.txt: written by every run that writes the stamp
+# install.sh <version> <UTC rfc3339>: seed-owned graph nodes re-created by this run
+docs/graph/protocols/grill.md
+docs/graph/skills/humanizer/SKILL.md
+```
+
+The pre-growth block in the placeholder `docs/graph/index.md` opens with the
+line `<!-- pre-growth: grow removes this block -->` and closes with the line
+`<!-- /pre-growth -->`. `protocol.grow` removes it in the phase that sets
+`grown: true`.
+
 ## 5. Non-functional requirements
 
 - **Compatibility:** bash and `python3` only; no third-party imports. The
@@ -659,3 +773,15 @@ only version surface it has, and it moves with each entry here.
   suite run does not show X386 killing it on its own (verified by hand). A
   candidate for a later round converts the older cases to the collecting
   pattern. No contract changed; the status stays `back-written`.
+- 2026-09-28: 7.32.0 harvest, written ahead of its RED tests. §4 gains a block
+  of pending amendments: five contracts (PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION,
+  RECREATED_LIST_IS_COMPLETE, UNKNOWN_STAMP_KEYS_SURVIVE,
+  PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX,
+  CODE_ANCHOR_TOOL_IS_PLACED), two failure modes (SEED_HISTORY_UNAVAILABLE,
+  STAMP_NOT_AN_OBJECT) and the §6 shapes they need. They are headed so that
+  `spec-lint.py` counts none of them, and each moves to §4 or §7 as a
+  `### Contract:` or `### Failure:` heading in the commit that lands its RED
+  (`verify.status-evidence`), with its §10 row. This departs from the 7.31.0
+  practice, which wrote contracts live ahead of their RED and carried the
+  over-budget coverage line as expected-red at each tip. No existing contract
+  changed; the status stays `back-written`.

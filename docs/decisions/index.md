@@ -22,6 +22,12 @@ which is the installed *application* knowledge graph. ADR bodies use
 | [0012](adr-0012-red-waves-ahead-of-green.md) | Work runs in cycles of a RED wave and a clean GREEN wave; holds are per increment; one ruling pass per cycle rules on what was flagged; `grill-lint.py --waves` reports the schedule | accepted | 2026-09-28 | grill-7.31.0-wave-scheduling.md | 7.31.0 |
 | [0013](adr-0013-harness-memory-is-not-a-home.md) | Harness memory is not a home: a session writes what it learns to a session record in the plant (`docs/graph/plans/sessions/`), which canonize files; the kernel's §3.2 points there | accepted | 2026-09-28 | grill-7.31.0-wave-scheduling.md | 7.31.0 |
 | [0014](adr-0014-graft-reconciles-every-graph-engine.md) | Graft reconciles every graph engine with the config each one carries (the tool picks it per engine; the audit checks every pair); the installer keeps engines plant-owned | accepted | 2026-09-28 | grill-7.31.0-wave-scheduling.md | 7.31.0 |
+| [0015](adr-0015-cross-repository-decision-references.md) | A plan may cite another repository's decision as `<name>:ADR-NNNN`; `grill-lint.py` reports it as external and does not resolve it | proposed | 2026-09-28 | grill-7.32.0-harvest.md | 7.32.0 |
+| [0016](adr-0016-stamp-carries-keys-it-does-not-own.md) | The seed stamp is an open record: the installer carries forward every key it does not own | proposed | 2026-09-28 | grill-7.32.0-harvest.md | 7.32.0 |
+| [0017](adr-0017-pre-growth-pointers-leave-the-kernel.md) | The pre-growth pointers leave the kernel and live in the placeholder index that grow rewrites | proposed | 2026-09-28 | grill-7.32.0-harvest.md | 7.32.0 |
+| [0018](adr-0018-code-fact-freshness-anchor.md) | Facts the graph states are settled; code facts are checked once per session against an anchor canonize records | proposed | 2026-09-28 | grill-7.32.0-harvest.md | 7.32.0 |
+| [0019](adr-0019-no-opus-version-table-in-the-seed.md) | The seed names no Opus version table; a protocol names the model class, and one rule maps the class to a version | proposed | 2026-09-28 | grill-7.32.0-harvest.md | 7.32.0 |
+| [0020](adr-0020-a-plans-ledger-lives-beside-it.md) | A plan's increments live beside it in a directory named for its stem; the seed's round plans are ledgers | proposed | 2026-09-28 | grill-7.32.0-harvest.md | 7.32.0 |
 
 ADRs **0001–0003** were decided inline in the plan-of-record
 [`../plans/agent-routing-and-delegation.md`](../plans/agent-routing-and-delegation.md)
