@@ -1048,6 +1048,10 @@ place_graph_scaffold() {
     # artifact. Config-free (vocabulary is the schema's), so it fast-forwards
     # like the router. A session-start hook injects its --summary once.
     place_file "$SEED_ROOT/tools/status-register.py" "$g/status-register.py"
+    # the code anchor (ADR-0018): the session-start hooks call it to record
+    # and compare the code state. Config-free, so it fast-forwards like the
+    # router. It writes no anchor at install time (SPEC-0003 owns that file).
+    place_file "$SEED_ROOT/tools/code-anchor.py" "$g/code-anchor.py"
     place_if_missing "$SEED_ROOT/templates/knowledge-graph/index.md" "$g/index.md"
     fill_plant_facts "$g/index.md"
     log "  run /initialize — it forks on whether this target has source to scout:"

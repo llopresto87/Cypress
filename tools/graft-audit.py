@@ -39,7 +39,7 @@ It also flags any backup over PLANT-AUTHORED docs/graph/ content (a knowledge
 overwrite — should be none; knowledge is add-if-missing). The seed-owned graph
 subtrees docs/graph/{protocols,skills,agents,method,templates}/ and the shared
 scripts (graph-lint.py, spec-lint.py, grill-lint.py, agent-lint.py, agnosticism-lint.py,
-prose-lint.py, status-register.py) are machinery, expected to be fast-forwarded — but only
+prose-lint.py, status-register.py, code-anchor.py) are machinery, expected to be fast-forwarded — but only
 where a seed source actually backs the path: a plant-authored project skill
 under docs/graph/skills/ is plant knowledge. _schema.md and index.md are
 project-instantiated and always the plant's own, like everything else under
@@ -214,6 +214,7 @@ DELIVERED_TOOLS = {
     "agnosticism-lint.py": "tools/agnosticism-lint.py",
     "prose-lint.py": "tools/prose-lint.py",
     "status-register.py": "tools/status-register.py",
+    "code-anchor.py": "tools/code-anchor.py",
 }
 # the graph engines: placed add-if-missing, then reconciled by
 # graft-graph-engine.py, which keeps the plant's config and comments
