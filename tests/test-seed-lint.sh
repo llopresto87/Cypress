@@ -3281,6 +3281,60 @@ case_ce_pending_phrase_wrapped() {
   rm -rf "$TMP"
 }
 
+# Removes the kernel's session-record sentence from §3.2, or moves it to §5
+# (the sentence of the plan's M2 row: from "Harness memory is not a home:" to
+# "(`method.stewardship-posture`).", however it is wrapped).
+# $1 = kernel path, $2 = drop | move.
+ce_kernel_sentence() {
+python3 - "$1" "$2" <<'PY'
+import re, sys
+p, mode = sys.argv[1], sys.argv[2]
+t = open(p, encoding="utf-8").read()
+m32 = re.search(r"^### 3\.2 .*?(?=^### |\Z)", t, re.M | re.S)
+if not m32:
+    sys.exit("ce_kernel_sentence: no ### 3.2 section")
+block = m32.group(0)
+s = re.search(r"Harness\s+memory\s+is\s+not\s+a\s+home:.*?\(`method\.stewardship-posture`\)\.",
+              block, re.S)
+if not s:
+    sys.exit("ce_kernel_sentence: §3.2 does not hold the session-record sentence")
+t = t[:m32.start()] + block[:s.start()] + block[s.end():] + t[m32.end():]
+if mode == "move":
+    m5 = re.search(r"^## 5\. .*?(?=^## |\Z)", t, re.M | re.S)
+    if not m5:
+        sys.exit("ce_kernel_sentence: no ## 5. section")
+    t = t[:m5.end()].rstrip("\n") + "\n" + s.group(0) + "\n" + t[m5.end():]
+open(p, "w", encoding="utf-8").write(t)
+PY
+}
+case_ce_kernel_session_record_pointer() {
+  local TMP
+  # X381 KERNEL_POINTS_AT_THE_SESSION_RECORD
+  # Asserts SPEC-0005 KERNEL_POINTS_AT_THE_SESSION_RECORD; holds
+  # KERNEL_POINTER_TRIMMED. Three plants, each on its own fresh copy: the
+  # sentence removed from §3.2; the sentence moved from §3.2 to §5, which kills
+  # a check that reads the whole kernel; and templates/docs/plans/sessions/
+  # emptied, which kills a check that drops its second clause.
+  # exercises: check_kernel_points_at_the_session_record
+  TMP="$(fresh)"
+  ce_need "ce-kernel-session-record-removed" check_kernel_points_at_the_session_record
+  ce_kernel_sentence "$TMP/core/AGENTS.md" drop \
+    || { echo "[ce-kernel-session-record-removed] setup failed" >&2; exit 1; }
+  ce_expect "ce-kernel-session-record-removed" "core/AGENTS.md §3.2"
+  rm -rf "$TMP"
+  TMP="$(fresh)"
+  ce_kernel_sentence "$TMP/core/AGENTS.md" move \
+    || { echo "[ce-kernel-session-record-moved] setup failed" >&2; exit 1; }
+  ce_expect "ce-kernel-session-record-moved" "core/AGENTS.md §3.2"
+  rm -rf "$TMP"
+  TMP="$(fresh)"
+  [ -d "$TMP/templates/docs/plans/sessions" ] \
+    || { echo "[ce-kernel-session-form-emptied] setup: templates/docs/plans/sessions/ is absent" >&2; exit 1; }
+  find "$TMP/templates/docs/plans/sessions" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+  ce_expect "ce-kernel-session-form-emptied" "templates/docs/plans/sessions/"
+  rm -rf "$TMP"
+}
+
 if [ "${1:-}" = "__case" ]; then
   "$2"
   exit $?
@@ -3303,7 +3357,8 @@ for c in case_01 case_02 case_03 case_04 case_05 case_06 case_07 case_08 case_09
     case_ce_leaf_new_oversized case_ce_leaf_stale_member case_ce_leaf_unknown_member case_ce_leaf_ratchet_ceiling_raised case_ce_leaf_ratchet_member_added case_ce_leaf_sibling_over case_ce_split_sibling_missing case_ce_split_key_wrong_home case_ce_split_peer_dropped case_ce_split_neighbour_missing \
     case_ce_home_key_owned_twice case_ce_home_key_missing case_ce_stale_pointer case_ce_handback_effort_removed case_ce_handback_gap_removed case_ce_step2_reworded case_ce_step2_rewrapped_passes case_ce_pending_phrase_planted case_ce_pending_phrase_wrapped \
     case_ce_stale_pointer_wrapped case_ce_stale_pointer_front_door \
-    case_ce_stale_pointer_root_prompt case_ce_stale_pointer_wrapped_key_first case_ce_adjacent_correct_pointers_pass; do
+    case_ce_stale_pointer_root_prompt case_ce_stale_pointer_wrapped_key_first case_ce_adjacent_correct_pointers_pass \
+    case_ce_kernel_session_record_pointer; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0

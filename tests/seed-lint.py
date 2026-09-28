@@ -348,6 +348,9 @@ ADOPTED_RULE_HOMES = {
     "context-router.graph-over-harness": "skills/context-router/SKILL.md",
     "knowledge-graph.branch-shape": "skills/knowledge-graph/SKILL.md",
     "test-first.no-lint-only-tests": "skills/test-first/SKILL.md",
+    "delegation.waves": "core/method/delegation-sequencing.md",
+    "stewardship-posture.session-record": "core/method/stewardship-posture.md",
+    "canonize.session-record": "protocols/canonize.md",
 }
 # The shipped surfaces that state or point at a rule: every tree a plant
 # receives. check_adopted_rules_not_pending reads their Markdown.
@@ -3247,6 +3250,38 @@ def check_agent_spawn_grants(agents: dict) -> None:
                     fail(f"{rel}: delegates_to unknown agent '{target}'")
 
 
+# SPEC-0005 KERNEL_POINTS_AT_THE_SESSION_RECORD: the two literals the kernel's
+# §3.2 carries, and the seed directory whose form every plant receives.
+SESSION_RECORD_LITERALS = ("docs/graph/plans/sessions/", "method.stewardship-posture")
+SESSION_FORM_DIR = "templates/docs/plans/sessions/"
+
+
+def check_kernel_points_at_the_session_record(kernel_text: str) -> None:
+    """The kernel's §3.2 tells every session where its learnings go, and the
+    directory it names reaches every plant (SPEC-0005
+    KERNEL_POINTS_AT_THE_SESSION_RECORD).
+
+    Only the text from the `### 3.2 ` heading to the next `### ` heading is
+    read, so a sentence moved out of §3.2 into another section counts as
+    missing: a whole-kernel search would pass it. A missing directory holds
+    no file.
+    """
+    m = re.search(r"^### 3\.2 .*?(?=^### |\Z)", kernel_text, re.MULTILINE | re.DOTALL)
+    block = m.group(0) if m else ""
+    missing = [lit for lit in SESSION_RECORD_LITERALS if lit not in block]
+    if missing:
+        fail(f"core/AGENTS.md §3.2: does not contain "
+             f"{' or '.join(f'`{lit}`' for lit in missing)}; the sentence that "
+             f"sends a session's learnings to its session record belongs in "
+             f"§3.2, and moved to another section it counts as missing "
+             f"(SPEC-0005 KERNEL_POINTS_AT_THE_SESSION_RECORD)")
+    form_dir = ROOT / SESSION_FORM_DIR
+    if not (form_dir.is_dir() and any(p.is_file() for p in form_dir.iterdir())):
+        fail(f"{SESSION_FORM_DIR}: holds no file, so no plant the installer "
+             f"grows receives the directory the kernel names "
+             f"(SPEC-0005 KERNEL_POINTS_AT_THE_SESSION_RECORD)")
+
+
 def check() -> None:
     # -- gather ground truth from agents/ frontmatter -------------------
     agent_files = sorted(p for p in (ROOT / "agents").glob("*.md"))
@@ -3327,6 +3362,7 @@ def check() -> None:
     for n in range(1, 9):
         if not re.search(rf"^### 3\.{n} ", kernel_text, re.MULTILINE):
             fail(f"core/AGENTS.md: stable anchor §3.{n} heading is missing")
+    check_kernel_points_at_the_session_record(kernel_text)
     size = KERNEL.stat().st_size
     if size > KERNEL_BUDGET:
         fail(f"core/AGENTS.md: {size} bytes exceeds the {KERNEL_BUDGET}-byte budget "
