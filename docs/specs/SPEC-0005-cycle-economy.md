@@ -10,7 +10,7 @@ status_evidence: tests/test_graph_lint.py, tests/test_agent_lint.py, tests/test-
 ## 0. Metadata
 
 - **Identifier:** SPEC-0005-cycle-economy
-- **Version:** 0.11 (7.31.0 wave scheduling and the session record, ruling pass 1, 2026-09-28; every amendment is dated in §12)
+- **Version:** 0.12 (7.31.0 wave scheduling and the session record, final status pass, 2026-09-28; every amendment is dated in §12)
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-09-28
@@ -2196,6 +2196,14 @@ named, passes today; the form clause is the one observed failing. The four
 scenarios that already fail on the same CONTRADICTED line (scn_absent,
 scn_nostaff, scn_x34, scn_x41) are not rows of this spec and are not edited.
 
+**Final status pass (2026-09-28, v0.12).** The final tip ran every step green,
+with nothing carried and nothing `not run`. `tests/test-seed-lint.sh` ran past
+its baseline, and X381 is `green`. X382 is `green` since the growth-audit
+exclusion landed. The kernel check's real-tree row and the two session-record
+`ADOPTED_RULE_HOMES` rows are `green` since their doctrine and the kernel
+sentence committed. For those rows this supersedes the statuses the note above
+gives.
+
 | Contract / Failure | Test case | Test file | Level | Status |
 |---|---|---|---|---|
 | PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE | test_plan_promotes_expertise_past_the_scored_cut | tests/test_graph_lint.py | unit, PromotionTests (CLI, fixture graph) | green |
@@ -2315,13 +2323,13 @@ scn_nostaff, scn_x34, scn_x41) are not rows of this spec and are not edited.
 | ABORTED_STEP_HIDES_CASES | (none) the tip record's `not run` list (R0.12); for `tests/test-grill-lint.sh`, the collecting block (R0.3), which X361 to X380 run in | — | tip record | pending |
 | RED_WRITES_A_HELD_TEST_FILE | (none) the orchestrator's dispatch check that an early RED's files are disjoint from every live lane, backed by the RED hash re-check (`soft`) | — | dispatch record | pending |
 | BATCH_PAUSED_FOR_ONE_INCREMENT | (none) the reviewer at verify, against the batch record's per-increment holds | — | review | pending |
-| KERNEL_POINTS_AT_THE_SESSION_RECORD | (none) seed-lint on the real tree (increment 10's check); red ids: the finding line naming `core/AGENTS.md §3.2` and the finding line naming `templates/docs/plans/sessions/`; the "shipped tree reports neither" clause turns green when increments 12 and 13 have committed | tests/seed-lint.py | real-tree, the kernel check | red |
-| KERNEL_POINTS_AT_THE_SESSION_RECORD | X381 case_ce_kernel_session_record_pointer: on copies, the sentence removed from §3.2 gives the `core/AGENTS.md §3.2` line; the sentence moved from §3.2 to §5 gives the same line; `templates/docs/plans/sessions/` emptied gives the `templates/docs/plans/sessions/` line; `not run` while the script's baseline is red (R0.4, R0.12) | tests/test-seed-lint.sh | fixture (scope), the kernel check | pending |
-| ADOPTED_RULE_HOMES | (none) the `stewardship-posture.session-record` and `canonize.session-record` entries in `ADOPTED_RULE_HOMES` (increment 10); red ids: `stewardship-posture.session-record: not owned by core/method/stewardship-posture.md, its one home under SPEC-0005 (owned by no node)` and `canonize.session-record: not owned by protocols/canonize.md, its one home under SPEC-0005 (owned by no node)`; the check itself is held by X347 and X348 | tests/seed-lint.py | real-tree, `check_adopted_rule_homes` | red |
-| KERNEL_POINTER_TRIMMED | X381 case_ce_kernel_session_record_pointer: dropping the sentence, or moving it out of §3.2, fails naming `core/AGENTS.md §3.2` | tests/test-seed-lint.sh | fixture (scope) | pending |
+| KERNEL_POINTS_AT_THE_SESSION_RECORD | (none) seed-lint on the real tree (increment 10's check); red ids: the finding line naming `core/AGENTS.md §3.2` and the finding line naming `templates/docs/plans/sessions/` | tests/seed-lint.py | real-tree, the kernel check | green |
+| KERNEL_POINTS_AT_THE_SESSION_RECORD | X381 case_ce_kernel_session_record_pointer: on copies, the sentence removed from §3.2 gives the `core/AGENTS.md §3.2` line; the sentence moved from §3.2 to §5 gives the same line; `templates/docs/plans/sessions/` emptied gives the `templates/docs/plans/sessions/` line; `not run` while the script's baseline is red (R0.4, R0.12) | tests/test-seed-lint.sh | fixture (scope), the kernel check | green |
+| ADOPTED_RULE_HOMES | (none) the `stewardship-posture.session-record` and `canonize.session-record` entries in `ADOPTED_RULE_HOMES` (increment 10); red ids: `stewardship-posture.session-record: not owned by core/method/stewardship-posture.md, its one home under SPEC-0005 (owned by no node)` and `canonize.session-record: not owned by protocols/canonize.md, its one home under SPEC-0005 (owned by no node)`; the check itself is held by X347 and X348 | tests/seed-lint.py | real-tree, `check_adopted_rule_homes` | green |
+| KERNEL_POINTER_TRIMMED | X381 case_ce_kernel_session_record_pointer: dropping the sentence, or moving it out of §3.2, fails naming `core/AGENTS.md §3.2` | tests/test-seed-lint.sh | fixture (scope) | green |
 | SESSION_RECORD_NOT_KEPT | (none) `judgment`: canonize's walk, and the librarian's "no session record" or missing-item finding, which the delivery shows | — | review | pending |
 | RECORD_ITEM_LEFT_UNFILED | (none) `judgment`, with the next session's start read as the `detective` backstop: items with no "Canonize status" line are named in its newest "Open threads" block | — | review | pending |
-| SESSION_RECORD_FORM_IS_NOT_A_SCAFFOLD | X382 scn_x382: an installed plant whose coverage record claims `plans/` ABSENT with its reason, whose `plans/` holds the placed `sessions/_session-record.template.md` and whose `grill.md` scaffold is renamed `.unfilled.md`, gives no CONTRADICTED line naming the form and no finding on `plans/`; in the same run an untouched `runbooks/rollback.md` scaffold in an ABSENT row is still named as the seed's unfilled scaffold | tests/test-growth-audit.sh | integration | red |
+| SESSION_RECORD_FORM_IS_NOT_A_SCAFFOLD | X382 scn_x382: an installed plant whose coverage record claims `plans/` ABSENT with its reason, whose `plans/` holds the placed `sessions/_session-record.template.md` and whose `grill.md` scaffold is renamed `.unfilled.md`, gives no CONTRADICTED line naming the form and no finding on `plans/`; in the same run an untouched `runbooks/rollback.md` scaffold in an ABSENT row is still named as the seed's unfilled scaffold | tests/test-growth-audit.sh | integration | green |
 
 
 ## 11. Open questions
@@ -2469,3 +2477,10 @@ kept outside the seed.
   homes and the real-tree kernel check stay `red` until their doctrine commits;
   new X382 `red`, in `tests/test-growth-audit.sh`. Product and tester re-signed
   at v0.11.
+- 2026-09-28 — version 0.12, final status pass, by `architect`. Still
+  `active`; no contract changed. The session-record and plant-pickup
+  increments landed, and the final tip ran every step green, with the
+  expected-red and `not run` lists empty. §10: X381 (`tests/test-seed-lint.sh`
+  ran past its baseline), X382, the kernel check's real-tree row and the two
+  session-record `ADOPTED_RULE_HOMES` rows are `green`; every other row keeps
+  its status. §10's dated note records the same flips in the tester's pass.
