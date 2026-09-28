@@ -96,10 +96,19 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "companion: it requires the slug in the test the ROW cites"),
     "test-grill-lint.sh": (
         "the plan-of-record linter finds shape defects", FIXTURES, "scope",
-        "proves the linter works; the seed's docs/plans/ use a different heading "
-        "convention and are not swept, except that the --waves cases also read "
+        "proves the linter works; the seed's own active plan is swept by the "
+        "grill-lint.py step below, and no other plan is, except that the --waves "
+        "cases also read "
         "the frozen docs/plans/grill-7.30.0-cycle-economy.md, read-only, for one "
         "wave line (SPEC-0005 GRILL_WAVES_LEVELS_FROM_DEPENDS_ON)"),
+    "grill-lint.py": (
+        "the seed's active plan of record is well formed: every increment has its "
+        "fields, its dependencies exist and come first, and every contract and "
+        "decision it names is filed", REAL, "coverage",
+        "reads only the one plan ACTIVE_PLAN names in run.sh; every other plan "
+        "under docs/plans/, frozen or not, is not linted. The linter prints SKIP "
+        "and exits 0 when the plan file is missing, so an ACTIVE_PLAN left pointing "
+        "at a renamed or deleted plan reads green"),
     "test-full-install.sh": (
         "every adapter delivers the runtime machinery it promises", TEMP, "coverage",
         "checks presence and the command roster, not the placement contract "

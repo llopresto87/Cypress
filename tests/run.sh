@@ -183,6 +183,13 @@ add_step bash "$ROOT/tests/test-spec-lint.sh"
 SPEC_BUDGET="$(python3 -c 'import pathlib,re,sys; print((re.search(r"^SPEC_UNCOVERED_BUDGET = (\d+)", pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"), re.M) or [0,"0"])[1])' "$ROOT/tests/seed-lint.py")"
 add_step python3 "$ROOT/templates/knowledge-graph/spec-lint.py" --specs "$ROOT/docs/specs" --root "$ROOT" --uncovered-budget "$SPEC_BUDGET"
 add_step bash "$ROOT/tests/test-grill-lint.sh"
+# The linter above proves itself against FIXTURES. This runs it over the seed's
+# own plan of record, the active round's plan, so a plan that names a contract
+# no spec holds, or a decision nobody filed, turns the gate red. Only the active
+# plan: frozen plans keep the shapes of their own rounds. Point ACTIVE_PLAN at
+# the next round's plan when that round opens.
+ACTIVE_PLAN="$ROOT/docs/plans/grill-7.32.0-harvest.md"
+add_step python3 "$ROOT/templates/knowledge-graph/grill-lint.py" --plan "$ACTIVE_PLAN" --specs "$ROOT/docs/specs" --decisions "$ROOT/docs/decisions"
 add_step bash "$ROOT/tests/test-full-install.sh"
 # Destination-placement contract (M2/M3/M7/M9). Discovers the placed file set
 # from a real install rather than listing it, so a destination added later is
