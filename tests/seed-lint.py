@@ -5748,6 +5748,55 @@ def front_door_checks() -> None:
         check_fd_pending_ledger_holds_only_failing_contracts()
 
 
+def check_run_sh_shell_contract() -> None:
+    """tests/run.sh holds `set -euo pipefail` above its first `add_step` call.
+
+    The gate's verdict is its exit code. Without `-e` a failing command runs
+    on; without `-u` a misspelt variable expands to nothing; without
+    `pipefail` a red suite piped into another command exits clean. A `set`
+    line placed below the first `add_step` binds too late for the steps above
+    it. Each of these turns a red gate into a clean exit and prints nothing,
+    so the contract is read here: the top-level `set` lines above the first
+    call, in order, as bash applies them (`-o name`, `+x` and grouped letters
+    such as `-euo pipefail` included).
+    """
+    path = ROOT / "tests" / "run.sh"
+    if not path.is_file():
+        return
+    lines = path.read_text(encoding="utf-8").splitlines()
+    call = next((i for i, ln in enumerate(lines, 1)
+                 if re.match(r"add_step\s", ln)), len(lines) + 1)
+    on: set = set()
+    last = 0
+    for i, ln in enumerate(lines[:call - 1], 1):
+        m = re.match(r"set\s+([^#;]*)", ln)
+        if not m:
+            continue
+        last = i
+        words = m.group(1).split()
+        while words:
+            word = words.pop(0)
+            if word[:1] not in "-+" or word in ("-", "--"):
+                continue
+            turn = on.add if word[0] == "-" else on.discard
+            for letter in word[1:]:
+                if letter == "o" and words:
+                    turn(words.pop(0))
+                else:
+                    turn({"e": "errexit", "u": "nounset"}.get(letter, letter))
+    if not last:
+        fail(f"tests/run.sh:{call}: no `set` line above the first `add_step` "
+             f"call; `set -euo pipefail` must bind before any step is added, or "
+             f"a failing step can leave the gate exiting 0")
+        return
+    for name, flag in (("errexit", "-e"), ("nounset", "-u"), ("pipefail", "pipefail")):
+        if name not in on:
+            fail(f"tests/run.sh:{last}: the shell contract above the first "
+                 f"`add_step` lacks `{flag}`"
+                 + (f" ({name})" if flag != name else "")
+                 + "; without it a red gate can exit 0 and say nothing")
+
+
 def main() -> int:
     # A missing or unreadable file used to abort the run with a traceback, and
     # every finding already collected went unprinted — so the operator saw a
@@ -5771,6 +5820,7 @@ def main() -> int:
         # populates _prevents_by_node. Calling it before compared zero nodes,
         # and the pass's own floor said so rather than reporting clean.
         check_prevents_are_distinct()
+        check_run_sh_shell_contract()
     except Exception as e:                       # noqa: BLE001 — see below
         findings.append(f"seed-lint could not complete: {type(e).__name__}: {e} "
                         f"— the findings above are everything that ran before it")

@@ -89,6 +89,10 @@ SIGNOFF_RE = re.compile(r"\*\*Sign-offs:\*\*(.*)")
 SLUG_RE = re.compile(r"(?<![A-Z0-9_])[A-Z][A-Z0-9_]{2,}(?![A-Z0-9_])")
 SIGNERS = ("product", "architect", "tester")
 STILL_OPEN = {"red", "pending"}
+# A table's cell boundary: a pipe not escaped as `\|` (GFM). The delimiter
+# row under a header is dashes with optional colons, one run per column.
+PIPE_RE = re.compile(r"(?<!\\)\|")
+DELIM_ROW_RE = re.compile(r"^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?\s*$")
 # --slice reads the spec as headings rather than as text, because a block's
 # end is the next heading of its level and a heading inside a fence is not one.
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
@@ -139,13 +143,62 @@ def signed(text: str) -> tuple[bool, list[str]]:
     return (not missing, missing)
 
 
-def mapping_rows(body10: str) -> dict[str, str]:
+def section_lines(text: str, num: int) -> list[tuple[int, str]]:
+    """[(1-based line, text)] of section `num`'s body, the heading excluded,
+    so a finding in it can name the line of the file."""
+    matches = list(SECTION_RE.finditer(text))
+    for i, m in reversed(list(enumerate(matches))):   # the last wins, as in sections()
+        if int(m.group(1)) != num:
+            continue
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        first = text.count("\n", 0, m.start()) + 1
+        body = text[m.end():end].split("\n")[1:]      # [0] is the heading's own rest
+        return [(first + k, ln) for k, ln in enumerate(body, 1)]
+    return []
+
+
+def row_cells(line: str) -> list[str]:
+    """A table line's cells, read as GFM reads them: the outer pipes are
+    optional, and an escaped pipe `\\|` is text inside its cell, not a
+    cell boundary."""
+    ln = line.strip()
+    if ln.startswith("|"):
+        ln = ln[1:]
+    if ln.endswith("|") and not ln.endswith("\\|"):
+        ln = ln[:-1]
+    return [c.strip() for c in PIPE_RE.split(ln)]
+
+
+def table_rows(lines: list[tuple[int, str]]) -> list[tuple[int, list[str], int]]:
+    """[(line, cells, header cell count)] for each table line in `lines`.
+    A table is a line holding a pipe with a delimiter row under it; its body
+    runs to the first line without an unescaped pipe, and every body row is
+    read against the header's count. A pipe-led line with no delimiter row
+    under it is read as before 7.32.0: a row on its own, its own header."""
+    out: list[tuple[int, list[str], int]] = []
+    i = 0
+    while i < len(lines):
+        n, ln = lines[i]
+        nxt = lines[i + 1][1] if i + 1 < len(lines) else ""
+        if PIPE_RE.search(ln) and "|" in nxt and DELIM_ROW_RE.match(nxt):
+            width = len(row_cells(ln))
+            out.append((n, row_cells(ln), width))
+            i += 2                                  # the delimiter row is no row
+            while i < len(lines) and PIPE_RE.search(lines[i][1]):
+                out.append((lines[i][0], row_cells(lines[i][1]), width))
+                i += 1
+            continue
+        if ln.strip().startswith("|"):
+            cells = row_cells(ln)
+            out.append((n, cells, len(cells)))
+        i += 1
+    return out
+
+
+def mapping_rows(lines10: list[tuple[int, str]]) -> dict[str, str]:
     """§10 table: first cell -> status cell (last non-empty cell)."""
     rows: dict[str, str] = {}
-    for ln in body10.splitlines():
-        if not ln.strip().startswith("|"):
-            continue
-        cells = [c.strip() for c in ln.strip().strip("|").split("|")]
+    for _, cells, _ in table_rows(lines10):
         if len(cells) < 2 or set(cells[0]) <= set("-: "):
             continue
         rows[cells[0]] = cells[-1].lower()
@@ -188,8 +241,15 @@ def shape(spec: Path, text: str, status: str, fails: list[str], warns: list[str]
         fails.append(f"{spec.name}: live spec with no `### Contract:` at all — "
                      f"a spec that contracts nothing passes every coverage check "
                      f"vacuously, which is the shape of a false green")
+    # A §10 row whose cell count differs from its table's header reads its
+    # status from the wrong column, and nothing downstream can tell.
+    lines10 = section_lines(text, 10)
+    for n, cells, width in table_rows(lines10):
+        if len(cells) != width:
+            fails.append(f"{spec.name}:{n}: §10 row has {len(cells)} cells and its "
+                         f"header has {width}; its status is read from the wrong column")
     if (is_signed or live) and declared:
-        rows = mapping_rows(secs.get(10, ""))
+        rows = mapping_rows(lines10)
         for slug in sorted(declared - set(rows)):
             fails.append(f"{spec.name}: contract {slug} has no §10 test-mapping row"
                          f" ({'signed' if is_signed else status} — the mapping is owed, status `pending` is a value)")

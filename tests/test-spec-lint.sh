@@ -377,4 +377,90 @@ out="$(slice 2>&1)" && rc=0 || rc=$?
 rm -rf "$TMP/docs/graph/specs"
 lint >/dev/null
 
+
+# ---- ROW CELLS (plan increment 5) ------------------------------------------
+# A §10 row whose cell count differs from its header reads its status from the
+# wrong column and nothing says so. A collecting block: each case prints
+# `FAIL <label>: <why>` and the suite exits 1 after the last one, so no case
+# hides another. No spec owns spec-lint's table parsing (plan increment 5).
+set +e
+CELLS_FAILED=0
+CL="$TMP/cells"
+mkdir -p "$CL/docs/graph/specs" "$CL/tests"
+cp "$ROOT/templates/knowledge-graph/spec-lint.py" "$CL/docs/graph/"
+printf 'def test_cells():  # CELL_ALPHA CELL_BETA\n    pass\n' > "$CL/tests/test_cells.py"
+cfail() { printf 'FAIL %s: %s\n' "$1" "$2"; CELLS_FAILED=1; }
+crun() { COUT="$(python3 "$CL/docs/graph/spec-lint.py" 2>&1)"; CRC=$?; }
+# cells_spec NAME ROW_ALPHA ROW_BETA: a signed draft (it owes a §10 row per
+# contract) with a five-cell header and the two rows given verbatim.
+cells_spec() {
+  local f="$CL/docs/graph/specs/$1.md"
+  rm -f "$CL"/docs/graph/specs/*.md
+  {
+    printf -- '---\nstatus: draft\nstatus_date: 2026-09-28\n---\n\n# %s\n\n## 0. Metadata\n' "$1"
+    printf -- '- **Status:** see frontmatter (single home)\n- **Sign-offs:** product [x] · architect [x] · tester [x] · security [ ]\n\n'
+    printf '## 4. Functional contracts\n\n### Contract: CELL_ALPHA\n- **Given:** a\n\n### Contract: CELL_BETA\n- **Given:** b\n\n'
+    printf '## 7. Failure modes\n\n### Failure: CELL_FAILS\n- **Trigger:** x\n\n'
+    printf '## 9. Acceptance criteria\n\n- [ ] AC-1: a — maps to CELL_ALPHA\n- [ ] AC-2: b — maps to CELL_BETA\n\n'
+    printf '## 10. Test mapping\n\n| Contract / Failure | Test name | Test file | Level | Status |\n|---|---|---|---|---|\n'
+    printf '%s\n%s\n' "$2" "$3"
+  } > "$f"
+  CSPEC="$f"
+}
+# the 1-based line of the file that holds $1 exactly
+cline() { grep -n -F -x -- "$1" "$CSPEC" | head -1 | cut -d: -f1; }
+# one output line holds the spec name, the line number and both counts
+cells_named() {  # $1=spec file name $2=line $3=header count $4=row count
+  python3 -c '
+import re, sys
+name, line, h, r, out = sys.argv[1:6]
+word = lambda n, s: re.search(r"(?<!\d)" + n + r"(?!\d)", s)
+sys.exit(0 if any(name in l and word(line, l) and word(h, l) and word(r, l)
+                  for l in out.splitlines()) else 1)' "$1" "$2" "$3" "$4" "$COUT"
+}
+GOOD_A='| CELL_ALPHA | test_cells | tests/test_cells.py | unit | red |'
+
+case_row_one_cell_fewer() {
+  # G2a (increment 5a): a §10 row with one cell fewer than its header fails,
+  # and the finding names the spec, the line and both counts (5 and 4).
+  local L=G2a row='| CELL_BETA | test_cells | tests/test_cells.py | red |' n
+  cells_spec SPEC-0101-cells "$GOOD_A" "$row"; n="$(cline "$row")"
+  crun
+  [ "$CRC" -eq 1 ] || { cfail $L "expected exit 1, got $CRC"; return; }
+  cells_named SPEC-0101-cells.md "$n" 5 4 || cfail $L "no finding line naming SPEC-0101-cells.md, line $n, 5 and 4 cells"
+}
+case_row_one_cell_more() {
+  # G2b (increment 5b): one cell more fails the same way (5 and 6).
+  local L=G2b row='| CELL_BETA | test_cells | tests/test_cells.py | unit | red | extra |' n
+  cells_spec SPEC-0102-cells "$GOOD_A" "$row"; n="$(cline "$row")"
+  crun
+  [ "$CRC" -eq 1 ] || { cfail $L "expected exit 1, got $CRC"; return; }
+  cells_named SPEC-0102-cells.md "$n" 5 6 || cfail $L "no finding line naming SPEC-0102-cells.md, line $n, 5 and 6 cells"
+}
+case_row_escaped_pipe_is_one_cell() {
+  # G2c (increment 5c, guard): a cell holding an escaped pipe `\|` is one cell.
+  local L=G2c
+  cells_spec SPEC-0103-cells "$GOOD_A" '| CELL_BETA | test_a\|b | tests/test_cells.py | unit | red |'
+  crun
+  [ "$CRC" -eq 0 ] || cfail $L "an escaped pipe was counted as a cell boundary (exit $CRC): $(grep -m1 -- '  - ' <<<"$COUT")"
+}
+case_row_outer_pipes_optional() {
+  # G2d (increment 5d, guard): leading and trailing pipes are optional, as GFM
+  # allows. The table after §10's is a second table whose rows drop them.
+  local L=G2d
+  cells_spec SPEC-0104-cells "$GOOD_A" '| CELL_BETA | test_cells | tests/test_cells.py | unit | red'
+  printf '\n| Note | Detail |\n|---|---|\nfirst | one\n| second | two\nthird | three |\n' >> "$CSPEC"
+  crun
+  [ "$CRC" -eq 0 ] || cfail $L "a row without an outer pipe was refused (exit $CRC): $(grep -m1 -- '  - ' <<<"$COUT")"
+}
+for c in case_row_one_cell_fewer case_row_one_cell_more \
+         case_row_escaped_pipe_is_one_cell case_row_outer_pipes_optional; do
+  "$c"
+done
+set -e
+if [ "$CELLS_FAILED" -ne 0 ]; then
+  printf 'spec lint contract: FAIL — the row-cell block has failing cases (above)\n'
+  exit 1
+fi
+
 printf 'spec lint contract: PASS\n'

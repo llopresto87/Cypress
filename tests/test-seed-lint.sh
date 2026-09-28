@@ -3335,6 +3335,51 @@ case_ce_kernel_session_record_pointer() {
   rm -rf "$TMP"
 }
 
+# Plan increment 18 (D4b): tests/run.sh holds its shell contract. Dropping `-u`
+# or `pipefail` from its `set -euo pipefail` line, or moving the line below the
+# first `add_step`, would let a red gate exit clean. Three plants, each on its
+# own fresh copy; each time seed-lint names tests/run.sh and what is missing.
+# No spec owns seed-lint's checks (plan increment 18).
+run_sh_plant() {  # $1 = run.sh path, $2 = drop-pipefail | drop-u | move
+python3 - "$1" "$2" <<'PY'
+import re, sys
+p, mode = sys.argv[1], sys.argv[2]
+t = open(p, encoding="utf-8").read()
+line = re.compile(r"^set -euo pipefail\n", re.M)
+if len(line.findall(t)) != 1:
+    sys.exit("run_sh_plant: tests/run.sh has no single `set -euo pipefail` line")
+if mode == "drop-pipefail":
+    t = line.sub("set -eu\n", t)
+elif mode == "drop-u":
+    t = line.sub("set -eo pipefail\n", t)
+elif mode == "move":
+    t = line.sub("", t)
+    m = re.search(r"^add_step .*\n", t, re.M)
+    if not m:
+        sys.exit("run_sh_plant: tests/run.sh has no add_step line")
+    t = t[:m.end()] + "set -euo pipefail\n" + t[m.end():]
+else:
+    sys.exit(f"run_sh_plant: unknown mode {mode}")
+open(p, "w", encoding="utf-8").write(t)
+PY
+}
+# exercises: check_run_sh_shell_contract
+case_run_sh_shell_contract() {
+  local TMP
+  TMP="$(fresh)"
+  run_sh_plant "$TMP/tests/run.sh" drop-pipefail || { echo "[run-sh-drop-pipefail] setup failed" >&2; exit 1; }
+  ce_expect "run-sh-drop-pipefail" "tests/run.sh" "pipefail"
+  rm -rf "$TMP"
+  TMP="$(fresh)"
+  run_sh_plant "$TMP/tests/run.sh" drop-u || { echo "[run-sh-drop-u] setup failed" >&2; exit 1; }
+  ce_expect "run-sh-drop-u" "tests/run.sh" "-u|nounset"
+  rm -rf "$TMP"
+  TMP="$(fresh)"
+  run_sh_plant "$TMP/tests/run.sh" move || { echo "[run-sh-set-line-moved] setup failed" >&2; exit 1; }
+  ce_expect "run-sh-set-line-moved" "tests/run.sh" "add_step"
+  rm -rf "$TMP"
+}
+
 if [ "${1:-}" = "__case" ]; then
   "$2"
   exit $?
@@ -3358,7 +3403,7 @@ for c in case_01 case_02 case_03 case_04 case_05 case_06 case_07 case_08 case_09
     case_ce_home_key_owned_twice case_ce_home_key_missing case_ce_stale_pointer case_ce_handback_effort_removed case_ce_handback_gap_removed case_ce_step2_reworded case_ce_step2_rewrapped_passes case_ce_pending_phrase_planted case_ce_pending_phrase_wrapped \
     case_ce_stale_pointer_wrapped case_ce_stale_pointer_front_door \
     case_ce_stale_pointer_root_prompt case_ce_stale_pointer_wrapped_key_first case_ce_adjacent_correct_pointers_pass \
-    case_ce_kernel_session_record_pointer; do
+    case_ce_kernel_session_record_pointer case_run_sh_shell_contract; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0
