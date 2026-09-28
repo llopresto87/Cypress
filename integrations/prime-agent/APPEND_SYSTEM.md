@@ -117,12 +117,12 @@ A reusable win has exactly one correct home; the three do not overlap.
   so the team and CI share it. NEVER accept skill-creator's default drop into
   the GLOBAL `~/.prime/agent/skills/` (private to you, uncommitted, invisible
   to the team) and NEVER stash a project skill in the continual harness.
-- **A cross-session OPERATING lesson** (a durable fact, a reusable delegation
-  role, an agent-operating procedure or preference that is NOT a plant
-  deliverable) → the **continual harness** via `await refine.run(...)`
-  (memories, subagent specs, prompt notes). This is Prime Agent's own memory,
-  private to you across sessions — a complement to the graph, never a
-  substitute for a plant tool or skill.
+- **A cross-session OPERATING lesson** (an owner rule, a corrected assumption,
+  where paused work stands) → the plant's **session record** in
+  `docs/graph/plans/sessions/` (`method.stewardship-posture`), written when you
+  learn it; canonize files it into the graph. The continual harness
+  (`refine.run(...)`) is private to you and keeps at most a one-line pointer
+  to that directory, never the lesson itself.
 
 Do not let a reusable win evaporate with the session — but put it where its
 owner can find it.

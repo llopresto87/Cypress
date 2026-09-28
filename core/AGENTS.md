@@ -93,7 +93,9 @@ Owner: `protocol.specify` (`rule.spec`).
 `docs/graph/` is the single source of truth for structure and
 capability — one home per fact, loaded minimally and declared, ahead of
 memory. Owner: `skill.context-router` (`rule.knowledge`); authoring:
-`skill.knowledge-graph`.
+`skill.knowledge-graph`. Harness memory is not a home: a session starts
+from the newest record in `docs/graph/plans/sessions/` and writes what it
+learns there for canonize (`method.stewardship-posture`).
 
 ### 3.3 The grill rule
 `docs/graph/plans/grill.md` is the living plan-of-record; append, never
