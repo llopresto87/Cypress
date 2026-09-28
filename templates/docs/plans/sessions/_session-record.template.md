@@ -50,3 +50,5 @@ How it applies: <one short paragraph>
 ## Canonize status
 
 (Appended by the docs-librarian at close-out, one line per item.)
+
+- <the line `python3 docs/graph/code-anchor.py --record` printed, `Code anchor recorded <UTC>: ...`, or its stderr line on a refusal>

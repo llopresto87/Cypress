@@ -30,6 +30,10 @@ GRAPH DISCIPLINE — execute before reading any source:
    later widening (with the reason it became necessary).
 4. One home per fact: never duplicate a fact the graph owns — link to
    its owning node. The graph outranks your memory of APIs/versions.
+   A fact the graph states is settled: use it, never re-derive or
+   re-check it. Facts about code are current only where your brief
+   carries a code-anchor line saying no code changed; otherwise check
+   the code facts you rely on against the code.
    When a fact is unknown, write "not recorded" — never fabricate a
    version, URL, or identifier.
 5. Minimum sufficient work: every read, search, and tool call serves

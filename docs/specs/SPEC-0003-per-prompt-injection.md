@@ -2,7 +2,7 @@
 status: active
 status_date: 2026-09-23
 owner: architect
-status_evidence: tests/test-bound-hook.sh, tests/test-seed-lint.sh, tests/seed-lint.py, tests/test-nested-checkout.sh (RED landed with this promotion; §10 says which rows are red)
+status_evidence: tests/test-bound-hook.sh, tests/test-seed-lint.sh, tests/seed-lint.py, tests/test-nested-checkout.sh, tests/test_graph_lint.py (RED landed with this promotion; §10 says which rows are red)
 ---
 
 # SPEC-0003: per-prompt injection
@@ -533,9 +533,10 @@ Every contract also requires exit code 0. Tests run with umask 022.
 
 ### Contract: BRIEF_TEMPLATES_BYTE_IDENTICAL
 - **Given:** `templates/prompts/graph-session-bootstrap.md` and
-  `templates/prompts/handback-payload.md`, and the baseline revision: the 7.27.0
-  release commit on the base branch, which is the parent of Slice A's first
-  commit (its SHA is written into §10 at RED)
+  `templates/prompts/handback-payload.md`, and the baseline revision: the
+  7.32.0 commit that puts owner rule R5's two sentences into step 4 of the
+  canonical `GRAPH DISCIPLINE` block (its SHA is written into §10 when that
+  commit lands; the baseline before it was the 7.27.0 release commit, §12)
 - **When:** `git diff --quiet <baseline> -- templates/prompts/graph-session-bootstrap.md templates/prompts/handback-payload.md`
   runs at verify
 - **Then:** it exits 0, and `tests/seed-lint.py`'s existing GRAPH DISCIPLINE
@@ -801,16 +802,11 @@ test (`verify.status-evidence`), and until then `spec-lint.py` counts none of
 it. The plan of record is `docs/plans/grill-7.32.0-harvest.md`; its §9 names
 the increment that promotes each one. The path column and the code anchor, with
 their failures and data shapes, left this block with the RED of increments 6
-to 8 (§12). The decision behind the anchor is
+to 8 (§12), and the BRIEF_TEMPLATES_BYTE_IDENTICAL baseline amendment with the
+commit that lands owner rule R5's sentences, so the block is empty. The
+decision behind the anchor is
 [ADR-0018](../decisions/adr-0018-code-fact-freshness-anchor.md); the one behind
 the path column is decision 9 of that plan's §6.
-
-#### Pending amendment: BRIEF_TEMPLATES_BYTE_IDENTICAL
-Owner rule R5 of the 7.32.0 plan puts two sentences into step 4 of the
-canonical `GRAPH DISCIPLINE` block, so the template cannot stay identical to
-its 7.27.0 baseline. In the commit that lands those sentences, the contract's
-baseline revision becomes that commit, and §10 records its SHA. The seed-lint
-identity check across the five embedding templates is unchanged.
 
 ## 5. Non-functional requirements
 
@@ -1179,7 +1175,7 @@ each, except `ANCHOR_TIMEOUT`. That one is a module-level literal in
 | `ANCHOR_MAX_PATHS` | 20 | paths named before the more-paths line |
 | `ANCHOR_MAX_BYTES` | 2048 | the whole `--compare` output |
 | `ANCHOR_DIRTY_MAX` | 256 | uncommitted paths recorded per repository |
-| `ANCHOR_TIMEOUT` | 15 s | the hook's wait for the tool; each Git call inside the tool waits at most 10 s |
+| `ANCHOR_TIMEOUT` | 5 s | the hook's wait for the tool; each Git call inside the tool waits at most 10 s |
 
 Exact texts (`<n>`, `<reason>` and the bracketed parts are filled in):
 
@@ -1603,7 +1599,7 @@ Techniques the cases rely on:
 | LEDGER_NO_CYPRESS_DIR_NO_WRITE | X132; red on arrival (no pointer line, no stderr line yet) | tests/test-bound-hook.sh | integration | green |
 | LEDGER_WRITE_FAILURE_FAILS_OPEN | X133; chmod case skipped as root, and says so; `runpy` case runs as root | tests/test-bound-hook.sh | integration | green |
 | LEDGER_GC_BOUNDED | X134 | tests/test-bound-hook.sh | integration | green |
-| BRIEF_TEMPLATES_BYTE_IDENTICAL | check | tests/seed-lint.py | verify gate; the slug sits in a comment beside the existing GRAPH DISCIPLINE identity check in `check` (not `main`, which holds no such check), and the verify record is `git diff --quiet ac61a3f -- templates/prompts/graph-session-bootstrap.md templates/prompts/handback-payload.md`, where `ac61a3f` is the 7.27.0 release commit, the parent of Slice A's first commit. Green on arrival (exit 0 at RED); RED shown by mutation (a byte appended to either template gives exit 1, and a drifted embedded block fails the identity check). Held at `pending` until the top-level-def scope defect in `check_spec_rows_name_their_contract` was fixed (§12); green since, and binding (the slug found inside the function) | green |
+| BRIEF_TEMPLATES_BYTE_IDENTICAL | check | tests/seed-lint.py | verify gate; the slug sits in a comment beside the existing GRAPH DISCIPLINE identity check in `check` (not `main`, which holds no such check), and the verify record is `git diff --quiet <baseline> -- templates/prompts/graph-session-bootstrap.md templates/prompts/handback-payload.md`, where `<baseline>` is the 7.32.0 commit that lands owner rule R5's two sentences in step 4, its SHA not yet written here (until 7.32.0 it was `ac61a3f`, the 7.27.0 release commit, the parent of Slice A's first commit). Green on arrival (exit 0 at RED); RED shown by mutation (a byte appended to either template gives exit 1, and a drifted embedded block fails the identity check). Held at `pending` until the top-level-def scope defect in `check_spec_rows_name_their_contract` was fixed (§12); green since, and binding (the slug found inside the function) | green |
 | ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX | X135; structural | tests/test-bound-hook.sh | unit | green |
 | ROUTE_EXTENSION_PASSES_PROMPT_AS_ONE_OPTION_VALUE | X136; structural; fails when no inline argv literal is found | tests/test-bound-hook.sh | unit | green |
 | ROUTE_EXTENSION_TEXT_MATCHES_ROUTE_HOOK | X137; structural, escapes decoded, single literals | tests/test-bound-hook.sh | unit | green |
@@ -1629,23 +1625,23 @@ Techniques the cases rely on:
 | LEDGER_WRITE_FAILURE_FAILS_OPEN | X148; a ledger over `LEDGER_MAX_BYTES`, three prompts; red on arrival (the oversized file was written) | tests/test-bound-hook.sh | integration | green |
 | LEDGER_GC_BOUNDED | X149; GC's scan fails through the `scandirfail` wrapper; red on arrival (no ledger written) | tests/test-bound-hook.sh | integration | green |
 | ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX | X150; structural, the twin of X146; green on arrival, red under a stdout-normalising mutation (§11) | tests/test-bound-hook.sh | unit | green |
-| PLAN_ENTRY_NAMES_THE_NODE_FILE | test_plan_entry_names_the_node_file | tests/test_graph_lint.py | integration; red on arrival (entry lines carry no path); the fixture puts one node at `docs/graph/agents/04-tester.md`, a path its id does not spell | red |
+| PLAN_ENTRY_NAMES_THE_NODE_FILE | test_plan_entry_names_the_node_file | tests/test_graph_lint.py | integration; red on arrival (entry lines carry no path); the fixture puts one node at `docs/graph/agents/04-tester.md`, a path its id does not spell | green |
 | ROUTE_HOOK_KEEPS_THE_PATH | X151; green on arrival (the hook reads the id as the first token and passes entry lines through); RED shown by mutation (a scratch `route-hook.py` that drops the path token from a new id's entry line fails X151 alone) | tests/test-bound-hook.sh | integration | green |
-| ANCHOR_RECORD_NAMES_EVERY_REPOSITORY | X152; red on arrival (no `tools/code-anchor.py`) | tests/test-bound-hook.sh | integration | red |
-| ANCHOR_QUIET_WHEN_NOTHING_MOVED | X153; red on arrival (no tool) | tests/test-bound-hook.sh | integration | red |
-| ANCHOR_NAMES_PATHS_WHEN_THE_COMMIT_MOVED | X154; red on arrival (no tool) | tests/test-bound-hook.sh | integration | red |
-| ANCHOR_NAMES_BOTH_BRANCHES_WHEN_THE_BRANCH_MOVED | X155; red on arrival (no tool) | tests/test-bound-hook.sh | integration | red |
-| ANCHOR_NAMES_NEW_UNCOMMITTED_WORK | X156; red on arrival (no tool) | tests/test-bound-hook.sh | integration | red |
-| ANCHOR_ABSENT_FAILS_TOWARD_INCLUSION | X157; five causes; red on arrival (no tool) | tests/test-bound-hook.sh | integration | red |
-| ANCHOR_OUTPUT_WITHIN_BUDGET | X158; 300 changed paths; red on arrival (no tool) | tests/test-bound-hook.sh | integration | red |
-| ANCHOR_COMPARE_WRITES_NOTHING | X159; five plant states with a stale index; red on arrival (no tool) | tests/test-bound-hook.sh | integration | red |
-| ANCHOR_RECORD_REFUSES_A_SYMLINK | X160; hard link, and fault injection through `runpy`; red on arrival (no tool) | tests/test-bound-hook.sh | integration | red |
-| STATUS_HOOK_INJECTS_THE_ANCHOR_LINE | X161; with and without a register; red on arrival (no anchor line); its ledger-reset assertion is a guard, green on arrival | tests/test-bound-hook.sh | integration | red |
-| STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION | X162; four causes, with and without a register; red on arrival (no not-checked line, no `ANCHOR_TIMEOUT`) | tests/test-bound-hook.sh | integration | red |
-| STATUS_EXTENSION_INJECTS_THE_ANCHOR_LINE | X163; structural; red on arrival (no `code-anchor.py` in the source) | tests/test-bound-hook.sh | unit | red |
-| ANCHOR_UNUSABLE | X157, the case of the contract named there | tests/test-bound-hook.sh | integration; the case names this failure slug after its contract slug | red |
-| ANCHOR_COMMIT_UNREACHABLE | X157, the case of the contract named there | tests/test-bound-hook.sh | integration; the case names this failure slug after its contract slug | red |
-| ANCHOR_CHECK_DID_NOT_RUN | X162 and X163, the cases of the contracts named there | tests/test-bound-hook.sh | integration and unit; each names this failure slug after its contract slug | red |
+| ANCHOR_RECORD_NAMES_EVERY_REPOSITORY | X152; red on arrival (no `tools/code-anchor.py`) | tests/test-bound-hook.sh | integration | green |
+| ANCHOR_QUIET_WHEN_NOTHING_MOVED | X153; red on arrival (no tool) | tests/test-bound-hook.sh | integration | green |
+| ANCHOR_NAMES_PATHS_WHEN_THE_COMMIT_MOVED | X154; red on arrival (no tool) | tests/test-bound-hook.sh | integration | green |
+| ANCHOR_NAMES_BOTH_BRANCHES_WHEN_THE_BRANCH_MOVED | X155; red on arrival (no tool) | tests/test-bound-hook.sh | integration | green |
+| ANCHOR_NAMES_NEW_UNCOMMITTED_WORK | X156; red on arrival (no tool) | tests/test-bound-hook.sh | integration | green |
+| ANCHOR_ABSENT_FAILS_TOWARD_INCLUSION | X157; five causes; red on arrival (no tool) | tests/test-bound-hook.sh | integration | green |
+| ANCHOR_OUTPUT_WITHIN_BUDGET | X158; 300 changed paths; red on arrival (no tool) | tests/test-bound-hook.sh | integration | green |
+| ANCHOR_COMPARE_WRITES_NOTHING | X159; five plant states with a stale index; red on arrival (no tool) | tests/test-bound-hook.sh | integration | green |
+| ANCHOR_RECORD_REFUSES_A_SYMLINK | X160; hard link, and fault injection through `runpy`; red on arrival (no tool) | tests/test-bound-hook.sh | integration | green |
+| STATUS_HOOK_INJECTS_THE_ANCHOR_LINE | X161; with and without a register; red on arrival (no anchor line); its ledger-reset assertion is a guard, green on arrival | tests/test-bound-hook.sh | integration | green |
+| STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION | X162; four causes, with and without a register; red on arrival (no not-checked line, no `ANCHOR_TIMEOUT`) | tests/test-bound-hook.sh | integration | green |
+| STATUS_EXTENSION_INJECTS_THE_ANCHOR_LINE | X163; structural; red on arrival (no `code-anchor.py` in the source) | tests/test-bound-hook.sh | unit | green |
+| ANCHOR_UNUSABLE | X157, the case of the contract named there | tests/test-bound-hook.sh | integration; the case names this failure slug after its contract slug | green |
+| ANCHOR_COMMIT_UNREACHABLE | X157, the case of the contract named there | tests/test-bound-hook.sh | integration; the case names this failure slug after its contract slug | green |
+| ANCHOR_CHECK_DID_NOT_RUN | X162 and X163, the cases of the contracts named there | tests/test-bound-hook.sh | integration and unit; each names this failure slug after its contract slug | green |
 
 Existing tests that must change in the same commit as the RED cases (plan §9):
 `tests/test-tier-lanes.sh` drops `route-hook.py` and `route-extension.ts` from
@@ -1931,3 +1927,14 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
   first prompt), and never by the per-prompt route hook or extension or any
   pre-tool hook. No contract was added. §9 gains AC-12 to AC-15 for the
   contracts promoted with that RED.
+- 2026-09-28: 7.32.0: `ANCHOR_TIMEOUT` goes from 15 s to 5 s. The wait comes
+  before a session's first answer, a compare costs milliseconds, and an
+  expired wait gives the not-checked line. Only the §6 row changes: the 15 s
+  wait in the §10 note on `X142` belongs to `ROUTER_TIMEOUT`, which keeps it.
+- 2026-09-28: 7.32.0, plan increment 45. Owner rule R5 puts two sentences into
+  step 4 of the canonical `GRAPH DISCIPLINE` block and, byte-identical, into the
+  five embedding templates. BRIEF_TEMPLATES_BYTE_IDENTICAL's baseline revision
+  becomes the commit that lands them, and its pending amendment leaves §4. The
+  7.27.0 baseline `ac61a3f` had already stopped matching: `git diff --quiet
+  ac61a3f` exits 1 on the two templates as they stood before this change. The
+  seed-lint identity check is unchanged.
