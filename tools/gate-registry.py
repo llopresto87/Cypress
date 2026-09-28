@@ -97,7 +97,9 @@ GATES: dict[str, tuple[str, str, str, str]] = {
     "test-grill-lint.sh": (
         "the plan-of-record linter finds shape defects", FIXTURES, "scope",
         "proves the linter works; the seed's docs/plans/ use a different heading "
-        "convention and are not swept"),
+        "convention and are not swept, except that the --waves cases also read "
+        "the frozen docs/plans/grill-7.30.0-cycle-economy.md, read-only, for one "
+        "wave line (SPEC-0005 GRILL_WAVES_LEVELS_FROM_DEPENDS_ON)"),
     "test-full-install.sh": (
         "every adapter delivers the runtime machinery it promises", TEMP, "coverage",
         "checks presence and the command roster, not the placement contract "

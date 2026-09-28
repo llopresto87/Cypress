@@ -19,6 +19,8 @@ which is the installed *application* knowledge graph. ADR bodies use
 | [0009](adr-0009-host-support-tiers.md) | Hosts sit in three support tiers (first-class, supported, frozen); `install.sh all` installs only the first two | proposed | 2026-09-23 | grill-7.27.0-host-support-tiers.md | 7.27.0 |
 | [0010](adr-0010-context-residency.md) | Text enters a session once, at the lowest residency class that serves it; the per-prompt hooks hold to that per host, and the ledger's threat model | proposed | 2026-09-23 | grill-7.28.0-context-residency.md | 7.28.0 |
 | [0011](adr-0011-donor-token-redaction.md) | Donor-identifying tokens in append-only seed records are replaced in place, under one scoped exception whose home is `CLAUDE.md` Conventions | proposed | 2026-09-24 | grill-7.29.0-front-door.md | 7.29.0 |
+| [0012](adr-0012-red-waves-ahead-of-green.md) | Work runs in cycles of a RED wave and a clean GREEN wave; holds are per increment; one ruling pass per cycle rules on what was flagged; `grill-lint.py --waves` reports the schedule | accepted | 2026-09-28 | grill-7.31.0-wave-scheduling.md | 7.31.0 |
+| [0013](adr-0013-harness-memory-is-not-a-home.md) | Harness memory is not a home: a session writes what it learns to a session record in the plant (`docs/graph/plans/sessions/`), which canonize files; the kernel's §3.2 points there | accepted | 2026-09-28 | grill-7.31.0-wave-scheduling.md | 7.31.0 |
 
 ADRs **0001–0003** were decided inline in the plan-of-record
 [`../plans/agent-routing-and-delegation.md`](../plans/agent-routing-and-delegation.md)

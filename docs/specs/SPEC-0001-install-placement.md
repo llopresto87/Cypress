@@ -22,9 +22,9 @@ status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tes
 
 - **Owner:** seed-installer
 - **Date:** 2026-09-13
-- **Last reviewed:** 2026-09-23
+- **Last reviewed:** 2026-09-28
 - **Related grill section:** docs/plans/grill-7.15.0-remediation.md §3, §5
-- **Related ADRs:** adr-0003-enforcement-layering-honesty, adr-0009-host-support-tiers
+- **Related ADRs:** adr-0003-enforcement-layering-honesty, adr-0009-host-support-tiers, adr-0013-harness-memory-is-not-a-home
 - **Supersedes:** —
 - **Superseded by:** —
 
@@ -311,6 +311,19 @@ whose record carries github-copilot, because checking writes nothing.
   the dispatch installs
 - **And:** the unmutated tree passes
 
+### Contract: SESSION_RECORD_FORM_IS_PLACED
+- **Given:** a fresh target directory
+- **When:** `install.sh claude-code --project-dir <target>` runs
+- **Then:** `docs/graph/plans/sessions/_session-record.template.md` exists
+  and is byte-identical to the seed's
+  `templates/docs/plans/sessions/_session-record.template.md`, placed by
+  `place_docs_skeleton`'s existing `templates/docs/**` walk with
+  `place_if_missing`, so `SINGLE_WRITER`'s census is unchanged
+- **And:** after the plant writes its own record in
+  `docs/graph/plans/sessions/` and edits the placed form, `install.sh all
+  --project-dir <target>` leaves both files byte-identical and writes no
+  backup beside either
+
 ## 5. Non-functional requirements
 
 - **Compatibility:** bash and `python3` only; no third-party imports. The
@@ -452,6 +465,7 @@ $ echo $?
 | CHECK_WITHOUT_COPILOT_SAYS_SO | D3 caseCHECK_WITHOUT_COPILOT_SAYS_SO: `all --check` exits 0 and says no generated views are in scope | tests/test-install-adoption.sh | integration | green |
 | ALL_CHECK_INCLUDES_RECORDED_COPILOT | D4 caseALL_CHECK_INCLUDES_RECORDED_COPILOT: a Copilot-recording plant is checked by `all --check`, in sync exits 0 with "up to date", drifted exits non-zero with STALE, no not-refreshed warning, exactly one DEPRECATED line on stderr in each arm | tests/test-install-adoption.sh | integration | green |
 | HOST_TIERS_AGREE | E4 caseHOST_TIERS_AGREE: the matrix moves opencode to frozen, a tier row is duplicated, codex leaves every tier while still dispatched, each suite's EVERY_HOST drops a host, the dispatch gains a `cursor` arm whose command is not a bare `install_cursor ;;`, the argument parser accepts `cursor`, a dispatch label is quoted; `check_host_tiers` fails naming the files; a dispatch arm split over two lines passes | tests/test-seed-lint.sh | unit | green |
+| SESSION_RECORD_FORM_IS_PLACED | S9 case_session_records: a fresh `install.sh claude-code` holds `docs/graph/plans/sessions/_session-record.template.md` byte-identical to the seed's form; after a plant record and an edit to the placed form, `install.sh all` leaves both byte-identical, with no backup beside either. Written before the form exists (7.31.0): it fails on its first assertion until the form ships | tests/test-plant-state.sh | integration | pending |
 
 Coverage note, so the table is not read as more than it is.
 
@@ -537,3 +551,11 @@ only version surface it has, and it moves with each entry here.
   holds the argument parser's accepted tools to the arrays plus `all`.
   Review minor m2: §10's ALL_CHECK_INCLUDES_RECORDED_COPILOT row now names
   the assertion that pins "fires, once". No other contract changed.
+- 2026-09-28: 7.31.0 session record,
+  [ADR-0013](../decisions/adr-0013-harness-memory-is-not-a-home.md). §4 gains
+  SESSION_RECORD_FORM_IS_PLACED: every plant receives the session-record form,
+  and so the `docs/graph/plans/sessions/` directory, through the existing
+  scaffold walk. It adds no installer code and no write site, and a plant's own
+  records are never touched. It is written ahead of its RED
+  (`tests/test-plant-state.sh`), and §10 binds it when that RED lands. No
+  existing contract changed; the status stays `back-written`.
