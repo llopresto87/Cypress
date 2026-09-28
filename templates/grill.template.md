@@ -77,8 +77,9 @@ and every library, spec, or API a §6 decision rests on — or one line,
 |---|---|---|---|---|---|
 | Design latitude: <creative / balanced / simple> | <what the answer allows this change> | <the owner's quote, or the session's recorded reason> | reversible | — | <date> |
 
-The `Design latitude:` row is asked once, before the spec's §3, and
-every later step is held to it. Depth: `specify.design-latitude` in
+The session classifies the `Design latitude:` row before the spec's §3,
+asking the owner only in doubt, and every later step is held to it.
+Depth: `specify.design-latitude` in
 `docs/graph/protocols/specify-joint-pass.md`.
 
 Reversibility takes the same graduated value here as it does in an ADR,
