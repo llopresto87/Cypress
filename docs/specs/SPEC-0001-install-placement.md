@@ -24,7 +24,7 @@ status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tes
 - **Date:** 2026-09-13
 - **Last reviewed:** 2026-09-28
 - **Related grill section:** docs/plans/grill-7.15.0-remediation.md §3, §5
-- **Related ADRs:** adr-0003-enforcement-layering-honesty, adr-0009-host-support-tiers, adr-0013-harness-memory-is-not-a-home
+- **Related ADRs:** adr-0003-enforcement-layering-honesty, adr-0009-host-support-tiers, adr-0013-harness-memory-is-not-a-home, adr-0014-graft-reconciles-every-graph-engine
 - **Supersedes:** —
 - **Superseded by:** —
 
@@ -36,7 +36,10 @@ one component that writes into somebody else's repository — had no spec at all
 This contracts the properties that make an install safe to run twice, safe to
 run over a customized plant, and safe to audit afterwards: every write is
 recoverable, no write escapes the target, an identical re-run changes nothing,
-and the record the installer keeps cannot contradict the filesystem.
+and the record the installer keeps cannot contradict the filesystem. It also
+contracts the one write the seed's graft tools make into a plant's placed
+files, the reconciliation of the graph engines the installer placed
+add-if-missing, and the audit that says whether each engine is current.
 
 ## 2. Scope
 
@@ -48,10 +51,14 @@ and the record the installer keeps cannot contradict the filesystem.
   - the legal corpus as a whole-or-nothing artifact
   - preflight refusal before any write
   - which hosts `all` installs, and the deprecation notice a frozen host prints
+  - the graph-engine reconciliation `tools/graft-graph-engine.py` performs on a
+    plant's placed engines (`graph-lint.py`, `spec-lint.py`, `grill-lint.py`),
+    and the engine-currency check of `tools/graft-audit.py --engine`
+    (adr-0014)
 - **Out of scope:**
   - what the placed files MEAN (the graph schema, the kernel's content)
   - `grow`, `graft` and `harvest`, which are user-sovereign flows over an
-    already-installed plant
+    already-installed plant, apart from the engine reconciliation above
   - the seed's own repository layout
 
 ## 3. User-facing behavior
@@ -324,6 +331,41 @@ whose record carries github-copilot, because checking writes nothing.
   --project-dir <target>` leaves both files byte-identical and writes no
   backup beside either
 
+### Contract: ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE
+- **Given:** a plant engine file and the seed's engine of the same name
+- **When:** `tools/graft-graph-engine.py <plant-file> <seed-file>` runs with no
+  `--preserve`
+- **Then:** it preserves the config that engine carries: `ROOT_ID`, `KINDS`
+  and `KIND_PREFIX` for `graph-lint.py`; `TEST_GLOBS` for `spec-lint.py`;
+  nothing for `grill-lint.py`; and exits 0, having adopted the seed body with
+  a `.bak-<ts>` of the plant file, or reporting it already current or
+  KEEP-PLANT
+- **And:** a plant file with any other name takes the `graph-lint.py` set
+- **And:** an explicit `--preserve` wins over the per-engine set
+
+### Contract: ENGINE_AUDIT_CHECKS_EVERY_PAIR
+- **Given:** `tools/graft-audit.py <plant> <seed>` with `--engine
+  <plant-file>:<seed-file>` given more than once
+- **When:** it runs
+- **Then:** it prints one engine-currency line per pair, each naming its plant
+  file
+- **And:** a malformed or unreadable pair, in any position, makes it exit
+  non-zero, because a check that did not run is not reported as run
+
+### Contract: EXISTING_PLANT_RECEIVES_CURRENT_ENGINES
+- **Given:** an installed plant whose `docs/graph/grill-lint.py` is an older
+  engine body
+- **When:** `install.sh` re-runs
+- **Then:** `docs/graph/grill-lint.py` is unchanged: the engines stay
+  plant-owned
+- **And:** when `tools/graft-graph-engine.py` then runs, with no
+  `--preserve`, over each of the three engines, every run exits 0,
+  `docs/graph/grill-lint.py` is byte-identical to the seed's, one backup holds
+  the older body, and `python3 docs/graph/grill-lint.py --waves` prints a line
+  starting `waves:`
+- **And:** `tools/graft-audit.py` with the three `--engine` pairs reports
+  every engine current
+
 ## 5. Non-functional requirements
 
 - **Compatibility:** bash and `python3` only; no third-party imports. The
@@ -392,6 +434,17 @@ agent_projections:    { type: array, derived_from: tools }
   refreshed, and `install.sh all <host>` refreshes them
 - **Side effects:** none; the frozen host's tree is left exactly as it was
 - **Recovery:** re-run with the host named
+
+### Failure: ENGINE_LEFT_STALE_BY_GRAFT
+- **Trigger:** a graft reconciles fewer than the three engines, or the engine
+  tool refuses one and the refusal is not acted on
+- **Response:** `graft.gate.engine`, run with the three pairs, prints a `graph
+  engine STALE` line naming the stale engine (`detective`: the line does not
+  gate the exit code)
+- **Side effects:** the plant keeps its older engine; for `grill-lint.py`,
+  `--waves` is missing
+- **Recovery:** run `tools/graft-graph-engine.py` over the named engine, or
+  record a superset as KEEP-PLANT
 
 ## 8. Examples
 
@@ -559,3 +612,13 @@ only version surface it has, and it moves with each entry here.
   records are never touched. It is written ahead of its RED
   (`tests/test-plant-state.sh`), and §10 binds it when that RED lands. No
   existing contract changed; the status stays `back-written`.
+- 2026-09-28: 7.31.0 plant pickup,
+  [ADR-0014](../decisions/adr-0014-graft-reconciles-every-graph-engine.md).
+  §1 and §2 take in the graph-engine reconciliation and the audit's engine
+  check, the one write graft's tools make into a plant's placed engines; graft
+  as a whole stays out of scope. §4 gains ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE,
+  ENGINE_AUDIT_CHECKS_EVERY_PAIR and EXISTING_PLANT_RECEIVES_CURRENT_ENGINES,
+  written ahead of their RED (`tests/test-graft-tools.sh`,
+  `tests/test-plant-state.sh`); §7 gains ENGINE_LEFT_STALE_BY_GRAFT. No
+  installer behaviour and no existing contract changed; the status stays
+  `back-written`.
