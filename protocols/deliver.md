@@ -26,7 +26,7 @@ load_when:
   - "every remaining step is the owner's, goal loop or stop hook keeps firing"
   - "session metrics after each increment, cost and quality so far"
 prevents: A session that ends without a cold-pickup state, leaving the next one to re-derive what changed, what was gated and what is still open from a diff.
-est_tokens: 2681
+est_tokens: 2793
 command: true
 ---
 
@@ -124,18 +124,25 @@ section 15.
 <single highest-leverage action, named specifically>
 ```
 
-**Decisions routed to the owner are numbered** (`deliver.numbered-decisions`).
-Wherever this summary — or any message in the session — puts a choice in
-the owner's hands (an option set, an open question, a conflict between
-specialists, a ratification), it arrives as a numbered list of
-individually approvable items, so the owner answers "1 and 3, not 2"
-instead of re-describing each. That holds for the Key decisions still
-open, for a limitation that needs a call, and for the next step when it
-needs a go/no-go. Every item names each branch, environment, or
-resource by its exact identifier, never by a nickname
-or a shorthand, and an environment name never stands in for a branch name:
-an approval given against an ambiguous name can land on the wrong
-target. Default on; the owner may waive it.
+**A question put to the owner is as understandable as possible, and
+its decisions are numbered** (`deliver.numbered-decisions`). The
+standard is the owner's words: "when asking question the seed/plant
+should strive to be as understandable as possible". Before a choice is
+asked, it is explained in prose: what the earlier decision says, quoted;
+what changes, with one concrete example; what it costs; and what stays
+the same. If the owner says the explanation fell short, explain again
+and confirm the answer before building on it. Wherever this summary, or
+any message in the session, puts a choice in the owner's hands (an
+option set, an open question, a conflict between specialists, a
+ratification), it arrives as a numbered list of individually approvable
+items, so the owner answers "1 and 3, not 2" instead of re-describing
+each. That holds for the Key decisions still open, for a limitation
+that needs a call, and for the next step when it needs a go/no-go.
+Every item names each branch, environment, or resource by its exact
+identifier, never by a nickname or a shorthand, and an environment name
+never stands in for a branch name: an approval given against an
+ambiguous name can land on the wrong target. Default on; the owner may
+waive it.
 
 The metrics block is nine lines of telemetry, not prose, and the
 orchestrator fills every line from its own trace (spawn ids, handbacks,
