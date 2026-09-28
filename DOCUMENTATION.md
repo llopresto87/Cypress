@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 7.30.0
+- Version documented: 7.31.0
 - Repository role: this repo is the seed, the product that is shipped
   into other projects. It is *not* a grown project itself.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -142,7 +142,7 @@ full statement of each rule lives in (and only in) its owning node.
 | #   | Rule        | One-line statement | Owner node |
 |-----|-------------|--------------------|------------|
 | 3.1 | **spec**       | Every non-trivial behavior has an executable spec in `docs/graph/specs/`, written before the code — except a T2 contained change, pinned by its RED test and why-record instead ([§4.1](#41-t2s-contained-lane)). | `protocol.specify` (`rule.spec`) |
-| 3.2 | **knowledge**  | `docs/graph/` is the single source of truth — one home per fact, loaded minimally and declared, ahead of memory. | `skill.context-router` (`rule.knowledge`) |
+| 3.2 | **knowledge**  | `docs/graph/` is the single source of truth — one home per fact, loaded minimally and declared, ahead of memory. Harness memory is not a home: what a session learns goes to a session record in `docs/graph/plans/sessions/` (`stewardship-posture.session-record`). | `skill.context-router` (`rule.knowledge`) |
 | 3.3 | **grill**      | `docs/graph/plans/grill.md` is the living plan-of-record; append, never silently rewrite. | `protocol.grill` (`rule.grill`) |
 | 3.4 | **test-first** | No production code without a failing test that authorizes it — RED → GREEN → REFACTOR → COMMIT. | `protocol.test-first` (`rule.test-first`) |
 | 3.5 | **verify**     | Gates proportional to blast radius run — and assert something — before "done"; absences recorded, never faked green. | `protocol.verify` (`rule.verify`) |
@@ -507,9 +507,9 @@ that answers the question in hand.
 |---|---|
 | [`delegation.md`](core/method/delegation.md) | the roster, mechanical routing, the knowledge-or-judgment question on a LOW band, and shared spec authoring; its Neighbours list is the menu of the other five |
 | [`delegation-model-classes.md`](core/method/delegation-model-classes.md) | the model class and reasoning effort each step kind runs on, light variants, and the `effort:` key |
-| [`delegation-cycle-economy.md`](core/method/delegation-cycle-economy.md) | one step per spawn, effort labels and batch sizes, GREEN running its own tests, the batch-tip cadence, mutation at the end, the question file and the ruling pass |
+| [`delegation-cycle-economy.md`](core/method/delegation-cycle-economy.md) | one step per spawn, effort labels and batch sizes, GREEN running its own tests, the tip cadence, mutation at the end, the question file and the ruling pass |
 | [`delegation-briefs.md`](core/method/delegation-briefs.md) | what every brief carries across the spawn boundary |
-| [`delegation-sequencing.md`](core/method/delegation-sequencing.md) | spawn order by dependency, and one writer per file set |
+| [`delegation-sequencing.md`](core/method/delegation-sequencing.md) | spawn order by dependency, RED waves ahead of GREEN, and one writer per file set |
 | [`delegation-bounds.md`](core/method/delegation-bounds.md) | spawn allowlists and depth, host registration, what a turn is, and the spawn trace |
 
 ### 6.9 The cycle economy
@@ -533,17 +533,24 @@ every test and fixture file the RED spawn wrote. It re-checks those hashes
 before it commits a GREEN file set and before the batch-tip run, and a mismatch
 sends the GREEN back to be re-briefed from the recorded RED.
 
-**The full suite runs once per batch.** Each increment runs its targeted tests
-and the gates its files touch. The full suite runs at the batch tip and has to
-pass before anything leaves the branch. Until then, a landed increment is
-"landed, tip pending".
+**The full suite runs once per cycle, after its GREEN wave.** Each increment
+runs its targeted tests and the gates its files touch. The full suite runs at
+the tip. A failure whose test id is on the expected-red list, a RED whose GREEN
+has not committed, does not fail the tip. Nothing leaves the branch until a
+tip carries neither expected-red nor `not run` ids (`delegation.waves`). Until
+the tip passes, a landed increment is "landed, tip pending".
 
-**Questions wait for one ruling pass.** A worker that meets an ambiguity
-appends it to the batch's question file,
+**Work runs in cycles, and questions wait for one ruling pass per cycle.** A
+RED wave writes every ready RED; a GREEN wave follows over the clean increments
+only, with no ruling pass before it. A worker that meets an ambiguity appends it
+to the batch's question file,
 `docs/graph/plans/<unit of work>/questions/batch-<N>.md`, and carries on with
-the work the question does not touch. Once every spawn of the batch has handed
-back, and before the next batch starts, the architect rules on every entry in a
-single pass. A ruling that relaxes or removes a contract, or that amends one on
+the work the question does not touch. The unit that pauses is the increment,
+never the batch: an increment an entry touches is held, with whatever depends on
+it, and every other increment proceeds, its GREEN included. Once the cycle's
+GREEN wave has handed back, the architect rules on every entry of the cycle in
+a single pass, and the next cycle re-issues only the held increments. The full
+rule is [`delegation.waves`](core/method/delegation-sequencing.md). A ruling that relaxes or removes a contract, or that amends one on
 a security, data-integrity or money surface, goes to the owner first, and to
 `security` as well for a security surface.
 
@@ -1057,7 +1064,8 @@ said, grouped by what they check:
 4. `test-graph-artifacts.sh`: graph artifact presence.
 5. `test-spec-lint.sh`: the spec gate: shape of every spec, coverage of live ones.
 6. `test-grill-lint.sh`: the plan-of-record gate (`grill-lint.py`): section
-   shape, §9 dependency order, §5 derived from §9, plan↔spec alignment.
+   shape, §9 dependency order, §5 derived from §9, plan↔spec alignment, and
+   the `--waves` report.
 7. `test-full-install.sh`: full install across tools, roster parity, the
    Claude-Code + Prime-Agent coexistence, CI parity gate.
 8. `test-bound-hook.sh`: the Claude-Code delegation-bound hook.
@@ -1177,7 +1185,7 @@ count.
 > `tests/ratchets.json`; the comment beside the constant in
 > `integrations/claude-code/agent-lint.py` records why it stands where it does.
 
-Routable body sizes, computed by `tests/seed-lint.py` from the method files on every run: the largest routable body is 1 384 lines (`protocols/graft.md`) and the median is 140 lines, against a ceiling of 1 000 lines for any routable node and 2 500 lines for the three cross-project protocols, `graft`, `grow` and `harvest`. Those three are the only protocols that write into a repository the seed does not own, and a session loads one only while it performs that operation ([ADR-0007](docs/decisions/adr-0007-lifecycle-protocol-ceiling.md)). Both ceilings are ratchets: they may fall freely, and raising either is an owner decision recorded in `tests/ratchets.json`. The always-loaded budget has the same shape, and `EAGER_EXEMPTIONS` in `tests/seed-lint.py` is consequently **empty**: every harness sits under `EAGER_BUDGET`, and the per-harness figures are in the [host capability matrix](documentation/host-capability-matrix.md).
+Routable body sizes, computed by `tests/seed-lint.py` from the method files on every run: the largest routable body is 1 427 lines (`protocols/graft.md`) and the median is 149 lines, against a ceiling of 1 000 lines for any routable node and 2 500 lines for the three cross-project protocols, `graft`, `grow` and `harvest`. Those three are the only protocols that write into a repository the seed does not own, and a session loads one only while it performs that operation ([ADR-0007](docs/decisions/adr-0007-lifecycle-protocol-ceiling.md)). Both ceilings are ratchets: they may fall freely, and raising either is an owner decision recorded in `tests/ratchets.json`. The always-loaded budget has the same shape, and `EAGER_EXEMPTIONS` in `tests/seed-lint.py` is consequently **empty**: every harness sits under `EAGER_BUDGET`, and the per-harness figures are in the [host capability matrix](documentation/host-capability-matrix.md).
 
 ## 15. Glossary
 <a id="glossary"></a>
@@ -1685,7 +1693,7 @@ This section answers which rules a tool holds and which the method only asks the
 | <a id="enf-registration-notice"></a>The installer prints a notice about when new agents become usable | `install.sh` (`log_registration_notice`) | **not a control**: advice, printed at install | It checks nothing. When a host picks up newly placed agent files is host-dependent | [host capability matrix, Specialist discovery/registration](documentation/host-capability-matrix.md) |
 | <a id="enf-graph-lint"></a>A graph node's contract, and one home per `owns:` key | `templates/knowledge-graph/graph-lint.py` | **soft** in its lint mode; **not a control** for `--plan`, `--graph` and `--warn`, which exit 0 | A well-formed node that states something false passes. In a plant it holds only when someone runs it | [knowledge-graph skill](skills/knowledge-graph/SKILL.md) |
 | <a id="enf-spec-lint"></a>A spec's shape, and each live contract's test coverage | `templates/knowledge-graph/spec-lint.py` | **soft** | A contract slug found anywhere in a test file, a comment included, counts as covered | [specify protocol](protocols/specify.md) |
-| <a id="enf-grill-lint"></a>The plan-of-record's shape | `templates/knowledge-graph/grill-lint.py` | **soft** | With no plan present it prints SKIP and exits 0. Whether an edit appended to the plan or rewrote it is not checked; a reviewer judges that | [grill protocol](protocols/grill.md) |
+| <a id="enf-grill-lint"></a>The plan-of-record's shape | `templates/knowledge-graph/grill-lint.py` | **soft** | With no plan present it prints SKIP and exits 0. Whether an edit appended to the plan or rewrote it is not checked; a reviewer judges that. `--waves` is a report: its wave lines and overlap warnings never change the exit status | [grill protocol](protocols/grill.md) |
 | <a id="enf-agent-lint"></a>The roster's frontmatter, and the routing corpus's scores | `integrations/claude-code/agent-lint.py`, `agents/_routes.golden.tsv` | **soft** for `--lint` and `--eval`; **not a control** for `--route`, which prints and exits 0 | It reads the agent files on disk, not what a host registered | [§14 Tests and gates](#14-tests-and-gates) |
 | <a id="enf-prose-lint"></a>The prose floor under the humanizer skill | `tools/prose-lint.py` | **soft** | It catches only the tells a pattern can decide. Its rate thresholds are computed over all the files passed in one run, so one file's excess can hide in another's slack; the seed's own gate runs it once per file for that reason | [§14 Tests and gates](#14-tests-and-gates) |
 | <a id="enf-agnosticism-lint"></a>No leaked identity, address or vulnerability id in shipped text | `tools/agnosticism-lint.py` | **soft** | It finds IP addresses, CVE ids and the terms passed with `--forbid`; a name nobody listed passes. Its default glob reads Markdown only | [harvest protocol](protocols/harvest.md) |

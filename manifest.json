@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft-07/schema#",
   "name": "cypress",
   "fullName": "Contextual Yield Protocol for Routed Expert Seed Systems",
-  "version": "7.30.0",
+  "version": "7.31.0",
   "supersedes": "general_expert_prompts@1.0.0",
   "created": "2026-05-23",
   "description": "CYPRESS (Contextual Yield Protocol for Routed Expert Seed Systems) — a project-agnostic multi-agent seed for single- or multi-repository programs. As of 6.0.0 it is a pure graph system: the entire method surface — protocols, skills, agent charters, method/posture nodes, and template artifacts — installs INTO the plant's unified docs/graph/ as seed-owned routable nodes (origin: seed), activated progressively by the router; the always-loaded kernel is a small bootstrap (identity, tiers, rule anchors, boundaries), and tool directories hold only harness projections (agents, skills). Its tool-neutral INSTALL_PROMPT.md keeps user chat in orchestration/planning, dispatches Sonnet-class read-only scouts and Opus-class authors/reviewers, and grows the graph without building the application or publishing Git state.",
@@ -27,7 +27,7 @@
     "core/method/delegation-model-classes.md": "method.delegation-model-classes node — the class and reasoning effort each step runs on, and light variants. Installed to docs/graph/method/.",
     "core/method/delegation-cycle-economy.md": "method.delegation-cycle-economy node — effort-sized batches, GREEN self-test, tip cadence, the question file and ruling pass, mutation at the end. Installed to docs/graph/method/.",
     "core/method/delegation-briefs.md": "method.delegation-briefs node — what every brief carries across the spawn boundary. Installed to docs/graph/method/.",
-    "core/method/delegation-sequencing.md": "method.delegation-sequencing node — spawn order by dependency, and one writer per file set. Installed to docs/graph/method/.",
+    "core/method/delegation-sequencing.md": "method.delegation-sequencing node — spawn order by dependency, RED waves ahead of GREEN (delegation.waves), and one writer per file set. Installed to docs/graph/method/.",
     "core/method/delegation-bounds.md": "method.delegation-bounds node — spawn allowlists and depth, host registration, the turn, and the spawn trace. Installed to docs/graph/method/.",
     "core/method/engineering-posture.md": "method.engineering-posture node — general engineering principles (was operating-principles §1–§12). Installed to docs/graph/method/.",
     "core/method/minimum-sufficient-work.md": "method.minimum-sufficient-work node — how much work a task deserves, the declared effort level, risk-homogeneous increments (engineering-posture §5, split P1). Installed to docs/graph/method/.",
@@ -38,7 +38,7 @@
     "core/method/restrictive-policy.md": "method.restrictive-policy node — a rule that restricts must not deny the default; decided fallbacks, report-only destructive operations (design-posture §8, split P2). Installed to docs/graph/method/.",
     "core/method/maintenance-contracts.md": "method.maintenance-contracts node — one maintenance contract per artifact, what a generated artifact owes, doc-versus-code precedence (design-posture §12–§13, split P2). Installed to docs/graph/method/.",
     "core/method/design-governance.md": "method.design-governance node — the project's contract outranks the brief and the industry default; maintained primitives for security-critical machinery (design-posture §14–§15, split P2). Installed to docs/graph/method/.",
-    "core/method/stewardship-posture.md": "method.stewardship-posture node — records, verification, knowledge, session closure, tools (was §20–§27). Installed to docs/graph/method/.",
+    "core/method/stewardship-posture.md": "method.stewardship-posture node — records, verification, knowledge, the session record (harness memory is not a home), session closure, tools (was §20–§27). Installed to docs/graph/method/.",
     "core/method/prose-posture.md": "method.prose-posture node — prose a person reads: information contract, claim classes, genre profiles, diagnostics A–X, anti-patterns, stop conditions. Installed to docs/graph/method/.",
     "core/method/contract-posture.md": "method.contract-posture node — fail loudly on missing input, reject out-of-domain values, own the unversioned boundary. Installed to docs/graph/method/.",
     "core/method/incident-posture.md": "method.incident-posture node — smallest reversible containment, forensic trail kept intact, remediation separate from the stop. Installed to docs/graph/method/.",
@@ -217,7 +217,7 @@
     {
       "file": "protocols/canonize.md",
       "name": "canonize",
-      "role": "The single end-of-task close-out spawn (kernel §3.7 + §3.8): ONE docs-librarian brief persists knowledge of interest into the graph AND catalogs durable tools in docs/graph/tools. T0/T1 tasks satisfy it with a one-line self-record in the compact delivery."
+      "role": "The single end-of-task close-out spawn (kernel §3.7 + §3.8): ONE docs-librarian brief persists knowledge of interest into the graph, files the session record, AND catalogs durable tools in docs/graph/tools. T0/T1 tasks satisfy it with a one-line self-record in the compact delivery."
     },
     {
       "file": "protocols/deliver.md",
@@ -232,7 +232,7 @@
     {
       "file": "protocols/graft.md",
       "name": "graft",
-      "role": "User-decided-only cross-project meta-loop (never automatic): the outward complement of harvest. Carry the enriched seed onto an existing grown plant — three-way-reconcile its seed-owned machinery (kernel, protocols, skills, agents, templates, shared scripts) and refresh its library/legal/tool surfaces from the corpora — additively, reversibly, preserving the plant's own source and authored facts, for the steward to ratify. Standalone entry: GRAFT_PROMPT.md."
+      "role": "User-decided-only cross-project meta-loop (never automatic): the outward complement of harvest. Carry the enriched seed onto an existing grown plant — three-way-reconcile its seed-owned machinery (kernel, protocols, skills, agents, templates, shared scripts, and every graph engine with its own config), move harness memory into a first session record, and refresh its library/legal/tool surfaces from the corpora — additively, reversibly, preserving the plant's own source and authored facts, for the steward to ratify. Standalone entry: GRAFT_PROMPT.md."
     }
   ],
   "skills": [
@@ -361,7 +361,7 @@
     },
     {
       "file": "templates/knowledge-graph/grill-lint.py",
-      "produces": "docs/graph/grill-lint.py (no config) — mechanical plan-of-record gate: section shape, §9 dependency order, §5 derived from §9, plan↔spec alignment"
+      "produces": "docs/graph/grill-lint.py (no config) — mechanical plan-of-record gate: section shape, §9 dependency order, §5 derived from §9, plan↔spec alignment; --waves prints the §9 wave schedule as a report that never changes the exit status"
     },
     {
       "file": "templates/knowledge-graph/index.md",
