@@ -812,8 +812,9 @@ engine_case X389 case_engine_audit_malformed_first_pair_fails "a malformed first
 # One collecting block, after every older case: each case prints
 # `FAIL <label>: <why>` and the block exits 1 at its end, so one red case never
 # hides the next. Labels: GA-C1..GA-C4 are graft-audit's four false alarms
-# (GA-C3 asserts SPEC-0001 EVERY_BACKUP_IS_CLASSIFIABLE; the others are
-# contained, no spec owns them); GL-a..GL-d are tools/graft-ledger.py;
+# (GA-C3 runs under X390 and asserts SPEC-0001 EVERY_BACKUP_IS_CLASSIFIABLE, as
+# X391 and X392 do for the other projections of a plant-owned node; the others
+# are contained, no spec owns them); GL-a..GL-d are tools/graft-ledger.py;
 # GR-a..GR-f are tools/graft-run.py. Every fixture is synthetic.
 LEDGER="$ROOT/tools/graft-ledger.py"
 RUN="$ROOT/tools/graft-run.py"
@@ -903,7 +904,7 @@ PY
     || { echo "an engine backup carrying a signal line the current engine lost must stay CUSTOMIZED, exit 1 (got $rc): $(flat "$RW/c2.guard")"; return 1; }
 }
 
-# -- GA-C3: the projection of a plant-owned agent is a named exclusion ---------
+# -- X390 (GA-C3): the projection of a plant-owned agent is a named exclusion ---
 case_audit_plant_agent_projection() {
   # Asserts SPEC-0001 EVERY_BACKUP_IS_CLASSIFIABLE.
   local s="$RW/c3seed" p="$RW/c3plant" rc
@@ -931,6 +932,67 @@ MD
   python3 "$AUDIT" "$p" "$s" --date=20260305 >"$RW/c3.guard" 2>&1 && rc=0 || rc=$?
   grep -q "'UNMAPPED': 1" "$RW/c3.guard" && [ "$rc" -eq 1 ] \
     || { echo "a projection backup with no seed source and no plant node must stay UNMAPPED, exit 1 (got $rc): $(flat "$RW/c3.guard")"; return 1; }
+}
+
+# -- X391: the skill projection of a plant-owned skill node is classified -------
+case_audit_plant_skill_projection() {
+  # Asserts SPEC-0001 EVERY_BACKUP_IS_CLASSIFIABLE.
+  local s="$RW/x391seed" p="$RW/x391plant" rc
+  mkdir -p "$s/skills/spec-author" "$p/docs/graph/skills" "$p/.claude/skills/billing-rules"
+  printf 'seed skill body\n' > "$s/skills/spec-author/SKILL.md"
+  cat > "$p/docs/graph/skills/billing-rules.md" <<'MD'
+---
+name: billing-rules
+id: skill.billing-rules
+kind: skill
+origin: project
+---
+# Billing rules
+MD
+  cp "$p/docs/graph/skills/billing-rules.md" "$p/.claude/skills/billing-rules/SKILL.md"
+  printf -- '---\nname: billing-rules\norigin: project\n---\n# Billing rules, older\n' \
+    > "$p/.claude/skills/billing-rules/SKILL.md.bak-20260306-000000"
+  python3 "$AUDIT" "$p" "$s" --date=20260306 >"$RW/x391.out" 2>&1 && rc=0 || rc=$?
+  grep -q "backups audited: 1" "$RW/x391.out" || { echo "fixture: expected one backup audited: $(flat "$RW/x391.out")"; return 1; }
+  grep -q "'UNMAPPED': 0" "$RW/x391.out" && ! grep -q "UNMAPPED backup" "$RW/x391.out" \
+    || { echo "the skill projection of an origin: project skill node was reported UNMAPPED: $(flat "$RW/x391.out")"; return 1; }
+  [ "$rc" -eq 0 ] || { echo "a plant-owned skill's projection backup must audit exit 0 (got $rc): $(flat "$RW/x391.out")"; return 1; }
+  # guard: a skill projection with no plant node behind it is still unclassifiable, exit 1
+  mkdir -p "$p/.claude/skills/ghost"
+  printf 'a skill nobody owns\n' > "$p/.claude/skills/ghost/SKILL.md.bak-20260307-000000"
+  python3 "$AUDIT" "$p" "$s" --date=20260307 >"$RW/x391.guard" 2>&1 && rc=0 || rc=$?
+  grep -q "'UNMAPPED': 1" "$RW/x391.guard" && [ "$rc" -eq 1 ] \
+    || { echo "a skill projection backup with no seed source and no plant node must stay UNMAPPED, exit 1 (got $rc): $(flat "$RW/x391.guard")"; return 1; }
+}
+
+# -- X392: the Copilot agent view of a plant-owned agent node is classified -----
+case_audit_plant_agent_copilot_view() {
+  # Asserts SPEC-0001 EVERY_BACKUP_IS_CLASSIFIABLE.
+  local s="$RW/x392seed" p="$RW/x392plant" rc
+  mkdir -p "$s/agents" "$p/docs/graph/agents" "$p/.github/agents"
+  printf 'seed agent body\n' > "$s/agents/05-reviewer.md"
+  cat > "$p/docs/graph/agents/billing-auditor.md" <<'MD'
+---
+name: billing-auditor
+id: agent.billing-auditor
+kind: agent
+origin: project
+---
+# Billing auditor
+MD
+  printf -- '---\nname: billing-auditor\n---\n# Billing auditor\n' > "$p/.github/agents/billing-auditor.agent.md"
+  printf -- '---\nname: billing-auditor\n---\n# Billing auditor, older\n' \
+    > "$p/.github/agents/billing-auditor.agent.md.bak-20260308-000000"
+  python3 "$AUDIT" "$p" "$s" --date=20260308 >"$RW/x392.out" 2>&1 && rc=0 || rc=$?
+  grep -q "backups audited: 1" "$RW/x392.out" || { echo "fixture: expected one backup audited: $(flat "$RW/x392.out")"; return 1; }
+  grep -q "'UNMAPPED': 0" "$RW/x392.out" && ! grep -q "UNMAPPED backup" "$RW/x392.out" \
+    || { echo "the Copilot view of an origin: project agent node was reported UNMAPPED: $(flat "$RW/x392.out")"; return 1; }
+  [ "$rc" -eq 0 ] || { echo "a plant-owned agent's Copilot view backup must audit exit 0 (got $rc): $(flat "$RW/x392.out")"; return 1; }
+  # guard: a Copilot agent view with no seed agent and no plant node is still unclassifiable, exit 1
+  printf 'an agent view nobody owns\n' > "$p/.github/agents/ghost.agent.md.bak-20260309-000000"
+  python3 "$AUDIT" "$p" "$s" --date=20260309 >"$RW/x392.guard" 2>&1 && rc=0 || rc=$?
+  grep -q "'UNMAPPED': 1" "$RW/x392.guard" && [ "$rc" -eq 1 ] \
+    || { echo "a Copilot agent view backup with no seed generator and no plant node must stay UNMAPPED, exit 1 (got $rc): $(flat "$RW/x392.guard")"; return 1; }
 }
 
 # -- GA-C4: backups inside a nested plant copy are not this plant's -----------
@@ -1242,7 +1304,9 @@ PY
 
 round_case GA-C1 case_audit_base_identical_is_delta "a backup byte-identical to the seed at --base is DELTA; without --base it stays CUSTOMIZED"
 round_case GA-C2 case_audit_engine_signal_survives "an engine backup whose signal lines survive in the current engine is not CUSTOMIZED"
-round_case GA-C3 case_audit_plant_agent_projection "a plant-owned agent's projection backup is a named exclusion, exit 0"
+round_case X390 case_audit_plant_agent_projection "GA-C3: a plant-owned agent's projection backup is a named exclusion, exit 0"
+round_case X391 case_audit_plant_skill_projection "a plant-owned skill's projection backup is not UNMAPPED, exit 0"
+round_case X392 case_audit_plant_agent_copilot_view "a plant-owned agent's Copilot view backup is not UNMAPPED, exit 0"
 round_case GA-C4 case_audit_skips_nested_plant_copy "backups under a nested .cypress/seed.json directory are not counted"
 round_case GL-a case_ledger_classifies_three_ways "the ledger prints one class per seed-owned machinery file"
 round_case GL-b case_ledger_harvested_is_not_merge "a plant addition the seed already carries is HARVESTED"
