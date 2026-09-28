@@ -123,11 +123,12 @@ instruction is the first thing the model reads.
 
 Prime Agent is RLM-native, with primitives Claude Code does not have: recursive
 `rlm()` subagents you spawn and fan out from the IPython kernel, a persistent
-kernel that *is* your tool, a **continual harness** (`refine`, memories,
-reusable subagent specs) for cross-session memory, `agent_message` /
-`agent_observe` for coordinating children, and goals / heartbeats for
-long-running work. A first-class integration should exploit these, not run the
-seed as "Claude Code with different paths."
+kernel that *is* your tool, `agent_message` / `agent_observe` for coordinating
+children, and goals / heartbeats for long-running work. It also has a
+**continual harness** (`refine`, memories, reusable subagent specs) (operating
+lessons still go to the plant's session record; see Close-out). A first-class
+integration should exploit these, not run the seed as "Claude Code with
+different paths."
 
 That guidance ships as **`.prime/agent/APPEND_SYSTEM.md`** — a native-execution
 overlay the installer drops in. Prime Agent **appends it to the system prompt on
@@ -147,10 +148,12 @@ kernel; it maps the kernel's discipline onto Prime Agent's primitives:
 - **Close-out** → canonize into `docs/graph/`; author any reusable TOOL or
   project SKILL **in the plant** (home `docs/graph/skills/<name>.md`, projected
   to `.prime/agent/skills/<name>/SKILL.md`, committed) per `skill.toolcraft`,
-  not in the global `~/.prime/agent/skills/`; and persist reusable *operating*
-  lessons with the continual harness (`refine.run(...)`) — the cross-session
-  memory Claude Code lacks. A project skill is a plant deliverable, not a
-  private harness entry.
+  not in the global `~/.prime/agent/skills/`; and write *operating* lessons
+  (an owner rule, a corrected assumption, where paused work stands) to the
+  plant's session record in `docs/graph/plans/sessions/`, which canonize
+  files (`method.stewardship-posture`). The continual harness
+  (`refine.run(...)`) keeps at most a one-line pointer there. A project skill
+  is a plant deliverable, not a private harness entry.
 - **Long-running work** → a nonblocking control loop with `goal` and
   `rlm_heartbeat`; end the turn and fan-in on replies instead of polling.
 

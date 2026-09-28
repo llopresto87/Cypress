@@ -95,7 +95,7 @@ opencode under that rule, and targets no frozen host.
 | Per-session injection dedup | mechanically enforced | unsupported | unsupported | degraded³ | unsupported⁵ |
 | Pre-tool guard | mechanically enforced | unsupported | unsupported | unsupported | unsupported |
 | Slash commands | mechanically enforced | mechanically enforced | unsupported | mechanically enforced | mechanically enforced |
-| Always-applied instructions | mechanically enforced (26 261 B) | mechanically enforced (26 261 B) | mechanically enforced (≤ 26 261 B)⁴ | mechanically enforced (31 905 B) | mechanically enforced (24 627 B) |
+| Always-applied instructions | mechanically enforced (26 440 B) | mechanically enforced (26 440 B) | mechanically enforced (≤ 26 440 B)⁴ | mechanically enforced (32 084 B) | mechanically enforced (24 810 B) |
 
 ¹ The leaf/coordinator split (who holds the spawn tool at all: `Agent` on Claude Code, `Task` accepted) is read by the
 harness from each agent's `tools:` line, and ADR-0003 classes that read
@@ -472,11 +472,11 @@ function's own computation against current sources:
 
 | Harness | Formula | Measured |
 |---|---|---|
-| Claude Code | kernel + agent descriptions + skill descriptions | 26 261 B |
-| opencode | kernel + agent descriptions + skill descriptions | 26 261 B |
-| Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 26 261 B |
-| Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 24 627 B |
-| GitHub Copilot | kernel + agent descriptions + skill descriptions + pointer boilerplate | 31 905 B |
+| Claude Code | kernel + agent descriptions + skill descriptions | 26 440 B |
+| opencode | kernel + agent descriptions + skill descriptions | 26 440 B |
+| Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 26 440 B |
+| Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 24 810 B |
+| GitHub Copilot | kernel + agent descriptions + skill descriptions + pointer boilerplate | 32 084 B |
 
 (Component figures are not restated here. These moved four times in one release
 and were wrong three of those times, including once while the correction to the
@@ -495,9 +495,9 @@ the same shape since 7.16.0.
 
 GitHub Copilot **was** the outlier. Its skill projections carried
 `applyTo: '**'`, so every skill body was always-applied context there:
-138 535 bytes against 26 261 everywhere else. 7.16.0 narrowed them to
+138 535 bytes against 26 440 everywhere else. 7.16.0 narrowed them to
 pointers, `EAGER_EXEMPTIONS` is consequently empty, and the harness is
-modelled like every other one at 31 905 B. The residue is the pointer
+modelled like every other one at 32 084 B. The residue is the pointer
 boilerplate each file carries, not the discipline behind it.
 
 ## Measurements
