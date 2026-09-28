@@ -9,7 +9,7 @@ which is the installed *application* knowledge graph. ADR bodies use
 | ADR | Title | Status | Decided | Source | Plan phase |
 |---|---|---|---|---|---|
 | [0001](adr-0001-mechanical-agent-router.md) | Mechanical agent-router (`agent-lint.py --route`) fed by `routing_triggers` | accepted | 2026-07-13 | plan §3 ADR-A | P0 |
-| [0002](adr-0002-bounded-delegation-hybrid.md) | Bounded-delegation hybrid (originally 5 delegators, now 6 — see amendment; leaf-only allowlists, depth ≤ 3) | accepted (amended 2026-07-23) | 2026-07-13 | plan §3 ADR-B | P1 |
+| [0002](adr-0002-bounded-delegation-hybrid.md) | Bounded-delegation hybrid (originally 5 delegators, now 6 — see amendment; leaf-only allowlists, depth ≤ 3) | accepted (amended 2026-07-23, 2026-08-06, 2026-09-28) | 2026-07-13 | plan §3 ADR-B | P1 |
 | [0003](adr-0003-enforcement-layering-honesty.md) | Enforcement layering, honestly labelled (tool-grant hard; caps soft; deliver-time detective) | accepted (amended 2026-09-14, twice 2026-09-24) | 2026-07-13 | plan §3 ADR-C | P2 |
 | [0004](adr-0004-pure-graph-architecture.md) | The seed is a pure graph (machinery as routable nodes; kernel is a bootstrap) | accepted | 2026-07-22 | pure-graph-refactor.md | 6.0.0 |
 | [0005](adr-0005-composable-expertise-as-graph-nodes.md) | Composable expertise is a node kind and a lazy edge, not a deeper agent tree | accepted | 2026-09-09 | grill-7.5.0-composable-expertise.md | 7.5.0 |
