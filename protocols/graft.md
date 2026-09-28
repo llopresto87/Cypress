@@ -154,7 +154,8 @@ Two territories, and graft writes to exactly one of them:
 > **The rootstock line:** every fact the plant authored about itself survives
 > the graft. A fact may be **re-homed**, into the node that owns it, into
 > frontmatter, into a refreshed page's pinned block, but it is never lost and it
-> never moves on the graft's own authority.
+> never moves on the graft's own authority. A plant fact the graft corrects
+> keeps its old value as one dated line of history.
 
 So the line is not "graft writes nothing inside `docs/graph/`". Phase 4
 refreshes a page surface, Phase 5 moves routing prose into an expertise node,
@@ -472,6 +473,10 @@ the seed has since redefined; what its sessions learned may sit in harness
 memory instead of the plant. The four subsections below are one fact and one
 slot in the flow, and they are independent of each other: a plant may owe all
 four, one, or none. Each is proposed, ratified, and recorded separately.
+Before the graft calls any migration optional, it reads the plant's operator
+node (`crosscut.operator`, the seed's node kind from
+`templates/docs/nodes/_operator.template.md`): an owner rule recorded there
+can make that migration owed.
 
 #### Layout migration: 5.x → 6.0.0
 
@@ -1004,7 +1009,7 @@ dates.
 | Gate | Asserts | Command | On failure | Class |
 |---|---|---|---|---|
 | `graft.gate.backups` | every file `place_file` replaced is recoverable from a timestamped sibling. It does **not** assert that the backup set accounts for every byte the run destroyed: three writers replace with no backup, and *The installer is the hand that applies it* names all three | `tools/graft-audit.py <plant> <seed> --date=<this run's stamp>` classifies every fresh `.bak` and refuses a vacuous audit (zero for the named date while others exist); the totality property (M7) is proven seed-side by `tests/test-install-placement.sh` over a *discovered* destination set, whose sole exception is `is_installer_state()` and whose scope is stated with it | BLOCK: do not ratify an upgrade whose replaced files cannot be found. A no-backup replacement outside those three is a defect of the installer, not a class to accept | soft |
-| `graft.gate.rootstock` | the rootstock line held: every plant-authored fact survived, and each write into plant-authored material was value-preserving and ratified | the same audit's *knowledge overwrite* count over `docs/graph/`, plus `git -C <plant> status --porcelain` scoped to non-machinery paths, plus `git -C <plant> diff docs/graph/index.md` by name, for the reason *The installer is the hand that applies it* gives. One new file under `plans/` is expected and is no breach: `docs/graph/plans/sessions/_session-record.template.md`, placed by the scaffold walk (the memory migration) | BLOCK: restore from the backup and re-reconcile | soft |
+| `graft.gate.rootstock` | the rootstock line held: every plant-authored fact survived, and each write into plant-authored material was value-preserving and ratified | the same audit's *knowledge overwrite* count over `docs/graph/`, plus `git -C <plant> status --porcelain` scoped to non-machinery paths (narrow on purpose: it asks whether plant-authored tracked files changed, not where a writer's stray files landed, which is what grow's `--ignored -uall` form checks), plus `git -C <plant> diff docs/graph/index.md` by name, for the reason *The installer is the hand that applies it* gives. One new file under `plans/` is expected and is no breach: `docs/graph/plans/sessions/_session-record.template.md`, placed by the scaffold walk (the memory migration) | BLOCK: restore from the backup and re-reconcile | soft |
 | `graft.gate.customization` | no plant divergence was buried by a blind fast-forward | `tools/graft-audit.py <plant> <seed> --date=<this run's stamp> --tokens=<plant tokens> --engine=<plant>/docs/graph/graph-lint.py:<seed>/templates/knowledge-graph/graph-lint.py --engine=<plant>/docs/graph/spec-lint.py:<seed>/templates/knowledge-graph/spec-lint.py --engine=<plant>/docs/graph/grill-lint.py:<seed>/templates/knowledge-graph/grill-lint.py`, one pair per engine — `--date` is not optional here, for the ordering reason above | BLOCK: re-integrate each hit into the FF'd file as a holistic MERGE, or ratify it explicitly | soft |
 | `graft.gate.kernel` | every kernel destination this plant carries holds the seed's `core/AGENTS.md` body | the same audit's kernel-currency check gates the exit code, but it reads exactly two files, `<plant>/AGENTS.md` and `<plant>/CLAUDE.md`. A plant whose stamp lists `github-copilot` has a third, and the audit is silent on it: add `cmp <plant>/.github/copilot-instructions.md <seed>/core/AGENTS.md` | BLOCK: see *When a gate blocks* | soft |
 | `graft.gate.schema` | the plant's `_schema.md` still describes the machinery this graft installed | the same audit's node-schema line | report: it does **not** gate the exit code, so read the line; the remedy is a ratified MERGE (Phase 3) | detective |

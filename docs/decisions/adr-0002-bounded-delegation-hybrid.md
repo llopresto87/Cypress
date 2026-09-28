@@ -112,6 +112,21 @@ docs-librarian at 1; growth-scout, seed-installer, research-scout, tester at 0).
 drift out of compliance silently. Only the *count* of delegators changed; the
 policy did not.
 
+## Amendment (2026-09-28): the invariant this decision owns, and where the roster lives
+
+This decision owns an invariant, not a count. The invariant is two facts. Only
+six opus coordinators may delegate: orchestrator, multi-agent-architect,
+growth-orchestrator, architect, reviewer and docs-librarian. Every other agent
+is a Task-less leaf, and each allowlist reaches only agents of strictly lower
+depth, under the cap of 3. `agent-lint.py --lint` enforces both.
+
+The roster itself has one home: `manifest.json` and each agent's frontmatter
+(`can_delegate`, `max_spawn_depth`, `delegates_to`). The agent counts in the
+amendments above were true on their dates and stay as written, per the
+append-only rule. Read the current roster from its home, not from this file. A
+new leaf agent needs no amendment here; a new delegator or a change to the
+depth cap does.
+
 ## References
 
 - Plan (source of the decision): `../plans/agent-routing-and-delegation.md`
