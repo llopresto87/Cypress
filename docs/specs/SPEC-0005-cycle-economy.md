@@ -259,9 +259,11 @@ and the implementer moves on to work the question does not touch.
 
 ### 3.3 The owner deciding how much design freedom a change gets
 
-Before a spec is written, the owner is asked once how much latitude the design
-has: creative, balanced, or as simple a feature implementation as possible. The
-answer is recorded in the plan with its source. Every later design step, press
+Before a spec is written, the session names how much latitude the design has:
+creative, balanced, or as simple a feature implementation as possible. It reads
+the value from the request, its tone and what the work is trying to accomplish,
+the way it names a tier, and asks the owner at the start only when in doubt. The
+value is recorded in the plan with its source. Every later design step, press
 and ruling is held to it. Anything outside it is not built. It goes to the
 batch's question file, the ruling refuses it under `simple`, and only the owner
 can widen the scope. The owner then sees one joint specify-and-grill pass, in
@@ -675,12 +677,16 @@ Global posture is the plan's §4; only what binds these checks is listed.
 | `balanced` | new structure where the change needs it; no new concepts the goal did not ask for | the press checks every new concept traces to the goal |
 | `simple` | the smallest design that meets the goal; no new gates, kinds, agents or renamed concepts; when unsure whether something is in scope, it is not | the press and every ruling refuse anything outside the adopted scope and send it to the question file |
 
-Asked once, by the session in joint-pass step 0 (or specify phase 0 when specify
-runs alone; `protocols/specify.md` points here), in the owner's own words where
-they give them. Recorded as a row of the plan's §6 (Decisions Made) whose first
-cell begins `Design latitude:`, with the owner's quote or the session's recorded
-reason as evidence and the date. Checked by judgment, not by a tool, at three
-points: `grill.press`, each ruling pass, and the brief (which quotes the row).
+Classified by the session the way it classifies a tier, from the request, its
+tone and what the work is trying to accomplish, and stated with the reason in
+joint-pass step 0 (or specify phase 0 when specify runs alone;
+`protocols/specify.md` points here). Only a request that leaves the value in
+doubt is put to the owner, once, at the start of the spec definition, in the
+owner's own words where they give them. Recorded as a row of the plan's §6
+(Decisions Made) whose first cell begins `Design latitude:`, with the session's
+reason or the owner's quote as evidence and the date. Checked by judgment, not
+by a tool, at three points: `grill.press`, each ruling pass, and the brief
+(which quotes the row).
 
 ### Effort labels and batch sizes (`delegation.effort-scale`)
 
@@ -1119,7 +1125,7 @@ Homes with no new key, reviewed rather than checked:
 
 | Step | Owner | Writes | Needs | Parallel with |
 |---|---|---|---|---|
-| 0 | session | the design-latitude ask; spec §0 to §2; plan §0, §2 to §4, §1 | — | `research-scout` for missing library pages (plan §5) |
+| 0 | session | the design-latitude classification; spec §0 to §2; plan §0, §2 to §4, §1 | — | `research-scout` for missing library pages (plan §5) |
 | 1 | `product` | spec §3 | 0 | the scouts |
 | 2 | `architect` | spec §4 to §8; plan §5 synthesis, §6 to §9 with effort labels, phases and the batch plan | 1, the scouts | — |
 | 3 | `product` (spec §9) ∥ `tester` (spec §10 rows, testability; plan §10) ∥ `security` where the surface is sensitive (spec §5, §7; plan §11) ∥ `reliability` (plan §11) | as named | 2 | each other |
@@ -1963,10 +1969,11 @@ who judges it.)
       tester spawn; the implementer never edits a test or fixture file; a test
       that looks wrong becomes a question.
       Contracts: none; detective, judged by the reviewer at verify.
-- [ ] **AC-16.** The joint-pass leaf asks the design-latitude question before
-      spec §3, and the press and the ruling pass say they check against the
-      recorded answer. It describes the joint pass (§6 table) as one pass in
-      which each specialist writes its spec part and its plan part, and
+- [ ] **AC-16.** The joint-pass leaf classifies the design latitude before
+      spec §3 and asks the owner only when the request leaves it in doubt, and
+      the press and the ruling pass say they check against the recorded value.
+      It describes the joint pass (§6 table) as one pass in which each
+      specialist writes its spec part and its plan part, and
       `grill.flow` and `specify.flow` point at it.
       Contracts: none; detective, judged by the reviewer at verify.
 - [ ] **AC-17.** The no-write-inspection, graph-over-harness and
@@ -2484,3 +2491,13 @@ kept outside the seed.
   ran past its baseline), X382, the kernel check's real-tree row and the two
   session-record `ADOPTED_RULE_HOMES` rows are `green`; every other row keeps
   its status. §10's dated note records the same flips in the tester's pass.
+- 2026-09-28 — the owner's latitude rule, by `docs-librarian`. Still `active`;
+  no contract id changed. The owner, verbatim: "the 3 values needs to be
+  present and those postures/modes need to go akin to Tiers mode - need to be
+  engaged based on request/tone/what we are trying to accomplish - or when in
+  doubt asked to use at the beginning of the spec definition/request". §3.3,
+  §6 "Design latitude" and the joint-pass step 0 row now say the session
+  classifies the latitude and asks only in doubt; the three values stay. §9
+  AC-16's wording changes the same way. No test covers it: it is
+  detective, judged by the reviewer at verify, and it holds against
+  `protocols/specify-joint-pass.md` as it reads now.

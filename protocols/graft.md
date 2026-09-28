@@ -217,9 +217,9 @@ divergence a future `harvest` exists to pull back. Graft respects that work by
 reconciling three versions of every seed-owned artifact, exactly as a
 well-behaved merge does:
 
-- **base**: the seed revision the plant grew from (read from the plant's seed
-  stamp; reconstructed from install backups or content lineage on a first
-  graft; see *Provenance & the seed stamp* below);
+- **base**: the seed revision the plant grew from (the tag of the stamped
+  version, else inferred by content lineage; Phase 1 prints it; see
+  *Provenance & the seed stamp* below);
 - **theirs**: the artifact in the seed today;
 - **ours**: the artifact as it currently stands in the plant.
 
@@ -263,7 +263,8 @@ separate:
 
 - **M7, recoverability.** Every destination the run *replaced* has a
   timestamped sibling beside it. Its sole declared exception is
-  `is_installer_state()`: `.cypress/seed.json`. Read the scope as carefully as
+  `is_installer_state()`: `.cypress/seed.json` and
+  `.cypress/recreated-nodes.txt`. Read the scope as carefully as
   the exception. The sweep reaches M7's branch only where the plant's edit is
   *gone*; a destination that still carries its edit is diverted one branch
   earlier, into M1's question of whether the installer still maintains it. So
@@ -310,8 +311,9 @@ sentence a steward has to carry out of this section, because the obvious
 reading of "one canonical writer" is that `find <plant> -name '*.bak-*'`
 accounts for every byte the run destroyed, and it does not:
 
-- `place_state` writes `.cypress/seed.json`, replacing it with no backup. The
-  one recorded M7 exception, and the only *declared* one.
+- `place_state` writes `.cypress/seed.json` and `.cypress/recreated-nodes.txt`,
+  replacing both with no backup. They are M7's one recorded exception, and the
+  only *declared* one.
 - `place_if_missing` places the scaffold leaves, `_schema.md`, `index.md`, and
   the graph engines (`graph-lint.py`, `spec-lint.py`, `grill-lint.py`). It only
   ever **adds**, so there is nothing to back up and nothing M7 asks of it;
@@ -411,10 +413,11 @@ has run. That is correct fast-forward behaviour, and it is also exactly how a
 plant's **deliberate deletion** gets silently reverted
 (`graft.gate.recreated-nodes`). Two properties bound what the notice is worth.
 It is gated on `PRIOR_INSTALL`, so a stampless plant gets none and the gate is
-N-A there rather than clean. And it is printed, not stored: nothing on disk
-records it afterwards, and re-running the installer will not reproduce it,
-because the nodes now exist. **Capture the install output to a file** and cite
-that file as the gate's evidence; scrollback is not evidence.
+N-A there rather than clean. And the console stops at ten paths: the whole
+list is in `.cypress/recreated-nodes.txt`, which every run that writes the
+stamp rewrites. A re-run lists none of them, because the nodes now exist, so
+**read the file before any remedy re-runs the installer** and cite it as the
+gate's evidence.
 
 ## The flow
 
@@ -436,33 +439,35 @@ Identify the plant or the set of sibling plants in scope, and for each record
 its path, host integration (`.claude/` / `.prime/agent/` / `.opencode/` /
 `.codex/` / `.github/`), current branch, HEAD, and worktree cleanliness, as
 provenance, without mutating Git. Read the plant's **seed stamp** to learn the
-base version it carries; on a first graft where no stamp exists, reconstruct
-the base from install backups (`*.bak-*`) or from content lineage against
-tagged seed revisions, and note that the stamp will be established by this
-graft. A corrupt stamp is reconstructed the same way (*Provenance & the seed
-stamp*), and the record says that the plant's recorded decisions were
-re-derived rather than inherited. A stampless plant is also the one where the
-installer's own two safety nets are silent (`graft.gate.recreated-nodes` is
-N-A, and no orphaned kernel backup is swept), so this is the graft that owes
-the closest reading of the install output. Confirm the seed's own version and
+base version it carries;
+`python3 <seed>/tools/graft-ledger.py <plant> <seed> --base` prints the base:
+the stamped version's tag, or else the seed commit the plant's machinery
+matches best, with the match count. With no stamp the base is that inference,
+and this graft establishes the stamp. A corrupt stamp is reconstructed the same
+way (*Provenance & the seed stamp*), and the record says that the plant's
+recorded decisions were re-derived rather than inherited. A stampless plant is
+also the one where the installer's own two safety nets are silent
+(`graft.gate.recreated-nodes` is N-A, and no orphaned kernel backup is swept),
+so this is the graft that owes the closest reading of the install output. Confirm the seed's own version and
 what has changed between base and now (its CHANGELOG and harvest log are the
 map of available fruit). A clean working tree here makes the whole upgrade easy
 to review and to unwind.
 
 ### Phase 2: Survey the drift (Sonnet scouts, read-only)
 
-Dispatch read-only scouts to inventory every seed-owned artifact installed in
-the plant and classify its three-way state (base vs. theirs vs. ours) as a
-first guess at FAST-FORWARD / KEEP-PLANT / MERGE. In parallel, inventory the
-**fruit the plant can withdraw**: the libraries, tools, and, where the plant
-is subject to externally-authored rules, the legal instruments the plant
-actually reasons against (from its `docs/graph/libraries/`,
+The machinery half is a command, not a guess:
+`python3 <seed>/tools/graft-ledger.py <plant> <seed>` prints one row per
+seed-owned file with its three-way class (the tool's docstring defines each).
+Dispatch read-only scouts to inventory the **fruit the plant can withdraw**:
+the libraries, tools, and, where the plant is subject to externally-authored
+rules, the legal instruments the plant actually reasons against (from its
+`docs/graph/libraries/`,
 `docs/graph/tools/`, and `docs/graph/legal/`) for which the seed's
 `library-corpus/`, `tool-corpus/`, or `legal-corpus/` now holds a page the
-plant predates or lacks. Return a **graft ledger**, one row per artifact or
-withdrawable page, with provenance (plant path, seed source, base state) and a
-candidate class. Claims cite paths; centralized prose is an untrusted clue
-until corroborated against the installed files.
+plant predates or lacks. The **graft ledger** is the tool's table plus one row
+per withdrawable page, with provenance (plant path, seed source, base state).
+Claims cite paths; centralized prose is an untrusted clue until corroborated
+against the installed files.
 
 ### The migrations (`graft.migration`): between the survey and the reconcile
 
@@ -501,13 +506,13 @@ migration threads through the phases that follow:
   the half-installed target that used to result. A destination symlink that
   stays inside the target is deliberately still allowed, so a plant that
   arranges its own directories with links is not refused for doing so.
-  **Redirect the output to a file** and keep it. The "re-created" notice exists
-  nowhere else once the run ends, and the `adopted-instructions` warning, the
-  displaced-symlink warning, and the per-file backup warnings are how a reader
-  learns what to look for before Phase 7 goes looking. Python bytecode is never
-  seed content and is excluded from the machinery subtrees; a `__pycache__` or
-  `.pyc` file found inside one on an older plant has no seed source, so it is
-  residue to list for the steward's deletion, not an artifact to reconcile.
+  **Redirect the output to a file** and keep it. The `adopted-instructions`
+  warning, the displaced-symlink warning, and the per-file backup warnings are
+  how a reader learns what to look for before Phase 7 goes looking. Python
+  bytecode is never seed content and is excluded from the machinery subtrees;
+  a `__pycache__` or `.pyc` file found inside one on an older plant has no
+  seed source, so it is residue to list for the steward's deletion, not an
+  artifact to reconcile.
 - **(b) Diff the old tool-dir copies against their seed base; the plant's
   customizations must survive the move.** Each old copy under
   `.claude/protocols/`, `.claude/templates/`, `.claude/core/` (and kin) is
@@ -653,6 +658,10 @@ enough that §9 dominates it. The conversion:
 4. `python3 docs/graph/grill-lint.py` must pass afterwards. It resolves the
    index, enforces the same required fields inside each child, and refuses a
    row with no file, a file no row points at, and an increment defined twice.
+   It checks the form. That nothing moved is checked by `verify-ledger.py`:
+   `python3 <seed>/tools/verify-ledger.py --monolith <copy> --ledger
+   docs/graph/plans/grill.md --leaves docs/graph/plans/grill/`, where `<copy>`
+   is the plan as it stood before step 1, must rebuild it byte for byte.
 
 Both forms lint, so this is done **one increment at a time** and never as a
 flag day, because a half-migrated plan is a valid plan. Nothing in the seed
@@ -700,8 +709,9 @@ reads it as an expected new file.
 
 ### Phase 3: Reconcile the machinery (Opus authors)
 
-For each seed-owned artifact, apply the three-way reconciliation above and
-produce the upgraded result: adopt on FAST-FORWARD; retain and raise a harvest
+For each ledger row, act on its class: nothing on CURRENT; adopt on
+FAST-FORWARD and SEED-NEW, and on HARVESTED, whose plant lines a harvest already
+carried into the seed, so it raises no candidate; retain and raise a harvest
 candidate on KEEP-PLANT; author one holistic re-integration on MERGE. Every
 merged file arrives whole, integrated as if it had always read that way, never
 a seed block bolted beside a plant block. Each reconciliation records its
@@ -987,6 +997,12 @@ parallelism is exactly what `graft.gate.cross-author` exists to reconcile.
 Apply the ratified upgrade **additively**, to a clean tree or to one whose
 dirty paths the steward has accepted (*Reversibility*, (d)).
 
+`python3 <seed>/tools/graft-run.py <plant> <seed> --stage <dir>` rehearses the
+mechanical half on a copy outside the plant: the ledger, the install with its
+log, the engines, the audits and the lints. It prints this table's result
+column, a judgment row as `not run` with its judge. It writes nothing in the
+plant and ratifies nothing.
+
 Then prove the plant is left more capable and no less itself. Every gate is one
 row of the table below — that table is the single home for what a graft
 asserts, and the record's integrity-gate block is its result column, never a
@@ -1010,7 +1026,7 @@ dates.
 |---|---|---|---|---|
 | `graft.gate.backups` | every file `place_file` replaced is recoverable from a timestamped sibling. It does **not** assert that the backup set accounts for every byte the run destroyed: three writers replace with no backup, and *The installer is the hand that applies it* names all three | `tools/graft-audit.py <plant> <seed> --date=<this run's stamp>` classifies every fresh `.bak` and refuses a vacuous audit (zero for the named date while others exist); the totality property (M7) is proven seed-side by `tests/test-install-placement.sh` over a *discovered* destination set, whose sole exception is `is_installer_state()` and whose scope is stated with it | BLOCK: do not ratify an upgrade whose replaced files cannot be found. A no-backup replacement outside those three is a defect of the installer, not a class to accept | soft |
 | `graft.gate.rootstock` | the rootstock line held: every plant-authored fact survived, and each write into plant-authored material was value-preserving and ratified | the same audit's *knowledge overwrite* count over `docs/graph/`, plus `git -C <plant> status --porcelain` scoped to non-machinery paths (narrow on purpose: it asks whether plant-authored tracked files changed, not where a writer's stray files landed, which is what grow's `--ignored -uall` form checks), plus `git -C <plant> diff docs/graph/index.md` by name, for the reason *The installer is the hand that applies it* gives. One new file under `plans/` is expected and is no breach: `docs/graph/plans/sessions/_session-record.template.md`, placed by the scaffold walk (the memory migration) | BLOCK: restore from the backup and re-reconcile | soft |
-| `graft.gate.customization` | no plant divergence was buried by a blind fast-forward | `tools/graft-audit.py <plant> <seed> --date=<this run's stamp> --tokens=<plant tokens> --engine=<plant>/docs/graph/graph-lint.py:<seed>/templates/knowledge-graph/graph-lint.py --engine=<plant>/docs/graph/spec-lint.py:<seed>/templates/knowledge-graph/spec-lint.py --engine=<plant>/docs/graph/grill-lint.py:<seed>/templates/knowledge-graph/grill-lint.py`, one pair per engine — `--date` is not optional here, for the ordering reason above | BLOCK: re-integrate each hit into the FF'd file as a holistic MERGE, or ratify it explicitly | soft |
+| `graft.gate.customization` | no plant divergence was buried by a blind fast-forward | `tools/graft-audit.py <plant> <seed> --date=<this run's stamp> --base=<the base Phase 1 printed> --tokens=<plant tokens> --engine=<plant>/docs/graph/graph-lint.py:<seed>/templates/knowledge-graph/graph-lint.py --engine=<plant>/docs/graph/spec-lint.py:<seed>/templates/knowledge-graph/spec-lint.py --engine=<plant>/docs/graph/grill-lint.py:<seed>/templates/knowledge-graph/grill-lint.py`, one pair per engine — `--date` is not optional here, for the ordering reason above | BLOCK: re-integrate each hit into the FF'd file as a holistic MERGE, or ratify it explicitly | soft |
 | `graft.gate.kernel` | every kernel destination this plant carries holds the seed's `core/AGENTS.md` body | the same audit's kernel-currency check gates the exit code, but it reads exactly two files, `<plant>/AGENTS.md` and `<plant>/CLAUDE.md`. A plant whose stamp lists `github-copilot` has a third, and the audit is silent on it: add `cmp <plant>/.github/copilot-instructions.md <seed>/core/AGENTS.md` | BLOCK: see *When a gate blocks* | soft |
 | `graft.gate.schema` | the plant's `_schema.md` still describes the machinery this graft installed | the same audit's node-schema line | report: it does **not** gate the exit code, so read the line; the remedy is a ratified MERGE (Phase 3) | detective |
 | `graft.gate.engine` | the plant runs the seed's current graph engines, each with its own config preserved | the same audit's engine-currency check, via the three `--engine=<plant>:<seed>` pairs `graft.gate.customization` passes, each reported on its own line naming its plant file. Each value is a **pair**; a single path is malformed and the audit refuses it rather than skipping the check | report: a `graph engine STALE` line does **not** gate the exit code, exactly as `graft.gate.schema` does not, so read the line. The one thing here that gates is a malformed or unreadable `--engine` pair, and it gates because the check did not run. Reconcile with `tools/graft-graph-engine.py`, or record a superset as KEEP-PLANT; this protocol's own contract is that a stale engine is not ratified | detective |
@@ -1020,7 +1036,7 @@ dates.
 | `graft.gate.status-register` | a migrated plant's lifecycle status is queryable and agrees with its index rows | `python3 docs/graph/status-register.py --root docs/graph` | BLOCK, or N-A where no status migration was ratified | soft |
 | `graft.gate.prose` | the prose this graft authored into the plant meets the plant's own prose floor | `python3 docs/graph/prose-lint.py --file <node>` for each node Phases 4–6 wrote or re-wove (`--against <rev>` where the plant's Git state names one) | BLOCK the item: re-author; never lower the linter | soft |
 | `graft.gate.adopted-instructions` | every instruction file the kernel replaced has a ledger row, and every ledger row has an owner | list this graft's kernel backups — `ls <plant>/CLAUDE.md.bak-<date>-* <plant>/AGENTS.md.bak-<date>-* <plant>/.github/copilot-instructions.md.bak-<date>-*` — and match each against `docs/graph/plans/adopted-instructions.md`. Three outcomes, and the command separates them: no backups and no ledger file is **nothing to report**; backups all matched by rows is the healthy replacement; a backup with no row is *Reversibility* (b) 3, the case that is permanent | report every unstruck row and hand it to `docs-librarian` — open librarian work, not a defect of this graft. BLOCK on an unmatched backup and file it by hand | detective |
-| `graft.gate.recreated-nodes` | a node the installer re-created is re-applied or ratified, never silently reverted | the "re-created" notice in the **captured install log** (the run prints it once and stores nothing; re-running the installer cannot reproduce it, because the nodes now exist) | report each path; a deliberate deletion the steward confirms is re-applied, else ratified in the plant's record | detective |
+| `graft.gate.recreated-nodes` | a node the installer re-created is re-applied or ratified, never silently reverted | `.cypress/recreated-nodes.txt`, this run's whole list (the next run rewrites it, so read it before any remedy re-runs the installer) | report each path; a deliberate deletion the steward confirms is re-applied, else ratified in the plant's record | detective |
 | `graft.gate.roster-delta` | the specialists this graft added or renamed are handed to the plant's next session | diff the plant's `docs/graph/agents/` against the base seed's roster; cite `delegation.harness-registration` | report: this session cannot verify them spawnable, and saying it did would be the claim the fact exists to prevent | detective |
 | `graft.gate.stamp` | the plant records the seed it now carries, with dated provenance | read `version` from `<plant>/.cypress/seed.json` and compare with the seed's `manifest.json`; `growth-audit.py` reports `STALE` when stamp and coverage record disagree | BLOCK: a stamp that disagrees with the coverage record means the upgrade was audited against a seed the plant does not carry | soft |
 | `graft.gate.minimum-sufficient` | everything this graft added beyond the machinery contract earns its place | none — the graft reviewer (Opus) audits the additions against `docs/graph/method/minimum-sufficient-work.md`. Judge: the graft reviewer (Opus) | BLOCK that item; the rest of the graft may proceed | judgment |
@@ -1191,13 +1207,15 @@ Its criterion is the heading's, not "replaced with no backup": items 2 and 3
 have a `.bak` and are still out of reach, and item 5 has none. Read the two
 questions separately, because the backup scan answers only one of them:
 
-1. **`.cypress/seed.json`.** Written by `place_state` with no backup, on
-   purpose: it carries a fresh `installed_at` every run, so it is never
-   byte-identical and a backup policy would leave one sibling per install for
-   ever; and the next stamp is *derived* from this one plus the run's flags
-   rather than authored, so a backup would carry no recovery value anyway.
-   Recover it by re-deriving: re-run the base installer with the plant's
-   recorded flags, or hand-write it from `installed_from` and the adapter list.
+1. **`.cypress/seed.json` and `.cypress/recreated-nodes.txt`.** Written by
+   `place_state` with no backup, on purpose: each carries a fresh timestamp
+   every run, so it is never byte-identical and a backup policy would leave one
+   sibling per install for ever; and each is *derived* (the stamp from the last
+   one plus the run's flags, the list from the run) rather than authored, so a
+   backup would carry no recovery value anyway. Recover the stamp by
+   re-deriving: re-run the base installer with the plant's recorded flags, or
+   hand-write it from `installed_from` and the adapter list. An earlier run's
+   list is not recoverable, which is why the gate reads it first.
 2. **A project's own root instruction file.** The `.bak` exists, but a backup
    is recovery evidence, not operational preservation — the content is out of
    force the moment the kernel lands. Its restoration is a *migration*, tracked

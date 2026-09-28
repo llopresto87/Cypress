@@ -116,3 +116,6 @@ routing, planning, briefing, communication, and acceptance
   tier is decided and workers must be chosen and briefed.
 - `protocol.canonize` — where the contained lane's why-record lands —
   cross at close-out.
+- `protocol.specify-joint-pass`: the design latitude, classified from the
+  request the way a tier is (`specify.design-latitude`); cross before a
+  spec is written.
