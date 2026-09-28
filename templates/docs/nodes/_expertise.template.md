@@ -54,10 +54,9 @@ fact the node owns, so it is stated here and nowhere else.}}
 
 ## Composition
 
-One line per composed child, naming the condition it applies under. The router
-descends only when the task names, exactly, a term the child carries and this
-node does not, so a condition written in this node's own family words composes
-nothing.
+One line per composed child, naming its condition. The router descends on a
+term of the child's `load_when:` or slug that this node lacks, never on body
+prose (`skill.context-router` §3), so this node's family words compose nothing.
 
 - `expertise.{{child-slug}}` — when {{the condition, in the child's own
   vocabulary: the sub-area the task has to reach}}

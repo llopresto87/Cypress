@@ -12,9 +12,6 @@
 >
 > No tool needed — just read the files. Required on every task.
 > Optional check: `python3 docs/graph/graph-lint.py --plan "<task>"`.
-> If there is no `docs/graph/` yet, use the installed
-> `EXPERT_SEED_INSTALL_PROMPT.md` (`/initialize` is only a tool adapter;
-> it forks to `protocol.grow` or `protocol.from-scratch`).
 
 This file is the **bootstrap kernel**, read on every session by Claude
 Code (as `CLAUDE.md`), Prime Agent and opencode and OpenAI Codex (as
@@ -92,10 +89,14 @@ Owner: `protocol.specify` (`rule.spec`).
 ### 3.2 The knowledge rule
 `docs/graph/` is the single source of truth for structure and
 capability — one home per fact, loaded minimally and declared, ahead of
-memory. Owner: `skill.context-router` (`rule.knowledge`); authoring:
-`skill.knowledge-graph`. Harness memory is not a home: a session starts
-from the newest record in `docs/graph/plans/sessions/` and writes what it
-learns there for canonize (`method.stewardship-posture`).
+memory. A fact the graph states is settled: use it, never re-derive or
+re-check it. Facts about code are current unless the session-start
+code-anchor line names their paths; there the code wins, and the node
+is fixed in the same change. Owner: `skill.context-router`
+(`rule.knowledge`); authoring: `skill.knowledge-graph`. Harness memory
+is not a home: a session starts from the newest record in
+`docs/graph/plans/sessions/` and writes what it learns there for
+canonize (`method.stewardship-posture`).
 
 ### 3.3 The grill rule
 `docs/graph/plans/grill.md` is the living plan-of-record; append, never
@@ -153,6 +154,3 @@ tool is built by `agent.tool-smith`.
   `docs/graph/agents/` — the method surface, one node each.
 - `docs/graph/plans/grill.md`, `docs/graph/specs/index.md`,
   `docs/graph/libraries/index.md` — the plan, specs, wiki.
-- `EXPERT_SEED_INSTALL_PROMPT.md` + `protocol.initialize` — the entry
-  fork: `protocol.grow` when there is source to scout,
-  `protocol.from-scratch` when the repo is empty.

@@ -17,12 +17,19 @@ nodes are added; the linter treats anything listed here as reachable.
 
 # The router — start every task here
 
+<!-- pre-growth: grow removes this block -->
+**Not grown yet.** Start from the installed `EXPERT_SEED_INSTALL_PROMPT.md`
+(`/initialize` is only a tool adapter). `protocol.initialize` is the entry
+fork: `protocol.grow` when there is source to scout, `protocol.from-scratch`
+when the repository is empty.
+<!-- /pre-growth -->
+
 This is Tier 1. It is the only index. Match your task against the
 triggers below, load the entry node plus the transitive closure of its
 `requires:` edges, and **do not** load its `peers:` unless the task
-crosses into them. An expertise node's `composes:` children are a menu
-rather than a closure: descend into a child only when your task names,
-exactly, a term that child carries and its parent does not.
+crosses into them. `composes:` children are a menu, not a closure:
+descend on a term of a child's `load_when:` or slug that the parent
+lacks, never on body prose (`skills/context-router.md` §3).
 
 The traversal is specified in `skills/context-router.md` and is
 executable:
@@ -73,7 +80,7 @@ test-first → verify → canonize → deliver.
 | Goal vague or contested | `protocol.brainstorm` |
 | Goal clear, no executable spec covers it | `protocol.specify` |
 | Spec exists; need the plan-of-record | `protocol.grill` |
-| Need a new spec and a new plan-of-record in one pass, or must ask/record the owner's design latitude | `protocol.specify-joint-pass` |
+| Need a new spec and a new plan-of-record in one pass, or classify design latitude; ask only in doubt | `protocol.specify-joint-pass` |
 | About to write or change code | `protocol.test-first` |
 | Introducing or refreshing a dependency | `protocol.ingest-library` |
 | Increment claims "done" — run the gates | `protocol.verify` |

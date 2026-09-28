@@ -185,12 +185,15 @@ dependency pages use `libraries:`. A fact has one owner and links elsewhere.
 
 ## The completeness contract (`grow.completeness-contract`)
 
-Growth is **complete or it is not done**. A first growth that stops at a
-skeleton (a root node, a router, and a handful of leaves) is a failed
-growth reported as a success, and it is the single most common way this
-protocol is mis-run. The contract below is binding on whatever model
-orchestrates growth; it does not soften with model size, context pressure,
-or operator impatience. Full depth is the default, not an upgrade.
+Growth is **complete or it is not done**. It establishes the plant's facts
+so that no later session has to: a fact the graph states is settled
+(`rule.knowledge`), and a fact growth left out is re-derived in every
+session after it. A first growth that stops at a skeleton (a root node, a
+router, and a handful of leaves) is a failed growth reported as a success,
+and it is the single most common way this protocol is mis-run. The contract
+below is binding on whatever model orchestrates growth; it does not soften
+with model size, context pressure, or operator impatience. Full depth is the
+default, not an upgrade.
 
 **The rule of evidence-bounded totality.** For every knowledge collection in
 the unified shape above, growth produces one of exactly two outcomes, and a
@@ -877,7 +880,9 @@ When validation passes, set `grown: true` in the frontmatter of
 `docs/graph/index.md`: the marker `graph-lint.py` reads to hold this plant
 to the grown standard (a missing `plant:` block fails, not warns, from here
 on). Set it only then; a plant stamped grown while half-grown lies to every
-later lint.
+later lint. In the same edit, remove the pre-growth block: the lines from
+`<!-- pre-growth: grow removes this block -->` through `<!-- /pre-growth -->`.
+A grown plant has no reader for it.
 
 Configure the spec-coverage gate while the stack evidence is fresh: set
 `TEST_GLOBS` in `docs/graph/spec-lint.py` to the project's real test layout,
