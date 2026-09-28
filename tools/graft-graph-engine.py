@@ -9,10 +9,14 @@ A graft that leaves a plant on a stale graph engine is not a true upgrade.
 
 This tool makes the engine a first-class, config-preserving fast-forward: it
 takes the seed's current script as the body of record and re-injects the
-plant's own top-level config assignments (ROOT_ID / KINDS / KIND_PREFIX for
-graph-lint.py; TEST_GLOBS for spec-lint.py; grill-lint.py carries none), so the
-plant gains every engine improvement while keeping the identity it configured. A config knob the plant
-predates (an older engine that never had it) adopts the seed's default.
+plant's own top-level config assignments, so the plant gains every engine
+improvement while keeping the identity it configured. Each engine carries its
+own config:
+  * graph-lint.py  ROOT_ID / KINDS / KIND_PREFIX
+  * spec-lint.py   TEST_GLOBS
+  * grill-lint.py  none
+A config knob the plant predates (an older engine that never had it) adopts
+the seed's default.
 
 A config knob is reconciled by shape, not blindly kept wholesale:
   * a SET literal the seed has EXTENDED (e.g. KINDS gaining the machinery kinds
@@ -30,8 +34,11 @@ every non-config engine line), the tool reports KEEP-PLANT and changes nothing
 
 Usage:
   graft-graph-engine.py <plant-file> <seed-file> [--preserve VAR1,VAR2,...]
-Defaults --preserve to ROOT_ID,KINDS,KIND_PREFIX. Backs the plant file up
-(.bak-<ts>) before writing. Dependency-free. Exit 0 on success/no-op, 2 on refuse.
+With no --preserve the config is the engine's own, chosen by the plant file's
+name as listed above; an engine under any other name is taken to be a renamed
+graph-lint.py and keeps ROOT_ID,KINDS,KIND_PREFIX. An explicit --preserve
+always wins. Backs the plant file up (.bak-<ts>) before writing.
+Dependency-free. Exit 0 on success/no-op, 2 on refuse.
 """
 import re
 import shutil
@@ -39,7 +46,15 @@ import sys
 import time
 from pathlib import Path
 
+# Each engine's PROJECT CONFIG, keyed by the plant file's name. One default
+# for all three refused the two engines that lack graph-lint.py's knobs, so a
+# plant kept an old spec-lint.py or grill-lint.py through every graft.
 DEFAULT_PRESERVE = ("ROOT_ID", "KINDS", "KIND_PREFIX")
+ENGINE_PRESERVE = {
+    "graph-lint.py": DEFAULT_PRESERVE,
+    "spec-lint.py": ("TEST_GLOBS",),
+    "grill-lint.py": (),
+}
 
 
 def grab_assignment(text: str, name: str):
@@ -157,7 +172,7 @@ def main() -> int:
         print(__doc__ or "")
         return 0
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    preserve = DEFAULT_PRESERVE
+    preserve = None
     for a in sys.argv[1:]:
         if a.startswith("--preserve="):
             preserve = tuple(x for x in a.split("=", 1)[1].split(",") if x)
@@ -168,6 +183,8 @@ def main() -> int:
         print(__doc__)
         return 2
     plant_p, seed_p = Path(args[0]), Path(args[1])
+    if preserve is None:
+        preserve = ENGINE_PRESERVE.get(plant_p.name, DEFAULT_PRESERVE)
     plant, seed = plant_p.read_text(), seed_p.read_text()
 
     # superset check: does the plant already contain every seed engine line?

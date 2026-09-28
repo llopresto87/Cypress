@@ -22,6 +22,9 @@
 #   S9  every plant receives the session-record form, and a re-install keeps
 #       the plant's own records and its edited form byte-identical
 #       — asserts SPEC-0001 SESSION_RECORD_FORM_IS_PLACED
+#   S10 a re-install leaves a plant's older engine alone, and graft's engine
+#       tool brings all three engines current
+#       — asserts SPEC-0001 EXISTING_PLANT_RECEIVES_CURRENT_ENGINES
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -428,8 +431,8 @@ local WORK; WORK="$(mktemp -d)"
 # Harness memory is not a home: a session writes what it learns to a record
 # under docs/graph/plans/sessions/, and canonize files it. Every plant receives
 # the blank form there, and a re-install never touches the plant's own records
-# or the form once the plant has edited it. Called last, so a red here stops
-# nothing after it.
+# or the form once the plant has edited it. It runs in its own target, so a red
+# here stops no other case.
 local FORM="docs/graph/plans/sessions/_session-record.template.md"
 local SEED_FORM="$ROOT/templates/docs/plans/sessions/_session-record.template.md"
 local REC="docs/graph/plans/sessions/2026-01-01-example.md"
@@ -458,6 +461,66 @@ echo "  S9: the session-record form is placed, and the plant's records and edite
 rm -rf "$WORK"
 }
 
+case_engine_upgrade() {
+local WORK; WORK="$(mktemp -d)"
+# --- S10: EXISTING_PLANT_RECEIVES_CURRENT_ENGINES (SPEC-0001, ADR-0014) --------
+# An existing plant carries an older grill-lint.py. A re-install never overwrites
+# a placed engine (the engines are plant-owned), so the plant gets --waves only
+# through graft: tools/graft-graph-engine.py over each of the three engines, with
+# no --preserve, then graft-audit with the three --engine pairs. Every check
+# after the setup is collected, so the first failure does not hide the others.
+local KG="$ROOT/templates/knowledge-graph" G="docs/graph" OLD="$WORK/grill-lint.older.py"
+local why=() e rc out n
+P="$WORK/engines"; mkdir -p "$P"
+"$ROOT/install.sh" claude-code --project-dir "$P" >/dev/null 2>&1 \
+    || fail "S10: the fresh claude-code install failed"
+# Given: the older engine body, the seed's copy with every line naming `waves` gone.
+grep -v waves "$KG/grill-lint.py" >"$OLD" || true
+cmp -s "$OLD" "$KG/grill-lint.py" && fail "S10: setup — the older body equals the seed's grill-lint.py"
+cp "$OLD" "$P/$G/grill-lint.py"
+# When install.sh re-runs, the older engine stays: the engines are plant-owned.
+"$ROOT/install.sh" claude-code --project-dir "$P" >/dev/null 2>&1 \
+    || fail "S10: the re-install over the plant failed"
+cmp -s "$OLD" "$P/$G/grill-lint.py" \
+    || fail "S10: the re-install changed the plant's grill-lint.py; the engines are plant-owned (ADR-0014)"
+[[ "$(find "$P/$G" -maxdepth 1 -name 'grill-lint.py.bak-*' | wc -l | tr -d ' ')" -eq 0 ]] \
+    || fail "S10: the re-install wrote a grill-lint.py backup, so it replaced the engine"
+# And: the engine tool with no --preserve over each engine, grill-lint.py first.
+for e in grill-lint.py graph-lint.py spec-lint.py; do
+    out="$(python3 "$ROOT/tools/graft-graph-engine.py" "$P/$G/$e" "$KG/$e" 2>&1)" && rc=0 || rc=$?
+    [[ "$rc" -eq 0 ]] || why+=("the reconcile of $e with no --preserve exited $rc: $(tr '\n' ' ' <<<"$out")")
+done
+cmp -s "$KG/grill-lint.py" "$P/$G/grill-lint.py" \
+    || why+=("grill-lint.py is not byte-identical to the seed's after the reconcile")
+n="$(find "$P/$G" -maxdepth 1 -name 'grill-lint.py.bak-*' | wc -l | tr -d ' ')"
+if [[ "$n" -ne 1 ]]; then
+    why+=("expected exactly one grill-lint.py.bak-*, found $n")
+elif ! cmp -s "$OLD" "$(find "$P/$G" -maxdepth 1 -name 'grill-lint.py.bak-*')"; then
+    why+=("the grill-lint.py backup does not hold the older body")
+fi
+out="$(cd "$P" && python3 "$G/grill-lint.py" --waves 2>&1)" || true
+grep -q '^waves:' <<<"$out" \
+    || why+=("python3 docs/graph/grill-lint.py --waves printed no line starting 'waves:': $(head -3 <<<"$out" | tr '\n' ' ')")
+# And: graft-audit with the three --engine pairs reports every engine current.
+out="$(python3 "$ROOT/tools/graft-audit.py" "$P" "$ROOT" \
+        --engine="$P/$G/graph-lint.py:$KG/graph-lint.py" \
+        --engine="$P/$G/spec-lint.py:$KG/spec-lint.py" \
+        --engine="$P/$G/grill-lint.py:$KG/grill-lint.py" 2>&1)" || true
+n="$(grep -c 'graph engine' <<<"$out")" || true
+[[ "$n" -eq 3 ]] || why+=("three --engine pairs printed $n engine-currency line(s)")
+! grep -q 'graph engine STALE' <<<"$out" || why+=("the audit reported a graph engine STALE: $(grep 'graph engine STALE' <<<"$out" | tr '\n' ' ')")
+for e in graph-lint.py spec-lint.py grill-lint.py; do
+    grep 'graph engine' <<<"$out" | grep -F "$e" | grep -q 'current' \
+        || why+=("no 'graph engine' current line names the plant's $e")
+done
+if [[ "${#why[@]}" -gt 0 ]]; then
+    printf 'FAIL: S10: %s\n' "${why[@]}" >&2
+    exit 1
+fi
+echo "  S10: a re-install keeps the older engine, and the engine tool brings all three current — OK"
+rm -rf "$WORK"
+}
+
 # --- one-case subcommand, run by the parallel dispatcher ---------------------
 if [ "${1:-}" = "__case" ]; then
   "$2"
@@ -472,7 +535,7 @@ fi
 # concurrently under the gate's ONE shared budget (tests/gate_pool.py,
 # $GATE_JOBS / $GATE_POOL_DIR). Every assertion is byte-for-byte what it was.
 SCN="$(mktemp)"
-for c in case_s1_s2_s5 caseALL_NAMES_SKIPPED_FROZEN_HOSTS case_s4 case_s6 case_plan_records case_corpus_linkmodes case_corpus_surplus case_drift case_edited case_s7 case_session_records; do
+for c in case_s1_s2_s5 caseALL_NAMES_SKIPPED_FROZEN_HOSTS case_s4 case_s6 case_plan_records case_corpus_linkmodes case_corpus_surplus case_drift case_edited case_s7 case_session_records case_engine_upgrade; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0

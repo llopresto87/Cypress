@@ -25,8 +25,8 @@ prose-lint.py, status-register.py) are machinery, expected to be fast-forwarded 
 where a seed source actually backs the path: a plant-authored project skill
 under docs/graph/skills/ is plant knowledge. _schema.md and index.md are
 project-instantiated and always the plant's own, like everything else under
-docs/graph/. Given the plant's graph-lint.py and the seed's, it also warns if
-the plant engine is STALE (missing engine lines the seed has).
+docs/graph/. Given a plant engine and the seed's as an --engine pair, it also
+warns if the plant engine is STALE (missing engine lines the seed has).
 
 "Plant-signal" = the plant's own name/paths PLUS generic self-reference that a
 customization uses without naming the plant ("this project's", "this program",
@@ -58,12 +58,15 @@ gate is unfilled like any other scaffold.
 Usage:
   graft-audit.py <plant-root> <seed-root> [--date YYYYMMDD[-HHMMSS]]
                  [--tokens t1,t2,...]
-                 [--engine <plant-graph-lint.py>:<seed-graph-lint.py>]
+                 [--engine <plant-engine>:<seed-engine>]...
   graft-audit.py <plant-root> <seed-root> --unfilled [--rename | --prune]
 --date is a PREFIX of the backup stamp install.sh writes (YYYYMMDD-HHMMSS), so
 `--date 20260101` audits a whole day and `--date 20260101-1632` audits the one
 pass — a graft and the remedy it triggers land on the same day more often than
 not. It defaults to the newest day a .bak stamp in the plant carries.
+--engine is the one option that repeats: a graft passes one pair per engine
+(graph-lint.py, spec-lint.py, grill-lint.py), and every pair is checked and
+reported on its own line.
 Backup audit: exit 0 if clean/only-DELTA; 1 if any CUSTOMIZED or docs
 overwrite (a gate hit). Unfilled: exit 1 while unfilled scaffolds remain and
 neither --rename nor --prune was requested (a gate); 0 once none remain or
@@ -97,6 +100,8 @@ def parse_args():
     def _set(key, raw):
         if key == "tokens":
             opt["tokens"] = [t.strip().lower() for t in raw.split(",") if t.strip()]
+        elif key == "engine":
+            opt.setdefault("engine", []).append(raw)
         else:
             opt[key] = raw
     while i < len(a):
@@ -513,9 +518,9 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
               "the audit had nothing to prove")
     kernel_ok = _kernel_currency(plant, seed)
     schema_ok = _schema_currency(plant, seed)
-    engine_ok = True
-    if opt.get("engine"):
-        engine_ok = _engine_currency(opt["engine"])
+    # every pair runs, so a malformed first pair cannot hide the check of the
+    # next, nor a current last pair the staleness of the ones before it
+    engine_ok = all([_engine_currency(pair) for pair in opt.get("engine", [])])
     if knowledge_hits:
         print(f"  !! {len(knowledge_hits)} knowledge overwrite(s) under docs/graph/:")
         for k in knowledge_hits[:20]:
@@ -786,10 +791,10 @@ def _engine_currency(spec: str) -> bool:
         return False
     missing = sl - pl
     if missing:
-        print(f"  !! graph engine STALE: {len(missing)} seed engine line(s) absent "
-              f"from the plant — reconcile with graft-graph-engine.py")
+        print(f"  !! graph engine STALE: {pf}: {len(missing)} seed engine line(s) "
+              f"absent from the plant — reconcile with graft-graph-engine.py")
     else:
-        print("  graph engine: current (no seed engine line missing from plant)")
+        print(f"  graph engine: current: {pf} (no seed engine line missing from plant)")
     return True
 
 

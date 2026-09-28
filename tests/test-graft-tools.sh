@@ -666,4 +666,146 @@ grep -q "status" <<<"$out" && grep -q "closed" <<<"$out" \
   || { printf '%s\n' "$out" >&2; fail "the missing terms must be named, not counted"; }
 echo "  schema currency compares what the contract names, not its sentences — OK"
 
+# ---- every graph engine is reconciled with its own config (7.31.0) --------
+# A graft reconciles three engines, and each carries a different config:
+# graph-lint.py ROOT_ID/KINDS/KIND_PREFIX, spec-lint.py TEST_GLOBS, grill-lint.py
+# none. With the graph-lint set as the only default, the tool refused the other
+# two, so a plant kept an old grill-lint.py (no --waves) through every graft.
+# The plants are built here from the seed's real engines. One collecting block:
+# each case prints `FAIL <label>: <why>` and the block exits 1 at its end, so
+# one red case never hides the next.
+KG="$ROOT/templates/knowledge-graph"
+EW="$TMP/engines"; mkdir -p "$EW"
+ENGINE_FAILED=0
+engine_case() {  # $1 label, $2 case function, $3 what an OK run shows
+  local why
+  if why="$("$2" 2>&1)"; then
+    echo "  $1 $3 — OK"
+  else
+    echo "FAIL $1: $why" >&2
+    ENGINE_FAILED=1
+  fi
+}
+# a graph-lint.py whose config the plant changed (ROOT_ID, KIND_PREFIX), body current
+configured_graph_lint() {
+  sed -e 's/^ROOT_ID = "root"$/ROOT_ID = "app"/' \
+      -e 's/^KIND_PREFIX = {}$/KIND_PREFIX = {"operator": "op."}/' "$KG/graph-lint.py" > "$1"
+  grep -qx 'ROOT_ID = "app"' "$1" && grep -qx 'KIND_PREFIX = {"operator": "op."}' "$1" \
+    || { echo "fixture: the seed's graph-lint.py no longer carries ROOT_ID = \"root\" and KIND_PREFIX = {}"; return 1; }
+}
+
+case_engine_reconcile_stale_grill_lint() {
+  # X383 ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE
+  # Asserts SPEC-0001 ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE.
+  local d="$EW/x383" rc
+  mkdir -p "$d"
+  grep -v waves "$KG/grill-lint.py" > "$EW/x383.stale"
+  cmp -s "$EW/x383.stale" "$KG/grill-lint.py" && { echo "fixture: the stale body equals the seed's"; return 1; }
+  cp "$EW/x383.stale" "$d/grill-lint.py"
+  python3 "$ENGINE" "$d/grill-lint.py" "$KG/grill-lint.py" >"$EW/x383.out" 2>&1; rc=$?
+  [ "$rc" -eq 0 ] || { echo "a stale grill-lint.py reconciled with no --preserve exited $rc: $(tr '\n' ' ' <"$EW/x383.out")"; return 1; }
+  cmp -s "$d/grill-lint.py" "$KG/grill-lint.py" || { echo "grill-lint.py is not byte-identical to the seed's after the reconcile"; return 1; }
+  [ "$(ls "$d" | grep -c '^grill-lint\.py\.bak-')" -eq 1 ] || { echo "expected exactly one grill-lint.py.bak-*, found: $(ls "$d" | tr '\n' ' ')"; return 1; }
+  cmp -s "$d"/grill-lint.py.bak-* "$EW/x383.stale" || { echo "the backup does not hold the older body"; return 1; }
+}
+
+case_engine_reconcile_spec_lint_keeps_test_globs() {
+  # X384 ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE
+  # Asserts SPEC-0001 ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE.
+  local d="$EW/x384" rc
+  mkdir -p "$d"
+  # the plant's own TEST_GLOBS, and a body older than the seed's (every line
+  # naming KNOWN_STATUSES gone), so the reconcile has a body to adopt
+  python3 - "$KG/spec-lint.py" "$d/spec-lint.py" <<'PY' || { echo "fixture: the seed's spec-lint.py has no multi-line TEST_GLOBS or no KNOWN_STATUSES"; return 1; }
+import re, sys
+src = open(sys.argv[1]).read()
+new, n = re.subn(r"^TEST_GLOBS = \[.*?\n\]", 'TEST_GLOBS = ["checks/**/*.py"]', src, count=1, flags=re.S | re.M)
+assert n == 1 and "KNOWN_STATUSES" in new
+open(sys.argv[2], "w").write("".join(l for l in new.splitlines(True) if "KNOWN_STATUSES" not in l))
+PY
+  python3 "$ENGINE" "$d/spec-lint.py" "$KG/spec-lint.py" >"$EW/x384.out" 2>&1; rc=$?
+  [ "$rc" -eq 0 ] || { echo "a spec-lint.py reconciled with no --preserve exited $rc: $(tr '\n' ' ' <"$EW/x384.out")"; return 1; }
+  grep -qx 'TEST_GLOBS = \["checks/\*\*/\*\.py"\]' "$d/spec-lint.py" && ! grep -q '"spec/\*\*/\*\.\*"' "$d/spec-lint.py" \
+    || { echo "the plant's TEST_GLOBS was not kept"; return 1; }
+  grep -q "KNOWN_STATUSES" "$d/spec-lint.py" || { echo "the seed's spec-lint.py body was not adopted"; return 1; }
+}
+
+case_engine_reconcile_explicit_preserve_wins() {
+  # X385 ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE (guard: passes on the unmodified tool)
+  # Asserts SPEC-0001 ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE.
+  local d="$EW/x385" rc
+  mkdir -p "$d"
+  configured_graph_lint "$d/graph-lint.py" || return 1
+  python3 "$ENGINE" "$d/graph-lint.py" "$KG/graph-lint.py" --preserve=ROOT_ID >"$EW/x385.out" 2>&1; rc=$?
+  [ "$rc" -eq 0 ] || { echo "--preserve=ROOT_ID on graph-lint.py exited $rc: $(tr '\n' ' ' <"$EW/x385.out")"; return 1; }
+  grep -qx 'ROOT_ID = "app"' "$d/graph-lint.py" || { echo "--preserve=ROOT_ID did not keep the plant's ROOT_ID"; return 1; }
+  grep -qx 'KIND_PREFIX = {}' "$d/graph-lint.py" && ! grep -q '"operator": "op."' "$d/graph-lint.py" \
+    || { echo "--preserve=ROOT_ID still kept the plant's KIND_PREFIX: the per-engine set won over the explicit one"; return 1; }
+}
+
+case_engine_reconcile_other_name_takes_graph_lint_set() {
+  # X386 ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE (guard: passes on the unmodified tool)
+  # Asserts SPEC-0001 ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE.
+  local d="$EW/x386" rc
+  mkdir -p "$d"
+  configured_graph_lint "$d/project-lint.py" || return 1
+  python3 "$ENGINE" "$d/project-lint.py" "$KG/graph-lint.py" >"$EW/x386.out" 2>&1; rc=$?
+  [ "$rc" -eq 0 ] || { echo "a project-lint.py reconciled with no --preserve exited $rc: $(tr '\n' ' ' <"$EW/x386.out")"; return 1; }
+  grep -qx 'ROOT_ID = "app"' "$d/project-lint.py" && grep -qx 'KIND_PREFIX = {"operator": "op."}' "$d/project-lint.py" \
+    || { echo "an engine under another name lost its ROOT_ID or KIND_PREFIX: it did not take the graph-lint.py set"; return 1; }
+}
+
+# the audit fixture for X387-X389: a current graph-lint.py and a stale grill-lint.py
+AP="$EW/audit"; mkdir -p "$AP/plant/docs/graph" "$AP/seed"
+cp "$KG/graph-lint.py" "$AP/plant/docs/graph/graph-lint.py"
+grep -v waves "$KG/grill-lint.py" > "$AP/plant/docs/graph/grill-lint.py"
+PAIR_CURRENT="$AP/plant/docs/graph/graph-lint.py:$KG/graph-lint.py"
+PAIR_STALE="$AP/plant/docs/graph/grill-lint.py:$KG/grill-lint.py"
+PAIR_MALFORMED="$AP/plant/docs/graph/grill-lint.py"
+
+case_engine_audit_one_line_per_pair() {
+  # X387 ENGINE_AUDIT_CHECKS_EVERY_PAIR, ENGINE_LEFT_STALE_BY_GRAFT
+  # Asserts SPEC-0001 ENGINE_AUDIT_CHECKS_EVERY_PAIR.
+  local out n
+  out="$(python3 "$AUDIT" "$AP/plant" "$AP/seed" --engine="$PAIR_CURRENT" --engine="$PAIR_STALE" 2>&1)" || true
+  n="$(grep -c "graph engine" <<<"$out")" || true
+  [ "$n" -eq 2 ] || { echo "two --engine pairs printed $n engine-currency line(s): $(tr '\n' ' ' <<<"$out")"; return 1; }
+  grep "graph engine" <<<"$out" | grep "graph-lint.py" | grep -q "current" \
+    || { echo "no current line naming the plant's graph-lint.py: $(tr '\n' ' ' <<<"$out")"; return 1; }
+  grep "graph engine STALE" <<<"$out" | grep -q "grill-lint.py" \
+    || { echo "no graph engine STALE line naming the plant's grill-lint.py: $(tr '\n' ' ' <<<"$out")"; return 1; }
+}
+
+case_engine_audit_malformed_second_pair_fails() {
+  # X388 ENGINE_AUDIT_CHECKS_EVERY_PAIR (guard: passes on the unmodified tool, whose last --engine wins)
+  # Asserts SPEC-0001 ENGINE_AUDIT_CHECKS_EVERY_PAIR.
+  local out rc
+  python3 "$AUDIT" "$AP/plant" "$AP/seed" --engine="$PAIR_CURRENT" >"$EW/x387.ctl" 2>&1 \
+    || { echo "control: the current pair alone did not exit 0: $(tr '\n' ' ' <"$EW/x387.ctl")"; return 1; }
+  out="$(python3 "$AUDIT" "$AP/plant" "$AP/seed" --engine="$PAIR_CURRENT" --engine="$PAIR_MALFORMED" 2>&1)" && rc=0 || rc=$?
+  [ "$rc" -ne 0 ] || { echo "a malformed second --engine pair exited 0"; return 1; }
+  grep -q -- "--engine wants <plant-file>:<seed-file>" <<<"$out" \
+    || { echo "a malformed second --engine pair did not say what was wrong: $(tr '\n' ' ' <<<"$out")"; return 1; }
+}
+
+case_engine_audit_malformed_first_pair_fails() {
+  # X389 ENGINE_AUDIT_CHECKS_EVERY_PAIR
+  # Asserts SPEC-0001 ENGINE_AUDIT_CHECKS_EVERY_PAIR.
+  local out rc
+  out="$(python3 "$AUDIT" "$AP/plant" "$AP/seed" --engine="$PAIR_MALFORMED" --engine="$PAIR_CURRENT" 2>&1)" && rc=0 || rc=$?
+  [ "$rc" -ne 0 ] || { echo "a malformed first --engine pair exited 0: the check it asked for did not run and was not reported"; return 1; }
+  grep -q -- "--engine wants <plant-file>:<seed-file>" <<<"$out" \
+    || { echo "a malformed first --engine pair did not say what was wrong: $(tr '\n' ' ' <<<"$out")"; return 1; }
+}
+
+engine_case X383 case_engine_reconcile_stale_grill_lint "a stale grill-lint.py adopts the seed's body with no --preserve, one backup"
+engine_case X384 case_engine_reconcile_spec_lint_keeps_test_globs "spec-lint.py keeps the plant's TEST_GLOBS with no --preserve"
+engine_case X385 case_engine_reconcile_explicit_preserve_wins "an explicit --preserve wins over the per-engine set"
+engine_case X386 case_engine_reconcile_other_name_takes_graph_lint_set "an engine under another name takes the graph-lint.py set"
+engine_case X387 case_engine_audit_one_line_per_pair "two --engine pairs print two lines, each naming its plant file"
+engine_case X388 case_engine_audit_malformed_second_pair_fails "a malformed second --engine pair exits non-zero"
+engine_case X389 case_engine_audit_malformed_first_pair_fails "a malformed first --engine pair exits non-zero"
+[ "$ENGINE_FAILED" -eq 0 ] \
+  || { echo "test-graft-tools: FAIL — the engine reconciliation block has failing cases (above)" >&2; exit 1; }
+
 echo "test-graft-tools: PASS"
