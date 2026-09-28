@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """status-hook.py — a SessionStart hook that surfaces the plant's lifecycle
-status register ONCE per session, and resets the session ledger that its
-sibling route-hook.py keeps. The sibling runs on every prompt: this one runs
-when a session starts and injects the output of `status-register.py --summary`
-— how many items are open / hotfix / deferred and the oldest of them — so
-standing debt is in front of the model before it plans, deterministically,
-without a line in any brief or a step the model must remember.
+status register and its code anchor ONCE per session, and resets the session
+ledger that its sibling route-hook.py keeps. The sibling runs on every prompt:
+this one runs when a session starts and injects the output of
+`status-register.py --summary` — how many items are open / hotfix / deferred
+and the oldest of them — so standing debt is in front of the model before it
+plans, deterministically, without a line in any brief or a step the model must
+remember. It ends the injection with what `code-anchor.py --compare` prints:
+whether the code moved since the last canonize recorded the anchor, so the
+model knows which facts about code to check (SPEC-0003, 7.32.0). No prompt
+and no pre-tool hook runs the anchor; this is its one run per session.
 
 Installed to `.claude/status-hook.py` and wired in `.claude/settings.json`
 under hooks.SessionStart. The host passes `{"session_id", "hook_event_name",
@@ -21,8 +25,10 @@ from the sibling route-hook.py, and this file carries no copy of its path
 rule or session-id pattern (SPEC-0003).
 
 It never blocks: a missing register, a missing graph, a timeout, or a broken
-tool degrades to silence, and a reset that cannot run, or stdin nested past the
-JSON parser, costs one stderr line. Exit 0 always. Context injection REQUIRES
+register degrades to silence, and a reset that cannot run, or stdin nested past
+the JSON parser, costs one stderr line. The anchor fails toward inclusion
+instead: an absent, failing, silent or slow `code-anchor.py` gives the
+not-checked line, and no stderr line. Exit 0 always. Context injection REQUIRES
 JSON on stdout — plain text is not injected by Copilot.
 """
 
@@ -33,6 +39,10 @@ import sys
 from pathlib import Path
 
 CANDIDATES = (Path("docs") / "graph" / "status-register.py", Path("tools") / "status-register.py")
+ANCHOR_CANDIDATES = (Path("docs") / "graph" / "code-anchor.py",)
+ANCHOR_TIMEOUT = 15                               # s; the hook's wait for code-anchor.py (SPEC-0003 §6)
+ANCHOR_NOT_CHECKED = ("Code anchor: not checked this session (the comparison did not run). "
+                      "Facts about code in the graph are unverified.")
 
 
 # --- canonical plant-root boundary ---
@@ -55,7 +65,7 @@ def _is_plant_root(p) -> bool:
 # --- end canonical plant-root boundary ---
 
 
-def find_register():
+def find_tool(candidates):
     starts = [Path.cwd(), Path(__file__).resolve().parent]
     seen = set()
     for start in starts:
@@ -64,13 +74,17 @@ def find_register():
             if p in seen:
                 break
             seen.add(p)
-            for rel in CANDIDATES:
+            for rel in candidates:
                 if (p / rel).exists():
                     return p / rel, p
             if _is_plant_root(p):
                 break
             p = p.parent
     return None, Path.cwd()
+
+
+def find_register():
+    return find_tool(CANDIDATES)
 
 
 def emit(text: str, event: str) -> None:
@@ -105,6 +119,47 @@ def reset_session_ledger(data: dict) -> None:
         print(f"status-hook: session ledger not reset ({why})", file=sys.stderr)
 
 
+def status_summary() -> str:
+    """The register's summary line, or "" when there is none: a missing or
+    broken register is silence."""
+    register, root = find_register()
+    if register is None:
+        return ""
+    try:
+        out = subprocess.run(
+            [sys.executable, str(register), "--summary", "--root", str(root / "docs" / "graph")],
+            capture_output=True, text=True, timeout=15, cwd=str(root),
+        )
+    except Exception:                             # noqa: BLE001 — a broken register is silence,
+        return ""                                 # output that does not decode included
+    summary = (out.stdout or "").strip()
+    if out.returncode not in (0, 1) or not summary:
+        return ""
+    return ("Status register (lifecycle debt in this plant, from frontmatter — "
+            "read it, do not re-infer it): " + summary)
+
+
+def code_anchor() -> str:
+    """What `code-anchor.py --compare` prints, run from the plant root; the
+    not-checked line when the tool is absent, exits non-zero, prints nothing,
+    runs past ANCHOR_TIMEOUT or prints what does not decode. Never empty and
+    never a stderr line: a comparison that did not run is said, not hidden."""
+    tool, root = find_tool(ANCHOR_CANDIDATES)
+    if tool is None:
+        return ANCHOR_NOT_CHECKED
+    try:
+        out = subprocess.run(
+            [sys.executable, str(tool), "--compare"],
+            capture_output=True, text=True, timeout=ANCHOR_TIMEOUT, cwd=str(root),
+        )
+    except Exception:                             # noqa: BLE001: every failure is the not-checked line
+        return ANCHOR_NOT_CHECKED
+    line = (out.stdout or "").strip()
+    if out.returncode != 0 or not line:
+        return ANCHOR_NOT_CHECKED
+    return line
+
+
 def main() -> int:
     try:
         data = json.load(sys.stdin)
@@ -117,21 +172,8 @@ def main() -> int:
         data = {}
     event = data.get("hook_event_name") or data.get("hookEventName") or "SessionStart"
     reset_session_ledger(data)
-    register, root = find_register()
-    if register is None:
-        return 0
-    try:
-        out = subprocess.run(
-            [sys.executable, str(register), "--summary", "--root", str(root / "docs" / "graph")],
-            capture_output=True, text=True, timeout=15, cwd=str(root),
-        )
-    except Exception:                             # noqa: BLE001 — a broken register is silence,
-        return 0                                  # output that does not decode included
-    summary = (out.stdout or "").strip()
-    if out.returncode not in (0, 1) or not summary:
-        return 0
-    emit("Status register (lifecycle debt in this plant, from frontmatter — "
-         "read it, do not re-infer it): " + summary, event)
+    parts = [p for p in (status_summary(), code_anchor()) if p]
+    emit("\n".join(parts), event)
     return 0
 
 
