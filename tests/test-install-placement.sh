@@ -32,13 +32,15 @@ trap 'chmod -R u+w "$WORK" 2>/dev/null; rm -rf "$WORK"' EXIT
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
-# The installer's OWN derived state (place_state): a fresh `installed_at` every
-# run means it is never byte-identical, so backing it up would leave one .bak
-# per install for ever, and the next stamp is derived from this one rather than
-# authored, so a backup carries no recovery value. The one recorded M7
-# exception — it is still replaced atomically and still symlink-safe.
+# The installer's OWN derived state (place_state) has two destinations: the
+# stamp `.cypress/seed.json` and the list file `.cypress/recreated-nodes.txt`
+# written beside it. A fresh `installed_at` every run means the stamp is never
+# byte-identical, so backing it up would leave one .bak per install for ever,
+# and each is derived by the installer rather than authored, so a backup
+# carries no recovery value. These are the recorded M7 exception. Both are
+# still replaced atomically and still symlink-safe.
 is_installer_state() {
-    [[ "$1" == ".cypress/seed.json" ]]
+    [[ "$1" == ".cypress/seed.json" || "$1" == ".cypress/recreated-nodes.txt" ]]
 }
 
 # Destinations the installer places ONCE and the plant then owns: scaffold

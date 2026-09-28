@@ -148,4 +148,161 @@ cmp -s "$ROOT/core/AGENTS.md" "$D/CLAUDE.md" \
     || fail "K6 VIOLATED — the placed kernel is not byte-identical to core/AGENTS.md"
 echo "K6: placed kernel is byte-identical to core/AGENTS.md — OK"
 
+# --- K7: an earlier seed kernel is not a migration (7.32.0) -------------------
+# Asserts SPEC-0001 PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION and SPEC-0001
+# SEED_HISTORY_UNAVAILABLE. A target whose kernel is byte-identical to
+# core/AGENTS.md at an earlier commit of the seed holds no instruction of the
+# plant's own, so replacing it is a fast-forward: one backup, no row in
+# adopted-instructions.md, no OVERWRITTEN line. A kernel with one plant line
+# added is still filed (guard). A seed with no Git history falls back to the
+# comparison with the current kernel only, and says so in one line.
+#
+# The seed under test is a temp clone of the real seed (`git clone --local
+# --no-hardlinks`: a hard link fails when the temp directory is on another
+# device),
+# with the real seed's working tree laid over it, so the installer run is the
+# one on disk and its history is the real seed's. A shallow checkout (CI) has
+# no earlier kernel in its history; the clone then gains one commit holding an
+# earlier body and one restoring the current body, so the history the
+# installer walks still holds an earlier kernel. One collecting block: each
+# case prints `FAIL <label>: <why>` and the block exits 1 at its end, so one
+# red case never hides the next.
+K7_FAILED=0
+k7_case() {  # $1 label, $2 case function, $3 what an OK run shows
+    local why
+    if why="$("$2" 2>&1)"; then
+        echo "$1: $3 — OK"
+    else
+        echo "FAIL $1: $why" >&2
+        K7_FAILED=1
+    fi
+}
+# The rows of the plant's adopted-instructions.md that name a backup, or
+# nothing when the file or the row is absent.
+k7_rows_for() {  # $1 plant, $2 backup basename
+    local note="$1/docs/graph/plans/adopted-instructions.md"
+    [[ -f "$note" ]] || return 0
+    grep -F -- "$2" "$note" || true
+}
+
+K7_SEED="$WORK/k7-seed"
+K7_PRIOR="$WORK/k7-prior-kernel.md"
+k7_fixture() {
+    git clone --local --no-hardlinks --quiet "$ROOT" "$K7_SEED" >/dev/null 2>&1 \
+        || { echo "fixture: git clone --local of the seed failed"; return 1; }
+    (cd "$ROOT" && tar cf - --exclude=./.git .) | (cd "$K7_SEED" && tar xf -) \
+        || { echo "fixture: laying the seed's working tree over the clone failed"; return 1; }
+    local rev
+    for rev in $(git -C "$K7_SEED" log --format=%H -- core/AGENTS.md); do
+        git -C "$K7_SEED" show "$rev:core/AGENTS.md" > "$K7_PRIOR" 2>/dev/null || continue
+        cmp -s "$K7_PRIOR" "$K7_SEED/core/AGENTS.md" || return 0
+    done
+    # Shallow history: record an earlier body, then the current one, in the clone.
+    sed '$d' "$K7_SEED/core/AGENTS.md" > "$K7_PRIOR"
+    cmp -s "$K7_PRIOR" "$K7_SEED/core/AGENTS.md" \
+        && { echo "fixture: could not derive an earlier kernel body"; return 1; }
+    local cur="$WORK/k7-current-kernel.md"
+    cp "$K7_SEED/core/AGENTS.md" "$cur"
+    cp "$K7_PRIOR" "$K7_SEED/core/AGENTS.md"
+    git -C "$K7_SEED" -c user.name=k7 -c user.email=k7@example.invalid \
+        commit --quiet --no-verify -m "k7: earlier kernel" -- core/AGENTS.md >/dev/null 2>&1 \
+        || { echo "fixture: could not commit an earlier kernel in the clone"; return 1; }
+    cp "$cur" "$K7_SEED/core/AGENTS.md"
+    git -C "$K7_SEED" -c user.name=k7 -c user.email=k7@example.invalid \
+        commit --quiet --no-verify -m "k7: current kernel" -- core/AGENTS.md >/dev/null 2>&1 \
+        || { echo "fixture: could not commit the current kernel in the clone"; return 1; }
+}
+
+case_k7_prior_kernel_fast_forwards() {
+    # K7 PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION: the first run, then a second run.
+    local t="$WORK/k7-prior" out rc baks
+    mkdir -p "$t"
+    cp "$K7_PRIOR" "$t/CLAUDE.md"
+    out="$("$K7_SEED/install.sh" claude-code --project-dir "$t" --copy 2>&1)"; rc=$?
+    [[ $rc -eq 0 ]] || { echo "install over an earlier seed kernel exited $rc: $(tail -3 <<<"$out")"; return 1; }
+    baks="$(find "$t" -maxdepth 1 -name 'CLAUDE.md.bak-*' | wc -l | tr -d ' ')"
+    [[ "$baks" -eq 1 ]] || { echo "expected exactly one CLAUDE.md.bak-*, found $baks"; return 1; }
+    local bak; bak="$(basename "$(find "$t" -maxdepth 1 -name 'CLAUDE.md.bak-*')")"
+    [[ -z "$(k7_rows_for "$t" "$bak")" ]] \
+        || { echo "adopted-instructions.md gained a row for $bak, whose body is an earlier seed kernel: $(k7_rows_for "$t" "$bak")"; return 1; }
+    grep -q OVERWRITTEN <<<"$out" \
+        && { echo "the install printed an OVERWRITTEN line for an earlier seed kernel: $(grep OVERWRITTEN <<<"$out")"; return 1; }
+    grep -qi "earlier seed kernel" <<<"$out" \
+        || { echo "the log does not name the replacement as a fast-forward from an earlier seed kernel"; return 1; }
+    cmp -s "$t/CLAUDE.md" "$K7_SEED/core/AGENTS.md" \
+        || { echo "the kernel was not brought to the current seed kernel"; return 1; }
+    cmp -s "$t/$bak" "$K7_PRIOR" || { echo "the backup does not hold the earlier kernel"; return 1; }
+    out="$("$K7_SEED/install.sh" claude-code --project-dir "$t" --copy 2>&1)"; rc=$?
+    [[ $rc -eq 0 ]] || { echo "the second run exited $rc: $(tail -3 <<<"$out")"; return 1; }
+    [[ -z "$(k7_rows_for "$t" "$bak")" ]] \
+        || { echo "the second run filed a row for $bak: $(k7_rows_for "$t" "$bak")"; return 1; }
+    return 0
+}
+
+case_k7_sweep_skips_prior_kernel_backup() {
+    # K7 PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION: a later run's orphan sweep.
+    local t="$WORK/k7-sweep" out rc bak="CLAUDE.md.bak-20260101-000000"
+    mkdir -p "$t"
+    "$K7_SEED/install.sh" claude-code --project-dir "$t" --copy >/dev/null 2>&1 \
+        || { echo "fixture: the first install failed"; return 1; }
+    cp "$K7_PRIOR" "$t/$bak"
+    out="$("$K7_SEED/install.sh" claude-code --project-dir "$t" --copy 2>&1)"; rc=$?
+    [[ $rc -eq 0 ]] || { echo "the re-run exited $rc: $(tail -3 <<<"$out")"; return 1; }
+    [[ -z "$(k7_rows_for "$t" "$bak")" ]] \
+        || { echo "the orphan sweep filed a row for $bak, whose body is an earlier seed kernel: $(k7_rows_for "$t" "$bak")"; return 1; }
+    return 0
+}
+
+case_k7_plant_line_is_still_filed() {
+    # K7 PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION, guard: a body that matches no
+    # seed kernel is filed exactly as today.
+    local t="$WORK/k7-plant-line" out rc bak
+    mkdir -p "$t"
+    { cat "$K7_PRIOR"; printf '%s\n' "- K7 plant rule: run the linter before every commit."; } > "$t/CLAUDE.md"
+    out="$("$K7_SEED/install.sh" claude-code --project-dir "$t" --copy 2>&1)"; rc=$?
+    [[ $rc -eq 0 ]] || { echo "install exited $rc: $(tail -3 <<<"$out")"; return 1; }
+    bak="$(basename "$(find "$t" -maxdepth 1 -name 'CLAUDE.md.bak-*' | head -1)")"
+    [[ "$bak" == CLAUDE.md.bak-* ]] || { echo "no CLAUDE.md.bak-* was left"; return 1; }
+    [[ -n "$(k7_rows_for "$t" "$bak")" ]] \
+        || { echo "a kernel carrying a plant line was not filed in adopted-instructions.md"; return 1; }
+    grep -q OVERWRITTEN <<<"$out" \
+        || { echo "a kernel carrying a plant line was replaced with no OVERWRITTEN line"; return 1; }
+    return 0
+}
+
+case_k7_no_history_falls_back() {
+    # K7 SEED_HISTORY_UNAVAILABLE: a seed copy with no .git files the row as
+    # before 7.32.0, and the log says so in one line.
+    local seed="$WORK/k7-nogit-seed" t="$WORK/k7-nogit" out rc bak n
+    mkdir -p "$seed" "$t"
+    (cd "$ROOT" && tar cf - --exclude=./.git .) | (cd "$seed" && tar xf -) \
+        || { echo "fixture: copying the seed without .git failed"; return 1; }
+    [[ ! -e "$seed/.git" ]] || { echo "fixture: the seed copy still has .git"; return 1; }
+    cp "$K7_PRIOR" "$t/CLAUDE.md"
+    out="$("$seed/install.sh" claude-code --project-dir "$t" --copy 2>&1)"; rc=$?
+    [[ $rc -eq 0 ]] || { echo "install from a seed with no history exited $rc: $(tail -3 <<<"$out")"; return 1; }
+    bak="$(basename "$(find "$t" -maxdepth 1 -name 'CLAUDE.md.bak-*' | head -1)")"
+    [[ -n "$(k7_rows_for "$t" "$bak")" ]] \
+        || { echo "with no seed history the earlier kernel was not filed for migration"; return 1; }
+    n="$(grep -ci 'history' <<<"$out" || true)"
+    [[ "$n" -eq 1 ]] \
+        || { echo "expected one log line saying the seed history is unavailable (a line naming 'history'), found $n"; return 1; }
+    return 0
+}
+
+if why="$(k7_fixture 2>&1)"; then
+    k7_case "K7 PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION" case_k7_prior_kernel_fast_forwards \
+        "an earlier seed kernel is replaced with one backup, no row, no OVERWRITTEN line, and a re-run files none"
+    k7_case "K7 PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION (sweep)" case_k7_sweep_skips_prior_kernel_backup \
+        "the orphan sweep files no row for a backup holding an earlier seed kernel"
+    k7_case "K7 PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION (guard)" case_k7_plant_line_is_still_filed \
+        "a kernel with one plant line added is filed and announced as before"
+    k7_case "K7 SEED_HISTORY_UNAVAILABLE" case_k7_no_history_falls_back \
+        "a seed with no Git history files the row and says so in one line"
+else
+    echo "FAIL K7 fixture: $why" >&2
+    K7_FAILED=1
+fi
+[[ $K7_FAILED -eq 0 ]] || fail "K7: one or more cases above failed"
+
 echo "install-kernel-modes: OK — copy isolates, symlink is live, order is commutative, placement is byte-identical"
