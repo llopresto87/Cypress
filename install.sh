@@ -209,7 +209,11 @@ except ValueError as exc:
     print(f"is not valid JSON ({exc})")
     raise SystemExit(0)
 if not isinstance(data, dict):
-    print(f"is a JSON {type(data).__name__}, not an object")
+    # Readable JSON that is not one object records no decision this installer
+    # can read, so it is not refused here: write_seed_stamp moves it aside to a
+    # backup and writes a stamp of this run's keys (SPEC-0001
+    # STAMP_NOT_AN_OBJECT). Only a stamp that cannot be parsed at all, or whose
+    # owned keys have the wrong type, is refused.
     raise SystemExit(0)
 for key in ("seed", "version", "tools", "legal_corpus", "legal_jurisdiction",
             "installed_at", "installed_from"):
@@ -2287,6 +2291,50 @@ write_seed_stamp() {
     # owner's corpus decisions to `undecided`. Every field below is therefore
     # "what this run states, else what the stamp already held".
     local now; now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+    # A stamp that parses but whose top level is not one object (an array, a
+    # string, a number, true, false or null) has no keys to merge or carry:
+    # stamp_field reads nothing from it, so the stamp below is written from this
+    # run's keys alone. preflight_state_record lets it through, and it is not
+    # replaced silently: it is placed with place_file, whose backup is then the
+    # only home of its content (SPEC-0001 STAMP_NOT_AN_OBJECT). Not through a
+    # link, for the reason stamp_field gives.
+    local not_an_object=0
+    if [[ -f "$stamp" && ! -L "$stamp" ]]; then
+        local shape_rc=0
+        python3 -c 'import json, sys
+sys.exit(0 if isinstance(json.load(open(sys.argv[1], encoding="utf-8")), dict) else 3)' \
+            "$stamp" >/dev/null 2>&1 || shape_rc=$?
+        [[ $shape_rc -eq 3 ]] && not_an_object=1
+    fi
+
+    # The keys this installer does not own are the plant's, not the run's: a
+    # readable stamp's other keys are carried forward with JSON-equal values, in
+    # their original order, after the installer's own keys (SPEC-0001
+    # UNKNOWN_STAMP_KEYS_SURVIVE). Each value is rendered as `json.dumps(...,
+    # indent=2)` would render it at this depth, so a stamp in that layout keeps
+    # those lines byte-identical across runs. The owned set is exactly the keys
+    # the block below writes; anything else is carried, never interpreted.
+    local carried=""
+    if [[ -f "$stamp" && ! -L "$stamp" ]]; then
+        carried="$(STAMP_PATH="$stamp" python3 - <<'PYEOF' 2>/dev/null || true
+import json, os, sys
+OWNED = {"seed", "version", "installed_at", "installed_from", "tools",
+         "legal_corpus", "legal_jurisdiction", "agent_projections"}
+with open(os.environ["STAMP_PATH"], encoding="utf-8") as fh:
+    data = json.load(fh)
+if isinstance(data, dict):
+    out = []
+    for key, value in data.items():
+        if key in OWNED:
+            continue
+        body = json.dumps(value, indent=2, ensure_ascii=False).replace("\n", "\n  ")
+        out.append(",\n  " + json.dumps(key, ensure_ascii=False) + ": " + body)
+    sys.stdout.buffer.write("".join(out).encode("utf-8"))
+PYEOF
+)"
+    fi
+
     local prev prev_from prev_tools prev_corpus prev_juris
     prev="$(stamp_field "$stamp" version)"
     prev_from="$(stamp_field "$stamp" installed_from)"
@@ -2395,7 +2443,7 @@ write_seed_stamp() {
                    "$sep" "$t" "${proj% *}" "${proj##* }"
             sep=$',\n'
         done
-        printf '\n  ]\n'
+        printf '\n  ]%s\n' "$carried"
         printf '}\n'
     } > "$tmp"
     # Staged, then placed atomically. A truncate-in-place write that failed
@@ -2403,7 +2451,21 @@ write_seed_stamp() {
     # empty — indistinguishable from "never set" — so the next run would
     # silently reset the owner's corpus decisions and forget every installed
     # adapter. Rendering to scratch first makes the transition all-or-nothing.
-    place_state "$tmp" "$stamp"
+    if [[ $not_an_object -eq 1 ]]; then
+        # place_file moves the old stamp to a `.bak-<ts>` sibling (bak_path)
+        # before it copies. Its own per-file warning is silenced here so that
+        # exactly one line names the backup, and it copies whatever --symlink
+        # says, because a stamp linked into the staging tree would not survive.
+        local before=" " b stamp_bak=""
+        for b in "$stamp".bak-*; do [[ -e "$b" || -L "$b" ]] && before+="$b "; done
+        LINK_MODE=copy FORCE=1 place_file "$tmp" "$stamp"
+        for b in "$stamp".bak-*; do
+            [[ "$before" == *" $b "* ]] || stamp_bak="$b"
+        done
+        warn ".cypress/seed.json was JSON but not an object; moved it to .cypress/${stamp_bak##*/} and wrote a stamp from this run's keys. Keys the installer does not own could not be carried; they are in the backup only."
+    else
+        place_state "$tmp" "$stamp"
+    fi
     log "  .cypress/seed.json     (seed stamp: cypress $version — commit it)"
     # The whole list of this run's re-created nodes, written by every run that
     # writes the stamp, so it always describes that run: a run that re-created

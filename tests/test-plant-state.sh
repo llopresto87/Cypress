@@ -25,6 +25,10 @@
 #   S10 a re-install leaves a plant's older engine alone, and graft's engine
 #       tool brings all three engines current
 #       — asserts SPEC-0001 EXISTING_PLANT_RECEIVES_CURRENT_ENGINES
+#   S11 a key the stamp holds and the installer does not own survives, and a
+#       stamp that is not one JSON object is backed up and named
+#       — asserts SPEC-0001 UNKNOWN_STAMP_KEYS_SURVIVE and
+#         SPEC-0001 STAMP_NOT_AN_OBJECT
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -521,6 +525,71 @@ echo "  S10: a re-install keeps the older engine, and the engine tool brings all
 rm -rf "$WORK"
 }
 
+case_stamp_keys() {
+local WORK; WORK="$(mktemp -d)"
+# --- S11: UNKNOWN_STAMP_KEYS_SURVIVE, STAMP_NOT_AN_OBJECT (SPEC-0001) --------
+# Asserts SPEC-0001 UNKNOWN_STAMP_KEYS_SURVIVE and SPEC-0001 STAMP_NOT_AN_OBJECT.
+# A key the installer does not own is carried forward unchanged: JSON-equal
+# value, original order among the carried keys, after the installer's own
+# keys. The fixture puts `zz_note` before the installer's keys and
+# `aa_annotation` after them, so neither a sorted order nor the fixture's own
+# position passes by accident. The installer's keys keep their own rules.
+local T="$WORK/stamp-keys"; mkdir -p "$T"
+"$ROOT/install.sh" claude-code --legal-corpus no --project-dir "$T" >/dev/null 2>&1 \
+    || fail "S11 setup install failed"
+python3 - "$T/.cypress/seed.json" <<'PY' || fail "S11: could not write the stamp fixture"
+import json, sys
+p = sys.argv[1]
+d = json.load(open(p, encoding="utf-8"))
+out = {"zz_note": "kept by the plant owner"}
+out.update(d)
+out["aa_annotation"] = {"reviewed_by": "owner", "rounds": [1, 2], "ok": True}
+open(p, "w", encoding="utf-8").write(json.dumps(out, indent=2) + "\n")
+PY
+"$ROOT/install.sh" all --project-dir "$T" >/dev/null 2>&1 \
+    || fail "S11: install.sh all over a stamp carrying two unknown keys failed"
+python3 - "$T/.cypress/seed.json" <<'PY' || fail "S11 UNKNOWN_STAMP_KEYS_SURVIVE: see the line above"
+import json, sys
+d = json.load(open(sys.argv[1], encoding="utf-8"))
+keys = list(d)
+own = {"seed", "version", "installed_at", "installed_from", "tools",
+       "legal_corpus", "legal_jurisdiction", "agent_projections"}
+carried = [k for k in keys if k not in own]
+if carried != ["zz_note", "aa_annotation"]:
+    sys.exit(f"S11: the keys the installer does not own are {carried!r} after the run, "
+             f"expected ['zz_note', 'aa_annotation'] in their original order (keys: {keys!r})")
+if keys[-2:] != carried:
+    sys.exit(f"S11: the carried keys are not after the installer's own keys: {keys!r}")
+if d["zz_note"] != "kept by the plant owner":
+    sys.exit(f"S11: zz_note changed: {d['zz_note']!r}")
+if d["aa_annotation"] != {"reviewed_by": "owner", "rounds": [1, 2], "ok": True}:
+    sys.exit(f"S11: aa_annotation changed: {d['aa_annotation']!r}")
+if d.get("legal_corpus") != "no":
+    sys.exit(f"S11: the owner's legal_corpus decision did not survive: {d.get('legal_corpus')!r}")
+if d.get("tools", "").split()[:1] != ["claude-code"]:
+    sys.exit(f"S11: the installed adapters did not accumulate: {d.get('tools')!r}")
+PY
+# STAMP_NOT_AN_OBJECT: a stamp that parses as JSON but is not one object
+# (here a JSON array) is moved to a .bak-<ts> sibling, a stamp is written from
+# the installer's own keys, and one warning names the backup.
+local N="$WORK/stamp-array"; mkdir -p "$N"
+"$ROOT/install.sh" claude-code --project-dir "$N" >/dev/null 2>&1 \
+    || fail "S11 STAMP_NOT_AN_OBJECT setup install failed"
+printf '["cypress", {"zz_note": "kept by the plant owner"}]\n' > "$N/.cypress/seed.json"
+local out rc=0
+out="$("$ROOT/install.sh" all --project-dir "$N" 2>&1)" || rc=$?
+[[ $rc -eq 0 ]] || fail "S11 STAMP_NOT_AN_OBJECT: install over a stamp that is not a JSON object exited $rc: $(tail -3 <<<"$out")"
+local bak; bak="$(find "$N/.cypress" -maxdepth 1 -name 'seed.json.bak-*' | head -1)"
+[[ -n "$bak" ]] || fail "S11 STAMP_NOT_AN_OBJECT: the stamp was not moved to a seed.json.bak-* sibling"
+grep -q 'zz_note' "$bak" || fail "S11 STAMP_NOT_AN_OBJECT: the backup does not hold the old stamp"
+[[ "$(field "$N/.cypress/seed.json" seed)" == "cypress" ]] \
+    || fail "S11 STAMP_NOT_AN_OBJECT: no stamp was written from the installer's own keys"
+[[ "$(grep -c "$(basename "$bak")" <<<"$out")" -eq 1 ]] \
+    || fail "S11 STAMP_NOT_AN_OBJECT: expected one warning naming $(basename "$bak")"
+echo "  S11: keys the installer does not own survive in order after its own; a stamp that is not an object is backed up and named — OK"
+rm -rf "$WORK"
+}
+
 # --- one-case subcommand, run by the parallel dispatcher ---------------------
 if [ "${1:-}" = "__case" ]; then
   "$2"
@@ -535,7 +604,7 @@ fi
 # concurrently under the gate's ONE shared budget (tests/gate_pool.py,
 # $GATE_JOBS / $GATE_POOL_DIR). Every assertion is byte-for-byte what it was.
 SCN="$(mktemp)"
-for c in case_s1_s2_s5 caseALL_NAMES_SKIPPED_FROZEN_HOSTS case_s4 case_s6 case_plan_records case_corpus_linkmodes case_corpus_surplus case_drift case_edited case_s7 case_session_records case_engine_upgrade; do
+for c in case_s1_s2_s5 caseALL_NAMES_SKIPPED_FROZEN_HOSTS case_s4 case_s6 case_plan_records case_corpus_linkmodes case_corpus_surplus case_drift case_edited case_s7 case_session_records case_engine_upgrade case_stamp_keys; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0
