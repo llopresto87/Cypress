@@ -39,7 +39,7 @@ runs unchanged and decides the exit status. It levels the §9 increments into
 waves (1 for an increment that depends on no increment, else one after its
 latest dependency), prints each with its `Phase:`, and warns when two
 increments no dependency path orders both name one file in `Files touched:`
-(SPEC-0005 §6 "Wave report"). The schedule is static: it reads §9 alone,
+(`delegation.waves`, `docs/graph/method/delegation-sequencing.md`). The schedule is static: it reads §9 alone,
 never §15 or what is committed. A plan no `Phase:` reaches is `unscheduled`;
 a dependency defect, or two increments sharing one number, leaves it
 `not computed`, because a wave keyed on a wrong edge is worse than none.
