@@ -1,0 +1,19 @@
+### Increment 18 — Prose: graft and grow carry 7.31.0 to plants
+- Spec contracts: none — doctrine accepted by review (ADR-0013, ADR-0014; SPEC-0005 §6 "Session record", its Migration row as amended for 7.31.0)
+- Files touched: `protocols/graft.md` (body about 1,380 lines, under the 2,500-line lifecycle ceiling of adr-0007; the additions are about 40):
+  - the ownership list (:132-135) names `grill-lint.py` beside `graph-lint.py` and `spec-lint.py`;
+  - Phase 3's engine paragraph (:683-714) names the three engines and the config each carries (`grill-lint.py`: none), and says the tool takes that set by itself when no `--preserve` is given;
+  - `graft.gate.customization` and `graft.gate.engine` (:971, :974) pass the three `--engine` pairs;
+  - `graft.gate.rootstock` (:970) names `docs/graph/plans/sessions/_session-record.template.md` as an expected new file under `plans/`, placed by the scaffold walk, not a rootstock breach;
+  - a fourth migration, after the shape migration: "Memory migration: harness memory → a session record". Graft reads the harness memory it can reach, read-only; where each host keeps it is the host's fact. It writes a first session record in `docs/graph/plans/sessions/`, listing every entry in "Harness memories to migrate". The graft's own canonize close-out files the record. Retiring or deleting a harness entry goes to the owner as a numbered decision, by name (kernel §4). It also says that the kernel's §3.2 sentence arrives with the kernel fast-forward, which `graft.gate.kernel` already checks, and that the new sentence is expected in the kernel diff. The migrations' opening sentence ("The three subsections below") counts four;
+  - one Output-format section, "Harness memories moved to a session record (N/A if none)".
+  - `protocols/grow.md`, in "Delivery and maturity" (:890-894), gains one sentence. The growth session keeps its own session record from Phase 1. If the host already holds memories for this project, the record lists them for the close-out it already runs (`stewardship-posture.session-record`).
+  - `documentation/protocols-reference.md`: the graft and grow rows and sections, only what `check_protocol_reference` needs (`est_tokens`).
+  - In both protocols: no `owns` change, `est_tokens` re-measured, and no new `load_when` unless the writer finds the memory migration unroutable, in which case the stem table is checked first
+- Tests to write (RED): none — prose increment
+- Behavior added: an existing plant's steward is told how 7.31.0 arrives (engines, kernel sentence, form, memory migration); a new plant starts its first record at grow
+- Gate: `python3 tests/seed-lint.py` (the lifecycle body ceiling, protocol reference, pending phrases, the `REGISTRATION_REFERRERS` pointers `graft.md` and `grow.md` must keep); `python3 tools/prose-lint.py --file <each file>` against its baseline count
+- Rollback path: revert
+- Effort: medium
+- Phase: prose
+- Depends on: increment 12, increment 13, increment 17

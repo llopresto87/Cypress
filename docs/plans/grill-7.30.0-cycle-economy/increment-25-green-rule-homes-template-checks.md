@@ -1,0 +1,11 @@
+### Increment 25 — GREEN: the rule-homes and template checks
+- Spec contracts: SPEC-0005/ADOPTED_RULE_HOMES, SPEC-0005/HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP, SPEC-0005/BOOTSTRAP_STEP2_LOADS_A_MENU, SPEC-0005/ADOPTED_RULES_NOT_PENDING
+- Files touched: `tests/seed-lint.py` (`check_adopted_rule_homes`, `check_handback_fields`, `check_bootstrap_step2`, `check_adopted_rules_not_pending`, each called by name, and their constants)
+- Tests to write (RED): none new; increments 23 and 24
+- Behavior added: the adopted rules' homes, the two handback fields, step 2 and the pending phrases are held mechanically
+- Gate: `bash tests/test-seed-lint.sh`; `python3 tests/check-coverage-binder.py .`; `python3 tests/seed-lint.py` on the real tree
+- Rollback path: revert
+- Effort: medium
+- Phase: GREEN
+- Depends on: increment 9, increment 12, increment 13, increment 14, increment 16, increment 17, increment 18, increment 20, increment 22, increment 23, increment 24, increment 28, increment 29, increment 30
+- Ordering (ruling pass 3): increments 28 to 30 land before this GREEN runs. seed-lint's real-tree run is `tests/test-seed-lint.sh`'s baseline, so a stale pointer or a pending phrase anywhere in the tree would abort every case, not only this increment's. The implementer first runs the four new checks on the tree; a finding in a file outside `tests/seed-lint.py` is a question, never an edit

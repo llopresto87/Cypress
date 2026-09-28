@@ -1,0 +1,11 @@
+### Increment 10 — GREEN: the leaf ceiling ledger
+- Spec contracts: SPEC-0005/LEAF_BODY_CEILING_HELD
+- Files touched: `tests/seed-lint.py` (`LEAF_BODY_CEILING`, `OVERSIZED_LEAVES` derived by the check's own count at this commit, `check_leaf_body_ceiling`), `tests/ratchets.json` (two keys added, no existing key changed), `tools/ratchet-lint.py` (`RATCHETS` map)
+- Tests to write (RED): none new; increment 4's cases
+- Behavior added: no in-scope leaf may exceed 170 body lines unless listed; the list only shrinks
+- Gate: `bash tests/test-seed-lint.sh`; `python3 tools/ratchet-lint.py`; `git diff -U0 HEAD~1 -- tests/ratchets.json` adds only the two keys
+- GREEN constraints (ruling pass 1): the check reads the scope by glob (`core/method/*.md`, `protocols/*.md`, `skills/*/SKILL.md`), never a fixed list, because `case_ce_leaf_new_oversized` clones `core/method/tiers.md` into `core/method/ce-planted-leaf.md`; it counts body lines as the machinery check does, because `case_ce_leaf_sibling_over` pads `protocols/specify.md` (a non-member) to 180 body lines
+- Rollback path: revert
+- Effort: medium
+- Phase: GREEN
+- Depends on: increment 4

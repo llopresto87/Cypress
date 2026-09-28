@@ -1,0 +1,11 @@
+### Increment 11 — GREEN: the delegation split, verbatim
+- Spec contracts: SPEC-0005/DELEGATION_SPLIT_INTO_SIBLINGS, SPEC-0005/DELEGATION_LEAVES_ROUTE
+- Files touched: `core/method/delegation.md` and new `core/method/delegation-{model-classes,cycle-economy,briefs,sequencing,bounds}.md` (sections moved verbatim per SPEC-0005 §6; frontmatter, `load_when`, `prevents`, measured `est_tokens`), `tests/seed-lint.py` (`REGISTRATION_HOME`; `check_delegation_split`; `core/method/delegation.md` leaves `OVERSIZED_LEAVES`), `tests/ratchets.json` (that member removed), `templates/knowledge-graph/index.md` (the delegation row lists the six ids)
+- Tests to write (RED): none new; increment 5's cases and increment 2's routing cases
+- Behavior added: six sibling leaves, each owning its topic's keys
+- GREEN constraints (ruling pass 1): `check_delegation_split` reads each key's owner from the siblings' `owns:`, because `case_ce_split_key_wrong_home` moves `delegation.step-scope` from `delegation-cycle-economy.md` to `delegation-briefs.md`; it reads `method.delegation`'s `peers:` and its `## Neighbours` section, which `case_ce_split_peer_dropped` and `case_ce_split_neighbour_missing` plant
+- Gate: `bash tests/test-seed-lint.sh`; `python3 -m unittest tests.test_graph_lint tests.test_router_reach` (a stem collision goes to the question file for a tester spawn; the implementer does not edit the fixture); the one-time verbatim record (SPEC-0005 §5) in the handback
+- Rollback path: revert; the pre-split file and the constant return together
+- Effort: medium
+- Phase: GREEN
+- Depends on: increment 2, increment 5, increment 10

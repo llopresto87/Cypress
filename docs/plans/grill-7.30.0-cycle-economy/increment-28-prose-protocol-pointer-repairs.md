@@ -1,0 +1,11 @@
+### Increment 28 — Prose: protocol pointer repairs (ruling pass 3)
+- Spec contracts: SPEC-0005/ADOPTED_RULE_HOMES
+- Files touched: `protocols/from-scratch.md` (:182), `protocols/grow.md` (:128, :343, :519), `protocols/canonize.md` (:194), `protocols/ingest-library.md` (:58), `protocols/initialize.md` (:74), `protocols/graft.md` (:679, :984), `protocols/deliver.md` (:179), `protocols/verify.md` (:269), `protocols/harvest.md` (:343), `protocols/verify-new-gates.md` ("exactly as a missing gate fails this protocol" → names `protocol.verify`). Line numbers are as reported at batch 3; the writer re-reads them
+- Rule: a line that names `method/delegation.md` or `method.delegation` for a topic the split moved (anything but the roster, routing and spec authoring) names the sibling that now holds it; a line that names `method.engineering-posture` or its file for minimum sufficient work, bounded execution, decision economy or host parity names the leaf that now holds it. A line whose topic stayed in the hub or the retained posture is left alone. Pointer text only: no other wording changes, and no `est_tokens`, `owns` or `load_when` edit, so `documentation/protocols-reference.md` does not move
+- Tests to write (RED): none new; increment 23's stale-pointer case holds the `delegation.md` half once increment 25 lands
+- Behavior added: no shipped protocol points at a file for a fact that moved out of it
+- Gate: `python3 tests/seed-lint.py`; `grep -n 'method/delegation.md\|method/engineering-posture.md' protocols/*.md` shows only lines whose topic stayed; `prose-lint` per file against baseline
+- Rollback path: revert
+- Effort: medium-low
+- Phase: prose
+- Depends on: increment 22

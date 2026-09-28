@@ -1,0 +1,11 @@
+### Increment 35 — Prose: front-door and documentation pointer repairs
+- Spec contracts: SPEC-0005/ADOPTED_RULE_HOMES
+- Files touched: `agents/seed-installer.md` (:82-83), `integrations/opencode/README.md` (:67-68), `integrations/github-copilot/README.md` (:64-65), `INSTALL.md` (:42-43), `README.md` (:51), `GRAFT_PROMPT.md` (:49), `INSTALL_PROMPT.md` (:55), `CLAUDE.md` (:121), `DOCUMENTATION.md` (:358, :388, :406, :975, :1237, :1281, :1283, :1347-1352, :1380, :1382), `documentation/host-capability-matrix.md` (:108, :181, :215, :253 dead anchors; :91 and :327-336 narrowed to what the brief records), `documentation/corpora-and-integrations-reference.md` (:510, :517, :522-523), `manifest.json` (the design-posture split rows gain a split tag)
+- Rule: each pointer names the sibling or engineering-posture leaf that now holds its fact; a dead anchor names the new file's heading; front-door wording keeps SPEC-0004's checks green
+- Tests to write (RED): none — prose increment; increment 33's cases hold the widened scan once increment 39 lands
+- Behavior added: no shipped or front-door line points at the old delegation or posture file for a moved fact
+- Gate: `python3 tests/seed-lint.py`; `grep -n 'method/delegation.md' README.md INSTALL.md CLAUDE.md *_PROMPT.md DOCUMENTATION.md documentation/*.md integrations/*/README.md agents/seed-installer.md` shows only lines whose topic stayed in the hub
+- Rollback path: revert
+- Effort: medium
+- Phase: prose
+- Depends on: increment 26

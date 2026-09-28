@@ -1,0 +1,11 @@
+### Increment 6 — GREEN: promotion and inference in `plan()` (security surface)
+- Spec contracts: SPEC-0005/PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE, SPEC-0005/PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES, SPEC-0005/PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE
+- Files touched: `templates/knowledge-graph/graph-lint.py` (`resolve()`, the `--plan` printer in `main()`; the canonical stemmer and stopword blocks untouched)
+- Tests to write (RED): none new; increment 1's cases
+- Behavior added: phrase-hit promotion and path inference as entries beside the scored cut; string matching only (the task token is the name, the piece the pattern); token cap and length skip; never raises (notice line, exit 0); echo sanitizing; SPEC-0005 §6 suffixes and precedence
+- Gate: `python3 -m unittest tests.test_graph_lint tests.test_router_reach`; cross-cutting: `python3 tests/seed-lint.py` (canonical blocks, installed-copy agreement), the route-hook tests that parse `--plan` output; then the `security` review at high effort, clean, before the commit
+- GREEN constraints (ruling pass 1): match through the module attribute `fnmatch.fnmatchcase`, never a name imported with `from fnmatch import`, because `test_plan_hostile_task_line_never_raises` plants its fault there; the length skip happens before the 64-token count, and the strip set (trailing `.` included) repeats until stable (SPEC-0005 §6)
+- Rollback path: revert; increment 1's cases go red again
+- Effort: medium-hard (a security surface: GREEN batch of one, high effort)
+- Phase: GREEN
+- Depends on: increment 1
