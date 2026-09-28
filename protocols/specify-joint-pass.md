@@ -5,7 +5,7 @@ id: protocol.specify-joint-pass
 tier: 2
 kind: protocol
 origin: seed
-title: specify joint pass — one specify-and-grill pass, held to the design latitude the owner chose
+title: specify joint pass — one specify-and-grill pass, held to a design latitude classified like a tier
 owns:
   - specify.joint-pass
   - specify.design-latitude
