@@ -214,7 +214,7 @@ except ValueError as exc:
 if not isinstance(data, dict):
     # Readable JSON that is not one object records no decision this installer
     # can read, so it is not refused here: write_seed_stamp moves it aside to a
-    # backup and writes a stamp of this run's keys (SPEC-0001
+    # backup and writes a stamp of the keys this run states (SPEC-0001
     # STAMP_NOT_AN_OBJECT). Only a stamp that cannot be parsed at all, or whose
     # owned keys have the wrong type, is refused.
     raise SystemExit(0)
