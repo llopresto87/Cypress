@@ -25,9 +25,9 @@ serve only a plant that has not been grown yet: the FIRST MOVE fallback "If
 there is no `docs/graph/` yet, use the installed `EXPERT_SEED_INSTALL_PROMPT.md`"
 and the §5 bullet naming `EXPERT_SEED_INSTALL_PROMPT.md` and
 `protocol.initialize`. After an install `docs/graph/` always exists, so the
-first condition is never true; after grow neither passage has a reader. A
-survey of the plant's own session history found the install prompt named in 53
-tool calls and read in 4, which is the investigation such lines prompt.
+first condition is never true; after grow neither passage has a reader. The
+session history of a grown plant shows the install prompt named often and read
+rarely, which is the investigation such lines prompt.
 
 The owner's rules for this round:
 
