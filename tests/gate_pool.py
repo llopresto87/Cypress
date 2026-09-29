@@ -1,57 +1,25 @@
 #!/usr/bin/env python3
-"""gate_pool: the gate's ONE shared concurrency budget and scenario runner.
+"""gate_pool: the gate's one shared concurrency budget and scenario runner.
 
-`tests/run.sh` is a tree of gate steps; several of the slow steps are
-themselves a suite of INDEPENDENT scenarios (an install into its own temp
-target, a planted-violation lint against its own temp copy). This module is the
-single home for two facts every one of those places must agree on:
+1. `resolve_workers()` is the one knob. An explicit `GATE_JOBS` is clamped to
+   [4, 64]; unset, the default is clamp(cpu_count * 2, 8, 64). Gate work is
+   I/O-bound, so oversubscribing cores is faster (measured: 4 -> 8 workers
+   nearly halved wall time).
+2. `TokenPool` is a cross-process counting semaphore, so the TOTAL leaf
+   subprocesses across every parallel suite stay <= the budget, not
+   N suites * budget. `$GATE_POOL_DIR` names the shared directory; unset, the
+   pool is a no-op. Slots are atomic `os.mkdir` directories (POSIX, stdlib).
 
-  1. HOW MANY things may run at once, anywhere in the gate. `resolve_workers()`
-     honours an explicit `GATE_JOBS` (clamped to [4, 64]); with no override the
-     AUTO default is `clamp(cpu_count * 2, 8, 64)`. The gate is I/O-bound — each
-     step forks install.sh, copies trees and spawns python far more than it
-     burns CPU — so oversubscribing cores overlaps that I/O wait and is faster
-     even on a 4-core laptop (measured: a 4->8 worker budget nearly halved the
-     wall time). One knob, `GATE_JOBS`, read here and nowhere else, honoured by
-     the top-level `run-parallel.py` AND by every internally-parallel suite.
+Only leaf work takes a token. A coordinator never holds one while it waits on
+its children, so the pool cannot deadlock; run-parallel.py runs its steps
+token-free for that reason.
 
-  2. A CROSS-PROCESS token pool (`TokenPool`) so that the TOTAL number of heavy
-     leaf subprocesses running at once — summed over EVERY suite that is
-     parallel at the same moment — stays <= the budget. Without it, N parallel
-     suites each running `budget` workers would put `N * budget` installs on the
-     box at once: the `cpu_count**2` explosion. The pool makes the ceiling
-     `budget`, flat, no matter how many suites overlap. `$GATE_POOL_DIR` names
-     the shared pool directory; when it is unset (a suite run on its own, not
-     under run.sh) the pool is a no-op and the suite's own worker count bounds
-     it.
-
-Why a token pool and not just a small per-suite worker count: the suites do not
-know about each other. The bound has to be GLOBAL, and the only thing every
-process shares is the filesystem. `TokenPool` is a counting semaphore built from
-atomic `os.mkdir` on slot directories — POSIX-atomic on macOS and Linux, no
-`flock`, no third-party dependency, no GNU tool.
-
-Only LEAF work acquires a token (the actual install / lint subprocess). A
-coordinator never holds a token while waiting for its children, so the pool
-cannot deadlock: `budget` coordinators each waiting on children would still
-leave every token free for those children. The top-level dispatcher therefore
-runs its steps token-FREE (they ARE the coordinators); the leaves inside them
-draw from the pool.
-
-Portability floor: python3 stdlib only, bash 3.2 hosts run this unchanged.
-
-Usage as a library (the top-level run-parallel.py):
-    import gate_pool
-    rc = gate_pool.dispatch(scenarios, pooled=False)   # coordinators, no token
-
-Usage as a CLI (a suite parallelising its own scenarios):
+Usage as a CLI (a suite running its own scenarios):
     python3 tests/gate_pool.py run SCENARIOS_FILE
-        Each line is one scenario: "LABEL<TAB>SHELL COMMAND", or just a command
-        (a label is then derived). Blank and #-comment lines are ignored. Every
-        scenario runs `bash -c COMMAND` under one pool token, output is captured
-        and printed GROUPED (never interleaved), every exit code is aggregated,
-        and the run exits 1 naming each failed scenario if ANY failed — so a red
-        scenario still fails the whole gate.
+        One scenario per line: "LABEL<TAB>COMMAND" or a bare command (label
+        derived). Blank and #-comment lines are ignored. Each runs `bash -c`
+        under one token; output is printed grouped; the run exits 1 naming
+        each failed scenario.
 """
 
 from __future__ import annotations
@@ -63,28 +31,14 @@ import sys
 import time
 from pathlib import Path
 
-MIN_WORKERS = 4          # absolute floor for an explicit GATE_JOBS override
-MAX_WORKERS = 64         # absolute ceiling, bounds thread/memory blowup
-IO_OVERSUBSCRIBE = 2     # gate work is I/O-bound (each step forks install.sh,
-                         # copies trees, greps, spawns python) far more than it
-                         # burns CPU — a 16-worker run drew only ~594% of 1600%
-                         # CPU, so cores sit idle on I/O. Running MORE workers
-                         # than cores overlaps that wait: measured, a 4->8
-                         # worker budget nearly halved the wall time. So the
-                         # AUTO default oversubscribes cores rather than matching
-                         # them.
-DEFAULT_MIN_WORKERS = 8  # auto-default floor: a 1-4 core laptop still gets the
-                         # measured overlap win, not a 4-wide undersubscription.
+MIN_WORKERS = 4          # floor for an explicit GATE_JOBS
+MAX_WORKERS = 64         # ceiling, bounds thread/memory blowup
+IO_OVERSUBSCRIBE = 2     # auto default: workers per core (I/O-bound work)
+DEFAULT_MIN_WORKERS = 8  # auto-default floor for a 1-4 core box
 
 
 def resolve_workers() -> int:
-    """The gate's one concurrency knob.
-
-    An explicit GATE_JOBS is honoured verbatim, clamped to [4, 64].
-    With no GATE_JOBS the AUTO default is clamp(cpu_count * 2, 8, 64): the work
-    is I/O-bound, so oversubscribing cores overlaps I/O wait and is faster even
-    on a small box — never fewer than 8, never more than 64.
-    """
+    """GATE_JOBS clamped to [4, 64]; unset or garbage: clamp(cpu*2, 8, 64)."""
     raw = os.environ.get("GATE_JOBS")
     if raw:
         try:
@@ -96,14 +50,7 @@ def resolve_workers() -> int:
 
 
 class TokenPool:
-    """A cross-process counting semaphore of `size` tokens.
-
-    A token is an atomically-created slot directory under `root`; `os.mkdir`
-    fails with FileExistsError when the slot is taken, which is the POSIX-atomic
-    test-and-set this relies on. When `root` is None (no `$GATE_POOL_DIR`) the
-    pool is a no-op and `size` alone — the caller's worker count — bounds
-    concurrency.
-    """
+    """`size` tokens as slot directories under `root`; a no-op without root."""
 
     def __init__(self, size: int, root: str | None = None):
         self.size = max(1, size)
@@ -125,8 +72,7 @@ class TokenPool:
                 if i % self.size == 0:
                     time.sleep(0.005)
             except OSError:
-                # A transient FS error must not wedge the gate; fall back to
-                # running without a token rather than blocking for ever.
+                # A transient FS error must not wedge the gate: run tokenless.
                 return None
 
     def release(self, slot: str | None) -> None:
@@ -138,8 +84,7 @@ class TokenPool:
 
 
 def _label(cmd: str) -> str:
-    """A short, stable name for grouped output: the script basename plus any
-    distinguishing --flag, mirroring tools/gate-registry.py's step keys."""
+    """Script basename plus any --lint/--eval/--gaps flag (gate-registry keys)."""
     parts = cmd.split()
     name = cmd
     for tok in parts:
@@ -155,8 +100,7 @@ def _label(cmd: str) -> str:
 
 
 def parse_scenarios(path: str) -> list[tuple[str, str]]:
-    """Read a scenarios file: one 'LABEL<TAB>COMMAND' (or bare COMMAND) per
-    line, blanks and #-comments skipped. Returns [(label, command), ...]."""
+    """[(label, command), ...] from a scenarios file (see module docstring)."""
     out = []
     for ln in Path(path).read_text(encoding="utf-8").splitlines():
         if not ln.strip() or ln.lstrip().startswith("#"):
@@ -196,25 +140,19 @@ def _run_one(idx: int, label: str, cmd: str, pool: TokenPool | None) -> dict:
 def dispatch(scenarios: list[tuple[str, str]], pooled: bool,
              prefix: str = "gate_pool", noun: str = "scenario",
              header: str | None = None) -> int:
-    """Run (label, command) scenarios concurrently under the shared budget.
+    """Run (label, command) pairs under the shared budget; 0 only if all pass.
 
-    pooled=True  : each leaf scenario acquires one cross-process token, so this
-                   suite's concurrency sums with every other parallel suite's
-                   into a single global ceiling of `resolve_workers()`.
-    pooled=False : the top-level dispatcher — its steps are coordinators, never
-                   token holders, so they cannot starve the leaves beneath them.
-
-    `prefix` and `noun` shape the summary lines so the top-level runner keeps
-    saying "step" (its own regression pins that wording) while a suite says
-    "scenario".
+    pooled=True: each leaf takes a cross-process token. pooled=False: the
+    top-level coordinators, which never hold a token. `prefix` and `noun`
+    shape the summary ("step" for run-parallel, "scenario" for a suite).
     """
     if not scenarios:
         print("%s: FAIL — zero %ss to run" % (prefix, noun), file=sys.stderr)
         return 1
 
-    workers = resolve_workers()
-    workers = max(1, min(workers, len(scenarios)))
-    pool = TokenPool(resolve_workers()) if pooled else None
+    budget = resolve_workers()
+    workers = max(1, min(budget, len(scenarios)))
+    pool = TokenPool(budget) if pooled else None
 
     t0 = time.monotonic()
     if header:

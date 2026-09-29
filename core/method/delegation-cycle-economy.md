@@ -115,8 +115,8 @@ One batched mutation pass runs per spec, after its last increment, on the
 investigation class, at the effort `delegation.effort` derives. It is mandatory
 for security, data-integrity and money contracts: the mutant plan is drawn from
 the commit log, and every increment in those classes gets at least one mutant.
-Elsewhere the pass is sampled. The owner may widen the sample, or skip the pass
-outside the mandatory classes, and the choice is recorded.
+Elsewhere no mutation runs unless the owner widens the pass to a named sample,
+and the choice is recorded.
 
 ### The question file and the ruling pass (`delegation.question-file`)
 

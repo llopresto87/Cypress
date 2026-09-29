@@ -1,8 +1,8 @@
 ---
 status: active
-status_date: 2026-09-26
+status_date: 2026-09-29
 owner: architect
-status_evidence: tests/test_graph_lint.py, tests/test_agent_lint.py, tests/test-seed-lint.sh (final tip 3c62b18, 49/49; the harvest's fresh-install gate passed for every host; three mutation passes of 45, 12 and 60 mutants, every survivor closed by a test; §10 says which rows are green and which stay pending)
+status_evidence: tests/test_graph_lint.py, tests/test_agent_lint.py, tests/test-seed-lint.sh, tests/test-grill-lint.sh, tests/test-ratchet-lint.sh (final tip 3c62b18, 49/49; the harvest's fresh-install gate passed for every host; three mutation passes of 45, 12 and 60 mutants, every survivor closed by a test; §10 says which rows are green and which stay pending)
 ---
 
 # SPEC-0005: cycle economy, the delegation split and expertise routing
@@ -10,7 +10,7 @@ status_evidence: tests/test_graph_lint.py, tests/test_agent_lint.py, tests/test-
 ## 0. Metadata
 
 - **Identifier:** SPEC-0005-cycle-economy
-- **Version:** 0.13 (7.32.0: the design latitude is classified like a tier and asked only in doubt, 2026-09-28; every amendment is dated in §12)
+- **Version:** 0.14 (test consolidation: six contracts narrowed, the §6 per-agent effort table replaced by a pointer to the agents' frontmatter, 2026-09-29; every amendment is dated in §12)
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-09-28
@@ -393,8 +393,7 @@ grammar is in §6.
 - **And:** an agent whose `effort:` is outside the §6 closed set fails, naming
   the value (`xhigh`, which the host accepts, is refused)
 - **And:** an agent carrying `origin: project` is held to the same rule
-- **And:** the shipped roster in `agents/` passes, and each shipped agent's
-  `effort:` equals its row in the §6 default table
+- **And:** the shipped roster in `agents/` passes
 
 ### Seed method surface
 
@@ -407,9 +406,6 @@ grammar is in §6.
 - **Then:** a file whose body exceeds `LEAF_BODY_CEILING` lines, counted as the
   existing machinery check counts them, and that is not in `OVERSIZED_LEAVES`,
   is a finding naming the file, its line count and the ceiling
-- **And:** a member of `OVERSIZED_LEAVES` whose body is at or below the ceiling
-  is a finding (`stale oversized entry: remove it`), so the set only shrinks
-- **And:** a member that is not a file in scope is a finding
 - **And:** `tools/ratchet-lint.py` knows both keys, so raising the ceiling or
   adding a member fails it
 
@@ -418,11 +414,11 @@ grammar is in §6.
 - **Given:** the six files of §6 "Delegation leaves"
 - **When:** seed-lint runs
 - **Then:** each file exists, and each of the thirteen fact keys the pre-split
-  `core/method/delegation.md` owned is owned by exactly the file §6 names for it
+  `core/method/delegation.md` owned is owned by exactly the file §6 names for it.
+  These key homes are rows of the `ADOPTED_RULE_HOMES` map (§6 "Adopted rule
+  homes"), so one check holds them
 - **And:** `REGISTRATION_HOME` is `core/method/delegation-bounds.md`, and the
   existing registration check passes against it
-- **And:** `core/method/delegation.md` lists the other five sibling ids in its
-  `peers:`, and its `## Neighbours` section names each of them
 - (The v0.2 clause "no sibling is in `OVERSIZED_LEAVES`" is removed at ruling
   pass 1: `LEAF_BODY_CEILING_HELD` already holds it, since the ledger is derived
   before the split and adding a member fails `ratchet-lint`. The property is
@@ -444,13 +440,12 @@ grammar is in §6.
 - **Then:** each key in the table is in the `owns:` of exactly the file the
   table names, and of no other node
 - **And:** no line of a file under `core/`, `agents/`, `protocols/`, `skills/`,
-  `templates/`, `integrations/` or `documentation/`, or of `install.sh`,
-  `README.md`, `INSTALL.md`, `DOCUMENTATION.md`, `CLAUDE.md` or a root
-  `*_PROMPT.md`, names a path ending in `method/delegation.md` together with a
-  `delegation.*` key that §6 homes in a different sibling, where the line is
-  read joined with the line after it, so a pointer wrapped across two lines is
-  one line. The finding names the file, the line and the sibling to point at
-  (scope widened and wrap-joined at ruling pass 5)
+  `templates/` or `integrations/`, or of `install.sh`, `DOCUMENTATION.md` or
+  `CLAUDE.md`, names a path ending in `method/delegation.md` together with a
+  `delegation.*` key that §6 homes in a different sibling. The finding names
+  the file, the line and the sibling to point at. A pointer wrapped across two
+  lines, and one in `README.md`, `INSTALL.md`, a root `*_PROMPT.md` or
+  `documentation/`, is not checked (narrowed 2026-09-29, §12)
 
 ### Templates
 
@@ -493,12 +488,8 @@ session reads before any routing.
 - **When:** seed-lint runs
 - **Then:** it fails, naming `core/AGENTS.md §3.2`, when the text from the
   `### 3.2 ` heading to the next `### ` heading does not contain the literal
-  `docs/graph/plans/sessions/` or the literal `method.stewardship-posture`; a
-  sentence moved out of §3.2 into another section counts as missing
-- **And:** it fails, naming `templates/docs/plans/sessions/`, when that
-  directory holds no file, because every plant the installer grows would then
-  lack the directory the kernel names
-- **And:** on the shipped tree it reports neither
+  `docs/graph/plans/sessions/` or the literal `method.stewardship-posture`
+- **And:** on the shipped tree it reports nothing
 
 ### Audits: the session-record form is not a scaffold (added for 7.31.0)
 
@@ -610,8 +601,6 @@ another.
   crash inside the report cannot pass as a defect exit
 - **And:** without `--waves`, no output line begins `waves:` or `  wave `, and
   no line is an overlap warning or a phase warning
-- **And:** on the fixture plan, the plain output equals a golden copy captured
-  from the unmodified tool at RED (a guard)
 
 ## 5. Non-functional requirements
 
@@ -658,7 +647,7 @@ Global posture is the plan's §4; only what binds these checks is listed.
   the one the same invocation returns without it, and the output without the
   flag does not change. (R0.13, C7:) the evidence for that is scoped to what it
   covers: `GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED` holds it on every plan
-  `tests/test-grill-lint.sh` builds, plus the one real plan X365 reads. A crash
+  `tests/test-grill-lint.sh` builds. A crash
   inside the report on some other plan would exit 1 with a traceback. No wider
   claim ("no plan that passes today fails") is made. Stdlib only (`re`, `fnmatch`). Output order is deterministic: by wave,
   then §9 document order, and overlap pairs in document order. The overlap
@@ -728,31 +717,10 @@ Whether that host offers a per-spawn override: not recorded. Whether opencode,
 Codex or GitHub Copilot read the key: not recorded. No install transform drops
 the key.
 
-Default per agent definition (the step kind the agent mostly runs, from the
-model-class table; `medium` where the table has no row):
-
-| Agent | `effort:` | Step kind it mostly runs |
-|---|---|---|
-| `orchestrator` | high | routing and rulings on a contract's reading |
-| `architect` | high | spec contracts, architecture, rulings, one-way doors |
-| `multi-agent-architect` | high | architecture |
-| `security` | high | any step on a security surface; threat models |
-| `pentest` | high | any step on a security surface |
-| `devils-advocate` | high | adversarial validation |
-| `legal` | high | rulings against a rule corpus |
-| `growth-orchestrator` | high | the close-out that ends a grow |
-| `implementer` | medium | routine GREEN |
-| `tester` | medium | RED for a new contract |
-| `reviewer` | medium | standard batch review |
-| `product` | medium | spec §3 and §9 |
-| `ui-ux-designer` | medium | no table row |
-| `data-ml` | medium | no table row |
-| `reliability` | medium | no table row |
-| `docs-librarian` | medium | the canonize librarian |
-| `research-scout` | medium | library research |
-| `growth-scout` | medium | artifact discovery (low to medium) |
-| `tool-smith` | medium | no table row |
-| `seed-installer` | medium | no table row |
+Default per agent definition: the `effort:` key in each agent's frontmatter
+(`agents/*.md`) is the one home. It follows the step kind the agent mostly
+runs, from the model-class table, and is `medium` where the table has no row.
+This table used to restate the values; it was removed on 2026-09-29 (§12).
 
 Per-spawn derivation, first matching row wins:
 
@@ -1039,7 +1007,7 @@ Frontmatter per sibling: `id`, `tier: 2`, `kind: method`, `origin: seed`,
 `title`, `owns`, `requires`, `peers`, `artifacts` (`method.delegation-briefs`
 takes `graph-session-bootstrap.md` and `handback-payload.md`;
 `method.delegation-model-classes` takes `agent.template.md`), `load_when`,
-`prevents` (one per sibling, written so `PREVENTS_OVERLAP_CEILING` holds), and a
+`prevents` (one per sibling), and a
 measured `est_tokens`.
 
 `load_when` per sibling: the pre-split entries go to the sibling that owns their
@@ -1085,8 +1053,9 @@ leaf keeps its section numbers; moved sections keep theirs, verbatim.
 
 ### Adopted rule homes
 
-Checked by `ADOPTED_RULE_HOMES`. The thirteen pre-split delegation keys are held
-by `DELEGATION_SPLIT_INTO_SIBLINGS` instead and are not repeated here.
+Checked by `ADOPTED_RULE_HOMES`. The thirteen pre-split delegation keys are
+rows of the same map, keyed as §6 "Delegation leaves" names them, and are held
+for `DELEGATION_SPLIT_INTO_SIBLINGS`; they are not repeated here.
 
 | Key | File | Rule |
 |---|---|---|
@@ -1254,7 +1223,7 @@ pass 0).
 
 | Contract | Fragment a planted case greps |
 |---|---|
-| LEAF_BODY_CEILING_HELD | `over the 170-line leaf ceiling`; `stale oversized entry: remove it`; `not a file in the leaf scope` |
+| LEAF_BODY_CEILING_HELD | `over the 170-line leaf ceiling` |
 | DELEGATION_SPLIT_INTO_SIBLINGS | the sibling's path or the key, and `delegation split` |
 | ADOPTED_RULE_HOMES | `owned by more than one node`; `names method/delegation.md beside <key>; point at <sibling>` |
 | HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP | ``handback block has no `- effort:` line``; ``handback block has no `- expertise_gap:` line`` |
@@ -1347,6 +1316,9 @@ Checked by `ADOPTED_RULES_NOT_PENDING`, case-insensitive, whitespace-collapsed:
 - **Side effects:** at most a mis-rank
 - **Recovery:** none needed. The route hook's fail-open path stays for real
   router failures only
+- **Note:** the token-count cap and the token-length limit are untested by
+  decision (2026-09-29, §12): the surface only reports, and one fault class
+  proves the notice and the exit 0
 
 ### Failure: DESCENT_TEST_NOW_SEEDS_THE_CHILD
 - **Contracts:** PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE, PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE
@@ -1922,14 +1894,14 @@ who judges it.)
       non-blank line of each pre-split body (at the batch base) occurs in exactly
       one resulting leaf, except the lines §6 marks as new.
       Contracts: none; detective, the one-time verbatim record at each split's gate (§5), judged by the reviewer.
-- [ ] **AC-9.** Each adopted rule has exactly one home, and no shipped pointer
-      sends a reader to the old file for a moved key.
+- [ ] **AC-9.** Each adopted rule has exactly one home, and no single-line
+      shipped pointer sends a reader to the old file for a moved key.
       Contracts: maps to ADOPTED_RULE_HOMES
 
 ### Effort and briefs
 
 - [ ] **AC-10.** Every shipped agent declares its default effort from the closed
-      set, matching the table.
+      set.
       Contracts: maps to AGENT_DECLARES_EFFORT
 - [ ] **AC-11.** The handback template carries an `effort:` field that echoes the
       brief's effort line, including the host-applied default where it differs,
@@ -2095,10 +2067,9 @@ who judges it.)
 - [ ] **AC-28.** Every session is told where its learnings go: the text of
       `core/AGENTS.md` from the `### 3.2 ` heading to the next `### ` heading
       names `docs/graph/plans/sessions/` and `method.stewardship-posture`, and
-      seed-lint fails, naming `core/AGENTS.md §3.2`, when either is dropped or
-      moved out of §3.2. The seed's `templates/docs/plans/sessions/` holds the
-      session-record form, and seed-lint fails when it holds no file. The
-      kernel stays within its 8,000-byte budget.
+      seed-lint fails, naming `core/AGENTS.md §3.2`, when either is dropped.
+      The seed's `templates/docs/plans/sessions/` holds the session-record
+      form. The kernel stays within its 8,000-byte budget.
       Contracts: maps to KERNEL_POINTS_AT_THE_SESSION_RECORD; the byte budget is the existing kernel budget check.
 - [ ] **AC-29.** The session-record rule and its filing step each have exactly
       one home: `stewardship-posture.session-record` in
@@ -2140,8 +2111,7 @@ pasted at ruling pass 0 with the rulings applied. Python methods carry
 `Asserts SPEC-0005 <SLUG>.` as their first docstring line; shell cases carry it
 as a comment inside the case, beside `# exercises: <check>`. "guard" = passes on
 the unmodified tool, recorded green on arrival and held by a named mutant instead
-of an observed red. The `check-coverage-binder.py` failure naming checks
-seed-lint does not yet run is an expected RED id of its own.)
+of an observed red.)
 
 **Ruling pass 1 (2026-09-26).** Statuses set from the first RED batch's
 handbacks: every case written is `red`, except the guards, which are `green`.
@@ -2159,9 +2129,10 @@ before any case existed, so every one is `pending`. Every wave case, X361 to
 X380, runs in the one collecting block after every existing case (R0.3), so a
 single run shows each label's result. At the cycle-1 RED observation the
 orchestrator sets each case observed failing to `red`, and each guard to
-`green`. The guards are X370 and X377 to X379: the unmodified tool reads its
-flags with `in argv` and ignores `--waves`, so they pass on arrival, and a named
-mutant holds each one (plan §10). Labels `X361` to `X380` go in
+`green`. The guards were X370 and X377 to X379 (since the 2026-09-29
+consolidation X370 is inside X366, X378 inside X377, and X379 is gone): the
+unmodified tool read its flags with `in argv` and ignored `--waves`, so they
+passed on arrival, and a named mutant held each one (plan §10). Labels `X361` to `X380` go in
 `tests/test-grill-lint.sh`, one per case, as a comment inside the case beside
 `# Asserts SPEC-0005 <SLUG>.`. A case that also holds a failure names that slug
 too. Until the RED writes the labels, seed-lint reports "§10 cites 'X3NN' in
@@ -2213,83 +2184,48 @@ gives.
 
 | Contract / Failure | Test case | Test file | Level | Status |
 |---|---|---|---|---|
-| PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE | test_plan_promotes_expertise_past_the_scored_cut | tests/test_graph_lint.py | unit, PromotionTests (CLI, fixture graph) | green |
-| PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE | test_plan_partial_phrase_does_not_promote | tests/test_graph_lint.py | unit, PromotionTests; guard | green |
+| PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE | test_plan_promotes_expertise_past_the_scored_cut | tests/test_graph_lint.py | unit, PromotionTests (CLI, fixture graph); table rows: a one-word phrase, a whole dotted compound, a phrase with a slash, the first hitting piece reported | green |
+| PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE | test_plan_partial_phrase_does_not_promote | tests/test_graph_lint.py | unit, PromotionTests; table rows: a partial version token, short words, stopwords, a prefix fold; guard | green |
 | PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE | test_plan_full_hit_on_non_expertise_stays_under_the_cut | tests/test_graph_lint.py | unit, PromotionTests; guard | green |
 | PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE | test_plan_without_hit_or_path_is_unchanged | tests/test_graph_lint.py | golden (ID sets), PromotionTests; guard | green |
-| PROMOTION_FLOODS_LOAD | test_plan_promotes_one_word_phrase_uncapped | tests/test_graph_lint.py | unit, PromotionTests | green |
-| DESCENT_TEST_NOW_SEEDS_THE_CHILD | test_plan_descent_never_folds | tests/test_graph_lint.py | unit, DescentTests (reshaped at ruling pass 0) | green |
-| DESCENT_TEST_NOW_SEEDS_THE_CHILD | test_plan_descends_two_levels_each_on_own_term | tests/test_graph_lint.py | unit, DescentTests (reshaped at ruling pass 0) | green |
-| DESCENT_TEST_NOW_SEEDS_THE_CHILD | test_plan_selects_major_by_tfm_token | tests/test_graph_lint.py | unit, DescentTests (reshaped at ruling pass 0) | green |
-| DESCENT_TEST_NOW_SEEDS_THE_CHILD | test_plan_warns_on_wide_descent | tests/test_graph_lint.py | unit, DescentTests (reshaped at ruling pass 0) | green |
-| PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES | test_plan_infers_from_extension | tests/test_graph_lint.py | unit, InferenceTests | green |
+| PROMOTION_FLOODS_LOAD | test_plan_promotes_expertise_past_the_scored_cut | tests/test_graph_lint.py | unit, PromotionTests, its one-word-phrase row | green |
+| DESCENT_TEST_NOW_SEEDS_THE_CHILD | test_plan_descends_on_specific_term | tests/test_graph_lint.py | unit, DescentTests; table rows: never folds, two levels each on its own term, a major selected by its TFM token | green |
+| PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES | test_plan_infers_from_extension | tests/test_graph_lint.py | unit, InferenceTests; table rows: a bare manifest, pattern text as words, a literal-name pattern in a subdirectory, a slash piece without a star, a task wildcard against a slash pattern, the first path in task order, a backslash-only token | green |
 | PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES | test_plan_infers_from_nested_lockfile | tests/test_graph_lint.py | unit, InferenceTests | green |
-| PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES | test_plan_infers_from_bare_manifest | tests/test_graph_lint.py | unit, InferenceTests | green |
 | PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES | test_plan_inferred_path_echo_is_normalized_and_sanitized | tests/test_graph_lint.py | unit, InferenceTests | green |
-| PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES | test_plan_pattern_text_as_words_does_not_promote | tests/test_graph_lint.py | unit, InferenceTests; guard | green |
 | PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES | test_plan_task_text_is_never_a_pattern | tests/test_graph_lint.py | unit, InferenceTests (adversarial) | green |
-| HOSTILE_TASK_LINE | test_plan_hostile_task_line_never_raises | tests/test_graph_lint.py | unit, InferenceTests (adversarial: token cap, long token, forced error prints the notice) | green |
+| HOSTILE_TASK_LINE | test_plan_hostile_task_line_never_raises | tests/test_graph_lint.py | unit, InferenceTests (adversarial: one fault class prints the notice and exits 0). The cap and length boundaries are untested by decision: the surface only reports (§7) | green |
 | TASK_LINE_WITHOUT_PATHS | test_plan_infers_nothing_without_a_path_token | tests/test_graph_lint.py | unit, InferenceTests; guard | green |
-| PATTERN_BRACE_SPLIT | test_plan_brace_pattern_tail_promotes | tests/test_graph_lint.py | unit, InferenceTests | green |
-| EXTENSIONLESS_BARE_NAME | test_plan_bare_dockerfile_infers_nothing | tests/test_graph_lint.py | unit, InferenceTests; guard | green |
-| EXTENSIONLESS_BARE_NAME | test_plan_dotted_dockerfile_infers | tests/test_graph_lint.py | unit, InferenceTests | green |
+| PATTERN_BRACE_SPLIT | test_plan_infers_from_extension | tests/test_graph_lint.py | unit, InferenceTests, its brace-pattern-tail row | green |
+| EXTENSIONLESS_BARE_NAME | test_plan_infers_from_extension | tests/test_graph_lint.py | unit, InferenceTests, its bare and dotted Dockerfile rows | green |
 | PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE | test_plan_promoted_node_brings_required_parent | tests/test_graph_lint.py | unit, PromotedClosureTests | green |
 | PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE | test_plan_promoted_node_descends_to_named_child | tests/test_graph_lint.py | unit, PromotedClosureTests | green |
-| PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE | test_plan_scored_and_hit_prints_no_suffix | tests/test_graph_lint.py | unit, PromotedClosureTests; guard | green |
-| PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE | test_plan_promoted_and_inferred_prints_promotion_only | tests/test_graph_lint.py | unit, PromotedClosureTests | green |
 | LISTED_NODE_EDGES_REACH | test_listed_node_peer_is_reachable | tests/test_graph_lint.py | unit, ListedNodeEdgesTests (also covers SIBLING_UNREACHABLE_AFTER_GRAFT) | green |
 | ORPHAN_ISLAND | test_unlisted_peer_island_still_unreachable | tests/test_graph_lint.py | unit, ListedNodeEdgesTests; guard | green |
 | DELEGATION_LEAVES_ROUTE | test_delegation_sibling_routes_on_its_phrase | tests/test_graph_lint.py | integration (installed graph), DelegationRoutingTests | green |
-| DELEGATION_LEAVES_ROUTE | test_delegation_phrase_is_a_load_when_entry | tests/test_graph_lint.py | integration (installed graph), DelegationRoutingTests | green |
 | AGENT_DECLARES_EFFORT | test_lint_accepts_each_value_in_the_closed_set | tests/test_agent_lint.py | unit, LintEffortTests; guard | green |
 | AGENT_DECLARES_EFFORT | test_lint_fails_on_missing_effort | tests/test_agent_lint.py | unit, LintEffortTests (CLI, fixture roster) | green |
 | AGENT_DECLARES_EFFORT | test_lint_fails_on_effort_outside_the_set | tests/test_agent_lint.py | unit, LintEffortTests | green |
-| AGENT_DECLARES_EFFORT | test_lint_real_roster_effort_matches_the_table | tests/test_agent_lint.py | contract (real roster vs §6 table), LintEffortTests | green |
 | AGENT_WITHOUT_EFFORT_AFTER_GRAFT | test_lint_fails_on_plant_agent_without_effort | tests/test_agent_lint.py | unit, LintEffortTests | green |
 | HOST_REJECTS_EFFORT_KEY | (none) the harvest's fresh-install gate per host, and the existing projection lint in `tests/test-full-install.sh`. Observed at the final tip 3c62b18: the fresh install passed for every host adapter, and all 20 installed agents keep `effort:` on the Claude Code install path. Whether another host warns on the key is not recorded | — | e2e; observed at tip | green |
 | LEAF_BODY_CEILING_HELD | X336 case_ce_leaf_new_oversized | tests/test-seed-lint.sh | fixture (scope), `check_leaf_body_ceiling` | green |
-| LEAF_BODY_CEILING_HELD | X337 case_ce_leaf_stale_member | tests/test-seed-lint.sh | fixture (scope), `check_leaf_body_ceiling` | green |
-| LEAF_BODY_CEILING_HELD | X338 case_ce_leaf_unknown_member | tests/test-seed-lint.sh | fixture (scope), `check_leaf_body_ceiling` | green |
-| LEAF_BODY_CEILING_HELD | X339 case_ce_leaf_ratchet_ceiling_raised | tests/test-seed-lint.sh | fixture (scope), `tools/ratchet-lint.py` | green |
-| LEDGER_REGROWS | X340 case_ce_leaf_ratchet_member_added | tests/test-seed-lint.sh | fixture (scope), `tools/ratchet-lint.py` | green |
-| SIBLING_OVER_CEILING | X341 case_ce_leaf_sibling_over | tests/test-seed-lint.sh | fixture (scope), `check_leaf_body_ceiling` | green |
-| DELEGATION_SPLIT_INTO_SIBLINGS | X342 case_ce_split_sibling_missing | tests/test-seed-lint.sh | fixture (scope), `check_delegation_split` | green |
-| DELEGATION_SPLIT_INTO_SIBLINGS | X343 case_ce_split_key_wrong_home | tests/test-seed-lint.sh | fixture (scope), `check_delegation_split` | green |
-| DELEGATION_SPLIT_INTO_SIBLINGS | X344 case_ce_split_peer_dropped | tests/test-seed-lint.sh | fixture (scope), `check_delegation_split` | green |
-| DELEGATION_SPLIT_INTO_SIBLINGS | X345 case_ce_split_neighbour_missing | tests/test-seed-lint.sh | fixture (scope), `check_delegation_split` | green |
+| LEAF_BODY_CEILING_HELD | X339 case_ce_leaf_ratchet_ceiling_raised: a raised ceiling on a synthetic lock gives exit 1 | tests/test-ratchet-lint.sh | fixture (scope), `tools/ratchet-lint.py` | green |
+| LEDGER_REGROWS | X340 case_ce_leaf_ratchet_member_added: a set member added on a synthetic lock gives exit 1 | tests/test-ratchet-lint.sh | fixture (scope), `tools/ratchet-lint.py` | green |
+| SIBLING_OVER_CEILING | X341, a row of X336 | tests/test-seed-lint.sh | fixture (scope), `check_leaf_body_ceiling` | green |
+| DELEGATION_SPLIT_INTO_SIBLINGS | X343, a row of X347: a delegation key in the wrong sibling | tests/test-seed-lint.sh | fixture (scope), `check_adopted_rule_homes` | green |
 | DELEGATION_SPLIT_INTO_SIBLINGS | X346 registration-home (the existing case, repointed to `core/method/delegation-bounds.md`) | tests/test-seed-lint.sh | fixture (scope), the existing registration check | green |
 | VERBATIM_DRIFT | (none) one-time scratch record at each split's gate (§5) | — | manual record | pending |
 | ADOPTED_RULE_HOMES | X347 case_ce_home_key_owned_twice | tests/test-seed-lint.sh | fixture (scope), `check_adopted_rule_homes` (batch 1b) | green |
 | ADOPTED_RULE_HOMES | X348 case_ce_home_key_missing | tests/test-seed-lint.sh | fixture (scope), `check_adopted_rule_homes` (batch 1b) | green |
 | STALE_POINTER | X349 case_ce_stale_pointer | tests/test-seed-lint.sh | fixture (scope), `check_adopted_rule_homes` (batch 1b) | green |
-| HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP | X350 case_ce_handback_effort_removed | tests/test-seed-lint.sh | fixture (scope), `check_handback_fields` (batch 1b) | green |
-| HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP | X351 case_ce_handback_gap_removed | tests/test-seed-lint.sh | fixture (scope), `check_handback_fields` (batch 1b) | green |
-| BOOTSTRAP_STEP2_LOADS_A_MENU | X352 case_ce_step2_reworded | tests/test-seed-lint.sh | fixture (scope), `check_bootstrap_step2`, all six copies reworded alike (batch 1b) | green |
-| BOOTSTRAP_STEP2_LOADS_A_MENU | X353 case_ce_step2_rewrapped_passes | tests/test-seed-lint.sh | fixture (scope), `check_bootstrap_step2`, all six copies re-wrapped (batch 1b); guard | green |
-| ADOPTED_RULES_NOT_PENDING | X354 case_ce_pending_phrase_planted | tests/test-seed-lint.sh | fixture (scope), `check_adopted_rules_not_pending`, one plant per §6 phrase (batch 1b) | green |
-| ADOPTED_RULES_NOT_PENDING | X355 case_ce_pending_phrase_wrapped | tests/test-seed-lint.sh | fixture (scope), `check_adopted_rules_not_pending` (batch 1b) | green |
-| PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE | test_plan_partial_version_token_does_not_promote | tests/test_graph_lint.py | unit, PromotionTests (fix batch: `target net10` does not promote a node whose piece is `net10.0`) | green |
-| PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE | test_plan_dotted_compound_named_whole_promotes | tests/test_graph_lint.py | unit, PromotionTests (batch F3: naming the whole dotted and hyphenated token still promotes); guard | green |
-| PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE | test_plan_phrase_with_a_slash_still_promotes | tests/test_graph_lint.py | unit, PromotionTests (fix batch); guard | green |
-| PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE | test_plan_promotion_reports_first_hitting_piece | tests/test_graph_lint.py | unit, PromotionTests (fix batch); guard | green |
-| PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE | test_plan_short_words_are_not_phrase_tokens | tests/test_graph_lint.py | unit, PromotionTests (fix batch); guard | green |
-| PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE | test_plan_stopwords_are_not_phrase_tokens | tests/test_graph_lint.py | unit, PromotionTests (fix batch); guard | green |
-| PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE | test_plan_prefix_fold_does_not_promote | tests/test_graph_lint.py | unit, PromotionTests (fix batch); guard | green |
-| PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES | test_plan_task_wildcard_never_matches_a_slash_pattern | tests/test_graph_lint.py | unit, InferenceTests (fix batch); guard | green |
+| HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP | X350, a row of the text-rules table: the handback `effort:` line removed | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
+| HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP | X351, a row of the text-rules table: the handback `expertise_gap:` line removed | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
+| BOOTSTRAP_STEP2_LOADS_A_MENU | X352, a row of the text-rules table: step 2 reworded alike in all six copies | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
+| BOOTSTRAP_STEP2_LOADS_A_MENU | X353, a row of the text-rules table: step 2 re-wrapped in all six copies passes; guard | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
+| ADOPTED_RULES_NOT_PENDING | X354, a row of the text-rules table: one §6 pending phrase planted | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
+| ADOPTED_RULES_NOT_PENDING | X355, a row of the text-rules table: a pending phrase wrapped across a line break | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
 | PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES | test_plan_infers_through_a_slash_pattern | tests/test_graph_lint.py | unit, InferenceTests (fix batch); guard | green |
-| PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES | test_plan_infers_literal_name_pattern_in_a_subdirectory | tests/test_graph_lint.py | unit, InferenceTests (fix batch); guard | green |
-| PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES | test_plan_slash_piece_without_star_is_a_pattern | tests/test_graph_lint.py | unit, InferenceTests (fix batch); guard | green |
-| PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES | test_plan_inference_reports_first_path_in_task_order | tests/test_graph_lint.py | unit, InferenceTests (fix batch); guard | green |
-| PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES | test_plan_backslash_only_token_is_not_path_like | tests/test_graph_lint.py | unit, InferenceTests (fix batch); guard | green |
-| HOSTILE_TASK_LINE | test_plan_long_token_flood_does_not_use_the_cap | tests/test_graph_lint.py | unit, InferenceTests (fix batch); guard | green |
-| HOSTILE_TASK_LINE | test_plan_cap_counts_only_path_like_tokens | tests/test_graph_lint.py | unit, InferenceTests (fix batch); guard | green |
-| HOSTILE_TASK_LINE | test_plan_token_of_exactly_256_is_considered | tests/test_graph_lint.py | unit, InferenceTests (fix batch); guard | green |
 | PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE | test_plan_seed_closure_is_accounted_before_promotion | tests/test_graph_lint.py | unit, PromotedClosureTests (fix batch); guard | green |
-| ADOPTED_RULE_HOMES | X356 case_ce_stale_pointer_wrapped | tests/test-seed-lint.sh | fixture (scope), `check_adopted_rule_homes`, path and key on two lines, reported at the line holding the path only (fix batch; expectation tightened in batch F3) | green |
-| ADOPTED_RULE_HOMES | X357 case_ce_stale_pointer_front_door | tests/test-seed-lint.sh | fixture (scope), `check_adopted_rule_homes`, a stale pointer planted in `README.md`, `INSTALL.md` and `documentation/` (fix batch) | green |
-| ADOPTED_RULE_HOMES | X358 case_ce_stale_pointer_root_prompt | tests/test-seed-lint.sh | fixture (scope), `check_adopted_rule_homes`, a stale pointer planted in `INSTALL_PROMPT.md` (batch F3); guard | green |
-| ADOPTED_RULE_HOMES | X359 case_ce_stale_pointer_wrapped_key_first | tests/test-seed-lint.sh | fixture (scope), `check_adopted_rule_homes`, key on the first line and path on the next, reported at the key's line (batch F3); guard | green |
-| ADOPTED_RULE_HOMES | X360 case_ce_adjacent_correct_pointers_pass | tests/test-seed-lint.sh | fixture (scope), `check_adopted_rule_homes`, a hub pointer on one line and a correct sibling pointer on the next yield no finding (batch F3) | green |
 | TEMPLATE_CHANGE_UNDER_SPEC_0003 | (none) SPEC-0003 verify command; held for the owner | — | verify record | pending |
 | EFFORT_NOT_APPLIED_PER_SPAWN | (none) reader: the brief's effort line; field held by HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP | — | review | pending |
 | IMPLEMENTER_EDITS_A_TEST | (none) the RED hash re-check at the commit boundary and the tip | — | commit boundary | pending |
@@ -2299,29 +2235,27 @@ gives.
 | WORKER_GUESSES | (none) reader | — | review | pending |
 | RULING_PASS_SKIPPED | (none) reader | — | review | pending |
 | GRILL_WAVES_LEVELS_FROM_DEPENDS_ON | X361 case_waves_levels_scheduled_plan: the full §6 header, then exactly the five wave lines in wave-then-document order, exit 0; increment 2 depends on a library page and stays in wave 2 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope), `--waves` on the scheduled fixture plan | green |
-| GRILL_WAVES_LEVELS_FROM_DEPENDS_ON | X362 case_waves_levels_red_without_dependency_rises: increment 4's `Depends on:` set to `none` prints it in wave 1 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
-| GRILL_WAVES_LEVELS_FROM_DEPENDS_ON | X363 case_waves_levels_ledger_form: after `write_ledger`, the same wave lines (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
-| GRILL_WAVES_LEVELS_FROM_DEPENDS_ON | X364 case_waves_levels_library_only_dependency: increment 3's `Depends on:` set to the library page alone keeps increment 3 in wave 1 and increment 4 in wave 2 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
-| GRILL_WAVES_LEVELS_FROM_DEPENDS_ON | X365 case_waves_levels_seed_plan_7_30_0: `--plan docs/plans/grill-7.30.0-cycle-economy.md --waves --warn` prints `wave 1: increment 23 (RED)`, exit 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | real-tree read of one frozen plan (R0.5) | green |
+| GRILL_WAVES_LEVELS_FROM_DEPENDS_ON | X362, a row of X361: increment 4's `Depends on:` set to `none` prints it in wave 1 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_LEVELS_FROM_DEPENDS_ON | X363, a row of X361: after `write_ledger`, the same wave lines (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_LEVELS_FROM_DEPENDS_ON | X364, a row of X361: increment 3's `Depends on:` set to the library page alone keeps increment 3 in wave 1 and increment 4 in wave 2 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
 | GRILL_WAVES_OVERLAP_IS_A_WARNING | X366 case_waves_overlap_brace_pair: with increment 3's files set to `tests/test_{forms,store}.py`, exactly one overlap warning, for increments 1 and 3 on `tests/test_forms.py`, none for 3 and 4; exit 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
-| GRILL_WAVES_OVERLAP_IS_A_WARNING | X367 case_waves_overlap_glob_token: increment 3's `tests/*.py` gives the full line `WARN §9 increments 1 and 3 may run together and both name tests/test_forms.py` (R0.6; in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
-| GRILL_WAVES_OVERLAP_IS_A_WARNING | X368 case_waves_overlap_bare_name: increment 3's `test_forms.py` gives the full line `WARN §9 increments 1 and 3 may run together and both name tests/test_forms.py` (R0.6; in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
-| GRILL_WAVES_OVERLAP_IS_A_WARNING | X369 case_waves_overlap_words_and_keys_silent: the header prints, and neither prose words nor `forms.submit`, named by two independent increments, give an overlap warning (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
-| GRILL_WAVES_OVERLAP_IS_A_WARNING | X370 case_waves_overlap_plain_lint_silent: plain `grill-lint.py` on the brace-pair plan prints no overlap line, exit 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope); guard | green |
-| GRILL_WAVES_UNSCHEDULED_WITHOUT_PHASE | X371 case_waves_unscheduled_without_phase: the fixture plan prints the unscheduled header, no wave line and no warning, exit 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
-| GRILL_WAVES_UNSCHEDULED_WITHOUT_PHASE | X372 case_waves_partial_phase_warns: only increment 1 carries `Phase: RED`; increment 2 prints `(no phase)` and one `WARN §9 increment 2: no Phase: field`, exit 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_OVERLAP_IS_A_WARNING | X367, a row of X366: increment 3's `tests/*.py` gives the full line `WARN §9 increments 1 and 3 may run together and both name tests/test_forms.py` (R0.6; in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_OVERLAP_IS_A_WARNING | X368, a row of X366: increment 3's `test_forms.py` gives the full line `WARN §9 increments 1 and 3 may run together and both name tests/test_forms.py` (R0.6; in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_OVERLAP_IS_A_WARNING | X369, a row of X366: the header prints, and neither prose words nor `forms.submit`, named by two independent increments, give an overlap warning (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_OVERLAP_IS_A_WARNING | X370, a row of X366: plain `grill-lint.py` on the brace-pair plan prints no overlap line, exit 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope); guard | green |
+| GRILL_WAVES_UNSCHEDULED_WITHOUT_PHASE | X371, a row of X373: the fixture plan prints the unscheduled header, no wave line and no warning, exit 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_UNSCHEDULED_WITHOUT_PHASE | X372, a row of X373: only increment 1 carries `Phase: RED`; increment 2 prints `(no phase)` and one `WARN §9 increment 2: no Phase: field`, exit 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
 | GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT | X373 case_waves_not_computed_forward_dependency: the not-computed header, no wave line, exit 1, and the plain lint's forward-dependency line (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
-| GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT | X374 case_waves_not_computed_missing_dependency: the same for a dependency on an increment that does not exist (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
-| GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT | X375 case_waves_not_computed_under_warn: the not-computed header prints and `--warn` exits 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
-| GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT | X376 case_waves_other_defect_still_reports: the invented contract of case 7 leaves the wave lines printed, exit 1 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
-| GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT | X380 case_waves_not_computed_duplicate_numbers: two inline increments carrying one number print `waves: not computed — §9 has duplicate increment numbers`, no wave line, and the plain lint's exit status (R0.13; in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT | X374, a row of X373: the same for a dependency on an increment that does not exist (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT | X375, a row of X373: the not-computed header prints and `--warn` exits 0 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT | X376, a row of X373: the invented contract of case 7 leaves the wave lines printed, exit 1 (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT | X380, a row of X373: two inline increments carrying one number print `waves: not computed — §9 has duplicate increment numbers`, no wave line, and the plain lint's exit status (R0.13; in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
 | GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED | X377 case_waves_existing_plans_same_exit: the `lint` helper records each plan and flag set cases 1 to 32 lint; the block lints each again with and without `--waves` and asserts the same exit status, every plain line present in the `--waves` output in the same relative order, and no line beginning `Traceback` (R0.7; in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope); guard | green |
-| GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED | X378 case_waves_plain_output_has_no_report_lines: no plain run of a recorded plan prints a `waves:` line, a `  wave ` line, an overlap warning or a phase warning (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope); guard | green |
-| GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED | X379 case_waves_plain_output_golden: the plain output on the fixture plan equals the golden copy captured from the unmodified tool (in the collecting block, R0.3) | tests/test-grill-lint.sh | golden, `tests/fixtures/grill/`; guard | green |
+| GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED | X378, a row of X377: no plain run of a recorded plan prints a `waves:` line, a `  wave ` line, an overlap warning or a phase warning (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope); guard | green |
 | ADOPTED_RULE_HOMES | (none) the `delegation.waves` entry in `ADOPTED_RULE_HOMES` (increment 2); red id: the finding line `delegation.waves: not owned by core/method/delegation-sequencing.md, its one home under SPEC-0005 (owned by no node)`; the check itself is held by X347 and X348. While the entry is carried, `tests/test-seed-lint.sh` stops at its clean-copy baseline, so each tip lists that baseline line as expected-red and the rest of the script as `not run` (R0.4) | tests/seed-lint.py | real-tree, `check_adopted_rule_homes` | green |
 | UNDECLARED_DEPENDENCY | (none) the orchestrator's check at RED observation that the test fails for the right reason, and the reviewer | — | review | pending |
-| FALSE_OVERLAP | X368 case_waves_overlap_bare_name: a bare name warns whatever directory it really sits in, and the exit status does not change | tests/test-grill-lint.sh | fixture (scope) | green |
-| MISSED_OVERLAP | X369 case_waves_overlap_words_and_keys_silent: a file named only in prose gives no warning | tests/test-grill-lint.sh | fixture (scope) | green |
+| FALSE_OVERLAP | X368, a row of X366: a bare name warns whatever directory it really sits in, and the exit status does not change | tests/test-grill-lint.sh | fixture (scope) | green |
+| MISSED_OVERLAP | X369, a row of X366: a file named only in prose gives no warning | tests/test-grill-lint.sh | fixture (scope) | green |
 | STALE_SCHEDULE | X361 case_waves_levels_scheduled_plan: the header says the schedule is static and that what is committed is not read | tests/test-grill-lint.sh | fixture (scope) | green |
 | EARLY_RED_CONTRACT_AMENDED | (none) the RED hash re-check before the GREEN commit (`soft`), and the old and new hashes recorded beside the ruling id | — | commit boundary | pending |
 | EXPECTED_RED_MASKS_A_REGRESSION | (none) `judgment`: the orchestrator compares the tip's failing ids with the expected-red list by hand, in the batch record (R0.14) | — | tip record | pending |
@@ -2330,10 +2264,10 @@ gives.
 | ABORTED_STEP_HIDES_CASES | (none) the tip record's `not run` list (R0.12); for `tests/test-grill-lint.sh`, the collecting block (R0.3), which X361 to X380 run in | — | tip record | pending |
 | RED_WRITES_A_HELD_TEST_FILE | (none) the orchestrator's dispatch check that an early RED's files are disjoint from every live lane, backed by the RED hash re-check (`soft`) | — | dispatch record | pending |
 | BATCH_PAUSED_FOR_ONE_INCREMENT | (none) the reviewer at verify, against the batch record's per-increment holds | — | review | pending |
-| KERNEL_POINTS_AT_THE_SESSION_RECORD | (none) seed-lint on the real tree (increment 10's check); red ids: the finding line naming `core/AGENTS.md §3.2` and the finding line naming `templates/docs/plans/sessions/` | tests/seed-lint.py | real-tree, the kernel check | green |
-| KERNEL_POINTS_AT_THE_SESSION_RECORD | X381 case_ce_kernel_session_record_pointer: on copies, the sentence removed from §3.2 gives the `core/AGENTS.md §3.2` line; the sentence moved from §3.2 to §5 gives the same line; `templates/docs/plans/sessions/` emptied gives the `templates/docs/plans/sessions/` line; `not run` while the script's baseline is red (R0.4, R0.12) | tests/test-seed-lint.sh | fixture (scope), the kernel check | green |
+| KERNEL_POINTS_AT_THE_SESSION_RECORD | (none) seed-lint on the real tree (increment 10's check); red id: the finding line naming `core/AGENTS.md §3.2` | tests/seed-lint.py | real-tree, the kernel check | green |
+| KERNEL_POINTS_AT_THE_SESSION_RECORD | X381 case_ce_kernel_session_record_pointer: on a copy, the sentence removed from §3.2 gives the `core/AGENTS.md §3.2` line | tests/test-seed-lint.sh | fixture (scope), the kernel check | green |
 | ADOPTED_RULE_HOMES | (none) the `stewardship-posture.session-record` and `canonize.session-record` entries in `ADOPTED_RULE_HOMES` (increment 10); red ids: `stewardship-posture.session-record: not owned by core/method/stewardship-posture.md, its one home under SPEC-0005 (owned by no node)` and `canonize.session-record: not owned by protocols/canonize.md, its one home under SPEC-0005 (owned by no node)`; the check itself is held by X347 and X348 | tests/seed-lint.py | real-tree, `check_adopted_rule_homes` | green |
-| KERNEL_POINTER_TRIMMED | X381 case_ce_kernel_session_record_pointer: dropping the sentence, or moving it out of §3.2, fails naming `core/AGENTS.md §3.2` | tests/test-seed-lint.sh | fixture (scope) | green |
+| KERNEL_POINTER_TRIMMED | X381 case_ce_kernel_session_record_pointer: dropping the sentence fails naming `core/AGENTS.md §3.2` | tests/test-seed-lint.sh | fixture (scope) | green |
 | SESSION_RECORD_NOT_KEPT | (none) `judgment`: canonize's walk, and the librarian's "no session record" or missing-item finding, which the delivery shows | — | review | pending |
 | RECORD_ITEM_LEFT_UNFILED | (none) `judgment`, with the next session's start read as the `detective` backstop: items with no "Canonize status" line are named in its newest "Open threads" block | — | review | pending |
 | SESSION_RECORD_FORM_IS_NOT_A_SCAFFOLD | X382 scn_x382: an installed plant whose coverage record claims `plans/` ABSENT with its reason, whose `plans/` holds the placed `sessions/_session-record.template.md` and whose `grill.md` scaffold is renamed `.unfilled.md`, gives no CONTRADICTED line naming the form and no finding on `plans/`; in the same run an untouched `runbooks/rollback.md` scaffold in an ABSENT row is still named as the seed's unfilled scaffold | tests/test-growth-audit.sh | integration | green |
@@ -2504,3 +2438,38 @@ kept outside the seed.
 - 2026-09-28 — version 0.13, by `docs-librarian`. The latitude amendment in the
   entry above is this version, and §0's Version line now says so. Nothing else
   changed.
+- 2026-09-29 — version 0.14, test consolidation
+  (`docs/plans/grill-test-consolidation.md`, S5), by `architect`. Still
+  `active`. §4, narrowing six contracts on the owner's confirmation of that
+  plan's §4: DELEGATION_SPLIT_INTO_SIBLINGS drops the `peers:` and
+  `## Neighbours` clauses, and its key homes are rows of the
+  ADOPTED_RULE_HOMES map (§6 "Adopted rule homes" says so);
+  AGENT_DECLARES_EFFORT drops "each shipped agent's effort equals its row in
+  the §6 default table", and §6 replaces that table with a pointer to the
+  agents' frontmatter, the one home; LEAF_BODY_CEILING_HELD drops the stale-
+  and unknown-member clauses (ratchet-lint still refuses growth of
+  `OVERSIZED_LEAVES`); ADOPTED_RULE_HOMES drops the wrapped-pointer and the
+  front-door and root-prompt scope clauses; KERNEL_POINTS_AT_THE_SESSION_RECORD
+  drops the moved-sentence and emptied-directory clauses;
+  GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED drops the golden clause. §7
+  HOSTILE_TASK_LINE notes that the cap and length boundaries are untested by
+  decision. §9 AC-9, AC-10 and AC-28 follow. §10: the rows of deleted cases
+  go (the wide-descent warn, the three cap and length cases, the two suffix
+  cases, the load-when entry case, the real-roster effort table case, X337,
+  X338, X342, X344, X345, X356 to X360, X365, X379); folded cases point at
+  their survivors (the promotion rows at
+  `test_plan_promotes_expertise_past_the_scored_cut` and
+  `test_plan_partial_phrase_does_not_promote`, the inference rows at
+  `test_plan_infers_from_extension`, the descent rows at
+  `test_plan_descends_on_specific_term`; X339 and X340 at
+  `tests/test-ratchet-lint.sh`; X341 in X336; X343 in X347; X350 to X355 as
+  rows of the text-rules table; X362 to X364 in X361; X367 to X370 in X366;
+  X371 to X376 and X380 in X373; X378 in X377). The coverage-binder sentence
+  goes.
+- 2026-09-29: consolidation close-out, by the docs-librarian (spawn
+  `session.10.docs-librarian.1`). Spec text only; the version stays 0.14. The
+  sibling frontmatter paragraph no longer names the retired
+  `PREVENTS_OVERLAP_CEILING`; the §10 guard paragraph records where X370, X378
+  and X379 went; `status_evidence` adds `tests/test-grill-lint.sh` and
+  `tests/test-ratchet-lint.sh`, which hold §10 rows.
+

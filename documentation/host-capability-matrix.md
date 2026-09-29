@@ -489,7 +489,7 @@ function's own computation against current sources:
 and were wrong three of those times, including once while the correction to the
 previous error was being written down, because a ten-byte kernel edit landed in
 between. `check_eager_surface()` in `tests/seed-lint.py` is their one home, and
-`check_published_eager_figures()` beside it now holds this table against that
+`check_published_figures()` beside it now holds this table against that
 computation: a cell that drifts from what the function computes fails the gate
 and names both numbers. Chasing them by hand was the wrong repair, and this
 paragraph used to claim the gate already did this while it did not.)

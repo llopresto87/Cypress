@@ -144,7 +144,7 @@ which target, who declared it, when it is reviewed), so an "allow" that
 holds only because a statement hid a critical says so; one with no
 declared author or expiry, or past its expiry, suppresses nothing and
 is listed as ignored. Where one check
-runs on several paths (a local suite, a pipeline, a deploy-time scan),
+runs on several paths (a local suite, an automated run, a deploy-time scan),
 the paths share one contract: each derives its targets from the same
 declaration, and a parity check compares the resolved target sets and
 per-target outcomes, never only the finding counts. A missing report
@@ -174,10 +174,11 @@ production path, the newer as a separately reversible fast-follow
 (`method.engineering-posture`: boring on the production path); forced
 off an end-of-life generation, target the supported line with the
 longest runway, and budget the upgrade by the hand-written rewrites it
-may spend. Four supply-chain gates run in CI — advisories failing on
-high severity, committed-secret scanning, static analysis for injection
-patterns, image scanning under the pinned-tag policy — each with the
-positive control `protocol.verify` requires of a zero.
+may spend. Supply-chain gates (high-severity advisories, committed
+secrets, injection patterns, image scanning under the pinned-tag policy)
+are adopted one by one where the blast radius is named
+(`test-first.proportionate-checks`), each with the positive control
+`protocol.verify` requires of a zero.
 
 ## 5. Land the reversible parts first; gate the one-way step on their evidence
 

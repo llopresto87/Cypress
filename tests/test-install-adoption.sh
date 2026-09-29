@@ -1,49 +1,17 @@
 #!/usr/bin/env bash
-# Adoption contract: install.sh meeting a project that already has its OWN
-# files, and a plant that already carries the seed. Two ledger defects
-# (U-12) drove this:
-#   D1  asserts SPEC-0001 PREFLIGHT_REFUSES_BEFORE_WRITING,
-#       SPEC-0001 DESTINATION_PATH_OCCUPIED and SPEC-0001 TARGET_NOT_WRITABLE.
-#       A destination directory that already existed as a REGULAR FILE (or a
-#       symlink to one) let place_kernel and the whole docs/graph/ scaffold
-#       run to completion and then die on a raw `mkdir: ... Not a directory`
-#       — never this tool's own die() — leaving the target half-installed.
-#   D2  deleting a seed-owned node from an installed plant and re-installing
-#       silently restored it: correct behaviour (the seed owns its
-#       machinery), announced nowhere, so a deliberate deletion was reverted
-#       with no trace and no way to tell "restored" from "always there".
-#   D3  asserts SPEC-0001 CHECK_WITHOUT_COPILOT_SAYS_SO: `all --check` on a
-#       target whose record lacks github-copilot says it checked nothing.
-#   D4  asserts SPEC-0001 ALL_CHECK_INCLUDES_RECORDED_COPILOT: `all --check`
-#       checks the Copilot views a plant records, and drift exits non-zero.
-#   D5  asserts SPEC-0001 RECREATED_LIST_IS_COMPLETE: the whole list of
-#       re-created nodes is written to .cypress/recreated-nodes.txt.
-#   D6  asserts SPEC-0001 PREFLIGHT_SCOPED_TO_WRITTEN_TREES: unwritable trees
-#       the installer never writes (node_modules, .next, a data volume) do not
-#       refuse the install.
-# Alongside those: the ADOPTION cases place_kernel and place_file already
-# handle correctly (a hand-written kernel backed up, a plant-authored graph
-# leaf left alone) are pinned here too, so a future change to either cannot
-# regress them unnoticed.
-set -euo pipefail
-#
-# PARALLEL: every banner section above is an independent non-pristine-target
-# scenario with its OWN mktemp target. Each is a self-contained case_* function
-# that builds its own temp tree and runs its ORIGINAL asserts verbatim; main
-# emits one scenario line per case and dispatches them concurrently through the
-# gate's ONE shared budget (tests/gate_pool.py, $GATE_JOBS / $GATE_POOL_DIR).
-# ~30 serial install.sh calls were the floor here; now they run under one
-# clamped pool. Every assertion is byte-for-byte what it was — the only
-# structural change is a per-case `mktemp -d` (replacing the single shared
-# $WORK) plus the __case re-invocation dispatch, so a red scenario still fails
-# the whole gate exactly as before.
+# Adoption contract (SPEC-0001): install.sh meeting a project that already has
+# its own files, or a plant that already carries the seed. Labels: D1 preflight,
+# D3/D4 `all --check` scoping, D5 recreated-nodes list, D6 preflight scope.
+# Each case_* runs in its own process with its own temp target; main dispatches
+# them through the gate's shared pool (tests/gate_pool.py).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SELF="$ROOT/tests/test-install-adoption.sh"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
-ok()   { echo "$1 — OK"; }
+ok()   { echo "  $1 — OK"; }
+tmpw() { W="$(mktemp -d)"; trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT; }
 
 assert_clean_refusal() {   # $1=label $2=target $3=blocked relpath $4=adapter $5=expect-empty
     local label="$1" tgt="$2" rel="$3" tool="$4" empty="$5" out rc
@@ -52,8 +20,7 @@ assert_clean_refusal() {   # $1=label $2=target $3=blocked relpath $4=adapter $5
     out="$("$ROOT/install.sh" "$tool" --project-dir "$tgt" 2>&1)" && rc=0 || rc=$?
     [[ $rc -ne 0 ]] || fail "$label: a file at '$rel' must refuse the install"
     grep -q "^ERROR:" <<<"$out" \
-        || fail "$label: must fail with the tool's own ERROR, not a raw shell \
-message. Got: $(tail -2 <<<"$out")"
+        || fail "$label: must fail with the tool's own ERROR, not a raw shell message. Got: $(tail -2 <<<"$out")"
     grep -qF "$rel" <<<"$out" || fail "$label: the error must name '$rel'"
     if [[ "$empty" == "empty" ]]; then
         local n; n="$(find "$tgt" -type f -not -name "$(basename "$rel")" | wc -l | tr -d ' ')"
@@ -61,193 +28,56 @@ message. Got: $(tail -2 <<<"$out")"
     fi
 }
 
-case_agents() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  T="$W/agents-only"; mkdir -p "$T"
-  printf '# hand-written AGENTS.md\nmy own project instructions\n' > "$T/AGENTS.md"
-  out="$("$ROOT/install.sh" claude-code --project-dir "$T" --copy 2>&1)" \
-      || fail "install over hand-written AGENTS.md failed: $out"
-  bak="$(ls -1dt "$T"/AGENTS.md.bak-* 2>/dev/null | head -1)"
-  [[ -n "$bak" ]] || fail "hand-written AGENTS.md was not backed up: $out"
-  grep -q "my own project instructions" "$bak" \
-      || fail "AGENTS.md backup does not carry the original body"
-  grep -qF "$bak" <<<"$out" || fail "warning does not name the AGENTS.md backup: $out"
-  ok "pre-existing AGENTS.md backed up and named"
-}
-
-case_claude() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  T="$W/claude-only"; mkdir -p "$T"
-  printf '# hand-written CLAUDE.md\nmy other project instructions\n' > "$T/CLAUDE.md"
-  out="$("$ROOT/install.sh" claude-code --project-dir "$T" --copy 2>&1)" \
-      || fail "install over hand-written CLAUDE.md failed: $out"
-  bak="$(ls -1dt "$T"/CLAUDE.md.bak-* 2>/dev/null | head -1)"
-  [[ -n "$bak" ]] || fail "hand-written CLAUDE.md was not backed up: $out"
-  grep -q "my other project instructions" "$bak" \
-      || fail "CLAUDE.md backup does not carry the original body"
-  grep -qF "$bak" <<<"$out" || fail "warning does not name the CLAUDE.md backup: $out"
-  ok "pre-existing CLAUDE.md backed up and named"
-}
-
 case_both() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  T="$W/both-different"; mkdir -p "$T"
+  tmpw; T="$W/both-different"; mkdir -p "$T"
   printf '# CLAUDE.md body\nCLAUDE-SENTINEL-ONE\n' > "$T/CLAUDE.md"
   printf '# AGENTS.md body\nAGENTS-SENTINEL-TWO\n' > "$T/AGENTS.md"
   out="$("$ROOT/install.sh" claude-code --project-dir "$T" --copy 2>&1)" \
       || fail "install over two differing hand-written kernels failed: $out"
-  cbak="$(ls -1dt "$T"/CLAUDE.md.bak-* 2>/dev/null | head -1)"
-  abak="$(ls -1dt "$T"/AGENTS.md.bak-* 2>/dev/null | head -1)"
-  [[ -n "$cbak" ]] || fail "CLAUDE.md body lost with no .bak: $out"
-  [[ -n "$abak" ]] || fail "AGENTS.md body lost with no .bak: $out"
-  grep -q "CLAUDE-SENTINEL-ONE" "$cbak" || fail "CLAUDE.md's own body is not in its backup"
-  grep -q "AGENTS-SENTINEL-TWO" "$abak" || fail "AGENTS.md's own body is not in its backup"
-  ok "both differing pre-existing kernels recoverable from distinct backups"
-}
-
-case_index() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  T="$W/index-survives"; mkdir -p "$T"
-  "$ROOT/install.sh" claude-code --project-dir "$T" --copy >/dev/null 2>&1 \
-      || fail "baseline install for index-survives failed"
-  printf '\n<!-- PLANT-AUTHORED-SENTINEL: do not touch -->\n' >> "$T/docs/graph/index.md"
-  before="$(cat "$T/docs/graph/index.md")"
-  "$ROOT/install.sh" claude-code --project-dir "$T" --copy >/dev/null 2>&1 \
-      || fail "re-install for index-survives failed"
-  after="$(cat "$T/docs/graph/index.md")"
-  [[ "$before" == "$after" ]] || fail "docs/graph/index.md changed on a re-install with no new plant facts"
-  compgen -G "$T/docs/graph/index.md.bak-*" >/dev/null \
-      && fail "docs/graph/index.md should never be backed up (add-if-missing, plant-owned)"
-  ok "plant-authored docs/graph/index.md survives a re-install untouched"
-}
-
-case_d1_file() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  T="$W/d1-file"; mkdir -p "$T"
-  touch "$T/.claude"
-  rc=0
-  out="$("$ROOT/install.sh" claude-code --project-dir "$T" --copy 2>&1)" || rc=$?
-  [[ $rc -ne 0 ]] || fail "D1: install over a .claude FILE did not fail: $out"
-  grep -qF "$T/.claude" <<<"$out" || fail "D1: failure message does not name $T/.claude: $out"
-  [[ -e "$T/CLAUDE.md" ]] && fail "D1: CLAUDE.md was written despite the preflight failure"
-  [[ -e "$T/docs/graph" ]] && fail "D1: docs/graph/ was written despite the preflight failure"
-  [[ -f "$T/.claude" ]] || fail "D1: the offending .claude file itself should be left alone"
-  ok "D1: .claude-as-a-regular-file refuses before any write"
-}
-
-case_d1_ro() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  T="$W/d1-readonly"; mkdir -p "$T"
-  chmod 555 "$T"
-  rc=0
-  out="$("$ROOT/install.sh" claude-code --project-dir "$T" --copy 2>&1)" || rc=$?
-  chmod u+w "$T"
-  [[ $rc -ne 0 ]] || fail "D1: install into a read-only target did not fail: $out"
-  grep -qF "$T" <<<"$out" || fail "D1: read-only failure message does not name $T: $out"
-  [[ -e "$T/CLAUDE.md" ]] && fail "D1: CLAUDE.md was written despite the read-only target"
-  [[ -e "$T/docs" ]] && fail "D1: docs/ was written despite the read-only target"
-  ok "D1: read-only target refuses before any write"
-}
-
-case_d2() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  T="$W/d2-recreate"; mkdir -p "$T"
-  "$ROOT/install.sh" claude-code --project-dir "$T" --copy >/dev/null 2>&1 \
-      || fail "D2: baseline install failed"
-  # bash 3.2 (macOS) has no `mapfile`; read the list portably.
-  deleted=(); while IFS= read -r _l; do deleted+=("$_l"); done \
-      < <(ls "$T"/docs/graph/protocols/*.md | head -3)
-  [[ ${#deleted[@]} -eq 3 ]] || fail "D2: could not find 3 protocol files to delete"
-  rm -f "${deleted[@]}"
-  rc=0
-  out="$("$ROOT/install.sh" claude-code --project-dir "$T" --copy 2>&1)" || rc=$?
-  [[ $rc -eq 0 ]] || fail "D2: re-install after deleting protocol files did not exit 0: $out"
-  for f in "${deleted[@]}"; do
-      [[ -f "$f" ]] || fail "D2: $f was not restored"
-      grep -qF "$(basename "$f")" <<<"$out" \
-          || fail "D2: output does not name the re-created file $(basename "$f"): $out"
+  for k in CLAUDE:ONE AGENTS:TWO; do
+      bak="$(ls -1dt "$T/${k%%:*}.md".bak-* 2>/dev/null | head -1)"
+      [[ -n "$bak" ]] || fail "${k%%:*}.md body lost with no .bak: $out"
+      grep -q "${k%%:*}-SENTINEL-${k##*:}" "$bak" || fail "${k%%:*}.md's own body is not in its backup"
+      grep -qF "$bak" <<<"$out" || fail "the warning does not name the ${k%%:*}.md backup: $out"
   done
-  grep -qi "re-created" <<<"$out" || fail "D2: output does not announce the re-creation: $out"
-
-  Tfresh="$W/d2-fresh"; mkdir -p "$Tfresh"
-  outfresh="$("$ROOT/install.sh" claude-code --project-dir "$Tfresh" --copy 2>&1)" \
-      || fail "D2: fresh install failed"
-  grep -qi "re-created" <<<"$outfresh" \
-      && fail "D2: a FRESH install must not emit the re-creation notice (it would be noise): $outfresh"
-  ok "D2: deleted protocol nodes are restored and named; a fresh install stays quiet"
+  ok "both differing pre-existing kernels recoverable from distinct, named backups"
 }
 
-case_idem() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  T="$W/idempotent"; mkdir -p "$T"
-  "$ROOT/install.sh" claude-code --project-dir "$T" --copy >/dev/null 2>&1 \
-      || fail "idempotence: first install failed"
-  "$ROOT/install.sh" claude-code --project-dir "$T" --copy >/dev/null 2>&1 \
-      || fail "idempotence: second install failed"
-  n="$(find "$T" -name '*.bak-*' | wc -l | tr -d ' ')"
-  [[ "$n" -eq 0 ]] || { find "$T" -name '*.bak-*' >&2; fail "idempotence: identical re-install produced $n backup(s)"; }
-  ok "identical re-install stays backup-free"
-}
-
+# D1 PREFLIGHT_REFUSES_BEFORE_WRITING, DESTINATION_PATH_OCCUPIED (here) and
+# TARGET_NOT_WRITABLE (case_block_readonly): refuse before any write.
 case_block_declared() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  # Declared area -> refused before a single byte is written.
+  tmpw
   P1="$W/block-declared"; mkdir -p "$P1"
   assert_clean_refusal "preflight/.claude" "$P1" ".claude" claude-code empty
   P2="$W/block-hooks"; mkdir -p "$P2"
   assert_clean_refusal "preflight/.github/hooks" "$P2" ".github/hooks" github-copilot empty
-  echo "  a file at a declared destination refuses before writing anything — OK"
+  ok "a file at a declared destination refuses before writing anything"
 }
 
 case_block_deep() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  # Undeclared depth -> still the tool's own error, naming the path.
-  P3="$W/block-deep"; mkdir -p "$P3"
+  tmpw; P3="$W/block-deep"; mkdir -p "$P3"
   assert_clean_refusal "ensure_dir/skill leaf" "$P3" ".claude/skills/adopt-existing" claude-code late
-  echo "  a file at a depth no list enumerates still fails cleanly and names it — OK"
+  ok "a file at a depth no list enumerates still fails cleanly and names it"
 }
 
-case_block_readonly() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  # A read-only directory DEEPER than adapter_dirs() reaches. The list gets one
-  # level; a per-skill leaf or docs/graph/protocols/ is two or three, and those
-  # used to fall through to ensure_dir's late check — a clean error, but only
-  # after the kernel and most of the graph were already on disk. Preflight's whole
-  # promise is that a refusal writes nothing.
-  for deep in .claude/skills/library-wiki docs/graph/protocols; do
+case_block_readonly() {  # D1: a read-only target, or a read-only directory deeper than adapter_dirs() reaches
+  tmpw
+  for deep in . .claude/skills/library-wiki docs/graph/protocols; do
       P="$W/ro-$(basename "$deep")"; mkdir -p "$P/$deep"
       chmod 555 "$P/$deep"
       out="$("$ROOT/install.sh" claude-code --project-dir "$P" --copy --force 2>&1)" && rc=0 || rc=$?
       chmod -R u+w "$P" 2>/dev/null || true
+      name="$deep"; [[ "$deep" == "." ]] && name="$P"
       [[ $rc -ne 0 ]] || fail "a read-only '$deep' must refuse the install"
-      grep -qF "$deep" <<<"$out" || fail "the refusal must name '$deep'"
+      grep -qF "$name" <<<"$out" || fail "the refusal must name '$name': $out"
       n="$(find "$P" -type f | wc -l | tr -d ' ')"
       [[ "$n" -eq 0 ]] || fail "a read-only '$deep' must write NOTHING, found $n file(s)"
   done
-  echo "  a read-only directory at any depth refuses before writing anything — OK"
+  ok "a read-only target or directory at any depth refuses before writing anything"
 }
 
-case_unrelated_trees() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  # SPEC-0001 PREFLIGHT_SCOPED_TO_WRITTEN_TREES. The preflight's promise is
-  # "a refusal writes nothing" for the trees the installer WRITES: docs/graph,
-  # .cypress and the selected adapters' own directories. A plant that runs its
-  # build or its tests in Docker has root-owned, unwritable directories
-  # (node_modules, .next, a database volume, a nested checkout) the installer
-  # never opens, and refusing over those blocked every graft of that plant.
-  P="$W/unrelated"; mkdir -p "$P"
+case_unrelated_trees() {  # D6 PREFLIGHT_SCOPED_TO_WRITTEN_TREES: Docker-owned trees must not block a graft
+  tmpw; P="$W/unrelated"; mkdir -p "$P"
   for d in node_modules/pkg/lib .next/server/app .vivid-data/pglite/base test-results vivid/.cypress; do
       mkdir -p "$P/$d"; printf 'x\n' >"$P/$d/keep"
   done
@@ -261,13 +91,11 @@ case_unrelated_trees() {
   [[ -f "$P/.cypress/seed.json" ]] || fail "the install did not complete: no seed stamp"
   after="$(cd "$P" && find $trees | LC_ALL=C sort)"
   [[ "$before" == "$after" ]] || fail "the install touched a tree it does not own"
-  echo "  unwritable trees outside the written set do not block the install, and stay untouched — OK"
+  ok "unwritable trees outside the written set do not block the install, and stay untouched"
 }
 
 case_adopted() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  MIG="$W/adopted"; mkdir -p "$MIG"
+  tmpw; MIG="$W/adopted"; mkdir -p "$MIG"
   printf '# Our team rules\n\nAlways rebase, never merge.\n' >"$MIG/AGENTS.md"
   out="$("$ROOT/install.sh" claude-code --project-dir "$MIG" 2>&1)" \
       || fail "install over a project with its own AGENTS.md failed"
@@ -280,24 +108,18 @@ case_adopted() {
   [[ "$entry" -eq 1 ]] || fail "expected exactly one migration entry, got $entry"
   grep -rqF "Always rebase" "$MIG"/*.bak-* \
       || fail "the original instructions must remain recoverable"
-
-  # A second install must not file the same backup twice.
   "$ROOT/install.sh" opencode --project-dir "$MIG" >/dev/null 2>&1
   entry="$(grep -c '^- \[ \]' "$NOTE" | tr -d ' ')"
   [[ "$entry" -eq 1 ]] || fail "a re-install duplicated the migration entry ($entry)"
-
-  # ...and a project that never had its own instructions gets no note at all,
-  # or the notice is noise on every first install.
   FRESH="$W/adopted-fresh"; mkdir -p "$FRESH"
   "$ROOT/install.sh" claude-code --project-dir "$FRESH" >/dev/null 2>&1
   [[ ! -f "$FRESH/docs/graph/plans/adopted-instructions.md" ]] \
       || fail "a fresh plant must not get a migration note"
-  echo "  a replaced instruction file becomes recorded work for docs-librarian — OK"
+  ok "a replaced instruction file becomes recorded work for docs-librarian"
 }
 
 case_adapter_dirs() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
+  tmpw
   for tool in claude-code opencode codex github-copilot prime-agent; do
       D="$W/dirs-$tool"; mkdir -p "$D"
       "$ROOT/install.sh" "$tool" --project-dir "$D" >/dev/null 2>&1 \
@@ -305,353 +127,198 @@ case_adapter_dirs() {
       while IFS= read -r dec; do
           [[ -z "$dec" ]] && continue
           case "$dec" in docs|docs/graph|.cypress) continue ;; esac
-          [[ -d "$D/$dec" ]] || fail "adapter_dirs($tool) declares '$dec', which \
-  installing $tool does not create — the preflight would refuse over a path the \
-  adapter never touches"
+          [[ -d "$D/$dec" ]] || fail "adapter_dirs($tool) declares '$dec', which installing $tool \
+does not create, so the preflight would refuse over a path the adapter never touches"
       done < <(bash -c 'source /dev/stdin <<<"$(sed -n "/^adapter_dirs()/,/^}/p" "$0")"; adapter_dirs "$1"' \
                "$ROOT/install.sh" "$tool" 2>/dev/null)
   done
-  echo "  every directory adapter_dirs declares is one the adapter really creates — OK"
+  ok "every directory adapter_dirs declares is one the adapter really creates"
 }
 
-case_check_broken() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  CHK="$W/check-broken"; mkdir -p "$CHK"
-  "$ROOT/install.sh" github-copilot --project-dir "$CHK" >/dev/null 2>&1 \
-      || fail "--check setup install failed"
+# --check on github-copilot views: one install, copied into each sub-case.
+check_broken() {
+  set -e; CHK="$W/check-broken"; plant_copy "$CHK"
   python3 -c "
 open('$CHK/docs/graph/agents/50-plant-expert.md','wb').write(
     '---\ndescription: caf\xe9 domain expert\ntools: [Read]\n---\nbody\n'.encode('latin-1'))"
-
-  chk_out="$("$ROOT/install.sh" github-copilot --check --project-dir "$CHK" 2>&1)" && chk_rc=0 || chk_rc=$?
-  [[ $chk_rc -ne 0 ]] || fail "--check returned 0 over a generator that cannot run"
-  [[ -n "$chk_out" ]] || fail "--check failed with EMPTY output. A drift gate that \
-  exits non-zero and says nothing is indistinguishable from one that found drift, \
-  and the operator has nothing to act on."
-  grep -q "could not regenerate" <<<"$chk_out" \
-      || fail "--check did not say the generation FAILED (it must not be reported \
-  as 'STALE' — those are different findings): $chk_out"
-  grep -qi "UnicodeDecodeError" <<<"$chk_out" \
-      || fail "--check named the failure but swallowed its cause; the generator's \
-  own error has to reach the operator: $chk_out"
+  out="$("$ROOT/install.sh" github-copilot --check --project-dir "$CHK" 2>&1)" && rc=0 || rc=$?
+  [[ $rc -ne 0 ]] || fail "--check returned 0 over a generator that cannot run"
+  grep -q "could not regenerate" <<<"$out" \
+      || fail "--check did not say the generation FAILED (not STALE): $out"
+  grep -qi "UnicodeDecodeError" <<<"$out" \
+      || fail "--check named the failure but swallowed its cause: $out"
 }
-
-case_check_stale() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  # ...and a plant that is merely out of date is still reported as STALE, or the
-  # assertion above is satisfied by a tool that calls everything a crash.
-  CHK2="$W/check-stale"; mkdir -p "$CHK2"
-  "$ROOT/install.sh" github-copilot --project-dir "$CHK2" >/dev/null 2>&1 \
-      || fail "--check stale-case setup failed"
+check_stale() {
+  set -e; CHK2="$W/check-stale"; plant_copy "$CHK2"
   printf '\n<!-- drifted -->\n' >> "$CHK2/.github/copilot-instructions.md"
-  stale_out="$("$ROOT/install.sh" github-copilot --check --project-dir "$CHK2" 2>&1)" || true
-  grep -q "STALE" <<<"$stale_out" \
-      || fail "a drifted view is no longer reported as STALE: $stale_out"
-  grep -q "could not regenerate" <<<"$stale_out" \
-      && fail "a drifted view was reported as a broken generator: $stale_out"
-  echo "  --check tells a broken generator from a drifted view, and shows the cause — OK"
+  out="$("$ROOT/install.sh" github-copilot --check --project-dir "$CHK2" 2>&1)" || true
+  grep -q "STALE" <<<"$out" || fail "a drifted view is no longer reported as STALE: $out"
+  grep -q "could not regenerate" <<<"$out" \
+      && fail "a drifted view was reported as a broken generator: $out"
+  return 0
+}
+check_backups() {  # the installer's own backups are not drift
+  set -e; B="$W/check-baks"; plant_copy "$B"
+  victim="$(find "$B/.github/prompts" -name '*.prompt.md' | head -1)"
+  [[ -n "$victim" ]] || fail "no generated prompt to edit"
+  printf '\n<!-- edited by hand -->\n' >> "$victim"
+  "$ROOT/install.sh" github-copilot --project-dir "$B" --force >/dev/null 2>&1 \
+      || fail "the regenerating re-install failed"
+  n="$(find "$B/.github" -name '*.bak-*' | wc -l | tr -d ' ')"
+  [[ "$n" -ge 1 ]] || fail "the re-install left no backup under .github/, so this case asserts nothing"
+  out="$("$ROOT/install.sh" github-copilot --check --project-dir "$B" 2>&1)" && rc=0 || rc=$?
+  [[ $rc -eq 0 ]] || fail "--check must exit 0 over its own backups; got $rc: $out"
+  grep -q "up to date" <<<"$out" || fail "--check reported drift over backups it wrote itself: $out"
+}
+case_check() {
+  tmpw; export PLANT_CACHE="$W/cache"
+  source "$ROOT/tests/helpers/plant.sh"; source "$ROOT/tests/helpers/lintcase.sh"
+  plant_base github-copilot || fail "--check setup install failed"
+  collect_case case_check_broken  check_broken  "--check names a broken generator and its cause"
+  collect_case case_check_stale   check_stale   "--check reports a drifted view as STALE"
+  collect_case case_check_backups check_backups "--check ignores the installer's own backups"
+  return "$CASE_FAILED"
 }
 
-case_migration_date() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  # install.sh stamps backups and ledger rows in LOCAL time (see bak_path()'s
-  # "Local time throughout"). Pin TZ for this whole case so the installer's
-  # local time and this case's own `date` calls read the same clock —
-  # independent of the host's zone and of where local midnight falls in it.
-  # This only affects this case's own bash process (see the __case dispatch
-  # above), not sibling cases running concurrently.
-  export TZ=UTC
-  # A ledger row states when the replacement HAPPENED, not when the row was
-  # written. The orphan sweep re-files backups taken on runs long past, and
-  # stamping those with the sweep's own date makes recoverable history
-  # unrecoverable — a false claim put in front of the librarian by the same
-  # mechanism the sweep's own suffix guard exists to stop, with the true value
-  # sitting in the filename the guard already matched.
+case_migration_date() {  # a re-filed orphan row carries the backup's date, not the sweep's
+  tmpw; export TZ=UTC   # install.sh stamps in local time; pin it to this case's clock
   D="$W/migdate"; mkdir -p "$D"
   printf '# Our team rules\n\nAlways rebase, never merge.\n' >"$D/AGENTS.md"
   "$ROOT/install.sh" claude-code --project-dir "$D" >/dev/null 2>&1 \
       || fail "migration-date setup install failed"
   NOTE="$D/docs/graph/plans/adopted-instructions.md"
   [[ -f "$NOTE" ]] || fail "migration-date: setup produced no migration note"
-  # An orphaned backup from a run long past: on disk, with no ledger row.
-  OLD="AGENTS.md.bak-20240102-030405"
+  OLD="AGENTS.md.bak-20240102-030405"     # an orphaned backup: on disk, no ledger row
   printf '# Rules from a much earlier run\n' >"$D/$OLD"
   "$ROOT/install.sh" opencode --project-dir "$D" >/dev/null 2>&1 \
       || fail "migration-date: the sweeping re-install failed"
   row="$(grep -F "$OLD" "$NOTE" || true)"
   [[ -n "$row" ]] || fail "migration-date: the orphaned backup was never re-filed"
   grep -qF "on 2024-01-02" <<<"$row" \
-      || fail "migration-date: the row must carry the backup's own date, not the \
-sweep's. Got: $row"
+      || fail "migration-date: the row must carry the backup's own date, not the sweep's. Got: $row"
   SWEEP_DAY="$(date +%Y-%m-%d)"
   grep -qF "$SWEEP_DAY" <<<"$row" \
-      && fail "migration-date: the re-filed row was stamped with this run's date \
-($SWEEP_DAY), which is the false claim. Got: $row"
-  # ...and a LIVE replacement still records the day it happened, which is
-  # today. Read "today" once right before AND once right after the install
-  # call: same clock as the installer (the TZ pin above), so a midnight
-  # rollover landing between the two `date` calls still passes — either day
-  # is the honest one.
-  F="$W/migdate-live"; mkdir -p "$F"
-  printf '# Our team rules\n' >"$F/AGENTS.md"
-  BEFORE_LIVE="$(date +%Y-%m-%d)"
-  "$ROOT/install.sh" claude-code --project-dir "$F" >/dev/null 2>&1 \
-      || fail "migration-date: live-replacement install failed"
-  AFTER_LIVE="$(date +%Y-%m-%d)"
-  LIVE_NOTE="$F/docs/graph/plans/adopted-instructions.md"
-  { grep -qF "on $BEFORE_LIVE" "$LIVE_NOTE" || grep -qF "on $AFTER_LIVE" "$LIVE_NOTE"; } \
-      || fail "migration-date: a replacement made now must be dated now \
-(expected $BEFORE_LIVE or $AFTER_LIVE). Got: $(grep -F 'on ' "$LIVE_NOTE" || true)"
-  echo "  a re-filed migration row carries the backup's date, not the sweep's — OK"
+      && fail "migration-date: the re-filed row was stamped with this run's date ($SWEEP_DAY). Got: $row"
+  ok "a re-filed migration row carries the backup's date, not the sweep's"
 }
 
-case_check_backups() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  # A drift check compares what a run would generate against what is on disk,
-  # so everything on disk the run does not generate has to be excluded — the
-  # installer's own backups included. Without that, a target reads STALE from
-  # its second install onward whatever the views say, and no re-run clears it.
-  B="$W/check-baks"; mkdir -p "$B"
-  "$ROOT/install.sh" github-copilot --project-dir "$B" >/dev/null 2>&1 \
-      || fail "--check backup-case setup failed"
-  victim="$(find "$B/.github/prompts" -name '*.prompt.md' | head -1)"
-  [[ -n "$victim" ]] || fail "--check backup case: no generated prompt to edit"
-  printf '\n<!-- edited by hand -->\n' >> "$victim"
-  "$ROOT/install.sh" github-copilot --project-dir "$B" --force >/dev/null 2>&1 \
-      || fail "--check backup case: the regenerating re-install failed"
-  n="$(find "$B/.github" -name '*.bak-*' | wc -l | tr -d ' ')"
-  [[ "$n" -ge 1 ]] || fail "--check backup case: the re-install left no backup \
-under .github/, so this case is asserting nothing"
-  out="$("$ROOT/install.sh" github-copilot --check --project-dir "$B" 2>&1)" && rc=0 || rc=$?
-  [[ $rc -eq 0 ]] || fail "--check must exit 0 over its own backups; got $rc: $out"
-  grep -q "up to date" <<<"$out" \
-      || fail "--check reported drift over backups it wrote itself: $out"
-  echo "  --check ignores the backups the installer itself leaves behind — OK"
-}
-
-caseCHECK_WITHOUT_COPILOT_SAYS_SO() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  # D3 CHECK_WITHOUT_COPILOT_SAYS_SO (SPEC-0001, ADR-0009): `--check` verifies the
-  # github-copilot generated views, and `all` no longer expands to that host. A
-  # CI job running `install.sh all --check` on a target whose record does NOT
-  # carry github-copilot must be told it checked nothing, not handed a silent
-  # exit 0 that reads as "in sync". The Given is narrowed on purpose: a target
-  # whose .cypress/seed.json records github-copilot is checked, and exit 0 is
-  # not blessed there (ALL_CHECK_INCLUDES_RECORDED_COPILOT, below).
-  # (1) no record at all.
-  E="$W/check-no-copilot"; mkdir -p "$E"
+caseCHECK_WITHOUT_COPILOT_SAYS_SO() {  # D3: silence would read as "in sync" in CI
+  tmpw
+  E="$W/check-no-copilot"; mkdir -p "$E"             # (1) no record at all
   out="$("$ROOT/install.sh" all --check --project-dir "$E" 2>&1)" && rc=0 || rc=$?
-  [[ $rc -eq 0 ]] \
-      || fail "CHECK_WITHOUT_COPILOT_SAYS_SO: all --check must exit 0 when no generated views are in scope; got $rc: $out"
-  grep -qi 'no generated views' <<<"$out" \
-      || fail "CHECK_WITHOUT_COPILOT_SAYS_SO: all --check did not say that no generated views are in scope — silence is the failure: $out"
-  # (2) a record that carries a frozen host, but not github-copilot.
-  F="$W/check-codex-only"; mkdir -p "$F"
-  "$ROOT/install.sh" all codex --project-dir "$F" >/dev/null 2>&1 \
-      || fail "CHECK_WITHOUT_COPILOT_SAYS_SO: setup — install.sh all codex failed"
+  [[ $rc -eq 0 ]] || fail "D3: all --check with no generated views in scope must exit 0; got $rc: $out"
+  grep -qi 'no generated views' <<<"$out" || fail "D3: all --check did not say no generated views are in scope: $out"
+  F="$W/check-codex-only"; mkdir -p "$F"             # (2) a record without github-copilot
+  "$ROOT/install.sh" all codex --project-dir "$F" >/dev/null 2>&1 || fail "D3: setup install.sh all codex failed"
   grep -q 'github-copilot' "$F/.cypress/seed.json" \
-      && fail "CHECK_WITHOUT_COPILOT_SAYS_SO: setup — the record carries github-copilot, so this arm asserts nothing"
+      && fail "D3: setup record carries github-copilot, so this arm asserts nothing"
   out="$("$ROOT/install.sh" all --check --project-dir "$F" 2>&1)" && rc=0 || rc=$?
-  [[ $rc -eq 0 ]] \
-      || fail "CHECK_WITHOUT_COPILOT_SAYS_SO: all --check on a plant recording codex but not github-copilot must exit 0; got $rc: $out"
+  [[ $rc -eq 0 ]] || fail "D3: all --check on a codex-only plant must exit 0; got $rc: $out"
   grep -qi 'no generated views' <<<"$out" \
-      || fail "CHECK_WITHOUT_COPILOT_SAYS_SO: all --check on a plant without github-copilot in its record did not say that no generated views are in scope: $out"
-  echo "  CHECK_WITHOUT_COPILOT_SAYS_SO: all --check without github-copilot recorded says no generated views are in scope — OK"
+      || fail "D3: all --check on a plant without github-copilot recorded did not say no generated views are in scope: $out"
+  ok "CHECK_WITHOUT_COPILOT_SAYS_SO: all --check without github-copilot recorded says so"
 }
 
-caseALL_CHECK_INCLUDES_RECORDED_COPILOT() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  # D4 ALL_CHECK_INCLUDES_RECORDED_COPILOT (SPEC-0001, ADR-0009, review F1): when
-  # the plant's .cypress/seed.json records github-copilot, `all --check` checks
-  # its generated views. Checking is read-only, so it is not a new feature on a
-  # frozen host, and a CI job that ran `all --check` before 7.27.0 keeps exiting
-  # non-zero on drift. Before this contract, `all --check` exited 0 ("no
-  # generated views are in scope") while `github-copilot --check` on the same
-  # drifted plant exited 1: a real check hidden behind a green.
-  P="$W/copilot-plant"; mkdir -p "$P"
+caseALL_CHECK_INCLUDES_RECORDED_COPILOT() {  # D4: a recorded Copilot host is checked by `all --check`
+  tmpw; P="$W/copilot-plant"; mkdir -p "$P"
   "$ROOT/install.sh" all github-copilot --project-dir "$P" >/dev/null 2>&1 \
-      || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: setup — install.sh all github-copilot failed"
-  grep -q 'github-copilot' "$P/.cypress/seed.json" \
-      || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: setup — the record does not carry github-copilot"
-  # (1) In sync: the check ran and says so, and it is not the out-of-scope notice.
-  out="$("$ROOT/install.sh" all --check --project-dir "$P" 2>"$W/err")" && rc=0 || rc=$?
-  err="$(cat "$W/err")"; out="$out"$'\n'"$err"
-  [[ $rc -eq 0 ]] \
-      || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check on an in-sync Copilot-recording plant must exit 0; got $rc: $out"
-  # SPEC-0001 says the DEPRECATED notice fires once for this run (review m2):
-  # exactly one such line on stderr, not zero and not one per pass over the host.
-  n="$(grep -c 'DEPRECATED' <<<"$err" || true)"
-  [[ "$n" -eq 1 ]] \
-      || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check on an in-sync plant printed $n DEPRECATED lines on stderr; the contract says the notice fires once: $err"
-  grep -qi 'no generated views' <<<"$out" \
-      && fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check said no generated views are in scope on a plant that records github-copilot — the Copilot views were not checked: $out"
-  grep -q 'Copilot views up to date' <<<"$out" \
-      || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check on an in-sync Copilot-recording plant did not report the views as checked and up to date: $out"
-  # The host IS checked, so the "not refreshed ... Refresh them with: install.sh
-  # all github-copilot" warning (which names a writing command) must not fire.
-  grep -qi 'not refreshed' <<<"$out" \
-      && fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check printed the not-refreshed warning for github-copilot, which it checks, and advised a writing command under --check: $out"
-  # (2) Drifted: the same exit a github-copilot --check gives, and the drift named.
-  victim="$(find "$P/.github/agents" -name '*.agent.md' | head -1)"
-  [[ -n "$victim" ]] || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: setup — no .github/agents view to drift"
+      || fail "D4: setup install.sh all github-copilot failed"
+  grep -q 'github-copilot' "$P/.cypress/seed.json" || fail "D4: setup record does not carry github-copilot"
+  out="$("$ROOT/install.sh" all --check --project-dir "$P" 2>&1)" && rc=0 || rc=$?      # (1) in sync
+  [[ $rc -eq 0 ]] || fail "D4: all --check on an in-sync Copilot plant must exit 0; got $rc: $out"
+  grep -qi 'no generated views' <<<"$out" && fail "D4: the recorded Copilot views were not checked: $out"
+  grep -q 'Copilot views up to date' <<<"$out" || fail "D4: in-sync views not reported as up to date: $out"
+  grep -qi 'not refreshed' <<<"$out" && fail "D4: the not-refreshed warning fired for a host it checks: $out"
+  victim="$(find "$P/.github/agents" -name '*.agent.md' | head -1)"                        # (2) drifted
+  [[ -n "$victim" ]] || fail "D4: setup has no .github/agents view to drift"
   printf '\n<!-- drifted by hand -->\n' >> "$victim"
   own="$("$ROOT/install.sh" github-copilot --check --project-dir "$P" 2>&1)" && own_rc=0 || own_rc=$?
-  [[ $own_rc -ne 0 ]] \
-      || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: setup — github-copilot --check does not see the drift, so this arm asserts nothing: $own"
-  out="$("$ROOT/install.sh" all --check --project-dir "$P" 2>"$W/err")" && rc=0 || rc=$?
-  err="$(cat "$W/err")"; out="$out"$'\n'"$err"
-  [[ $rc -ne 0 ]] \
-      || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check exited 0 on a drifted Copilot-recording plant (github-copilot --check exits $own_rc): $out"
-  # SPEC-0001 says the DEPRECATED notice fires once for this run (review m2):
-  # exactly one such line on stderr, not zero and not one per pass over the host.
-  n="$(grep -c 'DEPRECATED' <<<"$err" || true)"
-  [[ "$n" -eq 1 ]] \
-      || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check on a drifted plant printed $n DEPRECATED lines on stderr; the contract says the notice fires once: $err"
-  grep -q 'STALE' <<<"$out" \
-      || fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check failed on a drifted plant without naming the drift (STALE): $out"
-  grep -qi 'not refreshed' <<<"$out" \
-      && fail "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check printed the not-refreshed warning on a drifted plant it checks: $out"
-  echo "  ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check checks the Copilot views a plant records, and drift exits non-zero — OK"
+  [[ $own_rc -ne 0 ]] || fail "D4: setup github-copilot --check does not see the drift: $own"
+  out="$("$ROOT/install.sh" all --check --project-dir "$P" 2>&1)" && rc=0 || rc=$?
+  [[ $rc -ne 0 ]] || fail "D4: all --check exited 0 on a drifted Copilot plant (github-copilot --check exits $own_rc): $out"
+  grep -q 'STALE' <<<"$out" || fail "D4: all --check failed on a drifted plant without naming the drift (STALE): $out"
+  grep -qi 'not refreshed' <<<"$out" && fail "D4: the not-refreshed warning fired on a drifted plant it checks: $out"
+  ok "ALL_CHECK_INCLUDES_RECORDED_COPILOT: all --check checks recorded Copilot views, drift exits non-zero"
 }
 
-case_stray_prompt() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  # An installer that generates a directory owns the files it wrote and nothing
-  # else. A leftover from a generator that no longer runs is not its to delete
-  # — deleting by inference destroys work somebody meant to keep — but leaving
-  # it unmentioned lets a stale command surface go on being offered as current.
-  S="$W/stray"; mkdir -p "$S/.github/prompts"
-  printf -- '---\nmode: %s\n---\n\nbody\n' "'agent'" \
-      >"$S/.github/prompts/retired-command.prompt.md"
-  out="$("$ROOT/install.sh" github-copilot --project-dir "$S" 2>&1)" \
-      || fail "stray-prompt install failed"
+case_stray_prompt() {  # a leftover prompt is named, never deleted by inference
+  tmpw; S="$W/stray"; mkdir -p "$S/.github/prompts"
+  printf -- '---\nmode: %s\n---\n\nbody\n' "'agent'" >"$S/.github/prompts/retired-command.prompt.md"
+  out="$("$ROOT/install.sh" github-copilot --project-dir "$S" 2>&1)" || fail "stray-prompt install failed"
   [[ -f "$S/.github/prompts/retired-command.prompt.md" ]] \
-      || fail "the installer DELETED a prompt it did not write — it may only name it"
+      || fail "the installer DELETED a prompt it did not write; it may only name it"
   grep -qF "retired-command.prompt.md" <<<"$out" \
       || fail "a prompt this run did not generate must be named in the output: $out"
-  # ...and a prompt this run DID generate is never named as a leftover.
-  live="$(basename "$(find "$S/.github/prompts" -name '*.prompt.md' \
-         -not -name 'retired-command.prompt.md' | head -1)")"
+  live="$(basename "$(find "$S/.github/prompts" -name '*.prompt.md' -not -name 'retired-command.prompt.md' | head -1)")"
   [[ -n "$live" ]] || fail "stray-prompt: the run generated no prompts at all"
-  out2="$("$ROOT/install.sh" github-copilot --project-dir "$S" 2>&1)" \
-      || fail "stray-prompt re-install failed"
+  out2="$("$ROOT/install.sh" github-copilot --project-dir "$S" 2>&1)" || fail "stray-prompt re-install failed"
   grep -E "not generated by this seed" <<<"$out2" | grep -qF "$live" \
       && fail "a prompt this run generated was reported as a leftover: $out2"
-  echo "  a prompt the run did not generate is named and left in place — OK"
+  ok "a prompt the run did not generate is named and left in place"
 }
 
-case_hook_order() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
+case_hook_order() {  # VS Code reads both .github/hooks and .claude/settings.json
+  tmpw
   for order in "github-copilot claude-code" "claude-code github-copilot"; do
       H="$W/hookorder-$(echo "$order" | tr ' ' '-')"; mkdir -p "$H"
       for tool in $order; do
-          "$ROOT/install.sh" "$tool" --project-dir "$H" >/dev/null 2>&1 \
-              || fail "hook-order setup: install $tool failed"
+          "$ROOT/install.sh" "$tool" --project-dir "$H" >/dev/null 2>&1 || fail "hook-order setup: install $tool failed"
       done
       live=0
       for f in route-hook.py route.json status-hook.py status.json; do
           [[ -e "$H/.github/hooks/$f" ]] && live=$((live + 1))
       done
-      [[ -f "$H/.claude/settings.json" ]] \
-          || fail "hook-order [$order]: .claude/settings.json is missing"
-      [[ $live -eq 0 ]] || fail "hook-order [$order]: $live .github/hooks/ file(s) \
-  are still wired alongside .claude/settings.json — VS Code reads both, so every \
-  hook fires twice. The guard only held in one direction."
+      [[ -f "$H/.claude/settings.json" ]] || fail "hook-order [$order]: .claude/settings.json is missing"
+      [[ $live -eq 0 ]] || fail "hook-order [$order]: $live .github/hooks/ file(s) still wired alongside \
+.claude/settings.json, so every hook fires twice"
   done
+  ok "the Copilot/Claude-Code hook guard holds in both install orders"
 }
 
 case_hook_retire() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  HR="$W/hookorder-retire"; mkdir -p "$HR"
+  tmpw; HR="$W/hookorder-retire"; mkdir -p "$HR"
   "$ROOT/install.sh" github-copilot --project-dir "$HR" >/dev/null 2>&1 || fail "retire setup failed"
   printf '\n# PLANT-EDIT\n' >> "$HR/.github/hooks/route-hook.py"
-  retire_log="$("$ROOT/install.sh" claude-code --project-dir "$HR" 2>&1)" \
-      || fail "retire install failed"
-  grep -q "retired .github/hooks/route-hook.py" <<<"$retire_log" \
-      || fail "the retirement was not announced: a plant loses a file it may have \
-  edited and is told nothing"
-  found=0
-  for bak in "$HR/.github/hooks/route-hook.py".bak-*; do
-      [[ -e "$bak" ]] || continue
-      grep -q "PLANT-EDIT" "$bak" 2>/dev/null && { found=1; break; }
-  done
-  [[ $found -eq 1 ]] || fail "a retired hook carrying a plant edit is not recoverable"
-  echo "  the Copilot/Claude-Code hook guard holds in both install orders — OK"
+  log="$("$ROOT/install.sh" claude-code --project-dir "$HR" 2>&1)" || fail "retire install failed"
+  grep -q "retired .github/hooks/route-hook.py" <<<"$log" || fail "the hook retirement was not announced"
+  grep -lq "PLANT-EDIT" "$HR/.github/hooks/route-hook.py".bak-* 2>/dev/null \
+      || fail "a retired hook carrying a plant edit is not recoverable"
+  ok "a retired Copilot hook is announced and its plant edit recoverable"
 }
 
-case_nostamp() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  NOSTAMP="$W/nostamp"; mkdir -p "$NOSTAMP"
-  "$ROOT/install.sh" claude-code --project-dir "$NOSTAMP" >/dev/null 2>&1 \
-      || fail "no-stamp setup install failed"
-  rm -f "$NOSTAMP/.cypress/seed.json"
-  rm -f "$NOSTAMP/docs/graph/protocols/grill.md"
-  nostamp_log="$("$ROOT/install.sh" claude-code --project-dir "$NOSTAMP" 2>&1)" \
-      || fail "install over a stamp-less plant failed"
-  grep -qi "RE-CREATED" <<<"$nostamp_log" \
-      || fail "a node was restored into an existing plant with no notice, because \
-  the plant's RECORD was missing. Absence of the record is not absence of the plant."
-  grep -q "no .cypress/seed.json" <<<"$nostamp_log" \
-      || fail "the missing record was not announced; the owner decisions it held \
-  cannot be recovered from disk and the owner has to be told"
-  [[ -f "$NOSTAMP/docs/graph/protocols/grill.md" ]] \
-      || fail "the missing node was not restored"
+case_nostamp() {  # absence of the record is not absence of the plant
+  tmpw; NS="$W/nostamp"; mkdir -p "$NS"
+  "$ROOT/install.sh" claude-code --project-dir "$NS" >/dev/null 2>&1 || fail "no-stamp setup install failed"
+  rm -f "$NS/.cypress/seed.json" "$NS/docs/graph/protocols/grill.md"
+  log="$("$ROOT/install.sh" claude-code --project-dir "$NS" 2>&1)" || fail "install over a stamp-less plant failed"
+  grep -qi "RE-CREATED" <<<"$log" || fail "a node was restored into a stamp-less plant with no notice"
+  grep -q "no .cypress/seed.json" <<<"$log" || fail "the missing record was not announced"
+  [[ -f "$NS/docs/graph/protocols/grill.md" ]] || fail "the missing node was not restored"
+  ok "a plant whose .cypress/seed.json is missing is still treated as a plant"
 }
 
 case_freshquiet() {
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  FRESH="$W/freshquiet"; mkdir -p "$FRESH"
-  fresh_log="$("$ROOT/install.sh" claude-code --project-dir "$FRESH" 2>&1)" \
-      || fail "fresh install failed"
-  grep -qi "RE-CREATED" <<<"$fresh_log" \
-      && fail "a FIRST install announced re-created nodes: $fresh_log"
-  grep -q "no .cypress/seed.json" <<<"$fresh_log" \
-      && fail "a first install warned about a missing record it was about to write"
-  echo "  a plant whose .cypress/seed.json is missing is still treated as a plant — OK"
+  tmpw; FRESH="$W/freshquiet"; mkdir -p "$FRESH"
+  log="$("$ROOT/install.sh" claude-code --project-dir "$FRESH" 2>&1)" || fail "fresh install failed"
+  grep -qi "RE-CREATED" <<<"$log" && fail "a FIRST install announced re-created nodes: $log"
+  grep -q "no .cypress/seed.json" <<<"$log" && fail "a first install warned about a missing record it was about to write"
+  ok "a first install announces no re-creation and no missing record"
 }
 
-# D5 asserts SPEC-0001 RECREATED_LIST_IS_COMPLETE (7.32.0): the console notice
-# stops at ten paths, so the whole list of re-created nodes is written to
-# .cypress/recreated-nodes.txt by every run that writes the stamp, under the
-# header line SPEC-0001 §6 gives, and a run that re-creates nothing leaves the
-# header alone.
-D5_HEADER_RE='^# install\.sh [^ ]+ [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z: seed-owned graph nodes re-created by this run$'
-d5_version() {
-  sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$ROOT/manifest.json" | head -1
-}
-d5_assert_header() {  # $1=label $2=first line of the list file
-  grep -Eq "$D5_HEADER_RE" <<<"$2" \
-      || fail "$1: the first line of .cypress/recreated-nodes.txt is not the SPEC-0001 §6 header: $2"
-  [[ "$(cut -d' ' -f3 <<<"$2")" == "$(d5_version)" ]] \
-      || fail "$1: the header does not name the seed version $(d5_version): $2"
+# D5 RECREATED_LIST_IS_COMPLETE: the console stops at ten paths, so the whole
+# list goes to .cypress/recreated-nodes.txt under the SPEC-0001 §6 header.
+d5_assert_header() {  # $1=label $2=first line of the list file; checked by prefix
+  local v; v="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$ROOT/manifest.json" | head -1)"
+  [[ "$2" == "# install.sh $v "* ]] \
+      || fail "$1: the first line of .cypress/recreated-nodes.txt is not the §6 header for $v: $2"
 }
 
-case_d5_recreated_list() {
-  # One plant serves the three D5 checks: the first install, a run that
-  # re-creates twelve nodes, then a run that re-creates nothing. Each check runs in its own subshell, so a
-  # failed first check does not hide the second; the case fails at its end.
-  W="$(mktemp -d)"
-  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
-  T="$W/d5-twelve"; mkdir -p "$T"
-  "$ROOT/install.sh" claude-code --project-dir "$T" --copy >/dev/null 2>&1 \
-      || fail "D5: baseline install failed"
+case_d5_recreated_list() {  # one plant, three checks, each in a subshell so one red hides no other
+  tmpw; T="$W/d5-twelve"; mkdir -p "$T"
+  "$ROOT/install.sh" claude-code --project-dir "$T" --copy >/dev/null 2>&1 || fail "D5: baseline install failed"
   list="$T/.cypress/recreated-nodes.txt"
   local bad=0
-  (
-    # D5 case_d5_fresh_list: a first install places every node, and none of
-    # them is re-created (the plant carried no stamp before the run), so the
-    # file that describes this run holds the header alone.
+  (   # D5 case_d5_fresh_list: a first install lists the header alone
     [[ -f "$list" ]] || fail "D5 (fresh): a first install wrote no .cypress/recreated-nodes.txt"
     [[ "$(wc -l < "$list" | tr -d ' ')" -eq 1 ]] \
         || fail "D5 (fresh): a first install listed nodes as re-created: $(head -4 "$list" | tr '\n' ' ')"
@@ -663,30 +330,22 @@ case_d5_recreated_list() {
   [[ ${#deleted[@]} -eq 12 ]] || fail "D5: could not find 12 seed-owned protocol nodes to delete"
   for rel in "${deleted[@]}"; do rm -f "$T/$rel"; done
   (
-    rc=0
-    out="$("$ROOT/install.sh" claude-code --project-dir "$T" --copy 2>&1)" || rc=$?
-    [[ $rc -eq 0 ]] || fail "D5: re-install after deleting twelve nodes did not exit 0: $out"
+    out="$("$ROOT/install.sh" claude-code --project-dir "$T" --copy 2>&1)" \
+        || fail "D5: re-install after deleting twelve nodes did not exit 0: $out"
     [[ -f "$list" ]] || fail "D5: .cypress/recreated-nodes.txt is absent after a run that re-created twelve nodes"
     d5_assert_header "D5" "$(head -1 "$list")"
-    want="$(printf '%s\n' "${deleted[@]}" | sort -u)"
     got="$(tail -n +2 "$list")"
-    [[ "$got" == "$want" ]] \
+    [[ "$got" == "$(printf '%s\n' "${deleted[@]}" | sort -u)" ]] \
         || fail "D5: the list file does not hold exactly the twelve re-created paths, sorted and unique. Got: $got"
-    shown=0
-    plain="$(sed 's/^\[seed\] //' <<<"$out")"   # the installer's log prefix
-    for rel in "${deleted[@]}"; do
-        grep -qxF "  $rel" <<<"$plain" && shown=$((shown + 1))
-    done
+    shown=0; plain="$(sed 's/^\[seed\] //' <<<"$out")"   # strip the installer's log prefix
+    for rel in "${deleted[@]}"; do grep -qxF "  $rel" <<<"$plain" && shown=$((shown + 1)); done
     [[ $shown -eq 10 ]] || fail "D5: the console notice printed $shown of the twelve paths, expected ten"
     grep -qF ".cypress/recreated-nodes.txt" <<<"$out" \
-        || fail "D5: the console notice does not name .cypress/recreated-nodes.txt, the file that holds the whole list"
-    ok "D5: twelve re-created nodes are all in .cypress/recreated-nodes.txt; the console shows ten and names the file"
+        || fail "D5: the console notice does not name .cypress/recreated-nodes.txt"
+    ok "D5: twelve re-created nodes are all in the list file; the console shows ten and names the file"
   ) || bad=1
-  (
-    # D5 case_d5_clean_rewrite: the run above re-created twelve nodes; a run
-    # that re-creates nothing rewrites the file with the header alone.
-    "$ROOT/install.sh" claude-code --project-dir "$T" --copy >/dev/null 2>&1 \
-        || fail "D5 (clean): the clean re-install failed"
+  (   # D5 case_d5_clean_rewrite: a run that re-creates nothing leaves the header alone
+    "$ROOT/install.sh" claude-code --project-dir "$T" --copy >/dev/null 2>&1 || fail "D5 (clean): the clean re-install failed"
     [[ -f "$list" ]] || fail "D5 (clean): a clean re-install removed .cypress/recreated-nodes.txt"
     [[ "$(wc -l < "$list" | tr -d ' ')" -eq 1 ]] \
         || fail "D5 (clean): a re-install that re-created nothing left more than the header: $(cat "$list")"
@@ -696,21 +355,15 @@ case_d5_recreated_list() {
   return "$bad"
 }
 
-# --- one-case subcommand, run by the parallel dispatcher ---------------------
-if [ "${1:-}" = "__case" ]; then
-  "$2"
-  exit $?
-fi
+if [ "${1:-}" = "__case" ]; then "$2"; exit $?; fi
 
-# --- main: dispatch every independent scenario in parallel -------------------
 export ROOT
 SCN="$(mktemp)"
-for c in case_agents case_claude case_both case_index case_d1_file case_d1_ro case_d2 case_idem case_block_declared case_block_deep case_block_readonly case_unrelated_trees case_adopted case_adapter_dirs case_check_broken case_check_stale case_migration_date case_check_backups caseCHECK_WITHOUT_COPILOT_SAYS_SO caseALL_CHECK_INCLUDES_RECORDED_COPILOT case_stray_prompt case_hook_order case_hook_retire case_nostamp case_freshquiet case_d5_recreated_list; do
+for c in case_both case_block_declared case_block_deep case_block_readonly case_unrelated_trees case_adopted case_adapter_dirs case_check case_migration_date caseCHECK_WITHOUT_COPILOT_SAYS_SO caseALL_CHECK_INCLUDES_RECORDED_COPILOT case_stray_prompt case_hook_order case_hook_retire case_nostamp case_freshquiet case_d5_recreated_list; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0
 python3 "$ROOT/tests/gate_pool.py" run "$SCN" || rc=$?
 rm -f "$SCN"
-
 [ "$rc" -eq 0 ] || { echo "install-adoption: FAIL — a scenario failed" >&2; exit "$rc"; }
-echo "install-adoption: OK — kernel adoption, plant-owned survival, D1 preflight, D2 announcement, idempotence, --check diagnostics, hook-order guard, stamp-less adoption"
+echo "install-adoption: OK"

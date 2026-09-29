@@ -97,7 +97,7 @@ Flag a test whose **own** setup — not a shared or module-level fixture —
 performs a caller-declared expensive operation: a repository copy, a
 version-control initialization, a full gate or subprocess run. This is the
 setup-cost half of the "one action, many named subcases, shared fixture"
-default (owned by `skills/test-first/SKILL.md` "Keeping the suite lean",
+default (owned by `skills/test-first/SKILL.md` "Proportionate checks",
 linked and not restated here): where that default is a review guideline,
 this lint checks it mechanically, over every test in the suite, every run.
 
@@ -185,7 +185,7 @@ part of the test suite, so "found nothing" can never mean "checked nothing."
   planted-violation discipline that makes any gate trusted; linked, not
   restated).
 - **Doctrine home (linked, not restated):** `skills/test-first/SKILL.md`
-  "Keeping the suite lean" owns the review-level default this lint checks
+  "Proportionate checks" owns the review-level default this lint checks
   mechanically; `protocols/grill.md`'s consolidation-increment step owns the
   planned pass this lint's findings feed into.
 - **Sources:** distilled from harvested plant experience; no reference

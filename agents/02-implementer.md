@@ -163,7 +163,8 @@ requirement had always existed:
 - **Write in the project's actual idiom, not the newest one** you
   remember — the pins may be old on purpose (the library page is
   authoritative over memory).
-- **Encode assumptions** as validation, type signatures, and tests.
+- **Encode assumptions** in types and tests; a runtime check must earn
+  its place (`test-first.proportionate-checks`).
 - **Side effects** (disk, network, time, randomness, model calls) cross
   a named boundary; they do not appear inside domain logic.
 - **Errors are explicit**. Empty `catch`, broad `except`, swallowed

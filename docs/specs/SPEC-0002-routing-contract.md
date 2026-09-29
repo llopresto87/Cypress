@@ -1,6 +1,6 @@
 ---
 status: back-written
-status_date: 2026-09-13
+status_date: 2026-09-29
 owner: data-ml
 status_evidence: tests/test_agent_lint.py (CorpusHonestyTests, CompoundFragmentTests), agents/_routes.golden.tsv, tests/run.sh
 ---
@@ -247,14 +247,6 @@ mistake self-consistency for skill.
   word, which a plural never does, and 32% of the agent roster's vocabulary and
   39% of the node set's was unreachable by its own plural
 
-### Contract: A_STEM_COLLISION_IS_REVIEWED_BEFORE_IT_SHIPS
-- **Given:** two distinct roster words that reduce to one stem
-- **When:** the routers are gated
-- **Then:** the collision must appear in the reviewed fixture, or the gate fails
-- **And:** no mechanical rule separates a true merge (`pin`/`pinned`) from a
-  false one (`rat`/`rating`), so the review is a person and the gate only makes
-  skipping it impossible
-
 ### Contract: A_WORD_EVERY_TASK_WRITES_CANNOT_SELECT_AN_AGENT
 - **Given:** a first- or second-person pronoun in a task or a routing trigger
 - **When:** the task is scored
@@ -345,7 +337,6 @@ ROUTE (ranked, confidence: HIGH)     # the compound itself still routes
 - [x] AC-5: the gate cannot pass vacuously — maps to VACUOUS_CORPUS_IS_REFUSED
 - [x] AC-6: a route does not turn on the tense or number of a word — maps to
       AN_INFLECTION_MATCHES_THE_WORD_IT_INFLECTS,
-      A_STEM_COLLISION_IS_REVIEWED_BEFORE_IT_SHIPS,
       A_WORD_EVERY_TASK_WRITES_CANNOT_SELECT_AN_AGENT
 - [x] AC-7: an absolute limit gates only where it was measured — maps to
       AN_ABSOLUTE_FLOOR_IS_KEYED_TO_ITS_ROSTER
@@ -360,12 +351,10 @@ ROUTE (ranked, confidence: HIGH)     # the compound itself still routes
 | HELD_OUT_STAYS_HELD_OUT | test_a_padded_trigger_copy_cannot_pass_as_held_out | tests/test_agent_lint.py | integration | green |
 | MISLABELLED_PARAPHRASE | test_a_near_copy_may_not_be_labelled_paraphrase | tests/test_agent_lint.py | integration | green |
 | HELD_OUT_SET_MAY_NOT_BE_EMPTIED | test_golden_corpus_is_wellformed_and_covers_the_roster | tests/test_agent_lint.py | integration | green |
-| HELD_OUT_SET_MAY_NOT_BE_EMPTIED | test_a_row_expecting_low_may_not_wear_another_class | tests/test_agent_lint.py | integration | green |
+| HELD_OUT_SET_MAY_NOT_BE_EMPTIED | test_a_padded_trigger_copy_cannot_pass_as_held_out | tests/test_agent_lint.py | integration | green |
 | CONFIDENT_WRONG_IS_THE_GATE | test_a_confident_wrong_route_fails_even_when_the_average_is_fine | tests/test_agent_lint.py | integration | green |
-| THE_ADVERSARIAL_BUDGET_IS_RATCHETED_NOT_ZERO | test_exceeding_the_budget_fails_the_gate | tests/test_agent_lint.py | integration | green |
-| THE_ADVERSARIAL_BUDGET_IS_RATCHETED_NOT_ZERO | test_the_shipped_corpus_sits_under_the_budget | tests/test_agent_lint.py | integration | green |
+| THE_ADVERSARIAL_BUDGET_IS_RATCHETED_NOT_ZERO | test_exceeding_the_budget_fails_the_gate | tests/test_agent_lint.py | integration; the shrink-only clause is held by the ratchet-lint step (`tools/ratchet-lint.py`) | green |
 | NEITHER_HELD_OUT_SET_MAY_BE_THINNED | test_emptying_a_whole_class_is_refused | tests/test_agent_lint.py | integration | green |
-| THE_ADVERSARIAL_BUDGET_IS_RATCHETED_NOT_ZERO | test_the_budget_is_ratcheted_shrink_only | tests/test_agent_lint.py | integration | green |
 | CONFIDENT_MISROUTE | test_a_confident_wrong_route_fails_even_when_the_average_is_fine | tests/test_agent_lint.py | integration | green |
 | ABSTENTION_IS_A_CORRECT_OUTCOME | test_abstention_on_a_held_out_row_is_not_a_failure | tests/test_agent_lint.py | integration | green |
 | CONTRACT_ROW_ABSTENTION_IS_A_DEFECT | (no test — see §11) | — | — | pending |
@@ -374,21 +363,14 @@ ROUTE (ranked, confidence: HIGH)     # the compound itself still routes
 | AN_INFLECTION_MATCHES_THE_WORD_IT_INFLECTS | test_inflection_does_not_change_the_top_pick | tests/test_router_reach.py | integration | green |
 | AN_INFLECTION_MATCHES_THE_WORD_IT_INFLECTS | test_every_roster_word_is_reachable_by_its_plural | tests/test_router_reach.py | integration | green |
 | AN_INFLECTION_MATCHES_THE_WORD_IT_INFLECTS | test_every_load_when_word_is_reachable_by_its_plural | tests/test_router_reach.py | integration | green |
-| A_STEM_COLLISION_IS_REVIEWED_BEFORE_IT_SHIPS | test_agent_roster_collisions_are_reviewed | tests/test_router_reach.py | integration | green |
-| A_STEM_COLLISION_IS_REVIEWED_BEFORE_IT_SHIPS | test_load_when_collisions_are_reviewed | tests/test_router_reach.py | integration | green |
 | A_WORD_EVERY_TASK_WRITES_CANNOT_SELECT_AN_AGENT | (no test — see §11) | — | — | pending |
 | UNKNOWN_DOMAIN_MUST_ABSTAIN | test_the_shipped_unknown_domain_rows_all_abstain | tests/test_agent_lint.py | integration | green |
 | UNKNOWN_DOMAIN_MUST_ABSTAIN | test_a_leaking_unknown_domain_row_fails_the_gate | tests/test_agent_lint.py | integration | green |
 | COMPOUND_FRAGMENT_IS_WEAK_EVIDENCE | test_a_compound_fragment_does_not_earn_a_confident_route | tests/test_agent_lint.py | integration | green |
-| COMPOUND_FRAGMENT_IS_WEAK_EVIDENCE | test_the_compound_itself_still_routes | tests/test_agent_lint.py | integration | green |
-| RARITY_AMPLIFIES_ONLY_A_CONFIDENT_MATCH | test_a_rare_word_matching_only_a_description_does_not_dominate | tests/test_agent_lint.py | integration | green |
 | RARITY_AMPLIFIES_ONLY_A_CONFIDENT_MATCH | test_a_rare_word_in_a_real_trigger_still_dominates | tests/test_agent_lint.py | integration | green |
-| COMPOUND_FRAGMENT_IS_WEAK_EVIDENCE | test_a_de_hyphenated_compound_still_reaches_its_owner | tests/test_agent_lint.py | integration | green |
-| COMPOUND_FRAGMENT_IS_WEAK_EVIDENCE | test_an_invented_compound_earns_nothing | tests/test_agent_lint.py | integration | green |
 | VACUOUS_CORPUS_IS_REFUSED | test_a_corpus_that_asks_for_no_routes_is_vacuous | tests/test_agent_lint.py | integration | green |
 | AN_ABSOLUTE_FLOOR_IS_KEYED_TO_ITS_ROSTER | test_a_grown_roster_reports_the_paraphrase_floor_instead_of_gating_on_it | tests/test_agent_lint.py | integration | green |
 | AN_ABSOLUTE_FLOOR_IS_KEYED_TO_ITS_ROSTER | test_the_measured_roster_still_gates_on_the_paraphrase_floor | tests/test_agent_lint.py | integration | green |
-| AN_ABSOLUTE_FLOOR_IS_KEYED_TO_ITS_ROSTER | test_scoping_the_floor_did_not_move_its_recorded_value | tests/test_agent_lint.py | integration | green |
 
 ## 11. Open questions
 
@@ -454,3 +436,27 @@ so it is not invisible.
 | The bands are not calibrated per specialist | HIGH is cited as evidence in briefs, so it should mean the same thing for every agent | HIGH currently means "best score clears FLOOR and leads the runner-up by 1.5x", which is a property of the scores and not a measured correctness rate | data-ml | a per-specialist calibration run over a corpus large enough to have per-agent rows |
 | The paraphrase floor is met at exactly the router's achievement | `PARAPHRASE_FLOOR` is 4 and the router is confidently correct on 4 of 18 held-out rows, so the floor has zero slack and any regression fails the gate. That is the design ("a floor is what the router achieves"), not a gap — but it also means the floor cannot rise without the router improving, which is the measurement U-34 is for. Derive both halves with `agent-lint.py --eval --dir agents` and `ratchet-lint.py --show`; the comment block above `PARAPHRASE_FLOOR` is the home for the reasoning | Raising it requires improving the router and re-measuring, never editing a row. It moved DOWN once, when a two-way overlap check found a trigger copy in the held-out set, and UP from 2 to 4 when the two rows of slack were found to have no defender | data-ml | Track E measurement (U-34) |
 | This table was once green against a test that did not exist | A spec whose §10 cites a fabricated name is worse than one with an honest gap: it certifies coverage nobody can find | Every row here has been grepped against the suite. Two contracts are honestly `pending`; the rest are a reviewed claim rather than a derived one, and `spec-lint.py --specs docs/specs` now derives the real figure on every gate run | data-ml | re-grep §10 on every spec change |
+
+## 12. Changelog
+
+This section did not exist before 2026-09-29. It was added with the entry
+below, as SPEC-0001's was, so that an amendment is recorded rather than made
+silently. The file carries no version field; `status_date` in the frontmatter
+moves with each entry here.
+
+- 2026-09-29 — test consolidation (`docs/plans/grill-test-consolidation.md`,
+  S2). A_STEM_COLLISION_IS_REVIEWED_BEFORE_IT_SHIPS is retired with its
+  reviewed fixture and its two tests, by the owner's confirmation of the
+  plan's §4 line 53. Nothing replaces the review: a new false stem merge in
+  real vocabulary is no longer gated. §9 AC-6 no longer names it. §10 follows the folds:
+  THE_ADVERSARIAL_BUDGET_IS_RATCHETED_NOT_ZERO keeps
+  `test_exceeding_the_budget_fails_the_gate`, and its shrink-only clause cites
+  the ratchet-lint step; AN_ABSOLUTE_FLOOR_IS_KEYED_TO_ITS_ROSTER drops the
+  value-unchanged row, since ratchet-lint refuses a lowering of
+  `PARAPHRASE_FLOOR`; RARITY_AMPLIFIES_ONLY_A_CONFIDENT_MATCH and
+  COMPOUND_FRAGMENT_IS_WEAK_EVIDENCE each cite the one table test that holds
+  their rows; HELD_OUT_SET_MAY_NOT_BE_EMPTIED's second row cites
+  `test_a_padded_trigger_copy_cannot_pass_as_held_out`, the table that takes
+  in `test_a_row_expecting_low_may_not_wear_another_class`. No router behaviour
+  changed; the status stays `back-written`.
+

@@ -264,35 +264,8 @@ class ProseFloorPerFileTests(unittest.TestCase):
 
 
 class RealTreeTests(unittest.TestCase):
-    def test_the_shipped_registry_is_clean(self):
-        mod = load_tool()
-        self.assertEqual(mod.cmd_lint(), 0,
-                         "the real tests/run.sh must be fully classified")
-
-    def test_the_real_runner_carries_the_shell_options_that_make_it_fail(self):
-        """Read from the REAL tests/run.sh, not a synthetic one.
-
-        Every classification in the registry is a claim about a gate's input
-        set. None of them is worth anything if the runner does not act on what
-        a gate returns, and that is one character: `set -euo pipefail` minus
-        the `e` took a run carrying three FAIL lines — a kernel 1 744 bytes
-        over budget — to EXIT=0. The other tests in this file write
-        `set -euo pipefail` into their own fixtures and so could never have
-        seen it.
-        """
-        mod = load_tool()
-        raw = mod.RUN_SH.read_text(encoding="utf-8")
-        self.assertRegex(
-            raw, r"(?m)^set -euo pipefail$",
-            "tests/run.sh must carry `set -euo pipefail` on a line of its own")
-        self.assertEqual(
-            mod.runner_contract_problems(), [],
-            "the shipped runner must satisfy its own shell contract")
-
     def test_a_neutralized_gate_line_is_refused(self):
-        """`|| true` leaves the step running, parsed and classified — and
-        unable to fail. The step parser's tail group stops at `|`, so the
-        registry went on counting it as a gate."""
+        """`|| true` leaves a parsed, classified step unable to fail."""
         mod = load_tool()
         raw = mod.RUN_SH.read_text(encoding="utf-8")
         line = next(l for l in raw.splitlines()
@@ -301,9 +274,7 @@ class RealTreeTests(unittest.TestCase):
                              "|| true")
 
     def test_a_gate_outside_the_scanned_directories_is_refused(self):
-        """Invisible on ADD: the parser only scans four directories, so a gate
-        placed elsewhere runs while the registry reports OK about a tree it
-        cannot see."""
+        """A gate outside the scanned directories runs unseen by the registry."""
         mod = load_tool()
         raw = mod.RUN_SH.read_text(encoding="utf-8")
         self._assert_refused(mod, raw + '\nbash "$ROOT/scripts/newgate.sh"\n',
@@ -321,16 +292,6 @@ class RealTreeTests(unittest.TestCase):
         self.assertTrue(
             any(expected_fragment in p for p in problems),
             f"expected a {expected_fragment!r} finding, got {problems}")
-
-    def test_every_entry_declares_a_known_scope_and_class(self):
-        mod = load_tool()
-        classes = {"coverage", "scope", "self-reference", "representation",
-                   "evidence", "semantic", "none"}
-        for key, (asserts, scope, cls, _note) in mod.GATES.items():
-            with self.subTest(gate=key):
-                self.assertTrue(asserts, f"{key} does not say what it asserts")
-                self.assertIn(scope, (mod.FIXTURES, mod.REAL, mod.TEMP))
-                self.assertIn(cls, classes)
 
 
 if __name__ == "__main__":

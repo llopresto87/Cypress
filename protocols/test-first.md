@@ -130,13 +130,12 @@ worker, writes grill.md — the plan-of-record is session-owned
    spawn stops here and hands back (`tester.spawn-scope`).
 
 **Inherited suites — prove RED by mutation.** A suite you inherited
-that was authored without test-first, and that is green the moment you
-arrive, is untrusted: you have never watched it fail, so you do not
-yet know it asserts anything. Before you rely on it, do the
-adoption-time analog of RED — deliberately reintroduce in the
-production code the historical defect a test claims to guard against,
-confirm the suite fails for *that specific reason*, then revert. Only
-a green you have seen turn red and back is a trusted green.
+green, authored without test-first, is untrusted: you have never
+watched it fail. Before you rely on a test over high blast-radius code,
+reintroduce in the production code the historical defect it claims to
+guard against, confirm it fails for *that specific reason*, then
+revert. Which code earns this, and when it runs (once per batch), is
+`test-first.proportionate-checks`.
 
 Two corollaries decide whether a mutation result can be read at all.
 First, confirm the mutant actually rebuilt before believing it survived:
@@ -323,7 +322,7 @@ orchestrator so the team can address it directly.
 - **A worker writing grill.md.** §15 is the session's record of what
   it spawned and in what order; a worker that appends to it has
   written the caller's trace. Report in the handback.
-- **Assuming dev-machine green means CI green.** Headless or
-  browser-based tests that pass locally are not guaranteed in CI —
-  minimal build images often lack a browser binary or another
-  runtime the test needs. Verify the CI image actually contains it.
+- **Assuming dev-machine green means automated-run green.** Headless
+  or browser-based tests that pass locally are not guaranteed in an
+  automated run — a minimal environment often lacks a browser binary
+  or another runtime the test needs. Verify that environment has it.

@@ -54,10 +54,11 @@ blast radius have run, with commands and results recorded in
 recorded **absent** with a date — never silently dropped, never faked
 green. A gate that runs but asserts nothing is a **green lie** —
 worse than a missing gate, because it is trusted. A binding rule or
-done-criterion is a control only once it is a mechanically checkable
-predicate wired into a gate and asserting the property itself, not a
-positional proxy for it — a comment, a README warning, or a review habit
-is never a control. After building or adopting the graph, validate the
+done-criterion whose breach has a high blast radius
+(`test-first.proportionate-checks`) is a control only once it is a
+mechanically checkable predicate wired into a gate and asserting the
+property itself, not a positional proxy for it — a comment, a README
+warning, or a review habit is never a control. After building or adopting the graph, validate the
 *knowledge* too (`docs/graph/skills/validate-knowledge.md`). `tester`
 and `reliability` own this rule.
 
@@ -74,9 +75,9 @@ mutation pass per spec), both in
 
 ## The gates
 
-Select the gates that apply to the change. Use the lowest level that
-catches the kind of bug you care about; don't run every gate on every
-change.
+Select the gates that apply to the change, at the lowest level that
+catches the bug. Whether a check exists at all is
+`test-first.proportionate-checks`.
 
 | Gate                 | Catches                                                       |
 |----------------------|---------------------------------------------------------------|
@@ -271,8 +272,8 @@ rule; this section is about what a recorded assertion can have proved.
    ones pass. All checks live behind **one entry point** whose default
    tier runs on a clean checkout with no external runtime; heavier
    tiers are explicit opt-in strict supersets, and a tier whose tooling
-   is missing fails rather than degrading to the tier below. CI is a
-   caller of that entry point, never a second home for the checks.
+   is missing fails rather than degrading to the tier below. Automated
+   runs call that entry point; they are never a second home for checks.
 3. **Record outcomes** in `docs/graph/runbooks/verification.md` under the
    increment heading:
 
@@ -347,8 +348,8 @@ rule; this section is about what a recorded assertion can have proved.
    will never arrive.
 
    Adopting an existing codebase with no test or gate infrastructure is
-   not an excuse to leave the runbook empty: record each standard gate
-   explicitly as `absent (YYYY-MM-DD) — <reason>`. A blank verification
+   not an excuse to leave the runbook empty: record each gate its blast
+   radius calls for as `absent (YYYY-MM-DD) — <reason>`. A blank verification
    runbook is indistinguishable from one nobody checked, so it is not an
    acceptable resting state (the verify rule above).
 
@@ -356,15 +357,16 @@ rule; this section is about what a recorded assertion can have proved.
    something — the green-lie clause of the rule.** A test command with no
    tests, a linter over an empty set, a type check with everything untyped:
    these "pass" and mean nothing. Do not cite a vacuous pass as
-   evidence, and do not wire such a gate into CI. Land the real check
-   first (a test that asserts, a rule that fires); *then* add the gate,
-   in a later increment — never both in the same one. A gate is trusted
-   only once a **planted violation** has turned it red, naming the
-   offender, and the plant's removal has turned it green again; that
-   demonstration is part of the gate's record, and is repeated after any
-   refactor around the assertion — a surviving tautology is worse than a
-   deleted check. A gate later found to have been incapable of failing
-   did not stop working; it never worked, so its greens are retracted
+   evidence, and do not make it a gate. Land the real check first (a
+   test that asserts, a rule that fires); the gate follows in a later
+   increment, by owner decision (`test-first.proportionate-checks`). A
+   gate is trusted only once a **planted violation** has turned it red,
+   naming the offender, and its removal has turned it green again; that
+   demonstration is part of the gate's record. Over high blast-radius
+   code it is repeated, once per batch, after a refactor around the
+   assertion — a surviving tautology is worse than a deleted check. A
+   gate later found to have been incapable of failing did not stop
+   working; it never worked, so its greens are retracted
    rather than superseded. Record beside the gate the window in which
    its verdict meant nothing, so the increments it appeared to authorize
    can be re-read. Repairing the wiring without recording the window
@@ -425,8 +427,6 @@ rule; this section is about what a recorded assertion can have proved.
 
 - "All gates green, but I disabled the flaky one." Either fix the
   flake or document it explicitly; do not silently disable.
-- "Tests pass locally, didn't run them in CI." If the gate isn't in
-  CI, it isn't a gate; it's a hope.
 - "We don't have time for the eval suite this increment." That is the
   signal to merge a smaller increment, not to skip the gate.
 - "The scan came back clean." Clean against what? A probe with a

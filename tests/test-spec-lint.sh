@@ -1,24 +1,36 @@
 #!/usr/bin/env bash
-# spec-lint contract, two passes. COVERAGE: fails on an uncovered live
-# contract, passes when covered, ignores superseded specs, and FAILS (not
-# passes) when contracts exist but zero test files match — the green-lie
-# guard. SHAPE: every spec on disk — duplicate slugs, a §9 criterion mapping
-# to no contract, a signed or live spec missing a §10 row, a live spec
-# nobody signed, an implemented spec with a row still red — each named,
-# with a draft shape-checked but never counted for coverage. Status is read
-# from frontmatter; the template's body "see frontmatter" is not a status.
-# HEADLINE: names every draft it did not coverage-check; a draft whose slugs
-# tests already carry is a promotion WARN (never a FAIL). SLICE: --slice
-# prints one contract's block, its §10 rows and, with --refs, pointers.
+# spec-lint contract. COVERAGE: an uncovered live contract fails, a covered one
+# passes, superseded specs are ignored, and zero matching test files is a
+# green-lie FAIL. SHAPE: duplicate slugs, a §9 criterion mapping to no
+# contract, a signed or live spec missing a §10 row, a live spec nobody signed,
+# an implemented spec with a red row; a draft is shape-checked, never counted
+# for coverage. Status is read from frontmatter. HEADLINE: names every draft it
+# did not coverage-check; a draft whose slugs tests carry is a promotion WARN.
+# SLICE: --slice prints one contract's block, its §10 rows and, with --refs,
+# pointers. ROW CELLS: a §10 row's cell count must match its header.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$ROOT/tests/helpers/lintcase.sh"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
+
+# One harness. run_rc <want> <cmd...> runs cmd, keeps its output in $out and
+# fails unless it exits <want>; has/hasnt take grep flags and a pattern.
+CASE=""
+fail() { echo "FAIL ${CASE:+[$CASE] }$1" >&2; [ -n "${out:-}" ] && echo "$out" >&2; exit 1; }
+run_rc() {
+  local want="$1"; shift
+  out="$("$@" 2>&1)" && rc=0 || rc=$?
+  [[ $rc -eq $want ]] || fail "exit $rc, want $want: $*"
+}
+has() { grep -q "$@" <<<"$out" || fail "output lacks: ${*: -1}"; }
+hasnt() { if grep -q "$@" <<<"$out"; then fail "output holds: ${*: -1}"; fi; }
 
 mkdir -p "$TMP/docs/graph/specs" "$TMP/tests"
 cp "$ROOT/templates/knowledge-graph/spec-lint.py" "$TMP/docs/graph/"
 lint() { python3 "$TMP/docs/graph/spec-lint.py" "$@"; }
+SPECS="$TMP/docs/graph/specs"
 
 # spec NAME STATUS SIGNED(y/n) "SLUG[:rowstatus] ..." [extra-body]
 # Shape-conformant by default: frontmatter status, a body "see frontmatter"
@@ -40,193 +52,156 @@ spec() {
       printf '| %s | test_%s | tests/test_forms.py | unit | %s |\n' "$slug" "$(tr 'A-Z' 'a-z' <<<"$slug")" "$st"
     done
     printf '%s\n' "$extra"
-  } > "$TMP/docs/graph/specs/$name.md"
-}
-expect_fail() {  # $1 = pattern the report must name, $2 = why
-  local out rc
-  out="$(lint 2>&1)" && rc=0 || rc=$?
-  [[ $rc -eq 1 ]] || { echo "expected exit 1 ($2), got $rc" >&2; echo "$out" >&2; exit 1; }
-  grep -q -- "$1" <<<"$out" || { echo "report does not name it ($2): want /$1/" >&2; echo "$out" >&2; exit 1; }
+  } > "$SPECS/$name.md"
 }
 
+# ---- COVERAGE -----------------------------------------------------------------
 spec SPEC-0001-forms active y "SUBMIT_VALID_FORM:green REJECT_BAD_SCHEMA:red"
 spec SPEC-0002-old superseded y "OLD_RETIRED_THING:green"
 printf 'def test_submit():  # SUBMIT_VALID_FORM\n    pass\n' > "$TMP/tests/test_forms.py"
 
 # 1. uncovered live contract -> exit 1, names the slug, not the retired one
-out="$(lint 2>&1)" && rc=0 || rc=$?
-[[ $rc -eq 1 ]] || { echo "expected exit 1 on uncovered contract, got $rc" >&2; exit 1; }
-grep -q 'REJECT_BAD_SCHEMA' <<<"$out" || { echo "uncovered live slug not named" >&2; exit 1; }
-# NOT `! grep` — bash exempts `!`-negated commands from errexit, so a
-# leaked retired slug would have sailed straight past this check.
-if grep -q 'OLD_RETIRED_THING' <<<"$out"; then
-  echo "retired (superseded) contract leaked into the report" >&2; exit 1
-fi
+CASE=1; run_rc 1 lint
+has REJECT_BAD_SCHEMA
+hasnt OLD_RETIRED_THING
 
 # 2. --warn reports but exits 0
-lint --warn >/dev/null
+CASE=2; run_rc 0 lint --warn
 
 # 3. covered -> PASS
 printf 'def test_reject():  # REJECT_BAD_SCHEMA\n    pass\n' >> "$TMP/tests/test_forms.py"
-lint >/dev/null
+CASE=3; run_rc 0 lint
 
 # 4. zero test files with live contracts -> green-lie FAIL
 rm "$TMP/tests/test_forms.py"
-out="$(lint 2>&1)" && rc=0 || rc=$?
-[[ $rc -eq 1 ]] || { echo "expected green-lie exit 1 on zero test files, got $rc" >&2; exit 1; }
-grep -qi 'green lie' <<<"$out"
+CASE=4; run_rc 1 lint
+has -i 'green lie'
 
-# 5. REGRESSION — prefix slugs: alternation is leftmost-first, so PARSE_JSON
-# once stole the match from PARSE_JSON_STRICT; the covered longer slug was
-# reported uncovered while the uncovered shorter one silently earned credit.
+# 5. prefix slugs: the covered PARSE_JSON_STRICT must not credit PARSE_JSON.
 spec SPEC-0003-parse active y "PARSE_JSON:pending PARSE_JSON_STRICT:green"
-rm "$TMP/docs/graph/specs/SPEC-0001-forms.md"
+rm "$SPECS/SPEC-0001-forms.md"
 printf 'def test_strict():  # PARSE_JSON_STRICT\n    pass\n' > "$TMP/tests/test_parse.py"
-out="$(lint 2>&1)" && rc=0 || rc=$?
-[[ $rc -eq 1 ]] || { echo "expected exit 1: PARSE_JSON is uncovered, got $rc" >&2; echo "$out" >&2; exit 1; }
-grep -q -- '- PARSE_JSON ' <<<"$out" || { echo "uncovered PARSE_JSON not named" >&2; echo "$out" >&2; exit 1; }
-if grep -q -- '- PARSE_JSON_STRICT' <<<"$out"; then
-  echo "covered PARSE_JSON_STRICT wrongly reported uncovered (prefix steal)" >&2; echo "$out" >&2; exit 1
-fi
-# 5b. REGRESSION — an UNREGISTERED extension slug must not credit its prefix:
-# a test mentioning only PARSE_JSON_V2 (no such contract) once satisfied
-# PARSE_JSON via bare substring match.
+CASE=5; run_rc 1 lint
+has -- '- PARSE_JSON '
+hasnt -- '- PARSE_JSON_STRICT'
+# 5b. an unregistered extension slug (PARSE_JSON_V2) must not credit its prefix.
 printf 'def test_v2():  # PARSE_JSON_V2\n    pass\n' > "$TMP/tests/test_parse.py"
-out="$(lint 2>&1)" && rc=0 || rc=$?
-[[ $rc -eq 1 ]] || { echo "expected exit 1: no registered slug is covered, got $rc" >&2; echo "$out" >&2; exit 1; }
-grep -q -- '- PARSE_JSON ' <<<"$out" || { echo "PARSE_JSON wrongly credited by PARSE_JSON_V2 substring" >&2; echo "$out" >&2; exit 1; }
-rm "$TMP/docs/graph/specs/SPEC-0003-parse.md" "$TMP/tests/test_parse.py"
+CASE=5b; run_rc 1 lint
+has -- '- PARSE_JSON '
+rm "$SPECS/SPEC-0003-parse.md" "$TMP/tests/test_parse.py"
 
-# 6. REGRESSION — status lives in frontmatter; the template's body line reads
-# "see frontmatter", which the old body-only scan took as status "see" and
-# thereby dropped EVERY template-conformant spec from coverage: a live spec
-# with no test passed. The fixtures above carry both; this one proves the
-# frontmatter is what decides.
+# 6. frontmatter status decides liveness; the body "see frontmatter" is not a
+#    status.
 spec SPEC-0004-front active y "FRONT_ONLY:pending"
 printf 'def test_other():  # NOTHING_HERE\n    pass\n' > "$TMP/tests/test_other.py"
-expect_fail '- FRONT_ONLY ' 'frontmatter status decides liveness'
-rm "$TMP/docs/graph/specs/SPEC-0004-front.md" "$TMP/tests/test_other.py"
+CASE=6; run_rc 1 lint
+has -- '- FRONT_ONLY '
+rm "$SPECS/SPEC-0004-front.md" "$TMP/tests/test_other.py"
 
 # ---- SHAPE ----------------------------------------------------------------
 printf 'def test_a():  # SHAPE_A\n    pass\ndef test_b():  # SHAPE_B\n    pass\n' > "$TMP/tests/test_shape.py"
+DRAFT="$SPECS/SPEC-0005-draft.md"
 
 # 7. a draft nobody signed is shape-checked but owes no §10 rows and no coverage
 spec SPEC-0005-draft draft n "SHAPE_A SHAPE_B"
-python3 - "$TMP/docs/graph/specs/SPEC-0005-draft.md" <<'PY'
+python3 - "$DRAFT" <<'PY'
 import sys, re; p = sys.argv[1]; s = open(p).read()
 s = re.sub(r"## 10\. Test mapping.*", "## 10. Test mapping\n", s, flags=re.S); open(p, "w").write(s)
 PY
-lint >/dev/null || { echo "an unsigned draft must not owe §10 rows" >&2; lint; exit 1; }
+CASE=7; run_rc 0 lint
 
 # 8. ...but a SIGNED draft owes a §10 row per contract (the specify exit condition)
 spec SPEC-0005-draft draft y "SHAPE_A SHAPE_B"
-python3 - "$TMP/docs/graph/specs/SPEC-0005-draft.md" <<'PY'
+python3 - "$DRAFT" <<'PY'
 import sys; p = sys.argv[1]; s = open(p).read()
 open(p, "w").write("\n".join(ln for ln in s.splitlines() if not ln.startswith("| SHAPE_B")) + "\n")
 PY
-expect_fail 'contract SHAPE_B has no §10 test-mapping row (signed' 'signed draft missing a §10 row'
+CASE=8; run_rc 1 lint
+has -- 'contract SHAPE_B has no §10 test-mapping row (signed'
 
 # 9. a live spec nobody signed is a promotion nobody signed
 spec SPEC-0005-draft active n "SHAPE_A SHAPE_B"
-expect_fail 'status active but unsigned by product, architect, tester' 'unsigned promotion'
+CASE=9; run_rc 1 lint
+has -- 'status active but unsigned by product, architect, tester'
 
 # 10. duplicate slug
 spec SPEC-0005-draft draft n "SHAPE_A SHAPE_A"
-expect_fail 'contract SHAPE_A is declared twice' 'duplicate slug'
+CASE=10; run_rc 1 lint
+has -- 'contract SHAPE_A is declared twice'
 
 # 11. §9 maps to a slug the spec does not declare
 spec SPEC-0005-draft draft n "SHAPE_A" $'\n- [ ] AC-9: ghost — maps to SHAPE_GHOST\n'
-python3 - "$TMP/docs/graph/specs/SPEC-0005-draft.md" <<'PY'
+python3 - "$DRAFT" <<'PY'
 import sys; p = sys.argv[1]; s = open(p).read()
 # move the extra AC line into §9 (it was appended after §10)
 extra = "- [ ] AC-9: ghost — maps to SHAPE_GHOST"
 s = s.replace(extra + "\n", "").replace("## 10. Test mapping", extra + "\n\n## 10. Test mapping")
 open(p, "w").write(s)
 PY
-expect_fail '§9 maps to SHAPE_GHOST, which is not a' '§9 dangling slug'
+CASE=11; run_rc 1 lint
+has -- '§9 maps to SHAPE_GHOST, which is not a'
 
 # 12. implemented with a row still red
 spec SPEC-0005-draft implemented y "SHAPE_A:green SHAPE_B:red"
-expect_fail 'implemented, but §10 row SHAPE_B is `red`' 'implemented with red row'
+CASE=12; run_rc 1 lint
+has -- 'implemented, but §10 row SHAPE_B is `red`'
 spec SPEC-0005-draft implemented y "SHAPE_A:green SHAPE_B:green"
-lint >/dev/null
+run_rc 0 lint
 
 # ---- WHAT THE HEADLINE LEAVES OUT ------------------------------------------
-# REGRESSION — a draft is shape-checked only, and the headline used to say so
-# by omission: "PASS — no live contracts to cover (0 live spec(s))" over a
-# spec already in implementation, which a report then quoted as 0 findings.
-# The headline names every spec it did not coverage-check, and a draft whose
-# slugs tests already carry is a WARN: its RED landed, the promotion did not.
-rm -f "$TMP"/docs/graph/specs/*.md "$TMP"/tests/*
+rm -f "$SPECS"/*.md "$TMP"/tests/*
 
-# 14. draft-only tree: the headline names the draft as not coverage-checked
+# 14. headline_names_unchecked_drafts: a draft-only tree names the draft
 spec SPEC-0006-onlydraft draft y "DRAFT_ONLY_THING"
-out="$(lint 2>&1)" && rc=0 || rc=$?
-[[ $rc -eq 0 ]] || { echo "draft-only tree must still pass, got $rc" >&2; echo "$out" >&2; exit 1; }
-grep -q 'not coverage-checked' <<<"$out" && grep -q 'SPEC-0006-onlydraft' <<<"$out" || {
-  echo "headline_names_unchecked_drafts: draft-only headline does not name SPEC-0006-onlydraft as not coverage-checked" >&2
-  echo "$out" >&2; exit 1; }
+CASE=14; run_rc 0 lint
+has 'not coverage-checked'
+has SPEC-0006-onlydraft
 
 # 14b. mixed tree: a covered live spec's PASS headline still names the draft
 spec SPEC-0007-live active y "LIVE_COVERED:green"
 printf 'def test_live():  # LIVE_COVERED\n    pass\n' > "$TMP/tests/test_live.py"
-out="$(lint 2>&1)" && rc=0 || rc=$?
-[[ $rc -eq 0 ]] || { echo "covered live + draft must pass, got $rc" >&2; echo "$out" >&2; exit 1; }
-headline="$(grep '^spec lint: PASS' <<<"$out" || true)"
-grep -q 'not coverage-checked' <<<"$headline" && grep -q 'SPEC-0006-onlydraft' <<<"$headline" || {
-  echo "headline_names_unchecked_drafts: PASS headline over a live spec omits the draft it skipped" >&2
-  echo "$out" >&2; exit 1; }
-rm "$TMP/docs/graph/specs/SPEC-0007-live.md" "$TMP/tests/test_live.py"
+CASE=14b; run_rc 0 lint
+out="$(grep '^spec lint: PASS' <<<"$out" || true)"
+has 'not coverage-checked'
+has SPEC-0006-onlydraft
+rm "$SPECS/SPEC-0007-live.md" "$TMP/tests/test_live.py"
 
-# 15. a draft whose slug a test already carries -> WARN naming it, exit 0
+# 15. draft_with_tested_slugs_warns: WARN naming the draft, exit 0, not a defect
 printf 'def test_draft():  # DRAFT_ONLY_THING\n    pass\n' > "$TMP/tests/test_draft.py"
-out="$(lint 2>&1)" && rc=0 || rc=$?
-[[ $rc -eq 0 ]] || { echo "draft_with_tested_slugs_warns: must WARN, not FAIL; got exit $rc" >&2; echo "$out" >&2; exit 1; }
-grep -q 'WARN.*SPEC-0006-onlydraft.*draft' <<<"$out" && grep -qi 'promot' <<<"$out" || {
-  echo "draft_with_tested_slugs_warns: no promotion WARN naming SPEC-0006-onlydraft" >&2
-  echo "$out" >&2; exit 1; }
-if grep -q -- '^  - .*SPEC-0006-onlydraft' <<<"$out"; then
-  echo "draft_with_tested_slugs_warns: the promotion miss was filed as a defect, not a WARN" >&2
-  echo "$out" >&2; exit 1
-fi
+CASE=15; run_rc 0 lint
+has 'WARN.*SPEC-0006-onlydraft.*draft'
+has -i promot
+hasnt -- '^  - .*SPEC-0006-onlydraft'
 
 # 15b. the WARN leaves the ratchet step's exit alone: a live spec inside its
-# uncovered budget still exits 0 with the promotion WARN printed beside it
+#      uncovered budget still exits 0 with the promotion WARN beside it
 spec SPEC-0008-debt active y "DEBT_UNTESTED:pending"
-out="$(lint --uncovered-budget 1 2>&1)" && rc=0 || rc=$?
-[[ $rc -eq 0 ]] || { echo "promotion WARN changed the budgeted run's exit: got $rc" >&2; echo "$out" >&2; exit 1; }
-grep -qi 'promot' <<<"$out" || { echo "budgeted run dropped the promotion WARN" >&2; echo "$out" >&2; exit 1; }
-rm "$TMP/docs/graph/specs/SPEC-0008-debt.md"
+CASE=15b; run_rc 0 lint --uncovered-budget 1
+has -i promot
+rm "$SPECS/SPEC-0008-debt.md"
 
 # 16. control: the same spec active and covered -> no promotion WARN, PASS
 spec SPEC-0006-onlydraft active y "DRAFT_ONLY_THING:green"
-out="$(lint 2>&1)" && rc=0 || rc=$?
-[[ $rc -eq 0 ]] || { echo "active covered control must pass, got $rc" >&2; echo "$out" >&2; exit 1; }
-if grep -qi 'promot' <<<"$out"; then
-  echo "an active spec was told to promote itself" >&2; echo "$out" >&2; exit 1
-fi
-grep -q '^spec lint: PASS — 1 live contract(s) covered' <<<"$out" || {
-  echo "active control headline changed" >&2; echo "$out" >&2; exit 1; }
+CASE=16; run_rc 0 lint
+hasnt -i promot
+has '^spec lint: PASS — 1 live contract(s) covered'
 
-# 16b. REGRESSION — draft_sharing_a_live_slug_does_not_warn: hits were keyed by
-# slug alone, so a draft that re-declares a slug a live spec already owns was
-# told to promote itself on the live spec's test. The test proves the live
-# contract, not the draft; no promotion WARN.
+# 16b. draft_sharing_a_live_slug_does_not_warn: the live spec's test proves the
+#      live contract, not a draft re-declaring its slug.
 spec SPEC-0009-sharedraft draft y "DRAFT_ONLY_THING"
-out="$(lint 2>&1)" && rc=0 || rc=$?
-[[ $rc -eq 0 ]] || { echo "draft_sharing_a_live_slug_does_not_warn: expected exit 0, got $rc" >&2; echo "$out" >&2; exit 1; }
-if grep -qi 'promot' <<<"$out"; then
-  echo "draft_sharing_a_live_slug_does_not_warn: a draft was told to promote on a live spec's test" >&2
-  echo "$out" >&2; exit 1
-fi
-rm -f "$TMP"/docs/graph/specs/*.md "$TMP"/tests/*
+CASE=16b; run_rc 0 lint
+hasnt -i promot
+rm -f "$SPECS"/*.md "$TMP"/tests/*
+
+# 13. no specs dir at all -> SKIP, exit 0
+rm -rf "$SPECS"
+CASE=13; run_rc 0 lint
 
 # ---- SLICE ------------------------------------------------------------------
-# `--slice SLUG...` prints only what one contract needs: its `### Contract:` or
-# `### Failure:` block up to the next heading of the same or higher level
-# (headings inside fences are text), its §10 row(s) each under its table
-# header, and with --refs file:line pointers to the §6/§7 headings the block
-# cites, never their text. --lines prints ranges. Exit 0 all found, 1 any
+# `--slice SLUG...` prints a `### Contract:`/`### Failure:` block up to the next
+# heading of the same or higher level (fenced headings are text), its §10
+# row(s) each under its table header, and with --refs file:line pointers to the
+# §6/§7 headings it cites. --lines prints ranges. Exit 0 all found, 1 any
 # missing (found ones still printed), 2 usage error.
 SL="$TMP/slice"
 mkdir -p "$SL/docs/graph/specs"
@@ -275,62 +250,18 @@ Beta body.
 | ALPHA_HOLDS | not in the mapping | x |
 MD
 line_of() { grep -n -F -x -- "$1" "$SPECF" | head -1 | cut -d: -f1; }
-sfail() { echo "$1" >&2; echo "$2" >&2; exit 1; }
 
-# 17. slice_block_runs_to_next_same_or_higher_heading (deeper ones kept)
-out="$(slice ALPHA_HOLDS 2>&1)" && rc=0 || rc=$?
-[[ $rc -eq 0 ]] || sfail "slice ALPHA_HOLDS: expected exit 0, got $rc" "$out"
-grep -q -F 'Alpha body' <<<"$out" || sfail "slice: contract block text missing" "$out"
-grep -q -F '#### A sub-heading inside the block' <<<"$out" || sfail "slice: deeper heading cut from the block" "$out"
-if grep -q -F 'Gamma body' <<<"$out"; then sfail "slice: block ran past the next same-level heading" "$out"; fi
-
-# 18. slice_rows_come_from_10_only_each_under_its_header
-grep -q -F '| ALPHA_HOLDS | unit | green |' <<<"$out" || sfail "slice: §10 contract row missing" "$out"
-grep -q -F '| `ALPHA_HOLDS` | structural | green |' <<<"$out" || sfail "slice: backticked §10 row missing" "$out"
-if grep -q -F 'not in the mapping' <<<"$out"; then sfail "slice: a row outside §10 leaked in" "$out"; fi
-[[ "$(grep -c -F '| Slug | Level | Status |' <<<"$out")" -eq 2 ]] || sfail "slice: each row must sit under its own table header (want 2)" "$out"
-if grep -q -F 'GAMMA_HOLDS | unit' <<<"$out"; then sfail "slice: another slug's row leaked in" "$out"; fi
-
-# 19. slice_failure_slug_is_sliced_like_a_contract
-out="$(slice BETA_BREAKS 2>&1)" && rc=0 || rc=$?
-[[ $rc -eq 0 ]] || sfail "slice BETA_BREAKS: expected exit 0, got $rc" "$out"
-grep -q -F 'Beta body.' <<<"$out" || sfail "slice: failure block missing" "$out"
-if grep -q -F '## 10.' <<<"$out"; then sfail "slice: failure block ran into §10" "$out"; fi
-
-# 20. slice_refs_are_pointers_never_text
-out="$(slice ALPHA_HOLDS --refs 2>&1)" && rc=0 || rc=$?
-[[ $rc -eq 0 ]] || sfail "slice --refs: expected exit 0, got $rc" "$out"
-for h in '### 6.2 The record' '#### 6.3.1 The detail' '## 7. Failure modes'; do
-  grep -q -F "SPEC-9999-slice.md:$(line_of "$h")	$h" <<<"$out" || sfail "slice --refs: no pointer to '$h'" "$out"
-done
-if grep -q -F 'Record text.' <<<"$out"; then sfail "slice --refs: printed a cited section's text" "$out"; fi
-if grep -q -F '## 5.' <<<"$out"; then sfail "slice --refs: pointed outside §6/§7" "$out"; fi
-
-# 21. slice_lines_prints_ranges_for_several_slugs
-out="$(slice --lines ALPHA_HOLDS BETA_BREAKS 2>&1)" && rc=0 || rc=$?
-[[ $rc -eq 0 ]] || sfail "slice --lines: expected exit 0, got $rc" "$out"
-a="$(line_of '### Contract: ALPHA_HOLDS')"; b="$(line_of '### Failure: BETA_BREAKS')"
-grep -q -F "SPEC-9999-slice.md:$a-$((a + 5))	ALPHA_HOLDS contract block" <<<"$out" || sfail "slice --lines: wrong ALPHA_HOLDS range" "$out"
-grep -q -F "SPEC-9999-slice.md:$b-$((b + 1))	BETA_BREAKS failure block" <<<"$out" || sfail "slice --lines: wrong BETA_BREAKS range" "$out"
-[[ "$(grep -c -F '§10 row' <<<"$out")" -eq 3 ]] || sfail "slice --lines: want 3 '§10 row' ranges" "$out"
-if grep -q -F 'Alpha body' <<<"$out"; then sfail "slice --lines: printed text instead of ranges" "$out"; fi
-
-# 22. slice_unknown_slug_exits_one_and_prints_the_known_ones
-errf="$TMP/slice.err"
-out="$(slice NOPE_MISSING GAMMA_HOLDS 2>"$errf")" && rc=0 || rc=$?
-[[ $rc -eq 1 ]] || sfail "slice unknown slug: expected exit 1, got $rc" "$out"
-grep -q -F 'NOPE_MISSING' "$errf" || sfail "slice unknown slug: stderr does not name it" "$(cat "$errf")"
-grep -q -F 'Gamma body.' <<<"$out" || sfail "slice unknown slug: the found slug was not printed" "$out"
-
-# 23. slice_fenced_heading_is_not_a_slug
-out="$(slice NOT_A_HEADING_IN_A_FENCE 2>&1)" && rc=0 || rc=$?
-[[ $rc -eq 1 ]] || sfail "slice: a heading inside a fence was sliced (exit $rc)" "$out"
-
-# 23b. REGRESSION — slice_fence_closes_only_on_its_own_marker: a fence line
-# once toggled the state whatever its marker, so a `~~~` inside a ``` block
-# closed it early. The fenced example heading got sliced and the real heading
-# after the fence became unsliceable. CommonMark: a fence closes only on the
-# same character, at least as long as the opener.
+# Block bounds (17 slice_block_runs_to_next_same_or_higher_heading, 19
+# slice_failure_slug_is_sliced_like_a_contract, 23b
+# slice_fence_closes_only_on_its_own_marker).
+CASE=slice-block; run_rc 0 slice ALPHA_HOLDS
+has -F 'Alpha body'
+has -F '#### A sub-heading inside the block'
+hasnt -F 'Gamma body'
+ALPHA_OUT="$out"
+run_rc 0 slice BETA_BREAKS
+has -F 'Beta body.'
+hasnt -F '## 10.'
 FENCEF="$SL/docs/graph/specs/SPEC-9998-fence.md"
 cat > "$FENCEF" <<'MD'
 ---
@@ -348,49 +279,64 @@ An example of a spec, fenced:
 After body.
 ## 10. Test mapping
 MD
-out="$(slice HIDDEN_EXAMPLE 2>&1)" && rc=0 || rc=$?
-[[ $rc -eq 1 ]] || sfail "slice_fence_closes_only_on_its_own_marker: a heading inside a \`\`\` fence was sliced (exit $rc)" "$out"
-out="$(slice AFTER_FENCE 2>&1)" && rc=0 || rc=$?
-[[ $rc -eq 0 ]] || sfail "slice_fence_closes_only_on_its_own_marker: the real heading after the fence is unsliceable (exit $rc)" "$out"
-grep -q -F 'After body.' <<<"$out" || sfail "slice_fence_closes_only_on_its_own_marker: AFTER_FENCE block text missing" "$out"
+run_rc 1 slice HIDDEN_EXAMPLE
+run_rc 0 slice AFTER_FENCE
+has -F 'After body.'
 rm "$FENCEF"
 
-# 23c. slice_slug_in_two_specs_notes_both_files: a slug declared in two specs
-# is sliced from each, and stderr says so, naming both files, so a reader
-# does not take one spec's block for the only one.
-SHAREA="$SL/docs/graph/specs/SPEC-9996-share-a.md"
-SHAREB="$SL/docs/graph/specs/SPEC-9997-share-b.md"
-for f in "$SHAREA" "$SHAREB"; do
-  printf -- '---\nstatus: draft\n---\n# fixture\n## 4. Functional contracts\n### Contract: SHARED_TWICE\nShared body.\n' > "$f"
+# §10 rows and pointers (18 slice_rows_come_from_10_only_each_under_its_header,
+# 20 slice_refs_are_pointers_never_text, 21
+# slice_lines_prints_ranges_for_several_slugs).
+CASE=slice-rows; out="$ALPHA_OUT"
+has -F '| ALPHA_HOLDS | unit | green |'
+has -F '| `ALPHA_HOLDS` | structural | green |'
+hasnt -F 'not in the mapping'
+[[ "$(grep -c -F '| Slug | Level | Status |' <<<"$out")" -eq 2 ]] \
+  || fail "each row must sit under its own table header (want 2)"
+hasnt -F 'GAMMA_HOLDS | unit'
+run_rc 0 slice ALPHA_HOLDS --refs
+for h in '### 6.2 The record' '#### 6.3.1 The detail' '## 7. Failure modes'; do
+  has -F "SPEC-9999-slice.md:$(line_of "$h")	$h"
+done
+hasnt -F 'Record text.'
+hasnt -F '## 5.'
+run_rc 0 slice --lines ALPHA_HOLDS BETA_BREAKS
+a="$(line_of '### Contract: ALPHA_HOLDS')"; b="$(line_of '### Failure: BETA_BREAKS')"
+has -F "SPEC-9999-slice.md:$a-$((a + 5))	ALPHA_HOLDS contract block"
+has -F "SPEC-9999-slice.md:$b-$((b + 1))	BETA_BREAKS failure block"
+[[ "$(grep -c -F '§10 row' <<<"$out")" -eq 3 ]] || fail "--lines: want 3 '§10 row' ranges"
+hasnt -F 'Alpha body'
+
+# Exit codes and stderr (22 slice_unknown_slug_exits_one_and_prints_the_known_ones,
+# 23 slice_fenced_heading_is_not_a_slug, 23c
+# slice_slug_in_two_specs_notes_both_files, 24 slice_without_slugs_is_a_usage_error).
+CASE=slice-exit; errf="$TMP/slice.err"
+out="$(slice NOPE_MISSING GAMMA_HOLDS 2>"$errf")" && rc=0 || rc=$?
+[[ $rc -eq 1 ]] || fail "unknown slug: exit $rc, want 1"
+has -F 'Gamma body.'
+out="$(cat "$errf")"; has -F NOPE_MISSING
+run_rc 1 slice NOT_A_HEADING_IN_A_FENCE
+for f in SPEC-9996-share-a SPEC-9997-share-b; do
+  printf -- '---\nstatus: draft\n---\n# fixture\n## 4. Functional contracts\n### Contract: SHARED_TWICE\nShared body.\n' \
+    > "$SL/docs/graph/specs/$f.md"
 done
 out="$(slice SHARED_TWICE 2>"$errf")" && rc=0 || rc=$?
-[[ $rc -eq 0 ]] || sfail "slice_slug_in_two_specs_notes_both_files: expected exit 0, got $rc" "$out$(cat "$errf")"
-grep -q -F 'SHARED_TWICE' "$errf" && grep -q -F 'SPEC-9996-share-a.md' "$errf" && grep -q -F 'SPEC-9997-share-b.md' "$errf" || \
-  sfail "slice_slug_in_two_specs_notes_both_files: stderr does not name the slug and both files" "stderr: $(cat "$errf")"
-rm "$SHAREA" "$SHAREB"
+[[ $rc -eq 0 ]] || fail "slug in two specs: exit $rc, want 0"
+out="$(cat "$errf")"
+has -F SHARED_TWICE
+has -F SPEC-9996-share-a.md
+has -F SPEC-9997-share-b.md
+run_rc 2 slice
+CASE=""
 
-# 24. slice_without_slugs_is_a_usage_error
-out="$(slice 2>&1)" && rc=0 || rc=$?
-[[ $rc -eq 2 ]] || sfail "slice with no SLUG: expected usage exit 2, got $rc" "$out"
-
-# 13. no specs dir at all -> SKIP, exit 0
-rm -rf "$TMP/docs/graph/specs"
-lint >/dev/null
-
-
-# ---- ROW CELLS (plan increment 5) ------------------------------------------
+# ---- ROW CELLS ------------------------------------------------------------
 # A §10 row whose cell count differs from its header reads its status from the
-# wrong column and nothing says so. A collecting block: each case prints
-# `FAIL <label>: <why>` and the suite exits 1 after the last one, so no case
-# hides another. No spec owns spec-lint's table parsing (plan increment 5).
-set +e
-CELLS_FAILED=0
+# wrong column. Cases run through collect_case, so no case hides another.
 CL="$TMP/cells"
 mkdir -p "$CL/docs/graph/specs" "$CL/tests"
 cp "$ROOT/templates/knowledge-graph/spec-lint.py" "$CL/docs/graph/"
 printf 'def test_cells():  # CELL_ALPHA CELL_BETA\n    pass\n' > "$CL/tests/test_cells.py"
-cfail() { printf 'FAIL %s: %s\n' "$1" "$2"; CELLS_FAILED=1; }
-crun() { COUT="$(python3 "$CL/docs/graph/spec-lint.py" 2>&1)"; CRC=$?; }
+cells_lint() { python3 "$CL/docs/graph/spec-lint.py"; }
 # cells_spec NAME ROW_ALPHA ROW_BETA: a signed draft (it owes a §10 row per
 # contract) with a five-cell header and the two rows given verbatim.
 cells_spec() {
@@ -407,7 +353,6 @@ cells_spec() {
   } > "$f"
   CSPEC="$f"
 }
-# the 1-based line of the file that holds $1 exactly
 cline() { grep -n -F -x -- "$1" "$CSPEC" | head -1 | cut -d: -f1; }
 # one output line holds the spec name, the line number and both counts
 cells_named() {  # $1=spec file name $2=line $3=header count $4=row count
@@ -416,51 +361,34 @@ import re, sys
 name, line, h, r, out = sys.argv[1:6]
 word = lambda n, s: re.search(r"(?<!\d)" + n + r"(?!\d)", s)
 sys.exit(0 if any(name in l and word(line, l) and word(h, l) and word(r, l)
-                  for l in out.splitlines()) else 1)' "$1" "$2" "$3" "$4" "$COUT"
+                  for l in out.splitlines()) else 1)' "$1" "$2" "$3" "$4" "$out" \
+    || fail "no finding line naming $1, line $2, $3 and $4 cells"
 }
 GOOD_A='| CELL_ALPHA | test_cells | tests/test_cells.py | unit | red |'
 
 case_row_one_cell_fewer() {
-  # G2a (increment 5a): a §10 row with one cell fewer than its header fails,
-  # and the finding names the spec, the line and both counts (5 and 4).
-  local L=G2a row='| CELL_BETA | test_cells | tests/test_cells.py | red |' n
+  # G2a: one cell fewer fails, naming spec, line and both counts (5 and 4).
+  # G2b (folded): one cell more fails the same way (5 and 6).
+  local row n
+  row='| CELL_BETA | test_cells | tests/test_cells.py | red |'
   cells_spec SPEC-0101-cells "$GOOD_A" "$row"; n="$(cline "$row")"
-  crun
-  [ "$CRC" -eq 1 ] || { cfail $L "expected exit 1, got $CRC"; return; }
-  cells_named SPEC-0101-cells.md "$n" 5 4 || cfail $L "no finding line naming SPEC-0101-cells.md, line $n, 5 and 4 cells"
-}
-case_row_one_cell_more() {
-  # G2b (increment 5b): one cell more fails the same way (5 and 6).
-  local L=G2b row='| CELL_BETA | test_cells | tests/test_cells.py | unit | red | extra |' n
+  run_rc 1 cells_lint; cells_named SPEC-0101-cells.md "$n" 5 4
+  row='| CELL_BETA | test_cells | tests/test_cells.py | unit | red | extra |'
   cells_spec SPEC-0102-cells "$GOOD_A" "$row"; n="$(cline "$row")"
-  crun
-  [ "$CRC" -eq 1 ] || { cfail $L "expected exit 1, got $CRC"; return; }
-  cells_named SPEC-0102-cells.md "$n" 5 6 || cfail $L "no finding line naming SPEC-0102-cells.md, line $n, 5 and 6 cells"
+  run_rc 1 cells_lint; cells_named SPEC-0102-cells.md "$n" 5 6
 }
 case_row_escaped_pipe_is_one_cell() {
-  # G2c (increment 5c, guard): a cell holding an escaped pipe `\|` is one cell.
-  local L=G2c
+  # G2c (guard): an escaped pipe `\|` is one cell.
+  # G2d (guard, folded): outer pipes are optional, as GFM allows; the table
+  # after §10's is a second table whose rows drop them.
   cells_spec SPEC-0103-cells "$GOOD_A" '| CELL_BETA | test_a\|b | tests/test_cells.py | unit | red |'
-  crun
-  [ "$CRC" -eq 0 ] || cfail $L "an escaped pipe was counted as a cell boundary (exit $CRC): $(grep -m1 -- '  - ' <<<"$COUT")"
-}
-case_row_outer_pipes_optional() {
-  # G2d (increment 5d, guard): leading and trailing pipes are optional, as GFM
-  # allows. The table after §10's is a second table whose rows drop them.
-  local L=G2d
+  run_rc 0 cells_lint
   cells_spec SPEC-0104-cells "$GOOD_A" '| CELL_BETA | test_cells | tests/test_cells.py | unit | red'
   printf '\n| Note | Detail |\n|---|---|\nfirst | one\n| second | two\nthird | three |\n' >> "$CSPEC"
-  crun
-  [ "$CRC" -eq 0 ] || cfail $L "a row without an outer pipe was refused (exit $CRC): $(grep -m1 -- '  - ' <<<"$COUT")"
+  run_rc 0 cells_lint
 }
-for c in case_row_one_cell_fewer case_row_one_cell_more \
-         case_row_escaped_pipe_is_one_cell case_row_outer_pipes_optional; do
-  "$c"
-done
-set -e
-if [ "$CELLS_FAILED" -ne 0 ]; then
-  printf 'spec lint contract: FAIL — the row-cell block has failing cases (above)\n'
-  exit 1
-fi
+collect_case G2a+G2b case_row_one_cell_fewer "a row with a cell count off its header fails, named"
+collect_case G2c+G2d case_row_escaped_pipe_is_one_cell "escaped pipes and optional outer pipes are not miscounted"
+[ "$CASE_FAILED" -eq 0 ] || { printf 'spec lint contract: FAIL — the row-cell block has failing cases (above)\n'; exit 1; }
 
 printf 'spec lint contract: PASS\n'

@@ -325,13 +325,9 @@ whose record carries github-copilot, because checking writes nothing.
 
 ### Contract: HOST_TIERS_AGREE
 - **Given:** the tier arrays in `install.sh` (the one home of the assignment)
-  and the tier table in `documentation/host-capability-matrix.md`
 - **When:** `seed-lint` runs
-- **Then:** it fails, naming both files, when the two disagree, when a host sits
-  in two tiers, or when `all` expands to anything but the first-class and
-  supported hosts
-- **And:** it fails, naming the matrix, when the tier table has two rows for one
-  tier or lists a host in two rows
+- **Then:** it fails, naming `install.sh`, when a host sits in two tiers, or
+  when `all` expands to anything but the first-class and supported hosts
 - **And:** it fails, naming `install.sh`, when the three arrays together are not
   exactly the labels of the adapter dispatch `case "$tool"` block, whatever
   shape an arm's command takes, or when a label there is not a bare tool name
@@ -624,8 +620,8 @@ $ echo $?
 | BACKUP_BEFORE_REPLACE | M7 sweep | tests/test-install-placement.sh | integration | green |
 | SYMLINK_IS_REPLACED_NOT_FOLLOWED | M2 attack over every destination | tests/test-install-placement.sh | integration | green |
 | IDENTICAL_RERUN_IS_INERT | M3 churn check (names the churned files) | tests/test-install-placement.sh | integration | green |
-| SYMLINK_MODE_IS_UNIFORM | M9 link-uniformity check | tests/test-install-placement.sh | integration | green |
-| EVERY_BACKUP_IS_CLASSIFIABLE | M8 audit-totality check | tests/test-install-placement.sh | integration | green |
+| SYMLINK_MODE_IS_UNIFORM | M9 link-uniformity check, inside case_symchurn | tests/test-install-placement.sh | integration | green |
+| EVERY_BACKUP_IS_CLASSIFIABLE | M8 audit-totality check: every backup of a real install classifies; the UNMAPPED exit is held by X390's second arm | tests/test-install-placement.sh | integration | green |
 | FORCE_SUPPRESSES_WARNING_NOT_BACKUP | M4: --force keeps every backup, and without it the backup is announced | tests/test-install-placement.sh | integration | green |
 | ONE_KERNEL_BODY | K1/K4/K5 cases | tests/test-install-kernel-modes.sh | integration | green |
 | COPY_MODE_ISOLATES | K2 case | tests/test-install-kernel-modes.sh | integration | green |
@@ -635,48 +631,47 @@ $ echo $?
 | RECORD_AGREES_WITH_DISK | S6 refusal case | tests/test-plant-state.sh | integration | green |
 | CORPUS_IS_WHOLE_OR_ABSENT | S6 whole-corpus case | tests/test-plant-state.sh | integration | green |
 | CONTRADICTORY_CORPUS_TRANSITION | S6 refusal leaves disk and record untouched | tests/test-plant-state.sh | integration | green |
-| PREFLIGHT_REFUSES_BEFORE_WRITING | D1 preflight refuses before any write (`.claude`-as-a-file, read-only target) | tests/test-install-adoption.sh | integration | green |
+| PREFLIGHT_REFUSES_BEFORE_WRITING | D1 inside case_block_declared and case_block_readonly: the preflight refuses before any write (`.claude`-as-a-file, read-only target) | tests/test-install-adoption.sh | integration | green |
 | PREFLIGHT_SCOPED_TO_WRITTEN_TREES | D6 case_unrelated_trees: unwritable trees and an escaping directory link outside the written set do not refuse the install, and are unchanged afterwards | tests/test-install-adoption.sh | integration | green |
-| SYMLINK_IS_REPLACED_NOT_FOLLOWED | M10 (6) a symlinked DIRECTORY leaving the target is refused at any depth, M10 (7) one staying inside still works — §5's Security NFR and §9 AC-2 rest on this | tests/test-install-placement.sh | integration | green |
-| DESTINATION_PATH_OCCUPIED | D1 destination occupied by a non-directory | tests/test-install-adoption.sh | integration | green |
-| TARGET_NOT_WRITABLE | D1 target directory not writable | tests/test-install-adoption.sh | integration | green |
+| SYMLINK_IS_REPLACED_NOT_FOLLOWED | M10 (6) a symlinked DIRECTORY leaving the target is refused, at two paths (an adapter directory and a `docs/graph/` subtree), M10 (7) one staying inside still works — §5's Security NFR and §9 AC-2 rest on this | tests/test-install-placement.sh | integration | green |
+| DESTINATION_PATH_OCCUPIED | D1 inside case_block_declared: destination occupied by a non-directory | tests/test-install-adoption.sh | integration | green |
+| TARGET_NOT_WRITABLE | D1 inside case_block_readonly: target directory not writable | tests/test-install-adoption.sh | integration | green |
 | PARTIAL_CORPUS | (no behavioural test — see §11) | — | — | pending |
 | ALL_EXCLUDES_LEGACY_HOSTS | E1 caseALL_EXCLUDES_LEGACY_HOSTS: `all` places three hosts, and the stamp lists exactly those | tests/test-full-install.sh | integration | green |
-| LEGACY_INSTALL_PRINTS_DEPRECATED | E2 case_codex, case_github_copilot: one DEPRECATED line naming the tool and ADR-0009; case_opencode: none | tests/test-full-install.sh | integration | green |
-| LEGACY_INSTALL_STILL_SUCCEEDS | E3 case_codex, case_github_copilot: exit 0, 7.26.0 destinations, `--print-config` stdout clean | tests/test-full-install.sh | integration | green |
+| LEGACY_INSTALL_PRINTS_DEPRECATED | E2 case_codex, case_github_copilot: one DEPRECATED line naming the tool and ADR-0009; that a maintained host prints none is held by E1 caseALL_EXCLUDES_LEGACY_HOSTS | tests/test-full-install.sh | integration | green |
+| LEGACY_INSTALL_STILL_SUCCEEDS | E3 case_codex, case_github_copilot: exit 0, two destinations each, `--print-config` stdout clean | tests/test-full-install.sh | integration | green |
 | ALL_NAMES_SKIPPED_FROZEN_HOSTS | S8 caseALL_NAMES_SKIPPED_FROZEN_HOSTS: the skip and its refresh command named, `.codex/` byte-identical, stamp keeps codex | tests/test-plant-state.sh | integration | green |
 | FROZEN_PROJECTION_LEFT_STALE | S8 caseALL_NAMES_SKIPPED_FROZEN_HOSTS (the same case holds the warning and the untouched tree) | tests/test-plant-state.sh | integration | green |
 | CHECK_WITHOUT_COPILOT_SAYS_SO | D3 caseCHECK_WITHOUT_COPILOT_SAYS_SO: `all --check` exits 0 and says no generated views are in scope | tests/test-install-adoption.sh | integration | green |
-| ALL_CHECK_INCLUDES_RECORDED_COPILOT | D4 caseALL_CHECK_INCLUDES_RECORDED_COPILOT: a Copilot-recording plant is checked by `all --check`, in sync exits 0 with "up to date", drifted exits non-zero with STALE, no not-refreshed warning, exactly one DEPRECATED line on stderr in each arm | tests/test-install-adoption.sh | integration | green |
-| HOST_TIERS_AGREE | E4 caseHOST_TIERS_AGREE: the matrix moves opencode to frozen, a tier row is duplicated, codex leaves every tier while still dispatched, each suite's EVERY_HOST drops a host, the dispatch gains a `cursor` arm whose command is not a bare `install_cursor ;;`, the argument parser accepts `cursor`, a dispatch label is quoted; `check_host_tiers` fails naming the files; a dispatch arm split over two lines passes | tests/test-seed-lint.sh | unit | green |
-| SESSION_RECORD_FORM_IS_PLACED | S9 case_session_records: a fresh `install.sh claude-code` holds `docs/graph/plans/sessions/_session-record.template.md` byte-identical to the seed's form; after a plant record and an edit to the placed form, `install.sh all` leaves both byte-identical, with no backup beside either. Written before the form exists (7.31.0): it fails on its first assertion until the form ships | tests/test-plant-state.sh | integration | green |
+| ALL_CHECK_INCLUDES_RECORDED_COPILOT | D4 caseALL_CHECK_INCLUDES_RECORDED_COPILOT: a Copilot-recording plant is checked by `all --check`, in sync exits 0 with "up to date", drifted exits non-zero with STALE, no not-refreshed warning. The DEPRECATED notice of this run is held by E2 (LEGACY_INSTALL_PRINTS_DEPRECATED) | tests/test-install-adoption.sh | integration | green |
+| HOST_TIERS_AGREE | E4 caseHOST_TIERS_AGREE, two rows: the tier arrays and `all` disagree; codex leaves every tier while still dispatched. `check_host_tiers` fails naming `install.sh` | tests/test-seed-lint.sh | unit | green |
+| SESSION_RECORD_FORM_IS_PLACED | S9 inside case_plan_records: a fresh `install.sh claude-code` holds `docs/graph/plans/sessions/_session-record.template.md` byte-identical to the seed's form; after a plant record and an edit to the placed form, `install.sh all` leaves both byte-identical, with no backup beside either | tests/test-plant-state.sh | integration | green |
 | ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE | X383 case_engine_reconcile_stale_grill_lint: a stale `grill-lint.py` (the seed's copy with every line naming `waves` removed), reconciled with no `--preserve`, exits 0, equals the seed's file byte for byte, and leaves one `.bak-*` holding the older body | tests/test-graft-tools.sh | unit | green |
 | ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE | X384 case_engine_reconcile_spec_lint_keeps_test_globs: a `spec-lint.py` with the plant's own `TEST_GLOBS` and an older body, reconciled with no `--preserve`, exits 0, keeps the plant's `TEST_GLOBS` and adopts the seed's body | tests/test-graft-tools.sh | unit | green |
 | ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE | X385 case_engine_reconcile_explicit_preserve_wins: `--preserve=ROOT_ID` on a `graph-lint.py` whose plant changed `ROOT_ID` and `KIND_PREFIX` keeps the plant's `ROOT_ID` and takes the seed's `KIND_PREFIX`; guard | tests/test-graft-tools.sh | unit | green |
 | ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE | X386 case_engine_reconcile_other_name_takes_graph_lint_set: the same plant file named `project-lint.py`, reconciled with no `--preserve`, exits 0 and keeps both `ROOT_ID` and `KIND_PREFIX`; guard | tests/test-graft-tools.sh | unit | green |
 | ENGINE_AUDIT_CHECKS_EVERY_PAIR | X387 case_engine_audit_one_line_per_pair: `graft-audit.py` with two `--engine` pairs, a current `graph-lint.py` and a stale `grill-lint.py`, prints two engine-currency lines, the current one naming `graph-lint.py` and the `graph engine STALE` one naming `grill-lint.py` | tests/test-graft-tools.sh | unit | green |
-| ENGINE_AUDIT_CHECKS_EVERY_PAIR | X388 case_engine_audit_malformed_second_pair_fails: a current pair then a malformed one exits non-zero and says `--engine wants <plant-file>:<seed-file>`, where the current pair alone exits 0; guard | tests/test-graft-tools.sh | unit | green |
+| ENGINE_AUDIT_CHECKS_EVERY_PAIR | X388, a row inside X389: a current pair then a malformed one exits non-zero and says `--engine wants <plant-file>:<seed-file>`, where the current pair alone exits 0; guard | tests/test-graft-tools.sh | unit | green |
 | ENGINE_AUDIT_CHECKS_EVERY_PAIR | X389 case_engine_audit_malformed_first_pair_fails: a malformed pair then a current one exits non-zero and says `--engine wants <plant-file>:<seed-file>` | tests/test-graft-tools.sh | unit | green |
-| EXISTING_PLANT_RECEIVES_CURRENT_ENGINES | S10 case_engine_upgrade: re-install leaves the older `grill-lint.py`; the reconcile of the three engines exits 0; `grill-lint.py` equals the seed's with one backup; `--waves` prints `waves:`; the audit reports every engine current | tests/test-plant-state.sh | integration | green |
+| EXISTING_PLANT_RECEIVES_CURRENT_ENGINES | S10 case_engine_upgrade: re-install leaves the older `grill-lint.py`. The reconcile half is held by X383 and the audit half by X387, both in `tests/test-graft-tools.sh` | tests/test-plant-state.sh | integration | green |
 | ENGINE_LEFT_STALE_BY_GRAFT | X387 case_engine_audit_one_line_per_pair: the stale pair's `graph engine STALE` line names `grill-lint.py`, beside the current pair's line | tests/test-graft-tools.sh | unit | green |
 | PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION | K7 case_k7_prior_kernel_fast_forwards: a kernel byte-identical to `core/AGENTS.md` at an earlier commit of a temp `git clone --local` of the seed is replaced with one backup holding it, no adopted-instructions row for that backup, no `OVERWRITTEN` line, a log line naming an earlier seed kernel; a second run files no row | tests/test-install-kernel-modes.sh | integration | green |
 | PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION | K7 case_k7_sweep_skips_prior_kernel_backup: a `CLAUDE.md.bak-*` holding an earlier seed kernel beside an installed plant gets no row from the next run's orphan sweep | tests/test-install-kernel-modes.sh | integration | green |
 | PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION | K7 case_k7_plant_line_is_still_filed: an earlier seed kernel with one plant line added is filed and announced `OVERWRITTEN`; guard | tests/test-install-kernel-modes.sh | integration | green |
 | SEED_HISTORY_UNAVAILABLE | K7 case_k7_no_history_falls_back: from a seed copy with no `.git`, an earlier seed kernel is filed for migration and exactly one log line names the missing history | tests/test-install-kernel-modes.sh | integration | green |
-| RECREATED_LIST_IS_COMPLETE | D5 case_d5_recreated_list: twelve deleted protocol nodes re-created; `.cypress/recreated-nodes.txt` holds the §6 header and all twelve paths, sorted and unique; the console prints ten and names the file | tests/test-install-adoption.sh | integration | green |
-| RECREATED_LIST_IS_COMPLETE | D5 case_d5_fresh_list, the first check of case_d5_recreated_list: a first install writes `.cypress/recreated-nodes.txt` with the §6 header alone; guard, red under a mutant that records nodes on a first install | tests/test-install-adoption.sh | integration | green |
+| RECREATED_LIST_IS_COMPLETE | D5 case_d5_recreated_list: twelve deleted protocol nodes re-created; `.cypress/recreated-nodes.txt` holds the §6 header (checked by its prefix) and all twelve paths, sorted and unique; the console prints ten and names the file | tests/test-install-adoption.sh | integration | green |
+| RECREATED_LIST_IS_COMPLETE | D5 case_d5_fresh_list, the first check of case_d5_recreated_list: a first install writes `.cypress/recreated-nodes.txt` with the §6 header alone (checked by its prefix); guard, red under a mutant that records nodes on a first install | tests/test-install-adoption.sh | integration | green |
 | RECREATED_LIST_IS_COMPLETE | D5 case_d5_recreated_list, third check: after the run that re-created twelve nodes, a run that re-creates nothing rewrites the file with the header line alone | tests/test-install-adoption.sh | integration | green |
 | UNKNOWN_STAMP_KEYS_SURVIVE | S11 case_stamp_keys: a string key and an object key the installer does not own survive `install.sh all` JSON-equal, in their original order, after the installer's keys; `legal_corpus` and `tools` keep their own rules | tests/test-plant-state.sh | integration | green |
 | STAMP_NOT_AN_OBJECT | S11 case_stamp_keys, second arm: a stamp that is a JSON array is moved to a `seed.json.bak-*`, a stamp is written from the installer's keys, one line names the backup. The arm runs after the first, so its red is not observed until the first arm is green | tests/test-plant-state.sh | integration | green |
-| STAMP_NOT_AN_OBJECT | S12 case_s12_unparseable_stamp: a stamp that does not parse (cut off inside a field; bytes that are not UTF-8) is not the trigger: the run exits non-zero with the preflight's refusal line, the stamp is byte-identical, no `seed.json.bak-*` is made, the file listing is unchanged. The truncated arm is a guard; the not-UTF-8 arm is red: the preflight's reader stops on a Python traceback, not its refusal | tests/test-plant-state.sh | integration | green |
+| STAMP_NOT_AN_OBJECT | S12 inside case_s7: a stamp that does not parse (cut off inside a field; bytes that are not UTF-8) is not the trigger: the run exits non-zero with the preflight's refusal line, the stamp is byte-identical, no `seed.json.bak-*` is made, the file listing is unchanged. The truncated arm is a guard; the not-UTF-8 arm is red: the preflight's reader stops on a Python traceback, not its refusal | tests/test-plant-state.sh | integration | green |
 | PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX | E5 case_pre_growth_pointer, first check: a fresh `install.sh claude-code` gives `docs/graph/index.md` one pre-growth block, delimited as §6 gives, naming `EXPERT_SEED_INSTALL_PROMPT.md` and `protocol.initialize` | tests/test-full-install.sh | integration | green |
 | PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX | E5 case_pre_growth_pointer, second check: the placed `CLAUDE.md` names neither `EXPERT_SEED_INSTALL_PROMPT.md` nor `protocol.initialize` | tests/test-full-install.sh | integration | green |
 | PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX | E5 case_pre_growth_pointer, third check: a re-install over an index with no pre-growth block leaves it byte-identical; guard | tests/test-full-install.sh | integration | green |
-| CODE_ANCHOR_TOOL_IS_PLACED | E6 case_code_anchor_tool, first check: a fresh `install.sh all` places `docs/graph/code-anchor.py` byte-identical to `tools/code-anchor.py` and writes no `.cypress/anchor.json` | tests/test-full-install.sh | integration | green |
-| CODE_ANCHOR_TOOL_IS_PLACED | E6 case_code_anchor_tool, second check: a re-install over an older `docs/graph/code-anchor.py` leaves one backup holding it and the seed's tool in place | tests/test-full-install.sh | integration | green |
+| CODE_ANCHOR_TOOL_IS_PLACED | E6 case_code_anchor_tool: a fresh `install.sh all` places `docs/graph/code-anchor.py` byte-identical to `tools/code-anchor.py` and writes no `.cypress/anchor.json`. The second check, a re-install over an older copy leaving a backup, is held by the M7 sweep of `tests/test-install-placement.sh`, whose discovered destination set holds the tool | tests/test-full-install.sh | integration | green |
 | EVERY_BACKUP_IS_CLASSIFIABLE | X390 case_audit_plant_agent_projection (GA-C3): a `.claude/agents/<name>.md` backup whose plant node `docs/graph/agents/<name>.md` has `origin: project` is not UNMAPPED and the audit exits 0; a projection backup with no seed source and no plant node stays UNMAPPED, exit 1 | tests/test-graft-tools.sh | unit | green |
-| EVERY_BACKUP_IS_CLASSIFIABLE | X391 case_audit_plant_skill_projection: a `.claude/skills/<name>/SKILL.md` backup whose plant node `docs/graph/skills/<name>.md` has `origin: project` is not UNMAPPED and the audit exits 0; a skill projection backup with no plant node stays UNMAPPED, exit 1 | tests/test-graft-tools.sh | unit | green |
-| EVERY_BACKUP_IS_CLASSIFIABLE | X392 case_audit_plant_agent_copilot_view: a `.github/agents/<name>.agent.md` backup whose plant node `docs/graph/agents/<name>.md` has `origin: project` is not UNMAPPED and the audit exits 0; a Copilot agent view backup with no seed agent and no plant node stays UNMAPPED, exit 1 | tests/test-graft-tools.sh | unit | green |
+| EVERY_BACKUP_IS_CLASSIFIABLE | X391, a row of X390: a `.claude/skills/<name>/SKILL.md` backup whose plant node `docs/graph/skills/<name>.md` has `origin: project` is not UNMAPPED and the audit exits 0; a skill projection backup with no plant node stays UNMAPPED, exit 1 | tests/test-graft-tools.sh | unit | green |
+| EVERY_BACKUP_IS_CLASSIFIABLE | X392, a row of X390: a `.github/agents/<name>.agent.md` backup whose plant node `docs/graph/agents/<name>.md` has `origin: project` is not UNMAPPED and the audit exits 0; a Copilot agent view backup with no seed agent and no plant node stays UNMAPPED, exit 1 | tests/test-graft-tools.sh | unit | green |
 
 Coverage note, so the table is not read as more than it is.
 
@@ -685,9 +680,9 @@ to X389 among them, runs under one collector, so each label shows its own
 result in one run. A row marked guard passes on the unmodified tools and is held
 by a named mutant instead of an observed red: X385 by an explicit `--preserve`
 ignored, X386 by an unknown engine name given no preserve set, X388 by a later
-malformed pair skipped. EXISTING_PLANT_RECEIVES_CURRENT_ENGINES is held by S10
-`case_engine_upgrade` in `tests/test-plant-state.sh`, one plant carried from
-re-install through graft.
+malformed pair skipped. EXISTING_PLANT_RECEIVES_CURRENT_ENGINES is held in
+two halves: S10 `case_engine_upgrade` in `tests/test-plant-state.sh` holds the
+re-install, and X383 and X387 hold the reconcile and the audit.
 
 **The 7.32.0 rows.** K7, D5, S11, E5 and E6 are the RED of the five
 contracts and two failures promoted from the 7.32.0 pending block. K7's four
@@ -868,3 +863,24 @@ only version surface it has, and it moves with each entry here.
   The walks now cover the written trees only. The earlier text said "beneath the
   target at any depth", which described the code and not the promise it exists
   for: a refusal that writes nothing. `status_date` moved to this date.
+- 2026-09-29 — test consolidation (`docs/plans/grill-test-consolidation.md`,
+  S1). HOST_TIERS_AGREE drops its clauses on the tier table of
+  `documentation/host-capability-matrix.md`: the arrays in `install.sh` are the
+  one home, and a published copy is no longer held to them. The dispatch,
+  argument-parser and `EVERY_HOST` clauses stay. E4 keeps two planted rows (the
+  arrays against `all`, and a dispatched tool in no tier); the other clauses
+  run on the real tree and are no longer planted. §10 follows the folds of the
+  consolidation: M9 in case_symchurn; D1 in case_block_declared and
+  case_block_readonly; S9 in case_plan_records; S12 in case_s7; X388 in X389;
+  X391 and X392 as rows of X390, which also holds M8's UNMAPPED arm;
+  EXISTING_PLANT_RECEIVES_CURRENT_ENGINES's S10 row cites X383 and X387 for the
+  reconcile and audit halves; the second check of CODE_ANCHOR_TOOL_IS_PLACED is
+  the M7 sweep; the recreated
+  list's header is checked by its prefix; the DEPRECATED count of
+  ALL_CHECK_INCLUDES_RECORDED_COPILOT is held by E2. No installer behaviour
+  changed; the status stays `back-written`.
+- 2026-09-29: consolidation close-out, by the docs-librarian (spawn
+  `session.10.docs-librarian.1`). §10 text only: the M10 row names the two
+  paths the case now covers, the E2 row names E1 as the holder of the
+  maintained-host negative, and the E3 row says two destinations each. No
+  contract changed.

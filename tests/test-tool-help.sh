@@ -4,9 +4,8 @@
 # U-10 recorded that `graft-audit.py --help` exited 2 through the unknown-option
 # path. Fixing that one file closed the instance: a sweep found `growth-audit.py`
 # emitting the entry's own quoted string ("!! unknown option --help") from the
-# same directory with the same idiom, `graft-graph-engine.py` printing its
-# docstring and then exiting 2 anyway, and `check-coverage-binder.py` taking
-# `--help` as a PATH and dying with a FileNotFoundError traceback.
+# same directory with the same idiom, and `graft-graph-engine.py` printing its
+# docstring and then exiting 2 anyway.
 #
 # The defect is not any one tool, so neither is the check: this walks the tool
 # directories and holds all of them, which means a tool added later is covered

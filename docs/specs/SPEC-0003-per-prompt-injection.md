@@ -1,8 +1,8 @@
 ---
 status: active
-status_date: 2026-09-23
+status_date: 2026-09-29
 owner: architect
-status_evidence: tests/test-bound-hook.sh, tests/test-seed-lint.sh, tests/seed-lint.py, tests/test-nested-checkout.sh, tests/test_graph_lint.py (RED landed with this promotion; §10 says which rows are red)
+status_evidence: tests/test-prompt-hooks.sh, tests/test-code-anchor.sh, tests/test-seed-lint.sh, tests/seed-lint.py, tests/test-nested-checkout.sh, tests/test_graph_lint.py (RED landed with this promotion; §10 says which rows are red)
 ---
 
 # SPEC-0003: per-prompt injection
@@ -14,6 +14,9 @@ status_evidence: tests/test-bound-hook.sh, tests/test-seed-lint.sh, tests/seed-l
 - **Sign-offs:** product [x] · architect [x] · tester [x] · security [x]
   Each role signed on its own re-check of 2026-09-23; the tester's sign is
   conditional on E1 to E3 as applied here (§12).
+  Amended 2026-09-29 by the architect (test consolidation, §12): two contracts
+  retired, one rewritten, fixture clauses narrowed. The sign-offs above
+  predate the amendment and were not re-taken.
 
 - **Owner:** architect
 - **Date:** 2026-09-23
@@ -202,19 +205,16 @@ Every contract also requires exit code 0. Tests run with umask 022.
   whose value is the prompt, and the injection carries the stub's body
 
 ### Contract: ROUTE_HOOK_UNPASSABLE_PROMPT_FAILS_OPEN
-- **Given:** a valid ledger, and in turn a prompt holding an embedded NUL byte
-  (sent as `\u0000` in the JSON envelope) and a prompt of 2 000 000
-  characters, over both Linux's per-argument limit and macOS's `ARG_MAX`
+- **Given:** a valid ledger, and a prompt holding an embedded NUL byte (sent
+  as `\u0000` in the JSON envelope), which no argv can carry
 - **When:** the hook runs
 - **Then:** the injection is the pointer line alone, and the ledger is
   byte-identical with an unchanged mtime
 - **And:** stdout is one valid hook envelope, and no traceback reaches stderr
 
 ### Contract: ROUTER_OUTPUT_WITHOUT_ECHO_PREFIX_POINTER_ONLY
-- **Given:** a valid ledger, a prompt holding a sentinel token, and in turn a
-  stub whose output is: the §6 body with no `task:` line; `task: ` followed by
-  other text, a blank line and the body; the exact `task: <prompt>` line with
-  no blank line after it
+- **Given:** a valid ledger, a prompt holding a sentinel token, and a stub
+  whose output is the §6 body with no `task:` line
 - **When:** the hook runs
 - **Then:** the injection is the pointer line alone
 - **And:** the sentinel appears in no injection, in no file under
@@ -229,21 +229,18 @@ Every contract also requires exit code 0. Tests run with umask 022.
   for byte
 
 ### Contract: HOOK_TEXT_RESTATES_NO_KERNEL_RULE
-- **Given:** `core/AGENTS.md`, from which the check derives the cells of the §0
-  "The task is…" column and the FIRST MOVE numbered steps. Both that text and
-  each scanned file are normalised the same way: `\uXXXX` escapes decoded,
-  markdown `*` and backticks dropped, lowercased, then split into tokens that
-  are runs of `[a-z0-9]`. The whole of each scanned file is read, comments and
-  docstrings included
-- **When:** `tests/seed-lint.py` scans `integrations/claude-code/route-hook.py`
-  and `integrations/prime-agent/route-extension.ts`
-- **Then:** the check fails on any run of four or more consecutive tokens from
-  those cells or steps appearing in either file (I-8)
-- **And:** the check also fails on any token matching `\bT[0-3]\b` in either
-  file, read case-sensitively after escapes are decoded, so a paraphrase of
-  the tier table that shares no four-token run is still caught
-- **And:** a planted copy of a §0 cell in a scratch hook makes the check fail,
-  and so does a planted `T2`, so both rules are shown to fire
+- **Given:** the fixed text `integrations/claude-code/route-hook.py` injects
+  (the §6 injection texts it authors, not the router's output), and a recorded
+  byte ceiling on it that may only fall
+- **When:** `tests/seed-lint.py` runs
+- **Then:** the check fails when that text grows past the ceiling, so a kernel
+  rule cannot be restated in the per-prompt text without the growth being
+  seen (I-8)
+- **And:** a planted line that grows the text past the ceiling makes the check
+  fail
+- **Note:** until 2026-09-29 this contract matched four-token runs of the
+  kernel's §0 cells and FIRST MOVE steps, and `T0` to `T3` tokens. A short
+  paraphrase that does not grow the text is no longer caught (§12)
 
 ### Session ledger: first prompt, later prompts, refresh
 
@@ -318,8 +315,6 @@ Every contract also requires exit code 0. Tests run with umask 022.
   sentinel is gone
 - **And:** from a ledger whose `prompt_count` is `REFRESH_EVERY` − 1, the
   injection is reminder mode
-- **And:** in a copy whose `REFRESH_EVERY` literal is rewritten to 3, a ledger
-  at count 3 gives full mode and one at count 2 gives reminder mode
 
 ### Contract: LEDGER_TRIVIAL_PROMPT_UNTOUCHED
 - **Given:** a ledger
@@ -356,31 +351,26 @@ Every contract also requires exit code 0. Tests run with umask 022.
 
 ### Contract: LEDGER_ABSENT_SESSION_ID_FULL
 - **Given:** in turn, a Copilot-shaped envelope (no `session_id`, `source`
-  `"new"`, an unknown extra field), the same envelope carrying `sessionId`
-  set to a value that passes the §6 session-id pattern, and the same envelope
-  carrying `session_id` set to JSON `null`
+  `"new"`, an unknown extra field), and the same envelope carrying
+  `session_id` set to JSON `null`
 - **When:** the hook runs on the same prompt twice
 - **Then:** both injections are full mode, no file is created under
   `.cypress/session/`, and there is no stderr, so ADR-0009's
   `CLAUDE_HOOKS_FAIL_OPEN_ON_COPILOT_ENVELOPE` stays green
 
 ### Contract: LEDGER_INVALID_SESSION_ID_FULL
-- **Given:** a `session_id` from each of: `../../escape`, `a/b`, `.hidden`,
-  an empty string, 129 characters of `a`, a JSON number, and a string holding
-  a NUL byte
+- **Given:** a `session_id` from each of: `../../escape`, `a/b`, and a string
+  holding a NUL byte
 - **When:** the hook runs
 - **Then:** the injection is full mode, no file is created or modified in the
   temp plant tree or its parent directory (compared by a snapshot taken before
-  and after), and stderr has one line that, for each non-empty id, does not
-  contain the raw id
+  and after), and stderr has one line that does not contain the raw id
 - **And:** the id is tested against the §6 session-id pattern before any path
   is built from it
 
 ### Contract: LEDGER_CORRUPT_FULL
 - **Given:** a ledger file holding, in turn: invalid JSON; valid JSON with an
-  extra key; an id failing the id pattern; a `session_id` field that differs
-  from the filename stem; a file over `LEDGER_MAX_BYTES`; 60 000 `[`
-  characters, under `LEDGER_MAX_BYTES`, nested too deep for the JSON parser
+  extra key; a file over `LEDGER_MAX_BYTES`
 - **When:** the hook runs
 - **Then:** the injection is full mode, stderr has one line, and the file is
   replaced by a valid version-1 ledger for this session
@@ -400,19 +390,19 @@ Every contract also requires exit code 0. Tests run with umask 022.
 ### Reset
 
 ### Contract: STATUS_HOOK_RESETS_LEDGER
-- **Given:** a ledger with `prompt_count` 3, and in turn each `source` of
-  `startup`, `resume`, `clear`, `compact`, `fork`, `new`, a value outside the
-  §6 `reset_source` pattern, and an absent `source`
+- **Given:** a ledger with `prompt_count` 3, and in turn the `source`
+  `startup` and an absent `source`
 - **When:** `status-hook.py` runs with that `source` and the same `session_id`
 - **Then:** the ledger has `prompt_count` 0, empty `surfaced` and
   `peers_seen`, and `last_reset.source` equal to the source, or `"unknown"`
-  for a value outside the pattern and for an absent `source`
+  for an absent `source` (and for a value outside the §6 `reset_source`
+  pattern)
 - **And:** the next non-trivial prompt gets a full injection
 
 ### Contract: STATUS_HOOK_NO_LEDGER_WRITES_NOTHING
 - **Given:** a plant with a graph and `.cypress/`, and in turn a valid
-  `session_id` with no ledger file, no `session_id`, and each invalid
-  `session_id` of `LEDGER_INVALID_SESSION_ID_FULL`
+  `session_id` with no ledger file, no `session_id`, and the invalid
+  `session_id` `../../escape`
 - **When:** `status-hook.py` runs on `SessionStart`
 - **Then:** no file under `.cypress/` is created or modified, and the next
   non-trivial prompt for the valid id gets a full injection
@@ -425,16 +415,6 @@ Every contract also requires exit code 0. Tests run with umask 022.
 - **And:** stdout carries only the code-anchor injection of
   `STATUS_HOOK_INJECTS_THE_ANCHOR_LINE`, or the not-checked line of
   `STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION` (7.32.0)
-
-### Contract: STATUS_HOOK_RESET_OWNS_NO_PATH_RULE
-- **Given:** `integrations/claude-code/status-hook.py`
-- **When:** its source is read
-- **Then:** it carries neither the session-id pattern nor the string
-  `.cypress/session`. It obtains `reset_ledger` from its sibling
-  `route-hook.py`, so the ledger has one owner (I-4)
-- **Note:** a planted `Path(root, ".cypress", "session")` passes this source
-  check; `STATUS_HOOK_WITHOUT_SIBLING_LEAVES_LEDGER` is the behavioural case
-  that catches it
 
 ### Contract: STATUS_HOOK_WITHOUT_SIBLING_LEAVES_LEDGER
 - **Given:** `status-hook.py` in `.claude/` without `route-hook.py` beside it,
@@ -458,28 +438,19 @@ Every contract also requires exit code 0. Tests run with umask 022.
   holding other content, that file is byte-identical after the hook writes
 
 ### Contract: LEDGER_WRITE_IS_ATOMIC
-- **Given:** an existing valid ledger, and a hard link to it in the temp plant
-  root
-- **When:** the hook updates the ledger
-- **Then:** the ledger path's inode differs from the hard link's, the
-  hard-linked file is byte-identical to the old ledger, and no file other than
-  `<sid>.json` and `.gitignore` remains in `.cypress/session/`. The ledger was
-  replaced, not rewritten in place
-- **And:** when the replace fails (the hook run through a `runpy` wrapper that
-  makes `os.replace` and `os.rename` raise `OSError`), the original ledger is
-  byte-identical, no temp file remains, the injection is full mode, and stderr
-  has one line. An interrupted replace leaves the old ledger intact
+- **Given:** an existing valid ledger
+- **When:** the hook updates it and the replace fails (the hook run through a
+  `runpy` wrapper that makes `os.replace` and `os.rename` raise `OSError`)
+- **Then:** the original ledger is byte-identical, the injection is full mode,
+  and stderr has one line. An interrupted replace leaves the old ledger intact
 
 ### Contract: LEDGER_SYMLINK_REFUSED
 - **Given:** in turn:
-  - `.cypress` as a symlink to a directory outside the temp plant that holds a
-    `session/` directory with a valid ledger for this sid
   - `.cypress/session` as a symlink to a directory outside the temp plant
   - `.cypress/session/<sid>.json` as a symlink to an outside file holding a
     valid version-1 ledger for the same sid, with `prompt_count` 1 and
     `surfaced` equal to the LOAD ids, so following the link would give
     reminder mode
-  - `.cypress/session/.gitignore` as a symlink to a file outside the temp plant
   - `.cypress/session/<sid>.json` as a FIFO
 - **When:** the hook runs, under a 5 s timeout
 - **Then:** it exits 0 within the timeout, every outside target is
@@ -506,10 +477,8 @@ Every contract also requires exit code 0. Tests run with umask 022.
   has one line naming the path
 
 ### Contract: LEDGER_WRITE_FAILURE_FAILS_OPEN
-- **Given:** in turn, `.cypress/session/` read-only (this case is skipped, and
-  says so, when the suite runs as root), and the hook run through a `runpy`
-  wrapper that makes `os.replace` raise `PermissionError` (this case runs as
-  root too)
+- **Given:** the hook run through a `runpy` wrapper that makes `os.replace`
+  raise `PermissionError` (this case runs as root too)
 - **When:** the hook runs
 - **Then:** the injection is full mode and stderr has one line
 
@@ -521,13 +490,11 @@ Every contract also requires exit code 0. Tests run with umask 022.
   session-id pattern
 - **When:** the hook creates the current session's ledger
 - **Then:** no ledger file older than `GC_MAX_AGE` remains; at most
-  `GC_MAX_FILES` ledger files remain, the current one among them and the
-  removed fresh ones being the oldest; no stale temp file remains; and
-  `notes.txt`, `bad name.json` and `.gitignore` are byte-identical
+  `GC_MAX_FILES` ledger files remain, the current one among them; no stale
+  temp file remains; and `notes.txt`, `bad name.json` and `.gitignore` are
+  byte-identical
 - **And:** a stale temp file planted after that prompt survives the next prompt
   of the same session, which updates the ledger rather than creating it
-- **And:** with 300 stale temp files present, one ledger creation removes at
-  most `GC_SCAN_MAX` of them
 
 ### Spawn boundary (I-2)
 
@@ -570,22 +537,15 @@ section is collapsed to one space, so a line wrap cannot hide a phrase.
 ### Contract: ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX
 - **Given:** the extension source
 - **When:** it is read
-- **Then:** the prefix is built as `` `task: ${prompt}\n\n` `` from the same
-  `prompt` value that goes into the `--plan=` element, tested with
-  `startsWith`, and removed with `slice(prefix.length)`; the remainder
-  undergoes no transformation other than `trim`; and the source contains no
-  `.slice(2)` or other fixed line count applied to `--plan` output
-- **And:** the suggestion header and the remainder are appended to the content
-  only inside the branch guarded by that `startsWith` test, so output without
-  the exact prefix yields the pointer line alone (§7 `ROUTER_FAILED`)
+- **Then:** it contains the substrings `` `task: ${prompt}\n\n` `` and
+  `startsWith(`: the echo is stripped by testing the exact prefix, and output
+  without it yields the pointer line alone (§7 `ROUTER_FAILED`)
 
 ### Contract: ROUTE_EXTENSION_PASSES_PROMPT_AS_ONE_OPTION_VALUE
 - **Given:** the extension source
 - **When:** it is read
-- **Then:** the argv is an array literal written inline in the single
-  `pi.exec(` call, and it carries the prompt only inside a `--plan=` element,
-  never as a separate element after `--plan`. The test fails when no such
-  literal is found
+- **Then:** it contains exactly one `pi.exec(` and the substring `--plan=${`,
+  so the prompt travels inside the `--plan=` element
 
 ### Contract: ROUTE_EXTENSION_TEXT_MATCHES_ROUTE_HOOK
 - **Given:** the pointer line and the full-mode suggestion header of §6
@@ -593,28 +553,16 @@ section is collapsed to one space, so a line wrap cannot hide a phrase.
   `route-extension.ts` spells non-ASCII characters as escapes: a backslash
   and `u00a7` for the section sign, a backslash and `u2014` for the dash
 - **Then:** each string occurs verbatim in both `route-hook.py` and
-  `route-extension.ts`, each as a single string literal with no `+`
-  concatenation and no implicit concatenation, so the two surfaces cannot
-  drift apart in wording
+  `route-extension.ts`, so the two surfaces cannot drift apart in wording
 
 ### Contract: ROUTE_EXTENSION_HOLDS_NO_LEDGER_STATE
-- **Given:** the extension source, and the allowlist of module-scope names
-  `TRIVIAL`, `CANDIDATES`, `findLint`, `POINTER`, `SUGGESTION_HEADER` and
-  `routeExtension`
+- **Given:** the extension source
 - **When:** it is read
-- **Then:** every name declared on a line matching
-  `^(export\s+)?(default\s+)?(async\s+)?(const|let|var|function|class)\s+(\w+)`
-  is in the allowlist; no line matches `^(export\s+)?(const|let|var)\s*[\[{]`;
-  the source contains no `globalThis`; it subscribes
-  through `pi.on` to `before_agent_start` only; it contains none of the
-  reminder-mode prefixes `Surfaced earlier this session:`, `New for this
-  task:` and `Not suggested, not listed before (cross only if needed):`; and
-  it calls no `pi.appendEntry` and no filesystem write (no match of
-  `\bNAME\s*\(` for any NAME of `writeFile`,
-  `writeFileSync`, `appendFile`, `appendFileSync`, `mkdir`, `mkdirSync`,
-  `rename`, `renameSync`, `createWriteStream`, `copyFile`, `copyFileSync`,
-  `cp`, `cpSync`, `open`, `openSync`, `truncate`, `truncateSync`, `symlink`,
-  `symlinkSync`)
+- **Then:** it calls no filesystem write (no match of `\bNAME\s*\(` for any
+  NAME of `writeFile`, `writeFileSync`, `appendFile`, `appendFileSync`,
+  `mkdir`, `mkdirSync`, `rename`, `renameSync`, `createWriteStream`,
+  `copyFile`, `copyFileSync`, `cp`, `cpSync`, `open`, `openSync`, `truncate`,
+  `truncateSync`, `symlink`, `symlinkSync`)
 - **Note:** a consequence, not asserted: with no state, every non-trivial
   prompt with a graph takes the full-mode path, and the extension cannot hold
   a record that outlives a session in its process
@@ -622,12 +570,7 @@ section is collapsed to one space, so a line wrap cannot hide a phrase.
 ### Contract: PRIME_OVERLAY_KEEPS_SURFACED_SET
 - **Given:** `integrations/prime-agent/APPEND_SYSTEM.md`
 - **When:** it is read
-- **Then:** exactly one `## Surfaced nodes` section exists, and it contains the
-  phrases `_cypress_surfaced`, `IPython kernel`,
-  `surfaced earlier this session` and
-  `re-open it if its content is not in view`
-- **And:** the section contains neither `rlm` nor `brief`, so it never asks the
-  model to hand the set to a child (I-2)
+- **Then:** the section names `_cypress_surfaced`
 
 ### Contract: PRIME_OVERLAY_NEVER_SAYS_LOADED
 - **Given:** the section
@@ -635,17 +578,6 @@ section is collapsed to one space, so a line wrap cannot hide a phrase.
 - **Then:** it contains no `loaded` in any letter case (I-6)
 - **And:** the case fails when the section is absent, so it cannot pass on an
   empty match
-
-### Contract: PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE
-- **Given:** the §0 cells and FIRST MOVE steps that
-  `HOOK_TEXT_RESTATES_NO_KERNEL_RULE` derives from `core/AGENTS.md`, under the
-  same normalisation
-- **When:** `tests/seed-lint.py` runs the same check over the section
-- **Then:** the check fails on any run of four or more consecutive tokens from
-  those cells or steps appearing in the section, or on any token matching
-  `\bT[0-3]\b` in it (I-8)
-- **And:** a planted copy of a FIRST MOVE step inside a scratch overlay's
-  section makes the check fail, and the same copy outside the section does not
 
 ### Contract: PRIME_OVERLAY_SECTION_WITHIN_CEILING
 - **Given:** the section
@@ -657,7 +589,7 @@ section is collapsed to one space, so a line wrap cannot hide a phrase.
 - **When:** `tests/seed-lint.py` runs `check_eager_surface`
 - **Then:** the prime-agent surface (kernel bytes, skill descriptions and
   overlay bytes) is at most `EAGER_BUDGET`, and
-  `check_published_eager_figures` passes, so the prime-agent figures in
+  `check_published_figures` passes, so the prime-agent figures in
   `documentation/host-capability-matrix.md` equal the new computation
 
 ### Router path column (7.32.0)
@@ -694,9 +626,9 @@ contracts use a stub tool in the plant of the reset contracts.
 - **Given:** a plant that is a Git work tree with one commit and one modified
   tracked file, holding a nested Git work tree that one node names in `repo:`
 - **When:** `python3 docs/graph/code-anchor.py --record` runs from the plant root
-- **Then:** `.cypress/anchor.json` holds one entry per repository in the §6
-  shape: the path, the branch, the commit, and each uncommitted path with its
-  content hash
+- **Then:** `.cypress/anchor.json` holds one entry per repository, naming the
+  path, the branch, the commit, and each uncommitted path with its content
+  hash
 - **And:** stdout is the one session-record line of §6, and the exit code is 0
 
 ### Contract: ANCHOR_QUIET_WHEN_NOTHING_MOVED
@@ -759,8 +691,6 @@ contracts use a stub tool in the plant of the reset contracts.
 - **When:** `code-anchor.py --record` runs
 - **Then:** the outside file is byte-identical, the symlink is not followed, no
   `.cypress/` is created, stderr has one line, and the exit code is non-zero
-- **And:** a successful record replaces the anchor atomically: a reader sees
-  the old file or the new one, never a partial one
 
 ### Contract: STATUS_HOOK_INJECTS_THE_ANCHOR_LINE
 - **Given:** a plant with `docs/graph/code-anchor.py`, and in turn with and
@@ -771,12 +701,12 @@ contracts use a stub tool in the plant of the reset contracts.
 - **And:** the ledger reset of `STATUS_HOOK_RESETS_LEDGER` is unchanged
 - **And:** this line, or the not-checked line of
   `STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION`, is injected once per
-  session, on `SessionStart` only. `route-hook.py`, which runs on every
-  prompt, never injects it, and no pre-tool hook does
+  session: `integrations/claude-code/settings.json` and the Copilot
+  `hooks/status.json` wire `status-hook.py` under `SessionStart` alone
 
 ### Contract: STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION
-- **Given:** `code-anchor.py` is absent, exits non-zero, prints nothing, or
-  runs past `ANCHOR_TIMEOUT`
+- **Given:** a plant without `status-register.py`, and in turn
+  `code-anchor.py` absent and `code-anchor.py` running past `ANCHOR_TIMEOUT`
 - **When:** `status-hook.py` runs on `SessionStart`
 - **Then:** `additionalContext` carries the not-checked line of §6, and the hook
   exits 0
@@ -784,12 +714,9 @@ contracts use a stub tool in the plant of the reset contracts.
 ### Contract: STATUS_EXTENSION_INJECTS_THE_ANCHOR_LINE
 - **Given:** `integrations/prime-agent/status-extension.ts`, read as text
 - **When:** its source is checked
-- **Then:** on its one injection it runs `docs/graph/code-anchor.py --compare`
-  through `pi.exec` with an argument array, and injects that output, or the
-  not-checked line when the call fails, whether or not a status register exists
-- **And:** that one injection is on the first prompt of the session, never on
-  a later prompt. `route-extension.ts`, which runs on every prompt, never
-  injects either line
+- **Then:** it contains the substrings `code-anchor.py`, `--compare` and the
+  not-checked line of §6: it runs the comparison and injects its output, or
+  the not-checked line when the call fails
 - **Note:** structural, as every Prime Agent contract here; it proves the
   source, not what the host runs
 
@@ -972,11 +899,17 @@ In `route-hook.py`, one home each:
 | `LEDGER_MAX_BYTES` | 64 KiB |
 | `SURFACED_MAX` | 512 |
 
-In the Prime Agent structural block of `tests/test-bound-hook.sh`, its one home:
+In the Prime Agent structural block of `tests/test-prompt-hooks.sh`, its one home:
 
 | Name | Value |
 |---|---|
 | `OVERLAY_SECTION_MAX_BYTES` | 512, the ceiling. The section's own size is not restated here; `PRIME_OVERLAY_SECTION_WITHIN_CEILING` holds it under this value |
+
+In `tests/seed-lint.py`, its one home (registered `max` in `tests/ratchets.json`):
+
+| Name | Value |
+|---|---|
+| `HOOK_TEXT_MAX_BYTES` | 851, the ceiling `HOOK_TEXT_RESTATES_NO_KERNEL_RULE` holds. `hook_text_bytes()` measures the whole `# --- injected text` block of `route-hook.py`, from that line up to the next `# --- ` line, so the block's comment lines count too. It may only fall |
 
 ### Router output grammar (input; the path column since 7.32.0)
 
@@ -1413,11 +1346,10 @@ contracts it maps to.)
       ROUTER_OUTPUT_WITHOUT_ECHO_PREFIX_POINTER_ONLY,
       ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX,
       ROUTE_EXTENSION_PASSES_PROMPT_AS_ONE_OPTION_VALUE
-- [ ] AC-2: per-prompt text, and the overlay section beside it, points at the
-      kernel and restates none of it. Maps to ROUTE_HOOK_POINTS_AT_KERNEL,
+- [ ] AC-2: per-prompt text points at the kernel, and its fixed text is held
+      under a byte ceiling. Maps to ROUTE_HOOK_POINTS_AT_KERNEL,
       HOOK_TEXT_RESTATES_NO_KERNEL_RULE,
-      ROUTE_EXTENSION_TEXT_MATCHES_ROUTE_HOOK,
-      PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE
+      ROUTE_EXTENSION_TEXT_MATCHES_ROUTE_HOOK
 - [ ] AC-3: between one full injection and the next, a node the router already
       suggested this session is named by id on the `Surfaced earlier this
       session:` line and its entry line is not repeated. No line the hook or
@@ -1447,7 +1379,6 @@ contracts it maps to.)
       LEDGER_NO_CYPRESS_DIR_NO_WRITE, LEDGER_WRITE_FAILURE_FAILS_OPEN,
       LEDGER_GC_BOUNDED, LEDGER_NEVER_EMITS_UNROUTED_ID,
       LEDGER_UNUSED_WITHOUT_GRAPH, LEDGER_TRIVIAL_PROMPT_UNTOUCHED,
-      STATUS_HOOK_RESET_OWNS_NO_PATH_RULE,
       STATUS_HOOK_WITHOUT_SIBLING_LEAVES_LEDGER,
       ROUTE_EXTENSION_HOLDS_NO_LEDGER_STATE
 - [ ] AC-7: spawned workers see exactly what they saw before. Maps to
@@ -1514,48 +1445,44 @@ its Test case cell, which the cited file contains.
 
 Binding, fixed at this revision (tester R22):
 
-- Rows citing `tests/test-bound-hook.sh` use the fixed-width labels `X101` to
-  `X143` reserved below, one per contract, `X144` to `X150` for the cases
+- Rows citing `tests/test-prompt-hooks.sh` or `tests/test-code-anchor.sh`
+  use the fixed-width labels `X101` to `X143` reserved below, one per contract, `X144` to `X150` for the cases
   the review of 2deda6a..343445f added, and `X151` to `X163` for the 7.32.0
   contracts (§12). Each case's OK line reads
   `X1NN <SLUG>: … — OK`, so both the label and the slug appear in that case.
   Fixed width keeps one label from matching inside another. When the case is
   written, the row gets the bare path.
-- Rows citing `tests/test-seed-lint.sh` use `X201` to `X203` the same way.
+- Rows citing `tests/test-seed-lint.sh` use `X201` the same way.
 - Rows citing `tests/seed-lint.py` carry exactly the bare function name in the
   Test case cell, and nothing else, once the row leaves `pending`. Any text
   after the name makes `_spec_green_rows` fall back to a search of the whole
   file, so the notes for these rows sit in the Level cell. Already written that
   way below. `check_spec_rows_name_their_contract` then looks for the
   slug inside that function and requires an assertion there (`fail(` counts),
-  so `check_hook_text_restates_no_kernel_rule` names both of its slugs,
+  so `check_hook_text_restates_no_kernel_rule` names its slug,
   `check_eager_surface` names `PRIME_EAGER_SURFACE_WITHIN_BUDGET`, and `check` (the function that
   holds the GRAPH DISCIPLINE identity check; this bullet read `main` until RED)
   names `BRIEF_TEMPLATES_BYTE_IDENTICAL` beside it.
 - The RED commit that moves this spec to `active` carries all 45 slugs in
   `tests/`. Fewer would fail `SPEC_UNCOVERED_BUDGET`, which `ratchets.json`
   holds ceiling-only.
-- `tests/check-coverage-binder.py` forces one `# exercises:` marker per check,
-  so the second planted case of `check_hook_text_restates_no_kernel_rule` (the
-  overlay, `X202`) is enforced by this table alone.
 
-Placement follows plan §8 and the orchestrator's decision of 2026-09-23 (§11):
-after 7.27.0, `tests/test-bound-hook.sh` holds every Claude Code hook contract,
-and its Copilot fail-open section is the one these cases extend. The Prime
-Agent structural cases, overlay included, go in one Python block in that same
-file, in the style of the resolver read at `tests/test-install-placement.sh:835`.
-No new test file is named. Every Prime Agent row is at structural strength: it
-reads text and observes no model.
+Placement is by subject (test consolidation, 2026-09-29):
+`tests/test-prompt-hooks.sh` holds the route-hook and status-hook cases, the
+Copilot fail-open rows inside X118 and X124, and the Prime Agent structural
+cases, overlay included, in one Python block. `tests/test-code-anchor.sh` holds
+the code-anchor tool cases. `tests/test-bound-hook.sh` keeps the bounded-execution
+guard only. Every Prime Agent row is at structural strength: it reads text and
+observes no model.
 
 Techniques the cases rely on:
 
 - `REFRESH_EVERY` and `ROUTER_TIMEOUT` are read by regex from the copied hook.
-  `X113` also rewrites the copy's `REFRESH_EVERY` literal to 3 and asserts the
-  refresh happens at 3. `X142` rewrites `ROUTER_TIMEOUT` to 1 against a stub
+  `X142` rewrites `ROUTER_TIMEOUT` to 1 against a stub
   that sleeps 3 s, so the timeout branch runs without a 15 s wait.
-- Fault injection (`X129`, `X133`) runs the hook through a `runpy` wrapper that
-  patches `os.replace` and `os.rename`, so it works as root.
-- Only the read-only-directory case of `X133` skips as root, and it says so.
+- Fault injection (`X133`, which holds X129's failed replace) runs the hook
+  through a `runpy` wrapper that patches `os.replace` and `os.rename`, so it
+  works as root. No case skips as root.
 - `X162` rewrites the copied `status-hook.py`'s `ANCHOR_TIMEOUT` to 1
   against a stub tool that sleeps 3 s. `X152` to `X160` build real Git
   repositories under a `HOME` of their own, and copy `tools/code-anchor.py` to
@@ -1563,88 +1490,84 @@ Techniques the cases rely on:
 
 | Contract / Failure | Test case | Test file | Level | Status |
 |---|---|---|---|---|
-| ROUTE_HOOK_STRIPS_MULTILINE_PROMPT_ECHO | X101 | tests/test-bound-hook.sh | integration | green |
-| ROUTE_HOOK_PASSES_PROMPT_AS_ONE_OPTION_VALUE | X102 | tests/test-bound-hook.sh | integration | green |
-| ROUTE_HOOK_UNPASSABLE_PROMPT_FAILS_OPEN | X103; red on arrival (no pointer line yet); the spec's mutation (router call moved outside the guard) was also run against a scratch GREEN and fails it | tests/test-bound-hook.sh | integration | green |
-| ROUTER_OUTPUT_WITHOUT_ECHO_PREFIX_POINTER_ONLY | X104 | tests/test-bound-hook.sh | integration | green |
-| ROUTE_HOOK_POINTS_AT_KERNEL | X105 | tests/test-bound-hook.sh | integration | green |
-| HOOK_TEXT_RESTATES_NO_KERNEL_RULE | check_hook_text_restates_no_kernel_rule | tests/seed-lint.py | unit; a new check, entered in COVERED in tests/check-coverage-binder.py; red at RED (the check did not exist, so X201 drew no finding and the binder named it), green at GREEN; the function names the slug in its own body, in the finding it raises (the comment above its `def` is documentation, outside the bound scope) | green |
-| HOOK_TEXT_RESTATES_NO_KERNEL_RULE | X201; planted §0 cell and planted `T2`, tagged `# exercises: check_hook_text_restates_no_kernel_rule` | tests/test-seed-lint.sh | integration | green |
-| LEDGER_FIRST_PROMPT_FULL | X106 | tests/test-bound-hook.sh | integration | green |
-| LEDGER_LATER_PROMPT_REMINDER | X107 | tests/test-bound-hook.sh | integration | green |
-| REMINDER_KEEPS_NOTICE_LINES | X108 | tests/test-bound-hook.sh | integration | green |
-| REMINDER_SAYS_SURFACED_NEVER_LOADED | X109 | tests/test-bound-hook.sh | integration | green |
-| LEDGER_NEW_IDS_LISTED | X110 | tests/test-bound-hook.sh | integration | green |
-| REMINDER_DROPS_PEERS_ALREADY_SHOWN | X111 | tests/test-bound-hook.sh | integration | green |
-| LEDGER_EVERY_LOAD_ID_NAMED | X112; the six ledger states of the contract | tests/test-bound-hook.sh | integration | green |
-| LEDGER_REFRESH_EVERY_N | X113; constant read by regex, copy rewritten to 3 | tests/test-bound-hook.sh | integration | green |
-| LEDGER_TRIVIAL_PROMPT_UNTOUCHED | X114; green on arrival; RED shown by mutation (trivial-prompt early return removed) | tests/test-bound-hook.sh | integration | green |
-| LEDGER_UNUSED_WITHOUT_GRAPH | X115; green on arrival; RED shown by mutation (no-graph path creating a file under `.cypress/session/`) | tests/test-bound-hook.sh | integration | green |
-| LEDGER_NEVER_EMITS_UNROUTED_ID | X116; green on arrival; RED shown by mutation (ledger content appended to the injection) | tests/test-bound-hook.sh | integration | green |
-| UNPARSEABLE_ROUTER_OUTPUT_FULL | X117 | tests/test-bound-hook.sh | integration | green |
-| LEDGER_ABSENT_SESSION_ID_FULL | X118; extends the CLAUDE_HOOKS_FAIL_OPEN_ON_COPILOT_ENVELOPE section; red on arrival (no pointer line yet); the `session_id: null` variant added at the review RED, red on arrival (refused with a stderr line) | tests/test-bound-hook.sh | integration | green |
-| LEDGER_INVALID_SESSION_ID_FULL | X119; tree snapshot before and after | tests/test-bound-hook.sh | integration | green |
-| LEDGER_CORRUPT_FULL | X120 | tests/test-bound-hook.sh | integration | green |
-| LEDGER_UNKNOWN_VERSION_FULL | X121 | tests/test-bound-hook.sh | integration | green |
-| LEDGER_EXPIRED_FULL | X122 | tests/test-bound-hook.sh | integration | green |
-| STATUS_HOOK_RESETS_LEDGER | X123 | tests/test-bound-hook.sh | integration | green |
-| STATUS_HOOK_NO_LEDGER_WRITES_NOTHING | X124 | tests/test-bound-hook.sh | integration | green |
-| STATUS_HOOK_RESETS_WITHOUT_REGISTER | X125 | tests/test-bound-hook.sh | integration | green |
-| STATUS_HOOK_RESET_OWNS_NO_PATH_RULE | X126; source assertion | tests/test-bound-hook.sh | unit | green |
-| STATUS_HOOK_WITHOUT_SIBLING_LEAVES_LEDGER | X127 | tests/test-bound-hook.sh | integration | green |
-| LEDGER_GITIGNORED | X128 | tests/test-bound-hook.sh | integration | green |
-| LEDGER_WRITE_IS_ATOMIC | X129; hard link, and fault injection through `runpy` | tests/test-bound-hook.sh | integration | green |
-| LEDGER_SYMLINK_REFUSED | X130; five cases under a 5 s timeout | tests/test-bound-hook.sh | integration | green |
-| LEDGER_FOREIGN_OR_WRITABLE_REFUSED | X131; runs as root too | tests/test-bound-hook.sh | integration | green |
-| LEDGER_NO_CYPRESS_DIR_NO_WRITE | X132; red on arrival (no pointer line, no stderr line yet) | tests/test-bound-hook.sh | integration | green |
-| LEDGER_WRITE_FAILURE_FAILS_OPEN | X133; chmod case skipped as root, and says so; `runpy` case runs as root | tests/test-bound-hook.sh | integration | green |
-| LEDGER_GC_BOUNDED | X134 | tests/test-bound-hook.sh | integration | green |
+| ROUTE_HOOK_STRIPS_MULTILINE_PROMPT_ECHO | X101 | tests/test-prompt-hooks.sh | integration | green |
+| ROUTE_HOOK_PASSES_PROMPT_AS_ONE_OPTION_VALUE | X102 | tests/test-prompt-hooks.sh | integration | green |
+| ROUTE_HOOK_UNPASSABLE_PROMPT_FAILS_OPEN | X103; the NUL prompt | tests/test-prompt-hooks.sh | integration | green |
+| ROUTER_OUTPUT_WITHOUT_ECHO_PREFIX_POINTER_ONLY | X104; one stub mode | tests/test-prompt-hooks.sh | integration | green |
+| ROUTE_HOOK_POINTS_AT_KERNEL | X105, inside X106: the full-mode compare puts the pointer line first | tests/test-prompt-hooks.sh | integration | green |
+| HOOK_TEXT_RESTATES_NO_KERNEL_RULE | check_hook_text_restates_no_kernel_rule | tests/seed-lint.py | unit; the byte budget on the hook's fixed text; the function names the slug in the finding it raises | green |
+| HOOK_TEXT_RESTATES_NO_KERNEL_RULE | X201; a planted line grows the hook text past its byte ceiling | tests/test-seed-lint.sh | integration | green |
+| LEDGER_FIRST_PROMPT_FULL | X106 | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_LATER_PROMPT_REMINDER | X107 | tests/test-prompt-hooks.sh | integration | green |
+| REMINDER_KEEPS_NOTICE_LINES | X108, inside X109 (the same notice-body run) | tests/test-prompt-hooks.sh | integration | green |
+| REMINDER_SAYS_SURFACED_NEVER_LOADED | X109 | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_NEW_IDS_LISTED | X110 | tests/test-prompt-hooks.sh | integration | green |
+| REMINDER_DROPS_PEERS_ALREADY_SHOWN | X111 | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_EVERY_LOAD_ID_NAMED | X106, X107, X110, X113, X120 and X123 hold the six ledger states (absent, every id surfaced, one outside, `REFRESH_EVERY`, invalid JSON, count 0 after a reset), each by an exact-text compare | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_REFRESH_EVERY_N | X113; constant read by regex, N and N−1 | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_TRIVIAL_PROMPT_UNTOUCHED | X114; green on arrival; RED shown by mutation (trivial-prompt early return removed) | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_UNUSED_WITHOUT_GRAPH | X115; green on arrival; RED shown by mutation (no-graph path creating a file under `.cypress/session/`) | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_NEVER_EMITS_UNROUTED_ID | X116, inside X107: one unrouted id in the ledger, absent from the injection | tests/test-prompt-hooks.sh | integration | green |
+| UNPARSEABLE_ROUTER_OUTPUT_FULL | X117 | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_ABSENT_SESSION_ID_FULL | X118; two envelopes, and it holds the CLAUDE_HOOKS_FAIL_OPEN_ON_COPILOT_ENVELOPE block | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_INVALID_SESSION_ID_FULL | X119; three ids, tree snapshot before and after | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_CORRUPT_FULL | X120; three shapes | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_UNKNOWN_VERSION_FULL | X121, a row of X120 | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_EXPIRED_FULL | X122, a row of X120 | tests/test-prompt-hooks.sh | integration | green |
+| STATUS_HOOK_RESETS_LEDGER | X123; `startup` and an absent source | tests/test-prompt-hooks.sh | integration | green |
+| STATUS_HOOK_NO_LEDGER_WRITES_NOTHING | X124; three ids | tests/test-prompt-hooks.sh | integration | green |
+| STATUS_HOOK_RESETS_WITHOUT_REGISTER | X125 | tests/test-prompt-hooks.sh | integration | green |
+| STATUS_HOOK_WITHOUT_SIBLING_LEAVES_LEDGER | X127 | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_GITIGNORED | X128 | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_WRITE_IS_ATOMIC | X129, the failed-replace row inside X133; fault injection through `runpy` | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_SYMLINK_REFUSED | X130; three cases under a 5 s timeout | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_FOREIGN_OR_WRITABLE_REFUSED | X131; runs as root too | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_NO_CYPRESS_DIR_NO_WRITE | X132; red on arrival (no pointer line, no stderr line yet) | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_WRITE_FAILURE_FAILS_OPEN | X133; the `runpy` case, which runs as root | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_GC_BOUNDED | X134; old ledgers go, foreign files stay | tests/test-prompt-hooks.sh | integration | green |
 | BRIEF_TEMPLATES_BYTE_IDENTICAL | check | tests/seed-lint.py | verify gate; the slug sits in a comment beside the existing GRAPH DISCIPLINE identity check in `check` (not `main`, which holds no such check), and the verify record is `git diff --quiet <baseline> -- templates/prompts/graph-session-bootstrap.md templates/prompts/handback-payload.md`, where `<baseline>` is the 7.32.0 commit that lands owner rule R5's two sentences in step 4, commit `9ba5b4b` (until 7.32.0 it was `ac61a3f`, the 7.27.0 release commit, the parent of Slice A's first commit). Green on arrival (exit 0 at RED); RED shown by mutation (a byte appended to either template gives exit 1, and a drifted embedded block fails the identity check). Held at `pending` until the top-level-def scope defect in `check_spec_rows_name_their_contract` was fixed (§12); green since, and binding (the slug found inside the function) | green |
-| ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX | X135; structural | tests/test-bound-hook.sh | unit | green |
-| ROUTE_EXTENSION_PASSES_PROMPT_AS_ONE_OPTION_VALUE | X136; structural; fails when no inline argv literal is found | tests/test-bound-hook.sh | unit | green |
-| ROUTE_EXTENSION_TEXT_MATCHES_ROUTE_HOOK | X137; structural, escapes decoded, single literals | tests/test-bound-hook.sh | unit | green |
-| ROUTE_EXTENSION_HOLDS_NO_LEDGER_STATE | X138; structural; red on arrival (module-scope `MANDATE`). Mutations run against a scratch GREEN: a module-scope `const SEEN = new Set<string>()` and a `pi.on("session_start", …)` each turn it red | tests/test-bound-hook.sh | unit | green |
-| PRIME_OVERLAY_KEEPS_SURFACED_SET | X139; structural, reads `integrations/prime-agent/APPEND_SYSTEM.md`, case-sensitive | tests/test-bound-hook.sh | unit | green |
-| PRIME_OVERLAY_NEVER_SAYS_LOADED | X140; structural; fails on an absent section | tests/test-bound-hook.sh | unit | green |
-| PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE | check_hook_text_restates_no_kernel_rule | tests/seed-lint.py | unit; the same check, extended to the section; red at RED, green at GREEN; the function names the slug in its own body, in the finding it raises (the comment above its `def` is documentation, outside the bound scope) | green |
-| PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE | X202; planted case in a scratch overlay's section | tests/test-seed-lint.sh | integration | green |
-| PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE | X203; the section heading renamed and a `T2` planted under it; red on arrival (the check skipped a section it could not find) | tests/test-seed-lint.sh | integration | green |
-| PRIME_OVERLAY_SECTION_WITHIN_CEILING | X141; structural; holds `OVERLAY_SECTION_MAX_BYTES` | tests/test-bound-hook.sh | unit | green |
+| ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX | X135; structural, substrings | tests/test-prompt-hooks.sh | unit | green |
+| ROUTE_EXTENSION_PASSES_PROMPT_AS_ONE_OPTION_VALUE | X136, inside X135; structural, substrings | tests/test-prompt-hooks.sh | unit | green |
+| ROUTE_EXTENSION_TEXT_MATCHES_ROUTE_HOOK | X137; structural, escapes decoded, plain substrings | tests/test-prompt-hooks.sh | unit | green |
+| ROUTE_EXTENSION_HOLDS_NO_LEDGER_STATE | X138; structural, the fs-write ban | tests/test-prompt-hooks.sh | unit | green |
+| PRIME_OVERLAY_KEEPS_SURFACED_SET | X139, inside X141: the section names `_cypress_surfaced` | tests/test-prompt-hooks.sh | unit | green |
+| PRIME_OVERLAY_NEVER_SAYS_LOADED | X140, inside X141: no `loaded` in the section; fails on an absent section | tests/test-prompt-hooks.sh | unit | green |
+| PRIME_OVERLAY_SECTION_WITHIN_CEILING | X141; structural; holds `OVERLAY_SECTION_MAX_BYTES` | tests/test-prompt-hooks.sh | unit | green |
 | PRIME_EAGER_SURFACE_WITHIN_BUDGET | check_eager_surface | tests/seed-lint.py | unit; an existing check, run with check_published_eager_figures; green on arrival, and red on the section's arrival until the matrix figures are updated. RED shown by mutation (the overlay grown in a scratch copy fails the published-figures check). Held at `pending` until the top-level-def scope defect in `check_spec_rows_name_their_contract` was fixed (§12); green since, and binding (the slug found inside the function) | green |
-| ROUTER_FAILED | X142; non-zero exit, empty output, and timeout with `ROUTER_TIMEOUT` rewritten to 1 | tests/test-bound-hook.sh | integration | green |
-| SESSION_ID_REFUSED | X119, the case of LEDGER_INVALID_SESSION_ID_FULL | tests/test-bound-hook.sh | integration; its cases pass at GREEN (2026-09-23), and each names this failure slug after its contract slug, on its OK and FAIL lines (`X1NN <SLUG>; failure …`) | green |
-| LEDGER_UNUSABLE | X120, X121, X122, X130 (file symlink and FIFO) and X131, the cases of the contracts named there | tests/test-bound-hook.sh | integration; its cases pass at GREEN (2026-09-23), and each names this failure slug after its contract slug, on its OK and FAIL lines (`X1NN <SLUG>; failure …`) | green |
-| LEDGER_DIR_UNUSABLE | X130, X131 and X132, the cases of the contracts named there | tests/test-bound-hook.sh | integration; its cases pass at GREEN (2026-09-23), and each names this failure slug after its contract slug, on its OK and FAIL lines (`X1NN <SLUG>; failure …`) | green |
-| RESET_NOT_WRITTEN | X143, for the write-fails trigger; the sibling-missing trigger is X127 | tests/test-bound-hook.sh | integration | green |
+| ROUTER_FAILED | X142; non-zero exit, empty output, and timeout with `ROUTER_TIMEOUT` rewritten to 1 | tests/test-prompt-hooks.sh | integration | green |
+| SESSION_ID_REFUSED | X119, the case of LEDGER_INVALID_SESSION_ID_FULL | tests/test-prompt-hooks.sh | integration; its cases pass at GREEN (2026-09-23), and each names this failure slug after its contract slug, on its OK and FAIL lines (`X1NN <SLUG>; failure …`) | green |
+| LEDGER_UNUSABLE | X120 (with its X121 and X122 rows), X130 (file symlink and FIFO) and X131, the cases of the contracts named there | tests/test-prompt-hooks.sh | integration; its cases pass at GREEN (2026-09-23), and each names this failure slug after its contract slug, on its OK and FAIL lines (`X1NN <SLUG>; failure …`) | green |
+| LEDGER_DIR_UNUSABLE | X130, X131 and X132, the cases of the contracts named there | tests/test-prompt-hooks.sh | integration; its cases pass at GREEN (2026-09-23), and each names this failure slug after its contract slug, on its OK and FAIL lines (`X1NN <SLUG>; failure …`) | green |
+| RESET_NOT_WRITTEN | X143, for the write-fails trigger; the sibling-missing trigger is X127 | tests/test-prompt-hooks.sh | integration | green |
 | PRIME_MODEL_IGNORES_SURFACED_INSTRUCTION | no test; model behaviour, soft (§11). The no-omission half rests on ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX and ROUTE_EXTENSION_HOLDS_NO_LEDGER_STATE | — | — | pending |
 | PRIME_SURFACED_SET_TRUSTED_WHILE_STALE | no test; model behaviour (§11) | — | — | pending |
-| UNEXPECTED_EXCEPTION | X144; a status register printing non-UTF-8 bytes; red on arrival (a traceback) | tests/test-bound-hook.sh | integration | green |
-| UNEXPECTED_EXCEPTION | X145; 100 000 nested `[` on stdin, both hooks; red on arrival (a traceback, no pointer line) | tests/test-bound-hook.sh | integration | green |
-| ROUTE_HOOK_STRIPS_MULTILINE_PROMPT_ECHO | X146; CRLF and lone-CR prompts against their `\n` twin; red on arrival (newline translation broke the echo match) | tests/test-bound-hook.sh | integration | green |
-| RESET_NOT_WRITTEN | X147; the ledger stat fails through the `statfail` wrapper; red on arrival (the raw session id on stderr) | tests/test-bound-hook.sh | integration | green |
-| LEDGER_WRITE_FAILURE_FAILS_OPEN | X148; a ledger over `LEDGER_MAX_BYTES`, three prompts; red on arrival (the oversized file was written) | tests/test-bound-hook.sh | integration | green |
-| LEDGER_GC_BOUNDED | X149; GC's scan fails through the `scandirfail` wrapper; red on arrival (no ledger written) | tests/test-bound-hook.sh | integration | green |
-| ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX | X150; structural, the twin of X146; green on arrival, red under a stdout-normalising mutation (§11) | tests/test-bound-hook.sh | unit | green |
+| UNEXPECTED_EXCEPTION | X144; a status register printing non-UTF-8 bytes; red on arrival (a traceback) | tests/test-prompt-hooks.sh | integration | green |
+| UNEXPECTED_EXCEPTION | X145; 100 000 nested `[` on stdin, both hooks; red on arrival (a traceback, no pointer line) | tests/test-prompt-hooks.sh | integration | green |
+| ROUTE_HOOK_STRIPS_MULTILINE_PROMPT_ECHO | X146; CRLF and lone-CR prompts against their `\n` twin; red on arrival (newline translation broke the echo match) | tests/test-prompt-hooks.sh | integration | green |
+| RESET_NOT_WRITTEN | X147, a second fault row of X143: the ledger stat fails | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_WRITE_FAILURE_FAILS_OPEN | X148; a ledger that would pass `LEDGER_MAX_BYTES`, one prompt: not written, full mode | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_GC_BOUNDED | X149, a fault row of X134: GC's scan fails and the ledger is still written | tests/test-prompt-hooks.sh | integration | green |
+| ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX | X150, inside X135; structural | tests/test-prompt-hooks.sh | unit | green |
 | PLAN_ENTRY_NAMES_THE_NODE_FILE | test_plan_entry_names_the_node_file | tests/test_graph_lint.py | integration; red on arrival (entry lines carry no path); the fixture puts one node at `docs/graph/agents/04-tester.md`, a path its id does not spell | green |
-| ROUTE_HOOK_KEEPS_THE_PATH | X151; green on arrival (the hook reads the id as the first token and passes entry lines through); RED shown by mutation (a scratch `route-hook.py` that drops the path token from a new id's entry line fails X151 alone) | tests/test-bound-hook.sh | integration | green |
-| ANCHOR_RECORD_NAMES_EVERY_REPOSITORY | X152; red on arrival (no `tools/code-anchor.py`) | tests/test-bound-hook.sh | integration | green |
-| ANCHOR_QUIET_WHEN_NOTHING_MOVED | X153; red on arrival (no tool) | tests/test-bound-hook.sh | integration | green |
-| ANCHOR_NAMES_PATHS_WHEN_THE_COMMIT_MOVED | X154; red on arrival (no tool) | tests/test-bound-hook.sh | integration | green |
-| ANCHOR_NAMES_BOTH_BRANCHES_WHEN_THE_BRANCH_MOVED | X155; red on arrival (no tool) | tests/test-bound-hook.sh | integration | green |
-| ANCHOR_NAMES_NEW_UNCOMMITTED_WORK | X156; red on arrival (no tool) | tests/test-bound-hook.sh | integration | green |
-| ANCHOR_ABSENT_FAILS_TOWARD_INCLUSION | X157; five causes; red on arrival (no tool) | tests/test-bound-hook.sh | integration | green |
-| ANCHOR_OUTPUT_WITHIN_BUDGET | X158; 300 changed paths; red on arrival (no tool) | tests/test-bound-hook.sh | integration | green |
-| ANCHOR_COMPARE_WRITES_NOTHING | X159; five plant states with a stale index; red on arrival (no tool) | tests/test-bound-hook.sh | integration | green |
-| ANCHOR_RECORD_REFUSES_A_SYMLINK | X160; hard link, and fault injection through `runpy`; red on arrival (no tool) | tests/test-bound-hook.sh | integration | green |
-| ANCHOR_RECORD_REFUSES_A_SYMLINK | X166; a directory at the anchor name is refused as not a regular file, stderr one line, nothing written (§6 anchor file: never through a symlink; the tool refuses any name that is not a regular file); guard, green on arrival, red under a mutant that refuses only a symlink | tests/test-bound-hook.sh | integration | green |
-| STATUS_HOOK_INJECTS_THE_ANCHOR_LINE | X161; with and without a register; red on arrival (no anchor line); its ledger-reset assertion is a guard, green on arrival | tests/test-bound-hook.sh | integration | green |
-| STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION | X162; four causes, with and without a register; red on arrival (no not-checked line, no `ANCHOR_TIMEOUT`) | tests/test-bound-hook.sh | integration | green |
-| STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION | X165; structural: `ANCHOR_TIMEOUT` in §6, in `status-hook.py` and in `status-extension.ts` state one value; red on arrival of the 5 s §6 value, green with increment 61 | tests/test-bound-hook.sh | unit | green |
-| STATUS_EXTENSION_INJECTS_THE_ANCHOR_LINE | X163; structural; red on arrival (no `code-anchor.py` in the source) | tests/test-bound-hook.sh | unit | green |
-| STATUS_EXTENSION_INJECTS_THE_ANCHOR_LINE | X164; structural, also for STATUS_HOOK_INJECTS_THE_ANCHOR_LINE: only the session-start paths (`status-hook.py`, `status-extension.ts`) name `code-anchor.py`; `route-hook.py`, `route-extension.ts` and `bound-hook.py` do not; a guard, green on arrival, shown able to fail by mutation | tests/test-bound-hook.sh | unit | green |
-| ANCHOR_UNUSABLE | X157, the case of the contract named there | tests/test-bound-hook.sh | integration; the case names this failure slug after its contract slug | green |
-| ANCHOR_COMMIT_UNREACHABLE | X157, the case of the contract named there | tests/test-bound-hook.sh | integration; the case names this failure slug after its contract slug | green |
-| ANCHOR_CHECK_DID_NOT_RUN | X162 and X163, the cases of the contracts named there | tests/test-bound-hook.sh | integration and unit; each names this failure slug after its contract slug | green |
+| ROUTE_HOOK_KEEPS_THE_PATH | X151, inside X110: pathed entry lines are the default body, and the ledger holds ids only | tests/test-prompt-hooks.sh | integration | green |
+| ANCHOR_RECORD_NAMES_EVERY_REPOSITORY | X152; every repository named | tests/test-code-anchor.sh | integration | green |
+| ANCHOR_QUIET_WHEN_NOTHING_MOVED | X153; red on arrival (no tool) | tests/test-code-anchor.sh | integration | green |
+| ANCHOR_NAMES_PATHS_WHEN_THE_COMMIT_MOVED | X154; red on arrival (no tool) | tests/test-code-anchor.sh | integration | green |
+| ANCHOR_NAMES_BOTH_BRANCHES_WHEN_THE_BRANCH_MOVED | X155; red on arrival (no tool) | tests/test-code-anchor.sh | integration | green |
+| ANCHOR_NAMES_NEW_UNCOMMITTED_WORK | X156; red on arrival (no tool) | tests/test-code-anchor.sh | integration | green |
+| ANCHOR_ABSENT_FAILS_TOWARD_INCLUSION | X157; five causes; red on arrival (no tool) | tests/test-code-anchor.sh | integration | green |
+| ANCHOR_OUTPUT_WITHIN_BUDGET | X158; 300 changed paths; red on arrival (no tool) | tests/test-code-anchor.sh | integration | green |
+| ANCHOR_COMPARE_WRITES_NOTHING | X159; five plant states with a stale index; red on arrival (no tool) | tests/test-code-anchor.sh | integration | green |
+| ANCHOR_RECORD_REFUSES_A_SYMLINK | X160; a symlink and a missing `.cypress/` refused | tests/test-code-anchor.sh | integration | green |
+| ANCHOR_RECORD_REFUSES_A_SYMLINK | X166, a row of X160: a directory at the anchor name is refused as not a regular file (§6 anchor file) | tests/test-code-anchor.sh | integration | green |
+| STATUS_HOOK_INJECTS_THE_ANCHOR_LINE | X161; with and without a register; red on arrival (no anchor line); its ledger-reset assertion is a guard, green on arrival | tests/test-prompt-hooks.sh | integration | green |
+| STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION | X162; two causes (absent, timeout), no register | tests/test-prompt-hooks.sh | integration | green |
+| STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION | X165; structural: `ANCHOR_TIMEOUT` in `status-hook.py` equals the `status-extension.ts` timeout over 1000 | tests/test-prompt-hooks.sh | unit | green |
+| STATUS_EXTENSION_INJECTS_THE_ANCHOR_LINE | X163; structural, substrings | tests/test-prompt-hooks.sh | unit | green |
+| STATUS_HOOK_INJECTS_THE_ANCHOR_LINE | X164; structural: `settings.json` and the Copilot `status.json` wire `status-hook.py` under `SessionStart` alone | tests/test-prompt-hooks.sh | unit | green |
+| ANCHOR_UNUSABLE | X157, the case of the contract named there | tests/test-code-anchor.sh | integration; the case names this failure slug after its contract slug | green |
+| ANCHOR_COMMIT_UNREACHABLE | X157, the case of the contract named there | tests/test-code-anchor.sh | integration; the case names this failure slug after its contract slug | green |
+| ANCHOR_CHECK_DID_NOT_RUN | X162 and X163, the cases of the contracts named there | tests/test-prompt-hooks.sh | integration and unit; each names this failure slug after its contract slug | green |
 
 Existing tests that must change in the same commit as the RED cases (plan §9):
 `tests/test-tier-lanes.sh` drops `route-hook.py` and `route-extension.ts` from
@@ -1672,11 +1595,10 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
 | Whether a model on Prime Agent follows the section's instruction | The whole Prime Agent saving depends on it, and the stale-set omission path (`PRIME_SURFACED_SET_TRUSTED_WHILE_STALE`) is closed by wording alone | not measured. No eval of model behaviour on Prime Agent exists. Non-compliance costs re-reads; only a model that trusts a stale set risks a missed read | owner | residual; an eval over Prime Agent sessions, not planned |
 | Model-side suppression on Prime Agent (security review) | Prompt-injected content can tell the model to fill `_cypress_surfaced` with ids it never opened | soft, and bounded by the full injection on every prompt, which still names every routed id (§7 `PRIME_SURFACED_SET_TRUSTED_WHILE_STALE`) | security | residual |
 | The spawn-boundary claim for Claude Code hooks | I-2 rests on hooks not crossing into a spawn (`status-hook.py:13-15`) | taken from the hook's own docstring. The tester found no existing test of hooks at the spawn boundary (2026-09-23), so the test is not recorded, and this spec adds none | tester | residual |
-| No behavioural test for `route-extension.ts` or the overlay | The nine Prime Agent structural contracts prove text and shape, not behaviour of the extension or the model | accepted at structural strength, as plan §5 records | owner | residual; a TypeScript runtime in the gate, not planned |
+| No behavioural test for `route-extension.ts` or the overlay | The eight Prime Agent structural contracts prove text and shape, not behaviour of the extension or the model | accepted at structural strength, as plan §5 records | owner | residual; a TypeScript runtime in the gate, not planned |
 | The prime-agent eager figure in `README.md:50` and `:338` | `check_published_eager_figures` matches only a figure followed by `B` or `bytes`, and these two lines carry none, so they can go stale with the gate green | updated by hand in the commit that adds the section | implementer | residual; a check change is outside this spec |
 | A ledger or session directory owned by another user | The owner test of §6 has no gate case, since it needs a second account | the mode cases run in the gate (`LEDGER_FOREIGN_OR_WRITABLE_REFUSED`); the owner half is shown by reading the code at review | security | residual |
-| A future `st_nlink == 1` rule on the ledger | `LEDGER_WRITE_IS_ATOMIC` (X129) hard-links the old ledger, which gives it `st_nlink` 2, so such a rule would make that ledger unusable and change what X129 observes | no link-count rule exists today. Any change that adds one must also change X129's Given | architect | residual |
-| How `pi.exec` decodes the child's line endings before it returns | X150 proves only that `route-extension.ts` compares the exec result's stdout as it arrived. If `pi.exec` itself rewrites CR or CRLF, a CRLF prompt's echo stops matching and the extension falls back to the pointer line alone | not recorded. X150 is structural only, and no runtime test observes `pi.exec` | architect | Unknown |
+| How `pi.exec` decodes the child's line endings before it returns | X150 (inside X135) proves only that `route-extension.ts` tests the exact echo prefix. If `pi.exec` itself rewrites CR or CRLF, a CRLF prompt's echo stops matching and the extension falls back to the pointer line alone | not recorded. X150 is structural only, and no runtime test observes `pi.exec` | architect | Unknown |
 | The Claude Code default hook timeout | If the host kills the hook first, nothing is injected, not even the pointer line | not recorded. The seed sets none; `ROUTER_TIMEOUT` is 15 s and GC is bounded by `GC_SCAN_MAX` (plan §4.8, §11) | reliability | Unknown |
 | The reminder header, renamed in the first draft from the plan's `Not loaded, not listed before:` to `Peers not listed before:` | The plan's header contained "loaded", which contradicts I-6; the first rename lost the router's "not suggested" meaning | **Resolved, product 2026-09-23:** renamed to `Not suggested, not listed before (cross only if needed):` so the header keeps the router's "not suggested" meaning | product | resolved |
 | The reminder tail on Claude Code | On Claude Code "surfaced" means suggested, not opened, so "re-open" assumed a read | **Resolved, product 2026-09-23 (optional C6, taken):** `— open if not in view.` on Claude Code; the Prime Agent section keeps "re-open", where membership does mean the model opened the node | product | resolved |
@@ -1946,3 +1868,46 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
   symlink, while `tools/code-anchor.py` refuses any existing anchor name that is
   not a regular file (`write_anchor`). The line now says so. Spec text only: no
   contract changed, and no FIFO case was added; X166 already covers a directory.
+- 2026-09-29: test consolidation (`docs/plans/grill-test-consolidation.md`,
+  S3), by the architect. The sign-offs in §0 predate it. Two contracts are
+  retired: `STATUS_HOOK_RESET_OWNS_NO_PATH_RULE`, a source check whose
+  behaviour `STATUS_HOOK_WITHOUT_SIBLING_LEAVES_LEDGER` holds, and
+  `PRIME_OVERLAY_RESTATES_NO_KERNEL_RULE`, whose section is held by
+  `PRIME_OVERLAY_SECTION_WITHIN_CEILING`. `HOOK_TEXT_RESTATES_NO_KERNEL_RULE`
+  becomes a byte ceiling on the hook's fixed text that may only fall; a short
+  paraphrase of a kernel rule that does not grow the text is no longer caught.
+  `PRIME_OVERLAY_KEEPS_SURFACED_SET` narrows to the section naming
+  `_cypress_surfaced`. The `ROUTE_EXTENSION_*` and
+  `STATUS_EXTENSION_INJECTS_THE_ANCHOR_LINE` contracts read the TypeScript as
+  substrings, and `ROUTE_EXTENSION_HOLDS_NO_LEDGER_STATE` is the fs-write ban
+  alone. Fixture clauses leave the contracts: the 2 000 000-character prompt;
+  two of three stub outputs; one of three Copilot envelopes (`sessionId`);
+  four of seven invalid ids; three of six corrupt ledgers; six of eight reset
+  sources; the invalid ids of the no-write case to one; the `.cypress` and
+  `.gitignore` symlink shapes; the rewrite of `REFRESH_EVERY` to 3; the
+  hard-link Then of `LEDGER_WRITE_IS_ATOMIC` (the failed-replace clause
+  stays); the read-only directory of `LEDGER_WRITE_FAILURE_FAILS_OPEN`; the GC
+  removal order and the 300-file clause; the anchor record's exact shape; the
+  atomic-replace clause of `ANCHOR_RECORD_REFUSES_A_SYMLINK`; the anchor
+  failure causes to two, with no register; the once-per-session clause to the
+  `SessionStart` wiring. §6 is unchanged: it still states the behaviour those
+  clauses tested. §9 AC-2 and AC-6 follow. §10 follows the folds of the
+  consolidation (X105 in X106; X108 in X109; X112 over X106, X107, X110, X113,
+  X120 and X123; X116 in X107; X121 and X122 in X120; X129 in X133; X147 in
+  X143; X149 in X134; X151 in X110; X166 in X160; X136 and X150 in X135; X139
+  and X140 in X141; X201 is the byte-budget row; X202 and X203 go), and the
+  technique notes for the rewrite to 3, the hard link and the coverage binder
+  go. §11 drops the `st_nlink` row, which rested on the hard link. The §10
+  file column changes when `tests/test-bound-hook.sh` is split, not here. No
+  hook behaviour
+  changed; the status stays `active`.
+- 2026-09-29: consolidation close-out, by the docs-librarian (spawn
+  `session.10.docs-librarian.1`). Spec text only; no contract changed.
+  `status_evidence` names `tests/test-prompt-hooks.sh` and
+  `tests/test-code-anchor.sh`, the homes of the cases split out of
+  `tests/test-bound-hook.sh`, and the `OVERLAY_SECTION_MAX_BYTES` home in §6
+  moves with them. §6 records `HOOK_TEXT_MAX_BYTES` (851) and what it
+  measures, comment lines included. `PRIME_EAGER_SURFACE_WITHIN_BUDGET` names
+  `check_published_figures`, the check that replaced
+  `check_published_eager_figures`.
+

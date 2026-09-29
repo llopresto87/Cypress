@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Does the Codex snippet carry --project-dir back out, byte for byte?
 
-Split out of tests/test-seed-budgets.sh because the assertion has to PARSE the
+Called by tests/test-full-install.sh because the assertion has to PARSE the
 TOML, and a heredoc inside the loop that generates it is a quoting problem
 nobody should have to read. `EXPECT` is the target path; argv[1] the snippet.
 

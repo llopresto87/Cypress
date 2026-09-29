@@ -63,7 +63,7 @@ skill frontmatter carries:
 | library-wiki | `skill.library-wiki` | `library-wiki.method`, `library-wiki.version-pinning` | (none) | `skill.research-and-ingest`, `protocol.ingest-library` | 1000 |
 | research-and-ingest | `skill.research-and-ingest` | `research-and-ingest.method`, `research-and-ingest.source-ranking` | (none) | `skill.library-wiki`, `agent.research-scout` | 1200 |
 | spec-author | `skill.spec-author` | `spec-author.method`, `spec-author.sign-off` | `protocol.specify` | `skill.test-first`, `skill.grill-planner`, `skill.humanizer` | 1250 |
-| test-first | `skill.test-first` | `test-first.shaping`, `test-first.level-selection`, `test-first.lean-suite`, `test-first.no-lint-only-tests` | `protocol.test-first` | `skill.spec-author` | 1286 |
+| test-first | `skill.test-first` | `test-first.shaping`, `test-first.level-selection`, `test-first.proportionate-checks`, `test-first.no-lint-only-tests` | `protocol.test-first` | `skill.spec-author` | 1286 |
 | toolcraft | `skill.toolcraft` | `rule.toolcraft`, `toolcraft.durability-criteria` | (none) | `agent.tool-smith`, `protocol.canonize`, `protocol.grill`, `protocol.harvest`, `method.bounded-execution` | 1672 |
 | validate-knowledge | `skill.validate-knowledge` | `validate-knowledge.method`, `validate-knowledge.adversarial-questions` | (none) | `skill.knowledge-graph`, `skill.context-router` | 1050 |
 
@@ -779,7 +779,7 @@ satisfy.
 Source: `skills/test-first/SKILL.md`
 
 **id:** `skill.test-first` · **owns:** `test-first.shaping`,
-`test-first.level-selection`, `test-first.lean-suite`,
+`test-first.level-selection`, `test-first.proportionate-checks`,
 `test-first.no-lint-only-tests` · **requires:**
 `protocol.test-first` · **peers:** `skill.spec-author`
 
@@ -813,13 +813,12 @@ coverage lint that reports an unnamed contract is never answered with a test
 that asserts nothing new; cite the slug in the existing test that asserts the
 contract, or write the test the contract lacks.
 
-**Keeping the suite lean (`test-first.lean-suite`).** A suite only grows
-unless someone shrinks it on purpose. Consolidate by the expensive action
-several tests share, not by a safe-looking fold; treat a size target as a
-direction, never a quota; every deleted test names the survivor that still
-kills its mutants; schedule consolidation as its own increment, never mid-spec;
-and review for the smells `tool-corpus/testing/test-hygiene-lint.md` catalogs
-— byte-identical bodies, repeated expensive helpers, expensive per-test setup.
+**Proportionate checks (`test-first.proportionate-checks`).** A check (test,
+gate, or check in delivered code) exists only for a named, real blast radius; a
+test is cheaper than its subject and never re-implements it; full rigor is for
+high blast radius, once per batch; a new check joins the automated runs or the
+running product only by owner decision. Every deleted test names its survivor,
+and consolidation is its own planned increment.
 
 **When to use.** When shaping any new test or choosing its level, or when a
 suite has grown enough to warrant a consolidation pass.

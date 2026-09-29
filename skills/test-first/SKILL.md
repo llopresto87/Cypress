@@ -9,7 +9,7 @@ title: 'test-first — shape each test: lowest level, contract-named, one outcom
 owns:
   - test-first.shaping
   - test-first.level-selection
-  - test-first.lean-suite
+  - test-first.proportionate-checks
   - test-first.no-lint-only-tests
 requires:
   - protocol.test-first
@@ -22,6 +22,7 @@ load_when:
   - "unit vs integration vs e2e choice"
   - "one outcome per test"
   - "consolidate or shrink a test suite, duplicate or expensive tests"
+  - "does this test, gate or runtime check earn its place, how much rigor"
   - "project-specific test, generic or synthetic fixture"
   - "coverage lint wants a test for a contract"
 artifacts:
@@ -86,35 +87,36 @@ an existing test already asserts the contract, cite the contract's slug
 in that test. If no test asserts it, the gap is real, and the contract
 gets the test it needs.
 
-## Keeping the suite lean (`test-first.lean-suite`)
+## Proportionate checks (`test-first.proportionate-checks`)
 
-Every increment adds its own tests, so a suite only grows unless
-someone shrinks it on purpose. Duplicates and repeated expensive setup
-pile up unseen until the whole suite is measured.
+The one home for when a check exists and what it may cost. A check is a
+test, a gate, or a check inside delivered code (validation, a guard, a
+fail-closed path). Other nodes link here; they do not restate it.
 
-- **Consolidate by action, not by safe fold.** Where several tests pay
-  for the same expensive action (a repository copy, a fresh
-  environment, a full gate run), run the action once and assert each
-  outcome under its own name. Per-stage happy-path tests that one
-  end-to-end chain run already covers go; so do tests written for one
-  real consumer (above) and tests that assert nothing a sibling does
-  not. Merging only the folds that are obviously safe lowers the count
-  and leaves the cost where it was.
-- **A size target is an aspiration, never a quota.** A number chosen
-  up front is a direction, not something to delete toward.
-- **Every deleted test names its survivor**: the test that still fails
-  when the deleted test would have (the one that still kills its
-  mutants). With no survivor, the deletion is a coverage loss and is
-  recorded as one. A reduction pass that ends with more tests than it
-  started with owes an explanation for each addition.
-- **Consolidation is planned work.** Schedule it once the spec's
-  behavior has landed, as its own increment in the plan-of-record
-  (`protocol.grill` owns increment order). Run mid-spec, beside the
-  critical path, it competes with the work it should follow.
-- **Review for the smells that inflate a suite**: byte-identical test
-  bodies, several tests calling the same expensive helper with the same
-  arguments, and expensive per-test setup. The seed's tool corpus
-  catalogs a lint that flags them,
+- **A check exists only for a named, real blast radius.** Name what
+  breaks, and for whom, if the check is absent. No name, no check. Spec
+  size does not set test count: one test may cover several failure
+  modes, and a failure mode with no real blast radius gets none.
+- **A test is cheaper than its subject.** It asserts one behavior and
+  never re-implements the code under test. A test that would need more
+  code than its subject means the level or the design is wrong: hand
+  it back unwritten, with that finding.
+- **Full rigor is for high blast radius only.** Mutation proof,
+  prefix/suffix mutants, and planted violations re-run after a refactor
+  belong to the classes `delegation.mutation-at-end` makes mandatory,
+  and run once per batch under that rule. Elsewhere a RED seen failing
+  for the right reason is the proof, plus any sample that rule records.
+- **The owner adds checks to runs; the seed adds none.** A new check
+  joins the project's automated runs, or the running product, only by
+  a recorded owner decision. An escaped bug earns a regression test; a
+  new gate is `protocol.verify-new-gates`'s call.
+- **Shrink on purpose.** A suite only grows unless someone cuts it.
+  Where several tests pay for one expensive action, run it once and
+  assert each outcome under its own name. Every deleted test names its
+  survivor, the test that still fails when it would have; with no
+  survivor the deletion is a recorded coverage loss. Consolidation is
+  its own planned increment (`protocol.grill`). The tool corpus
+  catalogs a lint for suite smells,
   `tool-corpus/testing/test-hygiene-lint.md`.
 
 ## Reference files
