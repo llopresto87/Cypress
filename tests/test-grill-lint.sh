@@ -1012,13 +1012,35 @@ PY
     || wfail $L "a changed byte in the second table's leaf increment-04-d.md is not named as a rebuild difference: $(tr '\n' ' ' <<<"$WOUT")"
 }
 
+case_verify_ledger_detail_cell_names_the_leaf() {
+  # D5g (review follow-up of F1): a row's leaf is the path in its Detail cell
+  # (the last cell), never the first `.md` token in the row. A title that names
+  # another file (here INSTALL.md) must not steal the row's leaf. The monolith
+  # carries no index row, so only the ledger's title changes and the rebuild
+  # must still prove exactly, exit 0.
+  local L=D5g d="$TMP/verify-ledger-detail"
+  rm -rf "$d"; cp -R "$ROOT/tests/fixtures/grill/multi-table" "$d" \
+    || { wfail $L "harness: tests/fixtures/grill/multi-table is missing"; return; }
+  python3 - "$d/docs/plans/round.md" <<'PY' || { wfail $L "harness: the row title was not changed"; return; }
+import sys
+p = sys.argv[1]; b = open(p, "rb").read(); old = b"| 3 | Refuse a duplicate batch |"
+if old not in b: sys.exit(1)
+open(p, "wb").write(b.replace(old, b"| 3 | Refuse a duplicate batch listed in INSTALL.md |", 1))
+PY
+  WOUT="$(python3 "$VL" --monolith "$d/round.monolith.md" --ledger "$d/docs/plans/round.md" \
+    --leaves "$d/docs/plans/round" 2>&1)"; WRC=$?
+  [ "$WRC" -eq 0 ] || { wfail $L "a title naming INSTALL.md must not replace the Detail cell's leaf; expected exit 0, got $WRC: $(tr '\n' ' ' <<<"$WOUT")"; return; }
+  ! grep -q 'INSTALL.md' <<<"$WOUT" || wfail $L "INSTALL.md from the row title was read as a leaf: $(tr '\n' ' ' <<<"$WOUT")"
+}
+
 for c in case_seed_ledger_lints_in_place case_seed_ledger_orphan_leaf \
          case_seed_ledger_row_outside_refused case_seed_ledger_contract_from_specs_flag \
          case_seed_ledger_decision_from_decisions_flag case_plant_layout_unchanged \
          case_external_decision_reported case_external_decision_once \
          case_verify_ledger_changed_byte \
          case_verify_ledger_unindexed_leaf case_verify_ledger_counts_utf8_bytes \
-         case_verify_ledger_multi_table case_verify_ledger_multi_table_changed_byte; do
+         case_verify_ledger_multi_table case_verify_ledger_multi_table_changed_byte \
+         case_verify_ledger_detail_cell_names_the_leaf; do
   "$c"
 done
 if [ "$WAVES_FAILED" -ne 0 ]; then

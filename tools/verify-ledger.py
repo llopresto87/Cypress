@@ -65,7 +65,8 @@ def index_tables(lines: list[bytes]) -> list[tuple[int, int, list[str]]]:
             if not text[i].lstrip().startswith("|"):
                 break
             if ROW_RE.match(text[i].lstrip()):
-                m = LEAF_RE.search("|".join(cells(text[i])[1:]).replace("`", " "))
+                cs = cells(text[i])
+                m = LEAF_RE.search(cs[-1].replace("`", " ")) if cs else None
                 if m:
                     leaves.append(Path(m.group(1)).name)
                 end = i + 1
