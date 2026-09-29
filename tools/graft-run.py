@@ -20,8 +20,9 @@ WHAT IT DOES, IN ORDER
   4. graft-graph-engine.py on the copy's three engines, each keeping its config
   5. graft-audit.py over this run's backups, with --tokens derived from the
      plant (its root directory's name, its own node ids, the stamp's `seed`
-     value), the three --engine pairs, and --base when the stamped version has
-     a tag; then --unfilled, which only reports
+     value), the three --engine pairs, and --base with the base graft-ledger
+     printed (the stamped version's tag, or the commit inferred by content
+     lineage); then --unfilled, which only reports
   6. growth-audit.py --plan on the copy, then its lint
   7. the copy's own graph-lint.py (and a representative --plan), agent-lint.py
      --lint and --eval, and status-register.py, where each is installed
@@ -390,7 +391,6 @@ def main() -> int:
     rc, out = run.tool("ledger.txt", "graft-ledger.py", copy, seed)
     base_line = line_of(out, r"^base: ")
     base_rev = base_line.split()[1] if base_line and "!!" not in base_line else ""
-    base_tag = base_rev if "from the tag" in base_line else ""
     print(f"ledger: {line_of(out, r'^totals: ') or f'not printed (exit {rc})'}; "
           f"{base_line or 'base: not found'}")
 
@@ -425,10 +425,10 @@ def main() -> int:
     print(f"tokens: --tokens={','.join(tokens)}")
     if date:
         args = [copy, seed, f"--date={date}", f"--tokens={','.join(tokens)}", *pairs]
-        if base_tag:
-            args.append(f"--base={base_tag}")
+        if base_rev:
+            args.append(f"--base={base_rev}")
         audit_rc, audit = run.tool("audit.txt", "graft-audit.py", *args)
-        print(f"audit: --date={date}{' --base=' + base_tag if base_tag else ''} exited {audit_rc}")
+        print(f"audit: --date={date}{' --base=' + base_rev if base_rev else ''} exited {audit_rc}")
     else:
         # nothing was replaced: the backup half has nothing to read, and a
         # named date that matches no backup is refused as vacuous, so the
@@ -466,7 +466,7 @@ def main() -> int:
     evidence = {
         "stamp": read_stamp(copy), "prior_install": prior_install, "date": date, "new": new,
         "shared": shared, "tokens": tokens, "base_line": base_line, "base_rev": base_rev,
-        "base_tag": base_tag, "audit": (audit_rc, audit), "unfilled": (unf_rc, unfilled),
+        "audit": (audit_rc, audit), "unfilled": (unf_rc, unfilled),
         "coverage": (plan_rc, cov_rc, coverage), "routes": routes, "register": reg,
         "before": before, "after": after, "agents_before": agents_before,
         "install": (install_rc, install_out), "engines": engines,
@@ -544,7 +544,8 @@ def check_customization(run, ev):
     rc, audit = ev["audit"]
     c = counts_of(audit)
     n = c.get("CUSTOMIZED", 0)
-    base = f", --base={ev['base_tag']}" if ev["base_tag"] else ", no --base (the stamped version has no tag)"
+    how = "from the tag" if "from the tag" in ev["base_line"] else "inferred"
+    base = f", --base={ev['base_rev']} ({how})" if ev["base_rev"] else ", no --base (no base was found)"
     if not c:
         return "BLOCK", f"graft-audit.py exited {rc} without a classification ({toks}, --date={ev['date']})"
     return ("BLOCK" if n else "PASS"), f"CUSTOMIZED: {n} ({toks}, --date={ev['date']}{base})"

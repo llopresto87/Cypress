@@ -7,9 +7,11 @@ kinds of directory sit under that root and are not part of it:
     scratch copy, a nested seed workspace. It has its own backups and its own
     knowledge, and a walk that counts them audits the wrong plant. A graft's
     backup audit once reported a large UNMAPPED total, every entry from a copy.
-  * a symlinked directory is another tree. A symlinked seed checkout under a
-    plant once turned every corpus row of a growth audit DANGLING. This
-    includes the directory being walked, when it is itself a link.
+  * a symlinked directory is another tree. A walk that follows it collects
+    that tree's leaves as this plant's. This includes the directory being
+    walked, when it is itself a link. The walk does not decide whether a cited
+    path is DANGLING: growth-audit.py's cite_problem still refuses a citation
+    that resolves outside the plant through a symlink.
 
 Symlinked FILES are still walked: a `--symlink` plant is made of them, because
 install.sh places one link per file and never links a directory.

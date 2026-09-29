@@ -2425,8 +2425,10 @@ echo "  the session-record form is a form, not a scaffold; a named scaffold stil
 # ==========================================================================
 # 7.32.0 — the audit's walk stays inside THIS plant. A directory holding its
 # own .cypress/seed.json is another plant (a scratch copy, a nested seed
-# workspace), and a symlinked directory is another tree: neither is walked. A
-# symlinked seed checkout under a plant once turned every corpus row DANGLING.
+# workspace), and a symlinked directory is another tree: neither is walked, so
+# no leaf under either is collected as this plant's. The walk does not decide
+# DANGLING: a cited path that resolves outside the plant through a symlink is
+# still refused by cite_problem's containment check, which this does not touch.
 # An ordinary subdirectory is still walked. Each scenario builds a plant whose
 # every row is honestly ABSENT, so any leaf the walk finds is a CONTRADICTED
 # row naming it.

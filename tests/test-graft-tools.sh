@@ -966,9 +966,12 @@ LEDGER="$ROOT/tools/graft-ledger.py"
 RUN="$ROOT/tools/graft-run.py"
 RW="$TMP/round"; mkdir -p "$RW"
 flat() { tr '\n' ' ' <"$1"; }
-# git for the synthetic repositories only: no user or system config is read
+# git for the synthetic repositories only: no user or system config is read, and
+# no commit leaves a background maintenance or gc run behind (it repacks .git
+# after the fixture's checksum is taken; Git 2.55.0 did so on every run)
 sgit() { GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 git -c user.name=fixture \
            -c user.email=fixture@example.invalid -c init.defaultBranch=main \
+           -c maintenance.auto=false -c gc.auto=0 \
            -c commit.gpgsign=false -c tag.gpgsign=false "$@"; }
 
 # -- GA-C1: a backup byte-identical to the seed at --base <rev> is DELTA ------
@@ -1170,6 +1173,9 @@ case_audit_skips_nested_plant_copy() {
 #   core/method/moved.md        v1       v1             v2              v2             CURRENT
 #   protocols/new.md            -        -              n1              -              SEED-NEW
 #   agents/harvested.md         h1       h1             h1 + plant + s  h1 + plant     HARVESTED
+#   agents/deleted.md           d1 d2 d3 d1 d2 d3       d1 d2 d3 + p + s d1 d3 + p     MERGE
+# agents/deleted.md: the plant deleted d2 and added p; the seed harvested p but
+# still carries d2. Adopting the seed would bring d2 back, so it is MERGE.
 # docs/graph/nodes/own.md is the plant's own node: no row. Byte-equal files at
 # v1.1.0: ff.md, ff2.md, current.md (3); at v1.2.0: current.md, moved.md (2);
 # at v1.0.0: current.md, moved.md (2). So content lineage finds v1.1.0, from 3.
@@ -1187,6 +1193,7 @@ gl_fixture() {
   printf 'k1\n' > "$s/protocols/keep.md"; printf 'm1\n' > "$s/protocols/merge.md"
   printf 'c1\n' > "$s/protocols/current.md"; printf 'v1\n' > "$s/core/method/moved.md"
   printf 'h1\n' > "$s/agents/harvested.md"
+  printf 'd1\nd2\nd3\n' > "$s/agents/deleted.md"
   gl_release 1.0.0 || { echo "fixture: release 1.0.0 failed"; return 1; }
   printf 'ff2\n' > "$s/protocols/ff.md"; printf 'gg2\n' > "$s/protocols/ff2.md"
   gl_release 1.1.0 || { echo "fixture: release 1.1.0 failed"; return 1; }
@@ -1195,6 +1202,7 @@ gl_fixture() {
   printf '{"seed": "cypress", "version": "1.1.0", "tools": "claude-code"}\n' > "$p/.cypress/seed.json"
   for f in ff ff2 keep merge current; do cp "$s/protocols/$f.md" "$p/docs/graph/protocols/$f.md"; done
   cp "$s/agents/harvested.md" "$p/docs/graph/agents/harvested.md"
+  printf 'd1\nd3\na plant line the seed later harvests\n' > "$p/docs/graph/agents/deleted.md"
   printf 'k1\na plant rule\n' > "$p/docs/graph/protocols/keep.md"
   printf 'm1\na plant merge line\n' > "$p/docs/graph/protocols/merge.md"
   printf 'h1\na plant addition\n' > "$p/docs/graph/agents/harvested.md"
@@ -1205,6 +1213,7 @@ gl_fixture() {
   printf 'm1\na seed merge line\n' > "$s/protocols/merge.md"
   printf 'v2\n' > "$s/core/method/moved.md"; printf 'n1\n' > "$s/protocols/new.md"
   printf 'h1\na plant addition\na later seed line\n' > "$s/agents/harvested.md"
+  printf 'd1\nd2\nd3\na plant line the seed later harvests\na later seed line\n' > "$s/agents/deleted.md"
   gl_release 1.2.0 || { echo "fixture: release 1.2.0 failed"; return 1; }
   touch "$RW/gl.ready"
 }
@@ -1254,6 +1263,20 @@ case_ledger_harvested_is_not_merge() {
   got="$(gl_class_of "$RW/glb.out" docs/graph/agents/harvested.md agents/harvested.md)" \
     || { echo "$got: $(flat "$RW/glb.out")"; return 1; }
   [ "$got" = "HARVESTED" ] || { echo "a plant addition the seed already carries was classed $got, want HARVESTED: $(flat "$RW/glb.out")"; return 1; }
+}
+
+case_ledger_plant_deletion_is_merge() {
+  # review F2 (ruling 2026-09-29): a plant file that deleted a line the seed
+  # still carries is MERGE, whatever it added, even when the seed harvested
+  # every line the plant added. HARVESTED is adopted as the seed's version, and
+  # that would revert the plant's deletion with no reconcile.
+  local rc got
+  gl_need || return 1; gl_fixture || return 1
+  python3 "$LEDGER" "$GL_PLANT" "$GL_SEED" >"$RW/glb2.out" 2>&1 && rc=0 || rc=$?
+  [ "$rc" -eq 0 ] || { echo "graft-ledger.py exited $rc: $(flat "$RW/glb2.out")"; return 1; }
+  got="$(gl_class_of "$RW/glb2.out" docs/graph/agents/deleted.md agents/deleted.md)" \
+    || { echo "$got: $(flat "$RW/glb2.out")"; return 1; }
+  [ "$got" = "MERGE" ] || { echo "a plant file that deleted a line the seed still carries was classed $got, want MERGE"; return 1; }
 }
 
 case_ledger_base_from_tag() {
@@ -1449,6 +1472,34 @@ case_run_exits_1_when_a_gate_blocks() {
     || { echo "a run whose gate table holds a BLOCK exited $(cat "$GR/run.rc"), want 1"; return 1; }
 }
 
+case_run_passes_inferred_base_to_audit() {
+  # review F3 (ruling 2026-09-29): graft.gate.customization says
+  # --base=<the base Phase 1 printed>, and Phase 1 may print a commit inferred
+  # by content lineage (a commit is a revision). The fixture plant is stamped
+  # with this checkout's version, which carries no tag here, so graft-ledger
+  # infers the base; the run passes that commit as --base to graft-audit. The
+  # tool shows the audit's arguments on its `audit:` line and in the
+  # customization gate row.
+  gr_need || return 1; gr_fixture || return 1; gr_run_once
+  python3 - "$GR/run.out" <<'PY' || return 1
+import re, sys
+out = open(sys.argv[1]).read()
+m = re.search(r"base: ([0-9a-f]{7,64}) \(inferred", out)
+if not m:
+    print(f"fixture: the run did not print a base inferred by content lineage: {out[:600]!r}"); sys.exit(1)
+rev = m.group(1)
+audit = [l for l in out.splitlines() if l.startswith("audit: --date=")]
+if len(audit) != 1:
+    print(f"fixture: want one `audit: --date=` line, got {len(audit)}: {out[:600]!r}"); sys.exit(1)
+b = re.search(r"--base=([0-9A-Za-z._/-]+)", audit[0])
+if not b or not (rev.startswith(b.group(1)) or b.group(1).startswith(rev)):
+    print(f"the inferred base {rev[:12]} was not passed to graft-audit as --base: {audit[0]!r}"); sys.exit(1)
+row = [l for l in out.splitlines() if l.strip().startswith("graft.gate.customization:")]
+if not row or f"--base={b.group(1)}" not in row[0]:
+    print(f"the customization gate row does not name --base={b.group(1)}: {row!r}"); sys.exit(1)
+PY
+}
+
 collect_case GA-C1 case_audit_base_identical_is_delta "a backup byte-identical to the seed at --base is DELTA; without --base it stays CUSTOMIZED"
 collect_case GA-C2 case_audit_engine_signal_survives "an engine backup whose signal lines survive in the current engine is not CUSTOMIZED"
 collect_case X390 case_audit_plant_agent_projection "GA-C3: a plant-owned agent's projection backup is a named exclusion, exit 0"
@@ -1457,6 +1508,7 @@ collect_case X392 case_audit_plant_agent_copilot_view "a plant-owned agent's Cop
 collect_case GA-C4 case_audit_skips_nested_plant_copy "backups under a nested .cypress/seed.json directory are not counted"
 collect_case GL-a case_ledger_classifies_three_ways "the ledger prints one class per seed-owned machinery file"
 collect_case GL-b case_ledger_harvested_is_not_merge "a plant addition the seed already carries is HARVESTED"
+collect_case GL-b2 case_ledger_plant_deletion_is_merge "a plant deletion the seed still carries is MERGE, not HARVESTED"
 collect_case GL-c case_ledger_base_from_tag "--base prints the stamped version's tag, from the tag"
 collect_case GL-d case_ledger_base_inferred_by_lineage "--base with no tag prints the lineage commit, its match count, inferred"
 collect_case GR-a case_run_refuses_stage_inside_plant "a stage inside the plant is refused, exit 2, nothing written"
@@ -1466,6 +1518,7 @@ collect_case GR-d case_run_reconciles_three_engines "the three engines in the st
 collect_case GR-e case_run_derives_tokens_from_plant "the --tokens list is derived from the plant"
 collect_case GR-f case_run_prints_gate_table "stdout ends with the Phase 7 gate table"
 collect_case GR-g case_run_exits_1_when_a_gate_blocks "a run whose gate table holds a BLOCK exits 1"
+collect_case GR-h case_run_passes_inferred_base_to_audit "an inferred base is passed to graft-audit as --base"
 [ "$CASE_FAILED" -eq 0 ] \
   || { echo "test-graft-tools: FAIL — failing cases (above)" >&2; exit 1; }
 

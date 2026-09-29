@@ -974,13 +974,51 @@ case_verify_ledger_counts_utf8_bytes() {
   has_word "$WOUT" "$nb" || { wfail $L "the UTF-8 byte count $nb is not printed"; return; }
   ! has_word "$WOUT" "$nc" || wfail $L "the character count $nc is printed as if it were bytes"
 }
+case_verify_ledger_multi_table() {
+  # D5e (review F1, ruling 2026-09-29): a plan whose §9 grew an appended
+  # subsection carries two index tables, each with rows and leaves. The fixture
+  # tests/fixtures/grill/multi-table/ is such a ledger; its round.monolith.md is
+  # round.md with EACH index table replaced by its own leaves, in row order, one
+  # blank line between them, the text between the tables kept where it is. Every
+  # index table counts, in document order, so the conversion proves exactly.
+  local L=D5e d="$ROOT/tests/fixtures/grill/multi-table" nb
+  [ -f "$d/round.monolith.md" ] && [ -d "$d/docs/plans/round" ] \
+    || { wfail $L "harness: tests/fixtures/grill/multi-table is missing"; return; }
+  [ "$(grep -c '^| # | Increment | Status | Detail |$' "$d/docs/plans/round.md")" -eq 2 ] \
+    || { wfail $L "harness: the multi-table ledger does not carry two index tables"; return; }
+  nb="$(wc -c < "$d/round.monolith.md" | tr -d ' ')"
+  WOUT="$(python3 "$VL" --monolith "$d/round.monolith.md" --ledger "$d/docs/plans/round.md" \
+    --leaves "$d/docs/plans/round" 2>&1)"; WRC=$?
+  [ "$WRC" -eq 0 ] || { wfail $L "a two-table conversion must prove exactly, exit 0, got $WRC: $(tr '\n' ' ' <<<"$WOUT")"; return; }
+  has_word "$WOUT" "$nb" || { wfail $L "the rebuilt byte count $nb is not printed"; return; }
+  has_word "$WOUT" 4 || wfail $L "the four leaves of both tables are not counted"
+}
+case_verify_ledger_multi_table_changed_byte() {
+  # D5f (review F1): a changed byte in a leaf of the SECOND index table exits 1
+  # and names that leaf, so the appended table's leaves are read, not skipped.
+  local L=D5f d="$TMP/verify-ledger-multi"
+  rm -rf "$d"; cp -R "$ROOT/tests/fixtures/grill/multi-table" "$d" \
+    || { wfail $L "harness: tests/fixtures/grill/multi-table is missing"; return; }
+  python3 - "$d/docs/plans/round/increment-04-d.md" <<'PY' || { wfail $L "harness: the leaf was not changed"; return; }
+import sys
+p = sys.argv[1]; b = open(p, "rb").read(); old = b"nightly report"
+if old not in b: sys.exit(1)
+open(p, "wb").write(b.replace(old, b"nightly repOrt", 1))
+PY
+  WOUT="$(python3 "$VL" --monolith "$d/round.monolith.md" --ledger "$d/docs/plans/round.md" \
+    --leaves "$d/docs/plans/round" 2>&1)"; WRC=$?
+  [ "$WRC" -eq 1 ] || { wfail $L "expected exit 1, got $WRC: $(first_line "$WOUT")"; return; }
+  grep -q 'differs from' <<<"$WOUT" && grep -q 'increment-04-d.md' <<<"$WOUT" \
+    || wfail $L "a changed byte in the second table's leaf increment-04-d.md is not named as a rebuild difference: $(tr '\n' ' ' <<<"$WOUT")"
+}
 
 for c in case_seed_ledger_lints_in_place case_seed_ledger_orphan_leaf \
          case_seed_ledger_row_outside_refused case_seed_ledger_contract_from_specs_flag \
          case_seed_ledger_decision_from_decisions_flag case_plant_layout_unchanged \
          case_external_decision_reported case_external_decision_once \
          case_verify_ledger_changed_byte \
-         case_verify_ledger_unindexed_leaf case_verify_ledger_counts_utf8_bytes; do
+         case_verify_ledger_unindexed_leaf case_verify_ledger_counts_utf8_bytes \
+         case_verify_ledger_multi_table case_verify_ledger_multi_table_changed_byte; do
   "$c"
 done
 if [ "$WAVES_FAILED" -ne 0 ]; then
