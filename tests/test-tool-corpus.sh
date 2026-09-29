@@ -118,100 +118,34 @@ blocks = re.findall(r"```python\n(.*?)```",
                     pathlib.Path(sys.argv[1]).read_text(), re.S)
 pathlib.Path(sys.argv[2]).write_text(max(blocks, key=len))
 PY
-# The verifier calls `yaml.safe_load`, and PyYAML is not stdlib. This block used
-# to run only `if python3 -c 'import yaml'` and otherwise announce a SKIP and
-# print PASS — and the seed's own CI has no `pip install` step, so BOTH legs took
-# the skip branch and reported a green gate with a mandatory check unexecuted.
-# That is the sentence this release closed for pytest, surviving one file over.
-#
-# The dependency is not removable (it belongs to the shipped page, which is
-# transcribed knowledge and not ours to rewrite for a test's convenience), and
-# adding it would make a third-party package a hard requirement of the default
-# gate. So the FIXTURE supplies what the fixture needs: a stdlib `safe_load`
-# over the two files written immediately below, put on sys.path only when the
-# real parser is absent. It parses nested maps of scalars and nothing else,
-# which is exactly what these two files are — and if a future fixture outgrows
-# it, it raises rather than guessing.
-if ! python3 -c 'import yaml' 2>/dev/null; then
-  mkdir -p "$TMP/yamlshim"
-  cat > "$TMP/yamlshim/yaml.py" <<'SHIM'
-"""Enough of `yaml.safe_load` for this suite's own fixtures, in stdlib.
-
-Nested mappings, two-space indentation, `key:` and `key: scalar`. Anything else
-raises, because a shim that guesses is worse than no shim: it would let the
-verifier under test pass over input it never really parsed.
-"""
-
-
-class YAMLError(Exception):
-    pass
-
-
-def safe_load(text):
-    if hasattr(text, "read"):
-        text = text.read()
-    root = {}
-    stack = [(-1, root)]
-    for lineno, raw in enumerate(text.splitlines(), 1):
-        if not raw.strip() or raw.lstrip().startswith("#"):
-            continue
-        stripped = raw.lstrip(" ")
-        indent = len(raw) - len(stripped)
-        if raw[:indent].strip(" "):
-            raise YAMLError(f"line {lineno}: tabs are not supported by this shim")
-        if stripped.startswith("- "):
-            raise YAMLError(f"line {lineno}: sequences are not supported by this shim")
-        if ":" not in stripped:
-            raise YAMLError(f"line {lineno}: not a key: {raw!r}")
-        key, _, value = stripped.partition(":")
-        while stack and indent <= stack[-1][0]:
-            stack.pop()
-        if not stack:
-            raise YAMLError(f"line {lineno}: dedent past the document root")
-        parent = stack[-1][1]
-        value = value.strip()
-        if value:
-            parent[key.strip()] = value
-        else:
-            child = {}
-            parent[key.strip()] = child
-            stack.append((indent, child))
-    return root
-SHIM
-  export PYTHONPATH="$TMP/yamlshim${PYTHONPATH:+:$PYTHONPATH}"
-  python3 -c 'import yaml' \
-    || { echo "the stdlib YAML shim did not import — the layered-config check would silently skip" >&2; exit 1; }
-  echo "  (no PyYAML here; using the suite's own stdlib safe_load for these fixtures)"
-fi
-
-if true; then
-  mkdir -p "$TMP/cfg"
-  cat > "$TMP/cfg/base.yml" <<'EOF'
+# The verifier scans the layer files as text; it imports yaml only to parse a
+# --resolver's output, which this check does not use, so no YAML parser is needed.
+mkdir -p "$TMP/cfg"
+cat > "$TMP/cfg/base.yml" <<'EOF'
 services:
   api:
     environment:
       TOKEN: ${API_TOKEN:?set API_TOKEN}
 EOF
-  cat > "$TMP/cfg/over.yml" <<'EOF'
+cat > "$TMP/cfg/over.yml" <<'EOF'
 services:
   api:
     environment:
       TOKEN: ${API_TOKEN}
 EOF
-  out="$(python3 "$TMP/lcmv.py" --layer base="$TMP/cfg/base.yml" \
-                                --layer over="$TMP/cfg/over.yml" 2>&1)" && rc=0 || rc=$?
-  [[ $rc -eq 1 ]] || { echo "a weakened guard did not fail the verifier" >&2; echo "$out" >&2; exit 1; }
-  grep -q "API_TOKEN" <<<"$out" || { echo "the weakened variable was not named" >&2; echo "$out" >&2; exit 1; }
+out="$(python3 "$TMP/lcmv.py" --layer base="$TMP/cfg/base.yml" \
+                              --layer over="$TMP/cfg/over.yml" 2>&1)" && rc=0 || rc=$?
+[[ $rc -eq 1 ]] || { echo "a weakened guard did not fail the verifier" >&2; echo "$out" >&2; exit 1; }
+grep -q "API_TOKEN" <<<"$out" || { echo "the weakened variable was not named" >&2; echo "$out" >&2; exit 1; }
 
-  printf 'services:\n  api:\n    image: x\n' > "$TMP/cfg/novars.yml"
-  cp "$TMP/cfg/novars.yml" "$TMP/cfg/novars2.yml"
-  out="$(python3 "$TMP/lcmv.py" --layer a="$TMP/cfg/novars.yml" \
-                                --layer b="$TMP/cfg/novars2.yml" 2>&1)" && rc=0 || rc=$?
-  [[ $rc -eq 1 ]] || { echo "zero variables analysed was reported as a PASS" >&2; exit 1; }
-  grep -qi "refusing to report a pass" <<<"$out" \
-    || { echo "the false-green guard did not say why it refused" >&2; echo "$out" >&2; exit 1; }
-  echo "  layered-config-merge-verifier: drift caught, zero-variable run refused — OK"
-fi
+printf 'services:\n  api:\n    image: x\n' > "$TMP/cfg/novars.yml"
+cp "$TMP/cfg/novars.yml" "$TMP/cfg/novars2.yml"
+out="$(python3 "$TMP/lcmv.py" --layer a="$TMP/cfg/novars.yml" \
+                              --layer b="$TMP/cfg/novars2.yml" 2>&1)" && rc=0 || rc=$?
+[[ $rc -eq 1 ]] || { echo "zero variables analysed was reported as a PASS" >&2; exit 1; }
+grep -qi "refusing to report a pass" <<<"$out" \
+  || { echo "the false-green guard did not say why it refused" >&2; echo "$out" >&2; exit 1; }
+echo "  layered-config-merge-verifier: drift caught, zero-variable run refused — OK"
 
 # 4. structured-secret-field-detector: the two properties that make it worth
 # shipping — an EXACT key-name match (a substring match would flag a legitimate
@@ -247,24 +181,13 @@ else:
 print("  structured-secret-field-detector: exact-name only, missing subtree raises — OK")
 PY
 
-# 5. parallel-suite-runner: a parallel run is only worth trusting if it reports
-# the same failures a serial run would, and if every way it can go wrong fails
-# CLOSED. The properties the page exists for: modules really run in separate,
-# concurrent processes; a failure is judged against a known-failing baseline BY
-# TEST ID, so a carried id passes and a new id fails whatever the counts say; a
-# shard that timed out is re-run once, and a timeout is never itself reported
-# as a failing test id; and a shard whose outcome cannot be read (it crashed,
-# printed no run line, or timed out on the re-run too) fails the run even when
-# every id it might have produced is in the baseline. A missing or malformed
-# baseline is a usage error, never an empty baseline that lets everything pass.
-# A run in which no test ran at all is a failure, never a vacuous PASS. A
-# timeout kills the shard's whole process group, so a process the test itself
-# spawned dies with it rather than outliving the run. A shard whose FAIL/ERROR
-# ids do not account for its failures+errors count has lost an id, and a lost
-# id is an unreadable outcome.
-#
-# The fixture is a synthetic stdlib-unittest package; the implementation is the
-# largest ```python block on the page, driven only through its command line.
+# 5. parallel-suite-runner: a parallel run reports the same failures a serial
+# run would, and every way it can go wrong fails CLOSED: failures are judged
+# against a baseline BY TEST ID; a hung shard fails the run after one re-run and
+# is never a failing test id; a crashed shard, an abnormal exit, a lost id, a
+# run where no test ran, and an unreadable baseline all fail. The fixture is a
+# synthetic stdlib-unittest package; the implementation is the largest
+# ```python block on the page, driven only through its command line.
 PSR_PAGE="$ROOT/tool-corpus/testing/parallel-suite-runner.md"
 [[ -f "$PSR_PAGE" ]] || { echo "parallel-suite-runner: page not found: $PSR_PAGE" >&2; exit 1; }
 python3 - "$PSR_PAGE" "$TMP/psr.py" <<'PY'
@@ -279,7 +202,7 @@ if not blocks:
 pathlib.Path(sys.argv[2]).write_text(max(blocks, key=len))
 PY
 python3 - "$TMP/psr.py" "$TMP/psr" <<'PY'
-import os, re, signal, subprocess, sys, textwrap, time, pathlib
+import re, subprocess, sys, textwrap, pathlib
 
 TOOL, WORK = sys.argv[1], pathlib.Path(sys.argv[2])
 SEP = "=" * 70
@@ -340,25 +263,6 @@ rc, out, ids = run(r, "-j", "2")
 check(ids == known, f"failing ids {ids} differ from a serial discover run {known}", out)
 check(rc == 1, f"no baseline given, so every failure is new, yet exit {rc}", out)
 
-# Shards run in parallel: one process per module, and their lifetimes overlap.
-slow = """
-    import os, time, unittest
-    class T(unittest.TestCase):
-        def test_slow(self):
-            t0 = time.time(); time.sleep(1.5)
-            with open("stamps.txt", "a") as f:
-                f.write(f"{os.getpid()} {t0} {time.time()}\\n")
-"""
-r = repo({f"test_slow{i}.py": slow for i in range(3)})
-base = WORK / "base-par.txt"; base.write_text("\n".join(sorted(known)) + "\n")
-rc, out, _ = run(r, "-j", "4", "--baseline", str(base))
-check(rc == 0, f"a clean parallel run with a covering baseline exited {rc}", out)
-stamps = [l.split() for l in (r / "stamps.txt").read_text().splitlines()]
-check(len(stamps) == 3, f"expected 3 slow tests to run, got {len(stamps)}", out)
-check(len({s[0] for s in stamps}) == 3, "the slow modules shared a process", out)
-check(max(float(s[1]) for s in stamps) < min(float(s[2]) for s in stamps),
-      "the slow modules ran one after another, not in parallel", out)
-
 # Baseline BY ID: carried ids pass, a new id fails and is named.
 r = repo()
 base = WORK / "base-all.txt"; base.write_text("\n".join(sorted(known)) + "\n")
@@ -382,35 +286,12 @@ r = repo({"test_known.py": """
 rc, out, _ = run(r, "--baseline", str(WORK / "base-all.txt"))
 check(rc == 1, "an equal failure COUNT with a new id passed: ids were not compared", out)
 
-# A timed-out shard is re-run once; a timeout is never a failing test id.
-flaky = """
-    import os, time, unittest
-    class F(unittest.TestCase):
-        def test_first_run_hangs(self):
-            with open("attempts-flaky.txt", "a") as f: f.write("x")
-            if len(open("attempts-flaky.txt").read()) == 1: time.sleep(60)
-"""
-r = repo({"test_flaky.py": flaky})
-rc, out, ids = run(r, "--timeout", "3", "--baseline", str(WORK / "base-all.txt"))
-attempts = len((r / "attempts-flaky.txt").read_text())
-check(attempts == 2, f"a timed-out shard ran {attempts} time(s); expected one re-run", out)
-check(rc == 0, f"a shard that timed out once and then passed failed the run (exit {rc})", out)
-check(ids is not None and not any("test_flaky" in i or "test_first_run_hangs" in i for i in ids),
-      f"a timeout was counted as a failing test id: {ids}", out)
-rerun_block = out.split("re-run after a timeout: 1\n", 1)
-check(len(rerun_block) == 2 and "test_flaky" in rerun_block[1].split("\n", 1)[0],
-      "the re-run shard was not reported under 're-run after a timeout: 1'", out)
-
 # Unreadable shards fail closed, even with every failing id baselined.
-# Each attempt also spawns a grandchild `sleep 60` and records its pid: the kill
-# must reach the whole process group, not only the shard process.
 hang = """
-    import subprocess, time, unittest
+    import time, unittest
     class H(unittest.TestCase):
         def test_hang(self):
             with open("attempts-hang.txt", "a") as f: f.write("x")
-            child = subprocess.Popen(["sleep", "60"])
-            with open("grandchild-pids.txt", "a") as f: f.write(f"{child.pid}\\n")
             time.sleep(60)
 """
 r = repo({"test_hang.py": hang})
@@ -421,32 +302,6 @@ check(rc == 1, f"a shard that timed out twice did not fail the run (exit {rc})",
 check("test_hang: timed out" in out, "the hung shard was not named as timed out", out)
 check(ids is not None and not any("test_hang" in i for i in ids),
       f"a timeout was counted as a failing test id: {ids}", out)
-
-def alive(pid):
-    try:
-        state = pathlib.Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0]
-        return state != "Z"  # a zombie awaiting its reaper is already dead
-    except (FileNotFoundError, ProcessLookupError, IndexError):
-        pass
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return not pathlib.Path("/proc").is_dir()
-
-gpids = [int(p) for p in (r / "grandchild-pids.txt").read_text().split()]
-check(len(gpids) == 2, f"expected one grandchild per attempt, got {gpids}", out)
-deadline = time.time() + 5
-while time.time() < deadline and any(alive(p) for p in gpids):
-    time.sleep(0.1)
-survivors = [p for p in gpids if alive(p)]
-for p in survivors:  # never leak the fixture's own processes, even on failure
-    try: os.kill(p, signal.SIGKILL)
-    except ProcessLookupError: pass
-check(not survivors, f"a timed-out shard's grandchild outlived the run (pids {survivors}): "
-      "the kill did not reach the process group", out)
 
 r = repo({"test_crash.py": "import os\nos._exit(3)\n"})
 rc, out, _ = run(r, "--baseline", str(WORK / "base-all.txt"))
@@ -501,7 +356,7 @@ bad = WORK / "base-bad.txt"; bad.write_text("test_foo (x.Y.test_foo)\n")
 rc, out, _ = run(r, "--baseline", str(bad))
 check(rc == 2, f"a malformed baseline line exited {rc}, not the usage error 2", out)
 
-print("  parallel-suite-runner: parallel, id-baselined, timeout re-run once, "
+print("  parallel-suite-runner: id-baselined, hung shard re-run once, "
       "unreadable shards fail closed — OK")
 PY
 

@@ -71,7 +71,7 @@ strive to write a correct test on the information they have".
    Any implementation, even a throwaway one that proves the test can
    pass, is the implementer's GREEN.
 
-## Spec → test pipeline
+## Spec → test flow
 
 1. Read the spec in `docs/graph/specs/SPEC-NNNN-*.md`. Locate the
    contracts in §4 that the current increment satisfies.
@@ -84,12 +84,13 @@ strive to write a correct test on the information they have".
      same outcome).
    - Use real data shapes from the spec §6 and the project's
      fixtures in `docs/graph/data/` where applicable.
-3. For each failure mode in spec §7, write a test that triggers it
-   and asserts the documented behavior.
+3. Test a spec §7 failure mode only where its blast radius is named
+   and real (`test-first.proportionate-checks`); a test that needs more
+   code than its subject goes back in the handback, unwritten.
 4. Run the tests. **Confirm they fail for the right reason** (the
    behavior is missing, not the import).
 5. Update spec §10 (Test mapping) with the test file and test name
-   for each contract and each failure mode, status `red`.
+   for each contract and each failure mode tested, status `red`.
 6. Hand back naming `implementer` for GREEN (`recommended_next`); the
    test paths and contract slugs travel in the handback so the
    implementer's brief can embed them.
@@ -126,9 +127,8 @@ input, expected behavior (or rubric), pass threshold, category
 / multimodal / latency / cost). Eval failures are first-class
 regressions.
 
-Treat the eval suite like any other test suite: it runs in CI, it
-gates the increment, its results go in
-`docs/graph/runbooks/verification.md`.
+Treat the eval suite like any other test suite: it gates the
+increment, and its results go in `docs/graph/runbooks/verification.md`.
 
 The **bar** for the AI red-team gate — which abuse classes must be
 covered and what counts as passing — is owned by `security`
@@ -142,9 +142,8 @@ commands a fresh agent or a fresh laptop must run to verify the
 project. When a gate breaks because of an environment change, fix
 the docs in the same increment.
 
-When a kind of bug slips past the existing gates, add a new gate
-that would have caught it (and a test that reproduces the bug).
-This is the only way the gate set converges on real coverage.
+When a bug slips past the existing gates, write the test that
+reproduces it; whether a new gate follows is `protocol.verify-new-gates`.
 
 ## Bug fixing
 

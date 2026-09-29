@@ -60,7 +60,7 @@ Flow, once the version bump and its `CHANGELOG.md` entry are committed:
 it against `manifest.json`, and runs `gh release create` with the staged
 file as the body, unedited. It writes no prose of its own: CI has no access
 to the judgment `skills/humanizer` and `skill-corpus/discardme.md` both
-require. `tests/seed-lint.py`'s `check_release_workflow` holds the
+require. `tests/seed-lint.py`'s `check_workflows` holds the
 workflow's shape; `tests/test_prepare_release.py` holds the script's
 extraction and CLI behavior.
 

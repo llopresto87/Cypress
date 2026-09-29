@@ -3,7 +3,7 @@
 false green it defends against.
 
 A gate's verdict is only worth what its INPUT SET is worth. `tests/run.sh` runs
-thirty steps and exits 0; that sentence is what a reader takes away, and it is
+its steps and exits 0; that sentence is what a reader takes away, and it is
 not the same claim as "the seed complies with everything it checks". Six of the
 suites read only `tests/fixtures/`: they prove a linter works and say nothing
 about whether the tree it ships obeys it. That difference was invisible because
@@ -68,16 +68,11 @@ RUN_SH_STEP_DIRS = ("tests", "tools", "integrations", "templates")
 GATES: dict[str, tuple[str, str, str, str]] = {
     "test-unified-graph-install.sh": (
         "every knowledge artifact lands under one docs/graph/ root", TEMP, "none", ""),
-    "test-knowledge-paths.sh": (
-        "graph paths referenced by the machinery resolve", REAL, "none", ""),
-    "test-orchestration-entry.sh": (
-        "the tool-neutral entry prompt drives the documented flow", REAL, "semantic",
-        "asserts the prompt SAYS the right things; cannot assert a session obeys it"),
     "test-tier-lanes.sh": (
-        "T2's covered and contained lanes stay distinct", REAL, "semantic",
-        "tier classification is a judgment the gate can only check the wording of"),
-    "test-graph-artifacts.sh": (
-        "template artifacts exist and carry their required shape", REAL, "none", ""),
+        "tiers.contained-lane and canonize.why-record each have exactly one "
+        "owner node", REAL, "semantic",
+        "it counts owners; whether the owning node states the lane correctly "
+        "is a judgment it cannot check"),
     "test-spec-lint.sh": (
         "the spec linter finds shape defects", FIXTURES, "scope",
         "proves the linter works against planted fixtures; the seed's own "
@@ -97,10 +92,7 @@ GATES: dict[str, tuple[str, str, str, str]] = {
     "test-grill-lint.sh": (
         "the plan-of-record linter finds shape defects", FIXTURES, "scope",
         "proves the linter works; the seed's own active plan is swept by the "
-        "grill-lint.py step below, and no other plan is, except that the --waves "
-        "cases also read "
-        "the frozen docs/plans/grill-7.30.0-cycle-economy.md, read-only, for one "
-        "wave line (SPEC-0005 GRILL_WAVES_LEVELS_FROM_DEPENDS_ON)"),
+        "grill-lint.py step below, and no other plan is"),
     "grill-lint.py": (
         "the seed's active plan of record is well formed: every increment has its "
         "fields, its dependencies exist and come first, and every contract and "
@@ -123,7 +115,7 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "Classified `none` until a reviewer patched place_file to skip one "
         "protocol and watched the suite stay green"),
     "test-plant-state.sh": (
-        "S1-S6: owner decisions survive, record agrees with disk", TEMP, "none", ""),
+        "S1-S12: owner decisions survive, record agrees with disk", TEMP, "none", ""),
     "test-install-kernel-modes.sh": (
         "K1-K6: one kernel body, copy isolates, symlink is live", TEMP,
         "coverage",
@@ -131,15 +123,22 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "the multi-adapter --symlink case where the pair flipped on every run "
         "and backups grew without bound. That case now lives in "
         "test-install-placement.sh's M3 section"),
-    "test-seed-budgets.sh": (
-        "special-character targets, and that the seed's budgets can fail", TEMP, "none",
-        "the budget half exists because a budget nobody has seen fail is a "
-        "constant, not a gate"),
     "test-install-adoption.sh": (
         "an install into a target that is not pristine: existing instructions, "
         "a partial install, a path in the way, a read-only target", TEMP, "coverage",
         "covers the failure shapes that were actually observed; a target can be "
         "non-pristine in ways nobody has thought of yet, and only those are here"),
+    "test-prompt-hooks.sh": (
+        "SPEC-0003 per-prompt injection: route-hook.py, status-hook.py and the "
+        "Prime Agent extensions inject what the contract says and fail open",
+        FIXTURES, "representation",
+        "the shipped hooks run in a synthetic temp plant on synthetic prompt "
+        "envelopes, not a real host session"),
+    "test-code-anchor.sh": (
+        "SPEC-0003 code anchor: code-anchor.py records and compares branch, "
+        "commit and uncommitted work", FIXTURES, "representation",
+        "runs against Git repositories built from synthetic files, not a real "
+        "governed repository"),
     "test-bound-hook.sh": (
         "the bounded-execution guard blocks what it claims to", FIXTURES, "representation",
         "the fixture is a synthetic command line, not a real session's"),
@@ -153,26 +152,19 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "plant's own artifacts at its own repo root still are", TEMP, "coverage",
         "asserts the boundary BEHAVIOUR that seed-lint's canonical-block check "
         "can only hold byte-identical — three copies of one WRONG rule pass "
-        "that check and fail this one. Its own residual: it exercises the "
-        "three walkers that exist, so a fourth upward walk added later is "
-        "covered by nothing until someone adds it here"),
+        "that check and fail this one. It also covers a fourth upward walk, "
+        "test_agent_lint.py's roster lookup. Its own residual: it exercises the "
+        "walkers that exist, so an upward walk added later is covered by "
+        "nothing until someone adds it here"),
     "test_frontmatter_contract.py": (
         "what the one frontmatter reader DOES — nesting, comment boundary, "
         "repeated keys, refusal of a continuation — asserted against every "
         "published copy", REAL, "coverage",
-        "the truth half of a pair whose other half is sameness. seed-lint holds "
-        "the four copies byte-identical and test_metadata_equivalence holds the "
-        "consumers in agreement; both are tautologies, and three "
-        "one-word mutations applied to ALL FOUR copies passed every gate before "
+        "the truth half of a pair whose other half is sameness: seed-lint's "
+        "FRONTMATTER_COPIES holds the three copies byte-identical, a tautology, "
+        "and one-word mutations applied to every copy passed every gate before "
         "this existed. Its own residual: it asserts the shapes the seed's "
         "frontmatter actually uses, so a shape nobody writes yet is unbound"),
-    "test-collected-count.sh": (
-        "no unittest suite has quietly stopped collecting tests, against a "
-        "per-suite floor in tests/collected.json", REAL, "coverage",
-        "it counts what a suite COLLECTS, not what its assertions are worth: a "
-        "test whose body is replaced by `pass` still counts. It exists because "
-        "renaming the 27 of 50 methods in test_agent_lint.py that no spec row "
-        "cites took the suite from 69 tests to 43 with the whole gate green"),
     "test-tool-help.sh": (
         "every shipped tool with a CLI answers --help on its own terms, "
         "discovered by walking the tool directories rather than by a list",
@@ -197,19 +189,6 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "60' into '0 gaps, of 59' at exit 0 — a smaller denominator presented "
         "as a clean bill. It names and fails on an unreadable node now "
         "(test-lint-audibility.sh case 5)"),
-    "test_tool_authorship.py": (
-        "a repeated operation has an author, and the close-out still spawns once",
-        REAL, "semantic",
-        "it holds the three-way split structurally — rule.toolcraft keeps exactly "
-        "one home and the linter's map agrees with it, the tool-smith is routable "
-        "and carries at least three golden rows (counted, not grepped: deleting "
-        "all three left the section comment behind and satisfied a substring "
-        "check while the agent became measured by nothing), canonize states its "
-        "producer and is checked against disclaimers that named the agent while "
-        "removing it, and the scope refusal is checked against charters asserting "
-        "its opposite. It cannot tell whether the tool-smith APPLIES its bar "
-        "honestly: building on two instances and a hunch, or refusing one that "
-        "had earned building, passes every check here"),
     "test_prepare_release.py": (
         "tools/prepare-release.py stages the right CHANGELOG.md section into "
         ".github/RELEASE_NOTES.md, and refuses loudly on a missing entry or an "
@@ -219,39 +198,8 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "from what canonize's humanizer pass produced is out of scope here; "
         "that pass is asserted where it runs, in canonize's own gate. It also "
         "cannot execute .github/workflows/release.yml, which only GitHub "
-        "Actions can run; seed-lint's check_release_workflow holds that file's "
+        "Actions can run; seed-lint's check_workflows holds that file's "
         "shape structurally instead"),
-    "test_brainstorm_modes.py": (
-        "both brainstorm modes exist, are reachable, and differ where it matters",
-        REAL, "semantic",
-        "it reads the two mode nodes and asserts the seam structurally. The "
-        "exit check forbids the negations FIRST and then requires the "
-        "affirmative, because a positive regex for the property matched its own "
-        "inversion — 'Never exit WITHOUT user CONFIRMATION' passed a check "
-        "written to forbid exactly that. It still cannot tell whether a session "
-        "PICKED the right mode for a given decision, which is the failure that "
-        "actually costs something and is judgement exercised mid-session"),
-    "test-entry-paths.sh": (
-        "every way into the seed reaches the protocol that fits the target",
-        REAL, "semantic",
-        "MEASURED against six simultaneous behaviour inversions, twice. Round 1 "
-        "of an adversarial review reverted all six and this step stayed green "
-        "(evasion: a comma, dropped backticks, a parenthetical aside). Round 2 "
-        "inverted them a second way — satisfying every literal while negating "
-        "the sentence ('It is false that the producer is X') — and it stayed "
-        "green again. Natural-language negation is unbounded, so no list of "
-        "banned phrases closes it. MEASURED, and an earlier version of this "
-        "note claimed four of six were caught — that was WRONG, and a later "
-        "round proved it by inverting more carefully: ONE of the six is "
-        "caught. The one is `initialize`'s fork arms, read as TABLE CELLS "
-        "with swap detection, which prose cannot fake. The kernel tie, the "
-        "installer tie and grow's sub-step ban are still substring regexes "
-        "and each was walked past by a reworded negation (`it is false that "
-        "an empty repo goes to from-scratch` satisfies the co-occurrence "
-        "window; `control resumes at Phase 2` is not the banned `and "
-        "resume`). Routing IS parsed from an installed plant's LOAD block "
-        "only, which is real, but no inversion of the four targets it. "
-        "FIVE REMAIN INVERTIBLE and none is claimed"),
     "test-growth-audit.sh": (
         "UNKNOWN rows are disclosed rather than silently dropped", FIXTURES, "scope", ""),
     "test-agnosticism-lint.sh": (
@@ -279,9 +227,18 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "the seed linter's own contract, and that every check_* in it is either "
         "exercised by a planted violation or declared unprotected", REAL, "scope",
         "the planted violations run against a hermetic COPY, so they prove the "
-        "linter fires and say nothing about the shipped tree; the "
-        "check-coverage-binder step at its end is what reads $ROOT, and it reads "
-        "only the NAMES of the checks, not what they assert"),
+        "linter fires and say nothing about the shipped tree; the real-tree "
+        "seed-lint.py step is each row's partner. A check_* with no row is "
+        "covered only by that real-tree run"),
+    "test-verify-ledger.sh": (
+        "verify-ledger.py rebuilds a monolith from a ledger plan and its leaves "
+        "and names the first byte that differs", FIXTURES, "scope",
+        "proves the tool works on fixtures; no real ledger is verified by the gate"),
+    "test-ratchet-lint.sh": (
+        "ratchet-lint.py refuses a loosened ceiling and a regrown ledger",
+        FIXTURES, "scope",
+        "a mini tree with a synthetic source; the real tree is the "
+        "ratchet-lint.py step"),
     "test-legal-lint.sh": (
         "the legal citability contract", FIXTURES, "scope", ""),
     "test-tool-corpus.sh": (
@@ -320,23 +277,11 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "breaking anything else in the seed does not."),
     "test_router_reach.py": (
         "no routing vocabulary is unreachable by its own inflection, in either "
-        "router, and every stem collision has been reviewed", REAL, "coverage",
+        "router", REAL, "coverage",
         "it enumerates the vocabulary exhaustively but probes ONE inflection "
         "rule per word — the regular plural. An irregular a charter starts "
         "using (analyses/analysis is already known) is not measured, and the "
         "STEM_IRREGULAR map is deliberately tiny rather than a lexicon"),
-    "test_metadata_equivalence.py": (
-        "the five frontmatter parsers and two router tokenizers agree on one "
-        "shared input table", REAL, "evidence",
-        "it pins agreement BETWEEN the copies, which is a weaker claim than "
-        "agreement with the truth: four byte-identical frontmatter.py copies "
-        "mutated the SAME wrong way pass this and every other gate. One "
-        "property is truth-checked (a multi-line description is refused); the "
-        "rest are checked only for sameness. Both divergences this residual "
-        "used to name are closed — graph-lint received the compound-fragment "
-        "fix (asserted here now, on resolve()'s own scoring path), and the "
-        "multi-line description is refused by every consumer of the shared "
-        "reader; status-register remains the one recorded exception"),
     "seed-lint.py": (
         "one home per fact; kernel, body and eager budgets; manifest agreement; "
         "SINGLE_WRITER derived from install.sh by count and shape",
@@ -366,13 +311,10 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "exempted WHOLESALE until 7.16.0, so a raw write hidden inside "
         "`place_file` destroyed a file outside the target with this gate green. "
         "They are counted rows now, but the check still sees only writes it can "
-        "attribute to a function it can find. SPEC-0004's front-door checks add "
-        "five: a restated definition reworded below DEFINITION_OVERLAP_CEILING, "
-        "an enforcement claim phrased without a listed mechanism verb, a term "
-        "used in a form its glossary entry does not list, and an install target "
-        "install.sh names only in a comment or message all pass; and a slug in "
-        "FRONT_DOOR_PENDING is reported on its PENDING line, not enforced, until "
-        "the increment that clears it removes it"),
+        "attribute to a function it can find. SPEC-0004's front-door checks "
+        "are two, the install section's target paths and the front-door "
+        "anchors: they hold names and links, not whether the prose around "
+        "them is true"),
     "ratchet-lint.py": (
         "no budget, threshold or debt ledger has been loosened since it was "
         "recorded", REAL, "evidence",
@@ -739,7 +681,7 @@ NON_STEP_GUARDS = {
         "evidence",
         "NOT a step in tests/run.sh, and nothing in the gate asserts the "
         "workflow exists: deleting the file leaves every suite green, which is "
-        "why `check_ci_workflow` in tests/seed-lint.py now holds its shape. "
+        "why `check_workflows` in tests/seed-lint.py now holds its shape. "
         "What no check can hold is whether a run ever went GREEN — the file is "
         "untracked as of 7.16.0 and has never executed, so the macOS leg in "
         "particular is configured rather than demonstrated."),

@@ -239,7 +239,7 @@ cannot write — is re-sliced.
 **The consolidation increment.** A spec whose increments added many
 tests ends its §9 with one more increment, planned from the start:
 survey the tests the spec added and the older tests they overlap, rule
-on each overlap, then merge or delete under the lean-suite rules in
+on each overlap, then merge or delete under the proportionate-checks rules in
 `skill.test-first`. Its `Spec contracts:` are the contracts whose tests
 it touches, and its `Tests to write (RED):` reads `none — consolidation`.
 Its gate is the suite staying green with no contract losing its test.

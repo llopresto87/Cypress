@@ -491,12 +491,9 @@ dir. It pins:
 
 - failing ids equal to a real serial `discover` over the same package, with the
   start dir importable and the repository root as cwd;
-- one process per module, with overlapping lifetimes;
 - the baseline compared by id: carried ids pass, a new id fails and is listed
   under `new failing ids:`, and an equal failure count with a different id
   fails;
-- a shard that times out once is re-run exactly once, passes on the re-run, and
-  adds no failing id;
 - a shard that times out twice runs exactly twice, fails the run, is named as
   timed out, and adds no failing id;
 - a shard that crashes before its run line, and one that exits 3 after a
@@ -508,7 +505,11 @@ dir. It pins:
 
 A plant that adopts the script should also pin `--serial`, `--split` (every
 class in exactly one slice, and more slices than classes), the live core-count
-default, and the `DONE` marker.
+default, and the `DONE` marker. The seed no longer checks three behaviours, so
+a plant that relies on them pins them too: one process per module with
+overlapping lifetimes, a shard that times out once and passes when it is run
+again (once only, adding no failing id), and the kill of a timed-out shard's
+whole process group.
 
 - **How to run the tests:** `bash tests/test-tool-corpus.sh` in the seed; in a
   plant, `<the plant's test command for its copy>`

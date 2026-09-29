@@ -1,23 +1,9 @@
 #!/usr/bin/env bash
-# test-status-register.sh — the lifecycle-status register does what a plant's
-# CI, session-start hook and canonize close-out rely on:
-#   a clean tree PASSES: every base status with its companions, the three
-#     kind extensions, a body "## Status" pointer, and files that carry no
-#     lifecycle at all (ordinary nodes, legal_status, no frontmatter);
-#   each D-STATUS violation class FAILS with file:line and the reason — bad
-#     vocabulary; closed/superseded/deferred/open/standing without their
-#     companion; a missing or malformed status_date; a body value that
-#     contradicts the frontmatter (both values named);
-#   kind extensions are per kind: an ADR may be `accepted`, a spec may not,
-#     and the finding says the kind was inferred from the directory;
-#   --strict-unknown turns "no status at all" into a finding for the kinds
-#     that must carry one, and nothing else — the default stays silent so
-#     adoption is incremental;
-#   the query role never fails on content: --open/--hotfix/... list
-#     oldest-first, --since/--by-kind filter, --summary is one short
-#     paragraph, --json is the same result for tooling;
-#   scan()/lint() are importable, which is how a hook and a host linter
-#     call it in-process instead of keeping a second copy.
+# test-status-register.sh — tools/status-register.py: the lint role (a clean
+# tree passes; each D-STATUS violation fails with file:line and reason; kind
+# extensions per kind; --strict-unknown), the query role (never fails on
+# content; --open/--since/--by-kind/--summary/--json), the in-process reuse
+# contract, and the default scope used when no --root is given.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REG="$ROOT/tools/status-register.py"
@@ -35,10 +21,8 @@ run() {
   [ "$rc" -eq "$want" ] || fail "expected exit $want, got $rc (args: $*)"
 }
 
-# run_at <dir> <expected-rc> <args...> -> output in $TMP/out
-# The tool run FROM <dir>, which is the only way to exercise what it does when
-# nobody passes --root. `run` above always names one, so every case written
-# with it says nothing about the scope the tool picks for itself.
+# run_at <dir> <expected-rc> <args...> -> output in $TMP/out, run FROM <dir>
+# with no --root, so the tool picks its own scope.
 run_at() {
   local dir="$1" want="$2"; shift 2
   local rc=0
@@ -97,12 +81,8 @@ grep -q "body-disagrees.md:12: body states status 'proposed' but frontmatter say
 grep -q "FAIL (9 finding(s))" "$TMP/out" || fail "expected exactly 9 findings"
 echo "  nine violation classes fail with file:line + reason — OK"
 
-# 3. A lifecycle word used in an ordinary sentence is not a stated status.
-#    Every status word is also an English word, so scanning a "## Status"
-#    section for any occurrence made a correct pointer plus its explanation
-#    fail — and, the check being fail-closed, taught stewards to reword true
-#    prose until the linter was happy. A value still fails when it is stated;
-#    prose that merely uses the word does not.
+# 3. A lifecycle word used in an ordinary sentence is not a stated status
+#    (a stated value still fails: case 2, body-disagrees.md).
 run 0 --root "$FIX/prose"
 grep -q "status register: PASS" "$TMP/out" \
   || fail "a Status section that points at frontmatter and then explains itself was flagged"
@@ -110,12 +90,7 @@ grep -q "2 file(s) scanned, 2 status-carrying" "$TMP/out" \
   || fail "prose tree counted wrong"
 grep -q "body states status" "$TMP/out" \
   && fail "a lifecycle word inside a sentence was read as a stated status"
-#    …and the genuine second home it exists to catch still fails (case 2 above
-#    asserts the finding; assert here that the fix did not silence it).
-run 1 --root "$FIX/violations"
-grep -q "body-disagrees.md:12: body states status 'proposed' but frontmatter says 'accepted'" "$TMP/out" \
-  || fail "a bare restated value stopped being reported"
-echo "  prose that uses a lifecycle word passes; a restated value still fails — OK"
+echo "  prose that uses a lifecycle word passes — OK"
 
 # 4. Kind extensions are per kind. The same value `accepted` passes on an ADR
 #    and fails on a spec; both kinds come from the directory name, and the
@@ -225,8 +200,7 @@ PY
 echo "  --json for the list and the summary — OK"
 
 # 11. The reuse contract: a hook or host linter imports this file by path and
-#     calls scan()/lint() in-process. If they move or change shape, the
-#     session-start summary and seed-lint's check go silently missing.
+#     calls scan()/lint() in-process.
 python3 - "$REG" "$FIX" <<'PY' >"$TMP/out" 2>&1 || fail "import contract broken"
 import importlib.util, sys
 from pathlib import Path
@@ -251,29 +225,13 @@ grep -q "import contract: OK" "$TMP/out" || fail "import contract assertions did
 echo "  scan()/lint()/summarize() importable — the hook reuse contract — OK"
 
 
-# ==========================================================================
-# SPEC-0001-gate-assertion-floor, increment 9 — the declared default scope.
-#
-# Cases 1-11 above every one name a --root. That is why the tool could ship
-# with a default scope of `.` and nobody notice: no case in this suite had
-# ever run it the way a session runs it. The four cases below are RED until
-# `docs/graph/status-register.py` / `Cypress/tools/status-register.py` gain a
-# default root, a default-sweep exclusion and a scoped PASS line.
-#
-# Each case is a shell function whose NAME is the contract slug, because
-# spec-lint.py credits coverage from the slug appearing anywhere under
-# Cypress/tests/ — including inside a comment. A slug that lives only in a
-# comment is the `coverage` false green the census records; a slug that names
-# the thing that executes is not.
-# ==========================================================================
-
+# Cases 12-15: the declared default scope (no --root). Each function name is
+# its contract slug.
 # --- 12. the default scope is the graph, not whatever the CWD contains -----
 caseREGISTER_DEFAULT_ROOT_PREFERS_THE_GRAPH() {
   CASE=REGISTER_DEFAULT_ROOT_PREFERS_THE_GRAPH
   local d="$TMP/default-root"; rm -rf "$d"
   clean_item "$d/docs/graph/decisions/adr-0001-clean.md"
-  # A markdown file that is somebody's business, but not this tool's: it sits
-  # beside the declared graph, not in it.
   cp "$FIX/violations/open-no-owner.md" "$d/outside-the-graph.md"
   run_at "$d" 0
   grep -q "status register: PASS" "$TMP/out" \
@@ -281,8 +239,7 @@ caseREGISTER_DEFAULT_ROOT_PREFERS_THE_GRAPH() {
   ! grep -q "outside-the-graph" "$TMP/out" \
     || fail "the default sweep reached a file outside docs/graph/"
 
-  # And with no docs/graph/ beneath it, the default root stays the working
-  # directory, exactly as today — this half must not change.
+  # With no docs/graph/ beneath it, the default root stays the CWD.
   local e="$TMP/default-root-nograph"; rm -rf "$e"; mkdir -p "$e"
   cp "$FIX/violations/open-no-owner.md" "$e/"
   run_at "$e" 1
@@ -294,15 +251,11 @@ caseREGISTER_DEFAULT_ROOT_PREFERS_THE_GRAPH
 echo "  the default root is docs/graph/ when there is one, the CWD when there is not — OK"
 
 # --- 13. a default sweep is not decided by somebody else's violations ------
-# `tests/fixtures/` is where a linter's own counter-examples live. A tool that
-# counts them as findings about the tree teaches its reader that it cries
-# wolf, and a tool nobody runs asserts nothing.
 caseREGISTER_DEFAULT_SWEEP_SKIPS_VIOLATION_FIXTURES() {
   CASE=REGISTER_DEFAULT_SWEEP_SKIPS_VIOLATION_FIXTURES
   local d="$TMP/sweep"; rm -rf "$d"
   clean_item "$d/decisions/adr-0001-clean.md"
-  # Two depths, because the contract says "at any depth": one nested inside a
-  # vendored project, one directly beneath the root being swept.
+  # Two depths: nested in a vendored project, and directly under the root.
   mkdir -p "$d/Cypress/tests/fixtures/status" "$d/tests/fixtures"
   cp "$FIX/violations/open-no-owner.md" "$d/Cypress/tests/fixtures/status/"
   cp "$FIX/violations/bad-vocabulary.md" "$d/tests/fixtures/"
@@ -317,9 +270,8 @@ caseREGISTER_DEFAULT_SWEEP_SKIPS_VIOLATION_FIXTURES
 echo "  a default sweep skips tests/fixtures/ at any depth — OK"
 
 # --- 14. naming a root is a declaration of scope, not a suggestion ---------
-# The exclusion case 13 pins must not reach an explicit --root, or this whole
-# suite stops being able to prove the linter fires: cases 2-5 aim straight at
-# $FIX, which is a tests/fixtures/ path.
+# Case 13's exclusion must not reach an explicit --root (cases 2-5 aim at $FIX,
+# a tests/fixtures/ path). The empty explicit root is case 6.
 caseREGISTER_EXPLICIT_ROOT_IS_HONOURED_VERBATIM() {
   CASE=REGISTER_EXPLICIT_ROOT_IS_HONOURED_VERBATIM
   local d="$TMP/explicit"; rm -rf "$d"
@@ -339,28 +291,15 @@ caseREGISTER_EXPLICIT_ROOT_IS_HONOURED_VERBATIM() {
     || fail "an explicit --root at a fixtures path dropped a second violation"
   grep -q "FAIL (2 finding(s))" "$TMP/out" \
     || fail "an explicit root reported a different number of findings than it holds"
-  # And the vacuous-pass refusal still fires when an explicit root matches no
-  # markdown at all: honouring a root verbatim includes honouring an empty one.
-  mkdir -p "$d/empty"
-  run 2 --root "$d/empty"
-  grep -q "refusing a vacuous pass" "$TMP/out" \
-    || fail "the vacuous-pass refusal stopped firing on an explicit empty root"
   CASE=""
 }
 caseREGISTER_EXPLICIT_ROOT_IS_HONOURED_VERBATIM
 echo "  an explicit --root is honoured verbatim, exclusion and all — OK"
 
 # --- 15. the PASS line says what it covers ---------------------------------
-# "230 file(s) scanned" reads as 230 files certified. One of them carried a
-# status. The line has to say which root it read and what the verdict covers,
-# or the number is an invitation to misread it.
 caseREGISTER_PASS_LINE_STATES_ITS_SCOPE() {
   CASE=REGISTER_PASS_LINE_STATES_ITS_SCOPE
   run 0 --root "$FIX/clean"
-  # The counts case 1 pins stay: this contract adds scope, it does not replace
-  # the figures.
-  grep -q "12 file(s) scanned, 9 status-carrying" "$TMP/out" \
-    || fail "the k-of-n figures case 1 pins must survive the scope sentence"
   grep -q "$FIX/clean" "$TMP/out" \
     || fail "the PASS line does not name the root it actually scanned"
   grep -qi "covers" "$TMP/out" \

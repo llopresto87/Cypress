@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 7.32.1
+- Version documented: 7.33.0
 - Repository role: this repo is the seed, the product that is shipped
   into other projects. It is *not* a grown project itself.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -1083,63 +1083,60 @@ classified, so it cannot fall behind the way a hand-typed list did. With that
 said, grouped by what they check:
 
 1. `test-unified-graph-install.sh`: graph install shape.
-2. `test-knowledge-paths.sh`: knowledge path integrity.
-3. `test-orchestration-entry.sh`: pins the single three-phase entry + the
-   completeness contract in prose.
-4. `test-graph-artifacts.sh`: graph artifact presence.
-5. `test-spec-lint.sh`: the spec gate: shape of every spec, coverage of live
+2. `test-spec-lint.sh`: the spec gate: shape of every spec, coverage of live
    ones, and a table row whose cell count differs from its header.
-6. `test-grill-lint.sh`: the plan-of-record gate (`grill-lint.py`): section
+3. `test-grill-lint.sh`: the plan-of-record gate (`grill-lint.py`): section
    shape, §9 dependency order, §5 derived from §9, plan↔spec alignment, the
    `--waves` report, a ledger plan read from its leaves beside it, and a
    decision in another repository, cited as `<name>:ADR-NNNN`, reported as
-   external. The same step file proves `tools/verify-ledger.py`, which
-   rebuilds a plan converted to a ledger byte for byte. The gate also runs
-   `grill-lint.py` over the active round's own plan.
-7. `test-full-install.sh`: full install across tools, roster parity, the
+   external. The gate also runs `grill-lint.py` over the active round's own
+   plan. `test-verify-ledger.sh` proves `tools/verify-ledger.py`, which
+   rebuilds a plan converted to a ledger byte for byte.
+4. `test-full-install.sh`: full install across tools, roster parity, the
    Claude-Code + Prime-Agent coexistence, CI parity gate.
-8. `test-bound-hook.sh`: the Claude-Code delegation-bound hook, the
-   session-start hooks and `tools/code-anchor.py`, which only they run.
-9. `test-graft-tools.sh`: the graft tools: the engine reconciliation, the
+5. `test-bound-hook.sh`: the Claude-Code bounded-execution guard.
+   `test-prompt-hooks.sh` holds the per-prompt and session-start hooks, and
+   `test-code-anchor.sh` holds `tools/code-anchor.py`.
+6. `test-graft-tools.sh`: the graft tools: the engine reconciliation, the
    backup audit, the three-way ledger and the run driver.
-10. `test-growth-audit.sh`: the coverage gate (`tools/growth-audit.py`): every
+7. `test-growth-audit.sh`: the coverage gate (`tools/growth-audit.py`): every
     planned artifact present and substantive, every declared read filled, every
     absence established, every UNKNOWN named where the owner reads.
-11. `test-agnosticism-lint.sh`: the shared agnosticism gate
+8. `test-agnosticism-lint.sh`: the shared agnosticism gate
     (`tools/agnosticism-lint.py`, delivered to plants as
     `docs/graph/agnosticism-lint.py`), run before the seed-lint suite that
     consumes it.
-12. `test-prose-lint.sh`: the mechanical floor under the humanizer skill. It
+9. `test-prose-lint.sh`: the mechanical floor under the humanizer skill. It
     reports the tells a pattern can catch, and its fact-preservation check
     proves a rewrite added and dropped nothing.
-13. `test-status-register.sh`: the lifecycle-status linter/query
+10. `test-status-register.sh`: the lifecycle-status linter/query
     (`tools/status-register.py`, delivered as `docs/graph/status-register.py`):
     one vocabulary in frontmatter, companion keys, body/frontmatter agreement,
     query ordering and the `--summary` the session-start hook injects.
-14. `test-status-migrate.sh`: the one-time body-prose → frontmatter migration
+11. `test-status-migrate.sh`: the one-time body-prose → frontmatter migration
     (`tools/status-migrate.py`): exact mappings, `not recorded` never invented,
     annotations carried as `status_note`, idempotent, output lints clean.
-15. `test-seed-lint.sh`: plant-a-violation regression for each seed-lint class.
-16. `test-legal-lint.sh`: legal-corpus citability contract — including the
+12. `test-seed-lint.sh`: plant-a-violation regression for each seed-lint class.
+13. `test-legal-lint.sh`: legal-corpus citability contract — including the
     amendment trap (an entry on an amendable instrument must state whether its
     text is the original or the consolidated edition; decisions are exempt by
     construction) and the dated edition-debt ledger, which only shrinks — and
     the placement contract: whole corpus or none, the jurisdiction recorded, an
     uncarried jurisdiction surfaced as an ingest request.
-17. `test-tool-corpus.sh`: the tool-corpus portability contract. Every shell
+14. `test-tool-corpus.sh`: the tool-corpus portability contract. Every shell
     and Python implementation embedded on a page declaring `Stability:
     portable` compiles, the pages that ship a runnable implementation have
     their behaviour exercised, and the compile stage refuses a run that
     selected almost nothing — code an adopting project is invited to run as-is,
     that nobody has run, is a claim, not a tool.
-18. `test_graph_lint.py`: graph-lint CLI-contract regression (stdlib unittest),
+15. `test_graph_lint.py`: graph-lint CLI-contract regression (stdlib unittest),
     including the 7.0.0 status / deviation / `plant:` block rules and the
     `--plan` entry that prints each node's file beside its id.
-19. `agent-lint.py --lint` and `--eval` (against `agents/`).
-20. `test_agent_lint.py`: agent-lint CLI-contract regression (stdlib
+16. `agent-lint.py --lint` and `--eval` (against `agents/`).
+17. `test_agent_lint.py`: agent-lint CLI-contract regression (stdlib
     `unittest`, no third-party dependency).
-21. `seed-lint.py`: one-home-per-fact for the seed's own meta-facts.
-22. `legal-lint.py`: the eight-field-per-entry legal gate.
+18. `seed-lint.py`: one-home-per-fact for the seed's own meta-facts.
+19. `legal-lint.py`: the eight-field-per-entry legal gate.
 
 Steps 19 and 20 read the seed's own `agents/` directory as the roster, and the
 one `_routes.golden.tsv` that lives there, whatever directory the seed is

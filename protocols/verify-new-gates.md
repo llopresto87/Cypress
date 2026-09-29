@@ -54,26 +54,20 @@ Reviewing what is still `open` or `hotfix` at close-out is `canonize`'s.
 ## Adding a new gate
 
 If verification reveals a kind of bug that no existing gate would have
-caught, add a gate. New gates:
-- Pick the lowest level that catches the bug.
-- Get a test case that reproduces the bug (RED).
-- Get added to the verification runbook in the same increment.
-- Get added to CI in the next reliability-owned increment.
+caught, write the test that reproduces it (RED). A new gate is owed only
+when that kind of bug recurs or its blast radius is high
+(`test-first.proportionate-checks`). A new gate takes the lowest level
+that catches the bug, is recorded in the verification runbook in the
+same increment, and joins the project's automated runs only by owner
+decision.
 
-A gate is a tool, and a tool that can fail halfway is a second thing to
-verify. Any gate or verification script you author is **all-or-nothing**:
-it validates everything it will touch before it writes anything, so a
-failure never leaves a half-applied state; it runs under strict error
-and unset-variable handling and resolves its own root from its location,
-never from the working directory; and it keeps **environment failures
-distinct from repository failures** in both remedy text and exit status
-— a missing interpreter, an absent fixture, or a tool that could not
-start never degrades into a skip or an empty success, or a broken
-environment reads as a clean tree. Fixtures raise on an environment
-fault and reserve the empty result for a genuine empty success. Fail
-closed by default; a soft mode for local troubleshooting is an explicit,
-documented switch. Whether a check deserves to become a cataloged tool
-at all is `toolcraft`'s doctrine.
+A gate or verification script that writes never leaves a half-applied
+state, and it keeps **environment failures distinct from repository
+failures**: a missing interpreter, an absent fixture, or a tool that
+could not start never reads as a skip, an empty success, or a clean
+tree. Any further hardening is sized by the same principle. Whether a
+check deserves to become a cataloged tool at all is `toolcraft`'s
+doctrine.
 
 ## Neighbours
 

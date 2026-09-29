@@ -1,28 +1,17 @@
 #!/usr/bin/env bash
-# test-lint-audibility.sh — V5: no gate skips an input silently. Three
-# linters used to catch an unreadable file (bad permissions, bad encoding,
-# a race with something deleting it) with a bare `except: continue` — no
-# diagnostic, no effect on exit status, so a gate that could not even read
-# its input still printed the same PASS a real scan earns. This proves the
-# fix for all three: prose-lint.py, status-register.py, spec-lint.py.
-#   For each: an unreadable input makes the tool exit non-zero AND print a
-#   diagnostic naming the path and the reason; a clean, readable input
-#   still passes exactly as before.
+# test-lint-audibility.sh — V5: no gate skips an input silently. For each tool,
+# an unreadable input makes it exit non-zero AND print a diagnostic naming the
+# path and the reason. The clean path of each tool is its own suite's case 1.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$ROOT/tests/helpers/lintcase.sh"
 T="$(mktemp -d)"
 trap 'chmod -R u+w "$T" 2>/dev/null || true; rm -rf "$T"' EXIT
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
-# make_unreadable PATH — plant a file the tool cannot read. chmod 000 is
-# preferred (it exercises the real OSError a gate hits in CI), but a
-# process running as root ignores permission bits, which would make the
-# whole test vacuous — it would "pass" without ever exercising the fix. So
-# after chmod 000 we check whether the file actually became unreadable to
-# us; if not (root, or some other override), fall back to an invalid UTF-8
-# byte sequence, which triggers UnicodeDecodeError instead and is immune
-# to who owns the process.
+# make_unreadable PATH — chmod 000; a process running as root still reads it,
+# so then fall back to invalid UTF-8, which fails the decode for any owner.
 make_unreadable() {
   local f="$1"
   printf 'plain content that would otherwise lint clean\n' >"$f"
@@ -33,44 +22,37 @@ make_unreadable() {
   fi
 }
 
-# ---------------------------------------------------------------- prose-lint
-PROSE_BAD="$T/prose-bad.md"
-make_unreadable "$PROSE_BAD"
-out="$(python3 "$ROOT/tools/prose-lint.py" --file "$PROSE_BAD" 2>&1)" && rc=0 || rc=$?
-[ "$rc" -eq 1 ] || fail "prose-lint: unreadable input should exit 1, got $rc ($out)"
-grep -q "$PROSE_BAD" <<<"$out" || fail "prose-lint: diagnostic does not name the path ($out)"
-grep -qi "unreadable" <<<"$out" || fail "prose-lint: diagnostic does not say why ($out)"
-echo "  prose-lint: unreadable input exits non-zero and names path + reason — OK"
+# unread_fails <tool> <path-needle> <rc> -- <cmd...>: exit <rc> (or any non-zero
+# for "nz"), and the output names the path and says why.
+unread_fails() {
+  local tool="$1" needle="$2" want="$3" out rc
+  shift 3; [ "${1:-}" = "--" ] && shift
+  out="$("$@" 2>&1)" && rc=0 || rc=$?
+  if [ "$want" = nz ]; then [ "$rc" -ne 0 ]; else [ "$rc" -eq "$want" ]; fi \
+    || fail "$tool: unreadable input should exit $want, got $rc ($out)"
+  grep -q "$needle" <<<"$out" || fail "$tool: diagnostic does not name the path ($out)"
+  grep -qi "could not be read\|unreadable" <<<"$out" \
+    || fail "$tool: diagnostic does not say why ($out)"
+  echo "  $tool: unreadable input exits non-zero and names path + reason — OK"
+}
 
-out="$(python3 "$ROOT/tools/prose-lint.py" --file "$ROOT/tests/fixtures/prose/clean.md" 2>&1)" && rc=0 || rc=$?
-[ "$rc" -eq 0 ] || fail "prose-lint: a clean file must still pass, got $rc ($out)"
-grep -q "prose lint: PASS" <<<"$out" || fail "prose-lint: clean file did not report PASS"
-echo "  prose-lint: a clean readable file still passes — OK"
+# prose-lint
+make_unreadable "$T/prose-bad.md"
+unread_fails prose-lint "$T/prose-bad.md" 1 -- \
+  python3 "$ROOT/tools/prose-lint.py" --file "$T/prose-bad.md"
 
-# ------------------------------------------------------------ status-register
-STATUS_ROOT="$T/status"
-mkdir -p "$STATUS_ROOT"
-make_unreadable "$STATUS_ROOT/bad.md"
-out="$(python3 "$ROOT/tools/status-register.py" --root "$STATUS_ROOT" 2>&1)" && rc=0 || rc=$?
-[ "$rc" -eq 1 ] || fail "status-register: unreadable input should exit 1, got $rc ($out)"
-grep -q "bad.md" <<<"$out" || fail "status-register: diagnostic does not name the path ($out)"
-grep -qi "unreadable" <<<"$out" || fail "status-register: diagnostic does not say why ($out)"
-echo "  status-register: unreadable input exits non-zero and names path + reason — OK"
+# status-register
+mkdir -p "$T/status"
+make_unreadable "$T/status/bad.md"
+unread_fails status-register bad.md 1 -- \
+  python3 "$ROOT/tools/status-register.py" --root "$T/status"
 
-out="$(python3 "$ROOT/tools/status-register.py" --root "$ROOT/tests/fixtures/status/clean" 2>&1)" && rc=0 || rc=$?
-[ "$rc" -eq 0 ] || fail "status-register: a clean tree must still pass, got $rc ($out)"
-grep -q "status register: PASS" <<<"$out" || fail "status-register: clean tree did not report PASS"
-echo "  status-register: a clean readable tree still passes — OK"
-
-# ----------------------------------------------------------------- spec-lint
-# spec-lint.py reads its own location to find docs/graph/{specs,../../tests}
-# (it is installed at docs/graph/spec-lint.py in a plant), so each case gets
-# its own scratch tree shaped the same way.
-spec_tree() {  # spec_tree DIR — a minimal live spec with one covered contract
-  local dir="$1"
-  mkdir -p "$dir/docs/graph/specs" "$dir/tests"
-  cp "$ROOT/templates/knowledge-graph/spec-lint.py" "$dir/docs/graph/spec-lint.py"
-  cat >"$dir/docs/graph/specs/SPEC-0001-thing.md" <<'MD'
+# spec-lint reads its own location to find docs/graph/specs and tests/, so it
+# runs from a scratch tree shaped like a plant.
+SPEC="$T/spec"
+mkdir -p "$SPEC/docs/graph/specs" "$SPEC/tests"
+cp "$ROOT/templates/knowledge-graph/spec-lint.py" "$SPEC/docs/graph/spec-lint.py"
+cat >"$SPEC/docs/graph/specs/SPEC-0001-thing.md" <<'MD'
 ---
 status: active
 status_date: 2026-09-13
@@ -104,83 +86,33 @@ status_date: 2026-09-13
 |---|---|---|---|---|
 | DO_THING | test_do_thing | tests/test_thing.py | unit | green |
 MD
-}
+make_unreadable "$SPEC/tests/test_thing.py"
+unread_fails spec-lint test_thing.py 1 -- \
+  bash -c 'cd "$1" && python3 docs/graph/spec-lint.py' _ "$SPEC"
 
-SPEC_BAD="$T/spec-bad"
-spec_tree "$SPEC_BAD"
-make_unreadable "$SPEC_BAD/tests/test_thing.py"
-out="$(cd "$SPEC_BAD" && python3 docs/graph/spec-lint.py 2>&1)" && rc=0 || rc=$?
-[ "$rc" -eq 1 ] || fail "spec-lint: unreadable test file should exit 1, got $rc ($out)"
-grep -q "test_thing.py" <<<"$out" || fail "spec-lint: diagnostic does not name the path ($out)"
-grep -qi "unreadable" <<<"$out" || fail "spec-lint: diagnostic does not say why ($out)"
-echo "  spec-lint: unreadable test file exits non-zero and names path + reason — OK"
+# agnosticism-lint: DEFAULT_GLOBS is *.md, so a skipped read was always a page.
+mkdir -p "$T/agn"
+printf '# ordinary page\nnothing forbidden here.\n' >"$T/agn/ok.md"
+make_unreadable "$T/agn/bad.md"
+unread_fails agnosticism-lint bad.md nz -- \
+  python3 "$ROOT/tools/agnosticism-lint.py" --root "$T/agn"
 
-SPEC_CLEAN="$T/spec-clean"
-spec_tree "$SPEC_CLEAN"
-printf 'def test_do_thing():  # DO_THING\n    pass\n' >"$SPEC_CLEAN/tests/test_thing.py"
-out="$(cd "$SPEC_CLEAN" && python3 docs/graph/spec-lint.py 2>&1)" && rc=0 || rc=$?
-[ "$rc" -eq 0 ] || fail "spec-lint: a clean, covered spec must still pass, got $rc ($out)"
-grep -q "spec lint: PASS" <<<"$out" || fail "spec-lint: clean tree did not report PASS"
-echo "  spec-lint: a clean, covered spec still passes — OK"
-
-# --- agnosticism-lint ------------------------------------------------------
-# The fourth instance of the same defect, and the one that says the most about
-# how it survived: the ledger named three linters, the audit that fixed them was
-# told three, and this one was found only because a second pass was not given
-# the list. Its skip even carried a rationale — "binary or unreadable: carries
-# no prose" — while DEFAULT_GLOBS is ("*.md",), so the only thing it could skip
-# was a markdown file it failed to read. A stale reason reads exactly like a
-# considered one.
-AGN_DIR="$T/agn"
-mkdir -p "$AGN_DIR"
-printf '# ordinary page\nnothing forbidden here.\n' >"$AGN_DIR/ok.md"
-AGN_BAD="$AGN_DIR/bad.md"
-printf 'placeholder\n' >"$AGN_BAD"
-make_unreadable "$AGN_BAD"
-out="$(python3 "$ROOT/tools/agnosticism-lint.py" --root "$AGN_DIR" 2>&1)" && rc=0 || rc=$?
-[ "$rc" -ne 0 ] || fail "agnosticism-lint: an unreadable page must not pass, got 0 ($out)"
-grep -q "bad.md" <<<"$out" || fail "agnosticism-lint: the diagnostic must name the path ($out)"
-grep -qi "could not be read\|unreadable" <<<"$out" \
-    || fail "agnosticism-lint: the diagnostic must give the reason ($out)"
-echo "  agnosticism-lint: unreadable page exits non-zero and names path + reason — OK"
-
-out="$(python3 "$ROOT/tools/agnosticism-lint.py" --file "$AGN_DIR/ok.md" 2>&1)" && rc=0 || rc=$?
-[ "$rc" -eq 0 ] || fail "agnosticism-lint: a clean page must still pass, got $rc ($out)"
-echo "  agnosticism-lint: a clean page still passes — OK"
-
-# 5. roster-justification.py — the fifth instance, and the one in a GATE STEP.
-#
-# Found after the other four were fixed, in a tool this same release wired into
-# run.sh. Its reader turned both FrontmatterError and OSError into `{}` and the
-# caller `continue`d, so an unreadable node left the DENOMINATOR: "0 node(s)
-# with a gap, of 60" became "0 node(s) with a gap, of 59", exit 0, no
-# diagnostic. Three reference documents publish this tool as the home for why
-# each node is on the roster.
-#
-# It needs the real tree (it walks protocols/, skills/, agents/, method/), so
-# this runs against a throwaway copy rather than a fixture.
+# roster-justification (a gate step): an unreadable node must also leave the
+# denominator visibly ("of N" drops by one), not silently. It walks the real
+# roster, so it runs on a copy of only what it reads.
 RJ="$T/rjcopy"
-mkdir -p "$RJ"
-( cd "$ROOT" && tar --exclude=.git --exclude=__pycache__ --exclude='*.pyc' -cf - . ) \
-    | ( cd "$RJ" && tar -xf - )
+mini_tree "$RJ" tools/roster-justification.py tools/frontmatter.py \
+  agents protocols skills core/method
 out="$(python3 "$RJ/tools/roster-justification.py" --gaps 2>&1)" && rc=0 || rc=$?
 [ "$rc" -eq 0 ] || fail "roster-justification: a clean copy must pass, got $rc ($out)"
-# Derive the expected total from this clean-copy run rather than pinning a
-# number: the roster's node count changes as nodes are added, and a pinned
-# count breaks every time it does without telling us anything new.
 clean_count="$(sed -n 's/^.*of \([0-9][0-9]*\).*$/\1/p' <<<"$out")"
-[ -n "$clean_count" ] \
-    || fail "roster-justification: could not parse the node count from the clean-copy run ($out)"
-expected_count=$((clean_count - 1))
+[ -n "$clean_count" ] || fail "roster-justification: no node count in the clean run ($out)"
 make_unreadable "$RJ/agents/05-security.md"
-out="$(python3 "$RJ/tools/roster-justification.py" --gaps 2>&1)" && rc=0 || rc=$?
-[ "$rc" -ne 0 ] || fail "roster-justification: an unreadable node must not pass, got 0 ($out)"
-grep -q "05-security.md" <<<"$out" \
-    || fail "roster-justification: the diagnostic must name the path ($out)"
-grep -qi "could not be read\|unreadable" <<<"$out" \
-    || fail "roster-justification: the diagnostic must give the reason ($out)"
-grep -q "of $expected_count" <<<"$out" \
-    || fail "roster-justification: the count should show the node missing from the total (expected $expected_count, i.e. clean count $clean_count minus the unreadable node; got: $out)"
-echo "  roster-justification: unreadable node exits non-zero and names path + reason — OK"
+unread_fails roster-justification 05-security.md nz -- \
+  python3 "$RJ/tools/roster-justification.py" --gaps
+out="$(python3 "$RJ/tools/roster-justification.py" --gaps 2>&1)" || true
+grep -q "of $((clean_count - 1))" <<<"$out" \
+  || fail "roster-justification: total should drop to $((clean_count - 1)) ($out)"
+echo "  roster-justification: the unreadable node leaves the total visibly — OK"
 
 echo "test-lint-audibility: PASS"

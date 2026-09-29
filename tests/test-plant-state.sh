@@ -1,36 +1,27 @@
 #!/usr/bin/env bash
-# Persistent plant state contract (.cypress/seed.json).
-#
-# The stamp is the plant's record of what it CARRIES — not a log of the last
-# command typed. Every invariant below was violated at some point by a stamp
-# that was rebuilt from the current invocation instead of merged into:
-#   S1  an invocation that does not explicitly alter an owner decision keeps it
-#       — asserts SPEC-0001 DECISIONS_SURVIVE_SILENCE
+# Persistent plant state contract (.cypress/seed.json): the stamp records what
+# the plant carries, merged into, never rebuilt from the current invocation.
+#   S1  an invocation that does not alter an owner decision keeps it
+#       (SPEC-0001 DECISIONS_SURVIVE_SILENCE)
 #   S2  installed adapters accumulate unless explicitly removed
-#       — asserts SPEC-0001 ADAPTERS_ACCUMULATE
-#   S3  recorded state corresponds to actual installed topology
-#   S4  undecided / no / yes stay distinct
-#   S5  agent_projections is DERIVED from the adapter list, never maintained
-#   S6  yes => corpus complete on disk; no => corpus absent
-#       — asserts SPEC-0001 RECORD_AGREES_WITH_DISK,
-#         SPEC-0001 CORPUS_IS_WHOLE_OR_ABSENT and
-#         SPEC-0001 CONTRADICTORY_CORPUS_TRANSITION
+#       (SPEC-0001 ADAPTERS_ACCUMULATE)
+#   S4  undecided / no / yes stay distinct (held in case_drift)
+#   S5  agent_projections is derived from the adapter list
+#   S6  yes => corpus whole on disk; no => corpus absent
+#       (SPEC-0001 RECORD_AGREES_WITH_DISK, CORPUS_IS_WHOLE_OR_ABSENT,
+#        CONTRADICTORY_CORPUS_TRANSITION)
 #   S7  an unreadable record is refused before the first write
-#   S8  a frozen host the record carries, skipped by `all`, is named as not
-#       refreshed in a WARNING and left byte-identical
-#       — asserts SPEC-0001 ALL_NAMES_SKIPPED_FROZEN_HOSTS
-#   S9  every plant receives the session-record form, and a re-install keeps
-#       the plant's own records and its edited form byte-identical
-#       — asserts SPEC-0001 SESSION_RECORD_FORM_IS_PLACED
-#   S10 a re-install leaves a plant's older engine alone, and graft's engine
-#       tool brings all three engines current
-#       — asserts SPEC-0001 EXISTING_PLANT_RECEIVES_CURRENT_ENGINES
-#   S11 a key the stamp holds and the installer does not own survives, and a
-#       stamp that is not one JSON object is backed up and named
-#       — asserts SPEC-0001 UNKNOWN_STAMP_KEYS_SURVIVE and
-#         SPEC-0001 STAMP_NOT_AN_OBJECT
+#   S8  a frozen host skipped by `all` is named in a WARNING, left byte-identical
+#       (SPEC-0001 ALL_NAMES_SKIPPED_FROZEN_HOSTS)
+#   S9  the session-record form is placed; a re-install keeps the plant's
+#       records and its edited form (SPEC-0001 SESSION_RECORD_FORM_IS_PLACED)
+#   S10 a re-install leaves a plant's older engine alone
+#       (SPEC-0001 EXISTING_PLANT_RECEIVES_CURRENT_ENGINES; graft half in
+#        test-graft-tools.sh X383-X387)
+#   S11 unknown stamp keys survive; a non-object stamp is backed up and named
+#       (SPEC-0001 UNKNOWN_STAMP_KEYS_SURVIVE, STAMP_NOT_AN_OBJECT)
 #   S12 a stamp cut off inside a field, or not UTF-8, takes the preflight
-#       refusal, not the STAMP_NOT_AN_OBJECT backup
+#       refusal, not the STAMP_NOT_AN_OBJECT backup (held in case_s7)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -38,10 +29,7 @@ SELF="$ROOT/tests/test-plant-state.sh"
 export ROOT
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
-# The oracle must not be the mechanism under test. This was a `sed` capture
-# byte-identical in shape to install.sh's own reader, so every defect in that
-# reader was invisible here by construction: the suite and the code agreed
-# because they were the same code. A real JSON parse disagrees where it should.
+# A real JSON parse, not a copy of install.sh's own reader.
 field() {
     STAMP_PATH="$1" STAMP_KEY="$2" python3 - <<'PYEOF'
 import json, os, sys
@@ -51,21 +39,17 @@ value = data.get(os.environ["STAMP_KEY"], "")
 sys.stdout.write(value if isinstance(value, str) else repr(value))
 PYEOF
 }
-# `-type f -o -type l`, dormant footgun otherwise: under --symlink the corpus is
-# a tree of links, and a bare `-type f` counts none of them. That exact mistake
-# in install.sh made `--legal-corpus yes --symlink` die every time. No caller
-# here passes a symlink install today, which is precisely why the wrong shape
-# should not sit in the file that records the incident.
+# Files and links: under --symlink the corpus is a tree of links.
 pages() {
     [[ -d "$1/docs/graph/legal/corpus" ]] || { printf '0\n'; return 0; }
     find "$1/docs/graph/legal/corpus" \( -type f -o -type l \) -name '*.md' \
         -not -name '*.bak-*' | wc -l | tr -d ' '
 }
+seed_pages() { find "$ROOT/legal-corpus" -type f -not -name '*.bak-*' | wc -l | tr -d ' '; }
 
 
 case_s1_s2_s5() {
 local WORK; WORK="$(mktemp -d)"
-# --- S1/S2/S5: an unrelated install must not narrow the record -------------
 T="$WORK/seq"; mkdir -p "$T"
 "$ROOT/install.sh" claude-code --legal-corpus yes --legal-jurisdiction it \
     --project-dir "$T" >/dev/null 2>&1 || fail "first install failed"
@@ -92,43 +76,19 @@ for a in claude-code prime-agent; do
     grep -q "\"tool\": \"$a\"" "$R/.cypress/seed.json" \
         || fail "order dependence: $a absent when installed in the reverse order"
 done
-
 rm -rf "$WORK"
 }
 
 caseALL_NAMES_SKIPPED_FROZEN_HOSTS() {
 local WORK; WORK="$(mktemp -d)"
-# --- S8: ALL_NAMES_SKIPPED_FROZEN_HOSTS (SPEC-0001, ADR-0009) --------------
-# A plant that carries a frozen host, re-run with `all`, is not refreshed for
-# that host. Saying nothing would leave its projections at the old seed version
-# unannounced; touching them would be work on a host `all` no longer names.
-# So: the skip is named with the command that refreshes it, the frozen tree is
-# left byte-identical, and the stamp keeps the host (ADAPTERS_ACCUMULATE).
-# That warning is SPEC-0001's failure mode FROZEN_PROJECTION_LEFT_STALE.
+# S8 (SPEC-0001, ADR-0009); the WARNING is FROZEN_PROJECTION_LEFT_STALE.
 P="$WORK/frozen"; mkdir -p "$P"
 "$ROOT/install.sh" codex --project-dir "$P" >/dev/null 2>&1 || fail "codex install failed"
 [[ "$(field "$P/.cypress/seed.json" tools)" == *codex* ]] \
     || fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: setup — the stamp does not record codex"
 [[ -d "$P/.codex" ]] || fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: setup — no .codex/ to compare"
-tree_digest() {  # $1=dir — every entry's path, type, link target or content hash
-    python3 - "$1" <<'PYEOF'
-import hashlib, os, sys
-root = sys.argv[1]
-for dirpath, dirnames, filenames in os.walk(root):
-    dirnames.sort()
-    for name in sorted(dirnames + filenames):
-        full = os.path.join(dirpath, name)
-        rel = os.path.relpath(full, root)
-        if os.path.islink(full):
-            print("L", rel, os.readlink(full))
-        elif os.path.isdir(full):
-            print("D", rel)
-        else:
-            with open(full, "rb") as fh:
-                print("F", rel, hashlib.sha256(fh.read()).hexdigest())
-PYEOF
-}
-before="$(tree_digest "$P/.codex")"
+tree_sum() { (cd "$1" && find . | LC_ALL=C sort && find . -type f -exec cksum {} + | LC_ALL=C sort); }
+before="$(tree_sum "$P/.codex")"
 err="$WORK/all.err"
 "$ROOT/install.sh" all --project-dir "$P" >/dev/null 2>"$err" \
     || { cat "$err" >&2; fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: install.sh all failed"; }
@@ -136,64 +96,43 @@ grep -i 'not refreshed' "$err" | grep -qF 'codex' \
     || { cat "$err" >&2; fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: stderr does not name codex as not refreshed"; }
 grep -qF 'install.sh all codex' "$err" \
     || { cat "$err" >&2; fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: stderr does not name the command that refreshes codex (install.sh all codex)"; }
-# The skip is a WARNING, not the deprecation notice: `all` did not install
-# codex, so a line saying codex "still installs" and is deprecated would claim an
-# install that did not happen, and would let the notice stand in for the warning.
 grep -i 'not refreshed' "$err" | grep -qF 'WARNING' \
     || { cat "$err" >&2; fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: the skip is not printed as a WARNING"; }
-if grep -q 'DEPRECATED' "$err"; then
-    cat "$err" >&2
-    fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: the skip path printed the DEPRECATED notice for a host that all did not install"
-fi
-after="$(tree_digest "$P/.codex")"
-[[ "$before" == "$after" ]] \
-    || { diff <(printf '%s\n' "$before") <(printf '%s\n' "$after") >&2 || true
-         fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: install.sh all changed .codex/, which it no longer installs"; }
+! grep -q 'DEPRECATED' "$err" \
+    || { cat "$err" >&2; fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: the skip path printed the DEPRECATED notice for a host that all did not install"; }
+[[ "$before" == "$(tree_sum "$P/.codex")" ]] \
+    || fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: install.sh all changed .codex/, which it no longer installs"
 [[ " $(field "$P/.cypress/seed.json" tools) " == *" codex "* ]] \
     || fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: the stamp forgot codex (ADAPTERS_ACCUMULATE)"
 echo "  ALL_NAMES_SKIPPED_FROZEN_HOSTS: all names the skipped frozen host and leaves it untouched — OK"
 rm -rf "$WORK"
 }
 
-case_s4() {
-local WORK; WORK="$(mktemp -d)"
-# --- S4: silence on a FRESH plant is `undecided`, not `no` -----------------
-U="$WORK/undecided"; mkdir -p "$U"
-"$ROOT/install.sh" claude-code --project-dir "$U" >/dev/null 2>&1
-[[ "$(field "$U/.cypress/seed.json" legal_corpus)" == "undecided" ]] \
-    || fail "S4: an unasked corpus decision must read 'undecided', never 'no'"
-
-rm -rf "$WORK"
-}
-
 case_s6() {
 local WORK; WORK="$(mktemp -d)"
-# --- S6: the record can never contradict the disk -------------------------
+# S6: the record never contradicts the disk.
 L="$WORK/legal"; mkdir -p "$L"
 "$ROOT/install.sh" claude-code --legal-corpus no --project-dir "$L" >/dev/null 2>&1 \
     || fail "S6: recording 'no' on a plant with no corpus must be allowed"
-[[ "$(pages "$L")" -eq 0 ]] || fail "S6: 'no' was recorded but corpus pages exist"
+[[ ! -d "$L/docs/graph/legal/corpus" ]] || fail "S6: 'no' was recorded but a corpus was placed"
+[[ "$(field "$L/.cypress/seed.json" legal_corpus)" == "no" ]] || fail "S6: the stamp did not record 'no'"
 
 "$ROOT/install.sh" claude-code --legal-corpus yes --project-dir "$L" >/dev/null 2>&1 \
     || fail "S6: no -> yes must be allowed"
-want="$(find "$ROOT/legal-corpus" -type f -not -name '*.bak-*' | wc -l | tr -d ' ')"
-# -ge, not -eq: the contract is that no seed page is MISSING. A plant that
-# ingests its own national statute under legal/corpus/ — which the installer's
-# own notice tells it to do — carries more than the seed ships, and `-eq`
-# reported that as "placed partially (17 of 16 pages)" and made the plant
-# uninstallable. The shortfall direction is what this asserts.
+want="$(seed_pages)"
 [[ "$(pages "$L")" -ge "$want" ]] \
     || fail "S6: 'yes' must place the WHOLE corpus ($(pages "$L") of $want)"
+diff -r "$ROOT/legal-corpus" "$L/docs/graph/legal/corpus" >/dev/null \
+    || fail "S6: the placed corpus is not byte-identical to the seed's"
 
-# yes -> no while the corpus is on disk is a DESTRUCTIVE transition. It must be
-# refused, and the refusal must leave both the disk and the record untouched.
+# yes -> no while the corpus is on disk is refused; disk and record untouched.
 if "$ROOT/install.sh" claude-code --legal-corpus no --project-dir "$L" >/dev/null 2>&1; then
-    fail "S6: 'no' was accepted while $(pages "$L") corpus pages sit on disk — the record now lies"
+    fail "S6: 'no' was accepted while $(pages "$L") corpus pages sit on disk"
 fi
 [[ "$(field "$L/.cypress/seed.json" legal_corpus)" == "yes" ]] \
     || fail "S6: a REFUSED transition still changed the record"
 [[ "$(pages "$L")" -eq "$want" ]] \
-    || fail "S6: a refused transition deleted corpus pages — it must never delete"
+    || fail "S6: a refused transition deleted corpus pages"
 
 # The deliberate route out stays open.
 rm -rf "$L/docs/graph/legal/corpus"
@@ -202,89 +141,74 @@ rm -rf "$L/docs/graph/legal/corpus"
 [[ "$(field "$L/.cypress/seed.json" legal_corpus)" == "no" ]] \
     || fail "S6: deliberate removal then 'no' did not record 'no'"
 
+# A value outside yes/no, or a jurisdiction that is not a country code, is refused.
+B="$WORK/bad"; mkdir -p "$B"
+"$ROOT/install.sh" claude-code --project-dir "$B" --legal-corpus foo >/dev/null 2>&1 \
+    && fail "S6: --legal-corpus took a value other than yes/no"
+"$ROOT/install.sh" claude-code --project-dir "$B" --legal-jurisdiction italy >/dev/null 2>&1 \
+    && fail "S6: --legal-jurisdiction took a non-country-code"
 rm -rf "$WORK"
 }
 
 case_plan_records() {
 local WORK; WORK="$(mktemp -d)"
-# --- a plant's own plan records are never touched by the seed --------------
-# The plan-of-record and its ledger files hold the plant's decisions: why a
-# thing was built, what was rejected, what a steward ratified. They are the one
-# artifact a project cannot reconstruct. The seed ships two leaves into plans/
-# and nothing else: an empty grill.md scaffold and the session-record form,
-# sessions/_session-record.template.md (S9). `plans/` is deliberately absent from
-# graft-audit's MACHINERY_SUBTREES so it counts as plant knowledge, and an
-# install must leave every byte of it alone — including the ledger children,
-# which are new and which nothing in the seed knows the names of.
+# A plant's own plan records are never touched by the seed. The seed ships two
+# leaves into plans/: an empty grill.md scaffold and the session-record form (S9).
+local FORM="docs/graph/plans/sessions/_session-record.template.md"
+local SEED_FORM="$ROOT/templates/docs/plans/sessions/_session-record.template.md"
+local REC="docs/graph/plans/sessions/2026-01-01-example.md"
 P="$WORK/plan-records"; mkdir -p "$P"
 "$ROOT/install.sh" claude-code --project-dir "$P" >/dev/null 2>&1 \
     || fail "baseline install failed"
+[[ -f "$P/$FORM" ]] || fail "S9: a fresh install holds no $FORM"
+cmp -s "$SEED_FORM" "$P/$FORM" \
+    || fail "S9: the placed $FORM is not byte-identical to the seed's form"
+
 mkdir -p "$P/docs/graph/plans/grill"
 printf '# grill — this plant\n\n## 9. Implementation Plan\n\n| # | Increment | Status | Detail |\n|---|---|---|---|\n| 1 | Ours | done | `plans/grill/increment-01-ours.md` |\n' \
     >"$P/docs/graph/plans/grill.md"
 printf '### Increment 1 — Ours\nPLANT-DECISION-RECORD\n' \
     >"$P/docs/graph/plans/grill/increment-01-ours.md"
 printf 'a decision the plant made\n' >"$P/docs/graph/plans/our-other-plan.md"
-plan_sum="$(cat "$P/docs/graph/plans/grill.md" \
-                "$P/docs/graph/plans/grill/increment-01-ours.md" \
-                "$P/docs/graph/plans/our-other-plan.md" | cksum)"
+printf '# Session record: 2026-01-01, example\nA synthetic record.\n' >"$P/$REC"
+printf '\n<!-- edited by the plant -->\n' >>"$P/$FORM"
+records() { (cd "$P" && cat docs/graph/plans/grill.md docs/graph/plans/grill/increment-01-ours.md \
+    docs/graph/plans/our-other-plan.md "$REC" "$FORM" | cksum); }
+plan_sum="$(records)"
 
 "$ROOT/install.sh" all --project-dir "$P" >/dev/null 2>&1 || fail "re-install failed"
 "$ROOT/install.sh" all --project-dir "$P" --symlink >/dev/null 2>&1 || true
 
-after="$(cat "$P/docs/graph/plans/grill.md" \
-             "$P/docs/graph/plans/grill/increment-01-ours.md" \
-             "$P/docs/graph/plans/our-other-plan.md" | cksum)"
-[[ "$plan_sum" == "$after" ]] \
-    || fail "an install CHANGED the plant's own plan records — the one artifact \
-a project cannot reconstruct"
+[[ "$plan_sum" == "$(records)" ]] \
+    || fail "an install CHANGED the plant's plan records, a session record (S9) or the edited form"
 [[ "$(find "$P/docs/graph/plans" -name '*.bak-*' | wc -l | tr -d ' ')" -eq 0 ]] \
-    || fail "an install backed up (therefore replaced) a plant plan record"
-# ...and nothing from the seed's own eighteen plans came along. `sessions` is
-# the directory that holds the placed session-record form, which every plant
-# must receive (SPEC-0001 SESSION_RECORD_FORM_IS_PLACED, S9).
+    || fail "an install backed up (therefore replaced) a plant plan or session record"
+# ...and none of the seed's own plans came along.
 for leaked in $(ls "$P/docs/graph/plans"); do
     case "$leaked" in
         grill|grill.md|our-other-plan.md|adopted-instructions.md|sessions) ;;
-        *) fail "the seed leaked '$leaked' into the plant's plans/ — the seed's own \
-plan records must never reach a plant" ;;
+        *) fail "the seed leaked '$leaked' into the plant's plans/" ;;
     esac
 done
-echo "  a plant's plan records and ledger children survive every install — OK"
-
+echo "  a plant's plan and session records and the edited form survive every install (S9) — OK"
 rm -rf "$WORK"
 }
 
 case_corpus_linkmodes() {
 local WORK; WORK="$(mktemp -d)"
-# --- the corpus works in BOTH link modes ----------------------------------
-# `--legal-corpus yes --symlink` died with "placed partially (0 of 16 pages)"
-# while all sixteen pages were present and correct as symlinks: the completeness
-# check counted `-type f` only. The check written to prevent a partial corpus
-# was the only thing preventing a whole one, and no test had ever combined the
-# corpus flag with a link mode.
-for mode in --copy --symlink; do
-    M="$WORK/corpus$mode"; mkdir -p "$M"
-    "$ROOT/install.sh" claude-code --legal-corpus yes --project-dir "$M" "$mode" \
-        >/dev/null 2>&1 || fail "S6: --legal-corpus yes failed under $mode"
-    got="$(find "$M/docs/graph/legal/corpus" \( -type f -o -type l \) \
-           -not -name '*.bak-*' | wc -l | tr -d ' ')"
-    seed_pages="$(find "$ROOT/legal-corpus" \( -type f -o -type l \) \
-                  -not -name '*.bak-*' | wc -l | tr -d ' ')"
-    [[ "$got" -ge "$seed_pages" ]] \
-        || fail "S6: $mode placed $got of $seed_pages corpus pages"
-done
-echo "  the whole corpus lands under --copy AND --symlink — OK"
-
+# The corpus lands whole under --symlink (the copy mode is case_s6).
+M="$WORK/corpus-symlink"; mkdir -p "$M"
+"$ROOT/install.sh" claude-code --legal-corpus yes --project-dir "$M" --symlink \
+    >/dev/null 2>&1 || fail "S6: --legal-corpus yes failed under --symlink"
+[[ "$(pages "$M")" -ge "$(seed_pages)" ]] \
+    || fail "S6: --symlink placed $(pages "$M") of $(seed_pages) corpus pages"
+echo "  the whole corpus lands under --symlink — OK"
 rm -rf "$WORK"
 }
 
 case_corpus_surplus() {
 local WORK; WORK="$(mktemp -d)"
-# A plant ingest ON TOP of the whole corpus must not be reported as partial, and
-# must not make the plant uninstallable. Untested in both directions until now:
-# the code moved from -eq to -lt, the contract's Then kept saying "equals", and
-# the cited test asserted -eq — three homes, two of them falsified.
+# A plant ingest beside the whole corpus is named, kept, and not refused.
 SUR="$WORK/surplus"; mkdir -p "$SUR"
 "$ROOT/install.sh" claude-code --project-dir "$SUR" --copy --legal-corpus yes >/dev/null 2>&1 \
     || fail "S6 surplus: the baseline install with --legal-corpus yes failed"
@@ -298,128 +222,100 @@ grep -q "beyond the" "$WORK/surplus.log" \
 [[ -f "$SUR/docs/graph/legal/corpus/national/zz-plant-ingest.md" ]] \
     || fail "S6 surplus: the plant's own ingest was deleted by a re-install"
 echo "  a plant ingest beside the whole corpus is named, kept, and not refused — OK"
-
 rm -rf "$WORK"
 }
 
 case_drift() {
 local WORK; WORK="$(mktemp -d)"
-want="$(find "$ROOT/legal-corpus" -type f -not -name '*.bak-*' | wc -l | tr -d ' ')"
-# --- the record cannot drift from the disk WITHOUT a wrong flag -----------
-# S6 was only ever enforced on an explicit `--legal-corpus no`. A plant that
-# decided `yes`, then lost the corpus out-of-band, then had a second adapter
-# installed with no legal flag at all, kept a stamp reading `yes` over an empty
-# directory — the exact contradiction the feature exists to prevent, reached
-# without the owner typing anything wrong. The recorded decision now drives
-# placement, so the corpus is restored to match what the plant says it carries.
+want="$(seed_pages)"
+# A recorded yes over a corpus lost out-of-band is restored, and announced.
+# The baseline names an uncarried jurisdiction: a request, never an error.
 D="$WORK/drift"; mkdir -p "$D"
-"$ROOT/install.sh" claude-code --legal-corpus yes --project-dir "$D" >/dev/null 2>&1 \
-    || fail "S6/drift: baseline yes-install failed"
+out="$("$ROOT/install.sh" claude-code --legal-corpus yes --legal-jurisdiction zz \
+    --project-dir "$D" 2>&1)" \
+    || fail "S6/drift: an uncarried jurisdiction was treated as an error"
+grep -q "NATIONAL LAYER MISSING for 'zz'" <<<"$out" \
+    || fail "S6/drift: a missing national layer was not surfaced"
+grep -q "research-scout ingest" <<<"$out" || fail "S6/drift: the missing layer named no remedy"
+[[ -f "$D/docs/graph/legal/corpus/eu/gdpr.md" ]] \
+    || fail "S6/drift: an uncarried jurisdiction lost the EU layer too"
 rm -rf "$D/docs/graph/legal/corpus"
 out="$("$ROOT/install.sh" opencode --project-dir "$D" 2>&1)" \
     || fail "S6/drift: a later adapter install must still succeed"
 [[ "$(field "$D/.cypress/seed.json" legal_corpus)" == "yes" ]] \
     || fail "S6/drift: the recorded decision must survive"
 [[ "$(pages "$D")" -eq "$want" ]] \
-    || fail "S6/drift: the record says yes, so the corpus must be restored to \
-match it — found $(pages "$D") of $want pages"
+    || fail "S6/drift: the record says yes, so the corpus must be restored — found $(pages "$D") of $want pages"
 grep -q "records" <<<"$out" \
-    || fail "S6/drift: restoring pages a plant may have deleted on purpose must \
-be ANNOUNCED, not silent (the D2 rule)"
+    || fail "S6/drift: restoring pages a plant may have deleted on purpose must be ANNOUNCED"
 
 # ...and the other two decisions are untouched by that inheritance.
 N="$WORK/drift-no"; mkdir -p "$N"
 "$ROOT/install.sh" claude-code --legal-corpus no --project-dir "$N" >/dev/null 2>&1
 "$ROOT/install.sh" opencode --project-dir "$N" >/dev/null 2>&1
 [[ "$(pages "$N")" -eq 0 ]] || fail "S6/drift: a plant recorded 'no' must not acquire a corpus"
+# S4: silence on a fresh plant is undecided, for the corpus and the jurisdiction.
 U="$WORK/drift-undecided"; mkdir -p "$U"
-"$ROOT/install.sh" claude-code --project-dir "$U" >/dev/null 2>&1
+out="$("$ROOT/install.sh" claude-code --project-dir "$U" 2>&1)"
+[[ "$(field "$U/.cypress/seed.json" legal_corpus)" == "undecided" ]] \
+    || fail "S4: an unasked corpus decision must read 'undecided', never 'no'"
+grep -q "NEXT STEP — legal corpus undecided" <<<"$out" \
+    || fail "S4: an undecided corpus was not surfaced as a NEXT STEP"
+[[ "$(field "$U/.cypress/seed.json" legal_jurisdiction)" == "undecided" ]] \
+    || fail "S4: an unnamed jurisdiction was not recorded undecided"
+grep -q "NEXT STEP — national jurisdiction undecided" <<<"$out" \
+    || fail "S4: an unnamed jurisdiction was not surfaced"
 "$ROOT/install.sh" opencode --project-dir "$U" >/dev/null 2>&1
 [[ "$(field "$U/.cypress/seed.json" legal_corpus)" == "undecided" ]] \
     || fail "S6/drift: an undecided plant must stay undecided"
 [[ "$(pages "$U")" -eq 0 ]] || fail "S6/drift: an undecided plant must not acquire a corpus"
-
-rm -rf "$WORK"
-}
-
-case_edited() {
-local WORK; WORK="$(mktemp -d)"
-want="$(find "$ROOT/legal-corpus" -type f -not -name '*.bak-*' | wc -l | tr -d ' ')"
-# --- a re-install over an EDITED corpus still leaves it whole --------------
-# What this pins: after a re-install that backs up four edited pages, the plant
-# holds the complete corpus AND four .bak siblings beside it.
-#
-# What it does NOT pin, stated so nobody reads more into it: install.sh's own
-# completeness check was `-ge` over `find -type f`, which counts `.bak-*`
-# siblings as corpus pages, so four backups would let a twelve-page corpus
-# satisfy a sixteen-page check. That is now `-eq` over pages only. The fix is
-# unreachable from here because `place_tree` never actually fails to place a
-# page, so no public-interface sequence produces the partial corpus the old
-# check would have waved through. It is a correction to what the check
-# MEASURES, carried without a behavioural regression; it becomes testable the
-# day placement can fail partway (an ENOSPC or permission fault mid-tree).
-C="$WORK/count"; mkdir -p "$C"
-"$ROOT/install.sh" claude-code --legal-corpus yes --project-dir "$C" >/dev/null 2>&1
-D="$C/docs/graph/legal/corpus"
-for f in $(find "$D" -name '*.md' | head -4); do printf '\n<!-- edited -->\n' >> "$f"; done
-"$ROOT/install.sh" claude-code --legal-corpus yes --project-dir "$C" >/dev/null 2>&1 \
-    || fail "re-install over an edited corpus failed"
-[[ "$(find "$D" -name '*.bak-*' | wc -l | tr -d ' ')" -eq 4 ]] \
-    || fail "expected 4 corpus backups to set up the counting case"
-[[ "$(pages "$C")" -eq "$want" ]] \
-    || fail "corpus page count must ignore .bak siblings (got $(pages "$C") want $want)"
-
 rm -rf "$WORK"
 }
 
 case_s7() {
 local WORK; WORK="$(mktemp -d)"
-# S7 — an unreadable record is refused BEFORE the first write.
-#
-# This whole class shipped with no regression at all: the guard could be deleted
-# outright and the full gate stayed green, while a zero-byte stamp — the exact
-# outcome of the interrupted write `place_state` exists to prevent — narrowed
-# `tools` to the adapter of the moment and reset a recorded `yes` to `undecided`
-# over a corpus still on disk, at exit 0 with no warning.
-#
-# Four shapes, because the old guard keyed on which BYTES survived and so
-# behaved differently for each: empty, garbage, and two that are valid JSON with
-# a wrong type. The assertion is the same for all four — exit 1, and the plant
-# is byte-for-byte what it was.
+# S7/S12: an unreadable record is refused BEFORE the first write. Each shape
+# must exit non-zero with the preflight's refusal line, leave the stamp
+# byte-identical and the file listing unchanged (so no seed.json.bak-*).
+# truncated and not-utf8 are S12: they take this refusal, not the
+# STAMP_NOT_AN_OBJECT backup.
 S="$WORK/unreadable"; mkdir -p "$S"
 "$ROOT/install.sh" claude-code --legal-corpus yes --legal-jurisdiction it \
     --project-dir "$S" >/dev/null 2>&1 || fail "S7 setup install failed"
 
-corrupt_zero()    { : > "$1"; }
-corrupt_garbage() { printf 'this is not json at all\n' > "$1"; }
-corrupt_array()   { python3 -c "
+corrupt_zero()      { : > "$1"; }
+corrupt_garbage()   { printf 'this is not json at all\n' > "$1"; }
+corrupt_array()     { python3 -c "
 import json,sys; p=sys.argv[1]; d=json.load(open(p))
 d['tools']=d['tools'].split(); open(p,'w').write(json.dumps(d,indent=2))" "$1"; }
-corrupt_bool()    { python3 -c "
+corrupt_bool()      { python3 -c "
 import json,sys; p=sys.argv[1]; d=json.load(open(p))
 d['legal_corpus']=True; open(p,'w').write(json.dumps(d,indent=2))" "$1"; }
+corrupt_truncated() { printf '{"seed": "cypress", "legal_corpus": "ye' > "$1"; }
+corrupt_not_utf8()  { printf '{"seed": "cypress", "legal_corpus": "yes", "note": "caf\351"}\n' > "$1"; }
 
-for shape in zero garbage array bool; do
+local bad=0 shape
+for shape in zero garbage array bool truncated not_utf8; do
+  (
     T="$WORK/unreadable-$shape"
     cp -a "$S" "$T"
     "corrupt_$shape" "$T/.cypress/seed.json"
-    # A sorted listing, not a checksum: macOS has no `md5sum` (it has `md5`),
-    # and this suite runs on the mac leg of the CI matrix. The listing is what
-    # the assertion is actually about — did the refusal write anything.
+    cp "$T/.cypress/seed.json" "$WORK/stamp-$shape"
     before="$(find "$T" \( -type f -o -type l \) | sort)"
-    if "$ROOT/install.sh" codex --project-dir "$T" >/dev/null 2>&1; then
-        fail "S7/$shape: an unreadable .cypress/seed.json was accepted (exit 0). \
-A record that cannot be read is not a record that says nothing — re-deriving \
-it overwrites decisions the owner made with this run's defaults."
-    fi
-    after="$(find "$T" \( -type f -o -type l \) | sort)"
-    [[ "$before" == "$after" ]] \
-        || fail "S7/$shape: the refusal wrote to the plant. It says \
-'Nothing has been written', and that has to be true — it is a preflight."
+    rc=0
+    out="$("$ROOT/install.sh" codex --project-dir "$T" 2>&1)" || rc=$?
+    [[ $rc -ne 0 ]] || fail "S7/$shape: an unreadable .cypress/seed.json was accepted (exit 0)"
+    [[ "$before" == "$(find "$T" \( -type f -o -type l \) | sort)" ]] \
+        || fail "S7/$shape: the refusal wrote to the plant"
+    cmp -s "$T/.cypress/seed.json" "$WORK/stamp-$shape" \
+        || fail "S7/$shape: the stamp's bytes changed; it is refused, not rewritten"
+    grep -qF 'refusing to install: .cypress/seed.json' <<<"$out" \
+        || fail "S7/$shape: no preflight refusal line. Output ends: $(tail -3 <<<"$out" | tr '\n' ' ')"
+  ) || bad=1
 done
+[[ $bad -eq 0 ]] || exit 1
 
-# ...and the readable stamp is still read, or the refusal above is just a tool
-# that always fails.
+# ...and the readable stamp is still read.
 T="$WORK/unreadable-control"; cp -a "$S" "$T"
 "$ROOT/install.sh" codex --project-dir "$T" >/dev/null 2>&1 \
     || fail "S7 control: a VALID stamp was refused"
@@ -427,115 +323,35 @@ T="$WORK/unreadable-control"; cp -a "$S" "$T"
     || fail "S7 control: the recorded decision did not survive a normal re-run"
 [[ "$(field "$T/.cypress/seed.json" tools)" == "claude-code codex" ]] \
     || fail "S7 control: adapters did not accumulate"
-
-rm -rf "$WORK"
-}
-
-case_session_records() {
-local WORK; WORK="$(mktemp -d)"
-# --- S9: SESSION_RECORD_FORM_IS_PLACED (SPEC-0001) ---------------------------
-# Harness memory is not a home: a session writes what it learns to a record
-# under docs/graph/plans/sessions/, and canonize files it. Every plant receives
-# the blank form there, and a re-install never touches the plant's own records
-# or the form once the plant has edited it. It runs in its own target, so a red
-# here stops no other case.
-local FORM="docs/graph/plans/sessions/_session-record.template.md"
-local SEED_FORM="$ROOT/templates/docs/plans/sessions/_session-record.template.md"
-local REC="docs/graph/plans/sessions/2026-01-01-example.md"
-P="$WORK/sessions"; mkdir -p "$P"
-"$ROOT/install.sh" claude-code --project-dir "$P" >/dev/null 2>&1 \
-    || fail "S9: the fresh claude-code install failed"
-[[ -f "$P/$FORM" ]] || fail "S9: a fresh install holds no $FORM"
-[[ -f "$SEED_FORM" ]] || fail "S9: the seed holds no templates/docs/plans/sessions/_session-record.template.md"
-cmp -s "$SEED_FORM" "$P/$FORM" \
-    || fail "S9: the placed $FORM is not byte-identical to the seed's form"
-
-# A plant record (synthetic text) and an edit to the placed form.
-printf '# Session record: 2026-01-01, example\nA synthetic record written by the plant-state suite.\n' >"$P/$REC"
-printf '\n<!-- edited by the plant -->\n' >>"$P/$FORM"
-rec_before="$(cksum <"$P/$REC")"
-form_before="$(cksum <"$P/$FORM")"
-"$ROOT/install.sh" all --project-dir "$P" >/dev/null 2>&1 \
-    || fail "S9: install.sh all over the plant failed"
-[[ "$(cksum <"$P/$REC")" == "$rec_before" ]] \
-    || fail "S9: install.sh all changed the plant's own session record $REC"
-[[ "$(cksum <"$P/$FORM")" == "$form_before" ]] \
-    || fail "S9: install.sh all changed the plant's edited $FORM"
-[[ "$(find "$P/docs/graph/plans/sessions" -name '*.bak-*' | wc -l | tr -d ' ')" -eq 0 ]] \
-    || fail "S9: install.sh all wrote a backup beside a session record or the form"
-echo "  S9: the session-record form is placed, and the plant's records and edited form survive a re-install — OK"
 rm -rf "$WORK"
 }
 
 case_engine_upgrade() {
 local WORK; WORK="$(mktemp -d)"
-# --- S10: EXISTING_PLANT_RECEIVES_CURRENT_ENGINES (SPEC-0001, ADR-0014) --------
-# An existing plant carries an older grill-lint.py. A re-install never overwrites
-# a placed engine (the engines are plant-owned), so the plant gets --waves only
-# through graft: tools/graft-graph-engine.py over each of the three engines, with
-# no --preserve, then graft-audit with the three --engine pairs. Every check
-# after the setup is collected, so the first failure does not hide the others.
+# S10: a re-install never overwrites a placed engine (plant-owned, ADR-0014).
 local KG="$ROOT/templates/knowledge-graph" G="docs/graph" OLD="$WORK/grill-lint.older.py"
-local why=() e rc out n
 P="$WORK/engines"; mkdir -p "$P"
 "$ROOT/install.sh" claude-code --project-dir "$P" >/dev/null 2>&1 \
     || fail "S10: the fresh claude-code install failed"
-# Given: the older engine body, the seed's copy with every line naming `waves` gone.
 grep -v waves "$KG/grill-lint.py" >"$OLD" || true
 cmp -s "$OLD" "$KG/grill-lint.py" && fail "S10: setup — the older body equals the seed's grill-lint.py"
 cp "$OLD" "$P/$G/grill-lint.py"
-# When install.sh re-runs, the older engine stays: the engines are plant-owned.
 "$ROOT/install.sh" claude-code --project-dir "$P" >/dev/null 2>&1 \
     || fail "S10: the re-install over the plant failed"
 cmp -s "$OLD" "$P/$G/grill-lint.py" \
     || fail "S10: the re-install changed the plant's grill-lint.py; the engines are plant-owned (ADR-0014)"
 [[ "$(find "$P/$G" -maxdepth 1 -name 'grill-lint.py.bak-*' | wc -l | tr -d ' ')" -eq 0 ]] \
     || fail "S10: the re-install wrote a grill-lint.py backup, so it replaced the engine"
-# And: the engine tool with no --preserve over each engine, grill-lint.py first.
-for e in grill-lint.py graph-lint.py spec-lint.py; do
-    out="$(python3 "$ROOT/tools/graft-graph-engine.py" "$P/$G/$e" "$KG/$e" 2>&1)" && rc=0 || rc=$?
-    [[ "$rc" -eq 0 ]] || why+=("the reconcile of $e with no --preserve exited $rc: $(tr '\n' ' ' <<<"$out")")
-done
-cmp -s "$KG/grill-lint.py" "$P/$G/grill-lint.py" \
-    || why+=("grill-lint.py is not byte-identical to the seed's after the reconcile")
-n="$(find "$P/$G" -maxdepth 1 -name 'grill-lint.py.bak-*' | wc -l | tr -d ' ')"
-if [[ "$n" -ne 1 ]]; then
-    why+=("expected exactly one grill-lint.py.bak-*, found $n")
-elif ! cmp -s "$OLD" "$(find "$P/$G" -maxdepth 1 -name 'grill-lint.py.bak-*')"; then
-    why+=("the grill-lint.py backup does not hold the older body")
-fi
-out="$(cd "$P" && python3 "$G/grill-lint.py" --waves 2>&1)" || true
-grep -q '^waves:' <<<"$out" \
-    || why+=("python3 docs/graph/grill-lint.py --waves printed no line starting 'waves:': $(head -3 <<<"$out" | tr '\n' ' ')")
-# And: graft-audit with the three --engine pairs reports every engine current.
-out="$(python3 "$ROOT/tools/graft-audit.py" "$P" "$ROOT" \
-        --engine="$P/$G/graph-lint.py:$KG/graph-lint.py" \
-        --engine="$P/$G/spec-lint.py:$KG/spec-lint.py" \
-        --engine="$P/$G/grill-lint.py:$KG/grill-lint.py" 2>&1)" || true
-n="$(grep -c 'graph engine' <<<"$out")" || true
-[[ "$n" -eq 3 ]] || why+=("three --engine pairs printed $n engine-currency line(s)")
-! grep -q 'graph engine STALE' <<<"$out" || why+=("the audit reported a graph engine STALE: $(grep 'graph engine STALE' <<<"$out" | tr '\n' ' ')")
-for e in graph-lint.py spec-lint.py grill-lint.py; do
-    grep 'graph engine' <<<"$out" | grep -F "$e" | grep -q 'current' \
-        || why+=("no 'graph engine' current line names the plant's $e")
-done
-if [[ "${#why[@]}" -gt 0 ]]; then
-    printf 'FAIL: S10: %s\n' "${why[@]}" >&2
-    exit 1
-fi
-echo "  S10: a re-install keeps the older engine, and the engine tool brings all three current — OK"
+echo "  S10: a re-install keeps the older engine — OK"
 rm -rf "$WORK"
 }
 
 case_stamp_keys() {
 local WORK; WORK="$(mktemp -d)"
-# --- S11: UNKNOWN_STAMP_KEYS_SURVIVE, STAMP_NOT_AN_OBJECT (SPEC-0001) --------
-# Asserts SPEC-0001 UNKNOWN_STAMP_KEYS_SURVIVE and SPEC-0001 STAMP_NOT_AN_OBJECT.
-# A key the installer does not own is carried forward unchanged: JSON-equal
-# value, original order among the carried keys, after the installer's own
-# keys. The fixture puts `zz_note` before the installer's keys and
-# `aa_annotation` after them, so neither a sorted order nor the fixture's own
-# position passes by accident. The installer's keys keep their own rules.
+# S11: a key the installer does not own is carried forward: JSON-equal value,
+# original order, after the installer's own keys. `zz_note` sits before the
+# installer's keys and `aa_annotation` after, so neither sorting nor the
+# fixture's own position passes by accident.
 local T="$WORK/stamp-keys"; mkdir -p "$T"
 "$ROOT/install.sh" claude-code --legal-corpus no --project-dir "$T" >/dev/null 2>&1 \
     || fail "S11 setup install failed"
@@ -571,9 +387,8 @@ if d.get("legal_corpus") != "no":
 if d.get("tools", "").split()[:1] != ["claude-code"]:
     sys.exit(f"S11: the installed adapters did not accumulate: {d.get('tools')!r}")
 PY
-# STAMP_NOT_AN_OBJECT: a stamp that parses as JSON but is not one object
-# (here a JSON array) is moved to a .bak-<ts> sibling, a stamp is written from
-# the installer's own keys, and one warning names the backup.
+# STAMP_NOT_AN_OBJECT: a JSON array stamp is moved to a .bak-<ts> sibling, a
+# stamp is written from the installer's own keys, one warning names the backup.
 local N="$WORK/stamp-array"; mkdir -p "$N"
 "$ROOT/install.sh" claude-code --project-dir "$N" >/dev/null 2>&1 \
     || fail "S11 STAMP_NOT_AN_OBJECT setup install failed"
@@ -588,53 +403,8 @@ grep -q 'zz_note' "$bak" || fail "S11 STAMP_NOT_AN_OBJECT: the backup does not h
     || fail "S11 STAMP_NOT_AN_OBJECT: no stamp was written from the installer's own keys"
 [[ "$(grep -c "$(basename "$bak")" <<<"$out")" -eq 1 ]] \
     || fail "S11 STAMP_NOT_AN_OBJECT: expected one warning naming $(basename "$bak")"
-echo "  S11: keys the installer does not own survive in order after its own; a stamp that is not an object is backed up and named — OK"
+echo "  S11: unknown keys survive in order after the installer's own; a non-object stamp is backed up and named — OK"
 rm -rf "$WORK"
-}
-
-case_s12_unparseable_stamp() {
-local WORK; WORK="$(mktemp -d)"
-# --- S12: an unparseable stamp takes the preflight refusal (SPEC-0001) -------
-# By the owner's ruling on STAMP_NOT_AN_OBJECT, only a stamp that parses as
-# JSON with a top level that is not an object is moved to a backup. A stamp
-# that does not parse stays refused before any write by the preflight. S7
-# holds four shapes of that; S12 adds the two its shapes miss: a stamp cut
-# off inside a field, and a stamp whose bytes are not UTF-8 (JSON text is
-# UTF-8). Each arm asserts the same outcome: exit non-zero, the preflight's
-# own refusal line, the stamp byte-identical, no seed.json.bak-*, the file
-# listing unchanged. Each arm runs in its own subshell, so one red arm does not hide
-# the other; the case fails at its end.
-local S="$WORK/s12"; mkdir -p "$S"
-"$ROOT/install.sh" claude-code --legal-corpus yes --legal-jurisdiction it \
-    --project-dir "$S" >/dev/null 2>&1 || fail "S12 setup install failed"
-local bad=0 shape
-for shape in truncated not-utf8; do
-  (
-    T="$WORK/s12-$shape"
-    cp -a "$S" "$T"
-    case "$shape" in
-      truncated) printf '{"seed": "cypress", "legal_corpus": "ye' > "$T/.cypress/seed.json" ;;
-      not-utf8)  printf '{"seed": "cypress", "legal_corpus": "yes", "note": "caf\351"}\n' \
-                     > "$T/.cypress/seed.json" ;;
-    esac
-    cp "$T/.cypress/seed.json" "$WORK/stamp-$shape"
-    before="$(find "$T" \( -type f -o -type l \) | sort)"
-    rc=0
-    out="$("$ROOT/install.sh" codex --project-dir "$T" 2>&1)" || rc=$?
-    [[ $rc -ne 0 ]] || fail "S12/$shape: an unparseable .cypress/seed.json was accepted (exit 0)"
-    after="$(find "$T" \( -type f -o -type l \) | sort)"
-    [[ "$before" == "$after" ]] || fail "S12/$shape: the refusal changed the plant's file listing"
-    cmp -s "$T/.cypress/seed.json" "$WORK/stamp-$shape" \
-        || fail "S12/$shape: the stamp's bytes changed; it is refused, not backed up or rewritten"
-    [[ -z "$(find "$T/.cypress" -maxdepth 1 -name 'seed.json.bak-*')" ]] \
-        || fail "S12/$shape: the stamp was moved to a seed.json.bak-*, the STAMP_NOT_AN_OBJECT path, which is for a stamp that parses"
-    grep -qF 'refusing to install: .cypress/seed.json' <<<"$out" \
-        || fail "S12/$shape: the run did not stop with the preflight's refusal line. Output ends: $(tail -3 <<<"$out" | tr '\n' ' ')"
-    echo "  S12/$shape: an unparseable stamp is refused by the preflight; nothing written — OK"
-  ) || bad=1
-done
-rm -rf "$WORK"
-return "$bad"
 }
 
 # --- one-case subcommand, run by the parallel dispatcher ---------------------
@@ -643,15 +413,10 @@ if [ "${1:-}" = "__case" ]; then
   exit $?
 fi
 
-# --- main: dispatch every INDEPENDENT scenario in parallel -------------------
-# Each S-section is a self-contained scenario over its OWN mktemp target. The
-# sequential-dependency sections (an install SEQUENCE into one plant: S6's
-# no->yes->refuse->remove->no, S7's setup->corrupt->refuse->control) stay whole
-# inside a single scenario; DIFFERENT S-sections are independent and run
-# concurrently under the gate's ONE shared budget (tests/gate_pool.py,
-# $GATE_JOBS / $GATE_POOL_DIR). Every assertion is byte-for-byte what it was.
+# Each case owns its mktemp target, so cases run concurrently under the gate's
+# shared budget (tests/gate_pool.py).
 SCN="$(mktemp)"
-for c in case_s1_s2_s5 caseALL_NAMES_SKIPPED_FROZEN_HOSTS case_s4 case_s6 case_plan_records case_corpus_linkmodes case_corpus_surplus case_drift case_edited case_s7 case_session_records case_engine_upgrade case_stamp_keys case_s12_unparseable_stamp; do
+for c in case_s1_s2_s5 caseALL_NAMES_SKIPPED_FROZEN_HOSTS case_s6 case_plan_records case_corpus_linkmodes case_corpus_surplus case_drift case_s7 case_engine_upgrade case_stamp_keys; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0

@@ -1,148 +1,112 @@
 #!/usr/bin/env python3
-"""What the one frontmatter reader must DO, not merely that its copies agree.
+"""What the one frontmatter reader must do, asserted on the canonical copy.
 
-`seed-lint`'s `check_frontmatter_reader_is_one_reader` holds four
-byte-identical copies of `frontmatter.py` identical, and
-`test_metadata_equivalence.py` holds the five consumers in agreement with each
-other. Both are tautologies about sameness. Mutating all four copies the SAME
-wrong way passed every one of the 42 gates, three times over:
-
-  - dropping the nested mapping value, so a `plant:` block read as `{}`
-  - widening the comment strip from `"  #"` to `" #"`, so
-    `title: fix #42 in the parser` read as `fix`
-  - `meta[key] =` -> `meta.setdefault(key, ...)`, so a duplicate key became
-    first-wins and `status: draft` beat a later `status: active`
-
-Each is one character or one word, each changes what a plant's metadata means,
-and nothing in the tree could tell. Enforcement by sameness is not enforcement
-by truth, and this file is the truth half: it asserts the reader's behaviour
-against fixtures, so a wrong rule copied four times fails here even though it
-satisfies the byte-identity check.
-
-Stdlib unittest; no third-party imports.
+seed-lint FRONTMATTER_COPIES keeps the other copies byte-identical to it.
+tools/status-register.py keeps its own tolerant reader; the table at the end
+holds it to the same facts. Stdlib unittest.
 """
 
 from __future__ import annotations
 
 import importlib.util
+import sys
 import unittest
 from pathlib import Path
 
 SEED = Path(__file__).resolve().parent.parent
-# Every published copy. The point is that they must all behave the same AND be
-# right, so each is exercised rather than one standing in for the rest.
-COPIES = (
-    "templates/knowledge-graph/frontmatter.py",
-    "integrations/claude-code/frontmatter.py",
-    "tests/frontmatter.py",
-    "tools/frontmatter.py",
-)
 
 
-def load(rel: str):
-    path = SEED / rel
-    spec = importlib.util.spec_from_file_location(f"fm_{rel.replace('/', '_')}", path)
+def load(rel: str, name: str):
+    spec = importlib.util.spec_from_file_location(name, SEED / rel)
     mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
     spec.loader.exec_module(mod)
     return mod
 
 
+# Loaded at module level: an import failure errors the file.
+FM = load("templates/knowledge-graph/frontmatter.py", "_fm_contract")
+SR = load("tools/status-register.py", "_fm_status_register")
+
+
+def parse(text):
+    return FM.parse(text, "probe.md")[0]
+
+
 class FrontmatterContract(unittest.TestCase):
-    """Each assertion runs against every copy."""
-
-    def setUp(self):
-        self.readers = [(rel, load(rel)) for rel in COPIES
-                        if (SEED / rel).is_file()]
-        self.assertGreaterEqual(
-            len(self.readers), 2,
-            "fewer than two copies of frontmatter.py found — this suite has "
-            "stopped reaching them, and a clean result means nothing")
-
-    def each(self, text):
-        for rel, mod in self.readers:
-            with self.subTest(copy=rel):
-                yield rel, mod, text
 
     def test_a_nested_mapping_keeps_its_values(self):
-        """`docs/graph/index.md`'s `plant:` block is the reason the promoted
-        reader gained nesting at all. Dropping the value is invisible to every
-        equivalence check, because no Python consumer reads `meta['plant']`
-        today — which is exactly why it needs an assertion of its own."""
         text = ("---\nplant:\n  name: acme\n  legal_corpus: yes\n"
                 "id: protocol.x\n---\nbody\n")
-        for rel, mod, t in self.each(text):
-            meta, _ = mod.parse(t, "probe.md")
-            self.assertEqual(
-                meta.get("plant"), {"name": "acme", "legal_corpus": "yes"},
-                f"{rel}: the nested mapping lost its values")
+        self.assertEqual(parse(text).get("plant"),
+                         {"name": "acme", "legal_corpus": "yes"})
 
     def test_a_hash_inside_a_value_is_content(self):
-        """The comment strip is `"  #"` — TWO spaces — and the difference is a
-        title. Widening it to `" #"` turns `fix #42 in the parser` into `fix`,
-        silently, in every projection a plant ships."""
         text = "---\ntitle: fix #42 in the parser\n---\nbody\n"
-        for rel, mod, t in self.each(text):
-            meta, _ = mod.parse(t, "probe.md")
-            self.assertEqual(meta.get("title"), "fix #42 in the parser",
-                             f"{rel}: a single-space `#` was treated as a comment")
+        self.assertEqual(parse(text).get("title"), "fix #42 in the parser")
 
     def test_a_trailing_double_space_comment_is_stripped(self):
-        """The other direction, so the assertion above is not satisfied by a
-        reader that simply stopped stripping comments."""
         text = "---\ntier: 2  # the contained lane\n---\nbody\n"
-        for rel, mod, t in self.each(text):
-            meta, _ = mod.parse(t, "probe.md")
-            self.assertEqual(meta.get("tier"), 2,
-                             f"{rel}: the trailing comment was not stripped")
+        self.assertEqual(parse(text).get("tier"), 2)
 
     def test_a_repeated_key_is_last_wins(self):
-        """`meta[key] = ...` vs `meta.setdefault(key, ...)` is one word, and it
-        decides which of two `status:` lines a spec is read as carrying."""
         text = "---\nstatus: draft\nstatus: active\n---\nbody\n"
-        for rel, mod, t in self.each(text):
-            meta, _ = mod.parse(t, "probe.md")
-            self.assertEqual(meta.get("status"), "active",
-                             f"{rel}: a repeated key became first-wins")
+        self.assertEqual(parse(text).get("status"), "active")
 
     def test_a_multi_line_value_is_refused(self):
-        """The defect the consolidation existed to close: two readers raised
-        and three dropped the continuation silently."""
-        text = ("---\ndescription: one line\n  and a continuation\n---\nbody\n")
-        for rel, mod, t in self.each(text):
-            with self.assertRaises(mod.FrontmatterError,
-                                   msg=f"{rel}: a continuation line was accepted"):
-                mod.parse(t, "probe.md")
+        text = "---\ndescription: one line\n  and a continuation\n---\nbody\n"
+        with self.assertRaises(FM.FrontmatterError):
+            parse(text)
 
     def test_an_unterminated_block_is_refused(self):
-        for rel, mod, t in self.each("---\nid: x\nno terminator here\n"):
-            with self.assertRaises(mod.FrontmatterError):
-                mod.parse(t, "probe.md")
+        with self.assertRaises(FM.FrontmatterError):
+            parse("---\nid: x\nno terminator here\n")
 
     def test_quoting_protects_a_hash_and_a_bracket(self):
-        text = "---\nname: \"a  # b\"\nlist: [one, two]\n---\nbody\n"
-        for rel, mod, t in self.each(text):
-            meta, _ = mod.parse(t, "probe.md")
-            self.assertEqual(meta.get("name"), "a  # b",
-                             f"{rel}: a quoted value was comment-stripped")
-            self.assertEqual(meta.get("list"), ["one", "two"],
-                             f"{rel}: an inline list did not parse")
+        meta = parse("---\nname: \"a  # b\"\ntitle: \"a quoted title\"\n"
+                     "list: [one, two]\n---\nbody\n")
+        self.assertEqual(meta.get("name"), "a  # b")
+        self.assertEqual(meta.get("title"), "a quoted title")
+        self.assertEqual(meta.get("list"), ["one", "two"])
 
     def test_integers_are_coerced_and_the_body_survives(self):
-        text = "---\nmax_spawn_depth: 2\n---\n# Body\n\ntext\n"
-        for rel, mod, t in self.each(text):
-            meta, body = mod.parse(t, "probe.md")
-            self.assertEqual(meta.get("max_spawn_depth"), 2,
-                             f"{rel}: an integer was left as a string — the "
-                             f"roster lint checks it as an int")
-            self.assertEqual(body, "# Body\n\ntext\n",
-                             f"{rel}: the body was altered")
+        meta, body = FM.parse("---\nmax_spawn_depth: 2\n---\n# Body\n\ntext\n",
+                              "probe.md")
+        self.assertEqual(meta.get("max_spawn_depth"), 2)
+        self.assertEqual(body, "# Body\n\ntext\n")
 
     def test_a_block_list_parses(self):
         text = "---\nowns:\n  - rule.one\n  - rule.two\n---\nbody\n"
-        for rel, mod, t in self.each(text):
-            meta, _ = mod.parse(t, "probe.md")
-            self.assertEqual(meta.get("owns"), ["rule.one", "rule.two"],
-                             f"{rel}: a block list did not parse")
+        self.assertEqual(parse(text).get("owns"), ["rule.one", "rule.two"])
+
+
+class StatusRegisterReader(unittest.TestCase):
+    """status-register reads what frontmatter.py reads; None where it refuses."""
+
+    ROWS = [
+        "---\nid: p\ntitle: Plain Value\n---\nbody\n",
+        "---\nid: c\nnote: ratio 3:1 acceptable\n---\nbody\n",
+        "---\nid: e\nnotes:\ntitle: After Empty\n---\nbody\n",
+        "---\nid: l\ntags:\n  - alpha\n  - beta\n  - gamma\n---\nbody\n",
+        "---\nid: b\ncan_delegate: true\n---\nbody\n",
+        "no frontmatter here\njust body text\n",
+        "---\nid: x\ntitle: Unterminated\n",
+    ]
+
+    def test_status_register_reads_like_the_shared_reader(self):
+        for text in self.ROWS:
+            with self.subTest(text=text):
+                try:
+                    want = parse(text)
+                except FM.FrontmatterError:
+                    want = None
+                got = SR.parse_frontmatter(text)
+                self.assertEqual(got and got[0], want)
+
+    def test_the_unshared_reader_is_named_and_still_tolerant(self):
+        got = SR.parse_frontmatter("---\nid: m\ndescription: This starts here\n"
+                                   "  and continues indented.\n---\nbody\n")
+        self.assertEqual(got[0]["description"], "This starts here")
 
 
 if __name__ == "__main__":

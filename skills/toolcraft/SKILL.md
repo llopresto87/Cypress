@@ -81,8 +81,8 @@ Catalog a piece of real code that:
   `tool-smith`, not to a fourth copy;
 - has a **stable interface** — a named entry point, defined inputs and
   outputs, a documented invocation, not a copy-pasted snippet;
-- is **authorized by a test** (§3.4) — at least one test pins what it
-  does, so a future session can trust and change it safely;
+- is **authorized by a test** (§3.4) — at least one test, sized by
+  `test-first.proportionate-checks`, pins what it does;
 - **lives in the repository**, committed where the project keeps its
   tooling, reachable by path.
 

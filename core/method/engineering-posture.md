@@ -194,12 +194,11 @@ inversion made concrete (see `method.design-posture`): the boundary is
 the stable contract; the adapter is the volatile detail the domain
 refuses to import.
 
-When a boundary persists durable state, write it so a crash leaves
-either the complete old value or the complete new one, never a partial
-write; and when persistent state is read back corrupt, quarantine the
-bad artifact for inspection, recover to a safe empty or partial state,
-and surface the fault — never fail silently, and never silently
-discard.
+When a boundary persists state whose loss or corruption has a named
+blast radius (`test-first.proportionate-checks`), write it so a crash
+leaves the complete old value or the complete new one; when such state
+reads back corrupt, quarantine it, recover to a safe state, and surface
+the fault. Never fail silently, and never silently discard.
 
 ## Neighbours
 

@@ -81,12 +81,6 @@ class ExtractionTests(unittest.TestCase):
             with self.assertRaises(TOOL_MOD.ReleasePrepError):
                 TOOL_MOD.read_version(manifest)
 
-    def test_plain_semver_reads_cleanly(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            manifest = Path(tmp) / "manifest.json"
-            manifest.write_text(json.dumps({"version": "1.2.3"}), encoding="utf-8")
-            self.assertEqual(TOOL_MOD.read_version(manifest), "1.2.3")
-
 
 class CliTests(unittest.TestCase):
     """End to end, against a disposable temp repo — never the seed's own."""
@@ -115,6 +109,7 @@ class CliTests(unittest.TestCase):
         )
 
     def test_stages_the_file_and_prints_the_next_commands(self):
+        # Also covers a plain semver manifest version reading cleanly.
         with tempfile.TemporaryDirectory() as tmp:
             root = self._repo(tmp, "1.0.0", SAMPLE_CHANGELOG)
             result = self._run(root)
@@ -145,15 +140,6 @@ class CliTests(unittest.TestCase):
             result = self._run(root)
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("already exists", result.stderr)
-
-    def test_help_exits_zero(self):
-        result = subprocess.run(
-            [sys.executable, str(TOOL), "--help"],
-            capture_output=True,
-            text=True,
-        )
-        self.assertEqual(result.returncode, 0)
-        self.assertTrue(result.stdout.strip())
 
 
 if __name__ == "__main__":

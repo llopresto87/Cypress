@@ -1361,7 +1361,7 @@ files, and not the absence of a `docs/graph/`. The honesty rules are part of thi
 section now, rather than a separate skill node: a bootstrap states what it does
 not yet know rather than inventing it. (Which node they came from is history,
 and history lives in `CHANGELOG.md` — naming a retired node here reads as a
-live reference, and `tests/test-entry-paths.sh` is right to refuse it.)
+live reference.)
 
 ### Common ways to fail it
 
@@ -1733,8 +1733,8 @@ is `docs/graph/protocols/grow.md`. This node is the smallest of the 14
 (est_tokens 697) and it does not delegate unchanged: it FORKS, selecting
 grow when the target has executable project evidence to scout and
 from-scratch when the repository is empty or near-empty. The two arms are
-peers, and `tests/test-entry-paths.sh` binds each to its own table cell so
-a swap or a merge fails.
+peers, each in its own table cell. No test checks those cells, so a swap or
+a merge would pass the gate.
 
 When invoked, enter the orchestration role and execute the install
 prompt and grow protocol without weakening them; the orchestration,

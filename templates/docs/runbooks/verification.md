@@ -5,16 +5,12 @@ command and an expected outcome.
 
 ## Gates
 
+List only the gates the project's blast radius calls for
+(`test-first.proportionate-checks`); a row is added by owner decision.
+
 | Gate | Command | Expected outcome | Trusted since |
 |---|---|---|---|
-| formatter   | `<cmd>` | exit 0, no diff | `<date>` |
-| linter      | `<cmd>` | exit 0, no warnings above threshold | `<date>` |
-| type check  | `<cmd>` | exit 0 | `<date>` |
-| unit tests  | `<cmd>` | exit 0, N cases pass | `<date>` |
-| integration | `<cmd>` | exit 0 | `<date>` |
-| build       | `<cmd>` | artifact produced | `<date>` |
-| smoke test  | `<cmd>` | deployed system responds 200 to `/health` | `<date>` |
-| eval suite  | `<cmd>` | rubric score >= gate threshold | `<date>` |
+| `<gate>` | `<cmd>` | `<exit status and what it asserts>` | `<date>` |
 
 `Trusted since` is the date this gate was last shown to fail for the reason
 it claims to guard against. A gate with no such date has authorized nothing,
