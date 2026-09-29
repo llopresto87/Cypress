@@ -29,9 +29,9 @@ host-tier decision for example, has two outcomes and both are wrong:
 - a local ADR happens to carry the same number, and the lint passes over a
   citation that reaches a different decision.
 
-A graft met the first case on a real plant: the plan cited two seed ADRs and
-the plant's lint failed on both. The second case is latent in any plant whose
-own ADR numbers overlap the seed's.
+A plant meets the first case when its plan cites a seed ADR by bare number:
+the lint fails on each such citation. The second case is latent in any plant
+whose own ADR numbers overlap the seed's.
 
 ## Decision
 

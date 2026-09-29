@@ -78,9 +78,10 @@ runbooks, specs, decisions, tools). Never parallel doc systems.
   for a library you're about to use → run `ingest-library`.
 - **A fact the graph states is settled.** Use it; never re-derive or
   re-check it. Grow, `ingest-library` and canonize establish facts so
-  that no later session has to: a library's behaviour, a best practice,
-  a known bug, a decision, an owner rule. Only a fact about the plant's
-  own code can go stale, and only when that code moved. Canonize records
+  that no later session has to: the behaviour of a language or a
+  library, a best practice, a known bug, a decision, an owner rule. Only
+  a fact about the plant's own code can go stale, and only when that
+  code moved. Canonize records
   a code anchor (`docs/graph/code-anchor.py --record`), and one
   comparison at session start prints one line. A quiet line: code facts
   are current. A line naming paths: facts about those paths may be

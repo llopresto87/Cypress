@@ -50,13 +50,11 @@ class. `multi-agent-architect` follows the same rule.
 now reads `<id>  <path>  <reason>`, and both route hooks keep the path, so a
 session no longer searches for the file a node names. The path costs bytes on
 every routed prompt. Measured on a grown plant before and after this release,
-the route hook's output grew by 935, 742 and 1,367 bytes on three of four
-fixed prompts and shrank by 750 on the fourth. The total cost still fell: the
-prompt about editing the installer went from 3 turns and 69,192 input tokens
-to 2 turns and 47,474, the prompt asking where the route hook is installed from
-went from 6 turns to 5, and twelve runs cost $3.6140 against $3.7063 before.
-No median got worse beyond the spread of its own three runs, and
-`agent-lint --eval` returned identical results on both copies.
+the route hook's output grew on three of four fixed prompts and shrank on the
+fourth. The total cost still fell: two prompts each finished in one turn fewer,
+and one of them read fewer input tokens. No median got worse beyond the spread
+of its own runs, and `agent-lint --eval` returned identical results on both
+copies.
 
 **Graft's mechanical steps are tools, run from the seed.** None of these is
 placed into a plant.
