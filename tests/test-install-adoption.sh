@@ -18,6 +18,9 @@
 #       checks the Copilot views a plant records, and drift exits non-zero.
 #   D5  asserts SPEC-0001 RECREATED_LIST_IS_COMPLETE: the whole list of
 #       re-created nodes is written to .cypress/recreated-nodes.txt.
+#   D6  asserts SPEC-0001 PREFLIGHT_SCOPED_TO_WRITTEN_TREES: unwritable trees
+#       the installer never writes (node_modules, .next, a data volume) do not
+#       refuse the install.
 # Alongside those: the ADOPTION cases place_kernel and place_file already
 # handle correctly (a hand-written kernel backed up, a plant-authored graph
 # leaf left alone) are pinned here too, so a future change to either cannot
@@ -233,6 +236,32 @@ case_block_readonly() {
       [[ "$n" -eq 0 ]] || fail "a read-only '$deep' must write NOTHING, found $n file(s)"
   done
   echo "  a read-only directory at any depth refuses before writing anything — OK"
+}
+
+case_unrelated_trees() {
+  W="$(mktemp -d)"
+  trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT
+  # SPEC-0001 PREFLIGHT_SCOPED_TO_WRITTEN_TREES. The preflight's promise is
+  # "a refusal writes nothing" for the trees the installer WRITES: docs/graph,
+  # .cypress and the selected adapters' own directories. A plant that runs its
+  # build or its tests in Docker has root-owned, unwritable directories
+  # (node_modules, .next, a database volume, a nested checkout) the installer
+  # never opens, and refusing over those blocked every graft of that plant.
+  P="$W/unrelated"; mkdir -p "$P"
+  for d in node_modules/pkg/lib .next/server/app .vivid-data/pglite/base test-results vivid/.cypress; do
+      mkdir -p "$P/$d"; printf 'x\n' >"$P/$d/keep"
+  done
+  ln -s "$W" "$P/node_modules/pkg/outside"          # a directory link leaving the target
+  trees="node_modules .next .vivid-data test-results vivid"
+  before="$(cd "$P" && find $trees | LC_ALL=C sort)"
+  for d in $trees; do chmod -R a-w "$P/$d"; done
+  out="$("$ROOT/install.sh" claude-code --project-dir "$P" 2>&1)" && rc=0 || rc=$?
+  chmod -R u+w "$P" 2>/dev/null || true
+  [[ $rc -eq 0 ]] || fail "unwritable trees the installer never writes must not refuse the install: $(tail -3 <<<"$out")"
+  [[ -f "$P/.cypress/seed.json" ]] || fail "the install did not complete: no seed stamp"
+  after="$(cd "$P" && find $trees | LC_ALL=C sort)"
+  [[ "$before" == "$after" ]] || fail "the install touched a tree it does not own"
+  echo "  unwritable trees outside the written set do not block the install, and stay untouched — OK"
 }
 
 case_adopted() {
@@ -676,7 +705,7 @@ fi
 # --- main: dispatch every independent scenario in parallel -------------------
 export ROOT
 SCN="$(mktemp)"
-for c in case_agents case_claude case_both case_index case_d1_file case_d1_ro case_d2 case_idem case_block_declared case_block_deep case_block_readonly case_adopted case_adapter_dirs case_check_broken case_check_stale case_migration_date case_check_backups caseCHECK_WITHOUT_COPILOT_SAYS_SO caseALL_CHECK_INCLUDES_RECORDED_COPILOT case_stray_prompt case_hook_order case_hook_retire case_nostamp case_freshquiet case_d5_recreated_list; do
+for c in case_agents case_claude case_both case_index case_d1_file case_d1_ro case_d2 case_idem case_block_declared case_block_deep case_block_readonly case_unrelated_trees case_adopted case_adapter_dirs case_check_broken case_check_stale case_migration_date case_check_backups caseCHECK_WITHOUT_COPILOT_SAYS_SO caseALL_CHECK_INCLUDES_RECORDED_COPILOT case_stray_prompt case_hook_order case_hook_retire case_nostamp case_freshquiet case_d5_recreated_list; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0
