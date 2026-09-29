@@ -15,8 +15,9 @@ Classes, first match wins:
   KEEP-PLANT    the seed equals the base and the plant differs: the seed has
                 nothing new here, the plant's edit stands
   SEED-NEW      the seed has the file and neither the base nor the plant does
-  HARVESTED     all three differ, and every line the plant added over the base
-                is already in the seed's version (a harvest carried it back)
+  HARVESTED     all three differ, every line the plant added over the base
+                is already in the seed's version (a harvest carried it back),
+                and no line the plant removed is still in it
   MERGE         all three differ otherwise: reconcile by hand before the
                 installer overwrites the plant's version
 
@@ -258,13 +259,20 @@ def classify(plant_oid, seed_oid, base_oid, texts) -> str:
     if base_oid is None and plant_oid is None:
         return "SEED-NEW"
     base_lines, plant_lines, seed_lines = (t().splitlines() for t in texts)
-    added = [l for tag, _, _, j1, j2 in difflib.SequenceMatcher(
-                 None, base_lines, plant_lines, autojunk=False).get_opcodes()
-             if tag in ("insert", "replace") for l in plant_lines[j1:j2]]
+    added, removed = [], []
+    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(
+            None, base_lines, plant_lines, autojunk=False).get_opcodes():
+        if tag in ("delete", "replace"):
+            removed += base_lines[i1:i2]
+        if tag in ("insert", "replace"):
+            added += plant_lines[j1:j2]
     # a plant that added nothing (it only removed lines) has no addition the
-    # seed could have carried back: that is a divergence, not a harvest
+    # seed could have carried back: that is a divergence, not a harvest. A plant
+    # that removed a line the seed still carries has diverged too, whatever it
+    # added: adopting the seed would put the line back
     seed_set = set(seed_lines)
-    if added and all(l in seed_set for l in added):
+    if (added and all(l in seed_set for l in added)
+            and not any(l in seed_set for l in removed)):
         return "HARVESTED"
     return "MERGE"
 
