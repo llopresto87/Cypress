@@ -310,15 +310,16 @@ orchestrator so the team can address it directly.
   ran would have passed identically against the pre-change code,
   it proved zero coverage of the change, however green it is.
 - **One giant test per increment.** Many small tests, each
-  exercising one contract, with clear names. The reviewer should
-  be able to read the test names and reconstruct the spec.
+  exercising one contract, named after it (`skill.test-first`).
 - **Testing through.** Don't write an end-to-end test for a pure
   function; write a unit test. Don't write a unit test that mocks
   three layers; promote it to integration.
 - **Mocking everything.** Mocks for time, randomness, network, and
   external services are reasonable. Mocks for the object under
   test or its immediate collaborators are a smell — the design is
-  probably too coupled.
+  probably too coupled. A mock that only counts calls is a wiring
+  proof, and an either-or assertion asserts nothing
+  (`test-first.proportionate-checks`).
 - **A worker writing grill.md.** §15 is the session's record of what
   it spawned and in what order; a worker that appends to it has
   written the caller's trace. Report in the handback.

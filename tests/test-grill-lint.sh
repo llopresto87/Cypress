@@ -491,5 +491,17 @@ collect_case G3e case_seed_ledger_decision_from_decisions_flag 'decisions resolv
 collect_case G3f case_plant_layout_unchanged 'the plant ledger form lints as the inline form'
 collect_case G1a case_external_decision_reported 'a qualified decision is reported once as external'
 
+case_retired_spec_status_from_frontmatter() {
+  # S1: status is read from frontmatter; the modern body line says "see frontmatter".
+  # A retired spec's unplanned contract is not demanded; the plan only warns.
+  local active; set -e; active="$(cat "$G/specs/SPEC-0001-forms.md")"
+  trap 'printf "%s\n" "$active" > "$G/specs/SPEC-0001-forms.md"' RETURN
+  printf -- '---\nstatus: retired\n---\n\n- **Status:** see frontmatter (single home)\n\n### Contract: SUBMIT_VALID_FORM\n### Contract: REJECT_BAD_SCHEMA\n' \
+    > "$G/specs/SPEC-0001-forms.md"
+  write_plan "sub:- Spec contracts: SPEC-0001/REJECT_BAD_SCHEMA=- Spec contracts: SPEC-0001/SUBMIT_VALID_FORM"
+  wrun; lacks 'contract REJECT_BAD_SCHEMA appears in no'; has_re 'SPEC-0001 whose status is retired'; rc 0
+}
+collect_case S1 case_retired_spec_status_from_frontmatter 'a spec retired in frontmatter is not demanded of the plan'
+
 [ "$CASE_FAILED" -eq 0 ] || { echo 'grill lint contract: FAIL (cases above)'; exit 1; }
 echo 'grill lint contract: PASS'

@@ -114,6 +114,7 @@ INC_REF_RE = re.compile(r"\bincrement\s+(\d+)", re.I)
 CONTRACT_REF_RE = re.compile(r"(SPEC-\d{4})[\w\-]*/([A-Z][A-Z0-9_]{2,})")
 CONTRACT_DECL_RE = re.compile(r"^###\s+Contract:\s*([A-Z][A-Z0-9_]{2,})\s*$", re.M)
 STATUS_RE = re.compile(r"\*\*Status:\*\*\s*([\w-]+)")
+FRONT_STATUS_RE = re.compile(r"^status:\s*([\w-]+)", re.M)
 NA_RE = re.compile(r"^\s*(not applicable|n/?a|none)\b", re.I)
 REQUIRED_FIELDS = ("Spec contracts", "Tests to write (RED)", "Rollback path", "Depends on")
 PHASES = ("RED", "GREEN", "prose")
@@ -351,9 +352,19 @@ def spec_files(specs: Path = SPECS) -> dict[str, tuple[Path, str]]:
         for p in sorted(specs.glob("SPEC-*.md")):
             key = p.name[:9]
             text = p.read_text(encoding="utf-8", errors="replace")
-            m = STATUS_RE.search(text)
-            out[key] = (p, (m.group(1).lower() if m else "unknown"))
+            out[key] = (p, spec_status(text))
     return out
+
+
+def spec_status(text: str) -> str:
+    """Frontmatter first, as spec-lint.py's status_of(); the body line only
+    when the frontmatter has none, and never the template's "see frontmatter"."""
+    if text.startswith("---"):
+        m = FRONT_STATUS_RE.search(text.split("\n---", 1)[0])
+        if m:
+            return m.group(1).lower()
+    m = STATUS_RE.search(text)
+    return m.group(1).lower() if m and m.group(1).lower() != "see" else "unknown"
 
 
 def decision_files(decisions: Path = DECISIONS) -> dict[str, Path]:

@@ -78,6 +78,8 @@ Pick the lowest level that exercises the behavior.
   kernel §4). No test class is named for a real consumer, and no test
   asserts a real consumer's literal values: such a test pins the
   shared code to one customer and breaks when that customer changes.
+  The same holds for a property of a factory, a table, or a loop: one
+  case over the collection, never one per element.
 
 ## No test only to turn a lint green (`test-first.no-lint-only-tests`)
 
@@ -98,25 +100,32 @@ fail-closed path). Other nodes link here; they do not restate it.
   size does not set test count: one test may cover several failure
   modes, and a failure mode with no real blast radius gets none.
 - **A test is cheaper than its subject.** It asserts one behavior and
-  never re-implements the code under test. A test that would need more
-  code than its subject means the level or the design is wrong: hand
-  it back unwritten, with that finding.
-- **Full rigor is for high blast radius only.** Mutation proof,
-  prefix/suffix mutants, and planted violations re-run after a refactor
-  belong to the classes `delegation.mutation-at-end` makes mandatory,
-  and run once per batch under that rule. Elsewhere a RED seen failing
-  for the right reason is the proof, plus any sample that rule records.
+  never re-implements the code under test. A long setup, a helper of its
+  own, or a comment naming the load-bearing line marks it over budget,
+  and the answer is a smaller test or none; one that would need more
+  code than its subject means the level or the design is wrong: hand it
+  back unwritten, with that finding.
+- **No disjunctions, no wiring proofs.** A test that passes on either of
+  two implementations asserts nothing: assert the one mechanism, and
+  escalate a contract that permits two shapes as a spec ambiguity. Where
+  a behavioral assertion is available, no test asserts that code calls a
+  function, imports a module, or takes a path; a mock that only counts
+  calls fails on a rename and passes on wrong behavior. Mocks for time,
+  randomness, network, and external services stay fine.
+- **Full rigor is for high blast radius only.** Mutation proof and
+  planted violations re-run after a refactor belong to the classes
+  `delegation.mutation-at-end` makes mandatory, once per batch. Elsewhere
+  a RED seen failing for the right reason is the proof, plus any sample
+  that rule records.
 - **The owner adds checks to runs; the seed adds none.** A new check
   joins the project's automated runs, or the running product, only by
   a recorded owner decision. An escaped bug earns a regression test; a
   new gate is `protocol.verify-new-gates`'s call.
 - **Shrink on purpose.** A suite only grows unless someone cuts it.
-  Where several tests pay for one expensive action, run it once and
-  assert each outcome under its own name. Every deleted test names its
-  survivor, the test that still fails when it would have; with no
-  survivor the deletion is a recorded coverage loss. Consolidation is
-  its own planned increment (`protocol.grill`). The tool corpus
-  catalogs a lint for suite smells,
+  Every deleted test names its survivor, the test that still fails when
+  it would have; with no survivor the deletion is a recorded coverage
+  loss. Consolidation is its own planned increment (`protocol.grill`).
+  The tool corpus catalogs a lint for suite smells,
   `tool-corpus/testing/test-hygiene-lint.md`.
 
 ## Reference files
