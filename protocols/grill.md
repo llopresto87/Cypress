@@ -185,20 +185,17 @@ increment pointing at its own file under `docs/graph/plans/grill/`. Inline is
 right while the plan is small. Switch to the ledger when §9 starts dominating
 the file — a plan is read whole, and §9 is the section that grows for as long as
 the project does, so a mature plan held in one file becomes the largest single
-thing a session loads. That is the progressive-discovery failure this method
-exists to prevent, arriving in the document that describes the work.
+thing a session loads.
 
 Both forms coexist, so a plan migrates one increment at a time. The contract is
 unchanged either way: the required fields live with the increment, in whichever
 file holds it, and `grill-lint.py` refuses an index row with no file, a file no
 row points at, and an increment defined twice.
 
-Increments live under §9 and nowhere else, because §9 is the only place
-`grill-lint.py` reads them. A plan for a second spec, or a later phase of
-the same one, is new §9 rows or new ledger files, never a top-level
-section appended after §15. The plan checks (dependency order, required
-fields, spec alignment) run on §9 alone, so an increment written anywhere
-else is never checked, and its coverage falls back to reading by hand.
+Increments live under §9 and nowhere else: `grill-lint.py` runs its plan
+checks (dependency order, required fields, spec alignment) on §9 alone. A
+second spec, or a later phase, is new §9 rows or ledger files, never a
+section after §15; an increment written elsewhere is never checked.
 
 §9 is where grill earns its keep. A good increment looks like:
 
@@ -207,8 +204,8 @@ else is never checked, and its coverage falls back to reading by hand.
 - Spec contracts: SPEC-0001/SUBMIT_VALID_FORM_RETURNS_2XX,
   SPEC-0001/SUBMIT_FORM_SCHEMA_INVALID
 - Files touched: src/submissions/store.{ext}, tests/submissions/store_test.{ext}
-- Tests to write (RED): test_submit_valid_form_persists,
-  test_submit_invalid_schema_returns_422
+- Tests to write (RED): 2 cases over SPEC-0001/SUBMIT_VALID_FORM_RETURNS_2XX,
+  SPEC-0001/SUBMIT_FORM_SCHEMA_INVALID; the tester names them
 - Behavior added: a persistence adapter that stores submissions and
   returns them by ID
 - Gate: integration test against the test database; the suite stays
@@ -230,11 +227,17 @@ row that depends on a later row is misordered, and the orchestrator
 reads §9 top to bottom when it sequences spawns. `none` is a valid
 value; blank is not.
 
-An increment is ready when it names its spec contracts, its RED tests,
+`Tests to write (RED):` names contracts, not cases: the slug(s) and a case
+cap no larger than the contract count. One case may cover several slugs, and
+a failure mode with no real blast radius gets none
+(`test-first.proportionate-checks`). The tester names the cases; a plan that
+lists test names writes the suite twice, once in prose nobody runs.
+
+An increment is ready when it names its spec contracts, its case cap,
 its rollback, and its dependencies, and the tester can write the failing
-test from the row as written. One that fails any of those — vague
-tests, no contract, no rollback, blank dependencies, a test the tester
-cannot write — is re-sliced.
+test from the row as written. One that fails any of those — no cap, no
+contract, no rollback, blank dependencies, a test the tester cannot
+write — is re-sliced.
 
 **The consolidation increment.** A spec whose increments added many
 tests ends its §9 with one more increment, planned from the start:
@@ -245,10 +248,8 @@ it touches, and its `Tests to write (RED):` reads `none — consolidation`.
 Its gate is the suite staying green with no contract losing its test.
 The template carries this row by default. The planner may drop it for a
 spec that added few tests, and records the reason in the row's place.
-It is never a mid-spec detour: run beside the critical path, a
-consolidation pass competes with the work it should follow, and it
-cannot see the whole set of tests until the last feature increment has
-landed.
+It is never a mid-spec detour: it cannot see the whole set of tests
+until the last feature increment has landed.
 
 ## Press the plan (`grill.press`)
 

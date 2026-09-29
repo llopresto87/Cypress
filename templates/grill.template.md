@@ -118,7 +118,7 @@ top-level section.
 ### Increment 1 — <title>
 - Spec contracts: <SPEC-NNNN/contract-slug, ...>
 - Files touched:
-- Tests to write (RED):
+- Tests to write (RED): <N cases over SPEC-NNNN/contract-slug, ...; the tester names them>
 - Behavior added:
 - Gate:
 - Rollback path:
