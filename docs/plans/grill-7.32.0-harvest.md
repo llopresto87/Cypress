@@ -67,6 +67,7 @@ What each item gives a grown plant (R4), and where it lands:
 | Owner's tester rule (2026-09-28) | P | a tester that stops at a confirmed red and asks instead of prototyping | 54 |
 | Owner's latitude rule (2026-09-28) | P | a session that names the design latitude with its reason, as it names a tier, and asks only when in doubt | 55 |
 | C3 widened (cycle 1 ruling pass) | S | a graft audit that also names the projection of a plant's own skill and the Copilot view of its own agent | 57, 58 |
+| C5 (raised after the round, 7.32.1) | S | an install preflight that walks only the trees a run writes, so root-owned build output elsewhere in the plant does not refuse it | 63, 64 |
 | F hardened (cycle 1 ruling pass) | P | a steady anchor test, the once-per-session rule under test, a shorter session-start wait, and one frontmatter reader | 56, 59 to 62 |
 
 Success means every item above lands with its gate green, the round adds no byte to any always-loaded plant surface (the kernel, the Prime Agent overlay and the always-listed descriptions all shrink or hold), and a plant receives the round at install or at its next graft. Out of scope: anything not in the ratified proposal; the routing redesign, whose decisions 2 to 4 are still the owner's; any staleness tool or lint (decision 11, withdrawn); Codex and Copilot, which are frozen.
@@ -289,6 +290,8 @@ This plan is a ledger from its first increment (the owner's rule; ADR-0020). The
 | 60 | RED: the session-start wait for the anchor is one value, 5 s, in every home | planned | `docs/plans/grill-7.32.0-harvest/increment-60-red-anchor-timeout.md` |
 | 61 | GREEN: the session-start hooks wait 5 s for the anchor | planned | `docs/plans/grill-7.32.0-harvest/increment-61-green-anchor-timeout.md` |
 | 62 | GREEN: the code-anchor tool reads `repo:` through the one frontmatter reader | planned | `docs/plans/grill-7.32.0-harvest/increment-62-green-anchor-one-reader.md` |
+| 63 | RED: the install preflight ignores unwritable trees the installer never writes | planned | `docs/plans/grill-7.32.0-harvest/increment-63-red-preflight-written-trees.md` |
+| 64 | GREEN: the install preflight walks only the trees a run writes | planned | `docs/plans/grill-7.32.0-harvest/increment-64-green-preflight-written-trees.md` |
 | 50 | Consolidate the tests this round added | planned | `docs/plans/grill-7.32.0-harvest/increment-50-consolidate-tests.md` |
 | 51 | Prose: the harvest's integrity gates G1 to G11 | planned | `docs/plans/grill-7.32.0-harvest/increment-51-harvest-integrity-gates.md` |
 | 52 | Prose: docs once, at the end, by one writer | planned | `docs/plans/grill-7.32.0-harvest/increment-52-docs-once.md` |

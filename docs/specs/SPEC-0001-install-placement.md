@@ -1,6 +1,6 @@
 ---
 status: back-written
-status_date: 2026-09-28
+status_date: 2026-09-29
 owner: seed-installer
 status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tests/test-install-kernel-modes.sh, tests/test-install-adoption.sh, tests/test-full-install.sh, tests/test-seed-lint.sh, tests/test-graft-tools.sh (all wired into tests/run.sh)
 ---
@@ -22,7 +22,7 @@ status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tes
 
 - **Owner:** seed-installer
 - **Date:** 2026-09-13
-- **Last reviewed:** 2026-09-28
+- **Last reviewed:** 2026-09-29
 - **Related grill section:** docs/plans/grill-7.15.0-remediation.md §3, §5
 - **Related ADRs:** adr-0003-enforcement-layering-honesty, adr-0009-host-support-tiers, adr-0013-harness-memory-is-not-a-home, adr-0014-graft-reconciles-every-graph-engine, adr-0016-stamp-carries-keys-it-does-not-own, adr-0017-pre-growth-pointers-leave-the-kernel, adr-0018-code-fact-freshness-anchor (the last three proposed)
 - **Supersedes:** —
@@ -254,9 +254,27 @@ whose record carries github-copilot, because checking writes nothing.
   honestly as "the preflight is the early warning, and this is the floor
   underneath it"; the contract asserted the opposite. What the preflight DOES
   enumerate is: `adapter_dirs()` for every selected tool, every directory that
-  already exists beneath the target at any depth, and every existing symlink
-  beneath it — the last two walked rather than listed, so they do not depend on
+  already exists beneath the trees the installer writes
+  (`PREFLIGHT_SCOPED_TO_WRITTEN_TREES`), and every existing symlink beneath those
+  trees. The last two are walked rather than listed, so they do not depend on
   anyone remembering to add a path.
+
+### Contract: PREFLIGHT_SCOPED_TO_WRITTEN_TREES
+- **Given:** a target that holds unwritable directories, or a directory symlink
+  leaving the target, in a tree the installer never writes: `node_modules/`,
+  `.next/`, a database volume, a nested checkout, `test-results/`. Docker builds
+  and test runs leave such trees, often owned by root.
+- **When:** the installer runs
+- **Then:** it installs, and it does not open, change or refuse over those trees
+- **And:** the deep walks for an unwritable directory and for an escaping
+  symlink cover only the trees a run writes: `docs/graph`, `.cypress`, each
+  selected adapter's own top directory, and the four `.github` subdirectories
+  the Copilot adapter writes. The roots come from `adapter_dirs()`, so a new
+  adapter is covered by its own entry.
+- **Except:** none inside a written tree. A read-only directory or an escaping
+  symlink under `docs/graph`, `.cypress` or an adapter directory still refuses
+  before the first byte (`PREFLIGHT_REFUSES_BEFORE_WRITING`,
+  `SYMLINK_IS_REPLACED_NOT_FOLLOWED`).
 
 ### Contract: ALL_EXCLUDES_LEGACY_HOSTS
 - **Given:** an empty target
@@ -618,6 +636,7 @@ $ echo $?
 | CORPUS_IS_WHOLE_OR_ABSENT | S6 whole-corpus case | tests/test-plant-state.sh | integration | green |
 | CONTRADICTORY_CORPUS_TRANSITION | S6 refusal leaves disk and record untouched | tests/test-plant-state.sh | integration | green |
 | PREFLIGHT_REFUSES_BEFORE_WRITING | D1 preflight refuses before any write (`.claude`-as-a-file, read-only target) | tests/test-install-adoption.sh | integration | green |
+| PREFLIGHT_SCOPED_TO_WRITTEN_TREES | D6 case_unrelated_trees: unwritable trees and an escaping directory link outside the written set do not refuse the install, and are unchanged afterwards | tests/test-install-adoption.sh | integration | green |
 | SYMLINK_IS_REPLACED_NOT_FOLLOWED | M10 (6) a symlinked DIRECTORY leaving the target is refused at any depth, M10 (7) one staying inside still works — §5's Security NFR and §9 AC-2 rest on this | tests/test-install-placement.sh | integration | green |
 | DESTINATION_PATH_OCCUPIED | D1 destination occupied by a non-directory | tests/test-install-adoption.sh | integration | green |
 | TARGET_NOT_WRITABLE | D1 target directory not writable | tests/test-install-adoption.sh | integration | green |
@@ -841,3 +860,11 @@ only version surface it has, and it moves with each entry here.
   with no backup (RECREATED_LIST_IS_COMPLETE; ruling Q2.1 of the round's second
   question batch). The clause now names both. The spec was wrong about the code;
   no other contract changed, and the status stays `back-written`.
+- 2026-09-29 — new contract `PREFLIGHT_SCOPED_TO_WRITTEN_TREES`, and the
+  enumeration sentence under `PREFLIGHT_REFUSES_BEFORE_WRITING` corrected. The
+  preflight walked every directory under the project root, so root-owned
+  directories left by Docker in `node_modules/`, `.next/` or a data volume
+  refused every install of that plant, though the installer never writes there.
+  The walks now cover the written trees only. The earlier text said "beneath the
+  target at any depth", which described the code and not the promise it exists
+  for: a refusal that writes nothing. `status_date` moved to this date.

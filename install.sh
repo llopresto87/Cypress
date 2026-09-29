@@ -2059,7 +2059,25 @@ preflight_destinations() {
     # Only EXISTING directories are walked — this is a pre-write check, so there
     # is nothing else to walk, and it costs one find over a directory the
     # installer is about to traverse anyway.
-    if [[ -d "$PROJECT_DIR" ]]; then
+    # SCOPE: the trees the installer writes, never the whole project. Walking
+    # $PROJECT_DIR refused every plant whose Docker builds or test runs left
+    # root-owned directories in node_modules/, .next/, a database volume or a
+    # nested checkout: directories this script never opens. A refusal is owed
+    # for what a run would WRITE (SPEC-0001 PREFLIGHT_SCOPED_TO_WRITTEN_TREES).
+    # The roots derive from `dirs` above, so an adapter added tomorrow is
+    # covered by its adapter_dirs() entry and nobody has to remember this list:
+    # docs/graph and .cypress whole, each adapter's top directory whole, and
+    # .github only by its four written subdirectories (the rest of .github is
+    # the project's own workflows).
+    local roots=() root walked=" "
+    for rel in "${dirs[@]}"; do
+        case "$rel" in docs|.github) continue ;; esac
+        [[ "$walked" == *" ${rel%%/*} "* && "$rel" == */* && "$rel" != .github/* ]] && continue
+        [[ -e "$PROJECT_DIR/$rel" || -L "$PROJECT_DIR/$rel" ]] || continue
+        roots+=("$PROJECT_DIR/$rel")
+        [[ "$rel" == .github/* ]] || walked+="${rel%%/*} "
+    done
+    if [[ ${#roots[@]} -gt 0 ]]; then
         local existing
         # -print0 / read -d '': a path containing a NEWLINE is one path, and
         # line-wise reading split it into two. A directory literally named
@@ -2070,7 +2088,7 @@ preflight_destinations() {
             [[ -n "$existing" ]] || continue
             case "$existing" in *"/.git"|*"/.git/"*) continue ;; esac
             [[ -w "$existing" ]] || bad+=("$existing (exists but is not writable)")
-        done < <(find "$PROJECT_DIR" -type d -not -path '*/.git/*' -print0 2>/dev/null || true)
+        done < <(find "${roots[@]}" -type d -not -path '*/.git/*' -print0 2>/dev/null || true)
 
         # ...and every existing SYMLINK-TO-A-DIRECTORY that leaves the target,
         # at any depth. The loop above is `-type d`, which does not follow
@@ -2093,7 +2111,7 @@ preflight_destinations() {
             [[ -d "$link" ]] || continue          # links to files are caught above
             dest_inside_target "$link" && continue
             bad+=("$link (symlink leaving the target: $(readlink "$link"))")
-        done < <(find "$PROJECT_DIR" -type l -not -path '*/.git/*' -print0 2>/dev/null || true)
+        done < <(find "${roots[@]}" -type l -not -path '*/.git/*' -print0 2>/dev/null || true)
     fi
 
     # Read-only target: a `cp` failing mid-install used to surface as a raw
