@@ -75,7 +75,9 @@ persisted format, security posture, or anything a spec covers is T2 or
 higher. The covered lane needs an active spec contract. The contained lane
 needs all five: one surface, no new dependency, reversible, no spec owns it,
 intent fits a decision note. Any doubt in any of them is T3. On the contained lane the RED test
-is the contract and the close-out's why-record is the history; depth in
+is the contract (for a declarative edit with nothing to get wrong, the
+recorded run that shows it working) and the close-out's why-record is the
+history; depth in
 `method.tiers` (`tiers.contained-lane`).
 
 The **default T3 sequence** (kernel §2), verbatim:
@@ -227,8 +229,8 @@ truth for *behavior*. Every non-trivial behavior has a spec, written
 before the code, with stable section numbers; every functional contract
 maps to at least one test; superseded specs stay on disk with a link
 forward. The one exception is the **T2 contained lane**: a change whose
-contract is the RED test that pins it and whose why is the close-out's
-why-record. It enters `specify` only if it leaves the lane, and it holds
+contract is the RED test that pins it (or, for a declarative edit, the run
+that proved it) and whose why is the close-out's why-record. It enters `specify` only if it leaves the lane, and it holds
 only while every one of the lane's conditions holds (`tiers.contained-lane`
 owns them). A change that needs prose to be explicable is spec-bearing
 work, and size alone never qualifies a change for the lane. If wiki and spec disagree about how a library *can* be used,
@@ -460,8 +462,18 @@ and `Depends on:`
 — both the earlier increments it builds on and the
 `docs/graph/libraries/` pages it relies on (`none` is a value; blank is
 not). Rows are listed in dependency order. An increment is ready when
-the tester can write the failing test from the row as written;
-otherwise re-slice.
+the tester can write the failing test from the row as written, or the
+row reads `none` and names the run that proves it; otherwise re-slice.
+
+Each increment answers "does it need a test?" here, while slicing, not
+at RED. A declarative edit (a selector, a pipeline stage, a flag, a
+config key) usually does not: its field reads
+`Tests to write (RED): none — <why>; proved by <run>`, the increment
+gets no RED spawn, and `spec-lint.py` counts the contracts it names as
+covered by that run. A declaration that holds logic (a pattern, a
+condition, an order that changes the output) does need one. When the
+planner cannot tell, the row keeps its test and the tester decides at
+RED, handing back unwritten if the answer is no.
 
 ### Press the plan (`grill.press`)
 
@@ -518,7 +530,10 @@ cycles, each tied to one or more spec contracts, with the verification
 gates passing at the end.
 
 This node owns **the test-first rule** (`rule.test-first`): no
-production code without a failing test that authorizes it. The test
+production code without a failing test that authorizes it. A change
+with nothing a test could get wrong, such as a declarative selector or
+config entry, is authorized instead by the run that shows it working
+(`test-first.proportionate-checks`). The test
 encodes a named spec contract and must fail for the right reason first;
 GREEN adds the minimum new behavior, integrated into the file; REFACTOR
 is not optional when you touched existing code; exceptions are explicit
@@ -560,6 +575,11 @@ sized by their effort labels (`delegation.step-scope`,
 | GREEN → REFACTOR | `implementer` | the RED handback | green, integrated diff; the implementer runs the RED tests itself, edits no test or fixture, and writes a doubtful test up as a question (`delegation.green-self-test`); affected gates run; §10 rows `green` |
 | REVIEW | `reviewer` | the diff, the §9 row | severity findings; Critical/Major → `implementer` once more, an attempt under `recover` |
 | COMMIT | the session | a clean review | grill.md §15 entry with the `spawn_id`s in order; the commit; the spec's status advanced |
+
+An increment whose §9 row reads `Tests to write (RED): none — …` was
+judged at planning to need no test (`grill.increment-shape`): it has no
+RED phase. `implementer` makes the change and runs the proof the row
+names; REVIEW and COMMIT stand.
 
 The one merge the tiers allow: a T2 single-contract increment — or a
 single reproduced defect on the contained lane — with a mechanical RED
@@ -607,8 +627,9 @@ re-runs that same test; until then the red is declared in the delivery
 as WIP with its failure record. Pure refactors (existing tests green before and after; a
 break means a behavior change or a test of implementation). Migration
 safety gate (an unguarded schema is a blocking finding first). Recorded
-exceptions (throwaway prototypes, pure configuration, type-only changes,
-generated code) — each in grill.md §9 with a rationale and a date.
+exceptions (throwaway prototypes, declarative edits with nothing to get
+wrong, type-only changes, generated code) — each in grill.md §9 with a
+rationale and a date, or on the T2 contained lane in the why-record.
 
 ### Exit conditions
 

@@ -391,4 +391,23 @@ collect_case G2a+G2b case_row_one_cell_fewer "a row with a cell count off its he
 collect_case G2c+G2d case_row_escaped_pipe_is_one_cell "escaped pipes and optional outer pipes are not miscounted"
 [ "$CASE_FAILED" -eq 0 ] || { printf 'spec lint contract: FAIL — the row-cell block has failing cases (above)\n'; exit 1; }
 
+# ---- PROVED BY A RUN ----------------------------------------------------------
+# P1: a plan increment reading `Tests to write (RED): none — <why>; proved by
+# <run>` covers the contracts it names (grill.increment-shape); `none —
+# consolidation` covers nothing.
+PR="$TMP/proved"
+mkdir -p "$PR/docs/graph/specs" "$PR/docs/graph/plans" "$PR/tests"
+cp "$ROOT/templates/knowledge-graph/spec-lint.py" "$PR/docs/graph/"
+printf 'def test_sel():  # SELECT_TESTED\n    pass\n' > "$PR/tests/test_sel.py"
+SPECS="$PR/docs/graph/specs"
+spec SPEC-0201-select active y "SELECT_TESTED:green SELECT_BY_LABEL:green"
+pr_plan() { printf '## 9. Increments\n\n### Increment 1 — Add the selector\n- Spec contracts: SPEC-0201/SELECT_BY_LABEL\n- Tests to write (RED): %s\n' "$1" > "$PR/docs/graph/plans/grill.md"; }
+pr_plan 'none — a declarative selector; proved by `pipeline --dry-run`'
+CASE=P1; run_rc 0 python3 "$PR/docs/graph/spec-lint.py"
+has 'proved by a run.*SELECT_BY_LABEL'
+pr_plan 'none — consolidation'
+run_rc 1 python3 "$PR/docs/graph/spec-lint.py"
+has -- '- SELECT_BY_LABEL '
+CASE=""
+
 printf 'spec lint contract: PASS\n'

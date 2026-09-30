@@ -38,6 +38,9 @@ verification gates passing at the end.
 This node owns **the test-first rule**: tests authorize code; you
 integrate, not bolt on. No production code without a failing test
 that authorizes it: RED → GREEN → REFACTOR → COMMIT, per increment.
+A change with nothing a test could get wrong, such as a declarative
+selector or config entry, is authorized instead by the run that shows
+it working (`test-first.proportionate-checks`).
 The test encodes a named spec contract and must fail for the right
 reason first; GREEN adds the minimum new behavior, integrated into
 the file, not stapled to its edge; REFACTOR is not optional when you
@@ -101,6 +104,11 @@ One spawn may carry a batch of increments, sized by their effort labels
 | GREEN → REFACTOR | `implementer` | the RED handback (test paths, contract slugs, files) | a green, integrated diff; the RED tests run by the implementer itself, with no separate tester spawn and no test or fixture file edited, and a test that looks wrong written up as a question (`delegation.green-self-test`); affected gates run locally; spec §10 rows `green` |
 | REVIEW | `reviewer` | the diff, the §9 row | severity-tagged findings; Critical/Major return to `implementer`, one more spawn, an attempt under `protocol.recover` |
 | COMMIT | the session | a clean review | grill.md §15 entry with the `spawn_id`s in issue order; the commit; the spec's status advanced |
+
+An increment whose §9 row reads `Tests to write (RED): none — …` was
+judged at planning to need no test (`grill.increment-shape`): it has no
+RED phase. `implementer` makes the change and runs the proof the row
+names; REVIEW and COMMIT stand.
 
 The one merge the tiers allow: a T2 increment covering a single
 contract (or, on the contained lane, a single reproduced defect) whose
@@ -274,21 +282,25 @@ waiting to surface in production.
 ## Exceptions to test-first
 
 Explicit exceptions, recorded in grill.md §9 with a rationale and a
-date:
+date (on the T2 contained lane, in the why-record instead):
 - **Throwaway prototypes** to learn about a library or approach.
   Mark the code clearly and keep it out of the main branch: it has no
   test behind it.
-- **Pure configuration changes** (raise a timeout, add a log
-  scope) where there is no *unit-testable* behavior to assert. The
-  operational risk is real and goes to `docs/graph/protocols/verify.md`'s
-  gates instead. Such a change still tiers at T2 or above: a config
-  value alters behavior, so it is never T1
-  (`docs/graph/method/tiers.md`).
+- **Declarative edits with nothing to get wrong** (add a selector or a
+  pipeline stage, raise a timeout, add a log scope), where the only test
+  would read back the value just written. The run that shows the effect
+  is the proof, named in the handback, and the operational risk goes to
+  `docs/graph/protocols/verify.md`'s gates. A declaration that holds
+  logic (a pattern, a condition, an order that changes the output) is
+  not in this class (`test-first.proportionate-checks`). Such a change
+  still tiers at T2 or above: a config value alters behavior, so it is
+  never T1 (`docs/graph/method/tiers.md`).
 - **Type-only changes** in a strongly typed language where the type
   checker is the verifier.
 - **Generated code** where the generator itself is tested.
 
-If you find yourself reaching for "exception" frequently, that is a
+If you find yourself reaching for "exception" frequently on changes
+that hold logic, that is a
 signal that test-first is not landing: surface this to the
 orchestrator so the team can address it directly.
 

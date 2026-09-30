@@ -120,7 +120,7 @@ Why and how: `grill.increment-shape` in protocols/grill.md.
 ### Increment 1 — <title>
 - Spec contracts: <SPEC-NNNN/contract-slug, ...>
 - Files touched:
-- Tests to write (RED): <N cases over SPEC-NNNN/contract-slug, ...; the tester names them>
+- Tests to write (RED): <N cases over SPEC-NNNN/contract-slug, ...; the tester names them — or `none — <why>; proved by <run>` when nothing here can be wrong while present>
 - Behavior added:
 - Gate:
 - Rollback path:

@@ -48,7 +48,9 @@ and a grill pass to authorize three lines, and the cost is paid so
 often that the funnel stops being believed. The contained lane is the
 proportional answer: the authorization for a small change is **the
 failing test that pins the new behavior** plus **a recorded why**, not
-a spec document.
+a spec document. A declarative edit with nothing a test could get wrong
+(a selector, a pipeline stage, a flag) swaps the test for the recorded
+run that shows it working (`test-first.proportionate-checks`).
 
 A change enters the contained lane only when all of these hold:
 
@@ -69,7 +71,7 @@ What the lane produces, and what it does not:
 
 | Produced                                                             | Not produced                          |
 |----------------------------------------------------------------------|---------------------------------------|
-| A regression test written **before** the fix, naming the behavior — the executable record of the contract, and the §3.4 obligation in full | A spec document, its §0 sign-offs, or a `specify` pass |
+| A regression test written **before** the fix, naming the behavior — the executable record of the contract, and the §3.4 obligation in full; for a declarative edit with nothing to get wrong, the recorded run that shows it working | A spec document, its §0 sign-offs, or a `specify` pass |
 | A **why-record** at close-out: what was wrong, why this fix, which test pins it — an ADR when a real choice was made among options, otherwise the plant `changelog.md` entry (`protocol.canonize`) | A grill refutation spawn, an architect pass, a devil's-advocate pass |
 | A `grill.md` line added on entry — bookkeeping, so the plan-of-record stays a record of what happened | A full `grill` pass |
 | The independent reviewer audit and the gates the change's blast radius earns (`protocol.verify`) | Any discount on verification — depth follows blast radius, never the lane |

@@ -108,6 +108,7 @@ a change lands as a new entry. Owner: `protocol.grill` (`rule.grill`).
 ### 3.4 The test-first rule
 Production code starts from a failing test that authorizes it:
 RED → GREEN → REFACTOR → COMMIT; characterize untested code first.
+A declarative edit with nothing to get wrong is proved by a run instead.
 Owner: `protocol.test-first` (`rule.test-first`).
 
 ### 3.5 The verify rule
