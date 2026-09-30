@@ -175,10 +175,11 @@ and let the next session decide.
 **Why-record** (`tiers.contained-lane`): owed by every **T2
 contained lane** task, because the lane spent no spec to explain
 itself and the close-out is where that debt comes due. The brief names
-the defect, its cause, the fix, and the test that pins it, and the
+the defect, its cause, the fix, and the test that pins it (for a
+declarative edit, the run that proved it), and the
 librarian writes exactly **one** entry: an **ADR** when a real choice was
 made among options (`docs/graph/skills/adr-writer.md`), otherwise a
-`changelog.md` line naming defect → cause → fix → test. A small change
+`changelog.md` line naming defect → cause → fix → test or run. A small change
 that needs a spec to be explicable was misclassified: the close-out says
 so in the delivery and reclassifies it. A covered-lane task owes no
 why-record: its spec contract already carries the why.

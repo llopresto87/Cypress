@@ -846,7 +846,12 @@ gate, or check in delivered code) exists only for a named, real blast radius; a
 test is cheaper than its subject and never re-implements it; full rigor is for
 high blast radius, once per batch; a new check joins the automated runs or the
 running product only by owner decision. Every deleted test names its survivor,
-and consolidation is its own planned increment.
+and consolidation is its own planned increment. A change with nothing to get
+wrong earns no new test: a declarative edit (a selector, a pipeline stage, a
+route, a flag, a config key, a mapping entry, a label) is proved by the run
+that shows it working, named with its result in the handback. A declaration
+that holds logic (a regex, glob or wildcard, a condition, an order that
+changes the output, a computed value) still earns a test that feeds it inputs.
 
 **When to use.** When shaping any new test or choosing its level, or when a
 suite has grown enough to warrant a consolidation pass.
@@ -1066,7 +1071,7 @@ project and updated continuously. Sixteen stable sections:
   the lint checks against §9), **§6 Decisions Made** (table with evidence
   and ADR columns), **§7 Options Considered**, **§8 Architecture Plan**, **§9
   Implementation Plan** (each increment names spec contracts, files, RED
-  tests, behavior, gate, rollback, effort, dependencies — earlier increments
+  tests or `none — <why>; proved by <run>`, behavior, gate, rollback, effort, dependencies — earlier increments
   and library pages, `none` if neither — and, when it adds structure, the
   responsibility and present variation; rows in dependency order).
 - **§10 Verification Plan**: covered by the standard gates in
@@ -1434,10 +1439,16 @@ active/implemented/back-written spec, the test files (skipping `.git`,
 `node_modules`, `.venv`, etc., and the specs dir) must name the slug,
 boundary-guarded and longest-first:
 
-- Every live contract must appear in ≥1 test file, or the gate FAILs.
+- Every live contract must appear in ≥1 test file, or be proved by a run
+  (below), or the gate FAILs.
 - A slug in tests but in no live spec is drift → a WARN.
 - Live contracts + zero matching test files is a "green lie": it FAILs
   loudly, never a vacuous pass.
+- A contract named by a plan increment whose `Tests to write (RED):` reads
+  `none — <why>; proved by <run>` counts as covered by that run
+  (`grill.increment-shape`); the PASS line and `--list` say so.
+  `none — consolidation` covers nothing. The plans read are
+  `docs/graph/plans/grill.md` and `docs/graph/plans/grill/**/*.md`.
 
 **Drafts are shape-checked, not coverage-checked.** A draft turns `active` in
 the change that lands its RED tests (test-first COMMIT), so a spec in

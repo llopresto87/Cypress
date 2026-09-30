@@ -401,6 +401,29 @@ def slice_specs(slugs: list[str], refs: bool, as_lines: bool) -> int:
     return 1 if missing else 0
 
 
+PLAN_FIELD_RE = re.compile(r"^- (Spec contracts|Tests to write \(RED\)):(.*)$", re.M)
+
+
+def run_proved(slugs: set[str]) -> set[str]:
+    """The live contracts the plan judged to need no test.
+
+    grill.increment-shape asks of every increment whether it needs a test; a
+    no reads `Tests to write (RED): none — <why>; proved by <run>`, and the
+    contracts that increment names are covered by that run. `none —
+    consolidation` covers nothing: its contracts keep their tests. Reads
+    plans/grill.md and its ledger, plans/grill/**/*.md."""
+    plans = SPECS.parent / "plans"
+    proved: set[str] = set()
+    for f in [plans / "grill.md", *sorted((plans / "grill").glob("**/*.md"))]:
+        if not f.is_file():
+            continue
+        for block in re.split(r"^#+ Increment\b", f.read_text(encoding="utf-8", errors="replace"), flags=re.M):
+            fields = dict(PLAN_FIELD_RE.findall(block))
+            tests = fields.get("Tests to write (RED)", "").strip()
+            if re.match(r"none\b", tests, re.I) and re.search(r"proved by\s+\S", tests, re.I):
+                proved |= set(re.findall(r"[A-Z][A-Z0-9_]*", fields.get("Spec contracts", ""))) & slugs
+    return proved
+
 def main() -> int:
     list_mode = "--list" in sys.argv
     warn_mode = "--warn" in sys.argv
@@ -530,11 +553,13 @@ def main() -> int:
         return finish(f"spec lint: PASS — no live contracts to cover "
                       f"({live_specs} live spec(s)){unchecked}", 0)
 
-    uncovered = sorted(s for s in contracts if not hits[s])
+    proved = {s for s in run_proved(set(contracts)) if not hits[s]}
+    uncovered = sorted(s for s in contracts if not hits[s] and s not in proved)
 
     if list_mode:
         for slug in sorted(contracts):
-            where = ", ".join(sorted(set(hits[slug]))[:3]) or "UNCOVERED"
+            where = (", ".join(sorted(set(hits[slug]))[:3])
+                     or ("proved by a run (plan)" if slug in proved else "UNCOVERED"))
             print(f"  {slug}  ({contracts[slug]})  ->  {where}")
 
     if uncovered:
@@ -575,8 +600,9 @@ def main() -> int:
             return 1 if fails else 0
         return 0 if warn_mode else 1
 
+    by_run = f"; proved by a run per the plan: {', '.join(sorted(proved))}" if proved else ""
     return finish(f"spec lint: PASS — {len(contracts)} live contract(s) covered "
-                  f"across {len(files)} test file(s){unchecked}", 0)
+                  f"across {len(files)} test file(s){by_run}{unchecked}", 0)
 
 
 if __name__ == "__main__":

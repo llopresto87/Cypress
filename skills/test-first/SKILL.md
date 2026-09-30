@@ -97,6 +97,20 @@ fail-closed path). Other nodes link here; they do not restate it.
   breaks, and for whom, if the check is absent. No name, no check. Spec
   size does not set test count: one test may cover several failure
   modes, and a failure mode with no real blast radius gets none.
+- **A change with nothing to get wrong earns no new test.** Before RED,
+  name what the test could catch that the edit being present does not
+  already guarantee. A declarative edit (a selector, a pipeline stage, a
+  route, a flag, a config key, a mapping entry, a label) usually has
+  nothing: its only test reads back the value just written, goes red
+  because the line is absent and green because it is present, and so
+  proves only the diff. Prove such a change by the run that shows its
+  effect: an existing test or gate that already exercises the surface,
+  or the cheapest real run (a dry-run, a validate command, one pipeline
+  run), named with its result in the handback. The declaration earns a
+  test when it holds logic that can be wrong while present: a pattern
+  (regex, glob, wildcard), a condition, an order or precedence that
+  changes the output, or a computed value. That test feeds it inputs
+  and asserts what it selects.
 - **A test is cheaper than its subject.** It asserts one behavior and
   never re-implements the code under test. A long setup, a helper of its
   own, or a comment naming the load-bearing line marks it over budget,

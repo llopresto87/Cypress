@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 7.35.0
+- Version documented: 7.36.0
 - Repository role: this repo is the seed, the product shipped into other
   projects; it holds no `docs/graph/` of its own.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -144,7 +144,7 @@ full statement of each rule lives in (and only in) its owning node.
 | 3.1 | **spec**       | Every non-trivial behavior has an executable spec in `docs/graph/specs/`, written before the code — except a T2 contained change, pinned by its RED test and why-record instead ([§4.1](#41-t2s-contained-lane)). | `protocol.specify` (`rule.spec`) |
 | 3.2 | **knowledge**  | `docs/graph/` is the single source of truth for structure and capability — one home per fact, loaded minimally and declared, ahead of memory. A fact the graph states is settled: use it as stated. Facts about code are current unless the session-start code-anchor line names their paths; there the code wins, and the node is fixed in the same change. Harness memory is not a home: what a session learns goes to a session record in `docs/graph/plans/sessions/` (`stewardship-posture.session-record`). | `skill.context-router` (`rule.knowledge`) |
 | 3.3 | **grill**      | `docs/graph/plans/grill.md` is the living plan-of-record, append-only: a change lands as a new entry. | `protocol.grill` (`rule.grill`) |
-| 3.4 | **test-first** | Production code starts from a failing test that authorizes it: RED → GREEN → REFACTOR → COMMIT; characterize untested code first. | `protocol.test-first` (`rule.test-first`) |
+| 3.4 | **test-first** | Production code starts from a failing test that authorizes it: RED → GREEN → REFACTOR → COMMIT; characterize untested code first. A declarative edit with nothing to get wrong is proved by a run instead. | `protocol.test-first` (`rule.test-first`) |
 | 3.5 | **verify**     | Gates proportional to blast radius run, and assert something, before "done"; a gate that did not run is recorded as absent. | `protocol.verify` (`rule.verify`) |
 | 3.6 | **deliver**    | Every session ends in a cold-pickup delivery with a `produced_by` attribution assertion (detective — §6.4). | `protocol.deliver` (`rule.deliver`) |
 | 3.7 | **canonize**   | Every T2/T3 task ends with one docs-librarian close-out spawn that persists what the work taught — or records "nothing of interest, because …". | `protocol.canonize` (`rule.canonize`) |
@@ -190,7 +190,10 @@ Most maintenance is a small defect fix in code no spec covers. Sending all of
 it to T3 buys a specify pass and a grill pass to authorize three lines — paid
 often enough that the funnel stops being believed. The contained lane makes the
 authorization proportional: **the failing test that pins the behavior, plus a
-recorded why**, instead of a spec document.
+recorded why**, instead of a spec document. A declarative edit with nothing a
+test could get wrong (a selector, a pipeline stage, a flag) swaps the test for
+the recorded run that shows it working
+([`test-first.proportionate-checks`](skills/test-first/SKILL.md)).
 
 It opens only when every condition holds — one surface (no contract, public
 interface, persisted format, or schema); no new dependency; reversible by revert
@@ -202,8 +205,8 @@ What it buys and what it never buys:
 
 | Still owed | Waived |
 |------------|--------|
-| The RED test, written before the fix — §3.4 in full | The spec document, its §0 sign-offs, the `specify` pass |
-| The **why-record** at close-out: defect → cause → fix → pinning test, as a short ADR when a real choice was made, otherwise a `changelog.md` entry | The grill refutation spawn, the architect pass, the devil's-advocate pass |
+| The RED test, written before the fix — §3.4 in full; for a declarative edit with nothing to get wrong, the recorded run that shows it working | The spec document, its §0 sign-offs, the `specify` pass |
+| The **why-record** at close-out: defect → cause → fix → pinning test or run, as a short ADR when a real choice was made, otherwise a `changelog.md` entry | The grill refutation spawn, the architect pass, the devil's-advocate pass |
 | A `grill.md` line on entry, so the plan-of-record still records what happened | The full `grill` pass |
 | The independent reviewer audit, and the gates the blast radius earns | Nothing — gate depth follows radius, never the lane |
 
@@ -658,13 +661,17 @@ agents and tooling can index into them. Code without a spec is in remediation
 mode; a spec without code is an unimplemented feature. The exception is T2's
 contained lane ([§4.1](#41-t2s-contained-lane)): a small, single-surface,
 reversible change with no spec over it carries its contract in the RED test
-and its why in the close-out record, and enters `specify` only if it leaves
+(or, for a declarative edit, the run that proved it) and its why in the close-out record, and enters `specify` only if it leaves
 the lane.
 
 ### 7.2 Test-driven development (TDD)
 
 Production code starts from a failing test that authorizes it: RED → GREEN →
-REFACTOR → COMMIT, per increment. Tests name spec contracts, so the reviewer
+REFACTOR → COMMIT, per increment. A change with nothing a test could get wrong,
+such as adding a selector or a config key, is proved by the run that shows it
+working; the plan records that call per increment, and a declaration that holds
+logic (a pattern, a condition, an order) still gets its test
+(`test-first.proportionate-checks`, `grill.increment-shape`). Tests name spec contracts, so the reviewer
 reading the test list reconstructs the spec. Bug fixes start with a regression
 test that stays in the suite after the fix. A bug a test uncovered is marked
 for a fix and named to the owner; the test that found it stays unchanged as the
@@ -1099,7 +1106,8 @@ classified, so it stays current with the file. Grouped by what they check:
 
 1. `test-unified-graph-install.sh`: graph install shape.
 2. `test-spec-lint.sh`: the spec gate: shape of every spec, coverage of live
-   ones, and a table row whose cell count differs from its header.
+   ones (a plan row proved by a run included), and a table row whose cell
+   count differs from its header.
 3. `test-grill-lint.sh`: the plan-of-record gate (`grill-lint.py`): section
    shape, §9 dependency order, §5 derived from §9, plan↔spec alignment, the
    `--waves` report, a ledger plan read from its leaves beside it, and a
@@ -1417,7 +1425,7 @@ Each entry covers one word that the front door (the README, the install guide, t
 <a id="term-test-first"></a>
 
 - **Forms:** test-first development, test-first, TDD
-- **Here:** No production code is written without a failing test that authorizes it. The [test-first protocol](protocols/test-first.md) owns the cycle and the rule for code that has no tests yet.
+- **Here:** No production code is written without a failing test that authorizes it. A declarative edit with nothing to get wrong is proved by the run that shows it working instead. The [test-first protocol](protocols/test-first.md) owns the cycle and the rule for code that has no tests yet.
 - **Field:** A failing test is written before the code that passes it, in a short cycle of red, green and refactor (Fowler, "Test Driven Development", https://martinfowler.com/bliki/TestDrivenDevelopment.html, retrieved 2026-09-24; status: verified. Beck, *Test-Driven Development: By Example*, 2002; status: secondhand, the book was not opened)
 - **Implemented at:** `protocols/test-first.md`, `skills/test-first/SKILL.md`
 - **Enforcement:** The word itself is not a control. The order of test and code is **judgment**, in the [test-before-code row](#enf-test-before-code)
@@ -1751,7 +1759,7 @@ This section answers which rules a tool holds and which the method only asks the
 | <a id="enf-install-stamp"></a>The install records its version and flags in a stamp file | `install.sh` (`write_seed_stamp`) | **detective**: graft and the audits read it later | It records what was installed, not what the plant changed afterwards | [graft protocol](protocols/graft.md) |
 | <a id="enf-registration-notice"></a>The installer prints a notice about when new agents become usable | `install.sh` (`log_registration_notice`) | **not a control**: advice, printed at install | It checks nothing. When a host picks up newly placed agent files is host-dependent | [host capability matrix, Specialist discovery/registration](documentation/host-capability-matrix.md) |
 | <a id="enf-graph-lint"></a>A graph node's contract, and one home per `owns:` key | `templates/knowledge-graph/graph-lint.py` | **soft** in its lint mode; **not a control** for `--plan`, `--graph` and `--warn`, which exit 0 | A well-formed node that states something false passes. In a plant it holds only when someone runs it | [knowledge-graph skill](skills/knowledge-graph/SKILL.md) |
-| <a id="enf-spec-lint"></a>A spec's shape, and each live contract's test coverage | `templates/knowledge-graph/spec-lint.py` | **soft** | A contract slug found anywhere in a test file, a comment included, counts as covered | [specify protocol](protocols/specify.md) |
+| <a id="enf-spec-lint"></a>A spec's shape, and each live contract's test coverage | `templates/knowledge-graph/spec-lint.py` | **soft** | A contract slug found anywhere in a test file, a comment included, counts as covered; so does a contract a plan increment marks `none — <why>; proved by <run>`, and no tool checks that the run happened | [specify protocol](protocols/specify.md) |
 | <a id="enf-grill-lint"></a>The plan-of-record's shape | `templates/knowledge-graph/grill-lint.py` | **soft** | With no plan present it prints SKIP and exits 0. Whether an edit appended to the plan or rewrote it is not checked; a reviewer judges that. `--waves` is a report: its wave lines and overlap warnings never change the exit status | [grill protocol](protocols/grill.md) |
 | <a id="enf-agent-lint"></a>The roster's frontmatter, and the routing corpus's scores | `integrations/claude-code/agent-lint.py`, `agents/_routes.golden.tsv` | **soft** for `--lint` and `--eval`; **not a control** for `--route`, which prints and exits 0 | It reads the agent files on disk, not what a host registered | [§14 Tests and gates](#14-tests-and-gates) |
 | <a id="enf-prose-lint"></a>The prose floor under the humanizer skill | `tools/prose-lint.py` | **soft** | It catches only the tells a pattern can decide. Its rate thresholds are computed over all the files passed in one run, so one file's excess can hide in another's slack; the seed's own gate runs it once per file for that reason | [§14 Tests and gates](#14-tests-and-gates) |

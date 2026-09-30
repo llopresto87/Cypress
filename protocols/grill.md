@@ -228,14 +228,26 @@ row that depends on a later row is misordered, and the orchestrator
 reads §9 top to bottom when it sequences spawns. `none` is a valid
 value; blank is not.
 
+**Ask of every increment: does it need a test?** Decide it here, while
+slicing, not at RED. An increment needs a test when it adds behavior that
+can be wrong while the code is present, and something breaks, for someone,
+if it is (`test-first.proportionate-checks`). A declarative edit (a
+selector, a pipeline stage, a flag, a config key) usually does not: its
+field reads `none — <why>; proved by <run>`, naming the run that shows it
+working, and the increment gets no RED spawn. `spec-lint.py` counts
+the contracts that row names as covered by the run. A declaration that holds
+logic (a pattern, a condition, an order that changes the output) does
+need one. When the planner cannot tell, the row keeps its test and the
+tester makes the call at RED, handing back unwritten if the answer is no.
+
 `Tests to write (RED):` names contracts, not cases: the slug(s) and a case
 cap no larger than the contract count. One case may cover several slugs, and
 a failure mode with no real blast radius gets none
 (`test-first.proportionate-checks`). The tester names the cases; a plan that
 lists test names writes the suite twice, once in prose nobody runs.
 
-An increment is ready when it names its spec contracts, its case cap,
-its rollback, and its dependencies, and the tester can write the failing
+An increment is ready when it names its spec contracts, its case cap
+(or its `none` and the run that proves it), its rollback, and its dependencies, and the tester can write the failing
 test from the row as written. An increment missing any of them is
 re-sliced, and so is one that touches many files to add several
 behaviors.

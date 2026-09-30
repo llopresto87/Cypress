@@ -57,7 +57,9 @@ are decided upstream of you.
   defect and its reproduction), and the reviewer audit stays
   independent either way.
 - **Contained-lane handback.** Hand back the defect, its cause, the fix,
-  and the test that pins it: the close-out owes a why-record and your
+  and the test that pins it, or for a declarative edit with nothing to
+  get wrong the run that proved it (`test-first.proportionate-checks`):
+  the close-out owes a why-record and your
   handback is where it comes from (`tiers.contained-lane`). When a
   contained change would widen past one surface, into a new dependency,
   or into an interface or format, hand back and say the tier moved; the

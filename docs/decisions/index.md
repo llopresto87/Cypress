@@ -13,7 +13,7 @@ which is the installed *application* knowledge graph. ADR bodies use
 | [0003](adr-0003-enforcement-layering-honesty.md) | Enforcement layering, honestly labelled (tool-grant hard; caps soft; deliver-time detective) | accepted (amended 2026-09-14, twice 2026-09-24) | 2026-07-13 | plan §3 ADR-C | P2 |
 | [0004](adr-0004-pure-graph-architecture.md) | The seed is a pure graph (machinery as routable nodes; kernel is a bootstrap) | accepted | 2026-07-22 | pure-graph-refactor.md | 6.0.0 |
 | [0005](adr-0005-composable-expertise-as-graph-nodes.md) | Composable expertise is a node kind and a lazy edge, not a deeper agent tree | accepted | 2026-09-09 | grill-7.5.0-composable-expertise.md | 7.5.0 |
-| [0006](adr-0006-t2-contained-lane.md) | T2 gains a contained lane — a small change is authorized by a test and a why, not a spec | accepted | 2026-09-13 | grill-7.14.0-t2-contained-lane.md | 7.14.0 |
+| [0006](adr-0006-t2-contained-lane.md) | T2 gains a contained lane — a small change is authorized by a test and a why, not a spec | accepted (amended in part by ADR-0023, 2026-09-30) | 2026-09-13 | grill-7.14.0-t2-contained-lane.md | 7.14.0 |
 | [0007](adr-0007-lifecycle-protocol-ceiling.md) | The cross-project meta-loop answers to a larger body ceiling than the rest of the graph | accepted | 2026-09-14 | grill-7.15.0-remediation.md | 7.16.0 |
 | [0008](adr-0008-roster-justification-lives-in-the-node.md) | A component's justification lives in the component (`prevents:`), derived not published; the name-occurrence count is retired | accepted | 2026-09-14 | grill-7.15.0-remediation.md | 7.16.0 |
 | [0009](adr-0009-host-support-tiers.md) | Hosts sit in three support tiers (first-class, supported, frozen); `install.sh all` installs only the first two | proposed | 2026-09-23 | grill-7.27.0-host-support-tiers.md | 7.27.0 |
@@ -30,6 +30,7 @@ which is the installed *application* knowledge graph. ADR bodies use
 | [0020](adr-0020-a-plans-ledger-lives-beside-it.md) | A plan's increments live beside it in a directory named for its stem; the seed's round plans are ledgers | proposed | 2026-09-28 | grill-7.32.0-harvest.md | 7.32.0 |
 | [0021](adr-0021-seed-only-procedures-stay-home.md) | A seed-only procedure lives under `docs/skills/`, and `check_seed_only_stays_home` proves it never reaches a plant | proposed | 2026-09-30 | owner rulings D1, D2 (kept outside the seed) | 7.35.0 |
 | [0022](adr-0022-the-plant-model-map.md) | A plant names its models once, in `docs/graph/models.md`; nodes name the class, and each host reads the map in its own way (supersedes ADR-0019 in part) | proposed | 2026-09-30 | owner ruling D9 (kept outside the seed) | 7.35.0 |
+| [0023](adr-0023-a-declarative-edit-is-proved-by-a-run.md) | A declarative edit with nothing to get wrong is proved by a run, not a RED test (amends ADR-0006 in part) | proposed | 2026-09-30 | owner report, a pipeline selector (kept outside the seed) | unreleased |
 
 ADRs **0001–0003** were decided inline in the plan-of-record
 [`../plans/agent-routing-and-delegation.md`](../plans/agent-routing-and-delegation.md)

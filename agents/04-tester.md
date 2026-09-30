@@ -93,7 +93,9 @@ The detail of steps 1 to 4:
      fixtures in `docs/graph/data/` where applicable.
 3. Test a spec §7 failure mode only where its blast radius is named
    and real (`test-first.proportionate-checks`); a test that needs more
-   code than its subject goes back in the handback, unwritten.
+   code than its subject goes back in the handback, unwritten, and so
+   does a test that would only read back a declarative value (a
+   selector, a stage, a flag): name the run that proves it instead.
 4. Run the tests and confirm each fails for the right reason (step 3
    above).
 5. Update spec §10 (Test mapping) with the test file and test name
