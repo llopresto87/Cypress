@@ -22,14 +22,14 @@ load_when:
 artifacts:
   - templates/library-page.template.md
 prevents: Sources cited from memory rather than retrieved — plausible URLs, plausible quotes, and no snapshot to check either against.
-est_tokens: 1200
+est_tokens: 1540
 ---
 
 # research-and-ingest
 
-This skill is invoked by `research-scout` to fetch external content
-in a disciplined way. The output of this skill is two artifacts:
-raw snapshots in `docs/graph/sources/raw/` (when license allows) and
+This skill is invoked by `research-scout` to fetch external content in a
+disciplined way. The output of this skill is two artifacts: raw
+snapshots in `docs/graph/sources/raw/` (when license allows) and
 normalized summaries in `docs/graph/sources/normalized/`, plus a row in
 `docs/graph/sources/index.md`. The wiki page (created by `library-wiki`)
 draws from these.
@@ -37,11 +37,11 @@ draws from these.
 ## When to apply this skill
 
 - A new dependency is being evaluated or added.
-- A wiki page's "Last reviewed" date is older than the project's
-  review cadence, or its pin no longer matches the lockfile.
+- A wiki page's "Last reviewed" date is older than the project's review
+  cadence, or its pin no longer matches the lockfile.
 - An ADR is being written and needs current evidence.
-- An LLM/VLM feature is being designed and needs the provider's
-  current behavior documentation.
+- An LLM/VLM feature is being designed and needs the provider's current
+  behavior documentation.
 - A spec is being authored and refers to a standard (RFC, schema,
   protocol) the project hasn't read recently.
 
@@ -52,16 +52,16 @@ When two sources disagree, prefer in this order:
 2. Official upstream source code (especially public API surface,
    examples directory, CHANGELOG).
 3. Official upstream blog posts and migration guides.
-4. Security advisories from trusted bodies (CVE, CISA, OWASP,
-   official upstream advisories).
+4. Security advisories from trusted bodies (CVE, CISA, OWASP, official
+   upstream advisories).
 5. Well-maintained community resources with current dates.
 6. Recent blog posts from credible authors.
 7. Anything else, marked clearly with reliability `community` or
    `mirror`.
 
-Never cite a forum answer older than a year for a fast-moving
-library without verifying against current docs. Never paste a forum
-answer into the wiki without testing it.
+Verify a forum answer older than a year against current docs before
+citing it for a fast-moving library, and test any forum answer before it
+enters the wiki.
 
 ## Workflow (per source)
 
@@ -76,20 +76,21 @@ For each source you intend to ingest, note:
 
 ### 2. Fetch
 
-Use the host tool's web-fetch capability. If a documentation MCP
-server is configured (Context7, DeepWiki, `llms.txt` provider,
-similar), prefer it for fast, version-aware retrieval. The MCP
-server does not replace the wiki; it just gets you upstream content
-faster than crawling.
+Use the host tool's web-fetch capability. Ingest paywalled or
+login-walled content only with the user's explicit OK, because its
+access terms bind the project. If a documentation MCP server is
+configured (Context7, DeepWiki, `llms.txt` provider, similar), prefer it
+for fast, version-aware retrieval.
 
 ### 3. Snapshot (when allowed)
 
 When the license permits, write the raw content to
 `docs/graph/sources/raw/<slug>-<retrieved-date>.<ext>`. Acceptable
-extensions: `.md`, `.html`, `.pdf`, `.txt`, `.json`. Strip nothing
-from the raw file — preserve provenance. When the license does not
-permit — or the host retrieved through an MCP summary and holds no
-page to keep — say so in the `raw:` line of the normalized metadata
+extensions: `.md`, `.html`, `.pdf`, `.txt`, `.json`. Keep the raw file
+whole, to preserve provenance. When the license does not permit a
+snapshot, link to the source and store no copy; when the host retrieved
+through an MCP summary and holds no page to keep, there is none to
+store. Either way, say so in the `raw:` line of the normalized metadata
 block. A snapshot with neither the raw file nor the reason is
 `UNJUSTIFIED` at the coverage gate: the reason recorded is what makes
 the omission a decision instead of a habit.
@@ -97,10 +98,9 @@ the omission a decision instead of a habit.
 ### 4. Normalize
 
 Produce `docs/graph/sources/normalized/<slug>.md`:
-- Clean Markdown, no navigation chrome, no ads, no tracking
-  pixels, no boilerplate footers.
-- Keep upstream headings; drop everything else that is not
-  decision-relevant.
+- Clean Markdown holding the upstream headings and the decision-relevant
+  content only (navigation chrome, ads, tracking pixels and boilerplate
+  footers go).
 - At the top, the metadata block:
 
 ```markdown
@@ -127,53 +127,57 @@ Add a row to `docs/graph/sources/index.md`:
 ### 6. Draft, then hand back
 
 Draft the wiki page from the normalized sources (`skill.library-wiki`
-says what each section owes) and end the turn with the handback
-payload naming the page, the sources index rows, and `tester` as
-`recommended_next` for the smoke test — the scout is a leaf; the
-opus-class `docs-librarian` finalizes the page in the close-out, the
-phase order being `ingest-library.flow`'s.
+says what each section owes) and end the turn with the handback payload
+naming the page, the sources index rows, and `tester` as
+`recommended_next` for the smoke test. The scout is a leaf; the
+authoring-class `docs-librarian` finalizes the page in the close-out,
+the phase order being `ingest-library.flow`'s.
 
 ## Documentation MCP servers (when available)
 
-If the project has any of these configured, prefer them for
-fetching upstream content:
+If the project has any of these configured, prefer them for fetching
+upstream content:
 
 - **Context7** (`@upstash/context7-mcp`): current docs for many
-  libraries, addressable by library ID and version. Use the
-  library-ID form for precision.
+  libraries, addressable by library ID and version. Use the library-ID
+  form for precision.
 - **DeepWiki**: open-source repository summaries.
-- **`llms.txt` providers**: projects that publish a
-  machine-readable docs index.
+- **`llms.txt` providers**: projects that publish a machine-readable
+  docs index.
 
-When you use one, cite the source in the normalized file's
-metadata with the MCP server name and the date.
+When you use one, cite the source in the normalized file's metadata with
+the MCP server name and the date.
 
-The local wiki is still authoritative for the project. The MCP
-server gets you upstream content faster; the wiki page is your
-distillation of what this project actually does with that content.
+The local wiki is still authoritative for the project. The MCP server
+gets you upstream content faster; the wiki page is your distillation of
+what this project actually does with that content.
 
 ## Disagreement handling
 
 If two sources disagree:
 1. Note the version coverage of each.
 2. Prefer the more recent official source.
-3. If a security advisory disagrees with the docs, the advisory
-   wins.
-4. If the disagreement persists, record both with their versions
-   in the wiki page, and open a question in grill.md §12.
+3. If a security advisory disagrees with the docs, the advisory wins.
+4. If the disagreement persists, record both with their versions in the
+   wiki page, and open a question in grill.md §12.
+
+For a non-trivial topic, cross-check against the upstream source code as
+well, because one source per topic leaves a disagreement nobody can see.
 
 ## Source reconciliation (lightweight drift check)
 
 Between full research passes, run a cheap periodic reconciliation: diff
 the currently-resolved dependency versions and manifests/locks against
-the versions recorded in the library wiki, **without** re-running research
-or re-fetching upstream. Classify each line:
+the versions recorded in the library wiki, using only what already
+resolves locally. Classify each line:
 
-- **no mismatch** — the wiki pin still matches what resolves; nothing to do.
-- **refresh before the next API-affecting change** — the pin has drifted
-  but no work is about to touch that surface; flag it, don't re-ingest yet.
-- **superseded — treat as historical** — the recorded version is gone from
-  the resolved set; mark the wiki content as historical.
+- **no mismatch**: the wiki pin still matches what resolves; nothing to
+  do.
+- **refresh before the next API-affecting change**: the pin has drifted
+  but no work is about to touch that surface; flag it, and re-ingest
+  when work next touches that surface.
+- **superseded — treat as historical**: the recorded version is gone
+  from the resolved set; mark the wiki content as historical.
 
 This catches silent pin drift that accumulates between full passes, at a
 fraction of the cost. It is distinct from a full research pass (which
@@ -181,22 +185,10 @@ re-fetches and re-normalizes upstream content) and from
 `validate-knowledge` (which tests whether the wiki *prose* is navigable
 and correct, not whether its pins are still current).
 
-## Anti-patterns
-
-- **Ingesting paywalled or login-walled content** without the user's
-  explicit OK.
-- **Paraphrasing past the point** where the paraphrase still says
-  what the source said.
-- **Skipping the version pin.** "Latest" is not a version.
-- **Snapshotting forbidden content.** When the license disallows
-  snapshotting, link only; do not store.
-- **Ingesting from one source per topic.** For non-trivial topics,
-  cross-check against the source code.
-
 ## Reference files
 
-- `docs/graph/templates/library-page.template.md` — where this skill's output
-  ultimately lands.
-- `docs/graph/protocols/ingest-library.md` — the parent protocol.
-- `docs/graph/agents/10-research-scout.md` — the agent that runs this.
-- `docs/graph/skills/library-wiki.md` — the wiki-maintenance skill.
+- `docs/graph/templates/library-page.template.md` : where this skill's
+  output ultimately lands.
+- `docs/graph/protocols/ingest-library.md` : the parent protocol.
+- `docs/graph/agents/10-research-scout.md` : the agent that runs this.
+- `docs/graph/skills/library-wiki.md` : the wiki-maintenance skill.

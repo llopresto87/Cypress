@@ -2,16 +2,14 @@
 
 > Optional procedure: a deployment stops because one or more required
 > configuration variables resolved to nothing, and each one must be sorted into
-> the bucket that decides its fix before anyone touches the pipeline. Not a core
-> skill; instantiate into `docs/graph/skills/<name>.md` (its home, projected
-> into the harness dirs the plant uses) from `templates/skill.template.md` if
-> selected. It runs under the role `agent-corpus/env-contract-manager.md` when
+> the bucket that decides its fix before anyone touches the pipeline. It runs
+> under the role `agent-corpus/env-contract-manager.md` when
 > a plant has selected that role, and under `reliability` otherwise.
 > **Composes** `core/method/secrets-posture.md` (names and locations, never
 > values), `protocols/test-first.md` (the test that pins a deliberate empty
 > mode), `protocols/verify.md` (a gate not run is recorded as not run), and
 > `tool-corpus/ops/declared-variable-existence-auditor.md` (the names-only
-> store probe) **by reference, restating none of them**. What it adds is the
+> store probe) by reference. What it adds is the
 > three-bucket classification, the one sanctioned exception to it, and the
 > diagnostic order that finds a missing value before a wiring bug.
 
@@ -37,17 +35,16 @@ variable set, if there is one).
 
 ## 1. Classify each variable into exactly one bucket
 
-Do not start from the pipeline. For each variable the error names, read the
-**consumer**: the application code and container entrypoint that read it, and
-the deploy manifests that reference it, split into the local and the
-non-local side. The bucket decides the fix, and every variable goes into
-exactly one.
+Start from the **consumer**: for each variable the error names, read the
+application code and container entrypoint that read it, and the deploy
+manifests that reference it, split into the local and the non-local side. The
+bucket decides the fix, and every variable goes into exactly one.
 
 | bucket | how you know | the fix |
 |---|---|---|
 | **Dead config** | no reader anywhere in the consumer | remove the stale reference from the deploy manifest and unwire it from the contract; do not supply a value |
 | **Blank-safe** | the consumer supplies its own fallback (a settings default, an entrypoint `${X:-N}`) | give the deploy reference a default that equals the consumer's own fallback **exactly**; keep the required check everywhere else |
-| **Real secret** | a reader rejects or breaks on empty (throws, refuses to start, signs with nothing) | **never default it, never make it optional**; leave the reference bare so the fail-closed check keeps guarding it, and supply the value |
+| **Real secret** | a reader rejects or breaks on empty (throws, refuses to start, signs with nothing) | leave the reference bare so the fail-closed check keeps guarding it, and supply the value; a default or an optional flag would disarm that check (§2 is the one exception) |
 
 A blank-safe default that differs from the consumer's fallback is a second
 home for that value, and the two will drift. When the consumer renames the
@@ -84,6 +81,11 @@ writes nothing, so the target stays empty and the check still fires. Inject
 the source name wherever the component's variable list is declared, so it
 reaches the step. Leave the bare reference untouched.
 
+Declare only inputs. A variable produced by a derivation step at deploy time
+is an output, and it is correctly absent from the declared set; check that a
+variable is not derived before adding it there, because a declared copy is a
+second source for one value.
+
 Check the other side too. Local and non-local manifests often spell the same
 setting in two forms, and a local example file may omit it entirely. Confirm
 the name on the side you are resolving before concluding it is missing.
@@ -107,8 +109,8 @@ re-run is evidence only for values that existed at its own queue time. Whether
 platform's library-corpus page (for one example,
 `library-corpus/platform/azure-pipelines-yaml.md`).
 
-**Third, what does the target hold?** Probe the deployed target without
-exposing the value. Report one of three states, and nothing else:
+**Third, what does the target hold?** Probe the deployed target so it reports
+ONLY one of three states, never the value:
 
 ```sh
 <TARGET_EXEC> sh -c 'if ! printenv NAME >/dev/null; then echo unset;
@@ -124,11 +126,6 @@ rather than "deploy failed", suspect deploy code older than the fail-closed
 check. A deploy agent still running that code writes the empty value silently,
 while the current branch fails loudly on the same input.
 
-**Before adding a variable to the declared list, check it is not derived.** A
-variable produced by a derivation step at deploy time is an output, not a
-declaration, and it is correctly absent from the declared set. Adding it there
-creates a second source for one value.
-
 ## 5. Record, and keep the golden test honest
 
 Record variable **names and locations**, never values, in the fix and in every
@@ -138,26 +135,9 @@ keeps verification results; a gate that did not run is written as not run
 
 When the fix legitimately changes the generated variable set (a new alias
 output, a removed dead reference), update `<GOLDEN_TEST>`'s list of intended
-deltas on purpose, with the reason. Never loosen or delete its assertion to
-turn it green: that hides real drift behind a passing gate.
-
-## Anti-patterns
-
-- Starting from the pipeline definition instead of from the consumer.
-- Defaulting a real secret, or marking it optional, so the deploy goes through.
-- A blank-safe default that differs from the consumer's own fallback.
-- Optionalizing a secret on the strength of one of the three artifacts, or
-  citing an earlier exception for a different name.
-- Bridging a name mismatch with a defaulted alias, or by editing the bare
-  reference.
-- Re-reading the wiring layer by layer before checking that the value exists.
-- Reading a names-only probe as proof that a value is set.
-- Treating a failure from a run queued before the save as "the fix did not
-  work".
-- Printing a value, or its length, to find out whether it is set.
-- Adding a derived output to the declared list.
-- Loosening the golden test's assertion instead of updating its intended
-  deltas.
+deltas on purpose, with the reason. Change `<GOLDEN_TEST>` only through that
+list, because loosening or deleting its assertion hides real drift behind a
+passing gate.
 
 ## Reference files
 

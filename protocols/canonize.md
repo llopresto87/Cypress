@@ -1,6 +1,6 @@
 ---
 name: canonize
-description: The single end-of-task close-out spawn. At the completion of every non-trivial task, spawn the docs-librarian ONCE with a combined brief that (a) persists into docs/graph any knowledge of interest the work surfaced (b) catalogs in docs/graph/tools any durable tool it produced (the toolcraft doctrine, kernel §3.8, executes inside this same spawn — never a second one), (c) walks the open/hotfix status register item by item and moves — in frontmatter, with evidence — what this session actually moved, (d) records every decision that departs from a standard the graph owns as both an ADR entry and a standing `deviation.*` node, and (e) on a T2 contained-lane task writes the why-record the lane owes — one ADR or one changelog line carrying defect → cause → fix → pinning test. A task is not complete until all five are done or explicitly recorded empty. For Tier 0/1 tasks (kernel §0), the session self-records "nothing of interest / no tool" in the delivery instead of spawning. Runs before deliver signs off.
+description: The single end-of-task close-out spawn. At the completion of every non-trivial task, spawn the docs-librarian once with a combined brief that (a) persists into docs/graph any knowledge of interest the work surfaced (b) catalogs in docs/graph/tools any durable tool it produced (the toolcraft doctrine, kernel §3.8, executes inside this same spawn — never a second one), (c) walks the open/hotfix status register item by item and moves — in frontmatter, with evidence — what this session actually moved, (d) records every decision that departs from a standard the graph owns as both an ADR entry and a standing `deviation.*` node, and (e) on a T2 contained-lane task writes the why-record the lane owes — one ADR or one changelog line carrying defect → cause → fix → pinning test. A task is not complete until all five are done or explicitly recorded empty. For Tier 0/1 tasks (kernel §0), the session self-records "nothing of interest / no tool" in the delivery instead of spawning. Runs before deliver signs off.
 id: protocol.canonize
 tier: 2
 kind: protocol
@@ -37,38 +37,35 @@ load_when:
   - "handback overflow notes, read them at close-out"
   - "file the session record, which harness memory entries can be retired"
 prevents: Knowledge that dies with the session that produced it, and durable tools reinvented as throwaway scripts because nothing cataloged the last one.
-est_tokens: 3823
+est_tokens: 3619
 command: true
 ---
 
 # Protocol: canonize — the close-out spawn
 
-This node owns **the canonize rule** — knowledge of interest is
-captured before a task is done. Work generates knowledge and
-capabilities; if either lives only in the session transcript, it dies
-with the session and the next agent rediscovers or rewrites it the
-hard way. Every T2/T3 task ends with **one** docs-librarian spawn —
-the close-out — persisting into `docs/graph/` the facts, sharp edges,
-corrected assumptions, provenance, and missed `load_when:` triggers
-the work surfaced; cataloging its durable tools (the toolcraft rule)
-in the same pass; moving the lifecycle status of whatever the session
-closed, parked, or patched; and writing each deliberate departure from
-a graph-owned standard as a standing deviation. Facts land in the
-graph, tools in the catalog, status in frontmatter, deviations in
-`nodes/` — one execution for all of it, because a second spawn with
-the same bootstrap and the same lint run would be pure coordination
-waste. The librarian owns the graph's **fact-bearing surfaces** —
-nodes, wiki pages, the tool catalog — and one-home-per-fact; the
-session never edits those. The session-owned operational artifacts
-under the same root (grill.md, changelog.md and the session records in
-`plans/sessions/`) are the deliberate exception: the session writes
-them directly. The librarian's one write to a session record is the
-status lines it appends. The verification runbook is written by the
-tester worker that ran the gates (`docs/graph/protocols/verify.md` and
-`docs/graph/agents/04-tester.md` agree on that). A delivery that
-changed understanding but left the graph
-untouched is a silent knowledge leak — the same failure class as a
-green lie.
+This node owns **the canonize rule**: knowledge of interest is captured
+before a task is done. Work generates knowledge and capabilities; if
+either lives only in the session transcript, it dies with the session and
+the next agent rediscovers or rewrites it the hard way. Every T2/T3 task
+ends with **one** docs-librarian spawn, the close-out, which persists into
+`docs/graph/` the facts, sharp edges, corrected assumptions, provenance,
+and missed `load_when:` triggers the work surfaced; catalogs its durable
+tools (the toolcraft rule) in the same pass; moves the lifecycle status of
+whatever the session closed, parked, or patched; and writes each
+deliberate departure from a graph-owned standard as a standing deviation.
+Facts land in the graph, tools in the catalog, status in frontmatter,
+deviations in `nodes/`. It is one execution for all of it, because a second
+spawn with the same bootstrap and the same lint run would be pure
+coordination waste.
+
+Only the librarian writes the graph's **fact-bearing surfaces** (nodes,
+wiki pages, the tool catalog), and it keeps one home per fact; the session
+writes none of them. The session writes its own operational artifacts under
+the same root directly:
+grill.md (`rule.grill`), changelog.md, and the session records in
+`plans/sessions/`, where the librarian's one write is the status lines it
+appends. The verification runbook belongs to the tester worker that ran
+the gates (`protocol.verify`).
 
 ## When to invoke
 
@@ -77,17 +74,17 @@ green lie.
 - Whenever the work surfaced a fact the graph does not own, contradicted
   one it does, or produced a tool a future session will run again.
 - **Tier 0/1 shortcut:** a question answered or a trivial non-behavioral
-  edit needs no spawn. The session writes one line in the delivery —
-  "canonize: nothing of interest / no tool, because …" — and that
-  satisfies the fail-closed doctrine. If a T0/T1 task *did* surface
-  something durable (it happens), it escalates: spawn the librarian.
+  edit needs no spawn. The session writes one line in the delivery,
+  "canonize: nothing of interest / no tool, because …", however minor the
+  task, and that line satisfies the fail-closed doctrine. A T0/T1 task
+  that surfaced something durable escalates: spawn the librarian.
 
 ## What the one brief carries
 
-**Knowledge candidates** (§3.7) — canonize this:
+**Knowledge candidates** (§3.7), canonize this:
 - a new or changed fact about the project's structure or capability;
 - a sharp edge that bit (and the tell that would spot it next time);
-- a corrected assumption — the graph asserted X, the work proved not-X;
+- a corrected assumption: the graph asserted X, the work proved not-X;
 - provenance for a claim (the source/path/symbol that grounds it);
 - a `load_when:` trigger that should have matched this task and didn't;
 - a new library idiom or pitfall learned while using a dependency.
@@ -97,72 +94,72 @@ session itself learned, which no handback carries. The record and its
 shape belong to `method.stewardship-posture`
 (`stewardship-posture.session-record`). The brief names the path of every
 record the task wrote or appended to since the last close-out; it
-carries the paths, never the content. The librarian walks every item
-that has no line in the record's "Canonize status" and gives each exactly
-one outcome. An owner rule about how agents work with this owner goes to
-`crosscut.operator` (`docs/graph/nodes/_operator.template.md`); an owner
-rule about the project goes to the node that owns its topic, and a
-procedure to a project skill. A corrected assumption is fixed in place,
-in the node or leaf that asserted the wrong thing. Resume state is not
-placed ("resume state; stays in the record"). Anything else is placed
-where it belongs, or not placed with the reason. Per item the librarian
-appends one line to "Canonize status",
+carries the paths ONLY, and the librarian reads each record itself. The
+librarian walks every item that has no line in the record's "Canonize
+status" and gives each exactly one outcome. An owner rule about how agents
+work with this owner goes to `crosscut.operator`
+(`docs/graph/nodes/_operator.template.md`); an owner rule about the
+project goes to the node that owns its topic, and a procedure to a project
+skill. A corrected assumption is fixed in place, in the node or leaf that
+asserted the wrong thing. Resume state is not placed
+("resume state; stays in the record"). Anything else is placed where it belongs, or not placed
+with the reason. Per item the librarian appends one line to "Canonize
+status",
 `- <section> <item> → <node id and fact key, or file>` or
 `- <section> <item> → not placed: <reason>`, then one line
 `- retirable harness entries: <names>, awaiting the owner's confirmation by name`
-(or `none`), and last the code-anchor line of flow step 3. It never
-rewrites an item, never touches harness memory, which sits outside the
-plant, and places nothing that carries a secret,
-production data or speculation. Retiring a harness entry stays the
-owner's decision, taken by name (kernel §4). The record is a source of
-knowledge candidates, so it adds no sixth duty to this close-out. A
-T2/T3 task that wrote no record is handed back as the finding "no
-session record".
+(or `none`), and last the code-anchor line of flow step 3. The librarian
+ONLY appends to a record, and ONLY writes inside the plant: harness memory
+sits outside it, and retiring a harness entry stays the owner's decision,
+taken by name (kernel §4). The record is a source of knowledge candidates,
+so it adds no sixth duty to this close-out. A T2/T3 task that wrote no
+record is handed back as the finding "no session record".
 
-**Tool candidates** (§3.8, `docs/graph/skills/toolcraft.md` owns the doctrine) —
-catalog any durable tool the work produced: recurs across sessions,
-stable interface, test-authorized, lives in the repo. The worker
-handbacks already name these in `tools_built`; the brief forwards them.
-The producer is `agent.tool-smith`, spawned **mid-task** when the
-recurrence was noticed — never here. Close-out catalogs what was built;
-it does not build. A tool candidate that arrives with no tool behind it
-is a finding for the next plan, not work for the librarian.
+**Tool candidates** (§3.8, `docs/graph/skills/toolcraft.md` owns the
+doctrine): catalog any durable tool the work produced (recurs across
+sessions, stable interface, test-authorized, lives in the repo). The
+worker handbacks already name these in `tools_built`; the brief forwards
+them. The builder is `agent.tool-smith`, spawned mid-task when the
+recurrence was noticed; the close-out ONLY catalogs what was built. A tool
+candidate that arrives with no tool behind it is a finding for the next
+plan, not work for the librarian.
 
-**Skill candidates** (§3.8, the procedure sibling of a tool — the
-doctrine lives in `docs/graph/skills/toolcraft.md`) — forward any repeatable
+**Skill candidates** (§3.8, the procedure sibling of a tool; the doctrine
+lives in `docs/graph/skills/toolcraft.md`): forward any repeatable
 multi-step procedure the work walked that a future session will walk
-again: named in `skills_built` on a handback, or the same sequence now
+again, named in `skills_built` on a handback, or the same sequence now
 appearing a third time in grill/changelog. The brief forwards the
 candidates; the librarian authors them.
 
-**Status review** (`canonize.status-review`) — the brief instructs the
+**Status review** (`canonize.status-review`): the brief instructs the
 librarian to run `python3 docs/graph/status-register.py --open --hotfix`
 against the tree as the session left it and walk the result item by
 item, asking of each: *did this move this session?* What the work
 closed gets `status: closed` + `status_evidence` (the gate run, commit,
 or path#anchor that proves it); what it patched improperly is `hotfix`
 with an `owner`; what it parked is `deferred` with `reopen_when`. Moves
-land in **frontmatter only, never body prose** — the vocabulary and its
-companions are `docs/graph/_schema.md` §"Lifecycle status". An item
-that did not move is left alone: the librarian records the session's
-moves, it does not close what the work did not close. The brief carries
-the instruction, not the register's output.
+land in frontmatter ONLY, where the register reads them; the vocabulary
+and its companions are `docs/graph/_schema.md` §"Lifecycle status". The
+librarian ONLY records the moves this session made: an item the work did
+not move keeps its status. The brief carries the instruction, and the
+librarian runs the register itself.
 
-**Session metrics** — before the hand-back says the session's metrics
+**Session metrics**: before the hand-back says the session's metrics
 are on record, the librarian shows the entry that carries them: the
 most recent T2/T3 delivery entry in `docs/graph/changelog.md` (the
 delivery this close-out follows), holding the Session metrics block
 `docs/graph/protocols/deliver.md` defines. When that entry has no such
-block, the hand-back says so; the librarian does not reconstruct the
-missing numbers. A block that is defined but never read leaves
-`harvest` nothing to aggregate.
+block, the hand-back says so and leaves the numbers empty, because
+reconstructed numbers would be guesses that `harvest` aggregates as data.
+A block that is defined but never read leaves `harvest` nothing to
+aggregate.
 
-**Deviation candidates** (`canonize.deviation-capture`) — every
+**Deviation candidates** (`canonize.deviation-capture`): every
 decision made this session that departs from a standard the graph owns
 (a fact key, a posture node, a `best-practices/` leaf, an external norm
 the graph records). The brief names the decision and the standard; the
-librarian asks **why** — of the session, or of the handback that
-carries the decision — and writes BOTH homes: the ADR entry (the
+librarian asks **why**, of the session or of the handback that
+carries the decision, and writes BOTH homes: the ADR entry (the
 history; `docs/graph/skills/adr-writer.md`) and a `deviation.<slug>`
 node in `docs/graph/nodes/` (the standing truth: `status: standing`,
 `departs_from`, `reason`, `scope`, `ends_when`, `recorded_in` naming the
@@ -172,33 +169,35 @@ blank form out of the router). A departure with no node is a lapse the next
 session will "fix"; one with no ADR is a decision nobody can trace; with
 both, the router surfaces it exactly when the topic comes up and it is
 never re-litigated or mistaken for a lapse. If nobody can say why, it
-is not a standing deviation — record it `status: open` with an owner
+is not a standing deviation: record it `status: open` with an owner
 and let the next session decide.
 
-**Why-record** (`tiers.contained-lane`) — mandatory on every **T2
+**Why-record** (`tiers.contained-lane`): owed by every **T2
 contained lane** task, because the lane spent no spec to explain
 itself and the close-out is where that debt comes due. The brief names
 the defect, its cause, the fix, and the test that pins it, and the
-librarian writes **one** entry: an **ADR** when a real choice was made
-among options (`docs/graph/skills/adr-writer.md`), otherwise a
-`changelog.md` line naming defect → cause → fix → test. One entry, not
-both, and never a spec — a small change that needs a spec to be
-explicable was misclassified, and the honest close-out says so rather
-than manufacturing the spec after the fact. A covered-lane task owes no
+librarian writes exactly **one** entry: an **ADR** when a real choice was
+made among options (`docs/graph/skills/adr-writer.md`), otherwise a
+`changelog.md` line naming defect → cause → fix → test. A small change
+that needs a spec to be explicable was misclassified: the close-out says
+so in the delivery and reclassifies it. A covered-lane task owes no
 why-record: its spec contract already carries the why.
 
-**Prose pass** (`humanizer.scope`) — every node body, runbook, or README
-paragraph the librarian writes or refreshes this spawn is prose a person
-reads: the brief instructs the librarian to apply
-`docs/graph/skills/humanizer.md` in file mode and to run
+**Prose pass** (`humanizer.scope`): node bodies and session records are
+written for models, so the librarian writes them in compact instruction
+language and gives them no humanizer pass. A runbook or README paragraph it
+writes or refreshes this spawn is prose a person reads, so the brief
+instructs the librarian to apply `docs/graph/skills/humanizer.md` in file
+mode to it. On every prose file the spawn changes, the librarian runs
 `python3 docs/graph/prose-lint.py --file <path> --against HEAD` before the
-graph-lint pass, so the rewrite carries no strong tell and dropped no
-number, heading, code span, or link target.
+graph-lint pass, so no file gains a strong tell or drops a number, heading,
+code span, or link target.
 
-**Neither list includes:** ephemeral scratch, secrets/credentials,
-production or personal data, speculation (write "not recorded"),
-project-specific material aimed at the seed (that is `harvest`'s
-agnosticism gate), throwaway prototypes or genuine one-offs.
+**Kept out of every candidate list:** ephemeral scratch, throwaway
+prototypes and genuine one-offs (they have no future reader); secrets,
+credentials, production or personal data (kernel §4); speculation (write
+"not recorded"); project-specific material aimed at the seed (that is
+`harvest`'s agnosticism gate).
 
 ## The flow (one spawn)
 
@@ -212,92 +211,97 @@ agnosticism gate), throwaway prototypes or genuine one-offs.
    worker wrote when its handback did not fit, at
    `docs/graph/plans/<unit of work>/overflow/<spawn_id>.md`
    (`docs/graph/templates/prompts/handback-payload.md` owns its shape):
-   the brief names each one, and the
-   librarian reads each as candidate evidence. A handback carries only
-   the decision content, so the caveats and dead ends that did not fit
-   live in the note and nowhere else.
-2. **Spawn the docs-librarian once** (Opus-class; it owns `docs/graph/`)
-   with a brief that embeds the canonical block from
-   `docs/graph/templates/prompts/graph-session-bootstrap.md` plus both candidate
-   lists. This spawn is fail-closed, and a `grow`/`graft` session reaches it in
-   the same session that installed the roster — so if the host has no such type,
-   apply `delegation.harness-registration`
-   (`docs/graph/method/delegation-bounds.md`): re-enter rooted at the plant or
-   role-emulate and record it. Skipping the close-out because the type would not
-   resolve is not one of the options.
-3. **The librarian persists and catalogs in one pass:** each fact lands
-   in exactly one node's `owns:` (dedupe against what the graph already
-   owns — update, don't duplicate); each tool gets
-   `docs/graph/templates/tool-page.template.md` filled into
-   `docs/graph/tools/<name>.md`, an index row, and an `artifacts:` edge
-   from its owning node (checking `tool-corpus/` first for a ready card —
-   when working in the seed repo, or when the plant has harvested the tool
-   corpus); each recurring procedure gets
-   `docs/graph/templates/skill.template.md` filled into its home node
-   `docs/graph/skills/<name>.md`, plus the projection in each harness
-   directory the plant actually uses (`.claude/skills/<name>/SKILL.md` and
-   kin) — checking `skill-corpus/` first for a ready one under the same
-   condition, deduping against skills already present, composing existing
-   disciplines by reference;
-   `load_when:` triggers that failed to fire are sharpened. Then the
-   librarian runs the status register (`--open --hotfix`) and walks it
-   item by item, moving in frontmatter — with evidence — what this session
-   moved; and writes each deviation candidate as ADR entry + `deviation.`
-   node once its *why* is on record. One `graph-lint` run plus the
-   register's lint role (`python3 docs/graph/status-register.py --root
-   docs/graph`) confirm the graph stays clean. With the graph reconciled,
-   the librarian runs `python3 docs/graph/code-anchor.py --record` once.
-   It writes `.cypress/anchor.json`: the branch, the commit and the
-   uncommitted code paths of each repository the plant governs. The
-   line it prints goes into the newest session record's "Canonize
-   status" as a bullet of its own, as printed: it already begins
-   `Code anchor recorded`. The next session compares against
-   the anchor once at its start: its session-start hook runs `--compare`,
-   and a host with no hook reads that line. A refusal (exit 1) leaves
-   the old anchor standing, and its stderr line takes the place of the
-   printed line. Nothing runs the tool per prompt or per tool call.
+   the brief names each one, and the librarian reads each as candidate
+   evidence. A handback carries only the decision content, so the
+   caveats and dead ends that did not fit live in the note and nowhere
+   else.
+2. **Spawn the docs-librarian once** (authoring-class; it owns
+   `docs/graph/`) with a brief that embeds the canonical block from
+   `docs/graph/templates/prompts/graph-session-bootstrap.md` plus the
+   candidate lists. This spawn is fail-closed, and a `grow`/`graft`
+   session reaches it in the same session that installed the roster, so
+   if the host has no such type, apply `delegation.harness-registration`
+   (`docs/graph/method/delegation-bounds.md`): re-enter rooted at the
+   plant or role-emulate and record it. The close-out runs either way.
+3. **The librarian persists and catalogs in one pass.** Where the step
+   says a corpus is checked first, that applies when the corpus is present
+   (the seed repo, or a plant that harvested it).
+   - *Facts:* each lands in exactly one node's `owns:`; when the graph
+     already owns the fact, update that home in place. `load_when:`
+     triggers that failed to fire are sharpened.
+   - *Tools:* each gets `docs/graph/templates/tool-page.template.md`
+     filled into `docs/graph/tools/<name>.md`, an index row, and an
+     `artifacts:` edge from its owning node; check `tool-corpus/` first
+     for a ready card.
+   - *Skills:* each recurring procedure gets
+     `docs/graph/templates/skill.template.md` filled into its home node
+     `docs/graph/skills/<name>.md`, plus the projection in each harness
+     directory the plant actually uses (`.claude/skills/<name>/SKILL.md`
+     and kin). Check `skill-corpus/` first for a ready one, dedupe
+     against skills already present, and compose existing disciplines by
+     reference.
+   - *Status:* run the status register (`--open --hotfix`) and walk it
+     item by item, moving in frontmatter, with evidence, what this session
+     moved.
+   - *Deviations:* write each candidate as ADR entry + `deviation.` node
+     once its *why* is on record.
+   - *Lint:* one `graph-lint` run plus the register's lint role
+     (`python3 docs/graph/status-register.py --root docs/graph`) confirm
+     the graph stays clean.
+   - *Anchor:* with the graph reconciled, run
+     `python3 docs/graph/code-anchor.py --record` once. It writes
+     `.cypress/anchor.json`: the branch, the commit and the uncommitted
+     code paths of each repository the plant governs. The line it prints
+     goes into the newest session record's "Canonize status" as a bullet
+     of its own, as printed: it already begins `Code anchor recorded`.
+     The next session compares against the anchor once at its start: its
+     session-start hook runs `--compare`, and a host with no hook reads
+     that line. A refusal (exit 1) leaves the old anchor standing, and its
+     stderr line takes the place of the printed line. Nothing runs the
+     tool per prompt or per tool call.
 4. **Confirm or record-empty.** The librarian hands back nodes/fact-keys
    touched, tool cards written, status items moved (id → new status +
-   evidence), and deviation nodes written — or an explicit "nothing of
+   evidence), and deviation nodes written, or an explicit "nothing of
    interest, because …" / "no durable tool, because …" / "no status
    moved" / "no deviation". For each session record it hands back the
    items placed (item → home), the items not placed (item → reason), and
    the harness entries that can be retired; with no record, it hands back
    "no session record". It also hands back the code-anchor line or its
-   refusal, the lint results and each
-   overflow note it read with whether anything in it was persisted.
+   refusal, the lint results and each overflow note it read with whether
+   anything in it was persisted.
 
 ## Fail-closed doctrine
 
 A task is **not complete** until its knowledge is canonized, any durable
 tool is cataloged, and any recurring procedure is crystallized into a
-project skill — or each is explicitly recorded empty with a reason
-(this node and `docs/graph/skills/toolcraft.md` own the rule; toolcraft owns what
-counts as durable). An uncaptured fact is a silent knowledge leak; an
-uncaptured tool or procedure is a silent capability leak; a status the
-work moved but the frontmatter still shows `open` is the same leak in a
-third form (the next session redoes closed work, or trusts a hotfix as
-a fix); an unrecorded deviation is the fourth (a deliberate departure
-read as a lapse and reverted); and a contained-lane change delivered
-with no why-record is the fifth — a behavior change nobody can trace
-back to a reason, the exact debt the lane borrowed against when it
-skipped the spec — all the same failure class as a green lie (§3.5). `deliver` (§3.6) does not sign off
-until this close-out has run (or the T0/T1 self-record line is present).
+project skill, or each is explicitly recorded empty with a reason
+(this node and `docs/graph/skills/toolcraft.md` own the rule; toolcraft
+owns what counts as durable). Each duty left neither done nor recorded
+empty is a leak of the same failure class as a green lie (§3.5):
+- an uncaptured fact (a knowledge leak), tool or procedure (a capability
+  leak);
+- a status the work moved while the frontmatter still shows `open` (the
+  next session redoes closed work, or trusts a hotfix as a fix);
+- an unrecorded deviation (a deliberate departure read as a lapse and
+  reverted);
+- a contained-lane change delivered with no why-record (a behavior change
+  nobody can trace back to a reason, the exact debt the lane borrowed
+  against when it skipped the spec).
+
+`deliver` (§3.6) signs off once this close-out has run (or the T0/T1
+self-record line is present).
 
 ## Relationship to the other protocols
 
 - `deliver` produces the human-facing cold-pickup **summary**; canonize
   persists the machine-facing **graph knowledge and tool catalog**.
 - `toolcraft` (`docs/graph/skills/toolcraft.md`) owns the *doctrine* of what
-  counts as a durable tool. Three actors, three moments, and conflating them
-  is what left the doctrine with no author for so long:
-  **`skill.toolcraft` rules**, **`agent.tool-smith` builds** (mid-task, when
-  the recurrence is noticed), **canonize catalogs** (once, at close-out).
-  There is still no separate *cataloging* spawn — a second spawn with the same
-  bootstrap and lint run would be coordination waste — and that rule was never
-  about authoring, which does not happen here at all.
+  counts as a durable tool. Three actors act at three moments, and each
+  needs its own owner: **`skill.toolcraft` rules**, **`agent.tool-smith`
+  builds** (mid-task, when the recurrence is noticed), **canonize
+  catalogs** (once, in the close-out spawn, which authors nothing).
 - `adr-writer` (`docs/graph/skills/adr-writer.md`) writes the ADR that
-  carries a deviation's history — and the short-form ADR a contained
+  carries a deviation's history, and the short-form ADR a contained
   lane's why-record calls for; canonize owns the moment either is
   captured and the `deviation.*` node that makes a departure standing
   truth.
@@ -305,23 +309,3 @@ until this close-out has run (or the T0/T1 self-record line is present).
   user-triggered only; canonize keeps **project-specific** knowledge and
   tools in the plant. What harvest's agnosticism gate rejects still
   belongs here.
-
-## What you do not do
-
-- You do not close a Tier 2/3 task without the librarian spawn, and you
-  do not skip the T0/T1 self-record line "because it was minor".
-- You do not close a contained-lane task without its why-record, and
-  you do not let that record grow into a spec — if it needs one, the
-  task was misclassified; say so in the delivery and reclassify.
-- You do not spawn the librarian twice for one task's close-out; facts
-  and tools travel in the same brief.
-- You do not write the graph's fact-bearing surfaces from the main
-  session; the librarian owns them (the ownership split and its
-  session-owned exception are stated in the rule above).
-- You do not move a status in body prose, and you do not close an item
-  the work did not close — `closed` needs `status_evidence`.
-- You do not record a departure from a standard in the ADR alone or in
-  a node alone; both, or it is not captured.
-- You do not canonize secrets, production data, or speculation.
-- You do not duplicate a fact or a tool card that already has a home;
-  update it in place.

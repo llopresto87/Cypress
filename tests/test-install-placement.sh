@@ -44,6 +44,7 @@ is_generated() {
         .claude/commands/*|.opencode/commands/*|.prime/agent/prompts/*) return 0 ;;
         .github/agents/*|.github/prompts/*|.github/instructions/*)      return 0 ;;
         .codex/codex-config-snippet.toml)                               return 0 ;;
+        .opencode/agents/*)                                             return 0 ;;  # ADR-0022: projected through the model map
     esac
     return 1
 }
@@ -198,7 +199,15 @@ case_m2() {
         fi
         refused+=("$blocked")
         rm -f "$A/$blocked"
-        printf 'placeholder\n' > "$A/$blocked"
+        if [[ "$blocked" == "docs/graph/models.md" ]]; then
+            # A bare placeholder has no `## Map` table, so SPEC-0001
+            # MODEL_MAP_UNREADABLE dies before the next attempt even starts.
+            # The shipped template has a valid (if unfilled) map, so the
+            # loop can keep proving the symlink-replacement contract.
+            cp "$ROOT/templates/docs/models.md" "$A/$blocked"
+        else
+            printf 'placeholder\n' > "$A/$blocked"
+        fi
     done
 
     local clobbered=()

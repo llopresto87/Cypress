@@ -1,6 +1,6 @@
 <!--
 Template: knowledge-graph/node.template.md
-Lives at: docs/graph/nodes/<id>.md   (filename MUST equal the id)
+Lives at: docs/graph/nodes/<id>.md   (the filename is the id; graph-lint rule 2)
 Used: one file per node. Copy an existing node in preference to this
 when the graph already has peers of the same kind.
 Contract: docs/graph/_schema.md — the linter enforces it.
@@ -11,12 +11,12 @@ tier: 2
 kind: {{kind}}
 title: {{name}} — one-line description
 repo: {{repo-or-path}}          # optional; omit for non-code subjects
-owns:                           # fact-keys this node is the SOLE home of
+owns:                           # fact-keys this node is the only home of
   - {{name}}.responsibility
   - {{name}}.{{fact}}
 requires:                       # loaded transitively with this node; keep minimal
   - {{kind}}.{{dependency}}
-peers:                          # NOT loaded unless the task crosses into them
+peers:                          # loaded only when the task crosses into them
   - {{kind}}.{{neighbour}}
 libraries:                      # Tier-3 pages this node depends on (optional; omit if none)
   - {{library-name}}
@@ -37,8 +37,8 @@ Two or three sentences. What this subject is and its boundary.
 
 ## What you must know
 
-The facts this node `owns`. Terse — bullets, tables, code. No prose
-padding. Do not restate a fact another node owns; link to it.
+The facts this node `owns`. Terse: bullets, tables, code. Link to any
+fact another node owns.
 
 ## Sharp edges
 

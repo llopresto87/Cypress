@@ -2,7 +2,7 @@
 
 How to put CYPRESS into a project, keep it up to date, and take it out again.
 
-**There is one entry point: [`INSTALL_PROMPT.md`](INSTALL_PROMPT.md).** Paste it
+There is one entry point: [`INSTALL_PROMPT.md`](INSTALL_PROMPT.md). Paste it
 into an agent-capable chat, meaning a coding tool's chat that can run commands
 in your repository, and it does the whole job in two parts. First it *places*
 every seed file (the files this repository ships) into your project; then it
@@ -11,7 +11,7 @@ graph. `install.sh`, documented below, is only the placement step that prompt
 runs. The growth follows `docs/graph/protocols/grow.md`, including its
 **completeness contract** (`grow.completeness-contract`), which binds the model
 running the growth to write every node and leaf your code gives evidence for,
-not a skeleton. This page is the reference for the shell installer and for the
+to full depth. This page is the reference for the shell installer and for the
 housekeeping around that one flow: upgrade, uninstall and troubleshooting.
 
 ## Prerequisites
@@ -27,11 +27,12 @@ housekeeping around that one flow: upgrade, uninstall and troubleshooting.
   the Codex and GitHub Copilot files.
 - The seed system unzipped or cloned somewhere stable. In the default
   copy mode the seed path is only read at install time; in `--symlink`
-  mode the placed files reference it, so don't move it after install.
+  mode the placed files reference the seed, so keep it at the path you
+  installed from.
 
 ## One-shot install and grow
 
-The main way to install **and grow** the seed, whichever coding tool you use,
+The main way to install and grow the seed, whichever coding tool you use,
 is to paste [`INSTALL_PROMPT.md`](INSTALL_PROMPT.md) into an agent-capable chat.
 That prompt runs one flow in three phases:
 
@@ -46,7 +47,7 @@ That prompt runs one flow in three phases:
   gives evidence for is covered.
 
 The chat stays where the work is planned and coordinated, and it starts
-Sonnet-class scouts and Opus-class authors to do it. The shell installer below
+investigation-class scouts and authoring-class authors to do it. The shell installer below
 is the PLACE-phase mechanism, and you rarely call it directly.
 
 From the seed system directory:
@@ -58,9 +59,13 @@ From the seed system directory:
              [--legal-corpus yes|no] [--legal-jurisdiction CC] [--print-config]
 ```
 
-`<tool>` is one of:
+`<tool>` is one of the list below. Every tool gets the kernel under both
+names, `CLAUDE.md` and `AGENTS.md`: the first one placed holds it, and the
+other is a symlink to it.
 - `claude-code`: drops `CLAUDE.md` + `.claude/`.
-- `opencode`: drops `AGENTS.md` + `.opencode/` + `opencode.json`.
+- `opencode`: drops `AGENTS.md` + `.opencode/` + `opencode.json`, with each
+  agent's `model:` line written from the plant's model map,
+  `docs/graph/models.md`.
 - `codex`: deprecated, a frozen host
   ([ADR-0009](docs/decisions/adr-0009-host-support-tiers.md)); drops
   `AGENTS.md` + `.codex/`; prints `~/.codex/config.toml` hints.
@@ -71,9 +76,6 @@ From the seed system directory:
   agents, `route-extension.ts`, `settings.json`).
 - `all`: runs claude-code, opencode and prime-agent. Name `codex` or
   `github-copilot` as well to install a frozen host.
-
-Every tool also gets the kernel under both names, `CLAUDE.md` and
-`AGENTS.md`: the first one placed holds it, and the other is a symlink to it.
 
 ### Examples
 
@@ -94,11 +96,8 @@ Every tool also gets the kernel under both names, `CLAUDE.md` and
 ## What the installer does
 
 For each tool:
-1. Drops the bootstrap kernel at the expected path (`CLAUDE.md` for
-   Claude Code; `AGENTS.md` for the others), with the other name beside it
-   as a symlink, or a copy where symlinks are unavailable. The kernel is
-   small by design, and everything else activates progressively through the
-   graph.
+1. Drops the bootstrap kernel (see above). The kernel is small by design,
+   and everything else activates progressively through the graph.
 2. Installs the entire method surface into the graph (protocols, skills
    flattened to `<name>.md`, agents, `method/` posture nodes and the Tier-3
    template artifacts) as seed-owned nodes the router can reach, under
@@ -107,8 +106,9 @@ For each tool:
    tool expects a fixed location, for agents and skills only, plus
    tool-specific files (slash commands, settings, config).
 4. Places in `docs/graph/` the schema, linter, router, nodes directory,
-   and every missing leaf collection from `templates/docs/`. Existing files
-   are preserved ([plant files kept](DOCUMENTATION.md#enf-plant-files-kept)). `INSTALL_PROMPT.md` then orchestrates source-grounded
+   and every missing leaf collection from `templates/docs/`, among them the
+   model map `docs/graph/models.md`, which you fill once with the model each
+   host runs for each class and effort. Existing files are preserved ([plant files kept](DOCUMENTATION.md#enf-plant-files-kept)). `INSTALL_PROMPT.md` then orchestrates source-grounded
    growth. `/initialize` is the entry fork behind it: grow when there is
    source to scout, from-scratch when the repository is empty.
 5. Installs the canonical prompt as `EXPERT_SEED_INSTALL_PROMPT.md` at the
@@ -116,13 +116,16 @@ For each tool:
 
 For `github-copilot` specifically, files are *transformed* (not
 symlinked) because Copilot expects different frontmatter shapes. Each
-generated file carries a "GENERATED — do not edit" banner. Re-run the
-installer after editing any source file to regenerate the Copilot
-views, and use `--check` to detect drift without writing:
+generated file carries a "GENERATED — do not edit" banner. For `opencode`,
+each agent is rendered with its `model:` line from the model map; after you
+edit the map, re-run `install.sh opencode`. Re-run the installer after
+editing any source file to regenerate these views, and use `--check` to
+detect drift without writing:
 
 ```sh
-# CI drift gate: exits non-zero if the .github/ views are stale
+# CI drift gate: exits non-zero if the generated views are stale
 ./install.sh github-copilot --check
+./install.sh opencode --check
 ```
 
 ## The plant facts are yours to state
@@ -133,15 +136,21 @@ decides what the release posture tolerates, build-on-host included), `commit_att
 (`none` or the trailer text), `deliverable_language` and `comment_language`. Pass them at
 install time with those four flags, or fill the section by hand before grow or graft.
 
-Two more decisions are the owner's and are **asked before a run, not settled
-during one**: `--legal-corpus yes|no`, which places the whole legal corpus or
+Two more decisions are the owner's, asked before a run, not settled during
+one: `--legal-corpus yes|no`, which places the whole legal corpus or
 records that this plant carries none, and `--legal-jurisdiction CC`, which names
 the national layer. `agent.legal` can do exactly one thing until the first is
 answered, which is to decline the work
 ([charter duties](DOCUMENTATION.md#enf-charter-duties)), and the installer says
 so at the end of every run that leaves it undecided.
-The installer does not guess them, and it leaves any value the plant already declares
-as it is; whatever is still a placeholder is named as a NEXT STEP.
+The installer keeps any value the plant already declares and names each
+remaining placeholder as a NEXT STEP.
+
+The model map, `docs/graph/models.md`, is the third owner decision: which
+model each host runs for each class and effort. An unfilled row is not an
+error: the agent runs on its caller's model, and graft reports the unfilled
+map as a disclosed line
+([ADR-0022](docs/decisions/adr-0022-the-plant-model-map.md)).
 
 ## Copy mode vs symlink mode
 
@@ -164,7 +173,7 @@ so re-installing over an unchanged project creates nothing.
 
 `--force` suppresses the per-file warning, never the backup
 ([backup before replace](DOCUMENTATION.md#enf-backup-before-replace)). The
-backup IS graft Phase 7's safety net and the input `tools/graft-audit.py`
+backup is graft Phase 7's safety net and the input `tools/graft-audit.py`
 reads, so a flag that discarded it would leave a graft with nothing to audit
 and no way back. No mode overwrites without a recovery copy. Two files are
 replaced without a copy, by design: the install stamp `.cypress/seed.json`,
@@ -173,7 +182,7 @@ which keeps every key the installer does not own, and
 re-created. Both are derived, never authored, so a copy would carry no
 recovery value.
 
-If the destination is a symlink, the LINK is moved aside, not followed, so an
+If the destination is a symlink, the link is moved aside, not followed, so an
 install does not modify a file outside the target directory
 ([backup before replace](DOCUMENTATION.md#enf-backup-before-replace)).
 
@@ -248,8 +257,9 @@ If you copied (the default), re-run the installer to pull seed updates:
 If you used `--symlink`, edits to the seed propagate automatically:
 `git pull` or otherwise update the seed source, and no re-install is needed.
 
-`--force` skips the backup chatter when you know the existing files
-are just outdated copies.
+For a grown plant, the reconciled upgrade is `graft`, through
+[`GRAFT_PROMPT.md`](GRAFT_PROMPT.md): it adopts what the seed advanced,
+keeps the plant's own divergences, and reports what it cannot reconcile.
 
 ## Uninstalling
 
@@ -281,9 +291,7 @@ and everything under
 ## Multi-tool projects
 
 Installing multiple tools is supported and common. They share the
-same kernel (`AGENTS.md` / `CLAUDE.md`) and unified graph. If a kernel
-file already in place differs from the seed kernel, the installer backs it
-up and warns.
+same kernel (`AGENTS.md` / `CLAUDE.md`) and unified graph.
 
 **Claude Code + Prime Agent, interchangeably.** These two are the
 first-class harnesses, and one plant can run either. Install both:
@@ -295,11 +303,10 @@ first-class harnesses, and one plant can run either. Install both:
 The installer collapses `CLAUDE.md` (Claude Code) and `AGENTS.md`
 (Prime Agent) into a **single shared kernel file**, one the real file and the
 other a project-local symlink to it, so editing the kernel
-updates both harnesses and the two do not drift apart. `.claude/` and
-`.prime/agent/` sit side by side; `docs/graph/` is shared. Switching
-harness is just opening the plant in the other tool. (On a platform
-without symlinks the second kernel is an independent copy; keep the two
-in sync by hand.)
+updates both harnesses and the two do not drift apart; where symlinks are
+unavailable, the second kernel is a copy you keep in sync by hand.
+`.claude/` and `.prime/agent/` sit side by side; `docs/graph/` is shared.
+Switching harness is just opening the plant in the other tool.
 
 Recommended order if installing all five:
 
@@ -338,7 +345,9 @@ provided snippet sets it to 64 KiB.
 discovers `.opencode/agents/*.md` by convention. Confirm the files are there,
 then confirm the session started *after* they were placed
 (`docs/graph/method/delegation-bounds.md`, `delegation.harness-registration`). Note the
-known gap in `integrations/opencode/README.md`: the seed's `model:` and `tools:`
-frontmatter are Claude-Code-shaped, so on opencode the model class and a leaf's
-tool bound are carried by the brief rather than held by the harness
-([tool allow-list](DOCUMENTATION.md#enf-tool-allowlist)).
+known gap in `integrations/opencode/README.md`: the seed's `tools:` frontmatter
+is Claude-Code-shaped, so on opencode a leaf's tool bound is carried by the
+brief rather than held by the harness
+([tool allow-list](DOCUMENTATION.md#enf-tool-allowlist)). An agent whose
+`model:` line is missing runs on its caller's model, because the model map
+names no opencode model for its class and effort.

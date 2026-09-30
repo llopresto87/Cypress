@@ -8,6 +8,7 @@ owns:
   - delegation.model-classes
   - delegation.light-variants
   - delegation.effort
+  - delegation.model-map
 requires:
 peers:
   - method.delegation
@@ -18,41 +19,54 @@ load_when:
   - "sonnet or opus, which model class"
   - "reasoning effort, low effort worker, light variant, light reviewer or tester"
   - "effort for this spawn, effort field in the agent definition"
+  - "which model on this host, model map, provider, non-Anthropic model"
 prevents: Every worker run on the most expensive model at full effort, or a cheap one handed authoring, review or a security surface it cannot carry.
-est_tokens: 2153
+est_tokens: 2292
 ---
 
 ## Route by model class
 
 Read-only investigation and mechanical retrieval/normalization →
-**sonnet-class** (draft artifacts are finalized by an opus librarian);
-authoring, implementation, judgment-heavy design, review, or adversarial
-validation → **opus-class**. The one exception is a light variant
-(`delegation.light-variants`, below): a light
-reviewer, a light tester or a one-line-fix implementer runs small, mechanical
-work on the investigation class, and never on a security surface. No other
-authoring or review step leaves its class. This **model class** lives in each
-agent's `model:` frontmatter. It is a distinct axis from the **task tier**
-(T0–T3, kernel §0) and the graph **load-tier** (the node `tier:` field): three
-independent axes that share the word loosely — only the risk axis is written
-`T0–T3`; "model class" and "load-tier"/`tier:` name the other two.
+**investigation class** (draft artifacts are finalized by an authoring-class
+librarian); authoring, implementation, judgment-heavy design, review, or
+adversarial validation → **authoring class**. The one exception is a light
+variant (`delegation.light-variants`, below): a light reviewer, a light tester
+or a one-line-fix implementer runs small, mechanical work on the investigation
+class (security surfaces excepted, below); every other authoring or review
+step stays in its class. This **model class** lives in each agent's `model:`
+frontmatter. It is a distinct axis from the **task tier** (T0–T3, kernel §0)
+and the graph **load-tier** (the node `tier:` field): three independent axes
+that share the word loosely; only the risk axis is written `T0–T3`, and
+"model class" and "load-tier"/`tier:` name the other two.
 
-A host that can select model *versions* within a class refines each phase's
-class to a concrete version at spawn time. That version policy is host-specific
-and lives in the host's integration overlay, never in a tool-neutral node; the
-class a phase uses stays owned by that phase in its protocol node.
+**Two classes, four aliases.** The authoring class and the investigation
+class are the only model classes. An agent's `model:` field names one of the
+four aliases Claude Code reads natively: `opus` (authoring), `sonnet`
+(investigation), `haiku` (investigation at low effort, whatever `effort:` says)
+and `inherit` (the caller's model). Seed agents use `opus` and `sonnet`. On
+every other host the alias names a class, and routing text names it in the
+body's words, "authoring-class" or "investigation-class". The class a phase
+uses stays owned by that phase's protocol node.
+
+**The plant names the model once** (`delegation.model-map`). The model each
+host runs for a class and an effort lives in `docs/graph/models.md`, which the
+plant owns and fills once. Nodes, protocols and briefs name the class and the
+effort and leave the model to that file. A spawn runs the model its map row
+lists. A row still unfilled means the caller's model: the spawn omits the
+model, and its routing evidence records `model: inherited (map row unfilled)`.
+A filled row whose model does not resolve stops the spawn, which reports it.
+How each host reads the map is in that host's integration README.
 
 **Effort refines the class; it is not a fourth axis.** Effort in this node is
 *reasoning effort*, a host setting. It is not the owner-declared *effort level*
 of a task, which `method.minimum-sufficient-work` owns. A host that accepts a
 reasoning-effort setting runs a class at low, medium or high effort. Which
 hosts accept one, and whether it is set per agent definition or per spawn, is
-host policy, recorded under `delegation.effort` below.
-Where the host reads a default effort from the agent's definition, that default
-is the baseline. A spawn that departs from it, in model or in effort, records
-the departure and its reason in the brief's routing evidence, the same place an
-overridden route is recorded, so the delivery can see which budget each step
-ran on.
+host policy, recorded under `delegation.effort` below. Where the host reads a
+default effort from the agent's definition, that default is the baseline. A
+spawn that departs from it, in model or in effort, records the departure and
+its reason in the brief's routing evidence, the same place an overridden route
+is recorded, so the delivery can see which budget each step ran on.
 
 The class and effort each step kind runs on by default:
 
@@ -66,14 +80,11 @@ The class and effort each step kind runs on by default:
 | A harvest's faithful-import review (`protocol.harvest`) | authoring | high | already at the ceiling |
 | Any step on a security surface (the list under `delegation.light-variants`) | authoring | high | already at the ceiling |
 
-A gate-running worker judges nothing. It runs the gates, asserts what they
-report, and fails closed on output it cannot read; the verdict on a red result
-belongs to the authoring class.
+A gate-running worker only runs the gates and asserts what they report,
+failing closed on output it cannot read; the verdict on a red result belongs
+to the authoring class.
 
 ### Light variants (`delegation.light-variants`)
-
-Light variants are adopted for small, mechanical work, and never for a
-security surface.
 
 **A light variant is a budget, not a new mandate.** A plant may instantiate a
 low-budget variant of an existing specialist for small, mechanical work (a
@@ -81,17 +92,16 @@ pinned test, a one-line fix, a follow-up diff). The variant keeps the base
 agent's mandate unchanged, runs on the investigation class at low effort, and
 its definition `requires:` the base agent and names it as the escalation
 target. Like any commissioned expert (`delegation.routing`, in
-`method.delegation`), it joins the project's roster,
-never the seed's.
+`method.delegation`), it joins only the project's roster.
 
 It reads only the exact ranges its brief names, as `file:line` spans: the spec
 rows, the diff hunks, the test functions. It still runs the graph discipline's
-`--plan` and reports the output, but it loads no node the brief does not name
+`--plan` and reports the output, but it loads only the nodes the brief names
 and lists every other one as skipped, brief-scoped.
 
-**Escalation is mechanical, never a judgment of size.** The variant stops with
-`blocked-out-of-domain` and names the base agent as `recommended_next` when any
-of these holds, and it never widens its own reading to cover the gap:
+**Escalation is mechanical.** The variant stops with `blocked-out-of-domain`
+and names the base agent as `recommended_next` when any of these holds,
+whatever the work's size:
 
 - deciding the work needs a line outside the ranges the brief names;
 - the diff changes a line outside the hunks the brief names;
@@ -101,15 +111,16 @@ of these holds, and it never widens its own reading to cover the gap:
 - the named ranges raise a question the brief does not answer: a second
   reading of a contract, or a design choice.
 
-**Never on a security surface.** Work that touches one goes to the full agent
-at the class the table gives, whatever its size. The caller applies this before
-routing, and the third escalation condition is the variant's backstop when the
-caller misjudged it.
+**Security surfaces go to the full agent.** Work that touches one runs on the
+full agent at the class the table gives, whatever its size, because the
+investigation class at low effort cannot carry a security surface. The caller
+applies this before routing, and the third escalation condition is the
+variant's backstop when the caller misjudged it.
 
 **Still an independent reviewer.** A light reviewer is a reviewer at a smaller
-budget. It is never the author of what it reviews, and never a worker from the
-lane whose output it reviews. It does not replace the independent review a step
-requires; it only runs that review more cheaply when the work is small.
+budget, independent in the same way: someone other than the author, from
+outside the lane whose output it reviews. It runs the independent review the
+step requires, more cheaply, when the work is small.
 
 **Size the brief to the class before routing to it.** The caller gives a light
 variant the smallest context that decides the work: the exact ranges, the few
@@ -147,7 +158,7 @@ A spawn's effort is derived from the first row that matches:
 | # | Condition | Spawn effort |
 |---|---|---|
 | 1 | a security surface (any trigger in `agent.security`'s "When to invoke" list; the brief names which); spec contracts, architecture, rulings, one-way doors, threat models, `devils-advocate`; a harvest's faithful-import review; diagnosing a red gate | high |
-| 2 | a light variant (never on a security surface) | low |
+| 2 | a light variant | low |
 | 3 | the spawn carries increments: the hardest label in the batch (`delegation.effort-scale`) | low or medium-low → low; medium → medium; medium-hard or hard → high |
 | 4 | no increment label: the step kind's row in the class and effort table above | that row's effort |
 | 5 | otherwise | the agent definition's default |
@@ -159,8 +170,7 @@ definition's default on a host with no recorded per-spawn setting, the line adds
 handback echoes the line in its `effort:` field.
 
 Departures fail closed. For rows 3 to 5, route to a definition that carries the
-needed effort, or accept the recorded departure. For row 1 a departure is never
-accepted: the step goes to a definition whose default is `high`, or its output
-takes a review spawn at `high` before it lands (`security` for a security
-surface, `architect` for a contract or ruling). A row-1 step with neither is a
-block.
+needed effort, or accept the recorded departure. For row 1 the step goes to a
+definition whose default is `high`, or its output takes a review spawn at
+`high` before it lands (`security` for a security surface, `architect` for a
+contract or ruling); a row-1 step with neither is a block.

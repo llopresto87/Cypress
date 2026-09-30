@@ -22,8 +22,8 @@ distinct that a single "supported / not supported" table would blur:
   draws for Claude Code alone (**hard** = the harness refuses, **soft** = a
   contract or a tool refuses (lint plus prose plus the brief), **detective** =
   asserted post-hoc from named evidence a person reads, **judgment** = a named
-  agent or person decides and no tool can, the fourth label its 2026-09-14
-  amendment added), extended here across all five hosts.
+  agent or person decides and no tool can), extended here across all five
+  hosts.
 
 Every cell below is one of exactly six classes, with one deliberate
 exception: the Effort override row uses `not recorded` where whether the host
@@ -60,8 +60,7 @@ Measurements section).
 A tier is a maintenance commitment, set by
 [ADR-0009](../docs/decisions/adr-0009-host-support-tiers.md). It says what the
 seed owes each host on the next change; the matrix below says what each harness
-holds today, so the two do not replace each other and no cell below moved when
-the tiers were set. The assignment's one home is the three tier arrays in
+holds today, so the two do not replace each other. The assignment's one home is the three tier arrays in
 `install.sh`, and `tests/seed-lint.py` (`check_host_tiers`) holds this table to
 them. `install.sh all` installs the first-class and supported hosts; a frozen
 host installs only when it is named, as in `install.sh all codex`, and prints a
@@ -70,11 +69,12 @@ host installs only when it is named, as in `install.sh all codex`, and prints a
 | Tier | Hosts | What the seed commits to |
 |---|---|---|
 | `first-class` | `claude-code`, `prime-agent` | Feature parity is the target. A feature that ships on one is owed to the other, or its absence is recorded as a defect to close. |
-| `supported` | `opencode` | Installed by `all`, with its install surfaces unchanged. |
+| `supported` | `opencode` | Installed by `all`, with its install surfaces unchanged except the `model:` line of each projected agent, which the installer writes from the plant's model map ([ADR-0022](../docs/decisions/adr-0022-the-plant-model-map.md)). |
 | `frozen` | `codex`, `github-copilot` | Still installable by name, with a `DEPRECATED` notice. No new features; the existing tests run as regression. |
 
 A feature reaches opencode only where the host carries it natively; where it
-cannot, the gap is recorded in this matrix and no workaround is built. A
+cannot, the gap is recorded in this matrix and stays the host's gap, with no
+workaround. A
 harvest generalises a feature for the first-class hosts, carries it to
 opencode under that rule, and targets no frozen host.
 
@@ -87,15 +87,15 @@ opencode under that rule, and targets no frozen host.
 | Delegation mechanism | mechanically enforced | mechanically enforced | unsupported | unsupported | mechanically enforced |
 | Recursion bound | brief-enforced¹ | mechanically enforced | unsupported | unsupported | mechanically enforced² |
 | Tool allowlists | mechanically enforced | degraded | unsupported | projected | brief-enforced |
-| Model selection | mechanically enforced | degraded | unsupported | unsupported | brief-enforced |
-| Effort override (agent-frontmatter `effort:` key) | mechanically enforced | not recorded⁶ | not recorded⁶ | not recorded⁶ | not recorded⁶ |
+| Model selection | mechanically enforced | mechanically enforced⁷ | unsupported | unsupported | brief-enforced |
+| Effort override (agent-frontmatter `effort:` key) | mechanically enforced | not recorded⁶ | not recorded⁶ | not recorded⁶ | brief-enforced⁶ |
 | Session-start hook | mechanically enforced | unsupported | unsupported | projected³ | mechanically enforced |
 | Routing hook | mechanically enforced | unsupported | unsupported | projected³ | mechanically enforced |
 | Status hook | mechanically enforced | unsupported | unsupported | projected³ | mechanically enforced |
 | Per-session injection dedup | mechanically enforced | unsupported | unsupported | degraded³ | unsupported⁵ |
 | Pre-tool guard | mechanically enforced | unsupported | unsupported | unsupported | unsupported |
 | Slash commands | mechanically enforced | mechanically enforced | unsupported | mechanically enforced | mechanically enforced |
-| Always-applied instructions | mechanically enforced (25 401 B) | mechanically enforced (25 401 B) | mechanically enforced (≤ 25 401 B)⁴ | mechanically enforced (31 045 B) | mechanically enforced (22 295 B) |
+| Always-applied instructions | mechanically enforced (25 246 B) | mechanically enforced (25 246 B) | mechanically enforced (≤ 25 246 B)⁴ | mechanically enforced (30 890 B) | mechanically enforced (21 324 B) |
 
 ¹ The leaf/coordinator split (who holds the spawn tool at all: `Agent` on Claude Code, `Task` accepted) is read by the
 harness from each agent's `tools:` line, and ADR-0003 classes that read
@@ -135,15 +135,21 @@ model-cooperative: no harness reads it, and it holds only while the model
 follows the overlay. That is not one of the six classes, so it is recorded
 here and not in the cell (see "Per-session injection dedup" below).
 
-⁶ Whether opencode, Codex CLI, GitHub Copilot or Prime Agent read an `effort`
+⁶ Whether opencode, Codex CLI or GitHub Copilot read an `effort`
 key from agent frontmatter at all is not established
 (`docs/specs/SPEC-0005-cycle-economy.md` §6, "Effort";
 `core/method/delegation-model-classes.md`, `delegation.effort`). "not
 recorded" is not one of the six classes above: it names an open question, not
 a confirmed capability gap, so no cell here reads "unsupported" on the
-strength of a guess. Whether Claude Code itself offers a per-spawn override on
+strength of a guess. Prime Agent takes the effort per spawn as
+`rlm.spawn(..., thinking=<effort>)`, and its overlay tells the parent to pass
+the brief's effort there (`integrations/prime-agent/APPEND_SYSTEM.md`), so that
+cell is brief-enforced. Whether Claude Code itself offers a per-spawn override on
 top of the frontmatter key is likewise not recorded
 (`integrations/claude-code/README.md`, "Effort").
+
+⁷ Once the plant's model map row is filled. An unfilled row projects no
+`model:` line, and the agent runs on its caller's model.
 
 ## Per-capability evidence
 
@@ -207,7 +213,7 @@ parity here; the differences are budget mechanics, not enforcement.
 - **Prime Agent: observed.** No static roster is enumerated at session
   start at all, by design. `agents/*.md` land as on-disk **brief
   sources**; the orchestrator reads one and spawns a child with
-  `rlm(brief + task)` at the moment it is needed
+  `rlm.spawn(brief + task, name=...)` at the moment it is needed
   (`integrations/prime-agent/APPEND_SYSTEM.md`, "Delegation — recursive
   subagents, not a Task tool"). This is not a weaker version of
   registration: there is no "installed but not yet spawnable" lag the way
@@ -232,7 +238,7 @@ parity here; the differences are budget mechanics, not enforcement.
   "`Task` (subagent spawning) has no Copilot equivalent and is not
   projected." VS Code's "agent mode" is a user-driven persona switch, not
   one agent programmatically spawning another: **unsupported**.
-- Prime Agent: the native `rlm()` primitive, a real recursive-subagent
+- Prime Agent: the native `rlm.spawn()` primitive, a real recursive-subagent
   spawn with model selection and message-based handback
   (`integrations/prime-agent/APPEND_SYSTEM.md`): **mechanically
   enforced**.
@@ -299,30 +305,34 @@ parity here; the differences are budget mechanics, not enforcement.
   hence "projected," not "degraded". The enforcement is real, the mapping
   is lossy by design and documented as such.
 - Prime Agent: no per-role tool-restriction surface is shipped; a spawned
-  `rlm()` child's actual capability set is whatever the discipline in
+  `rlm.spawn()` child's actual capability set is whatever the discipline in
   `APPEND_SYSTEM.md` asks the parent to respect. **brief-enforced**.
 
 ### Model selection
 
 - Claude Code: `model: opus` / `model: sonnet` in frontmatter is read
   natively by the spawn tool (`Agent`, `Task` accepted). **mechanically enforced**.
-- opencode: explicitly **degraded**. Same gap table: opencode expects
-  `provider/model` (e.g. `anthropic/claude-sonnet-4-5`); fed `opus` or
-  `sonnet` instead, "the seed's model-class policy is not applied; agents
-  run on the session default." The mechanism exists on opencode; the
-  seed's unmodified projection just doesn't speak its shape.
+- opencode: opencode expects a `provider/model` selector, so the installer
+  writes each projected agent's `model:` line from the plant's model map,
+  `docs/graph/models.md`, at the agent's class and effort
+  (`render_opencode_agents()` in `install.sh`; `integrations/opencode/README.md`,
+  "Model choice comes from the plant's model map"). **mechanically enforced**
+  once the map row is filled. An unfilled row projects no `model:` line, and the
+  agent runs on its caller's model. `install.sh opencode --check` compares the
+  placed projections with a fresh rendering, the `model:` line included.
 - Codex CLI: no per-agent model directive appears anywhere in
   `config.toml.example`, and the README doesn't describe one being
   generated: **unsupported**.
 - GitHub Copilot: the transform (`install_github_copilot()` in `install.sh`) emits only
   `description:` and `tools:`; there is no `model:` line in the generated
   frontmatter at all; the field is dropped, not mismapped. **unsupported**.
-- Prime Agent: the orchestrator reads the brief's `model:` field itself and
-  passes it to `rlm(..., model=...)`, resolving the class via
-  `rlm.find_models(...)` (`APPEND_SYSTEM.md`, "Model policy"). Real
-  mechanism, but it depends on the calling agent following that
-  instruction correctly on every spawn, and nothing forces it.
-  **brief-enforced**.
+- Prime Agent: the parent reads the class from the brief and the model from
+  the plant's model map, `docs/graph/models.md`, resolves it with
+  `rlm.find_models(...)` and spawns with `rlm.spawn(..., model=...)`
+  (`APPEND_SYSTEM.md`, "Delegation"). A selector that does not resolve stops
+  the spawn; an unfilled row inherits the parent's model and is recorded. Real
+  mechanism, but it depends on the calling agent following that instruction on
+  every spawn. **brief-enforced**.
 
 ### Effort override
 
@@ -340,7 +350,10 @@ parity here; the differences are budget mechanics, not enforcement.
   per-spawn override on top of the frontmatter key: not recorded.
 - Every host: the per-spawn derived effort (`delegation.effort`) is
   **brief-enforced**. The brief records it; no host applies it.
-- opencode, Codex CLI, GitHub Copilot, Prime Agent: whether the host reads an
+- Prime Agent: the parent passes the brief's effort as
+  `rlm.spawn(..., thinking=<effort>)` on each spawn (`APPEND_SYSTEM.md`).
+  **brief-enforced**.
+- opencode, Codex CLI, GitHub Copilot: whether the host reads an
   `effort` key from agent frontmatter at all is **not recorded**
   (`docs/specs/SPEC-0005-cycle-economy.md` §6, "Effort"). This sits outside
   the six classes above by design (see footnote 6): an unconfirmed read is
@@ -479,33 +492,24 @@ function's own computation against current sources:
 
 | Harness | Formula | Measured |
 |---|---|---|
-| Claude Code | kernel + agent descriptions + skill descriptions | 25 401 B |
-| opencode | kernel + agent descriptions + skill descriptions | 25 401 B |
-| Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 25 401 B |
-| Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 22 295 B |
-| GitHub Copilot | kernel + agent descriptions + skill descriptions + pointer boilerplate | 31 045 B |
+| Claude Code | kernel + agent descriptions + skill descriptions | 25 246 B |
+| opencode | kernel + agent descriptions + skill descriptions | 25 246 B |
+| Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 25 246 B |
+| Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 21 324 B |
+| GitHub Copilot | kernel + agent descriptions + skill descriptions + pointer boilerplate | 30 890 B |
 
-(Component figures are not restated here. These moved four times in one release
-and were wrong three of those times, including once while the correction to the
-previous error was being written down, because a ten-byte kernel edit landed in
-between. `check_eager_surface()` in `tests/seed-lint.py` is their one home, and
-`check_published_figures()` beside it now holds this table against that
-computation: a cell that drifts from what the function computes fails the gate
-and names both numbers. Chasing them by hand was the wrong repair, and this
-paragraph used to claim the gate already did this while it did not.)
+The component figures live in `check_eager_surface()` in `tests/seed-lint.py`,
+their one home, and `check_published_figures()` beside it holds this table to
+that computation: a cell that drifts from what the function computes fails the
+gate and names both numbers.
 
 Four harnesses enumerate only `name` + `description` for each of the 15
 skills at session start and load a skill's full body only when the model
 invokes it: genuine progressive disclosure. Copilot's projections (written by
 `install_github_copilot()`, not by `generate_slash_commands()`) are pointers of
-the same shape since 7.16.0.
-
-GitHub Copilot **was** the outlier. Its skill projections carried
-`applyTo: '**'`, so every skill body was always-applied context there:
-138 535 bytes against 25 401 everywhere else. 7.16.0 narrowed them to
-pointers, `EAGER_EXEMPTIONS` is consequently empty, and the harness is
-modelled like every other one at 31 045 B. The residue is the pointer
-boilerplate each file carries, not the discipline behind it.
+the same shape, so no harness is exempt: `EAGER_EXEMPTIONS` is consequently
+empty, and GitHub Copilot is modelled like every other harness. Its extra bytes
+are the pointer boilerplate each projected file carries.
 
 ## Measurements
 
@@ -532,8 +536,6 @@ grep -n '\[agents\]' integrations/codex/config.toml.example   # (no output)
 grep -n 'library.corpus' install.sh   # (no output — legal-corpus is the only corpus install.sh places)
 ```
 
-A gap surfaced while building this matrix and was closed in 7.16.0:
-`integrations/codex/config.toml.example` registered 13 of the seed's 15
-skills while `integrations/codex/README.md` claimed the bundled example
-"shows the full set — one `[[skills.config]]` entry per skill the seed
-ships." It now registers all 15, so the README's claim is true.
+`integrations/codex/config.toml.example` registers all 15 skills, one
+`[[skills.config]]` entry per skill the seed ships, as
+`integrations/codex/README.md` says.

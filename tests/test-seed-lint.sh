@@ -121,6 +121,19 @@ def pad(rel, n):
     append(rel, "\n".join(f"padding line {i}" for i in range(n)))
 
 
+def manifest_tools(add=None, drop=None):
+    m = json.loads(read("manifest.json"))
+    assert drop is None or drop in m["tools"], f"plant did not apply: {drop} not in manifest.json tools"
+    if add:
+        m["tools"][add] = "x"
+    if drop:
+        del m["tools"][drop]
+    put("manifest.json", json.dumps(m, indent=2) + "\n")
+
+
+PLACE_ANCHOR = '    place_file "$SEED_ROOT/tools/code-anchor.py" "$g/code-anchor.py"\n'
+
+
 # label, check, plant, needle, absent. Labels bound by a spec §10 row keep
 # their X/E id (R1); a row folded into another keeps its label beside it.
 OC = {"$schema": "https://opencode.ai/config.json", "subagent_depth": 3}
@@ -153,6 +166,22 @@ ROWS = [
     ("E4 HOST_TIERS_AGREE all-vs-arrays", "check_host_tiers", lambda: sub("install.sh", "SUPPORTED_TOOLS=(opencode)", "SUPPORTED_TOOLS=()"), "`all` expands to"),
     ("E4 HOST_TIERS_AGREE untiered", "check_host_tiers", lambda: sub("install.sh", "FROZEN_TOOLS=(codex github-copilot)", "FROZEN_TOOLS=(github-copilot)"), "untiered ['codex']"),
     ("single-writer-bypass", "check_install_write_sites", lambda: sub("install.sh", "place_tree() {", 'sneak() {\n    cp "$SEED_ROOT/README.md" "$PROJECT_DIR/SNEAK.md"\n}\nplace_tree() {'), "named placement operations"),
+    # SPEC-0001 SEED_ONLY_FILES_NEVER_PLACED (adr-0021). exercises: check_seed_only_stays_home
+    ("X393 SEED_ONLY_FILES_NEVER_PLACED manifest names prepare-release", "check_seed_only_stays_home", lambda: manifest_tools(add="tools/prepare-release.py"), ("tools/prepare-release.py", "a seed-only file")),
+    ("X394 SEED_ONLY_FILES_NEVER_PLACED installer places a seed doc", "check_seed_only_stays_home", lambda: sub("install.sh", PLACE_ANCHOR,
+        PLACE_ANCHOR + '    place_file "$SEED_ROOT/docs/decisions/index.md" "$PROJECT_DIR/docs/graph/decisions-index.md"\n'), "sources a file under $SEED_ROOT/docs"),
+    ("X395 SEED_ONLY_FILES_NEVER_PLACED manifest drops a placed tool", "check_seed_only_stays_home", lambda: manifest_tools(drop="tools/code-anchor.py"), "manifest.json"),
+    # SPEC-0003 BRIEF_TEMPLATES_BYTE_IDENTICAL, the COMPANION block. exercises: check
+    ("X396 BRIEF_TEMPLATES_BYTE_IDENTICAL COMPANION block drift", "check", lambda: sub("templates/prompts/investigation-brief.md",
+        r"(COMPANION \(echo each item back in your handback\):\n- Trace )this( spawn\.)", r"\1that\2", True), ("investigation-brief.md", "COMPANION")),
+    # the reference's quoted load_when strings follow the frontmatter (D2, seed-release.dedupe-rule). exercises: check_reference_tables
+    ("reference-load-when-drift", "check_reference_tables", lambda: sub("documentation/protocols-reference.md",
+        r'"record a\s+missing or skipped gate"', '"record a skipped gate"', True), ("load_when", "protocol.verify")),
+    ("reference-load-when-rewrapped", "check_reference_tables", lambda: sub("documentation/protocols-reference.md",
+        r'"record a\s+missing or skipped gate"', '"record a missing or\n  skipped gate"', True), "load_when", True),
+    ("reference-load-when-reordered", "check_reference_tables", lambda: sub("documentation/protocols-reference.md",
+        r'"increment done, ready to merge or deploy"; "which gates to\s+run, verification runbook"',
+        '"which gates to run, verification runbook"; "increment done, ready to merge or deploy"', True), ("protocol.verify", "other order")),
     # SPEC-0003 HOOK_TEXT_RESTATES_NO_KERNEL_RULE
     ("X201 HOOK_TEXT_RESTATES_NO_KERNEL_RULE text grows", "check_hook_text_restates_no_kernel_rule", lambda: sub(
         "integrations/claude-code/route-hook.py", 'NEW_PREFIX = "', 'NEW_PREFIX = "' + "T2 is a contained change. " * 40), "over HOOK_TEXT_MAX_BYTES"),
@@ -206,10 +235,16 @@ ROWS = [
     ("reference-stale-tokens", "check_reference_tables", lambda: sub("documentation/protocols-reference.md", r"^(\| graft \|[^\n]*\| )(\d+)( \|)$", r"\g<1>9790\g<3>", True), "est_tokens 9790, but protocol.graft declares"),
     ("reference-invented-fact", "check_reference_tables", lambda: sub("documentation/protocols-reference.md", "`graft.reversibility` |", "`graft.reversibility`, `graft.invented` |"), "extra ['graft.invented']"),
     ("reference-duplicate-field", "check_reference_tables", lambda: sub("documentation/protocols-reference.md", r"^(- \*\*load_when:\*\*[^\n]*\n)", r"\1\1", True), "is stated 2 times"),
+    # docs/decisions/index.md lists every ADR file, and no row points at a missing one. exercises: check_decision_index
+    ("decision-index-unlisted", "check_decision_index", lambda: put("docs/decisions/adr-0099-planted.md", read("docs/decisions/adr-0001-mechanical-agent-router.md")), "adr-0099"),
+    ("decision-index-dangling", "check_decision_index", lambda: sub("docs/decisions/index.md", r"(^\| \[\d{4}\]\(adr-[^\n]*\n)(?!\| \[\d{4}\])",
+        r"\1| [0098](adr-0098-gone.md) | A planted row with no file | accepted | 2026-09-30 | planted | planted |\n", True), "adr-0098"),
     ("gate-dangling-reference", "check_gate_single_home", lambda: append("protocols/grow.md", "See `grow.gate.invented-here` for details."), "which no table row declares"),
     ("plant-root-boundary", "check_canonical_plant_root_boundary", lambda: sub("integrations/claude-code/status-hook.py", r"# --- canonical plant-root boundary ---.*?# --- end canonical plant-root boundary ---\n", "", True), "plant-root boundary"),
     # published figures (SPEC-0004 scope rows X318, X319, X332)
     ("skills-count", "check_published_figures", lambda: append("README.md", "The seed ships 99 skills."), "claims 99 skills"),
+    ("protocol-count", "check_published_figures", lambda: append("README.md", "The seed ships 99 protocols."), "claims 99 protocols"),
+    ("protocol-count-under", "check_published_figures", lambda: append("README.md", "The seed ships 3 protocols."), "claims 3 protocols"),
     ("agent-count", "check_published_figures", lambda: append("DOCUMENTATION.md", "A team of 99 named specialist agents."), "99 named specialist agents"),
     ("version-pin", "check_published_figures", lambda: sub("documentation/README.md", r"\(version \d+\.\d+\.\d+\)", "(version 0.0.1)", True), "documents version 0.0.1"),
     ("eager-misattributed", "check_published_figures", lambda: append("README.md", f"Claude Code pays {surfaces()['prime-agent']} bytes per session."), "bytes for claude-code"),
@@ -238,6 +273,9 @@ ROWS = [
     ("X312 MECHANISM_CLAIMS_TRACED artifact missing", "front_door_checks", lambda: (fixture(), sub("DOCUMENTATION.md", "| `install.sh` (`place_file`) |", "| `tools/no-such.sh` |")), "Artifact: `tools/no-such.sh` does not resolve"),
 ]
 
+# A row whose check is missing, or red on the unplanted copy, fails by name and
+# the table runs on (SPEC-0005 ABORTED_STEP_HIDES_CASES): one red baseline never
+# hides the rows after it. A needle may be a tuple: one finding holds them all.
 baseline: dict = {}
 failed = 0
 for label, check, plant, needle, *absent in ROWS:
@@ -246,16 +284,19 @@ for label, check, plant, needle, *absent in ROWS:
         if key[1]:
             fixture()
         baseline[key] = set(lint(check))
-        assert key[1] or not baseline[key], f"{check} is red on the tree: {sorted(baseline[key])[:3]}"
         restore()
-    try:
-        plant()
-        new = [f for f in lint(check) if f not in baseline[key]]
-        hit = [f for f in new if needle in f]
-        ok = not hit if absent else bool(hit)
-        why = f"new findings: {new[:3]}" if not ok else ""
-    except AssertionError as e:
-        ok, why = False, str(e)
+    needles = needle if isinstance(needle, tuple) else (needle,)
+    if not key[1] and baseline[key]:
+        ok, why = False, f"{check} is missing or red on the unplanted copy: {sorted(baseline[key])[:3]}"
+    else:
+        try:
+            plant()
+            new = [f for f in lint(check) if f not in baseline[key]]
+            hit = [f for f in new if all(n in f for n in needles)]
+            ok = not hit if absent else bool(hit)
+            why = f"new findings: {new[:3]}" if not ok else ""
+        except AssertionError as e:
+            ok, why = False, str(e)
     restore()
     print(f"  {label} ({check}) — {'OK' if ok else 'FAIL'}" + (f": {why}" if why else ""))
     failed += not ok

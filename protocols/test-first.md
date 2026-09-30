@@ -1,6 +1,6 @@
 ---
 name: test-first
-description: The WORKFLOW that drives every production change through RED → GREEN → REFACTOR → COMMIT — entry conditions (signed spec, plan, wiki), the phase table that says who owns each phase and which spawn waits for which, characterize-first on untested code, the per-phase gates, the review inside COMMIT, the spec's promotion with its RED, the bug-fix and pure-refactor variants, the migration safety gate, recorded exceptions, and exit conditions. Use whenever you are about to write or change production code. How to SHAPE each test — level selection, contract naming, one outcome per test — is the test-first skill.
+description: The workflow that drives every production change through RED → GREEN → REFACTOR → COMMIT — entry conditions (signed spec, plan, wiki), the phase table that says who owns each phase and which spawn waits for which, characterize-first on untested code, the per-phase gates, the review inside COMMIT, the spec's promotion with its RED, the bug-fix and pure-refactor variants, the migration safety gate, recorded exceptions, and exit conditions. Use whenever you are about to write or change production code. How to shape each test — level selection, contract naming, one outcome per test — is the test-first skill.
 id: protocol.test-first
 tier: 2
 kind: protocol
@@ -10,6 +10,7 @@ owns:
   - rule.test-first
   - test-first.cycle
   - test-first.characterize-first
+  - test-first.known-bug
 requires:
 peers:
   - protocol.verify
@@ -23,7 +24,7 @@ load_when:
   - "legacy code with no tests, characterization test"
   - "pure refactor, migration safety"
 prevents: Production changes with no failing test to authorize them, and after-the-fact tests that pass on first run and therefore prove nothing.
-est_tokens: 2723
+est_tokens: 3391
 command: true
 ---
 
@@ -34,7 +35,7 @@ The deliverable is a sequence of RED → GREEN → REFACTOR → COMMIT
 cycles, each tied to one or more contracts in a spec, with the
 verification gates passing at the end.
 
-This node owns **the test-first rule** — tests authorize code; you
+This node owns **the test-first rule**: tests authorize code; you
 integrate, not bolt on. No production code without a failing test
 that authorizes it: RED → GREEN → REFACTOR → COMMIT, per increment.
 The test encodes a named spec contract and must fail for the right
@@ -60,8 +61,8 @@ If any of these is missing, back up to the protocol that produces it
 change has no spec over its surface, so the first two conditions are
 met differently: the *defect and its reproduction* stand in for the
 contract text, and a grill.md entry line stands in for the §9 increment
-row. Everything below this point — RED first, fails for the right
-reason, GREEN, REFACTOR, the independent REVIEW — applies unchanged.
+row. Everything below this point (RED first, fails for the right
+reason, GREEN, REFACTOR, the independent REVIEW) applies unchanged.
 The lane buys its way out of `specify` and the grill pass, never out of
 the cycle (`tiers.contained-lane`).
 
@@ -73,23 +74,22 @@ cannot: nobody has written down what the code is *supposed* to do, so a
 test asserting the "correct" answer would just encode your guess.
 
 Before you change such code, write a **characterization test** that
-pins what it does *today* — bug included. Run it; it passes (it
+pins what it does *today*, bug included. Run it; it passes (it
 describes reality). Name it so no one mistakes it for a correctness
 claim (`characterizes_…`, not `should_…`), and note in its docstring
 any behavior you believe is wrong, linking the grill.md item that
 tracks fixing it. Now you have a safety net: make your change, and the
-characterization test fails in exactly the way you intended — that
-failure is your RED, and the normal cycle resumes. Adopting a codebase
-does not license editing untested code bare.
+characterization test fails in exactly the way you intended: that
+failure is your RED, and the normal cycle resumes. On adopted code,
+characterize before every change.
 
 ## The cycle (`test-first.cycle`)
 
 One cycle per increment, in grill.md §9 order. Each phase has an owner,
-and **the table is the spawn order**: a phase's spawn is issued only
-after the handback it needs has returned; the next increment's RED is
-not spawned until this increment's COMMIT is recorded, unless §9's
-`Depends on:` rows say the two are independent (`delegation.sequencing`,
-`docs/graph/method/delegation-sequencing.md`). How independent REDs run ahead
+and **the table is the spawn order** (`delegation.sequencing`,
+`docs/graph/method/delegation-sequencing.md`): the next increment's RED
+waits for this increment's COMMIT unless §9's `Depends on:` rows say the
+two are independent. How independent REDs run ahead
 in a RED wave, and which GREENs follow them, is `delegation.waves` there.
 One spawn may carry a batch of increments, sized by their effort labels
 (`delegation.step-scope` and `delegation.effort-scale` in
@@ -103,12 +103,13 @@ One spawn may carry a batch of increments, sized by their effort labels
 | COMMIT | the session | a clean review | grill.md §15 entry with the `spawn_id`s in issue order; the commit; the spec's status advanced |
 
 The one merge the tiers allow: a T2 increment covering a single
-contract — or, on the contained lane, a single reproduced defect —
-whose RED is mechanical is briefed whole to `implementer`, which writes
-the failing test before making it pass (`tiers.execution-paths`); the
-REVIEW spawn stays independent either way. Workers report what they did in the handback; the session, not the
-worker, writes grill.md — the plan-of-record is session-owned
-(`rule.grill`, `protocol.canonize`).
+contract (or, on the contained lane, a single reproduced defect) whose
+RED is mechanical is briefed whole to `implementer`, which writes the
+failing test before making it pass (`tiers.execution-paths`); the
+REVIEW spawn stays independent either way.
+
+Only the session writes grill.md; workers report what they did in the
+handback (`rule.grill`).
 
 ### RED — write the failing test
 
@@ -124,12 +125,17 @@ worker, writes grill.md — the plan-of-record is session-owned
      yet achieved RED.
    - A test that fails because the *behavior* is missing has
      achieved RED.
+   - A test that passes without the code present is not exercising the
+     contract, or another code path already meets it: investigate. Ask
+     the same of a whole gate phase before crediting it as coverage: a
+     phase that would pass identically against the pre-change code proved
+     zero coverage of the change, however green it is.
 4. If you cannot get RED for the right reason, the test is wrong or
    the contract is wrong. Fix the test or revisit the spec.
 5. Update the spec §10 (Test mapping) row: status `red`. A tester's RED
    spawn stops here and hands back (`tester.spawn-scope`).
 
-**Inherited suites — prove RED by mutation.** A suite you inherited
+**Inherited suites: prove RED by mutation.** A suite you inherited
 green, authored without test-first, is untrusted: you have never
 watched it fail. Before you rely on a test over high blast-radius code,
 reintroduce in the production code the historical defect it claims to
@@ -141,7 +147,7 @@ Two corollaries decide whether a mutation result can be read at all.
 First, confirm the mutant actually rebuilt before believing it survived:
 a toolchain that caches compiled artifacts on a cheap staleness check can
 satisfy that check with an edit of the same size made in the same second,
-and then runs the *old* artifact — a survived mutation that was never
+and then runs the *old* artifact: a survived mutation that was never
 executed. Second, a check that claims **exact** membership (an allow-list
 of hosts, roles, scopes, media types, extensions, flags) needs a mutant
 input that is a strict prefix-extension of an allowed value and one that
@@ -151,12 +157,10 @@ attacker would make.
 
 ### GREEN — minimum behavior, integrated
 
-1. Add the minimum *new behavior* that turns RED into GREEN. "Minimum"
-   is about behavior, not diff size: no speculative generality, and no
-   expansion into unrelated code (file that separately, per the scope
-   rule). But integrate what you do add into the file's existing design
-   — do not append a function at the bottom or special-case the new
-   requirement around logic that should itself change.
+1. Add the minimum *new behavior* that turns RED into GREEN, minimum in
+   behavior rather than diff size, integrated into the file's existing
+   design per `skill.holistic-editing`. Unrelated fixes are filed as their
+   own increment (its scope rule).
 2. Run the test. Confirm it passes.
 3. Run the surrounding tests (or the affected module's tests).
    Confirm nothing else broke. A new green that turns another green
@@ -172,35 +176,32 @@ attacker would make.
    file should read as if the requirement had always existed, with no
    visible seam. See `docs/graph/skills/holistic-editing.md`.
 3. Run the tests again after each refactor; the suite stays green.
-4. On a pure-addition to green fields the refactor may be trivial. But
-   **when you touched existing code, REFACTOR is not optional** — an
-   additive-only diff that left duplication or dead code behind is an
-   incomplete increment, not a small one. (The append-only artifacts —
-   grill.md history, ADRs — are the deliberate exception; there you
-   supersede, not rewrite.)
+4. On a pure addition to green fields the refactor may be trivial. When
+   you touched existing code, an additive-only diff that left duplication
+   or dead code behind is an incomplete increment, not a small one.
 
 ### COMMIT — record the increment
 
 1. **Review first.** Hand the diff and the §9 row to `reviewer`. A
    Critical or Major finding goes back to `implementer` as one more
-   spawn; a third red on the same increment is the gate-failure rule —
+   spawn; a third red on the same increment is the gate-failure rule:
    reopen `grill` and re-slice (`protocol.recover`).
-2. Run the increment's named gate from grill.md §9 —
+2. Run the increment's named gate from grill.md §9:
    `docs/graph/protocols/verify.md` owns that per-increment cadence, and
    the full verify pass still runs before close-out and deliver.
 3. The session appends to grill.md §15 (Changelog): increment title,
    spec contracts covered, files touched, tests added, gates run with
    their outcomes, and the cycle's `spawn_id`s in the order issued.
 4. The spec's §10 (Test mapping) carries the actual test names and
-   file paths — the tester wrote the rows at RED, the implementer set
+   file paths: the tester wrote the rows at RED, the implementer set
    them `green`. **The spec's status advances in this same change:**
    the first RED to land for a `draft` spec promotes it to `active`
    (the moment `spec-lint.py` starts counting it, and the one place a
-   live status can be honest — `verify.status-evidence`); the last
+   live status can be honest, `verify.status-evidence`); the last
    contract to turn green marks it `implemented`.
 5. Library idioms this increment taught, and any durable tool it built,
    are named in the worker handbacks; the close-out librarian persists
-   them (§3.7/§3.8). Nobody edits the wiki or the tool catalog inline.
+   them (§3.7/§3.8).
 6. If using version control, commit. Commit message:
    `feat(<scope>): <contract slug> — implements SPEC-NNNN`
    or `fix(<scope>): <bug slug> — adds regression for SPEC-NNNN`.
@@ -231,17 +232,23 @@ missing spec). The cycle:
      pass.
    - If no: the spec was incomplete. Run `specify` first to add or
      revise the contract, then write the regression.
-2. A bug confirmed but not yet fixable is not dropped from coverage:
-   encode it as an explicitly-named, intentionally-failing test inside
-   the regular suite, documenting the root cause — the debt stays
-   mechanically visible on every run and the eventual fix inherits a
-   ready acceptance check.
-3. The regression test stays in the suite forever. Do not delete it
-   when the bug is fixed; that's how regressions return.
+2. **A bug a test uncovered** (`test-first.known-bug`) is marked for a fix
+   and the owner is told: the session records it in grill.md §12 and names
+   it in the delivery. The test that uncovered it is the bug's acceptance
+   check and its ONLY test: it stays exactly as written, carries no marker
+   that expects its failure, and no second test is written to assert the
+   buggy behavior.
+   The session dispatches `implementer` to fix the bug, then re-runs that
+   same test. Until the fix lands, the red is declared in the delivery as
+   WIP with its failure record (`protocol.deliver`), never hidden.
+3. The regression test stays in the suite after the fix, because a
+   deleted regression test is how regressions return. Consolidation may
+   merge it ONLY into a named survivor that still fails if the bug returns
+   (`skill.test-first`, Shrink on purpose).
 
 ## Refactoring (no behavior change)
 
-A "pure refactor" — same behavior, different shape of code — is a
+A "pure refactor" (same behavior, different shape of code) is a
 special case:
 1. The existing tests must pass before you start.
 2. You do not write a new test (no new behavior to author).
@@ -259,21 +266,22 @@ special case:
 Before any framework, ORM, or runtime **major-version** migration,
 confirm the change is observable. "No migrations tool and no tests,
 with the schema driven only by the ORM's auto-DDL" is itself a
-**blocking** finding that must be closed first — characterization
-tests especially (see the inherited-suites rule under RED). A
-migration run against an unguarded schema is not an increment; it is
-an unverified change waiting to surface in production.
+**blocking** finding that must be closed first, characterization
+tests especially (see the inherited-suites rule under RED), because a
+migration run against an unguarded schema is an unverified change
+waiting to surface in production.
 
 ## Exceptions to test-first
 
 Explicit exceptions, recorded in grill.md §9 with a rationale and a
 date:
 - **Throwaway prototypes** to learn about a library or approach.
-  Mark the code clearly; do not merge it.
+  Mark the code clearly and keep it out of the main branch: it has no
+  test behind it.
 - **Pure configuration changes** (raise a timeout, add a log
   scope) where there is no *unit-testable* behavior to assert. The
   operational risk is real and goes to `docs/graph/protocols/verify.md`'s
-  gates instead. Such a change still tiers at T2 or above — a config
+  gates instead. Such a change still tiers at T2 or above: a config
   value alters behavior, so it is never T1
   (`docs/graph/method/tiers.md`).
 - **Type-only changes** in a strongly typed language where the type
@@ -281,7 +289,7 @@ date:
 - **Generated code** where the generator itself is tested.
 
 If you find yourself reaching for "exception" frequently, that is a
-signal that test-first is not landing — surface this to the
+signal that test-first is not landing: surface this to the
 orchestrator so the team can address it directly.
 
 ## Exit conditions
@@ -297,33 +305,3 @@ orchestrator so the team can address it directly.
   carries the tests; the spec's status is `active` (or `implemented`
   when every contract is green); `spec-lint.py` and `grill-lint.py`
   exit 0.
-
-## Anti-patterns
-
-- **Writing tests after the code "to be safe".** That's not
-  test-first; that's documentation. The whole point of RED is to
-  make the next step's design pressure-test the spec.
-- **Tests that pass without the code present.** Either the test
-  is not exercising the contract, or the contract is met by some
-  other code path. Investigate. Ask the same question of a whole
-  gate phase before crediting it as coverage: if the phase that
-  ran would have passed identically against the pre-change code,
-  it proved zero coverage of the change, however green it is.
-- **One giant test per increment.** Many small tests, each
-  exercising one contract, named after it (`skill.test-first`).
-- **Testing through.** Don't write an end-to-end test for a pure
-  function; write a unit test. Don't write a unit test that mocks
-  three layers; promote it to integration.
-- **Mocking everything.** Mocks for time, randomness, network, and
-  external services are reasonable. Mocks for the object under
-  test or its immediate collaborators are a smell — the design is
-  probably too coupled. A mock that only counts calls is a wiring
-  proof, and an either-or assertion asserts nothing
-  (`test-first.proportionate-checks`).
-- **A worker writing grill.md.** §15 is the session's record of what
-  it spawned and in what order; a worker that appends to it has
-  written the caller's trace. Report in the handback.
-- **Assuming dev-machine green means automated-run green.** Headless
-  or browser-based tests that pass locally are not guaranteed in an
-  automated run — a minimal environment often lacks a browser binary
-  or another runtime the test needs. Verify that environment has it.

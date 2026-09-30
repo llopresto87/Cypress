@@ -18,7 +18,7 @@ load_when:
   - "gate script left half-applied state, environment failure or repository failure"
   - "adding a new gate or check"
 prevents: Work marked closed on a promise with no evidence a reader can open, and gate scripts that half-apply or read a broken environment as a clean tree.
-est_tokens: 877
+est_tokens: 758
 ---
 
 # Protocol: verify, new gates
@@ -28,7 +28,7 @@ est_tokens: 877
 A lifecycle status is a gate on a record the way a test is a gate on
 code, and it lies the same way. `closed` means *resolved with evidence*:
 `status_evidence` names a path#anchor, a commit, or a gate-run id that a
-reader can open — the same thing an `executed` runbook entry records.
+reader can open, the same thing an `executed` runbook entry records.
 When that evidence does not exist yet, the honest states are `hotfix`
 (resolved improperly, a proper fix owed) and `deferred` (parked, with
 the condition that reopens it), each with an owner, so nothing rests as
@@ -38,14 +38,12 @@ nothing; a `closed` without evidence says the work finished and proves
 nothing, and is trusted just as readily.
 
 Promotion is the same gate at the other end of a record's life. A
-specification is not promoted to a live status until executable
-assertions covering its contracts exist and pass, and the promotion
-lands in the same change that adds them; a live status over an empty
-assertion set is a false green.
+specification is promoted to a live status in the change that adds
+passing executable assertions for its contracts; a live status over an
+empty assertion set is a false green.
 
 The vocabulary and each status's required companions live in
-`docs/graph/_schema.md` §"Lifecycle status" — read them there, never
-restate them. The enforcement is the delivered
+`docs/graph/_schema.md` §"Lifecycle status"; read them there. The enforcement is the delivered
 `docs/graph/status-register.py` in its lint role: a `closed` with no
 companion fails the run with ``status 'closed' requires
 `status_evidence` ``, exactly as a missing gate fails `protocol.verify`.
@@ -61,11 +59,12 @@ that catches the bug, is recorded in the verification runbook in the
 same increment, and joins the project's automated runs only by owner
 decision.
 
-A gate or verification script that writes never leaves a half-applied
-state, and it keeps **environment failures distinct from repository
-failures**: a missing interpreter, an absent fixture, or a tool that
-could not start never reads as a skip, an empty success, or a clean
-tree. Any further hardening is sized by the same principle. Whether a
+A gate or verification script that writes leaves either the full change
+or the prior state, and it keeps **environment failures distinct from
+repository failures**: it reports a missing interpreter, an absent
+fixture, or a tool that could not start as its own outcome, never as a
+skip, an empty success, or a clean tree. Further hardening is sized by
+`test-first.proportionate-checks`. Whether a
 check deserves to become a cataloged tool at all is `toolcraft`'s
 doctrine.
 

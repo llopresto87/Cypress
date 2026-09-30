@@ -72,7 +72,8 @@ Three of the four sets of required rows are derived from something other than
 the record itself, so a row cannot go missing by being left out:
 
   * one COLLECTION row per knowledge collection the installer creates
-    (every top-level directory and leaf of the seed's templates/docs/**),
+    (every top-level directory and leaf of the seed's templates/docs/**,
+    except `models.md`, the plant's model map, which is its configuration),
   * one AGENT row per roster agent that declares `plant_knowledge:` — the
     collections that agent must be able to read to do its job at all,
   * one EXPERT row per project-specific expert the PLANT's own graph carries
@@ -164,6 +165,10 @@ STAMP_REL = ".cypress/seed.json"
 GRAPH_HOME = "docs/graph"
 TEMPLATE_DOCS = "templates/docs"
 UNFILLED_SUFFIX = ".unfilled.md"
+# The plant's model map (ADR-0022): configuration the plant owns, not a
+# collection a scout gathers, so it is no collection row. An unfilled map means
+# every agent runs on its caller's model; the audit discloses it and passes.
+MODEL_MAP = "models.md"
 
 STATUSES = ("COVERED", "ABSENT", "UNKNOWN")
 # Every verdict this tool can emit. The protocols quote from this set for their
@@ -358,6 +363,9 @@ def required_collections(seed):
     runbook, where each file is its own procedure) is a row of its own. Deriving
     this from the seed is what stops a collection from being forgotten: adding a
     template to the seed adds a required row to every plant's next audit.
+    `models.md` is the one root leaf that is no row: it is the plant's model
+    map, configuration rather than knowledge a scout gathers, and do_lint
+    discloses it while unfilled.
 
     `legal/corpus/` is the one collection that does not come from a template.
     It is the seed's `legal-corpus/` placed whole on the owner's
@@ -376,8 +384,8 @@ def required_collections(seed):
         rel = t.relative_to(troot).as_posix()
         parts = rel.split("/")
         if len(parts) == 1:
-            if parts[0] == "README.md":
-                continue          # the shape's own preamble, not a collection
+            if parts[0] in ("README.md", MODEL_MAP):
+                continue          # the shape's preamble; the plant's model map
             rows.add(rel)         # changelog.md and friends: leaf-as-collection
         elif parts[0] == "runbooks":
             rows.add(rel)         # each runbook is its own procedure to cover
@@ -1954,6 +1962,11 @@ def do_lint(plant, seed, opt):
     else:
         for f in findings:
             print(f)
+        model_map = plant / GRAPH_HOME / MODEL_MAP
+        if model_map.is_file() and model_map.read_bytes() == templates.get(MODEL_MAP):
+            print(f"  note: {GRAPH_HOME}/{MODEL_MAP} is unfilled, so every agent "
+                  f"runs on its caller's model. It is the plant's configuration, "
+                  f"disclosed here and not a coverage row.")
         fatal = [f for f in findings if f.fatal()]
         unknown = [f for f in findings if not f.fatal()]
         scope = ("agent and expert coverage" if opt.get("agents")

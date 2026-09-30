@@ -26,8 +26,10 @@ which is the installed *application* knowledge graph. ADR bodies use
 | [0016](adr-0016-stamp-carries-keys-it-does-not-own.md) | The seed stamp is an open record: the installer carries forward every key it does not own | proposed | 2026-09-28 | grill-7.32.0-harvest.md | 7.32.0 |
 | [0017](adr-0017-pre-growth-pointers-leave-the-kernel.md) | The pre-growth pointers leave the kernel and live in the placeholder index that grow rewrites | proposed | 2026-09-28 | grill-7.32.0-harvest.md | 7.32.0 |
 | [0018](adr-0018-code-fact-freshness-anchor.md) | Facts the graph states are settled; code facts are checked once per session against an anchor canonize records | proposed | 2026-09-28 | grill-7.32.0-harvest.md | 7.32.0 |
-| [0019](adr-0019-no-opus-version-table-in-the-seed.md) | The seed names no Opus version table; a protocol names the model class, and one rule maps the class to a version | proposed | 2026-09-28 | grill-7.32.0-harvest.md | 7.32.0 |
+| [0019](adr-0019-no-opus-version-table-in-the-seed.md) | The seed names no Opus version table; a protocol names the model class, and one rule maps the class to a version | proposed (superseded in part by ADR-0022, 2026-09-30) | 2026-09-28 | grill-7.32.0-harvest.md | 7.32.0 |
 | [0020](adr-0020-a-plans-ledger-lives-beside-it.md) | A plan's increments live beside it in a directory named for its stem; the seed's round plans are ledgers | proposed | 2026-09-28 | grill-7.32.0-harvest.md | 7.32.0 |
+| [0021](adr-0021-seed-only-procedures-stay-home.md) | A seed-only procedure lives under `docs/skills/`, and `check_seed_only_stays_home` proves it never reaches a plant | proposed | 2026-09-30 | owner rulings D1, D2 (kept outside the seed) | 7.35.0 |
+| [0022](adr-0022-the-plant-model-map.md) | A plant names its models once, in `docs/graph/models.md`; nodes name the class, and each host reads the map in its own way (supersedes ADR-0019 in part) | proposed | 2026-09-30 | owner ruling D9 (kept outside the seed) | 7.35.0 |
 
 ADRs **0001–0003** were decided inline in the plan-of-record
 [`../plans/agent-routing-and-delegation.md`](../plans/agent-routing-and-delegation.md)

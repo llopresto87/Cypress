@@ -24,5 +24,9 @@ SOFTWARE.
 
 Second upstream: the human-prose doctrine (SKILL.md, metadata.version 4.0.0,
 license: MIT, derived_from: blader/humanizer, upstream_version_reviewed: 3.0.0),
-supplied by the seed's owner; its MIT terms are the same as the notice above.
+supplied by the seed's owner, who holds its copyright:
+
+Copyright (c) 2026 Luigi Lopresto
+
+Its MIT terms are the same as the notice above.
 core/method/prose-posture.md and skills/humanizer/SKILL.md are adapted from both.

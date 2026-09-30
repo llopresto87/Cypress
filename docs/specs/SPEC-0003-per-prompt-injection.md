@@ -1,6 +1,6 @@
 ---
 status: active
-status_date: 2026-09-29
+status_date: 2026-09-30
 owner: architect
 status_evidence: tests/test-prompt-hooks.sh, tests/test-code-anchor.sh, tests/test-seed-lint.sh, tests/seed-lint.py, tests/test-nested-checkout.sh, tests/test_graph_lint.py (RED landed with this promotion; §10 says which rows are red)
 ---
@@ -17,6 +17,9 @@ status_evidence: tests/test-prompt-hooks.sh, tests/test-code-anchor.sh, tests/te
   Amended 2026-09-29 by the architect (test consolidation, §12): two contracts
   retired, one rewritten, fixture clauses narrowed. The sign-offs above
   predate the amendment and were not re-taken.
+  Amended 2026-09-30 by the architect (7.35.0, §12):
+  BRIEF_TEMPLATES_BYTE_IDENTICAL takes in the `COMPANION` block and moves its
+  baseline. The sign-offs were not re-taken for it either.
 
 - **Owner:** architect
 - **Date:** 2026-09-23
@@ -501,13 +504,19 @@ Every contract also requires exit code 0. Tests run with umask 022.
 ### Contract: BRIEF_TEMPLATES_BYTE_IDENTICAL
 - **Given:** `templates/prompts/graph-session-bootstrap.md` and
   `templates/prompts/handback-payload.md`, and the baseline revision: the
-  7.32.0 commit that puts owner rule R5's two sentences into step 4 of the
-  canonical `GRAPH DISCIPLINE` block (its SHA is written into §10 when that
-  commit lands; the baseline before it was the 7.27.0 release commit, §12)
+  7.35.0 commit that lands that round's template changes, among them the
+  canonical `COMPANION` block of `graph-session-bootstrap.md` (owner ruling
+  D2). Its SHA is written into §10 when that commit lands; the baseline before
+  it was the 7.32.0 commit that put owner rule R5's two sentences into step 4
+  of the canonical `GRAPH DISCIPLINE` block, and before that the 7.27.0
+  release commit (§12)
 - **When:** `git diff --quiet <baseline> -- templates/prompts/graph-session-bootstrap.md templates/prompts/handback-payload.md`
   runs at verify
-- **Then:** it exits 0, and `tests/seed-lint.py`'s existing GRAPH DISCIPLINE
-  identity check still passes across the five embedding templates
+- **Then:** it exits 0, and `tests/seed-lint.py`'s canonical-block identity
+  check passes across the five embedding templates for both fenced blocks of
+  `graph-session-bootstrap.md`, `GRAPH DISCIPLINE` and `COMPANION`
+- **And:** a `COMPANION` block that differs by one byte in any one of the five
+  templates is a finding naming that template
 
 ### Prime Agent (first-class; soft dedup, structural tests)
 
@@ -1525,7 +1534,8 @@ Techniques the cases rely on:
 | LEDGER_NO_CYPRESS_DIR_NO_WRITE | X132; red on arrival (no pointer line, no stderr line yet) | tests/test-prompt-hooks.sh | integration | green |
 | LEDGER_WRITE_FAILURE_FAILS_OPEN | X133; the `runpy` case, which runs as root | tests/test-prompt-hooks.sh | integration | green |
 | LEDGER_GC_BOUNDED | X134; old ledgers go, foreign files stay | tests/test-prompt-hooks.sh | integration | green |
-| BRIEF_TEMPLATES_BYTE_IDENTICAL | check | tests/seed-lint.py | verify gate; the slug sits in a comment beside the existing GRAPH DISCIPLINE identity check in `check` (not `main`, which holds no such check), and the verify record is `git diff --quiet <baseline> -- templates/prompts/graph-session-bootstrap.md templates/prompts/handback-payload.md`, where `<baseline>` is the 7.32.0 commit that lands owner rule R5's two sentences in step 4, commit `9ba5b4b` (until 7.32.0 it was `ac61a3f`, the 7.27.0 release commit, the parent of Slice A's first commit). Green on arrival (exit 0 at RED); RED shown by mutation (a byte appended to either template gives exit 1, and a drifted embedded block fails the identity check). Held at `pending` until the top-level-def scope defect in `check_spec_rows_name_their_contract` was fixed (§12); green since, and binding (the slug found inside the function) | green |
+| BRIEF_TEMPLATES_BYTE_IDENTICAL | check | tests/seed-lint.py | verify gate; the slug sits in a comment beside the existing GRAPH DISCIPLINE identity check in `check` (not `main`, which holds no such check), and the verify record is `git diff --quiet <baseline> -- templates/prompts/graph-session-bootstrap.md templates/prompts/handback-payload.md`, where `<baseline>` is the 7.32.0 commit that lands owner rule R5's two sentences in step 4, commit `9ba5b4b` (until 7.32.0 it was `ac61a3f`, the 7.27.0 release commit, the parent of Slice A's first commit). From 7.35.0 the baseline is the commit that lands that round's template changes, the `COMPANION` block among them, and its SHA is written here when it lands. Green on arrival (exit 0 at RED); RED shown by mutation (a byte appended to either template gives exit 1, and a drifted embedded block fails the identity check). Held at `pending` until the top-level-def scope defect in `check_spec_rows_name_their_contract` was fixed (§12); green since, and binding (the slug found inside the function) | green |
+| BRIEF_TEMPLATES_BYTE_IDENTICAL | X396 COMPANION block drift: one word changed inside the `COMPANION` block of one embedding template is a finding naming that template | tests/test-seed-lint.sh | unit | green |
 | ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX | X135; structural, substrings | tests/test-prompt-hooks.sh | unit | green |
 | ROUTE_EXTENSION_PASSES_PROMPT_AS_ONE_OPTION_VALUE | X136, inside X135; structural, substrings | tests/test-prompt-hooks.sh | unit | green |
 | ROUTE_EXTENSION_TEXT_MATCHES_ROUTE_HOOK | X137; structural, escapes decoded, plain substrings | tests/test-prompt-hooks.sh | unit | green |
@@ -1910,4 +1920,14 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
   measures, comment lines included. `PRIME_EAGER_SURFACE_WITHIN_BUDGET` names
   `check_published_figures`, the check that replaced
   `check_published_eager_figures`.
-
+- 2026-09-30: 7.35.0, owner ruling D2 ("lint to keep the aligned"), by the
+  architect, written ahead of its RED. The companion bullets that the five
+  brief templates each worded for themselves become one canonical fenced
+  block that opens `COMPANION`, in `graph-session-bootstrap.md`, embedded
+  byte-identical in the five templates. BRIEF_TEMPLATES_BYTE_IDENTICAL's Then
+  covers both canonical blocks, a new And-clause names the drifted template,
+  and its baseline moves to the 7.35.0 commit that lands the round's template
+  changes; the 7.32.0 baseline `9ba5b4b` stops matching the moment those
+  changes land. §10 gains X396 (`tests/test-seed-lint.sh`), `red` until its
+  RED lands; the existing `check` row is unchanged apart from the baseline
+  note. No other contract changed; the status stays `active`.

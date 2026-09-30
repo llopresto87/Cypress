@@ -27,7 +27,7 @@ load_when:
   - "installed the seed into an empty repo, now what"
   - "mkdir a new project and cd into it"
 prevents: A first day spent on a skeleton nobody specified, where the plan, the spec and the first test all arrive after the code they were supposed to govern.
-est_tokens: 2698
+est_tokens: 2532
 command: true
 ---
 
@@ -37,8 +37,8 @@ Use this when the project does not yet exist. The repo is empty or
 near-empty: no `docs/`, no `README.md`, no `grill.md`. Your job is to
 turn a goal into a project that another agent can pick up cold.
 
-This protocol is bigger than the others because the first day matters
-disproportionately. Do not skip steps.
+This protocol is bigger than the others because the first day shapes
+every session after it. Run all nine phases in order.
 
 ## Entry (`from-scratch.entry`)
 
@@ -49,10 +49,10 @@ disproportionately. Do not skip steps.
 - The repository is empty, near-empty, or contains only a license and
   a README placeholder.
 
-There is **no executable project evidence to scout** — which is exactly the test
-`protocol.initialize` applies at the front door, and the reason the other arm of
-that fork (`protocol.grow`) does not fit: grow authors a graph *from* source,
-and here there is none. If source exists, you are in the wrong protocol.
+The entry test is that there is no executable project evidence to scout,
+the same test `protocol.initialize` applies at the front door. When source
+exists, run the other arm of that fork, `protocol.grow`, which authors a
+graph *from* that source.
 
 ### How you got here
 
@@ -67,37 +67,34 @@ on the same postcondition.
 
 ### The honesty this day needs
 
-The nine phases below say what to do. They cannot stop the first day cutting the
-corners a sequence alone does not prevent, and each of these is a way it
-silently goes wrong:
+Each phase is done when its exit condition holds, not when its files exist.
+A first day that judges phases by files silently cuts these corners:
 
-- **Bootstrapping is inherently T3** (kernel §0). The full funnel is the
-  proportional response, not ceremony — never discount it because the goal
-  "sounds clear"; the brainstorm exists to surface the constraints the user did
-  not state.
-- **The skeleton phase is done only when the host tool *actually loads* the
-  machinery** — agents, protocols and skills, from its own directory — not when
-  the files merely exist. Claude Code → `.claude/` + `CLAUDE.md`; Prime Agent →
+- **Bootstrapping is inherently T3** (kernel §0). Run the full funnel even
+  when the goal "sounds clear", because the brainstorm surfaces the
+  constraints the user did not state.
+- **The skeleton phase is done when the host tool *actually loads* the
+  machinery** (agents, protocols and skills) from its own directory:
+  Claude Code → `.claude/` + `CLAUDE.md`; Prime Agent →
   `.prime/agent/` + `AGENTS.md`; opencode → `.opencode/` + `AGENTS.md`; Codex →
   `.codex/` + config entries; Copilot → `.github/` + `copilot-instructions.md`.
-- **The stack is chosen from verified research, never memory** — version,
-  maintenance signal and license confirmed and wikified before anything is
-  committed to. Research routinely invalidates a remembered option.
+- **The stack is chosen from verified research**: version, maintenance
+  signal and license confirmed and wikified before anything is committed
+  to, because research routinely invalidates a remembered option.
 - **The verification baseline passes on a clean checkout before any feature
   code.** A test framework configured and a smoke test green come first; a slice
   without a passing gate is a draft, not a slice.
-- **Specs before tests before code, always.** The specify phase authors the
-  spec, not the implementation.
-
-The rest of the catalog is in "Common ways to fail this protocol" at the end of
-this file; read it before Phase 1, not after Phase 9.
+- **Spec, then test, then code.** The specify phase ONLY authors the spec.
+- **ADR-0001 and SPEC-0001 are written**, because future sessions ask "why
+  this design" and need to learn what the slice was supposed to do, not
+  only what it does.
 
 ## Phases (`from-scratch.phases`)
 
 Nine phases, each adopting a sub-protocol that carries its own owners
-and failure modes — read the phase's protocol, never a summary of it.
-**The table is the spawn order**: a phase's spawn is issued only after
-the handback it needs has returned (`delegation.sequencing`).
+and failure modes: read the phase's own protocol, because a summary drops
+the failure modes it carries. **The table is the spawn order**
+(`delegation.sequencing`).
 
 | Phase | Does | Adopts | Owner | Needs |
 |---|---|---|---|---|
@@ -113,13 +110,13 @@ the handback it needs has returned (`delegation.sequencing`).
 
 ### Phase 1 — Brainstorm (Socratic)
 
-Adopt `docs/graph/protocols/brainstorm.md`. Do not skip. The output of this
+Adopt `docs/graph/protocols/brainstorm.md`. The output of this
 phase is a precise problem statement, the primary user, the first
 useful slice, the constraints, and at least three shaped options for
 the technical approach.
 
 Pacing and the stopping rule belong to
-`docs/graph/skills/brainstorm-socratic.md` — one-to-three questions per
+`docs/graph/skills/brainstorm-socratic.md`: one-to-three questions per
 turn under a hard cap of nine questions total. When the cap is reached
 without precision, write what you have, mark the gaps as assumptions in
 grill.md, and proceed.
@@ -127,17 +124,16 @@ grill.md, and proceed.
 ### Phase 2 — Project skeleton
 
 Once the brainstorm converges, the project needs the skeleton below. **Read the
-tree before writing to it** — on the documented route the installer has already
-run, and re-running it over a tree it just wrote is how a phase that "always
-installs" produces a second overlay and a backup of a file nobody changed.
+tree before writing to it**: on the documented route the installer has already
+run, and re-running it over a tree it just wrote produces a second overlay and
+a backup of a file nobody changed.
 
 - **If the kernel and `docs/graph/` are already present**, the skeleton is
   already there. **Verify** it against the tree below rather than creating it:
-  record what is present, and take only what is genuinely missing. Do not
-  re-run `install.sh`. The phase's real exit condition is unchanged and is the
-  one that matters — the host tool *actually loads* the machinery from its own
-  directory, which the presence of files does not establish.
-- **If they are absent** — direct entry from a bare `mkdir` — run `install.sh`
+  record what is present, and take only what is genuinely missing. The
+  phase's exit condition is the host tool *actually loading* the machinery
+  from its own directory, which the presence of files does not establish.
+- **If they are absent** (direct entry from a bare `mkdir`), run `install.sh`
   and create the skeleton as described below.
 
 Either branch exits on the same postcondition, so the phase table, its `Needs`
@@ -156,37 +152,36 @@ The skeleton:
 ├── README.md                 → orientation, one screen
 ├── docs/
 │   ├── README.md
-│   ├── graph/                  → knowledge-graph home
-│   │   ├── _schema.md          → templates/knowledge-graph/_schema.md
-│   │   ├── graph-lint.py       → templates/knowledge-graph/graph-lint.py
-│   │   ├── index.md            → the router (root node listed)
-│   │   └── nodes/root.md       → the one root node to start
-│   ├── plans/grill.md
-│   ├── specs/index.md
-│   ├── decisions/adr-0001-bootstrapping.md
-│   ├── libraries/index.md
-│   ├── sources/index.md
-│   ├── runbooks/local-development.md
-│   ├── runbooks/verification.md
-│   └── (other folders created as needed)
+│   └── graph/                  → knowledge-graph home
+│       ├── _schema.md          → templates/knowledge-graph/_schema.md
+│       ├── graph-lint.py       → templates/knowledge-graph/graph-lint.py
+│       ├── index.md            → the router (root node listed)
+│       ├── nodes/root.md       → the one root node to start
+│       ├── plans/grill.md
+│       ├── specs/index.md
+│       ├── decisions/          → adr-0001-initial-architecture.md lands in Phase 5
+│       ├── libraries/index.md
+│       ├── sources/index.md
+│       ├── runbooks/local-development.md
+│       ├── runbooks/verification.md
+│       └── (other folders created as needed)
 └── (language- or stack-specific files only after Phase 4)
 ```
 
 When Phase 2 is creating rather than verifying, the `install.sh` in this seed
-system drops the right per-tool overlay into `.claude/`, `.prime/agent/`, `.opencode/`, `.codex/`, or
-`.github/`, and
-the knowledge-graph scaffold (schema, lint, router) into `docs/graph/`.
-That overlay includes the specialist roster, which this protocol then
-dispatches **by name** in later phases — from the same session that just
-wrote it. Settle spawnability before the first named hand-off:
-`delegation.harness-registration` in `docs/graph/method/delegation-bounds.md`.
+system drops the right per-tool overlay into `.claude/`, `.prime/agent/`,
+`.opencode/`, `.codex/`, or `.github/`, and the knowledge-graph scaffold
+(schema, lint, router) into `docs/graph/`. That overlay includes the
+specialist roster, which this protocol then dispatches **by name** in later
+phases, from the same session that just wrote it. Settle spawnability before
+the first named hand-off: `delegation.harness-registration` in
+`docs/graph/method/delegation-bounds.md`.
 
-A new project's graph starts tiny — one root node — and grows a node
-per subsystem as the architecture (Phase 5) takes shape. It is not
-overhead to defer: seeding it now means every later session routes
-through `docs/graph/index.md` instead of re-reading the tree. For a
-program spanning several repos, the unified graph lives at
-the governing root; for a single repo, at its root. See
+A new project's graph starts tiny (one root node) and grows a node per
+subsystem as the architecture (Phase 5) takes shape. Seed it now: every
+later session then routes through `docs/graph/index.md` instead of
+re-reading the tree. For a program spanning several repos, the unified
+graph lives at the governing root; for a single repo, at its root. See
 `docs/graph/skills/knowledge-graph.md`.
 
 ### Phases 3–5 — The grill creation pass, greenfield
@@ -195,14 +190,14 @@ Phases 3–5 are `grill.flow`'s phases 0–4 and are not restated here;
 what a greenfield adds:
 
 - **Phase 3** fills §0 (phase "bootstrapping"), §2–§4 from the
-  brainstorm, and §1 with `none — greenfield` on every line — the
+  brainstorm, and §1 with `none — greenfield` on every line: the
   honest discovery of an empty repository, and what `grill-lint.py`
   accepts in place of a path. §7 carries the three-plus shaped options,
   §11 the obvious risks, §12 every assumption flagged for validation;
   §14 reads "Phase 4 — research and library ingest".
 - **Phase 4** hands each candidate technology to `research-scout`
-  through `ingest-library.flow` — existence, version, maintenance
-  signal, license, the wiki page — and this is where shaped options
+  through `ingest-library.flow` (existence, version, maintenance
+  signal, license, the wiki page), and this is where shaped options
   die: a candidate turns out unmaintained, worse-licensed than
   remembered, or sharp in a way that matters. §5 and §7 are updated as
   it happens.
@@ -223,17 +218,13 @@ Before any feature code, set up the verification baseline:
   `docs/graph/runbooks/verification.md` with the exact gate commands
   behind the one entry point `protocol.verify` requires.
 - The gate command must pass on a clean checkout before any feature
-  is implemented.
-
-A project that cannot run its gates from a clean checkout is not
-yet bootstrapped. A project without a test framework configured is
-not yet bootstrapped.
+  is implemented; until then the project is not yet bootstrapped.
 
 ### Phase 7 — Specify the first useful slice
 
 Run `docs/graph/protocols/specify.md` to produce
 `docs/graph/specs/SPEC-0001-<slug>.md` for the first useful slice. This
-spec is short — the slice is small — but it covers §1–§10. Get
+spec is short (the slice is small), but it covers §1–§10. Get
 the sign-offs (product ✓, architect ✓, tester ✓).
 
 ### Phase 8 — Test-first the first useful slice
@@ -244,10 +235,10 @@ RED → GREEN → REFACTOR → COMMIT for each increment in grill.md
 
 ### Phase 9 — Close-out and deliver
 
-Run `docs/graph/protocols/canonize.md` — the one `docs-librarian` spawn
+Run `docs/graph/protocols/canonize.md`, the one `docs-librarian` spawn
 that finalizes every wiki page the scouts drafted, writes the
 `libraries/index.md` and `sources/index.md` rows, persists what the
-first day taught, and catalogs any tool it built — then
+first day taught, and catalogs any tool it built; then
 `docs/graph/protocols/deliver.md`. The recommended next step is the
 second slice or the next-most-valuable item from the roadmap in
 `docs/graph/product/requirements.md`.
@@ -266,31 +257,3 @@ second slice or the next-most-valuable item from the roadmap in
 - The first useful slice's tests are green; the suite is green.
 - The README explains what the project is and how to run it.
 - The close-out ran: the delivery cites the librarian's handback.
-
-## Common ways to fail this protocol
-
-How a first day silently goes wrong. Each of these has happened; none of them
-announces itself, and every one of them passes a phase that was judged on files
-existing rather than on the phase's exit condition.
-
-- **Skipping the brainstorm.** "It's just a CLI" — wrong; the brainstorm
-  uncovers the constraints the user did not state.
-- **Picking the stack from memory.** Verify version, maintenance signal and
-  license; wikify before committing to it.
-- **Writing feature code before the gates pass.** A slice without a passing gate
-  is a draft, not a slice.
-- **Skipping ADR-0001.** Future sessions ask "why this design" and have no
-  answer.
-- **Skipping SPEC-0001.** Future sessions learn what the slice does and never
-  what it was supposed to do.
-- **Writing code in Phase 7 instead of the spec.** Specs first, tests second,
-  code third. Always.
-- **"We'll add tests later" in Phase 6.** A bootstrap without a test framework
-  configured is not a bootstrap.
-- **Declaring Phase 2 done because the files are there.** The exit condition is
-  that the host tool *loads* the machinery — see the entry section.
-
-And the structural rule the list cannot carry: **each phase above adopts a
-sub-protocol that carries its own failure modes** — brainstorm, ingest-library,
-specify, test-first, the ADR/spec-first rules — so read the phase's protocol,
-never a summary of it.

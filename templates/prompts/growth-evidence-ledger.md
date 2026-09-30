@@ -1,15 +1,15 @@
 <!--
 Template: prompts/growth-evidence-ledger.md
-THE CANONICAL SCHEMA of the growth evidence ledger — the one structured
+The canonical schema of the growth evidence ledger — the one structured
 artifact that passes between a growth-scout (producer) and a growth
-author (consumer). A scout fills ONE ledger per boundary; the authors
+author (consumer). A scout fills one ledger per boundary; the authors
 read it and build every growth deliverable from its cited claims,
 instead of re-investigating source from scratch.
 
-WHERE IT LIVES — a seed organ, not a plant organ. The ledger is
-growth-time feedstock, transient to a grow/adopt run. It is written to
-the PLANT's gitignored seed-adjacent scratch, NEVER to docs/graph/
-(which is permanent plant knowledge):
+Where it lives: it is a seed organ. The ledger is growth-time
+feedstock, transient to a grow/adopt run, so it is written to the
+plant's gitignored seed-adjacent scratch, while docs/graph/ holds
+permanent plant knowledge:
 
     .cypress/growth/<boundary-slug>.ledger.md
 
@@ -31,19 +31,19 @@ source**, anchored to `path:line` and a **symbol** (function, class,
 route, table, config key, entry point). Prose/READMEs are clues until
 corroborated; where source and prose disagree, record the disagreement
 and believe the source. A fact you cannot establish from source is
-written `not recorded` with the evidence a follow-up would need — never
-guessed. Terse claims, not prose.
+written `not recorded` with the evidence a follow-up would need. Terse
+claims, not prose.
 
 Each section names the **downstream deliverable** it feeds, so the scout
 knows *why* it collects each fact and the author knows *where* each fact
-goes. A section with no evidence says `none found` (a real absence is a
-fact); it is never padded to look populated.
+goes. A section with no evidence says `none found`: a real absence is a
+fact, and it stands on its own.
 
 ## 0 — Boundary & provenance  → root/subsystem node, changelog
 
 - **Boundary**: {{subsystem / repo / path}} and its edges (what it is,
   what it is not).
-- **Provenance** (read-only, do not mutate Git): repo path, current
+- **Provenance** (read from Git; its state stays as found): repo path, current
   branch, HEAD short-sha, worktree clean/dirty, stack/manifests.
 - **Scout & date**: `produced_by: growth-scout`, run date.
 
@@ -75,7 +75,7 @@ fact); it is never padded to look populated.
   `path:line`), lock/manifest pin location, and whether it is
   architecturally significant / cross-cutting / security- or
   operations-critical (those earn a rich library page; the rest, an
-  index line). Read pins from the tree, never from memory.
+  index line). Read pins from the tree.
 
 ## 6 — Prompts & evaluations  → prompts/ + evaluations/ nodes
 
@@ -94,9 +94,8 @@ fact); it is never padded to look populated.
 - Decisions **visible in the source** (a chosen library over an
   obvious alternative, a boundary drawn deliberately, a config default
   with consequences): decision, evidence path, alternatives/consequences
-  the code reveals. Never infer rationale the source does not show —
-  mark unknown rationale `not recorded`. A candidate list, not an
-  authored ADR.
+  the code reveals. Record ONLY rationale the source shows; mark the
+  rest `not recorded`. A candidate list, not an authored ADR.
 
 ## 9 — Expertise and specialist signals  → expertise.* nodes + project-specific expert agents
 
@@ -123,7 +122,7 @@ fact); it is never padded to look populated.
 - Exact commands, test invocations, CI gates, build/deploy/rollback
   descriptors, and observability hooks, each with its source location.
   Everything here is **discovered, not executed** — the author labels it
-  so. Never claim a command passes.
+  so, and a command's result stays unknown until a verifier runs it.
 
 ## 11 — Sharp edges  → wherever the owning fact lives
 
@@ -166,17 +165,15 @@ fact); it is never padded to look populated.
   or accessibility baselines its domain carries, the conventions its linters
   and formatters encode.
 - For each, name where the project observably stands: the config, the code,
-  or the gate that shows it conforming or departing. The *content* of the
-  standard is not yours to state — the external pass retrieves it. Your job
-  is to name which standards apply and where this project's stance is
+  or the gate that shows it conforming or departing. The external pass
+  retrieves the *content* of the standard; your job is to name which standards apply and where this project's stance is
   visible, so `best-practices/` can be written as "the standard says X, and
   this project does Y" rather than as a description of local habit.
 
 ## 15 — Uncertainties & cross-boundary notes
 
 - **Uncertainties**: what could not be established from source, each
-  with the evidence a follow-up scout would need. `not recorded`, never
-  a guess.
+  with the evidence a follow-up scout would need, marked `not recorded`.
 - **Cross-boundary notes**: facts that belong to a neighbouring
   boundary — for the orchestrator to route, not for this scout to chase.
 

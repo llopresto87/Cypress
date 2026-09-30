@@ -1032,6 +1032,22 @@ has "CONTRADICTED collection data/" "an authored leaf in an ordinary subdirector
 has "plainleaf.md" "an authored leaf in an ordinary subdirectory of an ABSENT collection was not found"
 }
 
+# --- the model map is disclosed, not required (S4, ADR-0022) ---
+# A grown plant whose record predates the map: no models.md row, and the map
+# still the seed's template. Passing is the plant's configuration choice.
+scn_model_map_disclosed() {
+local p="$TMP/mapd"
+fixture renamed "$p"
+ga "$p"; rc_is 0 "setup: the renamed all-ABSENT plant no longer passes, so this case asserts nothing"
+rm -f "$p/docs/graph/models.unfilled.md"
+cp "$ROOT/templates/docs/models.md" "$p/docs/graph/models.md"
+patch_record "$p" 'r["collections"] = [c for c in r["collections"] if c["name"] != "models.md"]'
+ga "$p"; rc_is 0 "a grown plant with the template model map and no models.md row failed the gate"
+grep -i 'docs/graph/models.md' <<<"$out" | grep -qi 'unfilled' \
+  || { printf '%s\n' "$out" >&2; fail "the audit did not name docs/graph/models.md as unfilled"; }
+echo "  an unfilled model map is disclosed, not required — OK"
+}
+
 # --- dispatch: `__case scn_<name>` runs ONE scenario; bases come from the parent ---
 if [ -z "${GA_BASES:-}" ]; then
   export GA_BASES="$TMP/bases"
@@ -1047,7 +1063,8 @@ SCN="$TMP/scenarios"
 for s in scn_shared scn_s9 scn_absent scn_staff scn_nostaff scn_dflt scn_rows \
          scn_copy scn_x28 scn_x31 scn_x32 scn_x33 scn_x34 scn_x35 scn_x38 \
          scn_x39 scn_x40 scn_x41 scn_x42 scn_x43 scn_x44 scn_x45 scn_rawbase \
-         scn_x58 scn_x61 scn_x62x63 scn_x64 scn_x65 scn_x68 scn_x382 scn_walk; do
+         scn_x58 scn_x61 scn_x62x63 scn_x64 scn_x65 scn_x68 scn_x382 scn_walk \
+         scn_model_map_disclosed; do
   printf '%s\t%s\n' "$s" "bash \"$SELF\" __case $s" >> "$SCN"
 done
 rc=0

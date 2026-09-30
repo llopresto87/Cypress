@@ -24,10 +24,10 @@ run that to install one.
 ## The hardening floor
 
 - **Users & SSH.** No routine work as `root`; a non-root deploy user with
-  scoped `sudo`. SSH is **key-only** (`PasswordAuthentication no`), root login
-  off (`PermitRootLogin no` — or `prohibit-password` where a key-only root is a
-  deliberate deploy convention), on a maintained OpenSSH. Key auth, not
-  passwords, everywhere.
+  scoped `sudo`. SSH is **key-only** (`PasswordAuthentication no`) with
+  `PermitRootLogin prohibit-password`: root logs in by public key, root
+  password login is off. Run a maintained OpenSSH. Key auth, not passwords,
+  everywhere.
 - **Firewall — default-deny, but an operator choice.** A host firewall
   (ufw/nftables) that denies inbound by default and opens **only the edge** the
   fleet publishes is the goal — but it is the one control that can lock out

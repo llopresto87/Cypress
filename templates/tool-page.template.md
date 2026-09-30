@@ -2,11 +2,12 @@
 Template: tool-page.template.md
 Authored by: docs-librarian
 Lives at: docs/graph/tools/<tool-name>.md
-Used: by `toolcraft` (kernel §3.8), whenever a task produces a durable,
+Used: at canonize close-out, by the docs-librarian applying
+`skill.toolcraft` (kernel §3.8), whenever a task produces a durable,
 reusable tool worth cataloging so the next session reuses it.
 Filled by copying this template into the target path and replacing
-every <placeholder>. Stable section numbers must not be renumbered;
-agents and tooling index into them. Reached from the owning node via an
+every <placeholder>. Keep the section numbers: agents and tooling
+index into them. Reached from the owning node via an
 `artifacts:` edge (artifacts: - tools/<tool-name>.md) and registered in
 docs/graph/tools/index.md.
 -->
@@ -66,8 +67,8 @@ What goes wrong. Each entry dated.
 
 ## 6. Tests that cover it
 
-The tests that authorize and pin this tool's behavior (§3.4). A tool with
-no test is not durable — add one before cataloging.
+The tests that authorize and pin this tool's behavior (§3.4). Catalog a
+tool once a test pins it: the test is what makes it durable.
 
 - <path to test> — <what contract it pins>
 - **How to run the tests:** `<command>`

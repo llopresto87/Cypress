@@ -16,25 +16,25 @@ libraries:
 artifacts:
   - best-practices/{{slug}}.md      # the standard and this project's stance
 load_when:
-  - "{{the ≥3-character phrases a developer types when THIS is in play — never the family's words}}"
+  - "{{the ≥3-character phrases a developer types when this is in play: this element's own words, because the family's words route to the parent}}"
   - "{{another; a version-qualified child carries the target tokens, e.g. net8.0}}"
 est_tokens: {{honest estimate of the body}}
 ---
 
 <!--
 Template: docs/nodes/_expertise.template.md
-Lives at: docs/graph/nodes/expertise.<slug>.md   (filename MUST equal the id)
+Lives at: docs/graph/nodes/expertise.<slug>.md   (the filename is the id; graph-lint rule 2)
 Used: one file per core or significant language, runtime, framework,
 dependency, infrastructure component, or datastore the stack inventory
 carries (growth-audit plans the path; grow Phase 4 authors it from ledger
 §5, §9, §14 and the same retrieved sources as its libraries/ and
-best-practices/ leaves). The node owns applicability and composition and
-nothing else — it routes to the pin and the standard, it never restates
-them. Agents reach it through the router: the brief's task line is what
+best-practices/ leaves). The node owns ONLY applicability and composition;
+it routes to the pin and the standard, which keep their facts in their
+leaves. Agents reach it through the router: the brief's task line is what
 composes it in, and the Depth section tells each reader which leaf to open.
 Contract: docs/graph/_schema.md — "Node kinds" (expertise), "Key semantics"
 (composes), rules 15–19. The leading underscore keeps this blank form out of
-the linter; the node you copy it to must not carry one.
+the linter; name the copy by its id, without the underscore.
 -->
 
 # {{slug}} — when this expertise is in play
@@ -46,7 +46,7 @@ subsystems they land in, and what the plant actually builds with it. `load_when`
 above carries the trigger words; this tells a reader what they have walked
 into.}}
 
-## Do not without
+## What goes wrong without it
 
 {{What goes wrong when that work is done without this expertise — the specific
 damage, named, not a general warning to be careful. This is the applicability
@@ -67,10 +67,10 @@ section reads exactly like an unopened one.}}
 
 ## Version in play
 
-The pinned major(s) live in `libraries/<slug>.md` §0 — read the pin before
+The pinned major(s) live in `libraries/<slug>.md` §0; read the pin before
 writing anything against this stack. The pins are often old on purpose; the
 wiki is authoritative over memory. Behaviour that differs between majors is
-recorded there (§5 sharp edges, §6 deprecations), never here. Where this
+recorded there (§5 sharp edges, §6 deprecations). Where this
 plant runs more than one major, the composition above lists one child per
 major; load the one whose target the task names.
 
@@ -81,7 +81,7 @@ stance → `best-practices/{{slug}}.md` · this project's own conventions →
 `stack.{{slug}}`
 
 One line per purpose, so a reader of any identity opens the one leaf its work
-needs. Name only leaves this node actually links to, and restate none of them.
+needs. Name only the leaves this node links to.
 
 ## Example
 

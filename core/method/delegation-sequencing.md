@@ -17,7 +17,7 @@ load_when:
   - "one writer per file set, parallel lanes, concurrent writers, who writes the shared file"
   - "RED wave ahead of GREEN wave, is this increment ready, held increment, expected-red at the tip"
 prevents: Dependent units dispatched together and merged by hand, ready units held back by invented caps, a whole batch paused for one increment's problem, or two lanes racing on one file.
-est_tokens: 2540
+est_tokens: 2398
 ---
 
 ## Spawns are sequenced by dependency
@@ -26,19 +26,20 @@ When work spans specialists, decide by **independence**: units that
 touch disjoint files/contracts and consume none of each other's outputs
 may be spawned in parallel, each with its own complete brief and all of
 them named in the plan. Units where one's output feeds the next are
-sequenced — never spawned together and merged by hand. Genuine
-parallelism is wall-clock you keep; false parallelism is a merge
+sequenced, because spawning them together means merging them by hand.
+Genuine parallelism is wall-clock you keep; false parallelism is a merge
 conflict you scheduled.
 
-**No invented concurrency cap.** A ready unit is never held back to fit an
-unmeasured cap. Absent an owner-set limit recorded in the plan, dispatch all
-ready units together, in one message. Ready means its files are disjoint from
-every live lane (`delegation.lanes`) and everything it depends on is satisfied,
-which for implementation work `delegation.waves` defines below.
-Machine load is handled in the brief, which carries the bounded-execution
-clauses of `method.engineering-posture`, not by rationing spawns. A shard that
-times out under load is a transient failure, whose retry budget
-`protocol.recover` owns, and never a defect to "fix".
+**Dispatch every ready unit at once.** Unless the plan's §6 records an
+owner-set spawn limit, dispatch all ready units together, in one message;
+an unmeasured cap only delays ready work. Under a recorded limit, ready
+REDs go first, lowest wave first and then in §9 order, then GREEN, then
+prose; that rule orders units and sets no cap. Ready means its files are
+disjoint from every live lane (`delegation.lanes`) and everything it
+depends on is satisfied, which for implementation work `delegation.waves`
+defines below. Machine load is handled in the brief, which carries the
+clauses of `method.bounded-execution`. A shard that times out under load
+is a transient failure; `protocol.recover` owns its retry budget.
 
 **A read-only review starts as soon as there is committed work to read.** It
 consumes only committed work, so it is independent of the writers still
@@ -56,36 +57,33 @@ and whose `Depends on:` field is what "independent" means; the plan
 linter prints those rows as waves (`delegation.waves`). A caller
 issues a spawn only after every handback that spawn needs has
 returned; the `spawn_id` ordinals it mints (`delegation.tracing`, in
-`method.delegation-bounds`) are then the record
-of the order it actually used, and a §15 entry cites them in that
-order. A flat numbered list is not a sequence — it says nothing about
-which edges are dependencies — so a document that only has one is not
-yet a source to spawn from.
+`method.delegation-bounds`) are then the record of the order it actually
+used, and a §15 entry cites them in that order. A flat numbered list is
+not a sequence (it says nothing about which edges are dependencies), so
+a document that only has one is not yet a source to spawn from.
 
 ## Lanes: one writer per file set (`delegation.lanes`)
 
 A **lane** is the file set one live worker writes. **One writer per file
 set.** Parallel lanes need disjoint files, and disjointness is measured on
-files, never on topics: two units about different subjects that both edit one
-file are not independent. A shared artifact, such as a spec or the
-plan-of-record, has one writer at a time. A worker whose lane does not hold the
-shared artifact lists the rows it would change (the row, its new status, the
-test that justifies it) in its handback, and the lane holder applies them. A
-lane is done when its handback returns, not when its files stop changing.
+files: two units about different subjects that edit one file share a lane.
+A shared artifact, such as a spec or the plan-of-record, has one writer at a
+time. A worker whose lane does not hold the shared artifact lists the rows it
+would change (the row, its new status, the test that justifies it) in its
+handback, and the lane holder applies them. A lane is done when its handback
+returns, not when its files stop changing.
 
-**Decide the order before dispatch, because a live spawn cannot be recalled.**
-There is no way to stop a worker partway through, so the dispatch order is
-settled in the plan, not corrected mid-flight. A finding that surfaces while
-lanes are live goes to a live lane only if that lane owns the files the finding
-touches. Otherwise it waits for the next dispatch, and it is never bolted onto a
-spawn that does not own its files. A shared write ledger, where each worker
-claims its files before writing, works only when every brief tells the worker
-to claim there.
+**Decide the order before dispatch, because a worker stopped partway leaves
+its lane half-written.** Settle the dispatch order in the plan. A finding that
+surfaces while lanes are live goes to a live lane only if that lane owns the
+files the finding touches; otherwise it waits for the next dispatch. A shared
+write ledger, where each worker claims its files before writing, works only
+when every brief tells the worker to claim there.
 
-**No worker moves a shared tree.** When several lanes write one working tree, a
-worker runs no command that moves other writers' uncommitted files: no
-`git stash`, `checkout`, `restore` or `reset`. For a baseline it copies the
-file, or reads `git show HEAD:<path>`, and compares against that. The
+**Take baselines without moving the shared tree.** When several lanes write
+one working tree, a worker gets a baseline by copying the file or reading
+`git show HEAD:<path>`, and runs no `git stash`, `checkout`, `restore` or
+`reset`, because those move other writers' uncommitted files. The
 orchestrator commits each lane by pathspec.
 
 Two cheap signs show that a race between lanes did damage: an orphaned leaf
@@ -95,13 +93,12 @@ touched. Check for both after lanes that shared a neighbourhood return.
 ## Waves: RED ahead of GREEN (`delegation.waves`)
 
 A wave is a set of increments that the plan's §9 `Depends on:` rows allow in
-flight together. The session reads the schedule from `grill-lint.py --waves`
-and does not work it out by hand. That report is a static schedule. Which
-increments are already satisfied is live state, and the session reads it from
-the plan's §15 entries, the commit log and the batch record (the RED hashes and
-the expected-red list). A RED and its GREEN are separate §9 increments, and the
-GREEN names the RED in `Depends on:`, so the RED falls in an earlier wave with
-no rule needed to put it there.
+flight together. The session reads the schedule from `grill-lint.py --waves`.
+That report is a static schedule. Which increments are already satisfied is
+live state, and the session reads it from the plan's §15 entries, the commit
+log and the batch record (the RED hashes and the expected-red list). A RED and
+its GREEN are separate §9 increments, and the GREEN names the RED in `Depends
+on:`, so the RED falls in an earlier wave with no rule needed to put it there.
 
 **Work runs in cycles.** A RED wave writes every ready RED, spread over as many
 parallel tester spawns as `delegation.effort-scale` requires, each sized
@@ -109,13 +106,13 @@ exactly as that scale gives it, with independent prose beside them. A GREEN
 wave follows over the clean increments only, and no ruling pass comes before
 it. The tip runs once the GREEN wave has handed back. One ruling pass, beside
 or after the tip, then covers every flag both waves raised; it rules on the
-held increments, holds nothing that no entry touches, and is skipped when
-nothing is flagged. The next cycle re-issues only the held increments, RED
-again where a ruling changed a contract they encode and GREEN otherwise,
-together with any work that has newly become ready. Cycles repeat until nothing
-is held. The batch still sizes spawns; the cycle is the unit the ruling pass
-and the tip follow. The question file and the shapes of an entry and a ruling
-are `delegation.question-file`, in `method.delegation-cycle-economy`.
+held increments only and is skipped when nothing is flagged. The next cycle
+re-issues only the held increments, RED again where a ruling changed a
+contract they encode and GREEN otherwise, together with any work that has
+newly become ready. Cycles repeat until nothing is held. The batch still sizes
+spawns; the cycle is the unit the ruling pass and the tip follow. The question
+file and the shapes of an entry and a ruling are `delegation.question-file`,
+in `method.delegation-cycle-economy`.
 
 **When a dependency is satisfied.** A RED's own GREEN is the increment that
 turns it green: the GREEN or prose increment whose `Depends on:` names the RED
@@ -125,9 +122,8 @@ and recorded its hashes (`delegation.green-self-test`). For every other
 dependent, a RED is satisfied only when its own GREEN has committed, because
 what a dependent needs is the behavior, not the failing test. A dependency that
 is not a RED is satisfied when it is committed after its review (the COMMIT of
-`test-first.cycle`). Being GREEN is never enough. Whether a RED's files commit
-alone or with its GREEN is the plan's commit practice, and nothing here depends
-on it.
+`test-first.cycle`). Whether a RED's files commit alone or with its GREEN is
+the plan's commit practice, and nothing here depends on it.
 
 An observed RED whose own GREEN has not committed holds its test and fixture
 files as a live lane (`delegation.lanes`), because its hashes are recorded and
@@ -143,7 +139,7 @@ turns a RED green is dispatched there when its RED is satisfied for it, every
 other dependency is satisfied, its files are disjoint from every live lane,
 and neither it nor its RED is held.
 
-**The unit that pauses is the increment, never the batch.** An increment is
+**The increment pauses; the rest of the batch runs on.** An increment is
 held while any of these is true:
 
 1. A question-file entry not yet ruled on touches it: its `where:` or
@@ -156,8 +152,8 @@ held while any of these is true:
    the failing test's contract or files; `protocol.recover` attributes it when
    that is unclear.
 
-Every increment that depends on a held increment is held with it. Nothing else
-in the batch pauses, including the GREEN of an increment no entry touches.
+Every increment that depends on a held increment is held with it. Every other
+increment in the batch proceeds, its GREEN included.
 
 When a ruling amends a contract that a RED already encodes, the session
 re-briefs that RED to a tester against the amended text. The orchestrator
@@ -180,12 +176,6 @@ A gate step that aborts at its first failure proves nothing past the abort.
 The tip record lists every case the step did not execute as `not run`, by id
 where the step names its cases and otherwise as "the rest of `<step>`". A
 `not run` id is neither a pass nor a failure, and by itself it holds no
-increment. Nothing leaves the branch (merge, push or tag) until a tip whose
-expected-red list is empty and which lists no `not run` id. The final tip is
-such a tip.
-
-**RED first only under a spawn limit.** With no owner-set spawn limit recorded
-in the plan's §6, every ready unit goes out together in one message
-(`delegation.sequencing`, above), so there is no order to choose. Under a
-recorded limit, ready REDs go first, lowest wave first and then in §9 order,
-then GREEN, then prose. This rule orders units. It never sets a cap.
+increment. A change leaves the branch (merge, push or tag) only from a tip
+whose expected-red list is empty and which lists no `not run` id. The final
+tip is such a tip.

@@ -25,7 +25,7 @@ recorded_in: ADR-NNNN                 # the ADR that holds the history
 
 <!--
 Template: docs/nodes/_deviation.template.md
-Lives at: docs/graph/nodes/deviation.<slug>.md   (filename MUST equal the id)
+Lives at: docs/graph/nodes/deviation.<slug>.md   (the filename is the id; graph-lint rule 2)
 Used: one file per standing departure from a known standard, written at
 canonize close-out when a decision departs from a standard and the owner
 has said why (canonize.deviation-capture). The ADR named in `recorded_in`
@@ -33,8 +33,8 @@ is the history; this node is the standing truth the router surfaces
 whenever the standard's topic comes up.
 Contract: docs/graph/_schema.md — "Node kinds" (deviation) and "Lifecycle
 status" (`standing` requires `ends_when`); graph-lint rule 13 enforces it.
-The leading underscore keeps this blank form out of the linter; the node
-you copy it to must not carry one.
+The leading underscore keeps this blank form out of the linter; name the
+copy by its id, without the underscore.
 -->
 
 # <slug> — deviation from <the standard>
@@ -43,8 +43,8 @@ you copy it to must not carry one.
 
 A deliberate, reasoned, standing departure from `<departs_from>` — not a
 lapse to be fixed and not a decision to re-litigate. Every field that
-matters is in the frontmatter above; the body explains, it never
-restates a value.
+matters is in the frontmatter above; the body explains them and points at
+the field it explains.
 
 ## Why
 

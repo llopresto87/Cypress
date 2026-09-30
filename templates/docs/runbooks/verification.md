@@ -20,11 +20,10 @@ whatever it has been printing.
 
 A gate discovered to have been wired to the wrong artifact, run against an
 empty input set, or otherwise incapable of failing did not merely stop
-working — it was never working, and every green it reported was a claim about
+working: it was never working, and every green it reported was a claim about
 nothing. Fixing the wiring silently leaves those greens standing as evidence.
 
-Record the finding next to the gate, and never only in the commit that fixed
-it:
+Record the finding next to the gate, where its next reader looks:
 
 - Gate: `<name>` — vacuous from `<when it was introduced or last verified>` to
   `<when it was caught>`

@@ -13,15 +13,14 @@ Authored by: architect, orchestrator
 Lives at: docs/graph/decisions/adr-NNNN-<slug>.md
 Used: on every non-obvious technical decision; one ADR per decision
 Filled by copying this template into the target path and replacing
-every <placeholder>. Stable section numbers must not be renumbered;
-agents and tooling index into them.
+every <placeholder>.
 -->
 
 # ADR-NNNN: <short slug>
 
 ## Status
 
-See frontmatter — the single home. Do not restate the value here.
+See frontmatter (single home).
 
 ## Date
 

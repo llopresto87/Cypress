@@ -12,8 +12,8 @@ Authored by: product + architect + tester (joint)
 Lives at: docs/graph/specs/SPEC-NNNN-<slug>.md
 Used: on every new behavior or behavior change
 Filled by copying this template into the target path and replacing
-every <placeholder>. Stable section numbers must not be renumbered;
-agents and tooling index into them.
+every <placeholder>. Keep the section numbers: agents and tooling
+index into them.
 -->
 
 # SPEC-NNNN: <short slug>
@@ -34,8 +34,8 @@ agents and tooling index into them.
 
 ## 1. Summary
 
-One paragraph. What this spec covers and why. No marketing, no
-philosophy — just the scope of the behavior being contracted.
+One paragraph: what this spec covers and why, stated as the scope of
+the behavior being contracted.
 
 ## 2. Scope
 
@@ -91,8 +91,8 @@ an empty NFR line is noise, not thoroughness.
 - **Compatibility:** platforms, browsers, locales, runtime
   versions.
 
-Cross-link to grill.md §4 (Operating Constraints) so the project's
-global posture isn't restated here.
+Cross-link to grill.md §4 (Operating Constraints), the home of the
+project's global posture.
 
 ## 6. Data shapes
 

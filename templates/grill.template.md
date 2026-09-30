@@ -4,8 +4,8 @@ Authored by: orchestrator, grill-planner
 Lives at: docs/graph/plans/grill.md
 Used: once per project; updated continuously
 Filled by copying this template into the target path and replacing
-every <placeholder>. Stable section numbers must not be renumbered;
-agents and tooling index into them.
+every <placeholder>. Keep the section numbers: agents and tooling
+index into them.
 -->
 
 # grill.md — Plan of Record
@@ -111,9 +111,11 @@ docs/graph/libraries/ pages it relies on; `none` if neither)
 — and, when it adds structure (a module, layer, interface, service),
 the single responsibility that structure owns and the present variation
 justifying any abstraction. Rows are listed in dependency order.
-Increments live here and only here: grill-lint reads §9 and nothing
-else, so a plan for a second spec is more rows below, never a new
-top-level section.
+Increments live in §9, inline (below) or as ledger files it indexes:
+grill-lint runs its plan checks on §9, so a plan for a second spec
+adds rows or ledger files here. Switch to the ledger when §9 starts
+dominating the file; both forms may coexist while a plan migrates.
+Why and how: `grill.increment-shape` in protocols/grill.md.
 
 ### Increment 1 — <title>
 - Spec contracts: <SPEC-NNNN/contract-slug, ...>
@@ -141,30 +143,16 @@ top-level section.
 - Depends on: <the last feature increment>
 
 <!--
-The consolidation increment is a default, not a gate. Keep it last when
-this spec added many tests. Drop it when the spec added few, and write
-the reason where the row was (`no consolidation: <reason>`). Never run
-it mid-spec. Depth: `grill.increment-shape` in protocols/grill.md.
+The consolidation increment is a default: keep it last when this spec
+added many tests; when it added few, replace the row with
+`no consolidation: <reason>`. Depth: `grill.increment-shape` in
+protocols/grill.md.
 -->
 
 <!--
-TWO FORMS, and a mature plan wants the second.
-
-INLINE (above) — increments written straight into §9. Right while the plan is
-small, and every existing plant uses it.
-
-LEDGER — §9 becomes an index and each increment moves to its own file under
-`docs/graph/plans/grill/`. §9 grows faster than any other section: every
-increment ever planned leaves its contracts, RED tests, rollback path and
-dependencies here permanently. A plan is read whole, so past a certain size the
-document describing the work becomes the largest single thing a session loads,
-and the progressive discovery the method rests on is defeated by its own plan.
-In ledger form a session reads the index plus the one increment it is working
-on.
-
-Switch when §9 starts dominating the file. Both forms may coexist, so a plan
-migrates one increment at a time rather than in a flag day. `grill-lint.py`
-resolves the index, and holds the same required fields inside the child file:
+The ledger form of §9: an index, each row pointing at one increment file
+under `docs/graph/plans/grill/`. `grill-lint.py` resolves the index and
+holds the same required fields inside each file:
 
 ## 9. Implementation Plan
 
@@ -175,18 +163,14 @@ resolves the index, and holds the same required fields inside the child file:
 
 ...with `plans/grill/increment-01-validate-schema.md` holding the block exactly
 as written above, `### Increment 1 — Validate schema` heading included.
-
-The lint refuses an index row pointing at a missing file, an increment file no
-row points at (work that exists and is unreachable), and an increment defined
-both inline and in a file.
 -->
 
 ## 10. Verification Plan
 Covered by the project's standard gates — see
-docs/graph/runbooks/verification.md. List a gate here ONLY where this
+docs/graph/runbooks/verification.md. List a gate here only where this
 plan diverges from the runbook (a new gate this work introduces, a
 standard gate deliberately skipped and why); grill.md is read every
-session and must not duplicate the runbook it points at.
+session, so the runbook stays the gates' one home.
 
 ## 11. Risks and Mitigations
 | Risk | Probability | Impact | Mitigation | Owner | Verification |
@@ -197,7 +181,7 @@ session and must not duplicate the runbook it points at.
 |---:|---|---|---|---|---|---|
 
 One numbered row per open decision or finding, each with an owner —
-this table IS the open engineering backlog (no side list). Cite the
+this table is the open engineering backlog, its only home. Cite the
 pinning test in "Pinned by"; mark rows needing human input
 **do-not-guess** and leave them for sign-off; resolve a row in place
 (strike-through, dated, with evidence), never by deleting it. Depth:
@@ -214,13 +198,10 @@ One action.
 - YYYY-MM-DD: <entry>
 
 <!--
-Append, don't fork. When a follow-up investigation or ad-hoc deep-dive
-grows past a changelog line, capture it as a new top-level numbered
-section appended here (§16, §17, …) rather than spawning a separate
-document. An appended section holds findings, never increments:
-grill-lint checks increments in §9 only, so new plan work goes into §9
-as more rows or ledger files. One file stays the definitive state of
-the plan, consistent with §15's append-only discipline: earlier sections are struck through
-when superseded, never silently rewritten or split off.
+Append in place (`rule.grill`): a follow-up investigation or deep-dive
+that outgrows a changelog line becomes a new numbered section here
+(§16, §17, …) holding findings; new plan work goes into §9. One file
+stays the definitive state of the plan: earlier sections are struck
+through when superseded, never silently rewritten or split off.
 -->
 

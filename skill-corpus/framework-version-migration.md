@@ -2,12 +2,9 @@
 
 > Optional procedure — the behavior-preserving sequence for moving a codebase
 > across a major generation of a framework, language runtime, or load-bearing
-> dependency, so the jump lands without silent behavior drift and without a
-> big-bang no gate can bisect. Not a core skill; instantiate into
-> `docs/graph/skills/<name>.md` (its home, projected into the harness dirs
-> the plant uses) from `templates/skill.template.md` if selected. Composes
-> `verify`, `grill`, `adr-writer`, and `security` by reference — it does not
-> restate them. Parameterized by `<source-generation>` and
+> dependency, so the jump lands with behavior preserved, in increments a gate
+> can bisect. Composes `verify`, `grill`, `adr-writer`, and `security` by
+> reference. Parameterized by `<source-generation>` and
 > `<target-generation>`.
 
 ## When to apply
@@ -38,16 +35,11 @@
    participant at a time; canary-first on uniform multi-target changes.
 5. **Gate on the intended-delta allowlist.** Diff against the baseline; accept
    only enumerated intended deltas, each justified as a strengthening, not a
-   convenience relaxation (`verify`). Clear the advisory/currency gate on the
-   target (`security`).
+   convenience relaxation (`verify`). A test changes only through that list: a
+   test edited to pass hides the drift the baseline exists to catch. Clear the
+   advisory/currency gate on the target (`security`).
 6. **Record the decision and its escape hatch.** An ADR with the target, the
    reversibility class, and a documented fallback trigger (`adr-writer`).
-
-## Anti-patterns
-
-- Editing tests to pass instead of enumerating intended deltas.
-- A big-bang migration with no per-concern increments to bisect.
-- Trusting "it compiles" as behavior preservation.
 
 ## Reference files
 

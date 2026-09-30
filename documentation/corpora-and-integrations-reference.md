@@ -7,9 +7,8 @@ This reference documents two parts of the CYPRESS seed:
 - **Part B — the integrations.** The five per-tool adapters under
   `integrations/` that project the shared seed onto each host harness.
 
-The repository root is `<seed-root>`. This repository is
-the seed (the shippable product), not a grown project. Every fact below comes
-from source files on disk; each major section cites its source path.
+The repository root is `<seed-root>`. Every fact below comes from source files
+on disk; each major section cites its source path.
 
 ---
 
@@ -41,18 +40,18 @@ The tool, agent, and skill corpora are artifact / role / procedure corpora
 Every corpus entry must satisfy two gates, stated in each `README.md` and
 enforced by `protocols/harvest.md`:
 
-1. Agnostic or it does not belong here. No project name, domain noun, path,
-   credential, or dataset shape. If you cannot describe the entry without
-   naming the plant, it is not ready to harvest.
-2. Durable or it does not belong here. No version-pinned specific. A page must
-   read like a general-purpose reference, not one project's runbook step.
+1. Agnostic: the entry describes itself without naming the plant, so it
+   carries no project name, domain noun, path, credential or dataset shape
+   (`harvest.agnosticism-gate`).
+2. Durable: the entry reads as a general-purpose reference that holds across
+   versions, with no version-pinned specific.
 
-A third principle governs *reading* a corpus: **orientation, not gospel.** A
+A third principle governs *reading* a corpus: orientation, not gospel. A
 corpus page seeds a project's own leaf as an orientation layer; the project
 then confirms current facts against the real source (the lockfile, the
 publisher, the stack) and authors its own application beside the citation.
 
-## A.1 Why corpora sit OUTSIDE the kernel and roster
+## A.1 Why corpora sit outside the kernel and roster
 
 Source: `agent-corpus/README.md`, `protocols/harvest.md` (§ "The
 suggested-expert corpus").
@@ -67,16 +66,13 @@ roster. Instead:
 - Depositing into a corpus gives harvest a home for a generic foreign role,
   tool, procedure, or citation without touching the kernel budget or the
   seed's one-home-per-fact roster.
-- The kernel is loaded on every session of every plant, so additions there
-  must earn roughly 2k-token-per-session rent, and `tests/seed-lint.py` fails
-  the build past the kernel size budget (`KERNEL_BUDGET`). Depth belongs in a
-  machinery node or a corpus, never the kernel (source: `CLAUDE.md`).
+- The kernel is loaded on every session of every plant, so depth belongs in
+  a machinery node or a corpus; the kernel's byte budget is
+  [enforced](../DOCUMENTATION.md#enf-kernel-budget).
 
 ## A.2 The steward-only promotion rule
 
-Source: `protocols/harvest.md`, §"Promotion to the base roster". (A line
-number here was wrong and would go wrong again on the next edit of that file;
-a heading is the stable address.)
+Source: `protocols/harvest.md`, §"Promotion to the base roster".
 
 > **Promotion to the base roster is a separate, steward-only decision**, and
 > the bar is higher than "useful": the role's mandate must be **universal** —
@@ -88,19 +84,18 @@ Key points:
 - A role that serves a domain some projects simply do not have (a regulatory
   analyst, a stack specialist) stays in the catalog however good it is,
   because the catalog costs nothing until selected.
-- Harvest may *propose* a promotion; it never performs one. Moving an entry
-  from a corpus into the always-loaded roster is the steward's (the seed
-  owner's) call, not the system's.
-- `harvest`, `graft`, and `harvest` triggers are all user-sovereign:
-  nothing in the seed may trigger them automatically (source: `CLAUDE.md`,
-  `HARVEST_PROMPT.md`, `protocols/harvest.md` § "Trigger — manual only").
+- Harvest may *propose* a promotion; the steward (the seed owner) makes it.
+- `harvest` and `graft` are user-sovereign: only the user starts them, and
+  the method may propose one and then stops (source: `CLAUDE.md`,
+  `HARVEST_PROMPT.md`, `protocols/harvest.md` § "Trigger: user-started; the
+  system proposes, the steward starts").
 
 ## A.3 How harvest deposits and grow/graft withdraw
 
 Source: `protocols/harvest.md`, each corpus `README.md` § "The withdraw
 contract".
 
-**Deposit (harvest, inbound).** Harvest is manual only. A mature plant's
+**Deposit (harvest, inbound).** Harvest runs only when the user starts it. A mature plant's
 `docs/graph/{libraries,legal,tools,agents,skills}/` leaves are mined for their
 **durable, agnostic surface only**. Each candidate must survive three hard
 gates before it may touch the seed:
@@ -114,8 +109,7 @@ gates before it may touch the seed:
 
 A single leaked project-specific or version-pinned detail, anywhere, including
 the CHANGELOG entry and harvest-log, is a failed harvest. Plant-identifying
-provenance lives only in the ratification proposal shown to the steward, never
-in the seed's committed files.
+provenance lives only in the ratification proposal shown to the steward.
 
 **Withdraw (grow / graft / toolcraft / commission, outbound).** When a new
 project needs a capability, role, procedure, or citation, it checks the
@@ -150,18 +144,21 @@ per version. `<library>` is the canonical id, lowercased, scope slash removed
 
 | Ecosystem (subfolder) | Entry count | Examples |
 |---|---|---|
-| `container` | 7 | `docker.md`, `docker-compose.md`, `nginx.md`, `docker-host-hardening.md` |
-| `language` | 5 | `python.md`, `typescript.md`, `dotnet.md`, `angular.md`, `flutter.md` |
+| `cli` | 2 | `curl.md`, `git.md` |
+| `container` | 10 | `docker.md`, `docker-compose.md`, `nginx.md`, `docker-host-hardening.md`, `postgres.md` |
+| `language` | 6 | `python.md`, `typescript.md`, `dotnet.md`, `nodejs.md`, `angular.md`, `flutter.md` |
 | `maven` | 21 | `spring-boot.md`, `hibernate-orm.md`, `resilience4j.md`, `stripe-java.md` |
 | `npm` | 10 | `rxjs.md`, `playwright-test.md`, `primeng.md`, `keycloak-js.md` |
-| `nuget` | 22 | `Microsoft.EntityFrameworkCore.md`, `Dapper.md`, `xunit.md`, `Npgsql.md` |
-| `platform` | 2 | `azure-cli.md`, `azure-pipelines-yaml.md` |
-| `pypi` | 14 | `fastapi.md`, `pydantic.md`, `numpy.md`, `openai.md`, `qdrant-client.md` |
-| **Total** | **81** | |
+| `nuget` | 23 | `Microsoft.EntityFrameworkCore.md`, `Dapper.md`, `xunit.md`, `Npgsql.md` |
+| `platform` | 3 | `azure-cli.md`, `azure-devops-rest.md`, `azure-pipelines-yaml.md` |
+| `pypi` | 16 | `fastapi.md`, `pydantic.md`, `numpy.md`, `openai.md`, `qdrant-client.md` |
+| **Total** | **91** | |
 
-`nuget` (22) and `maven` (21) together are 43 of these 81 pages — 53%. The
-estate this corpus was harvested from is a .NET/Java shop; see §A.4.1a for
-what that means for an adopter on a different stack.
+The counts are a directory listing: `ls library-corpus/<ecosystem>/*.md`,
+excluding `README.md` and `index.md`. `nuget` and `maven` together hold about
+half of the pages, because the estate this corpus was harvested from is a
+.NET/Java shop; see §A.4.1a for what that means for an adopter on a different
+stack.
 
 - **Belongs here (surface, durable):** the capability the library provides; its
   ecosystem and canonical package name; core API shape and canonical usage;
@@ -185,20 +182,20 @@ Example entry shape (`library-corpus/pypi/fastapi.md`): a title
 The seed's machinery — protocols, skills, agents, `ingest-library`,
 `research-and-ingest`, `library-wiki` — makes no assumption about ecosystem;
 it ingests any dependency, in any language, the same way. The **shipped
-library-corpus content** is a different claim: `nuget` (22 pages) and `maven`
-(21) together are 43 of its 81 pages, 53% — the corpus was harvested from a
-.NET/Java estate, and it shows in the composition, not the mechanism.
+library-corpus content** is a different claim: `nuget` and `maven` together
+hold about half of its pages (the §A.4.1 table) — the corpus was harvested
+from a .NET/Java estate, and it shows in the composition, not the mechanism.
 
-**The corpus never ships into a plant.** Unlike `legal-corpus/`, which
-`install.sh --legal-corpus yes` places whole at `docs/graph/legal/corpus/`,
-`install.sh` has no equivalent for `library-corpus/` (grep it — there is no
-`place_library_corpus`, no flag). The corpus stays in this seed repository. A
+The library corpus stays in this seed repository. Unlike `legal-corpus/`,
+which `install.sh --legal-corpus yes` places whole at
+`docs/graph/legal/corpus/`, `install.sh` has no placement function or flag
+for `library-corpus/`. A
 freshly grown plant's `ingest-library.corpus-first` check
 (`protocols/ingest-library.md`) can only find it when the pass runs inside
 the seed repo itself; for every installed plant it is a no-op, and phase 2
 goes straight to upstream. The corpus reaches a plant at all only through a
-later `graft` (§9.3), which is user-decided, never automatic — and even then
-only for the dependencies the corpus happens to carry a page for.
+later `graft`, which only the user starts, and then only for the
+dependencies the corpus happens to carry a page for.
 
 **What this means for an adopter, concretely:**
 
@@ -229,10 +226,9 @@ corpus captures exactly the durable half and is deliberately unpinned (see
 CVEs, no deprecations, no resolved version. The version-pinned half —
 API deltas against the actual lockfile, deprecations, advisories, a
 smoke-tested pin — is what running `ingest-library` (or its `.refresh` pass)
-against a real project delivers, corpus present or not. Two different
-artifacts, two different claims: the shipped corpus gives you a durable
-orientation page today; `ingest-library` gives a plant the version-pinned
-page it can actually trust.
+against a real project delivers, corpus present or not. The shipped corpus
+gives a durable orientation page; `ingest-library` gives a plant the
+version-pinned page it can actually trust.
 
 ### A.4.2 Legal corpus — `legal-corpus/`
 
@@ -290,18 +286,19 @@ consumer as `not recorded — requires ingest`.
    transposing act's Article N routinely address unrelated matters.
 3. **`in force` ≠ settled:** an instrument can be valid and under appeal.
 4. **A number is the highest-risk field:** deadlines, thresholds, fine
-   ceilings. A deadline that is a *formula* must never be a *calendar date*.
+   ceilings. Record a deadline that is a *formula* as the formula; a
+   *calendar date* in its place is wrong.
 5. Guidance is not law, and a standard is not a legal basis.
 
-**Grade per entry, never per page.** A page may hold a primary-fetched verbatim
-article beside a secondary-corroborated summary. A page-level "verified" banner
-over mixed provenance is falsification. `text_form` values: `verbatim`
+Grade each entry on its own, never the page: a page may hold a
+primary-fetched verbatim article beside a secondary-corroborated summary, and
+a page-level "verified" banner over mixed provenance is falsification. `text_form` values: `verbatim`
 (quotable), `normalized summary` (not the law's words), `wording withheld —
 requires licensed copy` (citable by identifier and title only), `topic only`.
 
 **Roles (`legal-corpus/index.md`):** written by `docs-librarian`, ingested by
-`research-scout`, and read by the optional role in `agent-corpus/legal.md`,
-a role instantiated without `WebSearch`, `WebFetch`, or `Bash`, so this
+`research-scout`, and read by the base-roster legal agent, `agents/14-legal.md`,
+which runs without `WebSearch`, `WebFetch`, or `Bash`, so this
 corpus plus the project's own legal leaf is its only source of law. A corpus
 gap produces an explicit refusal (`not recorded — needs ingest`), never a
 reconstructed citation. That refusal-on-gap behaviour is only safe because
@@ -356,7 +353,7 @@ Source: `agent-corpus/README.md`.
 | `env-contract-manager.md` | Environment / configuration contract role |
 | `integration-topologist.md` | Cross-service integration topology role |
 | `legacy-runtime-reconstructor.md` | Reconstructing a legacy runtime |
-| `legal.md` | Promoted to the base roster at 6.12.0 (`agents/14-legal.md`); this page is a historical tombstone documenting the harvested mandate, not a withdrawable candidate (see A.4.2) |
+| `legal.md` | A short pointer to the base-roster agent, `agents/14-legal.md`, which owns the legal mandate; the catalog offers no second legal role (see A.4.2) |
 | `report-editor.md` | Re-cuts a finished, fact-bearing report for a different reader without touching its claims |
 | **Total** | **7** |
 
@@ -413,8 +410,8 @@ procedure. Source: `skill-corpus/README.md`.
 - **Stays out:** a procedure bound to one stack or repo layout; anything
   duplicating a core `skills/` discipline.
 - Each page opens with an optional-procedure blockquote naming what it composes
-  and its parameters, then `## When to apply`, the procedure, `Anti-patterns`,
-  and `Reference files`.
+  and its parameters, then `## When to apply`, the procedure, and
+  `Reference files`.
 - **Withdraw:** a matching page is instantiated into the project's
   `docs/graph/skills/<name>.md` (projected into `.claude/skills/<name>/SKILL.md`
   and kin by the harness) from `docs/graph/templates/skill.template.md`,
@@ -447,10 +444,11 @@ links); machinery re-installs fast-forward: identical files untouched,
 changed ones backed up. The install also delivers `docs/graph/prose-lint.py`,
 the prose gate under the `humanizer` skill, as fast-forward machinery.
 
-## B.0 First-class vs supported
+## B.0 Support tiers
 
-Source: `README.md` §"Per-tool details", `integrations/prime-agent/README.md`,
-`tests/test-full-install.sh`.
+Source: [ADR-0009](../docs/decisions/adr-0009-host-support-tiers.md), the
+Support tiers table of `documentation/host-capability-matrix.md`,
+`integrations/prime-agent/README.md`, `tests/test-full-install.sh`.
 
 - Claude Code and Prime Agent are the two first-class citizens at full
   parity: each ships a progressive-discovery enforcement hook/extension, and
@@ -458,11 +456,12 @@ Source: `README.md` §"Per-tool details", `integrations/prime-agent/README.md`,
   What asserts that is `tests/test-full-install.sh`, a gate in the seed's own
   suite; `install.sh` places the linter into a plant but no workflow that runs
   it, so running it on every push is the plant's to wire (§B.8).
-- opencode, Codex, and GitHub Copilot are supported integrations. They
-  install the same kernel, roster, and skills; commands reach opencode and
-  Copilot but not Codex, which gets no command surface at all (the Slash
-  commands row of `documentation/host-capability-matrix.md`). Each has stated
-  gaps, documented per tool below.
+- opencode is the one `supported` host; Codex and GitHub Copilot are
+  `frozen`: still installable by name, with a `DEPRECATED` notice, and no new
+  features. All three install the same kernel, roster, and skills; commands
+  reach opencode and Copilot but not Codex, which gets no command surface at
+  all (the Slash commands row of `documentation/host-capability-matrix.md`).
+  Each has stated gaps, documented per tool below.
 
 ## B.1 Per-tool summary table
 
@@ -470,7 +469,7 @@ Source: `README.md` §"Per-tool details", `integrations/prime-agent/README.md`,
 |---|---|---|---|---|---|
 | Claude Code | `CLAUDE.md` (copy of `core/AGENTS.md`; `--symlink` opt-in) | `.claude/{agents,skills,commands}` | copy by default; commands generated | **Yes** | `.claude/route-hook.py` on `UserPromptSubmit`; `.claude/status-hook.py` on `SessionStart` |
 | Prime Agent | `AGENTS.md` (copy of `core/AGENTS.md`; shared with CLAUDE.md when co-installed) | `.prime/agent/{agents,skills,prompts,extensions}` | copy by default; prompts generated | **Yes** | `.prime/agent/extensions/route-extension.ts` on `before_agent_start`; `status-extension.ts` once per session |
-| opencode | `AGENTS.md` (or `CLAUDE.md` fallback) | `.opencode/{agents,skills,commands}` | copy by default; `opencode.json` copied | No | Kernel FIRST-MOVE mandate (no dedicated hook shipped) |
+| opencode | `AGENTS.md` (or `CLAUDE.md` fallback) | `.opencode/{agents,skills,commands}` | copy by default; agents rendered with their `model:` line from the model map; `opencode.json` copied | No | Kernel FIRST-MOVE mandate (no dedicated hook shipped) |
 | Codex | `AGENTS.md` at repo root | `.codex/{agents,skills}` | copy by default; global `~/.codex/config.toml` edits are user-consented | No | Kernel FIRST-MOVE mandate; skills registered in global config |
 | GitHub Copilot | `.github/copilot-instructions.md` (copy) + `AGENTS.md` | `.github/{agents,prompts,instructions,hooks}` | **transform** (regenerate, not symlink) | No | `route-hook.py` + `status-hook.py` via VS Code Agent Hooks (Preview), installed only when `.claude/settings.json` is absent — VS Code reads both, and firing both would double-inject (`documentation/host-capability-matrix.md`) |
 
@@ -495,8 +494,8 @@ Claude Code reads on every session: `CLAUDE.md` (project memory at repo root),
 - **Install:** `install.sh claude-code`. `CLAUDE.md` → copy of
   `core/AGENTS.md` (`--symlink` opt-in); agents/skills → copies; commands generated
   one per protocol node with `command: true`; `docs/graph/` scaffolded. If
-  `.claude/` already has custom content, the installer prompts; conflicts are
-  reported, not silently overwritten.
+  `.claude/` already has custom content, the installer prompts, and conflicts
+  are reported for you to resolve.
 - **Enforcement:** `.claude/route-hook.py` runs on `UserPromptSubmit`, runs the
   graph router (`docs/graph/graph-lint.py --plan=<prompt>`) on the actual
   prompt, and injects a one-line pointer at the kernel plus the suggested node
@@ -504,8 +503,8 @@ Claude Code reads on every session: `CLAUDE.md` (project memory at repo root),
   with the prompt's echo removed. A session ledger under `.cypress/session/` lets later prompts name
   already-suggested nodes by id; `status-hook.py` resets it on every
   `SessionStart` (SPEC-0003). It is fail-open (trailing `|| true`; any error
-  degrades to the full injection, the pointer line, or silence; a hook must
-  never block a prompt). The frontmatter format (`name`, `description`, `tools`,
+  degrades to the full injection, the pointer line, or silence, so every
+  prompt goes through). The frontmatter format (`name`, `description`, `tools`,
   `model`) is exactly what Claude Code expects, so the files work unchanged.
 - **Bounded execution before every shell call:** `.claude/bound-hook.py` (`PreToolUse`, matcher `Bash`) refuses a blocking-prone command that carries neither an explicit bound nor a detached launch, printing both accepted forms; it is the one hook wired without `|| true`, because a guard that cannot block is not a guard. Doctrine: `core/method/bounded-execution.md` §14, "A command that may outlive its session is bounded" (`toolcraft.bounded-execution`).
 - **Status register at session start:** `.claude/status-hook.py` runs once on
@@ -533,7 +532,7 @@ Source: `integrations/prime-agent/README.md`, `settings.json`,
 `route-extension.ts`, `APPEND_SYSTEM.md`.
 
 Prime Agent is an RLM-native harness built around a persistent IPython kernel,
-recursive subagents (`rlm()`), durable sessions, and a continual-harness state
+recursive subagents (`rlm.spawn()`), durable sessions, and a continual-harness state
 ledger. Discovery (verified against prime-agent 0.8.1): context files
 (`AGENTS.md` or `CLAUDE.md`, auto-loaded and concatenated), prompt templates
 (`.prime/agent/prompts/<name>.md`), skills (`.prime/agent/skills/<name>/
@@ -555,7 +554,7 @@ SKILL.md`), extensions (`.prime/agent/extensions/*.ts`), and settings
   briefs, skills, generated prompts, the `route-extension.ts`, `settings.json`,
   and `APPEND_SYSTEM.md` are placed; `docs/graph/` scaffolded. Prime Agent has
   no static roster/protocol/template tool-dirs; it is graph-only (the test
-  asserts `.prime/agent/protocols` and `.prime/agent/templates` do NOT exist).
+  asserts `.prime/agent/protocols` and `.prime/agent/templates` do not exist).
 - **Enforcement:** `route-extension.ts` subscribes to `before_agent_start`,
   runs the same graph router as `route-hook.py`, and injects the route-first
   mandate plus suggested node set via Prime Agent's native extension API. It is
@@ -567,15 +566,15 @@ SKILL.md`), extensions (`.prime/agent/extensions/*.ts`), and settings
   blunt "FIRST MOVE" mandate is the non-extension floor.
 - **Delegation advantage (no registration lag):** Prime Agent has no
   session-start roster enumeration. Delegation is a runtime primitive
-  (`await rlm("<brief>")`); the `agents/*.md` install as **brief sources** the
-  orchestrator reads and passes into the `rlm()` call. The "installed but not
+  (`await rlm.spawn("<brief>", name=...)`); the `agents/*.md` install as
+  **brief sources** the orchestrator reads and passes into the `rlm.spawn()` call. The "installed but not
   spawnable" trap therefore does not exist here: the recorded
   `delegation.harness-registration` fallback is the normal path.
 - **Native-execution overlay:** `.prime/agent/APPEND_SYSTEM.md` is appended to
   the system prompt every session (Claude Code never reads it). It maps the
-  kernel's discipline onto Prime Agent primitives (fan-out `rlm()` delegation,
-  a model policy that maps each class to one version and carries no version
-  table, kernel-run gates, canonize + continual-harness close-out,
+  kernel's discipline onto Prime Agent primitives (fan-out `rlm.spawn()` delegation,
+  a model policy that reads each class's model from the plant's model map,
+  `docs/graph/models.md`, kernel-run gates, canonize + continual-harness close-out,
   nonblocking `goal` / `rlm_heartbeat` loops). A project can edit it; a global
   `~/.prime/agent/APPEND_SYSTEM.md` is superseded inside the plant.
 - **settings.json:** lists only the seed's own resource dirs with bare
@@ -625,12 +624,15 @@ protocols → `.opencode/commands/*.md`; `templates/docs/` → `docs/graph/`.
 
   | seed frontmatter | opencode expects | consequence today |
   |---|---|---|
-  | `model: opus` / `model: sonnet` | `provider/model` (e.g. `anthropic/claude-sonnet-4-5`) | the model-class policy is not applied; agents run on the session default |
+  | `model: opus` / `model: sonnet` | `provider/model` | the installer writes each agent's `provider/model` from the plant's model map, `docs/graph/models.md`; with no map row the projected agent has no `model:` line and runs on its caller's model |
   | `tools: [Read, Glob, Grep, Bash]` (list) | `permission: {edit: deny, bash: deny}` (`tools` object deprecated) | a read-only leaf's tool bound is not enforced by the harness |
 
-  Neither is fixable in `opencode.json`; the fix is for `install.sh` to emit a
-  transformed projection (as it does for Copilot). Until then, treat the
-  model class and leaf tool bound as brief-enforced on opencode, per
+  Neither is fixable in `opencode.json`. The `model:` line is a transformed
+  projection: `install.sh opencode` renders each agent with it, and
+  `install.sh opencode --check` compares the placed projections with a fresh
+  rendering ([ADR-0022](../docs/decisions/adr-0022-the-plant-model-map.md);
+  `integrations/opencode/README.md`, "Model choice comes from the plant's model
+  map"). The leaf tool bound stays brief-enforced on opencode, per
   `delegation.harness-registration`.
 
 ## B.5 Codex (OpenAI Codex CLI)
@@ -780,7 +782,7 @@ plant receives. It asserts:
   `.prime/agent/agents/_routes.golden.tsv` must `cmp` equal to the one home
   `agents/_routes.golden.tsv`, with no drift.
 - **Prime Agent is graph-only.** `.prime/agent/protocols` and
-  `.prime/agent/templates` must NOT exist (stale-dir check).
+  `.prime/agent/templates` must not exist (stale-dir check).
 - **settings.json hygiene.** Valid JSON; resource entries use bare relative
   names (no `.prime/` prefix, which would double-nest); `rlmMaxDepth` must not
   appear in project settings (it is silently ignored, so shipping it is a bug).
@@ -806,7 +808,9 @@ plus agent-lint lint/eval, graph/agent-lint regressions, `seed-lint.py`, and
 - Corpora READMEs: `library-corpus/README.md`, `legal-corpus/README.md`,
   `legal-corpus/index.md`, `legal-corpus/_schema.md`,
   `legal-corpus/case-law/index.md`, `tool-corpus/README.md`,
-  `agent-corpus/README.md`, `agent-corpus/legal.md`, `skill-corpus/README.md`.
+  `agent-corpus/README.md`, `skill-corpus/README.md`.
+- The legal agent: `agents/14-legal.md` (the base-roster agent) and
+  `agent-corpus/legal.md` (its pointer in the agent corpus).
 - Harvest / withdraw contract: `protocols/harvest.md`, `HARVEST_PROMPT.md`.
 - Kernel economy / gates / conventions: `CLAUDE.md`.
 - Integrations: `integrations/{claude-code,prime-agent,opencode,codex,

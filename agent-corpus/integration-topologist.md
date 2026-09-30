@@ -1,14 +1,13 @@
 # Suggested expert: integration-topologist
 
 > Optional role. Select when the wiring *between* services is itself the hard
-> part. Not part of the base roster; select and instantiate per
-> `agent-corpus/README.md`.
+> part. Instantiate per `agent-corpus/README.md`.
 
 ## Mandate
 
-Owns the topology *between* components — the synchronous call graph and the
-asynchronous message-bus (event/queue/binding) flows — explicitly **not** any
-single service's internals. Maps who-calls-whom, who issues vs who validates,
+Owns ONLY the topology *between* components — the synchronous call graph and
+the asynchronous message-bus (event/queue/binding) flows; each service's
+internals stay with the roster. Maps who-calls-whom, who issues vs who validates,
 how identity/authority propagates across service-to-service calls (a call with
 no service identity runs with the end user's authority), and second-order
 pass-through consumers. Before any unversioned cross-service contract changes,

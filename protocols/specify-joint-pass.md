@@ -18,7 +18,7 @@ load_when:
   - "design latitude, creative balanced or simple, how much design freedom"
   - "out of scope under simple, the owner did not ask for it"
 prevents: A design that drifts past what the owner wanted because nobody asked how much freedom it had, and specialists spawned twice over for a spec and a plan they could have written in one visit.
-est_tokens: 1058
+est_tokens: 1101
 ---
 
 # Protocol: specify joint pass
@@ -51,14 +51,14 @@ quote as evidence, and the date.
 Judgment checks the recorded value, not a tool, at three points: the
 press (`grill.press`), each ruling pass (`delegation.question-file` in
 `docs/graph/method/delegation-cycle-economy.md`), and every brief, which
-quotes the row. Anything outside the latitude is not built. It goes to
-the batch's question file, the ruling refuses it under `simple`, and
-only the owner can widen the scope.
+quotes the row. Anything outside the latitude goes to the batch's
+question file instead of into the build; under `simple` the ruling refuses
+it, and ONLY the owner can widen the scope.
 
 ## The joint pass (`specify.joint-pass`)
 
-The table is the spawn order, as in `specify.flow` and `grill.flow`: a
-step's spawn is issued only after every handback it needs has returned.
+The table is the spawn order (`delegation.sequencing`), as in
+`specify.flow` and `grill.flow`.
 
 | Step | Owner | Writes | Needs | Parallel with |
 |---|---|---|---|---|

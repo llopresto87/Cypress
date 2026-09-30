@@ -146,6 +146,7 @@ ADOPTED_RULE_HOMES = {
     "delegation.turn": REGISTRATION_HOME,
     "delegation.tracing": REGISTRATION_HOME,
     "delegation.effort": "core/method/delegation-model-classes.md",
+    "delegation.model-map": "core/method/delegation-model-classes.md",
     "delegation.effort-scale": "core/method/delegation-cycle-economy.md",
     "delegation.green-self-test": "core/method/delegation-cycle-economy.md",
     "delegation.tip-cadence": "core/method/delegation-cycle-economy.md",
@@ -291,9 +292,10 @@ def load_agents() -> dict:
 
 def check_reference_tables() -> None:
     """The three reference documents' primary tables follow the frontmatter,
-    their one home: the protocol table (owns, est_tokens), the skills summary
-    table (owns, requires, peers, est_tokens) and each agent's section in the
-    agents reference (routing_triggers, golden rows, owns, requires, peers,
+    their one home: the protocol table (owns, est_tokens) and each protocol
+    section's quoted load_when strings, the skills summary table (owns,
+    requires, peers, est_tokens) and each agent's section in the agents
+    reference (routing_triggers, golden rows, owns, requires, peers,
     delegates_to). Every node has a row, and no row names a missing node."""
     nodes = {fm.get("id"): fm for _l, fm, _b in machinery_nodes()}
     for rel, prefix, cols in (("documentation/protocols-reference.md", "protocol", ("owns",)),
@@ -333,11 +335,24 @@ def check_reference_tables() -> None:
             fail(f"{name} has no row for {nid}")
         if prefix == "protocol":
             for sec in re.split(r"^- \*\*id:\*\* `protocol\.", text, flags=re.M)[1:]:
+                nid = f"protocol.{sec.split('`', 1)[0]}"
                 for field in ("owns", "requires", "peers", "load_when"):
                     n = len(re.findall(rf"^- \*\*{field}:\*\*", sec, re.M))
                     if n > 1:
-                        fail(f"{name} section for protocol.{sec.split('`', 1)[0]}: "
-                             f"`{field}` is stated {n} times")
+                        fail(f"{name} section for {nid}: `{field}` is stated {n} times")
+                # The quoted load_when strings, in order, as the frontmatter has
+                # them; the reference wraps a string across lines, so each
+                # whitespace run counts as one space.
+                bullet = re.search(r"^- \*\*load_when:\*\*(.*?)(?=^- \*\*|\n\n|\Z)", sec, re.M | re.S)
+                if bullet and nid in nodes:
+                    listed = [re.sub(r"\s+", " ", q) for q in re.findall(r'"([^"]*)"', bullet.group(1))]
+                    declared = [re.sub(r"\s+", " ", str(q)) for q in nodes[nid].get("load_when") or []]
+                    if listed != declared:
+                        missing = [q for q in declared if q not in listed]
+                        extra = [q for q in listed if q not in declared]
+                        fail(f"{name} section for {nid}: load_when disagrees with the "
+                             f"frontmatter — " + (f"missing {missing}, extra {extra}"
+                                                  if missing or extra else "same strings, other order"))
 
     rel = "documentation/agents-reference.md"
     if not (ROOT / rel).is_file():
@@ -392,6 +407,23 @@ def check_reference_tables() -> None:
             fail(f"agents-reference: {a.name} golden rows do not match "
                  f"agents/_routes.golden.tsv ({len(shown)} listed, "
                  f"{len(golden.get(a.name, []))} in the corpus)")
+
+
+def check_decision_index() -> None:
+    """docs/decisions/index.md catalogs every ADR file, and each of its table
+    rows links a file that exists."""
+    ddir = ROOT / "docs" / "decisions"
+    index = ddir / "index.md"
+    if not index.is_file():
+        fail("docs/decisions/index.md is missing")
+        return
+    rows = [l for l in index.read_text(encoding="utf-8").splitlines() if l.startswith("|")]
+    linked = {t for l in rows for t in re.findall(r"\]\((adr-[^)\s]+\.md)\)", l)}
+    files = {q.name for q in ddir.glob("adr-*.md")}
+    for name in sorted(files - linked):
+        fail(f"docs/decisions/index.md has no row for {name}")
+    for name in sorted(linked - files):
+        fail(f"docs/decisions/index.md links {name}, which is not in docs/decisions/")
 
 
 def check_gate_single_home() -> None:
@@ -793,6 +825,8 @@ INSTALL_WRITE_EXCEPTIONS = {
     ("generate_slash_commands", "cat"): (1, "temp", "writes a command file into $tmp"),
     ("write_seed_stamp", ">"): (1, "temp", "writes the stamp into $tmp before place_state"),
     ("install_codex", "embedded"): (1, "temp", "renders the config snippet into $tmp"),
+    ("render_opencode_agents", "embedded"): (1, "temp",
+        "renders each opencode agent with its map model: line into $tmp, then placed"),
     ("install_github_copilot", "embedded"): (4, "temp",
         "renders the four Copilot projections into $tmp, each then placed"),
     ("<main>", "cp"): (1, "temp", "copies the graph into the verification tree under $tmp"),
@@ -1083,6 +1117,36 @@ def check_install_write_sites() -> None:
                  f"into the target' — that is what INSTALL_WRITE_EXCEPTIONS "
                  f"currently holds. It said 'three' while the table held six, "
                  f"which is how a derived claim goes stale in prose.")
+
+# ADR-0021: the seed's own procedures and tools, which no plant receives.
+SEED_ONLY = ("tools/prepare-release.py", "docs/skills/seed-release.md")
+
+
+def check_seed_only_stays_home() -> None:
+    """SPEC-0001 SEED_ONLY_FILES_NEVER_PLACED: each SEED_ONLY file exists and
+    neither manifest.json nor install.sh names it; install.sh sources nothing
+    under $SEED_ROOT/docs; and the manifest's `tools` map holds exactly the
+    tools/ and tests/ files install.sh places, so a seed-only tool cannot ship."""
+    manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
+    install = (ROOT / "install.sh").read_text(encoding="utf-8")
+    for rel in SEED_ONLY:
+        if not (ROOT / rel).is_file():
+            fail(f"{rel}: listed in SEED_ONLY and missing from the seed")
+        if rel in manifest:
+            fail(f"manifest.json names {rel}, a seed-only file (ADR-0021)")
+        if rel in install:
+            fail(f"install.sh names {rel}, a seed-only file (ADR-0021)")
+    for n, line in enumerate(install.splitlines(), 1):
+        if re.search(r'\$\{?SEED_ROOT\}?"?/docs\b', line):
+            fail(f"install.sh:{n}: sources a file under $SEED_ROOT/docs, the seed's "
+                 f"own governance tree, which no plant receives (ADR-0021)")
+    placed = set(re.findall(r'\$\{?SEED_ROOT\}?"?/((?:tools|tests)/[^"\s]+)', install))
+    listed = set(json.loads(manifest).get("tools", {}))
+    if listed != placed:
+        fail(f"manifest.json: the `tools` map disagrees with the tools/ and tests/ files "
+             f"install.sh places — missing {sorted(placed - listed)}, "
+             f"extra {sorted(listed - placed)}")
+
 
 def check_eager_surface() -> None:
     """Bound what each harness loads on EVERY session, before any routing."""
@@ -1523,6 +1587,9 @@ BRIEF_TEMPLATES = ("templates/prompts/investigation-brief.md",
                    "templates/prompts/growth-scout-brief.md",
                    "templates/prompts/growth-author-brief.md",
                    "templates/prompts/clean-context-validation-brief.md")
+# The fenced blocks of graph-session-bootstrap.md every brief embeds verbatim,
+# each named by the line that opens it (SPEC-0003 BRIEF_TEMPLATES_BYTE_IDENTICAL).
+BRIEF_BLOCKS = ("GRAPH DISCIPLINE", "COMPANION")
 
 
 def check() -> None:
@@ -1580,19 +1647,22 @@ def check() -> None:
         fail("core/AGENTS.md: does not reference the canonical "
              "templates/prompts/graph-session-bootstrap.md block")
     canonical = ROOT / "templates/prompts/graph-session-bootstrap.md"
-    m = re.search(r"```\n(GRAPH DISCIPLINE.*?)```", canonical.read_text(encoding="utf-8"),
-                  re.S) if canonical.exists() else None
-    if not m:
-        fail(f"{canonical.relative_to(ROOT)}: no fenced GRAPH DISCIPLINE block found")
-    else:
-        # SPEC-0003 BRIEF_TEMPLATES_BYTE_IDENTICAL (I-2): the embedding templates
-        # carry the canonical block byte for byte.
-        for rel in BRIEF_TEMPLATES:
-            p = ROOT / rel
-            if not p.exists():
-                fail(f"{rel}: embedding template missing")
-            elif m.group(1) not in p.read_text(encoding="utf-8"):
-                fail(f"{rel}: embedded GRAPH DISCIPLINE block has drifted from "
+    canonical_text = canonical.read_text(encoding="utf-8") if canonical.exists() else ""
+    briefs = {rel: (ROOT / rel).read_text(encoding="utf-8")
+              for rel in BRIEF_TEMPLATES if (ROOT / rel).exists()}
+    for rel in BRIEF_TEMPLATES:
+        if rel not in briefs:
+            fail(f"{rel}: embedding template missing")
+    # SPEC-0003 BRIEF_TEMPLATES_BYTE_IDENTICAL (I-2): the embedding templates
+    # carry each canonical block byte for byte.
+    for block in BRIEF_BLOCKS:
+        m = re.search(rf"```\n({re.escape(block)}.*?)```", canonical_text, re.S)
+        if not m:
+            fail(f"{canonical.relative_to(ROOT)}: no fenced {block} block found")
+            continue
+        for rel, text in briefs.items():
+            if m.group(1) not in text:
+                fail(f"{rel}: embedded {block} block has drifted from "
                      f"the canonical copy in {canonical.name} — sync it verbatim")
     # -- spawn tracing: every brief and the handback carry spawn_id -------
     for rel in ("templates/prompts/handback-payload.md",) + BRIEF_TEMPLATES:
@@ -1735,7 +1805,7 @@ def check() -> None:
              if (ROOT / f).exists()]
     agn = load_tool("agnosticism-lint.py")
     agn_scan = list(scan)
-    agn_scan += [ROOT / r for r in ("docs/plans", "tools") if (ROOT / r).is_dir()]
+    agn_scan += [ROOT / r for r in ("docs/plans", "docs/skills", "tools") if (ROOT / r).is_dir()]
     agn_scan += [ROOT / f for f in ("install.sh", "DOCUMENTATION.md", "INSTALL.md")
                  if (ROOT / f).exists()]
     for finding in agn.scan(agn_scan, globs=("*.md", "*.py", "*.sh"),
@@ -2088,8 +2158,8 @@ def front_door_checks() -> None:
 def check_published_figures() -> None:
     """Every figure the prose publishes derives from the tree. SPEC-0004
     EAGER_FIGURES_CHECKED_WHEREVER_PUBLISHED and BODY_FIGURES_HAVE_A_REQUIRED_HOME
-    are its front-door scope rows; the roster and skill counts, the documented
-    version, and each harness's own eager figure are its other rows."""
+    are its front-door scope rows; the roster, skill and protocol counts, the
+    documented version, and each harness's own eager figure are its other rows."""
     surfaces = eager_surfaces(KERNEL.stat().st_size)
     live = set(surfaces.values()) | {EAGER_BUDGET}
     eager, body = "EAGER_FIGURES_CHECKED_WHEREVER_PUBLISHED", "BODY_FIGURES_HAVE_A_REQUIRED_HOME"
@@ -2138,12 +2208,13 @@ def check_published_figures() -> None:
 
 
 def check_published_counts() -> None:
-    """The roster, coordinator and skill counts, and the documented version, as
-    the shipped prose states them."""
+    """The roster, coordinator, skill and protocol counts, and the documented
+    version, as the shipped prose states them."""
     agents = load_agents()
     delegators = {n for n, a in agents.items()
                   if str(a["fm"].get("can_delegate", "false")).lower() == "true"}
     n_skills = sum(1 for d in (ROOT / "skills").iterdir() if (d / "SKILL.md").is_file())
+    n_protocols = sum(1 for _p in (ROOT / "protocols").glob("*.md"))
     version = json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))["version"]
     word = "|".join(WORD_NUMS)
 
@@ -2171,14 +2242,17 @@ def check_published_counts() -> None:
         for m in re.finditer(rf"\b(\d+|{word})\s+skills\b", text, re.I):
             if num(m.group(1)) != n_skills:
                 fail(f"{path}: claims {m.group(1)} skills; skills/ has {n_skills}")
+        for m in re.finditer(rf"\b(\d+|{word})\s+protocols\b", text, re.I):
+            if num(m.group(1)) != n_protocols:
+                fail(f"{path}: claims {m.group(1)} protocols; protocols/ has {n_protocols}")
 
 
 CHECKS = (check, check_agent_spawn_grants, check_body_ceiling, check_leaf_body_ceiling,
           check_adopted_rule_homes, check_text_rules, check_eager_surface,
           check_opencode_config, check_spec_test_mapping, check_spec_rows_name_their_contract,
           check_frontmatter_reader_is_one_reader, check_frontmatter_is_portable_yaml,
-          check_install_write_sites, check_host_tiers, check_reference_tables,
-          check_gate_single_home, check_canonical_router_blocks,
+          check_install_write_sites, check_seed_only_stays_home, check_host_tiers,
+          check_reference_tables, check_decision_index, check_gate_single_home, check_canonical_router_blocks,
           check_canonical_plant_root_boundary, check_hook_text_restates_no_kernel_rule,
           check_published_figures, check_workflows, check_run_sh_shell_contract,
           front_door_checks)

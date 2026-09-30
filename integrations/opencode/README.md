@@ -57,36 +57,41 @@ markdown-agent contract is *not* a superset of it. Verified against
 
 | seed frontmatter | opencode expects | consequence today |
 |------------------|------------------|-------------------|
-| `model: opus` / `model: sonnet` | `provider/model`, e.g. `anthropic/claude-sonnet-4-5` | the seed's model-class policy is not applied; agents run on the session default |
+| `model: opus` / `model: sonnet` | `provider/model` | the installer writes each agent's `provider/model` from the plant's model map; with no map row the projected agent has no `model:` line and runs on its caller's model |
 | `tools: [Read, Glob, Grep, Bash]` (list) | `permission: {edit: deny, bash: deny}` (`tools` object is deprecated) | the harness does not hold a read-only leaf's tool bound ([tool allow-list](../../DOCUMENTATION.md#enf-tool-allowlist)) |
 
-Neither is fixable in `opencode.json` — the fix is for `install.sh` to emit a
-**transformed** projection for opencode the way it already does for Copilot
-(`install_github_copilot` rewrites frontmatter per agent). Until then, treat the
-model class and the leaf tool bound as carried by the brief on opencode, exactly as
+Neither is fixable in `opencode.json`; the fix is a **transformed** projection,
+the way `install_github_copilot` rewrites frontmatter per agent for Copilot.
+The `model:` line has that transform (next section). The leaf tool bound is
+carried by the brief on opencode, exactly as
 `docs/graph/method/delegation-bounds.md` describes for role emulation
 (`delegation.harness-registration`); the
 [tool allow-list row](../../DOCUMENTATION.md#enf-tool-allowlist) records the gap.
+
+### Model choice comes from the plant's model map
+
+`install.sh opencode` rewrites one line of each projected agent: the class
+token in `model:` becomes the `provider/model` string that
+`docs/graph/models.md` lists for that class, at the agent's `effort:`. Any
+provider opencode carries works. The rest of the file stays verbatim, so the
+tool bound is still carried by the brief. After you edit the map, re-run
+`install.sh opencode`.
 
 ## Slash commands
 
 Every protocol whose node declares `command: true` in its frontmatter is
 exposed as a slash command; `install.sh` **generates** one command file per
-such node into `.opencode/commands/` — the same roster it generates for
-Claude Code and Prime Agent, since those three draw from the same `command:`
-field. GitHub Copilot gets that roster through a different generator
-(`.github/prompts/<name>.prompt.md`); Codex gets none of it, because
-`install_codex` does not call `generate_slash_commands` and is the one adapter
-with no command surface at all. Each is a short
-pointer into the corresponding `docs/graph/protocols/<name>.md` node (the
-single home). The user-sovereign meta-loop protocols (`graft`, `grow`,
+such node into `.opencode/commands/`. Each is a short pointer into the
+corresponding `docs/graph/protocols/<name>.md` node (the single home). How
+the other hosts get the same roster is in the
+[host capability matrix](../../documentation/host-capability-matrix.md#slash-commands). The user-sovereign meta-loop protocols (`graft`, `grow`,
 `harvest`) carry no `command:` field and
 are commands on no harness.
 
 ## opencode.json
 
-The bundled config is deliberately almost empty — every key it used to carry was
-either invalid or redundant:
+The bundled config is deliberately almost empty: it carries only keys that
+are valid and load-bearing.
 
 ```json
 {
@@ -95,9 +100,8 @@ either invalid or redundant:
 }
 ```
 
-- **`$schema`** — `https://opencode.ai/config.json`. The older
-  `config-schema.json` URL now returns **404**; an editor pointed at it silently
-  validates nothing.
+- **`$schema`** — `https://opencode.ai/config.json`. The `config-schema.json`
+  URL returns **404**, so an editor pointed at it silently validates nothing.
 - **`subagent_depth: 3`** — this is the load-bearing key. opencode defaults it to
   **1**, a depth at which subagents do not launch subagents of their own, and
   that alone collapses the seed's bounded-delegation topology: the deepest legal
@@ -115,9 +119,9 @@ either invalid or redundant:
   `commands` are not config keys at all (the real ones are `agent` and
   `command`, and they hold *inline definitions*, not directories); `skills` is a
   real key but takes `{paths, urls}` for *additional* folders. All three
-  directories are found by convention. Since the schema sets
-  `additionalProperties: false`, the old `{"directory": ...}` entries were
-  keys the schema did not allow, not harmless hints.
+  directories are found by convention, and since the schema sets
+  `additionalProperties: false`, a `{"directory": ...}` entry would be a key
+  the schema does not allow.
 - **MCP servers** use the `mcp` key (not `mcp_servers`), shaped
   `{"<name>": {"type": "local", "command": [...], "environment": {...}}}`. The
   seed declares none: a documentation MCP is a project choice, and
@@ -125,8 +129,7 @@ either invalid or redundant:
 
 One config file ships, not two. opencode reads `opencode.json` **or**
 `opencode.jsonc`, and with both present at the same tier the winner is
-unspecified — the seed previously installed both, so a project could edit one and
-have the other apply.
+unspecified, so a project could edit one and have the other apply.
 
 ## Install
 

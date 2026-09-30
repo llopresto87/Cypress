@@ -2,8 +2,7 @@
 
 > Optional role. Select when a project has a non-trivial dedicated client
 > (web SPA, mobile, desktop) whose concerns the stack-general roster doesn't
-> own. Not part of the base roster; select and instantiate per
-> `agent-corpus/README.md`.
+> own. Instantiate per `agent-corpus/README.md`.
 
 ## Mandate
 
@@ -14,8 +13,8 @@ the auth-token attach/refresh/interceptor flow, and session gating; the
 **build-time contract** to the edge (the base-URL/endpoint catalog injected at
 build, not hard-coded); and client-specific constraints the server never sees
 (secure browser context, offline/cache behavior, bundling, accessibility).
-Reasons from the project's pinned client facts; never claims an end-to-end
-flow works when the backend it targets is unavailable.
+Reasons from the project's pinned client facts; when the backend it targets is
+unavailable, it reports an end-to-end flow as unverified.
 
 ## When to select
 
@@ -29,7 +28,7 @@ flow works when the backend it targets is unavailable.
 
 - Distinct from **product**, which owns UX *flows and outcomes* — this role
   owns the *client code* that realizes them.
-- Distinct from **implementer**, which is stack-general — this role is the
+- Distinct from **implementer**, which is stack-general; this role is the
   resident owner of *this* client's architecture and idioms.
 - Distinct from **security**, which owns the auth *decision and doctrine* —
   this role *wires* the token flow client-side (client-side decode is UX only;

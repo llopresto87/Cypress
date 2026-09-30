@@ -24,17 +24,17 @@ est_tokens: {{honest estimate of the body}}
 
 <!--
 Template: docs/nodes/_operator.template.md
-Lives at: docs/graph/nodes/crosscut.operator.md   (filename MUST equal the id)
+Lives at: docs/graph/nodes/crosscut.operator.md   (the filename is the id; graph-lint rule 2)
 Used: once per plant, when the owner states a working rule for good
 ("remember …", "from now on …", "always …") and the rule is about how agents
 work with this owner, not about the project. method.stewardship-posture decides
-where such a rule goes; this is the node it names. Authored from recorded owner
-corrections and instructions only. A rule nobody can quote is not written.
+where such a rule goes; this is the node it names. Authored ONLY from recorded
+owner words.
 Kind: `crosscut`. The contract spans every subsystem and every task, which is
 what the kind means (docs/graph/_schema.md, "Node kinds"), and `crosscut` is in
 every plant's graph-lint KINDS, so no plant needs a linter change to carry it.
-The leading underscore keeps this blank form out of the linter; the node you
-copy it to must not carry one.
+The leading underscore keeps this blank form out of the linter; name the copy
+by its id, without the underscore.
 -->
 
 # Operator: how the plant owner works with agents
@@ -46,13 +46,13 @@ how agents should work with them. It holds only what the seed does not already
 own. Where the seed owns a rule, this node names that home in one line and
 adds only what is specific to this owner.
 
-Every rule is authored from something the owner said, and carries the quote.
-Style is not inferred from how the owner writes, and a rule is not generalized
-beyond what the owner said. When the owner reverses a rule, rewrite the rule
-and add the reversing quote as its newest evidence. A reversal is the
-requirement moving, not a mistake to argue about.
+Every rule is authored from a recorded owner correction or instruction, and
+carries the quote. Each rule states what the owner said, at the scope they said
+it; how the owner writes is described under Register. When the owner reverses a
+rule, rewrite the rule and add the reversing quote as its newest evidence. A
+reversal is the requirement moving, not a mistake to argue about.
 
-## Facts this node does not hold
+## Facts owned elsewhere
 
 - **Commit attribution, deliverable language, comment language.** These are
   the `plant:` block in `docs/graph/index.md` (`commit_attribution`,
@@ -79,14 +79,15 @@ evidence stands behind it:
 
 ### {{The rule, as an instruction}} (`{{canonical | strong | contextual}}`)
 
-{{One short paragraph: what to do, what not to do, and, for a contextual rule,
-the condition. Name the seed home if the rule sharpens one.}}
+{{One short paragraph: what to do and why, the limit if the owner stated one,
+and, for a contextual rule, the condition. Name the seed home if the rule
+sharpens one.}}
 
 > "{{the owner's words, verbatim, in the language they used}}" ({{YYYY-MM-DD}})
 
 ## Effort tiers, in the owner's words
 
-The owner declares effort; agents do not guess it. Record the words the owner
+The owner declares effort; agents read it from this table. Record the words the owner
 uses for each tier and what each one authorizes.
 
 | Tier | The owner's words | What it authorizes | What it suspends |
@@ -118,8 +119,8 @@ authorize only reading, because that is the line agents most often misread.
 ## Register
 
 - **How the owner writes to agents:** {{the register, and anything to read
-  through, such as typos or a mix of languages}}. Describe it here; never
-  mirror it in deliverables.
+  through, such as typos or a mix of languages}}. Describe it here;
+  deliverables keep the plant's own register (`method.prose-posture`).
 - **How the owner wants reports:** {{e.g. pending actions or history,
   classified or flat, where on disk they live}}
 - **When the owner wants questions:** {{e.g. many at planning, none during

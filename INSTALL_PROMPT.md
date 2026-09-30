@@ -1,8 +1,7 @@
 # Install and grow CYPRESS — the single entry point
 
 This one prompt is the **primary, tool-neutral entry point** for putting CYPRESS
-into a project. There is nothing else to run first and nothing else to run after:
-it installs **all** the seed's files into your target and then drives a
+into a project, and it is the whole flow: it installs **all** the seed's files into your target and then drives a
 **complete, full-depth growth** of the target's `docs/graph/` knowledge system.
 `install.sh` is only the placement mechanism this prompt invokes; `grow` is the
 growth doctrine it executes; `/initialize` is the entry fork that chooses between `grow` and
@@ -22,15 +21,15 @@ empty one it does not. Paste this whole file into an agent-capable chat and foll
   **two-sided**: internal `growth-scout`s read this project's code, and
   external `research-scout`s retrieve the upstream documentation and community
   standards that code operates against — "executable source is the truth"
-  governs claims *about the project*, and is never a license to skip the web.
+  governs claims *about the project*, and the web pass belongs to every growth.
 - **Why full depth is mandatory.** A half-grown plant — a root node, a router,
   and a few leaves — is the most common way this is mis-run: a failed growth
   reported as a success. The growth here is bound by `grow`'s
   **completeness contract** (`grow.completeness-contract`): every knowledge
   collection is either covered to the depth its evidence supports, or explicitly
   absent because the source has no such evidence. "Enough", "ran out of context",
-  and "the templates are present" are not completion. This binds whatever model
-  is orchestrating; it does not soften with model size or operator impatience.
+  and "the templates are present" are not completion. This binds every
+  orchestrating model equally, whatever its size or the operator's hurry.
 
 ## How it runs — one flow, three phases
 
@@ -53,8 +52,9 @@ target now carries `EXPERT_SEED_INSTALL_PROMPT.md`, a copy of this prompt, for
 exactly this re-entry and for later refreshes. If a restart is truly impossible,
 use the recorded role-emulation fallback and report it in the delivery.
 `docs/graph/method/delegation-bounds.md` (`delegation.harness-registration`) is the
-single home for both the remedy and the fallback. Silently substituting a
-generic worker for a named specialist is the one response that is not allowed.
+single home for both the remedy and the fallback. Restart or the recorded
+fallback are the two responses; a generic worker silently standing in for a
+named specialist is not one.
 
 **Phase 2 — GROW IN FULL.** From the target-rooted session, **execute the
 complete `grow` protocol — `docs/graph/protocols/grow.md` — in full**: read it,
@@ -69,17 +69,18 @@ inventory, run
 `python3 <seed>/tools/growth-audit.py <plant> <seed> --plan` to turn each item
 into the artifacts growth owes it, author them, then run
 `python3 <seed>/tools/growth-audit.py <plant> <seed>` and route every finding
-back to an author. Repeat until it exits 0. Growth is not done while that gate
-is red, and a row is covered-to-evidence, absent-with-a-reason-and-the-paths-you-
-searched, or a named blocker — never blank. Phase 6 validation then passes
-against the graph, never against the file tree. Do not work from a summary and do not
-skip or collapse its phases. If the target has no executable evidence, `grow` is the wrong protocol for it:
+back to an author. Repeat until it exits 0: every row is covered to evidence,
+absent with a reason and the paths you searched, or a named blocker
+(`docs/graph/templates/prompts/growth-coverage-record.md` defines each). Phase 6
+validation then passes against the graph rather than the file tree. Work from
+the node itself, not a summary. If the target has no executable evidence,
+`grow` is the wrong protocol for it:
 `protocol.initialize` owns the entry fork and hands an empty repository to
 `from-scratch`, a nine-phase workflow that authors the project and its graph
 and ends at `deliver`. It does not return here.
 
-Three steps are historically skipped by orchestrators optimizing for the
-checklist instead of depth, and each is a defect, not a judgment call:
+Orchestrators optimizing for the checklist instead of depth most often skip
+these three steps; each skip is a defect, not a judgment call:
 
 1. **The external pass** (grow topology step 3): after the internal ledgers
    reconcile, dispatch `research-scout`s for every architecturally
@@ -99,40 +100,38 @@ checklist instead of depth, and each is a defect, not a judgment call:
 
 ## The orchestration rules that bind this chat
 
-This chat is the orchestration and planning plane. **Do not perform investigation,**
-authoring, or code edits in the main chat. Maintain the plan here, communicate
-with me here, and always spawn clean-context workers with a bounded purpose, the
-exact paths they may inspect/change, required graph context, evidence rules,
-deliverables, and verification. Use purpose-made existing agents/skills/prompts;
+This chat is the orchestration and planning plane: it routes, plans and talks
+with me, and every investigation, authoring task and code edit goes to a
+clean-context worker. Each worker gets a bounded purpose, the exact paths it
+may inspect/change, required graph context, evidence rules, deliverables, and
+verification. Use purpose-made existing agents/skills/prompts;
 if none fits, create the missing project-agnostic expert definition first — and
 hold it to that word: `python3 docs/graph/agnosticism-lint.py --file <the new
 definition> --forbid <project name> --forbid <domain noun>` catches the
 objective leaks before the definition calcifies. A definition that names this
 project is not an expert definition, it is a note.
 
-Model policy is strict:
+Model policy (the classes are `delegation.model-classes`; the plant's model
+map names the model on each host):
 
-- **Sonnet-class workers**: read-only scouting, inventory, extraction, and factual
-  evidence reports only. They do not author artifacts or make deep design calls.
-  (`research-scout`'s snapshot/normalize writes into `docs/graph/sources/` are
-  mechanical normalization of retrieved upstream text, not authoring — its
-  drafts are finalized by the Opus-class `docs-librarian`.)
-- **Opus-class workers**: all writing/authoring, code changes, synthesis,
-  architecture, deep analysis, review, and adversarial validation.
+- **Investigation-class workers** ONLY scout, inventory, extract and report
+  facts, read-only, plus `research-scout`'s mechanical normalization of
+  retrieved upstream text into `docs/graph/sources/`, whose drafts the
+  authoring-class `docs-librarian` finalizes.
+- **Authoring-class workers** do all writing/authoring, code changes,
+  synthesis, architecture, deep analysis, review, and adversarial validation.
 
-**Every spawned session must execute**
-`python3 docs/graph/graph-lint.py --plan "<its exact task>"` before reading source
-or writing, load the resulting nodes plus their `requires` closure, and return the
-command/output, the loaded closure, deliberate skips, and any later widening. A
-bootstrap scout facing an empty initial graph still runs the probe, reports that
-it is not yet routable, and stays strictly inside the exact paths in its brief.
-Once nodes exist there is no fallback to hand-waved routing.
+Every worker brief embeds the graph-session bootstrap blocks
+(`templates/prompts/graph-session-bootstrap.md`, placed in the target as
+`docs/graph/templates/prompts/graph-session-bootstrap.md`) verbatim.
 
 Hard boundaries bind every worker from the first spawn (`grow`'s § Boundaries is
-the full statement): do not modify application code; do not run application builds
-or test suites; do not fetch/pull/switch/commit/push Git; do not fabricate specs,
-ADRs, rationale, commands, sources, or green status. Record Git state only as
-provenance; existing docs never outrank current executable source.
+the full statement): workers leave the application as they find it. They
+change none of its code, run none of its builds or test suites, and leave its
+Git state alone (no fetch, pull, switch, commit or push), recording that state
+only as provenance. Every spec, ADR, rationale, command, source and status they
+report is evidenced, never fabricated, and existing docs never outrank current
+executable source.
 
 ## The plant facts are an explicit choice
 
@@ -152,14 +151,8 @@ grown, the librarian rebalance report, the **coverage record**
 (`.cypress/coverage.json`, and the `growth-audit.py` run that passed over it),
 checks and results, excluded/untrusted evidence, honest unknowns, and one
 highest-leverage next action with its task tier (kernel §0), so the next session
-starts classified. Run the `canonize` close-out before delivering. Do not call
-the plant mature merely because template files exist; maturity is proved by the
-graph, and by a green coverage gate. Commit the coverage record with the graph —
+starts classified. Run the `canonize` close-out before delivering. Call the
+plant mature when the graph proves it and the coverage gate is green; template
+files alone prove nothing. Commit the coverage record with the graph —
 it is how the next session, and the next graft, can tell what this growth
 covered from what it never looked at.
-
----
-
-The prompt is intentionally project-, language-, vendor-, repository-, and
-coding-tool-agnostic. Tool commands such as `/initialize` are convenience
-adapters to this workflow, not the workflow's primary interface.

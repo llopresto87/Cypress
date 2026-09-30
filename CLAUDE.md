@@ -1,72 +1,45 @@
 # Working on the CYPRESS seed (this repo)
 
-This repository IS the seed — not a grown plant. `core/AGENTS.md` here is
-the product shipped to target projects, not this repo's instructions.
-There is no `docs/graph/` here; these notes replace it.
+This repository is the seed, not a grown plant. `core/AGENTS.md` here is
+the product shipped to target projects; this repo's own instructions are
+these notes. There is no `docs/graph/` here; these notes replace it.
 
 ## Gates (run before claiming anything works)
 
 ```
-bash tests/run.sh        # the full gate. The roster is deliberately not
-                         # restated here: it drifted twice during one session
-                         # of editing it, which is what a count in prose does.
-                         # Ask the thing that derives it:
-                         #   python3 tools/gate-registry.py --summary
-                         # for how many gates there are and what each READS,
-                         # --table for the false green each can still produce.
+bash tests/run.sh        # the full gate; tools/gate-registry.py --summary describes it
 ```
 
-A count in prose is a fact with two homes. Where one is unavoidable, derive it:
-`tools/gate-registry.py` parses `tests/run.sh` and refuses a step nobody has
-classified — which is also what keeps the gate honest about the gates that read
-only `tests/fixtures/`, and therefore prove a linter works while saying nothing
-about the tree the seed ships. `--summary` prints how many that currently is.
+A count in prose is a fact with two homes. Where one is unavoidable, derive it.
+`tools/gate-registry.py` derives the gate: it parses `tests/run.sh` and refuses
+a step nobody has classified. `--summary` prints how many gates there are and
+what each reads; `--table` prints the false green each can still produce. The
+same classification keeps the gate honest about the steps that read only
+`tests/fixtures/`: they prove a linter works and say nothing about the tree the
+seed ships, and `--summary` prints how many there currently are.
 
 `tests/seed-lint.py` is one-home-per-fact for the seed's own meta-facts:
 roster/frontmatter/manifest/README consistency, the delegator invariant,
-numeric claims, the kernel size budget (8 000 bytes), stable §3.1–§3.8
+numeric claims, the kernel size budget (`KERNEL_BUDGET`), stable §3.1–§3.8
 anchors, machinery-node frontmatter (every protocol/skill/agent/method
 file is a graph node: id, kind, origin: seed, owns, load_when,
 est_tokens, prevents; owns globally unique; the eight `rule.*` keys in
 exactly their mapped homes), canonical-block byte-identity in the brief
 templates, and the per-session instruction budget of the integrations.
 
-## Release (GitHub, tag-triggered)
+## Release
 
-`tools/prepare-release.py` is seed-only — absent from `manifest.json`'s
-`tools` map, so it never ships to a plant. It stages
-`.github/RELEASE_NOTES.md` from the `CHANGELOG.md` entry for the current
-`manifest.json` version, taken verbatim rather than re-drafted: the entry
-already passed canonize's `skills/humanizer` prose pass, so re-authoring it
-here would be a second home for the same release, in the same voice, for
-the same reader. The staged file is `skill-corpus/discardme.md`-shaped
-scaffolding — produced this session, consumed by the pipeline below,
-superseded (not explicitly deleted) the next time the script runs for the
-following version, since a same-turn cleanup commit back to the default
-branch would race whatever lands on it next for no benefit a release reader
-gets.
+The release, with its one documentation pass, is `docs/skills/seed-release.md`.
+It ends in `tools/prepare-release.py` and a `vX.Y.Z` tag push. Both files are
+seed-only: `install.sh` places neither into a plant. Pushing the tag is a publish: it waits for
+the owner's explicit go-ahead (`vcs-posture.publish-authorization`).
+`.github/workflows/release.yml` publishes the staged notes unedited and writes
+no prose of its own, because CI has no access to the judgment
+`skills/humanizer` requires.
 
-Flow, once the version bump and its `CHANGELOG.md` entry are committed:
+## Canonical homes (edit the home; copies follow it)
 
-1. `python3 tools/prepare-release.py` — writes `.github/RELEASE_NOTES.md`
-   and prints the exact commands for the next step.
-2. `bash tests/run.sh` green, then commit the staged file with the rest of
-   the change.
-3. `git tag -a vX.Y.Z -m vX.Y.Z && git push && git push origin vX.Y.Z` —
-   pushing the tag is a publish and needs the same explicit go-ahead as any
-   other push (`core/method/vcs-posture.md`'s `vcs-posture.publish-authorization`).
-
-`.github/workflows/release.yml` triggers on that `vX.Y.Z` tag push, checks
-it against `manifest.json`, and runs `gh release create` with the staged
-file as the body, unedited. It writes no prose of its own: CI has no access
-to the judgment `skills/humanizer` and `skill-corpus/discardme.md` both
-require. `tests/seed-lint.py`'s `check_workflows` holds the
-workflow's shape; `tests/test_prepare_release.py` holds the script's
-extraction and CLI behavior.
-
-## Canonical homes (edit the home, never a copy)
-
-- The seed IS a graph (6.0.0): every protocol, skill, agent, and
+- The seed is a graph: every protocol, skill, agent, and
   `core/method/` file is a routable node installed into a plant's
   `docs/graph/{protocols,skills,agents,method}/`; the kernel is a
   bootstrap of anchors and pointers.
@@ -82,45 +55,42 @@ extraction and CLI behavior.
 - Graph-session discipline → `templates/prompts/graph-session-bootstrap.md`
   (brief templates embed it byte-identical; lint enforces sync).
 - Handback contract → `templates/prompts/handback-payload.md`
-  (agent files carry a 3-sentence pointer, never the full spec).
+  (agent files carry a short pointer to it).
 - Close-out flow → `protocols/canonize.md` (single librarian spawn;
-  `skills/toolcraft/` owns only the durable-tool doctrine — `agent.tool-smith` builds, `canonize` catalogs).
+  `skills/toolcraft/` owns only the durable-tool doctrine: `agent.tool-smith` builds, `canonize` catalogs).
 - Failure discipline → `protocols/recover.md` (classify, one move per
   class, three attempts, escalate).
-- The seed's own specs → `docs/specs/`. Kernel §3.1 says code without a spec is
-  in remediation mode, and the seed had none of its own. Two exist, covering the
-  two surfaces where the seed writes into somebody else's repository or makes a
-  quantitative claim about itself: `SPEC-0001-install-placement` (what
-  `install.sh` may do to a target) and
-  `SPEC-0002-routing-contract` (what `--route` and `--eval` may claim). Both
-  name their contracts in words rather than by letter-number label; read §4 of
-  each, and `seed-lint`'s `check_spec_test_mapping` for which test holds which.
-  A third, `SPEC-0003-per-prompt-injection` (what the per-prompt hooks inject,
-  and the session ledger the Claude Code hook writes into a plant), is
-  `active`: forward-written for the 7.28.0 context-residency increment, and
-  promoted in the commit that landed its RED cases.
-  **Recorded exemption — the corpora are deliberately unspecced.** A
+- Seed release and the seed docs' one-home rule → `docs/skills/seed-release.md`
+  (`seed-release.flow`, `seed-release.dedupe-rule`).
+- The seed's own specs → `docs/specs/`, one file per specced surface, each
+  titled by its surface. Kernel §3.1 says code without a spec is in remediation
+  mode, and a seed surface where the seed writes into somebody else's repository
+  or makes a quantitative claim about itself carries a spec. Each spec names
+  its contracts in words rather than by letter-number label; read §4
+  of each, and `seed-lint`'s `check_spec_test_mapping` for which test holds
+  which. A new spec is owed the moment a new surface starts writing into a plant
+  or reporting a number about itself.
+  **Recorded exemption: the corpora are deliberately unspecced.** A
   `library-corpus/`, `legal-corpus/` or `tool-corpus/` page is transcribed
   knowledge, not behavior: its contract is its `_schema.md` plus
   `legal-lint.py` / the page-shape checks, and a §4 Given/When/Then over a
   statute would restate the statute. The exemption is bounded to the corpora and
-  does not extend to any code path. A third spec is owed the moment a new
-  surface starts writing into a plant or reporting a number about itself.
+  does not extend to any code path.
 - Spec shape and contract coverage → `templates/knowledge-graph/spec-lint.py`
   (tested by `tests/test-spec-lint.sh`); plan-of-record shape →
   `templates/knowledge-graph/grill-lint.py` (tested by
   `tests/test-grill-lint.sh`).
 - Front-door word definitions → `DOCUMENTATION.md` §15, the glossary (one
   anchored entry per term; README, the manual and the references link an
-  entry, never restate it). What each mechanism holds and misses, with its
+  entry instead of restating it). What each mechanism holds and misses, with its
   ADR-0003 class → `DOCUMENTATION.md` §17, the enforcement section (one row per
   mechanism kind; a front-door claim of enforcement links its row).
   `SPEC-0004-front-door` holds both through `tests/seed-lint.py`.
 - Spawn order of a pass → its protocol's phase table (`grill.flow`,
   `specify.flow`, `test-first.cycle`, `ingest-library.flow`,
   `from-scratch.phases`); the generic sequencing rule →
-  `core/method/delegation-sequencing.md` (`delegation.sequencing`). Skills, agents,
-  and the orchestrator point, never re-list.
+  `core/method/delegation-sequencing.md` (`delegation.sequencing`). Skills, agents
+  and the orchestrator point to it.
 - Source ranking, retrieval steps, conflict rule → `skills/research-and-ingest`;
   page-section discipline → `skills/library-wiki`; the scout charter points.
 - The spec's `active` moment → `verify.status-evidence` (promotion lands
@@ -139,13 +109,14 @@ extraction and CLI behavior.
 
 ## Conventions
 
-- Behavior change ⇒ bump `manifest.json` version + `CHANGELOG.md` entry
-  (append-only; supersede, don't rewrite).
-- The kernel is loaded on every session of every plant: additions there
-  need to earn ~2k-token-per-session rent, and lint fails past budget.
-  Depth belongs in a machinery node, never the kernel.
-- Append-only artifacts: CHANGELOG.md, docs/decisions/. Everything else:
-  integrate, don't bolt on.
+- A round with a behavior change ends in a version bump (`manifest.json`) and a
+  `CHANGELOG.md` entry (append-only; a later entry supersedes an earlier one,
+  which stays as written), through `docs/skills/seed-release.md`.
+- The kernel is loaded on every session of every plant: every addition there
+  is paid by every session, and lint enforces the budget. Depth belongs in a
+  machinery node.
+- Append-only artifacts: CHANGELOG.md, docs/decisions/. Everything else is
+  integrated in place (`skills/holistic-editing`).
   - The one exception ([ADR-0011](docs/decisions/adr-0011-donor-token-redaction.md)):
     a token that identifies a project the seed was harvested from may be
     replaced in an append-only record, by owner decision only, never in an
@@ -159,10 +130,10 @@ extraction and CLI behavior.
     and that published tags and Releases keep it; (c) the same statement is
     a dated line in each edited plan's or spec's changelog; (d) no
     force-push and no tag move.
-- `harvest`/`graft` are user-sovereign; nothing in the seed may trigger
-  them automatically.
-- Seed text (specs, plans, ADRs, doctrine) carries no session residue: no
-  session identifier (a spawn id, a worker label) and no path to a round's
-  working records outside the seed. A ruling is cited by its id, and its
-  source is described in words, for example "kept with the round's working
-  records outside the seed".
+- `harvest`/`graft` are user-sovereign: they start only from the owner, and
+  seed machinery may propose one and stop there.
+- Seed text (specs, plans, ADRs, doctrine) cites a ruling by its id and
+  describes its source in words, for example "kept with the round's working
+  records outside the seed", because session identifiers (a spawn id, a worker
+  label) and paths to a round's working records do not resolve for a later
+  reader.

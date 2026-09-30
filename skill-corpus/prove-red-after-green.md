@@ -2,18 +2,16 @@
 
 > Optional procedure: recover the missing RED for a fix that landed before its
 > test was ever seen failing, by parking the fix on purpose and requiring the
-> named rows to fail without it. Not a core skill; instantiate into
-> `docs/graph/skills/<name>.md` (its home, projected into the harness dirs the
-> plant uses) from `templates/skill.template.md` if selected.
-> `protocols/verify.md` states the obligation (a gate whose test never went
-> red has authorized nothing, and the runbook entry records the red before the
-> green) and delegates the *how* to `protocols/test-first.md`, which carries
-> only the **adoption-time** analog: an inherited suite, proven by reintroducing
-> a historical defect. This page is the **same-session sibling** of that move,
-> for a fix written in this session whose RED nobody watched. It composes both
-> by reference and restates neither. Parameterized by `<CONTRACT_FILTER>` (the
-> exact selector for the rows that encode the contract), `<PRODUCTION_PATHS>`
-> (the non-test paths the fix touched), and `<VCS_PARK_MECHANISM>`.
+> named rows to fail without it. `protocols/verify.md` states the obligation
+> (a gate whose test never went red has authorized nothing, and the runbook
+> entry records the red before the green) and delegates the *how* to
+> `protocols/test-first.md`, which carries only the **adoption-time** analog:
+> an inherited suite, proven by reintroducing a historical defect. This page is
+> the **same-session sibling** of that move, for a fix written in this session
+> whose RED nobody watched. It composes both by reference. Parameterized by
+> `<CONTRACT_FILTER>` (the exact selector for the rows that encode the
+> contract), `<PRODUCTION_PATHS>` (the non-test paths the fix touched), and
+> `<VCS_PARK_MECHANISM>`.
 
 ## When to apply
 
@@ -31,18 +29,17 @@ shameful. What is not ordinary is calling the result verified:
 
 In all three the green run proves the **state of the tree**, not the strength
 of the test. Until the procedure below has actually been observed, the
-increment's status is **unproven green**. Say those words in the handback and
-in the runbook entry; do not write PASS.
+increment's status is **unproven green**: write those words in the handback and
+in the runbook entry, in place of PASS.
 
 The moments to catch it are the ones where a green is about to be spent: a
 handback reports GREEN and names no observed RED; the tests for a
 characterization passed on their first run; a spec §10 row is about to move
 from `red` to `green` on the strength of one run.
 
-The first cause is the one worth preventing rather than recovering. A RED is
-never spawned beside the GREEN that implements it: the spawn order that stops
-it is `protocols/test-first.md`'s cycle table, where each phase waits for the
-handback it needs. This page is for when that order was broken anyway.
+The first cause is the preventable one: `protocols/test-first.md`'s cycle table
+has each phase wait for the handback it needs. This page is for when that order
+was broken anyway.
 
 When the subject is not a parkable fix (an inherited suite, a checker, a
 configuration artifact), use `skill-corpus/mutation-verify.md` instead: mutate
@@ -59,7 +56,9 @@ Record two lists first:
   words you expect to see.
 - `<PRODUCTION_PATHS>`: the non-test paths the fix touched.
 
-A prediction written after the run is scored against whatever happened.
+A prediction written after the run is scored against whatever happened, and a
+failure reasoned about rather than observed ("it would obviously have thrown")
+is still only a prediction; this procedure turns it into a result.
 
 ### 2. Park the production paths only
 
@@ -76,24 +75,21 @@ experiment.
 
 The parking mechanics themselves (record the pin commit, keep the patch
 outside the tree, verify the tree afterwards, say where the work went) are
-`core/method/vcs-posture.md`'s discipline. Follow it there. What this page adds
-is the selection rule: production paths, never test paths.
+`core/method/vcs-posture.md`'s discipline. Follow it there.
 
 **When the fix is already committed**, the working tree holds nothing to park.
 The state the RED should have run against is the last commit before the fix
 with the new tests copied in: pre-fix production code, post-fix tests. Build
-that state inside the one working tree. Start from a clean tree at the pin
-(the current commit, recorded), then undo only the fix's own changes to
-`<PRODUCTION_PATHS>`, which means reversing the fix's diff restricted to those
-paths. Rolling the paths back wholesale to an older revision also undoes any
-later commit that touched them, and the measurement then covers changes it was
-never meant to. The test files stay exactly as the pin has them.
-
-Do not build that state in a second checkout, a worktree, or a scratch clone.
-`core/method/vcs-posture.md` §3 bans the second tree, and its measurement
-rationale applies here with full force: a second tree can skip, cache or
-resolve differently, so a RED observed there and a GREEN observed in the
-working tree are two questions asked of two environments, not a pair.
+that state inside the one working tree (`core/method/vcs-posture.md` §3): a
+second tree can skip, cache or resolve differently, so a RED observed there and
+a GREEN observed here are two questions asked of two environments, not a pair.
+Start from a clean tree at the pin (the current commit, recorded), then undo
+only the fix's own changes to `<PRODUCTION_PATHS>`, which means reversing the
+fix's diff restricted to those paths. Reverting the whole fix commit takes the
+tests with it and is harder to restore exactly; rolling the paths back
+wholesale to an older revision also undoes any later commit that touched them,
+and the measurement then covers changes it was never meant to. The test files
+stay exactly as the pin has them.
 
 ### 3. Run the contract filter and read rows, not totals
 
@@ -102,8 +98,8 @@ row**, against the predictions from step 1.
 
 A suite in which many rows fail for environment reasons unrelated to the change
 (an absent service, a missing runtime, a fixture that needs credentials) is
-common and is not a blocker here. The suite total is unreadable in that state
-and must not be quoted. The filter's rows are what is read: the question is
+common and does not block this procedure; the suite total is unreadable in that
+state, so the record quotes only the filter's rows: the question is
 whether *these named rows* fail for *this named reason*, and the surrounding
 noise is irrelevant to it. Record the environment failures separately as
 `discovered` or `absent`, per `protocols/verify.md`.
@@ -115,11 +111,10 @@ claims. It is green against the defect it is named for, which means it would
 have been green against the defect in production. Stop: that row is the defect
 now.
 
-Fix the row before restoring: write the assertion that fails against the
-parked tree, watch it fail, and only then continue. A row repaired in this
-state has had its RED observed by construction, which is the whole objective.
-Do not restore first and repair afterwards; the parked tree is the only place
-the repair can be proven.
+Fix the row before restoring, because the parked tree is the only place the
+repair can be proven: write the assertion that fails against the parked tree,
+watch it fail, and only then continue. A row repaired in this state has had its
+RED observed by construction, which is the whole objective.
 
 Where the row is green because it watches a proxy rather than the boundary, the
 diagnosis and the cut are `skill-corpus/mutation-verify.md`'s.
@@ -145,35 +140,13 @@ The record is two numbers and the tree each belongs to:
 - Contract rows, fix restored: <N> passed (<filter>) — tree clean at <pin>
 ```
 
-Never report a bare "tests pass". A single green number is exactly what an
-assertion-free suite produces, and it is the shape of report this procedure
-exists to replace. Until the pair is in the record, the increment is unproven
-green and the delivery says so.
+The pair replaces a bare "tests pass", because a single green number is exactly
+what an assertion-free suite produces. Until the pair is in the record, the
+increment is unproven green and the delivery says so.
 
 The pair proves the test. It does not turn the increment into one that followed
 the cycle. The record says the RED was recovered after the GREEN, and why it
 went missing, so the departure from `protocols/test-first.md` stays visible.
-
-## Anti-patterns
-
-- Reporting "tests pass" for a fix whose RED nobody watched.
-- Parking a test file, or the whole change, instead of the production paths.
-- Reverting the whole fix commit instead of the fix's changes to the production
-  paths: it takes the tests with it, and it is harder to restore exactly.
-- Proving the RED in a second checkout or worktree of the pre-fix commit and
-  pairing it with a GREEN from the working tree.
-- Reasoning about what would have failed instead of observing it. "It would
-  obviously have thrown" is a prediction; this procedure turns it into a result.
-- Predicting the failures after seeing them.
-- Quoting the suite total on a suite with unrelated environment failures,
-  instead of reading the contract filter's rows.
-- Restoring first and repairing a vacuous row afterwards, where its RED can no
-  longer be observed.
-- Re-running a narrower or wider filter after restoring than the one that
-  produced the red.
-- Skipping the clean-tree confirmation and reading the restored green as proof.
-- Treating a row that passed with the fix removed as good news.
-- Recording the recovered pair as if the cycle had run in order.
 
 ## Reference files
 

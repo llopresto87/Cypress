@@ -20,10 +20,10 @@ load_when:
   - "who should do this, which specialist, which agent"
   - "route the task, agent routing, roster"
 prevents: Specialists picked by whoever is asking, with no ranked route, no named knowledge-or-judgment gap, and no shared sign-off on a spec.
-est_tokens: 1132
+est_tokens: 1135
 ---
 
-# Delegation — the team, routing, and bounds
+# Delegation — the team and routing
 
 The host session is the **orchestrator**: it routes, plans, briefs,
 verifies, communicates, and accepts. Whether it also *does* is decided
@@ -34,6 +34,10 @@ spawning a clean-context worker with a purpose-made brief; persona
 simulation in the chat is not delegation.
 
 ## The roster
+
+A *specialist* is a member of the shipped roster below; an *expert* is one
+you commission for this project (`delegation.routing`, below), and it joins
+only the project's roster. The words are otherwise interchangeable.
 
 | Specialist            | When to call                                                      |
 |-----------------------|-------------------------------------------------------------------|
@@ -55,14 +59,14 @@ simulation in the chat is not delegation.
 | `multi-agent-architect` | Agent-topology design/review: delegation bounds, tool contracts, fail-closed gates, evals, cost budgets. |
 | `growth-orchestrator` | Growth DNA: conducts grow/adopt/from-scratch end to end.          |
 | `growth-scout`        | Read-only per-boundary evidence gathering for graph authors.      |
-| `tool-smith`          | A plant operation done by hand enough times to have earned a durable, tested tool; owns the bar and refuses below it. Never seed machinery. |
+| `tool-smith`          | A plant operation done by hand enough times to have earned a durable, tested tool; owns the bar and refuses below it. Builds plant tools only. |
 | `seed-installer`      | Additive seed/adapter install; verifies the host loads the kernel. |
 
 ## Route mechanically first
 
 Before spawning, run `python3 docs/graph/agent-lint.py --route "<task>"`
 and cite the ranked line + confidence band in the brief. It is a
-keyword heuristic, not an oracle — reason over it, and record why if
+keyword heuristic, not an oracle: reason over it, and record why if
 you override a HIGH-band pick.
 
 **On LOW/NONE, ask what the gap *is* before you fill it.** The band says
@@ -80,18 +84,16 @@ no specialist matched; it does not say what was missing.
   the caller's context. Those four are what a node cannot be, and they
   are the whole warrant for an agent. Check `agent-corpus/` for the role
   first — where present, harvested on demand — before authoring from
-  scratch, then spawn an Opus-class agent-definition author to create
-  the missing expert from `docs/graph/templates/agent.template.md`,
+  scratch, then spawn an authoring-class agent-definition author to
+  create the missing expert from `docs/graph/templates/agent.template.md`,
   grounded in the project's version-pinned facts (the `stack.*` node,
-  its `expertise.*` node, the library wiki) — never in memory of a
-  version the project may not use.
+  its `expertise.*` node, the library wiki), because a remembered
+  version may not be the one the project uses.
 
-(A *specialist* is a member of the shipped roster above; an *expert* is
-one you commission here for this project — it joins the *project's*
-roster, never the seed's. The words are otherwise interchangeable.) The
-*new expert's* `model:` frontmatter is sonnet if it only investigates,
-opus if it authors; the definition author itself is always opus. A
-definition authored mid-session is not yet a spawnable type — see
+The *new expert's* `model:` frontmatter is `sonnet` (the investigation
+class) if it only investigates, `opus` (the authoring class) if it
+authors; the definition author itself is always authoring class. A
+definition authored mid-session is not yet a spawnable type: see
 `delegation.harness-registration` (`method.delegation-bounds`) before
 delegating to it.
 
@@ -103,7 +105,7 @@ all three signed off on the same document.
 
 ## Neighbours
 
-- `method.tiers` — decides whether to delegate at all — cross when
+- `method.tiers`: decides whether to delegate at all; cross when
   classifying, before choosing workers.
 - `method.delegation-model-classes`: load when sonnet or opus, which
   model class.

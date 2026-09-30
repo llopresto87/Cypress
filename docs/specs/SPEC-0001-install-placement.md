@@ -1,6 +1,6 @@
 ---
 status: back-written
-status_date: 2026-09-29
+status_date: 2026-09-30
 owner: seed-installer
 status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tests/test-install-kernel-modes.sh, tests/test-install-adoption.sh, tests/test-full-install.sh, tests/test-seed-lint.sh, tests/test-graft-tools.sh (all wired into tests/run.sh)
 ---
@@ -22,9 +22,9 @@ status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tes
 
 - **Owner:** seed-installer
 - **Date:** 2026-09-13
-- **Last reviewed:** 2026-09-29
+- **Last reviewed:** 2026-09-30
 - **Related grill section:** docs/plans/grill-7.15.0-remediation.md §3, §5
-- **Related ADRs:** adr-0003-enforcement-layering-honesty, adr-0009-host-support-tiers, adr-0013-harness-memory-is-not-a-home, adr-0014-graft-reconciles-every-graph-engine, adr-0016-stamp-carries-keys-it-does-not-own, adr-0017-pre-growth-pointers-leave-the-kernel, adr-0018-code-fact-freshness-anchor (the last three proposed)
+- **Related ADRs:** adr-0003-enforcement-layering-honesty, adr-0009-host-support-tiers, adr-0013-harness-memory-is-not-a-home, adr-0014-graft-reconciles-every-graph-engine, adr-0016-stamp-carries-keys-it-does-not-own, adr-0017-pre-growth-pointers-leave-the-kernel, adr-0018-code-fact-freshness-anchor (the last three proposed), adr-0021-seed-only-procedures-stay-home, adr-0022-the-plant-model-map (both proposed)
 - **Supersedes:** —
 - **Superseded by:** —
 
@@ -59,6 +59,11 @@ add-if-missing, and the audit that says whether each engine is current.
   - the keys of `.cypress/seed.json` that the installer does not own
     (adr-0016)
   - the placement of `docs/graph/code-anchor.py` (adr-0018)
+  - the plant's model map, `docs/graph/models.md`: its placement, the one
+    line of each opencode agent projection the installer writes from it, and
+    the `--check` that compares those projections with the map (adr-0022)
+  - the seed-only files the installer never places, and the tools it does
+    place, held against `manifest.json` (adr-0021)
 - **Out of scope:**
   - the anchor file `docs/graph/code-anchor.py` writes: SPEC-0003 owns it,
     because the session-start hooks read it and canonize writes it; the
@@ -67,6 +72,8 @@ add-if-missing, and the audit that says whether each engine is current.
   - `grow`, `graft` and `harvest`, which are user-sovereign flows over an
     already-installed plant, apart from the engine reconciliation above
   - the seed's own repository layout
+  - how Prime Agent reads the model map (overlay prose, brief-enforced), and
+    whether a host's model catalog carries a selector the map names
 
 ## 3. User-facing behavior
 
@@ -79,7 +86,9 @@ Nothing outside the named project directory is ever modified.
 `all` installs the maintained hosts: claude-code, opencode and prime-agent. A
 frozen host (codex, github-copilot) still installs when it is named, and says
 that it is deprecated. `all --check` still checks the Copilot views of a plant
-whose record carries github-copilot, because checking writes nothing.
+whose record carries github-copilot, because checking writes nothing, and it
+checks the opencode agent projections of a plant whose record carries opencode,
+because those carry a `model:` line written from the plant's model map.
 
 ## 4. Functional contracts
 
@@ -306,7 +315,8 @@ whose record carries github-copilot, because checking writes nothing.
   lists `codex` (ADAPTERS_ACCUMULATE)
 
 ### Contract: CHECK_WITHOUT_COPILOT_SAYS_SO
-- **Given:** a target whose record does not carry github-copilot
+- **Given:** a target whose record carries neither github-copilot nor
+  opencode, the two hosts whose views `--check` can compare
 - **When:** `install.sh all --check` runs
 - **Then:** it exits 0 and prints that no generated views are in scope
 - **And:** silence is the failure, because a CI job reading only the exit code
@@ -442,6 +452,90 @@ whose record carries github-copilot, because checking writes nothing.
 - **And:** a re-install over an older copy of the tool replaces it with a
   backup, as it does `docs/graph/status-register.py`
 
+### Contract: MODEL_MAP_TEMPLATE_IS_PLACED
+- **Given:** a fresh target directory
+- **When:** `install.sh claude-code --project-dir <target>` runs
+- **Then:** `docs/graph/models.md` exists and is byte-identical to the seed's
+  `templates/docs/models.md`, placed by `place_docs_skeleton`'s existing
+  `templates/docs/**` walk with `place_if_missing`, so `SINGLE_WRITER`'s
+  census is unchanged
+- **And:** after the plant edits the placed map, `install.sh all
+  --project-dir <target>` leaves it byte-identical and writes no backup
+  beside it
+
+### Contract: OPENCODE_MODEL_FROM_MAP
+- **Given:** a plant whose `docs/graph/models.md` fills the opencode cell of
+  the `authoring | high` row with `` `provider-a/model-x` `` and of the
+  `investigation | medium` row with `` `provider-b/model-y` ``, and whose
+  graph holds an agent with `model: opus` and `effort: high` and one with
+  `model: sonnet` and `effort: medium`
+- **When:** `install.sh opencode --project-dir <target>` runs
+- **Then:** each of the two agents' `.opencode/agents/<name>.md` equals its
+  graph home `docs/graph/agents/<name>.md` with the `model:` line replaced by
+  `model: provider-a/model-x` and `model: provider-b/model-y` respectively,
+  and with no other byte changed
+- **And:** the projection is written through `place_generated`, so it is a
+  real file under `--symlink` as well, and `SINGLE_WRITER`'s exception count
+  is unchanged
+- **And:** the stamp's `agent_projections` entry for opencode records
+  `"verbatim": false`
+- **And:** a plant agent with `model: haiku` gets the opencode cell of the
+  `investigation | low` row, whatever its `effort:` says (§6)
+
+### Contract: OPENCODE_NO_MAP_ROW_NO_MODEL_LINE
+- **Given:** a fresh target, so `docs/graph/models.md` is the unfilled
+  template
+- **When:** `install.sh opencode --project-dir <target>` runs
+- **Then:** it exits 0, and each `.opencode/agents/<name>.md` equals its graph
+  home with the `model:` line removed and no other byte changed
+- **And:** the same holds, in a map whose other rows are filled, for an agent
+  whose class and effort have no row, for one whose row's opencode cell is
+  `-`, and for a plant agent with `model: inherit`, whatever the map says
+- **And:** stdout carries one line that names `docs/graph/models.md` and the
+  number of agents projected with no `model:` line, so an agent that runs on
+  its caller's model is never silent
+
+### Contract: OPENCODE_MAP_UNREADABLE_FAILS_CLOSED
+- **Given:** an installed opencode plant whose `docs/graph/models.md` breaks
+  the §6 map grammar (for example, a row whose class is `premium`)
+- **When:** `install.sh opencode --project-dir <target>` runs
+- **Then:** it exits non-zero, and stderr names `docs/graph/models.md` and the
+  offending line
+- **And:** every `.opencode/agents/*.md` is byte-identical to its state
+  before the run, and no backup is made beside any of them
+
+### Contract: OPENCODE_CHECK_DETECTS_DRIFT
+- **Given:** an opencode plant, its record carrying opencode, installed with a
+  map that fills the opencode cell of the `authoring | high` row
+- **When:** `install.sh opencode --check --project-dir <target>` runs
+- **Then:** after a hand edit to one `.opencode/agents/<name>.md`, it exits
+  non-zero and names that projection as stale
+- **And:** after an edit of the map's filled cell with no re-run, which
+  changes only `model:` lines, it exits non-zero and names each projection
+  whose `model:` line the edit changes
+- **And:** the expected set is rendered from the plant's `docs/graph/agents/`
+  and `docs/graph/models.md` by the §6 projection rule and compared with the
+  plant's `.opencode/agents/`, backups excluded, so a projection that is
+  missing, or that has no graph home, is stale too
+- **And:** in sync, it exits 0 and says the opencode projections are up to
+  date
+- **And:** every run leaves the plant byte-identical: no projection, backup or
+  stamp is written
+- **And:** `install.sh all --check` checks the same projections, because
+  `all` names opencode and the record carries it
+
+### Contract: SEED_ONLY_FILES_NEVER_PLACED
+- **Given:** `SEED_ONLY` in `tests/seed-lint.py`, which names
+  `tools/prepare-release.py` and `docs/skills/seed-release.md` (adr-0021)
+- **When:** `seed-lint` runs
+- **Then:** it fails, naming the path, when a `SEED_ONLY` path is missing from
+  the seed or `manifest.json` names it
+- **And:** it fails, naming `install.sh`, when the installer names a
+  `SEED_ONLY` path or sources any file under `$SEED_ROOT/docs`
+- **And:** it fails, naming `manifest.json`, when the keys of its `tools` map
+  differ from the set of `$SEED_ROOT/tools/*` and `$SEED_ROOT/tests/*` files
+  `install.sh` places
+
 ## 5. Non-functional requirements
 
 - **Compatibility:** bash and `python3` only; no third-party imports. The
@@ -492,6 +586,53 @@ The pre-growth block in the placeholder `docs/graph/index.md` opens with the
 line `<!-- pre-growth: grow removes this block -->` and closes with the line
 `<!-- /pre-growth -->`. `protocol.grow` removes it in the phase that sets
 `grown: true`.
+
+The stamp's `agent_projections` entry for opencode reads
+`{"tool": "opencode", "path": ".opencode/agents/{name}.md", "verbatim": false}`
+(adr-0022); the other hosts' entries are unchanged.
+
+The model map, `docs/graph/models.md` (adr-0022), is placed from
+`templates/docs/models.md` when missing and is plant-owned from then on. The
+opencode projection reads one table from it:
+
+```text
+# the first table under the `## Map` heading
+header:   | Class | Effort | Prime Agent | opencode |          exact
+class:    authoring | investigation                          closed set
+effort:   low | medium | high                                closed set
+rows:     at most one per (class, effort); a missing pair reads as unfilled
+cell:     `<provider>/<model>`   one inline-code span, at least one "/", no
+                                 whitespace, no "<" or ">"           filled
+          `<...>` or <...>       the template's placeholder          unfilled
+          -                      inherit the caller's model          unfilled
+token:    model: opus   -> authoring, the agent's effort
+          model: sonnet -> investigation, the agent's effort
+          model: haiku  -> investigation, low (the agent's effort is not read)
+          model: inherit -> no row: the projection carries no model line
+```
+
+The opencode projection of a graph agent follows from its frontmatter:
+
+| The agent's `model:` and `effort:` | The projected `model:` line |
+|---|---|
+| `opus`, `sonnet` or `haiku`, and the map's cell for its (class, effort) is filled | `model: <cell>`, in place of the token |
+| `opus`, `sonnet` or `haiku`, and the cell is unfilled, the row is missing, the `effort:` of an `opus` or `sonnet` agent is missing, or the map is absent | none |
+| `inherit`, or no `model:` key | none |
+| any other `model:` value | copied unchanged |
+
+A map is absent when the plant renamed it by hand to
+`docs/graph/models.unfilled.md`, a marker `place_docs_skeleton` honours by
+leaving `docs/graph/models.md` unplaced; `graft-audit.py --rename` leaves the
+map in place (ADR-0022, S4). The Prime
+Agent column is read by the Prime Agent overlay, and the installer does not
+read it.
+
+`--check` renders the same rule into a scratch directory under the run's stage
+and compares it with `.opencode/agents/`, excluding `*.bak-*`. The opencode
+projections are in its scope when the run names opencode, directly or through
+`all`, and the stamp's `tools` carries opencode; the Copilot views keep their
+own scope rule (ALL_CHECK_INCLUDES_RECORDED_COPILOT). With neither in scope,
+the run says that no generated views are in scope and exits 0.
 
 ## 7. Failure modes
 
@@ -561,6 +702,34 @@ line `<!-- pre-growth: grow removes this block -->` and closes with the line
 - **Side effects:** those keys are in the backup only
 - **Recovery:** the owner copies them back by hand
 
+### Failure: MODEL_MAP_UNREADABLE
+- **Contracts:** OPENCODE_MAP_UNREADABLE_FAILS_CLOSED, OPENCODE_CHECK_DETECTS_DRIFT
+- **Trigger:** `docs/graph/models.md` exists and is not UTF-8, or its
+  `## Map` table is missing, has a header other than §6's or no separator row
+  under it, holds a row without four cells or a class or an effort outside §6's
+  closed sets, repeats a (class, effort) pair, or has an opencode cell that is
+  none of §6's cell forms; or `docs/graph/models.md` is a symlink leaving the
+  target, which is refused as `docs/graph/index.md`'s is
+  (SYMLINK_IS_REPLACED_NOT_FOLLOWED), naming the link
+- **Response:** `die` naming the file and the offending line, before the
+  first opencode agent is projected; under `--check`, the same exit and message
+  before any comparison, so an unreadable map is never reported in sync
+- **Side effects:** none under `--check`. Otherwise the writes the run made
+  before the opencode adapter stand (the kernel, `docs/graph/`, an earlier
+  adapter's tree); the opencode projections are unchanged; the stamp is not
+  rewritten, because `write_seed_stamp` runs after every adapter
+- **Recovery:** fix the map and re-run
+
+### Failure: OPENCODE_SELECTOR_UNRESOLVED
+- **Contracts:** OPENCODE_MODEL_FROM_MAP
+- **Trigger:** a filled opencode cell names a `provider/model` the host's
+  catalog does not carry
+- **Response:** none from the installer, which has no access to the host's
+  catalog and writes the cell as given. What opencode does when it spawns that
+  agent: not recorded
+- **Side effects:** that agent may fail to spawn on opencode
+- **Recovery:** fix the row and re-run `install.sh opencode`
+
 ## 8. Examples
 
 ```
@@ -610,6 +779,18 @@ $ echo $?
       PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX
 - [ ] AC-13: every plant has the anchor tool the hooks call, and no install
       writes an anchor — maps to CODE_ANCHOR_TOOL_IS_PLACED
+- [ ] AC-14: every plant receives an unfilled model map, which it then owns;
+      maps to MODEL_MAP_TEMPLATE_IS_PLACED
+- [ ] AC-15: an opencode agent carries the model the plant's map names, or no
+      model line where the map names none; maps to OPENCODE_MODEL_FROM_MAP,
+      OPENCODE_NO_MAP_ROW_NO_MODEL_LINE
+- [ ] AC-16: a map the installer cannot read stops the opencode projection and
+      leaves it as it was; maps to OPENCODE_MAP_UNREADABLE_FAILS_CLOSED
+- [ ] AC-17: a seed-only file never reaches a plant; maps to
+      SEED_ONLY_FILES_NEVER_PLACED
+- [ ] AC-18: a drifted opencode projection, its `model:` line included, is
+      reported by `--check`, which writes nothing; maps to
+      OPENCODE_CHECK_DETECTS_DRIFT
 
 ## 10. Test mapping
 
@@ -642,7 +823,7 @@ $ echo $?
 | LEGACY_INSTALL_STILL_SUCCEEDS | E3 case_codex, case_github_copilot: exit 0, two destinations each, `--print-config` stdout clean | tests/test-full-install.sh | integration | green |
 | ALL_NAMES_SKIPPED_FROZEN_HOSTS | S8 caseALL_NAMES_SKIPPED_FROZEN_HOSTS: the skip and its refresh command named, `.codex/` byte-identical, stamp keeps codex | tests/test-plant-state.sh | integration | green |
 | FROZEN_PROJECTION_LEFT_STALE | S8 caseALL_NAMES_SKIPPED_FROZEN_HOSTS (the same case holds the warning and the untouched tree) | tests/test-plant-state.sh | integration | green |
-| CHECK_WITHOUT_COPILOT_SAYS_SO | D3 caseCHECK_WITHOUT_COPILOT_SAYS_SO: `all --check` exits 0 and says no generated views are in scope | tests/test-install-adoption.sh | integration | green |
+| CHECK_WITHOUT_COPILOT_SAYS_SO | D3 caseCHECK_WITHOUT_COPILOT_SAYS_SO: `all --check` exits 0 and says no generated views are in scope, on a target with no record and on a plant whose record carries neither github-copilot nor opencode (`install.sh claude-code codex`) | tests/test-install-adoption.sh | integration | green |
 | ALL_CHECK_INCLUDES_RECORDED_COPILOT | D4 caseALL_CHECK_INCLUDES_RECORDED_COPILOT: a Copilot-recording plant is checked by `all --check`, in sync exits 0 with "up to date", drifted exits non-zero with STALE, no not-refreshed warning. The DEPRECATED notice of this run is held by E2 (LEGACY_INSTALL_PRINTS_DEPRECATED) | tests/test-install-adoption.sh | integration | green |
 | HOST_TIERS_AGREE | E4 caseHOST_TIERS_AGREE, two rows: the tier arrays and `all` disagree; codex leaves every tier while still dispatched. `check_host_tiers` fails naming `install.sh` | tests/test-seed-lint.sh | unit | green |
 | SESSION_RECORD_FORM_IS_PLACED | S9 inside case_plan_records: a fresh `install.sh claude-code` holds `docs/graph/plans/sessions/_session-record.template.md` byte-identical to the seed's form; after a plant record and an edit to the placed form, `install.sh all` leaves both byte-identical, with no backup beside either | tests/test-plant-state.sh | integration | green |
@@ -672,6 +853,17 @@ $ echo $?
 | EVERY_BACKUP_IS_CLASSIFIABLE | X390 case_audit_plant_agent_projection (GA-C3): a `.claude/agents/<name>.md` backup whose plant node `docs/graph/agents/<name>.md` has `origin: project` is not UNMAPPED and the audit exits 0; a projection backup with no seed source and no plant node stays UNMAPPED, exit 1 | tests/test-graft-tools.sh | unit | green |
 | EVERY_BACKUP_IS_CLASSIFIABLE | X391, a row of X390: a `.claude/skills/<name>/SKILL.md` backup whose plant node `docs/graph/skills/<name>.md` has `origin: project` is not UNMAPPED and the audit exits 0; a skill projection backup with no plant node stays UNMAPPED, exit 1 | tests/test-graft-tools.sh | unit | green |
 | EVERY_BACKUP_IS_CLASSIFIABLE | X392, a row of X390: a `.github/agents/<name>.agent.md` backup whose plant node `docs/graph/agents/<name>.md` has `origin: project` is not UNMAPPED and the audit exits 0; a Copilot agent view backup with no seed agent and no plant node stays UNMAPPED, exit 1 | tests/test-graft-tools.sh | unit | green |
+| MODEL_MAP_TEMPLATE_IS_PLACED | E7 case_model_map_placed: a fresh `install.sh claude-code` holds `docs/graph/models.md` byte-identical to `templates/docs/models.md`; after a plant edit to it, `install.sh all` leaves it byte-identical with no backup beside it; guard: the existing scaffold walk places the template, so the case passes on arrival once `templates/docs/models.md` exists, and is held by the mutant that deletes that template | tests/test-full-install.sh | integration | green |
+| OPENCODE_MODEL_FROM_MAP | E8 case_opencode_model_from_map: a map filling the opencode cells of the authoring-high and investigation-medium rows, then `install.sh opencode`: an opus/high agent and a sonnet/medium agent each equal their graph home with only the `model:` line replaced by the cell; under `--symlink` the projection is a regular file; the stamp's opencode entry is `"verbatim": false`; a plant agent with `model: haiku` and `effort: high` gets the investigation-low cell | tests/test-full-install.sh | integration | green |
+| OPENCODE_NO_MAP_ROW_NO_MODEL_LINE | E9 case_opencode_no_map_row: a fresh `install.sh opencode` exits 0 and every projection equals its graph home with the `model:` line removed; stdout has one line naming `docs/graph/models.md` and the count; with other rows filled, an agent whose row is `-`, one whose row is missing and a plant agent with `model: inherit` carry no `model:` line, a plant agent with `model: provider-q/model-q` keeps that value (copied as is), and stdout has exactly one line `opencode: <n> of <total> agents carry no model: line`, where the two numbers differ | tests/test-full-install.sh | integration | green |
+| OPENCODE_MAP_UNREADABLE_FAILS_CLOSED | E10 case_opencode_map_unreadable: over an installed opencode plant whose authoring-high cell is filled and projected, a change to that cell plus a map row with class `premium` makes `install.sh opencode` exit non-zero with stderr naming `docs/graph/models.md`; every `.opencode/agents/*.md` is byte-identical to the snapshot taken before the run and no new `.bak-*` is beside any, so a run that projects before it refuses fails the case | tests/test-full-install.sh | integration | green |
+| MODEL_MAP_UNREADABLE | E10 case_opencode_map_unreadable (the same case holds the refusal and the untouched projections) | tests/test-full-install.sh | integration | green |
+| OPENCODE_SELECTOR_UNRESOLVED | (no behavioural test: the installer has no host catalog to check a cell against; §7) | — | — | pending |
+| OPENCODE_CHECK_DETECTS_DRIFT | E11 case_opencode_check_drift: over an opencode plant with a filled authoring-high cell, `install.sh opencode --check` exits 0 and says up to date; after a hand edit to one projection, and after a cell edit with no re-run, it exits non-zero naming the stale projections; `install.sh all --check` fails the same way; the plant's file digest is unchanged by every run | tests/test-full-install.sh | integration | green |
+| MODEL_MAP_UNREADABLE | E11 case_opencode_check_drift, its last arm: a map row with class `premium` makes `install.sh opencode --check` exit non-zero with stderr naming `docs/graph/models.md` | tests/test-full-install.sh | integration | green |
+| SEED_ONLY_FILES_NEVER_PLACED | X393 check_seed_only_stays_home: a copied `manifest.json` whose `tools` map gains `tools/prepare-release.py` is a finding naming that path as a seed-only file | tests/test-seed-lint.sh | unit | green |
+| SEED_ONLY_FILES_NEVER_PLACED | X394 check_seed_only_stays_home: a copied `install.sh` that places a file from `$SEED_ROOT/docs/` that is not itself seed-only (`docs/decisions/index.md`) is a finding naming `install.sh` that says it sources a file under `$SEED_ROOT/docs` | tests/test-seed-lint.sh | unit | green |
+| SEED_ONLY_FILES_NEVER_PLACED | X395 check_seed_only_stays_home: a copied `manifest.json` whose `tools` map drops `tools/code-anchor.py`, which `install.sh` places, is a finding naming `manifest.json` | tests/test-seed-lint.sh | unit | green |
 
 Coverage note, so the table is not read as more than it is.
 
@@ -694,6 +886,23 @@ unmodified installer. K7's seed is a temp clone of the real seed; when the
 checkout is shallow and holds no earlier kernel, the clone gains an earlier
 body and the current one as two commits, so the case still has a history to
 walk.
+
+**The 7.35.0 rows.** E7 to E11 and X393 to X395 were written ahead of their
+RED (adr-0021, adr-0022). E7 is a guard, `green` on arrival, because placing
+the template needs no installer change. Every other row was `red` until the
+tester's case landed and showed its failure on the tree it was written against;
+the label is written as a comment inside its case, beside the slug. All of them
+turned green in the round's GREEN wave (increments 19 and 21). E8 to E11
+run in `tests/test-full-install.sh`, and the M9 exception list of
+`tests/test-install-placement.sh` (`is_generated`) gained `.opencode/agents/*`
+in the same RED, because `SYMLINK_MODE_IS_UNIFORM` already exempts generated
+content and the opencode projections are generated. D3's second arm moved
+its setup from `install.sh all codex` to `install.sh claude-code codex` in the
+same RED: `all` records opencode, which `--check` checks, so the old setup
+would no longer be a plant with no views in scope. The edited arm is green
+before and after the installer change. The one `pending` failure row,
+OPENCODE_SELECTOR_UNRESOLVED, has no test by design: it needs a host catalog
+the installer does not have.
 
 **M1 shares a label with a different invariant.** `tests/test-install-placement.sh`
 carries cases headed `M1 completeness` and exits `M1 VIOLATED`, but what they
@@ -884,3 +1093,52 @@ only version surface it has, and it moves with each entry here.
   paths the case now covers, the E2 row names E1 as the holder of the
   maintained-host negative, and the E3 row says two destinations each. No
   contract changed.
+- 2026-09-30: 7.35.0, written ahead of its RED tests
+  ([ADR-0021](../decisions/adr-0021-seed-only-procedures-stay-home.md),
+  [ADR-0022](../decisions/adr-0022-the-plant-model-map.md)). §2 takes in the
+  plant's model map and the seed-only files. §4 gains five contracts, live
+  from this entry: MODEL_MAP_TEMPLATE_IS_PLACED (the map template, placed only
+  when missing), OPENCODE_MODEL_FROM_MAP, OPENCODE_NO_MAP_ROW_NO_MODEL_LINE and
+  OPENCODE_MAP_UNREADABLE_FAILS_CLOSED (the opencode projection writes its
+  `model:` line from the map, or none, and refuses a map it cannot read), and
+  SEED_ONLY_FILES_NEVER_PLACED (seed-lint holds the seed-only files and the
+  manifest's `tools` map against `install.sh`). §6 gains the map grammar, the
+  projection rule and the opencode stamp entry; §7 gains MODEL_MAP_UNREADABLE,
+  OPENCODE_SELECTOR_UNRESOLVED and OPENCODE_PROJECTION_DRIFT_UNCHECKED; §9
+  gains AC-14 to AC-17; §10 gains E7 (a guard, `green` on arrival) and E8 to
+  E10 and X393 to X395, `red` until their RED lands, and two `pending` failure
+  rows; §11 gains the opencode
+  `--check` question. Until the RED lands, `spec-lint.py` counts these five
+  contracts as uncovered and `seed-lint` reports each label as absent from its
+  test file; both clear when the tester's cases name them. The contracts are
+  written live, as in 7.31.0, because the round's RED batch lands before any
+  GREEN and a pending block would need a second spec edit in that batch. No
+  existing contract changed; the status stays `back-written`.
+- 2026-09-30: 7.35.0, the session's rulings S1 and S3 on the architect's first
+  findings (kept with the round's working records outside the seed), applied
+  before any test of the entry above was written; the round's plan of record is
+  `docs/plans/grill-7.35.0-positive-voice.md`. S1: a graft pickup that reports
+  "none drifted" after checking nothing is a green that asserts nothing
+  (`rule.verify`), so `install.sh opencode --check` is built. §4 gains
+  OPENCODE_CHECK_DETECTS_DRIFT, which replaces the failure
+  OPENCODE_PROJECTION_DRIFT_UNCHECKED and its §11 question, both removed.
+  CHECK_WITHOUT_COPILOT_SAYS_SO's Given narrows to a record that carries
+  neither github-copilot nor opencode, because `all --check` now checks the
+  opencode projections of a plant that records opencode; its D3 case moves
+  its second arm's setup to `install.sh claude-code codex`. §2, §3 and §6 name
+  the check and its scope; MODEL_MAP_UNREADABLE also covers `--check`. S3:
+  agent-lint's token set is every alias Claude Code accepts (SPEC-0005), so §6
+  reads `haiku` as the `investigation | low` row and writes no model line for
+  `inherit`, and OPENCODE_MODEL_FROM_MAP and OPENCODE_NO_MAP_ROW_NO_MODEL_LINE
+  each gain that clause. §9 gains AC-18; §10 gains E11's two rows, `red`, and
+  keeps one `pending` failure row. `spec-lint.py` counts six new contracts as
+  uncovered until the RED lands. The status stays `back-written`.
+- 2026-09-30: 7.35.0, the post-review fix pass (text only; no contract added
+  or removed). §6: a plant declines the map by renaming it by hand, because
+  `graft-audit.py --rename` leaves `models.md` in place since ruling S4.
+  §7 MODEL_MAP_UNREADABLE's trigger names the refusals the renderer already
+  makes: a map that is not UTF-8, a missing separator row, a row without four
+  cells, and a `models.md` symlink leaving the target. §10: the 7.35.0 note is
+  in the past tense, and the E9, E10, X393 and X394 rows describe the
+  strengthened cases (E9's copy-through and count arms; E10's filled-cell
+  setup; the needles X393 and X394 pin). The status stays `back-written`.

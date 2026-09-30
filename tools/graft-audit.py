@@ -68,7 +68,11 @@ grow Phase 6 / graft Phase 7 was never filled: it is a scaffold posing as
 knowledge, and a fresh agent routed to it reads placeholders as facts. Each one
 is reported as `UNFILLED docs/graph/<rel>`; --rename moves it to
 `<name>.unfilled.md` (the body survives, the router stops trusting it) and
---prune removes it. docs/graph/runbooks/verification.md is exempt only when it
+--prune removes it. docs/graph/models.md, the plant's model map, is the one
+leaf reported as `DISCLOSED docs/graph/<rel>` instead: an unfilled map means
+every agent runs on its caller's model, which the plant has chosen, so it is
+named, left out of the count and the exit code, and neither renamed nor
+removed. docs/graph/runbooks/verification.md is exempt only when it
 carries at least one gate row marked `executed` (verify.md's gate-state
 vocabulary: executed | discovered | absent); byte-identity stays the trigger,
 so a verification runbook identical to its template and carrying no executed
@@ -295,6 +299,11 @@ TEMPLATE_DOCS = "templates/docs"
 GRAPH_HOME = "docs/graph"
 VERIFICATION_RUNBOOK = "runbooks/verification.md"
 UNFILLED_SUFFIX = ".unfilled.md"
+# The plant's model map (ADR-0022). An unfilled row already means "inherit the
+# caller's model, and say so", so a map still identical to its template is a
+# choice the plant has made: --unfilled discloses it, outside the blocking
+# count, and --rename and --prune leave it in place.
+MODEL_MAP = "models.md"
 # verify.md gate-state vocabulary: executed | discovered | absent. A row is
 # "marked executed" when it carries the token as a whole word and not as a
 # negation ("not executed", "never executed", "un-executed").
@@ -448,7 +457,7 @@ def audit_unfilled(plant: Path, seed: Path, action) -> int:
         print(f"  !! {seed} has no {TEMPLATE_DOCS}/ — not a seed root; "
               f"refusing a vacuous scaffold audit")
         return 1
-    mirrored, unfilled = 0, []
+    mirrored, unfilled, disclosed = 0, [], []
     for rel, f, t in scaffold_pairs(plant, seed):
         # a delivered blank form is byte-identical by design — it is the template
         if f.name.endswith(".template.md") or f.name.startswith("_"):
@@ -458,7 +467,10 @@ def audit_unfilled(plant: Path, seed: Path, action) -> int:
             continue
         if rel == VERIFICATION_RUNBOOK and has_executed_gate(f.read_text(errors="replace")):
             continue
-        unfilled.append((rel, f))
+        (disclosed if rel == MODEL_MAP else unfilled).append((rel, f))
+    for rel, _f in disclosed:
+        print(f"  DISCLOSED {GRAPH_HOME}/{rel}  (unfilled: every agent runs on "
+              f"its caller's model until the plant fills it)")
     for rel, f in unfilled:
         line = f"  UNFILLED {GRAPH_HOME}/{rel}"
         if action == "prune":

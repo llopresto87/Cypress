@@ -64,11 +64,12 @@ class ExtractionTests(unittest.TestCase):
         self.assertIn("Body of the first entry.", section)
         self.assertNotIn("second entry", section)
 
-    def test_stops_at_the_next_level_two_heading_even_when_not_a_version(self):
-        section = TOOL_MOD.extract_changelog_section(SAMPLE_CHANGELOG, "2.0.0")
-        self.assertIn("Second paragraph.", section)
-        self.assertNotIn("Seed integrity gate", section)
-        self.assertNotIn("first entry", section)
+    def test_non_version_level_two_heading_inside_the_entry_refuses(self):
+        # Regression: the extraction used to stop at any level-two heading, so
+        # an entry holding one was cut short and staged without a word.
+        with self.assertRaises(TOOL_MOD.ReleasePrepError) as ctx:
+            TOOL_MOD.extract_changelog_section(SAMPLE_CHANGELOG, "2.0.0")
+        self.assertIn("## Seed integrity gate", str(ctx.exception))
 
     def test_missing_version_raises(self):
         with self.assertRaises(TOOL_MOD.ReleasePrepError):
@@ -126,6 +127,16 @@ class CliTests(unittest.TestCase):
             result = self._run(root)
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("no CHANGELOG.md entry", result.stderr)
+            self.assertFalse((root / ".github" / "RELEASE_NOTES.md").exists())
+
+    def test_non_version_level_two_heading_inside_the_entry_refuses_at_the_cli(self):
+        # The CLI arm of the extraction regression: exit 1, the heading on
+        # stderr, and no release notes staged.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._repo(tmp, "2.0.0", SAMPLE_CHANGELOG)
+            result = self._run(root)
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            self.assertIn("## Seed integrity gate", result.stderr)
             self.assertFalse((root / ".github" / "RELEASE_NOTES.md").exists())
 
     def test_already_tagged_version_fails_loudly(self):

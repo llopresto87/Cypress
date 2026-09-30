@@ -10,8 +10,8 @@ Authored by: data-ml, security
 Lives at: docs/graph/prompts/prompt-contracts/PROMPT-NNNN-<slug>.md
 Used: on every active LLM/VLM prompt
 Filled by copying this template into the target path and replacing
-every <placeholder>. Stable section numbers must not be renumbered;
-agents and tooling index into them.
+every <placeholder>. Keep the section numbers: agents and tooling
+index into them.
 -->
 
 # Prompt Contract: <name>
