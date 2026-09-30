@@ -25,7 +25,7 @@ load_when:
   - "bug revealed an implicit or missing contract"
   - "acceptance criteria, Given/When/Then, failure modes"
 prevents: Behavior whose source of truth is the implementation, so a test can only assert what the code already does and correct comes to mean unchanged.
-est_tokens: 1750
+est_tokens: 2127
 command: true
 ---
 
@@ -37,9 +37,9 @@ new (or refreshed) file in `docs/graph/specs/` populated through every
 section of `docs/graph/templates/spec.template.md`, signed off by
 product, architect, and tester.
 
-This node owns **the spec rule** — specs are the source of truth for
-*behavior*. Every non-trivial behavior — feature, endpoint, job,
-significant function, LLM/VLM interaction — has a spec in
+This node owns **the spec rule**: specs are the source of truth for
+*behavior*. Every non-trivial behavior (feature, endpoint, job,
+significant function, LLM/VLM interaction) has a spec in
 `docs/graph/specs/`, written before the code, using the template with
 stable section numbers. Specs are executable: every functional
 contract maps to at least one test (the test-first rule enforces
@@ -48,17 +48,15 @@ link forward, catalogued in `docs/graph/specs/index.md`. If wiki and
 spec disagree about how a library *can* be used, the wiki is right;
 if product and spec disagree about what to build, fix the spec.
 
-**The one exception, and its price.** A **T2 contained-lane** change —
-small, single-surface, reversible, with no spec over the surface —
+**The one exception, and its price.** A **T2 contained-lane** change
 carries its behavior in the RED test that pins it and its why in the
-close-out's why-record, and does not enter this protocol
-(`tiers.contained-lane`). That is not a spec-free behavior change: it
-is a behavior change whose contract is executable but not narrative,
-and it is bounded by the lane's conditions, every one of which must
-hold. The moment a change needs prose to be explicable — because the
+close-out's why-record, and enters this protocol ONLY if it leaves the
+lane. Its contract is executable rather than narrative, and it holds only
+while every one of the lane's conditions holds (`tiers.contained-lane`
+owns them). The moment a change needs prose to be explicable (the
 behavior is contested, spans a surface, or a reader would ask what the
-rule *is* rather than what broke — it is spec-bearing work and belongs
-here. "It is only a few lines" is not one of the conditions.
+rule *is* rather than what broke), it is spec-bearing work and belongs
+here. Size alone never qualifies a change for the lane.
 
 This protocol is the bridge between "we know what we want" and "we
 have a plan". The spec is the contract that the plan will implement
@@ -78,15 +76,14 @@ One of:
 ## The pass (`specify.flow`)
 
 The pass is a sequence of phases, each filling named sections with a
-named owner. **The table is the spawn order**: a phase's spawn is issued
-only after every handback it needs has returned, and two phases run
-side by side only where the last column says so
-(`delegation.sequencing`, `docs/graph/method/delegation-sequencing.md`). This is
-spawned, clean-context work: if the host cannot spawn workers of the
-required model classes, stop and report the unsupported operating model
-— never simulate the personas in the orchestration chat. A specialist
-the host has no *type* for is a different condition and does not stop
-the pass (`delegation.harness-registration`).
+named owner. **The table is the spawn order** (`delegation.sequencing`,
+`docs/graph/method/delegation-sequencing.md`); two phases run side by side
+ONLY where the last column says so. This is spawned, clean-context work: if
+the host cannot spawn workers of the required model classes, stop and report
+the unsupported operating model, because personas simulated in the
+orchestration chat would produce sign-offs no specialist gave. A specialist
+the host has no *type* for is a different condition and does not stop the
+pass (`delegation.harness-registration`).
 
 | Phase | Sections | Owner | Needs | Parallel with |
 |---|---|---|---|---|
@@ -119,23 +116,24 @@ What the table cannot hold:
   and per failure mode (status `pending`) and runs the testability
   review of §4: observable from outside, measurable in §9, fixtures
   writable from §6, failure modes triggerable in a test environment. A
-  contract that fails the review goes back to `architect` — phase 2
-  again for that contract — and that return is an attempt under
-  `protocol.recover`'s three-attempt boundary, not a free loop. A spec
-  that cannot be tested is not a spec; it is a description.
-- **Sensitive surface** — auth, secrets, payments, file uploads,
-  external integrations, LLM/VLM behavior that acts on data — adds a
+  contract that fails the review goes back to `architect` (phase 2
+  again for that contract), and that return is an attempt under
+  `protocol.recover`'s three-attempt boundary.
+- **Sensitive surface** (auth, secrets, payments, file uploads,
+  external integrations, LLM/VLM behavior that acts on data) adds a
   `security` review: abuse cases become failure modes in §7 or
   requirements in §5.
 - **Sign-off is not promotion.** `product` ✓ confirms §3 and §9 reflect
   the outcome, `architect` ✓ that §4 §6 §7 cohere, `tester` ✓ that every
-  contract is testable, `security` ✓ where it reviewed — each ticked in
+  contract is testable, `security` ✓ where it reviewed, each ticked in
   §0 while the spec is still `draft`. The status moves to `active` in
   the change that lands its RED tests (`test-first`'s COMMIT; the moment
   is owned by `verify.status-evidence`), and to `implemented` when every
   contract is green. A live status over an empty assertion set is a
-  false green, and `spec-lint.py` counts only live specs — so a signed
-  draft is planned against and encoded, never reported uncovered.
+  false green (and an `active` spec with no test a red gate for the
+  whole test-first phase), and `spec-lint.py` counts only live specs, so
+  a signed draft is planned against and encoded, never reported
+  uncovered.
 - **Hand-off.** A signed draft is what `grill` plans against: its §4
   contracts are the rows §9 of grill.md maps increments to, in
   increments small enough for one RED-GREEN-REFACTOR cycle (or a small
@@ -154,8 +152,8 @@ When behavior changes:
    `superseded` with a link to the new one, write the new spec from
    the change. Update everything that depended on the old.
 
-Specs never silently change behavior. The catalog tells the next
-agent "this used to behave like X; now it behaves like Y; here is
+A behavior change always arrives as a new spec, so the catalog tells the
+next agent "this used to behave like X; now it behaves like Y; here is
 when it changed and why."
 
 ## Exit conditions
@@ -172,26 +170,16 @@ is neither.
 - §11 is empty, or every row's current assumption is a flagged
   assumption in grill.md §12.
 - grill.md links the spec from §3 and §9.
-- `python3 docs/graph/spec-lint.py` exits 0 — the shape checks above,
+- `python3 docs/graph/spec-lint.py` exits 0: the shape checks above,
   mechanically, for every spec on disk.
 
-## Anti-patterns
 
-- **The spec is the README.** Specs are not marketing. They are
-  contracts, executable, exhaustive about behavior.
-- **The spec describes the implementation.** Specs describe
-  *behavior* — what the system does, not how. "Stores the user
-  record in a Postgres table" is not a spec; "User records persist
-  across restarts and are retrievable by ID" is.
-- **No failure modes section.** A spec that only describes the happy
-  path is half a spec.
-- **No examples.** Examples are the bridge between the abstract
-  contract and the concrete test.
-- **Spec written after the code.** That's a description, not a
-  spec. It is still better than no document, but mark its status as
-  `back-written` so the team knows.
-- **§9 written beside §3.** An acceptance criterion that maps to no
-  slug, because the slugs did not exist yet. §9 waits for §4.
-- **Promoted at sign-off.** An `active` spec with no test is a red
-  gate for the whole test-first phase and a false green the moment
-  someone silences it. Sign in §0; promote with the RED.
+## What a spec states
+
+A spec states behavior as an executable contract, exhaustive about
+behavior. It says what the system does, not how: "User records persist
+across restarts and are retrievable by ID" is a contract; "Stores the user
+record in a Postgres table" is a design. Every contract carries its failure
+modes (§7) and three real examples (§8), because a happy path alone is half
+a spec and examples are the bridge from contract to test. A spec written
+after the code carries status `back-written`, so the team knows.

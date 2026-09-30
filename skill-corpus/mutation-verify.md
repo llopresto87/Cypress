@@ -2,18 +2,15 @@
 
 > Optional procedure — establish that an assertion actually bites, by naming
 > the smallest change that would leave the subject broken while the assertion
-> still passes, making that change, and watching the gate. Not a core skill;
-> instantiate into `docs/graph/skills/<name>.md` (its home, projected into the
-> harness dirs the plant uses) from `templates/skill.template.md` if selected.
-> The *doctrine* is already owned and is not restated here:
-> `protocols/test-first.md` owns proving an inherited suite by mutation, and
-> the two corollaries that decide whether a mutation result may be read at all;
-> `protocols/verify.md` owns the planted-violation clause that makes a gate
-> trusted. This page is the **operational procedure** neither carries — where
-> to cut, what the assertion must watch, how to mutate an artifact the working
-> tree must keep, and what a survivor means. It **composes both by reference**.
-> Parameterized by `<GATE_COMMAND>`, `<SUBJECT>` (a code path or a
-> configuration/data artifact), and `<SCRATCH_LOCATION>`.
+> still passes, making that change, and watching the gate. The doctrine is
+> owned elsewhere: `protocols/test-first.md` owns proving an inherited suite by
+> mutation, and the two corollaries that decide whether a mutation result may
+> be read at all; `protocols/verify.md` owns the planted-violation clause that
+> makes a gate trusted. This page is the **operational procedure** neither
+> carries — where to cut, what the assertion must watch, how to mutate an
+> artifact the working tree must keep, and what a survivor means. It **composes
+> both by reference**. Parameterized by `<GATE_COMMAND>`, `<SUBJECT>` (a code
+> path or a configuration/data artifact), and `<SCRATCH_LOCATION>`.
 
 ## When to apply
 
@@ -33,7 +30,7 @@
 Write down, before touching anything: the smallest change to `<SUBJECT>` that
 would leave the feature genuinely broken while the assertion still passes, and
 which rows of `<GATE_COMMAND>` you expect to go red. This is a prediction, and
-it is the part that carries the information — a mutation invented after the
+it is the part that carries the information: a mutation invented after the
 run is scored against whatever happened.
 
 The change must be small and *plausible* — the edit a tired author or a
@@ -71,9 +68,8 @@ assertion to the boundary and re-run the same mutation before recording a kill.
 
 ### 4. Mutating an artifact the tree must keep: mutate by copy
 
-When `<SUBJECT>` is a configuration or data artifact rather than code, do not
-edit it in place and restore from memory. Build the mutant **outside the
-working tree**:
+When `<SUBJECT>` is a configuration or data artifact rather than code, build
+the mutant **outside the working tree**:
 
 1. Record a checksum of the original artifact.
 2. Copy it to `<SCRATCH_LOCATION>` and mutate the copy.
@@ -135,26 +131,11 @@ check. The record names: the mutation, where it was cut, which rows went red
 with their failure text, and — for an artifact mutated by copy — the diff and
 the restored checksum.
 
-## Anti-patterns
-
-- Reporting "proven by mutation" without naming the mutation.
-- Inventing the mutation after seeing which rows failed.
-- A mutation so large that any assertion would catch it — it proves the subject
-  is loaded, not that the assertion discriminates.
-- Mutating the helper when the caller's seam is the wiring.
-- Recording a kill from an assertion that watches a proxy upstream of the
-  boundary the claim names.
-- Editing a configuration or data artifact in the working tree and restoring it
-  by hand.
-- Treating a kill as proof that the assertion's unit of comparison is correct.
-- Treating a survivor as a coverage gap before excluding the instrument faults
-  above.
-
 ## Reference files
 
 - `protocols/test-first.md` (owns proving an inherited suite by mutation, and
-  the corollaries on rebuild and on exact-membership mutants — this page is the
-  operational form of that move and restates none of it)
+  the corollaries on rebuild and on exact-membership mutants; this page is the
+  operational form of that move)
 - `protocols/verify.md` (owns the planted-violation clause that makes a gate
   trusted, the assertion-shape questions, and the lower-bound reporting rule)
 - `skills/test-first/SKILL.md` (how to shape the replacement assertion once a

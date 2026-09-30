@@ -35,11 +35,10 @@ what is on disk.
 
 - **`docs-librarian` writes.** This is a fact-bearing surface (kernel
   §3.2/§3.7). Entries are ingested by `research-scout` and finalized here.
-- **The consuming analyst reads only** — the role described by
-  `agent-corpus/legal.md`, instantiated in a project
-  without `WebSearch`, `WebFetch`, or `Bash`. This corpus plus the project's own
-  legal leaf is the *only* source of law it can reach. Its core rule is
-  **no corpus entry → no claim**.
+- **The consuming analyst reads only** — the base-roster legal agent,
+  `agents/14-legal.md`, which runs without `WebSearch`, `WebFetch`, or `Bash`.
+  This corpus plus the project's own legal leaf is the *only* source of law it
+  can reach. Its core rule is **no corpus entry → no claim**.
 
 That asymmetry is deliberate and it is what makes this schema load-bearing. A
 missing or malformed entry does not produce a bad citation — it produces a
@@ -277,5 +276,4 @@ further bullets in the same block.
 - `index.md` — the router: one row per instrument, kind, coverage.
 - `README.md` — what belongs in this corpus and what never does.
 - `library-corpus/` — the same doctrine, applied to dependencies.
-- `agent-corpus/legal.md` — the role this schema is
-  built to make safe.
+- `agents/14-legal.md` — the role this schema is built to make safe.

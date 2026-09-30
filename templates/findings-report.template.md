@@ -28,11 +28,9 @@ and every glyph is `aria-hidden`. That accessibility floor is expensive to
 derive and easy to lose when someone redraws a report from scratch, so a plant
 fills this form instead.
 
-It is a template and not a tool. It has a stable, documented interface (the
-tables below), but no executable entry point and no test, so it gets no
-`tools/` card (`skill.toolcraft`). If a generator is ever written against this
-contract, the generator is the tool and gets the card, and this file becomes
-its input format.
+A template with a documented interface, not a tool: no entry point or test, so
+no `tools/` card (`skill.toolcraft`). A generator written against this contract
+would be the tool and take the card, with this file as its input format.
 
 ## The fill rules
 
@@ -40,14 +38,13 @@ its input format.
   `<!-- CARD-TEMPLATE-END -->` once per finding. Insert the copies into
   `<!-- SECTION: APP -->` or `<!-- SECTION: PLATFORM -->`, by where the fix
   lands.
-- **The template never reorders anything.** Cards go in the order the data
-  already decided (the sample's method note states severity descending, then
-  effort ascending). Ordering is a decision about the findings, and it is made
-  where the findings live.
-- A field that does not apply has its whole `<dt>`/`<dd>` pair removed. It is
-  never left empty.
-- A value that was not established is written `not recorded`. The report never
-  guesses.
+- **Cards keep the order the data already decided** (the sample's method note
+  states severity descending, then effort ascending). Ordering is a decision
+  about the findings, and it is made where the findings live.
+- Remove the whole `<dt>`/`<dd>` pair of a field that does not apply, so no
+  empty field renders.
+- Write `not recorded` for a value that was not established, so every stated
+  value is an established one.
 - State the severity floor in the method note. Entries below it move to
   "Considered and excluded", one line each with the reason for the downgrade,
   so the review stays traceable.

@@ -1,7 +1,9 @@
 # Operations
 
 The steady-state operations reference: what to watch, what breaks, how to
-triage.
+triage. Keep this file matched to what the environment can do today: a
+drifted or aspirational operations doc is worse than none, because it is
+trusted.
 
 ## Boundaries
 
@@ -27,12 +29,11 @@ the limits from the commands.
 |---|---|---|---|
 | `<name>` | `<threshold + rationale>` | `<user/operational impact>` | `<role>` |
 
-Every alert names a threshold **and its rationale**. An alert that fires on a
-condition no human should act on is removed or downgraded — alert fatigue is a
-reliability risk, not diligence. Every alert also names how its own delivery is
-confirmed: a notification path that can fail without saying so is not a
-mitigation, and an alert nobody receives and no alert at all are the same
-outcome, and the difference is invisible precisely on the day it matters. Where a signal is the only
+Every alert names a threshold **and its rationale**. Every alert fires only on
+a condition a human acts on; downgrade or remove the rest, because alert
+fatigue is a reliability risk. Every alert also names how its own delivery is
+confirmed, because an alert nobody receives is the same as no alert, and the
+difference shows only on the day it matters. Where a signal is the only
 automated protection for a hazard, the check that the signal still fires is
 itself a gate.
 
@@ -52,10 +53,9 @@ chases it as a defect.
 - `<procedure>`: `<the red it produces>`, designed, proven by `<field or
   log line>`
 
-A red with no entry here is not expected, however familiar it has become.
-A gate that stays red for a reason unrelated to what it guards belongs in
-`verification.md` as chronically red, with an owner, and never in this
-list.
+Only a red listed here is expected, however familiar another has become.
+A gate that stays red for a reason unrelated to what it guards goes in
+`verification.md` as chronically red, with an owner.
 
 ## Inspecting the running system
 
@@ -98,9 +98,3 @@ above that it shrinks.
 
 - `<capability>`: absent (YYYY-MM-DD) — `<reason>`; owner `<who>`; bounds
   `<which promise above is smaller because of this>`
-
-An operations document that describes the capabilities it wishes it had is
-worse than none, for the same reason a drifted one is: it is trusted.
-
-<!-- Keep current: an operations doc that has stopped matching reality is worse
-than none, because it is trusted. -->

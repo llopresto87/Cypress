@@ -23,15 +23,15 @@ load_when:
   - "token TTL versus revocation list, credential lifetime and rotation"
   - "generate a fresh password or key during deploy without overwriting the live one"
 prevents: Secrets that arrive by several channels and leave by all of them — values in logs and errors, and compromise treated as a scare rather than a rotation.
-est_tokens: 1550
+est_tokens: 1860
 ---
 
 # Secrets posture
 
 How live credentials are stored, moved, written about, remediated, and
-aged. Four facts, each the single home of its rule; the kernel §4
-boundaries ("do not paste secrets", "do not rotate without a named
-confirmation") are the floor this node builds on, not a second copy.
+aged. Each section is the single home of its rule; the kernel §4
+boundaries on pasting and rotating secrets are the floor this node
+builds on.
 
 ## 1. Secrets enter through one validated channel and leave through none
 
@@ -122,20 +122,24 @@ its wake, so a credential minted for one operation carries a marker that
 everything it creates carries too, and the artifacts it touched are
 enumerated and removed afterwards rather than remembered. Revocation
 closes against that set, and the marker itself is recorded by name,
-never the credential it marks. Generate secrets fresh at the point of
-use, before anything is provisioned or listens on a network — standing a
-system up on old values rebuilds the exposure into the new environment —
-and never echo the generated value into a log or transcript; an
-environment's own secret files are read-only during an automated change.
-Generation is idempotent and never overwrites an existing value, so
-re-running convergence cannot rotate a live credential by accident; a
-first-touch convergence rotates at most once, re-authenticates, and
-verifies before the next target. Never reuse one generated value across
-tenants — one recovered value would unlock many. Absent a secret
-manager, reusing an existing trust root beats minting another secret
-(each new one adds rotation surface without adding security), but record
-where a single-issuer trust root concentrates total compromise, at the
-place the key lives, not only where it is validated. A one-time code's
+never the credential it marks.
+
+Generate secrets fresh at the point of use, before anything is
+provisioned or listens on a network, because standing a system up on old
+values rebuilds the exposure into the new environment (the value is
+recorded by name only, §2); an environment's own secret files are
+read-only during an automated change. Generation is idempotent and
+never overwrites an existing value, so re-running convergence cannot
+rotate a live credential by accident; a first-touch convergence rotates
+at most once, re-authenticates, and verifies before the next target.
+Generate a separate value per tenant: one recovered value would
+otherwise unlock many.
+
+Absent a secret manager, reusing an existing trust root beats minting
+another secret (each new one adds rotation surface without adding
+security), but record where a single-issuer trust root concentrates
+total compromise, at the place the key lives, not only where it is
+validated. A one-time code's
 strength is the product of its entropy, validity window, and attempt
 limit; a small code space is acceptable only with a short window and
 enforced throttling. Account-security operations require fresh
@@ -145,14 +149,14 @@ convenience; under `real-production` it is a finding.
 
 ## Neighbours
 
-- `method.contract-posture` — what a service does when a required secret
-  is missing, and what logs may carry — cross when the question is
+- `method.contract-posture`: what a service does when a required secret
+  is missing, and what logs may carry; cross when the question is
   startup validation or log content rather than the secret itself.
-- `method.incident-posture` — containment and register rows once an
-  exposure is an incident — cross when sequencing a remediation backlog.
-- `method.release-posture` — supply-chain gates and the artifact a secret
-  must not be baked into — cross when the secret rides a build.
-- `protocol.verify` — the secret scan is a gate with a null-result
-  control — cross when reporting "no secrets found".
-- `protocol.recover` — a failed rotation is a failure to classify before
-  retrying — cross when the rotation itself goes wrong.
+- `method.incident-posture`: containment and register rows once an
+  exposure is an incident; cross when sequencing a remediation backlog.
+- `method.release-posture`: supply-chain gates and the artifact a secret
+  is kept out of; cross when the secret rides a build.
+- `protocol.verify`: the secret scan is a gate with a null-result
+  control; cross when reporting "no secrets found".
+- `protocol.recover`: a failed rotation is a failure to classify before
+  retrying; cross when the rotation itself goes wrong.

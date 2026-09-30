@@ -30,7 +30,7 @@ load_when:
   - "an increment shipped, revise the plan, record what happened"
   - "plan is stale, assumption broke, architecture change"
 prevents: Increments chosen one at a time with no plan-of-record, so nothing says which contract an increment satisfies and a broken assumption is discovered rather than recorded.
-est_tokens: 3964
+est_tokens: 3820
 command: true
 ---
 
@@ -45,14 +45,16 @@ gates, risks, and a single recommended next step. The protocol has two
 passes over the same document: **creation** (`grill.flow`) and
 **revision** (`grill.revise`). Most sessions run the second.
 
-This node owns **the grill rule** — `docs/graph/plans/grill.md` is the
+This node owns **the grill rule**: `docs/graph/plans/grill.md` is the
 living plan-of-record, the source of truth for *plans*, linked to the
 specs it implements and the nodes it depends on. Open it when you
 start, before you change architecture, when you finish, and whenever
-an assumption breaks. Append to its changelog; strike through stale
-claims, never silently rewrite. Template:
+an assumption breaks. It is append-only: a change lands as a new
+changelog entry, and a stale claim is struck through where it stands, so
+the plan keeps its history. The session writes it; workers report
+what they did in their handback. Template:
 `docs/graph/templates/grill.template.md`. Gate:
-`python3 docs/graph/grill-lint.py` — the plan's shape, its dependency
+`python3 docs/graph/grill-lint.py`: the plan's shape, its dependency
 order, and its spec alignment, checked mechanically.
 
 "Grill" is a verb. It is the discipline of grilling the *plan* until
@@ -83,14 +85,12 @@ because each informs the other.
 ## The creation pass (`grill.flow`)
 
 The pass is a sequence of phases, each filling named sections with a
-named owner. **The table is the spawn order.** A phase's spawn is
-issued only after every handback it needs has returned; two phases run
-side by side only where the last column says so. The general rule —
-sequence by dependency, parallelize by independence, never merge by
-hand — is `delegation.sequencing` in
-`docs/graph/method/delegation-sequencing.md`. The §15 entry for the pass lists its
-spawns by `spawn_id` in the order they were issued, which is what makes
-the order auditable afterwards. When the spec is being written in the
+named owner. **The table is the spawn order** (`delegation.sequencing`
+in `docs/graph/method/delegation-sequencing.md`: sequence by dependency,
+parallelize by independence, never merge by hand). Two phases run side by
+side ONLY where the last column says so. The §15 entry for the pass lists
+its spawns by `spawn_id` in the order they were issued, which is what
+makes the order auditable afterwards. When the spec is being written in the
 same pass, run the joint pass instead (`specify.joint-pass`,
 `docs/graph/protocols/specify-joint-pass.md`); the table below applies
 when only the plan is being written.
@@ -99,7 +99,7 @@ when only the plan is being written.
 |---|---|---|---|---|
 | 0 | §0 Metadata | orchestrator, in-session | — | — |
 | 1 | §2 §3 §4 Shared Understanding, User Goal, Operating Constraints | orchestrator, in-session | §0 | — |
-| 2 | §1 Artifact Discovery | orchestrator (router-bounded reads); a sonnet investigation for what the router does not bound | §2–§4 | — |
+| 2 | §1 Artifact Discovery | orchestrator (router-bounded reads); an investigation-class worker for what the router does not bound | §2–§4 | — |
 | 3 | §5 Research Summary | `research-scout`, one spawn per dependency without a wiki page (`ingest-library`) | §1 | — |
 | 4 | §6 §7 §8 Decisions, Options, Architecture | `architect` → ADRs; `legal` inside its checkpoint | §5 | — |
 | 5 | §9 §10 Implementation and Verification Plan | `architect` slices; `tester` confirms each row's RED tests are writable and owns §10 | §8, spec §4 | phase 6 |
@@ -109,35 +109,35 @@ when only the plan is being written.
 
 What the table cannot hold:
 
-- **§2–§4 come before §1.** They are conversation products — what the
+- **§2–§4 come before §1.** They are conversation products: what the
   user asked for, the restatement both sides accept, the constraints
   the plan must operate under. Capture them before discovery colors
   them.
 - **§1 is read, not recalled.** The router bounds what you read
-  yourself (kernel §2; Turn 0's "do not bulk-read" is about
-  orientation, not discovery); what lies outside that bound is read by
-  a sonnet worker briefed from
-  `docs/graph/templates/prompts/investigation-brief.md`, never guessed.
-  Every §1 line cites a path or reads `none — <reason>`; a blank line
-  fails the pass.
+  yourself; what lies outside that bound is read by an
+  investigation-class worker briefed from
+  `docs/graph/templates/prompts/investigation-brief.md`. Every §1 line
+  cites a path or reads `none — <reason>`; a blank line fails the
+  pass.
 - **§5 is derived, not judged.** Its required set is every
   `docs/graph/libraries/` page an increment's `Depends on:` row names
   (increment shape below), plus any library, spec, or API a decision in
   §6 rests on. Hand each to `research-scout`; where the page is
   missing, that spawn runs `ingest-library`. A §5 with nothing to
-  research says so — `no external dependency — <reason>` — and that is
-  a falsifiable claim the lint checks against §9. When phase 5 names a
+  research says so, `no external dependency — <reason>`, and that is
+  a falsifiable claim the lint checks against §9; the lint catches a
+  silent §5, and ONLY you can check that the reason was earned. When phase 5 names a
   dependency §5 did not, phase 3 runs again for it before the pass
   exits.
 - **§6/§7** make explicit choices, record the discarded options and
   why, cite evidence, tag reversibility. Anything non-obvious gets an
   ADR; an ADR that implicates externally-authored rules (licenses,
   regulation, data protection, standards, third-party terms) clears
-  the architect's `legal` checkpoint before it is accepted —
-  spawn-or-instantiate mechanics per `architect.legal-checkpoint`; a
+  the architect's `legal` checkpoint before it is accepted
+  (spawn-or-instantiate mechanics per `architect.legal-checkpoint`); a
   corpus gap is a §12 row ("not recorded — needs ingest"), never a
-  recalled rule. When the plan needs a recurring operation — one a
-  future session will run again — decide it as a **durable tool** (an
+  recalled rule. When the plan needs a recurring operation, one a
+  future session will run again, decide it as a **durable tool** (an
   increment in §9 with a stable interface and a test), not an inline
   throwaway, and check `docs/graph/tools/` for one that already exists
   (§3.8).
@@ -149,11 +149,13 @@ What the table cannot hold:
 - **§11** hands boundary, contract, and dependency exposure to
   `security` and `reliability`; exposure to externally-authored rules
   goes to `legal` alongside them, under the same checkpoint mechanics.
+  Each risk row names its probability and its impact.
 - **§12** turns every "we'll figure that out later" into a row with a
   named owner, a current assumption, and a resolution path
   (`grill-planner` owns the row discipline). **§13** aligns with the
-  spec's §9 acceptance criteria. **§14** is one action — usually "enter
-  `test-first` for increment 1". **§15** records the pass.
+  spec's §9 acceptance criteria. **§14** is one action, the one that
+  unblocks the most (usually "enter `test-first` for increment 1").
+  **§15** records the pass.
 
 The creation pass is iterative: research can change the architecture
 and send phase 4 round again. Record what changed in §15.
@@ -172,10 +174,9 @@ and send phase 4 round again. Record what changed in §15.
 5. §14 names the next highest-leverage action.
 
 A revision that adds a dependency, moves a boundary, or breaks an
-assumption is not a bookkeeping change: it re-enters the creation phase
-that owns what moved — phase 3 for a dependency (the scout is spawned in
-revision exactly as in creation), phase 4 for a decision — then presses
-and exits as below. A red gate twice on one increment reopens this pass
+assumption re-enters the creation phase that owns what moved: phase 3 for
+a dependency (the scout is spawned in revision exactly as in creation),
+phase 4 for a decision. It then presses and exits as below. A red gate twice on one increment reopens this pass
 (`protocol.recover`). Every revision ends green under `grill-lint.py`.
 
 ## Increment shape (`grill.increment-shape`)
@@ -183,7 +184,7 @@ and exits as below. A red gate twice on one increment reopens this pass
 §9 may hold increments **inline**, or as a **ledger**: an index row per
 increment pointing at its own file under `docs/graph/plans/grill/`. Inline is
 right while the plan is small. Switch to the ledger when §9 starts dominating
-the file — a plan is read whole, and §9 is the section that grows for as long as
+the file: a plan is read whole, and §9 is the section that grows for as long as
 the project does, so a mature plan held in one file becomes the largest single
 thing a session loads.
 
@@ -192,10 +193,10 @@ unchanged either way: the required fields live with the increment, in whichever
 file holds it, and `grill-lint.py` refuses an index row with no file, a file no
 row points at, and an increment defined twice.
 
-Increments live under §9 and nowhere else: `grill-lint.py` runs its plan
-checks (dependency order, required fields, spec alignment) on §9 alone. A
-second spec, or a later phase, is new §9 rows or ledger files, never a
-section after §15; an increment written elsewhere is never checked.
+Increments live under §9 ONLY (inline, or in the ledger files it
+indexes), because `grill-lint.py` runs its plan checks (dependency order,
+required fields, spec alignment) on §9 and its ledger alone. A second spec
+or a later phase adds §9 rows or ledger files.
 
 §9 is where grill earns its keep. A good increment looks like:
 
@@ -220,7 +221,7 @@ section after §15; an increment written elsewhere is never checked.
 Both vocabularies, and the batch sizes they set, are
 `delegation.effort-scale` in `docs/graph/method/delegation-cycle-economy.md`.
 
-`Depends on:` names both kinds of dependency — the earlier increments
+`Depends on:` names both kinds of dependency: the earlier increments
 this one builds on, and the `docs/graph/libraries/` pages it relies on
 (the set §5 must cover). Increments are listed in dependency order: a
 row that depends on a later row is misordered, and the orchestrator
@@ -235,9 +236,9 @@ lists test names writes the suite twice, once in prose nobody runs.
 
 An increment is ready when it names its spec contracts, its case cap,
 its rollback, and its dependencies, and the tester can write the failing
-test from the row as written. One that fails any of those — no cap, no
-contract, no rollback, blank dependencies, a test the tester cannot
-write — is re-sliced.
+test from the row as written. An increment missing any of them is
+re-sliced, and so is one that touches many files to add several
+behaviors.
 
 **The consolidation increment.** A spec whose increments added many
 tests ends its §9 with one more increment, planned from the start:
@@ -248,8 +249,8 @@ it touches, and its `Tests to write (RED):` reads `none — consolidation`.
 Its gate is the suite staying green with no contract losing its test.
 The template carries this row by default. The planner may drop it for a
 spec that added few tests, and records the reason in the row's place.
-It is never a mid-spec detour: it cannot see the whole set of tests
-until the last feature increment has landed.
+It runs last, because only after the last feature increment has landed
+can it see the whole set of tests.
 
 ## Press the plan (`grill.press`)
 
@@ -266,7 +267,7 @@ and what the press does with anything outside it, is
 at least one increment; every acceptance criterion in the spec's §9
 maps to a contract an increment implements; no increment introduces
 behavior no contract covers (if one does, the spec is missing a
-contract — go back to `specify`). This check is what makes spec-driven
+contract: go back to `specify`). This check is what makes spec-driven
 development *actually* spec-driven; `grill-lint.py` runs the first and
 third mechanically.
 
@@ -275,17 +276,16 @@ would invalidate it and where the plan records it: a §11 row with a
 verifying check, or a §12 row with the current assumption and its
 resolution path. A load-bearing claim still carrying `[verify]` in §9
 or §13 is an assumption with no home — resolve it or move it to §12.
-The plan never resolves one by guessing; a value that needs human
-input is **do-not-guess** in §12 and left for sign-off.
+A value that needs human input is marked **do-not-guess** in §12 and
+left for sign-off, because a guessed value would read as settled.
 
 **Refutation.** On a T3 plan, any one-way door (`architect`
 reversibility class) and the top risk by probability × impact go to
 `devils-advocate` as a finished, claim-bearing deliverable for its
 bounded refutation pass. A `refuted` verdict reopens the phase that
 owns the claim; `could-not-refute` is recorded beside the §6 or §11
-row. This is one spawn per pass, not a standing gate, and no T2
-work incurs it — a covered-lane revision or a contained-lane change
-adds its grill.md line and moves on.
+row. It is one spawn per pass on T3 plans ONLY; T2 work (a covered-lane
+revision or a contained-lane change) adds its grill.md line and moves on.
 
 ## Plan approval (`grill.plan-approval`)
 
@@ -330,33 +330,11 @@ nothing after it is neither.
   exists; an empty §5 states why.
 - Every non-obvious decision has an ADR or a row in §6; every one-way
   door has been pressed.
-- Every §9 increment fits the shape — contracts, RED tests, rollback,
-  dependencies — and the rows are in dependency order.
+- Every §9 increment fits the shape (contracts, RED tests, rollback,
+  dependencies), and the rows are in dependency order.
 - Spec ↔ plan alignment holds; no `[verify]` survives in §9 or §13.
 - Where the plan went to the owner for approval, the plan-approval ask
   went out as one message, and §4 "Cost constraints" records its
   answers or the defaults left in force.
 - §14 names a single next action.
 - `python3 docs/graph/grill-lint.py` exits 0.
-
-## Anti-patterns
-
-- **"I know what's in the repo."** A §1 line with no path. Read it.
-- **"I know the library."** A §5 silent about a page §9 depends on.
-  The lint catches the silence; only you can catch a `no research
-  needed` you did not earn.
-- **Spawning across a dependency edge.** Two phases issued together
-  because the list looked flat. The table says which pair is parallel;
-  everything else is a merge conflict you scheduled.
-- **Increments that touch ten files and add three new behaviors.**
-  Slice them.
-- **A risk table with three rows that all say "manageable".** Be
-  specific about probability and impact.
-- **Rules that arrive mid-flight.** A cost lever or an owner-only step
-  discovered after the workers are running. Where the plan goes to the
-  owner, ask for it at plan approval.
-- **A consolidation pass in the middle of the spec.** It belongs at the
-  end of §9, planned.
-- **A "next step" that is actually a list of next steps.** Pick the
-  one that unblocks the most.
-- **Plan with no spec link.** That's not a plan; that's a wish.

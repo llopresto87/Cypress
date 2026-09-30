@@ -135,8 +135,8 @@ def status_summary() -> str:
     summary = (out.stdout or "").strip()
     if out.returncode not in (0, 1) or not summary:
         return ""
-    return ("Status register (lifecycle debt in this plant, from frontmatter — "
-            "read it, do not re-infer it): " + summary)
+    return ("Status register (lifecycle debt in this plant, read from frontmatter; "
+            "use these counts as settled): " + summary)
 
 
 def code_anchor() -> str:

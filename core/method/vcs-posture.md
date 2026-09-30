@@ -27,19 +27,19 @@ load_when:
   - "commit trailer, co-authored-by line, who signs the commit"
   - "which language for code comments or the deliverable"
 prevents: Work published without the owner's authorization, several working trees drifting apart, and commit identity decided per session.
-est_tokens: 1900
+est_tokens: 1935
 ---
 
 # VCS posture
 
 How in-flight work rests, who may publish it, how many trees hold it,
-and which commit and language facts the plant — not the doctrine —
+and which commit and language facts the plant, not the doctrine,
 decides. The kernel's §4 boundaries are the parent rule; this node is
 their version-control instance.
 
 ## 1. The local commit is the resting state of work
 
-Work on a branch. Commit locally at every verified-green increment —
+Work on a branch. Commit locally at every verified-green increment,
 green by `protocol.verify`'s gates, committed as the last step of the
 `protocol.test-first` loop. A local commit is what in-flight work looks
 like when nobody is touching it: reversal is a reset to a known-good
@@ -55,21 +55,21 @@ Splitting one uncommitted tree into two commits is the same rule under
 load. An uncommitted tree is a shared mutable surface: two unrelated
 workstreams left in it couple silently, and every day they stay there
 widens the entanglement. The split is a method, not a guess. Back up the
-shared files first. Strip the other workstream's blocks **by exact
-content match, never by line number**, because in interleaved work the
+shared files first. Strip the other workstream's blocks by exact
+content match, never by line number, because in interleaved work the
 first removed block moves every line number after it. Commit the first
 half, restore the shared files from the backup, and commit the second
 half. Then **prove every shared file byte-identical to its backup**
 before anything is published. Without that proof the two commits are a
 claim; with it they are a measurement.
 
-## 2. Publishing is a separate authorization — MANDATE
+## 2. Publishing is a separate authorization
 
-None of the following happens without an **explicit owner authorization,
+Each of the following happens only on an **explicit owner authorization,
 in the conversation, that names the act**:
 
-- pushing to a shared remote — any branch;
-- changing the default branch — by push, merge, rebase, or force;
+- pushing to a shared remote, any branch;
+- changing the default branch, by push, merge, rebase, or force;
 - deploying;
 - restarting, reloading or stopping a running service;
 - killing a process the agent did not start;
@@ -77,13 +77,13 @@ in the conversation, that names the act**:
 - lifting a standing no-change rule (a doc-only phase, a frozen module,
   a "do not touch X" instruction).
 
-The authorization is never automatic, never inferred from "the tests are
-green", never carried over from an earlier session, and never bundled
-into another approval: "go ahead with the fix" authorizes the fix, not
-the push; "commit it" authorizes the commit, not the deploy. Writing a
-fix and shipping it are two authorizations; when only the first is
-granted, the work rests as a local commit and the delivery says so
-(`protocol.deliver`).
+Each authorization covers exactly the act it names, given in the current
+session: green tests authorize nothing, an earlier session's approval
+does not carry over, and one approval never bundles another ("go ahead
+with the fix" authorizes the fix, not the push; "commit it" authorizes
+the commit, not the deploy). Writing a fix and shipping it are two
+authorizations; when only the first is granted, the work rests as a
+local commit and the delivery says so (`protocol.deliver`).
 
 The kernel §4 names the destructive cases — delete, force-push, drop,
 rotate — each needing a confirmation that names the resource. Publishing
@@ -92,26 +92,14 @@ un-see as a dropped table is to un-drop.
 
 ## 3. One working tree, one compounding branch
 
-No git worktrees; no parallel checkouts of the same repository for the
-same task; no second clone "to try something". One tree, one branch that
-compounds through local commits. State diverges silently between trees —
-each looks clean and passes its own gates, and the divergence surfaces
-only at merge, where the recovery cost exceeds any parallelism the second
-tree bought. Parallel work that a task genuinely needs is serialized at
-the commit boundary inside the one tree (`method.delegation-bounds`
-bounds the workers), never multiplied across trees.
-
-When work is re-derived onto a new branch instead of compounding on the
-old one, the old branch is swept before it is left behind. A scope filter
-drawn on the list of findings or tasks does not filter the branch: a fix
-committed there and never merged is lost silently, and nothing in the
-new round's process will notice. The sweep is mechanical. For every
-commit on the old branch that the new one lacks, check ancestry against
-the new tip (`git merge-base --is-ancestor <sha> HEAD`), then check
-whether the change it made, or an independent twin of it, was
-re-implemented on the new branch. What remains is the list of work
-actually still open, and it is usually far shorter than the count of
-unmerged commits suggests. Record it rather than infer it.
+Work in one tree, on one branch that compounds through local commits: no
+git worktrees, no parallel checkouts of the same repository for the same
+task, no second clone "to try something". State diverges silently
+between trees: each looks clean and passes its own gates, and the
+divergence surfaces only at merge, where the recovery cost exceeds any
+parallelism the second tree bought. Parallel work that a task genuinely
+needs is serialized at the commit boundary inside the one tree
+(`method.delegation-bounds` bounds the workers).
 
 The ban also has a measurement rationale, and it is the sharper one. A
 second tree does not only diverge in state, it *measures differently*: a
@@ -125,11 +113,23 @@ before/after comparison is genuinely needed, compare the identities of the
 failing checks in one tree, never counts across two (`protocol.verify`
 owns the names-not-counts rule).
 
+When work is re-derived onto a new branch instead of compounding on the
+old one, the old branch is swept before it is left behind. A scope filter
+drawn on the list of findings or tasks does not filter the branch: a fix
+committed there and never merged is lost silently, and nothing in the
+new round's process will notice. The sweep is mechanical. For every
+commit on the old branch that the new one lacks, check ancestry against
+the new tip (`git merge-base --is-ancestor <sha> HEAD`), then check
+whether the change it made, or an independent twin of it, was
+re-implemented on the new branch. What remains is the list of work
+actually still open, and it is usually far shorter than the count of
+unmerged commits suggests. Record it rather than infer it.
+
 ## 4. Attribution and language are plant facts
 
 Who a commit says wrote it, and which human language comments and
 deliverables are written in, are facts only the plant's owner can assert.
-They are declared **once**, in the `plant:` block of `docs/graph/index.md`:
+They are declared once, in the `plant:` block of `docs/graph/index.md`:
 
 | key | governs |
 |---|---|
@@ -137,14 +137,14 @@ They are declared **once**, in the `plant:` block of `docs/graph/index.md`:
 | `comment_language` | code comments, docstrings, commit messages |
 | `deliverable_language` | deliveries, reports, ADRs, anything handed to a human |
 
-Doctrine never assumes these and never restates them — a node that says
-"commits carry trailer X" is a second home for a plant fact and lies the
-day the owner changes it. Read the block; obey it.
+Doctrine reads these from the block, because a node that says "commits
+carry trailer X" is a second home for a plant fact and lies the day the
+owner changes it.
 
 **Undeclared** (an adopted plant before the owner has answered, or no
 plant at all): no attribution trailer, and match the language the
-surrounding artifact already uses. Do not ask in the middle of a
-commit; the ask belongs to grow Phase 1 / adopt-existing.
+surrounding artifact already uses. The question belongs to grow
+Phase 1 / adopt-existing, where the owner answers it once.
 
 ## Sharp edges
 
@@ -161,12 +161,16 @@ commit; the ask belongs to grow Phase 1 / adopt-existing.
   and leave the default branch alone. Record the parameter recipe where
   the next session will find it; a run that depends on such an override
   is borrowed, not deployed (`method.release-posture` §1).
+- A before-copy of a checkout in scratch excludes the version-control
+  metadata. A plain recursive copy keeps it, so version-control commands
+  run inside the copy still find a repository, and in a copy of a linked
+  worktree that repository is the original.
 
 ## Neighbours
 
-- `protocol.deliver` — the delivery states what rested locally and what
+- `protocol.deliver`: the delivery states what rested locally and what
   was authorized; cross when writing the handoff.
-- `method.engineering-posture` — production boundaries and how much
+- `method.engineering-posture`: production boundaries and how much
   work a task needs; cross when the question is scope, not publication.
-- `method.design-posture` / `method.stewardship-posture` — the other
+- `method.design-posture` / `method.stewardship-posture`: the other
   postures; cross when the decision is design- or record-shaped.

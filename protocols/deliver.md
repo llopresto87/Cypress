@@ -1,6 +1,6 @@
 ---
 name: deliver
-description: End the session with a cold-pickup summary covering files changed, specs touched, docs updated, decisions recorded, gates run/passed/skipped, known limitations, and ONE recommended next step. Use at the end of EVERY work session, before handing off to another specialist, and before the user closes the chat. Tier 0/1 tasks (kernel §0) use the compact form; Tier 2/3 use the full form after the canonize close-out has run. A session without a delivery summary is paused, not finished — never skip this protocol.
+description: End the session with a cold-pickup summary covering files changed, specs touched, docs updated, decisions recorded, gates run/passed/skipped, known limitations, and one recommended next step. Use at the end of every work session, before handing off to another specialist, and before the user closes the chat. Tier 0/1 tasks (kernel §0) use the compact form; Tier 2/3 use the full form after the canonize close-out has run. A session without a delivery summary is paused, not finished — never skip this protocol.
 id: protocol.deliver
 tier: 2
 kind: protocol
@@ -26,7 +26,7 @@ load_when:
   - "every remaining step is the owner's, goal loop or stop hook keeps firing"
   - "session metrics after each increment, cost and quality so far"
 prevents: A session that ends without a cold-pickup state, leaving the next one to re-derive what changed, what was gated and what is still open from a diff.
-est_tokens: 2793
+est_tokens: 2471
 command: true
 ---
 
@@ -36,15 +36,13 @@ Every session ends with delivery. The deliverable is a concise summary
 that lets another agent (or the same agent next time) pick the project
 up cold.
 
-This node owns **the deliver rule** — every session ends with a
+This node owns **the deliver rule**: every session ends with a
 delivery, compact for T0/T1, full for T2/T3: files changed, routing
 attribution, docs updated, decisions, gates with outcomes,
 limitations, and **one** recommended next step. The deliver-time
 attribution assertion is **detective** (ADR-0003): a unit of work with
-no `produced_by` is a BLOCK, and the session running the assertion is
-what calls it — no harness refuses a delivery that skips the check
-(§Routing-attribution assertion). If another senior engineer could pick
-up cold, you are done; if not, you are not.
+no `produced_by` is a BLOCK (§Routing-attribution assertion). The
+standard for done is §The cold-pickup test.
 
 ## When to invoke
 
@@ -54,8 +52,8 @@ up cold, you are done; if not, you are not.
 
 ## Compact form (Tier 0/1 only — kernel §0)
 
-A question answered (T0) or a trivial non-behavioral edit (T1) does not
-earn the full ceremony. Deliver in the chat, in five lines or fewer:
+A T0 answer or a T1 trivial non-behavioral edit takes the compact form:
+in the chat, in five lines or fewer:
 
 ```markdown
 # Delivery (compact) — <what> — YYYY-MM-DD
@@ -66,9 +64,10 @@ earn the full ceremony. Deliver in the chat, in five lines or fewer:
 ```
 
 A T1 edit that turns out to touch behavior, a contract, or anything a
-spec covers is not T1 — reclassify and take the full path: a small
-behavior change is T2's contained lane, not a stretched T1. The compact
-form appends to grill.md §15 only when it changed a file.
+spec covers is reclassified (`method.tiers` owns the edges; a small
+behavior change is T2's contained lane) and takes the full form after the
+close-out. The compact form appends to grill.md §15 only when it changed a
+file.
 
 ## Full form (Tier 2/3)
 
@@ -102,8 +101,9 @@ section 15.
 ## Gates run
 - Formatter, linter, type-check, unit, integration, ... — each as executed /
   discovered / absent (reason), the three states owned by
-  docs/graph/protocols/verify.md. There is no FAIL state: a failing gate is
-  fixed or handed back, never recorded and delivered.
+  docs/graph/protocols/verify.md. A failing gate is fixed, or its increment
+  goes out marked WIP under Known limitations with the failure record
+  docs/graph/protocols/recover.md requires.
 
 ## Known limitations
 - <thing that doesn't work yet> — link to grill.md section 12 row
@@ -139,60 +139,51 @@ items, so the owner answers "1 and 3, not 2" instead of re-describing
 each. That holds for the Key decisions still open, for a limitation
 that needs a call, and for the next step when it needs a go/no-go.
 Every item names each branch, environment, or resource by its exact
-identifier, never by a nickname or a shorthand, and an environment name
-never stands in for a branch name: an approval given against an
-ambiguous name can land on the wrong target. Default on; the owner may
-waive it.
+identifier (a branch by its branch name, never by the environment it
+deploys to), because an approval given against an ambiguous name can land
+on the wrong target. Default on; the owner may waive it.
 
-The metrics block is nine lines of telemetry, not prose, and the
-orchestrator fills every line from its own trace (spawn ids, handbacks,
-gate runs), with no transcript access. It is what lets the system
-improve on evidence instead of anecdote: `harvest` aggregates these
-across deliveries to find *systemic* seed problems — recurring
-misroutes mean a specialist's `routing_triggers` need sharpening,
-frequent tier reclassifications mean the tier edges need tuning,
-repeated transient retries in one area is a reliability signal. The
-Quality line sits beside the cost lines on purpose. A cost figure read
-alone would endorse any change that made a session cheaper by making
-it worse, so a cheaper session counts as progress only when its quality
-line held.
+The metrics block is telemetry, and the orchestrator fills every line
+from its own trace (spawn ids, handbacks, gate runs), with no transcript
+access. It is what lets the system improve on evidence instead of
+anecdote: `harvest` aggregates these across deliveries to find
+*systemic* seed problems. Recurring misroutes mean a specialist's
+`routing_triggers` need sharpening, frequent tier reclassifications mean
+the tier edges need tuning, and repeated transient retries in one area
+are a reliability signal. The Quality line sits beside the cost lines on
+purpose. A cost figure read alone would endorse any change that made a
+session cheaper by making it worse, so a cheaper session counts as
+progress only when its quality line held.
 
 In a long session, take the block after each landed increment as well
 as at the end, and append it to the grill.md §15 entry that increment's
-revision pass writes.
-The cost curve is then visible while it can still change, not only in
-a retrospective after the money is spent. Where the host exposes
-tokens and wall time per spawn, add them to the Spawns line; the block
-does not depend on them.
+revision pass writes. The cost curve is then visible while it can still
+change, and a retrospective after the money is spent is too late to act
+on it. Where the host exposes tokens and wall time per spawn, add them to
+the Spawns line; the block does not depend on them.
 
 ## Quality bar
 
 A delivery summary that passes:
 - Names every changed file.
-- Names every documentation update with its location.
-- Cites verification outcomes (no hand-waving).
-- Lists every limitation explicitly (no "should mostly work").
+- Names every documentation update with its location, grill.md among them.
+- Cites verification outcomes by gate (no hand-waving).
+- Lists every limitation explicitly (no "should mostly work"), and marks
+  a half-finished increment WIP, with resuming it as the next step.
 - Recommends exactly one next step (not a list).
 - Numbers every decision left to the owner, so the answer can be by
   number.
+- Covers every library the work used with its wiki page
+  (`protocol.ingest-library`).
 - Reads as the writer, not as a model: the full-form summary and any
   pull-request description or commit message pass the `humanizer` skill
   in embedded mode (`docs/graph/skills/humanizer.md`), and
   `docs/graph/prose-lint.py` reports no strong tell on the text.
 - Is the smallest summary that permits correct use and appropriate
   trust: material caveats and risks stay in; process narration,
-  restated requests, and recaps of settled context stay out
-  (proportionate communication —
-  `docs/graph/method/decision-economy.md`).
-
-A delivery summary that fails:
-- Says "implemented X" without naming the files.
-- Says "tests pass" without naming the gates.
-- Says "next, do whatever feels right" or lists five options.
-- Hides limitations behind optimism.
-- Buries an owner decision in a paragraph the owner must paraphrase back.
-- Pads the record with narration the next session must filter out —
-  future context is a cost this summary imposes on every later turn.
+  restated requests, and recaps of settled context stay out, because
+  future context is a cost this summary imposes on every later turn
+  (proportionate communication, `docs/graph/method/decision-economy.md`).
 
 ## Routing-attribution assertion (detective)
 
@@ -201,10 +192,9 @@ produced it, reading the `produced_by` and `route_evidence` fields from the
 handback payloads (`docs/graph/templates/prompts/handback-payload.md`) the workers
 returned. Then run these checks:
 
-- **Missing `produced_by` on any unit of work → BLOCK.** A missing proof of
-  who did the work is a block, never a pass — the same missing-proof-is-a-BLOCK
-  rule the release gates use. You call that block yourself; no hook refuses the
-  delivery on your behalf.
+- **Missing `produced_by` on any unit of work → BLOCK**, the same
+  missing-proof-is-a-BLOCK rule the release gates use. You call that block
+  yourself.
 - **Out-of-domain authoring → FLAG.** A `produced_by` specialist whose
   `routing_triggers` do not cover the work it authored is flagged for the
   operator to confirm or re-route.
@@ -216,18 +206,19 @@ returned. Then run these checks:
   type wearing a specialist's role must carry `harness_override:
   role-emulated (<reason>)` in its handback. Without it, a recorded emulation
   and a silent substitution stamp the identical `produced_by`, so the
-  declaration is the only thing separating them — and every emulated unit
+  declaration is the only thing separating them, and every emulated unit
   carries weaker bounds than its frontmatter claims
   (`delegation.harness-registration`). Report the count in the delivery.
 
 This assertion runs in the top session at `deliver`, where the whole
 delivery is in view; no hook the seed installs reads a worker's result
-(`delegation.briefs`). A top-session `Stop` hook that
-greps the delivery / grill.md §15 for attributions stays **deliberately
-unwired until this plant's real deliveries carry `produced_by`** — a gate
-landed before the thing it checks either checks nothing or blocks
-everything (kernel §3.5, the green-lie rule). Once deliveries carry the
-field, wire it warn-first, then block.
+(`delegation.briefs`), and no harness refuses a delivery that skips the
+check. A top-session `Stop` hook that greps the delivery / grill.md §15
+for attributions stays deliberately unwired until this plant's real
+deliveries carry `produced_by`, because a gate landed before the thing it
+checks either checks nothing or blocks everything (kernel §3.5, the
+green-lie rule). Once deliveries carry the field, wire it warn-first, then
+block.
 
 ## When every open step is the owner's
 
@@ -235,13 +226,11 @@ When every open step is the owner's (a merge, an approval, a check or
 credential only they can create), the session has reached its end, not
 a wait. State those steps once, as a numbered list with the exact
 command to run or control to click for each, each target named by its
-exact identifier, then deliver and stop. Do not restate the list turn
-after turn. An autonomous continuation (a goal condition, a stop hook, a
-heartbeat, a scheduled loop) treats that state as its exit: it ends, or
-is reshaped so that its exit message names the owner-only steps, and it
-never re-fires on a state that only the owner can change. A loop that
-keeps firing there makes no progress and spends a main-loop turn on
-every firing.
+exact identifier, then deliver and stop. An autonomous continuation (a
+goal condition, a stop hook, a heartbeat, a scheduled loop) treats that
+state as its exit: it ends, or is reshaped so that its exit message names
+the owner-only steps. A loop that keeps firing there makes no progress and
+spends a main-loop turn on every firing.
 
 ## The cold-pickup test
 
@@ -254,18 +243,3 @@ the delivery summary, should be able to:
 4. Know the next step.
 
 If they can't, the delivery isn't done.
-
-## What you do not do
-
-- You do not deliver with red tests, undeclared.
-- You do not use the compact form for work that changed behavior,
-  contracts, or spec-covered code; that is Tier 2/3 and takes the full
-  form after the close-out.
-- You do not deliver with libraries used but not wikified.
-- You do not deliver a unit of work with no `produced_by`; a missing
-  attribution is a BLOCK, not a pass.
-- You do not deliver without updating grill.md.
-- You do not leave a loop re-firing on steps only the owner can take;
-  list them once, numbered, and stop.
-- You do not deliver a half-finished increment as if it's done; mark
-  it WIP and recommend resuming it as the next step.

@@ -8,7 +8,7 @@ exactly like memory of a library API.
   including **"The amendment trap"**, which is mandatory.
 - **What belongs here and what never does:** `README.md`.
 - **Written by** `docs-librarian`, ingested by `research-scout`, read by the
-  role in `agent-corpus/legal.md`.
+  base-roster legal agent, `agents/14-legal.md`.
 
 **Provenance is graded per entry, never per page.** A page may hold a
 primary-fetched verbatim article beside a withheld standard control. Read the

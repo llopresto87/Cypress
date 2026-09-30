@@ -26,7 +26,7 @@ load_when:
   - "generate options for a decision nobody needs to confirm"
   - "shaped alternatives, is this mine to decide or theirs"
 prevents: Work that starts from a goal nobody has stated in one sentence, so scope is settled later by whoever writes the next file and the disagreement surfaces after the build — and, in the other direction, a session asking the owner to settle what was always its own to decide.
-est_tokens: 901
+est_tokens: 1244
 command: true
 ---
 
@@ -34,10 +34,13 @@ command: true
 
 Use this when the goal is vague, contested, or under-specified. The
 deliverable is a precise problem statement, a primary user, a first
-useful slice, the constraints, and a shaped set of options.
+useful slice, the constraints, and a shaped set of options. This protocol
+owns when you enter, which mode applies, where the output lands, and when
+you are done.
 
-You do not write code in brainstorm. You do not pick a stack. You
-converge.
+In brainstorm you ONLY converge: the output is words in grill.md. Code and
+the stack wait for `specify`, because a stack picked before the problem is
+stated narrows the options.
 
 ## Entry conditions
 
@@ -50,12 +53,11 @@ One or more of:
 
 ## Which mode (`brainstorm.mode-selection`)
 
-Brainstorm has two audiences and they do not share a technique. Pick before
+Brainstorm has two audiences, and each has its own technique. Pick before
 you start, and say which you picked.
 
-**The test: is the decision the owner's to make?** Not "would the owner be
-interested" — everything is interesting. The question is whether their answer
-changes what gets built.
+**The test: does the owner's answer change what gets built?** If it does,
+the decision is theirs.
 
 | The decision | Mode | Skill |
 |---|---|---|
@@ -65,22 +67,19 @@ changes what gets built.
 Both failures are real and they are opposite. Using the internal mode on the
 owner's decision presents a settled choice as a finished one, and the owner
 finds out when it ships. Using the socratic mode on your own decision spends
-their turn to be told "you decide" — and a session that does this routinely
+their turn to be told "you decide", and a session that does this routinely
 teaches the owner to stop reading.
 
-**When genuinely unsure, ask** — one question, framed as the mode question
-("this is mine to call unless you want it; say if you do"), not as the
-decision. That costs one turn and settles it; guessing wrong costs the build.
+**When genuinely unsure, ask** one question, framed as the mode question
+("this is mine to call unless you want it; say if you do") rather than as
+the decision. That costs one turn and settles it; guessing wrong costs the
+build.
 
-The two techniques are not variants of each other. Questioning, pacing, the
+The two techniques are separate. Questioning, pacing, the
 reflect-every-two-answers cadence, the nine-question hard cap and the
-convergence checklist belong to the socratic mode alone, and are meaningless
-where there is nobody to ask. Preconditions, kill conditions and the strawman
-discipline belong to the internal mode alone, and are what replaces the user as
-the thing that pushes back.
-
-This protocol owns when you enter, which mode applies, where the output lands,
-and when you are done.
+convergence checklist belong to the socratic mode, where there is someone to
+ask. Preconditions, kill conditions and the strawman discipline belong to the
+internal mode, where they replace the user as the thing that pushes back.
 
 ## Output format
 
@@ -96,7 +95,7 @@ Write the brainstorm output directly into the relevant sections of
 - Section 12 → assumptions and open questions.
 
 If the project does not yet have a grill.md, create one from
-`docs/graph/templates/grill.template.md` — brainstorm fills phase 1 of
+`docs/graph/templates/grill.template.md`. Brainstorm fills phase 1 of
 the grill pass (`grill.flow`), which is why §2–§4 land before §1.
 
 ## Exit conditions
@@ -105,16 +104,17 @@ the grill pass (`grill.flow`), which is why §2–§4 land before §1.
 - The skill's convergence checklist is satisfied (or each gap is a
   flagged assumption in grill.md §12).
 - The user has confirmed the problem statement, the primary user,
-  and the first useful slice. Confirmation is explicit ("yes",
-  "looks right"), not assumed from silence.
-- What they confirmed was put to them through `skill.humanizer` — a person
-  cannot agree to a decision they had to reverse-engineer from an options
-  table.
+  and the first useful slice. Confirmation is an explicit word ("yes",
+  "looks right"); treat silence as unconfirmed.
+- What they confirmed was put to them through `skill.humanizer`, because a
+  person cannot agree to a decision they had to reverse-engineer from an
+  options table.
 - The next protocol (`grill` or `from-scratch` Phase 2) has an
   unambiguous entry point.
 
 **Internal mode** is done when the options set is written where the next step
 reads it, each option carrying its preconditions and the one fact that would
-kill it, and the pick naming which kill condition retired each loser. **No user
-confirmation is required or waited for.** If one turns out to be needed, the
-mode was wrong — go back to the table above.
+kill it, and the pick naming which kill condition retired each loser. The
+session acts on its own pick without waiting for the owner. If an owner
+confirmation turns out to be needed, the mode was wrong: go back to the table
+above.

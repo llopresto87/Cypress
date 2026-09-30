@@ -60,6 +60,13 @@ MIN_DEPTH, MAX_DEPTH = 1, 3
 # these three so every accepted value has a recorded per-spawn derivation.
 EFFORT_LEVELS = ("low", "medium", "high")
 
+# Closed set for an agent definition's `model:` key (SPEC-0005 §6 "Model class
+# token", home docs/graph/core/method/delegation-model-classes.md,
+# delegation.model-map): the four aliases Claude Code accepts. Each names a
+# class, and `inherit` no class; a full model id belongs in the plant's model
+# map, docs/graph/models.md, never in the agent.
+MODEL_CLASSES = ("opus", "sonnet", "haiku", "inherit")
+
 # Confidence-band calibration (plan §4.2 — tunable, calibrated to the golden
 # corpus). A single distinctive trigger double-hit scores weight(3)*2*2 = 12; a
 # genuine multi-term route scores far higher, while a novel task that only grazes
@@ -945,6 +952,20 @@ def cmd_lint(agents: list) -> int:
                         f"set {EFFORT_LEVELS} (the seed's SPEC-0005 "
                         f"AGENT_DECLARES_EFFORT; rule: delegation.effort)")
 
+        # Rule 6: model declared, in the closed set of class tokens (the seed's
+        # SPEC-0005 AGENT_DECLARES_MODEL_CLASS, rule home delegation.model-map).
+        # Held for every agent regardless of origin, as rule 5 is
+        # (AGENT_MODEL_OUTSIDE_SET_AFTER_GRAFT).
+        if "model" not in a.meta:
+            errs.append(f"{a.ident}: model missing — declare one of "
+                        f"{MODEL_CLASSES} (the seed's SPEC-0005 "
+                        f"AGENT_DECLARES_MODEL_CLASS; rule: delegation.model-map)")
+        elif a.model.strip() not in MODEL_CLASSES:
+            errs.append(f"{a.ident}: model={a.model!r} is outside the closed set "
+                        f"{MODEL_CLASSES}; a full model id belongs in the plant's "
+                        f"model map, docs/graph/models.md (the seed's SPEC-0005 "
+                        f"AGENT_DECLARES_MODEL_CLASS; rule: delegation.model-map)")
+
     for w in _distinctiveness_warnings(agents):
         print(f"agent-lint: warning: {w}", file=sys.stderr)
 
@@ -1249,9 +1270,9 @@ def cmd_eval(agents: list, adir: Path) -> int:
         failures.append(
             f"adversarial class: {adversarial_wrong} confident-and-wrong, above the "
             f"recorded {ADVERSARIAL_CONFIDENT_WRONG_BUDGET}. This budget measures how "
-            f"far deliberate baiting moves the router; it may only fall. Do NOT widen "
-            f"a trigger to clear it — that trades a bait row for worse routing "
-            f"everywhere else")
+            f"far deliberate baiting moves the router; it may only fall. Lower it by "
+            f"sharpening the router: widening a trigger to clear it trades a bait row "
+            f"for worse routing everywhere else")
     if acc < EVAL_THRESHOLD:
         failures.append(
             f"contract consistency {acc*100:.1f}% below {EVAL_THRESHOLD*100:.0f}% "

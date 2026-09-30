@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Full-install contract: every adapter delivers its runtime surfaces, and the
 # plant's own router, linters and hooks run in the installed tree.
-# E family (SPEC-0001, ADR-0009 host tiers): E1-E3, E5 and E6 here; E4 is in test-seed-lint.sh.
+# E family (SPEC-0001, ADR-0009 host tiers): E1-E3 and E5-E11 here; E4 is in test-seed-lint.sh.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -402,6 +402,217 @@ PY
   rm -rf "$D"
 }
 
+# ---- The model map (ADR-0022): E7 to E11, SPEC-0001 ----------------------
+# Each of E8 to E11 runs every arm and reports all its failed arms at once, so
+# one red arm never hides the next (arm_fail, then arms_done).
+ARM_FAILS=()
+arm_fail() { ARM_FAILS+=("$*"); }
+arms_done() {
+  [[ ${#ARM_FAILS[@]} -eq 0 ]] || die "$1: ${#ARM_FAILS[@]} arm(s) failed: $(printf '[%s] ' "${ARM_FAILS[@]}")"
+}
+
+# map_edit <models.md> <op> <class> <effort> [value]: edit one row of the
+# `## Map` table. op: cell (set the opencode cell), class (set the class
+# cell), drop (delete the row).
+map_edit() {
+  python3 - "$@" <<'PY'
+import re, sys
+path, op, cls, eff = sys.argv[1:5]
+val = sys.argv[5] if len(sys.argv) > 5 else ""
+lines = open(path, encoding="utf-8").read().split("\n")
+hit = [i for i, l in enumerate(lines) if re.match(rf"^\|\s*{cls}\s*\|\s*{eff}\s*\|", l)]
+if len(hit) != 1:
+    sys.exit(f"map_edit: {len(hit)} Map rows for {cls} | {eff} in {path}")
+cells = lines[hit[0]].strip().strip("|").split("|")
+if op == "drop":
+    del lines[hit[0]]
+else:
+    cells[{"cell": 3, "class": 0}[op]] = f" {val} "
+    lines[hit[0]] = "|" + "|".join(cells) + "|"
+open(path, "w", encoding="utf-8").write("\n".join(lines))
+PY
+}
+
+# expect_projection <graph home> <projection> <model|->: the projection equals
+# its graph home with the frontmatter `model:` line set to `model: <model>`,
+# or removed for `-`, and no other byte changed.
+expect_projection() {
+  python3 - "$@" <<'PY'
+import re, sys
+home, proj, want = sys.argv[1:4]
+raw = open(home, encoding="utf-8").read()
+fm = re.match(r"\A---\n.*?\n---\n", raw, re.S)
+if not fm or not re.search(r"^model:[^\n]*\n", fm.group(0), re.M):
+    sys.exit(f"{home}: no frontmatter model: line to project")
+head = re.sub(r"^model:[^\n]*\n", "" if want == "-" else f"model: {want}\n",
+              fm.group(0), count=1, flags=re.M)
+expected = head + raw[fm.end():]
+try:
+    got = open(proj, encoding="utf-8").read()
+except OSError as e:
+    sys.exit(f"{proj}: {e}")
+if got != expected:
+    line = lambda t: next((l for l in t.split("\n") if l.startswith("model:")), "(no model: line)")
+    sys.exit(f"{proj} != {home} with model line {want!r} (projection's: {line(got)!r})")
+PY
+}
+
+# plant_agent <path> <name> <model> <effort>: a plant-authored agent node.
+plant_agent() {
+  printf -- '---\nname: %s\ndescription: owns the plant-only %s work\norigin: project\ntools: [Read, Grep]\nmodel: %s\neffort: %s\nrouting_triggers:\n  - "tend the %s borogove"\ncan_delegate: false\n---\n\nA plant agent.\n' \
+    "$2" "$2" "$3" "$4" "$2" > "$1"
+}
+
+# tree_digest <dir>: one digest over every regular file's path and bytes.
+tree_digest() {
+  (cd "$1" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum) | sha256sum
+}
+
+# E7 MODEL_MAP_TEMPLATE_IS_PLACED (guard): the template is placed on a fresh
+# install and is plant-owned from then on. Asserts SPEC-0001 MODEL_MAP_TEMPLATE_IS_PLACED.
+case_model_map_placed() {
+  local D; D="$(mktemp -d)"; fresh_copy "$D" claude-code --copy
+  cmp -s "$ROOT/templates/docs/models.md" "$D/docs/graph/models.md" \
+    || die "E7: docs/graph/models.md is missing or differs from templates/docs/models.md"
+  printf '\nA plant row note.\n' >> "$D/docs/graph/models.md"
+  cp "$D/docs/graph/models.md" "$D/models.edited"
+  "$ROOT/install.sh" all --project-dir "$D" --copy >/dev/null 2>&1 || die "E7: install.sh all over the plant failed"
+  cmp -s "$D/models.edited" "$D/docs/graph/models.md" || die "E7: install.sh all changed the plant-owned docs/graph/models.md"
+  [[ -z "$(find "$D/docs/graph" -maxdepth 1 -name 'models.md.bak-*')" ]] || die "E7: install.sh all left a backup beside docs/graph/models.md"
+  rm -rf "$D"
+}
+
+# E8 OPENCODE_MODEL_FROM_MAP: a filled opencode cell becomes the projection's
+# model: line; the projection is generated. Asserts SPEC-0001 OPENCODE_MODEL_FROM_MAP.
+case_opencode_model_from_map() {
+  local T S G; T="$(mktemp -d)"; S="$(mktemp -d)"; fresh_copy "$T" opencode --copy
+  G="$T/docs/graph"
+  map_edit "$G/models.md" cell authoring high '`provider-a/model-x`'
+  map_edit "$G/models.md" cell investigation medium '`provider-b/model-y`'
+  map_edit "$G/models.md" cell investigation low '`provider-c/model-z`'
+  plant_agent "$G/agents/zz-cheap.md" zz-cheap haiku high      # S3: haiku reads investigation-low
+  "$ROOT/install.sh" opencode --project-dir "$T" --copy >/dev/null 2>&1 || die "E8: install.sh opencode over the filled map failed"
+  local A="$T/.opencode/agents" why
+  why="$(expect_projection "$G/agents/01-architect.md" "$A/01-architect.md" provider-a/model-x 2>&1)" || arm_fail "opus/high: $why"
+  why="$(expect_projection "$G/agents/10-research-scout.md" "$A/10-research-scout.md" provider-b/model-y 2>&1)" || arm_fail "sonnet/medium: $why"
+  why="$(expect_projection "$G/agents/zz-cheap.md" "$A/zz-cheap.md" provider-c/model-z 2>&1)" || arm_fail "plant haiku/high: $why"
+  python3 - "$T/.cypress/seed.json" <<'PY' || arm_fail "stamp: opencode's agent_projections entry is not verbatim false"
+import json, sys
+e = [p for p in json.load(open(sys.argv[1])).get("agent_projections", []) if p.get("tool") == "opencode"]
+sys.exit(0 if len(e) == 1 and e[0].get("verbatim") is False else 1)
+PY
+  "$ROOT/install.sh" opencode --project-dir "$S" --symlink >/dev/null 2>&1 || die "E8: install.sh opencode --symlink failed"
+  [[ -f "$S/.opencode/agents/01-architect.md" && ! -L "$S/.opencode/agents/01-architect.md" ]] \
+    || arm_fail "--symlink: .opencode/agents/01-architect.md is a link, not a generated file"
+  arms_done "E8 OPENCODE_MODEL_FROM_MAP"
+  rm -rf "$T" "$S"
+}
+
+# E9 OPENCODE_NO_MAP_ROW_NO_MODEL_LINE: an unfilled, `-` or missing row, and
+# `inherit`, project no model: line, and the run says how many agents run on
+# their caller's model. Asserts SPEC-0001 OPENCODE_NO_MAP_ROW_NO_MODEL_LINE.
+case_opencode_no_map_row() {
+  local D OUT G A f name n why; D="$(mktemp -d)"; OUT="$(mktemp)"
+  "$ROOT/install.sh" opencode --project-dir "$D" --copy >"$OUT" 2>/dev/null || die "E9: a fresh install.sh opencode exited non-zero"
+  G="$D/docs/graph"; A="$D/.opencode/agents"; n=0; local bad=0
+  for f in "$G"/agents/*.md; do
+    name="$(basename "$f")"
+    case "$name" in _*|index.md|README.md) continue ;; esac
+    n=$((n + 1))
+    why="$(expect_projection "$f" "$A/$name" - 2>&1)" || { bad=$((bad + 1)); [[ $bad -gt 1 ]] || arm_fail "unfilled template: $why"; }
+  done
+  [[ $bad -le 1 ]] || arm_fail "unfilled template: $bad of $n projections carry a model: line"
+  [[ "$(grep -F 'docs/graph/models.md' "$OUT" | grep -cw -- "$n")" -eq 1 ]] \
+    || arm_fail "stdout has no single line naming docs/graph/models.md and the $n agents with no model: line"
+  map_edit "$G/models.md" cell authoring high '`provider-a/model-x`'
+  map_edit "$G/models.md" cell authoring medium '-'
+  map_edit "$G/models.md" drop investigation medium
+  plant_agent "$G/agents/zz-own.md" zz-own inherit high          # S3: inherit has no row
+  plant_agent "$G/agents/zz-copy.md" zz-copy provider-q/model-q high   # §6: any other value is copied as is
+  "$ROOT/install.sh" opencode --project-dir "$D" --copy >"$OUT" 2>/dev/null || die "E9: install.sh opencode over a partly filled map failed"
+  why="$(expect_projection "$G/agents/02-implementer.md" "$A/02-implementer.md" - 2>&1)" || arm_fail "'-' cell: $why"
+  why="$(expect_projection "$G/agents/10-research-scout.md" "$A/10-research-scout.md" - 2>&1)" || arm_fail "missing row: $why"
+  why="$(expect_projection "$G/agents/zz-own.md" "$A/zz-own.md" - 2>&1)" || arm_fail "plant inherit: $why"
+  why="$(expect_projection "$G/agents/01-architect.md" "$A/01-architect.md" provider-a/model-x 2>&1)" || arm_fail "filled cell: $why"
+  why="$(expect_projection "$G/agents/zz-copy.md" "$A/zz-copy.md" provider-q/model-q 2>&1)" || arm_fail "copy-through: $why"
+  # The count, where it differs from the total: opus/high agents take the one
+  # filled cell, zz-copy carries its own value, every other agent inherits.
+  local carriers=1
+  for f in "$G"/agents/*.md; do
+    case "$(basename "$f")" in _*|index.md|README.md) continue ;; esac
+    grep -qx 'model: opus' "$f" && grep -qx 'effort: high' "$f" && carriers=$((carriers + 1))
+  done
+  [[ "$(grep -cF "opencode: $((n + 2 - carriers)) of $((n + 2)) agents carry no model: line" "$OUT")" -eq 1 ]] \
+    || arm_fail "count: stdout has no line 'opencode: $((n + 2 - carriers)) of $((n + 2)) agents carry no model: line': $(grep -F 'opencode:' "$OUT" | head -3)"
+  arms_done "E9 OPENCODE_NO_MAP_ROW_NO_MODEL_LINE"
+  rm -rf "$D" "$OUT"
+}
+
+# E10 OPENCODE_MAP_UNREADABLE_FAILS_CLOSED and MODEL_MAP_UNREADABLE: a map that
+# breaks the grammar stops the run before any projection is touched.
+# Asserts SPEC-0001 OPENCODE_MAP_UNREADABLE_FAILS_CLOSED.
+case_opencode_map_unreadable() {
+  local D SNAP ERR rc; D="$(mktemp -d)"; SNAP="$(mktemp -d)"; ERR="$(mktemp)"
+  fresh_copy "$D" opencode --copy
+  # Start from a filled cell, so a run that projects before it refuses would
+  # rewrite 01-architect.md and leave a backup: the two last arms can fail.
+  map_edit "$D/docs/graph/models.md" cell authoring high '`provider-a/model-x`'
+  "$ROOT/install.sh" opencode --project-dir "$D" --copy >/dev/null 2>&1 || die "E10: setup re-install over the filled map failed"
+  cp -a "$D/.opencode/agents/." "$SNAP/"
+  map_edit "$D/docs/graph/models.md" cell authoring high '`provider-a/model-w`'
+  map_edit "$D/docs/graph/models.md" class investigation low premium
+  "$ROOT/install.sh" opencode --project-dir "$D" --copy >/dev/null 2>"$ERR" && rc=0 || rc=$?
+  [[ $rc -ne 0 ]] || arm_fail "install.sh opencode exited 0 over a map row whose class is premium"
+  grep -qF 'docs/graph/models.md' "$ERR" || arm_fail "stderr does not name docs/graph/models.md"
+  diff -rq "$SNAP" "$D/.opencode/agents" >/dev/null 2>&1 || arm_fail "the .opencode/agents projections changed"
+  [[ "$(find "$D/.opencode/agents" -name '*.bak-*' | wc -l)" -eq "$(find "$SNAP" -name '*.bak-*' | wc -l)" ]] \
+    || arm_fail "a backup was made under .opencode/agents/"
+  arms_done "E10 OPENCODE_MAP_UNREADABLE_FAILS_CLOSED"
+  rm -rf "$D" "$SNAP" "$ERR"
+}
+
+# E11 OPENCODE_CHECK_DETECTS_DRIFT and MODEL_MAP_UNREADABLE (its last arm):
+# --check renders the projections from the graph and the map, compares them,
+# and writes nothing. Asserts SPEC-0001 OPENCODE_CHECK_DETECTS_DRIFT.
+case_opencode_check_drift() {
+  local P ERR out rc before; P="$(mktemp -d)"; ERR="$(mktemp)"
+  fresh_copy "$P" opencode --copy
+  map_edit "$P/docs/graph/models.md" cell authoring high '`provider-a/model-x`'
+  "$ROOT/install.sh" opencode --project-dir "$P" --copy >/dev/null 2>&1 || die "E11: setup re-install over the filled map failed"
+  # check_run <all|opencode>: one --check run; out, ERR and rc hold its result,
+  # and the plant's digest must not move.
+  check_run() {
+    before="$(tree_digest "$P")"
+    out="$("$ROOT/install.sh" "$1" --check --project-dir "$P" 2>"$ERR")" && rc=0 || rc=$?
+    out="$out $(cat "$ERR")"
+    [[ "$(tree_digest "$P")" == "$before" ]] || arm_fail "$2: $1 --check wrote into the plant"
+  }
+  check_run opencode "(a) in sync"
+  [[ $rc -eq 0 ]] || arm_fail "(a) in sync: --check exited $rc"
+  { grep -q 'opencode' <<<"$out" && grep -q 'up to date' <<<"$out"; } || arm_fail "(a) in sync: output does not say the opencode projections are up to date: ${out:0:200}"
+  printf '\nA hand edit.\n' >> "$P/.opencode/agents/01-architect.md"
+  check_run opencode "(b) hand edit"
+  [[ $rc -ne 0 ]] || arm_fail "(b) hand edit: --check exited 0"
+  grep -q '01-architect.md' <<<"$out" || arm_fail "(b) hand edit: --check does not name 01-architect.md"
+  "$ROOT/install.sh" opencode --project-dir "$P" --copy >/dev/null 2>&1 || die "E11: the restoring re-install failed"
+  [[ -n "$(find "$P/.opencode/agents" -name '*.bak-*')" ]] || arm_fail "(c) setup: the restoring re-install left no backup, so the arm asserts nothing"
+  check_run opencode "(c) backups excluded"
+  [[ $rc -eq 0 ]] || arm_fail "(c) backups excluded: --check exited $rc after the restoring re-install"
+  map_edit "$P/docs/graph/models.md" cell authoring high '`provider-a/model-w`'
+  check_run opencode "(d) cell edit"
+  [[ $rc -ne 0 ]] || arm_fail "(d) cell edit: --check exited 0"
+  grep -q '01-architect.md' <<<"$out" || arm_fail "(d) cell edit: --check does not name 01-architect.md"
+  ! grep -q '10-research-scout.md' <<<"$out" || arm_fail "(d) cell edit: --check names 10-research-scout.md, which the edit does not change"
+  check_run all "(e) all --check"
+  [[ $rc -ne 0 ]] || arm_fail "(e) all --check: exited 0 on stale opencode projections"
+  map_edit "$P/docs/graph/models.md" class investigation low premium
+  check_run opencode "(f) unreadable map"
+  [[ $rc -ne 0 ]] || arm_fail "(f) unreadable map: --check exited 0"
+  grep -qF 'docs/graph/models.md' "$ERR" || arm_fail "(f) unreadable map: stderr does not name docs/graph/models.md"
+  arms_done "E11 OPENCODE_CHECK_DETECTS_DRIFT"
+  rm -rf "$P" "$ERR"
+}
+
 SELF="$ROOT/tests/test-full-install.sh"
 
 # Re-invoke self to run ONE scenario (a child bash spawned by gate_pool).
@@ -424,7 +635,9 @@ main() {
     case_graft_stale_kernel case_glob_metachar case_no_symlink_churn \
     case_universal_router case_copilot_projection_tools case_seed_stamp \
     caseALL_EXCLUDES_LEGACY_HOSTS case_pre_growth_pointer case_code_anchor_tool \
-    case_plant_facts_index_no_fm case_plant_facts_declared case_plant_facts_partial; do
+    case_plant_facts_index_no_fm case_plant_facts_declared case_plant_facts_partial \
+    case_model_map_placed case_opencode_model_from_map case_opencode_no_map_row \
+    case_opencode_map_unreadable case_opencode_check_drift; do
     printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
   done
   python3 "$ROOT/tests/gate_pool.py" run "$SCN" || rc=$?

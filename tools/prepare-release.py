@@ -3,12 +3,12 @@
 
 Seed-only. Absent from manifest.json's `tools` map on purpose: a plant
 publishes releases on its own terms, and this script's whole job is specific
-to how CYPRESS's own repository ships itself. See CLAUDE.md's Release
-section for the full flow.
+to how CYPRESS's own repository ships itself. The full flow, which ends in
+this script, is `docs/skills/seed-release.md`.
 
 It does not write prose. `.github/RELEASE_NOTES.md` is the CHANGELOG.md
 entry for the current `manifest.json` version, taken verbatim: that entry
-already passed canonize's humanizer pass, and drafting a second version of
+already passed the seed-release doc pass, and drafting a second version of
 the same release for the same reader would be a second home for one fact.
 `.github/workflows/release.yml` reads the staged file when the matching
 `vX.Y.Z` tag is pushed and hands it to `gh release create` unedited — CI has
@@ -20,7 +20,9 @@ Usage:
 
 Exit 0 on success (the file is staged and the next commands are printed),
 1 when the version has no matching CHANGELOG entry, is already tagged, or
-manifest.json's version is not plain semver.
+manifest.json's version is not plain semver, and 1 when the entry holds a
+level-two heading that is not a version heading: an entry ends at the next
+`## ` line, so staging it would cut the notes short there.
 """
 
 from __future__ import annotations
@@ -66,6 +68,12 @@ def extract_changelog_section(changelog_text: str, version: str) -> str:
     end = len(lines)
     for j in range(start + 1, len(lines)):
         if lines[j].startswith("## "):
+            if not VERSION_HEADING.match(lines[j]):
+                raise ReleasePrepError(
+                    f"the CHANGELOG.md entry for {version} holds `{lines[j]}` "
+                    f"(line {j + 1}), a level-two heading that is not a version "
+                    f"heading; the entry would end there. Make it a `###` heading"
+                )
             end = j
             break
     section = "\n".join(lines[start:end]).strip("\n")

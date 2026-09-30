@@ -31,7 +31,7 @@ load_when:
   - "do not fake a human voice; no planted typos, no detector chasing, no invented anecdotes"
   - "when to stop editing; difference is not improvement; over-editing stable language"
 prevents: Prose written to a style rule instead of to its meaning, with the genre ignored and the information contract broken in the name of readability.
-est_tokens: 4400
+est_tokens: 4317
 ---
 
 # Prose posture
@@ -41,7 +41,8 @@ text, ADR and spec bodies, runbooks, delivery summaries, pull-request
 descriptions, briefs and reports for the owner. Its value depends on the
 reader understanding and trusting it. This node holds the doctrine for such
 prose. The procedure that applies it is the `humanizer` skill; the mechanical
-floor is `docs/graph/prose-lint.py`.
+floor is `docs/graph/prose-lint.py`. Instruction text a model reads follows
+the voice rule of `method.engineering-posture` §8.
 
 The job is not to make text perform "human" as a costume. The job is prose
 that reads as the product of a writer who understands the subject, knows the
@@ -72,14 +73,14 @@ exceptions, causal claims, uncertainty, scope, quoted language, citations
 and their attachment to a claim, legal or technical qualifications,
 commitments and requirement levels, and explicitly stated opinions.
 
-Do not make a claim stronger, broader, more certain, more causal, or more
-universal than the source supports. Do not turn an attributed claim into a
-fact by dropping the attribution, correlation into causation, an estimate
-into an exact value, or "may" into "will" to sound decisive. A cleaner
-sentence that changes the information contract is a failed edit.
+Keep every claim at the strength, breadth, certainty, causality, and scope
+the source supports: an attributed claim keeps its attribution, a
+correlation stays a correlation, an estimate stays an estimate, and "may"
+stays "may" even where "will" would sound more decisive. A cleaner sentence
+that changes the information contract is a failed edit.
 
 Code, commands, flags, paths, URLs, configuration keys, identifiers, schema
-fields, frontmatter, table data, and link targets are never "humanized".
+fields, frontmatter, table data, and link targets stay byte-exact.
 Required legal, compliance, or contractual wording is clarified around,
 never rewritten. Modal distinctions (must, shall, should, may, prohibited)
 stay exactly as written. Quotations stay exact.
@@ -100,16 +101,13 @@ fabrication.
 
 ## 4. Structure carries emphasis
 
-Adjectives, boldface, fragments, and dramatic closers do not carry the
-weight that belongs to information hierarchy. An important point gets its
-weight from placement, evidence, stated consequence, space, and its
-connection to the decision or task. A sentence does not announce that a
-fact is crucial when the document can show why it matters.
+An important point gets its weight from placement, evidence, stated
+consequence, space, and its connection to the decision or task, not from
+adjectives, boldface, fragments, or dramatic closers. Show why a fact
+matters rather than calling it crucial.
 
-Unevenness follows importance. Do not force the same number of paragraphs
-under every heading, three bullets in every list, parallel closers after
-every section, equal treatment of unequal evidence, or an introduction and
-conclusion for every short section. Spend words where the reader's
+Unevenness follows importance: give each section, list, and paragraph the
+size its content needs (diagnostic G), and spend words where the reader's
 uncertainty, risk, or decision difficulty is highest.
 
 Every section answers a real reader question or performs a real function;
@@ -155,27 +153,22 @@ punctuation habits, contraction rate, person, register, directness,
 parentheticals, transitions, signposting, humor, confidence) and preserve
 those tendencies where they do not conflict with accuracy or the task.
 Match tendencies, not isolated quirks: a single dash or fragment
-establishes no rule. Do not reproduce typos, duplicated words, malformed
-citations, or formatting glitches; they are noise, not voice.
+establishes no rule. Correct typos, duplicated words, malformed citations,
+and formatting glitches; they are noise, not voice.
 
 Without a sample, the default is direct, unshowy, specific, and comfortable
 with ordinary language, inferred from document type, audience, subject, and
 context. "Professional" does not mean inflated or bureaucratic. The plant's
 `plant:` block in `docs/graph/index.md` names the `deliverable_language`
 and `comment_language`; prose is written in the declared language.
-
-Naturalness is never imitation of imperfection. Never add typos,
-grammatical mistakes, fake hesitations, random contractions, arbitrary
-fragments, fabricated anecdotes, invented preferences, unsupported
-first-person experience, inconsistent punctuation, or slang the writer or
-genre did not establish.
+Naturalness comes from those established choices; imitating imperfection is
+a deception, bounded in §9.
 
 ## 7. Diagnostics
 
-These are editorial diagnostics, not a blacklist. A pattern warrants
-revision when it weakens meaning, rhythm, credibility, or genre fit. The
-letters are the vocabulary `prose-lint.py` reports beside the humanizer's
-numbered tells.
+A pattern below warrants revision when it weakens meaning, rhythm,
+credibility, or genre fit. The letters are the vocabulary `prose-lint.py`
+reports beside the humanizer's numbered tells.
 
 | | Diagnostic | Watch for | Repair |
 |---|---|---|---|
@@ -206,57 +199,58 @@ numbered tells.
 
 These diagnostics are built on one language's vocabulary. On a document
 written in another, run the tool for its language-independent checks only
-— structural repetition, decorative formatting, heading density,
-punctuation — and record every vocabulary-based finding as **inapplicable**
+(structural repetition, decorative formatting, heading density,
+punctuation) and record every vocabulary-based finding as **inapplicable**
 rather than clean. A silent detector there has reported that it cannot read
 the document, never that the prose is good, and the two look identical in
-the output. The language-independent checks are not automatically trustworthy
-either: where a genre or a companion skill *mandates* a shape — a required
-field block that reads as repeated bold labels, a required title or heading
-punctuation that inflates a whole-file dash rate — the detector fires on the
-mandated structure and cannot tell it from the tell it is named after. There
-the finding is advisory, not a defect: record why it was kept and leave the
-mandated shape, rather than editing toward the detector's label.
+the output. Where a genre or a companion skill *mandates* a shape (a
+required field block that reads as repeated bold labels, a required title
+or heading punctuation that inflates a whole-file dash rate), a
+language-independent check also fires on the mandated structure and cannot
+tell it from the tell it is named after. There the finding is advisory:
+record why it was kept and leave the mandated shape.
 
 Stock model vocabulary (`additionally`, `crucial`, `delve`, `enhance`,
 `fostering`, `highlight` as a verb, `interplay`, `intricate`, `key` as an
 adjective, `landscape` as an abstraction, `meticulous`, `pivotal`,
 `showcase`, `tapestry`, `testament`, `underscore` as a verb, `valuable`,
-`vibrant`) is a prompt to inspect the sentence, not a ban; a formal word
-outside the list is not a tell by itself, and technical uses of words like
-`gate` or `robust` are not tells.
+`vibrant`) is a prompt to inspect the sentence (§1); a formal word outside
+the list is not a tell by itself, and technical uses of words like `gate`
+or `robust` are not tells.
 
 ## 8. Anti-patterns of editing
 
-Reject these strategies: synonym roulette (rarer words to look less
-model-like; it harms precision and register); detector chasing (editing
-toward a classifier's label); random burstiness (alternating sentence
-length by formula); planted imperfection (typos, fragments, slang, or
-inconsistency to simulate a person; deceptive and worse); universal word
-bans; universal punctuation bans (dashes, semicolons, parentheses, and
-colons carry relationships and voice; control overuse, not existence);
+Most failed editing strategies are the sections above read in reverse:
+synonym roulette (§1), detector chasing and planted imperfection (§9),
+random burstiness (§1, diagnostic O), universal word or punctuation bans
+(§1; dashes, semicolons, parentheses, and colons carry relationships and
+voice, so control overuse, not existence), fake confidence (§2), and
+template completion ("Challenges", "Future outlook", "Key takeaways", a
+conclusion because templates have one: §4). Five have no other home:
 maximal contraction; forced colloquialism ("honestly", "basically", casual
-asides in formal material); fake confidence (qualifiers removed to sound
-decisive); fake nuance (caveats added to sound thoughtful); template
-completion ("Challenges", "Future outlook", "Key takeaways", a conclusion
-because templates have one); parallelism at any cost (unlike items forced
-into one grammatical shape); and over-editing stable language (a clear,
-exact, genre-appropriate sentence changed because it could be; difference
-is not improvement).
+asides in formal material); fake nuance (caveats added to sound
+thoughtful); parallelism at any cost (unlike items forced into one
+grammatical shape); and over-editing stable language (a clear, exact,
+genre-appropriate sentence changed because it could be; difference is not
+improvement).
 
 ## 9. Authorship and provenance integrity
 
 Polished prose from the owner's facts, notes, sources, or drafts is
-legitimate. The prose must never claim a human wrote text when that is not
-established, fabricate a personal history, firsthand observation, interview,
-or lived experience, insert fake idiosyncrasies to disguise machine
-assistance, advise that the text will evade detectors, revise toward a
+legitimate. The prose states only the authorship, history, and experience
+the owner or the source establishes. It must never claim a human wrote
+text when that is not established, fabricate a personal history, firsthand
+observation, interview, or lived experience, insert fake idiosyncrasies to
+disguise machine assistance (typos, grammatical mistakes, fake
+hesitations, random contractions, arbitrary fragments, invented
+preferences, inconsistent punctuation, or slang the writer or genre did
+not establish), advise that the text will evade detectors, revise toward a
 detector score, or create fake drafts, timestamps, or revision histories.
 First person uses only experiences, judgments, or actions established by
 the owner or the source. `deliver.attribution-assertion` and the plant's
 `commit_attribution` fact govern what a commit or deliverable says about
-who produced it; this node governs only that the prose tells no lie about
-it.
+who produced it; this node governs only that the prose tells the truth
+about it.
 
 ## 10. Decision rules
 
@@ -282,8 +276,8 @@ value. When shortening, preserve in order: decision-critical facts,
 requirements and constraints, evidence that changes confidence, caveats
 that change interpretation, definitions that prevent ambiguity; cut first
 throat-clearing, repeated framing, redundant examples, generic significance,
-duplicate conclusions, and low-value transitions. Compression never
-deletes uncertainty or conditions.
+duplicate conclusions, and low-value transitions. Compression keeps
+every uncertainty and condition.
 
 ## 11. Stop conditions
 
@@ -294,17 +288,17 @@ identifiable jobs; section order follows reader need; terminology is
 stable; the voice fits author, audience, and genre; no high-impact drafting
 residue remains; no unsupported experience or provenance was introduced;
 citations and quantities are intact; and further edits would mostly create
-difference rather than improvement. Passing a detector is not a completion
-condition. Making every sentence distinctive is not a completion condition.
+difference rather than improvement, whatever a detector says or however
+distinctive each sentence already is.
 
 ## Doctrine compatibility
 
-This posture never overrides factual correctness, source fidelity, citation
+This posture yields to factual correctness, source fidelity, citation
 requirements, security or privacy constraints, legal accuracy,
 accessibility, required terminology, a style guide the owner or
 organization supplies, project instructions, regulated or contractual
 wording, localization requirements, technical syntax, data formats, code or
-command integrity, or the owner's intent. When a style preference conflicts
+command integrity, and the owner's intent. When a style preference conflicts
 with correctness or required wording, correctness wins. When a house style
 conflicts with these defaults, the house style wins unless it creates a
 substantive error. When an author's sample conflicts with the genre, the
@@ -315,8 +309,9 @@ two are reconciled: recognizable voice, usable document.
 - `docs/graph/skills/humanizer.md`: the procedure (document contract,
   progressive execution, the rewriting passes, verification, output modes)
   and the tool that floors it.
-- `docs/graph/method/engineering-posture.md`: proportionate communication,
-  the general principles this posture specializes for prose.
+- `method.engineering-posture` §8: instruction economy and the voice rule
+  for model-facing text; `method.decision-economy`: when to stop
+  explaining, and reading a request literally.
 - `docs/graph/protocols/deliver.md`: the delivery summary's quality bar,
   where this posture is applied last.
 

@@ -130,7 +130,7 @@ add_step python3 "$ROOT/integrations/claude-code/agent-lint.py" --eval --dir "$R
 SPEC_BUDGET="$(python3 -c 'import pathlib,re,sys; print((re.search(r"^SPEC_UNCOVERED_BUDGET = (\d+)", pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"), re.M) or [0,"0"])[1])' "$ROOT/tests/seed-lint.py")"
 add_step python3 "$ROOT/templates/knowledge-graph/spec-lint.py" --specs "$ROOT/docs/specs" --root "$ROOT" --uncovered-budget "$SPEC_BUDGET"
 # Only the active plan is linted; point ACTIVE_PLAN at the next round's plan.
-ACTIVE_PLAN="$ROOT/docs/plans/grill-7.32.0-harvest.md"
+ACTIVE_PLAN="$ROOT/docs/plans/grill-7.35.0-positive-voice.md"
 add_step python3 "$ROOT/templates/knowledge-graph/grill-lint.py" --plan "$ACTIVE_PLAN" --specs "$ROOT/docs/specs" --decisions "$ROOT/docs/decisions"
 # One step per file (SPEC-0004 PROSE_FLOOR_HELD_PER_FILE): the dash allowance is
 # a rate. documentation/*-reference.md stay out by a recorded genre decision.

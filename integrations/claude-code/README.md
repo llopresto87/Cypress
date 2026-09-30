@@ -62,8 +62,7 @@ host's spawn tool (the [host capability matrix](../../documentation/host-capabil
 names it), calling them by their `name` field. The `description`
 field is what Claude Code reads when deciding which subagent to
 delegate to, so descriptions in `agents/*.md` are written to be
-"pushy" — they explicitly say WHEN to use the agent, not just what
-it does.
+"pushy": they say when to use the agent as well as what it does.
 
 ## Effort
 
@@ -98,7 +97,7 @@ the backup; see INSTALL.md "What gets backed up".
 
 Three hooks ship in `settings.json`. `route-hook.py` (UserPromptSubmit) and
 `status-hook.py` (SessionStart) inject context and are wired fail-open with
-`|| true`: a context hook must never block a prompt
+`|| true`, so a context hook always lets the prompt through
 ([routing pointer](../../DOCUMENTATION.md#enf-route-hook),
 [status summary](../../DOCUMENTATION.md#enf-status-hook)).
 The route hook names the router's nodes for the prompt, each id beside its
@@ -133,9 +132,8 @@ A hook or loop you add yourself exits when every open step is the owner's;
 `docs/graph/protocols/deliver.md` ("When every open step is the owner's") owns
 that rule.
 
-## What you do not need to do
+## Works unchanged
 
-You do not need to edit the agents or skills to fit Claude Code —
-they were written to its conventions and the other tools'
-conventions simultaneously. The kernel and team are the same across
-every host the seed installs.
+The agents and skills work in Claude Code as written: they follow its
+conventions and the other tools' at once. The kernel and team are the
+same across every host the seed installs.

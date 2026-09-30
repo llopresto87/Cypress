@@ -359,6 +359,42 @@ case_unfilled_prune() {
 }
 collect_case GT18 case_unfilled_prune "--unfilled --prune removes the scaffold, exit 0"
 
+# ---- the model map is disclosed, not blocked on (S4, ADR-0022) ------------
+# A plant whose docs/graph/models.md is still the seed's template has chosen
+# "inherit the caller's model"; --unfilled names it on a DISCLOSED line and
+# neither gates nor renames it. Fixture: the graft fixture plus the real map
+# template; rollback.md is filled in (a), left identical in (b).
+map_plant() {  # map_plant <dir> <fill rollback: yes|no>
+  rm -rf "$1" "$TMP/mseed"; cp -R "$FIX/plant" "$1"; cp -R "$FIX/seed" "$TMP/mseed"
+  cp "$ROOT/templates/docs/models.md" "$TMP/mseed/templates/docs/models.md"
+  cp "$ROOT/templates/docs/models.md" "$1/docs/graph/models.md"
+  [ "$2" = no ] || printf '\nA filled rollback step.\n' >> "$1/docs/graph/runbooks/rollback.md"
+}
+case_unfilled_model_map_disclosed() {
+  local why=() mrc
+  # (a) the map is the only template-identical leaf: exit 0, disclosed, not counted
+  map_plant "$TMP/mplant" yes
+  python3 "$AUDIT" "$TMP/mplant" "$TMP/mseed" --unfilled >"$TMP/mout1" 2>&1 && mrc=0 || mrc=$?
+  [ "$mrc" -eq 0 ] || why+=("(a) exit $mrc, want 0")
+  [ "$(grep -cE '^ *DISCLOSED .*docs/graph/models\.md' "$TMP/mout1")" -eq 1 ] || why+=("(a) no single DISCLOSED line names docs/graph/models.md")
+  ! grep -qE '^ *UNFILLED .*models\.md' "$TMP/mout1" || why+=("(a) an UNFILLED line names models.md")
+  grep -q "unfilled scaffolds: 0 reported" "$TMP/mout1" || why+=("(a) summary is not 'unfilled scaffolds: 0 reported'")
+  # (b) guard: rollback.md unfilled too still gates, on rollback only
+  map_plant "$TMP/mplant2" no
+  python3 "$AUDIT" "$TMP/mplant2" "$TMP/mseed" --unfilled >"$TMP/mout2" 2>&1 && mrc=0 || mrc=$?
+  [ "$mrc" -eq 1 ] || why+=("(b) exit $mrc, want 1")
+  grep -qE '^ *UNFILLED .*runbooks/rollback\.md' "$TMP/mout2" || why+=("(b) no UNFILLED line names rollback.md")
+  ! grep -qE '^ *UNFILLED .*models\.md' "$TMP/mout2" || why+=("(b) an UNFILLED line names models.md")
+  grep -qE '^ *DISCLOSED .*docs/graph/models\.md' "$TMP/mout2" || why+=("(b) the DISCLOSED line is not printed")
+  # (c) --rename leaves the disclosed map in place
+  map_plant "$TMP/mplant" yes
+  python3 "$AUDIT" "$TMP/mplant" "$TMP/mseed" --unfilled --rename >"$TMP/mout3" 2>&1 || true
+  [ -f "$TMP/mplant/docs/graph/models.md" ] || why+=("(c) --rename moved docs/graph/models.md")
+  [ ! -e "$TMP/mplant/docs/graph/models.unfilled.md" ] || why+=("(c) --rename wrote models.unfilled.md")
+  [ ${#why[@]} -eq 0 ] || { cat "$TMP/mout1" "$TMP/mout2"; fail "$(printf '%s; ' "${why[@]}")"; }
+}
+collect_case GT-MAP case_unfilled_model_map_disclosed "an unfilled model map is DISCLOSED: exit 0, not counted, not renamed; rollback still gates"
+
 # verification.md: byte-identical is unfilled unless it carries an executed gate row.
 case_unfilled_verification_exemption() {
   # GT19

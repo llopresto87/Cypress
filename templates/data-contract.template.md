@@ -10,8 +10,8 @@ Authored by: data-ml
 Lives at: docs/graph/data/data-contracts.md (one section per dataset)
 Used: when adding or changing a dataset that other code depends on
 Filled by copying this template into the target path and replacing
-every <placeholder>. Stable section numbers must not be renumbered;
-agents and tooling index into them.
+every <placeholder>. Keep the section numbers: agents and tooling
+index into them.
 -->
 
 # Data Contract: <name>

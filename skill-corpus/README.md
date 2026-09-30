@@ -1,6 +1,6 @@
 # Skill corpus — suggested skills
 
-**Project-agnostic, durable, OPTIONAL procedures** — the procedure mirror of
+**Project-agnostic, durable, optional procedures** — the procedure mirror of
 `agent-corpus/` (roles) and `tool-corpus/` (artifacts), and of the reference
 corpora `library-corpus/` and `legal-corpus/`. Folded back into the seed by the
 **harvest** protocol (`protocols/harvest.md`, `HARVEST_PROMPT.md`) from
@@ -25,16 +25,16 @@ so the next plant instantiates a ready sequence instead of rediscovering it.
   procedure's subject (a container runtime, an SSH transport); what disqualifies
   a page is binding to one repo's layout or one project's pins. (A *role* is
   held to the stricter bar — see `agent-corpus/README.md`.)
-- Stated by **composing** the existing protocols/skills/agents it runs under,
-  by reference — never restating a discipline the seed already owns.
+- Stated by **composing** the protocols, skills and agents it runs under, by
+  reference, so each discipline, and the rules of the agent a procedure runs
+  under, keep their one home. A page names what it composes and states only its
+  own steps.
 - Recurring across **independent** project lineages.
 
 ## What stays OUT
 
 - A procedure bound to one stack or one repo's layout — the plant's own,
   authored fresh.
-- Anything duplicating a core `skills/` discipline, or restating the rules of
-  the agent it runs under: one home per procedure.
 
 ## Layout
 
@@ -45,18 +45,15 @@ skill-corpus/<name>.md
 One page per suggested procedure, kebab-case id, describing the skill in
 general (orientation to instantiate, not the plant's copy). Each page opens
 with an optional-procedure blockquote naming what it composes and its
-parameters, then `When to apply`, the procedure itself, `Anti-patterns`, and
-`Reference files`.
+parameters, then `When to apply`, the procedure itself, and `Reference files`.
+Each step names the move it replaces, and a hard boundary sits, paired with its
+right move, in the step that owns it.
 
 ## The withdraw contract (consumed by `grow` / `toolcraft` / commission)
 
-`protocols/harvest.md` owns this contract. In short: when a project hits a
-repeatable procedure the core `skills/` don't cover, check this corpus
-**first**. A matching page is instantiated into the project's
-`docs/graph/skills/<name>.md` — its home — from
-`docs/graph/templates/skill.template.md`, grounding its steps in the project's
-real gates and tools. The harness projections (`.claude/skills/<name>/SKILL.md`
-and kin) follow from that home: `install.sh` projects what is in the graph, so
-an instantiated page reaches every harness the plant runs on the next install. If none matches,
-author it fresh as a project skill — and its durable, agnostic form becomes a
-harvest candidate for the next cycle.
+`protocols/harvest.md` ("The suggested-skill corpus") owns this contract: when
+a project hits a repeatable procedure the core `skills/` don't cover, check
+this corpus first, and instantiate a match into the project's
+`docs/graph/skills/<name>.md` (its home) from
+`docs/graph/templates/skill.template.md`. If none matches, author it fresh as a
+project skill; its durable, agnostic form becomes a harvest candidate.

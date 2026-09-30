@@ -23,180 +23,173 @@ load_when:
   - "rename crossing a serialization or wire boundary"
   - "nothing uses this, delete dead code or an unused file"
 prevents: Changes landed as the smallest diff that satisfies the request — bolted-on functions, _v2 names, and a file whose design is the fossil record of every past edit.
-est_tokens: 2890
+est_tokens: 2720
 ---
 
 # holistic-editing
 
 You are a senior engineer performing an **integration, not a patch**.
 When asked to change, fix, refactor, or review something, your unit of
-work is the whole file or module — never the smallest diff that
-satisfies the request.
+work is the whole file or module, never the smallest diff that satisfies
+the request.
 
 ## Prime directive
 
-A change is only complete when the file reads as if the requirement
-had existed from the beginning. If a reviewer could point to where
-your change was bolted on, you have failed. Minimal diffs are not a
-virtue here; **coherence is**.
+A change is only complete when the file reads as if the requirement had
+existed from the beginning. If a reviewer could point to where your
+change was bolted on, you have failed. Minimal diffs are not a virtue
+here; **coherence is**.
 
-This does not license gold-plating. "Minimum" still governs *new
-behavior* — you add no capability nobody asked for, and you do not
-expand into unrelated code (that is scope creep; file it for its own
-increment). But the code that delivers the behavior you *were* asked
-for is integrated into the existing design, not stapled to its edge.
+"Minimum" still governs *new behavior*: add only the capability the
+request asks for (Scope rule below). The code that delivers it is
+integrated into the existing design, not stapled to its edge.
 
-## Mandatory process, in order, every time
+## Process, in order
 
-1. **Comprehend first.** Before writing code, state briefly: the
-   file's responsibilities, its main structures and abstractions, and
-   its conventions (naming, error handling, patterns). If you can't,
-   ask for the missing context or read it — never reconstruct a file
-   from memory and guess. If the project keeps a knowledge graph, the
-   owning conventions may live in a node, not in the file itself; load
-   it via `context-router`.
+1. **Comprehend first.** Before writing code, state briefly: the file's
+   responsibilities, its main structures and abstractions, and its
+   conventions (naming, error handling, patterns). If you can't, read
+   the file or ask for the missing context, so the change is built on
+   the file and not on memory. If the project keeps a knowledge graph,
+   the owning conventions may live in a node, not in the file itself;
+   load it via `context-router`.
 2. **Locate the change architecturally.** State where the change
-   conceptually belongs — which abstraction should own it, and what
+   conceptually belongs: which abstraction should own it, and what
    surrounding code it affects.
 3. **Assess the ripple.** List everything the change invalidates,
    duplicates, or makes obsolete: helpers to merge, branches that go
-   dead, names that no longer describe their contents, comments and
-   docs that go stale, tests the change implies.
-4. **Integrate.** Rewrite the affected regions as a whole.
-   Restructure, rename, merge, and delete as needed. **Deletion and
-   consolidation are first-class outcomes, not side effects.**
-5. **Output the whole revised unit** — the full file, or full revised
-   functions/sections when the file is very large. Never a fragment
-   like "add this after line 42."
+   dead, names that no longer describe their contents, comments and docs
+   that go stale, tests the change implies.
+4. **Integrate.** Rewrite the affected regions as a whole. Restructure,
+   rename, merge, and delete as needed. **Deletion and consolidation are
+   first-class outcomes, not side effects.**
+5. **Output the whole revised unit** (Output format below).
 
-## Forbidden moves
+## Integration moves
 
-- Appending new functions at the bottom because it's the path of
-  least resistance.
-- Wrapper functions, `handleXNew`, `_v2`, `Improved`, `Enhanced`
-  suffixes, or boolean flags that route around old behavior instead of
-  replacing it.
-- Special-casing: adding an `if` for the new requirement while the
-  general logic stays untouched, when the general logic itself should
-  change.
-- Leaving now-redundant code, dead branches, or duplicated logic in
-  place "to be safe."
-- Fixing the symptom at the call site when the defect lives in the
-  abstraction.
-- Preserving a bad structure just because the request didn't name it.
-  If honoring the request properly requires restructuring, restructure
-  — and say you did.
-- Fixing the instance you were handed while known siblings keep the
-  same defect, and calling the change complete — or fixing all of them
-  by pasting the same edit into every copy when the copies could have
-  been collapsed into one.
+Each move names, in parentheses, the tell a reviewer searches for when
+the move was skipped.
+
+- Place new behavior with its kin (tell: a function appended at the
+  bottom because it was the path of least resistance).
+- Replace old behavior in place (tell: a wrapper, a `handleXNew`, `_v2`,
+  `Improved` or `Enhanced` suffix, or a boolean flag routing around the
+  old code).
+- Change the general logic when the requirement changes it (tell: an
+  `if` for the new case beside general logic left untouched).
+- Delete what the change made redundant (tell: dead branches, duplicated
+  logic, or code kept "to be safe").
+- Fix the defect in the abstraction that owns it (tell: the symptom
+  fixed at the call site).
+- Restructure when honoring the request properly needs it, and say you
+  did (tell: a bad structure preserved because the request didn't name
+  it).
+- Treat known siblings of the defect as one class and land the fix once,
+  per the class sweep below (tell: the handed instance fixed while
+  siblings keep the defect, or the same edit pasted into copies that
+  could have been collapsed into one).
 
 ## The class sweep
 
 Some defects are not one defect. The same wrong path in six pipelines,
 the same unguarded call in four adapters, the same stale constant in
-every copy of a generated file — that is **one defect with six
+every copy of a generated file: that is **one defect with six
 locations**, and the location you were handed is not privileged.
 
 When the thing you are fixing has siblings, the discipline has two
-halves — *find every copy*, then *land the fix once*:
+halves, *find every copy*, then *land the fix once*:
 
 1. **Establish the class before you fix the instance.** What is the
    defect, stated so a search can find it? Search for it.
-2. **Land the fix once, at the seam that owns it.** The sweep found
-   *n* copies; the fix does not become *n* edits. Declare the intended
+2. **Land the fix once, at the seam that owns it.** The sweep found *n*
+   copies; the fix does not become *n* edits. Declare the intended
    behaviour at the single seam that owns it and collapse the duplicate
-   implementations into one shared module every member invokes — the
-   copy is the mechanism that produced the drift, and re-copying is the
-   same mechanism run once more. A placeholder whose side effect happens
-   to suppress the symptom is not a fix; nor is a reimplementation of
-   logic that already exists elsewhere — a second, weaker source of
-   truth. Where the copies genuinely cannot be collapsed in this
-   increment — a generated file per consumer, a shared library whose
-   source sits outside the audit — apply the fix at each site,
-   integrated into that member's local conventions (a sweep is not a
-   find-and-replace, and a mechanical substitution that breaks a
-   member's conventions is not a fix), then **verify uniformity by
-   diff** rather than assuming it, and file the collapse as its own
-   increment.
+   implementations into one shared module every member invokes, because
+   the copy is the mechanism that produced the drift, and re-copying
+   runs that mechanism once more. A placeholder whose side effect
+   happens to suppress the symptom is not a fix; nor is a
+   reimplementation of logic that already exists elsewhere, a second,
+   weaker source of truth. Where the copies genuinely cannot be
+   collapsed in this increment (a generated file per consumer, a shared
+   library whose source sits outside the audit), apply the fix at each
+   site in that member's own conventions, then **verify uniformity by
+   diff**, and file the collapse as its own increment.
 3. **Report the sweep**: which members were searched, which were
    affected, which were already clean, and where the fix now lives. A
    sweep you cannot enumerate is a claim, not a result.
 
-If the class is too large for this increment, fix the instance, name
-the remaining members explicitly, and file them — but never leave the
-sweep *implicit*, because a silent partial fix reads as a complete one.
-
-**This is not a licence to roam, and it does not compete with the scope
-rule below.** Scope restraint is about *other problems*: a defect you
-noticed that has nothing to do with the request is filed, not fixed.
-The class sweep is about *this problem, in another file*. A sibling
-carrying the defect you were sent to fix is not unrelated code — it is
-the same work, and the file boundary is not the shape of the bug. The
-sweep is bounded by the defect's identity; the scope rule is bounded by
-the defect's relevance. Both bound; neither licenses the other's
-territory. The seam that should own the fix may live in a file the
-request did not name; that file is the sweep's territory too — and, like
-any other file outside the one you were given, it is listed before it is
-touched (scope rule below).
+If the class is too large for this increment, fix the instance, name the
+remaining members explicitly, and file them, because a silent partial
+fix reads as a complete one.
 
 ## Scope rule
 
-Holistic is not unbounded. Stay within the file or module you were
-given and the **direct consequences** of the request. Do not redesign
-unrelated subsystems, swap libraries, or change public interfaces
-other code depends on without flagging it first. "Integrate the code
+Holistic is bounded. Stay within the file or module you were given and
+the **direct consequences** of the request. Flag a change before you
+make it when it redesigns an unrelated subsystem, swaps a library, or
+changes a public interface other code depends on. "Integrate the code
 you touch" and "do not chase unrelated code" are the same discipline
 seen from two sides: coherence *inside* the unit of work, scope
-restraint *outside* it. Unrelated issues you notice get filed as their
-own increment, not silently fixed in this one — *unrelated* being the
-operative word: another instance of the defect you were sent to fix is
-the same issue, and belongs to the class sweep above, not here.
+restraint *outside* it.
 
-If proper integration requires touching other files, **say so
-explicitly and list them** before doing it.
+Scope bounds by relevance; the class sweep bounds by identity. A problem
+unrelated to the request is filed as its own increment and fixed there.
+Another instance of the defect you were sent to fix is the same work
+wherever it lives, because the file boundary is not the shape of the
+bug; the seam that should own the fix belongs to the sweep too, even in
+a file the request did not name.
+
+If proper integration requires touching other files, sweep territory
+included, **say so explicitly and list them** before doing it.
 
 ## The append-only exception
 
 Some artifacts are *deliberately* append-only, and holistic rewriting
-would destroy their reason to exist. Do **not** apply this skill to:
+would destroy their reason to exist. These follow supersede-don't-delete
+instead of this skill:
 
-- the plan-of-record's history/changelog (see `grill-planner` — stale
+- the plan-of-record's history/changelog (see `grill-planner`: stale
   claims are struck through, not deleted),
-- Architecture Decision Records (see `adr-writer` — superseded, never
+- Architecture Decision Records (see `adr-writer`: superseded, never
   edited in place),
 - any changelog or audit log.
 
-Those follow supersede-don't-delete. This skill governs code and
-single-current-truth knowledge pages, where two copies of a fact is a
-defect. Know which kind of file you are in before you start.
+This skill governs code and single-current-truth knowledge pages, where
+two copies of a fact is a defect. Know which kind of file you are in
+before you start.
 
 The two kinds meet wherever a record of a claim outlives the claim, and
 such records are true-shaped: their form reads as evidence whatever
 their content says, so review passes over them.
 
-- **A dated defect note** in a test or code comment ("measured: X
-  fails when Y") cites its subject by symbol, so it can be found when
-  the code moves, and is retracted in the commit that fixes the defect.
-  Left in place, it goes on reading as a measurement after the defect
-  is gone, and the next reader cites it as a premise.
-- **An archived copy of a retracted claim**, kept because the reasoning
-  error is itself the finding, is struck in the same edit that
-  retracts it. Keeping the original is right; leaving it unstruck in
-  the present tense is a second live claim.
+- **A dated defect note** in a test or code comment ("measured: X fails
+  when Y") cites its subject by symbol, so it can be found when the code
+  moves, and is retracted in the commit that fixes the defect. Left in
+  place, it goes on reading as a measurement after the defect is gone,
+  and the next reader cites it as a premise.
+- **A recorded claim found false** gets two marks in the edit that
+  retracts it: the original is struck through, and a dated
+  **Correction** beside it states the corrected finding. This is the one
+  retraction rule for a graph fact (`knowledge-graph`, rule 5) and for
+  an archived copy kept because the reasoning error is itself the
+  finding. Keeping the original preserves the reasoning, which stops the
+  next agent from re-deriving the mistake; the strike stops a search
+  that lands on the old line from reading it as a second live claim. The
+  current fact still has one home, and the Correction records how it got
+  there.
 
 ## Self-check, run before you answer
 
 - Did I read and account for the **entire** file, or only the region
   near my edit?
 - Is my diff purely additive? If yes, justify why nothing needed to
-  change or die — additive-only is a red flag, not a default.
+  change or die: additive-only is a red flag, not a default.
 - Does anything now exist in **two places**?
 - Does the defect I just fixed exist in **another place**? If I did not
   look, I do not know.
 - Is any symbol still imported for a definition that has been commented
   out or deleted? A dangling import is often the only trace of a
-  half-removed feature — when auditing for dead code, check type, enum,
+  half-removed feature: when auditing for dead code, check type, enum,
   and import references separately from executable call sites, because
   the call sites can all be gone while the import quietly survives.
 - Before I delete something as unused, did I search for **each file by
@@ -213,46 +206,42 @@ their content says, so review passes over them.
 
 When you deliver a change under this discipline:
 
-1. **Read** — 2–4 sentences: the file's purpose and relevant
-   structure.
-2. **Integration plan** — what changes, what moves, what dies, and
-   why.
-3. **Full revised code** — the whole unit, not a fragment.
-4. **Changelog** — a bullet list that *includes anything you removed
-   or restructured beyond the literal request*, so it can be vetoed.
+1. **Read**: 2–4 sentences on the file's purpose and relevant structure.
+2. **Integration plan**: what changes, what moves, what dies, and why.
+3. **Full revised code**: the whole unit, meaning the full file, or the
+   full revised functions or sections when the file is very large.
+4. **Changelog**: a bullet list that *includes anything you removed or
+   restructured beyond the literal request*, so it can be vetoed.
+   Deletion and restructuring are the parts most likely to surprise, so
+   surface them loudest.
 
-The changelog is not decoration. Deletion and restructuring are the
-parts most likely to surprise, so they are the parts you surface
-loudest.
+## Trivial changes
 
-## When this does NOT apply
+Genuinely trivial changes (a typo, a comment, a lint fix, a single-line
+config value) take the trivial-change shortcut, with no four-part
+report. The test is the *unit of work*, not the *size of the request*:
+"fix this typo" is trivial; "fix this bug" almost never is, because the
+bug usually lives in an abstraction, not at the call site.
 
-Genuinely trivial changes — a typo, a comment, a lint fix, a
-single-line config value — take the trivial-change shortcut. Do not
-stage a four-part integration report for a one-character fix. The test
-is the *unit of work*, not the *size of the request*: "fix this typo"
-is trivial; "fix this bug" almost never is, because the bug usually
-lives in an abstraction, not at the call site.
-
-A rename is the sharp exception, and it fails the trivial test the
-moment the identifier crosses a **serialization, wire, or process
-boundary** — a persisted entity or DTO field, an enum constant an
+A rename stays trivial only while its identifier stays inside one
+process. Once the identifier crosses a **serialization, wire, or process
+boundary** (a persisted entity or DTO field, an enum constant an
 external party reads, an auth-token claim name, an RPC or HTTP path, a
-message-queue routing key, a service-discovery name. Each of those is
-an **unversioned contract**: the diff looks like a one-line rename, but
-some other process, stored record, or in-flight message still speaks
-the old name, and nothing fails at compile time. "Looks like a
-one-liner" is exactly the failure mode that silently breaks contracts
-in service-oriented or serialized-data systems — so treat such a rename
-as a contract change (versioned, migrated, or dual-read), never as a
-trivial edit.
+message-queue routing key, a service-discovery name), the rename is an
+**unversioned contract** change: some other process, stored record, or
+in-flight message still speaks the old name, and nothing fails at
+compile time. The diff looks like a one-line rename, and that look is
+how such renames silently break service-oriented and serialized-data
+systems. Treat it as a contract change (versioned, migrated, or
+dual-read), whatever the diff size.
 
 ## Reference files
 
-- the kernel (`AGENTS.md`) — the boundary that makes this binding.
-- `docs/graph/agents/02-implementer.md` — writes code under this rule.
-- `docs/graph/agents/03-reviewer.md` — audits for the forbidden moves.
-- `docs/graph/skills/context-router.md` — how to comprehend a file's owning
-  conventions before editing.
-- `docs/graph/protocols/test-first.md` — the characterization test that makes
-  restructuring existing code safe.
+- the kernel (`AGENTS.md`): the boundary that makes this binding.
+- `docs/graph/agents/02-implementer.md`: writes code under this rule.
+- `docs/graph/agents/03-reviewer.md`: audits for the tells of skipped
+  integration moves.
+- `docs/graph/skills/context-router.md`: how to comprehend a file's
+  owning conventions before editing.
+- `docs/graph/protocols/test-first.md`: the characterization test that
+  makes restructuring existing code safe.

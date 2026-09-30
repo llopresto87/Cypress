@@ -1,14 +1,12 @@
 <!--
 Template: prompts/handback-payload.md
-Used: ONCE per spawn, at the moment a worker returns control to its caller —
+Used: once per spawn, at the moment a worker returns control to its caller —
 delegating or leaf, and on all three endings (complete, blocked-out-of-domain,
 failed). Not per tool call. "Turn" is defined in docs/graph/method/delegation-bounds.md
 (delegation.turn). This hands control back across the subagent boundary. No
 hook the seed installs reads a worker's result, so this block is the only
 reliable carrier (docs/graph/method/delegation-briefs.md).
-A LEAF worker (no spawn tool) that hits an out-of-domain boundary returns
-this instead of doing the work itself: it names the specialist, it does
-not spawn one. A DELEGATOR returns it when it STOPs rather than spawning.
+Leaf and delegator endings: see Rules.
 Fill the {{PLACEHOLDERS}} and return the body verbatim to the caller.
 Discipline: docs/graph/agents/00-orchestrator.md (delegation), kernel §3.6.
 -->
@@ -18,7 +16,7 @@ Discipline: docs/graph/agents/00-orchestrator.md (delegation), kernel §3.6.
 ```
 HANDBACK
 - produced_by: {{this agent name}}
-- spawn_id: {{echoed VERBATIM from the brief — the caller-minted
+- spawn_id: {{echoed verbatim from the brief — the caller-minted
              dot-chain, e.g. orchestrator.3.architect.1; see
              docs/graph/method/delegation-bounds.md, delegation.tracing}}
 - status: complete | blocked-out-of-domain | failed
@@ -27,15 +25,16 @@ HANDBACK
                    docs/graph/protocols/recover.md; what survives goes in
                    in_domain_work_done}}
 - in_domain_work_done: {{what this agent legitimately did, with paths}}
-- out_of_domain_needed: {{work this agent must NOT do itself, or "none"}}
-- route_evidence: {{the agent-lint --route line that selected THIS agent,
+- out_of_domain_needed: {{work outside this agent's domain, for the caller
+                          to route, or "none"}}
+- route_evidence: {{the agent-lint --route line that selected this agent,
                     or the caller's recorded override rationale — echoed
                     from the brief}}
 - effort: {{echoed from the brief: <low|medium|high> (row <n>: <reason>),
             plus "host applies: definition default <value>" where it differs}}
 - expertise_gap: {{each stack element met mid-work with no expertise.* node,
                    with the path that shows it, one per line, or "none"}}
-- harness_override: {{omit unless this worker is a ROLE EMULATION of a
+- harness_override: {{only when this worker is a role emulation of a
                       specialist the host had no registered type for:
                       "role-emulated (<reason>)" — see
                       docs/graph/method/delegation-bounds.md,
@@ -56,12 +55,13 @@ HANDBACK
 
 ## Rules (why this block exists)
 
-- **`route_evidence` is about YOU, `next_route_evidence` about the next
+- **`route_evidence` is about you, `next_route_evidence` about the next
   hop.** `route_evidence` echoes the routing line from your brief that
   selected you — the deliver-time attribution assertion reads it beside
-  `produced_by` to confirm the right specialist did the work. Never put
-  the next agent's routing (or graph-lint `--plan` output — that is
-  graph-route evidence and belongs in your report body) in this field.
+  `produced_by` to confirm the right specialist did the work. This field
+  holds only your own routing line: the next hop's goes in
+  `next_route_evidence`, and graph-lint `--plan` output (graph-route
+  evidence) goes in your report body.
 - **`produced_by` is load-bearing.** A unit of work with no `produced_by`
   is a deliver-time BLOCK, not a pass (fail-closed).
 - **Every field is its shortest sufficient form.** Paths and identifiers,
@@ -69,22 +69,21 @@ HANDBACK
   each time a worker returns, not a report; findings go in the report body.
 - **The report body carries decisions, in a fixed order, and has an
   overflow note.** The order is: the verdict; the paths delivered; the
-  gates, with their numbers; the blockers; then this payload. Leave out the restated brief, quoted
-  diffs and the story of how you got there, because the caller holds
-  the brief and can open the paths. Aim at a few thousand characters.
+  gates, with their numbers; the blockers; then this payload. Point at
+  the brief, the diffs and the paths instead of restating them or
+  telling the story of how you got there, because the caller holds the
+  brief and can open the paths. Aim at a few thousand characters.
   That is a soft target, not a cap: a cap trims exactly the caveats the
   caller needs. When the content does not fit, the rest goes in an
   overflow note at `docs/graph/plans/<unit of work>/overflow/<spawn_id>.md`,
-  and the report names it. Write the note as you work, not at the end,
-  so that a spawn that stalls or runs out of context still leaves its
-  findings on disk. The close-out librarian reads every overflow note
+  and the report names it. Write the note as you work, so that a spawn
+  that stalls or runs out of context still leaves its findings on disk. The close-out librarian reads every overflow note
   the task produced (`protocol.canonize`), so nothing that lives only
   there is lost to the graph.
-- **`gates:` reports what the spawn added to the suite, not only what it
-  ran.** A spawn that adds tests states the cases and the runtime it
-  added, as a delta. This is a convention inside the field, not a new
-  field. It lets the caller weigh the suite's growth against the
-  contracts it covers before the cost compounds across increments.
+- **`gates:` also reports what the spawn added to the suite.** A spawn
+  that adds tests states the cases and the runtime it added, as a delta.
+  It lets the caller weigh the suite's growth against the contracts it
+  covers before the cost compounds across increments.
 - **`effort` is echoed, not chosen.** Copy the effort label, row and
   reason from your brief. When the host cannot apply a per-spawn setting
   and runs your definition's default instead, add "host applies:
@@ -94,31 +93,30 @@ HANDBACK
   and the evidence it cites, is set by "Stack expertise found mid-work"
   in `docs/graph/templates/prompts/graph-session-bootstrap.md`, the one
   home of the stack rule.
-- **Name an addressable agent, never only a protocol.** When you
-  recommend, `recommended_next` points at a specialist the orchestrator
-  can spawn, plus the protocol/step. A protocol name alone is not a
-  routable target. On a final turn with nothing left, "none — session
-  ends here" is the defined value.
-- **A leaf worker recommends; it does not spawn.** Leaf agents carry no
-  spawn tool by design: for a registered specialist that is one of the
-  harness's two recursion caps, the host's nesting limit being the other. At an out-of-domain boundary you STOP and
-  return this payload — you do not do the work. Under role emulation the
-  same cap holds by brief instead of by frontmatter, and
+- **`recommended_next` names a spawnable specialist.** When you
+  recommend, it points at a specialist the orchestrator can spawn, plus
+  the protocol/step, because a protocol name alone is not a routable
+  target. On a final turn with nothing left, "none — session ends here"
+  is the defined value.
+- **A leaf worker ONLY recommends.** At an out-of-domain boundary it
+  names the specialist in `recommended_next` and returns this payload;
+  the work is the specialist's. Leaf agents carry no spawn tool by
+  design: for a registered specialist that is one of the harness's two
+  recursion caps, the host's nesting limit being the other. Under role
+  emulation the same cap holds by brief instead of by frontmatter, and
   `harness_override` is what makes that visible at `deliver`.
-- **A delegator that stops still fills this in.** The caller needs the
-  same attribution either way.
-- **`failure_class` feeds `recover` (§ the failure discipline).** Classify
-  before handing back; preserve what survived in `in_domain_work_done` so
-  the next attempt starts from the frontier, not zero.
-- **`tools_built` feeds the close-out (§3.8).** A durable, reusable tool —
-  stable interface, covering test, plausibly run again in a later
-  session — is named here so the orchestrator forwards it in the single
-  canonize close-out brief. A throwaway prototype or genuine one-off is
-  `none`. Leaving a reusable tool out is a silent capability leak.
-- **`skills_built` feeds the same close-out (§3.8) — the procedure sibling.**
-  A repeatable multi-step *procedure* a future session will walk again (a
-  migration recipe, a release choreography) is named here so the close-out
-  crystallizes it into a project skill (home `docs/graph/skills/<name>.md`,
-  projected into the harness dirs in use). A one-off sequence
-  is `none`. Leaving a recurring procedure out is a silent capability leak,
-  exactly as an uncatalogued tool is.
+- **A delegator that stops instead of spawning still fills this in.**
+  The caller needs the same attribution either way.
+- **`failure_class` feeds `protocol.recover`.** Classify before handing
+  back; preserve what survived in `in_domain_work_done` so the next
+  attempt starts from the frontier, not zero.
+- **`tools_built` and `skills_built` feed the close-out (§3.8).** Name a
+  durable, reusable tool (stable interface, covering test, plausibly run
+  again in a later session) or a repeatable multi-step *procedure* a
+  future session will walk again (a migration recipe, a release
+  choreography), so the orchestrator forwards it in the single canonize
+  close-out brief: the tool is cataloged, and the procedure is
+  crystallized into a project skill (home `docs/graph/skills/<name>.md`,
+  projected into the harness dirs in use). A throwaway prototype or a
+  genuine one-off is `none`; a reusable one left out is a silent
+  capability leak.

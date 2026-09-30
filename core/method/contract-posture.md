@@ -33,7 +33,7 @@ load_when:
   - "a failed build left no log, discard stderr or keep the step's output"
   - "print external text into a CI log, log command injection, sanitize before printing"
 prevents: Interfaces that accept anything and fail late — missing input read as empty, out-of-domain values coerced, and errors that tell the caller less than it needs to act.
-est_tokens: 2872
+est_tokens: 2797
 ---
 
 # Contract posture
@@ -46,19 +46,20 @@ it writes about itself. Where validation and error handling *live* is
 ## 1. Missing required input fails loudly, at one layer, naming the offender
 
 Required configuration, credentials, and fields are validated once at
-the earliest common layer — one schema-checked module the rest of the
-code may not bypass — and a missing one fails the run with a non-zero
-exit naming every offender. A default added to silence the failure
-converts a loud deploy failure into a silent wrong value in production;
-an interpolation that substitutes blank is the same defect. A service
-whose security depends on a supplied secret refuses to start without it
-and says which one; a known sample or placeholder value is a boot
-failure; a configuration that can disable a security control fails
-closed at startup rather than trusting every deployment path to override
-it. Optionality is declared — "optional" means the artifact works
-without it — never inferred from a loader's behaviour, and a field whose
-absence would bind a silent zero in a non-nullable type is mandatory. The
-guard against a fallback that substitutes a *value* is `protocol.verify`'s.
+the earliest common layer, one schema-checked module every reader goes
+through, and a missing one fails the run with a non-zero exit naming
+every offender. A default added to silence the failure converts a loud
+deploy failure into a silent wrong value in production; an
+interpolation that substitutes blank is the same defect. A service whose
+security depends on a supplied secret refuses to start without it and
+says which one; a known sample or placeholder value is a boot failure; a
+configuration that can disable a security control fails closed at
+startup rather than trusting every deployment path to override it.
+Optionality is declared ("optional" means the artifact works without
+it), because a loader that tolerates a missing value says nothing about
+whether the artifact still works; a field whose absence would bind a
+silent zero in a non-nullable type is mandatory. The guard against a
+fallback that substitutes a *value* is `protocol.verify`'s.
 
 ## 2. Reject out-of-domain input rather than repairing it
 
@@ -67,34 +68,37 @@ persists nothing — never rounds, clamps, truncates, coerces, merges, or
 substitutes — because downstream the repair is indistinguishable from
 the measurement; refusal is non-destructive and retryable. Schema-validate
 every input at the boundary so nothing past it is untrusted; decide an
-upload's type from its own bytes with a cheap pre-decode gate, never from
-a client-supplied label; a parser building authoritative structure
-rejects ambiguous or repeated input rather than merging it. Ignoring
-unknown properties buys forward compatibility and pays in silent data
-loss — where that matters, a test asserts the literal value arrived.
+upload's type from its own bytes with a cheap pre-decode gate, because a
+client-supplied label is attacker-controlled; a parser building
+authoritative structure rejects ambiguous or repeated input rather than
+merging it. Ignoring unknown properties buys forward compatibility and
+pays in silent data loss; where that matters, a test asserts the literal
+value arrived.
 
 ## 3. Own an unversioned contract in one document and validate on both sides
 
 Where no schema registry or consumer-driven contract test exists, one
-frozen document owns the contract — named owner, numbered amendment log;
-implementers may not edit it, and disagreement is escalated and settled
-by an attributed amendment, never by local reinterpretation. It carries
-one worked example per distinct contract shape, precise enough that a
-wrong rule contradicts it and derived from the consuming code, not
-copied from a live instance. Producer and consumer each assert exact
-literal values at the boundary — the producer defines validity, the
-consumer keeps a backstop against any producer version it may meet —
-and each assertion names the defect it would have caught. No change
-lands before the real producers and consumers are enumerated by name,
-the unknown ones that could still be affected stated, the change
-classified against them with its reversibility, and the ADR question
-argued either way. A breaking change to a published contract ships once,
-as one coordinated release with written notice, never as a defective old
-version kept alive behind a version segment. Cross-service references
-are opaque identifiers whose integrity lives in code and tests, not the
-store; a format hardens once clients you do not deploy in lockstep
-persist it, so keep it opaque. A rename crossing a serialization, wire,
-or process boundary is a contract change (`skill.holistic-editing`).
+frozen document owns the contract: named owner, numbered amendment log.
+Only its named owner edits it; an implementer who disagrees escalates,
+and the owner settles it by an attributed amendment, so the contract
+never forks into local readings. It carries one worked example per
+distinct contract shape, precise enough that a wrong rule contradicts
+it, and derived from the consuming code, because a live instance shows
+one producer's behaviour and the contract covers every producer.
+Producer and consumer each assert exact literal values at the boundary
+(the producer defines validity, the consumer keeps a backstop against
+any producer version it may meet), and each assertion names the defect
+it would have caught. A change lands only after the real producers and
+consumers are enumerated by name, the unknown ones that could still be
+affected stated, the change classified against them with its
+reversibility, and the ADR question argued either way. A breaking change
+to a published contract ships once, as one coordinated release with
+written notice, never as a defective old version kept alive behind a
+version segment. Cross-service references are opaque identifiers whose
+integrity lives in code and tests, not the store; a format hardens once
+clients you do not deploy in lockstep persist it, so keep it opaque. A
+rename crossing a serialization, wire, or process boundary is a contract
+change (`skill.holistic-editing`).
 
 ## 4. Where order or precision carries meaning, it is an asserted contract
 
@@ -116,26 +120,24 @@ An error carries its cause and a type or status that truthfully
 describes what happened; a convenient but wrong type is a latent trap for
 future callers. Where a platform limit or permission was hit, the failure
 text carries the upstream's verbatim refusal, so a refusal is
-distinguishable from an input error at the point of failure — the raw
-text is often what later disproves an assumed cause. A status never
-claims less acceptance than actually happened: misstated partial
-acceptance produces client retry loops that re-send committed work.
-Internal errors become one bounded envelope only at the API boundary,
-where an unknown failure returns a generic code and leaks nothing.
+distinguishable from an input error at the point of failure; the raw
+text is often what later disproves an assumed cause. A status reports
+exactly the acceptance that happened: misstated partial acceptance
+produces client retry loops that re-send committed work. Internal errors
+become one bounded envelope only at the API boundary, where an unknown
+failure returns a generic code and leaks nothing.
 
 A failure also stays readable after the fact. A step that does work
 (builds, pulls, scans, runs a step, pushes) writes its output to a
-durable place a later reader can reach, and it does so even when the
-step is allowed to fail or swallows its own exit status; the log a
-build failure leaves is how its cause is found. A query whose parsed
-stdout is the result, and whose failure already surfaces as a named
-outcome, may discard its stderr, and so may housekeeping. The line is
-drawn by what the process does, not by which binary it is: the same
-tool can be a query in one call and work in the next. A failure that
-left no log can only be guessed at by the next run, and a repeated
-blind failure costs a full run each time where one read of the log
-would have named the cause. The retained output passes through the same
-redaction as any log (§8).
+durable place a later reader can reach, even when the step is allowed to
+fail or swallows its own exit status, because the log a failure leaves
+is how its cause is found; a failure with no log costs a full blind run
+each time where one read would have named the cause. A query whose
+parsed stdout is the result, and whose failure already surfaces as a
+named outcome, may discard its stderr, and so may housekeeping; the line
+is drawn by what the process does, since the same tool can be a query in
+one call and work in the next. The retained output passes through the
+same redaction as any log (§8).
 
 ## 6. Authorize server-side from the verified credential, once, and reuse it
 
@@ -148,72 +150,71 @@ operation and resource, and every surface reuses that check: the UI is a
 navigation affordance, never the guard; hiding a path from documentation
 is not authorization; where only URL-pattern rules exist, the gap is
 recorded as a weaker-than-baseline posture. A denial does not disclose
-existence — a resource the caller may not see answers not-found, and
+existence: a resource the caller may not see answers not-found, and
 authentication and visibility denials share one response shape and
 timing class. A service-to-service caller is a narrowly scoped,
 short-lived machine identity admitted by the same rules, never a widened
-guard or trusted network position; a pre-authentication admission cap is
-never placed over a class containing the legitimate caller, nor keyed on
-a value the caller controls.
+guard or trusted network position. Scope a pre-authentication admission
+cap to a class that excludes the legitimate caller and key it on a value
+the caller cannot set, because otherwise an attacker can lock real
+callers out.
 
 ## 7. Visibility, deletion, and retention apply to every read surface
 
 Decide visibility rules before building the surfaces that expose data,
 and apply them as an explicit predicate on every write and every read
-path — pages, APIs, search indexes, feeds, notifications, media
-delivery, caches, background jobs — so the rule survives any engine; a
-record removed from one surface but reachable from another is a leak. Deletion is a state change applied uniformly across
-every surface and retained for audit, with a soft-delete grace window
-before hard purge and released identifiers held unusable for at least
-that window. Every new store of personal data registers in the erasure
-inventory, enforced by a contract test, so deletion coverage cannot fall
-behind the schema; where a statutory retention duty overrides erasure,
-redact the personal fields and stamp the record, citing the provision.
-Retention is set per record class by accountability value, not one
-global window; a rotation cap on a log volume is a retention policy
-whether or not anyone chose it. A cache key encodes the visibility scope
-of what it stores; object keys for user content are opaque,
-non-enumerable, and never publicly listable.
+path (pages, APIs, search indexes, feeds, notifications, media
+delivery, caches, background jobs) so the rule survives any engine; a
+record removed from one surface but reachable from another is a leak.
+Deletion is a state change applied uniformly across every surface and
+retained for audit, with a soft-delete grace window before hard purge
+and released identifiers held unusable for at least that window. Every
+new store of personal data registers in the erasure inventory, enforced
+by a contract test, so deletion coverage cannot fall behind the schema;
+where a statutory retention duty overrides erasure, redact the personal
+fields and stamp the record, citing the provision. Retention is set per
+record class by accountability value, not one global window; a rotation
+cap on a log volume is a retention policy whether or not anyone chose
+it. A cache key encodes the visibility scope of what it stores; object
+keys for user content are opaque, non-enumerable, and never publicly
+listable.
 
 ## 8. Log structured facts and identifiers, never payloads
 
 Emit structured logs to a single stream with a correlation identifier on
 every request, job, and delegation (the `spawn_id` of
 `delegation.tracing` in `method.delegation-bounds`), carrying outcome
-and reason — actor handle, result, rejection reason, size — and never
-the payload, credential, token, or private field that caused it. Ad-hoc
-console output in application code is banned; tracing uses a
+and reason (actor handle, result, rejection reason, size) and never
+the payload, credential, token, or private field that caused it.
+Application code logs only through that structured stream, so every
+line carries the correlation id and passes redaction; tracing uses a
 vendor-neutral API so the backend stays swappable; redaction applies to
-traces and operational inspection exactly as to logging — a trace is a
-data sink like any other. Any mechanism that displaces a human-supplied
-value announces the name and the displacing mechanism before the value
-is lost — one value-free line per overridden name, silent when nothing
-changed — with a provenance view separating supplied from effective
-values. A diagnostic capture window is anchored to the event under
-investigation: a window that can hold more than one occurrence yields a
-sample, not a trace.
+traces and operational inspection exactly as to logging, because a trace
+is a data sink like any other. Any mechanism that displaces a
+human-supplied value announces the name and the displacing mechanism
+before the value is lost (one value-free line per overridden name,
+silent when nothing changed), with a provenance view separating
+supplied from effective values. A diagnostic capture window is anchored
+to the event under investigation: a window that can hold more than one
+occurrence yields a sample, not a trace.
 
 Where a log is also a command channel, printing is an input to it. Some
 CI runners interpret specially marked output lines as instructions (set
 a variable, change the step's result, prepend a path), so externally
 controlled text printed there hands that channel to whoever controls the
-text: a value whose first character is a newline can forge a whole line,
-mark a failing gate as passed, alter later steps, or, on a non-ephemeral
-runner, move toward code execution. ANSI escape sequences and other C0
-control characters in the same text spoof what the log shows, even where
-no line is interpreted. Neutralize such text before it is printed, with
-a control shaped by where the data comes from: data read from a server
-is projected through an allowlist at one choke point (a non-conforming
-value becomes a fixed placeholder plus its length), and data declared in
-the repository is checked by a narrower safety predicate that refuses
-when unsafe, substituting nothing. The two controls differ because a
-false positive costs something different on each side: on the server
-side it costs a placeholder in the output, so a strict allowlist is
-affordable, while on the declaration side it refuses the run, so only
-a value that is unsafe to print is refused. The declaration needs a check at all
-because it is usually transcribed from the same external system, so it
-carries text from the same adversaries. Every printed identifier needs
-the check, not only the one field a gate happened to validate. An output
+text: a leading newline can forge a whole line, mark a failing gate as
+passed, alter later steps, or, on a non-ephemeral runner, move toward
+code execution; ANSI escapes and other C0 control characters spoof what
+the log shows even where no line is interpreted. Neutralize every
+printed identifier before it is printed, not only the one field a gate
+happened to validate, with a control shaped by where the data comes
+from. Data read from a server passes through an allowlist at one choke
+point (a non-conforming value becomes a fixed placeholder plus its
+length), because a false positive there costs only a placeholder. Data
+declared in the repository, usually transcribed from the same external
+system and so carrying the same adversaries' text, is checked by a
+narrower safety predicate that refuses when unsafe and substitutes
+nothing, because a false positive there refuses the run. An output
 grammar an adversary can forge is not a security control. Log text
 copied into files agents later load as context is persistent prompt
 injection, so the same neutralization applies before it is filed. The

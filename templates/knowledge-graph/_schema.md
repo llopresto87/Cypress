@@ -21,11 +21,11 @@ flat `docs/` tree gives an agent no way to decide what *not* to read.
 The graph makes context loading a **traversal with a stopping rule**:
 
 - Nodes are the unit of loading. One node ≈ one subject.
-- `requires:` edges are the closure an agent **must** load to work on
-  this node correctly. Follow them transitively.
-- `peers:` edges are subjects an agent **must not** load unless the
-  task explicitly crosses into them. They exist so you know what you
-  are choosing not to read.
+- `requires:` edges are the closure an agent loads with the node to
+  work on it correctly, transitively.
+- `peers:` edges mark the boundary: an agent loads one only when the
+  task explicitly crosses into it. They are listed so the choice not to
+  read them is visible.
 - `composes:` edges are a menu rather than a closure: an expertise node
   lists its specialisations, and the router descends into only those the
   task names specifically. They exist so depth is available without
@@ -41,7 +41,8 @@ the whole tree, and can say precisely what it did not read and why.
 
 These are the graph **load-tiers** (what loads, and when) — the axis the node
 `tier:` field records. They are distinct from the **task tier** (T0–T3, the
-risk classification in kernel §0) and the **model class** (sonnet/opus): three
+risk classification in kernel §0) and the **model class** (authoring or
+investigation, written `opus`/`sonnet` in agent frontmatter): three
 axes that share the word loosely, only the risk axis written `T0–T3`.
 
 | Tier | What | Loaded |
@@ -49,7 +50,7 @@ axes that share the word loosely, only the risk axis written `T0–T3`.
 | 0 | `AGENTS.md` / `CLAUDE.md` | Always, by the host tool — a bootstrap only: identity, first move, tiers, rule anchors, boundaries |
 | 1 | `docs/graph/index.md` | Every task, first |
 | 2 | `docs/graph/nodes/*.md` (project) and `docs/graph/{protocols,skills,agents,method}/*.md` (machinery) | By traversal from the router |
-| 3 | `docs/graph/{libraries,sources,specs,decisions,plans,runbooks,product,architecture,api,data,evaluations,prompts,best-practices,tools,templates}/**` | Only when a Tier-2 node names it AND the task needs it |
+| 3 | `docs/graph/{libraries,sources,specs,decisions,plans,runbooks,product,architecture,api,data,evaluations,prompts,best-practices,tools,templates}/**` | Only when a Tier-2 node names it and the task needs it |
 
 **Machinery nodes.** The seed's method surface — protocols (how work
 flows), skills (how a technique is executed), agents (who does what),
@@ -59,7 +60,7 @@ inside the graph as Tier-2 nodes of kind `protocol`/`skill`/`agent`/
 (graft's ownership marker), route through this same schema, and load
 progressively exactly like project nodes: nothing about *how to work*
 is always-loaded except the kernel bootstrap. Two project-fact checks
-do not apply to them (version-pin leakage; the ~150-line body ceiling),
+do not apply to them (version-pin leakage; the 170-line body ceiling),
 and their filenames keep natural names — the id's `<name>` part must
 equal the filename stem with any `NN-` ordering prefix stripped.
 Templates under `docs/graph/templates/**` are Tier-3 artifacts (blank
@@ -68,9 +69,11 @@ forms carry no routable knowledge); machinery nodes point at them via
 
 ## Frontmatter
 
-Every node begins with YAML frontmatter (a small subset: `key: scalar`
-or `key:` followed by two-space-indented `  - item` lines — no nested
-maps, no inline `[a, b]` lists).
+Every node begins with YAML frontmatter. House style for authored nodes is
+a small subset: `key: scalar`, or `key:` followed by two-space-indented
+`  - item` lines. Two exceptions, both read by the parser: an agent node's
+inline `tools: [a, b]` list, and the router's one-level `plant:` block on
+`index.md`.
 
 ```yaml
 ---
@@ -79,12 +82,12 @@ tier: 2
 kind: {{kind}}                 # one of the project's node kinds (below)
 title: {{name}} — one-line description
 repo: {{repo-or-path}}         # optional; omit for non-code subjects
-owns:                          # facts this node is the SOLE home of
+owns:                          # facts this node is the only home of
   - {{name}}.responsibility
   - {{name}}.{{another-fact}}
-requires:                      # transitive closure; ALWAYS loaded with this node
+requires:                      # transitive closure; loaded with this node
   - {{kind}}.{{dependency}}
-peers:                         # NOT loaded unless the task crosses into them
+peers:                         # loaded only when the task crosses into them
   - {{kind}}.{{neighbour}}
 composes:                      # lazy, downward, expertise nodes only; descended into
   - expertise.{{sub-slug}}     # only for the children the task names specifically
@@ -105,9 +108,9 @@ owner: {{agent-or-person}}     # required while open | hotfix | deferred
 
 ### Lifecycle status
 
-Anything that can be *open* carries its status **in frontmatter, never in
-prose** — an agent must read a field, not infer a state. One base vocabulary
-for every kind:
+Anything that can be *open* carries its status in frontmatter, so an agent
+reads a field instead of inferring a state. One base vocabulary for every
+kind:
 
 | value | means | requires |
 |---|---|---|
@@ -119,12 +122,12 @@ for every kind:
 | `closed` | resolved **with evidence** | `status_evidence` (a path#anchor, commit, or gate-run id) |
 
 Kind extensions, only where the base cannot express a real state: ADR adds
-`proposed | accepted`; spec adds `draft | active | implemented | back-written`
-(back-written = written AFTER the behaviour it describes, so no RED landed
-with it and no promotion was signed; it may still be fully tested, and its
-§10 rows are held to the same standard as any other live spec); `deviation` adds
-`standing` (permanently open by design; requires `ends_when`). `status_date`
-is always present. A body `## Status` section may exist only as a pointer to
+`proposed | accepted`; spec adds `draft | active | implemented | back-written`;
+`deviation` adds `standing` (permanently open by design; requires `ends_when`).
+A `back-written` spec was written after the behaviour it describes, so no RED
+landed with it and no promotion was signed; it may still be fully tested, and
+its §10 rows are held to the same standard as any other live spec.
+`status_date` is always present. A body `## Status` section may exist only as a pointer to
 the frontmatter; a body value that disagrees is a lint failure — two homes
 for one fact is how status drift starts. `legal_status` in the legal corpus
 is a *domain* fact (in force / repealed), not a lifecycle, and is separate.
@@ -144,10 +147,9 @@ joints. A common starting set:
 - `subsystem` — a service, package, or module.
 - `stack` — a language/framework's shared conventions **in this
   project**: layout, build, house rules, which projects target what.
-  Requires the matching `expertise.*` node and never restates its
-  applicability.
+  Requires the matching `expertise.*` node, which owns applicability.
 - `expertise` — **when** a language, runtime, framework, library, or
-  platform is in play for a task, what must not be done without it, and
+  platform is in play for a task, what goes wrong without it, and
   which sub-expertises apply under which condition. Lives in `nodes/`
   as `expertise.<slug>.md`, the slug unversioned (see `composes`). Owns
   exactly `<slug>.applicability` and `<slug>.composition`; every fact,
@@ -163,7 +165,6 @@ joints. A common starting set:
 - `crosscut` — concerns spanning subsystems: auth, secrets, privacy,
   testing.
 - `domain` — the problem-domain vocabulary and workflows.
-
 - `deviation` — a **deliberate, standing departure from a known standard**,
   with the reason, its scope, and the condition that ends it. Lives in
   `nodes/` as `deviation.<slug>.md` with `status: standing`, `departs_from`
@@ -239,8 +240,7 @@ all other leaf kinds use `artifacts`.
 
 **`load_when`** — what the router matches a task description against.
 On `kind: agent` nodes, `routing_triggers` (the same key the harness
-roster uses) substitutes for `load_when` — the linter accepts either;
-all shipped agent nodes use `routing_triggers`.
+roster uses) substitutes for `load_when`; the linter accepts either.
 Write the phrases a developer would actually type, including globs.
 
 On a `kind: expertise` node, each entry is split on commas into pieces.
@@ -256,9 +256,9 @@ them:
   `*.{ts,tsx}` splits at the comma into `*.{ts`, which matches nothing,
   and `tsx}`, a trigger phrase that loads the node on any task naming a
   `.tsx` path. Write `*.ts, *.tsx`.
-- **No all-wildcard pattern.** A pattern carries at least one literal
-  character besides `*`, `?` and `/`. A pattern like `**/*` matches
-  every path and floods every task that names one. No lint catches it.
+- **Every pattern carries a literal.** At least one character besides
+  `*`, `?` and `/`, because a pattern like `**/*` matches every path and
+  floods every task that names one. No lint catches it.
 - **A bare name without an extension is not a path.** A task naming
   `Dockerfile` infers nothing; the task writes `./Dockerfile`.
 
@@ -273,17 +273,17 @@ sums these to report context cost before work starts.
 
 ## Body
 
-Answer, in this order, and nothing else: **what this is** (2–3
+Answer exactly these, in this order: **what this is** (2–3
 sentences) · **what you must know** (the owned facts, terse) · **sharp
 edges** (what will bite, dated) · **where the code is** (concrete
 paths) · **neighbours** (why each peer exists, when to cross). Under
 ~150 lines (the linter rejects past 170); a longer node is two nodes.
 
 An `expertise` node answers a routing question instead, so its order is
-**what this is in play for** · **what you must not do without it** ·
+**what this is in play for** · **what goes wrong without it** ·
 **composition** (one line per composed child, naming the condition it
 applies under) · **version in play** (a pointer to
-`libraries/<slug>.md`, never a version) · **depth** (which leaf serves
+`libraries/<slug>.md`) · **depth** (which leaf serves
 which purpose). The same ceiling applies, and is generous: a node that
 needs more room is restating a leaf.
 
@@ -298,7 +298,8 @@ the leaf rule it pairs with, is `knowledge-graph.branch-shape`
 ## The rules the linter enforces
 
 1. Frontmatter parses and has every required key.
-2. `id` is unique and matches the filename (`<id>.md`).
+2. `id` is unique and matches the filename (`<id>.md`). A file named
+   `_*.md` is a blank form, and the linter skips it.
 3. `id` prefix matches `kind` (root node excepted).
 4. Every fact-key in `owns` is unique across all nodes.
 5. Every id in `requires` and `peers` resolves to a real node
@@ -340,11 +341,11 @@ the leaf rule it pairs with, is `knowledge-graph.branch-shape`
     registered by `libraries/index.md`: a link whose target resolves to it, or
     a table cell holding its name or stem whole. Case does not matter; a page
     an index titles the way the library's own docs do is the same page. What
-    does matter is WHICH section the row sits in. A row under a heading marked
-    **pending**, **planned**, **unwritten**, **not yet**, **to ingest**,
-    **backlog** or **TODO** records that the page has *not* been written, so it
-    registers nothing: counting it would make the check green on precisely the
-    omission it exists to catch. Those words are the contract; `graph-lint.py`
+    does matter is which section the row sits in. A row under a heading marked
+    `pending`, `planned`, `unwritten`, `not yet`, `to ingest`, `backlog` or
+    `TODO` records that the page has *not* been written, so it registers
+    nothing: counting it would make the check green on precisely the omission
+    it exists to catch. Those words are the contract; `graph-lint.py`
     reads every other section and skips these.
 
 A machinery upgrade can install a rule this graph has never been linted
@@ -365,23 +366,15 @@ python3 docs/graph/graph-lint.py --plan "<task>"   # dry-run the router
 
 ## Anti-patterns
 
-- **A node that restates a version** — link to the library page.
-- **An expertise node that names the version instead of pointing at
-  it** — the pin has one home; the node says where, never what.
 - **A node that `requires` everything** — a bulk read in disguise.
 - **An expertise node that `composes` everything** — the same bulk read
   wearing a menu. If every child descends on every task, the children
   are carrying the family's words instead of their own.
 - **A subsystem node that explains the language/framework** — that is a
   `stack.*` node.
-- **An expertise node that restates its own leaf** — it owns when the
-  depth is in play, not what the depth says.
 - **A node with no `owns`** — a link farm; delete it. A branch owns
   its menu (`<slug>.menu`, "Body"), so a menu with a "load when" per
   item is not one.
-- **Growing a node instead of splitting it** at the line ceiling.
 - **Filling an unknown with a guess** — write "not recorded".
-- **A status stated in prose** — a state nobody can query is a state
-  everybody re-infers; put it in frontmatter.
 - **`closed` without evidence** — that is `hotfix` or `deferred` wearing a
   green badge.

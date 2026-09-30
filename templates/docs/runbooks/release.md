@@ -9,13 +9,13 @@ human and the procedure.
 - **Verification is green** on the exact artifact being released (link the
   `verification.md` increment).
 - **A tested, documented rollback path exists** (`rollback.md`) — "deployed"
-  and "production-ready" are different claims; a release with no rehearsed
-  reversal is not releasable.
+  and "production-ready" are different claims; only a release with a
+  rehearsed reversal is releasable.
 - **A rollback point is captured and verified** (data backup / previous
   immutable artifact reference), not assumed.
-- **Deliberately excluded** — list what this release does NOT include
-  (deferred hardening, known limitations); shipping config-complete is not the
-  same as hardened, and the gap is stated, not implied.
+- **Deliberately excluded** — list what this release leaves out (deferred
+  hardening, known limitations), so the gap between config-complete and
+  hardened is stated.
 - **Evaluations are compared with the checked-in baseline** where behaviour
   is model-driven, and the comparison is linked here the way the
   verification increment is.
@@ -41,9 +41,8 @@ by design with the field that proves it is the designed verdict.
 
 **Released bits are the tested bits** (the `reliability` delivery-pipeline
 doctrine, applied operationally here). Release re-tags / promotes the exact
-artifact that passed verification — pinned by an immutable digest, not a
-floating tag — and never rebuilds at release time; a rebuild forfeits the
-verification evidence.
+artifact that passed verification, pinned by an immutable digest, because a
+rebuild or a floating tag forfeits the verification evidence.
 
 ## Records
 
@@ -53,4 +52,4 @@ verification evidence.
 - Rollback point: `<what was captured, where>`
 - Outcome: `<result>`
 
-<!-- Append a section per release. Never rewrite a past release record. -->
+<!-- Append a section per release; past records stay as written. -->

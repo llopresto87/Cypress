@@ -2,44 +2,44 @@
   "$schema": "https://json-schema.org/draft-07/schema#",
   "name": "cypress",
   "fullName": "Contextual Yield Protocol for Routed Expert Seed Systems",
-  "version": "7.34.0",
+  "version": "7.35.0",
   "supersedes": "general_expert_prompts@1.0.0",
   "created": "2026-05-23",
-  "description": "CYPRESS (Contextual Yield Protocol for Routed Expert Seed Systems) — a project-agnostic multi-agent seed for single- or multi-repository programs. As of 6.0.0 it is a pure graph system: the entire method surface — protocols, skills, agent charters, method/posture nodes, and template artifacts — installs INTO the plant's unified docs/graph/ as seed-owned routable nodes (origin: seed), activated progressively by the router; the always-loaded kernel is a small bootstrap (identity, tiers, rule anchors, boundaries), and tool directories hold only harness projections (agents, skills). Its tool-neutral INSTALL_PROMPT.md keeps user chat in orchestration/planning, dispatches Sonnet-class read-only scouts and Opus-class authors/reviewers, and grows the graph without building the application or publishing Git state.",
+  "description": "CYPRESS (Contextual Yield Protocol for Routed Expert Seed Systems) — a project-agnostic multi-agent seed for single- or multi-repository programs. It is a pure graph system: the entire method surface — protocols, skills, agent charters, method/posture nodes, and template artifacts — installs into the plant's unified docs/graph/ as seed-owned routable nodes (origin: seed), activated progressively by the router; the always-loaded kernel is a small bootstrap (identity, tiers, rule anchors, boundaries), and tool directories hold only harness projections (agents, skills). Its tool-neutral INSTALL_PROMPT.md keeps user chat in orchestration/planning, dispatches investigation-class read-only scouts and authoring-class authors/reviewers, and grows the graph while leaving the application unbuilt and Git state unpublished.",
   "principles": [
     "Risk-proportional tiers: every task is classified T0 (question) / T1 (trivial non-behavioral edit, in-session) / T2 (contained change, minimal workers — reached either by an active spec contract, the covered lane, or by being small, local and reversible with no spec over it, the contained lane, where a RED test and a recorded why are the proportional authorization) / T3 (spec-bearing work, full funnel) before acting; process depth follows the tier, misclassifying down is the violation, escalating up is normal.",
-    "Spec-driven: every behavior has an executable spec in docs/graph/specs/.",
-    "Test-driven: RED-GREEN-REFACTOR-COMMIT authorizes every code change; on untested code, characterize first.",
-    "Unified graph: ALL maintained knowledge lives below docs/graph/ — project facts AND the method surface (protocol/skill/agent/method nodes, origin: seed). Tier 1 routes, Tier 2 owns facts (machinery included), Tier 3 provides source-backed depth and template artifacts. Load minimally; declare what you skip; connect every leaf; one home per fact. The kernel is a bootstrap: nothing about how to work is always-loaded except identity, tiers, the eight rule anchors, and the boundaries.",
-    "Integrate, don't patch: the unit of work is the whole file; delete and consolidate rather than bolt on.",
-    "Plan-of-record: docs/graph/plans/grill.md is updated continuously, never silently rewritten.",
-    "Synthetic data only: never source test/demo data from production.",
+    "Spec-driven: every non-trivial behavior has an executable spec in docs/graph/specs/, written before the code; a T2 contained change is pinned by its RED test and why-record instead.",
+    "Test-driven: production code starts from a failing test that authorizes it, RED-GREEN-REFACTOR-COMMIT; on untested code, characterize first.",
+    "Unified graph: All maintained knowledge lives below docs/graph/ — project facts and the method surface (protocol/skill/agent/method nodes, origin: seed). Tier 1 routes, Tier 2 owns facts (machinery included), Tier 3 provides source-backed depth and template artifacts. Load minimally; declare what you skip; connect every leaf; one home per fact. The kernel is a bootstrap: of how to work, only identity, tiers, the eight rule anchors and the boundaries are always loaded.",
+    "Integrate each change: the unit of work is the whole file; delete and consolidate in place, so the file reads as if the change had always been there.",
+    "Plan-of-record: docs/graph/plans/grill.md is the living plan-of-record, append-only: a change lands as a new entry.",
+    "Synthetic data only: tests, fixtures and demos use synthetic data, never production data.",
     "Scale-agnostic: the same method governs a single repo or a program of several.",
     "Tool-agnostic: the same kernel runs in Claude Code, opencode, Codex, Copilot, and Prime Agent.",
-    "Toolcraft: when an operation recurs across sessions, build a durable, tested tool and catalog it in docs/graph/tools/; never reinvent throwaway scripts.",
+    "Toolcraft: when an operation recurs across sessions, build a durable, tested tool and catalog it in docs/graph/tools/; one-offs stay disposable.",
     "Minimum sufficient work: produce the smallest body of work that reliably delivers the required result — every operation serves a named decision, effort scales with uncertainty and consequence (the tiers), structure/artifacts/delegation earn their lifecycle rent, and work stops when the result is sufficiently trusted. Depth in docs/graph/method/minimum-sufficient-work.md, docs/graph/method/decision-economy.md and docs/graph/method/engineering-posture.md §8; grow, graft, and harvest each audit their own additions against it.",
-    "Design for responsibility: give each part one coherent responsibility, keep cohesive things together, and point dependencies at stable contracts rather than volatile detail — but prefer the smallest structure that fits; correct separation is the goal, never maximum. Structure is named at plan time (grill §9) and audited at review. Depth in docs/graph/method/design-posture.md.",
+    "Design for responsibility: give each part one coherent responsibility, keep cohesive things together, and point dependencies at stable contracts rather than volatile detail — at the smallest structure that fits; the goal is correct separation, not the most of it. Structure is named at plan time (grill §9) and audited at review. Depth in docs/graph/method/design-posture.md.",
     "Settled facts, for the plant: everything the seed ships serves the plant it grows. Where a model would otherwise work something out, the seed ships the answer, a tool that prints it or a fact recorded at a known path, and a session uses a fact the graph states instead of re-deriving or re-checking it. Only facts about the plant's own code can go stale: canonize records the code anchor, the session-start hook compares against it once, and where the code moved, the code wins and the node is fixed in the same change. Depth in docs/graph/skills/context-router.md (rule.knowledge)."
   ],
   "kernel": {
-    "core/AGENTS.md": "Bootstrap kernel — the ONLY always-loaded instruction file, read on every session by every supported tool: identity, first move (the router), tier table, the eight rule anchors, boundaries. Full statements live in the graph machinery nodes.",
+    "core/AGENTS.md": "Bootstrap kernel — the one always-loaded instruction file, read on every session by every supported tool: identity, first move (the router), tier table, the eight rule anchors, boundaries. Full statements live in the graph machinery nodes.",
     "core/method/tiers.md": "method.tiers node — tier depth, hard edges, execution paths. Installed to docs/graph/method/.",
     "core/method/delegation.md": "method.delegation node — the roster, mechanical routing and shared spec authoring; hub over the five delegation siblings. Installed to docs/graph/method/.",
-    "core/method/delegation-model-classes.md": "method.delegation-model-classes node — the class and reasoning effort each step runs on, and light variants. Installed to docs/graph/method/.",
+    "core/method/delegation-model-classes.md": "method.delegation-model-classes node — the class and reasoning effort each step runs on, light variants, and the plant's model map (docs/graph/models.md, delegation.model-map) that names the model each host runs per class and effort. Installed to docs/graph/method/.",
     "core/method/delegation-cycle-economy.md": "method.delegation-cycle-economy node — effort-sized batches, GREEN self-test, tip cadence, the question file and ruling pass, mutation at the end. Installed to docs/graph/method/.",
     "core/method/delegation-briefs.md": "method.delegation-briefs node — what every brief carries across the spawn boundary. Installed to docs/graph/method/.",
     "core/method/delegation-sequencing.md": "method.delegation-sequencing node — spawn order by dependency, RED waves ahead of GREEN (delegation.waves), and one writer per file set. Installed to docs/graph/method/.",
     "core/method/delegation-bounds.md": "method.delegation-bounds node — spawn allowlists and depth, host registration, the turn, and the spawn trace. Installed to docs/graph/method/.",
-    "core/method/engineering-posture.md": "method.engineering-posture node — general engineering principles (was operating-principles §1–§12). Installed to docs/graph/method/.",
-    "core/method/minimum-sufficient-work.md": "method.minimum-sufficient-work node — how much work a task deserves, the declared effort level, risk-homogeneous increments (engineering-posture §5, split P1). Installed to docs/graph/method/.",
-    "core/method/decision-economy.md": "method.decision-economy node — every operation serves a decision, stop when trusted, ask or assume (engineering-posture §6–§7, split P1). Installed to docs/graph/method/.",
-    "core/method/host-parity.md": "method.host-parity node — authoring host is not the execution target, real CI for works claims, inspection writes nothing (engineering-posture §13, split P1). Installed to docs/graph/method/.",
-    "core/method/bounded-execution.md": "method.bounded-execution node — a command that may outlive its session is detached, logged and ended by a marker (engineering-posture §14, split P1). Installed to docs/graph/method/.",
-    "core/method/design-posture.md": "method.design-posture node — SOLID/responsibility design cluster (was §13–§19). Installed to docs/graph/method/.",
-    "core/method/restrictive-policy.md": "method.restrictive-policy node — a rule that restricts must not deny the default; decided fallbacks, report-only destructive operations (design-posture §8, split P2). Installed to docs/graph/method/.",
-    "core/method/maintenance-contracts.md": "method.maintenance-contracts node — one maintenance contract per artifact, what a generated artifact owes, doc-versus-code precedence (design-posture §12–§13, split P2). Installed to docs/graph/method/.",
-    "core/method/design-governance.md": "method.design-governance node — the project's contract outranks the brief and the industry default; maintained primitives for security-critical machinery (design-posture §14–§15, split P2). Installed to docs/graph/method/.",
-    "core/method/stewardship-posture.md": "method.stewardship-posture node — records, verification, knowledge, the session record (harness memory is not a home), session closure, tools (was §20–§27). Installed to docs/graph/method/.",
+    "core/method/engineering-posture.md": "method.engineering-posture node — general engineering principles, and the seed-wide voice rule (§8). Installed to docs/graph/method/.",
+    "core/method/minimum-sufficient-work.md": "method.minimum-sufficient-work node — how much work a task deserves, the declared effort level, risk-homogeneous increments. Installed to docs/graph/method/.",
+    "core/method/decision-economy.md": "method.decision-economy node — every operation serves a decision, stop when trusted, ask or assume. Installed to docs/graph/method/.",
+    "core/method/host-parity.md": "method.host-parity node — authoring host is not the execution target, real CI for works claims, inspection writes nothing. Installed to docs/graph/method/.",
+    "core/method/bounded-execution.md": "method.bounded-execution node — a command that may outlive its session is detached, logged and ended by a marker. Installed to docs/graph/method/.",
+    "core/method/design-posture.md": "method.design-posture node — SOLID/responsibility design cluster. Installed to docs/graph/method/.",
+    "core/method/restrictive-policy.md": "method.restrictive-policy node — a restrictive rule keeps the default path working; decided fallbacks, report-only destructive operations. Installed to docs/graph/method/.",
+    "core/method/maintenance-contracts.md": "method.maintenance-contracts node — one maintenance contract per artifact, what a generated artifact owes, doc-versus-code precedence. Installed to docs/graph/method/.",
+    "core/method/design-governance.md": "method.design-governance node — the project's contract outranks the brief and the industry default; maintained primitives for security-critical machinery. Installed to docs/graph/method/.",
+    "core/method/stewardship-posture.md": "method.stewardship-posture node — records, verification, knowledge, the session record (harness memory is not a home), session closure, tools. Installed to docs/graph/method/.",
     "core/method/prose-posture.md": "method.prose-posture node — prose a person reads: information contract, claim classes, genre profiles, diagnostics A–X, anti-patterns, stop conditions. Installed to docs/graph/method/.",
     "core/method/contract-posture.md": "method.contract-posture node — fail loudly on missing input, reject out-of-domain values, own the unversioned boundary. Installed to docs/graph/method/.",
     "core/method/incident-posture.md": "method.incident-posture node — smallest reversible containment, forensic trail kept intact, remediation separate from the stop. Installed to docs/graph/method/.",
@@ -71,7 +71,7 @@
     {
       "file": "agents/04-tester.md",
       "name": "tester",
-      "role": "Spec→test translation, RED phase (write the test, confirm it fails, hand back; no implementation), eval suites, regression corpus."
+      "role": "Spec→test translation, RED phase (it ONLY writes the test, confirms it fails and hands back), eval suites, regression corpus."
     },
     {
       "file": "agents/05-security.md",
@@ -121,7 +121,7 @@
     {
       "file": "agents/14-legal.md",
       "name": "legal",
-      "role": "Regulatory-compliance analyst: corpus-bound legal reasoning, four-part findings, citation ledger, qualification boundary. Never model memory."
+      "role": "Regulatory-compliance analyst: corpus-bound legal reasoning with the verified legal corpus as its only knowledge source, four-part findings, citation ledger, qualification boundary."
     },
     {
       "file": "agents/multi-agent-architect.md",
@@ -136,17 +136,17 @@
     {
       "file": "agents/growth-scout.md",
       "name": "growth-scout",
-      "role": "Read-only per-boundary evidence gatherer; returns claims tied to paths/symbols for the graph authors. Runs only inside grow, graft or adopt. Sonnet leaf."
+      "role": "Read-only per-boundary evidence gatherer; returns claims tied to paths/symbols for the graph authors. Runs only inside grow, graft or adopt. Investigation-class leaf."
     },
     {
       "file": "agents/seed-installer.md",
       "name": "seed-installer",
-      "role": "Additive seed/adapter install via install.sh; preserves target-owned files; verifies the host tool loads the kernel. Runs only inside grow, graft or adopt. Opus leaf."
+      "role": "Additive seed/adapter install via install.sh; preserves target-owned files; verifies the host tool loads the kernel. Runs only inside grow, graft or adopt. Authoring-class leaf."
     },
     {
       "file": "agents/tool-smith.md",
       "name": "tool-smith",
-      "role": "Builds the durable, tested tool a repeated PLANT operation has earned (data resets, client regeneration, migration drivers); owns the bar and refuses below it. Never authors seed or graph machinery; cataloging stays with the canonize close-out. Opus leaf."
+      "role": "Builds the durable, tested tool a repeated plant operation has earned (data resets, client regeneration, migration drivers); owns the bar and declines work below it. Its scope is the plant's operations only: seed, graph and harness machinery stay out of it, and cataloging stays with the canonize close-out. Authoring-class leaf."
     }
   ],
   "protocols": [
@@ -208,17 +208,17 @@
     {
       "file": "protocols/verify-disagreement.md",
       "name": "verify-disagreement",
-      "role": "Behavior-preserving changes, the self-expiring known-defect exception, and what to do when a check and its subject disagree."
+      "role": "Behavior-preserving changes, a known defect (the test that found it stays unchanged and red until the fix lands, test-first.known-bug), and what to do when a check and its subject disagree."
     },
     {
       "file": "protocols/recover.md",
       "name": "recover",
-      "role": "The failure discipline: classify every failure (transient/deterministic/capability/ambiguity/systemic) before reacting, take the single move that class allows, three attempts total, then escalate with evidence. No identical retries of deterministic failures, no silent downgrades; a gate red twice reopens grill."
+      "role": "The failure discipline: classify every failure (transient/deterministic/capability/ambiguity/systemic/unregistered) before reacting, take the single move that class allows, three attempts total, then escalate with evidence. A retry of a deterministic failure changes one thing and every downgrade is recorded; a gate red twice reopens grill."
     },
     {
       "file": "protocols/canonize.md",
       "name": "canonize",
-      "role": "The single end-of-task close-out spawn (kernel §3.7 + §3.8): ONE docs-librarian brief persists knowledge of interest into the graph, files the session record, AND catalogs durable tools in docs/graph/tools. T0/T1 tasks satisfy it with a one-line self-record in the compact delivery."
+      "role": "The single end-of-task close-out spawn (kernel §3.7 + §3.8): one docs-librarian brief persists knowledge of interest into the graph, files the session record, and catalogs durable tools in docs/graph/tools. T0/T1 tasks satisfy it with a one-line self-record in the compact delivery."
     },
     {
       "file": "protocols/deliver.md",
@@ -228,12 +228,12 @@
     {
       "file": "protocols/harvest.md",
       "name": "harvest",
-      "role": "User-triggered-only cross-project meta-loop (never automatic): propose a mature plant's project-agnostic lessons and its reusable library-doc, legal-citation, tool, expert and skill corpora back into the seed for the user to ratify. Standalone entry: HARVEST_PROMPT.md."
+      "role": "Cross-project meta-loop that runs only when the user starts it: propose a mature plant's project-agnostic lessons and its reusable library-doc, legal-citation, tool, expert and skill corpora back into the seed for the user to ratify. Standalone entry: HARVEST_PROMPT.md."
     },
     {
       "file": "protocols/graft.md",
       "name": "graft",
-      "role": "User-decided-only cross-project meta-loop (never automatic): the outward complement of harvest. Carry the enriched seed onto an existing grown plant — three-way-reconcile its seed-owned machinery (kernel, protocols, skills, agents, templates, shared scripts, and every graph engine with its own config), move harness memory into a first session record, and refresh its library/legal/tool surfaces from the corpora — additively, reversibly, preserving the plant's own source and authored facts, for the steward to ratify. Standalone entry: GRAFT_PROMPT.md."
+      "role": "Cross-project meta-loop that runs only when the user decides on it: the outward complement of harvest. Carry the enriched seed onto an existing grown plant — three-way-reconcile its seed-owned machinery (kernel, protocols, skills, agents, templates, shared scripts, and every graph engine with its own config), move harness memory into a first session record, and refresh its library/legal/tool surfaces from the corpora — additively, reversibly, preserving the plant's own source and authored facts, for the steward to ratify. Standalone entry: GRAFT_PROMPT.md."
     }
   ],
   "skills": [
@@ -250,7 +250,7 @@
     {
       "file": "skills/holistic-editing/SKILL.md",
       "name": "holistic-editing",
-      "role": "Integrate, don't bolt on; the whole file is the unit of work."
+      "role": "Integrate each change into the whole file; the file, not the smallest diff, is the unit of work."
     },
     {
       "file": "skills/validate-knowledge/SKILL.md",
@@ -418,7 +418,7 @@
     "tools/prose-lint.py": "Placed into every plant at docs/graph/prose-lint.py — the prose-posture checks a plant runs over its own writing.",
     "tools/status-register.py": "Placed into every plant at docs/graph/status-register.py — the register a plant's specs and plans declare their status through.",
     "tools/code-anchor.py": "Placed into every plant at docs/graph/code-anchor.py: canonize runs --record to write .cypress/anchor.json (the branch, the commit and the uncommitted code paths of each repository the plant governs), and the session-start hooks run --compare once per session to say which facts about code may be stale. The installer writes no anchor.",
-    "tests/legal-lint.py": "The legal corpus's citability checker. Placed into a plant at docs/graph/legal-lint.py ONLY when --legal-corpus yes — the corpus travels with its checker, and a plant without the corpus has nothing for it to lint. Until 7.16.0 the plant received legal-corpus/_schema.md (the contract a page must satisfy) and no instrument to check it."
+    "tests/legal-lint.py": "The legal corpus's citability checker. Placed into a plant at docs/graph/legal-lint.py only when --legal-corpus yes: the corpus travels with its checker, and a plant without the corpus has nothing for it to lint."
   },
   "docs_skeleton": {
     "root": "templates/docs/",
@@ -459,7 +459,7 @@
     {
       "tool": "opencode",
       "dir": "integrations/opencode/",
-      "method": "symlink"
+      "method": "symlink, except .opencode/agents/: each agent is rendered with its model: line from docs/graph/models.md (ADR-0022); install.sh opencode --check compares the projection"
     },
     {
       "tool": "codex",

@@ -74,8 +74,8 @@ async function statusSummary(pi: ExtensionAPI, cwd: string): Promise<string> {
     const summary = (r.stdout || "").trim();
     if ((r.code !== 0 && r.code !== 1) || !summary) return "";
     return (
-      "Status register (lifecycle debt in this plant, from frontmatter — " +
-      "read it, do not re-infer it): " + summary
+      "Status register (lifecycle debt in this plant, read from frontmatter; " +
+      "use these counts as settled): " + summary
     );
   } catch {
     return "";

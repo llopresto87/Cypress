@@ -26,41 +26,47 @@ artifacts:
   - templates/prompts/graph-session-bootstrap.md
   - templates/prompts/handback-payload.md
 prevents: An adoption with no way back — a graph authored once from a snapshot of the code, with no refresh path when the source moves under it, so it decays into a confident description of a repository that no longer exists.
-est_tokens: 1614
+est_tokens: 1780
 ---
 
 # Adopt an existing project
 
 Turn a generic installed seed into a project-specific knowledge plant.
-Follow `docs/graph/protocols/initialize.md`; this skill supplies the existing-project
-discovery and authoring discipline.
+Follow `docs/graph/protocols/initialize.md`; this skill supplies the
+existing-project discovery and authoring discipline.
 
 ## Invariants
 
-- `docs/graph/` is the only maintained knowledge root. The router, nodes,
-  LLM wiki, provenance, plans, runbooks, contracts, and deep dives are
-  layers of one graph, not separate documentation systems.
+- `docs/graph/` is the only maintained knowledge root. The router,
+  nodes, LLM wiki, provenance, plans, runbooks, contracts, and deep
+  dives are layers of this one graph (`rule.knowledge`).
 - Executable source outranks prose. Manifests, entry points, routes,
   schemas, migrations, config, deployment, tests, CI, prompts, and evals
   are primary evidence. Existing docs are corroborating evidence only.
-- Make additive knowledge changes. Preserve application code and unrelated
-  existing files. Never delete or relocate competing AI configurations.
-- Do not run builds or application test suites during adoption. Extract
-  their exact commands and label them `discovered, not executed`. An
-  inherited suite is untrusted until it has been proven by mutation (see
-  `docs/graph/protocols/test-first.md` — prove RED by mutation); record it as discovered,
-  never as passing.
-- Do not fetch, pull, switch, commit, or push. Record repository revision
-  as provenance; Git operations need a separate explicit request.
-- Observed behavior is not a normative spec. Observed choices are not ADRs
-  with invented rationale. Unknown means unknown.
+- Make additive knowledge changes. Preserve application code and
+  unrelated existing files. Leave competing AI configurations in place;
+  deleting or relocating one is the owner's call.
+- Adoption ONLY records build and test commands: extract each exact
+  command and label it `discovered, not executed`. An inherited suite
+  stays untrusted until proven RED by mutation
+  (`docs/graph/protocols/test-first.md`), so record it as discovered.
+- Git stays read-only: record the repository revision as provenance;
+  fetch, pull, switch, commit, and push each need a separate explicit
+  request.
+- Record observed behaviour and observed choices as node facts. Specs
+  and ADRs record intent, which only an existing record or the owner
+  supplies. Unknown means unknown.
 
 ## Scout pass
 
-Establish the governed boundary first: one repo, workspace/monorepo, or an
-umbrella of sibling repos. For each repository record path, branch, HEAD,
-worktree state, role, manifests, and stack. Boundaries follow capabilities,
-not repository count.
+Establish the governed boundary first: one repo, workspace/monorepo, or
+an umbrella of sibling repos. For each repository record path, branch,
+HEAD, worktree state, role, manifests, stack, and the natural language
+of its identifiers and domain vocabulary. A non-English (or otherwise
+non-default) language is an explicit graph fact, because downstream
+agents grep and reason in it and an unrecorded mismatch silently defeats
+every later search. Boundaries follow capabilities, not repository
+count.
 
 Inventory cheaply, excluding generated/vendor/cache/build output. Then
 open the smallest authoritative files needed to trace:
@@ -73,18 +79,12 @@ open the smallest authoritative files needed to trace:
 6. tests, CI, scripts, prompts, evaluations, and operational commands;
 7. direct dependencies and evidence of their actual usage.
 
-Return facts with exact paths and symbols. When prose makes a claim, find
-source corroboration or record it as untrusted/unverified. Do not let a
-central docs repository become the authority by repetition.
+Return facts with exact paths and symbols. Find source corroboration for
+each claim prose makes, or record it as untrusted/unverified; repetition
+across central docs adds no corroboration.
 
 Every delegated worker's brief embeds the canonical block from
-`docs/graph/templates/prompts/graph-session-bootstrap.md` — this file does not
-restate that discipline.
-When a codebase's identifiers and domain vocabulary are in a non-English
-(or otherwise non-default) natural language, record that explicitly as a
-graph fact during adoption. Downstream agents must grep and reason in the
-codebase's actual language rather than an assumed one; an unrecorded
-language mismatch silently defeats every later search.
+`docs/graph/templates/prompts/graph-session-bootstrap.md`.
 
 ## Librarian pass
 
@@ -92,14 +92,14 @@ Normalize the evidence into single fact owners:
 
 - configure `ROOT_ID` and `KINDS` in `docs/graph/graph-lint.py`;
 - author a root node and capability/subsystem nodes;
-- factor shared stack, platform, data, domain, and cross-cutting facts into
-  their own nodes only where this reduces duplication;
+- factor shared stack, platform, data, domain, and cross-cutting facts
+  into their own nodes only where this reduces duplication;
 - give nodes concrete `load_when` triggers and source paths;
 - keep `requires` minimal and acyclic; use `peers` for boundaries, and
-  `composes` where an `expertise.*` node offers sub-expertises the router
-  should descend into only when the task names one;
-- link detailed leaves using `artifacts:` and dependency wiki pages using
-  `libraries:`.
+  `composes` where an `expertise.*` node offers sub-expertises the
+  router should descend into only when the task names one;
+- link detailed leaves using `artifacts:` and dependency wiki pages
+  using `libraries:`.
 
 Then enrich the leaf collections under `docs/graph/`:
 
@@ -117,34 +117,33 @@ Then enrich the leaf collections under `docs/graph/`:
 | `plans/` | evidence gaps, drift/backfill work, next useful increment |
 | `best-practices/` | conventions demonstrated by this project |
 
-Keep `specs/` and `decisions/` indexes, but leave them empty unless genuine
-intent records already exist and can be preserved with provenance. Put
-implementation observations in nodes or architecture leaves.
+Keep `specs/` and `decisions/` indexes, and fill them only from genuine
+intent records that already exist and can be preserved with provenance.
+Put implementation observations in nodes or architecture leaves.
 
-When the sweep confirms zero test or gate infrastructure, the librarian
-pass MUST still emit explicit `absent (YYYY-MM-DD) — <reason>` rows for the
-standard gates in the verification runbook, rather than leaving it blank. A
-blank runbook is indistinguishable from one nobody checked; recording each
-gate as deliberately absent turns an unknown into a stated finding.
+When the sweep confirms zero test or gate infrastructure, write an
+`absent (YYYY-MM-DD) — <reason>` row for each standard gate in the
+verification runbook: a blank runbook is indistinguishable from one
+nobody checked, and a row for each gate turns an unknown into a stated
+finding.
 
-When a legacy or parallel documentation source predates and conflicts with
-the evidence-derived graph, excluding it as evidence is not enough — do not
-merely stop reading it. Silence reads to a later agent as
-absence-of-a-decision, and the artifact gets rediscovered and re-trusted.
-Give the exclusion a real, routable node that states (a) the source is
-excluded as evidence, (b) what supersedes it, and (c) that this is a
-trust/evidence decision, NOT authorization to modify or delete the artifact
-(see Invariants: never delete or relocate competing configurations). The
-Handoff's excluded-docs report then points at this node rather than standing
-in for it.
+When a legacy or parallel documentation source predates and conflicts
+with the evidence-derived graph, give the exclusion a real, routable
+node that states (a) the source is excluded as evidence, (b) what
+supersedes it, and (c) that this is a trust/evidence decision only: the
+artifact itself stays untouched (Invariants). A silent skip reads to a
+later agent as no decision, and the artifact gets re-trusted. The
+Handoff's excluded-docs report then points at this node rather than
+standing in for it.
 
 ## Dependency wiki depth
 
 Index every direct dependency from manifests. Create a detailed library
 page during initialization when the dependency is architecturally
-significant, security/operations critical, unusual, or used across several
-subsystems. Each page answers how this project uses it, where configuration
-lives, relevant constraints, sharp edges, and verification status.
+significant, security/operations critical, unusual, or used across
+several subsystems. Each page answers how this project uses it, where
+configuration lives, relevant constraints, sharp edges, and verification
+status.
 
 Installed versions come from manifests/locks. Upstream lifecycle,
 compatibility, or current guidance requires a primary upstream source;
@@ -163,7 +162,8 @@ Treat graph prose as a read model to verify against current source:
    evidence;
 6. record conflicts and unanswered questions in the plan.
 
-Never claim a full refresh when part of the governed source was unavailable.
+Report a refresh as partial, naming each unavailable source, whenever
+part of the governed source was out of reach.
 
 ## Validation
 
@@ -175,27 +175,26 @@ python3 docs/graph/graph-lint.py --plan "change a representative capability"
 ```
 
 Verify all graph links resolve; every Tier-3 leaf is reachable from an
-owning node; no duplicate fact homes exist; representative task routes are
-small and relevant; commands say whether they were executed; where no test
-or gate infrastructure was found, the verification runbook carries explicit
-`absent (YYYY-MM-DD) — <reason>` rows for the standard gates rather than a
-blank template; and no template placeholders, fabricated success, inferred
-specs, or invented rationale remain.
+owning node; no duplicate fact homes exist; representative task routes
+are small and relevant; commands say whether they were executed; the
+verification runbook carries the absent-gate rows where no
+infrastructure was found (Librarian pass); and no template placeholders,
+fabricated success, inferred specs, or invented rationale remain.
 
 Use known-answer navigation questions from several capabilities plus an
-adversarial false-premise question. A wrong or bulk-read answer is a graph
-defect: improve ownership, routing, or leaf content and rerun — **at most
-two fix-and-rerun rounds per defect** (`docs/graph/protocols/recover.md`); a defect
-that survives them is recorded as an honest unknown in the handoff and
-handed to the user, never looped on a third time.
+adversarial false-premise question. A wrong or bulk-read answer is a
+graph defect: improve ownership, routing, or leaf content and rerun, for
+at most two fix-and-rerun rounds per defect; with the authoring pass
+they are the three attempts `docs/graph/protocols/recover.md` allows. A
+defect that survives them goes to the user as an honest unknown.
 
 ## Handoff (the stopping condition)
 
-Adoption is DONE when validation passes within its bounded rounds and the
-open defects are recorded — not when every file has been read; completeness
-is measured by reliable progressive discovery, not file count. End with
-the payload from `docs/graph/templates/prompts/handback-payload.md`, and report:
+Adoption is done when validation passes within its bounded rounds and
+the open defects are recorded; completeness is measured by reliable
+progressive discovery. End with the payload from
+`docs/graph/templates/prompts/handback-payload.md`, and report:
 repository revisions, evidence inspected, graph artifacts created or
 refreshed, validation outcomes, docs deliberately excluded as untrusted
-(named by their exclusion node, not merely mentioned in passing),
-remaining unknowns, and one highest-leverage next action with its tier.
+(each named by its exclusion node), remaining unknowns, and one
+highest-leverage next action with its tier.

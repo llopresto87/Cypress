@@ -29,7 +29,7 @@ load_when:
   - "which increment lands first, the irreversible step and the landing order"
   - "ship the release order across services, canary the lowest-risk one then fan out"
 prevents: Promoting a rebuilt artifact instead of the attested one, with an unrehearsed rollback and the irreversible steps taken first.
-est_tokens: 2940
+est_tokens: 2883
 ---
 
 # Release posture
@@ -41,32 +41,33 @@ is `protocol.ingest-library`'s; this node owns the release-side rules.
 ## 1. Ship the exact verified artifact, pinned immutably
 
 The thing released is the byte-identical artifact that passed
-verification, promoted by immutable digest — an exact tag *and* the
-digest, never a floating tag — with only configuration changing between
+verification, promoted by immutable digest (an exact tag *and* the
+digest, never a floating tag), with only configuration changing between
 environments; the previous configuration stays on disk and provably
 recreatable so reversal needs no rebuild. Rebuilding at release
-invalidates every gate that ran before it. The artifact carries no
-environment identity (a client bundle addresses its serving edge by
-relative path, no host baked in). A commit id proves authorship, not
-deployment — a claim that a fix or control ships carries an ancestry
-check against the shipping reference. A fix running only because
-one run was given a per-run source override (a branch or repository
-substituted for that run alone) is **borrowed, not deployed**: the
-override lives in the run, not the repository, so the next run that
-omits it rebuilds from the ordinary branch and reverts the fix silently,
-and both runs report green because both deployed what they were told.
-Prefer merging; an override is a bridge to a merge, not a substitute
-for one. While one is live, record it (repository, ref, the change it
-waits on) where the next operator looks. Before any full rebuild, list
-the live overrides and either merge or carry each one, and after the
-rebuild re-check the original symptom rather than the run's status.
-Every externally supplied
-identifier written into a deployment file (an image tag, a version) is
-verified to resolve before it is committed. Enforce the pin with a
-tag-policy lint that fails the build.
+invalidates every gate that ran before it. The artifact is
+environment-neutral (a client bundle addresses its serving edge by
+relative path). Every externally supplied identifier written into a
+deployment file (an image tag, a version) is verified to resolve before
+it is committed. Enforce the pin with a tag-policy lint that fails the
+build.
+
+A commit id proves authorship, not deployment: a claim that a fix or
+control ships carries an ancestry check against the shipping reference.
+A fix running only because one run was given a per-run source override
+(a branch or repository substituted for that run alone) is *borrowed,
+not deployed*: the override lives in the run, not the repository, so the
+next run that omits it rebuilds from the ordinary branch and reverts the
+fix silently, and both runs report green because both deployed what they
+were told. Prefer merging; an override is a bridge to a merge, not a
+substitute for one. While one is live, record it (repository, ref, the
+change it waits on) where the next operator looks. Before any full
+rebuild, list the live overrides and either merge or carry each one, and
+after the rebuild re-check the original symptom rather than the run's
+status.
 
 **The argued exception.** One line of practice builds on the target host
-at deploy time — no registry, ship source, build there — because a
+at deploy time (no registry, ship source, build there), because a
 silently stale local image cache is worse than the build cost and "what
 was tested" is then "what runs". The rule stands; the exception is
 legitimate only when `plant.environment_class` is `ephemeral-test` or
@@ -78,23 +79,26 @@ build-on-host is a defect, not a preference.
 
 ## 2. Releasable means green on the exact artifact, a rehearsed reversal, a verified restore point
 
-"Deployed" and "production-ready" are different claims. A release is not
-releasable without green verification on the exact artifact, a rehearsed
-reversal path, and a restore point captured *before* the change and
-verified after capture (it exists, carries its completion marker, its
-reference rows are intact). An assumed backup is not a rollback point; an
-untested rollback is not a rollback; a teardown script is not a reversal;
-never write a recovery procedure you have not run — an invented rollback
-is believed exactly when it matters most. Before each release record the
-previous build identifiers, the migration and message-schema
-compatibility, and whether derived state (caches, search or vector
-indexes, materialized views) built by the new version is still readable
-by the previous artifact: reverting code over a derived store the newer
-version rebuilt is a mixed-version state too; refuse a generic rollback across an irreversible
-migration; where deployments auto-apply migrations, record that reverting
-the artifact does not revert the schema; removing a migration's reverse
-path is a recorded decision in the rollback runbook. A release checklist
-covers both sides of every contract change, migration and rollback
+"Deployed" and "production-ready" are different claims. A release is
+releasable only with green verification on the exact artifact, a
+rehearsed reversal path, and a restore point captured *before* the
+change and verified after capture (it exists, carries its completion
+marker, its reference rows are intact). An assumed backup is not a
+rollback point; an untested rollback is not a rollback; a teardown
+script is not a reversal; write a recovery procedure only after running
+it, because an invented rollback is believed exactly when it matters
+most.
+
+Before each release record the previous build identifiers, the
+migration and message-schema compatibility, and whether derived state
+(caches, search or vector indexes, materialized views) built by the new
+version is still readable by the previous artifact: reverting code over
+a derived store the newer version rebuilt is a mixed-version state too.
+Refuse a generic rollback across an irreversible migration; where
+deployments auto-apply migrations, record that reverting the artifact
+does not revert the schema; removing a migration's reverse path is a
+recorded decision in the rollback runbook. A release checklist covers
+both sides of every contract change, migration and rollback
 compatibility, the absence of secrets or real data in fixtures
 (`method.stewardship-posture`), and what the release deliberately does
 not include. A missing or unrehearsed path is recorded `absent` with a
@@ -107,31 +111,34 @@ date (`protocol.verify` gate states), never implied. Under
 One dependency-management source governs direct and transitive versions,
 toolchains, and base images at explicitly pinned versions, with lock
 files committed and inherited package feeds cleared so a machine-level
-source cannot inject a dependency. Pin the toolchain at invocation —
-default resolution varies by machine and by moment and surfaces as a
-misleading unrelated error — and keep it inside the build container so a
-target is reproducible from a bare OS plus the container runtime. A
+source cannot inject a dependency. Pin the toolchain at invocation,
+because default resolution varies by machine and by moment and surfaces
+as a misleading unrelated error, and keep it inside the build container
+so a target is reproducible from a bare OS plus the container runtime. A
 toolchain pin does not reach the container base image: pin that
-separately, and check that compile target and runtime base agree. A range
-is a compatibility policy, never proof of the installed version; bounded
-ranges without a committed lock are a recorded reproducibility gap. Every
-hand-pin outside the governing source is an exception justified and
-recorded on the dependency's library page (`protocol.ingest-library`),
-never applied silently in a build file — and a pin is verified to reach
-the resolved graph, because an override at the wrong layer is silently
-ineffective and a pin whose transitive reach is off is where version
-splits come from. A lock is resolved in an empty environment for the
-target platform: a resolver report taken where packages are already
-installed silently omits them, so a hashed lock computed that way is not
-closed and fails only at install time on a clean target. Whenever a pin
-changes, resolve and check lock closure from a clean environment with
-the target platform's markers (the package manager's flags for it
-belong on its library page). Where a version is the mitigation for a vulnerability
-class, record the floor as forbidden-to-downgrade and enforce it with an
-automated check; shared build templates are consumed at pinned release
-tags, rolling-branch consumption being an opted-in, recorded risk.
+separately, and check that compile target and runtime base agree. A
+range is a compatibility policy, never proof of the installed version;
+bounded ranges without a committed lock are a recorded reproducibility
+gap.
 
-## 4. Never suppress an advisory; decide upgrades on measured reachability
+Every hand-pin outside the governing source is an exception justified
+and recorded on the dependency's library page (`protocol.ingest-library`),
+and a pin is verified to reach the resolved graph, because an override at
+the wrong layer is silently ineffective and a pin whose transitive reach
+is off is where version splits come from. A lock is resolved in an empty
+environment for the target platform: a resolver report taken where
+packages are already installed silently omits them, so a hashed lock
+computed that way is not closed and fails only at install time on a
+clean target. Whenever a pin changes, resolve and check lock closure
+from a clean environment with the target platform's markers (the
+package manager's flags for it belong on its library page).
+
+Where a version is the mitigation for a vulnerability class, record the
+floor as forbidden-to-downgrade and enforce it with an automated check;
+shared build templates are consumed at pinned release tags,
+rolling-branch consumption being an opted-in, recorded risk.
+
+## 4. Promote every advisory to a build error; decide upgrades on measured reachability
 
 Vulnerability advisories are promoted to build errors, never suppressed;
 suppressions are replaced by explicit remediation pins, and a scan
@@ -143,40 +150,44 @@ verdict by severity and attributable there (what it suppressed, on
 which target, who declared it, when it is reviewed), so an "allow" that
 holds only because a statement hid a critical says so; one with no
 declared author or expiry, or past its expiry, suppresses nothing and
-is listed as ignored. Where one check
-runs on several paths (a local suite, an automated run, a deploy-time scan),
-the paths share one contract: each derives its targets from the same
-declaration, and a parity check compares the resolved target sets and
-per-target outcomes, never only the finding counts. A missing report
-renders as unavailable, never as zero, and only a run that covered the
-full declared scope is release evidence; a narrower path says it is
-narrower in every artifact it writes. Each upgrade or
-deliberate non-upgrade is decided on whether the advisory is actually
-reachable in this codebase and whether the newer version is genuinely
-better — measured, since a newer release can carry more findings or fail
-to boot — and every non-upgrade is recorded with the measurement that
-justified it. That recording carries the condition its justification
-rests on, whether a support window it assumes or an upstream state it
-measured, and is re-measured, never inherited, before the condition
+is listed as ignored.
+
+Where one check runs on several paths (a local suite, an automated run,
+a deploy-time scan), the paths share one contract: each derives its
+targets from the same declaration, and a parity check compares the
+resolved target sets and per-target outcomes, because equal finding
+counts can hide different targets. A missing report renders as
+unavailable, never as zero, and only a run that covered the full
+declared scope is release evidence; a narrower path says it is narrower
+in every artifact it writes.
+
+Each upgrade or deliberate non-upgrade is decided on whether the
+advisory is actually reachable in this codebase and whether the newer
+version is genuinely better, measured, since a newer release can carry
+more findings or fail to boot; every non-upgrade is recorded with the
+measurement that justified it. That recording carries the condition its
+justification rests on, whether a support window it assumes or an
+upstream state it measured, and is re-measured before the condition
 lapses: an upstream constraint whose own report has since closed is a
 citation that no longer cites anything. Currency is a standing
 obligation and not an arrival: the lapse that left a line unsupported is
 available to reproduce itself on the line that replaced it, so the work
 closes with a recurring check and a named owner instead of a migration
-marked done. An archived or
-commercially relicensed upstream is a production blocker regardless of
-current exposure: record the escape hatch before you need it, and the
-licence option a multi-licensed dependency is used under. Dependencies
-whose upgrade could silently change computed results are held constant
-behind a golden-value characterization test (`protocol.test-first`). Do
-not stack two risky upgrades on one change: the proven line on the
-production path, the newer as a separately reversible fast-follow
-(`method.engineering-posture`: boring on the production path); forced
-off an end-of-life generation, target the supported line with the
-longest runway, and budget the upgrade by the hand-written rewrites it
-may spend. Supply-chain gates (high-severity advisories, committed
-secrets, injection patterns, image scanning under the pinned-tag policy)
-are adopted one by one where the blast radius is named
+marked done.
+
+An archived or commercially relicensed upstream is a production blocker
+regardless of current exposure: record the escape hatch before you need
+it, and the licence option a multi-licensed dependency is used under.
+Dependencies whose upgrade could silently change computed results are
+held constant behind a golden-value characterization test
+(`protocol.test-first`). Land one risky upgrade per change: the proven
+line on the production path, the newer as a separately reversible
+fast-follow (`method.engineering-posture` §11); forced off an
+end-of-life generation, target the supported line with the longest
+runway, and budget the upgrade by the hand-written rewrites it may
+spend. Supply-chain gates (high-severity advisories, committed secrets,
+injection patterns, image scanning under the pinned-tag policy) are
+adopted one by one where the blast radius is named
 (`test-first.proportionate-checks`), each with the positive control
 `protocol.verify` requires of a zero.
 
@@ -186,23 +197,23 @@ Where two or more steps interact, their order is load-bearing and stated
 as a binding constraint, justified by what the wrong order would hide.
 Reversible, low-blast-radius increments land first and prove the rule;
 the irreversible step is named as such and lands only with all reversible
-evidence already green. Never let a sequencing choice convert a loud
-failure into a silent one: nothing that removes a failure's reproduction
-lands before its evidence is captured (a cache that would drive the
-failure count to zero without fixing the defect waits for the trace); a
-validation, threshold, or metric is gated behind the fix that makes a
-corrupt input real, never layered on top of it; when a file governed by
-an exclusion rule moves, the rule changes first and the file second.
+evidence already green. Order the steps so a loud failure stays loud: a
+change that removes a failure's reproduction lands only after its
+evidence is captured (a cache that would drive the failure count to zero
+without fixing the defect waits for the trace); a validation, threshold,
+or metric is gated behind the fix that makes a corrupt input real; when
+a file governed by an exclusion rule moves, the rule changes first and
+the file second.
 
 The same ordering binds the tool that produces the change. A tool that
-generates or recovers a change stages it and does not apply it: it
-writes its candidate as a separate full copy with the source untouched
-and never restarts, reloads or deploys a service on its own. Applying,
-promoting and activating are distinct steps, each with its own
-authorization and its own passing gate. Its default mode is the one the
-design posture already owns for destructive operations (report-only,
-mutate only on an explicit per-operation flag); this paragraph adds only
-the release-side steps.
+generates or recovers a change only stages it: it writes its candidate
+as a separate full copy, leaves the source untouched, and leaves
+restarting, reloading and deploying a service to the separately
+authorized steps that follow. Applying, promoting and activating are
+distinct steps, each with its own authorization and its own passing
+gate. Its default mode is the one `method.restrictive-policy` owns for
+destructive operations (report-only, mutate only on an explicit
+per-operation flag); this paragraph adds only the release-side steps.
 
 ## 6. Roll out one lowest-risk target at a time, in a recorded order
 
@@ -213,25 +224,26 @@ mechanism, the highest blast radius last, health criteria at each step
 beforehand, a per-target reversal path. Fleet-wide risky operations run
 serialized; propagating a change beyond the primary write is a separate
 decision with its own explicit flag. Preserve the ability to build,
-deploy, and migrate one component at a time — a restructure that makes
+deploy, and migrate one component at a time: a restructure that makes
 the unit of change all-or-nothing is the largest one-way door a program
 can open. Where a component resolves its dependency once at startup,
 deployment order is load-bearing: write the rule down the first time it
 bites, then fix it in configuration so order stops mattering. A change
-to the single component all traffic passes through
-needs explicit human authorization, a written step order, and the gate
-that would catch a regression at each step. **Lockstep versus
-incremental** is decided by whether the running system can hold a mixed
-state and whether there are live users to protect, not by a preference
-for small steps: under `ephemeral-test` with no live users a lockstep
-cut is legitimate; under `real-production` incremental is the default,
-and a mixed-version fleet is a deliberate, recorded state with a test
-proving the versions interoperate across the wire.
+to the single component all traffic passes through needs explicit human
+authorization, a written step order, and the gate that would catch a
+regression at each step.
+
+**Lockstep versus incremental** is decided by whether the running system
+can hold a mixed state and whether there are live users to protect, not
+by a preference for small steps: under `ephemeral-test` with no live
+users a lockstep cut is legitimate; under `real-production` incremental
+is the default, and a mixed-version fleet is a deliberate, recorded
+state with a test proving the versions interoperate across the wire.
 
 ## Neighbours
 
-- `method.incident-posture` — fix-forward or reversal once live; the register.
-- `method.secrets-posture` — the credential that must not ride the artifact.
-- `method.contract-posture` — wire contracts compatible on both sides on release.
-- `protocol.verify` — gate states, null-result controls; cross for what "green" means.
-- `protocol.ingest-library` — one dependency and its library page; cross per library.
+- `method.incident-posture`: fix-forward or reversal once live; the register.
+- `method.secrets-posture`: the credential kept out of the artifact.
+- `method.contract-posture`: wire contracts compatible on both sides on release.
+- `protocol.verify`: gate states, null-result controls; cross for what "green" means.
+- `protocol.ingest-library`: one dependency and its library page; cross per library.

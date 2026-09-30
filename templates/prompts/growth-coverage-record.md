@@ -1,28 +1,22 @@
 <!--
 Template: prompts/growth-coverage-record.md
-THE CANONICAL SCHEMA of the growth coverage record — the artifact that
+The canonical schema of the growth coverage record: the artifact that
 makes protocols/grow.md's completeness contract
 (grow.completeness-contract) mechanical instead of a matter of judgment,
-and that lets any later session ask a plant what growth actually covered.
+and that lets any later session ask a plant what growth actually covered,
+and what it deliberately left alone. It is written where it survives and
+in a shape a linter reads, so a collection nobody looked at stays
+distinguishable from one a project genuinely has no evidence for.
 
-It supersedes the prose "growth completeness ledger" (through 7.2.1),
-which was a table a model filled in about its own work, written to
-gitignored scratch and discarded when the run ended. A plant therefore
-kept no durable answer to "what did growth cover, and what did it
-deliberately leave alone?" — and the collections nobody ever looked at
-were indistinguishable from the ones a project genuinely has no evidence
-for. This record is the same promise, written where it survives and in a
-shape a linter reads.
+Who fills it: the orchestration chat itself, not a spawned worker.
 
-WHO FILLS IT — the ORCHESTRATION chat, not a spawned worker.
-
-WHERE IT LIVES — tracked, beside the plant's seed stamp:
+Where it lives: tracked, beside the plant's seed stamp:
 
     .cypress/coverage.json
 
 Not `.cypress/growth/`, which is the run's transient scratch and stays
 gitignored; not `docs/graph/`, which is the plant's own knowledge. The
-coverage record is a fact about the SEED's work on the plant, so it
+coverage record is a fact about the seed's work on the plant, so it
 lives with the seed's other plant-side state — and it is committed,
 because its whole purpose is to outlive the run that wrote it.
 
@@ -46,9 +40,8 @@ inventory  ->  plan  ->  growth/graft  ->  lint --+
 of. **Plan** turns each inventory item into the artifacts growth owes it, and
 records whether the item needs upstream documentation retrieved from the open
 web. **Growth** authors them. **Lint** — `tools/growth-audit.py` — checks each
-planned artifact appeared and is not a scaffold. A finding is not a report the
-run ends on: it names a row still owed, so the cycle turns again. The gate is
-green or growth is not done.
+planned artifact appeared and is not a scaffold. A finding names a row still
+owed, so the cycle turns again; growth ends only on a green gate.
 
 ## The four kinds of row
 
@@ -70,11 +63,9 @@ which is exactly how "grafted is not grown" becomes visible:
   plus any an inventory row names. Growth is supposed to end with the experts
   this project needs and the base roster does not have — the rarer half of the
   evidence ledger's §9, the signal a node could not answer — and this row is
-  what makes that checkable,
-  including the part that used to fail silently: an expert authored into the
-  graph and never projected into the harness is on disk and unspawnable,
-  because the host reads its roster from the projection directory when a
-  session starts;
+  what makes that checkable, including an expert authored into the graph but
+  not projected into the harness: it is on disk and unspawnable, because the
+  host reads its roster from the projection directory when a session starts;
 - **inventory** — one row per item the scouts found, carrying its own planned
   artifacts, its own grounding obligation, and — where it is a dominant domain
   or a core part of the stack — its own staffing decision.
@@ -101,8 +92,8 @@ Exactly one of, on every collection, agent, and expert row:
   plant actually wrote in is `CONTRADICTED`.
 - **UNKNOWN** — a named `blocker` (unreachable source, a two-round
   non-converging `recover` finding, an evidence gap the scouts could not close)
-  prevents coverage. The only legitimate way a row stays uncovered, and it
-  ships reported, never silent — named in the plant's `changelog.md` entry
+  prevents coverage. It is the one legitimate way a row stays uncovered, and
+  it ships reported: named in the plant's `changelog.md` entry
   for the pass (the row, what it waits on, and who) and put to the owner as
   a numbered decision (`deliver.numbered-decisions`), the same ask the
   plant facts use. The audit reads that entry and reports an `UNKNOWN` it
@@ -115,8 +106,8 @@ cases done` are not statuses — they are the failure the contract forbids.
 
 An inventory item of kind `domain`, and any item marked `significance: core`,
 carries an `expert` object. It is the ledger §9 signal recorded where it
-survives the run — and the question it answers is no longer "does this surface
-deserve an agent?".
+survives the run, and it records whether the work needs an agent beyond the
+expertise node.
 
 **The node is owed; an agent needs a trigger.** Every core or significant stack
 element already owes an `expertise.*` node (the table below derives it, and
@@ -143,22 +134,21 @@ which of those four it `needs`, alongside a `name` and a `why`:
                    context"}
 ```
 
-A `why` that only says the surface matters is not a reason to spawn — say what
-the expertise node could not do. `warranted: true` missing any of `name`,
+A `why` names what the expertise node could not do; that the surface matters
+is not a reason to spawn. `warranted: true` missing any of `name`,
 `why`, or a `needs` drawn from those four is not a decision, it is
 `UNSTAFFED`; so is a `name` that resolves to no agent node in the plant, which
 means the surface was staffed on paper only. `warranted: false` is complete
-with its `why`. What an item may not do is leave the question unasked, because
-a decision nobody recorded is indistinguishable from a §9 nobody read, and that
-is the state plants kept arriving in. An expert the plant's graph carries that
+with its `why`. Every item answers the question, because a decision nobody
+recorded is indistinguishable from a §9 nobody read. An expert the plant's graph carries that
 the record has no row for is `MISSING` — re-run `--plan`, which derives the row
 from the plant's own graph.
 
 An expert the plant carries owes four things beyond existing: `origin: project`
 in its frontmatter, so a graft can tell it from the seed machinery it replaces;
 a `plant_knowledge:` list — the collections or expertise nodes it draws on — so
-the agent authored *for* this project's surface is not the only one exempt from
-the check that asks whether it has anything to read; a `motivated_by` citation
+the check that asks whether an agent has anything to read covers the agent
+authored *for* this project's surface as well as the seed's agents; a `motivated_by` citation
 in its row, resolving to the source that earned it; and a projection at every
 path the plant's `.cypress/seed.json` stamp records under `agent_projections`,
 byte-identical to its graph home wherever that entry says `"verbatim": true`
@@ -172,8 +162,7 @@ mapping.
 `--plan` fills these defaults; the orchestrator extends them from evidence but
 may not silently drop one. `grounding.required` means a `research-scout` must
 retrieve the upstream documentation this run and normalize it under
-`docs/graph/sources/` — the page is written from what was retrieved, never from
-model memory. Each normalized source keeps its raw snapshot under
+`docs/graph/sources/`, and the page is written from what was retrieved. Each normalized source keeps its raw snapshot under
 `sources/raw/`, or names in its `raw:` line why none was kept; the `sources/`
 collection row is `UNJUSTIFIED` otherwise.
 
@@ -266,6 +255,6 @@ python3 <seed>/tools/growth-audit.py <plant> <seed> --plan   # create / refresh
 python3 <seed>/tools/growth-audit.py <plant> <seed>          # the gate
 ```
 
-Growth is done ONLY when that gate exits 0, Phase 6 independent validation
-passes, and the maturity test at the foot of `docs/graph/protocols/grow.md` is
-met — against the graph, never the file tree.
+Growth is done only when that gate exits 0, Phase 6 independent validation passes,
+and the maturity test at the foot of `docs/graph/protocols/grow.md` is met,
+each judged against the graph rather than the file tree.

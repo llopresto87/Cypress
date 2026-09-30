@@ -9,6 +9,7 @@ title: verify — risk-proportional gates that pass, and mean something, before 
 owns:
   - rule.verify
   - verify.gate-states
+  - verify.gate-classes
   - verify.risk-depth
   - verify.null-result
   - verify.composition
@@ -37,7 +38,7 @@ load_when:
   - "chronic red gate, always red for an unrelated cause"
   - "tests whose subject is outside the shipped perimeter, excluded or skipped"
 prevents: Gates that run and assert nothing, so green means the command exited zero rather than that the behavior holds.
-est_tokens: 5786
+est_tokens: 5706
 command: true
 ---
 
@@ -57,16 +58,14 @@ worse than a missing gate, because it is trusted. A binding rule or
 done-criterion whose breach has a high blast radius
 (`test-first.proportionate-checks`) is a control only once it is a
 mechanically checkable predicate wired into a gate and asserting the
-property itself, not a positional proxy for it — a comment, a README
-warning, or a review habit is never a control. After building or adopting the graph, validate the
-*knowledge* too (`docs/graph/skills/validate-knowledge.md`). `tester`
-and `reliability` own this rule.
+property itself, not a positional proxy for it; a comment, a README
+warning, or a review habit is never a control. `tester` and
+`reliability` own this rule.
 
 **Actor:** `tester` runs the gates (`reliability` for operational and
 deploy gates) in its own context and reports outcomes in its handback;
-the runbook entry is part of that worker's write scope. The
-grill.md §15 record (step 8) is the session's — the plan-of-record is a
-session-owned operational artifact (§3.3).
+the runbook entry is part of that worker's write scope. The session
+writes the grill.md §15 record (step 8; `rule.grill`).
 
 When each gate runs is `delegation.tip-cadence` (per increment, then the
 full suite at the batch tip) and `delegation.mutation-at-end` (one
@@ -100,6 +99,14 @@ catches the bug. Whether a check exists at all is
 | Plan-of-record lint  | grill.md out of shape — a §9 row depending on a later row, a §5 silent about a page §9 depends on, a contract the plan invents or never implements (`python3 docs/graph/grill-lint.py`) — the §3.3 "it is a plan" claim, checked mechanically. |
 | Manual review        | High-impact, non-automatable judgment.                        |
 
+**Gate classes** (`verify.gate-classes`, ADR-0003 as amended 2026-09-14).
+A gate table that carries a `Class` column holds one of four words per row:
+`hard`, the harness refuses, so the wrong act is impossible; `soft`, a
+contract or a tool refuses; `detective`, asserted after the run from named
+evidence that a person reads and acts on; `judgment`, a named agent or person
+decides and no tool can. A linter someone may decline to run is `soft`: it is
+a contract, not a harness.
+
 ## Risk-proportional gate depth
 
 Verification depth follows the change's blast radius, not habit. Start
@@ -120,8 +127,9 @@ lane bought a cheaper *authorization*, never a cheaper gate
 (`tiers.contained-lane`).
 
 Escalate one row the moment a "local" change turns out to touch a
-shared surface. Never run the broad battery on a provably local change
-out of ritual — wall-clock and attention are budget too.
+shared surface. On a provably local change, run the battery its row names
+and no broader: wall-clock and attention are budget too. When the gate a row
+names does not fit the time, merge a smaller increment and keep the gate.
 
 ## A gate that found nothing has not yet said anything
 
@@ -129,7 +137,7 @@ out of ritual — wall-clock and attention are budget too.
 findings, a grep with no hits, a discovery run that collected no tests,
 and a port check that saw nothing open all return exactly what a
 *broken probe* returns. The two are indistinguishable from the result
-alone, so a zero is not yet evidence — it is a claim awaiting its
+alone, so a zero is not yet evidence: it is a claim awaiting its
 control.
 
 **Report a zero only with a positive control the probe did detect on
@@ -140,10 +148,9 @@ and aimed where you think it was aimed; only then does the empty result
 carry information. Run the check with the same privilege as the
 operation it checks: a probe with less access than the copy, the
 migration, or the scan it verifies silently skips what it cannot read,
-and the shortfall reads as a defect in the subject. And never read
-absence from output that was cut short for reading: a search piped
-through a line cap is a sample, and a sample that missed the item is
-not a search that proved it missing.
+and the shortfall reads as a defect in the subject. Read absence ONLY
+from complete output: a search piped through a line cap is a sample, and
+a sample that missed the item proves nothing about it.
 
 The control settles the instrument, not the subject. A negative result
 is evidence about the exact subject that was presented and about nothing
@@ -154,13 +161,39 @@ artifact, identifier, or credential, the run that proves it presents
 that one.
 
 A checker you own goes further: it counts what it examined and **fails
-when that count is zero inside its perimeter** — a glob that matched
+when that count is zero inside its perimeter**: a glob that matched
 nothing, a suite that collected no tests. An empty subject set genuinely
 outside the repository is an honest skip; inside it, an environment
 failure. The empty-input pass is the false green that hides every other
 one. It also reports every violation in its perimeter in one pass: a
 checker that halts at the first makes each fix cost another run, and
 its count of one says nothing about how many remain.
+
+An exit code says a process ended, not that a property held, and an input
+handed to a tool is not yet an input it applied:
+- **Passed is not applied.** A suppression list, a policy file, or a rules
+  file handed to a tool can be rejected on every run while the tool
+  carries on without it. Before recording that an input took effect, show
+  that the tool accepted it: a cheap offline check against the tool at the
+  version the project pins, one that fails if the tool ignores or rejects
+  the input, is that evidence (the inert item announcing itself,
+  `method.restrictive-policy` §8).
+- **One exit code, two meanings.** Before filing a non-zero exit as
+  findings from a tool whose exit code means both "fatal error" and
+  "findings", show which of the two it was; a wrapper that makes the two
+  exit differently answers that on every run, and without it a crash
+  reads as a finding.
+- **Written this run.** A step that emits per-target artifacts into a
+  persistent or shared output root can read a prior run's artifact as the
+  current one's: present, readable, and well-formed, yet entirely false.
+  A presence check (exists and non-empty) swaps one false green for
+  another. The evidence is that the artifact was observed written this
+  run; without that observation the check fails closed and records a
+  stale artifact as distinct from a missing one.
+- **The automated run's environment.** A headless or browser-based test
+  that passes on a dev machine proves that machine: a minimal automated
+  environment often lacks a browser binary or another runtime the test
+  needs, so verify that environment has it.
 
 State the coverage the control establishes, not more. "No secrets
 found by <tool> across <paths>, control fixture detected" is a
@@ -183,7 +216,7 @@ rationalized into a partial success.
 This is `verify.gate-states` one level down: the three states say
 whether a gate *ran*, and a run that reports nothing still owes proof
 that it *could have* reported something. Control depth follows the same
-blast-radius rule as gate depth above — a throwaway grep needs a
+blast-radius rule as gate depth above: a throwaway grep needs a
 one-line sanity check, a security scan gating a deploy needs a fixture
 that is known to trip it.
 
@@ -192,8 +225,8 @@ that is known to trip it.
 The indistinguishability that makes a bare zero worthless in a gate is
 a defect when the *system* produces it. A missing required input, an
 unrendered template, a skipped step, an unmatched route, a computation
-that cannot produce a valid answer, an oversized payload clamped to fit
-— each must fail visibly and distinctly, never emit an empty, clamped,
+that cannot produce a valid answer, an oversized payload clamped to fit:
+each must fail visibly and distinctly, never emit an empty, clamped,
 or plausible-looking result a caller cannot tell from success. The
 failure must be representable in the type or status the caller receives,
 never as a value the success path could also produce. A catch-all that
@@ -203,8 +236,8 @@ configuration is absent, and an encoding where "not yet decided" and
 "deliberately empty" look alike are the same defect in different
 clothes.
 
-The gate over such a path asserts the *distinct* failure — the status,
-the omitted fields, the raised error — and asserts the degraded case as
+The gate over such a path asserts the *distinct* failure (the status,
+the omitted fields, the raised error) and asserts the degraded case as
 its own named passing outcome. Two empty results that agree have proved
 nothing; a gate that lets an empty result pass by default has installed
 the substitute it was meant to catch.
@@ -218,7 +251,7 @@ questions decide whether an assertion is a witness or an echo:
   moment offsetting errors cancel; a count returns to its expected value
   while the underlying set is wrong. Assert what the result is made of.
   Where completeness matters and no gate can check it, do the full set
-  difference — a spot-check of the newest items is not an audit. Report
+  difference: a spot-check of the newest items is not an audit. Report
   new coverage as the delta, never the run total, and establish "no
   regression" on a red baseline by comparing the *names* of failing
   tests before and after, not their number.
@@ -229,14 +262,14 @@ questions decide whether an assertion is a witness or an echo:
   independently maintained sources, never by re-reading its own input.
   The test for any duplicate is the same: if one coordinated edit could
   change both copies with nothing failing, the copy is not an
-  independent witness — and a copy that *is* one is kept on purpose.
+  independent witness, and a copy that *is* one is kept on purpose.
   The worst dependent expectation **defends the defect**: a fixture
   literal copied from what the code produced makes the assertion true
   only because the production code is wrong, so fixing the defect turns
   the test red. Ask of each expected literal where it came from.
 - **Does a failure say what drifted?** Assert each dimension under its
   own name so a red identifies the property that moved, and choose a
-  witness sensitive to the change you guard against — a projection only
+  witness sensitive to the change you guard against: a projection only
   witnesses what it is sensitive to. The invocation-*count* assertion on
   a mock is the canonical failure: it passes vacuously the moment the
   code stops calling the collaborator for an unrelated, wrong reason.
@@ -264,8 +297,8 @@ rule; this section is about what a recorded assertion can have proved.
    that covers several failure modes over overlapping gates that
    re-test the same property; verification stops when the mandatory
    gates pass and the remaining uncertainty cannot materially change
-   the result (proportionate verification —
-   `docs/graph/method/decision-economy.md`) — not when every
+   the result (proportionate verification,
+   `docs/graph/method/decision-economy.md`), not when every
    possible gate has run.
 2. **Run them in order**, cheapest and most syntactic first (formatter,
    linter, type check) and only proceed to slower gates if the cheap
@@ -273,7 +306,7 @@ rule; this section is about what a recorded assertion can have proved.
    tier runs on a clean checkout with no external runtime; heavier
    tiers are explicit opt-in strict supersets, and a tier whose tooling
    is missing fails rather than degrading to the tier below. Automated
-   runs call that entry point; they are never a second home for checks.
+   runs call that entry point, the one home for checks.
 3. **Record outcomes** in `docs/graph/runbooks/verification.md` under the
    increment heading:
 
@@ -292,20 +325,19 @@ rule; this section is about what a recorded assertion can have proved.
    excluded, blocked distinguished from skipped, so a partial pass is
    never read as completion.
 
-4. **Report every gate as exactly one of three states — silence must
-   never imply a pass.** Each gate you considered lands in exactly one
+4. **Report every gate as exactly one of three states**, so silence never
+   reads as a pass. Each gate you considered lands in exactly one
    of these, and is recorded as such:
 
-   - **executed** — actually run this pass, with its command and result
+   - **executed**: actually run this pass, with its command and result
      (the entries in the block above). A zero exit code is `executed`
      only if the check's prerequisites held and its assertions ran: a
      step that skipped itself, a suite whose precondition never holds
      here, a run whose test count came back short, a configured-but-inert
-     tool — these are **discovered**, whatever the runner printed, and a
+     tool: these are **discovered**, whatever the runner printed, and a
      test named for more than it asserts is recorded under what it
-     asserts. If it fails, either fix the increment or hand it back; do
-     not record a fake PASS.
-   - **discovered** — known to exist (you read it in the source or
+     asserts. If it fails, fix the increment or hand it back.
+   - **discovered**: known to exist (you read it in the source or
      config) but *not* run this pass. This is the middle rung: record it
      as discovered-not-run so it can never be mistaken for an executed
      pass:
@@ -314,7 +346,7 @@ rule; this section is about what a recorded assertion can have proved.
      - End-to-end tests: DISCOVERED, not run (2025-06-01) — suite exists (e2e/), out of scope for this increment
      ```
 
-   - **absent** — does not exist yet. Record it with a date, a reason,
+   - **absent**: does not exist yet. Record it with a date, a reason,
      and the owner who will add it:
 
      ```
@@ -329,8 +361,7 @@ rule; this section is about what a recorded assertion can have proved.
    "at least N" until every assertion in the case has run. And a check
    recorded `discovered` or `absent` inside a list whose other rows are
    `executed` does not inherit their standing by sitting among them: a
-   contract may not rest on such a row without saying so in the contract's
-   own text, because an unmeasured assumption surrounded by measured ones
+   contract that rests on such a row says so in its own text, because an unmeasured assumption surrounded by measured ones
    is the one place in a verification record where being wrong costs
    nothing. So every `discovered` or `absent` row also says what it would
    have caught, in the form "unmeasured: X; if X is false, Y ships
@@ -347,24 +378,24 @@ rule; this section is about what a recorded assertion can have proved.
    standing skip in its place leaves the totals describing work that
    will never arrive.
 
-   Adopting an existing codebase with no test or gate infrastructure is
-   not an excuse to leave the runbook empty: record each gate its blast
-   radius calls for as `absent (YYYY-MM-DD) — <reason>`. A blank verification
-   runbook is indistinguishable from one nobody checked, so it is not an
-   acceptable resting state (the verify rule above).
+   Adopting an existing codebase with no test or gate infrastructure
+   still fills the runbook: record each gate its blast radius calls for
+   as `absent (YYYY-MM-DD) — <reason>`, because a blank verification
+   runbook is indistinguishable from one nobody checked (the verify rule
+   above).
 
 5. **The three states are honest only if an executed PASS means
-   something — the green-lie clause of the rule.** A test command with no
+   something: the green-lie clause of the rule.** A test command with no
    tests, a linter over an empty set, a type check with everything untyped:
-   these "pass" and mean nothing. Do not cite a vacuous pass as
-   evidence, and do not make it a gate. Land the real check first (a
+   these "pass" and mean nothing. Cite a pass as evidence ONLY when its
+   check asserted something, and gate ONLY on such a check. Land the real check first (a
    test that asserts, a rule that fires); the gate follows in a later
    increment, by owner decision (`test-first.proportionate-checks`). A
    gate is trusted only once a **planted violation** has turned it red,
    naming the offender, and its removal has turned it green again; that
    demonstration is part of the gate's record. Over high blast-radius
    code it is repeated, once per batch, after a refactor around the
-   assertion — a surviving tautology is worse than a deleted check. A
+   assertion, because a surviving tautology is worse than a deleted check. A
    gate later found to have been incapable of failing did not stop
    working; it never worked, so its greens are retracted
    rather than superseded. Record beside the gate the window in which
@@ -380,23 +411,26 @@ rule; this section is about what a recorded assertion can have proved.
    reader to ignore that colour, and the next genuine failure then
    arrives unnoticed. A red that reproduces every time is not flakiness,
    so before calling a red flaky or noise, show that it fails to
-   reproduce. And before reading the rest of a run's colours as
-   meaningful beside a chronic red, show the runbook entry that names it
-   chronically red since a date, for a named reason, with an owner; that
-   entry is what keeps the colour's meaning for everything else in the
-   run.
+   reproduce; a gate that is genuinely flaky is fixed, or documented as
+   such in the runbook, and stays enabled. A red that is a confirmed bug
+   awaiting its fix is not chronic: it is declared WIP under
+   `test-first.known-bug` until the fix lands. And before reading the rest
+   of a run's colours as meaningful beside a chronic red, show the runbook
+   entry that names it chronically red since a date, for a named reason,
+   with an owner; that entry is what keeps the colour's meaning for
+   everything else in the run.
 
    A gate that *does* execute and *does* assert can still lie by not
    discriminating what it claims. A recorded verdict uses only the words
    the check actually proved, never the words of the goal the check
-   served, and names what the gate **structurally cannot see** — a
+   served, and names what the gate **structurally cannot see**: a
    structural linter is evidence about shape, never content; a result at
    one layer is never evidence about another; a zero-finding scan is a
    claim about scope before it is a claim about content.
 
    **The gate-side of test-first.** A gate authorizes a change only if
    its test was seen to fail *before* the change, for the reason named
-   in advance — a gate whose test never went red has authorized nothing,
+   in advance; a gate whose test never went red has authorized nothing,
    because it may be green for exactly the reason it would be green
    against an empty implementation. The runbook entry for a new gate
    records the red, with its actual failure text, before the green.
@@ -422,43 +456,6 @@ rule; this section is about what a recorded assertion can have proved.
 9. **Hand off.** When the gates for the whole piece of work are green,
    hand to `canonize` (close-out) to persist what the work taught, then
    to `deliver` for the handoff package.
-
-## Anti-patterns
-
-- "All gates green, but I disabled the flaky one." Either fix the
-  flake or document it explicitly; do not silently disable.
-- "We don't have time for the eval suite this increment." That is the
-  signal to merge a smaller increment, not to skip the gate.
-- "The scan came back clean." Clean against what? A probe with a
-  broken pattern, a wrong path, or an unbuilt image reports zero
-  exactly as a healthy system does. No control, no finding.
-- "The check was wrong, so I fixed the file it reads." Now the
-  declaration records a bug instead of an intent, and the tool misfires
-  on the next reader. Fix the instrument.
-- "The step exited zero." Did it run? A skipped precondition, an empty
-  collection, and a tool that could not start all exit zero when nobody
-  made them fail. An exit code says a process ended, not that a property
-  held.
-- "The configuration was passed." Passed is not applied. A suppression
-  list, a policy file, or a rules file handed to a tool can be rejected
-  on every run while the tool carries on without it, and the record
-  says the suppressions took effect. Before recording that an input took
-  effect, show that the tool accepted it: a cheap offline check against
-  the tool at the version the project pins, one that fails if the tool
-  ignores or rejects the input, is that evidence (the inert item
-  announcing itself, `method.restrictive-policy` §8). Likewise, before filing
-  a non-zero exit as findings from a tool whose exit code means both
-  "fatal error" and "findings", show which of the two it was; a wrapper
-  that makes the two exit differently answers that on every run, and
-  without it a crash reads as a finding.
-- "The report was on disk." Was it written *this* run? A step that emits
-  per-target artifacts into a persistent or shared output root can read a
-  prior run's artifact as the current one's — present, readable, and
-  well-formed, yet entirely false. A presence check (exists and non-empty)
-  is the tempting fix for a crashed-run zero and silently swaps one false
-  green for another. The evidence is that the artifact was observed written
-  this run; without that observation the check fails closed and records a
-  stale artifact as distinct from a missing one.
 
 ## Neighbours
 

@@ -9,7 +9,7 @@ a legal entry is. The contract that decides whether the corpus is usable at all
 was guarded by an ad-hoc script that lived outside the repo.
 
 That matters more here than in the other corpora because of who reads this one.
-The corpus-bound analyst role (agent-corpus/legal.md) has exactly one defining
+The corpus-bound analyst role (agents/14-legal.md) has exactly one defining
 discipline: NO CORPUS ENTRY -> NO CLAIM. A gap must produce a refusal rather
 than a fabrication. That only works if a malformed entry is *detectably*
 malformed — an entry missing `verified` still looks like an entry, so the

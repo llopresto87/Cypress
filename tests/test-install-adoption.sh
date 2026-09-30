@@ -208,10 +208,12 @@ caseCHECK_WITHOUT_COPILOT_SAYS_SO() {  # D3: silence would read as "in sync" in 
   out="$("$ROOT/install.sh" all --check --project-dir "$E" 2>&1)" && rc=0 || rc=$?
   [[ $rc -eq 0 ]] || fail "D3: all --check with no generated views in scope must exit 0; got $rc: $out"
   grep -qi 'no generated views' <<<"$out" || fail "D3: all --check did not say no generated views are in scope: $out"
-  F="$W/check-codex-only"; mkdir -p "$F"             # (2) a record without github-copilot
-  "$ROOT/install.sh" all codex --project-dir "$F" >/dev/null 2>&1 || fail "D3: setup install.sh all codex failed"
+  F="$W/check-codex-only"; mkdir -p "$F"             # (2) a record with neither github-copilot nor opencode
+  "$ROOT/install.sh" claude-code codex --project-dir "$F" >/dev/null 2>&1 || fail "D3: setup install.sh claude-code codex failed"
   grep -q 'github-copilot' "$F/.cypress/seed.json" \
       && fail "D3: setup record carries github-copilot, so this arm asserts nothing"
+  python3 -c 'import json,sys; sys.exit("opencode" in json.load(open(sys.argv[1]))["tools"].split())' "$F/.cypress/seed.json" \
+      || fail "D3: setup record carries opencode, so this arm asserts nothing"
   out="$("$ROOT/install.sh" all --check --project-dir "$F" 2>&1)" && rc=0 || rc=$?
   [[ $rc -eq 0 ]] || fail "D3: all --check on a codex-only plant must exit 0; got $rc: $out"
   grep -qi 'no generated views' <<<"$out" \

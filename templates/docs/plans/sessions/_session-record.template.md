@@ -14,10 +14,12 @@ protocol.canonize (canonize.session-record).
 A record has no frontmatter and no status: key. It is working state, like
 grill.md, and is not routed. Append only: correct an item with a new item
 that names the one it corrects, and add a dated block to "Open threads"
-instead of editing the last one. Never write a secret, a credential,
-production or personal data, or speculation.
+instead of editing the last one. Record only evidenced items; an unverified
+idea goes to "Open threads" as a question. A secret, a credential, or
+production or personal data never enters a record (kernel §4): records are
+committed and read by every later session.
 The leading underscore keeps this blank form out of the linters and audits;
-the record you copy it to must not carry one.
+name the copy `<YYYY-MM-DD>-<slug>.md`, without the underscore.
 -->
 
 # Session record: <YYYY-MM-DD>, <unit of work>

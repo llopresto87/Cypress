@@ -8,9 +8,9 @@ had not been loosened to let a real violation through — and it is a two-line
 edit:
 
   - bloat `core/AGENTS.md` past 8 000 bytes, raise `KERNEL_BUDGET` to 20 000,
-    and the gate goes green. The kernel budget exists because "additions there
-    need to earn ~2k-token-per-session rent" (CLAUDE.md); a literal in the
-    linter is not a rent collector.
+    and the gate goes green. The kernel budget exists because "every addition
+    there is paid by every session, and lint enforces the budget" (CLAUDE.md);
+    a literal the same diff can raise enforces nothing.
   - break the edition markers on a legal page, then add the 25 newly-failing
     entry IDs to `EDITION_DEBT`, and `legal lint: PASS — 70 carrying recorded
     edition debt`. That ledger's own comment says "a NEW entry may not join this

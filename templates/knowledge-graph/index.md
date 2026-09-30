@@ -26,8 +26,8 @@ when the repository is empty.
 
 This is Tier 1. It is the only index. Match your task against the
 triggers below, load the entry node plus the transitive closure of its
-`requires:` edges, and **do not** load its `peers:` unless the task
-crosses into them. `composes:` children are a menu, not a closure:
+`requires:` edges, and load its `peers:` only when the task crosses
+into them. `composes:` children are a menu, not a closure:
 descend on a term of a child's `load_when:` or slug that the parent
 lacks, never on body prose (`skills/context-router.md` §3).
 
@@ -38,11 +38,10 @@ executable:
 python3 docs/graph/graph-lint.py --plan "<your task>"
 ```
 
-If your hand-resolved node set disagrees with that output, one of you
-is wrong — usually a `load_when:` trigger needs sharpening. Fix it in
-the same commit. (`--plan` is a keyword heuristic, not an oracle;
-`skills/context-router.md` owns the list of task kinds on which you
-should trust node ownership and this table over it.)
+If your hand-resolved node set disagrees with that output, sharpen the
+`load_when:` trigger at fault in the same commit. `--plan` is a keyword
+heuristic; `skills/context-router.md` names the task kinds where node
+ownership and this table outrank it.
 
 ---
 
@@ -95,26 +94,24 @@ test-first → verify → canonize → deliver.
 | Authoring or linting graph nodes | `skill.knowledge-graph` |
 | Engineering and design posture — the why | `method.engineering-posture` · `method.minimum-sufficient-work` · `method.decision-economy` · `method.host-parity` · `method.bounded-execution` · `method.design-posture` · `method.restrictive-policy` · `method.maintenance-contracts` · `method.design-governance` · `method.stewardship-posture` · `method.secrets-posture` · `method.release-posture` · `method.incident-posture` · `method.contract-posture` · `method.vcs-posture` · `method.prose-posture` |
 | Prose a person will read: documentation, README, ADR or spec body, runbook, PR text, delivery summary, or a draft that reads like a model wrote it | `skill.humanizer` (procedure) · `method.prose-posture` (doctrine) |
-| Fold lessons into the seed / carry the seed onto a plant | `protocol.harvest` / `protocol.graft` — **user-sovereign, never automatic** |
+| Fold lessons into the seed / carry the seed onto a plant | `protocol.harvest` / `protocol.graft` — user-sovereign: enter them only when the owner starts them; unprompted, only propose one |
 
-Specialist agent nodes route via their own triggers; `method.delegation`
-owns the roster table. The full roster: `agent.orchestrator`,
+Specialist agent nodes route by their own triggers; `method.delegation`
+owns the roster table. The ids below are listed so graph-lint counts each
+as a reachable entry point. Agents: `agent.orchestrator`,
 `agent.architect`, `agent.implementer`, `agent.reviewer`,
 `agent.tester`, `agent.security`, `agent.pentest`, `agent.reliability`,
 `agent.data-ml`, `agent.product`, `agent.ui-ux-designer`,
-`agent.docs-librarian`,
-`agent.research-scout`, `agent.devils-advocate`, `agent.legal`,
-`agent.multi-agent-architect`,
-`agent.growth-orchestrator`, `agent.growth-scout`,
-`agent.seed-installer`. Situational skills not routed above:
-`skill.adopt-existing` (adopting an existing codebase),
-`skill.adr-writer` (recording a decision), `skill.spec-author`,
-`skill.grill-planner`, `skill.brainstorm-socratic` (user-facing) and
-`skill.brainstorm-internal` (no user in the loop),
-`skill.holistic-editing`,
-`skill.library-wiki`, `skill.research-and-ingest`,
-`skill.validate-knowledge`, `skill.test-first`.
-`harvest` and `graft` are user-sovereign — never enter them unprompted.
+`agent.docs-librarian`, `agent.research-scout`, `agent.devils-advocate`,
+`agent.legal`, `agent.multi-agent-architect`, `agent.growth-orchestrator`,
+`agent.growth-scout`, `agent.seed-installer`, `agent.tool-smith`.
+Situational skills not routed above: `skill.adopt-existing` (adopting an
+existing codebase), `skill.adr-writer` (recording a decision),
+`skill.spec-author`, `skill.grill-planner`, `skill.brainstorm-socratic`
+(user-facing) and `skill.brainstorm-internal` (no user in the loop),
+`skill.holistic-editing`, `skill.library-wiki`,
+`skill.research-and-ingest`, `skill.validate-knowledge`,
+`skill.test-first`.
 
 ---
 
@@ -150,22 +147,21 @@ owns the roster table. The full roster: `agent.orchestrator`,
 
 - A **change** task should load a handful of nodes. More means it is
   really several tasks; split it and say so.
-- A **trace** may follow many nodes along one path, but never a node
-  off that path.
-- **Never load two sibling subsystem nodes to compare them.** What they
-  share belongs in a shared node; read that.
+- A **trace** may follow many nodes, all on one path.
+- **To compare sibling subsystems, read the shared node** that owns what
+  they share.
 - Loading the whole graph is the most expensive way to know the least.
 
 ## When the graph is wrong
 
 It will be; the code moves and the graph lags.
 
-1. **The code wins on facts** — fix the node in the same change.
+1. **A fact the graph states is settled** — use it. Where the
+   session-start code-anchor line names a node's paths as changed, the
+   code wins on facts there: fix the node in the same change (kernel §3.2).
 2. **The node wins on contracts** — a code violation of a recorded
    contract is a bug, not a doc update.
 3. When a task should have matched a `load_when:` and didn't, sharpen
    the trigger.
 4. Run `python3 docs/graph/graph-lint.py` before committing. It enforces
-   unique fact ownership, resolvable and acyclic edges, reachability,
-   artifact/library edge resolution, and that no version pin leaks out
-   of `docs/graph/libraries/`.
+   the contract in `_schema.md` ("The rules the linter enforces").

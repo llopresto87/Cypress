@@ -113,8 +113,8 @@ Entry shape is fixed by `_schema.md`; `index.md` is the router.
 
 ## The natural consumer
 
-`agent-corpus/legal.md` is the specialist a project
-would pair with a corpus like this one. Its whole discipline depends on exactly
+`agents/14-legal.md`, the base-roster legal agent, is the specialist that
+reads a corpus like this one. Its whole discipline depends on exactly
 this kind of rigorously-graded external corpus existing to read from: it reasons
 about externally-authored rules using the corpus as its **only** knowledge
 source, a corpus gap produces an explicit refusal rather than a reconstructed

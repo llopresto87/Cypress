@@ -5,14 +5,15 @@ How to get back to a known-good state, how fast, and what data is preserved.
 ## Doctrine (read before acting)
 
 - **Fix-forward is the default.** On a failure, the first move is the smallest
-  reversible containment or a forward fix — not a reversal. Reversal is for
+  reversible containment or a forward fix, not a reversal. Reversal is for
   when forward is slower or riskier than going back.
-- **Reversal is never autonomous.** No rollback or restore runs on its own or
-  as a reflex; it requires an explicit human go-ahead that names the resource
-  and the intent. A tool proposes and stops.
+- **Reversal waits for a human.** A rollback or restore runs ONLY on an
+  explicit human go-ahead that names the resource and the intent, never on its
+  own or as a reflex. A tool proposes and stops.
 - **Reversible before destructive.** A config/artifact rollback (no data loss)
-  is a different, lower gate than a data restore (destructive, lossy). Never
-  reach for the destructive path when the reversible one recovers the fault.
+  is a different, lower gate than a data restore (destructive, lossy). Take
+  the reversible path whenever it recovers the fault; the destructive path is
+  the last resort.
 
 ## Recorded before each release
 
@@ -35,12 +36,11 @@ What the pre-release record must hold is set by `method.release-posture`
 2. Re-run the smoke gate: `<cmd>` — a gate asserting the current artifact
    identity is *expected* to go red here, because the reversal deliberately
    restored an earlier one, and that red is the gate working. Update the
-   expectation in the same change as the reversal (`protocol.verify`: an
-   assertion that fails because the product deliberately changed is updated,
-   never reverted around); never widen it to accept any version, because
-   catching a stale artifact is the failure this gate exists for.
+   expectation to the restored artifact's identity in the same change as the
+   reversal (`protocol.verify` owns why), keeping it pinned to one exact
+   version, because catching a stale artifact is this gate's job.
 - How fast: `<target>`
-- Data preserved: all — this path touches no data.
+- Data preserved: all; this path touches no data.
 
 ## Path B — data restore (destructive — separate, explicit approval)
 
@@ -52,12 +52,11 @@ What the pre-release record must hold is set by `method.release-posture`
 
 ## Path B when the capability does not exist yet
 
-Do not write a procedure here that has never been run, and do not leave this
-section blank: an invented restore is believed exactly when it matters most,
-and a blank one is indistinguishable from an unfinished edit. Replace the
-procedure with the ordered chain of what would have to exist before it could
-be written, each item a precondition of the next, recorded `absent
-(YYYY-MM-DD)` with its owner:
+Fill this section with the ordered chain of what would have to exist before a
+restore procedure could be written, each item a precondition of the next,
+recorded `absent (YYYY-MM-DD)` with its owner, because an invented restore is
+believed exactly when it matters most and a blank section reads as an
+unfinished edit:
 
 1. `<the capture exists and runs on a schedule>`
 2. `<its completion is observable — a marker written by the run itself, not

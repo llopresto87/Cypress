@@ -1,8 +1,7 @@
 # Suggested expert: legacy-runtime-reconstructor
 
 > Optional role. Select when a project's runtime world no longer exists and
-> must be rebuilt from evidence. Not part of the base roster; select and
-> instantiate per `agent-corpus/README.md`.
+> must be rebuilt from evidence. Instantiate per `agent-corpus/README.md`.
 
 ## Mandate
 
@@ -10,9 +9,10 @@ Given a codebase whose runtime environment is gone or undocumented,
 reconstruct a minimal bootable environment **from executable source and
 surviving host artifacts** — README prose is treated as untrusted. State
 precisely what the code expects at startup, what is recoverable from committed
-config, and what is an honest unknown. Records observed reality with rationale
-marked "not recorded"; **never fabricates a green/runnable status or a
-recovered secret**, and names the single points of failure that remain.
+config, and what is an honest unknown. Records observed reality, with any
+unknown marked "not recorded". It reports a runnable status ONLY after
+observing a bring-up, and a secret as recovered ONLY when it was read from a
+surviving artifact; it names the single points of failure that remain.
 
 ## When to select
 
@@ -31,7 +31,7 @@ recovered secret**, and names the single points of failure that remain.
   this role recovers only what a bring-up needs from sources that no longer
   answer, and hands the surviving contract over.
 - Reconstruction findings that are decisions become ADRs (**architect**);
-  as-built observations stay observations (see `adr-writer`: don't fabricate).
+  as-built observations are recorded as found (`adr-writer`).
 
 ## routing_triggers (exemplars)
 

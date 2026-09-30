@@ -19,7 +19,8 @@ The first things to do when something is wrong in production, in order.
 ## What shapes an incident here
 
 The loop below is generic; these facts decide how it is actually run
-here. Each is recorded, or marked `not recorded` — never left implied.
+here. Record each, or mark it `not recorded`, so every fact the loop
+depends on is explicit.
 
 - What tells you an incident has started: the signal, or its absence.
   Where nothing alerts, the first step of the loop is a person noticing,
@@ -47,15 +48,15 @@ here. Each is recorded, or marked `not recorded` — never left implied.
   jobs that do not matter equally. Where it does, read the per-stage
   result before concluding that a deploy did or did not happen.
 
-Keep this section to what changes the loop's execution; it is not an
-architecture summary.
+Keep this section to what changes the loop's execution.
 
 ## The loop
 
-1. **Contain without destroying evidence.** Stop the unsafe process; do not
-   wipe the state that explains what happened.
+1. **Contain and keep the evidence.** Stop the unsafe process and leave in
+   place the state that explains what happened.
 2. **Capture identifiers, not secrets.** Record environment, build/artifact
-   ref, and correlation ids; never paste credentials or sensitive fields.
+   ref, and correlation ids; credentials and sensitive fields stay out of the
+   record.
 3. **Classify the boundary** the failure crosses (which service, which trust
    boundary, which data class).
 4. **Preserve sanitized evidence** — logs with redaction, queue/dead-letter
@@ -66,8 +67,8 @@ architecture summary.
    suite) — not by eyeballing.
 7. **Close the loop:** file the follow-up as a spec/`grill.md` §12 item, add a
    regression test and (if a gate would have caught it) a new gate via
-   `verify`, and record the durable prevention rule via `canonize` — never the
-   incident narrative as a one-off.
+   `verify`, and record the durable prevention rule via `canonize`; the
+   narrative stays in Records below.
 
 ## Records
 

@@ -1,6 +1,6 @@
 ---
 status: active
-status_date: 2026-09-29
+status_date: 2026-09-30
 owner: architect
 status_evidence: tests/test_graph_lint.py, tests/test_agent_lint.py, tests/test-seed-lint.sh, tests/test-grill-lint.sh, tests/test-ratchet-lint.sh (final tip 3c62b18, 49/49; the harvest's fresh-install gate passed for every host; three mutation passes of 45, 12 and 60 mutants, every survivor closed by a test; §10 says which rows are green and which stay pending)
 ---
@@ -10,13 +10,13 @@ status_evidence: tests/test_graph_lint.py, tests/test_agent_lint.py, tests/test-
 ## 0. Metadata
 
 - **Identifier:** SPEC-0005-cycle-economy
-- **Version:** 0.14 (test consolidation: six contracts narrowed, the §6 per-agent effort table replaced by a pointer to the agents' frontmatter, 2026-09-29; every amendment is dated in §12)
+- **Version:** 0.15 (the model class token: AGENT_DECLARES_MODEL_CLASS, 2026-09-30; every amendment is dated in §12)
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-09-28
 - **Last reviewed:** 2026-09-28
 - **Related grill section:** docs/plans/grill-7.30.0-cycle-economy.md §2, §4, §6, §8, §9; docs/plans/grill-7.31.0-wave-scheduling.md §2, §6, §7, §8, §9
-- **Related ADRs:** adr-0003-enforcement-layering-honesty (the class vocabulary §7 uses); adr-0004-pure-graph-architecture (one home per fact); adr-0007-lifecycle-protocol-ceiling (the lifecycle body ceiling, which this spec leaves in force); adr-0012-red-waves-ahead-of-green (cycles of a RED wave and a clean GREEN wave; per-increment holds; one ruling pass per cycle); adr-0013-harness-memory-is-not-a-home (the session record, its kernel pointer and its two rule homes)
+- **Related ADRs:** adr-0003-enforcement-layering-honesty (the class vocabulary §7 uses); adr-0004-pure-graph-architecture (one home per fact); adr-0007-lifecycle-protocol-ceiling (the lifecycle body ceiling, which this spec leaves in force); adr-0012-red-waves-ahead-of-green (cycles of a RED wave and a clean GREEN wave; per-increment holds; one ruling pass per cycle); adr-0013-harness-memory-is-not-a-home (the session record, its kernel pointer and its two rule homes); adr-0022-the-plant-model-map (the model class token and the plant's model map)
 - **Related specs:** SPEC-0001-install-placement (`SESSION_RECORD_FORM_IS_PLACED` places the session-record form this spec's §6 shapes); SPEC-0003-per-prompt-injection (`BRIEF_TEMPLATES_BYTE_IDENTICAL` names the two templates this spec changes; §11); SPEC-0004-front-door (the body figures its checks publish move when leaves split, and the eager figures move with the kernel; §5)
 - **Related wiki pages:** none (stdlib Python, POSIX shell and Markdown only)
 - **Design latitude:** simple for the 7.30.0 round; balanced for the 7.31.0 amendment (each recorded in its plan's §6 with its source; this line points there)
@@ -395,6 +395,18 @@ grammar is in §6.
 - **And:** an agent carrying `origin: project` is held to the same rule
 - **And:** the shipped roster in `agents/` passes
 
+### Contract: AGENT_DECLARES_MODEL_CLASS
+- **Test file:** `tests/test_agent_lint.py`
+- **Given:** an agent directory
+- **When:** `agent-lint.py --lint --dir <dir>` runs
+- **Then:** an agent with no `model:` key fails, naming the agent and the rule
+- **And:** an agent whose `model:` is outside the §6 closed set fails, naming
+  the value (a full model id such as `provider-a/model-x`, which opencode
+  accepts, is refused: it belongs in the plant's model map)
+- **And:** an agent carrying `origin: project` is held to the same rule
+- **And:** an agent whose `model:` is `opus`, `sonnet`, `haiku` or `inherit`
+  passes, and the shipped roster in `agents/` passes
+
 ### Seed method surface
 
 ### Contract: LEAF_BODY_CEILING_HELD
@@ -750,6 +762,19 @@ host reads `effort:`, its values, what is not recorded) live in
 `core/method/delegation-model-classes.md`, which installs into every plant; the
 Claude Code overlay README and `templates/agent.template.md` point at that leaf.
 
+### Model class token (`delegation.model-map`, home `core/method/delegation-model-classes.md`)
+
+Closed set for an agent definition's `model:` key: `opus`, `sonnet`, `haiku`,
+`inherit`, the four aliases Claude Code accepts. The seed's own agents use
+`opus` and `sonnet`. The token names a class: `opus` the authoring class,
+`sonnet` the investigation class, `haiku` the investigation class at low
+effort whatever the agent's `effort:` says, and `inherit` no class, so the
+agent runs on its caller's model. Claude Code reads all four natively and
+picks the version; on every other host the model for a class and an effort
+comes from the plant's model map, `docs/graph/models.md` (adr-0022; its
+grammar and the opencode projection rule are SPEC-0001 §6). A full model id
+is outside the set: the map names the model.
+
 ### Cycle-economy rules (home: `core/method/delegation-cycle-economy.md`)
 
 | Key | Rule |
@@ -1076,6 +1101,7 @@ for `DELEGATION_SPLIT_INTO_SIBLINGS`; they are not repeated here.
 | `delegation.waves` | `core/method/delegation-sequencing.md` | (added for 7.31.0) RED waves ahead of GREEN: what is satisfied and ready, the observed RED's lane, the per-increment hold and what the ruling pass releases, the re-brief on amendment, expected-red and `not run` at the tip, RED first only under an owner-set spawn limit (§6 "Waves") |
 | `stewardship-posture.session-record` | `core/method/stewardship-posture.md` | (added for 7.31.0) harness memory is not a home: what counts as a learning, when and where the session writes it, reading the newest record at session start, migrating a harness's existing entries (§6 "Session record") |
 | `canonize.session-record` | `protocols/canonize.md` | (added for 7.31.0) canonize takes the session record as a named input, files each item or records why not, appends its status, and hands back the retirable harness entries (§6 "Session record") |
+| `delegation.model-map` | `core/method/delegation-model-classes.md` | (added for 7.35.0) the plant's model map is the one home of the model each host runs for a class and an effort; nodes and briefs name the class (§6 "Model class token") |
 
 Homes with no new key, reviewed rather than checked:
 - The works-claim rule sharpens `engineering-posture.host-parity` ("Validate
@@ -1380,6 +1406,18 @@ Checked by `ADOPTED_RULES_NOT_PENDING`, case-insensitive, whitespace-collapsed:
 - **Response:** `agent-lint --lint` exits 1 naming the agent
 - **Side effects:** the plant's agent-lint step is red until the line is added
 - **Recovery:** add the line; graft reports it
+
+### Failure: AGENT_MODEL_OUTSIDE_SET_AFTER_GRAFT
+- **Contracts:** AGENT_DECLARES_MODEL_CLASS
+- **Trigger:** a plant's own agent definition, authored before this release,
+  has no `model:` or pins a full model id, and the grafted `agent-lint.py`
+  holds the set; a plant agent on `haiku` or `inherit` is inside the set and
+  keeps passing
+- **Response:** `agent-lint --lint` exits 1 naming the agent and the value
+- **Side effects:** the plant's agent-lint step is red until the line is
+  changed
+- **Recovery:** write the class token, and name the model for that class and
+  effort in the plant's model map; graft reports it
 
 ### Failure: HOST_REJECTS_EFFORT_KEY
 - **Contracts:** AGENT_DECLARES_EFFORT
@@ -2103,6 +2141,10 @@ who judges it.)
       starts with `_` nor ends in `.template.md` is still reported as the
       seed's unfilled scaffold.
       Contracts: maps to SESSION_RECORD_FORM_IS_NOT_A_SCAFFOLD
+- [ ] **AC-33.** Every agent declares a `model:` token from the closed set
+      `opus`, `sonnet`, `haiku`, `inherit`, and agent-lint refuses a missing
+      key or any other value, for a plant's own agents as well.
+      Contracts: maps to AGENT_DECLARES_MODEL_CLASS
 
 ## 10. Test mapping
 
@@ -2206,6 +2248,10 @@ gives.
 | AGENT_DECLARES_EFFORT | test_lint_accepts_each_value_in_the_closed_set | tests/test_agent_lint.py | unit, LintEffortTests; guard | green |
 | AGENT_DECLARES_EFFORT | test_lint_fails_on_missing_effort | tests/test_agent_lint.py | unit, LintEffortTests (CLI, fixture roster) | green |
 | AGENT_DECLARES_EFFORT | test_lint_fails_on_effort_outside_the_set | tests/test_agent_lint.py | unit, LintEffortTests | green |
+| AGENT_DECLARES_MODEL_CLASS | test_lint_accepts_each_model_class_token | tests/test_agent_lint.py | unit, LintModelClassTests; guard | green |
+| AGENT_DECLARES_MODEL_CLASS | test_lint_fails_on_missing_model | tests/test_agent_lint.py | unit, LintModelClassTests (CLI, fixture roster) | green |
+| AGENT_DECLARES_MODEL_CLASS | test_lint_fails_on_model_outside_the_set | tests/test_agent_lint.py | unit, LintModelClassTests | green |
+| AGENT_MODEL_OUTSIDE_SET_AFTER_GRAFT | test_lint_fails_on_plant_agent_with_model_outside_the_set | tests/test_agent_lint.py | unit, LintModelClassTests | green |
 | AGENT_WITHOUT_EFFORT_AFTER_GRAFT | test_lint_fails_on_plant_agent_without_effort | tests/test_agent_lint.py | unit, LintEffortTests | green |
 | HOST_REJECTS_EFFORT_KEY | (none) the harvest's fresh-install gate per host, and the existing projection lint in `tests/test-full-install.sh`. Observed at the final tip 3c62b18: the fresh install passed for every host adapter, and all 20 installed agents keep `effort:` on the Claude Code install path. Whether another host warns on the key is not recorded | — | e2e; observed at tip | green |
 | LEAF_BODY_CEILING_HELD | X336 case_ce_leaf_new_oversized | tests/test-seed-lint.sh | fixture (scope), `check_leaf_body_ceiling` | green |
@@ -2472,4 +2518,29 @@ kept outside the seed.
   `PREVENTS_OVERLAP_CEILING`; the §10 guard paragraph records where X370, X378
   and X379 went; `status_evidence` adds `tests/test-grill-lint.sh` and
   `tests/test-ratchet-lint.sh`, which hold §10 rows.
-
+- 2026-09-30: version 0.15, 7.35.0, by `architect`, written ahead of its
+  RED ([ADR-0022](../decisions/adr-0022-the-plant-model-map.md), from the
+  owner's ruling D9). Still `active`. §4 gains AGENT_DECLARES_MODEL_CLASS
+  beside AGENT_DECLARES_EFFORT: agent-lint holds `model:` to the closed set
+  `opus`, `sonnet`, for plant agents as well. §6 gains "Model class token",
+  which names the set and points at the plant's model map. §7 gains
+  AGENT_MODEL_OUTSIDE_SET_AFTER_GRAFT. §9 gains AC-33. §10 gains four rows in
+  `tests/test_agent_lint.py`: the accept case is a guard, `green` on arrival
+  with the RED batch; the three refusal rows are `red`. Until that batch
+  lands, `spec-lint.py` counts the contract as uncovered and `seed-lint`
+  reports the four test names as missing. No other contract changed.
+- 2026-09-30: version 0.15, which has not shipped, 7.35.0, by `architect`: the session's ruling
+  S3 on the architect's first findings (kept with the round's working records
+  outside the seed), applied before any test of the entry above was written;
+  the round's plan of record is `docs/plans/grill-7.35.0-positive-voice.md`.
+  AGENT_DECLARES_MODEL_CLASS's closed set widens to `opus`, `sonnet`, `haiku`,
+  `inherit`, every alias Claude Code accepts, so a plant agent pinned to
+  `haiku` or `inherit` keeps passing after its graft; a missing key and a full
+  model id are still refused, and the refusal example is now a full id. §6
+  reads `haiku` as the investigation class at low effort and `inherit` as the
+  caller's model. AGENT_MODEL_OUTSIDE_SET_AFTER_GRAFT's trigger and recovery,
+  and AC-33, follow. §10 is unchanged: the four rows keep their names, and the
+  accept guard now covers four tokens. §6 "Adopted rule homes" gains
+  `delegation.model-map`, homed in `core/method/delegation-model-classes.md`,
+  which already owns it; seed-lint's `ADOPTED_RULE_HOMES` gains the same row in
+  the round's tooling wave, green on arrival under the existing contract.

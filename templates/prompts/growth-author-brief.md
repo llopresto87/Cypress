@@ -1,28 +1,29 @@
 <!--
 Template: prompts/growth-author-brief.md
-Used: by grow / adopt-existing / from-scratch to dispatch an Opus-class
-author that turns a completed growth evidence ledger into a specific
-deliverable. This is the GROWTH-DEDICATED author brief: it CONSUMES the
-ledger the growth-scout wrote and maps its sections to the deliverable,
-so the author builds on collected, cited evidence instead of
-re-investigating source or generating structure from scratch. Pair with
-templates/prompts/growth-scout-brief.md (the producer).
+Used: by grow / adopt-existing / from-scratch to dispatch an
+authoring-class author that turns a completed growth evidence ledger
+into a specific deliverable. This is the growth-dedicated author brief:
+it consumes the ledger the growth-scout wrote and maps its sections to
+the deliverable, so the author builds on collected, cited evidence
+instead of re-investigating source or generating structure from
+scratch. Pair with templates/prompts/growth-scout-brief.md (the
+producer).
 
-This brief orchestrates WHICH deliverable an author produces and points
+This brief orchestrates which deliverable an author produces and points
 at the per-deliverable contract to obey. For a knowledge-graph node,
 that contract is templates/prompts/node-authoring-brief.md (embed its
-HARD RULES); for a spec/ADR/agent/library page, the matching template.
+linted rules); for a spec/ADR/agent/library page, the matching template.
+Give each author an exclusive set of facts and files.
+Model class: opus (the authoring class): authoring is judgment work,
+and a mechanical fill-in produces a deliverable that lies.
 Fill the {{PLACEHOLDERS}} and hand the body to the author.
 Discipline: protocols/grow.md, agents/growth-orchestrator.md.
 -->
 
 # Growth-author brief — {{deliverable}}
 
-**Model class: opus.** Authoring is high-level work — a mechanical
-fill-in produces a deliverable that lies. But your **evidence is already
-gathered**: you build from the ledger, not from a fresh reading of
-source. Confirm a path the ledger cites when it sharpens the point;
-do not re-scout.
+Your **evidence is already gathered**: build from the ledger, and open a
+path the ledger cites only when it sharpens the point.
 
 ## Your feedstock — read this first
 
@@ -38,9 +39,8 @@ each section is keyed to the deliverable it feeds. Also load
 
 - **Build only on cited claims.** Every fact you write traces to a
   ledger claim with its `path:line` + symbol. A fact the ledger marks
-  `not recorded` stays `not recorded` — you do not fill it from memory.
-  A section marked `none found` means the deliverable omits it, not that
-  you invent content to populate it.
+  `not recorded` stays `not recorded`, and a section marked `none found`
+  is left out of the deliverable.
 - **Route ledger section → deliverable.** Author {{this deliverable}}
   from these ledger sections:
   - graph node (product/architecture/api/data/prompts/evals) → §1–§6,
@@ -57,13 +57,13 @@ each section is keyed to the deliverable it feeds. Also load
     own words, never the family's), `composes:` from the sub-expertises §9
     names, and the `libraries:`/`artifacts:` edges to the depth pages
     below; the node is written from the same retrieved sources as those
-    leaves, carries no version, and restates nothing they own
+    leaves, carries no version, and links to what they own
     (`docs/graph/templates/docs/nodes/_expertise.template.md`);
   - project-specific specialist agent → §9's agent half, and only where the
     work needs what a node cannot give it: different `tools`, a different
     `model` class, an adversarial `stance`, or context `isolation`;
     otherwise report "no custom agent warranted". Either way the decision is
-    RECORDED, in the `expert` object of the inventory item it belongs to,
+    recorded, in the `expert` object of the inventory item it belongs to,
     naming which of those four it `needs`. An authored expert carries
     `origin: project`, a `plant_knowledge:` list (the collections or
     expertise nodes it draws on), and a `motivated_by` citation, and is
@@ -74,9 +74,8 @@ each section is keyed to the deliverable it feeds. Also load
   - `libraries/` → §5 **plus** the research-scout's normalized upstream
     sources under `docs/graph/sources/normalized/` — a rich page for a
     §5-flagged significant dependency is grounded in that retrieved
-    material (`docs/graph/protocols/ingest-library.md`), never in memory
-    of the library's API. This page is the one home of the pin; the slug's
-    expertise node points here for it and never repeats it;
+    material (`docs/graph/protocols/ingest-library.md`). This page is the
+    one home of the pin; the slug's expertise node points here for it;
   - `design/` → §12 (screens, flows, components, tokens, interaction
     states, the accessibility affordances present) **plus** the retrieved
     design standards and platform conventions in
@@ -87,17 +86,13 @@ each section is keyed to the deliverable it feeds. Also load
     artifacts the source shows) **plus** the seed's
     `legal-corpus/<scope>/<instrument>.md` as the orientation layer,
     currency re-confirmed against the publisher. The ledger supplies the
-    technical facts; `agent.legal` qualifies them against the corpus and
-    never from memory;
+    technical facts; `agent.legal` qualifies them against the corpus;
   - `best-practices/` → §14 (which standards apply and where the
     project's stance is visible) **plus** the retrieved standards in
     `docs/graph/sources/`: state the external standard (cited), what it
     says not to do, and where the project observably stands — normative,
     not a description of current habits. This page is the one home of the
-    stance; the slug's expertise node points here for it and never repeats
-    it.
-- **One home per fact.** A fact the graph already owns is linked, never
-  re-stated. Never ask two authors to own overlapping facts or files.
+    stance; the slug's expertise node points here for it.
 - **Smallest sufficient artifact.** Author only what the evidence
   demands and the graph will consume: no section padded to look
   complete, no node the router cannot reach, no leaf without an
@@ -107,15 +102,15 @@ each section is keyed to the deliverable it feeds. Also load
 
 ## Rules (state these to the sub-agent verbatim)
 
-- **Execute the graph first.** The route-hook does not fire for you.
-  <!-- canonical block from docs/graph/templates/prompts/graph-session-bootstrap.md;
-       byte-identity enforced by tests/seed-lint.py — edit it THERE -->
+- **Execute the graph first; these blocks are your routing.**
+<!-- canonical blocks from docs/graph/templates/prompts/graph-session-bootstrap.md;
+     tests/seed-lint.py holds them byte-identical, so edit them there -->
 
 ```
 GRAPH DISCIPLINE — execute before reading any source:
 1. Run: python3 docs/graph/graph-lint.py --plan "{{exact delegated task}}"
    Include the command and its output in your report as graph-route
-   evidence (context routing — NOT the `route_evidence` field, which
+   evidence (this is context routing; the `route_evidence` field
    carries the agent-routing line from your brief).
 2. Load ONLY the reported nodes plus their `requires:` closure.
    Everything else a loaded node lists (leaves, children, links,
@@ -123,53 +118,65 @@ GRAPH DISCIPLINE — execute before reading any source:
    "load when" serves your task, and list the rest as skipped.
 3. Declare what you loaded, what you deliberately skipped, and any
    later widening (with the reason it became necessary).
-4. One home per fact: never duplicate a fact the graph owns — link to
-   its owning node. The graph outranks your memory of APIs/versions.
-   A fact the graph states is settled: use it, never re-derive or
-   re-check it. Facts about code are current only where your brief
-   carries a code-anchor line saying no code changed; otherwise check
-   the code facts you rely on against the code.
+4. One home per fact: link to the node that owns a fact instead of
+   restating it. The graph outranks your memory of APIs/versions.
+   A fact the graph states is settled: use it as stated; re-deriving
+   or re-checking it spends what the graph saves. Facts about code are
+   current only where your brief carries a code-anchor line saying no
+   code changed; otherwise check the code facts you rely on against
+   the code.
    When a fact is unknown, write "not recorded" — never fabricate a
    version, URL, or identifier.
 5. Minimum sufficient work: every read, search, and tool call serves
    your delegated deliverable — smallest sufficient evidence, cheapest
    reliable method; stop when the deliverable is complete and trusted.
-   Return findings, not raw dumps; produce nothing your parent does
-   not need. Depth: `method.minimum-sufficient-work`,
-   `method.decision-economy`, `method.engineering-posture` §8.
+   Return findings, and only what your parent needs. Depth:
+   `method.minimum-sufficient-work`, `method.decision-economy`,
+   `method.engineering-posture` §8.
 6. If the graph has no nodes yet (bootstrap pass), report the failed
    probe and stay inside the exact paths named in this brief.
 ```
 
+```
+COMPANION (echo each item back in your handback):
+- Trace this spawn. Your `spawn_id` is {{caller-minted dot-chain id,
+  e.g. orchestrator.3.architect.1; see delegation.tracing}}. Echo it
+  verbatim in your handback's `spawn_id` field.
+- Cite the router. The `agent-lint --route` ranked line and confidence
+  band that selected you, or the caller's override rationale:
+  {{paste the line + band, or the rationale}}. Echo it back in
+  `route_evidence`. At a LOW/NONE band, say so there and name the gap:
+  a different specialist, or expertise no node in this graph carries.
+- End with a handback. Close your turn with the payload from
+  `docs/graph/templates/prompts/handback-payload.md`: `produced_by:
+  {{you}}`, `in_domain_work_done` with paths, `route_evidence`,
+  `effort`, `expertise_gap`, `gates`, `tools_built`, and, at any
+  out-of-domain boundary, `recommended_next` naming the specialist.
+  When your report outgrows the soft target, write the overflow note
+  as you work and name it (that file's Rules).
+```
+
 - **Obey the per-deliverable contract.** For a knowledge-graph node,
-  embed the HARD RULES from `docs/graph/templates/prompts/node-authoring-brief.md`
-  verbatim (frontmatter subset, unique `owns`, minimal `requires`, body
-  ≤150 lines, no version numbers in body, honest `est_tokens`). For a
+  embed the linted rules of
+  `docs/graph/templates/prompts/node-authoring-brief.md` verbatim. For a
   spec/ADR/library/agent, follow the matching template
   (`docs/graph/templates/spec.template.md`, `docs/graph/templates/adr.template.md`,
   `docs/graph/templates/library-page.template.md`, `docs/graph/templates/agent.template.md`).
 - **Write only your exclusive scope.** Write exactly: {{list the exact
   file paths}}. Knowledge writes stay under `docs/graph/`; a
-  project-specific agent goes where the plant's roster lives. Do not
-  touch application code, manifests, CI, or Git state.
-- **Never invent.** No fabricated version, URL, CVE, status, date, or
-  passing result. `not recorded` / `not audited` / `discovered, not
-  executed` instead.
-- **Trace this spawn.** Your `spawn_id` is **{{caller-minted dot-chain id,
-  e.g. orchestrator.3.architect.1 — see delegation.tracing}}**; echo it
-  verbatim in your handback's `spawn_id` field.
-
-- **Cite the router.** Selected by `agent-lint --route`: {{paste the
-  ranked line + confidence band}} — echo it back in `route_evidence`.
+  project-specific agent goes where the plant's roster lives.
+  Application code, manifests, CI and Git state stay as they are.
+- **Mark every unknown.** Write `not recorded`, `not audited` or
+  `discovered, not executed` wherever a version, URL, CVE, status, date
+  or passing result is not in evidence (GRAPH DISCIPLINE 4).
+- **Delegate only as your frontmatter allows.** A delegator spawns only
+  from its `delegates_to` allowlist within its depth cap; a leaf
+  (`can_delegate: false`) ONLY recommends the next specialist and hands
+  back.
 
 ## Return
 
 The file paths written; for each, the ledger claims it rests on and any
 ledger fact you deliberately omitted for length. Confirm the relevant
 linter passes (`graph-lint.py`, and `spec-lint.py` for a spec) or report
-what it flags. End with the payload from
-`docs/graph/templates/prompts/handback-payload.md` (`produced_by: {{you}}`,
-`in_domain_work_done` with paths, `route_evidence`); spawn only from your
-`delegates_to` allowlist within your depth cap, else STOP and hand back. If
-you are a leaf (`can_delegate: false`) you have no allowlist — never spawn;
-STOP and hand back instead.
+what it flags.

@@ -13,7 +13,8 @@
 #   claude-code        — Drop CLAUDE.md + .claude/ into the project.
 #   opencode           — Drop AGENTS.md + .opencode/ + opencode.json.
 #                         (one config file; opencode auto-discovers
-#                          .opencode/{agents,commands,skills}/ by convention)
+#                          .opencode/{agents,commands,skills}/ by convention;
+#                          each agent's model: line comes from docs/graph/models.md)
 #   codex              — DEPRECATED (frozen, ADR-0009). Drop AGENTS.md + .codex/;
 #                         print ~/.codex/config.toml hints.
 #   github-copilot     — DEPRECATED (frozen, ADR-0009). Generate .github/ from
@@ -63,9 +64,11 @@
 #                        from a neighbouring one.
 #   --print-config       For `codex`: print the config.toml lines with
 #                         resolved paths instead of editing anything.
-#   --check              For `github-copilot`: verify the generated .github/
-#                         views are in sync with the seed sources; write
-#                         nothing; exit non-zero if stale (CI drift gate).
+#   --check              Verify the generated views are in sync; write
+#                         nothing; exit non-zero if stale (CI drift gate). It
+#                         checks the `github-copilot` .github/ views, and the
+#                         `opencode` agent projections of a plant whose record
+#                         carries opencode, model: lines included.
 #   -h, --help           Show this help.
 #
 # The seed system's source files are not modified. The installer
@@ -811,13 +814,21 @@ place_tree() {
 # nodes into a phantom skill. `_`-prefixed files are the graph's own
 # conventions (templates, the routing corpus) and are handled explicitly or
 # not at all.
+# project_agents takes an optional RENDERED_DIR: a host whose agents carry a
+# per-plant line (opencode, render_opencode_agents) places each agent from its
+# rendering there, through place_generated, so the projection is a real file in
+# both link modes. Without it, each agent is its graph home, placed as is.
 project_agents() {
-    local dest="$1" home="$PROJECT_DIR/docs/graph/agents" f name
+    local dest="$1" rendered="${2:-}" home="$PROJECT_DIR/docs/graph/agents" f name
     for f in "$home"/*.md; do
         [[ -f "$f" ]] || continue           # -f follows a symlinked home
         name="$(basename "$f")"
         case "$name" in _*|index.md|README.md) continue ;; esac
-        place_file "$f" "$dest/$name"
+        if [[ -n "$rendered" ]]; then
+            place_generated "$rendered/$name" "$dest/$name"
+        else
+            place_file "$f" "$dest/$name"
+        fi
     done
     # the golden routing corpus rides with the roster (not a *.md, so the loop
     # skips it) so agent-lint.py --eval can score the roster on EVERY harness
@@ -832,6 +843,170 @@ project_skills() {
         case "$name" in _*|index|README) continue ;; esac
         place_file "$f" "$dest/$name/SKILL.md"
     done
+}
+
+# render_opencode_agents DEST_DIR
+# The opencode projection of the roster (SPEC-0001 §6, ADR-0022). opencode
+# takes a `provider/model` selector where Claude Code takes the alias, so each
+# graph agent is rendered with its `model:` line written from the plant's
+# model map, docs/graph/models.md: `opus` reads the authoring row of the
+# agent's effort, `sonnet` the investigation row, `haiku` the investigation-low
+# row. Where the map names no model (a `-` or placeholder cell, a missing row,
+# no effort, no map, or `inherit`), the line is removed and the agent runs on
+# its caller's model. Every other byte is the graph home's. The map is read
+# once, before the first agent is rendered, so a map that breaks the grammar
+# stops the run here, naming the file and the line, with every projection as it
+# was (MODEL_MAP_UNREADABLE). Renders into DEST_DIR under $STAGE, for
+# project_agents to place or --check to compare, and prints
+# "<agents with no model: line> <agents>". Values are read with the one
+# frontmatter reader's scalar rule; -B keeps its bytecode out of the seed.
+render_opencode_agents() {
+    python3 -B - "$PROJECT_DIR/docs/graph" "$1" "$SEED_ROOT/templates/knowledge-graph" <<'PYEOF'
+import os, re, sys
+graph, dest, reader = sys.argv[1:4]
+sys.path.insert(0, reader)
+from frontmatter import scalar
+
+MAP = "docs/graph/models.md"
+HEADER = ["Class", "Effort", "Prime Agent", "opencode"]
+CLASSES, EFFORTS = ("authoring", "investigation"), ("low", "medium", "high")
+FILLED = re.compile(r"`([^\s`<>]*/[^\s`<>]*)`")
+UNFILLED = re.compile(r"`<[^`]*>`|<[^>]*>|-")
+
+
+def refuse(why, n=None, line=None):
+    where = f"{MAP}:{n}" if n else MAP
+    shown = f": {line.strip()}" if line else ""
+    sys.stderr.write(f"ERROR: {where}: {why}{shown}\n"
+                     f"  Fix the map (SPEC-0001 §6) and re-run. The opencode "
+                     f"projections are unchanged.\n")
+    sys.exit(1)
+
+
+def split_row(line):
+    return [c.strip() for c in line.strip()[1:-1].split("|")] \
+        if line.strip().endswith("|") else None
+
+
+# (class, effort) -> the opencode selector; an unfilled cell and a missing row
+# both read as absent. A plant that declined the map has none.
+cells = {}
+path = os.path.join(graph, "models.md")
+root = os.path.realpath(os.path.dirname(os.path.dirname(graph)))
+if os.path.islink(path) and os.path.commonpath(
+        [root, os.path.realpath(path)]) != root:
+    # The installer's rule for a link: inside the target it is the plant's
+    # business; leaving it, it is refused (docs/graph/index.md has the same).
+    sys.stderr.write(f"ERROR: {MAP} is a symlink leaving the target "
+                     f"({os.readlink(path)}); refusing to read the model map "
+                     f"through it. Replace the link with a real file, or point "
+                     f"it inside the project, then re-run.\n")
+    sys.exit(1)
+if os.path.isfile(path):
+    try:
+        lines = open(path, encoding="utf-8").read().split("\n")
+    except UnicodeDecodeError:
+        refuse("is not UTF-8")
+    start = next((i for i, l in enumerate(lines) if l.rstrip() == "## Map"), None)
+    if start is None:
+        refuse("has no `## Map` heading")
+    i = start + 1
+    while i < len(lines) and not lines[i].startswith("|"):
+        if re.match(r"#{1,2} ", lines[i]):
+            break
+        i += 1
+    if i >= len(lines) or not lines[i].startswith("|"):
+        refuse("has no table under `## Map`")
+    if split_row(lines[i]) != HEADER:
+        refuse("the Map header is not | Class | Effort | Prime Agent | opencode |",
+               i + 1, lines[i])
+    sep = split_row(lines[i + 1]) if i + 1 < len(lines) else None
+    if not sep or len(sep) != 4 or not all(re.fullmatch(r":?-+:?", c) for c in sep):
+        refuse("the Map header has no |---| separator row under it", i + 2,
+               lines[i + 1] if i + 1 < len(lines) else "")
+    for n in range(i + 2, len(lines)):
+        line = lines[n]
+        if not line.startswith("|"):
+            break
+        row = split_row(line)
+        if not row or len(row) != 4:
+            refuse("a Map row needs four cells", n + 1, line)
+        cls, effort, _prime, cell = row
+        if cls not in CLASSES:
+            refuse(f"class {cls!r} is not one of {', '.join(CLASSES)}", n + 1, line)
+        if effort not in EFFORTS:
+            refuse(f"effort {effort!r} is not one of {', '.join(EFFORTS)}", n + 1, line)
+        if (cls, effort) in cells:
+            refuse(f"the row {cls} | {effort} repeats an earlier one", n + 1, line)
+        filled = FILLED.fullmatch(cell)
+        if not filled and not UNFILLED.fullmatch(cell):
+            refuse("the opencode cell is not `<provider>/<model>`, a placeholder "
+                   "or -", n + 1, line)
+        cells[(cls, effort)] = filled.group(1) if filled else None
+
+home = os.path.join(graph, "agents")
+names = sorted(n for n in os.listdir(home)
+               if n.endswith(".md") and not n.startswith(("_", "."))
+               and n not in ("index.md", "README.md")
+               and os.path.isfile(os.path.join(home, n)))
+os.makedirs(dest, exist_ok=True)
+inherits = 0
+for name in names:
+    raw = open(os.path.join(home, name), "rb").read()
+    head = re.match(rb"\A---\n.*?\n---\n", raw, re.S)
+    token = head and re.search(rb"^model:([^\n]*)\n", raw[:head.end()], re.M)
+    carries = False
+    if token:
+        alias = scalar(token.group(1).decode("utf-8", "replace"))
+        effort = re.search(rb"^effort:([^\n]*)\n", raw[:head.end()], re.M)
+        effort = scalar(effort.group(1).decode("utf-8", "replace")) if effort else None
+        row = {"opus": ("authoring", effort), "sonnet": ("investigation", effort),
+               "haiku": ("investigation", "low")}.get(alias)
+        if alias in ("opus", "sonnet", "haiku", "inherit"):
+            cell = cells.get(row) if row else None
+            line = f"model: {cell}\n".encode() if cell else b""
+            raw = raw[:token.start()] + line + raw[token.end():]
+            carries = bool(cell)
+        else:
+            carries = True        # a value outside the aliases is copied as is
+    inherits += not carries
+    rendered = os.path.join(dest, name)
+    open(rendered, "wb").write(raw)
+print(inherits, len(names))
+PYEOF
+}
+
+# check_opencode_projections: --check for the opencode projections
+# (OPENCODE_CHECK_DETECTS_DRIFT). Renders what an install would place and
+# compares it, name by name, with .opencode/agents/, backups excluded: a
+# projection that differs, is missing, or has no graph home is stale. The
+# routing corpus rides with the roster, so it is expected too. Writes nothing
+# into the target; a map the renderer refuses exits as the install does, before
+# any comparison. Returns 1 when a projection is stale.
+check_opencode_projections() {
+    local dest="$PROJECT_DIR/.opencode/agents" home="$PROJECT_DIR/docs/graph/agents"
+    local rendered f name stale=()
+    rendered="$(stage opencode-check/agents)"
+    render_opencode_agents "$rendered" >/dev/null || exit 1
+    for f in "$rendered"/*.md "$home/_routes.golden.tsv"; do
+        [[ -f "$f" ]] || continue
+        name="$(basename "$f")"
+        cmp -s "$f" "$dest/$name" || stale+=("$name")
+    done
+    for f in "$dest"/*; do
+        [[ -e "$f" || -L "$f" ]] || continue
+        name="$(basename "$f")"
+        case "$name" in *.bak-*) continue ;; esac
+        [[ -f "$rendered/$name" ]] && continue
+        [[ "$name" == _routes.golden.tsv && -f "$home/$name" ]] && continue
+        stale+=("$name")
+    done
+    if [[ ${#stale[@]} -eq 0 ]]; then
+        log "opencode projections up to date."
+        return 0
+    fi
+    warn "opencode projections are STALE: ${stale[*]}. Re-run: install.sh opencode"
+    return 1
 }
 
 # place_docs_skeleton: install every knowledge artifact beneath the one
@@ -1350,7 +1525,14 @@ install_opencode() {
     # harness directories below are projections of it. Projecting before the home
     # exists would project the previous run's tree.
     place_docs_skeleton
-    project_agents "$PROJECT_DIR/.opencode/agents"
+    # Each agent's model: line comes from the plant's model map. All of them are
+    # rendered before the first is placed, so a map the renderer refuses leaves
+    # every projection as it was.
+    local rendered counts
+    rendered="$(stage opencode/agents)"
+    counts="$(render_opencode_agents "$rendered")" || exit 1
+    project_agents "$PROJECT_DIR/.opencode/agents" "$rendered"
+    log "opencode: ${counts%% *} of ${counts##* } agents carry no model: line, because docs/graph/models.md names no opencode model for their class and effort; each runs on its caller's model"
     project_skills "$PROJECT_DIR/.opencode/skills"
     # Slash commands — the same generated projections as every other harness.
     generate_slash_commands "$PROJECT_DIR/.opencode/commands"
@@ -1363,7 +1545,7 @@ install_opencode() {
     log "opencode install done."
     log "  AGENTS.md             -> core/AGENTS.md (bootstrap kernel)"
     log "  docs/graph/           -> the ONE knowledge system (method surface + project graph)"
-    log "  .opencode/agents/     (harness projection of docs/graph/agents/)"
+    log "  .opencode/agents/     (projection of docs/graph/agents/, model: lines from the map)"
     log "  .opencode/skills/     (harness projection of docs/graph/skills/)"
     log "  .opencode/commands/   (tool-specific slash commands)"
     log "  opencode.json         (commit to share with team)"
@@ -2166,20 +2348,31 @@ report_recreated_nodes() {
     log "  The whole list is in .cypress/recreated-nodes.txt."
 }
 
-# --check: verify generated views are in sync, write nothing. Only the
-# github-copilot views are generated (transformed) rather than symlinked,
-# so they are the only ones that can drift; the others are safe by
-# construction. Regenerate to a temp dir and diff. Without github-copilot in
-# the run — `all` has not named it since ADR-0009, and adds it back under
-# --check only when the plant records it — there is nothing to check, and a CI
-# job relying on the exit 0 is told so rather than handed a silent green.
+# --check: verify the generated views are in sync, and write nothing. Two sets
+# are generated rather than placed from the seed, so only they can drift: the
+# github-copilot views (transformed), and the opencode agent projections, whose
+# model: line comes from the plant's map. Each is regenerated to a scratch
+# directory and compared. The opencode projections are in scope when the run
+# names opencode, directly or through `all`, and the plant's record carries it
+# (check_opencode_projections). Copilot is in scope when the run names it,
+# which `all` does under --check only when the plant records it (above). With
+# neither in scope there is nothing to check, and a CI job relying on the exit 0
+# is told so rather than handed a silent green.
 if [[ ${CHECK:-0} -eq 1 ]]; then
-    if [[ " ${expanded[*]} " != *" github-copilot "* ]]; then
-        log "--check: no generated views are in scope (only github-copilot generates"
-        log "  views, and this run does not name it). Nothing was checked."
+    check_opencode=0
+    [[ " ${expanded[*]} " == *" opencode "* && "$_recorded_tools" == *" opencode "* ]] \
+        && check_opencode=1
+    if [[ $check_opencode -eq 0 && " ${expanded[*]} " != *" github-copilot "* ]]; then
+        log "--check: no generated views are in scope. The github-copilot views are"
+        log "  checked when the run names github-copilot, and the opencode projections"
+        log "  when it names opencode and the plant's record carries it. This run has"
+        log "  neither, so nothing was checked."
         exit 0
     fi
     stale=0
+    if [[ $check_opencode -eq 1 ]]; then
+        check_opencode_projections || stale=1
+    fi
     for tool in "${expanded[@]}"; do
         [[ "$tool" == "github-copilot" ]] || continue
         # Inside STAGE, so the run's single trap reclaims it on every exit
@@ -2290,11 +2483,12 @@ place_file "$SEED_ROOT/INSTALL_PROMPT.md" "$PROJECT_DIR/EXPERT_SEED_INSTALL_PROM
 # it is recorded into the plant's stamp below, and the growth audit reads it
 # from there rather than keeping a copy that could drift.
 # `{name}` is the agent file's stem; `verbatim` is false where the projection is
-# transformed at install time and so cannot be compared byte-for-byte.
+# transformed at install time (Copilot's views; opencode's model: line, from the
+# plant's map) and so cannot be compared byte-for-byte: `--check` compares it.
 agent_projection_for() {
     case "$1" in
         claude-code)    printf '.claude/agents/{name}.md true' ;;
-        opencode)       printf '.opencode/agents/{name}.md true' ;;
+        opencode)       printf '.opencode/agents/{name}.md false' ;;
         codex)          printf '.codex/agents/{name}.md true' ;;
         prime-agent)    printf '.prime/agent/agents/{name}.md true' ;;
         github-copilot) printf '.github/agents/{name}.agent.md false' ;;

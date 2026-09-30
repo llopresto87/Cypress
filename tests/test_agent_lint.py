@@ -130,13 +130,15 @@ def agent_md(name, *, description="handles project work",
              effort="medium", origin=None, triggers=("do the work",),
              can_delegate=False, max_spawn_depth=None, delegates_to=None,
              body="Body of the agent definition."):
-    """An agent def. `None` omits a key; `triggers=()` emits an empty list."""
+    """An agent def. `None` omits a key (`model`, `effort`, ...); `triggers=()`
+    emits an empty list."""
     out = ["---", f"name: {name}", f"description: {description}"]
     if origin is not None:
         out.append(f"origin: {origin}")
     if tools is not None:
         out.append(f"tools: {tools}")
-    out.append(f"model: {model}")
+    if model is not None:
+        out.append(f"model: {model}")
     if effort is not None:
         out.append(f"effort: {effort}")
     if triggers is not None:
@@ -485,6 +487,55 @@ class LintEffortTests(TmpCase):
         self._assert_refused("plant-expert", origin="project", effort=None,
                              description="owns the mimsy borogove pipeline",
                              triggers=["tune the mimsy borogove pipeline"])
+
+
+class LintModelClassTests(TmpCase):
+    """SPEC-0005 AGENT_DECLARES_MODEL_CLASS: `model:` is required and one of
+    opus, sonnet, haiku, inherit, whoever owns the agent (adr-0022, S3)."""
+
+    def _assert_refused(self, agent_name, **kw):
+        r = self._lint({**_valid_roster(), "zz": agent_md(agent_name, **kw)})
+        out = r.stdout + r.stderr
+        self.assertEqual(r.returncode, 1, out)
+        line = next((ln for ln in out.splitlines() if agent_name in ln), "")
+        self.assertIn("model", line, out)
+        return out
+
+    def test_lint_accepts_each_model_class_token(self):
+        """Asserts SPEC-0005 AGENT_DECLARES_MODEL_CLASS. A plant agent on
+        `haiku` or `inherit` keeps passing after graft."""
+        r = self._lint({
+            "big": agent_md("big", model="opus", triggers=["design the data model"]),
+            "mid": agent_md("mid", model="sonnet", triggers=["write the failing test"]),
+            "cheap": agent_md("cheap", model="haiku", origin="project",
+                              triggers=["sweep the lint warnings"]),
+            "same": agent_md("same", model="inherit", origin="project",
+                             triggers=["tidy the imports"]),
+        })
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_lint_fails_on_missing_model(self):
+        """Asserts SPEC-0005 AGENT_DECLARES_MODEL_CLASS. An absent `model:`
+        key gets the missing message, not the outside-the-set one."""
+        out = self._assert_refused("modelless", model=None, triggers=["tidy the imports"])
+        line = next(ln for ln in out.splitlines() if "modelless" in ln)
+        self.assertIn("model missing", line, out)
+
+    def test_lint_fails_on_model_outside_the_set(self):
+        """Asserts SPEC-0005 AGENT_DECLARES_MODEL_CLASS. A full model id
+        belongs in the plant's model map, not in the agent."""
+        self.assertIn("provider-a/model-x",
+                      self._assert_refused("pinned", model="provider-a/model-x",
+                                           triggers=["tidy the imports"]))
+
+    def test_lint_fails_on_plant_agent_with_model_outside_the_set(self):
+        """Asserts SPEC-0005 AGENT_MODEL_OUTSIDE_SET_AFTER_GRAFT: a plant's own
+        agent (`origin: project`) is held to the same rule."""
+        self.assertIn("provider-a/model-x",
+                      self._assert_refused("plant-pinned", origin="project",
+                                           model="provider-a/model-x",
+                                           description="owns the mimsy borogove pipeline",
+                                           triggers=["tune the mimsy borogove pipeline"]))
 
 
 def _delegator(name, *, depth, delegates_to, trigger):

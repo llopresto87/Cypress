@@ -10,8 +10,8 @@ Authored by: security
 Lives at: docs/graph/decisions/threat-model-<feature>.md
 Used: whenever a sensitive feature is being designed
 Filled by copying this template into the target path and replacing
-every <placeholder>. Stable section numbers must not be renumbered;
-agents and tooling index into them.
+every <placeholder>. Keep the section numbers: agents and tooling
+index into them.
 -->
 
 # Threat Model: <feature>

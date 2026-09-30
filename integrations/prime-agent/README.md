@@ -2,12 +2,13 @@
 
 [Prime Agent](https://app.primeintellect.ai) is an RLM-native coding and
 research harness built around a persistent IPython kernel (a live Python
-process, not the seed's kernel file), recursive subagents (`rlm()`), durable
+process, not the seed's kernel file), recursive subagents (`rlm.spawn()`), durable
 sessions, and a continual-harness state ledger. This adapter makes the seed a
 first-class Prime Agent citizen, and this page says where each seed file lands.
 
 Prime Agent discovers resources by convention (verified against
-prime-agent 0.8.1 `README.md` + `docs/`):
+prime-agent 0.8.1 `README.md` + `docs/`; the `rlm.spawn` API against the
+0.9.7 runtime):
 
 1. **Context files (the kernel)**: `AGENTS.md` **or** `CLAUDE.md`,
    auto-loaded from `~/.prime/agent/`, every parent directory of the
@@ -46,7 +47,7 @@ opencode, and the difference is in the seed's favour.
 Prime Agent has **no static agent-roster directory that a session
 enumerates at start**. Delegation is a runtime primitive: the
 orchestrator spawns a clean-context child with an inline brief via
-`await rlm("<brief>")`, and reusable delegation specs are persisted in
+`await rlm.spawn("<brief>", name="<role>")`, and reusable delegation specs are persisted in
 the **continual harness** (`rlm.harness`), not as spawnable-by-name
 registry files.
 
@@ -55,35 +56,31 @@ Two consequences:
 - The seed's `agents/*.md` are installed to `.prime/agent/agents/*.md`
   as **brief sources**. The orchestrator reads the relevant roster file
   and passes its persona + tool bound + delegation contract into the
-  `rlm()` call — exactly the brief-carried role emulation that
+  `rlm.spawn()` call — exactly the brief-carried role emulation that
   `docs/graph/method/delegation-bounds.md` (`delegation.harness-registration`)
   already prescribes for any harness whose native registration does not
   carry the seed's model class or tool bound.
 - Because there is no session-start enumeration, the **"installed but
   not spawnable" trap does not exist on Prime Agent**. A roster brief
   written to disk — by an install, a graft, or a freshly commissioned
-  expert — is usable by the very next `rlm()` call in the same session;
+  expert — is usable by the very next `rlm.spawn()` call in the same session;
   no restart is needed. The recorded fallback in
   `delegation.harness-registration` is therefore the *normal* path here,
   not a workaround.
 
 If you want the roster reachable as reusable specs across sessions,
 persist the briefs as continual-harness subagent specifications
-(`rlm.harness.create_subagent(...)` / `refine`). That is a project
+(`rlm.harness.create_subagent(...)`). That is a project
 choice; the committed single home stays `.prime/agent/agents/*.md`.
 
 ## Slash commands
 
 Every protocol whose node declares `command: true` in its frontmatter is
 exposed as a slash command; `install.sh` **generates** one prompt-template
-file per such node into `.prime/agent/prompts/` — the same roster it generates
-for Claude Code and opencode, since those three draw from the same `command:`
-field. GitHub Copilot gets that roster through a different generator
-(`.github/prompts/<name>.prompt.md`); Codex gets none of it, because
-`install_codex` does not call `generate_slash_commands` and is the one adapter
-with no command surface at all. Each is a
-short pointer into the corresponding `docs/graph/protocols/<name>.md`
-node (the single home). The user-sovereign meta-loop protocols (`graft`,
+file per such node into `.prime/agent/prompts/`. Each is a short pointer
+into the corresponding `docs/graph/protocols/<name>.md` node (the single
+home). How the other hosts get the same roster is in the
+[host capability matrix](../../documentation/host-capability-matrix.md#slash-commands). The user-sovereign meta-loop protocols (`graft`,
 `grow`, `harvest`) carry no `command:`
 field and are commands on no harness.
 
@@ -110,7 +107,7 @@ extension event bus; like the hook, it adds text and holds nothing
   the ids it has opened in `_cypress_surfaced`, a Python set in its IPython
   kernel; that is soft and model-kept, and nothing checks it (SPEC-0003).
 - It is **fail-open**: any error (missing graph, router failure) degrades
-  to the pointer line or to silence, and it never blocks a prompt
+  to the pointer line or to silence, so the prompt always goes through
   ([routing pointer](../../DOCUMENTATION.md#enf-route-hook)).
 - It is auto-discovered from `.prime/agent/extensions/`. The bundled
   `settings.json` also lists it explicitly so it still loads if a project
@@ -123,13 +120,13 @@ instruction is the first thing the model reads.
 ## Native execution — using Prime Agent's edge over Claude Code
 
 Prime Agent is RLM-native, with primitives Claude Code does not have: recursive
-`rlm()` subagents you spawn and fan out from the IPython kernel, a persistent
-kernel that *is* your tool, `agent_message` / `agent_observe` for coordinating
-children, and goals / heartbeats for long-running work. It also has a
-**continual harness** (`refine`, memories, reusable subagent specs), though
-operating lessons still go to the plant's session record (see Close-out). A first-class
-integration should exploit these, not run the seed as "Claude Code with
-different paths."
+`rlm.spawn()` subagents you spawn and fan out from the IPython kernel, a
+persistent kernel that *is* your tool, `agent_message` / `agent_observe` for
+coordinating children, and goals / heartbeats for long-running work. It also
+has a **continual harness** (`rlm.harness`: memories, prompt notes, skills,
+reusable subagent specs), though operating lessons still go to the plant's
+session record (see Close-out). A first-class integration uses these
+primitives directly.
 
 That guidance ships as **`.prime/agent/APPEND_SYSTEM.md`** — a native-execution
 overlay the installer drops in. Prime Agent **appends it to the system prompt on
@@ -138,26 +135,24 @@ and lives under `.prime/agent/`). It does not replace or contradict the shared
 kernel; it maps the kernel's discipline onto Prime Agent's primitives:
 
 - **Delegation** → read a `.prime/agent/agents/<role>.md` brief and spawn
-  `await rlm(brief + task, name=role, model=...)`; fan out MULTIPLE
-  single-scoped children in parallel (not one broad worker); collect handbacks
-  via `agent_message`; supervise with `agent_observe`.
-- **Model policy** → each roster brief's `model:` field gives the class:
-  Sonnet-class (floor `claude-sonnet-4-6`) for read-only scouting, Opus-class
-  for authoring. The overlay maps a class to a version and carries no version
-  table. Opus-class work runs on Opus 5.5, and on Opus 4.6 only for extremely
-  light authoring that Sonnet should not be trusted with. `grow`, `harvest`
-  and `graft` name each phase's class in their own nodes.
+  `await rlm.spawn(brief + task, name=role, model=..., thinking=...)`; fan out
+  several single-scoped children in parallel, one facet each; collect
+  handbacks via `agent_message`; supervise with `agent_observe`.
+- **Model policy** → each roster brief's `model:` field names the class, and
+  the plant's model map (`docs/graph/models.md`) names the model and provider
+  for that class and effort, from any provider the Prime Agent catalog
+  carries. The overlay resolves it per spawn with `rlm.find_models(...)` and
+  passes the effort as `thinking=`.
 - **Checks** → run `bash tests/run.sh` and the linters directly in the kernel;
   keep evidence in variables.
-- **Close-out** → canonize into `docs/graph/`; author any reusable TOOL or
-  project SKILL **in the plant** (home `docs/graph/skills/<name>.md`, projected
-  to `.prime/agent/skills/<name>/SKILL.md`, committed) per `skill.toolcraft`,
-  not in the global `~/.prime/agent/skills/`; and write *operating* lessons
-  (an owner rule, a corrected assumption, where paused work stands) to the
-  plant's session record in `docs/graph/plans/sessions/`, which canonize
-  files (`method.stewardship-posture`). The continual harness
-  (`refine.run(...)`) keeps at most a one-line pointer there. A project skill
-  is a plant deliverable, not a private harness entry.
+- **Close-out** → three destinations: project knowledge into `docs/graph/`
+  via canonize; any reusable tool or project skill **in the plant**, committed
+  (home `docs/graph/skills/<name>.md`, projected to
+  `.prime/agent/skills/<name>/SKILL.md`, per `skill.toolcraft`); and
+  *operating* lessons to the plant's session record in
+  `docs/graph/plans/sessions/` (`method.stewardship-posture`). The overlay's
+  Close-out section holds the routing, including what the continual harness
+  (`rlm.harness`) may keep.
 - **Long-running work** → a nonblocking control loop with `goal` and
   `rlm_heartbeat`; end the turn and fan-in on replies instead of polling.
 
@@ -181,7 +176,7 @@ The bundled config only lists the seed's own resource directories, with
   resolves resource entries in `.prime/agent/settings.json` against that
   file's own directory (`resolve(cwd/.prime/agent, entry)`), so `"prompts"`
   means `.prime/agent/prompts`. Writing `".prime/agent/prompts"` here would
-  wrongly nest to `.prime/agent/.prime/agent/prompts` — do not do it.
+  wrongly nest to `.prime/agent/.prime/agent/prompts`.
 - **Redundant with convention discovery.** Prime Agent already auto-scans
   `.prime/agent/{extensions,skills,prompts}/`. The arrays are listed only so
   the seed's directories still load under a locked-down or non-default
@@ -201,7 +196,7 @@ multi-agent-architect → architect → leaf), which needs a depth of 3.
 
 Default depth-2 work (the common T2/T3 path) runs unchanged. To exercise the
 seed's **deepest** multi-coordinator topology on Prime Agent, raise the limit
-by ONE of:
+by one of:
 
 - `/rlm-max-depth 3` — per session, persisted in the session branch;
 - `~/.prime/agent/settings.json` → `{ "rlmMaxDepth": 3 }` — global, all

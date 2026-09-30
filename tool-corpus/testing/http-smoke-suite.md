@@ -2,8 +2,8 @@
 
 > Project-agnostic, durable capability notes, folded into the seed by the
 > harvest protocol. Orientation for a reusable tool — the assertion set is
-> project-specific, but the harness, idioms, and the known-bug discipline are
-> portable and re-usable as-is.
+> project-specific, but the harness and its idioms are portable and re-usable
+> as-is.
 
 ## 0. Identity
 
@@ -70,26 +70,24 @@ rather than page contents, e.g.:
   from `curl`, a failed `openssl s_client` connect), never a status code and
   never the body: any HTTP reply proves the endpoint is alive, which is exactly
   what the assertion denies. Pin a short `--max-time`, and decide deliberately
-  whether a *timeout* counts as passing — a dropped or filtered packet is a
+  whether a *timeout* counts as passing: a dropped or filtered packet is a
   weaker signal than a reset.
 
-The distinctive, durable idiom — **`KNOWN_BUG_*` assertions**:
+**A failing assertion that uncovers a bug stays as it is.** Every assertion
+states correct behavior; the suite carries no assertion of broken behavior.
+When an assertion uncovers a confirmed bug:
 
-- For each **confirmed-broken** behavior, add an explicitly-named assertion (e.g.
-  `KNOWN_BUG_redirect_drops_query`) that asserts **today's broken behavior on
-  purpose**, with the root cause documented inline.
-- It PASSES while the bug exists and **flips to FAIL once the bug is fixed** —
-  turning the suite red exactly when someone fixes the bug without removing its
-  known-bug marker. This makes technical debt **mechanically visible** and
-  impossible to silently absorb: a known bug is either still asserted (and
-  tracked) or the fix forces you to promote it to a real assertion.
+- The assertion that uncovered it is the acceptance check for the fix, so it
+  stays unchanged, and the suite stays red on it. To re-run it alone, select
+  its section.
+- Recording the bug, telling the owner, the fix and the re-run follow
+  `protocols/test-first.md` (`test-first.known-bug`).
 
 ## 4. Portable vs blueprint
 
 - **Portable (use as-is):** the PASS/FAIL counter harness, colored output, single
-  aggregate exit code, the `assert` wrapper with its section selector and
-  `{section, check, pass, detail}` JSON record, and the `KNOWN_BUG_*`
-  convention.
+  aggregate exit code, and the `assert` wrapper with its section selector and
+  `{section, check, pass, detail}` JSON record.
 - **Project-specific (fill in):** the concrete URLs, ports, expected status
   codes, auth scheme, section names, and which protocol facts matter for the
   given service.
@@ -133,11 +131,6 @@ assert app  "health endpoint serves"            health_ok
 assert auth "protected route rejects anon"      auth_enforced
 assert edge "closed port serves nothing at all" port_closed   # ANY HTTP reply FAILS
 
-# --- KNOWN BUG: asserts TODAY's broken behavior on purpose. ---
-# root cause: <one-line cause>. Flips FAIL when fixed -> promote to a real assert.
-known_bug_x() { : ; }   # <cmd that succeeds WHILE the bug is present>
-assert bugs "KNOWN_BUG_x (expected to flip when fixed)" known_bug_x
-
 [ -n "$JSON" ] || printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
 ```
@@ -149,9 +142,9 @@ assert bugs "KNOWN_BUG_x (expected to flip when fixed)" known_bug_x
   `assert` wrapper own pass/fail.
 - **Testing page content instead of protocol facts** is brittle; assert status
   codes, redirects, TLS negotiation, and auth enforcement.
-- **A removed `KNOWN_BUG_*` marker hides regressions.** If someone deletes the
-  known-bug assertion instead of promoting it, the debt vanishes from view —
-  code review must catch that.
+- **A bug hidden by editing its assertion.** Loosening, inverting or deleting
+  the assertion that uncovered a bug turns the suite green over a live defect
+  and discards the fix's acceptance check; the assertion stays as it is (§3).
 - **Asserting only the happy path for auth** proves nothing; assert that the
   unauthenticated request is *rejected*.
 - **Reading a not-found as "the route is protected."** It is equally consistent
@@ -174,7 +167,6 @@ stopped service, a wrong port, a stub returning the wrong status) and assert tha
 it *fails*. That is the check that makes the self-evidencing-instrument pitfall
 in §5 falsifiable, so it comes before the suite is trusted as a gate, not after.
 Then cover: the aggregate exit code (pass-all → 0, any-fail → non-zero); a
-`KNOWN_BUG_*` case flipping when the stub's behavior is "fixed"; a
 closed-surface assertion **failing** when the stub answers with an error status
 instead of refusing the connection; and selecting one section running only that
 section's checks while keeping the same aggregate exit behavior.
@@ -204,3 +196,8 @@ section's checks while keeping the same aggregate exit behavior.
 - 2026-09-22 — folded in the auth-sweep's second reading: the same rejection
   assertion is also a route-existence proof (§3), with the read-a-not-found-as-
   protected pitfall it closes (§5), by docs-librarian.
+- 2026-09-30 — replaced the assert-today's-broken-behavior idiom with the
+  owner's known-bug rule:
+  the assertion that uncovered a bug stays unchanged as the fix's acceptance
+  check, the bug is recorded and the user told, and the same assertion re-runs
+  after the fix (§3, §4 skeleton, §5, §6), by implementer.

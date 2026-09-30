@@ -12,9 +12,9 @@ Each node also declares `prevents:` — the failure its own absence produces. It
 
 Source: `core/method/delegation.md`.
 
-The host session is the `orchestrator`. It routes, plans, briefs, verifies, communicates, and accepts. Whether it also *does* the work is decided by the task's tier (`method.tiers`). The specialists live in `docs/graph/agents/`, each a full system prompt. You invoke one by spawning a clean-context worker with a purpose-made brief. Simulating a specialist persona in the chat is not delegation.
+The host session is the `orchestrator`. It routes, plans, briefs, verifies, communicates, and accepts. Whether it also *does* the work is decided by the task's tier (`method.tiers`). The specialists live in `docs/graph/agents/`, each a full system prompt. You invoke one by spawning a clean-context worker with a purpose-made brief; delegation is a real spawn, and playing the role in the chat does not count.
 
-The brief is the only carrier of the discipline across the boundary, because no hook the seed installs carries it into a worker's turn ([delegation-briefs node](../core/method/delegation-briefs.md#every-brief-carries-the-graph-discipline)). Whatever discipline the brief omits, the worker does not have. Every brief embeds the canonical graph-session block verbatim, carries the routing evidence, and requires the handback payload.
+The brief is the only carrier of the discipline across the boundary, because no hook the seed installs carries it into a worker's turn ([delegation-briefs node](../core/method/delegation-briefs.md#every-brief-carries-the-graph-discipline)). Whatever discipline the brief omits, the worker does not have. Every brief embeds the canonical GRAPH DISCIPLINE and COMPANION blocks verbatim, which carry the spawn id, the routing evidence and the handback requirement.
 
 ## 2. Mechanical routing (`agent-lint.py --route`)
 
@@ -22,19 +22,19 @@ Source: `core/method/delegation.md`, `00-orchestrator.md`.
 
 Before spawning, the router runs `python3 docs/graph/agent-lint.py --route "<task>"` and cites the ranked line and confidence band in the brief. The router reasons over the route, which is a keyword heuristic, and records a rationale whenever it overrides a HIGH-band pick. The deliver-time attribution assertion flags unexplained overrides.
 
-On a LOW / NONE band, no shipped specialist fits, and the next question is what kind of gap it is. If it is knowledge — a stack, library, or platform nobody on the roster is written for — the answer is an `expertise.*` node, authored or extended from `docs/graph/nodes/_expertise.template.md`; the router composes it into any worker whose task names it, so nothing is spawned and nothing is registered. Only judgment that needs its own context — different tools, a different model class, an adversarial stance, or isolation — commissions an expert: an Opus-class agent-definition author writes one from `docs/graph/templates/agent.template.md`, grounded in the project's version-pinned facts. A commissioned expert joins the *project's* roster, never the seed's.
+On a LOW / NONE band, no shipped specialist fits, and the next question is what kind of gap it is. If it is knowledge — a stack, library, or platform nobody on the roster is written for — the answer is an `expertise.*` node, authored or extended from `docs/graph/nodes/_expertise.template.md`; the router composes it into any worker whose task names it, so nothing is spawned and nothing is registered. Only judgment that needs its own context — different tools, a different model class, an adversarial stance, or isolation — commissions an expert: an authoring-class agent-definition author writes one from `docs/graph/templates/agent.template.md`, grounded in the project's version-pinned facts. A commissioned expert joins only the *project's* roster.
 
-The routing_triggers in each agent's frontmatter are the keyword phrases the router matches on. The acceptance contract for those triggers is the golden corpus `agents/_routes.golden.tsv`, which maps example tasks to their expected agent (or the sentinel `LOW`, meaning the router must return low/none confidence and take the commission path). That corpus is owned and extended by `tester` + `data-ml`, and `agent-lint.py --eval` checks the routing_triggers against it.
+The routing_triggers in each agent's frontmatter are the keyword phrases the router matches on. The acceptance contract for those triggers is the golden corpus `agents/_routes.golden.tsv`, which maps example tasks to their expected agent (or the sentinel `LOW`, meaning the router must return low/none confidence and take the commission path). That corpus is owned and extended by `tester` + `data-ml`, and `agent-lint.py --eval` checks the routing_triggers against it. Each row carries a class (`contract`, `paraphrase`, `adversarial`, `unknown-domain`); the classes measure different things, so `--eval` reports each on its own and never averages them. The golden rows listed under each agent below give their class.
 
 ## 3. Model classes
 
 Source: `core/method/delegation-model-classes.md`.
 
-Each agent's `model:` frontmatter field is its model class: sonnet-class for read-only investigation, opus-class for authoring, implementation, and judgment-heavy design.
+Each agent's `model:` frontmatter field names its model class: the investigation class for read-only investigation, the authoring class for authoring, implementation, and judgment-heavy design. The field takes one of the four aliases Claude Code reads natively: `opus` (authoring), `sonnet` (investigation), `haiku` (investigation at low effort) and `inherit` (the caller's model); `agent-lint.py --lint` holds that set. Seed agents use `opus` and `sonnet`. Which model each host runs for a class and an effort is the plant's model map, `docs/graph/models.md` (`delegation.model-map`, [ADR-0022](../docs/decisions/adr-0022-the-plant-model-map.md)), which the plant owns and fills once.
 
-Only two agents run on sonnet: `research-scout` and `growth-scout`, the two scout roles (growth-scout writes only its evidence ledger; research-scout's drafts are mechanical normalization finalized by the librarian). The other 18 run on opus. Model class is a distinct axis from the task tier (T0–T3, kernel §0) and the graph load-tier (the node `tier:` field). Only the risk axis is written `T0–T3`.
+The two scout roles, `research-scout` and `growth-scout`, run on `sonnet` (growth-scout writes only its evidence ledger; research-scout's drafts are mechanical normalization finalized by the librarian); every other agent runs on `opus`, as the summary table below shows. Model class is a distinct axis from the task tier (T0–T3, kernel §0) and the graph load-tier (the node `tier:` field). Only the risk axis is written `T0–T3`.
 
-Each agent's `effort:` frontmatter field is its default reasoning effort, one of `low`, `medium` or `high`. Effort refines the model class and is not a fourth axis; it is also not the effort level an owner declares for a task. Eight agents default to `high`: `orchestrator`, `architect`, `multi-agent-architect`, `security`, `pentest`, `devils-advocate`, `legal` and `growth-orchestrator`. The other twelve default to `medium`, and none ships at `low`. `agent-lint.py --lint` fails an agent file whose value is missing or outside that set. A spawn can run at a different effort than its default; the derivation, and what each host is recorded to read, are in `core/method/delegation-model-classes.md`.
+Each agent's `effort:` frontmatter field is its default reasoning effort, one of `low`, `medium` or `high`. Effort refines the model class and is not a fourth axis; it is also not the effort level an owner declares for a task. `orchestrator`, `architect`, `multi-agent-architect`, `security`, `pentest`, `devils-advocate`, `legal` and `growth-orchestrator` default to `high`; the rest default to `medium`, and none ships at `low`. `agent-lint.py --lint` fails an agent file whose value is missing or outside that set. A spawn can run at a different effort than its default; the derivation, and what each host is recorded to read, are in `core/method/delegation-model-classes.md`.
 
 ## 4. Bounded delegation
 
@@ -55,9 +55,9 @@ Six coordinators hold a depth-capped `Task` tool and may spawn only within their
 
 The deepest legal chain is depth 3 (through the `orchestrator`).
 
-Every other agent is a spawn-less leaf: its `tools:` line is present and grants no spawn tool (`Agent`, or its alias `Task`), so it cannot spawn. That missing grant is one of the harness's own recursion caps whenever the specialist was registered as a type; the host's nesting limit is the other ([delegation bounds](../core/method/delegation-bounds.md#delegation-is-bounded)). At an out-of-domain boundary a leaf STOPs and hands back, naming the next specialist, and never does the work itself. `agent-lint --lint` enforces these frontmatter invariants.
+Every other agent is a spawn-less leaf: its `tools:` line is present and grants no spawn tool (`Agent`, or its alias `Task`), so it cannot spawn. That missing grant is one of the harness's own recursion caps whenever the specialist was registered as a type; the host's nesting limit is the other ([delegation bounds](../core/method/delegation-bounds.md#delegation-is-bounded)). At an out-of-domain boundary a leaf stops, hands back and names the next specialist; the out-of-domain work goes to that specialist. `agent-lint --lint` enforces these frontmatter invariants.
 
-Attribution runs through `produced_by`. Every worker ends with the handback payload (`docs/graph/templates/prompts/handback-payload.md`). `produced_by` and `route_evidence` feed the deliver-time attribution assertion (`protocol.deliver`); a missing `produced_by` is a BLOCK. A worker hands back exactly once per spawn, on `complete`, `blocked-out-of-domain`, or `failed`, and never once per tool call.
+Attribution runs through `produced_by`. Every worker ends with the handback payload (`docs/graph/templates/prompts/handback-payload.md`). `produced_by` and `route_evidence` feed the deliver-time attribution assertion (`protocol.deliver`); a missing `produced_by` is a BLOCK. A worker hands back exactly once per spawn, on `complete`, `blocked-out-of-domain`, or `failed` (never per tool call).
 
 At the harness-registration boundary, a specialist is spawnable by name only once the host has registered it. `docs/graph/agents/` is the home; the spawnable form is the host's *projection* of it, and when a host sees a file written there mid-session is host-dependent ([registration](../core/method/delegation-bounds.md#a-specialist-is-spawnable-only-once-the-host-registered-it)). Spawning by name therefore needs two preconditions: the session's project root is the plant, and the host registered the projection. Anything that *writes* a projection mid-session, such as the install, a graft's roster delta, or a freshly commissioned expert, can be on disk and not yet spawnable. The router preflights once per protocol with a throwaway dispatch; `agent-lint --route` does not answer registration (it globs the on-disk projection and can name types an unregistered session cannot spawn). Prime Agent is the exception: it has no session-start roster enumeration, so a brief written mid-session is spawnable immediately.
 
@@ -94,9 +94,7 @@ Spec authoring is split across three agents: `product` writes the user-facing la
 | 19 | `legal` | `agent.legal` | opus | leaf (no Task) | `legal.charter`, `legal.corpus-rule`, `legal.four-part-finding`, `legal.qualification-boundary`, `legal.citation-ledger` |
 | 20 | `tool-smith` | `agent.tool-smith` | opus | leaf (no Task) | `tool-smith.charter`, `tool-smith.authoring-bar`, `tool-smith.plant-scope` |
 
-`legal` ships in every install, its corpus only on request (`install.sh --legal-corpus yes`), and it carries no default `delegates_to` edge from any coordinator: `architect.legal-checkpoint` (`agents/01-architect.md`) reaches it only if the plant-local roster and `architect`'s `delegates_to` were both extended to include it at instantiation time; absent that extension, `architect` stops and hands back naming `legal` as `recommended_next` rather than spawning it. It is not in the edge-list table below for that reason — every row there is a shipped default.
-
-Coordinators as an edge list of `delegates_to` allowlists:
+Coordinators as an edge list of `delegates_to` allowlists (every row is a shipped default):
 
 | Coordinator | `max_spawn_depth` | `delegates_to` |
 |---|---|---|
@@ -106,6 +104,8 @@ Coordinators as an edge list of `delegates_to` allowlists:
 | `docs-librarian` | 1 | `research-scout` |
 | `growth-orchestrator` | 2 | `growth-scout`, `seed-installer`, `docs-librarian`, `architect`, `research-scout`, `tester`, `ui-ux-designer` |
 | `multi-agent-architect` | 2 | `architect`, `tester`, `implementer`, `reviewer`, `data-ml`, `security`, `reliability` |
+
+`legal` ships in every install, its corpus only on request (`install.sh --legal-corpus yes`), and no coordinator's shipped `delegates_to` names it. `architect.legal-checkpoint` (`agents/01-architect.md`) reaches it only when the plant has extended both its roster and `architect`'s `delegates_to` to include it; otherwise `architect` stops and hands back naming `legal` as `recommended_next`.
 
 ## 7. Agent reference (per agent)
 
@@ -153,14 +153,14 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "choose a framework and write the adr for the split"
   - "decide sync versus async at the service boundary"
   - "define the interface contract between modules"
-- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `architect`, with its class — the classes measure different things and are never merged):
+- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `architect`, with its class):
   - "design the data model for the orders service" — `contract`
   - "choose a framework and write the adr for the split" — `contract`
   - "decide sync versus async at the service boundary" — `contract`
   - "two services both write to the same table and we keep getting conflicts" — `paraphrase`
   - "the data migration needs an architecture decision record" — `adversarial`
 
-**Charter.** The architect names the system's boundaries, designs the interfaces between them, and turns product intent into testable functional contracts. It records every non-obvious decision as an ADR and favors reversible choices, tagging each decision with a reversibility class. It is the central author of the technical part of every spec (§4 contracts, §6 data shapes, §7 failure modes). It may spawn `tester` or `research-scout` at bounded depth 1 but writes no production code itself.
+**Charter.** The architect names the system's boundaries, designs the interfaces between them, and turns product intent into testable functional contracts. It records every non-obvious decision as an ADR and favors reversible choices, tagging each decision with a reversibility class. It is the central author of the technical part of every spec (§4 contracts, §6 data shapes, §7 failure modes). It may spawn `tester` or `research-scout` at bounded depth 1, and leaves production code to `implementer`.
 
 ### 7.3 `implementer`
 
@@ -181,14 +181,14 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "turn the red test green in the code"
   - "implement the minimum behavior to satisfy the test"
   - "wire the green code into the existing module"
-- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `implementer`, with its class — the classes measure different things and are never merged):
+- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `implementer`, with its class):
   - "make the failing test pass" — `contract`
   - "write the code to turn the red test green" — `contract`
   - "implement the minimum behavior to satisfy the test" — `contract`
   - "make the failing test pass and nothing else" — `contract`
   - "the model evaluation harness has a race condition" — `adversarial`
 
-**Charter.** The implementer turns RED into GREEN: it writes the minimum new behavior the spec asked for once the spec, contracts, and failing tests already exist. "Minimum" governs behavior, not diff size: the code is woven into the file's existing design, never bolted on, and it adds no abstraction the spec's variation does not yet demand. It loads context through the graph context-router before editing. It is a Task-less leaf and stops at any out-of-domain boundary.
+**Charter.** The implementer turns RED into GREEN: it writes the minimum new behavior the spec asked for once the spec, contracts, and failing tests already exist. "Minimum" governs behavior, not diff size: the code is woven into the file's existing design, and it adds abstraction only where the spec's variation demands it. It loads context through the graph context-router before editing. It is a Task-less leaf and stops at any out-of-domain boundary.
 
 ### 7.4 `reviewer`
 
@@ -209,14 +209,14 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "review the pull request before we merge"
   - "check the change is integrated and not bolted on"
   - "produce severity tagged review findings"
-- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `reviewer`, with its class — the classes measure different things and are never merged):
+- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `reviewer`, with its class):
   - "audit this diff against the spec" — `contract`
   - "review the pull request before we merge" — `contract`
   - "check the change is integrated and not bolted on" — `contract`
   - "checking the change is integrated and not bolted on" — `contract`
   - "go over yesterday's merge and tell me what will break" — `paraphrase`
 
-**Charter.** The reviewer reads and writes no files at all; its structured review goes in the report body. It compares a diff against the plan, the architecture, the library wiki, and project conventions, and returns findings tagged by severity: critical blocks the increment, major gates the merge, minor and nit are suggestions. For a hard security or operations finding it may spawn `security` or `reliability` via bounded Task (depth 1) and fold their findings in. It still writes no source itself.
+**Charter.** The reviewer only reads: it writes no files, and its structured review goes in the report body. It compares a diff against the plan, the architecture, the library wiki, and project conventions, and returns findings tagged by severity: critical blocks the increment, major gates the merge, minor and nit are suggestions. For a hard security or operations finding it may spawn `security` or `reliability` via bounded Task (depth 1) and fold their findings in.
 
 ### 7.5 `tester`
 
@@ -237,7 +237,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "add a regression test for this bug"
   - "run the verification gates before merge"
   - "drive the red green refactor cycle"
-- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `tester`, with its class — the classes measure different things and are never merged):
+- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `tester`, with its class):
   - "write the failing test that encodes the spec contract" — `contract`
   - "add a regression test for this bug" — `contract`
   - "run the verification gates before merge" — `contract`
@@ -267,7 +267,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "check for prompt injection and data exfiltration"
   - "assess known vulnerabilities in the dependencies and images"
   - "plan the secret rotation path by blast radius"
-- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `security`, with its class — the classes measure different things and are never merged):
+- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `security`, with its class):
   - "add a threat model for the upload endpoint" — `contract`
   - "assess the supply-chain and secrets handling risk" — `contract`
   - "design the authorization model for the api" — `contract`
@@ -297,7 +297,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "stand up fresh infrastructure from scratch"
   - "add health checks timeouts and retries"
   - "write the release and rollback procedure for this service"
-- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `reliability`, with its class — the classes measure different things and are never merged):
+- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `reliability`, with its class):
   - "the deploy is flaking under load, add observability" — `contract`
   - "configure rollback and capacity budgets for the cluster" — `contract`
   - "stand up fresh infrastructure and set the timers" — `contract`
@@ -326,13 +326,13 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "design the dataset contract and the pipeline"
   - "select a model and design its evaluation"
   - "build the eval suite and golden set"
-- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `data-ml`, with its class — the classes measure different things and are never merged):
+- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `data-ml`, with its class):
   - "generate synthetic fixture data for tests not sourced from production" — `contract`
   - "design the dataset contract and the pipeline" — `contract`
   - "select a model and design its evaluation" — `contract`
   - "our churn predictor scores 0.9 offline and does nothing useful once live" — `paraphrase`
 
-**Charter.** The data/ML/evaluation engineer treats data quality and evaluation design as engineering work done up front. It produces reproducible pipelines, named data contracts, and evaluation suites with stable thresholds, and it generates synthetic, fixture, and demo data that is never sourced from production. It is invoked whenever the project has a dataset, ships a model, or ships an LLM/VLM feature where quality matters. It is a Task-less leaf.
+**Charter.** The data/ML/evaluation engineer treats data quality and evaluation design as engineering work done up front. It produces reproducible pipelines, named data contracts, and evaluation suites with stable thresholds, and it generates synthetic, fixture, and demo data, taking none of it from production (kernel §4). It is invoked whenever the project has a dataset, ships a model, or ships an LLM/VLM feature where quality matters. It is a Task-less leaf.
 
 ### 7.9 `product`
 
@@ -353,20 +353,20 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "define onboarding and the accessibility floor"
   - "map the user flow states and recovery paths"
   - "cut the smallest slice that delivers the outcome end to end"
-- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `product`, with its class — the classes measure different things and are never merged):
+- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `product`, with its class):
   - "write the acceptance criteria and the user flow" — `contract`
   - "define onboarding and the accessibility floor" — `contract`
   - "write down what done means for the invoice feature so we can argue about it now" — `paraphrase`
   - "decide what done means for the gdpr data-export screen" — `adversarial`
 
-**Charter.** The product-minded technical lead clarifies what the user is trying to do and designs the smallest coherent solution. It never jumps from goal to UI; it goes goal → outcome → flow → states → acceptance. It authors the user-facing sections of every spec (§3 user-facing behavior and §9 acceptance criteria) and owns user flows, the first useful slice, and the accessibility floor. It is a Task-less leaf.
+**Charter.** The product-minded technical lead clarifies what the user is trying to do and designs the smallest coherent solution. It works goal → outcome → flow → states → acceptance, in that order. It authors the user-facing sections of every spec (§3 user-facing behavior and §9 acceptance criteria) and owns user flows, the first useful slice, and the accessibility floor. It is a Task-less leaf.
 
 ### 7.10 `docs-librarian`
 
 *Source file: `agents/09-docs-librarian.md`*
 
 - **id:** `agent.docs-librarian`
-- **Role:** Senior knowledge-graph architect. Owns the unified system at docs/graph/ — progressive-discovery router, fact-owning nodes, source provenance, detailed project leaves, dependency wiki, the reusable-tool catalog, the project-skill catalog (.claude/skills/), specs, decisions, plans, and runbooks.
+- **Role:** Senior knowledge-graph architect. Owns the unified system at docs/graph/ — progressive-discovery router, fact-owning nodes, source provenance, detailed project leaves, dependency wiki, the reusable-tool catalog, the project-skill catalog (docs/graph/skills/, projected to the harness dirs), specs, decisions, plans, and runbooks.
 - **model class:** `opus`
 - **effort (default):** `medium`
 - **Delegation:** coordinator with `can_delegate: true`, `max_spawn_depth: 1`, `delegates_to:` `research-scout`
@@ -386,7 +386,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "register the sources a retrieval pass left unregistered"
   - "the index disagrees with what the collection actually holds"
   - "reconcile a stale count or a stale table in a README"
-- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `docs-librarian`, with its class — the classes measure different things and are never merged):
+- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `docs-librarian`, with its class):
   - "author a graph node for the auth subsystem" — `contract`
   - "fix the wiki page that fails graph validation" — `contract`
   - "dedupe the knowledge facts so each has one home" — `contract`
@@ -395,10 +395,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "the delegation caps we agreed are written down nowhere in the graph" — `adversarial`
   - "the graph router picks the wrong node for legal questions" — `adversarial`
 
-**Charter.** The docs-librarian is the knowledge-graph architect for the project's single maintained system at `docs/graph/`. It keeps the graph useful, current, routed, source-grounded, and deduplicated, and it enforces the one-home-per-fact rule: every fact lives in exactly one node's `owns:` list and everything else links. It runs `graph-lint.py` before committing any graph change and owns the close-out flow that persists knowledge and catalogs reusable tools. It may spawn `research-scout` at bounded depth 1.
-Its once-per-session documentation audit ends with a prose question: does the
-prose written this session pass `docs/graph/prose-lint.py`, with no strong
-tell and no dropped fact under `--against HEAD`?
+**Charter.** The docs-librarian is the knowledge-graph architect for the project's single maintained system at `docs/graph/`. It keeps the graph useful, current, routed, source-grounded, and deduplicated, and it enforces the one-home-per-fact rule: every fact lives in exactly one node's `owns:` list and everything else links. It runs `graph-lint.py` before committing any graph change and owns the close-out flow that persists knowledge and catalogs reusable tools. It may spawn `research-scout` at bounded depth 1. Its once-per-session documentation audit ends with a prose question: does the prose written this session pass `docs/graph/prose-lint.py`, with no strong tell and no dropped fact under `--against HEAD`?
 
 ### 7.11 `research-scout`
 
@@ -418,13 +415,13 @@ tell and no dropped fact under `--against HEAD`?
   - "retrieve the authoritative upstream documentation for a new library"
   - "find and normalize the official spec for this dependency"
   - "ingest a new dependency into the wiki"
-- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `research-scout`, with its class — the classes measure different things and are never merged):
+- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `research-scout`, with its class):
   - "retrieve the authoritative upstream documentation for a new library" — `contract`
   - "find and normalize the official spec for this dependency" — `contract`
   - "find out what the official guidance actually says before we guess" — `paraphrase`
   - "we need the vendor's own signed documentation before we design with their crypto" — `adversarial`
 
-**Charter.** The research scout is the bridge between the project and the open web. It finds authoritative sources, retrieves them when allowed, normalizes them, and hands them to the docs-librarian; it never invents facts and never trusts training data on version-sensitive details. It prefers official upstream docs for the exact version in use, then upstream source, and records conflicts rather than guessing. It runs on the sonnet model class as a read-only leaf.
+**Charter.** The research scout is the bridge between the project and the open web. It finds authoritative sources, retrieves them when allowed, normalizes them, and hands them to the docs-librarian; it states only facts it retrieved and takes version-sensitive details from the source. It prefers official upstream docs for the exact version in use, then upstream source, and records conflicts rather than guessing. It runs on the investigation class (`sonnet`) as a read-only leaf.
 
 ### 7.12 `pentest`
 
@@ -444,7 +441,7 @@ tell and no dropped fact under `--against HEAD`?
   - "run an authorized penetration test of the login"
   - "write a proof-of-concept exploit for the upload endpoint"
   - "reproduce and remediate the vulnerability"
-- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `pentest`, with its class — the classes measure different things and are never merged):
+- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `pentest`, with its class):
   - "run an authorized penetration test of the login" — `contract`
   - "write a proof-of-concept exploit for the upload endpoint" — `contract`
   - "we have written permission to break into the staging cluster, do it" — `paraphrase`
@@ -456,7 +453,7 @@ tell and no dropped fact under `--against HEAD`?
 *Source file: `agents/12-devils-advocate.md`*
 
 - **id:** `agent.devils-advocate`
-- **Role:** Hostile second pass over a FINISHED, claim-bearing deliverable — a report, spec, ADR, security finding, audit result, or migration plan — whose sole job is to try to REFUTE each load-bearing claim from primary sources only, never the working papers that produced it.
+- **Role:** Hostile second pass over a finished, claim-bearing deliverable — a report, spec, ADR, security finding, audit result, or migration plan — whose sole job is to try to refute each load-bearing claim from primary sources only, never the working papers that produced it.
 - **model class:** `opus`
 - **effort (default):** `high`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
@@ -470,7 +467,7 @@ tell and no dropped fact under `--against HEAD`?
   - "check this deliverable's citations against the sources they name"
   - "what single fact would break this conclusion"
   - "what should this document claim and does not"
-- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `devils-advocate`, with its class — the classes measure different things and are never merged):
+- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `devils-advocate`, with its class):
   - "try to refute every load-bearing claim in this finished document" — `contract`
   - "check this deliverable's citations against the sources they name" — `contract`
   - "what single fact would break this conclusion" — `contract`
@@ -500,20 +497,20 @@ tell and no dropped fact under `--against HEAD`?
   - "conduct the grow protocol across these repositories"
   - "adopt this project into the docs graph by subsystem boundary"
   - "run the from-scratch bootstrap for a brand new project"
-- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `growth-orchestrator`, with its class — the classes measure different things and are never merged):
+- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `growth-orchestrator`, with its class):
   - "grow the knowledge graph from this existing codebase" — `contract`
   - "adopt this project into the docs graph by subsystem boundary" — `contract`
   - "adopting this project into the docs graph by subsystem boundary" — `contract`
   - "run the from-scratch bootstrap for a brand new project" — `contract`
 
-**Charter.** The growth orchestrator is the specialist the generic orchestrator hands a *growth* to: it conducts the grow / adopt-existing / from-scratch flow end to end. It detects the project's shape, dispatches growth-scouts by real subsystem or repository boundary, sequences the authoring of a unified `docs/graph/` from their evidence ledgers, and gates on knowledge validation before delivery. It enforces the model policy (Sonnet scouts, Opus authors) and never gathers evidence or authors a node with its own hands. It coordinates at bounded depth 2.
+**Charter.** The growth orchestrator is the specialist the generic orchestrator hands a *growth* to: it conducts the grow / adopt-existing / from-scratch flow end to end. It detects the project's shape, dispatches growth-scouts by real subsystem or repository boundary, sequences the authoring of a unified `docs/graph/` from their evidence ledgers, and gates on knowledge validation before delivery. It enforces the model policy (investigation-class scouts, authoring-class authors) and only coordinates: scouts gather the evidence and authors write the nodes. It coordinates at bounded depth 2.
 
 ### 7.15 `growth-scout`
 
 *Source file: `agents/growth-scout.md`*
 
 - **id:** `agent.growth-scout`
-- **Role:** Senior growth scout. Reads the executable source at ONE subsystem or repository boundary and writes only its evidence ledger under .cypress/growth/, with claims tied to paths and symbols for the graph authors. Never authors the graph. Runs only inside grow, graft or adopt.
+- **Role:** Senior growth scout. Reads the executable source at one subsystem or repository boundary and writes only its evidence ledger under .cypress/growth/, with claims tied to paths and symbols for the graph authors. Never authors the graph. Runs only inside grow, graft or adopt.
 - **model class:** `sonnet`
 - **effort (default):** `medium`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
@@ -527,13 +524,13 @@ tell and no dropped fact under `--against HEAD`?
   - "scout this repository boundary and return claims with paths and symbols"
   - "inventory what this module actually does from its code not its docs"
   - "produce the evidence ledger for adopting this codebase"
-- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `growth-scout`, with its class — the classes measure different things and are never merged):
+- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `growth-scout`, with its class):
   - "gather executable evidence from this subsystem's source" — `contract`
   - "scout this repository boundary and return claims with paths and symbols" — `contract`
   - "produce the evidence ledger for adopting this codebase" — `contract`
   - "read the whole codebase and tell me what it does, change nothing" — `paraphrase`
 
-**Charter.** The growth scout is the read-only evidence-gatherer of the grow/adopt flow, the bridge between a project's executable source and the authors who build its graph. It is dispatched to exactly one subsystem or repository boundary, reads what is actually there, and returns claims anchored to a path and a symbol. It authors no graph nodes, specs, or ADRs and never trusts centralized prose over the code it describes. It runs on the sonnet model class as a read-only leaf.
+**Charter.** The growth scout is the read-only evidence-gatherer of the grow/adopt flow, the bridge between a project's executable source and the authors who build its graph. It is dispatched to exactly one subsystem or repository boundary, reads what is actually there, and returns claims anchored to a path and a symbol. It writes only its evidence ledger, and where prose and code disagree it records what the code does. It runs on the investigation class (`sonnet`) as a read-only leaf.
 
 ### 7.16 `multi-agent-architect`
 
@@ -556,14 +553,14 @@ tell and no dropped fact under `--against HEAD`?
   - "review the orchestration framework and delegation caps"
   - "make each step of the agent loop deterministic and bound the shared state"
   - "run the pre-ship checklist for the fleet"
-- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `multi-agent-architect`, with its class — the classes measure different things and are never merged):
+- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `multi-agent-architect`, with its class):
   - "design a multi-agent topology with bounded delegation" — `contract`
   - "diagnose runaway fan-out in the agent fleet" — `contract`
   - "define the agent role tool and termination contract" — `contract`
   - "our chain of language-model calls loops forever and burns money" — `paraphrase`
   - "check yesterday's merge for anything that breaks the delegation caps" — `adversarial`
 
-**Charter.** The multi-agent architect decides whether a problem needs more than one agent and, if so, how the agents are shaped, wired, bounded, observed, and paid for. It is accountable for one thing: that the system does useful work under a known termination budget, with failures that are visible and recoverable rather than silent. It does not reach for a multi-agent design when a single well-tooled agent or plain code would do with less to go wrong, and it reads the wiki before pinning any model version. It coordinates at bounded depth 2.
+**Charter.** The multi-agent architect decides whether a problem needs more than one agent and, if so, how the agents are shaped, wired, bounded, observed, and paid for. It is accountable for one thing: that the system does useful work under a known termination budget, with failures that are visible and recoverable rather than silent. It chooses a single well-tooled agent or plain code whenever that does the job with less to go wrong. When it runs as a CYPRESS worker, its own spawns follow the plant's model map; when it advises a client, the client's models come from the client project's provider wiki. It coordinates at bounded depth 2.
 
 ### 7.17 `seed-installer`
 
@@ -584,12 +581,12 @@ tell and no dropped fact under `--against HEAD`?
   - "place the kernel and adapters additively for this host tool"
   - "wire the claude code or prime agent or opencode or codex adapter into the project"
   - "set up the seed skeleton before growth"
-- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `seed-installer`, with its class — the classes measure different things and are never merged):
+- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `seed-installer`, with its class):
   - "install the expert seed system into this target project" — `contract`
   - "place the kernel and adapters additively for this host tool" — `contract`
   - "put this framework into the payments repo without wrecking what is there" — `paraphrase`
 
-**Charter.** The seed installer places CYPRESS into a target so a fresh agent session there loads the kernel, roster, protocols, and skills, and it does so additively, leaving every target-owned file exactly as found or safely backed up. An install that overwrites the project it serves is a failure no matter how clean the result. It selects only the host adapters actually used, backs up rather than clobbers, and does not build or run the target app or push Git state. It is a Task-less leaf.
+**Charter.** The seed installer places CYPRESS into a target so a fresh agent session there loads the kernel, roster, protocols, and skills, and it does so additively, leaving every target-owned file exactly as found or safely backed up. An install that overwrites the project it serves is a failure no matter how clean the result. It selects only the host adapters actually used and backs up rather than clobbers. It only places and verifies seed files; building or running the app and pushing Git state stay with the owner. It is a Task-less leaf.
 
 
 ### 7.18 `ui-ux-designer`
@@ -597,7 +594,7 @@ tell and no dropped fact under `--against HEAD`?
 *Source file: `agents/13-ui-ux-designer.md`*
 
 - **id:** `agent.ui-ux-designer`
-- **Role:** Senior interface & interaction designer. The definitive authority on information architecture, screen/flow design, interaction states, design tokens and the component system, visual hierarchy, and usability-heuristics audits — and on HOW the accessibility floor is met in the interface.
+- **Role:** Senior interface & interaction designer. The definitive authority on information architecture, screen/flow design, interaction states, design tokens and the component system, visual hierarchy, and usability-heuristics audits — and on how the accessibility floor is met in the interface.
 - **model class:** `opus`
 - **effort (default):** `medium`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
@@ -612,7 +609,7 @@ tell and no dropped fact under `--against HEAD`?
   - "audit the ui against usability heuristics"
   - "design the screen flows and visual hierarchy"
 
-- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `ui-ux-designer`, with its class — the classes measure different things and are never merged):
+- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `ui-ux-designer`, with its class):
   - "design the interface layout and its loading empty error states" — `contract`
   - "define the design tokens and component system for the app" — `contract`
   - "run a usability heuristics audit of the checkout ui" — `contract`
@@ -628,7 +625,7 @@ tell and no dropped fact under `--against HEAD`?
 - **Role:** Senior regulatory-compliance analyst. Owns reasoning about externally-authored rules (regulatory codes, standards catalogs, compliance requirements) against a curated, verified legal corpus as its only knowledge source — never live search, never model memory. Every claim is bound to a corpus entry; a corpus gap produces an explicit refusal, never a reconstructed citation.
 - **model class:** `opus`
 - **effort (default):** `high`
-- **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary. No coordinator's default `delegates_to` names it — see §6 — so it is only reached today via `architect.legal-checkpoint`'s conditional extension, or by a session dispatching it directly if the host projection registered it.
+- **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary. No coordinator's default `delegates_to` names it — see §6 — so it is only reached via `architect.legal-checkpoint`'s conditional extension, or by a session dispatching it directly if the host projection registered it.
 - **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`
 - **tier (graph load-tier):** 2
 - **owns (facts):** `legal.charter`, `legal.corpus-rule`, `legal.four-part-finding`, `legal.qualification-boundary`, `legal.citation-ledger`
@@ -646,7 +643,7 @@ tell and no dropped fact under `--against HEAD`?
   - "check every citation in this compliance document against the corpus"
   - "is this obligation actually in the corpus or do we need an ingest"
   - "which provision of the instrument applies, with its article and date"
-- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `legal`, with its class — the classes measure different things and are never merged):
+- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `legal`, with its class):
   - "which recorded external rules apply to this finding" — `contract`
   - "check every citation in this compliance document against the corpus" — `contract`
   - "is this obligation actually in the corpus or do we need an ingest" — `contract`
@@ -655,14 +652,14 @@ tell and no dropped fact under `--against HEAD`?
   - "prepare an impact assessment and map the compliance obligations" — `contract`
   - "can we keep European customer records on a server in Virginia" — `paraphrase`
 
-**Charter.** Ships only when the plant installs the legal corpus (`install.sh --legal-corpus yes`). Every legal claim in its output traces to a corpus entry (instrument, article, verbatim text, official URL, language/version, verification date, legal status) or is written as one of three explicit non-claim forms (`not recorded`, `unverified`, `stale`); it never cites from memory. Separates every finding into four parts — verified technical fact, cited obligation, assessment, qualification boundary — and appends a citation ledger that fail-closed-blocks the deliverable if any claim lacks a row. Distinct from `security`, which owns the technical posture; `legal` owns only the regulatory obligation and compliance posture that attaches to it. It is a Task-less leaf.
+**Charter.** Ships in every install; it works only when the plant has installed the legal corpus (`install.sh --legal-corpus yes`), and until then it declines the work. Every legal claim in its output traces to a corpus entry (instrument, article, verbatim text, official URL, language/version, verification date, legal status) or is written as one of three explicit non-claim forms (`not recorded`, `unverified`, `stale`). Separates every finding into four parts — verified technical fact, cited obligation, assessment, qualification boundary — and appends a citation ledger that fail-closed-blocks the deliverable if any claim lacks a row. Distinct from `security`, which owns the technical posture; `legal` owns only the regulatory obligation and compliance posture that attaches to it. It is a Task-less leaf.
 
 ### 7.20 `tool-smith`
 
 *Source file: `agents/tool-smith.md`*
 
 - **id:** `agent.tool-smith`
-- **Role:** Senior tooling engineer for the plant's own operations. Builds the durable, tested, documented tool when a project operation has been done by hand enough times to have earned one — a database reset, a client regeneration, a fixture seed, a release choreography, an export reconciliation. Owns the bar that separates a tool worth keeping from a script worth throwing away, and refuses work below it.
+- **Role:** Senior tooling engineer for the plant's own operations. Builds the durable, tested, documented tool when a project operation has been done by hand enough times to have earned one — a database reset, a client regeneration, a fixture seed, a release choreography, an export reconciliation. Owns the bar that separates a tool worth keeping from a script worth throwing away, and refuses work that is below it. Scope is the plant's operations only - it does not author seed, graph or harness machinery.
 - **model class:** `opus`
 - **effort (default):** `medium`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; an unfamiliar test harness is a handback finding, never a reason to ship untested
@@ -676,11 +673,11 @@ tell and no dropped fact under `--against HEAD`?
   - "this operation recurs, build reusable tooling for it"
   - "build a tested command for resetting the dev database"
   - "this runbook step should be a tool, not a paragraph of shell"
-- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `tool-smith`, with its class — the classes measure different things and are never merged):
+- **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `tool-smith`, with its class):
   - "make this throwaway script a durable tested tool" — `contract`
   - "this operation recurs, build reusable tooling for it" — `contract`
   - "build a tested command for resetting the dev database" — `contract`
 
-**Charter.** `skill.toolcraft` owns the *rule* — what counts as durable, what stays disposable, and the fail-closed requirement that a task is incomplete until a durable tool is cataloged or recorded absent. The tool-smith owns *doing it*. Three actors, three moments: the skill rules, the tool-smith builds mid-task when the recurrence is noticed, and `protocol.canonize` catalogs once at close-out. Before this agent existed the close-out catalogued "any durable tool it produced" and the producer was never named, so the operation got rewritten by hand each session — the failure `rule.toolcraft` exists to prevent, reproduced inside the doctrine that prevents it.
+**Charter.** `skill.toolcraft` owns the *rule* — what counts as durable, what stays disposable, and the fail-closed requirement that a task is incomplete until a durable tool is cataloged or recorded absent. The tool-smith owns *doing it*. Three actors, three moments: the skill rules, the tool-smith builds mid-task when the recurrence is noticed, and `protocol.canonize` catalogs once at close-out.
 
-Its scope is the **plant's operations**, never the machinery: it does not author linters, the router, graph tooling, or install and graft mechanics. The test is what the tool operates *on*, not who asked. That boundary is the whole defence against becoming a general "write me a script" route. Its bar has five clauses — recurrence observed (three instances, or named in the plan), a stable interface, a test that can pin it, no embedded secrets or production data, and plant scope — and **refusing is a normal outcome of the charter, not a failure of it**. It ends every turn with the handback payload: `tools_built` names each tool with the test that pins it, or the bar clause a refusal failed. It writes no catalog page under `docs/graph/tools/` and spawns no librarian; the close-out catalogs what it names.
+Its scope is only the **plant's operations**; linters, the router, graph tooling, and install and graft mechanics are seed machinery. The test is what the tool operates *on*, not who asked. That boundary is the whole defence against becoming a general "write me a script" route. Its bar has five clauses — recurrence observed (three instances, or named in the plan), a stable interface, a test that can pin it, no embedded secrets or production data, and plant scope — and declining work below the bar is a normal outcome of the charter. It ends every turn with the handback payload: `tools_built` names each tool with the test that pins it, or the bar clause a refusal failed. It writes no catalog page under `docs/graph/tools/` and spawns no librarian; the close-out catalogs what it names.

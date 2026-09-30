@@ -4,10 +4,10 @@ Authored by: docs-librarian, research-scout
 Lives at: docs/graph/libraries/<library-name>.md
 Used: on every new dependency or version refresh
 Filled by copying this template into the target path. Fill §0–§3 on
-creation; §4–§12 are demand-grown — add a section's body only when a
-real fact exists (a bare page with an honest pin is a valid start;
-never write "none" rows to look complete). Keep every section heading,
-and never renumber them; agents and tooling index into them.
+creation; §4–§12 grow on demand: give a section a body only when a real
+fact exists, and leave it empty until then (a bare page with an honest
+pin is a valid start). Keep every heading and its number: agents and
+tooling index into them.
 -->
 
 # Library: <name>
@@ -17,8 +17,8 @@ and never renumber them; agents and tooling index into them.
 Versions in play — one row per major this project actually runs. One row is
 the common case; a second row means two majors are live at once, and the
 graph then carries one version-qualified expertise child per row. This table
-is the only home of the pin: no node, best-practices page, or expertise node
-repeats a version.
+is the only home of the pin; nodes, best-practices pages and expertise nodes
+link here for a version.
 
 | Major | Exact version | Projects / paths | Notes |
 |---|---|---|---|
@@ -52,9 +52,9 @@ here and cross-link to the runbook.
 
 ## 3. Used API surface
 
-The narrow slice of the library's API that this project actually uses.
-**Not** a copy of upstream docs — just the names we touch and the
-shapes we depend on.
+The narrow slice of the library's API that this project actually uses:
+only the names we touch and the shapes we depend on. Upstream docs stay
+upstream.
 
 ```
 <module>.<name>(<args>) -> <return type>   # used in src/<path>
@@ -108,8 +108,9 @@ Relevant numbers we've measured for this library in this project
 
 ## 10. References
 
-Sources used to build this page. Cite — do not paraphrase upstream
-text verbatim.
+Sources used to build this page. Cite each source: quote briefly or
+summarize in our own words (`skill.library-wiki` §3), because a close
+paraphrase of upstream text is a licensing risk.
 
 - Official docs: <URL> — retrieved YYYY-MM-DD
 - Source: <URL> — retrieved YYYY-MM-DD

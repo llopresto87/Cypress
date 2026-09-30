@@ -21,7 +21,7 @@ load_when:
   - "set up the seed via the coding tool"
   - "dry-run the initialization"
 prevents: Every repository entering the same protocol regardless of whether it has any source to scout, so an empty one is sent to grow — which authors a graph FROM evidence — and the nine-phase bootstrap that fits it is never reached.
-est_tokens: 697
+est_tokens: 994
 command: true
 ---
 
@@ -34,7 +34,7 @@ for hosts that expose a command.
 ## The fork (`initialize.entry-fork`)
 
 **The test: does the target hold executable project evidence?** Source a scout
-could read and make claims about — not a README, not a licence, not an empty
+could read and make claims about: not a README, not a licence, not an empty
 `src/`. This is the same judgement `grow` Phase 1 already makes when it detects
 the target's shape; the fork adopts it rather than inventing a second one.
 
@@ -47,12 +47,11 @@ Entering `grow` on an empty repository is the failure this fork exists to stop:
 every scout returns an empty ledger, the completeness contract has nothing to be
 complete about, and the session reports a grown plant that holds no knowledge.
 
-**Hand off; do not resume.** Both arms are whole protocols that run to their own
-exit conditions. Neither returns here, and this node owns nothing that happens
-after the branch is taken.
+**Hand off.** Each arm is a whole protocol that runs to its own exit
+conditions; this node ONLY owns the branch.
 
-If the target is ambiguous — a scaffold with one placeholder module, a repo
-holding only config — the question is whether a scout could return claims tied
+If the target is ambiguous (a scaffold with one placeholder module, a repo
+holding only config), the question is whether a scout could return claims tied
 to paths and symbols. If it could, that is evidence and the arm is `grow`. If
 the only readable thing is scaffolding, there is nothing to make claims about
 and the arm is `from-scratch`. Say which way you read it and why before you
@@ -64,17 +63,21 @@ if you brought it the wrong target.
 `/initialize` is a convenience adapter for Claude Code, Prime Agent, Codex,
 opencode, Copilot, and similar coding tools. The primary tool-neutral entry
 point is `INSTALL_PROMPT.md`. When invoked, take the fork above, then enter the
-chosen protocol and execute it without weakening it — orchestration,
-model-class, routing and evidence policy are that protocol's to define and are
-never re-listed here.
+chosen protocol and execute it as written: orchestration, model-class, routing
+and evidence policy belong to that protocol.
 
-The adapter adds only these edges of its own, and they bind both arms:
-- the roster this adapter installs is not spawnable in the session that
-  installed it — preflight and remedy per `delegation.harness-registration`
-  (`docs/graph/method/delegation-bounds.md`) before any by-name dispatch;
-- initialization does not run application builds or application test suites;
-- initialization does not push, fetch, pull, switch, or commit Git;
-- it does not modify application code or fabricate normative records.
+The adapter adds ONLY these edges of its own:
+1. The roster this adapter installs is not spawnable in the session that
+   installed it: preflight and remedy per `delegation.harness-registration`
+   (`docs/graph/method/delegation-bounds.md`) before any by-name dispatch.
+2. The fork runs no application build and no application test suite.
+3. The fork never pushes, fetches, pulls, switches, or commits Git.
+4. The fork leaves application code as it found it and fabricates no
+   normative record.
+
+Edge 1 binds both arms. Edges 2-4 bind the fork and the `grow` arm, whose own
+Boundaries (`grow.write-boundaries`) hold them too. The `from-scratch` arm
+runs, tests and commits by its own phase table.
 
 Support `--dry-run` by performing only orchestration planning and read-only
 scouting, then reporting the fork's verdict and the proposed authoring briefs

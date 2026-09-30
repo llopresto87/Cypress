@@ -16,11 +16,11 @@ It is not for someone who does not use an AI coding [tool](DOCUMENTATION.md#term
 
 ## What installing does to your repository
 
-An install for Claude Code writes the files below into your project. If one of them is already there and differs, your version is kept beside it as a timestamped copy before the new one replaces it, and nothing is merged; the install stamp and the list beside it are the exceptions.
+An install for Claude Code writes the files below into your project. If one of them is already there and differs, your version is kept beside it as a timestamped copy before the new one replaces it, and nothing is merged.
 
 - the [kernel](DOCUMENTATION.md#term-kernel), a short instruction file the harness reads at the start of every session: `CLAUDE.md` at the project root, with `AGENTS.md` beside it as a symlink to it (a copy where symlinks are unavailable); on the other harnesses, or where your project already has a plain `AGENTS.md` and no `CLAUDE.md`, `AGENTS.md` holds the kernel and `CLAUDE.md` is the symlink;
 - the harness directory `.claude/`, holding the agent definitions, the [skills](DOCUMENTATION.md#term-skill), slash commands, hook scripts and settings;
-- `docs/graph/`, where the knowledge graph lives: the method's own notes, and a skeleton that the first session fills in from your code;
+- `docs/graph/`, where the knowledge graph lives: the method's own notes, and a skeleton that the first session fills in from your code, including `docs/graph/models.md`, where you name the model each host runs for each kind of work;
 - the install stamp `.cypress/seed.json`, which records the version and options of the install and keeps any key the installer does not own, and beside it `.cypress/recreated-nodes.txt`, which lists the method's notes this install had to put back because they were missing;
 - `EXPERT_SEED_INSTALL_PROMPT.md`, a local copy of the entry prompt for later sessions.
 
@@ -34,7 +34,7 @@ The install does not touch your application source, `.gitignore`, git history or
 
 | Figure | What it covers, and how it was obtained |
 |---|---|
-| 25 401 bytes | per session on Claude Code: the kernel plus the one-line description of every agent and skill, computed from the [seed](DOCUMENTATION.md#term-seed)'s files by this repository's test run; a lower bound, not a live reading |
+| 25 246 bytes | per session on Claude Code: the kernel plus the one-line description of every agent and skill, computed from the [seed](DOCUMENTATION.md#term-seed)'s files by this repository's test run; a lower bound, not a live reading |
 | 11% more tokens | per task, against a session with no method, on one small, well-specified task; measured once ([evidence record](docs/plans/grill-7.29.0-front-door/method-overhead-evidence.md)) |
 
 The always-loaded figure leaves out the notes a session opens on demand, each worker it starts, the text the hooks add to each prompt, and the one-time pass that builds the graph. The [host capability matrix](documentation/host-capability-matrix.md) gives the figure for each other harness. No money figure exists.
@@ -46,7 +46,7 @@ git clone https://github.com/llopresto87/Cypress
 ./Cypress/install.sh claude-code --project-dir /path/to/your/project
 ```
 
-The clone takes whatever the default branch holds when you run it, not a tagged release. In the second command, put your repository's path in place of the placeholder. That command only places files and does not edit your code; its last line says the files are placed and the project's graph is not built yet. Then open a session rooted at your project and paste [`INSTALL_PROMPT.md`](INSTALL_PROMPT.md) into it. That starts the one-time [growth](DOCUMENTATION.md#term-growth) pass, which reads your repository and builds its graph. None of these steps asks you to learn the project's vocabulary first.
+The clone takes whatever the default branch holds when you run it, not a tagged release. In the second command, put your repository's path in place of the placeholder. That command only places files; its last line says the files are placed and the project's graph is not built yet. Then open a session rooted at your project and paste [`INSTALL_PROMPT.md`](INSTALL_PROMPT.md) into it. That starts the one-time [growth](DOCUMENTATION.md#term-growth) pass, which reads your repository and builds its graph. None of these steps asks you to learn the project's vocabulary first.
 
 On a first install, a harness may need a fresh session before it can start the agents that were just placed; the [delegation notes](core/method/delegation-bounds.md) record when, under `delegation.harness-registration`.
 
@@ -62,7 +62,7 @@ Those workers are [specialists](DOCUMENTATION.md#term-specialist): roles such as
 
 Before reading code, a session is asked to open the graph's [router](DOCUMENTATION.md#term-router), an index that points to the few [nodes](DOCUMENTATION.md#term-node) a task needs, and to load only those. This is [progressive disclosure](DOCUMENTATION.md#term-progressive-disclosure) applied to your own project. Each fact is meant to live in one node, with every other node linking to it ([one home per fact](DOCUMENTATION.md#term-one-home-per-fact)).
 
-Once grown, your repository is a [plant](DOCUMENTATION.md#term-plant) of the [seed](DOCUMENTATION.md#term-seed), which is this repository. Lessons can travel between them later: [harvest](DOCUMENTATION.md#term-harvest) proposes a plant's lessons back to the seed, and [graft](DOCUMENTATION.md#term-graft) carries an updated seed onto a plant grown earlier. The method starts neither unless the [steward](DOCUMENTATION.md#term-steward) asks ([steward only](DOCUMENTATION.md#enf-steward-only)).
+Once grown, your repository is a [plant](DOCUMENTATION.md#term-plant) of the [seed](DOCUMENTATION.md#term-seed), which is this repository. Lessons can travel between them later: [harvest](DOCUMENTATION.md#term-harvest) proposes a plant's lessons back to the seed, and [graft](DOCUMENTATION.md#term-graft) carries an updated seed onto a plant grown earlier. Only the [steward](DOCUMENTATION.md#term-steward) starts either one; the method may propose it and then waits ([steward only](DOCUMENTATION.md#enf-steward-only)).
 
 ## Why it is built this way
 
