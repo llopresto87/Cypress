@@ -49,8 +49,9 @@ that four of the owner's rulings needed.
   ADR and spec bodies). Graph nodes and session records get none, because
   the graph is written for models; `prose-lint.py` stays the floor.
 - **Corrected facts**, among others: the orchestrator's cold-repo route goes
-  through `protocol.initialize`; `agent-corpus/legal.md` is a pointer to the
-  base-roster `agents/14-legal.md`, and its referrers name the agent; SSH
+  through `protocol.initialize`; the legal referrers name the base-roster
+  `agents/14-legal.md`, and `agent-corpus/legal.md`, a duplicate of its
+  mandate, is removed at the owner's go-ahead; SSH
   hardening allows root login by public key and refuses it by password
   (`PermitRootLogin prohibit-password`); the
   `deploy-fleet-on-remote-docker-host` skill-corpus page uses
@@ -84,8 +85,6 @@ as above (D7); retractions as above (D8); one model policy for Prime Agent,
 Claude Code and opencode, where Prime Agent and opencode may run any
 provider (D9); and `templates/knowledge-graph/_schema.md` keeps its
 frontmatter house style with two named exceptions (D10).
-`agent-corpus/legal.md` stays in place, as a pointer, because no named
-go-ahead to delete it was given.
 
 ### New checks
 

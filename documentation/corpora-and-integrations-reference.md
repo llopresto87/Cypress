@@ -809,8 +809,7 @@ plus agent-lint lint/eval, graph/agent-lint regressions, `seed-lint.py`, and
   `legal-corpus/index.md`, `legal-corpus/_schema.md`,
   `legal-corpus/case-law/index.md`, `tool-corpus/README.md`,
   `agent-corpus/README.md`, `skill-corpus/README.md`.
-- The legal agent: `agents/14-legal.md` (the base-roster agent) and
-  `agent-corpus/legal.md` (its pointer in the agent corpus).
+- The legal agent: `agents/14-legal.md` (the base-roster agent).
 - Harvest / withdraw contract: `protocols/harvest.md`, `HARVEST_PROMPT.md`.
 - Kernel economy / gates / conventions: `CLAUDE.md`.
 - Integrations: `integrations/{claude-code,prime-agent,opencode,codex,
