@@ -1,6 +1,6 @@
 ---
 status: back-written
-status_date: 2026-09-29
+status_date: 2026-10-01
 owner: data-ml
 status_evidence: tests/test_agent_lint.py (CorpusHonestyTests, CompoundFragmentTests), agents/_routes.golden.tsv, tests/run.sh
 ---
@@ -22,9 +22,9 @@ status_evidence: tests/test_agent_lint.py (CorpusHonestyTests, CompoundFragmentT
 
 - **Owner:** data-ml
 - **Date:** 2026-09-13
-- **Last reviewed:** 2026-09-13
-- **Related grill section:** docs/plans/grill-7.15.0-remediation.md §0.3, §5 slice 7
-- **Related ADRs:** adr-0001-mechanical-agent-router, adr-0003-enforcement-layering-honesty
+- **Last reviewed:** 2026-10-01
+- **Related grill section:** docs/plans/grill-7.15.0-remediation.md §0.3, §5 slice 7; docs/plans/grill-7.37.0-routing-context.md §9 (the node router, 7.37.0)
+- **Related ADRs:** adr-0001-mechanical-agent-router, adr-0003-enforcement-layering-honesty, adr-0026-node-router-ladder-and-gated-corpus (proposed)
 - **Supersedes:** —
 - **Superseded by:** —
 
@@ -42,6 +42,13 @@ select. 46 of those 55 rows were a verbatim vocabulary subset of their own
 target. The number was arithmetically true and measured mutual consistency under
 the name "accuracy".
 
+Since 7.37.0 it also covers the node router, `graph-lint.py --plan` (the
+`resolve()` function) and its `--eval`, which had no contract and no corpus.
+A measured node-route corpus showed it loading forbidden nodes on every
+adversarial row and abstaining on one of nine unknown-domain rows
+(ADR-0026). The change is to routing quality, measured per class; no token
+saving is claimed for it.
+
 ## 2. Scope
 
 - **In scope:**
@@ -49,9 +56,14 @@ the name "accuracy".
   - the corpus classes and what each is evidence for
   - confidence-band semantics and abstention
   - the honesty checks that keep the held-out set held out
+  - since 7.37.0, the node router: the order of its signal tiers, its cap,
+    its abstentions and their notices, the lexical guards it shares with the
+    agent router, and `graph-lint.py --eval`
 - **Out of scope:**
-  - the scoring algorithm's internals (ADR-0001 owns the design; changing it
-    requires re-measuring against this spec, not amending it)
+  - the scoring algorithms' internals (ADR-0001 and ADR-0026 own the designs;
+    changing them requires re-measuring against this spec, not amending it).
+    The node router's tier order is contracted because a task can observe it
+  - the format of the node router's output, which SPEC-0003 covers
   - whether a semantic adjudication layer should exist — a Track E question
     gated on measurement, not settled here
   - which specialist is correct for a given task, which is the corpus's content
@@ -65,10 +77,17 @@ never pretends. When the seed reports how well it routes, it reports one number
 per corpus class and says what each class is evidence for, so a reader cannot
 mistake self-consistency for skill.
 
+The node router answers a task with the nodes to read. When the task names a
+node id or a path, that wins over any word match. When nothing matches
+confidently, it loads nothing and its notice names the protocol entry nodes
+and asks for a sharper task line, instead of forcing root. A pasted brief is
+not routed: the notice asks for the task line.
+
 ## 4. Functional contracts
 
 ### Contract: EVERY_NUMBER_NAMES_ITS_CORPUS
-- **Given:** any figure `--eval` prints
+- **Given:** any figure either router's `--eval` prints (`agent-lint.py` or,
+  since 7.37.0, `graph-lint.py`)
 - **When:** it is reported
 - **Then:** the corpus class it was computed over is named on the same line
 - **And:** the classes are never averaged into a single headline figure
@@ -81,13 +100,32 @@ mistake self-consistency for skill.
 - **And:** a reader gets the accuracy and the reason to distrust it together
 
 ### Contract: HELD_OUT_STAYS_HELD_OUT
-- **Given:** a row in either held-out class (`paraphrase` or `adversarial`)
+- **Given:** a row in either held-out class (`paraphrase` or `adversarial`),
+  in either router's corpus; for the node corpus the target's vocabulary is
+  the `load_when` of its required ids
 - **When:** its vocabulary overlap with its target exceeds
   `PARAPHRASE_MAX_OVERLAP` (0.50; it was 0.80 until a reviewer smuggled four
   trigger copies past it)
 - **Then:** the gate FAILS, naming the row
 - **And:** the failure is fatal, not a warning — a diagnostic with no effect on
   exit status tells a reader something is wrong and the gate that all is fine
+- **Node corpus:** the overlap is the larger of the task side (the share of
+  the row's content words the target's `load_when` holds) and the trigger
+  side, read only over `load_when` pieces of `HELD_OUT_PIECE_WORDS` content
+  words or more (§6). A node's pieces are often one or two words
+  (`canonize`, `grill.md`); a row that names one whole is about that node,
+  not written from its triggers, and read at every length four of the fifteen
+  verbatim owner prompts measured 1.0. A piece of three words held verbatim
+  is a trigger copy, and the row is a contract row
+- **Node corpus ceiling:** amended 2026-10-01 (architect pass on increment
+  3). The node corpus's overlap is a different measure from the agent
+  corpus's, so its ceiling is the node router's own constant,
+  `GRAPH_PARAPHRASE_MAX_OVERLAP` in `graph-lint.py`, not a second copy of
+  `PARAPHRASE_MAX_OVERLAP`. Both it and `HELD_OUT_PIECE_WORDS` are ratchets
+  registered `max` in `tests/ratchets.json`, because raising either one
+  loosens this rule. Before the amendment `graph-lint.py` defined
+  `PARAPHRASE_MAX_OVERLAP` with nothing binding it to agent-lint's value, and a
+  raise to 0.9 passed every gate
 
 ### Contract: HELD_OUT_SET_MAY_NOT_BE_EMPTIED
 - **Given:** the paraphrase class
@@ -140,7 +178,8 @@ mistake self-consistency for skill.
 
 ### Contract: ABSTENTION_IS_A_CORRECT_OUTCOME
 - **Given:** a paraphrase row the router has no signal for
-- **When:** it returns LOW or NONE
+- **When:** the agent router returns LOW or NONE, or the node router loads
+  nothing with a `no_signal` notice
 - **Then:** the gate does not fail *on that row*
 - **And:** the reverse rule would push the fix toward widening triggers until
   something matches, which is how a router starts answering confidently about
@@ -224,7 +263,8 @@ mistake self-consistency for skill.
 - **Given:** a term that appears only as a fragment of a hyphenated compound on
   either side of the comparison
 - **When:** it is matched
-- **Then:** it matches at the near-match tier, never the standalone tier
+- **Then:** it matches at the near-match tier, never the standalone tier, in
+  both routers (the node router since 7.37.0)
 - **And:** `chain` taken from `supply-chain` cannot carry a confident route for
   a task about a chain of calls
 
@@ -232,7 +272,8 @@ mistake self-consistency for skill.
 - **Given:** a term matching only one agent
 - **When:** the match is a compound fragment, a prefix fold, or a
   description-only graze
-- **Then:** it does not receive the full rare-term weight
+- **Then:** it does not receive the full rare-term weight, in both routers
+  (the node router since 7.37.0)
 - **And:** "distinctive" means a confident match is rare, not that a rare word
   brushed something
 
@@ -254,11 +295,194 @@ mistake self-consistency for skill.
 - **And:** `we` was live in three shipped triggers and `our` earned the
   rare-term bonus, routing a task to `security` on the strength of the word
   "our"
+- **Note:** since 7.37.0 a test scores a pronoun against both routers (§11
+  recorded none before)
 
 ### Contract: VACUOUS_CORPUS_IS_REFUSED
 - **Given:** a corpus in which every row expects abstention
-- **When:** `--eval` runs
+- **When:** either router's `--eval` runs
 - **Then:** it fails closed rather than scoring 1.0 over zero routes
+- **And:** the node corpus also refuses, naming the row, an adversarial row
+  whose `forbidden_ids` is `-` (it baits nothing, yet counts toward
+  `GRAPH_ADVERSARIAL_MIN_ROWS`) and an unknown-domain row that lists required
+  ids. The refusal names the offending row by its task text. Added
+  2026-10-01 (architect pass on increment 3, reviewer note N7)
+
+### Node router (`graph-lint.py`), since 7.37.0
+
+These run the real `graph-lint.py --plan-json=<task>` over a fixture graph
+built for the test, and read the document's `load`, `how` and `notices`
+(SPEC-0003 §6). "Loads N" means N is in `load`; the `requires:` closure of a
+loaded node always loads with it. Tiers, phrases and constants are §6's.
+
+### Contract: GRAPH_ROUTE_NAMED_ID_LOADS_IT
+- **Given:** a task that names an exact dotted node id (`kind.slug`) among
+  other words, one of which alone would seed a different node lexically
+- **When:** the router runs
+- **Then:** the named node loads with `how.kind` `named_id`, and the node the
+  other word would seed does not load
+- **And:** a task word equal to an id with no `.` is not a tier-1 hit. The
+  only such id is `root`, and it is an English word: `root cause of the
+  crash` and `a pipe of edges from root to leaf` loaded root alone as
+  `named_id` and nothing else. Root is named by its path (tier 2); the word
+  `root` is an ordinary lexical term
+- **Note:** amended 2026-10-01 (architect pass on increment 3, reviewer
+  finding F2). Sign-offs not re-taken
+
+### Contract: GRAPH_ROUTE_NAMED_PATH_LOADS_ITS_OWNER
+- **Given:** in turn a task naming: a node's file path; a path under a node's
+  `repo:` prefix that is not a repository root; a path an expertise node's
+  file pattern matches; a basename that one node file alone carries
+- **When:** the router runs
+- **Then:** the owning node loads with `how.kind` `named_path` (or
+  `inferred` for the expertise pattern) and `how.detail` the path as named
+- **And:** a basename two node files share loads neither by this tier, and a
+  `repo:` value that names a repository root claims no path
+
+### Contract: GRAPH_ROUTE_PHRASE_LOADS_ITS_NODE
+- **Given:** a task holding, contiguous, the content tokens of one trigger
+  phrase (§6) of node N, of at least two content tokens, and naming no id or
+  path
+- **When:** the router runs
+- **Then:** N loads with `how.kind` `phrase` and `how.detail` that phrase
+- **And:** the same tokens in another order, or with a content word between
+  them, do not load N by this tier
+
+### Contract: STRONG_TIER_OVER_CAP_FALLS_THROUGH
+- **Given:** a task that names more than `STRONG_TIER_CAP` node ids
+- **When:** the router runs
+- **Then:** no node loads with `how.kind` `named_id`; the result is the next
+  tier's, as for the same task with the ids removed from the tier count
+- **And:** the cap covers tiers 1 and 2 only. Tier 3 is not capped: every
+  phrase hit loads (`PHRASE_TIER_FLOODS_LOAD`, §7). ADR-0026 says the same since
+  its amendment of 2026-10-01
+
+### Contract: PROMOTION_NEEDS_A_CONTIGUOUS_PHRASE
+- **Given:** an expertise node whose trigger is a two-word phrase, and in
+  turn a task holding both words apart, and a task holding the phrase
+- **When:** the router runs
+- **Then:** the first task produces no `phrase` entry for the node, and the
+  second loads it with `how.kind` `phrase` (tier 3). The first task may still
+  load the node as `scored` when its words are two distinct confident terms
+  (tier 4, `ONE_TERM_CANNOT_SEED_A_NODE`); held apart they are no phrase
+- **And:** a trigger piece that reduces to one content token (`json`,
+  `the CI workflow` -> `workflow`) seeds its node by no tier, even on a whole
+  task word equal to it. It serves composition descent only
+  (`COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE`). Tier 4 has no promotion: an
+  expertise node enters from tier 4 only as a scored entry, on two distinct
+  confident terms (`ONE_TERM_CANNOT_SEED_A_NODE`)
+- **Note:** amended 2026-10-01 (architect pass on increment 3). The first
+  text kept one-token promotion beside the lexical tier. Measured over the
+  round's 74-row plant corpus, one-token promotion produced 7 of the 8
+  remaining adversarial forbidden hits and none of the required hits of any
+  class; with it removed, required recall is unchanged in every class (20/23,
+  14/38, 7/13), forbidden hits fall from 9 to 2 and the adversarial mean
+  loaded `est_tokens` from 15,979 to 11,742 (`--plan-json` per row, the
+  round's scorer). No row of either corpus requires an expertise node, so the
+  recall cost for a task that names only a technology word is not measured.
+  A multi-word expertise phrase is a tier-3 hit, so promotion was reachable
+  only through one-token pieces. Sign-offs not re-taken
+
+### Contract: COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE
+- **Given:** a loaded expertise parent that composes child C, and in turn a
+  task holding one word of C's trigger phrase and a task holding the phrase
+- **When:** the router runs
+- **Then:** C does not load for the first task and loads for the second, with
+  `how.kind` `composed`
+- **And:** descent runs inside the closure of an entry of any tier, from a
+  parent that is itself an entry or that loaded through another node's
+  `requires:`
+- **And:** a child trigger piece that reduces to one content token loads C on
+  a whole task word equal to it. Descent chooses among the children of a
+  parent already loaded, so one word is enough there and nowhere else
+  (`PROMOTION_NEEDS_A_CONTIGUOUS_PHRASE`)
+- **And:** a node that a loaded node `requires:` is reported `requires`, never
+  `composed`, whichever edge the traversal meets first (§6 "How precedence")
+- **Note:** the three `And` clauses were added 2026-10-01 (architect pass on
+  increment 3). They carry over what SPEC-0005's retired
+  `PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE` held. Sign-offs not re-taken
+
+### Contract: PUNCTUATION_DOES_NOT_CHANGE_A_TERM
+- **Given:** a task word followed by `.`, `,`, `:`, `;`, `?`, `!` or `)`
+- **When:** the router runs
+- **Then:** the result equals the result for the same task without the mark
+
+### Contract: IDS_AND_PATHS_ARE_NOT_LEXICAL_TERMS
+- **Given:** a task whose only words that match any node are a kind prefix
+  (`domain`, `subsystem`, `protocol`, `skill`, `agent`, `expertise`,
+  `method`, `crosscut`) and the segments of a path no node owns
+- **When:** the router runs
+- **Then:** nothing loads, and the notice is `no_signal`
+- **And:** this holds when a node's `load_when` writes a kind word itself
+  (`which protocol applies`). A kind prefix is not a term on the task side
+  either: `the protocol and skill for an agent hook` loaded
+  `domain.frontmatter` by a score built on those words
+- **Note:** the `And` clause was added 2026-10-01 (architect pass on increment
+  3, reviewer finding F1). The code removed kind words from node names only.
+  Removing them from task terms too left required recall unchanged in every
+  class of the 74-row plant corpus and of the seed corpus. Sign-offs not
+  re-taken
+
+### Contract: ONE_TERM_CANNOT_SEED_A_NODE
+- **Given:** a task whose lexical match with node N is one distinct confident
+  term, however rare
+- **When:** the router runs
+- **Then:** N does not load by the lexical tier
+- **And:** with a second distinct confident term of N's added, N loads
+
+### Contract: NO_SIGNAL_LOADS_NOTHING
+- **Given:** a task no tier matches (an unknown-domain task)
+- **When:** the router runs
+- **Then:** `load` is empty, root does not load, and `notices` holds exactly
+  one `no_signal` notice whose text is §6's `NO_SIGNAL_TEXT` followed by the
+  ids of the graph's `kind: protocol` nodes, sorted
+- **And:** the notice does not name `docs/graph/index.md`
+
+### Contract: LONG_TASK_ABSTAINS_WITH_NOTICE
+- **Given:** a task with more than `LONG_TASK_TERMS` distinct content terms,
+  one of which names a node id
+- **When:** the router runs
+- **Then:** `load` is empty, and `notices` holds exactly one `long_task`
+  notice whose text is §6's `LONG_TASK_TEXT` with the term count
+- **And:** a task of exactly `LONG_TASK_TERMS` distinct content terms is
+  routed
+
+### Contract: GRAPH_EVAL_GATES_PER_CLASS
+- **Given:** a node-route corpus in the §6 shape, and in turn the seed's
+  corpus at `tests/graph-routes.golden.tsv` and a copy with one forbidden id
+  added to a row the router loads
+- **When:** `graph-lint.py --eval <tsv>` runs
+- **Then:** for each class it prints, on lines naming the class, required
+  recall, rows fully covered, mean loaded nodes, the irrelevant share of
+  loaded `est_tokens`, forbidden hits, and correct abstentions; the seed's
+  corpus exits 0, and the copy exits 1 naming the breached ratchet
+- **And:** a class figure is never averaged with another class
+
+### Contract: GRAPH_RATCHETS_ARE_KEYED_TO_THEIR_GRAPH
+- **Given:** the `GRAPH_*` ratchets, measured on the seed's corpus over a fresh
+  seed install, whose every node carries `origin: seed` (named by
+  `MEASURED_GRAPH_ORIGIN` in `graph-lint.py`)
+- **When:** `graph-lint.py --eval <tsv>` runs over a graph holding any node
+  whose `origin` is not `seed`, a missing `origin` included (a grown plant)
+- **Then:** every class figure prints, one line says the ratchets are reported
+  and not gated on this graph, and no `GRAPH_*` ratchet changes the exit
+  status
+- **And:** the corpus-honesty checks still gate on every graph: a malformed
+  or unknown-id row, a vacuous corpus, and a held-out row over
+  `GRAPH_PARAPHRASE_MAX_OVERLAP`
+- **And:** on the measured graph every ratchet gates, as
+  `GRAPH_EVAL_GATES_PER_CLASS` states, and the ratchets' recorded values are
+  unchanged by this scoping
+- **And:** the reason is the one `AN_ABSOLUTE_FLOOR_IS_KEYED_TO_ITS_ROSTER`
+  gives for the agent router. `graph-lint.py` ships into every plant
+  (ADR-0026), so a floor of 8 correct unknown-domain abstentions, row floors of
+  14 and 8, and share ceilings measured over the 75-node seed install would
+  gate a plant's own corpus over its own graph, which they were never measured
+  on, and a plant with fewer rows could never pass. The line that says so
+  carries no digit, so it names no figure without a class
+- **Note:** added 2026-10-01 (architect pass on increment 3, reviewer
+  finding F4). The same fail-open trade as the agent router: a pre-growth
+  plant routing the seed graph alone takes the measured key
 
 ## 5. Non-functional requirements
 
@@ -282,6 +506,87 @@ adversarial:    "resistance to bait phrasings"
 unknown-domain: "the commission path is reachable"
 ```
 
+```yaml
+# tests/graph-routes.golden.tsv — the node-route corpus (7.37.0); plants keep their own beside docs/graph/
+row:                              # tab-separated; `#` lines are comments
+  task:          { type: string }   # a literal task, or "@file:<name>" beside the TSV
+  required_ids:  { type: string }   # comma list of node ids that must load; "-" = none (an abstention is correct)
+  forbidden_ids: { type: string }   # comma list of node ids that must not load; "-" = none
+  class:         { enum: [contract, paraphrase, adversarial, unknown-domain] }
+```
+
+The seed's corpus holds the rows of the round's 74-row measurement corpus
+whose ids are all seed-owned, plus its unknown-domain rows (32 rows), and the
+adversarial bait rows the tester adds, each naming the mechanism it baits.
+Paraphrase rows are copied verbatim with their authoring date and never
+tuned.
+
+Node-router tiers, in order; the first tier with a hit decides the seeds:
+
+| Tier | Hit | `how.kind` |
+|---|---|---|
+| 1 | an exact dotted node id as a task word (`root`, the one id with no `.`, is named by its path) | `named_id` |
+| 2 | a node's file path; the longest `repo:` prefix of a path, ignoring a `repo:` value that names a repository root; an expertise file pattern; a basename one node file alone carries | `named_path`, `inferred` |
+| 3 | a trigger phrase held contiguous | `phrase` |
+| 4 | the lexical score, with at least two distinct confident terms per node | `scored` |
+
+`requires` and `composed` are closure kinds: they are reached from an entry of
+any tier, never seeds. A tier-1 or tier-2 hit on more than `STRONG_TIER_CAP`
+nodes is no hit; tier 3 is not capped. A
+trigger phrase is one comma-separated piece of a `load_when` entry (or of an
+expertise trigger); its content tokens are its words after the router's
+stopword removal and inflection reduction, and a task holds it when those
+tokens occur in the task's content-token sequence consecutively and in order.
+A piece that reduces to one content token is not a phrase for tiers 3 and 4;
+it is read only by composition descent. A kind prefix, a dotted node id, and a
+path with its segments are not lexical terms of the task, and a node's name
+drops its kind prefix. A path is a word holding `/` or `*`, or one that looks like a file name
+(`main.tf`); `node.js` and `asp.net` therefore count as paths, never as
+lexical terms. Trailing punctuation is removed before a term is compared.
+
+How precedence: an entry keeps its tier's kind. The closure follows every
+`requires:` edge it has met before it descends to a composed child, so a node
+that the entries' `requires:` closure reaches is `requires`, never `composed`,
+whichever edge the walk meets first. A node first reached by descent is
+`composed`, also when a child loaded below it requires it back (a composed
+child usually requires its composing parent).
+
+Constants, in `graph-lint.py`, one home each:
+
+| Name | Value |
+|---|---|
+| `STRONG_TIER_CAP` | 3 |
+| `LEXICAL_MIN_TERMS` | 2, the distinct confident terms a tier-4 entry needs |
+| `LONG_TASK_TERMS` | 100, distinct content words; over every prompt a person typed in the round (the owner-framing row: 66) and an order of magnitude under the pasted brief (1,332). No row of the seed's corpus has more than 20 |
+| `NO_SIGNAL_TEXT` | `no node matches this task; route a sharper task line, or enter a protocol:` |
+| `LONG_TASK_TEXT` | `task too long to route (<n> terms); run --plan on the task line` |
+| `HELD_OUT_PIECE_WORDS` | 3, the shortest `load_when` piece the trigger side of the node corpus's overlap reads; a ratchet, `max` |
+| `GRAPH_PARAPHRASE_MAX_OVERLAP` | 0.50, the node corpus's held-out ceiling (`HELD_OUT_STAYS_HELD_OUT`); a ratchet, `max` |
+| `MEASURED_GRAPH_ORIGIN` | `seed`, the `origin` every node of the graph the `GRAPH_*` ratchets were measured on carries (`GRAPH_RATCHETS_ARE_KEYED_TO_THEIR_GRAPH`) |
+
+The `no_signal` notice text is `NO_SIGNAL_TEXT`, one space, then the
+protocol ids sorted and separated by `, `.
+
+The `no_signal` line on the seed's graph is about 410 characters (17 protocol
+ids), about 155 tokens at the measured 2.65 characters per token; it replaces
+an unknown-domain route of about 1,360 tokens, and is not a pointer to
+`index.md` (about 5,500 tokens).
+
+Ratchets in `tests/ratchets.json`, set at the values measured after the
+change and tighten-only: `GRAPH_CONTRACT_RECALL_MIN`,
+`GRAPH_ADVERSARIAL_FORBIDDEN_MAX`, `GRAPH_UNKNOWN_ABSTAIN_MIN`,
+`GRAPH_IRRELEVANT_SHARE_MAX` (a map by class), `GRAPH_PARAPHRASE_MIN_ROWS`,
+`GRAPH_ADVERSARIAL_MIN_ROWS`; they gate only on the measured graph
+(`GRAPH_RATCHETS_ARE_KEYED_TO_THEIR_GRAPH`). `GRAPH_PARAPHRASE_MAX_OVERLAP` and
+`HELD_OUT_PIECE_WORDS` are registered beside them and gate on every graph. On
+any other graph `--eval` prints one line, after the class lines, that holds no
+digit and says the ratchets are `not gated`; it may name the ratchets the
+figures pass, by name only. The map has no `unknown-domain` key: every node
+such a row loads is irrelevant, so its share is 0 or 1 and adds nothing to
+`GRAPH_UNKNOWN_ABSTAIN_MIN`. The values live in `graph-lint.py` and
+`tests/ratchets.json`; the gate step is `tests/graph-route-eval.sh`, which runs
+`--eval` in a fresh install.
+
 ## 7. Failure modes
 
 ### Failure: MISLABELLED_PARAPHRASE
@@ -296,6 +601,32 @@ unknown-domain: "the commission path is reachable"
 - **Side effects:** none
 - **Recovery:** fix the mechanism that produced the confidence; do not edit the
   row, and do not widen the band threshold to hide it
+
+### Failure: GRAPH_ROUTE_RATCHET_BREACHED
+- **Contracts:** GRAPH_EVAL_GATES_PER_CLASS, GRAPH_RATCHETS_ARE_KEYED_TO_THEIR_GRAPH
+- **Trigger:** a node-router change or a `load_when` edit moves a class figure
+  past its ratchet, on the measured graph
+- **Response:** `graph-lint.py --eval` exits 1 naming the class, the figure
+  and the ratchet; on any other graph the figure prints and the exit status
+  does not change
+- **Side effects:** none
+- **Recovery:** fix the mechanism or the node; do not edit a held-out row, and
+  loosen a ratchet only on purpose, in `tests/ratchets.json`
+
+### Failure: PHRASE_TIER_FLOODS_LOAD
+- **Contracts:** GRAPH_ROUTE_PHRASE_LOADS_ITS_NODE
+- **Trigger:** a task of up to `LONG_TASK_TERMS` words holds the trigger
+  phrases of many nodes
+- **Response:** every tier-3 hit loads, uncapped. This carries forward the
+  owner's ruling for phrase hits (SPEC-0005, ruling pass 0, "every hit loads,
+  uncapped"), which retired with `PROMOTION_FLOODS_LOAD`. Measured
+  2026-10-01: no routed row of the 74-row plant corpus or the seed corpus held
+  the phrases of more than two nodes, so a cap here would change no measured
+  route
+- **Side effects:** more tokens on a compound task
+- **Recovery:** sharpen the trigger (`skill.knowledge-graph` rule 5); the
+  owner may cap tier 3 under `STRONG_TIER_CAP` with a new amendment
+- **Note:** added 2026-10-01 (architect pass on increment 3)
 
 ## 8. Examples
 
@@ -340,6 +671,22 @@ ROUTE (ranked, confidence: HIGH)     # the compound itself still routes
       A_WORD_EVERY_TASK_WRITES_CANNOT_SELECT_AN_AGENT
 - [x] AC-7: an absolute limit gates only where it was measured — maps to
       AN_ABSOLUTE_FLOOR_IS_KEYED_TO_ITS_ROSTER
+- [ ] AC-8 (7.37.0): a task that names a node, by id, path or a trigger
+      phrase, gets that node first, and a strong signal that names too much
+      falls through — maps to GRAPH_ROUTE_NAMED_ID_LOADS_IT,
+      GRAPH_ROUTE_NAMED_PATH_LOADS_ITS_OWNER, GRAPH_ROUTE_PHRASE_LOADS_ITS_NODE,
+      STRONG_TIER_OVER_CAP_FALLS_THROUGH
+- [ ] AC-9 (7.37.0): a scattered word cannot carry a node — maps to
+      PROMOTION_NEEDS_A_CONTIGUOUS_PHRASE, COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE,
+      PUNCTUATION_DOES_NOT_CHANGE_A_TERM, IDS_AND_PATHS_ARE_NOT_LEXICAL_TERMS,
+      ONE_TERM_CANNOT_SEED_A_NODE, RARITY_AMPLIFIES_ONLY_A_CONFIDENT_MATCH,
+      COMPOUND_FRAGMENT_IS_WEAK_EVIDENCE,
+      A_WORD_EVERY_TASK_WRITES_CANNOT_SELECT_AN_AGENT
+- [ ] AC-10 (7.37.0): the node router abstains with a cheap notice instead of
+      guessing, and is gated per class — maps to NO_SIGNAL_LOADS_NOTHING,
+      LONG_TASK_ABSTAINS_WITH_NOTICE, GRAPH_EVAL_GATES_PER_CLASS,
+      EVERY_NUMBER_NAMES_ITS_CORPUS, HELD_OUT_STAYS_HELD_OUT,
+      VACUOUS_CORPUS_IS_REFUSED, ABSTENTION_IS_A_CORRECT_OUTCOME
 
 ## 10. Test mapping
 
@@ -363,7 +710,7 @@ ROUTE (ranked, confidence: HIGH)     # the compound itself still routes
 | AN_INFLECTION_MATCHES_THE_WORD_IT_INFLECTS | test_inflection_does_not_change_the_top_pick | tests/test_router_reach.py | integration | green |
 | AN_INFLECTION_MATCHES_THE_WORD_IT_INFLECTS | test_every_roster_word_is_reachable_by_its_plural | tests/test_router_reach.py | integration | green |
 | AN_INFLECTION_MATCHES_THE_WORD_IT_INFLECTS | test_every_load_when_word_is_reachable_by_its_plural | tests/test_router_reach.py | integration | green |
-| A_WORD_EVERY_TASK_WRITES_CANNOT_SELECT_AN_AGENT | (no test — see §11) | — | — | pending |
+| A_WORD_EVERY_TASK_WRITES_CANNOT_SELECT_AN_AGENT | test_a_word_every_task_writes_cannot_select_an_agent (agent router: `agent-lint.py --route` on pronouns alone) | tests/test_graph_lint.py | integration; a characterization, green on arrival | green |
 | UNKNOWN_DOMAIN_MUST_ABSTAIN | test_the_shipped_unknown_domain_rows_all_abstain | tests/test_agent_lint.py | integration | green |
 | UNKNOWN_DOMAIN_MUST_ABSTAIN | test_a_leaking_unknown_domain_row_fails_the_gate | tests/test_agent_lint.py | integration | green |
 | COMPOUND_FRAGMENT_IS_WEAK_EVIDENCE | test_a_compound_fragment_does_not_earn_a_confident_route | tests/test_agent_lint.py | integration | green |
@@ -371,6 +718,32 @@ ROUTE (ranked, confidence: HIGH)     # the compound itself still routes
 | VACUOUS_CORPUS_IS_REFUSED | test_a_corpus_that_asks_for_no_routes_is_vacuous | tests/test_agent_lint.py | integration | green |
 | AN_ABSOLUTE_FLOOR_IS_KEYED_TO_ITS_ROSTER | test_a_grown_roster_reports_the_paraphrase_floor_instead_of_gating_on_it | tests/test_agent_lint.py | integration | green |
 | AN_ABSOLUTE_FLOOR_IS_KEYED_TO_ITS_ROSTER | test_the_measured_roster_still_gates_on_the_paraphrase_floor | tests/test_agent_lint.py | integration | green |
+| GRAPH_ROUTE_NAMED_ID_LOADS_IT | test_graph_route_named_id_loads_it | tests/test_graph_lint.py | integration; gains the bare-`root` row (amended 2026-10-01) | green |
+| GRAPH_ROUTE_NAMED_PATH_LOADS_ITS_OWNER | test_graph_route_named_path_loads_its_owner | tests/test_graph_lint.py | integration | green |
+| GRAPH_ROUTE_PHRASE_LOADS_ITS_NODE | test_graph_route_phrase_loads_its_node | tests/test_graph_lint.py | integration; gains the rows moved from SPEC-0005's retired promotion tests: a piece holding a slash and a space, stopwords and short words dropped, the first held piece in `load_when` order as `how.detail` | green |
+| GRAPH_ROUTE_PHRASE_LOADS_ITS_NODE | test_plan_phrase_entry_brings_required_parent | tests/test_graph_lint.py | integration; rewritten from SPEC-0005 `test_plan_promoted_node_brings_required_parent` | green |
+| STRONG_TIER_OVER_CAP_FALLS_THROUGH | test_strong_tier_over_cap_falls_through | tests/test_graph_lint.py | integration; gains a row where four nodes' phrases load by tier 3, uncapped (amended 2026-10-01) | green |
+| PROMOTION_NEEDS_A_CONTIGUOUS_PHRASE | test_promotion_needs_a_contiguous_phrase | tests/test_graph_lint.py | integration; the one-token row now asserts the node does not load (amended 2026-10-01) | green |
+| COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE | test_composed_child_needs_its_own_phrase | tests/test_graph_lint.py | integration; gains a row whose parent enters by tier 3 (from SPEC-0005 `test_plan_promoted_node_descends_to_named_child`) and a one-token child row | green |
+| COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE | test_plan_descends_on_specific_term | tests/test_graph_lint.py | unit, DescentTests; rewritten from SPEC-0005: each level descends on its child's whole phrase, never on a prefix fold, a major on its whole TFM token as `composed` | green |
+| COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE | test_plan_descends_from_required_node | tests/test_graph_lint.py | unit, DescentTests; the task holds the child's phrase | green |
+| COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE | test_plan_requires_outranks_composed | tests/test_graph_lint.py | unit; rewritten from SPEC-0005 `test_plan_seed_closure_is_accounted_before_promotion` (§6 how precedence) | green |
+| PUNCTUATION_DOES_NOT_CHANGE_A_TERM | test_punctuation_does_not_change_a_term | tests/test_graph_lint.py | integration | green |
+| IDS_AND_PATHS_ARE_NOT_LEXICAL_TERMS | test_ids_and_paths_are_not_lexical_terms | tests/test_graph_lint.py | integration; gains a fixture whose `load_when` writes a kind word (amended 2026-10-01) | green |
+| ONE_TERM_CANNOT_SEED_A_NODE | test_one_term_cannot_seed_a_node | tests/test_graph_lint.py | integration | green |
+| NO_SIGNAL_LOADS_NOTHING | test_no_signal_loads_nothing | tests/test_graph_lint.py | integration | green |
+| LONG_TASK_ABSTAINS_WITH_NOTICE | test_long_task_abstains_with_notice | tests/test_graph_lint.py | integration | green |
+| GRAPH_EVAL_GATES_PER_CLASS | test_graph_eval_gates_per_class | tests/test_graph_lint.py | integration | green |
+| GRAPH_ROUTE_RATCHET_BREACHED | test_graph_eval_gates_per_class (measured graph: exit 1 naming the ratchet, green) and test_graph_ratchets_are_keyed_to_their_graph (any other graph: figures print, exit unchanged, green); both docstrings name this slug | tests/test_graph_lint.py | integration | green |
+| GRAPH_RATCHETS_ARE_KEYED_TO_THEIR_GRAPH | test_graph_ratchets_are_keyed_to_their_graph | tests/test_graph_lint.py | integration; a graph holding one node of another origin breaches a ratchet, prints, exits 0; the seed graph still exits 1 | green |
+| PHRASE_TIER_FLOODS_LOAD | test_strong_tier_over_cap_falls_through, its uncapped tier-3 row | tests/test_graph_lint.py | integration | green |
+| EVERY_NUMBER_NAMES_ITS_CORPUS | test_graph_eval_every_number_names_its_corpus (node router) | tests/test_graph_lint.py | integration | green |
+| HELD_OUT_STAYS_HELD_OUT | test_graph_held_out_stays_held_out (node router) | tests/test_graph_lint.py | integration | green |
+| VACUOUS_CORPUS_IS_REFUSED | test_graph_vacuous_corpus_is_refused (node router) | tests/test_graph_lint.py | integration; gains the bait-free adversarial row and the unknown-domain row with required ids (amended 2026-10-01) | green |
+| ABSTENTION_IS_A_CORRECT_OUTCOME | test_graph_abstention_is_a_correct_outcome (node router) | tests/test_graph_lint.py | integration | green |
+| RARITY_AMPLIFIES_ONLY_A_CONFIDENT_MATCH | test_rarity_amplifies_only_a_confident_match (node router) | tests/test_graph_lint.py | integration | green |
+| COMPOUND_FRAGMENT_IS_WEAK_EVIDENCE | test_compound_fragment_is_weak_evidence (node router) | tests/test_graph_lint.py | integration | green |
+| A_WORD_EVERY_TASK_WRITES_CANNOT_SELECT_AN_AGENT | test_a_word_every_task_writes_cannot_select_an_agent (node router) | tests/test_graph_lint.py | integration; a characterization of both routers, green on arrival (the shared stopword block already held it) | green |
 
 ## 11. Open questions
 
@@ -459,4 +832,76 @@ moves with each entry here.
   `test_a_padded_trigger_copy_cannot_pass_as_held_out`, the table that takes
   in `test_a_row_expecting_low_may_not_wear_another_class`. No router behaviour
   changed; the status stays `back-written`.
-
+- 2026-10-01: 7.37.0, written ahead of its RED
+  ([ADR-0026](../decisions/adr-0026-node-router-ladder-and-gated-corpus.md);
+  plan `docs/plans/grill-7.37.0-routing-context.md`, increment 3). None of
+  the sign-offs §0 says are not owed was taken. The scope gains the node
+  router, `graph-lint.py --plan` and `--eval`, as a routing-quality change
+  with no token claim. §4 gains, live from this entry, a node-router section:
+  GRAPH_ROUTE_NAMED_ID_LOADS_IT, GRAPH_ROUTE_NAMED_PATH_LOADS_ITS_OWNER,
+  GRAPH_ROUTE_PHRASE_LOADS_ITS_NODE, STRONG_TIER_OVER_CAP_FALLS_THROUGH,
+  PROMOTION_NEEDS_A_CONTIGUOUS_PHRASE, COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE,
+  PUNCTUATION_DOES_NOT_CHANGE_A_TERM, IDS_AND_PATHS_ARE_NOT_LEXICAL_TERMS,
+  ONE_TERM_CANNOT_SEED_A_NODE, NO_SIGNAL_LOADS_NOTHING,
+  LONG_TASK_ABSTAINS_WITH_NOTICE and GRAPH_EVAL_GATES_PER_CLASS. Widened to
+  the node router: EVERY_NUMBER_NAMES_ITS_CORPUS, HELD_OUT_STAYS_HELD_OUT,
+  VACUOUS_CORPUS_IS_REFUSED, ABSTENTION_IS_A_CORRECT_OUTCOME,
+  RARITY_AMPLIFIES_ONLY_A_CONFIDENT_MATCH and COMPOUND_FRAGMENT_IS_WEAK_EVIDENCE;
+  A_WORD_EVERY_TASK_WRITES_CANNOT_SELECT_AN_AGENT, which already said "both
+  routers", gains the test §11 recorded as missing. AN_INFLECTION_MATCHES_THE_WORD_IT_INFLECTS
+  already holds both routers and is unchanged. §6 gains the node corpus
+  shape, the tier table, the constants and the ratchet names; §7 gains
+  GRAPH_ROUTE_RATCHET_BREACHED; §9 gains AC-8 to AC-10; §10 gains `pending`
+  rows. Until the RED lands, `spec-lint.py` counts the new contracts as
+  uncovered. The status stays `back-written`.
+- 2026-10-01: 7.37.0, increment 3 GREEN. §10's node-router rows name their
+  tests and turn `green`; A_WORD_EVERY_TASK_WRITES_CANNOT_SELECT_AN_AGENT is a
+  characterization of both routers, green on arrival. HELD_OUT_STAYS_HELD_OUT
+  states the node corpus's overlap rule (orchestrator ruling F1, 2026-10-01);
+  under it one seed corpus row holding a three-word `load_when` piece verbatim
+  was reclassified `contract` (the corpus comment records it), and
+  `GRAPH_PARAPHRASE_MIN_ROWS` was set from the post-change count. §6 records
+  `LONG_TASK_TERMS` (100), `LEXICAL_MIN_TERMS`, `HELD_OUT_PIECE_WORDS`, the
+  `no_signal` id separator, the unknown-domain gap in
+  `GRAPH_IRRELEVANT_SHARE_MAX`, and the gate step. The status stays
+  `back-written`.
+- 2026-10-01: 7.37.0, architect pass on increment 3 (spawn
+  `orchestrator.17.architect.1`), after the GREEN run met 21 SPEC-0005 and
+  SPEC-0003 tests that pin the old node router, and after the increment's
+  review. Sign-offs not re-taken. GRAPH_ROUTE_NAMED_ID_LOADS_IT reads dotted
+  ids only. STRONG_TIER_OVER_CAP_FALLS_THROUGH states that tier 3 is
+  uncapped, and §7 gains PHRASE_TIER_FLOODS_LOAD, which carries the owner's
+  uncapped-hit ruling forward from SPEC-0005. PROMOTION_NEEDS_A_CONTIGUOUS_PHRASE
+  removes one-token promotion, which leaves tier 4 with no promotion.
+  COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE takes over what SPEC-0005's retired
+  PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE held. IDS_AND_PATHS_ARE_NOT_LEXICAL_TERMS
+  covers kind words on the task side. VACUOUS_CORPUS_IS_REFUSED refuses
+  bait-free adversarial rows and unknown-domain rows with required ids.
+  HELD_OUT_STAYS_HELD_OUT names the node router's own
+  `GRAPH_PARAPHRASE_MAX_OVERLAP`. The new GRAPH_RATCHETS_ARE_KEYED_TO_THEIR_GRAPH
+  keys the `GRAPH_*` ratchets to the seed graph. §6 gains the closure kinds,
+  how precedence, the path-word rule and three constants; tier 4's kinds drop
+  `promoted`. §10 rows whose tests gain or move rows read `pending` until that
+  RED lands. Until then `spec-lint.py` counts GRAPH_RATCHETS_ARE_KEYED_TO_THEIR_GRAPH
+  as uncovered, and `seed-lint` reports the three new test names as missing:
+  `test_graph_ratchets_are_keyed_to_their_graph`,
+  `test_plan_phrase_entry_brings_required_parent` and
+  `test_plan_requires_outranks_composed`. The status stays `back-written`.
+- 2026-10-01: 7.37.0, increment 3 GREEN after the architect pass (spawn
+  `orchestrator.19.implementer.6`), with the orchestrator's rulings on the
+  tester's questions. PROMOTION_NEEDS_A_CONTIGUOUS_PHRASE's Then says what the
+  test asserts: no `phrase` entry for the words held apart, a `scored` entry
+  under the two-term floor still possible (Q1). VACUOUS_CORPUS_IS_REFUSED names
+  the row by its task text (Q4). §6 pins the digit-free `not gated` line (Q3)
+  and states how precedence as the walk runs it: `requires:` edges before
+  descent, so a parent a composed child requires back stays `composed` (the
+  `two levels` descent row, green before this pass, holds it). The seven §10
+  rows the RED left red are green. `GRAPH_IRRELEVANT_SHARE_MAX` tightens to
+  paraphrase 0.51 and adversarial 0.43 from the post-change seed run. The
+  status stays `back-written`.
+- 2026-10-01: 7.37.0 release pass, by `architect` (spawn
+  `orchestrator.26.architect.1`). Every node-router contract the round added
+  or widened reads `green`, and the `--eval` step gates the seed corpus at
+  the ratchets set from the post-change run (ADR-0026, its Result section).
+  The one `pending` row is CONTRACT_ROW_ABSTENTION_IS_A_DEFECT, untested as
+  §11 says. No contract changed. The status stays `back-written`.

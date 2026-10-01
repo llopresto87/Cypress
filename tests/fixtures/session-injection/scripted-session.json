@@ -1,0 +1,22 @@
+{
+  "_comment": "SPEC-0003 SESSION_INJECTION_WITHIN_BUDGET: a synthetic scripted session over the PLAN_* fixture graph of tests/test_graph_lint.py (plan_fixture_plant, main). Each prompt runs through route-hook.py's argv envelope in order; before the prompt at each index in resets, status-hook.py runs with --source=compact. Synthetic text only.",
+  "session_id": "zq-scripted-session-0172",
+  "resets": [
+    5,
+    9
+  ],
+  "prompts": [
+    "In the orders service, fix the mapping between the order lines and the invoice rows.",
+    "Now add a regression test for the mapping fix in the orders service.",
+    "Write widget ledger tests that cover the empty ledger case.",
+    "Check the orders service again: the mapping still drops the discount column.",
+    "Tidy the log sink enrichers so the orders service logs the order id.",
+    "After the compaction: where were we on the orders service mapping fix?",
+    "Write widget ledger tests for the overflow path as well.",
+    "In the orders service, rename the mapping profile and keep the tests green.",
+    "Look at the invoice sprocket gearing in the billing subsystem next.",
+    "Back to the orders service: does the mapping need a migration script?",
+    "Summarise what changed in the orders service mapping this session.",
+    "Write widget ledger tests for the concurrent update case."
+  ]
+}

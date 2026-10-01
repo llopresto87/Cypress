@@ -48,7 +48,8 @@ algorithm that makes the rule executable.
 ## The knowledge rule
 
 The project keeps **one LLM-maintained knowledge system** at
-`docs/graph/`: Tier 1 routes, Tier 2 nodes own concise facts, Tier 3
+`docs/graph/`: the router (`graph-lint.py`) routes over it with
+`index.md` as the Tier 1 fallback map, Tier 2 nodes own concise facts, Tier 3
 leaf collections hold source-backed depth (libraries, provenance,
 product, architecture, APIs, data, prompts, evaluations, plans,
 runbooks, specs, decisions, tools). It is the project's only
@@ -123,10 +124,23 @@ route differently:
 | **Trace** | "why is this endpoint 401-ing?" | Every node on the request/data path. Follow `peers` deliberately — this is the one kind that legitimately crosses them. |
 | **Plan** | "rebuild the deploy pipeline" | The plan-of-record + the relevant platform/infra nodes. |
 
-### 2. Resolve entry nodes
+### 2. Route first, then resolve entry nodes
 
-Open the graph's router index (Tier 1) and match the task against each
-node's `load_when:` triggers. Prefer the most specific match. A task
+Route the task line before you open anything: take the router
+suggestion the host injected for this prompt, or, where no hook
+injected one (a hookless host, a spawned child, a task line of your
+own), run `python3 docs/graph/graph-lint.py --plan "<task>"`. Its LOAD
+set is your entry set with the `requires:` closure already taken; read
+it through `--show` (step 3). A `!` notice says the plan is thin, wide
+or empty; an empty plan's notice names the next step: a sharper task
+line, or the protocol entry nodes (an ungrown plant's include
+`protocol.initialize`).
+
+The graph's router index, `docs/graph/index.md` (Tier 1), is the
+fallback map, not a first read. Open it only when the router fails,
+when a notice leaves the plan empty or wrong, or when the task explores
+the graph itself. There, match the task against each node's
+`load_when:` triggers. Prefer the most specific match. A task
 naming a path resolves to that subsystem's node; a task naming a concept
 resolves to the node that `owns` it.
 
@@ -158,10 +172,22 @@ Load each entry node, then transitively load every node in its
 by construction; if it is not, the graph is mis-modelled and should be
 fixed rather than worked around.
 
+Read the routed nodes through
+`python3 docs/graph/graph-lint.py --show <id>...`, not the raw files:
+for each id it prints a header with the node's path and every pointer
+it holds (`requires`, `peers`, `composes`, `delegates_to` as ids;
+`artifacts`, `libraries`, `plant_knowledge` as paths), then the body
+verbatim. It drops only the keys that are router input, spawn
+configuration, or a copy of the body: `load_when`, `routing_triggers`,
+`est_tokens`, `tier`, `kind`, `name`, `description`, `prevents`, and the
+spawn keys `tools`, `model`, `effort`, `can_delegate`,
+`max_spawn_depth`, `command`. Every other key stays in the header, so
+no edge and no leaf is lost.
+
 **Whatever else a node lists is a menu** (`context-router.menu`). Open a
 leaf, child, link, neighbour or index row a loaded node names only when
 its one-line "load when" serves your task, one item at a time, and list
-each one you pass over in NOT LOADED (step 5). Only the `requires:`
+each one you pass over in the skip block (step 5). Only the `requires:`
 closure loads in full. A thin parent saves context only if its reader
 does not go on to open every leaf it names.
 
@@ -191,29 +217,23 @@ subsystems is exactly what `peers` edges are for.
 
 Print the resolved set, however small the task. It is the artifact that
 lets a reviewer catch a bad load before it becomes a bad change, and the
-only record of what you did not read.
+only record of what you did not read. Declare it in the compact lines
+`graph-lint.py --plan` prints, so a route you accept as it stands is
+declared by naming it, and a set you changed shows the change:
 
 ```
-Task: add field <F> to <entity>                              [change]
-
-LOAD (N nodes, ~T tokens)
-  <entry node>       (entry)
-  <required node>    (requires of <entry node>)
-  <expertise node>   (requires of <required node>)
-  <composed child>   (composed by <expertise node> on "<term>")
-
-NOT LOADED (with the reason)
-  <peer node>        peer of <entry> — owns X; not touched
-  <peer node>        peer of <entry> — holds a copy of Y; cross only if
-                     the change must reach it
-  <sibling child>    composed by <expertise>; no task term specific to it
-
-Tier-3 to open on demand
-  <library page / spec / ADR> — if the detail is needed
-  <expertise node>'s "depth" map names which leaf your identity needs
+Task: add field <F> to <entity>  [change]
+LOAD <n> ~<t>t
+<entry node> <path> | <title>
+<required node> <path> | <title>
+<composed child> <path> | <title> <- composed by <expertise node> on "<term>"
+skip (cross only if the task needs it):
+ peer of <entry node>: <id>=<path> <id>=<path>
+ composed by <expertise node>, no specific term: <id>=<path>
+open on demand: <library page, spec or ADR>; the "depth" leaf <expertise node> names
 ```
 
-One NOT LOADED section, whatever kept a node out. A peer you chose not
+One skip block, whatever kept a node out. A peer you chose not
 to cross and a specialisation the task never named are the same kind of
 record (the boundary, and the reason it held), and a set that lists only
 one of them hides the other.
@@ -229,20 +249,15 @@ Silent widening is the failure this skill prevents. So is stubbornly
 working without a node you need in order to look disciplined. Both are
 worse than "I was wrong about the boundary."
 
-## Dry-run it
+## Check the route
 
-The graph router is executable, and every spawned worker session runs
-it: the canonical block every delegation brief embeds
-(`docs/graph/templates/prompts/graph-session-bootstrap.md`) carries that
-across the spawn, and this skill owns only the traversal *algorithm*
-above. Dry-run your own hand-resolved set against the tool:
-
-```sh
-python3 <graph-tools>/graph-lint.py --plan "add a field to X"
-```
-
-If the two differ, one of you is wrong; usually a `load_when:` trigger
-needs sharpening, a cheap permanent fix.
+The graph router is executable, and every session runs it first (the
+kernel's FIRST MOVE, and this skill's step 2 above). A spawned worker
+runs it through the canonical block every delegation brief embeds
+(`docs/graph/templates/prompts/graph-session-bootstrap.md`); this skill
+owns only the traversal *algorithm*. When your own reading of the task
+resolves a different set than the route, one of you is wrong; usually
+a `load_when:` trigger needs sharpening, a cheap permanent fix.
 
 **`--plan` is a keyword heuristic, not an oracle.** It ranks nodes by
 weighted term overlap; it does not reason about a request path or a
@@ -306,15 +321,18 @@ to exactly one of four classes, placed by the test, not by file type:
 |---|---|---|
 | **1. Resident, full** | Every task needs it. | Loaded once at session start, in full. Nothing restates it, per-prompt hooks included. Only the kernel. |
 | **2. Resident, pointer** | The model must know it exists before it can know it needs it. | Always visible as one line naming *when* to reach for it; the explanation lives in the body. |
-| **3. Once per session** | Some tasks need it, and may need it again. | Protocol and skill bodies. Surfaced when first routed, then named by id as surfaced earlier, not re-suggested in full, until a reset or refresh. |
+| **3. Once per session** | Some tasks need it, and may need it again. | Protocol and skill bodies. Surfaced when first routed; after that the hook's reminder names it by id on its `seen:` line (open it again only if it is no longer in view), with entry lines only for ids new to the session, until a reset or refresh. |
 | **4. Per lookup** | It is consulted for a fact, not followed as a procedure. | Never resident. Reference corpora: read the section, cite, move on. |
 
 An item that fits two classes takes the smaller resident footprint, and
 you say why. Dedup applies within one context. A spawned agent starts
 empty, so repetition across a subagent spawn is how the brief's
-canonical block arrives verbatim. A hook can know what it *surfaced*,
-never what the model *read*. How the per-prompt hooks hold to this is
-the CYPRESS seed's own spec `SPEC-0003-per-prompt-injection`.
+canonical block arrives verbatim. Children are not routed: the
+per-prompt hooks inject nothing into a child session or into a turn a
+person did not type, so a child routes its own task line as its brief
+says. A hook can know what it *surfaced*, never what the model *read*.
+How the per-prompt hooks hold to this is the CYPRESS seed's own spec
+`SPEC-0003-per-prompt-injection`.
 
 ## Reference files
 

@@ -55,7 +55,7 @@ those subjects span is a property of the project, not of the method.
 | Tier | What | Loaded |
 |---|---|---|
 | 0 | The kernel (`AGENTS.md` / `CLAUDE.md`) | Always, by the host tool |
-| 1 | `docs/graph/index.md` — the router | Every task, first |
+| 1 | `docs/graph/index.md` — the fallback map | When the routed plan (`graph-lint.py --plan`) fails, stays empty or looks wrong |
 | 2 | `docs/graph/nodes/*.md` — one subject each | By traversal from the router |
 | 3 | Detailed collections below `docs/graph/` | Only when a Tier-2 node names the leaf and the task needs it |
 

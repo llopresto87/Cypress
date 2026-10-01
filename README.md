@@ -34,7 +34,7 @@ The install does not touch your application source, `.gitignore`, git history or
 
 | Figure | What it covers, and how it was obtained |
 |---|---|
-| 25 319 bytes | per session on Claude Code: the kernel plus the one-line description of every agent and skill, computed from the [seed](DOCUMENTATION.md#term-seed)'s files by this repository's test run; a lower bound, not a live reading |
+| 25 515 bytes | per session on Claude Code: the kernel plus the one-line description of every agent and skill, computed from the [seed](DOCUMENTATION.md#term-seed)'s files by this repository's test run; a lower bound, not a live reading |
 | 11% more tokens | per task, against a session with no method, on one small, well-specified task; measured once ([evidence record](docs/plans/grill-7.29.0-front-door/method-overhead-evidence.md)) |
 
 The always-loaded figure leaves out the notes a session opens on demand, each worker it starts, the text the hooks add to each prompt, and the one-time pass that builds the graph. The [host capability matrix](documentation/host-capability-matrix.md) gives the figure for each other harness. No money figure exists.
@@ -79,7 +79,7 @@ The method is written for the model to follow, and most of it is a request. For 
 - Choosing a task's tier is the model's own call, and no tool sees a tier chosen too low ([tier classification](DOCUMENTATION.md#enf-tier-classification)).
 - Writing a specification before the code is asked of the model. A linter checks a written specification's shape, not when it was written ([spec before code](DOCUMENTATION.md#enf-spec-before-code)).
 - Writing a failing test before the code is asked of the model, and no tool sees the order ([test before code](DOCUMENTATION.md#enf-test-before-code)).
-- Opening the router first and working through a protocol are asked of the model. The [routing](DOCUMENTATION.md#term-routing) hook adds a pointer to each prompt and holds nothing ([protocol order](DOCUMENTATION.md#enf-protocol-order), [prompt pointer](DOCUMENTATION.md#enf-route-hook)).
+- Routing each task before reading anything and working through a protocol are asked of the model. The [routing](DOCUMENTATION.md#term-routing) hook adds the route to each prompt and holds nothing ([protocol order](DOCUMENTATION.md#enf-protocol-order), [prompt pointer](DOCUMENTATION.md#enf-route-hook)).
 - The linters report a fault only when someone runs them, and the install adds no CI to your project ([graph lint](DOCUMENTATION.md#enf-graph-lint), [this repository's own checks](DOCUMENTATION.md#enf-seed-gate)).
 - The kernel's byte budget is checked only in this repository's own test run, and nothing re-measures the copy in your project ([kernel budget](DOCUMENTATION.md#enf-kernel-budget)).
 

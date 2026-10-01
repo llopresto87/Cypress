@@ -101,7 +101,9 @@ Three hooks ship in `settings.json`. `route-hook.py` (UserPromptSubmit) and
 ([routing pointer](../../DOCUMENTATION.md#enf-route-hook),
 [status summary](../../DOCUMENTATION.md#enf-status-hook)).
 The route hook names the router's nodes for the prompt, each id beside its
-node file. The status hook runs once per session: it injects the status
+node file. Later in the session it names a node already shown by id on one
+`seen:` line, and it does not route a turn a person did not type, such as a
+task notification. Prime Agent runs the same two scripts through its extensions. The status hook runs once per session: it injects the status
 register's summary and ends with the line `docs/graph/code-anchor.py
 --compare` prints, which says whether the code moved since canonize last
 recorded the anchor. When the comparison does not finish within 5 s, that

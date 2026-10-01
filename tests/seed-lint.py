@@ -64,7 +64,7 @@ OVERSIZED_LEAVES = frozenset({
 
 # How many live contracts in the seed's specs carry no test naming their slug.
 # Derived by `spec-lint.py --specs docs/specs --uncovered-budget`, never by hand.
-SPEC_UNCOVERED_BUDGET = 2
+SPEC_UNCOVERED_BUDGET = 1
 # How many `green` §10 rows cite a test that does not NAME their contract.
 SPEC_ROW_UNBOUND_BUDGET = 0
 
@@ -86,7 +86,7 @@ EAGER_EXEMPTIONS: dict[str, tuple[int, str]] = {
 # SPEC-0003 HOOK_TEXT_RESTATES_NO_KERNEL_RULE: bytes of the fixed text
 # route-hook.py injects (its "injected text" block). A ceiling that may only fall.
 HOOK_TEXT = "integrations/claude-code/route-hook.py"
-HOOK_TEXT_MAX_BYTES = 851
+HOOK_TEXT_MAX_BYTES = 802   # 7.37.0: 724 -> 802, a signed loosening: ENGINE_OLDER is a new literal SPEC-0003 §7 requires (ENGINE_OLDER_THAN_HOOK_IS_NAMED)
 
 # The eight rules' full statements live in exactly these machinery nodes.
 RULE_HOMES = {
@@ -1152,8 +1152,8 @@ def check_eager_surface() -> None:
     """Bound what each harness loads on EVERY session, before any routing."""
     surfaces = eager_surfaces(KERNEL.stat().st_size)
     # SPEC-0003 PRIME_EAGER_SURFACE_WITHIN_BUDGET: the prime-agent surface counts
-    # the whole overlay, so the `## Surfaced nodes` section is paid here on every
-    # Prime Agent session and held to EAGER_BUDGET like every other harness.
+    # the whole overlay, so every section of it is paid here on every Prime
+    # Agent session and held to EAGER_BUDGET like every other harness.
     for harness, measured in sorted(surfaces.items()):
         if harness in EAGER_EXEMPTIONS:
             allowed, reason = EAGER_EXEMPTIONS[harness]

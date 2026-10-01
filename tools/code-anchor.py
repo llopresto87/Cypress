@@ -5,8 +5,9 @@ The graph states facts about code, and code moves under it: a commit, a branch
 checkout, uncommitted work. This tool marks the state of the code at canonize,
 the moment the graph was last reconciled against it, and says once per session
 start whether any code moved since. Paths under `docs/graph/` and `.cypress/`
-are the graph and its state, not code, and never count (SPEC-0003, "Code
-anchor").
+are the graph and its state, not code, and never count; nor do build and backup
+files (`__pycache__/`, `*.pyc`, `*.bak`, `*.bak-*`), which no fact describes
+(SPEC-0003, "Code anchor").
 
 Placed in a plant as `docs/graph/code-anchor.py` and run from the plant root:
 
@@ -81,6 +82,8 @@ ANCHOR_DIR, ANCHOR_NAME = ".cypress", "anchor.json"
 ANCHOR_KEYS = {"version", "recorded_at", "repositories"}
 REPO_KEYS = {"path", "branch", "commit", "dirty", "dirty_overflow"}
 NOT_CODE = ("docs/graph/", ".cypress/")
+NOISE_DIR = "__pycache__"                       # build and backup files: never code
+NOISE_NAME = re.compile(r"\.(pyc|bak)$|\.bak-\d")   # *.bak-<digit>*: the installer's stamp
 DELETED = "deleted"
 DETACHED = "(detached)"
 TEMP_PREFIX = ".tmp-anchor-"
@@ -175,8 +178,12 @@ def plant_path(repo: str, path: str) -> str:
 
 
 def is_code(repo: str, path: str) -> bool:
-    rel = plant_path(repo, path.rstrip("/")) + "/"
-    return not rel.startswith(NOT_CODE)
+    """False for the graph and its state, and for build and backup noise
+    (SPEC-0003 ANCHOR_IGNORES_BUILD_AND_BACKUP_NOISE): such a path is neither
+    recorded nor named, nor counted on the more-paths line."""
+    rel = plant_path(repo, path.rstrip("/"))
+    *dirs, name = rel.split("/")
+    return not ((rel + "/").startswith(NOT_CODE) or NOISE_DIR in dirs or NOISE_NAME.search(name))
 
 
 def content_state(repo: Path, path: str):

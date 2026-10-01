@@ -15,8 +15,9 @@ Each node also declares `prevents:` — the failure its own absence produces. It
 
 The kernel rule
 (`core/AGENTS.md` §2) says: "State which protocol you are entering
-before you begin." The router maps *where the work stands* to a
-`protocol.*` node.
+before you begin": the `protocol.*` node the route names. When the route
+names none, the **Method** table in `docs/graph/index.md` maps *where the work
+stands* to the entry node.
 
 ---
 

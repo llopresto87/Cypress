@@ -17,6 +17,11 @@ under hooks.SessionStart. The host passes `{"session_id", "hook_event_name",
 prepended message. As a SessionStart hook it is not recorded to reach a
 subagent's turn (docs/graph/method/delegation-briefs.md, delegation.briefs), so a
 bounded worker reads one node's frontmatter when it needs one item's status.
+Prime Agent's `status-extension.ts` runs the same file from
+`.prime/agent/hooks/` on its session events with the argv envelope
+(`--session-id=`, `--source=`, `--depth=`, one element each; any argument that
+begins `--` selects it, and stdin is not read). A child session (`--depth`
+above 0) gets nothing and its parent's ledger is not reset.
 
 The reset runs on every source (startup, resume, clear, compact, fork, and
 anything else), because each one can leave the model without context the
@@ -25,8 +30,9 @@ from the sibling route-hook.py, and this file carries no copy of its path
 rule or session-id pattern (SPEC-0003).
 
 It never blocks: a missing register, a missing graph, a timeout, or a broken
-register degrades to silence, and a reset that cannot run, or stdin nested past
-the JSON parser, costs one stderr line. The anchor fails toward inclusion
+register degrades to silence, and a reset that cannot run, stdin nested past
+the JSON parser, or an argv element outside the envelope costs one stderr
+line. The anchor fails toward inclusion
 instead: an absent, failing, silent or slow `code-anchor.py` gives the
 not-checked line, and no stderr line. Exit 0 always. Context injection REQUIRES
 JSON on stdout — plain text is not injected by Copilot.
@@ -34,15 +40,19 @@ JSON on stdout — plain text is not injected by Copilot.
 
 import importlib.util
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
 
-CANDIDATES = (Path("docs") / "graph" / "status-register.py", Path("tools") / "status-register.py")
+# Each lists the one path the installer writes (the CANDIDATES rule in route-hook.py).
+CANDIDATES = (Path("docs") / "graph" / "status-register.py",)
 ANCHOR_CANDIDATES = (Path("docs") / "graph" / "code-anchor.py",)
 ANCHOR_TIMEOUT = 5                                # s; the hook's wait for code-anchor.py (SPEC-0003 §6)
 ANCHOR_NOT_CHECKED = ("Code anchor: not checked this session (the comparison did not run). "
                       "Facts about code in the graph are unverified.")
+ARGV_OPTIONS = ("session-id", "source", "depth")
+CHILD_DEPTH = re.compile(r"^0*[1-9][0-9]*$")      # a decimal integer above 0, as in route-hook.py
 
 
 # --- canonical plant-root boundary ---
@@ -160,7 +170,24 @@ def code_anchor() -> str:
     return line
 
 
-def main() -> int:
+def read_envelope():
+    """The session start as a stdin-shaped dict (`session_id`, `source`,
+    `hook_event_name`), or None when nothing at all is owed: a child session,
+    or an argv element outside the envelope (one stderr line naming it)."""
+    args = sys.argv[1:]
+    if any(a.startswith("--") for a in args):     # the argv envelope; stdin is not read
+        options = {}
+        for arg in args:
+            name, eq, value = arg.partition("=")
+            if not (eq and name.startswith("--") and name[2:] in ARGV_OPTIONS):
+                print(f"status-hook: option {name[:64]} is outside the argv envelope; "
+                      f"nothing injected", file=sys.stderr)
+                return None
+            options[name[2:]] = value
+        if CHILD_DEPTH.fullmatch(options.get("depth", "")):
+            return None
+        return {key: options[opt] for key, opt in (("session_id", "session-id"), ("source", "source"))
+                if opt in options}
     try:
         data = json.load(sys.stdin)
     except RecursionError:                        # nested past the parser: no session to reset
@@ -168,8 +195,13 @@ def main() -> int:
         data = {}
     except Exception:                             # noqa: BLE001 — not JSON, empty stdin included: silent
         data = {}
-    if not isinstance(data, dict):
-        data = {}
+    return data if isinstance(data, dict) else {}
+
+
+def main() -> int:
+    data = read_envelope()
+    if data is None:
+        return 0
     event = data.get("hook_event_name") or data.get("hookEventName") or "SessionStart"
     reset_session_ledger(data)
     parts = [p for p in (status_summary(), code_anchor()) if p]

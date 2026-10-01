@@ -1,0 +1,73 @@
+# Node-route corpus for `graph-lint.py --eval` (SPEC-0002 §6, ADR-0026). Seed round 7.37.0.
+# Subject graph: the graph a fresh `install.sh claude-code` places into an empty project (75 nodes, no root,
+# all seed-owned). The gate runs `--eval` over this file against that installed graph, never against a grown plant.
+#
+# Columns: task<TAB>required_ids<TAB>forbidden_ids<TAB>class
+#   required_ids   comma list of node ids that must LOAD; "-" = none (an abstention is correct)
+#   forbidden_ids  comma list of node ids that must NOT load; "-" = none
+#   class          contract | paraphrase | adversarial | unknown-domain; classes are reported separately, never averaged
+#
+# Provenance. Every row except the tester's bait rows is copied verbatim (typos kept) from the round's 74-row
+# measurement corpus (records-7.37.0/B-graph-routes.golden.tsv, data-ml spawn orchestrator.1.data-ml.2, authored
+# 2026-10-01 over the steward plant): the 32 rows whose ids are all seed-owned, that is, every id they name is a node
+# of the installed graph. That selection is mechanical and was not made by looking at any route.
+# contract rows: copied from the curated router tables of the steward plant's index; self-consistency evidence only.
+# paraphrase rows: owner prompts quoted verbatim, authored 2026-10-01 WITHOUT reading any target's load_when, and
+#   NOT adjusted after any run. They must never be tuned, and no trigger may be tuned toward them.
+# adversarial rows: the first is copied from B; the rest were added 2026-10-01 by the tester spawn
+#   orchestrator.15.tester.8 against the installed graph, each baiting the resolve() mechanism named in the comment
+#   above it (ADR-0026 context); the forbidden column names the baited node.
+# unknown-domain rows: nothing in the graph is written for them; the correct outcome is an empty LOAD.
+
+# --- contract (B, verbatim)
+Who should do this? Which specialist?	method.delegation	-	contract
+Which tier is this task? Execution paths	method.tiers	-	contract
+Goal clear, no executable spec covers it	protocol.specify	-	contract
+Increment claims done, run the gates	protocol.verify	-	contract
+A worker, gate, or delegation failed	protocol.recover	-	contract
+Loading context minimally	skill.context-router	-	contract
+Session ending, the summary	protocol.deliver	-	contract
+# reclassified 2026-10-01 by the held-out check (3-word trigger piece verbatim), not for its routing outcome
+a markdown-only change with nothing to get wrong should be proved by running it, not by a failing test first	protocol.test-first	-	contract
+# --- paraphrase (B, verbatim, authored 2026-10-01, never tuned)
+go implement kind_plan, you are explicitly authorized to spawn subagents as you see fit, but orchestrate so that they do not create file writing/accessing race conditions	method.delegation	-	paraphrase
+let's verify the seed ability to upgrade/graft from every version since 6.0.0 to the current one	protocol.graft	-	paraphrase
+upgrading means improving what alredy exist and bring it up to speed with the base of the seedm not blind overwrite	protocol.graft	-	paraphrase
+go harvest the candidates at $HOME/vivid-deepseek plant. compare the work we did for the test creation procedure with the one in the plant and see if there is anything of interest	protocol.harvest	-	paraphrase
+didn't i say that grill.md from now on needs to be a ledger/node with leaf under it?	protocol.grill	-	paraphrase
+the creation of a stale files mechanical tool would mean more context duplicated for a tool called at each file access. instead we should keep track of each branch repo/commit at canonize and compare	protocol.canonize	-	paraphrase
+docs pass should use humanizer skill	skill.humanizer	-	paraphrase
+check if you can see a sonnet-5-5 model and/or refresh your model list, first	method.delegation-model-classes	-	paraphrase
+please don't write tests about when to not write tests	protocol.test-first	-	paraphrase
+so the plant is way staler than that, and you need to run actual growth scouts and docs librarian to update the docs/graph against actual current on disk code	protocol.grow	-	paraphrase
+the 3 values needs to be present and those postures/modes need to go akin to Tiers mode - need to be engaged based on request/tone/what we are trying to accomplish	method.tiers	-	paraphrase
+tell everything that waits on me and eli5 it and explain it	protocol.deliver	-	paraphrase
+a one-line typo fix should not pay for the same checks as an architecture change	protocol.verify,method.tiers	-	paraphrase
+get as much work done per spawned worker as possible without losing quality	method.delegation	-	paraphrase
+# --- adversarial
+# bait (B): a path whose segments are scored as words (docs, graph)
+edit docs/graph/method/tiers.md wording	method.tiers	agent.docs-librarian	adversarial
+# bait (tester, 2026-10-01): path segments scored as words (docs, graph)
+reword the headings in docs/graph/method/tiers.md	method.tiers	protocol.grow,agent.docs-librarian	adversarial
+# bait (tester, 2026-10-01): kind prefix scored as a word (method)
+rename a method in the parser	-	method.bounded-execution,method.contract-posture	adversarial
+# bait (tester, 2026-10-01): kind prefix scored as a word (agent)
+the tester agent wrote a test that passed on its first run	agent.tester	agent.pentest,agent.orchestrator	adversarial
+# bait (tester, 2026-10-01): rare filler word carrying the IDF bonus (recap)
+give me a recap of the tiers	method.tiers	agent.orchestrator,protocol.specify-joint-pass	adversarial
+# bait (tester, 2026-10-01): a common word seeding a node (job) where the tier vocabulary is spelled differently
+is this job a T2 or a T3 one	method.tiers	agent.docs-librarian,skill.knowledge-graph	adversarial
+# bait (tester, 2026-10-01): one term seeding a node (failing) and a compound fragment (chain)
+a worker keeps failing in a chain of retries	protocol.recover	agent.tester	adversarial
+# bait (tester, 2026-10-01): a hyphen compound split into fragments (append-only)
+is the ledger append-only, and where does an entry land	protocol.grill	agent.growth-scout,protocol.initialize	adversarial
+# --- unknown-domain (B, verbatim)
+what's the weather in Rome tomorrow	-	-	unknown-domain
+write me a haiku about autumn leaves	-	-	unknown-domain
+how long should I proof sourdough at room temperature	-	-	unknown-domain
+thanks, that looks good	-	-	unknown-domain
+translate good morning into Japanese	-	-	unknown-domain
+what is 17 times 23	-	-	unknown-domain
+i need you to make a better recap of the task i've instructed you to do and what you want to exclude, what you want to actually implement and what are the decisions i should take, eli5	-	-	unknown-domain
+go. accepted. implement	-	-	unknown-domain
+my go ahead for what	-	-	unknown-domain

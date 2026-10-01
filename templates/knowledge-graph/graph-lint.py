@@ -16,6 +16,13 @@ Usage:
     python3 graph-lint.py --graph         # print the edges (-> requires, ~> composes)
     python3 graph-lint.py --plan "TASK"   # dry-run the context router:
                                           # what loads, what does not, and why
+    python3 graph-lint.py --plan-json=TASK  # the same route as one
+                                          # `cypress.plan/1` JSON document, for
+                                          # programs (the route hooks)
+    python3 graph-lint.py --show ID...    # read routed nodes: each pointer
+                                          # resolved in a header, then the body
+    python3 graph-lint.py --eval TSV      # route a node-route corpus; per class,
+                                          # gated on the GRAPH_* ratchets
 
 Contract: docs/graph/_schema.md
 No third-party dependencies: it must run on a bare python3.
@@ -25,10 +32,13 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import hashlib
+import json
 import re
 import sys
 from dataclasses import dataclass
 from functools import lru_cache
+from typing import NamedTuple
 import importlib.util as _ilu
 from pathlib import Path
 from pathlib import Path as _Path
@@ -102,7 +112,9 @@ STATUS_COMPANIONS = {
     "standing": ("ends_when",),
 }
 DEVIATION_KEYS = {"departs_from", "reason", "scope", "ends_when", "recorded_in"}
-PLANT_KEYS = {"environment_class", "commit_attribution", "deliverable_language", "comment_language"}
+# The owner-declared plant facts in index.md's `plant:` block, in the order the
+# full `--plan` prints them (SPEC-0003 PLAN_PRINTS_PLANT_BLOCK).
+PLANT_KEYS = ("environment_class", "commit_attribution", "deliverable_language", "comment_language")
 ENVIRONMENT_CLASSES = {"ephemeral-test", "staging", "real-production", "mixed"}
 STATUS_LINE_RE = re.compile(r"^##\s+Status\s*$", re.M)
 _ALL_STATUS_WORDS = STATUS_BASE | set().union(*STATUS_EXT.values())
@@ -225,36 +237,14 @@ class Node:
 
     @property
     def triggers(self) -> set:
-        """The vocabulary descent matches a task against: the node's own
-        `load_when` tokens plus its slug kept WHOLE. The slug is not tokenized
-        — `ef-core` split into `ef` and `core` would let a task saying "the
-        core module" DESCEND the persistence expertise off a word that names
-        nothing about it. (Seeding is a separate question and is unchanged: it
-        scores id and title tokens, so such a task may still load the node on
-        its own merits, and the absence of a composed-by line is what says
-        so.) Title and repo words stay out of this set: they belong to seed
-        scoring, and a title like "ef-core — the persistence expertise" would
-        put `expertise` in every sibling's vocabulary."""
-        # STOPWORDS are not stripped here and need not be: `_terms` drops them
-        # from every task, so a filler word sitting in a child's triggers can
-        # never be the term that descends it.
+        """A composed child's trigger vocabulary as `check_composition_triggers`
+        reads it: the node's own `load_when` tokens plus its slug kept WHOLE.
+        The slug is not tokenized: `ef-core` split into `ef` and `core` would
+        report `core` as family vocabulary it never wrote. Title and repo words
+        stay out: they belong to seed scoring, and a title like "ef-core — the
+        persistence expertise" would put `expertise` in every sibling's
+        vocabulary. Descent itself matches whole trigger phrases (`resolve`)."""
         return _tokens(" ".join(self.get_list("load_when"))) | {self.id.split(".", 1)[-1]}
-
-    @property
-    def trigger_terms(self) -> tuple:
-        """The same vocabulary, split into (whole, fragment) tiers.
-
-        `triggers` reads a hyphenated compound as two ORDINARY words, because
-        `_tokens`' regex has no `-` in it. 7.16.0 gave the SCORER the fragment
-        model and left the descent on `triggers`, so the defect the release
-        reports as closed was still live one code path over: a child whose
-        `load_when` says `supply-chain` was descended into on the bare term
-        `chain`, at the standalone tier the descent requires precisely so a
-        weak match cannot pull an expertise in. The slug stays whole here for
-        the same reason it does in `triggers`.
-        """
-        whole, frag = _split_terms(" ".join(self.get_list("load_when")))
-        return whole | {self.id.split(".", 1)[-1]}, frag
 
 
 def parse_frontmatter(text: str, path: Path):
@@ -396,6 +386,49 @@ def check_deviation(n: Node, errs: list) -> None:
         errs.append(f"{n.id}: deviation missing {', '.join(sorted(missing))}")
 
 
+def plant_block(text: str) -> dict:
+    """The `key: value` pairs of index.md's `plant:` frontmatter block, as
+    written less any inline `# comment` tail, as YAML reads it; empty when
+    there is no frontmatter or no block. `plant:` is a
+    nested map the frontmatter subset stores as an empty list marker, and its
+    indented lines are not list items, so the block is read by line rather
+    than through parse_frontmatter."""
+    if not text.startswith("---\n"):
+        return {}
+    block = {}
+    in_block = False
+    for line in text[4:text.find("\n---\n")].split("\n"):
+        if re.match(r"^plant:\s*$", line):
+            in_block = True
+            continue
+        if in_block:
+            if not line.startswith(" "):
+                break
+            k, _, v = line.strip().partition(":")
+            if k:
+                block[k.strip()] = re.sub(r"(^|\s)#.*$", "", v).strip()
+    return block
+
+
+def _unfilled(value: str) -> bool:
+    """A template placeholder such as `<bcp47>`, not an owner's answer."""
+    return value.startswith("<") and value.endswith(">")
+
+
+def plant_facts():
+    """The four plant facts in PLANT_KEYS order, or None unless index.md
+    declares every one of them (present, non-empty, no placeholder): the
+    `plant` of a `--plan-json` document and the `plant:` line of `--plan`
+    (SPEC-0003 PLAN_PRINTS_PLANT_BLOCK, ADR-0027). A missing or unfilled
+    block is rule 14's finding, not the plan's."""
+    if not INDEX.exists():
+        return None
+    block = plant_block(INDEX.read_text(encoding="utf-8"))
+    if not all(block.get(k) and not _unfilled(block[k]) for k in PLANT_KEYS):
+        return None
+    return {k: block[k] for k in PLANT_KEYS}
+
+
 def check_plant_block(errs: list, warns: list) -> None:
     """Rule 14: index.md carries the owner-declared plant facts. A grown plant
     (coverage record present, or `grown: true` in index.md) FAILS without
@@ -423,27 +456,13 @@ def check_plant_block(errs: list, warns: list) -> None:
     flag = str(meta.get("grown", "")).strip().lower()
     grown = flag in ("true", "yes", "1") or (at_docs_graph and record.exists())
     sink = errs if grown else warns
-    # `plant:` is a nested map; the frontmatter subset stores it as an empty
-    # list marker and the indented `key: value` lines are not list items, so
-    # read the block by line rather than through parse_frontmatter.
-    block = {}
-    in_block = False
-    for line in text[4:text.find("\n---\n")].split("\n"):
-        if re.match(r"^plant:\s*$", line):
-            in_block = True
-            continue
-        if in_block:
-            if not line.startswith(" "):
-                break
-            k, _, v = line.strip().partition(":")
-            if k:
-                block[k.strip()] = v.strip()
+    block = plant_block(text)
     if not block:
         sink.append("index.md: missing `plant:` block (environment_class, commit_attribution, "
                     "deliverable_language, comment_language) — the owner-declared facts")
         return
-    unfilled = {k for k, v in block.items() if v.startswith("<") and v.endswith(">")}
-    missing = (PLANT_KEYS - {k for k, v in block.items() if v}) | unfilled
+    unfilled = {k for k, v in block.items() if _unfilled(v)}
+    missing = (set(PLANT_KEYS) - {k for k, v in block.items() if v}) | unfilled
     if missing:
         sink.append(f"index.md: plant block not yet declared for {', '.join(sorted(missing))} "
                     f"— the owner answers these once (grow Phase 1 / adopt-existing)")
@@ -562,12 +581,12 @@ def check_expertise(n: Node, errs: list, by_id: dict) -> None:
 
 def check_composition_triggers(nodes: list, warns: list) -> None:
     """The `load_when` analogue of agent-lint's routing-trigger warning, for
-    composed children. Descent matches a task term against what a child knows
-    and its parent does not, so a term the siblings share is family vocabulary
-    that belongs one level up, and a term half the graph carries descends on
-    tasks that are not about this child at all. Tokens under three characters
-    are ignored: `_terms` drops them from every task, so `0` out of `net8.0`
-    can never match and must never be reported."""
+    composed children. Descent needs a trigger phrase the child writes and its
+    parent does not, so a term the siblings share is family vocabulary that
+    belongs one level up, and a term half the graph carries makes a one-word
+    phrase that descends on tasks that are not about this child at all. Tokens
+    under three characters are ignored: `_words` drops them from every task,
+    so `0` out of `net8.0` can never match and must never be reported."""
     by_id = {n.id: n for n in nodes}
     seen = {}
     for n in nodes:
@@ -1016,24 +1035,57 @@ def _strength(term: str, whole: set, frag: set) -> int:
     return m if m else min(1, _match(term, frag))
 
 
-def _terms(task: str) -> set:
-    """Extract match terms, keeping paths whole and split (`/api/x` → `x`)."""
-    out = set()
-    for w in re.findall(r"[a-z0-9_/*.-]+", task.lower()):
-        for part in [w, *re.split(r"[/*.-]+", w)]:
-            part = part.strip("_")
-            if len(part) >= 3 and part not in STOPWORDS:
-                out.add(part)
+def _words(text: str) -> list:
+    """The content words of `text`, in order: lowercased, `_` and a trailing
+    `.` trimmed, three characters or more, no stopword. One rule for both sides
+    of every comparison the router makes: a task's words and a trigger
+    phrase's tokens. The regex keeps `-`, `.`, `/` and `*` inside a word, so a
+    compound, a dotted name and a path each stay one word; `,`, `:`, `;`,
+    `?`, `!` and `)` already end a word, and the trailing `.` is the one mark
+    the regex would keep (SPEC-0002 PUNCTUATION_DOES_NOT_CHANGE_A_TERM:
+    `prompt.` was a second term beside `prompt`)."""
+    out = []
+    for w in re.findall(r"[a-z0-9_/*.-]+", text.lower()):
+        w = w.strip("_").rstrip(".").strip("_")
+        if len(w) >= 3 and w not in STOPWORDS:
+            out.append(w)
     return out
 
 
-# --- expertise promotion and stack inference -------------------------------
-# A whole trigger phrase the task names, or a file the task names that one of
-# the node's file patterns matches, loads a `kind: expertise` node BESIDE the
-# scored cut, where the entry budget would otherwise leave it out. The task is
-# a raw user prompt (the route hook feeds every prompt through `--plan`), so it
-# is untrusted input: its tokens are only ever the NAME given to
-# `fnmatch.fnmatchcase`, never a pattern, and never touch the filesystem.
+def _same(a: str, b: str) -> bool:
+    """Two words are one term at the standalone tier: equal, or one
+    inflection of the other (`_stems`). A prefix fold is not the same word."""
+    return a == b or bool(_stems(a) & _stems(b))
+
+
+# --- the tier ladder (SPEC-0002 §6, ADR-0026) --------------------------------
+# `resolve()` takes its entries from the first tier that hits: a node id the
+# task names, a path the task names, a trigger phrase the task holds whole, and
+# only then the lexical score. A named id or path is the user telling the
+# router which node; words are the router guessing.
+#
+# A tier-1 or tier-2 hit on more nodes than this is no hit: a task naming a
+# dozen ids is a list, not a pointer, and on the round's longest brief the
+# strong tiers alone loaded the wrong kind of node.
+STRONG_TIER_CAP = 3
+# A lexical entry needs this many distinct confident terms (whole words at the
+# standalone tier). One rare word was enough before: `have` seeded the legal
+# corpus node, and `the payroll` would seed payroll.
+LEXICAL_MIN_TERMS = 2
+# A task with more distinct content words than this is not routed. Lexical
+# scoring has no length normalization, so a pasted brief matches everything:
+# 1,586 distinct terms scored all 116 nodes of the steward plant and loaded 28.
+# Measured with `_words` over the round's prompts: the longest owner prompt
+# carries 66 distinct words, a delegation task line 24, the pasted brief 1,332,
+# and no row of the seed's corpus more than 20 (SPEC-0002 §6). 100 sits over
+# every prompt a person typed and an order of magnitude under a brief.
+LONG_TASK_TERMS = 100
+NO_SIGNAL_TEXT = "no node matches this task; route a sharper task line, or enter a protocol:"
+LONG_TASK_TEXT = "task too long to route ({} terms); run --plan on the task line"
+
+# A path the task names (tier 2) is untrusted input: the route hook feeds every
+# prompt through `--plan-json`, so a path is only ever the NAME given to
+# `fnmatch.fnmatchcase`, never a pattern, and never touches the filesystem.
 PATH_TOKEN_MAX = 256        # a longer whitespace token is skipped, uncounted
 PATH_TOKENS_MAX = 64        # path-like tokens considered, in task order
 PATH_ECHO_MAX = 80          # characters of a path echoed on a LOAD line
@@ -1042,16 +1094,22 @@ PATH_LIKE_RE = re.compile(r"[A-Za-z0-9_.-]*\.[A-Za-z0-9]{1,10}")
 PATH_ECHO_UNSAFE_RE = re.compile(r"[^a-z0-9_./~+-]")
 
 
+def _is_path(word: str) -> bool:
+    """A word the task wrote as a path: it holds `/` or `*`, or it looks like
+    a file name (`main.tf`). Neither it nor its segments is a lexical term."""
+    return "/" in word or "*" in word or bool(PATH_LIKE_RE.fullmatch(word))
+
+
 def _load_when_pieces(n) -> tuple:
     """(phrases, patterns) — a node's `load_when` split on commas.
 
     A piece with no whitespace holding `*` or `/` is a file pattern and is
     never also a phrase, so a task repeating `**/package-lock.json` as words
-    does not promote. Any other piece is a phrase: its tokens are the
-    router's WHOLE tokens (`_split_terms`), so a dotted or hyphenated word
-    stays one token and must be named whole — `target net10` does not hit
-    `net10.0`, as `chain` does not speak for `supply-chain`. A piece with no
-    tokens is ignored. Brace expansion is not a thing here:
+    holds no phrase. Any other piece is a trigger phrase: `(piece, tokens)`,
+    its tokens the piece's content words in order (`_words`), so a dotted or
+    hyphenated word stays one token and must be named whole — `target net10`
+    does not hit `net10.0`, as `chain` does not speak for `supply-chain`. A
+    piece with no tokens is ignored. Brace expansion is not a thing here:
     `*.{ts,tsx}` is the pattern `*.{ts` and the phrase `tsx}`."""
     phrases, patterns = [], []
     for entry in n.get_list("load_when"):
@@ -1060,10 +1118,37 @@ def _load_when_pieces(n) -> tuple:
             if len(piece.split()) == 1 and ("*" in piece or "/" in piece):
                 patterns.append(piece)
                 continue
-            toks = _split_terms(piece)[0]
+            toks = tuple(_words(piece))
             if toks:
                 phrases.append((piece, toks))
     return phrases, patterns
+
+
+def _holds(seq: list, toks: tuple) -> bool:
+    """The task's word sequence holds a phrase's tokens consecutively and in
+    order, each the same word at the standalone tier."""
+    k = len(toks)
+    return any(all(_same(seq[i + j], toks[j]) for j in range(k))
+               for i in range(len(seq) - k + 1))
+
+
+def _held_piece(phrases: list, seq: list, words: set, min_tokens: int = 1,
+                exclude: frozenset = frozenset()):
+    """The first trigger phrase of at least `min_tokens` tokens the task
+    holds, or None. A phrase of two or more tokens must be held contiguous; a
+    one-token phrase only as a whole task word equal to it, never a fragment
+    or an inflection of another word. Tier 3 reads two tokens and up; a
+    one-token piece is read by composition descent alone, inside a parent
+    already loaded (SPEC-0002 PROMOTION_NEEDS_A_CONTIGUOUS_PHRASE). Of every
+    `load_when` piece, 51% reduced to one token, and as a seed one generic
+    word loaded a whole expertise and its closure: `json`, `engine`,
+    `workflow`."""
+    for piece, toks in phrases:
+        if len(toks) < min_tokens or toks in exclude:
+            continue
+        if (toks[0] in words) if len(toks) == 1 else _holds(seq, toks):
+            return piece
+    return None
 
 
 def _task_paths(task: str) -> list:
@@ -1108,53 +1193,111 @@ def _echo(path: str) -> str:
     return cut + ("…" if len(path) > PATH_ECHO_MAX else "")
 
 
-def _promoted_and_inferred(nodes: list, task: str, terms: set) -> dict:
-    """{expertise id: how} for every phrase hit and path match, uncapped.
+class How(NamedTuple):
+    """How a node entered LOAD, in the `cypress.plan/1` terms (SPEC-0003 §6):
+    the kind, its detail (the phrase or the path), and the node it came
+    through. A path entry names the path the task gave, the resolved fact; the
+    `load_when` glob an inferred one matched is the node's, read with --show."""
+    kind: str      # named_id | named_path | inferred | phrase | scored | composed | requires
+    detail: str | None = None
+    via: str | None = None
 
-    A hit is every token of one phrase matching a task term at the standalone
-    tier (exact or same stem; a prefix fold does not count). A node that hits
-    reports the first hitting piece and is not also reported as inferred; a
-    path match reports the first path in task order, then the first pattern
-    in `load_when` order."""
-    paths = _task_paths(task)
-    found = {}
+    @property
+    def suffix(self) -> str | None:
+        """The `<- …` the text view prints after a LOAD entry, or None. The
+        route hook renders the same suffix from the document (`how_suffix`)."""
+        if self.kind == "inferred":
+            return f'inferred from "{self.detail}"'
+        if self.kind == "composed":
+            return f'composed by {self.via} on "{self.detail}"'
+        if self.kind == "named_path":
+            return f'owns "{self.detail}"'
+        if self.kind == "phrase":
+            return f'phrase "{self.detail}"'
+        return None
+
+
+class Skip(NamedTuple):
+    """Why a node the route reached stayed out of LOAD: a peer of a loaded
+    node, or a composed child whose own phrase the task does not hold."""
+    kind: str                      # peer | composed
+    via: str
+
+    @property
+    def order(self) -> tuple:
+        """Where its group stands in the skip block: the reasons in the order
+        SPEC-0003 §6 lists them (peers, then composed), then by `via`."""
+        return (SKIP_KINDS.index(self.kind), self.via)
+
+    @property
+    def group(self) -> str:
+        """The skip-block group line, up to its `<id>=<path>` items."""
+        if self.kind == "peer":
+            return f" peer of {self.via}: "
+        return f" composed by {self.via}, no specific term: "
+
+
+SKIP_KINDS = ("peer", "composed")
+
+
+def _named_paths(nodes: list, paths: list) -> dict:
+    """Tier 2: {id: How} for each path the task names, by the first rule that
+    claims it: a node's own file; the longest `repo:` prefix, where a `repo:`
+    with no `/` names a repository root and claims nothing; an expertise file
+    pattern (`inferred`); a basename exactly one node file carries."""
+    files = {where(n.path).lower(): n for n in nodes}
+    repos = [(r, n) for n in nodes
+             for r in [str(n.meta.get("repo", "")).lower().strip("/")] if "/" in r]
+    patterns = [(n, _load_when_pieces(n)[1]) for n in nodes if n.meta.get("kind") == "expertise"]
+    by_base: dict = {}
     for n in nodes:
-        if n.meta.get("kind") != "expertise":
+        by_base.setdefault(n.path.name.lower(), []).append(n)
+    found: dict = {}
+    for p in paths:
+        shown = _echo(p)
+        owner = next((n for f, n in files.items() if p == f or p.endswith("/" + f)), None)
+        if owner is None:
+            under = [(len(r), n) for r, n in repos if p == r or p.startswith(r + "/")]
+            owner = max(under, key=lambda x: x[0])[1] if under else None
+        if owner is not None:
+            found.setdefault(owner.id, How("named_path", shown))
             continue
-        phrases, patterns = _load_when_pieces(n)
-        hit = next((piece for piece, toks in phrases
-                    if all(_match(t, terms) == 2 for t in toks)), None)
-        if hit is not None:
-            found[n.id] = f'promoted on "{hit}"'
+        inferred = [n for n, pats in patterns if any(_path_matches(p, pat) for pat in pats)]
+        for n in inferred:
+            found.setdefault(n.id, How("inferred", shown))
+        if inferred:
             continue
-        named = next(((p, pat) for p in paths for pat in patterns
-                      if _path_matches(p, pat)), None)
-        if named:
-            found[n.id] = f'inferred from "{_echo(named[0])}" via "{named[1]}"'
+        same = by_base.get(p.rsplit("/", 1)[-1], [])
+        if len(same) == 1:
+            found.setdefault(same[0].id, How("named_path", shown))
     return found
 
 
-def resolve(nodes: list, task: str):
-    """Mirror the traversal in skills/context-router/SKILL.md.
+def _lexical(nodes: list, words: list) -> list:
+    """Tier 4's scored entries: IDF-weighted, a term in many nodes (generic)
+    worth little, one in one or two (distinctive) dominating — with the guards
+    SPEC-0002 holds the agent router to.
 
-    Seeds are scored IDF-weighted: a term in many nodes (generic) is worth
-    little; a term in one or two (distinctive) dominates. The closure then
-    follows `requires` eagerly — you cannot be correct without it — and
-    `composes` lazily: a composed child loads only when the task names,
-    exactly, a term the child knows and its parent does not. Loud family
-    vocabulary therefore cannot drag a library page into every task about
-    the stack, which is the whole reason the lazy edge exists.
-
-    Beside the scored entries, and not counted against their cut, every
-    expertise node the task promotes or infers (`_promoted_and_inferred`) is
-    an entry too, and takes its closure like any other.
-
-    Returns (loaded, not_loaded, notices): `loaded` pairs each node with how
-    it got there, `not_loaded` pairs each node with why it stayed out, and
-    `notices` carries the wide-descent warnings and any inference fallback.
-    """
-    by_id = {n.id: n for n in nodes}
-    terms = _terms(task)
+    A term is a task word that is not a dotted node id, not a kind prefix,
+    not a path and not a path's segment (SPEC-0002
+    IDS_AND_PATHS_ARE_NOT_LEXICAL_TERMS); a hyphen piece of a task word is a
+    term at the fragment tier only, the mirror of `_split_terms` on the node
+    side. A kind prefix is no term on either side: in a node's name `domain`
+    matched all ten `domain.*` ids at name weight, and in a task `protocol`,
+    `skill` and `agent` scored any node whose `load_when` wrote them. Rarity
+    amplifies only a confident match (a whole word at the standalone tier); a
+    fragment or a prefix fold is capped at the common weight. A node needs
+    LEXICAL_MIN_TERMS distinct confident terms to be an entry at all."""
+    ids = {n.id for n in nodes if "." in n.id}
+    kind_words = {i.split(".", 1)[0] for i in ids}
+    terms: dict = {}
+    for w in words:
+        if w in ids or w in kind_words or _is_path(w):
+            continue
+        terms[w] = 2
+        for part in w.split("-"):
+            if part != w and len(part) >= 3 and part not in STOPWORDS and part not in kind_words:
+                terms.setdefault(part, 1)
 
     buckets = {}
     for n in nodes:
@@ -1165,11 +1308,11 @@ def resolve(nodes: list, task: str):
             " ".join([n.id, n.meta.get("title", ""), str(n.meta.get("repo", ""))]),
             keep_path_segments=True)
         lw_w, lw_f = _split_terms(" ".join(n.get_list("load_when") + n.get_list("routing_triggers")))
-        buckets[n.id] = (name_w, name_f, lw_w, lw_f)
+        buckets[n.id] = (name_w - kind_words, name_f - kind_words, lw_w, lw_f)
 
     df = {t: 0 for t in terms}
-    # df stays a PRESENCE count, exactly as before: a term that reaches a node at
-    # all is documented there, and changing what counts as presence shifts every
+    # df stays a PRESENCE count: a term that reaches a node at all is
+    # documented there, and changing what counts as presence shifts every
     # weight globally. The fragment cap belongs in scoring alone.
     for name_w, name_f, lw_w, lw_f in buckets.values():
         allt = name_w | name_f | lw_w | lw_f
@@ -1184,89 +1327,136 @@ def resolve(nodes: list, task: str):
     entries = []
     for n in nodes:
         name_w, name_f, lw_w, lw_f = buckets[n.id]
-        score = 0
-        for t in terms:
-            w = weight(t)
-            score += w * max(2 * _strength(t, name_w, name_f),
-                             _strength(t, lw_w, lw_f))
-        if score:
+        score, confident = 0, set()
+        for t, ts in terms.items():
+            on_name = min(ts, _strength(t, name_w, name_f))
+            on_lw = min(ts, _strength(t, lw_w, lw_f))
+            eff = max(2 * on_name, on_lw)
+            if not eff:
+                continue
+            sure = max(on_name, on_lw) == 2
+            score += (weight(t) if sure else min(weight(t), 2)) * eff
+            if sure:
+                confident.add(min(_stems(t)))
+        if len(confident) >= LEXICAL_MIN_TERMS:
             entries.append((score, n))
     entries.sort(key=lambda x: (-x[0], x[1].id))
-
     best = entries[0][0] if entries else 0
     floor = max(3, (best + 1) // 2) if best >= 3 else best
-    # pre-growth graphs have no root yet: fall back to nothing rather than crash
-    seeds = [n for s, n in entries[:3] if s >= floor] or ([by_id[ROOT_ID]] if ROOT_ID in by_id else [])
+    return [n for s, n in entries[:3] if s >= floor]
 
-    loaded: list = []          # [(Node, how)] — how: entry / promoted / inferred / requires / composed
-    seen: set = set()
-    reasons: dict = {}         # id -> why it is NOT loaded
+
+def resolve(nodes: list, task: str):
+    """Mirror the traversal in skills/context-router/SKILL.md.
+
+    The entries come from the first tier that hits (SPEC-0002 §6): a node id
+    the task names (`named_id`); a path it names (`named_path`, `inferred`);
+    a trigger phrase of two or more tokens it holds contiguous (`phrase`);
+    else the lexical score (`scored`). A node id is a dotted one: `root` is an
+    English word, named by its path. A tier-1 or tier-2 hit on more than
+    STRONG_TIER_CAP nodes is no hit; tier 3 is not capped. A task over LONG_TASK_TERMS distinct
+    content words loads nothing with a `long_task` notice; a task no tier
+    matches loads nothing with a `no_signal` notice naming the protocol entry
+    nodes. Root is never forced.
+
+    The closure then follows `requires` eagerly — you cannot be correct
+    without it — and `composes` lazily: a composed child loads only when the
+    task holds a trigger phrase of the child's own, one its parent does not
+    write. Loud family vocabulary therefore cannot drag a library page into
+    every task about the stack, which is the whole reason the lazy edge exists.
+    An entry keeps its tier's kind; the `requires` closure is followed before
+    any descent, so a node it reaches is `requires`, not `composed` (SPEC-0002
+    §6 how precedence).
+
+    Returns (loaded, not_loaded, notices): `loaded` pairs each node with its
+    How, `not_loaded` pairs each node with its Skip, and `notices` holds
+    (code, text) pairs.
+    """
+    by_id = {n.id: n for n in nodes}
+    seq = _words(task)
+    words = set(seq)
+    if len(words) > LONG_TASK_TERMS:
+        return [], [], [("long_task", LONG_TASK_TEXT.format(len(words)))]
     notices: list = []
-    try:
-        extra = _promoted_and_inferred(nodes, task, terms)
-    except Exception as e:
-        # Broad on purpose: the task is any str, and the route hook runs this
-        # on every prompt, where a raise would cost the plant its routing.
-        # Reported, not swallowed: the fallback is the scored entries alone,
-        # and the notice says so before LOAD.
-        extra = {}
-        notices.append(f"inference skipped: {type(e).__name__}")
-    # An entry is an entry however it is reached. The stack is LIFO over seeds
-    # sorted best-first, so a child that outscores its own subsystem is popped
-    # through the parent chain and would otherwise be reported as composed —
-    # a true load set with a false account of why. A scored entry prints no
-    # reason, so it outranks a promotion or an inference of the same node.
-    entry_how = {n.id: "entry" for n in seeds}
-    for i, how in extra.items():
-        entry_how.setdefault(i, how)
-    # Promoted and inferred entries go under the seeds, so the scored closure
-    # is walked first and accounted for exactly as before.
-    stack = [(by_id[i], how) for i, how in extra.items()] + [(n, "entry") for n in seeds]
-    while stack:
-        n, how = stack.pop()
+    phrases = {n.id: _load_when_pieces(n)[0] for n in nodes}
+
+    def first_tier() -> dict:
+        named = {w: How("named_id") for w in seq if "." in w and w in by_id}
+        if 0 < len(named) <= STRONG_TIER_CAP:
+            return named
+        try:
+            owned = _named_paths(nodes, _task_paths(task))
+        except Exception as e:
+            # Broad on purpose: the task is any str, and the route hook runs
+            # this on every prompt, where a raise would cost the plant its
+            # routing. Reported, not swallowed: the notice says the path tier
+            # was skipped, and the route goes on to the next tier.
+            owned = {}
+            notices.append(("inference_skipped", f"inference skipped: {type(e).__name__}"))
+        if 0 < len(owned) <= STRONG_TIER_CAP:
+            return owned
+        held = {}
+        for n in nodes:
+            piece = _held_piece(phrases[n.id], seq, words, min_tokens=2)
+            if piece is not None:
+                held[n.id] = How("phrase", piece)
+        if held:
+            return held
+        return {n.id: How("scored") for n in _lexical(nodes, seq)}
+
+    entry_how = first_tier()
+    if not entry_how:
+        protocols = sorted(n.id for n in nodes if n.meta.get("kind") == "protocol")
+        notices.append(("no_signal", " ".join([NO_SIGNAL_TEXT, ", ".join(protocols)]).rstrip()))
+        return [], [], notices
+
+    loaded: list = []          # [(Node, How)]
+    seen: set = set()
+    reasons: dict = {}         # id -> Skip, why it is NOT loaded
+    # An entry is an entry however it is reached: a child entry popped through
+    # its parent's closure keeps its own How, not `requires` or `composed`.
+    # Descent waits until every `requires:` edge met so far is followed, so a
+    # node the closure requires is `requires`, never `composed`, whichever edge
+    # the walk meets first; a child that requires its composing parent back
+    # leaves the parent `composed` (SPEC-0002 §6 how precedence).
+    stack = [(by_id[i], how) for i, how in reversed(list(entry_how.items()))]
+    descents: list = []
+    while stack or descents:
+        n, how = stack.pop() if stack else descents.pop()
         if n.id in seen:
             continue
         seen.add(n.id)
         loaded.append((n, entry_how.get(n.id, how)))
         for r in n.get_list("requires"):
             if r in by_id:
-                stack.append((by_id[r], f"requires of {n.id}"))
+                stack.append((by_id[r], How("requires", via=n.id)))
         if n.meta.get("kind") != "expertise":
             continue
         kids = [by_id[c] for c in n.get_list("composes") if c in by_id]
+        family = frozenset(toks for _piece, toks in phrases[n.id])
         hits = 0
         for c in kids:
-            # The child's OWN vocabulary: what it knows that its parent does
-            # not. Standalone-tier hits only (== 2) — a prefix FOLD, which
-            # scores 1, would let "migrating the CI runner" pull in the
-            # schema-migration expertise. Since 7.16.0 an inflection also
-            # scores 2, deliberately: `migrations` should reach a child whose
-            # trigger says `migration`. It does not reopen the case the line
-            # above guards, because `migrating` and `migration` reduce to
-            # different stems — the fold was matching six shared letters, the
-            # stemmer matches a word.
-            cw, cf = c.trigger_terms
-            nw, nf = n.trigger_terms
-            own_whole, own_frag = cw - nw, cf - nf
-            term = next((t for t in sorted(terms)
-                         if _strength(t, own_whole, own_frag) == 2), None)
-            if term:
+            # The child's OWN phrase, held as tier 3 holds one, or its
+            # one-token piece as a whole word: a word of a longer phrase is
+            # not enough (SPEC-0002 COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE).
+            # Descent on any single term pulled four of five host children
+            # into one brief.
+            piece = _held_piece(phrases[c.id], seq, words, exclude=family)
+            if piece is not None:
                 hits += 1
-                stack.append((c, f'composed by {n.id} on "{term}"'))
+                descents.append((c, How("composed", piece, n.id)))
             else:
-                reasons.setdefault(
-                    c.id, f"composed by {n.id}; no task term specific to it")
+                reasons.setdefault(c.id, Skip("composed", n.id))
         # A single child that matches is an ordinary descent, not a symptom;
         # only a parent handing over most of a real menu says the task or the
         # triggers are too generic.
         if len(kids) > 1 and hits * 2 > len(kids):
-            notices.append(f"wide descent from {n.id}: {hits} of {len(kids)} "
-                           f"children — the task or the triggers are too generic")
+            notices.append(("wide_descent", f"wide descent from {n.id}: {hits} of {len(kids)} "
+                                            f"children — the task or the triggers are too generic"))
     for n, _ in loaded:
         for p in n.get_list("peers"):
             if p in by_id:
-                reasons.setdefault(
-                    p, f"peer of {n.id} — cross only if the task requires it")
+                reasons.setdefault(p, Skip("peer", n.id))
     not_loaded = [(by_id[i], r) for i, r in reasons.items() if i not in seen]
     return loaded, not_loaded, notices
 
@@ -1314,6 +1504,371 @@ def check_frontmatter_portable(nodes: list, errs: list) -> None:
                     f"and drops the node. Quote it or reword the clause.")
 
 
+PLAN_SCHEMA = "cypress.plan/1"
+PLANT = HERE.parent.parent                       # the plant root every printed path is relative to
+SKIP_HEADER = "skip (cross only if the task needs it):"   # also a literal in route-hook.py
+# `--show` (SPEC-0003 §6): node edges print as bare ids, leaf entries as paths
+# from the plant root, the provenance keys on one `origin:` line. The router
+# and spawn keys are dropped; every other key is printed as it is.
+SHOW_EDGES = ("owns", "requires", "peers", "composes", "delegates_to")
+SHOW_LEAVES = ("artifacts", "libraries", "plant_knowledge")
+SHOW_ORIGIN = ("origin", "repo", "status", "status_date", "owner", "ends_when", "scope",
+               "reason", "recorded_in", "departs_from")
+SHOW_DROPS = frozenset({"load_when", "routing_triggers", "est_tokens", "tier",
+                        "kind", "name", "description", "prevents", "tools", "model", "effort",
+                        "can_delegate", "max_spawn_depth", "command"})
+
+
+def where(path: Path) -> str:
+    """A file as the views print it: relative to the plant root, so no session
+    searches for a file the router already found (SPEC-0003
+    PLAN_ENTRY_NAMES_THE_NODE_FILE)."""
+    try:
+        return path.relative_to(PLANT).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def short_title(n) -> str:
+    """The title with a leading `<slug> — ` cut when the slug is the id's last
+    dotted segment: the id printed before it already says it."""
+    return str(n.meta.get("title", "")).removeprefix(n.id.rsplit(".", 1)[-1] + " — ")
+
+
+def plan(nodes: list, task: str) -> tuple:
+    """The route both views print, in their order: the notices, the plant
+    facts (or None), the LOAD token total, LOAD as (node, path, How) by id,
+    and the skipped nodes as (node, path, Skip) in skip-block order: by
+    group, then by id."""
+    loaded, not_loaded, notices = resolve(nodes, task)
+    total = sum(n.meta.get("est_tokens", 0) for n, _ in loaded)
+    load = [(n, where(n.path), how) for n, how in sorted(loaded, key=lambda x: x[0].id)]
+    skip = [(n, where(n.path), why)
+            for n, why in sorted(not_loaded, key=lambda x: (x[1].order, x[0].id))]
+    return notices, plant_facts(), total, load, skip
+
+
+def print_plan(notices: list, plant, total: int, load: list, skip: list) -> None:
+    """`--plan`, the compact grammar (SPEC-0003 §6, ADR-0025): one line each,
+    no padding, the id first on every entry and every id with its path. The
+    `plant:` line carries the four facts a session that never opens index.md
+    would otherwise miss (ADR-0027). No line echoes the task."""
+    for _code, note in notices:
+        print(f"! {note}")
+    if plant:
+        print("plant: " + " ".join(f"{k}={v}" for k, v in plant.items()))
+    print(f"LOAD {len(load)} ~{total}t")
+    for n, path, how in load:
+        print(f"{n.id} {path} | {short_title(n)}" + (f" <- {how.suffix}" if how.suffix else ""))
+    groups: dict = {}
+    for n, path, why in skip:
+        groups.setdefault(why.group, []).append(f"{n.id}={path}")
+    if groups:
+        print(SKIP_HEADER)
+    for group, items in groups.items():
+        print(group + " ".join(items))
+
+
+def plan_document(task: str, notices: list, plant, total: int, load: list, skip: list) -> dict:
+    """`--plan-json`, the `cypress.plan/1` document (SPEC-0003 §6). It carries
+    no copy of the task, only the SHA-256 of its UTF-8 bytes as received in
+    argv, so a hook can bind the document to its prompt without an echo. The
+    only task-derived strings are inferred paths, already cut by `_echo`."""
+    return {
+        "schema": PLAN_SCHEMA,
+        "task_sha256": hashlib.sha256(task.encode("utf-8", "surrogateescape")).hexdigest(),
+        "plant": plant,
+        "notices": [{"code": code, "text": text} for code, text in notices],
+        "est_tokens": total,
+        "load": [{"id": n.id, "path": path, "title": str(n.meta.get("title", "")),
+                  "how": {"kind": how.kind, "detail": how.detail, "via": how.via}}
+                 for n, path, how in load],
+        "skip": [{"id": n.id, "path": path, "kind": why.kind, "via": why.via}
+                 for n, path, why in skip],
+    }
+
+
+def show_view(n) -> str:
+    """`--show <id>`: the §6 header, one blank line, the body verbatim. The
+    file stays canonical; the view is derived on every call, never cached."""
+    def joined(value) -> str:
+        return ", ".join(map(str, value)) if isinstance(value, list) else str(value)
+
+    head = [f"# {n.id} {where(n.path)}: {short_title(n)}"]
+    for key in SHOW_EDGES:
+        if key in n.meta:
+            head.append(f"{key}: {joined(n.meta[key])}")
+    def leaf(key: str, entry) -> str:
+        if key == "libraries":
+            return where(LIBS_DIR / f"{entry}.md")
+        # `Path` drops a trailing slash; a directory entry keeps it
+        return where(HERE / str(entry)) + ("/" if str(entry).endswith("/") else "")
+
+    for key in SHOW_LEAVES:
+        if key in n.meta:
+            head.append(f"{key}: " + ", ".join(leaf(key, v) for v in n.get_list(key)))
+    origin = [f"{key}: {n.meta[key]}" for key in SHOW_ORIGIN if key in n.meta]
+    if origin:
+        head.append(" ".join(origin))
+    shown = {"id", "title", *SHOW_EDGES, *SHOW_LEAVES, *SHOW_ORIGIN} | SHOW_DROPS
+    head += [f"{key}: {joined(value)}" for key, value in n.meta.items() if key not in shown]
+    return "\n".join(head) + "\n\n" + n.body.removeprefix("\n")
+
+
+def show(nodes: list, ids: list) -> int:
+    """Print `show_view` for each id in the order given, one blank line
+    between nodes. An unknown id prints nothing and exits 2."""
+    by_id = {n.id: n for n in nodes}
+    unknown = [i for i in ids if i not in by_id]
+    if unknown:
+        print(f"graph-lint: --show: no node has the id {', '.join(unknown)}", file=sys.stderr)
+        return 2
+    views = [show_view(by_id[i]) for i in ids]
+    sys.stdout.write("".join(v + ("\n" if v.endswith("\n") else "\n\n") for v in views[:-1])
+                     + views[-1])
+    return 0
+
+
+# --- `--eval`: the node-route corpus, per class (SPEC-0002) ------------------
+# `--eval <tsv>` routes every row of a corpus in the §6 shape and reports each
+# class on its own lines, never averaged: `contract` rows are the trigger set's
+# self-consistency, `paraphrase` rows generalization, `adversarial` rows bait,
+# `unknown-domain` rows the abstention.
+CORPUS_CLASSES = ("contract", "paraphrase", "adversarial", "unknown-domain")
+# A held-out row may not be a copy of its target's vocabulary. The ceiling
+# has agent-lint.py's PARAPHRASE_MAX_OVERLAP value but is its own fact: the
+# trigger side below reads piece words, which agent-lint does not, and the two
+# files ship to different directories, so each is registered on its own in
+# tests/ratchets.json (`max`, as HELD_OUT_PIECE_WORDS: lower is stricter). The
+# target is the `load_when` of the row's required ids. Task side:
+# the share of the row's content words that vocabulary holds. Trigger side:
+# the share of one `load_when` piece the row holds, read only for pieces of
+# HELD_OUT_PIECE_WORDS content words or more. Node pieces are often one or two
+# words (`canonize`, `grill.md`), and a row naming one whole is a row about
+# that node, not a row written from its triggers: read at every length, four
+# of the fifteen verbatim owner prompts measured 1.0.
+GRAPH_PARAPHRASE_MAX_OVERLAP = 0.50
+HELD_OUT_PIECE_WORDS = 3
+ROW_ECHO_MAX = 120          # characters of a corpus row a failure line repeats
+# Ratchets, registered in tests/ratchets.json with their direction and set at
+# the values the router measured over tests/graph-routes.golden.tsv on a fresh
+# seed install when the tier ladder landed (7.37.0). A floor may only rise and
+# a ceiling only fall; loosening one is an edit to tests/ratchets.json, on
+# purpose.
+#
+# They gate only on the graph they were measured on: one whose every node
+# carries `origin: MEASURED_GRAPH_ORIGIN`, the seed's own install. This file
+# ships into every plant, and a plant's grown graph and its own corpus were
+# never measured; a floor of eight abstentions would fail a plant with fewer
+# unknown-domain rows forever. There every figure prints and one line says the
+# ratchets are not gated (SPEC-0002 GRAPH_RATCHETS_ARE_KEYED_TO_THEIR_GRAPH,
+# the node-router twin of agent-lint.py's MEASURED_ROSTER_ORIGIN). The corpus
+# checks (malformed, vacuous, held-out) gate on every graph.
+MEASURED_GRAPH_ORIGIN = "seed"
+GRAPH_CONTRACT_RECALL_MIN = 1.0           # floor: required ids loaded / required ids, contract rows (8/8)
+GRAPH_ADVERSARIAL_FORBIDDEN_MAX = 0       # ceiling: forbidden ids loaded, adversarial rows
+GRAPH_UNKNOWN_ABSTAIN_MIN = 8             # floor: unknown-domain rows that load nothing (8 of 9)
+# Ceiling per class on the share of loaded est_tokens outside the requires
+# closure of the row's required ids, measured to two places and rounded up.
+# No unknown-domain entry: every node such a row loads is irrelevant, so its
+# share is 0 or 1 and says nothing the abstention floor above does not.
+GRAPH_IRRELEVANT_SHARE_MAX = {
+    "contract": (0.58, "measured 0.572"),
+    "paraphrase": (0.51, "measured 0.503"),
+    "adversarial": (0.43, "measured 0.430"),
+}
+GRAPH_PARAPHRASE_MIN_ROWS = 14            # floor: the held-out set may not be thinned
+GRAPH_ADVERSARIAL_MIN_ROWS = 8            # floor: nor may the bait set
+
+
+def _content_words(text: str) -> set:
+    """agent-lint.py's measure of a row's words, for the overlap check."""
+    return {w for w in re.findall(r"[a-z0-9_]+", text.lower())
+            if len(w) >= 3 and w not in STOPWORDS}
+
+
+def _overlap(task: str, targets: list) -> float:
+    """How much of a held-out row is its targets' own `load_when`, measured
+    both ways (HELD_OUT_STAYS_HELD_OUT); the larger side is the verdict."""
+    words = _content_words(task)
+    if not words:
+        return 1.0
+    pieces = [p for n in targets for entry in n.get_list("load_when") for p in str(entry).split(",")]
+    vocab = set().union(*(_content_words(p) for p in pieces)) if pieces else set()
+    side = sum(1 for w in words if w in vocab) / len(words)
+    for p in pieces:
+        pw = _content_words(p)
+        if len(pw) >= HELD_OUT_PIECE_WORDS:
+            side = max(side, sum(1 for w in pw if w in words) / len(pw))
+    return side
+
+
+def _echo_row(task: str) -> str:
+    """A corpus row as a failure names it: one line, cut at ROW_ECHO_MAX
+    characters, since an `@file:` row can be a whole brief."""
+    line = " ".join(task.split())
+    return line[:ROW_ECHO_MAX] + ("…" if len(line) > ROW_ECHO_MAX else "")
+
+
+def _read_corpus(tsv: Path, by_id: dict) -> tuple:
+    """(rows, faults): rows as (task, required, forbidden, class); a fault
+    names a line that is not four tab-separated columns with a known class, an
+    `@file:` that cannot be read, an id no node has, or a row that cannot
+    fail: an adversarial row that baits nothing (`forbidden_ids` is `-`), yet
+    counts toward GRAPH_ADVERSARIAL_MIN_ROWS, and an unknown-domain row that
+    requires ids an abstention never loads (VACUOUS_CORPUS_IS_REFUSED)."""
+    rows, faults = [], []
+    for ln, line in enumerate(tsv.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip() or line.startswith("#"):
+            continue
+        cols = line.split("\t")
+        if len(cols) != 4 or cols[3].strip() not in CORPUS_CLASSES:
+            faults.append(f"line {ln} is not task, required, forbidden, class")
+            continue
+        task, required, forbidden, cls = (c.strip() for c in cols)
+        if task.startswith("@file:"):
+            try:
+                task = (tsv.parent / task[len("@file:"):]).read_text(encoding="utf-8")
+            except OSError as e:
+                faults.append(f"line {ln}: {task} unreadable ({e.strerror})")
+                continue
+        ids = [[] if s == "-" else [x.strip() for x in s.split(",") if x.strip()]
+               for s in (required, forbidden)]
+        unknown = [i for i in ids[0] + ids[1] if i not in by_id]
+        if unknown:
+            faults.append(f"line {ln} names no node: {', '.join(unknown)}")
+            continue
+        if cls == "adversarial" and not ids[1]:
+            faults.append(f"line {ln} is vacuous: adversarial row \"{_echo_row(task)}\" "
+                          f"forbids no id, so it baits nothing")
+            continue
+        if cls == "unknown-domain" and ids[0]:
+            faults.append(f"line {ln} is vacuous: unknown-domain row \"{_echo_row(task)}\" "
+                          f"requires ids, but its outcome is an abstention")
+            continue
+        rows.append((task, ids[0], ids[1], cls))
+    return rows, faults
+
+
+def evaluate(nodes: list, tsv: Path) -> int:
+    """`--eval <tsv>`: every figure on a line naming its class, then the
+    ratchets. Exit 1 on a held-out row that is a copy, a malformed corpus, or
+    a vacuous one, and on the measured graph on a breached ratchet; 0
+    otherwise."""
+    by_id = {n.id: n for n in nodes}
+    measured_graph = bool(nodes) and all(
+        str(n.meta.get("origin", "")).strip() == MEASURED_GRAPH_ORIGIN for n in nodes)
+    try:
+        rows, faults = _read_corpus(tsv, by_id)
+    except (OSError, UnicodeDecodeError) as e:
+        print(f"graph-lint --eval: FAIL, cannot read the corpus {tsv.name}: "
+              f"{getattr(e, 'strerror', None) or type(e).__name__}", file=sys.stderr)
+        return 1
+    if faults:
+        for f in faults:
+            print(f"graph-lint --eval: FAIL, {tsv.name}: {f}", file=sys.stderr)
+        return 1
+    if not any(required for _t, required, _f, _c in rows):
+        print(f"graph-lint --eval: FAIL, {tsv.name} is vacuous: every row expects an "
+              f"abstention, so no figure measures a route", file=sys.stderr)
+        return 1
+
+    def closure(ids: list) -> set:
+        out, stack = set(), list(ids)
+        while stack:
+            i = stack.pop()
+            if i not in out and i in by_id:
+                out.add(i)
+                stack.extend(by_id[i].get_list("requires"))
+        return out
+
+    stats = {c: {"rows": 0, "req": 0, "hit": 0, "with_req": 0, "covered": 0, "loaded": 0,
+                 "est": 0, "irrelevant": 0, "forbidden": 0, "abstain": 0, "overlap": 0.0}
+             for c in CORPUS_CLASSES}
+    copies = []
+    for task, required, forbidden, cls in rows:
+        loaded = {n.id: n for n, _how in resolve(nodes, task)[0]}
+        allowed = closure(required)
+        b = stats[cls]
+        b["rows"] += 1
+        b["req"] += len(required)
+        b["hit"] += sum(1 for i in required if i in loaded)
+        b["with_req"] += bool(required)
+        b["covered"] += bool(required) and all(i in loaded for i in required)
+        b["loaded"] += len(loaded)
+        b["est"] += sum(n.meta.get("est_tokens", 0) for n in loaded.values())
+        b["irrelevant"] += sum(n.meta.get("est_tokens", 0) for i, n in loaded.items() if i not in allowed)
+        b["forbidden"] += sum(1 for i in forbidden if i in loaded)
+        b["abstain"] += not loaded
+        if cls in ("paraphrase", "adversarial") and required:
+            ov = _overlap(task, [by_id[i] for i in required])
+            b["overlap"] = max(b["overlap"], ov)
+            if ov > GRAPH_PARAPHRASE_MAX_OVERLAP:
+                copies.append((cls, task, required, ov))
+
+    def share(b: dict) -> float:
+        return b["irrelevant"] / b["est"] if b["est"] else 0.0
+
+    print(f"graph-lint --eval: {tsv.name}, per class, never averaged")
+    for cls in CORPUS_CLASSES:
+        b = stats[cls]
+        if not b["rows"]:
+            continue
+        line = (f"{cls}: rows {b['rows']}, required recall {b['hit']}/{b['req']}, "
+                f"covered {b['covered']}/{b['with_req']}, "
+                f"mean loaded {b['loaded'] / b['rows']:.1f}, irrelevant share {share(b):.2f}, "
+                f"forbidden {b['forbidden']}, abstain {b['abstain']}")
+        if cls in ("paraphrase", "adversarial"):
+            line += f", max overlap {b['overlap']:.2f}"
+        print(line)
+
+    failures = [f"{cls} row \"{_echo_row(task)}\" shares {ov:.2f} of its words with the load_when of "
+                f"{', '.join(required)}, above GRAPH_PARAPHRASE_MAX_OVERLAP "
+                f"{GRAPH_PARAPHRASE_MAX_OVERLAP}: a held-out row must stay held out; relabel it "
+                f"contract or write a real one"
+                for cls, task, required, ov in copies]
+    breaches = []              # (ratchet, failure line)
+    contract = stats["contract"]
+    recall = contract["hit"] / contract["req"] if contract["req"] else 0.0
+    if recall < GRAPH_CONTRACT_RECALL_MIN:
+        breaches.append(("GRAPH_CONTRACT_RECALL_MIN",
+                         f"contract required recall {recall:.2f} below "
+                         f"GRAPH_CONTRACT_RECALL_MIN {GRAPH_CONTRACT_RECALL_MIN}"))
+    if stats["adversarial"]["forbidden"] > GRAPH_ADVERSARIAL_FORBIDDEN_MAX:
+        breaches.append(("GRAPH_ADVERSARIAL_FORBIDDEN_MAX",
+                         f"adversarial forbidden {stats['adversarial']['forbidden']} above "
+                         f"GRAPH_ADVERSARIAL_FORBIDDEN_MAX {GRAPH_ADVERSARIAL_FORBIDDEN_MAX}"))
+    if stats["unknown-domain"]["abstain"] < GRAPH_UNKNOWN_ABSTAIN_MIN:
+        breaches.append(("GRAPH_UNKNOWN_ABSTAIN_MIN",
+                         f"unknown-domain abstain {stats['unknown-domain']['abstain']} below "
+                         f"GRAPH_UNKNOWN_ABSTAIN_MIN {GRAPH_UNKNOWN_ABSTAIN_MIN}"))
+    for cls, (ceiling, _what) in GRAPH_IRRELEVANT_SHARE_MAX.items():
+        if share(stats[cls]) > ceiling:
+            breaches.append(("GRAPH_IRRELEVANT_SHARE_MAX",
+                             f"{cls} irrelevant share {share(stats[cls]):.2f} above "
+                             f"GRAPH_IRRELEVANT_SHARE_MAX[{cls}] {ceiling}"))
+    for cls, floor, name in (("paraphrase", GRAPH_PARAPHRASE_MIN_ROWS, "GRAPH_PARAPHRASE_MIN_ROWS"),
+                             ("adversarial", GRAPH_ADVERSARIAL_MIN_ROWS, "GRAPH_ADVERSARIAL_MIN_ROWS")):
+        if stats[cls]["rows"] < floor:
+            breaches.append((name, f"{cls} rows {stats[cls]['rows']} below {name} {floor}: deleting "
+                                   f"the rows the router fails is not the router improving"))
+    if measured_graph:
+        failures += [line for _name, line in breaches]
+    else:
+        # One line, no digit: it names no figure, so it needs no class.
+        over = list(dict.fromkeys(name for name, _line in breaches))
+        print(f"graph-lint --eval: GRAPH_* ratchets reported, not gated: a node of this graph "
+              f"is not origin {MEASURED_GRAPH_ORIGIN}, and they were measured on the seed's own "
+              f"graph" + (f"; past a ratchet here: {', '.join(over)}" if over else ""))
+    for f in failures:
+        print(f"graph-lint --eval: FAIL, {f}", file=sys.stderr)
+    if failures:
+        return 1
+    print("graph-lint --eval: OK, every ratchet holds" if measured_graph
+          else "graph-lint --eval: OK, the corpus checks hold")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--graph", action="store_true", help="print the requires-DAG")
@@ -1322,6 +1877,13 @@ def main() -> int:
                          "mode a plant runs while it closes findings a newly "
                          "installed check surfaced")
     ap.add_argument("--plan", metavar="TASK", help="dry-run the context router for TASK")
+    ap.add_argument("--plan-json", metavar="TASK",
+                    help="the same route as one cypress.plan/1 JSON document; pass "
+                         "the task as one --plan-json=TASK element")
+    ap.add_argument("--show", nargs="+", metavar="ID",
+                    help="print each node: a header with every pointer resolved, then its body")
+    ap.add_argument("--eval", metavar="TSV", type=Path,
+                    help="route every row of a node-route corpus and gate each class on its ratchets")
     args = ap.parse_args()
 
     try:
@@ -1330,35 +1892,15 @@ def main() -> int:
         print(f"FATAL: {e}", file=sys.stderr)
         return 2
 
+    if args.show:
+        return show(nodes, args.show)
+    if args.eval:
+        return evaluate(nodes, args.eval)
     if args.plan:
-        loaded, not_loaded, notices = resolve(nodes, args.plan)
-        total = sum(n.meta.get("est_tokens", 0) for n, _ in loaded)
-        print(f"task: {args.plan}\n")
-        for note in notices:
-            print(f"  ! {note}")
-        if notices:
-            print()
-        # Each entry names its node's file beside the id, relative to the plant
-        # root, so no session searches for a file the router already found
-        # (SPEC-0003 PLAN_ENTRY_NAMES_THE_NODE_FILE). The id stays the first token.
-        plant = HERE.parent.parent
-
-        def where(n) -> str:
-            try:
-                return n.path.relative_to(plant).as_posix()
-            except ValueError:
-                return n.path.as_posix()
-
-        print(f"LOAD ({len(loaded)} nodes, ~{total} tokens):")
-        for n, how in sorted(loaded, key=lambda x: x[0].id):
-            line = f"  {n.id:<28} {where(n)}  {n.meta.get('title','')}"
-            if how.startswith(("promoted on", "inferred from", "composed by")):
-                line += f"   <- {how}"
-            print(line)
-        if not_loaded:
-            print("\nNOT LOADED (with the reason; cross only if the task requires it):")
-            for n, reason in sorted(not_loaded, key=lambda x: x[0].id):
-                print(f"  {n.id:<28} {where(n)}  {reason}")
+        print_plan(*plan(nodes, args.plan))
+        return 0
+    if args.plan_json is not None:
+        print(json.dumps(plan_document(args.plan_json, *plan(nodes, args.plan_json))))
         return 0
 
     if args.graph:

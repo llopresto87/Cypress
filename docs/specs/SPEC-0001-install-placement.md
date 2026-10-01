@@ -1,6 +1,6 @@
 ---
 status: back-written
-status_date: 2026-09-30
+status_date: 2026-10-01
 owner: seed-installer
 status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tests/test-install-kernel-modes.sh, tests/test-install-adoption.sh, tests/test-full-install.sh, tests/test-seed-lint.sh, tests/test-graft-tools.sh (all wired into tests/run.sh)
 ---
@@ -22,9 +22,9 @@ status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tes
 
 - **Owner:** seed-installer
 - **Date:** 2026-09-13
-- **Last reviewed:** 2026-09-30
+- **Last reviewed:** 2026-10-01
 - **Related grill section:** docs/plans/grill-7.15.0-remediation.md §3, §5
-- **Related ADRs:** adr-0003-enforcement-layering-honesty, adr-0009-host-support-tiers, adr-0013-harness-memory-is-not-a-home, adr-0014-graft-reconciles-every-graph-engine, adr-0016-stamp-carries-keys-it-does-not-own, adr-0017-pre-growth-pointers-leave-the-kernel, adr-0018-code-fact-freshness-anchor (the last three proposed), adr-0021-seed-only-procedures-stay-home, adr-0022-the-plant-model-map (both proposed)
+- **Related ADRs:** adr-0003-enforcement-layering-honesty, adr-0009-host-support-tiers, adr-0013-harness-memory-is-not-a-home, adr-0014-graft-reconciles-every-graph-engine, adr-0016-stamp-carries-keys-it-does-not-own, adr-0017-pre-growth-pointers-leave-the-kernel, adr-0018-code-fact-freshness-anchor (the last three proposed), adr-0021-seed-only-procedures-stay-home, adr-0022-the-plant-model-map (both proposed), adr-0024-one-hook-core-per-session-residency (proposed)
 - **Supersedes:** —
 - **Superseded by:** —
 
@@ -524,6 +524,35 @@ because those carry a `model:` line written from the plant's model map.
 - **And:** `install.sh all --check` checks the same projections, because
   `all` names opencode and the record carries it
 
+### Contract: PRIME_HOOK_SCRIPTS_ARE_PLACED
+- **Given:** a fresh target directory
+- **When:** `install.sh prime-agent --project-dir <target>` runs
+- **Then:** `.prime/agent/hooks/route-hook.py` and
+  `.prime/agent/hooks/status-hook.py` exist and are byte-identical to the
+  seed's `integrations/claude-code/route-hook.py` and `status-hook.py`
+  (adr-0024), placed by `place_file`, so `SINGLE_WRITER`'s census is unchanged
+- **And:** `adapter_dirs prime-agent` names `.prime/agent/hooks`, so the
+  preflight covers it
+- **And:** a re-install over an older copy of either script replaces it with
+  a backup
+- **And:** no `.claude/` directory is created by a `prime-agent` run alone
+
+### Contract: REINSTALL_ENGINE_SERVES_THE_HOOKS
+- **Given:** an installed plant whose `docs/graph/graph-lint.py` is an engine
+  that predates `--plan-json` (the `v7.36.0` file) with a plant PROJECT CONFIG
+  (a plant member in `KINDS`, a plant `KIND_PREFIX`), and older hook scripts
+- **When:** a plain `install.sh <host>` runs again and places the hook scripts
+- **Then:** it leaves `docs/graph/graph-lint.py` byte-unchanged, PROJECT CONFIG
+  included: the engine is plant-owned and upgrading it is graft's job (adr-0014)
+- **And:** the placed `route-hook.py` names the gap rather than routing to
+  nothing: its first-prompt injection is the pointer line and one notice line
+  naming `graph-lint.py`, `--plan-json` and graft (SPEC-0003
+  `ENGINE_OLDER_THAN_HOOK_IS_NAMED`)
+- **And:** after graft's engine step, `tools/graft-graph-engine.py <plant
+  engine> <seed engine>` as `tools/graft-run.py` step 4 calls it, the engine
+  accepts `--plan-json`, the placed `route-hook.py` injects a route (the
+  suggestion header), and the plant's `KINDS` member and `KIND_PREFIX` survive
+
 ### Contract: SEED_ONLY_FILES_NEVER_PLACED
 - **Given:** `SEED_ONLY` in `tests/seed-lint.py`, which names
   `tools/prepare-release.py` and `docs/skills/seed-release.md` (adr-0021)
@@ -791,6 +820,8 @@ $ echo $?
 - [ ] AC-18: a drifted opencode projection, its `model:` line included, is
       reported by `--check`, which writes nothing; maps to
       OPENCODE_CHECK_DETECTS_DRIFT
+- [ ] AC-19: a Prime Agent plant carries the same hook scripts as Claude Code,
+      beside its extensions; maps to PRIME_HOOK_SCRIPTS_ARE_PLACED
 
 ## 10. Test mapping
 
@@ -864,6 +895,8 @@ $ echo $?
 | SEED_ONLY_FILES_NEVER_PLACED | X393 check_seed_only_stays_home: a copied `manifest.json` whose `tools` map gains `tools/prepare-release.py` is a finding naming that path as a seed-only file | tests/test-seed-lint.sh | unit | green |
 | SEED_ONLY_FILES_NEVER_PLACED | X394 check_seed_only_stays_home: a copied `install.sh` that places a file from `$SEED_ROOT/docs/` that is not itself seed-only (`docs/decisions/index.md`) is a finding naming `install.sh` that says it sources a file under `$SEED_ROOT/docs` | tests/test-seed-lint.sh | unit | green |
 | SEED_ONLY_FILES_NEVER_PLACED | X395 check_seed_only_stays_home: a copied `manifest.json` whose `tools` map drops `tools/code-anchor.py`, which `install.sh` places, is a finding naming `manifest.json` | tests/test-seed-lint.sh | unit | green |
+| PRIME_HOOK_SCRIPTS_ARE_PLACED | E12 case_prime_hook_scripts_placed: a fresh `install.sh prime-agent --copy` places `.prime/agent/hooks/route-hook.py` and `status-hook.py` byte-identical to `integrations/claude-code/`; `adapter_dirs prime-agent` names `.prime/agent/hooks`; a re-install over an older copy replaces it with a `.bak-` backup; no `.claude/` is created | tests/test-full-install.sh | integration; red on arrival (nothing placed under `.prime/agent/hooks/`); the no-`.claude/` arm passes today | green |
+| REINSTALL_ENGINE_SERVES_THE_HOOKS | E13 case_reinstall_engine_serves_hooks: over a `claude-code --copy` plant whose engine is the `v7.36.0` graph-lint.py with `plantkind` added to `KINDS` and `KIND_PREFIX = {"plantkind": "pk"}`, and older hook scripts, a plain `install.sh claude-code --copy`: (a) the engine is byte-unchanged; (b) the placed route-hook's first-prompt injection is the pointer line and one notice line naming `graph-lint.py`, `--plan-json` and `graft`; then `tools/graft-graph-engine.py` on the engine: (c) it accepts `--plan-json`, the hook injects `Router suggestion`, and `KINDS` holds `plantkind` and `KIND_PREFIX` equals the plant's | tests/test-full-install.sh | integration; red on arrival in (b) only (the hook has no notice path); (a) and (c) pass today, guards: (a) against an installer that touches the engine, (c) against a reconcile that copies the seed engine wholesale | green |
 
 Coverage note, so the table is not read as more than it is.
 
@@ -1142,3 +1175,36 @@ only version surface it has, and it moves with each entry here.
   in the past tense, and the E9, E10, X393 and X394 rows describe the
   strengthened cases (E9's copy-through and count arms; E10's filled-cell
   setup; the needles X393 and X394 pin). The status stays `back-written`.
+- 2026-10-01: 7.37.0, written ahead of its RED
+  ([ADR-0024](../decisions/adr-0024-one-hook-core-per-session-residency.md);
+  plan `docs/plans/grill-7.37.0-routing-context.md`). The Prime Agent
+  extensions call the Claude Code hook scripts, so `install.sh prime-agent`
+  places byte-identical copies at `.prime/agent/hooks/`. §4 gains
+  PRIME_HOOK_SCRIPTS_ARE_PLACED, live from this entry; §9 gains AC-19; §10
+  gains its row, `pending` until the tester names the case. Until then
+  `spec-lint.py` counts it as uncovered. No existing contract changed; the
+  status stays `back-written`.
+- 2026-10-01: 7.37.0 increment 2 review fix, RED by the tester (spawn
+  `orchestrator.12.tester.6`), on the orchestrator's ruling for reviewer F1.
+  §4 gains REINSTALL_ENGINE_SERVES_THE_HOOKS: a re-install that places the hook
+  scripts reconciles `docs/graph/graph-lint.py` through
+  `tools/graft-graph-engine.py`, PROJECT CONFIG preserved. §10 gains its E13
+  row, `red`. The status stays `back-written`.
+- 2026-10-01: 7.37.0, REINSTALL_ENGINE_SERVES_THE_HOOKS rewritten by the
+  tester (spawn `orchestrator.13.tester.7`) on the orchestrator's corrected
+  ruling: the earlier wording had the installer reconcile the engine, which
+  contradicts accepted adr-0014. A plain re-install now leaves the engine and
+  its config byte-unchanged and the hook names the gap; graft's engine step
+  (`tools/graft-graph-engine.py`) makes the hook route, config preserved. §10
+  E13 row rewritten, `red` ((b) only). The status stays `back-written`.
+- 2026-10-01: 7.37.0, GREEN by the implementer (spawn
+  `orchestrator.14.implementer.4`): the route hook's notice for an engine
+  without `--plan-json` (SPEC-0003 ENGINE_OLDER_THAN_HOOK_IS_NAMED) turns arm
+  (b) green; install.sh unchanged. §10 E13 row `green`. The status stays
+  `back-written`.
+- 2026-10-01: 7.37.0 release pass, by `architect` (spawn
+  `orchestrator.26.architect.1`). Every contract this round added or rewrote
+  (PRIME_HOOK_SCRIPTS_ARE_PLACED, REINSTALL_ENGINE_SERVES_THE_HOOKS) reads
+  `green`; the two `pending` rows are the failures PARTIAL_CORPUS and
+  OPENCODE_SELECTOR_UNRESOLVED, untested by design (§7, §11). No contract
+  changed. The status stays `back-written`.

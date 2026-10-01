@@ -73,7 +73,8 @@ other is a symlink to it.
   ([ADR-0009](docs/decisions/adr-0009-host-support-tiers.md)); generates
   `.github/` from sources (transformed, not symlinked).
 - `prime-agent`: drops `AGENTS.md` + `.prime/agent/` (skills, prompts,
-  agents, `route-extension.ts`, `settings.json`).
+  agents, the hook core in `hooks/` and the two extensions that run it,
+  `settings.json`).
 - `all`: runs claude-code, opencode and prime-agent. Name `codex` or
   `github-copilot` as well to install a frozen host.
 
@@ -105,7 +106,8 @@ For each tool:
 3. Copies (or, with `--symlink`, links) harness projections where the
    tool expects a fixed location, for agents and skills only, plus
    tool-specific files (slash commands, settings, config).
-4. Places in `docs/graph/` the schema, linter, router, nodes directory,
+4. Places in `docs/graph/` the schema, the linter (whose `--plan` is the
+   router), the `index.md` map, the nodes directory,
    and every missing leaf collection from `templates/docs/`, among them the
    model map `docs/graph/models.md`, which you fill once with the model each
    host runs for each class and effort. Existing files are preserved ([plant files kept](DOCUMENTATION.md#enf-plant-files-kept)). `INSTALL_PROMPT.md` then orchestrates source-grounded

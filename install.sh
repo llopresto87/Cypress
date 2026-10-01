@@ -20,7 +20,7 @@
 #   github-copilot     — DEPRECATED (frozen, ADR-0009). Generate .github/ from
 #                         sources (transformed; not symlinked).
 #   prime-agent        — Drop AGENTS.md + .prime/agent/ (skills, prompts, agents,
-#                         route-extension, settings).
+#                         the hook core and its two extensions, settings).
 #   all                — Run claude-code, opencode and prime-agent. Name codex or
 #                         github-copilot as well to install a frozen host.
 #
@@ -1846,12 +1846,22 @@ install_prime_agent() {
     # Slash commands — generated prompt-template projections of the
     # command-protocol nodes, the same roster as every other harness.
     generate_slash_commands "$PROJECT_DIR/.prime/agent/prompts"
-    # Progressive-discovery enforcement extension (before_agent_start) — the
-    # Prime Agent parity of claude-code's route-hook.py. Copied so it is editable.
+    # The hook core: the same route-hook.py and status-hook.py Claude Code runs,
+    # byte-identical, so both first-class hosts keep one session ledger and one
+    # decision (ADR-0024). The two extensions below are envelopes that run them
+    # from here; each finds this directory beside its own.
+    ensure_dir "$PROJECT_DIR/.prime/agent/hooks"
+    place_file "$SEED_ROOT/integrations/claude-code/route-hook.py" \
+               "$PROJECT_DIR/.prime/agent/hooks/route-hook.py"
+    place_file "$SEED_ROOT/integrations/claude-code/status-hook.py" \
+               "$PROJECT_DIR/.prime/agent/hooks/status-hook.py"
+    # Progressive-discovery enforcement (before_agent_start): runs route-hook.py
+    # on every prompt. Copied so it is editable.
     ensure_dir "$PROJECT_DIR/.prime/agent/extensions"
     place_file "$SEED_ROOT/integrations/prime-agent/route-extension.ts" \
                "$PROJECT_DIR/.prime/agent/extensions/route-extension.ts"
-    # Status-register surfacing (first prompt of the session) — parity of status-hook.py.
+    # Status register and code anchor once per session start, never in a child:
+    # runs status-hook.py on the session events.
     place_file "$SEED_ROOT/integrations/prime-agent/status-extension.ts" \
                "$PROJECT_DIR/.prime/agent/extensions/status-extension.ts"
     # Settings — placed (so the project can edit it); an edited copy is backed up.
@@ -1869,6 +1879,7 @@ install_prime_agent() {
     log "  .prime/agent/agents/       (roster BRIEF SOURCES — read one, spawn an rlm() child with it)"
     log "  .prime/agent/skills/       (harness projection of docs/graph/skills/)"
     log "  .prime/agent/prompts/      (slash-command prompt templates)"
+    log "  .prime/agent/hooks/        (route-hook.py + status-hook.py — the hook core the extensions run)"
     log "  .prime/agent/extensions/   (route-extension.ts — progressive discovery; status-extension.ts — status register)"
     log "  .prime/agent/settings.json (commit to share with team)"
     log "  .prime/agent/APPEND_SYSTEM.md (RLM-native execution overlay — appended to the system prompt)"
@@ -2154,7 +2165,8 @@ adapter_dirs() {
                              .github/instructions .github/hooks ;;
         prime-agent)    printf '%s\n' docs docs/graph .prime .prime/agent \
                              .prime/agent/agents .prime/agent/skills \
-                             .prime/agent/prompts .prime/agent/extensions ;;
+                             .prime/agent/prompts .prime/agent/extensions \
+                             .prime/agent/hooks ;;
     esac
 }
 

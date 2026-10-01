@@ -1,6 +1,6 @@
 ---
 status: active
-status_date: 2026-09-30
+status_date: 2026-10-01
 owner: architect
 status_evidence: tests/test_graph_lint.py, tests/test_agent_lint.py, tests/test-seed-lint.sh, tests/test-grill-lint.sh, tests/test-ratchet-lint.sh (final tip 3c62b18, 49/49; the harvest's fresh-install gate passed for every host; three mutation passes of 45, 12 and 60 mutants, every survivor closed by a test; §10 says which rows are green and which stay pending)
 ---
@@ -90,7 +90,8 @@ receives is held by SPEC-0001 `SESSION_RECORD_FORM_IS_PLACED`. The doctrine text
     with a pointer from `integrations/claude-code/README.md` (the leaf installs
     into plants; the overlay does not)
   - `plan()` in `templates/knowledge-graph/graph-lint.py`: expertise promotion
-    and stack inference from named files
+    and stack inference from named files (promotion retired 2026-10-01; the
+    node router's order is SPEC-0002 §6)
   - graph-lint reachability through an index-listed node's edges
   - the menu rule in `skills/context-router/SKILL.md`; the leaf rule, the branch
     shape and the link-farm reconciliation in `skills/knowledge-graph/SKILL.md`
@@ -282,8 +283,10 @@ phrases, or the task names a file (by path, extension, manifest or lockfile)
 that one of the node's file patterns matches, `--plan` loads that node even past
 the entry budget. It also loads the node's required parent and any composed
 child the task names. The LOAD line says why: `promoted on "…"` or
-`inferred from "…" via "…"`. A task that does neither loads exactly what it
-loaded before. A bare name with no extension or directory (`Dockerfile`) is not
+`inferred from "…"`. A task that does neither loads exactly what it
+loaded before. (Amended 2026-10-01: since 7.37.0 a held phrase loads its node
+by SPEC-0002's tier 3, `phrase "…"`, and a named file by tier 2; the paragraph
+above describes the router ADR-0026 replaced.) A bare name with no extension or directory (`Dockerfile`) is not
 inferred, so the brief writes `./Dockerfile`.
 
 ### 3.6 A writer adding doctrine to the seed's method surface
@@ -317,23 +320,22 @@ grammar is in §6.
 
 ### Router: expertise promotion and stack inference
 
-### Contract: PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE
-- **Test file:** `tests/test_graph_lint.py`
-- **Given:** the fixture graph plus an `expertise` node whose first `load_when`
-  piece is `pipeline yaml`, and at least three non-expertise nodes that each
-  outscore it on the task, so the unmodified tool leaves it out of LOAD
-  (the tester records that observation in the test's docstring)
-- **When:** `graph-lint.py --plan "pipeline yaml"` runs
-- **Then:** LOAD lists the expertise node with the suffix
-  `<- promoted on "pipeline yaml"`, and exit status is 0
-- **And:** a task naming only one word of a two-word phrase (§6 "Trigger
-  phrase") does not promote that node
-- **And:** a non-expertise node whose phrase hits in full but that falls outside
-  the scored entries is not loaded, so the entry budget binds every other kind
-  unchanged
-- **And:** on a task with no phrase hit and no path-like token, LOAD is
-  identical to the unmodified tool's on the same fixture (the sets
-  `test_plan_without_composes_is_unchanged` already captures stay unchanged)
+Since 2026-10-01 the node router's contracts are SPEC-0002's; this section
+keeps inference and the record of what retired.
+
+### Retired: PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE
+Retired 2026-10-01 (7.37.0, architect pass on increment 3; ADR-0026). It
+said that an expertise node whose trigger phrase the task held in full loaded
+beside the scored entries, uncounted against their cut, that a
+non-expertise node with the same full hit stayed under the cut, and that a task
+with no phrase hit loaded what the tool loaded before. The node router is now
+a tier ladder (SPEC-0002 §6), so each clause is contradicted or moved. A
+contiguous trigger phrase of two or more tokens loads its node of any kind,
+and that tier decides the route (SPEC-0002 `GRAPH_ROUTE_PHRASE_LOADS_ITS_NODE`).
+Words apart, or one word of the phrase, do not load it, and a one-token piece
+seeds nothing (`PROMOTION_NEEDS_A_CONTIGUOUS_PHRASE`). The "unchanged LOAD"
+clause compared against a tool that no longer exists. Sign-offs not re-taken;
+§10 says where each test went.
 
 ### Contract: PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES
 - **Test file:** `tests/test_graph_lint.py`
@@ -344,9 +346,12 @@ grammar is in §6.
 - **When:** `--plan` runs on `edit infra/main.tf`, on `bump web/package-lock.json`,
   and on `bump package.json`
 - **Then:** each run lists the matching node with the suffix
-  `<- inferred from "<path>" via "<pattern>"`, where `<path>` is the task's
-  path-like token after §6 normalization and echo sanitizing, and `<pattern>` is
-  the matching piece as written
+  `<- inferred from "<path>"`, where `<path>` is the task's path-like token
+  after §6 normalization and echo sanitizing
+- **Note:** amended 2026-10-01 (7.37.0, SPEC-0003 §6 compact grammar, ADR-0025):
+  the suffix no longer ends ` via "<pattern>"`. The path is the resolved fact
+  handed to the model; the pattern is the node's own `load_when`, read through
+  `graph-lint.py --show`. Sign-offs not re-taken
 - **And:** `--plan "terraform plan output"` (no path-like token) infers nothing
 - **And:** a file pattern is never a trigger phrase: a task that repeats the
   pattern's text as words does not promote the node
@@ -356,20 +361,23 @@ grammar is in §6.
   no token touches the filesystem
 - **And:** a task holding more than 64 path-like tokens, or a token over 256
   characters, exits 0, and an error inside inference prints the §6 notice line
-  and falls back to the scored entries
+  and the route goes on to the next tier
+- **Note:** amended 2026-10-01 (7.37.0, architect pass on increment 3):
+  inference is tier 2 of SPEC-0002's node-router ladder (`how.kind`
+  `inferred`), so a path hit decides the route as a named path does. On an
+  error the route goes on to the next tier, as SPEC-0002 §6 orders it; it no
+  longer falls back to the scored entries. "Does not promote the node" reads
+  "does not load the node by any tier". Sign-offs not re-taken
 
-### Contract: PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE
-- **Test file:** `tests/test_graph_lint.py`
-- **Given:** the fixture graph where a promoted or inferred expertise node
-  `requires:` a parent expertise and `composes:` a child, and the task names one
-  of the child's own `load_when` terms that is not a whole piece (for example
-  `sink` from `log sink`)
-- **When:** `--plan` promotes or infers the node
-- **Then:** LOAD also lists the parent (by its `requires:` closure) and the
-  child with `<- composed by <node> on "<term>"`
-- **And:** a node that is both a scored entry and a phrase hit prints no suffix,
-  and a node that is both promoted and inferred prints only the promotion
-  suffix (§6 "Precedence")
+### Retired: PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE
+Retired 2026-10-01 (7.37.0, architect pass on increment 3). It said that a
+promoted or inferred node brings its `requires:` parent and a composed child
+the task names by one word that is not a whole piece. The closure of every
+entry is now SPEC-0002's node-router rule. Descent needs the child's own
+phrase, from a parent of any tier, and a node something requires reports
+`requires`, not `composed`: SPEC-0002 `COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE`
+and §6 "How precedence". Single-word descent on a piece that is not whole is
+the M5 over-selection ADR-0026 removes. Sign-offs not re-taken.
 
 ### Reachability
 
@@ -1142,20 +1150,14 @@ whitespace.
   a pattern like `**/*` matches every path and floods every task that names one
   (doctrine in `_schema.md`, no lint). Brace expansion is not supported:
   `*.{ts,tsx}` splits at the comma into `*.{ts` (a pattern that matches nothing)
-  and `tsx}` (a one-token trigger phrase that promotes on any task naming a
-  `.tsx` path). Write one pattern per piece. A manifest or lockfile is written as
+  and `tsx}` (a one-token piece, which seeds nothing). Write one pattern per
+  piece. A manifest or lockfile is written as
   a pattern, for example `**/package.json`.
-- **Trigger phrase:** any other piece. Its tokens are the router's whole tokens
-  of the lowercased piece (`_split_terms(piece)[0]`): runs of `[a-z0-9_/*.-]`,
-  stripped of `_`, of length 3 or more, not in `STOPWORDS`. A dotted or
-  hyphenated word stays one token, so `net10.0` and `supply-chain` are each a
-  single token and a task must name the whole of it (v0.5 split them into
-  `[a-z0-9_]` runs, so `target net10` promoted a node whose piece was
-  `net10.0`). A piece with no tokens is ignored.
-- **Hit:** every token of the phrase matches a term of the task
-  (`_terms(task)`) at strength 2 of `_match` (exact, or the same stem). A
-  prefix fold (strength 1) does not count.
-- Only `kind: expertise` nodes are promoted or inferred.
+- **Trigger phrase:** any other piece. What a phrase's tokens are, when a task
+  holds one, and which tier reads it are SPEC-0002 §6's, since 7.37.0. The
+  rules this section held (whole tokens, every token at strength 2 anywhere in
+  the task, expertise nodes only) were the bag-of-words promotion ADR-0026
+  removes; amended 2026-10-01, sign-offs not re-taken.
 
 ### Path-like token and pattern match
 
@@ -1184,35 +1186,35 @@ whitespace.
   accepted and documented, not corrected.
 - An extensionless bare name (`Dockerfile`) is path-like only when written with
   a directory (`docker/Dockerfile`, `./Dockerfile`).
-- Promotion and inference never raise on any `str` task. An unexpected error in
-  them drops back to the scored entries alone, prints one notice line
-  `  ! inference skipped: <exception class>` before `LOAD`, and exits 0.
+- Inference never raises on any `str` task. An unexpected error in it prints
+  one notice line `! inference skipped: <exception class>` before `LOAD`, the
+  route goes on to the next tier (SPEC-0002 §6), and the exit status is 0.
 
 ### Precedence and output
 
-- Promotion and inference add entries before the traversal, beside the scored
-  entries. The scored entries keep the existing cut (top three, above the floor).
-  Promoted and inferred entries are not counted against it, and all of them load.
-- The LOAD line's suffix, first matching rule:
-  1. a scored entry: no suffix (as today);
-  2. a phrase hit: `   <- promoted on "<piece as written>"`, the first hitting
-     piece in `load_when` order;
-  3. a path match: `   <- inferred from "<path>" via "<pattern as written>"`, the
-     first path in task order, then the first pattern in `load_when` order.
+- Since 7.37.0 the order in which entries are chosen, and how each LOAD line
+  names its kind, are SPEC-0002 §6's (the tier ladder, closure kinds, how
+  precedence) and SPEC-0003 §6's (the compact grammar). The rules this section
+  held, with promoted and inferred entries added beside an uncut scored set and
+  a three-way suffix order, describe the router ADR-0026 replaced; amended
+  2026-10-01, sign-offs not re-taken. What stays here:
 - The echoed `<path>` is the normalized token cut to its first 80 characters,
   with `…` appended when cut, and every character outside `[a-z0-9_./~+-]` shown
   as `?`.
-- `requires:` and composition descent run from promoted and inferred entries as
-  from any entry. A node that is an entry never prints `composed by`.
-- `NOT LOADED` never lists a node that loaded.
+- The `skip` block never lists a node that loaded.
 
-Example, fixture graph:
+Example, fixture graph (amended 2026-10-01: a phrase hit is SPEC-0002's tier 3):
 
 ```
-LOAD (4 nodes, ~T tokens):
-  expertise.pipelines          pipelines — when pipeline expertise is in play   <- promoted on "pipeline yaml"
-  expertise.terraform          terraform — when terraform is in play   <- inferred from "infra/main.tf" via "*.tf"
-  ...
+LOAD 4 ~<T>t
+expertise.pipelines docs/graph/nodes/expertise.pipelines.md | when pipeline expertise is in play <- phrase "pipeline yaml"
+...
+```
+
+```
+LOAD 2 ~<T>t
+expertise.terraform docs/graph/nodes/expertise.terraform.md | when terraform is in play <- inferred from "infra/main.tf"
+...
 ```
 
 ### Branch shape and the leaf rule (`knowledge-graph.branch-shape`)
@@ -1319,17 +1321,13 @@ Checked by `ADOPTED_RULES_NOT_PENDING`, case-insensitive, whitespace-collapsed:
 
 (Authored by `architect`; the security review's cases applied at ruling pass 0.)
 
-### Failure: PROMOTION_FLOODS_LOAD
-- **Contracts:** PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE
-- **Trigger:** an expertise node carries a one-word phrase common to many
-  tasks, such as a language name; or a long prompt through the route hook (a
-  pasted log or document) hits many phrases or names many matching paths
-- **Response:** every hit loads, uncapped, on every path; this is the owner's
-  decision, confirmed for the per-prompt hook at ruling pass 0
-- **Side effects:** more tokens per task; a reminder set past `SURFACED_MAX`
-  forces the route hook into full injection on every prompt
-- **Recovery:** sharpen the trigger (`skill.knowledge-graph` rule 5). No cap is
-  added (§11)
+### Retired: PROMOTION_FLOODS_LOAD
+Retired 2026-10-01 (7.37.0) with `PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE`.
+Its response, the owner's ruling at ruling pass 0 that every hit loads
+uncapped, carries forward to the phrase tier as SPEC-0002
+`PHRASE_TIER_FLOODS_LOAD`. Its one-word trigger case is gone, because a
+one-token piece now seeds nothing (SPEC-0002
+`PROMOTION_NEEDS_A_CONTIGUOUS_PHRASE`).
 
 ### Failure: HOSTILE_TASK_LINE
 - **Contracts:** PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES
@@ -1337,8 +1335,9 @@ Checked by `ADOPTED_RULES_NOT_PENDING`, case-insensitive, whitespace-collapsed:
   `../`, absolute or drive paths, control characters, or a very long token or
   token count
 - **Response:** string matching only; over-cap tokens skipped; an error inside
-  inference prints the notice line and falls back to the scored entries; never a
-  non-zero exit from inference
+  inference prints the notice line and the route goes on to the next tier of
+  SPEC-0002 §6 (amended 2026-10-01; it fell back to the scored entries
+  before the ladder); never a non-zero exit from inference
 - **Side effects:** at most a mis-rank
 - **Recovery:** none needed. The route hook's fail-open path stays for real
   router failures only
@@ -1346,26 +1345,20 @@ Checked by `ADOPTED_RULES_NOT_PENDING`, case-insensitive, whitespace-collapsed:
   decision (2026-09-29, §12): the surface only reports, and one fault class
   proves the notice and the exit 0
 
-### Failure: DESCENT_TEST_NOW_SEEDS_THE_CHILD
-- **Contracts:** PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE, PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE
-- **Trigger:** an existing `DescentTests` case assumes the unmodified tool did
-  not seed a child, and the child now promotes on a whole piece the task names
-  (measured: `dbcontext`, `net10.0`, `retry policy`)
-- **Response:** the case's provenance assertion changes (`promoted on` instead of
-  `composed by`)
-- **Side effects:** four red existing tests if left to GREEN
-- **Recovery:** ruled at ruling pass 0: the tester reshapes the four cases at
-  RED, each still asserting the child or major it selected, either by a task
-  term that is not a whole piece or by a `promoted on` assertion. The
-  implementer never edits them
+### Retired: DESCENT_TEST_NOW_SEEDS_THE_CHILD
+Retired 2026-10-01 (7.37.0). It recorded how four `DescentTests` cases were
+reshaped when bag-of-words promotion began seeding a child. Promotion is gone,
+and those cases now hold SPEC-0002 `COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE`
+(§10).
 
 ### Failure: PATTERN_BRACE_SPLIT
 - **Contracts:** PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES
 - **Trigger:** a `load_when` piece written as `*.{ts,tsx}`
-- **Response:** the head piece `*.{ts` matches nothing; the tail piece `tsx}` is
-  a one-token trigger phrase that promotes the node on any task naming a `.tsx`
-  path
-- **Side effects:** an unintended promotion; no error
+- **Response:** the head piece `*.{ts` matches nothing, and the tail piece
+  `tsx}` is a one-token trigger piece that seeds nothing (SPEC-0002 §6), so a
+  task naming a `.tsx` path does not load the node (amended 2026-10-01; the
+  tail promoted the node before)
+- **Side effects:** a silent miss; no error
 - **Recovery:** write one pattern per piece (§6); `_schema.md` says so
 
 ### Failure: EXTENSIONLESS_BARE_NAME
@@ -1735,19 +1728,17 @@ means a named agent decides and no tool can check.
 ## 8. Examples
 
 ```text
-# Happy: promotion past the budget (PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE)
+# Retired 2026-10-01 with PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE: a phrase hit is
+# SPEC-0002 tier 3 (GRAPH_ROUTE_PHRASE_LOADS_ITS_NODE), and that tier decides alone
 $ python3 graph-lint.py --plan "pipeline yaml"
-LOAD (4 nodes, ~T tokens):
-  expertise.pipelines          pipelines — when pipeline expertise is in play   <- promoted on "pipeline yaml"
-  subsystem.a                  ...
-  subsystem.b                  ...
-  subsystem.c                  ...
+LOAD 1 ~<T>t
+expertise.pipelines docs/graph/nodes/expertise.pipelines.md | when pipeline expertise is in play <- phrase "pipeline yaml"
 ```
 
 ```text
 # Happy: inference from a named lockfile (PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES)
 $ python3 graph-lint.py --plan "bump web/package-lock.json"
-  expertise.node-js            node-js — when node is in play   <- inferred from "web/package-lock.json" via "**/package-lock.json"
+expertise.node-js docs/graph/nodes/expertise.node-js.md | when node is in play <- inferred from "web/package-lock.json"
 ```
 
 ```text
@@ -1759,7 +1750,7 @@ $ python3 graph-lint.py --plan "terraform plan output"
 ```text
 # Adversarial: task text is never a pattern
 $ python3 graph-lint.py --plan "* */* [a-z]*/** ../../nowhere/x.tf /abs/y.tf"
-  expertise.terraform          ...   <- inferred from "../../nowhere/x.tf" via "*.tf"
+expertise.terraform docs/graph/nodes/expertise.terraform.md | ... <- inferred from "../../nowhere/x.tf"
 (exit 0; no other inferred line)
 ```
 
@@ -1894,22 +1885,18 @@ who judges it.)
 
 ### Routing
 
-- [ ] **AC-1.** A task whose words include every word of one of an expertise
-      node's trigger phrases loads that node, even when three other nodes
-      outscore it, and the output names the phrase. A task naming only part of a
-      two-word phrase does not. A non-expertise node is never promoted. A task
-      with no phrase hit and no path loads exactly what it loaded before.
-      Contracts: maps to PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE
+- [ ] **AC-1.** Withdrawn 2026-10-01 with PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE,
+      which is retired (§4). Phrase routing is SPEC-0002's tier 3 and its §9.
 - [ ] **AC-2.** A task that names a file by path, extension, manifest or lockfile
       loads the expertise node whose file patterns match it, and the output says
-      which path and pattern. A task with no path loads no inferred node.
-      Repeating a pattern's text as words does not promote the node. Glob
+      which path. A task with no path loads no inferred node.
+      Repeating a pattern's text as words does not load the node. Glob
       characters, `../` and absolute paths in the task never widen a match and
       never make the router fail.
       Contracts: maps to PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES
-- [ ] **AC-3.** A promoted or inferred node brings its required parent and the
-      composed child the task names.
-      Contracts: maps to PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE
+- [ ] **AC-3.** Withdrawn 2026-10-01 with PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE,
+      which is retired (§4); SPEC-0002 COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE holds
+      the closure and descent.
 - [ ] **AC-4.** Each delegation sibling loads on its own representative phrase.
       Contracts: maps to DELEGATION_LEAVES_ROUTE
 
@@ -2226,22 +2213,22 @@ gives.
 
 | Contract / Failure | Test case | Test file | Level | Status |
 |---|---|---|---|---|
-| PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE | test_plan_promotes_expertise_past_the_scored_cut | tests/test_graph_lint.py | unit, PromotionTests (CLI, fixture graph); table rows: a one-word phrase, a whole dotted compound, a phrase with a slash, the first hitting piece reported | green |
-| PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE | test_plan_partial_phrase_does_not_promote | tests/test_graph_lint.py | unit, PromotionTests; table rows: a partial version token, short words, stopwords, a prefix fold; guard | green |
-| PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE | test_plan_full_hit_on_non_expertise_stays_under_the_cut | tests/test_graph_lint.py | unit, PromotionTests; guard | green |
-| PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE | test_plan_without_hit_or_path_is_unchanged | tests/test_graph_lint.py | golden (ID sets), PromotionTests; guard | green |
-| PROMOTION_FLOODS_LOAD | test_plan_promotes_expertise_past_the_scored_cut | tests/test_graph_lint.py | unit, PromotionTests, its one-word-phrase row | green |
-| DESCENT_TEST_NOW_SEEDS_THE_CHILD | test_plan_descends_on_specific_term | tests/test_graph_lint.py | unit, DescentTests; table rows: never folds, two levels each on its own term, a major selected by its TFM token | green |
+| PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE (retired 2026-10-01) | test_plan_promotes_expertise_past_the_scored_cut, retired; its slash-phrase and first-held-piece rows move to SPEC-0002 `test_graph_route_phrase_loads_its_node`, its one-word and dotted-compound rows are contradicted by SPEC-0002 PROMOTION_NEEDS_A_CONTIGUOUS_PHRASE | tests/test_graph_lint.py | — | retired |
+| PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE (retired 2026-10-01) | test_plan_partial_phrase_does_not_promote, retired; its partial-token, prefix-fold and one-word rows are SPEC-0002 `test_promotion_needs_a_contiguous_phrase` cases, its short-word and stopword rows move to `test_graph_route_phrase_loads_its_node` | tests/test_graph_lint.py | — | retired |
+| PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE (retired 2026-10-01) | test_plan_full_hit_on_non_expertise_stays_under_the_cut, retired: SPEC-0002 GRAPH_ROUTE_PHRASE_LOADS_ITS_NODE loads a phrase hit of any kind | tests/test_graph_lint.py | — | retired |
+| PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE (retired 2026-10-01) | test_plan_without_hit_or_path_is_unchanged, retired: a golden of the replaced router's ID sets | tests/test_graph_lint.py | — | retired |
+| PROMOTION_FLOODS_LOAD (retired 2026-10-01) | carried forward as SPEC-0002 PHRASE_TIER_FLOODS_LOAD | — | — | retired |
+| DESCENT_TEST_NOW_SEEDS_THE_CHILD (retired 2026-10-01) | test_plan_descends_on_specific_term now holds SPEC-0002 COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE (its §10) | tests/test_graph_lint.py | — | retired |
 | PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES | test_plan_infers_from_extension | tests/test_graph_lint.py | unit, InferenceTests; table rows: a bare manifest, pattern text as words, a literal-name pattern in a subdirectory, a slash piece without a star, a task wildcard against a slash pattern, the first path in task order, a backslash-only token | green |
 | PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES | test_plan_infers_from_nested_lockfile | tests/test_graph_lint.py | unit, InferenceTests | green |
 | PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES | test_plan_inferred_path_echo_is_normalized_and_sanitized | tests/test_graph_lint.py | unit, InferenceTests | green |
 | PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES | test_plan_task_text_is_never_a_pattern | tests/test_graph_lint.py | unit, InferenceTests (adversarial) | green |
-| HOSTILE_TASK_LINE | test_plan_hostile_task_line_never_raises | tests/test_graph_lint.py | unit, InferenceTests (adversarial: one fault class prints the notice and exits 0). The cap and length boundaries are untested by decision: the surface only reports (§7) | green |
+| HOSTILE_TASK_LINE | test_plan_hostile_task_line_never_raises | tests/test_graph_lint.py | unit, InferenceTests (adversarial: one fault class prints the notice and exits 0; the LOAD equals the route of the same task with its path token removed, amended 2026-10-01). The cap and length boundaries are untested by decision: the surface only reports (§7) | green |
 | TASK_LINE_WITHOUT_PATHS | test_plan_infers_nothing_without_a_path_token | tests/test_graph_lint.py | unit, InferenceTests; guard | green |
-| PATTERN_BRACE_SPLIT | test_plan_infers_from_extension | tests/test_graph_lint.py | unit, InferenceTests, its brace-pattern-tail row | green |
+| PATTERN_BRACE_SPLIT | test_plan_infers_from_extension | tests/test_graph_lint.py | unit, InferenceTests, its brace-pattern-tail row, which now asserts the node does not load (amended 2026-10-01) | green |
 | EXTENSIONLESS_BARE_NAME | test_plan_infers_from_extension | tests/test_graph_lint.py | unit, InferenceTests, its bare and dotted Dockerfile rows | green |
-| PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE | test_plan_promoted_node_brings_required_parent | tests/test_graph_lint.py | unit, PromotedClosureTests | green |
-| PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE | test_plan_promoted_node_descends_to_named_child | tests/test_graph_lint.py | unit, PromotedClosureTests | green |
+| PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE (retired 2026-10-01) | test_plan_promoted_node_brings_required_parent, rewritten as SPEC-0002 `test_plan_phrase_entry_brings_required_parent` | tests/test_graph_lint.py | — | retired |
+| PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE (retired 2026-10-01) | test_plan_promoted_node_descends_to_named_child, retired; its case becomes a row of SPEC-0002 `test_composed_child_needs_its_own_phrase` | tests/test_graph_lint.py | — | retired |
 | LISTED_NODE_EDGES_REACH | test_listed_node_peer_is_reachable | tests/test_graph_lint.py | unit, ListedNodeEdgesTests (also covers SIBLING_UNREACHABLE_AFTER_GRAFT) | green |
 | ORPHAN_ISLAND | test_unlisted_peer_island_still_unreachable | tests/test_graph_lint.py | unit, ListedNodeEdgesTests; guard | green |
 | DELEGATION_LEAVES_ROUTE | test_delegation_sibling_routes_on_its_phrase | tests/test_graph_lint.py | integration (installed graph), DelegationRoutingTests | green |
@@ -2271,7 +2258,7 @@ gives.
 | ADOPTED_RULES_NOT_PENDING | X354, a row of the text-rules table: one §6 pending phrase planted | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
 | ADOPTED_RULES_NOT_PENDING | X355, a row of the text-rules table: a pending phrase wrapped across a line break | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
 | PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES | test_plan_infers_through_a_slash_pattern | tests/test_graph_lint.py | unit, InferenceTests (fix batch); guard | green |
-| PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE | test_plan_seed_closure_is_accounted_before_promotion | tests/test_graph_lint.py | unit, PromotedClosureTests (fix batch); guard | green |
+| PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE (retired 2026-10-01) | test_plan_seed_closure_is_accounted_before_promotion, rewritten as SPEC-0002 `test_plan_requires_outranks_composed` | tests/test_graph_lint.py | — | retired |
 | TEMPLATE_CHANGE_UNDER_SPEC_0003 | (none) SPEC-0003 verify command; held for the owner | — | verify record | pending |
 | EFFORT_NOT_APPLIED_PER_SPAWN | (none) reader: the brief's effort line; field held by HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP | — | review | pending |
 | IMPLEMENTER_EDITS_A_TEST | (none) the RED hash re-check at the commit boundary and the tip | — | commit boundary | pending |
@@ -2327,7 +2314,7 @@ gives.
 | SPEC-0003 `BRIEF_TEMPLATES_BYTE_IDENTICAL` and the two templates this spec edits | a live contract of another spec reads red if re-run | Ruled at ruling pass 0: SPEC-0005 does not edit SPEC-0003; held for the steward | steward; docs-librarian | the owner's answer |
 | Lifecycle protocols graft, grow, harvest | adr-0007 set a larger ceiling for them on purpose | Ruled at ruling pass 0: ledger members, not split this round; held | owner | the owner's answer |
 | The `## Leaves` mechanical check | the owner asked for the shape, not a check | Ruled at ruling pass 0: withdrawn; doctrine only; held for a possible restore | owner | the owner's answer |
-| Promotion uncapped on the per-prompt route hook | a pasted document can promote many nodes (cost only) | Ruled at ruling pass 0: uncapped, per the owner's decision; informational | owner | the owner's answer, if any |
+| Promotion uncapped on the per-prompt route hook | a pasted document can promote many nodes (cost only) | Ruled at ruling pass 0: uncapped, per the owner's decision; informational. Since 2026-10-01 a pasted document is not routed (SPEC-0002 LONG_TASK_ABSTAINS_WITH_NOTICE) and the ruling carries forward as SPEC-0002 PHRASE_TIER_FLOODS_LOAD | owner | the owner's answer, if any |
 | Mutation scope | "every increment gets a mutant" has two readings | Ruled at ruling pass 0: every increment inside the mandatory classes; held for confirmation | owner | the owner's answer |
 | Plant-authored agents and the required `effort:` | agent-lint ships into plants | Ruled at ruling pass 0: every agent; informational | owner | the owner's answer, if any |
 | The ledger freezes membership, not size | a member may still grow to `MACHINERY_BODY_CEILING` | Accepted under simple; noted by the tester | architect | a later round |
@@ -2544,3 +2531,34 @@ kept outside the seed.
   `delegation.model-map`, homed in `core/method/delegation-model-classes.md`,
   which already owns it; seed-lint's `ADOPTED_RULE_HOMES` gains the same row in
   the round's tooling wave, green on arrival under the existing contract.
+- 2026-10-01: 7.37.0, by the implementer of plan increment 2 (spawn
+  `orchestrator.10.implementer.3`), on the orchestrator's ruling Q1. The
+  inferred LOAD suffix is `<- inferred from "<path>"`, without
+  ` via "<pattern>"`, and the §6 and §8 route examples and the inference
+  notice line follow the compact grammar of SPEC-0003 §6 (ADR-0025). The
+  pattern stays a node fact, read through `graph-lint.py --show`. Sign-offs
+  not re-taken; the status stays `active`.
+- 2026-10-01: 7.37.0, by `architect` (spawn `orchestrator.17.architect.1`),
+  after increment 3's GREEN met 21 tests in `tests/test_graph_lint.py` that pin
+  the node router ADR-0026 replaces. Sign-offs not re-taken; the status stays
+  `active`. Code and spec disagreed, and this entry changes the spec on
+  purpose rather than the code: SPEC-0002's node-router contracts supersede
+  this spec's router clauses. Retired: PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE
+  (to SPEC-0002 GRAPH_ROUTE_PHRASE_LOADS_ITS_NODE and
+  PROMOTION_NEEDS_A_CONTIGUOUS_PHRASE) and PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE
+  (to COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE), with the failure modes
+  PROMOTION_FLOODS_LOAD (to PHRASE_TIER_FLOODS_LOAD) and
+  DESCENT_TEST_NOW_SEEDS_THE_CHILD. Each keeps a `### Retired:` paragraph
+  saying what it held. AC-1 and AC-3 are withdrawn. Amended:
+  PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES and HOSTILE_TASK_LINE (on an
+  inference error the route goes on to the next tier), PATTERN_BRACE_SPLIT
+  (the `tsx}` tail seeds nothing), §6 "Trigger phrase" and "Precedence and
+  output" (now pointers to SPEC-0002 §6), the §6 and §8 examples. §10 marks
+  the retired rows `retired`, says where each test went, and marks the
+  rewritten HOSTILE_TASK_LINE and PATTERN_BRACE_SPLIT rows `pending` until the
+  tester's rewrite lands.
+- 2026-10-01: 7.37.0 release pass, by `architect` (spawn
+  `orchestrator.26.architect.1`). `status_date` follows this round's
+  amendments. The status stays `active`: the §10 rows still `pending` are
+  failure modes held by review, process records or the owner, with no test by
+  design, so not every row can read `green`. No contract changed.

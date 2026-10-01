@@ -48,7 +48,7 @@ axes that share the word loosely, only the risk axis written `T0–T3`.
 | Tier | What | Loaded |
 |---|---|---|
 | 0 | `AGENTS.md` / `CLAUDE.md` | Always, by the host tool — a bootstrap only: identity, first move, tiers, rule anchors, boundaries |
-| 1 | `docs/graph/index.md` | Every task, first |
+| 1 | `docs/graph/index.md` — the fallback map | When the routed plan (`graph-lint.py --plan`) fails, stays empty or looks wrong |
 | 2 | `docs/graph/nodes/*.md` (project) and `docs/graph/{protocols,skills,agents,method}/*.md` (machinery) | By traversal from the router |
 | 3 | `docs/graph/{libraries,sources,specs,decisions,plans,runbooks,product,architecture,api,data,evaluations,prompts,best-practices,tools,templates}/**` | Only when a Tier-2 node names it and the task needs it |
 
@@ -203,6 +203,8 @@ per-deployment declaration in the deployment node. Rules about synthetic
 data, disposable credentials, rollback readiness, and build-on-host key off
 `environment_class` instead of being adjudicated case by case. The linter
 **fails** a grown plant that lacks the block and **warns** an adopted one.
+A value is read as YAML reads it: an inline `# comment` tail is dropped,
+and a `<placeholder>` left in place is not declared.
 
 ## Key semantics
 

@@ -246,6 +246,8 @@ ADAPTER_MACHINERY = {
     ".github/hooks/status-hook.py": "integrations/claude-code/status-hook.py",
     ".github/hooks/route.json": "integrations/github-copilot/hooks/route.json",
     ".github/hooks/status.json": "integrations/github-copilot/hooks/status.json",
+    ".prime/agent/hooks/route-hook.py": "integrations/claude-code/route-hook.py",
+    ".prime/agent/hooks/status-hook.py": "integrations/claude-code/status-hook.py",
     ".prime/agent/settings.json": "integrations/prime-agent/settings.json",
     ".prime/agent/APPEND_SYSTEM.md": "integrations/prime-agent/APPEND_SYSTEM.md",
     ".prime/agent/extensions/route-extension.ts":

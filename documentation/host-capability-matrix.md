@@ -92,10 +92,10 @@ opencode under that rule, and targets no frozen host.
 | Session-start hook | mechanically enforced | unsupported | unsupported | projected³ | mechanically enforced |
 | Routing hook | mechanically enforced | unsupported | unsupported | projected³ | mechanically enforced |
 | Status hook | mechanically enforced | unsupported | unsupported | projected³ | mechanically enforced |
-| Per-session injection dedup | mechanically enforced | unsupported | unsupported | degraded³ | unsupported⁵ |
+| Per-session injection dedup | mechanically enforced | unsupported | unsupported | degraded³ | mechanically enforced⁵ |
 | Pre-tool guard | mechanically enforced | unsupported | unsupported | unsupported | unsupported |
 | Slash commands | mechanically enforced | mechanically enforced | unsupported | mechanically enforced | mechanically enforced |
-| Always-applied instructions | mechanically enforced (25 319 B) | mechanically enforced (25 319 B) | mechanically enforced (≤ 25 319 B)⁴ | mechanically enforced (30 963 B) | mechanically enforced (21 397 B) |
+| Always-applied instructions | mechanically enforced (25 515 B) | mechanically enforced (25 515 B) | mechanically enforced (≤ 25 515 B)⁴ | mechanically enforced (31 159 B) | mechanically enforced (21 236 B) |
 
 ¹ The leaf/coordinator split (who holds the spawn tool at all: `Agent` on Claude Code, `Task` accepted) is read by the
 harness from each agent's `tools:` line, and ADR-0003 classes that read
@@ -127,13 +127,11 @@ the safe direction for a ratchet and the wrong direction for a claim, hence
 the `≤`. Correcting the model means editing `check_eager_surface()`, which
 would move the one home of these figures.
 
-⁵ No injection dedup ships: `route-extension.ts` keeps no state and injects in
-full on every prompt. What Prime Agent has instead is a model-kept set of
-surfaced node ids, `_cypress_surfaced`, in the session's IPython kernel, which
-the overlay asks the model to keep. Its ADR-0003 label is `soft`, and it is
-model-cooperative: no harness reads it, and it holds only while the model
-follows the overlay. That is not one of the six classes, so it is recorded
-here and not in the cell (see "Per-session injection dedup" below).
+⁵ Through the shared hook core: `route-extension.ts` runs the same
+`route-hook.py` Claude Code runs, from `.prime/agent/hooks/`, and passes the
+session id the host's session manager gives. When the host gives no id, the
+core injects in full on every prompt (see "Per-session injection dedup"
+below).
 
 ⁶ Whether opencode, Codex CLI or GitHub Copilot read an `effort`
 key from agent frontmatter at all is not established
@@ -402,12 +400,17 @@ Only the session-start hook runs it, never the per-prompt one.
   present, conditional on install order and on a Preview feature being
   available in the editor build.
 - **Prime Agent**: `route-extension.ts` subscribes to `before_agent_start`
-  for routing; `status-extension.ts` uses the same event plus a
-  process-local first-prompt flag to emulate session-start. Both are real,
-  natively auto-discovered (`.prime/agent/extensions/`, transpiled at
-  runtime, no build step): **mechanically enforced**, and, like Claude
-  Code's hooks, explicitly never block: "any error … degrades to the
-  pointer line or to silence" (`route-extension.ts` header comment).
+  and runs `route-hook.py`, the core Claude Code runs, from
+  `.prime/agent/hooks/`. `status-extension.ts` runs `status-hook.py` on the
+  session events that can leave the model without context it was shown
+  (`session_start`, `session_compact`, `session_tree`, `refine_complete`)
+  and injects the result on the next prompt of that session, once. Neither
+  extension composes text. A child session (`rlmDepth` above 0) gets
+  nothing, and the route core skips a turn a person did not type. Both are real, natively
+  auto-discovered (`.prime/agent/extensions/`, transpiled at runtime, no
+  build step): **mechanically enforced**, and, like Claude Code's hooks,
+  they never block: "a missing core, a timeout or any error injects
+  nothing" (`route-extension.ts` header comment).
 
 ### Pre-tool guard
 
@@ -471,17 +474,17 @@ already injected (SPEC-0003).
   carries no `session_id`, so every prompt takes the full injection and no
   dedup is delivered. Class: **degraded**, and only where the hook is
   installed at all: the Routing hook row's **projected**³ condition applies.
-- **Prime Agent**: `before_agent_start` carries no session id, and
-  `route-extension.ts` keeps no state, so every routed prompt is injected in
-  full and no saving in injected bytes is claimed. Class: **unsupported**,
-  for the injection itself. The overlay's `## Surfaced nodes` section asks the model
-  to keep `_cypress_surfaced`, a Python set in its IPython kernel, and not to
-  re-open a node whose content is still in view. That set is model-kept and
-  unenforced: `soft` under ADR-0003, model-cooperative, with nothing observing
-  whether the model complies. Any saving is in node bodies not re-read, and it
-  is not measured. What every Prime Agent session pays for the instruction is
-  the section itself, at most `OVERLAY_SECTION_MAX_BYTES` (512 B) on the
-  eager surface (the always-applied figure below includes it).
+- **Prime Agent**: `route-extension.ts` passes the session id from the
+  host's session manager to the same `route-hook.py`, so the session keeps
+  one ledger under `.cypress/session/`, and `status-hook.py` resets it after
+  each session start, compaction, tree switch or refine. The rules are
+  Claude Code's: a node already suggested is named by id on one `seen:`
+  line, with a full injection after each reset, every `REFRESH_EVERY`
+  routed prompts, and on any doubt about the record. Without a session id
+  the core injects in full. Class: **mechanically enforced**. Over 47
+  follow-up prompts in 22 real sessions, the text injected after the first
+  prompt fell by 69% (cl100k). The model-kept `_cypress_surfaced` set and the
+  overlay section that asked for it are retired.
 
 ### Always-applied instructions
 
@@ -492,11 +495,11 @@ function's own computation against current sources:
 
 | Harness | Formula | Measured |
 |---|---|---|
-| Claude Code | kernel + agent descriptions + skill descriptions | 25 319 B |
-| opencode | kernel + agent descriptions + skill descriptions | 25 319 B |
-| Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 25 319 B |
-| Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 21 397 B |
-| GitHub Copilot | kernel + agent descriptions + skill descriptions + pointer boilerplate | 30 963 B |
+| Claude Code | kernel + agent descriptions + skill descriptions | 25 515 B |
+| opencode | kernel + agent descriptions + skill descriptions | 25 515 B |
+| Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 25 515 B |
+| Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 21 236 B |
+| GitHub Copilot | kernel + agent descriptions + skill descriptions + pointer boilerplate | 31 159 B |
 
 The component figures live in `check_eager_surface()` in `tests/seed-lint.py`,
 their one home, and `check_published_figures()` beside it holds this table to

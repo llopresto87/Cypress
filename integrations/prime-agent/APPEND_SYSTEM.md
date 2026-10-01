@@ -5,8 +5,8 @@
 # Running CYPRESS natively on Prime Agent
 
 You are executing the CYPRESS seed on Prime Agent. Obey the kernel
-(`AGENTS.md`): route first through `docs/graph/index.md`, classify the tier,
-then follow the protocol. The tier table, the eight rules, the specs and the
+(`AGENTS.md`): route first through its FIRST MOVE, classify the tier, then
+follow the protocol. The tier table, the eight rules, the specs and the
 roster, skills and commands all come from the shared `docs/graph/` nodes; this
 overlay overrides no kernel rule, spec or gate. It only maps the kernel's
 discipline onto your native RLM primitives: spawned children, the IPython
@@ -49,14 +49,6 @@ test, code, or a doc), spawn a clean-context child instead of doing it inline:
 The verify discipline assumes you can run the gate. Run it directly in the
 IPython kernel (`bash tests/run.sh`, the linters, the test suite) and keep the
 evidence in variables. That is your native tool.
-
-## Surfaced nodes
-
-Keep a Python set of graph node ids, `_cypress_surfaced`, in the IPython
-kernel, and add each id whose node body you open. Before opening a body the
-router suggests, check the set. An id in it means surfaced earlier this
-session: re-open it if its content is not in view. IPython state outlives
-compaction; your context does not.
 
 ## Close-out — three destinations, routed by what the artifact is
 
