@@ -203,3 +203,7 @@ with it.
   graft)
 - The round's routing investigation and node-route corpus, kept with the
   round's working records outside the seed
+
+## Ratification
+
+Ratified by the owner after the 7.37.0 release, 2026-10-01: "accepted ratified".
