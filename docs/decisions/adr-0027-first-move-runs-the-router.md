@@ -175,3 +175,7 @@ plant-installed wording lines and one renderer line.
 - Owner ruling D2 of 7.37.0, the round's measurements and refutation pass,
   and the increment-4 precondition replay, kept with the round's working
   records outside the seed
+
+## Ratification
+
+Ratified by the owner after the 7.37.0 release, 2026-10-01: "accepted ratified".
