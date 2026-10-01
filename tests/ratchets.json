@@ -60,7 +60,19 @@
       "check the change is integrated and not bolted on || checking the change is integrated and not bolted on",
       "make the failing test pass || make the failing test pass and nothing else"
     ],
-    "HOOK_TEXT_MAX_BYTES": 851,
+    "GRAPH_ADVERSARIAL_FORBIDDEN_MAX": 0,
+    "GRAPH_ADVERSARIAL_MIN_ROWS": 8,
+    "GRAPH_CONTRACT_RECALL_MIN": 1.0,
+    "GRAPH_IRRELEVANT_SHARE_MAX": {
+      "adversarial": 0.43,
+      "contract": 0.58,
+      "paraphrase": 0.51
+    },
+    "GRAPH_PARAPHRASE_MAX_OVERLAP": 0.5,
+    "GRAPH_PARAPHRASE_MIN_ROWS": 14,
+    "GRAPH_UNKNOWN_ABSTAIN_MIN": 8,
+    "HELD_OUT_PIECE_WORDS": 3,
+    "HOOK_TEXT_MAX_BYTES": 802,
     "KERNEL_BUDGET": 8000,
     "LEAF_BODY_CEILING": 170,
     "LIFECYCLE_BODY_CEILING": 2500,
@@ -97,8 +109,9 @@
     "PARAPHRASE_FLOOR": 4,
     "PARAPHRASE_MAX_OVERLAP": 0.5,
     "PARAPHRASE_MIN_ROWS": 15,
+    "SESSION_INJECTION_MAX_BYTES": 4960,
     "SPEC_ROW_UNBOUND_BUDGET": 0,
-    "SPEC_UNCOVERED_BUDGET": 2
+    "SPEC_UNCOVERED_BUDGET": 1
   },
   "registry": {
     "ADVERSARIAL_CONFIDENT_WRONG_BUDGET": "max integrations/claude-code/agent-lint.py",
@@ -110,6 +123,14 @@
     "EVAL_THRESHOLD": "min integrations/claude-code/agent-lint.py",
     "FRONTMATTER_CEILING": "max tests/seed-lint.py",
     "GRANDFATHERED_NEAR_DUPLICATES": "set integrations/claude-code/agent-lint.py",
+    "GRAPH_ADVERSARIAL_FORBIDDEN_MAX": "max templates/knowledge-graph/graph-lint.py",
+    "GRAPH_ADVERSARIAL_MIN_ROWS": "min templates/knowledge-graph/graph-lint.py",
+    "GRAPH_CONTRACT_RECALL_MIN": "min templates/knowledge-graph/graph-lint.py",
+    "GRAPH_IRRELEVANT_SHARE_MAX": "map templates/knowledge-graph/graph-lint.py",
+    "GRAPH_PARAPHRASE_MAX_OVERLAP": "max templates/knowledge-graph/graph-lint.py",
+    "GRAPH_PARAPHRASE_MIN_ROWS": "min templates/knowledge-graph/graph-lint.py",
+    "GRAPH_UNKNOWN_ABSTAIN_MIN": "min templates/knowledge-graph/graph-lint.py",
+    "HELD_OUT_PIECE_WORDS": "max templates/knowledge-graph/graph-lint.py",
     "HOOK_TEXT_MAX_BYTES": "max tests/seed-lint.py",
     "KERNEL_BUDGET": "max tests/seed-lint.py",
     "LEAF_BODY_CEILING": "max tests/seed-lint.py",
@@ -121,6 +142,7 @@
     "PARAPHRASE_FLOOR": "min integrations/claude-code/agent-lint.py",
     "PARAPHRASE_MAX_OVERLAP": "max integrations/claude-code/agent-lint.py",
     "PARAPHRASE_MIN_ROWS": "min integrations/claude-code/agent-lint.py",
+    "SESSION_INJECTION_MAX_BYTES": "max integrations/claude-code/route-hook.py",
     "SPEC_ROW_UNBOUND_BUDGET": "max tests/seed-lint.py",
     "SPEC_UNCOVERED_BUDGET": "max tests/seed-lint.py"
   }

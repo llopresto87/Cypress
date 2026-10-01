@@ -1,103 +1,127 @@
-// status-extension.ts — surface the lifecycle status register and the code
-// anchor once per session.
+// status-extension.ts — the Prime Agent envelope of the session-start hook core.
 //
-// The Prime Agent parity of Claude Code's status-hook.py (SessionStart). Prime
-// Agent's extension API fires `before_agent_start` per prompt, so this module
-// keeps a process-local flag and injects only on the FIRST prompt of the
-// session: `status-register.py --summary` — open / hotfix / deferred counts
-// and the oldest items. Then, whether or not a register exists, it adds what
-// `code-anchor.py --compare` prints, all as one prepended message. Not per prompt; nothing
-// for the model to remember; subagents (rlm children) get nothing.
-// route-extension.ts, which runs on every prompt, never runs the anchor.
+// It runs `status-hook.py`, the Python core Claude Code runs on SessionStart,
+// with the argv envelope on each session event that can leave the model
+// without context it was shown: `session_start` (every reason),
+// `session_compact`, `session_tree` and `refine_complete`. The core resets the
+// session ledger route-hook.py keeps, and returns the status register summary
+// and the code anchor line. This file holds that text, keyed by session id,
+// and injects it on the next prompt of that session, once. A session with no
+// event seen (a missed `session_start`) runs the core as `startup` first. A
+// child session (`rlmDepth` above 0) gets nothing, because the core emits
+// nothing for it (SPEC-0003, ADR-0024). This file composes no text and writes
+// no file.
 //
 // Installed to `.prime/agent/extensions/status-extension.ts` by
-// `install.sh prime-agent`; auto-discovered like route-extension.ts.
-// It NEVER blocks: a missing or broken register degrades to silence, and an
-// anchor comparison that did not run is the not-checked line (SPEC-0003).
+// `install.sh prime-agent`, beside the core at `.prime/agent/hooks/`, and
+// auto-discovered like route-extension.ts. It NEVER blocks: a missing core, a
+// timeout or any error injects nothing.
 
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-const CANDIDATES = [
-  ["docs", "graph", "status-register.py"],
-  ["tools", "status-register.py"],
-];
-const ANCHOR_CANDIDATES = [["docs", "graph", "code-anchor.py"]];
-const ANCHOR_NOT_CHECKED =
-  "Code anchor: not checked this session (the comparison did not run). Facts about code in the graph are unverified.";
+type Session = {
+  cwd: string;
+  sessionManager: { getSessionId(): string; getHeader(): { rlmDepth?: unknown } | null };
+};
 
-function findTool(startDir: string, candidates: string[][]): { tool: string; root: string } | null {
-  let p = path.resolve(startDir);
-  for (let i = 0; i < 7; i++) {
-    for (const parts of candidates) {
-      const candidate = path.join(p, ...parts);
-      if (fs.existsSync(candidate)) return { tool: candidate, root: p };
-    }
-    const parent = path.dirname(p);
-    if (parent === p) break;
-    p = parent;
-  }
-  return null;
+// The core sits in `../hooks/` beside this file's directory; when that
+// directory cannot be resolved, in the plant's `.prime/agent/hooks/`. No
+// upward walk: a core this install did not place is never run.
+function corePath(ctx: Session): string | undefined {
+  const dir = typeof __dirname === "string"
+    ? path.join(__dirname, "..", "hooks")
+    : path.join(ctx.cwd, ".prime", "agent", "hooks");
+  const script = path.join(dir, "status-hook.py");
+  return fs.existsSync(script) ? script : undefined;
 }
 
-// The anchor line: what `code-anchor.py --compare` prints, run from the plant
-// root, or the not-checked line when the tool is absent, fails, prints
-// nothing or times out. Never empty.
-async function codeAnchor(pi: ExtensionAPI, cwd: string): Promise<string> {
+function sessionId(ctx: Session): string | undefined {
   try {
-    const anchor = findTool(cwd, ANCHOR_CANDIDATES);
-    if (!anchor) return ANCHOR_NOT_CHECKED;
-    const a = await pi.exec(
-      "python3",
-      [anchor.tool, "--compare"],
-      { timeout: 5_000, cwd: anchor.root },
-    );
-    const line = (a.stdout || "").trim();
-    if (a.code !== 0 || !line) return ANCHOR_NOT_CHECKED;
-    return line;
+    const id = ctx.sessionManager.getSessionId();
+    return typeof id === "string" && id ? id : undefined;
   } catch {
-    return ANCHOR_NOT_CHECKED;
+    return undefined;
   }
 }
 
-// The register's summary line, or "" when there is none.
-async function statusSummary(pi: ExtensionAPI, cwd: string): Promise<string> {
+// `--session-id=` and `--depth=` for this session, each left out when the host
+// does not give it: no session id resets nothing, no depth is a parent.
+function sessionOptions(ctx: Session): string[] {
+  const options: string[] = [];
+  const id = sessionId(ctx);
+  if (id) options.push(`--session-id=${id}`);
   try {
-    const found = findTool(cwd, CANDIDATES);
-    if (!found) return "";
-    const r = await pi.exec(
-      "python3",
-      [found.tool, "--summary", "--root", path.join(found.root, "docs", "graph")],
-      { timeout: 15_000, cwd: found.root },
-    );
-    const summary = (r.stdout || "").trim();
-    if ((r.code !== 0 && r.code !== 1) || !summary) return "";
-    return (
-      "Status register (lifecycle debt in this plant, read from frontmatter; " +
-      "use these counts as settled): " + summary
-    );
+    const depth = ctx.sessionManager.getHeader()?.rlmDepth;
+    if (Number.isInteger(depth)) options.push(`--depth=${depth}`);
   } catch {
-    return "";
+    // no depth: the core treats the session as a parent
+  }
+  return options;
+}
+
+// The core's `hookSpecificOutput.additionalContext`, or nothing when it printed
+// nothing or no hook envelope.
+function additionalContext(stdout: string): string | undefined {
+  try {
+    const text = JSON.parse(stdout)?.hookSpecificOutput?.additionalContext;
+    return typeof text === "string" && text ? text : undefined;
+  } catch {
+    return undefined;
   }
 }
 
-let shown = false;
+async function runCore(pi: ExtensionAPI, ctx: Session, source: string): Promise<string | undefined> {
+  try {
+    const script = corePath(ctx);
+    if (!script) return undefined;
+    const r = await pi.exec("python3", [script, source, ...sessionOptions(ctx)],
+      { timeout: 25_000, cwd: ctx.cwd });
+    return additionalContext(r.stdout);
+  } catch {
+    return undefined;
+  }
+}
+
+// The text each session is owed, not yet injected, keyed by session id (the
+// empty key when the id cannot be read), and every session an event was seen for.
+const held = new Map<string, Promise<string | undefined>>();
+const seen = new Set<string>();
+
+// The returned promise settles when the core has run, so the reset is written
+// before the host, which awaits session handlers, delivers the next prompt to
+// route-extension.ts. It never rejects: runCore catches every error.
+function reset(pi: ExtensionAPI, ctx: Session, source: string): Promise<string | undefined> {
+  const key = sessionId(ctx) ?? "";
+  const pending = runCore(pi, ctx, source);
+  seen.add(key);
+  held.set(key, pending);
+  return pending;
+}
 
 export default function statusExtension(pi: ExtensionAPI): void {
+  pi.on("session_start", async (event, ctx) => {
+    await reset(pi, ctx, `--source=${event.reason ?? "unknown"}`);
+  });
+  pi.on("session_compact", async (_event, ctx) => {
+    await reset(pi, ctx, "--source=session_compact");
+  });
+  pi.on("session_tree", async (_event, ctx) => {
+    await reset(pi, ctx, "--source=session_tree");
+  });
+  pi.on("refine_complete", async (_event, ctx) => {
+    await reset(pi, ctx, "--source=refine_complete");
+  });
   pi.on("before_agent_start", async (_event, ctx) => {
-    if (shown) return;
-    shown = true;
     try {
-      const summary = await statusSummary(pi, ctx.cwd);
-      const anchor = await codeAnchor(pi, ctx.cwd);
-      return {
-        message: {
-          customType: "cypress-status",
-          content: [summary, anchor].filter((part) => part).join("\n"),
-          display: true,
-        },
-      };
+      const key = sessionId(ctx) ?? "";
+      if (!seen.has(key)) reset(pi, ctx, "--source=startup");
+      const pending = held.get(key);
+      held.delete(key);
+      const content = pending && (await pending);
+      if (!content) return;
+      return { message: { customType: "cypress-status", content, display: true } };
     } catch {
       return;
     }

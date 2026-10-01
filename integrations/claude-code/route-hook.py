@@ -1,40 +1,53 @@
 #!/usr/bin/env python3
-"""route-hook.py — a UserPromptSubmit hook that points each prompt at the
+"""route-hook.py — the per-prompt hook core: it points each prompt at the
 kernel and attaches the graph router's suggestion, naming a node by id alone
-once this session has already been shown it. Works in BOTH Claude Code and
-VS Code Copilot (Agent Hooks, Preview): both read `.claude/settings.json`
-hooks, and both inject context via the `hookSpecificOutput.additionalContext`
-output shape.
+once this session has already been shown it. It runs on every first-class
+host: Claude Code and VS Code Copilot (Agent Hooks, Preview) read
+`.claude/settings.json` hooks and pass the stdin envelope; Prime Agent's
+`route-extension.ts` runs it from `.prime/agent/hooks/` with the argv
+envelope. Both get the same `hookSpecificOutput.additionalContext` back.
 
-Installed to `.claude/route-hook.py` and wired in `.claude/settings.json`
-under hooks.UserPromptSubmit, this runs on every prompt. The host passes
-`{"prompt": "..."}` (plus `cwd`, `session_id`, `hook_event_name`) on stdin;
-whatever `additionalContext` this returns is injected as a prepended message
-before the model answers. The rules themselves live in the kernel; this hook
-only points at them (SPEC-0003).
+On Claude Code it is installed to `.claude/route-hook.py` and wired under
+hooks.UserPromptSubmit. The host passes `{"prompt": "..."}` (plus `cwd`,
+`session_id`, `hook_event_name`) on stdin. Any argument that begins `--`
+selects the argv envelope instead (`--prompt=`, `--session-id=`, `--depth=`,
+`--origin=`, one element each), and stdin is not read. Whatever
+`additionalContext` this returns is injected as a prepended message before the
+model answers. The rules themselves live in the kernel; this hook only points
+at them (SPEC-0003).
 
-Three parts, kept apart:
+Four parts, kept apart:
 
+- The envelope and the not-routed rule. A trivial prompt, a child session
+  (`--depth` above 0), a turn whose `--origin` is not a person, and a prompt
+  that opens with a NON_HUMAN_MARKERS entry get nothing: no router run, no
+  ledger access.
 - The router call. The prompt reaches `docs/graph/graph-lint.py` as one
-  `--plan=<prompt>` argv value, with no shell. Output that does not begin with
-  the exact echo `task: <prompt>` and a blank line is a router failure, so the
-  prompt is never passed back into the session.
+  `--plan-json=<prompt>` argv value, with no shell. The answer is a
+  `cypress.plan/1` document that carries the prompt's SHA-256, never the
+  prompt; a document that fails validation, or is bound to another prompt, is
+  a router failure. An engine older than this hook, which argparse makes
+  reject `--plan-json`, is named in one notice line instead, never routed by
+  parsing `--plan` text. The route text is rendered here from the validated
+  fields alone, in the compact grammar `graph-lint.py --plan` prints.
 - The mode decision (`decide`), a pure function of the router's ids, the
   session ledger and REFRESH_EVERY. Full mode is the pointer line and the
   router's suggestion; reminder mode names what this session was already
-  shown by id, and gives entry lines only for what is new.
+  shown by id on one `seen:` line, and gives entry lines and skip items only
+  for what is new.
 - The session ledger, `.cypress/session/<session_id>.json`. This file is its
   one owner: path rule, schema, descriptor-relative I/O, garbage collection
-  and `reset_ledger`, which status-hook.py loads from here on SessionStart.
+  and `reset_ledger`, which status-hook.py loads from here on a session start.
 
 Every doubt resolves toward the full injection. It never blocks: exit 0
-always; once graph-lint.py resolves, at least the pointer line is emitted,
-and any ledger failure emits the full text with one stderr line.
+always; once graph-lint.py resolves, a routed prompt gets at least the
+pointer line, and any ledger failure emits the full text with one stderr line.
 
 Context injection REQUIRES JSON on stdout — plain text is not injected by
 Copilot.
 """
 
+import hashlib
 import itertools
 import json
 import os
@@ -47,9 +60,10 @@ import time
 from pathlib import Path
 from typing import NamedTuple
 
-# The same script may live at .claude/route-hook.py or
-# .github/hooks/route-hook.py (different depths), so find the project
-# root by walking up for the graph linter rather than assuming a depth.
+# The same script may live at .claude/route-hook.py,
+# .github/hooks/route-hook.py or .prime/agent/hooks/route-hook.py (different
+# depths), so find the project root by walking up for the graph linter rather
+# than assuming a depth.
 #
 # One candidate, and it is the one the installer writes. A candidate list is a
 # claim about where the artifact is written, so a path no writer produces is
@@ -115,21 +129,29 @@ def find_lint():
 LINT, ROOT = find_lint()
 
 TRIVIAL = {"", "yes", "no", "ok", "thanks", "thank you", "go", "continue", "y", "n"}
+# A prompt whose first non-whitespace text begins with one of these was not
+# typed by a person: a host notification, another session's message, a local
+# command's output, or a Prime Agent agent-message delivery, background-command
+# completion or harness digest. It is not routed and does not count toward
+# REFRESH_EVERY (SPEC-0003 §6).
+NON_HUMAN_MARKERS = ("<task-notification>", "Another Claude session sent a message:",
+                     "<local-command-", "[agent-message from ", "[bash-done ",
+                     "[harness-digest]")
 
 # --- injected text (SPEC-0003 §6; compared byte for byte by the tests) ---
-# POINTER and SUGGESTION_HEADER are also literals in the Prime Agent twin,
-# integrations/prime-agent/route-extension.ts, so the two cannot drift apart.
 POINTER = "Route first: the kernel's FIRST MOVE and \u00a70 apply to this prompt."
 SUGGESTION_HEADER = "Router suggestion (a keyword heuristic \u2014 reason over it):"
-NEW_PREFIX = "New for this task: "
-SURFACED_LINE = "Surfaced earlier this session: {} \u2014 open if not in view."
-PEERS_HEADER = "Not suggested, not listed before (cross only if needed):"
+REMINDER_HEADER = "LOAD {} ~{}t (reminder)"
+SEEN_LINE = "seen: {} (surfaced earlier this session; open if not in view)"
+SKIP_HEADER = "skip (cross only if the task needs it):"     # also a literal in graph-lint.py
+ENGINE_OLDER = "No route: graph-lint.py lacks --plan-json; graft the engine."
 NO_GRAPH = ("No knowledge graph found (docs/graph/). Use the canonical "
             "INSTALL_PROMPT.md; /initialize is the entry fork behind it \u2014 "
             "grow when there is source to scout, from-scratch when the "
             "repository is empty.")
 
-# --- ledger constants: this file is their one home ---
+
+# --- ledger and budget constants: this file is their one home ---
 LEDGER_VERSION = 1
 REFRESH_EVERY = 10          # routed prompts per full injection; plan §4.7 may retune it
 ROUTER_TIMEOUT = 15         # seconds
@@ -141,10 +163,18 @@ TEMP_PREFIX = ".tmp-"
 TEMP_MAX_AGE = 3600
 LEDGER_MAX_BYTES = 64 * 1024
 SURFACED_MAX = 512
+# What the scripted session under tests/fixtures/session-injection/ receives
+# in all, summed over every additionalContext, the status hook's resets
+# included (SPEC-0003 SESSION_INJECTION_WITHIN_BUDGET). Recorded in
+# tests/ratchets.json; it may only fall.
+SESSION_INJECTION_MAX_BYTES = 4960
 
 SESSION_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
 NODE_ID = re.compile(r"^[a-z][a-z0-9_.-]{0,127}$")
 RESET_SOURCE = re.compile(r"^[a-z_-]{1,32}$")
+ORIGIN = re.compile(r"^[a-z_-]{1,32}$")
+CHILD_DEPTH = re.compile(r"^0*[1-9][0-9]*$")      # a decimal integer above 0
+RELATIVE_PATH = re.compile(r"^(?!/)(?!.*(^|/)\.\.(/|$))[A-Za-z0-9_./-]+$")
 TEMP_NAME = re.compile(r"^" + re.escape(TEMP_PREFIX) + r"[A-Za-z0-9_-]{1,64}$")
 ISO_UTC = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?(Z|\+00:00)$")
 LEDGER_KEYS = ("version", "session_id", "prompt_count", "surfaced", "peers_seen", "last_reset")
@@ -182,68 +212,178 @@ def reason(e: OSError) -> str:
 
 
 # --- the router call -------------------------------------------------------
+# The `cypress.plan/1` document `graph-lint.py --plan-json` prints (SPEC-0003
+# §6), and the compact `--plan` grammar the route is rendered in from it.
+PLAN_SCHEMA = "cypress.plan/1"
+PLAN_KEYS = {"schema", "task_sha256", "plant", "notices", "est_tokens", "load", "skip"}
+PLANT_KEYS = ("environment_class", "commit_attribution", "deliverable_language",
+              "comment_language")       # the `plant:` line's order
+NOTICE_CODES = {"wide_descent", "inference_skipped", "long_task", "no_signal"}
+HOW_KINDS = {"scored", "requires", "inferred", "composed",
+             "named_id", "named_path", "phrase"}
+SKIP_GROUPS = {"peer": " peer of {}: ", "composed": " composed by {}, no specific term: "}
+LOAD_HEADER = "LOAD {} ~{}t"
+
+
 class Entry(NamedTuple):
     node: str
-    line: str
+    line: str               # a LOAD entry line, or a skip group's `<id>=<path>` item
+    group: str = ""         # a skip entry's group line, up to its items
 
 
 class Suggestion(NamedTuple):
-    notices: list
-    load: list
-    not_loaded: list
+    notices: list           # the notice lines, as `--plan` prints them
+    plant: list             # the `plant:` line, or nothing when the document has no facts
+    est_tokens: int
+    load: list              # [Entry], by id
+    not_loaded: list        # [Entry], in the router's order: grouped, by id within a group
 
 
-def run_router(prompt: str):
-    """The router's output with the exact echo prefix removed, or None when the
-    router failed: a non-zero exit, a timeout, no output, a prompt the OS
-    cannot pass as an argument (a NUL byte, over the argument limit), or output
-    that does not begin with `task: <prompt>` and a blank line.
+class RouterFailed(Exception):
+    """The router gave no usable document. A message, when there is one, is
+    the stderr line this prompt owes; it never carries a byte the router
+    printed. A `notice`, when there is one, is the line the injection carries
+    after the pointer."""
 
-    The output is decoded here, with no newline translation: text mode would
-    turn the echo of a CRLF or lone-CR prompt into `\n`, and it would no longer
-    match the prompt it echoes."""
+    def __init__(self, message: str = "", notice: str = ""):
+        super().__init__(message)
+        self.notice = notice
+
+
+def run_router(prompt: str) -> dict:
+    """The router's `cypress.plan/1` document for `prompt`, validated and
+    bound to it by its SHA-256. Raises RouterFailed, silently for a router that
+    failed (a non-zero exit, a timeout, no output, or a prompt the OS cannot
+    pass as an argument: a NUL byte, over the argument limit), with one stderr
+    line for output that is not such a document, and with the ENGINE_OLDER
+    notice for an engine whose argparse rejects the option: exit 2 and
+    `unrecognized arguments: --plan-json` on stderr (SPEC-0003
+    ENGINE_OLDER_THAN_HOOK_IS_NAMED)."""
     try:
         out = subprocess.run(
-            [sys.executable, str(LINT), "--plan=" + prompt],
+            [sys.executable, str(LINT), "--plan-json=" + prompt],
             capture_output=True, timeout=ROUTER_TIMEOUT, cwd=str(ROOT),
         )
     except (OSError, ValueError, subprocess.SubprocessError):
-        return None
-    stdout = out.stdout.decode("utf-8", errors="replace")
-    prefix = f"task: {prompt}\n\n"
-    if out.returncode != 0 or not stdout.startswith(prefix):
-        return None
-    return stdout[len(prefix):]
+        raise RouterFailed() from None
+    if out.returncode == 2 and b"unrecognized arguments: --plan-json" in out.stderr:
+        raise RouterFailed(notice=ENGINE_OLDER)
+    if out.returncode != 0 or not out.stdout.strip():
+        raise RouterFailed()
+    try:
+        doc = json.loads(out.stdout)
+    except (ValueError, RecursionError):
+        raise RouterFailed("router output is not JSON; pointer line only") from None
+    digest = hashlib.sha256(prompt.encode("utf-8", "surrogateescape")).hexdigest()
+    problem = plan_problem(doc, digest)
+    if problem:
+        raise RouterFailed(f"router output is not a valid {PLAN_SCHEMA} document "
+                           f"({problem}); pointer line only")
+    return doc
 
 
-def parse_suggestion(remainder: str):
-    """The router's notice lines and LOAD / NOT LOADED entries, in its order,
-    or None when the remainder does not follow the `--plan` grammar."""
-    notices, load, not_loaded = [], [], []
-    section = None
-    for line in remainder.splitlines():
-        if not line.strip():
-            continue
-        if section is None and line.startswith("  ! "):
-            notices.append(line)
-        elif section is None and line.startswith("LOAD ("):
-            section = load
-        elif section is load and line.startswith("NOT LOADED ("):
-            section = not_loaded
-        elif section is not None and line.startswith("  "):
-            node = line.split()[0]
-            if not NODE_ID.match(node):
-                return None
-            section.append(Entry(node, line))
-        else:
-            return None
-    if section is None:
-        return None
-    return Suggestion(notices, load, not_loaded)
+def _is(value, pattern) -> bool:
+    return isinstance(value, str) and bool(pattern.fullmatch(value))
 
 
-def full_text(remainder: str) -> str:
-    return POINTER + "\n\n" + SUGGESTION_HEADER + "\n" + remainder.strip()
+def _member(value, allowed) -> bool:
+    return isinstance(value, str) and value in allowed
+
+
+def _node_ref(e, keys) -> bool:
+    return (isinstance(e, dict) and set(e) == keys
+            and _is(e["id"], NODE_ID) and _is(e["path"], RELATIVE_PATH))
+
+
+def plan_problem(doc, digest: str):
+    """Why `doc` is not a `cypress.plan/1` document bound to the prompt whose
+    SHA-256 is `digest`, or None. The reason names the rule, never a value."""
+    if not isinstance(doc, dict) or set(doc) != PLAN_KEYS:
+        return "not a plan object"
+    if doc["schema"] != PLAN_SCHEMA:
+        return "unknown schema"
+    if doc["task_sha256"] != digest:
+        return "bound to another prompt"
+    plant = doc["plant"]
+    if plant is not None and not (isinstance(plant, dict) and set(plant) == set(PLANT_KEYS)
+                                  and all(isinstance(v, str) for v in plant.values())):
+        return "bad plant"
+    notices = doc["notices"]
+    if not (isinstance(notices, list) and all(
+            isinstance(n, dict) and set(n) == {"code", "text"}
+            and _member(n["code"], NOTICE_CODES) and isinstance(n["text"], str)
+            for n in notices)):
+        return "bad notices"
+    if type(doc["est_tokens"]) is not int or doc["est_tokens"] < 0:
+        return "bad est_tokens"
+    load = doc["load"]
+    if not (isinstance(load, list) and all(
+            _node_ref(e, {"id", "path", "title", "how"}) and isinstance(e["title"], str)
+            and isinstance(e["how"], dict) and set(e["how"]) == {"kind", "detail", "via"}
+            and _member(e["how"]["kind"], HOW_KINDS)
+            and (e["how"]["detail"] is None or isinstance(e["how"]["detail"], str))
+            and (e["how"]["via"] is None or _is(e["how"]["via"], NODE_ID))
+            for e in load)):
+        return "bad load entry"
+    if [e["id"] for e in load] != sorted(e["id"] for e in load):
+        return "load not sorted by id"
+    skip = doc["skip"]
+    if not (isinstance(skip, list) and all(
+            _node_ref(e, {"id", "path", "kind", "via"}) and _member(e["kind"], SKIP_GROUPS)
+            and _is(e["via"], NODE_ID) for e in skip)):
+        return "bad skip entry"
+    return None
+
+
+def how_suffix(how: dict):
+    """The `<- …` the `--plan` grammar prints after a LOAD entry, or None."""
+    kind, detail, via = how["kind"], how["detail"], how["via"]
+    if kind == "inferred":
+        return f'inferred from "{detail}"'
+    if kind == "composed":
+        return f'composed by {via} on "{detail}"'
+    if kind == "named_path":
+        return f'owns "{detail}"'
+    if kind == "phrase":
+        return f'phrase "{detail}"'
+    return None
+
+
+def suggest(doc: dict) -> Suggestion:
+    """A validated document as the lines `--plan` prints for it: a LOAD entry
+    is `<id> <path> | <title>[ <- <how>]`, the title without a leading
+    `<slug> — ` its id already says; a skipped one is an `<id>=<path>`
+    item of its group; the plant facts, when the document has them, are the
+    one `plant:` line, in PLANT_KEYS order."""
+    load = []
+    for e in doc["load"]:
+        title = e["title"].removeprefix(e["id"].rsplit(".", 1)[-1] + " \u2014 ")
+        suffix = how_suffix(e["how"])
+        load.append(Entry(e["id"], f"{e['id']} {e['path']} | {title}"
+                          + (f" <- {suffix}" if suffix else "")))
+    not_loaded = [Entry(e["id"], f"{e['id']}={e['path']}", SKIP_GROUPS[e["kind"]].format(e["via"]))
+                  for e in doc["skip"]]
+    plant = doc["plant"]
+    return Suggestion([f"! {n['text']}" for n in doc["notices"]],
+                      ["plant: " + " ".join(f"{k}={plant[k]}" for k in PLANT_KEYS)] if plant else [],
+                      doc["est_tokens"], load, not_loaded)
+
+
+def skip_block(entries: list) -> list:
+    """The skip header and one line per group, its items in the given order;
+    nothing when there are no entries."""
+    groups = {}
+    for e in entries:
+        groups.setdefault(e.group, []).append(e.line)
+    return ([SKIP_HEADER] if groups else []) + [g + " ".join(items) for g, items in groups.items()]
+
+
+def full_text(suggestion: Suggestion) -> str:
+    """Full mode: the pointer, the suggestion header, and the route exactly as
+    `graph-lint.py --plan` prints it (SPEC-0003 ROUTE_FULL_TEXT_EQUALS_PLAN)."""
+    return "\n".join([POINTER, "", SUGGESTION_HEADER, *suggestion.notices, *suggestion.plant,
+                      LOAD_HEADER.format(len(suggestion.load), suggestion.est_tokens),
+                      *(e.line for e in suggestion.load), *skip_block(suggestion.not_loaded)])
 
 
 # --- the mode decision (pure) ----------------------------------------------
@@ -266,23 +406,20 @@ def decide(ledger, suggestion: Suggestion):
 
 
 def reminder_text(ledger, suggestion: Suggestion) -> str:
-    """Reminder mode: the pointer, the router's notices, the entry lines of what
-    is new this session, one line naming the rest by id, and only the peers
-    not listed before. Each part is dropped when empty."""
+    """Reminder mode: the pointer, the router's notices, the reminder header,
+    the entry lines of what is new this session, one `seen:` line naming the
+    rest by id, and a skip block of only the ids not listed before. Each part
+    after the header is dropped when empty; no `plant:` line, which the full
+    injection left resident."""
     shown = set(ledger["surfaced"])
-    new = [e for e in suggestion.load if e.node not in shown]
+    new = [e.line for e in suggestion.load if e.node not in shown]
     known = [e.node for e in suggestion.load if e.node in shown]
     listed = shown | {e.node for e in suggestion.load} | set(ledger["peers_seen"])
-    peers = [e.line for e in suggestion.not_loaded if e.node not in listed]
-    lines = [POINTER, *suggestion.notices]
-    if new:
-        lines.append(NEW_PREFIX + ", ".join(e.node for e in new))
-        lines.extend(e.line for e in new)
+    lines = [POINTER, *suggestion.notices,
+             REMINDER_HEADER.format(len(suggestion.load), suggestion.est_tokens), *new]
     if known:
-        lines.append(SURFACED_LINE.format(", ".join(known)))
-    if peers:
-        lines.append(PEERS_HEADER)
-        lines.extend(peers)
+        lines.append(SEEN_LINE.format(", ".join(known)))
+    lines += skip_block([e for e in suggestion.not_loaded if e.node not in listed])
     return "\n".join(lines)
 
 
@@ -293,7 +430,7 @@ class LedgerUnusable(Exception):
 
 
 def valid_session_id(value) -> bool:
-    return isinstance(value, str) and bool(SESSION_ID.match(value))
+    return isinstance(value, str) and bool(SESSION_ID.fullmatch(value))
 
 
 def ledger_problem(doc, session_id: str):
@@ -310,14 +447,14 @@ def ledger_problem(doc, session_id: str):
     for key in ("surfaced", "peers_seen"):
         ids = doc[key]
         if (not isinstance(ids, list) or len(ids) > SURFACED_MAX
-                or not all(isinstance(i, str) and NODE_ID.match(i) for i in ids)
+                or not all(isinstance(i, str) and NODE_ID.fullmatch(i) for i in ids)
                 or ids != sorted(set(ids))):
             return f"bad {key}"
     reset = doc["last_reset"]
     if reset is not None and not (
             isinstance(reset, dict) and set(reset) == {"source", "at"}
-            and isinstance(reset["source"], str) and RESET_SOURCE.match(reset["source"])
-            and isinstance(reset["at"], str) and ISO_UTC.match(reset["at"])):
+            and isinstance(reset["source"], str) and RESET_SOURCE.fullmatch(reset["source"])
+            and isinstance(reset["at"], str) and ISO_UTC.fullmatch(reset["at"])):
         return "bad last_reset"
     return None
 
@@ -482,8 +619,8 @@ def collect_garbage(dir_fd: int, keep: str, now: float) -> None:
     with os.scandir(dir_fd) as entries:
         for entry in itertools.islice(entries, GC_SCAN_MAX):
             name = entry.name
-            is_ledger = name.endswith(".json") and bool(SESSION_ID.match(name[:-5]))
-            if name == keep or not (is_ledger or TEMP_NAME.match(name)):
+            is_ledger = name.endswith(".json") and bool(SESSION_ID.fullmatch(name[:-5]))
+            if name == keep or not (is_ledger or TEMP_NAME.fullmatch(name)):
                 continue
             if not entry.is_file(follow_symlinks=False):
                 continue
@@ -541,7 +678,7 @@ def reset_ledger(session_id, source) -> None:
         return
     if not valid_session_id(session_id):
         raise LedgerUnusable("session_id refused (not a safe filename); no reset")
-    if not (isinstance(source, str) and RESET_SOURCE.match(source)):
+    if not (isinstance(source, str) and RESET_SOURCE.fullmatch(source)):
         source = "unknown"
     dir_fd = open_session_dir(create=False)
     if dir_fd is None:
@@ -569,45 +706,89 @@ def reset_ledger(session_id, source) -> None:
 
 
 # --- the hook ----------------------------------------------------------------
-def main() -> int:
-    try:
-        data = json.load(sys.stdin)
-    except RecursionError:                        # nested past the parser: no prompt to route
-        warn("stdin nested past the JSON parser's limit; pointer line only")
-        if LINT is not None:
-            emit(POINTER, "UserPromptSubmit")
-        return 0
-    except ValueError:                            # not JSON, empty stdin included: silent
-        return 0
-    if not isinstance(data, dict):
-        return 0
-    prompt = data.get("prompt") or data.get("initialPrompt") or ""
-    if not isinstance(prompt, str):
-        return 0
-    prompt = prompt.strip()
-    event = data.get("hook_event_name") or data.get("hookEventName") or "UserPromptSubmit"
+ARGV_OPTIONS = ("prompt", "session-id", "depth", "origin")
 
+
+class EnvelopeRefused(Exception):
+    """An argv element outside the §6 envelope. The message names it."""
+
+
+def argv_envelope(args) -> dict:
+    """The argv envelope as {option: value}: one `--name=value` element per
+    option, each name in ARGV_OPTIONS."""
+    options = {}
+    for arg in args:
+        name, eq, value = arg.partition("=")
+        if not (eq and name.startswith("--") and name[2:] in ARGV_OPTIONS):
+            raise EnvelopeRefused(name[:64])
+        options[name[2:]] = value
+    return options
+
+
+def routed(prompt: str, depth, origin) -> bool:
+    """False for a turn that gets nothing at all: a trivial prompt, a child
+    session, or a turn a person did not type. An unreadable depth or origin is
+    routed (I-1)."""
     if prompt.lower() in TRIVIAL or len(prompt) < 8:
+        return False
+    if _is(depth, CHILD_DEPTH):
+        return False
+    if _is(origin, ORIGIN) and origin != "human":
+        return False
+    return not prompt.startswith(NON_HUMAN_MARKERS)
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    depth = origin = None
+    if any(a.startswith("--") for a in args):     # the argv envelope; stdin is not read
+        try:
+            options = argv_envelope(args)
+        except EnvelopeRefused as e:
+            warn(f"option {e} is outside the argv envelope; nothing injected")
+            return 0
+        prompt, session_id = options.get("prompt", ""), options.get("session-id")
+        depth, origin = options.get("depth"), options.get("origin")
+        event = "UserPromptSubmit"
+    else:
+        try:
+            data = json.load(sys.stdin)
+        except RecursionError:                    # nested past the parser: no prompt to route
+            warn("stdin nested past the JSON parser's limit; pointer line only")
+            if LINT is not None:
+                emit(POINTER, "UserPromptSubmit")
+            return 0
+        except ValueError:                        # not JSON, empty stdin included: silent
+            return 0
+        if not isinstance(data, dict):
+            return 0
+        prompt = data.get("prompt") or data.get("initialPrompt") or ""
+        if not isinstance(prompt, str):
+            return 0
+        session_id = data.get("session_id")      # the exact key only; null is absent
+        event = data.get("hook_event_name") or data.get("hookEventName") or "UserPromptSubmit"
+    prompt = prompt.strip()
+
+    if not routed(prompt, depth, origin):
         return 0
 
     if LINT is None:
         emit(NO_GRAPH, event)
         return 0
 
-    remainder = run_router(prompt)
-    if remainder is None:
-        emit(POINTER, event)
+    try:
+        suggestion = suggest(run_router(prompt))
+    except RouterFailed as e:
+        if str(e):
+            warn(str(e))
+        emit("\n".join([POINTER, e.notice]) if e.notice else POINTER, event)
         return 0
-    full = full_text(remainder)
+    full = full_text(suggestion)
 
     text, note = full, None
-    session_id = data.get("session_id")          # the exact key only; null is absent
     if session_id is not None:
-        suggestion = parse_suggestion(remainder)
         if not valid_session_id(session_id):
             note = "session_id refused (not a safe filename); full injection"
-        elif suggestion is None:
-            note = "router output not parseable after the echo; full injection, ledger unchanged"
         else:
             try:
                 text, note = inject_with_ledger(session_id, suggestion, full)

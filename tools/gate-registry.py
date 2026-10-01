@@ -269,6 +269,15 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "df globally and can drop unrelated routes — but it is slack, not a "
         "measurement. PARAPHRASE_FLOOR and the adversarial budget now carry "
         "none"),
+    "graph-route-eval.sh": (
+        "node routing, per corpus class, gated on the GRAPH_* ratchets", TEMP, "self-reference",
+        "the corpus is scored against the graph a fresh install places, and its "
+        "contract rows are copied from the steward plant's curated router tables "
+        "(the corpus header records it), so that class is a consistency check; "
+        "the paraphrase rows are owner prompts "
+        "kept held out by the overlap check, and the adversarial rows were "
+        "written against the router they bait. A grown plant's graph is not "
+        "measured here"),
     "test_agent_lint.py": (
         "the router's CLI contract and the corpus-honesty rules", REAL, "scope",
         "ROSTER resolves to the seed's own agents/ and --eval runs against the "

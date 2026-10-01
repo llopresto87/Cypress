@@ -15,7 +15,9 @@ it here, one home per fact.
 
 ## Map
 
-- `index.md`: Tier-1 context router. **Start here on every task.**
+- `index.md`: Tier-1 map of the graph. Route each task first (the
+  kernel's FIRST MOVE, `graph-lint.py --plan`); open this map when the
+  routed plan fails, stays empty or looks wrong.
 - `nodes/`: Tier-2 owned facts and routing edges.
 - `_schema.md` + `graph-lint.py`: graph contract and validator.
 - `plans/grill.md`: the plan-of-record for active delivery work.

@@ -155,7 +155,7 @@ The skeleton:
 │   └── graph/                  → knowledge-graph home
 │       ├── _schema.md          → templates/knowledge-graph/_schema.md
 │       ├── graph-lint.py       → templates/knowledge-graph/graph-lint.py
-│       ├── index.md            → the router (root node listed)
+│       ├── index.md            → the fallback map (root node listed)
 │       ├── nodes/root.md       → the one root node to start
 │       ├── plans/grill.md
 │       ├── specs/index.md

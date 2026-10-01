@@ -35,7 +35,8 @@ This seed system maps to Prime Agent as follows:
 | `skills/*/SKILL.md`          | `.prime/agent/skills/*/SKILL.md`                   |
 | protocols → slash commands   | `.prime/agent/prompts/*.md` (generated projections) |
 | routing pointer              | `.prime/agent/extensions/route-extension.ts`       |
-| status register and code anchor (once/session) | `.prime/agent/extensions/status-extension.ts` |
+| status register and code anchor (once per session start) | `.prime/agent/extensions/status-extension.ts` |
+| `integrations/claude-code/{route,status}-hook.py` | `.prime/agent/hooks/` (the core both extensions run) |
 | `templates/`                 | `docs/graph/templates/` (graph nodes)        |
 | `templates/docs/` (graph leaves) | `docs/graph/` (missing leaves added on install) |
 
@@ -86,36 +87,44 @@ field and are commands on no harness.
 
 ## Progressive-discovery pointer (extension)
 
-Progressive discovery — open the graph router, load only the nodes a task
-needs, declare what you skipped, then classify the tier — is guidance a
-capable model follows and a weaker one skips. Prime Agent can add the
-routing pointer to every prompt, as Claude Code's hook does, through its
-extension event bus; like the hook, it adds text and holds nothing
+Progressive discovery (route the task, load only the nodes it needs,
+declare what you skipped, then classify the tier) is guidance a capable
+model follows and a weaker one skips. Prime Agent adds the route to every
+prompt through its extension event bus, with the same hook core Claude Code
+runs. Like the hook, it adds text and holds nothing
 ([routing pointer](../../DOCUMENTATION.md#enf-route-hook)):
 
 - `route-extension.ts` subscribes to **`before_agent_start`** (fired
-  after the user submits a prompt, before the agent loop; it can inject
-  a message and modify the system prompt). It runs the graph router
-  (`python3 docs/graph/graph-lint.py --plan=<prompt>`, one argv value) on
-  the actual prompt and injects a one-line pointer at the kernel plus the
-  router's suggested node set, each id beside its node file, with the
-  prompt's echo removed — the same
-  text as the full mode of the cross-tool `route-hook.py`, using Prime
-  Agent's native extension API instead of a shell hook.
-- It keeps no state, so every routed prompt gets that full text. The
-  `## Surfaced nodes` section of `APPEND_SYSTEM.md` asks the model to keep
-  the ids it has opened in `_cypress_surfaced`, a Python set in its IPython
-  kernel; that is soft and model-kept, and nothing checks it (SPEC-0003).
-- It is **fail-open**: any error (missing graph, router failure) degrades
-  to the pointer line or to silence, so the prompt always goes through
-  ([routing pointer](../../DOCUMENTATION.md#enf-route-hook)).
-- It is auto-discovered from `.prime/agent/extensions/`. The bundled
-  `settings.json` also lists it explicitly so it still loads if a project
-  disables convention discovery.
+  after the user submits a prompt, before the agent loop). It runs
+  `.prime/agent/hooks/route-hook.py`, a byte-identical copy of Claude
+  Code's route hook, with the prompt, the session id and the session depth
+  as argv values, and injects the text the core returns. It composes no
+  text of its own.
+- The core keeps one ledger per session under `.cypress/session/`. The
+  first routed prompt gets the pointer line and the router's suggestion,
+  each node id beside its file. A later prompt names a node this session
+  was already shown by id on one `seen:` line and gives full lines only for
+  what is new. A full injection returns after each reset, every
+  `REFRESH_EVERY` routed prompts, and on any doubt about the ledger
+  (SPEC-0003, ADR-0024).
+- A child session (`rlmDepth` above 0) and a turn a person did not type,
+  such as a delivered agent message or a harness digest, are not routed.
+- `status-extension.ts` runs `.prime/agent/hooks/status-hook.py` on
+  `session_start`, `session_compact`, `session_tree` and `refine_complete`.
+  The core resets the ledger and returns the status register summary and
+  the code-anchor line, which the extension injects on the next prompt of
+  that session, once. A child session gets nothing.
+- Both are **fail-open**: a missing core, a timeout or any error injects
+  nothing, so the prompt always goes through. The core waits up to 15 s for
+  the router.
+- Both are auto-discovered from `.prime/agent/extensions/`. The bundled
+  `settings.json` also lists the directory explicitly so they still load if
+  a project disables convention discovery.
 
-The kernel this seed installs also leads with a blunt, tool-free
-"FIRST MOVE" mandate, so even with the extension disabled the route-first
-instruction is the first thing the model reads.
+The kernel this seed installs also leads with its "FIRST MOVE", so even
+with the extensions disabled the route-first instruction is the first thing
+the model reads. The model then runs
+`python3 docs/graph/graph-lint.py --plan "<task>"` itself.
 
 ## Native execution — using Prime Agent's edge over Claude Code
 
@@ -220,12 +229,15 @@ Creates (copies by default; `--symlink` opts into live seed links):
 - `.prime/agent/skills/<name>/SKILL.md` → `skills/<name>/SKILL.md`
 - `.prime/agent/prompts/*.md` → generated, one per protocol node with
   `command: true`
-- `.prime/agent/extensions/status-extension.ts` → copied (on the first
-  prompt of the session, injects `status-register.py --summary` and the line
-  `docs/graph/code-anchor.py --compare` prints, or the not-checked line when
-  the comparison did not run within 5 s)
-- `.prime/agent/extensions/route-extension.ts` → copied (the progressive-
-  discovery pointer)
+- `.prime/agent/hooks/route-hook.py`, `.prime/agent/hooks/status-hook.py` →
+  copied from `integrations/claude-code/` (the hook core both extensions run)
+- `.prime/agent/extensions/status-extension.ts` → copied (after each
+  session start, compaction, tree switch or refine, injects
+  `status-register.py --summary` and the line `docs/graph/code-anchor.py
+  --compare` prints, or the not-checked line when the comparison did not
+  run within 5 s)
+- `.prime/agent/extensions/route-extension.ts` → copied (the route on each
+  prompt)
 - `.prime/agent/settings.json` → copied (so the project can edit it)
 - `.prime/agent/APPEND_SYSTEM.md` → copied (RLM-native execution overlay,
   appended to the system prompt every session)
@@ -273,8 +285,9 @@ What you get in that plant:
   both — the single home for all project knowledge.
 - **One routing pointer per session type.** A Claude Code session fires
   `.claude/route-hook.py` (UserPromptSubmit); a Prime Agent session fires
-  `.prime/agent/extensions/route-extension.ts` (`before_agent_start`). They run
-  in different session types, so there is no double-firing.
+  `.prime/agent/extensions/route-extension.ts` (`before_agent_start`), which
+  runs its own copy of the same script. They run in different session types,
+  so there is no double-firing.
 
 Switching harness is just opening the plant in the other tool — nothing to
 re-install, nothing to reconcile.

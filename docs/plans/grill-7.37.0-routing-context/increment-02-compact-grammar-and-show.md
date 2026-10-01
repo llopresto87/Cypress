@@ -1,0 +1,13 @@
+<!-- Increment 2 of `docs/plans/grill-7.37.0-routing-context.md`; its §9 index row points here. -->
+
+### Increment 2: compact route grammar with every path, `graph-lint.py --show`, and the code-anchor noise filter
+- Item: ADR-0025 (owner rulings on JSON, D3 and O1). Measured size: on top of increment 1, compact lines take injected route and status from 0.67% to 0.46% of the measured session's tokens (about 5% of the round's saving) and add 7 to 12 points on follow-up routes; `--show` saves about 207 cl100k per opened node. The anchor filter removes build and backup paths from every status line
+- Spec contracts: SPEC-0003/PLAN_ENTRY_NAMES_THE_NODE_FILE, SPEC-0003/SHOW_KEEPS_EVERY_POINTER, SPEC-0003/SHOW_DROPS_ROUTER_AND_SPAWN_KEYS, SPEC-0003/SHOW_BODY_VERBATIM, SPEC-0003/SHOW_UNKNOWN_ID_FAILS, SPEC-0003/LEDGER_LATER_PROMPT_REMINDER, SPEC-0003/REMINDER_KEEPS_NOTICE_LINES, SPEC-0003/REMINDER_SAYS_SURFACED_NEVER_LOADED, SPEC-0003/LEDGER_NEW_IDS_LISTED, SPEC-0003/REMINDER_DROPS_PEERS_ALREADY_SHOWN, SPEC-0003/ROUTE_HOOK_KEEPS_THE_PATH, SPEC-0003/HOOK_TEXT_RESTATES_NO_KERNEL_RULE, SPEC-0003/ANCHOR_IGNORES_BUILD_AND_BACKUP_NOISE, SPEC-0003/EVERY_RESOLVER_PATH_IS_INSTALLED, SPEC-0001/REINSTALL_ENGINE_SERVES_THE_HOOKS
+- Files touched: `templates/knowledge-graph/graph-lint.py` (`--plan` compact grammar, `--show`); `integrations/claude-code/route-hook.py` (the renderer and the reminder literals, in its `# --- injected text` block); `tools/code-anchor.py` (the filter); `skills/context-router/SKILL.md` (one home of the traversal: read through `--show`, a reminder names surfaced ids, children are not routed); `tests/test_graph_lint.py` (its `--plan` helpers rewritten); `tests/test-prompt-hooks.sh`; `tests/test-code-anchor.sh`; `tests/ratchets.json` (`HOOK_TEXT_MAX_BYTES` re-baselined once)
+- Tests to write (RED): at most 13 cases over the contracts above; the tester names them. The rewritten ledger contracts keep their labels (X107 to X111, X151) and their cases are rewritten. The `skills/context-router/SKILL.md` text is a declarative edit: none of its own; proved by `python3 tests/seed-lint.py` and the route of a task that names `--show`
+- Behavior added: `--plan` prints the compact grammar with the resolved path on every id and no task echo; the core renders the same grammar, full and reminder; `--show <id>...`; `code-anchor.py --compare` drops `__pycache__`, `*.pyc`, `*.bak` and `*.bak-*`
+- Gate: `bash tests/run.sh`, green apart from the published figures (increment 5); `ROUTE_FULL_TEXT_EQUALS_PLAN` stays green across the grammar change
+- Rollback path: revert; no stored format changes, and `cypress.plan/1` is unchanged
+- Effort: medium-hard
+- Phase: RED
+- Depends on: increment 1

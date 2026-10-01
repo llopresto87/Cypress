@@ -524,41 +524,60 @@ if [[ ${#missing_nodes[@]} -gt 0 ]]; then
     fail "a machinery node the installer stopped placing is invisible to any check that enumerates what WAS placed"
 fi
 
-# M11: every path the route resolvers may SELECT is a path the installer writes,
-# read from route-hook.py CANDIDATES and route-extension.ts CANDIDATES.
+# M11 (SPEC-0003 EVERY_RESOLVER_PATH_IS_INSTALLED): every path a route resolver
+# may SELECT is a path the installer writes.
+# The plant-root walk lives in the Python cores alone, so their candidates are
+# read from route-hook.py CANDIDATES and status-hook.py CANDIDATES and
+# ANCHOR_CANDIDATES; each Prime Agent extension walks nothing and
+# runs the core at `path.join(__dirname, "..", "hooks", <script>)`, read from
+# the PLACED extension and resolved against its placed directory. The reader
+# runs as a plain command substitution, so its own failure fails the gate.
+m11_paths="$(python3 - "$ROOT" "$T" <<'PY'
+import re, sys
+from pathlib import Path
+
+root, target = Path(sys.argv[1]), Path(sys.argv[2])
+seen = []
+# The CANDIDATES rule (route-hook.py) binds every candidate list a core walks
+# for: route-hook.py's linter, status-hook.py's register and its code anchor.
+for script, names in (("route-hook.py", ("CANDIDATES",)),
+                      ("status-hook.py", ("CANDIDATES", "ANCHOR_CANDIDATES"))):
+    hook = (root / "integrations/claude-code" / script).read_text(encoding="utf-8")
+    for name in names:
+        m = re.search(rf"^{name}\s*=\s*\((.*?)\)\s*$", hook, re.M | re.S)
+        if not m:
+            sys.exit(f"{script}: no {name} list to read — the check would assert nothing")
+        paths = ["/".join(re.findall(r'"([^"]+)"', el)) for el in re.findall(r"[^,]+", m.group(1))]
+        paths = [p for p in paths if p]
+        if not paths:
+            sys.exit(f"{script} {name} yielded no path — a vacuous pass")
+        seen.extend(p for p in paths if p not in seen)
+ext_dir = Path(".prime/agent/extensions")
+for name in ("route-extension.ts", "status-extension.ts"):
+    placed = target / ext_dir / name
+    if not placed.is_file():
+        sys.exit(f"{ext_dir / name} was not placed — the check would assert nothing")
+    src = placed.read_text(encoding="utf-8")
+    if not re.search(r'path\.join\(\s*__dirname\s*,\s*"\.\."\s*,\s*"hooks"\s*\)', src):
+        sys.exit(f"{ext_dir / name} does not locate its core at `path.join(__dirname, \"..\", \"hooks\")`")
+    scripts = re.findall(r'path\.join\(\s*dir\s*,\s*"([^"]+\.py)"\s*\)', src)
+    if len(scripts) != 1:
+        sys.exit(f"{ext_dir / name} names {scripts} as its core script, not exactly one")
+    seen.append((ext_dir.parent / "hooks" / scripts[0]).as_posix())
+print("\n".join(seen))
+PY
+)" || fail "could not read the route resolvers' candidate paths (the reason is above)"
 stray_candidates=()
 while IFS= read -r rel; do
     [[ -n "$rel" ]] || continue
     [[ -e "$T/$rel" || -L "$T/$rel" ]] || stray_candidates+=("$rel")
-done < <(python3 - "$ROOT" <<'PY'
-import re, sys
-from pathlib import Path
-
-root = Path(sys.argv[1])
-seen = []
-sources = [
-    ("integrations/claude-code/route-hook.py", r"^CANDIDATES\s*=\s*\((.*?)\)\s*$", r"[^,]+"),
-    ("integrations/prime-agent/route-extension.ts", r"^const CANDIDATES\s*=\s*\[(.*?)\];\s*$", r"\[([^\]]*)\]"),
-]
-for rel, block, element in sources:
-    m = re.search(block, (root / rel).read_text(encoding="utf-8"), re.M | re.S)
-    if not m:
-        sys.exit(f"{rel}: no CANDIDATES list to read — the check would assert nothing")
-    for el in re.findall(element, m.group(1)):
-        path = "/".join(re.findall(r'"([^"]+)"', el))
-        if path and path not in seen:
-            seen.append(path)
-if not seen:
-    sys.exit("neither resolver yielded a candidate path — a vacuous pass")
-print("\n".join(seen))
-PY
-) || fail "could not read the route resolvers' candidate lists"
+done <<< "$m11_paths"
 if [[ ${#stray_candidates[@]} -gt 0 ]]; then
     echo "M11 VIOLATED — ${#stray_candidates[@]} resolver candidate(s) no install produces:" >&2
     printf '  %s\n' "${stray_candidates[@]}" >&2
     fail "a resolver may select a path the installer never writes"
 fi
-echo "  M11: every route-resolver candidate is a path the installer writes — OK"
+echo "  M11 EVERY_RESOLVER_PATH_IS_INSTALLED: every route-resolver path ($(grep -c . <<< "$m11_paths")) is a path the installer writes — OK"
 
 export BASE BASECOPILOT
 SCN="$(mktemp)"

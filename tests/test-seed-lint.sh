@@ -182,9 +182,11 @@ ROWS = [
     ("reference-load-when-reordered", "check_reference_tables", lambda: sub("documentation/protocols-reference.md",
         r'"increment done, ready to merge or deploy"; "which gates to\s+run, verification runbook"',
         '"which gates to run, verification runbook"; "increment done, ready to merge or deploy"', True), ("protocol.verify", "other order")),
-    # SPEC-0003 HOOK_TEXT_RESTATES_NO_KERNEL_RULE
+    # SPEC-0003 HOOK_TEXT_RESTATES_NO_KERNEL_RULE: the line is planted on the
+    # block's own marker, so the plant survives a change of its literals
     ("X201 HOOK_TEXT_RESTATES_NO_KERNEL_RULE text grows", "check_hook_text_restates_no_kernel_rule", lambda: sub(
-        "integrations/claude-code/route-hook.py", 'NEW_PREFIX = "', 'NEW_PREFIX = "' + "T2 is a contained change. " * 40), "over HOOK_TEXT_MAX_BYTES"),
+        "integrations/claude-code/route-hook.py", r"^(# --- injected text[^\n]*\n)",
+        "\\1" + "RESTATED = " + repr("T2 is a contained change. " * 40) + "\n", True), "over HOOK_TEXT_MAX_BYTES"),
     # SPEC-0005: rule homes, leaves, text rules
     ("X347 ADOPTED_RULE_HOMES key owned twice", "check_adopted_rule_homes", lambda: owns("protocols/test-first.md", "test-first.no-lint-only-tests", True), "owned by more than one node"),
     ("X348 ADOPTED_RULE_HOMES key missing", "check_adopted_rule_homes", lambda: owns("skills/test-first/SKILL.md", "test-first.no-lint-only-tests", False), "not owned by skills/test-first/SKILL.md"),

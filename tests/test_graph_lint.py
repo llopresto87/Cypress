@@ -7,6 +7,8 @@ stdlib alone: `python3 tests/test_graph_lint.py`.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 import shutil
 import subprocess
@@ -694,6 +696,15 @@ class StatusAndPlantTests(unittest.TestCase):
         self.assertEqual(r.returncode, 1, r.stderr)
         self.assertIn("missing `plant:` block", r.stderr)
 
+    def test_plant_commented_placeholder_is_not_declared(self):
+        # Rule 14: a placeholder followed by an inline YAML comment is still a
+        # placeholder, so a grown plant FAILS on it (reviewer increment 4, FIX-2).
+        front = self.PLANT.replace("  comment_language: en\n", "  comment_language: <bcp47>  # x\n")
+        self.assertNotEqual(front, self.PLANT, "harness: the comment_language line was not rewritten")
+        r = run_lint(self._graph(index_front=front, grown_marker=True))
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("plant block not yet declared for comment_language", r.stderr)
+
     def test_plant_environment_class_is_controlled(self):
         bad = self.PLANT.replace("ephemeral-test", "sorta-prod")
         r = run_lint(self._graph(index_front=bad, grown_marker=True))
@@ -713,7 +724,7 @@ class RootlessPlanTests(unittest.TestCase):
         r = subprocess.run([sys.executable, str(g / "graph-lint.py"), "--plan", "zebra quux nonsense"],
                            cwd=str(g), capture_output=True, text=True, timeout=60)
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("LOAD (0 nodes", r.stdout)
+        self.assertRegex(r.stdout, r"(?m)^LOAD 0 ~0t$")
 
 
 # --------------------------------------------------------------------------
@@ -754,27 +765,58 @@ _fnmatch.fnmatchcase = _raise
 """
 
 
-def plan_section(out: str, header: str) -> dict:
-    """{node id: the whole entry line} for the section starting `header`."""
-    lines, on = {}, False
-    for line in out.splitlines():
-        if line.startswith(header):
-            on = True
-            continue
-        if on:
-            if not line.startswith("  "):
-                break
-            if not line.startswith("  ! "):
-                lines[line.split()[0]] = line
-    return lines
+# The compact grammar of `--plan` (SPEC-0003 §6, ADR-0025): notices, the
+# LOAD header, one `<id> <path> | <title>[ <- <how>]` line per LOAD node, then
+# one `skip` block whose groups list `<id>=<path>` items. No line echoes the task.
+LOAD_HEAD = re.compile(r"^LOAD (\d+) ~(\d+)t$")
+SKIP_HEAD = "skip (cross only if the task needs it):"
+ENTRY_LINE = re.compile(r"^(\S+) (\S+) \| (.*?)(?: <- (.*))?$")
+SKIP_GROUP = re.compile(r"^ (peer of|composed by) ([a-z][a-z0-9_.-]*)(, no specific term)?: (\S.*)$")
 
 
 def load_section(out: str) -> dict:
-    return plan_section(out, "LOAD (")
+    """{node id: its whole entry line}, the lines between the LOAD header and
+    the skip header, in printed order."""
+    lines, on = {}, False
+    for line in out.splitlines():
+        if LOAD_HEAD.match(line):
+            on = True
+        elif line == SKIP_HEAD:
+            break
+        elif on and line:
+            lines[line.split(" ", 1)[0]] = line
+    return lines
+
+
+def skip_entries(out: str) -> list:
+    """[(id, path, kind, via)] of the skip block, in printed order. A group
+    line the grammar does not know is returned as (line, None, None, None),
+    so a compare fails on it instead of dropping it."""
+    entries, on = [], False
+    for line in out.splitlines():
+        if line == SKIP_HEAD:
+            on = True
+            continue
+        if not on:
+            continue
+        m = SKIP_GROUP.match(line)
+        if not m:
+            entries.append((line, None, None, None))
+            continue
+        kind = "peer" if m.group(1) == "peer of" else "composed"
+        for item in m.group(4).split(" "):
+            nid, _, path = item.partition("=")
+            entries.append((nid, path or None, kind, m.group(2)))
+    return entries
+
+
+def skipped(out: str) -> dict:
+    """{id: (kind, via)} of the skip block."""
+    return {nid: (kind, via) for nid, _, kind, via in skip_entries(out)}
 
 
 def not_loaded_section(out: str) -> set:
-    return set(plan_section(out, "NOT LOADED"))
+    return set(skipped(out))
 
 
 # --------------------------------------------------------------------------
@@ -1001,9 +1043,10 @@ def with_migrations(nodes: dict) -> dict:
 
 
 class DescentTests(_TmpCase):
-    """--plan descends only into the children the task names specifically.
-    Each task was measured on the tool without descent: it loads the
-    subsystem and the parent, not the child, so seeding alone passes nothing."""
+    """--plan descends only into the children whose own piece the task holds
+    (SPEC-0002 COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE). A descent row names its
+    parent by id, so tier 1 decides the entries and a child loads by descent
+    alone, never as a tier-3 phrase entry."""
 
     def plan(self, task, nodes=None, **kw):
         kw.setdefault("libraries", ["dotnet"])
@@ -1013,72 +1056,70 @@ class DescentTests(_TmpCase):
         return r.stdout
 
     def test_plan_descends_on_specific_term(self):
-        """Asserts SPEC-0005 DESCENT_TEST_NOW_SEEDS_THE_CHILD.
+        """Asserts SPEC-0002 COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE.
 
-        Rows: a child's own term descends it; family vocabulary does not;
-        descent never folds a prefix (`migrating` is not `migration`); each of
-        two levels descends on its own term; a target-framework token picks
-        the major (by promotion, as it is a whole piece); a child that
-        outscores its subsystem is reported as an entry, not as composed."""
-        with self.subTest(row="specific term"):
-            out = self.plan("in the orders service, fix the mapping")
-            self.assertIn('expertise.ef-core', out)
-            self.assertIn('composed by expertise.dotnet on "mapping"', out)
+        The parent enters by its named id, so tier 1 decides and no phrase
+        tier runs: a child loads only by descent. Rows: the child's whole
+        piece descends it; family vocabulary (one word of a sibling's piece)
+        does not; descent never folds a prefix (`migrating` is not
+        `migration`); each of two levels descends on its own whole piece; a
+        target-framework token picks the major as `composed`, the other major
+        stays skipped; a child whose own phrase the task holds with no named
+        parent is an entry (`phrase`), not composed."""
+        with self.subTest(row="whole piece"):
+            out = self.plan("in expertise.dotnet, fix the entity mapping")
+            self.assertIn('composed by expertise.dotnet on "entity mapping"', out)
         with self.subTest(row="family vocabulary"):
             nodes = expertise_family()
             nodes["expertise.serilog"] = node_md(
                 "expertise.serilog", "expertise", requires=["expertise.dotnet"],
                 libraries=["dotnet"], owns=["serilog.applicability"],
                 load_when=["structured logging, log sink", "dotnet logging"])
-            out = self.plan("in the orders service, fix the dotnet mapping", nodes)
-            self.assertNotIn("composed by expertise.dotnet on \"dotnet\"", out)
-            self.assertRegex(out, r"expertise\.serilog\s+\S+\s+composed by .*no task term")
+            out = self.plan("in expertise.dotnet, fix the dotnet entity mapping", nodes)
+            self.assertNotIn("expertise.serilog", load_section(out), out)
+            self.assertEqual(skipped(out).get("expertise.serilog", ("",))[0], "composed", out)
         with self.subTest(row="never folds"):
             out = self.plan(
-                "in the orders service, fix the mapping, migrating the runner",
+                "in expertise.dotnet, fix the entity mapping, migrating the runner",
                 with_migrations(expertise_family()))
-            self.assertIn('composed by expertise.dotnet on "mapping"', out)
-            self.assertRegex(out, r"expertise\.ef-migrations\s+\S+\s+composed by .*no task term")
+            self.assertIn('composed by expertise.dotnet on "entity mapping"', out)
+            self.assertEqual(skipped(out).get("expertise.ef-migrations", ("",))[0], "composed", out)
         with self.subTest(row="two levels"):
-            # "script", not "migration": `migration` is in the child's own id,
-            # and a node named by the task is seeded, not descended to.
             out = self.plan(
-                "in the orders service, fix the mapping, run the script",
+                "in expertise.dotnet, fix the entity mapping and the migration script",
                 with_migrations(expertise_family()))
-            self.assertIn('composed by expertise.dotnet on "mapping"', out)
-            self.assertIn('composed by expertise.ef-core on "script"', out)
+            self.assertIn('composed by expertise.dotnet on "entity mapping"', out)
+            self.assertRegex(load_section(out).get("expertise.ef-migrations", ""),
+                             r'<- composed by expertise\.ef-core on "[^"]+"$', out)
         with self.subTest(row="major by TFM token"):
-            # The path glob keeps dotnet-10 from being seeded by its score.
             tfm = "net10.0"
-            out = self.plan(
-                f"in the orders service, editing src/Orders/**, target {tfm}",
-                with_majors(expertise_family(), (8, 10)))
+            out = self.plan(f"in subsystem.orders, target {tfm}",
+                            with_majors(expertise_family(), (8, 10)))
             line = load_section(out).get("expertise.dotnet-10")
             self.assertIsNotNone(line, f"the TFM token did not select dotnet-10:\n{out}")
-            self.assertTrue(line.rstrip().endswith(f'<- promoted on "{tfm}"'),
-                            f"dotnet-10 must load promoted on the whole TFM token "
+            self.assertTrue(line.rstrip().endswith(f'<- composed by expertise.dotnet on "{tfm}"'),
+                            f"dotnet-10 must load composed on the whole TFM token "
                             f"{tfm!r} the task wrote:\n  {line}")
-            self.assertRegex(out, r"expertise\.dotnet-8\s+\S+\s+composed by .*no task term")
-        with self.subTest(row="top-scoring seed is an entry"):
+            self.assertEqual(skipped(out).get("expertise.dotnet-8", ("",))[0], "composed", out)
+        with self.subTest(row="a held phrase with no named parent is an entry"):
             out = self.plan("entity mapping dbcontext orders")
-            line = next(l for l in out.splitlines()
-                        if l.strip().startswith("expertise.ef-core"))
-            self.assertNotIn("composed by", line)
+            line = load_section(out).get("expertise.ef-core", "")
+            self.assertTrue(line.rstrip().endswith('<- phrase "entity mapping"'), out)
 
     def test_plan_leaves_the_unnamed_sibling_with_a_reason(self):
         out = self.plan("in the orders service, fix the mapping")
-        self.assertRegex(
-            out, r"expertise\.serilog\s+\S+\s+composed by expertise\.dotnet; "
-                 r"no task term specific to it")
+        self.assertEqual(skipped(out).get("expertise.serilog"), ("composed", "expertise.dotnet"), out)
+        self.assertIn(" composed by expertise.dotnet, no specific term: ", out)
 
     def test_plan_descends_from_required_node(self):
-        """The parent is not a seed here — it arrives through the subsystem's
-        `requires`. Descent must work from a node the closure pulled in, which
-        is what makes an agent's ordinary task reach library expertise."""
-        out = self.plan("in the orders service, add a sink")
-        self.assertIn('expertise.serilog', out)
-        self.assertIn('composed by expertise.dotnet on "sink"', out)
-        self.assertIn("subsystem.orders", out)
+        """Asserts SPEC-0002 COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE (descent from a
+        parent that loaded through another node's `requires:`).
+
+        The parent is not an entry here: it arrives through the named
+        subsystem's `requires`, and the task holds the child's phrase."""
+        out = self.plan("in subsystem.orders, add a log sink")
+        self.assertIn('composed by expertise.dotnet on "log sink"', out)
+        self.assertIn("subsystem.orders", load_section(out), out)
 
     def test_plan_reports_not_loaded_with_reason(self):
         """Peers and un-composed children share one NOT LOADED section, each
@@ -1092,9 +1133,9 @@ class DescentTests(_TmpCase):
             "subsystem.billing", "subsystem", owns=["billing.responsibility"],
             load_when=["billing service"])
         out = self.plan("in the orders service, fix the mapping", nodes)
-        self.assertIn("NOT LOADED (with the reason", out)
-        self.assertRegex(out, r"subsystem\.billing\s+\S+\s+peer of subsystem\.orders")
-        self.assertRegex(out, r"expertise\.serilog\s+\S+\s+composed by .*no task term")
+        self.assertIn(SKIP_HEAD, out.splitlines())
+        self.assertEqual(skipped(out).get("subsystem.billing"), ("peer", "subsystem.orders"), out)
+        self.assertEqual(skipped(out).get("expertise.serilog", ("",))[0], "composed", out)
 
     def test_plan_without_composes_is_unchanged(self):
         """Golden over the resolved ID sets of a graph with no `composes:`,
@@ -1118,10 +1159,10 @@ class DescentTests(_TmpCase):
 
 
 # --------------------------------------------------------------------------
-# Promotion, inference and promoted closure (SPEC-0005). Each fixture was
-# measured on the tool before promotion and inference existed: the expertise
-# node a positive row asserts on was not in LOAD, so a row passes only
-# through promotion or inference, never through the scored cut.
+# Inference (SPEC-0005) and the closure of a phrase entry (SPEC-0002). Each
+# inference fixture was measured on the tool before inference existed: the
+# expertise node a positive row asserts on was not in LOAD, so a row passes
+# only through inference (tier 2 of the SPEC-0002 ladder).
 # --------------------------------------------------------------------------
 
 class _PlanCase(_TmpCase):
@@ -1134,7 +1175,21 @@ class _PlanCase(_TmpCase):
                          f"--plan {task!r} exited {r.returncode}:\n{r.stdout}\n{r.stderr}")
         return r.stdout
 
+    def plan_doc(self, graph: Path, task: str) -> dict:
+        """The `--plan-json` document for `task` over an already built graph."""
+        r = subprocess.run([sys.executable, str(graph / "graph-lint.py"), f"--plan-json={task}"],
+                           cwd=str(graph), capture_output=True, text=True, timeout=120)
+        self.assertEqual(r.returncode, 0,
+                         f"--plan-json={task!r} exited {r.returncode}:\n{r.stdout}\n{r.stderr}")
+        return json.loads(r.stdout)
+
     def assertLoadSuffix(self, out: str, node_id: str, suffix: str, task: str):
+        """`suffix` is written as SPEC-0005 states it, `<- inferred from
+        "<path>" via "<pattern>"` included. The SPEC-0003 §6 compact grammar
+        prints `<- inferred from "<path>"` with no pattern, so the ` via` part
+        is cut before the compare (open question Q1 of the increment 2 RED
+        report: SPEC-0005 still names the pattern)."""
+        suffix = re.sub(r'^(<- inferred from "[^"]*") via "[^"]*"$', r"\1", suffix)
         line = load_section(out).get(node_id)
         self.assertIsNotNone(
             line, f"--plan {task!r}: {node_id} is not in LOAD; expected it with "
@@ -1155,7 +1210,8 @@ def router_graph(extra: dict, vocabulary: str = DECOY_VOCABULARY,
     """The one router fixture: a root, three non-expertise decoys named
     `<kind>.<name>` whose trigger is `vocabulary`, and the `extra` nodes. The
     decoys take the whole scored cut on every task a case runs over their
-    words, so an expertise node loads only by promotion or inference."""
+    words, so an expertise node loads only by inference or by a phrase of
+    its own."""
     nodes = {"root": node_md("root", "root", requires=[f"subsystem.{name}"],
                              owns=["root.map"])}
     for kind in ("subsystem", "stack", "platform"):
@@ -1168,18 +1224,6 @@ def router_graph(extra: dict, vocabulary: str = DECOY_VOCABULARY,
 def expertise(nid: str, *load_when: str, library: str, **kw) -> dict:
     return {nid: node_md(nid, "expertise", libraries=[library],
                          load_when=list(load_when), **kw)}
-
-
-# Task "pipeline yaml": LOAD is the three pipeline decoys only.
-PROMOTION = {
-    "crosscut.release": node_md("crosscut.release", "crosscut",
-                                load_when=["pipeline yaml"]),
-    **expertise("expertise.ci-config", "pipeline yaml, build definitions", library="ci"),
-}
-
-
-def promotion_graph(vocabulary: str = "pipeline yaml") -> dict:
-    return router_graph(PROMOTION, vocabulary, name="pipeline")
 
 
 # File patterns only. On every inference task, LOAD is the three decoys.
@@ -1200,114 +1244,15 @@ def inferred_lines(out: str) -> dict:
             if "inferred from" in line}
 
 
-class PromotionTests(_PlanCase):
-
-    def test_plan_promotes_expertise_past_the_scored_cut(self):
-        """Asserts SPEC-0005 PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE.
-
-        Also asserts SPEC-0005 PROMOTION_FLOODS_LOAD (the one-word-phrase row:
-        every hit loads, uncapped). Rows: the base phrase, a one-word phrase
-        on five nodes, a whole dotted compound, a phrase holding a slash (a
-        phrase, since whitespace disqualifies a pattern), and the first
-        hitting piece in `load_when` order."""
-        langs = {}
-        for c in "abcde":
-            langs.update(expertise(f"expertise.lang-{c}", "python", library="python"))
-        rows = [
-            ("base", promotion_graph(), "pipeline yaml",
-             ["expertise.ci-config"], '<- promoted on "pipeline yaml"'),
-            ("one-word phrase, uncapped", router_graph(langs, "python tooling", "python"),
-             "python tooling", list(langs), '<- promoted on "python"'),
-            ("dotted compound", router_graph(expertise("expertise.aspnet-mvc", "aspnet-core.mvc", library="aspnet"),
-                                             "upgrade aspnet-core.mvc", "upgrade"),
-             "upgrade aspnet-core.mvc", ["expertise.aspnet-mvc"],
-             '<- promoted on "aspnet-core.mvc"'),
-            ("phrase with a slash", router_graph(expertise("expertise.delivery", "ci/cd pipeline yaml", library="ci"),
-                                                 "ci/cd pipeline yaml", "pipeline"),
-             "ci/cd pipeline yaml", ["expertise.delivery"],
-             '<- promoted on "ci/cd pipeline yaml"'),
-            ("first hitting piece", promotion_graph("pipeline yaml build definitions"),
-             "pipeline yaml build definitions", ["expertise.ci-config"],
-             '<- promoted on "pipeline yaml"'),
-        ]
-        for label, nodes, task, ids, suffix in rows:
-            with self.subTest(row=label):
-                out = self.plan(nodes, task)
-                for nid in ids:
-                    self.assertLoadSuffix(out, nid, suffix, task)
-
-    def test_plan_partial_phrase_does_not_promote(self):
-        """Asserts SPEC-0005 PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE.
-
-        Guard: a hit is EVERY whole router token of the phrase. Rows: one word
-        of a two-word phrase; half of the version token `net10.0` (the whole
-        token does promote); a prefix fold (`migrating` -> `migration`).
-        Words under three characters and stopwords are not tokens, so a task
-        without them still hits."""
-        net = router_graph(expertise("expertise.runtime-ten", "net10.0", library="runtime"),
-                           "target net10 net10.0", "target")
-        schema = router_graph(expertise("expertise.schema", "migration tooling", library="db"),
-                              "migrating tooling", "tooling")
-        # (label, nodes, task, node, expected): a suffix, "absent" from LOAD,
-        # or "unpromoted" (in LOAD or not, but never promoted)
-        rows = [
-            ("one word of the phrase", promotion_graph(), "pipeline",
-             "expertise.ci-config", "absent"),
-            ("half a version token", net, "target net10",
-             "expertise.runtime-ten", "unpromoted"),
-            ("whole version token", net, "target net10.0",
-             "expertise.runtime-ten", '<- promoted on "net10.0"'),
-            ("prefix fold", schema, "migrating tooling", "expertise.schema", "absent"),
-            ("short words", router_graph(expertise("expertise.golang", "go toolchain", library="go"),
-                                         "toolchain upgrade", "toolchain"),
-             "toolchain upgrade", "expertise.golang", '<- promoted on "go toolchain"'),
-            ("stopwords", router_graph(expertise("expertise.shipping", "build and release", library="ci"),
-                                       "release build", "release"),
-             "release build", "expertise.shipping", '<- promoted on "build and release"'),
-        ]
-        for label, nodes, task, nid, expected in rows:
-            with self.subTest(row=label):
-                out = self.plan(nodes, task)
-                if expected == "absent":
-                    self.assertNotIn(nid, load_section(out),
-                                     f"--plan {task!r} loaded {nid}:\n{out}")
-                elif expected == "unpromoted":
-                    self.assertNotIn("promoted on", load_section(out).get(nid, ""),
-                                     f"--plan {task!r} promoted {nid}:\n{out}")
-                else:
-                    self.assertLoadSuffix(out, nid, expected, task)
-
-    def test_plan_full_hit_on_non_expertise_stays_under_the_cut(self):
-        """Asserts SPEC-0005 PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE.
-
-        Guard. crosscut.release hits `pipeline yaml` in full but is not
-        `kind: expertise`, so the entry budget binds it as before. Held by the
-        mutant "drop the kind: expertise filter"."""
-        out = self.plan(promotion_graph(), "pipeline yaml")
-        self.assertNotIn("crosscut.release", load_section(out),
-                         f"a non-expertise node outside the scored cut loaded:\n{out}")
-
-    def test_plan_without_hit_or_path_is_unchanged(self):
-        """Asserts SPEC-0005 PLAN_PROMOTES_PHRASE_MATCHED_EXPERTISE.
-
-        Guard, golden over ID sets: with no phrase hit and no path-like token,
-        LOAD and NOT LOADED are the sets the tool gave before promotion."""
-        out = self.plan(promotion_graph(), "tune the pipeline runner")
-        self.assertEqual(set(load_section(out)),
-                         {"platform.pipeline", "stack.pipeline", "subsystem.pipeline"},
-                         out)
-        self.assertEqual(not_loaded_section(out), set(), out)
-
-
 class InferenceTests(_PlanCase):
 
     def test_plan_infers_from_extension(self):
         """Asserts SPEC-0005 PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES.
 
-        Also asserts SPEC-0005 PATTERN_BRACE_SPLIT (the brace-tail row) and
+        Also asserts SPEC-0005 PATTERN_BRACE_SPLIT (the brace-pattern row) and
         SPEC-0005 EXTENSIONLESS_BARE_NAME (the Dockerfile rows). A pattern
         with no `/` matches the path's last segment. Rows below name each
-        edge; the negative rows infer (or promote) nothing."""
+        edge; the negative rows infer nothing."""
         pydeps = router_graph(expertise("expertise.pydeps", "requirements*.txt", library="python"),
                               DECOY_VOCABULARY + " svc requirements txt")
         ci = router_graph(expertise("expertise.ci", "ci/pipelines.yml", library="ci"),
@@ -1330,10 +1275,6 @@ class InferenceTests(_PlanCase):
             ("first path in task order", inference_graph(),
              "edit .terraform.lock.hcl infra/main.tf", "expertise.terraform",
              '<- inferred from ".terraform.lock.hcl" via "**/.terraform.lock.hcl"'),
-            # `*.{ts,tsx}` splits into `*.{ts` (matches nothing) and the
-            # one-token phrase `tsx}`, so a .tsx path promotes on the tail
-            ("brace-pattern tail", inference_graph(), "edit web/app.tsx",
-             "expertise.frontend", '<- promoted on "tsx}"'),
             ("dotted Dockerfile", inference_graph(), "edit ./Dockerfile",
              "expertise.containers", '<- inferred from "dockerfile" via "**/Dockerfile"'),
             ("Dockerfile in a directory", inference_graph(), "edit docker/Dockerfile",
@@ -1358,6 +1299,13 @@ class InferenceTests(_PlanCase):
             with self.subTest(row=label):
                 out = self.plan(nodes, task)
                 self.assertEqual(inferred_lines(out), {}, out)
+        with self.subTest(row="brace pattern"):
+            # `*.{ts,tsx}` splits into `*.{ts` (matches nothing) and `tsx}`, a
+            # one-token piece that seeds nothing (SPEC-0002 §6)
+            task = "edit web/app.tsx"
+            out = self.plan(inference_graph(), task)
+            self.assertNotIn("expertise.frontend", load_section(out),
+                             f"--plan {task!r} loaded the brace-pattern node:\n{out}")
         with self.subTest(row="pattern text as words"):
             out = self.plan(inference_graph(),
                             "update the package lock json and the terraform lock hcl")
@@ -1421,8 +1369,10 @@ class InferenceTests(_PlanCase):
     def test_plan_hostile_task_line_never_raises(self):
         """Asserts SPEC-0005 HOSTILE_TASK_LINE.
 
-        An error inside inference prints `  ! inference skipped: <class>`
-        before LOAD, keeps the scored entries, and exits 0."""
+        An error inside inference prints `! inference skipped: <class>`
+        before LOAD, exits 0, and the route goes on to the next tier: LOAD is
+        the `--plan-json` LOAD of the same task with its path token removed
+        (on this fixture, nothing, with a `no_signal` notice)."""
         g = build_graph(self.tmp, inference_graph())
         r = plan_output(g, "edit infra/main.tf", prelude=_FAULT_IN_FNMATCH)
         out = r.stdout + r.stderr
@@ -1430,15 +1380,14 @@ class InferenceTests(_PlanCase):
                          f"an inference error changed the exit status:\n{out}")
         lines = r.stdout.splitlines()
         notice = next((i for i, l in enumerate(lines)
-                       if l.startswith("  ! inference skipped: InjectedFault")), None)
-        load = next((i for i, l in enumerate(lines) if l.startswith("LOAD (")), None)
+                       if l.startswith("! inference skipped: InjectedFault")), None)
+        load = next((i for i, l in enumerate(lines) if LOAD_HEAD.match(l)), None)
         self.assertIsNotNone(notice, f"no inference-skipped notice:\n{out}")
         self.assertIsNotNone(load, out)
         self.assertLess(notice, load, f"the notice must precede LOAD:\n{out}")
-        self.assertEqual(
-            set(load_section(r.stdout)),
-            {"platform.workbench", "stack.workbench", "subsystem.workbench"},
-            f"the fallback is the scored entries alone:\n{out}")
+        without_path = self.plan_doc(g, "edit")
+        self.assertEqual(list(load_section(r.stdout)), [e["id"] for e in without_path["load"]],
+                         f"the fallback is the route of the task without its path:\n{out}")
 
     def test_plan_infers_nothing_without_a_path_token(self):
         """Asserts SPEC-0005 TASK_LINE_WITHOUT_PATHS.
@@ -1473,49 +1422,44 @@ CLOSURE = {
 }
 
 
-class PromotedClosureTests(_PlanCase):
+class PhraseEntryClosureTests(_PlanCase):
     TASK = "wire the metrics exporter into the sink"
 
-    def test_plan_promoted_node_brings_required_parent(self):
-        """Asserts SPEC-0005 PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE.
+    def test_plan_phrase_entry_brings_required_parent(self):
+        """Asserts SPEC-0002 GRAPH_ROUTE_PHRASE_LOADS_ITS_NODE (the closure of a
+        loaded node always loads with it).
 
-        `requires:` runs from a promoted entry as from any entry."""
+        `requires:` runs from a tier-3 phrase entry as from any entry."""
         out = self.plan(router_graph(CLOSURE), self.TASK)
-        self.assertLoadSuffix(out, "expertise.beta",
-                              '<- promoted on "metrics exporter"', self.TASK)
+        self.assertLoadSuffix(out, "expertise.beta", '<- phrase "metrics exporter"', self.TASK)
         self.assertIn("expertise.alpha", load_section(out),
-                      f"the promoted node's requires: parent did not load:\n{out}")
+                      f"the phrase entry's requires: parent did not load:\n{out}")
 
-    def test_plan_promoted_node_descends_to_named_child(self):
-        """Asserts SPEC-0005 PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE.
+    def test_plan_requires_outranks_composed(self):
+        """Asserts SPEC-0002 COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE (its `requires`
+        over `composed` clause; §6 How precedence).
 
-        `sink` is gamma's term but not a whole piece, so gamma arrives by
-        descent from the promoted beta."""
-        out = self.plan(router_graph(CLOSURE), self.TASK)
-        self.assertLoadSuffix(out, "expertise.gamma",
-                              '<- composed by expertise.beta on "sink"', self.TASK)
-
-    def test_plan_seed_closure_is_accounted_before_promotion(self):
-        """Asserts SPEC-0005 PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE.
-
-        Guard: expertise.cache is reached by the scored seed's `requires:`
-        and by descent from the promoted expertise.metrics. The scored closure
-        is walked first, so cache prints no `composed by`."""
+        expertise.cache is required by the phrase entry subsystem.orders and
+        is also a composed child of the phrase entry expertise.metrics whose
+        one-token piece `flush` the task holds. A node a loaded node requires
+        is `requires`, never `composed`, whichever edge the traversal meets
+        first."""
         task = "orders service metrics exporter flush"
         nodes = router_graph({
             **expertise("expertise.metrics", "metrics exporter", library="metrics",
                         composes=["expertise.cache"]),
-            **expertise("expertise.cache", "flush interval, cache warmup",
+            **expertise("expertise.cache", "flush, cache warmup",
                         library="metrics", requires=["expertise.metrics"]),
-        }, task, name="orders")
+        }, "orders pipeline decoy", name="orders")
         nodes["subsystem.orders"] = node_md("subsystem.orders", "subsystem",
-                                            requires=["expertise.cache"], load_when=[task])
-        out = self.plan(nodes, task)
-        self.assertLoadSuffix(out, "expertise.metrics",
-                              '<- promoted on "metrics exporter"', task)
-        line = load_section(out).get("expertise.cache")
-        self.assertIsNotNone(line, out)
-        self.assertNotIn("composed by", line, line)
+                                            requires=["expertise.cache"],
+                                            load_when=["orders service"])
+        doc = self.plan_doc(build_graph(self.tmp, nodes), task)
+        hows = {e["id"]: e["how"] for e in doc["load"]}
+        self.assertEqual((hows.get("expertise.metrics") or {}).get("kind"), "phrase", doc)
+        self.assertEqual((hows.get("subsystem.orders") or {}).get("kind"), "phrase", doc)
+        self.assertEqual((hows.get("expertise.cache") or {}).get("kind"), "requires",
+                         f"{task!r}: a required node was reported {hows.get('expertise.cache')!r}")
 
 
 class ListedNodeEdgesTests(_TmpCase):
@@ -1787,9 +1731,12 @@ class FrontmatterPortableTests(_TmpCase):
 
 
 class PlanEntryPathTests(_TmpCase):
-    """SPEC-0003 PLAN_ENTRY_NAMES_THE_NODE_FILE: each `--plan` entry line is
-    `  <id>  <path from the plant root>  <text>`. One node lives at
-    docs/graph/agents/04-tester.md, a path its id does not spell."""
+    """SPEC-0003 PLAN_ENTRY_NAMES_THE_NODE_FILE: `--plan` prints the compact
+    grammar of §6. Each LOAD entry is `<id> <path> | <title>`, the path from
+    the plant root and the title without its `<slug> — ` prefix; each skipped
+    node is `<id>=<path>` in one `skip` group. One node lives at
+    docs/graph/agents/04-tester.md, a path its id does not spell, and carries
+    a title with its slug prefix."""
 
     TASK = "write widget ledger tests"
 
@@ -1809,7 +1756,9 @@ class PlanEntryPathTests(_TmpCase):
         (graph / "agents").mkdir()
         (graph / "agents" / "04-tester.md").write_text(
             node_md("agent.tester", "agent", requires=["root"],
-                    load_when=["widget ledger tests"]), encoding="utf-8")
+                    load_when=["widget ledger tests"]).replace(
+                "title: agent.tester node", "title: tester \u2014 reads the gearbox", 1),
+            encoding="utf-8")
         with (graph / "index.md").open("a", encoding="utf-8") as f:
             f.write("- agent.tester\n")
         files = {
@@ -1819,29 +1768,1130 @@ class PlanEntryPathTests(_TmpCase):
             "agent.tester": "docs/graph/agents/04-tester.md",
         }
         titles = {nid: f"{nid} node" for nid in files}
+        titles["agent.tester"] = "reads the gearbox"
         return plant, files, titles
 
     def test_plan_entry_names_the_node_file(self):
-        """PLAN_ENTRY_NAMES_THE_NODE_FILE: every entry names its node file."""
+        """PLAN_ENTRY_NAMES_THE_NODE_FILE: every id is printed with its node file."""
         plant, files, titles = self._plant()
         r = subprocess.run([sys.executable, "docs/graph/graph-lint.py", "--plan", self.TASK],
                            cwd=str(plant), capture_output=True, text=True, timeout=120)
         out = r.stdout
         self.assertEqual(r.returncode, 0, f"--plan exited {r.returncode}:\n{out}\n{r.stderr}")
-        sections = {"LOAD": plan_section(out, "LOAD ("),
-                    "NOT LOADED": plan_section(out, "NOT LOADED (")}
-        self.assertEqual(sorted(sections["LOAD"]), ["agent.tester", "root", "subsystem.alpha"],
-                         f"harness: the fixture no longer routes as measured:\n{out}")
-        self.assertEqual(list(sections["NOT LOADED"]), ["subsystem.beta"],
-                         f"harness: the fixture no longer routes as measured:\n{out}")
-        for section, entries in sections.items():
-            for nid, line in entries.items():
-                with self.subTest(line=line):
-                    m = re.match(r"^  (\S+)\s+(\S+)\s+(\S.*)$", line)
-                    self.assertIsNotNone(m, f"{line!r} is not `  <id>  <path>  <text>`")
-                    self.assertEqual(m.group(2), files[nid], line)
-                    text = titles[nid] if section == "LOAD" else "peer of subsystem.alpha"
-                    self.assertTrue(m.group(3).startswith(text), line)
+        lines = out.splitlines()
+        self.assertFalse([l for l in lines if l.startswith("task:")], f"a `task:` line:\n{out}")
+        self.assertFalse([l for l in lines if re.search(r"\S {2,}|^ {2,}", l)],
+                         f"a line is padded with runs of spaces:\n{out}")
+        self.assertEqual(len([l for l in lines if LOAD_HEAD.match(l)]), 1,
+                         f"no single `LOAD <n> ~<t>t` header:\n{out}")
+        load = load_section(out)
+        self.assertEqual(sorted(load), ["agent.tester", "root", "subsystem.alpha"],
+                         f"harness or grammar: LOAD is not the measured three:\n{out}")
+        for nid, line in load.items():
+            with self.subTest(line=line):
+                m = ENTRY_LINE.match(line)
+                self.assertIsNotNone(m, f"{line!r} is not `<id> <path> | <title>`")
+                self.assertEqual((m.group(1), m.group(2), m.group(3)),
+                                 (nid, files[nid], titles[nid]), line)
+        self.assertEqual(lines.count(SKIP_HEAD), 1, f"not one skip block:\n{out}")
+        self.assertEqual(skip_entries(out),
+                         [("subsystem.beta", files["subsystem.beta"], "peer", "subsystem.alpha")],
+                         f"the skip block is not one `peer of` group naming beta=<path>:\n{out}")
+
+
+# --------------------------------------------------------------------------
+# `--plan-json`: the `cypress.plan/1` document (SPEC-0003 §6, ADR-0025)
+# --------------------------------------------------------------------------
+
+PLAN_SCHEMA = "cypress.plan/1"
+NODE_ID_PATTERN = re.compile(r"^[a-z][a-z0-9_.-]{0,127}$")
+RELATIVE_PATH_PATTERN = re.compile(r"^(?!/)(?!.*(^|/)\.\.(/|$))[A-Za-z0-9_./-]+$")
+NOTICE_CODES = {"wide_descent", "inference_skipped", "long_task", "no_signal"}
+HOW_KINDS = {"scored", "requires", "inferred", "composed", "named_id", "named_path",
+             "phrase"}
+PLANT_KEYS = {"environment_class", "commit_attribution", "deliverable_language",
+              "comment_language"}
+
+# The task set PLAN_JSON_EQUALS_PLAN names, shared with ROUTE_FULL_TEXT_EQUALS_PLAN
+# in tests/test-prompt-hooks.sh: (label, which fixture plant, task).
+PLAN_TASK_SET = (
+    ("notice, peer skipped and composed", "main",
+     "fix subsystem.orders: the entity mapping and the log sink"),
+    ("a node whose path its id does not spell", "main", "write widget ledger tests"),
+    ("loads nothing", "rootless", "zebra quux nonsense"),
+    ("an inferred entry", "main", "bump infra/main.tf in the orders service"),
+    ("a plant: block in index.md", "planted", "write widget ledger tests"),
+)
+
+# The `planted` fixture's index.md frontmatter (SPEC-0003 PLAN_PRINTS_PLANT_BLOCK):
+# four distinct values, so a renderer that reorders or drops a fact is caught.
+PLANT_FACTS = (("environment_class", "ephemeral-test"), ("commit_attribution", "none"),
+               ("deliverable_language", "fr"), ("comment_language", "de"))
+PLANT_LINE = "plant: " + " ".join(f"{k}={v}" for k, v in PLANT_FACTS)
+
+
+def plan_fixture_plant(tmp: Path, which: str = "main") -> Path:
+    """A plant whose `docs/graph/` holds the real tool. `main`: the expertise
+    family (a wide descent and composed entries on the first task), a peer
+    of `subsystem.orders` left unloaded, and `agent.tester` at docs/graph/agents/04-tester.md,
+    a path its id does not spell. `rootless`: one node and no root, so a task
+    that matches nothing loads nothing. `planted`: `main` with the four
+    PLANT_FACTS in a `plant:` block in index.md's frontmatter."""
+    plant = tmp / f"plant-{which}"
+    if which == "rootless":
+        nodes = {"subsystem.only": node_md("subsystem.only", "subsystem", owns=["only.fact"])}
+    else:
+        nodes = expertise_family(**{
+            "subsystem.orders": node_md(
+                "subsystem.orders", "subsystem", requires=["expertise.dotnet"],
+                owns=["orders.responsibility"], peers=["subsystem.billing"],
+                load_when=["orders service", "editing src/Orders/**"]),
+            "subsystem.billing": node_md("subsystem.billing", "subsystem", requires=["root"],
+                                         load_when=["invoice sprocket gearing"]),
+            # file patterns only: loads by inference (`<- inferred from "<path>"`)
+            "expertise.terraform": node_md("expertise.terraform", "expertise",
+                                           libraries=["terraform"], owns=["terraform.applicability"],
+                                           load_when=["*.tf, **/.terraform.lock.hcl"])})
+    built = build_graph(tmp, nodes, libraries=["dotnet", "terraform"])
+    (plant / "docs").mkdir(parents=True)
+    graph = plant / "docs" / "graph"
+    shutil.move(str(built), str(graph))
+    if which in ("main", "planted"):
+        (graph / "agents").mkdir()
+        (graph / "agents" / "04-tester.md").write_text(
+            node_md("agent.tester", "agent", requires=["root"],
+                    load_when=["widget ledger tests"]), encoding="utf-8")
+        with (graph / "index.md").open("a", encoding="utf-8") as f:
+            f.write("- agent.tester\n")
+    if which == "planted":
+        idx = graph / "index.md"
+        front = "---\nplant:\n" + "".join(f"  {k}: {v}\n" for k, v in PLANT_FACTS) + "---\n"
+        idx.write_text(front + idx.read_text(encoding="utf-8"), encoding="utf-8")
+    return plant
+
+
+def run_plant_tool(plant: Path, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run([sys.executable, "docs/graph/graph-lint.py", *args],
+                          cwd=str(plant), capture_output=True, text=True, timeout=120)
+
+
+def plan_json_problems(doc) -> list:
+    """Every way `doc` departs from the §6 `cypress.plan/1` schema."""
+    bad = []
+    if not isinstance(doc, dict):
+        return [f"not a JSON object: {type(doc).__name__}"]
+    want = {"schema", "task_sha256", "plant", "notices", "est_tokens", "load", "skip"}
+    if set(doc) != want:
+        bad.append(f"keys {sorted(doc)} != {sorted(want)}")
+    if doc.get("schema") != PLAN_SCHEMA:
+        bad.append(f"schema {doc.get('schema')!r}")
+    if not (isinstance(doc.get("task_sha256"), str)
+            and re.fullmatch(r"[0-9a-f]{64}", doc["task_sha256"])):
+        bad.append(f"task_sha256 {doc.get('task_sha256')!r}")
+    plant = doc.get("plant")
+    if plant is not None and not (isinstance(plant, dict) and set(plant) == PLANT_KEYS
+                                  and all(isinstance(v, str) for v in plant.values())):
+        bad.append(f"plant {plant!r}")
+    est = doc.get("est_tokens")
+    if not (isinstance(est, int) and not isinstance(est, bool) and est >= 0):
+        bad.append(f"est_tokens {est!r}")
+    for n in doc.get("notices") if isinstance(doc.get("notices"), list) else [None]:
+        if not (isinstance(n, dict) and set(n) == {"code", "text"}
+                and n["code"] in NOTICE_CODES and isinstance(n["text"], str)):
+            bad.append(f"notice {n!r}")
+
+    def node_ref(e, keys):
+        return (isinstance(e, dict) and set(e) == keys
+                and isinstance(e.get("id"), str) and NODE_ID_PATTERN.match(e["id"])
+                and isinstance(e.get("path"), str) and RELATIVE_PATH_PATTERN.match(e["path"]))
+
+    load = doc.get("load") if isinstance(doc.get("load"), list) else [None]
+    for e in load:
+        how = e.get("how") if isinstance(e, dict) else None
+        ok = (node_ref(e, {"id", "path", "title", "how"}) and isinstance(e.get("title"), str)
+              and isinstance(how, dict) and set(how) == {"kind", "detail", "via"}
+              and how["kind"] in HOW_KINDS
+              and (how["detail"] is None or isinstance(how["detail"], str))
+              and (how["via"] is None or (isinstance(how["via"], str)
+                                          and NODE_ID_PATTERN.match(how["via"]))))
+        if not ok:
+            bad.append(f"load entry {e!r}")
+    ids = [e.get("id") for e in load if isinstance(e, dict)]
+    if ids != sorted(ids):
+        bad.append(f"load not sorted by id: {ids}")
+    for e in doc.get("skip") if isinstance(doc.get("skip"), list) else [None]:
+        if not (node_ref(e, {"id", "path", "kind", "via"}) and e["kind"] in {"peer", "composed"}
+                and isinstance(e.get("via"), str) and NODE_ID_PATTERN.match(e["via"])):
+            bad.append(f"skip entry {e!r}")
+    return bad
+
+
+def text_plan(out: str, task: str) -> dict:
+    """The compact `--plan` grammar read back into the document's terms:
+    notice texts, the LOAD count and token total, LOAD (id, path, how) and
+    skipped (id, path, kind, via), each in printed order."""
+    lines = out.splitlines()
+    notices = [l[len("! "):] for l in lines if l.startswith("! ")]
+    m = next((LOAD_HEAD.match(l) for l in lines if LOAD_HEAD.match(l)), None)
+    load = []
+    for nid, line in load_section(out).items():
+        em = ENTRY_LINE.match(line)
+        load.append((nid, em.group(2), em.group(4)) if em else (line, None, None))
+    return {"notices": notices, "count": m and int(m.group(1)),
+            "est_tokens": m and int(m.group(2)), "load": load, "skip": skip_entries(out)}
+
+
+def how_suffix(how: dict):
+    """The text after ` <- ` the §6 grammar prints for a document `how`, or None."""
+    kind, detail, via = how["kind"], how["detail"], how["via"]
+    if kind == "inferred":
+        return f'inferred from "{detail}"'
+    if kind == "composed":
+        return f'composed by {via} on "{detail}"'
+    if kind == "named_path":
+        return f'owns "{detail}"'
+    if kind == "phrase":
+        return f'phrase "{detail}"'
+    return None
+
+
+class PlanJsonTests(_TmpCase):
+    """SPEC-0003 PLAN_JSON_*: `graph-lint.py --plan-json=<task>` prints one
+    `cypress.plan/1` document (§6) that programs read instead of the text."""
+
+    def plan_json(self, plant: Path, task: str) -> dict:
+        r = run_plant_tool(plant, f"--plan-json={task}")
+        self.assertEqual(r.returncode, 0,
+                         f"--plan-json={task!r} exited {r.returncode}:\n{r.stdout}\n{r.stderr}")
+        try:
+            return json.loads(r.stdout)
+        except ValueError as e:
+            self.fail(f"--plan-json={task!r}: stdout is not one JSON object ({e}):\n{r.stdout}")
+
+    def test_plan_json_schema(self):
+        """PLAN_JSON_SCHEMA: one JSON object satisfying `cypress.plan/1`. The
+        harness task loads, skips a peer and raises a `wide_descent` notice
+        (a parent with both its children held)."""
+        plant = plan_fixture_plant(self.tmp)
+        task = PLAN_TASK_SET[0][2]
+        doc = self.plan_json(plant, task)
+        self.assertEqual(plan_json_problems(doc), [], f"schema departures in:\n{doc!r}")
+        self.assertTrue(doc["load"] and doc["skip"] and doc["notices"],
+                        f"harness: the task must load, skip and raise a notice:\n{doc!r}")
+
+    def test_plan_json_carries_no_prompt(self):
+        """PLAN_JSON_CARRIES_NO_PROMPT: no field holds the task or its sentinel."""
+        plant = plan_fixture_plant(self.tmp)
+        sentinel = "zqsentinelnoprompt7731"
+        task = PLAN_TASK_SET[0][2] + " " + sentinel
+        r = run_plant_tool(plant, f"--plan-json={task}")
+        self.assertEqual(r.returncode, 0, f"--plan-json exited {r.returncode}:\n{r.stderr}")
+        self.assertNotIn(sentinel, r.stdout, "the task's sentinel reached the document")
+        doc = json.loads(r.stdout)
+
+        def strings(v):
+            if isinstance(v, str):
+                yield v
+            elif isinstance(v, dict):
+                for x in v.values():
+                    yield from strings(x)
+            elif isinstance(v, list):
+                for x in v:
+                    yield from strings(x)
+        held = [s for s in strings(doc) if task in s or s == task]
+        self.assertEqual(held, [], "a field holds the task")
+
+    def test_plan_json_hash_binds_task(self):
+        """PLAN_JSON_HASH_BINDS_TASK: task_sha256 is the SHA-256 of the task's
+        UTF-8 bytes exactly as received in argv, line ends included."""
+        plant = plan_fixture_plant(self.tmp)
+        base = "in the orders service, fix the mapping"
+        rows = [("one line", base),
+                ("LF", base.replace(", ", "\n")),
+                ("CRLF", base.replace(", ", "\r\n")),
+                ("lone CR", base.replace(", ", "\r")),
+                ("non-ASCII", base + " caf\u00e9 \u65e5\u672c \u00fcber")]
+        for label, task in rows:
+            with self.subTest(row=label):
+                doc = self.plan_json(plant, task)
+                self.assertEqual(doc.get("task_sha256"),
+                                 hashlib.sha256(task.encode("utf-8")).hexdigest())
+
+    def test_plan_json_equals_plan(self):
+        """PLAN_JSON_EQUALS_PLAN: `--plan` and `--plan-json` carry the same
+        notices, LOAD (ids, paths, how), skipped (ids, paths, kinds, via), in
+        the same order, and the same token total."""
+        plants = {w: plan_fixture_plant(self.tmp, w) for w in {w for _, w, _ in PLAN_TASK_SET}}
+        seen = {"notice": False, "composed": False, "empty": False}
+        for label, which, task in PLAN_TASK_SET:
+            with self.subTest(task=label):
+                r = run_plant_tool(plants[which], "--plan", task)
+                self.assertEqual(r.returncode, 0, r.stderr)
+                text = text_plan(r.stdout, task)
+                doc = self.plan_json(plants[which], task)
+                self.assertEqual(text["notices"], [n["text"] for n in doc["notices"]], "notices")
+                self.assertEqual(text["est_tokens"], doc["est_tokens"], "token total")
+                self.assertEqual([(i, p) for i, p, _ in text["load"]],
+                                 [(e["id"], e["path"]) for e in doc["load"]], "LOAD ids and paths")
+                self.assertEqual([h for _, _, h in text["load"]],
+                                 [how_suffix(e["how"]) for e in doc["load"]], "LOAD how")
+                self.assertEqual(text["skip"],
+                                 [(e["id"], e["path"], e["kind"], e["via"]) for e in doc["skip"]],
+                                 "skipped ids, paths, kinds and via")
+                seen["notice"] |= bool(doc["notices"])
+                seen["composed"] |= any(e["how"]["kind"] == "composed" for e in doc["load"])
+                seen["empty"] |= not doc["load"]
+        self.assertEqual(seen, dict.fromkeys(seen, True),
+                         "harness: the task set must hold a notice, a composed entry, and "
+                         "a task that loads nothing")
+
+
+class PlanPlantBlockTests(_TmpCase):
+    """SPEC-0003 PLAN_PRINTS_PLANT_BLOCK (ADR-0027): a full `--plan` carries
+    the plant's four `plant:` facts on one line before the LOAD line, so a
+    session whose first move is the router learns them without opening
+    index.md. The hook's full injection equals `--plan` byte for byte
+    (ROUTE_FULL_TEXT_EQUALS_PLAN, X168 over the `planted` row of PLAN_TASK_SET)."""
+
+    # The `planted` index.md, one `plant:` line rewritten or dropped: each is
+    # an unfilled or partial block, so `--plan` prints no `plant:` line. A
+    # placeholder is a value starting `<`, with or without a trailing YAML
+    # comment (the template's own frontmatter uses inline `#` comments).
+    UNFILLED_BLOCKS = {
+        "placeholder": ("  environment_class: ephemeral-test\n",
+                        "  environment_class: <ephemeral-test | staging>\n"),
+        "placeholder-commented": ("  environment_class: ephemeral-test\n",
+                                  "  environment_class: <ephemeral-test | staging>  # x\n"),
+        "partial": ("  comment_language: de\n", ""),
+    }
+
+    def _plant(self, which: str) -> Path:
+        if which not in self.UNFILLED_BLOCKS:
+            return plan_fixture_plant(self.tmp, which)
+        d = self.tmp / f"case-{which}"
+        d.mkdir()
+        plant = plan_fixture_plant(d, "planted")
+        idx = plant / "docs" / "graph" / "index.md"
+        line, repl = self.UNFILLED_BLOCKS[which]
+        text = idx.read_text(encoding="utf-8")
+        self.assertIn(line, text, "harness: the planted block lacks the line to rewrite")
+        idx.write_text(text.replace(line, repl, 1), encoding="utf-8")
+        return plant
+
+    def test_plan_prints_plant_block(self):
+        task = "write widget ledger tests"
+        cases = [("planted", [PLANT_LINE]), ("main", [])] + [(w, []) for w in self.UNFILLED_BLOCKS]
+        for which, want in cases:
+            with self.subTest(index=which):
+                r = run_plant_tool(self._plant(which), "--plan", task)
+                self.assertEqual(r.returncode, 0, r.stderr)
+                lines = r.stdout.splitlines()
+                got = [l for l in lines if l.startswith("plant:")]
+                self.assertEqual(got, want, f"`plant:` lines of --plan:\n{r.stdout}")
+                load_at = next((i for i, l in enumerate(lines) if LOAD_HEAD.match(l)), None)
+                self.assertIsNotNone(load_at, f"harness: no LOAD line in --plan:\n{r.stdout}")
+                if want:
+                    self.assertLess(lines.index(PLANT_LINE), load_at,
+                                    f"the `plant:` line comes after LOAD:\n{r.stdout}")
+
+
+# --------------------------------------------------------------------------
+# `--show <id>...`: the node view after routing (SPEC-0003 §6, ADR-0025)
+# --------------------------------------------------------------------------
+
+# The keys §6 does not print: router-only and spawn keys.
+SHOW_DROPPED_KEYS = ("load_when", "routing_triggers", "est_tokens", "tier", "kind", "name",
+                     "description", "prevents", "tools", "model", "effort", "can_delegate",
+                     "max_spawn_depth", "command")
+# Node edges print as bare ids; leaf entries resolve to a path from the plant root.
+SHOW_EDGE_KEYS = ("owns", "requires", "peers", "composes", "delegates_to")
+SHOW_LEAF_KEYS = {"artifacts": "docs/graph/{}", "plant_knowledge": "docs/graph/{}",
+                  "libraries": "docs/graph/libraries/{}.md"}
+# The keys §6 prints on the `origin:` line, each as `<key>: <value>`.
+SHOW_ORIGIN_KEYS = ("origin", "repo", "status", "status_date", "owner", "ends_when", "scope",
+                    "reason", "recorded_in", "departs_from")
+POINTER_KEYS = {"requires", "peers", "composes", "delegates_to", "artifacts", "libraries",
+                "plant_knowledge"}
+
+SHOW_AGENT = """---
+name: reviewer
+description: Senior reviewer for the widget ledger; reads diffs against the spec.
+tools: [Read, Grep, Bash]
+model: opus
+effort: medium
+routing_triggers:
+  - "review the widget ledger diff"
+can_delegate: false
+max_spawn_depth: 1
+command: /review-ledger
+id: agent.reviewer
+tier: 2
+kind: agent
+origin: seed
+title: reviewer \u2014 reads widget ledger diffs against the spec
+owns:
+  - reviewer.charter
+requires: [root]
+peers: [agent.tester, subsystem.orders]
+delegates_to: [agent.tester]
+plant_knowledge:
+  - specs/
+  - evaluations/
+prevents: A diff that lands without a reviewer reading it against the spec.
+load_when: ["review the widget ledger diff"]
+est_tokens: 300
+---
+
+# Reviewer
+
+You review the widget ledger. See `docs/graph/specs/` for the contracts.
+"""
+
+# Frontmatter-only leaves: no `artifacts` or `plant_knowledge` entry is named
+# in the body, so a view without the header would lose every one of them.
+SHOW_DOMAIN = """---
+id: domain.provenance
+tier: 2
+kind: domain
+origin: project
+repo: vendor/ledger
+status: open
+status_date: 2026-10-01
+owner: ledger-team
+ends_when: the audit chain is signed end to end
+scope: provenance records of the ledger
+reason: the chain is unsigned today
+recorded_in: docs/graph/plans/grill.md
+title: provenance \u2014 where each ledger record came from
+owns: [provenance.chain]
+requires: [root]
+peers: [subsystem.billing]
+artifacts:
+  - architecture/provenance.md
+  - runbooks/provenance-audit.md
+plant_knowledge: [data/]
+load_when: ["provenance chain audit"]
+est_tokens: 200
+---
+
+# Provenance
+
+A record keeps its origin through every hop.\u0020\u0020
+
+```text
+---
+id: not.a.header
+---
+```
+
+| hop | carries |
+|-----|---------|
+| ingest | the source id |
+| merge  | both parents\u0020 |
+
+Trailing line with spaces after it.\u0020\u0020\u0020
+"""
+
+
+def show_fixture_plant(tmp: Path) -> Path:
+    """The `main` PLAN_* plant plus an agent node at docs/graph/agents/05-reviewer.md
+    (a path its id does not spell) carrying every router and spawn key, and
+    `domain.provenance`, whose `artifacts` and `plant_knowledge` are named in
+    its frontmatter only and whose body holds a fenced block, a table and
+    trailing whitespace. Every leaf it names exists."""
+    plant = plan_fixture_plant(tmp, "main")
+    graph = plant / "docs" / "graph"
+    (graph / "agents" / "05-reviewer.md").write_text(SHOW_AGENT, encoding="utf-8")
+    (graph / "nodes" / "domain.provenance.md").write_text(SHOW_DOMAIN, encoding="utf-8")
+    for leaf in ("architecture/provenance.md", "runbooks/provenance-audit.md"):
+        (graph / leaf).parent.mkdir(parents=True, exist_ok=True)
+        (graph / leaf).write_text(f"# {leaf}\n", encoding="utf-8")
+    for d in ("specs", "evaluations", "data"):
+        (graph / d).mkdir(exist_ok=True)
+    with (graph / "index.md").open("a", encoding="utf-8") as f:
+        f.write("- agent.reviewer\n- domain.provenance\n")
+    return plant
+
+
+def fixture_node_files(plant: Path) -> dict:
+    """{id: (path from the plant root, raw text)} for every node file of the plant."""
+    graph = plant / "docs" / "graph"
+    out = {}
+    for p in sorted(list((graph / "nodes").glob("*.md")) + list((graph / "agents").glob("*.md"))):
+        text = p.read_text(encoding="utf-8")
+        meta, _ = FRONTMATTER.parse(text, p)
+        out[meta["id"]] = (p.relative_to(plant).as_posix(), text)
+    return out
+
+
+def _load_frontmatter_reader():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "cypress_frontmatter", SEED / "templates" / "knowledge-graph" / "frontmatter.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+FRONTMATTER = _load_frontmatter_reader()
+
+
+def show_header(out: str) -> list:
+    """The header lines of a one-node `--show`: up to the first blank line."""
+    return out.split("\n\n", 1)[0].split("\n")
+
+
+def body_after_fence(text: str) -> str:
+    """The file's bytes after its closing frontmatter fence and the blank line after it."""
+    rest = text.split("\n---\n", 1)[1]
+    return rest[1:] if rest.startswith("\n") else rest
+
+
+class ShowTests(_TmpCase):
+    """SPEC-0003 SHOW_*: `graph-lint.py --show <id>...` prints each node as a
+    §6 header (path, title, every edge and leaf pointer, origin) and its body
+    verbatim, without the router and spawn keys."""
+
+    def show(self, plant: Path, *ids: str) -> subprocess.CompletedProcess:
+        return run_plant_tool(plant, "--show", *ids)
+
+    def test_show_keeps_every_pointer(self):
+        """SHOW_KEEPS_EVERY_POINTER: for every node of the fixture, every value of
+        every frontmatter key the view keeps is on its §6 header line, leaves
+        resolved to their path; the first line names the node file. The
+        expected values are read from the raw file, not listed by hand."""
+        plant = show_fixture_plant(self.tmp)
+        files = fixture_node_files(plant)
+        kinds = set()
+        for nid, (path, text) in files.items():
+            meta, _ = FRONTMATTER.parse(text, path)
+            kinds |= POINTER_KEYS & set(meta)
+            with self.subTest(node=nid):
+                r = self.show(plant, nid)
+                self.assertEqual(r.returncode, 0, f"--show {nid} exited {r.returncode}:\n{r.stderr}")
+                head = show_header(r.stdout)
+                self.assertTrue(head[0].startswith(f"# {nid} {path}: "),
+                                f"the first line does not name {path}: {head[0]!r}")
+                by_key = {l.split(": ", 1)[0]: l.split(": ", 1)[1] for l in head[1:] if ": " in l}
+                missing = []
+                for key, value in meta.items():
+                    if key in SHOW_DROPPED_KEYS or key in ("id", "title"):
+                        continue
+                    values = value if isinstance(value, list) else [value]
+                    if key in SHOW_EDGE_KEYS or key in SHOW_LEAF_KEYS:
+                        shown = set(by_key.get(key, "").split(", "))
+                        form = SHOW_LEAF_KEYS.get(key, "{}")
+                        missing += [f"{key}: {form.format(v)}" for v in values
+                                    if form.format(v) not in shown]
+                    elif key in SHOW_ORIGIN_KEYS:
+                        origin = next((l for l in head if l.startswith("origin: ")), "")
+                        missing += [f"{key}: {v}" for v in values if f"{key}: {v}" not in origin]
+                    else:
+                        self.fail(f"harness: fixture key {key!r} of {nid} is in no §6 row")
+                self.assertEqual(missing, [], f"pointers in {path} missing from the header:\n"
+                                              + "\n".join(head))
+                self.assertTrue(r.stdout.endswith(body_after_fence(text)),
+                                "the body (and every pointer it names) is not printed")
+        self.assertEqual(kinds, POINTER_KEYS, "harness: the fixture must carry every pointer kind")
+        _, provenance = files["domain.provenance"]
+        body = body_after_fence(provenance)
+        self.assertFalse([a for a in ("provenance.md", "provenance-audit.md", "data/") if a in body],
+                         "harness: domain.provenance's leaves must be frontmatter-only")
+
+    def test_show_drops_router_and_spawn_keys(self):
+        """SHOW_DROPS_ROUTER_AND_SPAWN_KEYS: an agent and an expertise node in one
+        call; no header line names a router or spawn key, and one blank line
+        separates the first node's body from the second header."""
+        plant = show_fixture_plant(self.tmp)
+        files = fixture_node_files(plant)
+        present = set()
+        for nid in ("agent.reviewer", "expertise.dotnet"):
+            present |= set(FRONTMATTER.parse(files[nid][1], nid)[0])
+        self.assertEqual(present & set(SHOW_DROPPED_KEYS), set(SHOW_DROPPED_KEYS),
+                         "harness: the two nodes must carry every dropped key")
+        r = self.show(plant, "agent.reviewer", "expertise.dotnet")
+        self.assertEqual(r.returncode, 0, f"--show exited {r.returncode}:\n{r.stderr}")
+        first_body = body_after_fence(files["agent.reviewer"][1])
+        second = "# expertise.dotnet docs/graph/nodes/expertise.dotnet.md: "
+        self.assertIn(first_body + "\n" + second, r.stdout,
+                      f"not the first body, one blank line, then the second header:\n{r.stdout}")
+        self.assertTrue(r.stdout.startswith("# agent.reviewer docs/graph/agents/05-reviewer.md: "),
+                        r.stdout[:200])
+        heads = show_header(r.stdout) + show_header(r.stdout[r.stdout.index("\n" + second) + 1:])
+        named = [(k, l) for l in heads for k in SHOW_DROPPED_KEYS
+                 if re.search(rf"(^|\s){re.escape(k)}:", l)]
+        self.assertEqual(named, [], "a header line names a router or spawn key")
+
+    def test_show_body_verbatim(self):
+        """SHOW_BODY_VERBATIM: after the header and one blank line, the output is
+        the file's bytes after the closing fence and its blank line."""
+        plant = show_fixture_plant(self.tmp)
+        r = self.show(plant, "domain.provenance")
+        self.assertEqual(r.returncode, 0, f"--show exited {r.returncode}:\n{r.stderr}")
+        head = show_header(r.stdout)
+        got = r.stdout[len("\n".join(head)) + 2:]
+        self.assertTrue(head[0].startswith("# domain.provenance "), r.stdout[:200])
+        self.assertEqual(got, body_after_fence(SHOW_DOMAIN))
+
+    def test_show_unknown_id_fails(self):
+        """SHOW_UNKNOWN_ID_FAILS: one unknown id among the asked ones exits 2,
+        prints nothing on stdout, and names the unknown id on stderr."""
+        plant = show_fixture_plant(self.tmp)
+        known = self.show(plant, "root")
+        self.assertEqual(known.returncode, 0,
+                         f"harness: `--show root` alone must succeed, so the exit below is the "
+                         f"unknown id's:\n{known.stderr}")
+        r = self.show(plant, "root", "zz.no-such-node")
+        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertEqual(r.stdout, "")
+        self.assertIn("zz.no-such-node", r.stderr)
+
+
+# --------------------------------------------------------------------------
+# The node-router ladder and its gated corpus (SPEC-0002 node router, ADR-0026)
+# --------------------------------------------------------------------------
+
+STRONG_TIER_CAP = 3                       # SPEC-0002 §6
+NO_SIGNAL_TEXT = "no node matches this task; route a sharper task line, or enter a protocol:"
+LONG_TASK_TEXT_RE = re.compile(r"^task too long to route \((\d+) terms\); run --plan on the task line$")
+KIND_PREFIX_WORDS = ("domain", "subsystem", "protocol", "skill", "agent", "expertise",
+                     "method", "crosscut")
+SEED_NODE_CORPUS = SEED / "tests" / "graph-routes.golden.tsv"
+CORPUS_CLASSES = ("contract", "paraphrase", "adversarial", "unknown-domain")
+
+
+def with_repo(text: str, repo: str) -> str:
+    """`node_md` text with a `repo:` key; the key is one word, so the token
+    figure stays inside the band."""
+    return text.replace("\ntier: 2\n", f"\ntier: 2\nrepo: {repo}\n", 1)
+
+
+def ladder_plant(tmp: Path) -> Path:
+    """One plant for every ladder case. Its trigger phrases are disjoint, so a
+    case's task reaches exactly the node it is written for:
+    - subsystem.ledger / subsystem.payroll: two-word phrases, one rare word each;
+    - subsystem.billing (`repo: billsvc/src/payments`) under subsystem.monorepo
+      (`repo: billsvc`, a bare repository root that claims no path);
+    - subsystem.vendor (`supply-chain`: a compound whose fragment is `chain`);
+    - subsystem.exports (`attestation`: a prefix fold of `attesting`);
+    - expertise.ci-config (`pipeline yaml`), expertise.containers (`container`),
+      expertise.terraform (`*.tf`), and the composing family under
+      subsystem.orders (expertise.dotnet composes expertise.serilog, whose
+      phrase is `log sink` and whose one-token trigger is `enrichers`);
+    - agent.tester at agents/04-tester.md; protocol.review and skill.review
+      share the basename `review.md`; protocol.verify is the second protocol."""
+    nodes = expertise_family(**{
+        "root": node_md("root", "root", requires=[], owns=["root.map"],
+                        load_when=["what this project is"]),
+        "subsystem.ledger": node_md("subsystem.ledger", "subsystem",
+                                    load_when=["ledger reconciliation, nightly posting"]),
+        "subsystem.payroll": node_md("subsystem.payroll", "subsystem",
+                                     load_when=["payroll batch, salary slips"]),
+        "subsystem.monorepo": with_repo(node_md("subsystem.monorepo", "subsystem",
+                                                load_when=["monorepo layout"]), "billsvc"),
+        "subsystem.billing": with_repo(node_md("subsystem.billing", "subsystem",
+                                               load_when=["invoice sprocket gearing"]),
+                                       "billsvc/src/payments"),
+        "subsystem.vendor": node_md("subsystem.vendor", "subsystem",
+                                    load_when=["supply-chain risk review"]),
+        "subsystem.exports": node_md("subsystem.exports", "subsystem",
+                                     load_when=["attestation bundle export"]),
+        "expertise.ci-config": node_md("expertise.ci-config", "expertise", libraries=["ci"],
+                                       owns=["ci-config.applicability"],
+                                       load_when=["pipeline yaml"]),
+        "expertise.containers": node_md("expertise.containers", "expertise",
+                                        libraries=["containers"],
+                                        owns=["containers.applicability"],
+                                        load_when=["container"]),
+        "expertise.terraform": node_md("expertise.terraform", "expertise",
+                                       libraries=["terraform"], owns=["terraform.applicability"],
+                                       load_when=["*.tf"]),
+    })
+    nodes["expertise.serilog"] = node_md(
+        "expertise.serilog", "expertise", requires=["expertise.dotnet"],
+        libraries=["dotnet"], owns=["serilog.applicability"],
+        load_when=["structured logging, log sink", "enrichers"])
+    built = build_graph(tmp, nodes, libraries=["dotnet", "terraform", "ci", "containers"])
+    plant = tmp / "plant-ladder"
+    (plant / "docs").mkdir(parents=True)
+    graph = plant / "docs" / "graph"
+    shutil.move(str(built), str(graph))
+    machinery = {
+        ("agents", "04-tester.md"): node_md("agent.tester", "agent",
+                                            load_when=["widget gauge tests"]),
+        ("protocols", "review.md"): node_md("protocol.review", "protocol",
+                                            load_when=["code review gate"]),
+        ("skills", "review.md"): node_md("skill.review", "skill",
+                                         load_when=["review checklist technique"]),
+        ("protocols", "verify.md"): node_md("protocol.verify", "protocol",
+                                            load_when=["gates before done"]),
+    }
+    with (graph / "index.md").open("a", encoding="utf-8") as f:
+        for (d, name), text in machinery.items():
+            (graph / d).mkdir(exist_ok=True)
+            (graph / d / name).write_text(text, encoding="utf-8")
+            f.write(f"- {re.search(r'^id: (.+)$', text, re.M).group(1)}\n")
+    return plant
+
+
+def filler_words(n: int) -> list:
+    """`n` distinct four-letter words no node knows: consonants only, so no
+    suffix rule and no prefix fold reduces two of them to one term."""
+    letters = "bcdfghjklmnpqrtvwxz"
+    words = [f"kv{a}{b}" for a in letters for b in letters]
+    assert n <= len(words), n
+    return words[:n]
+
+
+def long_task_terms() -> int:
+    """`LONG_TASK_TERMS` as the tool defines it (SPEC-0002 §6 names it a
+    constant of graph-lint.py, valued at GREEN). None when it is undefined."""
+    m = re.search(r"^LONG_TASK_TERMS\s*=\s*(\d+)", GRAPH_LINT.read_text(encoding="utf-8"), re.M)
+    return int(m.group(1)) if m else None
+
+
+def corpus_rows(path: Path) -> list:
+    return [line.split("\t") for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.startswith("#")]
+
+
+def write_corpus(path: Path, rows: list, header: str = "") -> Path:
+    path.write_text(header + "".join("\t".join(r) + "\n" for r in rows), encoding="utf-8")
+    return path
+
+
+class NodeRouterLadderTests(_TmpCase):
+    """SPEC-0002, node router: the tier ladder, the cap, the phrase rule, the
+    lexical guards and the two abstentions, read from `--plan-json`."""
+
+    def setUp(self):
+        super().setUp()
+        self.plant = ladder_plant(self.tmp)
+
+    def route(self, task: str) -> dict:
+        r = run_plant_tool(self.plant, f"--plan-json={task}")
+        self.assertEqual(r.returncode, 0,
+                         f"--plan-json={task!r} exited {r.returncode}:\n{r.stdout}\n{r.stderr}")
+        return json.loads(r.stdout)
+
+    @staticmethod
+    def hows(doc: dict) -> dict:
+        return {e["id"]: e["how"] for e in doc["load"]}
+
+    def add_nodes(self, nodes: dict):
+        """Write `nodes` (id -> text) into this case's plant and list them in
+        index.md: a fixture row the shared ladder must not carry."""
+        graph = self.plant / "docs" / "graph"
+        with (graph / "index.md").open("a", encoding="utf-8") as f:
+            for nid, text in nodes.items():
+                (graph / "nodes" / f"{nid}.md").write_text(text, encoding="utf-8")
+                f.write(f"- {nid}\n")
+
+    def assertLoadedAs(self, doc: dict, node_id: str, kind: str, detail=..., task: str = ""):
+        how = self.hows(doc).get(node_id)
+        self.assertIsNotNone(how, f"{task!r}: {node_id} not in LOAD:\n{doc['load']!r}")
+        self.assertEqual(how["kind"], kind, f"{task!r}: {node_id} loaded as {how!r}")
+        if detail is not ...:
+            self.assertEqual(how["detail"], detail, f"{task!r}: {node_id} loaded as {how!r}")
+
+    def test_graph_route_named_id_loads_it(self):
+        """GRAPH_ROUTE_NAMED_ID_LOADS_IT: an exact dotted id wins; the other
+        node's trigger phrase in the same task does not load it. A word equal
+        to an id with no `.` (`root`) is no tier-1 hit."""
+        task = "fix subsystem.ledger before the payroll batch"
+        doc = self.route(task)
+        self.assertLoadedAs(doc, "subsystem.ledger", "named_id", task=task)
+        self.assertNotIn("subsystem.payroll", self.hows(doc), f"{task!r}: {doc['load']!r}")
+        for task in ("root cause of the crash", "a pipe of edges from root to leaf"):
+            with self.subTest(task):
+                hows = self.hows(self.route(task))
+                self.assertEqual([i for i, h in hows.items() if h["kind"] == "named_id"], [],
+                                 f"{task!r}: the bare word `root` is no named id: {hows!r}")
+
+    def test_graph_route_named_path_loads_its_owner(self):
+        """GRAPH_ROUTE_NAMED_PATH_LOADS_ITS_OWNER: a node file path, a path
+        under a non-root `repo:`, an expertise pattern, a unique basename; a
+        shared basename and a bare repository root claim nothing."""
+        owned = (
+            ("node file", "tidy docs/graph/nodes/subsystem.ledger.md",
+             "subsystem.ledger", "named_path", "docs/graph/nodes/subsystem.ledger.md"),
+            ("repo prefix", "fix billsvc/src/payments/refund.py",
+             "subsystem.billing", "named_path", "billsvc/src/payments/refund.py"),
+            ("expertise pattern", "bump infra/main.tf",
+             "expertise.terraform", "inferred", "infra/main.tf"),
+            ("unique basename", "rename 04-tester.md", "agent.tester", "named_path", "04-tester.md"),
+        )
+        for label, task, nid, kind, detail in owned:
+            with self.subTest(label):
+                self.assertLoadedAs(self.route(task), nid, kind, detail, task)
+        unowned = (
+            ("shared basename", "merge review.md", ("protocol.review", "skill.review")),
+            ("bare repo root", "fix billsvc/README.md", ("subsystem.monorepo",)),
+        )
+        for label, task, ids in unowned:
+            with self.subTest(label):
+                hows = self.hows(self.route(task))
+                for nid in ids:
+                    self.assertNotEqual((hows.get(nid) or {}).get("kind"), "named_path",
+                                        f"{task!r}: {nid} claimed by path: {hows!r}")
+
+    def test_graph_route_phrase_loads_its_node(self):
+        """GRAPH_ROUTE_PHRASE_LOADS_ITS_NODE: a contiguous trigger phrase loads
+        its node as `phrase`; reordered or interrupted tokens do not. Rows
+        moved from SPEC-0005's retired promotion tests: a piece holding a
+        slash and a space is a phrase, not a pattern; stopwords drop out of
+        the piece and the task alike, so `build release` holds `build and
+        release`; `how.detail` is the first held piece in `load_when` order,
+        not in task order."""
+        task = "regenerate the salary slips"
+        self.assertLoadedAs(self.route(task), "subsystem.payroll", "phrase", "salary slips", task)
+        for task in ("regenerate the slips salary", "regenerate the salary paper slips"):
+            with self.subTest(task):
+                how = self.hows(self.route(task)).get("subsystem.payroll") or {}
+                self.assertNotEqual(how.get("kind"), "phrase", f"{task!r}: {how!r}")
+        self.add_nodes({
+            "subsystem.delivery": node_md("subsystem.delivery", "subsystem",
+                                          load_when=["ci/cd release train"]),
+            "subsystem.shipping": node_md("subsystem.shipping", "subsystem",
+                                          load_when=["build and release"]),
+            "subsystem.shipyard": node_md("subsystem.shipyard", "subsystem",
+                                          load_when=["dock crane, harbor tug"]),
+        })
+        rows = (
+            ("slash and space", "tune the ci/cd release train",
+             "subsystem.delivery", "ci/cd release train"),
+            ("stopwords, as written", "tune the build and release flow",
+             "subsystem.shipping", "build and release"),
+            ("stopwords dropped", "tune the build release flow",
+             "subsystem.shipping", "build and release"),
+            ("first held piece in load_when order", "harbor tug dock crane",
+             "subsystem.shipyard", "dock crane"),
+        )
+        for label, task, nid, detail in rows:
+            with self.subTest(label):
+                self.assertLoadedAs(self.route(task), nid, "phrase", detail, task)
+
+    def test_strong_tier_over_cap_falls_through(self):
+        """STRONG_TIER_OVER_CAP_FALLS_THROUGH: more than STRONG_TIER_CAP named
+        ids is no tier-1 hit; the next tier (here a phrase) decides. At the cap
+        the ids load as named. Also asserts PHRASE_TIER_FLOODS_LOAD: four
+        nodes' phrases in one task load all four, as `phrase`."""
+        ids = ["subsystem.ledger", "subsystem.vendor", "subsystem.exports", "subsystem.monorepo"]
+        at_cap = " ".join(ids[:STRONG_TIER_CAP]) + " and the salary slips"
+        doc = self.route(at_cap)
+        for nid in ids[:STRONG_TIER_CAP]:
+            self.assertLoadedAs(doc, nid, "named_id", task=at_cap)
+        over = " ".join(ids[:STRONG_TIER_CAP + 1]) + " and the salary slips"
+        doc = self.route(over)
+        self.assertEqual([i for i, h in self.hows(doc).items() if h["kind"] == "named_id"], [],
+                         f"{over!r}: {doc['load']!r}")
+        self.assertLoadedAs(doc, "subsystem.payroll", "phrase", "salary slips", over)
+        with self.subTest("tier 3 is uncapped (PHRASE_TIER_FLOODS_LOAD)"):
+            four = ("ledger reconciliation, payroll batch, pipeline yaml, "
+                    "attestation bundle export")
+            doc = self.route(four)
+            for nid in ("subsystem.ledger", "subsystem.payroll", "expertise.ci-config",
+                        "subsystem.exports"):
+                self.assertLoadedAs(doc, nid, "phrase", task=four)
+
+    def test_promotion_needs_a_contiguous_phrase(self):
+        """PROMOTION_NEEDS_A_CONTIGUOUS_PHRASE: the two words apart are no
+        phrase hit; the phrase loads the node as `phrase` (tier 3). A trigger piece
+        that reduces to one content token seeds its node by no tier, even on
+        an equal whole task word. Rows moved from SPEC-0005's retired
+        promotion tests: one word of a two-word phrase, half a version token,
+        the whole version token `net10.0` (one token), `go toolchain` (one
+        token once the short word drops) and a prefix fold load nothing."""
+        hit = "edit the pipeline yaml"
+        self.assertLoadedAs(self.route(hit), "expertise.ci-config", "phrase", "pipeline yaml", hit)
+        # Apart, the two words are two distinct confident terms, so a tier-4
+        # `scored` entry stays possible (this contract's And); no phrase hit.
+        apart = "edit the yaml for the release pipeline"
+        how = self.hows(self.route(apart)).get("expertise.ci-config") or {}
+        self.assertNotEqual(how.get("kind"), "phrase", f"{apart!r}: {how!r}")
+        self.add_nodes({
+            "expertise.runtime-ten": node_md("expertise.runtime-ten", "expertise",
+                                             libraries=["ci"], owns=["runtime-ten.applicability"],
+                                             load_when=["net10.0"]),
+            "expertise.golang": node_md("expertise.golang", "expertise", libraries=["ci"],
+                                        owns=["golang.applicability"],
+                                        load_when=["go toolchain"]),
+            "expertise.schema": node_md("expertise.schema", "expertise", libraries=["ci"],
+                                        owns=["schema.applicability"],
+                                        load_when=["migration tooling"]),
+        })
+        rows = (
+            ("one word of the phrase", "edit the pipeline", "expertise.ci-config"),
+            ("one-token piece, equal whole word", "rebuild the container image",
+             "expertise.containers"),
+            ("one-token piece, plural", "rebuild the containers image", "expertise.containers"),
+            ("one-token piece, inside a compound", "rebuild the multi-container image",
+             "expertise.containers"),
+            ("half a version token", "target net10", "expertise.runtime-ten"),
+            ("whole version token, one token", "target net10.0", "expertise.runtime-ten"),
+            ("reduces to one token", "bump the toolchain", "expertise.golang"),
+            ("prefix fold", "migrating tooling", "expertise.schema"),
+        )
+        for label, task, nid in rows:
+            with self.subTest(label):
+                self.assertNotIn(nid, self.hows(self.route(task)), f"{task!r}")
+
+    def test_composed_child_needs_its_own_phrase(self):
+        """COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE: with the parent loaded (through
+        a named id, so tier 1 decides and no phrase tier runs), one word of
+        the child's phrase does not compose it; the phrase does. With the
+        parent a tier-3 phrase entry, a one-token child piece (`enrichers`)
+        composes the child on the equal whole word, not on an inflection
+        (from SPEC-0005's retired PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE: a
+        multi-word child phrase the task holds is itself a tier-3 entry)."""
+        one = "fix the sink in subsystem.orders"
+        doc = self.route(one)
+        self.assertIn("expertise.dotnet", self.hows(doc), f"harness: the parent must load:\n{doc!r}")
+        self.assertNotIn("expertise.serilog", self.hows(doc), f"{one!r}: {doc['load']!r}")
+        whole = "fix the log sink in subsystem.orders"
+        self.assertLoadedAs(self.route(whole), "expertise.serilog", "composed", task=whole)
+        word = "pin the target framework and the enrichers"
+        doc = self.route(word)
+        self.assertLoadedAs(doc, "expertise.dotnet", "phrase", "target framework", word)
+        self.assertLoadedAs(doc, "expertise.serilog", "composed", "enrichers", word)
+        inflected = "pin the target framework and the enricher"
+        self.assertNotIn("expertise.serilog", self.hows(self.route(inflected)), inflected)
+
+    def test_punctuation_does_not_change_a_term(self):
+        """PUNCTUATION_DOES_NOT_CHANGE_A_TERM: a trailing mark on a task word
+        leaves the route as it is without the mark."""
+        base = "ledger reconciliation nightly payroll"
+        want = self.route(base)
+        self.assertTrue(want["load"], f"harness: {base!r} must load something:\n{want!r}")
+        for mark in ".,:;?!)":
+            with self.subTest(mark=mark):
+                got = self.route(base.replace("nightly", "nightly" + mark))
+                self.assertEqual((got["load"], got["notices"]), (want["load"], want["notices"]))
+
+    def test_ids_and_paths_are_not_lexical_terms(self):
+        """IDS_AND_PATHS_ARE_NOT_LEXICAL_TERMS: kind prefixes and the segments
+        of an unowned path match nothing; the route is `no_signal`. This holds
+        when a node's `load_when` writes kind words itself: a kind word is no
+        term on the task side either."""
+        tasks = (" ".join(KIND_PREFIX_WORDS) + " src/payroll/ledger/vendor.py",
+                 "the protocol and skill for an agent hook")
+        for label, extra in (("ladder", {}), ("a load_when writes kind words", {
+                "subsystem.policy": node_md("subsystem.policy", "subsystem",
+                                            load_when=["which protocol applies",
+                                                       "skill and agent handbook"])})):
+            self.add_nodes(extra)
+            for task in tasks:
+                with self.subTest(label, task=task[:40]):
+                    doc = self.route(task)
+                    self.assertEqual(doc["load"], [], f"{task!r}")
+                    self.assertEqual([n["code"] for n in doc["notices"]], ["no_signal"],
+                                     f"{task!r}: {doc!r}")
+
+    def test_one_term_cannot_seed_a_node(self):
+        """ONE_TERM_CANNOT_SEED_A_NODE: one distinct confident term, however
+        rare, does not load its node lexically; a second one does."""
+        one = "the payroll"
+        self.assertNotIn("subsystem.payroll", self.hows(self.route(one)), one)
+        two = "the salary payroll"
+        self.assertLoadedAs(self.route(two), "subsystem.payroll", "scored", task=two)
+
+    def test_compound_fragment_is_weak_evidence(self):
+        """COMPOUND_FRAGMENT_IS_WEAK_EVIDENCE (node router): `chain` out of
+        `supply-chain` is no confident term, so with one other term it does
+        not seed; the compound itself does."""
+        frag = "review the chain"
+        self.assertNotIn("subsystem.vendor", self.hows(self.route(frag)), frag)
+        whole = "review the supply-chain"
+        self.assertIn("subsystem.vendor", self.hows(self.route(whole)), whole)
+
+    def test_rarity_amplifies_only_a_confident_match(self):
+        """RARITY_AMPLIFIES_ONLY_A_CONFIDENT_MATCH (node router): a rare term
+        that reaches one node only by a prefix fold (`attesting` to
+        `attestation`) is no confident term, so it cannot be the second."""
+        task = "export the attesting"
+        self.assertNotIn("subsystem.exports", self.hows(self.route(task)), task)
+
+    def test_no_signal_loads_nothing(self):
+        """NO_SIGNAL_LOADS_NOTHING: an unknown-domain task loads nothing, not
+        root, with one `no_signal` notice naming the protocol ids, sorted, and
+        never `index.md`."""
+        task = "what's the weather in Rome tomorrow"
+        doc = self.route(task)
+        self.assertEqual(doc["load"], [], f"{task!r}: {doc!r}")
+        self.assertEqual([n["code"] for n in doc["notices"]], ["no_signal"], f"{doc!r}")
+        text = doc["notices"][0]["text"]
+        self.assertTrue(text.startswith(NO_SIGNAL_TEXT), text)
+        named = re.findall(r"[a-z][a-z0-9_.-]*", text[len(NO_SIGNAL_TEXT):])
+        self.assertEqual(named, ["protocol.review", "protocol.verify"], text)
+        self.assertNotIn("index.md", text)
+
+    def test_long_task_abstains_with_notice(self):
+        """LONG_TASK_ABSTAINS_WITH_NOTICE: over LONG_TASK_TERMS distinct terms,
+        a named id included, loads nothing with one `long_task` notice that
+        counts them; exactly LONG_TASK_TERMS is routed."""
+        cap = long_task_terms()
+        self.assertIsNotNone(cap, "graph-lint.py defines no LONG_TASK_TERMS (SPEC-0002 §6)")
+        words = filler_words(cap + 1)
+        doc = self.route(" ".join(words))
+        self.assertEqual(doc["load"], [])
+        self.assertEqual([n["code"] for n in doc["notices"]], ["long_task"], f"{doc['notices']!r}")
+        m = LONG_TASK_TEXT_RE.match(doc["notices"][0]["text"])
+        self.assertIsNotNone(m, doc["notices"][0]["text"])
+        self.assertEqual(int(m.group(1)), cap + 1)
+        named = self.route(" ".join(words[:cap] + ["subsystem.ledger"]))
+        self.assertEqual(named["load"], [], "a named id does not route a long task")
+        self.assertEqual([n["code"] for n in named["notices"]], ["long_task"])
+        at = self.route(" ".join(words[:cap]))
+        self.assertNotIn("long_task", [n["code"] for n in at["notices"]],
+                         f"exactly LONG_TASK_TERMS terms must be routed: {at['notices']!r}")
+
+    def test_a_word_every_task_writes_cannot_select_an_agent(self):
+        """A_WORD_EVERY_TASK_WRITES_CANNOT_SELECT_AN_AGENT, in both routers: a
+        pronoun added to a task, and a pronoun in a trigger, change nothing."""
+        pronouns = "we our you your my i us"
+        base = "rename 04-tester.md"
+        self.assertEqual(self.route(f"{pronouns} {base}")["load"], self.route(base)["load"])
+        plant = _INSTALL["plant"]
+        installed_graph(self)
+        lone = subprocess.run([sys.executable, "docs/graph/agent-lint.py", "--route", pronouns],
+                              cwd=str(plant), capture_output=True, text=True, timeout=120)
+        self.assertEqual(lone.returncode, 0, lone.stderr)
+        self.assertRegex(lone.stdout, r"confidence: (LOW|NONE)",
+                         f"agent router: pronouns alone must not select an agent:\n{lone.stdout}")
+        doc = json.loads(run_plant_tool(plant, f"--plan-json={pronouns}").stdout)
+        self.assertEqual(doc["load"], [], f"node router: pronouns alone load nothing: {doc!r}")
+
+
+class NodeRouteEvalTests(unittest.TestCase):
+    """SPEC-0002 GRAPH_EVAL_GATES_PER_CLASS and the corpus-honesty contracts
+    widened to the node router: `graph-lint.py --eval <tsv>` over the graph a
+    fresh install places."""
+
+    def setUp(self):
+        self.plant = _INSTALL["plant"]
+        installed_graph(self)
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def evaluate(self, tsv: Path) -> subprocess.CompletedProcess:
+        return run_plant_tool(self.plant, "--eval", str(tsv))
+
+    def corpus_copy(self, rows: list) -> Path:
+        return write_corpus(self.tmp / "corpus.tsv", rows)
+
+    def breached_corpus(self) -> Path:
+        """A copy of the seed's corpus with one forbidden id added to an
+        adversarial row the router loads: GRAPH_ADVERSARIAL_FORBIDDEN_MAX
+        breaches on the measured graph."""
+        rows = corpus_rows(SEED_NODE_CORPUS)
+        bait = next(i for i, row in enumerate(rows) if row[3] == "adversarial")
+        doc = json.loads(run_plant_tool(self.plant, f"--plan-json={rows[bait][0]}").stdout)
+        loaded = [e["id"] for e in doc["load"]]
+        self.assertTrue(loaded, f"harness: the bait row must load something: {rows[bait]!r}")
+        rows[bait][2] = ",".join([x for x in rows[bait][2].split(",") if x != "-"] + [loaded[0]])
+        return write_corpus(self.tmp / "breached.tsv", rows)
+
+    def test_graph_eval_gates_per_class(self):
+        """GRAPH_EVAL_GATES_PER_CLASS: the seed's corpus exits 0 with every
+        figure on lines naming its class; one forbidden id added to a row the
+        router loads exits 1 naming the breached ratchet. Also asserts
+        GRAPH_ROUTE_RATCHET_BREACHED (§7), on the measured graph."""
+        self.assertTrue(SEED_NODE_CORPUS.exists(), f"missing corpus: {SEED_NODE_CORPUS}")
+        r = self.evaluate(SEED_NODE_CORPUS)
+        self.assertEqual(r.returncode, 0, f"--eval exited {r.returncode}:\n{r.stdout}\n{r.stderr}")
+        for cls in CORPUS_CLASSES:
+            self.assertRegex(r.stdout, rf"(?m)^.*\b{re.escape(cls)}\b.*\d", f"no line for {cls}")
+        for label in ("recall", "covered", "mean", "irrelevant", "forbidden", "abstain"):
+            self.assertIn(label, r.stdout.lower(), f"--eval prints no {label!r} figure:\n{r.stdout}")
+        r = self.evaluate(self.breached_corpus())
+        self.assertEqual(r.returncode, 1, f"{r.stdout}\n{r.stderr}")
+        self.assertIn("GRAPH_ADVERSARIAL_FORBIDDEN_MAX", r.stdout + r.stderr)
+
+    def test_graph_ratchets_are_keyed_to_their_graph(self):
+        """GRAPH_RATCHETS_ARE_KEYED_TO_THEIR_GRAPH: on a graph holding one node
+        whose `origin` is not `seed` (a grown plant), a corpus that breaches
+        GRAPH_ADVERSARIAL_FORBIDDEN_MAX prints every class figure and one
+        digit-free line saying the ratchets are reported and not gated, and
+        exits 0; the same corpus on the seed's own graph exits 1 naming the
+        ratchet. Also asserts GRAPH_ROUTE_RATCHET_BREACHED (§7, "on any other
+        graph the figure prints and the exit status does not change")."""
+        breached = self.breached_corpus()
+        grown = self.tmp / "grown"
+        shutil.copytree(self.plant / "docs", grown / "docs")
+        flipped = next(p for p in sorted((grown / "docs" / "graph").rglob("*.md"))
+                       if re.search(r"^origin: seed$", p.read_text(encoding="utf-8"), re.M))
+        flipped.write_text(re.sub(r"^origin: seed$", "origin: project",
+                                  flipped.read_text(encoding="utf-8"), count=1, flags=re.M),
+                           encoding="utf-8")
+        r = run_plant_tool(grown, "--eval", str(breached))
+        out = r.stdout + r.stderr
+        self.assertEqual(r.returncode, 0,
+                         f"a GRAPH_* ratchet gated a graph holding {flipped.name} "
+                         f"(origin: project):\n{out}")
+        for cls in CORPUS_CLASSES:
+            self.assertRegex(r.stdout, rf"(?m)^.*\b{re.escape(cls)}\b.*\d", f"no line for {cls}")
+        self.assertRegex(r.stdout, r"(?im)^[^\d\n]*\bnot gated\b[^\d\n]*$",
+                         f"no digit-free line saying the ratchets are not gated:\n{out}")
+        seed = self.evaluate(breached)
+        self.assertEqual(seed.returncode, 1, f"{seed.stdout}\n{seed.stderr}")
+        self.assertIn("GRAPH_ADVERSARIAL_FORBIDDEN_MAX", seed.stdout + seed.stderr)
+
+    def test_graph_eval_every_number_names_its_corpus(self):
+        """EVERY_NUMBER_NAMES_ITS_CORPUS (node router): every line of the
+        report that carries a figure names one class, and no line averages
+        classes."""
+        r = self.evaluate(SEED_NODE_CORPUS)
+        self.assertEqual(r.returncode, 0, f"{r.stdout}\n{r.stderr}")
+        figured = [l for l in r.stdout.splitlines() if re.search(r"\d", l)]
+        self.assertTrue(figured, r.stdout)
+        for line in figured:
+            named = [c for c in CORPUS_CLASSES if re.search(rf"\b{re.escape(c)}\b", line)]
+            self.assertEqual(len(named), 1, f"a figure names {named or 'no class'}: {line!r}")
+
+    def test_graph_held_out_stays_held_out(self):
+        """HELD_OUT_STAYS_HELD_OUT (node router): a paraphrase row that copies
+        its target's `load_when` fails the gate, naming the row."""
+        rows = corpus_rows(SEED_NODE_CORPUS)
+        i = next(i for i, row in enumerate(rows) if row[3] == "paraphrase" and row[1] == "method.tiers")
+        tiers = (self.plant / "docs" / "graph" / "method" / "tiers.md").read_text(encoding="utf-8")
+        trigger = re.search(r"^load_when:\n\s+- \"?([^\"\n]+)", tiers, re.M).group(1)
+        rows[i][0] = trigger
+        r = self.evaluate(self.corpus_copy(rows))
+        self.assertEqual(r.returncode, 1, f"{r.stdout}\n{r.stderr}")
+        self.assertIn(trigger, r.stdout + r.stderr)
+
+    def test_graph_vacuous_corpus_is_refused(self):
+        """VACUOUS_CORPUS_IS_REFUSED (node router): a corpus where every row
+        expects abstention fails closed, saying so. An adversarial row whose
+        `forbidden_ids` is `-` (it baits nothing) and an unknown-domain row
+        that lists required ids each fail, naming the row."""
+        rows = [row for row in corpus_rows(SEED_NODE_CORPUS) if row[3] == "unknown-domain"]
+        r = self.evaluate(self.corpus_copy(rows))
+        self.assertEqual(r.returncode, 1, f"{r.stdout}\n{r.stderr}")
+        self.assertRegex((r.stdout + r.stderr).lower(), r"vacuous")
+        for label, cls, col, value in (("bait-free adversarial row", "adversarial", 2, "-"),
+                                       ("unknown-domain row with required ids",
+                                        "unknown-domain", 1, "method.tiers")):
+            with self.subTest(label):
+                rows = corpus_rows(SEED_NODE_CORPUS)
+                i = next(i for i, row in enumerate(rows)
+                         if row[3] == cls and not row[0].startswith("@file:"))
+                rows[i][col] = value
+                r = self.evaluate(self.corpus_copy(rows))
+                self.assertEqual(r.returncode, 1, f"{label}: {r.stdout}\n{r.stderr}")
+                self.assertIn(rows[i][0], r.stdout + r.stderr, f"{label}: the row is not named")
+
+    def test_graph_abstention_is_a_correct_outcome(self):
+        """ABSTENTION_IS_A_CORRECT_OUTCOME (node router): a paraphrase row
+        the router loads nothing for, with `no_signal`, does not fail the gate."""
+        task = "kvbc kvbd kvbf"
+        doc = json.loads(run_plant_tool(self.plant, f"--plan-json={task}").stdout)
+        self.assertEqual([n["code"] for n in doc["notices"]], ["no_signal"],
+                         f"harness: the added row must abstain: {doc!r}")
+        rows = corpus_rows(SEED_NODE_CORPUS) + [[task, "method.tiers", "-", "paraphrase"]]
+        r = self.evaluate(self.corpus_copy(rows))
+        self.assertEqual(r.returncode, 0, f"{r.stdout}\n{r.stderr}")
 
 
 if __name__ == "__main__":

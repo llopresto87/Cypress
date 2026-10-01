@@ -468,7 +468,7 @@ Support tiers table of `documentation/host-capability-matrix.md`,
 | Tool | Kernel file (destination) | Overlay directory | Install method | First-class | Enforcement mechanism |
 |---|---|---|---|---|---|
 | Claude Code | `CLAUDE.md` (copy of `core/AGENTS.md`; `--symlink` opt-in) | `.claude/{agents,skills,commands}` | copy by default; commands generated | **Yes** | `.claude/route-hook.py` on `UserPromptSubmit`; `.claude/status-hook.py` on `SessionStart` |
-| Prime Agent | `AGENTS.md` (copy of `core/AGENTS.md`; shared with CLAUDE.md when co-installed) | `.prime/agent/{agents,skills,prompts,extensions}` | copy by default; prompts generated | **Yes** | `.prime/agent/extensions/route-extension.ts` on `before_agent_start`; `status-extension.ts` once per session |
+| Prime Agent | `AGENTS.md` (copy of `core/AGENTS.md`; shared with CLAUDE.md when co-installed) | `.prime/agent/{agents,skills,prompts,extensions,hooks}` | copy by default; prompts generated | **Yes** | `.prime/agent/extensions/route-extension.ts` on `before_agent_start` and `status-extension.ts` on the session events, both running the hook core in `.prime/agent/hooks/` |
 | opencode | `AGENTS.md` (or `CLAUDE.md` fallback) | `.opencode/{agents,skills,commands}` | copy by default; agents rendered with their `model:` line from the model map; `opencode.json` copied | No | Kernel FIRST-MOVE mandate (no dedicated hook shipped) |
 | Codex | `AGENTS.md` at repo root | `.codex/{agents,skills}` | copy by default; global `~/.codex/config.toml` edits are user-consented | No | Kernel FIRST-MOVE mandate; skills registered in global config |
 | GitHub Copilot | `.github/copilot-instructions.md` (copy) + `AGENTS.md` | `.github/{agents,prompts,instructions,hooks}` | **transform** (regenerate, not symlink) | No | `route-hook.py` + `status-hook.py` via VS Code Agent Hooks (Preview), installed only when `.claude/settings.json` is absent — VS Code reads both, and firing both would double-inject (`documentation/host-capability-matrix.md`) |
@@ -497,10 +497,11 @@ Claude Code reads on every session: `CLAUDE.md` (project memory at repo root),
   `.claude/` already has custom content, the installer prompts, and conflicts
   are reported for you to resolve.
 - **Enforcement:** `.claude/route-hook.py` runs on `UserPromptSubmit`, runs the
-  graph router (`docs/graph/graph-lint.py --plan=<prompt>`) on the actual
+  graph router (`docs/graph/graph-lint.py --plan-json=<prompt>`) on the actual
   prompt, and injects a one-line pointer at the kernel plus the suggested node
-  set, each id beside its node file, as `hookSpecificOutput.additionalContext`,
-  with the prompt's echo removed. A session ledger under `.cypress/session/` lets later prompts name
+  set in the compact lines `--plan` prints, each id beside its node file, as
+  `hookSpecificOutput.additionalContext`. No line echoes the prompt. A child
+  session and a turn a person did not type are not routed. A session ledger under `.cypress/session/` lets later prompts name
   already-suggested nodes by id; `status-hook.py` resets it on every
   `SessionStart` (SPEC-0003). It is fail-open (trailing `|| true`; any error
   degrades to the full injection, the pointer line, or silence, so every
@@ -529,7 +530,7 @@ Claude Code reads on every session: `CLAUDE.md` (project memory at repo root),
 ## B.3 Prime Agent
 
 Source: `integrations/prime-agent/README.md`, `settings.json`,
-`route-extension.ts`, `APPEND_SYSTEM.md`.
+`route-extension.ts`, `status-extension.ts`, `APPEND_SYSTEM.md`.
 
 Prime Agent is an RLM-native harness built around a persistent IPython kernel,
 recursive subagents (`rlm.spawn()`), durable sessions, and a continual-harness state
@@ -547,23 +548,28 @@ SKILL.md`), extensions (`.prime/agent/extensions/*.ts`), and settings
 | `agents/*.md` | `.prime/agent/agents/*.md` (brief sources) |
 | `skills/*/SKILL.md` | `.prime/agent/skills/*/SKILL.md` |
 | protocols → slash commands | `.prime/agent/prompts/*.md` (generated projections) |
-| route enforcement | `.prime/agent/extensions/route-extension.ts` |
+| route and status enforcement | `.prime/agent/extensions/{route,status}-extension.ts` |
+| `integrations/claude-code/{route,status}-hook.py` | `.prime/agent/hooks/` (the hook core the extensions run) |
 | `templates/docs/` | `docs/graph/` (missing leaves added on install) |
 
 - **Install:** `install.sh prime-agent`. `AGENTS.md` → `core/AGENTS.md`; roster
-  briefs, skills, generated prompts, the `route-extension.ts`, `settings.json`,
-  and `APPEND_SYSTEM.md` are placed; `docs/graph/` scaffolded. Prime Agent has
+  briefs, skills, generated prompts, the two extensions and the hook core they
+  run, `settings.json`, and `APPEND_SYSTEM.md` are placed; `docs/graph/` scaffolded. Prime Agent has
   no static roster/protocol/template tool-dirs; it is graph-only (the test
   asserts `.prime/agent/protocols` and `.prime/agent/templates` do not exist).
-- **Enforcement:** `route-extension.ts` subscribes to `before_agent_start`,
-  runs the same graph router as `route-hook.py`, and injects the route-first
-  mandate plus suggested node set via Prime Agent's native extension API. It is
-  fail-open and auto-discovered from `.prime/agent/extensions/`.
-  `status-extension.ts` uses the same event with a process-local first-prompt
-  guard to inject `status-register.py --summary` and the code-anchor line once
-  per session; that is the parity of Claude Code's `SessionStart` hook
-  (`settings.json` also lists it for locked-down configs). The kernel's own
-  blunt "FIRST MOVE" mandate is the non-extension floor.
+- **Enforcement:** `route-extension.ts` subscribes to `before_agent_start` and
+  runs `route-hook.py`, the core Claude Code runs, from `.prime/agent/hooks/`,
+  with the prompt, the session id and the session depth. The core decides
+  everything and keeps the session ledger, so a node this session was already
+  shown is named by id, not injected again; a child session and a turn a
+  person did not type are not routed. `status-extension.ts` runs
+  `status-hook.py` on `session_start`, `session_compact`, `session_tree` and
+  `refine_complete`, and injects `status-register.py --summary` and the
+  code-anchor line on the next prompt of that session, once; that is the parity
+  of Claude Code's `SessionStart` hook. Both are fail-open and auto-discovered
+  from `.prime/agent/extensions/` (`settings.json` also lists them for
+  locked-down configs). Without the extensions, the kernel's FIRST MOVE is the
+  floor: the session runs `graph-lint.py --plan` itself.
 - **Delegation advantage (no registration lag):** Prime Agent has no
   session-start roster enumeration. Delegation is a runtime primitive
   (`await rlm.spawn("<brief>", name=...)`); the `agents/*.md` install as
@@ -756,9 +762,9 @@ What that gives:
 - **Enforcement per session type.** A Claude Code session fires
   `.claude/route-hook.py` (`UserPromptSubmit`) and `.claude/status-hook.py`
   (`SessionStart`); a Prime Agent session fires
-  `.prime/agent/extensions/route-extension.ts` and `status-extension.ts`
-  (`before_agent_start`). They run in different session types, so there is no
-  double-firing.
+  `.prime/agent/extensions/route-extension.ts` and `status-extension.ts`,
+  which run the same two scripts from `.prime/agent/hooks/`. They run in
+  different session types, so there is no double-firing.
 
 Switching harness is just opening the plant in the other tool, with nothing to
 re-install and nothing to reconcile.

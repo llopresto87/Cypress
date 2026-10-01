@@ -1,104 +1,92 @@
-// route-extension.ts — progressive-discovery enforcement for Prime Agent.
+// route-extension.ts — the Prime Agent envelope of the per-prompt hook core.
 //
-// The Prime Agent parity of Claude Code's route-hook.py. It subscribes to the
-// `before_agent_start` event (fired after the user submits a prompt, before the
-// agent loop) and injects a one-line pointer at the kernel plus the graph
-// router's suggested node set as a prepended message — the same text as the
-// hook's full mode, using Prime Agent's native extension API instead of a
-// shell hook (SPEC-0003).
+// On `before_agent_start` (fired after a prompt is submitted, before the agent
+// loop) it runs `route-hook.py`, the Python core Claude Code runs on every
+// prompt, with the argv envelope, and injects the `additionalContext` the core
+// returns as a prepended message. Every decision is the core's: whether the
+// turn is routed, the router call, the session ledger and the text (SPEC-0003,
+// ADR-0024). This file composes no text and writes no file.
 //
-// The prompt reaches the router as one `--plan=` argv value (pi.exec spawns
-// without a shell), and router output that does not begin with the exact echo
-// of the prompt is dropped, so the prompt is never passed back in.
-//
-// It keeps no state. With no session id on this event there is nothing to
-// key a record on, so every routed prompt gets the full text. Remembering
-// which nodes were already surfaced is the model's job here, in its IPython
-// kernel, as the `## Surfaced nodes` section of APPEND_SYSTEM.md asks.
+// The prompt travels as one `--prompt=` element, and pi.exec spawns without a
+// shell. The session id and the session header's `rlmDepth` go beside it, so
+// the core keeps one ledger per session and injects nothing into a child
+// session. A value this host does not give is left out, and the core then
+// fails toward inclusion (I-1): no session id is the full injection on every
+// prompt, no depth is a routed prompt.
 //
 // Installed to `.prime/agent/extensions/route-extension.ts` by
-// `install.sh prime-agent`. Prime Agent auto-discovers `.prime/agent/extensions/`
-// and transpiles .ts at runtime (jiti) — no build step. The bundled
-// `.prime/agent/settings.json` also lists it explicitly for locked-down configs.
+// `install.sh prime-agent`, beside the core at `.prime/agent/hooks/`. Prime
+// Agent auto-discovers `.prime/agent/extensions/` and transpiles .ts at
+// runtime (jiti), with no build step; under jiti `__dirname` is this file's
+// own directory. The bundled `.prime/agent/settings.json` also lists it.
 //
-// It NEVER blocks: any error (missing graph, router failure, timeout) degrades
-// to the pointer line or to silence. The kernel's own FIRST MOVE is the
-// non-extension floor, so route-first holds even with this extension disabled.
+// It NEVER blocks: a missing core, a timeout or any error injects nothing. The
+// kernel's own FIRST MOVE is the floor, so route-first holds without it.
 
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-// Short/trivial prompts don't need routing (mirror route-hook.py).
-const TRIVIAL = new Set([
-  "", "yes", "no", "ok", "thanks", "thank you", "go", "continue", "y", "n",
-]);
+type Session = {
+  cwd: string;
+  sessionManager: { getSessionId(): string; getHeader(): { rlmDepth?: unknown } | null };
+};
 
-// The graph linter lives at docs/graph/graph-lint.py — the scaffold the
-// installer drops, and the only path it writes. Walk up from cwd to find the
-// project root. A candidate no writer produces is not a fallback: the only file
-// it could ever select is one this project did not put there, so a path is
-// listed here only while something writes it (mirrors route-hook.py).
-const CANDIDATES = [
-  ["docs", "graph", "graph-lint.py"],
-];
-
-function findLint(startDir: string): { lint: string; root: string } | null {
-  let p = path.resolve(startDir);
-  for (let i = 0; i < 7; i++) {
-    for (const parts of CANDIDATES) {
-      const candidate = path.join(p, ...parts);
-      if (fs.existsSync(candidate)) return { lint: candidate, root: p };
-    }
-    const parent = path.dirname(p);
-    if (parent === p) break;
-    p = parent;
-  }
-  return null;
+// The core sits in `../hooks/` beside this file's directory; when that
+// directory cannot be resolved, in the plant's `.prime/agent/hooks/`. No
+// upward walk: a core this install did not place is never run.
+function corePath(ctx: Session): string | undefined {
+  const dir = typeof __dirname === "string"
+    ? path.join(__dirname, "..", "hooks")
+    : path.join(ctx.cwd, ".prime", "agent", "hooks");
+  const script = path.join(dir, "route-hook.py");
+  return fs.existsSync(script) ? script : undefined;
 }
 
-// The same two literals as route-hook.py, so the hosts cannot drift apart.
-const POINTER = "Route first: the kernel's FIRST MOVE and \u00a70 apply to this prompt.";
-const SUGGESTION_HEADER = "Router suggestion (a keyword heuristic \u2014 reason over it):";
+// `--session-id=` and `--depth=` for this session, each left out when the host
+// does not give it.
+function sessionOptions(ctx: Session): string[] {
+  const options: string[] = [];
+  try {
+    const id = ctx.sessionManager.getSessionId();
+    if (typeof id === "string" && id) options.push(`--session-id=${id}`);
+  } catch {
+    // no session id: the core injects in full
+  }
+  try {
+    const depth = ctx.sessionManager.getHeader()?.rlmDepth;
+    if (Number.isInteger(depth)) options.push(`--depth=${depth}`);
+  } catch {
+    // no depth: the core routes the prompt
+  }
+  return options;
+}
+
+// The core's `hookSpecificOutput.additionalContext`, or nothing when it printed
+// nothing or no hook envelope.
+function additionalContext(stdout: string): string | undefined {
+  try {
+    const text = JSON.parse(stdout)?.hookSpecificOutput?.additionalContext;
+    return typeof text === "string" && text ? text : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export default function routeExtension(pi: ExtensionAPI): void {
   pi.on("before_agent_start", async (event, ctx) => {
     try {
-      const prompt = (event.prompt || "").trim();
-      if (TRIVIAL.has(prompt.toLowerCase()) || prompt.length < 8) return;
-
-      const found = findLint(ctx.cwd);
-      if (!found) {
-        return {
-          message: {
-            customType: "cypress-route",
-            content:
-              "No knowledge graph found (docs/graph/). Use the canonical " +
-              "INSTALL_PROMPT.md; /initialize is the entry fork behind it \u2014 " +
-              "grow when there is source to scout, from-scratch when the " +
-              "repository is empty.",
-            display: true,
-          },
-        };
-      }
-
-      let content = POINTER;
-      try {
-        const r = await pi.exec("python3", [found.lint, `--plan=${prompt}`], {
-          timeout: 15_000,
-          cwd: found.root,
-        });
-        // graph-lint --plan echoes the prompt as `task: <prompt>` and a blank
-        // line; anything else is a router failure and keeps the pointer alone.
-        const prefix = `task: ${prompt}\n\n`;
-        if (r.code === 0 && r.stdout.startsWith(prefix)) {
-          const remainder = r.stdout.slice(prefix.length).trim();
-          content += "\n\n" + SUGGESTION_HEADER + "\n" + remainder;
-        }
-      } catch {
-        // fail open: keep the pointer line
-      }
-
+      const script = corePath(ctx);
+      if (!script) return;
+      const options = [`--prompt=${event.prompt ?? ""}`, ...sessionOptions(ctx)];
+      // The turn's origin, when the host gives one. Prime Agent's event carries
+      // none today, so a delivered agent message is told apart by the core's
+      // leading marker, and a child session by its depth.
+      const origin = (event as { origin?: unknown }).origin;
+      if (typeof origin === "string") options.push(`--origin=${origin}`);
+      const r = await pi.exec("python3", [script, ...options], { timeout: 20_000, cwd: ctx.cwd });
+      const content = additionalContext(r.stdout);
+      if (!content) return;
       return { message: { customType: "cypress-route", content, display: true } };
     } catch {
       // never block a prompt

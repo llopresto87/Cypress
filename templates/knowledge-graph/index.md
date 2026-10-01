@@ -10,12 +10,13 @@ plant:
 <!--
 Template: knowledge-graph/index.md
 Lives at: docs/graph/index.md
-Used: as Tier 1 — the router every task opens first.
+Used: as Tier 1 — the hand-written map; the fallback the kernel's FIRST
+MOVE names when the routed plan fails or looks wrong.
 Fill the tables from the project's actual nodes. Keep it in sync as
 nodes are added; the linter treats anything listed here as reachable.
 -->
 
-# The router — start every task here
+# The map — open when the route fails or looks wrong
 
 <!-- pre-growth: grow removes this block -->
 **Not grown yet.** Start from the installed `EXPERT_SEED_INSTALL_PROMPT.md`
@@ -24,24 +25,26 @@ fork: `protocol.grow` when there is source to scout, `protocol.from-scratch`
 when the repository is empty.
 <!-- /pre-growth -->
 
-This is Tier 1. It is the only index. Match your task against the
-triggers below, load the entry node plus the transitive closure of its
-`requires:` edges, and load its `peers:` only when the task crosses
-into them. `composes:` children are a menu, not a closure:
-descend on a term of a child's `load_when:` or slug that the parent
-lacks, never on body prose (`skills/context-router.md` §3).
-
-The traversal is specified in `skills/context-router.md` and is
-executable:
+This is Tier 1, the only index, and the fallback map, not a first
+read. The first move routes the task line instead (the kernel's FIRST
+MOVE): the router suggestion the host injected, or
 
 ```sh
 python3 docs/graph/graph-lint.py --plan "<your task>"
 ```
 
-If your hand-resolved node set disagrees with that output, sharpen the
-`load_when:` trigger at fault in the same commit. `--plan` is a keyword
-heuristic; `skills/context-router.md` names the task kinds where node
-ownership and this table outrank it.
+Open this page when the router fails, when a `!` notice leaves the plan
+empty or wrong, or when the task explores the graph itself. Then match
+your task against the triggers below, load the entry node plus the
+transitive closure of its `requires:` edges, and load its `peers:` only
+when the task crosses into them. `composes:` children are a menu, not a
+closure: descend on a term of a child's `load_when:` or slug that the
+parent lacks, never on body prose (`skills/context-router.md` §3).
+
+If your hand-resolved node set disagrees with the routed plan, sharpen
+the `load_when:` trigger at fault in the same commit. `--plan` is a
+keyword heuristic; `skills/context-router.md` names the task kinds
+where node ownership and this table outrank it.
 
 ---
 

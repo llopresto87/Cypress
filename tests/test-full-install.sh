@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Full-install contract: every adapter delivers its runtime surfaces, and the
 # plant's own router, linters and hooks run in the installed tree.
-# E family (SPEC-0001, ADR-0009 host tiers): E1-E3 and E5-E11 here; E4 is in test-seed-lint.sh.
+# E family (SPEC-0001, ADR-0009 host tiers): E1-E3 and E5-E13 here; E4 is in test-seed-lint.sh.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -87,10 +87,11 @@ case_claude_code() {
     || die "the install projection is not a faithful projection of the seed roster"
   (cd "$T" && python3 docs/graph/graph-lint.py >/dev/null) || die "the installed plant's graph does not lint clean"
   assert_cmd_roster "$T/.claude/commands" .md "claude-code commands"
-  # The installed router SELECTS each entry arm (the LOAD block, not the NOT LOADED peers).
+  # The installed router SELECTS each entry arm: the ids of the compact `LOAD <n> ~<t>t`
+  # block (SPEC-0003 §6), not the `skip` block that follows it.
   selected() {
     (cd "$T" && python3 docs/graph/graph-lint.py --plan "$1" 2>/dev/null) \
-      | awk '/^LOAD \(/{b=1; next} /^NOT LOADED/{b=0} b && /^  [a-z]+\./{print $1}'
+      | awk '/^LOAD [0-9]+ ~/{b=1; next} /^skip /{b=0} b && /^[a-z]+\./{print $1}'
   }
   assert_routes() {  # <task> <node-id>
     selected "$1" | grep -qx "$2" || die "routing: '$1' does not SELECT $2 (selected: $(selected "$1" | tr '\n' ' '))"
@@ -613,6 +614,105 @@ case_opencode_check_drift() {
   rm -rf "$P" "$ERR"
 }
 
+# E12 PRIME_HOOK_SCRIPTS_ARE_PLACED (SPEC-0001, ADR-0024): the Python core the
+# Prime Agent extensions run is placed beside them, byte-identical, by
+# place_file; the preflight covers its directory; no `.claude/` appears.
+case_prime_hook_scripts_placed() {
+  local T h hooks; T="$(mktemp -d)"; ARM_FAILS=()
+  bash "$ROOT/install.sh" prime-agent --project-dir "$T" --copy >/dev/null 2>&1 \
+    || die "E12 PRIME_HOOK_SCRIPTS_ARE_PLACED: install.sh prime-agent exited non-zero"
+  hooks="$T/.prime/agent/hooks"
+  for h in route-hook.py status-hook.py; do
+    cmp -s "$ROOT/integrations/claude-code/$h" "$hooks/$h" \
+      || arm_fail "(a) .prime/agent/hooks/$h is missing or differs from integrations/claude-code/$h"
+  done
+  bash -c 'source <(sed -n "/^adapter_dirs() {/,/^}/p" "$1"); adapter_dirs prime-agent' _ "$ROOT/install.sh" \
+    | grep -qx '.prime/agent/hooks' || arm_fail "(b) adapter_dirs prime-agent does not name .prime/agent/hooks"
+  [[ ! -e "$T/.claude" ]] || arm_fail "(d) a prime-agent run alone created .claude/"
+  if [[ -f "$hooks/route-hook.py" && ! -L "$hooks/route-hook.py" ]]; then
+    printf '# an older copy of the core\n' > "$hooks/route-hook.py"
+    bash "$ROOT/install.sh" prime-agent --project-dir "$T" --copy >/dev/null 2>&1 \
+      || arm_fail "(c) the re-install exited non-zero"
+    cmp -s "$ROOT/integrations/claude-code/route-hook.py" "$hooks/route-hook.py" \
+      || arm_fail "(c) a re-install did not replace an older route-hook.py"
+    compgen -G "$hooks/route-hook.py.bak-*" >/dev/null \
+      || arm_fail "(c) a re-install replaced an older route-hook.py without a backup"
+  else
+    arm_fail "(c) no placed regular file to age, so the re-install arm cannot run"
+  fi
+  arms_done "E12 PRIME_HOOK_SCRIPTS_ARE_PLACED"
+  rm -rf "$T"
+}
+
+# E13 REINSTALL_ENGINE_SERVES_THE_HOOKS (SPEC-0001, adr-0014, adr-0024): a plain
+# re-install over a plant whose docs/graph/graph-lint.py predates `--plan-json`
+# places the newer hooks (place_file) and leaves the engine alone, because the
+# engine is plant-owned and upgrading it is graft's job (adr-0014). So (a) the
+# engine, PROJECT CONFIG included, is byte-unchanged; (b) the placed route-hook
+# names the gap: the pointer line and one notice line naming graph-lint.py,
+# --plan-json and graft (SPEC-0003 ENGINE_OLDER_THAN_HOOK_IS_NAMED), never a
+# silent pointer line alone. (c) After graft's engine step,
+# tools/graft-graph-engine.py <plant engine> <seed engine> as graft-run step 4
+# calls it, the engine accepts --plan-json, the hook injects a route, and the
+# plant's KINDS member and KIND_PREFIX survive, so a reconcile that copies the
+# seed engine wholesale fails (c).
+case_reinstall_engine_serves_hooks() {
+  local T h old inj eng before lines; T="$(mktemp -d)"; ARM_FAILS=()
+  before="$(mktemp)"
+  fresh_copy "$T" claude-code --copy
+  old="$(git -C "$ROOT" show v7.36.0:templates/knowledge-graph/graph-lint.py)" \
+    || die "E13: harness: git show v7.36.0:templates/knowledge-graph/graph-lint.py failed"
+  eng="$T/docs/graph/graph-lint.py"
+  printf '%s\n' "$old" \
+    | sed -e 's/^         "expertise", "deviation", "protocol", "skill", "agent", "method"}$/         "expertise", "deviation", "protocol", "skill", "agent", "method", "plantkind"}/' \
+          -e 's/^KIND_PREFIX = {}$/KIND_PREFIX = {"plantkind": "pk"}/' > "$eng"
+  { grep -q '"plantkind"}$' "$eng" && grep -qx 'KIND_PREFIX = {"plantkind": "pk"}' "$eng"; } \
+    || die "E13: harness: the plant PROJECT CONFIG edit did not land in the v7.36.0 engine"
+  cp "$eng" "$before"
+  for h in route-hook.py status-hook.py; do printf '# an older copy of the core\n' > "$T/.claude/$h"; done
+  bash "$ROOT/install.sh" claude-code --project-dir "$T" --copy >/dev/null 2>&1 \
+    || die "E13: the plain re-install exited non-zero"
+  cmp -s "$ROOT/integrations/claude-code/route-hook.py" "$T/.claude/route-hook.py" \
+    || die "E13: harness: the re-install did not fast-forward .claude/route-hook.py"
+  # (a) the plain re-install leaves the plant-owned engine and its config alone.
+  cmp -s "$before" "$eng" \
+    || arm_fail "(a) the plain re-install changed docs/graph/graph-lint.py; the engine is plant-owned and graft's to upgrade (adr-0014)"
+  if (cd "$T" && python3 docs/graph/graph-lint.py "--plan-json=start a new project from nothing" >/dev/null 2>&1); then
+    die "E13: harness: the engine left in place accepts --plan-json, so arm (b) tests nothing"
+  fi
+  # (b) the placed hook over that engine names the gap rather than routing to nothing.
+  inj="$(cd "$T" && printf '%s' '{"hook_event_name":"UserPromptSubmit","session_id":"e13-before","prompt":"start a new project from nothing, the repo is empty"}' \
+    | python3 .claude/route-hook.py 2>/dev/null)" || arm_fail "(b) the placed route-hook exited non-zero"
+  inj="$(printf '%s' "$inj" | python3 -c 'import json,sys
+t=sys.stdin.read()
+try: print(json.loads(t)["hookSpecificOutput"]["additionalContext"], end="")
+except Exception: print(t, end="")')"
+  lines="$(printf '%s\n' "$inj" | sed '/^$/d' | wc -l | tr -d ' ')"
+  { [[ "$lines" == "2" ]] && grep -qF 'Route first:' <<<"$(head -n1 <<<"$inj")" \
+      && tail -n1 <<<"$inj" | grep -F 'graph-lint.py' | grep -F -e '--plan-json' | grep -qF 'graft'; } \
+    || arm_fail "(b) over the kept older engine the placed route-hook does not name the gap (expected the pointer line and one notice line naming graph-lint.py, --plan-json and graft): ${inj:0:300}"
+  # (c) graft's engine step, as graft-run step 4 calls it, makes the hook route.
+  python3 "$ROOT/tools/graft-graph-engine.py" "$eng" "$ROOT/templates/knowledge-graph/graph-lint.py" >/dev/null 2>&1 \
+    || arm_fail "(c) tools/graft-graph-engine.py refused the v7.36.0 engine"
+  (cd "$T" && python3 docs/graph/graph-lint.py "--plan-json=start a new project from nothing" >/dev/null 2>&1) \
+    || arm_fail "(c) after graft-graph-engine.py docs/graph/graph-lint.py still rejects --plan-json"
+  inj="$(cd "$T" && printf '%s' '{"hook_event_name":"UserPromptSubmit","session_id":"e13-after","prompt":"start a new project from nothing, the repo is empty"}' \
+    | python3 .claude/route-hook.py 2>/dev/null)" || arm_fail "(c) the placed route-hook exited non-zero after the engine graft"
+  grep -qF 'Router suggestion' <<<"$inj" \
+    || arm_fail "(c) after the engine graft the placed route-hook injects no route: ${inj:0:200}"
+  python3 - "$eng" <<'PY' || arm_fail "(c) the engine graft lost the plant's PROJECT CONFIG (KINDS member plantkind, KIND_PREFIX {\"plantkind\": \"pk\"})"
+import ast, sys
+cfg = {}
+for n in ast.parse(open(sys.argv[1], encoding="utf-8").read()).body:
+    if isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name) \
+            and n.targets[0].id in ("KINDS", "KIND_PREFIX"):
+        cfg[n.targets[0].id] = ast.literal_eval(n.value)
+sys.exit(0 if "plantkind" in cfg.get("KINDS", ()) and cfg.get("KIND_PREFIX") == {"plantkind": "pk"} else 1)
+PY
+  arms_done "E13 REINSTALL_ENGINE_SERVES_THE_HOOKS"
+  rm -rf "$T" "$before"
+}
+
 SELF="$ROOT/tests/test-full-install.sh"
 
 # Re-invoke self to run ONE scenario (a child bash spawned by gate_pool).
@@ -637,7 +737,8 @@ main() {
     caseALL_EXCLUDES_LEGACY_HOSTS case_pre_growth_pointer case_code_anchor_tool \
     case_plant_facts_index_no_fm case_plant_facts_declared case_plant_facts_partial \
     case_model_map_placed case_opencode_model_from_map case_opencode_no_map_row \
-    case_opencode_map_unreadable case_opencode_check_drift; do
+    case_opencode_map_unreadable case_opencode_check_drift case_prime_hook_scripts_placed \
+    case_reinstall_engine_serves_hooks; do
     printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
   done
   python3 "$ROOT/tests/gate_pool.py" run "$SCN" || rc=$?

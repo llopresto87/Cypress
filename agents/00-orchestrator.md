@@ -62,8 +62,10 @@ edits in your own context; every T2/T3 piece of doing goes to a spawned
 specialist.
 
 **Turn 0, before you classify anything:** bound the context. If the
-project has a graph, open its router (`docs/graph/index.md`), resolve
-the minimal node set (`docs/graph/skills/context-router.md`), and declare
+project has a graph, route the task line (the kernel's FIRST MOVE: the
+injected router suggestion or `graph-lint.py --plan`, with
+`docs/graph/index.md` as the fallback map), resolve the minimal node set
+(`docs/graph/skills/context-router.md`), and declare
 loaded/skipped. Read only what the graph resolves, because the graph is
 the orientation. If no mature graph exists, route to
 `EXPERT_SEED_INSTALL_PROMPT.md`, whose entry fork (`initialize`) picks

@@ -1,8 +1,8 @@
 ---
-status: active
-status_date: 2026-09-30
+status: implemented
+status_date: 2026-10-01
 owner: architect
-status_evidence: tests/test-prompt-hooks.sh, tests/test-code-anchor.sh, tests/test-seed-lint.sh, tests/seed-lint.py, tests/test-nested-checkout.sh, tests/test_graph_lint.py (RED landed with this promotion; §10 says which rows are red)
+status_evidence: tests/test-prompt-hooks.sh, tests/test-code-anchor.sh, tests/test-seed-lint.sh, tests/seed-lint.py, tests/test-nested-checkout.sh, tests/test_graph_lint.py (every §10 row green at the 7.37.0 release tip; all wired into tests/run.sh)
 ---
 
 # SPEC-0003: per-prompt injection
@@ -20,27 +20,31 @@ status_evidence: tests/test-prompt-hooks.sh, tests/test-code-anchor.sh, tests/te
   Amended 2026-09-30 by the architect (7.35.0, §12):
   BRIEF_TEMPLATES_BYTE_IDENTICAL takes in the `COMPANION` block and moves its
   baseline. The sign-offs were not re-taken for it either.
+  Amended 2026-10-01 by the architect (7.37.0, §12): one Python hook core on
+  both first-class hosts, `--plan-json` and the compact route grammar,
+  `--show`, children and non-human turns unrouted; seven contracts and two
+  failures retired. The sign-offs were not re-taken for it.
 
 - **Owner:** architect
 - **Date:** 2026-09-23
 - **Last reviewed:** 2026-09-23
-- **Related grill section:** docs/plans/grill-7.28.0-context-residency.md §3, §4, §5, §8, §16, §17
-- **Related ADRs:** adr-0003-enforcement-layering-honesty (the enforcement classes); adr-0009-host-support-tiers; adr-0010-context-residency (the Residency Rule and this spec's threat model)
+- **Related grill section:** docs/plans/grill-7.28.0-context-residency.md §3, §4, §5, §8, §16, §17; docs/plans/grill-7.37.0-routing-context.md §9 (the 7.37.0 amendment)
+- **Related ADRs:** adr-0003-enforcement-layering-honesty (the enforcement classes); adr-0009-host-support-tiers; adr-0010-context-residency (the Residency Rule and this spec's threat model; superseded in part by adr-0024); adr-0024-one-hook-core-per-session-residency; adr-0025-compact-route-lines-json-between-programs; adr-0027-first-move-runs-the-router (`PLAN_PRINTS_PLANT_BLOCK`)
 - **Supersedes:** —
 - **Superseded by:** —
 
 ## 1. Summary
 
-This spec covers the text that two per-prompt surfaces inject into a session:
+This spec covers the text the per-prompt surfaces inject into a session, and
+how each first-class host avoids re-sending what a session already surfaced.
+Since 7.37.0 one Python core does it on both first-class hosts:
 `integrations/claude-code/route-hook.py` on `UserPromptSubmit` (which Copilot
-also runs, because it reads `.claude/settings.json`), and
-`integrations/prime-agent/route-extension.ts` on `before_agent_start`. It also
-covers how each first-class host avoids re-reading what a session already
-surfaced. On Claude Code the hook keeps a session ledger on disk and
-`status-hook.py` resets it on `SessionStart`. On Prime Agent the extension
-keeps no state and injects in full on every prompt, and the
-`integrations/prime-agent/APPEND_SYSTEM.md` overlay asks the model to keep a
-set of surfaced node ids as a Python variable in the session's IPython kernel.
+also runs, because it reads `.claude/settings.json`), and the same script,
+placed at `.prime/agent/hooks/route-hook.py`, which
+`integrations/prime-agent/route-extension.ts` calls on `before_agent_start`
+through an argv envelope. The core keeps a session ledger on disk, and
+`status-hook.py` resets it at every session start on both hosts. A child
+session and a turn a person did not type get no injection (ADR-0024).
 
 It turns plan §4 into contracts. Four things are contracted. The prompt is
 never echoed back into the injection: router output that does not begin with
@@ -58,17 +62,29 @@ inject the one line that `docs/graph/code-anchor.py --compare` prints, which
 says whether code moved since canonize recorded `.cypress/anchor.json`
 (ADR-0018).
 
+Since 7.37.0 the router speaks two formats. Models read the compact grammar
+that `graph-lint.py --plan` prints, which keeps the resolved path on every id;
+the core reads `graph-lint.py --plan-json`, a versioned document, and renders
+the same grammar from it. `graph-lint.py --show <id>...` prints a node with its
+router and spawn keys dropped and every edge and leaf pointer kept (ADR-0025).
+
 ## 2. Scope
 
 - **In scope:**
   - the exact text each surface injects, in full mode and in reminder mode
-  - the router call on both hosts: the prompt as one `--plan=` value, and the
-    exact-echo rule for the output
+  - the router call: the prompt as one `--plan-json=` value, and the
+    validation of the `cypress.plan/1` document the core reads (7.37.0; it
+    replaced the exact-echo rule of the text output)
   - the Claude Code session ledger under `.cypress/session/`: path rule,
     schema, validation, descriptor-relative I/O, owner and mode checks,
     garbage collection, atomic write, self-ignoring directory, reset
-  - the Prime Agent overlay section that asks the model to keep the surfaced
-    set, and the absence of ledger state in `route-extension.ts`
+  - since 7.37.0, the argv envelope of `route-hook.py` and `status-hook.py`,
+    their placement at `.prime/agent/hooks/`, and the two Prime Agent
+    extensions as envelopes that compose no text and write no file
+  - since 7.37.0, the rule that a child session (`--depth` above 0) and a turn
+    a person did not type get no injection
+  - since 7.37.0, the output of `graph-lint.py --plan`, `--plan-json` and
+    `--show`: the views of the graph a model or a hook reads
   - the fail-open behaviour of both hooks on a Copilot-shaped envelope
   - since 7.32.0, the path column of the router's entry line, which the hooks
     pass through, while the ledger still stores ids only
@@ -78,18 +94,16 @@ says whether code moved since canonize recorded `.cypress/anchor.json`
   - the invariants the plan names I-1, I-2, I-3, I-6, I-7 and I-8, as far as
     a test can observe them
 - **Out of scope:**
-  - the router's ranking. Its output format is out of scope except the path
-    column of the entry line (7.32.0); the rest is parsed as it is
+  - the router's ranking, which SPEC-0002 covers since 7.37.0. Its output
+    formats are in scope here
   - the status summary text of `status-hook.py` and `status-extension.ts`.
     Only the ledger reset and, since 7.32.0, the code-anchor line are added
   - agent and skill `description`s (Slices B and C, parked; plan §1.1)
   - the Residency Rule prose and the fact key `context-router.residency` added
     to `skills/context-router/SKILL.md` `owns:`. That is Slice E; this spec
     enforces the rule on the hooks, and the skill is the rule's one home
-  - whether a model on Prime Agent follows the overlay instruction. No gate
-    observes model behaviour; §11 records the absence
-  - the rest of `APPEND_SYSTEM.md`. An I-8 audit of the whole overlay stays
-    plan §12 item 5; only the new section is held to I-6 and I-8 here
+  - `APPEND_SYSTEM.md`, beyond the eager-surface budget it counts toward. The
+    `## Surfaced nodes` section it carried from 7.28.0 is deleted in 7.37.0
   - opencode, which ships no per-prompt injection, so there is nothing to
     dedup. The gap is recorded in `documentation/host-capability-matrix.md`
   - opencode's code-anchor line. It has no hook, so it reads the line canonize
@@ -98,8 +112,8 @@ says whether code moved since canonize recorded `.cypress/anchor.json`
     only Copilot obligation is that the Claude Code hook keeps failing open on
     its envelope. Copilot runs `status-hook.py` through
     `.claude/settings.json`, so it also sees the code-anchor line
-  - the `status-extension.ts` once-per-process flag (`let shown`), a known
-    defect that this spec does not fix
+  - a session-file ledger on Prime Agent (`details` and `getBranch()`),
+    deferred by ADR-0024
 
 ## 3. User-facing behavior
 
@@ -109,66 +123,54 @@ This change has two users. The model in a session reads what the hooks inject
 before each prompt. The plant owner pays for those bytes and needs the hooks to
 be honest about what they save.
 
-**Claude Code, and Copilot through `.claude/settings.json`**
+**Claude Code, Copilot through `.claude/settings.json`, and Prime Agent**
+
+The core is the same on both first-class hosts, so the text is the same.
 
 - First routed prompt of a session: the pointer line, a blank line,
-  `Router suggestion (a keyword heuristic — reason over it):`, then the
-  router's LOAD and NOT LOADED blocks as before. The prompt is no longer pasted
-  back, and the mandate paragraph is replaced by the one pointer line (§8,
-  first example).
-- Later prompts: the pointer line; the router's notice lines; `New for this
-  task:` with the full entry line of each node suggested now and not before in
-  this session; one `Surfaced earlier this session:` line naming by id only the
-  nodes suggested for this prompt that were suggested earlier, telling the
-  model to open what is not in its view; and, under `Not suggested, not listed
-  before (cross only if needed):`, only peers the router has not listed
-  before. When nothing is new the injection is two lines (§8). No line the hook
-  writes says a node was read or loaded.
+  `Router suggestion (a keyword heuristic — reason over it):`, then the route
+  in the compact grammar of §6, with the path of every node it names. The
+  prompt is never pasted back (§8, first example).
+- Later prompts: the pointer line; the router's notice lines; a
+  `LOAD <n> ~<t>t (reminder)` line; the full entry line of each node suggested
+  now and not before in this session; one `seen:` line naming by id the nodes
+  suggested for this prompt that were suggested earlier, telling the model to
+  open what is not in its view; and a `skip` block with only the peers the
+  router has not listed before. When nothing is new the injection is three
+  lines (§8). No line the hook writes says a node was read or loaded.
 - Peers listed earlier are not repeated. They return at the next full
-  injection and stay reachable through `docs/graph/index.md`.
-- The full injection returns after any session start (startup, resume, clear,
-  compaction, fork), after `REFRESH_EVERY` routed prompts, and whenever the
-  session record is missing, unreadable, expired, from another session or
-  otherwise suspect, or the router output cannot be parsed after the echo is
-  removed. When Copilot sends no session id, every prompt gets the full
-  injection and no dedup saving.
-- Trivial prompts inject nothing and are not counted. A plant with no graph
-  gets the existing no-graph message. If the router fails, the model sees the
-  pointer line alone. Router output that does not start with the exact echo of
-  the prompt counts as a failure, so the prompt is never passed back.
+  injection.
+- The full injection returns after any session start (on Claude Code:
+  startup, resume, clear, compaction, fork; on Prime Agent: `session_start` of
+  any reason, `session_compact`, `session_tree`, `refine_complete`), after
+  `REFRESH_EVERY` routed prompts, and whenever the session record is missing,
+  unreadable, expired, from another session or otherwise suspect. When the
+  host gives no session id (Copilot; Prime Agent if the session id cannot be
+  read), every prompt gets the full injection and no dedup saving.
+- Trivial prompts inject nothing and are not counted. Neither does a turn a
+  person did not type (a task notification, a peer or agent message), nor any
+  prompt of a child session. A plant with no graph gets the existing no-graph
+  message. If the router fails, or its document fails validation, the model
+  sees the pointer line alone.
+- The status register and the code anchor arrive once per session start,
+  never in a child (on Prime Agent this replaces the once-per-process flag).
 - The session never blocks, because every path exits 0. When the hook falls
   back to full, it writes one line to its error output saying why, never the
   raw session id.
 - For the owner: the record is a small file under `.cypress/session/`, ignored
-  by git through that directory's own `.gitignore` and pruned by the hook. No
-  byte saving is claimed until the scripted 20-prompt session is measured
-  against the 69,408 B baseline (plan §4.7), and the measured figure is stated
-  in bytes.
+  by git through that directory's own `.gitignore` and pruned by the hook. The
+  measured saving is stated in ADR-0024 (follow-up route characters -73% on a
+  real Prime Agent session; injected route and status 4.5% -> 0.67% of its
+  processed tokens), and `SESSION_INJECTION_WITHIN_BUDGET` holds a synthetic
+  session's injected bytes under a ratchet.
 - One known path can leave the model with ids but no titles after context
   loss: if the reset at session start fails, reminders continue for at most
   `REFRESH_EVERY` − 1 prompts. The ids are still named, and the line still
   says to open what is out of view (§7 `RESET_NOT_WRITTEN`).
 
-**Prime Agent**
-
-- Every routed prompt gets the full injection, with the echo removed and the
-  same pointer line. Injected text is not deduplicated on this host, and no
-  saving in injected bytes is claimed.
-- The `## Surfaced nodes` overlay section asks the model to keep
-  `_cypress_surfaced`, a Python set in its IPython kernel, of the nodes it has
-  opened, and not to open one again while its content is still in view. Any
-  saving is in node bodies not re-read. It is not measured, and nothing checks
-  that the model complies.
-- Every Prime Agent session pays for this instruction: at most
-  `OVERLAY_SECTION_MAX_BYTES` more on the eager surface, published in bytes in
-  the host capability matrix.
-- A model that ignores the section re-reads nodes, which costs bytes and loses
-  nothing. A model that keeps the set but skips the re-open after a compaction
-  can work without a node body it believes it saw. The router still names the
-  id on every prompt (§7 `PRIME_SURFACED_SET_TRUSTED_WHILE_STALE`).
-
 **Spawned agents** on either host get the same brief text as before, byte for
-byte, and start with no record of their own.
+byte, and no injection: the brief's GRAPH DISCIPLINE step 1 routes their task
+line.
 
 The injected text has no visual interface. The accessibility floor applies
 only as plain, unambiguous wording.
@@ -180,9 +182,13 @@ only as plain, unambiguous wording.
 Unless a contract says otherwise, each one runs the shipped
 `integrations/claude-code/route-hook.py` (or `status-hook.py`) copied into
 `.claude/` of a temp plant: a directory holding `.git/`, `.cypress/` and a stub
-`docs/graph/graph-lint.py`. The stub prints `task: <value of its --plan=
-argument>` and a blank line, then a fixed body in the §6 grammar; contracts
-that need other output say so. The hook's stdin is a JSON envelope (§6). "Full
+`docs/graph/graph-lint.py`. Since 7.37.0 the stub answers
+`--plan-json=<task>` with a `cypress.plan/1` document (§6) whose
+`task_sha256` is the SHA-256 of the value it received and whose other fields
+are a fixed body; contracts that need other output say so. "The router's LOAD
+ids" are the document's `load` ids and "the NOT LOADED ids" its `skip` ids.
+The hook's stdin is a JSON envelope (§6); the argv envelope gives the same
+result (`HOOK_ARGV_ENVELOPE_EQUALS_STDIN_ENVELOPE`). "Full
 mode" and "reminder mode" are the exact texts in §6. "Stderr has one line"
 means exactly one newline-ended line, and "no stderr" means empty stderr.
 Every contract also requires exit code 0. Tests run with umask 022.
@@ -197,15 +203,19 @@ Every contract also requires exit code 0. Tests run with umask 022.
 - **When:** the hook runs
 - **Then:** the injection does not contain the sentinel, nor any line of the
   prompt, nor a line beginning `task:`
-- **And:** the router's `LOAD (` header is present, so the strip removed the
-  echo and not the body
+- **And:** the injection's `LOAD ` header line is present, so the route was
+  used and only the prompt left out
+- **Note:** amended 2026-10-01: the core reads `--plan-json`, which carries a
+  hash of the task instead of an echo, so nothing is stripped; the Then is
+  unchanged
 
 ### Contract: ROUTE_HOOK_PASSES_PROMPT_AS_ONE_OPTION_VALUE
 - **Given:** a prompt of 8 or more characters that starts with `--` and has no
   space, and a stub router that records its argv
 - **When:** the hook runs
-- **Then:** the stub's argv carries exactly one argument beginning `--plan=`,
-  whose value is the prompt, and the injection carries the stub's body
+- **Then:** the stub's argv carries exactly one argument beginning
+  `--plan-json=`, whose value is the prompt, and no argument beginning
+  `--plan=`, and the injection carries the stub's body
 
 ### Contract: ROUTE_HOOK_UNPASSABLE_PROMPT_FAILS_OPEN
 - **Given:** a valid ledger, and a prompt holding an embedded NUL byte (sent
@@ -214,15 +224,6 @@ Every contract also requires exit code 0. Tests run with umask 022.
 - **Then:** the injection is the pointer line alone, and the ledger is
   byte-identical with an unchanged mtime
 - **And:** stdout is one valid hook envelope, and no traceback reaches stderr
-
-### Contract: ROUTER_OUTPUT_WITHOUT_ECHO_PREFIX_POINTER_ONLY
-- **Given:** a valid ledger, a prompt holding a sentinel token, and a stub
-  whose output is the §6 body with no `task:` line
-- **When:** the hook runs
-- **Then:** the injection is the pointer line alone
-- **And:** the sentinel appears in no injection, in no file under
-  `.cypress/session/` and in no stderr line, and the ledger is byte-identical
-  with an unchanged mtime
 
 ### Contract: ROUTE_HOOK_POINTS_AT_KERNEL
 - **Given:** any non-trivial prompt with a graph present and the router
@@ -244,6 +245,9 @@ Every contract also requires exit code 0. Tests run with umask 022.
 - **Note:** until 2026-09-29 this contract matched four-token runs of the
   kernel's §0 cells and FIRST MOVE steps, and `T0` to `T3` tokens. A short
   paraphrase that does not grow the text is no longer caught (§12)
+- **Note:** the 7.37.0 compact grammar changes the reminder literals, so the
+  ceiling is re-baselined once, to the measured block, in the commit that
+  lands them (§6 `HOOK_TEXT_MAX_BYTES`); it may only fall after that
 
 ### Session ledger: first prompt, later prompts, refresh
 
@@ -263,41 +267,41 @@ Every contract also requires exit code 0. Tests run with umask 022.
   whose router output has no notice lines, whose LOAD ids are a subset of
   `surfaced`, and whose NOT LOADED ids were all seen before
 - **When:** the hook runs
-- **Then:** the injection is exactly two lines: the pointer line, and the
-  `Surfaced earlier this session:` line of §6 naming those LOAD ids in the
-  router's order
+- **Then:** the injection is exactly three lines: the pointer line, the
+  reminder header `LOAD <n> ~<t>t (reminder)` of §6, and the `seen:` line of
+  §6 naming those LOAD ids in the router's order
 
 ### Contract: REMINDER_KEEPS_NOTICE_LINES
-- **Given:** a ledger, and a stub router whose output has `  ! <text>` notice
-  lines, with the LOAD ids all in `surfaced`
+- **Given:** a ledger, and a stub document whose `notices` are not empty, with
+  the LOAD ids all in `surfaced`
 - **When:** the hook runs
-- **Then:** every notice line appears verbatim, straight after the pointer line
+- **Then:** each notice appears as the line `! <text>`, its `text` verbatim, in
+  the document's order, straight after the pointer line
 
 ### Contract: REMINDER_SAYS_SURFACED_NEVER_LOADED
 - **Given:** any reminder-mode injection, from a stub whose entry and notice
   lines do not contain the word
 - **When:** it is inspected
-- **Then:** it contains `Surfaced earlier this session:` wherever a known id is
-  named, and no line the hook authors contains `loaded` in any letter case (I-6)
-- **Note:** the router's own `LOAD` and `NOT LOADED` headers appear only in
-  full mode. They are the router's recommendation vocabulary, not the hook's
-  claim about what the model read, so I-6 does not reach full mode
+- **Then:** every known id it names is on the `seen:` line, which ends
+  `(surfaced earlier this session; open if not in view)`, and no line the hook
+  authors contains `loaded` in any letter case (I-6)
+- **Note:** `LOAD` in the reminder header is the router's recommendation
+  vocabulary, as in full mode, not the hook's claim about what the model read
 
 ### Contract: LEDGER_NEW_IDS_LISTED
 - **Given:** a ledger, and a prompt whose LOAD set holds one id outside
   `surfaced`
 - **When:** the hook runs
-- **Then:** the line `New for this task: <that id>` is present, followed by
-  that id's router LOAD entry line verbatim
+- **Then:** that id's entry line in the §6 grammar is present after the
+  reminder header, and the id is not on the `seen:` line
 - **And:** the ledger's `surfaced` now contains that id
 
 ### Contract: REMINDER_DROPS_PEERS_ALREADY_SHOWN
 - **Given:** a ledger whose `peers_seen` holds `agent.implementer`, and a
   router NOT LOADED block naming `agent.implementer` and one unseen peer
 - **When:** the hook runs in reminder mode
-- **Then:** the unseen peer's entry line appears under `Not suggested, not
-  listed before (cross only if needed):`, and no line naming
-  `agent.implementer` appears
+- **Then:** the unseen peer appears as `<id>=<path>` in a group of the `skip`
+  block of §6, and no line names `agent.implementer`
 - **And:** the unseen peer is added to `peers_seen`
 
 ### Contract: LEDGER_EVERY_LOAD_ID_NAMED
@@ -342,13 +346,6 @@ Every contract also requires exit code 0. Tests run with umask 022.
 - **Then:** neither sentinel appears in the injection. Only ids present in the
   current router output are ever emitted (I-7: the ledger is state, never
   instructions)
-
-### Contract: UNPARSEABLE_ROUTER_OUTPUT_FULL
-- **Given:** a stub router whose output starts with the exact echo prefix and
-  whose remainder has no recognisable `LOAD (` header
-- **When:** the hook runs with a valid ledger
-- **Then:** the injection is full mode carrying that remainder, and the ledger
-  file is byte-identical with an unchanged mtime
 
 ### Session identity and fail toward inclusion (I-1)
 
@@ -518,111 +515,272 @@ Every contract also requires exit code 0. Tests run with umask 022.
 - **And:** a `COMPANION` block that differs by one byte in any one of the five
   templates is a finding naming that template
 
-### Prime Agent (first-class; soft dedup, structural tests)
+### Envelopes, children and non-human turns (7.37.0)
 
-**Enforcement class: soft**, in the vocabulary of
-`adr-0003-enforcement-layering-honesty`. The surfaced set is kept by the model
-because the overlay prose asks it to, and ADR-0003 §Decision counts prose an
-agent reads as a soft enforcer. No harness refuses a model that ignores the
-instruction, and no tool observes whether it complied. Nothing in this section
-is enforced dedup, and no document may describe it as enforced.
+These run the hook as above. "The argv envelope" is §6's; a run "emits
+nothing" when stdout is empty, stderr is empty, and no file under `.cypress/`
+is created or modified (mtimes included).
 
-Two host facts force this shape (§6 gives the classification and source of
-each). No extension API reads or writes the IPython kernel, and no Python-side
-hook runs per prompt. So `route-extension.ts` cannot see the set, and it keeps
-injecting in full on every prompt. The Prime Agent saving in injected bytes is
-therefore a recorded gap (§5, §11), and nothing here claims it.
+### Contract: HOOK_ARGV_ENVELOPE_EQUALS_STDIN_ENVELOPE
+- **Given:** in turn these states, each built twice: no ledger; a ledger with
+  `prompt_count` 1; a ledger with `prompt_count` equal to `REFRESH_EVERY`; an
+  invalid session id; no session id; and, for `status-hook.py`, a ledger with
+  `prompt_count` 3 and the source `compact`
+- **When:** the hook runs once with the stdin envelope and once with the argv
+  envelope carrying the same prompt, session id and source
+- **Then:** stdout, stderr and every byte under `.cypress/session/` are
+  identical between the two runs, apart from the ledger's `last_reset.at`
+  timestamp
+- **And:** an argv option outside the §6 envelope makes the hook emit nothing
+  but one stderr line naming the option
 
-The gate has no TypeScript runtime and no model in the loop, so every contract
-here is pinned by reading `integrations/prime-agent/route-extension.ts` or
-`integrations/prime-agent/APPEND_SYSTEM.md` as text (plan §5). The tests prove
-the instruction's wording and the extension's shape. They prove nothing about
-what a model does, and §10 records them at that strength. "The section" below
-means the `## Surfaced nodes` section of `APPEND_SYSTEM.md`: its heading line
-through the byte before the next line beginning `## `, or the end of the file.
-Phrase checks are case-sensitive and run after every run of whitespace in the
-section is collapsed to one space, so a line wrap cannot hide a phrase.
+### Contract: CHILD_SESSION_GETS_NO_INJECTION
+- **Given:** a plant with a graph and a ledger directory, and in turn
+  `route-hook.py` and `status-hook.py` run with `--depth=1`
+- **When:** each runs on a non-trivial prompt (or with `--source=startup`)
+- **Then:** each emits nothing
+- **And:** with `--depth=0`, with no `--depth`, and with `--depth=x`, the
+  route hook gives full mode on a first prompt and the status hook its
+  summary, as without the option (I-1: an unreadable depth is routed)
 
-### Contract: ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX
-- **Given:** the extension source
-- **When:** it is read
-- **Then:** it contains the substrings `` `task: ${prompt}\n\n` `` and
-  `startsWith(`: the echo is stripped by testing the exact prefix, and output
-  without it yields the pointer line alone (§7 `ROUTER_FAILED`)
+### Contract: NON_HUMAN_TURN_NOT_ROUTED
+- **Given:** a ledger with `prompt_count` 2, and in turn: a prompt whose first
+  non-whitespace text begins with each entry of `NON_HUMAN_MARKERS` (§6),
+  through stdin and through argv; and a plain prompt with `--origin=agent`
+- **When:** the route hook runs
+- **Then:** it emits nothing, and the ledger is byte-identical with an
+  unchanged mtime, so the turn does not count toward `REFRESH_EVERY`
+- **And:** the plain prompt with `--origin=human`, with no `--origin`, and
+  with an `--origin` value off the §6 pattern is routed as without the option
+
+### Contract: SESSION_INJECTION_WITHIN_BUDGET
+- **Given:** a synthetic scripted session under `tests/fixtures/`: a fixed list
+  of prompts, one session id, and reset points, over the seed's fixture graph
+  with the real `graph-lint.py`
+- **When:** every prompt runs through the route hook's argv envelope in order,
+  with `status-hook.py --source=compact` at each reset point
+- **Then:** the injected bytes of the whole session, summed over every
+  `additionalContext` either hook returns, the status hook's included, are at
+  most `SESSION_INJECTION_MAX_BYTES` (§6): the budget is everything the model
+  receives
+- **And:** no injection carries a line of any prompt
+
+### Prime Agent (first-class; the shared core, structural tests)
+
+Since 7.37.0 the two extensions are envelopes. `route-extension.ts` runs
+`route-hook.py` on `before_agent_start` and returns its `additionalContext`;
+`status-extension.ts` runs `status-hook.py` on the session events of §6 and
+injects what it returned on the next prompt of that session, once. The
+behaviour is the core's, proved above through the argv envelope. The gate has
+no TypeScript runtime and no model in the loop, so the contracts here read
+`integrations/prime-agent/route-extension.ts` and `status-extension.ts` as
+text. Phrase checks are case-sensitive. The three host facts these rest on are
+probed on a live Prime Agent session before the GREEN of the adapter (§6
+host facts); a probe is evidence, not a gate row.
 
 ### Contract: ROUTE_EXTENSION_PASSES_PROMPT_AS_ONE_OPTION_VALUE
-- **Given:** the extension source
+- **Given:** the `route-extension.ts` source
 - **When:** it is read
-- **Then:** it contains exactly one `pi.exec(` and the substring `--plan=${`,
-  so the prompt travels inside the `--plan=` element
+- **Then:** it contains exactly one `pi.exec(` and the substring `--prompt=${`,
+  so the prompt travels inside one `--prompt=` element
 
-### Contract: ROUTE_EXTENSION_TEXT_MATCHES_ROUTE_HOOK
-- **Given:** the pointer line and the full-mode suggestion header of §6
-- **When:** both sources are read, with string-literal escapes decoded, since
-  `route-extension.ts` spells non-ASCII characters as escapes: a backslash
-  and `u00a7` for the section sign, a backslash and `u2014` for the dash
-- **Then:** each string occurs verbatim in both `route-hook.py` and
-  `route-extension.ts`, so the two surfaces cannot drift apart in wording
-
-### Contract: ROUTE_EXTENSION_HOLDS_NO_LEDGER_STATE
-- **Given:** the extension source
+### Contract: PRIME_SESSION_ID_PASSED
+- **Given:** the `route-extension.ts` source
 - **When:** it is read
-- **Then:** it calls no filesystem write (no match of `\bNAME\s*\(` for any
+- **Then:** it contains `route-hook.py`, `getSessionId(`, `rlmDepth`,
+  `--session-id=`, `--depth=`, `--origin=` and `additionalContext`, and
+  contains neither `graph-lint.py` nor `--plan`: it calls the core with the
+  session's id and depth and composes no text of its own
+- **And:** it calls no filesystem write (no match of `\bNAME\s*\(` for any
   NAME of `writeFile`, `writeFileSync`, `appendFile`, `appendFileSync`,
   `mkdir`, `mkdirSync`, `rename`, `renameSync`, `createWriteStream`,
   `copyFile`, `copyFileSync`, `cp`, `cpSync`, `open`, `openSync`, `truncate`,
-  `truncateSync`, `symlink`, `symlinkSync`)
-- **Note:** a consequence, not asserted: with no state, every non-trivial
-  prompt with a graph takes the full-mode path, and the extension cannot hold
-  a record that outlives a session in its process
+  `truncateSync`, `symlink`, `symlinkSync`, `appendEntry`)
+- **And:** its `pi.exec` `timeout` is greater than `ROUTER_TIMEOUT` × 1000
 
-### Contract: PRIME_OVERLAY_KEEPS_SURFACED_SET
-- **Given:** `integrations/prime-agent/APPEND_SYSTEM.md`
+### Contract: PRIME_RESET_ON_EVENTS
+- **Given:** the `status-extension.ts` and `route-extension.ts` sources
+- **When:** they are read
+- **Then:** `status-extension.ts` subscribes `session_start`,
+  `session_compact`, `session_tree` and `refine_complete`, and contains
+  `status-hook.py` and `--source=`
+- **And:** `route-extension.ts` contains exactly one `pi.on(`, for
+  `before_agent_start`, so the ledger has one reset path, `status-hook.py`, on
+  both hosts
+
+### Contract: STATUS_ONCE_PER_SESSION
+- **Given:** the `status-extension.ts` source
 - **When:** it is read
-- **Then:** the section names `_cypress_surfaced`
+- **Then:** it contains no `let shown`, contains `getSessionId(` and
+  `--depth=`, and keys the text it holds by session id: it contains
+  `.delete(`, so a text is injected once and then dropped
+- **And:** on a `before_agent_start` for a session id it has seen no event
+  for, it runs `status-hook.py` with `--source=startup` (the substring
+  `--source=startup` is present), so a missed `session_start` costs no status
+- **Note:** a child gets no status because the core emits nothing for
+  `--depth` above 0 (`CHILD_SESSION_GETS_NO_INJECTION`)
 
-### Contract: PRIME_OVERLAY_NEVER_SAYS_LOADED
-- **Given:** the section
-- **When:** it is read
-- **Then:** it contains no `loaded` in any letter case (I-6)
-- **And:** the case fails when the section is absent, so it cannot pass on an
-  empty match
-
-### Contract: PRIME_OVERLAY_SECTION_WITHIN_CEILING
-- **Given:** the section
-- **When:** its UTF-8 bytes are counted
-- **Then:** the count is at most `OVERLAY_SECTION_MAX_BYTES` (§6)
+### Contract: EVERY_RESOLVER_PATH_IS_INSTALLED
+- **Given:** a plant installed by `install.sh`, the candidate lists of
+  `route-hook.py` (`CANDIDATES`) and `status-hook.py` (`CANDIDATES`,
+  `ANCHOR_CANDIDATES`), and the core script each placed extension runs from
+  its `hooks_dir` (§6)
+- **When:** each path a hook or extension resolver may select is looked up in
+  the installed plant
+- **Then:** every one of them exists there: no resolver selects a path the
+  installer does not write
+- **Note:** added 2026-10-01 to own the existing M11 check; the CANDIDATES
+  rule of §6, stated as a contract
 
 ### Contract: PRIME_EAGER_SURFACE_WITHIN_BUDGET
-- **Given:** the overlay with the section added
+- **Given:** the overlay without the `## Surfaced nodes` section (removed in
+  7.37.0)
 - **When:** `tests/seed-lint.py` runs `check_eager_surface`
 - **Then:** the prime-agent surface (kernel bytes, skill descriptions and
   overlay bytes) is at most `EAGER_BUDGET`, and
   `check_published_figures` passes, so the prime-agent figures in
   `documentation/host-capability-matrix.md` equal the new computation
 
-### Router path column (7.32.0)
+### Router output: compact grammar, `--plan-json` and `--show` (7.32.0, 7.37.0)
 
-`PLAN_ENTRY_NAMES_THE_NODE_FILE` runs the real `graph-lint.py` in a plant
-built for the test. `ROUTE_HOOK_KEEPS_THE_PATH` runs the hook as above, with a
-stub whose entry lines carry the path.
+The `PLAN_*` and `SHOW_*` contracts run the real `graph-lint.py` in a plant
+built for the test, from the plant root, with exit code 0 unless they say
+otherwise. The fixture graph holds one node at `docs/graph/agents/04-tester.md`,
+a path its id does not spell, one node with frontmatter-only `artifacts` and
+`plant_knowledge` entries, and an `index.md` with a full `plant:` block. The
+`ROUTE_*` contracts run the hook as above.
 
 ### Contract: PLAN_ENTRY_NAMES_THE_NODE_FILE
-- **Given:** a graph whose node `root` lives at `docs/graph/nodes/root.md`
-- **When:** `python3 docs/graph/graph-lint.py --plan "<task>"` runs from the
-  plant root
-- **Then:** every entry line under `LOAD (` and `NOT LOADED (` is two spaces,
-  the node id, whitespace, the node's file path relative to the plant root,
-  whitespace, then the text the line carried before 7.32.0
-- **And:** the id is still the line's first token, so a parser that reads only
-  the id is unaffected
+- **Given:** the fixture graph and a task that loads at least two nodes and
+  leaves at least one peer unloaded
+- **When:** `python3 docs/graph/graph-lint.py --plan "<task>"` runs
+- **Then:** the output is the compact grammar of §6: every LOAD entry line is
+  the node id, one space, the node's file path relative to the plant root,
+  ` | `, and the title with its slug prefix removed; every skipped node appears
+  as `<id>=<path>` in one `skip` group; no line is padded with runs of spaces
+- **And:** no line begins `task:`, and the id is the first token of every
+  LOAD entry line
+- **Note:** rewritten 2026-10-01; from 7.32.0 the entry line was two spaces,
+  the id padded to a column, the path and the title
+
+### Contract: PLAN_PRINTS_PLANT_BLOCK
+- **Given:** the fixture graph, and in turn an `index.md` with a full `plant:`
+  block and one without a `plant:` block
+- **When:** `--plan` runs on a task that loads a node
+- **Then:** with the block, the output has exactly one line
+  `plant: environment_class=<v> commit_attribution=<v> deliverable_language=<v> comment_language=<v>`,
+  the four values as `index.md` gives them, before the `LOAD` line; without
+  the block, it has no line beginning `plant:`
+- **And:** a block that is unfilled or partial prints no `plant:` line, and
+  `--plan-json` carries `plant: null`: any of the four keys missing or empty,
+  or a value that is a placeholder (it starts with `<`), with or without a
+  trailing inline comment (`<ephemeral-test | staging>  # x`)
+- **And:** a reminder-mode injection carries no line beginning `plant:`; the
+  facts ride the full injection only
+
+### Contract: PLAN_JSON_SCHEMA
+- **Given:** the fixture graph and a task that loads at least one node, leaves
+  at least one peer unloaded and raises a notice
+- **When:** `graph-lint.py --plan-json=<task>` runs
+- **Then:** stdout is one JSON object that satisfies the §6
+  `cypress.plan/1` schema, with `schema` equal to `cypress.plan/1`, no key
+  outside the schema, every `id` matching the node-id pattern and every
+  `path` the relative-path pattern
+
+### Contract: PLAN_JSON_CARRIES_NO_PROMPT
+- **Given:** a task holding a sentinel token that is in no id, title, path,
+  trigger or `load_when` of the fixture graph
+- **When:** `--plan-json=<task>` runs
+- **Then:** the sentinel appears nowhere in stdout, and no field holds the
+  task: the only task-derived strings are `how.detail` values of kind
+  `inferred` and `named_path`, which are paths the task names and a node owns.
+  The `how.detail` of kinds `phrase` and `composed` is the node's own trigger
+  piece as written, never a span of the task
+- **Note:** amended 2026-10-01 (7.37.0, architect pass on increment 3): a
+  composed child now needs its own trigger phrase (SPEC-0002
+  `COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE`), so its detail is the node's text and
+  no longer a task word. Sign-offs not re-taken
+
+### Contract: PLAN_JSON_HASH_BINDS_TASK
+- **Given:** in turn a one-line task, a task with LF, CRLF and lone-CR line
+  ends, and a task holding non-ASCII text
+- **When:** `--plan-json=<task>` runs
+- **Then:** `task_sha256` is the lowercase hex SHA-256 of the task's UTF-8
+  bytes exactly as received in argv
+
+### Contract: PLAN_JSON_EQUALS_PLAN
+- **Given:** a fixture task set of at least three tasks: one with a notice,
+  one with a composed entry, and one that loads nothing (amended 2026-10-01:
+  the node router no longer promotes, SPEC-0002
+  `PROMOTION_NEEDS_A_CONTIGUOUS_PHRASE`)
+- **When:** `--plan` and `--plan-json` run on each
+- **Then:** both carry the same notices, the same LOAD ids with the same paths
+  and `how`, the same skipped ids with the same paths, kinds and `via`, in the
+  same order, and the same token total
+
+### Contract: ROUTE_HOOK_READS_PLAN_JSON
+- **Given:** a valid ledger, and in turn a stub that prints: a document whose
+  `schema` is not `cypress.plan/1`; one whose `task_sha256` is not the hash of
+  the prompt; one with an `id` off the node-id pattern; one with a `path` that
+  is absolute or holds a `..` segment; one with a key outside the schema; and
+  output that is not JSON
+- **When:** the hook runs
+- **Then:** the injection is the pointer line alone, the ledger is
+  byte-identical with an unchanged mtime, and stderr has one line
+- **And:** no stub output byte that is not a validated field reaches the
+  injection
+
+### Contract: ROUTE_FULL_TEXT_EQUALS_PLAN
+- **Given:** the real `graph-lint.py` over the fixture graph, no ledger, and
+  the task set of `PLAN_JSON_EQUALS_PLAN`
+- **When:** the hook runs on each task
+- **Then:** the injection after the pointer line, the blank line and the
+  suggestion header equals `graph-lint.py --plan "<task>"` stdout byte for
+  byte, apart from one trailing newline
+- **Note:** one grammar, two renderers; this contract keeps them aligned
+  (ADR-0025)
+- **Note:** amended 2026-10-01: from 7.32.0 until plan increment 2 the
+  comparison removed the `task: <task>` line and the blank line after it;
+  the compact grammar prints no echo, so stdout is compared whole
 
 ### Contract: ROUTE_HOOK_KEEPS_THE_PATH
-- **Given:** the stub router prints entry lines in the pathed grammar
+- **Given:** a stub document whose `load` and `skip` entries carry paths
 - **When:** `route-hook.py` runs for a first prompt and then a later prompt
-- **Then:** the full injection holds every entry line verbatim, path included,
-  and each entry line under `New for this task:` in the reminder holds its path
+  with one new LOAD id and one unseen peer
+- **Then:** the full injection names the path of every LOAD and skipped entry,
+  and the reminder's new entry line and new `skip` item each carry their path
 - **And:** the ledger's `surfaced` and `peers_seen` hold node ids only
+
+### Contract: SHOW_KEEPS_EVERY_POINTER
+- **Given:** every node of the fixture graph
+- **When:** `graph-lint.py --show <id>` runs for each
+- **Then:** every `requires`, `peers`, `composes` and `delegates_to` id of the
+  node's frontmatter, and every `artifacts`, `libraries` and
+  `plant_knowledge` entry resolved to its path, appears on its §6 header line
+- **And:** the header's first line names the node's file path relative to the
+  plant root
+
+### Contract: SHOW_DROPS_ROUTER_AND_SPAWN_KEYS
+- **Given:** an agent node and an expertise node of the fixture graph
+- **When:** `--show` runs on both ids in one call
+- **Then:** no header line names any of `load_when`, `routing_triggers`,
+  `est_tokens`, `tier`, `kind`, `name`, `description`, `prevents`, `tools`,
+  `model`, `effort`, `can_delegate`, `max_spawn_depth` or `command`, and the
+  two nodes are separated by one blank line before the next `# ` header
+
+### Contract: SHOW_BODY_VERBATIM
+- **Given:** a node whose body holds a fenced block, a table and trailing
+  whitespace on a line
+- **When:** `--show` runs on it
+- **Then:** the output after the header and one blank line equals the file's
+  bytes after its closing frontmatter fence and the blank line that follows
+  it
+
+### Contract: SHOW_UNKNOWN_ID_FAILS
+- **Given:** one known id and one id that names no node
+- **When:** `--show <known> <unknown>` runs
+- **Then:** the exit code is 2, stdout is empty, and stderr names the unknown
+  id
 
 ### Code anchor (7.32.0)
 
@@ -701,6 +859,17 @@ contracts use a stub tool in the plant of the reset contracts.
 - **Then:** the outside file is byte-identical, the symlink is not followed, no
   `.cypress/` is created, stderr has one line, and the exit code is non-zero
 
+### Contract: ANCHOR_IGNORES_BUILD_AND_BACKUP_NOISE
+- **Given:** an anchor, then new untracked files `src/__pycache__/a.cpython-312.pyc`,
+  `src/b.pyc`, `src/c.py.bak`, `src/d.py.bak-20261001-091322` and `src/e.py`
+- **When:** `code-anchor.py --compare` runs
+- **Then:** the repository line names `src/e.py` and none of the other four,
+  and a more-paths count, when there is one, counts after the filter
+- **And:** `--compare --all` names the same paths
+- **And:** only the installer's backup suffixes are noise: an untracked
+  `src/x.bak-config.yaml` and `src/config.bak/settings.py` are named, and
+  `src/y.py.bak-20260928-163636` is not
+
 ### Contract: STATUS_HOOK_INJECTS_THE_ANCHOR_LINE
 - **Given:** a plant with `docs/graph/code-anchor.py`, and in turn with and
   without `docs/graph/status-register.py`
@@ -720,15 +889,6 @@ contracts use a stub tool in the plant of the reset contracts.
 - **Then:** `additionalContext` carries the not-checked line of §6, and the hook
   exits 0
 
-### Contract: STATUS_EXTENSION_INJECTS_THE_ANCHOR_LINE
-- **Given:** `integrations/prime-agent/status-extension.ts`, read as text
-- **When:** its source is checked
-- **Then:** it contains the substrings `code-anchor.py`, `--compare` and the
-  not-checked line of §6: it runs the comparison and injects its output, or
-  the not-checked line when the call fails
-- **Note:** structural, as every Prime Agent contract here; it proves the
-  source, not what the host runs
-
 
 ### Pending amendments, 7.32.0 (not yet contracts)
 
@@ -746,8 +906,9 @@ the path column is decision 9 of that plan's §6.
 
 ## 5. Non-functional requirements
 
-- **Compatibility:** `route-hook.py` and `status-hook.py` stay stdlib
-  `python3`. `route-extension.ts` adds no import.
+- **Compatibility:** `route-hook.py`, `status-hook.py` and `graph-lint.py`
+  stay stdlib `python3`. The extensions add no import. The copies at
+  `.prime/agent/hooks/` are byte-identical to the Claude Code ones.
 - **Security:** the session id is read only from the exact key `session_id`
   and becomes a filename only after it passes the §6 pattern. All ledger I/O
   follows the §6 descriptor discipline: no symlink is followed, nothing is
@@ -755,30 +916,29 @@ the path column is decision 9 of that plan's §6.
   owned by another user or writable by group or others is refused, and
   `.gitignore` is created only when absent. The hook never creates
   `.cypress/`, since that directory marks a plant root for `_is_plant_root`.
-  On both hosts the prompt reaches the router as one `--plan=` argv element
-  with no shell (§6 host facts for `pi.exec`), and router output without the
-  exact echo prefix is dropped rather than passed through. On Prime Agent the
-  seed writes no state at all. The surfaced set lives in the host's kernel,
-  and a persistent session may snapshot the kernel namespace to
-  `kernel-state.dill` or `kernel-state.json` under the host's
-  `session-artifacts/<root-session-id>/`, outside the plant tree (§6). The set
-  holds node ids only, which are public graph identifiers. The threat model
-  for this feature is written into ADR-0010 at the plan's §10 close.
+  On both hosts the prompt reaches the core as one `--prompt=` argv element or
+  the stdin envelope, and the router as one `--plan-json=` element, with no
+  shell (§6 host facts for `pi.exec`). The router's document carries a hash of
+  the task, never the task, and a document that fails §6 validation is
+  dropped rather than passed through. The argv envelope's values pass the same
+  patterns as the stdin ones. The extensions write no file; on Prime Agent the
+  core writes the same ledger, under the same rules, as on Claude Code. The
+  threat model is ADR-0010's, with ADR-0024's additions.
 - **Reliability:** every path exits 0. Once `graph-lint.py` resolves,
-  `route-hook.py` emits at least the pointer line, whatever fails after. No new
-  hook event is wired in `.claude/settings.json`, and `route-extension.ts`
-  subscribes to no new Prime Agent event.
+  `route-hook.py` emits at least the pointer line, whatever fails after,
+  unless the turn is not routed (a child, a non-human turn). No new hook event
+  is wired in `.claude/settings.json`. On Prime Agent, `status-extension.ts`
+  subscribes four session events (§6) and `route-extension.ts` one.
 - **Cost:** ledger work adds no subprocess and no network call. Each routed
   prompt adds one read of at most `LEDGER_MAX_BYTES` + 1 bytes and one atomic
   write. Garbage collection runs only when a ledger is created, and reads at
-  most `GC_SCAN_MAX` directory entries (plan §4.8, amended in plan §17). No
-  byte saving is claimed until plan §4.7 has measured it. On Prime Agent the
-  injected bytes shrink by the echo fix and the pointer line only; the dedup
-  saving in injected bytes is a recorded gap. The prime-agent eager surface
-  grows by the section's bytes, at most `OVERLAY_SECTION_MAX_BYTES`, paid on
-  every Prime Agent session.
-  Since 7.32.0 each session start runs one subprocess more,
-  `code-anchor.py --compare`, bounded by `ANCHOR_TIMEOUT`; no prompt runs one.
+  most `GC_SCAN_MAX` directory entries. On Prime Agent each routed prompt runs
+  one `python3` process more than before (the core, which runs the router);
+  each session event runs `status-hook.py` once. Latency is not a target
+  (`--plan` costs about 70 ms). The measured token effect is ADR-0024's;
+  `SESSION_INJECTION_WITHIN_BUDGET` holds a synthetic session under a ratchet.
+  Each session start runs `code-anchor.py --compare` once, bounded by
+  `ANCHOR_TIMEOUT`; no prompt runs one.
 
 ## 6. Data shapes
 
@@ -795,10 +955,27 @@ session_start_stdin:
   session_id:      { type: string, optional: true }  # this exact key only; null is absent
   source:          { type: string, optional: true }  # startup|resume|clear|compact|fork on Claude Code; "new" on Copilot; absent or off-pattern is stored as "unknown"
 
-hook_stdout:                     # unchanged shape
+hook_stdout:                     # unchanged shape; the same in argv mode
   hookSpecificOutput:
     hookEventName:     { type: string }
     additionalContext: { type: string }              # the injection
+```
+
+**Argv envelope (7.37.0).** Any argument that begins `--` selects argv mode,
+and stdin is not read. Each option is one argv element `--name=value`; an
+option outside this list makes the hook emit nothing but one stderr line.
+
+```yaml
+route_hook_argv:                 # Prime Agent's route-extension.ts; same core as the stdin envelope
+  --prompt:     { type: string, required: true }     # one element; the prompt never passes a shell
+  --session-id: { type: string, optional: true }     # session_id_pattern, else treated as an invalid id
+  --depth:      { type: string, optional: true }     # decimal integer; > 0 means a child: emit nothing; absent or not an integer: routed (I-1)
+  --origin:     { type: string, optional: true }     # "human" or absent: routed; another value on origin_pattern: emit nothing; off the pattern: routed (I-1)
+
+status_hook_argv:                # Prime Agent's status-extension.ts
+  --session-id: { type: string, optional: true }
+  --source:     { type: string, optional: true }     # reset_source; the Prime Agent event or session_start reason
+  --depth:      { type: string, optional: true }     # as above; > 0: emit nothing and reset nothing
 ```
 
 ### Patterns
@@ -807,6 +984,8 @@ hook_stdout:                     # unchanged shape
 session_id_pattern: '^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$'   # else: no session id
 node_id_pattern:    '^[a-z][a-z0-9_.-]{0,127}$'
 reset_source:       '^[a-z_-]{1,32}$'                        # else stored as "unknown"
+origin_pattern:     '^[a-z_-]{1,32}$'                        # 7.37.0; off the pattern is treated as absent
+relative_path:      '^(?!/)(?!.*(^|/)\.\.(/|$))[A-Za-z0-9_./-]+$' # 7.37.0; a path in a plan document
 ledger_filename:    '<session_id_pattern stem>.json'
 temp_filename:      '^\.tmp-[A-Za-z0-9_-]{1,64}$'            # TEMP_PREFIX plus a random suffix
 ```
@@ -898,7 +1077,7 @@ In `route-hook.py`, one home each:
 |---|---|
 | `LEDGER_VERSION` | 1 |
 | `REFRESH_EVERY` | 10, a module-level integer literal ≥ 2. The plan §4.7 measurement record may change the value without re-opening this spec |
-| `ROUTER_TIMEOUT` | 15 s, a module-level literal (`route-extension.ts` keeps its own `timeout: 15_000` in the `pi.exec` options) |
+| `ROUTER_TIMEOUT` | 15 s, a module-level literal. Since 7.37.0 `route-extension.ts` runs the core, not the router, so its `pi.exec` `timeout` is longer than this (`PRIME_SESSION_ID_PASSED`) |
 | `LEDGER_TTL` | 12 h |
 | `GC_MAX_AGE` | 7 days |
 | `GC_MAX_FILES` | 32 |
@@ -908,86 +1087,176 @@ In `route-hook.py`, one home each:
 | `LEDGER_MAX_BYTES` | 64 KiB |
 | `SURFACED_MAX` | 512 |
 
-In the Prime Agent structural block of `tests/test-prompt-hooks.sh`, its one home:
+Also in `route-hook.py` (7.37.0):
 
 | Name | Value |
 |---|---|
-| `OVERLAY_SECTION_MAX_BYTES` | 512, the ceiling. The section's own size is not restated here; `PRIME_OVERLAY_SECTION_WITHIN_CEILING` holds it under this value |
+| `NON_HUMAN_MARKERS` | `<task-notification>`, `Another Claude session sent a message:`, `<local-command-`, `[agent-message from `, `[bash-done `, `[harness-digest]`. A prompt whose first non-whitespace text begins with one is not routed. The last three are Prime Agent host turns: the delivery header of an agent message (observed 2026-10-01), a background command's completion notice (fires `before_agent_start` at depth 0, live probe of 7.37.0 increment 1) and the host-generated harness digest; the list may shrink when a probe shows the host envelope carries an origin |
+
+Also in `route-hook.py`, its one home, registered `max` in
+`tests/ratchets.json` (7.37.0):
+
+| Name | Value |
+|---|---|
+| `SESSION_INJECTION_MAX_BYTES` | 4960, the measured total of `SESSION_INJECTION_WITHIN_BUDGET`'s scripted session at the GREEN of plan increment 1: every byte of `additionalContext` the session receives, the route hook's and the status hook's `--source=compact` injections alike. It may only fall |
 
 In `tests/seed-lint.py`, its one home (registered `max` in `tests/ratchets.json`):
 
 | Name | Value |
 |---|---|
-| `HOOK_TEXT_MAX_BYTES` | 851, the ceiling `HOOK_TEXT_RESTATES_NO_KERNEL_RULE` holds. `hook_text_bytes()` measures the whole `# --- injected text` block of `route-hook.py`, from that line up to the next `# --- ` line, so the block's comment lines count too. It may only fall |
+| `HOOK_TEXT_MAX_BYTES` | 724, the ceiling `HOOK_TEXT_RESTATES_NO_KERNEL_RULE` holds. `hook_text_bytes()` measures the whole `# --- injected text` block of `route-hook.py`, from that line up to the next `# --- ` line, so the block's comment lines count too. It may only fall. The 7.37.0 compact reminder literals re-baselined it once, from 851 to the measured block, 724 (plan increment 2) |
 
-### Router output grammar (input; the path column since 7.32.0)
+### Router output (the path column since 7.32.0; compact grammar and `cypress.plan/1` since 7.37.0)
 
-From `templates/knowledge-graph/graph-lint.py` `--plan`: the line
-`task: <prompt>` and a blank line, which the hook removes as one exact prefix
-built from the prompt it passed as `--plan=`; then notice lines `  ! <text>`
-and a blank line when any exist; then the header
-`LOAD (<n> nodes, ~<t> tokens):` and entry lines `  <id>  <path>  <title>` with
-an optional `   <- composed by …` suffix; then optionally a blank line, the
-header `NOT LOADED (with the reason; cross only if the task requires it):` and
-entry lines `  <id>  <path>  <reason>`. `<path>` is the node's file relative to
-the plant root (7.32.0; before it, an entry line had no path). An entry's id is
-its first whitespace-delimited token and must match the node-id pattern.
+`templates/knowledge-graph/graph-lint.py` has three model- and hook-facing
+views. `--plan` prints the compact grammar and the core renders the same
+grammar from the document; `ROUTE_FULL_TEXT_EQUALS_PLAN` holds the two equal.
 
-Output that does not begin with that exact prefix is `ROUTER_FAILED` (§7) on
-both hosts: the pointer line alone, never the raw output. The prefix check
-alone suffices, because the router echoes the prompt only on its `task:` line
-(`graph-lint.py:1225`). Only output that begins with the prefix and has no
-recognisable `LOAD (` header after it is unparseable, which gives full mode
-with the remainder.
+**`--plan "<task>"`, the compact grammar.** One line each, no column padding,
+in this order; a part is absent when it is empty:
+
+```text
+! <notice text>                          one line per notice, router order
+plant: environment_class=<v> commit_attribution=<v> deliverable_language=<v> comment_language=<v>
+LOAD <n> ~<t>t                           always present; n may be 0
+<id> <path> | <title>[ <- <how>]         one per LOAD node, sorted by id
+skip (cross only if the task needs it):
+ peer of <via>: <id>=<path> <id>=<path> ...
+ composed by <via>, no specific term: <id>=<path> ...
+```
+
+- `<path>` is the node's file relative to the plant root, on every id (owner
+  ruling O1: the model is handed the resolved fact).
+- `<title>` is the frontmatter `title` with a leading `<slug> — ` removed when
+  `<slug>` equals the id's last dotted segment.
+- `<how>` is printed for these kinds only: `inferred from "<path>"`, `composed by <via> on "<term>"`,
+  `owns "<path>"` (a named path), `phrase "<phrase>"` (a trigger phrase).
+- Skip groups follow the order this section lists the reasons, every `peer
+  of` group before every `composed by` group, and by `via` within a reason;
+  ids are sorted within a group (ruling of 2026-10-01).
+- The `plant:` line is printed only from the plan increment that lands
+  `PLAN_PRINTS_PLANT_BLOCK` (ADR-0027).
+- No line echoes the task.
+
+**`--plan-json=<task>`, schema `cypress.plan/1`.** One JSON object on stdout:
+
+```yaml
+plan_document:
+  required: [schema, task_sha256, plant, notices, est_tokens, load, skip]
+  additional_keys: forbidden
+  fields:
+    schema:      { const: "cypress.plan/1" }
+    task_sha256: { type: string, pattern: '^[0-9a-f]{64}$' }   # SHA-256 of the task's UTF-8 bytes as received
+    plant:       { type: [null, object], fields: { environment_class, commit_attribution, deliverable_language, comment_language: string } }
+    notices:     { type: array, of: { code: { enum: [wide_descent, inference_skipped, long_task, no_signal] }, text: string } }
+    est_tokens:  { type: integer, min: 0 }                       # the LOAD token total
+    load:        { type: array, sorted_by: id, of: { id: node_id, path: relative_path, title: string,
+                   how: { kind: { enum: [scored, requires, inferred, composed, named_id, named_path, phrase] },
+                          detail: [null, string], via: [null, node_id] } } }
+    skip:        { type: array, ordered_as: the --plan text, of: { id: node_id, path: relative_path, kind: { enum: [peer, composed] }, via: node_id } }
+```
+
+`skip` is in the order the `--plan` text prints the skipped ids
+(`PLAN_JSON_EQUALS_PLAN`): the skip-group order above, by id within a group.
+
+The enums name every kind the router emits once SPEC-0002's node-router
+contracts land, so the schema does not change between increments. `promoted`
+left the enum on 2026-10-01, before `cypress.plan/1` shipped in any release:
+the node router no longer promotes (SPEC-0002
+`PROMOTION_NEEDS_A_CONTIGUOUS_PHRASE`). The
+document carries no copy of the task; the only task-derived strings are
+`how.detail` of kinds `inferred` and `named_path`, a path the task names and a
+node owns. The core validates a document against this schema, the node-id
+pattern and the relative-path pattern before it renders anything; a document
+that fails is `ROUTER_FAILED`. A later schema is a new name.
+
+**`--show <id>...`.** For each id, in the order given, separated by one blank
+line:
+
+```text
+# <id> <path>: <title>
+owns: <key>, <key>
+requires: <id>, <id>
+peers: <id>, <id>
+composes: <id>, <id>
+delegates_to: <id>, <id>
+artifacts: <path>, ...
+libraries: <path>, ...
+plant_knowledge: <path>, ...
+origin: <seed|project>[ repo: <v>][ status: <v> status_date: <v> owner: <v> ends_when: <v> scope: <v> reason: <v> recorded_in: <v> departs_from: <v>]
+
+<body verbatim>
+```
+
+A line is printed only when its key is present. `<title>` is cut as in
+`--plan`. Node edges print as bare ids, which `--show` resolves. Leaf entries
+print as paths relative to the plant root, a directory entry keeping its
+trailing `/`; a `libraries` slug resolves to its page. Not printed: `load_when`,
+`routing_triggers`, `est_tokens`, `tier`, `kind`, `name`, `description`,
+`prevents`, and the spawn keys `tools`, `model`, `effort`, `can_delegate`,
+`max_spawn_depth`, `command`. Any other key the header does not classify is
+kept, never dropped: after the `origin:` line, in frontmatter order, as
+`<key>: <value>`, a list joined with `, ` (ruling of 2026-10-01; a plant's own
+keys survive). An unknown id exits 2 and prints nothing. The file stays
+canonical; the view is derived on every call and never cached.
 
 ### Injection texts (exact; the tests compare against them)
 
-Each text below is a single string literal in each source that emits it, named
-`POINTER` and `SUGGESTION_HEADER` where both sources carry it.
+Each text below is a single string literal in `route-hook.py`, inside its
+`# --- injected text` block, except the route itself, which the core renders
+from the document in the grammar above. The skip header is also a literal in
+`graph-lint.py`; `ROUTE_FULL_TEXT_EQUALS_PLAN` holds the two equal.
 
 - **Pointer line (`POINTER`):**
   `Route first: the kernel's FIRST MOVE and §0 apply to this prompt.`
 - **Full mode:** the pointer line, a blank line, the suggestion header
   (`SUGGESTION_HEADER`)
-  `Router suggestion (a keyword heuristic — reason over it):`, then the
-  router output with the echo prefix removed.
-- **Reminder mode** (Claude Code only), in this order, each part omitted when
-  empty:
+  `Router suggestion (a keyword heuristic — reason over it):`, then the route
+  rendered from the document, equal to `--plan` output for the same task.
+- **Reminder mode**, in this order, each part omitted when empty:
   1. the pointer line;
-  2. the router's notice lines, verbatim;
-  3. `New for this task: <ids>`, then each of those ids' LOAD entry lines
-     verbatim;
-  4. `Surfaced earlier this session: <ids> — open if not in view.`;
-  5. `Not suggested, not listed before (cross only if needed):`, then the NOT
-     LOADED entry lines whose id is in neither `surfaced` nor `peers_seen`.
+  2. the notice lines, `! <text>`;
+  3. `LOAD <n> ~<t>t (reminder)` (`REMINDER_HEADER`), with the document's
+     LOAD count and token total;
+  4. the entry line of each LOAD id not in `surfaced`, in the grammar above;
+  5. `seen: <ids> (surfaced earlier this session; open if not in view)`
+     (`SEEN_LINE`);
+  6. `skip (cross only if the task needs it):` (`SKIP_HEADER`), then the
+     groups of the grammar above holding only skipped ids in neither
+     `surfaced` nor `peers_seen`.
 
-  Ids are joined with `, ` in the router's order.
+  Ids on the `seen:` line are joined with `, ` in the router's order. No
+  `plant:` line: it is resident from the full injection.
 - **Router failed:** the pointer line alone.
-
-`route-extension.ts` emits full mode, router failed, and the unchanged
-no-graph message. It never emits reminder mode.
+- **Not routed** (a trivial prompt, a child, a non-human turn): nothing.
 
 ### Mode decision (pure; kept apart from file I/O in the script)
 
 ```yaml
-inputs:  [router_ids (load, not_loaded), ledger_or_absent, REFRESH_EVERY]
+inputs:  [router_ids (load, skip), ledger_or_absent, REFRESH_EVERY, depth, origin, prompt]
+not routed when any of:          # emit nothing; no router run, no ledger access
+  - the prompt is trivial
+  - depth is an integer > 0
+  - origin is on origin_pattern and is not "human"
+  - the prompt's first non-whitespace text begins with a NON_HUMAN_MARKERS entry
 router failed when any of:       # no ledger access at all
   - graph-lint.py exits non-zero, exceeds ROUTER_TIMEOUT, or prints nothing
   - the prompt cannot be passed (NUL byte, over the OS argument limit)
-  - output lacks the exact echo prefix
+  - the output is not a document that passes the cypress.plan/1 validation,
+    task_sha256 included
 full when any of:
   - ledger absent or unusable
   - prompt_count == 0            # a reset was recorded
   - prompt_count >= REFRESH_EVERY
-  - router output unparseable after the prefix   # the ledger is not updated
   - the reminder's surfaced or peers_seen would exceed SURFACED_MAX   # a refresh
 otherwise: reminder
-after full:     prompt_count = 1; surfaced = load; peers_seen = not_loaded - load
-after reminder: prompt_count += 1; surfaced |= load; peers_seen |= (not_loaded - surfaced)
+after full:     prompt_count = 1; surfaced = load; peers_seen = skip - load
+after reminder: prompt_count += 1; surfaced |= load; peers_seen |= (skip - surfaced)
 ```
 
-Order of work in `route-hook.py`: resolve `graph-lint.py`; run the router;
-build the full-mode text; then, in one guarded block, read the ledger, decide,
+Order of work in `route-hook.py`: read the envelope; decide not-routed;
+resolve `graph-lint.py`; run the router; validate the document; build the
+full-mode text; then, in one guarded block, read the ledger, decide,
 compose the chosen text, and write the ledger; emit. The chosen text is emitted
 only when the whole block succeeds. If any step of the block fails, the
 full-mode text already in hand is emitted with one stderr line, so a ledger
@@ -999,76 +1268,50 @@ session could grow a list past the cap that `ledger_problem` enforces on
 read; instead that prompt takes the full injection, which rebuilds both lists
 from the current router output alone.
 
-This decision runs on Claude Code only. On Prime Agent the extension has no
-ledger to decide with, so its mode is full on every routed prompt whose output
-passes the prefix rule.
+Since 7.37.0 this decision runs on both first-class hosts, in the same
+script.
 
-### Prime Agent surfaced set (model-kept, soft)
+### Prime Agent envelope and host facts (7.37.0)
 
-Owner decision of 2026-09-23 (grill §16). The Prime Agent record is a Python
-variable in the session's IPython kernel, kept by the model and instructed by
-the overlay. It replaces the module-scope `let` of the earlier draft.
+The model-kept set `_cypress_surfaced` and the overlay's `## Surfaced nodes`
+section of 7.28.0 are retired by ADR-0024. On Prime Agent:
 
 ```yaml
-prime_surfaced_set:
-  name:        _cypress_surfaced
-  type:        set of str, each matching node_id_pattern
-  home:        the session's IPython kernel namespace
-  written_by:  the model, adding an id after it opens that node's body
-  read_by:     the model, before it opens a body the router suggests
-  membership_means: "surfaced earlier this session; re-open it if its content is not in view"
-  membership_never_means: loaded, read, or in context now (I-6)
-  lifetime:    the kernel's (see host facts below); no reset exists or is needed
-  children:    an rlm() child has its own kernel, so its set starts empty (I-2)
-  seed_code_access: none; no extension reads or writes it
-  enforcement: soft (adr-0003-enforcement-layering-honesty)
+route_extension:                 # .prime/agent/extensions/route-extension.ts
+  on: before_agent_start
+  runs: python3 <hooks>/route-hook.py --prompt=<prompt> --session-id=<getSessionId()> --depth=<header rlmDepth> --origin=<origin>
+  returns: hookSpecificOutput.additionalContext of stdout as the message content; nothing when stdout is empty or not JSON
+status_extension:                # .prime/agent/extensions/status-extension.ts
+  on: [session_start (every reason), session_compact, session_tree, refine_complete]
+  runs: python3 <hooks>/status-hook.py --session-id=<id> --source=<reason or event> --depth=<n>
+  holds: the returned additionalContext, keyed by session id
+  on_before_agent_start: inject the held text for this session id once, then drop it; for a session id with no event seen, run status-hook.py with --source=startup first
+hooks_dir: the extension's sibling `../hooks/`; when the extension cannot
+  resolve its own directory, `<ctx.cwd>/.prime/agent/hooks/`; no upward walk.
+  A missing script means no injection (the kernel's FIRST MOVE is the floor)
+fail_open: an unreadable session id is omitted (full mode, I-1); an unreadable
+  depth is omitted (routed, I-1); any exception returns nothing
 ```
 
-A stale entry is harmless by construction of its meaning. Kernel state
-survives compaction and context does not, so after a compaction the set names
-ids whose content has left view. The wording tells the model to re-open those.
-The set can therefore cost a read and never withholds a node: the router still
-names every id on every prompt, because `route-extension.ts` always injects
-in full (I-1, I-3).
-
-The section text below is the one to ship. Its four phrases in
-`PRIME_OVERLAY_KEEPS_SURFACED_SET` are normative; the implementer may reword
-the rest within `OVERLAY_SECTION_MAX_BYTES`.
-
-```markdown
-## Surfaced nodes
-
-Keep a Python set of graph node ids, `_cypress_surfaced`, in the IPython
-kernel, and add each id whose node body you open. Before opening a body the
-router suggests, check the set. An id in it means surfaced earlier this
-session: re-open it if its content is not in view. IPython state outlives
-compaction; your context does not.
-```
-
-Host facts this design rests on. Classifications are those of the Prime Agent
-host research pass of 2026-09-23 (session scratchpad
-`research-prime-state.md`, not snapshotted into the plant), except the
-`pi.exec` row, which the security review of 2026-09-23 read from the installed
-package. The other source paths are under the plant's `docs/graph/sources/raw/`.
+Host facts. Classifications as in the 7.28.0 research pass unless the row
+says otherwise; the source paths are under the steward plant's
+`docs/graph/sources/raw/`.
 
 | Fact | Class | Source |
 |---|---|---|
-| One IPython kernel per session, created lazily on first REPL use, a separate process from the TypeScript worker | Documented | `prime-agent-2026-09-17.txt:2724-2726`; `prime-agent-architecture-2026-09-16.md:15-27`, `:49` |
-| Kernel state survives compaction; compaction touches LLM context only | Documented | `prime-agent-long-running-agents-2026-09-16.md:257`; `prime-agent-rlm-2026-09-16.md:137` |
-| An `rlm()` child gets its own kernel, lazily, never the parent's | Documented | `prime-agent-architecture-2026-09-16.md:20`, `:45`; `prime-agent-2026-09-17.txt:2749`, `:2788-2801` |
-| No `ExtensionAPI` method reads, writes or runs code in the kernel; `pi.exec` spawns an unrelated process | Documented (absence, checked against the full method list) | `prime-agent-2026-09-17.txt:1265-1680`, `:1529-1536` |
-| `pi.exec` spawns with `shell: false` (`spawn(command, args, {shell: false})`), so the prompt in argv is not shell-parsed | Documented (source read) | installed `@earendil-works/pi-coding-agent` 0.75.3, `dist/core/exec.js:12-16`, read 2026-09-23 |
-| No Python-side hook runs per prompt or at session start | Documented (absence) | `prime-agent-rlm-2026-09-16.md` core invariants; `prime-agent-skills-2026-09-16.md:132-134` |
-| `session_start` reason ∈ `startup`, `reload`, `new`, `resume`, `fork` | Documented | `prime-agent-2026-09-17.txt:312-322`; `types.d.ts:416-422` per `pi-coding-agent-2026-09-17` normalized page |
-| Compaction events `session_before_compact` (reason ∈ `manual`, `threshold`, `overflow`), `session_compact`, `session_compact_failed` | Documented | `prime-agent-2026-09-17.txt:502-541` |
-| A persistent session may snapshot the kernel namespace to `kernel-state.dill` / `kernel-state.json` | Documented | `prime-agent-2026-09-17.txt:2736`, `:2857-2877` |
-| `/resume` on a live worker reuses the same kernel process | Tentative inference | research pass §1 |
-| `/new` starts a new kernel; `/fork` starts a fresh kernel | Strong inference (`/new`); Tentative inference (`/fork`) | research pass §1 |
-| Whether an `rlm()` child receives the `APPEND_SYSTEM.md` overlay | not recorded | none |
+| `pi.exec` spawns with `shell: false`, so argv elements are not shell-parsed | Documented (source read) | installed `@earendil-works/pi-coding-agent` 0.75.3, `dist/core/exec.js:12-16`, read 2026-09-23 |
+| `session_start` reason ∈ `startup`, `reload`, `new`, `resume`, `fork` | Documented | `prime-agent-2026-09-17.txt:312-322` |
+| Compaction events `session_before_compact`, `session_compact`, `session_compact_failed` | Documented | `prime-agent-2026-09-17.txt:502-541` |
+| An `agent_message` delivered to an idle child fires `before_agent_start` and was routed; four deliveries to a parent produced no route | Observed 2026-10-01 on real transcripts | the round's refutation pass, kept with the round's working records outside the seed |
+| A delivered agent message opens with the line `[agent-message from <role>:<id>]` | Observed 2026-10-01 | the same session's own transcript |
+| `ctx.sessionManager.getSessionId()` answers in `before_agent_start` and in `session_start`, and equals the session header `id` | Observed 2026-10-01, Prime Agent 0.9.8 | live probe, recorded in plan increment 1 |
+| `ctx.sessionManager.getHeader()` carries `rlmDepth` (0 in a parent, 1 in a child) and `parentSession` (absent at depth 0) | Observed 2026-10-01, Prime Agent 0.9.8 | live probe, recorded in plan increment 1 |
+| Under jiti `__dirname` names the extension's own directory; `import.meta.url` is a `data:` URL | Observed 2026-10-01, Prime Agent 0.9.8 | live probe, recorded in plan increment 1 |
+| The extension module is evaluated once per session, parent and child alike, in one process | Observed 2026-10-01, Prime Agent 0.9.8 | live probe, recorded in plan increment 1 |
+| The `before_agent_start` event carries `type`, `prompt`, `images`, `systemPrompt` and `systemPromptOptions`, and no origin of the turn, so `route-extension.ts` passes `--origin` only if a later host adds an `origin` field | Documented (source read) | the Prime Agent 0.9.8 binary, `emitBeforeAgentStart`, read 2026-10-01 |
 
-The design needs none of the inferred or unrecorded rows to hold. Each outcome
-leaves the model either with an empty set (it re-reads) or with a set whose
-wording says to re-open what is out of view.
+If the first probe fails, Prime Agent stays in full mode (the extension
+passes no `--session-id`) and the session-file ledger reopens (ADR-0024).
 
 ### Code anchor file, version 1 (7.32.0)
 
@@ -1102,14 +1345,20 @@ A path counts as moved when it is not under `docs/graph/` or `.cypress/` and
 any of these holds: it changed between the recorded commit and `HEAD`; it is
 uncommitted now and was not uncommitted at the anchor; or its current content
 hash differs from the one recorded for it. A path whose current content equals
-its recorded hash has not moved.
+its recorded hash has not moved. Since 7.37.0 a path is never named, nor
+counted, when a segment is `__pycache__` or its name ends `.pyc` or `.bak` or
+matches `*.bak-<digit>*`, the timestamped backup the installer writes. A name
+holding `.bak-` before other text (`x.bak-config.yaml`) and a directory named
+`*.bak` are code (`ANCHOR_IGNORES_BUILD_AND_BACKUP_NOISE`).
 
 ### Code anchor constants and texts (7.32.0)
 
 In `tools/code-anchor.py`, placed as `docs/graph/code-anchor.py`, one home
 each, except `ANCHOR_TIMEOUT`. That one is a module-level literal in
-`status-hook.py`, as `ROUTER_TIMEOUT` is in `route-hook.py`, and
-`status-extension.ts` keeps its own `timeout` in the `pi.exec` options.
+`status-hook.py`, as `ROUTER_TIMEOUT` is in `route-hook.py`. Since 7.37.0
+`status-extension.ts` runs `status-hook.py`, so this one value bounds the
+anchor on both hosts, and the extension's `pi.exec` `timeout` bounds the
+whole core.
 
 | Constant | Value | Holds |
 |---|---|---|
@@ -1145,11 +1394,33 @@ exception's text, which names the file, and a ledger's file name is the id.
 ### Failure: ROUTER_FAILED
 - **Trigger:** `graph-lint.py` exits non-zero, runs past `ROUTER_TIMEOUT`, or
   prints nothing; the prompt holds a NUL byte or exceeds the OS argument
-  limit; the output lacks the exact echo prefix
-- **Response:** the pointer line alone, exit 0, on both hosts
+  limit; the output is not a `cypress.plan/1` document that passes §6
+  validation, its `task_sha256` included (`ROUTE_HOOK_READS_PLAN_JSON`);
+  an engine that rejects `--plan-json` is `ENGINE_OLDER_THAN_HOOK_IS_NAMED`
+- **Response:** the pointer line alone, exit 0, on both hosts, with one stderr
+  line when the document failed validation
 - **Side effects:** the ledger is byte-identical with an unchanged mtime, and
   the prompt appears in no injection, ledger file or stderr line
 - **Recovery:** the next prompt tries again
+
+### Failure: ENGINE_OLDER_THAN_HOOK_IS_NAMED
+- **Trigger:** `graph-lint.py` exits 2 with argparse's rejection of
+  `--plan-json` on stderr: the plant's engine predates the hook (a graft
+  refused, a KEEP-PLANT engine, a symlinked engine, a plain re-install over
+  an older engine). The hook tells it from every other failure by exactly
+  two facts: exit status 2 and the bytes `unrecognized arguments: --plan-json`
+  in the engine's stderr. Any other non-zero exit is `ROUTER_FAILED`
+- **Response:** the pointer line and exactly one notice line after it, exit 0,
+  on both hosts. The notice names `graph-lint.py`, `--plan-json` and the fix,
+  a graft of the engine. No stderr line. The hook never falls back to parsing
+  `--plan` text
+- **Side effects:** as `ROUTER_FAILED`: the ledger is byte-identical with an
+  unchanged mtime, none is created, and the prompt appears in no injection,
+  ledger file or stderr line
+- **Recovery:** re-run graft's engine step (`tools/graft-graph-engine.py`).
+  A plain re-install leaves the engine byte-unchanged (adr-0014); the notice
+  is what it leaves the hook to say (SPEC-0001
+  `REINSTALL_ENGINE_SERVES_THE_HOOKS`)
 
 ### Failure: SESSION_ID_REFUSED
 - **Trigger:** `session_id` present, not `null`, and failing the §6 pattern,
@@ -1193,32 +1464,17 @@ exception's text, which names the file, and a ledger's file name is the id.
   Claude Code path where dedup can err toward omission, for at most N − 1
   prompts after a compaction. Recorded, not closed
 
-### Failure: PRIME_MODEL_IGNORES_SURFACED_INSTRUCTION
-- **Trigger:** on Prime Agent the model does not create `_cypress_surfaced`,
-  does not add the ids it opens, or does not check the set before opening a
-  body
-- **Response:** none from the seed; nothing observes the model
-- **Side effects:** extra body re-reads, and so extra context bytes. Never an
-  omission: `route-extension.ts` forwards the router output with only the
-  exact echo prefix removed and `trim` applied
-  (`ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX`), so every routed id is named in
-  full on every prompt, whatever the set holds. That holds at structural
-  strength, which is the strength of every Prime Agent test
-- **Recovery:** none needed. The cost is the pre-7.28.0 cost of re-reading
-
-### Failure: PRIME_SURFACED_SET_TRUSTED_WHILE_STALE
-- **Trigger:** after a compaction, a `/resume`, or any loss of context the
-  kernel survives, the set names an id whose content is out of view, and the
-  model skips the re-open the section asks for; or content injected into the
-  session tells the model to add ids it never opened
-- **Response:** none from the seed
-- **Side effects:** the model works without a node body it believes it has
-  seen. The router still names the id on every prompt (I-3), so the node stays
-  discoverable, but the read can be missed. This is the one Prime Agent path
-  toward omission
-- **Recovery:** the section's wording is the only mitigation. Unlike
-  `RESET_NOT_WRITTEN`, no refresh bound exists, since the extension keeps no
-  count. Kept in §11 as a residual
+### Failure: PRIME_SESSION_UNKNOWN
+- **Contracts:** PRIME_SESSION_ID_PASSED, CHILD_SESSION_GETS_NO_INJECTION
+- **Trigger:** on Prime Agent, `getSessionId()` throws or returns nothing, or
+  the session header gives no readable depth
+- **Response:** the extension omits that option; the core gives full mode on
+  every routed prompt (no session id) or routes the prompt (no depth), as
+  before 7.37.0
+- **Side effects:** no ledger is written without a session id; a child whose
+  depth cannot be read is routed on its brief, as before 7.37.0
+- **Recovery:** none needed. The direction is inclusion (I-1); the cost is the
+  pre-7.37.0 cost
 
 ### Failure: UNEXPECTED_EXCEPTION
 - **Trigger:** any other exception in either hook or the extension
@@ -1231,8 +1487,8 @@ exception's text, which names the file, and a ledger's file name is the id.
   silent, as Copilot's fail-open case needs. `status-hook.py` emits its
   summary when built, with at most one stderr line: nested stdin costs that
   line and the summary still runs, and a register that fails or prints
-  output that does not decode is silence. The extension's outer guard returns
-  nothing, as at 7.27.0, and its inner guard keeps the pointer line
+  output that does not decode is silence. Each extension's guard returns
+  nothing
 - **Side effects:** none beyond an atomic write that either completed or did
   not
 - **Recovery:** none needed
@@ -1254,8 +1510,7 @@ exception's text, which names the file, and a ledger's file name is the id.
 - **Recovery:** fetch the commit, or let the next canonize re-anchor
 
 ### Failure: ANCHOR_CHECK_DID_NOT_RUN
-- **Contracts:** STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION,
-  STATUS_EXTENSION_INJECTS_THE_ANCHOR_LINE
+- **Contracts:** STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION
 - **Trigger:** the tool is missing, fails or times out
 - **Response:** the not-checked line; the session is never blocked
 - **Side effects:** none
@@ -1263,19 +1518,17 @@ exception's text, which names the file, and a ledger's file name is the id.
 
 ## 8. Examples
 
-Stub router output, used for every example below. The ids are illustrative
-node ids, not a plant's real graph. The prompt is the two lines of the echo.
+The final grammar of 7.37.0. Stub document, used for every example below; the
+ids are illustrative, not a plant's real graph, and the hash is shortened here.
 
-```
-task: tighten the ledger garbage collection
-second line of the prompt
-
-LOAD (2 nodes, ~900 tokens):
-  root                         knowledge graph router
-  skill.knowledge-graph        knowledge-graph authoring
-
-NOT LOADED (with the reason; cross only if the task requires it):
-  agent.implementer            peer of skill.knowledge-graph
+```json
+{"schema": "cypress.plan/1", "task_sha256": "9f2c…", "plant": null, "notices": [],
+ "est_tokens": 900,
+ "load": [{"id": "root", "path": "docs/graph/nodes/root.md", "title": "root — knowledge graph router",
+           "how": {"kind": "scored", "detail": null, "via": null}},
+          {"id": "skill.knowledge-graph", "path": "docs/graph/skills/knowledge-graph.md",
+           "title": "knowledge-graph — knowledge-graph authoring", "how": {"kind": "requires", "detail": null, "via": "root"}}],
+ "skip": [{"id": "agent.implementer", "path": "docs/graph/agents/02-implementer.md", "kind": "peer", "via": "skill.knowledge-graph"}]}
 ```
 
 Happy, first prompt, `session_id` `3b9f1c2e-5d4a-4e8b-9a61-0c7f2d8e1a44`, no
@@ -1285,12 +1538,11 @@ ledger. Injection (full mode):
 Route first: the kernel's FIRST MOVE and §0 apply to this prompt.
 
 Router suggestion (a keyword heuristic — reason over it):
-LOAD (2 nodes, ~900 tokens):
-  root                         knowledge graph router
-  skill.knowledge-graph        knowledge-graph authoring
-
-NOT LOADED (with the reason; cross only if the task requires it):
-  agent.implementer            peer of skill.knowledge-graph
+LOAD 2 ~900t
+root docs/graph/nodes/root.md | knowledge graph router
+skill.knowledge-graph docs/graph/skills/knowledge-graph.md | knowledge-graph authoring
+skip (cross only if the task needs it):
+ peer of skill.knowledge-graph: agent.implementer=docs/graph/agents/02-implementer.md
 ```
 
 Ledger afterwards (mode 0600):
@@ -1301,24 +1553,25 @@ Ledger afterwards (mode 0600):
  "peers_seen": ["agent.implementer"], "last_reset": null}
 ```
 
-Edge, second prompt with the same router output. Injection (reminder mode,
-two lines):
+Edge, second prompt with the same document. Injection (reminder mode, three
+lines):
 
 ```
 Route first: the kernel's FIRST MOVE and §0 apply to this prompt.
-Surfaced earlier this session: root, skill.knowledge-graph — open if not in view.
+LOAD 2 ~900t (reminder)
+seen: root, skill.knowledge-graph (surfaced earlier this session; open if not in view)
 ```
 
-Edge, third prompt whose router adds `[redacted]` to LOAD and
-`[redacted]` to NOT LOADED:
+Edge, third prompt whose document adds `subsystem.graph-linters` to `load` and
+`domain.frontmatter` to `skip`:
 
 ```
 Route first: the kernel's FIRST MOVE and §0 apply to this prompt.
-New for this task: [redacted]
-  [redacted]      graph linters
-Surfaced earlier this session: root, skill.knowledge-graph — open if not in view.
-Not suggested, not listed before (cross only if needed):
-  [redacted]           peer of [redacted]
+LOAD 3 ~1400t (reminder)
+subsystem.graph-linters docs/graph/nodes/subsystem.graph-linters.md | graph linters
+seen: root, skill.knowledge-graph (surfaced earlier this session; open if not in view)
+skip (cross only if the task needs it):
+ peer of subsystem.graph-linters: domain.frontmatter=docs/graph/nodes/domain.frontmatter.md
 ```
 
 Failure, `session_id` `../../escape`: full mode as in the first example, no
@@ -1329,19 +1582,14 @@ Failure, ledger file holding `{"version": 2, …}`: full mode, one stderr line
 naming the ledger path, and the file replaced by a valid version-1 ledger with
 `prompt_count` 1.
 
-Failure, a stub whose output starts at `LOAD (` with no `task:` line: the
-pointer line alone, and the ledger untouched.
+Failure, a document whose `task_sha256` is not the hash of the prompt: the
+pointer line alone, one stderr line, and the ledger untouched.
 
-Prime Agent, the same three prompts. Each injection is the full-mode text of
-the first example. After the first prompt the model opens `root` and
-`skill.knowledge-graph` and its kernel holds
-`_cypress_surfaced == {"root", "skill.knowledge-graph"}`. On the second prompt
-both ids are in the set and both bodies are in view, so it opens neither.
-Then a threshold compaction summarises the early turns. The set is unchanged,
-the bodies are gone from view, and on the next prompt the model re-opens
-`root` because the set's meaning is "surfaced earlier, re-open if not in
-view". A model that skipped the set would have opened both bodies on every
-prompt, which costs bytes and loses nothing.
+Prime Agent, the same three prompts: the same three injections, from the same
+script through the argv envelope. A child spawned on the second prompt gets
+nothing on any of its prompts; its brief routes its task line. A parent's
+message delivered to that child, beginning `[agent-message from parent:…]`,
+gets nothing either.
 
 ## 9. Acceptance criteria
 
@@ -1352,49 +1600,44 @@ contracts it maps to.)
       Maps to ROUTE_HOOK_STRIPS_MULTILINE_PROMPT_ECHO,
       ROUTE_HOOK_PASSES_PROMPT_AS_ONE_OPTION_VALUE,
       ROUTE_HOOK_UNPASSABLE_PROMPT_FAILS_OPEN,
-      ROUTER_OUTPUT_WITHOUT_ECHO_PREFIX_POINTER_ONLY,
-      ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX,
-      ROUTE_EXTENSION_PASSES_PROMPT_AS_ONE_OPTION_VALUE
+      ROUTE_EXTENSION_PASSES_PROMPT_AS_ONE_OPTION_VALUE,
+      PLAN_JSON_CARRIES_NO_PROMPT, PLAN_JSON_HASH_BINDS_TASK
 - [ ] AC-2: per-prompt text points at the kernel, and its fixed text is held
       under a byte ceiling. Maps to ROUTE_HOOK_POINTS_AT_KERNEL,
-      HOOK_TEXT_RESTATES_NO_KERNEL_RULE,
-      ROUTE_EXTENSION_TEXT_MATCHES_ROUTE_HOOK
+      HOOK_TEXT_RESTATES_NO_KERNEL_RULE
 - [ ] AC-3: between one full injection and the next, a node the router already
-      suggested this session is named by id on the `Surfaced earlier this
-      session:` line and its entry line is not repeated. No line the hook or
-      the overlay section writes contains `loaded` in any letter case. Maps
-      to LEDGER_FIRST_PROMPT_FULL, LEDGER_LATER_PROMPT_REMINDER,
-      REMINDER_KEEPS_NOTICE_LINES, REMINDER_SAYS_SURFACED_NEVER_LOADED,
-      LEDGER_NEW_IDS_LISTED, REMINDER_DROPS_PEERS_ALREADY_SHOWN,
-      LEDGER_EVERY_LOAD_ID_NAMED, PRIME_OVERLAY_NEVER_SAYS_LOADED
+      suggested this session is named by id on the `seen:` line and its entry
+      line is not repeated, on both first-class hosts. No line the hook writes
+      contains `loaded` in any letter case. Maps to LEDGER_FIRST_PROMPT_FULL,
+      LEDGER_LATER_PROMPT_REMINDER, REMINDER_KEEPS_NOTICE_LINES,
+      REMINDER_SAYS_SURFACED_NEVER_LOADED, LEDGER_NEW_IDS_LISTED,
+      REMINDER_DROPS_PEERS_ALREADY_SHOWN, LEDGER_EVERY_LOAD_ID_NAMED
 - [ ] AC-4: each of these gives the full injection, exit 0, and at most one
       error line: no session id; an invalid session id; a ledger that is
-      corrupt, of unknown version, expired, oversized or from another session;
-      router output that carries the echo prefix but cannot be parsed after
-      it. On Prime Agent every routed prompt is full. Maps to
-      LEDGER_ABSENT_SESSION_ID_FULL, LEDGER_INVALID_SESSION_ID_FULL,
+      corrupt, of unknown version, expired, oversized or from another session.
+      A router document that fails validation gives the pointer line alone.
+      Maps to LEDGER_ABSENT_SESSION_ID_FULL, LEDGER_INVALID_SESSION_ID_FULL,
       LEDGER_CORRUPT_FULL, LEDGER_UNKNOWN_VERSION_FULL, LEDGER_EXPIRED_FULL,
-      UNPARSEABLE_ROUTER_OUTPUT_FULL, ROUTE_EXTENSION_HOLDS_NO_LEDGER_STATE
+      ROUTE_HOOK_READS_PLAN_JSON
 - [ ] AC-5: the first routed prompt after any `SessionStart` source, and the
-      first after `REFRESH_EVERY` routed prompts, gets the full injection. On
-      Prime Agent the set means "surfaced earlier, re-open if not in view",
-      never proof of what is in view. Maps to STATUS_HOOK_RESETS_LEDGER,
-      STATUS_HOOK_NO_LEDGER_WRITES_NOTHING,
+      first after `REFRESH_EVERY` routed prompts, gets the full injection, and
+      on Prime Agent each session event resets the ledger. Maps to
+      STATUS_HOOK_RESETS_LEDGER, STATUS_HOOK_NO_LEDGER_WRITES_NOTHING,
       STATUS_HOOK_RESETS_WITHOUT_REGISTER, LEDGER_REFRESH_EVERY_N,
-      PRIME_OVERLAY_KEEPS_SURFACED_SET
+      PRIME_RESET_ON_EVENTS
 - [ ] AC-6: the record is safe, bounded, invisible to git and never read as
       instructions. Maps to LEDGER_GITIGNORED, LEDGER_WRITE_IS_ATOMIC,
       LEDGER_SYMLINK_REFUSED, LEDGER_FOREIGN_OR_WRITABLE_REFUSED,
       LEDGER_NO_CYPRESS_DIR_NO_WRITE, LEDGER_WRITE_FAILURE_FAILS_OPEN,
       LEDGER_GC_BOUNDED, LEDGER_NEVER_EMITS_UNROUTED_ID,
       LEDGER_UNUSED_WITHOUT_GRAPH, LEDGER_TRIVIAL_PROMPT_UNTOUCHED,
-      STATUS_HOOK_WITHOUT_SIBLING_LEAVES_LEDGER,
-      ROUTE_EXTENSION_HOLDS_NO_LEDGER_STATE
-- [ ] AC-7: spawned workers see exactly what they saw before. Maps to
-      BRIEF_TEMPLATES_BYTE_IDENTICAL, PRIME_OVERLAY_KEEPS_SURFACED_SET
-- [ ] AC-8: the Prime Agent instruction stays brief and inside the eager
-      budget. Maps to PRIME_OVERLAY_SECTION_WITHIN_CEILING,
-      PRIME_EAGER_SURFACE_WITHIN_BUDGET
+      STATUS_HOOK_WITHOUT_SIBLING_LEAVES_LEDGER
+- [ ] AC-7: spawned workers get the same brief text as before and no injected
+      route or status; a turn a person did not type is not routed. Maps to
+      BRIEF_TEMPLATES_BYTE_IDENTICAL, CHILD_SESSION_GETS_NO_INJECTION,
+      NON_HUMAN_TURN_NOT_ROUTED
+- [ ] AC-8: the Prime Agent overlay stays inside the eager budget, and falls
+      by the retired section. Maps to PRIME_EAGER_SURFACE_WITHIN_BUDGET
 - [ ] AC-9: the scripted 20-prompt session (`measure/prompts.json`) runs
       through the Slice A hook with `REFRESH_EVERY` set to 5, 10 and 20, each
       once without resets and once with `--resets 8,15`. Plan §14 records the
@@ -1412,13 +1655,11 @@ contracts it maps to.)
       record, not a §10 test. Maps to LEDGER_LATER_PROMPT_REMINDER,
       LEDGER_REFRESH_EVERY_N, STATUS_HOOK_RESETS_LEDGER,
       ROUTE_HOOK_STRIPS_MULTILINE_PROMPT_ECHO
-- [ ] AC-10: Prime Agent is described as soft everywhere: `CHANGELOG.md`, the
-      host capability matrix row and ADR-0010 call the surfaced set
-      model-kept and unenforced, claim no injected-byte saving for Prime
-      Agent, and state the eager-surface increase in bytes. The wording half
-      is checked by the reviewer at verify and has no automated test. Maps to
-      ROUTE_EXTENSION_HOLDS_NO_LEDGER_STATE,
-      PRIME_OVERLAY_SECTION_WITHIN_CEILING, PRIME_EAGER_SURFACE_WITHIN_BUDGET
+- [ ] AC-10: Prime Agent gets the same residency as Claude Code through the
+      same script; its extensions compose no text and write no file, and the
+      status reaches each session start once. Maps to
+      HOOK_ARGV_ENVELOPE_EQUALS_STDIN_ENVELOPE, PRIME_SESSION_ID_PASSED,
+      STATUS_ONCE_PER_SESSION
 - [ ] AC-11: reminder mode drops nothing the model needs to navigate: every
       LOAD id, every notice line, and the entry line of every id new to this
       session. Maps to REMINDER_KEEPS_NOTICE_LINES,
@@ -1431,15 +1672,26 @@ contracts it maps to.)
       ANCHOR_RECORD_NAMES_EVERY_REPOSITORY, ANCHOR_QUIET_WHEN_NOTHING_MOVED,
       ANCHOR_NAMES_PATHS_WHEN_THE_COMMIT_MOVED,
       ANCHOR_NAMES_BOTH_BRANCHES_WHEN_THE_BRANCH_MOVED,
-      ANCHOR_NAMES_NEW_UNCOMMITTED_WORK, ANCHOR_OUTPUT_WITHIN_BUDGET
+      ANCHOR_NAMES_NEW_UNCOMMITTED_WORK, ANCHOR_OUTPUT_WITHIN_BUDGET,
+      ANCHOR_IGNORES_BUILD_AND_BACKUP_NOISE
 - [ ] AC-14: every doubt about the anchor resolves toward checking the code,
       and comparing writes nothing. Maps to
       ANCHOR_ABSENT_FAILS_TOWARD_INCLUSION, ANCHOR_COMPARE_WRITES_NOTHING,
       ANCHOR_RECORD_REFUSES_A_SYMLINK
 - [ ] AC-15: both first-class session starts carry the anchor line, with or
       without a status register. Maps to STATUS_HOOK_INJECTS_THE_ANCHOR_LINE,
-      STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION,
-      STATUS_EXTENSION_INJECTS_THE_ANCHOR_LINE
+      STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION, STATUS_ONCE_PER_SESSION
+- [ ] AC-16 (7.37.0): programs read the router through a versioned document
+      that the model-facing text equals. Maps to PLAN_JSON_SCHEMA,
+      PLAN_JSON_EQUALS_PLAN, ROUTE_FULL_TEXT_EQUALS_PLAN
+- [ ] AC-17 (7.37.0): a node read after routing keeps every pointer and drops
+      the router and spawn keys. Maps to SHOW_KEEPS_EVERY_POINTER,
+      SHOW_DROPS_ROUTER_AND_SPAWN_KEYS, SHOW_BODY_VERBATIM,
+      SHOW_UNKNOWN_ID_FAILS
+- [ ] AC-18 (7.37.0): a synthetic session's injected bytes stay under a
+      ratchet that may only fall. Maps to SESSION_INJECTION_WITHIN_BUDGET
+- [ ] AC-19 (7.37.0, if ADR-0027 lands): the full plan carries the plant's
+      four `plant:` facts. Maps to PLAN_PRINTS_PLANT_BLOCK
 
 ## 10. Test mapping
 
@@ -1476,6 +1728,14 @@ Binding, fixed at this revision (tester R22):
   `tests/`. Fewer would fail `SPEC_UNCOVERED_BUDGET`, which `ratchets.json`
   holds ceiling-only.
 
+Amendment of 2026-10-01 (7.37.0): the rows of retired contracts left with
+them (§12); a rewritten contract's row keeps its case label and reads
+`pending` until its case is rewritten at RED; a new contract's row reads
+`pending` with no test file until the tester names its case. Until then
+`spec-lint.py` counts these as uncovered, as at 7.35.0. The shared stub of
+`tests/test-prompt-hooks.sh` moves to the `cypress.plan/1` form at the RED of
+plan increment 1; the cases of unchanged contracts keep their assertions.
+
 Placement is by subject (test consolidation, 2026-09-29):
 `tests/test-prompt-hooks.sh` holds the route-hook and status-hook cases, the
 Copilot fail-open rows inside X118 and X124, and the Prime Agent structural
@@ -1499,27 +1759,25 @@ Techniques the cases rely on:
 
 | Contract / Failure | Test case | Test file | Level | Status |
 |---|---|---|---|---|
-| ROUTE_HOOK_STRIPS_MULTILINE_PROMPT_ECHO | X101 | tests/test-prompt-hooks.sh | integration | green |
-| ROUTE_HOOK_PASSES_PROMPT_AS_ONE_OPTION_VALUE | X102 | tests/test-prompt-hooks.sh | integration | green |
+| ROUTE_HOOK_STRIPS_MULTILINE_PROMPT_ECHO | X101 | tests/test-prompt-hooks.sh | integration; rewritten 2026-10-01 and its case at the RED of plan increment 1 (the And reads a `LOAD ` header line); green on arrival, as its Then is unchanged and today's core already holds it | green |
+| ROUTE_HOOK_PASSES_PROMPT_AS_ONE_OPTION_VALUE | X102 | tests/test-prompt-hooks.sh | integration; rewritten 2026-10-01 and its case at the RED of plan increment 1; red on arrival (the core passes `--plan=`) | green |
 | ROUTE_HOOK_UNPASSABLE_PROMPT_FAILS_OPEN | X103; the NUL prompt | tests/test-prompt-hooks.sh | integration | green |
-| ROUTER_OUTPUT_WITHOUT_ECHO_PREFIX_POINTER_ONLY | X104; one stub mode | tests/test-prompt-hooks.sh | integration | green |
 | ROUTE_HOOK_POINTS_AT_KERNEL | X105, inside X106: the full-mode compare puts the pointer line first | tests/test-prompt-hooks.sh | integration | green |
-| HOOK_TEXT_RESTATES_NO_KERNEL_RULE | check_hook_text_restates_no_kernel_rule | tests/seed-lint.py | unit; the byte budget on the hook's fixed text; the function names the slug in the finding it raises | green |
-| HOOK_TEXT_RESTATES_NO_KERNEL_RULE | X201; a planted line grows the hook text past its byte ceiling | tests/test-seed-lint.sh | integration | green |
+| HOOK_TEXT_RESTATES_NO_KERNEL_RULE | check_hook_text_restates_no_kernel_rule | tests/seed-lint.py | unit; the byte budget on the hook's fixed text; the function names the slug in the finding it raises; rewritten 2026-10-01; at the RED of plan increment 2 the check needs no change (it measures the whole block, whatever its literals), and the one re-baseline of `HOOK_TEXT_MAX_BYTES` is the GREEN's | green |
+| HOOK_TEXT_RESTATES_NO_KERNEL_RULE | X201; a planted line grows the hook text past its byte ceiling | tests/test-seed-lint.sh | integration; rewritten at the RED of plan increment 2: the line is planted after the `# --- injected text` marker, not on `NEW_PREFIX`, which the compact reminder removes | green |
 | LEDGER_FIRST_PROMPT_FULL | X106 | tests/test-prompt-hooks.sh | integration | green |
-| LEDGER_LATER_PROMPT_REMINDER | X107 | tests/test-prompt-hooks.sh | integration | green |
-| REMINDER_KEEPS_NOTICE_LINES | X108, inside X109 (the same notice-body run) | tests/test-prompt-hooks.sh | integration | green |
-| REMINDER_SAYS_SURFACED_NEVER_LOADED | X109 | tests/test-prompt-hooks.sh | integration | green |
-| LEDGER_NEW_IDS_LISTED | X110 | tests/test-prompt-hooks.sh | integration | green |
-| REMINDER_DROPS_PEERS_ALREADY_SHOWN | X111 | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_LATER_PROMPT_REMINDER | X107 | tests/test-prompt-hooks.sh | integration; rewritten 2026-10-01 and its case at the RED of plan increment 2; red at the RED of plan increment 2 (the reminder is the 7.28.0 Surfaced line, not `LOAD <n> ~<t>t (reminder)` and `seen:`; the first, full prompt is in the 7.32.0 layout); green at the GREEN of plan increment 2 | green |
+| REMINDER_KEEPS_NOTICE_LINES | X108, inside X109 (the same notice-body run) | tests/test-prompt-hooks.sh | integration; rewritten 2026-10-01 and its case at the RED of plan increment 2; red at the RED of plan increment 2 (notices print as `  ! <text>`, not `! <text>`); green at the GREEN of plan increment 2 | green |
+| REMINDER_SAYS_SURFACED_NEVER_LOADED | X109 | tests/test-prompt-hooks.sh | integration; rewritten 2026-10-01 and its case at the RED of plan increment 2; red at the RED of plan increment 2 (the X108 notice compare fails first; no `seen:` line); green at the GREEN of plan increment 2 | green |
+| LEDGER_NEW_IDS_LISTED | X110 | tests/test-prompt-hooks.sh | integration; rewritten 2026-10-01 and its case at the RED of plan increment 2; red at the RED of plan increment 2 (the full prompt is in the 7.32.0 layout; no `LOAD <n> ~<t>t (reminder)` header); green at the GREEN of plan increment 2 | green |
+| REMINDER_DROPS_PEERS_ALREADY_SHOWN | X111 | tests/test-prompt-hooks.sh | integration; rewritten 2026-10-01 and its case at the RED of plan increment 2; red at the RED of plan increment 2 (no `skip (cross only if the task needs it):` block); green at the GREEN of plan increment 2 | green |
 | LEDGER_EVERY_LOAD_ID_NAMED | X106, X107, X110, X113, X120 and X123 hold the six ledger states (absent, every id surfaced, one outside, `REFRESH_EVERY`, invalid JSON, count 0 after a reset), each by an exact-text compare | tests/test-prompt-hooks.sh | integration | green |
 | LEDGER_REFRESH_EVERY_N | X113; constant read by regex, N and N−1 | tests/test-prompt-hooks.sh | integration | green |
 | LEDGER_TRIVIAL_PROMPT_UNTOUCHED | X114; green on arrival; RED shown by mutation (trivial-prompt early return removed) | tests/test-prompt-hooks.sh | integration | green |
 | LEDGER_UNUSED_WITHOUT_GRAPH | X115; green on arrival; RED shown by mutation (no-graph path creating a file under `.cypress/session/`) | tests/test-prompt-hooks.sh | integration | green |
 | LEDGER_NEVER_EMITS_UNROUTED_ID | X116, inside X107: one unrouted id in the ledger, absent from the injection | tests/test-prompt-hooks.sh | integration | green |
-| UNPARSEABLE_ROUTER_OUTPUT_FULL | X117 | tests/test-prompt-hooks.sh | integration | green |
 | LEDGER_ABSENT_SESSION_ID_FULL | X118; two envelopes, and it holds the CLAUDE_HOOKS_FAIL_OPEN_ON_COPILOT_ENVELOPE block | tests/test-prompt-hooks.sh | integration | green |
-| LEDGER_INVALID_SESSION_ID_FULL | X119; three ids, tree snapshot before and after | tests/test-prompt-hooks.sh | integration | green |
+| LEDGER_INVALID_SESSION_ID_FULL | X119; four ids through stdin (`../../escape`, `a/b`, `ab\x00cd`, `abc\n`) and `abc\n` through argv (`--session-id=abc\n`), one fresh plant per row, tree snapshot before and after | tests/test-prompt-hooks.sh | integration; the `abc\n` rows red at 7.37.0 increment 1 review (F2: a `$`-anchored `SESSION_ID.match` accepts the trailing newline, so ledger `abc\n.json` is written, both envelopes); green at its GREEN (`fullmatch` at every pattern check in route-hook.py) | green |
 | LEDGER_CORRUPT_FULL | X120; three shapes | tests/test-prompt-hooks.sh | integration | green |
 | LEDGER_UNKNOWN_VERSION_FULL | X121, a row of X120 | tests/test-prompt-hooks.sh | integration | green |
 | LEDGER_EXPIRED_FULL | X122, a row of X120 | tests/test-prompt-hooks.sh | integration | green |
@@ -1536,30 +1794,22 @@ Techniques the cases rely on:
 | LEDGER_GC_BOUNDED | X134; old ledgers go, foreign files stay | tests/test-prompt-hooks.sh | integration | green |
 | BRIEF_TEMPLATES_BYTE_IDENTICAL | check | tests/seed-lint.py | verify gate; the slug sits in a comment beside the existing GRAPH DISCIPLINE identity check in `check` (not `main`, which holds no such check), and the verify record is `git diff --quiet <baseline> -- templates/prompts/graph-session-bootstrap.md templates/prompts/handback-payload.md`, where `<baseline>` is the 7.32.0 commit that lands owner rule R5's two sentences in step 4, commit `9ba5b4b` (until 7.32.0 it was `ac61a3f`, the 7.27.0 release commit, the parent of Slice A's first commit). From 7.35.0 the baseline is commit `dd7591d`, the commit that lands that round's template changes, the `COMPANION` block among them. Green on arrival (exit 0 at RED); RED shown by mutation (a byte appended to either template gives exit 1, and a drifted embedded block fails the identity check). Held at `pending` until the top-level-def scope defect in `check_spec_rows_name_their_contract` was fixed (§12); green since, and binding (the slug found inside the function) | green |
 | BRIEF_TEMPLATES_BYTE_IDENTICAL | X396 COMPANION block drift: one word changed inside the `COMPANION` block of one embedding template is a finding naming that template | tests/test-seed-lint.sh | unit | green |
-| ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX | X135; structural, substrings | tests/test-prompt-hooks.sh | unit | green |
-| ROUTE_EXTENSION_PASSES_PROMPT_AS_ONE_OPTION_VALUE | X136, inside X135; structural, substrings | tests/test-prompt-hooks.sh | unit | green |
-| ROUTE_EXTENSION_TEXT_MATCHES_ROUTE_HOOK | X137; structural, escapes decoded, plain substrings | tests/test-prompt-hooks.sh | unit | green |
-| ROUTE_EXTENSION_HOLDS_NO_LEDGER_STATE | X138; structural, the fs-write ban | tests/test-prompt-hooks.sh | unit | green |
-| PRIME_OVERLAY_KEEPS_SURFACED_SET | X139, inside X141: the section names `_cypress_surfaced` | tests/test-prompt-hooks.sh | unit | green |
-| PRIME_OVERLAY_NEVER_SAYS_LOADED | X140, inside X141: no `loaded` in the section; fails on an absent section | tests/test-prompt-hooks.sh | unit | green |
-| PRIME_OVERLAY_SECTION_WITHIN_CEILING | X141; structural; holds `OVERLAY_SECTION_MAX_BYTES` | tests/test-prompt-hooks.sh | unit | green |
-| PRIME_EAGER_SURFACE_WITHIN_BUDGET | check_eager_surface | tests/seed-lint.py | unit; an existing check, run with check_published_eager_figures; green on arrival, and red on the section's arrival until the matrix figures are updated. RED shown by mutation (the overlay grown in a scratch copy fails the published-figures check). Held at `pending` until the top-level-def scope defect in `check_spec_rows_name_their_contract` was fixed (§12); green since, and binding (the slug found inside the function) | green |
+| ROUTE_EXTENSION_PASSES_PROMPT_AS_ONE_OPTION_VALUE | X136; structural, substrings; was inside X135, which retired | tests/test-prompt-hooks.sh | unit; rewritten 2026-10-01 and its case at the RED of plan increment 1; red on arrival (no `--prompt=${`) | green |
+| PRIME_EAGER_SURFACE_WITHIN_BUDGET | check_eager_surface | tests/seed-lint.py | unit; an existing check, run with check_published_eager_figures; green on arrival, and red on the section's arrival until the matrix figures are updated. RED shown by mutation (the overlay grown in a scratch copy fails the published-figures check). Held at `pending` until the top-level-def scope defect in `check_spec_rows_name_their_contract` was fixed (§12); green since, and binding (the slug found inside the function); rewritten 2026-10-01; the 7.37.0 RED kept the existing check as its case (no new test), and the published half is green once the release doc pass re-derived the matrix figures | green |
 | ROUTER_FAILED | X142; non-zero exit, empty output, and timeout with `ROUTER_TIMEOUT` rewritten to 1 | tests/test-prompt-hooks.sh | integration | green |
-| SESSION_ID_REFUSED | X119, the case of LEDGER_INVALID_SESSION_ID_FULL | tests/test-prompt-hooks.sh | integration; its cases pass at GREEN (2026-09-23), and each names this failure slug after its contract slug, on its OK and FAIL lines (`X1NN <SLUG>; failure …`) | green |
+| ENGINE_OLDER_THAN_HOOK_IS_NAMED | X177; mixed version: the real `v7.36.0` graph-lint.py, which rejects `--plan-json` (argparse exit 2), under the new route-hook, first prompt and a ledgered prompt: the pointer line and one notice line naming `graph-lint.py`, `--plan-json` and `graft`, the prompt absent, exit 0, no stderr, ledger untouched or absent | tests/test-prompt-hooks.sh | integration; red on arrival (the pointer line alone) | green |
+| SESSION_ID_REFUSED | X119, the case of LEDGER_INVALID_SESSION_ID_FULL | tests/test-prompt-hooks.sh | integration; its cases pass at GREEN (2026-09-23), and each names this failure slug after its contract slug, on its OK and FAIL lines (`X1NN <SLUG>; failure …`); red again with X119's `abc\n` rows (F2), green at their GREEN | green |
 | LEDGER_UNUSABLE | X120 (with its X121 and X122 rows), X130 (file symlink and FIFO) and X131, the cases of the contracts named there | tests/test-prompt-hooks.sh | integration; its cases pass at GREEN (2026-09-23), and each names this failure slug after its contract slug, on its OK and FAIL lines (`X1NN <SLUG>; failure …`) | green |
 | LEDGER_DIR_UNUSABLE | X130, X131 and X132, the cases of the contracts named there | tests/test-prompt-hooks.sh | integration; its cases pass at GREEN (2026-09-23), and each names this failure slug after its contract slug, on its OK and FAIL lines (`X1NN <SLUG>; failure …`) | green |
 | RESET_NOT_WRITTEN | X143, for the write-fails trigger; the sibling-missing trigger is X127 | tests/test-prompt-hooks.sh | integration | green |
-| PRIME_MODEL_IGNORES_SURFACED_INSTRUCTION | no test; model behaviour, soft (§11). The no-omission half rests on ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX and ROUTE_EXTENSION_HOLDS_NO_LEDGER_STATE | — | — | pending |
-| PRIME_SURFACED_SET_TRUSTED_WHILE_STALE | no test; model behaviour (§11) | — | — | pending |
 | UNEXPECTED_EXCEPTION | X144; a status register printing non-UTF-8 bytes; red on arrival (a traceback) | tests/test-prompt-hooks.sh | integration | green |
 | UNEXPECTED_EXCEPTION | X145; 100 000 nested `[` on stdin, both hooks; red on arrival (a traceback, no pointer line) | tests/test-prompt-hooks.sh | integration | green |
-| ROUTE_HOOK_STRIPS_MULTILINE_PROMPT_ECHO | X146; CRLF and lone-CR prompts against their `\n` twin; red on arrival (newline translation broke the echo match) | tests/test-prompt-hooks.sh | integration | green |
+| ROUTE_HOOK_STRIPS_MULTILINE_PROMPT_ECHO | X146; CRLF and lone-CR prompts against their `\n` twin; red on arrival (newline translation broke the echo match) | tests/test-prompt-hooks.sh | integration; rewritten 2026-10-01; at the RED of plan increment 1 its assertions stand unchanged against the `cypress.plan/1` stub | green |
 | RESET_NOT_WRITTEN | X147, a second fault row of X143: the ledger stat fails | tests/test-prompt-hooks.sh | integration | green |
 | LEDGER_WRITE_FAILURE_FAILS_OPEN | X148; a ledger that would pass `LEDGER_MAX_BYTES`, one prompt: not written, full mode | tests/test-prompt-hooks.sh | integration | green |
 | LEDGER_GC_BOUNDED | X149, a fault row of X134: GC's scan fails and the ledger is still written | tests/test-prompt-hooks.sh | integration | green |
-| ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX | X150, inside X135; structural | tests/test-prompt-hooks.sh | unit | green |
-| PLAN_ENTRY_NAMES_THE_NODE_FILE | test_plan_entry_names_the_node_file | tests/test_graph_lint.py | integration; red on arrival (entry lines carry no path); the fixture puts one node at `docs/graph/agents/04-tester.md`, a path its id does not spell | green |
-| ROUTE_HOOK_KEEPS_THE_PATH | X151, inside X110: pathed entry lines are the default body, and the ledger holds ids only | tests/test-prompt-hooks.sh | integration | green |
+| PLAN_ENTRY_NAMES_THE_NODE_FILE | test_plan_entry_names_the_node_file | tests/test_graph_lint.py | integration; the fixture puts one node at `docs/graph/agents/04-tester.md`, a path its id does not spell, with a `tester — ` title prefix; rewritten 2026-10-01 and its case at the RED of plan increment 2, red (`--plan` prints `task:`, padded columns and the 7.32.0 headers); still red at the GREEN of plan increment 2, for a harness reason: the `widget ledger tester` title adds task terms to `agent.tester`, its score lifts the cut above `subsystem.alpha`, and LOAD is two nodes (question file of the GREEN); green at the REFACTOR of plan increment 2, the fixture title now `tester — reads the gearbox`, which holds no task term | green |
+| ROUTE_HOOK_KEEPS_THE_PATH | X151, inside X110: the full injection names every LOAD and skipped path; the reminder's new entry line and new `<id>=<path>` skip item carry theirs; the ledger holds ids only | tests/test-prompt-hooks.sh | integration; rewritten 2026-10-01 and its case at the RED of plan increment 2, red with X110; green at the GREEN of plan increment 2 | green |
 | ANCHOR_RECORD_NAMES_EVERY_REPOSITORY | X152; every repository named | tests/test-code-anchor.sh | integration | green |
 | ANCHOR_QUIET_WHEN_NOTHING_MOVED | X153; red on arrival (no tool) | tests/test-code-anchor.sh | integration | green |
 | ANCHOR_NAMES_PATHS_WHEN_THE_COMMIT_MOVED | X154; red on arrival (no tool) | tests/test-code-anchor.sh | integration | green |
@@ -1572,12 +1822,35 @@ Techniques the cases rely on:
 | ANCHOR_RECORD_REFUSES_A_SYMLINK | X166, a row of X160: a directory at the anchor name is refused as not a regular file (§6 anchor file) | tests/test-code-anchor.sh | integration | green |
 | STATUS_HOOK_INJECTS_THE_ANCHOR_LINE | X161; with and without a register; red on arrival (no anchor line); its ledger-reset assertion is a guard, green on arrival | tests/test-prompt-hooks.sh | integration | green |
 | STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION | X162; two causes (absent, timeout), no register | tests/test-prompt-hooks.sh | integration | green |
-| STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION | X165; structural: `ANCHOR_TIMEOUT` in `status-hook.py` equals the `status-extension.ts` timeout over 1000 | tests/test-prompt-hooks.sh | unit | green |
-| STATUS_EXTENSION_INJECTS_THE_ANCHOR_LINE | X163; structural, substrings | tests/test-prompt-hooks.sh | unit | green |
 | STATUS_HOOK_INJECTS_THE_ANCHOR_LINE | X164; structural: `settings.json` and the Copilot `status.json` wire `status-hook.py` under `SessionStart` alone | tests/test-prompt-hooks.sh | unit | green |
 | ANCHOR_UNUSABLE | X157, the case of the contract named there | tests/test-code-anchor.sh | integration; the case names this failure slug after its contract slug | green |
 | ANCHOR_COMMIT_UNREACHABLE | X157, the case of the contract named there | tests/test-code-anchor.sh | integration; the case names this failure slug after its contract slug | green |
-| ANCHOR_CHECK_DID_NOT_RUN | X162 and X163, the cases of the contracts named there | tests/test-prompt-hooks.sh | integration and unit; each names this failure slug after its contract slug | green |
+| ANCHOR_CHECK_DID_NOT_RUN | X162, the case of the contract named there (X163 retired with STATUS_EXTENSION_INJECTS_THE_ANCHOR_LINE, 2026-10-01) | tests/test-prompt-hooks.sh | integration; it names this failure slug after its contract slug | green |
+| PLAN_JSON_SCHEMA | test_plan_json_schema | tests/test_graph_lint.py | integration; the PLAN_* fixture plant (`plan_fixture_plant`), the notice task; red on arrival (`--plan-json` unrecognized). Since 2026-10-01 its task must load, skip and raise a notice under the SPEC-0002 ladder (a `wide_descent` task); the tester re-picks it | green |
+| PLAN_JSON_CARRIES_NO_PROMPT | test_plan_json_carries_no_prompt | tests/test_graph_lint.py | integration; red on arrival (`--plan-json` unrecognized) | green |
+| PLAN_JSON_HASH_BINDS_TASK | test_plan_json_hash_binds_task | tests/test_graph_lint.py | integration; five rows (one line, LF, CRLF, lone CR, non-ASCII); red on arrival (`--plan-json` unrecognized) | green |
+| PLAN_JSON_EQUALS_PLAN | test_plan_json_equals_plan | tests/test_graph_lint.py | integration; since 2026-10-01 its `PLAN_TASK_SET` and its harness key need a `composed` entry under the SPEC-0002 ladder (row `pending` until the tester's rewrite); `PLAN_TASK_SET` (a notice with a composed entry, a node whose path its id does not spell, a rootless task that loads nothing, and from plan increment 2 an inferred entry); red on arrival (`--plan-json` unrecognized); its parser `text_plan` rewritten to the compact grammar at the RED of plan increment 2, red again until `--plan` prints that grammar; green at the GREEN of plan increment 2 | green |
+| ROUTE_HOOK_READS_PLAN_JSON | X167; seven stub modes (bad schema, bad hash, off-pattern id, absolute path, `..` path, extra key, not JSON) | tests/test-prompt-hooks.sh | integration; red on arrival (the core reads the text view, so each gives a reminder) | green |
+| ROUTE_FULL_TEXT_EQUALS_PLAN | X168; the `PLAN_TASK_SET` of tests/test_graph_lint.py over the real router, with an inferred-expertise task added at the RED of plan increment 2 (reviewer N1); `--plan` stdout is compared whole, with no echo removed | tests/test-prompt-hooks.sh | integration; red at the RED of plan increment 2 (`--plan` still prints its `task:` echo; on the inferred task it also prints ` via "<pattern>"`, which the document does not carry); green at the GREEN of plan increment 2 | green |
+| HOOK_ARGV_ENVELOPE_EQUALS_STDIN_ENVELOPE | X169; five route states, the status compact reset, and an unknown option on each hook | tests/test-prompt-hooks.sh | integration; red on arrival (no argv envelope: the argv run emits nothing) | green |
+| CHILD_SESSION_GETS_NO_INJECTION | X170; `--depth=1` on both hooks, then `--depth=0`, absent and `x` | tests/test-prompt-hooks.sh | integration; red on arrival (the status hook injects at depth 1; the route hook ignores argv) | green |
+| NON_HUMAN_TURN_NOT_ROUTED | X171; each `NON_HUMAN_MARKERS` entry through stdin and argv, `--origin=agent`, then `human`, absent and off-pattern | tests/test-prompt-hooks.sh | integration; red on arrival (a marker prompt is routed and counted); the `[bash-done ` (`[bash-done pid:1 exit:0]`) and `[harness-digest]` rows red at 7.37.0 increment 1 review (F1: both routed with a reminder and counted); green at its GREEN (both markers in `NON_HUMAN_MARKERS`) | green |
+| SESSION_INJECTION_WITHIN_BUDGET | X172; tests/fixtures/session-injection/scripted-session.json over the PLAN_* fixture plant; the ceiling is read from tests/ratchets.json | tests/test-prompt-hooks.sh | integration; red on arrival (no argv envelope, so no full injection; and `SESSION_INJECTION_MAX_BYTES` is not registered until GREEN measures it) | green |
+| PRIME_SESSION_ID_PASSED | X173 | tests/test-prompt-hooks.sh | unit; structural; red on arrival (no `getSessionId(`, `rlmDepth`, argv options) | green |
+| PRIME_RESET_ON_EVENTS | X174 | tests/test-prompt-hooks.sh | unit; structural; red on arrival (status-extension.ts subscribes `before_agent_start` alone) | green |
+| STATUS_ONCE_PER_SESSION | X175 | tests/test-prompt-hooks.sh | unit; structural; red on arrival (`let shown`) | green |
+| PRIME_SESSION_UNKNOWN | X170 and X173, the cases of the contracts named in §7 (an unreadable depth is routed; no session id is full mode) | tests/test-prompt-hooks.sh | integration; each names this failure slug after its contract slug | green |
+| STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION | X165; structural: one `ANCHOR_TIMEOUT =` literal in `status-hook.py`, the `code-anchor.py --compare` run waits on it, `status-extension.ts` names no anchor, has one `pi.exec(` and its one timeout exceeds the core's waits plus `ANCHOR_TIMEOUT` | tests/test-prompt-hooks.sh | unit; structural; rewritten at the 7.37.0 increment 1 REFACTOR; no mutation run recorded | green |
+| EVERY_RESOLVER_PATH_IS_INSTALLED | M11; reads `route-hook.py` CANDIDATES, `status-hook.py` CANDIDATES and ANCHOR_CANDIDATES, and each placed extension's `path.join(__dirname, "..", "hooks")` script, then requires each path in the installed plant | tests/test-install-placement.sh | integration; the status-hook lists added at 7.37.0 increment 1 review, red (`tools/status-register.py`: no installer writes it); M11 passes at its GREEN (the path dropped from status-hook.py CANDIDATES); the slug added 2026-10-01 at the RED of plan increment 2, and M11 names it | green |
+| SHOW_KEEPS_EVERY_POINTER | test_show_keeps_every_pointer; every node of the `show_fixture_plant`, the expected values read from each raw file's frontmatter | tests/test_graph_lint.py | integration; red on arrival (`--show` is not an option: argparse exits 2); green at the GREEN of plan increment 2 | green |
+| SHOW_DROPS_ROUTER_AND_SPAWN_KEYS | test_show_drops_router_and_spawn_keys | tests/test_graph_lint.py | integration; red on arrival (`--show` is not an option); green at the GREEN of plan increment 2 | green |
+| SHOW_BODY_VERBATIM | test_show_body_verbatim | tests/test_graph_lint.py | integration; red on arrival (`--show` is not an option); green at the GREEN of plan increment 2 | green |
+| SHOW_UNKNOWN_ID_FAILS | test_show_unknown_id_fails; a harness step first requires `--show root` to exit 0 | tests/test_graph_lint.py | integration; red on arrival (`--show root` exits 2: not an option); green at the GREEN of plan increment 2 | green |
+| ANCHOR_IGNORES_BUILD_AND_BACKUP_NOISE | X176; one real path, then 21 real paths so the more-paths line must count after the filter; `--compare` and `--compare --all` | tests/test-code-anchor.sh | integration; red on arrival (the uncommitted line names all four build and backup files); green at the GREEN of plan increment 2 | green |
+| ANCHOR_IGNORES_BUILD_AND_BACKUP_NOISE | X176, its second case: untracked `src/x.bak-config.yaml`, `src/config.bak/settings.py` and `src/y.py.bak-20260928-163636`; `--compare` and `--compare --all` name the first two and not the third | tests/test-code-anchor.sh | integration; red on arrival (`x.bak-config.yaml` is filtered); the `config.bak/` arm passes today, a guard held by a filter that matches a directory segment | green |
+| PLAN_PRINTS_PLANT_BLOCK | test_plan_prints_plant_block; the `planted` fixture (PLANT_FACTS in index.md) and `main` (no block); the hook side is X168 over the `planted` row of PLAN_TASK_SET | tests/test_graph_lint.py, tests/test-prompt-hooks.sh (X168) | integration; red on arrival (the `planted` subtest: `--plan` printed no `plant:` line), green since increment 4; the `main` subtest is the guard | green |
+| PLAN_PRINTS_PLANT_BLOCK, the unfilled-or-partial And | test_plan_prints_plant_block, subtests `placeholder` (`<ephemeral-test \| staging>`), `placeholder-commented` (`<ephemeral-test \| staging>  # x`) and `partial` (`comment_language` dropped) | tests/test_graph_lint.py | integration; added at increment 4 review FIX-2; `placeholder-commented` red on arrival (`--plan` printed `plant: environment_class=<ephemeral-test \| staging>  # x ...`: plant_block keeps the comment tail, so _unfilled sees no closing `>`); `placeholder` and `partial` green on arrival, guards; green since the FIX-2 GREEN (plant_block drops an inline `# comment` tail) | green |
+| PLAN_PRINTS_PLANT_BLOCK, the reminder And | X178; the `planted` fixture plant: the full injection carries PLANT_LINE, the second prompt's reminder carries no `plant:` line | tests/test-prompt-hooks.sh | integration; added at increment 4 review N4; green on arrival, a characterization of an untested clause (route-hook.py reminder_text never reads the plan's `plant`) | green |
 
 Existing tests that must change in the same commit as the RED cases (plan §9):
 `tests/test-tier-lanes.sh` drops `route-hook.py` and `route-extension.ts` from
@@ -1601,14 +1874,16 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
 | The name of Prime Agent's compaction event | The earlier draft subscribed to it to reset a module-scope ledger | **Resolved 2026-09-23 and moot.** The host research pass classes `session_before_compact` (reason `manual`, `threshold`, `overflow`), `session_compact` and `session_compact_failed` as Documented (§6). The extension now subscribes to no session event, and the kernel set needs no reset | architect | resolved |
 | Whether `session_start` fires before the extension registers its handler | The earlier draft armed its ledger there | **Moot:** the extension holds no state (`ROUTE_EXTENSION_HOLDS_NO_LEDGER_STATE`) | architect | resolved |
 | Whether `rlm()` children share the extension module instance with the parent | Shared state would judge one context against another's record | **Moot for state:** the extension holds none, and a child's kernel is its own (Documented, §6) | architect | resolved |
-| Whether an `rlm()` child receives the `APPEND_SYSTEM.md` overlay | Decides whether a child keeps a set of its own | not recorded. Either answer keeps I-2: the child starts with an empty set or none, and re-reads what it needs | architect | Unknown; not needed for this spec |
-| Whether a model on Prime Agent follows the section's instruction | The whole Prime Agent saving depends on it, and the stale-set omission path (`PRIME_SURFACED_SET_TRUSTED_WHILE_STALE`) is closed by wording alone | not measured. No eval of model behaviour on Prime Agent exists. Non-compliance costs re-reads; only a model that trusts a stale set risks a missed read | owner | residual; an eval over Prime Agent sessions, not planned |
-| Model-side suppression on Prime Agent (security review) | Prompt-injected content can tell the model to fill `_cypress_surfaced` with ids it never opened | soft, and bounded by the full injection on every prompt, which still names every routed id (§7 `PRIME_SURFACED_SET_TRUSTED_WHILE_STALE`) | security | residual |
+| Whether an `rlm()` child receives the `APPEND_SYSTEM.md` overlay | Decided whether a child keeps a set of its own | **Moot 2026-10-01:** the set is retired (ADR-0024) | architect | resolved |
+| Whether a model on Prime Agent follows the section's instruction | The 7.28.0 Prime Agent saving depended on it | **Moot 2026-10-01:** the section is retired; Prime Agent residency is the core's ledger (ADR-0024) | owner | resolved |
+| Model-side suppression on Prime Agent (security review) | Prompt-injected content could fill `_cypress_surfaced` | **Moot 2026-10-01:** the set is retired; the ledger is written only by the core, under the §6 persistence rules | security | resolved |
 | The spawn-boundary claim for Claude Code hooks | I-2 rests on hooks not crossing into a spawn (`status-hook.py:13-15`) | taken from the hook's own docstring. The tester found no existing test of hooks at the spawn boundary (2026-09-23), so the test is not recorded, and this spec adds none | tester | residual |
-| No behavioural test for `route-extension.ts` or the overlay | The eight Prime Agent structural contracts prove text and shape, not behaviour of the extension or the model | accepted at structural strength, as plan §5 records | owner | residual; a TypeScript runtime in the gate, not planned |
+| No behavioural test for the Prime Agent extensions | The extensions are proved by reading their text | Since 7.37.0 they are envelopes: the behaviour is the core's, run by the gate through the argv envelope; the envelope wiring is structural and the three host facts of §6 are probed live before GREEN | owner | residual; a TypeScript runtime in the gate, not planned |
 | The prime-agent eager figure in `README.md:50` and `:338` | `check_published_eager_figures` matches only a figure followed by `B` or `bytes`, and these two lines carry none, so they can go stale with the gate green | updated by hand in the commit that adds the section | implementer | residual; a check change is outside this spec |
 | A ledger or session directory owned by another user | The owner test of §6 has no gate case, since it needs a second account | the mode cases run in the gate (`LEDGER_FOREIGN_OR_WRITABLE_REFUSED`); the owner half is shown by reading the code at review | security | residual |
-| How `pi.exec` decodes the child's line endings before it returns | X150 (inside X135) proves only that `route-extension.ts` tests the exact echo prefix. If `pi.exec` itself rewrites CR or CRLF, a CRLF prompt's echo stops matching and the extension falls back to the pointer line alone | not recorded. X150 is structural only, and no runtime test observes `pi.exec` | architect | Unknown |
+| How `pi.exec` decodes the child's line endings | The 7.28.0 extension matched an exact echo, which a decoded CR would break | **Moot 2026-10-01:** the core hashes the prompt it passes and the router hashes what it receives, so both see the same bytes; no echo is matched | architect | resolved |
+| `getSessionId()` in `before_agent_start`; `rlmDepth` or `parentSession` on the session header; the extension's own directory under jiti | Prime Agent residency (first), child suppression (second) and finding the hooks (third) rest on them | not recorded; each failure falls toward inclusion (§7 `PRIME_SESSION_UNKNOWN`) | orchestrator | a live probe on Prime Agent before the GREEN of plan increment 1, recorded as evidence |
+| Whether Claude Code's `UserPromptSubmit` envelope carries the turn's origin | The transcript records `origin.kind`; the hook would read it instead of `NON_HUMAN_MARKERS` | not recorded; the markers hold until a probe shows it | architect | a probe at the RED of plan increment 1 |
 | The Claude Code default hook timeout | If the host kills the hook first, nothing is injected, not even the pointer line | not recorded. The seed sets none; `ROUTER_TIMEOUT` is 15 s and GC is bounded by `GC_SCAN_MAX` (plan §4.8, §11) | reliability | Unknown |
 | The reminder header, renamed in the first draft from the plan's `Not loaded, not listed before:` to `Peers not listed before:` | The plan's header contained "loaded", which contradicts I-6; the first rename lost the router's "not suggested" meaning | **Resolved, product 2026-09-23:** renamed to `Not suggested, not listed before (cross only if needed):` so the header keeps the router's "not suggested" meaning | product | resolved |
 | The reminder tail on Claude Code | On Claude Code "surfaced" means suggested, not opened, so "re-open" assumed a read | **Resolved, product 2026-09-23 (optional C6, taken):** `— open if not in view.` on Claude Code; the Prime Agent section keeps "re-open", where membership does mean the model opened the node | product | resolved |
@@ -1931,3 +2206,94 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
   changes land. §10 gains X396 (`tests/test-seed-lint.sh`), `red` until its
   RED lands; the existing `check` row is unchanged apart from the baseline
   note. No other contract changed; the status stays `active`.
+- 2026-10-01: 7.37.0, by the architect, written ahead of its RED
+  ([ADR-0024](../decisions/adr-0024-one-hook-core-per-session-residency.md),
+  [ADR-0025](../decisions/adr-0025-compact-route-lines-json-between-programs.md),
+  [ADR-0027](../decisions/adr-0027-first-move-runs-the-router.md); plan
+  `docs/plans/grill-7.37.0-routing-context.md`). The sign-offs in §0 predate
+  it and were not re-taken. Owner rulings D1 (Prime Agent residency), D3 (a
+  slim node view that keeps every leaf pointer) and O1 (keep every path), and
+  the owner's note that the cost is in subsequent prompts. One Python core,
+  `route-hook.py` and `status-hook.py`, serves both first-class hosts: Prime
+  Agent's extensions call copies at `.prime/agent/hooks/` through an argv
+  envelope, and a child session or a turn a person did not type gets no
+  injection. The core reads `graph-lint.py --plan-json` (`cypress.plan/1`)
+  instead of parsing text. Models read a compact grammar that keeps the path
+  on every id, and `graph-lint.py --show`. §4 gains, live from this entry:
+  PLAN_JSON_SCHEMA, PLAN_JSON_CARRIES_NO_PROMPT, PLAN_JSON_HASH_BINDS_TASK,
+  PLAN_JSON_EQUALS_PLAN, ROUTE_HOOK_READS_PLAN_JSON,
+  ROUTE_FULL_TEXT_EQUALS_PLAN, HOOK_ARGV_ENVELOPE_EQUALS_STDIN_ENVELOPE,
+  CHILD_SESSION_GETS_NO_INJECTION, NON_HUMAN_TURN_NOT_ROUTED,
+  SESSION_INJECTION_WITHIN_BUDGET, PRIME_SESSION_ID_PASSED,
+  PRIME_RESET_ON_EVENTS, STATUS_ONCE_PER_SESSION, SHOW_KEEPS_EVERY_POINTER,
+  SHOW_DROPS_ROUTER_AND_SPAWN_KEYS, SHOW_BODY_VERBATIM, SHOW_UNKNOWN_ID_FAILS,
+  ANCHOR_IGNORES_BUILD_AND_BACKUP_NOISE, and PLAN_PRINTS_PLANT_BLOCK (which
+  lands only with ADR-0027). Rewritten: ROUTE_HOOK_STRIPS_MULTILINE_PROMPT_ECHO
+  (its And), ROUTE_HOOK_PASSES_PROMPT_AS_ONE_OPTION_VALUE (`--plan-json=`),
+  ROUTE_EXTENSION_PASSES_PROMPT_AS_ONE_OPTION_VALUE (`--prompt=`),
+  PRIME_EAGER_SURFACE_WITHIN_BUDGET (no overlay section),
+  LEDGER_LATER_PROMPT_REMINDER, REMINDER_KEEPS_NOTICE_LINES,
+  REMINDER_SAYS_SURFACED_NEVER_LOADED, LEDGER_NEW_IDS_LISTED,
+  REMINDER_DROPS_PEERS_ALREADY_SHOWN, ROUTE_HOOK_KEEPS_THE_PATH and
+  PLAN_ENTRY_NAMES_THE_NODE_FILE (the compact grammar), and
+  HOOK_TEXT_RESTATES_NO_KERNEL_RULE (one re-baseline of its ceiling). Retired,
+  with their §10 rows: ROUTER_OUTPUT_WITHOUT_ECHO_PREFIX_POINTER_ONLY and
+  UNPARSEABLE_ROUTER_OUTPUT_FULL (folded into ROUTE_HOOK_READS_PLAN_JSON:
+  there is no echo, and an invalid document gives the pointer line alone);
+  ROUTE_EXTENSION_STRIPS_EXACT_ECHO_PREFIX, ROUTE_EXTENSION_TEXT_MATCHES_ROUTE_HOOK
+  and STATUS_EXTENSION_INJECTS_THE_ANCHOR_LINE (the extensions compose no
+  text); ROUTE_EXTENSION_HOLDS_NO_LEDGER_STATE (its fs-write ban moves into
+  PRIME_SESSION_ID_PASSED; the core now holds the ledger on Prime Agent);
+  PRIME_OVERLAY_KEEPS_SURFACED_SET, PRIME_OVERLAY_NEVER_SAYS_LOADED and
+  PRIME_OVERLAY_SECTION_WITHIN_CEILING (the section is deleted); and the
+  failures PRIME_MODEL_IGNORES_SURFACED_INSTRUCTION and
+  PRIME_SURFACED_SET_TRUSTED_WHILE_STALE. §7 gains PRIME_SESSION_UNKNOWN, and
+  ROUTER_FAILED's trigger names the document validation. §1 to §3, §5, §6
+  (argv envelope, patterns, constants `NON_HUMAN_MARKERS` and
+  `SESSION_INJECTION_MAX_BYTES`, the three router views, the injection texts,
+  the mode decision, the Prime Agent envelope and host facts, the anchor
+  filter), §8, §9 (AC-16 to AC-19), §10 and §11 follow. The texts change in
+  two steps, in plan order: the core and the JSON first, on the 7.28.0
+  reminder literals; the compact grammar second. Until each RED lands,
+  `spec-lint.py` counts its contracts as uncovered. The status stays
+  `active`.
+- 2026-10-01: 7.37.0 plan increment 2 GREEN, by the implementer (spawn
+  `orchestrator.10.implementer.3`), with the orchestrator's rulings on the
+  RED's questions. §6 pins the skip-group order (peers before composed, by
+  `via`, ids sorted within a group; the JSON `skip` follows it), keeps every
+  frontmatter key `--show` does not classify, states that `--show` cuts the
+  title as `--plan` does and keeps a directory entry's trailing `/`, names
+  the reminder literals, and drops the transition sentences of the 7.28.0
+  literals and the 7.32.0 layout. ROUTE_FULL_TEXT_EQUALS_PLAN compares
+  `--plan` stdout whole. `HOOK_TEXT_MAX_BYTES` is re-baselined from 851 to
+  724 (a tightening). No contract added; the status stays `active`.
+- 2026-10-01: 7.37.0 increment 2 review fixes, RED by the tester (spawn
+  `orchestrator.12.tester.6`), on the orchestrator's rulings for reviewer F1
+  and F4. §7 gains ENGINE_OLDER_THAN_HOOK_IS_NAMED: an engine that rejects
+  `--plan-json` gives the pointer line and one notice line naming the graft,
+  never a `--plan` text fallback; ROUTER_FAILED's trigger excludes it and X177
+  moves to its row. ANCHOR_IGNORES_BUILD_AND_BACKUP_NOISE and the §6 anchor
+  filter narrow the backup match to `*.bak` and `*.bak-<digit>*`. §10 gains
+  the two rows, `red`. The status stays `active`.
+- 2026-10-01: 7.37.0 increment 2 review fixes, GREEN by the implementer
+  (spawn `orchestrator.14.implementer.4`). ENGINE_OLDER_THAN_HOOK_IS_NAMED's
+  trigger states how the hook tells an old engine from any other failure
+  (exit 2 plus argparse's `unrecognized arguments: --plan-json`), and its
+  recovery follows adr-0014: graft's engine step, not a re-install. The
+  X176 second case and X177 rows turn `green`. The status stays `active`.
+- 2026-10-01: 7.37.0, by `architect` (spawn `orchestrator.17.architect.1`),
+  after increment 3's GREEN. Sign-offs not re-taken. The node router no
+  longer promotes (SPEC-0002 `PROMOTION_NEEDS_A_CONTIGUOUS_PHRASE`), so
+  `promoted` leaves the `cypress.plan/1` kind enum and the `<how>` list; it
+  never shipped in a release. PLAN_JSON_CARRIES_NO_PROMPT reads the `phrase`
+  and `composed` details as node text. PLAN_JSON_EQUALS_PLAN's task set needs
+  a `composed` entry. The PLAN_JSON_SCHEMA and PLAN_JSON_EQUALS_PLAN rows are
+  `pending` until the tester re-picks their fixture tasks under the ladder.
+  The status stays `active`.
+- 2026-10-01: 7.37.0 release pass, by `architect` (spawn
+  `orchestrator.26.architect.1`). PRIME_EAGER_SURFACE_WITHIN_BUDGET reads
+  `green`: the round's RED kept `check_eager_surface` as its case, and the
+  published figures it is run with were re-derived by the release doc pass
+  (plan increment 5). Every §10 row is now green, so the status moves from
+  `active` to `implemented`. No contract changed; §11 keeps its open
+  question on Claude Code's turn origin.

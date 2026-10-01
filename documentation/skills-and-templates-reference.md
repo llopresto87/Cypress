@@ -324,18 +324,28 @@ wins; a harness's safety and permission policy is not working style
    node + required closure; Trace → every node on the path (the one kind
    that legitimately crosses `peers`); Plan → the plan-of-record + platform
    nodes.
-2. **Resolve entry nodes** by matching `load_when` triggers; prefer the most
-   specific. Watch for aliased names across layers: the Tier-1 router index
-   must carry a naming-divergence note listing aliases.
+2. **Route first, then resolve entry nodes**: take the router suggestion the
+   host injected, or run `python3 docs/graph/graph-lint.py --plan "<task>"`.
+   Its LOAD set is the entry set with the `requires:` closure already taken.
+   A `!` notice says the plan is thin, wide or empty, and an empty plan's
+   notice names the next step. `docs/graph/index.md` is the fallback map,
+   opened only when the router fails, when a notice leaves the plan empty or
+   wrong, or when the task explores the graph itself; there, match
+   `load_when` triggers and prefer the most specific. Watch for aliased
+   names across layers: the Tier-1 index must carry a naming-divergence note
+   listing aliases.
 3. **Take the required closure**: each entry node plus its transitive
-   `requires`. It is small by construction. Everything else a node lists
+   `requires`. It is small by construction. Read the routed nodes through
+   `graph-lint.py --show <id>...`: a header with every pointer the node
+   holds, then the body verbatim, with only router and spawn keys dropped. Everything else a node lists
    (leaves, children, links, neighbours, index rows) is a menu: open an
    item only when its one-line "load when" serves the task, and list the
    rest as skipped (`context-router.menu`).
 4. **Cross a peer only on purpose**: load a peer only when the task
    explicitly crosses into it, and say why (a trace is the exception).
-5. **Declare before you work**: print the resolved LOAD / NOT LOADED /
-   Tier-3-on-demand set.
+5. **Declare before you work**: print the resolved LOAD set and the skip
+   block in the compact lines `--plan` prints, so an accepted route is
+   declared by naming it and a changed set shows the change.
 6. **Widen honestly, never silently.**
 
 **Dry-run it.** The router is executable and must run inside every spawned
@@ -601,7 +611,8 @@ the artifacts edge · branch node shape, a menu of leaves.
 traverses. `context-router` reads the graph; this skill authors it.
 
 **Tiers.** Tier 0 kernel (always loaded by host tool); Tier 1
-`docs/graph/index.md` (router, every task first); Tier 2
+`docs/graph/index.md` (the fallback map, when the routed plan from
+`graph-lint.py --plan` fails, stays empty or looks wrong); Tier 2
 `docs/graph/nodes/*.md` (one subject each, by traversal); Tier 3 leaf
 collections (only when a Tier-2 node names the leaf and the task needs it).
 
@@ -968,9 +979,9 @@ Templates are Tier-3 artifacts; a machinery node points at them via
 | File | Installed path | Role |
 |---|---|---|
 | `_schema.md` | `docs/graph/_schema.md` | the node contract graph-lint.py enforces |
-| `index.md` | `docs/graph/index.md` | Tier-1 router template |
+| `index.md` | `docs/graph/index.md` | Tier-1 map template (the fallback the FIRST MOVE names) |
 | `node.template.md` | `docs/graph/nodes/<id>.md` | one blank node form |
-| `graph-lint.py` | `docs/graph/graph-lint.py` | the graph linter and router dry-run |
+| `graph-lint.py` | `docs/graph/graph-lint.py` | the graph linter and the router (`--plan`, `--plan-json`, `--show`, `--eval`) |
 | `spec-lint.py` | `docs/graph/spec-lint.py` | the spec gate: shape of every spec, coverage of live ones |
 | `grill-lint.py` | `docs/graph/grill-lint.py` | the plan-of-record gate |
 
@@ -1223,7 +1234,8 @@ the task tier (T0–T3 risk classification in kernel §0), and the model class
 Only the risk axis is written `T0–T3`.
 
 **Load-tiers.** Tier 0 kernel (always, by host tool; a bootstrap only); Tier
-1 `docs/graph/index.md` (every task first); Tier 2 project nodes
+1 `docs/graph/index.md`, the fallback map (when the routed plan from
+`graph-lint.py --plan` fails, stays empty or looks wrong); Tier 2 project nodes
 `docs/graph/nodes/*.md` and machinery nodes
 `docs/graph/{protocols,skills,agents,method}/*.md` (by traversal); Tier 3 the
 leaf collections under `docs/graph/` (only when a Tier-2 node names it and the
@@ -1297,14 +1309,17 @@ unknown with a guess; `closed` without evidence.
 
 ---
 
-## B.12 The router template — `index.md`
+## B.12 The map template — `index.md`
 Source: `templates/knowledge-graph/index.md` (installs to `docs/graph/index.md`)
 
-Tier 1: the router every task opens first, and the only index. Match the task
-against the triggers, load the entry node plus its `requires:` closure, and
-load `peers:` only when the task crosses into them. The traversal is
-specified in `skills/context-router.md` and is executable via
-`graph-lint.py --plan "<task>"`, which prints each node's file beside its id.
+Tier 1: the only index, and the fallback map, not a first read. The first
+move routes the task line through `graph-lint.py --plan "<task>"` (or the
+suggestion a hook injected), which prints each node's file beside its id. A
+session opens this page when the router fails, when a `!` notice leaves the
+plan empty or wrong, or when the task explores the graph itself. Then it
+matches the task against the triggers, loads the entry node plus its
+`requires:` closure, and loads `peers:` only when the task crosses into them.
+The traversal is specified in `skills/context-router.md`.
 Until growth, the template also carries a pre-growth block that points a
 session at the installed `EXPERT_SEED_INSTALL_PROMPT.md` and the entry fork;
 grow removes it when it sets `grown: true`. Blocks:
@@ -1352,8 +1367,12 @@ and its PROJECT CONFIG block is set to the project's kinds and root id.
 
 ```sh
 python3 graph-lint.py                 # lint; exit 1 on error
-python3 graph-lint.py --graph         # print the requires-DAG
+python3 graph-lint.py --warn          # report every error, always exit 0
+python3 graph-lint.py --graph         # print the edges (-> requires, ~> composes)
 python3 graph-lint.py --plan "TASK"   # dry-run the context router
+python3 graph-lint.py --plan-json=TASK  # the same route as one cypress.plan/1 document
+python3 graph-lint.py --show ID...    # read routed nodes, every pointer kept
+python3 graph-lint.py --eval TSV      # route a node-route corpus, gated per class
 ```
 
 **PROJECT CONFIG.** `ROOT_ID` (default `"root"`); `KINDS` (the set of node
@@ -1393,13 +1412,23 @@ frontmatter subset with a hand-written parser (no PyYAML dependency).
   ceiling; machinery nodes are exempt from the ceiling.
 
 **The router dry-run (`resolve` / `--plan`).** Mirrors the `context-router`
-traversal. It extracts task terms (keeping paths whole and split), scores each
-node by IDF-weighted token overlap between the task and the node's
-name/title/`repo` (weight ×2) and its `load_when`/`routing_triggers`, using
-whole-token matching only (an exact hit outranks a morphological fold; never a
-substring). It seeds from the top-ranked nodes above a floor, expands the
-`requires` closure, and reports the loaded set (with summed `est_tokens`) plus
-the skipped `peers`. Stopwords and a 6-char stem-fold reduce noise. The linter
+traversal. It takes its entries from the first tier that hits: a node id the
+task names, then a path it names (a node's file, a `repo:` prefix, an
+`expertise.*` file pattern), then a `load_when` phrase of two or more words the
+task holds whole. Only then does it score words: IDF-weighted token overlap
+between the task and the node's name/title/`repo` (weight ×2) and its
+`load_when`/`routing_triggers`, whole-token matching only (an exact hit
+outranks a morphological fold; never a substring), with a floor of two
+distinct confident terms. A strong tier that hits more than three nodes falls
+through. A task with no signal, or over `LONG_TASK_TERMS` distinct words,
+loads nothing and prints a `!` notice naming the next step; root is never
+forced. It expands the `requires` closure eagerly and composed children
+lazily, and prints the loaded set (with summed `est_tokens`) in compact lines,
+each id with its path, then the skip block. `--plan-json` prints the same
+route as one `cypress.plan/1` document, the route hooks' only input. `--show`
+prints a node with every edge and leaf pointer resolved in a header, then the
+body verbatim. `--eval` routes a node-route corpus and gates each class on
+the `GRAPH_*` ratchets. Stopwords and a 6-char stem-fold reduce noise. The linter
 prints `graph-lint: OK — N nodes, ~T tokens if fully loaded` and reminds that
 "no task should ever load them all."
 

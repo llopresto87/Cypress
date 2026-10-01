@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 7.36.0
+- Version documented: 7.37.0
 - Repository role: this repo is the seed, the product shipped into other
   projects; it holds no `docs/graph/` of its own.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -104,13 +104,19 @@ Everything else (every protocol, skill, agent charter, posture principle, and
 template) lives as a routable node inside the plant's `docs/graph/` and
 activates only when the router resolves it for the task at hand.
 
-### 2.2 The first move is always: open the router
+### 2.2 The first move is always: route the task
 
-Before reading code or writing anything, an agent is asked to open the
-[router](#term-router), which covers *all* knowledge, both project facts and the
-method surface, then to name the 2–3 nodes that match the task, read only those plus their required
-closure, and declare what it loaded and what it skipped. A task touching one
-subsystem loads a handful of nodes, not the whole tree.
+Before reading code or writing anything, an agent is asked to route the task
+line. It takes the suggestion the host's hook injected, or runs
+`python3 docs/graph/graph-lint.py --plan "<task>"` itself. The
+[router](#term-router) covers *all* knowledge, both project facts and the
+method surface, and its LOAD set already holds each entry node's required
+closure. The agent reads only those nodes, through `graph-lint.py --show`,
+declares what it loaded and what it skipped, and acts on any `!` notice the
+plan printed. `docs/graph/index.md` is the fallback map: the agent opens it
+when the router fails, when a notice leaves the plan empty or wrong, or when the
+task explores the graph itself. A task touching one subsystem loads a handful
+of nodes, not the whole tree.
 
 ### 2.3 Process is proportional to risk (the tiers)
 
@@ -268,7 +274,7 @@ work on a codebase too large to fit in a context window.
 | Tier | What | Loaded |
 |------|------|--------|
 | 0 | `AGENTS.md` / `CLAUDE.md` (the kernel) | Always, by the host tool — a bootstrap only. |
-| 1 | `docs/graph/index.md` (the router) | First, on every task. |
+| 1 | `docs/graph/index.md` (the fallback map) | Only when the routed plan (`graph-lint.py --plan`) fails, stays empty or looks wrong. |
 | 2 | Fact-owning nodes | Only when the router resolves them for the task. |
 | 3 | Wiki/leaf collections (libraries, sources, architecture, specs, runbooks, decisions, data, prompts, evaluations, plans, tools) | Only when a loaded node names the leaf and the task needs it. |
 
@@ -347,26 +353,26 @@ line moves whole into a sibling leaf.
 
 ### 5.7 Expertise reaches the worker that needs it
 
-`graph-lint.py --plan` scores nodes against the task and loads the top of the
-ranking. Two further routes load an `expertise.*` node beside that cut, with
-no cap on how many.
+`graph-lint.py --plan` takes its entry nodes from the first tier that hits.
+A node id the task names comes first. A path the task names comes next: a
+node's own file, a `repo:` prefix, or an `expertise.*` file pattern. Then comes
+a `load_when` phrase of two or more words that the task holds whole. Only when
+none of these hits does the router score words, and a scored entry needs two
+distinct confident terms. A strong tier that hits more than three nodes falls
+through to the next. A task with no signal, or one too long to be a task line,
+loads nothing and prints a `!` notice that names the next step. The per-prompt
+route hook runs the same code, so the ladder reaches a plant's prompts too.
 
-The first is promotion. When the task names every token of one of the node's
-`load_when` phrases (exactly, or by the same stem), the node loads even though
-its score fell past the cut. The per-prompt route hook runs the same code, so
-promotion reaches a plant's prompts too.
-
-The second is inference from file paths. A `load_when` piece with no
+Inference from file paths works on strings alone. A `load_when` piece with no
 whitespace that contains `/` or `*` is a file pattern, and a file path the task
-names that matches it loads the node. The match is on strings alone: a path
-from the task is only ever the name compared against a pattern, never a pattern
-itself, and nothing touches the filesystem. At most 64 path-like tokens are
-read, and any token longer than 256 characters is skipped. If promotion or
-inference fails internally, `--plan` prints `inference skipped` and falls back
-to the scored entries instead of raising.
+names that matches it loads the node. A path from the task is only ever the
+name compared against a pattern, never a pattern itself, and nothing touches
+the filesystem. At most 64 path-like tokens are read, and any token longer than
+256 characters is skipped. If the path tier fails internally, `--plan` prints
+`inference skipped` and goes on to the next tier instead of raising.
 
-Each node loaded this way says why on its LOAD line, `promoted on "<phrase>"` or
-`inferred from "<path>"`. Reachability also follows the edges of the nodes the
+A node loaded by a phrase, a path or inference says why on its LOAD line:
+`phrase "<phrase>"`, `owns "<path>"` or `inferred from "<path>"`. Reachability also follows the edges of the nodes the
 index lists, so a plant's own `index.md`, which graft leaves untouched, reaches
 new leaves through its existing rows. A worker that finds mid-task it needs
 expertise no node covers names the gap in its handback's `expertise_gap:`
@@ -910,7 +916,7 @@ what each tool needs *beyond* plain placement.
 | Tool | Kernel file | Overlay dir | Beyond placement | Tier |
 |------|-------------|-------------|------------------|------|
 | **Claude Code** | `CLAUDE.md` | `.claude/` | — | first-class |
-| **Prime Agent** | `AGENTS.md` | `.prime/agent/` | `route-extension.ts` + `settings.json` | first-class |
+| **Prime Agent** | `AGENTS.md` | `.prime/agent/` | `route-extension.ts` + `status-extension.ts`, the hook core they run in `hooks/`, `settings.json` | first-class |
 | opencode | `AGENTS.md` | `.opencode/` + `opencode.json` | agents rendered with their `model:` line from the model map | supported |
 | Codex | `AGENTS.md` | `.codex/` | manual `config.toml` merge | frozen |
 | GitHub Copilot | `.github/copilot-instructions.md` | `.github/` | transform (frontmatter rewrite), never a symlink | frozen |
@@ -1153,8 +1159,12 @@ classified, so it stays current with the file. Grouped by what they check:
     selected almost nothing — code an adopting project is invited to run as-is,
     that nobody has run, is a claim, not a tool.
 15. `test_graph_lint.py`: graph-lint CLI-contract regression (stdlib unittest),
-    including the lifecycle status, `deviation` and `plant:` block rules and the
-    `--plan` entry that prints each node's file beside its id.
+    including the lifecycle status, `deviation` and `plant:` block rules, the
+    `--plan` entry that prints each node's file beside its id, the
+    `--plan-json` document, `--show` and the tier ladder.
+    `graph-route-eval.sh` runs `graph-lint.py --eval` over the node-route
+    corpus, `tests/graph-routes.golden.tsv`, in a fresh install and gates
+    each corpus class on its `GRAPH_*` ratchets.
 16. `agent-lint.py --lint` and `--eval` (against `agents/`).
 17. `test_agent_lint.py`: agent-lint CLI-contract regression (stdlib
     `unittest`, no third-party dependency).
@@ -1328,7 +1338,7 @@ Each entry covers one word that the front door (the README, the install guide, t
 - **Forms:** hook, hooks
 - **Here:** A script the host runs automatically when a fixed event happens, such as a prompt being submitted or a shell command about to run, whatever the model decides. The [seed](#term-seed) ships three for Claude Code: one adds a routing pointer to each prompt, one adds a status summary when a session starts, and one checks a shell command before it runs. Which events a host offers, and which of them reach a worker's turn, are host-dependent; see the [host capability matrix](documentation/host-capability-matrix.md).
 - **Field:** A user-defined handler that fires at a fixed point in an agent's lifecycle whatever the model decides; its defining property is that it always fires (Claude Code glossary, https://code.claude.com/docs/en/glossary; Claude Code, "Automate actions with hooks", https://code.claude.com/docs/en/hooks-guide; both retrieved 2026-09-24; status: verified)
-- **Implemented at:** `integrations/claude-code/{route-hook.py,status-hook.py,bound-hook.py,settings.json}`, `integrations/prime-agent/{route-extension.ts,status-extension.ts}`, `integrations/github-copilot/hooks/{route.json,status.json}`. An install produces `.claude/settings.json`, `.claude/route-hook.py`, `.claude/status-hook.py` and `.claude/bound-hook.py` (`install_claude_code`)
+- **Implemented at:** `integrations/claude-code/{route-hook.py,status-hook.py,bound-hook.py,settings.json}`, `integrations/prime-agent/{route-extension.ts,status-extension.ts}`, `integrations/github-copilot/hooks/{route.json,status.json}`. An install produces `.claude/settings.json`, `.claude/route-hook.py`, `.claude/status-hook.py` and `.claude/bound-hook.py` (`install_claude_code`), and `.prime/agent/hooks/{route-hook.py,status-hook.py}` with the two extensions that run them (`install_prime_agent`)
 - **Enforcement:** **not a control** for the word itself, and for a hook that only adds text: see the [routing-hook row](#enf-route-hook) and the [status-hook row](#enf-status-hook). The shell-command check carries its own classes in the [pre-Bash guard row](#enf-pre-bash-guard)
 - **Divergence:** **same**
 - **Why:** ADR-0003 and ADR-0010
@@ -1359,7 +1369,7 @@ Each entry covers one word that the front door (the README, the install guide, t
 <a id="term-progressive-disclosure"></a>
 
 - **Forms:** progressive disclosure
-- **Here:** A short index is always loaded, and each full body is loaded only when the task routes to it. The [seed](#term-seed) applies this to its own method files and to a project's facts, through the [knowledge graph](#term-knowledge-graph) and its [router](#term-router).
+- **Here:** A short kernel is always loaded, the [router](#term-router) names the few nodes a task needs, and each full body is loaded only when the task routes to it. The [seed](#term-seed) applies this to its own method files and to a project's facts, through the [knowledge graph](#term-knowledge-graph) and its [router](#term-router).
 - **Field:** A user-interface principle: show the few most important options first and the specialized ones on request (Nielsen, "Progressive Disclosure", Nielsen Norman Group, 2006, https://nngroup.com/articles/progressive-disclosure/, retrieved 2026-09-24; status: verified). Agent Skills reuses it for model context, with metadata at start, the body on trigger and resources on reference (Anthropic, "Agent Skills" overview, https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview, retrieved 2026-09-24; status: verified)
 - **Implemented at:** `templates/knowledge-graph/index.md`, `templates/knowledge-graph/graph-lint.py`, `skills/context-router/SKILL.md`, `integrations/claude-code/route-hook.py`
 - **Enforcement:** **not a control**. Loading only the routed nodes is left to the session
@@ -1392,11 +1402,11 @@ Each entry covers one word that the front door (the README, the install guide, t
 <a id="term-router"></a>
 
 - **Forms:** router, routers
-- **Here:** The file `docs/graph/index.md`, the one index a session opens first on every task. It lists each [node](#term-node) with a short summary, and the session reads only the few that match the task. The word also names the two keyword commands described under [routing](#term-routing).
+- **Here:** The command `graph-lint.py --plan "<task>"`, which a session runs, or reads from its hook, before it opens anything: it names the few [nodes](#term-node) that match the task. The file `docs/graph/index.md` is the hand-written map behind it, opened when the routed plan fails or looks wrong. The word also names the two keyword commands described under [routing](#term-routing).
 - **Field:** A component that directs each incoming item to one of several destinations (field usage; status: not recorded)
-- **Implemented at:** `templates/knowledge-graph/index.md`. An install produces `docs/graph/index.md` only where missing (`place_graph_scaffold`)
+- **Implemented at:** `templates/knowledge-graph/graph-lint.py` (`--plan`, and `--plan-json` for the hooks) and `templates/knowledge-graph/index.md`. An install produces `docs/graph/index.md` only where missing (`place_graph_scaffold`)
 - **Enforcement:** **not a control** for the word itself. Reading only the nodes it names is left to the session, and the graph it indexes is classed in the [graph-lint row](#enf-graph-lint)
-- **Divergence:** **different**: here the router is a document a reader consults, not a component that moves traffic
+- **Divergence:** **different**: here the router recommends what a reader opens, and moves no traffic
 - **Why:** ADR-0004
 
 ### routing

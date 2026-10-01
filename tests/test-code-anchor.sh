@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPEC-0003 code anchor: tools/code-anchor.py (X152-X160).
+# SPEC-0003 code anchor: tools/code-anchor.py (X152-X160, X176).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -397,6 +397,63 @@ def x158(base):
     missing = [n for n in names if n not in a.out]
     check(not missing, f"--compare --all leaves {len(missing)} of 300 paths unnamed, e.g. {missing[:3]}")
     return f"300 changed paths: {size} B, {len(shown)} named, the more-paths line; --all names all 300"
+
+
+@case("X176", "ANCHOR_IGNORES_BUILD_AND_BACKUP_NOISE")
+def x176(base):
+    noise = ["src/__pycache__/a.cpython-312.pyc", "src/b.pyc", "src/c.py.bak",
+             "src/d.py.bak-20261001-091322"]
+    # one real path, then enough that the more-paths line shows and must count after the filter
+    for label, real in (("one path", ["src/e.py"]),
+                        ("over the cap", ["src/e.py"] + [f"src/f{i:02d}.py" for i in range(ANCHOR_MAX_PATHS)])):
+        p = Plant(base, name=label.replace(" ", "-"))
+        record(p)
+        for n in noise + real:
+            write(p.dir, n, f"# {n}\n")
+        for args in (("--compare",), ("--compare", "--all")):
+            r = tool(p, *args)
+            what = f"{label}, {' '.join(args)}"
+            check(r.rc == 0, f"{what}: exited {r.rc} — {r.ctx()}")
+            named = [q for l in repo_lines(r) for q in named_paths(l)]
+            check("src/e.py" in named, f"{what}: src/e.py is not named — {r.ctx()}")
+            leaked = [n for n in noise if n in r.out]
+            check(not leaked, f"{what}: build or backup noise is named: {leaked} — {r.ctx()}")
+            more = [int(m.group(1)) for m in map(MORE_RE.match, r.lines()) if m]
+            shown = [q for q in real if q in named]
+            check(len(shown) + sum(more) == len(real),
+                  f"{what}: {len(shown)} named plus more-paths {more} is not the {len(real)} real paths — {r.ctx()}")
+            if "--all" in args:
+                check(len(shown) == len(real) and not more, f"{what}: --all does not name every real path — {r.ctx()}")
+    return "build and backup files beside real ones: only the real paths are named, and the more-paths count is theirs"
+
+
+@case("X176", "ANCHOR_IGNORES_BUILD_AND_BACKUP_NOISE; the backup filter is the installer's suffixes only")
+def x176_narrow(base):
+    # Only `*.bak` and `*.bak-<digit>...` (the timestamped backup the installer
+    # writes) are backups. A name that merely holds `.bak-` before other text,
+    # and a directory named `*.bak`, are code a fact may describe.
+    code = ["src/x.bak-config.yaml", "src/config.bak/settings.py"]
+    noise = ["src/y.py.bak-20260928-163636"]
+    p = Plant(base, name="narrow")
+    record(p)
+    for n in code + noise:
+        write(p.dir, n, f"# {n}\n")
+    problems = []
+    for args in (("--compare",), ("--compare", "--all")):
+        r = tool(p, *args)
+        what = " ".join(args)
+        if r.rc != 0:
+            problems.append(f"{what}: exited {r.rc} — {r.ctx()}")
+            continue
+        named = [q for l in repo_lines(r) for q in named_paths(l)]
+        missed = [n for n in code if n not in named]
+        if missed:
+            problems.append(f"{what}: code paths taken for backups and not named: {missed} — {r.ctx()}")
+        leaked = [n for n in noise if n in r.out]
+        if leaked:
+            problems.append(f"{what}: an installer backup is named: {leaked} — {r.ctx()}")
+    check(not problems, " || ".join(problems))
+    return "x.bak-config.yaml and config.bak/ are named as code; y.py.bak-20260928-163636 is not"
 
 
 @case("X159", "ANCHOR_COMPARE_WRITES_NOTHING")

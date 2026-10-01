@@ -3,15 +3,15 @@
 <!-- CYPRESS — the Contextual Yield Protocol for Routed Expert Seed Systems -->
 
 > ## ► FIRST MOVE — before reading code or writing anything
-> Open `docs/graph/index.md`, the router over all knowledge: project
-> nodes and the method surface (protocol, skill, agent, and
-> method/posture nodes; §2).
-> 1. Name the 2–3 nodes that match the task; read only those, with
->    their `requires:` closure.
+> Route the task line: take the router suggestion the host injected,
+> or run `python3 docs/graph/graph-lint.py --plan "<task>"`.
+> 1. Read only the LOAD nodes (`requires:` closure included):
+>    `python3 docs/graph/graph-lint.py --show <id>...`.
 > 2. Say which nodes you loaded and which you skipped.
+> 3. Act on any `!` notice; an empty plan's notice names the next step.
 >
-> Reading the files is enough, and every task starts here.
-> Optional check: `python3 docs/graph/graph-lint.py --plan "<task>"`.
+> Open `docs/graph/index.md`, the fallback map, only when the router
+> fails, the plan stays empty or wrong, or the task explores the graph.
 
 This file is the **bootstrap kernel**, read on every session by Claude
 Code (as `CLAUDE.md`), Prime Agent and opencode and OpenAI Codex (as
@@ -68,10 +68,11 @@ depth-capped delegation bounds: `method.delegation`.
 
 ## 2. Enter work through a protocol node
 
-State which protocol you are entering before you begin. The router's
-**Method** section maps where-the-work-stands → the `protocol.*` entry
-node. Default T3 sequence: brainstorm* → specify → grill →
-ingest-library* → test-first → verify → canonize → deliver.
+State which protocol you are entering before you begin: the
+`protocol.*` node the route names. When it names none, the **Method**
+table in `docs/graph/index.md` maps where-the-work-stands → the entry
+node. Default T3 sequence: brainstorm* → specify →
+grill → ingest-library* → test-first → verify → canonize → deliver.
 On any failure: `protocol.recover`. `harvest` and `graft` are
 user-sovereign: enter them only when the owner starts them; unprompted,
 you may only propose one.
@@ -149,7 +150,8 @@ tool is built by `agent.tool-smith`.
 
 ## 5. Where to look next
 
-- `docs/graph/index.md` — the router; open first on every task.
+- `docs/graph/index.md` — the hand-written map: the Method table
+  (§2) and the node table; the fallback the FIRST MOVE names.
 - `docs/graph/method/` — tiers, delegation, posture (the why).
 - `docs/graph/protocols/` · `docs/graph/skills/` ·
   `docs/graph/agents/` — the method surface, one node each.

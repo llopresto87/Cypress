@@ -156,8 +156,8 @@ the seed's `.github/` from a parent.
 
 ## Progressive discovery in Copilot (Agent Hooks)
 
-Progressive discovery — open the graph router, load only the nodes a
-task needs, declare what you skipped — is guidance a capable model
+Progressive discovery — route the task, load only the nodes it needs,
+declare what you skipped — is guidance a capable model
 follows and a small local model (e.g. an Ollama model behind Copilot)
 often skips. You do not have to rely on the model remembering it: **VS
 Code Agent Hooks (Preview) can add the routing pointer to every prompt**,
@@ -198,5 +198,9 @@ model:
    before the model reasons, which is orthogonal to the graph.
 
 The `.github/copilot-instructions.md` this seed generates also leads with
-a blunt, tool-free "FIRST MOVE" mandate, so even without hooks enabled the
-route-first instruction is the first thing the model reads.
+the kernel's "FIRST MOVE", so even without hooks enabled the route-first
+instruction is the first thing the model reads. Without a hook, the model
+runs `python3 docs/graph/graph-lint.py --plan` itself, which needs a terminal
+tool. A chat mode with no terminal can only take the fallback the FIRST MOVE
+names, `docs/graph/index.md`; Copilot is a frozen host, so the seed adds no
+tool-free route for it.
