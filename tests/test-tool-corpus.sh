@@ -360,4 +360,190 @@ print("  parallel-suite-runner: id-baselined, hung shard re-run once, "
       "unreadable shards fail closed — OK")
 PY
 
+# 6. Every portable page that ships a runnable offline self-test has that
+# self-test RUN here, from the blocks extracted off the page, not only parsed by
+# section 1. A self-test PASS printed on a page is the author's recorded run;
+# without this step nothing re-runs it after the page is edited. Each row also
+# re-runs the self-test on a MUTATED COPY of one extracted block (the page is
+# never touched) with the property the page exists for broken, and requires a
+# nonzero exit with no pass line: a self-test that still passes there checks
+# nothing. A fake `docker` on PATH fails loudly, so a self-test that claims to be
+# offline but reaches the container engine is caught, not silently served. The
+# table is data, and a portable page that names a self-test (`--self-test` or a
+# `selftest.sh`) with no row here fails the step: the gap this step closes must
+# not reopen with the next page.
+mkdir -p "$TMP/fakebin"
+cat > "$TMP/fakebin/docker" <<EOF
+#!/usr/bin/env bash
+echo "\$*" >> "$TMP/fakebin/docker-called"
+echo "fake docker: an offline self-test reached the container engine" >&2
+exit 97
+EOF
+chmod +x "$TMP/fakebin/docker"
+python3 - "$ROOT" "$TMP/selftests" "$TMP/fakebin" <<'PY'
+import os, re, shutil, subprocess, sys, pathlib
+
+root, work, fakebin = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]), sys.argv[3]
+work.mkdir()
+env = dict(os.environ, PATH=fakebin + os.pathsep + os.environ.get("PATH", ""))
+
+# page -> files to extract (name, the marker that picks its block), the
+# command the page's "How to run the tests" line names, the pass line it
+# prints, and one mutation (file, exact text, replacement) that breaks a
+# property the page's section 6 says the self-test asserts.
+ROWS = [
+    ("testing/behavior-baseline-oracle",
+     [("baseline.py", '"""behavior-baseline-oracle:')],
+     ["python3", "baseline.py", "--self-test"], r"^self-test: PASS",
+     ("baseline.py", "if old.exists() and not rebaseline:", "if False:"),
+     "a second capture without --rebaseline is refused"),
+    ("testing/in-network-e2e-harness",
+     [("harness.py", '"""in-network-e2e-harness:')],
+     ["python3", "harness.py", "--self-test"], r"^self-test: PASS",
+     ("harness.py",
+      'raise RouteDown(f"precondition {path} answered {status}: route not alive")',
+      "pass"),
+     "a 404 or 500 precondition raises RouteDown"),
+    ("testing/live-contract-check-harness",
+     [("contract-checks.sh", "# contract-checks.sh:"),
+      ("lint-harness.sh", "# lint-harness.sh FILE:"),
+      ("selftest.sh", "# selftest.sh:")],
+     ["bash", "selftest.sh"], r"^selftest: PASS",
+     ("lint-harness.sh", '&& fail "set -x"', "&& true"),
+     "the lint fails a planted set -x"),
+    ("testing/touched-file-lint-hook",
+     [("touched_lint.py", '"""touched-file-lint-hook:')],
+     ["python3", "touched_lint.py", "--self-test"], r"^self-test: PASS",
+     ("touched_lint.py", '("ls-files", "-z", "--others", "--exclude-standard")',
+      '("ls-files", "-z", "--exclude-standard")'),
+     "an untracked new file is linted"),
+    ("ops/resolved-dependency-gate",
+     [("resolved-dependency-gate.py", '"""resolved-dependency-gate:')],
+     ["python3", "resolved-dependency-gate.py", "--self-test"], r"^self-test: PASS \(\d+ checks\)",
+     ("resolved-dependency-gate.py",
+      'say(False, f"floor {coord}>={minimum}: absent, so nothing was checked")',
+      'say(True, f"floor {coord}>={minimum}: absent, so nothing was checked")'),
+     "a floor on an absent artifact fails"),
+    ("ops/image-reference-pin-lint",
+     [("image-pin-lint.py", '"""image-reference-pin-lint:')],
+     ["python3", "image-pin-lint.py", "--self-test"], r"^self-test: PASS \(\d+ checks\)",
+     ("image-pin-lint.py", "sha512:[0-9a-f]{128}", "sha512:[0-9a-f]{64}"),
+     "a sha512 digest is pinned"),
+    ("ops/source-default-credential-gate",
+     [("source-default-credential-gate.py", '"""source-default-credential-gate:')],
+     ["python3", "source-default-credential-gate.py", "--self-test"], r"^self-test: PASS \(\d+ checks\)",
+     ("source-default-credential-gate.py",
+      "if QUERY_PW.search(literal_part(default)):", "if False:"),
+     "a query-parameter password in a default is a finding"),
+    ("ops/owner-scoped-idempotent-seed",
+     [("seeded-world-verifier.py", '"""seeded-world-verifier:')],
+     ["python3", "seeded-world-verifier.py", "--self-test"], r"^self-test: PASS \(\d+ checks\)",
+     ("seeded-world-verifier.py", 'report(False, name, f"id {exc} was never captured")',
+      'report(True, name, f"id {exc} was never captured")'),
+     "a path whose id was never captured fails instead of guessing"),
+    ("ops/lenient-json-response-parser",
+     [("lenient-json.py", '"""lenient-json:')],
+     ["python3", "lenient-json.py", "--self-test"], r"^self-test: PASS",
+     ("lenient-json.py", "parse_constant=_refuse_constant,", ""),
+     "NaN, Infinity and -Infinity raise"),
+    ("ops/destructive-command-guard-hook",
+     [("destructive-guard.py", '"""destructive-guard:')],
+     ["python3", "destructive-guard.py", "--self-test"], r"^self-test: PASS",
+     ("destructive-guard.py",
+      'if sub == "reset" and re.search(r"(?:^|\\s)--hard\\b", rest):', "if False:"),
+     "git reset --hard is denied"),
+    ("ops/orphaned-scoped-config-auditor",
+     [("orphaned-scope-config.py", '"""orphaned-scope-config:')],
+     ["python3", "orphaned-scope-config.py", "--self-test"], r"^self-test: PASS",
+     ("orphaned-scope-config.py",
+      'scopes.update(c for c in val.get("children", []) or [] if isinstance(c, str))',
+      "pass"),
+     "every children name is a scope (an empty group counts)"),
+    ("ops/chained-pipeline-run-driver-azure-devops",
+     [("chained-run-ado.py", '"""chained-run-ado:')],
+     ["python3", "chained-run-ado.py", "--self-test"], r"^self-test: PASS",
+     ("chained-run-ado.py", '{alias: {"runId": run_id}}', '{alias: {"runId": None}}'),
+     "B is bound to A's run id"),
+    ("ops/container-vuln-scan-and-aggregate",
+     [("vuln-scan-aggregate.py", '"""vuln-scan-aggregate:')],
+     ["python3", "vuln-scan-aggregate.py", "--self-test"], r"^self-test: PASS \(\d+ checks\)",
+     ("vuln-scan-aggregate.py", '("V40Score", "V3Score", "V2Score")',
+      '("V40Score", "V31Score", "V30Score")'),
+     "a V3Score is read"),
+]
+
+def fail(msg, out=""):
+    sys.exit(f"self-test step: {msg}" + (f"\n--- output ---\n{out[-3000:]}" if out else ""))
+
+# Coverage: every portable page that names a self-test has a row.
+covered = {r[0] for r in ROWS}
+for page in sorted((root / "tool-corpus").rglob("*.md")):
+    text = page.read_text(encoding="utf-8")
+    if not re.search(r"\*\*Stability:\*\*\s*\*\*portable", text):
+        continue
+    rel = str(page.relative_to(root / "tool-corpus"))[:-3]
+    if re.search(r"--self-test|\bselftest\.sh\b", text) and rel not in covered:
+        fail(f"tool-corpus/{rel}.md is portable and names a self-test, but no "
+             f"row here runs it: the page's PASS is a recorded claim, not a gate")
+
+def run(d, cmd):
+    marker = pathlib.Path(fakebin) / "docker-called"
+    if marker.exists():
+        marker.unlink()
+    try:
+        p = subprocess.run(cmd, cwd=d, env=env, capture_output=True, text=True, timeout=300)
+    except subprocess.TimeoutExpired as exc:
+        return 124, f"timed out after 300s: {exc}", False
+    return p.returncode, p.stdout + p.stderr, marker.exists()
+
+def row(page, files, cmd, passline, mfile, old, new, prop):
+    name = page.split("/")[-1]
+    path = root / "tool-corpus" / f"{page}.md"
+    if not path.is_file():
+        return note(f"{name}: page not found: {path}")
+    text = path.read_text(encoding="utf-8")
+    if not re.search(r"\*\*Stability:\*\*\s*\*\*portable", text):
+        return note(f"{name}: the page no longer claims portable stability")
+    code = re.findall(r"(?ms)^```(?:python|bash|sh)\n(.*?)^```", text)
+    d = work / name
+    d.mkdir()
+    for fname, mark in files:
+        hit = [b for b in code if mark in b]
+        if len(hit) != 1:
+            return note(f"{name}: expected exactly one code block carrying {mark!r} "
+                 f"(the block the page calls {fname}), found {len(hit)}")
+        (d / fname).write_text(hit[0])
+    # The extracted self-test, as the page says to run it.
+    rc, out, docker = run(d, cmd)
+    if docker:
+        return note(f"{name}: the offline self-test called docker", out)
+    if rc != 0 or not re.search(passline, out, re.M):
+        return note(f"{name}: `{' '.join(cmd)}` on the blocks extracted from the page "
+             f"exited {rc} without the pass line /{passline}/", out)
+    # The same self-test on a copy with one property broken must fail.
+    m = work / f"{name}.mutant"
+    shutil.copytree(d, m)
+    src = (m / mfile).read_text()
+    if src.count(old) != 1:
+        return note(f"{name}: the mutation target {old!r} occurs {src.count(old)} time(s) "
+             f"in {mfile}, not once; re-aim the mutation at the code as it now reads")
+    (m / mfile).write_text(src.replace(old, new))
+    rc, out, docker = run(m, cmd)
+    if rc == 0 or re.search(passline, out, re.M):
+        return note(f"{name}: with '{prop}' mutated out of {mfile}, the self-test still "
+             f"passed (exit {rc}); it does not check what its page says it checks", out)
+    print(f"  {name}: extracted self-test passes; fails with '{prop}' mutated out — OK")
+
+# Every row runs, so one red row does not hide the state of the others.
+failures = []
+def note(msg, out=""):
+    failures.append(msg + (f"\n--- output ---\n{out[-2000:]}" if out else ""))
+
+for page, files, cmd, passline, (mfile, old, new), prop in ROWS:
+    row(page, files, cmd, passline, mfile, old, new, prop)
+if failures:
+    sys.exit("self-test step: %d of %d row(s) RED\n" % (len(failures), len(ROWS))
+             + "\n".join("  " + f for f in failures))
+PY
+
 printf 'tool-corpus portability: PASS\n'

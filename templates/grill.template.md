@@ -57,6 +57,8 @@ belongs outside the current scope.
     plant's doctrine defines, or "none defined"): <lever: the owner's
     answer, or "default: <value>">
   - Owner-only prerequisites: <step, the increment that needs it, status>
+  - Scoped standing grant: <the named non-production acts and targets
+    the owner granted for this unit of work, or "none asked">
 - Latency constraints:
 - Compliance constraints:
 - Maintenance constraints:
@@ -98,6 +100,9 @@ under the same rule. Depth: `docs/graph/templates/adr.template.md`.
 - Observability:
 - Security posture:
 - Deployment model:
+- Environment parity (a plan that changes a deploy chain;
+  `grill.press`): <the versions each environment pins for the images
+  and tools the chain touches, read from source, and any drift>
 
 ## 9. Implementation Plan
 

@@ -1,10 +1,10 @@
 # Tool: cross-implementation-parity-verifier
 
-> Project-agnostic, durable capability notes, folded into the seed by the
-> harvest protocol. This page is a **BLUEPRINT**: the corpus-against-executed-
-> reference technique, the fallback-is-a-loud-downgrade rule, and the
-> skips-never-count-as-passes discipline are portable; invoking each
-> language- or path-specific implementation is written per project.
+> Project-agnostic capability notes, kept in the seed's tool corpus
+> (`tool-corpus/README.md`). This page is a **BLUEPRINT**: the
+> corpus-against-executed- reference technique, the fallback-is-a-loud-downgrade
+> rule, and the skips-never-count-as-passes discipline are portable; invoking
+> each language- or path-specific implementation is written per project.
 
 ## 0. Identity
 
@@ -154,9 +154,9 @@ false oracle by a known-disagreement fixture case built for that purpose.
   corpus-against-executed-reference half of that principle to full agreement
   across any number of candidate implementations, and adds the skip-
   accounting discipline that a single-oracle check does not need).
-- **Sources:** distilled from harvested plant experience; no external URL.
+- **Sources:** distilled from practice; no external URL.
 
 ## 8. Changelog
 
-- 2026-09-26 — created from harvested, generalized capability, by
+- 2026-09-26 — created by
   docs-librarian.

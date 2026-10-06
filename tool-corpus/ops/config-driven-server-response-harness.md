@@ -1,10 +1,10 @@
 # Tool: config-driven-server-response-harness
 
-> Project-agnostic, durable capability notes, folded into the seed by the
-> harvest protocol. This page is a **BLUEPRINT**: the argument, the staging
-> sequence, and the declared blind spot are portable; the config-rewrite table
-> that makes a real configuration run detached is binary-specific and is written
-> per server.
+> Project-agnostic capability notes, kept in the seed's tool corpus
+> (`tool-corpus/README.md`). This page is a **BLUEPRINT**: the argument, the
+> staging sequence, and the declared blind spot are portable; the config-rewrite
+> table that makes a real configuration run detached is binary-specific and is
+> written per server.
 
 ## 0. Identity
 
@@ -225,11 +225,11 @@ server is torn down even when a request fails.
   assertions against a **live** deployed endpoint);
   `tool-corpus/testing/auth-parity-oracle.md` (the same measure-the-real-component
   posture applied to an authentication decision).
-- **Sources:** distilled from harvested plant experience; no external URL.
+- **Sources:** distilled from practice; no external URL.
 
 ## 8. Changelog
 
-- 2026-09-13 — created from harvested, generalized capability, by docs-librarian.
+- 2026-09-13 — created by docs-librarian.
 - 2026-09-26 — folded in the recursive-include-chain rewrite and the
   shipped-generator-only rule for generated fragments (§3 step 1), and the
   version-skew printing, graceful-shutdown, and neutralization self-test

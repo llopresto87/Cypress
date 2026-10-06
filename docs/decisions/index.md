@@ -35,6 +35,7 @@ which is the installed *application* knowledge graph. ADR bodies use
 | [0025](adr-0025-compact-route-lines-json-between-programs.md) | The router talks to models in compact lines that keep every resolved path; JSON is only for programs; nodes are read through `--show` | accepted | 2026-10-01 | owner rulings on JSON, D3, O1 (kept outside the seed) | 7.37.0 |
 | [0026](adr-0026-node-router-ladder-and-gated-corpus.md) | The node router ranks named ids and paths above words, abstains with a cheap notice instead of forcing root, and is gated per class on a node-route corpus (a quality change; no token claim) | accepted | 2026-10-01 | the round's routing investigation (kept outside the seed) | 7.37.0 |
 | [0027](adr-0027-first-move-runs-the-router.md) | The kernel's FIRST MOVE runs the router and `index.md` becomes the fallback map, landed on a measurement that favoured it (amends a consequence of ADR-0017 in part) | accepted | 2026-10-01 | owner ruling D2 (kept outside the seed) | 7.37.0 |
+| [0028](adr-0028-harvest-takes-knowledge-whole.md) | Harvest generalizes instead of rejecting, admits the version facts a library documents (security facts, calendar dates and a plant's own version stay out), and classes every fact by provenance | proposed | 2026-10-05 | owner decisions of 2026-10-04 and 2026-10-05 | 8.0.0 |
 
 ADRs **0001–0003** were decided inline in the plan-of-record
 [`../plans/agent-routing-and-delegation.md`](../plans/agent-routing-and-delegation.md)

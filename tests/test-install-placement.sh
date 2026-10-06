@@ -8,6 +8,8 @@
 #   M7  every written file is recoverable from a timestamped sibling
 #   M9  under --symlink every placed file is a link or a recorded exception
 #   M10 no write escapes PROJECT_DIR
+#   M13 a retired seed entry is flagged RETIRED; M14 a plant-only harness entry ORPHAN
+#   M15-M20 selective placement: propose, place, refuse, refresh, leave, check
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -447,6 +449,361 @@ case_cond() {
     done
 }
 
+# M12, SPEC-0001 CHECK_EXECUTES_EACH_WIRED_HOOK: `--check` runs each wired context
+# hook once on the check envelope, writes nothing, and fails naming a hook
+# whose script is gone. BASE wires Claude Code's two and Prime Agent's two;
+# BASECOPILOT wires the Copilot pair.
+tree_sig() { ( cd "$1" && find . -print0 | LC_ALL=C sort -z | xargs -0 shasum 2>/dev/null; find . | LC_ALL=C sort ) | shasum; }
+case_hook_check() {
+    local HC="$WORK/hookcheck" HP="$WORK/hookcheck-copilot" out rc before ev_script
+    mkdir -p "$HC" "$HP" && cp -a "$BASE/." "$HC/" && cp -a "$BASECOPILOT/." "$HP/"
+    before="$(tree_sig "$HC")"
+    rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$HC" 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] || fail "CHECK_EXECUTES_EACH_WIRED_HOOK: --check over passing hooks exited $rc: $out"
+    grep -q "no generated views are in scope" <<<"$out" \
+        || fail "CHECK_EXECUTES_EACH_WIRED_HOOK: CHECK_WITHOUT_COPILOT_SAYS_SO's line is gone: $out"
+    for ev_script in "UserPromptSubmit .claude/route-hook.py" "SessionStart .claude/status-hook.py" \
+                     "UserPromptSubmit .prime/agent/hooks/route-hook.py" "SessionStart .prime/agent/hooks/status-hook.py"; do
+        grep -q "hook ${ev_script% *} ${ev_script#* } ran" <<<"$out" \
+            || fail "CHECK_EXECUTES_EACH_WIRED_HOOK: no ran line for $ev_script: $out"
+    done
+    [[ "$(tree_sig "$HC")" == "$before" ]] \
+        || fail "CHECK_EXECUTES_EACH_WIRED_HOOK: --check changed the plant"
+    rm "$HC/.claude/route-hook.py"
+    rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$HC" 2>&1)" || rc=$?
+    [[ $rc -ne 0 ]] || fail "CHECK_EXECUTES_EACH_WIRED_HOOK: --check passed a plant whose route hook is gone: $out"
+    grep -q "UserPromptSubmit .claude/route-hook.py" <<<"$out" \
+        || fail "CHECK_EXECUTES_EACH_WIRED_HOOK: the failure does not name the hook: $out"
+    rm "$HP/.github/hooks/status-hook.py"
+    rc=0; out="$("$ROOT/install.sh" github-copilot --check --project-dir "$HP" 2>&1)" || rc=$?
+    [[ $rc -ne 0 ]] || fail "CHECK_EXECUTES_EACH_WIRED_HOOK: --check passed a Copilot plant whose status hook is gone: $out"
+    grep -q "SessionStart .github/hooks/status-hook.py" <<<"$out" \
+        || fail "CHECK_EXECUTES_EACH_WIRED_HOOK: the Copilot failure does not name the hook: $out"
+    echo "  M12 CHECK_EXECUTES_EACH_WIRED_HOOK: four hooks ran with the plant unchanged; a missing route or Copilot status script fails --check, named — OK"
+}
+
+# M13, SPEC-0001 CHECK_FLAGS_RETIRED_HARNESS_ENTRY: an origin: seed skill the
+# seed no longer ships (it folded skill.from-scratch-bootstrap into
+# protocol.from-scratch), still in the graph and still projected, is named
+# RETIRED by --check and by graft-audit; nothing is deleted, the exit code is
+# the rest of the check's, and a backup of its projection classifies RETIRED.
+case_retired_flag() {
+    local R="$WORK/retired" out rc before node=docs/graph/skills/from-scratch-bootstrap.md
+    local proj=.claude/skills/from-scratch-bootstrap/SKILL.md lone=.claude/agents/legacy-steward.md audit_rc0
+    [[ ! -e "$ROOT/skills/from-scratch-bootstrap" ]] || fail "fixture: the seed ships skills/from-scratch-bootstrap again"
+    [[ ! -e "$ROOT/agents/legacy-steward.md" ]] || fail "fixture: the seed ships agents/legacy-steward.md"
+    mkdir -p "$R" && cp -a "$BASE/." "$R/"
+    rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$R" 2>&1)" || rc=$?
+    grep -q "every harness entry has a graph home" <<<"$out" \
+        || fail "CHECK_FLAGS_ORPHAN_HARNESS_ENTRY: --check over a clean install does not say every harness entry has a graph home: $out"
+    audit_rc0=0; python3 "$ROOT/tools/graft-audit.py" "$R" "$ROOT" >/dev/null 2>&1 || audit_rc0=$?
+    printf -- '---\nname: from-scratch-bootstrap\nid: skill.from-scratch-bootstrap\nkind: skill\norigin: seed\n---\n# from-scratch-bootstrap\n' > "$R/$node"
+    mkdir -p "$R/${proj%/SKILL.md}" && cp "$R/$node" "$R/$proj"
+    # the Given's third arm: an origin: seed harness entry with no graph node at all
+    printf -- '---\nname: legacy-steward\ndescription: a seed agent the seed folded away\norigin: seed\n---\n# legacy-steward\n' > "$R/$lone"
+    rc=0; out="$(python3 "$ROOT/tools/graft-audit.py" "$R" "$ROOT" 2>&1)" || rc=$?
+    [[ $rc -eq $audit_rc0 ]] || fail "CHECK_FLAGS_RETIRED_HARNESS_ENTRY: a RETIRED flag changed graft-audit's exit code from $audit_rc0 to $rc: $out"
+    grep -q "RETIRED $lone:" <<<"$out" || fail "CHECK_FLAGS_RETIRED_HARNESS_ENTRY: graft-audit does not name $lone RETIRED: $out"
+    before="$(tree_sig "$R")"
+    rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$R" 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] || fail "CHECK_FLAGS_RETIRED_HARNESS_ENTRY: a RETIRED flag changed the exit code to $rc: $out"
+    for p in "$node" "$proj" "$lone"; do
+        grep -q -- "--check: RETIRED $p:" <<<"$out" \
+            || fail "CHECK_FLAGS_RETIRED_HARNESS_ENTRY: --check does not name $p RETIRED: $out"
+    done
+    [[ "$(tree_sig "$R")" == "$before" ]] || fail "CHECK_FLAGS_RETIRED_HARNESS_ENTRY: --check changed the plant"
+    printf 'a line the projection gained\n' >> "$R/$proj"
+    "$ROOT/install.sh" claude-code --project-dir "$R" >/dev/null 2>&1 \
+        || fail "CHECK_FLAGS_RETIRED_HARNESS_ENTRY: the re-install over the retired projection failed"
+    rc=0; out="$(python3 "$ROOT/tools/graft-audit.py" "$R" "$ROOT" 2>&1)" || rc=$?
+    grep -q "'RETIRED': 1" <<<"$out" \
+        || fail "CHECK_FLAGS_RETIRED_HARNESS_ENTRY: graft-audit does not classify the retired projection's backup RETIRED: $out"
+    grep -q "UNMAPPED backup" <<<"$out" \
+        && fail "CHECK_FLAGS_RETIRED_HARNESS_ENTRY: graft-audit still reports the retired projection's backup UNMAPPED: $out"
+    grep -q "RETIRED $proj:" <<<"$out" \
+        || fail "CHECK_FLAGS_RETIRED_HARNESS_ENTRY: graft-audit does not name $proj RETIRED: $out"
+    [[ -f "$R/$node" && -f "$R/$proj" && -f "$R/$lone" ]] || fail "CHECK_FLAGS_RETIRED_HARNESS_ENTRY: a retired entry was deleted"
+    echo "  M13 CHECK_FLAGS_RETIRED_HARNESS_ENTRY: the retired node and its projection are named RETIRED by --check and graft-audit, nothing deleted — OK"
+}
+
+# M14, SPEC-0001 CHECK_FLAGS_ORPHAN_HARNESS_ENTRY: a skill and an agent the plant
+# authored straight into harness directories, with no graph home, are named
+# ORPHAN by --check and by graft-audit; nothing is written or deleted.
+case_orphan_flag() {
+    local O="$WORK/orphan" out rc before p audit_rc0
+    mkdir -p "$O" && cp -a "$BASE/." "$O/"
+    audit_rc0=0; python3 "$ROOT/tools/graft-audit.py" "$O" "$ROOT" >/dev/null 2>&1 || audit_rc0=$?
+    mkdir -p "$O/.claude/skills/deploy-notes" "$O/.prime/agent/agents"
+    printf -- '---\nname: deploy-notes\ndescription: how this plant deploys\n---\n# deploy-notes\n' \
+        > "$O/.claude/skills/deploy-notes/SKILL.md"
+    printf -- '---\nname: release-steward\ndescription: cuts releases\n---\n# release-steward\n' \
+        > "$O/.prime/agent/agents/release-steward.md"
+    before="$(tree_sig "$O")"
+    rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$O" 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] || fail "CHECK_FLAGS_ORPHAN_HARNESS_ENTRY: an ORPHAN flag changed the exit code to $rc: $out"
+    for p in ".claude/skills/deploy-notes/SKILL.md: no graph home (docs/graph/skills/deploy-notes.md)" \
+             ".prime/agent/agents/release-steward.md: no graph home (docs/graph/agents/release-steward.md)"; do
+        grep -qF -- "--check: ORPHAN $p" <<<"$out" \
+            || fail "CHECK_FLAGS_ORPHAN_HARNESS_ENTRY: --check does not say ORPHAN ${p%%:*}: $out"
+    done
+    [[ "$(tree_sig "$O")" == "$before" ]] || fail "CHECK_FLAGS_ORPHAN_HARNESS_ENTRY: --check changed the plant"
+    rc=0; out="$(python3 "$ROOT/tools/graft-audit.py" "$O" "$ROOT" 2>&1)" || rc=$?
+    [[ $rc -eq $audit_rc0 ]] || fail "CHECK_FLAGS_ORPHAN_HARNESS_ENTRY: an ORPHAN flag changed graft-audit's exit code from $audit_rc0 to $rc: $out"
+    grep -qF "ORPHAN .claude/skills/deploy-notes/SKILL.md:" <<<"$out" \
+        || fail "CHECK_FLAGS_ORPHAN_HARNESS_ENTRY: graft-audit does not name the orphan skill: $out"
+    [[ -f "$O/.claude/skills/deploy-notes/SKILL.md" && -f "$O/.prime/agent/agents/release-steward.md" ]] \
+        || fail "CHECK_FLAGS_ORPHAN_HARNESS_ENTRY: an orphan entry was deleted"
+    echo "  M14 CHECK_FLAGS_ORPHAN_HARNESS_ENTRY: two plant-authored harness entries are named ORPHAN by --check and graft-audit, nothing written — OK"
+}
+
+# --- selective placement (SPEC-0001 §6, M15 to M20) --------------------------
+# Every case installs from a copy of this seed whose three corpora are replaced
+# by the synthetic subset under tests/fixtures/corpus-placement/seed, into a copy
+# of the synthetic manifests under tests/fixtures/corpus-placement/plant. ESEED
+# is shared and read-only; a case that changes the corpus copies it first.
+FIX="$ROOT/tests/fixtures/corpus-placement"
+make_seed() {
+    local S="$1"
+    mkdir -p "$S"
+    ( cd "$ROOT" && tar cf - --exclude .git --exclude __pycache__ . ) | ( cd "$S" && tar xf - )
+    rm -rf "$S/library-corpus" "$S/skill-corpus" "$S/tool-corpus"
+    cp -R "$FIX/seed/." "$S/"
+}
+seed_version() { sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$1/manifest.json" | head -1; }
+fresh_plant() { mkdir -p "$1" && cp -R "$FIX/plant/." "$1/"; }
+sha_of() { shasum -a 256 "$1" | awk '{print $1}'; }
+# expertise_record PLANT -> "id path sha256" per recorded entry, in stamp order
+expertise_record() {
+    python3 - "$1/.cypress/seed.json" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1], encoding="utf-8"))
+for e in data.get("expertise", []):
+    print(e["id"], e["path"], e["sha256"])
+PY
+}
+
+# M15, SPEC-0001 EXPERTISE_PROPOSAL_WRITES_NOTHING and EXPERTISE_MANIFEST_UNREADABLE
+case_expertise_propose() {
+    local P="$WORK/xp-propose" out rc before
+    fresh_plant "$P"
+    before="$(tree_sig "$P")"
+    rc=0; out="$("$ESEED/install.sh" claude-code --expertise propose --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] || fail "EXPERTISE_PROPOSAL_WRITES_NOTHING: propose exited $rc: $out"
+    for line in "library-corpus/maven/lumen-core  pom.xml: org.example.lumen:lumen-core-starter-web" \
+                "library-corpus/npm/orbit-forms  package.json: @orbit/forms" \
+                "skill-corpus/maven/lumen-upgrade  stack: library-corpus/maven/lumen-core"; do
+        grep -qxF "$line" <<<"$out" || fail "EXPERTISE_PROPOSAL_WRITES_NOTHING: no proposal line '$line': $out"
+    done
+    [[ "$(tree_sig "$P")" == "$before" ]] || fail "EXPERTISE_PROPOSAL_WRITES_NOTHING: propose changed the target"
+    [[ ! -e "$P/.cypress" && ! -e "$P/CLAUDE.md" && ! -e "$P/.claude" ]] \
+        || fail "EXPERTISE_PROPOSAL_WRITES_NOTHING: propose installed something"
+    printf '{ not json' > "$P/package.json"
+    before="$(tree_sig "$P")"
+    rc=0; out="$("$ESEED/install.sh" claude-code --expertise propose --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] || fail "EXPERTISE_MANIFEST_UNREADABLE: propose over a broken package.json exited $rc: $out"
+    grep -q "package.json.*not valid JSON" <<<"$out" \
+        || fail "EXPERTISE_MANIFEST_UNREADABLE: the broken package.json is not named: $out"
+    grep -q "^library-corpus/maven/lumen-core  " <<<"$out" \
+        || fail "EXPERTISE_MANIFEST_UNREADABLE: the other manifests were not read: $out"
+    [[ "$(tree_sig "$P")" == "$before" ]] || fail "EXPERTISE_MANIFEST_UNREADABLE: propose changed the target"
+    echo "  M15 EXPERTISE_PROPOSAL_WRITES_NOTHING: propose prints the matches, names a broken manifest, writes nothing — OK"
+}
+
+# M16, SPEC-0001 EXPERTISE_PLACES_ONLY_THE_CONFIRMED_LIST, PLACED_PAGE_CARRIES_ITS_PROVENANCE,
+# PLACED_SKILL_IS_A_ROUTABLE_NODE and EXPERTISE_IS_RECORDED_IN_THE_STAMP
+case_expertise_place() {
+    local P="$WORK/xp-place" out rc V rel got want
+    fresh_plant "$P"
+    V="$(seed_version "$ESEED")"
+    rc=0; out="$("$ESEED/install.sh" claude-code --project-dir "$P" --expertise \
+        library-corpus/maven/lumen-core,skill-corpus/maven/lumen-upgrade,tool-corpus/ops/orbit-form-linter,library-corpus/platform/cloud-cli 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] || fail "EXPERTISE_PLACES_ONLY_THE_CONFIRMED_LIST: the install exited $rc: $out"
+    got="$(cd "$P/docs/graph" && ls libraries tools | grep -v -e '^index.md$' -e ':$' -e '^$' | sort | tr '\n' ' ')"
+    [[ "$got" == "cloud-cli.md lumen-core.md orbit-form-linter.md " ]] \
+        || fail "EXPERTISE_PLACES_ONLY_THE_CONFIRMED_LIST: libraries/ and tools/ hold '$got'"
+    [[ -z "$(ls "$P/docs/graph/legal/corpus" 2>/dev/null)" ]] \
+        || fail "EXPERTISE_PLACES_ONLY_THE_CONFIRMED_LIST: the arm wrote under docs/graph/legal/corpus"
+    [[ ! -e "$P/docs/graph/corpus-match.py" ]] \
+        || fail "EXPERTISE_PROPOSAL_WRITES_NOTHING: tools/corpus-match.py was placed in the plant"
+    for rel in libraries/lumen-core.md:library-corpus/maven/lumen-core tools/orbit-form-linter.md:tool-corpus/ops/orbit-form-linter; do
+        [[ "$(head -1 "$P/docs/graph/${rel%%:*}")" == "<!-- origin: corpus@$V id: ${rel#*:} -->" ]] \
+            || fail "PLACED_PAGE_CARRIES_ITS_PROVENANCE: ${rel%%:*} opens with '$(head -1 "$P/docs/graph/${rel%%:*}")'"
+        cmp -s <(tail -n +2 "$P/docs/graph/${rel%%:*}") "$ESEED/${rel#*:}.md" \
+            || fail "PLACED_PAGE_CARRIES_ITS_PROVENANCE: ${rel%%:*} differs from its corpus page after the provenance line"
+    done
+    grep -qx "origin: corpus@$V" "$P/docs/graph/skills/lumen-upgrade.md" \
+        || fail "PLACED_SKILL_IS_A_ROUTABLE_NODE: the placed skill carries no 'origin: corpus@$V' line"
+    cmp -s <(grep -vx "origin: corpus@$V" "$P/docs/graph/skills/lumen-upgrade.md") "$ESEED/skill-corpus/maven/lumen-upgrade.md" \
+        || fail "PLACED_SKILL_IS_A_ROUTABLE_NODE: the placed skill differs from its corpus page beyond the origin line"
+    rc=0; out="$(cd "$P" && python3 -B docs/graph/graph-lint.py --show skill.lumen-upgrade 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] && grep -q "lumen-upgrade" <<<"$out" \
+        || fail "PLACED_SKILL_IS_A_ROUTABLE_NODE: graph-lint --show skill.lumen-upgrade exited $rc: $out"
+    [[ -f "$P/.claude/skills/lumen-upgrade/SKILL.md" ]] \
+        || fail "PLACED_SKILL_IS_A_ROUTABLE_NODE: no .claude/skills/lumen-upgrade/SKILL.md projection"
+    want="library-corpus/maven/lumen-core docs/graph/libraries/lumen-core.md $(sha_of "$P/docs/graph/libraries/lumen-core.md")
+library-corpus/platform/cloud-cli docs/graph/libraries/cloud-cli.md $(sha_of "$P/docs/graph/libraries/cloud-cli.md")
+skill-corpus/maven/lumen-upgrade docs/graph/skills/lumen-upgrade.md $(sha_of "$P/docs/graph/skills/lumen-upgrade.md")
+tool-corpus/ops/orbit-form-linter docs/graph/tools/orbit-form-linter.md $(sha_of "$P/docs/graph/tools/orbit-form-linter.md")"
+    got="$(expertise_record "$P" 2>&1)" || fail "EXPERTISE_IS_RECORDED_IN_THE_STAMP: the stamp has no readable expertise key: $got"
+    [[ "$got" == "$want" ]] || fail "EXPERTISE_IS_RECORDED_IN_THE_STAMP: the record reads
+$got
+and should read
+$want"
+    [[ "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$P/.cypress/seed.json")" == "$V" ]] \
+        || fail "PLACED_PAGE_CARRIES_ITS_PROVENANCE: the stamp's version is not the provenance version $V"
+    echo "  M16 EXPERTISE_PLACES_ONLY_THE_CONFIRMED_LIST: four confirmed pages placed with provenance, the skill routable and projected, the record exact — OK"
+}
+
+# M17, SPEC-0001 UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING, with the architect's
+# condition: a listed id whose destination a different recorded id owns.
+case_expertise_refused() {
+    local P="$WORK/xp-refused" out rc before bad
+    fresh_plant "$P"
+    before="$(tree_sig "$P")"
+    for bad in library-corpus/maven/lumen-cor legal-corpus/eu/gdpr agent-corpus/roles/tester \
+               library-corpus/../legal-corpus/README /etc/passwd skill-corpus/generic-procedure \
+               "library-corpus/pypi/swift-cache,library-corpus/container/swift-cache" \
+               skill-corpus/maven/test-first library-corpus/npm/index; do
+        rc=0; out="$("$ESEED/install.sh" claude-code --expertise "library-corpus/maven/lumen-core,$bad" --project-dir "$P" 2>&1)" || rc=$?
+        [[ $rc -ne 0 ]] || fail "UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING: '$bad' was not refused"
+        grep -qF -- "${bad##*,}" <<<"$out" || fail "UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING: the refusal of '$bad' does not name it: $out"
+        grep -q "Traceback" <<<"$out" && fail "UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING: '$bad' raised a Python error: $out"
+        [[ "$(tree_sig "$P")" == "$before" ]] || fail "UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING: refusing '$bad' changed the target"
+    done
+    "$ESEED/install.sh" claude-code --expertise library-corpus/pypi/swift-cache --project-dir "$P" >/dev/null 2>&1 \
+        || fail "UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING: placing library-corpus/pypi/swift-cache failed"
+    before="$(tree_sig "$P")"
+    rc=0; out="$("$ESEED/install.sh" claude-code --expertise library-corpus/container/swift-cache --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -ne 0 ]] || fail "UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING: an id whose destination a recorded id owns was not refused: $out"
+    grep -qF "library-corpus/container/swift-cache" <<<"$out" \
+        || fail "UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING: the recorded-destination refusal does not name the id: $out"
+    [[ "$(tree_sig "$P")" == "$before" ]] \
+        || fail "UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING: the recorded-destination refusal changed the plant"
+    echo "  M17 UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING: ten bad lists refused by name with the target unchanged — OK"
+}
+
+# M18, SPEC-0001 EXPERTISE_SURVIVES_SILENCE and RECORDED_EXPERTISE_PAGE_WITHDRAWN,
+# with IDENTICAL_RERUN_IS_INERT, UNKNOWN_STAMP_KEYS_SURVIVE and the audit clause
+# of PLACED_PAGE_CARRIES_ITS_PROVENANCE over the refreshed page's backup.
+case_expertise_silence() {
+    local S="$WORK/xp-silence-seed" P="$WORK/xp-silence" out rc rec baks
+    make_seed "$S"; fresh_plant "$P"
+    "$S/install.sh" claude-code --project-dir "$P" \
+        --expertise library-corpus/maven/lumen-core,library-corpus/npm/orbit-forms,skill-corpus/maven/lumen-upgrade >/dev/null 2>&1 \
+        || fail "EXPERTISE_SURVIVES_SILENCE: the placing install failed"
+    python3 - "$P/.cypress/seed.json" <<'PY'
+import json, sys
+p = sys.argv[1]; d = json.load(open(p, encoding="utf-8")); d["owner_note"] = {"kept": True}
+open(p, "w", encoding="utf-8").write(json.dumps(d, indent=2) + "\n")
+PY
+    rec="$(expertise_record "$P")"
+    "$S/install.sh" claude-code --project-dir "$P" >/dev/null 2>&1 || fail "EXPERTISE_SURVIVES_SILENCE: the silent re-run failed"
+    baks="$(find "$P" -name '*.bak-*' | sed "s|^$P/||")"
+    [[ -z "$baks" ]] || fail "IDENTICAL_RERUN_IS_INERT: the silent re-run made backups: $baks"
+    [[ "$(expertise_record "$P")" == "$rec" ]] || fail "EXPERTISE_SURVIVES_SILENCE: the silent re-run changed the record"
+    python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); k=list(d); assert d["owner_note"]=={"kept":True} and k[-1]=="owner_note" and k.index("expertise")<k.index("owner_note"), k' \
+        "$P/.cypress/seed.json" || fail "UNKNOWN_STAMP_KEYS_SURVIVE: the unknown key did not survive after the expertise key"
+    printf '\nA newer layer of the corpus page.\n' >> "$S/library-corpus/npm/orbit-forms.md"
+    rc=0; out="$("$S/install.sh" claude-code --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] || fail "EXPERTISE_SURVIVES_SILENCE: the re-run over a newer corpus page exited $rc: $out"
+    tail -1 "$P/docs/graph/libraries/orbit-forms.md" | grep -q "A newer layer" \
+        || fail "EXPERTISE_SURVIVES_SILENCE: the newer corpus page was not placed"
+    compgen -G "$P/docs/graph/libraries/orbit-forms.md.bak-*" >/dev/null \
+        || fail "EXPERTISE_SURVIVES_SILENCE: the refreshed page left no backup"
+    compgen -G "$P/docs/graph/libraries/lumen-core.md.bak-*" >/dev/null \
+        && fail "EXPERTISE_SURVIVES_SILENCE: an unchanged page was backed up"
+    grep -q "^library-corpus/npm/orbit-forms docs/graph/libraries/orbit-forms.md $(sha_of "$P/docs/graph/libraries/orbit-forms.md")$" \
+        <<<"$(expertise_record "$P")" || fail "EXPERTISE_SURVIVES_SILENCE: the refreshed page's recorded hash was not updated"
+    rc=0; out="$(python3 "$S/tools/graft-audit.py" "$P" "$S" 2>&1)" || rc=$?
+    grep -q "'CORPUS-PLACED': 1" <<<"$out" \
+        || fail "PLACED_PAGE_CARRIES_ITS_PROVENANCE: graft-audit does not classify the refreshed page's backup corpus-placed: $out"
+    grep -q -e "UNMAPPED backup" -e "knowledge overwrite" <<<"$out" \
+        && fail "PLACED_PAGE_CARRIES_ITS_PROVENANCE: graft-audit reads the corpus-placed backup as unmapped or plant knowledge: $out"
+    rm "$P/docs/graph/libraries/lumen-core.md"
+    rc=0; out="$("$S/install.sh" claude-code --project-dir "$P" 2>&1)" || rc=$?
+    [[ -f "$P/docs/graph/libraries/lumen-core.md" ]] || fail "EXPERTISE_SURVIVES_SILENCE: a deleted recorded page was not placed again"
+    grep -q "docs/graph/libraries/lumen-core.md" <<<"$out" \
+        || fail "EXPERTISE_SURVIVES_SILENCE: the re-placed page is not named in the log: $out"
+    rec="$(expertise_record "$P")"
+    local page_sig; page_sig="$(sha_of "$P/docs/graph/libraries/orbit-forms.md")"
+    rm "$S/library-corpus/npm/orbit-forms.md"
+    rc=0; out="$("$S/install.sh" claude-code --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] || fail "RECORDED_EXPERTISE_PAGE_WITHDRAWN: a plain install exited $rc after the warning: $out"
+    grep -q "WARNING.*library-corpus/npm/orbit-forms" <<<"$out" \
+        || fail "RECORDED_EXPERTISE_PAGE_WITHDRAWN: no WARNING names the withdrawn id: $out"
+    [[ "$(sha_of "$P/docs/graph/libraries/orbit-forms.md")" == "$page_sig" && "$(expertise_record "$P")" == "$rec" ]] \
+        || fail "RECORDED_EXPERTISE_PAGE_WITHDRAWN: the placed page or its record entry changed"
+    rm "$P/docs/graph/libraries/orbit-forms.md"
+    rc=0; out="$("$S/install.sh" claude-code --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -eq 0 && ! -e "$P/docs/graph/libraries/orbit-forms.md" && "$(expertise_record "$P")" == "$rec" ]] \
+        || fail "RECORDED_EXPERTISE_PAGE_WITHDRAWN: a withdrawn page the plant deleted was not left absent with its entry kept (exit $rc): $out"
+    rc=0; out="$("$S/install.sh" claude-code --check --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -ne 0 ]] && grep -q "WARNING.*library-corpus/npm/orbit-forms" <<<"$out" \
+        || fail "RECORDED_EXPERTISE_PAGE_WITHDRAWN: --check did not name the withdrawn id and exit non-zero (exit $rc): $out"
+    echo "  M18 EXPERTISE_SURVIVES_SILENCE: silence refreshes, re-places and keeps the record; a withdrawn page warns and is left — OK"
+}
+
+# M19, SPEC-0001 PLANT_EDITED_PAGE_IS_LEFT_AND_NAMED and PLANT_OWNED_PAGE_IS_NEVER_REPLACED
+case_expertise_plant_edits() {
+    local P="$WORK/xp-edits" out rc rec page=docs/graph/libraries/lumen-core.md sig flag
+    fresh_plant "$P"
+    "$ESEED/install.sh" claude-code --expertise library-corpus/maven/lumen-core --project-dir "$P" >/dev/null 2>&1 \
+        || fail "PLANT_EDITED_PAGE_IS_LEFT_AND_NAMED: the placing install failed"
+    printf '\nThe plant observed this on its own build.\n' >> "$P/$page"
+    sig="$(sha_of "$P/$page")"; rec="$(expertise_record "$P")"
+    for flag in "" "--expertise library-corpus/maven/lumen-core"; do
+        rc=0; out="$("$ESEED/install.sh" claude-code $flag --project-dir "$P" 2>&1)" || rc=$?
+        [[ $rc -eq 0 ]] || fail "PLANT_EDITED_PAGE_IS_LEFT_AND_NAMED: the re-run '$flag' exited $rc: $out"
+        [[ "$(sha_of "$P/$page")" == "$sig" ]] || fail "PLANT_EDITED_PAGE_IS_LEFT_AND_NAMED: the edited page was rewritten ('$flag')"
+        compgen -G "$P/$page.bak-*" >/dev/null && fail "PLANT_EDITED_PAGE_IS_LEFT_AND_NAMED: a backup was made beside the edited page ('$flag')"
+        grep -q "$page.*graft Phase 4" <<<"$out" || fail "PLANT_EDITED_PAGE_IS_LEFT_AND_NAMED: no line names $page and graft Phase 4 ('$flag'): $out"
+        [[ "$(expertise_record "$P")" == "$rec" ]] || fail "PLANT_EDITED_PAGE_IS_LEFT_AND_NAMED: the record entry changed ('$flag')"
+    done
+    printf '# ripple\n\nThe plant ingested this page itself.\n' > "$P/docs/graph/libraries/ripple.md"
+    sig="$(sha_of "$P/docs/graph/libraries/ripple.md")"
+    rc=0; out="$("$ESEED/install.sh" claude-code --expertise library-corpus/npm/ripple,library-corpus/npm/orbit-forms --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] || fail "PLANT_OWNED_PAGE_IS_NEVER_REPLACED: the install exited $rc: $out"
+    [[ "$(sha_of "$P/docs/graph/libraries/ripple.md")" == "$sig" ]] || fail "PLANT_OWNED_PAGE_IS_NEVER_REPLACED: the plant's page was replaced"
+    compgen -G "$P/docs/graph/libraries/ripple.md.bak-*" >/dev/null && fail "PLANT_OWNED_PAGE_IS_NEVER_REPLACED: a backup was made beside the plant's page"
+    grep -q "docs/graph/libraries/ripple.md.*graft Phase 4" <<<"$out" \
+        || fail "PLANT_OWNED_PAGE_IS_NEVER_REPLACED: no line names the plant's page and graft Phase 4: $out"
+    rec="$(expertise_record "$P")"
+    grep -q "npm/ripple" <<<"$rec" && fail "PLANT_OWNED_PAGE_IS_NEVER_REPLACED: a record entry was written for the plant's page"
+    grep -q "^library-corpus/npm/orbit-forms " <<<"$rec" && [[ -f "$P/docs/graph/libraries/orbit-forms.md" ]] \
+        || fail "PLANT_OWNED_PAGE_IS_NEVER_REPLACED: the other id in the list was not placed and recorded"
+    echo "  M19 PLANT_EDITED_PAGE_IS_LEFT_AND_NAMED: an edited page and a plant-owned page are left, named, unrecorded changes none — OK"
+}
+
+# M20, SPEC-0001 EXPERTISE_CHECK_NAMES_MISSING_OR_STALE
+case_expertise_check() {
+    local S="$WORK/xp-check-seed" P="$WORK/xp-check" N="$WORK/xp-check-none" out rc before
+    make_seed "$S"; fresh_plant "$P"; fresh_plant "$N"
+    "$S/install.sh" claude-code --project-dir "$N" >/dev/null 2>&1 || fail "EXPERTISE_CHECK_NAMES_MISSING_OR_STALE: the plain install failed"
+    rc=0; out="$("$S/install.sh" claude-code --check --project-dir "$N" 2>&1)" || rc=$?
+    grep -qi "expertise" <<<"$out" && fail "EXPERTISE_CHECK_NAMES_MISSING_OR_STALE: a plant with no expertise key got an expertise line: $out"
+    "$S/install.sh" claude-code --expertise library-corpus/maven/lumen-core,library-corpus/npm/orbit-forms --project-dir "$P" >/dev/null 2>&1 \
+        || fail "EXPERTISE_CHECK_NAMES_MISSING_OR_STALE: the placing install failed"
+    before="$(tree_sig "$P")"
+    rc=0; out="$("$S/install.sh" claude-code --check --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] && grep -q "expertise pages are up to date" <<<"$out" \
+        || fail "EXPERTISE_CHECK_NAMES_MISSING_OR_STALE: a current plant did not pass with the up-to-date line (exit $rc): $out"
+    printf '\nA newer layer.\n' >> "$S/library-corpus/maven/lumen-core.md"
+    rm "$P/docs/graph/libraries/orbit-forms.md"
+    before="$(tree_sig "$P")"
+    rc=0; out="$("$S/install.sh" claude-code --check --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -ne 0 ]] || fail "EXPERTISE_CHECK_NAMES_MISSING_OR_STALE: a stale and a missing page passed --check: $out"
+    grep -q "docs/graph/libraries/lumen-core.md.*stale" <<<"$out" || fail "EXPERTISE_CHECK_NAMES_MISSING_OR_STALE: the stale page is not named: $out"
+    grep -q "docs/graph/libraries/orbit-forms.md.*missing" <<<"$out" || fail "EXPERTISE_CHECK_NAMES_MISSING_OR_STALE: the missing page is not named: $out"
+    [[ "$(tree_sig "$P")" == "$before" ]] || fail "EXPERTISE_CHECK_NAMES_MISSING_OR_STALE: --check changed the plant"
+    "$S/install.sh" claude-code --project-dir "$P" >/dev/null 2>&1 || fail "EXPERTISE_CHECK_NAMES_MISSING_OR_STALE: the refreshing install failed"
+    printf '\nA plant edit.\n' >> "$P/docs/graph/libraries/lumen-core.md"
+    rc=0; out="$("$S/install.sh" claude-code --check --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] || fail "EXPERTISE_CHECK_NAMES_MISSING_OR_STALE: a plant-edited page alone failed --check (exit $rc): $out"
+    grep -q "docs/graph/libraries/lumen-core.md.*graft Phase 4" <<<"$out" \
+        || fail "EXPERTISE_CHECK_NAMES_MISSING_OR_STALE: the plant-edited page is not named for graft Phase 4: $out"
+    echo "  M20 EXPERTISE_CHECK_NAMES_MISSING_OR_STALE: --check names a stale, a missing and an edited page, writing nothing — OK"
+}
+
 # --- one-case subcommand, run by the parallel dispatcher ---------------------
 if [ "${1:-}" = "__case" ]; then
     "$2"
@@ -579,9 +936,15 @@ if [[ ${#stray_candidates[@]} -gt 0 ]]; then
 fi
 echo "  M11 EVERY_RESOLVER_PATH_IS_INSTALLED: every route-resolver path ($(grep -c . <<< "$m11_paths")) is a path the installer writes — OK"
 
-export BASE BASECOPILOT
+# The selective-placement seed: a copy of this seed carrying the synthetic corpus.
+ESEED="$WORK/expertise-seed"
+make_seed "$ESEED"
+
+export BASE BASECOPILOT ESEED
 SCN="$(mktemp)"
-for c in case_recover case_symchurn case_m2 case_m4 case_m8 case_m10 case_cond; do
+for c in case_recover case_symchurn case_m2 case_m4 case_m8 case_m10 case_cond case_hook_check case_retired_flag case_orphan_flag \
+         case_expertise_propose case_expertise_place case_expertise_refused case_expertise_silence \
+         case_expertise_plant_edits case_expertise_check; do
     printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0

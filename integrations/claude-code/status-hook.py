@@ -31,7 +31,7 @@ rule or session-id pattern (SPEC-0003).
 
 It never blocks: a missing register, a missing graph, a timeout, or a broken
 register degrades to silence, and a reset that cannot run, stdin nested past
-the JSON parser, or an argv element outside the envelope costs one stderr
+route-hook.py's STDIN_NESTING_MAX, or an argv element outside the envelope costs one stderr
 line. The anchor fails toward inclusion
 instead: an absent, failing, silent or slow `code-anchor.py` gives the
 not-checked line, and no stderr line. Exit 0 always. Context injection REQUIRES
@@ -108,6 +108,23 @@ def emit(text: str, event: str) -> None:
     }))
 
 
+_ROUTE_HOOK = []
+
+
+def load_route_hook():
+    """The sibling route-hook.py as a module, loaded once. It owns the ledger
+    and the stdin nesting limit; any failure to load it raises."""
+    if not _ROUTE_HOOK:
+        sibling = Path(__file__).resolve().with_name("route-hook.py")
+        spec = importlib.util.spec_from_file_location("cypress_route_hook", sibling)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"cannot load {sibling.name}")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _ROUTE_HOOK.append(module)
+    return _ROUTE_HOOK[0]
+
+
 def reset_session_ledger(data: dict) -> None:
     """Reset this session's ledger through the sibling route-hook.py, its one
     owner. Any failure, the sibling missing included, is one stderr line and
@@ -116,12 +133,7 @@ def reset_session_ledger(data: dict) -> None:
     whose text can hold a file name and so the raw session id."""
     route_hook = None
     try:
-        sibling = Path(__file__).resolve().with_name("route-hook.py")
-        spec = importlib.util.spec_from_file_location("cypress_route_hook", sibling)
-        if spec is None or spec.loader is None:
-            raise ImportError(f"cannot load {sibling.name}")
-        route_hook = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(route_hook)
+        route_hook = load_route_hook()
         route_hook.reset_ledger(data.get("session_id"), data.get("source"))
     except Exception as e:                        # noqa: BLE001 — a reset never blocks the session
         safe = route_hook is not None and isinstance(e, getattr(route_hook, "LedgerUnusable", ()))
@@ -189,11 +201,22 @@ def read_envelope():
         return {key: options[opt] for key, opt in (("session_id", "session-id"), ("source", "source"))
                 if opt in options}
     try:
-        data = json.load(sys.stdin)
-    except RecursionError:                        # nested past the parser: no session to reset
-        print("status-hook: stdin nested past the JSON parser's limit; no reset", file=sys.stderr)
-        data = {}
+        route_hook = load_route_hook()
+    except Exception:                             # noqa: BLE001 — the reset names it; the parser guards alone
+        route_hook = None
+    nested = False
+    try:
+        if route_hook is not None:                # the sibling's count, on any Python
+            data = route_hook.read_stdin(sys.stdin)
+            nested = data is route_hook.NESTED
+        else:
+            data = json.load(sys.stdin)
+    except RecursionError:                        # a parser that still raises it: the second guard
+        nested = True
     except Exception:                             # noqa: BLE001 — not JSON, empty stdin included: silent
+        data = {}
+    if nested:                                    # nested past the limit: no session to reset
+        print("status-hook: stdin nested past the nesting limit; no reset", file=sys.stderr)
         data = {}
     return data if isinstance(data, dict) else {}
 

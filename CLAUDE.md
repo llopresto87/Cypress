@@ -132,8 +132,9 @@ no prose of its own, because CI has no access to the judgment
     force-push and no tag move.
 - `harvest`/`graft` are user-sovereign: they start only from the owner, and
   seed machinery may propose one and stop there.
-- Seed text (specs, plans, ADRs, doctrine) cites a ruling by its id and
-  describes its source in words, for example "kept with the round's working
-  records outside the seed", because session identifiers (a spawn id, a worker
-  label) and paths to a round's working records do not resolve for a later
-  reader.
+- Seed text (specs, plans, ADRs, doctrine) states an owner decision in words
+  with its date, for example "the owner decided on 2026-10-04 that ...", and
+  names no ruling id and no private record, because ruling ids, session
+  identifiers (a spawn id, a worker label) and paths to a round's working
+  records do not resolve for a later reader. Records of earlier releases keep
+  the form they were written in.

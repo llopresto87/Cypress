@@ -21,7 +21,7 @@ What this checks:
   2. GRADE HONESTY — an entry graded `verbatim` must actually carry quoted or
      blockquoted text. Grading a paraphrase as the law's own words is the
      falsification the schema's two "never soften" fields exist to prevent, and
-     it has shipped before: 18 entries carried it, inherited from a donor.
+     it has shipped before: 18 entries carried it, inherited from an earlier source.
   3. CONTROLLED VOCABULARY — text_form / legal_status values must be ones the
      schema defines.
   4. NEVER-INHERITABLE fields are inline: provision, text_form, text.

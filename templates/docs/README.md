@@ -23,6 +23,9 @@ it here, one home per fact.
 - `plans/grill.md`: the plan-of-record for active delivery work.
 - `plans/sessions/`: dated session records, the working state one
   session hands to the next (`_session-record.template.md` is the form).
+- `plans/harvest-candidates.md`: the plant's running list of lessons that
+  may belong in the seed, created from `_harvest-candidates.template.md`
+  the first time a lesson is flagged (`canonize.harvest-candidates`).
 - `specs/`: executable specifications (one per significant behavior).
 - `decisions/`: Architecture Decision Records.
 - `libraries/`: the LLM-maintained wiki, one page per dependency.

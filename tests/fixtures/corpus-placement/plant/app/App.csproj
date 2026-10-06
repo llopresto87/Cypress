@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="fabrikam.telemetry" Version="2.0.0" />
+  </ItemGroup>
+</Project>

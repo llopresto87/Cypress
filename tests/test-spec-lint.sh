@@ -410,4 +410,22 @@ run_rc 1 python3 "$PR/docs/graph/spec-lint.py"
 has -- '- SELECT_BY_LABEL '
 CASE=""
 
+# M1: a Markdown file in the specs directory that is not `SPEC-*.md` is a
+# misnamed spec. Discovery by the pattern skipped it and printed "PASS, 0 live
+# spec(s)" over a directory of specs: a green over an empty set. It now fails
+# and names the file; the directory's index and readme are exempt, and --slice
+# says the same on stderr.
+MS="$TMP/misnamed"
+mkdir -p "$MS/docs/graph" "$MS/tests"
+cp "$ROOT/templates/knowledge-graph/spec-lint.py" "$MS/docs/graph/"
+cp -R "$ROOT/tests/fixtures/misnamed-spec/specs" "$MS/docs/graph/specs"
+CASE=M1; run_rc 1 python3 "$MS/docs/graph/spec-lint.py"
+has 'misnamed spec, not checked: install-placement.md'
+hasnt 'misnamed spec, not checked: index.md'
+hasnt 'misnamed spec, not checked: README.md'
+hasnt 'PASS'
+run_rc 1 python3 "$MS/docs/graph/spec-lint.py" --slice PLACE_EVERY_FILE
+has 'misnamed spec, not checked: install-placement.md'
+CASE=""
+
 printf 'spec lint contract: PASS\n'

@@ -1,0 +1,10 @@
+{
+  "name": "sample-web",
+  "dependencies": {
+    "@orbit/forms": "^3.1.0",
+    "Ripple": "1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

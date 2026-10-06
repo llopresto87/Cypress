@@ -219,8 +219,19 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "DOCUMENTATION.md on its own meets the prose floor", REAL, "coverage",
         "1 of ~340 markdown files; documentation/*-reference.md are exempt by a "
         "recorded genre decision in run.sh"),
+    "prose-lint.py --file templates/knowledge-graph/_schema.md": (
+        "the schema template every plant installs meets the prose floor", REAL,
+        "coverage", "1 template of the many installed; the others are unchecked"),
+    "prose-lint.py --file templates/knowledge-graph/index.md": (
+        "the router index template every plant installs meets the prose floor",
+        REAL, "coverage", "1 template of the many installed; the others are unchecked"),
     "test-status-register.sh": (
         "the status vocabulary is controlled and queryable", FIXTURES, "scope", ""),
+    "test-session-metrics.sh": (
+        "session-metrics.py judges a delivery entry's Session metrics block "
+        "(SPEC-0006) and reports every entry for harvest", FIXTURES, "scope",
+        "one case (X413) reads the shipped protocols/deliver.md; no seed tree "
+        "holds a plant changelog, so the lint role has no real-tree partner"),
     "test-status-migrate.sh": (
         "status migration is exact and idempotent", FIXTURES, "scope", ""),
     "test-seed-lint.sh": (
@@ -241,6 +252,14 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "ratchet-lint.py step"),
     "test-legal-lint.sh": (
         "the legal citability contract", FIXTURES, "scope", ""),
+    "test_corpus_match.py": (
+        "tools/corpus-match.py proposes the corpus pages each manifest kind "
+        "matches by the SPEC-0001 §6 rule, names an unreadable manifest and "
+        "skips it, and says so when nothing matches", FIXTURES, "scope",
+        "runs against the synthetic manifests and corpus subset under "
+        "tests/fixtures/corpus-placement/, so a real corpus page whose key or "
+        "name the rule cannot reach is not seen here; the installer's use of "
+        "the proposal is held by test-install-placement.sh's M15"),
     "test-tool-corpus.sh": (
         "a page claiming portable stability ships code that compiles and works",
         REAL, "representation",

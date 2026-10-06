@@ -114,7 +114,7 @@ Then enrich the leaf collections under `docs/graph/`:
 | `prompts/` | discovered prompt contracts, versions, and call sites |
 | `evaluations/` | discovered datasets, rubrics, gates, and failure modes |
 | `runbooks/` | exact operational and verification commands, with status |
-| `plans/` | evidence gaps, drift/backfill work, next useful increment |
+| `plans/` | evidence gaps, drift/backfill work, next useful increment; when the project is automation that converges live systems, a backfill increment that imports the records those systems already hold as an unmanaged baseline, promoted one at a time by owner decision (`design-posture.converge-on-drift` owns the rule). The plan names the increment; the adoption pass does not write it |
 | `best-practices/` | conventions demonstrated by this project |
 
 Keep `specs/` and `decisions/` indexes, and fill them only from genuine
@@ -134,7 +134,8 @@ supersedes it, and (c) that this is a trust/evidence decision only: the
 artifact itself stays untouched (Invariants). A silent skip reads to a
 later agent as no decision, and the artifact gets re-trusted. The
 Handoff's excluded-docs report then points at this node rather than
-standing in for it.
+standing in for it. An agent-operations system is not such a source:
+`protocol.grow` Phase 4 says what each of its parts yields.
 
 ## Dependency wiki depth
 

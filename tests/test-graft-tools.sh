@@ -1129,6 +1129,10 @@ if not re.search(r"\binferred\b", out, re.I):
 if not any(re.search(r"\b3\b", l) and re.search(r"match", l, re.I) for l in out.splitlines()):
     print(f"the number of files that matched (3) is not printed on a line about matching: {out!r}"); sys.exit(1)
 PY
+  # GL-e's negative arm, held here where its input is made: a base inferred
+  # while the stamped version is in the history is not called a lower bound.
+  ! grep -qi "lower bound" "$RW/gld.out" \
+    || { echo "a base inferred where the stamped version is in the history is called a lower bound: $(flat "$RW/gld.out")"; return 1; }
 }
 
 # -- GR: the graft run driver ---------------------------------------------------
@@ -1227,9 +1231,9 @@ case_run_reconciles_three_engines() {
   local c e pairs
   gr_need || return 1; gr_fixture || return 1; gr_run_once
   c="$(gr_copy)"; [ -n "$c" ] || { echo "no copy of the plant in the stage"; return 1; }
-  pairs=""
-  for e in graph-lint.py spec-lint.py grill-lint.py; do pairs="$pairs --engine=$c/docs/graph/$e:$KG/$e"; done
-  python3 "$AUDIT" "$c" "$ROOT" $pairs >"$GR/d.out" 2>&1 || true
+  pairs=()
+  for e in graph-lint.py spec-lint.py grill-lint.py; do pairs+=("--engine=$c/docs/graph/$e:$KG/$e"); done
+  python3 "$AUDIT" "$c" "$ROOT" "${pairs[@]}" >"$GR/d.out" 2>&1 || true
   [ "$(grep -c "graph engine: current" "$GR/d.out")" -eq 3 ] \
     || { echo "the three engines in the stage are not all current: $(grep "graph engine" "$GR/d.out" | tr '\n' ' ')"; return 1; }
   grep -qx 'KIND_PREFIX = {"operator": "op."}' "$c/docs/graph/graph-lint.py" \
@@ -1281,6 +1285,18 @@ for (gid, cls), line in zip(gates, tail):
 PY
 }
 
+# GR-j: graft.gate.routes names `install.sh <host> --check`, which runs each
+# wired context hook (SPEC-0001 CHECK_EXECUTES_EACH_WIRED_HOOK); the rehearsal
+# runs it once per host in the stamp's tools and says so in the routes row.
+case_run_routes_runs_hook_check() {
+  local row
+  gr_need || return 1; gr_fixture || return 1; gr_run_once
+  row="$(grep -E '^graft\.gate\.routes:' "$GR/run.out" || true)"
+  [ -n "$row" ] || { echo "no graft.gate.routes row in the gate table: $(tail -5 "$GR/run.out" | tr '\n' ' ')"; return 1; }
+  echo "$row" | grep -Eq 'claude-code --check exit 0, [1-9][0-9]* hook\(s\) ran, 0 failed' \
+    || { echo "the routes row does not report the hook check for claude-code: $row"; return 1; }
+}
+
 case_run_exits_1_when_a_gate_blocks() {
   # the fixture deletes a seed node the install re-creates, so the gate table holds a BLOCK.
   gr_need || return 1; gr_fixture || return 1; gr_run_once
@@ -1312,6 +1328,103 @@ if not row or f"--base={b.group(1)}" not in row[0]:
 PY
 }
 
+# ---- round 8.0.0: three reported graft-tool defects, reproduced first -------
+# GL-e: a stamp older than the seed history the checkout retains. GR-i: a stamp
+# with no `tools`. GA-K1: a file the graft record kept, overwritten afterwards.
+
+# GL-e: the seed history starts at 1.1.0; the plant is a pristine 1.0.0 install.
+# Content lineage finds 1.1.0 (x.md matches only there), so ff.md, untouched by
+# the plant, would read as MERGE. The base is a lower bound and says so, and a
+# directory copy of 1.0.0 given as --base-dir is the real base.
+case_ledger_base_predates_history() {
+  local s="$RW/gleseed" p="$RW/gleplant" b="$RW/glebase" rc row got
+  gl_need || return 1
+  rm -rf "$s" "$p" "$b"; mkdir -p "$s/protocols" "$p/docs/graph/protocols" "$p/.cypress" "$b/protocols"
+  sgit -C "$s" init -q || { echo "fixture: git init failed"; return 1; }
+  printf 'ff2\n' > "$s/protocols/ff.md"; printf 'x1\n' > "$s/protocols/x.md"; printf 'c1\n' > "$s/protocols/c.md"
+  printf '{"version": "1.1.0"}\n' > "$s/manifest.json"
+  sgit -C "$s" add -A && sgit -C "$s" commit -q -m r110 || { echo "fixture: commit failed"; return 1; }
+  printf 'ff3\n' > "$s/protocols/ff.md"; printf 'x2\n' > "$s/protocols/x.md"
+  printf '{"version": "1.2.0"}\n' > "$s/manifest.json"
+  sgit -C "$s" add -A && sgit -C "$s" commit -q -m r120 || { echo "fixture: commit failed"; return 1; }
+  printf '{"seed": "cypress", "version": "1.0.0", "tools": "claude-code"}\n' > "$p/.cypress/seed.json"
+  printf 'ff1\n' > "$p/docs/graph/protocols/ff.md"; printf 'x1\n' > "$p/docs/graph/protocols/x.md"
+  printf 'c1\n' > "$p/docs/graph/protocols/c.md"
+  cp "$p"/docs/graph/protocols/*.md "$b/protocols/"; printf '{"version": "1.0.0"}\n' > "$b/manifest.json"
+  python3 "$LEDGER" "$p" "$s" >"$RW/gle1.out" 2>&1 && rc=0 || rc=$?
+  [ "$rc" -eq 0 ] || { echo "graft-ledger.py exited $rc: $(flat "$RW/gle1.out")"; return 1; }
+  grep -qi "lower bound" "$RW/gle1.out" && grep -q -- "--base-dir" "$RW/gle1.out" \
+    || { echo "an inferred base for a stamp no seed commit carries is not called a lower bound with --base-dir offered: $(flat "$RW/gle1.out")"; return 1; }
+  python3 "$LEDGER" "$p" "$s" --base-dir "$b" >"$RW/gle2.out" 2>&1 && rc=0 || rc=$?
+  [ "$rc" -eq 0 ] || { echo "graft-ledger.py --base-dir exited $rc: $(flat "$RW/gle2.out")"; return 1; }
+  grep -q "^base: .*$b" "$RW/gle2.out" || { echo "--base-dir is not printed as the base: $(flat "$RW/gle2.out")"; return 1; }
+  for row in "docs/graph/protocols/ff.md protocols/ff.md FAST-FORWARD" \
+             "docs/graph/protocols/x.md protocols/x.md FAST-FORWARD" \
+             "docs/graph/protocols/c.md protocols/c.md CURRENT"; do
+    set -- $row
+    got="$(gl_class_of "$RW/gle2.out" "$1" "$2")" || { echo "$got: $(flat "$RW/gle2.out")"; return 1; }
+    [ "$got" = "$3" ] || { echo "$1 classed $got against --base-dir, want $3: $(flat "$RW/gle2.out")"; return 1; }
+  done
+}
+
+# GR-i: a stamp with no `tools` is answered by the projections the plant
+# carries: the run names the adapters it inferred and the flag that confirms
+# them, writes nothing, and the confirmed run installs those adapters.
+case_run_infers_adapters_for_old_stamp() {
+  local p="$GR/oldstamp" st="$GR/oldstamp-stage" rc
+  gr_need || return 1; gr_fixture || return 1
+  rm -rf "$p" "$st" "$st-2"; cp -R "$GR_PLANT" "$p"
+  python3 - "$p/.cypress/seed.json" <<'PY' || { echo "fixture: could not strip tools from the stamp"; return 1; }
+import json, sys
+f = sys.argv[1]; d = json.load(open(f)); d.pop("tools", None); open(f, "w").write(json.dumps(d, indent=2) + "\n")
+PY
+  python3 "$RUN" "$p" "$ROOT" --stage "$st" >"$GR/i1.out" 2>&1 && rc=0 || rc=$?
+  [ "$rc" -eq 1 ] || { echo "an unconfirmed old stamp exited $rc, want 1: $(flat "$GR/i1.out")"; return 1; }
+  grep -q "claude-code" "$GR/i1.out" && grep -q -- "--tools" "$GR/i1.out" \
+    || { echo "the run did not name the inferred adapter claude-code and the --tools confirmation: $(flat "$GR/i1.out")"; return 1; }
+  ! grep -qi "by hand" "$GR/i1.out" || { echo "the run still refuses and sends the steward to work by hand: $(flat "$GR/i1.out")"; return 1; }
+  [ ! -e "$st" ] || [ -z "$(ls -A "$st")" ] || { echo "an unconfirmed run wrote into the stage"; return 1; }
+  python3 "$RUN" "$p" "$ROOT" --stage "$st-2" --tools=claude-code >"$GR/i2.out" 2>&1 && rc=0 || rc=$?
+  grep -q "^install: install.sh claude-code" "$GR/i2.out" \
+    || { echo "the confirmed run did not install claude-code (exit $rc): $(head -12 "$GR/i2.out" | tr '\n' ' ')"; return 1; }
+}
+
+# GA-K1: the record's newest graft entry lists a merged and a kept file. A
+# later plain install put the seed's bytes back over the merged one, so its
+# plant delta is gone. --record finds it, fails, and passes once it is back.
+case_audit_record_kept_delta_lost() {
+  local s="$RW/k1seed" p="$RW/k1plant" rc
+  rm -rf "$s" "$p"; mkdir -p "$s/protocols" "$s/core/method" "$p/docs/graph/protocols" "$p/docs/graph/method"
+  printf 'seed m\n' > "$s/protocols/merged.md"; printf 'seed k\n' > "$s/core/method/kept.md"
+  printf 'seed o\n' > "$s/protocols/old.md"
+  cp "$s/protocols/merged.md" "$p/docs/graph/protocols/merged.md"     # overwritten after the merge
+  printf 'seed k\na plant rule\n' > "$p/docs/graph/method/kept.md"
+  cp "$s/protocols/old.md" "$p/docs/graph/protocols/old.md"           # an older graft's entry only
+  cat > "$p/docs/graph/changelog.md" <<'MD'
+# Graft — synthetic — seed 1.0.0 → 1.1.0 — 2026-01-02
+
+## Merged (holistic re-integration; steward-ratified)
+- `protocols/old.md` — kept: an old section — gained: nothing
+
+# Graft — synthetic — seed 1.1.0 → 1.2.0 — 2026-03-04
+
+## Merged (holistic re-integration; steward-ratified)
+- `protocols/merged.md` — kept: the plant's section — gained: the seed's step
+
+## Kept as the plant's (divergence preserved) → harvest candidates
+- `method/kept.md` — the plant's version stands; raised upstream because: a rule
+MD
+  python3 "$AUDIT" "$p" "$s" --record "$p/docs/graph/changelog.md" >"$RW/k1.out" 2>&1 && rc=0 || rc=$?
+  [ "$rc" -eq 1 ] || { echo "a merged file carrying the seed's bytes exited $rc, want 1: $(flat "$RW/k1.out")"; return 1; }
+  grep -E "LOST.*docs/graph/protocols/merged\.md" "$RW/k1.out" >/dev/null \
+    || { echo "the lost delta of protocols/merged.md is not named LOST: $(flat "$RW/k1.out")"; return 1; }
+  ! grep -E "LOST.*(kept|old)\.md" "$RW/k1.out" >/dev/null \
+    || { echo "a file that still carries its delta, or one only an older entry lists, is named LOST: $(flat "$RW/k1.out")"; return 1; }
+  printf 'seed m\nthe plant section\n' > "$p/docs/graph/protocols/merged.md"
+  python3 "$AUDIT" "$p" "$s" --record "$p/docs/graph/changelog.md" >"$RW/k1b.out" 2>&1 && rc=0 || rc=$?
+  [ "$rc" -eq 0 ] || { echo "with every delta present the re-check exited $rc, want 0: $(flat "$RW/k1b.out")"; return 1; }
+}
+
 collect_case GA-C1 case_audit_base_identical_is_delta "a backup byte-identical to the seed at --base is DELTA; without --base it stays CUSTOMIZED"
 collect_case GA-C2 case_audit_engine_signal_survives "an engine backup whose signal lines survive in the current engine is not CUSTOMIZED"
 collect_case X390 case_audit_plant_agent_projection "GA-C3: a plant-owned node's agent, skill (X391) and Copilot (X392) projection backups are classified, exit 0"
@@ -1326,7 +1439,11 @@ collect_case GR-d case_run_reconciles_three_engines "the three engines in the st
 collect_case GR-e case_run_derives_tokens_from_plant "the --tokens list is derived from the plant"
 collect_case GR-f case_run_prints_gate_table "stdout ends with the Phase 7 gate table"
 collect_case GR-g case_run_exits_1_when_a_gate_blocks "a run whose gate table holds a BLOCK exits 1"
+collect_case GR-j case_run_routes_runs_hook_check "graft.gate.routes runs install.sh <host> --check, the hook check, once per recorded host"
 collect_case GR-h case_run_passes_inferred_base_to_audit "an inferred base is passed to graft-audit as --base"
+collect_case GL-e case_ledger_base_predates_history "a stamp older than the retained history: the inferred base is a lower bound, --base-dir gives the real one"
+collect_case GR-i case_run_infers_adapters_for_old_stamp "a stamp with no tools: adapters inferred from the projections, confirmed with --tools"
+collect_case GA-K1 case_audit_record_kept_delta_lost "--record: a merged or kept file that lost its plant delta fails the graft"
 [ "$CASE_FAILED" -eq 0 ] \
   || { echo "test-graft-tools: FAIL — failing cases (above)" >&2; exit 1; }
 

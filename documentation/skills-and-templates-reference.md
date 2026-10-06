@@ -55,7 +55,7 @@ skill frontmatter carries:
 | adr-writer | `skill.adr-writer` | `adr-writer.method`, `adr-writer.reversibility`, `adr-writer.numbering` | (none) | `skill.grill-planner`, `agent.architect`, `skill.humanizer` | 2760 |
 | brainstorm-internal | `skill.brainstorm-internal` | `brainstorm-internal.method` | (none) | `protocol.brainstorm`, `skill.brainstorm-socratic`, `skill.adr-writer`, `skill.grill-planner` | 1110 |
 | brainstorm-socratic | `skill.brainstorm-socratic` | `brainstorm-socratic.method` | (none) | `protocol.brainstorm`, `skill.brainstorm-internal`, `skill.humanizer`, `skill.spec-author` | 1100 |
-| context-router | `skill.context-router` | `rule.knowledge`, `context-router.method`, `context-router.declaration`, `context-router.residency`, `context-router.menu`, `context-router.graph-over-harness` | `skill.knowledge-graph` | `skill.validate-knowledge` | 3590 |
+| context-router | `skill.context-router` | `rule.knowledge`, `context-router.method`, `context-router.declaration`, `context-router.residency`, `context-router.menu`, `context-router.graph-over-harness` | `skill.knowledge-graph` | `skill.validate-knowledge` | 4048 |
 | grill-planner | `skill.grill-planner` | `grill-planner.method`, `grill-planner.audit` | `protocol.grill` | `skill.spec-author` | 1430 |
 | holistic-editing | `skill.holistic-editing` | `holistic-editing.method`, `holistic-editing.forbidden-moves`, `holistic-editing.class-sweep` | (none) | `skill.context-router`, `protocol.test-first` | 2720 |
 | humanizer | `skill.humanizer` | `humanizer.method`, `humanizer.document-contract`, `humanizer.progressive-execution`, `humanizer.fact-preservation`, `humanizer.modes`, `humanizer.scope` | `method.prose-posture` | `skill.holistic-editing`, `skill.adr-writer`, `skill.spec-author`, `agent.docs-librarian`, `protocol.deliver` | 8355 |
@@ -63,7 +63,7 @@ skill frontmatter carries:
 | library-wiki | `skill.library-wiki` | `library-wiki.method`, `library-wiki.version-pinning` | (none) | `skill.research-and-ingest`, `protocol.ingest-library` | 1310 |
 | research-and-ingest | `skill.research-and-ingest` | `research-and-ingest.method`, `research-and-ingest.source-ranking` | (none) | `skill.library-wiki`, `agent.research-scout` | 1540 |
 | spec-author | `skill.spec-author` | `spec-author.method`, `spec-author.sign-off` | `protocol.specify` | `skill.test-first`, `skill.grill-planner`, `skill.humanizer` | 1640 |
-| test-first | `skill.test-first` | `test-first.shaping`, `test-first.level-selection`, `test-first.proportionate-checks`, `test-first.no-lint-only-tests` | `protocol.test-first` | `skill.spec-author` | 1480 |
+| test-first | `skill.test-first` | `test-first.shaping`, `test-first.level-selection`, `test-first.proportionate-checks`, `test-first.no-lint-only-tests` | `protocol.test-first` | `skill.spec-author` | 1719 |
 | toolcraft | `skill.toolcraft` | `rule.toolcraft`, `toolcraft.durability-criteria` | (none) | `agent.tool-smith`, `protocol.canonize`, `protocol.grill`, `protocol.harvest`, `method.bounded-execution` | 1490 |
 | validate-knowledge | `skill.validate-knowledge` | `validate-knowledge.method`, `validate-knowledge.adversarial-questions` | (none) | `skill.knowledge-graph`, `skill.context-router` | 1290 |
 
@@ -470,7 +470,9 @@ fixed. If integration requires touching other files, say so and list them.
 **Append-only exception.** The plan-of-record changelog, ADRs, and any
 changelog or audit log follow supersede-don't-delete instead of this skill.
 A recorded claim found false is struck through, with a dated
-**Correction** beside it: the one retraction rule for a graph fact.
+**Correction** beside it: the one retraction rule for a graph fact. A
+ratified ADR is the one variant: its body stays unstruck, and the dated
+Correction is appended after it.
 
 **Self-check and output format.** Run a self-check (read the whole file?
 purely additive diff = red flag; anything now in two places?; dangling
@@ -950,8 +952,8 @@ before relying on the graph to route work.
 
 ## Part B — Artifact and knowledge-graph templates
 
-Sources: `templates/*.template.md` (10 files) and
-`templates/knowledge-graph/` (6 files).
+Sources: `templates/*.template.md` and `templates/knowledge-graph/` (the
+directory listings are the inventory; the two tables below name each file).
 
 An **artifact template** is a blank form. An author copies it into a target
 path under `docs/graph/` and fills every `<placeholder>`. Stable section
@@ -971,6 +973,7 @@ Templates are Tier-3 artifacts; a machinery node points at them via
 | `prompt-contract.template.md` | `docs/graph/prompts/prompt-contracts/PROMPT-NNNN-<slug>.md` | data-ml, security | every active LLM/VLM prompt |
 | `skill.template.md` | `docs/graph/skills/<name>.md` (projected to `.claude/skills/<name>/SKILL.md` and kin) | orchestrator (commission) or harvest | a repeatable project-specific procedure recurs |
 | `spec.template.md` | `docs/graph/specs/SPEC-NNNN-<slug>.md` | product + architect + tester (joint) | every new behavior or behavior change |
+| `findings-report.template.md` (+ `.html` form) | a standalone report wherever the plant keeps delivered reports | ui-ux-designer (form); security, pentest, legal, reviewer fill it | security or compliance findings go to a reader as one standalone document |
 | `threat-model.template.md` | `docs/graph/decisions/threat-model-<feature>.md` | security | a sensitive feature is being designed |
 | `tool-page.template.md` | `docs/graph/tools/<tool-name>.md` | docs-librarian | a task produces a durable, reusable tool |
 
@@ -984,6 +987,7 @@ Templates are Tier-3 artifacts; a machinery node points at them via
 | `graph-lint.py` | `docs/graph/graph-lint.py` | the graph linter and the router (`--plan`, `--plan-json`, `--show`, `--eval`) |
 | `spec-lint.py` | `docs/graph/spec-lint.py` | the spec gate: shape of every spec, coverage of live ones |
 | `grill-lint.py` | `docs/graph/grill-lint.py` | the plan-of-record gate |
+| `frontmatter.py` | `docs/graph/frontmatter.py` | the one frontmatter reader the graph engines import (fast-forwarded, not add-if-missing) |
 
 ---
 

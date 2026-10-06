@@ -1048,6 +1048,46 @@ grep -i 'docs/graph/models.md' <<<"$out" | grep -qi 'unfilled' \
 echo "  an unfilled model map is disclosed, not required — OK"
 }
 
+# --- 69: grounding the upstream cannot give is declared, and audited as declared ---
+# REGRESSION: a row closed UNKNOWN because no public source exists still got
+# UNGROUNDED, so the coverage gate blocked on a blocker it had already carried.
+scn_x69() {
+local p="$TMP/x69"
+fixture renamed "$p"
+patch_record "$p" 'by("collections", "changelog.md").update(status="COVERED",
+    reason="the delivery log this growth pass wrote", searched=["src/"], evidence=[], leaves=1)
+r["inventory"] = [{"kind": "domain", "name": "vendor wire protocol",
+    "slug": "vendor-wire-protocol", "status": "UNKNOWN",
+    "blocker": "no public source exists; the owner holds the only copy",
+    "evidence": ["docs/graph/index.md"], "expect": [],
+    "grounding": {"required": True, "sources": [],
+                  "unavailable": "no public specification exists; the owner holds the only copy"}}]'
+cat >> "$p/docs/graph/changelog.md" <<'MD'
+
+## 2026-10-04 — growth
+
+- vendor wire protocol — UNKNOWN: no public source exists for it, so no scout
+  can retrieve upstream documentation. The owner holds the only copy and
+  decides whether it may be normalized into the graph; until then the domain
+  row stays open, and this entry is where the owner reads that it waits on them.
+- Every other collection closed ABSENT, with the paths searched recorded in
+  the coverage record. This entry is the plant's own account of the pass.
+MD
+ga "$p"; rc_is 0 "a declared-unavailable grounding on a disclosed UNKNOWN row blocked the gate"
+lacks "UNGROUNDED" "a row that declared its grounding unavailable was still UNGROUNDED"
+has "grounding declared unavailable: no public specification exists" "the declared reason was not reported"
+# an empty declaration declares nothing
+patch_record "$p" 'r["inventory"][0]["grounding"]["unavailable"] = "  "'
+ga "$p"; rc_is 1 "an empty grounding.unavailable stood in for a reason"
+has "UNGROUNDED   domain vendor wire protocol" "an empty declaration was not UNGROUNDED"
+# a declaration on a row that is not UNKNOWN is still put to the owner
+absent_gfm "$TMP/x69b" 'it["grounding"].update(required=True,
+    unavailable="the upstream project took its documentation offline")'
+ga "$TMP/x69b"; rc_is 1 "a declared-unavailable grounding the changelog never names passed the gate"
+lacks "UNGROUNDED" "a declared-unavailable ABSENT row was still UNGROUNDED"
+has "SILENT       framework gfm" "a declared-unavailable grounding was accepted without being disclosed"
+}
+
 # --- dispatch: `__case scn_<name>` runs ONE scenario; bases come from the parent ---
 if [ -z "${GA_BASES:-}" ]; then
   export GA_BASES="$TMP/bases"
@@ -1064,7 +1104,7 @@ for s in scn_shared scn_s9 scn_absent scn_staff scn_nostaff scn_dflt scn_rows \
          scn_copy scn_x28 scn_x31 scn_x32 scn_x33 scn_x34 scn_x35 scn_x38 \
          scn_x39 scn_x40 scn_x41 scn_x42 scn_x43 scn_x44 scn_x45 scn_rawbase \
          scn_x58 scn_x61 scn_x62x63 scn_x64 scn_x65 scn_x68 scn_x382 scn_walk \
-         scn_model_map_disclosed; do
+         scn_model_map_disclosed scn_x69; do
   printf '%s\t%s\n' "$s" "bash \"$SELF\" __case $s" >> "$SCN"
 done
 rc=0

@@ -39,7 +39,12 @@ cites (pointers, never their text). --lines prints `file:start-end` ranges
 instead of text. Headings inside ``` or ~~~ fences are text (the CommonMark
 fence rule grill-lint uses). A slug declared in several specs is sliced from
 each, with a stderr note naming every file. Exit 0 every slug found; 1 a slug
-is missing (the found ones still print); 2 usage error.
+is missing (the found ones still print) or a spec is misnamed; 2 usage error.
+
+DISCOVERY — a spec is `specs/SPEC-*.md`. Every other Markdown file in the
+specs directory, apart from its index and readme, is a misnamed spec: a FAIL
+naming the file, because the pattern alone skipped it and reported a pass over
+an empty set.
 
 Installed at docs/graph/spec-lint.py by install.sh (like graph-lint.py).
 Dependency-free. Set TEST_GLOBS for the project's layout.
@@ -57,6 +62,13 @@ import sys
 from pathlib import Path
 
 # ---- project configuration (edit these when installing) -------------------
+# TEST_GLOBS is an owner fact, not a guess: the plant's owner confirms which
+# directories hold its tests (grow asks it with the plant facts, under
+# grow.plant-facts; graft puts it to the steward when the kept globs are still
+# this default or miss a test directory). The default below reads only the
+# conventional unit layouts and is deliberately narrow; a black-box directory
+# of another name (end-to-end suites, shell checks) is added here per plant on
+# the owner's word, never by widening this default for every plant.
 TEST_GLOBS = [
     "tests/**/*.*", "test/**/*.*", "spec/**/*.*",
     "**/*_test.*", "**/*.test.*", "**/test_*.*",
@@ -78,6 +90,8 @@ KNOWN_STATUSES = LIVE_STATUSES | {"draft", "superseded"}
 HERE = Path(__file__).resolve().parent          # docs/graph/
 ROOT = HERE.parent.parent                       # repo root
 SPECS = HERE / "specs"
+# The specs directory's own pages: not specs, and never misnamed ones.
+SPEC_DIR_EXEMPT = {"index.md", "readme.md"}
 SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__",
              "dist", "build", "target", ".next"}
 CONTRACT_RE = re.compile(r"^###\s+Contract:\s*([A-Z][A-Z0-9_]{2,})\s*$", re.M)
@@ -112,6 +126,25 @@ def test_files() -> list[Path]:
             if p.is_file() and not (set(p.parts) & SKIP_DIRS) and SPECS not in p.parents:
                 seen.add(p)
     return sorted(seen)
+
+
+def spec_paths() -> tuple[list[Path], list[Path]]:
+    """(specs, misnamed): the `SPEC-*.md` files, and every other Markdown
+    file in the specs directory apart from its index and readme. Discovery by
+    the pattern alone skipped a misnamed spec and printed "PASS, 0 live
+    spec(s)" over a directory of specs, a green over an empty set. A misnamed
+    spec is now a defect named by file, never a silent skip."""
+    if not SPECS.is_dir():
+        return [], []
+    specs = sorted(SPECS.glob("SPEC-*.md"))
+    misnamed = sorted(p for p in SPECS.glob("*.md")
+                      if p not in specs and p.name.lower() not in SPEC_DIR_EXEMPT)
+    return specs, misnamed
+
+
+def misnamed_message(p: Path) -> str:
+    return (f"misnamed spec, not checked: {p.name} — a spec file is "
+            f"SPEC-NNNN-<surface>.md; rename it, or it is never linted")
 
 
 def status_of(text: str) -> str:
@@ -349,7 +382,10 @@ def slice_specs(slugs: list[str], refs: bool, as_lines: bool) -> int:
     out: list[str] = []
     missing = set(slugs)
     found_in: dict[str, list[str]] = {slug: [] for slug in slugs}
-    for spec in sorted(SPECS.glob("SPEC-*.md")):
+    specs, misnamed = spec_paths()
+    for p in misnamed:
+        print(f"spec lint: {misnamed_message(p)}", file=sys.stderr)
+    for spec in specs:
         lines = spec.read_text(encoding="utf-8", errors="replace").splitlines()
         heads = headings(lines)
         nums = numbered(heads)
@@ -398,7 +434,7 @@ def slice_specs(slugs: list[str], refs: bool, as_lines: bool) -> int:
                   file=sys.stderr)
     if out:
         print("\n".join(out))
-    return 1 if missing else 0
+    return 1 if missing or misnamed else 0
 
 
 PLAN_FIELD_RE = re.compile(r"^- (Spec contracts|Tests to write \(RED\)):(.*)$", re.M)
@@ -476,7 +512,9 @@ def main() -> int:
     contracts: dict[str, str] = {}          # slug -> spec file (live only)
     drafts: dict[str, list[str]] = {}       # draft spec file -> its slugs
     live_specs = 0
-    for spec in sorted(SPECS.glob("SPEC-*.md")):
+    spec_list, misnamed = spec_paths()
+    fails.extend(misnamed_message(p) for p in misnamed)
+    for spec in spec_list:
         text = spec.read_text(encoding="utf-8", errors="replace")
         status = status_of(text)
         shape(spec, text, status, fails, warns)

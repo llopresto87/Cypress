@@ -1,10 +1,10 @@
 # Tool: declared-variable-existence-auditor
 
-> Project-agnostic, durable capability notes, folded into the seed by the
-> harvest protocol. This page is a **BLUEPRINT**: the shape — the three-outcome
-> vocabulary, the redirect refusal, the two-step skip predicate — is portable;
-> the transport that talks to the variable store is vendor-specific and is
-> written against whatever store the adopting project uses.
+> Project-agnostic capability notes, kept in the seed's tool corpus
+> (`tool-corpus/README.md`). This page is a **BLUEPRINT**: the shape — the
+> three-outcome vocabulary, the redirect refusal, the two-step skip predicate —
+> is portable; the transport that talks to the variable store is vendor-specific
+> and is written against whatever store the adopting project uses.
 
 ## 0. Identity
 
@@ -174,6 +174,12 @@ Read the automation marker from the environment the runner sets, and check it
   present proves nothing about whether the thing that will actually consume it
   is entitled to a usable value. The audit's green covers *the declared name
   exists somewhere in scope*, never *and this consumer may read it*.
+- **A present name can be inert.** When the deploy layer aliases one name
+  onto another, only the alias source is read from the store, so a value
+  stored under the target name is never expanded; and a variable the pipeline
+  computes at run time is never read from the store at all. Before adding a
+  name to the store, or reporting it as missing, classify it as a declared
+  source, an alias target, or computed at run time, and audit only the first.
 - **A permission remedy fires only on an explicit refusal status.** It never
   fires on a redirect (that is outcome (2), handled separately) and never on a
   malformed or revoked credential presented as if it were a permission gap —
@@ -212,13 +218,15 @@ run there is treated as proof rather than as evidence.
   `tool-corpus/ops/env-secret-rotation.md` (writes the values this only ever
   counts by name); `tool-corpus/ops/structured-secret-field-detector.md` (the
   complementary "what is already inside the artifact" direction).
-- **Sources:** distilled from harvested plant experience; no external URL.
+- **Sources:** distilled from practice; no external URL.
 
 ## 8. Changelog
 
-- 2026-09-13 — created from harvested, generalized capability, by docs-librarian.
+- 2026-09-13 — created by docs-librarian.
 - 2026-09-26 — folded in the unfiltered-list-then-targeted-lookup idiom (§3),
   the required-secret-flag violation outcome and second-entry-point reuse note
   (§2), the existence-is-not-authorization and unverified-remedy-name pitfalls
   (§5), and the reused-internals-are-not-a-tested-wrapper test note (§6), by
   docs-librarian.
+- 2026-10-05: folded in the inert-name pitfall: only a declared source is
+  audited, never an alias target or a run-time value (§5), by docs-librarian.

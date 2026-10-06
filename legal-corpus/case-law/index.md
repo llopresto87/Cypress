@@ -1,10 +1,11 @@
 # Case law & regulator decisions
 
-> Project-agnostic citation notes, folded into the seed by the harvest
-> protocol. Cross-jurisdictional judicial and regulatory-authority decisions,
-> one entry per case/decision. A recorded VERIFIED ABSENCE of a decision (a
-> search that did not find one to exist) is itself a valid, citable entry —
-> see the rules on this in `../_schema.md`. Entry contract: `../_schema.md`.
+> Project-agnostic citation notes, kept in the seed's legal corpus
+> (`legal-corpus/README.md`). Cross-jurisdictional judicial and
+> regulatory-authority decisions, one entry per case/decision. A recorded
+> VERIFIED ABSENCE of a decision (a search that did not find one to exist) is
+> itself a valid, citable entry — see the rules on this in `../_schema.md`.
+> Entry contract: `../_schema.md`.
 
 **Instrument kind:** `case-law` / `regulator-decision`. Grouped on one page
 because these entries are only useful when compared — a national judgment, the
@@ -63,7 +64,7 @@ per entry; the page no longer has one answer.
   adequacy decision
 - **text_form:** `topic only` (docket identification and outcome; the judgment's
   own reasoning text was **not** fetched)
-- **text:** The General Court dismissed MEP Philippe Latombe's action for
+- **text:** The General Court dismissed Philippe Latombe's action for
   annulment of Commission Implementing Decision (EU) 2023/1795, finding the Data
   Protection Review Court sufficiently independent, US bulk-collection
   limitations adequate, and security and automated-decision protections

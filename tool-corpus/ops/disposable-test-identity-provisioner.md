@@ -1,9 +1,9 @@
 # Tool: disposable-test-identity-provisioner
 
-> Project-agnostic, durable capability notes, folded into the seed by the
-> harvest protocol. Orientation for a reusable tool — the fail-closed guard, the
-> coupled-records model, and the lifecycle contract are portable; adopt them
-> verbatim. Only the two store adapters are project-specific.
+> Project-agnostic capability notes, kept in the seed's tool corpus
+> (`tool-corpus/README.md`). Orientation for a reusable tool — the fail-closed
+> guard, the coupled-records model, and the lifecycle contract are portable;
+> adopt them verbatim. Only the two store adapters are project-specific.
 
 ## 0. Identity
 
@@ -218,8 +218,8 @@ rotate.
   print-once, owner-only-permission discipline for secrets at rest);
   `tool-corpus/testing/http-smoke-suite.md` (a natural consumer — the identities
   this mints are what an auth-enforcement assertion authenticates with).
-- **Sources:** distilled from harvested plant experience; no external URL.
+- **Sources:** distilled from practice; no external URL.
 
 ## 8. Changelog
 
-- 2026-08-05 — created from harvested, generalized capability, by docs-librarian.
+- 2026-08-05 — created by docs-librarian.

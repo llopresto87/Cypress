@@ -28,7 +28,7 @@ load_when:
 artifacts:
   - templates/spec.template.md
 prevents: Tests written at the highest level that happens to work, named after the function rather than the contract, asserting several outcomes at once so a failure names no cause.
-est_tokens: 1480
+est_tokens: 1719
 ---
 
 # test-first (the test-shaping technique)
@@ -105,8 +105,10 @@ fail-closed path). Other nodes link here; they do not restate it.
   because the line is absent and green because it is present, and so
   proves only the diff. Prove such a change by the run that shows its
   effect: an existing test or gate that already exercises the surface,
-  or the cheapest real run (a dry-run, a validate command, one pipeline
-  run), named with its result in the handback. The declaration earns a
+  or the cheapest real run (a dry-run where it exercises the surface, a
+  validate command, one pipeline run; against live infrastructure a dry
+  run is structural evidence only, `method.host-parity`), named with its
+  result in the handback. The declaration earns a
   test when it holds logic that can be wrong while present: a pattern
   (regex, glob, wildcard), a condition, an order or precedence that
   changes the output, or a computed value. That test feeds it inputs

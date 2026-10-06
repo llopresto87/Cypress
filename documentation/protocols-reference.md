@@ -30,19 +30,19 @@ All 17 protocols are tier 2 nodes with `origin: seed`, `kind: protocol`.
 | brainstorm | `protocol.brainstorm` | `brainstorm.mode-selection`, `brainstorm.entry-and-exit`, `brainstorm.output-landing` | — | skill.brainstorm-socratic, skill.brainstorm-internal, humanizer, specify, grill, from-scratch | 1244 |
 | specify | `protocol.specify` | `rule.spec`, `specify.flow`, `specify.revision-discipline` | — | brainstorm, grill, specify-joint-pass | 2127 |
 | specify-joint-pass | `protocol.specify-joint-pass` | `specify.joint-pass`, `specify.design-latitude` | — | specify, grill | 1101 |
-| grill | `protocol.grill` | `rule.grill`, `grill.flow`, `grill.revise`, `grill.increment-shape`, `grill.press`, `grill.plan-approval`, `grill.legal-checkpoint` | — | specify, specify-joint-pass, test-first, agent.devils-advocate | 3820 |
+| grill | `protocol.grill` | `rule.grill`, `grill.flow`, `grill.revise`, `grill.increment-shape`, `grill.press`, `grill.plan-approval`, `grill.legal-checkpoint` | — | specify, specify-joint-pass, test-first, agent.devils-advocate | 4396 |
 | test-first | `protocol.test-first` | `rule.test-first`, `test-first.cycle`, `test-first.characterize-first`, `test-first.known-bug` | — | verify, specify, skill.test-first, skill.holistic-editing | 3391 |
 | verify | `protocol.verify` | `rule.verify`, `verify.gate-states`, `verify.gate-classes`, `verify.risk-depth`, `verify.null-result`, `verify.composition`, `verify.silent-substitutes`, `verify.test-first` | — | test-first, recover, canonize, deliver, skill.validate-knowledge, verify-new-gates, verify-disagreement | 5706 |
-| verify-new-gates | `protocol.verify-new-gates` | `verify.status-evidence`, `verify.tool-faults` | — | verify, verify-disagreement | 758 |
+| verify-new-gates | `protocol.verify-new-gates` | `verify.status-evidence`, `verify.tool-faults` | — | verify, verify-disagreement | 920 |
 | verify-disagreement | `protocol.verify-disagreement` | `verify.characterize`, `verify.measure-integrity` | — | verify, verify-new-gates | 1800 |
-| recover | `protocol.recover` | `recover.failure-classes`, `recover.three-attempt-boundary` | — | deliver, grill | 1757 |
-| canonize | `protocol.canonize` | `rule.canonize`, `canonize.close-out-flow`, `canonize.status-review`, `canonize.deviation-capture`, `canonize.why-record`, `canonize.session-record` | `skill.toolcraft` | agent.tool-smith, deliver, harvest, skill.adr-writer | 3619 |
-| deliver | `protocol.deliver` | `rule.deliver`, `deliver.forms`, `deliver.attribution-assertion`, `deliver.numbered-decisions` | — | canonize, recover | 2471 |
-| ingest-library | `protocol.ingest-library` | `ingest-library.flow`, `ingest-library.refresh`, `ingest-library.corpus-first` | — | harvest, skill.library-wiki, skill.research-and-ingest | 1686 |
+| recover | `protocol.recover` | `recover.failure-classes`, `recover.three-attempt-boundary` | — | deliver, grill | 1948 |
+| canonize | `protocol.canonize` | `rule.canonize`, `canonize.close-out-flow`, `canonize.status-review`, `canonize.deviation-capture`, `canonize.why-record`, `canonize.session-record`, `canonize.harvest-candidates` | `skill.toolcraft` | agent.tool-smith, deliver, harvest, skill.adr-writer | 4272 |
+| deliver | `protocol.deliver` | `rule.deliver`, `deliver.forms`, `deliver.attribution-assertion`, `deliver.numbered-decisions` | — | canonize, recover | 2795 |
+| ingest-library | `protocol.ingest-library` | `ingest-library.flow`, `ingest-library.refresh`, `ingest-library.corpus-first` | — | harvest, skill.library-wiki, skill.research-and-ingest | 2428 |
 | from-scratch | `protocol.from-scratch` | `from-scratch.phases`, `from-scratch.entry` | — | brainstorm, grill, ingest-library, canonize, initialize | 2532 |
 | grow | `protocol.grow` | `grow.worker-topology`, `grow.write-boundaries`, `grow.knowledge-shape`, `grow.growth-flow`, `grow.completeness-contract`, `grow.gate-table`, `grow.stack-inventory`, `grow.node-authoring`, `grow.librarian-pass`, `grow.plant-facts`, `grow.legal-corpus` | `method.delegation` | harvest, graft, initialize, ingest-library, canonize, deliver, recover, from-scratch, method.engineering-posture, method.design-posture | 13096 |
-| harvest | `protocol.harvest` | `harvest.fold-back-flow`, `harvest.agnosticism-gate`, `harvest.availability-gate`, `harvest.corpus-contracts` | `method.delegation` | method.minimum-sufficient-work, skill.humanizer, canonize, graft, grow, ingest-library, skill.toolcraft | 11551 |
-| graft | `protocol.graft` | `graft.reconcile-flow`, `graft.user-sovereignty`, `graft.pure-graph-mandate`, `graft.migration`, `graft.integrity-gates`, `graft.reversibility` | `method.delegation` | grow, harvest, deliver, method.engineering-posture | 19426 |
+| harvest | `protocol.harvest` | `harvest.fold-back-flow`, `harvest.agnosticism-gate`, `harvest.availability-gate`, `harvest.corpus-contracts` | `method.delegation` | method.minimum-sufficient-work, skill.humanizer, canonize, graft, grow, ingest-library, skill.toolcraft | 15890 |
+| graft | `protocol.graft` | `graft.reconcile-flow`, `graft.user-sovereignty`, `graft.pure-graph-mandate`, `graft.migration`, `graft.integrity-gates`, `graft.reversibility` | `method.delegation` | grow, harvest, deliver, method.engineering-posture | 22017 |
 | initialize | `protocol.initialize` | `initialize.entry-fork`, `initialize.adapter-edges` | — | grow, from-scratch, seed-installer | 994 |
 
 Six of the protocols also own one of the kernel's eight `rule.*`
@@ -274,7 +274,10 @@ spec is `draft`; `active` lands with the first RED (`test-first`
 COMMIT, owned by `verify.status-evidence`), `implemented` when every
 contract is green — `spec-lint.py` counts only live specs, so a signed
 draft is planned against and encoded, never reported uncovered. A
-signed draft is what `grill` plans against. When no plan exists yet
+signed draft is what `grill` plans against. A spec may grow by slice:
+when the plan builds a walking skeleton first, the first pass states only
+the thin contracts the first increments need, and each later slice passes
+phases 1 to 6 again and is signed before its own RED. When no plan exists yet
 either, the spec and the plan come from one joint pass
 (`protocol.specify-joint-pass`).
 
@@ -466,6 +469,12 @@ not). Rows are listed in dependency order. An increment is ready when
 the tester can write the failing test from the row as written, or the
 row reads `none` and names the run that proves it; otherwise re-slice.
 
+A new pipeline or deploy path starts as a walking skeleton: its first
+increment lands the pipeline with every job stubbed and runs it once on the
+real CI target, and domain increments fill it. The spec may then grow one
+signed slice ahead of each RED (`specify.flow`); until a group's slice is
+signed, its rows read `slice pending: <behavior>` and are not ready.
+
 Each increment answers "does it need a test?" here, while slicing, not
 at RED. A declarative edit (a selector, a pipeline stage, a flag, a
 config key) usually does not: its field reads
@@ -487,6 +496,9 @@ what moved.
   invalidates it, recorded as a §11 row with a verification or a §12
   row with a resolution path; no `[verify]` survives in §9 or §13;
   human-input values are do-not-guess.
+- **Environment parity:** a plan that changes a deploy chain reads, from
+  source, the versions each environment pins for the images and tools the
+  chain touches, and records any drift.
 - **Design latitude:** every §6 decision and §9 increment is checked
   against the plan's `Design latitude:` row (`specify.design-latitude`).
 - **Refutation:** on a T3 plan, one-way doors and the top risk go to
@@ -825,6 +837,12 @@ the lowest level that catches it; get a RED test case that reproduces
 it; add it to the verification runbook in the same increment; add it to
 CI in the next reliability-owned increment.
 
+An increment whose deliverable is an operational act (a rotation, a
+migration, a hardening) closes twice: the mechanism on its tests, and the
+act on evidence from the real systems. Until the act has run it stays
+`open` or `deferred`, and its record says "mechanism done, act not
+executed".
+
 A gate script you author is all-or-nothing, runs under strict error
 handling, resolves its own root, and keeps environment failures distinct
 from repository failures in remedy text and exit status.
@@ -892,7 +910,8 @@ re-derives the result by a different method.
 - **load_when:** "a worker or gate failed, what now"; "retry or re-route,
   flaky failure"; "delegation came back wrong or ambiguous"; "gate red twice
   on the same increment"; "permission guard refused an action the owner
-  directed"; "failure cause unknown, cheapest probe first"
+  directed"; "failure cause unknown, cheapest probe first"; "same error
+  every retry, is it impossible, refused or never reached"
 
 ### What it does
 
@@ -914,12 +933,19 @@ ones.
 
 ### The failure classes (`recover.failure-classes`)
 
+An error signature is not a class. One code can be deterministic for one
+input and transient for another, so classify by varying the input and
+seeing whether the failure follows it. Exhausted retries show that the
+attempts failed, not that the operation is impossible: an "impossible"
+verdict waits until a request is shown to have reached the subject and been
+refused for the reason stated.
+
 | Class | Recognize it by | The one allowed move |
 |-------|-----------------|----------------------|
 | **Transient** | Environment flake: network, rate limit, race, resource exhaustion | Retry as-is, **max 2**, backing off. Third failure is not transient — reclassify. |
 | **Deterministic** | Same input reliably produces the same failure: compile error, failing assertion, lint, schema rejection | **Change the input** (code, test, config), then re-run. A second failed theory is the signal to read the upstream documentation (the library page, or `protocol.ingest-library`) before a third. |
 | **Capability** | The worker is the wrong instrument: wrong specialist, missing expertise, out-of-domain handback, LOW/NONE route band in hindsight | Re-route: run `agent-lint --route` with a *sharper* task statement, written in the domain's own words so it also composes the expertise the worker lacked. A knowledge gap closes as an `expertise.*` node; commission an agent only when the work needs its own tools, model class, stance, or isolation (kernel §1). |
-| **Ambiguity** | The worker asked the brief a question, guessed, or two artifacts contradict (spec vs code, plan vs node) | Fix the **cheapest upstream artifact that owns the confusion** — brief first, then plan (grill §), then spec — and re-delegate. Widening context is not the fix. Inside a batch, the question goes to the batch's question file and the architect's ruling pass answers it (`delegation.question-file`). |
+| **Ambiguity** | The worker asked the brief a question, guessed, or two artifacts contradict (spec vs code, plan vs node) | Fix the **cheapest upstream artifact that owns the confusion** — brief first, then plan (grill §), then spec — and re-delegate. Widening context is not the fix. Inside a batch, the question goes to the batch's question file and the architect's ruling pass answers it (`delegation.question-file`). A reading inside an existing contract does not wait: the worker takes the more conservative reading as provisional and goes on. |
 | **Systemic** | The harness or system itself: wedged delegation, depth cap hit, missing tool, broken gate infrastructure; also a permission guard that refuses an action the owner directed | Stop the line. Record in grill.md §12 and report to the human with the exact evidence, visible rather than worked around. |
 | **Unregistered** | The specialist exists on disk but the host has no such type: the session predates the projection, or it is rooted at the seed rather than the plant. Reads like Systemic, but is not. | Apply `delegation.harness-registration`: preflight, re-enter rooted at the plant, or role-emulate **and record it**. Keep the line running and use the existing definition, because a second definition would be a second home for the same charter. |
 
@@ -979,7 +1005,8 @@ not from zero.
 - **id:** `protocol.canonize`, tier 2
 - **owns:** `rule.canonize`, `canonize.close-out-flow`,
   `canonize.status-review`, `canonize.deviation-capture`,
-  `canonize.why-record`, `canonize.session-record`
+  `canonize.why-record`, `canonize.session-record`,
+  `canonize.harvest-candidates`
 - **requires:** `skill.toolcraft`
 - **peers:** `agent.tool-smith`, `protocol.deliver`, `protocol.harvest`,
   `skill.adr-writer`
@@ -989,7 +1016,9 @@ not from zero.
   did each register item move this session"; "we departed from the standard,
   record the deviation and why"; "small fix with no spec, where does the why
   get written down"; "handback overflow notes, read them at close-out";
-  "file the session record, which harness memory entries can be retired"
+  "file the session record, which harness memory entries can be retired";
+  "a lesson flagged as a harvest candidate: add its row to the plant's
+  record"
 
 ### What it does
 
@@ -1046,15 +1075,28 @@ tool the work produced (recurs across sessions, stable interface,
 test-authorized, lives in the repo). Named in `tools_built` on
 handbacks.
 
+The brief also names each script, plugin or module the diff added that no
+handback named, and each core dependency the work leaned on that has no
+`libraries/` page; the librarian runs `ingest-library` for it in the same
+close-out, or records it as a finding for the next plan.
+
 Skill candidates (§3.8): any repeatable multi-step procedure a
 future session will walk again, named in `skills_built`, or the same
 sequence appearing a third time. The brief forwards candidates; the
 librarian authors them.
 
+Harvest candidates (`canonize.harvest-candidates`): a lesson flagged as
+possibly belonging in the seed is placed in its plant home first, then
+gets one row in `docs/graph/plans/harvest-candidates.md`, created from
+`_harvest-candidates.template.md` when absent. A row is struck with a dated
+note, never rewritten, and decides nothing: harvest stays the owner's to
+start.
+
 Kept out of every candidate list: ephemeral scratch, secrets/credentials,
 production or personal data, speculation (write "not recorded"),
-project-specific material aimed at the seed (that is `harvest`'s
-agnosticism gate), throwaway prototypes or genuine one-offs.
+project-specific material aimed at the seed (it stays in its plant home,
+with a harvest-candidate row when it passes the form's admission test),
+throwaway prototypes or genuine one-offs.
 
 ### The flow — one spawn (`canonize.close-out-flow`)
 
@@ -1176,7 +1218,11 @@ step.
 The **Session metrics** block is telemetry, not prose: Tier (with any
 reclassification), Spawns, Route bands + overrides, Retries by class (per
 `recover`), Gates run/failed-then-fixed, full-suite runs, serial waits,
-overflow notes, and a Quality line. This is what lets the system improve on evidence instead of anecdote: `harvest`
+overflow notes, and a Quality line. It is a required part of the full
+form: a line the trace cannot fill says `not recorded` and why.
+`docs/graph/session-metrics.py` lints the block of the entry deliver
+appends (SPEC-0006). This is what lets the system improve on evidence
+instead of anecdote: `harvest`
 aggregates these across deliveries to find *systemic* seed problems:
 recurring misroutes mean a specialist's `routing_triggers` need
 sharpening, frequent tier reclassifications mean the tier edges need
@@ -1189,7 +1235,9 @@ documentation update with its location, grill.md among them; cites
 verification outcomes by gate; lists every limitation explicitly and
 marks a half-finished increment WIP, with resuming it as the next step;
 recommends exactly one next step; numbers every decision left to the
-owner; covers every library the work used with its wiki page; reads as
+owner; records a user-reported production fault the work answered under
+Records in `docs/graph/runbooks/incident-response.md`; covers every library
+the work used with its wiki page; reads as
 the writer, in that the full-form summary and any
 pull-request description or commit message pass the `humanizer` skill in
 embedded mode with no strong tell from `docs/graph/prose-lint.py`; and is
@@ -1292,11 +1340,15 @@ whose library check reads the §0 pin and the index row.
 
 ### Corpus first (`ingest-library.corpus-first`)
 
-In the seed repo or a plant that harvested the library corpus, check
-`library-corpus/<ecosystem>/<library>.md` (keyed by library, not
-version) before re-downloading: seed the page from it, then pin and
-validate the version-specific layer against the lockfile from upstream.
-Reuse the corpus, re-download only the delta.
+Check for a page before re-downloading, in order: a page the installer
+placed at `docs/graph/libraries/<name>.md` (`install.sh <host> --expertise
+<id>`, which `grow` proposes and `graft` refreshes), then, inside the seed
+repo, `library-corpus/<ecosystem>/<library>.md`. A page whose own-package
+list names the library counts as its page. A placed page skips the scout:
+phase 2 is not spawned for it, and only the version delta is pinned and
+validated against the lockfile. A placed page that falls short of the
+withdraw-ready bar gets the scout for its empty sections only. Reuse the
+corpus, re-download only the delta.
 
 ### Refresh (`ingest-library.refresh`)
 
@@ -1598,7 +1650,10 @@ against. Settle spawnability here, not in Phase 2. Inventory cheaply
 before opening large files; ignore generated/vendor/cache/build dirs.
 Identify real subsystem boundaries and assign focused scouts for
 cross-cutting evidence (APIs/messages, data/migrations, platform/config,
-tests/CI/operations, dependencies, prompts/evaluations). If there is no
+tests/CI/operations, dependencies, prompts/evaluations, and any
+agent-operations system the project already runs: its charters, hooks,
+instruction files and lesson or memory logs are evidence, not stale prose).
+If there is no
 executable project evidence, the work goes to `from-scratch`
 (`protocol.initialize` owns the fork). The plant-facts ask to the owner
 also requests the plant's model map in `docs/graph/models.md`
@@ -1653,7 +1708,9 @@ to externally-authored rules; check `legal-corpus/` first, re-confirm
 information consumed" when none was dispatched is circular and a
 completeness defect); `prompts/` and `evaluations/`;
 `runbooks/verification.md` (exact
-commands, labeled `discovered, not executed`); `plans/grill.md`
+commands, labeled `discovered, not executed`); `runbooks/release.md` and
+`runbooks/rollback.md` from the deploy procedure the source already
+carries, labeled the same way; `plans/grill.md`
 (evidence, gaps, next increment); `best-practices/` (**normative**: the
 external standard, cited, plus the project's observed stance, not a
 description of current habits); `changelog.md`.
@@ -1845,75 +1902,12 @@ automatically, on a schedule, by a hook, or as a "while I'm here" step.
 Every candidate improvement passes three hard tests before it may touch
 the seed.
 
-**Gate 1: Agnosticism (the heart).** "Would this help an arbitrary
-next project, in a different language, framework, and domain, that has
-never heard of this plant?"
-- YES, verbatim → harvest as-is (rare, usually only tool-neutral
-  rules).
-- YES, once generalized → rewrite it stripping every plant-specific
-  name, domain term, stack pin, path, and example, then harvest the
-  generalized form; state the before→after explicitly.
-- NO → reject; record why; leave it in the plant.
-
-Fail-closed corollary: **a lesson is ready to harvest only when it can
-be stated without naming the plant.** A single leaked project name,
-domain noun, credential, dataset shape, or version-pinned specific in
-the seed is a failed harvest, worse than a missed lesson.
-
-*What counts as a project reference* (each is stripped from everything
-the seed commits, including the CHANGELOG entry, harvest-log row,
-provenance notes, and illustrative examples): a name (plant, product, company, service,
-internal tool); a stack fingerprint (the language/framework/datastore
-combo that identifies the plant); an identifying count or metric; a
-description of the plant's internals (file names, config keys,
-plugin names, module wiring, a security finding on its own code); a
-path, host, port, credential, or absolute install location; an
-illustrative example framed as the plant's own (recast every example
-in the generic). Plant-identifying provenance belongs only in the
-ratification proposal shown to the steward, never in the seed's
-committed files.
-
-*The mechanical floor* (`tools/agnosticism-lint.py`; the sibling
-`tools/status-register.py` is the mechanical floor for lifecycle status, and
-`tools/status-migrate.py` the one-time migration into it). Gate 1 is a
-judgement call, but three of its classes are not: a real host address, a
-pinned advisory, and a term the tree already knows it must not carry are
-objective, and review is exactly where they slip through. The shared
-linter scans any project-agnostic tree for those three and reports
-`path:line` with the offending term.
-
-```sh
-python3 tools/agnosticism-lint.py --root <dir> [--root <dir> ...]
-python3 tools/agnosticism-lint.py --root <dir> --forbid <token> \
-        --forbid <another-token> --glob '*.md' --file <path>
-```
-
-Exit 0 clean, 1 with findings, 2 on a usage error, including a scan
-that matched no file, which would otherwise print the pass a real scan
-earns.
-The `--forbid` terms are the caller's, repeatable, and matched
-case-insensitively as substrings (fail-closed, so a token catches the
-compounds built from it): a component meant for any project cannot
-enumerate the names it must not contain without containing them, so the
-adopting tree supplies its own, exactly as `graft-audit.py` takes
-`--tokens`. `tests/seed-lint.py` runs this same code over the seed's
-shipped prose, passing no `--forbid`, because the seed has no plant token
-it could name. Everything subtler (a domain noun, a stack combination,
-an identifying count) stays human judgement and is not faked
-mechanically.
-
-**Gate 2: Durability (surface, not pin).** "Will this still be true a
-version from now — is it about the library, or about one pinned release
-of it?"
-- KEEP (surface, durable): the capability the library provides; its
-  core API shape and canonical usage; idioms/best practices that hold
-  across lines; conceptual gotchas; the upstream doc/repo home.
-- REJECT (pinned, ephemeral): CVEs/advisories tied to an exact
-  version; "version X.Y.Z is a breaking marker"; per-release
-  deprecations; upgrade/migration diffs between pins; a resolved-version
-  number itself. These belong in the plant's
-  `docs/graph/libraries/<name>.md`. When in doubt, a fact is pinned;
-  drop it.
+**Gates 1 and 2: agnosticism and durability.** Their one home is
+`protocols/harvest.md`: §The agnosticism gate, with the six classes of project
+reference and §G1 in detail for the mechanical floor
+(`tools/agnosticism-lint.py`), and §The second gate, which says which version
+facts a corpus page may carry and what stays out. This reference points there
+and does not restate them.
 
 **Gate 3: Non-redundancy (does the seed already own this?).** "Does the
 seed ALREADY say this — in a kernel rule, an agent, a skill, a protocol,
@@ -1935,52 +1929,18 @@ clean-context workers survey, triage, and author: investigation-class for
 the read-only survey, authoring-class for every generalization and
 authoring.
 
-**Phase 1: Survey the mature plant (investigation-class scouts, read-only).**
-Inventory how the plant diverged from the seed and what it accumulated.
-A prior `graft`'s customization-audit ledger and its KEEP-PLANT list
-(`tools/graft-audit.py` output) is a ready-made divergence inventory;
-start from it. Candidate donor surfaces include: shared scripts/tooling
-the plant fixed; skills whose rules it sharpened and any project skill
-it authored; protocols found insufficient; agent/expert definitions;
-templates with better sections; the sharp-edges/case library/ADRs (mined
-for the *generalizable prevention rule* only, never the narrative); the
-plan-of-record's §6/§7/§11/§12 (mined for *decision and planning
-discipline*, never actual decisions); best-practices pages (a durable
-principle, never a stack-specific rule); runbooks (operational
-*discipline*, never hosts/commands/ports); library/language wiki pages
-(their **version-durable surface** only); the reusable-tool catalog
-(project-agnostic durable tools); legal/regulatory leaves (the
-**citation only**, never the application); session metrics (the seed's
-only *quantitative* donor surface: mine the *pattern*, propose the seed
-change); and a capability the seed ships that stays inert across plants
-(harvest the *fix to the seed's own machinery*). Output: a **candidate
-ledger** with provenance per row.
-
-**Phase 2: Triage against all three gates (authoring-class authors).** For each
-candidate, apply agnosticism, durability, and non-redundancy, and decide
-KEEP-AS-IS / GENERALIZE / REJECT. For anything kept, write its
-**generalized restatement** with the before→after shown (what
-plant-specifics *and* pinned specifics were stripped). Reject rows carry
-a one-line reason (including "redundant — the seed already owns this at
-`<home>`"). Be conservative; when in doubt, reject or generalize
-harder.
-
-**Phase 3: Backport authoring (authoring-class authors).** Apply each surviving
-generalized improvement to the seed artifact it belongs in (`skills/`,
-`protocols/`, `agents/`, shared scripts, `templates/`,
-`library-corpus/`, `legal-corpus/`, `tool-corpus/`, `agent-corpus/`,
-`skill-corpus/`, kernel), each as a **holistic edit**, integrated as if
-it had always been there. Every fold-back records provenance (plant
-lineage, generalization applied, seed files touched). A harvested
-tooling fix arrives with its regression test generalized alongside it.
+**Phases 1 to 3: survey, triage, backport.** Their one home is
+`protocols/harvest.md`: §Phase 1 for the donor surfaces, the provenance
+classes and the multi-plant waves, §Phase 2 for the triage (the default move
+is to generalize, not reject) and §Phase 3 for the holistic backport and its
+provenance. This reference points there and does not restate them.
 
 **Phase 4: Seed integrity gate.** The seed leaves harvest more capable
 and no less agnostic; the node holds the checks as a gate table, one row
 per check with its id and command. In summary:
-- Agnosticism scan: grep the *entire* diff (including CHANGELOG,
-  harvest-log, provenance notes) for any plant name, domain noun, stack
-  fingerprint, identifying count, internal-component/file/config name,
-  path, credential, dataset shape, or version pin. Any hit BLOCKS.
+- Agnosticism scan: G1 and G2 over the entire diff, the CHANGELOG and the
+  harvest-log included (`protocols/harvest.md`, the Phase 4 table). Any hit
+  BLOCKS.
 - Self-consistency: run the seed's own lints/tests; kernel,
   manifest, protocol table, and registries stay in sync.
 - Clean install: a dry-run install into a scratch target still
@@ -2000,16 +1960,9 @@ patch/proposal, never a silent mutation of the seed.
 ### The five corpora
 
 Harvest maintains five seed-side corpora that later `grow`/`graft`
-withdraw from. Each folds the durable, agnostic surface and never a
-plant's own facts:
-
-| Corpus | Path key | Keeps (durable) | Stays out (plant-bound) |
-|--------|----------|-----------------|-------------------------|
-| Library & language | `library-corpus/<ecosystem>/<library>.md`, keyed by library not version | capability, core API shape, idioms, conceptual pitfalls, upstream home | pinned CVEs, per-release deprecations, migration diffs, resolved version numbers |
-| Legal & regulatory | `legal-corpus/<scope>/<instrument-slug>.md` (scope: eu / national / international / case-law) | the citation itself (instrument, provision, `text_form` + text, publisher URL, `verification_grade`, `legal_status`, verified absence) | any application of the law to a system, every finding/determination |
-| Reusable tool | `tool-corpus/<category>/<name>.md` | capability, interface shape, approach/algorithm, portable implementation when stack-neutral | project paths, credentials, dataset shapes, version-locked deps |
-| Suggested expert | `agent-corpus/<name>.md` | the role's mandate, when-to-select, boundary, `routing_triggers` exemplars | stack-specific experts, roles duplicating a base-roster mandate |
-| Suggested skill | `skill-corpus/<name>.md` | the procedure's steps and the gate each clears, by composition | stack-bound recipes, anything duplicating a core skill |
+withdraw from. Each corpus's path key, what it keeps and what stays out have
+one home, its own README (`library-corpus/`, `legal-corpus/`, `tool-corpus/`,
+`agent-corpus/`, `skill-corpus/`), under `protocols/harvest.md` §The corpora.
 
 Two disciplines are special. Legal currency: an entry states whether
 its text is the **original** or the **consolidated/as-amended** edition

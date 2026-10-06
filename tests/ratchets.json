@@ -1,7 +1,7 @@
 {
   "_comment": "Recorded limits, and the one registry of them. A ceiling may fall and a floor may rise without touching this file; loosening either requires editing it here, on purpose, in a diff someone reads. registry: NAME -> '<max|min|set|map> <source file>' (the source defines NAME). Record values with: python3 tools/ratchet-lint.py --bless",
   "ratchets": {
-    "ADVERSARIAL_CONFIDENT_WRONG_BUDGET": 3,
+    "ADVERSARIAL_CONFIDENT_WRONG_BUDGET": 2,
     "ADVERSARIAL_MIN_ROWS": 12,
     "CONFIDENT_WRONG_BUDGET": 0,
     "EAGER_BUDGET": 41600,

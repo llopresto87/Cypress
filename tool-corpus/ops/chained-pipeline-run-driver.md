@@ -1,14 +1,14 @@
 # Tool: chained-pipeline-run-driver
 
-> Project-agnostic, durable capability notes, folded into the seed by the
-> harvest protocol. This page is a **BLUEPRINT**: the refusal vocabulary, the
-> retry/idempotence split, and the progress-visibility contract are portable;
-> the transport that talks to the hosted CI/CD platform's REST or CLI surface
-> is vendor-specific and is written against whatever platform the adopting
-> project uses. Composes `skill-corpus/drive-hosted-cicd-cli.md` (session
-> login, the two-branch trap, run-by-id proof) by reference and restates none
-> of it; this page's subject is chaining two runs together and staying honest
-> about a long wait, not authenticating or ref-proving.
+> Project-agnostic capability notes, kept in the seed's tool corpus
+> (`tool-corpus/README.md`). This page is a **BLUEPRINT**: the refusal
+> vocabulary, the retry/idempotence split, and the progress-visibility contract
+> are portable; the transport that talks to the hosted CI/CD platform's REST or
+> CLI surface is vendor-specific and is written against whatever platform the
+> adopting project uses. Composes `skill-corpus/drive-hosted-cicd-cli.md`
+> (session login, the two-branch trap, run-by-id proof) by reference and
+> restates none of it; this page's subject is chaining two runs together and
+> staying honest about a long wait, not authenticating or ref-proving.
 
 ## 0. Identity
 
@@ -234,11 +234,13 @@ status, and a named reason on failure.
   composes it by reference for anything below the chain-specific behavior
   above); `tool-corpus/testing/ci-runner-local-simulator.md` (reconstructs
   the runner's environment locally; a different question from driving a
-  hosted run remotely).
-- **Sources:** distilled from harvested plant experience; no external URL.
+  hosted run remotely);
+  `tool-corpus/ops/chained-pipeline-run-driver-azure-devops.md` (a portable,
+  self-tested implementation of this design for one hosted platform).
+- **Sources:** distilled from practice; no external URL.
 
 ## 8. Changelog
 
-- 2026-09-26 — created from harvested, generalized capability, by
+- 2026-09-26 — created by
   docs-librarian.
 - 2026-09-26 — corrected after review: the true worst-case wait formula, printed at start; when not to use it; the `tail` pitfall; the real terminal-state regression test.

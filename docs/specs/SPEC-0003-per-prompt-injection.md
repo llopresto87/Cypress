@@ -1,8 +1,8 @@
 ---
 status: implemented
-status_date: 2026-10-01
+status_date: 2026-10-04
 owner: architect
-status_evidence: tests/test-prompt-hooks.sh, tests/test-code-anchor.sh, tests/test-seed-lint.sh, tests/seed-lint.py, tests/test-nested-checkout.sh, tests/test_graph_lint.py (every §10 row green at the 7.37.0 release tip; all wired into tests/run.sh)
+status_evidence: tests/test-prompt-hooks.sh, tests/test-code-anchor.sh, tests/test-seed-lint.sh, tests/seed-lint.py, tests/test-nested-checkout.sh, tests/test_graph_lint.py (every §10 row green at the 8.0.0 tip, plan increment 15; all wired into tests/run.sh)
 ---
 
 # SPEC-0003: per-prompt injection
@@ -24,10 +24,34 @@ status_evidence: tests/test-prompt-hooks.sh, tests/test-code-anchor.sh, tests/te
   both first-class hosts, `--plan-json` and the compact route grammar,
   `--show`, children and non-human turns unrouted; seven contracts and two
   failures retired. The sign-offs were not re-taken for it.
+  Amended 2026-10-04 (8.0.0, §12): MISSING_HOOK_SCRIPT_WARNS_AND_PASSES,
+  written ahead of its RED. Its sign-offs:
+  product [x] · architect [x] · tester [x]. Each role ticks its own box when
+  it signs; the ticks on the line above predate it and do not cover it.
+  Amended 2026-10-04 (8.0.0 increment 16, §12): UNEXPECTED_EXCEPTION counts
+  stdin nesting before the parse, against `STDIN_NESTING_MAX`, instead of
+  reading it from the parser's `RecursionError`. No contract changed. The
+  ticks above cover it too.
+  The three roles reviewed both amendments at the 8.0.0 tip (increment 15),
+  each on its own read-only review of 2026-10-04, after the RED had landed;
+  the ticks carry that date, not one before the RED. Product
+  blocked first: §3 did not state the missing-script outcome, and AC-20
+  promised an in-session warning on every host. The architect blocked
+  first: Copilot injects only the JSON shape of §6 `hook_stdout`, so the
+  plain-text line cannot reach a Copilot session. Both are answered in the
+  text: the contract's Then, §3 and AC-20 now say the session sees the line
+  on Claude Code, while on Copilot and Prime Agent `install.sh --check`
+  names the gap (SPEC-0001 CHECK_EXECUTES_EACH_WIRED_HOOK). Printing the
+  line in the JSON shape, so a Copilot session sees it too, is left to a
+  later round as a wiring change. The architect also found that a sibling
+  that cannot load costs status-hook a second stderr line, now stated in
+  §7 UNEXPECTED_EXCEPTION. The tester blocked first: no case reached
+  the `RecursionError` second guard of either hook. X181 now does, through
+  the sibling and without it, and the tester signed on it.
 
 - **Owner:** architect
 - **Date:** 2026-09-23
-- **Last reviewed:** 2026-09-23
+- **Last reviewed:** 2026-10-04
 - **Related grill section:** docs/plans/grill-7.28.0-context-residency.md §3, §4, §5, §8, §16, §17; docs/plans/grill-7.37.0-routing-context.md §9 (the 7.37.0 amendment)
 - **Related ADRs:** adr-0003-enforcement-layering-honesty (the enforcement classes); adr-0009-host-support-tiers; adr-0010-context-residency (the Residency Rule and this spec's threat model; superseded in part by adr-0024); adr-0024-one-hook-core-per-session-residency; adr-0025-compact-route-lines-json-between-programs; adr-0027-first-move-runs-the-router (`PLAN_PRINTS_PLANT_BLOCK`)
 - **Supersedes:** —
@@ -157,6 +181,13 @@ The core is the same on both first-class hosts, so the text is the same.
 - The session never blocks, because every path exits 0. When the hook falls
   back to full, it writes one line to its error output saying why, never the
   raw session id.
+- A wired hook whose script is missing still lets the prompt through. On
+  Claude Code the session gets one line naming the script and saying to
+  re-run `install.sh` (MISSING_HOOK_SCRIPT_WARNS_AND_PASSES). Copilot prints
+  the same line but injects only JSON, so its session does not see it, and on
+  Prime Agent a missing core stays silent because its extensions inject
+  nothing when the core is absent. On both, `install.sh --check` names the
+  gap (SPEC-0001 CHECK_EXECUTES_EACH_WIRED_HOOK).
 - For the owner: the record is a small file under `.cypress/session/`, ignored
   by git through that directory's own `.gitignore` and pruned by the hook. The
   measured saving is stated in ADR-0024 (follow-up route characters -73% on a
@@ -890,6 +921,36 @@ contracts use a stub tool in the plant of the reset contracts.
   exits 0
 
 
+### Fail-open wiring (8.0.0)
+
+The context hooks are wired fail-open: `|| true` after each command lets the
+prompt through whatever the script does (`integrations/claude-code/settings.json`,
+the Copilot `hooks/route.json` and `hooks/status.json`). A script that is not
+there at all used to fail open in silence, and every prompt ran without its
+route. The owner decided on 2026-10-04 to keep the hooks fail-open and make the
+missing script loud. SPEC-0001
+CHECK_EXECUTES_EACH_WIRED_HOOK finds the same gap at install and graft time.
+
+### Contract: MISSING_HOOK_SCRIPT_WARNS_AND_PASSES
+- **Given:** a plant whose wired context-hook command names a script that
+  does not exist: in turn the `UserPromptSubmit` and the `SessionStart`
+  command of `.claude/settings.json`, and the command of the Copilot
+  `hooks/route.json` and `hooks/status.json`
+- **When:** the command runs as the host runs it, through a shell with
+  `CLAUDE_PROJECT_DIR` set to the plant
+- **Then:** it exits 0, and stdout carries exactly the missing-script line of
+  §6, naming the script's path. Claude Code adds a hook's plain stdout to
+  the session's context, so there the session sees the gap. Copilot injects
+  only the JSON shape of §6 `hook_stdout`, so on Copilot (its own hook files,
+  and `.claude/settings.json` when Copilot reads it) the line reaches the
+  hook's output and not the session; SPEC-0001 CHECK_EXECUTES_EACH_WIRED_HOOK
+  is where Copilot's gap is reported
+- **And:** with the script present, the command's output is the script's
+  alone: the missing-script line never appears, and every other contract of
+  this spec holds unchanged
+- **And:** the guard `bound-hook.py` is not a context hook: its `PreToolUse`
+  command keeps no `|| true` and gains no missing-script line
+
 ### Pending amendments, 7.32.0 (not yet contracts)
 
 This block holds what the 7.32.0 plan still adds to this spec and has not yet
@@ -1086,6 +1147,7 @@ In `route-hook.py`, one home each:
 | `TEMP_MAX_AGE` | 1 h |
 | `LEDGER_MAX_BYTES` | 64 KiB |
 | `SURFACED_MAX` | 512 |
+| `STDIN_NESTING_MAX` | 128 arrays and objects open at once on hook stdin, counted outside strings before the parse (8.0.0). A host envelope opens one; the value sits far below any interpreter's recursion limit. `status-hook.py` reads it from here (UNEXPECTED_EXCEPTION) |
 
 Also in `route-hook.py` (7.37.0):
 
@@ -1229,6 +1291,10 @@ from the document in the grammar above. The skip header is also a literal in
   `plant:` line: it is resident from the full injection.
 - **Router failed:** the pointer line alone.
 - **Not routed** (a trivial prompt, a child, a non-human turn): nothing.
+- **Missing script (8.0.0):** not a literal of `route-hook.py`, which is the
+  file that is absent: the wired command itself prints it, one line, with
+  `<path>` the script path as the shell expanded it:
+  `cypress: hook script missing: <path>; continuing without it. Re-run install.sh to restore it.`
 
 ### Mode decision (pure; kept apart from file I/O in the script)
 
@@ -1481,12 +1547,20 @@ exception's text, which names the file, and a ledger's file name is the id.
 - **Response:** exit 0. Once `graph-lint.py` has resolved, `route-hook.py`
   emits at least the pointer line, and the full-mode text when the router
   output was already in hand, with one stderr line; before that, nothing.
-  Stdin nested past the JSON parser's limit (`RecursionError`) leaves no
-  prompt to route, so `route-hook.py` emits the pointer line alone with one
-  stderr line; stdin that is plainly not JSON, empty stdin included, stays
+  Stdin nested past `STDIN_NESTING_MAX` (§6) leaves no prompt to route, so
+  `route-hook.py` emits the pointer line alone with one stderr line. Nesting
+  is counted before the parse, arrays and objects open at once with brackets
+  inside strings not counted, so the answer is the same whichever exception,
+  if any, the interpreter's JSON parser raises; a parser that still raises
+  `RecursionError` is caught as a second guard and gives the same answer.
+  Stdin that is plainly not JSON, empty stdin included, stays
   silent, as Copilot's fail-open case needs. `status-hook.py` emits its
-  summary when built, with at most one stderr line: nested stdin costs that
-  line and the summary still runs, and a register that fails or prints
+  summary when built, with at most one stderr line: nested stdin, counted by
+  the same rule through its sibling `route-hook.py` (by the parser's
+  `RecursionError` alone when the sibling cannot load), costs that
+  line and the summary still runs. A sibling that cannot load adds
+  RESET_NOT_WRITTEN's own line, so that path alone prints two, the nesting
+  line and then the reset line. A register that fails or prints
   output that does not decode is silence. Each extension's guard returns
   nothing
 - **Side effects:** none beyond an atomic write that either completed or did
@@ -1692,6 +1766,11 @@ contracts it maps to.)
       ratchet that may only fall. Maps to SESSION_INJECTION_WITHIN_BUDGET
 - [ ] AC-19 (7.37.0, if ADR-0027 lands): the full plan carries the plant's
       four `plant:` facts. Maps to PLAN_PRINTS_PLANT_BLOCK
+- [ ] AC-20 (8.0.0): a wired context hook whose script is gone lets the
+      prompt through and prints the missing-script line; on Claude Code the
+      session sees it, and on Copilot and Prime Agent the gap is named by
+      `install.sh --check`, not in the session. Maps to
+      MISSING_HOOK_SCRIPT_WARNS_AND_PASSES
 
 ## 10. Test mapping
 
@@ -1803,7 +1882,9 @@ Techniques the cases rely on:
 | LEDGER_DIR_UNUSABLE | X130, X131 and X132, the cases of the contracts named there | tests/test-prompt-hooks.sh | integration; its cases pass at GREEN (2026-09-23), and each names this failure slug after its contract slug, on its OK and FAIL lines (`X1NN <SLUG>; failure …`) | green |
 | RESET_NOT_WRITTEN | X143, for the write-fails trigger; the sibling-missing trigger is X127 | tests/test-prompt-hooks.sh | integration | green |
 | UNEXPECTED_EXCEPTION | X144; a status register printing non-UTF-8 bytes; red on arrival (a traceback) | tests/test-prompt-hooks.sh | integration | green |
-| UNEXPECTED_EXCEPTION | X145; 100 000 nested `[` on stdin, both hooks; red on arrival (a traceback, no pointer line) | tests/test-prompt-hooks.sh | integration | green |
+| UNEXPECTED_EXCEPTION | X145; 100 000 nested `[` on stdin, both hooks; red on arrival (a traceback, no pointer line); red again on Python 3.14 (exit 0, nothing on stdout or stderr: the parser raised `JSONDecodeError`, not `RecursionError`), green once nesting is counted before the parse (plan 8.0.0 increment 16) | tests/test-prompt-hooks.sh | integration | green |
+| UNEXPECTED_EXCEPTION | X180; a valid envelope nested 10 000 deep gets X145's answer from both hooks, status-hook's stderr line included, and a prompt carrying 10 000 `[` inside its string is routed as its plain twin is; red on arrival on Python 3.14 (route-hook routed the deep envelope in full mode) | tests/test-prompt-hooks.sh | integration | green |
+| UNEXPECTED_EXCEPTION | X181; a parser that raises `RecursionError` on deep stdin (a wrapper over `json.loads`) with `STDIN_NESTING_MAX` raised in the copy so the count never fires: route-hook gives the pointer line and one stderr line, status-hook through its sibling the summary and one line, and status-hook with the sibling removed the summary, the nesting line and RESET_NOT_WRITTEN's line; added at the plan 8.0.0 tip on the tester's sign-off condition, green on arrival and proved by reverted mutations that removed each hook's `RecursionError` guard | tests/test-prompt-hooks.sh | integration | green |
 | ROUTE_HOOK_STRIPS_MULTILINE_PROMPT_ECHO | X146; CRLF and lone-CR prompts against their `\n` twin; red on arrival (newline translation broke the echo match) | tests/test-prompt-hooks.sh | integration; rewritten 2026-10-01; at the RED of plan increment 1 its assertions stand unchanged against the `cypress.plan/1` stub | green |
 | RESET_NOT_WRITTEN | X147, a second fault row of X143: the ledger stat fails | tests/test-prompt-hooks.sh | integration | green |
 | LEDGER_WRITE_FAILURE_FAILS_OPEN | X148; a ledger that would pass `LEDGER_MAX_BYTES`, one prompt: not written, full mode | tests/test-prompt-hooks.sh | integration | green |
@@ -1851,6 +1932,7 @@ Techniques the cases rely on:
 | PLAN_PRINTS_PLANT_BLOCK | test_plan_prints_plant_block; the `planted` fixture (PLANT_FACTS in index.md) and `main` (no block); the hook side is X168 over the `planted` row of PLAN_TASK_SET | tests/test_graph_lint.py, tests/test-prompt-hooks.sh (X168) | integration; red on arrival (the `planted` subtest: `--plan` printed no `plant:` line), green since increment 4; the `main` subtest is the guard | green |
 | PLAN_PRINTS_PLANT_BLOCK, the unfilled-or-partial And | test_plan_prints_plant_block, subtests `placeholder` (`<ephemeral-test \| staging>`), `placeholder-commented` (`<ephemeral-test \| staging>  # x`) and `partial` (`comment_language` dropped) | tests/test_graph_lint.py | integration; added at increment 4 review FIX-2; `placeholder-commented` red on arrival (`--plan` printed `plant: environment_class=<ephemeral-test \| staging>  # x ...`: plant_block keeps the comment tail, so _unfilled sees no closing `>`); `placeholder` and `partial` green on arrival, guards; green since the FIX-2 GREEN (plant_block drops an inline `# comment` tail) | green |
 | PLAN_PRINTS_PLANT_BLOCK, the reminder And | X178; the `planted` fixture plant: the full injection carries PLANT_LINE, the second prompt's reminder carries no `plant:` line | tests/test-prompt-hooks.sh | integration; added at increment 4 review N4; green on arrival, a characterization of an untested clause (route-hook.py reminder_text never reads the plan's `plant`) | green |
+| MISSING_HOOK_SCRIPT_WARNS_AND_PASSES | X179; the four wired commands (`settings.json` `UserPromptSubmit` and `SessionStart`, the Copilot `route.json` and `status.json`) run through `sh -c` with `CLAUDE_PROJECT_DIR` set: with the script absent each exits 0 and prints exactly the missing-script line naming the expanded path; with it present each prints the script's output and no missing-script line; the `PreToolUse` guard command stays without the fail-open suffix and without a missing-script line | tests/test-prompt-hooks.sh | integration; red on arrival (each absent-script command printed nothing) | green |
 
 Existing tests that must change in the same commit as the RED cases (plan §9):
 `tests/test-tier-lanes.sh` drops `route-hook.py` and `route-extension.ts` from
@@ -2297,3 +2379,47 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
   (plan increment 5). Every §10 row is now green, so the status moves from
   `active` to `implemented`. No contract changed; §11 keeps its open
   question on Claude Code's turn origin.
+- 2026-10-04: 8.0.0, written ahead of its RED (plan
+  `docs/plans/grill-8.0.0-wave-a.md`, increment 1), on the owner's
+  decision of 2026-10-04 to keep the hooks fail-open and make a missing script
+  loud. §4 gains a
+  "Fail-open wiring" group and MISSING_HOOK_SCRIPT_WARNS_AND_PASSES, live
+  from this entry: a wired context-hook command whose script is absent exits
+  0 and prints one line naming it. §6 gains the missing-script line; §9 gains
+  AC-20; §10 gains its row, `pending` until increment 11's tester names the
+  case. §0 lists the sign-offs it owes, unticked. The status moves from
+  `implemented` to `active`, because an `implemented` spec may hold no
+  `pending` row; it returns to `implemented` when the row turns `green`
+  (plan increment 15). Until the RED lands, `spec-lint.py` counts the
+  contract as uncovered. No existing contract changed.
+- 2026-10-04: 8.0.0, increment 11 (lane Serial chain), the RED over
+  MISSING_HOOK_SCRIPT_WARNS_AND_PASSES: X179 in `tests/test-prompt-hooks.sh`
+  failed because each of the four wired commands printed nothing when its
+  script was absent, and passes once each command tests for its script and
+  prints the §6 missing-script line instead. §10's row is `green`. The
+  sign-offs §0 lists for this contract are still unticked: each role ticks
+  its own box on its own review. SPEC-0001 CHECK_EXECUTES_EACH_WIRED_HOOK
+  turned green in the same increment. The status stays `active` until plan
+  increment 15. No contract changed.
+- 2026-10-04: 8.0.0, increment 16 (lane Hooks), a defect that predates the
+  round: under Python 3.14 X145 failed because the JSON decoder raised
+  `JSONDecodeError`, not `RecursionError`, on 100 000 nested `[`, so
+  `route-hook.py` took its silent not-JSON branch and printed nothing; a
+  balanced deep envelope parsed and was routed. §7 UNEXPECTED_EXCEPTION now
+  names the mechanism that holds on every interpreter: nesting is counted
+  before the parse, outside strings, against `STDIN_NESTING_MAX`, a new §6
+  constant in `route-hook.py` that `status-hook.py` reads through its
+  sibling; `RecursionError` stays a second guard. The responses are
+  unchanged. §10's X145 row records the second RED, and X180 is added. The
+  status stays `active`. No contract changed.
+- 2026-10-04: 8.0.0, increment 15 (the tip). Product, architect and tester
+  reviewed MISSING_HOOK_SCRIPT_WARNS_AND_PASSES and increment 16's amendment,
+  each on its own read-only review, and signed once their blocking
+  conditions were answered (§0). The contract's Then, §3 and AC-20 now say
+  the missing-script line reaches the session on Claude Code only; Copilot
+  injects only the §6 `hook_stdout` JSON, and on Copilot and Prime Agent
+  `install.sh --check` names the gap. §7 UNEXPECTED_EXCEPTION states the
+  second stderr line a status hook prints when its sibling cannot load.
+  §10 gains X181, which reaches both hooks' `RecursionError` guard. Every
+  §10 row is `green`, so the status returns from `active` to `implemented`
+  (`verify.status-evidence`). No contract was added or retired.

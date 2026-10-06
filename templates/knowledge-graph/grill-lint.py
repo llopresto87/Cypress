@@ -356,6 +356,21 @@ def spec_files(specs: Path = SPECS) -> dict[str, tuple[Path, str]]:
     return out
 
 
+# The specs directory's own pages: not specs, and never misnamed ones.
+SPEC_DIR_EXEMPT = {"index.md", "readme.md"}
+
+
+def misnamed_specs(specs: Path = SPECS) -> list[Path]:
+    """Every Markdown file in the specs directory that is not `SPEC-*.md`,
+    apart from its index and readme. `spec_files` reads the pattern alone, so
+    a misnamed spec was skipped and a plan over it passed with its contracts
+    unseen; spec-lint.py applies the same rule."""
+    if not specs.is_dir():
+        return []
+    return sorted(p for p in specs.glob("*.md")
+                  if not p.name.startswith("SPEC-") and p.name.lower() not in SPEC_DIR_EXEMPT)
+
+
 def spec_status(text: str) -> str:
     """Frontmatter first, as spec-lint.py's status_of(); the body line only
     when the frontmatter has none, and never the template's "see frontmatter"."""
@@ -612,6 +627,10 @@ def main() -> int:
 
     # --- plan <-> spec alignment ---------------------------------------------
     specs = spec_files(specs_dir)
+    for p in misnamed_specs(specs_dir):
+        fails.append(f"misnamed spec, not checked: {p.name} in {specs_shown} — a "
+                     f"spec file is SPEC-NNNN-<surface>.md; rename it, or its "
+                     f"contracts are never checked against a plan")
     for spec, slugs in sorted(contract_refs.items()):
         if spec not in specs:
             fails.append(f"§9 names {spec}, which is not in {specs_shown}")

@@ -14,8 +14,9 @@ load_when:
   - "degraded dependency, silent fallback to a default, fail-open or fail-closed posture"
   - "destructive or stranding operation, describe-only default, explicit apply flag"
   - "scoped cleanup or remove-orphans inside a shared namespace or project name"
+  - "where a publish or branch control must sit, a check the committer can edit, widen the allowed pattern or delete it"
 prevents: A guard that serves the case it was written for and silently denies the ordinary path, a fallback nobody decided, and a destructive tool that acts without a per-operation flag.
-est_tokens: 1297
+est_tokens: 1563
 ---
 
 ## 8. A restrictive rule keeps the default path working
@@ -72,6 +73,22 @@ broken primary can protect less than nothing. Deleting a control is its
 own decision, even once its need is gone, and a guard made redundant by
 an earlier one stays as defence in depth. Where the weakening has been
 tried once already, pin the temptation with a contract test.
+
+**A control sits where the party it must stop cannot edit it.** A check
+written in code a committer can change (a branch condition in a pipeline
+file, a tool that refuses to run from the wrong branch) stops an
+accident, never the committer, who can edit the check in the change it
+was meant to stop. A boundary that has to hold against a committer
+belongs in controls no branch can edit: a required review on the
+protected branch, a build identity whose write permission is confined to
+a prefix, an authorization that binds one pipeline to one resource. An
+allow pattern widened until every legitimate case passes admits
+everything and asserts nothing while still showing green; when the
+requirement outgrows what the control can express, delete the control
+instead of widening it, as that separate decision, and record where the
+boundary now lives. Equality between two names the committer controls
+(this branch matches that branch) proves nothing either: bind provenance
+to the commit, and label a mismatch, because the name is not evidence.
 
 **Stranding or destructive operations default to report-only.** A tool
 that can delete state, strand its operator, or regenerate a set that

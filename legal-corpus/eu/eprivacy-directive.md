@@ -1,12 +1,12 @@
 # Directive 2002/58/EC (ePrivacy), as amended — EU
 
-> Project-agnostic legal citation notes, folded into the seed by the harvest
-> protocol. AMENDMENT TRAP: the 2002 original and the text in force (as
-> amended by Directive 2009/136/EC) state OPPOSITE rules (opt-out vs.
-> opt-in) — both CELEX ids are recorded per entry; never cite the original
-> alone as current. A directive alone does not bind persons — cite the
-> national transposing act for a national obligation (see `transposed_by`).
-> Entry contract: `../_schema.md`.
+> Project-agnostic legal citation notes, kept in the seed's legal corpus
+> (`legal-corpus/README.md`). AMENDMENT TRAP: the 2002 original and the text in
+> force (as amended by Directive 2009/136/EC) state OPPOSITE rules (opt-out vs.
+> opt-in) — both CELEX ids are recorded per entry; never cite the original alone
+> as current. A directive alone does not bind persons — cite the national
+> transposing act for a national obligation (see `transposed_by`). Entry
+> contract: `../_schema.md`.
 
 **Instrument kind:** `directive` — **binds Member States, not persons.** In
 Italy the binding provision is the transposing one, `it-codice-privacy-art-122`

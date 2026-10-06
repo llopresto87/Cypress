@@ -32,7 +32,7 @@ load_when:
   - "propose promoting a plant-commissioned expert into the base roster"
   - "a harvested page is in the seed but no plant can reach it"
 prevents: A lesson learned in one plant and re-learned in every other, because fixes stay project-local and the next plant starts exactly where the last one did.
-est_tokens: 11551
+est_tokens: 15890
 ---
 
 # Protocol: harvest
@@ -82,6 +82,12 @@ user's call, not the system's.
   words name the same person), working with the seed as the target scope. The
   plant is a read-only donor, and the seed is the only thing this protocol
   writes.
+- **One plant or several.** A harvest may take every plant on a host at once.
+  Each plant is then surveyed on its own, and the ledgers are consolidated
+  before triage (§Phase 1, "Several plants"). The round's working records
+  (ledgers, baselines, drafts, the friction log) name plants, so they live in
+  the seed's gitignored `.cypress/harvest/<date>-<scope>/` and are never
+  committed or quoted into seed text.
 
 ## The agnosticism gate (`harvest.agnosticism-gate`): the heart of this protocol
 
@@ -92,17 +98,19 @@ Every candidate improvement passes one hard test before it may touch the seed:
 
 - **YES, verbatim.** Harvest as-is (rare; usually only tool-neutral rules).
 - **YES, once generalized.** Rewrite it stripping every plant-specific name,
-  domain term, stack pin, path, and example, until only the universal kernel
-  remains, *then* harvest the generalized form. State the before→after
-  generalization explicitly.
+  domain term, the plant's own pin (the version it runs), path, and example,
+  until only the universal kernel remains, *then* harvest the generalized form.
+  A version fact about the library itself stays (§the second gate). State the
+  before→after generalization explicitly.
 - **NO.** Reject it. It is the plant's life, not the seed's. Record why, leave
   it in the plant.
 
-Fail-closed corollary: **a lesson is ready to harvest only when you can state
-it without naming the plant.** Generalize it or drop it. A single leaked
-project name, domain noun, credential, dataset shape, or version-pinned
-specific in the seed is a failed harvest, and it is worse than a missed lesson,
-because it silently narrows the seed for everyone downstream.
+Fail-closed corollary: **a lesson is ready to harvest only when you can state it
+without naming the plant.** Generalize it or drop it. A single leaked project
+name, domain noun, credential, dataset shape, or the version one plant runs,
+stated or cited as evidence, in the seed is a failed harvest, and it is worse
+than a missed lesson, because it silently narrows the seed for everyone
+downstream.
 
 ### What counts as a project reference
 
@@ -117,18 +125,31 @@ harvest-log row, provenance notes, and any illustrative example:**
    combination that identifies the plant (e.g. "a `<language>/<framework>`
    microservices plant"). Name a library only where the seed genuinely
    documents that library for *any* project (the library corpus), never as "the
-   stack this plant ran";
+   stack this plant ran". Versions can complete a fingerprint: a framework line
+   on a runtime line with a given datastore identifies a plant as surely as a
+   name does;
 3. an **identifying count or metric**: "authored N library pages", "an
    N-observer registry", a figure that describes this plant's scale rather than
    a universal rule;
 4. a **description of the plant's internals**: its file names, config keys,
-   plugin names, module wiring, or a security finding on its own code;
+   plugin names, module wiring, the exact versions its lockfile resolves, or a
+   security finding on its own code;
 5. a **path, host, port, credential, or absolute install location**
    (`/root/…`);
 6. an **illustrative example framed as the plant's own**, such as "this
    project's fleet does X". Recast every example in the generic ("a fleet may
    do X"); an example is admissible only once it no longer belongs to any
    specific project.
+
+**A plant's version is a project reference wherever it appears**, stated as a
+fact or cited as evidence ("seen on N"): the version this plant runs or
+resolved (class 4), or a set of versions that identifies its stack (class 2).
+A plant-observed fact enters the seed with no version of the plant attached.
+The versions a seed page may name are those the library's own release notes
+or documentation state, said about the library ("the setting exists from N",
+"the default changed in N"): those are version facts, and the second gate
+admits them. Security facts and calendar dates are kept out by that gate, not
+by this list.
 
 Plant-identifying provenance (which plant it was, its stack, the exact
 before-text that was stripped) belongs in the **ratification proposal you show
@@ -144,32 +165,57 @@ enforce it, and both point here by number rather than re-listing the classes.
 Agnosticism asks *"true for another project?"* Durability asks a second,
 independent question of every fact:
 
-> **Will this still be true a version from now: is it about the library, or
-> about one pinned release of it?**
+> **Will this still be true, as stated, a version from now?**
 
-The seed's inheritance is **surface-level, version-durable** knowledge: what a
-library is for, its stable API shape, its enduring idioms and conceptual
-pitfalls. That is what compounds. Anything keyed to an exact release is the
-*plant's* concern, discovered fresh by `ingest-library` against the plant's own
-lockfile, and it rots the moment the pin moves.
+A fact passes when it names the scope it holds for. "From version N the
+default is X", "removed in N", "a pitfall of the N line only" stay true when
+the next release ships, because each states the version it is bound to. A fact
+that silently assumes one release ("the default is X", written against one
+pin) rots the moment the pin moves. So the seed's inheritance is durable
+knowledge with its version facts stated: what a library is for, its stable API
+shape, its enduring idioms and conceptual pitfalls, and the versions at which
+any of that changes. That is what compounds. The version one plant runs is the
+*plant's* concern, discovered fresh by `ingest-library` against the plant's
+own lockfile.
 
-- **KEEP (surface, durable):** the capability the library provides; its core
-  API shape and canonical usage; idioms and best practices that hold across
-  minor/major lines; conceptual gotchas inherent to the tool; the upstream
-  doc/repo home.
-- **REJECT (pinned, ephemeral):** CVEs and advisories tied to an exact version;
-  "version X.Y.Z is a breaking-change marker"; deprecations introduced in a
-  specific release; upgrade/migration diffs between two pins; a
-  resolved-version number itself. These belong in the plant's
-  `docs/graph/libraries/<name>.md`.
+- **KEEP (durable, versions stated):** the capability the library provides;
+  its core API shape and canonical usage; idioms and best practices; conceptual
+  gotchas inherent to the tool; the upstream doc/repo home; and every **version
+  fact the library's own release notes or documentation state**, written with
+  the subject it qualifies: a minimum version, the version where a behaviour, a
+  default or a coordinate changed, a deprecation or removal version, a
+  version-specific pitfall, a major-line boundary of the page's own subject and
+  the upgrade or migration diff across it. A major line stays the unit that
+  earns a section of its own (`library-corpus/README.md`, "A major line is not a
+  pin"); a finer version fact sits in the section it qualifies.
+- **REJECT:**
+  - a **security fact**: a CVE or advisory identifier, and any fact whose
+    purpose is to warn about an exposure ("releases before N let an attacker
+    do Y"). Vulnerability scanners and advisory feeds own these, and the plant
+    reads them against its own lockfile. A page still states a library's
+    secure defaults and what a careless setting opens (the withdraw-ready bar);
+    that is configuration, not an advisory;
+  - a **calendar date**, with two standing exceptions: the retrieval date of a
+    `platform` page that has no version of its own (`library-corpus/README.md`,
+    the last rule) and the dates `legal-corpus/_schema.md` requires
+    (verification, edition and consolidation dates);
+  - a **plant's own version**: the version one project runs or resolved. It
+    is never stated in the seed and never cited as evidence for a fact there;
+    it belongs in the plant's `docs/graph/libraries/<name>.md` §0;
+  - a **bare version number** with no subject or behaviour attached;
+  - a page that reads like one release's security bulletin.
 
-When in doubt, a fact is pinned, so drop it. A corpus page that reads like a
+When in doubt about a version fact, cite the release note or documentation page
+that states it, or drop the version. A plant-observed fact keeps its provenance
+class (§Phase 1, "A plant fact may be wrong") and carries no version. A
+version-bound fact never passes as unbounded. A corpus page that reads like a
 security bulletin for one release has failed this gate; one that reads like the
-opening orientation of the library's own docs has passed.
+opening of the library's own docs, "changed in" notes included, has passed.
 
-Of the two classes above, only the CVE identifier has a detector
-(`tools/agnosticism-lint.py`'s `CVE_RE`). A resolved version number has none,
-so durability is read by a person.
+Of the classes above, only the CVE identifier has a detector
+(`tools/agnosticism-lint.py`'s `CVE_RE`). An advisory-shaped fact, a calendar
+date, a plant's version and a version fact missing its subject or its source
+have none, so durability is read by a person (G2).
 
 ### The third gate: non-redundancy (does the seed already own this?)
 
@@ -186,11 +232,16 @@ already ships (reversibility-with-trigger, a risk paired with its verifying
 check, fail-closed defaults, released-bits-are-tested-bits, resolve-in-place,
 two-axis severity) and proposing them back is not a harvest, it is an echo.
 Before any candidate is proposed, **open its would-be seed home and read it**:
-if the rule already lives there, the candidate is **rejected as redundant**,
-and only the genuinely net-new residue survives. Corroboration across several
-plants raises confidence that a *net-new* rule is universal; it never converts
-a seed duplicate into a fold-back. A candidate that bolts a second home onto a
-fact the seed already owns breaks the seed's one-home-per-fact rule
+if the rule already lives there, the candidate is **rejected as redundant**, and
+only the genuinely net-new residue survives. Corroboration across several plants
+raises confidence that a *net-new* rule is universal; it never converts a seed
+duplicate into a fold-back. Corroboration counts **lineages, not plants**:
+plants that share a lineage (one grown from another's tree, one product family,
+one shared copy of a page) are one witness, however many directories they fill.
+A survey's "already covered" call is a claim like any other: it names the seed
+home and the line that covers the candidate, and the triage author opens that
+line before rejecting the row. A candidate that bolts a second home onto a fact
+the seed already owns breaks the seed's one-home-per-fact rule
 (`rule.knowledge`), and that is worse than a missed lesson, because it splits a
 fact across two homes that will drift.
 
@@ -201,6 +252,26 @@ clean-context workers survey, triage, and author. Model classes follow
 `delegation.model-classes`: the investigation class for read-only survey, the
 authoring class for every generalization and authoring call.
 
+**Running a large harvest.** Four habits carried a multi-plant round and are
+the default:
+- one read-only worker per plant (and per library in the cross-plant wave),
+  each writing one scratch ledger and handing back a short summary;
+- authoring lanes with disjoint write sets and one written ownership list
+  that names each lane's files and its subjects: a shared file (an index, a
+  README listing, a documentation mirror, the CHANGELOG) has exactly one
+  owner, a fact two lanes could both write has one owner too, and no lane
+  reads another lane's unlanded writes;
+- every authoring lane is reviewed by a non-author before it lands (G2, G3),
+  and the review's fixes are applied before the next batch;
+- one full gate per batch, run when no writer is active, with only the
+  changed files' own lints in between. A prose or corpus fold-back gets no new
+  test: the existing checkers prove it (`test-first.proportionate-checks`).
+  New tests come only with code, RED first.
+
+A ruling the owner gives mid-flight is broadcast to the running workers and
+recorded with the round's records. Keep a friction log against this protocol
+as the round runs: it is the input to the next amendment of this node.
+
 ### Phase 1: Survey the mature plant (investigation-class scouts, read-only)
 
 Inventory how the plant diverged from the seed it grew from, and what it
@@ -208,21 +279,62 @@ accumulated. A prior `graft`'s customization-audit ledger and its KEEP-PLANT
 list (`tools/graft-audit.py` output, the graft record's "kept as the plant's"
 section) is a ready-made divergence inventory: a machinery file the plant
 customized that the graft preserved is already a flagged harvest candidate, so
-start from it rather than rediscovering the divergence.
+start from it rather than rediscovering the divergence. Read the plant's
+**harvest-candidate record** first of all, beside that ledger:
+`docs/graph/plans/harvest-candidates.md`, the append-only rows the close-out
+librarian added each time a lesson was flagged (`canonize.harvest-candidates`,
+form `templates/docs/plans/_harvest-candidates.template.md`). Each row points
+at the lesson's home in the plant; open the home, because the row never
+restates the rule. A struck row stays struck unless new evidence is dated on it.
+
+Before reading anything else, take **G5's baseline**: each plant's
+`git rev-parse HEAD` and its `git status --porcelain` output, or, for a plant
+with no repository of its own, a SHA-256 manifest of the files the survey will
+read (G5 says why). Plants are often dirty when a harvest starts, and the gate
+compares against what was there, not against a clean tree.
 
 Harvest takes only the generalized, project-agnostic lesson from the plant's
-`docs/graph/`. The plant's facts stay in the plant. Candidate donor surfaces,
-each mined that way:
+`docs/graph/` and from the surfaces below that sit outside it. The plant's facts
+stay in the plant. **Every plant-authored skill, procedure, tool, agent and
+gate is a candidate by default**: the triage generalizes it rather than
+rejecting it, and a procedure bound to one stack becomes a stack-keyed page,
+not a reject (§Phase 2). Candidate donor surfaces, each mined that way:
 - shared scripts/tooling the plant fixed or added;
 - skills whose rules the plant sharpened, or gaps it hit that a core skill
   should close, and any **project skill** the plant authored (a repeatable
   procedure) whose steps generalize, mined for the agnostic procedure only;
 - protocols the plant found insufficient or missing a step;
 - agent/expert definitions authored to fill a roster gap;
+- an **agent-operations system older than the graft**: charters and
+  instruction files under the agent hosts' own directories (`.github/` and
+  kin), hooks, and lesson or memory logs. Lesson logs are dated incident
+  evidence, mined as problem-to-fix records; hooks are enforcement the plant
+  ran; a copied facts table is drift. `grow` inventories the same surface when
+  it adopts a project (`protocols/grow.md`, "An agent-operations system the
+  project already runs");
+- **harness-only skills**: procedures that live only in a harness directory
+  (`.claude/skills/` and kin) with no home in `docs/graph/`. No graph survey
+  sees them, and they are often the plant's most-used procedures;
 - templates that gained a better section or default;
 - the plant's accumulated sharp-edges / case library / ADRs, mined for the
-  *generalizable prevention rule* only, recast tool-neutrally; the incident
-  narrative stays in the plant;
+  *generalizable prevention rule*, recast tool-neutrally;
+- the plant's **problem-to-fix records** (ADRs, changelogs, plans of record,
+  session records, runbooks, `recover` retries, lesson logs, and the plant
+  repository's commit messages), mined for the case: symptom, cause, fix, the
+  proof it held, and the trap that hid it, so a later session neither re-hits
+  the problem nor guesses how it was solved. A case seen in several plants
+  collapses into one. Strip the plant's identity and its incident timeline; keep
+  the case. Each case lands in the existing page that owns its subject (a
+  library page's pitfalls or major-line section, a skill-corpus step, a tool
+  page, an agent charter, a method or protocol node, a runbook template), by
+  holistic edit (§Phase 3);
+- the **owner's decisions** in those records, mined for the decision rule and
+  its reason, so a later session does not re-ask how the owner wants a kind of
+  problem solved. An owner's *preference* (a working habit of the person, not a
+  rule of the project) is owner-specific, and the seed is published: where a
+  preference lands, the public corpus or a private overlay, is the owner's
+  decision, asked before anything is written. Until the owner decides, it is
+  not written;
 - the plant's **plan-of-record** (`grill.md` §6 Decisions, §7 Options, §11
   Risks, §12 Open Questions) and its **ADRs**, mined for *decision and planning
   discipline* a plan should always carry (a decision's evidence and
@@ -236,8 +348,12 @@ each mined that way:
   gate, a reversal that is non-autonomous and reversible-before-destructive, an
   incident loop that closes by adding a gate);
 - the library & language wiki pages the plant built during `ingest-library`,
-  mined for their **version-durable surface** only (see the corpora below):
-  what the library is and how it is idiomatically used;
+  mined for their **version-durable surface** only (see the corpora below): what
+  the library is and how it is idiomatically used, its battle-tested pitfalls,
+  and the version facts its release notes or docs state, never the plant's own
+  version. The aim is a page a new plant adopts instead of running a scout (the
+  withdraw-ready bar, §the corpora), so the depth the plant earned is harvested,
+  not only its surface;
 - the plant's reusable-tool catalog (`docs/graph/tools/`) built during
   `toolcraft`, mined for **project-agnostic, durable tools**: the capability
   and interface, and the portable implementation when it is stack-neutral;
@@ -255,7 +371,12 @@ each mined that way:
   repeated retries of one failure class (`docs/graph/protocols/recover.md`)
   mean a protocol is missing a step, a gate, or a sharp-edge rule. Mine the
   *pattern*, propose the seed change; the plant's raw numbers stay in the
-  plant;
+  plant. Read the block with the reader, never by hand:
+  `python3 docs/graph/session-metrics.py --all --json` from the plant root
+  prints every entry, an `incomplete` one included. A plant grown before the
+  reader existed has no copy and an older `deliver.md`: run the seed's
+  `tools/session-metrics.py --all --json --root <plant>/docs/graph --deliver
+  <seed>/protocols/deliver.md`, so the labels come from the seed's template;
 - a **capability the seed ships that stays inert**: a surface (a suggested
   skill, a runbook template, a corpus withdrawal) present as machinery on many
   plants yet grown on none. Inertness across plants is a design signal, not a
@@ -267,16 +388,70 @@ Output: a **candidate ledger**, each row a candidate with provenance (where in
 the plant, what triggered it) and a first guess at its class. Claims cite plant
 paths/symbols; centralized prose is an untrusted clue until corroborated.
 
+**A plant fact may be wrong: verify, do not transcribe.** Plants carry wrong
+facts (a misremembered precedence order, a licence, the release a feature
+became the default), and so do seed corpus pages. Every fact row in the ledger
+carries one **provenance class**:
+- **plant-proven**: the plant shows it with evidence a reader can open (a
+  test, a measured run, a dated incident, a read of the library's source);
+- **upstream-fetched**: a source retrieved this round, with its raw snapshot
+  and `raw:` line (`skill.research-and-ingest`);
+- **model-supplied**: the worker's own knowledge, tagged as such. It lands
+  only after a `research-scout` fetch confirms it; unconfirmed, it is dropped.
+
+Upstream documentation is right far more often than not, but a plant's
+battle-tested observation can beat it. A plant-proven fact that upstream
+confirms lands as fact. One that upstream contradicts or does not mention stays
+on the page, labelled as observed in practice, with the conditions it was
+observed under (never the plant's version) and what the docs say; a reproduced
+or measured observation outweighs a one-off note, and neither side is silently
+preferred. A plant claim shown wrong is dropped, and the ledger records why so
+it is not carried over by the next harvest. A seed page that a plant or upstream
+contradicts is a **correction candidate** like any other row: harvest doubles as
+an audit of the corpus, and a correction is re-fetched upstream before the edit
+(a legal entry's grade moves up only after a new fetch,
+`harvest.corpus-contracts`).
+
+**Several plants.** When a harvest takes more than one plant, Phase 1 runs in
+two waves and a consolidation:
+1. **Per plant.** One read-only worker per plant writes that plant's ledger.
+2. **Per library, across plants.** A plant's library inventory is too big for
+   its plant worker, and the same library recurs across plants. A second wave
+   assigns each library to exactly one worker, by a written ownership list, and
+   that worker reads every plant's page and evidence for it, checks the facts
+   upstream or in the library's source, and writes one delta per library page.
+   This wave is where wrong plant facts surface, because two plants disagree.
+3. **Consolidate.** Merge the ledgers into one, one row per candidate, with
+   each row's supporting lineages (not plants; §the third gate) and its
+   provenance class. The merged `--forbid` vocabulary for G1 is collected
+   here, from every plant.
+
 ### Phase 2: Triage against all three gates (authoring-class authors)
 
 For each candidate, apply **all three** gates (agnosticism, durability,
 non-redundancy) and decide KEEP-AS-IS / GENERALIZE / REJECT. For anything kept,
 write its **generalized restatement**: the tool-neutral, version-durable form
 that will land in the seed, with the before→after shown (what plant-specifics
-*and* what pinned specifics were stripped). Reject rows carry a one-line
+*and* what plant versions were stripped). Reject rows carry a one-line
 reason, including "redundant — the seed already owns this at `<home>`". This
-phase is where the seed's purity is defended, so be conservative: when in
-doubt, reject or generalize harder.
+phase is where the seed's purity is defended, and the default move is to
+**generalize, not reject**: when in doubt, generalize harder. A row is
+rejected only when it cannot be stated without the plant, when the seed already
+owns it, or when it cannot reach the withdraw-ready bar. What generalizing
+admits:
+- **a stack-bound procedure or tool** lands as a stack-keyed page
+  (`skill-corpus/<key>/<name>.md`, or a tool page's `stack:` field), keyed by
+  the library corpus's ecosystem key, its subject the stack and never a plant;
+- **deep stack expertise** lands in `library-corpus/`, deep enough that no
+  plant re-researches that surface: install and configuration semantics,
+  idioms, battle-tested pitfalls, testing, security defaults, operational
+  behaviour, interop, and version facts. A page that cannot reach that bar
+  (`library-corpus/README.md`, "The admission bar") is completed by a full
+  ingest first or dropped; **no thin slice lands**;
+- **a correction to a seed page** lands once re-fetched upstream (§Phase 1).
+
+Every fact kept keeps its provenance class into Phase 3; a model-supplied fact
+still unconfirmed here is dropped.
 
 ### Phase 3: Backport authoring (authoring-class authors)
 
@@ -286,10 +461,20 @@ Apply each surviving generalized improvement to the seed artifact it belongs in
 `skill-corpus/`, kernel), each as a **holistic edit**
 (`skill.holistic-editing`), integrated into the artifact as if it had always
 been there; a fold-back that cannot be integrated that way is not landed. Every
-fold-back records provenance: which plant lineage it came from, the
+fold-back records provenance: which plant lineage or lineages it came from, the
 generalization applied, and the seed files touched. The seed evolves
 spec/test-first too, so a harvested tooling fix arrives with its regression
-test generalized alongside it.
+test generalized alongside it. Checks stay proportionate: a declarative or
+prose fold-back (a corpus page, a doctrine edit) is proved by running the
+existing checkers, never by writing a new test for it
+(`test-first.proportionate-checks`).
+
+**Disseminate into the homes that exist.** A case, a decision rule or a
+corpus delta lands in the page or node that already owns its subject, woven in
+so that it reads as if it had always been there. A new corpus, a new page kind
+or a new top-level surface is the last resort: the proposal states why no
+existing home can carry the row, and the owner rules on it before it is
+written. This is the surface ladder (G9) applied to the harvest's bulk.
 
 Three things are part of *authoring*, not of verifying, because a reader who
 leaves them to Phase 4 has already written the defect:
@@ -298,7 +483,11 @@ leaves them to Phase 4 has already written the defect:
   needs (a `place_*` call, a line in the consuming node, a roster row) is
   written with the artifact, because an artifact deposited now and wired later
   is exactly the defect **G4** exists to find, and it can sit undelivered for
-  many releases before anyone applies the gate.
+  many releases before anyone applies the gate. A fold-back that adds or
+  changes a delivery mechanism (an installer arm, the corpus matcher, a grow
+  step) is not GREEN until a **read-only live probe over the real donor
+  plants** has run it: a fixture suite proves the cases its author thought of,
+  and the live probe finds the recall gaps it missed.
 - **Bring imported prose into the seed's voice.** A harvested page, charter,
   or section arrived in the plant's voice. Where it lands in a graph node, it
   becomes the node's compact instruction language, written for models, with no
@@ -333,11 +522,11 @@ command cell.
 
 | # | Gate | What it asserts | Command, or the judge | On failure | Class |
 |---|---|---|---|---|---|
-| G1 | `harvest.gate.agnosticism-floor` | No host-IP literal, pinned CVE, or supplied plant token survives in any changed file, and every changed file was actually opened | `python3 tools/agnosticism-lint.py --forbid <plant token> …` with one `--file` per changed file, the set enumerated from `git diff --name-only --diff-filter=d <pre-harvest rev>` (the literal invocation, and why the list is driven from git and never from an extension list: §G1 in detail). Exits 0, with no `unreadable` finding | BLOCK | soft |
-| G2 | `harvest.gate.agnosticism-judgment` | The classes no regex sees: every class in §What counts as a project reference that G1's `--forbid` list did not cover | No command exists. Read `git diff` whole against that section, class by class. Judge: the Phase-2 generalizer, re-read by the steward at ratification | BLOCK | judgment |
-| G3 | `harvest.gate.faithful-import` | Each imported artifact carries the whole of its donor's generalizable discipline, with only plant-specifics stripped and never substance | No command exists. Section-by-section donor→import comparison, one per artifact. Judge: an authoring-class reviewer who did **not** author the import | BLOCK | judgment |
-| G4 | `harvest.gate.availability` | Every import is reachable by the flow that delivers it, proven against `install.sh` and the consuming node | The five-step resolution below; record the resolved path per artifact | BLOCK as INERT | detective |
-| G5 | `harvest.gate.plant-untouched` | The donor plant's working tree is byte-unchanged, because harvest is inbound-only | `git -C <plant> status --porcelain` is empty, and `git -C <plant> rev-parse HEAD` matches the pre-harvest value. The plain form reads the tracked tree only, on purpose; stray files are what grow's `--ignored -uall` form finds. Both exit 0 either way, so the output is evidence a person reads, not a refusal | BLOCK | detective |
+| G1 | `harvest.gate.agnosticism-floor` | No host-IP literal, CVE id, operator home path, or supplied plant token survives in any changed file, and every changed file was actually opened | `python3 tools/agnosticism-lint.py --forbid <plant token> …` with one `--file` per changed file, the set enumerated from `git diff --name-only --diff-filter=d <pre-harvest rev>` (the literal invocation, and why the list is driven from git and never from an extension list: §G1 in detail). Exits 0, with no `unreadable` finding | BLOCK | soft |
+| G2 | `harvest.gate.agnosticism-judgment` | The classes no regex sees: every class in §What counts as a project reference that G1's `--forbid` list did not cover | No command exists. Read `git diff` whole against that section, class by class, the version rule (§the second gate) included. Judge: the Phase-2 generalizer, then an authoring-class reviewer who did **not** author the diff and reads all of it, then the steward at ratification | BLOCK | judgment |
+| G3 | `harvest.gate.faithful-import` | Each imported artifact carries the whole of its donor's generalizable discipline, with only plant-specifics stripped and never substance | No command exists. Section-by-section donor→import comparison, one per artifact; for a corpus page, also the withdraw-ready bar's sections marked present, absent or gap-stated, and spot-checks that re-open the cited sources and the provenance class of each sampled fact. Judge: an authoring-class reviewer who did **not** author the import | BLOCK | judgment |
+| G4 | `harvest.gate.availability` | Every import is reachable by the flow that delivers it, proven against `install.sh` and the consuming node | The five-step resolution below; record the resolved path per artifact. A changed delivery mechanism also reports its read-only live probe over the real donors (§Phase 3) | BLOCK as INERT | detective |
+| G5 | `harvest.gate.plant-untouched` | Every donor plant is byte-unchanged against the baseline taken before the survey read it (§Phase 1), because harvest is inbound-only | For each plant, `git -C <plant> rev-parse HEAD` matches the baseline HEAD and `git -C <plant> status --porcelain` matches the baseline porcelain line for line: empty when the plant was clean, the same dirt when the owner had work in progress. A plant with no repository of its own (`git rev-parse --show-toplevel` from its root names another directory) is compared by re-hashing the baseline's SHA-256 manifest: every listed file present with the same hash. A plant that is no longer reachable from the machine running the gate (the round moved hosts) is recorded as not checked, with the baseline kept as evidence, never as a pass. The plain form reads the tracked tree only, on purpose; stray files are what grow's `--ignored -uall` form finds. Both exit 0 either way, so the output is evidence a person reads, not a refusal | BLOCK | detective |
 | G6 | `harvest.gate.self-consistency` | The seed's own full gate is green and every registry is in sync | `bash tests/run.sh`, every lint and suite: the whole run | BLOCK | soft |
 | G7 | `harvest.gate.clean-install` | A by-hand install of the working tree into a fresh directory succeeds, and its owner-facing output says what this harvest expects | `bash install.sh claude-code --project-dir "$(mktemp -d)"` (the harness is positional; there is no `--harness` flag and the parser dies on one). Read the warnings, the re-created-node notices and the NEXT STEP lines. The install suites are G6's and are not re-run here | BLOCK | soft |
 | G8 | `harvest.gate.prose` | Imported prose reads as the seed's own writing and lost no fact in the rewrite | `python3 tools/prose-lint.py --file <changed .md>` and `--against <pre-harvest rev>`, the floor on every changed file; above it, `skill.humanizer` judges human-facing documentation only, and a graph node gets no humanizer pass | BLOCK, or record the genre exception in the proposal | soft |
@@ -372,8 +561,11 @@ narrower than the definition it floors. State its real reach, because a clean
 run reads like a verdict and is not one.
 
 - It detects **host-IP literals** (loopback, unspecified, broadcast and the RFC
-  5737 documentation ranges excepted), **pinned CVE identifiers**, and any term
-  passed as `--forbid`. That is all three of its rules.
+  5737 documentation ranges excepted), **CVE identifiers**, **absolute operator
+  home paths** (generic placeholders excepted), and any term passed as
+  `--forbid`. That is all four of its rules. It has no rule for a version
+  number or a calendar date, so the version rule of §the second gate is G2's
+  alone.
 - It detects **none** of the six classes in §What counts as a project reference
   unless the run supplies them as `--forbid`. Supplying them is the harvester's
   job: the seed cannot hardcode a plant's vocabulary without leaking it, which
@@ -444,6 +636,15 @@ word. Reducing a full expert charter to a short blueprint, or a procedure to
 its step titles, loses exactly the hard-won discipline the harvest exists to
 compound, and reads like a clean summary while doing it.
 
+The independent layer earns its cost. In a multi-plant round, every authoring
+lane's own checks were lints, and the lints passed; the non-author reviews
+then returned most lanes with fixes, mostly of three kinds: a fact the seed
+already owns restated on a second page, a fact no source supports (or that the
+source contradicts), and donor substance lost in the generalization. An
+author's self-report ("no preference added", "no other page needs a change")
+is a claim the review checks, not evidence. Run G2 and G3 on every lane, and
+land the review's fixes before the next batch starts.
+
 #### G4 in detail (`harvest.availability-gate`): prove reach against `install.sh` and the consumer
 
 A withdraw contract in this file is a **claim about the installer**, and only
@@ -456,17 +657,30 @@ So for every artifact a harvest adds, resolve its delivery path:
 
 1. **Decide which arm it uses.** There are two, and which one applies is a fact
    about the consumer, not a style choice.
-   - **Placed**: the installer copies it into the plant. Exactly one corpus is
-     placed today, the legal corpus, whole or not at all and also on a
-     re-install with no flag (its withdraw contract, below). The consumer has
-     no filesystem reach to the seed, so an unplaced page is unreachable law.
+   - **Placed**: the installer copies it into the plant. Two corpora are
+     placed today, by two arms. The legal corpus is placed whole or not at
+     all, and also on a re-install with no flag (its withdraw contract,
+     below); its consumer has no filesystem reach to the seed, so an unplaced
+     page is unreachable law. Library, tool and stack-keyed skill pages are
+     placed **selectively**: `install.sh <host> --expertise propose` lists the
+     pages the plant's manifests match (`tools/corpus-match.py`), the owner
+     confirms a list, and `--expertise <id>,…` places exactly those (library
+     pages at `docs/graph/libraries/<name>.md`, tool pages at
+     `docs/graph/tools/<name>.md`, a skill page as the node
+     `docs/graph/skills/<name>.md`), records them in `.cypress/seed.json`
+     (`expertise`), and refreshes on every later install the recorded pages
+     nobody edited (SPEC-0001 §6). A harvested page reaches this arm only if
+     the matcher can name it: its `<key>/<name>` is a package a manifest
+     declares, its `## What it is` own-package list names one (or, on a maven
+     page, its coordinates), a page with no package carries a trigger
+     SPEC-0001 §6 names, or its `stack:` field names a library page that
+     matches.
    - **Read seed-side**: the corpus stays in the seed and the consuming node
-     names its path formula. `library-corpus/`, `tool-corpus/`, `agent-corpus/`
-     and `skill-corpus/` are all of this kind. `ingest-library.corpus-first`
-     states the condition in the open: the corpus check is a **no-op** unless
-     the session is working in the seed repo or the plant has harvested that
-     corpus. A page added to one of these four reaches a plant only through a
-     session that has the seed.
+     names its path formula. `agent-corpus/` is only of this kind, and a
+     library, tool or skill page the owner did not place is read this way too:
+     `ingest-library.corpus-first` looks for the seed's page on disk when the
+     session can read a seed checkout. Such a page reaches a plant only through
+     a session that has the seed.
 2. **Prove the placed arm against the installer, by discovery.** Run
    `bash tests/test-install-placement.sh`: it discovers the destination set
    from a real install rather than from a list, and reading what it discovers
@@ -485,9 +699,14 @@ So for every artifact a harvest adds, resolve its delivery path:
    formula.** A node that mentions a corpus without saying where a page lives
    establishes no reach. Two consumers meet that bar today:
    - `library-corpus/<ecosystem>/<library>.md` → `ingest-library.corpus-first`,
-     which states the formula and the no-op condition;
-   - `tool-corpus/<category>/<name>.md` and `skill-corpus/<name>.md` →
-     `protocols/grow.md`, which states both formulas where it authors.
+     which states the formula and the order it looks (a placed page, then the
+     seed's corpus on disk);
+   - `tool-corpus/<category>/<name>.md`, `skill-corpus/<name>.md` and the
+     stack-keyed `skill-corpus/<key>/<name>.md` → `protocols/grow.md`, which
+     states the formulas where it authors, and the stack-match condition: a
+     keyed page is withdrawn only when the plant declares a library its
+     `stack:` names (an upgrade page, only while the plant's line is older
+     than the page's target line).
 
    Every other mention is a pointer, not reach, and the gate records it as
    such; each corpus's withdraw contract below names the consumers that point
@@ -551,7 +770,14 @@ suggested-expert, suggested-skill. They are what `grow`, `graft`,
 `ingest-library`, `toolcraft` and `canonize` actually consume from the seed,
 and each is defined by the same four questions: where it lives, what is
 portable, what stays out, and the withdraw contract that delivers it. Every
-corpus page is orientation for the plant to confirm, not gospel to copy.
+corpus page is orientation for the plant to confirm, not gospel to copy, and
+every page is **withdraw-ready** before it lands: a new plant could adopt it
+instead of rediscovering its subject, a library page instead of running a
+research-scout on that library, a skill or tool page because a plant can run
+the procedure or build the tool from the page alone. The bar's one home is
+`library-corpus/README.md`, "The admission bar"; `tool-corpus/README.md` states
+its procedure and tool form. A page that falls short is completed or dropped,
+never landed thin.
 
 **All three gates apply to every page of every corpus**: agnosticism (§the
 agnosticism gate), durability (§the second gate) and non-redundancy (§the third
@@ -569,40 +795,51 @@ Ingesting a dependency is expensive: a scout downloads upstream docs, an author
 normalizes and wikifies them into a version-pinned page. Most of that cost is
 paid rediscovering the same **surface** every time, meaning what the library
 is, its core API, how it is idiomatically used. That surface barely moves
-between versions; only the pins, CVEs, and per-release quirks do. Harvest folds
-the durable surface into a shared corpus in the seed so the next plant starts
-from an orientation instead of a blank page, then ingests the version-specific
-delta fresh.
+between versions, and where it does move, the version it moved at is itself a
+durable fact. What changes per plant is the pin, its advisories, and the
+release notes that matter to that one project. Harvest folds the durable
+surface, its version facts and the pitfalls plants paid for into a shared
+corpus in the seed so the next plant starts from a page it can work from
+instead of a blank page, then ingests its own pin's delta fresh.
 
 - **Where it lives.** A seed-side corpus keyed by ecosystem + library, **not by
   version**: `library-corpus/<ecosystem>/<library>.md`. One page per library,
   describing the library in general, carrying its upstream doc/repo home as
-  provenance. It is a cache of *library-surface* knowledge; the plant's facts
-  and every version-pinned bulletin stay in the plant.
+  provenance. It is a cache of *library* knowledge, version facts included;
+  the plant's facts, its pin and every security bulletin stay in the plant.
 - **What is portable (surface, durable).** The durability gate's KEEP list: the
   capability the library provides, its core API shape and canonical usage,
-  idioms and best practices that hold across releases, and conceptual pitfalls
-  inherent to the tool. Strip every plant-specific usage example, path, and
-  domain reference **and** every version-pinned specific before it lands. The
-  page must read like the opening orientation of the library's own docs, usable
-  by any project on any recent version.
-- **What stays out (pinned, ephemeral).** The durability gate's REJECT list. It
-  lives in the *plant's* `docs/graph/libraries/<name>.md` and is rediscovered
-  per project, because it is wrong the moment the pin moves.
+  idioms and best practices that hold across releases, conceptual pitfalls
+  inherent to the tool and the battle-tested ones plants met, and every version
+  fact stated with the subject it qualifies. Strip every plant-specific usage
+  example, path, and domain reference **and** every plant version before it
+  lands. Each version it names is one the library's release notes or docs
+  state. The page must read like the library's own docs, "changed in" notes
+  included, usable by any project on any version the page covers, and it says
+  which versions those are wherever the surface differs.
+- **What stays out.** The durability gate's REJECT list: security facts (CVE
+  ids, advisories, exposure warnings), calendar dates (the platform retrieval
+  date excepted), a plant's own version, a bare version number. The pin and
+  its advisories live in the *plant's* `docs/graph/libraries/<name>.md` and are
+  rediscovered per project, because they are wrong the moment the pin moves.
 - **The withdraw contract (consumed by `ingest-library`, and by `grow` through
-  it).** Read seed-side, under the condition `ingest-library.corpus-first`
-  states (G4 step 1); `grow` reaches this corpus only by invoking
-  `ingest-library`, and has no second path of its own. If a surface page
-  exists, **seed the plant's `docs/graph/libraries/<name>.md` from it as the
-  orientation layer**, then ingest from upstream only the version-specific
+  it).** Placed selectively on the owner's list (`install.sh --expertise`, which
+  `grow` proposes from the plant's manifests and graft refreshes), or read
+  seed-side when the session has a seed checkout, both as
+  `ingest-library.corpus-first` states (G4 step 1); `grow` reaches this corpus
+  only by proposing the placement and by invoking `ingest-library`. If a surface
+  page exists, **seed the plant's `docs/graph/libraries/<name>.md` from it as
+  the orientation layer**, then ingest from upstream only the version-specific
   facts the plant actually needs (the exact pin, its advisories, its
   deprecations) against the plant's real lockfile. If no surface page exists,
   ingest from upstream as usual, and the durable surface of that work becomes a
-  harvest candidate for the next cycle. Start from the surface the corpus
-  holds, and take every pinned fact from upstream.
+  harvest candidate for the next cycle. Start from the surface the corpus holds,
+  and take every pinned fact from upstream.
 - **Currency.** A surface page ages slowly but not never, since an API redesign
-  across a major line can outdate it. Pinned facts are never read from here at
-  all, so a stale pin cannot leak: the corpus simply has none to be stale.
+  across a major line can outdate it. A version fact the page states stays true
+  for the version it names; what ages is the page's coverage of newer lines,
+  which a later harvest or a correction extends. A plant's pin is never read
+  from here at all, so a stale pin cannot leak: the corpus carries none.
 
 ### The legal & regulatory documentation corpus
 
@@ -645,25 +882,25 @@ confirms currency and derives its own application fresh.
   and is not, which makes this the sharpest agnosticism boundary of the five
   corpora.
 - **The withdraw contract (consumed by `grow` / `graft`).** This is the one
-  corpus the installer **places**: `place_legal_corpus` copies `legal-corpus/`
-  whole into the plant's `docs/graph/legal/corpus/`, and refuses a partial
-  copy, because the consuming analyst turns a corpus gap into a refusal and a
-  subset therefore reads as a smaller body of law instead of a missing one. It
-  runs on the owner's explicit `--legal-corpus yes`, and also with no flag at
-  all on a re-install: when the flag is absent and the plant already exists,
-  the installer re-derives the decision from `legal_corpus` in
-  `.cypress/seed.json` and restores the corpus to match the record, so
-  placement can happen on a run where nobody typed anything. The installer also
-  reports which national jurisdictions the corpus carries against
+  corpus the installer **places whole** (the library, tool and skill corpora are
+  placed page by page, on the owner's list, G4 step 1): `place_legal_corpus`
+  copies `legal-corpus/` whole into the plant's `docs/graph/legal/corpus/`, and
+  refuses a partial copy, because the consuming analyst turns a corpus gap into
+  a refusal and a subset therefore reads as a smaller body of law instead of a
+  missing one. It runs on the owner's explicit `--legal-corpus yes`, and also
+  with no flag at all on a re-install: when the flag is absent and the plant
+  already exists, the installer re-derives the decision from `legal_corpus` in
+  `.cypress/seed.json` and restores the corpus to match the record, so placement
+  can happen on a run where nobody typed anything. The installer also reports
+  which national jurisdictions the corpus carries against
   `--legal-jurisdiction`, so a country the corpus does not hold is recorded as
   absent instead of inferred. With the corpus in hand, a plant seeds its legal
   leaf from the matching entries as the orientation layer, re-confirms each
-  entry's `verified` + `legal_status` before relying on it, then authors its
-  own application against it. If no page exists, ingest from the official
-  publisher as usual, and the durable, graded citation from that work becomes a
-  harvest candidate for the next cycle. Start from the citation the corpus
-  holds; the plant's determination is always its own, since the corpus carries
-  none.
+  entry's `verified` + `legal_status` before relying on it, then authors its own
+  application against it. If no page exists, ingest from the official publisher
+  as usual, and the durable, graded citation from that work becomes a harvest
+  candidate for the next cycle. Start from the citation the corpus holds; the
+  plant's determination is always its own, since the corpus carries none.
 - **Currency.** A citation ages more slowly than a library API, but law amends,
   transposes, is annulled, and comes under appeal. Two disciplines keep a stale
   entry from passing as current. An entry states whether its text is the
@@ -688,24 +925,29 @@ a working tool or a clear blueprint instead of reinventing the wheel.
   operations stay in the plant.
 - **What is portable (durable).** The capability and the recurring operation it
   serves; the interface shape (invocation, inputs, outputs) in the general; the
-  approach/algorithm and enduring idioms; the portable implementation **when
-  the tool is genuinely stack-neutral** (a self-contained script with no
-  third-party or project dependencies, like the seed's own `graph-lint.py` /
-  `agent-lint.py`). Strip every plant path, credential and domain reference
-  **and** every stack-pinned specific before it lands.
+  approach/algorithm and enduring idioms; the portable implementation **when the
+  tool is genuinely stack-neutral** (a self-contained script with no third-party
+  or project dependencies, like the seed's own `graph-lint.py` /
+  `agent-lint.py`). A tool that serves one stack is admissible too, with a
+  `stack:` field naming the library-corpus pages it serves
+  (`tool-corpus/README.md`, "The stack field"); its version facts (the minimum
+  version of a tool it drives, a flag that changed) are those the driven tool's
+  release notes or docs state. Strip every plant path, credential and domain
+  reference **and** every plant's own pin before it lands.
 - **What stays out (project-bound, ephemeral).** Project names, paths,
   credentials, dataset shapes, a call-site tied to one repo's layout, a
-  version-locked dependency, an environment only this project has. These live
-  in the *plant's* `docs/graph/tools/<name>.md`.
+  dependency locked to one project's pin, an environment only this project has.
+  These live in the *plant's* `docs/graph/tools/<name>.md`.
 - **The withdraw contract (consumed by `grow`; pointed at by `toolcraft` /
-  `canonize`).** Read seed-side. The node that states the path formula is
-  `protocols/grow.md`, where growth seeds `docs/graph/tools/<name>.md` from
-  `tool-corpus/<category>/<name>.md` when the plant's real stack matches a
-  portable tool the corpus carries. `toolcraft` names this corpus in the
-  harvest direction (folding in, not withdrawing) and `canonize` tells the
-  librarian to check it first; neither states where a page lives, so neither is
-  reach on its own (G4 step 3). When a new plant needs a capability, it checks
-  the corpus first: if a matching tool exists, **seed
+  `canonize`).** Placed on the owner's list when its `stack:` matches the
+  plant's manifests (G4 step 1), else read seed-side. The node that states the
+  path formula is `protocols/grow.md`, where growth seeds
+  `docs/graph/tools/<name>.md` from `tool-corpus/<category>/<name>.md` when the
+  plant's real stack matches a portable tool the corpus carries. `toolcraft`
+  names this corpus in the harvest direction (folding in, not withdrawing) and
+  `canonize` tells the librarian to check it first; neither states where a page
+  lives, so neither is reach on its own (G4 step 3). When a new plant needs a
+  capability, it checks the corpus first: if a matching tool exists, **seed
   `docs/graph/tools/<name>.md` from it as the orientation layer**, adopting the
   portable implementation when the stack matches, or re-authoring against the
   plant's own stack (test-first) when it does not. If no tool exists, build it
@@ -748,7 +990,13 @@ promotion that is ratified clears G4 step 5 before it is real.
 - **What stays out.** A stack-specific expert (a framework/language/library
   specialist), and any role that duplicates a base-roster mandate. The first is
   the plant's own knowledge, which belongs in its expertise nodes against its
-  own pins rather than in any roster; the second breaks one-home-per-fact.
+  own pins rather than in any roster; the second breaks one-home-per-fact. A
+  role that owns a **discipline on a stack-shaped surface** (destroy-safety on
+  declarative infrastructure, build-and-delivery from a commit to a running
+  platform) is not a stack expert: it is admitted, catalog only, naming the
+  base agent it narrows (`agent-corpus/README.md`, "What belongs here"). A role
+  a plant lost and can only rebuild from its recorded outputs is marked as
+  reconstructed, and nothing it did is invented.
 - **The withdraw contract (consumed by `grow` / `graft` / commission).** Read
   seed-side. `core/method/delegation.md` and the orchestrator's charter both
   send a commissioning session here, and neither states the path formula, so
@@ -767,24 +1015,36 @@ promotion that is ratified clears G4 step 5 before it is real.
 
 The procedure mirror of the corpora above. A plant sometimes authors a project
 **skill**, a repeatable procedure such as a migration recipe or a release
-choreography, that is not stack-bound and would serve any project. Harvest
-folds its agnostic form into a seed-side catalog so the next plant instantiates
-a ready procedure instead of rediscovering the sequence.
+choreography, that would serve any project, or any project on the same stack.
+Harvest folds its agnostic form into a seed-side catalog so the next plant
+instantiates a ready procedure instead of rediscovering the sequence. A
+procedure bound to a stack (an upgrade across a framework's major lines, say)
+is harvested as a stack-keyed page; it is generalized, not rejected.
 
 - **Where it lives.** `skill-corpus/<name>.md`, one page per suggested
-  procedure, keyed by procedure, not project. The core `skills/` stay the fixed
-  shared methodology; this corpus holds *optional* procedures a project
-  selects.
+  procedure, keyed by procedure, not project; a stack-bound procedure at
+  `skill-corpus/<key>/<name>.md`, where `<key>` is a library-corpus ecosystem
+  key and the page's `stack:` field names the library-corpus pages whose
+  presence in a plant makes it a candidate (`skill-corpus/README.md`,
+  "Stack-keyed pages"). `<name>` is unique across the corpus, keys included. The
+  core `skills/` stay the fixed shared methodology; this corpus holds *optional*
+  procedures a project selects.
 - **What is portable (durable).** The procedure's steps and the gate each one
   clears, stated by **composing** existing protocols/skills by reference (one
   home per procedure).
-- **What stays out.** A procedure bound to one stack or repo layout (the
-  plant's own), and anything duplicating a core skill.
+- **What stays out.** A procedure bound to one repo layout or one plant (the
+  plant's own), anything duplicating a core skill, and a keyed page that
+  restates the generic page it specializes instead of naming it. The stack is a
+  keyed page's subject, and its version facts (a major-line boundary it
+  upgrades across, a minimum version a step needs), as the library documents
+  them, are admissible; a plant's version is not.
 - **The withdraw contract (consumed by `grow`; pointed at by `toolcraft` /
-  `canonize` / commission).** Read seed-side. `protocols/grow.md` is the node
-  that states the formula, seeding `docs/graph/skills/<name>.md` from
-  `skill-corpus/<name>.md` where a repeatable procedure the source actually
-  performs matches an entry; `toolcraft` names the corpus in the harvest
+  `canonize` / commission).** A stack-keyed page is also placed on the
+  owner's list (G4 step 1); otherwise read seed-side. `protocols/grow.md` is
+  the node that states the formula, seeding `docs/graph/skills/<name>.md` from
+  `skill-corpus/<name>.md` or `skill-corpus/<key>/<name>.md` where a
+  repeatable procedure the source actually performs matches an entry, a keyed
+  page only on a stack match; `toolcraft` names the corpus in the harvest
   direction and `canonize` tells the librarian to check it first, neither
   saying where it lives (G4 step 3). Check the corpus first; if a match exists,
   instantiate it into the project's `docs/graph/skills/<name>.md` from
@@ -814,7 +1074,7 @@ content**:
 **Proposal: to the steward, may name the plant, never committed:**
 
 ```markdown
-# Harvest proposal — from <plant lineage id> — YYYY-MM-DD
+# Harvest proposal — from <plant lineage id, or each lineage of a multi-plant round> — YYYY-MM-DD
 
 ## Harvested (generalized fold-backs)
 - <seed file touched> — lesson: <universal statement> — generalized-from:
@@ -825,7 +1085,9 @@ content**:
 - <candidate> — reason it is not project-agnostic
 
 ## Provenance ledger
-- <one row per fold-back: plant lineage, source surface, seed target, test added>
+- <one row per fold-back: plant lineage(s), source surface, provenance class
+  of its facts (plant-proven / upstream-fetched; model-supplied only once
+  fetched), seed target, the check that proves it (a test only for code)>
 
 ## Seed integrity gate (the result column; the plant may be named here)
 - <one line per row of the Phase 4 gate table, in its order, no row omitted.
@@ -851,7 +1113,9 @@ enters the CHANGELOG (and `HARVEST_LOG.md` if the seed keeps one):**
 Harvested:   <count + kind of generalized fold-backs, e.g. "3 corpus pages;
              6 doctrine/template rules"> — no plant identity.
 Generalized: every plant name/domain/path/credential/host/port, every stack
-             fingerprint and identifying count, and every version pin stripped.
+             fingerprint and identifying count, every plant version and every
+             security fact stripped; documented version facts about a library
+             kept with their subject.
 Rejected:    <generic categories only, e.g. "internal/proprietary pages;
              kernel/agent duplicates">.
 
@@ -890,6 +1154,10 @@ green.
   ratification with its before→after (Phase 2) and its resolved delivery path
   (G4) legible, because a proposal the steward cannot check is a request for
   trust, and trust is how contamination reaches the seed.
+- **What the plants knew is not lost to a thin slice.** Depth a plant paid for
+  (a pitfall, a version boundary, a problem and its fix) lands whole in the
+  page that owns it, or the row is dropped with its reason. A corpus page that
+  leaves the next plant to run the scout anyway was stored, not harvested.
 - **The seed reads as one author afterwards.** An import that is agnostic,
   faithful and reachable but audibly written by somebody else has been stored
   rather than integrated (Phase 3, G8).

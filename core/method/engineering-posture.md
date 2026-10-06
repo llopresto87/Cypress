@@ -22,6 +22,7 @@ load_when:
   - "how do I make this change cleanly, integrate not bolt on"
   - "which technology to pick, boring vs experimental"
   - "is this abstraction or extra worker worth its cost"
+  - "sync queue starved by one item, requeue to the back, transient or permanent error"
 prevents: Work with several sources of truth, context loaded in bulk, structure that does not earn its cost, and changes bolted on instead of integrated.
 est_tokens: 2214
 ---
@@ -197,6 +198,16 @@ leaves the complete old value or the complete new one; when such state
 reads back corrupt, quarantine it, recover to a safe state, and surface
 the fault: report every failure and every discard, because silent loss
 is the one kind nobody can trace.
+
+A retry queue at a boundary orders work oldest-touched-first and puts a
+failed item back at the end, parks an item after a bounded number of
+attempts and reports it, and counts as transient only a failure that
+would clear for every item (an expired session, an unreachable peer),
+never one particular to the item (forbidden, not found). Random order or
+an item-specific error classed transient lets one item that cannot be
+served take every cycle. Classify by the innermost cause, because a
+resilience library can wrap the cause in an exception of its own (a
+retry that gave up, an open circuit).
 
 ## Neighbours
 

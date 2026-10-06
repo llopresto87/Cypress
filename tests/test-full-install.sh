@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Full-install contract: every adapter delivers its runtime surfaces, and the
 # plant's own router, linters and hooks run in the installed tree.
-# E family (SPEC-0001, ADR-0009 host tiers): E1-E3 and E5-E13 here; E4 is in test-seed-lint.sh.
+# E family (SPEC-0001, ADR-0009 host tiers): E1-E3 and E5-E14 here; E4 is in test-seed-lint.sh.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -349,6 +349,20 @@ case_code_anchor_tool() {
   cmp -s "$ROOT/tools/code-anchor.py" "$D/docs/graph/code-anchor.py" \
     || die "E6: docs/graph/code-anchor.py is missing or differs from tools/code-anchor.py"
   [[ ! -e "$D/.cypress/anchor.json" ]] || die "E6: install.sh wrote .cypress/anchor.json; only canonize records one"
+  rm -rf "$D"
+}
+
+# E14 METRICS_READER_RUNS_IN_A_FRESH_PLANT (SPEC-0006): the placed session-metrics
+# reader runs from the plant root with no argument but --labels, and reads the
+# plant's own placed deliver node.
+# Asserts SPEC-0006 METRICS_READER_RUNS_IN_A_FRESH_PLANT.
+case_session_metrics_in_plant() {
+  local D out rc=0; D="$(mktemp -d)"; fresh_copy "$D" all --copy
+  [[ -f "$D/docs/graph/protocols/deliver.md" ]] \
+    || die "E14: harness: the fresh plant has no docs/graph/protocols/deliver.md"
+  out="$(cd "$D" && python3 docs/graph/session-metrics.py --labels 2>&1)" || rc=$?
+  [[ "$rc" -eq 0 ]] || die "E14: python3 docs/graph/session-metrics.py --labels exited $rc in a fresh plant: ${out:0:300}"
+  grep -qx 'Tier' <<<"$out" || die "E14: the placed reader printed no 'Tier' label: ${out:0:300}"
   rm -rf "$D"
 }
 
@@ -735,6 +749,7 @@ main() {
     case_graft_stale_kernel case_glob_metachar case_no_symlink_churn \
     case_universal_router case_copilot_projection_tools case_seed_stamp \
     caseALL_EXCLUDES_LEGACY_HOSTS case_pre_growth_pointer case_code_anchor_tool \
+    case_session_metrics_in_plant \
     case_plant_facts_index_no_fm case_plant_facts_declared case_plant_facts_partial \
     case_model_map_placed case_opencode_model_from_map case_opencode_no_map_row \
     case_opencode_map_unreadable case_opencode_check_drift case_prime_hook_scripts_placed \

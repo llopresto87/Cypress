@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 7.37.1
+- Version documented: 8.0.0
 - Repository role: this repo is the seed, the product shipped into other
   projects; it holds no `docs/graph/` of its own.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -62,11 +62,13 @@ or a program of several. It assumes only that you want serious engineering
 practice on the production path.
 
 The shipped corpora are narrower than the machinery that reads them: the
-library corpus is majority .NET/Java by page count, and the legal corpus
-carries one national jurisdiction; §10 describes both and links their counts.
-The library corpus is never placed in a plant, and the legal corpus only on
-explicit request, so an adopter on a different stack runs the same agnostic
-ingest flow everyone else does.
+library corpus leans toward .NET and Java, and the legal corpus carries one
+national jurisdiction; §10 describes both and links their inventories.
+A corpus page reaches a plant only on the owner's word: library, tool and
+stack-keyed skill pages one by one from the list `install.sh --expertise
+propose` prints, and the legal corpus whole on explicit request (§10). An
+adopter on a different stack gets no page it did not choose, and runs the same
+agnostic ingest flow everyone else does.
 
 ### The "seed" metaphor
 
@@ -846,24 +848,25 @@ reconciles the engines, and `tools/graft-audit.py` classifies the backups.
 
 ## 10. The corpora
 
-The corpora are harvested, durable, project-agnostic reference material that
-plants can draw from but that is not loaded by default. Harvest deposits into
-them; grow/graft draw from them.
+The corpora are durable, project-agnostic reference material that plants can
+draw from but that is not loaded by default. Grow and graft draw from them, and
+`install.sh --expertise` places single pages; new pages enter through the
+harvest protocol.
 
 | Corpus | Location | Holds |
 |--------|----------|-------|
-| Library docs | `library-corpus/` | Version-durable surface notes per dependency, by ecosystem (cli, container, language, maven, npm, nuget, platform, pypi) |
+| Library docs | `library-corpus/` | Notes per dependency, by ecosystem (cli, container, galaxy, language, maven, npm, nuget, platform, pub, pypi); what a page holds: `library-corpus/README.md` |
 | Legal citations | `legal-corpus/` | Law/standards citations by jurisdiction (eu, national, international, case-law); each entry graded on its own, never the page |
 | Reusable tools | `tool-corpus/` | Durable tested tools by category (ops, testing); `tests/test-tool-corpus.sh` compiles every shell and Python implementation on a page claiming `Stability: portable`, and exercises the behaviour of the ones that ship one |
 | Optional experts | `agent-corpus/` | Candidate expert roles, mirroring the roster; none loaded by default, none named in the kernel |
 | Optional procedures | `skill-corpus/` | Candidate procedures not in the core skill set |
 
-The entry counts of each corpus are in the corpora reference's
+Each corpus's folders and examples are in the corpora reference's
 [inventory](documentation/corpora-and-integrations-reference.md#a4-inventory),
-and `python3 tests/legal-lint.py` prints the legal corpus's entry and page
-counts on every run. The library corpus's ecosystem mix is not even: `nuget`
-and `maven` together hold more than half its pages, reflecting the .NET/Java
-estate it was harvested from. What that means for an adopter on a different
+its full listing is its directory, and `python3 tests/legal-lint.py` prints
+the legal corpus's entry and page counts on every run. The library corpus's
+ecosystem mix is not even: `maven` and `nuget` are its two largest
+ecosystems. What that means for an adopter on a different
 stack: `documentation/corpora-and-integrations-reference.md` §A.4.1a.
 
 The corpora sit outside the roster and kernel because the always-loaded team pays
@@ -980,11 +983,14 @@ adapter to the same fork: `grow` when there is source to scout,
               [--commit-attribution none|<trailer>]
               [--deliverable-language <bcp47>] [--comment-language <bcp47>]
               [--legal-corpus yes|no] [--legal-jurisdiction <cc>]
+              [--expertise propose|<corpus-id>[,<corpus-id>...]]
 ```
 
 The first four flags after `--force` are the plant facts (`grow.plant-facts`;
 INSTALL.md, "The plant facts are yours to state"): the owner's explicit answers, each filling its placeholder in `docs/graph/index.md`. The
-last two are the legal-corpus decision (§10). Every one of them is *asked*
+next two are the legal-corpus decision (§10). `--expertise` proposes or
+places library, tool and stack-keyed skill pages, one by one, on the owner's
+word. Every one of them is *asked*
 rather than inferred, and an unanswered one is named as a NEXT STEP and
 recorded as `undecided` in `.cypress/seed.json`. A plant that was never asked
 and a plant whose owner declined are different facts, and a later graft reads
@@ -1057,11 +1063,11 @@ templates/            Per-artifact templates (spec, grill, ADR, etc.)
   knowledge-graph/      node contract, graph-lint.py, spec-lint.py, grill-lint.py, router, node template
   prompts/              parameterized delegation/investigation/validation briefs
   docs/                 leaf collections installed beneath docs/graph/
-library-corpus/       Harvested library/language surface notes (by ecosystem)
-legal-corpus/         Harvested law/standards citations (by jurisdiction)
-tool-corpus/          Harvested reusable tools (by category)
-agent-corpus/         Harvested optional expert roles (not the base roster)
-skill-corpus/         Harvested optional procedures (not the core skills)
+library-corpus/       Library/language surface notes (by ecosystem)
+legal-corpus/         Law/standards citations (by jurisdiction)
+tool-corpus/          Reusable tools (by category)
+agent-corpus/         Optional expert roles (not the base roster)
+skill-corpus/         Optional procedures (not the core skills)
 integrations/         Per-tool overlays + config (claude-code, prime-agent, opencode, codex, github-copilot)
 tools/                the seed's tools: the ones placed into plants (see manifest.json "tools") and the ones that run from the seed (graft, growth audit, gate registry, release, ratchets)
 docs/                 The seed's own records
@@ -1259,7 +1265,7 @@ carries a ratcheted budget (`ADVERSARIAL_CONFIDENT_WRONG_BUDGET` in
 budget may fall freely, and raising it is an owner decision recorded in
 `tests/ratchets.json`.
 
-Routable body sizes, computed by `tests/seed-lint.py` from the method files on every run: the largest routable body is 1 337 lines (`protocols/graft.md`) and the median is 150 lines, against a ceiling of 1 000 lines for any routable node and 2 500 lines for the three cross-project protocols, `graft`, `grow` and `harvest`. Those three are the only protocols that write into a repository the seed does not own, and a session loads one only while it performs that operation ([ADR-0007](docs/decisions/adr-0007-lifecycle-protocol-ceiling.md)). Both ceilings are ratchets: they may fall freely, and raising either is an owner decision recorded in `tests/ratchets.json`. The always-loaded budget has the same shape, and `EAGER_EXEMPTIONS` in `tests/seed-lint.py` is consequently **empty**: every harness sits under `EAGER_BUDGET`, and the per-harness figures are in the [host capability matrix](documentation/host-capability-matrix.md).
+Routable body sizes, computed by `tests/seed-lint.py` from the method files on every run: the largest routable body is 1 481 lines (`protocols/graft.md`) and the median is 162 lines, against a ceiling of 1 000 lines for any routable node and 2 500 lines for the three cross-project protocols, `graft`, `grow` and `harvest`. Those three are the only protocols that write into a repository the seed does not own, and a session loads one only while it performs that operation ([ADR-0007](docs/decisions/adr-0007-lifecycle-protocol-ceiling.md)). Both ceilings are ratchets: they may fall freely, and raising either is an owner decision recorded in `tests/ratchets.json`. The always-loaded budget has the same shape, and `EAGER_EXEMPTIONS` in `tests/seed-lint.py` is consequently **empty**: every harness sits under `EAGER_BUDGET`, and the per-harness figures are in the [host capability matrix](documentation/host-capability-matrix.md).
 
 ## 15. Glossary
 <a id="glossary"></a>
@@ -1567,7 +1573,7 @@ Each entry covers one word that the front door (the README, the install guide, t
 <a id="term-corpus"></a>
 
 - **Forms:** corpus, corpora
-- **Here:** README's sense is the five withdraw-only reference collections (library, legal, tool, suggested-expert and suggested-skill), which hold material that applies to any project and any version and are not installed by default. The second sense is the golden routing corpus, the table of task lines that `agent-lint.py --eval` scores the roster against.
+- **Here:** README's sense is the five withdraw-only reference collections (library, legal, tool, suggested-expert and suggested-skill), which hold material that applies to any project, with the versions each fact holds for stated, and are not installed by default. The second sense is the golden routing corpus, the table of task lines that `agent-lint.py --eval` scores the roster against.
 - **Field:** A body of texts collected for study, in the linguistics sense (no source fetched; status: not recorded)
 - **Implemented at:** `library-corpus/`, `legal-corpus/`, `tool-corpus/`, `agent-corpus/`, `skill-corpus/`, `agents/_routes.golden.tsv`
 - **Enforcement:** **not a control** for the word itself. The corpora's own checks have no row yet in the [mechanism table of §17](#enforcement)

@@ -174,6 +174,12 @@ status over an empty assertion set is a false green: `active` with no
 test is a red gate until RED lands, and a false green once someone
 silences it.
 
+A spec that grows by slice (`specify.flow`) is signed the same way, one
+slice at a time. The slice's contracts, their §10 rows (status
+`pending`) and a §12 changelog row naming its signers are written before the tester writes the slice's RED, and
+they land in the same commit as that RED, so a live spec never holds a
+contract with no test.
+
 Before a spec is signed, its prose passes
 `docs/graph/skills/humanizer.md` in file mode and
 `python3 docs/graph/prose-lint.py --file <spec> --against HEAD` reports

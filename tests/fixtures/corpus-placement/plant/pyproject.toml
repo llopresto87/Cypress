@@ -1,0 +1,5 @@
+[project]
+name = "sample-worker"
+dependencies = [
+  "Data.Loom[extra]>=1.2",
+]

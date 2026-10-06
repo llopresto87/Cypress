@@ -193,7 +193,13 @@ CONFIDENT_WRONG_BUDGET = 0
 # it. This is a LOOSENING, which the ratchet makes the owner's to sign, and it
 # is recorded here rather than absorbed: the router is not better than 3, and a
 # limit that says otherwise is a limit bought with a live misroute.
-ADVERSARIAL_CONFIDENT_WRONG_BUDGET = 3
+#
+# Round 8.0.0 sharpened two triggers on the router's own roster (the
+# devils-advocate contract row stopped abstaining; the citation-check bait row
+# stopped going confidently to legal) and measured the class at 2, so the
+# budget tightens to 2. The two misroutes left each win on another agent's core
+# vocabulary, and moving them would trade a bait row for worse live routing.
+ADVERSARIAL_CONFIDENT_WRONG_BUDGET = 2
 # ...and the set it is measured over may not be quietly emptied. Without this,
 # deleting the two rows the router fails takes the class to a clean 0 and both
 # `--eval` and `ratchet-lint` pass with no trace — a budget that can only fall

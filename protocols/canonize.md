@@ -13,6 +13,7 @@ owns:
   - canonize.deviation-capture
   - canonize.why-record
   - canonize.session-record
+  - canonize.harvest-candidates
 requires:
   - skill.toolcraft
 peers:
@@ -36,8 +37,9 @@ load_when:
   - "small fix with no spec, where does the why get written down"
   - "handback overflow notes, read them at close-out"
   - "file the session record, which harness memory entries can be retired"
+  - "a lesson flagged as a harvest candidate: add its row to the plant's record"
 prevents: Knowledge that dies with the session that produced it, and durable tools reinvented as throwaway scripts because nothing cataloged the last one.
-est_tokens: 3619
+est_tokens: 4272
 command: true
 ---
 
@@ -119,10 +121,18 @@ record is handed back as the finding "no session record".
 doctrine): catalog any durable tool the work produced (recurs across
 sessions, stable interface, test-authorized, lives in the repo). The
 worker handbacks already name these in `tools_built`; the brief forwards
-them. The builder is `agent.tool-smith`, spawned mid-task when the
+them, and adds what no handback named: each script, plugin or module the
+task's diff added outside the test tree, so durable code nobody reported
+still meets the durability test instead of waiting for the librarian to
+notice it. The builder is `agent.tool-smith`, spawned mid-task when the
 recurrence was noticed; the close-out ONLY catalogs what was built. A tool
 candidate that arrives with no tool behind it is a finding for the next
-plan, not work for the librarian.
+plan, not work for the librarian. The brief names the same way each core
+dependency the work leaned on that has no `libraries/` page, and the
+librarian runs `protocol.ingest-library` for it in this close-out (a
+`research-scout` spawn, its one `delegates_to` entry). A page the pass
+cannot build now is recorded as a finding for the next plan, and the
+delivery names it under Known limitations.
 
 **Skill candidates** (§3.8, the procedure sibling of a tool; the doctrine
 lives in `docs/graph/skills/toolcraft.md`): forward any repeatable
@@ -130,6 +140,22 @@ multi-step procedure the work walked that a future session will walk
 again, named in `skills_built` on a handback, or the same sequence now
 appearing a third time in grill/changelog. The brief forwards the
 candidates; the librarian authors them.
+
+**Harvest candidates** (`canonize.harvest-candidates`): a lesson the owner, a
+session record, a handback or a retrospective flags as possibly belonging in the
+seed. The lesson is placed in its plant home first, like any knowledge
+candidate. Then the librarian appends one row to
+`docs/graph/plans/harvest-candidates.md`, created from
+`docs/graph/plans/_harvest-candidates.template.md` when absent: the candidate in
+one line, its home in the plant, its provenance and trigger, and a first guess
+at its class. The form's admission test filters first: a lesson that would make
+no sense in a repository with none of this project's services or domain is a
+project rule, and it gets no row. A lesson bound to a stack still gets a row,
+because harvest keys it by stack. A row is struck with a dated note, never
+rewritten. The record is the plant's own, so a graft that overwrites a charter
+cannot take its lessons with it, and a harvest can start from the rows instead
+of re-reading the plant's history. A row decides nothing: harvest stays the
+owner's to start, and its agnosticism gate rules on each row.
 
 **Status review** (`canonize.status-review`): the brief instructs the
 librarian to run `python3 docs/graph/status-register.py --open --hotfix`
@@ -144,15 +170,13 @@ librarian ONLY records the moves this session made: an item the work did
 not move keeps its status. The brief carries the instruction, and the
 librarian runs the register itself.
 
-**Session metrics**: before the hand-back says the session's metrics
-are on record, the librarian shows the entry that carries them: the
-most recent T2/T3 delivery entry in `docs/graph/changelog.md` (the
-delivery this close-out follows), holding the Session metrics block
-`docs/graph/protocols/deliver.md` defines. When that entry has no such
-block, the hand-back says so and leaves the numbers empty, because
-reconstructed numbers would be guesses that `harvest` aggregates as data.
-A block that is defined but never read leaves `harvest` nothing to
-aggregate.
+**Session metrics**: the check is deliver's: the session runs
+`docs/graph/session-metrics.py` on its own delivery entry
+(`docs/graph/protocols/deliver.md`). When the brief asks for the plant's
+metrics, the librarian runs `python3 docs/graph/session-metrics.py --all`
+and hands back what it prints, an `incomplete` entry included, and never
+reconstructs a number, because reconstructed numbers would be guesses
+that `harvest` aggregates as data.
 
 **Deviation candidates** (`canonize.deviation-capture`): every
 decision made this session that departs from a standard the graph owns
@@ -197,15 +221,18 @@ code span, or link target.
 **Kept out of every candidate list:** ephemeral scratch, throwaway
 prototypes and genuine one-offs (they have no future reader); secrets,
 credentials, production or personal data (kernel §4); speculation (write
-"not recorded"); project-specific material aimed at the seed (that is
-`harvest`'s agnosticism gate).
+"not recorded"); project-specific material aimed at the seed (it stays in
+its plant home; a lesson that passes the admission test gets a
+harvest-candidate row, and `harvest`'s agnosticism gate decides the rest).
 
 ## The flow (one spawn)
 
 1. **Assemble candidates** from the finished work, the session's
    records in `docs/graph/plans/sessions/` (named by path), and the
    workers' handback payloads: facts with evidence, tools with path +
-   entry point + invocation + covering test, every decision that
+   entry point + invocation + covering test, the scripts, plugins and
+   modules the diff added that no handback named, every lesson flagged a
+   harvest candidate, every decision that
    departed from a graph-owned standard (each with the standard it
    departs from), and, on the T2 contained lane, the why-record's
    defect, cause, fix, and pinning test. Include every overflow note a
@@ -233,7 +260,11 @@ credentials, production or personal data (kernel §4); speculation (write
    - *Tools:* each gets `docs/graph/templates/tool-page.template.md`
      filled into `docs/graph/tools/<name>.md`, an index row, and an
      `artifacts:` edge from its owning node; check `tool-corpus/` first
-     for a ready card.
+     for a ready card. A tool the plant built against a page placed
+     earlier from `tool-corpus/` re-points that page in place, to the
+     real implementation path and test command, and drops its
+     `blueprint only, not built here` mark; a second page for the same
+     tool would be two homes.
    - *Skills:* each recurring procedure gets
      `docs/graph/templates/skill.template.md` filled into its home node
      `docs/graph/skills/<name>.md`, plus the projection in each harness
@@ -244,6 +275,15 @@ credentials, production or personal data (kernel §4); speculation (write
    - *Status:* run the status register (`--open --hotfix`) and walk it
      item by item, moving in frontmatter, with evidence, what this session
      moved.
+   - *Claims of state:* each status line, figure, pin and commit reference
+     the session wrote into a node, a plan row or a record is re-read
+     against its source (the repository, the lockfile, the running system)
+     before the record closes. A wrong one in a node is corrected in place
+     with the check that proved it; one in a plan row or a record, which
+     the session writes, goes back to the session with that check, and a
+     scope conflict found on the way is flagged, not resolved. A commit is
+     cited by a reference that survives a history rebuild (a tag or a
+     merged commit).
    - *Deviations:* write each candidate as ADR entry + `deviation.` node
      once its *why* is on record.
    - *Lint:* one `graph-lint` run plus the register's lint role
@@ -262,14 +302,14 @@ credentials, production or personal data (kernel §4); speculation (write
      tool per prompt or per tool call.
 4. **Confirm or record-empty.** The librarian hands back nodes/fact-keys
    touched, tool cards written, status items moved (id → new status +
-   evidence), and deviation nodes written, or an explicit "nothing of
-   interest, because …" / "no durable tool, because …" / "no status
-   moved" / "no deviation". For each session record it hands back the
-   items placed (item → home), the items not placed (item → reason), and
-   the harness entries that can be retired; with no record, it hands back
-   "no session record". It also hands back the code-anchor line or its
-   refusal, the lint results and each overflow note it read with whether
-   anything in it was persisted.
+   evidence), deviation nodes written, and harvest-candidate rows added,
+   or an explicit "nothing of interest, because …" / "no durable tool,
+   because …" / "no status moved" / "no deviation". For each session
+   record it hands back the items placed (item → home), the items not
+   placed (item → reason), and the harness entries that can be retired;
+   with no record, it hands back "no session record". It also hands back
+   the code-anchor line or its refusal, the lint results and each overflow
+   note it read with whether anything in it was persisted.
 
 ## Fail-closed doctrine
 
@@ -308,5 +348,6 @@ self-record line is present).
   truth.
 - `harvest` folds **project-agnostic** lessons and tools into the seed,
   user-triggered only; canonize keeps **project-specific** knowledge and
-  tools in the plant. What harvest's agnosticism gate rejects still
-  belongs here.
+  tools in the plant, and keeps the harvest-candidate record that tells
+  a later harvest where to start. What harvest's agnosticism gate rejects
+  still belongs here.

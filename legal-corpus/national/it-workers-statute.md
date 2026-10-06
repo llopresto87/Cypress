@@ -1,7 +1,7 @@
 # Workers' Statute — Legge 300/1970 Art. 4 (Italy)
 
-> Project-agnostic legal citation notes, folded into the seed by the harvest
-> protocol. Entry contract: `../_schema.md`.
+> Project-agnostic legal citation notes, kept in the seed's legal corpus
+> (`legal-corpus/README.md`). Entry contract: `../_schema.md`.
 
 **Instrument kind:** `national statute` (the "Statuto dei lavoratori" — the
 Italian employment-relations statute).

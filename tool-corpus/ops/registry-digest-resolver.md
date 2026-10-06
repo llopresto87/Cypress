@@ -1,11 +1,11 @@
 # Tool: registry-digest-resolver
 
-> Project-agnostic, durable capability notes, folded into the seed by the
-> harvest protocol. This page is a **BLUEPRINT**: the hop-by-hop verification
-> method is portable; the registry's own token and manifest endpoints are
-> written against the OCI Distribution Spec surface (widely implemented, but
-> not identical in every deployment: a private registry can gate the
-> anonymous-token step).
+> Project-agnostic capability notes, kept in the seed's tool corpus
+> (`tool-corpus/README.md`). This page is a **BLUEPRINT**: the hop-by-hop
+> verification method is portable; the registry's own token and manifest
+> endpoints are written against the OCI Distribution Spec surface (widely
+> implemented, but not identical in every deployment: a private registry can
+> gate the anonymous-token step).
 
 ## 0. Identity
 
@@ -185,6 +185,6 @@ layer resolves through the collapsed two-hop path.
 
 ## 8. Changelog
 
-- 2026-09-26 — created from harvested, generalized capability, by
+- 2026-09-26 — created by
   docs-librarian.
 - 2026-09-26 — corrected after review: platform selection takes an optional variant (exact match when given; the unique os/arch entry, or a refusal when ambiguous, when not); OCI spec URLs and the `Docker-Content-Digest` header named.

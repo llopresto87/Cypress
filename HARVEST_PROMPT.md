@@ -18,11 +18,11 @@ satisfied with the growth.
 
 ---
 
-Harvest generalizable improvements from the mature plant at `{{plant path or
-umbrella; default: current working directory}}` back into CYPRESS
-at `{{seed path; locate the seed repository if not in scope}}`. Leave the plant
-as it is; changes reach the seed as proposals I ratify, never as a silent
-change.
+Harvest generalizable improvements from the mature plant, or every plant, at
+`{{plant path or umbrella; default: current working directory}}` back into
+CYPRESS at `{{seed path; locate the seed repository if not in scope}}`. Leave
+the plant as it is; changes reach the seed as proposals I ratify, never as a
+silent change.
 
 This chat is the orchestration and planning plane: it routes, plans and talks
 with me, and every investigation, generalization and authoring task goes to a
@@ -36,16 +36,20 @@ verbatim.
 
 Now **execute the harvest protocol — `protocols/harvest.md` — in full**: read
 it, then drive every phase it defines, in order. That node is the single
-authority on the flow, so work from the node itself, not a summary. Its heart is the triage that every candidate must survive
-before it may touch the seed — the **three hard gates**: **agnosticism** (would
-this help an arbitrary next project that never heard of this plant?),
-**durability** (will this still be true a version from now, or is it pinned to
-one release?), and **non-redundancy** (does the seed *already* own this rule —
-open its would-be home and read it before proposing an echo?). A single leaked
-project-specific or version-pinned detail — anywhere, the CHANGELOG and
-harvest-log included — or a second home bolted onto a fact the seed already
-owns is a failed harvest. Deliver the fold-back as a reviewable proposal with
-the node's harvest summary; I ratify before anything merges into the seed.
+authority on the flow, so work from the node itself, not a summary. Its heart is
+the triage that every candidate must survive before it may touch the seed — the
+**three hard gates**: **agnosticism** (would this help an arbitrary next project
+that never heard of this plant?), **durability** (will this still be true as
+stated a version from now? A version fact the library documents is kept, stated
+with what it qualifies; a security fact, a calendar date and the plant's own
+version are not), and **non-redundancy** (does the seed *already* own this rule?
+Open its would-be home and read it before proposing an echo). The default move
+is to generalize, not reject, and nothing thin lands: a corpus page must let the
+next plant skip the research it replaces. A single leaked project-specific
+detail anywhere (the CHANGELOG and harvest-log included), a fact no source
+confirms, or a second home bolted onto a fact the seed already owns is a failed
+harvest. Deliver the fold-back as a reviewable proposal with the node's harvest
+summary; I ratify before anything merges into the seed.
 
 Keep the seed strictly project-agnostic throughout: it is the inheritance of
 every future plant, and what goes back in must be true for all of them.

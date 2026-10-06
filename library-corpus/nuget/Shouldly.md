@@ -1,9 +1,9 @@
 # Shouldly — nuget
 
-> Project-agnostic, version-durable surface notes, folded into CYPRESS by the
-> harvest protocol. Orientation for a library, NOT a version-pinned page — for
-> exact pins, CVEs, and per-release behavior, run `ingest-library` against the
-> project's own lockfile.
+> Project-agnostic surface notes, kept in the seed's library corpus
+> (`library-corpus/README.md`). Orientation for a library, not a record of one
+> project's versions — for exact pins, CVEs, and per-release behavior, run
+> `ingest-library` against the project's own lockfile.
 
 ## What it is
 A fluent assertion library for .NET tests, used in place of a framework's

@@ -18,7 +18,7 @@ load_when:
   - "gate script left half-applied state, environment failure or repository failure"
   - "adding a new gate or check"
 prevents: Work marked closed on a promise with no evidence a reader can open, and gate scripts that half-apply or read a broken environment as a clean tree.
-est_tokens: 758
+est_tokens: 920
 ---
 
 # Protocol: verify, new gates
@@ -36,6 +36,17 @@ the condition that reopens it), each with an owner, so nothing rests as
 level up: a gate without an assertion says the check ran and proved
 nothing; a `closed` without evidence says the work finished and proves
 nothing, and is trusted just as readily.
+
+An increment whose deliverable is an operational act (a rotation, a
+migration, a hardening) has two things to close, and each takes its own
+evidence: the mechanism built and tested, and the act executed against
+the real systems. A green tool gate closes the first and says nothing
+about the second, so until the act has run, the act stays `open` (or `deferred`, with the
+condition that reopens it), its record says "mechanism done, act not
+executed", and its `closed` cites evidence of the act on the real
+systems, never the tool gate's run. A throwaway fixture standing in for
+a real destination is labelled as not satisfying the act; otherwise a
+tested rotation script reads as a completed rotation.
 
 Promotion is the same gate at the other end of a record's life. A
 specification is promoted to a live status in the change that adds

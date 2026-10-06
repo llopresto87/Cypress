@@ -298,6 +298,14 @@ date (on the T2 contained lane, in the why-record instead):
 - **Type-only changes** in a strongly typed language where the type
   checker is the verifier.
 - **Generated code** where the generator itself is tested.
+- **A contract only a deployed build can observe**, with no in-process
+  harness or local stack and a deploy that is expensive: the RED runs once
+  against the live pre-fix build and the choice between a deploy per
+  increment and a single deploy is explicit. The procedure, with the
+  exceptions it names for contracts that can fail only after an earlier
+  deploy, is the seed's suggested skill
+  `skill-corpus/deploy-gated-red-green.md`, which grow seeds into a plant as
+  `docs/graph/skills/deploy-gated-red-green.md`.
 
 If you find yourself reaching for "exception" frequently on changes
 that hold logic, that is a

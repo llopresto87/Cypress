@@ -97,6 +97,14 @@ make_unreadable "$T/agn/bad.md"
 unread_fails agnosticism-lint bad.md nz -- \
   python3 "$ROOT/tools/agnosticism-lint.py" --root "$T/agn"
 
+# session-metrics: X415 (SPEC-0006 METRICS_UNREADABLE_CHANGELOG_FAILS_LOUD and
+# failure CHANGELOG_UNREADABLE): exit 2, the path, "could not be read".
+# Asserts SPEC-0006 METRICS_UNREADABLE_CHANGELOG_FAILS_LOUD.
+mkdir -p "$T/metrics"
+make_unreadable "$T/metrics/changelog.md"
+unread_fails session-metrics changelog.md 2 -- python3 "$ROOT/tools/session-metrics.py" \
+  --root "$T/metrics" --deliver "$ROOT/protocols/deliver.md" --since 2026-10-05
+
 # roster-justification (a gate step): an unreadable node must also leave the
 # denominator visibly ("of N" drops by one), not silently. It walks the real
 # roster, so it runs on a copy of only what it reads.

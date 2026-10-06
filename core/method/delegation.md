@@ -67,7 +67,10 @@ only the project's roster. The words are otherwise interchangeable.
 Before spawning, run `python3 docs/graph/agent-lint.py --route "<task>"`
 and cite the ranked line + confidence band in the brief. It is a
 keyword heuristic, not an oracle: reason over it, and record why if
-you override a HIGH-band pick.
+you override a HIGH-band pick. Work split by area across several
+workers (one review divided by surface, say) is routed area by area,
+each with its own task statement, because one run over the whole picks
+for the whole.
 
 **On LOW/NONE, ask what the gap *is* before you fill it.** The band says
 no specialist matched; it does not say what was missing.

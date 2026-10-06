@@ -466,12 +466,12 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "try to refute every load-bearing claim in this finished document"
   - "check this deliverable's citations against the sources they name"
   - "what single fact would break this conclusion"
-  - "what should this document claim and does not"
+  - "which claim does this finished deliverable omit that its sources support"
 - **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `devils-advocate`, with its class):
   - "try to refute every load-bearing claim in this finished document" — `contract`
   - "check this deliverable's citations against the sources they name" — `contract`
   - "what single fact would break this conclusion" — `contract`
-  - "what should this document claim and does not" — `contract`
+  - "which claim does this finished deliverable omit that its sources support" — `contract`
   - "tear this finished report apart before I send it to the board" — `paraphrase`
   - "our penetration test report needs its citations checked" — `adversarial`
   - "refute the claim that this endpoint is rate limited" — `adversarial`
@@ -641,7 +641,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "regulatory obligations for a product with digital elements"
   - "evaluate the international transfer impact for this data flow"
   - "check every citation in this compliance document against the corpus"
-  - "is this obligation actually in the corpus or do we need an ingest"
+  - "is this obligation actually in the corpus or an ingest gap"
   - "which provision of the instrument applies, with its article and date"
 - **Golden routing tasks** (`agents/_routes.golden.tsv`, every row expecting `legal`, with its class):
   - "which recorded external rules apply to this finding" — `contract`

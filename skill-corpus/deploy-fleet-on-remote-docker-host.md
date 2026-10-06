@@ -63,8 +63,17 @@ stage is lean); **pin the base** by tag/digest; **run non-root**; **no secret in
 any layer** — build-time creds only via BuildKit `--mount=type=secret`, never
 `ARG`/`ENV`/a copied file; a `HEALTHCHECK` (or a compose one) using a tool that
 actually exists in the base image; a `.dockerignore` excluding `.git`, build
-output, `node_modules`. Vendored dead-registry dependencies are built first
-into the local build cache.
+output, `node_modules`. A dependency whose registry is gone is built from
+source and vendored first (`skill-corpus/vendor-dependency-from-dead-registry.md`).
+
+When installing that vendored dependency and packaging the service share a
+BuildKit cache mount (`RUN --mount=type=cache,...`), do both in **one** `RUN`.
+The contents of a cache mount are not part of the image layer. With the install
+in a `RUN` of its own, BuildKit can report that layer `CACHED` and skip running
+it while the mount has since been pruned. The packaging step then cannot
+resolve the dependency and falls back to the dead registry. One `RUN` means
+packaging always runs in the same step that just filled the mount. Leave a
+comment in the Dockerfile, so that nobody splits the step later to "tidy" it.
 
 ## Step 2 — compose: one base + dev/qa/prod overlays (see `library-corpus/container/docker-compose.md`)
 
@@ -117,6 +126,32 @@ written and kept out of argv and logs.
    commit `known_hosts`; a rebuilt host fails the check until it is re-pinned
    the same way. (A bare-IP host with no `~/.ssh/config` entry needs `-i`; a
    host that DOES have a config entry is addressed by alias without `-i`.)
+   **Know what you may do on the host before the first command.** On a host
+   you do not own outright, that is only the acts the owner named for it (a
+   scoped standing grant, `core/method/vcs-posture.md`); keep every later step
+   inside them.
+   **Prove the host is yours before the first `up`.** An address is not an
+   identity: one machine can change address, and a reused address can be
+   another machine. The identity is the pinned host key above. Then list the
+   compose projects already on the host (`docker ps -a --format '{{.Label
+   "com.docker.compose.project"}}' | sort -u`, or `docker compose ls -a`). A
+   project name that is not `<project>` means another tenant's stack: stop
+   and confirm the target with the operator. If a deploy did land on the wrong
+   host, reverse it by your own label only (`docker compose -p <project>
+   down`, then remove the volumes and images that carry the label, listed by
+   `docker volume ls -q --filter label=com.docker.compose.project=<project>`
+   and the same filter on `docker image ls -q`), and leave every other
+   project's resources untouched. Images that compose pulled, not built,
+   do not carry the label: list them from the compose file
+   (`docker compose -p <project> config --images`) and remove only those that
+   no other project uses. Last, check that the build plugin is present
+   (`docker buildx version`) before any Dockerfile uses a BuildKit-only
+   feature such as `RUN --mount`. Upstream makes Buildx and BuildKit the
+   default for `docker build`. Observed in practice: a distribution's
+   packaged engine shipped Buildx as a separate package, so a clean host
+   lacked it and a Dockerfile with cache mounts failed. The preflight names
+   the package to install and stops; it does not fall back to the legacy
+   builder.
 2. **Ensure `.env`** — if absent, `cp .env.example .env`, warn the operator to
    fill it, stop. Then load it fail-closed.
 3. **Ensure TLS** (idempotent) — generate a self-signed cert on the host only if
@@ -129,13 +164,88 @@ written and kept out of argv and logs.
    `tar -czf - … | ssh 'tar -xzf -'` fallback when rsync is absent. Ship `.env`
    and `certs/` explicitly (they are sync-excluded). The host receives the
    source this step ships, so what builds is exactly what was reviewed.
+   Two transfer traps come from a macOS workstation:
+   - **AppleDouble sidecars.** macOS `tar` archives extended attributes as
+     `._<name>` files next to each source file unless told not to: pass
+     `--no-mac-metadata` (the bsdtar option) or set `COPYFILE_DISABLE=1`
+     (observed in practice to suppress them; it is not in the tar manual).
+     Then purge any that arrived anyway, on the host before the build:
+     `find <remote-dir> -name '._*' -type f -delete`. Observed in practice: a
+     code generator read the sidecars as source, logged errors, reported
+     success and generated nothing, and the service crash-looped at runtime
+     on a missing class. When a build runs a generator, assert that its
+     output exists; a green build log is not that evidence.
+   - **Two rsync implementations.** Recent macOS ships `openrsync` as
+     `rsync`. Observed in practice: it and GNU rsync on the host disagreed on
+     a transfer with several `--exclude` flags. When the exclude list
+     misbehaves, ship committed history as a `git bundle` (`git bundle create
+     <file> --all`, then clone it on the host) and overlay only the
+     uncommitted working-tree files, passed as rsync's `--files-from` list. A
+     deploy that tags images by commit needs that history anyway. Build that
+     list without deletions: `git ls-files -m -o --exclude-standard` also
+     lists a tracked file deleted in the working tree (`-m` counts an
+     unstaged deletion as a modification), and rsync then reports the
+     missing file and exits 23. Filter the `git ls-files -d` paths out of the
+     list (`grep -vxFf <(git ls-files -d)`), and delete those same paths on
+     the host as a separate step.
 6. **Build, tag and start on the host** — build each service's image and tag it
    with an immutable ref (a content digest / git-SHA tag), then `$SSH 'cd
    <remote-dir>/deploy && DOCKER_BUILDKIT=1 docker compose -f
    docker-compose.yml -f docker-compose.<mode>.yml -p <project> up -d
    --remove-orphans'` against those tags. A host rebuild happens only when the
    source changed — the built-and-tested image is the one that runs.
-7. **Gate** — run `tests/e2e-smoke.sh` (`tool-corpus/testing/http-smoke-suite.md`)
+   - **Build one service at a time, then start without building.** Run
+     `docker compose build <svc>` for each changed service in turn, then `up
+     -d --no-build`. Do not run one `up -d --build` over the whole fleet.
+     Observed in practice: many parallel BuildKit builds on a modest host
+     crashed the daemon, and after it restarted several containers with
+     `restart: unless-stopped` stayed down, so the whole stack was down. The
+     restart-policy docs say such a container comes back when the daemon
+     restarts unless it was stopped before, "manually or otherwise". A crash
+     during recreation can leave it in that stopped state, so do not count
+     on the policy. Recovery: `docker start` the existing containers first,
+     then check `docker compose ps -a`, then resume the serialized build.
+   - **Restart an edge that resolved its upstreams at boot.** A reverse proxy
+     whose `proxy_pass` names a static upstream host resolves it once at
+     start (`library-corpus/container/nginx.md`). `up` recreates a changed
+     upstream with a new address, but it leaves the unchanged edge running,
+     and the edge keeps proxying to the old address and returns 502. End
+     every deploy that recreated an upstream with `docker compose restart
+     <edge>`, or with a graceful `nginx -s reload` inside the edge, which
+     re-resolves the names too and is the lighter choice on an edge that other
+     projects share. The lasting fix is per-request resolution (a `resolver` and a
+     variable upstream), which has its own URI-forwarding trap on that page.
+   - **Fix a bind-mounted secret's owner at deploy time.** When a container's
+     root entrypoint cannot read a bind-mounted key because a different UID
+     owns the file, set the owner and mode on the host before `up` (for
+     example `chown root:root` and `chmod 600` on the key). Do not add a
+     DAC-bypass capability (`DAC_READ_SEARCH`, `DAC_OVERRIDE`) to work around
+     it: that grants the bypass over every file in the container to fix one
+     file the deploy already controls. Use a capability only when the deploy
+     cannot control the file's ownership, and record why. That fix is for a
+     file the deploy itself writes.
+   - **A bind source that keeps coming back root-owned has a writer to
+     remove.** The daemon creates a missing bind source, and observed in
+     practice it comes back root-owned (`library-corpus/container/docker.md`,
+     General pitfalls). A chown on every run hides whichever writer does it
+     next. Detect it in the preflight and fail closed. Remove the writer:
+     create the directory as the deploy user before `up`, or run the
+     container that writes it as that user. Leave clearing what is already
+     there to one operator action, and do not build that repair on an image
+     that a disk-recovery step may have pruned.
+7. **Gate** — first assert the estate: compare the services running under
+   `-p <project>` (`docker compose … ps --services --status running`) with the
+   services the files of this run declare (`docker compose … config
+   --services`), and fail the deploy on any missing or extra one (a one-shot
+   service that exits by design is checked by its exit code in `ps -a`, not by
+   `--status running`). A zero exit
+   from `up` proves the command ran, not that the fleet is the one meant: when
+   runs that pass different `-f` subsets share one project name,
+   `--remove-orphans` removes what the other subsets declare and still exits 0
+   (`library-corpus/container/docker-compose.md`). When one such run is found,
+   check what earlier runs of the same shape left behind before calling them
+   harmless.
+   Then run `tests/e2e-smoke.sh` (`tool-corpus/testing/http-smoke-suite.md`)
    against the live host; nonzero exit fails the deploy.
 8. **Report** — `$SSH 'docker compose … ps'` + print the verification curls.
 
@@ -161,3 +271,5 @@ this skill names the command to match its own host substrate.
 - `tool-corpus/ops/{container-deploy-pipeline,self-signed-tls-cert,env-secret-rotation}.md`,
   `tool-corpus/testing/http-smoke-suite.md`
 - `templates/docs/runbooks/{release,rollback}.md`
+- `skill-corpus/vendor-dependency-from-dead-registry.md` (Step 1, a
+  dependency whose registry is gone)

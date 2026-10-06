@@ -1,9 +1,9 @@
 # Tool: failure-signature-triage
 
-> Project-agnostic, durable capability notes, folded into the seed by the
-> harvest protocol. Orientation for a reusable tool — the signature model and
-> both operations over it are portable; only the structured-result parser is
-> bound to the test framework in use.
+> Project-agnostic capability notes, kept in the seed's tool corpus
+> (`tool-corpus/README.md`). Orientation for a reusable tool — the signature
+> model and both operations over it are portable; only the structured-result
+> parser is bound to the test framework in use.
 
 ## 0. Identity
 
@@ -230,10 +230,10 @@ output contains each unmatched failure's full text.
   (reproduces the runs this consumes locally, so N baseline runs are cheap);
   `tool-corpus/testing/http-smoke-suite.md` (the same "assert the mechanical
   fact, don't eyeball the output" posture at the protocol level).
-- **Sources:** distilled from harvested plant experience; no external URL.
+- **Sources:** distilled from practice; no external URL.
 
 ## 8. Changelog
 
-- 2026-08-05 — created from harvested, generalized capability (three donor
-  scripts sharing one signature core, consolidated into one page), by
+- 2026-08-05 — created (three scripts sharing one signature core,
+  consolidated into one page), by
   docs-librarian.

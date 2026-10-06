@@ -20,6 +20,17 @@ classifies:
   PLANT-OWNED the harness projection of the plant's own `origin: project` agent or skill
               node (its skill projection and Copilot agent view included); the installer
               re-projected it from the graph, so no seed file backs it
+  RETIRED     a harness entry projected from an `origin: seed` node the running seed no
+              longer ships (MODE 4); reported, never a gate
+  ORPHAN      a harness entry with no graph home that is not an `origin: seed` entry
+              (MODE 4); reported, never a gate
+  CORPUS-PLACED  a page `install.sh --expertise` placed from a corpus (its first line
+              is `<!-- origin: corpus@<version> id: <corpus id> -->`, or its frontmatter
+              says `origin: corpus@<version>`), or a harness projection of such a
+              skill node: neither seed-owned nor plant-authored; the installer
+              refreshes it only while its bytes equal the recorded hash, so a backup
+              of it holds the corpus's earlier layer (SPEC-0001
+              PLACED_PAGE_CARRIES_ITS_PROVENANCE)
 
 A backup line counts as plant content only when the seed does not carry it. With
 `--base <rev>` the seed at that revision counts too, so a backup byte-identical
@@ -40,7 +51,7 @@ It also flags any backup over PLANT-AUTHORED docs/graph/ content (a knowledge
 overwrite — should be none; knowledge is add-if-missing). The seed-owned graph
 subtrees docs/graph/{protocols,skills,agents,method,templates}/ and the shared
 scripts (graph-lint.py, spec-lint.py, grill-lint.py, agent-lint.py, agnosticism-lint.py,
-prose-lint.py, status-register.py, code-anchor.py) are machinery, expected to be fast-forwarded — but only
+prose-lint.py, status-register.py, session-metrics.py, code-anchor.py) are machinery, expected to be fast-forwarded — but only
 where a seed source actually backs the path: a plant-authored project skill
 under docs/graph/skills/ is plant knowledge. _schema.md and index.md are
 project-instantiated and always the plant's own, like everything else under
@@ -78,11 +89,57 @@ vocabulary: executed | discovered | absent); byte-identity stays the trigger,
 so a verification runbook identical to its template and carrying no executed
 gate is unfilled like any other scaffold.
 
+MODE 3 — kept deltas (--record <file>)
+
+A graft record lists the files the graft merged keeping plant intent and the
+files it kept as the plant's. A later installer run (a remedy, or a second
+plain run) overwrites them again with a backup and no question, and the
+record goes on claiming them kept. This mode reads the newest graft entry of
+the record (a `# Graft` heading at any level; the latest date it carries, the
+last one in the file on a tie) and its `Merged` and `Kept as the plant's`
+sections. Each bullet's first backticked path, or its first word, names a
+file, relative to docs/graph/ or to the plant root, with one `{a,b}` group
+expanded. Each file is then checked for its plant delta:
+
+  KEPT        the plant's file differs from the seed source it installs from
+  LOST        the plant's file is byte-equal to the seed source: the delta the
+              record claims is gone
+  MISSING     the record names a file the plant no longer carries
+  UNMAPPED    no seed source backs the path, so there is no delta to measure
+
+LOST and MISSING fail the run (exit 1), and so does an entry that names no
+file at all, or a record with no graft entry: a re-check of nothing is not a
+pass. UNMAPPED is reported and does not gate. Run it last in Phase 7, after
+every remedy that re-ran the installer.
+
+MODE 4 — harness homes (--harness)
+
+An agent or skill in a harness directory (`<adapter>/agents/<name>.md`,
+`<adapter>/skills/<name>/SKILL.md`, `.github/agents/<name>.agent.md`) is
+reached by its harness alone unless the graph carries its node. Two shapes
+have no live home, and each is named on one line (SPEC-0001
+CHECK_FLAGS_RETIRED_HARNESS_ENTRY, CHECK_FLAGS_ORPHAN_HARNESS_ENTRY):
+
+  RETIRED     an `origin: seed` agent or skill the running seed no longer
+              ships: its graph node, each projection of it, and an entry with
+              no node whose own frontmatter says `origin: seed`
+  ORPHAN      an entry with no graph node that is not an `origin: seed` entry:
+              the plant authored it into the harness directory, where the
+              router and every other harness cannot see it
+
+Both are flags, never failures, and nothing is deleted: deleting one is the
+owner's act, and relocating an ORPHAN into docs/graph/ is graft migration (c).
+The backup audit prints the same lines after its verdicts; `install.sh
+--check` runs this mode and prefixes each line with `[seed] --check: `. Exit 0,
+with one line saying every harness entry has a graph home when none is flagged.
+
 Usage:
   graft-audit.py <plant-root> <seed-root> [--date YYYYMMDD[-HHMMSS]]
                  [--tokens t1,t2,...] [--base <rev>]
                  [--engine <plant-engine>:<seed-engine>]...
   graft-audit.py <plant-root> <seed-root> --unfilled [--rename | --prune]
+  graft-audit.py <plant-root> <seed-root> --record <docs/graph/changelog.md>
+  graft-audit.py <plant-root> <seed-root> --harness
 --date is a PREFIX of the backup stamp install.sh writes (YYYYMMDD-HHMMSS), so
 `--date 20260101` audits a whole day and `--date 20260101-1632` audits the one
 pass — a graft and the remedy it triggers land on the same day more often than
@@ -116,8 +173,8 @@ _pw_spec.loader.exec_module(plant_walk)
 GENERIC_SIGNALS = ("this project's", "this program", "our stack", "our program",
                    "this plant", "our deploy", "in this program")
 
-VALUE_OPTIONS = ("date", "tokens", "engine", "base")
-FLAG_OPTIONS = ("unfilled", "rename", "prune")
+VALUE_OPTIONS = ("date", "tokens", "engine", "base", "record")
+FLAG_OPTIONS = ("unfilled", "rename", "prune", "harness")
 
 
 def parse_args():
@@ -219,6 +276,7 @@ DELIVERED_TOOLS = {
     "agnosticism-lint.py": "tools/agnosticism-lint.py",
     "prose-lint.py": "tools/prose-lint.py",
     "status-register.py": "tools/status-register.py",
+    "session-metrics.py": "tools/session-metrics.py",
     "code-anchor.py": "tools/code-anchor.py",
 }
 # the graph engines: placed add-if-missing, then reconciled by
@@ -405,6 +463,126 @@ def plant_owned_node(rel: str, plant: Path):
     return None
 
 
+# A page the selective placement wrote (SPEC-0001 §6): a library or tool page
+# opens with the provenance line, a skill node says `origin: corpus@<version>`.
+CORPUS_PROVENANCE = re.compile(r"^<!-- origin: corpus@\S+ id: \S+ -->$")
+
+
+def corpus_placed_text(text: str) -> bool:
+    if CORPUS_PROVENANCE.match(text.split("\n", 1)[0]):
+        return True
+    m = re.match(r"^---\n(.*?)\n---", text, re.S)
+    return bool(m) and _fm_value(m.group(1), "origin").startswith("corpus@")
+
+
+def corpus_placed(bak: Path, rel: str, plant: Path) -> bool:
+    """Whether a backup is of a corpus-placed page: the backup carries the
+    provenance itself, or it is a harness projection of a skill node that does."""
+    if corpus_placed_text(bak.read_text(errors="replace")):
+        return True
+    sub = projected_sub(rel)
+    parts = Path(sub).parts if sub else ()
+    if len(parts) == 3 and parts[0] == "skills" and parts[2] == "SKILL.md":
+        node = plant / GRAPH_HOME / "skills" / f"{parts[1]}.md"
+        return node.is_file() and corpus_placed_text(node.read_text(errors="replace"))
+    return False
+
+
+# The harness entries (SPEC-0001 §6): what the roster and skill projections
+# write, in every harness directory the plant carries. An entry with no graph
+# home is invisible to the router and to every other harness, and an
+# `origin: seed` one the seed stopped shipping goes on loading in its harness
+# long after the seed folded it away. Both are flagged, never deleted: the
+# deletion is the owner's act (the owner's decision).
+COPILOT_AGENTS = ".github/agents/"
+NOT_AN_ENTRY = re.compile(r"^(_|index$|README$)")
+NUMBER_PREFIX = re.compile(r"^\d+-")
+
+
+def harness_entries(plant: Path):
+    """(target-relative entry, 'agents' or 'skills', name) for every agent and
+    skill a harness directory of the plant carries; backups are not entries."""
+    found = []
+    for adapter in ADAPTER_HOMES:
+        for p in sorted((plant / adapter / "agents").glob("*.md")):
+            found.append((p, "agents", p.stem))
+        for p in sorted((plant / adapter / "skills").glob("*/SKILL.md")):
+            found.append((p, "skills", p.parent.name))
+    for p in sorted((plant / COPILOT_AGENTS).glob("*.agent.md")):
+        found.append((p, "agents", p.name[:-len(".agent.md")]))
+    return [(p.relative_to(plant).as_posix(), kind, name) for p, kind, name in found
+            if p.is_file() and not NOT_AN_ENTRY.match(name)]
+
+
+def graph_home(rel: str, kind: str, name: str, plant: Path) -> Path:
+    """The graph node a harness entry is the projection of. A Copilot agent view
+    drops the node's `<digits>-` prefix, so its home is found by that name."""
+    home = plant / GRAPH_HOME / kind / f"{name}.md"
+    if rel.startswith(COPILOT_AGENTS) and not home.is_file():
+        for n in sorted((plant / GRAPH_HOME / "agents").glob("*.md")):
+            if NUMBER_PREFIX.sub("", n.stem) == name:
+                return n
+    return home
+
+
+def seed_ships(kind: str, name: str, seed: Path) -> bool:
+    """Whether the running seed still carries the agent or skill `name`, by the
+    node name or, for an agent, by the name its Copilot view uses."""
+    if kind == "skills":
+        return (seed / "skills" / name / "SKILL.md").is_file()
+    return any(a.stem == name or NUMBER_PREFIX.sub("", a.stem) == name
+               for a in (seed / "agents").glob("*.md"))
+
+
+def _is_seed_origin(path: Path) -> bool:
+    return _fm_value(_frontmatter(path), "origin") == "seed"
+
+
+def harness_flags(plant: Path, seed: Path) -> list:
+    """(verdict, target-relative path, graph home) for every graph node and
+    harness entry with no live home: RETIRED for an `origin: seed` node, or a
+    projection of one, the running seed does not ship; ORPHAN for an entry
+    with no graph node that is not an `origin: seed` entry."""
+    flags, retired = [], set()
+    for kind in ("agents", "skills"):
+        for node in sorted((plant / GRAPH_HOME / kind).glob("*.md")):
+            if node.is_file() and not NOT_AN_ENTRY.match(node.stem) \
+                    and _is_seed_origin(node) and not seed_ships(kind, node.stem, seed):
+                retired.add(node.resolve())
+                flags.append(("RETIRED", node.relative_to(plant).as_posix(), ""))
+    for rel, kind, name in harness_entries(plant):
+        home = graph_home(rel, kind, name, plant)
+        home_rel = home.relative_to(plant).as_posix()
+        if home.is_file():
+            if home.resolve() in retired:
+                flags.append(("RETIRED", rel, home_rel))
+        elif _is_seed_origin(plant / rel):
+            if not seed_ships(kind, name, seed):
+                flags.append(("RETIRED", rel, home_rel))
+        else:
+            flags.append(("ORPHAN", rel, home_rel))
+    return flags
+
+
+def flag_line(verdict: str, rel: str, home: str) -> str:
+    if verdict == "RETIRED":
+        return (f"RETIRED {rel}: an origin: seed node or projection the running seed "
+                f"does not ship; the owner decides its deletion")
+    return (f"ORPHAN {rel}: no graph home ({home}); propose relocating it into the "
+            f"graph, graft migration (c)")
+
+
+def audit_harness(plant: Path, seed: Path) -> int:
+    """--harness: name every RETIRED and ORPHAN entry, one line each, or say
+    there is none. A flag, never a failure, and nothing is written."""
+    flags = harness_flags(plant, seed)
+    for verdict, rel, home in flags:
+        print(flag_line(verdict, rel, home))
+    if not flags:
+        print("every harness entry has a graph home.")
+    return 0
+
+
 def is_seed_owned_graph_path(rel: str) -> bool:
     if not rel.startswith("docs/graph/"):
         return False
@@ -446,10 +624,125 @@ def main() -> int:
         print(f"  !! {plant} has no {GRAPH_HOME}/ — not a plant root; "
               f"refusing a vacuous audit")
         return 1
+    if opt.get("harness"):
+        return audit_harness(plant, seed)
     if opt.get("unfilled"):
         action = "prune" if opt.get("prune") else "rename" if opt.get("rename") else None
         return audit_unfilled(plant, seed, action)
+    if opt.get("record"):
+        return audit_record(plant, seed, Path(opt["record"]))
     return audit_backups(plant, seed, opt)
+
+
+GRAFT_ENTRY = re.compile(r"^(#{1,6})\s+Graft\b(.*)$")
+RECORD_HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*$")
+RECORD_DATE = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
+KEPT_SECTIONS = ("merged", "kept as the plant")
+BRACES = re.compile(r"\{([^{}]*,[^{}]*)\}")
+
+
+def newest_graft_entry(text: str):
+    """(heading, body lines) of the record's newest graft entry, or None. The
+    newest is the one with the latest date in its heading; on a tie, or with no
+    date, the last in the file."""
+    lines = text.splitlines()
+    entries = []
+    for i, line in enumerate(lines):
+        m = GRAFT_ENTRY.match(line)
+        if not m:
+            continue
+        level, end = len(m.group(1)), len(lines)
+        for j in range(i + 1, len(lines)):
+            h = RECORD_HEADING.match(lines[j])
+            if h and len(h.group(1)) <= level:
+                end = j
+                break
+        d = RECORD_DATE.findall(line)
+        entries.append((d[-1] if d else "", i, line.strip(), lines[i + 1:end]))
+    if not entries:
+        return None
+    best = max(entries, key=lambda e: (e[0], e[1]))
+    return best[2], best[3]
+
+
+def kept_artifacts(body) -> list:
+    """[(section, raw bullet, [paths])] for the bullets of the entry's Merged
+    and Kept-as-the-plant's sections."""
+    out, section = [], None
+    for line in body:
+        h = RECORD_HEADING.match(line)
+        if h:
+            name = h.group(2).lower()
+            section = next((s for s in KEPT_SECTIONS if name.startswith(s)), None)
+            continue
+        if section is None or not re.match(r"^\s*[-*+]\s+", line):
+            continue
+        item = re.sub(r"^\s*[-*+]\s+", "", line).strip()
+        if re.match(r"^(none|n/?a)\b", item, re.I):
+            continue
+        head = re.split(r"\s+[—–]\s+|\s+-\s+", item, maxsplit=1)[0]
+        tick = re.search(r"`([^`]+)`", head)
+        word = tick.group(1) if tick else (head.split() or [""])[0]
+        paths = [word]
+        m = BRACES.search(word)
+        if m:
+            paths = [word[:m.start()] + alt.strip() + word[m.end():]
+                     for alt in m.group(1).split(",")]
+        out.append((section, item, [p.strip().lstrip("./") for p in paths if p.strip()]))
+    return out
+
+
+def audit_record(plant: Path, seed: Path, record: Path) -> int:
+    """MODE 3: every file the newest graft entry lists as merged or kept still
+    carries its plant delta."""
+    try:
+        text = record.read_text(errors="replace")
+    except OSError:
+        print(f"  !! cannot read the graft record {record}")
+        return 1
+    entry = newest_graft_entry(text)
+    if entry is None:
+        print(f"  !! {record} holds no graft entry (a `# Graft` heading); "
+              f"nothing to re-check is not a pass")
+        return 1
+    heading, body = entry
+    items = kept_artifacts(body)
+    print(f"  record: {heading}")
+    print(f"  merged or kept files listed: {sum(len(p) for _, _, p in items)}")
+    bad = 0
+    for section, raw, paths in items:
+        if not paths:
+            print(f"  NO-PATH     a {section} bullet names no file: {raw}")
+            bad += 1
+            continue
+        for p in paths:
+            rel = next((c for c in (f"{GRAPH_HOME}/{p}", p) if (plant / c).is_file()),
+                       None)
+            if rel is None:
+                at_root = p.startswith(GRAPH_HOME + "/") or seed_source_for(p, seed)
+                rel = p if at_root else f"{GRAPH_HOME}/{p}"
+                print(f"  MISSING     {rel} ({section}): the plant no longer carries it")
+                bad += 1
+                continue
+            src = seed_source_for(rel, seed)
+            if src is None or not src.is_file():
+                print(f"  UNMAPPED    {rel} ({section}): no seed source backs it; "
+                      f"no delta to measure")
+                continue
+            if (plant / rel).read_bytes() == src.read_bytes():
+                print(f"  LOST        {rel} ({section}): byte-equal to the seed's "
+                      f"{src.relative_to(seed).as_posix()}; the plant delta the record "
+                      f"claims is gone. Re-apply it from the newest backup that holds "
+                      f"it, then run this again")
+                bad += 1
+            else:
+                print(f"  KEPT        {rel} ({section})")
+    if bad:
+        print(f"  {bad} merged or kept file(s) lost their plant delta after the graft "
+              f"recorded them")
+        return 1
+    print("  every merged or kept file still carries its plant delta")
+    return 0
 
 
 def audit_unfilled(plant: Path, seed: Path, action) -> int:
@@ -546,10 +839,22 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
     baks = [p for p, s in stamped
             if p.is_file() and not p.is_symlink() and s.startswith(date)]
     counts = {"IDENTICAL": 0, "DELTA": 0, "CUSTOMIZED": 0,
-              "GENERATED": 0, "PLANT-OWNED": 0, "UNMAPPED": 0}
+              "GENERATED": 0, "PLANT-OWNED": 0, "RETIRED": 0, "ORPHAN": 0,
+              "CORPUS-PLACED": 0, "UNMAPPED": 0}
+    # the harness entries with no live graph home, read once: a backup of one
+    # takes its verdict, and every one is named after the backup verdicts
+    flags = harness_flags(plant, seed)
+    flagged = {rel: verdict for verdict, rel, _ in flags}
     customized, knowledge_hits, unmapped = [], [], []
     for b in baks:
         rel = plant_rel(b, plant)
+        # A corpus-placed page is neither the seed's machinery nor the plant's
+        # knowledge: the installer refreshed it from the corpus because its
+        # bytes still equalled the recorded hash, so the backup is the corpus's
+        # earlier layer, not a plant edit (SPEC-0001 PLACED_PAGE_CARRIES_ITS_PROVENANCE).
+        if corpus_placed(b, rel, plant):
+            counts["CORPUS-PLACED"] += 1
+            continue
         src = seed_source_for(rel, seed)
         seed_backed = bool(src and src.exists())
         # a real knowledge overwrite is a backup over PLANT-AUTHORED
@@ -578,6 +883,8 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
                     counts["GENERATED"] += 1
             elif plant_owned_node(rel, plant):
                 counts["PLANT-OWNED"] += 1
+            elif rel in flagged:
+                counts[flagged[rel]] += 1
             else:
                 counts["UNMAPPED"] += 1
                 unmapped.append(b.relative_to(plant).as_posix())
@@ -608,6 +915,8 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
               f"inspect by hand:")
         for u in unmapped[:20]:
             print(f"       {u}")
+    for verdict, rel, home in flags:
+        print("  " + flag_line(verdict, rel, home))
     if not baks:
         # Idempotent installs make zero-backup grafts the NORMAL no-op
         # case — but only when no backups exist at all. Backups under
@@ -860,10 +1169,10 @@ def _schema_currency(plant: Path, seed: Path) -> bool:
 
     `_schema.md` is the node CONTRACT — the vocabulary every other check is
     written against — but the installer places it add-if-missing, so a plant
-    that already has one keeps it across every graft. A plant was found
+    that already has one keeps it across every graft. A plant can end up
     carrying a schema several minors old, missing an entire lifecycle-status
     vocabulary that the seed's own migration tool writes values into, and
-    nothing anywhere reported it.
+    nothing reports it.
 
     Reports, never rewrites, and does not gate — the same posture the engine
     check takes on staleness. The schema is the plant's own file and a plant

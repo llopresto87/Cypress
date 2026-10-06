@@ -29,7 +29,7 @@ plant_knowledge:
   - evaluations/
   - libraries/
 prevents: Datasets with no contract, evaluations designed to pass, and fixture data copied out of production.
-est_tokens: 1294
+est_tokens: 1634
 ---
 
 # Data / ML / Evaluation
@@ -86,17 +86,41 @@ Good synthetic data is:
 - **Structurally valid**: it satisfies every constraint the real data
   must (formats, checksums, unique keys, referential order) so it
   passes validators and inserts, drawing the rules from the relevant
-  data contract and the schema in the graph.
+  data contract and the schema in the graph. Where two readers
+  validate the same field differently, generate to the strictest rule,
+  so the row is valid to every reader. A row inserted straight into
+  the store skips the application's validation, so the generator
+  enforces those constraints itself.
+- **Issued to nobody**: an identifier with a check digit (a national
+  id, a tax or registration number) is built forward from synthetic
+  parts with the real checksum computed, so validators accept it.
+  Prefer parts no real person can hold (an unassigned or clearly
+  fictional component), because a forward-built valid id can still
+  match a real one. A published example is never copied: it belongs
+  to a real person.
+- **Unique across the whole dataset**: where several services or
+  writers share a store, or share a column whose uniqueness is global,
+  allocate unique values from one ledger for the whole dataset, not one
+  per writer, so a value spent in one place is not reused in another.
+- **Consistent with itself**: a persisted derived value (a stored
+  ratio, score or total) agrees with the inputs emitted beside it,
+  because nothing recomputes it; dates follow the lifecycle (start
+  before end) and agree with status (a past item is concluded or
+  missed, a future one is scheduled).
 - **Distributionally plausible**: it spans the range a domain expert
   would recognize (not every record identical, not every value at the
-  mean), so a demo or a load test exercises real behavior.
+  mean), so a demo or a load test exercises real behavior. A demo set
+  tells the product's story, such as change over time, rather than
+  uniform perfection. Names, places and addresses match the product's
+  locale: a mismatch breaks the illusion and can fail a validator.
 - **Deterministic where tests depend on it** (a fixed seed) and
   randomized where demos and load want variety. Tests that depend on
   random data flake.
 - **Ordered for referential integrity**: generate parents before
   children; respect cross-subsystem id references.
 - **Idempotent and reversible**: re-runnable, with a teardown that
-  actually removes what it created.
+  actually removes what it created, including denormalized copies
+  that outlive their originals and files in binary or object stores.
 
 Record what a generated dataset represents and how to regenerate it in
 `docs/graph/data/`. Mark any file that looks like it could be mistaken for

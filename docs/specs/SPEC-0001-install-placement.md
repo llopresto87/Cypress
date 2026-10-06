@@ -1,8 +1,8 @@
 ---
-status: back-written
-status_date: 2026-10-01
+status: implemented
+status_date: 2026-10-05
 owner: seed-installer
-status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tests/test-install-kernel-modes.sh, tests/test-install-adoption.sh, tests/test-full-install.sh, tests/test-seed-lint.sh, tests/test-graft-tools.sh (all wired into tests/run.sh)
+status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tests/test-install-kernel-modes.sh, tests/test-install-adoption.sh, tests/test-full-install.sh, tests/test-seed-lint.sh, tests/test-graft-tools.sh, tests/test_corpus_match.py (every §10 contract row green, HARVEST_CANDIDATE_FORM_IS_PLACED included, held by S14 in case_plan_records and proved by mutation, §12's second entry of 2026-10-05 on the harvest-candidate form; all wired into tests/run.sh)
 ---
 
 # SPEC-0001: install placement
@@ -11,19 +11,93 @@ status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tes
 
 - **Identifier:** SPEC-0001-install-placement
 - **Status:** see frontmatter (single home)
-- **Sign-offs:** none, and none is owed. This spec is `back-written` — the
-  schema's own status for documented existing behaviour (`_schema.md`) — so
-  there was no RED for a promotion to land with and no product/architect/tester
-  pass has been held. An earlier draft asserted signatures dated to a RED that
-  never landed; that was fabricated to satisfy a linter and is recorded here so
-  the correction is not silently absorbed. `active` was then used with a long
-  argument for why it was honest, which was an argument for `back-written` by
-  another name while the right value sat in the schema.
+- **Sign-offs:** product [x] · architect [x] · tester [x]
+  Each role signed the 8.0.0 contracts (§12) on its own read-only review of
+  2026-10-04, held with increment 10's RED over JURISDICTION_RESOLVED_ONCE,
+  the RED the promotion to `active` lands with (`verify.status-evidence`).
+  No condition blocks. Product asked §3 to state the jurisdiction outcome,
+  done with the promotion, and named three gaps in
+  RECORDED_EXPERTISE_PAGE_WITHDRAWN for increment 13: the exit code of a
+  plain install after its WARNING, its overlap with
+  EXPERTISE_SURVIVES_SILENCE (a withdrawn page cannot be placed again), and
+  AC-23's silence on it. The architect named two: a listed id whose
+  destination a different recorded id already owns is not refused by the
+  preflight (increment 13), and CHECK_EXECUTES_EACH_WIRED_HOOK fails a hook
+  that prints nothing while SPEC-0003 lets the status hook stay silent when
+  its register fails (increment 11). The tester signed with no condition.
+  Increment 11 answered the architect's second condition in the contract
+  text rather than by an exception: on the check envelope the status hook
+  is never silent, because SPEC-0003 STATUS_HOOK_RESETS_WITHOUT_REGISTER and
+  STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION end its output with the
+  anchor line or its not-checked line when the register is absent, fails or
+  prints nothing. The silence SPEC-0003 allows is the summary's, not the
+  hook's, so "prints nothing" can only name a broken script.
+  Increment 13 answered the conditions owed to it in the contract text.
+  RECORDED_EXPERTISE_PAGE_WITHDRAWN now states that a plain install exits 0
+  after its WARNING, that it takes precedence over EXPERTISE_SURVIVES_SILENCE
+  (a withdrawn page the plant deleted is not placed again, and its entry is
+  kept), and that a listed id the seed withdrew is refused by the preflight;
+  AC-22 and AC-23 map to it. UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING's
+  Given gains the architect's case, a listed id whose destination a different
+  recorded id already owns, and the preflight refuses it before the first
+  write.
+  The contracts and texts that came after those ticks were reviewed at the
+  8.0.0 tip (increment 15), each role on its own read-only review of
+  2026-10-04: CHECK_FLAGS_RETIRED_HARNESS_ENTRY and
+  CHECK_FLAGS_ORPHAN_HARNESS_ENTRY (increment 12), the increment-13 contract
+  text above, and the matcher rules §6 gained in increment 13's follow-up.
+  Sign-offs for them: product [x] · architect [x] · tester [x].
+  Product signed, and asked AC-26 to say that a flag alone does not fail
+  `--check`, which it now does. The architect signed with no blocking
+  condition and left notes for a later round: graft-audit counts a backup of
+  a live ORPHAN entry `ORPHAN` rather than `UNMAPPED`, which §4 does not
+  state; an `origin: seed` harness entry with no node whose name the seed
+  still ships is flagged neither way; a recorded withdrawn id also warns on
+  a list run, where RECORDED_EXPERTISE_PAGE_WITHDRAWN names only the silent
+  run; and the matcher also reads `Dockerfile.*` and `*.dockerfile`, while a
+  registry-less `dotnet/` image is not read as dotnet. The tester blocked
+  first on three gaps, each closed with a case before the tick: M13 gains an
+  `origin: seed` harness entry with no graph node, and M13 and M14 assert
+  graft-audit's exit code against the clean copy; M17 gains a skill id that
+  lands on a seed skill node and a library id that lands on a scaffold leaf;
+  and the matcher cases gain a `Containerfile`, a `dotnet/` image and a
+  manifest under each agent host's directory.
+  The matcher increment of 2026-10-05 came after every tick above. It adds
+  LANGUAGE_DECLARATION_PROPOSES_ITS_PAGE, OWN_PACKAGE_LIST_PROPOSES_ITS_PAGE,
+  CITED_PACKAGE_PROPOSES_NOTHING and PACKAGELESS_PAGE_PROPOSED_BY_ITS_TRIGGER,
+  the failure OWN_PACKAGE_NAMED_ONLY_IN_PROSE, AC-27 and AC-28, and the §6
+  rules they rest on (the own-package list among them). The architect wrote
+  them and signs that §4, §6 and §7 cohere. The tester wrote the five cases
+  from the brief, before these contracts existed, then reviewed them, added
+  the two subtests and the contract names the architect asked for, and
+  signed. Product reviewed §3 and §9 on 2026-10-05 and held its tick on
+  three points, answered in the text: AC-28 claimed that a cited package
+  never proposes a page, while CITED_PACKAGE_PROPOSES_NOTHING keeps an
+  Except for `maven` pages, and it now states that exception and its
+  recovery; AC-27 stated no bound, and it now binds to the §6 rows and holds
+  that a build with no Java level does not bring in `language/java`; and §3
+  now names the Maven exception and how the owner recovers a page no rule
+  reaches. Product re-reads before it ticks.
+  Sign-offs for them: product [x] · architect [x] · tester [x].
+  HARVEST_CANDIDATE_FORM_IS_PLACED (2026-10-05) came after every tick above.
+  The architect wrote it. The tester wrote S14 in case_plan_records against
+  it and signed. Product held its tick until §3 named the form and AC-29
+  mapped to the contract, then re-read and signed.
+  Sign-offs for it: product [x] · architect [x] · tester [x]. Product signed:
+  the form is placed byte-identical, never clobbered or backed up, and AC-29
+  states the outcome the owner checks, the one S14 asserts.
+  Before 8.0.0 this spec was `back-written` and carried no sign-off, because
+  there was no RED for a promotion to land with. An earlier draft asserted
+  signatures dated to a RED that never landed; that was fabricated to satisfy
+  a linter and is recorded here so the correction is not silently absorbed.
+  `active` was then used with a long argument for why it was honest, which
+  was an argument for `back-written` by another name while the right value
+  sat in the schema. The ticks above are the first real ones.
 
 - **Owner:** seed-installer
 - **Date:** 2026-09-13
-- **Last reviewed:** 2026-10-01
-- **Related grill section:** docs/plans/grill-7.15.0-remediation.md §3, §5
+- **Last reviewed:** 2026-10-05
+- **Related grill section:** docs/plans/grill-7.15.0-remediation.md §3, §5; docs/plans/grill-8.0.0-wave-a.md §9 (the 8.0.0 contracts); the matcher increment of 2026-10-05 is its increment 17
 - **Related ADRs:** adr-0003-enforcement-layering-honesty, adr-0009-host-support-tiers, adr-0013-harness-memory-is-not-a-home, adr-0014-graft-reconciles-every-graph-engine, adr-0016-stamp-carries-keys-it-does-not-own, adr-0017-pre-growth-pointers-leave-the-kernel, adr-0018-code-fact-freshness-anchor (the last three proposed), adr-0021-seed-only-procedures-stay-home, adr-0022-the-plant-model-map (both proposed), adr-0024-one-hook-core-per-session-residency (proposed)
 - **Supersedes:** —
 - **Superseded by:** —
@@ -40,6 +114,10 @@ and the record the installer keeps cannot contradict the filesystem. It also
 contracts the one write the seed's graft tools make into a plant's placed
 files, the reconciliation of the graph engines the installer placed
 add-if-missing, and the audit that says whether each engine is current.
+Since 8.0.0 it also contracts the selective placement of corpus knowledge:
+the installer proposes the corpus pages a plant's manifests match, places
+only the list the owner confirms, records it, and refreshes it on a later
+install without replacing a page the plant edited or owns.
 
 ## 2. Scope
 
@@ -64,6 +142,17 @@ add-if-missing, and the audit that says whether each engine is current.
     the `--check` that compares those projections with the map (adr-0022)
   - the seed-only files the installer never places, and the tools it does
     place, held against `manifest.json` (adr-0021)
+  - the selective placement of corpus pages (`--expertise`): the proposal
+    `tools/corpus-match.py` prints from the plant's manifests, the placement
+    of a confirmed list of `library-corpus/`, `skill-corpus/` and
+    `tool-corpus/` pages, the stamp's `expertise` key, the refresh on a later
+    install, and the `--check` of the recorded pages
+  - the one shape of a corpus page the matcher reads, the own-package list
+    of a library page's `## What it is` (§6), and the files that propose a
+    `language`, `platform` or `cli` page, which no lockfile declares
+  - the one resolution of the legal jurisdiction that the national-layer
+    report, the stamp and the closing banner share
+  - the execution of each wired context hook under `--check`
 - **Out of scope:**
   - the anchor file `docs/graph/code-anchor.py` writes: SPEC-0003 owns it,
     because the session-start hooks read it and canonize writes it; the
@@ -74,6 +163,10 @@ add-if-missing, and the audit that says whether each engine is current.
   - the seed's own repository layout
   - how Prime Agent reads the model map (overlay prose, brief-enforced), and
     whether a host's model catalog carries a selector the map names
+  - what a corpus page says (each corpus's `README.md` owns its admission
+    bar), and the merge of a plant-edited or plant-owned page with the
+    corpus's newer layer, which graft Phase 4 performs with understanding
+  - removing an id from the `expertise` record (§11)
 
 ## 3. User-facing behavior
 
@@ -83,12 +176,40 @@ path is in the way. Running it again over an unchanged project does nothing and
 says nothing. Running it over a project someone has edited replaces the seed's
 own files, leaves a timestamped copy of every body it replaced, and names them.
 Nothing outside the named project directory is ever modified.
+A fresh plant also gets a blank harvest-candidate form under
+`docs/graph/plans/`. Canonize starts the plant's own record from it. No
+install creates that record. After the plant writes the record or edits the
+form, a re-install leaves both as they are and keeps no copy of either.
 `all` installs the maintained hosts: claude-code, opencode and prime-agent. A
 frozen host (codex, github-copilot) still installs when it is named, and says
 that it is deprecated. `all --check` still checks the Copilot views of a plant
 whose record carries github-copilot, because checking writes nothing, and it
 checks the opencode agent projections of a plant whose record carries opencode,
 because those carry a `model:` line written from the plant's model map.
+
+An owner who wants the seed's knowledge of a stack runs the installer with
+`--expertise propose` and reads the corpus pages the project's manifests
+match; nothing is written. Running it again with `--expertise` and the ids
+the owner keeps places those pages in the plant's graph, each marked with the
+seed version it came from, and records them. The proposal reaches a language,
+a platform or a tool page through the file in the project that declares or
+drives it, and a library page through each package the page lists as its
+own. A package a page only mentions, such as its runtime dependency, does
+not bring that page into the proposal, with one exception for now: a Maven
+page is still brought in by a coordinate its opening section names, even one
+it only mentions, and the owner leaves that page out of the list (§11). A
+page that no rule reaches, such as a tool the project only calls from a
+script or Java whose level a parent build outside the project sets, is
+placed when the owner lists its id. Every later install refreshes
+the pages nobody edited and names each page it left alone. `--check` also
+runs each wired context hook once, so a hook whose script is gone is found by
+the check and not by a session. It also names each agent or skill in a harness
+directory that has no home in the plant's graph: `RETIRED` for one the seed
+does not ship, `ORPHAN` for one the plant authored there. It deletes
+neither.
+A plant whose record names its national jurisdiction keeps it on a re-install
+that passes no flag, and the run names that code instead of calling the
+jurisdiction undecided.
 
 ## 4. Functional contracts
 
@@ -363,6 +484,39 @@ because those carry a `model:` line written from the plant's model map.
   --project-dir <target>` leaves both files byte-identical and writes no
   backup beside either
 
+### Contract: HARVEST_CANDIDATE_FORM_IS_PLACED
+The harvest-candidate form is a seed-shipped blank form, like the
+session-record form, and is placed rather than held back. Three readers need
+it at its placed path: `canonize.harvest-candidates` creates the plant's
+`docs/graph/plans/harvest-candidates.md` from
+`docs/graph/plans/_harvest-candidates.template.md` when absent; graft's
+Phase 8 hands KEEP-PLANT divergences back as rows of that record; and
+`graft.gate.rootstock` names the placed form as an expected new leaf under
+`plans/`, not a breach. Its leading underscore keeps it out of
+`graft-audit.py --unfilled`, which skips `_`-prefixed and `.template.md`
+leaves, so a fresh plant reports no unfilled scaffold for it. The existing
+walk places it, so it adds no write site and `SINGLE_WRITER`'s census is
+unchanged. Holding it back
+would leave canonize pointing at a file no plant has. It is a separate
+contract from SESSION_RECORD_FORM_IS_PLACED because it has its own reader and
+its own record, and that slug stays as written in §12's history.
+- **Given:** a fresh target directory
+- **When:** `install.sh claude-code --project-dir <target>` runs
+- **Then:** `docs/graph/plans/_harvest-candidates.template.md` exists and is
+  byte-identical to the seed's
+  `templates/docs/plans/_harvest-candidates.template.md`, placed by
+  `place_docs_skeleton`'s existing `templates/docs/**` walk with
+  `place_if_missing`
+- **And:** no `docs/graph/plans/harvest-candidates.md` record is created; the
+  record is the plant's, made from the form by canonize
+- **And:** after the plant writes its own
+  `docs/graph/plans/harvest-candidates.md` and edits the placed form,
+  `install.sh all --project-dir <target>` leaves both files byte-identical
+  and writes no backup beside either
+- **And:** the seed places nothing else into `docs/graph/plans/` beyond the
+  `grill.md` scaffold, the `sessions/` form, this form, and
+  `adopted-instructions.md` when adoption writes it
+
 ### Contract: ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE
 - **Given:** a plant engine file and the seed's engine of the same name
 - **When:** `tools/graft-graph-engine.py <plant-file> <seed-file>` runs with no
@@ -565,6 +719,290 @@ because those carry a `model:` line written from the plant's model map.
   differ from the set of `$SEED_ROOT/tools/*` and `$SEED_ROOT/tests/*` files
   `install.sh` places
 
+### Contract: EXPERTISE_PROPOSAL_WRITES_NOTHING
+- **Given:** a target whose manifests (§6) declare dependencies, some of which
+  have a page in the seed's `library-corpus/`, and a `skill-corpus/` or
+  `tool-corpus/` page whose `stack:` names one of those library pages
+- **When:** `install.sh <host> --expertise propose --project-dir <target>` runs
+- **Then:** stdout carries one line per matching page, in the §6 proposal
+  form: the corpus id, then the manifest path and the entry that matched; a
+  skill or tool page names the library page id its `stack:` matched through.
+  The lines are sorted by id and unique, and the run exits 0
+- **And:** the target is byte-identical afterwards: no adapter is installed,
+  no stamp or backup is written, and a target with no `.cypress/seed.json`
+  still has none
+- **And:** a target whose manifests match nothing gets one line saying so,
+  so an empty proposal is never silent
+- **And:** the matching is `tools/corpus-match.py`'s, run from the seed. The
+  tool is not placed in the plant and is not a key of `manifest.json`'s
+  `tools` map (SEED_ONLY_FILES_NEVER_PLACED)
+
+### Contract: LANGUAGE_DECLARATION_PROPOSES_ITS_PAGE
+- **Given:** a target whose manifest declares the language a `language` page
+  covers, in a form the §6 language rows name: a `pom.xml`, `build.gradle` or
+  `build.gradle.kts` that sets the Java language level, or a `pubspec.yaml`
+  whose `environment:` carries a Dart SDK constraint
+- **When:** the matcher runs over it (`--expertise propose`)
+- **Then:** the proposal carries `library-corpus/language/java` or
+  `library-corpus/language/dart`, and its evidence names that manifest and
+  the declaration that matched
+- **And:** a Flutter app's `pubspec.yaml` proposes `language/dart` beside
+  `language/flutter`, because the Flutter SDK runs a Dart SDK and the dart
+  page owns the SDK constraint
+
+### Contract: OWN_PACKAGE_LIST_PROPOSES_ITS_PAGE
+- **Given:** a library page whose `## What it is` carries the own-package list
+  (§6), one list item per package the page covers, each opening with the
+  package's name in backticks and a colon; and a target whose manifest
+  declares one of those packages
+- **When:** the matcher runs over it
+- **Then:** the proposal carries that page, and its evidence names the
+  manifest and the entry
+- **And:** this holds in the page's own key, whichever it is, and the listed
+  name is read the way that key's §6 row reads a manifest entry, so on an
+  npm page `@stomp/rx-stomp` and the entry `@stomp/rx-stomp` meet as
+  `stomp-rx-stomp`
+
+### Contract: CITED_PACKAGE_PROPOSES_NOTHING
+- **Given:** a library page that names a package outside its own-package
+  list (in running prose, inside a list item that opens with something else,
+  or in a later section), as its runtime dependency, its peer or the library
+  it wraps; and a target whose manifest declares that package and none of
+  the page's own
+- **When:** the matcher runs over it
+- **Then:** the proposal does not carry that page
+- **Except:** a coordinate that a `maven` page names in its `## What it is`,
+  which the transitional own-coordinate form (§6) reads as the page's own
+  even when the page only cites it there. That page is proposed, a known
+  false positive (§6, §11), and the owner leaves it out of the confirmed
+  list. A coordinate a `maven` page cites in a later section proposes
+  nothing
+
+### Contract: PACKAGELESS_PAGE_PROPOSED_BY_ITS_TRIGGER
+- **Given:** a `platform` or `cli` page, which no lockfile declares, and a
+  target that holds one of the triggers the §6 rows list for it: the file
+  the platform reads, an entry whose only use is to drive the platform, the
+  tool's official image, the GitHub Action the tool's page names, the
+  config file the tool reads, or one of its pre-commit hook ids
+- **When:** the matcher runs over it
+- **Then:** the proposal carries that page, and its evidence names the file
+  that holds the trigger and the entry that matched, or `(present)` when the
+  file's presence is the trigger
+
+### Contract: EXPERTISE_PLACES_ONLY_THE_CONFIRMED_LIST
+- **Given:** a target, and a comma-separated list of corpus ids (§6), each
+  naming a page the seed carries under `library-corpus/`, `skill-corpus/` or
+  `tool-corpus/`
+- **When:** `install.sh <host> --expertise <id>[,<id>...] --project-dir
+  <target>` runs
+- **Then:** each listed page is placed at the destination §6 gives for its
+  corpus, and no other corpus page is placed, whatever the manifests match
+- **And:** a listed id no manifest matched is placed all the same, so the
+  owner can add a page the matcher missed
+- **And:** nothing is written under `docs/graph/legal/` by this arm: the
+  legal corpus keeps its own flag and CORPUS_IS_WHOLE_OR_ABSENT
+- **And:** every write goes through one of the four placers, so
+  SINGLE_WRITER's exception count is unchanged
+
+### Contract: UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING
+- **Given:** an `--expertise` list holding, in turn, an id that names no page
+  under the three corpus roots (misspelt, or under `legal-corpus/` or
+  `agent-corpus/`), an id holding `..` or starting with `/`, two ids whose
+  pages place at one destination (§6), and an id whose destination a
+  different id recorded in the stamp's `expertise` key already owns (for
+  example `library-corpus/container/redis` listed over a recorded
+  `library-corpus/pypi/redis`)
+- **When:** the installer runs
+- **Then:** it exits non-zero naming each offending id, and the target is
+  byte-identical: the ids are checked by the preflight, before the first
+  write
+- **And:** the refusal is the tool's own message, not a raw shell or Python
+  error, as PREFLIGHT_REFUSES_BEFORE_WRITING requires
+- **And:** the same preflight refuses a skill id whose destination is a node
+  the seed's own `skills/` places, and an id whose destination is a scaffold
+  leaf the seed places from `templates/docs/`, because either page would be
+  replaced by the seed's own on the same run
+
+### Contract: PLACED_PAGE_CARRIES_ITS_PROVENANCE
+- **Given:** a library or tool page placed by `--expertise`
+- **When:** the install completes
+- **Then:** the placed file's first line is the provenance line of §6, which
+  carries `origin: corpus@<seed version>` and the corpus id, and every later
+  byte equals the corpus page
+- **And:** a placed skill page carries its provenance in its frontmatter
+  instead, as PLACED_SKILL_IS_A_ROUTABLE_NODE gives
+- **And:** `<seed version>` is the `version` of the seed's `manifest.json`,
+  the same value the run writes to the stamp's `version`
+- **And:** `tools/graft-audit.py` reads `origin: corpus@` and classifies the
+  page, and a backup of it, as corpus-placed: neither seed-owned nor
+  plant-authored, and never `UNMAPPED` (EVERY_BACKUP_IS_CLASSIFIABLE)
+
+### Contract: PLACED_SKILL_IS_A_ROUTABLE_NODE
+- **Given:** a `skill-corpus/<key>/<name>.md` page, which carries node
+  frontmatter, placed by `--expertise` into a plant installed for claude-code
+- **When:** the install completes
+- **Then:** `docs/graph/skills/<name>.md` equals the corpus page with its
+  `origin:` value set to `corpus@<seed version>` (the key added when the page
+  has none) and no other byte changed
+- **And:** it is a top-level node of the plant's graph:
+  `python3 docs/graph/graph-lint.py --show <its id>` exits 0 and prints it
+- **And:** `.claude/skills/<name>/SKILL.md` exists, written by the existing
+  skill projection with no new projection code
+
+### Contract: EXPERTISE_IS_RECORDED_IN_THE_STAMP
+- **Given:** a run that places one or more pages through `--expertise`
+- **When:** the stamp is written
+- **Then:** `.cypress/seed.json` holds the `expertise` key of §6: one entry
+  per recorded page, with its corpus id, its placed path relative to the
+  target and the SHA-256 of the bytes the installer wrote there, sorted by id
+- **And:** `expertise` is an installer-owned key, written with the
+  installer's own keys, and every key the installer does not own still
+  survives (UNKNOWN_STAMP_KEYS_SURVIVE)
+- **And:** a later explicit list adds its ids to the record; no run removes a
+  recorded id or deletes a placed page (§11)
+- **And:** a plant that never used `--expertise` gets no `expertise` key, so
+  its stamp is unchanged by this arm
+
+### Contract: EXPERTISE_SURVIVES_SILENCE
+- **Given:** a plant whose stamp records `expertise` entries, each page on
+  disk equal to its recorded hash
+- **When:** a later install runs with no `--expertise` flag
+- **Then:** the record keeps every id, and each recorded page is placed again
+  from the running seed: a page whose new bytes equal the bytes on disk is
+  not rewritten, and a page whose bytes changed (a newer seed version, or a
+  newer corpus page) is replaced with a backup (BACKUP_BEFORE_REPLACE) and
+  its recorded hash updated
+- **And:** an identical re-run from the same seed rewrites no page and makes
+  no backup (IDENTICAL_RERUN_IS_INERT)
+- **And:** a recorded page the plant deleted is placed again and named in the
+  log, as a re-created seed node is, because the record holds the owner's
+  decision until the owner changes it (§11)
+- **Except:** a recorded id whose page is gone from the running seed.
+  RECORDED_EXPERTISE_PAGE_WITHDRAWN governs it, so it is not placed again
+  even when the plant deleted the page
+
+### Contract: PLANT_EDITED_PAGE_IS_LEFT_AND_NAMED
+- **Given:** a recorded page whose bytes on disk differ from its recorded
+  hash
+- **When:** a later install runs, with no `--expertise` flag or with a list
+  that names its id
+- **Then:** the page is byte-identical afterwards and no backup is made
+  beside it
+- **And:** one log line names its path, says the plant edited it, and names
+  graft Phase 4 as the step that merges the corpus's newer layer into it
+- **And:** its record entry is unchanged, hash included, so the next run
+  still finds it edited
+
+### Contract: PLANT_OWNED_PAGE_IS_NEVER_REPLACED
+- **Given:** a target where the destination of a listed id already exists
+  and the record holds no entry for that id: the plant's own page, written by
+  its `ingest-library` or by hand
+- **When:** `install.sh <host> --expertise <that id>` runs
+- **Then:** the file is byte-identical afterwards, no backup is made beside
+  it, and one log line names its path and graft Phase 4, as
+  PLANT_EDITED_PAGE_IS_LEFT_AND_NAMED gives
+- **And:** no record entry is written for that id, because the installer
+  placed nothing there; the other ids in the list are placed and recorded
+
+### Contract: EXPERTISE_CHECK_NAMES_MISSING_OR_STALE
+- **Given:** a plant whose stamp records `expertise` entries
+- **When:** `install.sh <host> --check --project-dir <target>` runs
+- **Then:** it names each recorded page that is missing, and each that is
+  stale: its bytes equal the recorded hash and the running seed would place
+  different bytes. With either present it exits non-zero
+- **And:** a recorded page whose bytes differ from its recorded hash is named
+  as plant-edited and left for graft Phase 4; it does not change the exit
+  code on its own
+- **And:** with every recorded page present and current, it says the
+  expertise pages are up to date
+- **And:** the run writes nothing: no page, backup or stamp
+- **And:** a plant with no `expertise` key gets no expertise line, so the
+  output CHECK_WITHOUT_COPILOT_SAYS_SO holds is unchanged for it
+
+### Contract: JURISDICTION_RESOLVED_ONCE
+- **Given:** a plant whose stamp records `legal_corpus: yes` and
+  `legal_jurisdiction` as a two-letter code
+- **When:** `install.sh <host> --project-dir <target>` runs again, in turn
+  with no `--legal-jurisdiction` flag and with the flag naming another code
+- **Then:** the installer resolves the jurisdiction once, the flag first and
+  then the stamp's recorded value, and the national-layer report, the stamp
+  writer and the closing NEXT STEP banner all read that one value
+- **And:** with no flag, no line of the run calls the jurisdiction undecided
+  or says no `--legal-jurisdiction` was given; the report names the recorded
+  code, and the stamp keeps it
+- **And:** with the flag, the report names the flag's code and the stamp
+  records it (DECISIONS_SURVIVE_SILENCE: only silence keeps a recorded value)
+- **And:** a plant with no recorded code and no flag still gets the
+  undecided banner
+
+### Contract: CHECK_EXECUTES_EACH_WIRED_HOOK
+- **Given:** an installed plant, and the context hooks its recorded hosts
+  wire: the `UserPromptSubmit` and `SessionStart` commands of
+  `.claude/settings.json`, the commands of the Copilot
+  `.github/hooks/route.json` and `status.json` when the plant has them, and
+  the `.prime/agent/hooks/` scripts the Prime Agent extensions call
+- **When:** `install.sh <host> --check --project-dir <target>` runs
+- **Then:** for each wired context hook it resolves the script the command
+  names under the target, and fails, exiting non-zero and naming the hook,
+  its event and the script, when the script is absent
+- **And:** it runs each present script once from the target, without the
+  command's `|| true`, on the §6 check envelope of its event, and fails the
+  same way when the script exits non-zero or prints nothing on stdout; a
+  passing hook gets one line saying it ran
+- **And:** the envelope carries no session id, so neither script writes the
+  ledger (SPEC-0003 LEDGER_ABSENT_SESSION_ID_FULL,
+  STATUS_HOOK_NO_LEDGER_WRITES_NOTHING), and the run leaves the plant
+  byte-identical
+- **And:** on that envelope a sound hook always prints: `route-hook.py`
+  gives the full injection, the pointer line or the no-graph message (the
+  prompt is not trivial and the envelope is a top-level human turn), and
+  `status-hook.py` ends with the code-anchor line or its not-checked line
+  even when the status register is absent, fails or prints nothing (SPEC-0003
+  STATUS_HOOK_RESETS_WITHOUT_REGISTER,
+  STATUS_HOOK_ANCHOR_FAILURE_FAILS_TOWARD_INCLUSION). A silent register is
+  therefore not a failed check
+- **And:** a wired command that names no script under the plant is said on
+  one line and not run
+- **And:** `bound-hook.py`, wired under `PreToolUse` without `|| true`, is a
+  guard and not a context hook, and is not run
+- **And:** with every hook passing, CHECK_WITHOUT_COPILOT_SAYS_SO's line and
+  exit code are unchanged
+
+### Contract: CHECK_FLAGS_RETIRED_HARNESS_ENTRY
+- **Given:** a plant carrying an `origin: seed` agent or skill that the
+  running seed does not ship (no `agents/<name>.md`, no
+  `skills/<name>/SKILL.md` in the seed): its graph node
+  `docs/graph/agents/<name>.md` or `docs/graph/skills/<name>.md`, a harness
+  entry projected from it (§6 harness entries), or a harness entry with no
+  graph node whose own frontmatter says `origin: seed`
+- **When:** `install.sh <host> --check --project-dir <target>` runs
+- **Then:** it prints one `RETIRED` line (§6) for each such node and each such
+  entry, naming its target-relative path
+- **And:** the run writes nothing and deletes nothing; the deletion is the
+  owner's act (the owner decided on 2026-10-04 that such entries are
+  flagged, never deleted)
+- **And:** a `RETIRED` line is a flag, not a failure: the exit code is the one
+  the rest of the check sets, so CHECK_WITHOUT_COPILOT_SAYS_SO's exit 0 holds
+  for a plant whose only finding is a flag
+- **And:** `tools/graft-audit.py <plant> <seed>` prints the same lines after
+  its backup verdicts, and classifies a backup of such an entry `RETIRED`
+  in place of `UNMAPPED` (EVERY_BACKUP_IS_CLASSIFIABLE); neither changes its
+  exit code
+
+### Contract: CHECK_FLAGS_ORPHAN_HARNESS_ENTRY
+- **Given:** a plant carrying a harness entry (§6) whose graph node is
+  absent and which is not an `origin: seed` entry: an agent or skill the
+  plant authored straight into a harness directory, which the router and
+  every other harness cannot see
+- **When:** `install.sh <host> --check --project-dir <target>` runs
+- **Then:** it prints one `ORPHAN` line (§6) naming the entry and the graph
+  node it lacks
+- **And:** the run writes nothing and deletes nothing, and the exit code is
+  the one the rest of the check sets, as for a `RETIRED` line
+- **And:** `tools/graft-audit.py <plant> <seed>` prints the same line
+- **And:** with no `RETIRED` and no `ORPHAN` finding, `--check` says in one
+  line that every harness entry has a graph home
+
 ## 5. Non-functional requirements
 
 - **Compatibility:** bash and `python3` only; no third-party imports. The
@@ -581,6 +1019,9 @@ because those carry a `model:` line written from the plant's model map.
 - **Reliability:** generation completes before replacement, so a failed
   generation cannot leave a partial destination.
 - **Security:** an install may not modify any path outside `--project-dir`.
+  An `--expertise` id resolves only to a page under the seed's
+  `library-corpus/`, `skill-corpus/` or `tool-corpus/`, so an id cannot name
+  a source outside them (UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING).
 
 ## 6. Data shapes
 
@@ -662,6 +1103,236 @@ projections are in its scope when the run names opencode, directly or through
 `all`, and the stamp's `tools` carries opencode; the Copilot views keep their
 own scope rule (ALL_CHECK_INCLUDES_RECORDED_COPILOT). With neither in scope,
 the run says that no generated views are in scope and exits 0.
+
+### Selective placement (8.0.0)
+
+A corpus id is the page's path in the seed, relative to the seed root, without
+`.md`: `library-corpus/<key>/<name>`, `skill-corpus/<key>/<name>` or
+`tool-corpus/<category>/<name>`. `--expertise` takes `propose`, or a
+comma-separated list of ids with no spaces.
+
+```yaml
+# .cypress/seed.json, the installer-owned key (absent until a page is placed)
+expertise:
+  type: array
+  sorted_by: id
+  items:
+    id:     { type: string }   # corpus id, as above
+    path:   { type: string }   # placed path, relative to the target
+    sha256: { type: string }   # hex digest of the bytes the installer wrote
+```
+
+| Corpus | Destination in the plant | Provenance |
+|---|---|---|
+| `library-corpus/<key>/<name>` | `docs/graph/libraries/<name>.md` | the provenance line, prepended |
+| `tool-corpus/<category>/<name>` | `docs/graph/tools/<name>.md` | the provenance line, prepended |
+| `skill-corpus/<key>/<name>` | `docs/graph/skills/<name>.md`, a top-level node | frontmatter `origin: corpus@<seed version>` |
+
+Two ids with one destination (for example `library-corpus/pypi/redis` and
+`library-corpus/container/redis`) are refused before writing
+(UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING); the owner places one of them,
+and graft Phase 4 folds the other into that page by hand.
+
+```text
+# the provenance line: the first line of a placed library or tool page
+<!-- origin: corpus@<seed version> id: <corpus id> -->
+
+# one proposal line per match, on stdout of --expertise propose
+<corpus id>  <manifest path>: <entry>
+<corpus id>  stack: <library corpus id>
+```
+
+The matcher, `tools/corpus-match.py`, reads the direct dependencies each
+manifest declares, normalizes each one to a candidate id, and proposes every
+library page whose `<key>/<name>` equals a candidate, compared without regard
+to case. One entry proposes every page one of its candidates names, so a
+module's own page and its family's umbrella page are proposed together. It
+then proposes every skill and tool page whose `stack:` names a library page it
+proposed.
+
+The walk reads the project's own manifests. It does not enter a dependency
+store, a build output, a virtual environment (`.venv*`), version control, the
+plant's `docs/graph/`, a scratch or copy directory (`.tmp/`,
+`.graft-backup-*`, `.graft-snapshot-*`, `*.bak-*`), an agent host's own
+directory (`.claude/`, `.opencode/`, `.codex/`, `.prime/`), a nested plant
+(a directory holding its own `.cypress/seed.json`) or a symlinked directory.
+A copy repeats the plant's manifests, and reading it would put a scratch path
+in the evidence or propose what the plant has since dropped.
+
+| Manifest | Key | Candidate names from one entry |
+|---|---|---|
+| `pom.xml` (`<dependency>`, `<plugin>`) | `maven` | every run of consecutive tokens of the `artifactId` (tokens split at `-` and `.`), read three ways: as written, with a `starter` token dropped, and with it and the token before it dropped; the last segment of the `groupId`, and its last two segments joined by `-`; and the `groupId:artifactId`, read the same three ways, against the coordinates a page claims (the own-coordinate form below) |
+| `pom.xml`, present | `cli` | `maven` |
+| `pom.xml` setting the Java language level: a `java.version`, `maven.compiler.release`, `maven.compiler.source` or `maven.compiler.target` property, or the compiler plugin's `<release>`, `<source>` or `<target>` | `language` | `java` |
+| `build.gradle`, `build.gradle.kts` setting the Java language level: a Java toolchain's `languageVersion`, or a `sourceCompatibility` or `targetCompatibility` | `language` | `java` |
+| `package.json` (`dependencies`, `devDependencies`) | `npm` | the package name, lowercased, a leading `@` dropped and `/` read as `-` |
+| `package.json`, present | `language` | `nodejs`; also `typescript` when `typescript` is a dependency, and `angular` when `@angular/core` is |
+| `requirements*.txt`, `pyproject.toml` | `pypi` | the name normalized as PyPI does: lowercased, each run of `-`, `_` and `.` read as `-` |
+| `requirements*.txt` or `pyproject.toml`, present | `language` | `python` |
+| `*.csproj` (`PackageReference Include`) | `nuget` | the package id as written |
+| `*.csproj`, present | `language` | `dotnet` |
+| `pubspec.yaml` (`dependencies`, `dev_dependencies`) | `pub` | the package name as published |
+| `pubspec.yaml` with an `sdk: flutter` dependency | `language` | `flutter` |
+| `pubspec.yaml` whose `environment:` carries an `sdk:` constraint | `language` | `dart` |
+| compose files (`image:`), `Dockerfile` and `Containerfile` (every stage's `FROM`), `bitbucket-pipelines.yml` (each `image:` given as a string, at file level or on a step) | `container` | the image's last path segment, tag and digest dropped; nothing for a `FROM` that names an earlier stage, `scratch`, or an image whose last segment is a variable |
+| the same images | `language`, `cli` | `nodejs` for a `node` image, `python` for a `python` image, `dotnet` for an image under a `dotnet/` path; `cli/maven` for a `maven` image, `cli/trivy` for a `trivy` image, `cli/gitleaks` for a `gitleaks` image |
+| a compose file, present | `container` | `docker-compose` |
+| a `Dockerfile` or `Containerfile`, present | `container` | `docker` |
+| `dotnet-tools.json` (`tools`) | `nuget` | the tool's package id as written |
+| `azure-pipelines*.yml`, present | `platform` | `azure-pipelines-yaml` |
+| `bitbucket-pipelines.yml`, present | `platform` | `bitbucket-pipelines` |
+| Ansible `requirements.yml` (`collections:`) | `galaxy` | the collection name, dotted as written |
+| Ansible `requirements.yml`, the collection `community.proxmox`; `requirements*.txt` or `pyproject.toml`, the requirement `proxmoxer` | `platform` | `proxmox-ve` |
+| `.github/workflows/*.yml` and `*.yaml`, a step's `uses:` naming `aquasecurity/trivy-action` or `gitleaks/gitleaks-action` at any ref | `cli` | `trivy`, `gitleaks` |
+| `trivy.yaml`, `.trivyignore`, present | `cli` | `trivy` |
+| `.gitleaks.toml`, present; `.pre-commit-config.yaml`, a hook `id:` of `gitleaks`, `gitleaks-docker` or `gitleaks-system` | `cli` | `gitleaks` |
+
+A key the seed's `library-corpus/` does not carry yet proposes nothing. A
+lockfile's transitive entries are not matched (§11). Any page no row of this
+table reaches is placed only when the owner lists it. The evidence of a
+declaration names it (`java.version`, `languageVersion`, `sdk`), the evidence
+of a `uses:` names the action as written, and the evidence of a hook names
+its id.
+
+**Language pages** (LANGUAGE_DECLARATION_PROPOSES_ITS_PAGE). A `language`
+page is proposed by the manifest fact that says the project is written in
+that language. When a manifest belongs to one language, its presence is that
+fact: `package.json`, a Python requirement file, a `*.csproj`. When a
+manifest serves several languages, the fact is the declaration the language
+page names as the language's own. A Maven or Gradle build also compiles
+Kotlin, Scala or Groovy, and an aggregator `pom.xml` compiles nothing, so
+`language/java` waits for the Java language level, which the java page
+places in the build descriptor. A `pubspec.yaml` serves a Dart package and a
+Flutter app alike, and its `environment:` `sdk:` constraint belongs to the
+Dart SDK, which the dart page owns; a Flutter app therefore proposes both
+pages. The trade-off: presence would also propose `language/java` for a
+Kotlin-only build. The declaration rule misses a build that inherits its
+level from a parent outside the project, and the owner lists `language/java`
+for it by hand (§11). A Gradle build is read for its language level only;
+its dependencies match no `maven` page yet (§11).
+
+**The own-package list** (OWN_PACKAGE_LIST_PROPOSES_ITS_PAGE,
+CITED_PACKAGE_PROPOSES_NOTHING). This is the one convention a corpus page
+author follows to say which packages a library page covers. In the page's
+`## What it is` section, write a Markdown list with one item per package the
+page covers, each item opening with the package's registry name in
+backticks, then a colon:
+
+```markdown
+## What it is
+<what the family of packages is, in a sentence or two>
+
+- `<package>`: <what this package is>
+- `<package>`: <what this package is>
+```
+
+Each listed name proposes the page. It is read the way the page's key reads
+a manifest entry in the table above, so `@stomp/stompjs` on an npm page
+meets the entry `@stomp/stompjs`. The page's own `<name>` proposes it as
+before, listed or not. Every other mention of a package is a citation: in
+running prose, inside an item that opens with something else, or in a later
+section. A citation proposes nothing, so a page can name its runtime
+dependency, its peer or the library it wraps, and a project that declares
+only that package is not offered the page. Two pages that both list one
+package are both proposed by it, as one entry proposes every page one of its
+candidates names.
+
+The list lives in the prose, not in a frontmatter field, because the list is
+then the fact's one home: the reader and the matcher read the same lines,
+and a corpus page needs no new shape (it carries no frontmatter, and a
+placed page keeps the corpus page's bytes under its provenance line). A
+`packages:` field would repeat what the section says and drift from it. The
+cost is that the convention is a shape of prose that only an author can get
+right. A page that names its own sibling packages only in running prose is
+not proposed by them, which costs recall that the owner recovers by listing
+the id. An item that opens with a dependency's name makes it the page's own,
+which costs precision (OWN_PACKAGE_NAMED_ONLY_IN_PROSE). The decision is
+reversible: changing the convention touches the matcher and the corpus pages,
+and no plant's data.
+
+**The own-coordinate form** (`maven` only, transitional). A `maven` page
+also claims each `groupId:artifactId` its `## What it is` section names in
+backticks, in a list or in prose, read the three ways the table reads an
+`artifactId`. A coordinate that a later section cites is not the page's own.
+The maven pages were written to this form before the own-package list
+existed, and the form cannot tell an owned coordinate from a cited one in
+that section: the mysql-connector-j page names MariaDB's driver there as the
+alternative, so the entry `org.mariadb.jdbc:mariadb-java-client` proposes
+the mysql-connector-j page. A maven page therefore cites a coordinate it does
+not own in a later section. That proposal is not always wrong: the
+mysql-connector-j page has a MariaDB section, so a project on the MariaDB
+driver may want it. Until a page is rewritten, the owner decides whether a
+page proposed this way belongs on the list. An own-package list item on
+a maven page names the full `groupId:artifactId`, which this form reads as
+well. §11 asks when the maven pages move to the list and the form retires.
+
+**Pages without a package** (PACKAGELESS_PAGE_PROPOSED_BY_ITS_TRIGGER). A
+`platform` or `cli` page has no lockfile entry, so the rows above name its
+triggers, and a trigger is admitted only when it exists to drive that
+subject: the file a platform reads (`azure-pipelines*.yml`,
+`bitbucket-pipelines.yml`), an entry whose only use is to call the platform
+(the `community.proxmox` collection and the `proxmoxer` client both drive the
+Proxmox VE API, as the platform page's Interop and the collection's page
+say), the official image of a tool that arrives as an image (`maven`,
+`trivy`, `gitleaks`), the GitHub Action the tool's page names as its own
+channel, the config file the tool reads by default, and the pre-commit hook
+ids the tool's page names. A `bitbucket-pipelines.yml` is read for its step
+images, and a GitHub workflow for its `uses:` lines, because the CI step is
+where a scanner's version is decided, as the trivy and gitleaks pages say. A
+`bitbucket-pipelines.yml` image given as a mapping (`name:` beside registry
+credentials) is not read; an official tool image needs no credentials. A
+trigger is a row of this table, never a word found in a script, so a page
+gains a trigger through a row here and a test.
+
+Four pages are unreachable by decision: `platform/azure-cli`,
+`platform/azure-devops-rest`, `cli/curl` and `cli/git`. An operator runs them
+from a shell, or a script calls them, and no manifest declares them. Git is
+the project's version control, which the walk does not enter, and curl ships
+in nearly every base image, so a trigger for either would fire on every
+project and tell the owner nothing. The Azure CLI and the Azure DevOps REST
+API appear in scripts and pipeline steps only as command text, which this
+matcher does not read. The image rows do not reach them either: a `git` or
+`curl` image proposes only a `container` page of that name, and the corpus
+carries none. The owner lists them by id when a plant wants them.
+
+The check envelope (CHECK_EXECUTES_EACH_WIRED_HOOK) is the host's envelope
+for the hook's event (SPEC-0003 §6) with no `session_id`. For
+`UserPromptSubmit` its prompt is the fixed text
+`cypress install check: route this task`, which is not trivial and carries no
+non-human marker; for `SessionStart` its `source` is `startup`. The Prime
+Agent scripts get the same values through the argv envelope (`--prompt=`,
+`--source=`). The check's lines, with `<event>` and `<script>` the hook's event
+and its target-relative path:
+
+```text
+[seed] --check: hook <event> <script> ran and printed its context.
+[seed] WARNING: --check: hook <event> <script> is wired but the script is missing; re-run install.sh to restore it
+[seed] WARNING: --check: hook <event> <script> failed (exit <code>)
+[seed] WARNING: --check: hook <event> <script> printed nothing on stdout
+```
+
+The harness entries (CHECK_FLAGS_RETIRED_HARNESS_ENTRY,
+CHECK_FLAGS_ORPHAN_HARNESS_ENTRY) are the files the roster and skill
+projections write, read in every harness directory the plant carries, recorded
+or not:
+
+| Entry | Graph home |
+|---|---|
+| `<adapter>/agents/<name>.md`, `<adapter>` one of `.claude`, `.codex`, `.opencode`, `.prime/agent` | `docs/graph/agents/<name>.md` |
+| `<adapter>/skills/<name>/SKILL.md`, the same adapters | `docs/graph/skills/<name>.md` |
+| `.github/agents/<name>.agent.md` | the `docs/graph/agents/` node whose name, without a leading `<digits>-`, is `<name>` |
+
+A name starting with `_`, `index` and `README`, and an installer backup, are
+not entries. The flag lines, with `<entry>` and `<home>` target-relative:
+
+```text
+[seed] --check: RETIRED <entry>: an origin: seed node or projection the running seed does not ship; the owner decides its deletion
+[seed] --check: ORPHAN <entry>: no graph home (<home>); propose relocating it into the graph, graft migration (c)
+[seed] --check: every harness entry has a graph home.
+```
+
+`tools/graft-audit.py` prints the same two flag lines without the `[seed]
+--check: ` prefix.
 
 ## 7. Failure modes
 
@@ -759,6 +1430,56 @@ the run says that no generated views are in scope and exits 0.
 - **Side effects:** that agent may fail to spawn on opencode
 - **Recovery:** fix the row and re-run `install.sh opencode`
 
+### Failure: EXPERTISE_MANIFEST_UNREADABLE
+- **Contracts:** EXPERTISE_PROPOSAL_WRITES_NOTHING,
+  LANGUAGE_DECLARATION_PROPOSES_ITS_PAGE, OWN_PACKAGE_LIST_PROPOSES_ITS_PAGE,
+  PACKAGELESS_PAGE_PROPOSED_BY_ITS_TRIGGER
+- **Trigger:** a manifest the matcher reads (§6) does not parse: a `pom.xml`
+  that is not XML, a `package.json` that is not JSON, a file that is not UTF-8.
+  A file whose presence alone is the trigger (`trivy.yaml`, `.trivyignore`,
+  `.gitleaks.toml`) is not read, so it cannot be unreadable
+- **Response:** one line names the manifest and why it was skipped, and the
+  proposal is made from every other manifest; the run exits 0
+- **Side effects:** none; a propose run writes nothing
+- **Recovery:** fix the manifest, or add the pages it would have matched to
+  the list by hand
+
+### Failure: OWN_PACKAGE_NAMED_ONLY_IN_PROSE
+- **Contracts:** OWN_PACKAGE_LIST_PROPOSES_ITS_PAGE,
+  CITED_PACKAGE_PROPOSES_NOTHING
+- **Trigger:** a page author breaks the own-package list (§6): a package the
+  page covers is named only in running prose, or a list item of
+  `## What it is` opens with a package the page only cites
+- **Response:** the matcher reads the page as written. The first package
+  proposes nothing; the second proposes the page. No line says so, because
+  the page's text is the only statement of what it owns
+- **Side effects:** none; a propose run writes nothing
+- **Recovery:** the author rewrites the section to the own-package list.
+  Until then the owner adds the missed id to the list by hand, or leaves the
+  wrongly proposed one out. Pages that name their own sibling packages only
+  in prose (several nuget, npm and pypi pages, written before the list
+  existed) are converted by a docs pass; §11 asks how the last one is found
+
+### Failure: RECORDED_EXPERTISE_PAGE_WITHDRAWN
+- **Contracts:** EXPERTISE_SURVIVES_SILENCE, EXPERTISE_CHECK_NAMES_MISSING_OR_STALE
+- **Trigger:** the stamp records an id whose page is missing from the
+  running seed (the corpus renamed or withdrew it)
+- **Response:** one `WARNING` line names the id; the placed page and its
+  record entry are left as they are, and a plain install still exits 0,
+  because the warning reports a seed change and no write failed; `--check`
+  names it the same way and exits non-zero
+- **Precedence:** over EXPERTISE_SURVIVES_SILENCE. A withdrawn page the plant
+  deleted cannot be placed again: the run names the id in the same `WARNING`,
+  writes nothing at the path and keeps the entry, so the record still says
+  what the owner chose
+- **Listed:** an `--expertise` list that names a withdrawn id is refused by
+  the preflight like any id that names no page
+  (UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING); the WARNING is for a
+  recorded id the run re-applies in silence
+- **Side effects:** none
+- **Recovery:** graft Phase 4 decides whether the plant keeps the page as its
+  own; the record entry goes with the removal path §11 leaves open
+
 ## 8. Examples
 
 ```
@@ -777,6 +1498,14 @@ $ install.sh claude-code --legal-corpus no --project-dir /p
 ERROR: refusing --legal-corpus no: 16 corpus page(s) are installed at ...
 $ echo $?
 1
+
+# propose, then place the confirmed list
+$ install.sh claude-code --expertise propose --project-dir /p
+library-corpus/language/nodejs  package.json: (present)
+library-corpus/npm/rxjs  package.json: rxjs
+$ install.sh claude-code --expertise library-corpus/npm/rxjs --project-dir /p
+$ head -1 /p/docs/graph/libraries/rxjs.md
+<!-- origin: corpus@<seed version> id: library-corpus/npm/rxjs -->
 ```
 
 ## 9. Acceptance criteria
@@ -822,6 +1551,51 @@ $ echo $?
       OPENCODE_CHECK_DETECTS_DRIFT
 - [ ] AC-19: a Prime Agent plant carries the same hook scripts as Claude Code,
       beside its extensions; maps to PRIME_HOOK_SCRIPTS_ARE_PLACED
+- [ ] AC-20: an owner sees the corpus pages the plant's manifests match before
+      anything is written; maps to EXPERTISE_PROPOSAL_WRITES_NOTHING
+- [ ] AC-21: exactly the confirmed pages land, each with its provenance, a
+      skill page as a routable node, and a bad list writes nothing; maps to
+      EXPERTISE_PLACES_ONLY_THE_CONFIRMED_LIST,
+      UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING,
+      PLACED_PAGE_CARRIES_ITS_PROVENANCE, PLACED_SKILL_IS_A_ROUTABLE_NODE
+- [ ] AC-22: the placed list is recorded and refreshed by every later install
+      without losing a plant edit or replacing a plant page; maps to
+      EXPERTISE_IS_RECORDED_IN_THE_STAMP, EXPERTISE_SURVIVES_SILENCE,
+      PLANT_EDITED_PAGE_IS_LEFT_AND_NAMED, PLANT_OWNED_PAGE_IS_NEVER_REPLACED,
+      and the failure RECORDED_EXPERTISE_PAGE_WITHDRAWN
+- [ ] AC-23: `--check` names a recorded page that is missing, stale or
+      withdrawn from the seed, and writes nothing; maps to
+      EXPERTISE_CHECK_NAMES_MISSING_OR_STALE and the failure
+      RECORDED_EXPERTISE_PAGE_WITHDRAWN
+- [ ] AC-24: the report, the stamp and the banner agree on the jurisdiction;
+      maps to JURISDICTION_RESOLVED_ONCE
+- [ ] AC-25: a wired context hook whose script is gone, or that prints
+      nothing, fails `--check`; maps to CHECK_EXECUTES_EACH_WIRED_HOOK
+- [ ] AC-26: an agent or skill in a harness directory with no graph home is
+      named `RETIRED` or `ORPHAN` by `--check` and by the graft audit,
+      nothing is deleted, and the flag alone does not fail `--check`; maps to CHECK_FLAGS_RETIRED_HARNESS_ENTRY,
+      CHECK_FLAGS_ORPHAN_HARNESS_ENTRY
+- [ ] AC-27: a project is offered a `language` page when a manifest declares
+      that language in a form a §6 language row names, and a `platform` or
+      `cli` page when it holds a trigger a §6 row lists for that page; a
+      `pom.xml`, `build.gradle` or `build.gradle.kts` that sets no Java
+      language level (an aggregator `pom.xml`) does not bring in
+      `language/java`, and only a §6 row is a trigger, so a word in a file
+      brings in no page; maps to LANGUAGE_DECLARATION_PROPOSES_ITS_PAGE,
+      PACKAGELESS_PAGE_PROPOSED_BY_ITS_TRIGGER
+- [ ] AC-28: a project that declares a package a library page lists as its
+      own (§6, the own-package list) is offered that page; a project that
+      declares only a package the page cites is not, except for a coordinate
+      a `maven` page names in its `## What it is` while the own-coordinate
+      form stands (§6, §11), and the owner then leaves that page out of the
+      list; maps to OWN_PACKAGE_LIST_PROPOSES_ITS_PAGE,
+      CITED_PACKAGE_PROPOSES_NOTHING
+- [ ] AC-29: a fresh install holds the seed's blank harvest-candidate form
+      at `docs/graph/plans/_harvest-candidates.template.md`, byte-identical
+      to the seed's, and no `docs/graph/plans/harvest-candidates.md` record;
+      after the plant writes its record and edits the form, `install.sh all`
+      changes neither and writes no backup beside either; maps to
+      HARVEST_CANDIDATE_FORM_IS_PLACED
 
 ## 10. Test mapping
 
@@ -858,6 +1632,7 @@ $ echo $?
 | ALL_CHECK_INCLUDES_RECORDED_COPILOT | D4 caseALL_CHECK_INCLUDES_RECORDED_COPILOT: a Copilot-recording plant is checked by `all --check`, in sync exits 0 with "up to date", drifted exits non-zero with STALE, no not-refreshed warning. The DEPRECATED notice of this run is held by E2 (LEGACY_INSTALL_PRINTS_DEPRECATED) | tests/test-install-adoption.sh | integration | green |
 | HOST_TIERS_AGREE | E4 caseHOST_TIERS_AGREE, two rows: the tier arrays and `all` disagree; codex leaves every tier while still dispatched. `check_host_tiers` fails naming `install.sh` | tests/test-seed-lint.sh | unit | green |
 | SESSION_RECORD_FORM_IS_PLACED | S9 inside case_plan_records: a fresh `install.sh claude-code` holds `docs/graph/plans/sessions/_session-record.template.md` byte-identical to the seed's form; after a plant record and an edit to the placed form, `install.sh all` leaves both byte-identical, with no backup beside either | tests/test-plant-state.sh | integration | green |
+| HARVEST_CANDIDATE_FORM_IS_PLACED | S14 inside case_plan_records: a fresh `install.sh claude-code` holds `docs/graph/plans/_harvest-candidates.template.md` byte-identical to the seed's form and no `harvest-candidates.md`; after a plant `harvest-candidates.md` and an edit to the placed form, `install.sh all` leaves both byte-identical, with no backup beside either; the leak check admits the form by name ; green on the real tree from its first run, because the installer already placed the form, so no RED was seen there; each check was proved instead by mutating a temp copy of the seed (the seed without the form, an installer that does not place it, a placed form one byte off, an install that creates the record, a reinstall that overwrites the edited form, one that backs it up, another seed leaf leaking into `plans/`), and each mutation failed on its own S14 message | tests/test-plant-state.sh | integration | green |
 | ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE | X383 case_engine_reconcile_stale_grill_lint: a stale `grill-lint.py` (the seed's copy with every line naming `waves` removed), reconciled with no `--preserve`, exits 0, equals the seed's file byte for byte, and leaves one `.bak-*` holding the older body | tests/test-graft-tools.sh | unit | green |
 | ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE | X384 case_engine_reconcile_spec_lint_keeps_test_globs: a `spec-lint.py` with the plant's own `TEST_GLOBS` and an older body, reconciled with no `--preserve`, exits 0, keeps the plant's `TEST_GLOBS` and adopts the seed's body | tests/test-graft-tools.sh | unit | green |
 | ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE | X385 case_engine_reconcile_explicit_preserve_wins: `--preserve=ROOT_ID` on a `graph-lint.py` whose plant changed `ROOT_ID` and `KIND_PREFIX` keeps the plant's `ROOT_ID` and takes the seed's `KIND_PREFIX`; guard | tests/test-graft-tools.sh | unit | green |
@@ -897,6 +1672,32 @@ $ echo $?
 | SEED_ONLY_FILES_NEVER_PLACED | X395 check_seed_only_stays_home: a copied `manifest.json` whose `tools` map drops `tools/code-anchor.py`, which `install.sh` places, is a finding naming `manifest.json` | tests/test-seed-lint.sh | unit | green |
 | PRIME_HOOK_SCRIPTS_ARE_PLACED | E12 case_prime_hook_scripts_placed: a fresh `install.sh prime-agent --copy` places `.prime/agent/hooks/route-hook.py` and `status-hook.py` byte-identical to `integrations/claude-code/`; `adapter_dirs prime-agent` names `.prime/agent/hooks`; a re-install over an older copy replaces it with a `.bak-` backup; no `.claude/` is created | tests/test-full-install.sh | integration; red on arrival (nothing placed under `.prime/agent/hooks/`); the no-`.claude/` arm passes today | green |
 | REINSTALL_ENGINE_SERVES_THE_HOOKS | E13 case_reinstall_engine_serves_hooks: over a `claude-code --copy` plant whose engine is the `v7.36.0` graph-lint.py with `plantkind` added to `KINDS` and `KIND_PREFIX = {"plantkind": "pk"}`, and older hook scripts, a plain `install.sh claude-code --copy`: (a) the engine is byte-unchanged; (b) the placed route-hook's first-prompt injection is the pointer line and one notice line naming `graph-lint.py`, `--plan-json` and `graft`; then `tools/graft-graph-engine.py` on the engine: (c) it accepts `--plan-json`, the hook injects `Router suggestion`, and `KINDS` holds `plantkind` and `KIND_PREFIX` equals the plant's | tests/test-full-install.sh | integration; red on arrival in (b) only (the hook has no notice path); (a) and (c) pass today, guards: (a) against an installer that touches the engine, (c) against a reconcile that copies the seed engine wholesale | green |
+| EXPERTISE_PROPOSAL_WRITES_NOTHING | M15 case_expertise_propose: over the synthetic manifests, `install.sh claude-code --expertise propose` exits 0 and prints the §6 lines for a Maven, an npm and a stack-keyed skill match; the target is byte-identical and carries no `.cypress/`, kernel or adapter; M16 holds that `corpus-match.py` is not placed | tests/test-install-placement.sh | integration; red on arrival (`unknown argument: --expertise`) | green |
+| EXPERTISE_PROPOSAL_WRITES_NOTHING | test_proposes_every_ecosystem_and_its_stack_pages | tests/test_corpus_match.py | unit; red on arrival (`tools/corpus-match.py` did not exist) | green |
+| EXPERTISE_PROPOSAL_WRITES_NOTHING | test_empty_proposal_is_never_silent | tests/test_corpus_match.py | unit; red on arrival (`tools/corpus-match.py` did not exist) | green |
+| EXPERTISE_PROPOSAL_WRITES_NOTHING | test_scratch_copies_and_foreign_dirs_are_not_read; at the tip it also writes a manifest under each agent host's directory (`.opencode`, `.claude`, `.codex`, `.prime`) | tests/test_corpus_match.py | unit; red on arrival (the walk read a `.bak-` copy, a graft backup, a `.tmp/` copy and a nested plant); the host arms added at the tip, proved by a reverted mutation that read `.claude`, `.codex` and `.prime` | green |
+| EXPERTISE_PROPOSAL_WRITES_NOTHING | test_manifest_rules_propose_their_pages: one project built in the test holds the maven starter and own-coordinate rule, the Dockerfile and Containerfile rules (a `dotnet/` image included), the azure-pipelines file and the dotnet-tools manifest; consolidated 2026-10-05 from four cases, each red on arrival in its own round | tests/test_corpus_match.py | unit | green |
+| LANGUAGE_DECLARATION_PROPOSES_ITS_PAGE | test_seed_pages_are_proposed_by_their_triggers: the eight Java-level forms (five pom.xml, two toolchain builds, source/targetCompatibility), two dart rows and Flutter beside Dart, and AC-27's no-level pom guard; consolidated 2026-10-05 | tests/test_corpus_match.py | unit | green |
+| OWN_PACKAGE_LIST_PROPOSES_ITS_PAGE | test_page_matches_the_packages_it_lists_as_its_own_in_any_ecosystem | tests/test_corpus_match.py | unit, the synthetic own-list subtests (`@comet/core`, `comet-rx`, `loom.extras`); the seed pages' rows (`@stomp/stompjs`; `bloc`, `bloc_test`) are in test_seed_pages_are_proposed_by_their_triggers since the 2026-10-05 consolidation, and `@stomp/rx-stomp`, `sockjs-client`, `stompjs` were cut as list data | green |
+| CITED_PACKAGE_PROPOSES_NOTHING | test_page_matches_the_packages_it_lists_as_its_own_in_any_ecosystem | tests/test_corpus_match.py | unit, the guard subtest: `tslib`, `nanoid`, `@popperjs/core` and `pdfjs-dist`, each cited in the `## What it is` prose of `npm/rxjs`, `npm/postcss`, `npm/bootstrap` and `npm/ng2-pdf-viewer`, propose none of them; green on arrival, so the GREEN proved it by a reverted mutation that reads every backticked name of the section (the guard and two synthetic citation subtests went red, then green on revert); the row reads the case | green |
+| PACKAGELESS_PAGE_PROPOSED_BY_ITS_TRIGGER | test_seed_pages_are_proposed_by_their_triggers: proxmox-ve by `community.proxmox` and `proxmoxer`, bitbucket-pipelines by its file, trivy by a compose image, a CI step image, its action and `trivy.yaml`, gitleaks by a compose image, its action, `.gitleaks.toml` and hook id `gitleaks-docker`; consolidated 2026-10-05, the alternate names cut as list data | tests/test_corpus_match.py | unit | green |
+| OWN_PACKAGE_NAMED_ONLY_IN_PROSE | (no behavioural test: the failure is a page author's; the matcher's half of it is CITED_PACKAGE_PROPOSES_NOTHING's guard) | — | — | pending |
+| EXPERTISE_PLACES_ONLY_THE_CONFIRMED_LIST | M16 case_expertise_place: a confirmed list of a library, a skill, a tool and an unmatched `platform`-key page places exactly those four and nothing under `docs/graph/legal/corpus/` | tests/test-install-placement.sh | integration; red on arrival (`unknown argument: --expertise`) | green |
+| UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING | M17 case_expertise_refused: a misspelt id, a `legal-corpus/` and an `agent-corpus/` id, an id holding `..`, an absolute path, a flat skill page, two ids with one destination, a skill id landing on the seed's own `skills/test-first` node and a library id landing on the `libraries/index.md` scaffold leaf (the last two added at the tip) are each refused by name with no Python error and the target byte-identical; over a plant recording `library-corpus/pypi/swift-cache`, listing `library-corpus/container/swift-cache` is refused by name with the plant byte-identical (the architect's condition) | tests/test-install-placement.sh | integration; red on arrival (`unknown argument: --expertise`) | green |
+| PLACED_PAGE_CARRIES_ITS_PROVENANCE | M16 case_expertise_place: the placed library and tool pages open with the §6 provenance line carrying the stamp's `version`, and every later byte equals the corpus page; M18 case_expertise_silence: `graft-audit.py` counts the refreshed page's backup `CORPUS-PLACED`, with no `UNMAPPED` backup and no knowledge overwrite | tests/test-install-placement.sh | integration; red on arrival (`unknown argument: --expertise`); the audit arm red until `graft-audit.py` read `origin: corpus@` | green |
+| PLACED_SKILL_IS_A_ROUTABLE_NODE | M16 case_expertise_place: `docs/graph/skills/lumen-upgrade.md` equals its stack-keyed corpus page plus the `origin: corpus@<version>` line, `graph-lint.py --show skill.lumen-upgrade` exits 0 and prints it, and `.claude/skills/lumen-upgrade/SKILL.md` exists | tests/test-install-placement.sh | integration; red on arrival (`unknown argument: --expertise`) | green |
+| EXPERTISE_IS_RECORDED_IN_THE_STAMP | M16 case_expertise_place: the stamp's `expertise` key holds the four ids sorted, each with its placed path and the SHA-256 of the file on disk; M18 holds that a key the installer does not own survives after it | tests/test-install-placement.sh | integration; red on arrival (`unknown argument: --expertise`) | green |
+| EXPERTISE_SURVIVES_SILENCE | M18 case_expertise_silence: a silent re-run makes no backup and keeps the record; a newer corpus page is placed with a backup and its recorded hash updated, an unchanged page is not backed up; a recorded page the plant deleted is placed again and named | tests/test-install-placement.sh | integration; red on arrival (`unknown argument: --expertise`) | green |
+| PLANT_EDITED_PAGE_IS_LEFT_AND_NAMED | M19 case_expertise_plant_edits: an edited placed page is byte-identical after a silent run and after a run listing its id, with no backup beside it, one line naming it and graft Phase 4, and its record entry unchanged | tests/test-install-placement.sh | integration; red on arrival (`unknown argument: --expertise`) | green |
+| PLANT_OWNED_PAGE_IS_NEVER_REPLACED | M19 case_expertise_plant_edits: the plant's own `docs/graph/libraries/ripple.md` is left byte-identical with no backup and named for graft Phase 4, no entry is recorded for it, and the other listed id is placed and recorded | tests/test-install-placement.sh | integration; red on arrival (`unknown argument: --expertise`) | green |
+| EXPERTISE_CHECK_NAMES_MISSING_OR_STALE | M20 case_expertise_check: a plant with no `expertise` key gets no expertise line; a current plant passes with the up-to-date line; a stale and a missing page fail `--check`, each named, with the plant byte-identical; a plant-edited page alone exits 0 and is named for graft Phase 4 | tests/test-install-placement.sh | integration; red on arrival (`unknown argument: --expertise`) | green |
+| EXPERTISE_MANIFEST_UNREADABLE | M15 case_expertise_propose: a `package.json` that is not JSON is named with its reason, the other manifests still match, exit 0, target byte-identical | tests/test-install-placement.sh | integration; red on arrival (`unknown argument: --expertise`) | green |
+| EXPERTISE_MANIFEST_UNREADABLE | test_unreadable_manifest_is_named_and_skipped | tests/test_corpus_match.py | unit; red on arrival (`tools/corpus-match.py` did not exist) | green |
+| RECORDED_EXPERTISE_PAGE_WITHDRAWN | M18 case_expertise_silence: with the seed's page removed, a plain install exits 0 with a `WARNING` naming the id and leaves the page and its entry; after the plant deletes the page the next run does not place it and keeps the entry; `--check` names the id and exits non-zero | tests/test-install-placement.sh | integration; red on arrival (`unknown argument: --expertise`) | green |
+| JURISDICTION_RESOLVED_ONCE | S13 case_jurisdiction_resolved_once: over a plant stamped `legal_corpus: yes`, `legal_jurisdiction: it`, a re-install with no flag prints no "jurisdiction undecided" line and no "no --legal-jurisdiction given", the national-layer report names `'it'` and the stamp keeps it; a re-install with `--legal-jurisdiction fr` names `'fr'`, not `'it'`, and the stamp records `fr`; a plant with no recorded code and no flag still prints the undecided banner | tests/test-plant-state.sh | integration; red on arrival (the no-flag re-install printed the undecided banner) | green |
+| CHECK_EXECUTES_EACH_WIRED_HOOK | M12 case_hook_check: over a copy of the every-host install, `claude-code --check` exits 0, keeps CHECK_WITHOUT_COPILOT_SAYS_SO's line, prints a ran line for the two Claude Code and the two Prime Agent hooks, and leaves the tree byte-identical; with `.claude/route-hook.py` removed it exits non-zero naming `UserPromptSubmit .claude/route-hook.py`; over a copy of the Copilot-only install with `.github/hooks/status-hook.py` removed, `github-copilot --check` exits non-zero naming `SessionStart .github/hooks/status-hook.py` | tests/test-install-placement.sh | integration; red on arrival (no ran line: `--check` ran no hook) | green |
+| CHECK_FLAGS_RETIRED_HARNESS_ENTRY | M13 case_retired_flag: over a copy of the every-host install carrying an `origin: seed` `docs/graph/skills/from-scratch-bootstrap.md` the seed does not ship and its `.claude/skills/` projection, plus an `origin: seed` `.claude/agents/legacy-steward.md` with no graph node (added at the tip), `graft-audit.py` keeps its clean-copy exit code and names the lone agent `RETIRED`, and `claude-code --check` exits 0, names all three `RETIRED` and leaves the tree byte-identical; after the projection gains a line and a re-install backs it up, `graft-audit.py` counts the backup `RETIRED`, reports no `UNMAPPED` backup and names the projection `RETIRED`; both entries are still on disk | tests/test-install-placement.sh | integration; red on arrival (`--check` printed no harness line, not even over the clean copy) | green |
+| CHECK_FLAGS_ORPHAN_HARNESS_ENTRY | M14 case_orphan_flag: over a copy of the every-host install, `claude-code --check` says every harness entry has a graph home (inside M13); with a skill in `.claude/skills/deploy-notes/` and an agent in `.prime/agent/agents/` and no graph node, it exits 0, names each `ORPHAN` with the graph home it lacks and leaves the tree byte-identical; `graft-audit.py` names the skill `ORPHAN` with its clean-copy exit code (asserted since the tip) | tests/test-install-placement.sh | integration; red on arrival (`--check` did not name the orphan skill) | green |
 
 Coverage note, so the table is not read as more than it is.
 
@@ -937,6 +1738,36 @@ before and after the installer change. The one `pending` failure row,
 OPENCODE_SELECTOR_UNRESOLVED, has no test by design: it needs a host catalog
 the installer does not have.
 
+**The 8.0.0 rows.** The twelve contracts and two failures of the 8.0.0
+entry in §12 were written ahead of their RED, each row `pending` until the
+increment it names landed its case. The selective-placement rows landed with
+increment 13: M15 to M20 in `tests/test-install-placement.sh` install from a
+copy of the seed whose three corpora are replaced by the synthetic subset
+under `tests/fixtures/corpus-placement/seed`, into a copy of the synthetic
+manifests beside it, never a real plant's; the matcher's own cases are in
+`tests/test_corpus_match.py`. Each case was run and seen failing before the
+installer, the matcher or the audit changed.
+
+**The matcher increment rows (2026-10-05).** The five cases of the
+increment match against the seed's own `library-corpus/`, while the older
+matcher cases use the fixture subset. Each new case holds a trigger or an
+own-package list that a named corpus page states, so a renamed page or a
+dropped list item fails here, which is the intent: the list is a contract
+between the page and the matcher. The projects stay synthetic and are built
+in the test. The assertions are by id and by the evidence's manifest prefix,
+so the corpus can grow under them. The GitHub Action and the
+`bitbucket-pipelines.yml` step-image subtests went past the brief's examples,
+and they are in scope by the architect's decision: the trivy and gitleaks
+pages name the action and the pipeline as the channels that decide the
+version a project runs. The tester added the two arms of §6 the first
+cases lacked, the Gradle `sourceCompatibility` and `targetCompatibility`
+form and a `pom.xml` that sets no language level, and named the four new
+contracts in the five cases' docstrings, which `spec-lint.py` reads for
+coverage and `seed-lint` requires before a row turns `green`. The
+unreachable pages of §6 have no case, by decision, and neither has the
+own-coordinate form's false positive (CITED_PACKAGE_PROPOSES_NOTHING's
+Except), which a case would freeze into the corpus.
+
 **M1 shares a label with a different invariant.** `tests/test-install-placement.sh`
 carries cases headed `M1 completeness` and exits `M1 VIOLATED`, but what they
 assert is that every machinery node the seed owns *arrives* in the plant — not
@@ -965,6 +1796,12 @@ narrower M2 above.
 | Question | Why it matters | Current assumption | Owner | Resolves by |
 |---|---|---|---|---|
 | PARTIAL_CORPUS has no regression | The check was corrected from `-ge` over files to `-eq` over pages, but `place_tree` never fails partway, so no public-interface sequence produces the partial corpus the old check waved through | The correction is right and untested; it becomes testable when placement can fail mid-tree (ENOSPC, permission fault) | seed-installer | a fault-injection harness, if one is ever justified |
+| How does an owner drop a page from the `expertise` record? | EXPERTISE_IS_RECORDED_IN_THE_STAMP never removes an id, and EXPERTISE_SURVIVES_SILENCE places a deleted page again, so a page the plant has dropped returns on every install | None this round: the record only grows; the owner edits the stamp by hand, which the installer then honours | seed-installer | the first plant that withdraws a placed page |
+| When do the `maven` pages move to the own-package list? | The own-coordinate form (§6) reads every backticked coordinate in `## What it is`, so a coordinate a page only cites there proposes it (the mysql-connector-j page and a MariaDB driver entry), the exception CITED_PACKAGE_PROPOSES_NOTHING and AC-28 state | The form stays for `maven` pages; their authors cite a coordinate they do not own in a later section, and the owner leaves a wrongly proposed page out of the list | seed-installer | a docs pass that writes every `maven` page's own coordinates as an own-package list; the matcher then drops the form, with its case |
+| When are the pages that name their own sibling packages only in prose converted to the own-package list? | A project that declares only a sibling package is not offered the page (OWN_PACKAGE_NAMED_ONLY_IN_PROSE), so that plant pays for a research-scout run the page exists to save, and no line of the proposal reports the miss | A docs pass converts each such page it reaches; until then the owner lists the missed id by hand | seed-installer | a corpus page-shape check that names each library page whose `## What it is` carries no own-package list, or the last such page converted |
+| Should a Gradle build's dependencies match `maven` pages? | A Gradle project gets no library page proposed from its build; only its Java language level is read (§6) | No, this increment reads a Gradle build for its language level only | seed-installer | the first Gradle plant whose proposal misses a library it declares |
+| How is `language/java` reached when the language level comes from a parent outside the project? | The declaration rule (§6) proposes nothing for a build that inherits its level, though the project is Java | The owner lists `language/java` by hand; a JDK runtime image rule (`eclipse-temurin`, `openjdk`) is the candidate fix, as the java page puts the runtime build in the base image | seed-installer | the first plant whose proposal misses `language/java` |
+| Should the matcher read a lockfile's transitive entries? | A direct dependency names what the plant calls; a transitive one names what it carries, and a page for it is noise in the plant's routing | No: direct dependencies only (§6) | seed-installer | the first proposal that misses a library the plant calls through a transitive entry |
 
 ## 12. Changelog
 
@@ -1208,3 +2045,221 @@ only version surface it has, and it moves with each entry here.
   `green`; the two `pending` rows are the failures PARTIAL_CORPUS and
   OPENCODE_SELECTOR_UNRESOLVED, untested by design (§7, §11). No contract
   changed. The status stays `back-written`.
+- 2026-10-04: 8.0.0, written ahead of its RED (plan
+  `docs/plans/grill-8.0.0-wave-a.md`, increment 1), on the owner's
+  decisions of 2026-10-04: corpus knowledge is placed selectively, and a
+  fail-open hook warns on a missing script and is run once by `--check`.
+  §1, §2 and §3 take in the selective placement, the one jurisdiction
+  resolution and the hook execution under `--check`. §4 gains twelve
+  contracts, live from this entry: EXPERTISE_PROPOSAL_WRITES_NOTHING,
+  EXPERTISE_PLACES_ONLY_THE_CONFIRMED_LIST,
+  UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING,
+  PLACED_PAGE_CARRIES_ITS_PROVENANCE, PLACED_SKILL_IS_A_ROUTABLE_NODE,
+  EXPERTISE_IS_RECORDED_IN_THE_STAMP, EXPERTISE_SURVIVES_SILENCE,
+  PLANT_EDITED_PAGE_IS_LEFT_AND_NAMED, PLANT_OWNED_PAGE_IS_NEVER_REPLACED and
+  EXPERTISE_CHECK_NAMES_MISSING_OR_STALE (increment 13),
+  JURISDICTION_RESOLVED_ONCE (increment 10) and
+  CHECK_EXECUTES_EACH_WIRED_HOOK (increment 11). §5 Security bounds an id to
+  the three corpus roots. §6 gains the `expertise` stamp key, the corpus id,
+  the destinations, the provenance line, the proposal line, the matcher's
+  per-ecosystem normalization and the check envelope. §7 gains
+  EXPERTISE_MANIFEST_UNREADABLE and RECORDED_EXPERTISE_PAGE_WITHDRAWN; §9
+  gains AC-20 to AC-25; §10 gains fourteen rows, `pending` until each
+  increment's tester names its case; §11 gains two questions, the removal of
+  a recorded id and the lockfile's transitive entries. §0 lists the sign-offs
+  these contracts owe, unticked. Until the RED lands, `spec-lint.py` counts
+  the twelve contracts as uncovered. No existing contract changed; the status
+  stays `back-written` until the first RED over a new contract (plan §12
+  question 5).
+- 2026-10-04: 8.0.0, increment 10 (lane Serial chain), the first RED over a
+  new contract: `case_jurisdiction_resolved_once` in
+  `tests/test-plant-state.sh` failed on a re-install with no flag, whose
+  banner called the recorded jurisdiction undecided, and passes once
+  `install.sh` resolves the jurisdiction once, the flag and then the stamp.
+  §10's JURISDICTION_RESOLVED_ONCE row is `green`. The status moves from
+  `back-written` to `active` with this RED (plan §12 question 5); product,
+  architect and tester signed in §0, where their non-blocking conditions are
+  listed. §3 gains the jurisdiction sentence product asked for. No contract
+  changed.
+- 2026-10-04: 8.0.0, increment 11 (lane Serial chain), the RED over
+  CHECK_EXECUTES_EACH_WIRED_HOOK: `case_hook_check` in
+  `tests/test-install-placement.sh` failed because `--check` ran no hook,
+  and passes once `install.sh --check` runs each wired context hook. §10's
+  row is `green`. The contract gains two And clauses: a sound hook always
+  prints on the check envelope, which answers the architect's condition that
+  SPEC-0003 lets the status hook stay silent (only its summary can be
+  silent; the anchor line is not), and a command that names no plant script
+  is said and not run. §6 gains the Prime Agent argv values and the check's
+  four lines. §0 records the answer. No other contract changed.
+- 2026-10-04: 8.0.0, increment 12 (lane Serial chain), written in the
+  increment's specify step on the owner's decision of 2026-10-04 (flag harness
+  entries with no graph home, never delete them), after the reproduction confirmed both halves (plan
+  §12 question 4): over a synthetic plant carrying a retired `origin: seed`
+  skill and its `.claude/skills/` projection, and a skill living only in
+  `.claude/skills/`, `install.sh claude-code --check` and
+  `tools/graft-audit.py` named neither. §4 gains
+  CHECK_FLAGS_RETIRED_HARNESS_ENTRY and CHECK_FLAGS_ORPHAN_HARNESS_ENTRY; §3
+  gains their sentence; §6 gains the harness entries and the flag lines; §9
+  gains AC-26. Their RED: `case_retired_flag` and `case_orphan_flag` in
+  `tests/test-install-placement.sh` failed because `--check` printed no harness line,
+  and pass once `--check` runs `graft-audit.py --harness`, the one home of the
+  classification. §10's two rows are `green`. The sign-offs in §0 predate these
+  two contracts, which are owed product, architect and tester reviews. No
+  existing contract changed; EVERY_BACKUP_IS_CLASSIFIABLE gains a named
+  exclusion, `RETIRED`, in place of an `UNMAPPED` backup.
+- 2026-10-04: 8.0.0, increment 13 (lane Serial chain), the RED over the
+  selective placement. M15 to M20 in `tests/test-install-placement.sh` failed
+  with `unknown argument: --expertise`, and the three cases of the new
+  `tests/test_corpus_match.py` because `tools/corpus-match.py` did not exist;
+  they pass once the installer carries the `--expertise` arm, the matcher
+  exists and `tools/graft-audit.py` counts a corpus-placed backup
+  `CORPUS-PLACED`. §10's fourteen rows are `green`. The two conditions §0
+  recorded for this increment are answered in the contract text:
+  RECORDED_EXPERTISE_PAGE_WITHDRAWN states the exit code of a plain install,
+  its precedence over EXPERTISE_SURVIVES_SILENCE (which gains the matching
+  Except) and the refusal of a listed withdrawn id, and AC-22 and AC-23 map
+  to it; UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING's Given gains a listed id
+  whose destination a different recorded id owns, and an And clause for a
+  destination the seed itself places. No other contract changed.
+- 2026-10-04: 8.0.0, a follow-up to increment 13 (lane Serial chain): the
+  matcher's recall. Read-only runs of `tools/corpus-match.py` over real projects
+  showed four defects that leave out a page a plant needs: the walk read
+  scratch and copy directories, so an evidence line could name a `.tmp/`
+  copy instead of the manifest; a starter entry proposed its umbrella page and never its
+  module's page; a `Dockerfile` was not read; and several pages had no rule a
+  manifest could meet. §6 gains the walk's edge, the starter reading of an
+  artifactId, the coordinates a maven page names as its own, the `Dockerfile`
+  and `Containerfile` rule, the runtime-image rule, the presence rules for a
+  compose file, a `Dockerfile` and an `azure-pipelines*.yml`, and the
+  `dotnet-tools.json` rule. The five new `tests/test_corpus_match.py` cases
+  failed first and pass now; §10 gains their rows. The proposal's line form is
+  unchanged, so M15 to M20 are untouched. No contract's text changed.
+- 2026-10-04: 8.0.0, increment 15 (the tip). Product, architect and tester
+  reviewed CHECK_FLAGS_RETIRED_HARNESS_ENTRY, CHECK_FLAGS_ORPHAN_HARNESS_ENTRY,
+  increment 13's contract text and its follow-up's §6 matcher rules, each on
+  its own read-only review, and signed (§0, with the architect's notes for a
+  later round). The tester's blocking gaps were closed with cases before the
+  tick: M13 gains an `origin: seed` harness entry with no graph node, M13 and
+  M14 assert graft-audit's exit code against the clean copy, M17 gains the
+  two destinations the seed itself places (a skill node, a scaffold leaf),
+  and `tests/test_corpus_match.py` gains a `Containerfile`, a `dotnet/` image
+  and a manifest under each agent host's directory; each new matcher arm was
+  proved by a reverted mutation, since it passed on arrival. AC-26 now says a
+  flag alone does not fail `--check`. Every §10 contract row is `green`; the
+  two `pending` rows are the failures PARTIAL_CORPUS and
+  OPENCODE_SELECTOR_UNRESOLVED, untested by design. The status moves from
+  `active` to `implemented` (plan §12 question 5, `verify.status-evidence`).
+  No contract was added or changed.
+- 2026-10-05: 8.0.0, the matcher increment, written by the architect after
+  the tester's RED. Read-only runs of the matcher
+  had left `language/java`, `language/dart`, `platform/proxmox-ve`,
+  `platform/bitbucket-pipelines`, `cli/trivy` and `cli/gitleaks` with no rule
+  a project could meet, and the own coordinates were read on `maven` pages
+  only, so the packages an npm or pub page lists as its own proposed nothing.
+  §4 gains four contracts: LANGUAGE_DECLARATION_PROPOSES_ITS_PAGE,
+  OWN_PACKAGE_LIST_PROPOSES_ITS_PAGE, CITED_PACKAGE_PROPOSES_NOTHING and
+  PACKAGELESS_PAGE_PROPOSED_BY_ITS_TRIGGER. §6 gains the language rows (the
+  Java language level in a Maven or Gradle build, the Dart SDK constraint in
+  a pubspec), the own-package list as the one convention by which a library
+  page in any key names its own packages, with its reasons and its cost, the
+  `maven` own-coordinate form as transitional, the platform and tool
+  triggers (a `bitbucket-pipelines.yml` and its step images, the
+  `community.proxmox` collection and the `proxmoxer` requirement, the
+  `trivy` and `gitleaks` images, GitHub Actions, config files and pre-commit
+  hooks), and the four pages unreachable by decision (`platform/azure-cli`,
+  `platform/azure-devops-rest`, `cli/curl`, `cli/git`). The `maven` row's
+  sentence on own coordinates moves into the own-coordinate paragraph; its
+  meaning is unchanged. §7 gains OWN_PACKAGE_NAMED_ONLY_IN_PROSE, and
+  EXPERTISE_MANIFEST_UNREADABLE names the new contracts. §2 and §3 take in
+  the own-package list and the triggers; §9 gains AC-27 and AC-28; §10 gains
+  six `red` rows over the tester's five cases and one `pending` failure row;
+  §11 gains three questions. The status moves from `implemented` back to
+  `active`, because the new rows are `red` and `implemented` means every
+  contract row is green (`verify.status-evidence`); it returns with the
+  GREEN. The architect signs these additions in §0; product and tester owe
+  their reviews. None of the tester's cases is dropped. No existing
+  contract's text changed.
+- 2026-10-05: 8.0.0, the matcher increment's product review, answered by
+  the architect. AC-28 said a page is never offered for a package it only
+  mentions, which CITED_PACKAGE_PROPOSES_NOTHING's Except for `maven` pages
+  contradicted. AC-28 now names that exception and the owner's recovery, and
+  the Except says which coordinate it covers: one a `maven` page names in its
+  `## What it is`, not one it cites later. Its meaning is unchanged. AC-27
+  binds to the §6 rows and gains its precision arm, a build that sets no Java
+  level does not bring in `language/java`, which the tester's aggregator
+  `pom.xml` subtest holds. §3 names the Maven exception and the owner's
+  listing of a page no rule reaches. §6 and §11 replace the jjwt example of
+  the false positive with the mysql-connector-j page and the MariaDB driver,
+  because the corpus pass of this round moved jjwt's BouncyCastle coordinate
+  to a later section; the MariaDB entry still proposes mysql-connector-j,
+  seen by running the matcher. §7's recovery points to a new §11 question on
+  the pages that name their sibling packages only in prose. §10 records the
+  tester's two added subtests. No contract was added.
+
+- 2026-10-05: 8.0.0, the matcher increment's GREEN in `tools/corpus-match.py`.
+  The own-package list is read on the pages of every key, with the key's
+  normalization, and the own-coordinate form stays for `maven` pages. The
+  matcher gains the language rows (a `pom.xml` Java level, a Gradle toolchain
+  `languageVersion` or `sourceCompatibility`/`targetCompatibility`, a pubspec
+  `environment:` `sdk:`), the `bitbucket-pipelines.yml` presence and string
+  images, a GitHub workflow's `uses:`, the pre-commit hook ids, the presence
+  of `trivy.yaml`, `.trivyignore` and `.gitleaks.toml`, the `trivy` and
+  `gitleaks` images, and the two Proxmox VE rows. §10's six `red` rows are
+  `green`. Each guard was proved by a reverted mutation: reading every
+  backticked name of `## What it is` turned the citation guard red, and
+  proposing `language/java` on a `pom.xml`'s presence turned the no-level
+  subtest red. Within one manifest, an entry that names a page is preferred
+  as evidence over one the page's list names. The evidence of a list match
+  names the declared package without its version specifier. §6's sentence on
+  the MariaDB driver no longer calls that proposal wrong, because the
+  mysql-connector-j page has a MariaDB section. The status returns to
+  `implemented`. No contract changed.
+
+- 2026-10-05: 8.0.0, the harvest-candidate form. This release added
+  `templates/docs/plans/_harvest-candidates.template.md`, and the
+  `templates/docs/**` walk places it at
+  `docs/graph/plans/_harvest-candidates.template.md`. case_plan_records then
+  failed, because its leak check allowed only the `grill.md` scaffold and
+  the session-record form into `plans/`. The architect decided the form is
+  placed, not held back: `canonize.harvest-candidates` creates the plant's
+  record from the form at that path, graft's Phase 8 writes KEEP-PLANT
+  divergences into that record, `graft.gate.rootstock` already names the
+  placed form as an expected leaf, and `graft-audit.py --unfilled` skips
+  `_`-prefixed leaves, so the form is never reported as an unfilled
+  scaffold. §4 gains HARVEST_CANDIDATE_FORM_IS_PLACED, with the same
+  guarantees as SESSION_RECORD_FORM_IS_PLACED: placed byte-identical by the
+  existing walk with `place_if_missing`, no new write site, never
+  overwritten once the plant edits it, no backup beside it, and the plant's
+  record untouched. It is a new slug rather than a widened S9, because the
+  form has its own reader and record, and S9's slug is cited in the entries
+  above. §10 binds it to a new label, S14 in case_plan_records, as `red` until the tester's
+  adjusted case lands, so the status moves from `implemented` back to
+  `active`; it returns to `implemented` when that row is `green`. No
+  installer behaviour and no existing contract changed. The architect wrote
+  the contract; product and tester owe their review of it.
+
+- 2026-10-05: 8.0.0, the harvest-candidate form's GREEN. The tester added
+  S14 to case_plan_records in `tests/test-plant-state.sh`. It passed on the
+  real tree from its first run, because the installer's `templates/docs/**`
+  walk already placed the form; no RED was seen on the real tree. The checks
+  were proved by mutation instead: on a temp copy of the seed the unmutated
+  case passed, and seven mutations each failed on their own S14 message (the
+  seed without the form, an installer that does not place it, a placed form
+  one byte off, an install that creates `harvest-candidates.md`, a reinstall
+  that overwrites the edited form, a reinstall that backs it up, and another
+  seed leaf leaking into `plans/`). §10's row for
+  HARVEST_CANDIDATE_FORM_IS_PLACED is `green`, and the status returns to
+  `implemented`. The tester signs the contract in §0; product's review is
+  still owed. No contract and no installer behaviour changed.
+
+- 2026-10-05: 8.0.0, the harvest-candidate form's product review, answered
+  by the architect. Product held its tick because §3 did not name the form
+  and no acceptance criterion mapped to HARVEST_CANDIDATE_FORM_IS_PLACED. §3
+  now states the owner-visible outcome: a blank form is placed, canonize
+  starts the record from it, no install creates the record, and a
+  re-install keeps the plant's record and edited form with no copy. §9
+  gains AC-29, bound to the path, the `install.sh all` re-run and the
+  backup check that S14 asserts. The contract's Then clause on
+  `SINGLE_WRITER`'s census, which S14 does not measure, moves into the
+  contract's preamble as its rationale; the contract's meaning is unchanged.
+  Product re-reads before it ticks.

@@ -1,0 +1,5 @@
+services:
+  cache:
+    image: registry.example.test/team/swift-cache:7.2@sha256:0000
+  web:
+    image: "sample-web:${TAG:-latest}"

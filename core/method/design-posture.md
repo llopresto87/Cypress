@@ -31,6 +31,7 @@ load_when:
   - "port and adapter, keep the driver behind a seam"
   - "enforce an invariant with a database constraint, not an application check"
   - "idempotent converge, read compare write only on drift"
+  - "adopt a system that already holds records, which records convergence may write"
 prevents: Separation chosen by habit — layers with no responsibility, dependencies pointing whichever way was convenient, and abstractions with one implementation.
 est_tokens: 2511
 ---
@@ -218,6 +219,13 @@ the gate itself belongs to `protocol.verify`. Confine any ad-hoc
 command channel to what the structured interface cannot do — bootstrap,
 export, transfer — and account for its credential and trust surface
 separately.
+
+A unit that adopts a system already holding records starts those records
+unmanaged: declared, read and reported, never written. It scopes its
+validation to the managed set, and each record is promoted to managed by
+an owner decision, so day-one convergence never rewrites state nobody
+has reviewed. The identity the unit authenticates with stays outside the
+managed set by default (`method.host-parity`).
 
 ## Neighbours
 

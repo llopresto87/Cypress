@@ -1,11 +1,11 @@
 # Directive (EU) 2022/2555 (NIS2) — EU + national transposition
 
-> Project-agnostic legal citation notes, folded into the seed by the harvest
-> protocol. Orientation for citing this directive and its transposing national
-> acts where recorded — a directive alone does not bind persons; the
-> transposing national act does (see `transposed_by` per entry). Confirm
-> currency before relying on any entry, especially size-gate thresholds and
-> deadlines, which are the highest-risk fields here. Entry contract:
+> Project-agnostic legal citation notes, kept in the seed's legal corpus
+> (`legal-corpus/README.md`). Orientation for citing this directive and its
+> transposing national acts where recorded — a directive alone does not bind
+> persons; the transposing national act does (see `transposed_by` per entry).
+> Confirm currency before relying on any entry, especially size-gate thresholds
+> and deadlines, which are the highest-risk fields here. Entry contract:
 > `../_schema.md`.
 
 **Instrument kind:** `directive` — **binds Member States, not persons.** What a
@@ -72,8 +72,7 @@ do not read the Directive-side text as the Italian text.
   not the official source.**
 - **official_url:** https://eur-lex.europa.eu/eli/dir/2022/2555/oj/eng ·
   IT: https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32022L2555
-- **language_version:** English, original OJ text as published; no consolidated
-  version recorded as at 2026-07-31.
+- **language_version:** English, original OJ text as published; the Publications Office lists one consolidated version, 02022L2555-20221227 (dated 2022-12-27, no later one; checked 2026-10-05 via SPARQL, consolidated text not fetched)
 - **verified:** 2026-07-31 · **legal_status:** `in force`
 
 ### Group B — every other Directive entry (Arts. 2(1), 3, 6(28), Annexes I/II)
@@ -178,8 +177,7 @@ anywhere.
   IT: https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32022L2555
 - **consulted:** mirror + two independent secondary sources; **EUR-Lex blocked
   by bot-challenge** — **verification_grade:** `secondary-corroborated`
-- **language_version:** English (via mirror), original OJ text as published; no
-  consolidated version recorded as at 2026-07-31
+- **language_version:** English (via mirror), original OJ text as published; the Publications Office lists one consolidated version, 02022L2555-20221227 (dated 2022-12-27, no later one; checked 2026-10-05 via SPARQL, consolidated text not fetched)
 - **verified:** 2026-07-31 · **legal_status:** `in force`
 - **transposed_by:** `it-dlgs-138-2024` (Italy) ·
   **transposition_status:** adopted · **divergence:** see the Art. 34 trap above

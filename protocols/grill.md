@@ -30,7 +30,7 @@ load_when:
   - "an increment shipped, revise the plan, record what happened"
   - "plan is stale, assumption broke, architecture change"
 prevents: Increments chosen one at a time with no plan-of-record, so nothing says which contract an increment satisfies and a broken assumption is discovered rather than recorded.
-est_tokens: 3820
+est_tokens: 4396
 command: true
 ---
 
@@ -228,6 +228,20 @@ row that depends on a later row is misordered, and the orchestrator
 reads §9 top to bottom when it sequences spawns. `none` is a valid
 value; blank is not.
 
+**A new pipeline or deploy path starts as a walking skeleton.** When the
+plan adds one, its first increment lands the pipeline file, its image
+and its declaration with every job stubbed, and runs it once on the real
+CI target before any domain logic is written. Domain increments then
+fill the skeleton, with a real run per batch. Ordered by contract group
+instead, the pipeline lands last, and the defects only a real run can
+show (wiring, permissions, paths, the image itself) all arrive at the
+end, after the code they would have shaped. The spec can grow the same
+way, one slice ahead of each RED (`specify.flow`). Until a group's
+slice is signed, its increments' `Spec contracts:` field reads
+`slice pending: <the behavior the slice will specify>`. Such a row is
+not ready (below) and goes to no RED; when the slice lands, the row
+names its slugs and the spec-plan alignment is pressed again for it.
+
 **Ask of every increment: does it need a test?** Decide it here, while
 slicing, not at RED. An increment needs a test when it adds behavior that
 can be wrong while the code is present, and something breaks, for someone,
@@ -291,6 +305,14 @@ or §13 is an assumption with no home — resolve it or move it to §12.
 A value that needs human input is marked **do-not-guess** in §12 and
 left for sign-off, because a guessed value would read as settled.
 
+**Environment parity.** A plan that changes a deploy chain reads, once
+and from source, the versions each environment pins for the images and
+tools the chain touches, and records any drift as a §11 risk or a §9
+increment. Drift between environments otherwise surfaces only when
+someone happens to ask. A production pin that can be read only on the
+running system, not in source, is touching a live workload and waits
+for the owner (`vcs-posture.publish-authorization`).
+
 **Refutation.** On a T3 plan, any one-way door (`architect`
 reversibility class) and the top risk by probability × impact go to
 `devils-advocate` as a finished, claim-bearing deliverable for its
@@ -315,7 +337,11 @@ can give. It is one numbered list with two parts:
 2. **Every owner-only prerequisite.** Each step in §9 that only the
    owner can take: a platform setting, an approval, a merge, a
    credentialed call, access to an environment. Name the increment
-   that needs it.
+   that needs it. Where the plan repeats a non-production act that
+   needs the owner's authorization (pushing the feature branch,
+   queueing a named test pipeline), ask here for a scoped standing
+   grant that names those acts and targets, instead of one ask per act;
+   its bounds are `vcs-posture.publish-authorization`'s.
 
 Record the answers in §4 under "Cost constraints", dated, and cite them
 from the briefs of the workers they bind. Asked up front, the

@@ -100,7 +100,8 @@ VERDICTS (a row fails the gate unless noted)
                a fact, or — for an expert — missing the frontmatter that makes
                it a node the graph and the harness can use
   UNGROUNDED   an item requiring external grounding cites no retrieved source
-               that resolves under docs/graph/sources/
+               that resolves under docs/graph/sources/, and does not declare
+               `grounding.unavailable` with the reason no upstream exists
   DANGLING     a COVERED row cites evidence paths that do not exist
   UNJUSTIFIED  an ABSENT row gives no reason, or no paths it searched; a
                normalized source under a COVERED sources/ that keeps no raw
@@ -126,7 +127,8 @@ VERDICTS (a row fails the gate unless noted)
   UNKNOWN      an honest blocker, named. Reported always, never a failure —
                the one legitimate way a row stays uncovered — where reported
                means named in docs/graph/changelog.md, the entry the delivery
-               writes (see SILENT).
+               writes (see SILENT). A row that declares its grounding
+               unavailable is reported the same way, on the same condition.
 
 Usage:
   growth-audit.py <plant-root> <seed-root>            lint (the gate)
@@ -1810,14 +1812,25 @@ def lint_inventory(plant, rec, templates, findings):
                 if rel.startswith("sources/") and is_substantive(plant, rel, templates)[0]:
                     grounded = True
                     break
-            if not grounded:
+            unavailable = declared_unavailable(item)
+            if not grounded and unavailable:
+                # A source that does not exist cannot be retrieved, and holding
+                # the row to a citation it can never carry blocked the gate on
+                # a blocker the record already named. The declaration is not a
+                # pass: it is reported, and put to the owner (SILENT otherwise).
+                findings.append(Finding("UNKNOWN", label,
+                                        f"grounding declared unavailable: "
+                                        f"{unavailable}"))
+            elif not grounded:
                 findings.append(Finding("UNGROUNDED", label,
                                         "requires external grounding and cites "
                                         "no retrieved source that resolves to a "
                                         "filled file under docs/graph/sources/ "
                                         "— dispatch a research-scout for the "
                                         "upstream documentation and normalize "
-                                        "it there"))
+                                        "it there, or, where no upstream "
+                                        "exists, declare `grounding.unavailable` "
+                                        "with the reason"))
         if kind == "objective":
             # An objective's own evidence is in-tree (Cypress/...:line); its
             # EXPERTISE is grounded one hop away, through `grounded_by` naming
@@ -1851,9 +1864,17 @@ def lint_inventory(plant, rec, templates, findings):
                                                 f"on expertise nobody grounded"))
 
 
+def declared_unavailable(item):
+    """The reason an item declares its upstream unavailable, or "" when it
+    declares none. A blank or non-string value declares nothing."""
+    why = (item.get("grounding") or {}).get("unavailable")
+    return why.strip() if isinstance(why, str) else ""
+
+
 def unknown_rows(rec):
-    """Every row the record closes UNKNOWN, labelled as the lint labels it,
-    with the names a delivery entry would call it by."""
+    """Every row the record closes UNKNOWN, or whose grounding it declares
+    unavailable, labelled as the lint labels it, with the names a delivery
+    entry would call it by."""
     out = []
     for key, prefix in (("collections", "collection"), ("agents", "agent"),
                         ("experts", "expert")):
@@ -1863,7 +1884,8 @@ def unknown_rows(rec):
                 out.append((f"{prefix} {row['name']}",
                             [str(row["name"]).rstrip("/")]))
     for item in rec.get("inventory", []):
-        if (item.get("status") or "").strip().upper() == "UNKNOWN":
+        if ((item.get("status") or "").strip().upper() == "UNKNOWN"
+                or declared_unavailable(item)):
             name = item.get("name") or item.get("slug") or "<unnamed>"
             out.append((f"{item.get('kind') or 'item'} {name}",
                         [n for n in (item.get("name"), item.get("slug")) if n]))

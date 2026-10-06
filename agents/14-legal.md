@@ -13,7 +13,7 @@ routing_triggers:
   - "regulatory obligations for a product with digital elements"
   - "evaluate the international transfer impact for this data flow"
   - "check every citation in this compliance document against the corpus"
-  - "is this obligation actually in the corpus or do we need an ingest"
+  - "is this obligation actually in the corpus or an ingest gap"
   - "which provision of the instrument applies, with its article and date"
 can_delegate: false
 id: agent.legal

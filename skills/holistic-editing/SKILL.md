@@ -150,8 +150,8 @@ instead of this skill:
 
 - the plan-of-record's history/changelog (see `grill-planner`: stale
   claims are struck through, not deleted),
-- Architecture Decision Records (see `adr-writer`: superseded, never
-  edited in place),
+- Architecture Decision Records (see `adr-writer`: superseded, or
+  corrected by an appended dated note, never edited in place),
 - any changelog or audit log.
 
 This skill governs code and single-current-truth knowledge pages, where
@@ -172,11 +172,19 @@ their content says, so review passes over them.
   **Correction** beside it states the corrected finding. This is the one
   retraction rule for a graph fact (`knowledge-graph`, rule 5) and for
   an archived copy kept because the reasoning error is itself the
-  finding. Keeping the original preserves the reasoning, which stops the
+  finding; a ratified ADR is the one variant, its body left unstruck and
+  its Correction appended after it (`adr-writer`). Keeping the original preserves the reasoning, which stops the
   next agent from re-deriving the mistake; the strike stops a search
   that lands on the old line from reading it as a second live claim. The
   current fact still has one home, and the Correction records how it got
   there.
+- **A rename** sweeps every live reference to the renamed thing: config,
+  code, current-truth pages, comments. It leaves alone the records of what
+  ran under the old name: delivery history, executed-run evidence rows (even
+  inside a current-truth page such as a verification runbook), and kept
+  artifacts such as backups stored under the old name. Rewriting them would
+  state that a run happened under a name it never had. Name both sets in the
+  rename's changelog line.
 
 ## Self-check, run before you answer
 

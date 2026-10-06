@@ -139,6 +139,8 @@ PLACE_ANCHOR = '    place_file "$SEED_ROOT/tools/code-anchor.py" "$g/code-anchor
 OC = {"$schema": "https://opencode.ai/config.json", "subagent_depth": 3}
 AGN = "leaked host 198.18.7.42 and advisory CVE-2031-99999"
 HOME = "Ran it from /home/exampleuser/work."
+NESTED_FIX = "tests/fixtures/nested-skill-corpus/maven/example-stack-procedure.md"
+NESTED = "skill-corpus/maven/example-stack-procedure.md"
 ROWS = [
     # check(): the inline checks
     ("sovereign-command", "check", lambda: sub("protocols/graft.md", r"^(est_tokens:[^\n]*\n)", r"\1command: true\n", True), "must not declare 'command: true'"),
@@ -157,6 +159,14 @@ ROWS = [
     ("agn-tool-corpus", "check", lambda: append("tool-corpus/testing/http-smoke-suite.md", AGN), "tool-corpus/testing/http-smoke-suite.md"),
     ("agn-agent-corpus", "check", lambda: append("agent-corpus/env-contract-manager.md", AGN), "agent-corpus/env-contract-manager.md"),
     ("agn-skill-corpus", "check", lambda: append("skill-corpus/harden-docker-host.md", AGN), "skill-corpus/harden-docker-host.md"),
+    # a stack-keyed skill-corpus/<key>/<name>.md page is walked by the one file walk
+    # the agnosticism and reference checks share, so a dangling nested reference fails
+    ("nested-skill-corpus-dangling-ref", "check", lambda: put(NESTED, read(NESTED_FIX) + "\nSee `skill-corpus/maven/no-such-procedure.md`.\n"),
+        (NESTED, "dangling corpus/template reference 'skill-corpus/maven/no-such-procedure.md'")),
+    # a stack: that names no library page, under a key the library corpus does not define
+    ("corpus-stack-points-nowhere", "check_corpus_stack", lambda: put("skill-corpus/no-such-key/example-stack-procedure.md",
+        read(NESTED_FIX).replace("library-corpus/maven/spring-boot", "library-corpus/maven/no-such-library")),
+        ("skill-corpus/no-such-key/example-stack-procedure.md", "'no-such-key' is not a library-corpus key", "library-corpus/maven/no-such-library")),
     # SPEC-0001 AGNOSTICISM_GATE_SCANS_DOCS_PLANS_TOOLS_INSTALLER AGNOSTICISM_GATE_SCANS_PY_AND_SH
     ("agn-docs-plans", "check", lambda: put("docs/plans/zz-agn.md", HOME), "absolute operator home path"),
     ("agn-install-sh", "check", lambda: append("install.sh", "# " + HOME), "install.sh"),
@@ -171,6 +181,10 @@ ROWS = [
     ("X394 SEED_ONLY_FILES_NEVER_PLACED installer places a seed doc", "check_seed_only_stays_home", lambda: sub("install.sh", PLACE_ANCHOR,
         PLACE_ANCHOR + '    place_file "$SEED_ROOT/docs/decisions/index.md" "$PROJECT_DIR/docs/graph/decisions-index.md"\n'), "sources a file under $SEED_ROOT/docs"),
     ("X395 SEED_ONLY_FILES_NEVER_PLACED manifest drops a placed tool", "check_seed_only_stays_home", lambda: manifest_tools(drop="tools/code-anchor.py"), "manifest.json"),
+    # A seed-side run (install.sh --check executing a seed tool) places nothing; a
+    # place_file of the same tool is still a shipped tool the manifest must list.
+    ("X395b SEED_ONLY_FILES_NEVER_PLACED a placed tool missing from the manifest", "check_seed_only_stays_home", lambda: sub("install.sh", PLACE_ANCHOR,
+        PLACE_ANCHOR + '    place_file "$SEED_ROOT/tools/graft-audit.py" "$g/graft-audit.py"\n'), ("manifest.json", "tools/graft-audit.py")),
     # SPEC-0003 BRIEF_TEMPLATES_BYTE_IDENTICAL, the COMPANION block. exercises: check
     ("X396 BRIEF_TEMPLATES_BYTE_IDENTICAL COMPANION block drift", "check", lambda: sub("templates/prompts/investigation-brief.md",
         r"(COMPANION \(echo each item back in your handback\):\n- Trace )this( spawn\.)", r"\1that\2", True), ("investigation-brief.md", "COMPANION")),

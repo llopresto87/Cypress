@@ -183,6 +183,10 @@ handed to a tool is not yet an input it applied:
   "findings", show which of the two it was; a wrapper that makes the two
   exit differently answers that on every run, and without it a crash
   reads as a finding.
+- **A figure, or a flag?** Before reporting a gate's number as a count,
+  read what it counts: a wrapper that reports 1 when any target failed
+  has turned a yes or no into a figure, and the real count, larger or
+  smaller, lives in the reports underneath.
 - **Written this run.** A step that emits per-target artifacts into a
   persistent or shared output root can read a prior run's artifact as the
   current one's: present, readable, and well-formed, yet entirely false.

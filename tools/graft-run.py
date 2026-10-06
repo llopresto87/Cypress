@@ -13,8 +13,8 @@ WHAT IT DOES, IN ORDER
      copied as a link, never followed)
   2. graft-ledger.py on the copy, before anything is written: the base and the
      three-way table (ledger.txt)
-  3. install.sh in the copy, once, for the adapters the stamp's `tools` names,
-     with --symlink only when the plant's placed protocols are links already;
+  3. install.sh in the copy, once, for the adapters the stamp's `tools` names
+     (or --tools, see below), with --symlink only when the plant's placed protocols are links already;
      the whole output is captured (install.log), because the re-created notice
      is printed once and stored nowhere else
   4. graft-graph-engine.py on the copy's three engines, each keeping its config
@@ -25,7 +25,9 @@ WHAT IT DOES, IN ORDER
      lineage); then --unfilled, which only reports
   6. growth-audit.py --plan on the copy, then its lint
   7. the copy's own graph-lint.py (and a representative --plan), agent-lint.py
-     --lint and --eval, and status-register.py, where each is installed
+     --lint and --eval, and status-register.py, where each is installed; then
+     install.sh <host> --check once per adapter, which runs each wired context
+     hook and names each harness entry with no graph home (RETIRED, ORPHAN)
   8. prints the gate table: one line per row of the Phase 7 table in
      protocols/graft.md, in its order, as the graft record's integrity-gate
      block gives it: `<gate id>: PASS / BLOCK / N-A — <evidence>`. A judgment
@@ -45,9 +47,14 @@ itself would let a write in the copy land in the plant, so the run stops at
 the copy when it finds one.
 
 Usage:
-  graft-run.py <plant-root> <seed-root> --stage <dir>
+  graft-run.py <plant-root> <seed-root> --stage <dir> [--tools <a,b,...>]
 The stage must not exist yet, or be an empty directory. The plant must carry a
-stamp (.cypress/seed.json) whose `tools` names the adapters to re-install.
+stamp (.cypress/seed.json). Its `tools` names the adapters to re-install, and
+--tools, when given, names them instead. A stamp older than the `tools` key
+names none: the run then infers the adapters from the projections the plant
+carries (.claude/agents/ for claude-code, .github/agents/ for github-copilot,
+and so on), prints them with the --tools line that confirms them, and stops
+before writing anything. The steward confirms by re-running with that line.
 Exit 0 when every mechanical gate is PASS or N-A; 1 when a gate BLOCKs or a
 step could not run; 2 on a malformed command line or a refused stage.
 Dependency-free.
@@ -87,31 +94,65 @@ PLAN_TASK = "graft the new seed onto this plant and run its integrity gates"
 
 
 def parse_args(argv):
-    pos, stage = [], None
+    pos, opts = [], {"stage": None, "tools": None}
     i = 0
     while i < len(argv):
         a = argv[i]
         if a in ("--help", "-h"):
             print(__doc__)
             sys.exit(0)
-        if a == "--stage":
-            if i + 1 >= len(argv):
-                print("  !! --stage needs a directory")
+        if a in ("--stage", "--tools"):
+            if i + 1 >= len(argv) or argv[i + 1].startswith("-"):
+                print(f"  !! {a} needs a value")
                 sys.exit(2)
-            stage, i = argv[i + 1], i + 2
+            opts[a[2:]], i = argv[i + 1], i + 2
             continue
-        if a.startswith("--stage="):
-            stage = a[len("--stage="):]
+        if a.startswith("--stage=") or a.startswith("--tools="):
+            key, _, val = a[2:].partition("=")
+            opts[key] = val
         elif a.startswith("-"):
             print(f"  !! unknown option {a}")
             sys.exit(2)
         else:
             pos.append(a)
         i += 1
+    stage = opts["stage"]
     if len(pos) != 2 or not stage:
-        print("  !! want <plant-root> <seed-root> --stage <dir>")
+        print("  !! want <plant-root> <seed-root> --stage <dir> [--tools <a,b,...>]")
         sys.exit(2)
-    return Path(pos[0]), Path(pos[1]), Path(stage)
+    tools = None
+    if opts["tools"] is not None:
+        tools = [x for x in re.split(r"[,\s]+", opts["tools"]) if x]
+        unknown = [x for x in tools if x not in ADAPTER_PROJECTIONS]
+        if not tools or unknown:
+            print(f"  !! --tools wants adapter names from {', '.join(ADAPTER_PROJECTIONS)}; "
+                  f"got {opts['tools']!r}")
+            sys.exit(2)
+    return Path(pos[0]), Path(pos[1]), Path(stage), tools
+
+
+# The projection each adapter leaves in a plant: the directory install.sh
+# projects the roster into (install.sh adapter_dirs), so its presence says
+# the adapter was installed. A stamp older than the `tools` key is read
+# through these.
+ADAPTER_PROJECTIONS = {
+    "claude-code": ".claude/agents",
+    "opencode": ".opencode/agents",
+    "codex": ".codex/agents",
+    "github-copilot": ".github/agents",
+    "prime-agent": ".prime/agent/agents",
+}
+
+
+def infer_adapters(plant: Path) -> list:
+    """[(adapter, projection dir)] for every adapter whose projection the plant
+    carries as a real directory of this plant (a symlink is another tree)."""
+    found = []
+    for name, sub in ADAPTER_PROJECTIONS.items():
+        d = plant / sub
+        if d.is_dir() and not d.is_symlink() and any(d.glob("*.md")):
+            found.append((name, sub))
+    return found
 
 
 def within(path: str, root: str) -> bool:
@@ -335,7 +376,7 @@ def line_of(text: str, pattern: str) -> str:
 
 
 def main() -> int:
-    plant_arg, seed_arg, stage_arg = parse_args(sys.argv[1:])
+    plant_arg, seed_arg, stage_arg, tools_arg = parse_args(sys.argv[1:])
     plant, seed = Path(os.path.realpath(plant_arg)), Path(os.path.realpath(seed_arg))
     stage = Path(os.path.realpath(stage_arg))
     if not plant.is_dir():
@@ -353,10 +394,20 @@ def main() -> int:
         print(f"  !! refused: {why}")
         return 2
     stamp = read_stamp(plant)
-    adapters = str(stamp.get("tools") or "").split()
+    adapters = tools_arg or str(stamp.get("tools") or "").split()
     if not adapters:
-        print(f"  !! the plant's {STAMP_REL} names no adapters under `tools`, so there is no "
-              f"install to repeat; establish the base by hand (protocols/graft.md, Phase 1)")
+        inferred = infer_adapters(plant)
+        print(f"  !! the plant's {STAMP_REL} names no adapters under `tools` (a stamp older "
+              f"than that key), so the adapters to re-install need your confirmation")
+        if not inferred:
+            print("     no adapter projection was found either; name the adapters the plant "
+                  "uses with --tools <a,b,...> and run again")
+            return 1
+        print("     inferred from the projections the plant carries:")
+        for name, sub in inferred:
+            print(f"       {name}  ({sub}/)")
+        print(f"     confirm by running again with --tools={','.join(n for n, _ in inferred)}; "
+              f"nothing was written")
         return 1
     gates = gate_rows(seed)
     if not gates:
@@ -393,6 +444,9 @@ def main() -> int:
     base_rev = base_line.split()[1] if base_line and "!!" not in base_line else ""
     print(f"ledger: {line_of(out, r'^totals: ') or f'not printed (exit {rc})'}; "
           f"{base_line or 'base: not found'}")
+    lower = line_of(out, r"base predates seed history")
+    if lower:
+        print(lower)
 
     # 3. the installer, once, for the adapters the plant carries
     protocols = copy / GRAPH_HOME / "protocols"
@@ -458,6 +512,12 @@ def main() -> int:
     if (g / "agent-lint.py").is_file():
         routes.append(("agent-lint --lint", *run.sh("routes.txt", [sys.executable, g / "agent-lint.py", "--lint"])))
         routes.append(("agent-lint --eval", *run.sh("routes.txt", [sys.executable, g / "agent-lint.py", "--eval"])))
+    # graft.gate.routes' second half: install.sh <host> --check once per host,
+    # which runs each wired context hook (SPEC-0001 CHECK_EXECUTES_EACH_WIRED_HOOK)
+    # and names each harness entry with no graph home, RETIRED or ORPHAN
+    hook_checks = [(a, *run.sh("hook-check.txt", ["bash", seed / "install.sh", a, "--check",
+                                                  "--project-dir", copy]))
+                   for a in adapters]
     reg = None
     if (g / "status-register.py").is_file():
         reg = run.sh("status-register.txt", [sys.executable, g / "status-register.py", "--root", "docs/graph"])
@@ -468,6 +528,7 @@ def main() -> int:
         "shared": shared, "tokens": tokens, "base_line": base_line, "base_rev": base_rev,
         "audit": (audit_rc, audit), "unfilled": (unf_rc, unfilled),
         "coverage": (plan_rc, cov_rc, coverage), "routes": routes, "register": reg,
+        "hook_checks": hook_checks,
         "before": before, "after": after, "agents_before": agents_before,
         "install": (install_rc, install_out), "engines": engines,
     }
@@ -594,6 +655,12 @@ def check_coverage(run, ev):
     return ("PASS" if rc == 0 and plan_rc == 0 else "BLOCK"), f"growth-audit.py exited {rc} {plan}: {line}"
 
 
+HOOK_RAN = re.compile(r"--check: hook \S+ \S+ ran and printed its context")
+HOOK_FAILED = re.compile(r"WARNING: --check: (hook \S+ \S+ (is wired but|failed|printed nothing)"
+                         r"|\S+ is not a readable hook config|could not classify the harness)")
+HARNESS_FLAG = re.compile(r"--check: (RETIRED|ORPHAN) (\S+):")
+
+
 def check_routes(run, ev):
     if not ev["routes"]:
         return "BLOCK", "no docs/graph/graph-lint.py in the stage copy"
@@ -605,7 +672,23 @@ def check_routes(run, ev):
         first = verdicts[-1] if verdicts else (tail[0] if tail else "")
         parts.append(f"{name} exit {rc}" + (f" ({first})" if first and name != "--plan" else ""))
         ok = ok and rc == 0
-    return ("PASS" if ok else "BLOCK"), "; ".join(parts)
+    # the hook half gates on the hook lines alone: a drifted view also fails
+    # --check, and that is graft.gate.projection-drift's finding, not this row's.
+    # A RETIRED or ORPHAN entry is named for migration (c) and (d), never gated.
+    flags = {}
+    for host, rc, out in ev.get("hook_checks", []):
+        ran, failed = len(HOOK_RAN.findall(out)), len(HOOK_FAILED.findall(out))
+        parts.append(f"{host} --check exit {rc}, {ran} hook(s) ran, {failed} failed")
+        ok = ok and failed == 0
+        for verdict, path in HARNESS_FLAG.findall(out):
+            flags.setdefault(path, verdict)
+    for verdict in ("RETIRED", "ORPHAN"):
+        named = sorted(p for p, v in flags.items() if v == verdict)
+        if named:
+            parts.append(f"{len(named)} {verdict} harness entr{'y' if len(named) == 1 else 'ies'} "
+                         f"({', '.join(named[:3])}{' ...' if len(named) > 3 else ''}; "
+                         f"migration (c)/(d), not gated)")
+    return ("PASS" if ok else "BLOCK"), "; ".join(parts) + f" ({run.logs / 'hook-check.txt'})"
 
 
 def check_status_register(run, ev):
@@ -711,6 +794,26 @@ def check_projection(run, ev):
     return ("BLOCK" if drift else "PASS"), why
 
 
+def check_kept(run, ev):
+    # On the stage the newest entry is the previous graft's: the install just
+    # rehearsed is what would overwrite the files it kept. This graft's own
+    # entry is re-checked in the plant once it is written.
+    record = run.copy / GRAPH_HOME / "changelog.md"
+    text = record.read_text(errors="replace") if record.is_file() else ""
+    entry = graft_audit.newest_graft_entry(text)
+    if entry is None:
+        return "N-A", (f"the copy's {GRAPH_HOME}/changelog.md holds no graft entry yet; once this "
+                       f"graft's entry is written, run graft-audit.py <plant> <seed> --record "
+                       f"{GRAPH_HOME}/changelog.md last")
+    rc, out = run.tool("kept.txt", "graft-audit.py", run.copy, run.seed, f"--record={record}")
+    lost = [" ".join(l.split()) for l in out.splitlines() if re.match(r"\s*(LOST|MISSING|NO-PATH)\b", l)]
+    if rc == 0:
+        return "PASS", f"every file the newest entry ({entry[0]}) merged or kept still carries its delta"
+    return "BLOCK", (f"{len(lost)} file(s) the newest entry ({entry[0]}) merged or kept lost their "
+                     f"delta after this install: {'; '.join(lost[:3])}"
+                     f"{' ...' if len(lost) > 3 else ''} ({run.logs / 'kept.txt'})")
+
+
 CHECKS = {
     "graft.gate.backups": check_backups,
     "graft.gate.rootstock": check_rootstock,
@@ -728,6 +831,7 @@ CHECKS = {
     "graft.gate.roster-delta": check_roster,
     "graft.gate.stamp": check_stamp,
     "graft.gate.projection-drift": check_projection,
+    "graft.gate.kept-deltas": check_kept,
 }
 
 

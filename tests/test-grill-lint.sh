@@ -503,5 +503,20 @@ case_retired_spec_status_from_frontmatter() {
 }
 collect_case S1 case_retired_spec_status_from_frontmatter 'a spec retired in frontmatter is not demanded of the plan'
 
+case_misnamed_spec_refused() {
+  # M1: a Markdown file in the specs directory that is not `SPEC-*.md` is a
+  # misnamed spec: the pattern skipped it, so a plan over it lint-passed with
+  # its contracts unseen. It fails and is named; the index and readme are exempt.
+  set -e
+  trap 'rm -f "$G/specs/install-placement.md" "$G/specs/index.md" "$G/specs/README.md"' RETURN
+  cp "$ROOT/tests/fixtures/misnamed-spec/specs/"*.md "$G/specs/"
+  write_plan
+  wrun; rc 1
+  has_re 'misnamed spec, not checked: install-placement\.md'
+  lacks 'misnamed spec, not checked: index\.md'
+  lacks 'misnamed spec, not checked: README\.md'
+}
+collect_case M1 case_misnamed_spec_refused 'a misnamed spec fails and is named; index and readme are exempt'
+
 [ "$CASE_FAILED" -eq 0 ] || { echo 'grill lint contract: FAIL (cases above)'; exit 1; }
 echo 'grill lint contract: PASS'

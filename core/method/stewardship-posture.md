@@ -25,6 +25,7 @@ load_when:
   - "should this script become a durable tool"
   - "the owner said remember, where does a standing rule go, harness memory or the graph"
   - "pick up where the last session left off, write it in the session record"
+  - "seeder, stub or capture inbox must refuse to start under a production profile"
 prevents: Model output treated as established fact without a second source, and example data drawn from production because no standing rule forbids it — two obligations that bind every session and sit inside no protocol's flow.
 est_tokens: 1941
 ---
@@ -60,6 +61,16 @@ trust. Fixtures, seed data, demo environments, and examples in prompts
 are **synthetic** — generated to match the shape and constraints of
 real data without being any real record. Masking is not anonymization.
 A copied "sample to reproduce a bug" is a disclosure.
+
+The staging-only machinery around synthetic data (a seeder, a stub of a
+dependency, a capture inbox for outbound mail) is default-off and also
+refuses to start under a production profile, because default-off alone
+is one stray setting away from production. A stub standing in for a
+dependency that has been retired is pinned to that dependency's
+documented contract shape and recorded as such, because nothing live can
+cross-check it. Its credential and sensitive-store halves are
+`method.secrets-posture`'s (§3 for a credentialed seeder, §1 for a
+capture inbox).
 
 ## 4. Convert ambiguity into artifacts
 

@@ -17,8 +17,10 @@ load_when:
   - "works locally but fails in CI or on the target host"
   - "did this run touch production"
   - "inspect a shared host or workspace read-only, a fix lets a loop continue past a failure"
+  - "mutating run against live infrastructure, the dry run passed, which hosts the target selector resolves to"
+  - "automation converges the account it authenticates with, its own access path"
 prevents: A green result on the authoring host reported as working on the target, an inspection that writes to a shared host, and a loop fix that carries on past what a failure protected.
-est_tokens: 1104
+est_tokens: 1296
 ---
 
 ## The machine you build on is not the machine it runs on
@@ -55,21 +57,32 @@ credential standing in for a remote one: the substitute is a
 convenience for iteration, never the evidence.
 
 When the target is live infrastructure, classify the blast radius before
-running anything (local, read, artifact-producing, or mutating),
-because a "dry run" still authenticates, reads, scans, and writes local
-artifacts, and a read-shaped endpoint can allocate from a finite pool.
-Validate the whole declared change set for self-lockout before executing
-any part of it (the guard sits before the first mutation, not between
-mutations); confirm the target is the project's own, by an ownership
-marker, before acting on it; and exclude the automation's own access
-path and identity from the set it manages while still asserting it keeps
-the privileges it needs. Whether the target is a real production system
-at all is a plant fact: `plant.environment_class` in the router's
-frontmatter answers it once, and every run reads it there. Which environment a given run actually touched is a different
-question, and it is answered from first-hand identity evidence: the
-host's own identity, the runner that executed the job, the file a line
-of text came from. A word in a log prefix or a script's name is a label
-somebody chose. It is not evidence of where the code ran.
+running anything (local, read, artifact-producing, or mutating), because
+a "dry run" still authenticates, reads, scans, and writes local
+artifacts, and a read-shaped endpoint can allocate from a finite pool. A
+green dry run is structural evidence only, because a step can skip or
+defer in dry-run mode the work that fails for real: follow it with a
+scoped real apply before claiming the change works. Before any mutating
+run, resolve the target selector to the concrete list of hosts it
+matches and confirm that list, because a shorthand that resolves
+differently from what its author meant aims the run somewhere else, or
+nowhere. Validate the whole declared change set for self-lockout before
+executing any part of it (the guard sits before the first mutation, not
+between mutations); confirm the target is the project's own, by an
+ownership marker, before acting on it; and exclude the automation's own
+access path and identity from the set it manages while still asserting
+it keeps the privileges it needs. That exclusion is the default, and
+overriding it takes an explicit, named flag set by a decision, never on
+the agent's own initiative, because converging the identity the
+automation authenticates with can lock it out of everything it manages.
+Whether the target is a real production system at all is a plant fact:
+`plant.environment_class` in the router's frontmatter answers it once,
+and every run reads it there. Which environment a given run actually
+touched is a different question, and it is answered from first-hand
+identity evidence: the host's own identity, the runner that executed the
+job, the file a line of text came from. A word in a log prefix or a
+script's name is a label somebody chose. It is not evidence of where the
+code ran.
 
 ### Inspection writes nothing (`engineering-posture.no-write-inspection`)
 

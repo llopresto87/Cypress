@@ -1034,6 +1034,77 @@ def x145(base):
     return "stdin nested past the parser: both hooks exit 0; route-hook keeps the pointer, status-hook the summary"
 
 
+@case("X180", "UNEXPECTED_EXCEPTION; nesting is counted before the parse, on any Python")
+def x180(base):
+    deep = "[" * 10_000 + "]" * 10_000            # valid JSON: a parser without a depth limit accepts it
+    prompt = "tighten the ledger gc please"
+    p = Plant(base, name="deep", register=True)
+    r = run_hook(p, json.dumps({"hook_event_name": "UserPromptSubmit", "prompt": prompt,
+                                "session_id": SID, "cwd": str(p.dir)})[:-1] + ', "x": ' + deep + "}")
+    s = run_hook(p, json.dumps({"hook_event_name": "SessionStart", "session_id": SID,
+                                "cwd": str(p.dir)})[:-1] + ', "x": ' + deep + "}",
+                 hook=p.hook("status-hook.py"))
+    check(r.rc == 0 and "Traceback" not in r.err and one_err_line(r) and is_pointer_only(r),
+          f"route-hook, a valid envelope nested 10 000 deep: expected X145's answer, the pointer "
+          f"line and one stderr line — {r.ctx()}")
+    check(s.rc == 0 and "Traceback" not in s.err and one_err_line(s)
+          and s.inj is not None and SUMMARY in s.inj,
+          f"status-hook, a valid envelope nested 10 000 deep: expected the summary and one "
+          f"stderr line — {s.ctx()}")
+    ref = route(Plant(base, name="flat"), prompt)
+    b = route(Plant(base, name="brackets"), prompt + " " + "[" * 10_000)
+    check(b.err == "" and is_full(b) and b.inj == ref.inj,
+          f"route-hook, 10 000 `[` inside the prompt string: expected the routing the plain "
+          f"prompt gets, no stderr line — {b.ctx()}")
+    return "nesting past the limit gives X145's answer on any Python; a `[` inside a string is not nesting"
+
+
+RECURSING_PARSER = WORK / "recursing-parser.py"
+RECURSING_PARSER.write_text(r"""
+import json, runpy, sys
+_loads = json.loads
+def loads(s, *a, **k):                    # a parser that still raises RecursionError on deep input
+    if isinstance(s, (str, bytes)) and s[:4] in ("[[[[", b"[[[["):
+        raise RecursionError("maximum recursion depth exceeded")
+    return _loads(s, *a, **k)
+json.loads = loads                        # json.load reads through json.loads
+hook = sys.argv[1]
+sys.argv = [hook]
+runpy.run_path(hook, run_name="__main__")
+""")
+
+
+@case("X181", "UNEXPECTED_EXCEPTION; the parser's RecursionError is the second guard")
+def x181(base):
+    deep = "[" * 1_000
+    p = Plant(base, name="recursing", register=True)
+    rewrite_constant(p.hook(), "STDIN_NESTING_MAX", 1_000_000)   # the count never fires
+
+    def run(hook):
+        r = subprocess.run([sys.executable, str(RECURSING_PARSER), str(hook)], input=deep,
+                           capture_output=True, text=True, timeout=20, cwd=str(p.dir))
+        return Run(r.returncode, r.stdout, r.stderr)
+
+    r = run(p.hook())
+    check(r.rc == 0 and "Traceback" not in r.err and one_err_line(r) and is_pointer_only(r),
+          f"route-hook, a parser raising RecursionError: expected X145's answer, the pointer "
+          f"line and one stderr line — {r.ctx()}")
+    s = run(p.hook("status-hook.py"))
+    check(s.rc == 0 and "Traceback" not in s.err and one_err_line(s)
+          and "nested" in s.err and s.inj is not None and SUMMARY in s.inj,
+          f"status-hook, a parser raising RecursionError through the sibling: expected the "
+          f"summary and the nesting line — {s.ctx()}")
+    p.hook().unlink()                         # the sibling cannot load: the parser guards alone
+    s = run(p.hook("status-hook.py"))
+    lines = s.err.splitlines()
+    check(s.rc == 0 and "Traceback" not in s.err and len(lines) == 2
+          and "nested" in lines[0] and "not reset" in lines[1]
+          and s.inj is not None and SUMMARY in s.inj,
+          f"status-hook, no sibling and a parser raising RecursionError: expected the summary, "
+          f"the nesting line and RESET_NOT_WRITTEN's line — {s.ctx()}")
+    return "a parser that raises RecursionError gives X145's answer, through the sibling and without it"
+
+
 @case("X146", "ROUTE_HOOK_STRIPS_MULTILINE_PROMPT_ECHO")
 def x146(base):
     words = ("tighten the", "ledger gc please")
@@ -1440,6 +1511,61 @@ def x162(base):
         collect(problems, one)
     check(not problems, " || ".join(problems))
     return "absent and timed out, no register: the not-checked line, exit 0"
+
+
+# §6 missing-script line (8.0.0); `{}` is the script path as the shell expanded it.
+MISSING_SCRIPT = "cypress: hook script missing: {}; continuing without it. Re-run install.sh to restore it."
+WIRED = (  # (wiring file, event, the directory the command resolves its script under, the script)
+    ("integrations/claude-code/settings.json", "UserPromptSubmit", ".claude", "route-hook.py"),
+    ("integrations/claude-code/settings.json", "SessionStart", ".claude", "status-hook.py"),
+    ("integrations/github-copilot/hooks/route.json", "UserPromptSubmit", ".github/hooks", "route-hook.py"),
+    ("integrations/github-copilot/hooks/status.json", "SessionStart", ".github/hooks", "status-hook.py"),
+)
+
+
+def wired_commands(rel, event):
+    """Every command a wiring file runs on `event`, in either nesting (Claude
+    Code's matcher groups, VS Code's single-nested list)."""
+    out = []
+    for entry in (json.loads((SEED / rel).read_text(encoding="utf-8")).get("hooks") or {}).get(event, []):
+        out += [h["command"] for h in entry.get("hooks", [entry]) if h.get("type") == "command"]
+    return out
+
+
+@case("X179", "MISSING_HOOK_SCRIPT_WARNS_AND_PASSES")
+def x179(base):
+    problems = []
+    for i, (rel, event, sub, script) in enumerate(WIRED):
+        what = f"{rel} {event}"
+
+        def one():
+            cmds = wired_commands(rel, event)
+            check(len(cmds) == 1, f"{what}: {len(cmds)} commands wired, expected one")
+            envelope = json.dumps({"hook_event_name": event, "prompt": "route this widget task",
+                                   "source": "startup"})
+            for present in (False, True):
+                p = Plant(base, name=f"p{i}{int(present)}", hooks=())
+                (p.dir / sub).mkdir(parents=True, exist_ok=True)
+                if present:
+                    for h in ("route-hook.py", "status-hook.py"):
+                        shutil.copy(HOOKS / h, p.dir / sub / h)
+                env = dict(os.environ, CLAUDE_PROJECT_DIR=str(p.dir))
+                r = subprocess.run(["sh", "-c", cmds[0]], input=envelope, capture_output=True,
+                                   text=True, timeout=30, cwd=str(p.dir), env=env)
+                line = MISSING_SCRIPT.format(f"{p.dir}/{sub}/{script}")
+                check(r.returncode == 0, f"{what}: the command exits {r.returncode}, not 0 — {r.stderr[:300]!r}")
+                if present:
+                    check("hook script missing" not in r.stdout and r.stdout.strip(),
+                          f"{what}: with the script present, stdout is not the script's alone — {r.stdout[:300]!r}")
+                else:
+                    check(r.stdout == line + "\n",
+                          f"{what}: a missing script prints {r.stdout[:300]!r}, not the missing-script line")
+        collect(problems, one)
+    bound = wired_commands("integrations/claude-code/settings.json", "PreToolUse")
+    check(bound and all("|| true" not in c and "hook script missing" not in c for c in bound),
+          f"the PreToolUse guard command changed: {bound}")
+    check(not problems, " || ".join(problems))
+    return "four wired commands: absent script prints the missing-script line and exits 0; present script prints alone"
 
 
 failed = []
