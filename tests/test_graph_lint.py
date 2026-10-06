@@ -477,6 +477,32 @@ class ArtifactsEdgeTests(_TmpCase):
         self.assertNotEqual(r.returncode, 0, f"a missing artifact must fail:\n{out}")
         self.assertIn("artifacts → missing docs/graph/architecture/README.md", out, out)
 
+    def test_symlinked_templates_edge_is_not_an_escape(self):
+        """SPEC-0001/SYMLINK_MODE_IS_UNIFORM: under a `--symlink` install the
+        graph's `templates/` resolves to the seed, outside the graph. The
+        containment test reads the path, so an in-graph edge through the link
+        passes, a `../` edge still fails as an escape, and a dangling edge
+        through the link still fails as missing."""
+        nodes = {
+            "root": node_md("root", "root", artifacts=["templates/prompts/brief.md"]),
+            "subsystem.out": node_md("subsystem.out", "subsystem", requires=["root"],
+                                     artifacts=["../outside.md"]),
+            "domain.gone": node_md("domain.gone", "domain", requires=["root"],
+                                   artifacts=["templates/prompts/absent.md"]),
+        }
+        graph = build_graph(self.tmp, nodes)
+        (graph / "templates").symlink_to(HERE / "fixtures" / "symlink-artifacts" / "templates",
+                                         target_is_directory=True)
+        (self.tmp / "outside.md").write_text("# outside\n", encoding="utf-8")
+        r = run_lint(graph)
+        out = r.stdout + r.stderr
+        self.assertNotIn("escapes docs/graph/: 'templates/prompts/brief.md'", out, out)
+        self.assertNotIn("missing docs/graph/templates/prompts/brief.md", out, out)
+        self.assertIn("subsystem.out: artifacts → path escapes docs/graph/: '../outside.md'", out, out)
+        self.assertIn("domain.gone: artifacts → missing docs/graph/templates/prompts/absent.md", out, out)
+        self.assertNotIn("domain.gone: artifacts → path escapes", out, out)
+        self.assertNotEqual(r.returncode, 0, out)
+
 
 class LibraryIndexRowBoundaryTests(_TmpCase):
     """An index row is a reference to the page: a markdown link whose target

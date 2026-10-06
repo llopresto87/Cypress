@@ -16,7 +16,7 @@ Fill the tables from the project's actual nodes. Keep it in sync as
 nodes are added; the linter treats anything listed here as reachable.
 -->
 
-# The map — open when the route fails or looks wrong
+# The map: open when the route fails or looks wrong
 
 <!-- pre-growth: grow removes this block -->
 **Not grown yet.** Start from the installed `EXPERT_SEED_INSTALL_PROMPT.md`
@@ -46,8 +46,6 @@ the `load_when:` trigger at fault in the same commit. `--plan` is a
 keyword heuristic; `skills/context-router.md` names the task kinds
 where node ownership and this table outrank it.
 
----
-
 ## Start here by task shape
 
 <!-- One row per common task phrasing → the entry node it should hit. -->
@@ -64,8 +62,6 @@ where node ownership and this table outrank it.
 | "How do I test this?" | `crosscut.{{testing}}` |
 | Bring the stack up / deploy | `platform.{{deploy}}` |
 | "Where does this config come from?" | `platform.{{config}}` |
-
----
 
 ## Method — how we work (machinery nodes, pre-filled; keep as installed)
 
@@ -116,8 +112,6 @@ existing codebase), `skill.adr-writer` (recording a decision),
 `skill.research-and-ingest`, `skill.validate-knowledge`,
 `skill.test-first`.
 
----
-
 ## The node table
 
 <!-- Group by tier/kind. Keep ~tokens honest; they sum to the budget. -->
@@ -144,8 +138,6 @@ existing codebase), `skill.adr-writer` (recording a decision),
 |---|---|---|
 | `subsystem.{{name}}` | `{{path}}` | … |
 
----
-
 ## Cost discipline
 
 - A **change** task should load a handful of nodes. More means it is
@@ -159,10 +151,10 @@ existing codebase), `skill.adr-writer` (recording a decision),
 
 It will be; the code moves and the graph lags.
 
-1. **A fact the graph states is settled** — use it. Where the
+1. **A fact the graph states is settled**: use it. Where the
    session-start code-anchor line names a node's paths as changed, the
    code wins on facts there: fix the node in the same change (kernel §3.2).
-2. **The node wins on contracts** — a code violation of a recorded
+2. **The node wins on contracts**: a code violation of a recorded
    contract is a bug, not a doc update.
 3. When a task should have matched a `load_when:` and didn't, sharpen
    the trigger.

@@ -1,9 +1,9 @@
 # Tool: large-artifact-stager
 
-> Project-agnostic, durable capability notes, folded into the seed by the
-> harvest protocol. This page is a **BLUEPRINT**: the four idioms are portable
-> and are the whole value; the transfer mechanics are written against the
-> adopting project's container tool, transport, and host layout.
+> Project-agnostic capability notes, kept in the seed's tool corpus
+> (`tool-corpus/README.md`). This page is a **BLUEPRINT**: the four idioms are
+> portable and are the whole value; the transfer mechanics are written against
+> the adopting project's container tool, transport, and host layout.
 
 ## 0. Identity
 
@@ -205,11 +205,11 @@ is a safe no-op.
   (reconstructs the environment a staging job runs in);
   `tool-corpus/testing/http-smoke-suite.md` (the post-start check that the staged
   artifacts are actually being served).
-- **Sources:** distilled from harvested plant experience; no external URL.
+- **Sources:** distilled from practice; no external URL.
 
 ## 8. Changelog
 
-- 2026-09-13 — created from harvested, generalized capability, by docs-librarian.
+- 2026-09-13 — created by docs-librarian.
 - 2026-09-26 — folded in the read-only status/verify split, the two-hop
   stage-push-verify shape with verify as the far-side oracle, the no-default
   source identity, the explicit-shared-root note for independently resolving

@@ -1,8 +1,8 @@
 # Tool: working-tree-snapshot
 
-> Project-agnostic, durable capability notes, folded into the seed by the
-> harvest protocol. Orientation for a reusable tool — near drop-in: the module
-> below is stdlib-only and the whole contract is two functions.
+> Project-agnostic capability notes, kept in the seed's tool corpus
+> (`tool-corpus/README.md`). Orientation for a reusable tool — near drop-in: the
+> module below is stdlib-only and the whole contract is two functions.
 
 ## 0. Identity
 
@@ -208,8 +208,8 @@ both staged and unstaged — that equivalence is the regression this exists for.
   reconstructed environment a copied tree is usually executed inside);
   `tool-corpus/testing/failure-signature-triage.md` (triages the results of the
   gate run inside that tree).
-- **Sources:** distilled from harvested plant experience; no external URL.
+- **Sources:** distilled from practice; no external URL.
 
 ## 8. Changelog
 
-- 2026-09-13 — created from harvested, generalized capability, by docs-librarian.
+- 2026-09-13 — created by docs-librarian.

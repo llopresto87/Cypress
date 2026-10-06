@@ -103,6 +103,16 @@ concluding the suite has a gap:
   entries — these all survive a mutation of the content they describe. This is
   the most common survivor and the most expensive, because the assertion reads
   as though it covers the subject.
+- **The assertion checks a hand-written list.** A gate that names the members
+  it expects (three routes of one class, say) stays green when a fourth member
+  of the class arrives unguarded, and a fix that enumerates members by hand
+  misses the same ones. Derive the expected set from what generates it (every
+  location of that class in the configuration;
+  `tool-corpus/testing/static-config-contract-gate.md`, "Enumerate, never
+  assume") and assert over that set. A
+  gate case can also encode the defect itself, by requiring the wrong
+  behavior; changing that case is then part of the fix, and the reason is
+  written at the edit site so nobody restores it.
 - **The harness short-circuits, so the survivor was never reached.** A
   per-case harness that stops at the first failing assertion never ran the
   later ones: the mutation may have been killed by an assertion that never
@@ -111,7 +121,16 @@ concluding the suite has a gap:
   failure removed before believing the survivor.
 - **The mutant never ran.** See the rebuild corollary in
   `protocols/test-first.md` — confirm the artifact under test is the mutated
-  one before reading anything into its survival.
+  one before reading anything into its survival. Python is the common case.
+  By default a cached `.pyc` is validated against the source's recorded
+  modification time and size, so a mutant of the same size written in the
+  same second as the cached original passes the check, and the old bytecode
+  runs. Clear every `__pycache__` under the tree and run the gate with
+  `PYTHONDONTWRITEBYTECODE=1` (or `python -B`). The two are not
+  interchangeable: the variable only stops new `.pyc` files from being
+  written, and Python still reads a stale one already on disk, so a run
+  with the variable set and the cache left in place reproduces the false
+  survivor.
 - **The cut was behind the seam** (step 2), or **the assertion is upstream of
   the boundary** (step 3). Both produce survivors that say nothing about
   coverage.

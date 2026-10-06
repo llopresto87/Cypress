@@ -57,6 +57,7 @@ From the seed system directory:
              [--environment-class CLASS] [--commit-attribution none|TRAILER]
              [--deliverable-language BCP47] [--comment-language BCP47]
              [--legal-corpus yes|no] [--legal-jurisdiction CC] [--print-config]
+             [--expertise propose|<corpus-id>[,<corpus-id>...]]
 ```
 
 `<tool>` is one of the list below. Every tool gets the kernel under both
@@ -147,6 +148,12 @@ answered, which is to decline the work
 so at the end of every run that leaves it undecided.
 The installer keeps any value the plant already declares and names each
 remaining placeholder as a NEXT STEP.
+
+Corpus pages are placed only when you name them. `--expertise propose`
+prints the library, tool and stack-keyed skill pages your manifests match
+and writes nothing. `--expertise <id>[,<id>...]` places exactly those pages
+and records them in `.cypress/seed.json`, so a later install refreshes the
+ones nobody edited ([corpora reference, A.4.1a](documentation/corpora-and-integrations-reference.md#a41a-agnosticism-the-machinery-is-the-shipped-corpus-is-not)).
 
 The model map, `docs/graph/models.md`, is the third owner decision: which
 model each host runs for each class and effort. An unfilled row is not an

@@ -535,8 +535,8 @@ ls skills/ | wc -l
 # no [agents] section ships in the Codex config example
 grep -n '\[agents\]' integrations/codex/config.toml.example   # (no output)
 
-# no per-plant install path exists for library-corpus
-grep -n 'library.corpus' install.sh   # (no output — legal-corpus is the only corpus install.sh places)
+# selective placement of library, tool and stack-keyed skill pages
+grep -n 'place_expertise' install.sh   # (SPEC-0001 §6)
 ```
 
 `integrations/codex/config.toml.example` registers all 15 skills, one

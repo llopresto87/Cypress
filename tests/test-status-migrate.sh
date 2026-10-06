@@ -17,13 +17,13 @@ fail() { echo "FAIL: $*" >&2; [ -f "$TMP/out" ] && cat "$TMP/out" >&2; exit 1; }
 run() { local want="$1"; shift; set +e; python3 "$TOOL" "$@" >"$TMP/out" 2>&1; local rc=$?; set -e; [ "$rc" = "$want" ] || fail "expected exit $want, got $rc (args: $*)"; }
 
 # 1. dry run lists the work, exits 1, writes nothing
-run 1 --root "$TMP/graph" --today 2026-09-06
+run 1 --root "$TMP/graph"
 grep -q "6 to migrate, 1 already in frontmatter, 1 need a decision" "$TMP/out" || fail "dry-run count"
 grep -q '^status:' "$TMP/graph/decisions/adr-0001-old.md" && fail "dry run must not write"
 echo "  dry run lists work, exits 1, writes nothing — OK"
 
 # 2. write, then verify each mapping
-run 0 --root "$TMP/graph" --write --today 2026-09-06
+run 0 --root "$TMP/graph" --write
 a1="$TMP/graph/decisions/adr-0001-old.md"
 grep -q '^status: superseded$' "$a1" || fail "adr-0001 status"
 grep -q '^superseded_by: ADR-0002$' "$a1" || fail "adr-0001 superseded_by"
@@ -60,7 +60,7 @@ cmp -s "$SRC/specs/SPEC-0002-done.md" "$TMP/graph/specs/SPEC-0002-done.md" || fa
 echo "  mappings exact; not-recorded never invented; pointer written; migrated file untouched — OK"
 
 # 3. idempotent: second run finds nothing
-run 0 --root "$TMP/graph" --today 2026-09-06
+run 0 --root "$TMP/graph"
 grep -q "0 to migrate, 7 already in frontmatter, 1 need a decision" "$TMP/out" || fail "second run must find nothing"
 echo "  idempotent — OK"
 
@@ -69,4 +69,44 @@ if [ -f "$ROOT/tools/status-register.py" ]; then
   python3 "$ROOT/tools/status-register.py" --root "$TMP/graph" >"$TMP/out" 2>&1 || fail "migrated tree must lint clean"
   echo "  migrated tree passes status-register lint — OK"
 fi
+# 5. REGRESSION: a `## Status` paragraph wrapped over two lines lost its second
+# line, which was left stranded in the body under the pointer.
+mkdir -p "$TMP/g5/decisions"
+cat > "$TMP/g5/decisions/adr-0007-wrapped.md" <<'MD'
+# ADR-0007: Queue retries
+
+## Status
+
+Accepted — the retry budget holds for the ingest path only; the export path
+keeps its own budget until the owner rules on it.
+
+## Date
+
+2026-05-04
+
+## Context
+
+The ingest path retried without a ceiling.
+MD
+run 0 --root "$TMP/g5" --write
+a7="$TMP/g5/decisions/adr-0007-wrapped.md"
+grep -q '^status: accepted$' "$a7" || fail "a wrapped status paragraph must still map on its token"
+grep -q '^status_note: the retry budget holds for the ingest path only; the export path keeps its own budget until the owner rules on it\.$' "$a7" \
+  || { cat "$a7" >&2; fail "the continuation of a wrapped status paragraph was dropped from status_note"; }
+grep -q '^keeps its own budget' "$a7" && { cat "$a7" >&2; fail "the continuation line was left in the body under the pointer"; }
+grep -q '^## Context$' "$a7" || fail "the section after the status paragraph was lost"
+echo "  a wrapped status paragraph moves whole — OK"
+
+# 6. REGRESSION: a status with no recorded date was stamped with today's date,
+# a status date the record never held.
+mkdir -p "$TMP/g6/decisions"
+printf '# ADR-0008: Undated\n\n## Status\n\nAccepted\n\n## Context\n\nNo date anywhere.\n' \
+  > "$TMP/g6/decisions/adr-0008-undated.md"
+run 1 --root "$TMP/g6"
+grep -q "adr-0008-undated.md: no status date recorded" "$TMP/out" || fail "the dry run did not name the undated record"
+run 0 --root "$TMP/g6" --write
+a8="$TMP/g6/decisions/adr-0008-undated.md"
+grep -q '^status: accepted$' "$a8" || fail "an undated status must still migrate"
+grep -q '^status_date:' "$a8" && { cat "$a8" >&2; fail "a status date was invented for a record that holds none"; }
+echo "  an undated status gets no invented date — OK"
 echo "test-status-migrate: PASS"

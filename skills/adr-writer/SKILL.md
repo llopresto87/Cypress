@@ -95,9 +95,14 @@ taken under pressure that owes a proper decision is `hotfix` with an
 To replace a decision, write a new ADR with a new number and
 `status: accepted`, and set the old ADR's frontmatter to
 `status: superseded` + `superseded_by: ADR-NNNN` + a fresh
-`status_date`. That flip is the **only** edit a ratified ADR ever
-receives; its body is never rewritten (the append-only exception in
-`holistic-editing`). To see what is still owed:
+`status_date`. A ratified ADR's body is never rewritten (the append-only
+exception in `holistic-editing`). Besides the supersede flip it takes
+one other change: when the decision stands but a fact in its context or
+reasons proves false, or execution reached the decision by a route the
+body does not describe, a dated `## Correction` is appended after the
+body, stating the corrected fact with its evidence and a pointer, and
+the text above it stays as written. When the decision itself moves,
+supersede it. To see what is still owed:
 `python3 docs/graph/status-register.py --by-kind adr --open --hotfix`
 (add `--deferred` for parked decisions). The register is the query
 surface; the index at `docs/graph/decisions/README.md` is the human

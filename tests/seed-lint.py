@@ -1140,7 +1140,10 @@ def check_seed_only_stays_home() -> None:
         if re.search(r'\$\{?SEED_ROOT\}?"?/docs\b', line):
             fail(f"install.sh:{n}: sources a file under $SEED_ROOT/docs, the seed's "
                  f"own governance tree, which no plant receives (ADR-0021)")
-    placed = set(re.findall(r'\$\{?SEED_ROOT\}?"?/((?:tools|tests)/[^"\s]+)', install))
+    # Placement is a `place_file` call; a seed-side run of a tool (install.sh
+    # --check executing tools/graft-audit.py from the seed) reads the seed copy
+    # and places nothing, so it is not a shipped tool.
+    placed = set(re.findall(r'place_file\s+"?\$\{?SEED_ROOT\}?"?/((?:tools|tests)/[^"\s]+)', install))
     listed = set(json.loads(manifest).get("tools", {}))
     if listed != placed:
         fail(f"manifest.json: the `tools` map disagrees with the tools/ and tests/ files "
@@ -1824,6 +1827,61 @@ def check() -> None:
                 fail(f"{rel}: dangling corpus/template reference '{ref}'")
 
 
+STACK_ID = re.compile(r"library-corpus/[^/\s]+/[^/\s]+")
+
+
+def check_corpus_stack() -> None:
+    """A stack-keyed page points somewhere (skill-corpus/README.md, "Stack-keyed
+    pages"; tool-corpus/README.md, "The stack field"). A
+    `skill-corpus/<key>/<name>.md` page sits under a key the library corpus
+    defines and carries `stack:`; a `stack:` on a skill or tool page names only
+    library-corpus pages that exist, each as its corpus id
+    `library-corpus/<key>/<name>`. A flat skill page has no key, so it carries
+    no `stack:`. One finding per page holds all of its problems."""
+    lib = ROOT / "library-corpus"
+    keys = {d.name for d in lib.iterdir() if d.is_dir()} if lib.is_dir() else set()
+    for corpus in ("skill-corpus", "tool-corpus"):
+        base = ROOT / corpus
+        if not base.is_dir():
+            continue
+        for p in sorted(base.rglob("*.md")):
+            parts = p.relative_to(base).parts
+            if parts == ("README.md",):
+                continue
+            rel = p.relative_to(ROOT).as_posix()
+            text = p.read_text(encoding="utf-8")
+            meta = {}
+            if text.startswith("---\n"):
+                try:
+                    meta, _ = _frontmatter.parse(text, p)
+                except _frontmatter.FrontmatterError as e:
+                    fail(str(e))
+                    continue
+            stack = meta.get("stack")
+            stack = [] if stack in (None, "") else stack if isinstance(stack, list) else [stack]
+            problems = []
+            if corpus == "skill-corpus":
+                if len(parts) > 2:
+                    problems.append(f"nested {len(parts) - 1} directories deep; a stack-keyed "
+                                    f"page sits one key down, at skill-corpus/<key>/<name>.md")
+                if len(parts) >= 2 and parts[0] not in keys:
+                    problems.append(f"its key '{parts[0]}' is not a library-corpus key "
+                                    f"(library-corpus/ defines {', '.join(sorted(keys)) or 'none'})")
+                if len(parts) >= 2 and not stack:
+                    problems.append("carries no stack: field, so no plant's inventory can withdraw it")
+                if len(parts) == 1 and stack:
+                    problems.append("a flat page carries stack:; a stack-keyed page lives under its "
+                                    "key, at skill-corpus/<key>/<name>.md")
+            for s in stack:
+                if not isinstance(s, str) or not STACK_ID.fullmatch(s):
+                    problems.append(f"stack: entry {s!r} is not a library corpus id "
+                                    f"library-corpus/<key>/<name>")
+                elif not (ROOT / f"{s}.md").is_file():
+                    problems.append(f"stack: names {s}, which is not a library-corpus page")
+            if problems:
+                fail(f"{rel}: " + "; ".join(problems))
+
+
 # --- SPEC-0004: the front door ------------------------------------------------
 # README.md, DOCUMENTATION.md, documentation/*.md, INSTALL.md and each
 # integrations/*/README.md, read by one small parser (§6 "Body text and units").
@@ -2247,7 +2305,7 @@ def check_published_counts() -> None:
                 fail(f"{path}: claims {m.group(1)} protocols; protocols/ has {n_protocols}")
 
 
-CHECKS = (check, check_agent_spawn_grants, check_body_ceiling, check_leaf_body_ceiling,
+CHECKS = (check, check_corpus_stack, check_agent_spawn_grants, check_body_ceiling, check_leaf_body_ceiling,
           check_adopted_rule_homes, check_text_rules, check_eager_surface,
           check_opencode_config, check_spec_test_mapping, check_spec_rows_name_their_contract,
           check_frontmatter_reader_is_one_reader, check_frontmatter_is_portable_yaml,

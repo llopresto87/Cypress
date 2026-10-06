@@ -1,9 +1,9 @@
 # Tool: ci-runner-local-simulator
 
-> Project-agnostic, durable capability notes, folded into the seed by the
-> harvest protocol. This page is a **BLUEPRINT**: a stack-neutral *pattern*, not
-> a portable script. The adopting plant builds it against its own CI system,
-> infrastructure API, and repo layout.
+> Project-agnostic capability notes, kept in the seed's tool corpus
+> (`tool-corpus/README.md`). This page is a **BLUEPRINT**: a stack-neutral
+> *pattern*, not a portable script. The adopting plant builds it against its own
+> CI system, infrastructure API, and repo layout.
 
 ## 0. Identity
 
@@ -103,8 +103,8 @@ manifest-only change.
   (the secret file the host-only tier may read from);
   `tool-corpus/testing/failure-signature-triage.md` (consumes the result files
   the runs reconstructed here produce, so N baseline runs are cheap).
-- **Sources:** distilled from harvested plant experience; no external URL.
+- **Sources:** distilled from practice; no external URL.
 
 ## 8. Changelog
 
-- 2026-07-16 — created from harvested, generalized capability, by docs-librarian.
+- 2026-07-16 — created by docs-librarian.

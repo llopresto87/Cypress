@@ -1,14 +1,14 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "_comment": "Project-scoped Claude Code settings. Commit this file to git so the team shares the same hook set. Per-user overrides go in .claude/settings.local.json (gitignored). Claude Code discovers .claude/agents/, .claude/skills/, .claude/commands/ and CLAUDE.md by fixed convention, and the schema this file pins has no keys for them.",
-  "_hooks_comment": "UserPromptSubmit runs route-hook.py on every prompt and injects its output (hookSpecificOutput.additionalContext) so the route-first step happens deterministically. Both Claude Code and VS Code Copilot (Agent Hooks, Preview) read this .claude/settings.json hooks block. Path: Claude Code sets $CLAUDE_PROJECT_DIR to the repo root even when the session cwd is a subdirectory, so use it; Copilot falls back to $PWD (its hook cwd is the workspace root). Trailing '|| true' keeps it fail-open: a context hook always lets the prompt through.",
+  "_hooks_comment": "UserPromptSubmit runs route-hook.py on every prompt and injects its output (hookSpecificOutput.additionalContext) so the route-first step happens deterministically. Both Claude Code and VS Code Copilot (Agent Hooks, Preview) read this .claude/settings.json hooks block. Path: Claude Code sets $CLAUDE_PROJECT_DIR to the repo root even when the session cwd is a subdirectory, so use it; Copilot falls back to $PWD (its hook cwd is the workspace root). '|| true' keeps it fail-open: a context hook always lets the prompt through. A script that is not there prints one 'cypress: hook script missing' line instead of nothing, and `install.sh --check` runs each context hook once (SPEC-0003, SPEC-0001).",
   "hooks": {
     "UserPromptSubmit": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/route-hook.py\" || true"
+            "command": "f=\"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/route-hook.py\"; if [ -f \"$f\" ]; then python3 \"$f\" || true; else echo \"cypress: hook script missing: $f; continuing without it. Re-run install.sh to restore it.\"; fi"
           }
         ]
       }
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/status-hook.py\" || true"
+            "command": "f=\"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/status-hook.py\"; if [ -f \"$f\" ]; then python3 \"$f\" || true; else echo \"cypress: hook script missing: $f; continuing without it. Re-run install.sh to restore it.\"; fi"
           }
         ]
       }
@@ -36,5 +36,5 @@
     ]
   },
   "_bound_hook_comment": "PreToolUse runs bound-hook.py before every Bash call and refuses (exit 2) a blocking-prone command — service control, process signalling, package managers, installers, builds, log followers — that carries neither an explicit bound nor a detached launch. It is a guard, wired without '|| true' on purpose; its exit-code contract is in integrations/claude-code/README.md (Hooks).",
-  "_status_hook_comment": "SessionStart runs status-hook.py once per session and injects `status-register.py --summary` (open / hotfix / deferred counts and the oldest items) so lifecycle debt is in front of the model before it plans. Not per prompt: the register is a frontmatter scan, and a session sees it once. Fail-open like route-hook: '|| true'."
+  "_status_hook_comment": "SessionStart runs status-hook.py once per session and injects `status-register.py --summary` (open / hotfix / deferred counts and the oldest items) so lifecycle debt is in front of the model before it plans. Not per prompt: the register is a frontmatter scan, and a session sees it once. Fail-open like route-hook, with the same missing-script line."
 }

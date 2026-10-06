@@ -163,6 +163,12 @@ TEMP_PREFIX = ".tmp-"
 TEMP_MAX_AGE = 3600
 LEDGER_MAX_BYTES = 64 * 1024
 SURFACED_MAX = 512
+# Arrays and objects open at once on hook stdin, counted outside strings before
+# the parse. A host envelope opens one; the limit sits far below any
+# interpreter's recursion limit, so nesting is caught by count, not by which
+# exception a parser raises (SPEC-0003 UNEXPECTED_EXCEPTION). status-hook.py
+# reads it from here.
+STDIN_NESTING_MAX = 128
 # What the scripted session under tests/fixtures/session-injection/ receives
 # in all, summed over every additionalContext, the status hook's resets
 # included (SPEC-0003 SESSION_INJECTION_WITHIN_BUDGET). Recorded in
@@ -707,6 +713,41 @@ def reset_ledger(session_id, source) -> None:
 
 # --- the hook ----------------------------------------------------------------
 ARGV_OPTIONS = ("prompt", "session-id", "depth", "origin")
+JSON_NESTING_TOKEN = re.compile(r'"[^"\\]*(?:\\.[^"\\]*)*"?|[\[\]{}]', re.S)
+NESTED = object()                               # read_stdin's answer for stdin nested past the limit
+
+
+def nested_past_limit(text: str) -> bool:
+    """True when JSON text holds more than STDIN_NESTING_MAX arrays or objects
+    open at once. A bracket inside a string does not count; an unterminated
+    string runs to the end. Text with no more opening brackets than the limit
+    is answered without a scan."""
+    if text.count("[") + text.count("{") <= STDIN_NESTING_MAX:
+        return False
+    depth = 0
+    for m in JSON_NESTING_TOKEN.finditer(text):
+        token = m.group()
+        if token in ("[", "{"):
+            depth += 1
+            if depth > STDIN_NESTING_MAX:
+                return True
+        elif token in ("]", "}"):
+            depth -= 1
+    return False
+
+
+def read_stdin(stream):
+    """The parsed stdin envelope, or NESTED when it is nested past the limit:
+    by count before the parse, or by a parser that raises RecursionError, kept
+    as a second guard. Text that is not JSON, empty stdin included, raises
+    ValueError."""
+    text = stream.read()
+    if nested_past_limit(text):
+        return NESTED
+    try:
+        return json.loads(text)
+    except RecursionError:
+        return NESTED
 
 
 class EnvelopeRefused(Exception):
@@ -752,13 +793,13 @@ def main() -> int:
         event = "UserPromptSubmit"
     else:
         try:
-            data = json.load(sys.stdin)
-        except RecursionError:                    # nested past the parser: no prompt to route
-            warn("stdin nested past the JSON parser's limit; pointer line only")
+            data = read_stdin(sys.stdin)
+        except ValueError:                        # not JSON, empty stdin included: silent
+            return 0
+        if data is NESTED:                        # nested past the limit: no prompt to route
+            warn(f"stdin nested past {STDIN_NESTING_MAX} levels; pointer line only")
             if LINT is not None:
                 emit(POINTER, "UserPromptSubmit")
-            return 0
-        except ValueError:                        # not JSON, empty stdin included: silent
             return 0
         if not isinstance(data, dict):
             return 0

@@ -1,9 +1,9 @@
 # bandit — pypi
 
-> Project-agnostic, version-durable surface notes, folded into CYPRESS by the
-> harvest protocol. Orientation for a library, NOT a version-pinned page — for
-> exact pins, CVEs, and per-release behavior, run `ingest-library` against the
-> project's own lockfile.
+> Project-agnostic surface notes, kept in the seed's library corpus
+> (`library-corpus/README.md`). Orientation for a library, not a record of one
+> project's versions: for exact pins, CVEs, and per-release behavior, run
+> `ingest-library` against the project's own lockfile.
 
 ## What it is
 `bandit` is a static application security testing (SAST) tool for Python source,
@@ -11,6 +11,14 @@ maintained by PyCQA. It parses each file into an abstract syntax tree, runs a se
 of security checks (plugins, each with a test ID such as `B602`) over it, and
 reports every finding with a severity and a confidence rating. It reads code; it
 never runs it.
+
+## Install, setup and configuration
+- Install it as a tool, outside the application's dependencies, at an exact
+  pin, with exactly the extras the pipeline uses (core API below). Core bandit
+  depends on `PyYAML`, `stevedore` and `rich`.
+- Configuration comes from the command line, from an INI file named `.bandit`
+  in the project, or from a YAML or TOML file passed explicitly with `-c`
+  (`[tool.bandit]` in `pyproject.toml` needs `bandit[toml]`).
 
 ## Core API / usage shape
 - It is used as a command-line tool, typically installed into a tool
@@ -49,6 +57,24 @@ never runs it.
   comparable.
 - Installing it into a Debian-family image's system Python meets PEP 668; the
   `pypi/pyyaml.md` page owns that trap and the correct install patterns.
+- A `--require-hashes` lock must hold the full closure of every extra you
+  install. `bandit[sarif]` pulls in `sarif-om` and `jschema-to-python`, and
+  through them `attrs`, `pbr` and `jsonpickle`; `bandit[baseline]` pulls in
+  `GitPython`, and through it `gitdb` and `smmap`; core bandit needs `PyYAML`,
+  `stevedore` and `rich`.
+- Observed in practice: the hashes of a dependency without a universal wheel
+  (PyYAML, for example) depend on interpreter and platform. Build the hashed
+  lock against the target image's Python and architecture, not on a
+  workstation. pip's secure-installs page says the same in its own terms: a
+  hash pins one archive file, and a package that ships binaries for several
+  platforms needs one hash per archive it may install.
+- Observed in practice: when several scanners are installed in one pip run in
+  one image (bandit, `cyclonedx-bom`, others), their closures overlap. Resolve
+  and lock them together in one lock file; `library-corpus/pypi/cyclonedx-bom.md`
+  points here for this rule. pip's docs do not cover several tools in one
+  image; they say only that hash-checking mode needs every requirement and
+  every dependency pinned and hashed, so a dependency left out of the lock
+  fails the install.
 
 ## General pitfalls
 - A missing extra can turn into a silent hole in the evidence. A wrapper script
@@ -64,6 +90,38 @@ never runs it.
 - Findings are pattern-based, so expect false positives (and false negatives).
   A clean report means none of the implemented checks matched, not that the
   code is secure.
+
+## Testing
+- Test the gate, not only the code: plant one known finding (a `subprocess`
+  call with `shell=True` in a fixture file) and prove that the pipeline step
+  fails on it with your pinned version and flags.
+- Assert that the report file exists and parses, so a scanner that silently
+  produced nothing cannot pass.
+
+## Security defaults
+- Bandit reads and parses code and never executes it, so scanning untrusted
+  code is safe as far as bandit itself goes.
+- The defaults report every severity and confidence; filters and `# nosec`
+  narrow that, and each narrowing is a decision a reviewer should be able to
+  see.
+
+## Operational behaviour
+- A pure static pass: run time grows with the size of the tree, and nothing
+  else is touched.
+- The CLI exits 1 when any finding passes the severity and confidence filters,
+  and 0 otherwise; `--exit-zero` forces 0. Prove the failing exit on your pin
+  anyway (testing, above).
+
+## Interop
+- The SARIF output (`bandit[sarif]`) feeds code-scanning dashboards.
+- It is commonly installed beside `cyclonedx-bom` and other scanners; the
+  shared-closure lock rule above covers them
+  (`library-corpus/pypi/cyclonedx-bom.md`).
+- PEP 668 install traps are on `library-corpus/pypi/pyyaml.md`.
+
+## Major lines
+- This page does not record differences between bandit's lines. Checks change
+  between releases (pitfalls above), so treat every pin move as a re-baseline.
 
 ## Upstream docs
 - Docs: https://bandit.readthedocs.io/

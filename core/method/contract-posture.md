@@ -32,6 +32,7 @@ load_when:
   - "what to log, correlation id, never payloads or tokens"
   - "a failed build left no log, discard stderr or keep the step's output"
   - "print external text into a CI log, log command injection, sanitize before printing"
+  - "a producer field changed, update every consumer that reads it, one provisioning step depends on another"
 prevents: Interfaces that accept anything and fail late — missing input read as empty, out-of-domain values coerced, and errors that tell the caller less than it needs to act.
 est_tokens: 2797
 ---
@@ -91,7 +92,11 @@ any producer version it may meet), and each assertion names the defect
 it would have caught. A change lands only after the real producers and
 consumers are enumerated by name, the unknown ones that could still be
 affected stated, the change classified against them with its
-reversibility, and the ADR question argued either way. A breaking change
+reversibility, and the ADR question argued either way. A consumer that
+reads a changed producer field (the provisioned login user, read back by
+the connection settings) changes in the same change set, and a preflight
+compares the two before anything acts on them, because a consumer left
+reading the old value fails only when it next uses it. A breaking change
 to a published contract ships once, as one coordinated release with
 written notice, never as a defective old version kept alive behind a
 version segment. Cross-service references are opaque identifiers whose
@@ -105,14 +110,18 @@ change (`skill.holistic-editing`).
 Ordering, layout, and numeric precision are first-class data, not
 formatting reconstructed at render time. Where the consuming platform
 gives order meaning, generate in declaration order, compare ordered
-rather than as a set (a set comparison passes a silent reorder), preserve
-order by filtering in place, surface name collisions, and treat any
-reordering as a deliberate change; where a multi-step convergence can
-strand an operator midway, step order is a documented safety contract
-with exact-match counts at the finalizing step. Numeric precision is
-specified uniformly at the wire boundary, with decimal rounding semantics
-stated explicitly rather than inherited from the language's binary-float
-rounding, which silently violates documented midpoint behaviour.
+rather than as a set (a set comparison passes a silent reorder),
+preserve order by filtering in place, surface name collisions, and treat
+any reordering as a deliberate change; where a multi-step convergence
+can strand an operator midway, step order is a documented safety
+contract with exact-match counts at the finalizing step; where one
+provisioning step depends on another having run, that dependency is an
+assertion gate before the downstream step, never an assumption carried
+by the order the steps happen to be written in. Numeric precision is
+specified uniformly at the wire boundary, with decimal rounding
+semantics stated explicitly rather than inherited from the language's
+binary-float rounding, which silently violates documented midpoint
+behaviour.
 
 ## 5. An error honestly describes what failed
 
@@ -154,7 +163,17 @@ existence: a resource the caller may not see answers not-found, and
 authentication and visibility denials share one response shape and
 timing class. A service-to-service caller is a narrowly scoped,
 short-lived machine identity admitted by the same rules, never a widened
-guard or trusted network position. Scope a pre-authentication admission
+guard or trusted network position. An access rule fails closed on input
+it cannot classify: scope access by a property every record carries,
+such as a declared class mapped totally to its rule (a test keeps the
+map total over the class's values, and an unclassified record answers
+not-found like a missing one), never by a join that is empty for some
+records and ambiguous for shared ones, because such a join denies shared
+material and lets the empty case through in the same change. A guard in
+front of authentication refuses a shape it cannot parse; one that
+answers "not mine" hands every shape its grammar lacks to the layer
+behind it, and a parse stricter than that layer's reads as defensive in
+review while it works as a bypass. Scope a pre-authentication admission
 cap to a class that excludes the legitimate caller and key it on a value
 the caller cannot set, because otherwise an attacker can lock real
 callers out.
@@ -196,7 +215,13 @@ before the value is lost (one value-free line per overridden name,
 silent when nothing changed), with a provenance view separating
 supplied from effective values. A diagnostic capture window is anchored
 to the event under investigation: a window that can hold more than one
-occurrence yields a sample, not a trace.
+occurrence yields a sample, not a trace. A log level is not a redaction
+control: where the call sites that write a sensitive value already emit
+at or above the shipped default, no verbosity setting at or below that
+default silences them, and a level high enough to drop them also drops
+the trail operators need. Count the
+offending call sites by level before proposing a level as the control;
+the fix is redaction at the call site or in the one structured stream.
 
 Where a log is also a command channel, printing is an input to it. Some
 CI runners interpret specially marked output lines as instructions (set

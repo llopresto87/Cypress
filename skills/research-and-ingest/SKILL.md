@@ -69,7 +69,13 @@ enters the wiki.
 
 For each source you intend to ingest, note:
 - Authority (who maintains it).
-- Version coverage (which versions of the library/spec it covers).
+- Version coverage (which versions of the library/spec it covers). A
+  documentation URL with no version in it serves whatever the site
+  publishes now (usually the newest release, on some hosts the
+  development branch), so a value read there (a managed version, a
+  default) belongs to whichever build was current on the day it was read. Read version-bound values
+  from a version-pinned URL or from the artifact's own metadata, and
+  record the version, not a date, as the coverage.
 - Date (when it was last updated upstream).
 - License (whether snapshotting is allowed).
 - Slug (the filename you'll use locally).

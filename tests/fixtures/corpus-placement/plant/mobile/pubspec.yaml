@@ -1,0 +1,8 @@
+name: sample_app
+dependencies:
+  flutter:
+    sdk: flutter
+  pebble_store: ^1.0.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter

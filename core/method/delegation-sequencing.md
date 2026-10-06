@@ -41,6 +41,14 @@ defines below. Machine load is handled in the brief, which carries the
 clauses of `method.bounded-execution`. A shard that times out under load
 is a transient failure; `protocol.recover` owns its retry budget.
 
+**The run that gates the goal goes first.** When the goal waits on one run,
+such as the next run in the real environment, the plan names it. The work that
+run needs is dispatched first, ahead of the order above under a recorded limit,
+with the lightest review the step's rules allow (a light reviewer,
+`delegation.light-variants`, where the surface allows one); every other unit
+runs beside it, never ahead. An increment that gates the run is split: the part
+the run needs lands first, and the rest follows in the same lane.
+
 **A read-only review starts as soon as there is committed work to read.** It
 consumes only committed work, so it is independent of the writers still
 running. When the plan includes a read-only review, such as a security review,
@@ -106,13 +114,14 @@ exactly as that scale gives it, with independent prose beside them. A GREEN
 wave follows over the clean increments only, and no ruling pass comes before
 it. The tip runs once the GREEN wave has handed back. One ruling pass, beside
 or after the tip, then covers every flag both waves raised; it rules on the
-held increments only and is skipped when nothing is flagged. The next cycle
-re-issues only the held increments, RED again where a ruling changed a
-contract they encode and GREEN otherwise, together with any work that has
-newly become ready. Cycles repeat until nothing is held. The batch still sizes
+held increments and the provisional readings only and is skipped when nothing
+is flagged. The next cycle re-issues only the held increments and the work a
+reversed provisional reading was built on, RED again where a ruling changed a
+contract they encode and GREEN otherwise, together with any work that has newly
+become ready. Cycles repeat until nothing is held. The batch still sizes
 spawns; the cycle is the unit the ruling pass and the tip follow. The question
-file and the shapes of an entry and a ruling are `delegation.question-file`,
-in `method.delegation-cycle-economy`.
+file and the shapes of an entry and a ruling are `delegation.question-file`, in
+`method.delegation-cycle-economy`.
 
 **When a dependency is satisfied.** A RED's own GREEN is the increment that
 turns it green: the GREEN or prose increment whose `Depends on:` names the RED
@@ -145,7 +154,8 @@ held while any of these is true:
 1. A question-file entry not yet ruled on touches it: its `where:` or
    `work held:` names the increment, a file in its `Files touched:`, or a
    contract in its `Spec contracts:` or a spec section that contract cites.
-   When the orchestrator cannot tell, the entry touches it.
+   When the orchestrator cannot tell, the entry touches it. A provisional
+   reading holds nothing (`delegation.question-file`).
 2. Its RED failed at observation for the wrong reason, or a test it wrote is
    under question.
 3. A tip failure that is not on the expected-red list is attributed to it, by
@@ -155,11 +165,11 @@ held while any of these is true:
 Every increment that depends on a held increment is held with it. Every other
 increment in the batch proceeds, its GREEN included.
 
-When a ruling amends a contract that a RED already encodes, the session
-re-briefs that RED to a tester against the amended text. The orchestrator
-records the old and new `sha256sum` of each test or fixture file that changed,
-in the batch record beside the ruling id, and the GREEN is briefed from the new
-hashes.
+When a ruling amends a contract, or reverses a provisional reading, that a RED
+already encodes, the session re-briefs that RED to a tester against the amended
+text. The orchestrator records the old and new `sha256sum` of each test or
+fixture file that changed, in the batch record beside the ruling id, and the
+GREEN is briefed from the new hashes.
 
 **Expected-red at the tip.** At each tip, once per cycle after its GREEN wave
 (`delegation.tip-cadence`), every observed RED whose own GREEN has not
@@ -172,10 +182,10 @@ attributed to. A listed id that passes before its GREEN lands is reported and
 goes to the question file, because the RED no longer fails for the reason it
 was written for.
 
-A gate step that aborts at its first failure proves nothing past the abort.
-The tip record lists every case the step did not execute as `not run`, by id
-where the step names its cases and otherwise as "the rest of `<step>`". A
-`not run` id is neither a pass nor a failure, and by itself it holds no
-increment. A change leaves the branch (merge, push or tag) only from a tip
-whose expected-red list is empty and which lists no `not run` id. The final
-tip is such a tip.
+A gate step that aborts at its first failure proves nothing past the abort. The
+tip record lists every case the step did not execute as `not run`, by id where
+the step names its cases and otherwise as "the rest of `<step>`". A `not run`
+id is neither a pass nor a failure, and by itself it holds no increment. A
+change leaves the branch (merge, push or tag) only from a tip whose
+expected-red list is empty and which lists no `not run` id, and only when no
+provisional reading is unruled. The final tip is such a tip.

@@ -51,6 +51,15 @@ home for that value, and the two will drift. When the consumer renames the
 variable between the host and the container, the default goes on the name the
 deploy layer actually resolves.
 
+A fallback is only safe when it has the same environment dimension as the
+value it stands in for. A default held as one scalar for every environment
+fills a variable missing from one environment's store with another
+environment's value: the deploy succeeds, nothing fails closed, and what it
+built (a certificate whose subject names the wrong host, say) carries the
+wrong environment's identity. A per-environment name gets no cross-environment
+default, and anything derived from it, such as a certificate subject, is
+derived only from the per-environment value.
+
 ## 2. The one exception, and what it costs
 
 A variable a reader would otherwise break on may be made optional only when

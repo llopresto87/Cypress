@@ -1,13 +1,13 @@
 # Tool: hashed-lock-closure-check
 
-> Project-agnostic, durable capability notes, folded into the seed by the
-> harvest protocol. This page is a **BLUEPRINT**: the closure-measurement
-> method is portable across any package manager with a hash-pinned,
-> dry-run-capable resolver; the exact flags belong on that package manager's
-> own library page (§7), not here. The doctrine this tool exists to satisfy,
-> that a lock is resolved in an empty environment for the target platform or
-> it is not closed, is owned by `core/method/release-posture.md` §3 and is
-> linked, not restated.
+> Project-agnostic capability notes, kept in the seed's tool corpus
+> (`tool-corpus/README.md`). This page is a **BLUEPRINT**: the
+> closure-measurement method is portable across any package manager with a
+> hash-pinned, dry-run-capable resolver; the exact flags belong on that package
+> manager's own library page (§7), not here. The doctrine this tool exists to
+> satisfy, that a lock is resolved in an empty environment for the target
+> platform or it is not closed, is owned by `core/method/release-posture.md` §3
+> and is linked, not restated.
 
 ## 0. Identity
 
@@ -208,7 +208,7 @@ index) exits with the tool-failure code, never the drift code.
 - **Package-manager-specific flags:** land on that package manager's own
   `library-corpus/<ecosystem>/<name>.md` page (for example, a Python
   toolchain's own dry-run/report/target-platform flags), never here.
-- **Sources:** distilled from harvested plant experience; no external URL.
+- **Sources:** distilled from practice; no external URL.
   The general method (dry-run resolution, ignore-installed, twice-run
   comparison) is a documented capability of common package-manager
   resolvers, and the exact flag names are cited on the package manager's own
@@ -216,6 +216,6 @@ index) exits with the tool-failure code, never the drift code.
 
 ## 8. Changelog
 
-- 2026-09-26 — created from harvested, generalized capability, by
+- 2026-09-26 — created by
   docs-librarian.
 - 2026-09-26 — corrected after review: the stripped lock keeps its `==` pins; the closure verdict is by package name, and version differences are reported separately as "a pin would change".

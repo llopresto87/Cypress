@@ -1,10 +1,10 @@
 # Legal corpus
 
 **Project-agnostic, citation-durable** entries for external law, regulation, and
-standards — the statute mirror of `library-corpus/`. Folded back into the seed
-by the **harvest** protocol (`protocols/harvest.md`, `HARVEST_PROMPT.md`), and
-withdrawn by `grow` (and refreshed onto an already-grown project by `graft`)
-when a project must reason about the same body of law.
+standards — the statute mirror of `library-corpus/`. Placed whole on request
+(`install.sh --legal-corpus yes`), withdrawn by `grow` (and refreshed onto an already-grown project by `graft`)
+when a project must reason about the same body of law. New entries enter
+through the **harvest** protocol (`protocols/harvest.md`).
 
 ## Purpose
 
@@ -13,7 +13,7 @@ rediscovering the same **primary text** every time: finding the official
 publisher, getting past whatever blocks a non-browser client, reading the
 provision, and correctly dating the edition you actually read. That text is
 durable far longer than any one project's application of it — a statute outlives
-several codebases. Harvest folds the durable **citation** into this corpus —
+several codebases. This corpus holds the durable **citation** —
 instrument, provision, its text (graded by how it was sourced), the official
 source URL, the verification grade and date, the legal status — so the next
 project that must comply with or reason about the same law starts from a sourced

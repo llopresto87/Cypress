@@ -1,9 +1,9 @@
 # Tool: parallel-suite-runner
 
-> Project-agnostic, durable capability notes, folded into the seed by the
-> harvest protocol. Orientation for a reusable tool, and drop-in: the script
-> below is stdlib-only and runs against any repository on a POSIX host through
-> `--repo`.
+> Project-agnostic capability notes, kept in the seed's tool corpus
+> (`tool-corpus/README.md`). Orientation for a reusable tool, and drop-in: the
+> script below is stdlib-only and runs against any repository on a POSIX host
+> through `--repo`.
 
 ## 0. Identity
 
@@ -522,13 +522,13 @@ whole process group.
   so that a known-flaky test failing in a new way is not waved through under
   its old name. `tool-corpus/testing/working-tree-snapshot.md` builds the
   throwaway tree a suite is often run inside.
-- **Sources:** distilled from harvested plant experience; the id format and
+- **Sources:** distilled from practice; the id format and
   exit code 5 ("no tests ran", Python 3.12+) are stdlib `unittest` behaviour.
   The runner accepts exit 5 from one shard and refuses a run that ran nothing.
 
 ## 8. Changelog
 
-- 2026-09-26: created from a harvested, generalized plant tool. The single
+- 2026-09-26: created from a generalized tool. The single
   re-run of a timed-out shard was added on import; before it, a timeout failed
   the run on its first occurrence. Same day: a run that ran no test fails, a
   shard whose parsed ids do not match its failures plus errors is unreadable,

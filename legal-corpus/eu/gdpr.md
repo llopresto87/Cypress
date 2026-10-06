@@ -1,9 +1,9 @@
 # Regulation (EU) 2016/679 (GDPR) — EU
 
-> Project-agnostic legal citation notes, folded into the seed by the harvest
-> protocol. Orientation for citing this regulation — verified against the
-> sources stated **per entry**; confirm currency before relying on any entry for
-> a consequential determination. Entry contract: `../_schema.md`.
+> Project-agnostic legal citation notes, kept in the seed's legal corpus
+> (`legal-corpus/README.md`). Orientation for citing this regulation — verified
+> against the sources stated **per entry**; confirm currency before relying on
+> any entry for a consequential determination. Entry contract: `../_schema.md`.
 
 **Instrument kind:** `regulation` (directly applicable; no transposition needed
 for the provisions recorded here).

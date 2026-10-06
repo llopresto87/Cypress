@@ -109,6 +109,12 @@ COMPANION (echo each item back in your handback):
 - **Stay inside your boundary.** A fact that belongs to a neighbouring
   subsystem goes in the ledger's cross-boundary notes for the
   orchestrator to route.
+- **An agent-operations system is evidence.** Agent charters, harness
+  hooks, instruction files and lesson or memory logs already in the tree
+  are inventoried, not waved off as stale or as a bulk read: each hook
+  with the event it fires on and what it blocks, each log entry with its
+  date and the paths it names. Outside your boundary, name the system in
+  the cross-boundary notes so the orchestrator assigns it a scout.
 - **Sample the load-bearing files.** Resolve the boundary (entry points,
   public surface, data owned, dependencies) and start from {{which
   manifests, entry points, config files}}; confirm a path with

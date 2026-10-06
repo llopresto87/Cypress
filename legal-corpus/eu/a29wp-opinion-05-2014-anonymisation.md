@@ -1,7 +1,7 @@
 # A29WP Opinion 05/2014 on Anonymisation Techniques (WP216) — EU
 
-> Project-agnostic legal citation notes, folded into the seed by the harvest
-> protocol. Entry contract: `../_schema.md`.
+> Project-agnostic legal citation notes, kept in the seed's legal corpus
+> (`legal-corpus/README.md`). Entry contract: `../_schema.md`.
 
 **Read the status field before you cite this.** This opinion is **not binding
 law**, it was adopted under a Directive that has since been repealed, and its

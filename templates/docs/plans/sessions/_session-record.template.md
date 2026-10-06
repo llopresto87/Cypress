@@ -43,6 +43,7 @@ How it applies: <one short paragraph>
 ### As of <YYYY-MM-DD>
 
 - <where paused work stands; what comes next; what waits on whom>
+- <when a live operation on a real target paused mid-flight, its exact state: what is applied where; the rollback anchors (previous image tags, backup copies and how long each survives); the blocker's next diagnostics, in order; the gates still to run. When it resolves, a later dated block says so first and names the block it closes, which stays as written>
 
 ## Harness memories to migrate
 

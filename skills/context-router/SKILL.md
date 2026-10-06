@@ -31,7 +31,7 @@ artifacts:
   - templates/knowledge-graph/_schema.md
   - templates/knowledge-graph/index.md
 prevents: A session that opens source files before deciding which few facts the task needs, and never declares what it skipped, so nobody downstream can tell an informed omission from an unread node.
-est_tokens: 3590
+est_tokens: 4048
 ---
 
 # context-router
@@ -257,7 +257,12 @@ runs it through the canonical block every delegation brief embeds
 (`docs/graph/templates/prompts/graph-session-bootstrap.md`); this skill
 owns only the traversal *algorithm*. When your own reading of the task
 resolves a different set than the route, one of you is wrong; usually
-a `load_when:` trigger needs sharpening, a cheap permanent fix.
+a `load_when:` trigger needs sharpening, a cheap permanent fix. That fix
+re-ranks every node, not only the one edited: titles and triggers are
+both scored text, and a sharper trigger on one node can push a peer out
+of a capped result that an earlier fix depended on. Re-run every routing
+probe fixed during the session after its last trigger or title edit, not
+after each one.
 
 **`--plan` is a keyword heuristic, not an oracle.** It ranks nodes by
 weighted term overlap; it does not reason about a request path or a

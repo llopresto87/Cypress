@@ -1,9 +1,9 @@
 # Tool: container-deploy-pipeline
 
-> Project-agnostic, durable capability notes, folded into the seed by the
-> harvest protocol. Orientation for a reusable tool, NOT a project runbook — the
-> adopting plant re-authors the blueprint sections against its own container tool
-> and host layout, test-first.
+> Project-agnostic capability notes, kept in the seed's tool corpus
+> (`tool-corpus/README.md`). Orientation for a reusable tool, NOT a project
+> runbook — the adopting plant re-authors the blueprint sections against its own
+> container tool and host layout, test-first.
 
 ## 0. Identity
 
@@ -183,6 +183,17 @@ esac
   restarting, a stale layer, and a hand-patched host all look identical in the
   log and different in the container. (`protocols/verify.md` owns the general
   rule this is an instance of: evidence is what was observed *this run*.)
+- **Every stage must address the same engine.** If `build` and `release` act
+  on the local engine while `deploy` and `rollback` address the remote one,
+  the deploy asks for a tag the remote never received. Either build on the
+  target, or push from where you build and authenticate the pull where it is
+  issued: a pull sent to a remote engine carries the client's registry login,
+  and a deploy run on the target's own engine needs the login there. Without
+  it the failure shows up only at the pull. A bind-mount source follows the
+  same rule: with a remote engine it is a path on the engine's host, and a
+  relative source is a trap there (`library-corpus/container/docker-compose.md`,
+  General pitfalls). Give bind sources as absolute paths that exist on the
+  target.
 
 ## 6. Tests that cover it
 
@@ -198,11 +209,14 @@ healthcheck loop times out (not hangs) when health never turns green.
 - **Related tools:** `tool-corpus/testing/http-smoke-suite.md` (the smoke gate
   this pipeline runs); `tool-corpus/ops/self-signed-tls-cert.md` (cert material a
   deployed TLS endpoint may need).
-- **Sources:** distilled from harvested plant experience; no external URL.
+- **Sources:** distilled from practice; no external URL.
 
 ## 8. Changelog
 
-- 2026-07-16 — created from harvested, generalized capability, by docs-librarian.
+- 2026-07-16 — created by docs-librarian.
 - 2026-09-22 — folded in the deploy-provenance pitfall: a deploy record states
   intent, and what is running is read from the running artifact (§5), by
   docs-librarian.
+- 2026-10-05: folded in the one-engine pitfall: every stage addresses the
+  engine that runs the container, and bind sources are absolute paths on that
+  engine's host (§5), by docs-librarian.

@@ -27,8 +27,9 @@ load_when:
   - "risk register row, accepted risk, can this risk be closed"
   - "new defect found during a fix, new finding id or widen the old one"
   - "a request widens the increment in flight, defer it or do it now"
+  - "a user reports a failure in their client, but the server looks healthy"
 prevents: Containment that destroys the evidence, remediation sequenced by what is easy rather than by exposure, and residual risk nobody owns.
-est_tokens: 2085
+est_tokens: 2361
 ---
 
 # Incident posture
@@ -87,8 +88,21 @@ rather than implied. Recovery is declared against the automated gate that
 owns the property (the smoke or contract gate re-run), because a dashboard
 glance is not a recovery claim.
 
+Locate a client-reported failure before changing the server. Read the
+access log of each edge the client should reach, filtered to that client
+(its address, its user agent), first: no API request from it puts the fault on
+the client side (an untrusted
+certificate, mixed content, a cached old bundle), where no server change can
+reach it. A cause named without reproducing the failure in that client is a
+hypothesis, and it is recorded as one.
+
 ## 4. Sequence remediation by live exposure and by what it unblocks
 
+Before planning a fix from an audit or a finding register, re-verify
+each finding, claim by claim, against the code at a named commit: a
+register drifts (the fix file cited as the bug site, line numbers moved,
+items already closed on the branch), and implementing a stale finding
+re-fixes closed items and can re-open a path that now fails closed.
 Order a backlog of known problems by confirmed reachability and risk
 concentration, not by effort or by how untidy something looks: an exposed
 credential outranks everything; a working-but-untidy configuration
@@ -159,15 +173,19 @@ the owner's call.
 An owner's declined fix is an accepted residual: dated, with its
 reachability argument and the escalation that fires if the reason stops
 holding; where the acceptance is standing, it is a `deviation` node with
-`ends_when`, so a later reader sees a decision rather than an oversight. A
-list of settled decisions that reviews may not re-raise is legitimate,
-bounded by its counter-rule: you cannot accept a risk you were never
-shown. A control gap that has not yet caused harm is a latent gap with its
-confirmed negative, closed before the next event rather than after. Once
-remediation SLAs are published they bind the team; a change to
-remediation capacity is a compliance decision, not only an engineering
-one. `status-register.py --open --hotfix` at close-out
-(`protocol.canonize`) is the mechanical ask.
+`ends_when`, so a later reader sees a decision rather than an oversight.
+An exposure opened outside what the deploy manages (a sidecar or port
+forward started by hand, a host-level rule) is not removed by the next
+deploy or teardown of the project, so its record names the command that
+removes it beside its end condition and states what an environment
+promotion does to it. A list of settled decisions that reviews may not
+re-raise is legitimate, bounded by its counter-rule: you cannot accept a
+risk you were never shown. A control gap that has not yet caused harm is
+a latent gap with its confirmed negative, closed before the next event
+rather than after. Once remediation SLAs are published they bind the
+team; a change to remediation capacity is a compliance decision, not
+only an engineering one. `status-register.py --open --hotfix` at
+close-out (`protocol.canonize`) is the mechanical ask.
 
 ## Neighbours
 

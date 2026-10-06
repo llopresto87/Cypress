@@ -1,10 +1,10 @@
 # Tool: static-config-contract-gate
 
-> Project-agnostic, durable capability notes, folded into the seed by the
-> harvest protocol. This page is a **BLUEPRINT**: the enumeration discipline,
-> the two operating modes and their distinct blind spots, and the self-check
-> idiom are portable; the reader for the artifact's own format, and the native
-> resolver command for resolved mode, are written per system.
+> Project-agnostic capability notes, kept in the seed's tool corpus
+> (`tool-corpus/README.md`). This page is a **BLUEPRINT**: the enumeration
+> discipline, the two operating modes and their distinct blind spots, and the
+> self-check idiom are portable; the reader for the artifact's own format, and
+> the native resolver command for resolved mode, are written per system.
 
 ## 0. Identity
 
@@ -12,7 +12,7 @@
 - **Name:** static-config-contract-gate
 - **Language / runtime:** any (a reader for the declarative artifact's own
   format; a native resolver binary only for resolved mode, no daemon)
-- **Stability:** **blueprint** — no portable implementation, because the
+- **Stability:** **blueprint**: no portable implementation, because the
   artifact format and its resolver are different for every system. The
   enumeration, mode split, and self-check discipline are the value of the
   page.
@@ -205,10 +205,16 @@ in anyone's memory.
   and pinning a choice the specification records as unverified would freeze
   it. List each such gap next to the mutant that exposed it, so the gap is
   visible rather than silent.
-- **A gate no pipeline invokes is orphaned from CI.** If no pipeline or gate
-  script calls it, it runs only when someone remembers. Say so on the gate's
-  own page, and record the wire-or-retire decision where the project keeps
-  open decisions.
+- **A gate nothing in its build chain invokes is orphaned from CI.** Before
+  calling a gate orphaned, follow its invocation chain rather than search for
+  its name (`protocols/verify-disagreement.md`): pipeline, gate script, image
+  build, Dockerfile, package-manager lifecycle hook. A check wired as an npm
+  `prebuild` script runs in every image build that calls `npm run build` and
+  appears in no pipeline file (`library-corpus/language/nodejs.md`, Interop).
+  Trace each gate on its own, because a sibling can be
+  genuinely orphaned. A gate that no link in that chain calls runs only when
+  someone remembers. Say so on the gate's own page, and record the
+  wire-or-retire decision where the project keeps open decisions.
 
 ## 4. Portable vs blueprint
 
@@ -249,6 +255,37 @@ in anyone's memory.
 - **A dead list of "known" names inside the gate**, kept separate from what
   the artifact itself declares, drifts the moment either side changes alone.
   Read the fail-closed names out of the artifact, every run.
+- **A "no committed secret" case that tests the disk.** Whether a secret is
+  committed is a fact about version control, so ask version control: `git
+  ls-files --error-unmatch <path>` (or `git ls-files <dir>`) for the path the
+  configuration mounts or reads. Opening the file on disk and failing on its
+  contents fails every operator host where the real secret sits, correctly,
+  in a gitignored path, and the usual "fix" for that red is to delete the
+  secret. A gate that reads the file can still check its permissions or
+  format; the tracked-or-not verdict comes from git.
+- **A configuration reader that ignores YAML merge keys.** Compose files and
+  other YAML configuration often share hardening through an anchor and a
+  merge key (`<<: *hardened`). A reader that does not resolve `<<` sees a
+  service without the inherited keys: a check for presence then fails a
+  hardened service, and a check for absence (no `privileged`, no extra
+  capability) passes one that inherits the forbidden key. Merge keys are a
+  YAML 1.1 type, not part of YAML 1.2: PyYAML's `safe_load` resolves them,
+  while the JavaScript `yaml` library resolves them by default only in 1.1
+  mode (option `merge`). Resolve them, or fail the gate when a `<<` key is
+  present and the reader cannot. The merge is shallow, and that decides the
+  assertion: any key the service sets itself wins whole over the merged one,
+  so a sequence is replaced, never concatenated, and a nested mapping such as
+  `environment` is replaced, not merged. A service that inherits
+  `cap_drop: [ALL]` and declares its own `cap_drop: [NET_RAW]` ends with only
+  `NET_RAW` dropped.
+  Assert on the resolved value, never on what the anchor says.
+- **A declared value nothing reads yet is still in the contract.** A
+  service URL left pointing at `localhost` in a service that has no consumer
+  today is latent: the first client added to it fails live with a refused
+  connection. Assert the contract (every declared service URL is routable
+  from where it will be read) for every declared value, consumed or not;
+  widen the contract to cover it rather than narrowing the gate to the values
+  read today.
 - **A printed finding that is not counted.** Wire every finding the gate
   prints into its exit code; the failure this prevents is owned by
   `tool-corpus/ops/layered-config-merge-verifier.md` §5 ("The
@@ -285,13 +322,20 @@ for names the artifact itself declares fail-closed.
   the wire, which is exactly what text mode here cannot see).
 - **Procedure:** `skill-corpus/mutation-verify.md` §4 "Mutating an artifact
   the tree must keep: mutate by copy" (composed by reference, not restated).
-- **Sources:** distilled from harvested plant experience; no external URL.
+- **Sources:** distilled from practice; no external URL.
 
 ## 8. Changelog
 
-- 2026-09-26 — created from harvested, generalized capability, by
+- 2026-09-26 — created by
   docs-librarian.
 - 2026-09-26 — added the mutation register rules (re-derive against landed
   code, per-group status), the satisfiable-RED render, and the recorded
   limits (stricter-than-contract, open coverage gaps, orphaned gates); the
   runner-environment pass now escalates as a spec gap.
+- 2026-10-05 — folded in two pitfalls (§5): a "no committed secret"
+  case asks version control, not the disk; a YAML reader resolves merge keys
+  and asserts on resolved values (with the override and sequence-replacement
+  rules), by tool-smith.
+- 2026-10-05: an orphaned-gate verdict now needs the whole invocation
+  chain traced, lifecycle hooks included (§3); §5 gained the
+  declared-but-unread value pitfall; by docs-librarian.

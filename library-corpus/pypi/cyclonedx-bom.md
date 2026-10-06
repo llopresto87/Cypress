@@ -1,9 +1,9 @@
 # cyclonedx-bom — pypi
 
-> Project-agnostic, version-durable surface notes, folded into CYPRESS by the
-> harvest protocol. Orientation for a library, NOT a version-pinned page — for
-> exact pins, CVEs, and per-release behavior, run `ingest-library` against the
-> project's own lockfile.
+> Project-agnostic surface notes, kept in the seed's library corpus
+> (`library-corpus/README.md`). Orientation for a library, not a record of one
+> project's versions: for exact pins, CVEs, and per-release behavior, run
+> `ingest-library` against the project's own lockfile.
 
 ## What it is
 `cyclonedx-bom` is the CycloneDX project's software bill of materials (SBOM)
@@ -20,6 +20,15 @@ One project carries three names, and each is load-bearing:
 | Upstream repository (changelog, issues, advisories) | `CycloneDX/cyclonedx-python` |
 
 The document model underneath is a separate library, `cyclonedx-python-lib`.
+
+## Install, setup and configuration
+- `pip install cyclonedx-bom` (or `pipx` / `uv tool`), at an exact pin, in an
+  environment separate from the application when possible. The command is
+  `cyclonedx-py`.
+- Options are per subcommand (input, output file, format, spec version). The
+  spec version has a default that moves
+  between tool majors, so pass `--schema-version` explicitly when a consumer
+  expects a particular one.
 
 ## Core API / usage shape
 - It is a command-line tool. Install it with `pip`, `pipx` or `uv tool`, into an
@@ -48,6 +57,8 @@ The document model underneath is a separate library, `cyclonedx-python-lib`.
   transitive closure (it pulls `cyclonedx-python-lib` and that library's own
   dependencies), not only the top-level package.
   `tool-corpus/ops/hashed-lock-closure-check.md` checks that a lock covers it.
+  When it shares an image with other scanners, lock their closures together:
+  the shared-closure rule lives on `library-corpus/pypi/bandit.md`.
 
 ## General pitfalls
 - A missing command that a wrapper downgrades to a warning is a silent missing
@@ -59,6 +70,45 @@ The document model underneath is a separate library, `cyclonedx-python-lib`.
   identifiers, spec version). Regenerate and diff before moving the pin.
 - Installing it into a Debian-family image's system Python meets PEP 668; the
   `pypi/pyyaml.md` page owns that trap and the correct install patterns.
+
+## Testing
+- Assert that each expected SBOM file exists, parses, and lists the components
+  you know are installed; a missing or empty SBOM must fail the step (pitfalls
+  above).
+- Regenerate and diff before a generator bump, so a changed artifact is a
+  reviewed change.
+
+## Security defaults
+- The SBOM is only as exact as its input: a loose requirements file yields
+  version ranges (idioms above). This page has no confirmed source on whether
+  a subcommand reaches the network.
+
+## Operational behaviour
+- The `environment` subcommand describes an installed Python environment, so
+  it runs where that environment is (inside the image that ships it, for
+  example).
+
+## Interop
+- The output is a CycloneDX document (JSON or XML) for supply-chain and
+  vulnerability tools that read the CycloneDX specification.
+- Often installed with `bandit` and other scanners
+  (`library-corpus/pypi/bandit.md`).
+
+## Major lines
+
+### Before 4.x
+- The deprecated `cyclonedx-bom` entry point still exists, and the input source
+  is chosen with flags (`-e` for the environment, `-r -i <file>` for
+  requirements, `-p` / `-pip` with a lockfile for Poetry and Pipenv); Conda
+  lockfiles are read.
+
+### 4.x and later
+- Not backwards compatible: nearly all behaviour changed. The `cyclonedx-bom`
+  entry point is removed (use `cyclonedx-py`, or `python -m cyclonedx_py`);
+  each source is a subcommand; Poetry and Pipenv take a project directory
+  instead of a lockfile; Conda lockfile analysis is removed (Conda Python
+  environments work through `environment`); the schema version is set with
+  `--schema-version` per subcommand. Upstream keeps an "Upgrading to v4" guide.
 
 ## Upstream docs
 - Docs: https://cyclonedx-bom-tool.readthedocs.io/

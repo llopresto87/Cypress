@@ -15,6 +15,9 @@
 #       (SPEC-0001 ALL_NAMES_SKIPPED_FROZEN_HOSTS)
 #   S9  the session-record form is placed; a re-install keeps the plant's
 #       records and its edited form (SPEC-0001 SESSION_RECORD_FORM_IS_PLACED)
+#   S14 the harvest-candidate form is placed, no record is made; a re-install
+#       keeps the plant's record and its edited form
+#       (SPEC-0001 HARVEST_CANDIDATE_FORM_IS_PLACED)
 #   S10 a re-install leaves a plant's older engine alone
 #       (SPEC-0001 EXISTING_PLANT_RECEIVES_CURRENT_ENGINES; graft half in
 #        test-graft-tools.sh X383-X387)
@@ -22,6 +25,9 @@
 #       (SPEC-0001 UNKNOWN_STAMP_KEYS_SURVIVE, STAMP_NOT_AN_OBJECT)
 #   S12 a stamp cut off inside a field, or not UTF-8, takes the preflight
 #       refusal, not the STAMP_NOT_AN_OBJECT backup (held in case_s7)
+#   S13 the jurisdiction is resolved once, flag then stamp, and the report,
+#       the stamp and the NEXT STEP banner agree on it
+#       (SPEC-0001 JURISDICTION_RESOLVED_ONCE)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -152,17 +158,29 @@ rm -rf "$WORK"
 
 case_plan_records() {
 local WORK; WORK="$(mktemp -d)"
-# A plant's own plan records are never touched by the seed. The seed ships two
-# leaves into plans/: an empty grill.md scaffold and the session-record form (S9).
+# A plant's own plan records are never touched by the seed. The seed ships three
+# leaves into plans/: an empty grill.md scaffold, the session-record form (S9,
+# SPEC-0001 SESSION_RECORD_FORM_IS_PLACED) and the harvest-candidate form (S14,
+# SPEC-0001 HARVEST_CANDIDATE_FORM_IS_PLACED).
 local FORM="docs/graph/plans/sessions/_session-record.template.md"
 local SEED_FORM="$ROOT/templates/docs/plans/sessions/_session-record.template.md"
 local REC="docs/graph/plans/sessions/2026-01-01-example.md"
+local HFORM="docs/graph/plans/_harvest-candidates.template.md"
+local SEED_HFORM="$ROOT/templates/docs/plans/_harvest-candidates.template.md"
+local HREC="docs/graph/plans/harvest-candidates.md"
 P="$WORK/plan-records"; mkdir -p "$P"
 "$ROOT/install.sh" claude-code --project-dir "$P" >/dev/null 2>&1 \
     || fail "baseline install failed"
 [[ -f "$P/$FORM" ]] || fail "S9: a fresh install holds no $FORM"
 cmp -s "$SEED_FORM" "$P/$FORM" \
     || fail "S9: the placed $FORM is not byte-identical to the seed's form"
+[[ -f "$SEED_HFORM" ]] \
+    || fail "S14: the seed ships no templates/docs/plans/_harvest-candidates.template.md"
+[[ -f "$P/$HFORM" ]] || fail "S14: a fresh install holds no $HFORM"
+cmp -s "$SEED_HFORM" "$P/$HFORM" \
+    || fail "S14: the placed $HFORM is not byte-identical to the seed's form"
+[[ ! -e "$P/$HREC" ]] \
+    || fail "S14: a fresh install created the plant's record $HREC; canonize makes it from the form"
 
 mkdir -p "$P/docs/graph/plans/grill"
 printf '# grill — this plant\n\n## 9. Implementation Plan\n\n| # | Increment | Status | Detail |\n|---|---|---|---|\n| 1 | Ours | done | `plans/grill/increment-01-ours.md` |\n' \
@@ -172,25 +190,33 @@ printf '### Increment 1 — Ours\nPLANT-DECISION-RECORD\n' \
 printf 'a decision the plant made\n' >"$P/docs/graph/plans/our-other-plan.md"
 printf '# Session record: 2026-01-01, example\nA synthetic record.\n' >"$P/$REC"
 printf '\n<!-- edited by the plant -->\n' >>"$P/$FORM"
+printf '# Harvest candidates\n| 1 | a synthetic KEEP-PLANT row |\n' >"$P/$HREC"
+printf '\n<!-- harvest form edited by the plant -->\n' >>"$P/$HFORM"
 records() { (cd "$P" && cat docs/graph/plans/grill.md docs/graph/plans/grill/increment-01-ours.md \
     docs/graph/plans/our-other-plan.md "$REC" "$FORM" | cksum); }
+harvest_records() { (cd "$P" && cat "$HREC" "$HFORM" | cksum); }
 plan_sum="$(records)"
+harvest_sum="$(harvest_records)"
 
 "$ROOT/install.sh" all --project-dir "$P" >/dev/null 2>&1 || fail "re-install failed"
 "$ROOT/install.sh" all --project-dir "$P" --symlink >/dev/null 2>&1 || true
 
 [[ "$plan_sum" == "$(records)" ]] \
     || fail "an install CHANGED the plant's plan records, a session record (S9) or the edited form"
+[[ "$harvest_sum" == "$(harvest_records)" ]] \
+    || fail "S14: an install CHANGED the plant's $HREC or its edited $HFORM"
 [[ "$(find "$P/docs/graph/plans" -name '*.bak-*' | wc -l | tr -d ' ')" -eq 0 ]] \
-    || fail "an install backed up (therefore replaced) a plant plan or session record"
-# ...and none of the seed's own plans came along.
+    || fail "an install backed up (therefore replaced) a plant plan, session or harvest record or form (S9, S14)"
+# ...and none of the seed's own plans came along. Exactly two seed forms are
+# admitted beside the grill.md scaffold: sessions/ (S9) and the harvest form (S14).
 for leaked in $(ls "$P/docs/graph/plans"); do
     case "$leaked" in
         grill|grill.md|our-other-plan.md|adopted-instructions.md|sessions) ;;
-        *) fail "the seed leaked '$leaked' into the plant's plans/" ;;
+        _harvest-candidates.template.md|harvest-candidates.md) ;;
+        *) fail "the seed leaked '$leaked' into the plant's plans/ (only grill.md, the sessions/ form (S9) and _harvest-candidates.template.md (S14) are the seed's)" ;;
     esac
 done
-echo "  a plant's plan and session records and the edited form survive every install (S9) — OK"
+echo "  a plant's plan, session and harvest records and both edited forms survive every install (S9, S14) — OK"
 rm -rf "$WORK"
 }
 
@@ -407,6 +433,53 @@ echo "  S11: unknown keys survive in order after the installer's own; a non-obje
 rm -rf "$WORK"
 }
 
+case_jurisdiction_resolved_once() {
+local WORK; WORK="$(mktemp -d)"
+# SPEC-0001 JURISDICTION_RESOLVED_ONCE: the flag first, then the stamp's
+# recorded code, and the national-layer report, the stamp writer and the
+# closing NEXT STEP banner all read that one value.
+local J="$WORK/juris" out
+mkdir -p "$J"
+"$ROOT/install.sh" claude-code --legal-corpus yes --legal-jurisdiction it \
+    --project-dir "$J" >/dev/null 2>&1 || fail "JURISDICTION_RESOLVED_ONCE: setup install failed"
+[[ "$(field "$J/.cypress/seed.json" legal_jurisdiction)" == "it" ]] \
+    || fail "JURISDICTION_RESOLVED_ONCE: setup — the stamp does not record 'it'"
+# Silence: the recorded code is the resolved one.
+out="$("$ROOT/install.sh" claude-code --project-dir "$J" 2>&1)" \
+    || fail "JURISDICTION_RESOLVED_ONCE: the re-install with no flag failed: $(tail -3 <<<"$out")"
+! grep -qi 'jurisdiction undecided' <<<"$out" \
+    || fail "JURISDICTION_RESOLVED_ONCE: a re-install with no flag called the recorded jurisdiction undecided: $(grep -i 'jurisdiction undecided' <<<"$out")"
+! grep -qF 'no --legal-jurisdiction given' <<<"$out" \
+    || fail "JURISDICTION_RESOLVED_ONCE: the national-layer report said no --legal-jurisdiction was given over a stamp that records one"
+grep -qF "national layer: 'it'" <<<"$out" \
+    || fail "JURISDICTION_RESOLVED_ONCE: the national-layer report does not name the recorded code 'it'"
+[[ "$(field "$J/.cypress/seed.json" legal_jurisdiction)" == "it" ]] \
+    || fail "JURISDICTION_RESOLVED_ONCE: a re-install with no flag changed the recorded jurisdiction"
+# The flag: it wins, the report names it and the stamp records it.
+out="$("$ROOT/install.sh" claude-code --legal-jurisdiction fr --project-dir "$J" 2>&1)" \
+    || fail "JURISDICTION_RESOLVED_ONCE: the re-install with --legal-jurisdiction fr failed: $(tail -3 <<<"$out")"
+grep -qF "'fr'" <<<"$out" \
+    || fail "JURISDICTION_RESOLVED_ONCE: the national-layer report does not name the flag's code 'fr'"
+! grep -qi 'jurisdiction undecided' <<<"$out" \
+    || fail "JURISDICTION_RESOLVED_ONCE: a re-install with --legal-jurisdiction fr called the jurisdiction undecided"
+! grep -qF "national layer: 'it'" <<<"$out" \
+    || fail "JURISDICTION_RESOLVED_ONCE: the report named the recorded code over the flag"
+[[ "$(field "$J/.cypress/seed.json" legal_jurisdiction)" == "fr" ]] \
+    || fail "JURISDICTION_RESOLVED_ONCE: the stamp did not record the flag's code 'fr'"
+# No recorded code and no flag: the undecided banner still prints.
+local U="$WORK/undecided"; mkdir -p "$U"
+"$ROOT/install.sh" claude-code --legal-corpus yes --project-dir "$U" >/dev/null 2>&1 \
+    || fail "JURISDICTION_RESOLVED_ONCE: the undecided setup install failed"
+out="$("$ROOT/install.sh" claude-code --project-dir "$U" 2>&1)" \
+    || fail "JURISDICTION_RESOLVED_ONCE: the undecided re-install failed: $(tail -3 <<<"$out")"
+grep -qF 'NEXT STEP — national jurisdiction undecided' <<<"$out" \
+    || fail "JURISDICTION_RESOLVED_ONCE: a plant with no recorded code and no flag lost the undecided banner"
+[[ "$(field "$U/.cypress/seed.json" legal_jurisdiction)" == "undecided" ]] \
+    || fail "JURISDICTION_RESOLVED_ONCE: the undecided plant's stamp does not say undecided"
+echo "  JURISDICTION_RESOLVED_ONCE: report, stamp and banner read one resolved jurisdiction — OK"
+rm -rf "$WORK"
+}
+
 # --- one-case subcommand, run by the parallel dispatcher ---------------------
 if [ "${1:-}" = "__case" ]; then
   "$2"
@@ -416,7 +489,7 @@ fi
 # Each case owns its mktemp target, so cases run concurrently under the gate's
 # shared budget (tests/gate_pool.py).
 SCN="$(mktemp)"
-for c in case_s1_s2_s5 caseALL_NAMES_SKIPPED_FROZEN_HOSTS case_s6 case_plan_records case_corpus_linkmodes case_corpus_surplus case_drift case_s7 case_engine_upgrade case_stamp_keys; do
+for c in case_s1_s2_s5 caseALL_NAMES_SKIPPED_FROZEN_HOSTS case_s6 case_plan_records case_corpus_linkmodes case_corpus_surplus case_drift case_s7 case_engine_upgrade case_stamp_keys case_jurisdiction_resolved_once; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0

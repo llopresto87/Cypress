@@ -1,9 +1,10 @@
 # Tool: auth-parity-oracle
 
-> Project-agnostic, durable capability notes, folded into the seed by the
-> harvest protocol. This page is a **BLUEPRINT**: a stack-neutral pattern, not a
-> portable script. The adopting project instantiates its **own** authenticator
-> as the oracle; there is nothing generic to copy but the contract.
+> Project-agnostic capability notes, kept in the seed's tool corpus
+> (`tool-corpus/README.md`). This page is a **BLUEPRINT**: a stack-neutral
+> pattern, not a portable script. The adopting project instantiates its **own**
+> authenticator as the oracle; there is nothing generic to copy but the
+> contract.
 
 ## 0. Identity
 
@@ -210,11 +211,11 @@ comes from watching the fixture go red against the pre-fix code, separately.
   the same measure-do-not-predict move, one layer out);
   `tool-corpus/ops/disposable-test-identity-provisioner.md` (mints the throwaway
   identities a credential corpus can be built from).
-- **Sources:** distilled from harvested plant experience; no external URL.
+- **Sources:** distilled from practice; no external URL.
 
 ## 8. Changelog
 
-- 2026-09-13 — created from harvested, generalized capability, by docs-librarian.
+- 2026-09-13 — created by docs-librarian.
 - 2026-09-26 — folded in the non-empty extracted-not-accepted class requirement
   and the loaded-version parity pin (§5), and the green-on-arrival regression-
   pin caveat (§6), by docs-librarian.

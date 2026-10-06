@@ -39,7 +39,7 @@ the whole tree, and can say precisely what it did not read and why.
 
 ## Tiers
 
-These are the graph **load-tiers** (what loads, and when) — the axis the node
+These are the graph **load-tiers** (what loads, and when), the axis the node
 `tier:` field records. They are distinct from the **task tier** (T0–T3, the
 risk classification in kernel §0) and the **model class** (authoring or
 investigation, written `opus`/`sonnet` in agent frontmatter): three
@@ -52,16 +52,16 @@ axes that share the word loosely, only the risk axis written `T0–T3`.
 | 2 | `docs/graph/nodes/*.md` (project) and `docs/graph/{protocols,skills,agents,method}/*.md` (machinery) | By traversal from the router |
 | 3 | `docs/graph/{libraries,sources,specs,decisions,plans,runbooks,product,architecture,api,data,evaluations,prompts,best-practices,tools,templates}/**` | Only when a Tier-2 node names it and the task needs it |
 
-**Machinery nodes.** The seed's method surface — protocols (how work
-flows), skills (how a technique is executed), agents (who does what),
-and method nodes (tiers, delegation, engineering posture) — lives
-inside the graph as Tier-2 nodes of kind `protocol`/`skill`/`agent`/
-`method`, each in its kind's directory. They carry `origin: seed`
+**Machinery nodes.** The seed's method surface lives inside the graph
+as Tier-2 nodes of kind `protocol`/`skill`/`agent`/`method`, each in
+its kind's directory: protocols (how work flows), skills (how a
+technique is executed), agents (who does what), and method nodes
+(tiers, delegation, engineering posture). They carry `origin: seed`
 (graft's ownership marker), route through this same schema, and load
 progressively exactly like project nodes: nothing about *how to work*
 is always-loaded except the kernel bootstrap. Two project-fact checks
 do not apply to them (version-pin leakage; the 170-line body ceiling),
-and their filenames keep natural names — the id's `<name>` part must
+and their filenames keep natural names: the id's `<name>` part must
 equal the filename stem with any `NN-` ordering prefix stripped.
 Templates under `docs/graph/templates/**` are Tier-3 artifacts (blank
 forms carry no routable knowledge); machinery nodes point at them via
@@ -128,8 +128,8 @@ A `back-written` spec was written after the behaviour it describes, so no RED
 landed with it and no promotion was signed; it may still be fully tested, and
 its §10 rows are held to the same standard as any other live spec.
 `status_date` is always present. A body `## Status` section may exist only as a pointer to
-the frontmatter; a body value that disagrees is a lint failure — two homes
-for one fact is how status drift starts. `legal_status` in the legal corpus
+the frontmatter; a body value that disagrees is a lint failure, because two
+homes for one fact is how status drift starts. `legal_status` in the legal corpus
 is a *domain* fact (in force / repealed), not a lifecycle, and is separate.
 
 `graph-lint.py` checks status on every node it loads; the delivered
@@ -142,30 +142,30 @@ Each project defines its own small set of kinds and sets them in
 `graph-lint.py` (`KINDS`). Pick kinds that carve the project at its
 joints. A common starting set:
 
-- `root` — the single entry node describing the whole project and its
+- `root`: the single entry node describing the whole project and its
   map. (Its id is exactly the root id, e.g. `root` or `program`.)
-- `subsystem` — a service, package, or module.
-- `stack` — a language/framework's shared conventions **in this
+- `subsystem`: a service, package, or module.
+- `stack`: a language/framework's shared conventions **in this
   project**: layout, build, house rules, which projects target what.
   Requires the matching `expertise.*` node, which owns applicability.
-- `expertise` — **when** a language, runtime, framework, library, or
+- `expertise`: **when** a language, runtime, framework, library, or
   platform is in play for a task, what goes wrong without it, and
   which sub-expertises apply under which condition. Lives in `nodes/`
   as `expertise.<slug>.md`, the slug unversioned (see `composes`). Owns
   exactly `<slug>.applicability` and `<slug>.composition`; every fact,
   pin, and standard stays in `libraries/` and `best-practices/`,
-  reached by `libraries:`/`artifacts:` — an expertise node with no such
+  reached by `libraries:`/`artifacts:`. An expertise node with no such
   depth edge routes to nothing and fails lint. Where a plant runs two
   majors of one stack at once, the unversioned node composes one child
   per major (`expertise.dotnet-8`), the only place a version enters a
   slug; the retired child is `superseded`.
-- `platform` — infra: gateway, config, discovery, messaging, deploy,
+- `platform`: infra: gateway, config, discovery, messaging, deploy,
   observability.
-- `data` — the data model and where it lives.
-- `crosscut` — concerns spanning subsystems: auth, secrets, privacy,
+- `data`: the data model and where it lives.
+- `crosscut`: concerns spanning subsystems: auth, secrets, privacy,
   testing.
-- `domain` — the problem-domain vocabulary and workflows.
-- `deviation` — a **deliberate, standing departure from a known standard**,
+- `domain`: the problem-domain vocabulary and workflows.
+- `deviation`: a **deliberate, standing departure from a known standard**,
   with the reason, its scope, and the condition that ends it. Lives in
   `nodes/` as `deviation.<slug>.md` with `status: standing`, `departs_from`
   (the fact key or standard it departs from), `reason`, `scope`, `ends_when`,
@@ -208,24 +208,24 @@ and a `<placeholder>` left in place is not declared.
 
 ## Key semantics
 
-**`owns`** — the dedup mechanism, and the most important key. Each
+**`owns`** is the dedup mechanism, and the most important key. Each
 entry is a fact-key this node is the single source of truth for. A
 fact-key appears in exactly one node's `owns` list, project-wide. If
 two nodes both want a fact, extract it to a shared node and have both
 `require` it.
 
-**`requires`** — hard dependency; you cannot be correct on this node
-without them. Keep minimal — every edge is context every future agent
-pays for. Must be acyclic on its own (see `composes`).
+**`requires`** lists hard dependencies: you cannot be correct on this node
+without them. Keep it minimal, because every edge is context every future
+agent pays for. Must be acyclic on its own (see `composes`).
 
-**`peers`** — soft adjacency; the boundary you are not crossing. The
+**`peers`** mark soft adjacency, the boundary you are not crossing. The
 router prints these as "not loaded" so the choice is visible.
 
-**`composes`** — lazy, downward, and task-conditioned; expertise nodes
+**`composes`** is lazy, downward, and task-conditioned; expertise nodes
 only, toward expertise nodes only. Where `requires` is a closure the
 router always takes, `composes` is a menu it reads: a composed child
 loads only when the task names, exactly, a term in the child's own
-vocabulary — its `load_when` tokens and its whole slug, minus the
+vocabulary: its `load_when` tokens and its whole slug, minus the
 parent's. Family words on the parent therefore never descend a child;
 a child's triggers must be its own. `composes` is acyclic on its own.
 Its union with `requires` is deliberately not: `parent composes child`
@@ -235,12 +235,12 @@ node must appear in that node's `composes` — lint names the line to
 add. The router prints un-composed children as "not loaded" with the
 reason, so the choice is visible.
 
-**`artifacts`** — progressive-discovery edges from a node to detailed
+**`artifacts`** are progressive-discovery edges from a node to detailed
 knowledge leaves. Paths are relative to `docs/graph/`, must remain
 inside it, and must resolve. `libraries` is the specialized wiki edge;
 all other leaf kinds use `artifacts`.
 
-**`load_when`** — what the router matches a task description against.
+**`load_when`** is what the router matches a task description against.
 On `kind: agent` nodes, `routing_triggers` (the same key the harness
 roster uses) substitutes for `load_when`; the linter accepts either.
 Write the phrases a developer would actually type, including globs.
@@ -269,7 +269,7 @@ such as `net10.0`, because the router drops phrase parts under three
 characters: `dotnet 10 target` reads as `dotnet target` and matches
 every major.
 
-**`est_tokens`** — honest estimate of the whole file, frontmatter
+**`est_tokens`** is an honest estimate of the whole file, frontmatter
 included: what a loader pays to open it, not the prose alone. The router
 sums these to report context cost before work starts.
 
@@ -313,18 +313,18 @@ the leaf rule it pairs with, is `knowledge-graph.branch-shape`
 9. Every path in `artifacts` resolves beneath `docs/graph/`.
 10. Version pins do not appear in a node body unless it owns a
    `*.version`/`*.versions` fact-key. Versions belong in
-   `docs/graph/libraries/`. Fenced and inline code are exempt —
+   `docs/graph/libraries/`. Fenced and inline code are exempt:
    quoting a real config line is not restating a fact.
-11. `est_tokens` is within 2× of the measured file size — `graph-lint.py`
-    measures the whole file, frontmatter included, not the body alone;
+11. `est_tokens` is within 2× of the measured file size, as `graph-lint.py`
+    measures it: the whole file, frontmatter included, not the body alone;
     body under the line ceiling.
 12. `status`, where present, is a vocabulary value for the node's kind and
     carries its required companions (`owner`, `reopen_when`, `superseded_by`,
     `status_evidence`, `ends_when`); a body `## Status` value never disagrees.
 13. A `deviation` node has `status: standing`, `departs_from`, `reason`,
     `scope`, `ends_when`, `recorded_in`.
-14. `index.md` carries a complete `plant:` block — failure on a grown plant,
-    warning on an adopted one.
+14. `index.md` carries a complete `plant:` block; a missing one is a failure
+    on a grown plant and a warning on an adopted one.
 15. Every id in `composes` resolves, and both ends are `kind: expertise`.
 16. `composes` is acyclic (its union with `requires` is not checked; see
     `composes`).
@@ -368,15 +368,15 @@ python3 docs/graph/graph-lint.py --plan "<task>"   # dry-run the router
 
 ## Anti-patterns
 
-- **A node that `requires` everything** — a bulk read in disguise.
-- **An expertise node that `composes` everything** — the same bulk read
+- **A node that `requires` everything** is a bulk read in disguise.
+- **An expertise node that `composes` everything** is the same bulk read
   wearing a menu. If every child descends on every task, the children
   are carrying the family's words instead of their own.
-- **A subsystem node that explains the language/framework** — that is a
-  `stack.*` node.
-- **A node with no `owns`** — a link farm; delete it. A branch owns
+- **A subsystem node that explains the language/framework** is doing the
+  work of a `stack.*` node.
+- **A node with no `owns`** is a link farm; delete it. A branch owns
   its menu (`<slug>.menu`, "Body"), so a menu with a "load when" per
   item is not one.
-- **Filling an unknown with a guess** — write "not recorded".
-- **`closed` without evidence** — that is `hotfix` or `deferred` wearing a
+- **Filling an unknown with a guess**: write "not recorded" instead.
+- **`closed` without evidence** is `hotfix` or `deferred` wearing a
   green badge.

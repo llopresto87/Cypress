@@ -71,7 +71,14 @@ dependency is current, it names the version *and* the support phase of
 the line that version belongs to. "On the latest release" and
 "supported" are two claims: a line that has left active support
 satisfies the first while failing the second, and a pin recorded without
-its phase reads as currency to every later reader.
+its phase reads as currency to every later reader. Nor is a pin what
+runs: it is what the project declares. Where the project deploys to more
+than one environment, a bump the page records stays intended until the
+running version is measured in each one, and the page says which
+environments it measured; a declared pin, and even a version endpoint
+the platform exposes, can disagree with what is deployed. When two
+measurements disagree, both stay on the page with their dates
+(`protocol.verify-disagreement`, mutable subjects).
 
 ### 3. Cite every claim
 

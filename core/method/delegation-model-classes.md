@@ -21,7 +21,7 @@ load_when:
   - "effort for this spawn, effort field in the agent definition"
   - "which model on this host, model map, provider, non-Anthropic model"
 prevents: Every worker run on the most expensive model at full effort, or a cheap one handed authoring, review or a security surface it cannot carry.
-est_tokens: 2292
+est_tokens: 2397
 ---
 
 ## Route by model class
@@ -55,6 +55,12 @@ effort and leave the model to that file. A spawn runs the model its map row
 lists. A row still unfilled means the caller's model: the spawn omits the
 model, and its routing evidence records `model: inherited (map row unfilled)`.
 A filled row whose model does not resolve stops the spawn, which reports it.
+Where the row is filled, the spawn passes that row's model and effort; letting
+the caller's model stand in is right only for an unfilled row, and the routing
+evidence says so. **A spawn never switches to another model or provider to get
+past a rate or usage limit.** It waits and resumes (`delegation.turn`), or
+reports the limit as the blocker. A delegating worker passes the same rule and
+its own model class into every brief it writes.
 How each host reads the map is in that host's integration README.
 
 **Effort refines the class; it is not a fourth axis.** Effort in this node is

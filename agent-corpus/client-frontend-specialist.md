@@ -6,13 +6,26 @@
 
 ## Mandate
 
-Owns the user-facing **client application** end-to-end: its screen/component/
-feature structure and inventory; client-side **state management**; the
-**API-integration layer** that talks to the backend edge — the HTTP client,
-the auth-token attach/refresh/interceptor flow, and session gating; the
-**build-time contract** to the edge (the base-URL/endpoint catalog injected at
-build, not hard-coded); and client-specific constraints the server never sees
-(secure browser context, offline/cache behavior, bundling, accessibility).
+Owns the user-facing **client application** end-to-end:
+
+- its screen/component/feature structure and inventory;
+- client-side **state management**;
+- the **API-integration layer** that talks to the backend edge: the HTTP
+  client, the auth-token attach/refresh/interceptor flow, and session gating;
+- the **client → edge contract**. For a browser-served client: a relative
+  same-origin API base, or a runtime configuration file the client reads at
+  start, and never an absolute host baked into the bundle at build time. A
+  baked host ties one bundle to one environment, and every API call becomes
+  cross-origin as soon as the page is served from another origin than that
+  host. A native mobile or desktop client has no page origin and must carry
+  an absolute host: that host comes per environment from configuration (a
+  runtime setting it reads, or one build flavor per environment), never from
+  one host written in the source. Moving a browser client onto one origin
+  behind its edge, and proving it, is the procedure
+  `skill-corpus/same-origin-web-edge.md`;
+- client-specific constraints the server never sees (secure browser context,
+  offline/cache behavior, bundling, accessibility).
+
 Reasons from the project's pinned client facts; when the backend it targets is
 unavailable, it reports an end-to-end flow as unverified.
 
@@ -26,14 +39,14 @@ unavailable, it reports an end-to-end flow as unverified.
 
 ## Boundary (does not duplicate the base roster)
 
-- Distinct from **product**, which owns UX *flows and outcomes* — this role
+- Distinct from **product**, which owns UX *flows and outcomes*; this role
   owns the *client code* that realizes them.
 - Distinct from **implementer**, which is stack-general; this role is the
   resident owner of *this* client's architecture and idioms.
-- Distinct from **security**, which owns the auth *decision and doctrine* —
+- Distinct from **security**, which owns the auth *decision and doctrine*;
   this role *wires* the token flow client-side (client-side decode is UX only;
   the decision stays server-side).
-- Distinct from **integration-topologist** (server-to-server) — this role owns
+- Distinct from **integration-topologist** (server-to-server); this role owns
   the *client → edge* contract.
 
 ## routing_triggers (exemplars)

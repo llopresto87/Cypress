@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft-07/schema#",
   "name": "cypress",
   "fullName": "Contextual Yield Protocol for Routed Expert Seed Systems",
-  "version": "7.37.1",
+  "version": "8.0.0",
   "supersedes": "general_expert_prompts@1.0.0",
   "created": "2026-05-23",
   "description": "CYPRESS (Contextual Yield Protocol for Routed Expert Seed Systems) — a project-agnostic multi-agent seed for single- or multi-repository programs. It is a pure graph system: the entire method surface — protocols, skills, agent charters, method/posture nodes, and template artifacts — installs into the plant's unified docs/graph/ as seed-owned routable nodes (origin: seed), activated progressively by the router; the always-loaded kernel is a small bootstrap (identity, tiers, rule anchors, boundaries), and tool directories hold only harness projections (agents, skills). Its tool-neutral INSTALL_PROMPT.md keeps user chat in orchestration/planning, dispatches investigation-class read-only scouts and authoring-class authors/reviewers, and grows the graph while leaving the application unbuilt and Git state unpublished.",
@@ -377,6 +377,10 @@
       "produces": "docs/graph/nodes/expertise.<slug>.md (one per core or significant stack element; applicability and composition only)"
     },
     {
+      "file": "templates/docs/plans/_harvest-candidates.template.md",
+      "produces": "docs/graph/plans/harvest-candidates.md (the plant's harvest-candidate record; canonize.harvest-candidates adds a row)"
+    },
+    {
       "file": "templates/prompts/graph-session-bootstrap.md",
       "produces": "the canonical graph-discipline block every delegation brief embeds verbatim; all static seed files reference it instead of paraphrasing"
     },
@@ -417,6 +421,7 @@
     "tools/agnosticism-lint.py": "Placed into every plant at docs/graph/agnosticism-lint.py — flags project-specific vocabulary that has leaked into a node meant to stay agnostic.",
     "tools/prose-lint.py": "Placed into every plant at docs/graph/prose-lint.py — the prose-posture checks a plant runs over its own writing.",
     "tools/status-register.py": "Placed into every plant at docs/graph/status-register.py — the register a plant's specs and plans declare their status through.",
+    "tools/session-metrics.py": "Placed into every plant at docs/graph/session-metrics.py: deliver runs its lint role (--since, --entry) on the full-form entry it appends to changelog.md, and harvest reads its query role (--all --json). It takes the Session metrics labels from the plant's deliver node at run time (SPEC-0006).",
     "tools/code-anchor.py": "Placed into every plant at docs/graph/code-anchor.py: canonize runs --record to write .cypress/anchor.json (the branch, the commit and the uncommitted code paths of each repository the plant governs), and the session-start hooks run --compare once per session to say which facts about code may be stale. The installer writes no anchor.",
     "tests/legal-lint.py": "The legal corpus's citability checker. Placed into a plant at docs/graph/legal-lint.py only when --legal-corpus yes: the corpus travels with its checker, and a plant without the corpus has nothing for it to lint."
   },

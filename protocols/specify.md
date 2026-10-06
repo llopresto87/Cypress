@@ -134,6 +134,16 @@ What the table cannot hold:
   whole test-first phase), and `spec-lint.py` counts only live specs, so
   a signed draft is planned against and encoded, never reported
   uncovered.
+- **A spec may grow by slice.** When the plan builds a walking
+  skeleton first (`grill.increment-shape`), or when its §9 splits the
+  work into increment groups that each get a real run before the next
+  is written, the first pass states only the thin contracts the first
+  increments need: the record shape, the outcome set, the hard rules.
+  Each later increment group adds its contract slice just before its
+  RED, through phases 1 to 6 again for that slice, and the slice is
+  signed before its own RED lands (`spec-author.sign-off`). Signed
+  before RED still holds, one slice at a time. A slice adds contracts;
+  changing one already signed is a revision (below).
 - **Hand-off.** A signed draft is what `grill` plans against: its §4
   contracts are the rows §9 of grill.md maps increments to, in
   increments small enough for one RED-GREEN-REFACTOR cycle (or a small

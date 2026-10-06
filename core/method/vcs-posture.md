@@ -19,6 +19,7 @@ load_when:
   - "should I push this or commit locally"
   - "open a PR, publish the branch, merge to the default branch"
   - "who authorizes a push, a deploy, or lifting a no-change rule"
+  - "standing grant for repeated test-side pushes and pipeline runs"
   - "git worktree, parallel checkout, second clone for the same task"
   - "a worktree just to measure a baseline across two commits"
   - "two workstreams in one uncommitted tree, split a working tree into two commits"
@@ -27,7 +28,7 @@ load_when:
   - "commit trailer, co-authored-by line, who signs the commit"
   - "which language for code comments or the deliverable"
 prevents: Work published without the owner's authorization, several working trees drifting apart, and commit identity decided per session.
-est_tokens: 1935
+est_tokens: 2208
 ---
 
 # VCS posture
@@ -79,11 +80,29 @@ in the conversation, that names the act**:
 
 Each authorization covers exactly the act it names, given in the current
 session: green tests authorize nothing, an earlier session's approval
-does not carry over, and one approval never bundles another ("go ahead
+does not carry over (the scoped standing grant below is the one
+exception), and one approval never bundles another ("go ahead
 with the fix" authorizes the fix, not the push; "commit it" authorizes
 the commit, not the deploy). Writing a fix and shipping it are two
 authorizations; when only the first is granted, the work rests as a
 local commit and the delivery says so (`protocol.deliver`).
+
+The one authorization that names more than a single act is a **scoped
+standing grant**, asked for once at plan approval
+(`grill.plan-approval`). It names the acts and their targets for one
+unit of work on the non-production side: push this feature branch,
+queue runs of this named test pipeline, make these named provisioning
+moves on the test host. Inside those names the work repeats the act
+without asking again. The grant is recorded, dated, in the plan's §4,
+so it holds in every session of that unit of work and ends with it; it
+is the one approval that carries over from an earlier session.
+Production, the default branch, any repository other people also work
+in, and the kernel §4 destructive acts stay outside every grant: each
+act there is asked for when it comes. The grant exists because an ask
+per repeated test-side act leaves workers idle for as long as the owner
+takes to answer. It stays narrow because a grant that named "the test
+side" in general would leave nobody able to check whether a given act
+fell inside it.
 
 The kernel §4 names the destructive cases — delete, force-push, drop,
 rotate — each needing a confirmation that names the resource. Publishing

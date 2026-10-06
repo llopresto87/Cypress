@@ -8,6 +8,7 @@
 #                     [--commit-attribution none|<trailer>] [--deliverable-language <bcp47>]
 #                     [--comment-language <bcp47>] [--legal-corpus yes|no]
 #                     [--legal-jurisdiction <iso-3166-1-alpha-2>]
+#                     [--expertise propose|<corpus-id>[,<corpus-id>...]]
 #
 # <tool> is one of:
 #   claude-code        — Drop CLAUDE.md + .claude/ into the project.
@@ -62,13 +63,33 @@
 #                        the gap so a research-scout ingest can close it, because
 #                        another country's statute is retrieved, never assumed
 #                        from a neighbouring one.
+#   --expertise propose  Print the library-corpus/, skill-corpus/ and
+#                        tool-corpus/ pages this project's manifests match
+#                        (tools/corpus-match.py, run from the seed), one line
+#                        per page with the manifest entry that matched. Writes
+#                        nothing and installs nothing.
+#   --expertise <id>[,<id>...]  Place exactly these corpus pages, each id the
+#                        page's seed path without `.md` (for example
+#                        library-corpus/npm/rxjs): library pages at
+#                        docs/graph/libraries/<name>.md and tool pages at
+#                        docs/graph/tools/<name>.md under a provenance line, a
+#                        stack-keyed skill page as the node
+#                        docs/graph/skills/<name>.md with `origin:
+#                        corpus@<seed version>`. The list is recorded in
+#                        .cypress/seed.json (`expertise`); every later install
+#                        refreshes the recorded pages nobody edited and names
+#                        each page it leaves alone for graft Phase 4.
 #   --print-config       For `codex`: print the config.toml lines with
 #                         resolved paths instead of editing anything.
 #   --check              Verify the generated views are in sync; write
 #                         nothing; exit non-zero if stale (CI drift gate). It
 #                         checks the `github-copilot` .github/ views, and the
 #                         `opencode` agent projections of a plant whose record
-#                         carries opencode, model: lines included.
+#                         carries opencode, model: lines included. It runs
+#                         each wired context hook once, and names each agent
+#                         or skill in a harness directory with no graph home
+#                         (RETIRED, ORPHAN), deleting nothing. It names each
+#                         recorded expertise page that is missing or stale.
 #   -h, --help           Show this help.
 #
 # The seed system's source files are not modified. The installer
@@ -1020,6 +1041,7 @@ place_docs_skeleton() {
     place_graph_scaffold
     place_graph_machinery
     [[ "${LEGAL_CORPUS:-}" == "yes" ]] && place_legal_corpus
+    place_expertise
     local src="$SEED_ROOT/templates/docs" dest="$PROJECT_DIR/docs/graph" f rel
     log "populating missing unified-graph leaves in docs/graph/"
     while IFS= read -r -d '' f; do
@@ -1186,6 +1208,315 @@ place_legal_corpus() {
     fi
 }
 
+# --- selective placement of corpus knowledge (SPEC-0001 §6) ------------------
+#
+# The owner confirms a list of corpus pages (`--expertise <ids>`, usually after
+# reading `--expertise propose`); this arm places exactly those, records each
+# with the SHA-256 of the bytes it wrote in the stamp's `expertise` key, and on
+# every later install re-applies the record: a page whose bytes still equal the
+# recorded hash is refreshed from the running seed, a page the plant changed or
+# authored is left and named for graft Phase 4. Modelled on the legal corpus,
+# but selective: the legal corpus is placed whole, this arm places a list, and
+# it never writes under docs/graph/legal/.
+#
+# expertise_py MODE [ID] is the arm's one home of the rules, so the plan, the
+# check and the bytes cannot disagree:
+#   plan    validate the listed ids and the recorded ones, then print one line
+#           per page: ERR, PLACE (with new|refresh|same|recreate), EDITED,
+#           OWNED or WITHDRAWN, and an ENTRY line per id of the new record
+#   check   the --check lines for each recorded page; exits 1 when one is
+#           missing, stale or withdrawn
+#   render  print the bytes the installer places for ID
+# It prints and never writes: the placement goes through place_state (staging
+# into $STAGE) and place_generated (into the target), so SINGLE_WRITER holds
+# without a new exception. It reads the stamp only when the stamp is a regular
+# file, for the reason stamp_field gives.
+EXPERTISE_PLAN=()
+EXPERTISE_DONE=0
+expertise_py() {
+    SEED_ROOT="$SEED_ROOT" PROJECT_DIR="$PROJECT_DIR" SEED_VERSION="${SEED_VERSION:-}" \
+    EXPERTISE_LIST="${EXPERTISE:-}" python3 -B - "$@" <<'PYEOF'
+import hashlib, json, os, re, sys
+from pathlib import Path
+
+seed, target = Path(os.environ["SEED_ROOT"]), Path(os.environ["PROJECT_DIR"])
+version = os.environ["SEED_VERSION"]
+mode = sys.argv[1]
+HOMES = {"library-corpus": "libraries", "tool-corpus": "tools", "skill-corpus": "skills"}
+ID = re.compile(r"^(library-corpus|skill-corpus|tool-corpus)/([A-Za-z0-9][A-Za-z0-9._-]*)/([A-Za-z0-9][A-Za-z0-9._-]*)$")
+HEX = re.compile(r"^[0-9a-f]{64}$")
+FRONTMATTER = re.compile(r"^---\n(.*?\n)---(?:\n|$)", re.S)
+
+
+class Refused(Exception):
+    pass
+
+
+def dest(cid):
+    m = ID.match(cid)
+    return f"docs/graph/{HOMES[m.group(1)]}/{m.group(3)}.md"
+
+
+def source(cid):
+    return seed / f"{cid}.md"
+
+
+def render(cid):
+    raw = source(cid).read_bytes()
+    if not cid.startswith("skill-corpus/"):
+        return f"<!-- origin: corpus@{version} id: {cid} -->\n".encode("utf-8") + raw
+    text = raw.decode("utf-8")
+    m = FRONTMATTER.match(text)
+    if not m:
+        raise Refused(f"{cid}: the seed's page carries no node frontmatter, so it cannot be placed as a skill node")
+    fm, line = m.group(1), f"origin: corpus@{version}"
+    if re.search(r"^origin:.*$", fm, re.M):
+        new = re.sub(r"^origin:.*$", line, fm, count=1, flags=re.M)
+    else:
+        new = fm + line + "\n"
+    return ("---\n" + new + text[len("---\n") + len(fm):]).encode("utf-8")
+
+
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def on_disk(rel):
+    """The bytes at the placed path, or None when it is absent, a link or not
+    a regular file: a link is never read through."""
+    p = target / rel
+    if p.is_symlink() or not p.is_file():
+        return None
+    return p.read_bytes()
+
+
+def present(rel):
+    p = target / rel
+    return p.exists() or p.is_symlink()
+
+
+def why_not(cid):
+    """Why a listed id cannot be placed, or None."""
+    if cid.startswith("/") or ".." in cid.split("/"):
+        return f"{cid}: holds '..' or starts with '/'; an id is a seed path such as library-corpus/<key>/<name>"
+    if not ID.match(cid):
+        return (f"{cid}: names no page under library-corpus/, skill-corpus/ or tool-corpus/ "
+                f"(an id is <corpus>/<key>/<name>, without .md; the legal and agent corpora are not placed this way)")
+    if not source(cid).is_file():
+        return f"{cid}: the seed carries no {cid}.md"
+    name = ID.match(cid).group(3)
+    if cid.startswith("skill-corpus/"):
+        if not FRONTMATTER.match(source(cid).read_text(encoding="utf-8", errors="replace")):
+            return f"{cid}: the page carries no node frontmatter, so it cannot be placed as a skill node"
+        if (seed / "skills" / name / "SKILL.md").is_file():
+            return f"{cid}: places at {dest(cid)}, a seed-owned skill node"
+    if (seed / "templates" / "docs" / dest(cid)[len("docs/graph/"):]).is_file():
+        return f"{cid}: places at {dest(cid)}, a scaffold leaf the seed places"
+    return None
+
+
+def recorded_entries():
+    """The stamp's `expertise` entries, validated; [] when there is none."""
+    stamp = target / ".cypress" / "seed.json"
+    if stamp.is_symlink() or not stamp.is_file():
+        return []
+    try:
+        data = json.loads(stamp.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []          # preflight_state_record owns an unreadable stamp
+    if not isinstance(data, dict) or "expertise" not in data:
+        return []
+    record = data["expertise"]
+    if not isinstance(record, list):
+        raise Refused(f".cypress/seed.json records 'expertise' as a JSON {type(record).__name__}, not a list")
+    out, seen = [], set()
+    for e in record:
+        ok = (isinstance(e, dict) and all(isinstance(e.get(k), str) for k in ("id", "path", "sha256"))
+              and ID.match(e["id"]) and ".." not in e["id"].split("/")
+              and e["path"] == dest(e["id"]) and HEX.match(e["sha256"]) and e["id"] not in seen)
+        if not ok:
+            raise Refused(f".cypress/seed.json holds an expertise entry that is not "
+                          f"{{id, path, sha256}} with the path its id places at, or repeats an id: {json.dumps(e)}")
+        seen.add(e["id"])
+        out.append(e)
+    return out
+
+
+def plan():
+    recorded = {e["id"]: e for e in recorded_entries()}
+    listed = []
+    if os.environ.get("EXPERTISE_LIST"):
+        for cid in os.environ["EXPERTISE_LIST"].split(","):
+            if cid not in listed:
+                listed.append(cid)
+    errs = [why_not(c) if c else "an empty id in the list (two commas, or a trailing one)" for c in listed]
+    errs = [e for e in errs if e]
+    good = [c for c in listed if c and not why_not(c)]
+    by_dest = {}
+    for c in good:
+        by_dest.setdefault(dest(c), []).append(c)
+    for d, ids in sorted(by_dest.items()):
+        if len(ids) > 1:
+            errs += [f"{c}: places at {d}, as {', '.join(x for x in ids if x != c)} does; list one of them" for c in ids]
+    owner = dict((dest(r), r) for r in recorded)
+    for c in good:
+        r = owner.get(dest(c))
+        if r and r != c:
+            errs.append(f"{c}: places at {dest(c)}, which the recorded id {r} already owns (.cypress/seed.json expertise)")
+    if errs:
+        for e in errs:
+            print("ERR\t" + e)
+        return
+    entries = {}
+    for cid in sorted(set(recorded) | set(good)):
+        rel, rec = dest(cid), recorded.get(cid)
+        if not source(cid).is_file():
+            print(f"WITHDRAWN\t{cid}\t{rel}")
+            entries[cid] = rec
+            continue
+        new = render(cid)
+        disk = on_disk(rel)
+        if rec is None:
+            if present(rel):
+                print(f"OWNED\t{cid}\t{rel}")
+                continue
+            how = "new"
+        elif not present(rel):
+            how = "recreate"
+        elif disk is None or digest(disk) != rec["sha256"]:
+            print(f"EDITED\t{cid}\t{rel}")
+            entries[cid] = rec
+            continue
+        else:
+            how = "same" if disk == new else "refresh"
+        print(f"PLACE\t{cid}\t{rel}\t{digest(new)}\t{how}")
+        entries[cid] = {"id": cid, "path": rel, "sha256": digest(new)}
+    for cid in sorted(entries):
+        e = entries[cid]
+        print(f"ENTRY\t{e['id']}\t{e['path']}\t{e['sha256']}")
+
+
+def check():
+    try:
+        record = recorded_entries()
+    except Refused as exc:
+        print(f"[seed] WARNING: --check: the expertise record cannot be read: {exc}", file=sys.stderr)
+        return 1
+    if not record:
+        return 0
+    bad = edited = 0
+    for e in sorted(record, key=lambda x: x["id"]):
+        cid, rel = e["id"], e["path"]
+        if not source(cid).is_file():
+            print(f"[seed] WARNING: --check: expertise id {cid} is recorded but the running seed no longer "
+                  f"carries it; {rel} and its record entry are left as they are, and graft Phase 4 decides "
+                  f"whether the plant keeps the page", file=sys.stderr)
+            bad = 1
+        elif not present(rel):
+            print(f"[seed] WARNING: --check: expertise page {rel} ({cid}) is missing; re-run install.sh "
+                  f"to place it again", file=sys.stderr)
+            bad = 1
+        elif on_disk(rel) is None or digest(on_disk(rel)) != e["sha256"]:
+            print(f"[seed] --check: expertise page {rel} ({cid}) was edited by the plant; left for graft "
+                  f"Phase 4 to merge the corpus's newer layer into it")
+            edited += 1
+        elif digest(render(cid)) != e["sha256"]:
+            print(f"[seed] WARNING: --check: expertise page {rel} ({cid}) is stale: the running seed would "
+                  f"place newer bytes; re-run install.sh to refresh it", file=sys.stderr)
+            bad = 1
+    if not bad and not edited:
+        print(f"[seed] --check: the expertise pages are up to date ({len(record)} recorded).")
+    elif not bad:
+        print(f"[seed] --check: no recorded expertise page is missing or stale; the {edited} "
+              f"plant-edited one(s) above wait for graft Phase 4.")
+    return bad
+
+
+try:
+    if mode == "plan":
+        plan()
+    elif mode == "check":
+        sys.exit(check())
+    elif mode == "render":
+        sys.stdout.buffer.write(render(sys.argv[2]))
+except Refused as exc:
+    print("ERR\t" + str(exc))
+    if mode != "plan":
+        sys.exit(1)
+PYEOF
+}
+
+# preflight_expertise: the arm's plan, computed before the first write so a bad
+# list refuses with the target unchanged (UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING),
+# and so does a listed id whose destination a different recorded id owns. It
+# runs on every install that writes, because a silent one re-applies the record.
+preflight_expertise() {
+    local out line errs=() kind rest
+    out="$(expertise_py plan 2>&1)" || die "the --expertise plan could not be computed:
+$out
+Nothing has been written."
+    while IFS= read -r line; do
+        [[ -n "$line" ]] || continue
+        kind="${line%%	*}"; rest="${line#*	}"
+        case "$kind" in
+            ERR)                                  errs+=("$rest") ;;
+            PLACE|EDITED|OWNED|WITHDRAWN|ENTRY)   EXPERTISE_PLAN+=("$line") ;;
+            *) die "the --expertise plan printed an unexpected line: $line
+Nothing has been written." ;;
+        esac
+    done <<<"$out"
+    [[ ${#errs[@]} -eq 0 ]] && return 0
+    local msg="refusing --expertise; each id named below cannot be placed:" e
+    for e in "${errs[@]}"; do msg+=$'\n  '"$e"; done
+    msg+=$'\n'"Fix the list (\`install.sh <host> --expertise propose\` prints the ids this"
+    msg+=$'\n'"project matches) and re-run. Nothing has been written."
+    die "$msg"
+}
+
+# place_expertise: carry out the plan, once per run (each adapter calls
+# place_docs_skeleton, and the first call places every page the projections
+# then read). Each page is rendered into $STAGE through place_state and placed
+# through place_generated, so an unchanged page is left alone, a changed one is
+# backed up first (BACKUP_BEFORE_REPLACE), and the page is a real file in both
+# link modes: it carries a line the seed's copy does not.
+place_expertise() {
+    [[ $EXPERTISE_DONE -eq 0 ]] || return 0
+    EXPERTISE_DONE=1
+    [[ ${#EXPERTISE_PLAN[@]} -gt 0 ]] || return 0
+    local line kind cid rel sha how staged
+    log "placing the corpus pages recorded or listed for this plant (--expertise)"
+    for line in "${EXPERTISE_PLAN[@]}"; do
+        IFS='	' read -r kind cid rel sha how <<<"$line"
+        case "$kind" in
+            PLACE)
+                staged="$STAGE/expertise/$rel"
+                place_state <(expertise_py render "$cid") "$staged"
+                place_generated "$staged" "$PROJECT_DIR/$rel"
+                case "$how" in
+                    new)      log "  $rel  ($cid, corpus@$SEED_VERSION)" ;;
+                    refresh)  log "  $rel  refreshed from the running seed ($cid, corpus@$SEED_VERSION)" ;;
+                    recreate) log "  $rel  RE-PLACED: .cypress/seed.json records $cid and the plant had"
+                              log "    deleted the page. The record holds the owner's decision; remove the id from it to drop the page." ;;
+                esac
+                ;;
+            EDITED)
+                log "  $rel: the plant edited this corpus page ($cid); left as it is, for graft Phase 4 to merge the corpus's newer layer into it" ;;
+            OWNED)
+                log "  $rel: the plant's own page, not placed by the installer; left as it is and $cid not recorded, for graft Phase 4 to merge the corpus page into it" ;;
+            WITHDRAWN)
+                warn "expertise: .cypress/seed.json records $cid, which the running seed no longer"
+                warn "  carries; $rel and its record entry are left as they are."
+                warn "  graft Phase 4 decides whether the plant keeps the page as its own." ;;
+        esac
+    done
+}
+
+# check_expertise: the fourth part of --check (EXPERTISE_CHECK_NAMES_MISSING_OR_STALE).
+# Silent for a plant that records no `expertise`; writes nothing.
+check_expertise() {
+    expertise_py check
+}
+
 # place_graph_scaffold: drop the knowledge-graph home (schema, linter,
 # router index, empty nodes/) into docs/graph/. Add missing files only.
 place_graph_scaffold() {
@@ -1226,6 +1557,11 @@ place_graph_scaffold() {
     # artifact. Config-free (vocabulary is the schema's), so it fast-forwards
     # like the router. A session-start hook injects its --summary once.
     place_file "$SEED_ROOT/tools/status-register.py" "$g/status-register.py"
+    # the session-metrics reader (SPEC-0006): deliver runs its lint role on the
+    # entry it appends to changelog.md; harvest reads its query role. Config-free
+    # (the labels come from the deliver node at run time), so it fast-forwards
+    # like the router.
+    place_file "$SEED_ROOT/tools/session-metrics.py" "$g/session-metrics.py"
     # the code anchor (ADR-0018): the session-start hooks call it to record
     # and compare the code state. Config-free, so it fast-forwards like the
     # router. It writes no anchor at install time (SPEC-0003 owns that file).
@@ -1939,6 +2275,7 @@ while [[ $# -gt 0 ]]; do
         --comment-language)    PLANT_CLANG="$2"; shift 2 ;;
         --legal-corpus)        LEGAL_CORPUS="$2"; shift 2 ;;
         --legal-jurisdiction)  LEGAL_JURISDICTION="$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')"; shift 2 ;;
+        --expertise)           EXPERTISE="${2:-}"; EXPERTISE_GIVEN=1; shift $(( $# > 1 ? 2 : 1 )) ;;
         -h|--help) usage 0 ;;
         *) die "unknown argument: $1 (try --help)" ;;
     esac
@@ -1997,6 +2334,20 @@ corpus_jurisdictions() {
 # Sanity: refuse to install into the seed itself.
 [[ "$PROJECT_DIR" != "$SEED_ROOT" ]] || die \
     "refusing to install the seed system into itself; pass --project-dir"
+
+# --expertise (SPEC-0001 §6, selective placement). `propose` prints the corpus
+# pages the project's manifests match and stops here, before any adapter, stamp
+# or backup is written (EXPERTISE_PROPOSAL_WRITES_NOTHING); the matching is
+# tools/corpus-match.py's, run from the seed and never placed. A list is
+# validated by preflight_expertise below, before the first write.
+if [[ ${EXPERTISE_GIVEN:-0} -eq 1 ]]; then
+    [[ -n "${EXPERTISE:-}" ]] || die "--expertise wants 'propose' or a comma-separated list of corpus ids (library-corpus/<key>/<name>, skill-corpus/<key>/<name>, tool-corpus/<category>/<name>)"
+    if [[ "$EXPERTISE" == "propose" ]]; then
+        python3 -B "$SEED_ROOT/tools/corpus-match.py" "$PROJECT_DIR" --seed "$SEED_ROOT"
+        exit $?
+    fi
+    [[ ${CHECK:-0} -eq 0 ]] || die "--expertise <ids> places pages and --check writes nothing; run them separately. (Nothing has been written.)"
+fi
 
 # Host support tiers — the one home of the assignment (ADR-0009,
 # docs/decisions/adr-0009-host-support-tiers.md). documentation/host-capability-matrix.md
@@ -2137,6 +2488,23 @@ if [[ -z "${LEGAL_CORPUS:-}" && $PRIOR_INSTALL -eq 1 ]]; then
  --legal-corpus yes to record what is there, or remove those pages and re-run."
         fi
     fi
+fi
+
+# The jurisdiction is resolved here, once: the flag first, then the stamp's
+# recorded code (SPEC-0001 JURISDICTION_RESOLVED_ONCE). The national-layer
+# report, the stamp writer and the closing NEXT STEP banner all read
+# LEGAL_JURISDICTION after this point. Before it, only the writer consulted the
+# stamp, so a silent re-install kept the recorded code in the file while the
+# report said no --legal-jurisdiction was given and the banner called the
+# jurisdiction undecided: the log and the record disagreeing about one value.
+# Only a two-letter code is inherited; `undecided`, or an out-of-domain value
+# in a hand-edited stamp, leaves the variable empty, so the banner still asks
+# and the writer carries the recorded text forward as it did.
+if [[ -z "${LEGAL_JURISDICTION:-}" && $PRIOR_INSTALL -eq 1 ]]; then
+    _recorded_juris="$(stamp_field "$PROJECT_DIR/.cypress/seed.json" legal_jurisdiction)"
+    case "$_recorded_juris" in
+        [a-z][a-z]) LEGAL_JURISDICTION="$_recorded_juris" ;;
+    esac
 fi
 
 # adapter_dirs TOOL — the destination directories (relative to PROJECT_DIR)
@@ -2323,7 +2691,12 @@ preflight_destinations() {
     msg+=$'\n'"nothing has been written."
     die "$msg"
 }
+# The seed version this run installs: the stamp's `version` and the provenance
+# of every page --expertise places (PLACED_PAGE_CARRIES_ITS_PROVENANCE).
+SEED_VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+               "$SEED_ROOT/manifest.json" | head -1)"
 [[ ${CHECK:-0} -eq 1 ]] || preflight_state_record
+[[ ${CHECK:-0} -eq 1 ]] || preflight_expertise
 [[ ${CHECK:-0} -eq 1 ]] || preflight_destinations
 
 # report_recreated_nodes — D2 SILENT RESTORE, the announcement half. See
@@ -2370,7 +2743,117 @@ report_recreated_nodes() {
 # which `all` does under --check only when the plant records it (above). With
 # neither in scope there is nothing to check, and a CI job relying on the exit 0
 # is told so rather than handed a silent green.
+# check_wired_hooks: the other half of --check (SPEC-0001
+# CHECK_EXECUTES_EACH_WIRED_HOOK). Every context hook the plant wires is fail-
+# open by design, so a dead one lets each prompt through without its route and
+# nothing in a session says so for long. This runs each wired context hook once,
+# before a session would: the UserPromptSubmit and SessionStart commands of
+# .claude/settings.json and of the Copilot .github/hooks/{route,status}.json,
+# and the .prime/agent/hooks/ scripts the Prime Agent extensions call. Each is
+# run from the target, without the command's `|| true`, on the check envelope
+# (SPEC-0001 §6), which carries no session id, so neither script writes the
+# ledger; bytecode caching is off, so the plant stays byte-identical. A script
+# that is absent, exits non-zero, or prints nothing fails the check. On that
+# envelope a sound hook always prints: route-hook.py gives the full injection,
+# the pointer line or the no-graph message, and status-hook.py ends with the
+# code-anchor line or its not-checked line even when the status register is
+# absent or silent (SPEC-0003 STATUS_HOOK_RESETS_WITHOUT_REGISTER), so "printed
+# nothing" names a broken script, never a quiet plant. bound-hook.py, wired under
+# PreToolUse, is a guard and is not run. Returns 1 when any hook failed.
+check_wired_hooks() {
+    python3 - "$PROJECT_DIR" <<'PY'
+import json, os, re, subprocess, sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+PROMPT = "cypress install check: route this task"
+ENVELOPE = {"UserPromptSubmit": {"hook_event_name": "UserPromptSubmit", "prompt": PROMPT},
+            "SessionStart": {"hook_event_name": "SessionStart", "source": "startup"}}
+ARGV = {"UserPromptSubmit": ["--prompt=" + PROMPT], "SessionStart": ["--source=startup"]}
+SCRIPT = re.compile(r"\$\{CLAUDE_PROJECT_DIR:-\$PWD\}/([^\"'\s;|&]+\.py)")
+hooks, failed = [], 0
+for rel in (".claude/settings.json", ".github/hooks/route.json", ".github/hooks/status.json"):
+    path = root / rel
+    if not path.is_file():
+        continue
+    try:
+        events = json.loads(path.read_text(encoding="utf-8")).get("hooks") or {}
+    except (OSError, ValueError, AttributeError) as e:
+        print(f"[seed] WARNING: --check: {rel} is not a readable hook config ({type(e).__name__}); "
+              f"its hooks cannot run", file=sys.stderr)
+        failed = 1
+        continue
+    for event in ("UserPromptSubmit", "SessionStart"):
+        for entry in events.get(event) or []:
+            for h in (entry.get("hooks", [entry]) if isinstance(entry, dict) else []):
+                if not isinstance(h, dict) or h.get("type") != "command":
+                    continue
+                m = SCRIPT.search(str(h.get("command", "")))
+                if m is None:
+                    print(f"[seed] --check: {rel} {event} runs a command that names no plant script; not run")
+                    continue
+                hooks.append((event, m.group(1), "stdin"))
+for ext, event, script in (("route-extension.ts", "UserPromptSubmit", "route-hook.py"),
+                           ("status-extension.ts", "SessionStart", "status-hook.py")):
+    if (root / ".prime/agent/extensions" / ext).is_file():
+        hooks.append((event, ".prime/agent/hooks/" + script, "argv"))
+
+env = dict(os.environ, CLAUDE_PROJECT_DIR=str(root), PYTHONDONTWRITEBYTECODE="1")
+for event, script, mode in hooks:
+    name = f"hook {event} {script}"
+    if not (root / script).is_file():
+        print(f"[seed] WARNING: --check: {name} is wired but the script is missing; "
+              f"re-run install.sh to restore it", file=sys.stderr)
+        failed = 1
+        continue
+    argv = [sys.executable, str(root / script)] + (ARGV[event] if mode == "argv" else [])
+    stdin = "" if mode == "argv" else json.dumps(ENVELOPE[event])
+    try:
+        r = subprocess.run(argv, input=stdin, capture_output=True, text=True,
+                           timeout=60, cwd=str(root), env=env)
+        rc, out = r.returncode, r.stdout
+    except subprocess.TimeoutExpired:
+        rc, out = "a timeout after 60 s", ""
+    except OSError as e:
+        rc, out = type(e).__name__, ""
+    if rc != 0:
+        print(f"[seed] WARNING: --check: {name} failed (exit {rc})", file=sys.stderr)
+        failed = 1
+    elif not out.strip():
+        print(f"[seed] WARNING: --check: {name} printed nothing on stdout", file=sys.stderr)
+        failed = 1
+    else:
+        print(f"[seed] --check: {name} ran and printed its context.")
+sys.exit(failed)
+PY
+}
+
+# check_harness_homes: the third part of --check (SPEC-0001
+# CHECK_FLAGS_RETIRED_HARNESS_ENTRY, CHECK_FLAGS_ORPHAN_HARNESS_ENTRY). An agent
+# or skill in a harness directory with no live graph home is named, RETIRED for
+# an origin: seed one the running seed does not ship and ORPHAN for one the
+# plant authored there, in every harness directory the plant carries. The
+# classification has one home, tools/graft-audit.py --harness, which a graft
+# runs as well. A flag is never a failure and nothing is deleted (the owner's
+# decision), so this returns 1 only when the classification itself could not run: a
+# check that did not run is not reported as run.
+check_harness_homes() {
+    [[ -d "$PROJECT_DIR/docs/graph" ]] || return 0
+    local out rc=0
+    out="$(python3 -B "$SEED_ROOT/tools/graft-audit.py" "$PROJECT_DIR" "$SEED_ROOT" --harness 2>&1)" || rc=$?
+    if [[ $rc -ne 0 ]]; then
+        warn "--check could not classify the harness entries (exit $rc):"
+        printf '%s\n' "$out" | sed 's/^/    /' >&2
+        return 1
+    fi
+    printf '%s\n' "$out" | sed 's/^/[seed] --check: /'
+}
+
 if [[ ${CHECK:-0} -eq 1 ]]; then
+    hooks_rc=0
+    check_wired_hooks || hooks_rc=1
+    check_harness_homes || hooks_rc=1
+    check_expertise || hooks_rc=1
     check_opencode=0
     [[ " ${expanded[*]} " == *" opencode "* && "$_recorded_tools" == *" opencode "* ]] \
         && check_opencode=1
@@ -2379,9 +2862,9 @@ if [[ ${CHECK:-0} -eq 1 ]]; then
         log "  checked when the run names github-copilot, and the opencode projections"
         log "  when it names opencode and the plant's record carries it. This run has"
         log "  neither, so nothing was checked."
-        exit 0
+        exit $hooks_rc
     fi
-    stale=0
+    stale=$hooks_rc
     if [[ $check_opencode -eq 1 ]]; then
         check_opencode_projections || stale=1
     fi
@@ -2551,7 +3034,7 @@ sys.exit(0 if isinstance(json.load(open(sys.argv[1], encoding="utf-8")), dict) e
         carried="$(STAMP_PATH="$stamp" python3 - <<'PYEOF' 2>/dev/null || true
 import json, os, sys
 OWNED = {"seed", "version", "installed_at", "installed_from", "tools",
-         "legal_corpus", "legal_jurisdiction", "agent_projections"}
+         "legal_corpus", "legal_jurisdiction", "agent_projections", "expertise"}
 with open(os.environ["STAMP_PATH"], encoding="utf-8") as fh:
     data = json.load(fh)
 if isinstance(data, dict):
@@ -2674,7 +3157,21 @@ PYEOF
                    "$sep" "$t" "${proj% *}" "${proj##* }"
             sep=$',\n'
         done
-        printf '\n  ]%s\n' "$carried"
+        printf '\n  ]'
+        # The installer-owned `expertise` key (EXPERTISE_IS_RECORDED_IN_THE_STAMP):
+        # the ENTRY lines of this run's plan, sorted by id, and no key at all when
+        # nothing is recorded. Ids and paths are validated to a plain path
+        # alphabet by the plan, so they need no JSON escaping.
+        local entry kind eid epath esha esep=""
+        for entry in ${EXPERTISE_PLAN[@]+"${EXPERTISE_PLAN[@]}"}; do
+            IFS='	' read -r kind eid epath esha <<<"$entry"
+            [[ "$kind" == "ENTRY" ]] || continue
+            [[ -n "$esep" ]] || printf ',\n  "expertise": [\n'
+            printf '%s    {"id": "%s", "path": "%s", "sha256": "%s"}' "$esep" "$eid" "$epath" "$esha"
+            esep=$',\n'
+        done
+        [[ -z "$esep" ]] || printf '\n  ]'
+        printf '%s\n' "$carried"
         printf '}\n'
     } > "$tmp"
     # Staged, then placed atomically. A truncate-in-place write that failed

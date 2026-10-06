@@ -1,13 +1,13 @@
 # Tool: session-cost-profiler
 
-> Project-agnostic, durable capability notes, folded into the seed by the
-> harvest protocol. This page is a **BLUEPRINT**: the metric set and the
-> checkpoint discipline are portable; the reader that extracts them from a
+> Project-agnostic capability notes, kept in the seed's tool corpus
+> (`tool-corpus/README.md`). This page is a **BLUEPRINT**: the metric set and
+> the checkpoint discipline are portable; the reader that extracts them from a
 > harness's own session/subagent transcripts is host-specific, because each
 > harness records a session in its own format. §3 specifies one adapter, for
-> Claude Code, from Claude Code's own official documentation (§7); every
-> other harness this seed integrates is **not recorded** and is an
-> adapter-writing task for whoever adopts this page against it.
+> Claude Code, from Claude Code's own official documentation (§7); every other
+> harness this seed integrates is **not recorded** and is an adapter-writing
+> task for whoever adopts this page against it.
 
 ## 0. Identity
 
@@ -199,6 +199,6 @@ mutants survived."
 
 ## 8. Changelog
 
-- 2026-09-26 — created from harvested, generalized capability, by
+- 2026-09-26 — created by
   docs-librarian.
 - 2026-09-26 — corrected after review: hook claims checked against the upstream hooks and sub-agents pages; skill frontmatter hooks are session-scoped, not spawn-scoped; the untrusted-folder gap.

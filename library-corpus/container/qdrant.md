@@ -1,9 +1,10 @@
 # qdrant — container
 
-> Project-agnostic, version-durable surface notes, folded into CYPRESS by the
-> harvest protocol. Orientation for a tool, NOT a version-pinned page. For
-> exact pins, CVEs, and per-release behavior, run `ingest-library` against the
-> project's own lockfile / base-image tag. The client library has its own page,
+> Project-agnostic surface notes, kept in the seed's library corpus
+> (`library-corpus/README.md`). Orientation for a tool, not a record of one
+> project's versions. For exact pins, CVEs, and per-release behavior, run
+> `ingest-library` against the project's own lockfile / base-image tag. The
+> client library has its own page,
 > [`pypi/qdrant-client.md`](../pypi/qdrant-client.md).
 
 ## What it is

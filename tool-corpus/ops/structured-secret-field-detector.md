@@ -1,9 +1,9 @@
 # Tool: structured-secret-field-detector
 
-> Project-agnostic, durable capability notes, folded into the seed by the
-> harvest protocol. Orientation for a reusable tool — the recursive walk and the
-> exact-key rule are portable; the key list and the subtree it starts from are
-> the two things each project fills in.
+> Project-agnostic capability notes, kept in the seed's tool corpus
+> (`tool-corpus/README.md`). Orientation for a reusable tool — the recursive
+> walk and the exact-key rule are portable; the key list and the subtree it
+> starts from are the two things each project fills in.
 
 ## 0. Identity
 
@@ -182,8 +182,8 @@ artifact with none of the keys exits zero.
   `tool-corpus/ops/env-secret-rotation.md` (the values this must never print);
   `tool-corpus/ops/layered-config-merge-verifier.md` (the same "walk the parsed
   document, report by path" traversal, applied to resolved configuration).
-- **Sources:** distilled from harvested plant experience; no external URL.
+- **Sources:** distilled from practice; no external URL.
 
 ## 8. Changelog
 
-- 2026-09-13 — created from harvested, generalized capability, by docs-librarian.
+- 2026-09-13 — created by docs-librarian.

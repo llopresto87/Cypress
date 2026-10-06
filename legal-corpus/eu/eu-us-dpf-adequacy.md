@@ -1,9 +1,9 @@
 # EU-US Data Privacy Framework adequacy — EU
 
-> Project-agnostic legal citation notes, folded into the seed by the harvest
-> protocol. Status is contested (`in force — under appeal`) — this schema's
-> legal_status vocabulary distinguishes "valid but contested" from settled
-> law; do not silently launder one into the other. Entry contract:
+> Project-agnostic legal citation notes, kept in the seed's legal corpus
+> (`legal-corpus/README.md`). Status is contested (`in force — under appeal`) —
+> this schema's legal_status vocabulary distinguishes "valid but contested" from
+> settled law; do not silently launder one into the other. Entry contract:
 > `../_schema.md`.
 
 Commission Implementing Decision (EU) 2023/1795.
@@ -46,7 +46,7 @@ into a settled one.
 
 **Litigation history — as at 2026-07-31, against the Court's own record:**
 
-- Challenged by MEP Philippe Latombe.
+- Challenged by Philippe Latombe, applicant of record (OJ C/2023/348: "Philippe Latombe (Nantes, France)"); no office is stated there.
 - **court:** General Court of the European Union (Tenth Chamber, Extended
   Composition) · **docket:** **Case T-553/23**, *Latombe v Commission* ·
   **decision_date:** **3 September 2025**. The General Court **dismissed** the

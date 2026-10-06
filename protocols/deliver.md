@@ -26,7 +26,7 @@ load_when:
   - "every remaining step is the owner's, goal loop or stop hook keeps firing"
   - "session metrics after each increment, cost and quality so far"
 prevents: A session that ends without a cold-pickup state, leaving the next one to re-derive what changed, what was gated and what is still open from a diff.
-est_tokens: 2471
+est_tokens: 2795
 command: true
 ---
 
@@ -74,7 +74,16 @@ file.
 Runs after the `canonize` close-out spawn has confirmed (or
 record-emptied) knowledge and tools. State the summary in the chat AND
 append the same content to `docs/graph/changelog.md` and to grill.md
-section 15.
+section 15. Title the changelog entry `Delivery — <title> — YYYY-MM-DD`,
+at whatever heading level the changelog uses; the tier may lead it, as in
+`T3 delivery — <title> — YYYY-MM-DD`. That heading carries the entry's only
+date: its sections are the template's, and a dated sub-heading inside the
+entry ends it early for the reader. Then run one command,
+`python3 docs/graph/session-metrics.py --since <the date in that heading> --entry <the line of that heading>`
+(`grep -n` finds the line). A FAIL names each defect of your entry by
+line and label: fix the entry and run again until it passes. A defect in
+an entry another session wrote prints on a `note:` line and does not fail
+your run; name it under Known limitations if it matters.
 
 ```markdown
 # Delivery — <feature or session title> — YYYY-MM-DD
@@ -92,6 +101,7 @@ section 15.
 - docs/graph/libraries/<name>.md — created / refreshed
 - docs/graph/decisions/adr-NNNN-*.md — added
 - docs/graph/runbooks/verification.md — increment recorded
+- docs/graph/runbooks/incident-response.md — Records entry (a production fault)
 - ...
 
 ## Key decisions
@@ -145,9 +155,12 @@ on the wrong target. Default on; the owner may waive it.
 
 The metrics block is telemetry, and the orchestrator fills every line
 from its own trace (spawn ids, handbacks, gate runs), with no transcript
-access. It is what lets the system improve on evidence instead of
-anecdote: `harvest` aggregates these across deliveries to find
-*systemic* seed problems. Recurring misroutes mean a specialist's
+access. It is a required part of the full form, not an optional extra: a
+line the trace cannot fill says `not recorded: <reason>`, and a full-form
+entry without the block is incomplete the way one without its gates is.
+It is what lets the system improve on evidence instead of anecdote:
+`harvest` aggregates these across deliveries to find *systemic* seed
+problems. Recurring misroutes mean a specialist's
 `routing_triggers` need sharpening, frequent tier reclassifications mean
 the tier edges need tuning, and repeated transient retries in one area
 are a reliability signal. The Quality line sits beside the cost lines on
@@ -170,6 +183,14 @@ A delivery summary that passes:
 - Cites verification outcomes by gate (no hand-waving).
 - Lists every limitation explicitly (no "should mostly work"), and marks
   a half-finished increment WIP, with resuming it as the next step.
+- Carries, on the full form, the Session metrics block with every line
+  filled or marked `not recorded: <reason>`, and
+  `docs/graph/session-metrics.py` passes on its entry.
+- Records a user-reported production fault the work answered as an
+  entry under Records in `docs/graph/runbooks/incident-response.md` (a
+  pointer to the increment is enough), because a fault handled only as
+  a plan increment leaves that runbook a blank template and its loop
+  never closes.
 - Recommends exactly one next step (not a list).
 - Numbers every decision left to the owner, so the answer can be by
   number.

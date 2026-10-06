@@ -8,7 +8,7 @@ routing_triggers:
   - "try to refute every load-bearing claim in this finished document"
   - "check this deliverable's citations against the sources they name"
   - "what single fact would break this conclusion"
-  - "what should this document claim and does not"
+  - "which claim does this finished deliverable omit that its sources support"
 can_delegate: false
 id: agent.devils-advocate
 tier: 2

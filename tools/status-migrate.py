@@ -10,7 +10,10 @@ same status drifted apart. This tool performs the one-time migration an
 adopted or pre-7.0.0 plant needs: it reads the old value, maps it onto the
 lifecycle vocabulary (schema §"Lifecycle status"), writes `status:`,
 `status_date:` and the companion keys into frontmatter, and turns the body
-line into a pointer — one home.
+section into a pointer — one home. A status section wrapped over several
+lines moves whole, and a status the artifact gives no date for gets no
+`status_date`: the status lint then names the date as owed, rather than the
+migration stamping the day it ran.
 
     python3 status-migrate.py --root docs/graph            # dry run: table only
     python3 status-migrate.py --root docs/graph --write    # apply
@@ -38,7 +41,6 @@ the dry run found work, 2 on usage error. Dependency-free.
 from __future__ import annotations
 
 import argparse
-import datetime as _dt
 import re
 import sys
 from pathlib import Path
@@ -46,7 +48,10 @@ from pathlib import Path
 KIND_DIRS = {"decisions": "adr", "specs": "spec"}
 REPORT_ONLY_DIRS = {"prompts": "prompt-contract", "data": "data-contract"}
 DATE_RE = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
-ADR_STATUS_LINE = re.compile(r"^##\s+Status\s*\n+\s*`?([^`\n]+?)`?\s*$", re.M)
+# The whole `## Status` section, to the next heading: a status paragraph
+# wrapped over two lines is one value, and capturing only its first line left
+# the second stranded in the body under the pointer.
+ADR_STATUS_LINE = re.compile(r"^##[ \t]+Status[ \t]*\n(?P<body>(?:(?!#{1,6}[ \t]).*(?:\n|$))*)", re.M)
 BULLET_STATUS = re.compile(r"^-\s+\*\*Status:\*\*\s*(.+?)\s*$", re.M)
 BULLET_SUPERSEDED_BY = re.compile(r"^-\s+\*\*Superseded by:\*\*\s*(.+?)\s*$", re.M)
 BULLET_OWNER = re.compile(r"^-\s+\*\*Owner:\*\*\s*(.+?)\s*$", re.M)
@@ -69,8 +74,23 @@ def frontmatter_has_status(text: str) -> bool:
     return re.search(r"^status:\s*\S", text[4:end], re.M) is not None
 
 
+def adr_status(text: str):
+    """The `## Status` section as (status paragraph, further paragraphs), each
+    with its line wraps joined, or None when the section states nothing."""
+    m = ADR_STATUS_LINE.search(text)
+    if not m:
+        return None
+    paras = [" ".join(p.split()) for p in re.split(r"\n\s*\n", m.group("body"))]
+    paras = [p for p in paras if p]
+    if not paras:
+        return None
+    return paras[0].strip("`").strip(), " ".join(paras[1:]) or None
+
+
 def detect(kind: str, text: str):
-    """Return (old_status_raw, superseded_by, owner, date) or None.
+    """Return (old_status_raw, superseded_by, owner, date, more) or None.
+    `more` is any further paragraph of a `## Status` section, which the
+    migration carries into `status_note` rather than drop.
 
     A status is written either as a section heading or as a metadata bullet,
     and which one an artifact uses is its author's habit rather than its kind:
@@ -79,12 +99,12 @@ def detect(kind: str, text: str):
     changes meaning — then fall through to the other, and keep `None` for an
     artifact that states a status in neither."""
     if kind == "adr":
-        m = ADR_STATUS_LINE.search(text)
-        if m:
-            raw = m.group(1).strip()
+        st = adr_status(text)
+        if st:
+            raw, more = st
             d = ADR_DATE_SECTION.search(text)
             date = d.group(1) if d and DATE_RE.fullmatch(d.group(1)) else None
-            return raw, None, None, date
+            return raw, None, None, date, more
     m = BULLET_STATUS.search(text)
     if not m:
         return None
@@ -99,7 +119,7 @@ def detect(kind: str, text: str):
     if ow_v and ow_v.startswith("<"):
         ow_v = None
     date = dt.group(1).strip() if dt and DATE_RE.fullmatch(dt.group(1).strip()) else None
-    return raw, sb_v, ow_v, date
+    return raw, sb_v, ow_v, date, None
 
 
 ANNOTATED = re.compile(r"^\s*`?\*{0,2}([A-Za-z][A-Za-z-]*)\*{0,2}`?\s*(?:\((.*)\)|—\s*(.*)|-\s+(.*))?\s*$", re.S)
@@ -151,7 +171,11 @@ def map_status(kind: str, raw: str, superseded_by, overrides: dict):
 
 
 def rewrite(kind: str, text: str, new_status: str, companions: dict, owner, date: str) -> str:
-    lines = [f"status: {new_status}", f"status_date: {date}"]
+    lines = [f"status: {new_status}"]
+    if date:
+        # No date is written for a record that holds none: the status lint
+        # names the missing date as owed, which a stamped run date would hide.
+        lines.append(f"status_date: {date}")
     if owner:
         lines.append(f"owner: {owner}")
     for k, v in companions.items():
@@ -163,8 +187,10 @@ def rewrite(kind: str, text: str, new_status: str, companions: dict, owner, date
         text = "---\n" + head.rstrip("\n") + "\n" + "\n".join(lines) + "\n---\n" + rest
     else:
         text = block + text
-    if kind == "adr" and ADR_STATUS_LINE.search(text):
-        text = ADR_STATUS_LINE.sub("## Status\n\n" + POINTER, text, count=1)
+    if kind == "adr" and adr_status(text):
+        text = ADR_STATUS_LINE.sub(
+            lambda m: "## Status\n\n" + POINTER + ("\n\n" if m.end() < len(m.string) else "\n"),
+            text, count=1)
     else:
         text = BULLET_STATUS.sub("- **Status:** see frontmatter (single home)", text, count=1)
     return text
@@ -201,7 +227,6 @@ def main() -> int:
     ap.add_argument("--kind", action="append", choices=sorted(set(KIND_DIRS.values())), help="restrict (repeatable)")
     ap.add_argument("--map", action="append", default=[], metavar="KIND:OLD=NEW",
                     help="override or supply a mapping, e.g. --map threat-model:active=open")
-    ap.add_argument("--today", default=_dt.date.today().isoformat(), help=argparse.SUPPRESS)
     args = ap.parse_args()
     root = Path(args.root)
     if not root.is_dir():
@@ -228,7 +253,7 @@ def main() -> int:
         if det is None:
             skipped.append((kind, f, "no status line found"))
             continue
-        raw, sb, owner, date = det
+        raw, sb, owner, date, more = det
         if raw.startswith("<") or "|" in raw:
             skipped.append((kind, f, f"template placeholder {raw!r}"))
             continue
@@ -237,9 +262,11 @@ def main() -> int:
             decisions.append((kind, f, comp))
             continue
         _, note = split_annotation(raw)
+        if more:
+            note = f"{note} {more}" if note else more
         if note:
             comp = dict(comp, status_note=note.replace(":", " -"))
-        migrated.append((kind, f, raw, new, comp, owner, date or args.today))
+        migrated.append((kind, f, raw, new, comp, owner, date))
 
     rel = lambda p: p.relative_to(root).as_posix()
     if migrated:
@@ -247,6 +274,10 @@ def main() -> int:
         for kind, f, raw, new, comp, owner, date in migrated:
             c = ", ".join(f"{k}={v}" for k, v in comp.items()) or "-"
             print(f"{kind:14} {raw[:34]:34} {new:12} {c[:40]:40} {rel(f)}")
+    for kind, f, raw, new, comp, owner, date in migrated:
+        if not date:
+            print(f"  ! {rel(f)}: no status date recorded — status_date is left "
+                  f"out and the status lint names it as owed")
     for kind, f, why in decisions:
         print(f"  ? {rel(f)}: {why}")
     for kind, f, why in skipped:

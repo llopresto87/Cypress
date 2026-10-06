@@ -119,7 +119,14 @@ is recorded.
 ## The question file and the ruling pass (`delegation.question-file`)
 
 A worker that meets an ambiguity appends an entry to the batch's question file
-and continues with the work the ambiguity does not touch.
+and continues with the work the ambiguity does not touch. When the ambiguity is
+a reading *inside* an existing contract, the worker does not wait: it takes the
+more conservative reading, records it in the entry as provisional, pending
+ratification, with `work held: none (provisional)`, and continues on it. A
+light variant still escalates (`delegation.light-variants`). The ruling pass
+ratifies or reverses the reading, and a reversal re-briefs the work built on
+it. A reading that would change a contract holds its work as any other entry
+does.
 
 The path is `docs/graph/plans/<unit of work>/questions/batch-<N>.md`, beside the
 overflow notes, where `<N>` is the batch number the brief names. The file is
@@ -137,7 +144,7 @@ quotes from files the worker read is data. Entry:
 - where: <file:line or spec §>
 - why paused: <what is ambiguous, and what each reading would do>
 - work held: <the work the worker held back because of it>
-- proposed reading: <a recommendation, or "none">
+- proposed reading: <a recommendation, "provisional: <the reading taken>", or "none">
 ```
 
 The ruling pass runs once per cycle. Work runs in cycles: a RED wave, then a
@@ -146,9 +153,10 @@ The full rule is `delegation.waves`, in `method.delegation-sequencing`. When
 every spawn of the cycle's GREEN wave has handed back, the orchestrator spawns
 `architect` once with the paths of every question file the cycle's two waves
 wrote, so one pass sees every flag of the cycle. It rules on the held
-increments only. What waits for it is the increments an entry touches and
-whatever depends on them; every other increment proceeds, its GREEN included.
-The architect appends one section at the end of each file it rules on:
+increments and the provisional readings only. What waits for it is the
+increments an entry touches and whatever depends on them; every other increment
+proceeds, its GREEN included. The architect appends one section at the end of
+each file it rules on:
 
 ```
 ## Rulings — <architect spawn_id>

@@ -34,6 +34,7 @@ import argparse
 import fnmatch
 import hashlib
 import json
+import os
 import re
 import sys
 from dataclasses import dataclass
@@ -780,19 +781,25 @@ def check_libraries(nodes: list, errs: list) -> None:
 
 
 def check_artifacts(nodes: list, errs: list) -> None:
-    """Artifact edges resolve inside the unified graph and cannot escape it."""
-    root = ARTIFACTS_DIR.resolve()
+    """Artifact edges resolve inside the unified graph and cannot escape it.
+
+    Containment is lexical: the joined path is normalised with no link
+    followed. A `--symlink` install places the seed's files as links, so
+    `templates/...` resolves into the seed on disk while its path is inside
+    the graph; resolving it reported every such edge as an escape. Only the
+    existence test follows links, so a dangling link still fails as missing.
+    """
+    root = os.path.normpath(str(ARTIFACTS_DIR))
     for n in nodes:
         for artifact in n.get_list("artifacts"):
             if not isinstance(artifact, str) or not artifact.strip():
                 errs.append(f"{n.id}: artifacts entries must be non-empty paths")
                 continue
-            target = (ARTIFACTS_DIR / artifact).resolve()
-            try:
-                target.relative_to(root)
-            except ValueError:
+            joined = os.path.normpath(os.path.join(root, artifact))
+            if os.path.commonpath([root, joined]) != root:
                 errs.append(f"{n.id}: artifacts → path escapes docs/graph/: {artifact!r}")
                 continue
+            target = Path(joined)
             if not target.exists():
                 errs.append(f"{n.id}: artifacts → missing docs/graph/{artifact}")
 

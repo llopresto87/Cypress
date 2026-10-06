@@ -1,10 +1,10 @@
 # Tool: declared-consumer-link-generator
 
-> Project-agnostic, durable capability notes, folded into the seed by the
-> harvest protocol. This page is a **BLUEPRINT**: the closed vocabulary, the
-> skip-vs-fail distinction, and the generation discipline are portable; the
-> declaration's schema and each consumer's link syntax are project-specific
-> and are written per system.
+> Project-agnostic capability notes, kept in the seed's tool corpus
+> (`tool-corpus/README.md`). This page is a **BLUEPRINT**: the closed
+> vocabulary, the skip-vs-fail distinction, and the generation discipline are
+> portable; the declaration's schema and each consumer's link syntax are
+> project-specific and are written per system.
 
 ## 0. Identity
 
@@ -80,6 +80,14 @@ knowledge or re-derives it independently — a second, drifting copy of "what
 each consumer needs" is exactly the failure this tool exists to prevent, and
 it must not reappear inside the tool itself.
 
+Write the declaration from what each consumer reads, never by copying the
+current links: a declaration seeded from today's links makes the drift gate
+ratify a copy of itself, over-linking included. Key it by consumer (each
+pipeline lists the sets it needs), not by configuration set, so a reader sees
+at once when a one-container pipeline links many sets. A set that exists
+in the store but is linked to no consumer resolves blank at run time and
+trips a mandatory-variable check that looks like a missing value.
+
 ### Drift-gate stage: closed vocabulary, honest skips
 
 Cross-check the declaration against each named consumer's actual,
@@ -118,7 +126,8 @@ output.
   from the drift-gate stage's "declaration vs. hand-written reality" — once
   generation exists, `--check` is the right gate to wire in, and running the
   older drift check alongside it can report two different, confusing
-  answers about the same consumer.
+  answers about the same consumer. The staleness gate holds only while the
+  generator is a pure function of the declaration (§5).
 - **Emission order is semantic.** Preserve the declaration's own order when
   emitting a consumer's link set, because the consumer format's own
   precedence rule (commonly last-wins for a repeated name) depends on
@@ -168,6 +177,30 @@ output.
   the drift gate compares declaration-vs-hand-written-reality, `--check`
   compares declaration-vs-what-generation-would-produce. Once a consumer is
   generator-owned, retire the older drift check for it.
+- **Only a pure function earns a regenerate-and-diff gate.** Only a
+  script-generated artifact gets one; a list an agent seeded is hand-owned,
+  and a comparison against a fresh seeding is advisory
+  (`core/method/maintenance-contracts.md` §12 owns the three maintenance
+  contracts). Check, too, that the script really is pure: a generator that
+  carries each list's order and extra names forward from the previous
+  artifact, or reads part of its input from a scan outside the declaration,
+  cannot be rebuilt from empty. A regenerate-from-scratch diff then fires on a
+  clean tree and gets muted, and "delete it and regenerate" is not a
+  recovery. Gate such an artifact with narrow invariants that hold on a clean
+  tree.
+- **Every axis the data model has goes into a generated file's path.** A
+  file named by role alone, when the model also has an environment axis, lets
+  two environments of one role write one file: the last generation wins and
+  both stay valid, so nothing shows the loss. Decide the path before the
+  first file is generated, since a later rename touches committed files and
+  every include line. `--check` covers every environment's files, never only
+  the active one's.
+- **A gate that echoes a literal proves nothing.** Before building a
+  derivation on a field a spec names, confirm that the field exists and can
+  carry the relation's cardinality (one component deployed by several
+  consumers is not a per-component scalar). Gate a join between independent
+  literals (the ids resolve, and the resolved names equal the consumer's own
+  list), never a derivation that reads a literal and reproduces it.
 - **A print sink added later that bypasses the shared print-safety
   predicate is a silent regression.** Test every sink, not just the first
   one written.
@@ -212,12 +245,15 @@ no script invokes is a gate that never runs.
   credentialed store, a different question from whether a consumer's
   hand-written or generated link agrees with the declaration; shares the
   names-only print-safety predicate).
-- **Sources:** distilled from harvested plant experience; no external URL.
+- **Sources:** distilled from practice; no external URL.
 
 ## 8. Changelog
 
-- 2026-09-26 — created from harvested, generalized capability, by
+- 2026-09-26 — created by
   docs-librarian.
 - 2026-09-26 — restored exit 3 (environment or dependency missing), the
   planted-drift and gate-script-invocation tests, and the strict line
   matcher lesson.
+- 2026-10-05: folded in how a declaration goes wrong at birth (§3), the
+  purity precondition of the staleness gate (§3, §5), and the path-axis and
+  echo-gate pitfalls (§5), by docs-librarian.

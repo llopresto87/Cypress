@@ -43,10 +43,21 @@ manifest.json carries the stamped version, then to the newest, and the tie is
 reported. Both are read from the object store: the tool runs no Git command
 that writes, in the seed or anywhere else.
 
+When no commit reachable from HEAD carries the stamped version in its
+manifest.json, the plant was installed from a seed older than the history this
+checkout retains (a squashed or untagged pre-history). Content lineage then
+finds a later commit, and a file the plant never touched but the seed changed
+in between reads as MERGE. The tool says so: the inferred base is a lower
+bound. `--base-dir <dir>` names a directory holding a copy of the seed at the
+stamped version, and its files are then the base, read from disk; the seed
+root need not be a Git work tree for it.
+
 Usage:
   graft-ledger.py <plant-root> <seed-root>          the base, then the table
   graft-ledger.py <plant-root> <seed-root> --base   the base only
-The seed root must be a Git work tree (the base lives in its history).
+  ... --base-dir <dir>   the base is that copy of the seed, not a commit
+The seed root must be a Git work tree (the base lives in its history), unless
+--base-dir names the base.
 Exit 0 when the table (or the base) was printed; 1 when the plant has no
 docs/graph/, the seed root is not a seed checkout (protocols/ and
 manifest.json), or no base could be found;
@@ -87,22 +98,33 @@ LEGAL_TOOL = "legal-lint.py"
 
 
 def parse_args(argv):
-    pos, base_only = [], False
-    for a in argv:
+    pos, base_only, base_dir = [], False, None
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        i += 1
         if a in ("--help", "-h"):
             print(__doc__)
             sys.exit(0)
         if a == "--base":
             base_only = True
+        elif a == "--base-dir" or a.startswith("--base-dir="):
+            if "=" in a:
+                base_dir = a.split("=", 1)[1]
+            elif i < len(argv) and not argv[i].startswith("-"):
+                base_dir, i = argv[i], i + 1
+            if not base_dir:
+                print("  !! --base-dir needs a directory")
+                sys.exit(2)
         elif a.startswith("-"):
             print(f"  !! unknown option {a}")
             sys.exit(2)
         else:
             pos.append(a)
     if len(pos) != 2:
-        print("  !! want <plant-root> <seed-root> [--base]")
+        print("  !! want <plant-root> <seed-root> [--base] [--base-dir <dir>]")
         sys.exit(2)
-    return Path(pos[0]), Path(pos[1]), base_only
+    return Path(pos[0]), Path(pos[1]), base_only, (Path(base_dir) if base_dir else None)
 
 
 def git(seed: Path, *args, text=True):
@@ -123,6 +145,7 @@ class Blobs:
         fmt = (git(seed, "rev-parse", "--show-object-format") or "sha1").strip()
         self.algo = fmt if fmt in ("sha1", "sha256") else "sha1"
         self._trees = {}
+        self._texts = {}
 
     def of_file(self, path: Path):
         try:
@@ -144,8 +167,10 @@ class Blobs:
         return self._trees[commit]
 
     def text(self, oid: str) -> str:
-        out = git(self.seed, "cat-file", "blob", oid, text=False)
-        return out.decode(errors="replace") if out is not None else ""
+        if oid not in self._texts:
+            out = git(self.seed, "cat-file", "blob", oid, text=False)
+            self._texts[oid] = out.decode(errors="replace") if out is not None else ""
+        return self._texts[oid]
 
 
 def read_stamp(plant: Path) -> dict:
@@ -230,8 +255,10 @@ def manifest_version(blobs: Blobs, commit: str) -> str:
 
 
 def infer_base(plant: Path, pairs: dict, blobs: Blobs, version: str):
-    """(commit, matched, of, tied, by_manifest) for the seed commit at which the most plant
-    machinery files are byte-equal to the seed's version, or None."""
+    """(commit, matched, of, tied, by_manifest, in_history) for the seed commit at which
+    the most plant machinery files are byte-equal to the seed's version, or None.
+    in_history is False when no commit's manifest.json carries the stamped version:
+    the base then predates the retained history, and the commit is a lower bound."""
     here = {s: blobs.of_file(plant / p) for p, s in pairs.items() if (plant / p).is_file()}
     commits = (git(blobs.seed, "rev-list", "HEAD") or "").split()
     scored = []
@@ -243,7 +270,14 @@ def infer_base(plant: Path, pairs: dict, blobs: Blobs, version: str):
         return None
     tied = [c for n, c in scored if n == best]
     stamped = [c for c in tied if version and manifest_version(blobs, c) == version]
-    return (stamped or tied)[0], best, len(here), len(tied), bool(stamped)
+    in_history = bool(version) and any(manifest_version(blobs, c) == version for _, c in scored)
+    return (stamped or tied)[0], best, len(here), len(tied), bool(stamped), in_history
+
+
+def dir_tree(base_dir: Path, pairs: dict, blobs: Blobs) -> dict:
+    """{seed path: object id} for the base read from a directory copy of the seed."""
+    return {src: blobs.of_file(base_dir / src) for src in pairs.values()
+            if (base_dir / src).is_file()}
 
 
 def classify(plant_oid, seed_oid, base_oid, texts) -> str:
@@ -278,14 +312,17 @@ def classify(plant_oid, seed_oid, base_oid, texts) -> str:
 
 
 def main() -> int:
-    plant, seed, base_only = parse_args(sys.argv[1:])
+    plant, seed, base_only, base_dir = parse_args(sys.argv[1:])
     if not (plant / GRAPH_HOME).is_dir():
         print(f"  !! {plant} has no {GRAPH_HOME}/: not a plant root")
         return 1
     if not ((seed / "protocols").is_dir() and (seed / "manifest.json").is_file()):
         print(f"  !! {seed} has no protocols/ and manifest.json: not a seed checkout")
         return 1
-    if git(seed, "rev-parse", "--verify", "--quiet", "HEAD") is None:
+    if base_dir is not None and not base_dir.is_dir():
+        print(f"  !! --base-dir {base_dir} is not a directory")
+        return 1
+    if base_dir is None and git(seed, "rev-parse", "--verify", "--quiet", "HEAD") is None:
         print(f"  !! {seed} is not a Git work tree with a commit; the base lives "
               f"in its history")
         return 1
@@ -294,8 +331,15 @@ def main() -> int:
     blobs = Blobs(seed)
     pairs = machinery(plant, seed, stamp)
 
-    tagged = find_tag(seed, version) if version else None
-    if tagged:
+    tagged = find_tag(seed, version) if version and base_dir is None else None
+    base_text, tree = None, None
+    if base_dir is not None:
+        tree = dir_tree(base_dir, pairs, blobs)
+        print(f"base: {base_dir} (the directory --base-dir names, read as the seed at "
+              f"{version or 'an unstamped version'})")
+        print(f"present: {len(tree)} of {len(pairs)} seed-owned machinery paths are in it")
+        base_text = lambda src: (base_dir / src).read_text(errors="replace")
+    elif tagged:
         base = tagged[1]
         print(f"base: {tagged[0]} (from the tag of the stamped version {version})")
     else:
@@ -306,7 +350,7 @@ def main() -> int:
             print(f"  !! base: not found ({why}, and no seed commit matches any "
                   f"plant machinery file byte for byte)")
             return 1
-        base, matched, of, tied, by_manifest = found
+        base, matched, of, tied, by_manifest, in_history = found
         print(f"base: {base} (inferred by content lineage; {why})")
         print(f"matched: {matched} of {of} plant machinery files are byte-equal "
               f"to the seed at that commit")
@@ -314,17 +358,23 @@ def main() -> int:
             how = ("the newest whose manifest.json carries the stamped version"
                    if by_manifest else "the newest")
             print(f"note: {tied} commits tie at that count; the one shown is {how}")
+        if version and not in_history:
+            print(f"  !! base predates seed history: no commit reachable from HEAD carries "
+                  f"version {version} in its manifest.json, so the inferred base is a lower "
+                  f"bound (a later commit), and a file the plant never edited may read as "
+                  f"MERGE; supply --base-dir <a copy of seed {version}> for the real base")
     if base_only:
         return 0
 
-    tree = blobs.tree(base)
+    if tree is None:
+        tree = blobs.tree(base)
     counts = dict.fromkeys(CLASSES, 0)
     rows = []
     for rel, src in sorted(pairs.items()):
         pf, sf = plant / rel, seed / src
         p_oid = blobs.of_file(pf) if pf.is_file() else None
         s_oid, b_oid = blobs.of_file(sf), tree.get(src)
-        texts = (lambda: blobs.text(b_oid) if b_oid else "",
+        texts = (lambda: (base_text(src) if base_text else blobs.text(b_oid)) if b_oid else "",
                  lambda: pf.read_text(errors="replace") if p_oid else "",
                  lambda: sf.read_text(errors="replace"))
         cls = classify(p_oid, s_oid, b_oid, texts)

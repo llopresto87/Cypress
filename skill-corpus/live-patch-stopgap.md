@@ -121,6 +121,13 @@ The claim made from that signal is exactly **"the harm stopped"**; the
 incident's status follows `incident-posture.containment` and
 `incident-posture.closure`.
 
+The return to the pipeline leaves rollback anchors behind it. When the
+permanent fix lands through the pipeline, the images from before it become
+the anchors, and not every one is safe: an image that still carries the
+defect the stopgap covered brings the harm back when rolled back to. Record
+each anchor as safe or as reintroducing the original defect, so a later
+rollback does not undo the incident's fix.
+
 ## Reference files
 
 - `core/method/incident-posture.md` (containment, evidence, and the status

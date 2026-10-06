@@ -1,12 +1,12 @@
 # Regulation (EU) 2024/2847 (Cyber Resilience Act) — EU
 
-> Project-agnostic legal citation notes, folded into the seed by the harvest
-> protocol. Orientation for citing this regulation — verified against primary
-> sources where stated per entry; confirm currency before relying on any entry
-> for a consequential determination, especially per-obligation application
-> dates (this instrument has STAGGERED application — check `applies_from` on
-> every entry, never assume the whole act applies uniformly from one date).
-> Entry contract: `../_schema.md`.
+> Project-agnostic legal citation notes, kept in the seed's legal corpus
+> (`legal-corpus/README.md`). Orientation for citing this regulation — verified
+> against primary sources where stated per entry; confirm currency before
+> relying on any entry for a consequential determination, especially
+> per-obligation application dates (this instrument has STAGGERED application —
+> check `applies_from` on every entry, never assume the whole act applies
+> uniformly from one date). Entry contract: `../_schema.md`.
 
 **Instrument kind:** `regulation` — directly applicable, **with staggered
 application dates**. Ingested 2026-07-31.
@@ -40,11 +40,15 @@ contract") are stated once here rather than restated under each entry:
   **verification_grade:** `proxy-sourced`. **A third-party proxy is not the
   official source, however faithful it appeared:** do not write any entry on
   this page up as verified against EUR-Lex.
-- **language_version:** English, OJ text, **original as published** — no
-  consolidated version recorded as at 2026-07-31. The **Italian** text was
-  confirmed reachable at the `/IT/` path and its title is consistent with the
-  English, but it was **not deep-parsed**; an Italian-language ingest is future
-  work if Italian-jurisdiction citations are needed.
+- **language_version:** English, OJ text, **original as published**. The
+  Publications Office index lists one consolidated version,
+  `02024R2847-20241120`, dated to the OJ publication date, and no later one, so
+  no amending act is indexed (checked 2026-10-05 by SPARQL query against the
+  Publications Office endpoint; the consolidated text was not fetched). The
+  **Italian** text was confirmed reachable at the `/IT/` path and its title is
+  consistent with the English, but it was **not deep-parsed**; an
+  Italian-language ingest is future work if Italian-jurisdiction citations are
+  needed.
 - **verified:** 2026-07-31.
 - **legal_status:** **`partially applicable`** — the schema's value for a
   staggered instrument, and the honest one here. The act is **in force**
@@ -115,7 +119,7 @@ the same proxy pattern and record which route worked.
 | `cra-art-71-1` | **entry into force** | **10 Dec 2024** | past |
 | `cra-art-71-2-chapter-iv` | **Chapter IV (Arts. 35–51)** — notification of conformity assessment bodies | **11 Jun 2026** | **already applicable** |
 | `cra-art-35-2` | Member States "strive to ensure" enough notified bodies exist | 11 Dec 2026 | not yet due |
-| `cra-art-71-2-art-14` | **Art. 14 reporting obligations** (actively exploited vulnerabilities + severe incidents) | **11 Sep 2026** | **not yet applicable** |
+| `cra-art-71-2-art-14` | **Art. 14 reporting obligations** (actively exploited vulnerabilities + severe incidents) | **11 Sep 2026** | **already applicable** (date passed; re-checked 2026-10-05) |
 | `cra-art-71-2-application` | **full application** — Annex I essential requirements, Arts. 13 and 18–34 economic-operator duties, CE marking, conformity assessment, Annex III/IV classification consequences | **11 Dec 2027** | not yet applicable |
 | — | Directive (EU) 2020/1828 (consumer representative actions) becomes applicable to CRA infringements | 11 Dec 2027 | not yet applicable |
 
@@ -149,8 +153,11 @@ binding**.
 - **provision:** Art. 71(2), second sentence, Art. 14 limb
 - **text_form:** `verbatim` (proxy-sourced)
 - **text:** *"...Article 14 shall apply from 11 September 2026..."*
-- **legal_status:** `not yet applicable` · **applies_from:** 2026-09-11
-- **notes:** the most urgent forward-looking date.
+- **legal_status:** **`in force`** · **applies_from:** 2026-09-11 (**already
+  binding as at 2026-10-05**).
+- **notes:** the date has passed, and no amending act is indexed (see the
+  instrument's `language_version` above). The Art. 71(2) text was re-read from
+  the Publications Office Cellar copy of the OJ text on 2026-10-05.
 
 ### `cra-art-71-2-chapter-iv`
 
@@ -387,7 +394,7 @@ the four recitals that set the scope test. One id per limb.
   *"remains available... for a minimum of **10 years** or for the remainder of
   the support period, whichever is longer."*
 
-### `cra-art-14` — reporting (the duty that starts 11 Sep 2026)
+### `cra-art-14` — reporting (the duty that started 11 Sep 2026)
 
 - **provision:** Art. 14(1)–(5); Art. 16 establishes the Single Reporting
   Platform
@@ -395,7 +402,7 @@ the four recitals that set the scope test. One id per limb.
    it.** The prose below is a restatement; the **hour and day figures within it
    were confirmed against the primary text, not memory** (proxy-sourced), and a
    deadline is the highest-risk field on this page
-- **legal_status:** `not yet applicable` · **applies_from:** **2026-09-11**
+- **legal_status:** **`in force`** · **applies_from:** **2026-09-11** (date passed; re-checked 2026-10-05)
 - **text:**
   - **Art. 14(1)–(2) — actively exploited vulnerabilities** (cite
     `cra-art-14` + the paragraph): simultaneous

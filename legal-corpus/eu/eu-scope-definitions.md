@@ -1,7 +1,7 @@
 # EU scope & size-category definitions — EU
 
-> Project-agnostic legal citation notes, folded into the seed by the harvest
-> protocol. Entry contract: `../_schema.md`.
+> Project-agnostic legal citation notes, kept in the seed's legal corpus
+> (`legal-corpus/README.md`). Entry contract: `../_schema.md`.
 
 Directive 2005/29/EC Art. 2(a)/(n) and Recommendation 2003/361/EC.
 

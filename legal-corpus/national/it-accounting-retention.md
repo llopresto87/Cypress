@@ -1,7 +1,7 @@
 # Accounting & tax retention duties (Italy)
 
-> Project-agnostic legal citation notes, folded into the seed by the harvest
-> protocol. Entry contract: `../_schema.md`.
+> Project-agnostic legal citation notes, kept in the seed's legal corpus
+> (`legal-corpus/README.md`). Entry contract: `../_schema.md`.
 
 **Art. 2220 c.c. · Art. 39 DPR 633/72 · Art. 22 DPR 600/73**
 

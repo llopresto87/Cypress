@@ -20,8 +20,9 @@ load_when:
   - "gate red twice on the same increment"
   - "permission guard refused an action the owner directed"
   - "failure cause unknown, cheapest probe first"
+  - "same error every retry, is it impossible, refused or never reached"
 prevents: Unclassified reaction to failure — identical retries of a deterministic error, unbounded fallback chains, and a red gate quietly swallowed to keep momentum.
-est_tokens: 1757
+est_tokens: 1948
 command: true
 ---
 
@@ -49,12 +50,23 @@ read-only reachability probe, or fetching the dependency ahead of the
 step that needs it. Start the probes beside the fix work and record what
 each one showed.
 
+An error signature is not a class. One code or message can be deterministic for
+one input and transient for another, so classify by varying the input and
+seeing whether the failure follows it, never by the code alone; when the
+message names a field, test that field first. A loop that exhausted its
+retries shows that the attempts failed, not that the operation is impossible.
+An "impossible" verdict stays an open question until a request is shown to
+have reached the subject and been refused for the reason stated, because a
+request that failed on the caller's side never asked it. This is the
+refusal-side mirror of the positive control `protocol.verify` requires before
+an empty result counts.
+
 | Class          | Recognize it by                                                          | The one allowed move                                                   |
 |----------------|--------------------------------------------------------------------------|------------------------------------------------------------------------|
 | **Transient**  | Environment flake: network, rate limit, race, resource exhaustion.       | Retry as-is, **max 2**, backing off. Third failure is not transient: reclassify. |
 | **Deterministic** | Same input reliably produces the same failure: compile error, failing assertion, lint, schema rejection. | **Change the input** (the code, the test, the config), then re-run. A second theory that failed is the signal to read the upstream documentation (the dependency's library page, or `protocol.ingest-library` when it has none) before trying a third. |
 | **Capability** | The worker is the wrong instrument: wrong specialist, missing expertise, out-of-domain handback, LOW/NONE route band in hindsight. | Re-route: run `agent-lint --route` again with the *sharper* task statement, stated in the domain's own words, which also composes the expertise the worker lacked. A knowledge gap closes as an `expertise.*` node; commission an agent only when the work needs its own tools, model class, stance, or isolation (kernel §1). |
-| **Ambiguity**  | The worker asked the brief a question, guessed, or two artifacts contradict (spec vs code, plan vs node). | Fix the **cheapest upstream artifact that owns the confusion** (brief first, then plan (grill §), then spec) and re-delegate. Widening the worker's context is not the fix; the contradiction will still be there. Inside a batch, the worker writes the question to the batch's question file and goes on with work it does not touch; the architect's one ruling pass per cycle answers it (`delegation.question-file`). |
+| **Ambiguity**  | The worker asked the brief a question, guessed, or two artifacts contradict (spec vs code, plan vs node). | Fix the **cheapest upstream artifact that owns the confusion** (brief first, then plan (grill §), then spec) and re-delegate. Widening the worker's context is not the fix; the contradiction will still be there. Inside a batch, the worker writes the question to the batch's question file and goes on with work it does not touch, or, for a reading inside a contract, on a provisional reading; the architect's one ruling pass per cycle answers it (`delegation.question-file`). |
 | **Systemic**   | The harness or the system itself: wedged delegation, depth cap hit, missing tool, broken gate infrastructure. A permission guard that refuses an action the owner directed belongs here too, because neither a worker nor the session can clear it. | Stop the line. Record in grill.md §12 and report to the human with the exact evidence, visible rather than worked around. Permission refusals: see below. |
 | **Unregistered** | The specialist exists on disk but the host has no such type: the session predates the projection (install, graft roster delta, freshly commissioned expert), or it is rooted at the seed rather than the plant. Reads like Systemic: it is not. | Apply `delegation.harness-registration` (`docs/graph/method/delegation-bounds.md`): preflight, re-enter rooted at the plant, or role-emulate **and record it**. Keep the line running and use the existing definition, because a second definition would be a second home for the same charter. |
 

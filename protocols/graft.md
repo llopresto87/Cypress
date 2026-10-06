@@ -34,7 +34,7 @@ load_when:
   - "does this upgraded plant carry the legal corpus, under which national jurisdiction"
   - "switch a symlinked plant back to copies before upgrading it"
 prevents: An enriched seed that reaches no existing plant — improvements pile up in the seed while every grown project stays at the version it was installed at — and, when carried by hand instead, a plant's own customizations overwritten with no backup and no record.
-est_tokens: 19426
+est_tokens: 22017
 ---
 
 # Protocol: graft
@@ -396,6 +396,10 @@ and files nothing, and the notice prints nothing.
   passes no flag inherits what the stamp already holds; only `undecided` is
   overwritten by silence. A graft carries each decision from the stamp or asks
   the owner; it never infers one from the plant's contents.
+- `--expertise <id>,...` is the owner's decision too, and an additive one: it
+  places the listed corpus pages and adds them to the record, and a run with no
+  flag re-applies the record. `--expertise propose` writes nothing and is safe
+  on any plant at any time. Phase 4 owns both uses.
 
 The stamp the run writes is the last additive step of a successful upgrade:
 `write_seed_stamp` runs after every adapter, after the re-created notice and
@@ -423,8 +427,10 @@ A plant that knows which seed version it carries can be grafted cleanly forever
 after, because every future graft has a real **base** for its three-way merge.
 `install.sh` writes that stamp: `.cypress/seed.json`, recording the seed name,
 the version just placed, the date, the adapters installed under `tools`, the
-owner's corpus and jurisdiction decisions, `agent_projections`, and
-`installed_from` when it advanced over an older stamp. It is tracked, like the
+owner's corpus and jurisdiction decisions, `agent_projections`, the corpus
+pages the owner chose to place (`expertise`: one entry per page, with its
+corpus id, its placed path and the SHA-256 of the bytes the installer wrote),
+and `installed_from` when it advanced over an older stamp. It is tracked, like the
 coverage record beside it. A plant grown before 7.3.0 has no stamp, because
 nothing wrote one then. On its first graft, reconstruct the base as best the
 evidence allows; the install step of the graft then establishes the stamp, and
@@ -452,6 +458,12 @@ forget `installed_from`, or reset the owner's corpus decisions. Consequences:
 - **The record is checked against the disk, not trusted over it.** A recorded
   `legal_corpus: yes` over a corpus that is missing pages restores the whole
   corpus and announces the restoration.
+- **`expertise` is a record of placed pages, and silence keeps it.** A run
+  with no `--expertise` flag re-applies every entry; a run with a list adds
+  its ids to the entries already there. No run removes an entry or deletes a
+  placed page, so a dependency the plant has dropped keeps its entry until the
+  owner removes it from the stamp by hand. A plant that never used the flag has
+  no `expertise` key at all, and none appears. Phase 4 reads it.
 
 ## The flow
 
@@ -575,6 +587,13 @@ threads through the phases that follow:
   `agent_projection_for` records which adapters are verbatim. That reconciliation is authoring-class work, and its
   result is additive: it lands in the ratifiable proposal like every other
   migration step.
+  This step is not bound to the 5.x layout. A plant of any version can author
+  an agent or skill straight into a harness directory, and it is then just as
+  invisible to the router and to every other harness. On every graft,
+  `install.sh <host> --check` and `tools/graft-audit.py` name each such entry
+  `ORPHAN` (SPEC-0001 CHECK_FLAGS_ORPHAN_HARNESS_ENTRY), and the graft proposes
+  its relocation into `docs/graph/{agents,skills}/` by this step. The flag
+  writes nothing and deletes nothing; the harness copy stays until (d).
 - **(d) List the now-redundant old machinery for the steward's deletion.** Once
   the graph homes and projections exist, the old tool-dir copies are redundant.
   Graft lists every such file by name and deletes only what the steward
@@ -583,6 +602,17 @@ threads through the phases that follow:
   (a `__pycache__` or `.pyc` file an older installer carried in) the same way:
   it has no seed source, so it is residue for the steward's deletion, never an
   artifact to reconcile.
+  This step is not bound to the 5.x layout either. When the seed folds a node
+  away (a skill merged into a protocol, an agent renamed), the plant keeps the
+  old `origin: seed` node in `docs/graph/` and the installer goes on projecting
+  it, so the harness loads machinery the seed retired. On every graft,
+  `install.sh <host> --check` and `tools/graft-audit.py` name the node and each
+  projection of it `RETIRED` (SPEC-0001 CHECK_FLAGS_RETIRED_HARNESS_ENTRY).
+  List each one here for the steward's deletion by name, with the seed node
+  that now owns its content where one does, and the harness copy of a relocated
+  `ORPHAN` beside them. Neither the installer nor the audit deletes one: the
+  deletion is the owner's act (the owner decided on 2026-10-04 that such
+  entries are flagged, never deleted).
 - **(e) Rewrite stale references in plant-authored docs only with consent.**
   Plant-authored pages may cite the old paths (`.protocols/x.md`,
   `.skills/<name>/SKILL.md`, `.templates/…`, `.core/operating-principles.md`).
@@ -779,6 +809,27 @@ an expertise node carries at least one depth edge to the pin or standard it
 routes to. A plant on the old engine is not failing those rules. It is not
 being asked them.
 
+**`TEST_GLOBS` is kept wholesale, and kept is not confirmed: put it to the
+steward as a fact.** Which directories hold the plant's tests is an owner fact
+(`grow.plant-facts` owns the ask and why a scout can only propose it). A plant
+grown before that ask existed, or one whose test layout has moved since it
+grew, carries globs nobody confirmed, and the config-preserving fast-forward
+carries them forward unexamined. The seed's default reads only the
+conventional unit layouts, so a plant whose tests are black-box checks in a
+directory of another name (end-to-end suites, shell checks, smoke or contract
+runs against a live service) reports that the globs matched zero files the
+moment it has a live spec, and a plant with none yet reports nothing at all.
+So after the engine is reconciled, print the files the kept globs resolve to
+(`python3 -c "import runpy; print(runpy.run_path('docs/graph/spec-lint.py')['test_files']())"`)
+beside the test directories the Phase 2 survey found and the runners the
+plant's build and CI invoke. Where the globs are still the seed's default, or
+miss a directory the survey found, or match files that are not tests, put the
+layout to the steward as a numbered decision (`deliver.numbered-decisions`):
+the proposed globs, each directory left out and why. Write the confirmed globs
+into the reconciled engine; never widen the seed's default to cover a layout
+nobody confirmed. An unanswered layout stays an open item, steward named, in
+the Phase 8 entry, and the kept globs stay as they were.
+
 **`_schema.md` is the plant's, and it can still be too old to read the
 machinery.** The engine-vs-instance rule keeps the node contract the plant's
 file; it does not keep it *current*. A plant carrying a schema several minors
@@ -838,7 +889,92 @@ it.
 
 A corpus **tool** is adopted as-is only when the plant's stack matches;
 otherwise treat the page as a blueprint and re-author against the plant's
-stack, test-first.
+stack, test-first. A tool page the plant carries for a tool it has not
+built is marked as grow's withdraw step marks it, `blueprint only, not
+built here`; one whose tool the plant has since built, still carrying the
+corpus's `<…>` run and test slots, is re-pointed here to the real
+implementation path and test command.
+
+**Pages the installer placed: re-propose, re-apply, merge.** A plant grown or
+grafted under 8.0.0 or later may carry corpus pages the installer placed on
+the owner's list (`install.sh <host> --expertise <ids>`), recorded in the
+stamp's `expertise` key with the hash of the bytes written. Those pages are
+refreshed by the installer and merged here, in three steps, before the Phase 7
+apply.
+
+1. **Re-propose against the plant's current manifests.** The plant's
+   dependencies have moved since the list was confirmed, and the seed's corpus
+   has grown. Run, from the seed:
+
+   ```sh
+   <seed>/install.sh <host> --expertise propose --project-dir <plant>
+   jq -r '.expertise[]? | "\(.id)  \(.path)"' <plant>/.cypress/seed.json
+   ```
+
+   The first writes nothing and prints one line per page the manifests match,
+   with the manifest entry or the `stack:` match behind it (SPEC-0001 §6,
+   "Selective placement", holds the matcher's rules). The second lists the
+   record. Read the two against each other and against the plant's
+   `docs/graph/libraries/`, `docs/graph/tools/` and `docs/graph/skills/`:
+
+   - **proposed and recorded**: the installer re-applies it at Phase 7;
+     nothing to decide.
+   - **proposed, not recorded, destination absent**: a page the plant can
+     withdraw. Filter it as grow's Phase 1 does (an upgrade page only while
+     the declared line is older than its target), then put it to the steward
+     as a numbered decision (`deliver.numbered-decisions`), each id with its
+     evidence line. The confirmed ids go to the Phase 7 apply as
+     `--expertise <id>,...`, which places and records them; an id the steward
+     adds by hand is placed all the same.
+   - **proposed, not recorded, destination present**: the plant's own page
+     for that dependency, authored before the corpus had one or by hand.
+     Listing the id would place nothing there (SPEC-0001
+     PLANT_OWNED_PAGE_IS_NEVER_REPLACED); the merge below folds the corpus
+     page into the plant's page instead, and the id stays unrecorded.
+   - **recorded, no longer proposed**: the plant dropped the dependency, or
+     a manifest the matcher read was renamed. The page stays and so does its
+     entry, because no run removes either; name it to the steward, who decides
+     whether the page goes and the entry with it.
+
+2. **Read what the installer will do with each recorded page.**
+   `<seed>/install.sh <host> --check --project-dir <plant>` writes nothing and
+   names each recorded page that is missing, stale (untouched by the plant,
+   and the running seed would place different bytes), edited by the plant, or
+   withdrawn from the seed (SPEC-0001 EXPERTISE_CHECK_NAMES_MISSING_OR_STALE).
+   Before the apply, a stale or missing line is expected: the Phase 7 install
+   refreshes an untouched page to the new seed version with a backup, and
+   places a deleted one again and names it in the log, because the record
+   holds the owner's decision until the owner changes it. A page the plant
+   deleted on purpose goes to the steward under `graft.gate.recreated-nodes`'
+   rule: re-apply the deletion and remove the entry, or ratify the page. A
+   **withdrawn** id (the seed renamed or dropped its page) is warned about and
+   left, page and entry both; decide here whether the plant keeps the page as
+   its own, and name the decision in the record.
+   `tools/graft-audit.py` classifies the backup of a refreshed page
+   `CORPUS-PLACED`, neither seed-owned nor plant-authored, so it never reads as
+   a knowledge overwrite at `graft.gate.rootstock`.
+
+3. **Merge each page the installer leaves and names.** A recorded page whose
+   bytes differ from its recorded hash was edited by the plant: its pin, its
+   project role, its sharp edges. The installer leaves it byte-identical, makes
+   no backup, keeps its entry and hash, and prints one line naming its path and
+   this phase (SPEC-0001 PLANT_EDITED_PAGE_IS_LEFT_AND_NAMED); a plant-owned
+   page at the destination of a listed id gets the same line. Each such page is
+   merged here by the rule above, one home per dependency: an author folds in
+   whatever the corpus page at the new seed version holds that the plant's page
+   lacks, keeps every pin and sharp edge the plant wrote, and re-pins nothing
+   from the corpus, which carries no pin. A placed page keeps its provenance
+   line as its first line, with the version updated to the seed whose layer was
+   merged, so the line says which corpus layer the page carries. The page stays
+   edited in the installer's eyes, so every later graft finds it here again,
+   which is the point: from its first edit on, the page is the plant's,
+   refreshed by merge and never replaced. The Phase 7 install log names the
+   same pages; one it names that this step did not merge comes back here before
+   the record is written.
+
+Two ids the seed places at one destination (a `pypi` client and a `container`
+image of one name) are refused before the install writes anything; the steward
+keeps one, and the author folds what the other page knows into it by hand.
 
 ### Phase 5: Grow the new capabilities onto the living plant (authoring-class authors)
 
@@ -1017,19 +1153,23 @@ whose remedy is an installer re-run for every adapter in the stamp's `tools`.
 An audit taken after any of them, with the date left to default, audits the
 remedy's own writes and prints `clean` over the graft it was supposed to
 examine. So: audit first, remediate second, name the date every time, and after
-any remediating re-run re-audit under **both** dates.
+any remediating re-run re-audit under **both** dates. A remedy's re-run also
+overwrites the files Phase 3 merged or kept, with a backup and no question, and
+the backup audit reads such a file as an ordinary version advance. The last row,
+`graft.gate.kept-deltas`, therefore checks each of those files against the
+record, after every remedy has run.
 
 | Gate | Asserts | Command | On failure | Class |
 |---|---|---|---|---|
 | `graft.gate.backups` | every file `place_file` replaced is recoverable from a timestamped sibling. It does **not** assert that the backup set accounts for every byte the run destroyed: *The installer is the hand that applies it* names the writers that replace with no backup | `tools/graft-audit.py <plant> <seed> --date=<this run's stamp>` classifies every fresh `.bak` and refuses a vacuous audit (zero for the named date while others exist); the totality property (M7) is proven seed-side by `tests/test-install-placement.sh` over a *discovered* destination set, whose sole exception is `is_installer_state()` and whose scope is stated with it | BLOCK: ratify only an upgrade whose replaced files are all found; file a no-backup replacement by any writer outside those named there as an installer defect | soft |
-| `graft.gate.rootstock` | the rootstock line held: every plant-authored fact survived, and each write into plant-authored material was value-preserving and ratified | the same audit's *knowledge overwrite* count over `docs/graph/`, plus `git -C <plant> status --porcelain` scoped to non-machinery paths (tracked files only, on purpose; stray files are what grow's `--ignored -uall` form finds), plus `git -C <plant> diff docs/graph/index.md` by name, for the reason *The installer is the hand that applies it* gives. One new file under `plans/` is expected and is no breach: `docs/graph/plans/sessions/_session-record.template.md`, placed by the scaffold walk (the memory migration) | BLOCK: restore from the backup and re-reconcile | soft |
+| `graft.gate.rootstock` | the rootstock line held: every plant-authored fact survived, and each write into plant-authored material was value-preserving and ratified | the same audit's *knowledge overwrite* count over `docs/graph/`, plus `git -C <plant> status --porcelain` scoped to non-machinery paths (tracked files only, on purpose; stray files are what grow's `--ignored -uall` form finds), plus `git -C <plant> diff docs/graph/index.md` by name, for the reason *The installer is the hand that applies it* gives. New blank forms under `plans/` are expected and are no breach: `docs/graph/plans/sessions/_session-record.template.md` (the memory migration) and `docs/graph/plans/_harvest-candidates.template.md`, each placed by the scaffold walk | BLOCK: restore from the backup and re-reconcile | soft |
 | `graft.gate.customization` | no plant divergence was buried by a blind fast-forward | `tools/graft-audit.py <plant> <seed> --date=<this run's stamp> --base=<the base Phase 1 printed, tagged or inferred> --tokens=<plant tokens> --engine=<plant>/docs/graph/graph-lint.py:<seed>/templates/knowledge-graph/graph-lint.py --engine=<plant>/docs/graph/spec-lint.py:<seed>/templates/knowledge-graph/spec-lint.py --engine=<plant>/docs/graph/grill-lint.py:<seed>/templates/knowledge-graph/grill-lint.py`, one pair per engine | BLOCK: re-integrate each hit into the FF'd file as a holistic MERGE, or ratify it explicitly | soft |
 | `graft.gate.kernel` | every kernel destination this plant carries holds the seed's `core/AGENTS.md` body | the same audit's kernel-currency check gates the exit code, but it reads exactly two files, `<plant>/AGENTS.md` and `<plant>/CLAUDE.md`. A plant whose stamp lists `github-copilot` has a third, and the audit is silent on it: add `cmp <plant>/.github/copilot-instructions.md <seed>/core/AGENTS.md` | BLOCK: see *When a gate blocks* | soft |
 | `graft.gate.schema` | the plant's `_schema.md` still describes the machinery this graft installed | the same audit's node-schema line | report: it does **not** gate the exit code, so read the line; the remedy is a ratified MERGE (Phase 3) | detective |
 | `graft.gate.engine` | the plant runs the seed's current graph engines, each with its own config preserved | the same audit's engine-currency check, via the three `--engine=<plant>:<seed>` pairs `graft.gate.customization` passes, each reported on its own line naming its plant file. Each value is a **pair**; a single path is malformed and the audit refuses it rather than skipping the check | report: the audit prints `graph engine STALE` without gating the exit code, as `graft.gate.schema` does, so read the line: ratify only when every engine is current, or is a superset recorded as KEEP-PLANT. Reconcile a stale engine with `tools/graft-graph-engine.py`. The one thing here that gates is a malformed or unreadable `--engine` pair, and it gates because the check did not run | detective |
 | `graft.gate.scaffolds` | no `docs/graph/` leaf is still byte-identical to its `templates/docs/**` template; an unfilled model map, `docs/graph/models.md`, is a `DISCLOSED` line and passes (every agent inherits its caller's model) | `tools/graft-audit.py <plant> <seed> --unfilled` | BLOCK: see *When a gate blocks* | soft |
 | `graft.gate.coverage` | every capability this graft carried was grown, or is answered | `python3 <seed>/tools/growth-audit.py <plant> <seed>`; non-zero blocks | BLOCK: see *When a gate blocks* | soft |
-| `graft.gate.routes` | the upgraded graph routes and the agent router is clean | `python3 docs/graph/graph-lint.py`, a representative `--plan`, `python3 docs/graph/agent-lint.py --lint` and `--eval` where installed | BLOCK: fix the node, not the linter | soft |
+| `graft.gate.routes` | the upgraded graph routes, the agent router is clean, and every context hook the plant wires runs and prints its context | `python3 docs/graph/graph-lint.py`, a representative `--plan`, `python3 docs/graph/agent-lint.py --lint` and `--eval` where installed; then `install.sh <host> --check --project-dir <plant>` once for each host in the stamp's `tools`. That check runs each wired `UserPromptSubmit` and `SessionStart` hook once, on an envelope with no session id, writes nothing in the plant, and fails naming any hook whose script is missing, exits non-zero or prints nothing (SPEC-0001 CHECK_EXECUTES_EACH_WIRED_HOOK). The hooks are fail-open in a session, so this is the step that finds a dead one before a session runs without its route. The same check names each agent or skill in a harness directory with no graph home: `RETIRED` for an `origin: seed` one the running seed does not ship, `ORPHAN` for one the plant authored there (SPEC-0001 CHECK_FLAGS_RETIRED_HARNESS_ENTRY, CHECK_FLAGS_ORPHAN_HARNESS_ENTRY). Those lines do not gate this row; they feed migration steps (c) and (d). `tools/graft-run.py`'s rehearsal runs this second half once per host on the stage copy and reports, in this row, the hooks that ran, the hooks that failed and the flagged entries | BLOCK: fix the node, not the linter. A failed hook is restored by re-running the installer for its host, which is an apply with its own backup date, as under `graft.gate.projection-drift` | soft |
 | `graft.gate.status-register` | a migrated plant's lifecycle status is queryable and agrees with its index rows | `python3 docs/graph/status-register.py --root docs/graph` | BLOCK, or N-A where no status migration was ratified | soft |
 | `graft.gate.prose` | the prose this graft authored into the plant meets the plant's own prose floor | `python3 docs/graph/prose-lint.py --file <node>` for each node Phases 4–6 wrote or re-wove (`--against <rev>` where the plant's Git state names one) | BLOCK the item: re-author; never lower the linter | soft |
 | `graft.gate.adopted-instructions` | every instruction file the kernel replaced has a ledger row, and every ledger row has an owner | list this graft's kernel backups (`ls <plant>/CLAUDE.md.bak-<date>-* <plant>/AGENTS.md.bak-<date>-* <plant>/.github/copilot-instructions.md.bak-<date>-*`) and match each against `docs/graph/plans/adopted-instructions.md`. Three outcomes, and the command separates them: no backups and no ledger file is **nothing to report**; backups all matched by rows is the healthy replacement; a backup with no row is *Reversibility* (b) 3, the case that is permanent | report every unstruck row and hand it to `docs-librarian`: open librarian work, not a defect of this graft. BLOCK on an unmatched backup and file it by hand | detective |
@@ -1040,6 +1180,7 @@ any remediating re-run re-audit under **both** dates.
 | `graft.gate.projection-drift` | every tool-dir projection still matches the node it is a projection of | read-only, and in two halves, because the projections are of two kinds. Where the stamp's `agent_projections` entry says `"verbatim": true`, the projection is a placed copy, so `diff <plant>/docs/graph/agents/<n>.md <plant>/<adapter path>` is the whole check. Where it says `false` (`github-copilot`, whose views are transformed), `install.sh github-copilot --check` regenerates to a temp dir and diffs, writing nothing to the plant | BLOCK: regenerate by re-running the installer for the affected adapter, never hand-patch the copy. That re-run is an apply: it writes, it creates a new backup date, and a tree regenerated that way matches by construction, so it is a remedy and never the detector | soft |
 | `graft.gate.pure-graph` | the Phase 6 rebalance ledger closed | none: **the graft reviewer (authoring class), the same judge as `graft.gate.minimum-sufficient`**, reads the ledger row by row against the pure-graph spec: no seed-class machinery or superfluous always-loaded instruction outside a node, no fact with two homes, no unlisted obsolete residue. Judge: the graft reviewer (authoring class) | BLOCK: or surface the residual drift with a remediation and a reason | judgment |
 | `graft.gate.cross-author` | a parallel absorption reconciled across author boundaries | none: **`docs-librarian` judges**, in one final spawn seeing the whole graph at once, followed by a structural audit, pass/fail per node. Judge: `docs-librarian`, in one final whole-graph spawn | BLOCK: see *When a gate blocks*; N-A where no phase used parallel authors | judgment |
+| `graft.gate.kept-deltas` | every file the graft record lists as merged or kept still carries its plant delta at the end of the graft, after every remedy that re-ran the installer | `tools/graft-audit.py <plant> <seed> --record <plant>/docs/graph/changelog.md`, run last, once the record's entry is written: it reads the newest graft entry's `Merged` and `Kept as the plant's` bullets and prints `LOST` for a file byte-equal to its seed source and `MISSING` for one the plant no longer carries | BLOCK: re-apply the delta from the newest backup that holds it, then re-run the row; never edit the record to match the loss | soft |
 
 Every row names its command, or the judgment and who owns it (`rule.verify`): a
 row whose Command cell reads `none` names its judge.
@@ -1143,7 +1284,9 @@ Graft **proposes**; the plant's steward **ratifies**. Emit the reconciled
 upgrade as a reviewable patch/proposal with the graft summary below, and add a
 provenance entry to the plant's own `docs/graph/changelog.md` naming the graft.
 Hand the KEEP-PLANT divergences back as harvest candidates, closing the loop
-the other way. End with the single highest-leverage next step.
+the other way: each one that passes the admission test gets a row in the
+plant's harvest-candidate record (`canonize.harvest-candidates`), so the
+hand-back outlives this entry. End with the single highest-leverage next step.
 
 ## Reversibility (`graft.reversibility`): what an unwind actually restores
 
@@ -1284,6 +1427,7 @@ State the summary in the chat, and record a provenance entry in the plant's own
 
 ## Knowledge refreshed from the corpus
 - <library/tool page> — surface renewed from corpus; version-specific facts re-pinned fresh
+- <placed page> (<corpus id>) — refreshed by the installer | merged by hand (plant-edited or plant-owned) | newly placed on the steward's list | withdrawn from the seed, kept or removed by the steward's decision
 
 ## Grown onto the plant (new capabilities actualized, grounded in plant facts)
 - <skill/expert/runbook/page> — grown because <the plant's evidenced need>

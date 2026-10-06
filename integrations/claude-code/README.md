@@ -109,6 +109,16 @@ register's summary and ends with the line `docs/graph/code-anchor.py
 recorded the anchor. When the comparison does not finish within 5 s, that
 line says the code was not checked. No other hook runs the anchor.
 
+Fail-open does not mean silent. When the script a context-hook command names
+is missing, the command prints one line, `cypress: hook script missing:
+<path>; continuing without it. Re-run install.sh to restore it.`, and the
+prompt still goes through. `install.sh claude-code --check` runs each wired
+context hook once, from the plant, on an envelope with no session id, and
+fails naming any hook whose script is missing, exits non-zero or prints
+nothing. A sound hook always prints on that envelope, because the status hook
+ends with its anchor line even when the register is absent. The check writes
+nothing in the plant, and graft runs it under `graft.gate.routes`.
+
 `bound-hook.py` (PreToolUse, matcher `Bash`) is a guard and is wired without
 `|| true`. It exits 2, and the host then does not run the command, when a shell
 command that can hang (service control, process signalling, package managers,

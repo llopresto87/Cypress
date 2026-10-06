@@ -35,18 +35,14 @@ The library and legal corpora are reference corpora (external facts to cite).
 The tool, agent, and skill corpora are artifact / role / procedure corpora
 (reusable seed material to instantiate).
 
-## A.0 The two hard properties every corpus shares
+## A.0 The gates every corpus clears
 
-Every corpus entry must satisfy two gates, stated in each `README.md` and
-enforced by `protocols/harvest.md`:
+Every corpus entry clears harvest's three gates (agnosticism, durability,
+non-redundancy) and the withdraw-ready bar. Their one home is
+`protocols/harvest.md` (§The agnosticism gate to §The third gate, §The
+corpora); each corpus `README.md` applies them to its own pages.
 
-1. Agnostic: the entry describes itself without naming the plant, so it
-   carries no project name, domain noun, path, credential or dataset shape
-   (`harvest.agnosticism-gate`).
-2. Durable: the entry reads as a general-purpose reference that holds across
-   versions, with no version-pinned specific.
-
-A third principle governs *reading* a corpus: orientation, not gospel. A
+One more principle governs *reading* a corpus: orientation, not gospel. A
 corpus page seeds a project's own leaf as an orientation layer; the project
 then confirms current facts against the real source (the lockfile, the
 publisher, the stack) and authors its own application beside the citation.
@@ -95,21 +91,11 @@ Key points:
 Source: `protocols/harvest.md`, each corpus `README.md` § "The withdraw
 contract".
 
-**Deposit (harvest, inbound).** Harvest runs only when the user starts it. A mature plant's
-`docs/graph/{libraries,legal,tools,agents,skills}/` leaves are mined for their
-**durable, agnostic surface only**. Each candidate must survive three hard
-gates before it may touch the seed:
-
-1. **Agnosticism:** would this help an arbitrary next project that never heard
-   of this plant?
-2. **Durability:** will this still be true a version from now, or is it pinned
-   to one release?
-3. **Non-redundancy:** does the seed already own this rule? Open its would-be
-   home and read it first.
-
-A single leaked project-specific or version-pinned detail, anywhere, including
-the CHANGELOG entry and harvest-log, is a failed harvest. Plant-identifying
-provenance lives only in the ratification proposal shown to the steward.
+**Deposit (harvest, inbound).** Harvest runs only when the user starts it.
+What it mines from a mature plant, the gates each candidate clears and the bar
+a page meets have one home, `protocols/harvest.md` (§Phase 1, §The agnosticism
+gate to §The third gate, §The corpora). Plant-identifying provenance lives only
+in the ratification proposal shown to the steward.
 
 **Withdraw (grow / graft / toolcraft / commission, outbound).** When a new
 project needs a capability, role, procedure, or citation, it checks the
@@ -131,9 +117,10 @@ for the next cycle. Nothing project-specific ever flows back.
 
 ## A.4 Inventory
 
-Counts below are of entry pages (excludes each corpus's `README.md`,
-`index.md`, `_schema.md`, and per-scope `index.md`). Source: directory listing
-under each corpus root.
+The inventory of each corpus is its directory listing, and each corpus README's
+`## Layout` names what every folder holds. The tables below name the folders
+and give examples; they carry no page counts, because a count restated here is
+a second home that goes stale with the next page added.
 
 ### A.4.1 Library corpus — `library-corpus/`
 
@@ -142,32 +129,24 @@ per version. `<library>` is the canonical id, lowercased, scope slash removed
 (`@microsoft/signalr` -> `microsoft-signalr`). Source:
 `library-corpus/README.md`.
 
-| Ecosystem (subfolder) | Entry count | Examples |
-|---|---|---|
-| `cli` | 2 | `curl.md`, `git.md` |
-| `container` | 10 | `docker.md`, `docker-compose.md`, `nginx.md`, `docker-host-hardening.md`, `postgres.md` |
-| `language` | 6 | `python.md`, `typescript.md`, `dotnet.md`, `nodejs.md`, `angular.md`, `flutter.md` |
-| `maven` | 21 | `spring-boot.md`, `hibernate-orm.md`, `resilience4j.md`, `stripe-java.md` |
-| `npm` | 10 | `rxjs.md`, `playwright-test.md`, `primeng.md`, `keycloak-js.md` |
-| `nuget` | 23 | `Microsoft.EntityFrameworkCore.md`, `Dapper.md`, `xunit.md`, `Npgsql.md` |
-| `platform` | 3 | `azure-cli.md`, `azure-devops-rest.md`, `azure-pipelines-yaml.md` |
-| `pypi` | 16 | `fastapi.md`, `pydantic.md`, `numpy.md`, `openai.md`, `qdrant-client.md` |
-| **Total** | **91** | |
+| Ecosystem (subfolder) | Examples |
+|---|---|
+| `cli` | `curl.md`, `git.md`, `trivy.md`, `gitleaks.md` |
+| `container` | `docker.md`, `docker-compose.md`, `nginx.md`, `docker-host-hardening.md`, `postgres.md` |
+| `galaxy` | `ansible.posix.md`, `community.docker.md` |
+| `language` | `python.md`, `typescript.md`, `dotnet.md`, `nodejs.md`, `angular.md`, `flutter.md` |
+| `maven` | `spring-boot.md`, `hibernate-orm.md`, `resilience4j.md`, `stripe-java.md` |
+| `npm` | `rxjs.md`, `playwright-test.md`, `primeng.md`, `keycloak-js.md` |
+| `nuget` | `Microsoft.EntityFrameworkCore.md`, `Dapper.md`, `xunit.md`, `Npgsql.md` |
+| `platform` | `azure-cli.md`, `azure-devops-rest.md`, `azure-pipelines-yaml.md` |
+| `pub` | `dio.md`, `flutter_bloc.md`, `flutter_secure_storage.md` |
+| `pypi` | `fastapi.md`, `pydantic.md`, `numpy.md`, `openai.md`, `qdrant-client.md` |
 
-The counts are a directory listing: `ls library-corpus/<ecosystem>/*.md`,
-excluding `README.md` and `index.md`. `nuget` and `maven` together hold about
-half of the pages, because the estate this corpus was harvested from is a
-.NET/Java shop; see §A.4.1a for what that means for an adopter on a different
-stack.
+`maven` and `nuget` hold the largest share of the pages; see §A.4.1a for
+what that means for an adopter on a different stack.
 
-- **Belongs here (surface, durable):** the capability the library provides; its
-  ecosystem and canonical package name; core API shape and canonical usage;
-  idioms that hold across releases; conceptual pitfalls; the upstream doc/repo
-  home.
-- **Stays out (pinned, ephemeral):** CVEs / advisories tied to an exact
-  version, breaking-change markers, per-release deprecations, upgrade diffs, a
-  resolved version number itself. Those are rediscovered per project by
-  `ingest-library` against the real lockfile.
+- **Belongs here and stays out:** one home, `library-corpus/README.md` ("The
+  admission bar", "What belongs here", "What stays OUT").
 - **Note on hosted-platform DSLs:** a hosted platform's declarative
   pipeline/config DSL (e.g. a CI platform's YAML schema) may earn a page with
   no installable package, pinned by retrieval-date instead of a version.
@@ -182,20 +161,17 @@ Example entry shape (`library-corpus/pypi/fastapi.md`): a title
 The seed's machinery — protocols, skills, agents, `ingest-library`,
 `research-and-ingest`, `library-wiki` — makes no assumption about ecosystem;
 it ingests any dependency, in any language, the same way. The **shipped
-library-corpus content** is a different claim: `nuget` and `maven` together
-hold about half of its pages (the §A.4.1 table) — the corpus was harvested
-from a .NET/Java estate, and it shows in the composition, not the mechanism.
+library-corpus content** is a different claim: `maven` and `nuget` hold the
+largest share of its pages (the §A.4.1 table). The lean is in the
+composition, not the mechanism.
 
-The library corpus stays in this seed repository. Unlike `legal-corpus/`,
-which `install.sh --legal-corpus yes` places whole at
-`docs/graph/legal/corpus/`, `install.sh` has no placement function or flag
-for `library-corpus/`. A
-freshly grown plant's `ingest-library.corpus-first` check
-(`protocols/ingest-library.md`) can only find it when the pass runs inside
-the seed repo itself; for every installed plant it is a no-op, and phase 2
-goes straight to upstream. The corpus reaches a plant at all only through a
-later `graft`, which only the user starts, and then only for the
-dependencies the corpus happens to carry a page for.
+A library page reaches a plant only by selective placement, on the owner's
+word: `install.sh <host> --expertise propose` prints the corpus pages the
+project's manifests match, and `install.sh <host> --expertise <id>[,<id>...]`
+places exactly the pages named and records them in `.cypress/seed.json`
+(`expertise`). `grow` proposes the list and `graft` refreshes it. Nothing is
+placed by default. A placed page skips the scout in `ingest-library` and gets
+only the version delta (`ingest-library.corpus-first`, which owns the rule).
 
 **What this means for an adopter, concretely:**
 
@@ -203,32 +179,21 @@ dependencies the corpus happens to carry a page for.
   agnostic machinery: the same `ingest-library` phases, the same
   smoke-test-then-finalize pass, over whatever dependency the project
   actually uses.
-- A later `graft` from this seed gives a .NET or Java plant a head start on
-  roughly half its dependency surface (EF Core, Dapper, xUnit, Npgsql,
-  Spring Boot, Hibernate, Resilience4j, …) — an orientation page to seed
-  from, not a finished one; the plant still pins and validates against its
-  own lockfile (`ingest-library.corpus-first`).
-- A Rust, Go, Ruby, or PHP plant's `graft` finds nothing to withdraw for its
-  ecosystem (none of those ecosystems has a subfolder yet) and runs the
-  exact same from-upstream `ingest-library` pass a .NET plant runs for any
-  dependency its corpus also lacks. The gap is corpus coverage, not
-  capability, and it closes the way every corpus entry arrives: `harvest`
-  folding a future plant's ingested pages back in.
+- A .NET or Java plant finds a page to place for much of its dependency
+  surface (EF Core, Dapper, xUnit, Npgsql, Spring Boot, Hibernate,
+  Resilience4j, and the rest); the plant still pins and validates the page
+  against its own lockfile.
+- A Rust, Go, Ruby, or PHP plant finds nothing to place for its ecosystem
+  (none of those ecosystems has a subfolder yet) and runs the same
+  from-upstream `ingest-library` pass a .NET plant runs for any dependency
+  the corpus lacks. The gap is corpus coverage, not capability, and it closes
+  the way every corpus entry arrives: `harvest` folding a future plant's
+  ingested pages back in.
 
-**Why the corpus exists, and why that is a narrower claim than "solves
-version drift":** ingesting a dependency from scratch is expensive, and most
-of that cost is spent re-learning the same durable surface — what the
-library is, its core API shape, its idioms — which barely changes between
-releases; only the pin, its CVEs, and its per-release deprecations do
-(`protocols/harvest.md`, "The library & language documentation corpus"). The
-corpus captures exactly the durable half and is deliberately unpinned (see
-"Stays out," above) — it is not itself a version-drift tracker and ships no
-CVEs, no deprecations, no resolved version. The version-pinned half —
-API deltas against the actual lockfile, deprecations, advisories, a
-smoke-tested pin — is what running `ingest-library` (or its `.refresh` pass)
-against a real project delivers, corpus present or not. The shipped corpus
-gives a durable orientation page; `ingest-library` gives a plant the
-version-pinned page it can actually trust.
+**Why the corpus exists, and why it is not a version-drift tracker:** one
+home, `protocols/harvest.md` ("The library & language documentation corpus"),
+with `library-corpus/README.md` ("Purpose"). A plant's own pin, smoke test and
+advisories still come from running `ingest-library` against its lockfile.
 
 ### A.4.2 Legal corpus — `legal-corpus/`
 
@@ -237,13 +202,15 @@ Keyed by `legal-corpus/<scope>/<instrument-slug>.md`, one page per instrument
 `index.md`. Source: `legal-corpus/README.md`, `legal-corpus/index.md`,
 `legal-corpus/_schema.md`.
 
-| Scope (subfolder) | Entry count | Instruments |
-|---|---|---|
-| `eu` | 9 | `gdpr.md`, `cra.md`, `nis2.md`, `eprivacy-directive.md`, `eu-scope-definitions.md`, `eu-us-dpf-adequacy.md`, `scc-2021-914.md`, `edpb-guidelines-07-2020.md`, `a29wp-opinion-05-2014-anonymisation.md` |
-| `international` | 1 | `iso-27001.md` |
-| `national` | 3 | `it-codice-privacy.md`, `it-workers-statute.md`, `it-accounting-retention.md` |
-| `case-law` | 1 file | `index.md` — a multi-entry router page (see below) |
-| **Total (instrument pages)** | **13** | plus the multi-entry `case-law/index.md` |
+| Scope (subfolder) | Examples |
+|---|---|
+| `eu` | `gdpr.md`, `nis2.md`, `cra.md`, `eprivacy-directive.md`, `psd2.md`, `sca-rts-2018-389.md`, `edpb-guidelines-02-2023.md` |
+| `international` | `iso-27001.md` |
+| `national` | `it-codice-privacy.md`, `it-workers-statute.md`, `it-accounting-retention.md` |
+| `case-law` | `index.md`, a multi-entry router page (see below) |
+
+`legal-corpus/index.md` routes every instrument page; read it, not this table,
+for the full list.
 
 The four scopes are: `eu` (Union-level instruments), `national`
 (country-code-prefixed statutes, e.g. `it-…`; a second jurisdiction would
@@ -318,11 +285,13 @@ linked forward.
 Keyed by `tool-corpus/<category>/<name>.md`, one page per tool. Source:
 `tool-corpus/README.md`.
 
-| Category (subfolder) | Entry count | Entries |
-|---|---|---|
-| `ops` | 15 | `chained-pipeline-run-driver.md`, `config-driven-server-response-harness.md`, `container-deploy-pipeline.md`, `declared-consumer-link-generator.md`, `declared-variable-existence-auditor.md`, `disposable-test-identity-provisioner.md`, `env-secret-rotation.md`, `hashed-lock-closure-check.md`, `large-artifact-stager.md`, `layered-config-merge-verifier.md`, `registry-digest-resolver.md`, `renamed-config-key-auditor.md`, `self-signed-tls-cert.md`, `session-cost-profiler.md`, `structured-secret-field-detector.md` |
-| `testing` | 9 | `auth-parity-oracle.md`, `ci-runner-local-simulator.md`, `cross-implementation-parity-verifier.md`, `failure-signature-triage.md`, `http-smoke-suite.md`, `parallel-suite-runner.md`, `static-config-contract-gate.md`, `test-hygiene-lint.md`, `working-tree-snapshot.md` |
-| **Total** | **24** | |
+| Category (subfolder) | Examples |
+|---|---|
+| `ops` | `container-deploy-pipeline.md`, `env-secret-rotation.md`, `registry-digest-resolver.md`, `resolved-dependency-gate.md`, `destructive-command-guard-hook.md` |
+| `testing` | `http-smoke-suite.md`, `behavior-baseline-oracle.md`, `failure-signature-triage.md`, `live-contract-check-harness.md`, `test-hygiene-lint.md` |
+
+`tool-corpus/README.md` (`## Layout`) names every kind of tool each category
+holds.
 
 - **Belongs here:** the capability and the recurring operation; the interface
   shape (invocation, inputs, outputs) in the general; the portable
@@ -330,11 +299,13 @@ Keyed by `tool-corpus/<category>/<name>.md`, one page per tool. Source:
   script with no third-party or project dependencies, like the seed's own
   `graph-lint.py` / `agent-lint.py`); the approach/algorithm and idioms;
   conceptual pitfalls.
-- **Stays out:** project names, paths, credentials, dataset shapes; stack-pinned
-  specifics; anything that reads like this project's operations.
+- **Stays out:** one home, `tool-corpus/README.md` ("What stays OUT").
 - Each page carries a `## 0. Identity` block (Category, Name, Language /
   runtime, Stability: `portable`) then `## 1. What it does`, `## 2. Interface &
   invocation`, and so on.
+- A page may carry a `stack:` field naming the library-corpus pages it is
+  bound to (`tool-corpus/README.md`, "The stack field"); a stack-neutral tool
+  carries none.
 - Further categories (`scaffolding`, `codegen`, `data`, `analysis`) are added
   as harvested.
 - **Withdraw:** adopt the portable implementation only when the stack matches;
@@ -346,16 +317,10 @@ Keyed by `tool-corpus/<category>/<name>.md`, one page per tool. Source:
 Keyed by `agent-corpus/<name>.md`, kebab-case id, one page per suggested role.
 Source: `agent-corpus/README.md`.
 
-| Entry | Role summary |
-|---|---|
-| `claim-verifier.md` | Re-tests a dated list of recorded claims against a system that has moved since |
-| `client-frontend-specialist.md` | Owns a non-trivial dedicated client (web SPA, mobile, desktop) end-to-end |
-| `env-contract-manager.md` | Environment / configuration contract role |
-| `integration-topologist.md` | Cross-service integration topology role |
-| `legacy-runtime-reconstructor.md` | Reconstructing a legacy runtime |
-| `legal.md` | A short pointer to the base-roster agent, `agents/14-legal.md`, which owns the legal mandate; the catalog offers no second legal role (see A.4.2) |
-| `report-editor.md` | Re-cuts a finished, fact-bearing report for a different reader without touching its claims |
-| **Total** | **7** |
+`agent-corpus/README.md` (`## Layout`) names every role and what it owns. The
+legal page there, `legal.md`, is only a pointer to the base-roster agent,
+`agents/14-legal.md`, which owns the legal mandate; the catalog offers no second
+legal role (see A.4.2).
 
 - These are OPTIONAL expert roles: none loaded by default, none named in
   the kernel. A project *may* select one.
@@ -364,12 +329,8 @@ Source: `agent-corpus/README.md`.
   zero framework names. Every page follows the shape: optional-role
   blockquote, `## Mandate`, `## When to select`, `## Boundary (does not
   duplicate the base roster)`, `## routing_triggers (exemplars)`.
-- **Stays out:** stack-specific experts (a framework/language/library
-  specialist), which are the plant's own — and which are usually not a role at
-  all now, because knowledge about a stack closes as an `expertise.*` node the
-  router composes rather than as a commissioned agent; roles that
-  duplicate the base roster's mandate, since there is one home per role, so
-  extend the existing agent instead.
+- **Stays out:** one home, `agent-corpus/README.md` ("What stays OUT"); it
+  also admits discipline roles on a stack-shaped surface ("What belongs here").
 - **Withdraw:** a matching role is instantiated into the project's
   `docs/graph/agents/` (the harness projections, `.claude/agents/` and kin,
   are regenerated from it) from `docs/graph/templates/agent.template.md`,
@@ -378,24 +339,11 @@ Source: `agent-corpus/README.md`.
 
 ### A.4.5 Skill corpus — `skill-corpus/`
 
-Keyed by `skill-corpus/<name>.md`, kebab-case id, one page per suggested
-procedure. Source: `skill-corpus/README.md`.
-
-| Entry | Procedure summary |
-|---|---|
-| `adversarial-pentest-passes.md` | Adversarial penetration-test passes |
-| `deploy-fleet-on-remote-docker-host.md` | Deploy a fleet on a remote Docker host |
-| `drive-hosted-cicd-cli.md` | Drive a hosted CI/CD platform from its CLI: authenticate, queue a run against the right refs, prove what it built |
-| `discardme.md` | A throwaway review file that lets a non-specialist accept or reject a security/compliance fix without reading the diff |
-| `framework-version-migration.md` | Behavior-preserving major framework/runtime migration |
-| `harden-docker-host.md` | Docker host hardening procedure |
-| `live-patch-stopgap.md` | Deploy an already-verified fix straight into a running instance — no push, no pipeline, no rebuild — to stop active harm |
-| `mutation-verify.md` | Prove an assertion actually bites by naming the smallest change that would break the subject while it still passes |
-| `operator-compressed-fix-path.md` | The disciplined form of a compressed-ceremony fix, for a small diff whose root cause is already known |
-| `prove-red-after-green.md` | Recover the missing RED for a fix that landed before its test was ever seen failing |
-| `release.md` | A numbered, resumable acceptance round across a multi-component delivery |
-| `triage-unresolved-required-variable.md` | Sort an unresolved required configuration variable into the bucket that decides its fix before touching the pipeline |
-| **Total** | **12** |
+Keyed by `skill-corpus/<name>.md` for a generic procedure and
+`skill-corpus/<key>/<name>.md` for a stack-keyed one, where `<key>` is a
+library-corpus key; one page per suggested procedure, kebab-case id. Source:
+`skill-corpus/README.md` (`## Layout` names every page; `## Stack-keyed pages`
+holds the keyed-page rules).
 
 - A skill is a procedure (the disciplined sequence for a recurring kind of
   work), as opposed to an *agent* (a role) or a *tool* (an artifact). The
@@ -407,8 +355,7 @@ procedure. Source: `skill-corpus/README.md`.
   already owns), recurring across independent project lineages. Naming a
   widely-portable substrate (a container runtime, an SSH transport) is fine when
   that substrate *is* the procedure's subject.
-- **Stays out:** a procedure bound to one stack or repo layout; anything
-  duplicating a core `skills/` discipline.
+- **Stays out:** one home, `skill-corpus/README.md` ("What stays OUT").
 - Each page opens with an optional-procedure blockquote naming what it composes
   and its parameters, then `## When to apply`, the procedure, and
   `Reference files`.

@@ -1,8 +1,9 @@
 # Tool: layered-config-merge-verifier
 
-> Project-agnostic, durable capability notes, folded into the seed by the
-> harvest protocol. Orientation for a reusable tool — the native-oracle idiom,
-> both guard checks, and the false-green guard are portable and adoptable as-is.
+> Project-agnostic capability notes, kept in the seed's tool corpus
+> (`tool-corpus/README.md`). Orientation for a reusable tool — the native-oracle
+> idiom, both guard checks, and the false-green guard are portable and adoptable
+> as-is.
 >
 > **Read §5 first.** This tool's ancestor shipped a defect of exactly the kind
 > the tool exists to catch: it keyed guard strength on the wrong token and
@@ -375,6 +376,17 @@ if __name__ == "__main__":
   something created out of band — a pre-existing resource the config only
   references — the tool can report the declaration and flag the ambiguity, but it
   cannot confirm the live property without the running system.
+- **Check that every file is really a layer, and that every path assembles
+  them the same way.** Overlay files that sit beside the one file a container
+  mounts are documentation, not layers: confirm which files the consumer
+  actually loads before passing them as `--layer`. Where two paths assemble
+  the same configuration (an orchestrator and a separate environment-file
+  writer, say), a guarantee about a value, such as a locked literal that no
+  environment value may override, must be enforced on both, or it holds on
+  one path only. Decide which names are locked by a mechanical test over the
+  declared files, not by argument. An operator who needs a different value
+  gets an enumerated, recorded override per name; relaxing the validator
+  reopens the channel and keeps every existing test green.
 
 ## 6. Tests that cover it
 
@@ -402,12 +414,14 @@ form the target system supports appears in the census fixture.
   "the generic scanner does not see this shape" posture, one level down in the
   document); `tool-corpus/ops/config-driven-server-response-harness.md` (measures
   what a config-driven binary **emits**, where this measures what it **declares**).
-- **Sources:** distilled from harvested plant experience; no external URL.
+- **Sources:** distilled from practice; no external URL.
 
 ## 8. Changelog
 
-- 2026-09-13 — created from harvested, generalized capability, by docs-librarian.
-  Carries the corrected keying defect as the lead pitfall, replaces the donor's
-  baked-in default paths with required labelled layers, and replaces its
+- 2026-09-13 — created by docs-librarian.
+  Carries the corrected keying defect as the lead pitfall, takes required
+  labelled layers instead of baked-in default paths, and takes, instead of a
   hardcoded port literal and domain judgment with a caller-supplied token list
   and label.
+- 2026-10-05: folded in the real-layer and every-assembly-path pitfall (§5),
+  by docs-librarian.
