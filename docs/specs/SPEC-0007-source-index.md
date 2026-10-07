@@ -12,7 +12,7 @@ owner: architect
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-10-07
-- **Last reviewed:** 2026-10-07 (review `reviewer-spec`, amended by `architect-amend`; joint-pass step-3 returns applied by `architect-fix`; devils-advocate verdicts applied by `architect-da`; the load by file path made `certain` by `architect-q5`; the code-review fixes stated in §6 and §7 by `architect-review-fixes`; the slice-1 final decisions after the measurement, path joins, the floor's depth and the unmapped specifier, by `architect-final`; slice 2, §1, §2 and §4 to §8, by `architect-slice2`; the slice-2 tester, security and devils-advocate findings by `architect-slice2-fix`; the slice-2 code review `reviewer-slice2` (fixes 5 and 6) and the measurement-2 decisions M2-1, M2-3 and M2-6 by `architect-slice2-m2`; the owner's `repo:` ruling, option D, by `architect-D`)
+- **Last reviewed:** 2026-10-07 (review `reviewer-spec`, amended by `architect-amend`; joint-pass step-3 returns applied by `architect-fix`; devils-advocate verdicts applied by `architect-da`; the load by file path made `certain` by `architect-q5`; the code-review fixes stated in §6 and §7 by `architect-review-fixes`; the slice-1 final decisions after the measurement, path joins, the floor's depth and the unmapped specifier, by `architect-final`; slice 2, §1, §2 and §4 to §8, by `architect-slice2`; the slice-2 tester, security and devils-advocate findings by `architect-slice2-fix`; the slice-2 code review `reviewer-slice2` (fixes 5 and 6) and the measurement-2 decisions M2-1, M2-3 and M2-6 by `architect-slice2-m2`; the owner's `repo:` ruling, option D, by `architect-D`; the option-D stat path's security lines D1 to D3 of `security-D` by `architect-D2`)
 - **Related grill section:** docs/plans/grill-8.1.0-source-index.md §6 (the owner's rulings of 2026-10-07: one walk with three link kinds; the helper's scope; test roots and plant config; graph-lint keeps its tier-2 rule in slice 1; "slice 2 ok", with the slice-2 rows)
 - **Related ADRs:** adr-0029-source-index-is-derived-scratch (proposed): the index is derived scratch, self-ignored, rebuilt on any key change, never committed and never canonical
 - **Related specs:** SPEC-0001-install-placement (placement), SPEC-0003-per-prompt-injection (code anchor)
@@ -20,7 +20,7 @@ owner: architect
 - **Design latitude:** balanced. The owner approved on 2026-10-07: "implement the plan so that it's integrated organically into the cypress seed and installed/grafted into the plants correctly." New structure is allowed where the change needs it (one shared helper module, one derived cache); no concept the plan did not name.
 - **Supersedes:** none
 - **Superseded by:** none
-- **Sign-offs:** product [x] (2026-10-07: slice 1 signed, §3 and §9 reflect the owner's outcome; 2026-10-07, `product-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling) · architect [x] (2026-10-07, `architect-da`: §4 to §8 coherent after the devils-advocate verdicts; the floor, the helper interface, the interpreter in the key and the TS/JS line join applied; 2026-10-07, `architect-slice2`: the slice-2 §4 to §8 coherent with slice 1; 2026-10-07, `architect-slice2-fix`: the slice-2 review findings applied, `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` left pending the owner's `repo:` ruling, grill §12 question 6; 2026-10-07, `architect-D`: that contract, `ANCHORS_NAME_CITING_PAGES_OR_UNCITED`, §6 "Helper" and §7 rewritten on the owner's option D, §4 to §8 coherent) · tester [x] (2026-10-07: slice 1 signed; `tester-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling) · security [x] (2026-10-07, `security-slice2-sign`: slice 2 signed; S1 to S8 and P1 to P10 applied in §5, §6, §7, §10 and the plan; accepted deviations: the `/%P` history marker that also skips a parentless commit, the depth-2 `file://` shallow clone, and a missing helper beside graph-lint degrading tier 2 with the `inference_skipped` notice instead of failing the route; REPO_CLAIM pending owner ruling. Slice 1 signed by `security-s5s7`: §5 Security requirements and seven §7 abuse cases added; four §6 constants, `FILE_MAX_BYTES`, `DIR_LINK_MAX`, `EXTENDS_MAX` and `CACHE_MAX_BYTES`, and the `outside-repository` `base` value are left to the architect)
+- **Sign-offs:** product [x] (2026-10-07: slice 1 signed, §3 and §9 reflect the owner's outcome; 2026-10-07, `product-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling; 2026-10-07, `product-D`: the owner's option D, §3 states the `repo:` claim, §9 AC-22 holds REPO_CLAIM and the missing helper) · architect [x] (2026-10-07, `architect-da`: §4 to §8 coherent after the devils-advocate verdicts; the floor, the helper interface, the interpreter in the key and the TS/JS line join applied; 2026-10-07, `architect-slice2`: the slice-2 §4 to §8 coherent with slice 1; 2026-10-07, `architect-slice2-fix`: the slice-2 review findings applied, `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` left pending the owner's `repo:` ruling, grill §12 question 6; 2026-10-07, `architect-D`: that contract, `ANCHORS_NAME_CITING_PAGES_OR_UNCITED`, §6 "Helper" and §7 rewritten on the owner's option D, §4 to §8 coherent) · tester [x] (2026-10-07: slice 1 signed; `tester-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling) · security [x] (2026-10-07, `security-slice2-sign`: slice 2 signed; S1 to S8 and P1 to P10 applied in §5, §6, §7, §10 and the plan; accepted deviations: the `/%P` history marker that also skips a parentless commit, the depth-2 `file://` shallow clone, and a missing helper beside graph-lint degrading tier 2 with the `inference_skipped` notice instead of failing the route; REPO_CLAIM pending owner ruling; 2026-10-07, `security-D`: option D's stat path signed; no finding, no block; apply spec lines D1 to D3 and arms D4 to D6 on X459. Slice 1 signed by `security-s5s7`: §5 Security requirements and seven §7 abuse cases added; four §6 constants, `FILE_MAX_BYTES`, `DIR_LINK_MAX`, `EXTENDS_MAX` and `CACHE_MAX_BYTES`, and the `outside-repository` `base` value are left to the architect)
 
 ## 1. Summary
 
@@ -87,7 +87,10 @@ prints repository-relative paths: such an input resolves under each
 governed repository, or the user prefixes the repository path; one that
 two repositories hold makes the answer incomplete. A citation by bare
 name, and a `repo:` prefix claim, are `maybe` facts; an ambiguous bare
-name makes the answer incomplete. Plans, specs and decisions are counted
+name makes the answer incomplete. A `repo:` value claims by what it names
+on disk: a file or a folder claims the paths under it, the plant root and
+a nested repository claim nothing, and a value that names nothing makes
+every answer incomplete, telling the user to correct the node's `repo:`. Plans, specs and decisions are counted
 as history and named with `--all`. The `--moved` input is in Slice 2 below.
 
 **Configure the plant.** The optional `docs/graph/source-index.json`
@@ -872,8 +875,12 @@ anchor with the placed `docs/graph/code-anchor.py`.
     loads `frontmatter.py`, with `sys.dont_write_bytecode` set first, so a
     routed prompt writes no `__pycache__` into `docs/graph/`; loading the
     helper runs no Git call and reads no file but `frontmatter.py`; its
-    `repo_kind` stats each distinct `repo:` value once per run and opens no
-    file and runs no Git (§6 "Helper"), and its `repo_claim` and
+    `repo_kind` stats each distinct `repo:` value once per run, opens no file
+    (only a directory, read-only, for its one entry), runs no Git, writes
+    nothing and expands no `~`, `$VAR` or glob; a value's only effect beyond a
+    claim is slice 1's: a `root` value inside the resolved plant adds that
+    repository to `governed_repositories`, where `build` runs Git through the
+    helper's one boundary (§6 "Helper"); and its `repo_claim` and
     `path_matches` are string functions that open nothing.
 
 - **Privacy:** the cache holds paths, hashes, link targets, reason codes and
@@ -987,26 +994,33 @@ Slice 2 moves graph-lint's tier-2 path rule onto the helper. What a `repo:`
 value names on disk decides whether it claims paths (the owner's ruling on
 grill §12 question 6, option D), so the rule is two functions, one that stats
 and one on strings; `path_matches` moves from `graph-lint.py` unchanged:
-- `repo_kind(plant, value) -> (kind, name)`: `kind` is one of `root`,
-  `path`, `outside` and `unresolved`, decided on the value as written (case
-  kept); an empty value is no value, and every caller skips it, as
-  `repo_values` does. The value is joined to `plant` (an absolute value
-  stands as it is) and resolved, symlinks followed; a target outside the
-  resolved plant is `outside`, and `name` is the target's plant-relative
-  POSIX path, `.` for the plant root, so `./src/lib`, `src/lib/` and an
-  absolute path to the folder are one name. Then, in order: the plant root,
-  or a directory holding `.git` (a file or a directory), is `root`; a
-  regular file, or a directory holding at least one entry, is `path`;
-  anything else is `unresolved`, with `name` the value as written: nothing
-  at the target (a deleted folder, a comma list), an empty directory (an
-  uninitialized submodule or a clone not made yet, so a missing repository
-  reads as a present one does), another file type, and any error the
-  resolution or the stat raises (`OSError`, `ValueError`, `RuntimeError`).
-  It stats, and reads one entry of a directory without `.git`; it opens no
-  file and runs no Git. On a case-sensitive file system (Linux, the seed's
-  gate) a value whose case differs from disk names nothing, so it is
-  `unresolved` and `anchors` reports it; a case-insensitive one finds it, and
-  it reads as `path` under the value's own case.
+- `repo_kind(plant, value) -> (kind, name)`: `kind` is one of `root`, `path`,
+  `outside` and `unresolved`, decided on the value as written (case kept); an
+  empty value is no value, and every caller skips it, as `repo_values` does.
+  The value is joined to `plant` (an absolute value stands as it is). Before
+  any system call, the joined value is normalized lexically
+  (`posixpath.normpath`); one that then lies outside the plant root, compared
+  both as given and resolved, is `outside` with no stat, so a value such as
+  `../x`, `/proc/self` or `/net/host/x` makes no file-system call outside the
+  plant; only a symlink inside the plant is followed past it. A value inside
+  is then resolved, symlinks followed; a target outside the resolved plant is
+  `outside`, and `name` is the target's plant-relative POSIX path, `.` for the
+  plant root, so `./src/lib`, `src/lib/` and an absolute path to the folder
+  are one name. Then, in order: the plant root, or a directory holding `.git`
+  (a file or a directory), is `root`; a regular file, or a directory holding
+  at least one entry, is `path`; anything else is `unresolved`, with `name`
+  the value as written: nothing at the target (a deleted folder, a comma
+  list), an empty directory (an uninitialized submodule or a clone not made
+  yet, so a missing repository reads as a present one does), another file
+  type, and any error the resolution, a stat or the one-entry read raises
+  (`OSError`, `ValueError`, `RuntimeError`). It stats, then, for a directory
+  without `.git`, reads at most one entry with `os.scandir` (`next(it, None)`
+  inside `with`), never `os.listdir`, `Path.iterdir` or a glob, which read the
+  whole directory first; it opens no file but that directory and runs no Git.
+  On a case-sensitive file system (Linux, the seed's gate) a value whose case
+  differs from disk names nothing, so it is `unresolved` and `anchors` reports
+  it; a case-insensitive one finds it, and it reads as `path` under the
+  value's own case.
 - `repo_claim(name, path, kind) -> "exact" | "prefix" | None`: a string
   function that opens nothing. `root` and `outside` claim nothing. `path`
   is `exact` when `path` equals `name`, `prefix` when `path` begins with
@@ -2092,7 +2106,8 @@ incomplete, else, for `affected-tests`, with `RECOMMEND_LINE`.
 - **Trigger:** a node's `repo:` value names nothing on disk (`repo_kind`
   `unresolved`): a deleted or renamed folder, a comma list, a case that
   differs from disk, an empty directory, another file type, or a value the
-  resolution or the stat refuses
+  tool cannot look up on disk (the path resolution, a stat or the one-entry
+  read fails)
 - **Response:** both tools read the value as before the owner's ruling (one
   holding a `/` once its leading and trailing `/` are cut is a string prefix,
   one holding none claims nothing); `anchors` adds one `repo-unresolved`
@@ -2451,10 +2466,32 @@ without further clarification.
   text view ends with `Incomplete: review by hand (...)` — maps to
   ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE
 
-REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS has no criterion yet: the
-owner's `repo:` ruling is open (grill §12 question 6). Its criterion will
-also hold HELPER_ABSENT_BESIDE_GRAPH_LINT: a missing helper costs tier 2
-only, with the `inference_skipped` notice.
+- [ ] AC-22: The router and `anchors` read a node's `repo:` value by what
+  it names on disk, as written, and the owner sees one of three outcomes
+  for each value:
+  (a) a regular file or a non-empty folder, with or without a trailing
+  `/`, claims: a task naming a path under it loads that node by
+  `named_path`, and `anchors` lists the node for that path, `certain` when
+  the value is the file itself, `maybe` found `repo-prefix` when it is a
+  folder holding the path;
+  (b) the plant root (`.`), a nested repository (a folder holding `.git`)
+  or a value outside the plant claims no path: a file under it that no
+  other page cites is `uncited`, and no `incomplete` record is added;
+  (c) a value that names nothing on disk (a renamed or deleted folder, a
+  comma list, a case that differs from disk, an empty folder) makes every
+  `anchors` answer `incomplete`, with one `repo-unresolved` record naming
+  the node's page and the value, whose detail ends "correct the node's
+  repo:", and the text view ends with `Incomplete: review by hand (...)`;
+  the router reads that value as before the ruling and prints no notice.
+  Case is matched as written by `anchors` and folded by the router, so a
+  task naming `SRC/b.py` loads the `repo: src` node. Routing changes only
+  in plants that hold a folder or file value without `/`: llama-xtx
+  (7 nodes) and wrt-migration (3 nodes) load those nodes by path from their
+  next graft on, and not before; the seed's own suites do not change. With
+  no usable `source_paths.py` beside `graph-lint.py`, the route still
+  answers, tier 2 claims nothing, and `--plan` prints
+  `inference skipped: HelperUnavailable` — maps to
+  REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS
 
 Acceptance criteria are checked off when the increment that
 implements them passes its gates.
@@ -2562,7 +2599,7 @@ and §6 now state each:
 | HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE | X456 case_history_incomplete: arm (a), `git clone --depth 2 file://<origin>`, the origin's last three commits `a.py` with `tests/t_old.sh`, `a.py` alone, `a.py` with `tests/t_new.sh`: one `history-shallow` record naming `.`, `history` holds `tests/t_new.sh` with `together` `{count: 1, of: 1}` and no `tests/t_old.sh` (the parentless boundary commit is not read); arm (b), no commit and an untracked `a.py`: one `history-unavailable` record naming `.`; each text view ends with the `affected-tests` `ACTION_LINE`; without `--history` neither record | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | green |
 | ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS | X457 case_anchors_moved: anchor recorded by the placed `docs/graph/code-anchor.py`, then a commit in nested `Cypress/` and an uncommitted `run.sh` edit; `anchors --moved` equals `anchors Cypress/tools/x.py run.sh` in every key but `cache`; after a second `--record`, no input, no file, `incomplete` empty, `MOVED_NONE_LINE` | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | green |
 | ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE | X458 case_anchors_moved_incomplete: arms (a) no `.cypress/anchor.json`, (b) the recorded `Cypress` commit replaced by one the clone lacks, `run.sh` edited, (c) no `docs/graph/code-anchor.py`, (d) a placed `code-anchor.py` with no `moved_list` (placed before slice 2), (e) a placed `code-anchor.py` whose `moved_list` returns a `paths` string, (f) a placed `code-anchor.py` whose `moved_list` raises `Unrecorded` with no `ANCHOR_NAME`; each text view ends with the `anchors` `ACTION_LINE` and prints no traceback | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | green |
-| REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS | X459 case_repo_claim, pending owner ruling on repo: (A/B/C): `anchors` lists `repo: src/lib/a.py` `certain` and `repo: src/lib/` `maybe` `repo-prefix` for `src/lib/a.py`, `repo: src/lib/` `maybe` for `src/lib/c.py`, `src/b.py` `uncited`; the seed's `graph-lint.py --plan-json` loads the same two nodes by `named_path` and none for `src/b.py` | (new case) | integration (synthetic plant, the seed's graph-lint.py placed) | pending |
+| REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS | X459 case_repo_claim, pending owner ruling on repo: (A/B/C): `anchors` lists `repo: src/lib/a.py` `certain` and `repo: src/lib/` `maybe` `repo-prefix` for `src/lib/a.py`, `repo: src/lib/` `maybe` for `src/lib/c.py`, `src/b.py` `uncited`; the seed's `graph-lint.py --plan-json` loads the same two nodes by `named_path` and none for `src/b.py`; security arms (`security-D`): D4 outside-absolute, a node `repo: /proc/self` claims nothing in either tool and adds no `incomplete` record; D5 symlink-out, `link-out`, a symlink in the plant to a directory outside it that holds `.git` and `z.py`, as a `repo:` value is kind `outside`, claims nothing in either tool, is not in `governed_repositories`, and `build` inventories no file under it; D6 FIFO, `pipe`, a FIFO in the plant (`mkfifo`), as a `repo:` value is kind `unresolved`, `anchors` adds one `repo-unresolved` record for it, and `graph-lint.py --plan-json` returns within the case's timeout (it does not block); D1's no-stat for an outside value is a code-review check, not an arm | (new case) | integration (synthetic plant, the seed's graph-lint.py placed) | pending |
 | GIT_UNAVAILABLE | X442 case_walk_incomplete: arm (f), PATH holds python3 and no git; an existing cache left byte-identical | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | NO_GOVERNED_REPOSITORY | X442 case_walk_incomplete: arm (i), a plant root that is no Git work tree | tests/test-source-index.sh | integration (synthetic plant) | green |
 | REPOSITORY_UNREADABLE | X442 case_walk_incomplete: arm (j), a nested governed repository with a corrupt index; the root repository still answers; arm (m3), a git that fails only `ls-files` in `vendor/lib` names `vendor/lib`, not `.` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
@@ -2626,3 +2663,5 @@ flagged assumption in grill.md §12. Sign-off keeps the status `draft`;
 - 2026-10-07 — slice-2 review findings applied by `architect-slice2-fix`, inside the slice-2 contracts, no contract added and none removed. Tester: `HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE` clones `--depth 2` through `file://` (a plain local path clone is not shallow) and pins the held commits; §6 "History links" leaves out a commit with no parent (a root commit, or a shallow clone's boundary commit, which Git lists as changing every file); `HISTORY_ONLY_ADDS` and `ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS` compare every key but `cache`. Security: the definition reader is iterative over statement bodies (S1); `--moved` guards the load and the call of `moved_list` and catches code-anchor's own classes, with the root a parameter (S2); `git log` takes `--no-renames --no-show-signature --no-color` and a `/`-led marker (S3); only `false` from the shallow probe reads as complete (S4); `NAME_RE` is matched whole (S5); the cache block is `/2` and the shape check covers `symbols` (S6); `graph-lint.py` sets `sys.dont_write_bytecode` before its loads (S7); §5 states the buffered `git log` and every `detail` through the `?` replacement. Devils-advocate: (b) a TS/JS declaration counts at column 0 or after `export`, so function locals define nothing (an arm of `SYMBOLS_LINE_READ_DECLARATIONS_ARE_MAYBE`); (d) `graph-lint.py` loads the helper lazily in tier 2 and a missing or skewed helper costs tier 2 alone, named by the existing `inference_skipped` notice, instead of failing every route (§7 `HELPER_ABSENT_BESIDE_GRAPH_LINT`); (a) and (c) are plan changes (grill §9, §10, §11); §2 cites ADR-0018's reason, a tool called at each file access. §6 and §8: the sibling-load line numbers corrected (`code-anchor.py` 53-54, `graft-audit.py` 169-170). `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` is unchanged, pending the owner's `repo:` ruling (grill §12 question 6).
 - 2026-10-07 — slice-2 code review (`reviewer-slice2`, fixes 5 and 6) and measurement 2 (`measure-slice2`, defects M2-1, M2-3, M2-6) applied by `architect-slice2-m2`; the `repo:` claim (§12 question 6) untouched, pending the owner. §3: a nested Python function is a definition (qualified), a nested TS/JS function is not, as §4 and §6 already said; an `undefined` answer names what the tool does not read. §6 "Definitions": the define-nothing list names `for`/`async for` targets, `with`/`except ... as` names, `:=` targets and augmented assignments (reviewer ruling 1, upheld: the code is right, the spec was silent), shell variables and dotted shell function names; the code-path rule bounds definitions, stated in the new `symbols` answer key `not_read` (the helper's `NOT_CODE`) and in `UNDEFINED_LINE` (M2-3: a name defined only in a placed seed tool under `docs/graph/` is `undefined` and says why, with no `incomplete` record). §4 `SYMBOLS_PYTHON_DEFINITIONS_CERTAIN` gains the `GRAPH_ONLY` arm; `ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE` gains two arms (a `paths` string; `Unrecorded` without `ANCHOR_NAME`), and §6 "Moved list" states the malformed shape and the subject read inside the guard. §5: the slice-2 figures and M2-1 decided as a reduction, not a restated budget: the cache is written compact and `build` holds no parsed cache while it derives; 64 MB stands. §6 "Cache document": compact layout (derived scratch, ADR-0029; the tool digest in the key rebuilds an indented cache; schema `/2` unchanged, the shape is the same). Reviewer ruling 2: the X447 newline arms stand as written.
 - 2026-10-07 — the owner's `repo:` ruling applied by `architect-D` (owner: "yes all" to decisions 1 to 4 of the internal brainstorm `architect-brainstorm`, option D; closes grill §12 question 6): what a `repo:` value names on disk decides whether it claims paths. §4 `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` rewritten with one arm per kind (path: a regular file or a non-empty folder claims, slash or not; root and outside: a directory holding `.git`, the plant root and a value outside the plant claim nothing; unresolved: the reading from before the ruling plus the `repo-unresolved` record; case: the kind is decided on the value as written, the router folds case when it matches and `anchors` does not); `ANCHORS_NAME_CITING_PAGES_OR_UNCITED` revised a second time: `repo: src/` and `repo: src` over a folder are `maybe` `repo-prefix` facts, and its uncited file is `lib/b.py`, as its case already holds. §2 states the ruling. §5 and §6 "Helper": `repo_kind(plant, value) -> (kind, name)` (stats, reads one entry of a directory without `.git`, opens no file, runs no Git), `repo_claim(name, path, kind)`, `governed_repositories` built on `repo_kind` (the same set), `REPO_UNRESOLVED_DETAIL`; §6 "Incomplete" gains `repo-unresolved`; §7 gains `REPO_VALUE_UNRESOLVED` and `HELPER_ABSENT_BESIDE_GRAPH_LINT` names `repo_kind` (its response unchanged: tier 2 claims nothing, `inference_skipped`); §8 adds the llama.cpp example. Intended routing change, accepted by the owner (decision 2): graph-lint's tier 2 changes in plants that hold a folder or file value without `/` (llama-xtx: 7 nodes; wrt-migration: 3 nodes) at their next graft, and a nested repository named with a `/` would stop claiming (no plant holds one); the seed's suites do not change. `anchors` reports every value naming nothing on disk in each answer (decision 3; turboquant_setup: 6 comma lists). Not changed: SPEC-0002 `GRAPH_ROUTE_NAMED_PATH_LOADS_ITS_OWNER` already says "a `repo:` value that names a repository root claims no path". §9 and §10 are product's and tester's to follow.
+- 2026-10-07 — §9 follows the owner's `repo:` ruling (`product-D`): AC-22 maps REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS in owner terms, one outcome per kind (a file or a non-empty folder claims; the root, a nested repository or an outside value claims nothing; a value naming nothing is `incomplete` with a `repo-unresolved` record and the action "correct the node's repo:"), the case fold, the routing change in llama-xtx (7 nodes) and wrt-migration (3 nodes) at their next graft only, and the missing helper (HELPER_ABSENT_BESIDE_GRAPH_LINT); the placeholder note is gone. §3 gains one sentence on the claim. §7 `REPO_VALUE_UNRESOLVED`: "a value the resolution or the stat refuses" reworded as a value the tool cannot look up on disk, meaning unchanged.
+- 2026-10-07 — security review of option D's stat path (`security-D`, no finding, no block) applied by `architect-D2`, inside `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS`, no contract added and none changed: §6 "Helper" `repo_kind` normalizes the joined value lexically before any system call, and a value then outside the plant root is `outside` with no stat, so `../x`, `/proc/self` or `/net/host/x` touches no file system outside the plant (D1); it reads a directory's one entry with `os.scandir` and `next`, never a whole-directory listing, and an error of that read is `unresolved` (D2); §5 Security states the exact guarantee: a directory opened read-only for its one entry, no Git, no write, no `~`, `$VAR` or glob expansion, and a value's only effect beyond a claim is slice 1's `governed_repositories` (D3); §7 `REPO_VALUE_UNRESOLVED` names the one-entry read in its trigger. §10 X459 gains the security arms D4 (`repo: /proc/self`), D5 (a symlink out of the plant) and D6 (a FIFO); D1's no-stat is a review check. Security signed in §0.
