@@ -32,6 +32,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history (not the default shallow clone): gate tests read
+          # git history and tags, e.g. `git show v7.36.0:...`.
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
