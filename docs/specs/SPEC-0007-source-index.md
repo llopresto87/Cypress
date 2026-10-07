@@ -12,7 +12,7 @@ owner: architect
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-10-07
-- **Last reviewed:** 2026-10-07 (review `reviewer-spec`, amended by `architect-amend`; joint-pass step-3 returns applied by `architect-fix`; devils-advocate verdicts applied by `architect-da`; the load by file path made `certain` by `architect-q5`; the code-review fixes stated in §6 and §7 by `architect-review-fixes`)
+- **Last reviewed:** 2026-10-07 (review `reviewer-spec`, amended by `architect-amend`; joint-pass step-3 returns applied by `architect-fix`; devils-advocate verdicts applied by `architect-da`; the load by file path made `certain` by `architect-q5`; the code-review fixes stated in §6 and §7 by `architect-review-fixes`; the slice-1 final decisions after the measurement, path joins, the floor's depth and the unmapped specifier, by `architect-final`)
 - **Related grill section:** docs/plans/grill-8.1.0-source-index.md §6 (the owner's rulings of 2026-10-07: one walk with three link kinds; the helper's scope; test roots and plant config; graph-lint keeps its tier-2 rule)
 - **Related ADRs:** adr-0029-source-index-is-derived-scratch (proposed): the index is derived scratch, self-ignored, rebuilt on any key change, never committed and never canonical
 - **Related specs:** SPEC-0001-install-placement (placement), SPEC-0003-per-prompt-injection (code anchor)
@@ -24,7 +24,7 @@ owner: architect
 
 ## 1. Summary
 
-A stdlib Python seed tool, `tools/source-index.py`, placed in every plant as `docs/graph/source-index.py`, derives the structure of a project's code, the code that does things and the tests that check it, without a model. It builds a file inventory (path, content hash, language, test class) and file-to-file links from Python imports (`ast`), shell and Python invocations, quoted path and directory literals, and TypeScript/JavaScript import and require specifiers resolved through `tsconfig` paths. One reverse walk over those links answers three queries: `impact` (the files that depend on the inputs, `certain` rows first, each class nearest first), `affected-tests` (the same walk filtered to the test class, plus the always-run set) and `anchors` (graph pages that cite the inputs). Every row is `certain` or `maybe` (with the reason and line of its weakest link); the `maybe` rows every input reaches alike, the opaque holders and their dependents, are the floor, listed once and apart after the input's own rows; what the tool cannot answer makes the answer `incomplete`, with a reason and one action per query: "check by hand", "run the full suite", "review by hand". The index is derived, safe to delete, never committed, and rebuilt whenever its key changes, a graft or another Python version included (ADR-0029). The rules for "what is code", "where does the plant end" and "how a page cites a path" have one home each, shared with `code-anchor.py` and `growth-audit.py`. The tool recommends; verify, tiering and canonize keep every decision.
+A stdlib Python seed tool, `tools/source-index.py`, placed in every plant as `docs/graph/source-index.py`, derives the structure of a project's code, the code that does things and the tests that check it, without a model. It builds a file inventory (path, content hash, language, test class) and file-to-file links from Python imports (`ast`), shell and Python invocations, quoted path and directory literals (whole, or joined from segments as in `ROOT / "tools" / "x.py"`), and TypeScript/JavaScript import and require specifiers resolved through `tsconfig` paths. One reverse walk over those links answers three queries: `impact` (the files that depend on the inputs, `certain` rows first, each class nearest first), `affected-tests` (the same walk filtered to the test class, plus the always-run set) and `anchors` (graph pages that cite the inputs). Every row is `certain` or `maybe` (with the reason and line of its weakest link); the `maybe` rows every input reaches alike, the opaque holders and their dependents, are the floor, listed once and apart after the input's own rows; what the tool cannot answer makes the answer `incomplete`, with a reason and one action per query: "check by hand", "run the full suite", "review by hand". The index is derived, safe to delete, never committed, and rebuilt whenever its key changes, a graft or another Python version included (ADR-0029). The rules for "what is code", "where does the plant end" and "how a page cites a path" have one home each, shared with `code-anchor.py` and `growth-audit.py`. The tool recommends; verify, tiering and canonize keep every decision.
 
 ## 2. Scope
 
@@ -32,13 +32,14 @@ A stdlib Python seed tool, `tools/source-index.py`, placed in every plant as `do
   - The seed tool and its placement by `install.sh` and `manifest.json`; graft rebuilds the cache through its key and never carries a stale one over.
   - One shared helper module, `tools/source_paths.py`, holding the code-path rule, governed repositories, the Git boundary, blob hashing, the clean-relative predicate `relative` and the atomic write (today in `code-anchor.py`, which moves onto the helper's interface of §6 "Helper"), and the citation grammar with the one citation-resolution function whose strict plant-relative mode is `cite_problem` (today in `growth-audit.py`); `plant_walk.py` stays the plant-edge owner. `graph-lint.py` keeps its own tier-2 path rule this slice (accepted debt, grill §6 and §12 question 2).
   - File inventory from `git ls-files` plus untracked non-ignored files, per governed repository, across repositories.
-  - Links: Python `ast` imports and loads by file path anchored at `__file__`; `python3|python|bash|sh <path>`, `python3 -m <module>` and `source <path>` invocations; quoted path literals and directory literals resolved by suffix; TS/JS `import`/`export from`/`require()`/`import()` with relative and `tsconfig` `paths`/`baseUrl` resolution (comment-tolerant JSON reader) and workspace package names. Each link is `certain` or `maybe` with its reason; files whose references cannot be pinned (non-literal dynamic paths, tree walks, unreadable files) are opaque. Markdown mentions are not dependency links; page citations are a separate relation read only by `anchors`.
+  - Links: Python `ast` imports and loads by file path anchored at `__file__`; `python3|python|bash|sh <path>`, `python3 -m <module>` and `source <path>` invocations; quoted path literals and directory literals, whole or joined from segments (a `/` chain, `os.path.join`, `path.join`, `path.resolve`), resolved by suffix; TS/JS `import`/`export from`/`require()`/`import()` with relative and `tsconfig` `paths`/`baseUrl` resolution (comment-tolerant JSON reader) and workspace package names. Each link is `certain` or `maybe` with its reason; files whose references cannot be pinned (non-literal dynamic paths, tree walks, unreadable files) are opaque. Markdown mentions are not dependency links; page citations are a separate relation read only by `anchors`.
   - Test class from the plant's `TEST_GLOBS` in `docs/graph/spec-lint.py`; an optional plant config `docs/graph/source-index.json` holding `exclude` (out of the test class), `always_run` and `global_inputs`, with seed defaults; a file may be both a test and a tool.
   - One walk and queries `impact`, `affected-tests` (default depth 3, cap 5), `anchors`, plus `build`; the floor listed apart; text and `--json`; the `incomplete` list with per-query actions.
   - A derived cache at `.cypress/source-index/` with an inner `.gitignore` of `*`, keyed as ADR-0029 decides (schema; the Python major.minor; digests of the tool and every sibling it loads; digest of the config and `TEST_GLOBS`; each governed repository's HEAD and uncommitted-code digest), written atomically.
 - **Out of scope:**
   - Slice 2 of this spec, after slice 1 is measured: a symbol-definition index; git co-change history as an optional link source; a `--moved` input taking code-anchor's report (grill §12 question 3); wiring into verify, canonize, grow; `graph-lint.py` loading the helper.
   - A separate later spec: read deduplication and context pointers (overlaps adr-0010).
+  - This slice: commands written in host settings files, such as a hook entry in `.claude/settings.json` (`"command": "python3 \".../.claude/route-hook.py\""`). A `json` file is a link target only (§6 "Inventory record"), so such a hook script has no dependent in any answer. Reading them needs one parser per host settings shape, and links come from code by one rule; a later slice may add host settings readers (measurement D3, grill §10).
   - Never: tree-sitter, SQLite, a daemon, MCP, a CodeGraph integration, Svelte, Vue or other languages, a call graph, per-prompt hook use (ADR-0018), any automatic tier decision, test omission or knowledge rewrite.
 
 ## 3. User-facing behavior
@@ -55,8 +56,8 @@ writes nothing outside its own cache and makes no decision for the user.
 pipes in `git diff --name-only`, and asks `impact`. They see the code that
 depends on those files, nearest first, each row with its depth, the
 nearer file it was reached from, and how that last link was found. Links
-come from Python imports, shell and Python invocations, quoted paths, and
-TS/JS imports resolved through `tsconfig` or `jsconfig` aliases. Each row
+come from Python imports, shell and Python invocations, quoted paths (whole
+or joined from segments), and TS/JS imports resolved through `tsconfig` or `jsconfig` aliases. Each row
 is `certain` or `maybe`; a `maybe` row names the reason, holder and line
 of its weakest link. A file whose references cannot be pinned (a dynamic
 import, a whole-tree walk) is opaque and appears as a `maybe` row in every
@@ -217,12 +218,29 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
   `"$SEED_ROOT/templates/k/lint.py"` with `templates/k/lint.py` in the
   inventory, and the string `"templates/k/"` with `templates/k/lint.py` and
   `templates/k/a.json` the inventory files under it; and a Markdown file
-  outside `docs/graph/` that names `tools/t.py` in backticks
+  outside `docs/graph/` that names `tools/t.py` in backticks. And path joins
+  (§6 "Links"), with `tools/u.py`, `tools/v.py` and `src/hooks/h.py` in the
+  inventory: `tools/j.py` holding `ROOT / "tools" / "u.py"`,
+  `os.path.join(ROOT, "tools", "v.py")` and `ROOT / "templates" / "k" / name`
+  over a variable `name`; `tools/w.py` holding
+  `(ROOT / "templates" / "k").glob("*.json")`; `tests/j.sh` holding the
+  here-document line `TOOL = SEED / "tools" / "u.py"` and the command
+  `cp "$SEED"/tools/v.py "$TMP"`; and `src/ext/e.ts` holding
+  `path.join(__dirname, "..", "hooks")` and `path.resolve(root, "tools", "u.py")`
 - **When:** `build --json` runs
 - **Then:** `tools/t.py` holds `maybe` `path-literal` links with reason
   `path-literal` to `tools/frontmatter.py` and `templates/k/lint.py`, and
   `maybe` `path-literal` links with reason `directory` to `templates/k/lint.py`
   and `templates/k/a.json`, each with its line
+- **And:** `tools/j.py` and `tests/j.sh` each hold exactly two `maybe`
+  `path-literal` links with reason `path-literal`, to `tools/u.py` and
+  `tools/v.py`, and `tools/j.py` also the two with reason `directory` to
+  `templates/k/lint.py` and `templates/k/a.json` (the literal segments before
+  `name`); `tools/w.py` holds those two `directory` links and no `opaque`
+  record (a walk whose root is a join that names a directory); `src/ext/e.ts`
+  holds one with reason `directory` to `src/hooks/h.py` and one with reason
+  `path-literal` to `tools/u.py`; each link's line is the line where its join
+  starts
 - **And:** the Markdown file holds no link
 
 ### Contract: LINK_TS_SPECIFIER_CERTAIN
@@ -246,18 +264,24 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
 - **Given:** source files holding, one each: `import(name)` with a non-literal
   argument; `os.walk(root)` over a variable; a `.py` file that does not parse;
   an alias import under a tsconfig whose `extends` names a file the inventory
-  lacks; `import "./missing"`; `import "@/nope"` under the paths of the
-  contract above; `import "./.next/types/routes.d.ts"` where Git ignores
-  `.next/`; `import css from "./a.css?raw"`; and a Python `import app.main`
-  where two inventory files end in `/app/main.py`
+  lacks; `import "~/x"` under the paths of the contract above, which map no
+  `~`, with no `baseUrl`; `import "./missing"`; `import "@/nope"` under the
+  paths of the contract above; `import "./.next/types/routes.d.ts"` where Git
+  ignores `.next/`; `import css from "./a.css?raw"`; a Python
+  `import app.main` where two inventory files end in `/app/main.py`; and, in
+  a file of their own, `import { test } from "bun:test"` and the Python join
+  `WORK / "scratch" / name` over a variable `name`, with no `scratch`
+  directory in the inventory
 - **When:** `build --json` runs
-- **Then:** the first four holders are `opaque` records with the reasons
-  `dynamic-nonliteral`, `walks-tree`, `unreadable` and
-  `alias-config-unavailable`; the next four references are `unresolved`
+- **Then:** the first five holders are `opaque` records with the reasons
+  `dynamic-nonliteral`, `walks-tree`, `unreadable`,
+  `alias-config-unavailable` and `unmapped-specifier`; the next four references are `unresolved`
   records with the reasons `relative-no-file`, `alias-no-file`, `generated`
   and `asset`, each with the base path it names; and the ambiguous import is
   two `maybe` links with reason `ambiguous`, one to each candidate
-- **And:** none of them is a `certain` link
+- **And:** none of them is a `certain` link, and the file of their own holds
+  no link and no record (a scheme-led specifier is external; a join whose
+  literal segments name nothing is no reference)
 
 ### Test class
 
@@ -322,6 +346,11 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
   walk reaches is never a floor row; the `floor` of `z.py` equals the `floor`
   of `a.py` with `q.py` added and `dependents` empty; and the text view prints
   the `dependents` rows, then `FLOOR_LINE`, then the `floor` rows
+- **And:** `impact a.py --depth 1` lists the same `floor`, `o.py` and `p.py`,
+  and its `incomplete` holds exactly one record, `depth-cap` naming `b.py`
+  (whose dependent `d.py` the input part did not reach), because the floor
+  part has no depth bound and only a cut in the input part makes an answer
+  incomplete
 
 ### Contract: WALK_DELETED_INPUT_REACHES_ITS_NAMERS
 - **Given:** `src/x.ts` holding `import { v } from "@/lib/gone"` under
@@ -361,7 +390,7 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
   "check by hand", `affected-tests` "run the full suite", `anchors` "review by
   hand")
 - **And:** the depth-cap record names the file at depth 3 whose dependent the
-  walk did not reach, and the same chain with `--depth 5` is complete
+  input part did not reach, and the same chain with `--depth 5` is complete
 
 ### Affected tests
 
@@ -452,9 +481,12 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
   finishes within 5 s and 64 MB peak RSS on the owner's development machine.
   Evidence (the gap scouts' throwaway builds, 2026-10-07): 0.15 s and 15 MB
   RSS on Vivid; 3.8 s on a 4,865-file llama.cpp tree, with import extraction
-  only. The 5 s budget is unverified for path-literal, directory and shell
-  extraction at 5,000 files. A query that reuses the cache answers within 1 s
-  on the seed-sized plant. Measured once at verify, not gated (grill §10).
+  only. A query that reuses the cache answers within 1 s on the seed-sized
+  plant. Measured once at verify, not gated (grill §10); the 2026-10-07
+  measurement, every rule on: 0.67 s and 47 MB on a plant governing a seed
+  clone (914 files), 0.66 s and 31 MB on Vivid (397), 3.19 s and 52 MB on a
+  4,320-file llama.cpp clone; a cached query 0.10 s on the seed plant. The
+  5,000-file figure, about 3.7 s and 55 MB, is inferred by linear scale.
 - **Security:** read-only over the repositories: the tool parses Python with
   `ast` and never imports, executes or `exec`s repository code; it reads a
   symlink as its link text, never its target; Git runs through the helper's
@@ -657,7 +689,8 @@ opaque:                        # a holder whose reference may name any file
   holder:    { type: string, inventory path }
   line:      { type: int, or null for unreadable }
   reference: { type: string, as written, cut to LITERAL_MAX }
-  reason:    { enum: [dynamic-nonliteral, walks-tree, unreadable, alias-config-unavailable] }
+  reason:    { enum: [dynamic-nonliteral, walks-tree, unreadable, alias-config-unavailable,
+                          unmapped-specifier] }
 unresolved:                    # an import or invoke reference that names a path no inventory file holds
   holder:    { type: string, inventory path }
   line:      { type: int }
@@ -690,7 +723,7 @@ unresolved:                    # an import or invoke reference that names a path
   not anchored keeps the rules below. The link's line is the line where the
   argument starts.
 - Line join (TS/JS only): a line whose code, comments stripped, ends in an
-  open `import(`, `require(` or `vi.mock(` is read joined with the following
+  open `import(`, `require(`, `vi.mock(`, `path.join(` or `path.resolve(` is read joined with the following
   lines, up to `JOIN_MAX` of them, until one holds the closing `)`; blank lines
   are skipped and not counted. The joined text is read once, as one line at
   the line of the call, and its lines are not read again on their own. A call
@@ -704,7 +737,8 @@ unresolved:                    # an import or invoke reference that names a path
   `-c` and `-` arguments are inline code, not links.
 - A quoted string that is an `import` specifier or an `invoke` argument is
   read as that reference only, never also as a `path-literal`, so it yields one
-  link, or one record, and no second one.
+  link, or one record, and no second one; a quoted string that is a segment of
+  a path join (below) is read as part of that join only.
 - `path-literal`: any other quoted string (single, double, or a backtick
   string without `${`) of at most `LITERAL_MAX` characters with no
   whitespace and no `://`, in a Python, shell or TS/JS file. It is a `maybe`
@@ -715,6 +749,38 @@ unresolved:                    # an import or invoke reference that names a path
   takes. A string that resolves
   to nothing is not a reference and yields nothing: no `unresolved` or `opaque`
   record ever comes from a path literal.
+  In a shell file, a word that joins quoted and unquoted parts with no space
+  between them (`"$SEED"/tools/x.py`) is one string, read whole with its
+  quotes removed, in place of its quoted parts.
+- Path join: an expression that builds one path from segments is one path
+  literal written in pieces. Its forms:
+  - Python (read by `ast`): a chain of the `/` operator, `B / s1 / … / sn`, or
+    a call `os.path.join(B, s1, …, sn)`, with at least one `si` a string
+    literal; `B` is the leftmost operand.
+  - Shell and TS/JS (a line at a time, after the TS/JS line join, which also
+    joins a line ending in an open `path.join(` or `path.resolve(`): a call
+    written `path.join(`, `path.resolve(` or `os.path.join(`, its first
+    argument `B` and the arguments after it, up to its `)`, the segments; and,
+    in a shell file only, words joined by `/` words with a quoted string after
+    the first word (`SEED / "tools" / "x.py"`, the form a Python
+    here-document writes), `B` the first word.
+  A segment is a literal when it is a string literal (in shell and TS/JS a
+  quoted string; an f-string or template string with an interpolation is not
+  one), and `B` also when it is `P("<literal>")`, `P` the name bound to
+  `pathlib.Path`. The join is read as the string of its segments joined by
+  `/`, each non-literal one written as a variable: `ROOT / "tools" / "x.py"`
+  reads `$ROOT/tools/x.py`, `path.join(__dirname, "..", "hooks")` reads
+  `$__dirname/../hooks`. That string is resolved by the shell-argument and
+  path-literal order of "Resolution", in a TS/JS file too (a join names a file
+  path, not a module specifier), and held to the `path-literal` bullet above:
+  a `maybe` link with reason `path-literal` or `directory`, at the line where
+  the join starts, or nothing. A join with no literal segment is not a
+  reference. A `__file__` or `__dirname` base is a variable lead, tried from
+  the holder's directory first, so a join anchored there is `maybe`: only a
+  load call makes an anchored path `certain` ("Load by file path" reads its
+  own argument; a load call whose argument is a join that rule does not take
+  reads it by this one). A walk call whose root is a join takes it as the
+  literal root of the `walks-tree` rule below.
 - `certain` links: found `exact` when a relative import, a load by file path
   or an `invoke` argument names the target as written, relative to the holder
   or the repository root (a `path-literal` is never `certain`, wherever it
@@ -737,10 +803,11 @@ unresolved:                    # an import or invoke reference that names a path
   reference is the literal or the specifier (§7 `DIRECTORY_LITERAL_TOO_WIDE`).
 - Opaque reasons: `dynamic-nonliteral`, an `import()`, `require()`,
   `import_module`, `spec_from_file_location`, `run_path` or `invoke` whose
-  argument is no anchored path and holds no literal that resolves; `walks-tree`, a call of `os.walk`,
+  argument is no anchored path and neither is nor holds a literal or path
+  join that resolves; `walks-tree`, a call of `os.walk`,
   `os.scandir`, `os.listdir`, `.rglob(`, `.glob(`, `glob.glob`, `readdirSync`
   or `readdir`, or a `find` or `git ls-files` command, whose root argument is
-  not a literal, or is a literal that makes no `directory` link by the
+  neither a literal nor a path join, or is one that makes no `directory` link by the
   `path-literal` rule (it holds no `/`, is a glob such as `"tools/*.py"`, is
   `.` or a root, or names no directory of inventory files; a `find` root is
   read with a `/` appended): `glob.glob("tools/*.py")`, `os.walk("tools")`,
@@ -750,7 +817,13 @@ unresolved:                    # an import or invoke reference that names a path
   of a link-bearing language that cannot be read, decoded as UTF-8 or parsed
   (`ast` SyntaxError); `alias-config-unavailable`, a non-relative, non-package
   specifier under a tsconfig whose `extends` chain names a file the inventory
-  lacks, or that the JSONC reader rejects.
+  lacks, or that the JSONC reader rejects; `unmapped-specifier`, a TS/JS
+  specifier that is not relative, not led by `/`, no npm package name and not
+  scheme-led, and that no `paths` pattern, `baseUrl` or workspace package
+  maps (`~/x` with no `~` alias, `#internal`): the config that maps it (a
+  bundler alias, a package `imports` map) is one the tool does not read, so it
+  may name any file. It has no base to probe, so an `unresolved` record could
+  never reach an answer through a `named` step.
 - Unresolved records come only from `import` and `invoke` references.
   Reasons: `relative-no-file`, a relative specifier, a load by file path or an
   `invoke` path that resolves to no file; `alias-no-file`, a specifier an alias matched
@@ -807,7 +880,12 @@ plant-relative inventory paths of any governed repository):
   file is `input-not-found`, an incomplete answer, never a silent drop). A
   string that is only a variable (`"$x"`, `${x}`), or that holds a variable
   after its leading segments (`$A/x/$B`), is `dynamic-nonliteral` when it is
-  an `invoke` argument and nothing otherwise.
+  an `invoke` argument. Otherwise a string that is only a variable is nothing,
+  and one that holds a variable after a named segment reads the segments
+  before that variable as a directory literal (`$A/x/$B` reads `$A/x/`;
+  `ROOT / "tools" / name` reads `$ROOT/tools/`): its `directory` links, or
+  nothing when it names no directory of inventory files, since then no base
+  this order tries holds an inventory file below it.
 - TS/JS specifier: `./` and `../` from the holder's directory; otherwise the
   nearest `tsconfig.json` or `jsconfig.json` up from the holder inside its
   repository, its `extends` chain followed through relative paths to
@@ -825,7 +903,10 @@ plant-relative inventory paths of any governed repository):
   a valid npm package name (including `@scope/name` and `node:` names; `~`
   begins no npm name, so `~/x` is read by the alias rules alone and, when an
   alias matches it with no file behind it, is `alias-no-file`), is not
-  resolved and names no workspace package is external. Each base path is probed as written, then
+  resolved and names no workspace package is external; so is a scheme-led
+  specifier, a letter then letters, digits, `+`, `-` or `.` up to a `:`
+  (`node:fs`, `bun:test`, `virtual:pwa`). Any other specifier that no rule
+  above resolves or records makes its holder `opaque` `unmapped-specifier`. Each base path is probed as written, then
   with `.ts .tsx .d.ts .js .jsx .mjs .cjs .mts .cts .json`, then as
   `<base>/index` with the same list; a written `.js .jsx .mjs .cjs` also
   probes `.ts .tsx .mts .cts`. In a TS/JS file, a path literal resolves by
@@ -908,8 +989,13 @@ In each part, each file is reached once, at its nearest depth; at equal depth a
 `link` is the weakest link on its chain (`certain` only when every link is),
 and a `maybe` row carries the reason, holder and line of the `maybe` link
 nearest the start of its chain (the input, or the opaque holder). The walk
-never stops at a test. Both parts stop at `--depth`; a file at that depth with
-a dependent the walk did not reach is a `depth-cap` record.
+never stops at a test. The input part stops at `--depth`: a file it reaches
+at that depth with a dependent that neither part lists is a `depth-cap`
+record. The floor part has no depth bound: `--depth` bounds the distance from
+an input, and the floor is the index's, not the input's; it runs until it
+reaches no new file, one pass over the links, so no floor row is ever cut and
+the floor adds no `incomplete` record. A floor row's depth counts from its
+opaque holder (depth 1).
 
 - `impact`: `dependents`, the input rows at depth 1 and more; `floor`, the
   floor rows.
@@ -946,7 +1032,7 @@ incomplete_record:
 | `outside-plant` | an input outside the plant root | the input | all |
 | `ambiguous-input` | a repository-relative input several repositories hold | the input | all |
 | `input-not-found` | an input no rule of "Inputs" takes | the input | impact, affected-tests |
-| `depth-cap` | a file at `--depth` has an unreached dependent | that file at the cut depth (`f4.py` for `f1.py`, `--depth 3` over `f1` to `f5`), one record each | impact, affected-tests |
+| `depth-cap` | a file the input part reaches at `--depth` has a dependent neither part lists | that file at the cut depth (`f4.py` for `f1.py`, `--depth 3` over `f1` to `f5`), one record each | impact, affected-tests |
 | `no-test-declaration` | `TEST_GLOBS` absent, unparsable or not a list of strings | `docs/graph/spec-lint.py` | affected-tests |
 | `no-test-files` | `TEST_GLOBS` matches no inventory file | `docs/graph/spec-lint.py` | affected-tests |
 | `ambiguous-citation` | a bare-name citation several inventory files match, one an input | the page (the citation is the detail) | anchors |
@@ -1022,7 +1108,8 @@ row:
   kind:  { enum: [import, invoke, path-literal, opaque], or null at depth 0 }
   found: { enum: [exact, resolved, path-literal, directory, ambiguous, workspace-package,   # a link's found
                    named,                                                                 # a walk step
-                   dynamic-nonliteral, walks-tree, unreadable, alias-config-unavailable], # an opaque reason
+                   dynamic-nonliteral, walks-tree, unreadable, alias-config-unavailable,  # an opaque reason
+                   unmapped-specifier],
            null at depth 0 }
   line:  int|null
   maybe: { reason, holder, line } | null      # the maybe link nearest the start of the chain
@@ -1240,7 +1327,7 @@ incomplete, else, for `affected-tests`, with `RECOMMEND_LINE`.
 
 ### Failure: DIRECTORY_LITERAL_TOO_WIDE
 - **Contract:** LINK_PATH_LITERAL_AND_DIRECTORY_ARE_MAYBE
-- **Trigger:** a directory literal or one of its `/`-suffixes is empty or names
+- **Trigger:** a directory literal (quoted, or read from a path join) or one of its `/`-suffixes is empty or names
   a root (`"/"`, `"./"`, `"$ROOT/"`), or resolves to a directory holding more
   than `DIR_LINK_MAX` inventory files at any depth; or a bare TS/JS specifier
   names a workspace package holding more than `DIR_LINK_MAX` inventory files;
@@ -1614,3 +1701,4 @@ flagged assumption in grill.md §12. Sign-off keeps the status `draft`;
 - 2026-10-07 — RED for plan increments 3 to 7 (`tester-R1`): §10 bound to `tests/test-source-index.sh` (X425 to X449) and `tests/test-full-install.sh` E15, every row `red`; rows added for `OUTPUT_CARRIES_NO_RAW_CONTROL` (X448), `WALK_FLOOR_LISTED_APART_AFTER_THE_INPUT_ROWS` (X449) and the security failures, each an arm of its contract's case; status `active` with the first RED tests (§11).
 - 2026-10-07 — RED R1 readings ruled (`architect-readings`), all confirmed, none amended, no test change: a `directory` link's kind is `path-literal`; `import a` beside `a.py` is found `resolved` and `python3 b.py` beside `b.py` `exact`; §6 "Incomplete" gains a Subject column (an input as normalized, which equals the input given in its normal form; `config-refused` the config path; `depth-cap` the file at the cut depth; the four subject-less reasons named); the cache reason of a `CACHE_UNREADABLE` rebuild is `cache unreadable`, another `schema` included; a copied plant's cache status is `reused`; `WALK_NEAREST_FIRST_ONCE` and `AFFECTED_TESTS_ARE_THE_WALK_FILTERED` each gain the one `maybe` row (`e.py`, `tests/p_test.py`) that shows the `certain` rows come first.
 - 2026-10-07 — code review `reviewer-code` (fix-list item 12) applied by `architect-review-fixes`, as clarifications inside the existing contracts, no new contract and no version bump: §6 "Resolution": `from a.b import c` links the module file and each submodule file `c` the inventory holds, in every branch (M1); variable-led shell strings (`$DIR/x`, `$(dirname "$0")/x`) try the holder's directory first, a hit there `resolved`, the unresolved `base` still repository-relative (M3); a workspace package matched by `name` or `name/`, the subpath probed to a `certain` `resolved` link, else the `maybe` package links (M6); a leading `/` with no alias match is `outside-repository` and `~` begins no npm name (m1); a non-relative tsconfig `extends` is skipped (m9e). §6 "Links": a walk call whose literal root makes no `directory` link is `opaque` `walks-tree` (M2); a `directory` link reaches every file below at any depth, and a workspace link set over `DIR_LINK_MAX` is `opaque` `walks-tree` with the specifier as reference (m9a, m9b; §7 `DIRECTORY_LITERAL_TOO_WIDE` widened to match); a foreign or ungoverned-work-tree base is not asked of `check-ignore` (m2). §6 inventory: `hash` "" when `content_state` cannot hash (m9c); a repository whose listing fails is left out with `repository-unreadable` and the others answer (m3); the key's dirty paths are those the inventory keeps (m4); `SKIP_DIRS` read from the placed spec-lint.py, the copy a fallback, not keyed because graft rebuilds (m8); `config_matches` case-sensitive by decision, the tail rule written out (m8). §6 answer and CLI: a forced `build` over an existing cache is `rebuilt` with reason `build forced` (m9d); the `build` text view is the cache line and one count line, formats given (m9 build text). Intended verdict change (m6): the helper's `split_citation` strips whitespace before it cuts the `:line` suffix, so growth-audit's `graph_leaf_filled` and grounding loop now read `x.md:3 ` (trailing space) as `x.md`, where before the raw `x.md:3` was never substantive; this corrects §6 "Helper" ("no growth-audit verdict changes") for that one input, because one parse is the point of the helper.
+- 2026-10-07 — slice-1 final decisions after the measurement (grill §10), by `architect-final`, as clarifications inside the existing contracts, no new contract: §6 "Links" reads a path join (a Python `/` chain or `os.path.join`; a shell or TS/JS `path.join(`, `path.resolve(` or `os.path.join(`; a shell run of `/` words, the here-document form) as one path literal, non-literal segments written as variables, so it is a `maybe` `path-literal` or `directory` link and a `__file__` or `__dirname` base is a variable lead, never `certain` outside a load call (D1, D2); a shell word joining quoted and unquoted parts is one string (D1); a string or join holding a variable after a named segment reads the segments before it as a directory literal (D1); a walk root may be a join; the TS/JS line join also takes `path.join(` and `path.resolve(`. §6 "Resolution": a scheme-led specifier is external, and a specifier no rule resolves or records makes its holder `opaque` `unmapped-specifier`, a new opaque reason, because a base-less `unresolved` record never reaches an answer (R1). §6 "Walk": the floor part has no depth bound, and `depth-cap` comes from the input part alone (D4). §2 states host settings commands out of scope (D3). §4 `LINK_PATH_LITERAL_AND_DIRECTORY_ARE_MAYBE`, `UNPINNED_REFERENCE_RECORDED_WITH_ITS_REASON`, `WALK_FLOOR_LISTED_APART_AFTER_THE_INPUT_ROWS` and `WALK_INCOMPLETE_NAMES_REASON_AND_ACTION` gain the arms; §5 records the measured timings; §7 `DIRECTORY_LITERAL_TOO_WIDE` names joined directory literals. The §10 rows are the R3 tester's (grill §9).
