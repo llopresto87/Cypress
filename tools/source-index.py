@@ -47,18 +47,23 @@ import sys
 from fnmatch import fnmatchcase
 from pathlib import Path
 import importlib.util as _ilu
+sys.dont_write_bytecode = True  # a query writes only under .cypress/source-index/: no __pycache__
 
 
-def _sibling(name, module):
-    spec = _ilu.spec_from_file_location(module, Path(__file__).resolve().parent / name)
+def _loaded(spec):
     mod = _ilu.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
 
 
-source_paths = _sibling("source_paths.py", "cypress_source_paths")
-plant_walk = _sibling("plant_walk.py", "cypress_plant_walk")
-frontmatter = _sibling("frontmatter.py", "cypress_frontmatter")
+# Each sibling is loaded in the anchored shape of SPEC-0007 §6 "Links", so the
+# tool's own loads are certain links in the index it builds over the seed.
+source_paths = _loaded(_ilu.spec_from_file_location(
+    "cypress_source_paths", Path(__file__).resolve().parent / "source_paths.py"))
+plant_walk = _loaded(_ilu.spec_from_file_location(
+    "cypress_plant_walk", Path(__file__).resolve().parent / "plant_walk.py"))
+frontmatter = _loaded(_ilu.spec_from_file_location(
+    "cypress_frontmatter", Path(__file__).resolve().parent / "frontmatter.py"))
 
 # --- constants and texts (SPEC-0007 §6): this file is their one home, except
 # the path rules, whose home is source_paths.py. ---
@@ -77,7 +82,7 @@ CACHE_DIR = ".cypress/source-index"
 CACHE_NAME = "index.json"
 CACHE_IGNORE = "*\n"
 CONFIG_PATH = "docs/graph/source-index.json"
-TEST_DECLARATION = "docs/graph/spec-lint.py: TEST_GLOBS"
+TEST_DECLARATION = "docs/graph/spec-lint.py"     # TEST_GLOBS and SKIP_DIRS
 SIBLINGS = ["source_paths.py", "plant_walk.py", "frontmatter.py"]
 TEMP_PREFIX = ".tmp-source-index-"
 FLOOR_LINE = "Floor: {n} maybe row(s) every input reaches (opaque holders and their dependents):"
@@ -100,7 +105,9 @@ CONFIG_DEFAULTS = {
         "requirements*.txt", "uv.lock"],
 }
 # spec-lint's `test_files` semantics, whose home is spec-lint.py (SPEC-0007 §6
-# "Inventory record"): no file under one of these directories is a test.
+# "Plant test declaration"): no file under one of these directories is a test.
+# The plant's `SKIP_DIRS` is read from spec-lint.py; this copy serves only when
+# that assignment is absent or not strings.
 TEST_SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__",
                   "dist", "build", "target", ".next"}
 
@@ -133,7 +140,7 @@ SHAPE = {
     "opaque": {"holder", "line", "reference", "reason"},
     "unresolved": {"holder", "line", "kind", "reference", "reason", "base"},
 }
-NPM_NAME = re.compile(r"^(?:node:.+|(?:@[a-z0-9~-][a-z0-9._~-]*/)?[a-z0-9~-][a-z0-9._~-]*(?:/.*)?)$")
+NPM_NAME = re.compile(r"^(?:node:.+|(?:@[a-z0-9-][a-z0-9._~-]*/)?[a-z0-9-][a-z0-9._~-]*(?:/.*)?)$")
 VARIABLE = re.compile(r"^\$(?:\{[^}]*\}|[A-Za-z_][A-Za-z0-9_]*|[@*#?$!0-9])$")
 OPEN_CALL = re.compile(r"(?:(?<![\w$.])import|(?<![\w$.])require|(?<![\w$])vi\.mock)\s*\(\s*$")
 TS_FROM = re.compile(r"(?<![\w$.])from\s*(['\"])([^'\"\n]*)\1")
@@ -239,24 +246,28 @@ def jsonc(text: str):
 
 
 # --- the plant's test declaration and config ---------------------------------
-def read_test_globs(root: Path):
-    """The plant's `TEST_GLOBS`: the list of strings the top-level assignment
-    in `docs/graph/spec-lint.py` holds, or None when there is none to read."""
+def read_test_declaration(root: Path) -> dict:
+    """The plant's `TEST_GLOBS` (a list of strings) and `SKIP_DIRS` (a set or
+    list of strings), each read with `ast.literal_eval` from its top-level
+    assignment in `docs/graph/spec-lint.py`: name -> value, a name absent when
+    there is none to read."""
     try:
-        tree = ast.parse(read_text(root, "docs/graph/spec-lint.py"))
+        tree = ast.parse(read_text(root, TEST_DECLARATION))
     except (OSError, Unreadable, SyntaxError, ValueError, RecursionError, MemoryError):
-        return None
+        return {}
+    kinds = {"TEST_GLOBS": (list,), "SKIP_DIRS": (set, list)}
+    found = {}
     for node in tree.body:
         targets = node.targets if isinstance(node, ast.Assign) else (
             [node.target] if isinstance(node, ast.AnnAssign) and node.value else [])
-        if any(isinstance(t, ast.Name) and t.id == "TEST_GLOBS" for t in targets):
+        for name in [t.id for t in targets if isinstance(t, ast.Name) and t.id in kinds]:
             try:
                 value = ast.literal_eval(node.value)
             except (ValueError, TypeError, SyntaxError, RecursionError, MemoryError):
-                return None
-            ok = isinstance(value, list) and all(isinstance(g, str) for g in value)
-            return value if ok else None
-    return None
+                continue
+            if isinstance(value, kinds[name]) and all(isinstance(g, str) for g in value):
+                found[name] = value
+    return found
 
 
 def read_config(root: Path):
@@ -287,7 +298,8 @@ def read_config(root: Path):
 def config_matches(path: str, pattern: str) -> bool:
     """A config pattern with no `/` matches the last path segment; one with
     `/` drops its leading `**/` and matches the whole plant-relative path or
-    any tail of it (graph-lint's `_path_matches` rule, case-sensitive here)."""
+    any tail of it. This is graph-lint's `_path_matches` rule, case-sensitive
+    by decision: a plant path is matched as Git names it (SPEC-0007 §6)."""
     if "/" not in pattern:
         return fnmatchcase(path.rsplit("/", 1)[-1], pattern)
     while pattern.startswith("**/"):
@@ -329,11 +341,11 @@ def glob_regex(pattern: str):
     return re.compile("".join(parts) + r"\Z", re.S)
 
 
-def test_class(path: str, test_globs, exclude) -> str:
+def test_class(path: str, test_globs, skip_dirs, exclude) -> str:
     """`test` when a TEST_GLOBS pattern matches the path, no directory on its
     way is one spec-lint skips, and no `exclude` pattern matches; else `code`."""
     dirs = path.split("/")[:-1]
-    if (not test_globs or TEST_SKIP_DIRS.intersection(dirs)
+    if (not test_globs or skip_dirs.intersection(dirs)
             or any(config_matches(path, p) for p in exclude)):
         return "code"
     return "test" if any(rx.match(path) for rx in test_globs) else "code"
@@ -370,7 +382,9 @@ class Plant:
     def __init__(self, root: Path):
         self.root = root
         self.config, self.config_raw, self.config_refused = read_config(root)
-        self.test_globs = read_test_globs(root)
+        declared = read_test_declaration(root)
+        self.test_globs = declared.get("TEST_GLOBS")
+        self.skip_dirs = set(declared.get("SKIP_DIRS", TEST_SKIP_DIRS))
         self.repos = source_paths.governed_repositories(root)
         self._foreign = {}
 
@@ -394,9 +408,21 @@ class Plant:
                 return True
         return False
 
+    def askable(self, path: str) -> bool:
+        """Whether Git can be asked about `path` in its repository: no foreign
+        directory on the way, and no nested work tree that no `repo:` governs
+        (Git answers such a path with exit 128 for the whole call)."""
+        if self.foreign(path):
+            return False
+        repo = self.repo_of(path)
+        parts = path.split("/")[:-1]
+        start = 0 if repo in (None, ".") else len(repo.split("/"))
+        return not any(os.path.lexists(self.root / "/".join(parts[:k]) / ".git")
+                       for k in range(start + 1, len(parts) + 1))
+
     def key_repositories(self, problems: list) -> list:
         """Each readable repository's HEAD and the digest of its uncommitted
-        code; a repository Git cannot read is a `repository-unreadable`
+        code (the paths the inventory keeps); a repository Git cannot read is a `repository-unreadable`
         record and is left out. GitMissing passes through."""
         entries = []
         for rel in self.repos:
@@ -405,7 +431,8 @@ class Plant:
                 head = source_paths.git(repo, "rev-parse", "--verify", "-q", "HEAD^{commit}",
                                         ok=(0, 1)).decode().strip()
                 dirty = hashlib.sha256()
-                for p in sorted(p for p in source_paths.uncommitted(repo) if source_paths.is_code(rel, p)):
+                for p in sorted(p for p in source_paths.uncommitted(repo) if source_paths.is_code(rel, p)
+                                and not self.foreign(source_paths.plant_path(rel, p))):
                     state = source_paths.content_state(repo, p) or ""
                     dirty.update(p.encode("utf-8", "surrogateescape") + b"\0" + state.encode() + b"\n")
             except source_paths.GitFailed as e:
@@ -414,15 +441,22 @@ class Plant:
             entries.append({"path": rel, "head": head, "dirty": dirty.hexdigest()})
         return entries
 
-    def inventory(self, repos: list) -> dict:
+    def inventory(self, repos: list, problems: list) -> dict:
         """path -> record for the code of the readable repositories: what Git
         lists, kept when the code-path rule holds and no directory on the way
-        is foreign, the files of a nested repository taken from it alone."""
+        is foreign, the files of a nested repository taken from it alone. A
+        repository whose listing fails is a `repository-unreadable` record and
+        is left out; the others answer."""
         nested = [r for r in repos if r != "."]
         rx = [glob_regex(g) for g in self.test_globs or []]
         records = {}
         for rel in repos:
-            for p in listed(self.root / rel):
+            try:
+                paths = listed(self.root / rel)
+            except source_paths.GitFailed as e:
+                problems.append(incomplete("repository-unreadable", rel, detail=str(e)))
+                continue
+            for p in paths:
                 path = source_paths.plant_path(rel, p)
                 if (p.endswith("/") or not source_paths.is_code(rel, p) or self.foreign(path)
                         or rel == "." and any(path.startswith(n + "/") for n in nested)):
@@ -436,7 +470,7 @@ class Plant:
                 records[path] = {"path": path, "repo": rel,
                                  "hash": source_paths.content_state(self.root / rel, p) or "",
                                  "language": None,
-                                 "test": test_class(path, rx, self.config["exclude"]),
+                                 "test": test_class(path, rx, self.skip_dirs, self.config["exclude"]),
                                  "symlink": stat.S_ISLNK(st.st_mode)}
         return records
 
@@ -465,6 +499,15 @@ def probe_order(base: str) -> list:
 def named(seg: str) -> bool:
     """A segment that names something: not empty, `.`, `..` or a bare variable."""
     return seg not in ("", ".", "..") and not VARIABLE.match(seg)
+
+
+def variable_lead(segs: list) -> int:
+    """How many leading segments of a shell path are variables (`$DIR`,
+    `$(dirname "$0")`), the last segment never counted."""
+    lead = 0
+    while lead < len(segs) - 1 and "$" in segs[lead]:
+        lead += 1
+    return lead
 
 
 class Extract:
@@ -510,7 +553,8 @@ class Extract:
     def run(self):
         for path, rec in sorted(self.records.items()):
             data = None
-            if not rec["symlink"]:
+            ext = posixpath.splitext(path.rsplit("/", 1)[-1])[1]
+            if not rec["symlink"] and (not ext or LANGUAGES.get(ext) in LINK_BEARING):
                 try:
                     data = read_bytes(self.plant.root / rec["repo"],
                                       posixpath.relpath(path, rec["repo"]) if rec["repo"] != "." else path)
@@ -535,17 +579,22 @@ class Extract:
     def resolve_text(self, holder: str, text: str, directories: bool):
         """A shell argument or path literal: holder-directory-relative, then
         each `/`-suffix of the string, longest first, relative to the holder's
-        repository and then to the plant root. ("file", path, exact) for a
-        file, exact when the whole string names it from the holder or its
-        repository root; ("dir", files) for a directory, only when
-        `directories` and the string holds a `/`; None when it names nothing.
-        A string with no named segment ("/", "./", "$ROOT/") never resolves."""
+        repository and then to the plant root; when the leading segments are
+        variables (`$DIR/lib.sh`), each suffix after them is tried from the
+        holder's directory first. ("file", path, exact) for a file, exact when
+        the whole string names it from the holder or its repository root;
+        ("dir", files) for a directory, only when `directories` and the string
+        holds a `/`; None when it names nothing. A string with no named
+        segment ("/", "./", "$ROOT/") never resolves."""
         segs = text.rstrip("/").split("/")
         if not any(named(s) for s in segs):
             return None
         hdir = posixpath.dirname(holder)
         repo = self.records[holder]["repo"]
-        tries = [(joined(hdir, text), True)]
+        lead = variable_lead(segs)
+        tries = [(joined(hdir, "/".join(segs[k:])), False) for k in range(lead, len(segs) if lead else 0)
+                 if any(named(s) for s in segs[k:])]
+        tries.append((joined(hdir, text), True))
         for k in range(len(segs)):
             if not any(named(s) for s in segs[k:]):
                 break
@@ -570,30 +619,40 @@ class Extract:
         hit = self.resolve_text(holder, text, directories=True)
         if hit is None:
             return False
-        self.literal_hit(holder, hit, line)
+        self.literal_hit(holder, hit, line, text)
         return True
 
-    def literal_hit(self, holder, hit, line):
+    def literal_hit(self, holder, hit, line, reference):
         if hit[0] == "file":
             self.link(holder, hit[1], "path-literal", "path-literal", line)
         elif len(hit[1]) > DIR_LINK_MAX:
-            self.opaque_at(holder, line, "", "walks-tree")
+            self.opaque_at(holder, line, reference, "walks-tree")
         else:
             for target in hit[1]:
                 self.link(holder, target, "path-literal", "directory", line)
 
+    def walk_root_links(self, holder, root) -> bool:
+        """Whether a walk call's literal root makes `directory` links by the
+        path-literal rule; a walk whose root makes none is `opaque` `walks-tree`
+        (SPEC-0007 §6 "Links"), so no walk is dropped in silence."""
+        if len(root) > LITERAL_MAX or any(c.isspace() for c in root):
+            return False
+        hit = self.resolve_text(holder, root, directories=True)
+        return bool(hit) and hit[0] == "dir"
+
     def pick(self, *cands):
         return next((c for c in cands if c in self.files), None)
 
-    def module_hits(self, base: str, parts, names) -> list:
-        """The module at `base` itself; else each imported name that is a
-        module beside it."""
-        if parts:
-            hit = self.pick(base + ".py", base + "/__init__.py")
-            if hit:
-                return [hit]
+    def module_hits(self, base: str, package: bool, names) -> list:
+        """The module file at `base` (`base.py` or `base/__init__.py`; with
+        `package`, `base` is the package directory itself) and each imported
+        name's submodule file below it the inventory holds, because an
+        imported name may be a submodule (SPEC-0007 §6 "Resolution")."""
         prefix = "" if base in ("", ".") else base + "/"
-        return [h for n in names if (h := self.pick(f"{prefix}{n}.py", f"{prefix}{n}/__init__.py"))]
+        cands = [prefix + "__init__.py"] if package else [base + ".py", base + "/__init__.py"]
+        for n in names:
+            cands += [f"{prefix}{n}.py", f"{prefix}{n}/__init__.py"]
+        return [c for c in dict.fromkeys(cands) if c in self.files]
 
     def module(self, holder, dotted, names=(), level=0, line=0, kind="import", reference=None):
         """The Python module rule: relative imports from the holder's package
@@ -610,9 +669,7 @@ class Extract:
             if base is None:
                 self.missing(holder, line, kind, ref, None)
                 return
-            hits = self.module_hits(base, parts, names)
-            if not hits and not parts:
-                hits = [h for h in [self.pick(joined(pkg, "__init__.py"))] if h]
+            hits = self.module_hits(base, not parts, names)
             if not hits:
                 self.missing(holder, line, kind, ref, joined(base, names[0]) if names and not parts else base)
             for h in hits:
@@ -623,16 +680,21 @@ class Extract:
         rel = "/".join(parts)
         for d in (hdir, self.records[holder]["repo"]):
             base = joined(d, rel)
-            hits = self.module_hits(base, parts, names) if base else []
+            hits = self.module_hits(base, False, names) if base else []
             if hits:
                 for h in hits:
                     self.link(holder, h, kind, "resolved", line)
                 return
-        ends = (rel + ".py", rel + "/__init__.py")
-        found = sorted({p for e in ends for p in self.by_name.get(e.rsplit("/", 1)[-1], [])
+        # the suffix fallback: each base whose module or submodule files end
+        # in the module's path is one candidate
+        ends = [rel + ".py", rel + "/__init__.py"] + [f"{rel}/{n}{t}" for n in names
+                                                      for t in (".py", "/__init__.py")]
+        bases = sorted({p[:len(p) - len(e)] + rel for e in ends
+                        for p in self.by_name.get(e.rsplit("/", 1)[-1], [])
                         if p == e or p.endswith("/" + e)})
-        for target in found:
-            self.link(holder, target, kind, "resolved" if len(found) == 1 else "ambiguous", line)
+        for base in bases:
+            for target in self.module_hits(base, False, names):
+                self.link(holder, target, kind, "resolved" if len(bases) == 1 else "ambiguous", line)
 
     # -- Python, read by ast
     def python(self, rec, text):
@@ -741,7 +803,8 @@ class Extract:
                     root = (node.args[0] if node.args else None) if q in PY_WALKS else node.func.value
                     if isinstance(root, ast.Call) and len(root.args) == 1 and not root.keywords:
                         root = root.args[0] if qual(root.func) == "pathlib.Path" else root
-                    if not (isinstance(root, ast.Constant) and isinstance(root.value, str)):
+                    if not (isinstance(root, ast.Constant) and isinstance(root.value, str)
+                            and self.walk_root_links(holder, root.value)):
                         self.opaque_at(holder, node.lineno, ast.unparse(root) if root is not None else q,
                                        "walks-tree")
         for node in ast.walk(tree):
@@ -800,9 +863,7 @@ class Extract:
                 self.opaque_at(holder, line, word, "dynamic-nonliteral")
             return
         segs = word.split("/")
-        lead = 0
-        while lead < len(segs) - 1 and "$" in segs[lead]:
-            lead += 1
+        lead = variable_lead(segs)
         if any("$" in s for s in segs[lead:]):
             self.opaque_at(holder, line, word, "dynamic-nonliteral")
             return
@@ -849,11 +910,10 @@ class Extract:
                     self.invoke(holder, follow[0][0], lineno)
                 elif at_command and (t == "find" or t == "git" and follow and follow[0][0] == "ls-files"):
                     roots = [x for x in follow[:1] if t == "find" and not x[0].startswith("-")]
-                    if roots and roots[0][0] and "$" not in roots[0][0]:
-                        hit = self.resolve_text(holder, roots[0][0].rstrip("/") + "/", True)
-                        if hit:
-                            used.add(id(roots[0]))
-                            self.literal_hit(holder, hit, lineno)
+                    root = roots[0][0].rstrip("/") + "/" if roots and roots[0][0] else ""
+                    if root and "$" not in root and self.walk_root_links(holder, root):
+                        used.add(id(roots[0]))
+                        self.literal_hit(holder, self.resolve_text(holder, root, True), lineno, roots[0][0])
                     else:
                         self.opaque_at(holder, lineno, roots[0][0] if roots else t, "walks-tree")
             for w in words:
@@ -923,7 +983,10 @@ class Extract:
             elif not self.ts_literal(holder, line[m.end():], lineno, dry=True):
                 self.opaque_at(holder, lineno, line[m.end():].split(")")[0].strip(), "dynamic-nonliteral")
         for m in TS_WALK.finditer(line):
-            if line[m.end():m.end() + 1] not in ("'", '"', "`"):
+            root = TS_STRING.match(line, m.end())
+            text = next((g for g in root.groups() if g is not None), "") if root else ""
+            hit = self.ts_target(holder, text) if text and "/" in text else None
+            if not (hit and not isinstance(hit[0], str)):
                 self.opaque_at(holder, lineno, line[m.end():].split(")")[0].strip(), "walks-tree")
         for m in TS_STRING.finditer(line):
             k = next(g for g in (1, 2, 3) if m.group(g) is not None)
@@ -939,10 +1002,10 @@ class Extract:
             text = next((g for g in m.groups() if g is not None), "") if m else ""
         if not text or len(text) > LITERAL_MAX or any(c.isspace() for c in text) or "://" in text:
             return False
-        hit = self.ts_target(holder, text, literal=True)
+        hit = self.ts_target(holder, text)
         if hit and not dry:
             self.literal_hit(holder, ("file", hit[0], False) if isinstance(hit[0], str) else ("dir", hit[0]),
-                             lineno)
+                             lineno, text)
         return bool(hit)
 
     def probe(self, base):
@@ -1073,6 +1136,10 @@ class Extract:
             if bases is not None and (asset or any(self.probe(b) for b in bases) or not package):
                 self.target(holder, spec, line, bases, asset, "alias-no-file", relative=False)
                 return
+        if path_part.startswith("/"):
+            self.missing(holder, line, "import", spec, None)
+            return
+        if cfg:
             if cfg["base_url"] is not None:
                 hit = self.probe(joined(cfg["base_url"], path_part))
                 if hit:
@@ -1101,16 +1168,27 @@ class Extract:
         self.missing(holder, line, "import", spec, bases[0], missing)
 
     def workspace(self, holder, spec, line):
-        d = self.packages().get(spec)
-        if d is None:
+        """A bare specifier against the workspace packages: the longest
+        `name` equal to it or followed in it by `/`. A subpath that probes to
+        a file under the package directory is one `resolved` link; otherwise
+        each file of the package is a `maybe` `workspace-package` link."""
+        names = [n for n in self.packages() if spec == n or spec.startswith(n + "/")]
+        if not names:
             return
+        name = max(names, key=len)
+        d = self.packages()[name]
+        if spec != name:
+            hit = self.probe(joined(d, spec[len(name) + 1:]))
+            if hit:
+                self.link(holder, hit[0], "import", "resolved", line)
+                return
         files = [f for f in (self.under.get(d, []) if d else sorted(self.files)) if f != holder]
         if len(files) > DIR_LINK_MAX:
             self.opaque_at(holder, line, spec, "walks-tree")
         for f in files if len(files) <= DIR_LINK_MAX else []:
             self.link(holder, f, "import", "workspace-package", line)
 
-    def ts_target(self, holder, text, literal=True):
+    def ts_target(self, holder, text):
         """A TS/JS path literal's file, as (file,), or its directory's files,
         as (files,); None unless it is relative or alias-prefixed."""
         if text.startswith(("./", "../")):
@@ -1128,10 +1206,12 @@ class Extract:
 
     def mark_generated(self):
         """Ask Git, once per repository, which unresolved bases it ignores:
-        those are `generated`. Paths go on stdin as `./<path>`, never argv."""
+        those are `generated`. Paths go on stdin as `./<path>`, never argv; a
+        base Git cannot be asked about keeps its reason."""
         asks = {}
         for u in self.unresolved:
-            if u["reason"] in ("relative-no-file", "alias-no-file") and u["base"]:
+            if u["reason"] in ("relative-no-file", "alias-no-file") and u["base"] and \
+                    self.plant.askable(u["base"]):
                 repo = self.plant.repo_of(u["base"])
                 asks.setdefault(repo, []).append(u)
         for repo, recs in sorted(asks.items()):
@@ -1156,7 +1236,7 @@ def incomplete(reason, subject, candidates=(), detail=None):
 def digest(*chunks: bytes) -> str:
     h = hashlib.sha256()
     for c in chunks:
-        h.update(c)
+        h.update(len(c).to_bytes(8, "big") + c)
     return h.hexdigest()
 
 
@@ -1172,10 +1252,10 @@ def tool_digest() -> str:
     return digest(*chunks)
 
 
-def derive(plant: Plant, repos: list) -> dict:
+def derive(plant: Plant, repos: list, problems: list) -> dict:
     """The index body: inventory, links, opaque and unresolved records, each
     sorted, holding plant-relative paths only."""
-    records = plant.inventory(repos)
+    records = plant.inventory(repos, problems)
     ex = Extract(plant, records)
     ex.run()
     inventory = [{k: r[k] for k in SHAPE["inventory"]} for _, r in sorted(records.items())]
@@ -1229,6 +1309,23 @@ def cache_problem(doc, key) -> str:
     return None if doc["key"] == key else "key changed"
 
 
+def read_ignore(dir_fd):
+    """The first bytes of the cache's inner `.gitignore` (one more than
+    CACHE_IGNORE holds, so a longer file differs), or None when it is absent
+    or not a regular file."""
+    try:
+        opened = source_paths.open_regular(".gitignore", dir_fd=dir_fd)
+    except FileNotFoundError:
+        return None
+    if opened is None:
+        return None
+    fd, _ = opened
+    try:
+        return os.read(fd, len(CACHE_IGNORE) + 1)
+    finally:
+        os.close(fd)
+
+
 def read_cache(root: Path, key):
     """(index, None) when the cache holds a usable index for `key`; else
     (None, why): None when there is no cache at all, else the reason."""
@@ -1240,6 +1337,9 @@ def read_cache(root: Path, key):
         return None, f"cache unreadable: {CACHE_DIR}/ is unusable ({e.strerror or type(e).__name__})"
     try:
         opened = source_paths.open_regular(CACHE_NAME, dir_fd=dir_fd)
+        if opened is not None and read_ignore(dir_fd) != CACHE_IGNORE.encode():
+            os.close(opened[0])
+            return None, "cache unreadable: ignore altered"
     except FileNotFoundError:
         return None, None
     except OSError as e:
@@ -1281,18 +1381,7 @@ def write_cache(root: Path, doc: dict):
                 f"a symlink is never followed")
     try:
         ignore = CACHE_IGNORE.encode()
-        try:
-            opened = source_paths.open_regular(".gitignore", dir_fd=dir_fd)
-        except FileNotFoundError:
-            opened = None
-        current = None
-        if opened:
-            fd, size = opened
-            try:
-                current = os.read(fd, len(ignore) + 1)
-            finally:
-                os.close(fd)
-        if current != ignore:
+        if read_ignore(dir_fd) != ignore:
             source_paths.atomic_write(dir_fd, ".gitignore", ignore, TEMP_PREFIX, f"{CACHE_DIR}/.gitignore")
         source_paths.atomic_write(dir_fd, CACHE_NAME, data, TEMP_PREFIX, f"{CACHE_DIR}/{CACHE_NAME}")
     except source_paths.Refused as e:
@@ -1324,7 +1413,7 @@ def load_index(root: Path, force: bool):
         cached, why = read_cache(root, key)
         if cached is not None and not force:
             return plant, {k: cached[k] for k in empty}, {"status": "reused", "reason": None}, problems
-        body = derive(plant, readable)
+        body = derive(plant, readable, problems)
     except source_paths.GitMissing:
         problems = [p for p in problems if p["reason"] == "config-refused"]
         problems.append(incomplete("git-unavailable", "git"))
@@ -1332,7 +1421,7 @@ def load_index(root: Path, force: bool):
     except source_paths.GitFailed as e:
         problems.append(incomplete("repository-unreadable", ".", detail=str(e)))
         return plant, empty, {"status": "not-written", "reason": str(e)}, problems
-    if len(readable) < len(plant.repos):
+    if any(p["reason"] == "repository-unreadable" for p in problems):
         return plant, body, {"status": "not-written", "reason": "a repository is unreadable"}, problems
     existed = cached is not None or why is not None
     failed = write_cache(root, {"schema": INDEX_SCHEMA, "key": key, **body})
@@ -1432,7 +1521,7 @@ class Index:
 
     def test(self, path):
         rec = self.records.get(path)
-        return rec["test"] if rec else test_class(path, self.rx, self.plant.config["exclude"])
+        return rec["test"] if rec else test_class(path, self.rx, self.plant.skip_dirs, self.plant.config["exclude"])
 
     # -- the one reverse walk
     def walk(self, starts, cap):
@@ -1591,7 +1680,7 @@ def answer(query: str, args, root: Path) -> dict:
             doc["dependents"] = sorted((r for r in rows if r["depth"]), key=by_link)
         else:
             if plant.test_globs is None:
-                problems.append(incomplete("no-test-declaration", "docs/graph/spec-lint.py"))
+                problems.append(incomplete("no-test-declaration", TEST_DECLARATION))
             elif not any(r["test"] == "test" for r in body["inventory"]):
                 problems.append(incomplete("no-test-files", "docs/graph/spec-lint.py"))
             doc["tests"] = sorted((r for r in rows if index.test(r["path"]) == "test"), key=by_link)
@@ -1689,7 +1778,7 @@ def main(argv=None) -> int:
     try:
         args = parse(sys.argv[1:] if argv is None else argv)
     except Usage as e:
-        print(f"usage: source-index.py {{build|impact|affected-tests|anchors}} ...: {e}", file=sys.stderr)
+        print(f"usage: source-index.py {{build|impact|affected-tests|anchors}} ...: {safe(e)}", file=sys.stderr)
         return 2
     if getattr(args, "paths", None) == ["-"]:
         args.paths = [l for l in sys.stdin.buffer.read().decode("utf-8", "surrogateescape").split("\n") if l]
