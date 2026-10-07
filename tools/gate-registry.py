@@ -139,6 +139,14 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "commit and uncommitted work", FIXTURES, "representation",
         "runs against Git repositories built from synthetic files, not a real "
         "governed repository"),
+    "test-source-index.sh": (
+        "SPEC-0007 source index: source-index.py inventories the code of every "
+        "governed repository, links it, walks the links for impact, affected "
+        "tests and anchors, and keeps a self-ignored cache rebuilt on any key "
+        "change", FIXTURES, "representation",
+        "runs against Git plants built from synthetic files (and one temp "
+        "install for the graft rebuild), not a real governed repository; the "
+        "timings of SPEC-0007 §5 are measured once at verify, not here"),
     "test-bound-hook.sh": (
         "the bounded-execution guard blocks what it claims to", FIXTURES, "representation",
         "the fixture is a synthetic command line, not a real session's"),
