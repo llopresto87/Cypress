@@ -10,6 +10,11 @@ disagree about a path:
   * the governed repositories: the plant root when it is a Git work tree,
     plus each `repo:` value in node frontmatter that resolves inside the root
     to a directory holding `.git`;
+  * the `repo:` claim rule, `repo_kind` and `repo_claim`: what a value names
+    on disk decides which paths its node claims, read alike by graph-lint's
+    tier 2 and `source-index.py anchors`; and `path_matches`, the one
+    file-pattern rule of graph-lint's expertise inference and the tool's
+    config;
   * the Git boundary: every Git call, with the variables that would point it
     at another repository removed and optional locks off;
   * the uncommitted paths of a repository, and the content state of a path,
@@ -26,13 +31,15 @@ A scratch directory under `.cypress/` that the atomic write fills ignores
 itself with an inner `.gitignore` of `*`; the other home of that self-ignore
 rule is route-hook.py's `.cypress/session/` writer.
 
-Library module, no CLI. code-anchor.py, growth-audit.py and source-index.py
-load it by file path from beside themselves, like frontmatter.py; it loads the one
-frontmatter reader, `frontmatter.py`, from beside itself. install.sh places it
+Library module, no CLI. code-anchor.py, growth-audit.py, source-index.py and
+graph-lint.py (lazily, in tier 2) load it by file path from beside themselves,
+like frontmatter.py; it loads the one frontmatter reader, `frontmatter.py`,
+from beside itself. install.sh places it
 in a plant's `docs/graph/`, beside code-anchor.py. No function reads a
 module-global root: each takes the root, or the repository, as a parameter.
 """
 
+import fnmatch
 import hashlib
 import os
 import posixpath
@@ -207,19 +214,89 @@ def repo_values(graph: Path):
 
 def governed_repositories(root: Path) -> list:
     """The plant root when it is a Git work tree, then each distinct `repo:`
-    value that resolves inside the root to a directory holding `.git`, as
-    paths relative to the root ("." is the root)."""
-    top = root.resolve()
-    nested = set()
-    for value in repo_values(root / "docs" / "graph"):
-        target = (root / value).resolve()
-        try:
-            rel = target.relative_to(top).as_posix()
-        except ValueError:
-            continue
-        if rel != "." and target.is_dir() and (target / ".git").exists():
-            nested.add(rel)
+    value `repo_kind` reads as a repository inside the root, as paths
+    relative to the root ("." is the root)."""
+    kinds = (repo_kind(root, v) for v in set(repo_values(root / "docs" / "graph")))
+    nested = {name for kind, name in kinds if kind == "root" and name != "."}
     return (["."] if (root / ".git").exists() else []) + sorted(nested)
+
+
+# --- the `repo:` claim rule ----------------------------------------------------
+# What a node's `repo:` value names on disk decides whether it claims paths
+# (SPEC-0007 §6 "Helper", the owner's option D): `repo_kind` looks once,
+# `repo_claim` decides on strings. graph-lint's tier 2 and `source-index.py
+# anchors` read every value through these two; only the case fold differs.
+REPO_UNRESOLVED_DETAIL = "repo: {value} names nothing on disk; correct the node's repo:"
+
+
+def _within(path: str, base: str) -> bool:
+    """`path` is `base` or under it, compared as normalized strings."""
+    return path == base or path.startswith(base.rstrip("/") + "/")
+
+
+def repo_kind(plant, value: str) -> tuple:
+    """(kind, name) for a non-empty `repo:` value, decided on the value as
+    written: `root` (the plant root or a directory holding `.git`), `path` (a
+    regular file or a directory holding an entry), `outside` (the value or
+    its resolved target lies outside the plant) or `unresolved` (anything
+    else, or any error looking). A value lexically outside the plant, as
+    given or resolved, is `outside` before any system call. `name` is the
+    target's plant-relative POSIX path (`.` for the root); for `unresolved`
+    it is the value as written. Stats, reads at most one directory entry,
+    opens no file and runs no Git."""
+    given = posixpath.normpath(os.fspath(plant))
+    joined = posixpath.normpath(posixpath.join(given, value))
+    try:
+        top = os.path.realpath(given)
+        if not (_within(joined, given) or _within(joined, top)):
+            return "outside", value
+        target = Path(joined).resolve()
+        try:
+            name = target.relative_to(top).as_posix()
+        except ValueError:
+            return "outside", value
+        st = os.stat(target)
+        if name == ".":
+            return "root", name
+        if stat.S_ISREG(st.st_mode):
+            return "path", name
+        if stat.S_ISDIR(st.st_mode):
+            if os.path.exists(target / ".git"):
+                return "root", name
+            with os.scandir(target) as it:
+                if next(it, None) is not None:
+                    return "path", name
+    except (OSError, ValueError, RuntimeError):
+        pass
+    return "unresolved", value
+
+
+def repo_claim(name: str, path: str, kind: str):
+    """"exact", "prefix" or None: does a `repo:` value of this kind and name
+    claim `path`? A string function. `root` and `outside` claim nothing; an
+    `unresolved` value is cut of its leading and trailing `/` and claims
+    nothing when no `/` remains (the reading from before option D)."""
+    if kind == "unresolved":
+        name = name.strip("/")
+        if "/" not in name:
+            return None
+    elif kind != "path":
+        return None
+    if path == name:
+        return "exact"
+    return "prefix" if path.startswith(name + "/") else None
+
+
+def path_matches(path: str, pattern: str) -> bool:
+    """A pattern with no `/` matches the last path segment; one with `/` drops
+    its leading `**/` and matches the whole path or any `*/`-prefixed tail
+    (fnmatch's `*` crosses `/`). Case-sensitive: a caller that folds case
+    folds both sides."""
+    if "/" not in pattern:
+        return fnmatch.fnmatchcase(path.rsplit("/", 1)[-1], pattern)
+    while pattern.startswith("**/"):
+        pattern = pattern[3:]
+    return fnmatch.fnmatchcase(path, pattern) or fnmatch.fnmatchcase(path, "*/" + pattern)
 
 
 # --- the descriptor-relative atomic write ------------------------------------

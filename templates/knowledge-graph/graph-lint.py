@@ -31,7 +31,6 @@ No third-party dependencies: it must run on a bare python3.
 from __future__ import annotations
 
 import argparse
-import fnmatch
 import hashlib
 import json
 import os
@@ -47,6 +46,8 @@ from pathlib import Path as _Path
 # The one frontmatter reader, loaded from beside this file. A COPY sits next to
 # every consumer because the linters that ship into plants are standalone files
 # with no package to import from; seed-lint enforces byte-identity across them.
+# Neither this load nor tier 2's helper load writes a __pycache__ into docs/graph/.
+sys.dont_write_bytecode = True
 _fm_spec = _ilu.spec_from_file_location(
     "cypress_frontmatter", _Path(__file__).resolve().parent / "frontmatter.py")
 _frontmatter = _ilu.module_from_spec(_fm_spec)
@@ -1092,7 +1093,8 @@ LONG_TASK_TEXT = "task too long to route ({} terms); run --plan on the task line
 
 # A path the task names (tier 2) is untrusted input: the route hook feeds every
 # prompt through `--plan-json`, so a path is only ever the NAME given to
-# `fnmatch.fnmatchcase`, never a pattern, and never touches the filesystem.
+# `fnmatchcase`, never a pattern, and never touches the filesystem; only the
+# graph's own `repo:` values are looked up on disk (`repo_kind`).
 PATH_TOKEN_MAX = 256        # a longer whitespace token is skipped, uncounted
 PATH_TOKENS_MAX = 64        # path-like tokens considered, in task order
 PATH_ECHO_MAX = 80          # characters of a path echoed on a LOAD line
@@ -1181,16 +1183,45 @@ def _task_paths(task: str) -> list:
     return paths
 
 
-def _path_matches(path: str, pattern: str) -> bool:
-    """String matching only; `path` is always the name. A pattern with no `/`
-    matches the last segment; one with `/` drops its leading `**/` and matches
-    the whole path or any `*/`-prefixed tail (fnmatch's `*` crosses `/`)."""
-    pat = pattern.lower()
-    if "/" not in pat:
-        return fnmatch.fnmatchcase(path.rsplit("/", 1)[-1], pat)
-    while pat.startswith("**/"):
-        pat = pat[3:]
-    return fnmatch.fnmatchcase(path, pat) or fnmatch.fnmatchcase(path, "*/" + pat)
+class HelperUnavailable(Exception):
+    """`source_paths.py` beside this file is absent, fails to load, or lacks
+    a tier-2 function (an older copy). Raised inside tier 2, where the route
+    catches it as the `inference_skipped` notice (SPEC-0007 §7
+    HELPER_ABSENT_BESIDE_GRAPH_LINT)."""
+
+
+_HELPER: list = []                 # the loaded helper, once per run
+_REPO_KINDS: dict = {}             # repo: value as written -> (kind, name), once per run
+
+
+def _helper():
+    """The path-rule helper, `source_paths.py`, loaded by file path from
+    beside this file the first time tier 2 reads a task path, so a lint run
+    never loads it. Its `repo_kind`, `repo_claim` and `path_matches` are the
+    one home of tier 2's `repo:` claim and file-pattern rules."""
+    if not _HELPER:
+        try:
+            spec = _ilu.spec_from_file_location(
+                "cypress_source_paths", _Path(__file__).resolve().parent / "source_paths.py")
+            mod = _ilu.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+        except Exception as e:     # absent, unreadable or broken: tier 2 alone pays
+            raise HelperUnavailable(str(e)) from e
+        if not all(callable(getattr(mod, f, None)) for f in ("repo_kind", "repo_claim", "path_matches")):
+            raise HelperUnavailable("source_paths.py lacks repo_kind, repo_claim or path_matches")
+        _HELPER.append(mod)
+    return _HELPER[0]
+
+
+def _repo_claim(value: str, path: str):
+    """How a node's `repo:` value claims a task path (lowercased): the value's
+    kind is read once per run on the value as written, then matched with case
+    folded on both sides. An unresolved value adds no notice."""
+    helper = _helper()
+    if value not in _REPO_KINDS:
+        _REPO_KINDS[value] = helper.repo_kind(PLANT, value)
+    kind, name = _REPO_KINDS[value]
+    return helper.repo_claim(name.lower(), path, kind), len(name.strip("/"))
 
 
 def _echo(path: str) -> str:
@@ -1249,12 +1280,15 @@ SKIP_KINDS = ("peer", "composed")
 
 def _named_paths(nodes: list, paths: list) -> dict:
     """Tier 2: {id: How} for each path the task names, by the first rule that
-    claims it: a node's own file; the longest `repo:` prefix, where a `repo:`
-    with no `/` names a repository root and claims nothing; an expertise file
-    pattern (`inferred`); a basename exactly one node file carries."""
+    claims it: a node's own file; the longest `repo:` claim, decided by what
+    the value names on disk (a repository, the plant root or a value outside
+    the plant claims nothing); an expertise file pattern (`inferred`); a
+    basename exactly one node file carries."""
+    if not paths:
+        return {}
+    helper = _helper()
     files = {where(n.path).lower(): n for n in nodes}
-    repos = [(r, n) for n in nodes
-             for r in [str(n.meta.get("repo", "")).lower().strip("/")] if "/" in r]
+    repos = [(r, n) for n in nodes for r in [n.meta.get("repo")] if isinstance(r, str) and r]
     patterns = [(n, _load_when_pieces(n)[1]) for n in nodes if n.meta.get("kind") == "expertise"]
     by_base: dict = {}
     for n in nodes:
@@ -1264,12 +1298,12 @@ def _named_paths(nodes: list, paths: list) -> dict:
         shown = _echo(p)
         owner = next((n for f, n in files.items() if p == f or p.endswith("/" + f)), None)
         if owner is None:
-            under = [(len(r), n) for r, n in repos if p == r or p.startswith(r + "/")]
+            under = [(size, n) for r, n in repos for claim, size in [_repo_claim(r, p)] if claim]
             owner = max(under, key=lambda x: x[0])[1] if under else None
         if owner is not None:
             found.setdefault(owner.id, How("named_path", shown))
             continue
-        inferred = [n for n, pats in patterns if any(_path_matches(p, pat) for pat in pats)]
+        inferred = [n for n, pats in patterns if any(helper.path_matches(p, pat.lower()) for pat in pats)]
         for n in inferred:
             found.setdefault(n.id, How("inferred", shown))
         if inferred:
