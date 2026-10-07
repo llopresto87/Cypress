@@ -1483,8 +1483,9 @@ PY_DEFS = ("TIMEOUT = 5\n"
 @case("X450", "SYMBOLS_PYTHON_DEFINITIONS_CERTAIN")
 def x450(base):
     deep = "deep_expr = " + "+".join(["a"] * 1000) + "\ndef deep_ok():\n    return 1\n"
-    p = Plant(base, files={"pkg/a.py": PY_DEFS, "deep.py": deep})
-    names = ["TIMEOUT", "A", "Alias", "run", "inner", "fetch", "Store", "LIMIT", "save", "Store.save", "x", "path"]
+    p = Plant(base, files={"pkg/a.py": PY_DEFS, "deep.py": deep, "docs/graph/tool.py": "GRAPH_ONLY = 1\n"})
+    names = ["TIMEOUT", "A", "Alias", "run", "inner", "fetch", "Store", "LIMIT", "save", "Store.save", "x", "path",
+             "GRAPH_ONLY"]
     d = slice2(p, "the `symbols` query", "symbols", *names)
     by = defs_by_name(d)
     problems = []
@@ -1506,6 +1507,14 @@ def x450(base):
     undefined(by, ["x", "path"], problems)
     if d.get("incomplete"):
         problems.append(f"incomplete {d.get('incomplete')!r}, not empty")
+    # arm GRAPH_ONLY (§6 "Definitions"): the code-path rule bounds definitions, and the answer says so
+    undefined(by, ["GRAPH_ONLY"], problems)
+    if d.get("not_read") != NOT_READ:
+        problems.append(f"arm GRAPH_ONLY: not_read {d.get('not_read')!r}, not {NOT_READ!r}")
+    want_line = UNDEFINED_LINE.format(name="GRAPH_ONLY", not_read=", ".join(NOT_READ))
+    t = slice2_text(p, "the `symbols` query", "symbols", "GRAPH_ONLY")
+    if want_line not in t.lines():
+        problems.append(f"arm GRAPH_ONLY: the text view does not print {want_line!r} — {t.ctx()}")
     # arm deep (§5): the reader never descends into expressions
     dd = slice2(p, "the `symbols` query", "symbols", "deep_ok")
     got = one_def(defs_by_name(dd), "deep_ok", problems)
@@ -1515,7 +1524,8 @@ def x450(base):
         problems.append(f"arm deep: an incomplete record names deep.py: {dd.get('incomplete')!r}")
     check(not problems, " || ".join(problems))
     return ("ten names each one certain ast definition with line, kind and qualified name; x and path "
-            "undefined; a 1,000-term expression leaves deep_ok readable")
+            "undefined; GRAPH_ONLY undefined with not_read naming docs/graph/ and .cypress/; "
+            "a 1,000-term expression leaves deep_ok readable")
 
 
 SH_DEFS = ("place_file() {\n  :\n}\n"
@@ -1763,6 +1773,9 @@ def x456(base):
 # The moved list: the plant places the seed's code-anchor.py beside the tool.
 CODE_ANCHOR = SEED / "tools" / "code-anchor.py"
 MOVED_NONE_LINE = "Moved: no code moved since the code anchor."
+NOT_READ = ["docs/graph/", ".cypress/"]          # source_paths.NOT_CODE, in its order
+UNDEFINED_LINE = ("{name}: no definition (read: Python definitions, shell functions, TS/JS declarations; "
+                  "not read: {not_read}, which are not code)")
 
 
 def moved_plant(base, name="plant"):
@@ -1831,6 +1844,8 @@ def x458(base):
         t = tool(plant, "anchors", "--moved")
         if t.rc != 0 or not t.last().startswith(ACTION["anchors"]):
             problems.append(f"arm ({name}): the text view does not end with the anchors action — {t.ctx()}")
+        if "Traceback" in t.err:
+            problems.append(f"arm ({name}): the query printed a traceback — {t.ctx()}")
 
     a = moved_plant(base, "no-anchor")
     (a.dir / ".cypress" / "anchor.json").unlink()
@@ -1852,9 +1867,22 @@ def x458(base):
     write(d.dir, "docs/graph/code-anchor.py", CODE_ANCHOR.read_text()
           + '\nif "moved_list" in globals():\n    del moved_list\n')
     arm("d", d, "moved-unavailable", "docs/graph/code-anchor.py", "", [])
+    # (e) a malformed result: `paths` a string, never one input per character (a name with no `/` or `.`,
+    # so no character is itself an unclean path)
+    e = moved_plant(base, "str-paths")
+    write(e.dir, "docs/graph/code-anchor.py", CODE_ANCHOR.read_text()
+          + '\ndef moved_list(root):\n    return [(".", [("moved", "run")])]\n')
+    arm("e", e, "moved-unavailable", "docs/graph/code-anchor.py", "", [])
+    # (f) Unrecorded from a code-anchor with no ANCHOR_NAME: the subject read inside the guard, its fallback
+    f = moved_plant(base, "no-anchor-name")
+    write(f.dir, "docs/graph/code-anchor.py", CODE_ANCHOR.read_text()
+          + '\ndef moved_list(root):\n    raise Unrecorded("no anchor here")\n'
+          + '\ndel ANCHOR_NAME\n')
+    arm("f", f, "moved-unavailable", ".cypress/anchor.json", "no anchor here", [])
     check(not problems, " || ".join(problems))
-    return ("no anchor, a code-anchor absent or older than moved_list: moved-unavailable; a recorded commit "
-            "the clone lacks: moved-unverified with run.sh still answered; each ends review by hand")
+    return ("no anchor, a code-anchor absent, older than moved_list, with a string for paths or with no "
+            "ANCHOR_NAME: moved-unavailable, no traceback; a recorded commit the clone lacks: moved-unverified "
+            "with run.sh still answered; each ends review by hand")
 
 
 failed = []

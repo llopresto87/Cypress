@@ -12,7 +12,7 @@ owner: architect
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-10-07
-- **Last reviewed:** 2026-10-07 (review `reviewer-spec`, amended by `architect-amend`; joint-pass step-3 returns applied by `architect-fix`; devils-advocate verdicts applied by `architect-da`; the load by file path made `certain` by `architect-q5`; the code-review fixes stated in §6 and §7 by `architect-review-fixes`; the slice-1 final decisions after the measurement, path joins, the floor's depth and the unmapped specifier, by `architect-final`; slice 2, §1, §2 and §4 to §8, by `architect-slice2`; the slice-2 tester, security and devils-advocate findings by `architect-slice2-fix`)
+- **Last reviewed:** 2026-10-07 (review `reviewer-spec`, amended by `architect-amend`; joint-pass step-3 returns applied by `architect-fix`; devils-advocate verdicts applied by `architect-da`; the load by file path made `certain` by `architect-q5`; the code-review fixes stated in §6 and §7 by `architect-review-fixes`; the slice-1 final decisions after the measurement, path joins, the floor's depth and the unmapped specifier, by `architect-final`; slice 2, §1, §2 and §4 to §8, by `architect-slice2`; the slice-2 tester, security and devils-advocate findings by `architect-slice2-fix`; the slice-2 code review `reviewer-slice2` (fixes 5 and 6) and the measurement-2 decisions M2-1, M2-3 and M2-6 by `architect-slice2-m2`)
 - **Related grill section:** docs/plans/grill-8.1.0-source-index.md §6 (the owner's rulings of 2026-10-07: one walk with three link kinds; the helper's scope; test roots and plant config; graph-lint keeps its tier-2 rule in slice 1; "slice 2 ok", with the slice-2 rows)
 - **Related ADRs:** adr-0029-source-index-is-derived-scratch (proposed): the index is derived scratch, self-ignored, rebuilt on any key change, never committed and never canonical
 - **Related specs:** SPEC-0001-install-placement (placement), SPEC-0003-per-prompt-injection (code anchor)
@@ -123,8 +123,12 @@ kind; a name defined in several files lists each one, and the tool never
 chooses one for the user. A Python definition read by `ast` is
 `certain`. A shell function, or a TS/JS declaration at the top level of
 its file or exported, is `maybe`, found by line-reading, with that reason.
-A function's local variables and nested functions are not definitions. A name with no definition gives an empty
-answer. A file the tool could not read makes the answer `incomplete`
+A function's local variables are not definitions; a nested Python
+function is, qualified (`run.inner`); a nested TS/JS function is not. A
+name with no definition gives an empty answer, and the answer names what
+the tool does not read: files under `docs/graph/` and `.cypress/`, which
+are not code, so a name defined only in a seed tool placed in
+`docs/graph/` is `undefined` and the worker learns where else to look. A file the tool could not read makes the answer `incomplete`
 with the action "search by hand", because that file may define the name.
 The query says where a name is defined, not who uses it.
 
@@ -561,8 +565,9 @@ anchor with the placed `docs/graph/code-anchor.py`.
 - **Given:** `pkg/a.py` holding `TIMEOUT = 5`, `A, B = 1, 2`,
   `type Alias = int`, `from os import path`, `def run():` whose body holds a
   local `x = 1` and a nested `def inner():`, `async def fetch():`, and
-  `class Store:` whose body holds `LIMIT = 3` and `def save(self):`
-- **When:** `symbols TIMEOUT A Alias run inner fetch Store LIMIT save Store.save x path --json` runs
+  `class Store:` whose body holds `LIMIT = 3` and `def save(self):`; and
+  `docs/graph/tool.py` holding `GRAPH_ONLY = 1`
+- **When:** `symbols TIMEOUT A Alias run inner fetch Store LIMIT save Store.save x path GRAPH_ONLY --json` runs
 - **Then:** each of the first ten names lists one `certain` definition, found
   `ast`, in `pkg/a.py` with its line, its kind (`variable` for `TIMEOUT`, `A`
   and `LIMIT`; `type` for `Alias`; `function` for `run`, `inner`, `fetch` and
@@ -570,6 +575,11 @@ anchor with the placed `docs/graph/code-anchor.py`.
   `Store.LIMIT`, `Store.save`); `Store.save` lists the definition `save` lists
 - **And:** `x` and `path` list no definition and are `undefined`, because a
   local binding and an import define nothing; `incomplete` is empty
+- **And:** `GRAPH_ONLY` lists no definition and is `undefined`, the answer's
+  `not_read` is `["docs/graph/", ".cypress/"]`, and the text view of
+  `symbols GRAPH_ONLY` prints `UNDEFINED_LINE` naming both, because the
+  code-path rule makes those trees not code (§6 "Definitions"): the answer
+  states its scope instead of reading as "no such name"
 
 ### Contract: SYMBOLS_LINE_READ_DECLARATIONS_ARE_MAYBE
 - **Given:** `install.sh` holding `place_file() {`, `function helper {` and
@@ -681,13 +691,19 @@ anchor with the placed `docs/graph/code-anchor.py`.
 ### Contract: ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE
 - **Given:** the plant of the contract above, then one of: no
   `.cypress/anchor.json`; an anchor whose recorded commit for `Cypress/` the
-  clone lacks, with `run.sh` edited; no `docs/graph/code-anchor.py`
+  clone lacks, with `run.sh` edited; no `docs/graph/code-anchor.py`; a placed
+  `code-anchor.py` whose `moved_list` returns a pair whose `paths` is a
+  string; a placed `code-anchor.py` whose `moved_list` raises its
+  `Unrecorded` and which defines no `ANCHOR_NAME`
 - **When:** `anchors --moved --json` runs
 - **Then:** `incomplete` holds, in turn: `moved-unavailable` naming
   `.cypress/anchor.json`, with code-anchor's not-recorded reason as detail;
   `moved-unverified` naming `Cypress`, with code-anchor's label as detail,
   while `run.sh` is still an input and answered; `moved-unavailable` naming
-  `docs/graph/code-anchor.py`
+  `docs/graph/code-anchor.py`; `moved-unavailable` naming
+  `docs/graph/code-anchor.py` and no input (a malformed result, never one
+  input per character); `moved-unavailable` naming `.cypress/anchor.json`
+  (the subject read inside the guard, with that fallback), never a traceback
 - **And:** each text view ends with `Incomplete: review by hand (...)`
 
 ### One claim rule
@@ -728,6 +744,22 @@ anchor with the placed `docs/graph/code-anchor.py`.
   there (one `git log` of at most `HISTORY_COMMITS` commits per repository
   holding an input); `graph-lint.py`'s load of the helper adds no measurable
   time to a `--plan` run, which the route hook makes on every prompt.
+  Slice-2 measurement (grill §10, increment 22, spawn `measure-slice2`, seed
+  `c456299`, Python 3.14): every time budget held (llama.cpp build 3.65 s,
+  cached `symbols` 0.10 s on the seed plant, `--history` +0.01 s); peak RSS
+  did not: 70 MB on the 4,320-file llama.cpp clone (M2-1). The cause,
+  measured by `architect-slice2-m2` on the same clone: a cold build peaks at
+  59 MB on 3.14 and 81 MB on 3.11, and a forced `build` over a usable cache at
+  72 MB and 93 MB. Two holders, neither the definitions: the cache written
+  with `indent` (on 3.11 Python's pure-Python encoder holds every chunk; the
+  extract itself peaks at 42 MB on both), and `build` keeping the parsed old
+  cache alive across the derive. The budget stays 64 MB, and the build must
+  meet it on every supported Python by two reductions: the cache is written
+  compact (§6 "Cache document"; the same extract then peaks at 44 MB on 3.14
+  and 45 MB on 3.11), and `build` keeps no parsed cache while it derives (it
+  needs only whether a cache existed, for the status `rebuilt`). File texts
+  are already read one at a time and dropped; no streaming is needed. The
+  5,000-file figure after the reductions is inferred at about 60 MB.
 - **Security:** read-only over the repositories: the tool parses Python with
   `ast` and never imports, executes or `exec`s repository code; it reads a
   symlink as its link text, never its target; Git runs through the helper's
@@ -878,7 +910,7 @@ constants:
   RECOMMEND_LINE: "Recommendation only: the tests above and the always-run set, never only these; verify decides what runs."
   HISTORY_LINE: "History: {n} maybe row(s), files that changed together with an input (--history):"
   MOVED_NONE_LINE: "Moved: no code moved since the code anchor."
-  UNDEFINED_LINE: "{name}: no definition (read: Python definitions, shell functions, TS/JS declarations)"
+  UNDEFINED_LINE: "{name}: no definition (read: Python definitions, shell functions, TS/JS declarations; not read: {not_read}, which are not code)"   # {not_read}: NOT_CODE joined by ", "
   ACTION_LINE:                   # the closing text line of an incomplete answer
     build: "Incomplete: check by hand ({reasons})."
     impact: "Incomplete: check by hand ({reasons})."
@@ -1265,8 +1297,11 @@ symbol:                        # one definition, read at build with the links (s
   binds, alone or in a tuple or list target, whose nearest enclosing scope is
   the module or a class body, `if`, `try`, `with` and loop blocks included
   (`variable`); a `type X = ...` statement (`type`). An import, a parameter, a
-  local binding inside a function, a `global` or `nonlocal` name and an
-  attribute target (`self.x = 1`) define nothing.
+  local binding inside a function, a `global` or `nonlocal` name, an
+  attribute target (`self.x = 1`), a `for` or `async for` target, a
+  `with ... as` or `except ... as` name, a `:=` target and an augmented
+  assignment (`X += 1`; the name's first binding is its definition) define
+  nothing: each is a temporary or a rebinding, not a name a worker looks up.
 - The Python reader walks statement bodies (module, class, function, `if`,
   `try`, `with`, loop) with an explicit stack and never descends into
   expressions, so a file `ast` parses never fails the reader. A
@@ -1276,7 +1311,9 @@ symbol:                        # one definition, read at build with the links (s
   a line whose first words, at any indentation, are `NAME()` or `NAME ()`
   (a `{` may follow) or `function NAME` (`function`). A here-document's
   lines are read like any other, so one that reads like a function is a
-  `maybe` row (`LINE_READ_DECLARATION_IN_TEXT`).
+  `maybe` row (`LINE_READ_DECLARATION_IN_TEXT`). A shell variable
+  assignment defines nothing, and a function name holding a `.`
+  (`foo.bar()`, legal in bash) is not read.
 - TS/JS, a line at a time after `strip_comments` blanks `//` and `/* */`
   comments (`maybe`, found `line-reading`): a line whose code begins at
   column 0, or after indentation with the word `export`, then any of the
@@ -1294,6 +1331,13 @@ symbol:                        # one definition, read at build with the links (s
 - Each line-reading pattern is an extraction regex of §5 (one line,
   anchored at its start, no nested or overlapping quantifier); the name it
   reads is held to `NAME_RE` without dots, so a line-read name is ASCII.
+- Definitions are read from inventory files alone, so the code-path rule
+  bounds them: a file under `docs/graph/` or `.cypress/` (the helper's
+  `NOT_CODE`), such as a seed tool placed in a plant's `docs/graph/`, holds
+  none, and a name defined only there is `undefined`. The `symbols` answer
+  states that scope in `not_read` and in `UNDEFINED_LINE`, read from
+  `NOT_CODE`, never a copy; it reads no file there and adds no `incomplete`
+  record, because the answer is complete for the code it names.
 - `json` and `other` files hold no definitions. A link-bearing file with an
   `opaque` `unreadable` record has none either; `symbols` names it in an
   `unreadable-file` record (§6 "Incomplete").
@@ -1363,8 +1407,11 @@ detail); code-anchor's `GitMissing` is the `git-unavailable` record the
 answer already holds. The load and the call of `moved_list` run inside one
 guard: any other exception, `SystemExit` included, a `CODE_ANCHOR` that is
 absent, a missing `moved_list` (a placed code-anchor older than slice 2) or
-a result not of the shape above adds `moved-unavailable` naming
-`docs/graph/code-anchor.py`. Code-anchor loads the helper as a module instance
+a result not of the shape above (a `paths` that is not a list or tuple of
+strings, a label that is not a string) adds `moved-unavailable` naming
+`docs/graph/code-anchor.py`. The `.cypress/anchor.json` subject of an
+`Unrecorded` record is read inside the guard, from code-anchor's
+`ANCHOR_DIR` and `ANCHOR_NAME`, with `.cypress/anchor.json` the fallback. Code-anchor loads the helper as a module instance
 of its own, so the tool catches code-anchor's classes (`Unrecorded`, and its helper's
 `GitMissing` and `GitFailed`), never its own. `moved_list(root)` and the
 anchor read it calls take the root as a parameter (code-anchor's `--compare`
@@ -1513,7 +1560,7 @@ that takes paths; `symbols` takes names, so of the reasons above it gives
 ### Cache document
 
 ```yaml
-# .cypress/source-index/index.json, written sorted, indent 1, trailing newline
+# .cypress/source-index/index.json, written sorted and compact (separators "," and ":", no indent), trailing newline
 index:
   schema: "cypress.source-index/2"
   key:
@@ -1571,6 +1618,7 @@ answer:
   floor:      [row]                      # the rows every input reaches; see "Walk"
   history:    [history_row]              # with --history only; the key is absent without it
   # symbols (inputs is [] : the names are in `names`)
+  not_read: [string]                     # the helper's NOT_CODE, in its order: what holds no definition
   names: [{ name,
             definitions: [symbol],       # sorted by link (certain first), then path, then line
             undefined: bool }]           # true when `definitions` is empty
@@ -2413,7 +2461,7 @@ and §6 now state each:
 | ANCHORS_BASENAME_IS_MAYBE_AMBIGUOUS_IS_INCOMPLETE | X446 case_anchors_basename | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | OUTPUT_CARRIES_NO_RAW_CONTROL | X448 case_output_no_raw_control: names holding ESC, U+202E and the byte 0xFF, text and `--json` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | SOURCE_INDEX_IS_PLACED | E15 SOURCE_INDEX_IS_PLACED | tests/test-full-install.sh | integration (fresh install) | green |
-| SYMBOLS_PYTHON_DEFINITIONS_CERTAIN | X450 case_symbols_python: the ten names each list one `certain` definition found `ast` in `pkg/a.py`, with line, kind and qualified name; `Store.save` lists what `save` lists; `x` and `path` `undefined`; `incomplete` empty; arm deep (§5 S1, the reader never descends into expressions), `deep.py` holding `x = a+a+...` (1,000 terms) then `def deep_ok():`: `deep_ok` lists one `certain` definition in `deep.py` and no `unreadable-file` record names it | tests/test-source-index.sh | integration (synthetic Git plant) | green |
+| SYMBOLS_PYTHON_DEFINITIONS_CERTAIN | X450 case_symbols_python: the ten names each list one `certain` definition found `ast` in `pkg/a.py`, with line, kind and qualified name; `Store.save` lists what `save` lists; `x` and `path` `undefined`; `incomplete` empty; arm deep (§5 S1, the reader never descends into expressions), `deep.py` holding `x = a+a+...` (1,000 terms) then `def deep_ok():`: `deep_ok` lists one `certain` definition in `deep.py` and no `unreadable-file` record names it; arm GRAPH_ONLY, `docs/graph/tool.py` holding `GRAPH_ONLY = 1`: `GRAPH_ONLY` `undefined`, `not_read` `["docs/graph/", ".cypress/"]`, the text view of `symbols GRAPH_ONLY` prints `UNDEFINED_LINE` naming both | tests/test-source-index.sh | integration (synthetic Git plant) | red |
 | SYMBOLS_LINE_READ_DECLARATIONS_ARE_MAYBE | X451 case_symbols_line_read: the twelve names in `install.sh` and `src/m.ts` each list one `maybe` definition found `line-reading`, with line and kind; `fake`, `z` and `y` `undefined`; arm indent, in `src/m.ts` `function i(` holds the indented `const local =` and `function nested(`, both `undefined`, and `namespace N {` holds the indented `export function ns(`, one `maybe` `function`; every other declaration line at column 0 | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | SYMBOLS_LIST_EVERY_DEFINITION | X452 case_symbols_every_definition: `parse` lists four definitions, the three `certain` ones by path, then the `maybe` one; `Reader.parse` lists the method alone; the text view of `symbols parse` prints one line per definition | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | SYMBOLS_UNREADABLE_FILE_MAKES_IT_INCOMPLETE | X453 case_symbols_unreadable: `run` lists `ok.py`; one `unreadable-file` record each for `bad.py` and `big.js`; the text view's last line is the `symbols` `ACTION_LINE` naming both | tests/test-source-index.sh | integration (synthetic Git plant) | green |
@@ -2421,7 +2469,7 @@ and §6 now state each:
 | HISTORY_ONLY_ADDS | X455 case_history_only_adds: the `--history` answer equals the plain one in every key but `history` and `cache`, the plain one has no `history` key; `history` holds `d.py` alone (`b.py` stays in `dependents`, `o.py` in `floor`) | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | green |
 | HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE | X456 case_history_incomplete: arm (a), `git clone --depth 2 file://<origin>`, the origin's last three commits `a.py` with `tests/t_old.sh`, `a.py` alone, `a.py` with `tests/t_new.sh`: one `history-shallow` record naming `.`, `history` holds `tests/t_new.sh` with `together` `{count: 1, of: 1}` and no `tests/t_old.sh` (the parentless boundary commit is not read); arm (b), no commit and an untracked `a.py`: one `history-unavailable` record naming `.`; each text view ends with the `affected-tests` `ACTION_LINE`; without `--history` neither record | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | green |
 | ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS | X457 case_anchors_moved: anchor recorded by the placed `docs/graph/code-anchor.py`, then a commit in nested `Cypress/` and an uncommitted `run.sh` edit; `anchors --moved` equals `anchors Cypress/tools/x.py run.sh` in every key but `cache`; after a second `--record`, no input, no file, `incomplete` empty, `MOVED_NONE_LINE` | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | green |
-| ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE | X458 case_anchors_moved_incomplete: arms (a) no `.cypress/anchor.json`, (b) the recorded `Cypress` commit replaced by one the clone lacks, `run.sh` edited, (c) no `docs/graph/code-anchor.py`, (d) a placed `code-anchor.py` with no `moved_list` (placed before slice 2); each text view ends with the `anchors` `ACTION_LINE` | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | green |
+| ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE | X458 case_anchors_moved_incomplete: arms (a) no `.cypress/anchor.json`, (b) the recorded `Cypress` commit replaced by one the clone lacks, `run.sh` edited, (c) no `docs/graph/code-anchor.py`, (d) a placed `code-anchor.py` with no `moved_list` (placed before slice 2), (e) a placed `code-anchor.py` whose `moved_list` returns a `paths` string, (f) a placed `code-anchor.py` whose `moved_list` raises `Unrecorded` with no `ANCHOR_NAME`; each text view ends with the `anchors` `ACTION_LINE` and prints no traceback | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | red |
 | REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS | X459 case_repo_claim, pending owner ruling on repo: (A/B/C): `anchors` lists `repo: src/lib/a.py` `certain` and `repo: src/lib/` `maybe` `repo-prefix` for `src/lib/a.py`, `repo: src/lib/` `maybe` for `src/lib/c.py`, `src/b.py` `uncited`; the seed's `graph-lint.py --plan-json` loads the same two nodes by `named_path` and none for `src/b.py` | (new case) | integration (synthetic plant, the seed's graph-lint.py placed) | pending |
 | GIT_UNAVAILABLE | X442 case_walk_incomplete: arm (f), PATH holds python3 and no git; an existing cache left byte-identical | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | NO_GOVERNED_REPOSITORY | X442 case_walk_incomplete: arm (i), a plant root that is no Git work tree | tests/test-source-index.sh | integration (synthetic plant) | green |
@@ -2448,7 +2496,7 @@ and §6 now state each:
 | HISTORY_SHALLOW | X456 case_history_incomplete: arm (a) | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | green |
 | HISTORY_UNAVAILABLE | X456 case_history_incomplete: arm (b); the failing and timed-out `git log` triggers give the same record and are not separate arms | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | green |
 | HISTORY_BULK_COMMIT | X454 case_history_counts: the commit of `a.py` with `HISTORY_MAX_FILES` other inventory files adds to no `count` and no `of` | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | green |
-| MOVED_LIST_UNAVAILABLE | X458 case_anchors_moved_incomplete: arms (a), (c) and (d), `moved-unavailable` naming `.cypress/anchor.json`, then `docs/graph/code-anchor.py` twice | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | green |
+| MOVED_LIST_UNAVAILABLE | X458 case_anchors_moved_incomplete: arms (a), (c), (d), (e) and (f), `moved-unavailable` naming `.cypress/anchor.json`, then `docs/graph/code-anchor.py` three times (no input in (e)), then `.cypress/anchor.json` (the fallback subject, no traceback) | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | red |
 | MOVED_REPOSITORY_UNVERIFIED | X458 case_anchors_moved_incomplete: arm (b), `moved-unverified` naming `Cypress`, `run.sh` still an input and answered | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | green |
 | HELPER_ABSENT_BESIDE_GRAPH_LINT | X459 case_repo_claim: arm helper-absent, which does not wait on the owner's `repo:` ruling, no `source_paths.py` beside `graph-lint.py`: `--plan-json` exits 0, `notices` holds `{code: inference_skipped, text: "inference skipped: HelperUnavailable"}`, and no LOAD entry is `named_path` through a `repo:` claim | (new case) | integration (synthetic plant, the seed's graph-lint.py placed) | pending |
 
@@ -2484,3 +2532,4 @@ flagged assumption in grill.md §12. Sign-off keeps the status `draft`;
 - 2026-10-07 — slice 2 added by `architect-slice2` (owner: "slice 2 ok"; `protocol.specify`, a spec may grow by slice), on product's §3 "Slice 2": §1 and §2 move the slice-2 items into scope (the Never list kept); §4 adds ten contracts, `SYMBOLS_PYTHON_DEFINITIONS_CERTAIN`, `SYMBOLS_LINE_READ_DECLARATIONS_ARE_MAYBE`, `SYMBOLS_LIST_EVERY_DEFINITION`, `SYMBOLS_UNREADABLE_FILE_MAKES_IT_INCOMPLETE`, `HISTORY_ROWS_ARE_MAYBE_WITH_THEIR_COUNT`, `HISTORY_ONLY_ADDS`, `HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE`, `ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS`, `ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE` and `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS`; §5 adds the slice-2 timings, security rules and the definition names to Privacy; §6 adds the `symbol` record and the definition rules, history links (`--history`, `history_row` with `together: {count, of}`), the moved list, the helper's `repo_claim` and `path_matches`, five `incomplete` reasons, `INDEX_SCHEMA` `/2` (the cache gains `symbols`; `ANSWER_SCHEMA` stays `/1`, the answer only gains keys) and the CLI; §7 adds eight failures and widens `USAGE_REFUSED`; §8 adds seven seed and plant examples. The protocol wiring is prose (grill §9 increment 21), no tool contract. One intended revision of a signed contract, recorded here as the slice-1 m6 change was: `ANCHORS_NAME_CITING_PAGES_OR_UNCITED` no longer reads `repo: src/` as a `maybe` prefix claim, because the helper's one `repo_claim` is graph-lint's rule (a value with no `/` once its leading and trailing `/` are cut is a repository root, and nothing is normalized beyond that cut), so graph-lint's routing stays as it is and the two tools agree; the `repo-prefix` arm moves to `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS`. Sign-offs of product, tester and security cleared for slice 2.
 - 2026-10-07 — slice 2 reopens the spec: status `active` (from `implemented`); slice 1's evidence stands as recorded: `tests/test-source-index.sh` (25 cases, X425 to X449) and `tests/test-full-install.sh` (E15), wired into `tests/run.sh`, every slice-1 §10 row green but `CACHE_WRITE_FAILED` (skipped: the helper's atomic write is proved by the code-anchor fault case), the full seed gate run-parallel OK, 51 of 51 steps, 38.6 s, at `b70b0d9`; the measurement in grill §10. `implemented` returns when every slice-2 row is green after G8.
 - 2026-10-07 — slice-2 review findings applied by `architect-slice2-fix`, inside the slice-2 contracts, no contract added and none removed. Tester: `HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE` clones `--depth 2` through `file://` (a plain local path clone is not shallow) and pins the held commits; §6 "History links" leaves out a commit with no parent (a root commit, or a shallow clone's boundary commit, which Git lists as changing every file); `HISTORY_ONLY_ADDS` and `ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS` compare every key but `cache`. Security: the definition reader is iterative over statement bodies (S1); `--moved` guards the load and the call of `moved_list` and catches code-anchor's own classes, with the root a parameter (S2); `git log` takes `--no-renames --no-show-signature --no-color` and a `/`-led marker (S3); only `false` from the shallow probe reads as complete (S4); `NAME_RE` is matched whole (S5); the cache block is `/2` and the shape check covers `symbols` (S6); `graph-lint.py` sets `sys.dont_write_bytecode` before its loads (S7); §5 states the buffered `git log` and every `detail` through the `?` replacement. Devils-advocate: (b) a TS/JS declaration counts at column 0 or after `export`, so function locals define nothing (an arm of `SYMBOLS_LINE_READ_DECLARATIONS_ARE_MAYBE`); (d) `graph-lint.py` loads the helper lazily in tier 2 and a missing or skewed helper costs tier 2 alone, named by the existing `inference_skipped` notice, instead of failing every route (§7 `HELPER_ABSENT_BESIDE_GRAPH_LINT`); (a) and (c) are plan changes (grill §9, §10, §11); §2 cites ADR-0018's reason, a tool called at each file access. §6 and §8: the sibling-load line numbers corrected (`code-anchor.py` 53-54, `graft-audit.py` 169-170). `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` is unchanged, pending the owner's `repo:` ruling (grill §12 question 6).
+- 2026-10-07 — slice-2 code review (`reviewer-slice2`, fixes 5 and 6) and measurement 2 (`measure-slice2`, defects M2-1, M2-3, M2-6) applied by `architect-slice2-m2`; the `repo:` claim (§12 question 6) untouched, pending the owner. §3: a nested Python function is a definition (qualified), a nested TS/JS function is not, as §4 and §6 already said; an `undefined` answer names what the tool does not read. §6 "Definitions": the define-nothing list names `for`/`async for` targets, `with`/`except ... as` names, `:=` targets and augmented assignments (reviewer ruling 1, upheld: the code is right, the spec was silent), shell variables and dotted shell function names; the code-path rule bounds definitions, stated in the new `symbols` answer key `not_read` (the helper's `NOT_CODE`) and in `UNDEFINED_LINE` (M2-3: a name defined only in a placed seed tool under `docs/graph/` is `undefined` and says why, with no `incomplete` record). §4 `SYMBOLS_PYTHON_DEFINITIONS_CERTAIN` gains the `GRAPH_ONLY` arm; `ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE` gains two arms (a `paths` string; `Unrecorded` without `ANCHOR_NAME`), and §6 "Moved list" states the malformed shape and the subject read inside the guard. §5: the slice-2 figures and M2-1 decided as a reduction, not a restated budget: the cache is written compact and `build` holds no parsed cache while it derives; 64 MB stands. §6 "Cache document": compact layout (derived scratch, ADR-0029; the tool digest in the key rebuilds an indented cache; schema `/2` unchanged, the shape is the same). Reviewer ruling 2: the X447 newline arms stand as written.
