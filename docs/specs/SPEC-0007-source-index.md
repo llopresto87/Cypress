@@ -1,8 +1,7 @@
 ---
-status: implemented
+status: active
 status_date: 2026-10-07
 owner: architect
-status_evidence: tests/test-source-index.sh (25 cases, X425 to X449) and tests/test-full-install.sh (E15), wired into tests/run.sh; every section-10 row green except CACHE_WRITE_FAILED (skipped: the helper's atomic write is proved by the code-anchor fault case); full seed gate run-parallel OK, 51 of 51 steps, 38.6 s, at b70b0d9 (2026-10-07); measurement in plan section 10
 ---
 
 # SPEC-0007: source-index
@@ -13,33 +12,39 @@ status_evidence: tests/test-source-index.sh (25 cases, X425 to X449) and tests/t
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-10-07
-- **Last reviewed:** 2026-10-07 (review `reviewer-spec`, amended by `architect-amend`; joint-pass step-3 returns applied by `architect-fix`; devils-advocate verdicts applied by `architect-da`; the load by file path made `certain` by `architect-q5`; the code-review fixes stated in §6 and §7 by `architect-review-fixes`; the slice-1 final decisions after the measurement, path joins, the floor's depth and the unmapped specifier, by `architect-final`)
-- **Related grill section:** docs/plans/grill-8.1.0-source-index.md §6 (the owner's rulings of 2026-10-07: one walk with three link kinds; the helper's scope; test roots and plant config; graph-lint keeps its tier-2 rule)
+- **Last reviewed:** 2026-10-07 (review `reviewer-spec`, amended by `architect-amend`; joint-pass step-3 returns applied by `architect-fix`; devils-advocate verdicts applied by `architect-da`; the load by file path made `certain` by `architect-q5`; the code-review fixes stated in §6 and §7 by `architect-review-fixes`; the slice-1 final decisions after the measurement, path joins, the floor's depth and the unmapped specifier, by `architect-final`; slice 2, §1, §2 and §4 to §8, by `architect-slice2`; the slice-2 tester, security and devils-advocate findings by `architect-slice2-fix`)
+- **Related grill section:** docs/plans/grill-8.1.0-source-index.md §6 (the owner's rulings of 2026-10-07: one walk with three link kinds; the helper's scope; test roots and plant config; graph-lint keeps its tier-2 rule in slice 1; "slice 2 ok", with the slice-2 rows)
 - **Related ADRs:** adr-0029-source-index-is-derived-scratch (proposed): the index is derived scratch, self-ignored, rebuilt on any key change, never committed and never canonical
 - **Related specs:** SPEC-0001-install-placement (placement), SPEC-0003-per-prompt-injection (code anchor)
 - **Related wiki pages:** none (stdlib Python and git only)
 - **Design latitude:** balanced. The owner approved on 2026-10-07: "implement the plan so that it's integrated organically into the cypress seed and installed/grafted into the plants correctly." New structure is allowed where the change needs it (one shared helper module, one derived cache); no concept the plan did not name.
 - **Supersedes:** none
 - **Superseded by:** none
-- **Sign-offs:** product [x] (2026-10-07: §3 and §9 reflect the owner's outcome) · architect [x] (2026-10-07, `architect-da`: §4 to §8 coherent after the devils-advocate verdicts; the floor, the helper interface, the interpreter in the key and the TS/JS line join applied) · tester [x] · security [x] (2026-10-07, `security-s5s7`: §5 Security requirements and seven §7 abuse cases added; four §6 constants, `FILE_MAX_BYTES`, `DIR_LINK_MAX`, `EXTENDS_MAX` and `CACHE_MAX_BYTES`, and the `outside-repository` `base` value are left to the architect)
+- **Sign-offs:** product [x] (2026-10-07: slice 1 signed, §3 and §9 reflect the owner's outcome; 2026-10-07, `product-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling) · architect [x] (2026-10-07, `architect-da`: §4 to §8 coherent after the devils-advocate verdicts; the floor, the helper interface, the interpreter in the key and the TS/JS line join applied; 2026-10-07, `architect-slice2`: the slice-2 §4 to §8 coherent with slice 1; 2026-10-07, `architect-slice2-fix`: the slice-2 review findings applied, `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` left pending the owner's `repo:` ruling, grill §12 question 6) · tester [x] (2026-10-07: slice 1 signed; `tester-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling) · security [x] (2026-10-07, `security-slice2-sign`: slice 2 signed; S1 to S8 and P1 to P10 applied in §5, §6, §7, §10 and the plan; accepted deviations: the `/%P` history marker that also skips a parentless commit, the depth-2 `file://` shallow clone, and a missing helper beside graph-lint degrading tier 2 with the `inference_skipped` notice instead of failing the route; REPO_CLAIM pending owner ruling. Slice 1 signed by `security-s5s7`: §5 Security requirements and seven §7 abuse cases added; four §6 constants, `FILE_MAX_BYTES`, `DIR_LINK_MAX`, `EXTENDS_MAX` and `CACHE_MAX_BYTES`, and the `outside-repository` `base` value are left to the architect)
 
 ## 1. Summary
 
-A stdlib Python seed tool, `tools/source-index.py`, placed in every plant as `docs/graph/source-index.py`, derives the structure of a project's code, the code that does things and the tests that check it, without a model. It builds a file inventory (path, content hash, language, test class) and file-to-file links from Python imports (`ast`), shell and Python invocations, quoted path and directory literals (whole, or joined from segments as in `ROOT / "tools" / "x.py"`), and TypeScript/JavaScript import and require specifiers resolved through `tsconfig` paths. One reverse walk over those links answers three queries: `impact` (the files that depend on the inputs, `certain` rows first, each class nearest first), `affected-tests` (the same walk filtered to the test class, plus the always-run set) and `anchors` (graph pages that cite the inputs). Every row is `certain` or `maybe` (with the reason and line of its weakest link); the `maybe` rows every input reaches alike, the opaque holders and their dependents, are the floor, listed once and apart after the input's own rows; what the tool cannot answer makes the answer `incomplete`, with a reason and one action per query: "check by hand", "run the full suite", "review by hand". The index is derived, safe to delete, never committed, and rebuilt whenever its key changes, a graft or another Python version included (ADR-0029). The rules for "what is code", "where does the plant end" and "how a page cites a path" have one home each, shared with `code-anchor.py` and `growth-audit.py`. The tool recommends; verify, tiering and canonize keep every decision.
+A stdlib Python seed tool, `tools/source-index.py`, placed in every plant as `docs/graph/source-index.py`, derives the structure of a project's code, the code that does things and the tests that check it, without a model. It builds a file inventory (path, content hash, language, test class) and file-to-file links from Python imports (`ast`), shell and Python invocations, quoted path and directory literals (whole, or joined from segments as in `ROOT / "tools" / "x.py"`), and TypeScript/JavaScript import and require specifiers resolved through `tsconfig` paths. One reverse walk over those links answers three queries: `impact` (the files that depend on the inputs, `certain` rows first, each class nearest first), `affected-tests` (the same walk filtered to the test class, plus the always-run set) and `anchors` (graph pages that cite the inputs). Every row is `certain` or `maybe` (with the reason and line of its weakest link); the `maybe` rows every input reaches alike, the opaque holders and their dependents, are the floor, listed once and apart after the input's own rows; what the tool cannot answer makes the answer `incomplete`, with a reason and one action per query: "check by hand", "run the full suite", "review by hand". The index is derived, safe to delete, never committed, and rebuilt whenever its key changes, a graft or another Python version included (ADR-0029). The rules for "what is code", "where does the plant end" and "how a page cites a path" have one home each, shared with `code-anchor.py` and `growth-audit.py`. The tool recommends; verify, tiering and canonize keep every decision. Slice 2 adds a `symbols` query that says where a name is defined (a Python definition read by `ast` is `certain`, a shell function or a top-level or exported TS/JS declaration read a line at a time is `maybe`), Git change history as an opt-in `maybe` link source (`--history`), `anchors --moved` over code-anchor's moved list, the `repo:` claim and path-pattern rules in the helper that `graph-lint.py` now loads too, and protocol steps that call the tool on demand at verify, canonize, grow and adopt.
 
 ## 2. Scope
 
 - **In scope:**
   - The seed tool and its placement by `install.sh` and `manifest.json`; graft rebuilds the cache through its key and never carries a stale one over.
-  - One shared helper module, `tools/source_paths.py`, holding the code-path rule, governed repositories, the Git boundary, blob hashing, the clean-relative predicate `relative` and the atomic write (today in `code-anchor.py`, which moves onto the helper's interface of §6 "Helper"), and the citation grammar with the one citation-resolution function whose strict plant-relative mode is `cite_problem` (today in `growth-audit.py`); `plant_walk.py` stays the plant-edge owner. `graph-lint.py` keeps its own tier-2 path rule this slice (accepted debt, grill §6 and §12 question 2).
+  - One shared helper module, `tools/source_paths.py`, holding the code-path rule, governed repositories, the Git boundary, blob hashing, the clean-relative predicate `relative` and the atomic write (today in `code-anchor.py`, which moves onto the helper's interface of §6 "Helper"), and the citation grammar with the one citation-resolution function whose strict plant-relative mode is `cite_problem` (today in `growth-audit.py`); `plant_walk.py` stays the plant-edge owner. `graph-lint.py` kept its own tier-2 path rule in slice 1 (accepted debt, grill §6); slice 2 moves it onto the helper (below).
   - File inventory from `git ls-files` plus untracked non-ignored files, per governed repository, across repositories.
   - Links: Python `ast` imports and loads by file path anchored at `__file__`; `python3|python|bash|sh <path>`, `python3 -m <module>` and `source <path>` invocations; quoted path literals and directory literals, whole or joined from segments (a `/` chain, `os.path.join`, `path.join`, `path.resolve`), resolved by suffix; TS/JS `import`/`export from`/`require()`/`import()` with relative and `tsconfig` `paths`/`baseUrl` resolution (comment-tolerant JSON reader) and workspace package names. Each link is `certain` or `maybe` with its reason; files whose references cannot be pinned (non-literal dynamic paths, tree walks, unreadable files) are opaque. Markdown mentions are not dependency links; page citations are a separate relation read only by `anchors`.
   - Test class from the plant's `TEST_GLOBS` in `docs/graph/spec-lint.py`; an optional plant config `docs/graph/source-index.json` holding `exclude` (out of the test class), `always_run` and `global_inputs`, with seed defaults; a file may be both a test and a tool.
   - One walk and queries `impact`, `affected-tests` (default depth 3, cap 5), `anchors`, plus `build`; the floor listed apart; text and `--json`; the `incomplete` list with per-query actions.
   - A derived cache at `.cypress/source-index/` with an inner `.gitignore` of `*`, keyed as ADR-0029 decides (schema; the Python major.minor; digests of the tool and every sibling it loads; digest of the config and `TEST_GLOBS`; each governed repository's HEAD and uncommitted-code digest), written atomically.
+  - Slice 2 (owner, 2026-10-07: "slice 2 ok"):
+    - Definitions, built with the links into the cache, and the query `symbols`: Python functions, classes, module and class assignments and `type` aliases read by `ast` (`certain`); shell functions and top-level or exported TS/JS declarations read a line at a time after comments are blanked (`maybe`, reason `line-reading`); every definition of a name listed; a file the index could not read makes the answer incomplete.
+    - Git change history as an opt-in link source for `impact` and `affected-tests` (`--history`): read per query from `git log` and never cached; its rows are `maybe`, labelled `history`, with how often each file changed together with an input, and listed apart; history only adds files no other list holds; shallow or missing history makes the answer incomplete.
+    - `anchors --moved`: the moved list of `code-anchor.py`, read through the one function its `--compare` prints from, each repository-relative path joined to its repository (grill §12 question 3).
+    - The `repo:` claim rule and the path-pattern rule move into the helper; `graph-lint.py` loads the helper from beside itself and its tier 2 calls both, with its messages and verdicts unchanged (grill §12 question 2); `anchors` and the plant config call the same two functions.
+    - Protocol wiring, on demand and never per prompt or per file access (ADR-0018 withdrew a freshness tool called at each file access), as prose in the protocol and skill nodes: verify takes `affected-tests` as the recommended floor of its focused gates; canonize runs `anchors --moved` before the code anchor is recorded again; grow and adopt-existing give scouts the `build` inventory as their file list. The wiring adds no tool contract.
 - **Out of scope:**
-  - Slice 2 of this spec, after slice 1 is measured: a symbol-definition index; git co-change history as an optional link source; a `--moved` input taking code-anchor's report (grill §12 question 3); wiring into verify, canonize, grow; `graph-lint.py` loading the helper.
-  - A separate later spec: read deduplication and context pointers (overlaps adr-0010).
+  - Later work, not slice 2: who references a name (a call graph stays out, below); TS/JS class members and indented declarations that are not exported (function locals), definitions inside shell here-documents and strings, and definitions in other languages; history across renames (`git log --follow`), history as a walk step, and a cached history; a text inventory view (`build --json` carries the inventory).
+  - A separate later spec: read deduplication, symbol excerpts and context pointers (overlaps adr-0010).
   - This slice: commands written in host settings files, such as a hook entry in `.claude/settings.json` (`"command": "python3 \".../.claude/route-hook.py\""`). A `json` file is a link target only (§6 "Inventory record"), so such a hook script has no dependent in any answer. Reading them needs one parser per host settings shape, and links come from code by one rule; a later slice may add host settings readers (measurement D3, grill §10).
   - Never: tree-sitter, SQLite, a daemon, MCP, a CodeGraph integration, Svelte, Vue or other languages, a call graph, per-prompt hook use (ADR-0018), any automatic tier decision, test omission or knowledge rewrite.
 
@@ -83,7 +88,7 @@ governed repository, or the user prefixes the repository path; one that
 two repositories hold makes the answer incomplete. A citation by bare
 name, and a `repo:` prefix claim, are `maybe` facts; an ambiguous bare
 name makes the answer incomplete. Plans, specs and decisions are counted
-as history and named with `--all`. A `--moved` input is slice 2.
+as history and named with `--all`. The `--moved` input is in Slice 2 below.
 
 **Configure the plant.** The optional `docs/graph/source-index.json`
 sets `exclude` (out of the test class only), `always_run`, and
@@ -103,6 +108,71 @@ cut the walk short. Then the text ends with one action: `impact` "check
 by hand", `affected-tests` "run the full suite", `anchors` "review by
 hand". The tool still exits normally, so a hook or brief that calls it
 does not break.
+
+### Slice 2
+
+Slice 2 adds one query, one optional link source and the protocol
+wiring. Every slice-2 answer keeps the three kinds: `certain` rows,
+`maybe` rows with reason and line, and `incomplete` records with a reason
+and the query's one action. Nothing is dropped without a record.
+
+**Ask where a name is defined.** A worker that needs a function, class
+or constant asks `symbols` for it by name instead of searching the tree.
+The answer lists every definition of the name, each with path, line and
+kind; a name defined in several files lists each one, and the tool never
+chooses one for the user. A Python definition read by `ast` is
+`certain`. A shell function, or a TS/JS declaration at the top level of
+its file or exported, is `maybe`, found by line-reading, with that reason.
+A function's local variables and nested functions are not definitions. A name with no definition gives an empty
+answer. A file the tool could not read makes the answer `incomplete`
+with the action "search by hand", because that file may define the name.
+The query says where a name is defined, not who uses it.
+
+**Add change history as a link source.** With `--history`, `impact` and
+`affected-tests` also use files that changed together in past commits.
+Each such row is `maybe`, labelled as history, and says the two files
+changed together in `count` of `of` commits (`of` is the number of read
+commits that changed the input). History rows are listed apart, in their
+own `history` list, never mixed with the code-linked rows. A history row
+is never `certain`. History only adds rows; it never removes or moves a
+row the code links give. If Git history is missing or shallow, the
+answer is `incomplete` with that reason. In a shallow clone the oldest
+commit it holds is not read, because Git shows that commit as changing
+every file. A CI checkout that holds one commit therefore gives no
+history rows, and every `--history` answer there is `incomplete` ("run
+the full suite"). Without `--history`, no history is read.
+
+**Take code-anchor's moved list.** `anchors --moved` reads the files
+that `code-anchor.py` reports as moved since the anchor was recorded, so
+the user copies no paths. The answer is the same as when the user names
+those files. A missing anchor (or no `code-anchor.py`) gives an
+`incomplete` answer with "review by hand"; so does a repository
+code-anchor cannot verify, while the other repositories' moved files
+are still answered. When nothing moved, the answer is empty and
+complete.
+
+**The protocols call the tool on demand.** The tool is never run per
+prompt or per file access (ADR-0018); a protocol step runs it once, when
+the step needs it.
+- At verify, after GREEN and before it chooses its gates, the
+  orchestrating session takes `affected-tests` as the recommended floor.
+  It may run more tests, never fewer. An `incomplete` answer means it runs
+  the full suite.
+- At canonize, in flow step 1 and before `code-anchor.py --record`, the
+  session runs `anchors --moved` and hands its pages to the docs-librarian
+  as the pages whose facts it must re-check. Recording the anchor first
+  would empty the list.
+- At grow and adopt, before the scouts are briefed, the session gives them
+  the `build` inventory (path, language, test class) as the mechanical
+  file list, instead of walking the tree.
+The tool recommends; the protocol rules decide.
+
+**One citation rule for graph-lint and anchors.** `graph-lint.py` reads
+page citations through the same helper as `anchors`. A plant owner sees
+both tools agree on which file a page cites. graph-lint's messages and
+verdicts do not change. If the helper is missing beside `graph-lint.py`,
+the route does not fail: it skips the inferred tier and the session sees
+the notice `inference skipped: HelperUnavailable`.
 
 ## 4. Functional contracts
 
@@ -430,12 +500,14 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
   `` `src/a.py` ``, and a file `src/b.py` no page cites
 - **When:** `anchors src/a.py src/b.py --json` runs
 - **Then:** `src/a.py` lists in `facts` the node (with line 12 and with no
-  line) and the leaf as `certain` `backtick` facts, the `repo: src/a.py` node
-  as a `certain` `repo` fact and the `repo: src/` node as a `maybe` `repo`
-  fact with reason `repo-prefix`; it counts the plan, spec and decision pages
+  line) and the leaf as `certain` `backtick` facts and the `repo: src/a.py`
+  node as a `certain` `repo` fact (the `maybe` `repo-prefix` fact is
+  `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS`'s); it counts the plan, spec and decision pages
   in `history` without naming them
-- **And:** the `repo: src` node claims nothing (a `repo:` with no `/` names a
-  repository root), and `src/b.py` is listed as `uncited`
+- **And:** the `repo: src/` and `repo: src` nodes claim nothing (a `repo:` that
+  holds no `/` once its leading and trailing `/` are cut names a repository
+  root: the helper's `repo_claim`, §6 "Helper"), and `src/b.py` is listed as
+  `uncited`
 - **And:** with `--all`, `history` names its three pages
 
 ### Contract: ANCHORS_BASENAME_IS_MAYBE_AMBIGUOUS_IS_INCOMPLETE
@@ -476,6 +548,168 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
 - **And:** `python3 docs/graph/source-index.py build` then exits 0 in the fresh
   plant
 
+### Slice 2
+
+Slice-2 contracts run in the same synthetic plant. A `--history` fixture
+commits with Git's author and committer dates fixed, so the order of its
+commits is the order the fixture writes them; a `--moved` fixture records the
+anchor with the placed `docs/graph/code-anchor.py`.
+
+### Definitions
+
+### Contract: SYMBOLS_PYTHON_DEFINITIONS_CERTAIN
+- **Given:** `pkg/a.py` holding `TIMEOUT = 5`, `A, B = 1, 2`,
+  `type Alias = int`, `from os import path`, `def run():` whose body holds a
+  local `x = 1` and a nested `def inner():`, `async def fetch():`, and
+  `class Store:` whose body holds `LIMIT = 3` and `def save(self):`
+- **When:** `symbols TIMEOUT A Alias run inner fetch Store LIMIT save Store.save x path --json` runs
+- **Then:** each of the first ten names lists one `certain` definition, found
+  `ast`, in `pkg/a.py` with its line, its kind (`variable` for `TIMEOUT`, `A`
+  and `LIMIT`; `type` for `Alias`; `function` for `run`, `inner`, `fetch` and
+  `save`; `class` for `Store`) and its qualified name (`run.inner`,
+  `Store.LIMIT`, `Store.save`); `Store.save` lists the definition `save` lists
+- **And:** `x` and `path` list no definition and are `undefined`, because a
+  local binding and an import define nothing; `incomplete` is empty
+
+### Contract: SYMBOLS_LINE_READ_DECLARATIONS_ARE_MAYBE
+- **Given:** `install.sh` holding `place_file() {`, `function helper {` and
+  the comment `# fake() {`; and `src/m.ts` holding `export function a(`,
+  `export default class B {`, `export const c =`, `let d =`,
+  `export interface E {`, `type F =`, `export enum G {`,
+  `export async function h(`, `function i(` whose indented body holds
+  `const local =` and `function nested(`, `namespace N {` holding an
+  indented `export function ns(`, the comment `// function z() {}` and a
+  `/* */` block holding `function y() {}`, every other line at column 0
+- **When:** `symbols place_file helper fake a B c d E F G h i ns local nested z y --json` runs
+- **Then:** each of `place_file`, `helper`, `a`, `B`, `c`, `d`, `E`, `F`,
+  `G`, `h`, `i` and `ns` lists one `maybe` definition found `line-reading`,
+  with its line and kind (`function` for `place_file`, `helper`, `a`, `h`,
+  `i` and `ns`; `class` for `B`; `variable` for `c` and `d`; `type` for `E`,
+  `F` and `G`)
+- **And:** `local`, `nested`, `fake`, `z` and `y` are `undefined`, because a
+  TS/JS declaration counts at column 0 or after `export`, so a function's
+  locals define nothing, and the line reading skips comments as the slice-1
+  readers do (§6 "Definitions")
+
+### Contract: SYMBOLS_LIST_EVERY_DEFINITION
+- **Given:** `def parse` in `tools/a.py` and in `tests/b.py`, `class Reader:`
+  holding `def parse(self):` in `tools/c.py`, and `function parse(` in
+  `src/p.ts`
+- **When:** `symbols parse --json` runs, then `symbols Reader.parse --json`
+- **Then:** `parse` lists four definitions, the three `certain` ones first by
+  path, then the `maybe` one, and `incomplete` is empty, because a name
+  defined in several places is answered by listing each, never by choosing one
+- **And:** `Reader.parse` lists the method alone, because a dotted name
+  matches a qualified name whole, and the text view of `symbols parse` prints
+  one line per definition in the format of §6 "CLI"
+
+### Contract: SYMBOLS_UNREADABLE_FILE_MAKES_IT_INCOMPLETE
+- **Given:** `ok.py` holding `def run():`, `bad.py` holding a syntax error,
+  and `big.js` larger than `FILE_MAX_BYTES`
+- **When:** `symbols run --json` runs
+- **Then:** `run` lists the definition in `ok.py`, and `incomplete` holds one
+  `unreadable-file` record naming `bad.py` and one naming `big.js`, because a
+  file the index could not read may define the name
+- **And:** the text view ends with
+  `Incomplete: search by hand (unreadable-file: bad.py, unreadable-file: big.js).`
+
+### History
+
+### Contract: HISTORY_ROWS_ARE_MAYBE_WITH_THEIR_COUNT
+- **Given:** a plant whose commits, oldest first, change: `a.py` and
+  `tests/t_b.sh`; `a.py`, `tests/t_b.sh` and `c.py`; `a.py` alone; and `a.py`
+  with `HISTORY_MAX_FILES` other inventory files, `tests/t_wide.sh` among
+  them; no link joins `a.py` to `tests/t_b.sh`, `c.py` or `tests/t_wide.sh`
+- **When:** `affected-tests a.py --history --json` runs, then
+  `impact a.py --history --json`
+- **Then:** the first answer's `history` holds `tests/t_b.sh` at depth 1,
+  `maybe`, kind `history`, found `history`, from `a.py`, with `together`
+  `{count: 2, of: 3}`; the second's holds `tests/t_b.sh`, then `c.py` with
+  `{count: 1, of: 3}`, the higher count first
+- **And:** no history row is `certain`, and `tests/t_wide.sh` is in no list,
+  because a commit that changes more than `HISTORY_MAX_FILES` inventory files
+  is not read: it would pair every file it changed, and `of` does not count it
+
+### Contract: HISTORY_ONLY_ADDS
+- **Given:** `a.py` imported by `b.py`; `o.py` holding `os.walk(root)` over a
+  variable; and commits that each change `a.py` together with `b.py`, `o.py`
+  and `d.py`, where no link joins `d.py` to `a.py`
+- **When:** `impact a.py --json` runs, then `impact a.py --history --json`
+- **Then:** the second answer equals the first in every key but `history`
+  and `cache` (the second query reuses the cache the first wrote), and
+  the first holds no `history` key
+- **And:** `history` holds `d.py` alone, because a file another list of the
+  answer holds (`b.py` in `dependents`, `o.py` in `floor`) is never a history
+  row: history adds files and never moves or removes a row
+
+### Contract: HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE
+- **Given:** one of: a plant whose root repository is a clone made with
+  `git clone --depth 2 file://<origin>` of an origin whose last three
+  commits change, oldest first, `a.py` and `tests/t_old.sh`; `a.py` alone;
+  `a.py` and `tests/t_new.sh`; and a plant whose root repository has no
+  commit and holds an untracked `a.py`
+- **When:** `affected-tests a.py --history --json` runs, then
+  `affected-tests a.py --json`
+- **Then:** with `--history`, `incomplete` holds one record naming the
+  repository `.`: `history-shallow` for the clone, whose `history` still
+  holds `tests/t_new.sh` with `together` `{count: 1, of: 1}` and holds no
+  `tests/t_old.sh`, because the clone's boundary commit (`a.py` alone) has
+  no parent it holds, so Git lists every file it holds and the commit is
+  not read; and `history-unavailable` for the plant with no commit; the
+  text view ends with `Incomplete: run the full suite (...)`
+- **And:** without `--history` neither answer holds such a record, because
+  history is read only when asked
+
+### Moved list
+
+### Contract: ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS
+- **Given:** a plant whose root repository holds `run.sh` and whose nested
+  governed repository `Cypress/` holds `Cypress/tools/x.py`, with the anchor
+  recorded by `docs/graph/code-anchor.py --record`; then a commit in
+  `Cypress/` that changes `tools/x.py`, an uncommitted edit to `run.sh`, and
+  a node citing each file
+- **When:** `anchors --moved --json` runs, then
+  `anchors Cypress/tools/x.py run.sh --json`
+- **Then:** the two documents are equal in every key but `cache` (the second
+  query reuses the cache the first wrote), and `inputs` lists
+  `Cypress/tools/x.py` and `run.sh`, because each repository-relative path
+  code-anchor reports is joined to its repository's plant-relative path
+- **And:** after `code-anchor.py --record` runs again, `anchors --moved
+  --json` lists no input and no file, `incomplete` is empty, and the text view
+  prints `MOVED_NONE_LINE`
+
+### Contract: ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE
+- **Given:** the plant of the contract above, then one of: no
+  `.cypress/anchor.json`; an anchor whose recorded commit for `Cypress/` the
+  clone lacks, with `run.sh` edited; no `docs/graph/code-anchor.py`
+- **When:** `anchors --moved --json` runs
+- **Then:** `incomplete` holds, in turn: `moved-unavailable` naming
+  `.cypress/anchor.json`, with code-anchor's not-recorded reason as detail;
+  `moved-unverified` naming `Cypress`, with code-anchor's label as detail,
+  while `run.sh` is still an input and answered; `moved-unavailable` naming
+  `docs/graph/code-anchor.py`
+- **And:** each text view ends with `Incomplete: review by hand (...)`
+
+### One claim rule
+
+### Contract: REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS
+- **Given:** a plant whose `docs/graph/` holds the seed's `graph-lint.py`
+  beside the tool and its siblings, nodes with `repo: src/`,
+  `repo: src/lib/` and `repo: src/lib/a.py`, and `src/lib/a.py`,
+  `src/lib/c.py` and `src/b.py` in the inventory
+- **When:** `anchors src/lib/a.py src/lib/c.py src/b.py --json` runs, and
+  `graph-lint.py --plan-json` runs once on a task naming each of the three
+  paths
+- **Then:** `anchors` lists for `src/lib/a.py` the `repo: src/lib/a.py` node
+  as a `certain` `repo` fact and the `repo: src/lib/` node as a `maybe` one
+  found `repo-prefix`, for `src/lib/c.py` the `repo: src/lib/` node as a
+  `maybe` one, and `src/b.py` as `uncited`; `graph-lint.py` loads by
+  `named_path` the `repo: src/lib/a.py` node, then the `repo: src/lib/` node,
+  then no node through a `repo:` claim
+- **And:** neither tool reads `repo: src/` as a claim, because both call the
+  helper's one `repo_claim`, which cuts the leading and trailing `/` and
+  reads a value that then holds no `/` as a repository root
+
 ## 5. Non-functional requirements
 
 - **Performance:** a full build over a repository of 5,000 inventoried files
@@ -488,6 +722,12 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
   clone (914 files), 0.66 s and 31 MB on Vivid (397), 3.19 s and 52 MB on a
   4,320-file llama.cpp clone; a cached query 0.10 s on the seed plant. The
   5,000-file figure, about 3.7 s and 55 MB, is inferred by linear scale.
+  Slice 2, each measured once at verify (grill §10, increment 22): the build,
+  definitions included, keeps the budgets above; a cached `symbols` query
+  answers within 1 s on the seed-sized plant; `--history` adds at most 1 s
+  there (one `git log` of at most `HISTORY_COMMITS` commits per repository
+  holding an input); `graph-lint.py`'s load of the helper adds no measurable
+  time to a `--plan` run, which the route hook makes on every prompt.
 - **Security:** read-only over the repositories: the tool parses Python with
   `ast` and never imports, executes or `exec`s repository code; it reads a
   symlink as its link text, never its target; Git runs through the helper's
@@ -538,7 +778,8 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
     never a path source.
   - Output carries no raw control. The `?` replacement covers every string
     the text view takes from repository content (paths, references,
-    citation text, a refused config's detail), and `--json` is written with
+    citation text, every record's `detail`, code-anchor's labels and reasons
+    included), and `--json` is written with
     `ensure_ascii`, so neither view emits a raw control, bidi-override or
     lone-surrogate character (`NON_UTF8_PATH`).
   - No file content is echoed. A record's `reference` holds the specifier or
@@ -549,9 +790,40 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
     wants to hide a link can (`getattr(importlib, "import_" + "module")`),
     so no gate may read a file's absence from `dependents` or `tests` as
     proof that it is unaffected.
+  Slice 2, held to the rules above:
+  - A definition name is repository content: cut to `LITERAL_MAX`, shown
+    with `?` in the text view and escaped in `--json`; a `symbols` input
+    that `NAME_RE` does not match whole (`re.fullmatch`) is `USAGE_REFUSED`
+    before anything is read. The text view shows an input name through the
+    same `?` replacement. The definition reader walks statement bodies with
+    an explicit stack and never descends into expressions, so a deep
+    expression `ast` parses cannot exhaust it (§6 "Definitions").
+  - History reads Git through the helper's one boundary: `git log` with
+    `--no-merges`, `--no-renames`, `--no-show-signature`, `--no-color`,
+    `-n HISTORY_COMMITS`, `--name-only -z`, a commit marker no Git path can
+    equal and no path in argv, so no user or repository setting
+    (`diff.renames`, `log.showSignature`, `color.ui`) changes what it reads;
+    its output is decoded with `surrogateescape`; each path it names is text
+    matched against the inventory, never opened. A `git log` that fails or
+    passes `GIT_TIMEOUT` is `history-unavailable`, never a crash. Its output
+    is buffered whole before the bulk-commit rule, so memory is bounded by
+    `HISTORY_COMMITS` and `GIT_TIMEOUT` only (accepted).
+  - `anchors --moved` loads `code-anchor.py` from beside the tool by file
+    path, the seed's own placed tool, as the siblings are loaded; the load
+    and the call run inside one guard (§6 "Moved list"), so no failure of
+    code-anchor crashes the query; its moved list is data, each path joined
+    to its repository and held to the helper's `relative` predicate before
+    it becomes an input.
+  - `graph-lint.py` loads the helper by file path from beside itself, as it
+    loads `frontmatter.py`, with `sys.dont_write_bytecode` set first, so a
+    routed prompt writes no `__pycache__` into `docs/graph/`; loading the
+    helper runs no Git call and reads no file but `frontmatter.py`; its
+    `repo_claim` and `path_matches` are string functions that open nothing.
 
-- **Privacy:** the cache holds paths, hashes, link targets and reason codes,
-  never file content.
+- **Privacy:** the cache holds paths, hashes, link targets, reason codes and
+  the names of definitions (identifiers), never a value or other file
+  content: `TOKEN = "..."` stores the name `TOKEN` and its line, never the
+  string. History is read per query and never stored.
 - **Reliability:** every query and `build` exits 0 with an answer, including
   when Git is absent (`USAGE_REFUSED` excepted); a failed write leaves the old
   cache whole; a full rebuild is the oracle, so no incremental update exists.
@@ -575,8 +847,8 @@ marked "helper", whose home is `tools/source_paths.py`.
 
 ```yaml
 constants:
-  INDEX_SCHEMA: "cypress.source-index/1"      # cache document
-  ANSWER_SCHEMA: "cypress.source-index.answer/1"
+  INDEX_SCHEMA: "cypress.source-index/2"      # cache document; /2 adds `symbols` (slice 2)
+  ANSWER_SCHEMA: "cypress.source-index.answer/1"   # slice 2 adds a query and keys, removes none
   DEFAULT_DEPTH: 3
   MAX_DEPTH: 5
   TEXT_MAX_ROWS: 40              # rows per list in the text view; --all lifts it
@@ -586,6 +858,10 @@ constants:
   DIR_LINK_MAX: 200              # most inventory files one directory literal links (DIRECTORY_LITERAL_TOO_WIDE)
   EXTENDS_MAX: 16                # longest tsconfig `extends` chain (TSCONFIG_EXTENDS_CYCLE)
   CACHE_MAX_BYTES: 67108864      # 64 MiB; a larger index.json is neither read nor written
+  HISTORY_COMMITS: 500           # most recent non-merge commits --history reads per repository
+  HISTORY_MAX_FILES: 40          # a commit changing more inventory files is not read (HISTORY_BULK_COMMIT)
+  NAME_RE: '[A-Za-z_$][A-Za-z0-9_$-]*(\.[A-Za-z_$][A-Za-z0-9_$-]*)*'   # a `symbols` input, matched whole (re.fullmatch); else USAGE_REFUSED
+  CODE_ANCHOR: "code-anchor.py"  # loaded by file path beside the tool by `anchors --moved` alone; no SIBLING, it shapes no index
   CACHE_DIR: ".cypress/source-index"
   CACHE_NAME: "index.json"
   CACHE_IGNORE: "*\n"            # the inner .gitignore, byte for byte
@@ -596,14 +872,19 @@ constants:
   NOT_CODE, NOISE_DIR, NOISE_NAME, GIT_LOCATORS, GIT_TIMEOUT: helper   # moved from code-anchor.py, unchanged
   DIR_FD_CALLS: helper           # moved from code-anchor.py, with `mkdir` added: {open, stat, unlink, rename, mkdir}
   CITATION_RE, MISSING_CITATION, MALFORMED_CITATION: helper             # moved from growth-audit.py, unchanged
+  repo_claim, path_matches: helper   # moved from graph-lint.py's tier 2 (slice 2); graph-lint, anchors and the config call them
   TEMP_PREFIX: ".tmp-source-index-"   # the cache's exclusive temp files
   FLOOR_LINE: "Floor: {n} maybe row(s) every input reaches (opaque holders and their dependents):"
   RECOMMEND_LINE: "Recommendation only: the tests above and the always-run set, never only these; verify decides what runs."
+  HISTORY_LINE: "History: {n} maybe row(s), files that changed together with an input (--history):"
+  MOVED_NONE_LINE: "Moved: no code moved since the code anchor."
+  UNDEFINED_LINE: "{name}: no definition (read: Python definitions, shell functions, TS/JS declarations)"
   ACTION_LINE:                   # the closing text line of an incomplete answer
     build: "Incomplete: check by hand ({reasons})."
     impact: "Incomplete: check by hand ({reasons})."
     affected-tests: "Incomplete: run the full suite ({reasons})."
     anchors: "Incomplete: review by hand ({reasons})."
+    symbols: "Incomplete: search by hand ({reasons})."
 ```
 
 ### Helper
@@ -643,6 +924,54 @@ intended exception, a citation with trailing whitespace: §12, 2026-10-07 code r
   directory it is relative to. Code-anchor's `anchor_problem` and the tool's
   cache shape check use it. The tool's input normalizer is another function,
   `plant_relative`, in `source-index.py` (§6 "Inputs").
+
+Slice 2 moves graph-lint's tier-2 path rule onto the helper, as two string
+functions that open nothing, each moved from `graph-lint.py` unchanged:
+- `repo_claim(value, path) -> "exact" | "prefix" | None`: the `repo:` value
+  cut of its leading and trailing `/` (`str.strip("/")`, nothing else
+  normalized); a value that then holds no `/` names a repository root and
+  claims nothing (`src`, `src/`); otherwise `exact` when `path` equals it,
+  `prefix` when `path` begins with it and `/`, else None. Graph-lint's
+  `_named_paths` takes the longest `exact` or `prefix` claim (both sides
+  lowercased by graph-lint before the call, as today); `anchors` lists every
+  claim, `exact` as a `certain` fact and `prefix` as a `maybe` one found
+  `repo-prefix`.
+- `path_matches(path, pattern) -> bool`: graph-lint's `_path_matches` with its
+  `.lower()` left to the caller: a pattern with no `/` matches the last path
+  segment; one with `/` drops its leading `**/` and matches the whole path or
+  any `*/`-prefixed tail. Graph-lint lowercases both sides, so its expertise
+  inference reads as today; the tool's config patterns (`exclude`,
+  `always_run`, `global_inputs`) call it case-sensitive (§6 "Plant test
+  declaration and config").
+
+`graph-lint.py` sets `sys.dont_write_bytecode` before it loads
+`frontmatter.py`, so neither load writes a `__pycache__` into `docs/graph/`.
+It loads the helper by file path from beside itself, in the anchored shape it
+loads `frontmatter.py` with, lazily: once per run, the first time tier 2
+reads a task path, so a lint run and a route that never reaches tier 2 never
+load it. Loading the helper runs no Git call and reads no file but
+`frontmatter.py`. A helper that is absent, fails to load, or lacks
+`repo_claim` or `path_matches` (an older copy) raises `HelperUnavailable`
+inside tier 2, which the router already catches, as it catches any other
+exception there (a call whose signature changed raises `TypeError`): tier 2
+claims nothing for that run, the route goes on to the next tier, and the
+existing `inference_skipped` notice names the exception (`inference
+skipped: HelperUnavailable`), which `--plan` prints and the route hook
+passes to the session as a `!` line (SPEC-0003 §6 `notices`; no new notice
+code). No second copy of the rule is kept for the fallback. In a plant both sit in
+`docs/graph/` (the installer places `source_paths.py` with `place_file` on
+every install and graft, and `graph-lint.py` with `place_if_missing`, which
+only a graft reconciles, so a plain re-install can pair a newer helper with
+an older engine: §7 `HELPER_ABSENT_BESIDE_GRAPH_LINT`); in the seed, `templates/knowledge-graph/source_paths.py`
+is a byte-identical copy of `tools/source_paths.py`, held so by
+`tests/seed-lint.py` as it holds the copies of `frontmatter.py`. The move is
+proved by graph-lint's existing suites passing with no assertion edited and
+by `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS`. One intended change, in
+`anchors` only: slice 1 read `repo: src/` as a prefix claim and normalized
+the value with `posixpath.normpath`; graph-lint read `src/` as a repository
+root and normalized nothing. The one rule is graph-lint's, so its routing is
+unchanged and `anchors` stops reading `src/` (and `./src/lib`) as claims
+(§12, 2026-10-07, slice 2).
 
 ### Inventory record
 
@@ -717,8 +1046,8 @@ unresolved:                    # an import or invoke reference that names a path
     where `D` is `os.path.dirname(…)` nested one or more times around
     `__file__`, `os.path.abspath(__file__)` or `os.path.realpath(__file__)`.
   The seed's tools load their siblings in the first shape
-  (`tools/code-anchor.py` 54-55, `tools/corpus-match.py` 53-54,
-  `tools/graft-audit.py` 168-169). An anchored path held in a variable, a base
+  (`tools/code-anchor.py` 53-54, `tools/corpus-match.py` 53-54,
+  `tools/graft-audit.py` 169-170). An anchored path held in a variable, a base
   other than `__file__`, or one that no load call takes is not a load: its
   strings stay `path-literal` references, and a load call whose argument is
   not anchored keeps the rules below. The link's line is the line where the
@@ -917,6 +1246,131 @@ plant-relative inventory paths of any governed repository):
 - The config reader is JSONC: `//` and `/* */` comments and trailing commas
   are removed outside string literals, so `"@/*"` survives.
 
+### Definitions
+
+```yaml
+symbol:                        # one definition, read at build with the links (slice 2)
+  name:  { type: string, the qualified name within its file, cut to LITERAL_MAX:
+           Python joins the enclosing class and function names with "." (`Store.save`,
+           `run.inner`); shell and TS/JS hold the declared name alone }
+  path:  { type: string, inventory path }
+  line:  { type: int, 1-based line of the `def`, `class`, assignment or declaration }
+  kind:  { enum: [function, class, variable, type] }
+  link:  { enum: [certain, maybe] }
+  found: { enum: [ast, line-reading] }   # ast: certain; line-reading: maybe, the reason
+```
+- Python, read by `ast` from the parse the links already make (`certain`,
+  found `ast`): every `def` and `async def` (`function`) and `class`
+  (`class`) at any depth; every name an assignment or annotated assignment
+  binds, alone or in a tuple or list target, whose nearest enclosing scope is
+  the module or a class body, `if`, `try`, `with` and loop blocks included
+  (`variable`); a `type X = ...` statement (`type`). An import, a parameter, a
+  local binding inside a function, a `global` or `nonlocal` name and an
+  attribute target (`self.x = 1`) define nothing.
+- The Python reader walks statement bodies (module, class, function, `if`,
+  `try`, `with`, loop) with an explicit stack and never descends into
+  expressions, so a file `ast` parses never fails the reader. A
+  `RecursionError` or `MemoryError` in the reader makes the file
+  `unreadable`, and the file's definitions are dropped with its links.
+- Shell, a line at a time outside comments (`maybe`, found `line-reading`):
+  a line whose first words, at any indentation, are `NAME()` or `NAME ()`
+  (a `{` may follow) or `function NAME` (`function`). A here-document's
+  lines are read like any other, so one that reads like a function is a
+  `maybe` row (`LINE_READ_DECLARATION_IN_TEXT`).
+- TS/JS, a line at a time after `strip_comments` blanks `//` and `/* */`
+  comments (`maybe`, found `line-reading`): a line whose code begins at
+  column 0, or after indentation with the word `export`, then any of the
+  words `export`, `default`, `declare`, `abstract`, `async` in that order,
+  with `function` or `function*` (`function`), `class` (`class`),
+  `interface`, `type`, `enum` or `const enum` (`type`), or `const`, `let` or
+  `var` (`variable`), then a name. An indented declaration without `export`
+  defines nothing: it is a function's local (72 percent of the line-read
+  declarations in Vivid were indented `const`, `let` or `var`), or a member
+  of a block the reader cannot see, and Python's reader leaves locals out
+  alike. The first declarator alone is read (`const a = 1, b = 2` defines
+  `a`); a destructuring pattern, an anonymous default export,
+  `export { a as b }`, a re-export and a class member define nothing (§2 out
+  of scope).
+- Each line-reading pattern is an extraction regex of §5 (one line,
+  anchored at its start, no nested or overlapping quantifier); the name it
+  reads is held to `NAME_RE` without dots, so a line-read name is ASCII.
+- `json` and `other` files hold no definitions. A link-bearing file with an
+  `opaque` `unreadable` record has none either; `symbols` names it in an
+  `unreadable-file` record (§6 "Incomplete").
+- A name matches a definition when it equals the qualified name whole, or,
+  holding no `.`, equals its last segment: `save` and `Store.save` match
+  `Store.save`; `Store.save` does not match `save` in another class. Matching
+  is case-sensitive and exact; no pattern is read.
+
+### History links
+
+`--history` (on `impact` and `affected-tests`) reads, per query and for each
+governed repository holding a `walked` input, `git log --no-merges
+--no-renames --no-show-signature --no-color -n HISTORY_COMMITS --name-only
+-z --format=/%P` through the helper's `git`, from HEAD. The marker begins
+with `/`, which no Git path does, so no file name splits a commit, and it
+holds the commit's parents. A commit with no parent is not read: a root
+commit, or a shallow clone's boundary commit, whose parent the clone lacks,
+so Git lists every file it holds as changed. Each other commit's changed
+paths are joined to the repository's plant-relative path and kept when they
+are inventory paths. A commit that keeps more than `HISTORY_MAX_FILES`
+paths is not read (`HISTORY_BULK_COMMIT`). For each walked input I and each other inventory
+path P, `count` is the number of read commits that changed both, and `of` the
+number of read commits that changed I. Every P with `count` 1 or more is a
+history candidate, from the input with the highest `count` (then the
+smaller `of`, then the smaller input path).
+
+```yaml
+history_row:                   # a row of the answer's `history` list; the `row` shape plus `together`
+  path:     string
+  depth:    1
+  link:     maybe                # always: history is evidence of change, never of dependency
+  from:     string               # the input it changed together with
+  kind:     history
+  found:    history
+  line:     null
+  maybe:    { reason: history, holder: <the input>, line: null }
+  via:      [<the input>, path]
+  together: { count: int, of: int }   # read commits that changed both; read commits that changed the input
+```
+The `history` list holds each candidate that no other list of the answer
+holds (`dependents` or `tests`, `always_run`, `floor`); `affected-tests`
+keeps only test-class candidates. It is sorted by `together.count`
+(highest first), then path. History rows are never walked: no link step
+starts from one, and they change no other list. Before reading, each such
+repository is asked `git rev-parse --is-shallow-repository`: only the exact
+output `false` reads as complete; any other output (`true`, or the flag
+echoed back by a Git older than 2.15) adds a `history-shallow` record, and
+the history it holds is still read; a repository
+with no commit, or a `git log` that fails or passes `GIT_TIMEOUT`, adds a
+`history-unavailable` record and no rows from it. History follows no rename.
+
+### Moved list
+
+`anchors --moved` takes no path. It loads `CODE_ANCHOR` from beside the
+tool by file path and calls the one function its `--compare` prints from,
+`moved_list(root)`, which returns, per recorded repository, its
+plant-relative path and the `(label, paths)` pairs `moved()` gives today
+(slice 2 adds the function to `code-anchor.py` and `--compare` calls it, its
+output unchanged). Each moved path is joined to its repository's path
+(`source_paths.plant_path`) and held to `relative`; the inputs are those
+paths, normalized and answered as §6 "Inputs" answers named paths, so the
+answer equals `anchors <those paths>`. A repository whose only label is
+`unverified (...)` adds a `moved-unverified` record (the label is the
+detail); code-anchor's `Unrecorded` (no anchor, unreadable, another version)
+adds `moved-unavailable` naming `.cypress/anchor.json` (its reason is the
+detail); code-anchor's `GitMissing` is the `git-unavailable` record the
+answer already holds. The load and the call of `moved_list` run inside one
+guard: any other exception, `SystemExit` included, a `CODE_ANCHOR` that is
+absent, a missing `moved_list` (a placed code-anchor older than slice 2) or
+a result not of the shape above adds `moved-unavailable` naming
+`docs/graph/code-anchor.py`. Code-anchor loads the helper as a module instance
+of its own, so the tool catches code-anchor's classes (`Unrecorded`, and its helper's
+`GitMissing` and `GitFailed`), never its own. `moved_list(root)` and the
+anchor read it calls take the root as a parameter (code-anchor's `--compare`
+passes its `ROOT`). An empty moved list is a complete answer with no input;
+its text view prints `MOVED_NONE_LINE`.
+
 ### Plant test declaration and config
 
 The tests are the plant's `TEST_GLOBS` (read with `ast.literal_eval` from the
@@ -941,9 +1395,10 @@ source_index_config:
       "requirements*.txt", "uv.lock" ] }
   # no other key; a pattern with no "/" matches the last path segment, one
   # with "/" (any leading "**/" dropped) the whole plant-relative path or any
-  # "*/"-prefixed tail (graph-lint's _path_matches rule). Case-sensitive by
-  # decision: these patterns name real files, whose names Git keeps case-
-  # sensitive; graph-lint lowercases because it matches lowercased task text.
+  # "*/"-prefixed tail: the helper's `path_matches`, the rule graph-lint's
+  # tier 2 calls. Case-sensitive by decision: these patterns name real files,
+  # whose names Git keeps case-sensitive; graph-lint lowercases both sides
+  # because it matches lowercased task text.
 ```
 Each key the file sets replaces that key's default whole; unknown keys,
 non-list values and non-string items refuse the whole file
@@ -1011,6 +1466,10 @@ opaque holder (depth 1).
   takes it, so a test in `json` or `other` (a fixture) is never always-run by
   `no-code-edge`, only by `declared`.
 - `anchors`: the citation join below; it does not walk links.
+- With `--history`, `impact` and `affected-tests` add the `history` list of
+  §6 "History links" after the input rows; no other list changes.
+- `symbols`: the definitions of each name (§6 "Definitions"); it does not
+  walk links.
 
 ### Incomplete
 
@@ -1038,17 +1497,25 @@ incomplete_record:
 | `no-test-declaration` | `TEST_GLOBS` absent, unparsable or not a list of strings | `docs/graph/spec-lint.py` | affected-tests |
 | `no-test-files` | `TEST_GLOBS` matches no inventory file | `docs/graph/spec-lint.py` | affected-tests |
 | `ambiguous-citation` | a bare-name citation several inventory files match, one an input | the page (the citation is the detail) | anchors |
+| `unreadable-file` | a link-bearing inventory file with an `opaque` `unreadable` record | that file | symbols |
+| `history-shallow` | a repository holding a walked input is a shallow clone | the repository's plant-relative path | impact, affected-tests, with `--history` |
+| `history-unavailable` | that repository has no commit, or its `git log` failed or timed out | the repository's plant-relative path (the error is the detail) | impact, affected-tests, with `--history` |
+| `moved-unavailable` | code-anchor has no usable anchor, or `code-anchor.py` is absent or fails to load | `.cypress/anchor.json`, or `docs/graph/code-anchor.py` (the reason is the detail) | anchors `--moved` |
+| `moved-unverified` | code-anchor labels a recorded repository `unverified` | the repository's plant-relative path (the label is the detail) | anchors `--moved` |
 
 "The input" is the input as `plant_relative` normalizes it (§6 "Inputs"), so
 it equals the input given in its normal form; an input it cannot make
-plant-relative (`outside-plant`) is named as written.
+plant-relative (`outside-plant`) is named as written. "All" is every query
+that takes paths; `symbols` takes names, so of the reasons above it gives
+`git-unavailable`, `no-repository`, `repository-unreadable` and
+`unreadable-file` alone.
 
 ### Cache document
 
 ```yaml
 # .cypress/source-index/index.json, written sorted, indent 1, trailing newline
 index:
-  schema: "cypress.source-index/1"
+  schema: "cypress.source-index/2"
   key:
     python: { the running interpreter's major.minor, e.g. "3.12": `ast` parses by its grammar }
     tool:   { sha256 of source-index.py bytes, then each SIBLINGS file's bytes in that order }
@@ -1061,13 +1528,18 @@ index:
   links:      [link]               # sorted by holder, target, kind, line
   opaque:     [opaque]             # sorted by holder, line
   unresolved: [unresolved]         # sorted by holder, line, reference
+  symbols:    [symbol]             # sorted by path, line, name (slice 2)
 ```
 A document whose `schema` or `key` differs from the current one, or which is
 not this shape, is rebuilt: one that is not JSON, breaks this shape, holds
 another `schema` or exceeds `CACHE_MAX_BYTES` is unreadable (reason
 `cache unreadable`, §7 `CACHE_UNREADABLE`); one whose `key` alone differs is a
-key change. Anchors citations are read from the pages on
-every query and never cached. The key leaves out Git's ignore sources outside
+key change. The shape check holds each `symbols` record to: `path` an
+inventory path, `line` an int of 1 or more, `name` a string of at most
+`LITERAL_MAX` with no NUL, `kind`, `link` and `found` from their enums,
+`found: ast` with `link: certain` and `line-reading` with `maybe`; a record
+that breaks it makes the document unreadable. Anchors citations are read
+from the pages on every query and never cached. The key leaves out Git's ignore sources outside
 the work tree (`.git/info/exclude`, the user's `core.excludesFile`): an edit
 there changes the inventory without a rebuild until the next key change or a
 `build` (ADR-0029, accepted gap).
@@ -1077,7 +1549,7 @@ there changes the inventory without a rebuild until the next key change or a
 ```yaml
 answer:
   schema: "cypress.source-index.answer/1"
-  query:  { enum: [build, impact, affected-tests, anchors] }
+  query:  { enum: [build, impact, affected-tests, anchors, symbols] }
   inputs: [{ path, status: [walked, not-code, not-found] }]   # walked or answered inputs
   depth:  int                            # impact and affected-tests
   cache:  { status: [built, reused, rebuilt, not-written], reason: string|null }
@@ -1091,11 +1563,17 @@ answer:
   links: [link]
   opaque: [opaque]
   unresolved: [unresolved]
+  symbols: [symbol]
   # impact (dependents) and affected-tests (tests); both list the floor apart
   dependents: [row]
   tests:      [row]
   always_run: [{ path, reason: [declared, no-code-edge] }]
   floor:      [row]                      # the rows every input reaches; see "Walk"
+  history:    [history_row]              # with --history only; the key is absent without it
+  # symbols (inputs is [] : the names are in `names`)
+  names: [{ name,
+            definitions: [symbol],       # sorted by link (certain first), then path, then line
+            undefined: bool }]           # true when `definitions` is empty
   # anchors
   files: [{ path,
             facts:   [{ page, line: int|null, form: [backtick, repo], link: [certain, maybe],
@@ -1107,9 +1585,9 @@ row:
   depth: int                                  # 0: the input itself
   link:  { enum: [certain, maybe] }           # the weakest link on the chain; certain at depth 0
   from:  string|null                          # the nearer file; null at depth 0 and for an opaque holder
-  kind:  { enum: [import, invoke, path-literal, opaque], or null at depth 0 }
+  kind:  { enum: [import, invoke, path-literal, opaque, history], or null at depth 0 }
   found: { enum: [exact, resolved, path-literal, directory, ambiguous, workspace-package,   # a link's found
-                   named,                                                                 # a walk step
+                   named, history,                                                        # a walk step; a history row
                    dynamic-nonliteral, walks-tree, unreadable, alias-config-unavailable,  # an opaque reason
                    unmapped-specifier],
            null at depth 0 }
@@ -1120,8 +1598,9 @@ row:
 Every list is sorted: `dependents` and `tests` by link (`certain` first),
 then depth, then path, so the `certain` rows come first and the input's own
 `maybe` rows after them; `floor` by depth, then path; facts by link (`certain`
-first), then page, then line; every other list by its fields in the order the
-shape names them. `inputs` lists each input once, sorted.
+first), then page, then line; `history` and `names` as their shapes say;
+every other list by its fields in the order the shape names them. `inputs`
+lists each input once, sorted.
 
 Citation reading for `anchors`: every `.md` page under `docs/graph/`, walked
 with `plant_walk.files`; inline backtick spans outside fenced blocks; a span
@@ -1135,10 +1614,11 @@ nested governed repository (each a `certain` fact, found `exact`); then, for a
 citation holding no `/`, the one inventory file of that basename (a `maybe`
 fact, found `basename`); several such files make an `ambiguous-citation`
 record when one is an input. `cite_problem` is the same function's strict
-mode: plant-relative only, line checked. Every node whose `repo:` holds a `/`
-claims each input it equals (`certain`) or is a directory prefix of (`maybe`,
-found `repo-prefix`), all such nodes listed, longest claim first; a `repo:`
-with no `/` claims nothing. Pages under `docs/graph/plans/`, `specs/` and
+mode: plant-relative only, line checked. Every node's `repo:` is read by the
+helper's `repo_claim` (§6 "Helper"): it claims each input it equals
+(`certain`) or is a directory prefix of (`maybe`, found `repo-prefix`), all
+such nodes listed, longest claim first; a `repo:` that holds no `/` once its
+leading and trailing `/` are cut claims nothing. Pages under `docs/graph/plans/`, `specs/` and
 `decisions/` are `history`; every other page is a `fact`.
 
 ### CLI
@@ -1146,22 +1626,31 @@ with no `/` claims nothing. Pages under `docs/graph/plans/`, `specs/` and
 ```
 python3 docs/graph/source-index.py --help
 python3 docs/graph/source-index.py build [--json]
-python3 docs/graph/source-index.py impact         [--depth N] [--all] [--json] <path>... | -
-python3 docs/graph/source-index.py affected-tests [--depth N] [--all] [--json] <path>... | -
-python3 docs/graph/source-index.py anchors                  [--all] [--json] <path>... | -
+python3 docs/graph/source-index.py impact         [--depth N] [--history] [--all] [--json] <path>... | -
+python3 docs/graph/source-index.py affected-tests [--depth N] [--history] [--all] [--json] <path>... | -
+python3 docs/graph/source-index.py anchors                  [--all] [--json] <path>... | - | --moved
+python3 docs/graph/source-index.py symbols                  [--all] [--json] <name>... | -
 ```
 `--help` prints the usage and exits 0. `build` derives the whole index and
 writes the cache whatever the key says (the forced rebuild of §3); the queries
 build only on a missing, unreadable or mismatched cache. `-` reads one path
-per stdin line (`git diff --name-only`). `--depth` takes 1 to `MAX_DEPTH`.
+per stdin line (`git diff --name-only`), for `symbols` one name. `--depth`
+takes 1 to `MAX_DEPTH`. `--history` reads Git history per query (§6 "History
+links"). `--moved` takes no path; a path or `-` beside it is refused, as is a
+`symbols` name `NAME_RE` does not match whole (`USAGE_REFUSED`).
 `--all` lifts `TEXT_MAX_ROWS` and names history pages. The text view prints
 the cache line (`Cache: <status>`, then ` (<reason>)` when there is one),
 then for `build` one count line and nothing else (`Index: <n> file(s), <n>
 test(s), <n> certain and <n> maybe link(s), <n> opaque and <n> unresolved
-record(s)`; the records themselves are in `--json`), for the walks one row per line
+record(s), <n> definition(s)`; the records themselves are in `--json`), for the walks one row per line
 (`<depth> <link> <path>  <- <from> [<kind> <found>:<line>]`, a `maybe` row
 adding `maybe: <reason> at <holder>:<line>`), the `certain` rows first, then
-the input's `maybe` rows, for `anchors` one block per file, then the
+the input's `maybe` rows, then, with `--history`, `HISTORY_LINE` and the
+history rows (`1 maybe <path>  <- <from> [history <count>/<of>]`), for
+`anchors` one block per file (`MOVED_NONE_LINE` alone when `--moved` finds
+nothing moved), for `symbols` one block per name (`<name>: <n>
+definition(s)`, then one line per definition, `  <link> <kind>
+<path>:<line> <qualified name> (<found>)`, or `UNDEFINED_LINE`), then the
 `always_run` list, then `FLOOR_LINE` and the floor rows, then the
 `incomplete` list, each list capped on its own with a more-line, so the floor
 never pushes an input row out of the view; it closes with the query's `ACTION_LINE` when the answer is
@@ -1278,9 +1767,13 @@ incomplete, else, for `affected-tests`, with `RECOMMEND_LINE`.
 - **Recovery:** check the source for that path
 
 ### Failure: USAGE_REFUSED
-- **Contract:** WALK_INCOMPLETE_NAMES_REASON_AND_ACTION
-- **Trigger:** an unknown query or option, `--depth` outside 1 to
-  `MAX_DEPTH`, or no path and no `-` (`--help` is not refused: exit 0)
+- **Contract:** WALK_INCOMPLETE_NAMES_REASON_AND_ACTION,
+  SYMBOLS_LIST_EVERY_DEFINITION, ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS
+- **Trigger:** an unknown query or option (`--history` on `anchors` or
+  `symbols`, `--moved` on any query but `anchors`), `--depth` outside 1 to
+  `MAX_DEPTH`, no path and no `-` (and, for `anchors`, no `--moved`), a path
+  or `-` beside `--moved`, or a `symbols` name `NAME_RE` refuses (`--help` is
+  not refused: exit 0)
 - **Response:** exit 2, one stderr usage line, empty stdout
 - **Side effects:** nothing read or written
 - **Recovery:** correct the command line
@@ -1399,6 +1892,106 @@ incomplete, else, for `affected-tests`, with `RECOMMEND_LINE`.
 - **Side effects:** none
 - **Recovery:** none needed
 
+### Failure: DEFINITIONS_UNREADABLE
+- **Contract:** SYMBOLS_UNREADABLE_FILE_MAKES_IT_INCOMPLETE
+- **Trigger:** a link-bearing inventory file the build could not read,
+  decode or parse (its `opaque` `unreadable` record: a syntax error, a file
+  over `FILE_MAX_BYTES`, bytes that are not UTF-8, a FIFO)
+- **Response:** exit 0; the definitions read elsewhere are listed; one
+  `unreadable-file` record per such file; the text view ends with the
+  `symbols` `ACTION_LINE`
+- **Side effects:** none; nothing is read at query time
+- **Recovery:** search that file by hand, or fix it
+
+### Failure: LINE_READ_DECLARATION_IN_TEXT
+- **Contract:** SYMBOLS_LINE_READ_DECLARATIONS_ARE_MAYBE
+- **Trigger:** a shell here-document, or a TS/JS template literal spanning
+  lines, holds a line that reads like a declaration (`function x() {` inside
+  a test fixture written as a string)
+- **Response:** a `maybe` definition found `line-reading`, which is why no
+  line-read definition is `certain`; a declaration the line reading cannot
+  see (a class member, a second declarator, an indented TS/JS declaration
+  without `export`) is no definition (§2), never a `certain` absence
+- **Side effects:** none
+- **Recovery:** none needed; the reader opens the line
+
+### Failure: HISTORY_SHALLOW
+- **Contract:** HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE
+- **Trigger:** with `--history`, a repository holding a walked input is a
+  shallow clone, as a CI checkout often is (`actions/checkout` fetches one
+  commit unless told otherwise): `git rev-parse --is-shallow-repository`
+  prints anything but `false`
+- **Response:** the history it holds is read and its rows listed, the
+  boundary commit left out (it has no parent the clone holds, so Git lists
+  every file as changed); a `history-shallow` record names the repository;
+  the text view ends with the query's `ACTION_LINE`, so an opt-in `maybe`
+  source turns an otherwise complete answer into "run the full suite",
+  which fails toward more
+- **Side effects:** none; the tool never fetches
+- **Recovery:** `git fetch --unshallow`, or read the answer without history
+
+### Failure: HISTORY_UNAVAILABLE
+- **Contract:** HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE
+- **Trigger:** with `--history`, a repository holding a walked input has no
+  commit, or its `git log` fails or passes `GIT_TIMEOUT`
+- **Response:** no history row from that repository; a
+  `history-unavailable` record names it, with the error as detail; the other
+  lists stand
+- **Side effects:** none
+- **Recovery:** commit, or repair the repository; the code links still answer
+
+### Failure: HISTORY_BULK_COMMIT
+- **Contract:** HISTORY_ROWS_ARE_MAYBE_WITH_THEIR_COUNT
+- **Trigger:** a read commit changes more than `HISTORY_MAX_FILES` inventory
+  files (a rename sweep, a vendored drop, a formatter run)
+- **Response:** the commit is not read: it adds to no `count` and no `of`,
+  so it cannot make every file it touched a history row of every other
+- **Side effects:** none
+- **Recovery:** none needed; the code links answer for such files
+
+### Failure: MOVED_LIST_UNAVAILABLE
+- **Contract:** ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE
+- **Trigger:** `anchors --moved` with no `.cypress/anchor.json`, one code-anchor
+  refuses (unreadable, another version), or no `docs/graph/code-anchor.py`
+  beside the tool, one that fails to load, one with no `moved_list` (placed
+  before slice 2), or any other exception or malformed result from its load
+  or call (§6 "Moved list")
+- **Response:** exit 0; no input; a `moved-unavailable` record with the
+  reason as detail; the text view ends with the `anchors` `ACTION_LINE`
+- **Side effects:** nothing written; the tool never records an anchor
+- **Recovery:** canonize records the anchor; an install places
+  `code-anchor.py`
+
+### Failure: MOVED_REPOSITORY_UNVERIFIED
+- **Contract:** ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE
+- **Trigger:** code-anchor labels a recorded repository `unverified` (no Git
+  work tree there now, a recorded commit the clone lacks, a Git failure)
+- **Response:** that repository adds no input and one `moved-unverified`
+  record with the label as detail; the other repositories' moved paths are
+  answered
+- **Side effects:** none
+- **Recovery:** fetch the recorded commit, or review that repository's
+  facts by hand
+
+### Failure: HELPER_ABSENT_BESIDE_GRAPH_LINT
+- **Contract:** REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS
+- **Trigger:** `graph-lint.py` reaches tier 2 with no usable `source_paths.py`
+  beside it: none (a hand-copied engine, a plant whose last install predates
+  the helper), one that fails to load, or one whose `repo_claim` or
+  `path_matches` is missing or no longer takes graph-lint's call. The likely
+  form is the reverse skew: a plain re-install fast-forwards the helper
+  (`place_file`) while the engine (`place_if_missing`) keeps its older calls
+  until a graft reconciles it
+- **Response:** `graph-lint.py` exits as it would otherwise; tier 2 claims
+  nothing for that run, the route goes on to the next tier, and the notice
+  `inference skipped: HelperUnavailable` (or the call's exception name) is
+  printed by `--plan` and passed to the session by the route hook as a `!`
+  line; lint runs never load the helper; nothing guesses a claim rule and
+  no copy of it is kept
+- **Side effects:** none
+- **Recovery:** an install or graft places `source_paths.py` (`place_file`
+  on every run); a graft reconciles the engine
+
 ## 8. Examples
 
 Real figures from the seed, this plant and Vivid as measured on 2026-10-07
@@ -1453,7 +2046,7 @@ input:  impact Cypress/tools/plant_walk.py --json
 output:
   dependents:
     - { path: Cypress/tools/corpus-match.py, depth: 1, link: certain, from: Cypress/tools/plant_walk.py, kind: import, found: exact, line: 54 }   # spec_from_file_location("cypress_plant_walk", Path(__file__).resolve().parent / "plant_walk.py")
-    - { path: Cypress/tools/graft-audit.py,  depth: 1, link: certain, from: Cypress/tools/plant_walk.py, kind: import, found: exact, line: 169 }
+    - { path: Cypress/tools/graft-audit.py,  depth: 1, link: certain, from: Cypress/tools/plant_walk.py, kind: import, found: exact, line: 170 }
     - { path: Cypress/tools/growth-audit.py, depth: 1, link: certain, from: Cypress/tools/plant_walk.py, kind: import, found: exact, line: 160 }
     - { path: Cypress/tools/graft-ledger.py, depth: 2, link: certain, from: Cypress/tools/graft-audit.py, kind: import, found: exact, line: 79 }
     - { path: Cypress/tools/graft-run.py,    depth: 2, link: certain, from: Cypress/tools/graft-audit.py, kind: import, found: exact, line: 79 }
@@ -1483,6 +2076,94 @@ output:
   #   Incomplete: check by hand (global-input: tsconfig.json).
   #   Incomplete: run the full suite (global-input: tsconfig.json).
   #   Incomplete: review by hand (global-input: tsconfig.json).
+```
+
+Slice 2. Figures from a temp plant over a clone of the seed at
+`experimental/source-index` (913 inventory files: 48 Python, 34 shell, 2
+TypeScript; no `unreadable` record; 169 non-merge commits), a throwaway `ast`
+and line scan standing in for the unbuilt query, and this plant's own
+`code-anchor.py --compare` output, all on 2026-10-07; outputs abbreviated.
+
+```yaml
+# Happy: the seed, a Python definition (a `def cite_problem` search, discovery report class C)
+input:  symbols cite_problem --json
+output:
+  names:
+    - name: cite_problem
+      definitions:
+        - { name: cite_problem, path: tools/source_paths.py, line: 363, kind: function, link: certain, found: ast }
+      undefined: false
+  incomplete: []
+```
+
+```yaml
+# Edge: the seed, a shell function (the discovery report's `place_file` searches)
+input:  symbols place_file
+output: |
+  Cache: reused
+  place_file: 1 definition(s)
+    maybe function install.sh:389 place_file (line-reading)
+```
+
+```yaml
+# Edge, many: the seed, one name in five files, three of them the byte-identical
+# frontmatter.py copies; `symbols main` lists 29 definitions the same way
+input:  symbols parse --json
+output:
+  names:
+    - name: parse
+      definitions:   # each certain, found ast, kind function
+        - { path: integrations/claude-code/frontmatter.py, line: 69 }
+        - { path: templates/knowledge-graph/frontmatter.py, line: 69 }
+        - { path: tests/test_frontmatter_contract.py, line: 32 }
+        - { path: tools/frontmatter.py, line: 69 }
+        - { path: tools/source-index.py, line: 1943 }
+  incomplete: []
+```
+
+```yaml
+# Edge: the seed, history in a test-first repository. RED and GREEN land in
+# separate commits: tools/source-index.py changed in 5 read commits and no
+# test changed in any of them; install.sh changed in 25 read commits (at most
+# 40 inventory files each), tests/test-full-install.sh in 12 of them
+input:  affected-tests tools/source-index.py --history --json
+output:
+  tests: [ ... the code-linked rows, as without --history ... ]
+  history: []        # no test changed together with it; the code links carry the answer
+  incomplete: []
+```
+
+```yaml
+# Happy: this plant; code-anchor --compare reported Cypress commit 00f8824..a36da40
+# (three paths) and one uncommitted path
+input:  anchors --moved --json
+output:
+  inputs:
+    - { path: Cypress/docs/decisions/adr-0029-source-index-is-derived-scratch.md, status: walked }
+    - { path: Cypress/docs/decisions/index.md, status: walked }
+    - { path: Cypress/docs/plans/grill-8.1.0-source-index.md, status: walked }
+    - { path: Cypress/docs/specs/SPEC-0007-source-index.md, status: walked }
+  files: [ ... the pages citing each, as `anchors <those four paths>` lists them ... ]
+  incomplete: []
+```
+
+```yaml
+# Edge: this plant's repo: values (5 nodes `repo: Cypress`, 2 `repo: Cypress/tools`,
+# 1 `repo: Cypress/templates/`); one rule in both tools
+input:  anchors Cypress/tools/code-anchor.py; graph-lint.py --plan "edit Cypress/tools/code-anchor.py"
+output:
+  # anchors: the two `repo: Cypress/tools` nodes, maybe, repo-prefix; the
+  #   `repo: Cypress` nodes claim nothing (a repository root)
+  # graph-lint: a `repo: Cypress/tools` node by named_path, as before slice 2
+```
+
+```yaml
+# Failure: a CI checkout (`git clone --depth 1`) asked for history
+input:  affected-tests tools/code-anchor.py --history
+output: |
+  ...
+  - incomplete: history-shallow: .
+  Incomplete: run the full suite (history-shallow: .).
 ```
 
 ## 9. Acceptance criteria
@@ -1570,6 +2251,71 @@ without further clarification.
   gated (§5) — maps to BUILD_INVENTORIES_THE_CODE_OF_EVERY_GOVERNED_REPOSITORY,
   CACHE_REUSED_WHILE_THE_KEY_HOLDS
 
+### Slice 2
+
+- [ ] AC-13: `symbols NAME` lists each Python `def`, `async def`, `class`,
+  module- or class-level assignment and `type` statement that defines NAME
+  as a `certain` row found `ast`, with path, line, kind and qualified name;
+  a dotted name such as `Store.save` matches the qualified name whole; an
+  import, a parameter or a local binding inside a function defines nothing,
+  so a name bound only that way is `undefined` with `incomplete` empty —
+  maps to SYMBOLS_PYTHON_DEFINITIONS_CERTAIN
+- [ ] AC-14: A shell function (`NAME()` or `function NAME`) or a TS/JS
+  declaration (`function`, `class`, `interface`, `type`, `enum`, `const`,
+  `let`, `var`, after any `export`/`default`/`declare`/`abstract`/`async`)
+  is listed as a `maybe` row found `line-reading`, with path, line and kind,
+  and is never `certain`; a TS/JS declaration counts only at column 0 or
+  after `export`, so an indented declaration without `export` (a function's
+  local) is no definition; a declaration inside a comment is no definition —
+  maps to SYMBOLS_LINE_READ_DECLARATIONS_ARE_MAYBE
+- [ ] AC-15: A name defined in N files lists N definitions, the `certain`
+  ones first by path, then the `maybe` ones; the tool never picks one, and
+  the text view prints one line per definition — maps to
+  SYMBOLS_LIST_EVERY_DEFINITION
+- [ ] AC-16: A link-bearing file the index could not read (a syntax error,
+  a file over `FILE_MAX_BYTES`) adds one `unreadable-file` record naming
+  it, the definitions read elsewhere are still listed, the exit code is 0,
+  and the text view ends with `Incomplete: search by hand (...)` — maps to
+  SYMBOLS_UNREADABLE_FILE_MAKES_IT_INCOMPLETE
+- [ ] AC-17: With `--history`, a file that changed together with an input
+  and that no other list holds is a row in the answer's separate `history`
+  list: `maybe`, kind and found `history`, with `together` `{count, of}`
+  equal to the number of read commits that changed both and the number that
+  changed the input; rows are sorted by `count`, highest first; a commit
+  that changes more than `HISTORY_MAX_FILES` inventory files adds to no
+  `count` and no `of`; `affected-tests` keeps only test-class history rows —
+  maps to HISTORY_ROWS_ARE_MAYBE_WITH_THEIR_COUNT
+- [ ] AC-18: An answer with `--history` equals the same answer without it
+  in every key but `history` and `cache`; a file already in `dependents`, `tests`,
+  `always_run` or `floor` is never a history row; without `--history` the
+  answer holds no `history` key — maps to HISTORY_ONLY_ADDS
+- [ ] AC-19: With `--history`, a shallow clone (any
+  `git rev-parse --is-shallow-repository` output but `false`) adds one
+  `history-shallow` record naming the repository and still lists the
+  history rows its commits give, except its boundary commit (the one whose
+  parent the clone does not hold), which is not read; a repository with no commit (or a failing `git log`) adds
+  one `history-unavailable` record and no history rows; each text view ends
+  with the query's action line; without `--history` neither record appears —
+  maps to HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE
+- [ ] AC-20: After a commit and an uncommitted edit since the anchor was
+  recorded, `anchors --moved --json` equals `anchors <the moved paths>
+  --json` in every key but `cache`, each repository-relative path joined
+  to its repository's plant-relative path; after `code-anchor.py --record` runs again, it lists
+  no input and no file, `incomplete` is empty, and the text view prints
+  `MOVED_NONE_LINE` — maps to ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS
+- [ ] AC-21: `anchors --moved` exits 0 and holds one `moved-unavailable`
+  record when `.cypress/anchor.json` is missing (naming it) or
+  `docs/graph/code-anchor.py` is missing (naming it); a repository
+  code-anchor labels unverified adds one `moved-unverified` record naming
+  it while the other repositories' moved paths are still answered; each
+  text view ends with `Incomplete: review by hand (...)` — maps to
+  ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE
+
+REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS has no criterion yet: the
+owner's `repo:` ruling is open (grill §12 question 6). Its criterion will
+also hold HELPER_ABSENT_BESIDE_GRAPH_LINT: a missing helper costs tier 2
+only, with the `inference_skipped` notice.
+
 Acceptance criteria are checked off when the increment that
 implements them passes its gates.
 
@@ -1586,6 +2332,17 @@ a HOME of its own, the tool and its siblings copied to `<plant>/docs/graph/`,
 run from the plant root; each case carries its label and the slugs it asserts,
 its OK line reads `X4NN <SLUG>: … — OK`, and `SOURCE_INDEX_ONLY=X425,X431`
 runs a subset. Labels `X425` to `X449` and `E15` are reserved here.
+
+Slice 2 (`tester-slice2-s10`, 2026-10-07): labels `X450` to `X459`, one case
+per slice-2 contract in the same suite, each slice-2 failure an arm of its
+contract's case. The file cells read `(new case)` until RED lands (binding
+below). Fixtures, all from §4 "Slice 2" and §6: history plants are synthetic
+repositories with scripted commits, author and committer dates fixed, the
+plant's own files committed first and apart from the counted commits; the
+shallow plant is cloned with a `file://` URL, because Git ignores `--depth`
+for a local path; the moved and claim cases also copy `code-anchor.py` and
+`graph-lint.py` into `<plant>/docs/graph/`. X445 and X447 return to
+`pending`: slice 2 turns one X445 arm and widens `USAGE_REFUSED`.
 
 Binding (`tests/seed-lint.py` `check_spec_test_mapping`): a row's file cell
 carries the bare path only once the case exists in that file; until RED lands
@@ -1652,10 +2409,20 @@ and §6 now state each:
 | WALK_INCOMPLETE_NAMES_REASON_AND_ACTION | X442 case_walk_incomplete: arms (a) to (h), one per reason the contract lists | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | AFFECTED_TESTS_ARE_THE_WALK_FILTERED | X443 case_affected_tests_filtered: certain rows first, then a maybe row | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | AFFECTED_ALWAYS_RUN_LISTED_APART | X444 case_affected_always_run: the opaque test in `floor`, the JSON and Markdown fixtures in no list | tests/test-source-index.sh | integration (synthetic Git plant) | green |
-| ANCHORS_NAME_CITING_PAGES_OR_UNCITED | X445 case_anchors_citing_pages | tests/test-source-index.sh | integration (synthetic Git plant) | green |
+| ANCHORS_NAME_CITING_PAGES_OR_UNCITED | X445 case_anchors_citing_pages: slice 2 turns the `repo: src/` arm, so `repo: src/` and `repo: src` each claim nothing; the slice-1 `maybe` `repo-prefix` fact the case still expects moves to X459; the `repo:` arm pending owner ruling (grill §12 question 6) | tests/test-source-index.sh | integration (synthetic Git plant) | pending |
 | ANCHORS_BASENAME_IS_MAYBE_AMBIGUOUS_IS_INCOMPLETE | X446 case_anchors_basename | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | OUTPUT_CARRIES_NO_RAW_CONTROL | X448 case_output_no_raw_control: names holding ESC, U+202E and the byte 0xFF, text and `--json` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | SOURCE_INDEX_IS_PLACED | E15 SOURCE_INDEX_IS_PLACED | tests/test-full-install.sh | integration (fresh install) | green |
+| SYMBOLS_PYTHON_DEFINITIONS_CERTAIN | X450 case_symbols_python: the ten names each list one `certain` definition found `ast` in `pkg/a.py`, with line, kind and qualified name; `Store.save` lists what `save` lists; `x` and `path` `undefined`; `incomplete` empty; arm deep (§5 S1, the reader never descends into expressions), `deep.py` holding `x = a+a+...` (1,000 terms) then `def deep_ok():`: `deep_ok` lists one `certain` definition in `deep.py` and no `unreadable-file` record names it | tests/test-source-index.sh | integration (synthetic Git plant) | red |
+| SYMBOLS_LINE_READ_DECLARATIONS_ARE_MAYBE | X451 case_symbols_line_read: the twelve names in `install.sh` and `src/m.ts` each list one `maybe` definition found `line-reading`, with line and kind; `fake`, `z` and `y` `undefined`; arm indent, in `src/m.ts` `function i(` holds the indented `const local =` and `function nested(`, both `undefined`, and `namespace N {` holds the indented `export function ns(`, one `maybe` `function`; every other declaration line at column 0 | tests/test-source-index.sh | integration (synthetic Git plant) | red |
+| SYMBOLS_LIST_EVERY_DEFINITION | X452 case_symbols_every_definition: `parse` lists four definitions, the three `certain` ones by path, then the `maybe` one; `Reader.parse` lists the method alone; the text view of `symbols parse` prints one line per definition | tests/test-source-index.sh | integration (synthetic Git plant) | red |
+| SYMBOLS_UNREADABLE_FILE_MAKES_IT_INCOMPLETE | X453 case_symbols_unreadable: `run` lists `ok.py`; one `unreadable-file` record each for `bad.py` and `big.js`; the text view's last line is the `symbols` `ACTION_LINE` naming both | tests/test-source-index.sh | integration (synthetic Git plant) | red |
+| HISTORY_ROWS_ARE_MAYBE_WITH_THEIR_COUNT | X454 case_history_counts: `affected-tests` holds `tests/t_b.sh` `maybe` `history` `{count: 2, of: 3}`; `impact` holds it, then `c.py` `{count: 1, of: 3}`; no history row `certain`; `tests/t_wide.sh` in no list | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | red |
+| HISTORY_ONLY_ADDS | X455 case_history_only_adds: the `--history` answer equals the plain one in every key but `history` and `cache`, the plain one has no `history` key; `history` holds `d.py` alone (`b.py` stays in `dependents`, `o.py` in `floor`) | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | red |
+| HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE | X456 case_history_incomplete: arm (a), `git clone --depth 2 file://<origin>`, the origin's last three commits `a.py` with `tests/t_old.sh`, `a.py` alone, `a.py` with `tests/t_new.sh`: one `history-shallow` record naming `.`, `history` holds `tests/t_new.sh` with `together` `{count: 1, of: 1}` and no `tests/t_old.sh` (the parentless boundary commit is not read); arm (b), no commit and an untracked `a.py`: one `history-unavailable` record naming `.`; each text view ends with the `affected-tests` `ACTION_LINE`; without `--history` neither record | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | red |
+| ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS | X457 case_anchors_moved: anchor recorded by the placed `docs/graph/code-anchor.py`, then a commit in nested `Cypress/` and an uncommitted `run.sh` edit; `anchors --moved` equals `anchors Cypress/tools/x.py run.sh` in every key but `cache`; after a second `--record`, no input, no file, `incomplete` empty, `MOVED_NONE_LINE` | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | red |
+| ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE | X458 case_anchors_moved_incomplete: arms (a) no `.cypress/anchor.json`, (b) the recorded `Cypress` commit replaced by one the clone lacks, `run.sh` edited, (c) no `docs/graph/code-anchor.py`, (d) a placed `code-anchor.py` with no `moved_list` (placed before slice 2); each text view ends with the `anchors` `ACTION_LINE` | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | red |
+| REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS | X459 case_repo_claim, pending owner ruling on repo: (A/B/C): `anchors` lists `repo: src/lib/a.py` `certain` and `repo: src/lib/` `maybe` `repo-prefix` for `src/lib/a.py`, `repo: src/lib/` `maybe` for `src/lib/c.py`, `src/b.py` `uncited`; the seed's `graph-lint.py --plan-json` loads the same two nodes by `named_path` and none for `src/b.py` | (new case) | integration (synthetic plant, the seed's graph-lint.py placed) | pending |
 | GIT_UNAVAILABLE | X442 case_walk_incomplete: arm (f), PATH holds python3 and no git; an existing cache left byte-identical | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | NO_GOVERNED_REPOSITORY | X442 case_walk_incomplete: arm (i), a plant root that is no Git work tree | tests/test-source-index.sh | integration (synthetic plant) | green |
 | REPOSITORY_UNREADABLE | X442 case_walk_incomplete: arm (j), a nested governed repository with a corrupt index; the root repository still answers; arm (m3), a git that fails only `ls-files` in `vendor/lib` names `vendor/lib`, not `.` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
@@ -1668,7 +2435,7 @@ and §6 now state each:
 | TEST_DECLARATION_UNAVAILABLE | X442 case_walk_incomplete: arms (g) `no-test-declaration` and (h) `no-test-files` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | PLANT_CONFIG_REFUSED | X442 case_walk_incomplete: arm (e), an unknown key; `config-refused` with the error as detail | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | INPUT_NOT_IN_INDEX | X441 case_input_forms, and X442 case_walk_incomplete: arms (b) `input-not-found`, (c) `ambiguous-input`, (k) `outside-plant` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
-| USAGE_REFUSED | X447 case_usage_refused: an unknown query or option, `--depth 0` and `--depth 6`, no path; `--help` exits 0 | tests/test-source-index.sh | integration (CLI) | green |
+| USAGE_REFUSED | X447 case_usage_refused: an unknown query or option, `--depth 0` and `--depth 6`, no path; `--help` exits 0; slice-2 arms: `--history` on `anchors` and on `symbols`, `--moved` on `impact`, `anchors` with no path and no `--moved`, `anchors --moved a.py` and `anchors --moved -`, and `symbols` names `NAME_RE` refuses whole (`a..b`, and a name ending in a newline); each writes no cache | tests/test-source-index.sh | integration (CLI) | pending |
 | UNSAFE_PATH_TEXT | X448 case_output_no_raw_control: the ESC arm; the text view shows `?`, `--json` escapes it | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | FILE_NOT_REGULAR | X435 case_unpinned_reference: a tracked file replaced by a FIFO is opaque `unreadable`, line null, and the query does not block; X425 holds the symlink arm (a record, never a holder) | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | INPUT_EXHAUSTS_A_PARSER | X435 case_unpinned_reference: a Python file over `FILE_MAX_BYTES` (its blob hash still listed) and one holding a NUL byte are opaque `unreadable` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
@@ -1676,6 +2443,14 @@ and §6 now state each:
 | TSCONFIG_EXTENDS_CYCLE | X434 case_link_ts_specifier: an `extends` cycle keeps the relative import and makes the alias holder opaque `alias-config-unavailable` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | GIT_PATH_ARGUMENT | X435 case_unpinned_reference: `./--exec=x`, `./:(top)q`, `./*` stay `relative-no-file` records and a path past the root `outside-repository`, the `generated` record still found beside bases under a symlinked directory and an ungoverned nested work tree (arm m2), and the build complete | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | NON_UTF8_PATH | X448 case_output_no_raw_control: the 0xFF arm, decoded as U+DCFF in `--json` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
+| DEFINITIONS_UNREADABLE | X453 case_symbols_unreadable: the `bad.py` (syntax error) and `big.js` (over `FILE_MAX_BYTES`) arms; the FIFO and non-UTF-8 forms reach `symbols` through the same `opaque` `unreadable` record X435 proves | tests/test-source-index.sh | integration (synthetic Git plant) | red |
+| LINE_READ_DECLARATION_IN_TEXT | X451 case_symbols_line_read: arm text, a here-document line `function hx() {` in `install.sh` and a template-literal line `function tx() {` at column 0 in `src/m.ts` each list one `maybe` definition; `const a1 = 1, b1 = 2` at column 0 defines `a1` and leaves `b1` `undefined` | tests/test-source-index.sh | integration (synthetic Git plant) | red |
+| HISTORY_SHALLOW | X456 case_history_incomplete: arm (a) | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | red |
+| HISTORY_UNAVAILABLE | X456 case_history_incomplete: arm (b); the failing and timed-out `git log` triggers give the same record and are not separate arms | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | red |
+| HISTORY_BULK_COMMIT | X454 case_history_counts: the commit of `a.py` with `HISTORY_MAX_FILES` other inventory files adds to no `count` and no `of` | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | red |
+| MOVED_LIST_UNAVAILABLE | X458 case_anchors_moved_incomplete: arms (a), (c) and (d), `moved-unavailable` naming `.cypress/anchor.json`, then `docs/graph/code-anchor.py` twice | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | red |
+| MOVED_REPOSITORY_UNVERIFIED | X458 case_anchors_moved_incomplete: arm (b), `moved-unverified` naming `Cypress`, `run.sh` still an input and answered | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | red |
+| HELPER_ABSENT_BESIDE_GRAPH_LINT | X459 case_repo_claim: arm helper-absent, which does not wait on the owner's `repo:` ruling, no `source_paths.py` beside `graph-lint.py`: `--plan-json` exits 0, `notices` holds `{code: inference_skipped, text: "inference skipped: HelperUnavailable"}`, and no LOAD entry is `named_path` through a `repo:` claim | (new case) | integration (synthetic plant, the seed's graph-lint.py placed) | pending |
 
 Status values: `red` (test exists, fails), `green` (test exists,
 passes), `pending` (test not yet written), `skipped` (with reason).
@@ -1706,3 +2481,6 @@ flagged assumption in grill.md §12. Sign-off keeps the status `draft`;
 - 2026-10-07 — slice-1 final decisions after the measurement (grill §10), by `architect-final`, as clarifications inside the existing contracts, no new contract: §6 "Links" reads a path join (a Python `/` chain or `os.path.join`; a shell or TS/JS `path.join(`, `path.resolve(` or `os.path.join(`; a shell run of `/` words, the here-document form) as one path literal, non-literal segments written as variables, so it is a `maybe` `path-literal` or `directory` link and a `__file__` or `__dirname` base is a variable lead, never `certain` outside a load call (D1, D2); a shell word joining quoted and unquoted parts is one string (D1); a string or join holding a variable after a named segment reads the segments before it as a directory literal (D1); a walk root may be a join; the TS/JS line join also takes `path.join(` and `path.resolve(`. §6 "Resolution": a scheme-led specifier is external, and a specifier no rule resolves or records makes its holder `opaque` `unmapped-specifier`, a new opaque reason, because a base-less `unresolved` record never reaches an answer (R1). §6 "Walk": the floor part has no depth bound, and `depth-cap` comes from the input part alone (D4). §2 states host settings commands out of scope (D3). §4 `LINK_PATH_LITERAL_AND_DIRECTORY_ARE_MAYBE`, `UNPINNED_REFERENCE_RECORDED_WITH_ITS_REASON`, `WALK_FLOOR_LISTED_APART_AFTER_THE_INPUT_ROWS` and `WALK_INCOMPLETE_NAMES_REASON_AND_ACTION` gain the arms; §5 records the measured timings; §7 `DIRECTORY_LITERAL_TOO_WIDE` names joined directory literals. The §10 rows are the R3 tester's (grill §9).
 - 2026-10-07 — second code review (`reviewer-code-2`): a specifier whose `baseUrl` probe misses is `unmapped-specifier` like any other unresolved specifier (the probe resolves, it does not map); an assignment word is read as its value. Applied in session from the reviewer's rulings.
 - 2026-10-07 — `implemented`: every contract green and the full seed gate green at b70b0d9 (session, `verify.status-evidence`).
+- 2026-10-07 — slice 2 added by `architect-slice2` (owner: "slice 2 ok"; `protocol.specify`, a spec may grow by slice), on product's §3 "Slice 2": §1 and §2 move the slice-2 items into scope (the Never list kept); §4 adds ten contracts, `SYMBOLS_PYTHON_DEFINITIONS_CERTAIN`, `SYMBOLS_LINE_READ_DECLARATIONS_ARE_MAYBE`, `SYMBOLS_LIST_EVERY_DEFINITION`, `SYMBOLS_UNREADABLE_FILE_MAKES_IT_INCOMPLETE`, `HISTORY_ROWS_ARE_MAYBE_WITH_THEIR_COUNT`, `HISTORY_ONLY_ADDS`, `HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE`, `ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS`, `ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE` and `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS`; §5 adds the slice-2 timings, security rules and the definition names to Privacy; §6 adds the `symbol` record and the definition rules, history links (`--history`, `history_row` with `together: {count, of}`), the moved list, the helper's `repo_claim` and `path_matches`, five `incomplete` reasons, `INDEX_SCHEMA` `/2` (the cache gains `symbols`; `ANSWER_SCHEMA` stays `/1`, the answer only gains keys) and the CLI; §7 adds eight failures and widens `USAGE_REFUSED`; §8 adds seven seed and plant examples. The protocol wiring is prose (grill §9 increment 21), no tool contract. One intended revision of a signed contract, recorded here as the slice-1 m6 change was: `ANCHORS_NAME_CITING_PAGES_OR_UNCITED` no longer reads `repo: src/` as a `maybe` prefix claim, because the helper's one `repo_claim` is graph-lint's rule (a value with no `/` once its leading and trailing `/` are cut is a repository root, and nothing is normalized beyond that cut), so graph-lint's routing stays as it is and the two tools agree; the `repo-prefix` arm moves to `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS`. Sign-offs of product, tester and security cleared for slice 2.
+- 2026-10-07 — slice 2 reopens the spec: status `active` (from `implemented`); slice 1's evidence stands as recorded: `tests/test-source-index.sh` (25 cases, X425 to X449) and `tests/test-full-install.sh` (E15), wired into `tests/run.sh`, every slice-1 §10 row green but `CACHE_WRITE_FAILED` (skipped: the helper's atomic write is proved by the code-anchor fault case), the full seed gate run-parallel OK, 51 of 51 steps, 38.6 s, at `b70b0d9`; the measurement in grill §10. `implemented` returns when every slice-2 row is green after G8.
+- 2026-10-07 — slice-2 review findings applied by `architect-slice2-fix`, inside the slice-2 contracts, no contract added and none removed. Tester: `HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE` clones `--depth 2` through `file://` (a plain local path clone is not shallow) and pins the held commits; §6 "History links" leaves out a commit with no parent (a root commit, or a shallow clone's boundary commit, which Git lists as changing every file); `HISTORY_ONLY_ADDS` and `ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS` compare every key but `cache`. Security: the definition reader is iterative over statement bodies (S1); `--moved` guards the load and the call of `moved_list` and catches code-anchor's own classes, with the root a parameter (S2); `git log` takes `--no-renames --no-show-signature --no-color` and a `/`-led marker (S3); only `false` from the shallow probe reads as complete (S4); `NAME_RE` is matched whole (S5); the cache block is `/2` and the shape check covers `symbols` (S6); `graph-lint.py` sets `sys.dont_write_bytecode` before its loads (S7); §5 states the buffered `git log` and every `detail` through the `?` replacement. Devils-advocate: (b) a TS/JS declaration counts at column 0 or after `export`, so function locals define nothing (an arm of `SYMBOLS_LINE_READ_DECLARATIONS_ARE_MAYBE`); (d) `graph-lint.py` loads the helper lazily in tier 2 and a missing or skewed helper costs tier 2 alone, named by the existing `inference_skipped` notice, instead of failing every route (§7 `HELPER_ABSENT_BESIDE_GRAPH_LINT`); (a) and (c) are plan changes (grill §9, §10, §11); §2 cites ADR-0018's reason, a tool called at each file access. §6 and §8: the sibling-load line numbers corrected (`code-anchor.py` 53-54, `graft-audit.py` 169-170). `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` is unchanged, pending the owner's `repo:` ruling (grill §12 question 6).

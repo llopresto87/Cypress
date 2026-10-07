@@ -1,4 +1,4 @@
-# grill.md: Plan of Record: round 8.1.0, the source index (slice 1)
+# grill.md: Plan of Record: round 8.1.0, the source index (slices 1 and 2)
 
 ## 0. Metadata
 - Project: CYPRESS seed
@@ -6,7 +6,7 @@
 - Date: 2026-10-07
 - Owner: the steward; the orchestrating session plans, briefs and commits
 - Tier: T3. Protocol: `protocol.specify-joint-pass` (spec and plan written together), then `protocol.grill`
-- Current phase: slice 1 implemented. Increments 1 to 13, the code-review fixes (R2/G4), the slice-1 decisions (R3/G5) and the second review (R4/G6) landed; the full seed gate is green at `b70b0d9`; SPEC-0007 is `implemented`. Next: canonize, deliver; slice 2 (symbols, history, verify/canonize/grow wiring, `anchors --moved`) waits for the owner
+- Current phase: slice 1 implemented (increments 1 to 13, the code-review fixes R2/G4, the slice-1 decisions R3/G5 and the second review R4/G6; the full seed gate green at `b70b0d9`). Slice 2 approved by the owner on 2026-10-07 ("slice 2 ok") and in its specify joint pass: SPEC-0007 §1, §2 and §4 to §8 for slice 2 written (`architect-slice2`), increments 14 to 22 planned; joint-pass step 3 and the devils-advocate pass returned, their findings applied (`architect-slice2-fix`), SPEC-0007 back to `active`; next, product's §3 and §9 lines and tester's §10 rows for those findings, the owner's `repo:` ruling (§12 question 6), then RED
 - Related files: `tools/source-index.py` (new), `tools/source_paths.py` (new), `tools/code-anchor.py`, `tools/growth-audit.py`, `tools/plant_walk.py`, `tools/graft-audit.py`, `tools/gate-registry.py`, `install.sh`, `manifest.json`, `tests/run.sh`, `tests/test-source-index.sh` (new), `tests/test-code-anchor.sh`, `tests/test-growth-audit.sh`, `tests/test-full-install.sh`
 - Related documentation: `docs/plans/grill-8.0.0-wave-a.md` (the previous plan the gate linted, and the shape this one follows); the session record of 2026-10-07, its gap reports and the review report `review-spec.md`, kept outside the seed under the seed workspace `.seed-worktrees/records-8.1.0-source-index/`
 - Related ADRs: [ADR-0029](../decisions/adr-0029-source-index-is-derived-scratch.md) (proposed: the index is derived scratch); the round works under [ADR-0018](../decisions/adr-0018-code-fact-freshness-anchor.md) (the code anchor, no per-file or per-prompt staleness tool), [ADR-0021](../decisions/adr-0021-seed-only-procedures-stay-home.md) (the manifest's `tools` map equals what the installer places) and [ADR-0023](../decisions/adr-0023-a-declarative-edit-is-proved-by-a-run.md) (a declarative edit is proved by a run)
@@ -33,7 +33,9 @@ and, earlier the same day, the correction that set the direction: CodeGraph's go
 
 Success means: a plant answers "what depends on these files", "which tests do these files reach" and "which graph pages cite these moved files" from a derived, rebuildable index, every answer naming what it could not resolve and failing toward running more; the seed reads as if the tool had always been there (one helper holds the rules `code-anchor.py` and `growth-audit.py` already apply, and both keep their behaviour); a fresh install places the tool, and a graft rebuilds its cache.
 
-Out of scope (SPEC-0007 §2): slice 2 (symbols, co-change history, wiring into verify, canonize and grow); read deduplication (a separate spec); and, never, tree-sitter, SQLite, a daemon, MCP, CodeGraph itself, other languages, a call graph, per-prompt use, or any automatic decision.
+Slice 2, the owner's words (2026-10-07), verbatim: "slice 2 ok". It ships inside 8.1.0, before the branch merges (§6, release row).
+
+Out of scope (SPEC-0007 §2): who references a name, TS/JS class members, history across renames, a text inventory view; read deduplication and symbol excerpts (a separate spec); and, never, tree-sitter, SQLite, a daemon, MCP, CodeGraph itself, other languages, a call graph, per-prompt use, or any automatic decision.
 
 ## 3. User Goal
 - Primary user: the orchestrating session that plans and verifies a change; a worker inside a brief; a plant owner at a shell
@@ -83,11 +85,11 @@ no external dependency — every increment uses stdlib Python (`ast`, `json`, `h
 | The cache is derived scratch: `.cypress/source-index/` with a self-written `.gitignore` of `*`, keyed on schema, tool digest, config digest and each repository's HEAD and dirty digest; full rebuild on mismatch; never committed; graft carries no rule for it | ADR-0029 | ADR-0029 | reversible | [ADR-0029](../decisions/adr-0029-source-index-is-derived-scratch.md) | 2026-10-07 |
 | Anchors read citations live on each query; history pages (`plans/`, `specs/`, `decisions/`) are counted, listed only with `--all` | node edits are not code, so caching them would widen the key; 59 percent of Vivid's cite pairs are history | §5 | reversible | none | 2026-10-07 |
 | Placement tests live in their owner suite, `tests/test-full-install.sh` (beside E6 and E14); every other SPEC-0007 case lives in one new file, `tests/test-source-index.sh` | one strong owner per behaviour; the plan's one test file for the tool's contracts | `tests/test-full-install.sh` E6, E14 | reversible | none | 2026-10-07 |
-| SPEC-0007 is planned in one slice; slice 2 (symbols, history, wiring) is a later spec revision | the owner's plan; slice 1 must be measured first | session record "Owner approval" | reversible | none | 2026-10-07 |
+| (superseded below: the owner approved slice 2 on 2026-10-07, added to SPEC-0007 by slice) SPEC-0007 is planned in one slice; slice 2 (symbols, history, wiring) is a later spec revision | the owner's plan; slice 1 must be measured first | session record "Owner approval" | reversible | none | 2026-10-07 |
 | Owner ruling: one walk, three link kinds, for `impact`, `affected-tests` and `anchors`. A row is `certain`, or `maybe` with the reason and line of its weakest link; what the tool cannot answer is `incomplete` with a reason and one action per query (`impact` "check by hand", `affected-tests` "run the full suite", `anchors` "review by hand"); `affected-tests` is the walk filtered by test class plus the always-run set. Supersedes the `uncertain`, provenance and `full_suite` rows above; the second walk and its test pass-through rule are gone | one concept had four signals (`full_suite`, `unavailable`, `unknown_inputs`, `truncated`) and two walks; the tool serves the project's code, not only its tests | the owner, 2026-10-07: "but i accept the three-kind rule" and "this change does not only apply to tests but also information regarding the actual repo/project code"; review B1, M11 | reversible | none | 2026-10-07 |
 | Owner ruling: the helper `tools/source_paths.py` takes code-anchor's Git boundary, blob hash and atomic write with the code-path rule, and holds the one citation-resolution function whose strict plant-relative mode is `cite_problem` | one home per security rule and per resolution rule | the owner, 2026-10-07: "3 accept"; review M7 | reversible | none | 2026-10-07 |
 | Owner ruling: the test roots are `TEST_GLOBS` from `docs/graph/spec-lint.py`; the optional `docs/graph/source-index.json` holds `exclude`, `always_run` and `global_inputs`. The key `full_suite_triggers` is renamed `global_inputs`: a change to such a file may affect every file, so every query is `incomplete` with reason `global-input` | the trigger list is a code fact (a tsconfig edit moves every alias), not a test rule | the owner, 2026-10-07: "2 yes ok accept"; the rename was the session's proposal, the owner answered "proceed"; review M3 | reversible | none | 2026-10-07 |
-| Owner ruling: `graph-lint.py` keeps its own tier-2 path rule this slice, recorded as accepted debt; the anchors' resolution lives in the helper, and graph-lint's copy is the debt §12 question 2 pins | an engine-placement change the plan did not name | the owner, 2026-10-07: "4 yes"; review M7 | reversible | none | 2026-10-07 |
+| (superseded below by the slice-2 helper row of 2026-10-07) Owner ruling: `graph-lint.py` keeps its own tier-2 path rule this slice, recorded as accepted debt; the anchors' resolution lives in the helper, and graph-lint's copy is the debt §12 question 2 pins | an engine-placement change the plan did not name | the owner, 2026-10-07: "4 yes"; review M7 | reversible | none | 2026-10-07 |
 | Inputs and walk rules after review: `exclude` changes the test class only (an excluded file keeps its links); a `not-code` input is answered, never incomplete; a deleted input that a stored reference names is walked; a repository-relative input resolves under each governed root; a target in another governed repository is a `certain` link; directory literals, tree walkers and workspace package names are `maybe`; a `TEST_GLOBS` matching nothing is `incomplete`; a depth-cap cut is `incomplete` | each closes a silent drop the review found; all follow from the one-walk ruling | review M1, M2, M4, M5, M6, M8, m12 | reversible | none | 2026-10-07 |
 | The helper extraction carries no SPEC-0007 contract: increments 1 and 2 are gated by the existing code-anchor and growth-audit suites, and SPEC-0007 is promoted to `active` after spawn R1 (increments 3 to 7) lands | spec-lint reads run-proved contracts only from `plans/grill.md`, so run-proved slugs here would count UNCOVERED; SPEC-0003 and the growth-audit suite already own that behaviour; all SPEC-0007 contracts go live at once | review B2, m19; `spec-lint.py` `run_proved` | reversible | none | 2026-10-07 |
 | Deliberately unreadable fixture files stay opaque and join every walk as `maybe` rows; the noise is accepted this slice | a data class would be a concept the plan did not name; each such row names its reason and holder | review m21 | reversible | none | 2026-10-07 |
@@ -103,6 +105,17 @@ no external dependency — every increment uses stdlib Python (`ast`, `json`, `h
 | The floor part of the walk has no depth bound; `depth-cap` comes from the input part alone, a file it reaches at `--depth` with a dependent neither part lists (D4) | `--depth` bounds the distance from an input, and the floor is the index's; on the llama.cpp clone the floor's cut made every answer `incomplete` ("run the full suite" whatever the input); walking it whole is one linear pass and cuts nothing. A capped floor with a "truncated" marker was rejected: it is a fourth signal beside `certain`, `maybe` and `incomplete`, which the one-walk ruling removed | §10 measurement D4; the one-walk ruling above | reversible | none | 2026-10-07 |
 | Commands in host settings files (`.claude/settings.json` hook entries) are not read this slice (D3) | `json` is a link target only; one parser per host settings shape is a concept the plan did not name; stated in SPEC-0007 §2 so no reader takes the hook script's empty dependents as proof | §10 measurement D3 | reversible | none | 2026-10-07 |
 | Release and sequencing: the seed branch `experimental/source-index` is not merged until every open owner decision is settled and implemented; the version is 8.1.0 and slice 2 ships inside 8.1.0, after slice 1's open decisions; no graft into any plant now | the owner sequences the release | owner, 2026-10-07: "1 not until everything i have to decide is settled and impkemented ... 3 8.1.0, dont' graft ... 7 after we did the abovve. slice 2 is still 8.1" | reversible | none | 2026-10-07 |
+| Owner: slice 2 approved: (a) a definition index, (b) Git co-change history as an optional link source, (c) the on-demand wiring of verify, canonize and grow, (d) `anchors --moved`, (e) graph-lint's tier-2 path rule on the helper; it ships inside 8.1.0 and adds no graft | the plan's slice 2, after slice 1 was measured (§10) | the owner, 2026-10-07: "slice 2 ok" | reversible | none | 2026-10-07 |
+| Design latitude for slice 2: balanced, as slice 1. New structure only where the slice needs it: one record (`symbol`), one opt-in answer list (`history`), one function in `code-anchor.py`, two string functions in the helper and its seed copy beside `graph-lint.py`; no other concept | the slice-1 latitude row; the owner's slice-2 approval names the five items and nothing more | SPEC-0007 §0; the owner, 2026-10-07 | reversible | none | 2026-10-07 |
+| The definition query is `symbols <name>...`. Definitions are read at build from the parse the links already make and cached (`INDEX_SCHEMA` `/2`); a Python definition read by `ast` is `certain`; shell functions and TS/JS declarations, exported or not, read a line at a time after comments are blanked, are `maybe` (reason `line-reading`); every definition of a name is listed and ambiguity is no `incomplete`; a link-bearing file with an `unreadable` record makes the answer `incomplete` (`unreadable-file`). The plan named "TS/JS exports"; shell functions and non-exported TS/JS declarations are read too, because an empty answer for a name a file defines would be a silent drop under the three-kind rule | the largest index-answerable class of worker searches is inventory plus identifier lookup (up to 47 percent of searches); the seed defines 53 shell functions in `install.sh` (`place_file`, a named search target) and its TypeScript functions are not exported (`integrations/prime-agent/route-extension.ts` 38-67); a line reading can mistake a declaration inside a string, so it is never `certain` | gap report "discovery" (classes B, C; targets `place_file`, `def parse_frontmatter`, `^[a-z_]*() *{`); the 2026-10-07 seed scan: 1,975 names, 2,257 definitions, no `unreadable` record | reversible | none | 2026-10-07 |
+| History: the flag is `--history` on `impact` and `affected-tests`; it is read per query from `git log --no-merges -n 500` (`HISTORY_COMMITS`) and never cached; a commit changing more than 40 inventory files (`HISTORY_MAX_FILES`) is not read; each row is `maybe`, kind and found `history`, with `together: {count, of}`; rows are listed apart in `history`, hold only files no other list holds, and are never walked; shallow or missing history is `incomplete` | the strongest single mechanical signal measured (history alone 0.85 recall, with path literals 0.97); "only adds" keeps every other list byte-equal, which a test can hold; live reading follows the anchors citations (ADR-0029: derived, nothing cached that a query can read cheaply); 40 sits above the seed's p90 commit (29 files) and below its bulk commits (185 to 396) | gap report "cochange" (H, H + C); the 2026-10-07 seed history: 169 non-merge commits, median 5 and p90 29 inventory files per commit | reversible | [ADR-0029](../decisions/adr-0029-source-index-is-derived-scratch.md) | 2026-10-07 |
+| `anchors --moved` reads code-anchor's moved list through one function, `moved_list(root)`, that `code-anchor.py` gains and its `--compare` calls (its output unchanged); the tool loads `code-anchor.py` from beside itself by file path; each repository-relative path is joined to its repository, so the answer equals `anchors <those paths>`; no anchor, or an unverified repository, is `incomplete` (`moved-unavailable`, `moved-unverified`). Closes §12 question 3 | one home for "what moved"; parsing `--compare` text would read a budgeted view whose paths are joined by ", "; a `--json` on code-anchor would add a SPEC-0003 surface for one consumer | `tools/code-anchor.py` `moved`, `report`, `compare` (252-331) | reversible | none | 2026-10-07 |
+| Graph-lint's tier-2 path rule moves onto the helper as `repo_claim(value, path)` and `path_matches(path, pattern)`, each graph-lint's code unchanged; graph-lint loads the helper from beside itself; the seed holds `templates/knowledge-graph/source_paths.py` byte-identical to `tools/source_paths.py`, checked by `tests/seed-lint.py` as the frontmatter copies are; graph-lint's messages and verdicts stay, proved by its suites with no assertion edited. `anchors` and the tool's config patterns call the same two functions. Closes §12 question 2; supersedes the slice-1 accepted-debt row | one home per resolution rule (the owner's helper ruling); in plants both files already sit in `docs/graph/`, `source_paths.py` placed on every install and graft | `templates/knowledge-graph/graph-lint.py` `_path_matches` 1184, `_named_paths` 1250-1257; `tools/source-index.py` `config_matches` 304; `tests/seed-lint.py` `FRONTMATTER_COPIES` 748 | reversible | none | 2026-10-07 |
+| Intended revision of a signed slice-1 contract: `anchors` takes graph-lint's `repo:` reading, so `repo: src/` (and an unnormalized value such as `./src/lib`) no longer claims; `ANCHORS_NAME_CITING_PAGES_OR_UNCITED` loses its `repo-prefix` arm, which moves to `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS`, and the X445 arm is edited once, recorded in SPEC-0007 §12 as the slice-1 m6 change was | the two readings differed only on a single-segment value with a trailing `/`; graph-lint's verdicts must not change, and a root claim read as a prefix made every file of a nested repository a `maybe` fact of `repo: Cypress/` | SPEC-0007 §4, §6 "Helper", §12; this plant's `repo:` values (5 `Cypress`, 1 `Cypress/templates/`) | reversible | none | 2026-10-07 |
+| The protocol wiring is prose in the protocol and skill nodes, proved by seed-lint, prose-lint and the protocol text, never a tool contract: verify takes `affected-tests` as the recommended floor of its focused gates and an `incomplete` answer as the "affected scope genuinely uncertain" row; canonize runs `anchors --moved` while assembling candidates, before the code anchor is recorded again; grow and adopt-existing give scouts `build --json`'s inventory as their file list; each runs once when its step needs it, never per prompt | the tool recommends and the protocol rules decide (owner rule); ADR-0018 withdrew per-prompt staleness tools | `protocols/verify.md` "Risk-proportional gate depth"; `protocols/canonize.md` flow steps 1 and 3; `protocols/grow.md` Phase 1; `skills/adopt-existing/SKILL.md` "Scout pass", "Refreshing an existing graph" | reversible | [ADR-0018](../decisions/adr-0018-code-fact-freshness-anchor.md) | 2026-10-07 |
+| (refines the `symbols` row above for TS/JS) A TS/JS declaration counts when its line begins at column 0, or after indentation with `export`; an indented declaration without `export` defines nothing; shell functions keep any indentation | 7,258 of Vivid's 10,133 line-read declarations (72 percent) were indented `const`/`let`/`var`, function locals (`symbols res` 273 rows); the Python reader leaves locals out, so one question had two rules; shell functions inside here-documents are about 2 percent of the seed's | devils-advocate slice-2 report (b); SPEC-0007 §6 "Definitions" | reversible | none | 2026-10-07 |
+| (qualifies the history row above) History stays opt-in with its guards, but its 0.85 and 0.97 recall figures are circular: the co-change truth set is "tests edited in the same commit", which history predicts by construction. Increment 22 scores history against another truth (a RED commit's tests paired with the next GREEN commit's sources, a cross-commit window) or reports it as unvalidated, and records a removal criterion before release: history adds no recall on small commits under that window | test-first puts RED and GREEN in separate commits (the seed's `tools/source-index.py`: 5 commits, no test co-changed), so the in-commit figure says nothing about this seed | devils-advocate slice-2 report (a) | reversible | none | 2026-10-07 |
+| `graph-lint.py` loads the helper lazily, once per run, the first time tier 2 reads a task path; a helper that is absent, fails to load or lacks `repo_claim` or `path_matches` raises `HelperUnavailable` inside tier 2, which the router's existing catch turns into the `inference_skipped` notice while the route goes on to the next tier; no second copy of the rule and no new notice code; `sys.dont_write_bytecode` is set before both loads | `graph-lint.py` is `place_if_missing` (`install.sh` 1533) and `source_paths.py` `place_file` (1571), so a plain re-install can pair a newer helper with an older engine; an eager load would fail every routed prompt, and the route hook drops a failed router silently (`route-hook.py` 262); the notice reaches the session as a `!` line; a second copy of the rule for the fallback would be a second home | devils-advocate slice-2 report (d); security S7; `graph-lint.py` 1393-1402 (the existing tier-2 catch) | reversible | none | 2026-10-07 |
 
 ## 7. Options Considered
 | Option | Benefits | Costs | Risks | Outcome |
@@ -120,6 +133,12 @@ no external dependency — every increment uses stdlib Python (`ast`, `json`, `h
 | `exclude` removes files from the inventory | a smaller index | real dependents vanish from `impact` (Vivid's `tests/experimental/**` imports `src/`) | a missing link shown as no dependency | Rejected (§6, review M4) |
 | Directory references and tree walkers are not links | the co-change study found no test recall in them | code that copies or walks a tree loses its dependents | silent drops for the code that does things | Rejected (§6, review M5) |
 | Per-prompt or hook use of the queries | answers without asking | ADR-0018 withdrew per-file and per-prompt staleness tools | context cost every prompt | Rejected (SPEC-0007 §2) |
+| Slice 2: definitions of TS/JS exports only, as the plan worded it | the narrowest reading | a name a shell file or a non-exported TS/JS declaration defines answers empty | a silent drop the three-kind rule forbids | Rejected (§6): shell functions and every TS/JS declaration, each `maybe` |
+| Slice 2: history rows mixed into `dependents` and `tests` | one list | a history row could move a file out of `floor` or `always_run`, or sit beside its code row | "never removes a row" no longer testable as list equality | Rejected (§6): the apart `history` list, files no other list holds |
+| Slice 2: history as a walk step, or cached in the index | wider reach; no `git log` per query | noise compounds along a chain; a cache shape for an opt-in source | a weak signal read as a chain | Rejected (§6); read live, one step |
+| Slice 2: `anchors --moved` parses `code-anchor.py --compare` text, or code-anchor gains `--json` | no code-anchor change; a stable format | the text is budgeted and joins paths with ", "; a new SPEC-0003 surface for one consumer | a path with ", " misread; two shapes of one list | Rejected (§6): one function, `moved_list`, both call |
+| Slice 2: `graph-lint.py` keeps its own `repo:` and pattern rules | no engine change | two homes of one rule, which already disagree on `repo: src/` | the router and `anchors` disagree on which node a path belongs to | Rejected (§6): the helper's two functions, graph-lint's verdicts kept |
+| Slice 2: a text inventory view (`build --list`) for scouts | a ready list in a shell | a new output contract for what `build --json` already carries | none beyond a new surface | Deferred (SPEC-0007 §2 out of scope) |
 
 ## 8. Architecture Plan
 - System boundary: one placed CLI over the plant's governed Git repositories and its `docs/graph/` pages; no network, no model, no hook
@@ -128,7 +147,9 @@ no external dependency — every increment uses stdlib Python (`ast`, `json`, `h
 flowchart LR
   subgraph Seed tools/
     SI[source-index.py]
-    SP[source_paths.py: code-path rule, governed repos, Git boundary, blob hash, atomic write, citation grammar and resolution, cite_problem]
+    SP[source_paths.py: code-path rule, governed repos, Git boundary, blob hash, atomic write, citation grammar and resolution, cite_problem, repo_claim, path_matches]
+    GL[templates/knowledge-graph/graph-lint.py]
+    SPC[templates/knowledge-graph/source_paths.py: byte-identical copy]
     PW[plant_walk.py]
     CA[code-anchor.py]
     GA[growth-audit.py]
@@ -136,6 +157,8 @@ flowchart LR
   end
   SI --> SP
   SI --> PW
+  SI -.->|anchors --moved: moved_list| CA
+  GL --> SPC
   CA --> SP
   GA --> SP
   GA --> PW
@@ -147,10 +170,12 @@ flowchart LR
     PG[docs/graph/**/*.md citations] --> SI
     C[.cypress/source-index/ index.json + .gitignore] <-->|key check, atomic write| SI
   end
-  SI -->|impact, affected-tests, anchors: text or --json| U[session, worker, owner]
+  G -->|git log, per --history query| SI
+  SI -->|impact, affected-tests, anchors, symbols: text or --json| U[session, worker, owner]
+  U -->|on demand: verify, canonize, grow and adopt steps| SI
   IN[install.sh place_file] -->|docs/graph/source-index.py, source_paths.py, plant_walk.py| Plant
 ```
-- Main components: the helper (the one home of the shared rules, citation resolution included); the indexer (inventory, link extraction per language, resolution, opaque and unresolved records); the cache (key, read, rebuild, write); one reverse walk over the links at nearest depth with weakest-link chains, in two parts (the input rows, and the floor reached from the opaque holders, listed apart), filtered per query (`impact` all rows, `affected-tests` the test class plus always-run); the citation join for `anchors`
+- Main components: the helper (the one home of the shared rules, citation resolution and, from slice 2, the `repo:` claim and path-pattern rules graph-lint calls too); the indexer (inventory, link extraction per language, resolution, opaque and unresolved records, and from slice 2 the definitions); the cache (key, read, rebuild, write); one reverse walk over the links at nearest depth with weakest-link chains, in two parts (the input rows, and the floor reached from the opaque holders, listed apart), filtered per query (`impact` all rows, `affected-tests` the test class plus always-run); the citation join for `anchors`, over named paths or code-anchor's moved list; slice 2's `symbols` lookup over the cached definitions and the opt-in history reader (one `git log` per repository holding an input, its rows listed apart)
 - Interfaces: the CLI and the answer document of SPEC-0007 §6; the helper's functions as module attributes, loaded by file path like `frontmatter.py`
 - Data flow: Git lists files, the helper filters them by the code-path rule and `plant_walk.is_foreign`, the indexer reads each file once and resolves references against the inventory, the cache stores the sorted result, a query walks it
 - Error handling: every doubt resolves toward checking more: an unpinned reference makes its holder opaque or its links `maybe`, and what the walk cannot answer makes the answer `incomplete` with a reason and the query's action; every query exits 0 (SPEC-0007 §6 "Incomplete", §7)
@@ -176,6 +201,11 @@ Increments are inline; numbers are dependency order. Two lanes run in parallel a
 | G4 | review fixes (8, 9, 10) | `implementer` | GREEN medium-hard: one spawn, the whole fix list |
 | R3 | final decisions D1, D2, D4, R1 and the G4 fixes m2, m3, m4 (9, 10, 8) | `tester` | RED medium-hard: one spawn, every arm |
 | G5 | final decisions D1, D2, D4, R1 (9, 10) | `implementer` | GREEN medium-hard: one spawn, the whole list |
+| R5 | 14, 15, 16 (slice 2) | `tester` | RED medium: three |
+| G7 | 17, 18 (slice 2) | `implementer` | GREEN medium-hard: two |
+| G8 | 19, 20 (slice 2) | `implementer` | GREEN medium-hard: two |
+| P2 | 21 (slice 2) | one writer | prose, one file set |
+| M2 | 22 (slice 2) | one measuring worker | a measurement, recorded in §10 by the session |
 
 R0 and R1 may run side by side; G0 after R0; G1 after G0 and R1.
 
@@ -328,6 +358,111 @@ no consolidation: the spec's cases are planned one per contract into one new fil
 - Phase: prose
 - Depends on: increment 12
 
+### Slice 2 (owner, 2026-10-07: "slice 2 ok")
+
+The slice adds its SPEC-0007 contracts before its RED (`protocol.specify`, a spec may grow by slice): joint-pass step 3 (product's §3 fixes and §9, tester's §10 rows, the security review) signs the slice, then R5 lands every slice-2 case red at once, G7 and G8 turn them green, the reviewer re-reads the G7 and G8 diffs, verify runs the full seed gate and M2 measures once, and canonize closes the round. A RED and its GREEN are separate spawns (`delegation.effort-scale`); each GREEN spawn runs its own cases and the slice-1 suite before it hands back.
+
+### Increment 14 — RED: definitions and the `symbols` query
+- Spec contracts: SPEC-0007/SYMBOLS_PYTHON_DEFINITIONS_CERTAIN, SPEC-0007/SYMBOLS_LINE_READ_DECLARATIONS_ARE_MAYBE, SPEC-0007/SYMBOLS_LIST_EVERY_DEFINITION, SPEC-0007/SYMBOLS_UNREADABLE_FILE_MAKES_IT_INCOMPLETE
+- Files touched: `tests/test-source-index.sh` (new cases from label X450; its `INDEX_SCHEMA` constant set to `cypress.source-index/2`, a constant no assertion reads)
+- Tests to write (RED): up to 4 cases, one per contract, with arms for the failures DEFINITIONS_UNREADABLE and LINE_READ_DECLARATION_IN_TEXT (a here-document line that reads like a function is a `maybe` row), the TS/JS indentation rule inside SYMBOLS_LINE_READ_DECLARATIONS_ARE_MAYBE (an indented `const local` and `function nested` are `undefined`, an indented `export function ns` inside a `namespace` is listed), and a USAGE_REFUSED arm in X447 (a name `NAME_RE` does not match whole, `a..b` and a name ending in a newline read from `-`; `--history` on `symbols`); synthetic files named in SPEC-0007 §4
+- Behavior added: none
+- Gate: each new case fails on its own message; every slice-1 case stays green
+- Rollback path: revert the test commit
+- Effort: medium
+- Phase: RED
+- Depends on: increment 13
+
+### Increment 15 — RED: history links
+- Spec contracts: SPEC-0007/HISTORY_ROWS_ARE_MAYBE_WITH_THEIR_COUNT, SPEC-0007/HISTORY_ONLY_ADDS, SPEC-0007/HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE
+- Files touched: `tests/test-source-index.sh`
+- Tests to write (RED): up to 3 cases, one per contract, committing with fixed author and committer dates; arms for HISTORY_SHALLOW (`git clone --depth 2 file://<origin>` of the three-commit origin SPEC-0007 §4 names; a plain path clone ignores `--depth` and is not shallow), HISTORY_UNAVAILABLE (a repository with no commit) and HISTORY_BULK_COMMIT (a commit over `HISTORY_MAX_FILES`); a USAGE_REFUSED arm in X447 (`--history` on `anchors`); HISTORY_ONLY_ADDS compares every key but `history` and `cache`
+- Behavior added: none
+- Gate: each new case fails on its own message
+- Rollback path: revert the test commit
+- Effort: medium
+- Phase: RED
+- Depends on: increment 14
+
+### Increment 16 — RED: the moved list and the one claim rule
+- Spec contracts: SPEC-0007/ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS, SPEC-0007/ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE, SPEC-0007/REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS, SPEC-0007/ANCHORS_NAME_CITING_PAGES_OR_UNCITED
+- Files touched: `tests/test-source-index.sh` (the moved and claim cases copy `tools/code-anchor.py` and `templates/knowledge-graph/graph-lint.py` into the plant's `docs/graph/` beside the tool; X445's `repo: src/` arm edited to "claims nothing", the one intended assertion edit of the slice, SPEC-0007 §12)
+- Tests to write (RED): up to 3 cases, one per new contract, with arms for MOVED_LIST_UNAVAILABLE (a placed code-anchor with no `moved_list` among them), MOVED_REPOSITORY_UNVERIFIED and HELPER_ABSENT_BESIDE_GRAPH_LINT (no `source_paths.py` beside `graph-lint.py`: `--plan-json` exits 0 with the `inference_skipped` notice and no `named_path` entry through a `repo:` claim); USAGE_REFUSED arms in X447 (`--moved` beside a path; `--moved` on `impact`); and the X445 arm edit. ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS compares every key but `cache`. The claim case's `repo:` arms wait for the owner's ruling (§12 question 6)
+- Behavior added: none
+- Gate: each new case and the edited X445 arm fail on their own messages
+- Rollback path: revert the test commit
+- Effort: medium
+- Phase: RED
+- Depends on: increment 15
+
+### Increment 17 — GREEN: definitions and the `symbols` query
+- Spec contracts: SPEC-0007/SYMBOLS_PYTHON_DEFINITIONS_CERTAIN, SPEC-0007/SYMBOLS_LINE_READ_DECLARATIONS_ARE_MAYBE, SPEC-0007/SYMBOLS_LIST_EVERY_DEFINITION, SPEC-0007/SYMBOLS_UNREADABLE_FILE_MAKES_IT_INCOMPLETE
+- Files touched: `tools/source-index.py`
+- Tests to write (RED): none — increment 14's cases authorize it
+- Behavior added: the definition reader in the Python, shell and TS/JS passes the links already make (SPEC-0007 §6 "Definitions"): the Python reader iterative over statement bodies, never into expressions, its `RecursionError` or `MemoryError` making the file `unreadable` with its definitions dropped beside its links; TS/JS declarations at column 0 or after `export` only; `symbols` in the cache (`INDEX_SCHEMA` `/2`) and its shape check over each `symbols` record; the `symbols` query, `NAME_RE` by `re.fullmatch`, the `unreadable-file` record, the text view (input names through the `?` replacement) and the build count line. Structure: the reader lives in `Extract` beside the link readers, no new module
+- Gate: increment 14's cases green; every slice-1 case green; `tests/test-tool-help.sh`
+- Rollback path: revert; the next query rebuilds a `/1` cache
+- Effort: medium-hard
+- Phase: GREEN
+- Depends on: increment 16
+
+### Increment 18 — GREEN: history links
+- Spec contracts: SPEC-0007/HISTORY_ROWS_ARE_MAYBE_WITH_THEIR_COUNT, SPEC-0007/HISTORY_ONLY_ADDS, SPEC-0007/HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE
+- Files touched: `tools/source-index.py`
+- Tests to write (RED): none — increment 15's cases authorize it
+- Behavior added: `--history` on `impact` and `affected-tests`: one `git log --no-merges --no-renames --no-show-signature --no-color --format=/%P` per repository holding a walked input through the helper's `git`, a parentless commit (root or shallow boundary) not read, the bulk-commit rule, `together` counts, the apart `history` list, `history-shallow` (any probe output but `false`) and `history-unavailable`, `HISTORY_LINE` in the text view
+- Gate: increment 15's cases green; every slice-1 case green
+- Rollback path: revert
+- Effort: medium
+- Phase: GREEN
+- Depends on: increment 17
+
+### Increment 19 — GREEN: the moved list
+- Spec contracts: SPEC-0007/ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS, SPEC-0007/ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE
+- Files touched: `tools/code-anchor.py` (`moved_list(root)`, the per-repository moved list `--compare` prints, which `compare` now calls; its output unchanged; `read_anchor` takes the root as a parameter instead of the module `ROOT`); `tools/source-index.py` (`anchors --moved`, loading `code-anchor.py` from beside itself by file path, its load and call inside one guard that catches code-anchor's own exception classes and any other exception, `SystemExit` included)
+- Tests to write (RED): none — increment 16's moved cases authorize it
+- Behavior added: `anchors --moved`; `moved-unavailable`, `moved-unverified`; `MOVED_NONE_LINE`
+- Gate: increment 16's moved cases green; `bash tests/test-code-anchor.sh` and `bash tests/test-prompt-hooks.sh` green with no assertion edited
+- Rollback path: revert
+- Effort: medium
+- Phase: GREEN
+- Depends on: increment 18
+
+### Increment 20 — GREEN: graph-lint's tier-2 path rule on the helper
+- Spec contracts: SPEC-0007/REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS, SPEC-0007/ANCHORS_NAME_CITING_PAGES_OR_UNCITED
+- Files touched: `tools/source_paths.py` (`repo_claim`, `path_matches`, moved from graph-lint unchanged); `templates/knowledge-graph/source_paths.py` (new, a byte-identical copy); `templates/knowledge-graph/graph-lint.py` (sets `sys.dont_write_bytecode` before its loads; loads the helper lazily from beside itself the first time tier 2 reads a path, a failed load raising `HelperUnavailable` into the existing tier-2 catch; `_named_paths` and the expertise inference call the two functions; `_path_matches` leaves); `tools/source-index.py` (`anchors` and `config_matches` call them); `tests/seed-lint.py` (the copy held byte-identical, beside `FRONTMATTER_COPIES`); every test fixture that copies `graph-lint.py` beside `frontmatter.py` copies `source_paths.py` too, setup only (candidates from `grep`: `tests/test_graph_lint.py`, `tests/test-prompt-hooks.sh`, `tests/test-seed-lint.sh`, `tests/test_agent_lint.py`); `manifest.json`, `tools/graft-audit.py` and the placement checks only if `tests/seed-lint.py` or `tests/test-graft-tools.sh` name the new seed file
+- Tests to write (RED): none — increment 16's claim case and its X445 arm authorize it
+- Behavior added: one `repo:` claim rule and one path-pattern rule for the router and the tool; graph-lint's messages and verdicts unchanged. Structure: the two functions are the present variation's one home (three callers: graph-lint, `anchors`, the plant config)
+- Gate: increment 16's claim case and X445 green; `python3 -m pytest tests/test_graph_lint.py` (or the run.sh step that runs it), `bash tests/graph-route-eval.sh`, `bash tests/test-prompt-hooks.sh`, `tests/seed-lint.py` and `tests/test-full-install.sh` green with no assertion edited; then the full gate `bash tests/run.sh` at the tip
+- Rollback path: revert; a plant keeps its placed copies until the next install
+- Effort: medium-hard
+- Phase: GREEN
+- Depends on: increment 19
+
+no consolidation: each slice-2 contract gets one case in the suite that owns the tool, `tests/test-source-index.sh`; the graph-lint suites gain fixture copies only, no case; X445 loses one arm to the new claim case instead of a second case asserting the same rule. The reviewer checks this claim against the diff.
+
+### Increment 21 — Prose: the protocols call the tool on demand, and the seed describes slice 2
+- Spec contracts: none — prose wiring, proved by `tests/seed-lint.py`, the `prose-lint.py` steps of `tests/run.sh` and the protocol text (SPEC-0007 §2: the wiring adds no tool contract)
+- Files touched: `protocols/verify.md` ("Risk-proportional gate depth": after GREEN and before the session chooses its gates, `affected-tests` is the recommended floor of the focused tests on a known affected path, the session may run more and never reads a test's absence as proof (SPEC-0007 §5); an `incomplete` answer is the "affected scope genuinely uncertain" row); `protocols/canonize.md` (flow step 1: the session runs `anchors --moved` once, before `code-anchor.py --record`, and hands its pages to the librarian as re-check candidates); `protocols/grow.md` (Phase 1 "Inventory cheaply": before the scouts are briefed, `build --json`'s `inventory` is their mechanical file list); the source-index tool node and tool card (one line: a worker asks `symbols <name>` before it searches the tree for a definition, the one place a worker learns the query exists); `skills/adopt-existing/SKILL.md` ("Scout pass" inventory; "Refreshing an existing graph" step 2: `impact` over the moved paths for the blast radius); `CHANGELOG.md` (the 8.1.0 entry, through the humanizer); `DOCUMENTATION.md`; `documentation/skills-and-templates-reference.md` (`symbols`, `--history`, `--moved`); `README.md` and `templates/knowledge-graph/index.md` only where they name the tool's queries. Each protocol line names exactly when the step calls the tool and says it runs once, never per prompt or per file access (ADR-0018 withdrew a freshness tool called at each file access)
+- Tests to write (RED): none — prose
+- Behavior added: none in code; the protocol steps name the queries
+- Gate: `bash tests/run.sh` green; `prose-lint.py --file` on each edited protocol node, against the branch's tip; the reviewer greps hooks and host settings files for `source-index`: no match (ADR-0018)
+- Rollback path: revert the prose commit
+- Effort: medium
+- Phase: prose
+- Depends on: increment 20
+
+### Increment 22 — Measurement: slice 1 again, symbol coverage and history recall
+- Spec contracts: none — a measurement, recorded in §10 and not gated (SPEC-0007 §5)
+- Files touched: none in the seed; scripts and raw answers outside it, in the session's measurement directory; the session writes the figures into §10
+- Tests to write (RED): none — a measurement
+- Behavior added: none. Measured on temp plants only, never in a real plant: (1) the slice-1 §10 recall script re-run at the tip (full, input rows only, `certain`-only; floor size); (2) symbol coverage: the class-C identifier patterns of the discovery report's script re-read over the CYPRESS rollouts, each identifier asked of `symbols` on a temp plant over a seed clone and a copy of Vivid, reported as the share answered with a definition, the share `undefined`, and the share whose real definition lies outside what §6 "Definitions" reads; (3) history recall, scored against a truth history does not produce by construction: each RED commit's tests paired with the sources of the next GREEN commit (a cross-commit window), `affected-tests --history` on the GREEN sources, recall and mean predicted with and without the `history` list and `history` alone; the gap report's 0.85 and 0.97 are not a baseline (they score history against in-commit co-change, which it predicts by construction); if no such window can be built, history is reported as unvalidated; the removal criterion (§6) is applied and its verdict recorded; (4) the SPEC-0007 §5 timings, slice 2 included
+- Gate: the figures recorded in §10 beside the slice-1 ones
+- Rollback path: not applicable — nothing lands in the seed
+- Effort: medium
+- Phase: prose
+- Depends on: increment 20
+
 ## 10. Verification Plan
 The standard gates hold (`bash tests/run.sh`). This plan diverges in four places:
 - A new gate step, `tests/test-source-index.sh`, enters `tests/run.sh` with increment 3, and `tools/gate-registry.py` classifies it (fixtures, representation: synthetic Git plants, not a real one).
@@ -343,6 +478,13 @@ Measurement recorded (2026-10-07, spawn `measure-si`; seed commit `17d4539`, eve
 - Sanity: Vivid `impact src/lib/env.ts` gave 27 depth-1 `certain` rows, equal to the 27 importers `git grep` finds; llama.cpp `conversion/base.py` 93 `certain` rows, equal to its 93 importers.
 - Defects, each decided in §6 on 2026-10-07: D1, a segmented path join was neither link nor record (18 seed holder-target pairs); D2, the same in TS/JS (`path.join(dir, "route-hook.py")`); D3, hook commands in host settings JSON are not read (out of scope, SPEC-0007 §2); D4, on the llama.cpp clone the floor's depth cut made every answer `incomplete`; D5, a plant's test class holds fixtures, helpers and experimental suites until it sets `exclude` (§11).
 - Performance note, not a defect: on Vivid the TS comment stripping is half the profiled build, and the tsconfig lookup runs once per literal, not once per directory.
+
+Slice 2 (increments 14 to 22) keeps the standard gates and diverges in four places:
+- SPEC-0007's status moved from `implemented` to `active` when slice 2 reopened it (`architect-slice2-fix`, SPEC-0007 §12; slice 1's evidence stands there), and returns to `implemented` when every slice-2 row is green after G8 (`verify.status-evidence`). Until R5 lands the slice-2 cases, the working tree shows spec-lint's uncovered findings for the ten slice-2 contracts, as the slice-1 draft did; the spec is committed with R5.
+- The history figures the slice was planned on (0.85 alone, 0.97 with path literals, §6) are circular: they score history against tests edited in the same commit, which history predicts by construction. M2 scores history against a cross-commit window, or reports it as unvalidated (increment 22).
+- Graph-lint's move onto the helper (increment 20) is proved by its suites with no assertion edited (fixture copies only) and by `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS`; code-anchor's `moved_list` (increment 19) by `tests/test-code-anchor.sh` with no assertion edited. The one intended assertion edit is X445's `repo: src/` arm (§6).
+- The wiring (increment 21) is prose, proved by seed-lint, prose-lint and the protocol text; no step of `tests/run.sh` runs the tool from a protocol.
+- One measurement (increment 22, spawn M2) after G8, recorded here, not gated: the slice-1 recall again, symbol coverage over the discovery report's identifier searches, history recall with and without `--history`, and the §5 timings.
 
 ## 11. Risks and Mitigations
 | Risk | Probability | Impact | Mitigation | Owner | Verification |
@@ -368,15 +510,25 @@ Measurement recorded (2026-10-07, spawn `measure-si`; seed commit `17d4539`, eve
 | A symlinked page or source file makes the tool read, and echo through `reference` or a citation detail, a file outside the plant | low | medium | `O_NOFOLLOW` open, real path inside its repository, `reference` holds the specifier only, never the line | security | SPEC-0007 §7 `FILE_NOT_REGULAR`; §5 Security |
 | A non-UTF-8 or bidi-override file name crashes a `--json` write or misleads a reader of a brief | low | low | `surrogateescape` decode, `ensure_ascii` output, `?` in the text view | security | SPEC-0007 `OUTPUT_CARRIES_NO_RAW_CONTROL` (§7 `NON_UTF8_PATH`, `UNSAFE_PATH_TEXT`) |
 | A later slice wires `affected-tests` into verify as a gate, and an author hides a link the tool cannot see | medium | high | §5: the answer is a recommendation over cooperative code; no gate reads a test's absence as proof | security, architect | slice 2 review |
+| Co-change history is weak in a test-first repository: RED and GREEN land in separate commits, so a tool and its tests rarely change together (the seed's `tools/source-index.py`: 5 read commits, no test in any) | high | low | history is opt-in, `maybe`, listed apart and only adds; the code links carry the answer; the measurement reports history recall on the seed and on Vivid | architect | increment 22 |
+| `graph-lint.py` now needs a usable `source_paths.py` beside it: a hand-copied engine, or the reverse skew, where a plain re-install fast-forwards the helper (`place_file`) while the engine (`place_if_missing`) keeps its older calls until a graft | medium | medium | the helper loads lazily in tier 2 alone; a failed load or call costs tier 2 for that run, and the existing `inference_skipped` notice reaches the session as a `!` line, so routing degrades visibly instead of failing every prompt; considered and not added: a seed-lint pin of the two functions' signatures, because the fallback already contains the skew and the notice names it | implementer | SPEC-0007 §7 `HELPER_ABSENT_BESIDE_GRAPH_LINT` (an arm of X459); `tests/test-full-install.sh`; `tests/test-graft-tools.sh` |
+| A shallow CI checkout (`actions/checkout` with no `fetch-depth`) turns every `--history` answer `incomplete`, so an opt-in `maybe` source makes a complete code answer "run the full suite" | high | low | fails toward more, by the three-kind rule; the shallow boundary commit is never read (SPEC-0007 §6); the CI gate does not run `--history` | architect | SPEC-0007 `HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE` |
+| `symbols`, the query sized for workers, is used by no one: verify, canonize and grow are the session's steps, and no brief names the query | medium | low | increment 21 puts one line in the tool node and tool card the router loads for code lookup; after release, the discovery report's intent script is re-run and `source-index.py` calls counted by role, beside a removal criterion | docs writer (P2), steward | increment 21; a post-release measurement |
+| A deep expression in a committed Python file exhausts a recursive definition reader and crashes the build | low | medium | the reader walks statement bodies with an explicit stack and never descends into expressions; a `RecursionError` or `MemoryError` makes the file `unreadable` | implementer, security | SPEC-0007 §6 "Definitions"; increment 17 |
+| A line-read definition sits in a string or here-document, or a declaration the line reading cannot see (a class member) answers `undefined` | medium | low | line-read definitions are `maybe`; §6 "Definitions" names what is read; the measurement reports the share of searched identifiers defined outside it | architect | SPEC-0007 `SYMBOLS_LINE_READ_DECLARATIONS_ARE_MAYBE`; increment 22 |
+| Canonize runs `anchors --moved` after `code-anchor.py --record`, so the moved list is empty and nothing is re-checked | medium | medium | the canonize prose places the query in flow step 1, before step 3 records the anchor; the empty answer prints `MOVED_NONE_LINE`, which names the anchor | docs writer (P2), reviewer | increment 21; the reviewer reads the canonize diff |
+| Verify reads `affected-tests` as the set to run and skips a test an author hid from the index | medium | high | the verify prose calls it a floor, never a set; an `incomplete` answer is the uncertain-scope row; SPEC-0007 §5 says no gate reads a test's absence as proof | docs writer (P2), security | increment 21; the reviewer reads the verify diff |
+| The X445 revision (`repo: src/` no longer a claim) changes a signed contract's answer | low | low | recorded as an intended revision in SPEC-0007 §12 and §6 here; graph-lint's verdicts are the reference, so the router does not move | architect | X445 and `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` |
 
 ## 12. Open Questions
 | # | Question | Why it matters | Current assumption | How to resolve | Owner | Pinned by |
 |---:|---|---|---|---|---|---|
 | 1 | Does replacing "full_suite on an unresolved edge on a reached path" with `uncertain` walking (§6) keep the owner's intent? | the owner approved the condensed plan's wording | closed 2026-10-07 by the owner's one-walk ruling (§6): `certain`, `maybe`, `incomplete` with a per-query action | answered | owner | SPEC-0007/WALK_INCOMPLETE_NAMES_REASON_AND_ACTION |
-| 2 | Should `graph-lint.py` load the helper for its tier-2 path rule in slice 2? | graph-lint's copy is accepted debt beside the helper's citation resolution | no this slice (owner, §6) | slice 2's specify pass | architect | SPEC-0007/ANCHORS_NAME_CITING_PAGES_OR_UNCITED |
-| 3 | Should `anchors` take code-anchor's moved list directly (`--moved`), so the §3 flow needs no copying of paths? | code-anchor prints repository-relative paths; a repository-relative input now resolves under each governed root, ambiguous when several hold it | no this slice; the wiring is slice 2 | slice 2, with the canonize wiring | architect | SPEC-0007/INPUT_FORMS_RESOLVED |
+| 2 | Should `graph-lint.py` load the helper for its tier-2 path rule in slice 2? | graph-lint's copy is accepted debt beside the helper's citation resolution | closed 2026-10-07: yes, in slice 2 (owner: "slice 2 ok"); `repo_claim` and `path_matches` move into the helper, graph-lint's verdicts unchanged (§6) | answered | architect | SPEC-0007/REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS |
+| 3 | Should `anchors` take code-anchor's moved list directly (`--moved`), so the §3 flow needs no copying of paths? | code-anchor prints repository-relative paths; a repository-relative input now resolves under each governed root, ambiguous when several hold it | closed 2026-10-07: yes, in slice 2 (owner: "slice 2 ok"); `anchors --moved` reads `code-anchor.py`'s `moved_list`, each path joined to its repository (§6) | answered | architect | SPEC-0007/ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS |
 | 4 | Do the helper's moved Git boundary, content hash and atomic write fit the plan's "code-path rule and cited-path reading"? | the plan named two rules, this plan moves five | closed 2026-10-07: the owner accepted ("3 accept", §6) | answered | owner | SPEC-0007/GRAFT_REBUILDS_THE_CACHE |
 | 5 | Should a sibling load by file path (`Path(__file__).resolve().parent / "frontmatter.py"`) be a `certain` link? | the seed's main Python dependency is such a load, and as a `path-literal` it is never `certain`, so `tools/frontmatter.py` has no `certain` dependent | closed 2026-10-07: yes, this slice; the owner accepted recommendation (b) (§6): a load by file path is a `certain` `import` link | answered | owner | SPEC-0007/LINK_PYTHON_IMPORT_CERTAIN |
+| 6 | How does a `repo:` value with no `/` (after its leading and trailing `/` are cut) read: (A) a repository root that claims nothing, as graph-lint reads it today; (B) A plus normalizing `./src/lib`-style values; (C) the string rule for the router, and in `anchors` a slash-less value that is not a governed repository but a plain folder gives a `maybe` fact found `repo-folder`? | three nodes in another plant name plain folders (`repo: suricata`), which A and B leave `uncited` and complete, a silent drop under the three-kind rule | open: SPEC-0007 `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` and its rows stay as written, pending; no other slice-2 text depends on the choice | the owner rules A, B or C; the architect then amends the contract, §6 "Helper" and the §10 rows | owner | SPEC-0007/REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS |
 
 ## 13. Done Criteria
 - Every increment in §9 done, or struck with a dated reason.
@@ -385,9 +537,10 @@ Measurement recorded (2026-10-07, spawn `measure-si`; seed commit `17d4539`, eve
 - A fresh install places `docs/graph/source-index.py`, `source_paths.py` and `plant_walk.py`, and `build` exits 0 in it.
 - The §10 measurement is recorded in the deliver entry.
 - `bash tests/run.sh` is green at the tip with no step `not run`, `grill-lint.py` lints this plan from `ACTIVE_PLAN`, and `--waves` prints no overlap warning.
+- Slice 2: every increment from 14 to 22 done or struck with a dated reason; every slice-2 §10 row of SPEC-0007 `green` and the spec back to `implemented`; `tests/test-code-anchor.sh` and graph-lint's suites passing with no assertion edited; the X445 arm the one intended assertion edit; the increment-22 measurement recorded in §10.
 
 ## 14. Recommended Next Step
-The session spawns R3 (`tester`: the arms §9 names, the SPEC-0007 §10 rows they touch) and then G5 (`implementer`); the reviewer re-reads the diff; verify runs `bash tests/run.sh` and the §10 recall script once; canonize (`docs-librarian`) records the D5 guidance (§11).
+The session asks the owner for the `repo:` ruling (§12 question 6) and meanwhile has `product` change the §3 "Slice 2" and §9 lines the `architect-slice2-fix` pass names (the TS/JS rule, the shallow boundary commit, the `cache` exception) and `tester` change the §10 rows it names, each signing §0; after the ruling, the architect amends the claim contract, then R5. History stays in the slice on the condition that M2 scores it without the circular co-change truth (§10) and applies the removal criterion (§6).
 
 ## 15. Changelog
 - 2026-10-07: plan written by the architect in joint pass step 2 (spawn `architect-s4b`), with SPEC-0007 §4 to §8 and ADR-0029 (proposed), from the owner-approved plan, the session record and its gap reports (languages, discovery, co-change, anchors, CodeGraph, current model). Prior spawns of the round: the gap scouts `gap-languages`, `gap-discovery`, `gap-cochange`, `gap-anchors-o`, in that order.
@@ -398,3 +551,5 @@ The session spawns R3 (`tester`: the arms §9 names, the SPEC-0007 §10 rows the
 - 2026-10-07: code-review fixes planned by the architect (spawn `architect-review-fixes`): SPEC-0007 §6 and §7 state fix-list item 12 (M1, M2, M3, M6, m1 to m4, m8, m9) and §12 records the intended growth-audit change m6; §9 adds spawns R2 and G4, one RED and one GREEN for the whole fix list.
 - 2026-10-07: slice-1 final decisions by the architect (spawn `architect-final`) after the measurement (spawn `measure-si`, recorded in §10): §6 rows for path joins (D1, D2), the `unmapped-specifier` opaque reason (R1), the floor walked with no depth bound (D4) and host settings commands out of scope (D3), each stated in SPEC-0007 §2, §4, §6 and §7; §9 adds spawns R3 and G5, with the R3 arms that also pin the G4 fixes m2, m3 and m4; §11 adds the D5 `exclude` guidance for grow and canonize and the floor-size risk; §0 and §14 moved on.
 - 2026-10-07: slice 1 implemented; SPEC-0007 `implemented` at `b70b0d9` with the full seed gate green (51 of 51).
+- 2026-10-07: slice 2 planned by the architect (spawn `architect-slice2`) in its specify joint pass, on the owner's "slice 2 ok": §0 phase, §2 owner quote and out of scope; §6 rows for the approval, the latitude, the `symbols` query, history, `anchors --moved`, graph-lint's rule on the helper, the X445 revision and the prose wiring (the slice-1 graph-lint debt and one-slice rows marked superseded); §7 six slice-2 options; §8 diagram and components; §9 spawns R5, G7, G8, P2, M2 and increments 14 to 22; §10 slice-2 divergences; §11 six risks; §12 questions 2 and 3 closed; §13 and §14 moved on. SPEC-0007 §1, §2 and §4 to §8 gained slice 2 in the same pass.
+- 2026-10-07: slice-2 review findings applied by the architect (spawn `architect-slice2-fix`), from the tester, security (S1 to S8, P1 to P10) and devils-advocate reports: SPEC-0007 back to `active` (slice 1's evidence moved to its §12); §0 phase; §6 rows for the TS/JS indentation rule, the circular history figures with a removal criterion, and the lazy helper load in graph-lint; increments 14 to 22 updated (the TS/JS arm, the `file://` depth-2 shallow clone, the `cache` exception, the guarded `--moved`, the iterative reader, the hardened `git log`, `sys.dont_write_bytecode`, the protocol lines that name when the tool runs, the `symbols` line in the tool node, the reviewer's hook grep, a non-circular history score); §10 status and history notes; §11 risk on the helper skew rewritten, three risks added; §12 question 6 (the `repo:` ruling) opened; §14 moved on.
