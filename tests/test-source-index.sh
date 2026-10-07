@@ -726,7 +726,9 @@ def x433(base):
              "templates/k/a.json": "{}\n", "notes.md": "The tool is `tools/t.py`.\n", "tools/wide.py": PY_W,
              # path joins (§6 "Links"): one path literal written in pieces
              "tools/u.py": "U = 1\n", "tools/v.py": "V = 1\n", "src/hooks/h.py": "H = 1\n",
-             "tools/j.py": PY_J, "tools/w.py": PY_JW, "tests/j.sh": SH_J, "src/ext/e.ts": TS_E}
+             "tools/j.py": PY_J, "tools/w.py": PY_JW, "tests/j.sh": SH_J, "src/ext/e.ts": TS_E,
+             # an assignment word joining quoted and unquoted parts reads its value
+             "src/lib.sh": "L=1\n", "src/s.sh": 'X="src"/lib.sh\n'}
     for i in range(DIR_LINK_MAX + 1):
         files[f"wide/f{i:03d}.json"] = "{}\n"
     p = Plant(base, files=files)
@@ -761,6 +763,7 @@ def x433(base):
         "tools/w.py": sorted(kit(line_of(PY_JW, ".glob("))),
         "src/ext/e.ts": sorted([("src/hooks/h.py", "path-literal", "maybe", "directory", line_of(TS_E, '"hooks"')),
                                 lit("tools/u.py", line_of(TS_E, '"u.py"'))]),
+        "src/s.sh": [lit("src/lib.sh", 1)],
     }
     for holder, want_j in joins.items():
         got_j = link_set(d, holder)
@@ -945,6 +948,20 @@ def x435(base):
     inv = {r.get("path"): r for r in d.get("inventory", [])}
     if (inv.get("py/big.py") or {}).get("hash") != p.blob("py/big.py"):
         problems.append("py/big.py (over FILE_MAX_BYTES) lacks its blob hash in the inventory")
+    # baseUrl: a specifier whose baseUrl probe misses, no `paths` pattern
+    # matching it and no workspace package naming it, is unmapped-specifier
+    b = Plant(base, "baseurl", files={"tsconfig.json": '{"compilerOptions": {"baseUrl": ".", '
+                                                       '"paths": {"@/*": ["./src/*"]}}}\n',
+                                      "src/x.ts": 'import "~/gone";\nimport "#internal";\nimport "Foo/bar";\n'})
+    db = query(b, "build")
+    got_b = sorted((r.get("reason"), r.get("line"), r.get("reference")) for r in records(db, "opaque", "src/x.ts"))
+    want_b = [("unmapped-specifier", 1, "~/gone"), ("unmapped-specifier", 2, "#internal"),
+              ("unmapped-specifier", 3, "Foo/bar")]
+    if got_b != sorted(want_b):
+        problems.append(f"baseUrl: src/x.ts opaque {got_b!r}, want {sorted(want_b)!r}")
+    held_b = links_of(db, "src/x.ts") + records(db, "unresolved", "src/x.ts")
+    if held_b:
+        problems.append(f"baseUrl: src/x.ts holds {held_b!r}")
     check(not problems, " || ".join(problems))
     return ("five opaque holders (an unmapped specifier among them), six unresolved references with their "
             "bases, two ambiguous maybe links; a scheme-led specifier and an empty join hold nothing; a FIFO, "
