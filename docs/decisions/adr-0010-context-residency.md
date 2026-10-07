@@ -1,3 +1,9 @@
+---
+status: accepted
+status_date: 2026-10-06
+owner: seed steward
+---
+
 # ADR-0010: text enters a session once, at the lowest residency class that serves it, and the per-prompt hooks hold to that
 
 ## Status
@@ -217,3 +223,7 @@ version as absent.
 - [ADR-0003](adr-0003-enforcement-layering-honesty.md) for the soft class;
   [ADR-0009](adr-0009-host-support-tiers.md) for the host tiers
 - `documentation/host-capability-matrix.md`, row "Per-session injection dedup"
+
+## Ratification
+
+Ratified by the owner, 2026-10-06: "ratify". The decision text above is unchanged; the Status section records the state at filing, and the frontmatter is the single home for the current status.

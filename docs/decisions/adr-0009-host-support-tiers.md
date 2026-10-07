@@ -1,3 +1,9 @@
+---
+status: accepted
+status_date: 2026-10-06
+owner: seed steward
+---
+
 # ADR-0009: hosts sit in three support tiers, and `install.sh all` installs only the two that are maintained
 
 ## Status
@@ -214,3 +220,7 @@ to the owner:
 - [ADR-0003](adr-0003-enforcement-layering-honesty.md), whose labels the host
   matrix's six classes extend.
 - `docs/specs/SPEC-0001-install-placement.md`, which gains the tier contracts.
+
+## Ratification
+
+Ratified by the owner, 2026-10-06: "ratify". The decision text above is unchanged; the Status section records the state at filing, and the frontmatter is the single home for the current status.
