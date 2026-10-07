@@ -1955,12 +1955,14 @@ def x459(base):
 
     page = "docs/graph/nodes/{}.md".format
     values = {"pfile": "src/lib/a.py", "pslash": "src/lib/", "pdir": "src", "pcmake": "CMakeLists.txt",
-              "rdot": ".", "oout": "../elsewhere", "uold": "old/lib", "ugone": "gone", "ucase": "Src"}
+              "rdot": ".", "oout": "../elsewhere", "uold": "old/lib", "ugone": "gone", "ucase": "Src",
+              "esub": "vendor/sub"}
     p = claim_plant(base, "plant", values,
                     {"src/lib/a.py": "A = 1\n", "src/lib/c.py": "C = 1\n", "src/b.py": "B = 1\n",
                      "CMakeLists.txt": "project(x)\n"},
                     nested={"vendor/x": {"y.py": "Y = 1\n"}})     # node subsystem.repo0, `repo: vendor/x`
     p.commit(".")
+    (p.dir / "vendor" / "sub").mkdir(parents=True)        # empty, created after commit: an unresolved dir
     inputs = ("src/lib/a.py", "src/lib/c.py", "src/b.py", "CMakeLists.txt", "vendor/x/y.py")
     holder = {}
 
@@ -1997,7 +1999,8 @@ def x459(base):
 
     def unresolved_arm():
         d = anchors_doc()
-        want = sorted((page(n), REPO_UNRESOLVED_DETAIL.format(value=values[n])) for n in ("uold", "ugone", "ucase"))
+        want = sorted((page(n), REPO_UNRESOLVED_DETAIL.format(value=values[n]))
+                      for n in ("uold", "ugone", "ucase", "esub"))
         check(unresolved(d) == want, f"anchors: repo-unresolved records {unresolved(d)!r}, want {want!r}")
         t = tool(p, "anchors", *inputs)
         check(t.rc == 0 and t.last().startswith(ACTION["anchors"]),
@@ -2027,6 +2030,24 @@ def x459(base):
               f"router: notices {doc.get('notices')!r} do not hold {HELPER_ABSENT_NOTICE!r}")
         check(named(doc) == [], f"router: with no helper, `edit src/lib/a.py` loads {named(doc)!r} by "
                                 f"named_path, want none")
+
+    def relative_plant_arm():
+        """`repo_kind` on a relative plant ('.', run from inside it) agrees with
+        the absolute call: both decide on the same resolved target (SPEC-0007's
+        abspath fix for a relative root)."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("source_paths_relcheck", SEED / "tools" / "source_paths.py")
+        sp = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(sp)
+        abs_kind = sp.repo_kind(p.dir, values["pdir"])
+        cwd = os.getcwd()
+        try:
+            os.chdir(p.dir)
+            rel_kind = sp.repo_kind(".", values["pdir"])
+        finally:
+            os.chdir(cwd)
+        check(rel_kind == abs_kind, f"repo_kind('.', {values['pdir']!r}) = {rel_kind!r} from inside the "
+                                    f"plant, want {abs_kind!r} (same as the absolute call)")
 
     # security arms (security-D): an absolute value outside, a symlink out, a FIFO
     outside = base / "outside"
@@ -2078,7 +2099,8 @@ def x459(base):
         route(s, "edit pipe/x.py", timeout=20)
 
     for name, fn in (("path", path_arm), ("root+outside", root_outside_arm), ("unresolved", unresolved_arm),
-                     ("case", case_arm), ("helper-absent", helper_absent_arm), ("D4 /proc/self", d4_arm),
+                     ("case", case_arm), ("helper-absent", helper_absent_arm),
+                     ("relative-plant", relative_plant_arm), ("D4 /proc/self", d4_arm),
                      ("D5 link-out", d5_arm), ("D6 FIFO", d6_arm)):
         arm(name, fn)
     check(not problems, " || ".join(problems))
