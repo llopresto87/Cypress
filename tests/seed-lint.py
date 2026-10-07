@@ -750,6 +750,10 @@ FRONTMATTER_COPIES = (
     "integrations/claude-code/frontmatter.py",
     "tools/frontmatter.py",
 )
+SOURCE_PATHS_COPIES = (
+    "tools/source_paths.py",                       # canonical; install.sh places it in plants
+    "templates/knowledge-graph/source_paths.py",   # beside graph-lint.py, which loads it by path
+)
 
 
 def check_frontmatter_is_portable_yaml() -> None:
@@ -782,7 +786,8 @@ def check_frontmatter_is_portable_yaml() -> None:
 
 
 def check_frontmatter_reader_is_one_reader() -> None:
-    """Every copy of the frontmatter reader is byte-identical to the canonical one."""
+    """Every copy of the frontmatter reader, and of the source_paths.py path-rule
+    module, is byte-identical to its canonical one."""
     canon = ROOT / FRONTMATTER_COPIES[0]
     if not canon.is_file():
         fail(f"{FRONTMATTER_COPIES[0]} is missing — it is the canonical "
@@ -798,6 +803,13 @@ def check_frontmatter_reader_is_one_reader() -> None:
         elif p.read_bytes() != want:
             fail(f"{rel} has drifted from {FRONTMATTER_COPIES[0]}. One reader, "
                  f"byte-identical: seven divergent readers is what this replaced.")
+    canon = ROOT / SOURCE_PATHS_COPIES[0]
+    for rel in SOURCE_PATHS_COPIES[1:]:
+        p = ROOT / rel
+        if not canon.is_file() or not p.is_file() or p.read_bytes() != canon.read_bytes():
+            fail(f"{rel} is missing or has drifted from {SOURCE_PATHS_COPIES[0]}. "
+                 f"One path-rule module, byte-identical: graph-lint loads this copy, "
+                 f"install.sh places the canonical one in plants.")
 
 
 # SPEC-0001 SINGLE_WRITER: every raw write in install.sh that does not go through

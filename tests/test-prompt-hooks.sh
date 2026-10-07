@@ -485,7 +485,7 @@ def x101(base):
     p = Plant(base, graph=False)
     g = p.dir / "docs" / "graph"
     (g / "nodes").mkdir(parents=True)
-    for f in ("graph-lint.py", "frontmatter.py"):
+    for f in ("graph-lint.py", "frontmatter.py", "source_paths.py"):
         shutil.copy(SEED / "templates" / "knowledge-graph" / f, g / f)
     (g / "nodes" / "root.md").write_text(
         "---\nid: root\ntier: 2\nkind: root\ntitle: minimal plant root\n"
