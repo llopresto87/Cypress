@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPEC-0007 source index: tools/source-index.py (X425-X449).
+# SPEC-0007 source index: tools/source-index.py (X425-X458).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -11,6 +11,7 @@ trap 'rm -rf "$FO"' EXIT
 
 # `docs/graph/source-index.py` inventories a plant's code, links it, and walks
 # those links in reverse to answer `impact`, `affected-tests` and `anchors`,
+# reads definitions for `symbols`,
 # keeping a derived cache under `.cypress/source-index/`. One case per contract
 # of SPEC-0007 §4, with the §7 failures as arms of the case whose fixture sets
 # them up (§10). Each case builds Git plants from synthetic files, copies the
@@ -35,7 +36,7 @@ ONLY = {s.strip() for s in os.environ.get("SOURCE_INDEX_ONLY", "").split(",") if
 os.umask(0o022)
 
 # §6 constants and texts, used by value; tools/source-index.py is their one home.
-INDEX_SCHEMA = "cypress.source-index/1"
+INDEX_SCHEMA = "cypress.source-index/2"
 ANSWER_SCHEMA = "cypress.source-index.answer/1"
 FILE_MAX_BYTES = 1048576
 DIR_LINK_MAX = 200
@@ -45,7 +46,8 @@ FLOOR_LINE = "Floor: {n} maybe row(s) every input reaches (opaque holders and th
 RECOMMEND_LINE = ("Recommendation only: the tests above and the always-run set, never only these; "
                   "verify decides what runs.")
 ACTION = {"build": "Incomplete: check by hand (", "impact": "Incomplete: check by hand (",
-          "affected-tests": "Incomplete: run the full suite (", "anchors": "Incomplete: review by hand ("}
+          "affected-tests": "Incomplete: run the full suite (", "anchors": "Incomplete: review by hand (",
+          "symbols": "Incomplete: search by hand ("}
 
 HOME = WORK / "home"
 HOME.mkdir(exist_ok=True)
@@ -1370,18 +1372,26 @@ def x446(base):
 def x447(base):
     p = Plant(base, files={"a.py": "A = 1\n"})
     problems = []
-    for args in (("frobnicate", "a.py"), ("impact", "--depth", "0", "a.py"), ("impact", "--depth", "6", "a.py"),
-                 ("impact",), ("impact", "--bogus", "a.py")):
-        r = tool(p, *args)
+    refused = [(("frobnicate", "a.py"), None), (("impact", "--depth", "0", "a.py"), None),
+               (("impact", "--depth", "6", "a.py"), None), (("impact",), None), (("impact", "--bogus", "a.py"), None),
+               # slice 2: --history and --moved where they do not belong, --moved beside a path,
+               # anchors with neither, and symbols names NAME_RE refuses whole
+               (("anchors", "--history", "a.py"), None), (("symbols", "--history", "A"), None),
+               (("impact", "--moved"), None), (("anchors",), None), (("anchors", "--moved", "a.py"), None),
+               (("anchors", "--moved", "-"), b"a.py\n"), (("symbols", "a..b"), None), (("symbols", "A\n"), None),
+               (("symbols", "-"), b"a..b\n")]
+    for args, stdin in refused:
+        r = tool(p, *args, stdin=stdin)
         if r.rc != 2 or r.out or r.err.count("\n") != 1:
-            problems.append(f"{' '.join(args)}: not exit 2 with one stderr line and empty stdout — {r.ctx()}")
+            problems.append(f"{' '.join(args)!r}: not exit 2 with one stderr line and empty stdout — {r.ctx()}")
     if p.cache.exists():
         problems.append("a refused command line wrote the cache")
     r = tool(p, "--help")
     if r.rc != 0 or not r.out.strip():
         problems.append(f"--help does not print the usage and exit 0 — {r.ctx()}")
     check(not problems, " || ".join(problems))
-    return "an unknown query or option, --depth 0 and 6, no path: exit 2, one stderr line; --help exits 0"
+    return ("an unknown query or option, --depth 0 and 6, no path, misplaced --history and --moved, a refused "
+            "name: exit 2, one stderr line; --help exits 0")
 
 
 @case("X448", "OUTPUT_CARRIES_NO_RAW_CONTROL; failures UNSAFE_PATH_TEXT, NON_UTF8_PATH")
@@ -1412,6 +1422,439 @@ def x448(base):
             problems.append(str(e))
     check(not problems, " || ".join(problems))
     return "ESC, U+202E and 0xFF names: the text view shows ?, --json escapes them to the names Git reports"
+
+
+# --- slice 2: definitions, history, the moved list --------------------------------
+def slice2(plant, feature, *args, stdin=None):
+    """The `--json` answer of a slice-2 query; a usage refusal names the missing feature."""
+    r = tool(plant, *args, "--json", stdin=stdin)
+    check(r.rc != 2, f"`source-index.py {' '.join(args)} --json` is refused as usage (exit 2): {feature} "
+                     f"is not built yet — {r.ctx()}")
+    return r.doc()
+
+
+def slice2_text(plant, feature, *args):
+    r = tool(plant, *args)
+    check(r.rc == 0, f"`source-index.py {' '.join(args)}` exits {r.rc}: {feature} — {r.ctx()}")
+    return r
+
+
+def defs_by_name(doc):
+    return {n.get("name"): n for n in doc.get("names", [])}
+
+
+def one_def(by, name, problems):
+    n = by.get(name)
+    if n is None:
+        problems.append(f"`names` holds no entry for {name!r}")
+        return None
+    ds = n.get("definitions") or []
+    if len(ds) != 1 or n.get("undefined") is not False:
+        problems.append(f"{name!r} lists {len(ds)} definition(s), undefined={n.get('undefined')!r}, "
+                        f"not one: {ds!r}")
+        return None
+    return ds[0]
+
+
+def undefined(by, names, problems):
+    for name in names:
+        n = by.get(name)
+        if n is None or n.get("definitions") or n.get("undefined") is not True:
+            problems.append(f"{name!r} is not `undefined` with no definition: {n!r}")
+
+
+PY_DEFS = ("TIMEOUT = 5\n"
+           "A, B = 1, 2\n"
+           "type Alias = int\n"
+           "from os import path\n"
+           "def run():\n"
+           "    x = 1\n"
+           "    def inner():\n"
+           "        return x\n"
+           "    return inner\n"
+           "async def fetch():\n"
+           "    return 1\n"
+           "class Store:\n"
+           "    LIMIT = 3\n"
+           "    def save(self):\n"
+           "        return self\n")
+
+
+@case("X450", "SYMBOLS_PYTHON_DEFINITIONS_CERTAIN")
+def x450(base):
+    deep = "deep_expr = " + "+".join(["a"] * 1000) + "\ndef deep_ok():\n    return 1\n"
+    p = Plant(base, files={"pkg/a.py": PY_DEFS, "deep.py": deep})
+    names = ["TIMEOUT", "A", "Alias", "run", "inner", "fetch", "Store", "LIMIT", "save", "Store.save", "x", "path"]
+    d = slice2(p, "the `symbols` query", "symbols", *names)
+    by = defs_by_name(d)
+    problems = []
+    want = {"TIMEOUT": ("variable", "TIMEOUT = 5", "TIMEOUT"), "A": ("variable", "A, B = 1, 2", "A"),
+            "Alias": ("type", "type Alias", "Alias"), "run": ("function", "def run(", "run"),
+            "inner": ("function", "def inner(", "run.inner"), "fetch": ("function", "async def fetch(", "fetch"),
+            "Store": ("class", "class Store", "Store"), "LIMIT": ("variable", "LIMIT = 3", "Store.LIMIT"),
+            "save": ("function", "def save(", "Store.save"), "Store.save": ("function", "def save(", "Store.save")}
+    for name, (kind, needle, qual) in want.items():
+        got = one_def(by, name, problems)
+        if got is None:
+            continue
+        exp = {"name": qual, "path": "pkg/a.py", "line": line_of(PY_DEFS, needle), "kind": kind,
+               "link": "certain", "found": "ast"}
+        if {k: got.get(k) for k in exp} != exp:
+            problems.append(f"{name!r}: definition {got!r}, want {exp!r}")
+    if by.get("save") and by.get("Store.save") and by["save"].get("definitions") != by["Store.save"].get("definitions"):
+        problems.append("`Store.save` does not list the definition `save` lists")
+    undefined(by, ["x", "path"], problems)
+    if d.get("incomplete"):
+        problems.append(f"incomplete {d.get('incomplete')!r}, not empty")
+    # arm deep (§5): the reader never descends into expressions
+    dd = slice2(p, "the `symbols` query", "symbols", "deep_ok")
+    got = one_def(defs_by_name(dd), "deep_ok", problems)
+    if got is not None and (got.get("path"), got.get("link"), got.get("found")) != ("deep.py", "certain", "ast"):
+        problems.append(f"arm deep: deep_ok {got!r}, not one certain ast definition in deep.py")
+    if any(r.get("subject") == "deep.py" for r in dd.get("incomplete", [])):
+        problems.append(f"arm deep: an incomplete record names deep.py: {dd.get('incomplete')!r}")
+    check(not problems, " || ".join(problems))
+    return ("ten names each one certain ast definition with line, kind and qualified name; x and path "
+            "undefined; a 1,000-term expression leaves deep_ok readable")
+
+
+SH_DEFS = ("place_file() {\n  :\n}\n"
+           "function helper {\n  :\n}\n"
+           "# fake() {\n"
+           "cat <<'EOF'\nfunction hx() {\nEOF\n")
+TS_DEFS = ("export function a() {}\n"
+           "export default class B {}\n"
+           "export const c = 1;\n"
+           "let d = 2;\n"
+           "export interface E {}\n"
+           "type F = number;\n"
+           "export enum G { X }\n"
+           "export async function h() {}\n"
+           "function i() {\n"
+           "  const local = 1;\n"
+           "  function nested() {}\n"
+           "  return local;\n"
+           "}\n"
+           "namespace N {\n"
+           "  export function ns() {}\n"
+           "}\n"
+           "// function z() {}\n"
+           "/*\nfunction y() {}\n*/\n"
+           "const a1 = 1, b1 = 2;\n"
+           "const s = `\nfunction tx() {\n`;\n")
+
+
+@case("X451", "SYMBOLS_LINE_READ_DECLARATIONS_ARE_MAYBE; failure LINE_READ_DECLARATION_IN_TEXT")
+def x451(base):
+    p = Plant(base, files={"install.sh": SH_DEFS, "src/m.ts": TS_DEFS})
+    want = {"place_file": ("install.sh", "function", "place_file() {"),
+            "helper": ("install.sh", "function", "function helper"),
+            "a": ("src/m.ts", "function", "export function a("), "B": ("src/m.ts", "class", "class B"),
+            "c": ("src/m.ts", "variable", "const c ="), "d": ("src/m.ts", "variable", "let d ="),
+            "E": ("src/m.ts", "type", "interface E"), "F": ("src/m.ts", "type", "type F ="),
+            "G": ("src/m.ts", "type", "enum G"), "h": ("src/m.ts", "function", "function h("),
+            "i": ("src/m.ts", "function", "function i("), "ns": ("src/m.ts", "function", "function ns("),
+            # arm text: a here-document line and a template-literal line read like declarations
+            "hx": ("install.sh", "function", "function hx("), "tx": ("src/m.ts", "function", "function tx("),
+            "a1": ("src/m.ts", "variable", "const a1")}
+    none = ["local", "nested", "fake", "z", "y", "b1"]
+    d = slice2(p, "the `symbols` query", "symbols", *want, *none)
+    by = defs_by_name(d)
+    problems = []
+    for name, (path, kind, needle) in want.items():
+        got = one_def(by, name, problems)
+        if got is None:
+            continue
+        text = SH_DEFS if path == "install.sh" else TS_DEFS
+        exp = {"name": name, "path": path, "line": line_of(text, needle), "kind": kind,
+               "link": "maybe", "found": "line-reading"}
+        if {k: got.get(k) for k in exp} != exp:
+            problems.append(f"{name!r}: definition {got!r}, want {exp!r}")
+    undefined(by, none, problems)
+    check(not problems, " || ".join(problems))
+    return ("shell functions and top-level or exported TS/JS declarations are maybe line-reading rows; "
+            "indented locals, comments and a second declarator define nothing; text lines that read "
+            "like a declaration are maybe rows")
+
+
+@case("X452", "SYMBOLS_LIST_EVERY_DEFINITION")
+def x452(base):
+    files = {"tools/a.py": "def parse():\n    return 1\n", "tests/b.py": "def parse():\n    return 2\n",
+             "tools/c.py": "class Reader:\n    def parse(self):\n        return 3\n",
+             "src/p.ts": "function parse() {}\n"}
+    p = Plant(base, files=files)
+    d = slice2(p, "the `symbols` query", "symbols", "parse")
+    problems = []
+    n = defs_by_name(d).get("parse") or {}
+    got = [(x.get("link"), x.get("path"), x.get("line"), x.get("name")) for x in n.get("definitions") or []]
+    want = [("certain", "tests/b.py", 1, "parse"), ("certain", "tools/a.py", 1, "parse"),
+            ("certain", "tools/c.py", 2, "Reader.parse"), ("maybe", "src/p.ts", 1, "parse")]
+    if got != want:
+        problems.append(f"parse lists {got!r}, want the three certain ones by path then the maybe one {want!r}")
+    if d.get("incomplete"):
+        problems.append(f"incomplete {d.get('incomplete')!r}, not empty")
+    q = slice2(p, "the `symbols` query", "symbols", "Reader.parse")
+    qn = defs_by_name(q).get("Reader.parse") or {}
+    qgot = [(x.get("path"), x.get("name")) for x in qn.get("definitions") or []]
+    if qgot != [("tools/c.py", "Reader.parse")]:
+        problems.append(f"Reader.parse lists {qgot!r}, not the method alone")
+    t = slice2_text(p, "the `symbols` text view", "symbols", "parse")
+    lines = t.lines()
+    want_lines = ["parse: 4 definition(s)",
+                  "  certain function tests/b.py:1 parse (ast)",
+                  "  certain function tools/a.py:1 parse (ast)",
+                  "  certain function tools/c.py:2 Reader.parse (ast)",
+                  "  maybe function src/p.ts:1 parse (line-reading)"]
+    at = lines.index(want_lines[0]) if want_lines[0] in lines else -1
+    if at < 0 or lines[at:at + 5] != want_lines:
+        problems.append(f"the text view does not print the header and one line per definition "
+                        f"{want_lines!r} — {t.ctx()}")
+    check(not problems, " || ".join(problems))
+    return "four definitions, certain first by path; a dotted name matches whole; one text line each"
+
+
+@case("X453", "SYMBOLS_UNREADABLE_FILE_MAKES_IT_INCOMPLETE; failure DEFINITIONS_UNREADABLE")
+def x453(base):
+    big = "function run() {}\n" + "// pad\n" * (FILE_MAX_BYTES // 7 + 10)
+    p = Plant(base, files={"ok.py": "def run():\n    return 1\n", "bad.py": "def run(:\n    return\n",
+                           "big.js": big})
+    d = slice2(p, "the `symbols` query", "symbols", "run")
+    problems = []
+    n = defs_by_name(d).get("run") or {}
+    paths = [x.get("path") for x in n.get("definitions") or []]
+    if paths != ["ok.py"]:
+        problems.append(f"run lists {paths!r}, not the definition in ok.py alone")
+    recs = sorted((r.get("reason"), r.get("subject")) for r in d.get("incomplete", []))
+    if recs != [("unreadable-file", "bad.py"), ("unreadable-file", "big.js")]:
+        problems.append(f"incomplete {d.get('incomplete')!r}, not one unreadable-file record each for "
+                        f"bad.py and big.js")
+    t = slice2_text(p, "the `symbols` text view", "symbols", "run")
+    want = "Incomplete: search by hand (unreadable-file: bad.py, unreadable-file: big.js)."
+    if t.last() != want:
+        problems.append(f"the text view ends {t.last()!r}, not {want!r}")
+    check(not problems, " || ".join(problems))
+    return "ok.py listed; bad.py and big.js each an unreadable-file record; the text ends search by hand"
+
+
+# History fixtures commit with fixed dates, the plant's own files first and apart.
+HISTORY_MAX_FILES = 40
+
+
+def dated_commit(repo, n, changes, msg="history"):
+    """Write `changes` (path -> text) in `repo` and commit them at fixed date n."""
+    for rel, text in changes.items():
+        write(repo, rel, text)
+    git(repo, "add", "-A", "--", *changes)
+    stamp = f"2026-01-01T00:{n:02d}:00+0000"
+    env = dict(ENV, GIT_AUTHOR_DATE=stamp, GIT_COMMITTER_DATE=stamp)
+    r = subprocess.run(["git", *FIXTURE_GIT, "commit", "-qm", msg], cwd=str(repo), capture_output=True,
+                       timeout=30, env=env)
+    if r.returncode != 0:
+        raise HarnessFail(f"git commit in {repo}: {r.stderr.decode(errors='replace')}")
+
+
+def history_row(doc, path):
+    rows = [r for r in doc.get("history", []) if r.get("path") == path]
+    return rows[0] if len(rows) == 1 else None
+
+
+@case("X454", "HISTORY_ROWS_ARE_MAYBE_WITH_THEIR_COUNT; failure HISTORY_BULK_COMMIT")
+def x454(base):
+    wide = {f"w/f{i:02d}.py": f"F{i} = 0\n" for i in range(1, HISTORY_MAX_FILES)}
+    files = {"a.py": "A = 0\n", "c.py": "C = 0\n", "lib.py": "L = 0\n",
+             "tests/t_b.sh": "python3 lib.py\n", "tests/t_wide.sh": "python3 lib.py\n", **wide}
+    p = Plant(base, files=files)
+    dated_commit(p.dir, 1, {"a.py": "A = 1\n", "tests/t_b.sh": "python3 lib.py\n# 1\n"})
+    dated_commit(p.dir, 2, {"a.py": "A = 2\n", "tests/t_b.sh": "python3 lib.py\n# 2\n", "c.py": "C = 2\n"})
+    dated_commit(p.dir, 3, {"a.py": "A = 3\n"})
+    bulk = {"a.py": "A = 4\n", "tests/t_wide.sh": "python3 lib.py\n# 4\n",
+            **{k: v + "# 4\n" for k, v in wide.items()}}
+    check(len(bulk) == HISTORY_MAX_FILES + 1, "fixture: the bulk commit is a.py and HISTORY_MAX_FILES others")
+    dated_commit(p.dir, 4, bulk)
+    problems = []
+    at = slice2(p, "the `--history` option", "affected-tests", "a.py", "--history")
+    hist = [(r.get("path"), r.get("depth"), r.get("link"), r.get("kind"), r.get("found"), r.get("from"),
+             r.get("together")) for r in at.get("history", [])]
+    want = [("tests/t_b.sh", 1, "maybe", "history", "history", "a.py", {"count": 2, "of": 3})]
+    if hist != want:
+        problems.append(f"affected-tests history {hist!r}, want {want!r}")
+    im = slice2(p, "the `--history` option", "impact", "a.py", "--history")
+    ih = [(r.get("path"), r.get("link"), r.get("together")) for r in im.get("history", [])]
+    iwant = [("tests/t_b.sh", "maybe", {"count": 2, "of": 3}), ("c.py", "maybe", {"count": 1, "of": 3})]
+    if ih != iwant:
+        problems.append(f"impact history {ih!r}, want t_b.sh then c.py, higher count first {iwant!r}")
+    for d in (at, im):
+        if any(r.get("link") == "certain" for r in d.get("history", [])):
+            problems.append("a history row is certain")
+        for key in ("dependents", "tests", "floor", "history"):
+            if "tests/t_wide.sh" in row_paths(d, key):
+                problems.append(f"tests/t_wide.sh (only in the bulk commit) is in `{key}`")
+        if "tests/t_wide.sh" in [x.get("path") for x in d.get("always_run", [])]:
+            problems.append("tests/t_wide.sh is in `always_run`")
+    check(not problems, " || ".join(problems))
+    return "t_b.sh 2 of 3, c.py 1 of 3, every row maybe; the bulk commit read for no count and no of"
+
+
+@case("X455", "HISTORY_ONLY_ADDS")
+def x455(base):
+    files = {"a.py": "A = 0\n", "b.py": "import a\n", "o.py": "import os\nfor _ in os.walk(root):\n    pass\n",
+             "d.py": "D = 0\n"}
+    p = Plant(base, files=files)
+    for n in (1, 2):
+        dated_commit(p.dir, n, {k: v + f"# {n}\n" for k, v in files.items()})
+    plain = query(p, "impact", "a.py")
+    hist = slice2(p, "the `--history` option", "impact", "a.py", "--history")
+    problems = []
+    if "history" in plain:
+        problems.append(f"the plain answer holds a `history` key: {plain.get('history')!r}")
+    strip = lambda doc: {k: v for k, v in doc.items() if k not in ("cache", "history")}
+    if strip(plain) != strip(hist):
+        problems.append(f"the --history answer differs from the plain one outside `history` and `cache`: "
+                        f"plain {strip(plain)!r}, history {strip(hist)!r}")
+    if row_paths(hist, "history") != ["d.py"]:
+        problems.append(f"history {row_paths(hist, 'history')!r}, not d.py alone (b.py in dependents, "
+                        f"o.py in floor)")
+    check(not problems, " || ".join(problems))
+    return "--history equals the plain answer but for history and cache; history holds d.py alone"
+
+
+@case("X456", "HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE; failures HISTORY_SHALLOW, HISTORY_UNAVAILABLE")
+def x456(base):
+    files = {"a.py": "A = 0\n", "lib.py": "L = 0\n",
+             "tests/t_old.sh": "python3 lib.py\n", "tests/t_new.sh": "python3 lib.py\n"}
+    origin = Plant(base, "origin", files=files)
+    dated_commit(origin.dir, 1, {"a.py": "A = 1\n", "tests/t_old.sh": "python3 lib.py\n# 1\n"})
+    dated_commit(origin.dir, 2, {"a.py": "A = 2\n"})
+    dated_commit(origin.dir, 3, {"a.py": "A = 3\n", "tests/t_new.sh": "python3 lib.py\n# 3\n"})
+    git(base, "clone", "-q", "--depth", "2", f"file://{origin.dir}", "shallow")
+    shallow = Plant.__new__(Plant)
+    shallow.dir = Path(base) / "shallow"
+    check(git(shallow.dir, "rev-parse", "--is-shallow-repository").strip() == "true",
+          "fixture: the file:// --depth 2 clone is not shallow")
+    empty = Plant(base, "empty", files={"a.py": "A = 0\n", "lib.py": "L = 0\n",
+                                        "tests/t.sh": "python3 lib.py\n"}, commit=False)
+    problems = []
+    for arm, plant, reason in (("a", shallow, "history-shallow"), ("b", empty, "history-unavailable")):
+        try:
+            d = slice2(plant, "the `--history` option", "affected-tests", "a.py", "--history")
+        except CaseFail as e:
+            problems.append(f"arm ({arm}): {e}")
+            continue
+        recs = [(r.get("reason"), r.get("subject")) for r in d.get("incomplete", [])]
+        if recs != [(reason, ".")]:
+            problems.append(f"arm ({arm}): incomplete {d.get('incomplete')!r}, not one {reason} record naming .")
+        if arm == "a":
+            h = [(r.get("path"), r.get("together")) for r in d.get("history", [])]
+            if h != [("tests/t_new.sh", {"count": 1, "of": 1})]:
+                problems.append(f"arm (a): history {h!r}, want t_new.sh 1 of 1 and no t_old.sh "
+                                f"(the boundary commit is not read)")
+        t = tool(plant, "affected-tests", "a.py", "--history")
+        if t.rc != 0 or not t.last().startswith(ACTION["affected-tests"]) or reason not in t.last():
+            problems.append(f"arm ({arm}): the text view does not end with the affected-tests action naming "
+                            f"{reason} — {t.ctx()}")
+        plain = query(plant, "affected-tests", "a.py")
+        if {"history-shallow", "history-unavailable"} & set(reasons(plain)) or "history" in plain:
+            problems.append(f"arm ({arm}): without --history the answer reads history: {plain!r}")
+    check(not problems, " || ".join(problems))
+    return ("a shallow clone is history-shallow, its boundary commit unread; no commit is "
+            "history-unavailable; neither without --history")
+
+
+# The moved list: the plant places the seed's code-anchor.py beside the tool.
+CODE_ANCHOR = SEED / "tools" / "code-anchor.py"
+MOVED_NONE_LINE = "Moved: no code moved since the code anchor."
+
+
+def moved_plant(base, name="plant"):
+    """The plant of ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS, its anchor recorded."""
+    files = {"run.sh": "echo run\n", "docs/graph/code-anchor.py": CODE_ANCHOR.read_text(),
+             "docs/graph/nodes/cx.md": node("subsystem.cx", body="See `Cypress/tools/x.py`.\n"),
+             "docs/graph/nodes/cr.md": node("subsystem.cr", body="Run `run.sh`.\n")}
+    p = Plant(base, name, files=files, nested={"Cypress": {"tools/x.py": "X = 1\n"}})
+    record(p)
+    return p
+
+
+def record(plant):
+    r = subprocess.run([sys.executable, "docs/graph/code-anchor.py", "--record"], cwd=str(plant.dir),
+                       capture_output=True, timeout=60, env=ENV)
+    if r.returncode != 0:
+        raise HarnessFail(f"code-anchor.py --record: exit {r.returncode}: {r.stderr.decode(errors='replace')}")
+
+
+@case("X457", "ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS")
+def x457(base):
+    p = moved_plant(base)
+    sub = p.dir / "Cypress"
+    write(sub, "tools/x.py", "X = 2\n")
+    git(sub, "commit", "-qam", "move x")
+    write(p.dir, "run.sh", "echo moved\n")
+    moved = slice2(p, "the `--moved` input", "anchors", "--moved")
+    named = query(p, "anchors", "Cypress/tools/x.py", "run.sh")
+    problems = []
+    if without_cache(moved) != without_cache(named):
+        problems.append(f"anchors --moved {without_cache(moved)!r} differs from the named paths "
+                        f"{without_cache(named)!r} outside `cache`")
+    if sorted(i.get("path") for i in moved.get("inputs", [])) != ["Cypress/tools/x.py", "run.sh"]:
+        problems.append(f"--moved inputs {moved.get('inputs')!r}, not Cypress/tools/x.py and run.sh")
+    record(p)
+    none = slice2(p, "the `--moved` input", "anchors", "--moved")
+    if none.get("inputs") or none.get("files") or none.get("incomplete"):
+        problems.append(f"after a second --record: inputs {none.get('inputs')!r}, files {none.get('files')!r}, "
+                        f"incomplete {none.get('incomplete')!r}, not all empty")
+    t = tool(p, "anchors", "--moved")
+    if t.rc != 0 or MOVED_NONE_LINE not in t.lines():
+        problems.append(f"the text view does not print {MOVED_NONE_LINE!r} — {t.ctx()}")
+    check(not problems, " || ".join(problems))
+    return "--moved equals the named moved paths but for cache; after a new record, empty and complete"
+
+
+@case("X458", "ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE; failures MOVED_LIST_UNAVAILABLE, "
+              "MOVED_REPOSITORY_UNVERIFIED")
+def x458(base):
+    problems = []
+
+    def arm(name, plant, reason, subject, detail, inputs):
+        try:
+            d = slice2(plant, "the `--moved` input", "anchors", "--moved")
+        except CaseFail as e:
+            problems.append(f"arm ({name}): {e}")
+            return
+        recs = d.get("incomplete", [])
+        if (len(recs) != 1 or (recs[0].get("reason"), recs[0].get("subject")) != (reason, subject)
+                or detail not in str(recs[0].get("detail"))):
+            problems.append(f"arm ({name}): incomplete {recs!r}, not one {reason} record naming {subject} "
+                            f"with a detail holding {detail!r}")
+        got = sorted(i.get("path") for i in d.get("inputs", []))
+        if got != inputs or sorted(f.get("path") for f in d.get("files", [])) != inputs:
+            problems.append(f"arm ({name}): inputs {got!r} or files not {inputs!r}")
+        t = tool(plant, "anchors", "--moved")
+        if t.rc != 0 or not t.last().startswith(ACTION["anchors"]):
+            problems.append(f"arm ({name}): the text view does not end with the anchors action — {t.ctx()}")
+
+    a = moved_plant(base, "no-anchor")
+    (a.dir / ".cypress" / "anchor.json").unlink()
+    arm("a", a, "moved-unavailable", ".cypress/anchor.json", "anchor.json", [])
+    b = moved_plant(base, "lacks-commit")
+    path = b.dir / ".cypress" / "anchor.json"
+    doc = json.loads(path.read_text())
+    for e in doc["repositories"]:
+        if e["path"] == "Cypress":
+            e["commit"] = "0123456789abcdef0123456789abcdef01234567"
+    path.write_text(json.dumps(doc, indent=2) + "\n")
+    write(b.dir, "run.sh", "echo edited\n")
+    arm("b", b, "moved-unverified", "Cypress", "unverified", ["run.sh"])
+    c = moved_plant(base, "no-code-anchor")
+    (c.dir / "docs" / "graph" / "code-anchor.py").unlink()
+    arm("c", c, "moved-unavailable", "docs/graph/code-anchor.py", "", [])
+    d = moved_plant(base, "old-code-anchor")
+    # a code-anchor placed before slice 2: no moved_list
+    write(d.dir, "docs/graph/code-anchor.py", CODE_ANCHOR.read_text()
+          + '\nif "moved_list" in globals():\n    del moved_list\n')
+    arm("d", d, "moved-unavailable", "docs/graph/code-anchor.py", "", [])
+    check(not problems, " || ".join(problems))
+    return ("no anchor, a code-anchor absent or older than moved_list: moved-unavailable; a recorded commit "
+            "the clone lacks: moved-unverified with run.sh still answered; each ends review by hand")
 
 
 failed = []
