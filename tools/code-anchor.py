@@ -49,6 +49,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 import importlib.util as _ilu
+sys.dont_write_bytecode = True  # a check writes nothing into the plant: no __pycache__
 _sp_spec = _ilu.spec_from_file_location(
     "cypress_source_paths", Path(__file__).resolve().parent / "source_paths.py")
 source_paths = _ilu.module_from_spec(_sp_spec)
