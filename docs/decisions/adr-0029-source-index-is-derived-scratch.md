@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 status_date: 2026-10-07
 owner: architect
 ---
@@ -8,8 +8,8 @@ owner: architect
 
 ## Status
 
-See frontmatter (single home). Proposed with SPEC-0007 for 8.1.0; accepted
-when the spec is signed.
+See frontmatter (single home). Proposed with SPEC-0007 for 8.1.0 and
+ratified by the owner (see Ratification).
 
 ## Date
 
@@ -20,8 +20,8 @@ when the spec is signed.
 SPEC-0007 adds `source-index.py`, which derives a repository's file
 inventory, its file-to-file links and the records of what it could not
 pin, and answers `impact`, `affected-tests` and `anchors` from that. A
-full derivation costs 0.15 s on Vivid and 3.8 s on a 4,865-file tree
-(measured 2026-10-07), so a session that asks several questions wants the
+full derivation costs 0.66 s on a 397-file TypeScript plant and 3.19 s on a
+4,320-file tree (the tool, measured 2026-10-07), so a session that asks several questions wants the
 result kept between queries. Where it is kept, and what it is allowed to be,
 decides four things:
 
@@ -43,7 +43,7 @@ decides four things:
   by incremental sync, and its own benchmark found the synced edge set
   4.3 percent away from a full rebuild while the node sets matched.
 
-Doing nothing (no cache) is viable but repeats a 4 s derivation per question
+Doing nothing (no cache) is viable but repeats a 3 s derivation per question
 on the larger plants; a committed index is not, for the reasons above.
 
 ## Decision
@@ -117,7 +117,7 @@ say.
   CodeGraph measured at 4.3 percent of edges; a full rebuild costs at most a
   few seconds here — rejected.
 - **No cache, derive on every query:** simplest and never stale, but repeats
-  up to 3.8 s per question on the larger plants and gives no shared result to
+  up to 3.2 s per question on the larger plants and gives no shared result to
   the queries of one session — rejected for slice 1; it stays the fallback
   whenever the cache cannot be written.
 - **Add `.cypress/source-index/` to the plant's `.gitignore` at install:** the
@@ -146,3 +146,7 @@ change of location or shape is a constant and a schema bump in one file.
   ids only)
 - External sources: CodeGraph `docs/benchmarks/index-drift-cg33.md` at
   31c3328, read 2026-10-07 by the reference scout (not kept in the seed)
+
+## Ratification
+
+Ratified by the owner, 2026-10-07: "adr accepted". Two corrections made at ratification: the Status line no longer ties acceptance to the spec's signing, and the cost figures quote the tool's measurement (3.19 s on 4,320 files) in place of the pre-build estimate (3.8 s on 4,865 files).
