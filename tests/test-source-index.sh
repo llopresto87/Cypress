@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPEC-0007 source index: tools/source-index.py (X425-X458).
+# SPEC-0007 source index: tools/source-index.py (X425-X459).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -1322,9 +1322,10 @@ def x445(base):
                    ("docs/graph/nodes/n.md", None, "backtick", "certain", "exact"),
                    ("docs/graph/nodes/deep/leaf.md", None, "backtick", "certain", "exact"),
                    ("docs/graph/nodes/r1.md", "-", "repo", "certain", "exact"),
-                   ("docs/graph/nodes/r2.md", "-", "repo", "maybe", "repo-prefix")], key=repr)
+                   ("docs/graph/nodes/r2.md", "-", "repo", "maybe", "repo-prefix"),
+                   ("docs/graph/nodes/r3.md", "-", "repo", "maybe", "repo-prefix")], key=repr)
     if facts != want:
-        problems.append(f"src/a.py facts {facts!r}, want {want!r} (r3.md, `repo: src`, claims nothing)")
+        problems.append(f"src/a.py facts {facts!r}, want {want!r} (a folder claims, slash or not)")
     if a.get("history") != {"count": 3, "pages": []}:
         problems.append(f"src/a.py history {a.get('history')!r}, not three pages counted and none named")
     b = by.get("lib/b.py") or {}
@@ -1338,7 +1339,7 @@ def x445(base):
     except CaseFail as e:
         problems.append(f"--all: {e}")
     check(not problems, " || ".join(problems))
-    return ("certain backtick and repo facts, a maybe repo-prefix fact, a root repo: claims nothing; history "
+    return ("certain backtick and repo facts, `repo: src/` and `repo: src` maybe repo-prefix facts; history "
             "counted, named with --all; lib/b.py uncited")
 
 
@@ -1884,6 +1885,206 @@ def x458(base):
             "ANCHOR_NAME: moved-unavailable, no traceback; a recorded commit the clone lacks: moved-unverified "
             "with run.sh still answered; each ends review by hand")
 
+
+# One claim rule: the plant places the seed's graph-lint.py beside the tool, so
+# the router and `anchors` read the same `repo:` values through the helper.
+GRAPH_LINT = SEED / "templates" / "knowledge-graph" / "graph-lint.py"
+PLAN_SCHEMA = "cypress.plan/1"
+REPO_UNRESOLVED_DETAIL = "repo: {value} names nothing on disk; correct the node's repo:"
+HELPER_ABSENT_NOTICE = {"code": "inference_skipped", "text": "inference skipped: HelperUnavailable"}
+
+
+def route(plant, task, timeout=30):
+    """The `graph-lint.py --plan-json` document for `task`, which must exit 0 in `timeout` s."""
+    try:
+        r = subprocess.run([sys.executable, "docs/graph/graph-lint.py", f"--plan-json={task}"],
+                           cwd=str(plant.dir), capture_output=True, timeout=timeout, env=ENV)
+    except subprocess.TimeoutExpired:
+        raise CaseFail(f"`graph-lint.py --plan-json={task}` ran past {timeout} s")
+    run = Run(r.returncode, r.stdout, r.stderr.decode("utf-8", "replace"))
+    check(run.rc == 0, f"`graph-lint.py --plan-json={task}` must exit 0 — {run.ctx()}")
+    try:
+        d = json.loads(run.out)
+    except ValueError:
+        raise CaseFail(f"`graph-lint.py --plan-json={task}` printed no JSON document — {run.ctx()}")
+    check(d.get("schema") == PLAN_SCHEMA, f"the plan's schema is not {PLAN_SCHEMA!r} — {run.ctx()}")
+    return d
+
+
+def named(doc):
+    """The ids the route loads by `named_path`."""
+    return sorted(e.get("id") for e in doc.get("load", []) if (e.get("how") or {}).get("kind") == "named_path")
+
+
+def repo_facts(doc, path):
+    f = next((f for f in doc.get("files", []) if f.get("path") == path), {})
+    return sorted((x.get("page"), x.get("link"), x.get("found")) for x in f.get("facts", [])
+                  if x.get("form") == "repo")
+
+
+def uncited(doc, path):
+    f = next((f for f in doc.get("files", []) if f.get("path") == path), {})
+    return f.get("uncited") is True and not f.get("facts")
+
+
+def unresolved(doc):
+    return sorted((r.get("subject"), r.get("detail")) for r in doc.get("incomplete", [])
+                  if r.get("reason") == "repo-unresolved")
+
+
+def claim_plant(base, name, values, files, nested=None):
+    """A plant holding one node per `repo:` value (`values` maps a node name to it) and the seed's
+    graph-lint.py beside the tool and its siblings."""
+    files = dict(files)
+    for n, v in values.items():
+        files[f"docs/graph/nodes/{n}.md"] = node(f"subsystem.{n}", repo=v)
+    files["docs/graph/graph-lint.py"] = GRAPH_LINT.read_text()
+    return Plant(base, name, files=files, nested=nested, commit=False)
+
+
+@case("X459", "REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS; failures REPO_VALUE_UNRESOLVED, "
+              "HELPER_ABSENT_BESIDE_GRAPH_LINT")
+def x459(base):
+    problems = []
+
+    def arm(name, fn):
+        try:
+            fn()
+        except CaseFail as e:
+            problems.append(f"arm ({name}): {e}")
+
+    page = "docs/graph/nodes/{}.md".format
+    values = {"pfile": "src/lib/a.py", "pslash": "src/lib/", "pdir": "src", "pcmake": "CMakeLists.txt",
+              "rdot": ".", "oout": "../elsewhere", "uold": "old/lib", "ugone": "gone", "ucase": "Src"}
+    p = claim_plant(base, "plant", values,
+                    {"src/lib/a.py": "A = 1\n", "src/lib/c.py": "C = 1\n", "src/b.py": "B = 1\n",
+                     "CMakeLists.txt": "project(x)\n"},
+                    nested={"vendor/x": {"y.py": "Y = 1\n"}})     # node subsystem.repo0, `repo: vendor/x`
+    p.commit(".")
+    inputs = ("src/lib/a.py", "src/lib/c.py", "src/b.py", "CMakeLists.txt", "vendor/x/y.py")
+    holder = {}
+
+    def anchors_doc():
+        if "d" not in holder:
+            holder["d"] = query(p, "anchors", *inputs)
+        return holder["d"]
+
+    def path_arm():
+        d = anchors_doc()
+        want = {"src/lib/a.py": [(page("pfile"), "certain", "exact"), (page("pslash"), "maybe", "repo-prefix"),
+                                 (page("pdir"), "maybe", "repo-prefix")],
+                "src/lib/c.py": [(page("pslash"), "maybe", "repo-prefix"), (page("pdir"), "maybe", "repo-prefix")],
+                "src/b.py": [(page("pdir"), "maybe", "repo-prefix")],
+                "CMakeLists.txt": [(page("pcmake"), "certain", "exact")]}
+        for path, w in want.items():
+            got = repo_facts(d, path)
+            check(got == sorted(w), f"anchors: {path} repo facts {got!r}, want {sorted(w)!r}")
+        for path, ids in (("src/lib/a.py", ["subsystem.pfile"]), ("src/lib/c.py", ["subsystem.pslash"]),
+                          ("src/b.py", ["subsystem.pdir"]), ("CMakeLists.txt", ["subsystem.pcmake"])):
+            got = named(route(p, f"edit {path}"))
+            check(got == ids, f"router: `edit {path}` loads {got!r} by named_path, want {ids!r}")
+
+    def root_outside_arm():
+        d = anchors_doc()
+        check(uncited(d, "vendor/x/y.py"),
+              f"anchors: vendor/x/y.py is not uncited: {repo_facts(d, 'vendor/x/y.py')!r}")
+        subjects = [s for s, _ in unresolved(d)]
+        for n in ("rdot", "oout", "repo0"):
+            check(page(n) not in subjects, f"anchors: the {values.get(n, 'vendor/x')!r} node adds an "
+                                           f"incomplete record: {d.get('incomplete')!r}")
+        got = named(route(p, "edit vendor/x/y.py"))
+        check(got == [], f"router: `edit vendor/x/y.py` loads {got!r} by named_path, want none")
+
+    def unresolved_arm():
+        d = anchors_doc()
+        want = sorted((page(n), REPO_UNRESOLVED_DETAIL.format(value=values[n])) for n in ("uold", "ugone", "ucase"))
+        check(unresolved(d) == want, f"anchors: repo-unresolved records {unresolved(d)!r}, want {want!r}")
+        t = tool(p, "anchors", *inputs)
+        check(t.rc == 0 and t.last().startswith(ACTION["anchors"]),
+              f"anchors: the text view does not end with the anchors action — {t.ctx()}")
+        doc = route(p, "edit old/lib/z.py")
+        check(named(doc) == ["subsystem.uold"], f"router: `edit old/lib/z.py` loads {named(doc)!r} by "
+                                                f"named_path, want ['subsystem.uold']")
+        for task in ("edit old/lib/z.py", "edit src/b.py"):
+            loud = [n for n in route(p, task).get("notices", []) if n.get("code") != "no_signal"]
+            check(not loud, f"router: `{task}` adds notices {loud!r}, want none for any repo: value")
+
+    def case_arm():
+        d = anchors_doc()
+        for path in inputs:
+            check(page("ucase") not in [f[0] for f in repo_facts(d, path)],
+                  f"anchors: `repo: Src` claims {path}")
+        got = named(route(p, "edit SRC/b.py"))
+        check(got == ["subsystem.pdir"], f"router: `edit SRC/b.py` loads {got!r} by named_path, "
+                                         f"want ['subsystem.pdir'] (the router folds case)")
+
+    def helper_absent_arm():
+        h = claim_plant(base, "no-helper", {"hslash": "src/lib/"}, {"src/lib/a.py": "A = 1\n"})
+        (h.dir / "docs" / "graph" / "source_paths.py").unlink()
+        h.commit(".")
+        doc = route(h, "edit src/lib/a.py")
+        check(HELPER_ABSENT_NOTICE in doc.get("notices", []),
+              f"router: notices {doc.get('notices')!r} do not hold {HELPER_ABSENT_NOTICE!r}")
+        check(named(doc) == [], f"router: with no helper, `edit src/lib/a.py` loads {named(doc)!r} by "
+                                f"named_path, want none")
+
+    # security arms (security-D): an absolute value outside, a symlink out, a FIFO
+    outside = base / "outside"
+    outside.mkdir()
+    git(outside, "init", "-q")
+    write(outside, "z.py", "Z = 1\n")
+    git(outside, "add", "-A")
+    git(outside, "commit", "-qm", "outside")
+    s = claim_plant(base, "security", {"dproc": "/proc/self", "dlink": "link-out", "dpipe": "pipe"},
+                    {"proc/self/x.py": "P = 1\n", "m.py": "M = 1\n"})
+    (s.dir / "link-out").symlink_to(outside, target_is_directory=True)
+    s.commit(".")
+    os.mkfifo(s.dir / "pipe")
+    sec = {}
+
+    def sec_doc():
+        if "d" not in sec:
+            sec["d"] = query(s, "anchors", "proc/self/x.py", "m.py")
+        return sec["d"]
+
+    def d4_arm():
+        d = sec_doc()
+        check(uncited(d, "proc/self/x.py"), f"anchors: `repo: /proc/self` claims proc/self/x.py: "
+                                            f"{repo_facts(d, 'proc/self/x.py')!r}")
+        check(page("dproc") not in [x for x, _ in unresolved(d)], f"anchors: `repo: /proc/self` adds an "
+                                                                 f"incomplete record: {d.get('incomplete')!r}")
+        got = named(route(s, "edit proc/self/status"))
+        check(got == [], f"router: `edit proc/self/status` loads {got!r} by named_path, want none "
+                         f"(`/proc/self` is outside)")
+
+    def d5_arm():
+        d = sec_doc()
+        check(page("dlink") not in [x for x, _ in unresolved(d)], f"anchors: `repo: link-out` adds an "
+                                                                 f"incomplete record: {d.get('incomplete')!r}")
+        b = query(s, "build")
+        under = [r.get("path") for r in b.get("inventory", []) if str(r.get("path")).startswith("link-out/")]
+        check(not under, f"build inventories {under!r} under the symlink out of the plant")
+        repos = (json.loads(s.index.read_text()).get("key") or {}).get("repositories") or []
+        check(all((r.get("path") if isinstance(r, dict) else r) != "link-out" for r in repos),
+              f"link-out is a governed repository: {repos!r}")
+        got = named(route(s, "edit link-out/z.py"))
+        check(got == [], f"router: `edit link-out/z.py` loads {got!r} by named_path, want none")
+
+    def d6_arm():
+        d = sec_doc()
+        want = [(page("dpipe"), REPO_UNRESOLVED_DETAIL.format(value="pipe"))]
+        check(unresolved(d) == want, f"anchors: repo-unresolved records {unresolved(d)!r}, want {want!r} "
+                                     f"(a FIFO names nothing)")
+        route(s, "edit pipe/x.py", timeout=20)
+
+    for name, fn in (("path", path_arm), ("root+outside", root_outside_arm), ("unresolved", unresolved_arm),
+                     ("case", case_arm), ("helper-absent", helper_absent_arm), ("D4 /proc/self", d4_arm),
+                     ("D5 link-out", d5_arm), ("D6 FIFO", d6_arm)):
+        arm(name, fn)
+    check(not problems, " || ".join(problems))
+    return ("a file or non-empty folder claims, slash or not; the root, a nested repository and outside "
+            "values claim nothing; a value naming nothing reads as before and is repo-unresolved; the router "
+            "folds case; no helper: inference skipped; /proc/self, a symlink out and a FIFO are safe")
 
 failed = []
 for label, slug, fn in CASES:
