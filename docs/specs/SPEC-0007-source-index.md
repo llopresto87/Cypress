@@ -139,7 +139,8 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
   the runs
 - **Then:** the two `.cypress/source-index/index.json` files are byte-identical
 - **And:** neither holds the absolute path of the plant root, so a copy of the
-  plant in another directory answers from the copied cache unchanged
+  plant in another directory answers from the copied cache unchanged: its
+  cache status is `reused`, because the key names no absolute path
 
 ### Contract: CACHE_WRITTEN_SELF_IGNORED
 - **Given:** a plant that holds `.cypress/` and no `.cypress/source-index/`,
@@ -220,8 +221,8 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
 - **When:** `build --json` runs
 - **Then:** `tools/t.py` holds `maybe` `path-literal` links with reason
   `path-literal` to `tools/frontmatter.py` and `templates/k/lint.py`, and
-  `maybe` links with reason `directory` to `templates/k/lint.py` and
-  `templates/k/a.json`, each with its line
+  `maybe` `path-literal` links with reason `directory` to `templates/k/lint.py`
+  and `templates/k/a.json`, each with its line
 - **And:** the Markdown file holds no link
 
 ### Contract: LINK_TS_SPECIFIER_CERTAIN
@@ -285,11 +286,14 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
 
 ### Contract: WALK_NEAREST_FIRST_ONCE
 - **Given:** `a.py` imported by `b.py` and by `c.py`, `b.py` imported by `c.py`
-  and invoked by `d.sh`
+  and invoked by `d.sh` (`python3 b.py`), and `e.py` holding the path literal
+  `"a.py"`
 - **When:** `impact a.py --json` runs
 - **Then:** `dependents` lists `b.py` and `c.py` at depth 1 and `d.sh` at
   depth 2, in that order, each `certain`, with the nearer file it was reached
-  from and that link's kind, how it was found and its line
+  from and that link's kind, how it was found and its line (`import a` found
+  `resolved` by the Python module search, `python3 b.py` found `exact`, §6
+  "Links"), then `e.py` at depth 1, `maybe`, because `certain` rows come first
 - **And:** `c.py` appears once, at its nearest depth, and the answer is
   complete (`incomplete` is empty)
 
@@ -352,7 +356,7 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
 - **Then:** `incomplete` holds one record whose reason is the one §6
   "Incomplete" assigns (`global-input`, `input-not-found`, `ambiguous-input`,
   `depth-cap`, `config-refused`, `git-unavailable`, `no-test-declaration`,
-  `no-test-files`), naming its subject; the rows the walk did reach are still
+  `no-test-files`), naming the subject §6 "Incomplete" gives that reason; the rows the walk did reach are still
   listed; and the text view ends with that query's action line (`impact`
   "check by hand", `affected-tests` "run the full suite", `anchors` "review by
   hand")
@@ -365,11 +369,12 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
 - **Given:** `lib.py` imported by `tool.py`, invoked by the test `tests/t.sh`;
   the test `tests/lint.py` importing `lib.py`, itself invoked by the test
   `tests/test-lint.sh`; the test `tests/u_test.py` named as an input beside
-  `lib.py`
+  `lib.py`; the test `tests/p_test.py` holding the path literal `"lib.py"`
 - **When:** `affected-tests lib.py tests/u_test.py --json` runs
 - **Then:** `tests` lists `tests/u_test.py` at depth 0, `tests/lint.py` at
   depth 1, `tests/t.sh` and `tests/test-lint.sh` at depth 2, each `certain`
-  with its `via` path from an input, and no non-test file
+  with its `via` path from an input, then `tests/p_test.py` at depth 1,
+  `maybe`, and no non-test file
 - **And:** the text view ends with the recommendation line of §6, never a
   claim that only these tests are affected
 
@@ -636,7 +641,7 @@ files are targets only.
 link:                          # the holder depends on the target
   holder: { type: string, inventory path holding the reference }
   target: { type: string, inventory path }
-  kind:   { enum: [import, invoke, path-literal] }
+  kind:   { enum: [import, invoke, path-literal] }   # a `directory` link's kind is `path-literal`
   link:   { enum: [certain, maybe] }
   found:  { enum: [exact, resolved,                                   # certain
                    path-literal, directory, ambiguous, workspace-package] }  # maybe: the reason
@@ -699,7 +704,9 @@ unresolved:                    # an import or invoke reference that names a path
   whitespace and no `://`, in a Python, shell or TS/JS file. It is a `maybe`
   link with reason `path-literal` to the inventory file it resolves to, or,
   when it holds a `/` and resolves to a directory holding inventory files, a
-  `maybe` link with reason `directory` to each of them. A string that resolves
+  `maybe` link with reason `directory` to each of them; both are of kind
+  `path-literal`, the one kind a quoted string that is no import or invoke
+  takes. A string that resolves
   to nothing is not a reference and yields nothing: no `unresolved` or `opaque`
   record ever comes from a path literal.
 - `certain` links: found `exact` when a relative import, a load by file path
@@ -708,7 +715,11 @@ unresolved:                    # an import or invoke reference that names a path
   resolves);
   found `resolved` when a lookup rule found it (Python module search, a
   `/`-suffix, extension or index probing, `.js` to `.ts`, tsconfig
-  `paths`/`baseUrl`, a target in another governed repository).
+  `paths`/`baseUrl`, a target in another governed repository). So `import a`
+  beside `a.py` is `resolved` (no relative import: the module search found it)
+  and `python3 b.py` beside `b.py` is `exact` (the whole string, from the
+  holder's directory); a shell string that hits only after a shorter
+  `/`-suffix is cut is `resolved`.
 - `maybe` links: `path-literal` and `directory` as above; `ambiguous`, one
   link to each candidate of a Python module that several inventory files end
   in; `workspace-package`, one link to each inventory file under the directory
@@ -865,24 +876,28 @@ then ends with the query's `ACTION_LINE`.
 ```yaml
 incomplete_record:
   reason:     { enum: [see table] }
-  subject:    { type: string, the input, repository, file or page concerned }
+  subject:    { type: string, never empty: the table's Subject column }
   candidates: { type: array of path, ambiguous-input and ambiguous-citation only, else [] }
   detail:     { type: string|null, e.g. the refused config's error or the citation text }
 ```
-| Reason | Trigger | Queries |
-|---|---|---|
-| `git-unavailable` | no `git` on PATH | all |
-| `no-repository` | no governed Git repository | all |
-| `repository-unreadable` | a Git call for one repository failed or timed out | all |
-| `config-refused` | `docs/graph/source-index.json` refused | all |
-| `global-input` | an input matches `global_inputs` | all |
-| `outside-plant` | an input outside the plant root | all |
-| `ambiguous-input` | a repository-relative input several repositories hold | all |
-| `input-not-found` | an input no rule of "Inputs" takes | impact, affected-tests |
-| `depth-cap` | a file at `--depth` has an unreached dependent | impact, affected-tests |
-| `no-test-declaration` | `TEST_GLOBS` absent, unparsable or not a list of strings | affected-tests |
-| `no-test-files` | `TEST_GLOBS` matches no inventory file | affected-tests |
-| `ambiguous-citation` | a bare-name citation several inventory files match, one an input | anchors |
+| Reason | Trigger | Subject | Queries |
+|---|---|---|---|
+| `git-unavailable` | no `git` on PATH | `git` | all |
+| `no-repository` | no governed Git repository | `.` (the plant root) | all |
+| `repository-unreadable` | a Git call for one repository failed or timed out | the repository's plant-relative path | all |
+| `config-refused` | `docs/graph/source-index.json` refused | `docs/graph/source-index.json` (the error is the detail) | all |
+| `global-input` | an input matches `global_inputs` | the input | all |
+| `outside-plant` | an input outside the plant root | the input | all |
+| `ambiguous-input` | a repository-relative input several repositories hold | the input | all |
+| `input-not-found` | an input no rule of "Inputs" takes | the input | impact, affected-tests |
+| `depth-cap` | a file at `--depth` has an unreached dependent | that file at the cut depth (`f4.py` for `f1.py`, `--depth 3` over `f1` to `f5`), one record each | impact, affected-tests |
+| `no-test-declaration` | `TEST_GLOBS` absent, unparsable or not a list of strings | `docs/graph/spec-lint.py` | affected-tests |
+| `no-test-files` | `TEST_GLOBS` matches no inventory file | `docs/graph/spec-lint.py` | affected-tests |
+| `ambiguous-citation` | a bare-name citation several inventory files match, one an input | the page (the citation is the detail) | anchors |
+
+"The input" is the input as `plant_relative` normalizes it (§6 "Inputs"), so
+it equals the input given in its normal form; an input it cannot make
+plant-relative (`outside-plant`) is named as written.
 
 ### Cache document
 
@@ -902,7 +917,10 @@ index:
   unresolved: [unresolved]         # sorted by holder, line, reference
 ```
 A document whose `schema` or `key` differs from the current one, or which is
-not this shape, is rebuilt. Anchors citations are read from the pages on
+not this shape, is rebuilt: one that is not JSON, breaks this shape, holds
+another `schema` or exceeds `CACHE_MAX_BYTES` is unreadable (reason
+`cache unreadable`, §7 `CACHE_UNREADABLE`); one whose `key` alone differs is a
+key change. Anchors citations are read from the pages on
 every query and never cached. The key leaves out Git's ignore sources outside
 the work tree (`.git/info/exclude`, the user's `core.excludesFile`): an edit
 there changes the inventory without a rebuild until the next key change or a
@@ -917,6 +935,8 @@ answer:
   inputs: [{ path, status: [walked, not-code, not-found] }]   # walked or answered inputs
   depth:  int                            # impact and affected-tests
   cache:  { status: [built, reused, rebuilt, not-written], reason: string|null }
+          # reason: the cause for not-written (§7); "cache unreadable" for a
+          # rebuild of a document CACHE_UNREADABLE names; else any text or null
   incomplete: [incomplete_record]
   # build
   inventory: [inventory_record]
@@ -1438,7 +1458,8 @@ Readings the tests take where §4 leaves a detail to §6 (each confirmed by
   has no code link reports `declared` (§6 lists it first).
 
 Readings RED R1 (`tester-R1`) takes where §4 and §6 name no value; the
-architect confirms or amends each before GREEN:
+architect confirmed all of them on 2026-10-07 (`architect-readings`), and §4
+and §6 now state each:
 - `LINK_PATH_LITERAL_AND_DIRECTORY_ARE_MAYBE`: a `directory` link has kind
   `path-literal` (the one kind a quoted string that is no import or invoke
   takes).
@@ -1526,3 +1547,4 @@ flagged assumption in grill.md §12. Sign-off keeps the status `draft`;
 - 2026-10-07 — section 9 aligned with the floor (`product-ac5`): AC-3 and AC-5 state the `floor` list and the one-list precedence tests, always_run, floor.
 - 2026-10-07 — plan §12 question 5 closed (`architect-q5`), the owner accepting recommendation (b): a Python load by file path (`spec_from_file_location` or `run_path` over a path anchored at `__file__`, the two shapes of §6 "Links") is a `certain` `import` link found `exact`, an arm of `LINK_PYTHON_IMPORT_CERTAIN`; a missing target is `relative-no-file`; `LINK_PATH_LITERAL_AND_DIRECTORY_ARE_MAYBE` now takes an anchored path no load call takes; §2 links line and a §8 example (`plant_walk.py`) added.
 - 2026-10-07 — RED for plan increments 3 to 7 (`tester-R1`): §10 bound to `tests/test-source-index.sh` (X425 to X449) and `tests/test-full-install.sh` E15, every row `red`; rows added for `OUTPUT_CARRIES_NO_RAW_CONTROL` (X448), `WALK_FLOOR_LISTED_APART_AFTER_THE_INPUT_ROWS` (X449) and the security failures, each an arm of its contract's case; status `active` with the first RED tests (§11).
+- 2026-10-07 — RED R1 readings ruled (`architect-readings`), all confirmed, none amended, no test change: a `directory` link's kind is `path-literal`; `import a` beside `a.py` is found `resolved` and `python3 b.py` beside `b.py` `exact`; §6 "Incomplete" gains a Subject column (an input as normalized, which equals the input given in its normal form; `config-refused` the config path; `depth-cap` the file at the cut depth; the four subject-less reasons named); the cache reason of a `CACHE_UNREADABLE` rebuild is `cache unreadable`, another `schema` included; a copied plant's cache status is `reused`; `WALK_NEAREST_FIRST_ONCE` and `AFFECTED_TESTS_ARE_THE_WALK_FILTERED` each gain the one `maybe` row (`e.py`, `tests/p_test.py`) that shows the `certain` rows come first.
