@@ -1007,7 +1007,7 @@ described with the roster.
 | `session-metrics.py` | `docs/graph/session-metrics.py` | the reader of the Session metrics block that deliver appends to `changelog.md` (SPEC-0006) |
 | `code-anchor.py` | `docs/graph/code-anchor.py` | records the code state at canonize (`--record`) and compares it once per session (`--compare`); writes no anchor at install |
 | `source-index.py` | `docs/graph/source-index.py` | the source index (SPEC-0007): `impact`, `affected-tests` and `anchors` from one walk over the plant's file-to-file links, each row `certain` or `maybe`, the floor listed apart, gaps listed as `incomplete`; `symbols` says where a name is defined; `--history` adds files that changed together in past commits as `maybe` rows of their own; `anchors --moved` takes its inputs from `code-anchor.py`'s moved list. Protocol steps call it once, on demand: verify (`affected-tests`), canonize (`anchors --moved`), grow and adopt (`build --json`'s inventory). It recommends, and verify and tiering decide. Its cache `.cypress/source-index/` ignores itself and is rebuilt when its key changes (ADR-0029); the installer writes none |
-| `source_paths.py` | `docs/graph/source_paths.py` | the seed's path rules in one module with no CLI: what is code, the governed repositories, the Git boundary, the content hash, the atomic write under `.cypress/`, how a page cites a path. `code-anchor.py` and `source-index.py` load it beside them; `growth-audit.py` loads it in the seed |
+| `source_paths.py` | `docs/graph/source_paths.py` | the seed's path rules in one module with no CLI: what is code, the governed repositories, the Git boundary, the content hash, the atomic write under `.cypress/`, how a page cites a path, and the `repo:` rule: what a node's `repo:` value names on disk decides what it claims (a folder or a file claims the paths under it, a repository or the plant root claims nothing). `code-anchor.py`, `source-index.py` and the router's path tier in `graph-lint.py` load it beside them; `growth-audit.py` loads it in the seed |
 | `plant_walk.py` | `docs/graph/plant_walk.py` | the walk over one plant's files, stopping at a nested plant and a symlinked directory; `source-index.py` loads it beside it, `graft-audit.py` in the seed |
 
 ---
@@ -1438,8 +1438,8 @@ frontmatter subset with a hand-written parser (no PyYAML dependency).
 
 **The router dry-run (`resolve` / `--plan`).** Mirrors the `context-router`
 traversal. It takes its entries from the first tier that hits: a node id the
-task names, then a path it names (a node's file, a `repo:` prefix, an
-`expertise.*` file pattern), then a `load_when` phrase of two or more words the
+task names, then a path it names (a node's file, a folder or file a node's
+`repo:` names, an `expertise.*` file pattern), then a `load_when` phrase of two or more words the
 task holds whole. Only then does it score words: IDF-weighted token overlap
 between the task and the node's name/title/`repo` (weight ×2) and its
 `load_when`/`routing_triggers`, whole-token matching only (an exact hit
