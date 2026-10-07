@@ -26,7 +26,10 @@ branch, the commit and each uncommitted code path with its Git blob hash in
 `.cypress/anchor.json`. `--compare` reads the list from the anchor and names
 the paths that moved: changed between the recorded commit and HEAD, uncommitted
 now and not at the anchor, or holding content other than the recorded hash. A
-path whose content equals its recorded hash has not moved.
+path whose content equals its recorded hash has not moved. That list is
+`moved_list(root)`, the one function `--compare` prints from; `source-index.py`
+beside this file loads it by file path for `anchors --moved` (SPEC-0007 §6
+"Moved list").
 
 Every doubt resolves toward checking the code. `--compare` always exits 0: an
 anchor that is missing, unreadable or of another version, or no `git` on
@@ -155,10 +158,11 @@ def anchor_problem(doc):
     return None
 
 
-def read_anchor() -> dict:
-    """The recorded anchor, or Unrecorded naming why there is none to use."""
+def read_anchor(root: Path) -> dict:
+    """The anchor recorded under `root`, or Unrecorded naming why there is none
+    to use."""
     try:
-        dir_fd = source_paths.open_dir(ROOT, ANCHOR_DIR)
+        dir_fd = source_paths.open_dir(root, ANCHOR_DIR)
     except FileNotFoundError:
         raise Unrecorded(f"no {ANCHOR_DIR}/ directory") from None
     except OSError as e:
@@ -282,6 +286,14 @@ def moved(root: Path, entry: dict):
     return lines
 
 
+def moved_list(root: Path) -> list:
+    """Per recorded repository, its plant-relative path and the (label, paths)
+    pairs `moved` gives it, in anchor order: the list `--compare` prints and
+    `source-index.py anchors --moved` reads. Unrecorded when there is no anchor
+    to use; GitMissing when there is no `git`."""
+    return [(entry["path"], moved(root, entry)) for entry in read_anchor(root)["repositories"]]
+
+
 def report(lines: list, everything: bool) -> list:
     """The moved header and the repository lines. Unless `everything`, at most
     ANCHOR_MAX_PATHS paths are named and the whole output stays within
@@ -314,18 +326,16 @@ def report(lines: list, everything: bool) -> list:
 
 def compare(everything: bool) -> int:
     try:
-        doc = read_anchor()
-        lines = []
-        for entry in doc["repositories"]:
-            lines.extend((entry["path"], label, paths) for label, paths in moved(ROOT, entry))
+        listed = moved_list(ROOT)
     except source_paths.GitMissing:
         print(NOT_RECORDED.format(reason="git is not on PATH, so nothing can be compared"))
         return 0
     except Unrecorded as e:
         print(NOT_RECORDED.format(reason=e))
         return 0
+    lines = [(repo, label, paths) for repo, pairs in listed for label, paths in pairs]
     if not lines:
-        print(QUIET.format(n=len(doc["repositories"])))
+        print(QUIET.format(n=len(listed)))
     else:
         print("\n".join(report(lines, everything)))
     return 0

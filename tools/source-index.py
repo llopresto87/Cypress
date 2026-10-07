@@ -17,14 +17,16 @@ Placed in a plant as `docs/graph/source-index.py` and run from the plant root:
     python3 docs/graph/source-index.py build [--json]
     python3 docs/graph/source-index.py impact         [--depth N] [--history] [--all] [--json] <path>... | -
     python3 docs/graph/source-index.py affected-tests [--depth N] [--history] [--all] [--json] <path>... | -
-    python3 docs/graph/source-index.py anchors                  [--all] [--json] <path>... | -
+    python3 docs/graph/source-index.py anchors                  [--all] [--json] <path>... | - | --moved
     python3 docs/graph/source-index.py symbols                  [--all] [--json] <name>... | -
 
 The same pass that reads the links reads each file's definitions for
 `symbols`: Python's by `ast` (certain), shell functions and top-level or
 exported TS/JS declarations by line-reading (maybe). `--history` adds the
 files that changed together with an input in past commits, as a `maybe`
-list of their own (SPEC-0007 §6 "Definitions", "History links").
+list of their own (SPEC-0007 §6 "Definitions", "History links"). `anchors
+--moved` takes its inputs from the moved list of `code-anchor.py` beside this
+file, so canonize needs no copied paths (SPEC-0007 §6 "Moved list").
 
 The path rules (what is code, the governed repositories, the Git boundary,
 the blob hash, the atomic write) are `source_paths.py`'s, the plant edge is
@@ -95,9 +97,11 @@ CACHE_IGNORE = "*\n"
 CONFIG_PATH = "docs/graph/source-index.json"
 TEST_DECLARATION = "docs/graph/spec-lint.py"     # TEST_GLOBS and SKIP_DIRS
 SIBLINGS = ["source_paths.py", "plant_walk.py", "frontmatter.py"]
+CODE_ANCHOR = "code-anchor.py"   # loaded beside the tool by `anchors --moved` alone; it shapes no index
 TEMP_PREFIX = ".tmp-source-index-"
 FLOOR_LINE = "Floor: {n} maybe row(s) every input reaches (opaque holders and their dependents):"
 HISTORY_LINE = "History: {n} maybe row(s), files that changed together with an input (--history):"
+MOVED_NONE_LINE = "Moved: no code moved since the code anchor."
 UNDEFINED_LINE = "{name}: no definition (read: Python definitions, shell functions, TS/JS declarations)"
 RECOMMEND_LINE = ("Recommendation only: the tests above and the always-run set, never only these; "
                   "verify decides what runs.")
@@ -1742,6 +1746,42 @@ def plant_relative(root: Path, text: str):
     return p if source_paths.relative(p) else None
 
 
+def moved_inputs(root: Path):
+    """(paths, incomplete records): the plant paths code-anchor's moved list
+    names, each joined to its repository. The load and the call of
+    `moved_list` sit in one guard, so no failure of code-anchor crashes the
+    query; it catches code-anchor's own classes, never this tool's."""
+    tool = Path(__file__).resolve().parent / CODE_ANCHOR
+    shown = f"docs/graph/{CODE_ANCHOR}"
+    if not tool.is_file():
+        return [], [incomplete("moved-unavailable", shown, detail="absent")]
+    missing = unrecorded = ()                    # code-anchor's classes, once it has loaded
+    paths, problems = [], []
+    try:
+        anchor = _loaded(_ilu.spec_from_file_location("cypress_code_anchor", tool))
+        missing, unrecorded = anchor.source_paths.GitMissing, anchor.Unrecorded
+        for repo, pairs in anchor.moved_list(root):
+            if not source_paths.relative(repo):
+                raise ValueError(f"moved_list named the repository {repo!r}, not a clean plant path")
+            pairs = [(label, list(moved)) for label, moved in pairs]
+            if len(pairs) == 1 and pairs[0][0].startswith("unverified") and not pairs[0][1]:
+                problems.append(incomplete("moved-unverified", repo, detail=pairs[0][0]))
+                continue
+            for _, moved in pairs:
+                for p in moved:
+                    joined = source_paths.plant_path(repo, p)
+                    if not source_paths.relative(joined):
+                        raise ValueError(f"moved_list named {joined!r}, not a clean plant path")
+                    paths.append(joined)
+    except missing:
+        return [], []                            # the answer already holds git-unavailable
+    except unrecorded as e:
+        return [], [incomplete("moved-unavailable", f"{anchor.ANCHOR_DIR}/{anchor.ANCHOR_NAME}", detail=str(e))]
+    except (Exception, SystemExit) as e:         # noqa: BLE001 — any failure of code-anchor is a record
+        return [], [incomplete("moved-unavailable", shown, detail=f"{type(e).__name__}: {e}")]
+    return paths, problems
+
+
 # --- the walk ------------------------------------------------------------------
 def by_link(r):
     return (r["link"] != "certain", r["depth"], r["path"])
@@ -2026,7 +2066,11 @@ def answer(query: str, args, root: Path) -> dict:
         problems[:] = [p for p in problems + more if p["reason"] != "config-refused"]
         problems.sort(key=lambda r: (r["reason"], r["subject"]))
         return doc
-    doc["inputs"], more = index.inputs(args.paths, query)
+    paths = args.paths
+    if getattr(args, "moved", False):
+        paths, more = moved_inputs(root)
+        problems += more
+    doc["inputs"], more = index.inputs(paths, query)
     problems += more
     if query == "anchors":
         doc["files"], more = index.anchors(doc["inputs"], args.all)
@@ -2073,7 +2117,7 @@ def capped(lines, every) -> list:
     return lines[:TEXT_MAX_ROWS] + [f"... {len(lines) - TEXT_MAX_ROWS} more; --all lists every row"]
 
 
-def text_view(doc: dict, every: bool = False) -> list:
+def text_view(doc: dict, every: bool = False, moved: bool = False) -> list:
     cache = doc["cache"]
     out = [f"Cache: {cache['status']}" + (f" ({cache['reason']})" if cache["reason"] else "")]
     if doc["query"] == "build":
@@ -2086,6 +2130,8 @@ def text_view(doc: dict, every: bool = False) -> list:
                    f"{len(doc['symbols'])} definition(s)")
     out += [f"Input: {i['path']} ({i['status']})" for i in doc["inputs"]]
     if doc["query"] == "anchors":
+        if moved and not doc["inputs"] and not doc["incomplete"]:
+            out.append(MOVED_NONE_LINE)
         for f in doc["files"]:
             h = f["history"]
             out.append(f"{f['path']}: uncited" if f["uncited"] else
@@ -2139,9 +2185,13 @@ def parse(argv):
                            help=f"walk depth, 1 to {MAX_DEPTH} (default {DEFAULT_DEPTH})")
             q.add_argument("--history", action="store_true",
                            help="add the files that changed together with an input in past commits")
+        else:
+            q.add_argument("--moved", action="store_true",
+                           help="take the inputs from code-anchor's moved list; no path beside it")
         q.add_argument("--all", action="store_true", help="every row, and the history pages named")
         q.add_argument("--json", action="store_true", help="print the answer as JSON")
-        q.add_argument("paths", nargs="+", help="plant paths, or - to read one per stdin line")
+        q.add_argument("paths", nargs="*" if name == "anchors" else "+",
+                       help="plant paths, or - to read one per stdin line")
     s = sub.add_parser("symbols", help="where each name is defined")
     s.add_argument("--all", action="store_true", help="every definition")
     s.add_argument("--json", action="store_true", help="print the answer as JSON")
@@ -2149,6 +2199,10 @@ def parse(argv):
     args = ap.parse_args(argv)
     if getattr(args, "depth", 1) is not None and not 1 <= getattr(args, "depth", 1) <= MAX_DEPTH:
         raise Usage(f"--depth takes 1 to {MAX_DEPTH}")
+    if getattr(args, "moved", False) and args.paths:
+        raise Usage("--moved takes no path and no -")
+    if args.query == "anchors" and not args.moved and not args.paths:
+        raise Usage("anchors takes a path, - or --moved")
     field = "names" if args.query == "symbols" else "paths"
     if getattr(args, field, None) == ["-"]:
         setattr(args, field, [l for l in sys.stdin.buffer.read().decode("utf-8", "surrogateescape").split("\n")
@@ -2170,7 +2224,8 @@ def main(argv=None) -> int:
     if args.json:
         sys.stdout.write(json.dumps(doc, sort_keys=True, indent=1, ensure_ascii=True) + "\n")
     else:
-        sys.stdout.write("\n".join(text_view(doc, getattr(args, "all", False))) + "\n")
+        sys.stdout.write("\n".join(text_view(doc, getattr(args, "all", False), getattr(args, "moved", False)))
+                         + "\n")
     return 0
 
 
