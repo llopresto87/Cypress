@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Full-install contract: every adapter delivers its runtime surfaces, and the
 # plant's own router, linters and hooks run in the installed tree.
-# E family (SPEC-0001, ADR-0009 host tiers): E1-E3 and E5-E14 here; E4 is in test-seed-lint.sh.
+# E family (SPEC-0001, ADR-0009 host tiers): E1-E3 and E5-E15 here; E4 is in test-seed-lint.sh.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -363,6 +363,22 @@ case_session_metrics_in_plant() {
   out="$(cd "$D" && python3 docs/graph/session-metrics.py --labels 2>&1)" || rc=$?
   [[ "$rc" -eq 0 ]] || die "E14: python3 docs/graph/session-metrics.py --labels exited $rc in a fresh plant: ${out:0:300}"
   grep -qx 'Tier' <<<"$out" || die "E14: the placed reader printed no 'Tier' label: ${out:0:300}"
+  rm -rf "$D"
+}
+
+# E15 SOURCE_INDEX_IS_PLACED (SPEC-0007): the source index and the two siblings
+# it loads by path are placed byte-identical; the installer writes neither the
+# cache nor the plant's config; the placed tool builds in the fresh plant.
+case_source_index_placed() {
+  local D f out rc=0; D="$(mktemp -d)"; fresh_copy "$D" all --copy
+  for f in source-index.py source_paths.py plant_walk.py; do
+    cmp -s "$ROOT/tools/$f" "$D/docs/graph/$f" \
+      || die "E15: docs/graph/$f is missing or differs from tools/$f"
+  done
+  [[ ! -e "$D/.cypress/source-index" ]] || die "E15: install.sh wrote .cypress/source-index/; only a query builds the cache"
+  [[ ! -e "$D/docs/graph/source-index.json" ]] || die "E15: install.sh wrote docs/graph/source-index.json; only the plant writes its config"
+  out="$(cd "$D" && python3 docs/graph/source-index.py build 2>&1)" || rc=$?
+  [[ "$rc" -eq 0 ]] || die "E15: python3 docs/graph/source-index.py build exited $rc in a fresh plant: ${out:0:300}"
   rm -rf "$D"
 }
 
@@ -749,7 +765,7 @@ main() {
     case_graft_stale_kernel case_glob_metachar case_no_symlink_churn \
     case_universal_router case_copilot_projection_tools case_seed_stamp \
     caseALL_EXCLUDES_LEGACY_HOSTS case_pre_growth_pointer case_code_anchor_tool \
-    case_session_metrics_in_plant \
+    case_session_metrics_in_plant case_source_index_placed \
     case_plant_facts_index_no_fm case_plant_facts_declared case_plant_facts_partial \
     case_model_map_placed case_opencode_model_from_map case_opencode_no_map_row \
     case_opencode_map_unreadable case_opencode_check_drift case_prime_hook_scripts_placed \
