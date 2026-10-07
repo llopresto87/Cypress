@@ -28,8 +28,9 @@ list of their own (SPEC-0007 §6 "Definitions", "History links"). `anchors
 --moved` takes its inputs from the moved list of `code-anchor.py` beside this
 file, so canonize needs no copied paths (SPEC-0007 §6 "Moved list").
 
-The path rules (what is code, the governed repositories, the Git boundary,
-the blob hash, the atomic write) are `source_paths.py`'s, the plant edge is
+The path rules (what is code, the governed repositories, the `repo:` claim
+rule, the config's path patterns, the Git boundary, the blob hash, the atomic
+write) are `source_paths.py`'s, the plant edge is
 `plant_walk.py`'s, and node frontmatter is read by `frontmatter.py`; all three
 sit beside this file and are loaded by file path. The tests are the plant's
 `TEST_GLOBS` in `docs/graph/spec-lint.py`; `docs/graph/source-index.json` may
@@ -54,7 +55,6 @@ import posixpath
 import re
 import stat
 import sys
-from fnmatch import fnmatchcase
 from pathlib import Path
 import importlib.util as _ilu
 sys.dont_write_bytecode = True  # a query writes only under .cypress/source-index/: no __pycache__
@@ -332,18 +332,6 @@ def read_config(root: Path):
     return {**CONFIG_DEFAULTS, **doc}, raw, None
 
 
-def config_matches(path: str, pattern: str) -> bool:
-    """A config pattern with no `/` matches the last path segment; one with
-    `/` drops its leading `**/` and matches the whole plant-relative path or
-    any tail of it. This is graph-lint's `_path_matches` rule, case-sensitive
-    by decision: a plant path is matched as Git names it (SPEC-0007 §6)."""
-    if "/" not in pattern:
-        return fnmatchcase(path.rsplit("/", 1)[-1], pattern)
-    while pattern.startswith("**/"):
-        pattern = pattern[3:]
-    return fnmatchcase(path, pattern) or fnmatchcase(path, "*/" + pattern)
-
-
 def _glob_segment(seg: str) -> str:
     out, i = [], 0
     while i < len(seg):
@@ -383,7 +371,7 @@ def test_class(path: str, test_globs, skip_dirs, exclude) -> str:
     way is one spec-lint skips, and no `exclude` pattern matches; else `code`."""
     dirs = path.split("/")[:-1]
     if (not test_globs or skip_dirs.intersection(dirs)
-            or any(config_matches(path, p) for p in exclude)):
+            or any(source_paths.path_matches(path, p) for p in exclude)):
         return "code"
     return "test" if any(rx.match(path) for rx in test_globs) else "code"
 
@@ -1856,7 +1844,7 @@ class Index:
                     continue
                 if hits:
                     path, status = hits[0], "walked"
-            if any(config_matches(path, g) for g in self.plant.config["global_inputs"]):
+            if any(source_paths.path_matches(path, g) for g in self.plant.config["global_inputs"]):
                 problems.append(incomplete("global-input", path))
             if status is None and query != "anchors":
                 if self.usable:
@@ -1927,7 +1915,7 @@ class Index:
         for path, rec in sorted(self.records.items()):
             if rec["test"] != "test" or path in taken:
                 continue
-            if any(config_matches(path, g) for g in self.plant.config["always_run"]):
+            if any(source_paths.path_matches(path, g) for g in self.plant.config["always_run"]):
                 out.append({"path": path, "reason": "declared"})
             elif rec["language"] in LINK_BEARING and path not in to_code and path not in self.opaque:
                 out.append({"path": path, "reason": "no-code-edge"})
@@ -2007,7 +1995,9 @@ class Index:
                     yield from (t for t in span.split() if "/" in t)
 
     def anchors(self, inputs, every):
-        """(files, incomplete records): for each input, the pages citing it."""
+        """(files, incomplete records): for each input, the pages citing it, by
+        backtick citation or `repo:` claim; each page whose `repo:` names
+        nothing on disk is a `repo-unresolved` record."""
         root = self.plant.root
         known = set(self.records) | {i["path"] for i in inputs}
         wanted = {i["path"] for i in inputs}
@@ -2015,6 +2005,7 @@ class Index:
         facts = {p: set() for p in wanted}
         history = {p: set() for p in wanted}
         problems = {}
+        kinds = {}                 # repo: value as written -> (kind, name), looked up once
         for page in plant_walk.files(root, GRAPH, "*.md"):
             rel = page.relative_to(root).as_posix()
             try:
@@ -2038,13 +2029,18 @@ class Index:
                 repo = frontmatter.parse(text, rel)[0].get("repo")
             except frontmatter.FrontmatterError:
                 repo = None
-            if isinstance(repo, str) and "/" in repo:
-                claimed = posixpath.normpath(repo)
+            if isinstance(repo, str) and repo:
+                if repo not in kinds:
+                    kinds[repo] = source_paths.repo_kind(root, repo)
+                kind, name = kinds[repo]
+                if kind == "unresolved":
+                    problems[(rel, None)] = incomplete(
+                        "repo-unresolved", rel, detail=safe(source_paths.REPO_UNRESOLVED_DETAIL.format(value=repo)))
                 for path in wanted:
-                    if path == claimed:
-                        claim(path, None, "repo", "certain", "exact")
-                    elif path.startswith(claimed + "/"):
-                        claim(path, None, "repo", "maybe", "repo-prefix")
+                    how = source_paths.repo_claim(name, path, kind)
+                    if how:
+                        claim(path, None, "repo", "certain" if how == "exact" else "maybe",
+                              "exact" if how == "exact" else "repo-prefix")
         files = []
         for path in sorted(wanted):
             fs = sorted(facts[path], key=lambda f: (f[3] != "certain", f[0], f[1] is not None, f[1] or 0,
