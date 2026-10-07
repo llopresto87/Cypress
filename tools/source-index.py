@@ -1322,17 +1322,16 @@ class Extract:
         if path_part.startswith("/"):
             self.missing(holder, line, "import", spec, None)
             return
-        if cfg:
-            if cfg["base_url"] is not None:
-                hit = self.probe(joined(cfg["base_url"], path_part))
-                if hit:
-                    self.link(holder, hit[0], "import", "resolved", line)
-                    return
+        if cfg and cfg["base_url"] is not None:
+            hit = self.probe(joined(cfg["base_url"], path_part))
+            if hit:
+                self.link(holder, hit[0], "import", "resolved", line)
+                return
         if package:
             self.workspace(holder, spec, line)
-        elif not (cfg and cfg["base_url"] is not None):
-            # no rule maps it (`~/x` with no `~` alias, `#internal`): the config
-            # that does is one this tool does not read, so it may name any file
+        else:
+            # no rule maps it (`~/x` with no `~` alias, `#internal`, a baseUrl
+            # miss): a config this tool does not read may name any file
             self.opaque_at(holder, line, spec, "unmapped-specifier")
 
     def target(self, holder, spec, line, bases, asset, missing, relative=True):
@@ -1871,7 +1870,7 @@ def answer(query: str, args, root: Path) -> dict:
             if plant.test_globs is None:
                 problems.append(incomplete("no-test-declaration", TEST_DECLARATION))
             elif not any(r["test"] == "test" for r in body["inventory"]):
-                problems.append(incomplete("no-test-files", "docs/graph/spec-lint.py"))
+                problems.append(incomplete("no-test-files", TEST_DECLARATION))
             doc["tests"] = sorted((r for r in rows if index.test(r["path"]) == "test"), key=by_link)
             doc["always_run"] = index.always_run({r["path"] for r in doc["tests"]})
             taken = {r["path"] for r in doc["tests"]} | {r["path"] for r in doc["always_run"]}
