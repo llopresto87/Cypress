@@ -3,10 +3,11 @@
 ## Unreleased — the source index: what a change reaches, read from the code (2026-10-07)
 
 A plant can now ask which code depends on a set of files, which tests a
-change reaches, and which graph pages cite a file, and get the answer from
-the code without a model. The tool is `docs/graph/source-index.py`. It
-recommends; verify and tiering still decide what runs and how much process
-a change gets.
+change reaches, which graph pages cite a file, and where a name is defined,
+and get the answer from the code without a model. The tool is
+`docs/graph/source-index.py`. Verify, canonize, grow and adopt-existing each
+call it once, at the step that needs it. It recommends; verify and tiering
+still decide what runs and how much process a change gets.
 
 ### Source index
 
@@ -16,6 +17,21 @@ a change gets.
   walk filtered to the plant's tests, plus an always-run set; and `anchors`,
   the graph pages that cite the inputs, with knowledge nodes kept apart from
   plans, specs and decisions. `build` forces a rebuild.
+- `symbols <name>` lists every definition of a name, with path, line and
+  kind, and never picks one when several files define it. A Python
+  definition, read with `ast`, is `certain`. A shell function, or a
+  TypeScript/JavaScript declaration at the top level of its file or
+  exported, is read line by line and is `maybe`. A file the tool could not
+  read makes the answer `incomplete`, with the action "search by hand".
+- `--history` adds to `impact` and `affected-tests` the files that changed
+  together with an input in past commits. Each is a `maybe` row in a
+  `history` list of its own, with the number of commits the two files
+  shared out of those that changed the input. History only adds rows. A
+  shallow clone, or a repository with no history, makes the answer
+  `incomplete`.
+- `anchors --moved` takes its inputs from the moved list of
+  `code-anchor.py`, the files changed since the anchor was recorded, so no
+  paths are copied by hand. With no anchor, the answer is `incomplete`.
 - Links come from Python imports, read with `ast` and never run; `python3`,
   `bash`, `sh` and `source` invocations; quoted path literals, whole or
   joined from segments; and TypeScript/JavaScript `import`, `export from`,
@@ -38,9 +54,26 @@ a change gets.
   another Python version), and deleting it is safe. A graft rebuilds it and
   never carries it over.
   [ADR-0029](docs/decisions/adr-0029-source-index-is-derived-scratch.md)
-  records the decision and is proposed;
+  records the decision; the owner accepted it on 2026-10-07.
   [SPEC-0007](docs/specs/SPEC-0007-source-index.md) holds the contracts.
 - The tool needs the Python standard library and `git`, nothing else.
+
+### The protocols call it on demand
+
+Each step below runs the tool once. No hook runs it, and nothing runs it
+per prompt or per file access, the pattern ADR-0018 withdrew.
+
+- `verify`: after GREEN and before the gates are chosen, `affected-tests`
+  is the recommended floor of the focused tests. The session may run more,
+  and never reads a test's absence from the list as proof that the change
+  cannot reach it. An `incomplete` answer puts the change in the "affected
+  scope genuinely uncertain" row.
+- `canonize`: in flow step 1, before `code-anchor.py --record`, the session
+  runs `anchors --moved` and hands the pages it names to the docs-librarian
+  to re-check. Recording the anchor first would empty the list.
+- `grow` and `adopt-existing`: before the scouts are briefed, the
+  `inventory` from `build --json` is their file list. On a refresh,
+  `impact` over the moved paths gives the blast radius.
 
 ### One home for the path rules
 
@@ -90,12 +123,15 @@ plant.
 
 ### Known limits
 
-- Slice 1 only: verify, canonize, grow and the route hooks do not call the
-  tool yet, and it reads no symbols and no history.
+- `symbols` says where a name is defined, not who uses it. A TS/JS class
+  member, an indented declaration that is not exported, and a definition in
+  a shell here-document are not read.
+- History does not follow renames, and a CI checkout that holds one commit
+  gives no history rows, so every `--history` answer there is
+  `incomplete`.
 - Hook commands written in host settings files, such as
   `.claude/settings.json`, are not read, so a hook script has no dependent
   in any answer.
-- ADR-0029 is proposed and waits for the owner.
 
 ## 8.0.0 — corpus pages placed on request, a deeper corpus, and sharper doctrine across the lifecycle (2026-10-05)
 
