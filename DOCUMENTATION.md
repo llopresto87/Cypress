@@ -1009,9 +1009,14 @@ claude-code, opencode and prime-agent. For each tool it:
 4. ensures `docs/graph/` has the schema, linter, router, nodes dir, and every
    missing leaf, while preserving existing files, and places the config-free
    tools beside them: `agnosticism-lint.py`, `prose-lint.py`,
-   `status-register.py` and `code-anchor.py`, which writes no anchor at
-   install, and places the model map `docs/graph/models.md` when it is
-   missing (the plant owns it from then on);
+   `status-register.py`, `session-metrics.py`, `code-anchor.py`, which
+   writes no anchor at install, and `source-index.py`, which writes no
+   cache at install (a query builds `.cypress/source-index/` and rebuilds
+   it when its key changes, ADR-0029), with the two modules they load by
+   path: `source_paths.py`, the seed's path rules, and `plant_walk.py`, the
+   walk over one plant's files. It places the model map
+   `docs/graph/models.md` when it is missing (the plant owns it from then
+   on);
 5. installs the canonical prompt as `EXPERT_SEED_INSTALL_PROMPT.md` at the target
    root;
 6. writes the seed stamp `.cypress/seed.json` (version, date, the adapters
@@ -1130,8 +1135,9 @@ classified, so it stays current with the file. Grouped by what they check:
 4. `test-full-install.sh`: full install across tools, roster parity, the
    Claude-Code + Prime-Agent coexistence, CI parity gate.
 5. `test-bound-hook.sh`: the Claude-Code bounded-execution guard.
-   `test-prompt-hooks.sh` holds the per-prompt and session-start hooks, and
-   `test-code-anchor.sh` holds `tools/code-anchor.py`.
+   `test-prompt-hooks.sh` holds the per-prompt and session-start hooks,
+   `test-code-anchor.sh` holds `tools/code-anchor.py`, and
+   `test-source-index.sh` holds `tools/source-index.py`.
 6. `test-graft-tools.sh`: the graft tools: the engine reconciliation, the
    backup audit, the three-way ledger and the run driver.
 7. `test-growth-audit.sh`: the coverage gate (`tools/growth-audit.py`): every

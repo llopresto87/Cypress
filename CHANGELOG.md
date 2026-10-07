@@ -1,5 +1,102 @@
 # Changelog
 
+## Unreleased — the source index: what a change reaches, read from the code (2026-10-07)
+
+A plant can now ask which code depends on a set of files, which tests a
+change reaches, and which graph pages cite a file, and get the answer from
+the code without a model. The tool is `docs/graph/source-index.py`. It
+recommends; verify and tiering still decide what runs and how much process
+a change gets.
+
+### Source index
+
+- `tools/source-index.py` is placed at `docs/graph/source-index.py`. One
+  reverse walk over file-to-file links answers three queries: `impact`, the
+  code that depends on the inputs, nearest first; `affected-tests`, the same
+  walk filtered to the plant's tests, plus an always-run set; and `anchors`,
+  the graph pages that cite the inputs, with knowledge nodes kept apart from
+  plans, specs and decisions. `build` forces a rebuild.
+- Links come from Python imports, read with `ast` and never run; `python3`,
+  `bash`, `sh` and `source` invocations; quoted path literals, whole or
+  joined from segments; and TypeScript/JavaScript `import`, `export from`,
+  `require()` and `import()`, resolved through `tsconfig` `paths` and
+  `baseUrl`. A mention in Markdown is not a link.
+- Each row is `certain` or `maybe`, and a `maybe` row names the reason and
+  line of its weakest link. A file whose references cannot be pinned, such
+  as a whole-tree walk or a dynamic import, gives `maybe` rows that every
+  input reaches alike. These are the floor, listed once after the input's
+  own rows. What the tool cannot answer makes the answer `incomplete`, with
+  a reason and one action: check by hand, run the full suite, or review by
+  hand. `affected-tests` never presents its list as the only tests to run.
+- The tests are the plant's `TEST_GLOBS` in `docs/graph/spec-lint.py`. A
+  plant can set `exclude`, `always_run` and `global_inputs` in
+  `docs/graph/source-index.json`, which is its own file; the installer never
+  places it.
+- The index is derived scratch in `.cypress/source-index/`, beside an inner
+  `.gitignore` of `*`. Any query rebuilds it when its key changes (a commit,
+  an uncommitted code edit, a config edit, a graft that changes the tool,
+  another Python version), and deleting it is safe. A graft rebuilds it and
+  never carries it over.
+  [ADR-0029](docs/decisions/adr-0029-source-index-is-derived-scratch.md)
+  records the decision and is proposed;
+  [SPEC-0007](docs/specs/SPEC-0007-source-index.md) holds the contracts.
+- The tool needs the Python standard library and `git`, nothing else.
+
+### One home for the path rules
+
+- `tools/source_paths.py`, placed at `docs/graph/source_paths.py`, holds the
+  rules for what counts as code, which repositories a plant governs, where
+  Git ends, the content hash, the atomic write under `.cypress/`, and how a
+  page cites a path. `code-anchor.py` and `growth-audit.py` now use it; their
+  behaviour is unchanged, and their existing tests prove it.
+- `tools/plant_walk.py`, the walk over one plant's files that `graft-audit.py`
+  already used, is now also placed, at `docs/graph/plant_walk.py`, because
+  `source-index.py` loads it.
+
+### Measured
+
+The figures come from copies of each tree, at seed commit `17d4539`, before
+the tool read paths joined from segments; nothing was written into a real
+plant.
+
+- On a temporary plant over a clone of the seed, `affected-tests` answered
+  for 48 past commits that changed at most three source files, scored
+  against the tests each commit edited, out of a set of 40. The full answer
+  (tests, always-run and floor) found 0.989 of them, but named 38.0 of the
+  40 tests on average: on the seed it suggests nearly the whole suite. The
+  input rows alone (tests and always-run, no floor) found 0.880 at 21.7
+  tests, and they are the useful part on the seed. The `certain` rows alone
+  found 0.120, because most of the seed's links are path literals, which are
+  `maybe`.
+- A full build of the seed plant takes 0.67 to 0.76 s, and a cached query
+  0.10 s. A TypeScript plant of 397 files builds in 0.66 s, and a llama.cpp
+  clone of 4,320 files in 3.19 s.
+
+### Checks
+
+- The gate has 51 steps (`python3 tools/gate-registry.py --summary`).
+- `tests/test-source-index.sh` holds the source index, on synthetic Git
+  plants.
+
+### Upgrade notes
+
+- **New placed tools.** Every install now places
+  `docs/graph/source-index.py`, `docs/graph/source_paths.py` and
+  `docs/graph/plant_walk.py`, fast-forwarded like the other seed tools. The
+  installer writes no index; the first query builds it.
+- **Set `exclude` before reading an answer as a gate set.** A plant's
+  `TEST_GLOBS` often match fixtures, helpers and a suite runner. List them
+  under `exclude` in `docs/graph/source-index.json`.
+
+### Known limits
+
+- Slice 1 only: verify, canonize, grow and the route hooks do not call the
+  tool yet, and it reads no symbols and no history.
+- Hook commands written in host settings files, such as
+  `.claude/settings.json`, are not read, so a hook script has no dependent
+  in any answer.
+- ADR-0029 is proposed and waits for the owner.
+
 ## 8.0.0 — corpus pages placed on request, a deeper corpus, and sharper doctrine across the lifecycle (2026-10-05)
 
 A plant can now ask the seed for the corpus pages that match its own stack,
