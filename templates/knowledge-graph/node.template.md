@@ -10,7 +10,7 @@ id: {{kind}}.{{name}}
 tier: 2
 kind: {{kind}}
 title: {{name}} — one-line description
-repo: {{repo-or-path}}          # optional; omit for non-code subjects
+repo: {{repo-or-path}}          # optional; one plant-relative path: a repository, a folder or a file; omit for non-code subjects
 owns:                           # fact-keys this node is the only home of
   - {{name}}.responsibility
   - {{name}}.{{fact}}

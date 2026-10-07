@@ -12,7 +12,7 @@ owner: architect
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-10-07
-- **Last reviewed:** 2026-10-07 (review `reviewer-spec`, amended by `architect-amend`; joint-pass step-3 returns applied by `architect-fix`; devils-advocate verdicts applied by `architect-da`; the load by file path made `certain` by `architect-q5`; the code-review fixes stated in §6 and §7 by `architect-review-fixes`; the slice-1 final decisions after the measurement, path joins, the floor's depth and the unmapped specifier, by `architect-final`; slice 2, §1, §2 and §4 to §8, by `architect-slice2`; the slice-2 tester, security and devils-advocate findings by `architect-slice2-fix`; the slice-2 code review `reviewer-slice2` (fixes 5 and 6) and the measurement-2 decisions M2-1, M2-3 and M2-6 by `architect-slice2-m2`)
+- **Last reviewed:** 2026-10-07 (review `reviewer-spec`, amended by `architect-amend`; joint-pass step-3 returns applied by `architect-fix`; devils-advocate verdicts applied by `architect-da`; the load by file path made `certain` by `architect-q5`; the code-review fixes stated in §6 and §7 by `architect-review-fixes`; the slice-1 final decisions after the measurement, path joins, the floor's depth and the unmapped specifier, by `architect-final`; slice 2, §1, §2 and §4 to §8, by `architect-slice2`; the slice-2 tester, security and devils-advocate findings by `architect-slice2-fix`; the slice-2 code review `reviewer-slice2` (fixes 5 and 6) and the measurement-2 decisions M2-1, M2-3 and M2-6 by `architect-slice2-m2`; the owner's `repo:` ruling, option D, by `architect-D`)
 - **Related grill section:** docs/plans/grill-8.1.0-source-index.md §6 (the owner's rulings of 2026-10-07: one walk with three link kinds; the helper's scope; test roots and plant config; graph-lint keeps its tier-2 rule in slice 1; "slice 2 ok", with the slice-2 rows)
 - **Related ADRs:** adr-0029-source-index-is-derived-scratch (proposed): the index is derived scratch, self-ignored, rebuilt on any key change, never committed and never canonical
 - **Related specs:** SPEC-0001-install-placement (placement), SPEC-0003-per-prompt-injection (code anchor)
@@ -20,7 +20,7 @@ owner: architect
 - **Design latitude:** balanced. The owner approved on 2026-10-07: "implement the plan so that it's integrated organically into the cypress seed and installed/grafted into the plants correctly." New structure is allowed where the change needs it (one shared helper module, one derived cache); no concept the plan did not name.
 - **Supersedes:** none
 - **Superseded by:** none
-- **Sign-offs:** product [x] (2026-10-07: slice 1 signed, §3 and §9 reflect the owner's outcome; 2026-10-07, `product-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling) · architect [x] (2026-10-07, `architect-da`: §4 to §8 coherent after the devils-advocate verdicts; the floor, the helper interface, the interpreter in the key and the TS/JS line join applied; 2026-10-07, `architect-slice2`: the slice-2 §4 to §8 coherent with slice 1; 2026-10-07, `architect-slice2-fix`: the slice-2 review findings applied, `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` left pending the owner's `repo:` ruling, grill §12 question 6) · tester [x] (2026-10-07: slice 1 signed; `tester-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling) · security [x] (2026-10-07, `security-slice2-sign`: slice 2 signed; S1 to S8 and P1 to P10 applied in §5, §6, §7, §10 and the plan; accepted deviations: the `/%P` history marker that also skips a parentless commit, the depth-2 `file://` shallow clone, and a missing helper beside graph-lint degrading tier 2 with the `inference_skipped` notice instead of failing the route; REPO_CLAIM pending owner ruling. Slice 1 signed by `security-s5s7`: §5 Security requirements and seven §7 abuse cases added; four §6 constants, `FILE_MAX_BYTES`, `DIR_LINK_MAX`, `EXTENDS_MAX` and `CACHE_MAX_BYTES`, and the `outside-repository` `base` value are left to the architect)
+- **Sign-offs:** product [x] (2026-10-07: slice 1 signed, §3 and §9 reflect the owner's outcome; 2026-10-07, `product-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling) · architect [x] (2026-10-07, `architect-da`: §4 to §8 coherent after the devils-advocate verdicts; the floor, the helper interface, the interpreter in the key and the TS/JS line join applied; 2026-10-07, `architect-slice2`: the slice-2 §4 to §8 coherent with slice 1; 2026-10-07, `architect-slice2-fix`: the slice-2 review findings applied, `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` left pending the owner's `repo:` ruling, grill §12 question 6; 2026-10-07, `architect-D`: that contract, `ANCHORS_NAME_CITING_PAGES_OR_UNCITED`, §6 "Helper" and §7 rewritten on the owner's option D, §4 to §8 coherent) · tester [x] (2026-10-07: slice 1 signed; `tester-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling) · security [x] (2026-10-07, `security-slice2-sign`: slice 2 signed; S1 to S8 and P1 to P10 applied in §5, §6, §7, §10 and the plan; accepted deviations: the `/%P` history marker that also skips a parentless commit, the depth-2 `file://` shallow clone, and a missing helper beside graph-lint degrading tier 2 with the `inference_skipped` notice instead of failing the route; REPO_CLAIM pending owner ruling. Slice 1 signed by `security-s5s7`: §5 Security requirements and seven §7 abuse cases added; four §6 constants, `FILE_MAX_BYTES`, `DIR_LINK_MAX`, `EXTENDS_MAX` and `CACHE_MAX_BYTES`, and the `outside-repository` `base` value are left to the architect)
 
 ## 1. Summary
 
@@ -40,7 +40,7 @@ A stdlib Python seed tool, `tools/source-index.py`, placed in every plant as `do
     - Definitions, built with the links into the cache, and the query `symbols`: Python functions, classes, module and class assignments and `type` aliases read by `ast` (`certain`); shell functions and top-level or exported TS/JS declarations read a line at a time after comments are blanked (`maybe`, reason `line-reading`); every definition of a name listed; a file the index could not read makes the answer incomplete.
     - Git change history as an opt-in link source for `impact` and `affected-tests` (`--history`): read per query from `git log` and never cached; its rows are `maybe`, labelled `history`, with how often each file changed together with an input, and listed apart; history only adds files no other list holds; shallow or missing history makes the answer incomplete.
     - `anchors --moved`: the moved list of `code-anchor.py`, read through the one function its `--compare` prints from, each repository-relative path joined to its repository (grill §12 question 3).
-    - The `repo:` claim rule and the path-pattern rule move into the helper; `graph-lint.py` loads the helper from beside itself and its tier 2 calls both, with its messages and verdicts unchanged (grill §12 question 2); `anchors` and the plant config call the same two functions.
+    - The `repo:` claim rule and the path-pattern rule move into the helper; `graph-lint.py` loads the helper from beside itself and its tier 2 calls both, with its messages unchanged (grill §12 question 2); `anchors` and the plant config call the same functions. What a `repo:` value names on disk decides whether it claims paths (the owner's ruling on grill §12 question 6, option D): a repository or the plant root claims nothing, a folder or a file claims, slash or not, and a value that names nothing is read as before and reported by `anchors`. Graph-lint's verdicts are unchanged on the seed's suites and change in a plant that holds a folder or file value without `/`, at its next graft.
     - Protocol wiring, on demand and never per prompt or per file access (ADR-0018 withdrew a freshness tool called at each file access), as prose in the protocol and skill nodes: verify takes `affected-tests` as the recommended floor of its focused gates; canonize runs `anchors --moved` before the code anchor is recorded again; grow and adopt-existing give scouts the `build` inventory as their file list. The wiring adds no tool contract.
 - **Out of scope:**
   - Later work, not slice 2: who references a name (a call graph stays out, below); TS/JS class members and indented declarations that are not exported (function locals), definitions inside shell here-documents and strings, and definitions in other languages; history across renames (`git log --follow`), history as a walk step, and a cached history; a text inventory view (`build --json` carries the inventory).
@@ -500,18 +500,16 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
 - **Given:** a node `docs/graph/nodes/n.md` citing `` `src/a.py:12` `` and
   `` `src/a.py#run` ``, a leaf citing `` `../../src/a.py` `` page-relatively,
   a node with `repo: src/a.py`, a node with `repo: src/` and one with
-  `repo: src`, a plan, a spec and a decision page each citing
-  `` `src/a.py` ``, and a file `src/b.py` no page cites
-- **When:** `anchors src/a.py src/b.py --json` runs
+  `repo: src` (`src` a plain folder), a plan, a spec and a decision page
+  each citing `` `src/a.py` ``, and a file `lib/b.py` no page cites
+- **When:** `anchors src/a.py lib/b.py --json` runs
 - **Then:** `src/a.py` lists in `facts` the node (with line 12 and with no
-  line) and the leaf as `certain` `backtick` facts and the `repo: src/a.py`
-  node as a `certain` `repo` fact (the `maybe` `repo-prefix` fact is
-  `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS`'s); it counts the plan, spec and decision pages
-  in `history` without naming them
-- **And:** the `repo: src/` and `repo: src` nodes claim nothing (a `repo:` that
-  holds no `/` once its leading and trailing `/` are cut names a repository
-  root: the helper's `repo_claim`, §6 "Helper"), and `src/b.py` is listed as
-  `uncited`
+  line) and the leaf as `certain` `backtick` facts, the `repo: src/a.py`
+  node as a `certain` `repo` fact and the `repo: src/` and `repo: src` nodes
+  as `maybe` `repo` facts found `repo-prefix` (a folder claims, slash or not:
+  the kinds are `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS`'s); it counts
+  the plan, spec and decision pages in `history` without naming them
+- **And:** `lib/b.py` is listed as `uncited`
 - **And:** with `--all`, `history` names its three pages
 
 ### Contract: ANCHORS_BASENAME_IS_MAYBE_AMBIGUOUS_IS_INCOMPLETE
@@ -709,22 +707,46 @@ anchor with the placed `docs/graph/code-anchor.py`.
 ### One claim rule
 
 ### Contract: REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS
-- **Given:** a plant whose `docs/graph/` holds the seed's `graph-lint.py`
-  beside the tool and its siblings, nodes with `repo: src/`,
-  `repo: src/lib/` and `repo: src/lib/a.py`, and `src/lib/a.py`,
-  `src/lib/c.py` and `src/b.py` in the inventory
-- **When:** `anchors src/lib/a.py src/lib/c.py src/b.py --json` runs, and
-  `graph-lint.py --plan-json` runs once on a task naming each of the three
-  paths
-- **Then:** `anchors` lists for `src/lib/a.py` the `repo: src/lib/a.py` node
-  as a `certain` `repo` fact and the `repo: src/lib/` node as a `maybe` one
-  found `repo-prefix`, for `src/lib/c.py` the `repo: src/lib/` node as a
-  `maybe` one, and `src/b.py` as `uncited`; `graph-lint.py` loads by
-  `named_path` the `repo: src/lib/a.py` node, then the `repo: src/lib/` node,
-  then no node through a `repo:` claim
-- **And:** neither tool reads `repo: src/` as a claim, because both call the
-  helper's one `repo_claim`, which cuts the leading and trailing `/` and
-  reads a value that then holds no `/` as a repository root
+- **Given:** a plant (a Git work tree) whose `docs/graph/` holds the seed's
+  `graph-lint.py` beside the tool and its siblings; on disk a plain folder
+  `src/` holding `src/lib/a.py`, `src/lib/c.py` and `src/b.py`, a file
+  `CMakeLists.txt` at the root, and a nested repository `vendor/x` (holding
+  `.git`) with `vendor/x/y.py`; nodes, one value each, with `repo:` (path)
+  `src/lib/a.py`, `src/lib/`, `src`, `CMakeLists.txt`; (root) `.`,
+  `vendor/x`; (outside) `../elsewhere`; (unresolved) `old/lib`, `gone`; and
+  (case) `Src`
+- **When:** `anchors src/lib/a.py src/lib/c.py src/b.py CMakeLists.txt
+  vendor/x/y.py --json` runs, and `graph-lint.py --plan-json` runs once per
+  task, each task naming one path: the five inputs, `old/lib/z.py` and
+  `SRC/b.py`
+- **Then** (path: an existing regular file or a non-empty folder claims,
+  slash or not): `anchors` lists for `src/lib/a.py` the `repo: src/lib/a.py`
+  node as a `certain` `repo` fact, then the `repo: src/lib/` and `repo: src`
+  nodes as `maybe` ones found `repo-prefix`; for `src/lib/c.py` the
+  `repo: src/lib/` then the `repo: src` node, `maybe`; for `src/b.py` the
+  `repo: src` node, `maybe`; for `CMakeLists.txt` the
+  `repo: CMakeLists.txt` node, `certain`; `graph-lint.py` loads by
+  `named_path` the `repo: src/lib/a.py`, `repo: src/lib/`, `repo: src` and
+  `repo: CMakeLists.txt` node for those four tasks, one each
+- **And** (root and outside: a directory holding `.git`, the plant root and
+  a value outside the plant claim nothing): `vendor/x/y.py` is `uncited`, and
+  its task loads no node through a `repo:` claim; none of the three values
+  adds an `incomplete` record
+- **And** (unresolved: a value that names nothing on disk is read as before
+  the ruling, a value holding a `/` once its leading and trailing `/` are cut
+  is a string prefix, one holding none claims nothing): the `old/lib/z.py`
+  task loads the `repo: old/lib` node by `named_path`, with no notice for any
+  `repo:` value; the `anchors` answer holds one `repo-unresolved` record for
+  each of the `old/lib`, `gone` and `Src` nodes, subject the node's page,
+  detail `REPO_UNRESOLVED_DETAIL` naming the value (§6 "Incomplete"), and its
+  text view ends with the `anchors` `ACTION_LINE`
+- **And** (case: the kind is decided on the value as written, matching case
+  is the caller's): `repo: Src`, whose case differs from the folder `src`,
+  claims nothing in either tool; the `SRC/b.py` task loads the `repo: src`
+  node by `named_path`, because the router folds case before it matches and
+  `anchors` matches exactly
+- **And:** both tools read each value through the helper's one `repo_kind`
+  and one `repo_claim` (§6 "Helper"), so they differ only in that case fold
 
 ## 5. Non-functional requirements
 
@@ -850,7 +872,9 @@ anchor with the placed `docs/graph/code-anchor.py`.
     loads `frontmatter.py`, with `sys.dont_write_bytecode` set first, so a
     routed prompt writes no `__pycache__` into `docs/graph/`; loading the
     helper runs no Git call and reads no file but `frontmatter.py`; its
-    `repo_claim` and `path_matches` are string functions that open nothing.
+    `repo_kind` stats each distinct `repo:` value once per run and opens no
+    file and runs no Git (§6 "Helper"), and its `repo_claim` and
+    `path_matches` are string functions that open nothing.
 
 - **Privacy:** the cache holds paths, hashes, link targets, reason codes and
   the names of definitions (identifiers), never a value or other file
@@ -905,6 +929,8 @@ constants:
   DIR_FD_CALLS: helper           # moved from code-anchor.py, with `mkdir` added: {open, stat, unlink, rename, mkdir}
   CITATION_RE, MISSING_CITATION, MALFORMED_CITATION: helper             # moved from growth-audit.py, unchanged
   repo_claim, path_matches: helper   # moved from graph-lint.py's tier 2 (slice 2); graph-lint, anchors and the config call them
+  repo_kind: helper              # the owner's `repo:` ruling, option D; graph-lint, anchors and governed_repositories call it
+  REPO_UNRESOLVED_DETAIL: "repo: {value} names nothing on disk; correct the node's repo:"   # the `repo-unresolved` detail; {value} through the `?` replacement
   TEMP_PREFIX: ".tmp-source-index-"   # the cache's exclusive temp files
   FLOOR_LINE: "Floor: {n} maybe row(s) every input reaches (opaque holders and their dependents):"
   RECOMMEND_LINE: "Recommendation only: the tests above and the always-run set, never only these; verify decides what runs."
@@ -957,17 +983,49 @@ intended exception, a citation with trailing whitespace: §12, 2026-10-07 code r
   cache shape check use it. The tool's input normalizer is another function,
   `plant_relative`, in `source-index.py` (§6 "Inputs").
 
-Slice 2 moves graph-lint's tier-2 path rule onto the helper, as two string
-functions that open nothing, each moved from `graph-lint.py` unchanged:
-- `repo_claim(value, path) -> "exact" | "prefix" | None`: the `repo:` value
-  cut of its leading and trailing `/` (`str.strip("/")`, nothing else
-  normalized); a value that then holds no `/` names a repository root and
-  claims nothing (`src`, `src/`); otherwise `exact` when `path` equals it,
-  `prefix` when `path` begins with it and `/`, else None. Graph-lint's
-  `_named_paths` takes the longest `exact` or `prefix` claim (both sides
-  lowercased by graph-lint before the call, as today); `anchors` lists every
-  claim, `exact` as a `certain` fact and `prefix` as a `maybe` one found
-  `repo-prefix`.
+Slice 2 moves graph-lint's tier-2 path rule onto the helper. What a `repo:`
+value names on disk decides whether it claims paths (the owner's ruling on
+grill §12 question 6, option D), so the rule is two functions, one that stats
+and one on strings; `path_matches` moves from `graph-lint.py` unchanged:
+- `repo_kind(plant, value) -> (kind, name)`: `kind` is one of `root`,
+  `path`, `outside` and `unresolved`, decided on the value as written (case
+  kept); an empty value is no value, and every caller skips it, as
+  `repo_values` does. The value is joined to `plant` (an absolute value
+  stands as it is) and resolved, symlinks followed; a target outside the
+  resolved plant is `outside`, and `name` is the target's plant-relative
+  POSIX path, `.` for the plant root, so `./src/lib`, `src/lib/` and an
+  absolute path to the folder are one name. Then, in order: the plant root,
+  or a directory holding `.git` (a file or a directory), is `root`; a
+  regular file, or a directory holding at least one entry, is `path`;
+  anything else is `unresolved`, with `name` the value as written: nothing
+  at the target (a deleted folder, a comma list), an empty directory (an
+  uninitialized submodule or a clone not made yet, so a missing repository
+  reads as a present one does), another file type, and any error the
+  resolution or the stat raises (`OSError`, `ValueError`, `RuntimeError`).
+  It stats, and reads one entry of a directory without `.git`; it opens no
+  file and runs no Git. On a case-sensitive file system (Linux, the seed's
+  gate) a value whose case differs from disk names nothing, so it is
+  `unresolved` and `anchors` reports it; a case-insensitive one finds it, and
+  it reads as `path` under the value's own case.
+- `repo_claim(name, path, kind) -> "exact" | "prefix" | None`: a string
+  function that opens nothing. `root` and `outside` claim nothing. `path`
+  is `exact` when `path` equals `name`, `prefix` when `path` begins with
+  `name` and `/`, else None. `unresolved` keeps graph-lint's reading from
+  before the ruling: the value cut of its leading and trailing `/`
+  (`str.strip("/")`, nothing else normalized); one that then holds no `/`
+  claims nothing, any other is `exact` or `prefix` as for `path`.
+- Graph-lint's `_named_paths` calls `repo_kind` once per distinct value as
+  written, once per run, with `PLANT`, and lowercases `name` and the path
+  before it calls `repo_claim` (as today); it takes the longest `exact` or
+  `prefix` claim, a tie keeping node order, and adds no notice for an
+  `unresolved` value (it runs on every prompt). `anchors` calls both with
+  the plant root and matches case-exact; it lists every claim, `exact` as a
+  `certain` fact and `prefix` as a `maybe` one found `repo-prefix`, and each
+  node whose value is `unresolved` adds one `repo-unresolved` record to
+  every `anchors` answer (§6 "Incomplete").
+- `governed_repositories(root)` is built on `repo_kind`: the plant root when
+  it holds `.git`, then each distinct `name` of a `root` value other than
+  `.`, sorted; the set it returns today.
 - `path_matches(path, pattern) -> bool`: graph-lint's `_path_matches` with its
   `.lower()` left to the caller: a pattern with no `/` matches the last path
   segment; one with `/` drops its leading `**/` and matches the whole path or
@@ -983,7 +1041,7 @@ loads `frontmatter.py` with, lazily: once per run, the first time tier 2
 reads a task path, so a lint run and a route that never reaches tier 2 never
 load it. Loading the helper runs no Git call and reads no file but
 `frontmatter.py`. A helper that is absent, fails to load, or lacks
-`repo_claim` or `path_matches` (an older copy) raises `HelperUnavailable`
+`repo_kind`, `repo_claim` or `path_matches` (an older copy) raises `HelperUnavailable`
 inside tier 2, which the router already catches, as it catches any other
 exception there (a call whose signature changed raises `TypeError`): tier 2
 claims nothing for that run, the route goes on to the next tier, and the
@@ -998,12 +1056,17 @@ an older engine: §7 `HELPER_ABSENT_BESIDE_GRAPH_LINT`); in the seed, `templates
 is a byte-identical copy of `tools/source_paths.py`, held so by
 `tests/seed-lint.py` as it holds the copies of `frontmatter.py`. The move is
 proved by graph-lint's existing suites passing with no assertion edited and
-by `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS`. One intended change, in
-`anchors` only: slice 1 read `repo: src/` as a prefix claim and normalized
-the value with `posixpath.normpath`; graph-lint read `src/` as a repository
-root and normalized nothing. The one rule is graph-lint's, so its routing is
-unchanged and `anchors` stops reading `src/` (and `./src/lib`) as claims
-(§12, 2026-10-07, slice 2).
+by `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS`. Two intended changes, both
+from the owner's `repo:` ruling (§12, 2026-10-07, option D). In `anchors`:
+slice 1 read `repo: src/` as a prefix claim and normalized the value with
+`posixpath.normpath`; now the kind decides, so `src/` and `src` over a folder
+claim as `maybe` facts, `./src/lib` over a folder claims as `src/lib`, and a
+value that names nothing is reported. In graph-lint: a folder or file value
+without `/` (`src/` and `CMakeLists.txt` in the llama.cpp plant, `suricata`
+in the wrt-migration plant) now claims, and a nested repository named with a
+`/` stops claiming (no plant holds one); every other verdict is unchanged.
+The seed's suites hold no value that moves: their `repo:` values name
+nothing on disk (`billsvc` is never written), so they read as before.
 
 ### Inventory record
 
@@ -1549,6 +1612,7 @@ incomplete_record:
 | `history-unavailable` | that repository has no commit, or its `git log` failed or timed out | the repository's plant-relative path (the error is the detail) | impact, affected-tests, with `--history` |
 | `moved-unavailable` | code-anchor has no usable anchor, or `code-anchor.py` is absent or fails to load | `.cypress/anchor.json`, or `docs/graph/code-anchor.py` (the reason is the detail) | anchors `--moved` |
 | `moved-unverified` | code-anchor labels a recorded repository `unverified` | the repository's plant-relative path (the label is the detail) | anchors `--moved` |
+| `repo-unresolved` | a node's `repo:` value names nothing on disk (`repo_kind` `unresolved`, §6 "Helper") | the node's plant-relative page (`REPO_UNRESOLVED_DETAIL` naming the value is the detail) | anchors, every answer, `--moved` included |
 
 "The input" is the input as `plant_relative` normalizes it (§6 "Inputs"), so
 it equals the input given in its normal form; an input it cannot make
@@ -1663,10 +1727,12 @@ citation holding no `/`, the one inventory file of that basename (a `maybe`
 fact, found `basename`); several such files make an `ambiguous-citation`
 record when one is an input. `cite_problem` is the same function's strict
 mode: plant-relative only, line checked. Every node's `repo:` is read by the
-helper's `repo_claim` (§6 "Helper"): it claims each input it equals
-(`certain`) or is a directory prefix of (`maybe`, found `repo-prefix`), all
-such nodes listed, longest claim first; a `repo:` that holds no `/` once its
-leading and trailing `/` are cut claims nothing. Pages under `docs/graph/plans/`, `specs/` and
+helper's `repo_kind` and `repo_claim` (§6 "Helper"): a value naming a
+folder or a file claims each input it equals (`certain`) or is a directory
+prefix of (`maybe`, found `repo-prefix`), all such nodes listed, longest
+claim first; a repository, the plant root or a value outside the plant claims
+nothing; a value that names nothing is read as before the owner's ruling and
+adds a `repo-unresolved` record. Pages under `docs/graph/plans/`, `specs/` and
 `decisions/` are `history`; every other page is a `fact`.
 
 ### CLI
@@ -2021,12 +2087,27 @@ incomplete, else, for `affected-tests`, with `RECOMMEND_LINE`.
 - **Recovery:** fetch the recorded commit, or review that repository's
   facts by hand
 
+### Failure: REPO_VALUE_UNRESOLVED
+- **Contract:** REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS
+- **Trigger:** a node's `repo:` value names nothing on disk (`repo_kind`
+  `unresolved`): a deleted or renamed folder, a comma list, a case that
+  differs from disk, an empty directory, another file type, or a value the
+  resolution or the stat refuses
+- **Response:** both tools read the value as before the owner's ruling (one
+  holding a `/` once its leading and trailing `/` are cut is a string prefix,
+  one holding none claims nothing); `anchors` adds one `repo-unresolved`
+  record naming the page, with the value in `REPO_UNRESOLVED_DETAIL`, to
+  every answer, which is then `incomplete`; the router adds no notice
+- **Side effects:** none
+- **Recovery:** correct the node's `repo:` to one plant-relative path that
+  exists (a repository, a folder or a file), or remove it
+
 ### Failure: HELPER_ABSENT_BESIDE_GRAPH_LINT
 - **Contract:** REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS
 - **Trigger:** `graph-lint.py` reaches tier 2 with no usable `source_paths.py`
   beside it: none (a hand-copied engine, a plant whose last install predates
-  the helper), one that fails to load, or one whose `repo_claim` or
-  `path_matches` is missing or no longer takes graph-lint's call. The likely
+  the helper), one that fails to load, or one whose `repo_kind`, `repo_claim`
+  or `path_matches` is missing or no longer takes graph-lint's call. The likely
   form is the reverse skew: a plain re-install fast-forwards the helper
   (`place_file`) while the engine (`place_if_missing`) keeps its older calls
   until a graft reconciles it
@@ -2201,8 +2282,19 @@ output:
 input:  anchors Cypress/tools/code-anchor.py; graph-lint.py --plan "edit Cypress/tools/code-anchor.py"
 output:
   # anchors: the two `repo: Cypress/tools` nodes, maybe, repo-prefix; the
-  #   `repo: Cypress` nodes claim nothing (a repository root)
+  #   `repo: Cypress` nodes claim nothing (a folder holding .git: `root`)
   # graph-lint: a `repo: Cypress/tools` node by named_path, as before slice 2
+```
+
+```yaml
+# Edge: the llama.cpp plant (seed 7.26.0), folder and file values without `/`
+# (`repo: src/` on two nodes, `repo: CMakeLists.txt`, `repo: .`), after its next graft
+input:  graph-lint.py --plan "fix src/llama.cpp"; anchors src/llama.cpp
+output:
+  # graph-lint: the first `repo: src/` node in node order by named_path (a tie
+  #   keeps node order); before the ruling no node, `src` read as a repository
+  # anchors: both `repo: src/` nodes, maybe, repo-prefix; `repo: .` claims
+  #   nothing (the plant root)
 ```
 
 ```yaml
@@ -2533,3 +2625,4 @@ flagged assumption in grill.md §12. Sign-off keeps the status `draft`;
 - 2026-10-07 — slice 2 reopens the spec: status `active` (from `implemented`); slice 1's evidence stands as recorded: `tests/test-source-index.sh` (25 cases, X425 to X449) and `tests/test-full-install.sh` (E15), wired into `tests/run.sh`, every slice-1 §10 row green but `CACHE_WRITE_FAILED` (skipped: the helper's atomic write is proved by the code-anchor fault case), the full seed gate run-parallel OK, 51 of 51 steps, 38.6 s, at `b70b0d9`; the measurement in grill §10. `implemented` returns when every slice-2 row is green after G8.
 - 2026-10-07 — slice-2 review findings applied by `architect-slice2-fix`, inside the slice-2 contracts, no contract added and none removed. Tester: `HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE` clones `--depth 2` through `file://` (a plain local path clone is not shallow) and pins the held commits; §6 "History links" leaves out a commit with no parent (a root commit, or a shallow clone's boundary commit, which Git lists as changing every file); `HISTORY_ONLY_ADDS` and `ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS` compare every key but `cache`. Security: the definition reader is iterative over statement bodies (S1); `--moved` guards the load and the call of `moved_list` and catches code-anchor's own classes, with the root a parameter (S2); `git log` takes `--no-renames --no-show-signature --no-color` and a `/`-led marker (S3); only `false` from the shallow probe reads as complete (S4); `NAME_RE` is matched whole (S5); the cache block is `/2` and the shape check covers `symbols` (S6); `graph-lint.py` sets `sys.dont_write_bytecode` before its loads (S7); §5 states the buffered `git log` and every `detail` through the `?` replacement. Devils-advocate: (b) a TS/JS declaration counts at column 0 or after `export`, so function locals define nothing (an arm of `SYMBOLS_LINE_READ_DECLARATIONS_ARE_MAYBE`); (d) `graph-lint.py` loads the helper lazily in tier 2 and a missing or skewed helper costs tier 2 alone, named by the existing `inference_skipped` notice, instead of failing every route (§7 `HELPER_ABSENT_BESIDE_GRAPH_LINT`); (a) and (c) are plan changes (grill §9, §10, §11); §2 cites ADR-0018's reason, a tool called at each file access. §6 and §8: the sibling-load line numbers corrected (`code-anchor.py` 53-54, `graft-audit.py` 169-170). `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` is unchanged, pending the owner's `repo:` ruling (grill §12 question 6).
 - 2026-10-07 — slice-2 code review (`reviewer-slice2`, fixes 5 and 6) and measurement 2 (`measure-slice2`, defects M2-1, M2-3, M2-6) applied by `architect-slice2-m2`; the `repo:` claim (§12 question 6) untouched, pending the owner. §3: a nested Python function is a definition (qualified), a nested TS/JS function is not, as §4 and §6 already said; an `undefined` answer names what the tool does not read. §6 "Definitions": the define-nothing list names `for`/`async for` targets, `with`/`except ... as` names, `:=` targets and augmented assignments (reviewer ruling 1, upheld: the code is right, the spec was silent), shell variables and dotted shell function names; the code-path rule bounds definitions, stated in the new `symbols` answer key `not_read` (the helper's `NOT_CODE`) and in `UNDEFINED_LINE` (M2-3: a name defined only in a placed seed tool under `docs/graph/` is `undefined` and says why, with no `incomplete` record). §4 `SYMBOLS_PYTHON_DEFINITIONS_CERTAIN` gains the `GRAPH_ONLY` arm; `ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE` gains two arms (a `paths` string; `Unrecorded` without `ANCHOR_NAME`), and §6 "Moved list" states the malformed shape and the subject read inside the guard. §5: the slice-2 figures and M2-1 decided as a reduction, not a restated budget: the cache is written compact and `build` holds no parsed cache while it derives; 64 MB stands. §6 "Cache document": compact layout (derived scratch, ADR-0029; the tool digest in the key rebuilds an indented cache; schema `/2` unchanged, the shape is the same). Reviewer ruling 2: the X447 newline arms stand as written.
+- 2026-10-07 — the owner's `repo:` ruling applied by `architect-D` (owner: "yes all" to decisions 1 to 4 of the internal brainstorm `architect-brainstorm`, option D; closes grill §12 question 6): what a `repo:` value names on disk decides whether it claims paths. §4 `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` rewritten with one arm per kind (path: a regular file or a non-empty folder claims, slash or not; root and outside: a directory holding `.git`, the plant root and a value outside the plant claim nothing; unresolved: the reading from before the ruling plus the `repo-unresolved` record; case: the kind is decided on the value as written, the router folds case when it matches and `anchors` does not); `ANCHORS_NAME_CITING_PAGES_OR_UNCITED` revised a second time: `repo: src/` and `repo: src` over a folder are `maybe` `repo-prefix` facts, and its uncited file is `lib/b.py`, as its case already holds. §2 states the ruling. §5 and §6 "Helper": `repo_kind(plant, value) -> (kind, name)` (stats, reads one entry of a directory without `.git`, opens no file, runs no Git), `repo_claim(name, path, kind)`, `governed_repositories` built on `repo_kind` (the same set), `REPO_UNRESOLVED_DETAIL`; §6 "Incomplete" gains `repo-unresolved`; §7 gains `REPO_VALUE_UNRESOLVED` and `HELPER_ABSENT_BESIDE_GRAPH_LINT` names `repo_kind` (its response unchanged: tier 2 claims nothing, `inference_skipped`); §8 adds the llama.cpp example. Intended routing change, accepted by the owner (decision 2): graph-lint's tier 2 changes in plants that hold a folder or file value without `/` (llama-xtx: 7 nodes; wrt-migration: 3 nodes) at their next graft, and a nested repository named with a `/` would stop claiming (no plant holds one); the seed's suites do not change. `anchors` reports every value naming nothing on disk in each answer (decision 3; turboquant_setup: 6 comma lists). Not changed: SPEC-0002 `GRAPH_ROUTE_NAMED_PATH_LOADS_ITS_OWNER` already says "a `repo:` value that names a repository root claims no path". §9 and §10 are product's and tester's to follow.

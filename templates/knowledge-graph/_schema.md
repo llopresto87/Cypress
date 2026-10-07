@@ -81,7 +81,7 @@ id: {{kind}}.{{name}}          # unique, dotted, lowercase
 tier: 2
 kind: {{kind}}                 # one of the project's node kinds (below)
 title: {{name}} — one-line description
-repo: {{repo-or-path}}         # optional; omit for non-code subjects
+repo: {{repo-or-path}}         # optional; one plant-relative path: a repository, a folder or a file; omit for non-code subjects
 owns:                          # facts this node is the only home of
   - {{name}}.responsibility
   - {{name}}.{{another-fact}}
