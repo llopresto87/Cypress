@@ -10,8 +10,9 @@ under `docs/graph/`. The files documented here are the shippable source.
 The reference has three parts:
 
 - Part A: the 15 skills in `skills/*/SKILL.md`.
-- Part B: the artifact templates in `templates/*.template.md` and the
-  knowledge-graph contract in `templates/knowledge-graph/`.
+- Part B: the artifact templates in `templates/*.template.md`, the
+  knowledge-graph contract in `templates/knowledge-graph/`, and the seed
+  tools placed beside it.
 - Part C: the prompt and brief templates in `templates/prompts/`.
 
 All facts come from the source files. Where a source states a rule
@@ -988,6 +989,24 @@ Templates are Tier-3 artifacts; a machinery node points at them via
 | `spec-lint.py` | `docs/graph/spec-lint.py` | the spec gate: shape of every spec, coverage of live ones |
 | `grill-lint.py` | `docs/graph/grill-lint.py` | the plan-of-record gate |
 | `frontmatter.py` | `docs/graph/frontmatter.py` | the one frontmatter reader the graph engines import (fast-forwarded, not add-if-missing) |
+
+## Summary table — seed tools placed beside the contract files
+
+Source: `tools/` (the `manifest.json` `tools` entries name each placed file).
+These carry no project config, so each install fast-forwards them like the
+router. `agent-lint.py` comes from `integrations/claude-code/` and is
+described with the roster.
+
+| File | Installed path | Role |
+|---|---|---|
+| `agnosticism-lint.py` | `docs/graph/agnosticism-lint.py` | the agnosticism floor for text meant to be reusable; forbidden terms come from `--forbid` at call time |
+| `prose-lint.py` | `docs/graph/prose-lint.py` | the prose floor under the humanizer skill, with the `--against <rev>` fact-preservation check |
+| `status-register.py` | `docs/graph/status-register.py` | the lifecycle status linter and query; a session-start hook injects its `--summary` |
+| `session-metrics.py` | `docs/graph/session-metrics.py` | the reader of the Session metrics block that deliver appends to `changelog.md` (SPEC-0006) |
+| `code-anchor.py` | `docs/graph/code-anchor.py` | records the code state at canonize (`--record`) and compares it once per session (`--compare`); writes no anchor at install |
+| `source-index.py` | `docs/graph/source-index.py` | the source index (SPEC-0007): `impact`, `affected-tests` and `anchors` from one walk over the plant's file-to-file links, each row `certain` or `maybe`, the floor listed apart, gaps listed as `incomplete`; it recommends, and verify and tiering decide. Its cache `.cypress/source-index/` ignores itself and is rebuilt when its key changes (ADR-0029); the installer writes none |
+| `source_paths.py` | `docs/graph/source_paths.py` | the seed's path rules in one module with no CLI: what is code, the governed repositories, the Git boundary, the content hash, the atomic write under `.cypress/`, how a page cites a path. `code-anchor.py` and `source-index.py` load it beside them; `growth-audit.py` loads it in the seed |
+| `plant_walk.py` | `docs/graph/plant_walk.py` | the walk over one plant's files, stopping at a nested plant and a symlinked directory; `source-index.py` loads it beside it, `graft-audit.py` in the seed |
 
 ---
 
