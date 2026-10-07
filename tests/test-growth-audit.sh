@@ -1048,6 +1048,27 @@ grep -i 'docs/graph/models.md' <<<"$out" | grep -qi 'unfilled' \
 echo "  an unfilled model map is disclosed, not required — OK"
 }
 
+# --- 70-71: what the citation reader holds, pinned before it moves (SPEC-0007 §6 "Helper") ---
+# CHARACTERIZATION: the citation grammar and cite_problem move into
+# tools/source_paths.py; these two readings had no case of their own.
+scn_x70() {
+# 70. a citation that leaves the plant through a symlink is not inside the plant
+local o="$TMP/x70-outside"
+mkdir -p "$o"; printf '# elsewhere\n\nA file that sits outside the plant.\n' > "$o/elsewhere.md"
+absent_gfm "$TMP/x70" 'it["evidence"] = ["docs/graph/escape/elsewhere.md"]'
+ln -s "$o" "$TMP/x70/docs/graph/escape"
+ga "$TMP/x70"; rc_is 1 "a citation that leaves the plant through a symlink passed the gate"
+has "DANGLING" "a citation resolving outside the plant through a symlink was not DANGLING"
+has "'docs/graph/escape/elsewhere.md' does not exist in the plant" "the escaping citation was not named as outside the plant"
+# 71. the `:line:col` and `:line-line` suffixes are line citations, checked on their line
+absent_gfm "$TMP/x71" 'it["evidence"] = ["docs/graph/index.md:1:5", "docs/graph/index.md:1-2"]'
+ga "$TMP/x71"; lacks "DANGLING" "an in-range :line:col or :line-line citation stopped resolving"
+patch_record "$TMP/x71" 'r["inventory"][0]["evidence"] = ["docs/graph/index.md:999999:1", "docs/graph/index.md:999998-999999"]'
+ga "$TMP/x71"; rc_is 1 "a :line:col or :line-line citation past the end of the file passed the gate"
+has "names line 999999 of a file" "a :line:col citation past the end was not checked on its line"
+has "names line 999998 of a file" "a :line-line citation past the end was not checked on its first line"
+}
+
 # --- 69: grounding the upstream cannot give is declared, and audited as declared ---
 # REGRESSION: a row closed UNKNOWN because no public source exists still got
 # UNGROUNDED, so the coverage gate blocked on a blocker it had already carried.
@@ -1104,7 +1125,7 @@ for s in scn_shared scn_s9 scn_absent scn_staff scn_nostaff scn_dflt scn_rows \
          scn_copy scn_x28 scn_x31 scn_x32 scn_x33 scn_x34 scn_x35 scn_x38 \
          scn_x39 scn_x40 scn_x41 scn_x42 scn_x43 scn_x44 scn_x45 scn_rawbase \
          scn_x58 scn_x61 scn_x62x63 scn_x64 scn_x65 scn_x68 scn_x382 scn_walk \
-         scn_model_map_disclosed scn_x69; do
+         scn_model_map_disclosed scn_x69 scn_x70; do
   printf '%s\t%s\n' "$s" "bash \"$SELF\" __case $s" >> "$SCN"
 done
 rc=0
