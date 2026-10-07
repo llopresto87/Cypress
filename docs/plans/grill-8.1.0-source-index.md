@@ -167,8 +167,12 @@ Increments are inline; numbers are dependency order. Two lanes run in parallel a
 | G2 | 10, 11 | `implementer` | GREEN medium-hard: two |
 | G3 | 12 | `implementer` | GREEN medium-low |
 | P1 | 13 | one writer | prose, one file set |
+| R2 | review fixes (8, 9, 10) | `tester` | RED medium-hard: one spawn, the whole fix list |
+| G4 | review fixes (8, 9, 10) | `implementer` | GREEN medium-hard: one spawn, the whole fix list |
 
 R0 and R1 may run side by side; G0 after R0; G1 after G0 and R1.
+
+The code-review fixes (`reviewer-code`, fix list items 1 to 12) land as one RED spawn (R2: arms added to the existing cases of `tests/test-source-index.sh`, no new case) and one GREEN spawn (G4: the whole list against SPEC-0007 §6 and §7 as amended by `architect-review-fixes`), then the reviewer re-reads the diff. They add no increment: each fix sits inside increment 8, 9 or 10 and its contracts.
 
 ### Increment 1 — Characterize what the helper extraction moves
 - Spec contracts: none — characterization of behaviour the helper extraction moves; SPEC-0003's code-anchor contracts and the growth-audit suite own it (§6)
@@ -371,3 +375,4 @@ The standard gates hold (`bash tests/run.sh`). This plan diverges in four places
 - 2026-10-07: step-3 returns applied by the architect (spawn `architect-fix`): contract `OUTPUT_CARRIES_NO_RAW_CONTROL` added to increments 5 and 10; the seven security failure modes placed as arms in increments 3 and 4; `source_paths.py` edits named in increments 8 (`mkdir` in `DIR_FD_CALLS`) and 9 (`git` answer exit set and stdin); §10 corrected on the draft-status finding; §11 slugs updated; §14 moved on.
 - 2026-10-07: devils-advocate verdicts applied by the architect (spawn `architect-da`), with the session's rulings: §6 rows for the floor, `no-code-edge` restricted to link-bearing languages, the helper's four interface changes (superseding the two "unchanged in behaviour" rows), the placed names fixed, the Python major.minor in the cache key with the 3.12 floor, and the TS/JS line join; §4 runtime floor corrected; §8 walk in two parts; increments 2, 5, 8, 9 and 10 updated (increments 8 and 9 now gated by the code-anchor suite); §10 measurement adds floor size and `certain`-only recall; §11 rows updated and added; §12 question 5; §14 moved on.
 - 2026-10-07: §12 question 5 closed by the architect (spawn `architect-q5`) on the owner's acceptance of recommendation (b): §6 row for the load by file path as a `certain` link; increment 9 names it; SPEC-0007 §2, §4 (`LINK_PYTHON_IMPORT_CERTAIN`, `LINK_PATH_LITERAL_AND_DIRECTORY_ARE_MAYBE`), §6 and §8 amended. The §10 rows for X431 and X433 are the R1 tester's.
+- 2026-10-07: code-review fixes planned by the architect (spawn `architect-review-fixes`): SPEC-0007 §6 and §7 state fix-list item 12 (M1, M2, M3, M6, m1 to m4, m8, m9) and §12 records the intended growth-audit change m6; §9 adds spawns R2 and G4, one RED and one GREEN for the whole fix list.
