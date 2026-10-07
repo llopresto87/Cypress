@@ -9,6 +9,16 @@ and get the answer from the code without a model. The tool is
 call it once, at the step that needs it. It recommends; verify and tiering
 still decide what runs and how much process a change gets.
 
+A node's `repo:` value now decides what it claims on disk, the same way
+everywhere the graph reads it. A folder or a file, named with or without a
+trailing slash, claims the paths under it; a repository or the plant root
+claims nothing. A plant that holds a `repo:` value naming a folder or file
+without a slash, such as `src/` or a bare folder name, starts routing on
+it after its next graft. A value that names nothing on disk is read as
+before, and `anchors` now says so with a `repo-unresolved` note asking the
+owner to correct it. The node template's comment states the rule: one
+plant-relative path.
+
 ### Source index
 
 - `tools/source-index.py` is placed at `docs/graph/source-index.py`. One

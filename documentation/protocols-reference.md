@@ -742,8 +742,20 @@ change class, not the gate list:
 | Affected scope genuinely uncertain | treat as the row above; uncertainty buys breadth, never a discount |
 
 The blast radius picks the row, not the tier: a T2 contained-lane change
-bought a cheaper authorization, not a cheaper gate. Escalate one row the
-moment a "local" change turns out to touch a shared surface. On a provably
+bought a cheaper authorization, not a cheaper gate.
+
+Which focused tests sit on a known affected path is a question the source
+index answers from the code. After GREEN and before choosing the gates,
+the session runs `python3 docs/graph/source-index.py affected-tests
+<changed paths>` once for the increment; nothing runs it per prompt or per
+file access (ADR-0018). The tests and the always-run set it lists are the
+recommended floor of the focused tests: the session may run more, never
+fewer, and never reads a test's absence from the list as proof that the
+change cannot reach it. An answer marked `incomplete` places the change in
+the "affected scope genuinely uncertain" row.
+
+Escalate one row the moment a "local" change turns out to touch a shared
+surface. On a provably
 local change, run the battery its row names and no broader, because
 wall-clock and attention are budget too. When the gate a row names does not
 fit the time, merge a smaller increment and keep the gate.
@@ -1066,9 +1078,11 @@ the gates.
 
 Knowledge candidates (§3.7): a new or changed fact about the
 project's structure or capability; a sharp edge that bit (and the tell
-to spot it next time); a corrected assumption; provenance for a claim;
-a `load_when:` trigger that should have matched and didn't; a new
-library idiom or pitfall.
+to spot it next time); a corrected assumption; a page `anchors --moved`
+named in flow step 1 (a page citing moved code, whose facts about that
+code are re-checked against it); provenance for a claim; a `load_when:`
+trigger that should have matched and didn't; a new library idiom or
+pitfall.
 
 Tool candidates (§3.8, toolcraft owns the doctrine): any durable
 tool the work produced (recurs across sessions, stable interface,
@@ -1102,7 +1116,14 @@ throwaway prototypes or genuine one-offs.
 
 1. Assemble candidates from the finished work and the workers'
    handback payloads: facts with evidence, tools with path + entry
-   point + invocation + covering test.
+   point + invocation + covering test. Last, the session runs
+   `python3 docs/graph/source-index.py anchors --moved` once: it lists
+   the graph pages that cite a code file moved since the last recorded
+   anchor, and the brief hands those pages to the librarian as the
+   pages whose facts it re-checks. It runs here, before step 3's
+   `code-anchor.py --record`, because recording the anchor first empties
+   the moved list; nothing runs it per prompt or per file access
+   (ADR-0018).
 2. Spawn the docs-librarian once (authoring-class; it owns
    `docs/graph/`) with a brief embedding the canonical block from
    `docs/graph/templates/prompts/graph-session-bootstrap.md` plus the
@@ -1646,8 +1667,12 @@ mutating Git. Ensure the plant gitignores `.cypress/growth/` before
 scouting, then write the boundary division to
 `.cypress/growth/boundaries.md` — one line per boundary with its ledger
 slug — which is the operand `grow.gate.scouts-ran` compares the ledgers
-against. Settle spawnability here, not in Phase 2. Inventory cheaply
-before opening large files; ignore generated/vendor/cache/build dirs.
+against. Settle spawnability here, not in Phase 2. Before the scouts are briefed, the session runs
+`python3 docs/graph/source-index.py build --json` once; the `inventory`
+it prints (each file's path, language, and test class, across the
+governed repositories) is the scouts' mechanical file list, so no scout
+walks the tree to find its files. Nothing runs it per prompt or per
+file access (ADR-0018). Ignore generated/vendor/cache/build dirs.
 Identify real subsystem boundaries and assign focused scouts for
 cross-cutting evidence (APIs/messages, data/migrations, platform/config,
 tests/CI/operations, dependencies, prompts/evaluations, and any
