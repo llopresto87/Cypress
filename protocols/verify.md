@@ -126,6 +126,16 @@ three-line fix on a shared path earns the row its radius names — the
 lane bought a cheaper *authorization*, never a cheaper gate
 (`tiers.contained-lane`).
 
+Which focused tests sit on a known affected path is a question the source
+index answers from the code. After GREEN and before choosing the gates, the
+session runs `python3 docs/graph/source-index.py affected-tests <changed
+paths>` once for the increment; nothing runs it per prompt or per file
+access (ADR-0018). The tests and the always-run set it lists are the
+recommended floor of the focused tests: the session may run more, never
+fewer, and never reads a test's absence from the list as proof that the
+change cannot reach it. An answer marked `incomplete` places the change in
+the "affected scope genuinely uncertain" row.
+
 Escalate one row the moment a "local" change turns out to touch a
 shared surface. On a provably local change, run the battery its row names
 and no broader: wall-clock and attention are budget too. When the gate a row

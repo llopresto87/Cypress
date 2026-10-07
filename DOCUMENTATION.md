@@ -698,7 +698,9 @@ explicit in `protocols/test-first.md`.
    `.cypress/growth/<slug>.ledger.md`. Every claim cites a path or a symbol.
    The orchestrator records the division itself to
    `.cypress/growth/boundaries.md` first, so a later validator can check which
-   boundaries were planned against which ledgers exist.
+   boundaries were planned against which ledgers exist. Before the scouts are
+   briefed it runs `docs/graph/source-index.py build --json` once and hands
+   them its `inventory` as their file list, so no scout walks the tree.
 2. The orchestration plane reconciles the per-boundary ledgers into one
    coherent evidence set.
 3. Authoring-class authors consume the ledger and write each artifact, mapping
@@ -809,7 +811,10 @@ edges, corrected assumptions, provenance, failed `load_when:` triggers) is
 persisted into `docs/graph/` and any durable tool it produced is cataloged in
 `docs/graph/tools/` (the `toolcraft` doctrine), or each is explicitly recorded
 empty. It runs *before* `deliver`. T0/T1 tasks satisfy it with a one-line
-self-record. Its last step records the code anchor: `docs/graph/code-anchor.py
+self-record. Its first step runs `docs/graph/source-index.py anchors --moved`
+once, so the librarian re-checks each page that cites code moved since the last
+anchor; it runs before the anchor is recorded again, which would empty that
+list. Its last step records the code anchor: `docs/graph/code-anchor.py
 --record` writes the branch, the commit and the uncommitted code paths of each
 repository the plant governs to `.cypress/anchor.json`. The next session
 compares against it once, at its start, and so knows which facts about code
@@ -1793,7 +1798,7 @@ This section answers which rules a tool holds and which the method only asks the
 | <a id="enf-protocol-order"></a>Work enters through a named protocol, in order | `core/AGENTS.md`, `protocols/*.md` | **judgment**: the session | Nothing reads which protocol a session entered, or which it skipped | [protocols reference](documentation/protocols-reference.md) |
 | <a id="enf-spec-before-code"></a>A spec is written before the code it covers | `protocols/specify.md`, `templates/knowledge-graph/spec-lint.py` | **judgment** for whether a behavior needed a spec first (the session); **soft** for a written spec's shape | No tool sees whether the spec came before the code | [specify protocol](protocols/specify.md) |
 | <a id="enf-test-before-code"></a>A failing test is written before the code it authorizes | `protocols/test-first.md` | **judgment**: the session, then the reviewer | No tool sees the order in which a test and its code were written | [test-first protocol](protocols/test-first.md) |
-| <a id="enf-verify-gates"></a>Gates sized to the change run before work is called done | `protocols/verify.md` | **soft** for each gate that is run; **judgment** for which gates run (the session) | A gate that was not run shows no red | [verify protocol](protocols/verify.md) |
+| <a id="enf-verify-gates"></a>Gates sized to the change run before work is called done | `protocols/verify.md` | **soft** for each gate that is run; **judgment** for which gates run (the session, which takes `source-index.py affected-tests`, run once after GREEN, as the recommended floor of the focused tests) | A gate that was not run shows no red | [verify protocol](protocols/verify.md) |
 | <a id="enf-canonize"></a>Each T2 or T3 task ends with one close-out spawn | `protocols/canonize.md`, `agents/09-docs-librarian.md` | **judgment**: the session reports the close-out line, and whoever reads the delivery weighs it | Nothing checks that the close-out spawn ran, or what it recorded | [canonize protocol](protocols/canonize.md) |
 | <a id="enf-attribution"></a>Each unit of delivered work names the specialist that produced it | `protocols/deliver.md`, `templates/prompts/handback-payload.md` | **detective**: the assertion runs at delivery, after the work | The top session runs the assertion on its own work. The `Stop` hook that could hold it is not wired, on purpose (ADR-0003) | [deliver protocol](protocols/deliver.md) |
 | <a id="enf-brief-block"></a>Each brief embeds the canonical graph-discipline text verbatim | `templates/prompts/graph-session-bootstrap.md`, `tests/seed-lint.py` | **soft** for byte identity in the seed's templates; **judgment** for a brief a session writes (the session) | Seed-lint compares the templates in the seed, never the briefs a session writes from them | [delegation node](core/method/delegation-briefs.md) |

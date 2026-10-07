@@ -114,7 +114,8 @@ discovery and authoring discipline for `docs/graph/protocols/initialize.md`.
 - **Scout pass.** Establish the governed boundary (one repo, monorepo, or
   umbrella of sibling repos). Record path, branch, HEAD, worktree state,
   role, manifests, stack. Inventory cheaply, skipping generated/vendor/
-  cache/build output. Trace seven things: entry points; module boundaries;
+  cache/build output; `source-index.py build --json`, run once, gives the
+  scouts their file list. Trace seven things: entry points; module boundaries;
   inbound/outbound edges; data and migrations; config, deployment,
   observability; tests, CI, prompts, evals; direct dependencies and their
   real usage. Return facts with exact paths and symbols. Record a
@@ -136,7 +137,8 @@ discovery and authoring discipline for `docs/graph/protocols/initialize.md`.
   Write a rich library page when a dependency is architecturally
   significant, security/ops critical, unusual, or cross-cutting.
 - **Refreshing.** Treat graph prose as a read model: compare revisions,
-  scout changed areas and blast radius, update the existing fact owner in
+  scout changed areas and blast radius (`source-index.py impact` over the
+  moved paths, run once), update the existing fact owner in
   place, preserve valid hand-authored context, supersede stale seed-owned
   claims only with cited contrary evidence. A refresh that could not read
   part of the source says so.
@@ -1004,7 +1006,7 @@ described with the roster.
 | `status-register.py` | `docs/graph/status-register.py` | the lifecycle status linter and query; a session-start hook injects its `--summary` |
 | `session-metrics.py` | `docs/graph/session-metrics.py` | the reader of the Session metrics block that deliver appends to `changelog.md` (SPEC-0006) |
 | `code-anchor.py` | `docs/graph/code-anchor.py` | records the code state at canonize (`--record`) and compares it once per session (`--compare`); writes no anchor at install |
-| `source-index.py` | `docs/graph/source-index.py` | the source index (SPEC-0007): `impact`, `affected-tests` and `anchors` from one walk over the plant's file-to-file links, each row `certain` or `maybe`, the floor listed apart, gaps listed as `incomplete`; it recommends, and verify and tiering decide. Its cache `.cypress/source-index/` ignores itself and is rebuilt when its key changes (ADR-0029); the installer writes none |
+| `source-index.py` | `docs/graph/source-index.py` | the source index (SPEC-0007): `impact`, `affected-tests` and `anchors` from one walk over the plant's file-to-file links, each row `certain` or `maybe`, the floor listed apart, gaps listed as `incomplete`; `symbols` says where a name is defined; `--history` adds files that changed together in past commits as `maybe` rows of their own; `anchors --moved` takes its inputs from `code-anchor.py`'s moved list. Protocol steps call it once, on demand: verify (`affected-tests`), canonize (`anchors --moved`), grow and adopt (`build --json`'s inventory). It recommends, and verify and tiering decide. Its cache `.cypress/source-index/` ignores itself and is rebuilt when its key changes (ADR-0029); the installer writes none |
 | `source_paths.py` | `docs/graph/source_paths.py` | the seed's path rules in one module with no CLI: what is code, the governed repositories, the Git boundary, the content hash, the atomic write under `.cypress/`, how a page cites a path. `code-anchor.py` and `source-index.py` load it beside them; `growth-audit.py` loads it in the seed |
 | `plant_walk.py` | `docs/graph/plant_walk.py` | the walk over one plant's files, stopping at a nested plant and a symlinked directory; `source-index.py` loads it beside it, `graft-audit.py` in the seed |
 

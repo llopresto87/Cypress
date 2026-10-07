@@ -59,17 +59,17 @@ existing-project discovery and authoring discipline.
 
 ## Scout pass
 
-Establish the governed boundary first: one repo, workspace/monorepo, or
-an umbrella of sibling repos. For each repository record path, branch,
-HEAD, worktree state, role, manifests, stack, and the natural language
-of its identifiers and domain vocabulary. A non-English (or otherwise
-non-default) language is an explicit graph fact, because downstream
-agents grep and reason in it and an unrecorded mismatch silently defeats
-every later search. Boundaries follow capabilities, not repository
-count.
+Establish the governed boundary first: one repo, workspace/monorepo, or an
+umbrella of sibling repos. For each repository record path, branch, HEAD,
+worktree state, role, manifests, stack, and the natural language of its
+identifiers and domain vocabulary. A non-English (or otherwise
+non-default) language is an explicit graph fact, because downstream agents
+grep and reason in it and an unrecorded mismatch silently defeats every
+later search. Boundaries follow capabilities, not repository count.
 
-Inventory cheaply, excluding generated/vendor/cache/build output. Then
-open the smallest authoritative files needed to trace:
+Inventory cheaply, excluding generated/vendor/cache/build output; the
+`inventory` of `source-index.py build --json`, run once, is the scouts'
+file list. Then open the smallest authoritative files needed to trace:
 
 1. bootstrap and runtime entry points;
 2. module/service/package boundaries and imports;
@@ -123,9 +123,8 @@ Put implementation observations in nodes or architecture leaves.
 
 When the sweep confirms zero test or gate infrastructure, write an
 `absent (YYYY-MM-DD) — <reason>` row for each standard gate in the
-verification runbook: a blank runbook is indistinguishable from one
-nobody checked, and a row for each gate turns an unknown into a stated
-finding.
+verification runbook: a blank runbook is indistinguishable from one nobody
+checked, and a row for each gate turns an unknown into a stated finding.
 
 When a legacy or parallel documentation source predates and conflicts
 with the evidence-derived graph, give the exclusion a real, routable
@@ -156,7 +155,8 @@ in `docs/graph/sources/`.
 Treat graph prose as a read model to verify against current source:
 
 1. compare repository revisions with the graph changelog/provenance;
-2. scout changed areas and their dependency/data/API blast radius;
+2. scout changed areas and their dependency/data/API blast radius
+   (`source-index.py impact`, run once over the moved paths);
 3. update the existing fact owner instead of creating a duplicate;
 4. preserve valid hand-authored context;
 5. remove or supersede stale seed-owned claims only with cited contrary
@@ -191,11 +191,11 @@ defect that survives them goes to the user as an honest unknown.
 
 ## Handoff (the stopping condition)
 
-Adoption is done when validation passes within its bounded rounds and
-the open defects are recorded; completeness is measured by reliable
+Adoption is done when validation passes within its bounded rounds and the
+open defects are recorded; completeness is measured by reliable
 progressive discovery. End with the payload from
-`docs/graph/templates/prompts/handback-payload.md`, and report:
-repository revisions, evidence inspected, graph artifacts created or
-refreshed, validation outcomes, docs deliberately excluded as untrusted
-(each named by its exclusion node), remaining unknowns, and one
-highest-leverage next action with its tier.
+`docs/graph/templates/prompts/handback-payload.md`, and report: repository
+revisions, evidence inspected, graph artifacts created or refreshed,
+validation outcomes, docs deliberately excluded as untrusted (each named
+by its exclusion node), remaining unknowns, and one highest-leverage next
+action with its tier.

@@ -638,8 +638,13 @@ preflight one roster type now and take the remedy or the recorded fallback
 (`docs/graph/method/delegation-bounds.md`, `delegation.harness-registration`). Scouting
 is the wrong place to learn that no scout can be spawned.
 
-Inventory cheaply before opening large files. Ignore generated, vendor,
-cache, and build directories. Identify real subsystem boundaries and divide
+Inventory cheaply before opening large files. Before the scouts are
+briefed, the session runs `python3 docs/graph/source-index.py build --json`
+once; the `inventory` it prints (each file's path, language, and test class,
+across the governed repositories) is the scouts' mechanical file list, so no
+scout walks the tree to find its files. Nothing runs it per prompt or per
+file access (ADR-0018). Ignore generated, vendor, cache, and build
+directories. Identify real subsystem boundaries and divide
 read-only scouting across them. Also assign focused scouts for cross-cutting
 evidence: APIs/messages, data/migrations, platform/config,
 tests/CI/operations, dependencies, prompts/evaluations, the interface and

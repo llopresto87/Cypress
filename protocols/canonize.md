@@ -87,6 +87,8 @@ the gates (`protocol.verify`).
 - a new or changed fact about the project's structure or capability;
 - a sharp edge that bit (and the tell that would spot it next time);
 - a corrected assumption: the graph asserted X, the work proved not-X;
+- a page `anchors --moved` named in flow step 1: a page citing moved code,
+  whose facts about that code are re-checked against it;
 - provenance for a claim (the source/path/symbol that grounds it);
 - a `load_when:` trigger that should have matched this task and didn't;
 - a new library idiom or pitfall learned while using a dependency.
@@ -242,7 +244,14 @@ harvest-candidate row, and `harvest`'s agnosticism gate decides the rest).
    the brief names each one, and the librarian reads each as candidate
    evidence. A handback carries only the decision content, so the
    caveats and dead ends that did not fit live in the note and nowhere
-   else.
+   else. Last, the session runs
+   `python3 docs/graph/source-index.py anchors --moved` once: it lists the
+   graph pages that cite a code file moved since the last recorded anchor,
+   and the brief hands those pages to the librarian as the pages whose
+   facts it re-checks. It runs here, before step 3's
+   `code-anchor.py --record`, because recording the anchor first empties
+   the moved list; nothing runs it per prompt or per file access
+   (ADR-0018).
 2. **Spawn the docs-librarian once** (authoring-class; it owns
    `docs/graph/`) with a brief that embeds the canonical block from
    `docs/graph/templates/prompts/graph-session-bootstrap.md` plus the
