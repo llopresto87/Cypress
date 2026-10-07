@@ -333,9 +333,21 @@ INVENTORY = {   # path -> (repo, language, test)
 @case("X425", "BUILD_INVENTORIES_THE_CODE_OF_EVERY_GOVERNED_REPOSITORY; failure FILE_NOT_REGULAR (a symlink)")
 def x425(base):
     p = inventory_plant(base)
+    # A `repo:` that resolves outside the plant root to a Git work tree governs
+    # nothing: none of its files is inventoried.
+    elsewhere = base / "elsewhere"
+    elsewhere.mkdir()
+    git(elsewhere, "init", "-q")
+    write(elsewhere, "far.py", "F = 1\n")
+    git(elsewhere, "add", "-A")
+    git(elsewhere, "commit", "-qm", "outside")
+    write(p.dir, "docs/graph/nodes/out.md", node("subsystem.out", repo="../elsewhere"))
+    p.commit("docs/graph/nodes/out.md")
     d = query(p, "build")
     inv = {r.get("path"): r for r in d.get("inventory", [])}
     problems = []
+    if d.get("incomplete"):
+        problems.append(f"a `repo:` outside the plant root made the build incomplete: {d.get('incomplete')!r}")
     if sorted(inv) != sorted(INVENTORY):
         problems.append(f"inventory paths: missing {sorted(set(INVENTORY) - set(inv))}, "
                         f"unexpected {sorted(set(inv) - set(INVENTORY))}")
@@ -382,7 +394,10 @@ def x427(base):
     problems = []
     # (a) the first query writes the cache and its inner ignore.
     p = Plant(base, "fresh", files=files)
-    d = query(p, "impact", "src/a.py")
+    # Python's own bytecode switch is off, so only the tool decides what it writes.
+    d = query(p, "impact", "src/a.py", env={k: v for k, v in ENV.items() if k != "PYTHONDONTWRITEBYTECODE"})
+    if (p.dir / "docs" / "graph" / "__pycache__").exists():
+        problems.append("(a) the query wrote docs/graph/__pycache__/ (it writes only under .cypress/source-index/)")
     if not p.index.is_file():
         problems.append("(a) no .cypress/source-index/index.json after a query")
     gi = p.cache / ".gitignore"
@@ -425,6 +440,17 @@ def x427(base):
     st = [l for l in git_status(a).split("\n") if ".cypress/source-index" in l]
     if st:
         problems.append(f"(d) git status shows the cache: {st!r}")
+    # (d) on reuse: an ignore altered beside a usable cache is never reused past.
+    query(a, "impact", "src/a.py")
+    write(a.dir, ".cypress/source-index/.gitignore", "*\n!index.json\n")
+    d = query(a, "impact", "src/a.py")
+    if gi.read_bytes() != CACHE_IGNORE:
+        problems.append(f"(d) reuse: the altered inner .gitignore was left in place: {gi.read_bytes()!r}")
+    if status(d) != "rebuilt":
+        problems.append(f"(d) reuse: cache {d.get('cache')!r}, not rebuilt over the altered ignore")
+    st = [l for l in git_status(a).split("\n") if ".cypress/source-index" in l]
+    if st:
+        problems.append(f"(d) reuse: git status shows the cache: {st!r}")
     check(not problems, " || ".join(problems))
     return ("index.json beside an inner '*' ignore, invisible to git, status built; no .cypress/ and a "
             "symlinked cache are not-written; an altered ignore is restored")
@@ -561,6 +587,20 @@ def x431(base):
                        f"got {got!r}, want {want!r}")
     recs = records(d, "opaque", "pkg/a.py") + records(d, "unresolved", "pkg/a.py")
     check(not recs, f"pkg/a.py holds records (json is external): {recs!r}")
+    # A package with an `__init__.py`: `from pkg2 import sub` names the package
+    # and its submodule, absolute and relative alike.
+    q = Plant(base, "init-pkg", files={"app.py": "from pkg2 import sub\n", "pkg2/__init__.py": "",
+                                       "pkg2/sub.py": "S = 1\n", "pkg2/x.py": "from . import sub\n"})
+    d2 = query(q, "build")
+    problems = []
+    for holder in ("app.py", "pkg2/x.py"):
+        got = sorted((l.get("target"), l.get("link")) for l in links_of(d2, holder))
+        if got != [("pkg2/__init__.py", "certain"), ("pkg2/sub.py", "certain")]:
+            problems.append(f"{holder}: links {got!r}, not certain links to pkg2/__init__.py and pkg2/sub.py")
+    dep = row_paths(query(q, "impact", "pkg2/sub.py"), "dependents")
+    if "app.py" not in dep:
+        problems.append(f"impact pkg2/sub.py misses app.py (`from pkg2 import sub`): {dep!r}")
+    check(not problems, " || ".join(problems))
     return "seven certain import links (two relative, three loads by file path exact; two resolved); json external"
 
 
@@ -594,6 +634,16 @@ def x432(base):
     mod = [l for l in got if l.get("target") == "pkg/mod.py"]
     if mod and mod[0].get("found") != "resolved":
         problems.append(f"pkg.mod is not found `resolved` as a Python module: {mod[0]!r}")
+    # A variable-led path to a sibling script resolves from the holder's directory.
+    sib = 'DIR=$(cd "$(dirname "$0")" && pwd)\nsource "$DIR/lib.sh"\n. "$(dirname "$0")/common.sh"\n'
+    r = Plant(base, "sibling", files={"tests/sib.sh": sib, "tests/lib.sh": "true\n", "tests/common.sh": "true\n"})
+    d3 = query(r, "build")
+    got3 = sorted((l.get("target"), l.get("kind"), l.get("link"), l.get("found"), l.get("line"))
+                  for l in links_of(d3, "tests/sib.sh"))
+    want3 = [("tests/common.sh", "invoke", "certain", "resolved", 3),
+             ("tests/lib.sh", "invoke", "certain", "resolved", 2)]
+    if got3 != want3:
+        problems.append(f"tests/sib.sh ($DIR/lib.sh, $(dirname \"$0\")/common.sh) links {got3!r}, want {want3!r}")
     q = Plant(base, "two-repos", files={"run.sh": "python3 Cypress/tools/y.py\n"},
               nested={"Cypress": {"tools/y.py": "Y = 1\n"}})
     d2 = query(q, "build")
@@ -712,6 +762,15 @@ def x434(base):
     op = [r.get("reason") for r in records(d, "opaque", "cyc/m.ts")]
     if op != ["alias-config-unavailable"]:
         problems.append(f"cyc/m.ts is not one opaque alias-config-unavailable record: {op!r}")
+    # A workspace package's subpath import links the subpath's file.
+    w = Plant(base, "workspace", files={"packages/ui/package.json": '{"name": "@acme/ui"}\n',
+                                        "packages/ui/button.ts": "export const b = 1;\n",
+                                        "packages/ui/card.ts": "export const c = 1;\n",
+                                        "app/x.ts": 'import { b } from "@acme/ui/button";\n'})
+    dw = query(w, "build")
+    gw = [(l.get("target"), l.get("found")) for l in links_of(dw, "app/x.ts")]
+    if gw != [("packages/ui/button.ts", "resolved")]:
+        problems.append(f"app/x.ts (`@acme/ui/button`) links {gw!r}, not one resolved link to packages/ui/button.ts")
     check(not problems, " || ".join(problems))
     return ("six certain resolved imports through a JSONC tsconfig, the split import() joined; bare packages "
             "external; an extends cycle keeps relative imports and makes the alias holder opaque")
@@ -726,6 +785,12 @@ def x435(base):
         "tsconfig.json": '{"compilerOptions": {"paths": {"@/*": ["./src/*"]}}}\n',
         "src/dyn.ts": "export async function f(name: string) {\n  return import(name);\n}\n",
         "py/walker.py": "import os\n\n\ndef f(root):\n    return list(os.walk(root))\n",
+        # walks whose literal root makes no directory link (no `/`, a glob, `.`)
+        "tools/a.py": "A = 1\n",
+        "py/globber.py": 'import glob\nprint(glob.glob("tools/*.py"))\n',
+        "py/oswalker.py": 'import os\nfor x in os.walk("tools"):\n    pass\n',
+        "py/rglobber.py": 'from pathlib import Path\nprint(list(Path("tools").rglob("*.py")))\n',
+        "sh/finder.sh": "find . -name '*.py'\n",
         "py/broken.py": "def (:\n",
         # TSCONFIG_UNREADABLE: an `extends` that names a file the inventory lacks
         "ext/tsconfig.json": '{"extends": "./missing-base.json", "compilerOptions": {"paths": {"@/*": ["./*"]}}}\n',
@@ -752,6 +817,8 @@ def x435(base):
     d = query(p, "build")
     problems = []
     for holder, reason in (("src/dyn.ts", "dynamic-nonliteral"), ("py/walker.py", "walks-tree"),
+                           ("py/globber.py", "walks-tree"), ("py/oswalker.py", "walks-tree"),
+                           ("py/rglobber.py", "walks-tree"), ("sh/finder.sh", "walks-tree"),
                            ("py/broken.py", "unreadable"), ("ext/u.ts", "alias-config-unavailable")):
         got = [r.get("reason") for r in records(d, "opaque", holder)]
         if got != [reason]:

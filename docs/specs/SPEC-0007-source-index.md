@@ -12,7 +12,7 @@ owner: architect
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-10-07
-- **Last reviewed:** 2026-10-07 (review `reviewer-spec`, amended by `architect-amend`; joint-pass step-3 returns applied by `architect-fix`; devils-advocate verdicts applied by `architect-da`; the load by file path made `certain` by `architect-q5`)
+- **Last reviewed:** 2026-10-07 (review `reviewer-spec`, amended by `architect-amend`; joint-pass step-3 returns applied by `architect-fix`; devils-advocate verdicts applied by `architect-da`; the load by file path made `certain` by `architect-q5`; the code-review fixes stated in §6 and §7 by `architect-review-fixes`)
 - **Related grill section:** docs/plans/grill-8.1.0-source-index.md §6 (the owner's rulings of 2026-10-07: one walk with three link kinds; the helper's scope; test roots and plant config; graph-lint keeps its tier-2 rule)
 - **Related ADRs:** adr-0029-source-index-is-derived-scratch (proposed): the index is derived scratch, self-ignored, rebuilt on any key change, never committed and never canonical
 - **Related specs:** SPEC-0001-install-placement (placement), SPEC-0003-per-prompt-injection (code anchor)
@@ -559,6 +559,7 @@ constants:
   CONFIG_PATH: "docs/graph/source-index.json"
   TEST_DECLARATION: "docs/graph/spec-lint.py: TEST_GLOBS"
   SIBLINGS: ["source_paths.py", "plant_walk.py", "frontmatter.py"]   # loaded by file path; digested in the key
+  TEST_SKIP_DIRS: fallback       # spec-lint's SKIP_DIRS, read from the placed spec-lint.py; this copy only when absent (§6 "Plant test declaration")
   NOT_CODE, NOISE_DIR, NOISE_NAME, GIT_LOCATORS, GIT_TIMEOUT: helper   # moved from code-anchor.py, unchanged
   DIR_FD_CALLS: helper           # moved from code-anchor.py, with `mkdir` added: {open, stat, unlink, rename, mkdir}
   CITATION_RE, MISSING_CITATION, MALFORMED_CITATION: helper             # moved from growth-audit.py, unchanged
@@ -582,7 +583,8 @@ citation grammar and its one resolution function (§2). The move changes the
 interface in the four places below and moves `relative` unchanged (plan
 increments 2, 8 and 9); each is proved by
 `tests/test-code-anchor.sh` and `tests/test-growth-audit.sh` with no assertion
-edited, because no code-anchor or growth-audit message or verdict changes:
+edited, because no code-anchor or growth-audit message or verdict changes (one
+intended exception, a citation with trailing whitespace: §12, 2026-10-07 code review):
 - `git(repo, *args, input=None, ok=(0,))` takes optional stdin bytes
   (`DEVNULL` when none) and the exit codes that are answers; any other exit
   raises as today. Code-anchor's calls keep the defaults.
@@ -615,7 +617,8 @@ edited, because no code-anchor or growth-audit message or verdict changes:
 inventory_record:
   path:     { type: string, plant-relative, posix }
   repo:     { type: string, governed repository path, "." for the root }
-  hash:     { type: string, git blob sha1 of the content; a symlink hashes its link text }
+  hash:     { type: string, git blob sha1 of the content; a symlink hashes its link text;
+              "" for a path `content_state` cannot hash (a FIFO, a socket, a failed open) }
   language: { enum: [python, shell, typescript, javascript, json, other] }
             # by extension: .py; .sh .bash; .ts .tsx .mts .cts; .js .jsx .mjs .cjs; .json;
             # an extensionless file by its shebang (python*, bash, sh); else other
@@ -629,11 +632,14 @@ on the way is foreign by `plant_walk.is_foreign`. A record's test class is
 `exclude` changes only the test class, so an excluded file keeps its links.
 The `TEST_GLOBS` match uses spec-lint's `test_files` semantics, whose home
 stays `templates/knowledge-graph/spec-lint.py`: patterns are `pathlib` globs
-from the plant root, and files under a `SKIP_DIRS` directory (`.git`,
+from the plant root, and files under a `SKIP_DIRS` directory (today `.git`,
 `node_modules`, `.venv`, `venv`, `__pycache__`, `dist`, `build`, `target`,
 `.next`) or under the specs directory are never tests. Links are read from
 `python`, `shell`, `typescript` and `javascript` files; `json` and `other`
-files are targets only.
+files are targets only. A repository whose Git listing fails or times out is
+left out of the inventory with a `repository-unreadable` record naming it;
+every other repository is inventoried and answers (§7
+`REPOSITORY_UNREADABLE`).
 
 ### Link, opaque and unresolved records
 
@@ -723,13 +729,24 @@ unresolved:                    # an import or invoke reference that names a path
 - `maybe` links: `path-literal` and `directory` as above; `ambiguous`, one
   link to each candidate of a Python module that several inventory files end
   in; `workspace-package`, one link to each inventory file under the directory
-  of a tracked `package.json` whose `name` equals a bare TS/JS specifier.
+  of a tracked `package.json` whose `name` the bare TS/JS specifier names
+  (TS/JS rule under "Resolution"), when no subpath of it probes to a file.
+  A `directory` link goes to every inventory file below the directory, at any
+  depth. A link set over `DIR_LINK_MAX` (a directory literal, a walk root or a
+  workspace package) is no links and one `opaque` `walks-tree` record whose
+  reference is the literal or the specifier (§7 `DIRECTORY_LITERAL_TOO_WIDE`).
 - Opaque reasons: `dynamic-nonliteral`, an `import()`, `require()`,
   `import_module`, `spec_from_file_location`, `run_path` or `invoke` whose
   argument is no anchored path and holds no literal that resolves; `walks-tree`, a call of `os.walk`,
   `os.scandir`, `os.listdir`, `.rglob(`, `.glob(`, `glob.glob`, `readdirSync`
   or `readdir`, or a `find` or `git ls-files` command, whose root argument is
-  not a literal (a literal root is a `directory` link); `unreadable`, a file
+  not a literal, or is a literal that makes no `directory` link by the
+  `path-literal` rule (it holds no `/`, is a glob such as `"tools/*.py"`, is
+  `.` or a root, or names no directory of inventory files; a `find` root is
+  read with a `/` appended): `glob.glob("tools/*.py")`, `os.walk("tools")`,
+  `Path("tools").rglob("*.py")` and `find . -name '*.py'` are each `opaque`
+  `walks-tree`, so no walk call is dropped in silence (a literal root that
+  makes `directory` links is those links); `unreadable`, a file
   of a link-bearing language that cannot be read, decoded as UTF-8 or parsed
   (`ast` SyntaxError); `alias-config-unavailable`, a non-relative, non-package
   specifier under a tsconfig whose `extends` chain names a file the inventory
@@ -751,15 +768,26 @@ unresolved:                    # an import or invoke reference that names a path
   is ignored) and optional stdin bytes. `generated` is asked of Git once per
   repository with `check-ignore --stdin -z`, after every path outside that
   repository has become `outside-repository`, each path written as `./<path>`
-  (`GIT_PATH_ARGUMENT`).
+  (`GIT_PATH_ARGUMENT`). A base that a foreign directory (`plant_walk.is_foreign`)
+  or a nested work tree no `repo:` governs holds is not asked, because Git
+  answers such a path with exit 128 for the whole call; it keeps its other
+  reason, so no base can cost the repository its `generated` answers.
 
 **Resolution** (one order, tried top-down; the first hit wins; candidates are
 plant-relative inventory paths of any governed repository):
 - Python module `a.b`: relative imports from the holder's package; otherwise
   `<holder dir>/a/b.py`, `<holder dir>/a/b/__init__.py`, `<repo>/a/b.py`,
-  `<repo>/a/b/__init__.py`; for `from a.b import c` also `…/a/b/c.py`; then
-  the inventory files ending in `/a/b.py` or `/a/b/__init__.py`: one is
-  `resolved`, several are `ambiguous`, none is external.
+  `<repo>/a/b/__init__.py`; then the inventory files ending in `/a/b.py` or
+  `/a/b/__init__.py`: one is `resolved`, several are `ambiguous`, none is
+  external. `from a.b import c, d` links the module file it finds AND, at the
+  same base, each of `…/a/b/c.py`, `…/a/b/c/__init__.py` (and so for `d`) the
+  inventory holds, because an imported name may be a submodule: so
+  `from pkg import sub` beside `pkg/__init__.py` and `pkg/sub.py` links both.
+  The rule is the same in each branch: relative (`from . import sub` links the
+  package's `__init__.py` and `sub.py`), the holder's directory, the
+  repository root and the suffix fallback (each candidate's submodule files
+  share its `ambiguous` or `resolved`). With no module file, the submodule
+  files alone are the links (a namespace package).
 - Python load by file path: the holder's directory, one directory up for each
   `.parent` or `dirname` after the first, joined with the literals in order and
   normalized; no probing and no suffix search. A target no inventory file
@@ -768,16 +796,36 @@ plant-relative inventory paths of any governed repository):
 - Shell argument and path literal: holder-directory-relative, then each
   `/`-suffix of the string, longest first, as a path relative to the holder's
   repository and then to the plant root (`$ROOT/tools/x.py` tries
-  `$ROOT/tools/x.py`, then `tools/x.py`, then `x.py`). A string that is only a
-  variable (`"$x"`, `${x}`) is `dynamic-nonliteral` when it is an `invoke`
-  argument and nothing otherwise.
+  `$ROOT/tools/x.py`, then `tools/x.py`, then `x.py`). When the string's
+  leading segments are variables (`$DIR/lib.sh`, `$(dirname "$0")/lib.sh`,
+  `${HERE}/a/b.sh`), each suffix after them is tried first from the holder's
+  directory, then from the holder's repository and the plant root, so
+  `source "$DIR/lib.sh"` in `tests/t.sh` reaches `tests/lib.sh`; a hit from
+  the holder's directory is found `resolved`, never `exact`. When nothing
+  resolves, the record's `base` is the suffix after the variables from the
+  holder's repository (one base per record; under the other reading a deleted
+  file is `input-not-found`, an incomplete answer, never a silent drop). A
+  string that is only a variable (`"$x"`, `${x}`), or that holds a variable
+  after its leading segments (`$A/x/$B`), is `dynamic-nonliteral` when it is
+  an `invoke` argument and nothing otherwise.
 - TS/JS specifier: `./` and `../` from the holder's directory; otherwise the
   nearest `tsconfig.json` or `jsconfig.json` up from the holder inside its
   repository, its `extends` chain followed through relative paths to
   inventory files, child keys over parent keys: each `paths` pattern (one
-  `*`), then `baseUrl`. A specifier that is a valid npm package name
-  (including `@scope/name` and `node:` names), is not resolved and names no
-  workspace package is external. Each base path is probed as written, then
+  `*`), then `baseUrl`. An `extends` entry (a string or a list of strings)
+  that is not relative names a package config (`@tsconfig/node20`): it is
+  skipped and adds no key, and is not `alias-config-unavailable`. A specifier
+  that begins with `/` and that no alias matches is `outside-repository`
+  (`base` null). A workspace package is matched by the longest `name` that
+  equals the specifier or is followed in it by `/`: for `@acme/ui/button`
+  under the package `@acme/ui` in `packages/ui/`, the subpath is probed under
+  the package directory by the probe list below (`packages/ui/button.ts`), a
+  hit being one `certain` `import` link found `resolved`; with no hit, and for
+  the bare `name`, the `maybe` `workspace-package` links. A specifier that is
+  a valid npm package name (including `@scope/name` and `node:` names; `~`
+  begins no npm name, so `~/x` is read by the alias rules alone and, when an
+  alias matches it with no file behind it, is `alias-no-file`), is not
+  resolved and names no workspace package is external. Each base path is probed as written, then
   with `.ts .tsx .d.ts .js .jsx .mjs .cjs .mts .cts .json`, then as
   `<base>/index` with the same list; a written `.js .jsx .mjs .cjs` also
   probes `.ts .tsx .mts .cts`. In a TS/JS file, a path literal resolves by
@@ -790,7 +838,12 @@ plant-relative inventory paths of any governed repository):
 
 The tests are the plant's `TEST_GLOBS` (read with `ast.literal_eval` from the
 top-level assignment in `docs/graph/spec-lint.py`; a list of strings or
-nothing). The optional plant-owned config, never placed by the installer:
+nothing). `SKIP_DIRS` is read from the same file by the same reading (a set
+or list of strings), so spec-lint stays its one home; the tool's
+`TEST_SKIP_DIRS` copy serves only when that assignment is absent or not
+strings. `SKIP_DIRS` is seed-owned and changes only by graft, which rebuilds
+the cache (`GRAFT_REBUILDS_THE_CACHE`), so it is not in the key. The optional
+plant-owned config, never placed by the installer:
 
 ```yaml
 # docs/graph/source-index.json
@@ -804,7 +857,10 @@ source_index_config:
       "pyproject.toml", "setup.cfg", "tox.ini", "conftest.py",
       "requirements*.txt", "uv.lock" ] }
   # no other key; a pattern with no "/" matches the last path segment, one
-  # with "/" the whole plant-relative path (graph-lint's _path_matches rule)
+  # with "/" (any leading "**/" dropped) the whole plant-relative path or any
+  # "*/"-prefixed tail (graph-lint's _path_matches rule). Case-sensitive by
+  # decision: these patterns name real files, whose names Git keeps case-
+  # sensitive; graph-lint lowercases because it matches lowercased task text.
 ```
 Each key the file sets replaces that key's default whole; unknown keys,
 non-list values and non-string items refuse the whole file
@@ -911,6 +967,8 @@ index:
     config: { sha256 of the config file bytes (or ""), then of the TEST_GLOBS repr }
     repositories:
       - { path: string, head: sha1, dirty: sha256 over the sorted "path\0blob\n" lines of its uncommitted code paths }
+        # the uncommitted paths the inventory keeps (`is_code`, no foreign directory on the way), so nothing
+        # is hashed through a symlinked directory; blob is `content_state`'s, "" when it cannot hash
   inventory:  [inventory_record]   # sorted by path
   links:      [link]               # sorted by holder, target, kind, line
   opaque:     [opaque]             # sorted by holder, line
@@ -936,7 +994,9 @@ answer:
   depth:  int                            # impact and affected-tests
   cache:  { status: [built, reused, rebuilt, not-written], reason: string|null }
           # reason: the cause for not-written (§7); "cache unreadable" for a
-          # rebuild of a document CACHE_UNREADABLE names; else any text or null
+          # rebuild of a document CACHE_UNREADABLE names; "build forced" for a
+          # `build` over a cache that existed, whose key held or not (status
+          # rebuilt); else any text or null
   incomplete: [incomplete_record]
   # build
   inventory: [inventory_record]
@@ -1006,8 +1066,10 @@ writes the cache whatever the key says (the forced rebuild of §3); the queries
 build only on a missing, unreadable or mismatched cache. `-` reads one path
 per stdin line (`git diff --name-only`). `--depth` takes 1 to `MAX_DEPTH`.
 `--all` lifts `TEXT_MAX_ROWS` and names history pages. The text view prints
-the cache line, then for `build` one count line (files, tests, `certain` and
-`maybe` links, opaque and unresolved records), for the walks one row per line
+the cache line (`Cache: <status>`, then ` (<reason>)` when there is one),
+then for `build` one count line and nothing else (`Index: <n> file(s), <n>
+test(s), <n> certain and <n> maybe link(s), <n> opaque and <n> unresolved
+record(s)`; the records themselves are in `--json`), for the walks one row per line
 (`<depth> <link> <path>  <- <from> [<kind> <found>:<line>]`, a `maybe` row
 adding `maybe: <reason> at <holder>:<line>`), the `certain` rows first, then
 the input's `maybe` rows, for `anchors` one block per file, then the
@@ -1180,11 +1242,14 @@ incomplete, else, for `affected-tests`, with `RECOMMEND_LINE`.
 - **Contract:** LINK_PATH_LITERAL_AND_DIRECTORY_ARE_MAYBE
 - **Trigger:** a directory literal or one of its `/`-suffixes is empty or names
   a root (`"/"`, `"./"`, `"$ROOT/"`), or resolves to a directory holding more
-  than `DIR_LINK_MAX` inventory files; strings such as `"/"` in `split("/")`
-  are common, so without a bound each holder would link to every file
+  than `DIR_LINK_MAX` inventory files at any depth; or a bare TS/JS specifier
+  names a workspace package holding more than `DIR_LINK_MAX` inventory files;
+  strings such as `"/"` in `split("/")` are common, so without a bound each
+  holder would link to every file
 - **Response:** the empty suffix and a string with no named segment never
   resolve; a directory over `DIR_LINK_MAX` yields no per-file links and makes
-  the holder `opaque` with reason `walks-tree`, so the link count stays linear
+  the holder `opaque` with reason `walks-tree` and the literal (or the
+  specifier) as its reference, so the link count stays linear
   in the number of references and the dependency is still reported, as a
   `maybe` floor row
 - **Side effects:** none
@@ -1548,3 +1613,4 @@ flagged assumption in grill.md §12. Sign-off keeps the status `draft`;
 - 2026-10-07 — plan §12 question 5 closed (`architect-q5`), the owner accepting recommendation (b): a Python load by file path (`spec_from_file_location` or `run_path` over a path anchored at `__file__`, the two shapes of §6 "Links") is a `certain` `import` link found `exact`, an arm of `LINK_PYTHON_IMPORT_CERTAIN`; a missing target is `relative-no-file`; `LINK_PATH_LITERAL_AND_DIRECTORY_ARE_MAYBE` now takes an anchored path no load call takes; §2 links line and a §8 example (`plant_walk.py`) added.
 - 2026-10-07 — RED for plan increments 3 to 7 (`tester-R1`): §10 bound to `tests/test-source-index.sh` (X425 to X449) and `tests/test-full-install.sh` E15, every row `red`; rows added for `OUTPUT_CARRIES_NO_RAW_CONTROL` (X448), `WALK_FLOOR_LISTED_APART_AFTER_THE_INPUT_ROWS` (X449) and the security failures, each an arm of its contract's case; status `active` with the first RED tests (§11).
 - 2026-10-07 — RED R1 readings ruled (`architect-readings`), all confirmed, none amended, no test change: a `directory` link's kind is `path-literal`; `import a` beside `a.py` is found `resolved` and `python3 b.py` beside `b.py` `exact`; §6 "Incomplete" gains a Subject column (an input as normalized, which equals the input given in its normal form; `config-refused` the config path; `depth-cap` the file at the cut depth; the four subject-less reasons named); the cache reason of a `CACHE_UNREADABLE` rebuild is `cache unreadable`, another `schema` included; a copied plant's cache status is `reused`; `WALK_NEAREST_FIRST_ONCE` and `AFFECTED_TESTS_ARE_THE_WALK_FILTERED` each gain the one `maybe` row (`e.py`, `tests/p_test.py`) that shows the `certain` rows come first.
+- 2026-10-07 — code review `reviewer-code` (fix-list item 12) applied by `architect-review-fixes`, as clarifications inside the existing contracts, no new contract and no version bump: §6 "Resolution": `from a.b import c` links the module file and each submodule file `c` the inventory holds, in every branch (M1); variable-led shell strings (`$DIR/x`, `$(dirname "$0")/x`) try the holder's directory first, a hit there `resolved`, the unresolved `base` still repository-relative (M3); a workspace package matched by `name` or `name/`, the subpath probed to a `certain` `resolved` link, else the `maybe` package links (M6); a leading `/` with no alias match is `outside-repository` and `~` begins no npm name (m1); a non-relative tsconfig `extends` is skipped (m9e). §6 "Links": a walk call whose literal root makes no `directory` link is `opaque` `walks-tree` (M2); a `directory` link reaches every file below at any depth, and a workspace link set over `DIR_LINK_MAX` is `opaque` `walks-tree` with the specifier as reference (m9a, m9b; §7 `DIRECTORY_LITERAL_TOO_WIDE` widened to match); a foreign or ungoverned-work-tree base is not asked of `check-ignore` (m2). §6 inventory: `hash` "" when `content_state` cannot hash (m9c); a repository whose listing fails is left out with `repository-unreadable` and the others answer (m3); the key's dirty paths are those the inventory keeps (m4); `SKIP_DIRS` read from the placed spec-lint.py, the copy a fallback, not keyed because graft rebuilds (m8); `config_matches` case-sensitive by decision, the tail rule written out (m8). §6 answer and CLI: a forced `build` over an existing cache is `rebuilt` with reason `build forced` (m9d); the `build` text view is the cache line and one count line, formats given (m9 build text). Intended verdict change (m6): the helper's `split_citation` strips whitespace before it cuts the `:line` suffix, so growth-audit's `graph_leaf_filled` and grounding loop now read `x.md:3 ` (trailing space) as `x.md`, where before the raw `x.md:3` was never substantive; this corrects §6 "Helper" ("no growth-audit verdict changes") for that one input, because one parse is the point of the helper.
