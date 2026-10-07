@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 8.0.0
+- Version documented: 8.1.0
 - Repository role: this repo is the seed, the product shipped into other
   projects; it holds no `docs/graph/` of its own.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -18,6 +18,10 @@
 > [`skills-and-templates-reference.md`](documentation/skills-and-templates-reference.md),
 > and [`corpora-and-integrations-reference.md`](documentation/corpora-and-integrations-reference.md).
 > This master guide is the overview; those files are the reference.
+> Feature guides: [`source-index.md`](documentation/source-index.md) (the
+> source index) and [`corpus-placement.md`](documentation/corpus-placement.md)
+> (placing corpus pages); [`whats-new-8.md`](documentation/whats-new-8.md)
+> lists what 8.0 and 8.1 added, with a link to each guide.
 
 ## Table of contents
 
@@ -357,7 +361,8 @@ line moves whole into a sibling leaf.
 
 `graph-lint.py --plan` takes its entry nodes from the first tier that hits.
 A node id the task names comes first. A path the task names comes next: a
-node's own file, a `repo:` prefix, or an `expertise.*` file pattern. Then comes
+node's own file, a folder or file a node's `repo:` names, or an `expertise.*`
+file pattern. Then comes
 a `load_when` phrase of two or more words that the task holds whole. Only when
 none of these hits does the router score words, and a scored entry needs two
 distinct confident terms. A strong tier that hits more than three nodes falls
@@ -855,7 +860,8 @@ reconciles the engines, and `tools/graft-audit.py` classifies the backups.
 
 The corpora are durable, project-agnostic reference material that plants can
 draw from but that is not loaded by default. Grow and graft draw from them, and
-`install.sh --expertise` places single pages; new pages enter through the
+`install.sh --expertise` places single pages
+([guide](documentation/corpus-placement.md)); new pages enter through the
 harvest protocol.
 
 | Corpus | Location | Holds |
@@ -1017,7 +1023,8 @@ claude-code, opencode and prime-agent. For each tool it:
    `status-register.py`, `session-metrics.py`, `code-anchor.py`, which
    writes no anchor at install, and `source-index.py`, which writes no
    cache at install (a query builds `.cypress/source-index/` and rebuilds
-   it when its key changes, ADR-0029), with the two modules they load by
+   it when its key changes, ADR-0029; guide:
+   [`documentation/source-index.md`](documentation/source-index.md)), with the two modules they load by
    path: `source_paths.py`, the seed's path rules, and `plant_walk.py`, the
    walk over one plant's files. It places the model map
    `docs/graph/models.md` when it is missing (the plant owns it from then

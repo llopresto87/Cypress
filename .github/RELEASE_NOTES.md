@@ -1,156 +1,142 @@
-## 8.0.0 — corpus pages placed on request, a deeper corpus, and sharper doctrine across the lifecycle (2026-10-05)
+## 8.1.0 — the source index: what a change reaches, read from the code (2026-10-07)
 
-A plant can now ask the seed for the corpus pages that match its own stack,
-one by one, and get version-aware library, skill and tool pages it can work
-from without a research pass. The corpora are much larger. Planning,
-delegation, the postures and the lifecycle protocols carry new rules. A
-placed tool reads the session-metrics block of every full delivery. This
-release is a major version because it adds a placed tool, a stamp key and
-stricter checks that an existing plant meets on upgrade (see Upgrade notes).
+A plant can now ask which code depends on a set of files, which tests a
+change reaches, which graph pages cite a file, and where a name is defined,
+and get the answer from the code without a model. The tool is
+`docs/graph/source-index.py`. Verify, canonize, grow and adopt-existing each
+call it once, at the step that needs it. It recommends; verify and tiering
+still decide what runs and how much process a change gets.
 
-### Install and selective placement
+A node's `repo:` value now decides what it claims on disk, the same way
+everywhere the graph reads it. A folder or a file, named with or without a
+trailing slash, claims the paths under it; a repository or the plant root
+claims nothing. A plant that holds a `repo:` value naming a folder or file
+without a slash, such as `src/` or a bare folder name, starts routing on
+it after its next graft. A value that names nothing on disk is read as
+before, and `anchors` now says so with a `repo-unresolved` note asking the
+owner to correct it. The node template's comment states the rule: one
+plant-relative path.
 
-- `install.sh <host> --expertise propose` prints the library, tool and
-  stack-keyed skill pages that the project's manifests match, one line per
-  page with the manifest entry that matched, and writes nothing.
-  `tools/corpus-match.py` does the matching; it runs from the seed and is
-  never placed.
-- `install.sh <host> --expertise <id>[,<id>...]` places exactly the pages
-  named: library pages at `docs/graph/libraries/<name>.md` and tool pages at
-  `docs/graph/tools/<name>.md` under a provenance line, and a stack-keyed
-  skill page as the node `docs/graph/skills/<name>.md` with
-  `origin: corpus@<seed version>`. The list is recorded in `.cypress/seed.json`
-  under `expertise`, with the SHA-256 of each page written.
-- Each later install refreshes the recorded pages nobody edited and names
-  each edited page for graft. `--check` names a recorded page that is
-  missing or stale.
-- `grow` proposes the list, `graft` refreshes it, and `ingest-library` skips
-  the scout for a placed page and pins only the version delta
-  (`ingest-library.corpus-first`).
+### Source index
 
-### Seed defects fixed
+- `tools/source-index.py` is placed at `docs/graph/source-index.py`. One
+  reverse walk over file-to-file links answers three queries: `impact`, the
+  code that depends on the inputs, nearest first; `affected-tests`, the same
+  walk filtered to the plant's tests, plus an always-run set; and `anchors`,
+  the graph pages that cite the inputs, with knowledge nodes kept apart from
+  plans, specs and decisions. `build` forces a rebuild.
+- `symbols <name>` lists every definition of a name, with path, line and
+  kind, and never picks one when several files define it. A Python
+  definition, read with `ast`, is `certain`. A shell function, or a
+  TypeScript/JavaScript declaration at the top level of its file or
+  exported, is read line by line and is `maybe`. A file the tool could not
+  read makes the answer `incomplete`, with the action "search by hand".
+- `--history` adds to `impact` and `affected-tests` the files that changed
+  together with an input in past commits. Each is a `maybe` row in a
+  `history` list of its own, with the number of commits the two files
+  shared out of those that changed the input. History only adds rows. A
+  shallow clone, or a repository with no history, makes the answer
+  `incomplete`.
+- `anchors --moved` takes its inputs from the moved list of
+  `code-anchor.py`, the files changed since the anchor was recorded, so no
+  paths are copied by hand. With no anchor, the answer is `incomplete`.
+- Links come from Python imports, read with `ast` and never run; `python3`,
+  `bash`, `sh` and `source` invocations; quoted path literals, whole or
+  joined from segments; and TypeScript/JavaScript `import`, `export from`,
+  `require()` and `import()`, resolved through `tsconfig` `paths` and
+  `baseUrl`. A mention in Markdown is not a link.
+- Each row is `certain` or `maybe`, and a `maybe` row names the reason and
+  line of its weakest link. A file whose references cannot be pinned, such
+  as a whole-tree walk or a dynamic import, gives `maybe` rows that every
+  input reaches alike. These are the floor, listed once after the input's
+  own rows. What the tool cannot answer makes the answer `incomplete`, with
+  a reason and one action: check by hand, run the full suite, or review by
+  hand. `affected-tests` never presents its list as the only tests to run.
+- The tests are the plant's `TEST_GLOBS` in `docs/graph/spec-lint.py`. A
+  plant can set `exclude`, `always_run` and `global_inputs` in
+  `docs/graph/source-index.json`, which is its own file; the installer never
+  places it.
+- The index is derived scratch in `.cypress/source-index/`, beside an inner
+  `.gitignore` of `*`. Any query rebuilds it when its key changes (a commit,
+  an uncommitted code edit, a config edit, a graft that changes the tool,
+  another Python version), and deleting it is safe. A graft rebuilds it and
+  never carries it over.
+  [ADR-0029](docs/decisions/adr-0029-source-index-is-derived-scratch.md)
+  records the decision; the owner accepted it on 2026-10-07.
+  [SPEC-0007](docs/specs/SPEC-0007-source-index.md) holds the contracts.
+- The tool needs the Python standard library and `git`, nothing else.
 
-- The graft ledger takes an honest lineage base and accepts `--base-dir`.
-  `graft-run` infers the adapters of an old stamp. graft re-checks at the end
-  every file its record says it merged or kept.
-- `status-migrate` keeps multi-line statuses and invents no dates.
-  `growth-audit` declares grounding it could not check.
-- graph-lint's artifact escape check is lexical, so a symlink install no
-  longer reports false escapes. spec-lint and grill-lint refuse a misnamed
-  spec instead of passing over it.
-- A missing hook script prints one `cypress: hook script missing` line
-  instead of nothing, and `install.sh --check` runs each wired context hook
-  once. A harness agent or skill with no graph home is named RETIRED or
-  ORPHAN; nothing is deleted.
-- The hooks detect deeply nested input on any Python version. The installer
-  resolves the legal jurisdiction once per run.
-- Router triggers are sharper, and the adversarial ratchet is 2.
+### The protocols call it on demand
 
-### Corpora
+Each step below runs the tool once. No hook runs it, and nothing runs it
+per prompt or per file access, the pattern ADR-0018 withdrew.
 
-- The library corpus grows from 91 to 131 pages, with new `galaxy` and `pub`
-  ecosystems. Pages state the version facts the library's own docs document
-  (a minimum version, a version where behaviour changed) next to their
-  subject, and a section per major line where the surface differs.
-- The skill corpus grows from 12 to 33 pages. Stack-keyed pages live at
-  `skill-corpus/<key>/<name>.md`, carry node frontmatter and a `stack:` field,
-  and can be placed as routable skill nodes.
-- The tool corpus grows from 24 to 40 pages, each with a self-test where the
-  page claims portability. A tool page may carry the same `stack:` field.
-- The agent corpus grows from 6 to 8 roles, including discipline roles on a
-  stack-shaped surface.
-- The legal corpus grows from 13 to 16 instrument pages: PSD2, the SCA
-  technical standards and EDPB Guidelines 2/2023, plus two more provisions of
-  the national data-protection code.
-- Every corpus admits a page only at the withdraw-ready bar: a new plant
-  could adopt it instead of running a research scout. Pitfalls, steps and
-  rules from problems met in practice are written into the pages that own
-  their subject.
+- `verify`: after GREEN and before the gates are chosen, `affected-tests`
+  is the recommended floor of the focused tests. The session may run more,
+  and never reads a test's absence from the list as proof that the change
+  cannot reach it. An `incomplete` answer puts the change in the "affected
+  scope genuinely uncertain" row.
+- `canonize`: in flow step 1, before `code-anchor.py --record`, the session
+  runs `anchors --moved` and hands the pages it names to the docs-librarian
+  to re-check. Recording the anchor first would empty the list.
+- `grow` and `adopt-existing`: before the scouts are briefed, the
+  `inventory` from `build --json` is their file list. On a refresh,
+  `impact` over the moved paths gives the blast radius.
 
-### Doctrine
+### One home for the path rules
 
-- Planning: a scoped standing grant for repeated non-production acts, asked
-  for once at plan approval (`vcs-posture.publish-authorization`); a walking
-  skeleton first for a new pipeline or deploy path, with a spec that grows one
-  signed slice ahead of each RED; an environment-parity read for a plan that
-  changes a deploy chain; an operational act that closes on evidence of the
-  act, not of the tool that performs it.
-- Delegation: an error signature is not a failure class; a provisional
-  reading inside a contract keeps a worker going until the ruling pass; the
-  run that gates the goal goes first; work split by area is routed area by
-  area; a worker that hits a limit is resumed, not respawned.
-- Postures: a control sits where the party it must stop cannot edit it; leak
-  triage settles liveness by digest and verifies a rotation at the consumer;
-  records a system already holds start unmanaged; a green dry run is
-  structural evidence only, and a target selector is resolved to hosts before
-  a mutating run; staging-only machinery refuses a production profile; a
-  changed producer field updates its consumers in the same change.
-- Lifecycle: grow treats an agent-operations system in the source as
-  evidence; canonize keeps a harvest-candidate record from
-  `docs/graph/plans/_harvest-candidates.template.md` and asks for missing tool
-  and library pages at close-out; deliver requires the Session metrics block
-  on the full form and records a production fault in the incident runbook; a
-  ratified ADR takes an appended, dated Correction.
-- The harvest protocol now takes knowledge whole. It generalizes a
-  candidate instead of rejecting it, admits a stack-bound procedure as a
-  stack-keyed page, and admits the version facts a library documents. It
-  never states a plant's own version, and it leaves security warnings and
-  CVE ids to scanners. Each fact carries a provenance class, candidates read
-  from more than one project are consolidated first, a lesson goes into the surface that
-  already owns its subject, and an independent reviewer reads each lane.
-  [ADR-0028](docs/decisions/adr-0028-harvest-takes-knowledge-whole.md)
-  records the decision.
+- `tools/source_paths.py`, placed at `docs/graph/source_paths.py`, holds the
+  rules for what counts as code, which repositories a plant governs, where
+  Git ends, the content hash, the atomic write under `.cypress/`, and how a
+  page cites a path. `code-anchor.py` and `growth-audit.py` now use it; their
+  behaviour is unchanged, and their existing tests prove it.
+- `tools/plant_walk.py`, the walk over one plant's files that `graft-audit.py`
+  already used, is now also placed, at `docs/graph/plant_walk.py`, because
+  `source-index.py` loads it.
 
-### Session metrics
+### Measured
 
-- `tools/session-metrics.py` is placed at `docs/graph/session-metrics.py`.
-  deliver runs its lint role on the full-form entry it appends to
-  `changelog.md`, and harvest reads its query role. It takes the block's
-  labels from the plant's deliver node at run time.
-  [SPEC-0006](docs/specs/SPEC-0006-session-metrics.md) holds its contracts.
+The figures come from copies of each tree, at seed commit `17d4539`, before
+the tool read paths joined from segments; nothing was written into a real
+plant.
+
+- On a temporary plant over a clone of the seed, `affected-tests` answered
+  for 48 past commits that changed at most three source files, scored
+  against the tests each commit edited, out of a set of 40. The full answer
+  (tests, always-run and floor) found 0.989 of them, but named 38.0 of the
+  40 tests on average: on the seed it suggests nearly the whole suite. The
+  input rows alone (tests and always-run, no floor) found 0.880 at 21.7
+  tests, and they are the useful part on the seed. The `certain` rows alone
+  found 0.120, because most of the seed's links are path literals, which are
+  `maybe`.
+- A full build of the seed plant takes 0.67 to 0.76 s, and a cached query
+  0.10 s. A TypeScript plant of 397 files builds in 0.66 s, and a llama.cpp
+  clone of 4,320 files in 3.19 s.
 
 ### Checks
 
-- The gate has 50 steps (`python3 tools/gate-registry.py --summary`).
-- `tests/test_corpus_match.py` holds the matcher, and
-  `tests/test-session-metrics.sh` the session-metrics reader.
-- `tests/test-tool-corpus.sh` runs the self-test of every portable tool page
-  and a mutated copy.
-- The two knowledge-graph templates are held by prose-lint.
-- SPEC-0001 carries the selective-placement, hook-check and
-  harvest-candidate form contracts, and SPEC-0003 the missing-script
-  warning.
+- The gate has 51 steps (`python3 tools/gate-registry.py --summary`).
+- `tests/test-source-index.sh` holds the source index, on synthetic Git
+  plants.
 
 ### Upgrade notes
 
-- **New placed tool.** Every install now places
-  `docs/graph/session-metrics.py`, fast-forwarded like the other seed tools.
-  A full-form delivery whose Session metrics block is missing or malformed
-  is reported by it.
-- **Nothing is placed from the corpora by default.** A plant gets library,
-  tool or skill pages only through `--expertise`. Once it has used the flag,
-  `.cypress/seed.json` carries an `expertise` key, and later installs refresh
-  the recorded pages it has not edited.
-- **New blank form in `plans/`.** The docs scaffold adds
-  `docs/graph/plans/_harvest-candidates.template.md` where it is missing;
-  graft treats it as expected.
-- **Stricter spec discovery.** After graft reconciles the graph engines, a
-  Markdown file in `docs/graph/specs/` that is not named `SPEC-*.md` (index
-  and readme aside) fails spec-lint and grill-lint as a misnamed spec. Rename
-  it, or it is never checked.
-- **Louder hooks.** A context hook whose script is missing now prints one
-  line naming it. `install.sh --check` runs each wired hook once, names each
-  recorded expertise page that is missing or stale, and names harness agents
-  and skills with no graph home.
-- **New rules in the protocols and method nodes**, as listed above, reach an
-  existing plant through `graft`. A new plant gets them from `install.sh`.
+- **New placed tools.** Every install now places
+  `docs/graph/source-index.py`, `docs/graph/source_paths.py` and
+  `docs/graph/plant_walk.py`, fast-forwarded like the other seed tools. The
+  installer writes no index; the first query builds it.
+- **Set `exclude` before reading an answer as a gate set.** A plant's
+  `TEST_GLOBS` often match fixtures, helpers and a suite runner. List them
+  under `exclude` in `docs/graph/source-index.json`.
 
 ### Known limits
 
-- The `cli/` library pages keep their documented minimum-version markers.
-- The portability gate breaks one property per page with a single mutation;
-  a self-test that misses other properties still passes it.
-- `skills/adopt-existing/SKILL.md` sits at the 170-line leaf ceiling. Whether
-  it moves to the lifecycle class or the ceiling is raised is the owner's
-  decision.
-- ADR-0028 is proposed and waits for the owner.
+- `symbols` says where a name is defined, not who uses it. A TS/JS class
+  member, an indented declaration that is not exported, and a definition in
+  a shell here-document are not read.
+- History does not follow renames, and a CI checkout that holds one commit
+  gives no history rows, so every `--history` answer there is
+  `incomplete`.
+- Hook commands written in host settings files, such as
+  `.claude/settings.json`, are not read, so a hook script has no dependent
+  in any answer.

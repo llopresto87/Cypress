@@ -99,6 +99,7 @@ The method is written for the model to follow, and most of it is a request. For 
 - [Protocols reference](documentation/protocols-reference.md)
 - [Skills and templates reference](documentation/skills-and-templates-reference.md)
 - [Host capability matrix](documentation/host-capability-matrix.md)
+- [What's new in 8.0 and 8.1](documentation/whats-new-8.md), with guides to the [source index](documentation/source-index.md) and to [placing corpus pages](documentation/corpus-placement.md)
 - [Decision index](docs/decisions/index.md)
 - [Install guide](INSTALL.md), including upgrade and removal
 - Per-harness notes: [Claude Code](integrations/claude-code/README.md), [Prime Agent](integrations/prime-agent/README.md), [opencode](integrations/opencode/README.md), [Codex](integrations/codex/README.md), [GitHub Copilot](integrations/github-copilot/README.md)

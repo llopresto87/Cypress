@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — the source index: what a change reaches, read from the code (2026-10-07)
+## 8.1.0 — the source index: what a change reaches, read from the code (2026-10-07)
 
 A plant can now ask which code depends on a set of files, which tests a
 change reaches, which graph pages cite a file, and where a name is defined,
