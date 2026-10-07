@@ -1566,6 +1566,9 @@ place_graph_scaffold() {
     # and compare the code state. Config-free, so it fast-forwards like the
     # router. It writes no anchor at install time (SPEC-0003 owns that file).
     place_file "$SEED_ROOT/tools/code-anchor.py" "$g/code-anchor.py"
+    # ...and the seed's path rules it imports, beside it (standalone scripts
+    # resolve their imports next to themselves; same fast-forward class).
+    place_file "$SEED_ROOT/tools/source_paths.py" "$g/source_paths.py"
     place_if_missing "$SEED_ROOT/templates/knowledge-graph/index.md" "$g/index.md"
     fill_plant_facts "$g/index.md"
     log "  run /initialize — it forks on whether this target has source to scout:"

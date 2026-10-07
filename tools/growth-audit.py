@@ -160,6 +160,12 @@ _pw_spec = _ilu.spec_from_file_location(
     "cypress_plant_walk", Path(__file__).resolve().parent / "plant_walk.py")
 plant_walk = _ilu.module_from_spec(_pw_spec)
 _pw_spec.loader.exec_module(plant_walk)
+# The seed's path rules, shared with code-anchor.py: the citation grammar, its
+# suffix parse and cite_problem, the strict reading of a cited path.
+_sp_spec = _ilu.spec_from_file_location(
+    "cypress_source_paths", Path(__file__).resolve().parent / "source_paths.py")
+source_paths = _ilu.module_from_spec(_sp_spec)
+_sp_spec.loader.exec_module(source_paths)
 
 SCHEMA = "cypress.coverage/1"
 RECORD_REL = ".cypress/coverage.json"
@@ -594,92 +600,17 @@ def _is_collection_descriptor(name, path):
     return name.endswith("/") and path.stem.lower() in ("index", "readme")
 
 
-MISSING_CITATION = "does not exist in the plant"
-MALFORMED_CITATION = "is not a path citation"
-
-# The shape a citation may take: a relative path, an optional `:line` (or
-# `:line:col`, or `:line-line`) suffix, and — stripped before this is ever
-# asked — a `#anchor`. A segment may hold a space, because a repository path
-# may; what it may not hold is the punctuation prose arrives with, which is
-# what makes a trailing note detectable as one.
-_CITE_SEG = r"[^\s/:'\"()\[\]{}<>|*?=,;]+(?: [^\s/:'\"()\[\]{}<>|*?=,;]+)*"
-CITATION_RE = re.compile(
-    rf"{_CITE_SEG}(?:/{_CITE_SEG})*/?(?::\d+(?::\d+)?(?:-\d+)?)?")
-
-
-def _shape_problem(ref):
-    """The part of a reference that never was a path, as a phrase — or None
-    when the whole of it parses as a citation.
-
-    Asked only of a reference the filesystem could not answer for, because
-    wherever a path resolves its shape is past arguing about. A reference
-    carrying a trailing note, a quoted value or a parenthetical named no file
-    to begin with, and reporting it as a missing one asserts a fact about the
-    filesystem that was never tested: it sends the reader hunting for a file
-    that is sitting exactly where the message says it is not."""
-    m = CITATION_RE.match(ref)
-    rest = (ref[m.end():] if m else ref).strip()
-    if not rest:
-        return None
-    return f"{MALFORMED_CITATION} — {rest!r} is not part of a path"
-
-
-def cite_problem(plant, ref):
-    """Why a cited path does not resolve, as a phrase — or None when it does.
-
-    A citation names a real file INSIDE the plant, and the line it names is in
-    that file. Anchor suffixes (`path#section`) are stripped and not checked:
-    there is no cheap check for an anchor, and inventing one is a different
-    job. A line suffix IS checked, because the line number is the part of a
-    citation a reader actually follows — `manifest.json:999999` resolved
-    against a file whose last line is 457 for as long as the suffix was
-    stripped and forgotten. A directory is not a citation
-    (`docs/graph/sources/` names where the evidence would live, not any
-    evidence), and an absolute path is not a claim about this plant at all.
-
-    A reference that is not a citation at all is reported as one. "This file
-    does not exist" is a claim about the filesystem, and a reference that never
-    parsed as a path never reached the filesystem to earn it — every shape the
-    grammar did not recognise collapsed into that one phrase, and the reader
-    went looking for the wrong defect."""
-    cited = str(ref).split("#", 1)[0].strip()
-    m = re.search(r":(\d+)(?::\d+)?(-\d+)?$", cited)
-    cited_line = int(m.group(1)) if m else None
-    raw = re.sub(r":\d+(?::\d+)?(-\d+)?$", "", cited).strip()
-    if not raw:
-        return f"{MALFORMED_CITATION} — it names no path"
-    if Path(raw).is_absolute():
-        return MISSING_CITATION
-    target = plant / raw
-    try:
-        target.resolve().relative_to(plant.resolve())
-    except (ValueError, OSError):
-        return MISSING_CITATION
-    if not target.is_file():
-        return _shape_problem(cited) or MISSING_CITATION
-    if cited_line:
-        try:
-            held = len(target.read_text(encoding="utf-8",
-                                        errors="replace").splitlines())
-        except OSError:
-            return MISSING_CITATION
-        if cited_line > held:
-            return (f"names line {cited_line} of a file that holds "
-                    f"{held} lines")
-    return None
-
-
 def resolves(plant, ref):
     """Whether a cited path resolves — the yes/no reading of cite_problem,
     for the callers that do not report a reason."""
-    return cite_problem(plant, ref) is None
+    return source_paths.cite_problem(plant, ref) is None
 
 
 def graph_leaf_filled(plant, ref, templates):
     """Whether a cited path is a filled leaf of this plant's own graph — the
     thing an agent row exists to find. A source path, a directory, or a leaf
     still byte-identical to its scaffold is not."""
-    raw = re.sub(r":\d+(?::\d+)?(-\d+)?$", "", str(ref).split("#", 1)[0]).strip()
+    _, raw, _ = source_paths.split_citation(ref)
     if not raw.startswith(GRAPH_HOME + "/") or not resolves(plant, raw):
         return False
     return is_substantive(plant, raw[len(GRAPH_HOME) + 1:], templates)[0]
@@ -1162,7 +1093,7 @@ def lint_collections(plant, seed, rec, templates, findings):
                                f"it declined to fill them")
                 findings.append(Finding("CONTRADICTED", label, detail))
             for ref in row.get("evidence", []):
-                why = cite_problem(plant, ref)
+                why = source_paths.cite_problem(plant, ref)
                 if why:
                     findings.append(Finding("DANGLING", label,
                                             f"cites {ref!r}, which {why}"))
@@ -1605,7 +1536,7 @@ def lint_inventory(plant, rec, templates, findings):
                                     "finding about the source, not a guess"))
         else:
             for ref in item["evidence"]:
-                why = cite_problem(plant, ref)
+                why = source_paths.cite_problem(plant, ref)
                 if why:
                     findings.append(Finding("DANGLING", label,
                                             f"evidence {ref!r} {why}"))
@@ -1806,8 +1737,7 @@ def lint_inventory(plant, rec, templates, findings):
             for ref in ground.get("sources", []):
                 if not resolves(plant, ref):
                     continue
-                rel = re.sub(r":\d+(?::\d+)?(-\d+)?$", "",
-                             str(ref).split("#", 1)[0]).strip()
+                _, rel, _ = source_paths.split_citation(ref)
                 rel = rel[len(GRAPH_HOME) + 1:] if rel.startswith(GRAPH_HOME + "/") else rel
                 if rel.startswith("sources/") and is_substantive(plant, rel, templates)[0]:
                     grounded = True

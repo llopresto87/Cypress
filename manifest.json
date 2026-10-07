@@ -423,6 +423,7 @@
     "tools/status-register.py": "Placed into every plant at docs/graph/status-register.py — the register a plant's specs and plans declare their status through.",
     "tools/session-metrics.py": "Placed into every plant at docs/graph/session-metrics.py: deliver runs its lint role (--since, --entry) on the full-form entry it appends to changelog.md, and harvest reads its query role (--all --json). It takes the Session metrics labels from the plant's deliver node at run time (SPEC-0006).",
     "tools/code-anchor.py": "Placed into every plant at docs/graph/code-anchor.py: canonize runs --record to write .cypress/anchor.json (the branch, the commit and the uncommitted code paths of each repository the plant governs), and the session-start hooks run --compare once per session to say which facts about code may be stale. The installer writes no anchor.",
+    "tools/source_paths.py": "Placed into every plant at docs/graph/source_paths.py, beside the code-anchor.py that imports it: the seed's path rules in one library module with no CLI (the code-path rule, governed repositories, the Git boundary, the content hash, the descriptor-relative atomic write under .cypress/, the citation grammar and cite_problem). growth-audit.py loads it from tools/.",
     "tests/legal-lint.py": "The legal corpus's citability checker. Placed into a plant at docs/graph/legal-lint.py only when --legal-corpus yes: the corpus travels with its checker, and a plant without the corpus has nothing for it to lint."
   },
   "docs_skeleton": {

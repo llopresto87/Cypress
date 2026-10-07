@@ -17,9 +17,11 @@ Placed in a plant as `docs/graph/code-anchor.py` and run from the plant root:
 
 Governed repositories are the plant root, when it is a Git work tree, plus each
 distinct `repo:` value in node frontmatter under `docs/graph/` that resolves,
-inside the plant root, to a directory holding `.git`, as read by the one
-frontmatter reader, `frontmatter.py` beside this file (the installer places
-both in `docs/graph/`). `--record` finds them and stores, per repository, the
+inside the plant root, to a directory holding `.git`. Those rules, the code-path
+rule, the Git boundary, the content hash and the atomic write are the seed's
+path rules, held by `source_paths.py` beside this file, which reads node
+frontmatter through `frontmatter.py` beside it (the installer places all three
+in `docs/graph/`). `--record` finds them and stores, per repository, the
 branch, the commit and each uncommitted code path with its Git blob hash in
 `.cypress/anchor.json`. `--compare` reads the list from the anchor and names
 the paths that moved: changed between the recorded commit and HEAD, uncommitted
@@ -39,22 +41,18 @@ Any refusal is one stderr line and exit 1, with the old anchor untouched.
 """
 
 import argparse
-import hashlib
 import json
 import os
-import posixpath
 import re
-import secrets
 import stat
-import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 import importlib.util as _ilu
-_fm_spec = _ilu.spec_from_file_location(
-    "cypress_frontmatter", Path(__file__).resolve().parent / "frontmatter.py")
-_frontmatter = _ilu.module_from_spec(_fm_spec)
-_fm_spec.loader.exec_module(_frontmatter)
+_sp_spec = _ilu.spec_from_file_location(
+    "cypress_source_paths", Path(__file__).resolve().parent / "source_paths.py")
+source_paths = _ilu.module_from_spec(_sp_spec)
+_sp_spec.loader.exec_module(source_paths)
 
 # --- constants and texts (SPEC-0003 §6): this file is their one home. ---
 # ANCHOR_TIMEOUT and the not-checked line are the callers': the hooks print
@@ -64,7 +62,6 @@ ANCHOR_QUIET_MAX_BYTES = 160
 ANCHOR_MAX_PATHS = 20
 ANCHOR_MAX_BYTES = 2048
 ANCHOR_DIRTY_MAX = 256
-GIT_TIMEOUT = 10            # seconds per Git call
 
 QUIET = ("Code anchor: no code changed since the last canonize (repositories: {n}). "
          "The graph's facts about code are current.")
@@ -81,30 +78,12 @@ RECORD_REPO = "{repo} {branch}@{sha7} ({k} uncommitted)"
 ANCHOR_DIR, ANCHOR_NAME = ".cypress", "anchor.json"
 ANCHOR_KEYS = {"version", "recorded_at", "repositories"}
 REPO_KEYS = {"path", "branch", "commit", "dirty", "dirty_overflow"}
-NOT_CODE = ("docs/graph/", ".cypress/")
-NOISE_DIR = "__pycache__"                       # build and backup files: never code
-NOISE_NAME = re.compile(r"\.(pyc|bak)$|\.bak-\d")   # *.bak-<digit>*: the installer's stamp
-DELETED = "deleted"
 DETACHED = "(detached)"
 TEMP_PREFIX = ".tmp-anchor-"
 SHA1 = re.compile(r"^[0-9a-f]{40}$")
 ISO_UTC = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?(Z|\+00:00)$")
 
-# Every anchor file call is relative to a descriptor on `.cypress/`. A platform
-# without these has no safe way to refuse a symlink, so it gets no anchor, never
-# a path-string fallback. os.replace rides on renameat, listed as `rename`.
-DIR_FD_CALLS = {"open", "stat", "unlink", "rename"}
-
-# Variables that would point Git at some other repository or index than the
-# work tree it runs in.
-GIT_LOCATORS = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR",
-                "GIT_OBJECT_DIRECTORY")
-
 ROOT = Path.cwd()
-
-
-class Refused(Exception):
-    """A record that must not be written. The message is the stderr line."""
 
 
 class Unrecorded(Exception):
@@ -112,42 +91,16 @@ class Unrecorded(Exception):
     the not-recorded line carries."""
 
 
-class GitMissing(Exception):
-    pass
-
-
-class GitFailed(Exception):
-    pass
-
-
-# --- Git: the one boundary to the repositories ------------------------------
-def git(repo: Path, *args: str) -> bytes:
-    """One Git call in `repo`, as an argument list, bounded by GIT_TIMEOUT.
-    Optional locks and the fsmonitor are off, so no call rewrites the index
-    or leaves a file behind; a partial clone never fetches a missing object."""
-    env = {k: v for k, v in os.environ.items() if k not in GIT_LOCATORS}
-    env.update(GIT_OPTIONAL_LOCKS="0", GIT_TERMINAL_PROMPT="0", GIT_NO_LAZY_FETCH="1")
-    try:
-        r = subprocess.run(["git", "--no-optional-locks", "-c", "core.fsmonitor=false", *args],
-                           cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
-                           capture_output=True, timeout=GIT_TIMEOUT)
-    except FileNotFoundError:
-        raise GitMissing() from None
-    except (OSError, subprocess.SubprocessError) as e:
-        raise GitFailed(f"git {args[0]}: {type(e).__name__}") from None
-    if r.returncode != 0:
-        raise GitFailed(f"git {args[0]} exited {r.returncode}")
-    return r.stdout
-
-
+# --- Git reads of the anchored state -----------------------------------------
 def head_state(repo: Path):
     """(branch or None when detached, commit) of the work tree at `repo`."""
-    commit = git(repo, "rev-parse", "--verify", "HEAD^{commit}").decode().strip()
+    commit = source_paths.git(repo, "rev-parse", "--verify", "HEAD^{commit}").decode().strip()
     if not SHA1.match(commit):
-        raise GitFailed("HEAD is not a SHA-1 commit")
+        raise source_paths.GitFailed("HEAD is not a SHA-1 commit")
     try:
-        branch = git(repo, "symbolic-ref", "-q", "--short", "HEAD").decode().strip() or None
-    except GitFailed:
+        branch = (source_paths.git(repo, "symbolic-ref", "-q", "--short", "HEAD")
+                  .decode().strip() or None)
+    except source_paths.GitFailed:
         branch = None
     return branch, commit
 
@@ -155,109 +108,25 @@ def head_state(repo: Path):
 def uncommitted(repo: Path) -> list:
     """Every path `git status` shows as changed or untracked, relative to the
     repository, ignored files left out."""
-    out = git(repo, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--no-renames")
+    out = source_paths.git(repo, "status", "--porcelain=v1", "-z", "--untracked-files=all",
+                           "--no-renames")
     return [e[3:].decode("utf-8", "surrogateescape") for e in out.split(b"\0") if len(e) > 3]
 
 
 def changed_between(repo: Path, old: str, new: str) -> list:
-    out = git(repo, "diff-tree", "-r", "-z", "--name-only", "--no-renames", old, new)
+    out = source_paths.git(repo, "diff-tree", "-r", "-z", "--name-only", "--no-renames", old, new)
     return [p.decode("utf-8", "surrogateescape") for p in out.split(b"\0") if p]
 
 
 def reachable(repo: Path, commit: str) -> bool:
     try:
-        git(repo, "cat-file", "-e", commit + "^{commit}")
-    except GitFailed:
+        source_paths.git(repo, "cat-file", "-e", commit + "^{commit}")
+    except source_paths.GitFailed:
         return False
     return True
 
 
-# --- paths and content -------------------------------------------------------
-def plant_path(repo: str, path: str) -> str:
-    return path if repo == "." else posixpath.join(repo, path)
-
-
-def is_code(repo: str, path: str) -> bool:
-    """False for the graph and its state, and for build and backup noise
-    (SPEC-0003 ANCHOR_IGNORES_BUILD_AND_BACKUP_NOISE): such a path is neither
-    recorded nor named, nor counted on the more-paths line."""
-    rel = plant_path(repo, path.rstrip("/"))
-    *dirs, name = rel.split("/")
-    return not ((rel + "/").startswith(NOT_CODE) or NOISE_DIR in dirs or NOISE_NAME.search(name))
-
-
-def content_state(repo: Path, path: str):
-    """The Git blob hash of the path's content now, DELETED when nothing is
-    there, or None when it cannot be hashed (a directory, a nested work tree,
-    an unreadable file). None never equals a recorded hash, so such a path
-    always counts as moved."""
-    p = repo / path
-    try:
-        st = os.lstat(p)
-        if stat.S_ISLNK(st.st_mode):
-            data = os.fsencode(os.readlink(p))
-        elif stat.S_ISREG(st.st_mode):
-            data = p.read_bytes()
-        else:
-            return None
-    except FileNotFoundError:
-        return DELETED
-    except OSError:
-        return None
-    return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
-
-
-# --- governed repositories ---------------------------------------------------
-def repo_values(graph: Path):
-    """Each string `repo:` value the one frontmatter reader returns for a node
-    under `graph`. A node it refuses, or an unreadable file, is skipped."""
-    for dirpath, dirnames, filenames in os.walk(graph):
-        for name in filenames:
-            if not name.endswith(".md"):
-                continue
-            try:
-                meta, _ = _frontmatter.parse_file(os.path.join(dirpath, name))
-            except (OSError, _frontmatter.FrontmatterError):
-                continue
-            value = meta.get("repo")
-            if isinstance(value, str) and value:
-                yield value
-
-
-def governed_repositories(root: Path) -> list:
-    """The plant root when it is a Git work tree, then each distinct `repo:`
-    value that resolves inside the root to a directory holding `.git`, as
-    paths relative to the root ("." is the root)."""
-    top = root.resolve()
-    nested = set()
-    for value in repo_values(root / "docs" / "graph"):
-        target = (root / value).resolve()
-        try:
-            rel = target.relative_to(top).as_posix()
-        except ValueError:
-            continue
-        if rel != "." and target.is_dir() and (target / ".git").exists():
-            nested.add(rel)
-    return (["."] if (root / ".git").exists() else []) + sorted(nested)
-
-
 # --- the anchor file ---------------------------------------------------------
-def open_anchor_dir():
-    """A descriptor on <ROOT>/.cypress, opened without following a symlink.
-    FileNotFoundError when it is absent; any other OSError when unusable."""
-    if not (hasattr(os, "O_NOFOLLOW") and hasattr(os, "O_DIRECTORY")
-            and DIR_FD_CALLS <= {f.__name__ for f in os.supports_dir_fd}):
-        raise OSError(0, "no descriptor-relative file calls on this platform")
-    return os.open(ROOT / ANCHOR_DIR, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
-
-
-def relative(path) -> bool:
-    """True for a clean path inside the directory it is relative to."""
-    return isinstance(path, str) and (path == "." or (
-        not path.startswith("/") and posixpath.normpath(path) == path
-        and ".." not in path.split("/")))
-
-
 def anchor_problem(doc):
     """Why `doc` is not a version-1 anchor, or None."""
     if not isinstance(doc, dict):
@@ -275,7 +144,7 @@ def anchor_problem(doc):
     for e in repos:
         if not isinstance(e, dict) or set(e) != REPO_KEYS:
             return "bad repository entry"
-        if not relative(e["path"]) or e["path"] in seen:
+        if not source_paths.relative(e["path"]) or e["path"] in seen:
             return "bad repository path"
         seen.add(e["path"])
         if not (e["branch"] is None or isinstance(e["branch"], str)):
@@ -284,7 +153,8 @@ def anchor_problem(doc):
             return "bad commit"
         dirty = e["dirty"]
         if not isinstance(dirty, dict) or not all(
-                relative(k) and isinstance(v, str) and (v == DELETED or SHA1.match(v))
+                source_paths.relative(k) and isinstance(v, str)
+                and (v == source_paths.DELETED or SHA1.match(v))
                 for k, v in dirty.items()):
             return "bad dirty"
         if type(e["dirty_overflow"]) is not bool:
@@ -295,7 +165,7 @@ def anchor_problem(doc):
 def read_anchor() -> dict:
     """The recorded anchor, or Unrecorded naming why there is none to use."""
     try:
-        dir_fd = open_anchor_dir()
+        dir_fd = source_paths.open_dir(ROOT, ANCHOR_DIR)
     except FileNotFoundError:
         raise Unrecorded(f"no {ANCHOR_DIR}/ directory") from None
     except OSError as e:
@@ -327,38 +197,6 @@ def read_anchor() -> dict:
     return doc
 
 
-def write_anchor(dir_fd: int, doc: dict) -> None:
-    """Replace the anchor atomically: a 0644 temp file created exclusively,
-    then os.replace onto the name. On any failure the temp file is removed and
-    the old anchor, if any, stays as it was. An anchor name that is anything
-    but a regular file (a symlink above all) is refused, never replaced."""
-    try:
-        st = os.stat(ANCHOR_NAME, dir_fd=dir_fd, follow_symlinks=False)
-        if not stat.S_ISREG(st.st_mode):
-            raise Refused(f"refusing {ANCHOR_DIR}/{ANCHOR_NAME}: not a regular file "
-                          f"(a symlink is never followed); nothing written")
-    except FileNotFoundError:
-        pass
-    data = (json.dumps(doc, indent=2) + "\n").encode()
-    tmp = TEMP_PREFIX + secrets.token_hex(8)
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644, dir_fd=dir_fd)
-    try:
-        try:
-            os.fchmod(fd, 0o644)
-            view = memoryview(data)
-            while view:
-                view = view[os.write(fd, view):]
-        finally:
-            os.close(fd)
-        os.replace(tmp, ANCHOR_NAME, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
-    except BaseException:
-        try:
-            os.unlink(tmp, dir_fd=dir_fd)
-        except FileNotFoundError:
-            pass
-        raise
-
-
 # --- record ------------------------------------------------------------------
 def snapshot(root: Path, rel: str):
     """One repository's anchor entry, and how many uncommitted code paths it
@@ -367,9 +205,9 @@ def snapshot(root: Path, rel: str):
     hashed is left out, so a compare counts it moved."""
     repo = root / rel
     branch, commit = head_state(repo)
-    paths = [p for p in uncommitted(repo) if is_code(rel, p)]
+    paths = [p for p in uncommitted(repo) if source_paths.is_code(rel, p)]
     overflow = len(paths) > ANCHOR_DIRTY_MAX
-    states = {} if overflow else {p: content_state(repo, p) for p in sorted(paths)}
+    states = {} if overflow else {p: source_paths.content_state(repo, p) for p in sorted(paths)}
     dirty = {p: s for p, s in states.items() if s is not None}
     return {"path": rel, "branch": branch, "commit": commit, "dirty": dirty,
             "dirty_overflow": overflow}, len(paths)
@@ -377,34 +215,37 @@ def snapshot(root: Path, rel: str):
 
 def record() -> int:
     try:
-        dir_fd = open_anchor_dir()
+        dir_fd = source_paths.open_dir(ROOT, ANCHOR_DIR)
     except FileNotFoundError:
-        raise Refused(f"{ANCHOR_DIR}/ is missing, and this tool never creates it; "
-                      f"nothing written") from None
+        raise source_paths.Refused(f"{ANCHOR_DIR}/ is missing, and this tool never creates "
+                                   f"it; nothing written") from None
     except OSError as e:
-        raise Refused(f"{ANCHOR_DIR}/ is unusable ({e.strerror or type(e).__name__}); "
-                      f"nothing written") from None
+        raise source_paths.Refused(f"{ANCHOR_DIR}/ is unusable "
+                                   f"({e.strerror or type(e).__name__}); nothing written") from None
     try:
-        repos = governed_repositories(ROOT)
+        repos = source_paths.governed_repositories(ROOT)
         if not repos:
-            raise Refused("no governed Git repository (the plant root is not a work tree and "
-                          "no repo: resolves to one); nothing written")
+            raise source_paths.Refused("no governed Git repository (the plant root is not a "
+                                       "work tree and no repo: resolves to one); nothing written")
         snaps = []
         for rel in repos:
             try:
                 snaps.append(snapshot(ROOT, rel))
-            except GitMissing:
-                raise Refused("git is not on PATH; nothing written") from None
-            except GitFailed as e:
-                raise Refused(f"{rel}: {e}; nothing written") from None
+            except source_paths.GitMissing:
+                raise source_paths.Refused("git is not on PATH; nothing written") from None
+            except source_paths.GitFailed as e:
+                raise source_paths.Refused(f"{rel}: {e}; nothing written") from None
         entries = [entry for entry, _ in snaps]
         at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         doc = {"version": ANCHOR_VERSION, "recorded_at": at, "repositories": entries}
         try:
-            write_anchor(dir_fd, doc)
+            source_paths.atomic_write(dir_fd, ANCHOR_NAME,
+                                      (json.dumps(doc, indent=2) + "\n").encode(),
+                                      TEMP_PREFIX, f"{ANCHOR_DIR}/{ANCHOR_NAME}")
         except OSError as e:
-            raise Refused(f"{ANCHOR_DIR}/{ANCHOR_NAME} not written "
-                          f"({e.strerror or type(e).__name__}); the old anchor stands") from None
+            raise source_paths.Refused(f"{ANCHOR_DIR}/{ANCHOR_NAME} not written "
+                                       f"({e.strerror or type(e).__name__}); "
+                                       f"the old anchor stands") from None
     finally:
         os.close(dir_fd)
     print(RECORD_LINE.format(at=at, repos="; ".join(
@@ -429,11 +270,11 @@ def moved(root: Path, entry: dict):
         branch, commit = head_state(repo)
         committed = set(changed_between(repo, entry["commit"], commit))
         now = set(uncommitted(repo))
-    except GitFailed as e:
+    except source_paths.GitFailed as e:
         return [(f"unverified ({e})", [])]
     recorded = {} if entry["dirty_overflow"] else entry["dirty"]
-    hits = {p for p in committed | now | set(recorded) if is_code(rel, p)
-            and (p not in recorded or content_state(repo, p) != recorded[p])}
+    hits = {p for p in committed | now | set(recorded) if source_paths.is_code(rel, p)
+            and (p not in recorded or source_paths.content_state(repo, p) != recorded[p])}
     in_commits = sorted(p for p in hits if p in committed and p not in now)
     rest = sorted(hits.difference(in_commits))
     lines = []
@@ -484,7 +325,7 @@ def compare(everything: bool) -> int:
         lines = []
         for entry in doc["repositories"]:
             lines.extend((entry["path"], label, paths) for label, paths in moved(ROOT, entry))
-    except GitMissing:
+    except source_paths.GitMissing:
         print(NOT_RECORDED.format(reason="git is not on PATH, so nothing can be compared"))
         return 0
     except Unrecorded as e:
@@ -514,7 +355,7 @@ def main() -> int:
         return compare(args.all)
     try:
         return record()
-    except Refused as e:
+    except source_paths.Refused as e:
         print(f"code-anchor: {e}", file=sys.stderr)
         return 1
 
