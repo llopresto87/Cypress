@@ -1103,7 +1103,7 @@ def x444(base):
 @case("X445", "ANCHORS_NAME_CITING_PAGES_OR_UNCITED")
 def x445(base):
     src_a = "".join(f"# line {i}\n" for i in range(1, 12)) + "def run():\n    return 1\n"
-    files = {"src/a.py": src_a, "src/b.py": "B = 1\n",
+    files = {"src/a.py": src_a, "lib/b.py": "B = 1\n",
              "docs/graph/nodes/n.md": node("subsystem.n", body="See `src/a.py:12` and `src/a.py#run`.\n"),
              "docs/graph/nodes/deep/leaf.md": "# leaf\n\nThe code is `../../../../src/a.py`.\n",
              "docs/graph/nodes/r1.md": node("subsystem.r1", repo="src/a.py"),
@@ -1113,24 +1113,24 @@ def x445(base):
              "docs/graph/specs/s.md": "# spec\n\nCovers `src/a.py`.\n",
              "docs/graph/decisions/d.md": "# decision\n\nAbout `src/a.py`.\n"}
     p = Plant(base, files=files)
-    d = query(p, "anchors", "src/a.py", "src/b.py")
+    d = query(p, "anchors", "src/a.py", "lib/b.py")
     by = {f.get("path"): f for f in d.get("files", [])}
     problems = []
     a = by.get("src/a.py") or {}
-    facts = sorted((f.get("page"), f.get("line") if f.get("form") == "backtick" else "-", f.get("form"),
-                    f.get("link"), f.get("found")) for f in a.get("facts", []))
+    facts = sorted(((f.get("page"), f.get("line") if f.get("form") == "backtick" else "-", f.get("form"),
+                     f.get("link"), f.get("found")) for f in a.get("facts", [])), key=repr)
     want = sorted([("docs/graph/nodes/n.md", 12, "backtick", "certain", "exact"),
                    ("docs/graph/nodes/n.md", None, "backtick", "certain", "exact"),
                    ("docs/graph/nodes/deep/leaf.md", None, "backtick", "certain", "exact"),
                    ("docs/graph/nodes/r1.md", "-", "repo", "certain", "exact"),
-                   ("docs/graph/nodes/r2.md", "-", "repo", "maybe", "repo-prefix")])
+                   ("docs/graph/nodes/r2.md", "-", "repo", "maybe", "repo-prefix")], key=repr)
     if facts != want:
         problems.append(f"src/a.py facts {facts!r}, want {want!r} (r3.md, `repo: src`, claims nothing)")
     if a.get("history") != {"count": 3, "pages": []}:
         problems.append(f"src/a.py history {a.get('history')!r}, not three pages counted and none named")
-    b = by.get("src/b.py") or {}
+    b = by.get("lib/b.py") or {}
     if b.get("uncited") is not True or b.get("facts"):
-        problems.append(f"src/b.py is not listed as uncited: {b!r}")
+        problems.append(f"lib/b.py is not listed as uncited: {b!r}")
     try:
         al = {f.get("path"): f for f in query(p, "anchors", "--all", "src/a.py").get("files", [])}
         pages = sorted(((al.get("src/a.py") or {}).get("history") or {}).get("pages") or [])
@@ -1140,7 +1140,7 @@ def x445(base):
         problems.append(f"--all: {e}")
     check(not problems, " || ".join(problems))
     return ("certain backtick and repo facts, a maybe repo-prefix fact, a root repo: claims nothing; history "
-            "counted, named with --all; src/b.py uncited")
+            "counted, named with --all; lib/b.py uncited")
 
 
 @case("X446", "ANCHORS_BASENAME_IS_MAYBE_AMBIGUOUS_IS_INCOMPLETE")
