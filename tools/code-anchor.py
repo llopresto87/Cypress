@@ -105,14 +105,6 @@ def head_state(repo: Path):
     return branch, commit
 
 
-def uncommitted(repo: Path) -> list:
-    """Every path `git status` shows as changed or untracked, relative to the
-    repository, ignored files left out."""
-    out = source_paths.git(repo, "status", "--porcelain=v1", "-z", "--untracked-files=all",
-                           "--no-renames")
-    return [e[3:].decode("utf-8", "surrogateescape") for e in out.split(b"\0") if len(e) > 3]
-
-
 def changed_between(repo: Path, old: str, new: str) -> list:
     out = source_paths.git(repo, "diff-tree", "-r", "-z", "--name-only", "--no-renames", old, new)
     return [p.decode("utf-8", "surrogateescape") for p in out.split(b"\0") if p]
@@ -205,7 +197,7 @@ def snapshot(root: Path, rel: str):
     hashed is left out, so a compare counts it moved."""
     repo = root / rel
     branch, commit = head_state(repo)
-    paths = [p for p in uncommitted(repo) if source_paths.is_code(rel, p)]
+    paths = [p for p in source_paths.uncommitted(repo) if source_paths.is_code(rel, p)]
     overflow = len(paths) > ANCHOR_DIRTY_MAX
     states = {} if overflow else {p: source_paths.content_state(repo, p) for p in sorted(paths)}
     dirty = {p: s for p, s in states.items() if s is not None}
@@ -269,7 +261,7 @@ def moved(root: Path, entry: dict):
             return [(f"unverified (commit {entry['commit'][:7]} is not in this clone)", [])]
         branch, commit = head_state(repo)
         committed = set(changed_between(repo, entry["commit"], commit))
-        now = set(uncommitted(repo))
+        now = set(source_paths.uncommitted(repo))
     except source_paths.GitFailed as e:
         return [(f"unverified ({e})", [])]
     recorded = {} if entry["dirty_overflow"] else entry["dirty"]

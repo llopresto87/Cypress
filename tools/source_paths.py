@@ -12,9 +12,11 @@ disagree about a path:
     to a directory holding `.git`;
   * the Git boundary: every Git call, with the variables that would point it
     at another repository removed and optional locks off;
-  * the content state of a path, as its Git blob hash;
-  * the descriptor-relative atomic write under `.cypress/`, which never
-    follows a symlink;
+  * the uncommitted paths of a repository, and the content state of a path,
+    as its Git blob hash, read through the one regular-file opener that never
+    follows a symlink or blocks on a FIFO;
+  * the descriptor-relative directory opener and atomic write under
+    `.cypress/`, which never follow a symlink;
   * the citation grammar and `cite_problem`, the strict plant-relative reading
     of a cited path (SPEC-0007 §6 "Helper").
 
@@ -22,8 +24,8 @@ A scratch directory under `.cypress/` that the atomic write fills ignores
 itself with an inner `.gitignore` of `*`; the other home of that self-ignore
 rule is route-hook.py's `.cypress/session/` writer.
 
-Library module, no CLI. code-anchor.py and growth-audit.py load it by file
-path from beside themselves, like frontmatter.py; it loads the one
+Library module, no CLI. code-anchor.py, growth-audit.py and source-index.py
+load it by file path from beside themselves, like frontmatter.py; it loads the one
 frontmatter reader, `frontmatter.py`, from beside itself. install.sh places it
 in a plant's `docs/graph/`, beside code-anchor.py. No function reads a
 module-global root: each takes the root, or the repository, as a parameter.
@@ -54,11 +56,11 @@ DELETED = "deleted"
 GIT_LOCATORS = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR",
                 "GIT_OBJECT_DIRECTORY")
 
-# Every file call of the atomic write is relative to a directory descriptor. A
-# platform without these has no safe way to refuse a symlink, so it gets no
-# write, never a path-string fallback. os.replace rides on renameat, listed as
-# `rename`.
-DIR_FD_CALLS = {"open", "stat", "unlink", "rename"}
+# Every file call of the atomic write, and the creation of a scratch directory,
+# is relative to a directory descriptor. A platform without these has no safe
+# way to refuse a symlink, so it gets no write, never a path-string fallback.
+# os.replace rides on renameat, listed as `rename`.
+DIR_FD_CALLS = {"open", "stat", "unlink", "rename", "mkdir"}
 
 MISSING_CITATION = "does not exist in the plant"
 MALFORMED_CITATION = "is not a path citation"
@@ -87,21 +89,25 @@ class GitFailed(Exception):
 
 
 # --- Git: the one boundary to the repositories ------------------------------
-def git(repo: Path, *args: str) -> bytes:
+def git(repo: Path, *args: str, input: bytes = None, ok=(0,)) -> bytes:
     """One Git call in `repo`, as an argument list, bounded by GIT_TIMEOUT.
     Optional locks and the fsmonitor are off, so no call rewrites the index
-    or leaves a file behind; a partial clone never fetches a missing object."""
+    or leaves a file behind; a partial clone never fetches a missing object.
+    `input` is the call's stdin (none when None); `ok` holds the exit codes
+    that are answers (`check-ignore` exits 1 when nothing is ignored), and any
+    other exit is GitFailed."""
     env = {k: v for k, v in os.environ.items() if k not in GIT_LOCATORS}
     env.update(GIT_OPTIONAL_LOCKS="0", GIT_TERMINAL_PROMPT="0", GIT_NO_LAZY_FETCH="1")
     try:
         r = subprocess.run(["git", "--no-optional-locks", "-c", "core.fsmonitor=false", *args],
-                           cwd=str(repo), env=env, stdin=subprocess.DEVNULL,
+                           cwd=str(repo), env=env, input=input,
+                           stdin=subprocess.DEVNULL if input is None else None,
                            capture_output=True, timeout=GIT_TIMEOUT)
     except FileNotFoundError:
         raise GitMissing() from None
     except (OSError, subprocess.SubprocessError) as e:
         raise GitFailed(f"git {args[0]}: {type(e).__name__}") from None
-    if r.returncode != 0:
+    if r.returncode not in ok:
         raise GitFailed(f"git {args[0]} exited {r.returncode}")
     return r.stdout
 
@@ -127,24 +133,57 @@ def relative(path) -> bool:
         and ".." not in path.split("/")))
 
 
+def uncommitted(repo: Path) -> list:
+    """Every path `git status` shows as changed or untracked, relative to the
+    repository, ignored files left out."""
+    out = git(repo, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--no-renames")
+    return [e[3:].decode("utf-8", "surrogateescape") for e in out.split(b"\0") if len(e) > 3]
+
+
+def open_regular(path, dir_fd=None):
+    """(descriptor, size) of a regular file opened for reading, or None when
+    the path is anything else. The open never follows a symlink and never
+    blocks on a FIFO, and nothing is read before `fstat` shows a regular file.
+    `dir_fd` makes `path` relative to that directory descriptor. FileNotFoundError
+    when nothing is there; any other OSError when unusable."""
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=dir_fd)
+    st = os.fstat(fd)
+    if not stat.S_ISREG(st.st_mode):
+        os.close(fd)
+        return None
+    return fd, st.st_size
+
+
 def content_state(repo: Path, path: str):
     """The Git blob hash of the path's content now, DELETED when nothing is
-    there, or None when it cannot be hashed (a directory, a nested work tree,
-    an unreadable file). A symlink hashes its link text."""
+    there, or None when it cannot be hashed (a directory, a FIFO, a nested work
+    tree, an unreadable file, a file that changed size while read). A symlink
+    hashes its link text. A file is hashed as a stream under the blob header of
+    its `fstat` size, so no file is held whole."""
     p = repo / path
     try:
-        st = os.lstat(p)
-        if stat.S_ISLNK(st.st_mode):
-            data = os.fsencode(os.readlink(p))
-        elif stat.S_ISREG(st.st_mode):
-            data = p.read_bytes()
-        else:
-            return None
+        if stat.S_ISLNK(os.lstat(p).st_mode):
+            text = os.fsencode(os.readlink(p))
+            return hashlib.sha1(b"blob %d\0" % len(text) + text).hexdigest()
+        opened = open_regular(p)
     except FileNotFoundError:
         return DELETED
     except OSError:
         return None
-    return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
+    if opened is None:
+        return None
+    fd, size = opened
+    h = hashlib.sha1(b"blob %d\0" % size)
+    read = 0
+    try:
+        while chunk := os.read(fd, 1 << 16):
+            h.update(chunk)
+            read += len(chunk)
+    except OSError:
+        return None
+    finally:
+        os.close(fd)
+    return h.hexdigest() if read == size else None
 
 
 # --- governed repositories ---------------------------------------------------
@@ -182,16 +221,23 @@ def governed_repositories(root: Path) -> list:
 
 
 # --- the descriptor-relative atomic write ------------------------------------
-def open_dir(root: Path, *parts: str) -> int:
+def open_dir(root: Path, *parts: str, create: bool = False) -> int:
     """A descriptor on <root>/<parts...>, each part opened relative to the one
-    before and never through a symlink. FileNotFoundError when a part is
-    absent; any other OSError when unusable."""
+    before and never through a symlink. With `create`, the last part is made
+    (0755, by `mkdir` relative to its parent's descriptor) when absent; no
+    other part is ever created. FileNotFoundError when a part is absent; any
+    other OSError when unusable."""
     if not (hasattr(os, "O_NOFOLLOW") and hasattr(os, "O_DIRECTORY")
             and DIR_FD_CALLS <= {f.__name__ for f in os.supports_dir_fd}):
         raise OSError(0, "no descriptor-relative file calls on this platform")
     fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY)
     try:
-        for part in parts:
+        for i, part in enumerate(parts):
+            if create and i == len(parts) - 1:
+                try:
+                    os.mkdir(part, 0o755, dir_fd=fd)
+                except FileExistsError:
+                    pass
             inner = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
             os.close(fd)
             fd = inner
