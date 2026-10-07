@@ -244,7 +244,7 @@ def repo_kind(plant, value: str) -> tuple:
     target's plant-relative POSIX path (`.` for the root); for `unresolved`
     it is the value as written. Stats, reads at most one directory entry,
     opens no file and runs no Git."""
-    given = posixpath.normpath(os.fspath(plant))
+    given = posixpath.normpath(os.path.abspath(os.fspath(plant)))
     joined = posixpath.normpath(posixpath.join(given, value))
     try:
         top = os.path.realpath(given)

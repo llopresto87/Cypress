@@ -786,8 +786,7 @@ def check_frontmatter_is_portable_yaml() -> None:
 
 
 def check_frontmatter_reader_is_one_reader() -> None:
-    """Every copy of the frontmatter reader, and of the source_paths.py path-rule
-    module, is byte-identical to its canonical one."""
+    """Every copy of the frontmatter reader is byte-identical to its canonical one."""
     canon = ROOT / FRONTMATTER_COPIES[0]
     if not canon.is_file():
         fail(f"{FRONTMATTER_COPIES[0]} is missing — it is the canonical "
@@ -803,10 +802,20 @@ def check_frontmatter_reader_is_one_reader() -> None:
         elif p.read_bytes() != want:
             fail(f"{rel} has drifted from {FRONTMATTER_COPIES[0]}. One reader, "
                  f"byte-identical: seven divergent readers is what this replaced.")
+
+
+def check_source_paths_is_one_module() -> None:
+    """Every copy of the source_paths.py path-rule module is byte-identical to
+    its canonical one."""
     canon = ROOT / SOURCE_PATHS_COPIES[0]
+    if not canon.is_file():
+        fail(f"{SOURCE_PATHS_COPIES[0]} is missing — it is the canonical "
+             f"path-rule module every other copy is checked against")
+        return
+    want = canon.read_bytes()
     for rel in SOURCE_PATHS_COPIES[1:]:
         p = ROOT / rel
-        if not canon.is_file() or not p.is_file() or p.read_bytes() != canon.read_bytes():
+        if not p.is_file() or p.read_bytes() != want:
             fail(f"{rel} is missing or has drifted from {SOURCE_PATHS_COPIES[0]}. "
                  f"One path-rule module, byte-identical: graph-lint loads this copy, "
                  f"install.sh places the canonical one in plants.")
@@ -2320,7 +2329,8 @@ def check_published_counts() -> None:
 CHECKS = (check, check_corpus_stack, check_agent_spawn_grants, check_body_ceiling, check_leaf_body_ceiling,
           check_adopted_rule_homes, check_text_rules, check_eager_surface,
           check_opencode_config, check_spec_test_mapping, check_spec_rows_name_their_contract,
-          check_frontmatter_reader_is_one_reader, check_frontmatter_is_portable_yaml,
+          check_frontmatter_reader_is_one_reader, check_source_paths_is_one_module,
+          check_frontmatter_is_portable_yaml,
           check_install_write_sites, check_seed_only_stays_home, check_host_tiers,
           check_reference_tables, check_decision_index, check_gate_single_home, check_canonical_router_blocks,
           check_canonical_plant_root_boundary, check_hook_text_restates_no_kernel_rule,
