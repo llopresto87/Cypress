@@ -10,7 +10,7 @@ kinds of directory sit under that root and are not part of it:
   * a symlinked directory is another tree. A walk that follows it collects
     that tree's leaves as this plant's. This includes the directory being
     walked, when it is itself a link. The walk does not decide whether a cited
-    path is DANGLING: growth-audit.py's cite_problem still refuses a citation
+    path is DANGLING: source_paths.py's cite_problem still refuses a citation
     that resolves outside the plant through a symlink.
 
 Symlinked FILES are still walked: a `--symlink` plant is made of them, because
