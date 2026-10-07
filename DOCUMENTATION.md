@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 8.1.0
+- Version documented: 8.1.1
 - Repository role: this repo is the seed, the product shipped into other
   projects; it holds no `docs/graph/` of its own.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
