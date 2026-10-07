@@ -105,9 +105,10 @@ def build_graph(tmp: Path, nodes: dict, *, config_line: str | None = None,
         )
         src = src.replace(DEFAULT_CONFIG_LINE, config_line, 1)
     (graph / "graph-lint.py").write_text(src, encoding="utf-8")
-    (graph / "frontmatter.py").write_text(
-        (SEED / "templates" / "knowledge-graph" / "frontmatter.py").read_text(encoding="utf-8"),
-        encoding="utf-8")
+    for helper in ("frontmatter.py", "source_paths.py"):
+        (graph / helper).write_text(
+            (SEED / "templates" / "knowledge-graph" / helper).read_text(encoding="utf-8"),
+            encoding="utf-8")
 
     named = nodes if listed is None else listed
     (graph / "index.md").write_text(
