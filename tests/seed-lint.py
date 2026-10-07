@@ -1368,6 +1368,11 @@ def check_workflows() -> None:
         if rel.endswith("release.yml") and not re.search(
                 r"tags:\s*\[.*v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+.*\]", text):
             fail(f"{rel} no longer triggers on a vX.Y.Z tag push")
+        if rel.endswith("gate.yml") and "fetch-depth: 0" not in text:
+            fail(f"{rel} checkout step lacks `fetch-depth: 0` — tests/test-prompt-hooks.sh "
+                 f"and tests/test-full-install.sh case_reinstall_engine_serves_hooks read git "
+                 f"history and tags (e.g. `git show v7.36.0:...`), so the default shallow, "
+                 f"tag-less clone makes them fail on CI")
 
 
 def check_body_ceiling() -> None:
