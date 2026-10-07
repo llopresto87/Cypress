@@ -15,9 +15,16 @@ file is an `unresolved` record (SPEC-0007 §6).
 Placed in a plant as `docs/graph/source-index.py` and run from the plant root:
 
     python3 docs/graph/source-index.py build [--json]
-    python3 docs/graph/source-index.py impact         [--depth N] [--all] [--json] <path>... | -
-    python3 docs/graph/source-index.py affected-tests [--depth N] [--all] [--json] <path>... | -
+    python3 docs/graph/source-index.py impact         [--depth N] [--history] [--all] [--json] <path>... | -
+    python3 docs/graph/source-index.py affected-tests [--depth N] [--history] [--all] [--json] <path>... | -
     python3 docs/graph/source-index.py anchors                  [--all] [--json] <path>... | -
+    python3 docs/graph/source-index.py symbols                  [--all] [--json] <name>... | -
+
+The same pass that reads the links reads each file's definitions for
+`symbols`: Python's by `ast` (certain), shell functions and top-level or
+exported TS/JS declarations by line-reading (maybe). `--history` adds the
+files that changed together with an input in past commits, as a `maybe`
+list of their own (SPEC-0007 §6 "Definitions", "History links").
 
 The path rules (what is code, the governed repositories, the Git boundary,
 the blob hash, the atomic write) are `source_paths.py`'s, the plant edge is
@@ -68,7 +75,7 @@ frontmatter = _loaded(_ilu.spec_from_file_location(
 
 # --- constants and texts (SPEC-0007 §6): this file is their one home, except
 # the path rules, whose home is source_paths.py. ---
-INDEX_SCHEMA = "cypress.source-index/1"
+INDEX_SCHEMA = "cypress.source-index/2"
 ANSWER_SCHEMA = "cypress.source-index.answer/1"
 DEFAULT_DEPTH = 3
 MAX_DEPTH = 5
@@ -79,6 +86,9 @@ FILE_MAX_BYTES = 1048576
 DIR_LINK_MAX = 200
 EXTENDS_MAX = 16
 CACHE_MAX_BYTES = 67108864
+HISTORY_COMMITS = 500
+HISTORY_MAX_FILES = 40
+NAME_RE = re.compile(r"[A-Za-z_$][A-Za-z0-9_$-]*(\.[A-Za-z_$][A-Za-z0-9_$-]*)*")
 CACHE_DIR = ".cypress/source-index"
 CACHE_NAME = "index.json"
 CACHE_IGNORE = "*\n"
@@ -87,6 +97,8 @@ TEST_DECLARATION = "docs/graph/spec-lint.py"     # TEST_GLOBS and SKIP_DIRS
 SIBLINGS = ["source_paths.py", "plant_walk.py", "frontmatter.py"]
 TEMP_PREFIX = ".tmp-source-index-"
 FLOOR_LINE = "Floor: {n} maybe row(s) every input reaches (opaque holders and their dependents):"
+HISTORY_LINE = "History: {n} maybe row(s), files that changed together with an input (--history):"
+UNDEFINED_LINE = "{name}: no definition (read: Python definitions, shell functions, TS/JS declarations)"
 RECOMMEND_LINE = ("Recommendation only: the tests above and the always-run set, never only these; "
                   "verify decides what runs.")
 ACTION_LINE = {
@@ -94,6 +106,7 @@ ACTION_LINE = {
     "impact": "Incomplete: check by hand ({reasons}).",
     "affected-tests": "Incomplete: run the full suite ({reasons}).",
     "anchors": "Incomplete: review by hand ({reasons}).",
+    "symbols": "Incomplete: search by hand ({reasons}).",
 }
 CONFIG_DEFAULTS = {
     "exclude": [],
@@ -135,12 +148,15 @@ ENUMS = {
     "opaque": {"dynamic-nonliteral", "walks-tree", "unreadable", "alias-config-unavailable",
                "unmapped-specifier"},
     "unresolved": {"relative-no-file", "alias-no-file", "outside-repository", "generated", "asset"},
+    "symbol": {"function", "class", "variable", "type"},
+    "read": {"ast": "certain", "line-reading": "maybe"},      # how a definition was found -> its link
 }
 SHAPE = {
     "inventory": {"path", "repo", "hash", "language", "test"},
     "links": {"holder", "target", "kind", "link", "found", "line"},
     "opaque": {"holder", "line", "reference", "reason"},
     "unresolved": {"holder", "line", "kind", "reference", "reason", "base"},
+    "symbols": {"name", "path", "line", "kind", "link", "found"},
 }
 NPM_NAME = re.compile(r"^(?:node:.+|(?:@[a-z0-9-][a-z0-9._~-]*/)?[a-z0-9-][a-z0-9._~-]*(?:/.*)?)$")
 SCHEME_LED = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")          # node:fs, bun:test, virtual:pwa
@@ -159,6 +175,16 @@ GRAPH = "docs/graph"
 HISTORY = ("docs/graph/plans/", "docs/graph/specs/", "docs/graph/decisions/")
 FENCE = re.compile(r"^\s*(?:```|~~~)")
 SPAN = re.compile(r"(`+)(.+?)\1")
+# Definitions read a line at a time (SPEC-0007 §6 "Definitions"): each anchored
+# at the line's start, the name NAME_RE without dots.
+_NAME = r"[A-Za-z_$][A-Za-z0-9_$-]*"
+SH_DEF = re.compile(rf"[ \t]*(?:function[ \t]+({_NAME})(?=[ \t({{;]|$)|({_NAME})[ \t]*\(\))")
+TS_DEF = re.compile(r"(?:[ \t]+(?=export[ \t]))?(?:export[ \t]+)?(?:default[ \t]+)?(?:declare[ \t]+)?"
+                    r"(?:abstract[ \t]+)?(?:async[ \t]+)?"
+                    r"(function(?:[ \t]*\*[ \t]*|[ \t]+)|class[ \t]+|interface[ \t]+|type[ \t]+"
+                    rf"|(?:const[ \t]+)?enum[ \t]+|const[ \t]+|let[ \t]+|var[ \t]+)({_NAME})")
+TS_DEF_KIND = {"function": "function", "class": "class", "interface": "type", "type": "type", "enum": "type",
+               "const": "variable", "let": "variable", "var": "variable"}   # by the declaration's last keyword
 
 
 class Unreadable(Exception):
@@ -381,6 +407,29 @@ def listed(repo: Path) -> list:
     return sorted({p.decode("utf-8", "surrogateescape") for p in out.split(b"\0") if p})
 
 
+def changed_together(root: Path, rel: str):
+    """(the plant paths each read commit of repository `rel` changed, whether
+    the repository may be shallow): the newest HISTORY_COMMITS non-merge
+    commits from HEAD, renames not followed, each commit's paths after a
+    `/<parents>` marker no Git path can equal. A commit with no parent (the
+    root, or a shallow clone's boundary, which Git shows as changing every
+    file it holds) is not read. GitFailed for a repository with no commit."""
+    probe = source_paths.git(root / rel, "rev-parse", "--is-shallow-repository")
+    out = source_paths.git(root / rel, "log", "--no-merges", "--no-renames", "--no-show-signature", "--no-color",
+                           "-n", str(HISTORY_COMMITS), "--name-only", "-z", "--format=/%P")
+    commits, paths, marker = [], None, False
+    for tok in out.split(b"\0"):
+        tok = tok[1:] if marker and tok.startswith(b"\n") else tok   # the newline after a marker
+        marker = tok.startswith(b"/")
+        if marker:
+            paths = set() if tok[1:].split() else None
+            if paths is not None:
+                commits.append(paths)
+        elif tok and paths is not None:
+            paths.add(source_paths.plant_path(rel, tok.decode("utf-8", "surrogateescape")))
+    return commits, probe.decode("utf-8", "replace").strip() != "false"
+
+
 class Plant:
     """One plant: its root, governed repositories, test declaration, config,
     and the inventory Git and the path rules give."""
@@ -600,7 +649,7 @@ class Extract:
             parts = path.split("/")
             for k in range(1, len(parts)):
                 self.under.setdefault("/".join(parts[:k]), []).append(path)
-        self.links, self.opaque, self.unresolved = set(), [], []
+        self.links, self.opaque, self.unresolved, self.symbols = set(), [], [], []
         self._tsconfig, self._packages = {}, None
 
     # -- recording
@@ -617,6 +666,11 @@ class Extract:
         self.unresolved.append({"holder": holder, "line": line, "kind": kind,
                                 "reference": reference[:LITERAL_MAX], "reason": reason,
                                 "base": base if reason != "outside-repository" else None})
+
+    def define(self, path, name, line, kind, found):
+        """One definition; its link is the one its reading gives (ast: certain)."""
+        self.symbols.append({"name": name[:LITERAL_MAX], "path": path, "line": line, "kind": kind,
+                             "link": ENUMS["read"][found], "found": found})
 
     def missing(self, holder, line, kind, reference, base, reason="relative-no-file"):
         """A reference naming a path no inventory file holds."""
@@ -647,6 +701,7 @@ class Extract:
                 self.opaque = [o for o in self.opaque if o["holder"] != path]
                 self.unresolved = [u for u in self.unresolved if u["holder"] != path]
                 self.links = {l for l in self.links if l[0] != path}
+                self.symbols = [s for s in self.symbols if s["path"] != path]
                 self.opaque_at(path, None, "", "unreadable")
         self.mark_generated()
 
@@ -792,6 +847,7 @@ class Extract:
     def python(self, rec, text):
         holder = rec["path"]
         tree = ast.parse(text)
+        self.python_definitions(holder, tree)
         names = {}                            # a bound name -> the dotted thing it names
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
@@ -952,6 +1008,44 @@ class Extract:
             elif is_str(node):
                 self.path_literal(holder, node.value, node.lineno)
 
+    def python_definitions(self, holder, tree):
+        """The module's definitions, read over statement bodies and assignment
+        targets with an explicit stack, never into an expression: every def
+        and class at any depth, qualified by the classes and functions that
+        enclose it, and every name an assignment, annotated assignment or
+        `type` statement binds where the nearest enclosing scope is the module
+        or a class body. A function's locals, imports, parameters and
+        attribute targets define nothing."""
+        stack = [(tree.body, "", False)]          # (statements, qualifying prefix, inside a function)
+        while stack:
+            body, prefix, local = stack.pop()
+            for node in body:
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                    is_class = isinstance(node, ast.ClassDef)
+                    self.define(holder, prefix + node.name, node.lineno, "class" if is_class else "function", "ast")
+                    stack.append((node.body, prefix + node.name + ".", not is_class))
+                    continue
+                if local:
+                    targets = []
+                elif isinstance(node, getattr(ast, "TypeAlias", ())):
+                    self.define(holder, prefix + node.name.id, node.lineno, "type", "ast")
+                    targets = []
+                else:
+                    targets = list(node.targets) if isinstance(node, ast.Assign) else \
+                        [node.target] if isinstance(node, ast.AnnAssign) else []
+                while targets:
+                    t = targets.pop()
+                    if isinstance(t, ast.Name):
+                        self.define(holder, prefix + t.id, node.lineno, "variable", "ast")
+                    elif isinstance(t, (ast.Tuple, ast.List)):
+                        targets.extend(t.elts)
+                    elif isinstance(t, ast.Starred):
+                        targets.append(t.value)
+                # the blocks of if, for, while, with, try and match share the enclosing scope
+                stack += [(b, prefix, local) for b in (getattr(node, f, None) for f in ("body", "orelse", "finalbody"))
+                          if isinstance(b, list)]
+                stack += [(h.body, prefix, local) for h in getattr(node, "handlers", []) + getattr(node, "cases", [])]
+
     # -- shell, read a line at a time
     @staticmethod
     def shell_words(line: str) -> list:
@@ -1018,6 +1112,9 @@ class Extract:
     def shell(self, rec, text):
         holder = rec["path"]
         for lineno, line in enumerate(text.split("\n"), 1):
+            fn = SH_DEF.match(line)
+            if fn:
+                self.define(holder, fn.group(1) or fn.group(2), lineno, "function", "line-reading")
             words = self.shell_words(line)
             used = set()
             command = True
@@ -1123,6 +1220,11 @@ class Extract:
     def script(self, rec, text):
         holder = rec["path"]
         lines = self.strip_comments(text).split("\n")
+        for lineno, line in enumerate(lines, 1):
+            decl = TS_DEF.match(line)
+            if decl:
+                self.define(holder, decl.group(2), lineno,
+                            TS_DEF_KIND[decl.group(1).replace("*", " ").split()[-1]], "line-reading")
         i = 0
         while i < len(lines):
             line, lineno, nxt = lines[i], i + 1, i + 1
@@ -1439,8 +1541,8 @@ def tool_digest() -> str:
 
 
 def derive(plant: Plant, repos: list, problems: list) -> dict:
-    """The index body: inventory, links, opaque and unresolved records, each
-    sorted, holding plant-relative paths only."""
+    """The index body: inventory, links, opaque and unresolved records and
+    definitions, each sorted, holding plant-relative paths only."""
     records = plant.inventory(repos, problems)
     ex = Extract(plant, records)
     ex.run()
@@ -1450,14 +1552,15 @@ def derive(plant: Plant, repos: list, problems: list) -> dict:
     opaque = sorted(ex.opaque, key=lambda o: (o["holder"], -1 if o["line"] is None else o["line"],
                                               o["reason"], o["reference"]))
     unresolved = sorted(ex.unresolved, key=lambda u: (u["holder"], u["line"], u["reference"], u["reason"]))
-    return {"inventory": inventory, "links": links, "opaque": opaque, "unresolved": unresolved}
+    symbols = sorted(ex.symbols, key=lambda s: (s["path"], s["line"], s["name"], s["kind"]))
+    return {"inventory": inventory, "links": links, "opaque": opaque, "unresolved": unresolved, "symbols": symbols}
 
 
 def cache_problem(doc, key) -> str:
     """Why `doc` is not a usable index for `key`, or None. The cache is
     untrusted: every path must be clean and relative, every endpoint an
     inventory path, every enum one SPEC-0007 §6 lists."""
-    if not isinstance(doc, dict) or set(doc) != {"schema", "key", "inventory", "links", "opaque", "unresolved"}:
+    if not isinstance(doc, dict) or set(doc) != {"schema", "key", *SHAPE}:
         return "cache unreadable: not an index document"
     if doc["schema"] != INDEX_SCHEMA:
         return "cache unreadable: another schema"
@@ -1492,6 +1595,11 @@ def cache_problem(doc, key) -> str:
                 and r["kind"] in ("import", "invoke") and line_ok(r["line"])
                 and (r["base"] is None or clean(r["base"]))):
             return "cache unreadable: bad unresolved record"
+    for r in doc["symbols"]:
+        if not (r["path"] in paths and line_ok(r["line"]) and isinstance(r["name"], str)
+                and len(r["name"]) <= LITERAL_MAX and "\0" not in r["name"] and r["kind"] in ENUMS["symbol"]
+                and r["found"] in ENUMS["read"] and r["link"] == ENUMS["read"][r["found"]]):
+            return "cache unreadable: bad symbols record"
     return None if doc["key"] == key else "key changed"
 
 
@@ -1585,7 +1693,7 @@ def load_index(root: Path, force: bool):
     problems = []
     if plant.config_refused:
         problems.append(incomplete("config-refused", CONFIG_PATH, detail=plant.config_refused))
-    empty = {"inventory": [], "links": [], "opaque": [], "unresolved": []}
+    empty = {part: [] for part in SHAPE}
     if not plant.repos:
         problems.append(incomplete("no-repository", "."))
         return plant, empty, {"status": "not-written", "reason": "no governed Git repository"}, problems
@@ -1669,6 +1777,8 @@ class Index:
         for o in body["opaque"]:
             self.opaque.setdefault(o["holder"], o)
         self.links = body["links"]
+        self.symbols = body["symbols"]
+        self.unreadable = sorted({o["holder"] for o in body["opaque"] if o["reason"] == "unreadable"})
         self.rx = [glob_regex(g) for g in plant.test_globs or []]
 
     # -- inputs
@@ -1772,6 +1882,61 @@ class Index:
                 out.append({"path": path, "reason": "no-code-edge"})
         return out
 
+    def history(self, doc, tests_only):
+        """(history rows, incomplete records): for each repository holding a
+        walked input, the inventory files that changed together with an input
+        in its read commits, from the input with the highest count; a commit
+        keeping more than HISTORY_MAX_FILES inventory paths is not read. A file
+        another list of the answer holds is no history row, so history only
+        adds (SPEC-0007 §6 "History links")."""
+        walked = [i["path"] for i in doc["inputs"] if i["status"] == "walked"]
+        taken = set(walked) | {r["path"] for key in ("dependents", "tests", "always_run", "floor")
+                               for r in doc.get(key, [])}
+        best, problems = {}, []
+        for repo in sorted({self.plant.repo_of(p) for p in walked} - {None}):
+            try:
+                commits, shallow = changed_together(self.plant.root, repo)
+            except (source_paths.GitFailed, source_paths.GitMissing) as e:
+                problems.append(incomplete("history-unavailable", repo, detail=str(e) or "git is not on PATH"))
+                continue
+            if shallow:
+                problems.append(incomplete("history-shallow", repo,
+                                           detail="a shallow clone: its oldest commit is not read"))
+            read = [c for c in ({p for p in c if p in self.records} for c in commits)
+                    if len(c) <= HISTORY_MAX_FILES]
+            for i in (p for p in walked if self.plant.repo_of(p) == repo):
+                mine = [c for c in read if i in c]
+                count = {}
+                for p in (p for c in mine for p in c if p != i):
+                    count[p] = count.get(p, 0) + 1
+                for p, n in count.items():
+                    rank = (-n, len(mine), i)
+                    if p not in best or rank < best[p][0]:
+                        best[p] = (rank, {"path": p, "depth": 1, "link": "maybe", "from": i, "kind": "history",
+                                          "found": "history", "line": None,
+                                          "maybe": {"reason": "history", "holder": i, "line": None},
+                                          "via": [i, p], "together": {"count": n, "of": len(mine)}})
+        rows = [r for p, (_, r) in best.items()
+                if p not in taken and (not tests_only or self.test(p) == "test")]
+        return sorted(rows, key=lambda r: (-r["together"]["count"], r["path"])), problems
+
+    # -- definitions
+    def definitions(self, names):
+        """(names, incomplete records): each name's definitions, a name
+        holding a `.` matching a qualified name whole, another also its last
+        segment; one `unreadable-file` record per file whose definitions the
+        build could not read, because it may define the name."""
+        by_full, by_last = {}, {}
+        for s in self.symbols:
+            by_full.setdefault(s["name"], []).append(s)
+            by_last.setdefault(s["name"].rsplit(".", 1)[-1], []).append(s)
+        out = []
+        for name in sorted(set(names)):
+            found = sorted((by_full if "." in name else by_last).get(name, []),
+                           key=lambda s: (s["link"] != "certain", s["path"], s["line"]))
+            out.append({"name": name, "definitions": found, "undefined": not found})
+        return out, [incomplete("unreadable-file", p) for p in self.unreadable]
+
     # -- the citation join
     @staticmethod
     def citations(text):
@@ -1855,6 +2020,12 @@ def answer(query: str, args, root: Path) -> dict:
         return doc
     usable = not any(p["reason"] in ("git-unavailable", "no-repository") for p in problems)
     index = Index(plant, body, usable)
+    if query == "symbols":
+        doc["names"], more = index.definitions(args.names)
+        # the config shapes the test class alone, so it cannot make a definition answer incomplete
+        problems[:] = [p for p in problems + more if p["reason"] != "config-refused"]
+        problems.sort(key=lambda r: (r["reason"], r["subject"]))
+        return doc
     doc["inputs"], more = index.inputs(args.paths, query)
     problems += more
     if query == "anchors":
@@ -1876,6 +2047,9 @@ def answer(query: str, args, root: Path) -> dict:
             taken = {r["path"] for r in doc["tests"]} | {r["path"] for r in doc["always_run"]}
             floor = [r for r in floor if index.test(r["path"]) == "test" and r["path"] not in taken]
         doc["floor"] = sorted(floor, key=by_depth)
+        if args.history:
+            doc["history"], more = index.history(doc, query == "affected-tests")
+            problems += more
     problems.sort(key=lambda r: (r["reason"], r["subject"], r["candidates"], r["detail"] or ""))
     return doc
 
@@ -1908,7 +2082,8 @@ def text_view(doc: dict, every: bool = False) -> list:
         out.append(f"Index: {len(doc['inventory'])} file(s), "
                    f"{sum(1 for r in doc['inventory'] if r['test'] == 'test')} test(s), "
                    f"{certain} certain and {len(links) - certain} maybe link(s), "
-                   f"{len(doc['opaque'])} opaque and {len(doc['unresolved'])} unresolved record(s)")
+                   f"{len(doc['opaque'])} opaque and {len(doc['unresolved'])} unresolved record(s), "
+                   f"{len(doc['symbols'])} definition(s)")
     out += [f"Input: {i['path']} ({i['status']})" for i in doc["inputs"]]
     if doc["query"] == "anchors":
         for f in doc["files"]:
@@ -1918,8 +2093,17 @@ def text_view(doc: dict, every: bool = False) -> list:
             out += capped([f"  {x['link']} {x['form']} {x['page']}" + (f":{x['line']}" if x["line"] else "")
                            + f" ({x['found']})" for x in f["facts"]], every)
             out += capped([f"  history: {p}" for p in h["pages"]], every)
+    for n in doc.get("names", []):
+        out.append(f"{n['name']}: {len(n['definitions'])} definition(s)" if n["definitions"] else
+                   UNDEFINED_LINE.format(name=n["name"]))
+        out += capped([f"  {s['link']} {s['kind']} {s['path']}:{s['line']} {s['name']} ({s['found']})"
+                       for s in n["definitions"]], every)
     if "dependents" in doc or "tests" in doc:
         out += capped([row_text(r) for r in doc.get("dependents", doc.get("tests"))], every)
+    if "history" in doc:
+        out.append(HISTORY_LINE.format(n=len(doc["history"])))
+        out += capped([f"1 maybe {r['path']}  <- {r['from']} [history {r['together']['count']}/"
+                       f"{r['together']['of']}]" for r in doc["history"]], every)
     out += capped([f"Always run: {r['path']} ({r['reason']})" for r in doc.get("always_run", [])], every)
     if doc.get("floor"):
         out.append(FLOOR_LINE.format(n=len(doc["floor"])))
@@ -1953,12 +2137,25 @@ def parse(argv):
         if name != "anchors":
             q.add_argument("--depth", type=int, default=DEFAULT_DEPTH,
                            help=f"walk depth, 1 to {MAX_DEPTH} (default {DEFAULT_DEPTH})")
+            q.add_argument("--history", action="store_true",
+                           help="add the files that changed together with an input in past commits")
         q.add_argument("--all", action="store_true", help="every row, and the history pages named")
         q.add_argument("--json", action="store_true", help="print the answer as JSON")
         q.add_argument("paths", nargs="+", help="plant paths, or - to read one per stdin line")
+    s = sub.add_parser("symbols", help="where each name is defined")
+    s.add_argument("--all", action="store_true", help="every definition")
+    s.add_argument("--json", action="store_true", help="print the answer as JSON")
+    s.add_argument("names", nargs="+", help="names (a dotted name matches a qualified one whole), or - for stdin")
     args = ap.parse_args(argv)
     if getattr(args, "depth", 1) is not None and not 1 <= getattr(args, "depth", 1) <= MAX_DEPTH:
         raise Usage(f"--depth takes 1 to {MAX_DEPTH}")
+    field = "names" if args.query == "symbols" else "paths"
+    if getattr(args, field, None) == ["-"]:
+        setattr(args, field, [l for l in sys.stdin.buffer.read().decode("utf-8", "surrogateescape").split("\n")
+                              if l])
+    refused = next((n for n in getattr(args, "names", []) if not NAME_RE.fullmatch(n)), None)
+    if refused is not None:
+        raise Usage(f"{refused!r} is not a name")
     return args
 
 
@@ -1966,10 +2163,9 @@ def main(argv=None) -> int:
     try:
         args = parse(sys.argv[1:] if argv is None else argv)
     except Usage as e:
-        print(f"usage: source-index.py {{build|impact|affected-tests|anchors}} ...: {safe(e)}", file=sys.stderr)
+        print(f"usage: source-index.py {{build|impact|affected-tests|anchors|symbols}} ...: {safe(e)}",
+              file=sys.stderr)
         return 2
-    if getattr(args, "paths", None) == ["-"]:
-        args.paths = [l for l in sys.stdin.buffer.read().decode("utf-8", "surrogateescape").split("\n") if l]
     doc = answer(args.query, args, Path.cwd())
     if args.json:
         sys.stdout.write(json.dumps(doc, sort_keys=True, indent=1, ensure_ascii=True) + "\n")
