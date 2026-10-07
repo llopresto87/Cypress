@@ -5,7 +5,8 @@ The tool inventories the code of every governed repository (the plant root
 when it is a Git work tree, plus each nested work tree a node names in
 `repo:`) and reads file-to-file links from it: Python imports and loads by
 file path (read with `ast`, never imported or run), shell and Python
-invocations, quoted path and directory literals, and TypeScript/JavaScript
+invocations, quoted path and directory literals (whole, or joined from
+segments as in `ROOT / "tools" / "x.py"`), and TypeScript/JavaScript
 import and require specifiers resolved through `tsconfig`/`jsconfig` paths.
 Each link is `certain` or `maybe`, with the reason; a file whose references
 cannot be pinned is an `opaque` record, and an import or invoke naming no
@@ -131,7 +132,8 @@ ENUMS = {
     "kind": {"import", "invoke", "path-literal"},
     "link": {"certain", "maybe"},
     "found": {"exact", "resolved", "path-literal", "directory", "ambiguous", "workspace-package"},
-    "opaque": {"dynamic-nonliteral", "walks-tree", "unreadable", "alias-config-unavailable"},
+    "opaque": {"dynamic-nonliteral", "walks-tree", "unreadable", "alias-config-unavailable",
+               "unmapped-specifier"},
     "unresolved": {"relative-no-file", "alias-no-file", "outside-repository", "generated", "asset"},
 }
 SHAPE = {
@@ -141,8 +143,12 @@ SHAPE = {
     "unresolved": {"holder", "line", "kind", "reference", "reason", "base"},
 }
 NPM_NAME = re.compile(r"^(?:node:.+|(?:@[a-z0-9-][a-z0-9._~-]*/)?[a-z0-9-][a-z0-9._~-]*(?:/.*)?)$")
+SCHEME_LED = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")          # node:fs, bun:test, virtual:pwa
 VARIABLE = re.compile(r"^\$(?:\{[^}]*\}|[A-Za-z_][A-Za-z0-9_]*|[@*#?$!0-9])$")
-OPEN_CALL = re.compile(r"(?:(?<![\w$.])import|(?<![\w$.])require|(?<![\w$])vi\.mock)\s*\(\s*$")
+OPEN_CALL = re.compile(r"(?:(?<![\w$.])import|(?<![\w$.])require|(?<![\w$])vi\.mock"
+                       r"|(?<![\w$])path\.(?:join|resolve))\s*\(\s*$")
+JOIN_CALL = re.compile(r"(?<![\w$.])(?:os\.path\.join|path\.join|path\.resolve)\s*\(")
+SHELL_ASSIGN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 TS_FROM = re.compile(r"(?<![\w$.])from\s*(['\"])([^'\"\n]*)\1")
 TS_BARE_IMPORT = re.compile(r"(?<![\w$.])import\s*(['\"])([^'\"\n]*)\1")
 TS_CALL = re.compile(r"(?:(?<![\w$.])import|(?<![\w$.])require|(?<![\w$])vi\.mock)\s*\(\s*")
@@ -510,6 +516,75 @@ def variable_lead(segs: list) -> int:
     return lead
 
 
+def as_variable(word: str) -> str:
+    """A non-literal join segment written as a variable: `$name` for a name,
+    the word itself when it is one already, else `$_`."""
+    if VARIABLE.match(word):
+        return word
+    return "$" + (word if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", word) else "_")
+
+
+def call_args(line: str, pos: int):
+    """(the arguments, stripped, of the call whose `(` ends at `pos`; the index
+    past its `)`), or None when that `)` is not on the line."""
+    args, depth, start, i, n = [], 0, pos, pos, len(line)
+    while i < n:
+        c = line[i]
+        if c in "'\"`":
+            i += 1
+            while i < n and line[i] != c:
+                i += 2 if line[i] == "\\" else 1
+        elif c in "([{":
+            depth += 1
+        elif c in ")]}" and depth:
+            depth -= 1
+        elif c == ")" or c == "," and not depth:
+            args.append(line[start:i].strip())
+            if c == ")":
+                return [a for a in args if a], i + 1
+            start = i + 1
+        elif c in "]}":
+            return None
+        i += 1
+    return None
+
+
+def call_join(line: str, m):
+    """A path join written as a call (`path.join(`, `path.resolve(`,
+    `os.path.join(`) at the JOIN_CALL match `m`, read as one path literal:
+    (its segments joined by `/`, each non-literal one as a variable; the index
+    past the call), or None when no segment after the first is a literal."""
+    got = call_args(line, m.end())
+    if got is None:
+        return None
+    args, end = got
+    segs, literal = [], False
+    for k, a in enumerate(args):
+        quoted, inner = TS_STRING.fullmatch(a), JOIN_CALL.match(a)
+        nested = call_join(a, inner) if inner else None
+        if quoted:
+            segs.append(next(g for g in quoted.groups() if g is not None))
+        elif nested and nested[1] == len(a):
+            segs.append(nested[0])
+        else:
+            segs.append(as_variable(a))
+            continue
+        literal = literal or k > 0
+    return ("/".join(segs), end) if literal else None
+
+
+def call_joins(line: str) -> list:
+    """Each path join call on one line, outermost only: (start, end, reading)."""
+    out = []
+    for m in JOIN_CALL.finditer(line):
+        if out and m.start() < out[-1][1]:
+            continue
+        got = call_join(line, m)
+        if got:
+            out.append((m.start(), got[1], got[0]))
+    return out
+
+
 class Extract:
     """Reads the links, opaque and unresolved records of every link-bearing
     inventory file. Paths from file content are text matched against the
@@ -611,12 +686,29 @@ class Extract:
                 return ("dir", self.under[cand])
         return None
 
-    def path_literal(self, holder, text, line):
-        """A quoted string read as a path: a `maybe` link to the file, or to
-        each file under the directory, it names; nothing when it names none."""
+    @staticmethod
+    def literal_text(text):
+        """A quoted string or path join as the path it is read as: None when it
+        is no candidate (empty, longer than LITERAL_MAX, holding whitespace or
+        `://`); one holding a variable after its leading segments is cut to the
+        directory literal before that variable (`$A/x/$B` reads `$A/x/`)."""
         if not text or len(text) > LITERAL_MAX or "://" in text or any(c.isspace() for c in text):
-            return False
-        hit = self.resolve_text(holder, text, directories=True)
+            return None
+        segs = text.split("/")
+        cut = next((k for k in range(variable_lead(segs), len(segs)) if "$" in segs[k]), None)
+        return text if cut is None else "/".join(segs[:cut]) + "/"
+
+    def literal_resolves(self, holder, text) -> bool:
+        """Whether a string or join reading names an inventory file or directory."""
+        lit = self.literal_text(text) if text else None
+        return bool(lit and self.resolve_text(holder, lit, directories=True))
+
+    def path_literal(self, holder, text, line):
+        """A quoted string or path join read as a path: a `maybe` link to the
+        file, or to each file under the directory, it names; nothing when it
+        names none."""
+        lit = self.literal_text(text)
+        hit = self.resolve_text(holder, lit, directories=True) if lit else None
         if hit is None:
             return False
         self.literal_hit(holder, hit, line, text)
@@ -632,12 +724,12 @@ class Extract:
                 self.link(holder, target, "path-literal", "directory", line)
 
     def walk_root_links(self, holder, root) -> bool:
-        """Whether a walk call's literal root makes `directory` links by the
-        path-literal rule; a walk whose root makes none is `opaque` `walks-tree`
-        (SPEC-0007 §6 "Links"), so no walk is dropped in silence."""
-        if len(root) > LITERAL_MAX or any(c.isspace() for c in root):
-            return False
-        hit = self.resolve_text(holder, root, directories=True)
+        """Whether a walk call's root, a literal or a path join, makes
+        `directory` links by the path-literal rule; a walk whose root makes
+        none is `opaque` `walks-tree` (SPEC-0007 §6 "Links"), so no walk is
+        dropped in silence."""
+        lit = self.literal_text(root) if root else None
+        hit = self.resolve_text(holder, lit, directories=True) if lit else None
         return bool(hit) and hit[0] == "dir"
 
     def pick(self, *cands):
@@ -750,6 +842,48 @@ class Extract:
                     return k - 1, list(arg.args[1:])
             return None
 
+        def is_str(n):
+            return isinstance(n, ast.Constant) and isinstance(n.value, str)
+
+        def join_of(n):
+            """A path join (a `/` chain or `os.path.join`, a string literal after
+            its base) as (its reading, the nodes it reads), or None."""
+            if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Div):
+                ops, nodes = [], [n]
+                while isinstance(n, ast.BinOp) and isinstance(n.op, ast.Div):
+                    ops.insert(0, n.right)
+                    n = n.left
+                    nodes.append(n)
+                ops.insert(0, n)
+            elif isinstance(n, ast.Call) and qual(n.func) == "os.path.join" and n.args and not n.keywords:
+                ops, nodes = list(n.args), [n]
+            else:
+                return None
+            if not any(is_str(o) for o in ops[1:]):
+                return None
+            segs = []
+            for o in ops:
+                inner = join_of(o)
+                if is_str(o):
+                    segs.append(o.value)
+                elif isinstance(o, ast.Call) and qual(o.func) == "pathlib.Path" and len(o.args) == 1 \
+                        and not o.keywords and is_str(o.args[0]):
+                    segs.append(o.args[0].value)
+                    o = o.args[0]
+                elif inner:
+                    segs.append(inner[0])
+                    nodes += inner[1]
+                    continue
+                else:
+                    segs.append(as_variable(o.id if isinstance(o, ast.Name) else ""))
+                    continue
+                nodes.append(o)
+            return "/".join(segs), nodes
+
+        def literal_of(n):
+            """The reading of a string literal or a path join, or None."""
+            return n.value if is_str(n) else (join_of(n) or (None,))[0]
+
         consumed = set()
         for node in ast.walk(tree):
             if isinstance(node, ast.JoinedStr):
@@ -757,8 +891,8 @@ class Extract:
         hdir = posixpath.dirname(holder)
 
         def literal_resolves(arg):
-            return any(isinstance(c, ast.Constant) and isinstance(c.value, str)
-                       and self.resolve_text(holder, c.value, True) for c in ast.walk(arg))
+            return any(self.literal_resolves(holder, t) for c in ast.walk(arg)
+                       for t in [literal_of(c)] if t is not None)
 
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
@@ -792,7 +926,7 @@ class Extract:
                             self.opaque_at(holder, node.lineno, ast.unparse(arg), "dynamic-nonliteral")
                         continue
                     ups, lits = shape
-                    consumed.update(id(c) for c in lits)
+                    consumed.update(map(id, ast.walk(arg)))
                     target = joined(hdir, "/".join([".."] * ups + [c.value for c in lits]))
                     if target in self.files:
                         self.link(holder, target, "import", "exact", arg.lineno)
@@ -803,42 +937,47 @@ class Extract:
                     root = (node.args[0] if node.args else None) if q in PY_WALKS else node.func.value
                     if isinstance(root, ast.Call) and len(root.args) == 1 and not root.keywords:
                         root = root.args[0] if qual(root.func) == "pathlib.Path" else root
-                    if not (isinstance(root, ast.Constant) and isinstance(root.value, str)
-                            and self.walk_root_links(holder, root.value)):
+                    if not (root is not None and self.walk_root_links(holder, literal_of(root))):
                         self.opaque_at(holder, node.lineno, ast.unparse(root) if root is not None else q,
                                        "walks-tree")
+        # every path literal, whole or a join (read once, outermost first,
+        # its segments read as part of it only)
         for node in ast.walk(tree):
-            if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in consumed:
+            if id(node) in consumed:
+                continue
+            join = join_of(node)
+            if join:
+                consumed.update(map(id, join[1]))
+                self.path_literal(holder, join[0], node.lineno)
+            elif is_str(node):
                 self.path_literal(holder, node.value, node.lineno)
 
     # -- shell, read a line at a time
     @staticmethod
     def shell_words(line: str) -> list:
-        """The words of one shell line, comments dropped: each a pair of its
-        text with quotes removed and the quoted strings it holds; None marks
-        a command separator."""
-        words, text, quoted, started, i, n = [], [], [], False, 0, len(line)
+        """The words of one shell line, comments dropped: each its text with
+        quotes removed, the quoted strings it holds, the index it starts at,
+        and whether it holds unquoted parts too; None marks a command
+        separator."""
+        words, text, quoted, start, bare, i, n = [], [], [], None, False, 0, len(line)
 
         def end():
-            nonlocal text, quoted, started
-            if started:
-                words.append(("".join(text), quoted))
-            text, quoted, started = [], [], False
+            nonlocal text, quoted, start, bare
+            if start is not None:
+                words.append(("".join(text), quoted, start, bare))
+            text, quoted, start, bare = [], [], None, False
 
         while i < n:
             c = line[i]
             if c in " \t\r":
                 end()
-            elif c == "#" and not started:
+            elif c == "#" and start is None:
                 break
             elif c in ";|&()`":
                 end()
                 words.append(None)
             elif c in "<>":
                 end()
-            elif c == "\\":
-                text.append(line[i + 1:i + 2])
-                started, i = True, i + 1
             elif c in "'\"":
                 j = line.find(c, i + 1)
                 while c == '"' and j > 0 and line[j - 1] == "\\":
@@ -846,10 +985,10 @@ class Extract:
                 j = n if j < 0 else j
                 text.append(line[i + 1:j])
                 quoted.append(line[i + 1:j])
-                started, i = True, j
+                start, i = i if start is None else start, j
             else:
-                text.append(c)
-                started = True
+                text.append(line[i + 1:i + 2] if c == "\\" else c)
+                start, bare, i = i if start is None else start, True, i + (c == "\\")
             i += 1
         end()
         return words
@@ -916,10 +1055,43 @@ class Extract:
                         self.literal_hit(holder, self.resolve_text(holder, root, True), lineno, roots[0][0])
                     else:
                         self.opaque_at(holder, lineno, roots[0][0] if roots else t, "walks-tree")
+            self.shell_joins(holder, line, words, used, lineno)
             for w in words:
                 if w is not None and id(w) not in used:
-                    for q in w[1]:
+                    # a word joining quoted and unquoted parts is one string,
+                    # an assignment's the value after its `=`
+                    value = SHELL_ASSIGN.sub("", w[0], count=1) if w[3] else w[0]
+                    for q in [value] if w[3] and w[1] and value != "".join(w[1]) else w[1]:
                         self.path_literal(holder, q, lineno)
+
+    def shell_joins(self, holder, line, words, used, lineno):
+        """The path joins of one shell line, each read as one path literal and
+        its words marked used: the join calls, then each run of words joined
+        by `/` words with a quoted word after the first (the form a Python
+        here-document writes, `SEED / "tools" / "x.py"`)."""
+        for a, b, reading in call_joins(line):
+            inside_call = [w for w in words if w is not None and a <= w[2] < b]
+            if inside_call and not any(id(w) in used for w in inside_call):
+                used.update(map(id, inside_call))
+                self.path_literal(holder, reading, lineno)
+
+        def slash(w):
+            return w is not None and w[0] == "/" and not w[1]
+
+        k = 0
+        while k < len(words):
+            j = k
+            while words[j] is not None and j + 2 < len(words) and slash(words[j + 1]) \
+                    and words[j + 2] is not None and not slash(words[j + 2]):
+                j += 2
+            run = words[k:j + 1:2]
+            if len(run) > 1 and any(w[1] and not w[3] for w in run[1:]) \
+                    and not any(id(w) in used for w in run):
+                used.update(map(id, words[k:j + 1]))
+                self.path_literal(holder, "/".join(w[0] if w[1] else as_variable(w[0]) for w in run), lineno)
+                k = j + 1
+            else:
+                k += 1
 
     # -- TypeScript and JavaScript, comment-stripped, a line at a time
     @staticmethod
@@ -969,6 +1141,9 @@ class Extract:
 
     def script_line(self, holder, line, lineno):
         spans = []
+        for a, b, reading in call_joins(line):
+            spans.append((a, b))
+            self.path_literal(holder, reading, lineno)
         for m in TS_FROM.finditer(line):
             spans.append(m.span(2))
             self.specifier(holder, m.group(2), lineno)
@@ -980,18 +1155,26 @@ class Extract:
             if arg:
                 spans.append(arg.span(2))
                 self.specifier(holder, arg.group(2), lineno)
-            elif not self.ts_literal(holder, line[m.end():], lineno, dry=True):
+            elif not (self.ts_literal(holder, line[m.end():], lineno, dry=True)
+                      or self.literal_resolves(holder, self.join_at(line, m.end()))):
                 self.opaque_at(holder, lineno, line[m.end():].split(")")[0].strip(), "dynamic-nonliteral")
         for m in TS_WALK.finditer(line):
             root = TS_STRING.match(line, m.end())
             text = next((g for g in root.groups() if g is not None), "") if root else ""
             hit = self.ts_target(holder, text) if text and "/" in text else None
-            if not (hit and not isinstance(hit[0], str)):
+            if not (hit and not isinstance(hit[0], str) or self.walk_root_links(holder, self.join_at(line, m.end()))):
                 self.opaque_at(holder, lineno, line[m.end():].split(")")[0].strip(), "walks-tree")
         for m in TS_STRING.finditer(line):
             k = next(g for g in (1, 2, 3) if m.group(g) is not None)
             if not any(a <= m.start(k) < b or m.start(k) == a for a, b in spans):
                 self.ts_literal(holder, m.group(k), lineno)
+
+    @staticmethod
+    def join_at(line, pos):
+        """The reading of the path join call that starts at `pos`, or None."""
+        m = JOIN_CALL.match(line, pos)
+        got = call_join(line, m) if m else None
+        return got[0] if got else None
 
     def ts_literal(self, holder, text, lineno, dry=False):
         """A TS/JS path literal: only a relative or alias-prefixed string, by
@@ -1124,7 +1307,7 @@ class Extract:
                         "relative-no-file")
             return
         cfg = self.tsconfig(holder)
-        package = bool(NPM_NAME.match(spec))
+        package = bool(NPM_NAME.match(spec) or SCHEME_LED.match(spec))   # a name led by a scheme is external too
         if cfg == "unavailable":
             if not package:
                 self.opaque_at(holder, line, spec, "alias-config-unavailable")
@@ -1147,6 +1330,10 @@ class Extract:
                     return
         if package:
             self.workspace(holder, spec, line)
+        elif not (cfg and cfg["base_url"] is not None):
+            # no rule maps it (`~/x` with no `~` alias, `#internal`): the config
+            # that does is one this tool does not read, so it may name any file
+            self.opaque_at(holder, line, spec, "unmapped-specifier")
 
     def target(self, holder, spec, line, bases, asset, missing, relative=True):
         """Link a relative or alias specifier to the first base that probes
@@ -1552,8 +1739,10 @@ class Index:
 
     def reach(self, inputs, cap):
         """(input rows, floor rows, depth-cap records): the input part from the
-        walked inputs at depth 0; the floor part, when an input is walked,
-        from every opaque holder at depth 1, less what the input part takes."""
+        walked inputs at depth 0, cut at `cap`; the floor part, when an input
+        is walked, from every opaque holder at depth 1 with no depth bound
+        (the floor is the index's, not the input's), less what the input part
+        takes. Only a cut in the input part makes a depth-cap record."""
         walked = [i["path"] for i in inputs if i["status"] == "walked"]
         rows = self.walk([{"path": p, "depth": 0, "link": "certain", "from": None, "kind": None,
                            "found": None, "line": None, "maybe": None, "via": [p]} for p in walked], cap)
@@ -1562,10 +1751,10 @@ class Index:
             floor = self.walk([{"path": h, "depth": 1, "link": "maybe", "from": None, "kind": "opaque",
                                 "found": o["reason"], "line": o["line"],
                                 "maybe": {"reason": o["reason"], "holder": h, "line": o["line"]}, "via": [h]}
-                               for h, o in sorted(self.opaque.items())], cap)
+                               for h, o in sorted(self.opaque.items())], float("inf"))
         floor = {p: r for p, r in floor.items() if p not in rows}
         seen = set(rows) | set(floor)
-        capped = sorted({r["path"] for r in (*rows.values(), *floor.values()) if r["depth"] == cap
+        capped = sorted({r["path"] for r in rows.values() if r["depth"] == cap
                          and any(h not in seen for h, *_ in self.steps.get(r["path"], []))})
         return list(rows.values()), list(floor.values()), [incomplete("depth-cap", p) for p in capped]
 
