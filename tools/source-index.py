@@ -90,7 +90,8 @@ EXTENDS_MAX = 16
 CACHE_MAX_BYTES = 67108864
 HISTORY_COMMITS = 500
 HISTORY_MAX_FILES = 40
-NAME_RE = re.compile(r"[A-Za-z_$][A-Za-z0-9_$-]*(\.[A-Za-z_$][A-Za-z0-9_$-]*)*")
+_NAME = r"[A-Za-z_$][A-Za-z0-9_$-]*"      # one name segment; shell and TS/JS definitions read it undotted
+NAME_RE = re.compile(rf"{_NAME}(\.{_NAME})*")
 CACHE_DIR = ".cypress/source-index"
 CACHE_NAME = "index.json"
 CACHE_IGNORE = "*\n"
@@ -102,7 +103,8 @@ TEMP_PREFIX = ".tmp-source-index-"
 FLOOR_LINE = "Floor: {n} maybe row(s) every input reaches (opaque holders and their dependents):"
 HISTORY_LINE = "History: {n} maybe row(s), files that changed together with an input (--history):"
 MOVED_NONE_LINE = "Moved: no code moved since the code anchor."
-UNDEFINED_LINE = "{name}: no definition (read: Python definitions, shell functions, TS/JS declarations)"
+UNDEFINED_LINE = ("{name}: no definition (read: Python definitions, shell functions, TS/JS declarations; "
+                  "not read: {not_read}, which are not code)")   # {not_read}: the answer's not_read
 RECOMMEND_LINE = ("Recommendation only: the tests above and the always-run set, never only these; "
                   "verify decides what runs.")
 ACTION_LINE = {
@@ -180,8 +182,7 @@ HISTORY = ("docs/graph/plans/", "docs/graph/specs/", "docs/graph/decisions/")
 FENCE = re.compile(r"^\s*(?:```|~~~)")
 SPAN = re.compile(r"(`+)(.+?)\1")
 # Definitions read a line at a time (SPEC-0007 §6 "Definitions"): each anchored
-# at the line's start, the name NAME_RE without dots.
-_NAME = r"[A-Za-z_$][A-Za-z0-9_$-]*"
+# at the line's start, the name NAME_RE without dots (_NAME).
 SH_DEF = re.compile(rf"[ \t]*(?:function[ \t]+({_NAME})(?=[ \t({{;]|$)|({_NAME})[ \t]*\(\))")
 TS_DEF = re.compile(r"(?:[ \t]+(?=export[ \t]))?(?:export[ \t]+)?(?:default[ \t]+)?(?:declare[ \t]+)?"
                     r"(?:abstract[ \t]+)?(?:async[ \t]+)?"
@@ -1667,7 +1668,7 @@ def write_cache(root: Path, doc: dict):
     `.cypress/` or following a symlink: the inner `.gitignore` first, then
     `index.json`, each by exclusive temp file and atomic replace. The reason
     nothing was written, or None."""
-    data = (json.dumps(doc, sort_keys=True, indent=1, ensure_ascii=True) + "\n").encode("ascii")
+    data = (json.dumps(doc, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n").encode("ascii")
     if len(data) > CACHE_MAX_BYTES:
         return "the index is larger than CACHE_MAX_BYTES"
     try:
@@ -1711,6 +1712,8 @@ def load_index(root: Path, force: bool):
         cached, why = read_cache(root, key)
         if cached is not None and not force:
             return plant, {k: cached[k] for k in empty}, {"status": "reused", "reason": None}, problems
+        existed = cached is not None or why is not None
+        del cached                               # the derive holds no parsed cache (SPEC-0007 §5)
         body = derive(plant, readable, problems)
     except source_paths.GitMissing:
         problems = [p for p in problems if p["reason"] == "config-refused"]
@@ -1721,7 +1724,6 @@ def load_index(root: Path, force: bool):
         return plant, empty, {"status": "not-written", "reason": str(e)}, problems
     if any(p["reason"] == "repository-unreadable" for p in problems):
         return plant, body, {"status": "not-written", "reason": "a repository is unreadable"}, problems
-    existed = cached is not None or why is not None
     failed = write_cache(root, {"schema": INDEX_SCHEMA, "key": key, **body})
     if failed:
         return plant, body, {"status": "not-written", "reason": failed}, problems
@@ -1756,14 +1758,23 @@ def moved_inputs(root: Path):
     if not tool.is_file():
         return [], [incomplete("moved-unavailable", shown, detail="absent")]
     missing = unrecorded = ()                    # code-anchor's classes, once it has loaded
+    subject = ".cypress/anchor.json"             # an Unrecorded record's subject, unless code-anchor names it
     paths, problems = [], []
     try:
         anchor = _loaded(_ilu.spec_from_file_location("cypress_code_anchor", tool))
         missing, unrecorded = anchor.source_paths.GitMissing, anchor.Unrecorded
+        where = getattr(anchor, "ANCHOR_DIR", None), getattr(anchor, "ANCHOR_NAME", None)
+        if all(isinstance(w, str) for w in where):
+            subject = "/".join(where)
         for repo, pairs in anchor.moved_list(root):
             if not source_paths.relative(repo):
                 raise ValueError(f"moved_list named the repository {repo!r}, not a clean plant path")
-            pairs = [(label, list(moved)) for label, moved in pairs]
+            pairs = list(pairs)
+            for label, moved in pairs:
+                if not (isinstance(label, str) and isinstance(moved, (list, tuple))
+                        and all(isinstance(p, str) for p in moved)):
+                    raise ValueError(f"moved_list gave a {type(label).__name__} label and "
+                                     f"{type(moved).__name__} paths, not a string and a list of strings")
             if len(pairs) == 1 and pairs[0][0].startswith("unverified") and not pairs[0][1]:
                 problems.append(incomplete("moved-unverified", repo, detail=pairs[0][0]))
                 continue
@@ -1776,7 +1787,7 @@ def moved_inputs(root: Path):
     except missing:
         return [], []                            # the answer already holds git-unavailable
     except unrecorded as e:
-        return [], [incomplete("moved-unavailable", f"{anchor.ANCHOR_DIR}/{anchor.ANCHOR_NAME}", detail=str(e))]
+        return [], [incomplete("moved-unavailable", subject, detail=str(e))]
     except (Exception, SystemExit) as e:         # noqa: BLE001 — any failure of code-anchor is a record
         return [], [incomplete("moved-unavailable", shown, detail=f"{type(e).__name__}: {e}")]
     return paths, problems
@@ -2061,39 +2072,39 @@ def answer(query: str, args, root: Path) -> dict:
     usable = not any(p["reason"] in ("git-unavailable", "no-repository") for p in problems)
     index = Index(plant, body, usable)
     if query == "symbols":
+        doc["not_read"] = list(source_paths.NOT_CODE)   # the code-path rule bounds definitions
         doc["names"], more = index.definitions(args.names)
         # the config shapes the test class alone, so it cannot make a definition answer incomplete
         problems[:] = [p for p in problems + more if p["reason"] != "config-refused"]
-        problems.sort(key=lambda r: (r["reason"], r["subject"]))
-        return doc
-    paths = args.paths
-    if getattr(args, "moved", False):
-        paths, more = moved_inputs(root)
-        problems += more
-    doc["inputs"], more = index.inputs(paths, query)
-    problems += more
-    if query == "anchors":
-        doc["files"], more = index.anchors(doc["inputs"], args.all)
-        problems += more
     else:
-        doc["depth"] = args.depth
-        rows, floor, more = index.reach(doc["inputs"], args.depth)
-        problems += more
-        if query == "impact":
-            doc["dependents"] = sorted((r for r in rows if r["depth"]), key=by_link)
-        else:
-            if plant.test_globs is None:
-                problems.append(incomplete("no-test-declaration", TEST_DECLARATION))
-            elif not any(r["test"] == "test" for r in body["inventory"]):
-                problems.append(incomplete("no-test-files", TEST_DECLARATION))
-            doc["tests"] = sorted((r for r in rows if index.test(r["path"]) == "test"), key=by_link)
-            doc["always_run"] = index.always_run({r["path"] for r in doc["tests"]})
-            taken = {r["path"] for r in doc["tests"]} | {r["path"] for r in doc["always_run"]}
-            floor = [r for r in floor if index.test(r["path"]) == "test" and r["path"] not in taken]
-        doc["floor"] = sorted(floor, key=by_depth)
-        if args.history:
-            doc["history"], more = index.history(doc, query == "affected-tests")
+        paths = args.paths
+        if getattr(args, "moved", False):
+            paths, more = moved_inputs(root)
             problems += more
+        doc["inputs"], more = index.inputs(paths, query)
+        problems += more
+        if query == "anchors":
+            doc["files"], more = index.anchors(doc["inputs"], args.all)
+            problems += more
+        else:
+            doc["depth"] = args.depth
+            rows, floor, more = index.reach(doc["inputs"], args.depth)
+            problems += more
+            if query == "impact":
+                doc["dependents"] = sorted((r for r in rows if r["depth"]), key=by_link)
+            else:
+                if plant.test_globs is None:
+                    problems.append(incomplete("no-test-declaration", TEST_DECLARATION))
+                elif not any(r["test"] == "test" for r in body["inventory"]):
+                    problems.append(incomplete("no-test-files", TEST_DECLARATION))
+                doc["tests"] = sorted((r for r in rows if index.test(r["path"]) == "test"), key=by_link)
+                doc["always_run"] = index.always_run({r["path"] for r in doc["tests"]})
+                taken = {r["path"] for r in doc["tests"]} | {r["path"] for r in doc["always_run"]}
+                floor = [r for r in floor if index.test(r["path"]) == "test" and r["path"] not in taken]
+            doc["floor"] = sorted(floor, key=by_depth)
+            if args.history:
+                doc["history"], more = index.history(doc, query == "affected-tests")
+                problems += more
     problems.sort(key=lambda r: (r["reason"], r["subject"], r["candidates"], r["detail"] or ""))
     return doc
 
@@ -2141,7 +2152,7 @@ def text_view(doc: dict, every: bool = False, moved: bool = False) -> list:
             out += capped([f"  history: {p}" for p in h["pages"]], every)
     for n in doc.get("names", []):
         out.append(f"{n['name']}: {len(n['definitions'])} definition(s)" if n["definitions"] else
-                   UNDEFINED_LINE.format(name=n["name"]))
+                   UNDEFINED_LINE.format(name=n["name"], not_read=", ".join(doc["not_read"])))
         out += capped([f"  {s['link']} {s['kind']} {s['path']}:{s['line']} {s['name']} ({s['found']})"
                        for s in n["definitions"]], every)
     if "dependents" in doc or "tests" in doc:
