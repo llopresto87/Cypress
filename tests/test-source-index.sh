@@ -466,7 +466,20 @@ def x428(base):
     check(status(d) == "reused", f"cache status {d.get('cache')!r}, not reused")
     check((p.index.read_bytes(), p.index.stat().st_mtime_ns) == before,
           "a reusing query changed index.json's bytes or modification time")
-    return "the second query reuses the cache; index.json bytes and mtime unchanged"
+    # m4: a tracked directory replaced by a symlink to outside files; the plant's code does not change
+    # when those files do, so the key holds.
+    m4 = Plant(base, "symlinked", files={"d/a.py": "A = 1\n", "src/b.py": "B = 1\n"})
+    outside = Path(base) / "m4-outside"
+    write(outside, "a.py", "A = 2\n")
+    shutil.rmtree(m4.dir / "d")
+    (m4.dir / "d").symlink_to(outside)
+    query(m4, "impact", "src/b.py")
+    write(outside, "a.py", "A = 3\n")
+    d4 = query(m4, "impact", "src/b.py")
+    check(status(d4) == "reused", f"m4: after an edit beyond a symlinked directory the cache status is "
+                                  f"{d4.get('cache')!r}, not reused")
+    return ("the second query reuses the cache; index.json bytes and mtime unchanged; an edit beyond a "
+            "symlinked directory leaves the key alone")
 
 
 @case("X429", "CACHE_REBUILT_WHEN_THE_KEY_CHANGES; failure CACHE_UNREADABLE")
@@ -671,10 +684,49 @@ def parts(s):
 """
 
 
+PY_J = """import os
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+U = ROOT / "tools" / "u.py"
+V = os.path.join(ROOT, "tools", "v.py")
+
+
+def kit(name):
+    return ROOT / "templates" / "k" / name
+"""
+PY_JW = """from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+KIT = sorted((ROOT / "templates" / "k").glob("*.json"))
+"""
+SH_J = """#!/usr/bin/env bash
+SEED="$1"
+TMP="$2"
+cp "$SEED"/tools/v.py "$TMP"
+python3 - "$SEED" <<'EOF'
+import sys
+from pathlib import Path
+SEED = Path(sys.argv[1])
+TOOL = SEED / "tools" / "u.py"
+EOF
+"""
+TS_E = """import path from "node:path";
+
+export function where(root: string) {
+  const hooks = path.join(__dirname, "..", "hooks");
+  return [hooks, path.resolve(root, "tools", "u.py")];
+}
+"""
+
+
 @case("X433", "LINK_PATH_LITERAL_AND_DIRECTORY_ARE_MAYBE; failure DIRECTORY_LITERAL_TOO_WIDE")
 def x433(base):
     files = {"tools/t.py": PY_T, "tools/frontmatter.py": "F = 1\n", "templates/k/lint.py": "K = 1\n",
-             "templates/k/a.json": "{}\n", "notes.md": "The tool is `tools/t.py`.\n", "tools/w.py": PY_W}
+             "templates/k/a.json": "{}\n", "notes.md": "The tool is `tools/t.py`.\n", "tools/wide.py": PY_W,
+             # path joins (§6 "Links"): one path literal written in pieces
+             "tools/u.py": "U = 1\n", "tools/v.py": "V = 1\n", "src/hooks/h.py": "H = 1\n",
+             "tools/j.py": PY_J, "tools/w.py": PY_JW, "tests/j.sh": SH_J, "src/ext/e.ts": TS_E}
     for i in range(DIR_LINK_MAX + 1):
         files[f"wide/f{i:03d}.json"] = "{}\n"
     p = Plant(base, files=files)
@@ -692,15 +744,35 @@ def x433(base):
         problems.append(f"tools/t.py links {got!r}, want {want!r}")
     if links_of(d, "notes.md"):
         problems.append(f"the Markdown file holds links: {links_of(d, 'notes.md')!r}")
-    if links_of(d, "tools/w.py"):
-        problems.append(f"tools/w.py holds {len(links_of(d, 'tools/w.py'))} link(s): a root-like string or a "
+    if links_of(d, "tools/wide.py"):
+        problems.append(f"tools/wide.py holds {len(links_of(d, 'tools/wide.py'))} link(s): a root-like string or a "
                         f"directory over DIR_LINK_MAX must link nothing")
-    op = [(r.get("reason")) for r in records(d, "opaque", "tools/w.py")]
+    op = [(r.get("reason")) for r in records(d, "opaque", "tools/wide.py")]
     if op != ["walks-tree"]:
-        problems.append(f"tools/w.py (a directory over DIR_LINK_MAX) is not one opaque walks-tree record: {op!r}")
+        problems.append(f"tools/wide.py (a directory over DIR_LINK_MAX) is not one opaque walks-tree record: {op!r}")
+    # joins: each join is one maybe path-literal link (or two directory links) at the line where it starts
+    lit = lambda target, line: (target, "path-literal", "maybe", "path-literal", line)
+    kit = lambda line: [("templates/k/lint.py", "path-literal", "maybe", "directory", line),
+                        ("templates/k/a.json", "path-literal", "maybe", "directory", line)]
+    J = lambda s: line_of(PY_J, s)
+    joins = {
+        "tools/j.py": sorted([lit("tools/u.py", J('"u.py"')), lit("tools/v.py", J('"v.py"'))] + kit(J('"k"'))),
+        "tests/j.sh": sorted([lit("tools/u.py", line_of(SH_J, '"u.py"')), lit("tools/v.py", line_of(SH_J, "v.py"))]),
+        "tools/w.py": sorted(kit(line_of(PY_JW, ".glob("))),
+        "src/ext/e.ts": sorted([("src/hooks/h.py", "path-literal", "maybe", "directory", line_of(TS_E, '"hooks"')),
+                                lit("tools/u.py", line_of(TS_E, '"u.py"'))]),
+    }
+    for holder, want_j in joins.items():
+        got_j = link_set(d, holder)
+        if got_j != want_j:
+            problems.append(f"joins: {holder} links {got_j!r}, want {want_j!r}")
+    if records(d, "opaque", "tools/w.py"):
+        problems.append(f"joins: tools/w.py, a walk whose root is a join naming a directory, is opaque: "
+                        f"{records(d, 'opaque', 'tools/w.py')!r}")
     check(not problems, " || ".join(problems))
     return ("two path-literal and two directory maybe links, each at its line; Markdown links nothing; a "
-            "root string links nothing and a too-wide directory makes its holder opaque walks-tree")
+            "root string links nothing and a too-wide directory makes its holder opaque walks-tree; Python, "
+            "shell and TS/JS path joins are one maybe link each (or directory links) at the join's line")
 
 
 TSCONFIG = """{
@@ -800,6 +872,13 @@ def x435(base):
         "src/app/r2.ts": 'import "@/nope";\n',
         "src/app/r3.ts": 'import "./.next/types/routes.d.ts";\n',
         "src/app/r4.ts": 'import css from "./a.css?raw";\n',
+        # R1: an unmapped specifier (no `~` alias, no baseUrl); scheme-led and empty-join files of their own
+        "src/app/r5.ts": 'import "~/x";\n',
+        "src/app/own.ts": 'import { test } from "bun:test";\n',
+        "py/own.py": 'WORK = None\n\n\ndef f(name):\n    return WORK / "scratch" / name\n',
+        # m2: bases under a symlinked directory and an ungoverned nested work tree (made below)
+        "src/app/r6.ts": 'import "./lnk/missing";\n',
+        "src/app/r7.ts": 'import "./sub/missing";\n',
         "py/amb.py": "import app.main\n",
         "x1/app/main.py": "M = 1\n", "x2/app/main.py": "M = 2\n",
         # GIT_PATH_ARGUMENT: paths Git would read as options, pathspec magic or globs
@@ -814,12 +893,17 @@ def x435(base):
     write(p.dir, "src/app/.next/types/routes.d.ts", "export {};\n")   # ignored by Git
     (p.dir / "py" / "fifo.py").unlink()
     os.mkfifo(p.dir / "py" / "fifo.py")                                # a tracked file replaced by a FIFO
+    (Path(base) / "m2-outside").mkdir()
+    (p.dir / "src" / "app" / "lnk").symlink_to(Path(base) / "m2-outside")  # a symlinked directory
+    (p.dir / "src" / "app" / "sub").mkdir()
+    git(p.dir / "src" / "app" / "sub", "init", "-q")                   # a nested work tree no repo: names
     d = query(p, "build")
     problems = []
     for holder, reason in (("src/dyn.ts", "dynamic-nonliteral"), ("py/walker.py", "walks-tree"),
                            ("py/globber.py", "walks-tree"), ("py/oswalker.py", "walks-tree"),
                            ("py/rglobber.py", "walks-tree"), ("sh/finder.sh", "walks-tree"),
-                           ("py/broken.py", "unreadable"), ("ext/u.ts", "alias-config-unavailable")):
+                           ("py/broken.py", "unreadable"), ("ext/u.ts", "alias-config-unavailable"),
+                           ("src/app/r5.ts", "unmapped-specifier")):
         got = [r.get("reason") for r in records(d, "opaque", holder)]
         if got != [reason]:
             problems.append(f"{holder}: opaque reasons {got!r}, not [{reason!r}]")
@@ -832,12 +916,18 @@ def x435(base):
     for holder, reason, base_path in (("src/app/r1.ts", "relative-no-file", "src/app/missing"),
                                       ("src/app/r2.ts", "alias-no-file", "src/nope"),
                                       ("src/app/r3.ts", "generated", "src/app/.next/types/routes.d.ts"),
-                                      ("src/app/r4.ts", "asset", "src/app/a.css")):
+                                      ("src/app/r4.ts", "asset", "src/app/a.css"),
+                                      ("src/app/r6.ts", "relative-no-file", "src/app/lnk/missing"),
+                                      ("src/app/r7.ts", "relative-no-file", "src/app/sub/missing")):
         got = [(r.get("reason"), r.get("base"), r.get("kind"), r.get("line")) for r in records(d, "unresolved", holder)]
         if got != [(reason, base_path, "import", 1)]:
             problems.append(f"{holder}: unresolved {got!r}, not [{(reason, base_path, 'import', 1)!r}]")
         if links_of(d, holder):
             problems.append(f"{holder}: holds links {links_of(d, holder)!r}")
+    for holder in ("src/app/own.ts", "py/own.py"):
+        held = links_of(d, holder) + records(d, "opaque", holder) + records(d, "unresolved", holder)
+        if held:
+            problems.append(f"R1: {holder} (a scheme-led specifier, a join naming nothing) holds {held!r}")
     amb = sorted((l.get("target"), l.get("link"), l.get("found")) for l in links_of(d, "py/amb.py"))
     if amb != [("x1/app/main.py", "maybe", "ambiguous"), ("x2/app/main.py", "maybe", "ambiguous")]:
         problems.append(f"py/amb.py: not two maybe ambiguous links, one per candidate: {amb!r}")
@@ -856,8 +946,10 @@ def x435(base):
     if (inv.get("py/big.py") or {}).get("hash") != p.blob("py/big.py"):
         problems.append("py/big.py (over FILE_MAX_BYTES) lacks its blob hash in the inventory")
     check(not problems, " || ".join(problems))
-    return ("four opaque holders, four unresolved references with their bases, two ambiguous maybe links; "
-            "a FIFO, an oversized and a NUL-byte file opaque unreadable; Git-hostile paths stay records")
+    return ("five opaque holders (an unmapped specifier among them), six unresolved references with their "
+            "bases, two ambiguous maybe links; a scheme-led specifier and an empty join hold nothing; a FIFO, "
+            "an oversized and a NUL-byte file opaque unreadable; Git-hostile paths and bases Git cannot be "
+            "asked about stay records beside the generated one")
 
 
 # --- test class -----------------------------------------------------------------
@@ -959,6 +1051,14 @@ def x449(base):
     zf = sorted(row_paths(z, "floor"))
     if zf != ["o.py", "p.py", "q.py"]:
         problems.append(f"z.py floor {zf!r}: the floor of a.py with q.py added")
+    # D4: the floor part has no depth bound; only a cut in the input part is incomplete
+    d1 = query(p, "impact", "--depth", "1", "a.py")
+    fl1 = [(r.get("path"), r.get("depth")) for r in d1.get("floor", [])]
+    if fl1 != [("o.py", 1), ("p.py", 2)]:
+        problems.append(f"D4: --depth 1 floor {fl1!r}, want [('o.py', 1), ('p.py', 2)]")
+    inc1 = [(r.get("reason"), r.get("subject")) for r in d1.get("incomplete", [])]
+    if inc1 != [("depth-cap", "b.py")]:
+        problems.append(f"D4: --depth 1 incomplete {inc1!r}, want exactly [('depth-cap', 'b.py')]")
     t = tool(p, "impact", "a.py")
     lines = t.lines()
     fline = FLOOR_LINE.format(n=2)
@@ -972,7 +1072,8 @@ def x449(base):
                             f"floor rows — {t.ctx()}")
     check(not problems, " || ".join(problems))
     return ("certain rows, then the input's maybe row; the floor (o.py, p.py) apart; q.py never a floor row "
-            "for a.py; z.py's floor adds q.py; the text view prints the floor after its line")
+            "for a.py; z.py's floor adds q.py; the text view prints the floor after its line; --depth 1 "
+            "keeps the whole floor and cuts only b.py")
 
 
 @case("X440", "WALK_DELETED_INPUT_REACHES_ITS_NAMERS")
@@ -1116,10 +1217,22 @@ def x442(base):
     j = Plant(base, "corrupt", files=BASE_FILES, nested={"vendor/lib": {"lib.py": "L = 1\n"}})
     (j.dir / "vendor" / "lib" / ".git" / "index").write_bytes(b"not a git index\n")
     expect_incomplete(problems, "(j)", j, ["a.py"], "repository-unreadable", "vendor/lib", still=reach)
+    # (m3) repository-unreadable from the listing alone: a git on PATH that fails only `ls-files` in the
+    # nested repository, so its HEAD and status read and only the inventory's listing fails.
+    m3 = Plant(base, "unlisted", files=BASE_FILES, nested={"vendor/lib": {"lib.py": "L = 1\n"}})
+    shim = WORK / "git-shim-m3"
+    shim.mkdir(exist_ok=True)
+    write(shim, "git", "#!/bin/sh\ncase \"$(/bin/pwd -P)\" in */unlisted/vendor/lib)\n"
+                       "  for a in \"$@\"; do [ \"$a\" = ls-files ] && exit 128; done;;\nesac\n"
+                       f"exec {shutil.which('git')} \"$@\"\n")
+    (shim / "git").chmod(0o755)
+    expect_incomplete(problems, "(m3)", m3, ["a.py"], "repository-unreadable", "vendor/lib", still=reach,
+                      env=dict(ENV, PATH=f"{shim}{os.pathsep}{ENV.get('PATH', '')}"))
     # (k) outside-plant: an input above the plant root.
     expect_incomplete(problems, "(k)", p, ["../elsewhere.py"], "outside-plant")
     check(not problems, " || ".join(problems))
-    return ("eleven reasons, each one record with its subject, rows still listed, the query's action line; "
+    return ("eleven reasons, each one record with its subject, rows still listed, the query's action line "
+            "(a nested repository whose listing alone fails names itself, not '.'); "
             "--depth 5 completes the chain --depth 3 cuts")
 
 

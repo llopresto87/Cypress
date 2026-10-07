@@ -1632,19 +1632,19 @@ and §6 now state each:
 | BUILD_INVENTORIES_THE_CODE_OF_EVERY_GOVERNED_REPOSITORY | X425 case_build_inventory | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | BUILD_IS_DETERMINISTIC | X426 case_build_deterministic | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | CACHE_WRITTEN_SELF_IGNORED | X427 case_cache_self_ignored: arm (a) | tests/test-source-index.sh | integration (synthetic Git plant) | green |
-| CACHE_REUSED_WHILE_THE_KEY_HOLDS | X428 case_cache_reused | tests/test-source-index.sh | integration (synthetic Git plant) | green |
+| CACHE_REUSED_WHILE_THE_KEY_HOLDS | X428 case_cache_reused; arm m4, a tracked `d/` replaced by a symlink to an outside directory: an edit there leaves the second query `reused` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | CACHE_REBUILT_WHEN_THE_KEY_CHANGES | X429 case_cache_rebuilt: arms (a) to (d) and (f), one per key change, (f) another Python major.minor in the key | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | GRAFT_REBUILDS_THE_CACHE | X430 case_graft_rebuilds | tests/test-source-index.sh | integration (install.sh over a temp plant) | green |
 | LINK_PYTHON_IMPORT_CERTAIN | X431 case_link_python_import: exactly seven certain import links, five found exact (three loads by file path) and two resolved; no path-literal link from a load argument | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | LINK_SHELL_INVOCATION_CERTAIN | X432 case_link_shell_invocation | tests/test-source-index.sh | integration (synthetic Git plant) | green |
-| LINK_PATH_LITERAL_AND_DIRECTORY_ARE_MAYBE | X433 case_link_path_literal: the anchored `frontmatter.py` path no load call takes is a maybe path-literal link | tests/test-source-index.sh | integration (synthetic Git plant) | green |
+| LINK_PATH_LITERAL_AND_DIRECTORY_ARE_MAYBE | X433 case_link_path_literal: the anchored `frontmatter.py` path no load call takes is a maybe path-literal link; arm joins, the path joins of `tools/j.py`, `tools/w.py`, `tests/j.sh` and `src/ext/e.ts`, each link at the join's start line | tests/test-source-index.sh | integration (synthetic Git plant) | red |
 | LINK_TS_SPECIFIER_CERTAIN | X434 case_link_ts_specifier: six files, the sixth the line-join arm | tests/test-source-index.sh | integration (synthetic Git plant) | green |
-| UNPINNED_REFERENCE_RECORDED_WITH_ITS_REASON | X435 case_unpinned_reference | tests/test-source-index.sh | integration (synthetic Git plant) | green |
+| UNPINNED_REFERENCE_RECORDED_WITH_ITS_REASON | X435 case_unpinned_reference; arm R1, `import "~/x"` is opaque `unmapped-specifier`, and `bun:test` and `WORK / "scratch" / name` hold no link and no record | tests/test-source-index.sh | integration (synthetic Git plant) | red |
 | TESTS_ARE_THE_PLANTS_TEST_GLOBS | X436 case_test_globs | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | PLANT_CONFIG_REPLACES_EACH_DEFAULT_KEY | X437 case_plant_config_keys | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | WALK_NEAREST_FIRST_ONCE | X438 case_walk_nearest_first: certain rows first, then a maybe row | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | WALK_CHAIN_IS_ITS_WEAKEST_LINK | X439 case_walk_weakest_link | tests/test-source-index.sh | integration (synthetic Git plant) | green |
-| WALK_FLOOR_LISTED_APART_AFTER_THE_INPUT_ROWS | X449 case_walk_floor: `impact a.py` then `impact z.py`, JSON and the text view | tests/test-source-index.sh | integration (synthetic Git plant) | green |
+| WALK_FLOOR_LISTED_APART_AFTER_THE_INPUT_ROWS | X449 case_walk_floor: `impact a.py` then `impact z.py`, JSON and the text view; arm D4, `impact a.py --depth 1` keeps the floor `o.py`, `p.py` and is incomplete by `depth-cap` `b.py` alone | tests/test-source-index.sh | integration (synthetic Git plant) | red |
 | WALK_DELETED_INPUT_REACHES_ITS_NAMERS | X440 case_walk_deleted_input | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | INPUT_FORMS_RESOLVED | X441 case_input_forms | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | WALK_INCOMPLETE_NAMES_REASON_AND_ACTION | X442 case_walk_incomplete: arms (a) to (h), one per reason the contract lists | tests/test-source-index.sh | integration (synthetic Git plant) | green |
@@ -1656,7 +1656,7 @@ and §6 now state each:
 | SOURCE_INDEX_IS_PLACED | E15 SOURCE_INDEX_IS_PLACED | tests/test-full-install.sh | integration (fresh install) | green |
 | GIT_UNAVAILABLE | X442 case_walk_incomplete: arm (f), PATH holds python3 and no git; an existing cache left byte-identical | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | NO_GOVERNED_REPOSITORY | X442 case_walk_incomplete: arm (i), a plant root that is no Git work tree | tests/test-source-index.sh | integration (synthetic plant) | green |
-| REPOSITORY_UNREADABLE | X442 case_walk_incomplete: arm (j), a nested governed repository with a corrupt index; the root repository still answers | tests/test-source-index.sh | integration (synthetic Git plant) | green |
+| REPOSITORY_UNREADABLE | X442 case_walk_incomplete: arm (j), a nested governed repository with a corrupt index; the root repository still answers; arm (m3), a git that fails only `ls-files` in `vendor/lib` names `vendor/lib`, not `.` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | CYPRESS_DIR_ABSENT | X427 case_cache_self_ignored: arm (b), no `.cypress/`; status `not-written`, `.cypress/` not created | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | CACHE_PATH_UNSAFE | X427 case_cache_self_ignored: arm (c), `.cypress/source-index` a symlink to a directory outside the plant; status `not-written`, the target untouched | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | CACHE_IGNORE_ALTERED | X427 case_cache_self_ignored: arm (d), an inner `.gitignore` holding `!index.json` is rewritten to `*` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
@@ -1672,7 +1672,7 @@ and §6 now state each:
 | INPUT_EXHAUSTS_A_PARSER | X435 case_unpinned_reference: a Python file over `FILE_MAX_BYTES` (its blob hash still listed) and one holding a NUL byte are opaque `unreadable` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | DIRECTORY_LITERAL_TOO_WIDE | X433 case_link_path_literal: `"/"`, `"./"` and `"$ROOT/"` link nothing; a directory over `DIR_LINK_MAX` makes its holder opaque `walks-tree` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | TSCONFIG_EXTENDS_CYCLE | X434 case_link_ts_specifier: an `extends` cycle keeps the relative import and makes the alias holder opaque `alias-config-unavailable` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
-| GIT_PATH_ARGUMENT | X435 case_unpinned_reference: `./--exec=x`, `./:(top)q`, `./*` stay `relative-no-file` records and a path past the root `outside-repository`, the `generated` record still found and the build complete | tests/test-source-index.sh | integration (synthetic Git plant) | green |
+| GIT_PATH_ARGUMENT | X435 case_unpinned_reference: `./--exec=x`, `./:(top)q`, `./*` stay `relative-no-file` records and a path past the root `outside-repository`, the `generated` record still found beside bases under a symlinked directory and an ungoverned nested work tree (arm m2), and the build complete | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | NON_UTF8_PATH | X448 case_output_no_raw_control: the 0xFF arm, decoded as U+DCFF in `--json` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 
 Status values: `red` (test exists, fails), `green` (test exists,
