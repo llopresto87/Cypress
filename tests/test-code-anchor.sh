@@ -28,6 +28,7 @@ SEED = Path(sys.argv[1])
 WORK = Path(sys.argv[2])
 TOOL = SEED / "tools" / "code-anchor.py"
 READER = SEED / "templates" / "knowledge-graph" / "frontmatter.py"
+HELPER = SEED / "tools" / "source_paths.py"
 ONLY = {s.strip() for s in os.environ.get("ANCHOR_ONLY", "").split(",") if s.strip()}
 os.umask(0o022)
 
@@ -142,6 +143,9 @@ class Plant:
         # install.sh places the canonical frontmatter reader beside the tool.
         check(READER.is_file(), f"the seed's frontmatter reader does not exist ({READER})")
         shutil.copy(READER, self.dir / "docs" / "graph" / "frontmatter.py")
+        # install.sh places the shared path helper beside the tool too.
+        check(HELPER.is_file(), f"the seed's path helper does not exist ({HELPER})")
+        shutil.copy(HELPER, self.dir / "docs" / "graph" / "source_paths.py")
         git(self.dir, "add", "-A")
         git(self.dir, "commit", "-qm", "fixture")
 
