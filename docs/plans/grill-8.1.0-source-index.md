@@ -6,7 +6,7 @@
 - Date: 2026-10-07
 - Owner: the steward; the orchestrating session plans, briefs and commits
 - Tier: T3. Protocol: `protocol.specify-joint-pass` (spec and plan written together), then `protocol.grill`
-- Current phase: slice 2 G7 and G8a landed and reviewed (`reviewer-slice2`), measurement 2 recorded (§10), R6 and G9 landed; the owner ruled the `repo:` question (option D, §6, §12 question 6 closed) and SPEC-0007 is amended (`architect-D`); next the joint-pass returns on the amendment (product §9, tester §10, security), then R7 and G8b (§9, increment 20). History: slice 1 implemented (increments 1 to 13, the code-review fixes R2/G4, the slice-1 decisions R3/G5 and the second review R4/G6; the full seed gate green at `b70b0d9`). Slice 2 approved by the owner on 2026-10-07 ("slice 2 ok") and in its specify joint pass: SPEC-0007 §1, §2 and §4 to §8 for slice 2 written (`architect-slice2`), increments 14 to 22 planned; joint-pass step 3 and the devils-advocate pass returned, their findings applied (`architect-slice2-fix`), SPEC-0007 back to `active`; next, product's §3 and §9 lines and tester's §10 rows for those findings, the owner's `repo:` ruling (§12 question 6), then RED
+- Current phase: implemented, awaiting owner merge and 8.1.0 release. Increments 16 to 22 landed (commits b806a35, 9026984, 0a8b539, c456299, 804fa2b, 3d80d87, 1842274, bc4dcdf, a74f267, fff5b70, 64ad578, 3413f1b, 68c970e); every §10 row green at `68c970e` (`tester-final`); SPEC-0007 `implemented`. History: slice 1 implemented (increments 1 to 13, the code-review fixes R2/G4, the slice-1 decisions R3/G5 and the second review R4/G6; the full seed gate green at `b70b0d9`). Slice 2 approved by the owner on 2026-10-07 ("slice 2 ok"), specified (`architect-slice2`), reviewed (`reviewer-slice2`), measured (measurement 2, §10), the owner's `repo:` ruling applied (option D, `architect-D`), then R7 and G8b landed (increment 20); the final review fix `review-code-4` applied at `68c970e` and signed by `tester-final`
 - Related files: `tools/source-index.py` (new), `tools/source_paths.py` (new), `tools/code-anchor.py`, `tools/growth-audit.py`, `tools/plant_walk.py`, `tools/graft-audit.py`, `tools/gate-registry.py`, `install.sh`, `manifest.json`, `tests/run.sh`, `tests/test-source-index.sh` (new), `tests/test-code-anchor.sh`, `tests/test-growth-audit.sh`, `tests/test-full-install.sh`
 - Related documentation: `docs/plans/grill-8.0.0-wave-a.md` (the previous plan the gate linted, and the shape this one follows); the session record of 2026-10-07, its gap reports and the review report `review-spec.md`, kept outside the seed under the seed workspace `.seed-worktrees/records-8.1.0-source-index/`
 - Related ADRs: [ADR-0029](../decisions/adr-0029-source-index-is-derived-scratch.md) (proposed: the index is derived scratch); the round works under [ADR-0018](../decisions/adr-0018-code-fact-freshness-anchor.md) (the code anchor, no per-file or per-prompt staleness tool), [ADR-0021](../decisions/adr-0021-seed-only-procedures-stay-home.md) (the manifest's `tools` map equals what the installer places) and [ADR-0023](../decisions/adr-0023-a-declarative-edit-is-proved-by-a-run.md) (a declarative edit is proved by a run)
@@ -395,7 +395,7 @@ The slice adds its SPEC-0007 contracts before its RED (`protocol.specify`, a spe
 - Phase: RED
 - Depends on: increment 14
 
-### Increment 16 — RED: the moved list and the one claim rule
+### Increment 16 — RED: the moved list and the one claim rule — done (commit b806a35)
 - Spec contracts: SPEC-0007/ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS, SPEC-0007/ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE, SPEC-0007/REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS, SPEC-0007/ANCHORS_NAME_CITING_PAGES_OR_UNCITED
 - Files touched: `tests/test-source-index.sh` (the moved and claim cases copy `tools/code-anchor.py` and `templates/knowledge-graph/graph-lint.py` into the plant's `docs/graph/` beside the tool; X445's `repo: src/` arm edited to "claims nothing", the one intended assertion edit of the slice, SPEC-0007 §12)
 - Tests to write (RED): up to 3 cases, one per new contract, with arms for MOVED_LIST_UNAVAILABLE (a placed code-anchor with no `moved_list` among them), MOVED_REPOSITORY_UNVERIFIED and HELPER_ABSENT_BESIDE_GRAPH_LINT (no `source_paths.py` beside `graph-lint.py`: `--plan-json` exits 0 with the `inference_skipped` notice and no `named_path` entry through a `repo:` claim); USAGE_REFUSED arms in X447 (`--moved` beside a path; `--moved` on `impact`); and the X445 arm edit. ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS compares every key but `cache`. The claim case's `repo:` arms wait for the owner's ruling (§12 question 6); ruled 2026-10-07 (option D, §6): they land in spawn R7 with X459 whole
@@ -406,7 +406,7 @@ The slice adds its SPEC-0007 contracts before its RED (`protocol.specify`, a spe
 - Phase: RED
 - Depends on: increment 15
 
-### Increment 17 — GREEN: definitions and the `symbols` query
+### Increment 17 — GREEN: definitions and the `symbols` query — done (commits 9026984, 804fa2b, 3d80d87)
 - Spec contracts: SPEC-0007/SYMBOLS_PYTHON_DEFINITIONS_CERTAIN, SPEC-0007/SYMBOLS_LINE_READ_DECLARATIONS_ARE_MAYBE, SPEC-0007/SYMBOLS_LIST_EVERY_DEFINITION, SPEC-0007/SYMBOLS_UNREADABLE_FILE_MAKES_IT_INCOMPLETE
 - Files touched: `tools/source-index.py`
 - Tests to write (RED): none — increment 14's cases authorize it
@@ -417,7 +417,7 @@ The slice adds its SPEC-0007 contracts before its RED (`protocol.specify`, a spe
 - Phase: GREEN
 - Depends on: increment 16
 
-### Increment 18 — GREEN: history links
+### Increment 18 — GREEN: history links — done (commit 9026984)
 - Spec contracts: SPEC-0007/HISTORY_ROWS_ARE_MAYBE_WITH_THEIR_COUNT, SPEC-0007/HISTORY_ONLY_ADDS, SPEC-0007/HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE
 - Files touched: `tools/source-index.py`
 - Tests to write (RED): none — increment 15's cases authorize it
@@ -428,7 +428,7 @@ The slice adds its SPEC-0007 contracts before its RED (`protocol.specify`, a spe
 - Phase: GREEN
 - Depends on: increment 17
 
-### Increment 19 — GREEN: the moved list
+### Increment 19 — GREEN: the moved list — done (commits 0a8b539, 804fa2b, 3d80d87)
 - Spec contracts: SPEC-0007/ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS, SPEC-0007/ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE
 - Files touched: `tools/code-anchor.py` (`moved_list(root)`, the per-repository moved list `--compare` prints, which `compare` now calls; its output unchanged; `read_anchor` takes the root as a parameter instead of the module `ROOT`); `tools/source-index.py` (`anchors --moved`, loading `code-anchor.py` from beside itself by file path, its load and call inside one guard that catches code-anchor's own exception classes and any other exception, `SystemExit` included)
 - Tests to write (RED): none — increment 16's moved cases authorize it
@@ -439,7 +439,7 @@ The slice adds its SPEC-0007 contracts before its RED (`protocol.specify`, a spe
 - Phase: GREEN
 - Depends on: increment 18
 
-### Increment 20 — GREEN: graph-lint's tier-2 path rule on the helper
+### Increment 20 — GREEN: graph-lint's tier-2 path rule on the helper — done (commits 1842274, bc4dcdf, a74f267, fff5b70, 64ad578, 68c970e)
 - Spec contracts: SPEC-0007/REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS, SPEC-0007/ANCHORS_NAME_CITING_PAGES_OR_UNCITED
 - Files touched: `tools/source_paths.py` (`repo_kind(plant, value)`, new under the owner's `repo:` ruling, stat only; `repo_claim(name, path, kind)`, moved from graph-lint and given the kind; `path_matches` moved unchanged; `governed_repositories` built on `repo_kind`, the same set); `templates/knowledge-graph/source_paths.py` (new, a byte-identical copy); `templates/knowledge-graph/graph-lint.py` (sets `sys.dont_write_bytecode` before its loads; loads the helper lazily from beside itself the first time tier 2 reads a path, a failed load raising `HelperUnavailable` into the existing tier-2 catch; `_named_paths` takes each distinct `repo:` value's kind once per run from the value as written, with `PLANT`, and lowercases before `repo_claim`; the expertise inference calls `path_matches`; `_path_matches` leaves); `tools/source-index.py` (`anchors` calls `repo_kind` and `repo_claim` and adds the `repo-unresolved` record with `REPO_UNRESOLVED_DETAIL`; `config_matches` calls `path_matches`); `tests/seed-lint.py` (the copy held byte-identical, beside `FRONTMATTER_COPIES`); every test fixture that copies `graph-lint.py` beside `frontmatter.py` copies `source_paths.py` too, setup only (candidates from `grep`: `tests/test_graph_lint.py`, `tests/test-prompt-hooks.sh`, `tests/test-seed-lint.sh`, `tests/test_agent_lint.py`); `manifest.json`, `tools/graft-audit.py` and the placement checks only if `tests/seed-lint.py` or `tests/test-graft-tools.sh` name the new seed file
 - Tests to write (RED): none — increment 16's claim case X459 and its X445 arm, written by spawn R7 after the owner's ruling, authorize it
@@ -452,7 +452,7 @@ The slice adds its SPEC-0007 contracts before its RED (`protocol.specify`, a spe
 
 no consolidation: each slice-2 contract gets one case in the suite that owns the tool, `tests/test-source-index.sh`; the graph-lint suites gain fixture copies only, no case; X445 loses one arm to the new claim case instead of a second case asserting the same rule. The reviewer checks this claim against the diff.
 
-### Increment 21 — Prose: the protocols call the tool on demand, and the seed describes slice 2
+### Increment 21 — Prose: the protocols call the tool on demand, and the seed describes slice 2 — done (commits c456299, 3413f1b)
 - Spec contracts: none — prose wiring, proved by `tests/seed-lint.py`, the `prose-lint.py` steps of `tests/run.sh` and the protocol text (SPEC-0007 §2: the wiring adds no tool contract)
 - Files touched: `protocols/verify.md` ("Risk-proportional gate depth": after GREEN and before the session chooses its gates, `affected-tests` is the recommended floor of the focused tests on a known affected path, the session may run more and never reads a test's absence as proof (SPEC-0007 §5); an `incomplete` answer is the "affected scope genuinely uncertain" row); `protocols/canonize.md` (flow step 1: the session runs `anchors --moved` once, before `code-anchor.py --record`, and hands its pages to the librarian as re-check candidates); `protocols/grow.md` (Phase 1 "Inventory cheaply": before the scouts are briefed, `build --json`'s `inventory` is their mechanical file list); the source-index tool node and tool card (one line: a worker asks `symbols <name>` before it searches the tree for a definition, the one place a worker learns the query exists); `skills/adopt-existing/SKILL.md` ("Scout pass" inventory; "Refreshing an existing graph" step 2: `impact` over the moved paths for the blast radius); `CHANGELOG.md` (the 8.1.0 entry, through the humanizer); `DOCUMENTATION.md`; `documentation/skills-and-templates-reference.md` (`symbols`, `--history`, `--moved`); `README.md` and `templates/knowledge-graph/index.md` only where they name the tool's queries. Each protocol line names exactly when the step calls the tool and says it runs once, never per prompt or per file access (ADR-0018 withdrew a freshness tool called at each file access)
 - Tests to write (RED): none — prose
@@ -463,7 +463,7 @@ no consolidation: each slice-2 contract gets one case in the suite that owns the
 - Phase: prose
 - Depends on: increment 20
 
-### Increment 22 — Measurement: slice 1 again, symbol coverage and history recall
+### Increment 22 — Measurement: slice 1 again, symbol coverage and history recall — done (measurement recorded in SPEC-0007 §5 and plan §10; no commit)
 - Spec contracts: none — a measurement, recorded in §10 and not gated (SPEC-0007 §5)
 - Files touched: none in the seed; scripts and raw answers outside it, in the session's measurement directory; the session writes the figures into §10
 - Tests to write (RED): none — a measurement
@@ -573,3 +573,4 @@ Measurement 2 recorded (2026-10-07, spawn `measure-slice2`; seed commit `c456299
 - 2026-10-07: slice-2 review findings applied by the architect (spawn `architect-slice2-fix`), from the tester, security (S1 to S8, P1 to P10) and devils-advocate reports: SPEC-0007 back to `active` (slice 1's evidence moved to its §12); §0 phase; §6 rows for the TS/JS indentation rule, the circular history figures with a removal criterion, and the lazy helper load in graph-lint; increments 14 to 22 updated (the TS/JS arm, the `file://` depth-2 shallow clone, the `cache` exception, the guarded `--moved`, the iterative reader, the hardened `git log`, `sys.dont_write_bytecode`, the protocol lines that name when the tool runs, the `symbols` line in the tool node, the reviewer's hook grep, a non-circular history score); §10 status and history notes; §11 risk on the helper skew rewritten, three risks added; §12 question 6 (the `repo:` ruling) opened; §14 moved on.
 - 2026-10-07: slice-2 review and measurement 2 applied by the architect (spawn `architect-slice2-m2`), the `repo:` ruling left open: §6 rows for M2-1 (a memory reduction, the 64 MB budget kept), M2-3 (`symbols` states its scope in `not_read` and `UNDEFINED_LINE`) and the review's rulings; §9 spawns R6 and G9 for review fixes 1 to 4, M2-1 and M2-3; §10 measurement 2 recorded; §0 phase. SPEC-0007 §3, §4, §5 and §6 amended in the same pass (its §12).
 - 2026-10-07: the owner's `repo:` ruling applied by the architect (spawn `architect-D`; owner "yes all" to decisions 1 to 4 of `architect-brainstorm`, option D): §6 dated row, the X445 revision row superseded and the helper row qualified; §7 the rejected spellings and the `paths:` field; §9 spawns R7 and G8b, increment 16's note and increment 20 (`repo_kind`, `repo_claim` with the kind, `governed_repositories` on `repo_kind`, the `repo-unresolved` record, the code-anchor suite in the gate); §11 the X445 risk superseded; §12 question 6 closed; §0 phase and §14 moved on. SPEC-0007 §0, §2, §4 to §8 and §12 amended in the same pass; templates `_schema.md` and `node.template.md` state "one plant-relative path: a repository, a folder or a file".
+- 2026-10-07: slice 2 and option D implemented; SPEC-0007 `implemented` with every §10 row green at `68c970e` (`tester-final`), the full gate wired into `tests/run.sh` (51 of 51). Increments 16 to 22 landed: R5 (`b806a35`); G7 increments 17 and 18 (`9026984`); G8a increment 19 (`0a8b539`); R6 and G9 review/measurement-2 fixes on increments 17 and 19 (`804fa2b`, `3d80d87`); the owner's option D plan and spec (`1842274`, `bc4dcdf`); R7 increment 20's RED (`a74f267`); G8b increment 20's GREEN (`fff5b70`); the fixture and seed-lint follow-ups (`64ad578`); P2 increment 21's prose (`c456299`, `3413f1b`); the final code-review fix `review-code-4` (`68c970e`). Increment 22's measurement is recorded in SPEC-0007 §5 and this plan's §10, with no commit of its own. §0 phase moved to implemented, awaiting owner merge and the 8.1.0 release.
