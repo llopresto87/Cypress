@@ -58,6 +58,7 @@ def _sibling(name, module):
 
 source_paths = _sibling("source_paths.py", "cypress_source_paths")
 plant_walk = _sibling("plant_walk.py", "cypress_plant_walk")
+frontmatter = _sibling("frontmatter.py", "cypress_frontmatter")
 
 # --- constants and texts (SPEC-0007 §6): this file is their one home, except
 # the path rules, whose home is source_paths.py. ---
@@ -141,6 +142,10 @@ TS_CALL = re.compile(r"(?:(?<![\w$.])import|(?<![\w$.])require|(?<![\w$])vi\.moc
 TS_LITERAL_ARG = re.compile(r"(['\"`])([^'\"`\n$]*)\1\s*[,)]")
 TS_WALK = re.compile(r"(?<![\w$])(?:readdirSync|readdir)\s*\(\s*")
 TS_STRING = re.compile(r"'([^'\\\n]*)'|\"([^\"\\\n]*)\"|`([^`\\\n$]*)`")
+GRAPH = "docs/graph"
+HISTORY = ("docs/graph/plans/", "docs/graph/specs/", "docs/graph/decisions/")
+FENCE = re.compile(r"^\s*(?:```|~~~)")
+SPAN = re.compile(r"(`+)(.+?)\1")
 
 
 class Unreadable(Exception):
@@ -447,6 +452,14 @@ def inside(path: str):
 
 def joined(base: str, rel: str):
     return inside(rel if base in ("", ".") else base + "/" + rel)
+
+
+def probe_order(base: str) -> list:
+    """The TS/JS probe rule: `base` as written, then a written .js as .ts,
+    then with each extension, then as an index (SPEC-0007 §6 "Links")."""
+    ext = posixpath.splitext(base)[1]
+    cands = [base] + ([base[:-len(ext)] + e for e in JS_TO_TS] if ext in JS_WRITTEN else [])
+    return cands + [base + e for e in TS_PROBE] + [base + "/index" + e for e in TS_PROBE]
 
 
 def named(seg: str) -> bool:
@@ -933,17 +946,12 @@ class Extract:
         return bool(hit)
 
     def probe(self, base):
-        """(file, exact) for a TS/JS base path probed as written, then a
-        written .js as .ts, then with each extension, then as an index."""
+        """(file, exact) for the first path of `probe_order(base)` the
+        inventory holds; exact only when it is `base` as written."""
         if base is None:
             return None
-        if base in self.files:
-            return base, True
-        ext = posixpath.splitext(base)[1]
-        cands = [base[:-len(ext)] + e for e in JS_TO_TS] if ext in JS_WRITTEN else []
-        cands += [base + e for e in TS_PROBE] + [base + "/index" + e for e in TS_PROBE]
-        hit = self.pick(*cands)
-        return (hit, False) if hit else None
+        hit = self.pick(*probe_order(base))
+        return (hit, hit == base) if hit else None
 
     def tsconfig(self, holder):
         """The nearest tsconfig.json or jsconfig.json up from the holder inside
@@ -1334,6 +1342,228 @@ def load_index(root: Path, force: bool):
     return plant, body, {"status": "rebuilt" if existed else "built", "reason": reason}, problems
 
 
+# --- inputs ------------------------------------------------------------------
+def plant_relative(root: Path, text: str):
+    """An input made plant-relative, lexically: posix, `./` dropped, an
+    absolute path inside the plant (as given or as resolved) taken from the
+    root; None when the result is not the helper's clean relative path."""
+    p = text
+    if p.startswith("/"):
+        for top in dict.fromkeys((str(root), os.path.realpath(root))):
+            if p == top or p.startswith(top.rstrip("/") + "/"):
+                p = p[len(top):].lstrip("/") or "."
+                break
+        else:
+            return None
+    p = posixpath.normpath(p) if p else p
+    return p if source_paths.relative(p) else None
+
+
+# --- the walk ------------------------------------------------------------------
+def by_link(r):
+    return (r["link"] != "certain", r["depth"], r["path"])
+
+
+def by_depth(r):
+    return (r["depth"], r["path"])
+
+
+class Index:
+    """The query side of one index body: input forms, the one reverse walk
+    and the citation join (SPEC-0007 §6 "Inputs", "Walk", "Query answer")."""
+
+    def __init__(self, plant: Plant, body: dict, usable: bool):
+        self.plant, self.usable = plant, usable
+        self.records = {r["path"]: r for r in body["inventory"]}
+        self.steps = {}                    # a file -> each (holder, kind, link, found, line) naming it
+        for l in body["links"]:
+            self.steps.setdefault(l["target"], []).append(
+                (l["holder"], l["kind"], l["link"], l["found"], l["line"]))
+        self.named = set()                 # paths no inventory file holds that a reference names
+        for u in body["unresolved"]:
+            if u["base"] is None:
+                continue
+            names = [u["base"]] if u["reason"] == "asset" else probe_order(u["base"])
+            if (self.records.get(u["holder"]) or {}).get("language") == "python":
+                names += [u["base"] + ".py", u["base"] + "/__init__.py"]
+            for n in dict.fromkeys(names):
+                if n not in self.records:
+                    self.named.add(n)
+                    self.steps.setdefault(n, []).append((u["holder"], u["kind"], "certain", "named", u["line"]))
+        self.opaque = {}                   # holder -> its first opaque record
+        for o in body["opaque"]:
+            self.opaque.setdefault(o["holder"], o)
+        self.links = body["links"]
+        self.rx = [glob_regex(g) for g in plant.test_globs or []]
+
+    # -- inputs
+    def status_of(self, path):
+        if path in self.records or path in self.named:
+            return "walked"
+        return None if source_paths.is_code(".", path) else "not-code"
+
+    def inputs(self, texts, query):
+        """(inputs, incomplete records): each input once, by the forms of
+        §6 "Inputs"; `global-input` for each that matches `global_inputs`."""
+        found, problems = {}, []
+        for text in texts:
+            path = plant_relative(self.plant.root, text)
+            if path is None:
+                problems.append(incomplete("outside-plant", text))
+                continue
+            status = self.status_of(path)
+            if status is None and self.usable:
+                hits = [q for r in self.plant.repos if r != "."
+                        for q in [posixpath.join(r, path)] if self.status_of(q) == "walked"]
+                if len(hits) > 1:
+                    problems.append(incomplete("ambiguous-input", path, hits))
+                    continue
+                if hits:
+                    path, status = hits[0], "walked"
+            if any(config_matches(path, g) for g in self.plant.config["global_inputs"]):
+                problems.append(incomplete("global-input", path))
+            if status is None and query != "anchors":
+                if self.usable:
+                    problems.append(incomplete("input-not-found", path))
+                continue
+            found[path] = status or "not-found"
+        unique = {(r["reason"], r["subject"]): r for r in problems}
+        return [{"path": p, "status": found[p]} for p in sorted(found)], list(unique.values())
+
+    def test(self, path):
+        rec = self.records.get(path)
+        return rec["test"] if rec else test_class(path, self.rx, self.plant.config["exclude"])
+
+    # -- the one reverse walk
+    def walk(self, starts, cap):
+        """Every file the steps reach from `starts` (rows of one depth), each
+        once at its nearest depth: a certain chain over a maybe one, then the
+        smaller `from`; a row is as strong as its weakest link and carries the
+        maybe link nearest its start."""
+        reached = {r["path"]: r for r in starts}
+        level = sorted(starts, key=by_depth)
+        while level and level[0]["depth"] < cap:
+            best = {}
+            for parent in level:
+                for holder, kind, link, found, line in self.steps.get(parent["path"], []):
+                    if holder in reached:
+                        continue
+                    chain = "certain" if parent["link"] == link == "certain" else "maybe"
+                    rank = (chain != "certain", parent["path"], link != "certain", line, kind, found)
+                    if holder in best and best[holder][0] <= rank:
+                        continue
+                    maybe = parent["maybe"] or (
+                        {"reason": found, "holder": holder, "line": line} if link == "maybe" else None)
+                    best[holder] = (rank, {"path": holder, "depth": parent["depth"] + 1, "link": chain,
+                                           "from": parent["path"], "kind": kind, "found": found,
+                                           "line": line, "maybe": maybe, "via": parent["via"] + [holder]})
+            level = sorted((r for _, r in best.values()), key=by_depth)
+            reached.update((r["path"], r) for r in level)
+        return reached
+
+    def reach(self, inputs, cap):
+        """(input rows, floor rows, depth-cap records): the input part from the
+        walked inputs at depth 0; the floor part, when an input is walked,
+        from every opaque holder at depth 1, less what the input part takes."""
+        walked = [i["path"] for i in inputs if i["status"] == "walked"]
+        rows = self.walk([{"path": p, "depth": 0, "link": "certain", "from": None, "kind": None,
+                           "found": None, "line": None, "maybe": None, "via": [p]} for p in walked], cap)
+        floor = {}
+        if walked:
+            floor = self.walk([{"path": h, "depth": 1, "link": "maybe", "from": None, "kind": "opaque",
+                                "found": o["reason"], "line": o["line"],
+                                "maybe": {"reason": o["reason"], "holder": h, "line": o["line"]}, "via": [h]}
+                               for h, o in sorted(self.opaque.items())], cap)
+        floor = {p: r for p, r in floor.items() if p not in rows}
+        seen = set(rows) | set(floor)
+        capped = sorted({r["path"] for r in (*rows.values(), *floor.values()) if r["depth"] == cap
+                         and any(h not in seen for h, *_ in self.steps.get(r["path"], []))})
+        return list(rows.values()), list(floor.values()), [incomplete("depth-cap", p) for p in capped]
+
+    def always_run(self, taken):
+        """The tests no list before takes: `declared` by the plant's
+        `always_run`, else `no-code-edge` for a link-bearing test holding no
+        link to code and no opaque record."""
+        to_code = {l["holder"] for l in self.links if self.test(l["target"]) == "code"}
+        out = []
+        for path, rec in sorted(self.records.items()):
+            if rec["test"] != "test" or path in taken:
+                continue
+            if any(config_matches(path, g) for g in self.plant.config["always_run"]):
+                out.append({"path": path, "reason": "declared"})
+            elif rec["language"] in LINK_BEARING and path not in to_code and path not in self.opaque:
+                out.append({"path": path, "reason": "no-code-edge"})
+        return out
+
+    # -- the citation join
+    @staticmethod
+    def citations(text):
+        """Each citation of a page: the inline backtick spans outside fenced
+        blocks, a span whole when the citation grammar parses it, else each of
+        its whitespace-separated tokens holding a `/`."""
+        fenced = False
+        for line in text.split("\n"):
+            if FENCE.match(line):
+                fenced = not fenced
+                continue
+            for m in () if fenced else SPAN.finditer(line):
+                span = m.group(2).strip()
+                if source_paths.CITATION_RE.fullmatch(span):
+                    yield span
+                else:
+                    yield from (t for t in span.split() if "/" in t)
+
+    def anchors(self, inputs, every):
+        """(files, incomplete records): for each input, the pages citing it."""
+        root = self.plant.root
+        known = set(self.records) | {i["path"] for i in inputs}
+        wanted = {i["path"] for i in inputs}
+        nested = [r for r in self.plant.repos if r != "."]
+        facts = {p: set() for p in wanted}
+        history = {p: set() for p in wanted}
+        problems = {}
+        for page in plant_walk.files(root, GRAPH, "*.md"):
+            rel = page.relative_to(root).as_posix()
+            try:
+                text = read_text(root, rel)
+            except (OSError, Unreadable):
+                continue
+            is_history = rel.startswith(HISTORY)
+
+            def claim(path, line, form, link, found):
+                if path in wanted:
+                    (history[path].add(rel) if is_history else
+                     facts[path].add((rel, line, form, link, found)))
+
+            for ref in self.citations(text):
+                targets, line, found, _ = source_paths.resolve_citation(root, ref, known, rel, nested)
+                if found == "exact" or found == "basename" and len(targets) == 1:
+                    claim(targets[0], line, "backtick", "certain" if found == "exact" else "maybe", found)
+                elif found == "basename" and wanted.intersection(targets):
+                    problems[(rel, ref)] = incomplete("ambiguous-citation", rel, targets, detail=ref)
+            try:
+                repo = frontmatter.parse(text, rel)[0].get("repo")
+            except frontmatter.FrontmatterError:
+                repo = None
+            if isinstance(repo, str) and "/" in repo:
+                claimed = posixpath.normpath(repo)
+                for path in wanted:
+                    if path == claimed:
+                        claim(path, None, "repo", "certain", "exact")
+                    elif path.startswith(claimed + "/"):
+                        claim(path, None, "repo", "maybe", "repo-prefix")
+        files = []
+        for path in sorted(wanted):
+            fs = sorted(facts[path], key=lambda f: (f[3] != "certain", f[0], f[1] is not None, f[1] or 0,
+                                                    f[2], f[4]))
+            files.append({"path": path,
+                          "facts": [dict(zip(("page", "line", "form", "link", "found"), f)) for f in fs],
+                          "history": {"count": len(history[path]),
+                                      "pages": sorted(history[path]) if every else []},
+                          "uncited": not fs and not history[path]})
+        return files, list(problems.values())
+
+
 # --- answers -----------------------------------------------------------------
 def safe(text) -> str:
     """Text for the text view: every character outside printable ASCII is `?`."""
@@ -1345,18 +1575,56 @@ def answer(query: str, args, root: Path) -> dict:
     doc = {"schema": ANSWER_SCHEMA, "query": query, "inputs": [], "cache": cache, "incomplete": problems}
     if query == "build":
         doc.update(body)
-    elif query == "anchors":
-        doc["files"] = []
+        return doc
+    usable = not any(p["reason"] in ("git-unavailable", "no-repository") for p in problems)
+    index = Index(plant, body, usable)
+    doc["inputs"], more = index.inputs(args.paths, query)
+    problems += more
+    if query == "anchors":
+        doc["files"], more = index.anchors(doc["inputs"], args.all)
+        problems += more
     else:
         doc["depth"] = args.depth
-        doc.update({"dependents": []} if query == "impact" else {"tests": [], "always_run": []})
-        doc["floor"] = []
+        rows, floor, more = index.reach(doc["inputs"], args.depth)
+        problems += more
+        if query == "impact":
+            doc["dependents"] = sorted((r for r in rows if r["depth"]), key=by_link)
+        else:
+            if plant.test_globs is None:
+                problems.append(incomplete("no-test-declaration", "docs/graph/spec-lint.py"))
+            elif not any(r["test"] == "test" for r in body["inventory"]):
+                problems.append(incomplete("no-test-files", "docs/graph/spec-lint.py"))
+            doc["tests"] = sorted((r for r in rows if index.test(r["path"]) == "test"), key=by_link)
+            doc["always_run"] = index.always_run({r["path"] for r in doc["tests"]})
+            taken = {r["path"] for r in doc["tests"]} | {r["path"] for r in doc["always_run"]}
+            floor = [r for r in floor if index.test(r["path"]) == "test" and r["path"] not in taken]
+        doc["floor"] = sorted(floor, key=by_depth)
+    problems.sort(key=lambda r: (r["reason"], r["subject"], r["candidates"], r["detail"] or ""))
     return doc
 
 
-def text_view(doc: dict) -> list:
+def row_text(r) -> str:
+    """`<depth> <link> <path>  <- <from> [<kind> <found>:<line>]`, a maybe row
+    adding `maybe: <reason> at <holder>:<line>`."""
+    out = f"{r['depth']} {r['link']} {r['path']}"
+    if r["depth"]:
+        out += f"  <- {r['from'] or '-'} [{r['kind']} {r['found']}:{r['line'] or '-'}]"
+    if r["maybe"]:
+        m = r["maybe"]
+        out += f" maybe: {m['reason']} at {m['holder']}:{m['line'] or '-'}"
+    return out
+
+
+def capped(lines, every) -> list:
+    """One list of the text view, cut at TEXT_MAX_ROWS with a more-line."""
+    if every or len(lines) <= TEXT_MAX_ROWS:
+        return lines
+    return lines[:TEXT_MAX_ROWS] + [f"... {len(lines) - TEXT_MAX_ROWS} more; --all lists every row"]
+
+
+def text_view(doc: dict, every: bool = False) -> list:
     cache = doc["cache"]
-    out = [safe(f"Cache: {cache['status']}" + (f" ({cache['reason']})" if cache["reason"] else ""))]
+    out = [f"Cache: {cache['status']}" + (f" ({cache['reason']})" if cache["reason"] else "")]
     if doc["query"] == "build":
         links = doc["links"]
         certain = sum(1 for l in links if l["link"] == "certain")
@@ -1364,15 +1632,29 @@ def text_view(doc: dict) -> list:
                    f"{sum(1 for r in doc['inventory'] if r['test'] == 'test')} test(s), "
                    f"{certain} certain and {len(links) - certain} maybe link(s), "
                    f"{len(doc['opaque'])} opaque and {len(doc['unresolved'])} unresolved record(s)")
-    for r in doc["incomplete"]:
-        out.append(safe(f"- incomplete: {r['reason']}: {r['subject']}"
-                        + (f" ({r['detail']})" if r["detail"] else "")))
+    out += [f"Input: {i['path']} ({i['status']})" for i in doc["inputs"]]
+    if doc["query"] == "anchors":
+        for f in doc["files"]:
+            h = f["history"]
+            out.append(f"{f['path']}: uncited" if f["uncited"] else
+                       f"{f['path']}: {len(f['facts'])} fact(s), {h['count']} history page(s)")
+            out += capped([f"  {x['link']} {x['form']} {x['page']}" + (f":{x['line']}" if x["line"] else "")
+                           + f" ({x['found']})" for x in f["facts"]], every)
+            out += capped([f"  history: {p}" for p in h["pages"]], every)
+    if "dependents" in doc or "tests" in doc:
+        out += capped([row_text(r) for r in doc.get("dependents", doc.get("tests"))], every)
+    out += capped([f"Always run: {r['path']} ({r['reason']})" for r in doc.get("always_run", [])], every)
+    if doc.get("floor"):
+        out.append(FLOOR_LINE.format(n=len(doc["floor"])))
+        out += capped([row_text(r) for r in doc["floor"]], every)
+    out += capped([f"- incomplete: {r['reason']}: {r['subject']}"
+                   + (f" ({r['detail']})" if r["detail"] else "") for r in doc["incomplete"]], every)
     if doc["incomplete"]:
-        out.append(safe(ACTION_LINE[doc["query"]].format(
-            reasons=", ".join(f"{r['reason']}: {r['subject']}" for r in doc["incomplete"]))))
+        out.append(ACTION_LINE[doc["query"]].format(
+            reasons=", ".join(f"{r['reason']}: {r['subject']}" for r in doc["incomplete"])))
     elif doc["query"] == "affected-tests":
         out.append(RECOMMEND_LINE)
-    return out
+    return [safe(l) for l in out]
 
 
 # --- the command line ----------------------------------------------------------
@@ -1409,11 +1691,13 @@ def main(argv=None) -> int:
     except Usage as e:
         print(f"usage: source-index.py {{build|impact|affected-tests|anchors}} ...: {e}", file=sys.stderr)
         return 2
+    if getattr(args, "paths", None) == ["-"]:
+        args.paths = [l for l in sys.stdin.buffer.read().decode("utf-8", "surrogateescape").split("\n") if l]
     doc = answer(args.query, args, Path.cwd())
     if args.json:
         sys.stdout.write(json.dumps(doc, sort_keys=True, indent=1, ensure_ascii=True) + "\n")
     else:
-        sys.stdout.write("\n".join(text_view(doc)) + "\n")
+        sys.stdout.write("\n".join(text_view(doc, getattr(args, "all", False))) + "\n")
     return 0
 
 

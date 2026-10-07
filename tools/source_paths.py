@@ -17,8 +17,10 @@ disagree about a path:
     follows a symlink or blocks on a FIFO;
   * the descriptor-relative directory opener and atomic write under
     `.cypress/`, which never follow a symlink;
-  * the citation grammar and `cite_problem`, the strict plant-relative reading
-    of a cited path (SPEC-0007 §6 "Helper").
+  * the citation grammar and its one resolution function,
+    `resolve_citation`: strict, the plant-relative reading `cite_problem`
+    gives; lenient, the text match `source-index.py anchors` reads
+    (SPEC-0007 §6 "Helper").
 
 A scratch directory under `.cypress/` that the atomic write fills ignores
 itself with an inner `.gitignore` of `*`; the other home of that self-ignore
@@ -306,8 +308,61 @@ def shape_problem(ref):
     return f"{MALFORMED_CITATION} — {rest!r} is not part of a path"
 
 
+def resolve_citation(plant, ref, known=None, page=None, nested=()):
+    """The one reading of a cited path: (targets, line, found, problem).
+
+    `line` is the first line the citation names, or None. Strict, the
+    default (`known` None): the plant-relative reading `cite_problem` gives,
+    asked of the filesystem, the line checked; `targets` holds the one path,
+    `found` is `exact`, `problem` is None, or `targets` is empty and `problem`
+    says why. Lenient (`known` a set of plant-relative paths): the citation
+    is text matched against `known`, never opened, its line reported and not
+    checked, in order plant-relative, `docs/graph/`-relative, relative to the
+    directory of `page`, then under each `nested` repository, each found
+    `exact`; then, for a citation holding no `/`, every path of `known` with
+    that basename, found `basename` (several are the caller's ambiguity).
+    Nothing found is (), line, None and a problem (SPEC-0007 §6 "Query answer")."""
+    cited, raw, cited_line = split_citation(ref)
+    if not raw:
+        return (), cited_line, None, f"{MALFORMED_CITATION} — it names no path"
+    if known is not None:
+        if not raw.startswith("/"):
+            tries = [raw, "docs/graph/" + raw]
+            tries += [posixpath.join(posixpath.dirname(page), raw)] if page else []
+            tries += [posixpath.join(n, raw) for n in nested]
+            for t in tries:
+                t = posixpath.normpath(t)
+                if relative(t) and t in known:
+                    return (t,), cited_line, "exact", None
+            if "/" not in raw:
+                hits = tuple(sorted(p for p in known if p.rsplit("/", 1)[-1] == raw))
+                if hits:
+                    return hits, cited_line, "basename", None
+        return (), cited_line, None, shape_problem(cited) or MISSING_CITATION
+    if Path(raw).is_absolute():
+        return (), cited_line, None, MISSING_CITATION
+    target = plant / raw
+    try:
+        target.resolve().relative_to(plant.resolve())
+    except (ValueError, OSError):
+        return (), cited_line, None, MISSING_CITATION
+    if not target.is_file():
+        return (), cited_line, None, shape_problem(cited) or MISSING_CITATION
+    if cited_line:
+        try:
+            held = len(target.read_text(encoding="utf-8",
+                                        errors="replace").splitlines())
+        except OSError:
+            return (), cited_line, None, MISSING_CITATION
+        if cited_line > held:
+            return (), cited_line, None, (f"names line {cited_line} of a file that holds "
+                                          f"{held} lines")
+    return (raw,), cited_line, "exact", None
+
+
 def cite_problem(plant, ref):
-    """Why a cited path does not resolve, as a phrase — or None when it does.
+    """Why a cited path does not resolve, as a phrase — or None when it does:
+    the strict mode of `resolve_citation`.
 
     A citation names a real file INSIDE the plant, and the line it names is in
     that file. Anchor suffixes (`path#section`) are stripped and not checked:
@@ -324,25 +379,4 @@ def cite_problem(plant, ref):
     parsed as a path never reached the filesystem to earn it — every shape the
     grammar did not recognise collapsed into that one phrase, and the reader
     went looking for the wrong defect."""
-    cited, raw, cited_line = split_citation(ref)
-    if not raw:
-        return f"{MALFORMED_CITATION} — it names no path"
-    if Path(raw).is_absolute():
-        return MISSING_CITATION
-    target = plant / raw
-    try:
-        target.resolve().relative_to(plant.resolve())
-    except (ValueError, OSError):
-        return MISSING_CITATION
-    if not target.is_file():
-        return shape_problem(cited) or MISSING_CITATION
-    if cited_line:
-        try:
-            held = len(target.read_text(encoding="utf-8",
-                                        errors="replace").splitlines())
-        except OSError:
-            return MISSING_CITATION
-        if cited_line > held:
-            return (f"names line {cited_line} of a file that holds "
-                    f"{held} lines")
-    return None
+    return resolve_citation(plant, ref)[3]
