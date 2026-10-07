@@ -235,6 +235,13 @@ ROWS = [
     ("opencode-depth-cap", "check_opencode_config", lambda: oc({**OC, "subagent_depth": 1}), "delegation topology would be capped"),
     ("ci-workflow", "check_workflows", lambda: drop(".github/workflows/gate.yml"), "gate.yml is missing"),
     ("release-workflow", "check_workflows", lambda: sub(".github/workflows/release.yml", "gh release create", "gh release view"), "does not hold `gh release create`"),
+    # RED: gate.yml's checkout has no fetch-depth, so CI clones shallow with no tags
+    # and tests/test-prompt-hooks.sh + tests/test-full-install.sh (`git show v7.36.0:...`)
+    # fail there; the planted gate.yml below is already fixed, so an unfixed baseline
+    # (today's real gate.yml) is this row's "absent" counterpart failing by name.
+    ("X397 gate.yml checkout needs fetch-depth:0 for history/tag reads", "check_workflows", lambda: sub(
+        ".github/workflows/gate.yml", "uses: actions/checkout@v4\n",
+        "uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n"), "lacks `fetch-depth: 0`", True),
     ("reader-drift", "check_frontmatter_reader_is_one_reader", lambda: append("tools/frontmatter.py", "# drifted"), "has drifted from"),
     ("frontmatter-inner-colon", "check_frontmatter_is_portable_yaml", lambda: sub("core/method/prose-posture.md", r"^(title: [^\"'\n][^\n]*)$", r"\1: always", True), "strict-YAML skill loader"),
     ("grant-undeclared", "check_agent_spawn_grants", lambda: sub("agents/02-implementer.md", r"^(tools: \[[^\]\n]*)\]", r"\1, Agent]", True), "agents/02-implementer.md: can_delegate=false"),
