@@ -1569,6 +1569,14 @@ place_graph_scaffold() {
     # ...and the seed's path rules it imports, beside it (standalone scripts
     # resolve their imports next to themselves; same fast-forward class).
     place_file "$SEED_ROOT/tools/source_paths.py" "$g/source_paths.py"
+    # the source index (SPEC-0007): impact, affected-tests and anchors queries
+    # over the plant's code. Config-free (the plant's test config is its own
+    # docs/graph/source-index.json, never placed), so it fast-forwards like the
+    # router; its cache under .cypress/source-index/ is derived scratch the
+    # next query rebuilds (ADR-0029), so the installer neither writes nor
+    # carries it. It loads source_paths.py and plant_walk.py by path, beside it.
+    place_file "$SEED_ROOT/tools/source-index.py" "$g/source-index.py"
+    place_file "$SEED_ROOT/tools/plant_walk.py" "$g/plant_walk.py"
     place_if_missing "$SEED_ROOT/templates/knowledge-graph/index.md" "$g/index.md"
     fill_plant_facts "$g/index.md"
     log "  run /initialize — it forks on whether this target has source to scout:"
