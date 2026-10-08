@@ -95,7 +95,8 @@ status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tes
   Product reviewed the amendment on 2026-10-07 and reworded §3 and AC-3 to
   match it: a re-run over an unchanged project leaves the installer's own
   files untouched and makes no backup, still prints the build report, and
-  refreshes the self-ignored cache in a Git work tree, the one exception.
+  refreshes the self-ignored cache in a plant with at least one governed
+  repository, the one exception.
   Sign-off for it: product [x]; the tester's review is still owed.
   Before 8.0.0 this spec was `back-written` and carried no sign-off, because
   there was no RED for a promotion to land with. An earlier draft asserted
@@ -195,11 +196,12 @@ An owner points the installer at a project and names one or more harnesses. The
 installer either completes, or refuses before writing anything and says which
 path is in the way. Running it again over an unchanged project rewrites none of the
 installer's own files, makes no backup and names none as replaced. It still
-ends with the source-index build report, on every run. In a Git project that
-build also refreshes its cache under `.cypress/source-index/`, a scratch
+ends with the source-index build report, on every run. In a project with at
+least one Git repository the build reads, that build also refreshes its
+cache under `.cypress/source-index/`, a scratch
 folder that ignores itself in Git; when nothing in the project moved, the
 new cache holds the same bytes as the old one. That cache is the only thing a
-re-run writes, and outside a Git project the build writes nothing. Running it over a project someone has edited replaces the seed's
+re-run writes, and in a project with no such repository the build writes nothing. Running it over a project someone has edited replaces the seed's
 own files, leaves a timestamped copy of every body it replaced, and names them.
 Nothing outside the named project directory is ever modified.
 A fresh plant also gets a blank harvest-candidate form under
@@ -301,8 +303,8 @@ jurisdiction undecided.
   all. They are recorded in the registry's `seed-lint.py` row now.
 - **And:** the source-index build that ends an install (SPEC-0007
   `INSTALL_RUNS_THE_BUILD`) is a tool run of a placed file, not an installer
-  write: `install.sh` runs `python3 docs/graph/source-index.py build` from the
-  target, and the cache that run writes under `.cypress/source-index/` is the
+  write: `install.sh` runs `python3 -I -B docs/graph/source-index.py build`
+  from the target (SPEC-0007 §6 "Build report"), and the cache that run writes under `.cypress/source-index/` is the
   tool's own atomic write under adr-0029. The run adds no raw write to
   `install.sh`, so it is neither a placer write nor a row of
   `INSTALL_WRITE_EXCEPTIONS`, and the count of 11 above is unchanged.
@@ -334,11 +336,13 @@ jurisdiction undecided.
 - **Then:** no file is rewritten and no `.bak-*` is created
 - **Except:** the derived cache under `.cypress/source-index/`, which the
   install's build (SPEC-0007 `INSTALL_RUNS_THE_BUILD`) replaces through the
-  tool's own atomic write on every install into a Git work tree. When nothing
+  tool's own atomic write on every install into a plant with at least one
+  governed repository (the plant root when it is a Git work tree, or a
+  nested work tree a node's `repo:` names). When nothing
   moved, the new cache holds the same bytes as the old one (SPEC-0007
   `BUILD_IS_DETERMINISTIC`), and no `.bak-*` is made for it, because the
-  installer neither places nor backs up a cache file. Over a target that is
-  not a Git work tree the build writes nothing, so the Then holds there
+  installer neither places nor backs up a cache file. Over a target with no
+  governed repository the build writes nothing, so the Then holds there
   without exception
 
 ### Contract: EVERY_BACKUP_IS_CLASSIFIABLE
@@ -1558,7 +1562,8 @@ $ head -1 /p/docs/graph/libraries/rxjs.md
 - [x] AC-3: an unchanged plant re-installs with none of the installer's own
       files rewritten and no backup made; the build report still prints, and
       the one write is the self-ignored cache under `.cypress/source-index/`
-      in a Git work tree, the same bytes when nothing moved — maps to
+      in a plant with at least one governed repository, the same bytes when
+      nothing moved — maps to
       IDENTICAL_RERUN_IS_INERT (SPEC-0007 INSTALL_RUNS_THE_BUILD holds the
       report and the cache)
 - [x] AC-4: every backup is classifiable by the audit — maps to
@@ -2329,3 +2334,15 @@ only version surface it has, and it moves with each entry here.
   says nothing" and AC-3's "zero churn" are product's to reword. Product
   reworded both the same day: the installer's own files stay untouched, the
   build report always prints, and the derived cache is the one exception.
+
+- 2026-10-07: 8.1.2 scope correction (`architect-8.1.2d`, on
+  `devils-advocate-8.1.2` 3 and `security-8.1.2` S1). The build writes its
+  cache wherever the plant has a governed repository, which includes a
+  non-Git plant root holding a nested work tree a node's `repo:` names; "a
+  Git work tree" was too narrow. `IDENTICAL_RERUN_IS_INERT`'s Except, §0's
+  product note, §3 and AC-3 now say "a plant with at least one governed
+  repository" (§3 in its plain form), which supersedes the "into a Git work
+  tree" wording of the 8.1.2 entry above. `SINGLE_WRITER`'s And clause names
+  the isolated run, `python3 -I -B`, that SPEC-0007 §6 "Build report" owns.
+  No contract added or removed, no §10 row changed; product re-reads §3 and
+  AC-3.

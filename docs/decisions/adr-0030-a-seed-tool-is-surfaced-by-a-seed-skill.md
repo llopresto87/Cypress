@@ -58,8 +58,14 @@ placement; the seed writes no card and no catalog row into a plant's
 
 ## Consequences
 
-- The tool is routed by its skill's `load_when`, and hosts that read skill
-  descriptions (Claude Code, opencode, Prime Agent) see it natively.
+- The tool is routed by its skill's `load_when` for path-free phrasings of
+  its four questions. When a task names a path a node owns, the router's
+  `named_path` tier loads the owning node first, and the skill reaches the
+  session through the host's native skill listing: hosts that read skill
+  descriptions (Claude Code, opencode, Prime Agent) see it natively. This is
+  option (b) of `docs/plans/grill-8.1.2-tool-surfacing.md` §12 question 12,
+  stated provisionally, pending the owner; option (a) would have the router
+  add the skill beside the owning node (a SPEC-0002 / ADR-0026 change).
 - No new placer, provenance line, stamp key, collection exclusion or backup
   class: every seed skill is placed by `place_file` on every install and
   graft, flagged `RETIRED` if the seed drops it, and backed up when a plant
@@ -71,12 +77,15 @@ placement; the seed writes no card and no catalog row into a plant's
 - Plant-specific facts about a seed tool (a measurement, a pitfall in this
   project) belong in a plant card or node, not in the seed skill, which the
   next install replaces.
-- Nothing is left to do by hand for the tool to be found and to answer: every
-  install and every graft places and projects the skill, and the same install
-  runs the tool's first build and prints its report (SPEC-0007
-  `INSTALL_RUNS_THE_BUILD`, ADR-0029 as amended for 8.1.2). What only the
-  owner can settle, the plant's `TEST_GLOBS`, its config and its `repo:`
-  values, the report names with the exact fix.
+- Every setup gap the build can detect is named with its fix: every install
+  and every graft places and projects the skill, and the same install runs
+  the tool's build and prints its report (SPEC-0007 `INSTALL_RUNS_THE_BUILD`,
+  ADR-0029 as amended for 8.1.2). What only the owner can settle, the
+  plant's `TEST_GLOBS`, its config, its `repo:` values and a nested
+  repository no `repo:` names, the report names with the exact fix. The
+  build does not judge whether `TEST_GLOBS` is right, only whether it
+  matches; a config pattern that matches no file is not reported (pending
+  owner, the plan's §12 question 14).
 - The test that fails if this is reversed:
   SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS (its route arms, and its arm
   that the installer writes nothing under `docs/graph/tools/` beyond the
@@ -122,3 +131,9 @@ is this record (question 1 of `docs/plans/grill-8.1.2-tool-surfacing.md`
 (questions 8 and 9). Before the ruling the session had taken question 1 as
 yes from the owner's "ready to go" ruling; the acceptance replaces that
 reading. The Decision is unchanged.
+
+Revised 2026-10-07 by `architect-8.1.2d` on the review `devils-advocate-8.1.2`
+(items 1 and 2): the routing consequence is narrowed to what the router does
+when a task names an owned path, with option (b) stated pending the owner,
+and "nothing is left to do by hand" is narrowed to the gaps the build can
+detect. The Decision is unchanged.
