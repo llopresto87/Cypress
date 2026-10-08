@@ -171,12 +171,21 @@ to go from te get-go after executing the protocols". The decision above is
 unchanged: the index stays derived scratch, self-ignored, keyed, never
 committed and never canonical. One consequence changes: the installer no
 longer leaves the first build to a query. It runs
-`python3 docs/graph/source-index.py build` from the plant root as its last
-step and prints the report, never failing on it (SPEC-0007
+`python3 -I -B docs/graph/source-index.py build` from the plant root as its
+last step, in isolated mode so the only code it runs is the seed's own, and
+prints the report, never failing on it (SPEC-0007
 `INSTALL_RUNS_THE_BUILD`, `INSTALL_BUILD_FAILED`). The write is the tool's,
 under this record's rules; `install.sh` gains no write site of its own, so
 SPEC-0001 `SINGLE_WRITER`'s census of the installer's writes is unchanged. What this costs: every install
-spends the build's time (0.66 s to 3.19 s measured, bounded at 120 s), and an
+spends the build's time (0.06 s on an empty plant to 3.7 s on a 4,320-file
+llama.cpp clone, measured cold at 3.64 s; bounded at 120 s), a graft spends
+about four builds (stage install, stage lint, apply, coverage gate), and an
 identical re-install replaces the cache with equal bytes. The rejected
 alternative "Install deletes the cache on every run" stays rejected: the
 build replaces the cache, it never deletes it.
+
+Revised 2026-10-07 by `architect-8.1.2d` on the reviews `security-8.1.2`
+(S1, the isolated run) and `devils-advocate-8.1.2` (item 4, the cost figures
+measured on seed `52fcce5`, and the build count per graft). The decision and
+the ratified consequence are unchanged; only the run's form and the cost
+figures are stated more exactly.
