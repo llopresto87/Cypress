@@ -92,6 +92,11 @@ status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tes
   it on the owner's go ("3 go", 2026-10-07). It changes no test and no §10
   row; product and tester owe their review of the text, and product owns
   whether §3 and AC-3 name the cache.
+  Product reviewed the amendment on 2026-10-07 and reworded §3 and AC-3 to
+  match it: a re-run over an unchanged project leaves the installer's own
+  files untouched and makes no backup, still prints the build report, and
+  refreshes the self-ignored cache in a Git work tree, the one exception.
+  Sign-off for it: product [x]; the tester's review is still owed.
   Before 8.0.0 this spec was `back-written` and carried no sign-off, because
   there was no RED for a promotion to land with. An earlier draft asserted
   signatures dated to a RED that never landed; that was fabricated to satisfy
@@ -188,8 +193,13 @@ install without replacing a page the plant edited or owns.
 
 An owner points the installer at a project and names one or more harnesses. The
 installer either completes, or refuses before writing anything and says which
-path is in the way. Running it again over an unchanged project does nothing and
-says nothing. Running it over a project someone has edited replaces the seed's
+path is in the way. Running it again over an unchanged project rewrites none of the
+installer's own files, makes no backup and names none as replaced. It still
+ends with the source-index build report, on every run. In a Git project that
+build also refreshes its cache under `.cypress/source-index/`, a scratch
+folder that ignores itself in Git; when nothing in the project moved, the
+new cache holds the same bytes as the old one. That cache is the only thing a
+re-run writes, and outside a Git project the build writes nothing. Running it over a project someone has edited replaces the seed's
 own files, leaves a timestamped copy of every body it replaced, and names them.
 Nothing outside the named project directory is ever modified.
 A fresh plant also gets a blank harvest-candidate form under
@@ -1545,8 +1555,12 @@ $ head -1 /p/docs/graph/libraries/rxjs.md
       SINGLE_WRITER
 - [x] AC-2: no install modifies a file outside the target — maps to
       SYMLINK_IS_REPLACED_NOT_FOLLOWED
-- [x] AC-3: an unchanged plant re-installs to zero churn — maps to
-      IDENTICAL_RERUN_IS_INERT
+- [x] AC-3: an unchanged plant re-installs with none of the installer's own
+      files rewritten and no backup made; the build report still prints, and
+      the one write is the self-ignored cache under `.cypress/source-index/`
+      in a Git work tree, the same bytes when nothing moved — maps to
+      IDENTICAL_RERUN_IS_INERT (SPEC-0007 INSTALL_RUNS_THE_BUILD holds the
+      report and the cache)
 - [x] AC-4: every backup is classifiable by the audit — maps to
       EVERY_BACKUP_IS_CLASSIFIABLE
 - [x] AC-5: one kernel body regardless of adapter order — maps to
@@ -2312,4 +2326,6 @@ only version surface it has, and it moves with each entry here.
   non-Git targets and `install.sh`, where the build adds no write, and
   SPEC-0007's rows hold the cache. No §6 shape and no §7 failure changed.
   Product and tester owe their review of the text; §3's "does nothing and
-  says nothing" and AC-3's "zero churn" are product's to reword.
+  says nothing" and AC-3's "zero churn" are product's to reword. Product
+  reworded both the same day: the installer's own files stay untouched, the
+  build report always prints, and the derived cache is the one exception.
