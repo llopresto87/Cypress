@@ -2,27 +2,27 @@
 
 ## 0. Metadata
 - Project: CYPRESS seed
-- Feature or goal: make the placed source index found by topic in every plant and make what a plant must set before trusting it visible after install, grow and graft; patch 8.1.2 over 8.1.1
+- Feature or goal: make the placed source index found by topic and built in every plant once install, grow or graft has run, and make what a plant must set before trusting it visible, with the exact fix, after each of them; patch 8.1.2 over 8.1.1
 - Date: 2026-10-07
 - Owner: the steward; the orchestrating session plans, briefs and commits
 - Tier: T3. Protocol: `protocol.specify` (SPEC-0007 grows by an 8.1.2 slice), then `protocol.grill`
-- Current phase: specified by `architect-8.1.2`; waiting for the owner's ruling on §12 questions 1 to 3, then product §3 and §9, tester §10, security and devils-advocate, then RED
-- Related files: `skills/source-index/SKILL.md` (new), `manifest.json`, `tools/source-index.py`, `tools/growth-audit.py`, `install.sh`, `protocols/graft.md`, `protocols/grow.md`, `protocols/canonize.md`, `skills/toolcraft/SKILL.md`, the catalog template `tools/index.md` under `templates/docs/`, `tests/test-source-index.sh`, `tests/test-full-install.sh`, `tests/test-growth-audit.sh`, `tests/run.sh`
+- Current phase: specified by `architect-8.1.2`, rewritten on the owner's rulings of questions 2 and 3 by `architect-8.1.2b`; waiting for the owner on §12 questions 1, 8 and 9 (ADR-0030, the ADR-0029 amendment, the SPEC-0001 amendment), then the SPEC-0001 amendment (increment 2), product §3 and §9, tester §10, security and devils-advocate, then RED
+- Related files: `skills/source-index/SKILL.md` (new), `manifest.json`, `tools/source-index.py`, `tools/growth-audit.py`, `install.sh`, `tools/graft-run.py` (docstring only), `protocols/graft.md`, `protocols/grow.md`, `protocols/canonize.md`, `skills/toolcraft/SKILL.md`, the catalog template `tools/index.md` under `templates/docs/`, `documentation/source-index.md`, `docs/specs/SPEC-0001-install-placement.md`, `tests/test-source-index.sh`, `tests/test-full-install.sh`, `tests/test-growth-audit.sh`, `tests/run.sh`
 - Related documentation: `docs/plans/grill-8.1.0-source-index.md` (the round that built the tool; its §10 measurements); the steward plant's card `docs/graph/tools/source-index.md` (plant-written, read as evidence only)
-- Related ADRs: [ADR-0030](../decisions/adr-0030-a-seed-tool-is-surfaced-by-a-seed-skill.md) (proposed: a placed seed tool is surfaced by a seed skill node); the round works under [ADR-0029](../decisions/adr-0029-source-index-is-derived-scratch.md) (the installer writes no cache) and [ADR-0021](../decisions/adr-0021-seed-only-procedures-stay-home.md) (the manifest names what the installer places)
-- Related specs: [SPEC-0007](../specs/SPEC-0007-source-index.md) §4 "Surfacing (8.1.2)" (every contract of this plan); [SPEC-0001](../specs/SPEC-0001-install-placement.md) (unchanged: `SINGLE_WRITER`, `BACKUP_BEFORE_REPLACE` and the seed-skill placement the new skill rides on)
+- Related ADRs: [ADR-0030](../decisions/adr-0030-a-seed-tool-is-surfaced-by-a-seed-skill.md) (proposed: a placed seed tool is surfaced by a seed skill node); [ADR-0029](../decisions/adr-0029-source-index-is-derived-scratch.md) (accepted; its "Amendment, 8.1.2" records that the installer runs the build, waiting for the owner's ratification); [ADR-0021](../decisions/adr-0021-seed-only-procedures-stay-home.md) (the manifest names what the installer places)
+- Related specs: [SPEC-0007](../specs/SPEC-0007-source-index.md) §4 "Surfacing (8.1.2)" (every contract of this plan); [SPEC-0001](../specs/SPEC-0001-install-placement.md) (`SINGLE_WRITER`, `BACKUP_BEFORE_REPLACE` and the seed-skill placement the new skill rides on, unchanged; a pointer in §2 and an Except clause in `IDENTICAL_RERUN_IS_INERT` for the build, increment 2)
 - Related libraries: none (stdlib Python and Git)
 - Baseline: seed `main` at `e3b22be` (v8.1.1)
 
 ## 1. Artifact Discovery
 - Existing files inspected: `install.sh` (`place_file` 389, `place_generated` 478, `place_graph_machinery` 1065 to 1087, which places every `skills/*/SKILL.md` as `docs/graph/skills/<name>.md`, `place_graph_scaffold` 1522 to 1586, `fill_plant_facts` 1588 onwards, the NEXT STEP banners 3226 to 3275); `manifest.json` (`tools`, `skills`, `templates`, `docs_skeleton`); `tools/graft-audit.py` (MODE 1 classes, the knowledge-overwrite flag, MODE 2 byte-identity); `tools/growth-audit.py` (`required_collections` 367, `collection_leaves` 573, `lint_collections` 1058, `VERDICTS`); `tools/graft-run.py` (steps 1 to 8); `templates/tool-page.template.md`; the catalog template `tools/index.md` under `templates/docs/`; `templates/knowledge-graph/_schema.md` ("Tiers": `tools/**` is Tier 3); `templates/knowledge-graph/graph-lint.py` (`KINDS`, `MACHINERY_DIRS`, `check_artifacts`)
 - Existing docs inspected: `skills/toolcraft/SKILL.md`; `skills/context-router/SKILL.md` (frontmatter); `protocols/graft.md` (headings, Phase 7 gate table, output format); `protocols/grow.md` 630 to 660 (the Phase 2 `build --json` step); `templates/grill.template.md`; `templates/adr.template.md`
-- Existing tests inspected: `tests/run.sh` (`ACTIVE_PLAN`, the spec-lint and grill-lint steps); `tests/graph-route-eval.sh` and `tests/graph-routes.golden.tsv` (the node-route corpus over a fresh install)
+- Existing tests inspected: `tests/run.sh` (`ACTIVE_PLAN`, the spec-lint and grill-lint steps); `tests/graph-route-eval.sh` and `tests/graph-routes.golden.tsv` (the node-route corpus over a fresh install); `tests/test-source-index.sh` X430 (asserts the re-install leaves the cache and the next query rebuilds it); `tests/test-full-install.sh` E15 (asserts no `.cypress/source-index/` after an install); `tests/test-install-placement.sh` (M7's `is_installer_state`, `case_recover` over a fresh non-Git target, `tree_sig` checks); `tests/helpers/plant.sh` `plant_base` (installs into a non-Git directory); `tests/seed-lint.py` `install_write_sites` (a command that runs a tool is no write site)
 - Existing specs inspected: `docs/specs/SPEC-0007-source-index.md` (§2, §4 `SOURCE_INDEX_IS_PLACED`, `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS`, §6 "Incomplete", "Query answer", "CLI", §7, §10); `docs/specs/SPEC-0001-install-placement.md` (§2, §4 `SINGLE_WRITER`, `BACKUP_BEFORE_REPLACE`, the 8.0.0 expertise contracts, §6 "Selective placement")
 - Existing architecture signals: the router routes Tier-2 nodes only; seed skills are placed and refreshed on every install by `place_file`; `tools/` is a growth-audit collection, so a seed page there is a substantive leaf of every plant; the steward plant routes the tool through its own `subsystem.source-index`, and `graph-lint.py --plan "find where a function is defined"` loads no node there
 - Libraries already wikified: none, no library is involved
 - External sources downloaded: none
-- Constraints discovered: the installer writes no source-index cache (SPEC-0007 `SOURCE_INDEX_IS_PLACED`, ADR-0029); `docs/graph/tools/index.md` and its cards are plant-owned (`skill.toolcraft`); a backup over plant-authored graph content is flagged by `graft-audit.py`; `SINGLE_WRITER` counts every in-place rewrite of a plant file; plants are read-only evidence for this round
+- Constraints discovered: until this round the installer wrote no source-index cache (SPEC-0007 `SOURCE_INDEX_IS_PLACED`, ADR-0029 Consequences, the `manifest.json` description of `tools/source-index.py`, `documentation/source-index.md` "The installer never writes it"), each of which changes; `install.sh` writes `.cypress/seed.json` (so `.cypress/` exists) as its last write, then prints the `NEXT STEP` notices and the closing banner; `--check` and `--expertise propose` exit before any placement; macOS has no `timeout` command and `install.sh` is bash 3.2; the tool takes the plant root from its working directory; in a non-Git directory `build` exits 0 and writes nothing (`NO_GOVERNED_REPOSITORY`); `graft-run.py` runs `install.sh` on its stage (step 3, `install.log`) and growth-audit's lint (step 6, `coverage.txt`), and graft's Phase 7 applies with `install.sh` in the plant; `docs/graph/tools/index.md` and its cards are plant-owned (`skill.toolcraft`); a backup over plant-authored graph content is flagged by `graft-audit.py`; `SINGLE_WRITER` counts every in-place rewrite of a plant file; plants are read-only evidence for this round
 
 ## 2. Shared Understanding
 The owner's words (2026-10-07), verbatim: "when doing graft do we create/add/update all the things the new tools need to be used and shine?", then, after the session's answer, "go do it. update graft and install/growth".
@@ -33,12 +33,16 @@ Success means: in any plant, a session that asks what depends on a file, which t
 
 Design change from (A), put to the owner (§12 question 1, ADR-0030): a seed skill node, not a card, carries the tool, because a Tier-3 card is not routed and a seed card in `tools/` breaks growth-audit's `ABSENT` rows for that collection.
 
-Out of scope (SPEC-0007 §2): seed cards or rows in a plant's `docs/graph/tools/`; a growth-audit verdict; the installer running the build; skills for the other placed tools; the seed-only user guides; editing any plant.
+The owner's rulings on questions 2 and 3 (2026-10-07), verbatim: "2 ACTUALLY BUILD IT. a user cannot be expected to know that it needs to do things if it executes a graft/install/growth. the plant needs to be ready to go from te get-go after executing the protocols. 3 yes". Question 1 is taken as yes on the same ground (a tool no route finds is not ready), until the owner rules on ADR-0030.
+
+Success therefore also means: after an install, a graft or a grow, the plant's cache is built (where the plant has a repository) and the report has been printed; everything still missing for the tool to answer well is named in that report with the exact fix, and nothing else is left for a person to know.
+
+Out of scope (SPEC-0007 §2): seed cards or rows in a plant's `docs/graph/tools/`; a growth-audit verdict; an install or graft that fails or stops on the build; a flag to skip it; any tool writing a plant's config, `TEST_GLOBS` or `repo:` values; skills for the other placed tools; the seed-only user guides; editing any plant.
 
 ## 3. User Goal
 - Primary user: a session in any plant; the steward after an install or graft
 - Primary outcome: the tool is used when its question comes up, and its answers are trusted only once the plant's `repo:` values and test class are right
-- Job to be done: find the tool by topic; see the setup items after each install, grow and graft
+- Job to be done: find the tool by topic; have it built by the protocol that installed or grafted the plant; see the setup items and their fixes after each install, grow and graft
 - Acceptance criteria (link to spec §9): SPEC-0007 §9, the 8.1.2 rows `product` adds
 - Non-goals: fixing a plant's `repo:` values or test config by tool; gating a graft on a hint
 
@@ -48,12 +52,12 @@ Out of scope (SPEC-0007 §2): seed cards or rows in a plant's `docs/graph/tools/
 - Privacy constraints: synthetic fixtures only; no plant name in seed files or tests
 - Data constraints: the cache stays derived scratch (ADR-0029); the plant config stays plant-owned and never placed
 - Cost constraints: the batch sizes of `delegation.effort-scale`; batch per wave, no micro-loops (owner)
-  - Plan approval (`grill.plan-approval`), 2026-10-07: the owner approved (A) and (B) in the session; the change from (A) waits for §12 question 1. Levers this plan uses: none defined beyond the batch sizes (default)
-  - Owner-only prerequisites: the ruling on §12 questions 1 to 3, before RED (increment 2)
+  - Plan approval (`grill.plan-approval`), 2026-10-07: the owner approved (A) and (B) in the session and ruled §12 questions 2 and 3; question 1 is taken as yes pending ADR-0030. Levers this plan uses: none defined beyond the batch sizes (default)
+  - Owner-only prerequisites: the ratification of ADR-0030 (question 1) and of the ADR-0029 amendment (question 8), and the go for the SPEC-0001 amendment (question 9), before RED (increment 3)
   - Scoped standing grant: none asked
-- Latency constraints: `build` within SPEC-0007 §5; growth-audit's report bounded by `GROWTH_REPORT_TIMEOUT` (120 s)
+- Latency constraints: `build` within SPEC-0007 §5; the install's build bounded by `INSTALL_BUILD_TIMEOUT` and growth-audit's by `GROWTH_REPORT_TIMEOUT` (120 s each); every install now spends the build's time (0.66 s to 3.19 s measured on real plants)
 - Compliance constraints: none
-- Maintenance constraints: one home per rule (the build report in `tools/source-index.py`; growth-audit prints it, the installer names it); the seed reads as if the feature always existed; tests only for real contracts; doctrine edits carry no tests of their own, the lints are their proof (`crosscut.operator-seed-rounds` in the steward plant)
+- Maintenance constraints: one home per rule (the build report and its fixes in `tools/source-index.py`; the installer and growth-audit print it, never restate it); the seed reads as if the feature always existed; tests only for real contracts; doctrine edits carry no tests of their own, the lints are their proof (`crosscut.operator-seed-rounds` in the steward plant)
 
 ## 5. Research Summary
 no external dependency — every increment uses stdlib Python and Git, which the seed's tools already use; no §9 row depends on a `docs/graph/libraries/` page. The evidence is the seed's own source (§1):
@@ -65,67 +69,83 @@ no external dependency — every increment uses stdlib Python and Git, which the
 ## 6. Decisions Made
 | Decision | Rationale | Evidence | Reversibility | ADR | Date |
 |---|---|---|---|---|---|
-| Design latitude: balanced | new structure only where the change needs it: one seed skill node, one report in an existing command | the owner, 2026-10-07: "go do it. update graft and install/growth" | reversible | — | 2026-10-07 |
+| Design latitude: balanced | new structure only where the change needs it: one seed skill node, one report in an existing command, one step at the end of the installer | the owner, 2026-10-07: "go do it. update graft and install/growth" | reversible | — | 2026-10-07 |
 | Tier T3 | a new seed skill, a changed CLI output, the installer and growth-audit | kernel §0 | not applicable | — | 2026-10-07 |
-| Owning spec: SPEC-0007 alone, an 8.1.2 slice; SPEC-0001 unchanged | every new behaviour is about the source index; the installer's output for this tool already sits in SPEC-0007 (`SOURCE_INDEX_IS_PLACED`); the skill rides on SPEC-0001's existing seed-skill placement | SPEC-0007 §4 "Integration" | reversible | — | 2026-10-07 |
-| The tool's seed-owned page in a plant is a seed skill node `skill.source-index`, not a card in `docs/graph/tools/` (pending §12 question 1) | a card is Tier 3 and not routed; a seed card breaks growth-audit's `tools/` rows; the skill is placed, refreshed, retired and projected by machinery that exists | §5; ADR-0030 | reversible | [ADR-0030](../decisions/adr-0030-a-seed-tool-is-surfaced-by-a-seed-skill.md) | 2026-10-07 |
-| The checklist has one home, `source-index.py build`: time, counts, `repo-unresolved`, the test-declaration records, two hints | the rules it reports (`repo_kind`, `TEST_GLOBS`, the config) live in the tool and its helper; a second reader would be a second home | SPEC-0007 §6 "Build report" | reversible | — | 2026-10-07 |
-| The installer names the build; it does not run it (pending §12 question 2) | the installer writes no cache (ADR-0029, `SOURCE_INDEX_IS_PLACED`); grow and graft run it anyway | SPEC-0007 `INSTALL_NAMES_THE_FIRST_BUILD` | reversible | — | 2026-10-07 |
-| Growth-audit prints the build report after its verdicts, never a verdict, running the seed's copy (pending §12 question 3) | the owner named growth-audit; a report keeps the coverage gate's meaning; the seed copy runs no plant code and is current before the plant is | SPEC-0007 `GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT` | reversible | — | 2026-10-07 |
+| Owning spec: SPEC-0007, an 8.1.2 slice; SPEC-0001 gains only a pointer and an Except clause | every new behaviour is about the source index; the installer's run of it is a SPEC-0007 contract (`INSTALL_RUNS_THE_BUILD`), and SPEC-0001 keeps the placement rules it already owns | SPEC-0007 §4 "Surfacing (8.1.2)"; SPEC-0001 §2, `IDENTICAL_RERUN_IS_INERT` | reversible | — | 2026-10-07 |
+| The tool's seed-owned page in a plant is a seed skill node `skill.source-index`, not a card in `docs/graph/tools/` (question 1, taken as yes) | a card is Tier 3 and not routed; a seed card breaks growth-audit's `tools/` rows; the skill is placed, refreshed, retired and projected by machinery that exists, on every install and graft | §5; ADR-0030 | reversible | [ADR-0030](../decisions/adr-0030-a-seed-tool-is-surfaced-by-a-seed-skill.md) | 2026-10-07 |
+| The report has one home, `source-index.py build`: time, counts, `repo-unresolved`, the test-declaration records, one `BUILD_FIX` line under each record, two hints | the rules it reports (`repo_kind`, `TEST_GLOBS`, the config) live in the tool and its helper; a second reader would be a second home; a fix beside each record is what makes "ready to go" checkable by a reader who knows nothing | SPEC-0007 §6 "Build report", `BUILD_RECORDS_NAME_THEIR_FIX` | reversible | — | 2026-10-07 |
+| The installer runs the placed `build` as its last step and prints the report (question 2, the owner: "ACTUALLY BUILD IT") | a plant must be ready after the protocol runs; graft applies with the installer, so graft gets it without a step of its own | SPEC-0007 `INSTALL_RUNS_THE_BUILD` | reversible | [ADR-0029](../decisions/adr-0029-source-index-is-derived-scratch.md) (amendment) | 2026-10-07 |
+| Where: after the stamp (the last write) and before the `NEXT STEP` notices and the closing banner | every file is placed, so a build failure leaves nothing unplaced, and the report is read where the install ends; `--check`, `--expertise propose` and refusals exit earlier and run none | `install.sh` main flow, `write_seed_stamp` then the notices | reversible | — | 2026-10-07 |
+| Every install that places files runs it, not only the first | a re-install or a graft can move the key (the tool, HEAD, the config), and "has a cache" is no sign the report was read; the cost is one build per install | SPEC-0007 `GRAFT_REBUILDS_THE_CACHE` as amended | reversible | — | 2026-10-07 |
+| Fail-open: a failed, slow or missing build never changes the install's exit code; it prints `INSTALL_BUILD_FAILED` with the rerun command | the build is advice about a derived cache; an install that fails on it would block a graft on scratch | SPEC-0007 §7 `INSTALL_BUILD_FAILED` | reversible | — | 2026-10-07 |
+| Bound and interpreter: `INSTALL_BUILD_TIMEOUT` 120 s through Python's subprocess timeout, the same `python3` the installer runs, stdin closed, working directory the plant root | macOS has no `timeout` command and `install.sh` stays bash 3.2; the interpreter is in the cache key, so the session's `python3` reuses the cache | SPEC-0007 §6 "Build report"; ADR-0029 key | reversible | — | 2026-10-07 |
+| The installer runs the placed copy; growth-audit runs the seed's copy | after an install the two are byte-identical; growth-audit can be run against a plant whose placed copy is older (before an apply), and the seed copy runs no plant code | SPEC-0007 §6 "Build report" | reversible | — | 2026-10-07 |
+| No plant, no Git, no code: the build still runs and its report names `no-repository`, `git-unavailable` or `no-test-files` with the fix; it writes nothing where there is no repository | one rule for every target; the fix is the step a person would otherwise have to know | SPEC-0007 `BUILD_RECORDS_NAME_THEIR_FIX`, §7 `NO_GOVERNED_REPOSITORY` | reversible | — | 2026-10-07 |
+| Growth-audit prints the build report after its verdicts, never a verdict, running the seed's copy (question 3, the owner: "yes") | the owner named growth-audit; a report keeps the coverage gate's meaning | SPEC-0007 `GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT` | reversible | — | 2026-10-07 |
+| `graft-run.py` gets no code change | its step 3 runs the installer (so the build, kept in `install.log`) and its step 6 runs growth-audit's lint (the report, kept in `coverage.txt`); graft's Phase 7 apply prints the report in the plant itself; graft.md tells the steward where to read it | `tools/graft-run.py` docstring steps 3 and 6; `protocols/graft.md` Phase 7 | reversible | — | 2026-10-07 |
 | Test-name hints read a closed list of name patterns and never gate | a name is a guess about a project's habits; the owner rules on each hint | SPEC-0007 §6 `TEST_NAME_PATTERNS` | reversible | — | 2026-10-07 |
-| A plant's `repo:` values are corrected by graft authors (Phase 6) and canonize, never by a tool | a comma list needs a choice of the one claim the node means | SPEC-0007 §7 `REPO_VALUE_UNRESOLVED` recovery | reversible | — | 2026-10-07 |
+| A plant's `repo:` values, `TEST_GLOBS` and config are corrected by people (graft Phase 6, grow's plant facts, canonize), never by a tool; the report names each with its fix | each needs a choice only the owner or an author with understanding can make | SPEC-0007 §6 `BUILD_FIX`, §7 `REPO_VALUE_UNRESOLVED` recovery | reversible | — | 2026-10-07 |
 
 ## 7. Options Considered
 | Option | Benefits | Costs | Risks | Outcome |
 |---|---|---|---|---|
 | (A) seed card in `docs/graph/tools/` plus a seed block in `tools/index.md` | the owner's approved shape; a catalog row | still needs a Tier-2 node to be routed; a provenance rule, a growth-audit exclusion, a `--unfilled` block reader, a second SINGLE_WRITER exception, a backup class | every plant with an `ABSENT` `tools/` row fails its next graft gate until the exclusion lands | rejected for ADR-0030, put to the owner (§12 question 1) |
-| (S) seed skill `skill.source-index` | routed by `load_when`; native host skill; no new mechanism; plant cards untouched | a sixteenth seed skill; the figures in README and the reference pages move at release | a plant skill of the same name is backed up (none known) | chosen, pending question 1 |
+| (S) seed skill `skill.source-index` | routed by `load_when`; native host skill; no new mechanism; plant cards untouched | a sixteenth seed skill; the figures in README and the reference pages move at release | a plant skill of the same name is backed up (none known) | chosen (question 1 taken as yes) |
 | Phrases on `skill.context-router` | no new node | a second subject in a node most tasks load | dilutes the knowledge rule's routing | rejected |
 | A new subcommand `check` for the checklist | `build` output unchanged | a sixth verb for what `build` already computes | two commands to name | rejected: `build` is the command the owner named |
 | Growth-audit verdict on report lines | forces a fix | a hint is a guess; a verdict blocks a graft on it | false blocks | rejected: report only |
+| The installer only names the build (the first draft) | no install time; no cache written by an install | relies on someone reading a line and acting | the plant is not ready after the protocol | rejected by the owner (question 2) |
+| The installer runs the build only when no cache exists | no time on re-installs | a re-install or graft that moved the key prints nothing, and the report is never seen again | stale advice | rejected: every install |
+| The installer runs it through growth-audit, or runs the seed's copy | one runner | growth-audit is a seed-only tool that needs a coverage record; the seed's copy is not the command the report tells a person to rerun | a report whose rerun line names another file | rejected: the placed copy |
+| GNU `timeout` around the build | one word in bash | absent on macOS, the CI's mac leg | the install dies on macOS | rejected: Python's subprocess timeout |
+| A `--no-source-index` flag | faster test installs | a second path through every install; the owner wants the plant ready without choices | plants installed without it | rejected; test fixtures are non-Git and the build there costs milliseconds |
+| `graft-run.py` prints the report after its gate table | one screen | a second reader of growth-audit's output, in a tool whose output is the gate table | an advice line read as a gate | rejected: Phase 7's apply prints it in the plant, and graft.md names the log |
 
 ## 8. Architecture Plan
-- System boundary: the seed's `tools/source-index.py` (domain: the build report), `tools/growth-audit.py` and `install.sh` (adapters that print it or name it), and one seed skill node (knowledge); no plant file is written by any of them beyond the cache a build writes
-- Main components: `skills/source-index/SKILL.md` (routing and usage); `build`'s report (§6 "Build report"); `install.sh` `FIRST_BUILD_STEP`; `growth-audit.py`'s report block
-- Interfaces: `build` text view and `--json` keys `seconds` and `hints` (`ANSWER_SCHEMA` `/1`, keys added); growth-audit `--json` key `source_index_report`
+- System boundary: the seed's `tools/source-index.py` (domain: the build report and its fixes), `install.sh` and `tools/growth-audit.py` (adapters that run it and print it), and one seed skill node (knowledge); no plant file is written by any of them beyond the cache a build writes
+- Main components: `skills/source-index/SKILL.md` (routing and usage); `build`'s report (§6 "Build report", `BUILD_FIX`); the installer's last step (`INSTALL_BUILD_HEAD`, `INSTALL_BUILD_FAILED`, `INSTALL_BUILD_TIMEOUT`); `growth-audit.py`'s report block
+- Interfaces: `build` text view (fix lines under records) and `--json` keys `seconds` and `hints` (`ANSWER_SCHEMA` `/1`, keys added); growth-audit `--json` key `source_index_report`; the installer's output lines
 - Data flow:
 
 ```mermaid
 flowchart LR
-  I[install.sh] -->|places| S[docs/graph/skills/source-index.md]
-  I -->|no cache: names| B[source-index.py build]
+  I[install.sh: last step] -->|places| S[docs/graph/skills/source-index.md]
+  I -->|runs placed copy, cwd = plant, 120 s| B[source-index.py build]
+  T[graft Phase 7 apply / graft-run step 3] --> I
   R[graph-lint --plan] -->|load_when| S
   S -->|tells the session to run| Q[impact / affected-tests / anchors / symbols]
   G[growth-audit.py lint] -->|runs seed copy, cwd = plant| B
   B --> C[(.cypress/source-index/)]
-  B -->|time, counts, repo-unresolved, hints| G
+  B -->|time, counts, records + fix, hints| I
+  B -->|same report| G
   G -->|report after verdicts| P[grow delivery / graft record]
 ```
-- Error handling: a failed or slow report prints `GROWTH_REPORT_FAILED` and changes nothing else (SPEC-0007 §7)
-- Observability: the report lines in the growth-audit output, kept by `graft-run.py` under `<stage>/graft-run-logs/`
-- Security posture: no plant code runs from a seed tool; the build's existing guarantees hold
-- Deployment model: seed release 8.1.2; plants receive it by install or graft. How plants pick it up: a fresh install places the skill and prints the next step; an existing plant's graft places the skill (every install fast-forwards seed skills), its Phase 7 growth-audit run prints the report, and Phase 6 corrects the `repo:` values it names
+- Error handling: a failed or slow build prints `INSTALL_BUILD_FAILED` in the installer and `GROWTH_REPORT_FAILED` in growth-audit, and changes nothing else (SPEC-0007 §7)
+- Observability: the report lines in the install output and the growth-audit output; `graft-run.py` keeps both under `<stage>/graft-run-logs/` (`install.log`, `coverage.txt`)
+- Security posture: the installer runs a file it has just placed from the seed, never plant code; growth-audit runs the seed's copy; the build's existing guarantees hold (read-only over repositories, writes only `.cypress/source-index/`)
+- Deployment model: seed release 8.1.2; plants receive it by install or graft. A fresh install places the skill, builds and prints the report; an existing plant's graft does the same at its apply, its Phase 7 growth-audit run prints the report again, and Phase 6 corrects the `repo:` values it names
 - Environment parity: not applicable, no deploy chain
 
 ## 9. Implementation Plan
 
-Increments are inline; numbers are dependency order. Increment 1 carries the slice-1 and slice-2 contracts this plan leaves as they are. RED (increment 2) waits for the owner's ruling on §12 questions 1 to 3.
+Increments are inline; numbers are dependency order. Increment 1 carries the slice-1 and slice-2 contracts this plan leaves as they are. The SPEC-0001 amendment (increment 2) and RED (increment 3) wait for the owner on §12 questions 1, 8 and 9.
 
 | Spawn | Increments | Worker | Batch rule (`delegation.effort-scale`) |
 |---|---|---|---|
 | — | 1 | none | carried from the 8.1.0 plan, no spawn |
-| R1 | 2 | `tester` | RED medium: one spawn, seven cases |
-| G1 | 3 | `implementer` | GREEN medium: one |
-| G2 | 4, 5 | `implementer` | GREEN medium-low: two |
-| P1 | 6 | one writer | prose, one file set |
-| V1 | 7 | session | verify and one measurement |
+| A1 | 2 | `architect` | spec text, one file |
+| R1 | 3 | `tester` | RED medium: one spawn, eight cases and two amended ones |
+| G1 | 4 | `implementer` | GREEN medium: one |
+| G2 | 5, 6 | `implementer` | GREEN medium-low: two |
+| P1 | 7 | one writer | prose, one file set |
+| V1 | 8 | session | verify and one measurement |
 
-G1 and G2 may run side by side after R1: their files are disjoint.
+G1 and G2 may run side by side after R1: their files are disjoint. Increment 6's installer cases pass only with increment 4's fix lines; G2's gate runs after G1 lands.
 
 ### Increment 1 — Carried: the slice-1 and slice-2 contracts
-- Spec contracts: SPEC-0007/BUILD_INVENTORIES_THE_CODE_OF_EVERY_GOVERNED_REPOSITORY, SPEC-0007/BUILD_IS_DETERMINISTIC, SPEC-0007/CACHE_WRITTEN_SELF_IGNORED, SPEC-0007/CACHE_REUSED_WHILE_THE_KEY_HOLDS, SPEC-0007/CACHE_REBUILT_WHEN_THE_KEY_CHANGES, SPEC-0007/GRAFT_REBUILDS_THE_CACHE, SPEC-0007/LINK_PYTHON_IMPORT_CERTAIN, SPEC-0007/LINK_SHELL_INVOCATION_CERTAIN, SPEC-0007/LINK_PATH_LITERAL_AND_DIRECTORY_ARE_MAYBE, SPEC-0007/LINK_TS_SPECIFIER_CERTAIN, SPEC-0007/UNPINNED_REFERENCE_RECORDED_WITH_ITS_REASON, SPEC-0007/TESTS_ARE_THE_PLANTS_TEST_GLOBS, SPEC-0007/PLANT_CONFIG_REPLACES_EACH_DEFAULT_KEY, SPEC-0007/WALK_NEAREST_FIRST_ONCE, SPEC-0007/WALK_CHAIN_IS_ITS_WEAKEST_LINK, SPEC-0007/WALK_FLOOR_LISTED_APART_AFTER_THE_INPUT_ROWS, SPEC-0007/WALK_DELETED_INPUT_REACHES_ITS_NAMERS, SPEC-0007/INPUT_FORMS_RESOLVED, SPEC-0007/WALK_INCOMPLETE_NAMES_REASON_AND_ACTION, SPEC-0007/AFFECTED_TESTS_ARE_THE_WALK_FILTERED, SPEC-0007/AFFECTED_ALWAYS_RUN_LISTED_APART, SPEC-0007/ANCHORS_NAME_CITING_PAGES_OR_UNCITED, SPEC-0007/ANCHORS_BASENAME_IS_MAYBE_AMBIGUOUS_IS_INCOMPLETE, SPEC-0007/OUTPUT_CARRIES_NO_RAW_CONTROL, SPEC-0007/SOURCE_INDEX_IS_PLACED, SPEC-0007/SYMBOLS_PYTHON_DEFINITIONS_CERTAIN, SPEC-0007/SYMBOLS_LINE_READ_DECLARATIONS_ARE_MAYBE, SPEC-0007/SYMBOLS_LIST_EVERY_DEFINITION, SPEC-0007/SYMBOLS_UNREADABLE_FILE_MAKES_IT_INCOMPLETE, SPEC-0007/HISTORY_ROWS_ARE_MAYBE_WITH_THEIR_COUNT, SPEC-0007/HISTORY_ONLY_ADDS, SPEC-0007/HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE, SPEC-0007/ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS, SPEC-0007/ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE, SPEC-0007/REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS
+- Spec contracts: SPEC-0007/BUILD_INVENTORIES_THE_CODE_OF_EVERY_GOVERNED_REPOSITORY, SPEC-0007/BUILD_IS_DETERMINISTIC, SPEC-0007/CACHE_WRITTEN_SELF_IGNORED, SPEC-0007/CACHE_REUSED_WHILE_THE_KEY_HOLDS, SPEC-0007/CACHE_REBUILT_WHEN_THE_KEY_CHANGES, SPEC-0007/LINK_PYTHON_IMPORT_CERTAIN, SPEC-0007/LINK_SHELL_INVOCATION_CERTAIN, SPEC-0007/LINK_PATH_LITERAL_AND_DIRECTORY_ARE_MAYBE, SPEC-0007/LINK_TS_SPECIFIER_CERTAIN, SPEC-0007/UNPINNED_REFERENCE_RECORDED_WITH_ITS_REASON, SPEC-0007/TESTS_ARE_THE_PLANTS_TEST_GLOBS, SPEC-0007/PLANT_CONFIG_REPLACES_EACH_DEFAULT_KEY, SPEC-0007/WALK_NEAREST_FIRST_ONCE, SPEC-0007/WALK_CHAIN_IS_ITS_WEAKEST_LINK, SPEC-0007/WALK_FLOOR_LISTED_APART_AFTER_THE_INPUT_ROWS, SPEC-0007/WALK_DELETED_INPUT_REACHES_ITS_NAMERS, SPEC-0007/INPUT_FORMS_RESOLVED, SPEC-0007/WALK_INCOMPLETE_NAMES_REASON_AND_ACTION, SPEC-0007/AFFECTED_TESTS_ARE_THE_WALK_FILTERED, SPEC-0007/AFFECTED_ALWAYS_RUN_LISTED_APART, SPEC-0007/ANCHORS_NAME_CITING_PAGES_OR_UNCITED, SPEC-0007/ANCHORS_BASENAME_IS_MAYBE_AMBIGUOUS_IS_INCOMPLETE, SPEC-0007/OUTPUT_CARRIES_NO_RAW_CONTROL, SPEC-0007/SYMBOLS_PYTHON_DEFINITIONS_CERTAIN, SPEC-0007/SYMBOLS_LINE_READ_DECLARATIONS_ARE_MAYBE, SPEC-0007/SYMBOLS_LIST_EVERY_DEFINITION, SPEC-0007/SYMBOLS_UNREADABLE_FILE_MAKES_IT_INCOMPLETE, SPEC-0007/HISTORY_ROWS_ARE_MAYBE_WITH_THEIR_COUNT, SPEC-0007/HISTORY_ONLY_ADDS, SPEC-0007/HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE, SPEC-0007/ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS, SPEC-0007/ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE, SPEC-0007/REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS
 - Files touched: none
-- Tests to write (RED): none — implemented and green at `68c970e` under `docs/plans/grill-8.1.0-source-index.md` increments 3 to 20; this plan changes none of them, and `build`'s added report keeps their outputs (the count line and `ANSWER_SCHEMA` `/1`)
+- Tests to write (RED): none — implemented and green at `68c970e` under `docs/plans/grill-8.1.0-source-index.md` increments 3 to 20; this plan changes none of them except `SOURCE_INDEX_IS_PLACED` and `GRAFT_REBUILDS_THE_CACHE`, amended for the installer's build and carried by increment 3, and `build`'s added report keeps their outputs (the count line and `ANSWER_SCHEMA` `/1`)
 - Behavior added: none
 - Gate: their §10 rows stay green in increment 7's full gate
 - Rollback path: none needed
@@ -133,105 +153,124 @@ G1 and G2 may run side by side after R1: their files are disjoint.
 - Phase: GREEN, done in 8.1.0
 - Depends on: none
 
-### Increment 2 — RED for the 8.1.2 contracts
-- Spec contracts: SPEC-0007/SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS, SPEC-0007/BUILD_REPORTS_ITS_TIME_AND_COUNTS, SPEC-0007/BUILD_NAMES_REPO_VALUES_THAT_NAME_NOTHING, SPEC-0007/BUILD_NAMES_TESTS_OUTSIDE_THE_TEST_CLASS, SPEC-0007/BUILD_HINTS_EXCLUDE_FOR_NON_TEST_FILES, SPEC-0007/INSTALL_NAMES_THE_FIRST_BUILD, SPEC-0007/GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT
-- Files touched: `tests/test-source-index.sh` (the build and skill cases), `tests/test-full-install.sh` (the next-step case), `tests/test-growth-audit.sh` (the report case and its `SOURCE_INDEX_REPORT_UNAVAILABLE` arm), `tests/run.sh` (`ACTIVE_PLAN` to this plan), SPEC-0007 §10 file cells and status `active`
-- Tests to write (RED): 7 cases, one per contract above, the tester names them; failure arms inside them as §10 says
-- Behavior added: none; every case fails for the missing behaviour, not for a fixture error
-- Gate: the seven cases fail; the rest of `tests/run.sh` stays green
+### Increment 2 — SPEC-0001 amendment for the installer's build
+- Spec contracts: none — spec text only: SPEC-0001's `IDENTICAL_RERUN_IS_INERT` gains an Except clause and its `SINGLE_WRITER` an And clause (census unchanged); their tests stay as they are
+- Files touched: `docs/specs/SPEC-0001-install-placement.md`: §2 in scope, one line: the source-index build the installer runs as its last step, owned by SPEC-0007 `INSTALL_RUNS_THE_BUILD`; `SINGLE_WRITER`: the cache under `.cypress/source-index/` is the placed tool's own atomic write, outside the census of the installer's writes, which is unchanged; `IDENTICAL_RERUN_IS_INERT`: Except the cache, which the build replaces with equal bytes when nothing moved (SPEC-0007 `BUILD_IS_DETERMINISTIC`); changelog line
+- Tests to write (RED): none — no test changes: `seed-lint`'s write-site census sees no new site (a command that runs a tool is none), and the placement suites install into non-Git targets, where the build writes nothing; increment 8's full gate proves both
+- Behavior added: none
+- Gate: `tests/run.sh` spec-lint and seed-lint steps green
+- Rollback path: revert the commit
+- Effort: low
+- Phase: prose
+- Depends on: none (waits for §12 question 9)
+
+### Increment 3 — RED for the 8.1.2 contracts
+- Spec contracts: SPEC-0007/SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS, SPEC-0007/BUILD_REPORTS_ITS_TIME_AND_COUNTS, SPEC-0007/BUILD_NAMES_REPO_VALUES_THAT_NAME_NOTHING, SPEC-0007/BUILD_NAMES_TESTS_OUTSIDE_THE_TEST_CLASS, SPEC-0007/BUILD_HINTS_EXCLUDE_FOR_NON_TEST_FILES, SPEC-0007/BUILD_RECORDS_NAME_THEIR_FIX, SPEC-0007/INSTALL_RUNS_THE_BUILD, SPEC-0007/GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT, SPEC-0007/GRAFT_REBUILDS_THE_CACHE (amended), SPEC-0007/SOURCE_INDEX_IS_PLACED (amended)
+- Files touched: `tests/test-source-index.sh` (the build, fix, skill and installer cases; X430's last two checks rewritten: the re-install's output holds `Cache: rebuilt (build forced)` and the next query reports `reused`), `tests/test-full-install.sh` (E15: the `.cypress/source-index` absence check struck, the config check kept), `tests/test-growth-audit.sh` (the report case and its `SOURCE_INDEX_REPORT_UNAVAILABLE` arm), `tests/run.sh` (`ACTIVE_PLAN` to this plan), SPEC-0007 §10 file cells and labels
+- Tests to write (RED): 8 cases, one per new contract above, the tester names them; failure arms inside them as §10 says (`INSTALL_BUILD_FAILED` in the installer case); X430 rewritten, E15 trimmed
+- Behavior added: none; every new case and X430 fail for the missing behaviour, not for a fixture error
+- Gate: the eight cases and X430 fail; E15 and the rest of `tests/run.sh` stay green
 - Rollback path: revert the RED commit
 - Effort: medium
 - Phase: RED
-- Depends on: none
+- Depends on: increment 2
 
-### Increment 3 — The build report
-- Spec contracts: SPEC-0007/BUILD_REPORTS_ITS_TIME_AND_COUNTS, SPEC-0007/BUILD_NAMES_REPO_VALUES_THAT_NAME_NOTHING, SPEC-0007/BUILD_NAMES_TESTS_OUTSIDE_THE_TEST_CLASS, SPEC-0007/BUILD_HINTS_EXCLUDE_FOR_NON_TEST_FILES
+### Increment 4 — The build report
+- Spec contracts: SPEC-0007/BUILD_REPORTS_ITS_TIME_AND_COUNTS, SPEC-0007/BUILD_NAMES_REPO_VALUES_THAT_NAME_NOTHING, SPEC-0007/BUILD_NAMES_TESTS_OUTSIDE_THE_TEST_CLASS, SPEC-0007/BUILD_HINTS_EXCLUDE_FOR_NON_TEST_FILES, SPEC-0007/BUILD_RECORDS_NAME_THEIR_FIX
 - Files touched: `tools/source-index.py`
-- Tests to write (RED): none here; increment 2 holds them
-- Behavior added: `build` prints `BUILD_TIME_LINE`, adds `repo-unresolved`, `no-test-declaration` and `no-test-files` to its `incomplete`, and adds `hints` (§6 "Build report"); the answer gains `seconds` and `hints`; the cache is unchanged
-- Gate: the four cases green; `tests/test-source-index.sh` whole green
+- Tests to write (RED): none here; increment 3 holds them
+- Behavior added: `build` prints `BUILD_TIME_LINE`, adds `repo-unresolved`, `no-test-declaration` and `no-test-files` to its `incomplete`, prints a `BUILD_FIX` line under each record, and adds `hints` (§6 "Build report"); the answer gains `seconds` and `hints`; the cache is unchanged
+- Gate: the five cases green; `tests/test-source-index.sh` whole green but for the increment-6 cases
 - Rollback path: revert the commit
 - Effort: medium
 - Phase: GREEN
-- Depends on: increment 2
+- Depends on: increment 3
 
-### Increment 4 — The seed skill
+### Increment 5 — The seed skill
 - Spec contracts: SPEC-0007/SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS
-- Files touched: `skills/source-index/SKILL.md` (new: node frontmatter with `id: skill.source-index`, `origin: seed`, `load_when` phrases that route `SKILL_ROUTE_TASKS` and their everyday wording, a `description` for host skills; a body in the sections of `templates/tool-page.template.md` written for any plant: invocation, outputs, when to use and when not, `docs/graph/source-index.json`, pitfalls, and the protocols that call it), `manifest.json` (`skills` entry)
-- Tests to write (RED): none here; increment 2 holds it
-- Behavior added: the tool is routed by topic in every plant and projected into each harness's skills
+- Files touched: `skills/source-index/SKILL.md` (new: node frontmatter with `id: skill.source-index`, `origin: seed`, `load_when` phrases that route `SKILL_ROUTE_TASKS` and their everyday wording, a `description` for host skills; a body in the sections of `templates/tool-page.template.md` written for any plant: invocation, outputs, when to use and when not, that install, graft and growth-audit run `build` and print its report, that a session reruns it after changing `TEST_GLOBS`, the config or a `repo:` value, `docs/graph/source-index.json`, pitfalls, and the protocols that call it), `manifest.json` (`skills` entry)
+- Tests to write (RED): none here; increment 3 holds it
+- Behavior added: the tool is routed by topic in every plant and projected into each harness's skills, at every install and graft
 - Gate: the skill case green; `graph-lint.py` and `agent-lint.py --lint` clean on a fresh install; `tests/graph-route-eval.sh` ratchets hold
 - Rollback path: revert the commit
 - Effort: medium-low
 - Phase: GREEN
-- Depends on: increment 2
+- Depends on: increment 3
 - Structure added: one seed skill node; its one responsibility is how a session uses the placed source index; the variation that justifies it is real now (four questions no seed node routes)
 
-### Increment 5 — The installer's next step and growth-audit's report
-- Spec contracts: SPEC-0007/INSTALL_NAMES_THE_FIRST_BUILD, SPEC-0007/GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT
-- Files touched: `install.sh` (the `FIRST_BUILD_STEP` lines before the closing banner, printed when the target holds no `.cypress/source-index/`), `tools/growth-audit.py` (the report after the verdicts; `GROWTH_REPORT_HEAD`, `GROWTH_REPORT_FAILED`, `GROWTH_REPORT_TIMEOUT`; `--json` `source_index_report`; nothing in `--plan` or `--agents`)
-- Tests to write (RED): none here; increment 2 holds them
-- Behavior added: the next step after an install; the report at every grow and graft lint
-- Gate: both cases green; `tests/test-full-install.sh`, `tests/test-growth-audit.sh` and `seed-lint` (install write sites unchanged: a log line is no write) green
+### Increment 6 — The installer's build and growth-audit's report
+- Spec contracts: SPEC-0007/INSTALL_RUNS_THE_BUILD, SPEC-0007/GRAFT_REBUILDS_THE_CACHE, SPEC-0007/SOURCE_INDEX_IS_PLACED, SPEC-0007/GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT
+- Files touched: `install.sh` (after `write_seed_stamp` and before the `NEXT STEP` notices: `INSTALL_BUILD_HEAD`, the placed `build` run from `$PROJECT_DIR` by `python3` with `INSTALL_BUILD_TIMEOUT` through Python's subprocess timeout, its lines indented in the `log` form, `INSTALL_BUILD_FAILED` on failure, the exit code untouched; the usage header names the step in one line), `manifest.json` (the `tools/source-index.py` description: "the installer runs its build as its last step and prints the report" in place of "the installer writes no cache"), `tools/growth-audit.py` (the report after the verdicts; `GROWTH_REPORT_HEAD`, `GROWTH_REPORT_FAILED`, `GROWTH_REPORT_TIMEOUT`; `--json` `source_index_report`; nothing in `--plan` or `--agents`)
+- Tests to write (RED): none here; increment 3 holds them
+- Behavior added: every install that places files builds the index and prints the report; the report again at every grow and graft lint
+- Gate: the installer, growth-audit, X430 and E15 cases green; `tests/test-full-install.sh`, `tests/test-install-placement.sh`, `tests/test-growth-audit.sh`, `tests/test-graft-tools.sh` and `seed-lint` (no new write site) green
 - Rollback path: revert the commit
 - Effort: medium-low
 - Phase: GREEN
-- Depends on: increment 2
+- Depends on: increment 3; its installer cases also need increment 4
 
-### Increment 6 — Protocol and template wiring
+### Increment 7 — Protocol, template and guide wiring
 - Spec contracts: none; doctrine text, proved by the lints that already run
-- Files touched: `protocols/graft.md` (Phase 6: correct each `repo:` value growth-audit's report names, one plant-relative path that exists or none; Phase 7 and the output format: a "Source index after the graft" section recording the report and what was done with each line, hints put to the owner as next steps); `protocols/grow.md` (the delivery records the report of its last growth-audit run); `protocols/canonize.md` (a `repo-unresolved` record from `anchors --moved` is corrected in the same close-out); `skills/toolcraft/SKILL.md` and the catalog template `tools/index.md` under `templates/docs/` (one sentence each: the seed's placed tools are described by seed skills and need no catalog row; a plant may still write its own card)
+- Files touched: `protocols/graft.md` ("The installer is the hand that applies it": the install ends with the source-index build, which writes only the self-ignored cache; Phase 6: correct each `repo:` value the report names, one plant-relative path that exists or none; Phase 7 and the output format: a "Source index after the graft" section recording the apply install's report and what was done with each line, hints and fixes put to the owner as next steps, read on the stage from `graft-run-logs/install.log` and `coverage.txt`); `protocols/grow.md` (Phase 2's `build --json` stays; the delivery records the report of its last growth-audit run); `protocols/canonize.md` (a `repo-unresolved` record from `anchors --moved` is corrected in the same close-out); `tools/graft-run.py` (docstring steps 3 and 6 name the report in `install.log` and `coverage.txt`; no code); `skills/toolcraft/SKILL.md` and the catalog template `tools/index.md` under `templates/docs/` (one sentence each: the seed's placed tools are described by seed skills and need no catalog row; a plant may still write its own card); `documentation/source-index.md` ("The installer never writes it" becomes: the installer runs `build` as its last step and prints the report; deleting the directory stays safe)
 - Tests to write (RED): none — doctrine text; proved by `seed-lint`, `graph-lint` on a fresh install and the route corpus
 - Behavior added: graft, grow and canonize act on the report
 - Gate: `tests/run.sh` green
 - Rollback path: revert the commit
 - Effort: low
 - Phase: prose
-- Depends on: increments 3, 4, 5
+- Depends on: increments 4, 5, 6
 
-### Increment 7 — Verify and one measurement
+### Increment 8 — Verify and one measurement
 - Spec contracts: every 8.1.2 contract
 - Files touched: SPEC-0007 §10 statuses and status `implemented`; this plan's §10
 - Tests to write (RED): none — verification
-- Behavior added: none; the full gate, then `build` on scratch copies of two plants (never the plants), its time and findings recorded in §10
+- Behavior added: none; the full gate, then an install into scratch copies of two plants (never the plants), the build time it prints and its findings recorded in §10, and the gate's wall time before and after the round
 - Gate: `tests/run.sh` whole green; the measurement recorded
 - Rollback path: none needed
 - Effort: low
 - Phase: prose
-- Depends on: increment 6
+- Depends on: increment 7
 
-No consolidation increment: the round adds seven cases to three existing suites, one per contract.
+No consolidation increment: the round adds eight cases to three existing suites, one per contract, and amends two.
 
 ## 10. Verification Plan
-Covered by the seed's standard gate, `tests/run.sh`. One addition: increment 7 runs `build` on scratch copies of two plants, a TypeScript plant and the plant with comma-list `repo:` values, and records the time, counts and findings here; it is a measurement, not a gate.
+Covered by the seed's standard gate, `tests/run.sh`. One addition: increment 8 runs `install.sh` into scratch copies of two plants, a TypeScript plant and the plant with comma-list `repo:` values, and records the build time the install prints, its counts and findings, and the gate's wall time before and after the round here; it is a measurement, not a gate.
 
 ## 11. Risks and Mitigations
 | Risk | Probability | Impact | Mitigation | Owner | Verification |
 |---:|---:|---:|---|---|---|
-| The skill's `load_when` also catches unrelated tasks and shifts the route corpus | 0.3 | 2 | the phrases name the four questions; `tests/graph-route-eval.sh` ratchets gate it | implementer | increment 4 gate |
-| The test-name hints fire on a whole fixture tree and read as noise | 0.5 | 1 | counts and five paths only; one `exclude` key, even `[]`, ends the hint | architect | increment 7 measurement |
-| growth-audit takes seconds longer on a large plant | 0.5 | 1 | `GROWTH_REPORT_TIMEOUT`; the build is the measured 0.7 to 3.7 s | implementer | increment 7 measurement |
-| The owner keeps the card shape (§12 question 1) | 0.3 | 3 | ADR-0030 lists the card design's extra contracts; the build report, installer and growth-audit increments stand either way | architect | the ruling |
+| The skill's `load_when` also catches unrelated tasks and shifts the route corpus | 0.3 | 2 | the phrases name the four questions; `tests/graph-route-eval.sh` ratchets gate it | implementer | increment 5 gate |
+| The test-name hints fire on a whole fixture tree and read as noise | 0.5 | 1 | counts and five paths only; one `exclude` key, even `[]`, ends the hint | architect | increment 8 measurement |
+| Every install spends the build's time; a large monorepo install waits up to the bound | 0.5 | 1 | measured 0.66 s to 3.19 s; `INSTALL_BUILD_TIMEOUT` 120 s and fail-open | implementer | increment 8 measurement |
+| A test that installs into a Git fixture and compares the tree, the backups or the output now meets the cache or the report | 0.4 | 2 | the placement suites install into non-Git targets (`plant_base`, `case_recover`); the cache is self-ignored and outside `placed_files`' backups; X430 and E15 are amended at RED; G2's gate runs the suites that install into Git fixtures (`test-graft-tools.sh`, `test-prompt-hooks.sh`, `test-tool-corpus.sh`) | tester | increment 6 gate |
+| An old `python3` on a plant host fails the build | 0.2 | 1 | `INSTALL_BUILD_FAILED` names the exit; the install completes | implementer | the failure arm |
+| The owner vetoes the skill (question 1) | 0.2 | 3 | ADR-0030 lists the card design's extra contracts; the build report, installer and growth-audit increments stand either way | architect | the ruling |
 
 ## 12. Open Questions
 | # | Question | Why it matters | Current assumption | How to resolve | Owner | Pinned by |
 |---:|---|---|---|---|---|---|
-| 1 | **do-not-guess.** Surface the tool through a seed skill instead of the approved card in `docs/graph/tools/` and a catalog row? | the router only follows Tier-2 nodes, so a card alone is never found; a seed card in `tools/` makes plants that recorded "no tools of our own" fail growth-audit | a seed skill `skill.source-index` (ADR-0030) | the owner's ruling | owner | SPEC-0007 SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS |
-| 2 | **do-not-guess.** Should the installer only name the first build, or run it? | running it writes the cache the installer never writes (ADR-0029) and adds seconds to every install; naming it relies on someone reading the line | name it; grow and graft run it through growth-audit | the owner's ruling | owner | SPEC-0007 INSTALL_NAMES_THE_FIRST_BUILD |
-| 3 | **do-not-guess.** May growth-audit run the source index on the plant (it writes the plant's `.cypress/source-index/` cache) and print the report as advice, never as a verdict? | the owner named growth-audit; a verdict would block a graft on a guess | yes, advice only, the seed's copy | the owner's ruling | owner | SPEC-0007 GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT |
+| 1 | **do-not-guess.** Surface the tool through a seed skill instead of the approved card in `docs/graph/tools/` and a catalog row? | the router only follows Tier-2 nodes, so a card alone is never found; a seed card in `tools/` makes plants that recorded "no tools of our own" fail growth-audit | yes, taken by the session from the owner's "ready to go" ruling; ADR-0030 stays `proposed` until ratified | the owner ratifies or vetoes ADR-0030 | owner | SPEC-0007 SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS |
+| 2 | Resolved 2026-10-07: the installer runs the build. The owner: "ACTUALLY BUILD IT. a user cannot be expected to know that it needs to do things if it executes a graft/install/growth. the plant needs to be ready to go from te get-go after executing the protocols" | — | — | resolved | owner | SPEC-0007 INSTALL_RUNS_THE_BUILD |
+| 3 | Resolved 2026-10-07: growth-audit runs the seed's `build` on the plant and prints the report as advice, never a verdict. The owner: "yes" | — | — | resolved | owner | SPEC-0007 GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT |
 | 4 | Settled, owner may veto: only the source index gets a seed skill now; `code-anchor.py`, `status-register.py`, `prose-lint.py` and the linters wait | scope | none now | veto | owner | — |
 | 5 | Settled, owner may veto: a test-file name list (`test_*.py`, `*.spec.*` and the rest of `TEST_NAME_PATTERNS`) is used only for hints | a name is a guess | hints only | veto | owner | SPEC-0007 BUILD_NAMES_TESTS_OUTSIDE_THE_TEST_CLASS |
-| 6 | Settled, owner may veto: the round ships as 8.1.2, as the owner set, though it adds a seed skill | version label only | 8.1.2 | veto | owner | — |
+| 6 | Settled, owner may veto: the round ships as 8.1.2, as the owner set, though it adds a seed skill and changes what an install does | version label only | 8.1.2 | veto | owner | — |
 | 7 | Settled, owner may veto: the seed-only user guides stay seed-only; the skill carries what a plant session needs | the guides describe the seed for its steward | unchanged | veto | owner | — |
+| 8 | **do-not-guess.** Ratify the "Amendment, 8.1.2" of the accepted ADR-0029: the installer runs `build`, so an install writes the cache through the tool's own atomic write; the decision itself (derived scratch, keyed, never committed) is unchanged | an accepted ADR's consequence changes; the owner ratified the original | amended in place with the owner's words, not superseded, because the decision stands | the owner's ratification | owner | SPEC-0007 INSTALL_RUNS_THE_BUILD |
+| 9 | **do-not-guess.** May SPEC-0001 gain a §2 pointer and an Except clause in `IDENTICAL_RERUN_IS_INERT` (the cache replaced with equal bytes), and an And clause in `SINGLE_WRITER` (the tool's write, outside the census)? | the installer's own spec must not claim a re-run rewrites nothing while the build replaces the cache; this round's writer brief named SPEC-0007 only | yes; increment 2, by an architect spawn, before RED | the owner's or session's go | owner | SPEC-0001 IDENTICAL_RERUN_IS_INERT |
+| 10 | Settled, owner may veto: every install that places files runs the build, not only the first; there is no flag to skip it | a re-install or graft can move the key; a skip flag is a second path | every install, no flag | veto | owner | SPEC-0007 INSTALL_RUNS_THE_BUILD |
+| 11 | Settled, owner may veto: `graft-run.py` gets no code change; the report is in its `install.log` and `coverage.txt`, Phase 7's apply prints it in the plant, and graft.md says where to read it | a second reader of growth-audit's output in a tool whose output is the gate table | docstring only | veto | owner | — |
 
 ## 13. Done Criteria
 - Every 8.1.2 row of SPEC-0007 §10 is green and `tests/run.sh` is green whole.
 - In a fresh install, the four `SKILL_ROUTE_TASKS` load `skill.source-index`.
-- The increment 7 measurement is recorded in §10.
-- The release procedure's one documentation pass has run (`CHANGELOG.md`, the skill count in `README.md` and the reference pages).
+- A fresh install into a Git work tree ends with the build's report and a cache a following query reuses; one into a non-Git directory ends with the `no-repository` fix; both exit 0.
+- The increment 8 measurement is recorded in §10.
+- The release procedure's one documentation pass has run (`CHANGELOG.md`, the skill count in `README.md` and the reference pages, `documentation/source-index.md`).
 
 ## 14. Recommended Next Step
-Put §12 questions 1 to 3 to the owner, then brief product (§3, §9), tester (§10), security and devils-advocate on SPEC-0007 "Surfacing (8.1.2)".
+Put §12 questions 1, 8 and 9 to the owner; on the go, spawn an architect for increment 2 (SPEC-0001), then brief product (§3, §9), tester (§10), security and devils-advocate on SPEC-0007 "Surfacing (8.1.2)".
 
 ## 15. Changelog
 - 2026-10-07: created by `architect-8.1.2` from the owner's request ("go do it. update graft and install/growth"); SPEC-0007 8.1.2 slice and ADR-0030 written; RED waits for §12 questions 1 to 3.
+- 2026-10-07: rewritten by `architect-8.1.2b` on the owner's rulings of questions 2 ("ACTUALLY BUILD IT") and 3 ("yes"): the installer runs the placed `build` as its last step on every install and graft apply, fail-open and bounded; `build` prints a fix under each record; question 1 taken as yes pending ADR-0030; questions 8 (ADR-0029 amendment) and 9 (SPEC-0001 amendment) added; increments renumbered 1 to 8, with the SPEC-0001 amendment as increment 2.
