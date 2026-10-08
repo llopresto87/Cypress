@@ -154,7 +154,15 @@ change of location or shape is a constant and a schema bump in one file.
 
 Ratified by the owner, 2026-10-07: "adr accepted". Two corrections made at ratification: the Status line no longer ties acceptance to the spec's signing, and the cost figures quote the tool's measurement (3.19 s on 4,320 files) in place of the pre-build estimate (3.8 s on 4,865 files).
 
-## Amendment, 8.1.2 (2026-10-07)
+## Amendment, 8.1.2 (2026-10-07), ratified
+
+Ratified by the owner, 2026-10-07: "1 ok 2 ok 3 go", item 2 of which is this
+amendment (question 8 of `docs/plans/grill-8.1.2-tool-surfacing.md` §12). It
+amends this accepted record in place, not by a superseding record, because
+the decision stands and one consequence changes. SPEC-0001 states the write
+against its own rules (`SINGLE_WRITER`, `IDENTICAL_RERUN_IS_INERT`, its
+8.1.2 entry in §12).
+
 
 The owner ruled on question 2 of `docs/plans/grill-8.1.2-tool-surfacing.md`
 §12: "ACTUALLY BUILD IT. a user cannot be expected to know that it needs to

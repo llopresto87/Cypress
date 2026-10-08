@@ -21,7 +21,7 @@ status_evidence: tests/test-source-index.sh, tests/test_graph_lint.py, tests/tes
 - **Design latitude:** balanced. The owner approved on 2026-10-07: "implement the plan so that it's integrated organically into the cypress seed and installed/grafted into the plants correctly." New structure is allowed where the change needs it (one shared helper module, one derived cache); no concept the plan did not name.
 - **Supersedes:** none
 - **Superseded by:** none
-- **Sign-offs:** 8.1.2 surfacing: architect [x] (2026-10-07, `architect-8.1.2`: §4 to §8 coherent with slices 1 and 2; `architect-8.1.2b`: rewritten on the owner's rulings, coherent again) · product [ ] · tester [ ] · security [ ]; the owner ruled plan §12 questions 2 and 3 on 2026-10-07; question 1 is taken as yes until the owner ratifies or vetoes ADR-0030. Slices 1 and 2: product [x] (2026-10-07: slice 1 signed, §3 and §9 reflect the owner's outcome; 2026-10-07, `product-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling; 2026-10-07, `product-D`: the owner's option D, §3 states the `repo:` claim, §9 AC-22 holds REPO_CLAIM and the missing helper) · architect [x] (2026-10-07, `architect-da`: §4 to §8 coherent after the devils-advocate verdicts; the floor, the helper interface, the interpreter in the key and the TS/JS line join applied; 2026-10-07, `architect-slice2`: the slice-2 §4 to §8 coherent with slice 1; 2026-10-07, `architect-slice2-fix`: the slice-2 review findings applied, `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` left pending the owner's `repo:` ruling, grill §12 question 6; 2026-10-07, `architect-D`: that contract, `ANCHORS_NAME_CITING_PAGES_OR_UNCITED`, §6 "Helper" and §7 rewritten on the owner's option D, §4 to §8 coherent) · tester [x] (2026-10-07: slice 1 signed; `tester-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling; 2026-10-07, `tester-final`: slice 2 and option D, every §10 row green at 68c970e) · security [x] (2026-10-07, `security-slice2-sign`: slice 2 signed; S1 to S8 and P1 to P10 applied in §5, §6, §7, §10 and the plan; accepted deviations: the `/%P` history marker that also skips a parentless commit, the depth-2 `file://` shallow clone, and a missing helper beside graph-lint degrading tier 2 with the `inference_skipped` notice instead of failing the route; REPO_CLAIM pending owner ruling; 2026-10-07, `security-D`: option D's stat path signed; no finding, no block; apply spec lines D1 to D3 and arms D4 to D6 on X459. Slice 1 signed by `security-s5s7`: §5 Security requirements and seven §7 abuse cases added; four §6 constants, `FILE_MAX_BYTES`, `DIR_LINK_MAX`, `EXTENDS_MAX` and `CACHE_MAX_BYTES`, and the `outside-repository` `base` value are left to the architect)
+- **Sign-offs:** 8.1.2 surfacing: architect [x] (2026-10-07, `architect-8.1.2`: §4 to §8 coherent with slices 1 and 2; `architect-8.1.2b`: rewritten on the owner's rulings, coherent again) · product [x] (2026-10-07, `product-8.1.2`: §3 "Surfacing (8.1.2)" states the owner's ready-after-the-protocol outcome; §9 AC-23 to AC-29 map every 8.1.2 contract; AC-9 names the install's build) · tester [ ] · security [ ]; the owner ruled plan §12 questions 2 and 3 on 2026-10-07; question 1 is taken as yes until the owner ratifies or vetoes ADR-0030. Slices 1 and 2: product [x] (2026-10-07: slice 1 signed, §3 and §9 reflect the owner's outcome; 2026-10-07, `product-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling; 2026-10-07, `product-D`: the owner's option D, §3 states the `repo:` claim, §9 AC-22 holds REPO_CLAIM and the missing helper) · architect [x] (2026-10-07, `architect-da`: §4 to §8 coherent after the devils-advocate verdicts; the floor, the helper interface, the interpreter in the key and the TS/JS line join applied; 2026-10-07, `architect-slice2`: the slice-2 §4 to §8 coherent with slice 1; 2026-10-07, `architect-slice2-fix`: the slice-2 review findings applied, `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` left pending the owner's `repo:` ruling, grill §12 question 6; 2026-10-07, `architect-D`: that contract, `ANCHORS_NAME_CITING_PAGES_OR_UNCITED`, §6 "Helper" and §7 rewritten on the owner's option D, §4 to §8 coherent) · tester [x] (2026-10-07: slice 1 signed; `tester-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling; 2026-10-07, `tester-final`: slice 2 and option D, every §10 row green at 68c970e) · security [x] (2026-10-07, `security-slice2-sign`: slice 2 signed; S1 to S8 and P1 to P10 applied in §5, §6, §7, §10 and the plan; accepted deviations: the `/%P` history marker that also skips a parentless commit, the depth-2 `file://` shallow clone, and a missing helper beside graph-lint degrading tier 2 with the `inference_skipped` notice instead of failing the route; REPO_CLAIM pending owner ruling; 2026-10-07, `security-D`: option D's stat path signed; no finding, no block; apply spec lines D1 to D3 and arms D4 to D6 on X459. Slice 1 signed by `security-s5s7`: §5 Security requirements and seven §7 abuse cases added; four §6 constants, `FILE_MAX_BYTES`, `DIR_LINK_MAX`, `EXTENDS_MAX` and `CACHE_MAX_BYTES`, and the `outside-repository` `base` value are left to the architect)
 
 ## 1. Summary
 
@@ -106,8 +106,9 @@ sets `exclude` (out of the test class only), `always_run`, and
 `global_inputs`. A change to a global input, such as `package.json` or
 `tsconfig.json`, may affect every file, so every query is incomplete.
 
-**Rebuild the index.** The user builds nothing first. Any query builds
-the cache under `.cypress/source-index/` when it is missing, corrupt or
+**Rebuild the index.** The user builds nothing first. Since 8.1.2 the
+install, and so every graft, builds the cache as its last step; any query
+also builds it under `.cypress/source-index/` when it is missing, corrupt or
 stale, and says so. It is rebuilt whenever its key changes: a commit, an
 uncommitted code edit, a config or `TEST_GLOBS` edit, or a graft that
 changes the tool. `build` forces a rebuild; deleting the cache is safe.
@@ -188,6 +189,61 @@ both tools agree on which file a page cites. graph-lint's messages and
 verdicts do not change. If the helper is missing beside `graph-lint.py`,
 the route does not fail: it skips the inferred tier and the session sees
 the notice `inference skipped: HelperUnavailable`.
+
+### Surfacing (8.1.2)
+
+The owner's outcome (2026-10-07): "a user cannot be expected to know that
+it needs to do things if it executes a graft/install/growth. the plant
+needs to be ready to go from te get-go after executing the protocols." So
+the person who runs install, grow or graft learns nothing in advance and
+types no extra command. When the protocol ends, the tool is placed, found
+by topic, built, and every setup item still missing is named with its exact
+fix.
+
+**A session finds the tool by its question.** In any plant, a session that
+asks what depends on a file, which tests a change reaches, which graph pages
+cite a file, or where a name is defined is routed to the seed skill
+`skill.source-index`, which tells it which query to run. The session needs
+no plant-written card and no prior knowledge of the tool. A plant installed
+before 8.1.2 gets the skill at its next install or graft. A card or catalog
+row the plant wrote itself in `docs/graph/tools/` stays as the plant wrote
+it.
+
+**Install and graft end with the build report.** Every install that places
+files runs the placed `build` as its last step, after every file and the
+stamp, and prints its report under one heading line, so a graft (which
+applies with the installer) prints it too. The person reads it where the
+install ends, before the usual `NEXT STEP` notices and the closing banner.
+The report says how long the build took and what it counted. In a Git work
+tree the cache is then built, and the first query reuses it.
+
+**Every finding comes with its fix.** Each problem the report names, such as
+no repository, no Git, a `repo:` value that names nothing, no `TEST_GLOBS`,
+a `TEST_GLOBS` that matches no file, or a refused config, is followed at
+once by a `fix:` line that states the exact edit or command. Each hint about
+the test class (test-named files outside `TEST_GLOBS`, non-test files inside
+it) names the files, up to five, and the file the owner edits. A hint is
+advice the owner rules on. It never makes an answer incomplete. Nothing the
+tool needs is left unnamed: if the report shows no finding, the plant is
+ready. The tool never edits a `repo:` value, `TEST_GLOBS` or the config
+itself, because each needs the owner's choice. The graft and grow protocols
+tell their authors to correct what the report names and to record the
+report.
+
+**Growth-audit repeats the report as advice.** After its verdicts at every
+grow and graft, `growth-audit.py` prints the same report under its own
+heading. The heading says it is advice, not a verdict. A report finding
+never changes a verdict or the exit code, so a hint can never block a
+graft.
+
+**A failed build never fails the protocol.** If the build cannot start,
+exits non-zero or runs past its time limit, the installer prints one line
+that names why (`exit <code>`, `timeout`, or the error), says the install is
+complete, and gives the command to rerun. Then it ends as usual, with the
+exit code it had before the build. Growth-audit does the same with its own
+line. The report is plain text, readable in any terminal and log, with no
+colour and no control characters (OUTPUT_CARRIES_NO_RAW_CONTROL), so a
+screen reader or a saved `install.log` gets all of it.
 
 ## 4. Functional contracts
 
@@ -2730,7 +2786,7 @@ without further clarification.
   `anchors` "review by hand"); `--depth 5` completes a chain that
   `--depth 3` cuts — maps to WALK_INCOMPLETE_NAMES_REASON_AND_ACTION,
   PLANT_CONFIG_REPLACES_EACH_DEFAULT_KEY
-- [ ] AC-9: The first query writes `.cypress/source-index/index.json` and
+- [ ] AC-9: The first build, the install's own or a query's, writes `.cypress/source-index/index.json` and
   an inner `.gitignore` of exactly `*`, and `git status --porcelain` shows
   nothing there; a second query with no change reuses the cache byte for
   byte; a commit, an uncommitted code edit, a config edit, a `TEST_GLOBS`
@@ -2838,6 +2894,78 @@ without further clarification.
   answers, tier 2 claims nothing, and `--plan` prints
   `inference skipped: HelperUnavailable` — maps to
   REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS
+
+The 8.1.2 criteria (surfacing) state the owner's outcome: after install,
+grow or graft the plant is ready, and the person needs to know nothing the
+output does not tell them.
+
+- [ ] AC-23: After a fresh `install.sh claude-code` into a temp target, each
+  of the four `SKILL_ROUTE_TASKS` tasks (one per query: `impact`,
+  `affected-tests`, `anchors`, `symbols`) routed by `graph-lint.py
+  --plan-json` from the target loads `skill.source-index`; the placed
+  `docs/graph/skills/source-index.md` is byte-identical to the seed's
+  `skills/source-index/SKILL.md` and `.claude/skills/source-index/SKILL.md`
+  exists; a re-install over a target from which both were removed places
+  both again; a re-install over a plant-written
+  `docs/graph/tools/source-index.md` and its row in `docs/graph/tools/index.md`
+  leaves both byte-identical, with no backup beside either — maps to
+  SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS
+- [ ] AC-24: An install into a Git work tree holding `src/a.py` prints, after
+  the stamp line and before the `NEXT STEP` notices and the closing banner,
+  `INSTALL_BUILD_HEAD` and then every line the placed `build` prints from the
+  target, each indented two spaces in the installer's log form, among them
+  `Cache: built` and the `BUILD_TIME_LINE`; nothing of the installer's own
+  output comes between the report and the notices; the install exits 0,
+  writes no `docs/graph/source-index.json`, and a following `impact src/a.py`
+  reports the cache `reused`. A re-install over a plant whose cache an older
+  tool built shows `Cache: rebuilt (build forced)`, so a graft's apply leaves
+  the cache current. `install.sh --check`, `--expertise propose` and a refused
+  run print no `INSTALL_BUILD_HEAD` and run no build — maps to
+  INSTALL_RUNS_THE_BUILD, GRAFT_REBUILDS_THE_CACHE, SOURCE_INDEX_IS_PLACED
+- [ ] AC-25: A failed build never fails the install: with a seed copy whose
+  `tools/source-index.py` exits 3, the install prints `INSTALL_BUILD_FAILED`
+  naming `exit 3` and the rerun command in place of the report, then its
+  notices and closing banner, and exits 0; over a fresh non-Git directory
+  the report holds the `no-repository` record and its fix line, nothing is
+  written under `.cypress/source-index/`, and the install exits 0 — maps to
+  INSTALL_RUNS_THE_BUILD (failure INSTALL_BUILD_FAILED)
+- [ ] AC-26: Every finding in the `build` text view carries its fix: each
+  `incomplete` record line (in turn `no-repository`, `no-test-declaration`,
+  `config-refused`, and `repo-unresolved` for `repo: old/lib` and for the
+  comma list `repo: src/a.py, src/b.py`) is followed on the next line by
+  `  fix: ` and that reason's `BUILD_FIX` text, every reason a `build` can
+  give has a `BUILD_FIX` entry, and the view ends with the `build`
+  `ACTION_LINE`; `repo: src` over an existing folder gives no record; the
+  build exits 0 and still writes the cache; a query over the same plant
+  prints no fix line, and `build --json` holds no fix text — maps to
+  BUILD_RECORDS_NAME_THEIR_FIX, BUILD_NAMES_REPO_VALUES_THAT_NAME_NOTHING
+- [ ] AC-27: The `build` text view prints the cache line, the count line,
+  then `BUILD_TIME_LINE`, which is its last line when there is no record
+  and no hint; `build --json` holds `seconds`, a number >= 0; two builds of
+  the same plant still write byte-identical caches — maps to
+  BUILD_REPORTS_ITS_TIME_AND_COUNTS
+- [ ] AC-28: The test-class hints name the files and the file to edit, and
+  never make an answer incomplete: two test-named files outside a declared
+  `TEST_GLOBS` give one `tests-outside-class` hint, count 2, subject
+  `docs/graph/spec-lint.py`, its `HINT_LINE` after the time line and no
+  `ACTION_LINE`; a test-named file the config's `exclude` lists is not
+  counted; with no `docs/graph/source-index.json`, two non-test files inside
+  the test class give one `class-holds-non-tests` hint, count 2, subject
+  `docs/graph/source-index.json`; an `exclude` key, even `[]`, ends that
+  hint; a refused config gives `config-refused` and no such hint; no hint
+  changes the exit code — maps to BUILD_NAMES_TESTS_OUTSIDE_THE_TEST_CLASS,
+  BUILD_HINTS_EXCLUDE_FOR_NON_TEST_FILES
+- [ ] AC-29: `growth-audit.py <plant> <seed>` (the lint) prints, after its
+  verdicts, `GROWTH_REPORT_HEAD` (which says "advice, not a verdict") and
+  then every line the seed's `tools/source-index.py build` prints from the
+  plant root, indented two spaces, a `repo: old/lib` node's
+  `repo-unresolved` record and fix line among them; its exit code and its
+  `VERDICTS` equal those of the same run with that node removed; `--json`
+  carries the lines in `source_index_report`; `--plan` and `--agents` run no
+  build; a seed copy whose `tools/source-index.py` exits 3 gives
+  `GROWTH_REPORT_FAILED` naming `exit 3` and the same exit code — maps to
+  GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT (failure
+  SOURCE_INDEX_REPORT_UNAVAILABLE)
 
 Acceptance criteria are checked off when the increment that
 implements them passes its gates.

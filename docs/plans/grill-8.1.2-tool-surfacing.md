@@ -6,11 +6,11 @@
 - Date: 2026-10-07
 - Owner: the steward; the orchestrating session plans, briefs and commits
 - Tier: T3. Protocol: `protocol.specify` (SPEC-0007 grows by an 8.1.2 slice), then `protocol.grill`
-- Current phase: specified by `architect-8.1.2`, rewritten on the owner's rulings of questions 2 and 3 by `architect-8.1.2b`; waiting for the owner on §12 questions 1, 8 and 9 (ADR-0030, the ADR-0029 amendment, the SPEC-0001 amendment), then the SPEC-0001 amendment (increment 2), product §3 and §9, tester §10, security and devils-advocate, then RED
+- Current phase: specified by `architect-8.1.2`, rewritten on the owner's rulings of questions 2 and 3 by `architect-8.1.2b`; the owner ruled §12 questions 1, 8 and 9 on 2026-10-07 ("1 ok 2 ok 3 go"), and `architect-8.1.2c` wrote the SPEC-0001 amendment (increment 2); next product §3 and §9, tester §10, security and devils-advocate, then RED
 - Related files: `skills/source-index/SKILL.md` (new), `manifest.json`, `tools/source-index.py`, `tools/growth-audit.py`, `install.sh`, `tools/graft-run.py` (docstring only), `protocols/graft.md`, `protocols/grow.md`, `protocols/canonize.md`, `skills/toolcraft/SKILL.md`, the catalog template `tools/index.md` under `templates/docs/`, `documentation/source-index.md`, `docs/specs/SPEC-0001-install-placement.md`, `tests/test-source-index.sh`, `tests/test-full-install.sh`, `tests/test-growth-audit.sh`, `tests/run.sh`
 - Related documentation: `docs/plans/grill-8.1.0-source-index.md` (the round that built the tool; its §10 measurements); the steward plant's card `docs/graph/tools/source-index.md` (plant-written, read as evidence only)
-- Related ADRs: [ADR-0030](../decisions/adr-0030-a-seed-tool-is-surfaced-by-a-seed-skill.md) (proposed: a placed seed tool is surfaced by a seed skill node); [ADR-0029](../decisions/adr-0029-source-index-is-derived-scratch.md) (accepted; its "Amendment, 8.1.2" records that the installer runs the build, waiting for the owner's ratification); [ADR-0021](../decisions/adr-0021-seed-only-procedures-stay-home.md) (the manifest names what the installer places)
-- Related specs: [SPEC-0007](../specs/SPEC-0007-source-index.md) §4 "Surfacing (8.1.2)" (every contract of this plan); [SPEC-0001](../specs/SPEC-0001-install-placement.md) (`SINGLE_WRITER`, `BACKUP_BEFORE_REPLACE` and the seed-skill placement the new skill rides on, unchanged; a pointer in §2 and an Except clause in `IDENTICAL_RERUN_IS_INERT` for the build, increment 2)
+- Related ADRs: [ADR-0030](../decisions/adr-0030-a-seed-tool-is-surfaced-by-a-seed-skill.md) (accepted 2026-10-07: a placed seed tool is surfaced by a seed skill node); [ADR-0029](../decisions/adr-0029-source-index-is-derived-scratch.md) (accepted; its "Amendment, 8.1.2", ratified 2026-10-07, records that the installer runs the build); [ADR-0021](../decisions/adr-0021-seed-only-procedures-stay-home.md) (the manifest names what the installer places)
+- Related specs: [SPEC-0007](../specs/SPEC-0007-source-index.md) §4 "Surfacing (8.1.2)" (every contract of this plan); [SPEC-0001](../specs/SPEC-0001-install-placement.md) (`BACKUP_BEFORE_REPLACE` and the seed-skill placement the new skill rides on, unchanged; increment 2 added §2's line for the build, an And clause in `SINGLE_WRITER` and an Except clause in `IDENTICAL_RERUN_IS_INERT`)
 - Related libraries: none (stdlib Python and Git)
 - Baseline: seed `main` at `e3b22be` (v8.1.1)
 
@@ -82,6 +82,7 @@ no external dependency — every increment uses stdlib Python and Git, which the
 | The installer runs the placed copy; growth-audit runs the seed's copy | after an install the two are byte-identical; growth-audit can be run against a plant whose placed copy is older (before an apply), and the seed copy runs no plant code | SPEC-0007 §6 "Build report" | reversible | — | 2026-10-07 |
 | No plant, no Git, no code: the build still runs and its report names `no-repository`, `git-unavailable` or `no-test-files` with the fix; it writes nothing where there is no repository | one rule for every target; the fix is the step a person would otherwise have to know | SPEC-0007 `BUILD_RECORDS_NAME_THEIR_FIX`, §7 `NO_GOVERNED_REPOSITORY` | reversible | — | 2026-10-07 |
 | Growth-audit prints the build report after its verdicts, never a verdict, running the seed's copy (question 3, the owner: "yes") | the owner named growth-audit; a report keeps the coverage gate's meaning | SPEC-0007 `GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT` | reversible | — | 2026-10-07 |
+| The owner's rulings of §12 questions 1, 8 and 9: ADR-0030 accepted, the ADR-0029 amendment ratified, go for the SPEC-0001 amendment | the owner, 2026-10-07: "1 ok 2 ok 3 go"; the SPEC-0001 amendment keeps its contracts true about the build's cache without a test change (increment 2) | ADR-0030 and ADR-0029 Ratification sections; SPEC-0001 §12 entry of 2026-10-07 | reversible | [ADR-0030](../decisions/adr-0030-a-seed-tool-is-surfaced-by-a-seed-skill.md), [ADR-0029](../decisions/adr-0029-source-index-is-derived-scratch.md) | 2026-10-07 |
 | `graft-run.py` gets no code change | its step 3 runs the installer (so the build, kept in `install.log`) and its step 6 runs growth-audit's lint (the report, kept in `coverage.txt`); graft's Phase 7 apply prints the report in the plant itself; graft.md tells the steward where to read it | `tools/graft-run.py` docstring steps 3 and 6; `protocols/graft.md` Phase 7 | reversible | — | 2026-10-07 |
 | Test-name hints read a closed list of name patterns and never gate | a name is a guess about a project's habits; the owner rules on each hint | SPEC-0007 §6 `TEST_NAME_PATTERNS` | reversible | — | 2026-10-07 |
 | A plant's `repo:` values, `TEST_GLOBS` and config are corrected by people (graft Phase 6, grow's plant facts, canonize), never by a tool; the report names each with its fix | each needs a choice only the owner or an author with understanding can make | SPEC-0007 §6 `BUILD_FIX`, §7 `REPO_VALUE_UNRESOLVED` recovery | reversible | — | 2026-10-07 |
@@ -128,7 +129,7 @@ flowchart LR
 
 ## 9. Implementation Plan
 
-Increments are inline; numbers are dependency order. Increment 1 carries the slice-1 and slice-2 contracts this plan leaves as they are. The SPEC-0001 amendment (increment 2) and RED (increment 3) wait for the owner on §12 questions 1, 8 and 9.
+Increments are inline; numbers are dependency order. Increment 1 carries the slice-1 and slice-2 contracts this plan leaves as they are. The owner ruled §12 questions 1, 8 and 9 on 2026-10-07; increment 2 is written, and RED (increment 3) waits for the reviews §14 names.
 
 | Spawn | Increments | Worker | Batch rule (`delegation.effort-scale`) |
 |---|---|---|---|
@@ -161,8 +162,8 @@ G1 and G2 may run side by side after R1: their files are disjoint. Increment 6's
 - Gate: `tests/run.sh` spec-lint and seed-lint steps green
 - Rollback path: revert the commit
 - Effort: low
-- Phase: prose
-- Depends on: none (waits for §12 question 9)
+- Phase: prose, written 2026-10-07 by `architect-8.1.2c`
+- Depends on: none (§12 question 9, ruled 2026-10-07)
 
 ### Increment 3 — RED for the 8.1.2 contracts
 - Spec contracts: SPEC-0007/SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS, SPEC-0007/BUILD_REPORTS_ITS_TIME_AND_COUNTS, SPEC-0007/BUILD_NAMES_REPO_VALUES_THAT_NAME_NOTHING, SPEC-0007/BUILD_NAMES_TESTS_OUTSIDE_THE_TEST_CLASS, SPEC-0007/BUILD_HINTS_EXCLUDE_FOR_NON_TEST_FILES, SPEC-0007/BUILD_RECORDS_NAME_THEIR_FIX, SPEC-0007/INSTALL_RUNS_THE_BUILD, SPEC-0007/GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT, SPEC-0007/GRAFT_REBUILDS_THE_CACHE (amended), SPEC-0007/SOURCE_INDEX_IS_PLACED (amended)
@@ -249,15 +250,15 @@ Covered by the seed's standard gate, `tests/run.sh`. One addition: increment 8 r
 ## 12. Open Questions
 | # | Question | Why it matters | Current assumption | How to resolve | Owner | Pinned by |
 |---:|---|---|---|---|---|---|
-| 1 | **do-not-guess.** Surface the tool through a seed skill instead of the approved card in `docs/graph/tools/` and a catalog row? | the router only follows Tier-2 nodes, so a card alone is never found; a seed card in `tools/` makes plants that recorded "no tools of our own" fail growth-audit | yes, taken by the session from the owner's "ready to go" ruling; ADR-0030 stays `proposed` until ratified | the owner ratifies or vetoes ADR-0030 | owner | SPEC-0007 SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS |
+| 1 | Resolved 2026-10-07: surface the tool through a seed skill; ADR-0030 accepted. The owner: "1 ok 2 ok 3 go" (item 1) | — | — | resolved | owner | SPEC-0007 SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS |
 | 2 | Resolved 2026-10-07: the installer runs the build. The owner: "ACTUALLY BUILD IT. a user cannot be expected to know that it needs to do things if it executes a graft/install/growth. the plant needs to be ready to go from te get-go after executing the protocols" | — | — | resolved | owner | SPEC-0007 INSTALL_RUNS_THE_BUILD |
 | 3 | Resolved 2026-10-07: growth-audit runs the seed's `build` on the plant and prints the report as advice, never a verdict. The owner: "yes" | — | — | resolved | owner | SPEC-0007 GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT |
 | 4 | Settled, owner may veto: only the source index gets a seed skill now; `code-anchor.py`, `status-register.py`, `prose-lint.py` and the linters wait | scope | none now | veto | owner | — |
 | 5 | Settled, owner may veto: a test-file name list (`test_*.py`, `*.spec.*` and the rest of `TEST_NAME_PATTERNS`) is used only for hints | a name is a guess | hints only | veto | owner | SPEC-0007 BUILD_NAMES_TESTS_OUTSIDE_THE_TEST_CLASS |
 | 6 | Settled, owner may veto: the round ships as 8.1.2, as the owner set, though it adds a seed skill and changes what an install does | version label only | 8.1.2 | veto | owner | — |
 | 7 | Settled, owner may veto: the seed-only user guides stay seed-only; the skill carries what a plant session needs | the guides describe the seed for its steward | unchanged | veto | owner | — |
-| 8 | **do-not-guess.** Ratify the "Amendment, 8.1.2" of the accepted ADR-0029: the installer runs `build`, so an install writes the cache through the tool's own atomic write; the decision itself (derived scratch, keyed, never committed) is unchanged | an accepted ADR's consequence changes; the owner ratified the original | amended in place with the owner's words, not superseded, because the decision stands | the owner's ratification | owner | SPEC-0007 INSTALL_RUNS_THE_BUILD |
-| 9 | **do-not-guess.** May SPEC-0001 gain a §2 pointer and an Except clause in `IDENTICAL_RERUN_IS_INERT` (the cache replaced with equal bytes), and an And clause in `SINGLE_WRITER` (the tool's write, outside the census)? | the installer's own spec must not claim a re-run rewrites nothing while the build replaces the cache; this round's writer brief named SPEC-0007 only | yes; increment 2, by an architect spawn, before RED | the owner's or session's go | owner | SPEC-0001 IDENTICAL_RERUN_IS_INERT |
+| 8 | Resolved 2026-10-07: the ADR-0029 "Amendment, 8.1.2" is ratified, in place. The owner: "1 ok 2 ok 3 go" (item 2) | — | — | resolved | owner | SPEC-0007 INSTALL_RUNS_THE_BUILD |
+| 9 | Resolved 2026-10-07: SPEC-0001 gains §2's line for the build, an And clause in `SINGLE_WRITER` and an Except clause in `IDENTICAL_RERUN_IS_INERT`, written as increment 2. The owner: "1 ok 2 ok 3 go" (item 3) | — | — | resolved | owner | SPEC-0001 IDENTICAL_RERUN_IS_INERT |
 | 10 | Settled, owner may veto: every install that places files runs the build, not only the first; there is no flag to skip it | a re-install or graft can move the key; a skip flag is a second path | every install, no flag | veto | owner | SPEC-0007 INSTALL_RUNS_THE_BUILD |
 | 11 | Settled, owner may veto: `graft-run.py` gets no code change; the report is in its `install.log` and `coverage.txt`, Phase 7's apply prints it in the plant, and graft.md says where to read it | a second reader of growth-audit's output in a tool whose output is the gate table | docstring only | veto | owner | — |
 
@@ -269,8 +270,9 @@ Covered by the seed's standard gate, `tests/run.sh`. One addition: increment 8 r
 - The release procedure's one documentation pass has run (`CHANGELOG.md`, the skill count in `README.md` and the reference pages, `documentation/source-index.md`).
 
 ## 14. Recommended Next Step
-Put §12 questions 1, 8 and 9 to the owner; on the go, spawn an architect for increment 2 (SPEC-0001), then brief product (§3, §9), tester (§10), security and devils-advocate on SPEC-0007 "Surfacing (8.1.2)".
+Brief product (SPEC-0007 §3 and §9, and SPEC-0001 §3 and AC-3, whose "does nothing and says nothing" and "zero churn" now meet the build's report and cache), tester (SPEC-0007 §10; SPEC-0001's 2026-10-07 text, which changes no row), security and devils-advocate on SPEC-0007 "Surfacing (8.1.2)"; then RED (increment 3).
 
 ## 15. Changelog
 - 2026-10-07: created by `architect-8.1.2` from the owner's request ("go do it. update graft and install/growth"); SPEC-0007 8.1.2 slice and ADR-0030 written; RED waits for §12 questions 1 to 3.
 - 2026-10-07: rewritten by `architect-8.1.2b` on the owner's rulings of questions 2 ("ACTUALLY BUILD IT") and 3 ("yes"): the installer runs the placed `build` as its last step on every install and graft apply, fail-open and bounded; `build` prints a fix under each record; question 1 taken as yes pending ADR-0030; questions 8 (ADR-0029 amendment) and 9 (SPEC-0001 amendment) added; increments renumbered 1 to 8, with the SPEC-0001 amendment as increment 2.
+- 2026-10-07: the owner ruled §12 questions 1, 8 and 9 ("1 ok 2 ok 3 go"): ADR-0030 accepted, the ADR-0029 amendment ratified, go for SPEC-0001; `architect-8.1.2c` wrote increment 2 (SPEC-0001 §2, `SINGLE_WRITER` And, `IDENTICAL_RERUN_IS_INERT` Except, §12 entry; no §10 row changed), set both ADRs' records and the index, and added the §6 row.
