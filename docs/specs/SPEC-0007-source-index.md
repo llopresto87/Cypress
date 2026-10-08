@@ -13,7 +13,7 @@ status_evidence: tests/test-source-index.sh, tests/test_graph_lint.py, tests/tes
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-10-07
-- **Last reviewed:** 2026-10-07 (review `reviewer-spec`, amended by `architect-amend`; joint-pass step-3 returns applied by `architect-fix`; devils-advocate verdicts applied by `architect-da`; the load by file path made `certain` by `architect-q5`; the code-review fixes stated in §6 and §7 by `architect-review-fixes`; the slice-1 final decisions after the measurement, path joins, the floor's depth and the unmapped specifier, by `architect-final`; slice 2, §1, §2 and §4 to §8, by `architect-slice2`; the slice-2 tester, security and devils-advocate findings by `architect-slice2-fix`; the slice-2 code review `reviewer-slice2` (fixes 5 and 6) and the measurement-2 decisions M2-1, M2-3 and M2-6 by `architect-slice2-m2`; the owner's `repo:` ruling, option D, by `architect-D`; the option-D stat path's security lines D1 to D3 of `security-D` by `architect-D2`; every §10 row green at 68c970e by `tester-final`; the 8.1.2 surfacing contracts, §2, §4, §6, §7, §8 and §10, by `architect-8.1.2`, with §3 and §9 left to product; the owner's rulings on plan §12 questions 2 and 3, the installer and graft running the build and growth-audit printing its report, by `architect-8.1.2b`; the `security-8.1.2` lines S1 to S4 and arms A1 to A4 and the `devils-advocate-8.1.2` changes that need no owner ruling, by `architect-8.1.2d`, with the three owner questions left pending, §11)
+- **Last reviewed:** 2026-10-07 (review `reviewer-spec`, amended by `architect-amend`; joint-pass step-3 returns applied by `architect-fix`; devils-advocate verdicts applied by `architect-da`; the load by file path made `certain` by `architect-q5`; the code-review fixes stated in §6 and §7 by `architect-review-fixes`; the slice-1 final decisions after the measurement, path joins, the floor's depth and the unmapped specifier, by `architect-final`; slice 2, §1, §2 and §4 to §8, by `architect-slice2`; the slice-2 tester, security and devils-advocate findings by `architect-slice2-fix`; the slice-2 code review `reviewer-slice2` (fixes 5 and 6) and the measurement-2 decisions M2-1, M2-3 and M2-6 by `architect-slice2-m2`; the owner's `repo:` ruling, option D, by `architect-D`; the option-D stat path's security lines D1 to D3 of `security-D` by `architect-D2`; every §10 row green at 68c970e by `tester-final`; the 8.1.2 surfacing contracts, §2, §4, §6, §7, §8 and §10, by `architect-8.1.2`, with §3 and §9 left to product; the owner's rulings on plan §12 questions 2 and 3, the installer and graft running the build and growth-audit printing its report, by `architect-8.1.2b`; the `security-8.1.2` lines S1 to S4 and arms A1 to A4 and the `devils-advocate-8.1.2` changes that need no owner ruling, by `architect-8.1.2d`, with the three owner questions left pending, §11; the owner's rulings of plan §12 questions 12 to 14, the kernel line and the cache bound, by `architect-8.1.2e`)
 - **Related grill section:** docs/plans/grill-8.1.2-tool-surfacing.md (the 8.1.2 surfacing contracts); docs/plans/grill-8.1.0-source-index.md §6 (the owner's rulings of 2026-10-07: one walk with three link kinds; the helper's scope; test roots and plant config; graph-lint keeps its tier-2 rule in slice 1; "slice 2 ok", with the slice-2 rows)
 - **Related ADRs:** adr-0029-source-index-is-derived-scratch (accepted): the index is derived scratch, self-ignored, rebuilt on any key change, never committed and never canonical; adr-0029 amended for 8.1.2 (the installer runs `build` as its last step, so an install writes the cache through the tool's own atomic write); adr-0030-a-seed-tool-is-surfaced-by-a-seed-skill (accepted, 8.1.2): a placed seed tool reaches sessions through a seed skill node, and a plant's `docs/graph/tools/` stays the plant's catalog
 - **Related specs:** SPEC-0001-install-placement (placement), SPEC-0003-per-prompt-injection (code anchor)
@@ -21,11 +21,11 @@ status_evidence: tests/test-source-index.sh, tests/test_graph_lint.py, tests/tes
 - **Design latitude:** balanced. The owner approved on 2026-10-07: "implement the plan so that it's integrated organically into the cypress seed and installed/grafted into the plants correctly." New structure is allowed where the change needs it (one shared helper module, one derived cache); no concept the plan did not name.
 - **Supersedes:** none
 - **Superseded by:** none
-- **Sign-offs:** 8.1.2 surfacing: architect [x] (2026-10-07, `architect-8.1.2`: §4 to §8 coherent with slices 1 and 2; `architect-8.1.2b`: rewritten on the owner's rulings, coherent again) · product [x] (2026-10-07, `product-8.1.2`: §3 "Surfacing (8.1.2)" states the owner's ready-after-the-protocol outcome; §9 AC-23 to AC-29 map every 8.1.2 contract; AC-9 names the install's build) · tester [ ] · security [x] (2026-10-07, `security-8.1.2`: no finding, no block; signed on the condition that spec lines S1 to S4 and test arms A1 to A4 are applied, applied by `architect-8.1.2d`: S1 the isolated run in §5 and §6 "Build report", S2 stdout only on exit 0 and never stderr, S3 the guarded run, S4 the skill's limit line in §2, A1 to A4 in the §10 rows of INSTALL_RUNS_THE_BUILD, INSTALL_BUILD_FAILED and SOURCE_INDEX_REPORT_UNAVAILABLE; the optional S5, the build in its own process group, not applied); the owner ruled plan §12 questions 2 and 3 on 2026-10-07; question 1 is taken as yes until the owner ratifies or vetoes ADR-0030. Slices 1 and 2: product [x] (2026-10-07: slice 1 signed, §3 and §9 reflect the owner's outcome; 2026-10-07, `product-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling; 2026-10-07, `product-D`: the owner's option D, §3 states the `repo:` claim, §9 AC-22 holds REPO_CLAIM and the missing helper) · architect [x] (2026-10-07, `architect-da`: §4 to §8 coherent after the devils-advocate verdicts; the floor, the helper interface, the interpreter in the key and the TS/JS line join applied; 2026-10-07, `architect-slice2`: the slice-2 §4 to §8 coherent with slice 1; 2026-10-07, `architect-slice2-fix`: the slice-2 review findings applied, `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` left pending the owner's `repo:` ruling, grill §12 question 6; 2026-10-07, `architect-D`: that contract, `ANCHORS_NAME_CITING_PAGES_OR_UNCITED`, §6 "Helper" and §7 rewritten on the owner's option D, §4 to §8 coherent) · tester [x] (2026-10-07: slice 1 signed; `tester-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling; 2026-10-07, `tester-final`: slice 2 and option D, every §10 row green at 68c970e) · security [x] (2026-10-07, `security-slice2-sign`: slice 2 signed; S1 to S8 and P1 to P10 applied in §5, §6, §7, §10 and the plan; accepted deviations: the `/%P` history marker that also skips a parentless commit, the depth-2 `file://` shallow clone, and a missing helper beside graph-lint degrading tier 2 with the `inference_skipped` notice instead of failing the route; REPO_CLAIM pending owner ruling; 2026-10-07, `security-D`: option D's stat path signed; no finding, no block; apply spec lines D1 to D3 and arms D4 to D6 on X459. Slice 1 signed by `security-s5s7`: §5 Security requirements and seven §7 abuse cases added; four §6 constants, `FILE_MAX_BYTES`, `DIR_LINK_MAX`, `EXTENDS_MAX` and `CACHE_MAX_BYTES`, and the `outside-repository` `base` value are left to the architect)
+- **Sign-offs:** 8.1.2 surfacing: architect [x] (2026-10-07, `architect-8.1.2`: §4 to §8 coherent with slices 1 and 2; `architect-8.1.2b`: rewritten on the owner's rulings, coherent again) · product [x] (2026-10-07, `product-8.1.2`: §3 "Surfacing (8.1.2)" states the owner's ready-after-the-protocol outcome; §9 AC-23 to AC-29 map every 8.1.2 contract; AC-9 names the install's build; a re-read of §3 and §9 is owed for the owner's rulings applied by `architect-8.1.2e`, with two contracts to map) · tester [ ] · security [x] (2026-10-07, `security-8.1.2`: no finding, no block; signed on the condition that spec lines S1 to S4 and test arms A1 to A4 are applied, applied by `architect-8.1.2d`: S1 the isolated run in §5 and §6 "Build report", S2 stdout only on exit 0 and never stderr, S3 the guarded run, S4 the skill's limit line in §2, A1 to A4 in the §10 rows of INSTALL_RUNS_THE_BUILD, INSTALL_BUILD_FAILED and SOURCE_INDEX_REPORT_UNAVAILABLE; the optional S5, the build in its own process group, not applied); the owner ruled plan §12 questions 2 and 3 on 2026-10-07; question 1 is taken as yes until the owner ratifies or vetoes ADR-0030. Slices 1 and 2: product [x] (2026-10-07: slice 1 signed, §3 and §9 reflect the owner's outcome; 2026-10-07, `product-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling; 2026-10-07, `product-D`: the owner's option D, §3 states the `repo:` claim, §9 AC-22 holds REPO_CLAIM and the missing helper) · architect [x] (2026-10-07, `architect-da`: §4 to §8 coherent after the devils-advocate verdicts; the floor, the helper interface, the interpreter in the key and the TS/JS line join applied; 2026-10-07, `architect-slice2`: the slice-2 §4 to §8 coherent with slice 1; 2026-10-07, `architect-slice2-fix`: the slice-2 review findings applied, `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` left pending the owner's `repo:` ruling, grill §12 question 6; 2026-10-07, `architect-D`: that contract, `ANCHORS_NAME_CITING_PAGES_OR_UNCITED`, §6 "Helper" and §7 rewritten on the owner's option D, §4 to §8 coherent) · tester [x] (2026-10-07: slice 1 signed; `tester-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling; 2026-10-07, `tester-final`: slice 2 and option D, every §10 row green at 68c970e) · security [x] (2026-10-07, `security-slice2-sign`: slice 2 signed; S1 to S8 and P1 to P10 applied in §5, §6, §7, §10 and the plan; accepted deviations: the `/%P` history marker that also skips a parentless commit, the depth-2 `file://` shallow clone, and a missing helper beside graph-lint degrading tier 2 with the `inference_skipped` notice instead of failing the route; REPO_CLAIM pending owner ruling; 2026-10-07, `security-D`: option D's stat path signed; no finding, no block; apply spec lines D1 to D3 and arms D4 to D6 on X459. Slice 1 signed by `security-s5s7`: §5 Security requirements and seven §7 abuse cases added; four §6 constants, `FILE_MAX_BYTES`, `DIR_LINK_MAX`, `EXTENDS_MAX` and `CACHE_MAX_BYTES`, and the `outside-repository` `base` value are left to the architect)
 
 ## 1. Summary
 
-A stdlib Python seed tool, `tools/source-index.py`, placed in every plant as `docs/graph/source-index.py`, derives the structure of a project's code, the code that does things and the tests that check it, without a model. It builds a file inventory (path, content hash, language, test class) and file-to-file links from Python imports (`ast`), shell and Python invocations, quoted path and directory literals (whole, or joined from segments as in `ROOT / "tools" / "x.py"`), and TypeScript/JavaScript import and require specifiers resolved through `tsconfig` paths. One reverse walk over those links answers three queries: `impact` (the files that depend on the inputs, `certain` rows first, each class nearest first), `affected-tests` (the same walk filtered to the test class, plus the always-run set) and `anchors` (graph pages that cite the inputs). Every row is `certain` or `maybe` (with the reason and line of its weakest link); the `maybe` rows every input reaches alike, the opaque holders and their dependents, are the floor, listed once and apart after the input's own rows; what the tool cannot answer makes the answer `incomplete`, with a reason and one action per query: "check by hand", "run the full suite", "review by hand". The index is derived, safe to delete, never committed, and rebuilt whenever its key changes, a graft or another Python version included (ADR-0029). The rules for "what is code", "where does the plant end" and "how a page cites a path" have one home each, shared with `code-anchor.py` and `growth-audit.py`. The tool recommends; verify, tiering and canonize keep every decision. Slice 2 adds a `symbols` query that says where a name is defined (a Python definition read by `ast` is `certain`, a shell function or a top-level or exported TS/JS declaration read a line at a time is `maybe`), Git change history as an opt-in `maybe` link source (`--history`), `anchors --moved` over code-anchor's moved list, the `repo:` claim and path-pattern rules in the helper that `graph-lint.py` now loads too, and protocol steps that call the tool on demand at verify, canonize, grow and adopt. Since 8.1.2 a plant finds the tool by topic and sees what to set before trusting it: the seed skill `skill.source-index`, placed and refreshed with the other seed skills, routes the four questions to the tool, and `build` reports its time and counts, every `repo:` value that names nothing, each setup gap with the exact fix, and hints about the test class. The installer runs that build as its last step, on every install and so on every graft, and prints the report, never failing on it; `growth-audit.py` prints it again after its verdicts at every grow and graft. A plant is ready to answer once a protocol has run, with nothing to do by hand that the report does not name.
+A stdlib Python seed tool, `tools/source-index.py`, placed in every plant as `docs/graph/source-index.py`, derives the structure of a project's code, the code that does things and the tests that check it, without a model. It builds a file inventory (path, content hash, language, test class) and file-to-file links from Python imports (`ast`), shell and Python invocations, quoted path and directory literals (whole, or joined from segments as in `ROOT / "tools" / "x.py"`), and TypeScript/JavaScript import and require specifiers resolved through `tsconfig` paths. One reverse walk over those links answers three queries: `impact` (the files that depend on the inputs, `certain` rows first, each class nearest first), `affected-tests` (the same walk filtered to the test class, plus the always-run set) and `anchors` (graph pages that cite the inputs). Every row is `certain` or `maybe` (with the reason and line of its weakest link); the `maybe` rows every input reaches alike, the opaque holders and their dependents, are the floor, listed once and apart after the input's own rows; what the tool cannot answer makes the answer `incomplete`, with a reason and one action per query: "check by hand", "run the full suite", "review by hand". The index is derived, safe to delete, never committed, and rebuilt whenever its key changes, a graft or another Python version included (ADR-0029). The rules for "what is code", "where does the plant end" and "how a page cites a path" have one home each, shared with `code-anchor.py` and `growth-audit.py`. The tool recommends; verify, tiering and canonize keep every decision. Slice 2 adds a `symbols` query that says where a name is defined (a Python definition read by `ast` is `certain`, a shell function or a top-level or exported TS/JS declaration read a line at a time is `maybe`), Git change history as an opt-in `maybe` link source (`--history`), `anchors --moved` over code-anchor's moved list, the `repo:` claim and path-pattern rules in the helper that `graph-lint.py` now loads too, and protocol steps that call the tool on demand at verify, canonize, grow and adopt. Since 8.1.2 a plant finds the tool by topic and sees what to set before trusting it: the seed skill `skill.source-index`, placed and refreshed with the other seed skills, routes the four questions to the tool, and `build` reports its time and counts, every `repo:` value that names nothing, each setup gap with the exact fix, and hints about the test class and the config. When a task names a file a plant node owns, the router loads the seed skill beside that node, and the kernel names the tool in one line. The installer runs that build as its last step, on every install and so on every graft, and prints the report, never failing on it; `growth-audit.py` prints it again after its verdicts at every grow and graft. A plant is ready to answer once a protocol has run, with nothing to do by hand that the report does not name.
 
 ## 2. Scope
 
@@ -49,11 +49,15 @@ A stdlib Python seed tool, `tools/source-index.py`, placed in every plant as `do
     - The installer running the placed `build` as its last step, after every file and the stamp are placed, on every install that places files (owner, 2026-10-07: "ACTUALLY BUILD IT ... the plant needs to be ready to go from te get-go after executing the protocols"): it runs it in isolated mode, prints the report's stdout only when the build exits 0, bounded by `INSTALL_BUILD_TIMEOUT`, and an install never fails on it. Graft applies the seed with the installer, so every graft runs it too.
     - `growth-audit.py` printing the seed copy's `build` report after its verdicts, never as a verdict (owner, 2026-10-07, plan §12 question 3: "yes").
     - Protocol wiring as prose, no tool contract: graft corrects each `repo:` value the report names (Phase 6) and records the report (Phase 7, the graft record); grow records it in its delivery; canonize corrects a `repo:` value `anchors --moved` names.
+    - The router adds a seed skill beside the node that owns a path a task names, when the task holds the skill's phrase (owner, 2026-10-07, plan §12 question 12, option (a)); SPEC-0002 owns the rule (`PATH_ROUTE_ADDS_SEED_SKILL_PHRASES`) and this spec its use for `skill.source-index` (SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS).
+    - One line in the kernel's §5 "Where to look next" naming `python3 docs/graph/source-index.py --help` and `skill.source-index`, within `KERNEL_BUDGET`, which the owner raised for it (2026-10-07: "1 yes add it"; `KERNEL_NAMES_THE_SOURCE_INDEX`).
+    - A build hint for each pattern the plant config sets that matches no inventory file, with its fix (owner, 2026-10-07, plan §12 question 14; `BUILD_HINTS_CONFIG_PATTERNS_THAT_MATCH_NOTHING`).
+    - `CACHE_MAX_BYTES` raised from 64 MiB to 196 MiB (owner, 2026-10-07).
 - **Out of scope:**
   - Later work, not slice 2: who references a name (a call graph stays out, below); TS/JS class members and indented declarations that are not exported (function locals), definitions inside shell here-documents and strings, and definitions in other languages; history across renames (`git log --follow`), history as a walk step, and a cached history; a text inventory view (`build --json` carries the inventory).
   - A separate later spec: read deduplication, symbol excerpts and context pointers (overlaps adr-0010).
   - This slice: commands written in host settings files, such as a hook entry in `.claude/settings.json` (`"command": "python3 \".../.claude/route-hook.py\""`). A `json` file is a link target only (§6 "Inventory record"), so such a hook script has no dependent in any answer. Reading them needs one parser per host settings shape, and links come from code by one rule; a later slice may add host settings readers (measurement D3, grill §10).
-  - 8.1.2: a seed-placed card or catalog row in a plant's `docs/graph/tools/`, which stays the catalog the plant's toolcraft keeps (ADR-0030); a growth-audit verdict on a report line; an install or graft that fails, stops or asks because of the build; a flag to skip the build; seed skills for the other placed tools; any write of the plant config or of `TEST_GLOBS` by a tool; any edit of a plant's `repo:` values by a tool, which graft authors make with understanding.
+  - 8.1.2: a seed-placed card or catalog row in a plant's `docs/graph/tools/`, which stays the catalog the plant's toolcraft keeps (ADR-0030); a growth-audit verdict on a report line; an install or graft that fails, stops or asks because of the build; a flag to skip the build; seed skills for the other placed tools; any write of the plant config or of `TEST_GLOBS` by a tool; any edit of a plant's `repo:` values by a tool, which graft authors make with understanding. A config key that narrows the inventory itself (for example `inventory_exclude`) is slice-3 work (owner, 2026-10-07, plan §12 question 13), recorded and not specified here.
   - Never: tree-sitter, SQLite, a daemon, MCP, a CodeGraph integration, Svelte, Vue or other languages, a call graph, per-prompt hook use (ADR-0018), any automatic tier decision, test omission or knowledge rewrite.
 
 ## 3. User-facing behavior
@@ -203,12 +207,12 @@ fix.
 **A session finds the tool by its question.** In any plant, a session that
 asks what depends on a file, which tests a change reaches, which graph pages
 cite a file, or where a name is defined is routed to the seed skill
-`skill.source-index`, which tells it which query to run, when the question
-names no path. When it names a path a node owns, the router loads the owning
-node, and the skill reaches the session through the host's native skill
-listing (pending owner, plan §12 question 12: this is option (b); option (a)
-would have the router load the skill beside the owning node). The session
-needs no plant-written card and no prior knowledge of the tool. A plant installed
+`skill.source-index`, which tells it which query to run. When the question
+names a path a node owns, the router loads the owning node and the skill
+beside it (the owner's ruling of 2026-10-07, plan §12 question 12). Every
+session also reads, before any routing, one kernel line that names the tool
+and the skill. The session needs no plant-written card and no prior
+knowledge of the tool. A plant installed
 before 8.1.2 gets the skill at its next install or graft. A card or catalog
 row the plant wrote itself in `docs/graph/tools/` stays as the plant wrote
 it.
@@ -232,8 +236,8 @@ the test class (test-named files outside `TEST_GLOBS`, non-test files inside
 it) names the files, up to five, and the file the owner edits. A hint is
 advice the owner rules on. It never makes an answer incomplete. Every setup
 gap the build can detect is named with its fix. The build does not judge
-whether `TEST_GLOBS` is right, only whether it matches; a config pattern
-that matches no file is not reported (pending owner, plan §12 question 14);
+whether `TEST_GLOBS` is right, only whether it matches; a pattern the
+plant config sets that matches no file is named in a hint with its fix;
 and below a plant root that is not a Git work tree it looks for no
 repository a node does not name. The tool never edits a `repo:` value, `TEST_GLOBS` or the config
 itself, because each needs the owner's choice. The graft and grow protocols
@@ -866,12 +870,12 @@ install.
   `docs/graph/skills/source-index.md` and `.claude/skills/source-index/` were
   removed, as in a plant installed before 8.1.2, places both again: the skill
   reaches an existing plant at its next install or graft, with no hand step
-- **And** (option (b), pending owner, plan §12 question 12): with a node
-  `repo: src` added to that install, the three tasks that name `src/app.py`
-  load that node by `named_path` and not `skill.source-index`, the `symbols`
-  task, which names no path, still loads `skill.source-index`, and the
-  projection under `.claude/skills/` is unchanged; under option (a) this arm
-  would assert the skill beside the owning node instead
+- **And** (the owner's option (a), plan §12 question 12): with a node
+  `repo: src` over an existing folder `src/` added to that install, each of
+  the three tasks that name `src/app.py` loads that node with `how.kind`
+  `named_path` and `skill.source-index` with `how.kind` `phrase`, and the
+  `symbols` task, which names no path, loads `skill.source-index`; the
+  router rule is SPEC-0002 `PATH_ROUTE_ADDS_SEED_SKILL_PHRASES`
 
 ### Contract: BUILD_REPORTS_ITS_TIME_AND_COUNTS
 - **Given:** the plant of BUILD_INVENTORIES_THE_CODE_OF_EVERY_GOVERNED_REPOSITORY
@@ -956,6 +960,39 @@ install.
 - **And:** `build --json` is unchanged by the fix lines: the text is a view
   of the record's reason, and the reason is already in the answer
 
+### Contract: BUILD_HINTS_CONFIG_PATTERNS_THAT_MATCH_NOTHING
+- **Given:** a plant whose `TEST_GLOBS = ["tests/**/*.*"]`, holding
+  `tests/t_test.py` and `src/a.py`, and a `docs/graph/source-index.json`
+  holding `{"exclude": [], "always_run": ["tests/t_test.py",
+  "tests/smoek/**"], "global_inputs": ["package.json"]}`
+- **When:** `build --json` runs, then `build`
+- **Then:** `hints` holds one `config-pattern-unmatched` hint, subject
+  `docs/graph/source-index.json`, count 2, `patterns`
+  `always_run: tests/smoek/**` and `global_inputs: package.json`: each
+  pattern the file sets that matches no inventory path by the helper's
+  `path_matches`, in the file's key order and then its list order
+- **And:** the text view prints the hint's `HINT_LINE`, then at once its
+  `HINT_FIX` line, `  fix: ` and the text; there is no `ACTION_LINE`, the
+  exit code is 0, `incomplete` is empty and the cache is written
+- **And:** a default pattern is never counted: with no
+  `docs/graph/source-index.json`, or one that sets no `global_inputs`, the
+  default `global_inputs` list, most of which names files a plant lacks,
+  gives no such hint; with the file refused (`config-refused`) there is no
+  such hint
+
+### Contract: KERNEL_NAMES_THE_SOURCE_INDEX
+- **Test file:** `tests/seed-lint.py` (two rows of its `TEXT_RULES`)
+- **Given:** the seed's `core/AGENTS.md`
+- **When:** seed-lint runs on the real tree
+- **Then:** it fails, naming `core/AGENTS.md §5`, when the text from the
+  `## 5. ` heading to the next `## ` heading does not hold the literal
+  `docs/graph/source-index.py` or the literal `skill.source-index`, and it
+  fails, as it does today, when the file is larger than `KERNEL_BUDGET`
+- **And:** on the shipped tree it reports nothing. The plant copies of the
+  kernel follow the seed's file by the placement SPEC-0001 holds
+  (`ONE_KERNEL_BODY`, `PRISTINE_PRIOR_KERNEL_IS_NOT_MIGRATION`,
+  `BACKUP_BEFORE_REPLACE`), with no new placement
+
 ### Contract: INSTALL_RUNS_THE_BUILD
 - **Given:** a Git work tree holding `src/a.py` and a commit, never installed
 - **When:** `install.sh claude-code --project-dir <target>` runs, then `impact
@@ -1030,6 +1067,18 @@ install.
   needs only whether a cache existed, for the status `rebuilt`). File texts
   are already read one at a time and dropped; no streaming is needed. The
   5,000-file figure after the reductions is inferred at about 60 MB.
+- **Cache bound (8.1.2):** `CACHE_MAX_BYTES` is 196 MiB (owner, 2026-10-07;
+  64 MiB before). A query that reuses a cache reads the whole document and
+  parses it in memory, so the bound is also the bound on that read. The
+  peak RSS of a cached query over a cache near the bound is not measured;
+  it is measured once before the 8.1.2 release (plan increment 10) and
+  recorded here, not gated. The file count that fills the bound is about
+  200,000 by linear scale from the measured caches, an inference.
+- **Kernel line (8.1.2):** the kernel's one line naming the tool stays inside
+  `KERNEL_BUDGET` (`tests/seed-lint.py`, recorded in `tests/ratchets.json`),
+  which the owner raised by 200 bytes for it on 2026-10-07; the eager-surface
+  figures seed-lint holds in `README.md` and the host matrix move with the
+  kernel's bytes and are set at the release's one documentation pass.
 - **Security:** read-only over the repositories: the tool parses Python with
   `ast` and never imports, executes or `exec`s repository code; it reads a
   symlink as its link text, never its target; Git runs through the helper's
@@ -1172,7 +1221,7 @@ constants:
   FILE_MAX_BYTES: 1048576        # 1 MiB; a larger link-bearing file is not parsed (INPUT_EXHAUSTS_A_PARSER)
   DIR_LINK_MAX: 200              # most inventory files one directory literal links (DIRECTORY_LITERAL_TOO_WIDE)
   EXTENDS_MAX: 16                # longest tsconfig `extends` chain (TSCONFIG_EXTENDS_CYCLE)
-  CACHE_MAX_BYTES: 67108864      # 64 MiB; a larger index.json is neither read nor written
+  CACHE_MAX_BYTES: 205520896     # 196 MiB (8.1.2; 64 MiB before); a larger index.json is neither read nor written
   HISTORY_COMMITS: 500           # most recent non-merge commits --history reads per repository
   HISTORY_MAX_FILES: 40          # a commit changing more inventory files is not read (HISTORY_BULK_COMMIT)
   NAME_RE: '[A-Za-z_$][A-Za-z0-9_$-]*(\.[A-Za-z_$][A-Za-z0-9_$-]*)*'   # a `symbols` input, matched whole (re.fullmatch); else USAGE_REFUSED
@@ -2017,15 +2066,16 @@ line and `BUILD_TIME_LINE`), every `repo:` value that names nothing (the
 `repo-unresolved` records `anchors` gives, read the same way), every nested
 repository no node names (`repository-unnamed`), a missing or empty test
 declaration (`no-test-declaration`, `no-test-files`), the exact fix of each
-record (`BUILD_FIX`), and two hints about the test class. The installer runs
+record (`BUILD_FIX`), two hints about the test class and one about the
+config. The installer runs
 it and prints its lines (INSTALL_RUNS_THE_BUILD), and `growth-audit.py`
 prints them again (GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT); neither restates a
 rule. Every setup gap the build can detect is named with its fix: the tool,
 its siblings and the seed skill are placed and projected by every install,
 the config is optional with defaults in the tool, and the cache is built by
 the install itself. The build does not judge whether `TEST_GLOBS` is right,
-only whether it matches; a config pattern that matches no file is not
-reported (pending owner, plan §12 question 14); and it looks for
+only whether it matches; a pattern the plant config sets that matches no
+file is a `config-pattern-unmatched` hint with its fix; and it looks for
 `repository-unnamed` only inside a governed repository, so below a plant
 root that is not a Git work tree a repository no node names stays unseen.
 
@@ -2039,10 +2089,11 @@ is setup the report owns, and the queries keep their reasons.
 
 ```yaml
 hint:
-  hint:    { enum: [tests-outside-class, class-holds-non-tests] }
+  hint:    { enum: [tests-outside-class, class-holds-non-tests, config-pattern-unmatched] }
   subject: { enum: ["docs/graph/spec-lint.py", "docs/graph/source-index.json"] }   # the file the owner edits
   count:   int
-  paths:   [path]          # every such file, sorted; the text view shows HINT_MAX_PATHS
+  paths:   [path]          # every such file, sorted; the text view shows HINT_MAX_PATHS; [] for config-pattern-unmatched
+  patterns: [string]       # config-pattern-unmatched only: "<key>: <pattern>", in the file's key order, then list order (8.1.2)
 build_report:
   TEST_NAME_PATTERNS: [ "test_*.py", "*_test.py", "test_*.sh", "test-*.sh", "*_test.sh",
                         "*_test.go", "*.test.*", "*.spec.*", "*_spec.rb",
@@ -2053,7 +2104,11 @@ build_report:
   HINT_LINE:
     tests-outside-class: "Hint: {count} file(s) named like tests are outside TEST_GLOBS, e.g. {paths}. Add their folders to TEST_GLOBS in docs/graph/spec-lint.py, or list them under \"exclude\" in docs/graph/source-index.json if they are not tests."
     class-holds-non-tests: "Hint: {count} file(s) in the test class are not named like tests, e.g. {paths}. List the ones that are not tests under \"exclude\" in docs/graph/source-index.json; an \"exclude\" key, even [], ends this hint."
+    config-pattern-unmatched: "Hint: {count} pattern(s) in docs/graph/source-index.json match no file: {patterns}."
       # {paths}: the first HINT_MAX_PATHS paths joined by ", ", each through the `?` replacement
+      # {patterns}: the first HINT_MAX_PATHS patterns joined by ", ", each through the `?` replacement
+  HINT_FIX:         # printed by `build` as "  fix: <text>" at once under a hint of that kind; the other hints carry their fix in HINT_LINE
+    config-pattern-unmatched: "correct each pattern in docs/graph/source-index.json to the files it means (a pattern with no \"/\" matches a file name, one with \"/\" a plant-relative path), or remove it; then run python3 docs/graph/source-index.py build"
   SKILL_ROUTE_TASKS:
     impact:         "what depends on src/app.py before I change it"
     affected-tests: "which tests does a change to src/app.py reach"
@@ -2076,10 +2131,17 @@ A `tests-outside-class` hint counts each inventory file named like a test
 or not. A `class-holds-non-tests` hint counts each file of the test class not
 named like a test; it is given when the plant has no
 `docs/graph/source-index.json`, or one that is read and sets no `exclude`
-key. A hint never makes an answer `incomplete` and never changes the exit
-code. The names are a guess about a project's habits, which is why each is a
-hint the owner rules on and the plant's declaration stays the one rule
-(TESTS_ARE_THE_PLANTS_TEST_GLOBS).
+key. The names are a guess about a project's habits, which is why each of
+these two is a hint the owner rules on and the plant's declaration stays the
+one rule (TESTS_ARE_THE_PLANTS_TEST_GLOBS). A `config-pattern-unmatched`
+hint counts each pattern that `docs/graph/source-index.json` sets under
+`exclude`, `always_run` or `global_inputs` and that matches no inventory
+path by the helper's `path_matches`; it is given only when the file is read,
+so a default pattern (the `global_inputs` list names files most plants
+lack) and a refused file give none. Without it a typo in `always_run` would
+leave the always-run set short with no record. Hints are listed in the
+order of the `hint` enum. A hint never makes an answer `incomplete` and
+never changes the exit code.
 
 Each record a `build` text view lists is followed at once by its fix line
 (BUILD_RECORDS_NAME_THEIR_FIX); every reason a `build` can give has one
@@ -2169,7 +2231,8 @@ then for `build` one count line (`Index: <n> file(s), <n>
 test(s), <n> certain and <n> maybe link(s), <n> opaque and <n> unresolved
 record(s), <n> definition(s)`; the records themselves are in `--json`),
 `BUILD_TIME_LINE`, then the `incomplete` list, each record followed by its
-`BUILD_FIX` line, and one `HINT_LINE` per hint (§6 "Build report"), for the walks one row per line
+`BUILD_FIX` line, and one `HINT_LINE` per hint, followed by its `HINT_FIX`
+line when its kind has one (§6 "Build report"), for the walks one row per line
 (`<depth> <link> <path>  <- <from> [<kind> <found>:<line>]`, a `maybe` row
 adding `maybe: <reason> at <holder>:<line>`), the `certain` rows first, then
 the input's `maybe` rows, then, with `--history`, `HISTORY_LINE` and the
@@ -2266,8 +2329,8 @@ incomplete, else, for `affected-tests`, with `RECOMMEND_LINE`.
 - **Recovery:** fix the cause; the next query rebuilds. A plant whose index
   is larger than `CACHE_MAX_BYTES` has no fix in this slice: the tool answers
   by rebuilding on each query, and no setting narrows the inventory (`exclude`
-  only takes files out of the test class; plan §12 question 13, pending
-  owner)
+  only takes files out of the test class); a key that does is slice-3 work
+  (owner, 2026-10-07, plan §12 question 13)
 
 ### Failure: TSCONFIG_UNREADABLE
 - **Contract:** LINK_TS_SPECIFIER_CERTAIN, UNPINNED_REFERENCE_RECORDED_WITH_ITS_REASON
@@ -2605,7 +2668,8 @@ incomplete, else, for `affected-tests`, with `RECOMMEND_LINE`.
   the tool's own message; the next query rebuilds a stale cache by its key.
   On a plant whose build passes the bound or whose index passes
   `CACHE_MAX_BYTES`, the tool answers by rebuilding on each query; no setting
-  narrows the inventory in this slice (plan §12 question 13, pending owner)
+  narrows the inventory in this slice (slice-3 work, owner, 2026-10-07, plan
+  §12 question 13)
 
 ## 8. Examples
 
@@ -3204,12 +3268,14 @@ and §6 now state each:
 | REPO_VALUE_UNRESOLVED | X459 case_repo_claim: arm unresolved, `anchors` holds one `repo-unresolved` record for each of the `repo: old/lib`, `repo: gone` and `repo: Src` nodes, subject the page, detail `REPO_UNRESOLVED_DETAIL` naming the value, and its text view ends with the `anchors` `ACTION_LINE`; the `old/lib/z.py` task loads the `repo: old/lib` node by `named_path` (the reading from before the ruling), and the router adds no notice for any `repo:` value; the `repo: Src` record runs only on a case-sensitive file system, by the probe of the REPO_CLAIM row | tests/test-source-index.sh | integration (synthetic plant, the seed's graph-lint.py placed) | green |
 | HELPER_ABSENT_BESIDE_GRAPH_LINT | X459 case_repo_claim: arm helper-absent, no `source_paths.py` beside `graph-lint.py` and a node `repo: src/lib/`: the `src/lib/a.py` task's `--plan-json` exits 0, `notices` holds `{code: inference_skipped, text: "inference skipped: HelperUnavailable"}`, and no LOAD entry is `named_path` | tests/test-source-index.sh | integration (synthetic plant, the seed's graph-lint.py placed) | green |
 
-| SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS | (8.1.2, the tester labels it) a fresh `install.sh claude-code` into a temp target: the placed skill node byte-identical to `skills/source-index/SKILL.md`, its `.claude/skills/` projection present, `--plan-json` for each `SKILL_ROUTE_TASKS` task loads `skill.source-index`; a re-install after the plant wrote its own `docs/graph/tools/source-index.md` and a row in `tools/index.md` leaves both byte-identical with no backup; arm owned-path (option (b), pending owner, plan §12 question 12): a node `repo: src` added, the three `src/app.py` tasks load that node by `named_path` and not the skill, the `symbols` task loads the skill; arm SKILL_NAME_HELD_BY_THE_PLANT is the existing seed-skill backup path and gets no arm | (new case) | integration (temp install) | pending |
+| SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS | (8.1.2, the tester labels it) a fresh `install.sh claude-code` into a temp target: the placed skill node byte-identical to `skills/source-index/SKILL.md`, its `.claude/skills/` projection present, `--plan-json` for each `SKILL_ROUTE_TASKS` task loads `skill.source-index`; a re-install after the plant wrote its own `docs/graph/tools/source-index.md` and a row in `tools/index.md` leaves both byte-identical with no backup; arm owned-path (the owner's option (a), plan §12 question 12): a node `repo: src` over an existing `src/` added, each of the three `src/app.py` tasks loads that node by `named_path` and the skill by `phrase`, the `symbols` task loads the skill; arm SKILL_NAME_HELD_BY_THE_PLANT is the existing seed-skill backup path and gets no arm | (new case) | integration (temp install) | pending |
 | BUILD_REPORTS_ITS_TIME_AND_COUNTS | (8.1.2) `build` text view: cache line, count line, `Built in <n.nn> s.` last; `build --json` `seconds` a number >= 0; the cache bytes equal across two builds (BUILD_IS_DETERMINISTIC unchanged) | (new case) | integration (synthetic Git plant) | pending |
 | BUILD_NAMES_REPO_VALUES_THAT_NAME_NOTHING | (8.1.2) `repo: old/lib` and `repo: src/a.py, src/b.py` each one `repo-unresolved` record, `repo: src` none; the text view ends with the `build` `ACTION_LINE`; exit 0; the cache written; arm unnamed (REPOSITORY_UNNAMED) | (new case) | integration (synthetic Git plant) | pending |
 | REPOSITORY_UNNAMED | (8.1.2, `devils-advocate-8.1.2` 1a) an arm of the BUILD_NAMES_REPO_VALUES_THAT_NAME_NOTHING case: a nested Git work tree `vendor/lib/` with its own commit and no node naming it gives one `repository-unnamed` record, subject `vendor/lib`, its `BUILD_FIX` line under it, and no inventory path under `vendor/lib/`; arm ignored (`vendor/lib/` in the root's `.gitignore`) and arm named (`repo: vendor/lib`) give none; an `impact` over the plant holds no such record | (new case) | integration (synthetic Git plant) | pending |
 | BUILD_NAMES_TESTS_OUTSIDE_THE_TEST_CLASS | (8.1.2) arms (a) no `TEST_GLOBS`, (b) a `TEST_GLOBS` matching nothing, (c) two test-named files outside the class and one excluded by the config; the records and hints as §4 states; (c) has no `ACTION_LINE` | (new case) | integration (synthetic Git plant) | pending |
 | BUILD_HINTS_EXCLUDE_FOR_NON_TEST_FILES | (8.1.2) arms no config, `{"exclude": []}`, a refused config | (new case) | integration (synthetic Git plant) | pending |
+| BUILD_HINTS_CONFIG_PATTERNS_THAT_MATCH_NOTHING | (8.1.2) the §4 plant: one `config-pattern-unmatched` hint, count 2, `patterns` `always_run: tests/smoek/**` and `global_inputs: package.json`, its `HINT_LINE` then its `HINT_FIX` line, exit 0, no `ACTION_LINE`; arms no config and a config with no `global_inputs` (no such hint), a refused config (no such hint) | (new case) | integration (synthetic Git plant) | pending |
+| KERNEL_NAMES_THE_SOURCE_INDEX | (8.1.2) two `TEXT_RULES` rows of seed-lint, run on the real tree; no new case: a declarative rule is proved by the run (ADR-0023; doctrine text carries no test of its own), and X381 already proves that a `require` row fires | tests/seed-lint.py | lint (real tree) | pending |
 | BUILD_RECORDS_NAME_THEIR_FIX | (8.1.2) arms (a) no repository, (b) no `TEST_GLOBS`, (c) a refused config: each record line followed at once by `  fix: ` and its `BUILD_FIX` text; an `impact` over arm (b) prints no fix line; `build --json` holds no fix text; the text view ends with the `build` `ACTION_LINE` "Incomplete: <n> setup item(s) above, each with its fix (", so the case file's `ACTION` prefix for `build` changes with it | (new case) | integration (synthetic plant) | pending |
 | INSTALL_RUNS_THE_BUILD | (8.1.2) an install into a Git work tree holding `src/a.py`: `INSTALL_BUILD_HEAD` and the indented build lines (`Cache: built`, the time line) after the stamp line and before the closing banner, exit 0, a following `impact src/a.py` reports `reused`, no `docs/graph/source-index.json`; arm: a fresh directory with no governed repository, the `no-repository` record and its fix line, no `.cypress/source-index/`, exit 0; arm: `--check` over the installed target prints no `INSTALL_BUILD_HEAD`; security arms (`security-8.1.2`): A1, the target commits `docs/graph/fnmatch.py` and `docs/graph/json.py`, each writing a marker file when imported: after the install no marker exists and the report's lines are printed; A4, in A1's target a node `repo: old/\x1b[31mlib`: the install output shows `?` there and holds no byte 0x1b; A3, a seed copy whose `tools/source-index.py` writes the bytes `\xff\xfe` to stdout and exits 0: the install exits 0 and prints the closing banner | (new case) | integration (temp install) | pending |
 | INSTALL_BUILD_FAILED | (8.1.2) an arm of the INSTALL_RUNS_THE_BUILD case: a seed copy whose `tools/source-index.py` exits 3 gives `INSTALL_BUILD_FAILED` naming `exit 3`, the closing banner after it, and exit 0; A2 (`security-8.1.2`): that fake tool also writes `\x1b[2J` and `MARK-OUT` to stdout and `MARK-ERR` and `\x1b]0;x\x07` to stderr before it exits 3, and the install's stdout and stderr hold neither marker and no byte 0x1b or 0x07 | (new case) | integration (temp install) | pending |
@@ -3223,9 +3289,14 @@ passes), `pending` (test not yet written), `skipped` (with reason).
 
 | Question | Why it matters | Current assumption | Owner | Resolves by |
 |---|---|---|---|---|
-| Skill routing when a task names a path a node owns: (a) the router adds phrase-tier hits of `origin: seed` skill nodes beside `named_path` entries (a SPEC-0002 / ADR-0026 change), or (b) the claim narrows to path-free phrasings, the skill reaching the session through the host's native listing | the routing claim of §3 and ADR-0030 holds only in a graph where no node owns the named path (`devils-advocate-8.1.2` 2) | (b), stated provisionally in §3, ADR-0030 and the owned-path arm; flagged in plan §12 question 12 | owner | owner ruling before RED |
-| Does an inventory-narrowing config key (for example `inventory_exclude`) belong in slice 3? | above `CACHE_MAX_BYTES` or past the install's bound the tool rebuilds on each query, and no setting shrinks the inventory (`devils-advocate-8.1.2` 6) | no such key in this slice; §7 says so; flagged in plan §12 question 13 | owner | owner ruling, any time before slice 3 |
-| Should a config pattern (`exclude`, `always_run`, `global_inputs`) that matches no inventory file become a build hint? | a typo in `always_run` makes the always-run set wrong with no record and no hint (`devils-advocate-8.1.2` 1c) | not reported; §3 and §6 "Build report" say so; flagged in plan §12 question 14 | owner | owner ruling before RED |
+
+The three 8.1.2 questions were ruled by the owner on 2026-10-07 (plan §12
+questions 12 to 14): option (a) for skill routing, SPEC-0002
+`PATH_ROUTE_ADDS_SEED_SKILL_PHRASES` and the owned-path arm of
+SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS; an inventory-narrowing key is
+slice-3 work, recorded in §2 and not specified; a config pattern that
+matches no file is a hint with its fix,
+BUILD_HINTS_CONFIG_PATTERNS_THAT_MATCH_NOTHING.
 
 A spec with open questions is unsigned. Sign off (§0) only when the
 table is empty or every row's "current assumption" is recorded as a
@@ -3260,3 +3331,4 @@ flagged assumption in grill.md §12. Sign-off keeps the status `draft`;
 - 2026-10-07 — 8.1.2 surfacing added by `architect-8.1.2` (owner: "go do it. update graft and install/growth"), on plan `docs/plans/grill-8.1.2-tool-surfacing.md`; status `active` (from `implemented`; a seed spec is never `draft`, seed-lint), so spec-lint's coverage check stays red on exactly these seven contracts until the 8.1.2 RED lands, and `implemented` returns when every 8.1.2 row is green; slices 1 and 2 keep their evidence. §1 and §2 state the slice; §4 adds seven contracts, `SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS`, `BUILD_REPORTS_ITS_TIME_AND_COUNTS`, `BUILD_NAMES_REPO_VALUES_THAT_NAME_NOTHING`, `BUILD_NAMES_TESTS_OUTSIDE_THE_TEST_CLASS`, `BUILD_HINTS_EXCLUDE_FOR_NON_TEST_FILES`, `INSTALL_NAMES_THE_FIRST_BUILD` and `GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT`; §6 adds "Build report" (the `hint` record, `TEST_NAME_PATTERNS`, `HINT_LINE`, `SKILL_ROUTE_TASKS`, `FIRST_BUILD_STEP`, growth-audit's lines), the answer keys `seconds` and `hints` (`ANSWER_SCHEMA` stays `/1`: keys added, none removed), `BUILD_TIME_LINE`, `build` in the Queries cells of `no-test-declaration`, `no-test-files` and `repo-unresolved`, and the build text view; §7 adds `SKILL_NAME_HELD_BY_THE_PLANT` and `SOURCE_INDEX_REPORT_UNAVAILABLE` and widens `REPO_VALUE_UNRESOLVED` and `TEST_DECLARATION_UNAVAILABLE` to `build`; §8 adds the build report example; §10 adds the rows, `pending`. The owner's approved shape was a seed tool card in `docs/graph/tools/` and a catalog row; the design is a seed skill instead, because a Tier-3 card is not routed and a seed card in that collection would turn growth-audit's `ABSENT` rows for it into `CONTRADICTED` (ADR-0030, put to the owner as plan §12 question 1). §3 and §9 are product's to follow.
 - 2026-10-07 — rewritten for the owner's rulings by `architect-8.1.2b` (plan §12 question 2: "ACTUALLY BUILD IT. a user cannot be expected to know that it needs to do things if it executes a graft/install/growth. the plant needs to be ready to go from te get-go after executing the protocols"; question 3: "yes"; question 1 taken as yes until the owner rules on ADR-0030). `INSTALL_NAMES_THE_FIRST_BUILD` is replaced by `INSTALL_RUNS_THE_BUILD`: every install that places files, and so every graft's apply, runs the placed `build` as its last step and prints its report, bounded by `INSTALL_BUILD_TIMEOUT` and never failing the install (§7 `INSTALL_BUILD_FAILED`). Contract `BUILD_RECORDS_NAME_THEIR_FIX` added: a `build` prints the exact fix under each record (§6 `BUILD_FIX`), so a fresh plant with no Git or no tests is told what to do. `SOURCE_INDEX_IS_PLACED` and `GRAFT_REBUILDS_THE_CACHE` amended (the install writes the cache through the tool; their §10 rows `pending` until RED edits E15 and X430); `SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS` gains the re-install arm that reaches a plant installed before 8.1.2. ADR-0029 amended to match. §1, §2, §6 "Build report" and "CLI", §7, §8 and §10 follow; spec-lint stays red on exactly the eight 8.1.2 contracts until RED.
 - 2026-10-07 — the 8.1.2 security and devils-advocate reviews applied by `architect-8.1.2d`, inside the 8.1.2 contracts, no contract added or removed; the §10 rows stay `pending`. Security (`security-8.1.2`, no finding, no block): the installer and growth-audit run the tool as `python3 -I -B`, stated in §5 Security and §6 "Build report" (S1); they print the build's stdout only on exit 0 and never its stderr, growth-audit's `source_index_report` empty on a failure (S2, §6 and §7); the run is guarded under `set -euo pipefail` and its stdout decoded with `errors="replace"` (S3); the skill states §5's limit line (S4, §2); arms A1 to A4 on the INSTALL_RUNS_THE_BUILD, INSTALL_BUILD_FAILED and SOURCE_INDEX_REPORT_UNAVAILABLE rows; security signed in §0; S5 not applied. Devils-advocate (`devils-advocate-8.1.2`): the build record `repository-unnamed` for a nested work tree no `repo:` names, an And of BUILD_NAMES_REPO_VALUES_THAT_NAME_NOTHING, §6 "Incomplete" and "Build report", §7 REPOSITORY_UNNAMED, its §10 row (1a); "no finding means ready" narrowed to "every setup gap the build can detect is named with its fix" in §3 and §6 (1b); "a Git work tree" scoped to "a plant with at least one governed repository" in §3, §4 INSTALL_RUNS_THE_BUILD and §6 (3); the `no-repository` fix reordered for umbrella plants, §6 and §8 (5); §7 INSTALL_BUILD_FAILED and CACHE_WRITE_FAILED recovery: no setting narrows the inventory in this slice (6); the X459 case checks run only on a case-sensitive file system, by a probe stated in §10 (7); the `build` `ACTION_LINE` names the setup items and their fixes (11). Three owner questions left pending in §11 and plan §12 (questions 12 to 14): skill routing (a) or (b), with (b) stated provisionally and its owned-path arm; an inventory-narrowing key for slice 3; a hint for a config pattern that matches nothing.
+- 2026-10-07 — the owner's rulings of 2026-10-07 applied by `architect-8.1.2e` (plan §12 questions 12 to 14, the kernel line, the cache bound). Question 12, option (a), "change now": §3, §1 and the owned-path arm of SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS and its §10 row now assert the skill beside the owning node; the router rule is SPEC-0002's (`PATH_ROUTE_ADDS_SEED_SKILL_PHRASES`, `PATH_ROUTE_SKILL_ADDITION_IS_CAPPED`, ADR-0026 "Amendment, 8.1.2", ratification pending). Question 13: an inventory-narrowing config key is slice-3 work, recorded in §2 and in the recoveries of §7 `CACHE_WRITE_FAILED` and `INSTALL_BUILD_FAILED`. Question 14: contract BUILD_HINTS_CONFIG_PATTERNS_THAT_MATCH_NOTHING; §6 "Build report" gains the hint kind `config-pattern-unmatched`, the hint key `patterns`, its `HINT_LINE` and `HINT_FIX`, and the hint order; §6 "CLI" prints the fix line under such a hint. Kernel ("1 yes add it"): contract KERNEL_NAMES_THE_SOURCE_INDEX, held by two seed-lint `TEXT_RULES` rows; `KERNEL_BUDGET` rises from 8,000 to 8,200 bytes in `tests/seed-lint.py` and `tests/ratchets.json`; §5 states it. `CACHE_MAX_BYTES` rises from 64 MiB (67,108,864) to 196 MiB (205,520,896) in §6, and §5 records the measurement owed before release: the peak RSS of a cached query near the bound. ADR-0029 and ADR-0030 revised to match. §11 is empty. §9 is product's to follow for the two new contracts; §10 rows `pending`. spec-lint stays red on the 8.1.2 contracts until RED.

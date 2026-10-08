@@ -1,6 +1,6 @@
 ---
 status: back-written
-status_date: 2026-10-01
+status_date: 2026-10-07
 owner: data-ml
 status_evidence: tests/test_agent_lint.py (CorpusHonestyTests, CompoundFragmentTests), agents/_routes.golden.tsv, tests/run.sh
 ---
@@ -22,9 +22,9 @@ status_evidence: tests/test_agent_lint.py (CorpusHonestyTests, CompoundFragmentT
 
 - **Owner:** data-ml
 - **Date:** 2026-09-13
-- **Last reviewed:** 2026-10-01
-- **Related grill section:** docs/plans/grill-7.15.0-remediation.md §0.3, §5 slice 7; docs/plans/grill-7.37.0-routing-context.md §9 (the node router, 7.37.0)
-- **Related ADRs:** adr-0001-mechanical-agent-router, adr-0003-enforcement-layering-honesty, adr-0026-node-router-ladder-and-gated-corpus (proposed)
+- **Last reviewed:** 2026-10-07
+- **Related grill section:** docs/plans/grill-7.15.0-remediation.md §0.3, §5 slice 7; docs/plans/grill-7.37.0-routing-context.md §9 (the node router, 7.37.0); docs/plans/grill-8.1.2-tool-surfacing.md §12 question 12 (a path route adds the seed skills whose phrase the task holds, 8.1.2)
+- **Related ADRs:** adr-0001-mechanical-agent-router, adr-0003-enforcement-layering-honesty, adr-0026-node-router-ladder-and-gated-corpus (accepted; its "Amendment, 8.1.2" awaits the owner's ratification), adr-0030-a-seed-tool-is-surfaced-by-a-seed-skill
 - **Supersedes:** —
 - **Superseded by:** —
 
@@ -59,6 +59,8 @@ saving is claimed for it.
   - since 7.37.0, the node router: the order of its signal tiers, its cap,
     its abstentions and their notices, the lexical guards it shares with the
     agent router, and `graph-lint.py --eval`
+  - since 8.1.2, the seed skills a path route adds beside the node that owns
+    the path (ADR-0026 "Amendment, 8.1.2")
 - **Out of scope:**
   - the scoring algorithms' internals (ADR-0001 and ADR-0026 own the designs;
     changing them requires re-measuring against this spec, not amending it).
@@ -78,7 +80,10 @@ per corpus class and says what each class is evidence for, so a reader cannot
 mistake self-consistency for skill.
 
 The node router answers a task with the nodes to read. When the task names a
-node id or a path, that wins over any word match. When nothing matches
+node id or a path, that wins over any word match. When the task names a
+path a node owns and also holds a trigger phrase of a seed skill, the skill
+loads beside the owning node, so a question about a file reaches the seed
+skill that says how to answer it (8.1.2). When nothing matches
 confidently, it loads nothing and its notice names the protocol entry nodes
 and asks for a sharper task line, instead of forcing root. A pasted brief is
 not routed: the notice asks for the task line.
@@ -339,6 +344,36 @@ loaded node always loads with it. Tiers, phrases and constants are §6's.
 - **And:** a basename two node files share loads neither by this tier, and a
   `repo:` value that names a repository root claims no path
 
+### Contract: PATH_ROUTE_ADDS_SEED_SKILL_PHRASES
+- **Given:** a fixture graph whose node `subsystem.app` claims `src/app.py`
+  by `repo: src` over an existing folder `src/`, and a task naming
+  `src/app.py` that holds, contiguous, one trigger phrase of each of: a
+  `kind: skill` node with `origin: seed`; a `kind: skill` node with another
+  `origin`, or none; a node of another kind with `origin: seed`
+- **When:** the router runs
+- **Then:** `load` holds `subsystem.app` with `how.kind` `named_path` and the
+  seed skill with `how.kind` `phrase` and `how.detail` its phrase, with the
+  skill's `requires:` closure; neither of the other two nodes loads
+- **And:** the same task with the path removed routes by tier 3, as before
+  8.1.2; a task that names a node id (tier 1) adds no skill; a tier-2 hit on
+  more than `STRONG_TIER_CAP` nodes falls through to tier 3, as before
+- **And:** a tier-2 `inferred` entry (an expertise file pattern) adds the
+  seed skill the same way, and a seed skill that tier 2 itself loaded loads
+  once, with its tier-2 kind
+- **Note:** added 2026-10-07 for 8.1.2, on the owner's ruling of plan
+  `docs/plans/grill-8.1.2-tool-surfacing.md` §12 question 12, option (a)
+
+### Contract: PATH_ROUTE_SKILL_ADDITION_IS_CAPPED
+- **Given:** the graph of PATH_ROUTE_ADDS_SEED_SKILL_PHRASES, and in turn a
+  task naming `src/app.py` that holds the phrases of exactly
+  `PATH_TIER_SKILL_CAP` seed skills and one that holds the phrases of one
+  more
+- **When:** `--plan-json` runs twice for each task
+- **Then:** the first task loads every such skill, listed after the tier-2
+  entries in node-id order; the second adds none and loads the tier-2
+  entries with their closure alone (§7 `PATH_ROUTE_SKILLS_OVER_CAP`)
+- **And:** the two runs of each task print the same `load`, byte for byte
+
 ### Contract: GRAPH_ROUTE_PHRASE_LOADS_ITS_NODE
 - **Given:** a task holding, contiguous, the content tokens of one trigger
   phrase (§6) of node N, of at least two content tokens, and naming no id or
@@ -530,6 +565,24 @@ Node-router tiers, in order; the first tier with a hit decides the seeds:
 | 3 | a trigger phrase held contiguous | `phrase` |
 | 4 | the lexical score, with at least two distinct confident terms per node | `scored` |
 
+One addition follows tier 2, since 8.1.2 (ADR-0026 "Amendment, 8.1.2"). When
+tier 2 decides the entries (`named_path` or `inferred`), each `kind: skill`
+node with `origin: seed` whose trigger phrase the task holds, as tier 3
+holds one, is added as an entry with `how.kind` `phrase`, after the tier-2
+entries in node-id order; when more than `PATH_TIER_SKILL_CAP` such skills
+hit, none is added. No other tier adds anything, and `how.kind` gains no
+value, so the `cypress.plan/1` document (SPEC-0003 §6) is unchanged. A seed
+skill says how a session uses a seed tool (ADR-0030), and the questions such
+a tool answers usually name a file a plant node owns; without the addition
+the first-tier rule loads the owner and never the skill. A node of another
+origin is not added, so a plant's own phrases keep the first-tier rule. Measured 2026-10-07 on a fresh install of seed `373b341`: 3 of the 39
+rows of `tests/graph-routes.golden.tsv` route by tier 2, and none holds a
+phrase of any of the 15 seed skills, so no row, class figure or `GRAPH_*`
+ratchet changes; a new seed skill's phrases are measured by the same gate
+when it lands. The scripted session of SPEC-0003
+`SESSION_INJECTION_WITHIN_BUDGET` names no owned path and holds no seed
+skill, so `SESSION_INJECTION_MAX_BYTES` does not move.
+
 `requires` and `composed` are closure kinds: they are reached from an entry of
 any tier, never seeds. A tier-1 or tier-2 hit on more than `STRONG_TIER_CAP`
 nodes is no hit; tier 3 is not capped. A
@@ -556,6 +609,7 @@ Constants, in `graph-lint.py`, one home each:
 | Name | Value |
 |---|---|
 | `STRONG_TIER_CAP` | 3 |
+| `PATH_TIER_SKILL_CAP` | 2, the most seed skills a tier-2 route adds; over it none is added (8.1.2). No routed row of the 74-row plant corpus or the seed corpus held the phrases of more than two nodes (`PHRASE_TIER_FLOODS_LOAD`) |
 | `LEXICAL_MIN_TERMS` | 2, the distinct confident terms a tier-4 entry needs |
 | `LONG_TASK_TERMS` | 100, distinct content words; over every prompt a person typed in the round (the owner-framing row: 66) and an order of magnitude under the pasted brief (1,332). No row of the seed's corpus has more than 20 |
 | `NO_SIGNAL_TEXT` | `no node matches this task; route a sharper task line, or enter a protocol:` |
@@ -628,6 +682,18 @@ such a row loads is irrelevant, so its share is 0 or 1 and adds nothing to
   owner may cap tier 3 under `STRONG_TIER_CAP` with a new amendment
 - **Note:** added 2026-10-01 (architect pass on increment 3)
 
+### Failure: PATH_ROUTE_SKILLS_OVER_CAP
+- **Contracts:** PATH_ROUTE_SKILL_ADDITION_IS_CAPPED
+- **Trigger:** a task naming a path a node owns holds the phrases of more
+  than `PATH_TIER_SKILL_CAP` seed skills
+- **Response:** no skill is added; the tier-2 entries load alone, as before
+  8.1.2. A strong signal that names too much is no signal, as
+  `STRONG_TIER_OVER_CAP_FALLS_THROUGH` holds for tiers 1 and 2
+- **Side effects:** none
+- **Recovery:** route the question without the path, or name the skill's id
+  (tier 1); sharpen a seed skill's trigger (`skill.knowledge-graph` rule 5)
+- **Note:** added 2026-10-07 for 8.1.2
+
 ## 8. Examples
 
 ```
@@ -687,6 +753,11 @@ ROUTE (ranked, confidence: HIGH)     # the compound itself still routes
       LONG_TASK_ABSTAINS_WITH_NOTICE, GRAPH_EVAL_GATES_PER_CLASS,
       EVERY_NUMBER_NAMES_ITS_CORPUS, HELD_OUT_STAYS_HELD_OUT,
       VACUOUS_CORPUS_IS_REFUSED, ABSTENTION_IS_A_CORRECT_OUTCOME
+- [ ] AC-11 (8.1.2): a task that names a path a node owns also loads each
+      seed skill whose trigger phrase it holds, at most `PATH_TIER_SKILL_CAP`
+      of them, after the owning node in a fixed order, and no plant node
+      beside it — maps to PATH_ROUTE_ADDS_SEED_SKILL_PHRASES,
+      PATH_ROUTE_SKILL_ADDITION_IS_CAPPED
 
 ## 10. Test mapping
 
@@ -720,6 +791,9 @@ ROUTE (ranked, confidence: HIGH)     # the compound itself still routes
 | AN_ABSOLUTE_FLOOR_IS_KEYED_TO_ITS_ROSTER | test_the_measured_roster_still_gates_on_the_paraphrase_floor | tests/test_agent_lint.py | integration | green |
 | GRAPH_ROUTE_NAMED_ID_LOADS_IT | test_graph_route_named_id_loads_it | tests/test_graph_lint.py | integration; gains the bare-`root` row (amended 2026-10-01) | green |
 | GRAPH_ROUTE_NAMED_PATH_LOADS_ITS_OWNER | test_graph_route_named_path_loads_its_owner | tests/test_graph_lint.py | integration | green |
+| PATH_ROUTE_ADDS_SEED_SKILL_PHRASES | test_path_route_adds_seed_skill_phrases (8.1.2): the §4 fixture; arms path removed (tier 3 as before), named id (no skill added), tier 2 over `STRONG_TIER_CAP` (tier 3 as before), an `inferred` entry, a seed skill that tier 2 loaded (once, its tier-2 kind) | tests/test_graph_lint.py | integration | pending |
+| PATH_ROUTE_SKILL_ADDITION_IS_CAPPED | test_path_route_skill_addition_is_capped (8.1.2): exactly `PATH_TIER_SKILL_CAP` skills added in node-id order after the tier-2 entries; one more adds none; two runs byte-identical | tests/test_graph_lint.py | integration | pending |
+| PATH_ROUTE_SKILLS_OVER_CAP | test_path_route_skill_addition_is_capped, its over-cap arm | tests/test_graph_lint.py | integration | pending |
 | GRAPH_ROUTE_PHRASE_LOADS_ITS_NODE | test_graph_route_phrase_loads_its_node | tests/test_graph_lint.py | integration; gains the rows moved from SPEC-0005's retired promotion tests: a piece holding a slash and a space, stopwords and short words dropped, the first held piece in `load_when` order as `how.detail` | green |
 | GRAPH_ROUTE_PHRASE_LOADS_ITS_NODE | test_plan_phrase_entry_brings_required_parent | tests/test_graph_lint.py | integration; rewritten from SPEC-0005 `test_plan_promoted_node_brings_required_parent` | green |
 | STRONG_TIER_OVER_CAP_FALLS_THROUGH | test_strong_tier_over_cap_falls_through | tests/test_graph_lint.py | integration; gains a row where four nodes' phrases load by tier 3, uncapped (amended 2026-10-01) | green |
@@ -905,3 +979,18 @@ moves with each entry here.
   the ratchets set from the post-change run (ADR-0026, its Result section).
   The one `pending` row is CONTRACT_ROW_ABSTENTION_IS_A_DEFECT, untested as
   §11 says. No contract changed. The status stays `back-written`.
+- 2026-10-07: 8.1.2, written ahead of its RED by `architect-8.1.2e`, on the
+  owner's ruling of plan `docs/plans/grill-8.1.2-tool-surfacing.md` §12
+  question 12, option (a), "change now"
+  ([ADR-0026](../decisions/adr-0026-node-router-ladder-and-gated-corpus.md)
+  "Amendment, 8.1.2", ratification pending). When tier 2 decides, the
+  router also adds the `origin: seed` skill nodes whose trigger phrase the
+  task holds, at most `PATH_TIER_SKILL_CAP` (2), after the tier-2 entries in
+  node-id order. §2 and §3 say so; §4 gains PATH_ROUTE_ADDS_SEED_SKILL_PHRASES
+  and PATH_ROUTE_SKILL_ADDITION_IS_CAPPED; §6 states the addition, its
+  measurement (no golden row, class figure or ratchet moves; the session
+  injection budget does not move) and the constant; §7 gains
+  PATH_ROUTE_SKILLS_OVER_CAP; §9 gains AC-11; §10 gains `pending` rows. The
+  related-ADR line no longer calls ADR-0026 proposed. Until the RED lands,
+  `spec-lint.py` counts the two contracts as uncovered. The status stays
+  `back-written`.
