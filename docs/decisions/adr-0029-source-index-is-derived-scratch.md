@@ -94,6 +94,13 @@ say.
   `docs/graph/` and cannot load the helper, so the helper's docstring names
   route-hook's writer as the other home of the rule; a change to the rule
   changes both.
+- The cache is bounded: a document larger than `CACHE_MAX_BYTES` (SPEC-0007
+  §6; 196 MiB since 8.1.2, by the owner's ruling of 2026-10-07, from 64 MiB)
+  is neither written nor read, and the tool then answers as with no cache,
+  by deriving the index on each query. The bound limits what a query loads
+  into memory; the memory a query takes near the bound is measured before
+  the 8.1.2 release. No setting narrows the inventory; such a key is slice-3
+  work (the owner, 2026-10-07).
 - Anchors citations are read from the pages on every query, never cached, so
   an uncommitted node edit is seen at once without widening the key to
   `docs/graph/`.
@@ -189,3 +196,7 @@ Revised 2026-10-07 by `architect-8.1.2d` on the reviews `security-8.1.2`
 measured on seed `52fcce5`, and the build count per graft). The decision and
 the ratified consequence are unchanged; only the run's form and the cost
 figures are stated more exactly.
+
+Revised 2026-10-07 by `architect-8.1.2e` on the owner's ruling that
+`CACHE_MAX_BYTES` is 196 MiB: the bound and its fallback are stated as a
+consequence. The decision and the ratified amendment are unchanged.

@@ -58,14 +58,15 @@ placement; the seed writes no card and no catalog row into a plant's
 
 ## Consequences
 
-- The tool is routed by its skill's `load_when` for path-free phrasings of
-  its four questions. When a task names a path a node owns, the router's
-  `named_path` tier loads the owning node first, and the skill reaches the
-  session through the host's native skill listing: hosts that read skill
-  descriptions (Claude Code, opencode, Prime Agent) see it natively. This is
-  option (b) of `docs/plans/grill-8.1.2-tool-surfacing.md` §12 question 12,
-  stated provisionally, pending the owner; option (a) would have the router
-  add the skill beside the owning node (a SPEC-0002 / ADR-0026 change).
+- The tool is routed by its skill's `load_when` for its four questions.
+  When a task names a path a node owns, the router's path tier loads the
+  owning node and adds the seed skill whose phrase the task holds beside it
+  (SPEC-0002 `PATH_ROUTE_ADDS_SEED_SKILL_PHRASES`,
+  [ADR-0026](adr-0026-node-router-ladder-and-gated-corpus.md) "Amendment,
+  8.1.2"; the owner's option (a) of
+  `docs/plans/grill-8.1.2-tool-surfacing.md` §12 question 12). Hosts that
+  read skill descriptions (Claude Code, opencode, Prime Agent) also list it
+  natively.
 - No new placer, provenance line, stamp key, collection exclusion or backup
   class: every seed skill is placed by `place_file` on every install and
   graft, flagged `RETIRED` if the seed drops it, and backed up when a plant
@@ -84,12 +85,15 @@ placement; the seed writes no card and no catalog row into a plant's
   plant's `TEST_GLOBS`, its config, its `repo:` values and a nested
   repository no `repo:` names, the report names with the exact fix. The
   build does not judge whether `TEST_GLOBS` is right, only whether it
-  matches; a config pattern that matches no file is not reported (pending
-  owner, the plan's §12 question 14).
+  matches; a pattern the plant's config sets that matches no file is named
+  in a hint with its fix (the owner, the plan's §12 question 14).
+- Every session reads one line about the tool before any routing: the
+  kernel's "Where to look next" names `source-index.py --help` and
+  `skill.source-index` (SPEC-0007 `KERNEL_NAMES_THE_SOURCE_INDEX`).
 - The test that fails if this is reversed:
-  SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS (its route arms, and its arm
-  that the installer writes nothing under `docs/graph/tools/` beyond the
-  missing catalog).
+  SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS (its route arms, the
+  owned-path arm among them, and its arm that the installer writes nothing
+  under `docs/graph/tools/` beyond the missing catalog).
 - Reversal cost: reversible. Removing the skill is a seed edit; plants drop
   it at their next graft through `RETIRED`.
 
@@ -137,3 +141,10 @@ Revised 2026-10-07 by `architect-8.1.2d` on the review `devils-advocate-8.1.2`
 when a task names an owned path, with option (b) stated pending the owner,
 and "nothing is left to do by hand" is narrowed to the gaps the build can
 detect. The Decision is unchanged.
+
+Revised 2026-10-07 by `architect-8.1.2e` on the owner's rulings of
+questions 12 (option (a): the router adds the seed skill beside the node
+that owns a named path), 14 (a config pattern that matches no file becomes
+a hint with its fix) and the kernel line (the kernel names the tool). The
+routing consequence now states option (a), and the consequence on the
+kernel line is added. The Decision is unchanged.

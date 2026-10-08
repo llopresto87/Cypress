@@ -1,6 +1,6 @@
 ---
 status: accepted
-status_date: 2026-10-01
+status_date: 2026-10-07
 owner: seed steward
 ---
 
@@ -188,6 +188,56 @@ irrelevant share at most 0.58, 0.51 and 0.43 for contract, paraphrase and
 adversarial. A pasted brief now gets the one `long_task` notice line instead
 of 28 nodes.
 
+## Amendment, 8.1.2 (2026-10-07), ratification pending
+
+Made by `architect-8.1.2e` on the owner's ruling of 2026-10-07 on question
+12 of `docs/plans/grill-8.1.2-tool-surfacing.md` §12, option (a), "change
+now". It amends this accepted record in place, as ADR-0029's 8.1.2
+amendment did, because the ladder stands and one rule is added beside it.
+SPEC-0002 is the one home of the rule (`PATH_ROUTE_ADDS_SEED_SKILL_PHRASES`,
+`PATH_ROUTE_SKILL_ADDITION_IS_CAPPED`, §6 `PATH_TIER_SKILL_CAP`); this
+section records the decision and the evidence.
+
+- **Context.** [ADR-0030](adr-0030-a-seed-tool-is-surfaced-by-a-seed-skill.md)
+  surfaces a placed seed tool through a seed skill. The questions that tool
+  answers usually name a file (`what depends on src/app.py`). In a grown
+  plant a node owns that path, tier 2 decides, and the first-tier rule
+  never reaches the skill's phrase: three of the four `SKILL_ROUTE_TASKS` of
+  SPEC-0007 loaded the owning node and not `skill.source-index`
+  (`devils-advocate-8.1.2`, item 2).
+- **Decision.** When tier 2 decides the entries (`named_path` or
+  `inferred`), the router also adds each `kind: skill` node with
+  `origin: seed` whose trigger phrase the task holds contiguous, as a
+  `phrase` entry after the tier-2 entries in node-id order. When more than
+  `PATH_TIER_SKILL_CAP` (2) such skills hit, none is added. Tiers 1, 3 and 4
+  are unchanged, and so is the first-tier rule for every other node.
+- **Why this narrow.** Seed skills only: their phrases are the seed's and
+  its corpus measures them, and a skill says how to work, which a path does
+  not; a plant node beside the owner would bring back the over-selection
+  this record removed. Tier 2 only: a named id is the caller's exact choice.
+  Phrase hits only: a scored hit is the weak signal the ladder ranks last.
+  Over the cap none, as a strong tier over `STRONG_TIER_CAP` is no hit.
+- **Consequences.** The `cypress.plan/1` document keeps its shape:
+  `how.kind` gains no value. Measured on a fresh install of seed `373b341`:
+  3 of the 39 rows of `tests/graph-routes.golden.tsv` route by tier 2 and
+  none holds a phrase of any of the 15 seed skills, so no row, class figure
+  or ratchet moves; `skill.source-index`'s phrases are measured by the same
+  gate when it lands. SPEC-0003's scripted session names no owned path, so
+  `SESSION_INJECTION_MAX_BYTES` does not move. A route adds at most two
+  skills and their `requires:` closure.
+- **Alternatives considered.** (b), narrowing the claim to path-free
+  phrasings and leaving the skill to the host's skill listing: rejected by
+  the owner, because the routed claim stayed false in every grown plant. A
+  new tier between 2 and 3: rejected, because a tier decides the entries
+  alone and the skill must load beside the owner, not in its place. A
+  frontmatter key naming the questions a skill answers: rejected, a schema
+  change in every plant for what a phrase already says.
+- **Reversibility.** `reversible`: one block in `resolve()` and one
+  constant; plants drop it at their next graft.
+
+Ratification: pending the owner. The owner ruled option (a) on 2026-10-07;
+this text waits for the owner's word.
+
 ## Reversibility
 
 `reversible`. A code change in one function and one flag. The ratchets revert
@@ -195,7 +245,7 @@ with it.
 
 ## References
 
-- Spec: SPEC-0002 (the node router section)
+- Spec: SPEC-0002 (the node router section; since 8.1.2 the seed skills a path route adds)
 - Plan: `docs/plans/grill-7.37.0-routing-context.md`, increment 3
 - [ADR-0001](adr-0001-mechanical-agent-router.md) (the agent router),
   [ADR-0017](adr-0017-pre-growth-pointers-leave-the-kernel.md) (the placeholder
