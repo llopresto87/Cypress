@@ -1,6 +1,6 @@
 ---
 status: implemented
-status_date: 2026-10-05
+status_date: 2026-10-07
 owner: seed-installer
 status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tests/test-install-kernel-modes.sh, tests/test-install-adoption.sh, tests/test-full-install.sh, tests/test-seed-lint.sh, tests/test-graft-tools.sh, tests/test_corpus_match.py (every §10 contract row green, HARVEST_CANDIDATE_FORM_IS_PLACED included, held by S14 in case_plan_records and proved by mutation, §12's second entry of 2026-10-05 on the harvest-candidate form; all wired into tests/run.sh)
 ---
@@ -86,6 +86,12 @@ status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tes
   Sign-offs for it: product [x] · architect [x] · tester [x]. Product signed:
   the form is placed byte-identical, never clobbered or backed up, and AC-29
   states the outcome the owner checks, the one S14 asserts.
+  The 8.1.2 amendment (2026-10-07) came after every tick above: §2's line for
+  the source-index build, SINGLE_WRITER's And clause for it and
+  IDENTICAL_RERUN_IS_INERT's Except clause for its cache. The architect wrote
+  it on the owner's go ("3 go", 2026-10-07). It changes no test and no §10
+  row; product and tester owe their review of the text, and product owns
+  whether §3 and AC-3 name the cache.
   Before 8.0.0 this spec was `back-written` and carried no sign-off, because
   there was no RED for a promotion to land with. An earlier draft asserted
   signatures dated to a RED that never landed; that was fabricated to satisfy
@@ -96,9 +102,9 @@ status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tes
 
 - **Owner:** seed-installer
 - **Date:** 2026-09-13
-- **Last reviewed:** 2026-10-05
-- **Related grill section:** docs/plans/grill-7.15.0-remediation.md §3, §5; docs/plans/grill-8.0.0-wave-a.md §9 (the 8.0.0 contracts); the matcher increment of 2026-10-05 is its increment 17
-- **Related ADRs:** adr-0003-enforcement-layering-honesty, adr-0009-host-support-tiers, adr-0013-harness-memory-is-not-a-home, adr-0014-graft-reconciles-every-graph-engine, adr-0016-stamp-carries-keys-it-does-not-own, adr-0017-pre-growth-pointers-leave-the-kernel, adr-0018-code-fact-freshness-anchor (the last three proposed), adr-0021-seed-only-procedures-stay-home, adr-0022-the-plant-model-map (both proposed), adr-0024-one-hook-core-per-session-residency (proposed)
+- **Last reviewed:** 2026-10-07
+- **Related grill section:** docs/plans/grill-7.15.0-remediation.md §3, §5; docs/plans/grill-8.0.0-wave-a.md §9 (the 8.0.0 contracts); the matcher increment of 2026-10-05 is its increment 17; docs/plans/grill-8.1.2-tool-surfacing.md increment 2 (the source-index build)
+- **Related ADRs:** adr-0003-enforcement-layering-honesty, adr-0009-host-support-tiers, adr-0013-harness-memory-is-not-a-home, adr-0014-graft-reconciles-every-graph-engine, adr-0016-stamp-carries-keys-it-does-not-own, adr-0017-pre-growth-pointers-leave-the-kernel, adr-0018-code-fact-freshness-anchor (the last three proposed), adr-0021-seed-only-procedures-stay-home, adr-0022-the-plant-model-map (both proposed), adr-0024-one-hook-core-per-session-residency (proposed), adr-0029-source-index-is-derived-scratch (its 8.1.2 amendment: the install runs the build)
 - **Supersedes:** —
 - **Superseded by:** —
 
@@ -153,10 +159,20 @@ install without replacing a page the plant edited or owns.
   - the one resolution of the legal jurisdiction that the national-layer
     report, the stamp and the closing banner share
   - the execution of each wired context hook under `--check`
+  - the one write of an install that is not the installer's: the cache under
+    `.cypress/source-index/` that the placed
+    `docs/graph/source-index.py build` writes when the install runs it as its
+    last step. This spec owns only where that write stands against its own
+    rules: outside SINGLE_WRITER's census, and the one exception to
+    IDENTICAL_RERUN_IS_INERT (adr-0029, amendment 8.1.2)
 - **Out of scope:**
   - the anchor file `docs/graph/code-anchor.py` writes: SPEC-0003 owns it,
     because the session-start hooks read it and canonize writes it; the
     installer never writes it
+  - the source-index build itself: when the install runs it, its report, its
+    bound and its failure, and the cache document it writes. SPEC-0007 owns
+    them (`INSTALL_RUNS_THE_BUILD`, `INSTALL_BUILD_FAILED`, §6 "Cache
+    document")
   - what the placed files MEAN (the graph schema, the kernel's content)
   - `grow`, `graft` and `harvest`, which are user-sovereign flows over an
     already-installed plant, apart from the engine reconciliation above
@@ -273,6 +289,13 @@ jurisdiction undecided.
   splitting), so the list was overstated as well as mislocated: it said these
   residuals were recorded in `tools/gate-registry.py`, and they were not there at
   all. They are recorded in the registry's `seed-lint.py` row now.
+- **And:** the source-index build that ends an install (SPEC-0007
+  `INSTALL_RUNS_THE_BUILD`) is a tool run of a placed file, not an installer
+  write: `install.sh` runs `python3 docs/graph/source-index.py build` from the
+  target, and the cache that run writes under `.cypress/source-index/` is the
+  tool's own atomic write under adr-0029. The run adds no raw write to
+  `install.sh`, so it is neither a placer write nor a row of
+  `INSTALL_WRITE_EXCEPTIONS`, and the count of 11 above is unchanged.
 
 ### Contract: BACKUP_BEFORE_REPLACE
 - **Given:** a destination that exists and differs from what is being placed
@@ -299,6 +322,14 @@ jurisdiction undecided.
 - **Given:** a plant nobody has modified since the last install
 - **When:** the same install command runs again
 - **Then:** no file is rewritten and no `.bak-*` is created
+- **Except:** the derived cache under `.cypress/source-index/`, which the
+  install's build (SPEC-0007 `INSTALL_RUNS_THE_BUILD`) replaces through the
+  tool's own atomic write on every install into a Git work tree. When nothing
+  moved, the new cache holds the same bytes as the old one (SPEC-0007
+  `BUILD_IS_DETERMINISTIC`), and no `.bak-*` is made for it, because the
+  installer neither places nor backs up a cache file. Over a target that is
+  not a Git work tree the build writes nothing, so the Then holds there
+  without exception
 
 ### Contract: EVERY_BACKUP_IS_CLASSIFIABLE
 - **Given:** any backup the installer produced
@@ -2263,3 +2294,22 @@ only version surface it has, and it moves with each entry here.
   `SINGLE_WRITER`'s census, which S14 does not measure, moves into the
   contract's preamble as its rationale; the contract's meaning is unchanged.
   Product re-reads before it ticks.
+
+- 2026-10-07: 8.1.2, the source-index build (grill-8.1.2-tool-surfacing.md
+  increment 2, on the owner's go of 2026-10-07: "3 go"). SPEC-0007
+  `INSTALL_RUNS_THE_BUILD` makes every install that places files end by
+  running the placed `docs/graph/source-index.py build`, so an install into a
+  Git work tree now writes, through the tool, the cache under
+  `.cypress/source-index/` (adr-0029, its 8.1.2 amendment). Two contracts here
+  would otherwise be false about that write, so the text changes and the code
+  is to follow it. §2 names the write in scope and the build itself as
+  SPEC-0007's. SINGLE_WRITER gains an And clause: the build is a tool run of a
+  placed file, not an installer write, and the count of 11 exceptions is
+  unchanged. IDENTICAL_RERUN_IS_INERT gains an Except clause: the cache is
+  replaced on every install into a Git work tree, with equal bytes when
+  nothing moved (SPEC-0007 `BUILD_IS_DETERMINISTIC`) and no backup. No §10 row
+  changes: M3, M7 and `check_install_write_sites` install into, or read,
+  non-Git targets and `install.sh`, where the build adds no write, and
+  SPEC-0007's rows hold the cache. No §6 shape and no §7 failure changed.
+  Product and tester owe their review of the text; §3's "does nothing and
+  says nothing" and AC-3's "zero churn" are product's to reword.

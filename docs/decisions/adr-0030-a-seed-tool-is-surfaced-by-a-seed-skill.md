@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 status_date: 2026-10-07
 owner: architect
 ---
@@ -9,12 +9,8 @@ owner: architect
 ## Status
 
 See frontmatter (single home). Proposed with the 8.1.2 contracts of
-SPEC-0007; the owner rules on it as question 1 of
-`docs/plans/grill-8.1.2-tool-surfacing.md` §12. On 2026-10-07 the owner
-ruled questions 2 and 3 and asked that a plant be "ready to go from te
-get-go after executing the protocols"; the session took question 1 as yes on
-that ground, because a tool no route finds is not ready. The owner may still
-veto.
+SPEC-0007 as question 1 of `docs/plans/grill-8.1.2-tool-surfacing.md` §12,
+and accepted by the owner (see Ratification).
 
 ## Date
 
@@ -117,3 +113,12 @@ placement; the seed writes no card and no catalog row into a plant's
 - `docs/plans/grill-8.1.2-tool-surfacing.md` §6, §7, §12
 - `tools/growth-audit.py` `required_collections`, `lint_collections`;
   `tools/graft-audit.py` MODE 1; `install.sh` `place_graph_machinery`
+
+## Ratification
+
+Accepted by the owner, 2026-10-07: "1 ok 2 ok 3 go". Item 1 of that ruling
+is this record (question 1 of `docs/plans/grill-8.1.2-tool-surfacing.md`
+§12); items 2 and 3 are the ADR-0029 amendment and the SPEC-0001 amendment
+(questions 8 and 9). Before the ruling the session had taken question 1 as
+yes from the owner's "ready to go" ruling; the acceptance replaces that
+reading. The Decision is unchanged.
