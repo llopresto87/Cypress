@@ -37,6 +37,7 @@ which is the installed *application* knowledge graph. ADR bodies use
 | [0027](adr-0027-first-move-runs-the-router.md) | The kernel's FIRST MOVE runs the router and `index.md` becomes the fallback map, landed on a measurement that favoured it (amends a consequence of ADR-0017 in part) | accepted | 2026-10-01 | owner ruling D2 (kept outside the seed) | 7.37.0 |
 | [0028](adr-0028-harvest-takes-knowledge-whole.md) | Harvest generalizes instead of rejecting, admits the version facts a library documents (security facts, calendar dates and a plant's own version stay out), and classes every fact by provenance | proposed | 2026-10-05 | owner decisions of 2026-10-04 and 2026-10-05 | 8.0.0 |
 | [0029](adr-0029-source-index-is-derived-scratch.md) | The source index is derived scratch: self-ignored under `.cypress/source-index/`, rebuilt on any key change, never committed, never canonical | accepted | 2026-10-07 | grill-8.1.0-source-index.md | 8.1.0 |
+| [0030](adr-0030-a-seed-tool-is-surfaced-by-a-seed-skill.md) | A placed seed tool is surfaced by a seed skill node; a plant's `docs/graph/tools/` stays the plant's catalog | proposed | 2026-10-07 | grill-8.1.2-tool-surfacing.md | 8.1.2 |
 
 ADRs **0001–0003** were decided inline in the plan-of-record
 [`../plans/agent-routing-and-delegation.md`](../plans/agent-routing-and-delegation.md)

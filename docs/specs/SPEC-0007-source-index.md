@@ -1,5 +1,5 @@
 ---
-status: implemented
+status: active
 status_date: 2026-10-07
 owner: architect
 status_evidence: tests/test-source-index.sh, tests/test_graph_lint.py, tests/test-code-anchor.sh, tests/test-prompt-hooks.sh, tests/seed-lint.py, tests/test-full-install.sh E15 (every §10 row green at 68c970e, slice 1 and slice 2 with option D; all wired into tests/run.sh, 51/51)
@@ -13,19 +13,19 @@ status_evidence: tests/test-source-index.sh, tests/test_graph_lint.py, tests/tes
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-10-07
-- **Last reviewed:** 2026-10-07 (review `reviewer-spec`, amended by `architect-amend`; joint-pass step-3 returns applied by `architect-fix`; devils-advocate verdicts applied by `architect-da`; the load by file path made `certain` by `architect-q5`; the code-review fixes stated in §6 and §7 by `architect-review-fixes`; the slice-1 final decisions after the measurement, path joins, the floor's depth and the unmapped specifier, by `architect-final`; slice 2, §1, §2 and §4 to §8, by `architect-slice2`; the slice-2 tester, security and devils-advocate findings by `architect-slice2-fix`; the slice-2 code review `reviewer-slice2` (fixes 5 and 6) and the measurement-2 decisions M2-1, M2-3 and M2-6 by `architect-slice2-m2`; the owner's `repo:` ruling, option D, by `architect-D`; the option-D stat path's security lines D1 to D3 of `security-D` by `architect-D2`; every §10 row green at 68c970e by `tester-final`)
-- **Related grill section:** docs/plans/grill-8.1.0-source-index.md §6 (the owner's rulings of 2026-10-07: one walk with three link kinds; the helper's scope; test roots and plant config; graph-lint keeps its tier-2 rule in slice 1; "slice 2 ok", with the slice-2 rows)
-- **Related ADRs:** adr-0029-source-index-is-derived-scratch (accepted): the index is derived scratch, self-ignored, rebuilt on any key change, never committed and never canonical
+- **Last reviewed:** 2026-10-07 (review `reviewer-spec`, amended by `architect-amend`; joint-pass step-3 returns applied by `architect-fix`; devils-advocate verdicts applied by `architect-da`; the load by file path made `certain` by `architect-q5`; the code-review fixes stated in §6 and §7 by `architect-review-fixes`; the slice-1 final decisions after the measurement, path joins, the floor's depth and the unmapped specifier, by `architect-final`; slice 2, §1, §2 and §4 to §8, by `architect-slice2`; the slice-2 tester, security and devils-advocate findings by `architect-slice2-fix`; the slice-2 code review `reviewer-slice2` (fixes 5 and 6) and the measurement-2 decisions M2-1, M2-3 and M2-6 by `architect-slice2-m2`; the owner's `repo:` ruling, option D, by `architect-D`; the option-D stat path's security lines D1 to D3 of `security-D` by `architect-D2`; every §10 row green at 68c970e by `tester-final`; the 8.1.2 surfacing contracts, §2, §4, §6, §7, §8 and §10, by `architect-8.1.2`, with §3 and §9 left to product)
+- **Related grill section:** docs/plans/grill-8.1.2-tool-surfacing.md (the 8.1.2 surfacing contracts); docs/plans/grill-8.1.0-source-index.md §6 (the owner's rulings of 2026-10-07: one walk with three link kinds; the helper's scope; test roots and plant config; graph-lint keeps its tier-2 rule in slice 1; "slice 2 ok", with the slice-2 rows)
+- **Related ADRs:** adr-0029-source-index-is-derived-scratch (accepted): the index is derived scratch, self-ignored, rebuilt on any key change, never committed and never canonical; adr-0030-a-seed-tool-is-surfaced-by-a-seed-skill (proposed, 8.1.2): a placed seed tool reaches sessions through a seed skill node, and a plant's `docs/graph/tools/` stays the plant's catalog
 - **Related specs:** SPEC-0001-install-placement (placement), SPEC-0003-per-prompt-injection (code anchor)
 - **Related wiki pages:** none (stdlib Python and git only)
 - **Design latitude:** balanced. The owner approved on 2026-10-07: "implement the plan so that it's integrated organically into the cypress seed and installed/grafted into the plants correctly." New structure is allowed where the change needs it (one shared helper module, one derived cache); no concept the plan did not name.
 - **Supersedes:** none
 - **Superseded by:** none
-- **Sign-offs:** product [x] (2026-10-07: slice 1 signed, §3 and §9 reflect the owner's outcome; 2026-10-07, `product-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling; 2026-10-07, `product-D`: the owner's option D, §3 states the `repo:` claim, §9 AC-22 holds REPO_CLAIM and the missing helper) · architect [x] (2026-10-07, `architect-da`: §4 to §8 coherent after the devils-advocate verdicts; the floor, the helper interface, the interpreter in the key and the TS/JS line join applied; 2026-10-07, `architect-slice2`: the slice-2 §4 to §8 coherent with slice 1; 2026-10-07, `architect-slice2-fix`: the slice-2 review findings applied, `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` left pending the owner's `repo:` ruling, grill §12 question 6; 2026-10-07, `architect-D`: that contract, `ANCHORS_NAME_CITING_PAGES_OR_UNCITED`, §6 "Helper" and §7 rewritten on the owner's option D, §4 to §8 coherent) · tester [x] (2026-10-07: slice 1 signed; `tester-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling; 2026-10-07, `tester-final`: slice 2 and option D, every §10 row green at 68c970e) · security [x] (2026-10-07, `security-slice2-sign`: slice 2 signed; S1 to S8 and P1 to P10 applied in §5, §6, §7, §10 and the plan; accepted deviations: the `/%P` history marker that also skips a parentless commit, the depth-2 `file://` shallow clone, and a missing helper beside graph-lint degrading tier 2 with the `inference_skipped` notice instead of failing the route; REPO_CLAIM pending owner ruling; 2026-10-07, `security-D`: option D's stat path signed; no finding, no block; apply spec lines D1 to D3 and arms D4 to D6 on X459. Slice 1 signed by `security-s5s7`: §5 Security requirements and seven §7 abuse cases added; four §6 constants, `FILE_MAX_BYTES`, `DIR_LINK_MAX`, `EXTENDS_MAX` and `CACHE_MAX_BYTES`, and the `outside-repository` `base` value are left to the architect)
+- **Sign-offs:** 8.1.2 surfacing: architect [x] (2026-10-07, `architect-8.1.2`: §4 to §8 coherent with slices 1 and 2) · product [ ] · tester [ ] · security [ ]; the owner's ruling on plan §12 questions 1 to 4 pending. Slices 1 and 2: product [x] (2026-10-07: slice 1 signed, §3 and §9 reflect the owner's outcome; 2026-10-07, `product-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling; 2026-10-07, `product-D`: the owner's option D, §3 states the `repo:` claim, §9 AC-22 holds REPO_CLAIM and the missing helper) · architect [x] (2026-10-07, `architect-da`: §4 to §8 coherent after the devils-advocate verdicts; the floor, the helper interface, the interpreter in the key and the TS/JS line join applied; 2026-10-07, `architect-slice2`: the slice-2 §4 to §8 coherent with slice 1; 2026-10-07, `architect-slice2-fix`: the slice-2 review findings applied, `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` left pending the owner's `repo:` ruling, grill §12 question 6; 2026-10-07, `architect-D`: that contract, `ANCHORS_NAME_CITING_PAGES_OR_UNCITED`, §6 "Helper" and §7 rewritten on the owner's option D, §4 to §8 coherent) · tester [x] (2026-10-07: slice 1 signed; `tester-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling; 2026-10-07, `tester-final`: slice 2 and option D, every §10 row green at 68c970e) · security [x] (2026-10-07, `security-slice2-sign`: slice 2 signed; S1 to S8 and P1 to P10 applied in §5, §6, §7, §10 and the plan; accepted deviations: the `/%P` history marker that also skips a parentless commit, the depth-2 `file://` shallow clone, and a missing helper beside graph-lint degrading tier 2 with the `inference_skipped` notice instead of failing the route; REPO_CLAIM pending owner ruling; 2026-10-07, `security-D`: option D's stat path signed; no finding, no block; apply spec lines D1 to D3 and arms D4 to D6 on X459. Slice 1 signed by `security-s5s7`: §5 Security requirements and seven §7 abuse cases added; four §6 constants, `FILE_MAX_BYTES`, `DIR_LINK_MAX`, `EXTENDS_MAX` and `CACHE_MAX_BYTES`, and the `outside-repository` `base` value are left to the architect)
 
 ## 1. Summary
 
-A stdlib Python seed tool, `tools/source-index.py`, placed in every plant as `docs/graph/source-index.py`, derives the structure of a project's code, the code that does things and the tests that check it, without a model. It builds a file inventory (path, content hash, language, test class) and file-to-file links from Python imports (`ast`), shell and Python invocations, quoted path and directory literals (whole, or joined from segments as in `ROOT / "tools" / "x.py"`), and TypeScript/JavaScript import and require specifiers resolved through `tsconfig` paths. One reverse walk over those links answers three queries: `impact` (the files that depend on the inputs, `certain` rows first, each class nearest first), `affected-tests` (the same walk filtered to the test class, plus the always-run set) and `anchors` (graph pages that cite the inputs). Every row is `certain` or `maybe` (with the reason and line of its weakest link); the `maybe` rows every input reaches alike, the opaque holders and their dependents, are the floor, listed once and apart after the input's own rows; what the tool cannot answer makes the answer `incomplete`, with a reason and one action per query: "check by hand", "run the full suite", "review by hand". The index is derived, safe to delete, never committed, and rebuilt whenever its key changes, a graft or another Python version included (ADR-0029). The rules for "what is code", "where does the plant end" and "how a page cites a path" have one home each, shared with `code-anchor.py` and `growth-audit.py`. The tool recommends; verify, tiering and canonize keep every decision. Slice 2 adds a `symbols` query that says where a name is defined (a Python definition read by `ast` is `certain`, a shell function or a top-level or exported TS/JS declaration read a line at a time is `maybe`), Git change history as an opt-in `maybe` link source (`--history`), `anchors --moved` over code-anchor's moved list, the `repo:` claim and path-pattern rules in the helper that `graph-lint.py` now loads too, and protocol steps that call the tool on demand at verify, canonize, grow and adopt.
+A stdlib Python seed tool, `tools/source-index.py`, placed in every plant as `docs/graph/source-index.py`, derives the structure of a project's code, the code that does things and the tests that check it, without a model. It builds a file inventory (path, content hash, language, test class) and file-to-file links from Python imports (`ast`), shell and Python invocations, quoted path and directory literals (whole, or joined from segments as in `ROOT / "tools" / "x.py"`), and TypeScript/JavaScript import and require specifiers resolved through `tsconfig` paths. One reverse walk over those links answers three queries: `impact` (the files that depend on the inputs, `certain` rows first, each class nearest first), `affected-tests` (the same walk filtered to the test class, plus the always-run set) and `anchors` (graph pages that cite the inputs). Every row is `certain` or `maybe` (with the reason and line of its weakest link); the `maybe` rows every input reaches alike, the opaque holders and their dependents, are the floor, listed once and apart after the input's own rows; what the tool cannot answer makes the answer `incomplete`, with a reason and one action per query: "check by hand", "run the full suite", "review by hand". The index is derived, safe to delete, never committed, and rebuilt whenever its key changes, a graft or another Python version included (ADR-0029). The rules for "what is code", "where does the plant end" and "how a page cites a path" have one home each, shared with `code-anchor.py` and `growth-audit.py`. The tool recommends; verify, tiering and canonize keep every decision. Slice 2 adds a `symbols` query that says where a name is defined (a Python definition read by `ast` is `certain`, a shell function or a top-level or exported TS/JS declaration read a line at a time is `maybe`), Git change history as an opt-in `maybe` link source (`--history`), `anchors --moved` over code-anchor's moved list, the `repo:` claim and path-pattern rules in the helper that `graph-lint.py` now loads too, and protocol steps that call the tool on demand at verify, canonize, grow and adopt. Since 8.1.2 a plant finds the tool by topic and sees what to set before trusting it: the seed skill `skill.source-index`, placed and refreshed with the other seed skills, routes the four questions to the tool, and `build` reports its time and counts, every `repo:` value that names nothing, and hints about the test class, a report the installer names as a next step and `growth-audit.py` prints at every grow and graft.
 
 ## 2. Scope
 
@@ -43,10 +43,16 @@ A stdlib Python seed tool, `tools/source-index.py`, placed in every plant as `do
     - `anchors --moved`: the moved list of `code-anchor.py`, read through the one function its `--compare` prints from, each repository-relative path joined to its repository (grill §12 question 3).
     - The `repo:` claim rule and the path-pattern rule move into the helper; `graph-lint.py` loads the helper from beside itself and its tier 2 calls both, with its messages unchanged (grill §12 question 2); `anchors` and the plant config call the same functions. What a `repo:` value names on disk decides whether it claims paths (the owner's ruling on grill §12 question 6, option D): a repository or the plant root claims nothing, a folder or a file claims, slash or not, and a value that names nothing is read as before and reported by `anchors`. Graph-lint's verdicts are unchanged on the seed's suites and change in a plant that holds a folder or file value without `/`, at its next graft.
     - Protocol wiring, on demand and never per prompt or per file access (ADR-0018 withdrew a freshness tool called at each file access), as prose in the protocol and skill nodes: verify takes `affected-tests` as the recommended floor of its focused gates; canonize runs `anchors --moved` before the code anchor is recorded again; grow and adopt-existing give scouts the `build` inventory as their file list. The wiring adds no tool contract.
+  - 8.1.2, surfacing (owner, 2026-10-07: "go do it. update graft and install/growth"):
+    - The seed skill `skills/source-index/SKILL.md`, placed as `docs/graph/skills/source-index.md` and projected into each harness's skills by the existing placement and projection, whose `load_when` routes the four questions (`impact`, `affected-tests`, `anchors`, `symbols`) to it; it is the tool's one seed-owned page in a plant (ADR-0030).
+    - The `build` report (§6 "Build report"): the build's time; the `repo-unresolved`, `no-test-declaration` and `no-test-files` records; a hint for test-named files outside `TEST_GLOBS` and a hint for non-test files inside it while the plant config sets no `exclude`.
+    - The installer's next step naming `build` while a plant has no cache, and `growth-audit.py` printing the seed copy's `build` report after its verdicts, never as a verdict.
+    - Protocol wiring as prose, no tool contract: graft corrects each `repo:` value the report names (Phase 6) and records the report (Phase 7, the graft record); grow records it in its delivery; canonize corrects a `repo:` value `anchors --moved` names.
 - **Out of scope:**
   - Later work, not slice 2: who references a name (a call graph stays out, below); TS/JS class members and indented declarations that are not exported (function locals), definitions inside shell here-documents and strings, and definitions in other languages; history across renames (`git log --follow`), history as a walk step, and a cached history; a text inventory view (`build --json` carries the inventory).
   - A separate later spec: read deduplication, symbol excerpts and context pointers (overlaps adr-0010).
   - This slice: commands written in host settings files, such as a hook entry in `.claude/settings.json` (`"command": "python3 \".../.claude/route-hook.py\""`). A `json` file is a link target only (§6 "Inventory record"), so such a hook script has no dependent in any answer. Reading them needs one parser per host settings shape, and links come from code by one rule; a later slice may add host settings readers (measurement D3, grill §10).
+  - 8.1.2: a seed-placed card or catalog row in a plant's `docs/graph/tools/`, which stays the catalog the plant's toolcraft keeps (ADR-0030); a growth-audit verdict on a report line; the installer running the first build (it writes no cache: SOURCE_INDEX_IS_PLACED); seed skills for the other placed tools; any edit of a plant's `repo:` values by a tool, which graft authors make with understanding.
   - Never: tree-sitter, SQLite, a daemon, MCP, a CodeGraph integration, Svelte, Vue or other languages, a call graph, per-prompt hook use (ADR-0018), any automatic tier decision, test omission or knowledge rewrite.
 
 ## 3. User-facing behavior
@@ -752,6 +758,119 @@ anchor with the placed `docs/graph/code-anchor.py`.
 - **And:** both tools read each value through the helper's one `repo_kind`
   and one `repo_claim` (§6 "Helper"), so they differ only in that case fold
 
+### Surfacing (8.1.2)
+
+The 8.1.2 contracts make the placed tool found by topic and make what a plant
+must set before trusting it visible at install, grow and graft (owner,
+2026-10-07: "go do it. update graft and install/growth"). The `build`
+contracts run in the synthetic plant above; the skill and install contracts
+run in a fresh temp install; the growth-audit contract runs the seed's
+`tools/growth-audit.py` over such an install.
+
+### Contract: SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS
+- **Given:** a fresh target directory
+- **When:** `install.sh claude-code --project-dir <target>` runs, then
+  `python3 docs/graph/graph-lint.py --plan-json "<task>"` runs from the target
+  once for each task of §6 "Build report" `SKILL_ROUTE_TASKS`, one task per
+  query (`impact`, `affected-tests`, `anchors`, `symbols`)
+- **Then:** `docs/graph/skills/source-index.md` exists, byte-identical to the
+  seed's `skills/source-index/SKILL.md`, its frontmatter `id:
+  skill.source-index` and `origin: seed`, and each of the four routes loads
+  `skill.source-index`
+- **And:** `.claude/skills/source-index/SKILL.md` exists, written by the
+  existing skill projection, with no new projection code
+- **And:** the installer writes nothing under `docs/graph/tools/` beyond the
+  catalog `index.md` it places when missing: the seed skill is the tool's
+  seed-owned page, and the plant's `docs/graph/tools/` stays the plant's
+  catalog (ADR-0030). A re-install over the target after the plant wrote its
+  own `docs/graph/tools/source-index.md` and a row naming it in
+  `docs/graph/tools/index.md` leaves both byte-identical, with no backup
+  beside either
+
+### Contract: BUILD_REPORTS_ITS_TIME_AND_COUNTS
+- **Given:** the plant of BUILD_INVENTORIES_THE_CODE_OF_EVERY_GOVERNED_REPOSITORY
+- **When:** `build` runs, then `build --json`
+- **Then:** the text view prints the cache line, the count line, then
+  `BUILD_TIME_LINE` with the seconds the build took, and the answer holds
+  `seconds`, a non-negative number
+- **And:** with no `incomplete` record and no hint, the time line is the last
+  line of the text view
+- **And:** the cache document holds no time, so
+  BUILD_IS_DETERMINISTIC holds as before
+
+### Contract: BUILD_NAMES_REPO_VALUES_THAT_NAME_NOTHING
+- **Given:** a plant (a Git work tree) holding a non-empty folder `src/` and
+  three nodes, with `repo: old/lib` (no such folder), `repo: src/a.py,
+  src/b.py` (a comma list) and `repo: src`
+- **When:** `build --json` runs, then `build`
+- **Then:** `incomplete` holds one `repo-unresolved` record for each of the
+  first two nodes, subject the node's page and detail
+  `REPO_UNRESOLVED_DETAIL` naming the value, and none for the `repo: src`
+  node: the reading of every node's `repo:` through the helper's `repo_kind`
+  that `anchors` makes (§6 "Citation reading for `anchors`")
+- **And:** the text view lists both records after the time line and ends
+  with the `build` `ACTION_LINE`; the exit code is 0 and the cache is written
+  as for any build, because a record about a page says nothing about the code
+
+### Contract: BUILD_NAMES_TESTS_OUTSIDE_THE_TEST_CLASS
+- **Given,** in turn: (a) a plant whose `docs/graph/spec-lint.py` holds no
+  `TEST_GLOBS`; (b) a plant whose `TEST_GLOBS = ["checks/**/*.*"]` matches no
+  file; (c) a plant whose `TEST_GLOBS = ["tests/**/*.*"]`, holding
+  `tests/t_test.py`, and outside that class `src/lib/test_a.py`,
+  `web/a.spec.ts` and `src/b.py`; each plant holds `src/lib/test_a.py`
+- **When:** `build --json` runs
+- **Then:** (a) `incomplete` holds the `no-test-declaration` record and
+  `hints` is empty; (b) `incomplete` holds the `no-test-files` record and
+  `hints` one `tests-outside-class` hint naming `src/lib/test_a.py`; (c)
+  `incomplete` is empty and `hints` holds one `tests-outside-class` hint,
+  subject `docs/graph/spec-lint.py`, count 2, paths `src/lib/test_a.py` and
+  `web/a.spec.ts`: the files named like a test (§6 "Build report"
+  `TEST_NAME_PATTERNS`) whose test class is `code`
+- **And:** (c)'s text view prints the hint's `HINT_LINE` after the time line
+  and has no `ACTION_LINE`, because a hint is advice about the plant's
+  declaration, never a gap in the answer
+- **And:** a test-named file that the config's `exclude` takes out of the
+  class is not counted: the owner put it there
+
+### Contract: BUILD_HINTS_EXCLUDE_FOR_NON_TEST_FILES
+- **Given:** a plant whose `TEST_GLOBS = ["tests/**/*.*"]`, holding
+  `tests/t_test.py`, `tests/fixtures/data.json` and `tests/helpers/util.py`,
+  in turn with no `docs/graph/source-index.json`, with one holding
+  `{"exclude": []}`, and with one holding an unknown key
+- **When:** `build --json` runs
+- **Then:** with no config, `hints` holds one `class-holds-non-tests` hint,
+  subject `docs/graph/source-index.json`, count 2, paths
+  `tests/fixtures/data.json` and `tests/helpers/util.py`: the files of the
+  test class not named like a test
+- **And:** with `exclude` set, even to `[]`, no such hint: the owner has
+  decided the class
+- **And:** with the refused config, `incomplete` holds `config-refused` and no
+  such hint, because the file's `exclude` is unknown
+
+### Contract: INSTALL_NAMES_THE_FIRST_BUILD
+- **Given:** a target with no `.cypress/source-index/`: a fresh directory, or
+  a plant where no query has run
+- **When:** `install.sh claude-code --project-dir <target>` runs
+- **Then:** its output holds the `FIRST_BUILD_STEP` lines of §6 once, naming
+  `python3 docs/graph/source-index.py build` and what its report holds
+- **And:** the run writes no `.cypress/source-index/` and no
+  `docs/graph/source-index.json` (SOURCE_INDEX_IS_PLACED)
+- **And:** over a target that holds `.cypress/source-index/index.json`, the
+  same install prints no such line
+
+### Contract: GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT
+- **Given:** a plant installed from the seed, a coverage record written by
+  `growth-audit.py --plan`, and one node with `repo: old/lib` (no such
+  folder)
+- **When:** `python3 tools/growth-audit.py <plant> <seed>` runs (the lint)
+- **Then:** after its verdicts it prints `GROWTH_REPORT_HEAD`, then each line
+  the seed's `tools/source-index.py build` prints when run from the plant
+  root, indented two spaces, the `repo-unresolved` record among them
+- **And:** its exit code is the one its verdicts set, findings in the report
+  or not, and `VERDICTS` is unchanged: the report is advice, never a verdict
+- **And:** `--json` carries the same lines in `source_index_report`, a list of
+  strings, and `--plan` and `--agents` run no build
+
 ## 5. Non-functional requirements
 
 - **Performance:** a full build over a repository of 5,000 inventoried files
@@ -940,6 +1059,8 @@ constants:
   repo_kind: helper              # the owner's `repo:` ruling, option D; graph-lint, anchors and governed_repositories call it
   REPO_UNRESOLVED_DETAIL: "repo: {value} names nothing on disk; correct the node's repo:"   # the `repo-unresolved` detail; {value} through the `?` replacement
   TEMP_PREFIX: ".tmp-source-index-"   # the cache's exclusive temp files
+  BUILD_TIME_LINE: "Built in {seconds:.2f} s."   # build's text view, after the count line (8.1.2)
+  TEST_NAME_PATTERNS, HINT_LINE, HINT_MAX_PATHS, SKILL_ROUTE_TASKS: see §6 "Build report"   # 8.1.2
   FLOOR_LINE: "Floor: {n} maybe row(s) every input reaches (opaque holders and their dependents):"
   RECOMMEND_LINE: "Recommendation only: the tests above and the always-run set, never only these; verify decides what runs."
   HISTORY_LINE: "History: {n} maybe row(s), files that changed together with an input (--history):"
@@ -1622,15 +1743,15 @@ incomplete_record:
 | `ambiguous-input` | a repository-relative input several repositories hold | the input | all |
 | `input-not-found` | an input no rule of "Inputs" takes | the input | impact, affected-tests |
 | `depth-cap` | a file the input part reaches at `--depth` has a dependent neither part lists | that file at the cut depth (`f4.py` for `f1.py`, `--depth 3` over `f1` to `f5`), one record each | impact, affected-tests |
-| `no-test-declaration` | `TEST_GLOBS` absent, unparsable or not a list of strings | `docs/graph/spec-lint.py` | affected-tests |
-| `no-test-files` | `TEST_GLOBS` matches no inventory file | `docs/graph/spec-lint.py` | affected-tests |
+| `no-test-declaration` | `TEST_GLOBS` absent, unparsable or not a list of strings | `docs/graph/spec-lint.py` | affected-tests, build |
+| `no-test-files` | `TEST_GLOBS` matches no inventory file | `docs/graph/spec-lint.py` | affected-tests, build |
 | `ambiguous-citation` | a bare-name citation several inventory files match, one an input | the page (the citation is the detail) | anchors |
 | `unreadable-file` | a link-bearing inventory file with an `opaque` `unreadable` record | that file | symbols |
 | `history-shallow` | a repository holding a walked input is a shallow clone | the repository's plant-relative path | impact, affected-tests, with `--history` |
 | `history-unavailable` | that repository has no commit, or its `git log` failed or timed out | the repository's plant-relative path (the error is the detail) | impact, affected-tests, with `--history` |
 | `moved-unavailable` | code-anchor has no usable anchor, or `code-anchor.py` is absent or fails to load | `.cypress/anchor.json`, or `docs/graph/code-anchor.py` (the reason is the detail) | anchors `--moved` |
 | `moved-unverified` | code-anchor labels a recorded repository `unverified` | the repository's plant-relative path (the label is the detail) | anchors `--moved` |
-| `repo-unresolved` | a node's `repo:` value names nothing on disk (`repo_kind` `unresolved`, §6 "Helper") | the node's plant-relative page (`REPO_UNRESOLVED_DETAIL` naming the value is the detail) | anchors, every answer, `--moved` included |
+| `repo-unresolved` | a node's `repo:` value names nothing on disk (`repo_kind` `unresolved`, §6 "Helper") | the node's plant-relative page (`REPO_UNRESOLVED_DETAIL` naming the value is the detail) | anchors, every answer, `--moved` included; build |
 
 "The input" is the input as `plant_relative` normalizes it (§6 "Inputs"), so
 it equals the input given in its normal form; an input it cannot make
@@ -1688,6 +1809,8 @@ answer:
           # rebuilt); else any text or null
   incomplete: [incomplete_record]
   # build
+  seconds: number                        # the build's wall time; build only, never in the cache (8.1.2)
+  hints: [hint]                          # build only; [] when none (§6 "Build report", 8.1.2)
   inventory: [inventory_record]
   links: [link]
   opaque: [opaque]
@@ -1753,6 +1876,76 @@ nothing; a value that names nothing is read as before the owner's ruling and
 adds a `repo-unresolved` record. Pages under `docs/graph/plans/`, `specs/` and
 `decisions/` are `history`; every other page is a `fact`.
 
+### Build report (8.1.2)
+
+`build` is the one home of the setup report a plant reads after an install,
+a grow or a graft: how long the build took and what it counted (the count
+line and `BUILD_TIME_LINE`), every `repo:` value that names nothing (the
+`repo-unresolved` records `anchors` gives, read the same way), a missing or
+empty test declaration (`no-test-declaration`, `no-test-files`), and two
+hints about the test class. The installer names the command
+(INSTALL_NAMES_THE_FIRST_BUILD) and `growth-audit.py` prints its lines
+(GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT); neither restates a rule.
+
+```yaml
+hint:
+  hint:    { enum: [tests-outside-class, class-holds-non-tests] }
+  subject: { enum: ["docs/graph/spec-lint.py", "docs/graph/source-index.json"] }   # the file the owner edits
+  count:   int
+  paths:   [path]          # every such file, sorted; the text view shows HINT_MAX_PATHS
+build_report:
+  TEST_NAME_PATTERNS: [ "test_*.py", "*_test.py", "test_*.sh", "test-*.sh", "*_test.sh",
+                        "*_test.go", "*.test.*", "*.spec.*", "*_spec.rb",
+                        "*Test.java", "*Tests.java", "*Test.kt", "*Tests.kt",
+                        "*Test.cs", "*Tests.cs", "*Test.php" ]
+      # matched against the basename with the helper's path_matches, case-sensitive
+  HINT_MAX_PATHS: 5
+  HINT_LINE:
+    tests-outside-class: "Hint: {count} file(s) named like tests are outside TEST_GLOBS, e.g. {paths}. Add their folders to TEST_GLOBS in docs/graph/spec-lint.py, or list them under \"exclude\" in docs/graph/source-index.json if they are not tests."
+    class-holds-non-tests: "Hint: {count} file(s) in the test class are not named like tests, e.g. {paths}. List the ones that are not tests under \"exclude\" in docs/graph/source-index.json; an \"exclude\" key, even [], ends this hint."
+      # {paths}: the first HINT_MAX_PATHS paths joined by ", ", each through the `?` replacement
+  SKILL_ROUTE_TASKS:
+    impact:         "what depends on src/app.py before I change it"
+    affected-tests: "which tests does a change to src/app.py reach"
+    anchors:        "which graph pages cite src/app.py"
+    symbols:        "where is the function save_order defined"
+```
+
+A `tests-outside-class` hint counts each inventory file named like a test
+(`TEST_NAME_PATTERNS`) whose test class is `code` and that the config's
+`exclude` does not match; it is given when `TEST_GLOBS` is declared, matched
+or not. A `class-holds-non-tests` hint counts each file of the test class not
+named like a test; it is given when the plant has no
+`docs/graph/source-index.json`, or one that is read and sets no `exclude`
+key. A hint never makes an answer `incomplete` and never changes the exit
+code. The names are a guess about a project's habits, which is why each is a
+hint the owner rules on and the plant's declaration stays the one rule
+(TESTS_ARE_THE_PLANTS_TEST_GLOBS).
+
+The installer's next step (INSTALL_NAMES_THE_FIRST_BUILD), printed before
+its closing banner when the target holds no `.cypress/source-index/`:
+
+```text
+FIRST_BUILD_STEP:
+NEXT STEP — the source index has not run in this plant yet (no .cypress/source-index/).
+  Run from the plant root: python3 docs/graph/source-index.py build
+  It times the build, counts the files and tests it read, names each repo:
+  value that names nothing, and hints when the test class looks wrong.
+```
+
+`growth-audit.py`'s report (GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT) runs the
+seed's own `tools/source-index.py build` with the plant root as its working
+directory and `GROWTH_REPORT_TIMEOUT` of 120 s, so no plant-side code runs
+and a plant whose placed copy is older still gets the current report; the
+tool's key then holds the seed copy's digest, which equals the placed copy's
+once the plant is installed from that seed. Its lines, constants of
+`tools/growth-audit.py`:
+
+```text
+GROWTH_REPORT_HEAD:   source index (advice, not a verdict; SPEC-0007 "Build report"):
+GROWTH_REPORT_FAILED: source index: the build did not answer ({why}); run python3 docs/graph/source-index.py build from the plant root
+```
+
 ### CLI
 
 ```
@@ -1772,9 +1965,11 @@ links"). `--moved` takes no path; a path or `-` beside it is refused, as is a
 `symbols` name `NAME_RE` does not match whole (`USAGE_REFUSED`).
 `--all` lifts `TEXT_MAX_ROWS` and names history pages. The text view prints
 the cache line (`Cache: <status>`, then ` (<reason>)` when there is one),
-then for `build` one count line and nothing else (`Index: <n> file(s), <n>
+then for `build` one count line (`Index: <n> file(s), <n>
 test(s), <n> certain and <n> maybe link(s), <n> opaque and <n> unresolved
-record(s), <n> definition(s)`; the records themselves are in `--json`), for the walks one row per line
+record(s), <n> definition(s)`; the records themselves are in `--json`),
+`BUILD_TIME_LINE`, then the `incomplete` list and one `HINT_LINE` per hint
+(§6 "Build report"), for the walks one row per line
 (`<depth> <link> <path>  <- <from> [<kind> <found>:<line>]`, a `maybe` row
 adding `maybe: <reason> at <holder>:<line>`), the `certain` rows first, then
 the input's `maybe` rows, then, with `--history`, `HISTORY_LINE` and the
@@ -1867,12 +2062,13 @@ incomplete, else, for `affected-tests`, with `RECOMMEND_LINE`.
 
 ### Failure: TEST_DECLARATION_UNAVAILABLE
 - **Contract:** TESTS_ARE_THE_PLANTS_TEST_GLOBS,
-  WALK_INCOMPLETE_NAMES_REASON_AND_ACTION
+  WALK_INCOMPLETE_NAMES_REASON_AND_ACTION,
+  BUILD_NAMES_TESTS_OUTSIDE_THE_TEST_CLASS
 - **Trigger:** `docs/graph/spec-lint.py` is absent, does not parse, or holds no
   top-level `TEST_GLOBS` list of strings (`no-test-declaration`); or its
   `TEST_GLOBS` matches no inventory file (`no-test-files`)
 - **Response:** no file is a test; `impact` and `anchors` answer as usual;
-  `affected-tests` is incomplete with that reason
+  `affected-tests` and `build` are incomplete with that reason
 - **Side effects:** none
 - **Recovery:** restore the engine (an install places it) or fix `TEST_GLOBS`
 
@@ -2106,7 +2302,8 @@ incomplete, else, for `affected-tests`, with `RECOMMEND_LINE`.
   facts by hand
 
 ### Failure: REPO_VALUE_UNRESOLVED
-- **Contract:** REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS
+- **Contract:** REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS,
+  BUILD_NAMES_REPO_VALUES_THAT_NAME_NOTHING
 - **Trigger:** a node's `repo:` value names nothing on disk (`repo_kind`
   `unresolved`): a deleted or renamed folder, a comma list, a case that
   differs from disk, an empty directory, another file type, or a value the
@@ -2116,7 +2313,8 @@ incomplete, else, for `affected-tests`, with `RECOMMEND_LINE`.
   holding a `/` once its leading and trailing `/` are cut is a string prefix,
   one holding none claims nothing); `anchors` adds one `repo-unresolved`
   record naming the page, with the value in `REPO_UNRESOLVED_DETAIL`, to
-  every answer, which is then `incomplete`; the router adds no notice
+  every answer, which is then `incomplete`, and so does `build` (8.1.2); the
+  router adds no notice
 - **Side effects:** none
 - **Recovery:** correct the node's `repo:` to one plant-relative path that
   exists (a repository, a folder or a file), or remove it
@@ -2139,6 +2337,32 @@ incomplete, else, for `affected-tests`, with `RECOMMEND_LINE`.
 - **Side effects:** none
 - **Recovery:** an install or graft places `source_paths.py` (`place_file`
   on every run); a graft reconciles the engine
+
+### Failure: SKILL_NAME_HELD_BY_THE_PLANT
+- **Contract:** SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS
+- **Trigger:** before an install that brings the seed skill, the plant holds
+  its own `docs/graph/skills/source-index.md` (a project skill of that name)
+- **Response:** the installer places the seed's node over it as it places
+  every seed skill (`place_file`, BACKUP_BEFORE_REPLACE in SPEC-0001), so the
+  plant's body is kept at `<path>.bak-<timestamp>`; `graft-audit.py`
+  classifies that backup by its content, `CUSTOMIZED` where it carries plant
+  signal
+- **Side effects:** the backup beside the node
+- **Recovery:** graft renames the plant's skill (file and `id:`) and moves
+  its body back from the backup; no plant is known to hold one
+
+### Failure: SOURCE_INDEX_REPORT_UNAVAILABLE
+- **Contract:** GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT
+- **Trigger:** the seed's `tools/source-index.py` cannot start, exits
+  non-zero, or runs past `GROWTH_REPORT_TIMEOUT`
+- **Response:** `growth-audit.py` prints `GROWTH_REPORT_FAILED` naming which
+  (`exit <code>`, `timeout`, or the error's class name) in place of the
+  report's lines; its verdicts, its exit code and the rest of its output are
+  unchanged
+- **Side effects:** none beyond what the build wrote atomically
+  (`CACHE_WRITE_FAILED` holds)
+- **Recovery:** run `build` by hand from the plant root and read its own
+  message
 
 ## 8. Examples
 
@@ -2323,6 +2547,21 @@ output: |
   ...
   - incomplete: history-shallow: .
   Incomplete: run the full suite (history-shallow: .).
+```
+
+```yaml
+# Edge: a turboquant-like plant after its graft (8.1.2), six nodes whose repo:
+# is a comma list, TEST_GLOBS ["tests/**/*.*"], a test file kept beside its code
+input:  build
+output: |
+  Cache: built
+  Index: 412 file(s), 38 test(s), ... definition(s)
+  Built in 0.71 s.
+  - incomplete: repo-unresolved: docs/graph/nodes/subsystem.kernels.md (repo: src/a, src/b names nothing on disk; correct the node's repo:)
+  ...
+  Hint: 3 file(s) named like tests are outside TEST_GLOBS, e.g. src/quant/test_pack.py, .... Add their folders to TEST_GLOBS in docs/graph/spec-lint.py, or list them under "exclude" in docs/graph/source-index.json if they are not tests.
+  Incomplete: check by hand (repo-unresolved).
+  # the figures and the page name are illustrative, not measured
 ```
 
 ## 9. Acceptance criteria
@@ -2634,6 +2873,15 @@ and §6 now state each:
 | REPO_VALUE_UNRESOLVED | X459 case_repo_claim: arm unresolved, `anchors` holds one `repo-unresolved` record for each of the `repo: old/lib`, `repo: gone` and `repo: Src` nodes, subject the page, detail `REPO_UNRESOLVED_DETAIL` naming the value, and its text view ends with the `anchors` `ACTION_LINE`; the `old/lib/z.py` task loads the `repo: old/lib` node by `named_path` (the reading from before the ruling), and the router adds no notice for any `repo:` value | tests/test-source-index.sh | integration (synthetic plant, the seed's graph-lint.py placed) | green |
 | HELPER_ABSENT_BESIDE_GRAPH_LINT | X459 case_repo_claim: arm helper-absent, no `source_paths.py` beside `graph-lint.py` and a node `repo: src/lib/`: the `src/lib/a.py` task's `--plan-json` exits 0, `notices` holds `{code: inference_skipped, text: "inference skipped: HelperUnavailable"}`, and no LOAD entry is `named_path` | tests/test-source-index.sh | integration (synthetic plant, the seed's graph-lint.py placed) | green |
 
+| SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS | (8.1.2, the tester labels it) a fresh `install.sh claude-code` into a temp target: the placed skill node byte-identical to `skills/source-index/SKILL.md`, its `.claude/skills/` projection present, `--plan-json` for each `SKILL_ROUTE_TASKS` task loads `skill.source-index`; a re-install after the plant wrote its own `docs/graph/tools/source-index.md` and a row in `tools/index.md` leaves both byte-identical with no backup; arm SKILL_NAME_HELD_BY_THE_PLANT is the existing seed-skill backup path and gets no arm | (new case) | integration (temp install) | pending |
+| BUILD_REPORTS_ITS_TIME_AND_COUNTS | (8.1.2) `build` text view: cache line, count line, `Built in <n.nn> s.` last; `build --json` `seconds` a number >= 0; the cache bytes equal across two builds (BUILD_IS_DETERMINISTIC unchanged) | (new case) | integration (synthetic Git plant) | pending |
+| BUILD_NAMES_REPO_VALUES_THAT_NAME_NOTHING | (8.1.2) `repo: old/lib` and `repo: src/a.py, src/b.py` each one `repo-unresolved` record, `repo: src` none; the text view ends with the `build` `ACTION_LINE`; exit 0; the cache written | (new case) | integration (synthetic Git plant) | pending |
+| BUILD_NAMES_TESTS_OUTSIDE_THE_TEST_CLASS | (8.1.2) arms (a) no `TEST_GLOBS`, (b) a `TEST_GLOBS` matching nothing, (c) two test-named files outside the class and one excluded by the config; the records and hints as §4 states; (c) has no `ACTION_LINE` | (new case) | integration (synthetic Git plant) | pending |
+| BUILD_HINTS_EXCLUDE_FOR_NON_TEST_FILES | (8.1.2) arms no config, `{"exclude": []}`, a refused config | (new case) | integration (synthetic Git plant) | pending |
+| INSTALL_NAMES_THE_FIRST_BUILD | (8.1.2) a fresh install's output holds `FIRST_BUILD_STEP` once and writes no cache; after a `build` in the target, a re-install prints none | (new case) | integration (temp install) | pending |
+| GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT | (8.1.2) a temp install with a `--plan` record and a node `repo: old/lib`: the lint prints `GROWTH_REPORT_HEAD` and the indented `repo-unresolved` line after its verdicts, its exit code equal to the same run with the node removed; `--json` `source_index_report`; `--plan` runs no build (no `.cypress/source-index/` after it) | (new case) | integration (temp install) | pending |
+| SKILL_NAME_HELD_BY_THE_PLANT | (8.1.2) no arm: the seed-skill backup path SPEC-0001 BACKUP_BEFORE_REPLACE already holds | — | — | skipped (owned by SPEC-0001 BACKUP_BEFORE_REPLACE) |
+| SOURCE_INDEX_REPORT_UNAVAILABLE | (8.1.2) an arm of the GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT case: a seed copy whose `tools/source-index.py` exits 3 gives `GROWTH_REPORT_FAILED` naming `exit 3` and the same exit code | (new case) | integration (temp install) | pending |
 Status values: `red` (test exists, fails), `green` (test exists,
 passes), `pending` (test not yet written), `skipped` (with reason).
 
@@ -2672,3 +2920,4 @@ flagged assumption in grill.md §12. Sign-off keeps the status `draft`;
 - 2026-10-07 — security review of option D's stat path (`security-D`, no finding, no block) applied by `architect-D2`, inside `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS`, no contract added and none changed: §6 "Helper" `repo_kind` normalizes the joined value lexically before any system call, and a value then outside the plant root is `outside` with no stat, so `../x`, `/proc/self` or `/net/host/x` touches no file system outside the plant (D1); it reads a directory's one entry with `os.scandir` and `next`, never a whole-directory listing, and an error of that read is `unresolved` (D2); §5 Security states the exact guarantee: a directory opened read-only for its one entry, no Git, no write, no `~`, `$VAR` or glob expansion, and a value's only effect beyond a claim is slice 1's `governed_repositories` (D3); §7 `REPO_VALUE_UNRESOLVED` names the one-entry read in its trigger. §10 X459 gains the security arms D4 (`repo: /proc/self`), D5 (a symlink out of the plant) and D6 (a FIFO); D1's no-stat is a review check. Security signed in §0.
 - 2026-10-07 — §6 "Helper" `governed_repositories` wording corrected per review-code-4 Minor 1 (`architect-fix-D`): the same set for every `root` value inside the plant as written; a value lexically outside the plant that resolves inside it through a symlinked ancestor is now outside and excluded, D1; a value holding a NUL byte is `unresolved` instead of crashing. No contract changed.
 - 2026-10-07 — implemented (`tester-final`): every §10 row green at `68c970e` for slice 1 and slice 2 with option D, wired into tests/run.sh (51 of 51); status moves from `active` to `implemented`; ADR-0029 moves from proposed to accepted.
+- 2026-10-07 — 8.1.2 surfacing added by `architect-8.1.2` (owner: "go do it. update graft and install/growth"), on plan `docs/plans/grill-8.1.2-tool-surfacing.md`; status `active` (from `implemented`; a seed spec is never `draft`, seed-lint), so spec-lint's coverage check stays red on exactly these seven contracts until the 8.1.2 RED lands, and `implemented` returns when every 8.1.2 row is green; slices 1 and 2 keep their evidence. §1 and §2 state the slice; §4 adds seven contracts, `SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS`, `BUILD_REPORTS_ITS_TIME_AND_COUNTS`, `BUILD_NAMES_REPO_VALUES_THAT_NAME_NOTHING`, `BUILD_NAMES_TESTS_OUTSIDE_THE_TEST_CLASS`, `BUILD_HINTS_EXCLUDE_FOR_NON_TEST_FILES`, `INSTALL_NAMES_THE_FIRST_BUILD` and `GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT`; §6 adds "Build report" (the `hint` record, `TEST_NAME_PATTERNS`, `HINT_LINE`, `SKILL_ROUTE_TASKS`, `FIRST_BUILD_STEP`, growth-audit's lines), the answer keys `seconds` and `hints` (`ANSWER_SCHEMA` stays `/1`: keys added, none removed), `BUILD_TIME_LINE`, `build` in the Queries cells of `no-test-declaration`, `no-test-files` and `repo-unresolved`, and the build text view; §7 adds `SKILL_NAME_HELD_BY_THE_PLANT` and `SOURCE_INDEX_REPORT_UNAVAILABLE` and widens `REPO_VALUE_UNRESOLVED` and `TEST_DECLARATION_UNAVAILABLE` to `build`; §8 adds the build report example; §10 adds the rows, `pending`. The owner's approved shape was a seed tool card in `docs/graph/tools/` and a catalog row; the design is a seed skill instead, because a Tier-3 card is not routed and a seed card in that collection would turn growth-audit's `ABSENT` rows for it into `CONTRADICTED` (ADR-0030, put to the owner as plan §12 question 1). §3 and §9 are product's to follow.
