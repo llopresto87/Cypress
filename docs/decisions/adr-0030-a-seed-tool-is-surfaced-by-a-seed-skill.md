@@ -10,7 +10,11 @@ owner: architect
 
 See frontmatter (single home). Proposed with the 8.1.2 contracts of
 SPEC-0007; the owner rules on it as question 1 of
-`docs/plans/grill-8.1.2-tool-surfacing.md` §12.
+`docs/plans/grill-8.1.2-tool-surfacing.md` §12. On 2026-10-07 the owner
+ruled questions 2 and 3 and asked that a plant be "ready to go from te
+get-go after executing the protocols"; the session took question 1 as yes on
+that ground, because a tool no route finds is not ready. The owner may still
+veto.
 
 ## Date
 
@@ -71,6 +75,12 @@ placement; the seed writes no card and no catalog row into a plant's
 - Plant-specific facts about a seed tool (a measurement, a pitfall in this
   project) belong in a plant card or node, not in the seed skill, which the
   next install replaces.
+- Nothing is left to do by hand for the tool to be found and to answer: every
+  install and every graft places and projects the skill, and the same install
+  runs the tool's first build and prints its report (SPEC-0007
+  `INSTALL_RUNS_THE_BUILD`, ADR-0029 as amended for 8.1.2). What only the
+  owner can settle, the plant's `TEST_GLOBS`, its config and its `repo:`
+  values, the report names with the exact fix.
 - The test that fails if this is reversed:
   SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS (its route arms, and its arm
   that the installer writes nothing under `docs/graph/tools/` beyond the
@@ -103,6 +113,7 @@ placement; the seed writes no card and no catalog row into a plant's
 ## References
 
 - `docs/specs/SPEC-0007-source-index.md` §2 and §4 "Surfacing (8.1.2)"
+- `docs/decisions/adr-0029-source-index-is-derived-scratch.md`, "Amendment, 8.1.2"
 - `docs/plans/grill-8.1.2-tool-surfacing.md` §6, §7, §12
 - `tools/growth-audit.py` `required_collections`, `lint_collections`;
   `tools/graft-audit.py` MODE 1; `install.sh` `place_graph_machinery`

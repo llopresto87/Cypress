@@ -65,10 +65,13 @@ say.
 ## Consequences
 
 - The index is safe to delete at any time; the next query rebuilds it and
-  says so. `install.sh` never creates, deletes or rewrites it, and graft needs
-  no preserve rule and no ignore edit: a graft that changes the tool changes
-  the key, so the copy rebuilds; one that does not change it reads a cache
-  equal to a rebuild, because the build is deterministic.
+  says so. `install.sh` never deletes it and writes no byte of it itself;
+  since 8.1.2 it runs the placed tool's `build` as its last step, so the tool,
+  through its own atomic write, writes it on every install and every graft's
+  apply (Amendment below). Graft needs no preserve rule and no ignore edit: a
+  graft that changes the tool changes the key, and its install rebuilds the
+  cache at once; a cache carried over unchanged equals a rebuild, because the
+  build is deterministic.
 - The interpreter is part of the key because `ast` parses by the running
   Python's grammar: the seed's own `templates/knowledge-graph/graph-lint.py`
   does not parse on 3.11 (a backslash inside an f-string expression, legal
@@ -150,3 +153,22 @@ change of location or shape is a constant and a schema bump in one file.
 ## Ratification
 
 Ratified by the owner, 2026-10-07: "adr accepted". Two corrections made at ratification: the Status line no longer ties acceptance to the spec's signing, and the cost figures quote the tool's measurement (3.19 s on 4,320 files) in place of the pre-build estimate (3.8 s on 4,865 files).
+
+## Amendment, 8.1.2 (2026-10-07)
+
+The owner ruled on question 2 of `docs/plans/grill-8.1.2-tool-surfacing.md`
+§12: "ACTUALLY BUILD IT. a user cannot be expected to know that it needs to
+do things if it executes a graft/install/growth. the plant needs to be ready
+to go from te get-go after executing the protocols". The decision above is
+unchanged: the index stays derived scratch, self-ignored, keyed, never
+committed and never canonical. One consequence changes: the installer no
+longer leaves the first build to a query. It runs
+`python3 docs/graph/source-index.py build` from the plant root as its last
+step and prints the report, never failing on it (SPEC-0007
+`INSTALL_RUNS_THE_BUILD`, `INSTALL_BUILD_FAILED`). The write is the tool's,
+under this record's rules; `install.sh` gains no write site of its own, so
+SPEC-0001 `SINGLE_WRITER`'s census of the installer's writes is unchanged. What this costs: every install
+spends the build's time (0.66 s to 3.19 s measured, bounded at 120 s), and an
+identical re-install replaces the cache with equal bytes. The rejected
+alternative "Install deletes the cache on every run" stays rejected: the
+build replaces the cache, it never deletes it.
