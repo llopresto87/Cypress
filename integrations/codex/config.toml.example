@@ -86,6 +86,10 @@ enabled = true
 path = "/abs/path/to/project/.codex/skills/validate-knowledge/SKILL.md"
 enabled = true
 
+[[skills.config]]
+path = "/abs/path/to/project/.codex/skills/source-index/SKILL.md"
+enabled = true
+
 
 # ----- Optional: documentation MCP -----
 # Context7 provides current library docs. With it configured,

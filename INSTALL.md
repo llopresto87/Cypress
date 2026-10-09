@@ -116,6 +116,15 @@ For each tool:
    source to scout, from-scratch when the repository is empty.
 5. Installs the canonical prompt as `EXPERT_SEED_INSTALL_PROMPT.md` at the
    target root so later growth/refresh sessions remain tool-neutral.
+6. Last, once per run, builds the source index: it runs the placed
+   `docs/graph/source-index.py build` from the target root and prints the
+   build report under `source index build (advice, never a failure of the
+   install; ...)`. The report gives the counts and the build time, then
+   each setup gap with a `fix:` line, such as a `TEST_GLOBS` still unset in
+   `docs/graph/spec-lint.py` or a `repo:` value that names nothing, and hints
+   about the test class and `docs/graph/source-index.json`. An install never
+   fails on the build; when it does not finish, one line names the command
+   to run by hand ([source index guide](documentation/source-index.md#the-build-report)).
 
 For `github-copilot` specifically, files are *transformed* (not
 symlinked) because Copilot expects different frontmatter shapes. Each
@@ -252,7 +261,7 @@ The installer prints a path to a generated config snippet:
 ```
 
 Merge that file into your global `~/.codex/config.toml` to register
-all fifteen skills. The installer does not modify your global config
+all sixteen skills. The installer does not modify your global config
 without consent.
 
 ## Upgrading

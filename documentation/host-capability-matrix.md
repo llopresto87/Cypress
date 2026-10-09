@@ -95,7 +95,7 @@ opencode under that rule, and targets no frozen host.
 | Per-session injection dedup | mechanically enforced | unsupported | unsupported | degraded³ | mechanically enforced⁵ |
 | Pre-tool guard | mechanically enforced | unsupported | unsupported | unsupported | unsupported |
 | Slash commands | mechanically enforced | mechanically enforced | unsupported | mechanically enforced | mechanically enforced |
-| Always-applied instructions | mechanically enforced (25 515 B) | mechanically enforced (25 515 B) | mechanically enforced (≤ 25 515 B)⁴ | mechanically enforced (31 159 B) | mechanically enforced (21 236 B) |
+| Always-applied instructions | mechanically enforced (25 800 B) | mechanically enforced (25 800 B) | mechanically enforced (≤ 25 800 B)⁴ | mechanically enforced (31 444 B) | mechanically enforced (21 521 B) |
 
 ¹ The leaf/coordinator split (who holds the spawn tool at all: `Agent` on Claude Code, `Task` accepted) is read by the
 harness from each agent's `tools:` line, and ADR-0003 classes that read
@@ -495,18 +495,18 @@ function's own computation against current sources:
 
 | Harness | Formula | Measured |
 |---|---|---|
-| Claude Code | kernel + agent descriptions + skill descriptions | 25 515 B |
-| opencode | kernel + agent descriptions + skill descriptions | 25 515 B |
-| Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 25 515 B |
-| Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 21 236 B |
-| GitHub Copilot | kernel + agent descriptions + skill descriptions + pointer boilerplate | 31 159 B |
+| Claude Code | kernel + agent descriptions + skill descriptions | 25 800 B |
+| opencode | kernel + agent descriptions + skill descriptions | 25 800 B |
+| Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 25 800 B |
+| Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 21 521 B |
+| GitHub Copilot | kernel + agent descriptions + skill descriptions + pointer boilerplate | 31 444 B |
 
 The component figures live in `check_eager_surface()` in `tests/seed-lint.py`,
 their one home, and `check_published_figures()` beside it holds this table to
 that computation: a cell that drifts from what the function computes fails the
 gate and names both numbers.
 
-Four harnesses enumerate only `name` + `description` for each of the 15
+Four harnesses enumerate only `name` + `description` for each of the 16
 skills at session start and load a skill's full body only when the model
 invokes it: genuine progressive disclosure. Copilot's projections (written by
 `install_github_copilot()`, not by `generate_slash_commands()`) are pointers of
@@ -528,7 +528,7 @@ cp -a . /tmp/eager && cd /tmp/eager \
 python3 tests/seed-lint.py   # in the seed itself: fails loudly if any harness
                              # exceeds its budget/exemption, silent otherwise
 
-# Codex's skills.config coverage vs. the 15 shipped skills
+# Codex's skills.config coverage vs. the 16 shipped skills
 grep -c 'path = ' integrations/codex/config.toml.example
 ls skills/ | wc -l
 
@@ -539,6 +539,6 @@ grep -n '\[agents\]' integrations/codex/config.toml.example   # (no output)
 grep -n 'place_expertise' install.sh   # (SPEC-0001 §6)
 ```
 
-`integrations/codex/config.toml.example` registers all 15 skills, one
+`integrations/codex/config.toml.example` registers all 16 skills, one
 `[[skills.config]]` entry per skill the seed ships, as
 `integrations/codex/README.md` says.

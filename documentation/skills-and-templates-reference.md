@@ -9,7 +9,7 @@ under `docs/graph/`. The files documented here are the shippable source.
 
 The reference has three parts:
 
-- Part A: the 15 skills in `skills/*/SKILL.md`.
+- Part A: the 16 skills in `skills/*/SKILL.md`.
 - Part B: the artifact templates in `templates/*.template.md`, the
   knowledge-graph contract in `templates/knowledge-graph/`, and the seed
   tools placed beside it.
@@ -31,7 +31,7 @@ inside a file.
 
 ## Part A — Skills
 
-Source: `skills/<name>/SKILL.md` (15 files).
+Source: `skills/<name>/SKILL.md` (16 files).
 
 Each skill node also declares `prevents:` — the failure its own absence produces. It is not mirrored here; `python3 tools/roster-justification.py` prints it beside the responsibility and the overlaps, reading each column out of the node that owns it ([ADR-0008](../docs/decisions/adr-0008-roster-justification-lives-in-the-node.md)).
 
@@ -48,7 +48,7 @@ skill frontmatter carries:
 - `artifacts`: template files the skill fills or points at.
 - `est_tokens`: the honest body-size estimate the router sums.
 
-## Summary table — all 15 skills
+## Summary table — all 16 skills
 
 | Skill | id | owns | requires | peers | est_tokens |
 |---|---|---|---|---|---|
@@ -63,6 +63,7 @@ skill frontmatter carries:
 | knowledge-graph | `skill.knowledge-graph` | `knowledge-graph.method`, `knowledge-graph.node-contract`, `knowledge-graph.linter`, `knowledge-graph.branch-shape` | (none) | `skill.context-router`, `skill.library-wiki`, `skill.validate-knowledge` | 2925 |
 | library-wiki | `skill.library-wiki` | `library-wiki.method`, `library-wiki.version-pinning` | (none) | `skill.research-and-ingest`, `protocol.ingest-library` | 1310 |
 | research-and-ingest | `skill.research-and-ingest` | `research-and-ingest.method`, `research-and-ingest.source-ranking` | (none) | `skill.library-wiki`, `agent.research-scout` | 1540 |
+| source-index | `skill.source-index` | `source-index.usage`, `source-index.limit`, `source-index.report` | (none) | `protocol.verify`, `protocol.canonize`, `protocol.grow`, `protocol.graft`, `skill.adopt-existing` | 1900 |
 | spec-author | `skill.spec-author` | `spec-author.method`, `spec-author.sign-off` | `protocol.specify` | `skill.test-first`, `skill.grill-planner`, `skill.humanizer` | 1640 |
 | test-first | `skill.test-first` | `test-first.shaping`, `test-first.level-selection`, `test-first.proportionate-checks`, `test-first.no-lint-only-tests` | `protocol.test-first` | `skill.spec-author` | 1719 |
 | toolcraft | `skill.toolcraft` | `rule.toolcraft`, `toolcraft.durability-criteria` | (none) | `agent.tool-smith`, `protocol.canonize`, `protocol.grill`, `protocol.harvest`, `method.bounded-execution` | 1490 |
@@ -81,6 +82,7 @@ Roles at a glance:
 | Writing and testing code | holistic-editing, test-first |
 | Prose people read | humanizer |
 | Recording decisions | adr-writer |
+| Questions about the code | source-index |
 
 ---
 
@@ -774,7 +776,57 @@ gathering current evidence for an ADR or spec.
 
 ---
 
-## A.12 spec-author
+## A.12 source-index
+Source: `skills/source-index/SKILL.md`
+
+**id:** `skill.source-index` · **owns:** `source-index.usage`,
+`source-index.limit`, `source-index.report` · **requires:** (none) ·
+**peers:** `protocol.verify`, `protocol.canonize`, `protocol.grow`,
+`protocol.graft`, `skill.adopt-existing`
+
+**load_when:** what depends on this file · impact of a change to a file,
+what breaks if I change this file · which tests does a change reach, which
+tests to run for a file · which graph pages cite a file, stale graph facts
+after a code move · where is a name defined · source index, source-index
+build report, repo-unresolved record.
+
+**What it does.** Tells a session how to use the placed tool
+`docs/graph/source-index.py` to answer four questions about the plant's
+code without a model: what depends on a file (`impact`), which tests a
+change reaches (`affected-tests`), which graph pages cite a file
+(`anchors`), and where a name is defined (`symbols`). It is the tool's one
+seed-owned page in a plant; the plant's `docs/graph/tools/` catalog stays
+the plant's own
+([ADR-0030](../docs/decisions/adr-0030-a-seed-tool-is-surfaced-by-a-seed-skill.md)).
+The router loads it beside the node that owns a file the task names when
+the task holds one of its phrases.
+
+**The discipline.**
+
+1. **Ask the tool first:** run `impact` before changing a file,
+   `affected-tests` when choosing tests (plus the always-run set it
+   prints), `anchors --moved` at canonize, `symbols` to find a definition.
+2. **The limit:** an answer is a recommendation over cooperative code, and
+   a file's absence from `dependents` or `tests` is never proof that it is
+   unaffected. `affected-tests` is never "only these"; an `incomplete`
+   answer means the full suite.
+3. **Act on the build report:** install, graft and `growth-audit.py` print
+   it. Each setup record (`no-test-declaration`, `repo-unresolved`,
+   `repository-unnamed`, and the rest) carries a `fix:` line; apply it
+   through the protocol that owns it, then rerun `build`.
+4. **The plant owns the config:** `TEST_GLOBS` in `docs/graph/spec-lint.py`,
+   the optional `docs/graph/source-index.json`, and each node's `repo:`
+   value. No tool writes them.
+
+**When to use.** Before changing a file, when choosing tests, after a code
+move that may have left graph facts stale, and when looking for a
+definition. Not for questions about prose or graph structure, and not for
+callers of a function: the index holds file links, not a call graph.
+Guide: [source-index.md](source-index.md).
+
+---
+
+## A.13 spec-author
 Source: `skills/spec-author/SKILL.md`
 
 **id:** `skill.spec-author` · **owns:** `spec-author.method`,
@@ -819,7 +871,7 @@ satisfy.
 
 ---
 
-## A.13 test-first
+## A.14 test-first
 Source: `skills/test-first/SKILL.md`
 
 **id:** `skill.test-first` · **owns:** `test-first.shaping`,
@@ -874,7 +926,7 @@ suite has grown enough to warrant a consolidation pass.
 
 ---
 
-## A.14 toolcraft
+## A.15 toolcraft
 Source: `skills/toolcraft/SKILL.md`
 
 **id:** `skill.toolcraft` · **owns:** `rule.toolcraft`,
@@ -908,7 +960,7 @@ runs anything, not only one producing a tool.
 
 ---
 
-## A.15 validate-knowledge
+## A.16 validate-knowledge
 Source: `skills/validate-knowledge/SKILL.md`
 
 **id:** `skill.validate-knowledge` · **owns:** `validate-knowledge.method`,
@@ -1006,7 +1058,7 @@ described with the roster.
 | `status-register.py` | `docs/graph/status-register.py` | the lifecycle status linter and query; a session-start hook injects its `--summary` |
 | `session-metrics.py` | `docs/graph/session-metrics.py` | the reader of the Session metrics block that deliver appends to `changelog.md` (SPEC-0006) |
 | `code-anchor.py` | `docs/graph/code-anchor.py` | records the code state at canonize (`--record`) and compares it once per session (`--compare`); writes no anchor at install |
-| `source-index.py` | `docs/graph/source-index.py` | the source index (SPEC-0007): `impact`, `affected-tests` and `anchors` from one walk over the plant's file-to-file links, each row `certain` or `maybe`, the floor listed apart, gaps listed as `incomplete`; `symbols` says where a name is defined; `--history` adds files that changed together in past commits as `maybe` rows of their own; `anchors --moved` takes its inputs from `code-anchor.py`'s moved list. Protocol steps call it once, on demand: verify (`affected-tests`), canonize (`anchors --moved`), grow and adopt (`build --json`'s inventory). It recommends, and verify and tiering decide. Its cache `.cypress/source-index/` ignores itself and is rebuilt when its key changes (ADR-0029); the installer writes none |
+| `source-index.py` | `docs/graph/source-index.py` | the source index (SPEC-0007): `impact`, `affected-tests` and `anchors` from one walk over the plant's file-to-file links, each row `certain` or `maybe`, the floor listed apart, gaps listed as `incomplete`; `symbols` says where a name is defined; `--history` adds files that changed together in past commits as `maybe` rows of their own; `anchors --moved` takes its inputs from `code-anchor.py`'s moved list. Protocol steps call it once, on demand: verify (`affected-tests`), canonize (`anchors --moved`), grow and adopt (`build --json`'s inventory). It recommends, and verify and tiering decide. Its cache `.cypress/source-index/` ignores itself and is rebuilt when its key changes (ADR-0029); the installer's last step runs `build` and prints its report, and `growth-audit.py` prints it again after its verdicts; `skill.source-index` is how a session uses it |
 | `source_paths.py` | `docs/graph/source_paths.py` | the seed's path rules in one module with no CLI: what is code, the governed repositories, the Git boundary, the content hash, the atomic write under `.cypress/`, how a page cites a path, and the `repo:` rule: what a node's `repo:` value names on disk decides what it claims (a folder or a file claims the paths under it, a repository or the plant root claims nothing). `code-anchor.py`, `source-index.py` and the router's path tier in `graph-lint.py` load it beside them; `growth-audit.py` loads it in the seed |
 | `plant_walk.py` | `docs/graph/plant_walk.py` | the walk over one plant's files, stopping at a nested plant and a symlinked directory; `source-index.py` loads it beside it, `graft-audit.py` in the seed |
 
@@ -1440,12 +1492,17 @@ frontmatter subset with a hand-written parser (no PyYAML dependency).
 traversal. It takes its entries from the first tier that hits: a node id the
 task names, then a path it names (a node's file, a folder or file a node's
 `repo:` names, an `expertise.*` file pattern), then a `load_when` phrase of two or more words the
-task holds whole. Only then does it score words: IDF-weighted token overlap
+task holds word for word and in order; a file path or a code name written between the phrase's
+words does not break it and stands in for the phrase's word `file` (a path)
+or `name` (a code name such as `save_order` or `saveOrder`). Only when none of
+these hits does it score words: IDF-weighted token overlap
 between the task and the node's name/title/`repo` (weight ×2) and its
 `load_when`/`routing_triggers`, whole-token matching only (an exact hit
 outranks a morphological fold; never a substring), with a floor of two
 distinct confident terms. A strong tier that hits more than three nodes falls
-through. A task with no signal, or over `LONG_TASK_TERMS` distinct words,
+through. A path route also adds, after the owning node, each seed skill whose
+phrase the task holds, at most `PATH_TIER_SKILL_CAP` (2); a task that holds
+the phrases of more adds none. A task with no signal, or over `LONG_TASK_TERMS` distinct words,
 loads nothing and prints a `!` notice naming the next step; root is never
 forced. It expands the `requires` closure eagerly and composed children
 lazily, and prints the loaded set (with summed `est_tokens`) in compact lines,
