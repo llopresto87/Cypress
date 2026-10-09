@@ -21,7 +21,7 @@ status_evidence: tests/test-source-index.sh, tests/test_graph_lint.py, tests/tes
 - **Design latitude:** balanced. The owner approved on 2026-10-07: "implement the plan so that it's integrated organically into the cypress seed and installed/grafted into the plants correctly." New structure is allowed where the change needs it (one shared helper module, one derived cache); no concept the plan did not name.
 - **Supersedes:** none
 - **Superseded by:** none
-- **Sign-offs:** 8.1.2 surfacing: architect [x] (2026-10-07, `architect-8.1.2`: §4 to §8 coherent with slices 1 and 2; `architect-8.1.2b`: rewritten on the owner's rulings, coherent again) · product [x] (2026-10-07, `product-8.1.2`: §3 "Surfacing (8.1.2)" states the owner's ready-after-the-protocol outcome; §9 AC-23 to AC-29 map every 8.1.2 contract; AC-9 names the install's build; a re-read of §3 and §9 is owed for the owner's rulings applied by `architect-8.1.2e`, with two contracts to map) · tester [ ] · security [x] (2026-10-07, `security-8.1.2`: no finding, no block; signed on the condition that spec lines S1 to S4 and test arms A1 to A4 are applied, applied by `architect-8.1.2d`: S1 the isolated run in §5 and §6 "Build report", S2 stdout only on exit 0 and never stderr, S3 the guarded run, S4 the skill's limit line in §2, A1 to A4 in the §10 rows of INSTALL_RUNS_THE_BUILD, INSTALL_BUILD_FAILED and SOURCE_INDEX_REPORT_UNAVAILABLE; the optional S5, the build in its own process group, not applied); the owner ruled plan §12 questions 2 and 3 on 2026-10-07; question 1 is taken as yes until the owner ratifies or vetoes ADR-0030. Slices 1 and 2: product [x] (2026-10-07: slice 1 signed, §3 and §9 reflect the owner's outcome; 2026-10-07, `product-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling; 2026-10-07, `product-D`: the owner's option D, §3 states the `repo:` claim, §9 AC-22 holds REPO_CLAIM and the missing helper) · architect [x] (2026-10-07, `architect-da`: §4 to §8 coherent after the devils-advocate verdicts; the floor, the helper interface, the interpreter in the key and the TS/JS line join applied; 2026-10-07, `architect-slice2`: the slice-2 §4 to §8 coherent with slice 1; 2026-10-07, `architect-slice2-fix`: the slice-2 review findings applied, `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` left pending the owner's `repo:` ruling, grill §12 question 6; 2026-10-07, `architect-D`: that contract, `ANCHORS_NAME_CITING_PAGES_OR_UNCITED`, §6 "Helper" and §7 rewritten on the owner's option D, §4 to §8 coherent) · tester [x] (2026-10-07: slice 1 signed; `tester-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling; 2026-10-07, `tester-final`: slice 2 and option D, every §10 row green at 68c970e) · security [x] (2026-10-07, `security-slice2-sign`: slice 2 signed; S1 to S8 and P1 to P10 applied in §5, §6, §7, §10 and the plan; accepted deviations: the `/%P` history marker that also skips a parentless commit, the depth-2 `file://` shallow clone, and a missing helper beside graph-lint degrading tier 2 with the `inference_skipped` notice instead of failing the route; REPO_CLAIM pending owner ruling; 2026-10-07, `security-D`: option D's stat path signed; no finding, no block; apply spec lines D1 to D3 and arms D4 to D6 on X459. Slice 1 signed by `security-s5s7`: §5 Security requirements and seven §7 abuse cases added; four §6 constants, `FILE_MAX_BYTES`, `DIR_LINK_MAX`, `EXTENDS_MAX` and `CACHE_MAX_BYTES`, and the `outside-repository` `base` value are left to the architect)
+- **Sign-offs:** 8.1.2 surfacing: architect [x] (2026-10-07, `architect-8.1.2`: §4 to §8 coherent with slices 1 and 2; `architect-8.1.2b`: rewritten on the owner's rulings, coherent again) · product [x] (2026-10-07, `product-8.1.2`: §3 "Surfacing (8.1.2)" states the owner's ready-after-the-protocol outcome; §9 AC-23 to AC-29 map every 8.1.2 contract; AC-9 names the install's build; 2026-10-09, `product-8.1.2c`: §3 re-read for the owner's rulings applied by `architect-8.1.2e`, the path route that loads the skill beside the owning node (option (a), ratified), the kernel line and the config hint; AC-23 gains the owned-path arm, AC-30 maps KERNEL_NAMES_THE_SOURCE_INDEX, AC-31 maps BUILD_HINTS_CONFIG_PATTERNS_THAT_MATCH_NOTHING; AC-24 to AC-29 re-read, unchanged by the router change) · tester [ ] · security [x] (2026-10-07, `security-8.1.2`: no finding, no block; signed on the condition that spec lines S1 to S4 and test arms A1 to A4 are applied, applied by `architect-8.1.2d`: S1 the isolated run in §5 and §6 "Build report", S2 stdout only on exit 0 and never stderr, S3 the guarded run, S4 the skill's limit line in §2, A1 to A4 in the §10 rows of INSTALL_RUNS_THE_BUILD, INSTALL_BUILD_FAILED and SOURCE_INDEX_REPORT_UNAVAILABLE; the optional S5, the build in its own process group, not applied); the owner ruled plan §12 questions 2 and 3 on 2026-10-07; question 1 is taken as yes until the owner ratifies or vetoes ADR-0030. Slices 1 and 2: product [x] (2026-10-07: slice 1 signed, §3 and §9 reflect the owner's outcome; 2026-10-07, `product-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling; 2026-10-07, `product-D`: the owner's option D, §3 states the `repo:` claim, §9 AC-22 holds REPO_CLAIM and the missing helper) · architect [x] (2026-10-07, `architect-da`: §4 to §8 coherent after the devils-advocate verdicts; the floor, the helper interface, the interpreter in the key and the TS/JS line join applied; 2026-10-07, `architect-slice2`: the slice-2 §4 to §8 coherent with slice 1; 2026-10-07, `architect-slice2-fix`: the slice-2 review findings applied, `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` left pending the owner's `repo:` ruling, grill §12 question 6; 2026-10-07, `architect-D`: that contract, `ANCHORS_NAME_CITING_PAGES_OR_UNCITED`, §6 "Helper" and §7 rewritten on the owner's option D, §4 to §8 coherent) · tester [x] (2026-10-07: slice 1 signed; `tester-slice2-fix`: slice 2, REPO_CLAIM pending owner ruling; 2026-10-07, `tester-final`: slice 2 and option D, every §10 row green at 68c970e) · security [x] (2026-10-07, `security-slice2-sign`: slice 2 signed; S1 to S8 and P1 to P10 applied in §5, §6, §7, §10 and the plan; accepted deviations: the `/%P` history marker that also skips a parentless commit, the depth-2 `file://` shallow clone, and a missing helper beside graph-lint degrading tier 2 with the `inference_skipped` notice instead of failing the route; REPO_CLAIM pending owner ruling; 2026-10-07, `security-D`: option D's stat path signed; no finding, no block; apply spec lines D1 to D3 and arms D4 to D6 on X459. Slice 1 signed by `security-s5s7`: §5 Security requirements and seven §7 abuse cases added; four §6 constants, `FILE_MAX_BYTES`, `DIR_LINK_MAX`, `EXTENDS_MAX` and `CACHE_MAX_BYTES`, and the `outside-repository` `base` value are left to the architect)
 
 ## 1. Summary
 
@@ -209,9 +209,15 @@ asks what depends on a file, which tests a change reaches, which graph pages
 cite a file, or where a name is defined is routed to the seed skill
 `skill.source-index`, which tells it which query to run. When the question
 names a path a node owns, the router loads the owning node and the skill
-beside it (the owner's ruling of 2026-10-07, plan §12 question 12). Every
-session also reads, before any routing, one kernel line that names the tool
-and the skill. The session needs no plant-written card and no prior
+beside it (the owner's ruling of 2026-10-07, plan §12 question 12, option
+(a), ratified in ADR-0026; SPEC-0002 owns the rule and its cap). So "what
+depends on src/app.py" in a grown plant loads the node that owns
+`src/app.py` and `skill.source-index`, not the node alone. Every session
+also reads, before any routing, one line in the kernel's "Where to look
+next" that names the tool's command (`python3 docs/graph/source-index.py
+--help`) and the skill, so every agent in every plant knows the tool exists
+even when its task line holds no phrase that routes to it (the owner: "1 yes
+add it"). The session needs no plant-written card and no prior
 knowledge of the tool. A plant installed
 before 8.1.2 gets the skill at its next install or graft. A card or catalog
 row the plant wrote itself in `docs/graph/tools/` stays as the plant wrote
@@ -236,9 +242,11 @@ the test class (test-named files outside `TEST_GLOBS`, non-test files inside
 it) names the files, up to five, and the file the owner edits. A hint is
 advice the owner rules on. It never makes an answer incomplete. Every setup
 gap the build can detect is named with its fix. The build does not judge
-whether `TEST_GLOBS` is right, only whether it matches; a pattern the
-plant config sets that matches no file is named in a hint with its fix;
-and below a plant root that is not a Git work tree it looks for no
+whether `TEST_GLOBS` is right, only whether it matches. A pattern the
+plant config sets that matches no file, such as the typo `tests/smoek/**`
+in `always_run`, is named in one hint with its key and then a `fix:` line;
+the seed's default patterns are never named, because most plants lack most
+of the files they list. Below a plant root that is not a Git work tree it looks for no
 repository a node does not name. The tool never edits a `repo:` value, `TEST_GLOBS` or the config
 itself, because each needs the owner's choice. The graft and grow protocols
 tell their authors to correct what the report names and to record the
@@ -3059,8 +3067,9 @@ without further clarification.
   REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS
 
 The 8.1.2 criteria (surfacing) state the owner's outcome: after install,
-grow or graft the plant is ready, and the person needs to know nothing the
-output does not tell them.
+grow or graft the plant is "ready to go from the get-go", the person needs
+to know nothing the output does not tell them, and every agent knows the
+tool from the kernel and finds it by its question.
 
 - [ ] AC-23: After a fresh `install.sh claude-code` into a temp target, each
   of the four `SKILL_ROUTE_TASKS` tasks (one per query: `impact`,
@@ -3071,7 +3080,12 @@ output does not tell them.
   exists; a re-install over a target from which both were removed places
   both again; a re-install over a plant-written
   `docs/graph/tools/source-index.md` and its row in `docs/graph/tools/index.md`
-  leaves both byte-identical, with no backup beside either — maps to
+  leaves both byte-identical, with no backup beside either. With a node
+  `repo: src` over an existing folder `src/` added to that install, each of
+  the three tasks that name `src/app.py` loads that node (`how.kind`
+  `named_path`) and `skill.source-index` (`how.kind` `phrase`), and the
+  `symbols` task, which names no path, still loads `skill.source-index`
+  (the router rule and its cap are SPEC-0002 AC-11) — maps to
   SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS
 - [ ] AC-24: An install into a Git work tree holding `src/a.py` prints, after
   the stamp line and before the `NEXT STEP` notices and the closing banner,
@@ -3129,6 +3143,26 @@ output does not tell them.
   `GROWTH_REPORT_FAILED` naming `exit 3` and the same exit code — maps to
   GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT (failure
   SOURCE_INDEX_REPORT_UNAVAILABLE)
+- [ ] AC-30: Every session knows the tool before it routes: the seed's
+  `core/AGENTS.md` §5 (from the `## 5. ` heading to the next `## `) holds the
+  literals `docs/graph/source-index.py` and `skill.source-index`, and the
+  file stays within `KERNEL_BUDGET`; seed-lint on the shipped tree reports
+  nothing, and fails naming `core/AGENTS.md §5` when either literal is
+  removed from that section; a plant receives the line with the kernel's
+  usual placement at install and graft — maps to
+  KERNEL_NAMES_THE_SOURCE_INDEX
+- [ ] AC-31: A config pattern that matches nothing is named with its fix:
+  with `always_run: ["tests/t_test.py", "tests/smoek/**"]` and
+  `global_inputs: ["package.json"]` in `docs/graph/source-index.json` and no
+  `package.json` in the plant, `build --json` holds one
+  `config-pattern-unmatched` hint, subject `docs/graph/source-index.json`,
+  count 2, `patterns` `always_run: tests/smoek/**` then
+  `global_inputs: package.json`; the text view prints its `HINT_LINE` and
+  at once its `HINT_FIX` line (`  fix: ` and the text), no `ACTION_LINE`;
+  `incomplete` is empty, the exit code is 0 and the cache is written; with
+  no config file, a config that sets no `global_inputs`, or a refused
+  config, there is no such hint — maps to
+  BUILD_HINTS_CONFIG_PATTERNS_THAT_MATCH_NOTHING
 
 Acceptance criteria are checked off when the increment that
 implements them passes its gates.
