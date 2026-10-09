@@ -1,8 +1,8 @@
 ---
-status: implemented
-status_date: 2026-10-07
+status: active
+status_date: 2026-10-09
 owner: seed-installer
-status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tests/test-install-kernel-modes.sh, tests/test-install-adoption.sh, tests/test-full-install.sh, tests/test-seed-lint.sh, tests/test-graft-tools.sh, tests/test_corpus_match.py (every §10 contract row green, HARVEST_CANDIDATE_FORM_IS_PLACED included, held by S14 in case_plan_records and proved by mutation, §12's second entry of 2026-10-05 on the harvest-candidate form; all wired into tests/run.sh)
+status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tests/test-install-kernel-modes.sh, tests/test-install-adoption.sh, tests/test-full-install.sh, tests/test-seed-lint.sh, tests/test-graft-tools.sh, tests/test_corpus_match.py (every §10 contract row green but the two 8.1.2 graft-finding rows, CHECK_FLAGS_RETIRED_GRAPH_NODE and GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES, `pending` until their RED, plan grill-8.1.2 increment 11; HARVEST_CANDIDATE_FORM_IS_PLACED included, held by S14 in case_plan_records and proved by mutation, §12's second entry of 2026-10-05 on the harvest-candidate form; all wired into tests/run.sh)
 ---
 
 # SPEC-0001: install placement
@@ -98,6 +98,14 @@ status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tes
   refreshes the self-ignored cache in a plant with at least one governed
   repository, the one exception.
   Sign-off for it: product [x]; the tester's review is still owed.
+  The 8.1.2 graft-finding contracts (2026-10-09) came after every tick above:
+  CHECK_FLAGS_RETIRED_GRAPH_NODE and GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES,
+  with §2's line and §6 "Retired graph nodes". The architect wrote them
+  (`architect-8.1.2j`) from the test graft of a plant copy, where a retired
+  `origin: seed` protocol node failed graph-lint with no flag naming it.
+  Product owes §3 and AC-26, which name only agents and skills; the tester
+  owes the two §10 rows.
+  Sign-offs for them: product [ ] · architect [x] · tester [ ].
   Before 8.0.0 this spec was `back-written` and carried no sign-off, because
   there was no RED for a promotion to land with. An earlier draft asserted
   signatures dated to a RED that never landed; that was fabricated to satisfy
@@ -108,8 +116,8 @@ status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tes
 
 - **Owner:** seed-installer
 - **Date:** 2026-09-13
-- **Last reviewed:** 2026-10-07
-- **Related grill section:** docs/plans/grill-7.15.0-remediation.md §3, §5; docs/plans/grill-8.0.0-wave-a.md §9 (the 8.0.0 contracts); the matcher increment of 2026-10-05 is its increment 17; docs/plans/grill-8.1.2-tool-surfacing.md increment 2 (the source-index build)
+- **Last reviewed:** 2026-10-09
+- **Related grill section:** docs/plans/grill-7.15.0-remediation.md §3, §5; docs/plans/grill-8.0.0-wave-a.md §9 (the 8.0.0 contracts); the matcher increment of 2026-10-05 is its increment 17; docs/plans/grill-8.1.2-tool-surfacing.md increment 2 (the source-index build) and increments 11 and 12 (the retired seed graph nodes)
 - **Related ADRs:** adr-0003-enforcement-layering-honesty, adr-0009-host-support-tiers, adr-0013-harness-memory-is-not-a-home, adr-0014-graft-reconciles-every-graph-engine, adr-0016-stamp-carries-keys-it-does-not-own, adr-0017-pre-growth-pointers-leave-the-kernel, adr-0018-code-fact-freshness-anchor (the last three proposed), adr-0021-seed-only-procedures-stay-home, adr-0022-the-plant-model-map (both proposed), adr-0024-one-hook-core-per-session-residency (proposed), adr-0029-source-index-is-derived-scratch (its 8.1.2 amendment: the install runs the build)
 - **Supersedes:** —
 - **Superseded by:** —
@@ -165,6 +173,10 @@ install without replacing a page the plant edited or owns.
   - the one resolution of the legal jurisdiction that the national-layer
     report, the stamp and the closing banner share
   - the execution of each wired context hook under `--check`
+  - the `RETIRED` and `ORPHAN` flags: the harness entries and the retired
+    seed graph nodes `--check` and `tools/graft-audit.py` name, and how
+    `tools/graft-run.py`'s `graft.gate.routes` row reports them and the
+    graph-lint errors a retired node causes
   - the one write of an install that is not the installer's: the cache under
     `.cypress/source-index/` that the placed
     `docs/graph/source-index.py build` writes when the install runs it as its
@@ -1048,6 +1060,43 @@ its own record, and that slug stays as written in §12's history.
 - **And:** with no `RETIRED` and no `ORPHAN` finding, `--check` says in one
   line that every harness entry has a graph home
 
+### Contract: CHECK_FLAGS_RETIRED_GRAPH_NODE
+- **Given:** a plant carrying an `origin: seed` node under
+  `docs/graph/protocols/` or `docs/graph/method/` whose seed source (§6
+  "Retired graph nodes") the running seed does not ship: a node the seed
+  folded into others, such as a protocol whose rules moved into a skill and
+  a method node, which no harness projects
+- **When:** `install.sh <host> --check --project-dir <target>` runs
+- **Then:** it prints one `RETIRED` line (§6) naming the node's
+  target-relative path, the line CHECK_FLAGS_RETIRED_HARNESS_ENTRY prints for
+  an agent or skill
+- **And:** the run writes nothing and deletes nothing, and the exit code is
+  the one the rest of the check sets, as for a `RETIRED` harness entry; the
+  deletion stays the owner's act, named by graft migration (d)
+- **And:** `tools/graft-audit.py <plant> <seed>` prints the same line after
+  its backup verdicts, and `--harness` prints it, neither changing its exit
+  code; the classification has its one home there, which `--check` runs
+- **And:** a node in those folders whose seed source the seed ships, or
+  whose frontmatter does not say `origin: seed`, is not named
+
+### Contract: GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES
+- **Given:** a plant carrying a node CHECK_FLAGS_RETIRED_GRAPH_NODE names,
+  whose `owns:` repeats a fact-key that a node the seed ships owns, so the
+  stage copy's `docs/graph/graph-lint.py` fails with a duplicate fact-key
+  error naming the retired node's `id` (a graft that leaves a retired
+  `protocol.toolcraft` beside `skill.toolcraft`)
+- **When:** `tools/graft-run.py <plant> <seed> --stage <dir>` runs
+- **Then:** its `graft.gate.routes` row names the node's path among the
+  `RETIRED` entries it reads from the `--check` lines, and adds
+  `RETIRED_LINT_CLAUSE` (§6) with the count of graph-lint error lines that
+  name the `id` of a RETIRED node, and those ids
+- **And:** the row's verdict stays the one graph-lint's exit sets (BLOCK
+  here), because the error is real until the steward deletes the node by
+  name, migration (d); the `RETIRED` flag itself gates nothing, and
+  graft-run deletes nothing in the plant or the stage
+- **And:** an error line that names no RETIRED node's id is not counted, and
+  with no such line the clause is absent
+
 ## 5. Non-functional requirements
 
 - **Compatibility:** bash and `python3` only; no third-party imports. The
@@ -1378,6 +1427,36 @@ not entries. The flag lines, with `<entry>` and `<home>` target-relative:
 
 `tools/graft-audit.py` prints the same two flag lines without the `[seed]
 --check: ` prefix.
+
+### Retired graph nodes
+
+The nodes CHECK_FLAGS_RETIRED_GRAPH_NODE reads are the `*.md` files directly
+under `docs/graph/protocols/` and `docs/graph/method/` whose frontmatter says
+`origin: seed`; with `agents/` and `skills/` (CHECK_FLAGS_RETIRED_HARNESS_ENTRY)
+they are the four machinery folders graph-lint reads as nodes (its
+`MACHINERY_DIRS`). A name starting with `_`, `index` and `README` is not a
+node. A node's seed source is the file the installer places it from,
+`protocols/<name>.md` or `core/method/<name>.md` in the seed; the one home of
+that map is `seed_source_for` in `tools/graft-audit.py`, which the backup
+audit reads too. The node is `RETIRED` when that file is absent, and its line
+is the `RETIRED` line above.
+
+`tools/graft-run.py`'s `graft.gate.routes` row reports the flags it reads
+from the `--check` lines of each host, then the clause for the lint errors
+they explain:
+
+```text
+<n> RETIRED entr{y|ies} (<first three paths>[ ...]; migration (c)/(d), not gated)
+<n> ORPHAN harness entr{y|ies} (<first three paths>[ ...]; migration (c)/(d), not gated)
+RETIRED_LINT_CLAUSE: "<n> graph-lint error(s) name a RETIRED node (<ids>): each clears when the steward deletes that node by name, migration (d)"
+```
+
+A graph-lint error line is an output line that starts with `✗`. It names a
+RETIRED node when the `id` in that node's frontmatter, read from the stage
+copy, appears in it as a whole word (no letter, digit, `.`, `-` or `_` on
+either side). `<ids>` lists each such id once, in path order. A RETIRED path
+outside `docs/graph/`, or a node with no `id`, is named in the first line
+and counts no error.
 
 ## 7. Failure modes
 
@@ -1748,6 +1827,8 @@ $ head -1 /p/docs/graph/libraries/rxjs.md
 | CHECK_EXECUTES_EACH_WIRED_HOOK | M12 case_hook_check: over a copy of the every-host install, `claude-code --check` exits 0, keeps CHECK_WITHOUT_COPILOT_SAYS_SO's line, prints a ran line for the two Claude Code and the two Prime Agent hooks, and leaves the tree byte-identical; with `.claude/route-hook.py` removed it exits non-zero naming `UserPromptSubmit .claude/route-hook.py`; over a copy of the Copilot-only install with `.github/hooks/status-hook.py` removed, `github-copilot --check` exits non-zero naming `SessionStart .github/hooks/status-hook.py` | tests/test-install-placement.sh | integration; red on arrival (no ran line: `--check` ran no hook) | green |
 | CHECK_FLAGS_RETIRED_HARNESS_ENTRY | M13 case_retired_flag: over a copy of the every-host install carrying an `origin: seed` `docs/graph/skills/from-scratch-bootstrap.md` the seed does not ship and its `.claude/skills/` projection, plus an `origin: seed` `.claude/agents/legacy-steward.md` with no graph node (added at the tip), `graft-audit.py` keeps its clean-copy exit code and names the lone agent `RETIRED`, and `claude-code --check` exits 0, names all three `RETIRED` and leaves the tree byte-identical; after the projection gains a line and a re-install backs it up, `graft-audit.py` counts the backup `RETIRED`, reports no `UNMAPPED` backup and names the projection `RETIRED`; both entries are still on disk | tests/test-install-placement.sh | integration; red on arrival (`--check` printed no harness line, not even over the clean copy) | green |
 | CHECK_FLAGS_ORPHAN_HARNESS_ENTRY | M14 case_orphan_flag: over a copy of the every-host install, `claude-code --check` says every harness entry has a graph home (inside M13); with a skill in `.claude/skills/deploy-notes/` and an agent in `.prime/agent/agents/` and no graph node, it exits 0, names each `ORPHAN` with the graph home it lacks and leaves the tree byte-identical; `graft-audit.py` names the skill `ORPHAN` with its clean-copy exit code (asserted since the tip) | tests/test-install-placement.sh | integration; red on arrival (`--check` did not name the orphan skill) | green |
+| CHECK_FLAGS_RETIRED_GRAPH_NODE | M13 case_retired_flag, graph-node arm (8.1.2, graft finding F1): the every-host install copy also carries an `origin: seed` `docs/graph/protocols/<name>.md` the seed does not ship and an `origin: project` protocol of another name: `claude-code --check` exits 0, names the seed one `RETIRED` and not the project one, and leaves the tree byte-identical; `graft-audit.py` names it `RETIRED` with its clean-copy exit code; the node is still on disk | tests/test-install-placement.sh | integration | pending |
+| GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES | X469, a GR case of `tools/graft-run.py`, its function named by the tester (8.1.2, graft finding F1): a synthetic plant carrying an `origin: seed` `docs/graph/protocols/<name>.md` the seed does not ship, whose `owns:` repeats a fact-key of a seed skill node: the `graft.gate.routes` row is BLOCK, names the path among the `RETIRED` entries and carries `RETIRED_LINT_CLAUSE` with the node's id and a count of 1; arm: the same node with that fact-key dropped from its `owns:` carries no clause; the node is on disk after the run | tests/test-graft-tools.sh | integration (synthetic plant) | pending |
 
 Coverage note, so the table is not read as more than it is.
 
@@ -2346,3 +2427,20 @@ only version surface it has, and it moves with each entry here.
   the isolated run, `python3 -I -B`, that SPEC-0007 §6 "Build report" owns.
   No contract added or removed, no §10 row changed; product re-reads §3 and
   AC-3.
+- 2026-10-09 — 8.1.2 graft finding F1 (`architect-8.1.2j`, from the test
+  graft `tester-verify-8.1.2` on a copy of one plant). The plant kept an
+  `origin: seed` `docs/graph/protocols/toolcraft.md` whose rules the seed now
+  ships in `skill.toolcraft` and `method.bounded-execution`; graph-lint on the
+  stage failed with three duplicate fact-key errors, and nothing named the
+  node, because the `RETIRED` classification read only the agents and skills
+  folders. CHECK_FLAGS_RETIRED_GRAPH_NODE widens the flag to the other two
+  machinery folders graph-lint reads as nodes, `protocols/` and `method/`,
+  with the same line, the same one home (`tools/graft-audit.py`, which
+  `--check` runs) and the same rule: named, never deleted.
+  GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES makes graft-run's routes row
+  say which graph-lint errors such a node causes and that migration (d)
+  clears them; the row still blocks on the error. §2 gains the line for the
+  flags, §6 the section "Retired graph nodes" with `RETIRED_LINT_CLAUSE`;
+  no §7 failure. Status `active` from `implemented`, with two `pending` §10
+  rows until plan increment 11's RED; `implemented` returns when they are
+  green. §3 and AC-26 name agents and skills only: product's to follow.
