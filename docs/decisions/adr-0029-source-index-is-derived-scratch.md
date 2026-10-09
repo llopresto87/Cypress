@@ -98,8 +98,8 @@ say.
   §6; 196 MiB since 8.1.2, by the owner's ruling of 2026-10-07, from 64 MiB)
   is neither written nor read, and the tool then answers as with no cache,
   by deriving the index on each query. The bound limits what a query loads
-  into memory; the memory a query takes near the bound is measured before
-  the 8.1.2 release. No setting narrows the inventory; such a key is slice-3
+  into memory; the memory a query takes near the bound was measured for
+  8.1.2 and is recorded in SPEC-0007 §5 "Cache bound". No setting narrows the inventory; such a key is slice-3
   work (the owner, 2026-10-07).
 - Anchors citations are read from the pages on every query, never cached, so
   an uncommitted node edit is seen at once without widening the key to

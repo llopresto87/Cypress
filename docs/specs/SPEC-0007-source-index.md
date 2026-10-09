@@ -13,7 +13,7 @@ status_evidence: tests/test-source-index.sh, tests/test_graph_lint.py, tests/tes
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-10-07
-- **Last reviewed:** 2026-10-07 (review `reviewer-spec`, amended by `architect-amend`; joint-pass step-3 returns applied by `architect-fix`; devils-advocate verdicts applied by `architect-da`; the load by file path made `certain` by `architect-q5`; the code-review fixes stated in §6 and §7 by `architect-review-fixes`; the slice-1 final decisions after the measurement, path joins, the floor's depth and the unmapped specifier, by `architect-final`; slice 2, §1, §2 and §4 to §8, by `architect-slice2`; the slice-2 tester, security and devils-advocate findings by `architect-slice2-fix`; the slice-2 code review `reviewer-slice2` (fixes 5 and 6) and the measurement-2 decisions M2-1, M2-3 and M2-6 by `architect-slice2-m2`; the owner's `repo:` ruling, option D, by `architect-D`; the option-D stat path's security lines D1 to D3 of `security-D` by `architect-D2`; every §10 row green at 68c970e by `tester-final`; the 8.1.2 surfacing contracts, §2, §4, §6, §7, §8 and §10, by `architect-8.1.2`, with §3 and §9 left to product; the owner's rulings on plan §12 questions 2 and 3, the installer and graft running the build and growth-audit printing its report, by `architect-8.1.2b`; the `security-8.1.2` lines S1 to S4 and arms A1 to A4 and the `devils-advocate-8.1.2` changes that need no owner ruling, by `architect-8.1.2d`, with the three owner questions left pending, §11; the owner's rulings of plan §12 questions 12 to 14, the kernel line and the cache bound, by `architect-8.1.2e`)
+- **Last reviewed:** 2026-10-07 (review `reviewer-spec`, amended by `architect-amend`; joint-pass step-3 returns applied by `architect-fix`; devils-advocate verdicts applied by `architect-da`; the load by file path made `certain` by `architect-q5`; the code-review fixes stated in §6 and §7 by `architect-review-fixes`; the slice-1 final decisions after the measurement, path joins, the floor's depth and the unmapped specifier, by `architect-final`; slice 2, §1, §2 and §4 to §8, by `architect-slice2`; the slice-2 tester, security and devils-advocate findings by `architect-slice2-fix`; the slice-2 code review `reviewer-slice2` (fixes 5 and 6) and the measurement-2 decisions M2-1, M2-3 and M2-6 by `architect-slice2-m2`; the owner's `repo:` ruling, option D, by `architect-D`; the option-D stat path's security lines D1 to D3 of `security-D` by `architect-D2`; every §10 row green at 68c970e by `tester-final`; the 8.1.2 surfacing contracts, §2, §4, §6, §7, §8 and §10, by `architect-8.1.2`, with §3 and §9 left to product; the owner's rulings on plan §12 questions 2 and 3, the installer and graft running the build and growth-audit printing its report, by `architect-8.1.2b`; the `security-8.1.2` lines S1 to S4 and arms A1 to A4 and the `devils-advocate-8.1.2` changes that need no owner ruling, by `architect-8.1.2d`, with the three owner questions left pending, §11; the owner's rulings of plan §12 questions 12 to 14, the kernel line and the cache bound, by `architect-8.1.2e`; the 8.1.2 test-graft findings F2 and F3, `ACTION_LINE_NAMES_AT_MOST_TEXT_MAX_ROWS_RECORDS` and the measured cache bound, by `architect-8.1.2j`, 2026-10-09)
 - **Related grill section:** docs/plans/grill-8.1.2-tool-surfacing.md (the 8.1.2 surfacing contracts); docs/plans/grill-8.1.0-source-index.md §6 (the owner's rulings of 2026-10-07: one walk with three link kinds; the helper's scope; test roots and plant config; graph-lint keeps its tier-2 rule in slice 1; "slice 2 ok", with the slice-2 rows)
 - **Related ADRs:** adr-0029-source-index-is-derived-scratch (accepted): the index is derived scratch, self-ignored, rebuilt on any key change, never committed and never canonical; adr-0029 amended for 8.1.2 (the installer runs `build` as its last step, so an install writes the cache through the tool's own atomic write); adr-0030-a-seed-tool-is-surfaced-by-a-seed-skill (accepted, 8.1.2): a placed seed tool reaches sessions through a seed skill node, and a plant's `docs/graph/tools/` stays the plant's catalog
 - **Related specs:** SPEC-0001-install-placement (placement), SPEC-0003-per-prompt-injection (code anchor)
@@ -561,6 +561,23 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
 - **And:** the depth-cap record names the file at depth 3 whose dependent the
   input part did not reach, and the same chain with `--depth 5` is complete
 
+### Contract: ACTION_LINE_NAMES_AT_MOST_TEXT_MAX_ROWS_RECORDS
+- **Given:** a plant whose one governed repository holds `a.py`, and 41
+  inputs that no repository holds and no stored reference names,
+  `gone/f01.py` to `gone/f41.py`, so `incomplete` holds 41 `input-not-found`
+  records (`TEXT_MAX_ROWS` + 1)
+- **When:** `impact gone/f01.py ... gone/f41.py` runs, then the same with
+  `--all`, then with `--json`
+- **Then:** the text view's closing `ACTION_LINE` names inside its
+  parentheses the first `TEXT_MAX_ROWS` records, `input-not-found:
+  gone/f01.py` to `input-not-found: gone/f40.py`, then `ACTION_MORE` with
+  `{k}` 1, so the line is cut where the record list above it is cut
+- **And:** with `--all` the line names all 41 records and no `ACTION_MORE`;
+  `--json`'s `incomplete` holds all 41 records, with `--all` or without
+- **And:** the `build` `ACTION_LINE` keeps `{n}` the count of every record
+  when its `{reasons}` is cut, so a plant with more setup items than
+  `TEXT_MAX_ROWS` is told their whole count
+
 ### Affected tests
 
 ### Contract: AFFECTED_TESTS_ARE_THE_WALK_FILTERED
@@ -1082,11 +1099,15 @@ install.
   5,000-file figure after the reductions is inferred at about 60 MB.
 - **Cache bound (8.1.2):** `CACHE_MAX_BYTES` is 196 MiB (owner, 2026-10-07;
   64 MiB before). A query that reuses a cache reads the whole document and
-  parses it in memory, so the bound is also the bound on that read. The
-  peak RSS of a cached query over a cache near the bound is not measured;
-  it is measured once before the 8.1.2 release (plan increment 10) and
-  recorded here, not gated. The file count that fills the bound is about
-  200,000 by linear scale from the measured caches, an inference.
+  parses it in memory, so the bound is also the bound on that read.
+  Measured once for 8.1.2 (plan increment 10, `tester-verify-8.1.2`, not
+  gated) on a synthetic plant of 100,551 Python files (800,094 certain
+  links, 700,000 definitions): its `index.json` is 201,905,735 bytes (98 %
+  of the bound), `build` takes 31.0 s at 1,145,152 KB peak RSS, and a cached
+  `impact` query takes 2.6 s at 1,336,296 KB peak RSS, about 6.6 times the
+  cache size (`affected-tests` 2.8 s, 1,336,304 KB). The file count that
+  fills the bound is therefore about 100,000 at this link density, not the
+  200,000 the linear scale from the smaller caches inferred.
 - **Kernel line (8.1.2):** the kernel's one line naming the tool stays inside
   `KERNEL_BUDGET` (`tests/seed-lint.py`, recorded in `tests/ratchets.json`),
   which the owner raised by 200 bytes for it on 2026-10-07; the eager-surface
@@ -1205,7 +1226,8 @@ install.
   when Git is absent (`USAGE_REFUSED` excepted); a failed write leaves the old
   cache whole; a full rebuild is the oracle, so no incremental update exists.
 - **Cost:** no model call. The text view lists at most `TEXT_MAX_ROWS` rows
-  per list and counts the rest on a more-line; `--all` lifts the cap; `--json`
+  per list and counts the rest on a more-line, and its closing `ACTION_LINE`
+  names at most `TEXT_MAX_ROWS` records; `--all` lifts both caps; `--json`
   lists every row.
 - **Compatibility:** stdlib Python 3.12 or newer, the version the seed's
   gate pins (`.github/workflows/gate.yml` line 38) and the one the placed
@@ -1260,12 +1282,13 @@ constants:
   HISTORY_LINE: "History: {n} maybe row(s), files that changed together with an input (--history):"
   MOVED_NONE_LINE: "Moved: no code moved since the code anchor."
   UNDEFINED_LINE: "{name}: no definition (read: Python definitions, shell functions, TS/JS declarations; not read: {not_read}, which are not code)"   # {not_read}: NOT_CODE joined by ", "
-  ACTION_LINE:                   # the closing text line of an incomplete answer
-    build: "Incomplete: {n} setup item(s) above, each with its fix ({reasons})."   # {n}: the count of `incomplete` records
+  ACTION_LINE:                   # the closing text line of an incomplete answer; {reasons}: `<reason>: <subject>` of each record in `incomplete` order, joined by ", ", at most TEXT_MAX_ROWS of them in the text view (then ACTION_MORE; --all lifts the cap)
+    build: "Incomplete: {n} setup item(s) above, each with its fix ({reasons})."   # {n}: the count of every `incomplete` record, cut list or not
     impact: "Incomplete: check by hand ({reasons})."
     affected-tests: "Incomplete: run the full suite ({reasons})."
     anchors: "Incomplete: review by hand ({reasons})."
     symbols: "Incomplete: search by hand ({reasons})."
+  ACTION_MORE: ", ... {k} more; --all lists every row"   # ends {reasons} when it names TEXT_MAX_ROWS of more records; {k}: the records it leaves out
 ```
 
 ### Helper
@@ -2285,7 +2308,7 @@ definition(s)`, then one line per definition, `  <link> <kind>
 `always_run` list, then `FLOOR_LINE` and the floor rows, then the
 `incomplete` list, each list capped on its own with a more-line, so the floor
 never pushes an input row out of the view; it closes with the query's `ACTION_LINE` when the answer is
-incomplete, else, for `affected-tests`, with `RECOMMEND_LINE`.
+incomplete, its `{reasons}` capped like the lists (`ACTION_MORE`), else, for `affected-tests`, with `RECOMMEND_LINE`.
 
 ## 7. Failure modes
 
@@ -2908,7 +2931,7 @@ output: |
   - incomplete: repo-unresolved: docs/graph/nodes/subsystem.kernels.md (repo: src/a, src/b names nothing on disk; correct the node's repo:)
   ...
   Hint: 3 file(s) named like tests are outside TEST_GLOBS, e.g. src/quant/test_pack.py, .... Add their folders to TEST_GLOBS in docs/graph/spec-lint.py, or list them under "exclude" in docs/graph/source-index.json if they are not tests.
-  Incomplete: 6 setup item(s) above, each with its fix (repo-unresolved).
+  Incomplete: 6 setup item(s) above, each with its fix (repo-unresolved: docs/graph/nodes/subsystem.kernels.md, repo-unresolved: ...).
   # the figures and the page name are illustrative, not measured
 ```
 
@@ -3362,6 +3385,7 @@ and §6 now state each:
 | GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT | X468 scn_x468 (8.1.2): a temp install with a `--plan` record and a node `repo: old/lib`: the lint prints `GROWTH_REPORT_HEAD` and the indented `repo-unresolved` line after its verdicts, its exit code equal to the same run with the node removed; `--json` `source_index_report`; `--plan` runs no build (no `.cypress/source-index/` after it) | tests/test-growth-audit.sh | integration (temp install) | green |
 | SKILL_NAME_HELD_BY_THE_PLANT | (8.1.2) no arm: the seed-skill backup path SPEC-0001 BACKUP_BEFORE_REPLACE already holds | — | — | skipped (owned by SPEC-0001 BACKUP_BEFORE_REPLACE) |
 | SOURCE_INDEX_REPORT_UNAVAILABLE | X468 scn_x468 (8.1.2): an arm of the GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT case: a seed copy whose `tools/source-index.py` exits 3 gives `GROWTH_REPORT_FAILED` naming `exit 3` and the same exit code; A2 (`security-8.1.2`): the fake tool also writes `\x1b[2J` and `MARK-OUT` to stdout and `MARK-ERR` and `\x1b]0;x\x07` to stderr before it exits 3: growth-audit's output holds neither marker and no byte 0x1b or 0x07, and `--json` `source_index_report` is empty | tests/test-growth-audit.sh | integration (temp install) | green |
+| ACTION_LINE_NAMES_AT_MOST_TEXT_MAX_ROWS_RECORDS | X470, its function named by the tester (8.1.2, graft finding F2): the §4 plant: `impact` over the 41 missing inputs ends with the `ACTION_LINE` naming `gone/f01.py` to `gone/f40.py` and `ACTION_MORE` with 1, the record list above it cut with its more-line; with `--all` all 41 and no `ACTION_MORE`; `--json` 41 records | tests/test-source-index.sh | integration (synthetic Git plant) | pending |
 Status values: `red` (test exists, fails), `green` (test exists,
 passes), `pending` (test not yet written), `skipped` (with reason).
 
@@ -3450,3 +3474,19 @@ flagged assumption in grill.md §12. Sign-off keeps the status `draft`;
   `hints` line state that `hints` is `[]` when `incomplete` holds
   `git-unavailable` or `no-repository`. §9 is product's to follow for the
   new And.
+- 2026-10-09 — the 8.1.2 test graft's findings F2 and F3 applied by
+  `architect-8.1.2j` (report `tester-verify-8.1.2`: a graft of a copy of
+  one plant, and a synthetic plant near `CACHE_MAX_BYTES`). F2: on a big
+  tree the closing `Incomplete:` line named all 64 `depth-cap` records on
+  one line while the record list above it was cut at `TEXT_MAX_ROWS`.
+  Contract `ACTION_LINE_NAMES_AT_MOST_TEXT_MAX_ROWS_RECORDS` added: the
+  text view's `{reasons}` names at most `TEXT_MAX_ROWS` records, then the
+  new §6 constant `ACTION_MORE`; `--all` lifts it, `--json` is unchanged,
+  and the `build` line's `{n}` stays the whole count. §5 "Cost", §6
+  `ACTION_LINE` (which now states `{reasons}`, until now read only from the
+  code) and §6 "CLI" follow; §8's turboquant-like example shows the
+  `<reason>: <subject>` form the code prints. §10 row `pending` until the
+  RED of plan increment 11. F3: §5 "Cache bound" records the measurement
+  owed by plan increment 10 and corrects the inferred fill count from
+  about 200,000 files to about 100,000 at the measured link density. §9 is
+  product's to follow for the new contract.
