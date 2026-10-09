@@ -105,7 +105,11 @@ status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tes
   `origin: seed` protocol node failed graph-lint with no flag naming it.
   Product owes §3 and AC-26, which name only agents and skills; the tester
   owes the two §10 rows.
-  Sign-offs for them: product [ ] · architect [x] · tester [ ].
+  Sign-offs for them: product [x] · architect [x] · tester [ ]. Product
+  (`product-8.1.2e`, 2026-10-09) signed: §3 now names the retired seed page,
+  the graft run's explanation of the graph-lint errors it causes, and the
+  steward's deletion by name after the owner's named confirmation; AC-26
+  maps both contracts in plain words. The tester's two §10 rows are owed.
   Before 8.0.0 this spec was `back-written` and carried no sign-off, because
   there was no RED for a promotion to land with. An earlier draft asserted
   signatures dated to a RED that never landed; that was fabricated to satisfy
@@ -245,8 +249,16 @@ the pages nobody edited and names each page it left alone. `--check` also
 runs each wired context hook once, so a hook whose script is gone is found by
 the check and not by a session. It also names each agent or skill in a harness
 directory that has no home in the plant's graph: `RETIRED` for one the seed
-does not ship, `ORPHAN` for one the plant authored there. It deletes
-neither.
+does not ship, `ORPHAN` for one the plant authored there. It names in the same way, as
+`RETIRED`, a seed page in the plant's `docs/graph/protocols/` or
+`docs/graph/method/` that the seed no longer ships, such as a protocol the
+seed folded into a skill. It deletes none of them, and a flag alone fails
+nothing. A graft run names those outdated seed pages in its routes row. When
+graph-lint fails because such a page repeats a fact a page the seed ships
+owns, the row also says how many of the errors that page causes, names it, and
+says that each error clears when the steward deletes the page by name. The
+graft still blocks on those errors and deletes nothing; removing the page is
+the steward's act, after the owner confirms that page by name.
 A plant whose record names its national jurisdiction keeps it on a re-install
 that passes no flag, and the run names that code instead of calling the
 jurisdiction undecided.
@@ -1701,9 +1713,22 @@ $ head -1 /p/docs/graph/libraries/rxjs.md
 - [ ] AC-25: a wired context hook whose script is gone, or that prints
       nothing, fails `--check`; maps to CHECK_EXECUTES_EACH_WIRED_HOOK
 - [ ] AC-26: an agent or skill in a harness directory with no graph home is
-      named `RETIRED` or `ORPHAN` by `--check` and by the graft audit,
-      nothing is deleted, and the flag alone does not fail `--check`; maps to CHECK_FLAGS_RETIRED_HARNESS_ENTRY,
-      CHECK_FLAGS_ORPHAN_HARNESS_ENTRY
+      named `RETIRED` or `ORPHAN` by `--check` and by the graft audit, and
+      an `origin: seed` page under `docs/graph/protocols/` or
+      `docs/graph/method/` whose seed source the running seed does not ship
+      is named `RETIRED` by its path in the same way; a page the seed still
+      ships, or one not marked `origin: seed`, is not named. Nothing is
+      deleted, and the flag alone neither fails `--check` nor changes the
+      graft audit's exit code. When a retired page repeats a fact-key a
+      shipped page owns, the graft run's `graft.gate.routes` row names the
+      page, counts the graph-lint error lines that name its `id`, lists that
+      `id`, and says each error clears when the steward deletes the page by
+      name (`RETIRED_LINT_CLAUSE`); the row still takes graph-lint's verdict
+      (BLOCK), an error line that names no retired page is not counted, with
+      no such line the clause is absent, and the graft run deletes nothing in
+      the plant or its stage; maps to CHECK_FLAGS_RETIRED_HARNESS_ENTRY,
+      CHECK_FLAGS_ORPHAN_HARNESS_ENTRY, CHECK_FLAGS_RETIRED_GRAPH_NODE,
+      GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES
 - [ ] AC-27: a project is offered a `language` page when a manifest declares
       that language in a form a §6 language row names, and a `platform` or
       `cli` page when it holds a trigger a §6 row lists for that page; a
