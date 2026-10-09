@@ -31,6 +31,7 @@ peers:
   - protocol.from-scratch
   - method.engineering-posture
   - method.design-posture
+  - skill.source-index
 load_when:
   - "grow the knowledge graph, first growth"
   - "install prompt, EXPERT_SEED_INSTALL_PROMPT"

@@ -24,6 +24,7 @@ peers:
   - skill.validate-knowledge
   - protocol.verify-new-gates
   - protocol.verify-disagreement
+  - skill.source-index
 load_when:
   - "increment done, ready to merge or deploy"
   - "which gates to run, verification runbook"

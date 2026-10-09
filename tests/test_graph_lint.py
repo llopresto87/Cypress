@@ -2712,6 +2712,56 @@ class NodeRouterLadderTests(_TmpCase):
             with self.subTest(label):
                 self.assertLoadedAs(self.route(task), nid, "phrase", detail, task)
 
+    def test_path_or_identifier_does_not_break_a_phrase(self):
+        """PATH_OR_IDENTIFIER_DOES_NOT_BREAK_A_PHRASE: a path, a snake_case or
+        a camelCase identifier between two tokens of a phrase leaves the phrase
+        held; a content word between still breaks it. The same gap rule holds
+        for the seed skill a tier-2 route adds and for composition descent."""
+        self.add_nodes({"subsystem.reach": node_md("subsystem.reach", "subsystem",
+                                                   load_when=["tests reach"])})
+        for label, task in (("a path", "which tests does a change to src/app.py reach"),
+                            ("a snake_case identifier", "which tests save_order reach"),
+                            ("a camelCase identifier", "which tests saveOrder reach")):
+            with self.subTest(label):
+                self.assertLoadedAs(self.route(task), "subsystem.reach", "phrase", "tests reach", task)
+        with self.subTest("a content word between breaks the phrase"):
+            task = "which tests widget reach"
+            how = self.hows(self.route(task)).get("subsystem.reach") or {}
+            self.assertNotEqual(how.get("kind"), "phrase", f"{task!r}: {how!r}")
+        with self.subTest("composition descent: an identifier splits the child's phrase"):
+            task = "fix the log save_order sink in subsystem.orders"
+            self.assertLoadedAs(self.route(task), "expertise.serilog", "composed", task=task)
+        self.add_seed_skill_fixture()
+        with self.subTest("tier 2 adds the seed skill whose phrase the owned path splits"):
+            task = "fix the orbit src/app.py lantern"
+            doc = self.route(task)
+            self.assertLoadedAs(doc, "subsystem.app", "named_path", "src/app.py", task)
+            self.assertLoadedAs(doc, "skill.alpha", "phrase", "orbit lantern", task)
+
+    def test_path_or_identifier_fills_a_slot_word(self):
+        """PATH_OR_IDENTIFIER_FILLS_A_SLOT_WORD: a path word holds the phrase
+        token `file` and an identifier word the token `name`, as the words
+        themselves do; a plain content word holds neither, a path does not
+        hold `name` and an identifier does not hold `file`."""
+        self.add_nodes({"subsystem.lookup": node_md(
+            "subsystem.lookup", "subsystem",
+            load_when=["depends on this file, where is a name defined"])})
+        held = (("a path holds file", "what depends on src/app.py"),
+                ("a snake_case identifier holds name", "where is save_order defined"),
+                ("a camelCase identifier holds name", "where is saveOrder defined"),
+                ("the word file itself", "what depends on this file"),
+                ("the word name itself", "where is the name defined"))
+        for label, task in held:
+            with self.subTest(label):
+                self.assertLoadedAs(self.route(task), "subsystem.lookup", "phrase", task=task)
+        not_held = (("a content word holds no slot", "what depends on widget"),
+                    ("a path does not hold name", "where is src/app.py defined"),
+                    ("an identifier does not hold file", "what depends on save_order"))
+        for label, task in not_held:
+            with self.subTest(label):
+                how = self.hows(self.route(task)).get("subsystem.lookup") or {}
+                self.assertNotEqual(how.get("kind"), "phrase", f"{task!r}: {how!r}")
+
     def test_strong_tier_over_cap_falls_through(self):
         """STRONG_TIER_OVER_CAP_FALLS_THROUGH: more than STRONG_TIER_CAP named
         ids is no tier-1 hit; the next tier (here a phrase) decides. At the cap
