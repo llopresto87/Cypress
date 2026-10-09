@@ -67,7 +67,9 @@ saving is claimed for it.
     its abstentions and their notices, the lexical guards it shares with the
     agent router, and `graph-lint.py --eval`
   - since 8.1.2, the seed skills a path route adds beside the node that owns
-    the path (ADR-0026 "Amendment, 8.1.2")
+    the path (ADR-0026 "Amendment, 8.1.2"), and the gap and slot rules by
+    which a task holds a trigger phrase across a path or an identifier it
+    names
 - **Out of scope:**
   - the scoring algorithms' internals (ADR-0001 and ADR-0026 own the designs;
     changing them requires re-measuring against this spec, not amending it).
@@ -396,7 +398,43 @@ loaded node always loads with it. Tiers, phrases and constants are §6's.
 - **When:** the router runs
 - **Then:** N loads with `how.kind` `phrase` and `how.detail` that phrase
 - **And:** the same tokens in another order, or with a content word between
-  them, do not load N by this tier
+  them that is neither a path nor an identifier (§6), do not load N by this
+  tier
+
+### Contract: PATH_OR_IDENTIFIER_DOES_NOT_BREAK_A_PHRASE
+- **Given:** a node N whose trigger phrase is `tests reach` (content tokens
+  `tests`, `reach`), and in turn the tasks `which tests does a change to
+  src/app.py reach`, `which tests save_order reach`, `which tests saveOrder
+  reach` and `which tests widget reach`, no node owning any path they name
+- **When:** the router runs
+- **Then:** the first three load N with `how.kind` `phrase` and `how.detail`
+  `tests reach`: a path or an identifier (§6) between two tokens of a phrase
+  does not break the phrase
+- **And:** the fourth does not load N by the phrase tier: `widget` is a
+  content word that is neither
+- **And:** the same holds for the seed skills a tier-2 route adds
+  (PATH_ROUTE_ADDS_SEED_SKILL_PHRASES) and for composition descent, which
+  read a phrase by the same rule; a phrase of one token is unchanged
+  (`PROMOTION_NEEDS_A_CONTIGUOUS_PHRASE`)
+- **Note:** added 2026-10-09 for 8.1.2 (`architect-8.1.2i`): without it the
+  owner's option (a) loaded no seed skill for the tasks it was ruled for,
+  because the path a task names sits between the words of the skill's phrase
+
+### Contract: PATH_OR_IDENTIFIER_FILLS_A_SLOT_WORD
+- **Given:** a node N whose trigger phrases are `depends on this file`
+  (`depends`, `file`) and `where is a name defined` (`name`, `defined`), and
+  in turn the tasks `what depends on src/app.py`, `where is save_order
+  defined`, `where is saveOrder defined` and `what depends on widget`, no
+  node owning any path they name
+- **When:** the router runs
+- **Then:** the first three load N with `how.kind` `phrase`: a path word holds
+  the phrase token `file`, and an identifier word holds the phrase token
+  `name` (§6, slot words)
+- **And:** the fourth does not load N by the phrase tier: a content word that
+  is neither a path nor an identifier holds no slot word
+- **And:** a task that writes the word `file` or `name` itself holds the slot
+  as any word holds its token; a path does not hold `name`, and an
+  identifier does not hold `file`
 
 ### Contract: STRONG_TIER_OVER_CAP_FALLS_THROUGH
 - **Given:** a task that names more than `STRONG_TIER_CAP` node ids
@@ -604,7 +642,36 @@ nodes is no hit; tier 3 is not capped. A
 trigger phrase is one comma-separated piece of a `load_when` entry (or of an
 expertise trigger); its content tokens are its words after the router's
 stopword removal and inflection reduction, and a task holds it when those
-tokens occur in the task's content-token sequence consecutively and in order.
+tokens occur in the task's content-token sequence consecutively and in order,
+read with two rules since 8.1.2 (`PATH_OR_IDENTIFIER_DOES_NOT_BREAK_A_PHRASE`,
+`PATH_OR_IDENTIFIER_FILLS_A_SLOT_WORD`):
+
+- **Gap rule.** Between two tokens of the phrase the task may hold any number
+  of path words and identifier words, which are skipped. Only between: a
+  phrase still starts at its first token and ends at its last.
+- **Slot words.** A phrase token that is the word `file` is held by a path
+  word, and one that is the word `name` by an identifier word, as well as by
+  the word itself. A `load_when` piece writes the place of a file or a name
+  the task will name as `this file`, `a file` or `a name`.
+
+An identifier is a task word, as the content-token sequence reads it, that is
+not a path and that, as written in the task before lowercasing, holds `_`
+with a letter or digit on each side (`save_order`, `MAX_BYTES`) or a lowercase
+letter directly followed by an uppercase one (`saveOrder`, `SaveOrder`,
+`TypeScript`). A word written all in capitals (`README`, `JSON`) is not one.
+The two rules only add holds: every phrase a task held before still holds, a
+content word that is neither a path nor an identifier still breaks a phrase,
+and a one-token piece is still read only as a whole task word equal to it.
+They apply wherever a phrase is held: tier 3, the seed skills tier 2 adds,
+and composition descent. An identifier stays a lexical term for tier 4, and a
+path stays none (`IDS_AND_PATHS_ARE_NOT_LEXICAL_TERMS`). Measured 2026-10-09
+(`architect-8.1.2i`, the rule prototyped on a scratch install of `cb57595`
+plus the uncommitted 8.1.2 work): `tests/graph-routes.golden.tsv` gives the
+same figures in every class, and over its 39 rows and the 96 task rows of
+each of the two plants' `docs/graph/agents/_routes.golden.tsv` (their graphs
+copied to a scratch directory), no task loads a different node list; only
+the nine tasks written for this question changed, each now loading
+`skill.source-index` by `phrase`.
 A piece that reduces to one content token is not a phrase for tiers 3 and 4;
 it is read only by composition descent. A kind prefix, a dotted node id, and a
 path with its segments are not lexical terms of the task, and a node's name
@@ -820,6 +887,8 @@ ROUTE (ranked, confidence: HIGH)     # the compound itself still routes
 | PATH_ROUTE_ADDS_SEED_SKILL_PHRASES | test_path_route_adds_seed_skill_phrases (8.1.2): the §4 fixture; arms path removed (tier 3 as before), named id (no skill added), tier 2 over `STRONG_TIER_CAP` (tier 3 as before), an `inferred` entry, a seed skill that tier 2 loaded (once, its tier-2 kind) | tests/test_graph_lint.py | integration | red |
 | PATH_ROUTE_SKILL_ADDITION_IS_CAPPED | test_path_route_skill_addition_is_capped (8.1.2): exactly `PATH_TIER_SKILL_CAP` skills added in node-id order after the tier-2 entries; one more adds none; two runs byte-identical | tests/test_graph_lint.py | integration | red |
 | PATH_ROUTE_SKILLS_OVER_CAP | test_path_route_skill_addition_is_capped, its over-cap arm | tests/test_graph_lint.py | integration | red |
+| PATH_OR_IDENTIFIER_DOES_NOT_BREAK_A_PHRASE | test_path_or_identifier_does_not_break_a_phrase (8.1.2): the §4 fixture, one arm per task (a path, a snake_case and a camelCase identifier between the tokens load N by `phrase`; a content word between does not); an arm where a tier-2 route adds a seed skill whose phrase a path splits; an arm where a composed child's phrase is split by an identifier | tests/test_graph_lint.py | integration | pending |
+| PATH_OR_IDENTIFIER_FILLS_A_SLOT_WORD | test_path_or_identifier_fills_a_slot_word (8.1.2): the §4 fixture, one arm per task; an arm where a path stands for `name` and an identifier for `file`, neither loading N | tests/test_graph_lint.py | integration | pending |
 | GRAPH_ROUTE_PHRASE_LOADS_ITS_NODE | test_graph_route_phrase_loads_its_node | tests/test_graph_lint.py | integration; gains the rows moved from SPEC-0005's retired promotion tests: a piece holding a slash and a space, stopwords and short words dropped, the first held piece in `load_when` order as `how.detail` | green |
 | GRAPH_ROUTE_PHRASE_LOADS_ITS_NODE | test_plan_phrase_entry_brings_required_parent | tests/test_graph_lint.py | integration; rewritten from SPEC-0005 `test_plan_promoted_node_brings_required_parent` | green |
 | STRONG_TIER_OVER_CAP_FALLS_THROUGH | test_strong_tier_over_cap_falls_through | tests/test_graph_lint.py | integration; gains a row where four nodes' phrases load by tier 3, uncapped (amended 2026-10-01) | green |
@@ -1032,3 +1101,16 @@ moves with each entry here.
   PATH_ROUTE_SKILL_ADDITION_IS_CAPPED and PATH_ROUTE_SKILLS_OVER_CAP rows name
   their tests in `tests/test_graph_lint.py` and read `red`. No contract
   changed. The status stays `back-written`.
+- 2026-10-09: 8.1.2 GREEN blocker ruled (`architect-8.1.2i`). The owned-path
+  arm of SPEC-0007 SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS could not go
+  green: the path or identifier a task names sat between the words of the
+  seed skill's phrase, so PATH_ROUTE_ADDS_SEED_SKILL_PHRASES added nothing.
+  §4 gains PATH_OR_IDENTIFIER_DOES_NOT_BREAK_A_PHRASE and
+  PATH_OR_IDENTIFIER_FILLS_A_SLOT_WORD; GRAPH_ROUTE_PHRASE_LOADS_ITS_NODE's
+  And clause names the content word that still breaks a phrase; §2 and §6
+  state the gap rule, the slot words, the identifier and the measurement (no
+  class figure and no route of the measured rows moves); §10 gains two
+  `pending` rows. ADR-0026's design (tier order, caps) is unchanged; plan
+  `docs/plans/grill-8.1.2-tool-surfacing.md` §12 question 19 records the
+  rule for the owner's veto. §3 and §9 are product's to follow. The status
+  stays `back-written`.

@@ -55,6 +55,7 @@ import posixpath
 import re
 import stat
 import sys
+import time
 from pathlib import Path
 import importlib.util as _ilu
 sys.dont_write_bytecode = True  # a query writes only under .cypress/source-index/: no __pycache__
@@ -87,7 +88,7 @@ JOIN_MAX = 3
 FILE_MAX_BYTES = 1048576
 DIR_LINK_MAX = 200
 EXTENDS_MAX = 16
-CACHE_MAX_BYTES = 67108864
+CACHE_MAX_BYTES = 205520896        # 196 MiB
 HISTORY_COMMITS = 500
 HISTORY_MAX_FILES = 40
 _NAME = r"[A-Za-z_$][A-Za-z0-9_$-]*"      # one name segment; shell and TS/JS definitions read it undotted
@@ -105,14 +106,57 @@ HISTORY_LINE = "History: {n} maybe row(s), files that changed together with an i
 MOVED_NONE_LINE = "Moved: no code moved since the code anchor."
 UNDEFINED_LINE = ("{name}: no definition (read: Python definitions, shell functions, TS/JS declarations; "
                   "not read: {not_read}, which are not code)")   # {not_read}: the answer's not_read
+BUILD_TIME_LINE = "Built in {seconds:.2f} s."
 RECOMMEND_LINE = ("Recommendation only: the tests above and the always-run set, never only these; "
                   "verify decides what runs.")
 ACTION_LINE = {
-    "build": "Incomplete: check by hand ({reasons}).",
+    "build": "Incomplete: {n} setup item(s) above, each with its fix ({reasons}).",
     "impact": "Incomplete: check by hand ({reasons}).",
     "affected-tests": "Incomplete: run the full suite ({reasons}).",
     "anchors": "Incomplete: review by hand ({reasons}).",
     "symbols": "Incomplete: search by hand ({reasons}).",
+}
+# §6 "Build report": the setup report `build` alone prints.
+FIX_PREFIX = "  fix: "
+BUILD_FIX = {               # one line under each record of that reason; every reason a build can give
+    "git-unavailable": "install Git, then run from the plant root: python3 docs/graph/source-index.py build",
+    "no-repository": ("the plant root is not a Git work tree and no node's repo: names a repository: if the "
+                      "code lives in repositories below the plant root, let grow write the nodes whose repo: "
+                      "names each (or write them); if the plant root is the code, run git init there and "
+                      "commit; then run python3 docs/graph/source-index.py build"),
+    "repository-unreadable": ("repair the repository the record names (git status must succeed in it), then run "
+                              "python3 docs/graph/source-index.py build"),
+    "config-refused": ("fix docs/graph/source-index.json: only the keys exclude, always_run and global_inputs, "
+                       "each a list of strings; or delete the file to use the defaults"),
+    "no-test-declaration": ("set TEST_GLOBS in docs/graph/spec-lint.py to a list of the plant's test-file "
+                            "patterns (the owner confirms it; grow asks it with the plant facts)"),
+    "no-test-files": ("TEST_GLOBS in docs/graph/spec-lint.py matches no file: set it to the folders that hold "
+                      "the tests; while the plant has no tests, nothing to do"),
+    "repo-unresolved": ("set the node's repo: to one plant-relative path that exists (a repository, a folder "
+                        "or a file), or remove the line"),
+    "repository-unnamed": ("write (or let grow write) a node whose repo: names this repository; if it is not "
+                           "this plant's code, list it in the .gitignore of the repository that holds it; then "
+                           "run python3 docs/graph/source-index.py build"),
+}
+TEST_NAME_PATTERNS = ["test_*.py", "*_test.py", "test_*.sh", "test-*.sh", "*_test.sh",
+                      "*_test.go", "*.test.*", "*.spec.*", "*_spec.rb",
+                      "*Test.java", "*Tests.java", "*Test.kt", "*Tests.kt",
+                      "*Test.cs", "*Tests.cs", "*Test.php"]     # basenames, by the helper's path_matches
+HINT_MAX_PATHS = 5
+HINT_LINE = {               # in the order hints are listed
+    "tests-outside-class": ("Hint: {count} file(s) named like tests are outside TEST_GLOBS, e.g. {paths}. Add "
+                            "their folders to TEST_GLOBS in docs/graph/spec-lint.py, or list them under "
+                            "\"exclude\" in docs/graph/source-index.json if they are not tests."),
+    "class-holds-non-tests": ("Hint: {count} file(s) in the test class are not named like tests, e.g. {paths}. "
+                              "List the ones that are not tests under \"exclude\" in "
+                              "docs/graph/source-index.json; an \"exclude\" key, even [], ends this hint."),
+    "config-pattern-unmatched": "Hint: {count} pattern(s) in docs/graph/source-index.json match no file: {patterns}.",
+}
+HINT_FIX = {                # under a hint of that kind; the other hints carry their fix in HINT_LINE
+    "config-pattern-unmatched": (
+        "correct each pattern in docs/graph/source-index.json to the files it means (a pattern with no \"/\" "
+        "matches a file name, one with \"/\" a plant-relative path), or remove it; then run python3 "
+        "docs/graph/source-index.py build"),
 }
 CONFIG_DEFAULTS = {
     "exclude": [],
@@ -308,28 +352,30 @@ def read_test_declaration(root: Path) -> dict:
 
 
 def read_config(root: Path):
-    """(config, raw bytes, refusal): the plant config over the defaults, each
-    key it sets replacing that key's default whole. A file that is not JSON,
-    or holds an unknown key, a non-list value or a non-string item, is refused
-    whole: the defaults apply and the refusal says why."""
+    """(config, raw bytes, refusal, set): the plant config over the defaults,
+    each key it sets replacing that key's default whole, and what the file
+    sets, in its own order (None when there is no file or it is refused). A
+    file that is not JSON, or holds an unknown key, a non-list value or a
+    non-string item, is refused whole: the defaults apply and the refusal
+    says why."""
     try:
         raw = read_bytes(root, CONFIG_PATH)
     except FileNotFoundError:
-        return dict(CONFIG_DEFAULTS), b"", None
+        return dict(CONFIG_DEFAULTS), b"", None, None
     except (OSError, Unreadable) as e:
-        return dict(CONFIG_DEFAULTS), b"", f"unreadable: {e}"
+        return dict(CONFIG_DEFAULTS), b"", f"unreadable: {e}", None
     try:
         doc = json.loads(raw.decode("utf-8"))
     except (ValueError, RecursionError, MemoryError):
-        return dict(CONFIG_DEFAULTS), raw, "not JSON"
+        return dict(CONFIG_DEFAULTS), raw, "not JSON", None
     if not isinstance(doc, dict):
-        return dict(CONFIG_DEFAULTS), raw, "not a JSON object"
+        return dict(CONFIG_DEFAULTS), raw, "not a JSON object", None
     for key, value in doc.items():
         if key not in CONFIG_DEFAULTS:
-            return dict(CONFIG_DEFAULTS), raw, f"unknown key {key!r}"
+            return dict(CONFIG_DEFAULTS), raw, f"unknown key {key!r}", None
         if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
-            return dict(CONFIG_DEFAULTS), raw, f"{key!r} is not a list of strings"
-    return {**CONFIG_DEFAULTS, **doc}, raw, None
+            return dict(CONFIG_DEFAULTS), raw, f"{key!r} is not a list of strings", None
+    return {**CONFIG_DEFAULTS, **doc}, raw, None, doc
 
 
 def _glob_segment(seg: str) -> str:
@@ -429,11 +475,12 @@ class Plant:
 
     def __init__(self, root: Path):
         self.root = root
-        self.config, self.config_raw, self.config_refused = read_config(root)
+        self.config, self.config_raw, self.config_refused, self.config_set = read_config(root)
         declared = read_test_declaration(root)
         self.test_globs = declared.get("TEST_GLOBS")
         self.skip_dirs = set(declared.get("SKIP_DIRS", TEST_SKIP_DIRS))
         self.repos = source_paths.governed_repositories(root)
+        self.unnamed = []          # nested work trees no `repo:` governs, found by the inventory
         self._foreign = {}
 
     def repo_of(self, path: str) -> str:
@@ -494,7 +541,8 @@ class Plant:
         lists, kept when the code-path rule holds and no directory on the way
         is foreign, the files of a nested repository taken from it alone. A
         repository whose listing fails is a `repository-unreadable` record and
-        is left out; the others answer."""
+        is left out; the others answer. A nested work tree the listing holds
+        that no `repo:` governs goes to `unnamed`, its files to no record."""
         nested = [r for r in repos if r != "."]
         rx = [glob_regex(g) for g in self.test_globs or []]
         records = {}
@@ -505,16 +553,20 @@ class Plant:
                 problems.append(incomplete("repository-unreadable", rel, detail=str(e)))
                 continue
             for p in paths:
-                path = source_paths.plant_path(rel, p)
-                if (p.endswith("/") or not source_paths.is_code(rel, p) or self.foreign(path)
-                        or rel == "." and any(path.startswith(n + "/") for n in nested)):
+                path = source_paths.plant_path(rel, p.rstrip("/"))
+                if self.foreign(path) or rel == "." and any(path.startswith(n + "/") for n in nested):
                     continue
                 try:
                     st = os.lstat(self.root / path)
                 except OSError:
                     continue                 # deleted from the work tree: not there to index
-                if os.path.isdir(self.root / path) and not os.path.islink(self.root / path):
-                    continue                 # a gitlink or a nested work tree
+                if p.endswith("/") or stat.S_ISDIR(st.st_mode):
+                    # a nested work tree (Git lists an untracked one as `<path>/`) or a gitlink
+                    if path not in self.repos and os.path.lexists(self.root / path / ".git"):
+                        self.unnamed.append(path)
+                    continue
+                if not source_paths.is_code(rel, p):
+                    continue
                 records[path] = {"path": path, "repo": rel,
                                  "hash": source_paths.content_state(self.root / rel, p) or "",
                                  "language": None,
@@ -1781,6 +1833,35 @@ def moved_inputs(root: Path):
     return paths, problems
 
 
+# --- the graph pages -----------------------------------------------------------
+def graph_pages(root: Path):
+    """Each readable graph page as (page, text, kind, name): its `repo:` value
+    read once per distinct value through the helper's `repo_kind`, kind and
+    name None when the page sets none."""
+    kinds = {}                 # repo: value as written -> (kind, name)
+    for page in plant_walk.files(root, GRAPH, "*.md"):
+        rel = page.relative_to(root).as_posix()
+        try:
+            text = read_text(root, rel)
+        except (OSError, Unreadable):
+            continue
+        try:
+            repo = frontmatter.parse(text, rel)[0].get("repo")
+        except frontmatter.FrontmatterError:
+            repo = None
+        if not (isinstance(repo, str) and repo):
+            yield rel, text, None, None
+            continue
+        if repo not in kinds:
+            kinds[repo] = source_paths.repo_kind(root, repo)
+        yield (rel, text, *kinds[repo])
+
+
+def repo_unresolved(page: str, value: str) -> dict:
+    """The `repo-unresolved` record of a page whose `repo:` names nothing."""
+    return incomplete("repo-unresolved", page, detail=safe(source_paths.REPO_UNRESOLVED_DETAIL.format(value=value)))
+
+
 # --- the walk ------------------------------------------------------------------
 def by_link(r):
     return (r["link"] != "certain", r["depth"], r["path"])
@@ -2005,13 +2086,7 @@ class Index:
         facts = {p: set() for p in wanted}
         history = {p: set() for p in wanted}
         problems = {}
-        kinds = {}                 # repo: value as written -> (kind, name), looked up once
-        for page in plant_walk.files(root, GRAPH, "*.md"):
-            rel = page.relative_to(root).as_posix()
-            try:
-                text = read_text(root, rel)
-            except (OSError, Unreadable):
-                continue
+        for rel, text, kind, name in graph_pages(root):
             is_history = rel.startswith(HISTORY)
 
             def claim(path, line, form, link, found):
@@ -2025,17 +2100,9 @@ class Index:
                     claim(targets[0], line, "backtick", "certain" if found == "exact" else "maybe", found)
                 elif found == "basename" and wanted.intersection(targets):
                     problems[(rel, ref)] = incomplete("ambiguous-citation", rel, targets, detail=ref)
-            try:
-                repo = frontmatter.parse(text, rel)[0].get("repo")
-            except frontmatter.FrontmatterError:
-                repo = None
-            if isinstance(repo, str) and repo:
-                if repo not in kinds:
-                    kinds[repo] = source_paths.repo_kind(root, repo)
-                kind, name = kinds[repo]
-                if kind == "unresolved":
-                    problems[(rel, None)] = incomplete(
-                        "repo-unresolved", rel, detail=safe(source_paths.REPO_UNRESOLVED_DETAIL.format(value=repo)))
+            if kind == "unresolved":
+                problems[(rel, None)] = repo_unresolved(rel, name)
+            if kind:
                 for path in wanted:
                     how = source_paths.repo_claim(name, path, kind)
                     if how:
@@ -2059,13 +2126,65 @@ def safe(text) -> str:
     return "".join(c if " " <= c <= "~" else "?" for c in str(text))
 
 
+def test_records(plant: Plant, inventory: list) -> list:
+    """The `no-test-declaration` or `no-test-files` record, or none."""
+    if plant.test_globs is None:
+        return [incomplete("no-test-declaration", TEST_DECLARATION)]
+    if not any(r["test"] == "test" for r in inventory):
+        return [incomplete("no-test-files", TEST_DECLARATION)]
+    return []
+
+
+def hints(plant: Plant, inventory: list) -> list:
+    """The build's advice about the plant's test class and config, in the
+    order of HINT_LINE (SPEC-0007 §6 "Build report"); never a gap."""
+    def named_like_test(path):
+        return any(source_paths.path_matches(path, p) for p in TEST_NAME_PATTERNS)
+
+    def hint(kind, subject, paths, patterns=None):
+        out = {"hint": kind, "subject": subject, "count": len(patterns if patterns else paths),
+               "paths": sorted(paths)}
+        return out if patterns is None else {**out, "patterns": patterns}
+
+    found = []
+    if plant.test_globs is not None:
+        paths = [r["path"] for r in inventory if r["test"] == "code" and named_like_test(r["path"])
+                 and not any(source_paths.path_matches(r["path"], e) for e in plant.config["exclude"])]
+        if paths:
+            found.append(hint("tests-outside-class", TEST_DECLARATION, paths))
+    if not plant.config_refused and "exclude" not in (plant.config_set or {}):
+        paths = [r["path"] for r in inventory if r["test"] == "test" and not named_like_test(r["path"])]
+        if paths:
+            found.append(hint("class-holds-non-tests", CONFIG_PATH, paths))
+    patterns = [f"{key}: {p}" for key, ps in (plant.config_set or {}).items() for p in ps
+                if not any(source_paths.path_matches(r["path"], p) for r in inventory)]
+    if patterns:
+        found.append(hint("config-pattern-unmatched", CONFIG_PATH, [], patterns))
+    return found
+
+
 def answer(query: str, args, root: Path) -> dict:
+    started = time.perf_counter()
     plant, body, cache, problems = load_index(root, force=query == "build")
     doc = {"schema": ANSWER_SCHEMA, "query": query, "inputs": [], "cache": cache, "incomplete": problems}
+    usable = not any(p["reason"] in ("git-unavailable", "no-repository") for p in problems)
     if query == "build":
         doc.update(body)
-        return doc
-    usable = not any(p["reason"] in ("git-unavailable", "no-repository") for p in problems)
+        problems += test_records(plant, body["inventory"])
+        problems += [repo_unresolved(rel, name) for rel, _, kind, name in graph_pages(root) if kind == "unresolved"]
+        problems += [incomplete("repository-unnamed", p) for p in sorted(set(plant.unnamed))]
+        doc["hints"] = hints(plant, body["inventory"]) if usable else []   # no inventory to match against
+        doc["seconds"] = time.perf_counter() - started
+    else:
+        query_answer(doc, args, root, plant, body, usable)
+    problems.sort(key=lambda r: (r["reason"], r["subject"], r["candidates"], r["detail"] or ""))
+    return doc
+
+
+def query_answer(doc: dict, args, root: Path, plant: Plant, body: dict, usable: bool):
+    """The answer of a query, added to `doc`: the inputs, the walk or the
+    citation join or the definitions, and their incomplete records."""
+    query, problems = doc["query"], doc["incomplete"]
     index = Index(plant, body, usable)
     if query == "symbols":
         doc["not_read"] = list(source_paths.NOT_CODE)   # the code-path rule bounds definitions
@@ -2089,10 +2208,7 @@ def answer(query: str, args, root: Path) -> dict:
             if query == "impact":
                 doc["dependents"] = sorted((r for r in rows if r["depth"]), key=by_link)
             else:
-                if plant.test_globs is None:
-                    problems.append(incomplete("no-test-declaration", TEST_DECLARATION))
-                elif not any(r["test"] == "test" for r in body["inventory"]):
-                    problems.append(incomplete("no-test-files", TEST_DECLARATION))
+                problems += test_records(plant, body["inventory"])
                 doc["tests"] = sorted((r for r in rows if index.test(r["path"]) == "test"), key=by_link)
                 doc["always_run"] = index.always_run({r["path"] for r in doc["tests"]})
                 taken = {r["path"] for r in doc["tests"]} | {r["path"] for r in doc["always_run"]}
@@ -2101,8 +2217,6 @@ def answer(query: str, args, root: Path) -> dict:
             if args.history:
                 doc["history"], more = index.history(doc, query == "affected-tests")
                 problems += more
-    problems.sort(key=lambda r: (r["reason"], r["subject"], r["candidates"], r["detail"] or ""))
-    return doc
 
 
 def row_text(r) -> str:
@@ -2135,6 +2249,7 @@ def text_view(doc: dict, every: bool = False, moved: bool = False) -> list:
                    f"{certain} certain and {len(links) - certain} maybe link(s), "
                    f"{len(doc['opaque'])} opaque and {len(doc['unresolved'])} unresolved record(s), "
                    f"{len(doc['symbols'])} definition(s)")
+        out.append(BUILD_TIME_LINE.format(seconds=doc["seconds"]))
     out += [f"Input: {i['path']} ({i['status']})" for i in doc["inputs"]]
     if doc["query"] == "anchors":
         if moved and not doc["inputs"] and not doc["incomplete"]:
@@ -2161,10 +2276,18 @@ def text_view(doc: dict, every: bool = False, moved: bool = False) -> list:
     if doc.get("floor"):
         out.append(FLOOR_LINE.format(n=len(doc["floor"])))
         out += capped([row_text(r) for r in doc["floor"]], every)
-    out += capped([f"- incomplete: {r['reason']}: {r['subject']}"
-                   + (f" ({r['detail']})" if r["detail"] else "") for r in doc["incomplete"]], every)
+    # each record, and for `build` its fix line under it (§6 "Build report"); the cap counts records
+    records = capped([[f"- incomplete: {r['reason']}: {r['subject']}" + (f" ({r['detail']})" if r["detail"] else "")]
+                      + ([FIX_PREFIX + BUILD_FIX[r["reason"]]] if doc["query"] == "build" else [])
+                      for r in doc["incomplete"]], every)
+    out += [l for group in records for l in ([group] if isinstance(group, str) else group)]
+    for h in doc.get("hints", []):
+        shown = ", ".join(h.get("patterns", h["paths"])[:HINT_MAX_PATHS])
+        out.append(HINT_LINE[h["hint"]].format(count=h["count"], paths=shown, patterns=shown))
+        out += [FIX_PREFIX + HINT_FIX[h["hint"]]] if h["hint"] in HINT_FIX else []
     if doc["incomplete"]:
         out.append(ACTION_LINE[doc["query"]].format(
+            n=len(doc["incomplete"]),
             reasons=", ".join(f"{r['reason']}: {r['subject']}" for r in doc["incomplete"])))
     elif doc["query"] == "affected-tests":
         out.append(RECOMMEND_LINE)

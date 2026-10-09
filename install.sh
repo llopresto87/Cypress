@@ -92,6 +92,8 @@
 #                         recorded expertise page that is missing or stale.
 #   -h, --help           Show this help.
 #
+# The last step runs the placed docs/graph/source-index.py build and prints its report (advice).
+#
 # The seed system's source files are not modified. The installer
 # copies them by default so project edits never write back into the
 # seed; --symlink instead links to them (edits then propagate both
@@ -1573,8 +1575,9 @@ place_graph_scaffold() {
     # over the plant's code. Config-free (the plant's test config is its own
     # docs/graph/source-index.json, never placed), so it fast-forwards like the
     # router; its cache under .cypress/source-index/ is derived scratch the
-    # next query rebuilds (ADR-0029), so the installer neither writes nor
-    # carries it. It loads source_paths.py and plant_walk.py by path, beside it.
+    # next query rebuilds (ADR-0029): the installer carries none, and its last
+    # step runs the placed build (build_source_index), which writes it. It
+    # loads source_paths.py and plant_walk.py by path, beside it.
     place_file "$SEED_ROOT/tools/source-index.py" "$g/source-index.py"
     place_file "$SEED_ROOT/tools/plant_walk.py" "$g/plant_walk.py"
     place_if_missing "$SEED_ROOT/templates/knowledge-graph/index.md" "$g/index.md"
@@ -3217,6 +3220,60 @@ PYEOF
                 "$PROJECT_DIR/.cypress/recreated-nodes.txt"
 }
 write_seed_stamp
+
+# The source index build (SPEC-0007 INSTALL_RUNS_THE_BUILD): the last step of
+# every install that placed files, after the stamp and before the NEXT STEP
+# notices, so a build cannot leave a file unplaced and its report is read where
+# the install ends. A re-install or a graft's apply runs it too, because the
+# tool, a repository's HEAD or the plant's config may have moved the cache key.
+# The placed copy runs from the plant root by this run's python3 in isolated
+# mode (-I keeps every docs/graph/ file off the module path, -B writes no
+# bytecode), stdin closed, bounded by Python's subprocess timeout (macOS has no
+# `timeout`). The build alone decides what it writes; the installer writes and
+# deletes nothing for it. Its stdout is printed only on exit 0, its stderr
+# never; any other outcome, a crash of the Python that runs it included, prints
+# one INSTALL_BUILD_FAILED line and leaves the exit code as it was.
+INSTALL_BUILD_TIMEOUT=120
+INSTALL_BUILD_HEAD='source index build (advice, never a failure of the install; SPEC-0007 "Build report"):'
+INSTALL_BUILD_FAILED='source index: the build did not finish (%s); the install is complete. Run from the plant root: python3 docs/graph/source-index.py build'
+build_source_index() {
+    local report rc=0 status body why line
+    report="$(BUILD_DIR="$PROJECT_DIR" BUILD_TIMEOUT="$INSTALL_BUILD_TIMEOUT" python3 -I -B - 2>/dev/null <<'PYEOF'
+import os, subprocess, sys
+why = None
+try:
+    r = subprocess.run([sys.executable, "-I", "-B", "docs/graph/source-index.py", "build"],
+                       cwd=os.environ["BUILD_DIR"], stdin=subprocess.DEVNULL,
+                       stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                       timeout=int(os.environ["BUILD_TIMEOUT"]))
+except subprocess.TimeoutExpired:
+    why = "timeout"
+except (OSError, ValueError, subprocess.SubprocessError) as e:  # it could not start
+    why = type(e).__name__
+else:
+    if r.returncode != 0:
+        why = f"exit {r.returncode}"
+if why is None:
+    sys.stdout.buffer.write(b"ok\n" + r.stdout.decode("utf-8", errors="replace").encode("utf-8"))
+else:
+    sys.stdout.buffer.write(f"failed\t{why}\n".encode("utf-8"))
+PYEOF
+)" || rc=$?
+    status="${report%%$'\n'*}"
+    log ""
+    log "$INSTALL_BUILD_HEAD"
+    if [[ $rc -eq 0 && "$status" == ok ]]; then
+        body="${report#ok}"
+        body="${body#$'\n'}"
+        [[ -z "$body" ]] && return 0
+        while IFS= read -r line; do log "  $line"; done <<< "$body"
+        return 0
+    fi
+    why="exit $rc"
+    [[ "$status" == failed$'\t'* ]] && why="${status#failed$'\t'}"
+    log "$(printf "$INSTALL_BUILD_FAILED" "$why")"
+}
+build_source_index
 
 # The corpus decision is the owner's and it is asked BEFORE a run, not settled
 # during one: an analyst with no corpus can only refuse, and a run that meets

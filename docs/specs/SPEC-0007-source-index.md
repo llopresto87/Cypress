@@ -878,12 +878,17 @@ install.
   `docs/graph/skills/source-index.md` and `.claude/skills/source-index/` were
   removed, as in a plant installed before 8.1.2, places both again: the skill
   reaches an existing plant at its next install or graft, with no hand step
+- **And:** each task of §6 "Build report" `SKILL_ROUTE_PHRASINGS` loads
+  `skill.source-index` with `how.kind` `phrase`
 - **And** (the owner's option (a), plan §12 question 12): with a node
-  `repo: src` over an existing folder `src/` added to that install, each of
-  the three tasks that name `src/app.py` loads that node with `how.kind`
-  `named_path` and `skill.source-index` with `how.kind` `phrase`, and the
-  `symbols` task, which names no path, loads `skill.source-index`; the
-  router rule is SPEC-0002 `PATH_ROUTE_ADDS_SEED_SKILL_PHRASES`
+  `repo: src` over an existing folder `src/` added to that install, each
+  task of `SKILL_ROUTE_TASKS` and `SKILL_ROUTE_PHRASINGS` that names
+  `src/app.py` loads that node with `how.kind` `named_path` and
+  `skill.source-index` with `how.kind` `phrase`, and each `symbols` task,
+  which names no path, loads `skill.source-index` with `how.kind` `phrase`;
+  the router rules are SPEC-0002 `PATH_ROUTE_ADDS_SEED_SKILL_PHRASES`,
+  `PATH_OR_IDENTIFIER_DOES_NOT_BREAK_A_PHRASE` and
+  `PATH_OR_IDENTIFIER_FILLS_A_SLOT_WORD`
 
 ### Contract: BUILD_REPORTS_ITS_TIME_AND_COUNTS
 - **Given:** the plant of BUILD_INVENTORIES_THE_CODE_OF_EVERY_GOVERNED_REPOSITORY
@@ -1249,7 +1254,7 @@ constants:
   REPO_UNRESOLVED_DETAIL: "repo: {value} names nothing on disk; correct the node's repo:"   # the `repo-unresolved` detail; {value} through the `?` replacement
   TEMP_PREFIX: ".tmp-source-index-"   # the cache's exclusive temp files
   BUILD_TIME_LINE: "Built in {seconds:.2f} s."   # build's text view, after the count line (8.1.2)
-  TEST_NAME_PATTERNS, HINT_LINE, HINT_MAX_PATHS, SKILL_ROUTE_TASKS, BUILD_FIX: see §6 "Build report"   # 8.1.2
+  TEST_NAME_PATTERNS, HINT_LINE, HINT_MAX_PATHS, SKILL_ROUTE_TASKS, SKILL_ROUTE_PHRASINGS, BUILD_FIX: see §6 "Build report"   # 8.1.2
   FLOOR_LINE: "Floor: {n} maybe row(s) every input reaches (opaque holders and their dependents):"
   RECOMMEND_LINE: "Recommendation only: the tests above and the always-run set, never only these; verify decides what runs."
   HISTORY_LINE: "History: {n} maybe row(s), files that changed together with an input (--history):"
@@ -2000,7 +2005,7 @@ answer:
   incomplete: [incomplete_record]
   # build
   seconds: number                        # the build's wall time; build only, never in the cache (8.1.2)
-  hints: [hint]                          # build only; [] when none (§6 "Build report", 8.1.2)
+  hints: [hint]                          # build only; [] when none, and [] when `incomplete` holds git-unavailable or no-repository (no inventory to read; §6 "Build report", 8.1.2)
   inventory: [inventory_record]
   links: [link]
   opaque: [opaque]
@@ -2086,6 +2091,9 @@ only whether it matches; a pattern the plant config sets that matches no
 file is a `config-pattern-unmatched` hint with its fix; and it looks for
 `repository-unnamed` only inside a governed repository, so below a plant
 root that is not a Git work tree a repository no node names stays unseen.
+When `incomplete` holds `git-unavailable` or `no-repository` there is no
+inventory, so `hints` is `[]` and no hint line is printed: every hint reads
+the inventory, and those two records and their fixes are the report.
 
 A `repository-unnamed` record comes from the listing the inventory already
 reads: an entry of a governed repository's `ls-files --cached --others
@@ -2122,6 +2130,10 @@ build_report:
     affected-tests: "which tests does a change to src/app.py reach"
     anchors:        "which graph pages cite src/app.py"
     symbols:        "where is the function save_order defined"
+  SKILL_ROUTE_PHRASINGS:   # the owner's everyday wording (8.1.2, architect-8.1.2i); routed by SPEC-0002's gap and slot rules
+    impact:         "what breaks if I change src/app.py"
+    affected-tests: "which tests cover src/app.py"
+    symbols:        "where is save_order defined"
   BUILD_FIX:        # printed by `build` alone, as "  fix: <text>" under each record of that reason
     git-unavailable:       "install Git, then run from the plant root: python3 docs/graph/source-index.py build"
     no-repository:         "the plant root is not a Git work tree and no node's repo: names a repository: if the code lives in repositories below the plant root, let grow write the nodes whose repo: names each (or write them); if the plant root is the code, run git init there and commit; then run python3 docs/graph/source-index.py build"
@@ -2215,6 +2227,27 @@ It guards, decodes and prints as the installer does: the build's stdout only
 on exit 0, never its stderr; on any other outcome only
 `GROWTH_REPORT_FAILED` is printed, and its `source_index_report` is then
 empty.
+
+**Where `source_index_report` sits in `growth-audit.py --json`** (session
+ruling, non-breaking, 2026-10-09; its value corrected 2026-10-09 by
+`architect-8.1.2i` to match GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT and X468):
+`--json`'s top level stays the list of finding objects it is today
+(`[{"verdict", "row", "detail"}, …]`), unchanged in shape and order. The
+report is carried as one extra item appended to that same list, after every
+finding: `{"source_index_report": <value>}`, a dict whose one key is
+`source_index_report`. Its value is a list of strings: the lines the build
+printed to stdout on exit 0, in order, as the text view prints them without
+the two-space indent; on any other outcome (`GROWTH_REPORT_FAILED`: the tool
+cannot start, exits non-zero or times out) it is `[]`, an empty list, never
+`null` and never an absent item (S2). The item is appended by every lint run
+that reaches its verdicts; `--agents` runs no build and appends none, `--plan`
+runs no lint, and a lint that stops at a missing coverage record prints only
+its `MISSING` finding. A consumer that reads `--json` as a bare list of
+findings is unaffected: it sees one more item, shaped `{verdict, row,
+detail}` for every prior item and `{source_index_report}` for the last one
+alone, so a reader keying only on `verdict`/`row`/`detail` treats the last
+item as a non-finding and skips it by that shape's absence, never by
+position. No existing finding's fields, order or count changes.
 
 ### CLI
 
@@ -3307,7 +3340,7 @@ and §6 now state each:
 | MOVED_REPOSITORY_UNVERIFIED | X458 case_anchors_moved_incomplete: arm (b), `moved-unverified` naming `Cypress`, `run.sh` still an input and answered | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | green |
 | REPO_VALUE_UNRESOLVED | X459 case_repo_claim: arm unresolved, `anchors` holds one `repo-unresolved` record for each of the `repo: old/lib`, `repo: gone` and `repo: Src` nodes, subject the page, detail `REPO_UNRESOLVED_DETAIL` naming the value, and its text view ends with the `anchors` `ACTION_LINE`; the `old/lib/z.py` task loads the `repo: old/lib` node by `named_path` (the reading from before the ruling), and the router adds no notice for any `repo:` value; the `repo: Src` record runs only on a case-sensitive file system, by the probe of the REPO_CLAIM row | tests/test-source-index.sh | integration (synthetic plant, the seed's graph-lint.py placed) | green |
 | HELPER_ABSENT_BESIDE_GRAPH_LINT | X459 case_repo_claim: arm helper-absent, no `source_paths.py` beside `graph-lint.py` and a node `repo: src/lib/`: the `src/lib/a.py` task's `--plan-json` exits 0, `notices` holds `{code: inference_skipped, text: "inference skipped: HelperUnavailable"}`, and no LOAD entry is `named_path` | tests/test-source-index.sh | integration (synthetic plant, the seed's graph-lint.py placed) | green |
-| SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS | X460 case_skill_routes (8.1.2): a fresh `install.sh claude-code` into a temp target: the placed skill node byte-identical to `skills/source-index/SKILL.md`, its `.claude/skills/` projection present, `--plan-json` for each `SKILL_ROUTE_TASKS` task loads `skill.source-index`; a re-install after the plant wrote its own `docs/graph/tools/source-index.md` and a row in `tools/index.md` leaves both byte-identical with no backup; arm owned-path (the owner's option (a), plan §12 question 12): a node `repo: src` over an existing `src/` added, each of the three `src/app.py` tasks loads that node by `named_path` and the skill by `phrase`, the `symbols` task loads the skill; arm SKILL_NAME_HELD_BY_THE_PLANT is the existing seed-skill backup path and gets no arm | tests/test-source-index.sh | integration (temp install) | red |
+| SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS | X460 case_skill_routes (8.1.2): a fresh `install.sh claude-code` into a temp target: the placed skill node byte-identical to `skills/source-index/SKILL.md`, its `.claude/skills/` projection present, `--plan-json` for each `SKILL_ROUTE_TASKS` task loads `skill.source-index`, and for each `SKILL_ROUTE_PHRASINGS` task loads it by `phrase`; a re-install after the plant wrote its own `docs/graph/tools/source-index.md` and a row in `tools/index.md` leaves both byte-identical with no backup; arm owned-path (the owner's option (a), plan §12 question 12): a node `repo: src` over an existing `src/` added, each `SKILL_ROUTE_TASKS` and `SKILL_ROUTE_PHRASINGS` task naming `src/app.py` loads that node by `named_path` and the skill by `phrase`, each `symbols` task loads the skill by `phrase` (amended 2026-10-09, `architect-8.1.2i`); arm SKILL_NAME_HELD_BY_THE_PLANT is the existing seed-skill backup path and gets no arm | tests/test-source-index.sh | integration (temp install) | red |
 | BUILD_REPORTS_ITS_TIME_AND_COUNTS | X461 case_build_report_time (8.1.2): `build` text view: cache line, count line, `Built in <n.nn> s.` last; `build --json` `seconds` a number >= 0; the cache bytes equal across two builds (BUILD_IS_DETERMINISTIC unchanged) | tests/test-source-index.sh | integration (synthetic Git plant) | red |
 | BUILD_NAMES_REPO_VALUES_THAT_NAME_NOTHING | X462 case_build_repo_values (8.1.2): `repo: old/lib` and `repo: src/a.py, src/b.py` each one `repo-unresolved` record, `repo: src` none; the text view ends with the `build` `ACTION_LINE`; exit 0; the cache written; arm unnamed (REPOSITORY_UNNAMED) | tests/test-source-index.sh | integration (synthetic Git plant) | red |
 | REPOSITORY_UNNAMED | X462 case_build_repo_values (8.1.2, `devils-advocate-8.1.2` 1a): arm unnamed, an arm of the BUILD_NAMES_REPO_VALUES_THAT_NAME_NOTHING case: a nested Git work tree `vendor/lib/` with its own commit and no node naming it gives one `repository-unnamed` record, subject `vendor/lib`, its `BUILD_FIX` line under it, and no inventory path under `vendor/lib/`; arm ignored (`vendor/lib/` in the root's `.gitignore`) and arm named (`repo: vendor/lib`) give none; an `impact` over the plant holds no such record | tests/test-source-index.sh | integration (synthetic Git plant) | red |
@@ -3382,3 +3415,30 @@ flagged assumption in grill.md §12. Sign-off keeps the status `draft`;
   E15's cache check struck (`green`); the case file's `build` `ACTION`
   prefix follows the new `ACTION_LINE`; X459's case checks guarded by the
   case-sensitivity probe. No contract changed.
+- 2026-10-09 — tester-R-8.1.2's open question on `--json` placement ruled
+  (`architect-8.1.2h`), non-breaking, no contract changed: §6 "Build report"
+  states that `growth-audit.py --json`'s top level stays the finding list
+  it is today, with `source_index_report` carried as one extra appended
+  item, `{"source_index_report": <value>}` (the build's answer, or `{}` per
+  S2 on failure); every existing finding's shape, order and count is
+  unchanged.
+- 2026-10-09 — two GREEN blockers and one §6 mismatch ruled
+  (`architect-8.1.2i`). (1) `skill.source-index` was unreachable on a fresh
+  install (graph-lint error; `tests/test-full-install.sh` asserts a clean
+  lint): plan increment 5 gains the edges, `skill.source-index` in the
+  `peers:` of `protocol.verify`, `protocol.canonize`, `protocol.grow` and
+  `protocol.graft` (the skill's own peers; seed machinery, so a grafted
+  plant whose `index.md` is its own reaches it too) and in the "Situational
+  skills" line of `templates/knowledge-graph/index.md`; no contract
+  changed. (2) The owned-path arm could not go green: SPEC-0002 gains
+  `PATH_OR_IDENTIFIER_DOES_NOT_BREAK_A_PHRASE` and
+  `PATH_OR_IDENTIFIER_FILLS_A_SLOT_WORD`; SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS
+  gains an And for §6 `SKILL_ROUTE_PHRASINGS` (the owner's everyday
+  wording) and its owned-path arm names their kinds; its §10 row amended,
+  `red`. (3) §6 "Where `source_index_report` sits": the value is the list
+  of the build's report lines, `[]` on a failure, as the contract, X468 and
+  the code have it (the entry above said the build's `--json` document or
+  `{}`, which nothing implemented); §6 "Build report" and the answer's
+  `hints` line state that `hints` is `[]` when `incomplete` holds
+  `git-unavailable` or `no-repository`. §9 is product's to follow for the
+  new And.

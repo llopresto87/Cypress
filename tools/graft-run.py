@@ -16,14 +16,17 @@ WHAT IT DOES, IN ORDER
   3. install.sh in the copy, once, for the adapters the stamp's `tools` names
      (or --tools, see below), with --symlink only when the plant's placed protocols are links already;
      the whole output is captured (install.log), because the re-created notice
-     is printed once and stored nowhere else
+     and the source index build report the installer prints last are printed
+     once and stored nowhere else
   4. graft-graph-engine.py on the copy's three engines, each keeping its config
   5. graft-audit.py over this run's backups, with --tokens derived from the
      plant (its root directory's name, its own node ids, the stamp's `seed`
      value), the three --engine pairs, and --base with the base graft-ledger
      printed (the stamped version's tag, or the commit inferred by content
      lineage); then --unfilled, which only reports
-  6. growth-audit.py --plan on the copy, then its lint
+  6. growth-audit.py --plan on the copy, then its lint, whose output
+     (coverage.txt) holds the source index build report after the verdicts,
+     advice and never a gate row
   7. the copy's own graph-lint.py (and a representative --plan), agent-lint.py
      --lint and --eval, and status-register.py, where each is installed; then
      install.sh <host> --check once per adapter, which runs each wired context

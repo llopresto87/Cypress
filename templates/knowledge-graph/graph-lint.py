@@ -1076,6 +1076,10 @@ def _same(a: str, b: str) -> bool:
 # dozen ids is a list, not a pointer, and on the round's longest brief the
 # strong tiers alone loaded the wrong kind of node.
 STRONG_TIER_CAP = 3
+# A tier-2 route adds at most this many seed skills whose phrase the task
+# holds (SPEC-0002 §6, ADR-0026 amendment 8.1.2); over it none is added, so
+# naming a file never floods the session.
+PATH_TIER_SKILL_CAP = 2
 # A lexical entry needs this many distinct confident terms (whole words at the
 # standalone tier). One rare word was enough before: `have` seeded the legal
 # corpus node, and `the payroll` would seed payroll.
@@ -1395,7 +1399,12 @@ def resolve(nodes: list, task: str):
     a trigger phrase of two or more tokens it holds contiguous (`phrase`);
     else the lexical score (`scored`). A node id is a dotted one: `root` is an
     English word, named by its path. A tier-1 or tier-2 hit on more than
-    STRONG_TIER_CAP nodes is no hit; tier 3 is not capped. A task over LONG_TASK_TERMS distinct
+    STRONG_TIER_CAP nodes is no hit; tier 3 is not capped. When tier 2
+    decides, each `kind: skill` node with `origin: seed` whose phrase the task
+    holds, as tier 3 holds one, is added as `phrase` after the tier-2 entries
+    in node-id order; over PATH_TIER_SKILL_CAP such skills none is added. A
+    seed skill says how to use a seed tool, and the questions it answers
+    usually name a file a plant node owns. A task over LONG_TASK_TERMS distinct
     content words loads nothing with a `long_task` notice; a task no tier
     matches loads nothing with a `no_signal` notice naming the protocol entry
     nodes. Root is never forced.
@@ -1421,6 +1430,14 @@ def resolve(nodes: list, task: str):
     notices: list = []
     phrases = {n.id: _load_when_pieces(n)[0] for n in nodes}
 
+    def held_phrases(candidates) -> dict:
+        held = {}
+        for n in candidates:
+            piece = _held_piece(phrases[n.id], seq, words, min_tokens=2)
+            if piece is not None:
+                held[n.id] = How("phrase", piece)
+        return held
+
     def first_tier() -> dict:
         named = {w: How("named_id") for w in seq if "." in w and w in by_id}
         if 0 < len(named) <= STRONG_TIER_CAP:
@@ -1435,12 +1452,13 @@ def resolve(nodes: list, task: str):
             owned = {}
             notices.append(("inference_skipped", f"inference skipped: {type(e).__name__}"))
         if 0 < len(owned) <= STRONG_TIER_CAP:
+            skills = held_phrases(sorted(
+                (n for n in nodes if n.id not in owned and n.meta.get("kind") == "skill"
+                 and n.meta.get("origin") == "seed"), key=lambda n: n.id))
+            if len(skills) <= PATH_TIER_SKILL_CAP:
+                owned.update(skills)
             return owned
-        held = {}
-        for n in nodes:
-            piece = _held_piece(phrases[n.id], seq, words, min_tokens=2)
-            if piece is not None:
-                held[n.id] = How("phrase", piece)
+        held = held_phrases(nodes)
         if held:
             return held
         return {n.id: How("scored") for n in _lexical(nodes, seq)}
@@ -1578,12 +1596,15 @@ def short_title(n) -> str:
 
 def plan(nodes: list, task: str) -> tuple:
     """The route both views print, in their order: the notices, the plant
-    facts (or None), the LOAD token total, LOAD as (node, path, How) by id,
+    facts (or None), the LOAD token total, LOAD as (node, path, How) by id
+    (the seed skills a tier-2 route adds after the rest, by id: SPEC-0002 §6),
     and the skipped nodes as (node, path, Skip) in skip-block order: by
     group, then by id."""
     loaded, not_loaded, notices = resolve(nodes, task)
     total = sum(n.meta.get("est_tokens", 0) for n, _ in loaded)
-    load = [(n, where(n.path), how) for n, how in sorted(loaded, key=lambda x: x[0].id)]
+    path_route = any(how.kind in ("named_path", "inferred") for _, how in loaded)
+    load = [(n, where(n.path), how) for n, how in sorted(
+        loaded, key=lambda x: (path_route and x[1].kind == "phrase", x[0].id))]
     skip = [(n, where(n.path), why)
             for n, why in sorted(not_loaded, key=lambda x: (x[1].order, x[0].id))]
     return notices, plant_facts(), total, load, skip
