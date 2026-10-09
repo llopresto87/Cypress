@@ -269,6 +269,12 @@ such as `net10.0`, because the router drops phrase parts under three
 characters: `dotnet 10 target` reads as `dotnet target` and matches
 every major.
 
+A trigger phrase writes the place of a file or a name the task will
+name as `this file`, `a file` or `a name`: a path the task names holds
+`file`, an identifier (`save_order`, `saveOrder`) holds `name`, and
+either one between two words of a phrase does not break it. A content
+word in that place still breaks it.
+
 **`est_tokens`** is an honest estimate of the whole file, frontmatter
 included: what a loader pays to open it, not the prose alone. The router
 sums these to report context cost before work starts.

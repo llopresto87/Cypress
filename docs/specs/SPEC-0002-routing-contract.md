@@ -24,7 +24,11 @@ status_evidence: tests/test_agent_lint.py (CorpusHonestyTests, CompoundFragmentT
   that only seed skills are added, the fixed order and the cap; AC-11 maps
   PATH_ROUTE_ADDS_SEED_SKILL_PHRASES, PATH_ROUTE_SKILL_ADDITION_IS_CAPPED and
   the failure PATH_ROUTE_SKILLS_OVER_CAP; read against the ADR-0026
-  "Amendment, 8.1.2" the owner ratified). The rest of the spec stays
+  "Amendment, 8.1.2" the owner ratified; 2026-10-09, `product-8.1.2d`: §3
+  states the gap and slot rules in user words, AC-12 maps
+  PATH_OR_IDENTIFIER_DOES_NOT_BREAK_A_PHRASE and
+  PATH_OR_IDENTIFIER_FILLS_A_SLOT_WORD, AC-11 now reads a held phrase by
+  those rules). The rest of the spec stays
   unsigned, as above.
 
 - **Owner:** data-ml
@@ -100,7 +104,27 @@ the same task loads the same nodes every time. At most
 `PATH_TIER_SKILL_CAP` skills are added; when the task holds the phrases of
 more, none is added and the owning node loads alone, so naming a file never
 floods the session. A task that names a node id gets that node and no added
-skill. When nothing matches
+skill.
+
+A task holds a trigger phrase even when it names a file or a code name
+between the phrase's words, because people ask about the thing they hold
+(8.1.2). So "which tests does a change to src/app.py reach" holds the
+phrase `tests reach`, and so does "which tests save_order reach". A file
+path also stands in for the word `file` in a phrase, and a code name for
+the word `name`: "what depends on src/app.py" holds `depends on this file`,
+and "where is save_order defined" holds `where is a name defined`. A code
+name here is a word with `_` between letters or digits (`save_order`), or
+with a small letter right before a capital one (`saveOrder`); a word in
+all capitals (`README`) is not one. An ordinary word still breaks a phrase
+and stands in for nothing, so "which tests widget reach" and "what depends
+on widget" do not hold those phrases. A path never stands in for `name`,
+and a code name never for `file`. These rules only add matches: a task
+that loaded a node before still loads it, and its word order still
+counts. They hold in every place the router reads a phrase, so a question
+that names a file a node owns loads the seed skill beside that node by
+the same reading.
+
+When nothing matches
 confidently, it loads nothing and its notice names the protocol entry nodes
 and asks for a sharper task line, instead of forcing root. A pasted brief is
 not routed: the notice asks for the task line.
@@ -836,8 +860,8 @@ ROUTE (ranked, confidence: HIGH)     # the compound itself still routes
       EVERY_NUMBER_NAMES_ITS_CORPUS, HELD_OUT_STAYS_HELD_OUT,
       VACUOUS_CORPUS_IS_REFUSED, ABSTENTION_IS_A_CORRECT_OUTCOME
 - [ ] AC-11 (8.1.2): a task that names a path a node owns (by its `repo:`
-      claim or an expertise file pattern) and holds, contiguous, the trigger
-      phrase of a `kind: skill`, `origin: seed` node loads the owning node
+      claim or an expertise file pattern) and holds, as tier 3 holds one
+      (AC-12), the trigger phrase of a `kind: skill`, `origin: seed` node loads the owning node
       (`how.kind` `named_path`, or `inferred`) and then that skill
       (`how.kind` `phrase`, `how.detail` its phrase) with its `requires:`
       closure; a skill of another `origin` and a seed node of another kind
@@ -851,6 +875,25 @@ ROUTE (ranked, confidence: HIGH)     # the compound itself still routes
       their closure. Two runs of each task print the same `load`, byte for
       byte — maps to PATH_ROUTE_ADDS_SEED_SKILL_PHRASES,
       PATH_ROUTE_SKILL_ADDITION_IS_CAPPED (failure PATH_ROUTE_SKILLS_OVER_CAP)
+- [ ] AC-12 (8.1.2): a path or a code name inside a phrase does not break
+      it, and fills its `file` or `name` slot. With no node owning the
+      paths named, a node whose phrase is `tests reach` loads with
+      `how.kind` `phrase` and `how.detail` `tests reach` for "which tests
+      does a change to src/app.py reach", "which tests save_order reach"
+      and "which tests saveOrder reach", and does not load by the phrase
+      tier for "which tests widget reach". A node whose phrases are
+      `depends on this file` and `where is a name defined` loads with
+      `how.kind` `phrase` for "what depends on src/app.py", "where is
+      save_order defined" and "where is saveOrder defined", and does not
+      load by the phrase tier for "what depends on widget". A task that
+      writes `file` or `name` itself still holds the slot; a path does not
+      hold `name`, a code name does not hold `file`, and an all-capitals
+      word (`README`) is not a code name. The same reading holds for the
+      seed skills a path route adds (AC-11) and for composition descent;
+      a one-word piece and a phrase in another word order load nothing by
+      the phrase tier, as before — maps to
+      PATH_OR_IDENTIFIER_DOES_NOT_BREAK_A_PHRASE,
+      PATH_OR_IDENTIFIER_FILLS_A_SLOT_WORD
 
 ## 10. Test mapping
 
