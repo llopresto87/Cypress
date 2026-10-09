@@ -21,7 +21,8 @@ classifies:
               node (its skill projection and Copilot agent view included); the installer
               re-projected it from the graph, so no seed file backs it
   RETIRED     a harness entry projected from an `origin: seed` node the running seed no
-              longer ships (MODE 4); reported, never a gate
+              longer ships, or an agent, skill, protocol or method node of that kind
+              (MODE 4); reported, never a gate
   ORPHAN      a harness entry with no graph home that is not an `origin: seed` entry
               (MODE 4); reported, never a gate
   CORPUS-PLACED  a page `install.sh --expertise` placed from a corpus (its first line
@@ -119,11 +120,14 @@ An agent or skill in a harness directory (`<adapter>/agents/<name>.md`,
 `<adapter>/skills/<name>/SKILL.md`, `.github/agents/<name>.agent.md`) is
 reached by its harness alone unless the graph carries its node. Two shapes
 have no live home, and each is named on one line (SPEC-0001
-CHECK_FLAGS_RETIRED_HARNESS_ENTRY, CHECK_FLAGS_ORPHAN_HARNESS_ENTRY):
+CHECK_FLAGS_RETIRED_HARNESS_ENTRY, CHECK_FLAGS_ORPHAN_HARNESS_ENTRY,
+CHECK_FLAGS_RETIRED_GRAPH_NODE):
 
-  RETIRED     an `origin: seed` agent or skill the running seed no longer
-              ships: its graph node, each projection of it, and an entry with
-              no node whose own frontmatter says `origin: seed`
+  RETIRED     an `origin: seed` node the running seed no longer ships: an
+              agent or skill node, each projection of it, an entry with no
+              node whose own frontmatter says `origin: seed`, and a
+              protocols/ or method/ node whose seed source is gone (a
+              protocol the seed folded into a skill)
   ORPHAN      an entry with no graph node that is not an `origin: seed` entry:
               the plant authored it into the harness directory, where the
               router and every other harness cannot see it
@@ -544,16 +548,29 @@ def _is_seed_origin(path: Path) -> bool:
     return _fm_value(_frontmatter(path), "origin") == "seed"
 
 
+# The machinery folders graph-lint reads as nodes (its MACHINERY_DIRS): agents
+# and skills are projected into harness directories; protocols and method are
+# not, so a retired one is found by its seed source alone (SPEC-0001 §6
+# "Retired graph nodes").
+NODE_FOLDERS = ("agents", "skills", "protocols", "method")
+
+
+def node_seed_ships(kind: str, node: Path, plant: Path, seed: Path) -> bool:
+    if kind in ("agents", "skills"):
+        return seed_ships(kind, node.stem, seed)
+    return seed_source_for(node.relative_to(plant).as_posix(), seed).is_file()
+
+
 def harness_flags(plant: Path, seed: Path) -> list:
     """(verdict, target-relative path, graph home) for every graph node and
     harness entry with no live home: RETIRED for an `origin: seed` node, or a
     projection of one, the running seed does not ship; ORPHAN for an entry
     with no graph node that is not an `origin: seed` entry."""
     flags, retired = [], set()
-    for kind in ("agents", "skills"):
+    for kind in NODE_FOLDERS:
         for node in sorted((plant / GRAPH_HOME / kind).glob("*.md")):
-            if node.is_file() and not NOT_AN_ENTRY.match(node.stem) \
-                    and _is_seed_origin(node) and not seed_ships(kind, node.stem, seed):
+            if node.is_file() and not NOT_AN_ENTRY.match(node.stem) and _is_seed_origin(node) \
+                    and not node_seed_ships(kind, node, plant, seed):
                 retired.add(node.resolve())
                 flags.append(("RETIRED", node.relative_to(plant).as_posix(), ""))
     for rel, kind, name in harness_entries(plant):

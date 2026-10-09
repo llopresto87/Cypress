@@ -116,6 +116,10 @@ ACTION_LINE = {
     "anchors": "Incomplete: review by hand ({reasons}).",
     "symbols": "Incomplete: search by hand ({reasons}).",
 }
+# a list of the text view cut at TEXT_MAX_ROWS ends with MORE_LINE; the action
+# line's {reasons} is cut with it and ends with ACTION_MORE
+MORE_LINE = "... {k} more; --all lists every row"
+ACTION_MORE = ", " + MORE_LINE
 # §6 "Build report": the setup report `build` alone prints.
 FIX_PREFIX = "  fix: "
 BUILD_FIX = {               # one line under each record of that reason; every reason a build can give
@@ -2236,7 +2240,7 @@ def capped(lines, every) -> list:
     """One list of the text view, cut at TEXT_MAX_ROWS with a more-line."""
     if every or len(lines) <= TEXT_MAX_ROWS:
         return lines
-    return lines[:TEXT_MAX_ROWS] + [f"... {len(lines) - TEXT_MAX_ROWS} more; --all lists every row"]
+    return lines[:TEXT_MAX_ROWS] + [MORE_LINE.format(k=len(lines) - TEXT_MAX_ROWS)]
 
 
 def text_view(doc: dict, every: bool = False, moved: bool = False) -> list:
@@ -2288,9 +2292,13 @@ def text_view(doc: dict, every: bool = False, moved: bool = False) -> list:
         out.append(HINT_LINE[h["hint"]].format(count=h["count"], paths=shown, patterns=shown))
         out += [FIX_PREFIX + HINT_FIX[h["hint"]]] if h["hint"] in HINT_FIX else []
     if doc["incomplete"]:
-        out.append(ACTION_LINE[doc["query"]].format(
-            n=len(doc["incomplete"]),
-            reasons=", ".join(f"{r['reason']}: {r['subject']}" for r in doc["incomplete"])))
+        # the line names the records the list above it shows; {n} stays the whole count
+        recs = doc["incomplete"]
+        shown = recs if every else recs[:TEXT_MAX_ROWS]
+        reasons = ", ".join(f"{r['reason']}: {r['subject']}" for r in shown)
+        if len(shown) < len(recs):
+            reasons += ACTION_MORE.format(k=len(recs) - len(shown))
+        out.append(ACTION_LINE[doc["query"]].format(n=len(recs), reasons=reasons))
     elif doc["query"] == "affected-tests":
         out.append(RECOMMEND_LINE)
     return [safe(l) for l in out]
