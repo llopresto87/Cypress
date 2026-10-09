@@ -31,7 +31,7 @@ status_evidence: tests/test_agent_lint.py (CorpusHonestyTests, CompoundFragmentT
 - **Date:** 2026-09-13
 - **Last reviewed:** 2026-10-07
 - **Related grill section:** docs/plans/grill-7.15.0-remediation.md §0.3, §5 slice 7; docs/plans/grill-7.37.0-routing-context.md §9 (the node router, 7.37.0); docs/plans/grill-8.1.2-tool-surfacing.md §12 question 12 (a path route adds the seed skills whose phrase the task holds, 8.1.2)
-- **Related ADRs:** adr-0001-mechanical-agent-router, adr-0003-enforcement-layering-honesty, adr-0026-node-router-ladder-and-gated-corpus (accepted; its "Amendment, 8.1.2" awaits the owner's ratification), adr-0030-a-seed-tool-is-surfaced-by-a-seed-skill
+- **Related ADRs:** adr-0001-mechanical-agent-router, adr-0003-enforcement-layering-honesty, adr-0026-node-router-ladder-and-gated-corpus (accepted; its "Amendment, 8.1.2" ratified by the owner 2026-10-07, commit af0bbb0), adr-0030-a-seed-tool-is-surfaced-by-a-seed-skill
 - **Supersedes:** —
 - **Superseded by:** —
 
@@ -1019,4 +1019,12 @@ moves with each entry here.
   PATH_ROUTE_SKILLS_OVER_CAP; §9 gains AC-11; §10 gains `pending` rows. The
   related-ADR line no longer calls ADR-0026 proposed. Until the RED lands,
   `spec-lint.py` counts the two contracts as uncovered. The status stays
+  `back-written`.
+- 2026-10-09: 8.1.2 product pass (`product-8.1.2c`), §3 states the seed
+  skill a path route adds, that only seed skills are added, the fixed order
+  and the cap; AC-11 maps PATH_ROUTE_ADDS_SEED_SKILL_PHRASES,
+  PATH_ROUTE_SKILL_ADDITION_IS_CAPPED and the failure
+  PATH_ROUTE_SKILLS_OVER_CAP; read against the ADR-0026 "Amendment, 8.1.2"
+  the owner ratified 2026-10-07 (commit af0bbb0). §0's Related ADRs line is
+  updated to record the ratification. No contract changed. The status stays
   `back-written`.
