@@ -101,6 +101,8 @@ no external dependency — every increment uses stdlib Python and Git, which the
 | An inventory-narrowing config key is slice-3 work (§12 question 13, the owner: yes) | recorded, not specified | SPEC-0007 §2 out of scope, §7 | reversible | — | 2026-10-07 |
 | A config pattern that matches no inventory file is a build hint with a fix line (§12 question 14, the owner: yes): kind `config-pattern-unmatched`, only for patterns the plant's file sets, never a default | a typo in `always_run` leaves the always-run set short with no record; the default `global_inputs` names files most plants lack | SPEC-0007 `BUILD_HINTS_CONFIG_PATTERNS_THAT_MATCH_NOTHING`, §6 `HINT_FIX` | reversible | — | 2026-10-07 |
 
+| The ADR-0026 "Amendment, 8.1.2" is ratified, in place, on the owner's "1 ratify" (§12 question 15); questions 16 to 18 kept, not vetoed | ADR-0026 is accepted and ratified; an amendment to it carries the owner's word, as ADR-0029's did | ADR-0026 "Amendment, 8.1.2", ratified; plan §12 questions 15 to 18 | reversible | [ADR-0026](../decisions/adr-0026-node-router-ladder-and-gated-corpus.md) | 2026-10-07 |
+
 ## 7. Options Considered
 | Option | Benefits | Costs | Risks | Outcome |
 |---|---|---|---|---|
@@ -309,10 +311,10 @@ Covered by the seed's standard gate, `tests/run.sh`. Two additions. Increment 10
 | 12 | Resolved 2026-10-07: option (a), "change now": when a task names a path a node owns, the router also adds the phrase-tier hits of `origin: seed` skill nodes | — | — | resolved | owner | SPEC-0002 PATH_ROUTE_ADDS_SEED_SKILL_PHRASES |
 | 13 | Resolved 2026-10-07: yes, an inventory-narrowing config key (for example `inventory_exclude`) is slice-3 work; recorded, not specified | — | — | resolved | owner | — |
 | 14 | Resolved 2026-10-07: yes, a config pattern that matches no inventory file is a build hint with a fix line | — | — | resolved | owner | SPEC-0007 BUILD_HINTS_CONFIG_PATTERNS_THAT_MATCH_NOTHING |
-| 15 | Pending owner: ratify the ADR-0026 "Amendment, 8.1.2", the record of the router rule ruled in question 12 (in place, as the ADR-0029 amendment was) | ADR-0026 is accepted and ratified; an amendment to it carries the owner's word, as ADR-0029's did | the text stands as written | owner ratifies or edits before increment 7 | owner | SPEC-0002 PATH_ROUTE_ADDS_SEED_SKILL_PHRASES |
-| 16 | Settled, owner may veto: the path tier counts whole, so an `inferred` entry (an expertise file pattern) adds seed skills as a `named_path` one does | "what breaks if I change main.tf" asks the same question as one about `src/app.py` | tier 2 whole | veto | owner | SPEC-0002 PATH_ROUTE_ADDS_SEED_SKILL_PHRASES |
-| 17 | Settled, owner may veto: `PATH_TIER_SKILL_CAP` is 2 and over it no skill is added | 2 is the most phrase hits any measured routed row held; none over it mirrors `STRONG_TIER_CAP` | 2, none over | veto | owner | SPEC-0002 PATH_ROUTE_SKILL_ADDITION_IS_CAPPED |
-| 18 | Settled, owner may veto: the kernel line is held by two rows of seed-lint's `TEXT_RULES`, with no new test case | doctrine text carries no test of its own; the row is a lint that already runs | two rows | veto | owner | SPEC-0007 KERNEL_NAMES_THE_SOURCE_INDEX |
+| 15 | Resolved 2026-10-07: the ADR-0026 "Amendment, 8.1.2" is ratified, in place. The owner: "1 ratify" | — | — | resolved | owner | SPEC-0002 PATH_ROUTE_ADDS_SEED_SKILL_PHRASES |
+| 16 | Resolved 2026-10-07: kept, not vetoed. The owner's "1 ratify" left question 16 standing: the path tier counts whole, so an `inferred` entry adds seed skills as a `named_path` one does | — | — | resolved | owner | SPEC-0002 PATH_ROUTE_ADDS_SEED_SKILL_PHRASES |
+| 17 | Resolved 2026-10-07: kept, not vetoed. The owner's "1 ratify" left question 17 standing: `PATH_TIER_SKILL_CAP` is 2 and over it no skill is added | — | — | resolved | owner | SPEC-0002 PATH_ROUTE_SKILL_ADDITION_IS_CAPPED |
+| 18 | Resolved 2026-10-07: kept, not vetoed. The owner's "1 ratify" left question 18 standing: the kernel line is held by two rows of seed-lint's `TEXT_RULES`, with no new test case | — | — | resolved | owner | SPEC-0007 KERNEL_NAMES_THE_SOURCE_INDEX |
 
 ## 13. Done Criteria
 - Every 8.1.2 row of SPEC-0007 §10 is green and `tests/run.sh` is green whole.
@@ -332,6 +334,7 @@ Earlier, by `architect-8.1.2d`: put §12 questions 12 to 14 to the owner; then p
 Brief product (SPEC-0007 §3 and §9, and SPEC-0001 §3 and AC-3, whose "does nothing and says nothing" and "zero churn" now meet the build's report and cache), tester (SPEC-0007 §10; SPEC-0001's 2026-10-07 text, which changes no row), security and devils-advocate on SPEC-0007 "Surfacing (8.1.2)"; then RED (increment 3).
 
 ## 15. Changelog
+- 2026-10-07: `architect-8.1.2f` applied the owner's ruling "1 ratify": the ADR-0026 "Amendment, 8.1.2" is ratified in place (§12 question 15 resolved), with questions 16 to 18 kept, not vetoed (all resolved); the index row for ADR-0026 updated; §6 gains a dated row recording the ratification.
 - 2026-10-07: created by `architect-8.1.2` from the owner's request ("go do it. update graft and install/growth"); SPEC-0007 8.1.2 slice and ADR-0030 written; RED waits for §12 questions 1 to 3.
 - 2026-10-07: rewritten by `architect-8.1.2b` on the owner's rulings of questions 2 ("ACTUALLY BUILD IT") and 3 ("yes"): the installer runs the placed `build` as its last step on every install and graft apply, fail-open and bounded; `build` prints a fix under each record; question 1 taken as yes pending ADR-0030; questions 8 (ADR-0029 amendment) and 9 (SPEC-0001 amendment) added; increments renumbered 1 to 8, with the SPEC-0001 amendment as increment 2.
 - 2026-10-07: the owner ruled §12 questions 1, 8 and 9 ("1 ok 2 ok 3 go"): ADR-0030 accepted, the ADR-0029 amendment ratified, go for SPEC-0001; `architect-8.1.2c` wrote increment 2 (SPEC-0001 §2, `SINGLE_WRITER` And, `IDENTICAL_RERUN_IS_INERT` Except, §12 entry; no §10 row changed), set both ADRs' records and the index, and added the §6 row.
