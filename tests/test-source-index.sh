@@ -2399,6 +2399,10 @@ def x465(base):
             check(t.rc == 0, f"build must exit 0 — {t.ctx()}")
             expect_fix_under(t, reason, subject if subject is not None else recs[0].get("subject"))
             ends_with_build_action(t, len(d.get("incomplete", [])))
+            if arm == "(a)":
+                check("no-test-files" not in reasons(d), f"(a) no governed repository: incomplete "
+                                                         f"{d.get('incomplete')!r} holds a no-test-files record")
+                check(d.get("hints") == [], f"(a) no governed repository: hints {d.get('hints')!r}, want []")
             if arm == "(b)":
                 for q in ("impact", "affected-tests"):
                     qt = tool(p, q, "a.py")
