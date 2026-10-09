@@ -1043,21 +1043,45 @@ def _strength(term: str, whole: set, frag: set) -> int:
     return m if m else min(1, _match(term, frag))
 
 
-def _words(text: str) -> list:
-    """The content words of `text`, in order: lowercased, `_` and a trailing
-    `.` trimmed, three characters or more, no stopword. One rule for both sides
-    of every comparison the router makes: a task's words and a trigger
-    phrase's tokens. The regex keeps `-`, `.`, `/` and `*` inside a word, so a
-    compound, a dotted name and a path each stay one word; `,`, `:`, `;`,
-    `?`, `!` and `)` already end a word, and the trailing `.` is the one mark
-    the regex would keep (SPEC-0002 PUNCTUATION_DOES_NOT_CHANGE_A_TERM:
-    `prompt.` was a second term beside `prompt`)."""
+def _written_words(text: str) -> list:
+    """The content words of `text`, in order, each as `(word, written)`: the
+    word lowercased, `_` and a trailing `.` trimmed, three characters or more,
+    no stopword; `written` the same word as the text wrote it, before
+    lowercasing. One rule for both sides of every comparison the router makes:
+    a task's words and a trigger phrase's tokens. The regex keeps `-`, `.`,
+    `/` and `*` inside a word, so a compound, a dotted name and a path each
+    stay one word; `,`, `:`, `;`, `?`, `!` and `)` already end a word, and
+    the trailing `.` is the one mark the regex would keep (SPEC-0002
+    PUNCTUATION_DOES_NOT_CHANGE_A_TERM: `prompt.` was a second term beside
+    `prompt`)."""
     out = []
-    for w in re.findall(r"[a-z0-9_/*.-]+", text.lower()):
-        w = w.strip("_").rstrip(".").strip("_")
+    for raw in re.findall(r"[A-Za-z0-9_/*.-]+", text):
+        raw = raw.strip("_").rstrip(".").strip("_")
+        w = raw.lower()
         if len(w) >= 3 and w not in STOPWORDS:
-            out.append(w)
+            out.append((w, raw))
     return out
+
+
+def _words(text: str) -> list:
+    """The content words of `text`, in order (`_written_words`)."""
+    return [w for w, _raw in _written_words(text)]
+
+
+# An identifier holds `_` between two letters or digits (`save_order`,
+# `MAX_BYTES`) or a lowercase letter directly before an uppercase one
+# (`saveOrder`, `TypeScript`); a word all in capitals (`README`) is not one.
+IDENTIFIER_RE = re.compile(r"[A-Za-z0-9]_[A-Za-z0-9]|[a-z][A-Z]")
+# The phrase token a slot word stands for, by the kind of task word that
+# fills it (SPEC-0002 PATH_OR_IDENTIFIER_FILLS_A_SLOT_WORD).
+SLOT_WORDS = {"file": "path", "name": "identifier"}
+
+
+def _slot_kinds(written: list) -> list:
+    """Per task word (`_written_words`), `path`, `identifier`, or None for a
+    content word. A path is never also an identifier."""
+    return ["path" if _is_path(w) else "identifier" if IDENTIFIER_RE.search(raw) else None
+            for w, raw in written]
 
 
 def _same(a: str, b: str) -> bool:
@@ -1137,29 +1161,49 @@ def _load_when_pieces(n) -> tuple:
     return phrases, patterns
 
 
-def _holds(seq: list, toks: tuple) -> bool:
-    """The task's word sequence holds a phrase's tokens consecutively and in
-    order, each the same word at the standalone tier."""
+def _holds(seq: list, kinds: list, toks: tuple) -> bool:
+    """The task's word sequence holds a phrase's tokens in order, each the
+    same word at the standalone tier, with nothing between them but path and
+    identifier words (`kinds`, the gap rule); a phrase token `file` is also
+    held by a path word and `name` by an identifier word (the slot rule).
+    Only between: the phrase starts at its first token and ends at its last
+    (SPEC-0002 PATH_OR_IDENTIFIER_DOES_NOT_BREAK_A_PHRASE,
+    PATH_OR_IDENTIFIER_FILLS_A_SLOT_WORD). A path names the place the
+    phrase is about: `which tests does src/app.py reach`."""
     k = len(toks)
-    return any(all(_same(seq[i + j], toks[j]) for j in range(k))
-               for i in range(len(seq) - k + 1))
+    for i in range(len(seq)):
+        # `reach` holds the token positions the phrase has advanced to with
+        # task words up to here; a gap word keeps every position past the
+        # first, a matching word advances one.
+        reach = {0}
+        for w, kind in zip(seq[i:], kinds[i:]):
+            nxt = {j + 1 for j in reach
+                   if _same(w, toks[j]) or (kind and SLOT_WORDS.get(toks[j]) == kind)}
+            if k in nxt:
+                return True
+            if kind:
+                nxt |= {j for j in reach if j > 0}
+            reach = nxt
+            if not reach:
+                break
+    return False
 
 
-def _held_piece(phrases: list, seq: list, words: set, min_tokens: int = 1,
+def _held_piece(phrases: list, seq: list, kinds: list, words: set, min_tokens: int = 1,
                 exclude: frozenset = frozenset()):
     """The first trigger phrase of at least `min_tokens` tokens the task
-    holds, or None. A phrase of two or more tokens must be held contiguous; a
-    one-token phrase only as a whole task word equal to it, never a fragment
-    or an inflection of another word. Tier 3 reads two tokens and up; a
-    one-token piece is read by composition descent alone, inside a parent
-    already loaded (SPEC-0002 PROMOTION_NEEDS_A_CONTIGUOUS_PHRASE). Of every
-    `load_when` piece, 51% reduced to one token, and as a seed one generic
-    word loaded a whole expertise and its closure: `json`, `engine`,
+    holds, or None. A phrase of two or more tokens must be held as `_holds`
+    reads it; a one-token phrase only as a whole task word equal to it, never
+    a fragment or an inflection of another word. Tier 3 reads two tokens and
+    up; a one-token piece is read by composition descent alone, inside a
+    parent already loaded (SPEC-0002 PROMOTION_NEEDS_A_CONTIGUOUS_PHRASE). Of
+    every `load_when` piece, 51% reduced to one token, and as a seed one
+    generic word loaded a whole expertise and its closure: `json`, `engine`,
     `workflow`."""
     for piece, toks in phrases:
         if len(toks) < min_tokens or toks in exclude:
             continue
-        if (toks[0] in words) if len(toks) == 1 else _holds(seq, toks):
+        if (toks[0] in words) if len(toks) == 1 else _holds(seq, kinds, toks):
             return piece
     return None
 
@@ -1423,7 +1467,9 @@ def resolve(nodes: list, task: str):
     (code, text) pairs.
     """
     by_id = {n.id: n for n in nodes}
-    seq = _words(task)
+    written = _written_words(task)
+    seq = [w for w, _raw in written]
+    kinds = _slot_kinds(written)
     words = set(seq)
     if len(words) > LONG_TASK_TERMS:
         return [], [], [("long_task", LONG_TASK_TEXT.format(len(words)))]
@@ -1433,7 +1479,7 @@ def resolve(nodes: list, task: str):
     def held_phrases(candidates) -> dict:
         held = {}
         for n in candidates:
-            piece = _held_piece(phrases[n.id], seq, words, min_tokens=2)
+            piece = _held_piece(phrases[n.id], seq, kinds, words, min_tokens=2)
             if piece is not None:
                 held[n.id] = How("phrase", piece)
         return held
@@ -1500,7 +1546,7 @@ def resolve(nodes: list, task: str):
             # not enough (SPEC-0002 COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE).
             # Descent on any single term pulled four of five host children
             # into one brief.
-            piece = _held_piece(phrases[c.id], seq, words, exclude=family)
+            piece = _held_piece(phrases[c.id], seq, kinds, words, exclude=family)
             if piece is not None:
                 hits += 1
                 descents.append((c, How("composed", piece, n.id)))

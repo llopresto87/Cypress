@@ -142,7 +142,10 @@ when a notice leaves the plan empty or wrong, or when the task explores
 the graph itself. There, match the task against each node's
 `load_when:` triggers. Prefer the most specific match. A task
 naming a path resolves to that subsystem's node; a task naming a concept
-resolves to the node that `owns` it.
+resolves to the node that `owns` it. A path or an identifier the task
+names does not break a trigger it sits inside, and stands in for the
+trigger's `file` or `name` word: `what breaks if I change src/app.py`
+matches `what breaks if I change this file`.
 
 If nothing matches, you have found a gap in the graph. Say so, fall back
 to the root node, and note it for the graph's maintainer to fix.
