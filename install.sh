@@ -88,7 +88,9 @@
 #                         carries opencode, model: lines included. It runs
 #                         each wired context hook once, and names each agent
 #                         or skill in a harness directory with no graph home
-#                         (RETIRED, ORPHAN), deleting nothing. It names each
+#                         (RETIRED, ORPHAN), and each origin: seed protocol or
+#                         method node whose seed file is gone (RETIRED),
+#                         deleting nothing. It names each
 #                         recorded expertise page that is missing or stale.
 #   -h, --help           Show this help.
 #
@@ -2846,7 +2848,9 @@ PY
 # CHECK_FLAGS_RETIRED_HARNESS_ENTRY, CHECK_FLAGS_ORPHAN_HARNESS_ENTRY). An agent
 # or skill in a harness directory with no live graph home is named, RETIRED for
 # an origin: seed one the running seed does not ship and ORPHAN for one the
-# plant authored there, in every harness directory the plant carries. The
+# plant authored there, in every harness directory the plant carries. An
+# origin: seed node under docs/graph/protocols/ or method/ whose seed file is
+# gone is named RETIRED too (no harness projects it). The
 # classification has one home, tools/graft-audit.py --harness, which a graft
 # runs as well. A flag is never a failure and nothing is deleted (the owner's
 # decision), so this returns 1 only when the classification itself could not run: a
