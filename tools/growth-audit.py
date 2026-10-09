@@ -137,12 +137,19 @@ Usage:
         (the inventory's staffing decisions are part of the full lint, not this)
   growth-audit.py <plant-root> <seed-root> --json     machine-readable findings
 
+The lint (with or without --json, not --agents) then runs the seed's
+tools/source-index.py build from the plant root and prints its report after
+the verdicts, as advice: it is never a verdict and never sets the exit code.
+--json appends it as one last item, {"source_index_report": [<line>, ...]},
+empty when the build did not answer.
+
 Exit 0 when every required row is answered and every planned artifact is
 present and substantive; 1 on any failing verdict; 2 on a malformed command
 line or an unreadable record. Dependency-free.
 """
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -197,6 +204,15 @@ LEGAL_CORPUS_REL = "legal/corpus/"
 NORMALIZED_DIR = "sources/normalized"
 RAW_DIR = "sources/raw"
 RAW_KEY = "raw"
+# The source index build report (SPEC-0007 GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT),
+# printed after the verdicts as advice: never a verdict, never the exit code.
+# The seed's own copy runs, so no plant code runs and a plant whose placed copy
+# is older still gets the current report.
+SOURCE_INDEX_TOOL = "tools/source-index.py"
+GROWTH_REPORT_TIMEOUT = 120
+GROWTH_REPORT_HEAD = 'source index (advice, not a verdict; SPEC-0007 "Build report"):'
+GROWTH_REPORT_FAILED = ("source index: the build did not answer ({why}); run python3 "
+                        "docs/graph/source-index.py build from the plant root")
 
 # A leaf smaller than this carries a heading and nothing else. It is the floor
 # for "a file that states a fact", not a quality bar — quality is the
@@ -1859,6 +1875,25 @@ def rows(rec, key, label):
     return val
 
 
+def source_index_report(plant, seed):
+    """The seed's `source-index.py build` run from the plant root: (its stdout
+    lines, None) on exit 0, else ([], why). Isolated mode (-I) keeps every file
+    of the plant off the module path and -B writes no bytecode; stdin is closed
+    and the build's stderr is never read, so nothing it did not mean as its
+    report reaches this tool's output (SPEC-0007 §5 Security, S1 and S2)."""
+    try:
+        r = subprocess.run([sys.executable, "-I", "-B", str((seed / SOURCE_INDEX_TOOL).resolve()), "build"],
+                           cwd=plant, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                           stderr=subprocess.DEVNULL, timeout=GROWTH_REPORT_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return [], "timeout"
+    except (OSError, ValueError, subprocess.SubprocessError) as e:
+        return [], type(e).__name__
+    if r.returncode != 0:
+        return [], f"exit {r.returncode}"
+    return r.stdout.decode("utf-8", errors="replace").splitlines(), None
+
+
 def do_lint(plant, seed, opt):
     rec = load_record(plant)
     findings = []
@@ -1908,9 +1943,13 @@ def do_lint(plant, seed, opt):
         lint_inventory(plant, rec, templates, findings)
         lint_disclosure(plant, rec, findings)
 
+    # The full lint only: --agents is a partial audit and runs no build.
+    report, why = source_index_report(plant, seed) if not opt.get("agents") else (None, None)
     if opt.get("json"):
-        print(json.dumps([{"verdict": f.verdict, "row": f.row,
-                           "detail": f.detail} for f in findings], indent=2))
+        doc = [{"verdict": f.verdict, "row": f.row, "detail": f.detail} for f in findings]
+        if report is not None:
+            doc.append({"source_index_report": report})
+        print(json.dumps(doc, indent=2))
     else:
         for f in findings:
             print(f)
@@ -1919,6 +1958,14 @@ def do_lint(plant, seed, opt):
             print(f"  note: {GRAPH_HOME}/{MODEL_MAP} is unfilled, so every agent "
                   f"runs on its caller's model. It is the plant's configuration, "
                   f"disclosed here and not a coverage row.")
+        # After the verdicts and before the summary line, which stays the last
+        # line (graft-run.py reads it as the coverage gate's evidence).
+        if report is not None:
+            print(GROWTH_REPORT_HEAD)
+            for line in report:
+                print(f"  {line}")
+            if why is not None:
+                print(GROWTH_REPORT_FAILED.format(why=why))
         fatal = [f for f in findings if f.fatal()]
         unknown = [f for f in findings if not f.fatal()]
         scope = ("agent and expert coverage" if opt.get("agents")

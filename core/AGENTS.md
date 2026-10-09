@@ -157,3 +157,6 @@ tool is built by `agent.tool-smith`.
   `docs/graph/agents/` — the method surface, one node each.
 - `docs/graph/plans/grill.md`, `docs/graph/specs/index.md`,
   `docs/graph/libraries/index.md` — the plan, specs, wiki.
+- Code questions (what breaks, which tests, who cites a file, where a
+  name is defined): `python3 docs/graph/source-index.py --help`,
+  `skill.source-index`.
