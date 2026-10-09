@@ -1,8 +1,8 @@
 ---
-status: active
+status: implemented
 status_date: 2026-10-09
 owner: seed-installer
-status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tests/test-install-kernel-modes.sh, tests/test-install-adoption.sh, tests/test-full-install.sh, tests/test-seed-lint.sh, tests/test-graft-tools.sh, tests/test_corpus_match.py (every §10 contract row green but the two 8.1.2 graft-finding rows, CHECK_FLAGS_RETIRED_GRAPH_NODE (M13 case_retired_flag, graph-node arm) and GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES (X469), `red` since their RED of 2026-10-09 until GREEN, plan grill-8.1.2 increment 12; HARVEST_CANDIDATE_FORM_IS_PLACED included, held by S14 in case_plan_records and proved by mutation, §12's second entry of 2026-10-05 on the harvest-candidate form; all wired into tests/run.sh)
+status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tests/test-install-kernel-modes.sh, tests/test-install-adoption.sh, tests/test-full-install.sh, tests/test-seed-lint.sh, tests/test-graft-tools.sh, tests/test_corpus_match.py (every §10 row green at seed main b628cf4, including the 8.1.2 graft-finding rows CHECK_FLAGS_RETIRED_GRAPH_NODE and GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES, and HARVEST_CANDIDATE_FORM_IS_PLACED; all wired into tests/run.sh, 51/51)
 ---
 
 # SPEC-0001: install placement
