@@ -1,8 +1,8 @@
 ---
-status: active
-status_date: 2026-10-07
+status: implemented
+status_date: 2026-10-09
 owner: architect
-status_evidence: tests/test-source-index.sh, tests/test_graph_lint.py, tests/test-code-anchor.sh, tests/test-prompt-hooks.sh, tests/seed-lint.py, tests/test-full-install.sh E15 (every §10 row green at 68c970e, slice 1 and slice 2 with option D; all wired into tests/run.sh, 51/51; the 8.1.2 row ACTION_LINE_NAMES_AT_MOST_TEXT_MAX_ROWS_RECORDS, X470, `red` since its RED of 2026-10-09 until GREEN, plan grill-8.1.2 increment 12)
+status_evidence: tests/test-source-index.sh, tests/test_graph_lint.py, tests/test-code-anchor.sh, tests/test-prompt-hooks.sh, tests/seed-lint.py, tests/test-full-install.sh E15 (every §10 row green at seed main b628cf4, slice 1 and slice 2 with option D, including the 8.1.2 row ACTION_LINE_NAMES_AT_MOST_TEXT_MAX_ROWS_RECORDS; all wired into tests/run.sh, 51/51)
 ---
 
 # SPEC-0007: source-index

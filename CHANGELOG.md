@@ -62,6 +62,19 @@ file.
   src/app.py" holds `what breaks if I change this file`. An ordinary word
   still breaks a phrase.
 
+### Graft and build output
+
+- A graft now names an outdated seed page left in a plant (a file under
+  `protocols/` or `method/` that the seed no longer ships, such as
+  `protocols/toolcraft.md`) as RETIRED, and ties the graph-lint errors it
+  causes to that page. It deletes nothing: the steward removes the page by
+  name (migration (d)). A test graft on a copy of wrt-migration found the
+  case.
+- The build report's `Incomplete:` line stops at the row limit and ends
+  with `and N more`; `--all` and `--json` show every row.
+- Memory was measured near the 196 MiB cache bound: about 100,000 files,
+  where a query needs about 1.3 GB.
+
 ### CI on macOS
 
 - `tests/test-source-index.sh` checks how `repo:` values with different
