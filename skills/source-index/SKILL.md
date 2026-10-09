@@ -18,13 +18,11 @@ peers:
   - protocol.graft
   - skill.adopt-existing
 load_when:
-  - "what depends on this file, depends on before changing, dependents of a file"
-  - "impact of a change, blast radius of a change, what breaks if I change"
-  - "which tests does a change reach, tests a change reaches, affected tests"
-  - "which tests to run for a change, tests cover this file"
-  - "graph pages cite, pages cite a file, which nodes cite, stale graph facts after code moved"
-  - "where is the function defined, where is a name defined, find a definition"
-  - "source index, source-index build report, repo-unresolved record"
+  - "impact of a change to a file"
+  - "what breaks if I change this file"
+  - "which tests to run for a file"
+  - "find the definition of a name"
+  - "stale graph facts after a code move"
 prevents: A placed tool nobody reaches for - sessions grep for dependents, guess the tests a change reaches, miss the graph pages a code move made stale, and read a missing row as proof that nothing is affected.
 est_tokens: 1900
 ---

@@ -20,6 +20,7 @@ peers:
   - protocol.harvest
   - protocol.deliver
   - method.engineering-posture
+  - skill.source-index
 load_when:
   - "upgrade this plant to the newer seed"
   - "graft the seed, re-propagate machinery"

@@ -110,7 +110,7 @@ existing codebase), `skill.adr-writer` (recording a decision),
 (user-facing) and `skill.brainstorm-internal` (no user in the loop),
 `skill.holistic-editing`, `skill.library-wiki`,
 `skill.research-and-ingest`, `skill.validate-knowledge`,
-`skill.test-first`.
+`skill.test-first`, `skill.source-index` (questions about the code).
 
 ## The node table
 

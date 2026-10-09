@@ -21,6 +21,7 @@ peers:
   - protocol.deliver
   - protocol.harvest
   - skill.adr-writer
+  - skill.source-index
 artifacts:
   - templates/prompts/graph-session-bootstrap.md
   - templates/tool-page.template.md

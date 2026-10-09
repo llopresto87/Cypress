@@ -893,6 +893,8 @@ def x435(base):
         "py/fifo.py": "F = 1\n",
         "py/big.py": big,
         "py/nul.py": b"import os\nX = '\x00'\n",
+        # a test file, so the build's no-test-files record (the build report's) stays out of this case
+        "tests/t_test.py": "T = 1\n",
     }
     p = Plant(base, files=files)
     write(p.dir, "src/app/.next/types/routes.d.ts", "export {};\n")   # ignored by Git
@@ -941,8 +943,12 @@ def x435(base):
                      ("relative-no-file", "src/app/*"), ("outside-repository", None)])
     if g != want_g:
         problems.append(f"src/app/g.ts: unresolved {g!r}, want {want_g!r}")
-    if d.get("incomplete"):
-        problems.append(f"paths Git could misread made the build incomplete: {d.get('incomplete')!r}")
+    # The nested work tree arm m2 needs is correctly the build report's one
+    # repository-unnamed record (X462 owns it); Git-hostile paths add none.
+    inc = sorted((r.get("reason"), r.get("subject")) for r in d.get("incomplete", []))
+    if inc != [("repository-unnamed", "src/app/sub")]:
+        problems.append(f"paths Git could misread made the build incomplete: {d.get('incomplete')!r}, "
+                        f"want only the unnamed nested work tree [('repository-unnamed', 'src/app/sub')]")
     for holder in ("py/fifo.py", "py/big.py", "py/nul.py"):
         got = [(r.get("reason"), r.get("line")) for r in records(d, "opaque", holder)]
         if got != [("unreadable", None)]:
@@ -2156,6 +2162,11 @@ SKILL_ROUTE_TASKS = {
     "anchors": "which graph pages cite src/app.py",
     "symbols": "where is the function save_order defined",
 }
+SKILL_ROUTE_PHRASINGS = {   # SPEC-0007 §6 "Build report": the owner's everyday wording, routed by phrase
+    "impact": "what breaks if I change src/app.py",
+    "affected-tests": "which tests cover src/app.py",
+    "symbols": "where is save_order defined",
+}
 INSTALL_BUILD_HEAD = 'source index build (advice, never a failure of the install; SPEC-0007 "Build report"):'
 INSTALL_BUILD_FAILED = ("source index: the build did not finish ({why}); the install is complete. Run from the "
                         "plant root: python3 docs/graph/source-index.py build")
@@ -2491,6 +2502,13 @@ def x460(base):
             check("skill.source-index" in got, f"the {q} task {task!r} loads {sorted(got)!r}, "
                                                f"not skill.source-index")
 
+    def phrasings_arm():
+        for q, task in SKILL_ROUTE_PHRASINGS.items():
+            got = plan_load(t, task)
+            check((got.get("skill.source-index") or {}).get("kind") == "phrase",
+                  f"the {q} phrasing {task!r} loads skill.source-index as {got.get('skill.source-index')!r}, "
+                  f"not phrase (loads {sorted(got)!r})")
+
     def catalog_arm():
         tools_dir = t / "docs" / "graph" / "tools"
         got = sorted(p.relative_to(tools_dir).as_posix() for p in tools_dir.rglob("*") if p.is_file())
@@ -2519,16 +2537,19 @@ def x460(base):
         write(t, "docs/graph/nodes/subsystem.app.md", node("subsystem.app", repo="src"))
         idx = t / "docs" / "graph" / "index.md"
         idx.write_text(idx.read_text() + "\n- subsystem.app\n")
-        for q, task in SKILL_ROUTE_TASKS.items():
+        tasks = [(q, task) for q, task in SKILL_ROUTE_TASKS.items()]
+        tasks += [(q, task) for q, task in SKILL_ROUTE_PHRASINGS.items()]
+        for q, task in tasks:
             got = plan_load(t, task)
-            if q != "symbols":
+            if "src/app.py" in task:
                 check((got.get("subsystem.app") or {}).get("kind") == "named_path",
-                      f"the {q} task loads subsystem.app as {got.get('subsystem.app')!r}, not named_path")
+                      f"the {q} task {task!r} loads subsystem.app as {got.get('subsystem.app')!r}, not named_path")
             check((got.get("skill.source-index") or {}).get("kind") == "phrase",
-                  f"the {q} task loads skill.source-index as {got.get('skill.source-index')!r}, not phrase "
-                  f"(loads {sorted(got)!r})")
+                  f"the {q} task {task!r} loads skill.source-index as {got.get('skill.source-index')!r}, "
+                  f"not phrase (loads {sorted(got)!r})")
 
-    for name, fn in (("placed", placed_arm), ("routes", route_arm), ("catalog", catalog_arm),
+    for name, fn in (("placed", placed_arm), ("routes", route_arm), ("phrasings", phrasings_arm),
+                     ("catalog", catalog_arm),
                      ("re-install", reinstall_arm), ("owned-path", owned_path_arm)):
         arm(name, fn)
     check(not problems, " || ".join(problems))
