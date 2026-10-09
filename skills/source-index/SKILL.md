@@ -140,8 +140,10 @@ the protocol that owns it, then reruns `build`.
 - **Protocols that call it:** `protocol.verify` (affected tests, never the
   whole decision), `protocol.canonize` (`anchors --moved`, then correct a
   `repo:` value it names), `protocol.grow` and `skill.adopt-existing`
-  (`build --json` gives scouts the file list), `protocol.graft` (the apply
-  install prints the report; Phase 6 corrects the `repo:` values it names).
+  (`build --json` gives scouts the file list; grow's delivery records the
+  report of its last growth-audit run), `protocol.graft` (the apply install
+  prints the report; Phase 6 corrects the `repo:` values it names, Phase 7
+  records each line and what was done with it).
 - **Related tools:** `docs/graph/code-anchor.py` (the moved list),
   `docs/graph/graph-lint.py` (routing; owns no code facts).
 - **Decisions:** the cache is derived scratch, rebuilt and never canonical;

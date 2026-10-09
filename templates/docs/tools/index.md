@@ -1,6 +1,6 @@
 # Tools index
 
-The catalog of durable, reusable tools this project has built — real code
+The catalog of durable, reusable tools this project has built: real code
 with a stable interface and a test, kept so the next session discovers and
 reuses a capability instead of rewriting it from scratch. Each row links to
 the tool's card, which records its invocation, interface, where the code
@@ -9,6 +9,8 @@ lives, and how it is tested.
 Populated at canonize close-out, where the docs-librarian applies
 `skill.toolcraft` (kernel §3.8), after any task that produced a durable tool.
 Catalog durable tools only; one-offs stay disposable.
+The tools the seed places in `docs/graph/` are described by seed skills
+and need no row here; a plant can still write its own card for one.
 
 | Tool | Card | What it does | Path | Owner | Stability | Last reviewed |
 |---|---|---|---|---|---|---|
