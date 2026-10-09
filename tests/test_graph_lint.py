@@ -2379,6 +2379,7 @@ class ShowTests(_TmpCase):
 # --------------------------------------------------------------------------
 
 STRONG_TIER_CAP = 3                       # SPEC-0002 §6
+PATH_TIER_SKILL_CAP = 2                   # SPEC-0002 §6 (8.1.2)
 NO_SIGNAL_TEXT = "no node matches this task; route a sharper task line, or enter a protocol:"
 LONG_TASK_TEXT_RE = re.compile(r"^task too long to route \((\d+) terms\); run --plan on the task line$")
 KIND_PREFIX_WORDS = ("domain", "subsystem", "protocol", "skill", "agent", "expertise",
@@ -2391,6 +2392,11 @@ def with_repo(text: str, repo: str) -> str:
     """`node_md` text with a `repo:` key; the key is one word, so the token
     figure stays inside the band."""
     return text.replace("\ntier: 2\n", f"\ntier: 2\nrepo: {repo}\n", 1)
+
+
+def with_origin(text: str, origin: str) -> str:
+    """`node_md` text with an `origin:` key (8.1.2, the seed-skill addition)."""
+    return text.replace("\ntier: 2\n", f"\ntier: 2\norigin: {origin}\n", 1)
 
 
 def ladder_plant(tmp: Path) -> Path:
@@ -2561,6 +2567,114 @@ class NodeRouterLadderTests(_TmpCase):
                 for nid in ids:
                     self.assertNotEqual((hows.get(nid) or {}).get("kind"), "named_path",
                                         f"{task!r}: {nid} claimed by path: {hows!r}")
+
+    def add_seed_skill_fixture(self):
+        """The fixture of PATH_ROUTE_ADDS_SEED_SKILL_PHRASES: `subsystem.app`
+        claims `src/app.py` by `repo: src` over an existing folder; three seed
+        skills (`skill.alpha`, `skill.delta`, `skill.epsilon`), a skill of
+        another origin (`skill.beta`) and a seed node of another kind
+        (`subsystem.gamma`), each with a two-word phrase no other node holds."""
+        (self.plant / "src").mkdir(exist_ok=True)
+        (self.plant / "src" / "app.py").write_text("APP = 1\n", encoding="utf-8")
+        graph = self.plant / "docs" / "graph"
+        (graph / "skills").mkdir(exist_ok=True)
+        self.add_nodes({
+            "subsystem.app": with_repo(node_md("subsystem.app", "subsystem",
+                                               load_when=["plinth basalt"]), "src"),
+            "subsystem.gamma": with_origin(node_md("subsystem.gamma", "subsystem",
+                                                   load_when=["velvet tundra"]), "seed"),
+        })
+        skills = {
+            "skill.alpha": with_origin(node_md("skill.alpha", "skill",
+                                               load_when=["orbit lantern"]), "seed"),
+            "skill.beta": with_origin(node_md("skill.beta", "skill",
+                                              load_when=["quartz harbor"]), "plant"),
+            "skill.delta": with_origin(node_md("skill.delta", "skill",
+                                               load_when=["copper meadow"]), "seed"),
+            "skill.epsilon": with_origin(node_md("skill.epsilon", "skill",
+                                                 load_when=["amber glacier"]), "seed"),
+        }
+        with (graph / "index.md").open("a", encoding="utf-8") as f:
+            for nid, text in skills.items():
+                (graph / "skills" / f"{nid.split('.', 1)[1]}.md").write_text(text, encoding="utf-8")
+                f.write(f"- {nid}\n")
+
+    def test_path_route_adds_seed_skill_phrases(self):
+        """PATH_ROUTE_ADDS_SEED_SKILL_PHRASES: when tier 2 decides, the
+        `origin: seed` skill whose phrase the task holds loads as `phrase`
+        beside the owner; a skill of another origin and a seed node of another
+        kind do not. The path removed routes by tier 3; a named id adds no
+        skill; a tier-2 hit over STRONG_TIER_CAP falls through; an `inferred`
+        entry adds the skill; a seed skill tier 2 loaded is listed once, with
+        its tier-2 kind."""
+        self.add_seed_skill_fixture()
+        task = "fix src/app.py: orbit lantern, quartz harbor, velvet tundra"
+        with self.subTest("tier 2 decides: the seed skill is added"):
+            doc = self.route(task)
+            self.assertLoadedAs(doc, "subsystem.app", "named_path", "src/app.py", task)
+            self.assertLoadedAs(doc, "skill.alpha", "phrase", "orbit lantern", task)
+            for nid in ("skill.beta", "subsystem.gamma"):
+                self.assertNotIn(nid, self.hows(doc), f"{task!r}: {doc['load']!r}")
+        with self.subTest("path removed: tier 3 as before"):
+            t = "fix orbit lantern, quartz harbor, velvet tundra"
+            d = self.route(t)
+            for nid, detail in (("skill.alpha", "orbit lantern"), ("skill.beta", "quartz harbor"),
+                                ("subsystem.gamma", "velvet tundra")):
+                self.assertLoadedAs(d, nid, "phrase", detail, t)
+            self.assertNotIn("subsystem.app", self.hows(d), f"{t!r}: {d['load']!r}")
+        with self.subTest("named id: tier 1 adds no skill"):
+            t = "fix subsystem.ledger and the orbit lantern"
+            d = self.route(t)
+            self.assertLoadedAs(d, "subsystem.ledger", "named_id", task=t)
+            self.assertNotIn("skill.alpha", self.hows(d), f"{t!r}: {d['load']!r}")
+        with self.subTest("tier 2 over STRONG_TIER_CAP falls through to tier 3"):
+            t = ("fix src/app.py billsvc/src/payments/refund.py infra/main.tf "
+                 "docs/graph/nodes/subsystem.ledger.md and the orbit lantern")
+            d = self.route(t)
+            self.assertEqual([i for i, h in self.hows(d).items()
+                              if h["kind"] in ("named_path", "inferred")], [],
+                             f"{t!r}: {d['load']!r}")
+            self.assertLoadedAs(d, "skill.alpha", "phrase", "orbit lantern", t)
+        with self.subTest("an inferred entry adds the seed skill"):
+            t = "bump infra/main.tf and the orbit lantern"
+            d = self.route(t)
+            self.assertLoadedAs(d, "expertise.terraform", "inferred", "infra/main.tf", t)
+            self.assertLoadedAs(d, "skill.alpha", "phrase", "orbit lantern", t)
+        with self.subTest("a seed skill tier 2 loaded is listed once, its tier-2 kind"):
+            t = "edit docs/graph/skills/alpha.md and the orbit lantern"
+            d = self.route(t)
+            self.assertEqual([e["id"] for e in d["load"]].count("skill.alpha"), 1,
+                             f"{t!r}: {d['load']!r}")
+            self.assertLoadedAs(d, "skill.alpha", "named_path", task=t)
+
+    def test_path_route_skill_addition_is_capped(self):
+        """PATH_ROUTE_SKILL_ADDITION_IS_CAPPED, failure PATH_ROUTE_SKILLS_OVER_CAP:
+        the phrases of exactly PATH_TIER_SKILL_CAP seed skills load each after
+        the tier-2 entries, in node-id order; one more adds none and the tier-2
+        entries load alone with their closure; two runs print the same `load`."""
+        self.add_seed_skill_fixture()
+        at_cap = "fix src/app.py: copper meadow, orbit lantern"
+        over = "fix src/app.py: copper meadow, orbit lantern, amber glacier"
+        alone = self.route("fix src/app.py")["load"]
+        for task in (at_cap, over):
+            with self.subTest(task):
+                first = self.route(task)
+                second = self.route(task)
+                self.assertEqual(json.dumps(first["load"]), json.dumps(second["load"]),
+                                 f"{task!r}: two runs differ")
+                ids = [e["id"] for e in first["load"]]
+                if task is at_cap:
+                    want = ["skill.alpha", "skill.delta"][:PATH_TIER_SKILL_CAP]
+                    added = [i for i in ids if i.startswith("skill.")]
+                    self.assertEqual(added, want, f"{task!r}: {first['load']!r}")
+                    for nid in want:
+                        self.assertLoadedAs(first, nid, "phrase", task=task)
+                        self.assertGreater(ids.index(nid), ids.index("subsystem.app"),
+                                           f"{task!r}: {nid} before the tier-2 entry: {ids!r}")
+                else:
+                    self.assertEqual(first["load"], alone,
+                                     f"{task!r}: over the cap loads {first['load']!r}, "
+                                     f"want the tier-2 entries alone {alone!r}")
 
     def test_graph_route_phrase_loads_its_node(self):
         """GRAPH_ROUTE_PHRASE_LOADS_ITS_NODE: a contiguous trigger phrase loads

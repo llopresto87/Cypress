@@ -367,15 +367,15 @@ case_session_metrics_in_plant() {
 }
 
 # E15 SOURCE_INDEX_IS_PLACED (SPEC-0007): the source index and the two siblings
-# it loads by path are placed byte-identical; the installer writes neither the
-# cache nor the plant's config; the placed tool builds in the fresh plant.
+# it loads by path are placed byte-identical; the installer writes no plant
+# config (the cache an install's build writes is INSTALL_RUNS_THE_BUILD's, X467);
+# the placed tool builds in the fresh plant.
 case_source_index_placed() {
   local D f out rc=0; D="$(mktemp -d)"; fresh_copy "$D" all --copy
   for f in source-index.py source_paths.py plant_walk.py; do
     cmp -s "$ROOT/tools/$f" "$D/docs/graph/$f" \
       || die "E15: docs/graph/$f is missing or differs from tools/$f"
   done
-  [[ ! -e "$D/.cypress/source-index" ]] || die "E15: install.sh wrote .cypress/source-index/; only a query builds the cache"
   [[ ! -e "$D/docs/graph/source-index.json" ]] || die "E15: install.sh wrote docs/graph/source-index.json; only the plant writes its config"
   out="$(cd "$D" && python3 docs/graph/source-index.py build 2>&1)" || rc=$?
   [[ "$rc" -eq 0 ]] || die "E15: python3 docs/graph/source-index.py build exited $rc in a fresh plant: ${out:0:300}"

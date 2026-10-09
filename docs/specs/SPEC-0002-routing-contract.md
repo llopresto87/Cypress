@@ -817,9 +817,9 @@ ROUTE (ranked, confidence: HIGH)     # the compound itself still routes
 | AN_ABSOLUTE_FLOOR_IS_KEYED_TO_ITS_ROSTER | test_the_measured_roster_still_gates_on_the_paraphrase_floor | tests/test_agent_lint.py | integration | green |
 | GRAPH_ROUTE_NAMED_ID_LOADS_IT | test_graph_route_named_id_loads_it | tests/test_graph_lint.py | integration; gains the bare-`root` row (amended 2026-10-01) | green |
 | GRAPH_ROUTE_NAMED_PATH_LOADS_ITS_OWNER | test_graph_route_named_path_loads_its_owner | tests/test_graph_lint.py | integration | green |
-| PATH_ROUTE_ADDS_SEED_SKILL_PHRASES | test_path_route_adds_seed_skill_phrases (8.1.2): the §4 fixture; arms path removed (tier 3 as before), named id (no skill added), tier 2 over `STRONG_TIER_CAP` (tier 3 as before), an `inferred` entry, a seed skill that tier 2 loaded (once, its tier-2 kind) | tests/test_graph_lint.py | integration | pending |
-| PATH_ROUTE_SKILL_ADDITION_IS_CAPPED | test_path_route_skill_addition_is_capped (8.1.2): exactly `PATH_TIER_SKILL_CAP` skills added in node-id order after the tier-2 entries; one more adds none; two runs byte-identical | tests/test_graph_lint.py | integration | pending |
-| PATH_ROUTE_SKILLS_OVER_CAP | test_path_route_skill_addition_is_capped, its over-cap arm | tests/test_graph_lint.py | integration | pending |
+| PATH_ROUTE_ADDS_SEED_SKILL_PHRASES | test_path_route_adds_seed_skill_phrases (8.1.2): the §4 fixture; arms path removed (tier 3 as before), named id (no skill added), tier 2 over `STRONG_TIER_CAP` (tier 3 as before), an `inferred` entry, a seed skill that tier 2 loaded (once, its tier-2 kind) | tests/test_graph_lint.py | integration | red |
+| PATH_ROUTE_SKILL_ADDITION_IS_CAPPED | test_path_route_skill_addition_is_capped (8.1.2): exactly `PATH_TIER_SKILL_CAP` skills added in node-id order after the tier-2 entries; one more adds none; two runs byte-identical | tests/test_graph_lint.py | integration | red |
+| PATH_ROUTE_SKILLS_OVER_CAP | test_path_route_skill_addition_is_capped, its over-cap arm | tests/test_graph_lint.py | integration | red |
 | GRAPH_ROUTE_PHRASE_LOADS_ITS_NODE | test_graph_route_phrase_loads_its_node | tests/test_graph_lint.py | integration; gains the rows moved from SPEC-0005's retired promotion tests: a piece holding a slash and a space, stopwords and short words dropped, the first held piece in `load_when` order as `how.detail` | green |
 | GRAPH_ROUTE_PHRASE_LOADS_ITS_NODE | test_plan_phrase_entry_brings_required_parent | tests/test_graph_lint.py | integration; rewritten from SPEC-0005 `test_plan_promoted_node_brings_required_parent` | green |
 | STRONG_TIER_OVER_CAP_FALLS_THROUGH | test_strong_tier_over_cap_falls_through | tests/test_graph_lint.py | integration; gains a row where four nodes' phrases load by tier 3, uncapped (amended 2026-10-01) | green |
@@ -1028,3 +1028,7 @@ moves with each entry here.
   the owner ratified 2026-10-07 (commit af0bbb0). §0's Related ADRs line is
   updated to record the ratification. No contract changed. The status stays
   `back-written`.
+- 2026-10-09: 8.1.2 RED (`tester-R-8.1.2`). §10's PATH_ROUTE_ADDS_SEED_SKILL_PHRASES,
+  PATH_ROUTE_SKILL_ADDITION_IS_CAPPED and PATH_ROUTE_SKILLS_OVER_CAP rows name
+  their tests in `tests/test_graph_lint.py` and read `red`. No contract
+  changed. The status stays `back-written`.
