@@ -2,7 +2,7 @@
 status: active
 status_date: 2026-10-09
 owner: seed-installer
-status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tests/test-install-kernel-modes.sh, tests/test-install-adoption.sh, tests/test-full-install.sh, tests/test-seed-lint.sh, tests/test-graft-tools.sh, tests/test_corpus_match.py (every §10 contract row green but the two 8.1.2 graft-finding rows, CHECK_FLAGS_RETIRED_GRAPH_NODE and GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES, `pending` until their RED, plan grill-8.1.2 increment 11; HARVEST_CANDIDATE_FORM_IS_PLACED included, held by S14 in case_plan_records and proved by mutation, §12's second entry of 2026-10-05 on the harvest-candidate form; all wired into tests/run.sh)
+status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tests/test-install-kernel-modes.sh, tests/test-install-adoption.sh, tests/test-full-install.sh, tests/test-seed-lint.sh, tests/test-graft-tools.sh, tests/test_corpus_match.py (every §10 contract row green but the two 8.1.2 graft-finding rows, CHECK_FLAGS_RETIRED_GRAPH_NODE (M13 case_retired_flag, graph-node arm) and GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES (X469), `red` since their RED of 2026-10-09 until GREEN, plan grill-8.1.2 increment 12; HARVEST_CANDIDATE_FORM_IS_PLACED included, held by S14 in case_plan_records and proved by mutation, §12's second entry of 2026-10-05 on the harvest-candidate form; all wired into tests/run.sh)
 ---
 
 # SPEC-0001: install placement
@@ -97,7 +97,11 @@ status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tes
   files untouched and makes no backup, still prints the build report, and
   refreshes the self-ignored cache in a plant with at least one governed
   repository, the one exception.
-  Sign-off for it: product [x]; the tester's review is still owed.
+  Sign-off for it: product [x] · tester [x] (2026-10-09, `tester-R3-8.1.2`:
+  the And and Except clauses are observable as written; the cache bytes are
+  held by SPEC-0007 X467 and BUILD_IS_DETERMINISTIC, and M3's target has no
+  governed repository, so its Then holds there without exception; no test
+  changes).
   The 8.1.2 graft-finding contracts (2026-10-09) came after every tick above:
   CHECK_FLAGS_RETIRED_GRAPH_NODE and GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES,
   with §2's line and §6 "Retired graph nodes". The architect wrote them
@@ -105,11 +109,17 @@ status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tes
   `origin: seed` protocol node failed graph-lint with no flag naming it.
   Product owes §3 and AC-26, which name only agents and skills; the tester
   owes the two §10 rows.
-  Sign-offs for them: product [x] · architect [x] · tester [ ]. Product
+  Sign-offs for them: product [x] · architect [x] · tester [x] (2026-10-09,
+  `tester-R3-8.1.2`: both §10 rows written and red, each for the missing
+  behaviour: M13 case_retired_flag's graph-node arm, where graft-audit names
+  no `RETIRED docs/graph/protocols/toolcraft.md`, and X469
+  case_run_ties_lint_errors_to_retired_nodes, where the routes row is BLOCK
+  over the stage copy's one duplicate fact-key error naming
+  `protocol.toolcraft` but names no RETIRED protocol). Product
   (`product-8.1.2e`, 2026-10-09) signed: §3 now names the retired seed page,
   the graft run's explanation of the graph-lint errors it causes, and the
   steward's deletion by name after the owner's named confirmation; AC-26
-  maps both contracts in plain words. The tester's two §10 rows are owed.
+  maps both contracts in plain words.
   Before 8.0.0 this spec was `back-written` and carried no sign-off, because
   there was no RED for a promotion to land with. An earlier draft asserted
   signatures dated to a RED that never landed; that was fabricated to satisfy
@@ -1852,8 +1862,8 @@ $ head -1 /p/docs/graph/libraries/rxjs.md
 | CHECK_EXECUTES_EACH_WIRED_HOOK | M12 case_hook_check: over a copy of the every-host install, `claude-code --check` exits 0, keeps CHECK_WITHOUT_COPILOT_SAYS_SO's line, prints a ran line for the two Claude Code and the two Prime Agent hooks, and leaves the tree byte-identical; with `.claude/route-hook.py` removed it exits non-zero naming `UserPromptSubmit .claude/route-hook.py`; over a copy of the Copilot-only install with `.github/hooks/status-hook.py` removed, `github-copilot --check` exits non-zero naming `SessionStart .github/hooks/status-hook.py` | tests/test-install-placement.sh | integration; red on arrival (no ran line: `--check` ran no hook) | green |
 | CHECK_FLAGS_RETIRED_HARNESS_ENTRY | M13 case_retired_flag: over a copy of the every-host install carrying an `origin: seed` `docs/graph/skills/from-scratch-bootstrap.md` the seed does not ship and its `.claude/skills/` projection, plus an `origin: seed` `.claude/agents/legacy-steward.md` with no graph node (added at the tip), `graft-audit.py` keeps its clean-copy exit code and names the lone agent `RETIRED`, and `claude-code --check` exits 0, names all three `RETIRED` and leaves the tree byte-identical; after the projection gains a line and a re-install backs it up, `graft-audit.py` counts the backup `RETIRED`, reports no `UNMAPPED` backup and names the projection `RETIRED`; both entries are still on disk | tests/test-install-placement.sh | integration; red on arrival (`--check` printed no harness line, not even over the clean copy) | green |
 | CHECK_FLAGS_ORPHAN_HARNESS_ENTRY | M14 case_orphan_flag: over a copy of the every-host install, `claude-code --check` says every harness entry has a graph home (inside M13); with a skill in `.claude/skills/deploy-notes/` and an agent in `.prime/agent/agents/` and no graph node, it exits 0, names each `ORPHAN` with the graph home it lacks and leaves the tree byte-identical; `graft-audit.py` names the skill `ORPHAN` with its clean-copy exit code (asserted since the tip) | tests/test-install-placement.sh | integration; red on arrival (`--check` did not name the orphan skill) | green |
-| CHECK_FLAGS_RETIRED_GRAPH_NODE | M13 case_retired_flag, graph-node arm (8.1.2, graft finding F1): the every-host install copy also carries an `origin: seed` `docs/graph/protocols/<name>.md` the seed does not ship and an `origin: project` protocol of another name: `claude-code --check` exits 0, names the seed one `RETIRED` and not the project one, and leaves the tree byte-identical; `graft-audit.py` names it `RETIRED` with its clean-copy exit code; the node is still on disk | tests/test-install-placement.sh | integration | pending |
-| GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES | X469, a GR case of `tools/graft-run.py`, its function named by the tester (8.1.2, graft finding F1): a synthetic plant carrying an `origin: seed` `docs/graph/protocols/<name>.md` the seed does not ship, whose `owns:` repeats a fact-key of a seed skill node: the `graft.gate.routes` row is BLOCK, names the path among the `RETIRED` entries and carries `RETIRED_LINT_CLAUSE` with the node's id and a count of 1; arm: the same node with that fact-key dropped from its `owns:` carries no clause; the node is on disk after the run | tests/test-graft-tools.sh | integration (synthetic plant) | pending |
+| CHECK_FLAGS_RETIRED_GRAPH_NODE | M13 case_retired_flag, graph-node arm (8.1.2, graft finding F1): the every-host install copy also carries an `origin: seed` `docs/graph/protocols/<name>.md` the seed does not ship and an `origin: project` protocol of another name: `claude-code --check` exits 0, names the seed one `RETIRED` and not the project one, and leaves the tree byte-identical; `graft-audit.py` names it `RETIRED` with its clean-copy exit code; the node is still on disk | tests/test-install-placement.sh | integration | red |
+| GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES | X469 case_run_ties_lint_errors_to_retired_nodes, a GR case of `tools/graft-run.py` (8.1.2, graft finding F1): a synthetic plant carrying an `origin: seed` `docs/graph/protocols/<name>.md` the seed does not ship, whose `owns:` repeats a fact-key of a seed skill node: the `graft.gate.routes` row is BLOCK, names the path among the `RETIRED` entries and carries `RETIRED_LINT_CLAUSE` with the node's id and a count of 1; arm: the same node with that fact-key dropped from its `owns:` carries no clause; the node is on disk after the run | tests/test-graft-tools.sh | integration (synthetic plant) | red |
 
 Coverage note, so the table is not read as more than it is.
 

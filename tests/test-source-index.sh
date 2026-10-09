@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPEC-0007 source index: tools/source-index.py (X425-X467).
+# SPEC-0007 source index: tools/source-index.py (X425-X467, X470).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -2691,6 +2691,64 @@ def x467(base):
     return ("the head and the indented report after the stamp, before the notices and banner, the cache reused; "
             "no repository: its fix, no cache; --check and propose run none; no plant module imported, ESC shown "
             "as ?; non-UTF-8 stdout and a failed build leave exit 0 and the banner, nothing of the build's printed")
+
+
+# §6 constants of ACTION_LINE_NAMES_AT_MOST_TEXT_MAX_ROWS_RECORDS, used by value.
+TEXT_MAX_ROWS = 40
+ACTION_MORE = ", ... {k} more; --all lists every row"
+
+
+def capped_action(query_name, recs, n=None):
+    """The closing ACTION_LINE of the text view over `recs`, its reasons cut at TEXT_MAX_ROWS."""
+    shown = ", ".join(f"{r['reason']}: {r['subject']}" for r in recs[:TEXT_MAX_ROWS])
+    if len(recs) > TEXT_MAX_ROWS:
+        shown += ACTION_MORE.format(k=len(recs) - TEXT_MAX_ROWS)
+    line = ACTION["build"].format(n=len(recs) if n is None else n) if query_name == "build" else ACTION[query_name]
+    return line + shown + ")."
+
+
+@case("X470", "ACTION_LINE_NAMES_AT_MOST_TEXT_MAX_ROWS_RECORDS")
+def x470(base):
+    problems = []
+    gone = [f"gone/f{i:02d}.py" for i in range(1, TEXT_MAX_ROWS + 2)]
+    p = Plant(base, "many-missing", files={"a.py": "A = 1\n"})
+    want = [{"reason": "input-not-found", "subject": g} for g in gone]
+    d = query(p, "impact", *gone)
+    recs = [{"reason": r.get("reason"), "subject": r.get("subject")} for r in d.get("incomplete", [])]
+    check(recs == want, f"setup: impact --json incomplete is not the {len(gone)} input-not-found records in input "
+                        f"order: {d.get('incomplete')!r}")
+    d_all = query(p, "impact", "--all", *gone)
+    if len(d_all.get("incomplete", [])) != len(gone):
+        problems.append(f"--json --all: incomplete holds {len(d_all.get('incomplete', []))} records, not {len(gone)}")
+    t = tool(p, "impact", *gone)
+    cut = capped_action("impact", want)
+    if t.rc != 0 or t.last() != cut:
+        problems.append(f"text: the action line is not cut at {TEXT_MAX_ROWS} records with ACTION_MORE 1: "
+                        f"want {cut[-120:]!r}, got {t.last()[-120:]!r}")
+    if "... 1 more; --all lists every row" not in t.lines():
+        problems.append(f"text: the record list above the action line is not cut with its more-line — {t.ctx()}")
+    t = tool(p, "impact", "--all", *gone)
+    whole = ACTION["impact"] + ", ".join(f"input-not-found: {g}" for g in gone) + ")."
+    if t.rc != 0 or t.last() != whole:
+        problems.append(f"--all: the action line does not name all {len(gone)} records and no ACTION_MORE: "
+                        f"got {t.last()[-120:]!r}")
+    # build: more setup items than TEXT_MAX_ROWS keep their whole count in {n}
+    files = {"src/a.py": "A = 1\n"}
+    for i in range(1, TEXT_MAX_ROWS + 2):
+        files[f"docs/graph/nodes/n{i:02d}.md"] = node(f"subsystem.n{i:02d}", repo=f"old/lib{i:02d}")
+    b = Plant(base, "many-setup", files=files, config={"exclude": []})
+    d = query(b, "build")
+    brecs = d.get("incomplete", [])
+    check(len(brecs) > TEXT_MAX_ROWS, f"setup: build holds {len(brecs)} incomplete records, not more than "
+                                      f"{TEXT_MAX_ROWS}: {brecs!r}")
+    t = tool(b, "build")
+    cut = capped_action("build", brecs)
+    if t.rc != 0 or t.last() != cut:
+        problems.append(f"build: the action line does not keep n={len(brecs)} with its reasons cut at "
+                        f"{TEXT_MAX_ROWS}: want {cut[:60]!r}…{cut[-80:]!r}, got {t.last()[:60]!r}…{t.last()[-80:]!r}")
+    check(not problems, " || ".join(problems))
+    return (f"{len(gone)} missing inputs: the action line names {TEXT_MAX_ROWS} then ACTION_MORE 1, --all all, "
+            f"--json all; build keeps n whole")
 
 
 failed = []

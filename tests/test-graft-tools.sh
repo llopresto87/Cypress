@@ -1297,6 +1297,58 @@ case_run_routes_runs_hook_check() {
     || { echo "the routes row does not report the hook check for claude-code: $row"; return 1; }
 }
 
+# X469, SPEC-0001 GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES: a plant keeps an
+# origin: seed protocol the seed folded into skills/toolcraft. When its owns:
+# repeats rule.toolcraft, the stage copy's graph-lint fails on the duplicate
+# fact-key; the routes row stays BLOCK, names the node RETIRED and ties the one
+# error to it. With a fact-key of its own the row carries no clause.
+x469_run() {  # x469_run <arm> <owns> -> $GR/x469-<arm>/{zephyrplant,stage,run.out,lint.out}
+  local d="$GR/x469-$1" p c
+  p="$d/zephyrplant"
+  mkdir -p "$d" && cp -a "$GR_PLANT" "$p"
+  rm -f "$p/.cypress/recreated-nodes.txt"
+  printf -- '---\nid: protocol.toolcraft\ntier: 2\nkind: protocol\norigin: seed\ntitle: toolcraft, a protocol the seed folded into skill.toolcraft\nowns:\n  - %s\nrequires:\nload_when:\n  - "retired toolcraft protocol"\nest_tokens: 60\n---\n# toolcraft\n\nA seed protocol whose rules moved into skill.toolcraft.\n' \
+    "$2" > "$p/docs/graph/protocols/toolcraft.md"
+  sgit -C "$p" add -A && sgit -C "$p" commit -q -m "a retired seed protocol" \
+    || { echo "fixture: the $1 plant could not be committed"; return 1; }
+  python3 "$RUN" "$p" "$ROOT" --stage "$d/stage" >"$d/run.out" 2>"$d/run.err" || true
+  c="$(find "$d/stage" -path '*/docs/graph/nodes/subsystem.quokka-ledger.md' 2>/dev/null | head -1 | sed 's#/docs/graph/nodes/subsystem.quokka-ledger.md$##')"
+  [ -n "$c" ] || { echo "fixture: no plant copy in the $1 stage: $(flat "$d/run.err")"; return 1; }
+  echo "$c" > "$d/copy"
+  ( cd "$c" && python3 docs/graph/graph-lint.py ) >"$d/lint.out" 2>&1 || true
+}
+case_run_ties_lint_errors_to_retired_nodes() {
+  local node=docs/graph/protocols/toolcraft.md d row n c
+  gr_need || return 1; gr_fixture || return 1
+  [ ! -e "$ROOT/protocols/toolcraft.md" ] && [ -f "$ROOT/skills/toolcraft/SKILL.md" ] \
+    && grep -q '^  - rule.toolcraft$' "$ROOT/skills/toolcraft/SKILL.md" \
+    || { echo "fixture: the seed ships protocols/toolcraft.md, or skills/toolcraft no longer owns rule.toolcraft"; return 1; }
+  # the duplicate arm
+  x469_run dup rule.toolcraft || return 1
+  d="$GR/x469-dup"; c="$(cat "$d/copy")"
+  n="$(grep -E '^[[:space:]]*✗' "$d/lint.out" | grep -cE '(^|[^A-Za-z0-9._-])protocol\.toolcraft([^A-Za-z0-9._-]|$)' || true)"
+  [ "$n" -eq 1 ] || { echo "fixture: the stage copy's graph-lint has $n error line(s) naming protocol.toolcraft, want 1: $(flat "$d/lint.out")"; return 1; }
+  row="$(grep -E '^graft\.gate\.routes:' "$d/run.out" || true)"
+  [ -n "$row" ] || { echo "no graft.gate.routes row: $(tail -5 "$d/run.out" | tr '\n' ' ')"; return 1; }
+  echo "$row" | grep -Eq '^graft\.gate\.routes:[[:space:]]*BLOCK' \
+    || { echo "the routes row is not BLOCK over a graph-lint error: $row"; return 1; }
+  echo "$row" | grep -Eq "[0-9]+ RETIRED entr(y|ies) \\([^)]*$node" \
+    || { echo "the routes row does not name $node among the RETIRED entries: $row"; return 1; }
+  echo "$row" | grep -qF '1 graph-lint error(s) name a RETIRED node (protocol.toolcraft): each clears when the steward deletes that node by name, migration (d)' \
+    || { echo "the routes row carries no RETIRED_LINT_CLAUSE with protocol.toolcraft and 1: $row"; return 1; }
+  [ -f "$d/zephyrplant/$node" ] && [ -f "$c/$node" ] \
+    || { echo "the run deleted $node from the plant or the stage copy"; return 1; }
+  # the arm without the duplicate
+  x469_run own toolcraft.retired-procedure || return 1
+  d="$GR/x469-own"
+  grep -E '^[[:space:]]*✗' "$d/lint.out" | grep -q 'protocol\.toolcraft' \
+    && { echo "fixture: graph-lint still names protocol.toolcraft without the duplicate: $(flat "$d/lint.out")"; return 1; }
+  row="$(grep -E '^graft\.gate\.routes:' "$d/run.out" || true)"
+  echo "$row" | grep -q 'name a RETIRED node' \
+    && { echo "the routes row carries RETIRED_LINT_CLAUSE with no lint error naming the node: $row"; return 1; }
+  [ -f "$d/zephyrplant/$node" ] || { echo "the run deleted $node from the plant"; return 1; }
+}
+
 case_run_exits_1_when_a_gate_blocks() {
   # the fixture deletes a seed node the install re-creates, so the gate table holds a BLOCK.
   gr_need || return 1; gr_fixture || return 1; gr_run_once
@@ -1440,6 +1492,7 @@ collect_case GR-e case_run_derives_tokens_from_plant "the --tokens list is deriv
 collect_case GR-f case_run_prints_gate_table "stdout ends with the Phase 7 gate table"
 collect_case GR-g case_run_exits_1_when_a_gate_blocks "a run whose gate table holds a BLOCK exits 1"
 collect_case GR-j case_run_routes_runs_hook_check "graft.gate.routes runs install.sh <host> --check, the hook check, once per recorded host"
+collect_case X469 case_run_ties_lint_errors_to_retired_nodes "GR-k: a retired seed protocol that repeats a seed fact-key: routes BLOCK, named RETIRED, its lint error tied to it"
 collect_case GR-h case_run_passes_inferred_base_to_audit "an inferred base is passed to graft-audit as --base"
 collect_case GL-e case_ledger_base_predates_history "a stamp older than the retained history: the inferred base is a lower bound, --base-dir gives the real one"
 collect_case GR-i case_run_infers_adapters_for_old_stamp "a stamp with no tools: adapters inferred from the projections, confirmed with --tools"

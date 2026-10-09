@@ -8,7 +8,7 @@
 #   M7  every written file is recoverable from a timestamped sibling
 #   M9  under --symlink every placed file is a link or a recorded exception
 #   M10 no write escapes PROJECT_DIR
-#   M13 a retired seed entry is flagged RETIRED; M14 a plant-only harness entry ORPHAN
+#   M13 a retired seed entry or graph node is flagged RETIRED; M14 a plant-only harness entry ORPHAN
 #   M15-M20 selective placement: propose, place, refuse, refresh, leave, check
 set -euo pipefail
 
@@ -487,11 +487,19 @@ case_hook_check() {
 # protocol.from-scratch), still in the graph and still projected, is named
 # RETIRED by --check and by graft-audit; nothing is deleted, the exit code is
 # the rest of the check's, and a backup of its projection classifies RETIRED.
+# Its graph-node arm, CHECK_FLAGS_RETIRED_GRAPH_NODE: an origin: seed protocol
+# the seed folded into skills/toolcraft, which no harness projects, is named
+# RETIRED the same way; an origin: project protocol is not.
 case_retired_flag() {
     local R="$WORK/retired" out rc before node=docs/graph/skills/from-scratch-bootstrap.md
     local proj=.claude/skills/from-scratch-bootstrap/SKILL.md lone=.claude/agents/legacy-steward.md audit_rc0
+    # the graph-node arm (CHECK_FLAGS_RETIRED_GRAPH_NODE): a seed protocol folded into skills/toolcraft
+    local gnode=docs/graph/protocols/toolcraft.md pnode=docs/graph/protocols/release-train.md
     [[ ! -e "$ROOT/skills/from-scratch-bootstrap" ]] || fail "fixture: the seed ships skills/from-scratch-bootstrap again"
     [[ ! -e "$ROOT/agents/legacy-steward.md" ]] || fail "fixture: the seed ships agents/legacy-steward.md"
+    [[ ! -e "$ROOT/protocols/toolcraft.md" && -d "$ROOT/skills/toolcraft" ]] \
+        || fail "fixture: the seed ships protocols/toolcraft.md again, or no longer ships skills/toolcraft"
+    [[ ! -e "$ROOT/protocols/release-train.md" ]] || fail "fixture: the seed ships protocols/release-train.md"
     mkdir -p "$R" && cp -a "$BASE/." "$R/"
     rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$R" 2>&1)" || rc=$?
     grep -q "every harness entry has a graph home" <<<"$out" \
@@ -501,9 +509,14 @@ case_retired_flag() {
     mkdir -p "$R/${proj%/SKILL.md}" && cp "$R/$node" "$R/$proj"
     # the Given's third arm: an origin: seed harness entry with no graph node at all
     printf -- '---\nname: legacy-steward\ndescription: a seed agent the seed folded away\norigin: seed\n---\n# legacy-steward\n' > "$R/$lone"
+    # the graph-node arm: an origin: seed protocol node no harness projects, beside a project protocol
+    printf -- '---\nid: protocol.toolcraft\nkind: protocol\norigin: seed\n---\n# toolcraft\n' > "$R/$gnode"
+    printf -- '---\nid: protocol.release-train\nkind: protocol\norigin: project\n---\n# release-train\n' > "$R/$pnode"
     rc=0; out="$(python3 "$ROOT/tools/graft-audit.py" "$R" "$ROOT" 2>&1)" || rc=$?
     [[ $rc -eq $audit_rc0 ]] || fail "CHECK_FLAGS_RETIRED_HARNESS_ENTRY: a RETIRED flag changed graft-audit's exit code from $audit_rc0 to $rc: $out"
     grep -q "RETIRED $lone:" <<<"$out" || fail "CHECK_FLAGS_RETIRED_HARNESS_ENTRY: graft-audit does not name $lone RETIRED: $out"
+    grep -q "RETIRED $gnode:" <<<"$out" || fail "CHECK_FLAGS_RETIRED_GRAPH_NODE: graft-audit does not name $gnode RETIRED: $out"
+    grep -q "RETIRED $pnode" <<<"$out" && fail "CHECK_FLAGS_RETIRED_GRAPH_NODE: graft-audit names the origin: project $pnode RETIRED: $out"
     before="$(tree_sig "$R")"
     rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$R" 2>&1)" || rc=$?
     [[ $rc -eq 0 ]] || fail "CHECK_FLAGS_RETIRED_HARNESS_ENTRY: a RETIRED flag changed the exit code to $rc: $out"
@@ -511,6 +524,10 @@ case_retired_flag() {
         grep -q -- "--check: RETIRED $p:" <<<"$out" \
             || fail "CHECK_FLAGS_RETIRED_HARNESS_ENTRY: --check does not name $p RETIRED: $out"
     done
+    grep -q -- "--check: RETIRED $gnode:" <<<"$out" \
+        || fail "CHECK_FLAGS_RETIRED_GRAPH_NODE: --check does not name $gnode RETIRED: $out"
+    grep -q -- "RETIRED $pnode" <<<"$out" \
+        && fail "CHECK_FLAGS_RETIRED_GRAPH_NODE: --check names the origin: project $pnode RETIRED: $out"
     [[ "$(tree_sig "$R")" == "$before" ]] || fail "CHECK_FLAGS_RETIRED_HARNESS_ENTRY: --check changed the plant"
     printf 'a line the projection gained\n' >> "$R/$proj"
     "$ROOT/install.sh" claude-code --project-dir "$R" >/dev/null 2>&1 \
@@ -523,7 +540,8 @@ case_retired_flag() {
     grep -q "RETIRED $proj:" <<<"$out" \
         || fail "CHECK_FLAGS_RETIRED_HARNESS_ENTRY: graft-audit does not name $proj RETIRED: $out"
     [[ -f "$R/$node" && -f "$R/$proj" && -f "$R/$lone" ]] || fail "CHECK_FLAGS_RETIRED_HARNESS_ENTRY: a retired entry was deleted"
-    echo "  M13 CHECK_FLAGS_RETIRED_HARNESS_ENTRY: the retired node and its projection are named RETIRED by --check and graft-audit, nothing deleted — OK"
+    [[ -f "$R/$gnode" && -f "$R/$pnode" ]] || fail "CHECK_FLAGS_RETIRED_GRAPH_NODE: a protocol node was deleted"
+    echo "  M13 CHECK_FLAGS_RETIRED_HARNESS_ENTRY, CHECK_FLAGS_RETIRED_GRAPH_NODE: the retired node, its projection and a retired seed protocol are named RETIRED by --check and graft-audit, a project protocol is not, nothing deleted — OK"
 }
 
 # M14, SPEC-0001 CHECK_FLAGS_ORPHAN_HARNESS_ENTRY: a skill and an agent the plant
