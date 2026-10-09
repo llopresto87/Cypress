@@ -422,6 +422,20 @@ that writes the stamp rewrites. A re-run lists none of them, because the nodes
 now exist, so **read the file before any remedy re-runs the installer** and
 cite it as the gate's evidence.
 
+**The install ends with the source-index build.** After the stamp and the
+re-created notice, the installer runs the placed `docs/graph/source-index.py
+build` and prints its report (`skill.source-index` §5 owns its lines). The
+build writes only `.cypress/source-index/`, derived scratch that ignores
+itself and that any query rebuilds, so nothing it replaces needs a backup and
+it is no writer of the plant (ADR-0029); a graft rebuilds the cache through
+its key and never carries one over. The report is advice: a build that fails
+or times out prints one line and leaves the install's exit code as it was, so
+no gate row reads it. A graft runs nothing extra for it. It reads the report
+where the install printed it: in a `graft-run.py` rehearsal, on the stage in
+`graft-run-logs/install.log`, and again after growth-audit's verdicts in
+`coverage.txt`. Phase 6 corrects the `repo:` values it names, and Phase 7
+records it with what was done with each line.
+
 ## Provenance & the seed stamp
 
 A plant that knows which seed version it carries can be grafted cleanly forever
@@ -1124,6 +1138,15 @@ The reconstruction pass, and the one home of the mandate's procedure.
   is surfaced with a remediation and a reason. The ledger closes when every row
   is fixed or carried with a reason, and closing it is what
   `graft.gate.pure-graph` asks the reviewer to assert.
+- **(4) Correct each `repo:` value the source-index report names.** A
+  `repo-unresolved` line is a node whose `repo:` names nothing on disk, a
+  drifted plant fact. Set the value to one plant-relative path that exists (a
+  repository, a folder or a file), or remove the line; no tool edits a
+  `repo:` value, because the author must know what the node owns. Read the
+  report from the stage of a `graft-run.py` rehearsal (*The installer is the
+  hand that applies it*); a line the apply install's report still names is
+  corrected the same way before the graft is recorded. The report's other
+  fix lines and its hints are the owner's choices, put to them in Phase 7.
 
 Split across parallel authoring-class authors when the rebalance is large; that
 parallelism is exactly what `graft.gate.cross-author` exists to reconcile.
@@ -1138,6 +1161,13 @@ mechanical half on a copy outside the plant: the ledger, the install with its
 log, the engines, the audits and the lints. It prints this table's result
 column, a judgment row as `not run` with its judge. It writes nothing in the
 plant and ratifies nothing.
+
+The apply install prints the source-index build report last, and
+growth-audit repeats it after its verdicts. It is advice and never a row of
+the table below. The record's "Source index after the graft" section holds
+the apply install's report and, for each line, what was done: a `repo:`
+value corrected in Phase 6, or a fix or hint put to the owner as a next step
+(`TEST_GLOBS`, the plant config, a repository no `repo:` names).
 
 Then prove the plant is left more capable and no less itself. Every gate is one
 row of the table below: that table is the single home for what a graft asserts,
@@ -1456,6 +1486,10 @@ State the summary in the chat, and record a provenance entry in the plant's own
 - Re-created nodes: <path> — deliberate deletion re-applied / ratified (N-A where the installer did not treat the target as a prior install: it prints no notice)
 - Roster delta (not assumed spawnable until the preflight confirms it): <specialists added or renamed>
 - Flags used: <--force / --symlink / --copy / none>, and what that means for this record
+
+## Source index after the graft (the apply install's build report; advice, never a gate)
+- Report: <the apply install's report, as printed; read on the stage from graft-run-logs/install.log and coverage.txt>
+- <each record or hint line> — corrected in Phase 6 (<node>: repo: <old> → <new / removed>) / put to the owner as a next step: <the fix line>
 
 ## Shape migrations proposed (plant-authored artifacts in a superseded form; N/A if none)
 - <artifact — form it carries → form the seed now defines, the version that changed it, what that buys, and the conversion; PROPOSED / RATIFIED / DECLINED; applied only once RATIFIED.>

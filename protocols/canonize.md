@@ -253,6 +253,10 @@ harvest-candidate row, and `harvest`'s agnosticism gate decides the rest).
    `code-anchor.py --record`, because recording the anchor first empties
    the moved list; nothing runs it per prompt or per file access
    (ADR-0018).
+   A `repo-unresolved` record in its answer is a node whose `repo:`
+   names nothing on disk; the brief hands that node to the librarian,
+   which corrects it in the same close-out: one plant-relative path that
+   exists, or no `repo:` line.
 2. **Spawn the docs-librarian once** (authoring-class; it owns
    `docs/graph/`) with a brief that embeds the canonical block from
    `docs/graph/templates/prompts/graph-session-bootstrap.md` plus the

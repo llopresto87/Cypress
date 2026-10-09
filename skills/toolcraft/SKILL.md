@@ -62,6 +62,9 @@ they happen at different times and are done by different actors:
 Cataloging happens inside the one canonize close-out spawn;
 `protocol.canonize` owns that rule. Canonize catalogs the tool "it
 produced", and the producer is the tool-smith.
+The tools the seed places in `docs/graph/` are described by seed skills
+and need no catalog row (ADR-0030); a plant can still write its own card
+for one.
 
 ## What counts as a durable tool (`toolcraft.durability-criteria`)
 

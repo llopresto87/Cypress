@@ -1087,10 +1087,15 @@ that are the owner's to resolve go to them as numbered decisions
 Include the **coverage record** (`grow.completeness-contract`): every
 collection marked covered-to-evidence or absent-with-reason, the scaffolds
 renamed `.unfilled.md`, and any `plant:` value the owner left open, so the
-delivery proves totality instead of asserting it. Include growth metrics (the
-delivery block from `docs/graph/protocols/deliver.md`): scouts and authors
-spawned, contradictions resolved by follow-up scouting, validation findings
-raised and fixed, evidence gaps left open. These are the plant's birth
+delivery proves totality instead of asserting it. Include the **source-index
+build report** of the last `growth-audit.py` run, printed after its verdicts
+as advice and never a verdict, with what was done about each line: a `repo:`
+value the growth wrote corrected to a path that exists, or a fix or hint
+(`TEST_GLOBS`, the plant config, a repository no `repo:` names) put to the
+owner as a numbered decision. Grow runs nothing extra for it. Include
+growth metrics (the delivery block from `docs/graph/protocols/deliver.md`):
+scouts and authors spawned, contradictions resolved by follow-up scouting,
+validation findings raised and fixed, evidence gaps left open. These are the plant's birth
 telemetry; `harvest` mines them like any other session metrics.
 
 The plant is mature when a clean-context agent can orient from `index.md`
