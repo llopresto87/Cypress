@@ -31,6 +31,8 @@ WHAT IT DOES, IN ORDER
      --lint and --eval, and status-register.py, where each is installed; then
      install.sh <host> --check once per adapter, which runs each wired context
      hook and names each harness entry with no graph home (RETIRED, ORPHAN)
+     and each retired seed graph node; the routes row ties the graph-lint
+     errors a RETIRED node causes to it, and still blocks on them
   8. prints the gate table: one line per row of the Phase 7 table in
      protocols/graft.md, in its order, as the graft record's integrity-gate
      block gives it: `<gate id>: PASS / BLOCK / N-A — <evidence>`. A judgment
@@ -662,6 +664,27 @@ HOOK_RAN = re.compile(r"--check: hook \S+ \S+ ran and printed its context")
 HOOK_FAILED = re.compile(r"WARNING: --check: (hook \S+ \S+ (is wired but|failed|printed nothing)"
                          r"|\S+ is not a readable hook config|could not classify the harness)")
 HARNESS_FLAG = re.compile(r"--check: (RETIRED|ORPHAN) (\S+):")
+FLAG_NOUN = {"RETIRED": "entr", "ORPHAN": "harness entr"}
+RETIRED_LINT_CLAUSE = ("{n} graph-lint error(s) name a RETIRED node ({ids}): each clears when "
+                       "the steward deletes that node by name, migration (d)")
+
+
+def retired_lint_clause(copy: Path, retired: list, lint_out: str) -> str:
+    """RETIRED_LINT_CLAUSE (SPEC-0001 GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES):
+    the graph-lint error lines that name a RETIRED node's id as a whole word,
+    counted once each, with those ids in path order; '' when none does."""
+    ids = []
+    for rel in retired:
+        f = copy / rel
+        if rel.startswith(GRAPH_HOME + "/") and f.is_file():
+            v = graft_audit._fm_value(graft_audit._frontmatter(f), "id")
+            if v and v not in ids:
+                ids.append(v)
+    words = {i: re.compile(rf"(?<![A-Za-z0-9._-]){re.escape(i)}(?![A-Za-z0-9._-])") for i in ids}
+    errors = [l for l in lint_out.splitlines() if l.strip().startswith("✗")]
+    named = [i for i in ids if any(words[i].search(l) for l in errors)]
+    n = sum(1 for l in errors if any(words[i].search(l) for i in ids))
+    return RETIRED_LINT_CLAUSE.format(n=n, ids=", ".join(named)) if n else ""
 
 
 def check_routes(run, ev):
@@ -688,9 +711,15 @@ def check_routes(run, ev):
     for verdict in ("RETIRED", "ORPHAN"):
         named = sorted(p for p, v in flags.items() if v == verdict)
         if named:
-            parts.append(f"{len(named)} {verdict} harness entr{'y' if len(named) == 1 else 'ies'} "
+            parts.append(f"{len(named)} {verdict} {FLAG_NOUN[verdict]}{'y' if len(named) == 1 else 'ies'} "
                          f"({', '.join(named[:3])}{' ...' if len(named) > 3 else ''}; "
                          f"migration (c)/(d), not gated)")
+    # the row keeps graph-lint's verdict; the clause only says which of its
+    # errors a RETIRED node causes and how they clear
+    lint_out = next((out for name, _, out in ev["routes"] if name == "graph-lint"), "")
+    clause = retired_lint_clause(run.copy, sorted(p for p, v in flags.items() if v == "RETIRED"), lint_out)
+    if clause:
+        parts.append(clause)
     return ("PASS" if ok else "BLOCK"), "; ".join(parts) + f" ({run.logs / 'hook-check.txt'})"
 
 
