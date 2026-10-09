@@ -1109,6 +1109,103 @@ lacks "UNGROUNDED" "a declared-unavailable ABSENT row was still UNGROUNDED"
 has "SILENT       framework gfm" "a declared-unavailable grounding was accepted without being disclosed"
 }
 
+# --- X468: the source-index build report after the verdicts (SPEC-0007, 8.1.2) ---
+# SPEC-0007 GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT SOURCE_INDEX_REPORT_UNAVAILABLE
+# The lint runs the seed's tools/source-index.py build from the plant root and
+# prints its lines as advice: never a verdict, never the exit code. A build that
+# does not answer is one GROWTH_REPORT_FAILED line, nothing of what it wrote.
+scn_x468() {
+local p="$TMP/x468" c="$TMP/x468-seed"
+fixture renamed "$p"
+git -C "$p" init -q
+git -C "$p" add -A
+git -C "$p" -c user.name=t -c user.email=t@example.invalid commit -qm plant
+mkdir -p "$c"
+tar -C "$ROOT" --exclude=./.git --exclude=__pycache__ --exclude=./.seed-worktrees -cf - . | tar -C "$c" -xf -
+python3 - "$p" "$ROOT" "$c" <<'PY' || fail "GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT: the case named above failed"
+import json, shutil, subprocess, sys
+from pathlib import Path
+plant, seed, copy = Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3])
+HEAD = 'source index (advice, not a verdict; SPEC-0007 "Build report"):'
+FAILED = ("source index: the build did not answer ({why}); run python3 docs/graph/source-index.py build "
+          "from the plant root")
+NODE = plant / "docs/graph/nodes/subsystem.oldlib.md"
+problems = []
+
+def audit(*flags, seed_root=seed):
+    r = subprocess.run([sys.executable, str(seed_root / "tools/growth-audit.py"), str(plant), str(seed_root),
+                        *flags], capture_output=True, timeout=600)
+    return r.returncode, r.stdout, r.stderr
+
+def lines(raw):
+    return raw.decode("utf-8", "replace").split("\n")
+
+def report_of(doc):
+    """`source_index_report` of the --json document: a key of the document, or
+    of the one list item that carries it (§6 names the key, not its place)."""
+    if isinstance(doc, dict):
+        return doc.get("source_index_report")
+    found = [x["source_index_report"] for x in doc if isinstance(x, dict) and "source_index_report" in x]
+    return found[0] if len(found) == 1 else None
+
+rc_clean, _, _ = audit()
+NODE.write_text("---\nid: subsystem.oldlib\ntier: 2\nkind: subsystem\ntitle: an old library\n"
+                "owns: [subsystem.oldlib.core]\nrequires: []\nrepo: old/lib\nload_when: [\"old library\"]\n"
+                "est_tokens: 100\n---\n# old library\n")
+rc, out, err = audit()
+ls = lines(out)
+if rc != rc_clean:
+    problems.append(f"the report changed the exit code: {rc}, the same run without the node {rc_clean}")
+if HEAD not in ls:
+    problems.append(f"the lint prints no {HEAD!r} line")
+else:
+    after = ls[ls.index(HEAD) + 1:]
+    rec = [l for l in after if l.startswith("  ") and "repo-unresolved: docs/graph/nodes/subsystem.oldlib.md" in l]
+    if not rec:
+        problems.append(f"no indented repo-unresolved line follows the head: {after[:12]!r}")
+rc, out, _ = audit("--json")
+try:
+    rep = report_of(json.loads(out))
+    if not (isinstance(rep, list) and all(isinstance(x, str) for x in rep)
+            and any("repo-unresolved: docs/graph/nodes/subsystem.oldlib.md" in x for x in rep)):
+        problems.append(f"--json source_index_report {rep!r} is not the report's lines with the record")
+except ValueError:
+    problems.append(f"--json printed no JSON document: {out[:300]!r}")
+# SOURCE_INDEX_REPORT_UNAVAILABLE, A2: a seed whose tool writes control bytes and markers, then exits 3
+(copy / "tools/source-index.py").write_text(
+    "import sys\nsys.stdout.write('\\x1b[2J MARK-OUT\\n')\nsys.stderr.write('MARK-ERR \\x1b]0;x\\x07\\n')\n"
+    "sys.exit(3)\n")
+rc, out, err = audit(seed_root=copy)
+both = out + err
+if FAILED.format(why="exit 3") not in lines(out):
+    problems.append(f"a build exiting 3 does not give {FAILED.format(why='exit 3')!r}")
+if rc != rc_clean:
+    problems.append(f"a failed build changed the exit code: {rc}, want {rc_clean}: {lines(out)[:8]!r}")
+if b"MARK-OUT" in both or b"MARK-ERR" in both:
+    problems.append("A2: the build's stdout or stderr was printed")
+if b"\x1b" in both or b"\x07" in both:
+    problems.append("A2: the lint's output holds a byte 0x1b or 0x07")
+_, out, _ = audit("--json", seed_root=copy)
+try:
+    rep = report_of(json.loads(out))
+    if rep != []:
+        problems.append(f"after a failed build --json source_index_report is {rep!r}, not []")
+except ValueError:
+    problems.append(f"--json (failed build) printed no JSON document: {out[:300]!r}")
+# last: --plan rewrites the record the runs above read
+shutil.rmtree(plant / ".cypress/source-index", ignore_errors=True)
+for flag in ("--plan", "--agents"):
+    audit(flag)
+    if (plant / ".cypress/source-index").exists():
+        problems.append(f"{flag} ran a build (.cypress/source-index/ exists after it)")
+if problems:
+    print("FAIL: X468 GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT; failure SOURCE_INDEX_REPORT_UNAVAILABLE: "
+          + " || ".join(problems), file=sys.stderr)
+    sys.exit(1)
+PY
+echo "  the build report follows the verdicts as advice; a failed build is one line — OK"
+}
+
 # --- dispatch: `__case scn_<name>` runs ONE scenario; bases come from the parent ---
 if [ -z "${GA_BASES:-}" ]; then
   export GA_BASES="$TMP/bases"
@@ -1125,7 +1222,7 @@ for s in scn_shared scn_s9 scn_absent scn_staff scn_nostaff scn_dflt scn_rows \
          scn_copy scn_x28 scn_x31 scn_x32 scn_x33 scn_x34 scn_x35 scn_x38 \
          scn_x39 scn_x40 scn_x41 scn_x42 scn_x43 scn_x44 scn_x45 scn_rawbase \
          scn_x58 scn_x61 scn_x62x63 scn_x64 scn_x65 scn_x68 scn_x382 scn_walk \
-         scn_model_map_disclosed scn_x69 scn_x70; do
+         scn_model_map_disclosed scn_x69 scn_x70 scn_x468; do
   printf '%s\t%s\n' "$s" "bash \"$SELF\" __case $s" >> "$SCN"
 done
 rc=0

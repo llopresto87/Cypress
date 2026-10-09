@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPEC-0007 source index: tools/source-index.py (X425-X459).
+# SPEC-0007 source index: tools/source-index.py (X425-X467).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -45,7 +45,7 @@ CONFIG_PATH = "docs/graph/source-index.json"
 FLOOR_LINE = "Floor: {n} maybe row(s) every input reaches (opaque holders and their dependents):"
 RECOMMEND_LINE = ("Recommendation only: the tests above and the always-run set, never only these; "
                   "verify decides what runs.")
-ACTION = {"build": "Incomplete: check by hand (", "impact": "Incomplete: check by hand (",
+ACTION = {"build": "Incomplete: {n} setup item(s) above, each with its fix (", "impact": "Incomplete: check by hand (",
           "affected-tests": "Incomplete: run the full suite (", "anchors": "Incomplete: review by hand (",
           "symbols": "Incomplete: search by hand ("}
 
@@ -549,16 +549,16 @@ def x430(base):
     d = query(P, "impact", "src/a.py")
     cache = t / ".cypress" / "source-index" / "index.json"
     check(cache.is_file(), f"the older tool's query wrote no cache: {d.get('cache')!r}")
-    old = cache.read_bytes()
     inst = subprocess.run(["bash", str(SEED / "install.sh"), "all", "--project-dir", str(t), "--copy"],
                           capture_output=True, text=True, timeout=600, env=ENV)
     if inst.returncode != 0:
         raise HarnessFail(f"the re-install exited {inst.returncode}: {inst.stderr[-600:]}")
     check(placed.read_bytes() == TOOL.read_bytes(), "the re-install did not place the seed's tool")
-    check(cache.is_file() and cache.read_bytes() == old, "the installer deleted or rewrote the cache")
+    check("Cache: rebuilt (build forced)" in inst.stdout,
+          f"the re-install's output holds no `Cache: rebuilt (build forced)`: {inst.stdout[-900:]!r}")
     d = query(P, "impact", "src/a.py")
-    check(status(d) == "rebuilt", f"after the install the cache status is {d.get('cache')!r}, not rebuilt")
-    return "an install over an older tool's cache leaves it; the next query rebuilds it"
+    check(status(d) == "reused", f"after the install the cache status is {d.get('cache')!r}, not reused")
+    return "an install over an older tool's cache rebuilds it with the seed's tool; the next query reuses it"
 
 
 # --- links ----------------------------------------------------------------------
@@ -1963,6 +1963,14 @@ def x459(base):
                     nested={"vendor/x": {"y.py": "Y = 1\n"}})     # node subsystem.repo0, `repo: vendor/x`
     p.commit(".")
     (p.dir / "vendor" / "sub").mkdir(parents=True)        # empty, created after commit: an unresolved dir
+    # Platform probe (SPEC-0007 §10): a value whose case differs from disk names
+    # nothing only on a case-sensitive file system; elsewhere the case checks skip.
+    probe = write(p.dir, "probe", "probe\n")
+    case_sensitive = not (p.dir / "PROBE").exists()
+    probe.unlink()
+    if not case_sensitive:
+        print("  X459: case-insensitive file system (stat of PROBE found probe): arm case and the "
+              "`repo: Src` record of arm unresolved skipped")
     inputs = ("src/lib/a.py", "src/lib/c.py", "src/b.py", "CMakeLists.txt", "vendor/x/y.py")
     holder = {}
 
@@ -2000,7 +2008,7 @@ def x459(base):
     def unresolved_arm():
         d = anchors_doc()
         want = sorted((page(n), REPO_UNRESOLVED_DETAIL.format(value=values[n]))
-                      for n in ("uold", "ugone", "ucase", "esub"))
+                      for n in ("uold", "ugone", "ucase", "esub") if case_sensitive or n != "ucase")
         check(unresolved(d) == want, f"anchors: repo-unresolved records {unresolved(d)!r}, want {want!r}")
         t = tool(p, "anchors", *inputs)
         check(t.rc == 0 and t.last().startswith(ACTION["anchors"]),
@@ -2013,6 +2021,8 @@ def x459(base):
             check(not loud, f"router: `{task}` adds notices {loud!r}, want none for any repo: value")
 
     def case_arm():
+        if not case_sensitive:
+            return
         d = anchors_doc()
         for path in inputs:
             check(page("ucase") not in [f[0] for f in repo_facts(d, path)],
@@ -2107,6 +2117,556 @@ def x459(base):
     return ("a file or non-empty folder claims, slash or not; the root, a nested repository and outside "
             "values claim nothing; a value naming nothing reads as before and is repo-unresolved; the router "
             "folds case; no helper: inference skipped; /proc/self, a symlink out and a FIFO are safe")
+
+
+# --- surfacing (8.1.2) ----------------------------------------------------------
+import re
+
+# §6 "Build report" texts, used by value; tools/source-index.py, install.sh and
+# the seed skill are their homes.
+BUILD_TIME_RE = r"Built in \d+\.\d\d s\."
+BUILD_FIX = {
+    "no-repository": ("the plant root is not a Git work tree and no node's repo: names a repository: if the "
+                      "code lives in repositories below the plant root, let grow write the nodes whose repo: "
+                      "names each (or write them); if the plant root is the code, run git init there and "
+                      "commit; then run python3 docs/graph/source-index.py build"),
+    "config-refused": ("fix docs/graph/source-index.json: only the keys exclude, always_run and global_inputs, "
+                       "each a list of strings; or delete the file to use the defaults"),
+    "no-test-declaration": ("set TEST_GLOBS in docs/graph/spec-lint.py to a list of the plant's test-file "
+                            "patterns (the owner confirms it; grow asks it with the plant facts)"),
+    "repo-unresolved": ("set the node's repo: to one plant-relative path that exists (a repository, a folder "
+                        "or a file), or remove the line"),
+    "repository-unnamed": ("write (or let grow write) a node whose repo: names this repository; if it is not "
+                           "this plant's code, list it in the .gitignore of the repository that holds it; then "
+                           "run python3 docs/graph/source-index.py build"),
+}
+HINT_LINE = {
+    "tests-outside-class": ("Hint: {count} file(s) named like tests are outside TEST_GLOBS, e.g. {paths}. Add "
+                            "their folders to TEST_GLOBS in docs/graph/spec-lint.py, or list them under "
+                            "\"exclude\" in docs/graph/source-index.json if they are not tests."),
+    "config-pattern-unmatched": "Hint: {count} pattern(s) in docs/graph/source-index.json match no file: {patterns}.",
+}
+HINT_FIX = {"config-pattern-unmatched": (
+    "correct each pattern in docs/graph/source-index.json to the files it means (a pattern with no \"/\" matches "
+    "a file name, one with \"/\" a plant-relative path), or remove it; then run python3 "
+    "docs/graph/source-index.py build")}
+SKILL_ROUTE_TASKS = {
+    "impact": "what depends on src/app.py before I change it",
+    "affected-tests": "which tests does a change to src/app.py reach",
+    "anchors": "which graph pages cite src/app.py",
+    "symbols": "where is the function save_order defined",
+}
+INSTALL_BUILD_HEAD = 'source index build (advice, never a failure of the install; SPEC-0007 "Build report"):'
+INSTALL_BUILD_FAILED = ("source index: the build did not finish ({why}); the install is complete. Run from the "
+                        "plant root: python3 docs/graph/source-index.py build")
+STAMP_LINE = "[seed]   .cypress/seed.json     (seed stamp:"
+CLOSING_BANNER = "[seed] done. FILES ARE PLACED"
+FIX = "  fix: "
+
+
+def fix_line(reason):
+    return FIX + BUILD_FIX[reason]
+
+
+def hints_of(doc, kind=None):
+    return [h for h in doc.get("hints", []) if kind is None or h.get("hint") == kind]
+
+
+def hint_view(h):
+    return (h.get("hint"), h.get("subject"), h.get("count"), h.get("paths"))
+
+
+def record_line(t, reason, subject):
+    """The index of the text view's line for the `reason` record of `subject`."""
+    ls = t.lines()
+    hits = [i for i, l in enumerate(ls) if f"{reason}: {subject}" in l and not l.startswith("Incomplete:")]
+    check(len(hits) == 1, f"the build text view lists the {reason} record of {subject} {len(hits)} time(s), "
+                          f"not once — {t.ctx()}")
+    return hits[0]
+
+
+def expect_fix_under(t, reason, subject):
+    i = record_line(t, reason, subject)
+    ls = t.lines()
+    got = ls[i + 1] if i + 1 < len(ls) else None
+    check(got == fix_line(reason), f"the line under the {reason} record is {got!r}, want {fix_line(reason)!r}")
+
+
+def time_line_index(t):
+    hits = [i for i, l in enumerate(t.lines()) if re.fullmatch(BUILD_TIME_RE, l)]
+    check(len(hits) == 1, f"the build text view holds {len(hits)} `Built in <s> s.` line(s), not one — {t.ctx()}")
+    return hits[0]
+
+
+def ends_with_build_action(t, n):
+    want = ACTION["build"].format(n=n)
+    check(t.last().startswith(want), f"the build text view does not end with {want!r}… — {t.ctx()}")
+
+
+@case("X461", "BUILD_REPORTS_ITS_TIME_AND_COUNTS")
+def x461(base):
+    p = inventory_plant(base)
+    t = tool(p, "build")
+    check(t.rc == 0, f"build must exit 0 — {t.ctx()}")
+    ls = t.lines()
+    check(len(ls) >= 2 and ls[0].startswith("Cache: ") and ls[1].startswith("Index: "),
+          f"the build text view does not open with the cache line and the count line — {t.ctx()}")
+    check(time_line_index(t) == 2, f"the time line is not the line after the count line — {t.ctx()}")
+    first = p.index.read_bytes()
+    d = query(p, "build")
+    secs = d.get("seconds")
+    check(isinstance(secs, (int, float)) and not isinstance(secs, bool) and secs >= 0,
+          f"build --json `seconds` is {secs!r}, not a non-negative number")
+    check(p.index.read_bytes() == first, "two builds wrote cache documents that differ (the time is in the cache)")
+    check(b"seconds" not in first, "the cache document holds `seconds`")
+    # no incomplete record and no hint: the time line is the last line
+    write(p.dir, CONFIG_PATH, json.dumps({"exclude": []}) + "\n")
+    d = query(p, "build")
+    check(d.get("incomplete") == [] and d.get("hints") == [],
+          f"setup: the plant with `exclude: []` is not complete and hint-free: {d.get('incomplete')!r} "
+          f"{d.get('hints')!r}")
+    t = tool(p, "build")
+    check(t.rc == 0 and re.fullmatch(BUILD_TIME_RE, t.last()),
+          f"with no record and no hint the time line is not the last line — {t.ctx()}")
+    return "cache line, count line, then `Built in <s> s.`; `seconds` >= 0; no time in the cache"
+
+
+@case("X462", "BUILD_NAMES_REPO_VALUES_THAT_NAME_NOTHING; failure REPOSITORY_UNNAMED")
+def x462(base):
+    problems = []
+    page = "docs/graph/nodes/{}.md".format
+    values = {"nold": "old/lib", "nlist": "src/a.py, src/b.py", "nsrc": "src"}
+    files = {"src/a.py": "A = 1\n", "src/b.py": "B = 1\n", "tests/t_test.py": "T = 1\n"}
+    for n, v in values.items():
+        files[f"docs/graph/nodes/{n}.md"] = node(f"subsystem.{n}", repo=v)
+    p = Plant(base, "repo-values", files=files, config={"exclude": []})
+    try:
+        d = query(p, "build")
+        got = unresolved(d)
+        want = sorted((page(n), REPO_UNRESOLVED_DETAIL.format(value=values[n])) for n in ("nold", "nlist"))
+        check(got == want, f"build: repo-unresolved records {got!r}, want {want!r}")
+        check(p.index.is_file(), "build wrote no cache beside its repo-unresolved records")
+        t = tool(p, "build")
+        check(t.rc == 0, f"build must exit 0 — {t.ctx()}")
+        ti = time_line_index(t)
+        for n in ("nold", "nlist"):
+            check(record_line(t, "repo-unresolved", page(n)) > ti,
+                  f"the {page(n)} record is not after the time line — {t.ctx()}")
+            expect_fix_under(t, "repo-unresolved", page(n))
+        ends_with_build_action(t, len(d.get("incomplete", [])))
+    except CaseFail as e:
+        problems.append(f"repo values: {e}")
+
+    def unnamed_plant(name, ignore=False, named=False):
+        fs = {"src/a.py": "A = 1\n", "tests/t_test.py": "T = 1\n"}
+        if ignore:
+            fs[".gitignore"] = "vendor/lib/\n"
+        if named:
+            fs["docs/graph/nodes/vlib.md"] = node("subsystem.vlib", repo="vendor/lib")
+        u = Plant(base, name, files=fs, config={"exclude": []})
+        sub = u.dir / "vendor" / "lib"
+        sub.mkdir(parents=True)
+        git(sub, "init", "-q")
+        write(sub, "x.py", "X = 1\n")
+        git(sub, "add", "-A")
+        git(sub, "commit", "-qm", "nested")
+        return u
+
+    try:
+        u = unnamed_plant("unnamed")
+        d = query(u, "build")
+        recs = [(r.get("reason"), r.get("subject")) for r in d.get("incomplete", [])]
+        check(recs == [("repository-unnamed", "vendor/lib")],
+              f"build: incomplete {d.get('incomplete')!r}, want one repository-unnamed record naming vendor/lib")
+        under = [r.get("path") for r in d.get("inventory", []) if str(r.get("path")).startswith("vendor/lib/")]
+        check(not under, f"build inventories {under!r} under the unnamed repository")
+        t = tool(u, "build")
+        expect_fix_under(t, "repository-unnamed", "vendor/lib")
+        imp = query(u, "impact", "src/a.py")
+        check("repository-unnamed" not in reasons(imp), f"impact holds a repository-unnamed record: "
+                                                         f"{imp.get('incomplete')!r}")
+    except CaseFail as e:
+        problems.append(f"arm unnamed (REPOSITORY_UNNAMED): {e}")
+    for name, kw in (("ignored", {"ignore": True}), ("named", {"named": True})):
+        try:
+            d = query(unnamed_plant(name, **kw), "build")
+            check("repository-unnamed" not in reasons(d), f"build holds a repository-unnamed record: "
+                                                          f"{d.get('incomplete')!r}")
+        except CaseFail as e:
+            problems.append(f"arm {name}: {e}")
+    check(not problems, " || ".join(problems))
+    return ("a missing folder and a comma list each repo-unresolved with its fix, `repo: src` none, the build "
+            "action last, the cache written; an unnamed nested repository named with its fix, none when "
+            "ignored or named, none in a query")
+
+
+@case("X463", "BUILD_NAMES_TESTS_OUTSIDE_THE_TEST_CLASS")
+def x463(base):
+    problems = []
+    common = {"src/lib/test_a.py": "A = 1\n", "src/b.py": "B = 1\n"}
+    try:
+        d = query(Plant(base, "no-globs", files=common, globs=None), "build")
+        check("no-test-declaration" in reasons(d), f"(a) incomplete {d.get('incomplete')!r} holds no "
+                                                   f"no-test-declaration record")
+        check(d.get("hints") == [], f"(a) hints {d.get('hints')!r}, want []")
+    except CaseFail as e:
+        problems.append(f"(a) {e}")
+    try:
+        d = query(Plant(base, "no-match", files=common, globs=["checks/**/*.*"]), "build")
+        check("no-test-files" in reasons(d), f"(b) incomplete {d.get('incomplete')!r} holds no no-test-files record")
+        hs = hints_of(d)
+        check(len(hs) == 1 and hs[0].get("hint") == "tests-outside-class"
+              and "src/lib/test_a.py" in (hs[0].get("paths") or []),
+              f"(b) hints {d.get('hints')!r}, want one tests-outside-class hint naming src/lib/test_a.py")
+    except CaseFail as e:
+        problems.append(f"(b) {e}")
+    try:
+        files = dict(common, **{"tests/t_test.py": "T = 1\n", "web/a.spec.ts": "export {};\n",
+                                "src/old/test_x.py": "X = 1\n"})
+        c = Plant(base, "outside", files=files, config={"exclude": ["src/old/test_x.py"]})
+        d = query(c, "build")
+        check(d.get("incomplete") == [], f"(c) incomplete {d.get('incomplete')!r}, want []")
+        want = [("tests-outside-class", "docs/graph/spec-lint.py", 2, ["src/lib/test_a.py", "web/a.spec.ts"])]
+        got = [hint_view(h) for h in hints_of(d)]
+        check(got == want, f"(c) hints {got!r}, want {want!r} (the excluded src/old/test_x.py not counted)")
+        t = tool(c, "build")
+        line = HINT_LINE["tests-outside-class"].format(count=2, paths="src/lib/test_a.py, web/a.spec.ts")
+        check(line in t.lines() and t.lines().index(line) > time_line_index(t),
+              f"(c) the text view does not print {line!r} after the time line — {t.ctx()}")
+        check(not any(l.startswith("Incomplete:") for l in t.lines()), f"(c) the text view has an action line "
+                                                                        f"— {t.ctx()}")
+    except CaseFail as e:
+        problems.append(f"(c) {e}")
+    check(not problems, " || ".join(problems))
+    return ("no TEST_GLOBS: no-test-declaration, no hint; unmatched globs: no-test-files and the hint; two "
+            "test-named files outside the class: one hint, its line, no action line; an excluded one not counted")
+
+
+@case("X464", "BUILD_HINTS_EXCLUDE_FOR_NON_TEST_FILES")
+def x464(base):
+    problems = []
+    files = {"tests/t_test.py": "T = 1\n", "tests/fixtures/data.json": "{}\n", "tests/helpers/util.py": "U = 1\n"}
+    want = [("class-holds-non-tests", "docs/graph/source-index.json", 2,
+             ["tests/fixtures/data.json", "tests/helpers/util.py"])]
+    try:
+        got = [hint_view(h) for h in hints_of(query(Plant(base, "no-config", files=files), "build"),
+                                              "class-holds-non-tests")]
+        check(got == want, f"no config: class-holds-non-tests hints {got!r}, want {want!r}")
+    except CaseFail as e:
+        problems.append(str(e))
+    for name, config in (("exclude-empty", {"exclude": []}), ("refused", {"exclude": [], "unknown_key": []})):
+        try:
+            d = query(Plant(base, name, files=files, config=config), "build")
+            check(hints_of(d, "class-holds-non-tests") == [], f"{name}: hints {d.get('hints')!r} hold a "
+                                                              f"class-holds-non-tests hint")
+            if name == "refused":
+                check("config-refused" in reasons(d), f"refused: incomplete {d.get('incomplete')!r} holds no "
+                                                      f"config-refused record")
+        except CaseFail as e:
+            problems.append(f"{name}: {e}")
+    check(not problems, " || ".join(problems))
+    return "no config: one class-holds-non-tests hint, count 2; `exclude: []` and a refused config: none"
+
+
+@case("X465", "BUILD_RECORDS_NAME_THEIR_FIX")
+def x465(base):
+    problems = []
+    arms = (("(a)", dict(name="no-repo", files={"a.py": "A = 1\n"}, git_init=False), "no-repository", None),
+            ("(b)", dict(name="no-globs", files=BASE_FILES, globs=None), "no-test-declaration", None),
+            ("(c)", dict(name="refused", files=BASE_FILES, config={"exclude": [], "unknown_key": []}),
+             "config-refused", CONFIG_PATH))
+    for arm, kw, reason, subject in arms:
+        try:
+            p = Plant(base, **kw)
+            d = query(p, "build")
+            recs = [r for r in d.get("incomplete", []) if r.get("reason") == reason]
+            check(len(recs) == 1, f"build --json incomplete {d.get('incomplete')!r} holds no single {reason} record")
+            raw = json.dumps(d)
+            check(BUILD_FIX[reason] not in raw,
+                  f"build --json carries the fix text: {raw[:600]!r}")
+            t = tool(p, "build")
+            check(t.rc == 0, f"build must exit 0 — {t.ctx()}")
+            expect_fix_under(t, reason, subject if subject is not None else recs[0].get("subject"))
+            ends_with_build_action(t, len(d.get("incomplete", [])))
+            if arm == "(b)":
+                for q in ("impact", "affected-tests"):
+                    qt = tool(p, q, "a.py")
+                    check(not any(l.startswith(FIX) for l in qt.lines()),
+                          f"`{q} a.py` prints a fix line — {qt.ctx()}")
+        except CaseFail as e:
+            problems.append(f"{arm} {e}")
+    check(not problems, " || ".join(problems))
+    return ("no repository, no TEST_GLOBS and a refused config: each record line followed by its fix line, the "
+            "build action last; the queries print no fix; --json holds no fix text")
+
+
+@case("X466", "BUILD_HINTS_CONFIG_PATTERNS_THAT_MATCH_NOTHING")
+def x466(base):
+    problems = []
+    files = {"tests/t_test.py": "T = 1\n", "src/a.py": "A = 1\n"}
+    config = {"exclude": [], "always_run": ["tests/t_test.py", "tests/smoek/**"], "global_inputs": ["package.json"]}
+    try:
+        p = Plant(base, "typo", files=files, config=config)
+        d = query(p, "build")
+        hs = hints_of(d, "config-pattern-unmatched")
+        want = [("config-pattern-unmatched", CONFIG_PATH, 2,
+                 ["always_run: tests/smoek/**", "global_inputs: package.json"])]
+        got = [(h.get("hint"), h.get("subject"), h.get("count"), h.get("patterns")) for h in hs]
+        check(got == want, f"config-pattern-unmatched hints {got!r}, want {want!r}")
+        check(d.get("incomplete") == [], f"incomplete {d.get('incomplete')!r}, want []")
+        check(p.index.is_file(), "the build wrote no cache")
+        t = tool(p, "build")
+        check(t.rc == 0, f"build must exit 0 — {t.ctx()}")
+        line = HINT_LINE["config-pattern-unmatched"].format(
+            count=2, patterns="always_run: tests/smoek/**, global_inputs: package.json")
+        ls = t.lines()
+        check(line in ls, f"the text view does not print {line!r} — {t.ctx()}")
+        i = ls.index(line)
+        check(i + 1 < len(ls) and ls[i + 1] == FIX + HINT_FIX["config-pattern-unmatched"],
+              f"the line under the hint is not its fix line — {t.ctx()}")
+        check(not any(l.startswith("Incomplete:") for l in ls), f"the text view has an action line — {t.ctx()}")
+    except CaseFail as e:
+        problems.append(f"typo: {e}")
+    for name, cfg in (("no-config", None), ("no-global-inputs", {"exclude": [], "always_run": ["tests/t_test.py"]}),
+                      ("refused", dict(config, unknown_key=[]))):
+        try:
+            d = query(Plant(base, name, files=files, config=cfg), "build")
+            check(hints_of(d, "config-pattern-unmatched") == [],
+                  f"{name}: hints {d.get('hints')!r} hold a config-pattern-unmatched hint")
+            check(isinstance(d.get("hints"), list), f"{name}: build --json has no `hints` list: {sorted(d)!r}")
+        except CaseFail as e:
+            problems.append(f"{name}: {e}")
+    check(not problems, " || ".join(problems))
+    return ("two unmatched patterns in key then list order: one hint, its line, its fix line, no action line; "
+            "a default pattern, an unset key and a refused file give none")
+
+
+# --- surfacing at install (8.1.2): the seed skill and the installer's build ------
+def install(target, *args, seed=None, timeout=600):
+    r = subprocess.run(["bash", str((seed or SEED) / "install.sh"), "claude-code", "--project-dir", str(target),
+                        *args], capture_output=True, timeout=timeout, env=ENV)
+    return Run(r.returncode, r.stdout, r.stderr.decode("utf-8", "surrogateescape"))
+
+
+def plan_load(target, task):
+    """id -> how of `graph-lint.py --plan-json` for `task`, run from the target."""
+    r = subprocess.run([sys.executable, "docs/graph/graph-lint.py", "--plan-json", task], cwd=str(target),
+                       capture_output=True, text=True, timeout=60, env=ENV)
+    check(r.returncode == 0, f"--plan-json {task!r} exited {r.returncode}: {r.stderr[-400:]}")
+    return {e.get("id"): (e.get("how") or {}) for e in json.loads(r.stdout).get("load", [])}
+
+
+SKILL_SRC = SEED / "skills" / "source-index" / "SKILL.md"
+
+
+@case("X460", "SOURCE_INDEX_SKILL_ROUTES_ITS_FOUR_QUESTIONS")
+def x460(base):
+    problems = []
+    t = base / "target"
+    t.mkdir()
+    r = install(t)
+    if r.rc != 0:
+        raise HarnessFail(f"install.sh claude-code exited {r.rc}: {r.err[-600:]}")
+    placed = t / "docs" / "graph" / "skills" / "source-index.md"
+    proj = t / ".claude" / "skills" / "source-index" / "SKILL.md"
+
+    def arm(name, fn):
+        try:
+            fn()
+        except CaseFail as e:
+            problems.append(f"arm ({name}): {e}")
+
+    def placed_arm():
+        check(SKILL_SRC.is_file(), f"the seed holds no skills/source-index/SKILL.md")
+        check(placed.is_file() and placed.read_bytes() == SKILL_SRC.read_bytes(),
+              "docs/graph/skills/source-index.md is missing or not byte-identical to the seed's skill")
+        head = placed.read_text().split("\n---", 1)[0]
+        check("\nid: skill.source-index\n" in head + "\n" and "\norigin: seed\n" in head + "\n",
+              f"the placed skill's frontmatter lacks `id: skill.source-index` or `origin: seed`: {head[:300]!r}")
+        check(proj.is_file(), ".claude/skills/source-index/SKILL.md was not projected")
+
+    def route_arm():
+        for q, task in SKILL_ROUTE_TASKS.items():
+            got = plan_load(t, task)
+            check("skill.source-index" in got, f"the {q} task {task!r} loads {sorted(got)!r}, "
+                                               f"not skill.source-index")
+
+    def catalog_arm():
+        tools_dir = t / "docs" / "graph" / "tools"
+        got = sorted(p.relative_to(tools_dir).as_posix() for p in tools_dir.rglob("*") if p.is_file())
+        check(got == ["index.md"], f"the installer wrote {got!r} under docs/graph/tools/, want ['index.md']")
+        own = write(t, "docs/graph/tools/source-index.md", "# source-index\n\nThe plant's own card.\n")
+        idx = tools_dir / "index.md"
+        idx.write_text(idx.read_text() + "\n| source-index | the plant's own row | tools/source-index.md |\n")
+        before = (own.read_bytes(), idx.read_bytes())
+        r2 = install(t)
+        check(r2.rc == 0, f"the re-install exited {r2.rc}: {r2.err[-400:]}")
+        check((own.read_bytes(), idx.read_bytes()) == before, "the re-install changed the plant's tool card or "
+                                                              "its catalog row")
+        baks = sorted(p.name for p in tools_dir.iterdir() if ".bak-" in p.name)
+        check(not baks, f"the re-install left backups in docs/graph/tools/: {baks!r}")
+
+    def reinstall_arm():
+        placed.unlink(missing_ok=True)
+        shutil.rmtree(proj.parent, ignore_errors=True)
+        r2 = install(t)
+        check(r2.rc == 0, f"the re-install exited {r2.rc}: {r2.err[-400:]}")
+        check(placed.is_file() and proj.is_file(), "a re-install over a plant without the skill did not place "
+                                                   "docs/graph/skills/source-index.md and its projection again")
+
+    def owned_path_arm():
+        write(t, "src/app.py", "def save_order():\n    pass\n")
+        write(t, "docs/graph/nodes/subsystem.app.md", node("subsystem.app", repo="src"))
+        idx = t / "docs" / "graph" / "index.md"
+        idx.write_text(idx.read_text() + "\n- subsystem.app\n")
+        for q, task in SKILL_ROUTE_TASKS.items():
+            got = plan_load(t, task)
+            if q != "symbols":
+                check((got.get("subsystem.app") or {}).get("kind") == "named_path",
+                      f"the {q} task loads subsystem.app as {got.get('subsystem.app')!r}, not named_path")
+            check((got.get("skill.source-index") or {}).get("kind") == "phrase",
+                  f"the {q} task loads skill.source-index as {got.get('skill.source-index')!r}, not phrase "
+                  f"(loads {sorted(got)!r})")
+
+    for name, fn in (("placed", placed_arm), ("routes", route_arm), ("catalog", catalog_arm),
+                     ("re-install", reinstall_arm), ("owned-path", owned_path_arm)):
+        arm(name, fn)
+    check(not problems, " || ".join(problems))
+    return ("the seed skill placed byte-identical and projected, the four tasks load it; the plant's tools/ card "
+            "untouched; a re-install restores it; beside a path route it loads by phrase")
+
+
+def seed_copy(base, fake_tool):
+    """A copy of the seed whose tools/source-index.py is `fake_tool` (Python source)."""
+    dst = base / "seed-copy"
+    if not dst.exists():
+        shutil.copytree(SEED, dst, symlinks=True,
+                        ignore=shutil.ignore_patterns(".git", "__pycache__", ".seed-worktrees"))
+    (dst / "tools" / "source-index.py").write_text(fake_tool)
+    return dst
+
+
+def git_target(base, name, files=None):
+    t = base / name
+    t.mkdir()
+    git(t, "init", "-q")
+    git(t, "symbolic-ref", "HEAD", "refs/heads/main")
+    for rel, text in (files or {"src/a.py": "A = 1\n"}).items():
+        write(t, rel, text)
+    git(t, "add", "-A")
+    git(t, "commit", "-qm", "plant")
+    return t
+
+
+@case("X467", "INSTALL_RUNS_THE_BUILD; failure INSTALL_BUILD_FAILED")
+def x467(base):
+    problems = []
+    head = "[seed] " + INSTALL_BUILD_HEAD
+
+    def arm(name, fn):
+        try:
+            fn()
+        except CaseFail as e:
+            problems.append(f"arm ({name}): {e}")
+
+    def ordered(r):
+        ls = r.lines()
+        check(r.rc == 0, f"the install exited {r.rc} — {r.ctx()}")
+        hi = [i for i, l in enumerate(ls) if l == head]
+        check(len(hi) == 1, f"the install prints {INSTALL_BUILD_HEAD!r} {len(hi)} time(s), not once — {r.ctx()}")
+        si = [i for i, l in enumerate(ls) if l.startswith(STAMP_LINE)]
+        bi = [i for i, l in enumerate(ls) if l.startswith(CLOSING_BANNER)]
+        ni = [i for i, l in enumerate(ls) if "NEXT STEP" in l and si and i > si[0]]
+        check(si and bi and si[0] < hi[0] < bi[0] and all(hi[0] < i for i in ni),
+              f"the report is not after the stamp line and before the NEXT STEP notices and the banner — {r.ctx()}")
+        return ls, hi[0]
+
+    def main_arm():
+        t = git_target(base, "git-plant")
+        r = install(t)
+        ls, h = ordered(r)
+        report = []
+        for l in ls[h + 1:]:
+            if not l.startswith("[seed]   "):
+                break
+            report.append(l[len("[seed]   "):])
+        check("Cache: built" in report, f"the report lines {report!r} hold no `Cache: built`")
+        check(any(re.fullmatch(BUILD_TIME_RE, l) for l in report),
+              f"the report lines {report!r} hold no time line")
+        class P:
+            dir = t
+        d = query(P, "impact", "src/a.py")
+        check(status(d) == "reused", f"the query after the install reports cache {d.get('cache')!r}, not reused")
+        check(not (t / CONFIG_PATH).exists(), "the install wrote docs/graph/source-index.json")
+
+    def no_repository_arm():
+        t = base / "fresh"
+        t.mkdir()
+        r = install(t)
+        ordered(r)
+        check("no-repository" in r.out and ("[seed]   " + fix_line("no-repository")) in r.lines(),
+              f"the report holds no no-repository record with its fix line — {r.ctx()}")
+        check(not (t / ".cypress" / "source-index").exists(), "the build wrote .cypress/source-index/ in a "
+                                                               "plant with no governed repository")
+
+    def no_build_arm():
+        t = git_target(base, "checked")
+        r = install(t)
+        check(r.rc == 0, f"setup install exited {r.rc}")
+        for args in (("--check",), ("--expertise", "propose"), ("--no-such-option",)):
+            r2 = install(t, *args)
+            check(head not in r2.lines(), f"`install.sh claude-code {' '.join(args)}` printed the build head — "
+                                          f"{r2.ctx()}")
+
+    def security_a1_a4_arm():
+        markers = base / "markers"
+        markers.mkdir()
+        files = {"src/a.py": "A = 1\n",
+                 "docs/graph/fnmatch.py": f"open({str(markers / 'fnmatch')!r}, 'w').write('x')\n",
+                 "docs/graph/json.py": f"open({str(markers / 'json')!r}, 'w').write('x')\n",
+                 "docs/graph/nodes/esc.md": node("subsystem.esc", repo="old/\x1b[31mlib")}
+        t = git_target(base, "hostile", files)
+        r = install(t)
+        ls, h = ordered(r)
+        check(not os.listdir(markers), f"the install imported a module the target holds: markers "
+                                       f"{sorted(os.listdir(markers))!r}")
+        check(any(l.startswith("[seed]   Cache: ") for l in ls[h + 1:]), f"A1: the report's lines are not "
+                                                                         f"printed — {r.ctx()}")
+        check("old/?[31mlib" in r.out, f"A4: the report does not show the control byte as `?` — {r.ctx()}")
+        check(b"\x1b" not in r.raw and "\x1b" not in r.err, "A4: the install's output holds the byte 0x1b")
+
+    def non_utf8_arm():
+        s = seed_copy(base, "import sys\nsys.stdout.buffer.write(b'\\xff\\xfe\\n')\nsys.exit(0)\n")
+        t = git_target(base, "non-utf8")
+        r = install(t, seed=s)
+        ordered(r)
+
+    def failed_arm():
+        s = seed_copy(base, "import sys\nsys.stdout.write('\\x1b[2J MARK-OUT\\n')\n"
+                            "sys.stderr.write('MARK-ERR \\x1b]0;x\\x07\\n')\nsys.exit(3)\n")
+        t = git_target(base, "failing")
+        r = install(t, seed=s)
+        ls = r.lines()
+        check(r.rc == 0, f"the install exited {r.rc} after a failed build — {r.ctx()}")
+        want = "[seed] " + INSTALL_BUILD_FAILED.format(why="exit 3")
+        check(want in ls, f"the install does not print {want!r} — {r.ctx()}")
+        bi = [i for i, l in enumerate(ls) if l.startswith(CLOSING_BANNER)]
+        check(bi and bi[0] > ls.index(want), f"the closing banner is not printed after the failure line — {r.ctx()}")
+        both = r.out + r.err
+        check("MARK-OUT" not in both and "MARK-ERR" not in both, f"A2: the build's stdout or stderr was printed "
+                                                                 f"— {r.ctx()}")
+        check(not any(b in r.raw for b in (b"\x1b", b"\x07")) and not any(c in r.err for c in ("\x1b", "\x07")),
+              "A2: the install's output holds a byte 0x1b or 0x07")
+
+    for name, fn in (("git plant", main_arm), ("no repository", no_repository_arm),
+                     ("--check, --expertise propose, a refused run", no_build_arm), ("A1+A4 hostile target", security_a1_a4_arm),
+                     ("A3 non-UTF-8 stdout", non_utf8_arm), ("INSTALL_BUILD_FAILED + A2", failed_arm)):
+        arm(name, fn)
+    check(not problems, " || ".join(problems))
+    return ("the head and the indented report after the stamp, before the notices and banner, the cache reused; "
+            "no repository: its fix, no cache; --check and propose run none; no plant module imported, ESC shown "
+            "as ?; non-UTF-8 stdout and a failed build leave exit 0 and the banner, nothing of the build's printed")
+
 
 failed = []
 for label, slug, fn in CASES:

@@ -27,7 +27,7 @@ _frontmatter = importlib.util.module_from_spec(_fm_spec)
 _fm_spec.loader.exec_module(_frontmatter)
 
 KERNEL = ROOT / "core" / "AGENTS.md"
-KERNEL_BUDGET = 8_000            # bytes; every session of every plant pays the kernel
+KERNEL_BUDGET = 8_200            # bytes; every session of every plant pays the kernel
 
 # Body ceilings, counted as body_lines() counts them. Raising one is an owner
 # decision with a recorded reason; ratchet-lint refuses a silent raise.
@@ -1509,6 +1509,10 @@ TEXT_RULES = (
      re.escape("docs/graph/plans/sessions/"), {"section": r"(?ms)^### 3\.2 .*?(?=^### |\Z)", "where": " §3.2"}),
     ("KERNEL_POINTS_AT_THE_SESSION_RECORD", "require", lambda: ["core/AGENTS.md"],
      re.escape("method.stewardship-posture"), {"section": r"(?ms)^### 3\.2 .*?(?=^### |\Z)", "where": " §3.2"}),
+    ("KERNEL_NAMES_THE_SOURCE_INDEX", "require", lambda: ["core/AGENTS.md"],
+     re.escape("docs/graph/source-index.py"), {"section": r"(?ms)^## 5\. .*?(?=^## |\Z)", "where": " §5"}),
+    ("KERNEL_NAMES_THE_SOURCE_INDEX", "require", lambda: ["core/AGENTS.md"],
+     re.escape("skill.source-index"), {"section": r"(?ms)^## 5\. .*?(?=^## |\Z)", "where": " §5"}),
     ("ADOPTED_RULES_NOT_PENDING", "forbid", lambda: _files(_SHIPPED),
      "|".join(re.escape(p) for p in PENDING_PHRASES), {"flat": True}),
     ("STALE_POINTER", "forbid",
