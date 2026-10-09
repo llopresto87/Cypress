@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 8.1.1
+- Version documented: 8.1.2
 - Repository role: this repo is the seed, the product shipped into other
   projects; it holds no `docs/graph/` of its own.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -363,10 +363,19 @@ line moves whole into a sibling leaf.
 A node id the task names comes first. A path the task names comes next: a
 node's own file, a folder or file a node's `repo:` names, or an `expertise.*`
 file pattern. Then comes
-a `load_when` phrase of two or more words that the task holds whole. Only when
-none of these hits does the router score words, and a scored entry needs two
-distinct confident terms. A strong tier that hits more than three nodes falls
-through to the next. A task with no signal, or one too long to be a task line,
+a `load_when` phrase of two or more words that the task holds, word for word
+and in order. A file path or a code name the task writes between a phrase's
+words does not break it, and stands in for the phrase's word `file` (a path) or `name` (a code
+name such as `save_order` or `saveOrder`); an ordinary word still breaks it.
+So "what breaks if I change src/app.py" holds `what breaks if I change this
+file`. Only when none of these hits does the router score words, and a
+scored entry needs two distinct confident terms. A strong tier that hits
+more than three nodes falls through to the next. When a path route loads
+the node that owns a file and the task also holds a trigger phrase of a
+seed skill, the skill loads beside that node, up to the cap
+`PATH_TIER_SKILL_CAP` (2); a task that holds the phrases of more loads the
+node alone. Only skills the seed ships are added this way, so a question
+about a file reaches `skill.source-index`, which says how to answer it. A task with no signal, or one too long to be a task line,
 loads nothing and prints a `!` notice that names the next step. The per-prompt
 route hook runs the same code, so the ladder reaches a plant's prompts too.
 
@@ -718,7 +727,8 @@ explicit in `protocols/test-first.md`.
    depth its evidence supports* or *absent with a named reason*. Proven by the
    tracked coverage record (`.cypress/coverage.json`) and gated in Phase 6 by
    `tools/growth-audit.py`, which checks every planned artifact appeared and is
-   not a scaffold.
+   not a scaffold. After its verdicts it prints the source index build
+   report, as advice that never sets its exit code.
 6. The same contract covers **expertise and staffing**. Every core or
    significant stack element owes an `expertise.*` node, the routable handle
    that says when it is in play, what goes wrong without it, and which
@@ -753,7 +763,7 @@ the latitude goes to the question file, and only the owner can widen it.
 
 ## 8. Skills, templates, and briefs
 
-### 8.1 The 15 skills
+### 8.1 The 16 skills
 
 Skills are composable procedures, one node each in `skills/`:
 
@@ -765,6 +775,8 @@ Skills are composable procedures, one node each in `skills/`:
   `brainstorm-internal` (no user in the loop)
 - Tooling doctrine: `toolcraft` (the rule; `agent.tool-smith` builds)
 - Bootstrap/adoption: `adopt-existing` (greenfield entry is `protocol.from-scratch`)
+- Code questions: `source-index` (how to use `docs/graph/source-index.py`
+  and act on its build report)
 
 ### 8.2 The artifact templates
 
@@ -1021,9 +1033,9 @@ claude-code, opencode and prime-agent. For each tool it:
    missing leaf, while preserving existing files, and places the config-free
    tools beside them: `agnosticism-lint.py`, `prose-lint.py`,
    `status-register.py`, `session-metrics.py`, `code-anchor.py`, which
-   writes no anchor at install, and `source-index.py`, which writes no
-   cache at install (a query builds `.cypress/source-index/` and rebuilds
-   it when its key changes, ADR-0029; guide:
+   writes no anchor at install, and `source-index.py`, whose cache under
+   `.cypress/source-index/` the last step below builds and any query
+   rebuilds when its key changes (ADR-0029; guide:
    [`documentation/source-index.md`](documentation/source-index.md)), with the two modules they load by
    path: `source_paths.py`, the seed's path rules, and `plant_walk.py`, the
    walk over one plant's files. It places the model map
@@ -1039,7 +1051,13 @@ claude-code, opencode and prime-agent. For each tool it:
    warning. Beside it, `.cypress/recreated-nodes.txt` lists every seed node
    this run re-created; the console notice names at most ten;
 7. places `legal-corpus/` at `docs/graph/legal/corpus/` when
-   `--legal-corpus yes`, whole or not at all.
+   `--legal-corpus yes`, whole or not at all;
+8. runs the placed `docs/graph/source-index.py build` from the target root,
+   in isolated mode with a 120-second bound, and prints its build report:
+   the counts, the build time, each setup gap with its `fix:` line, and the
+   hints. The report is advice. An install never fails on it, and a build
+   that does not finish prints one line with the command to run by hand.
+   A graft applies the seed with the installer, so it runs this step too.
 
 On opencode it also renders each agent's `model:` line from the model map
 before placing it.
@@ -1075,7 +1093,7 @@ core/                 Bootstrap kernel (AGENTS.md) + method/ posture nodes
 agents/               20 specialist agents (graph nodes; projected to the harness)
   _routes.golden.tsv    golden routing set for agent-lint --eval
 protocols/            17 protocol graph nodes (installed to docs/graph/protocols/)
-skills/               15 skill graph nodes (installed flat to docs/graph/skills/)
+skills/               16 skill graph nodes (installed flat to docs/graph/skills/)
 templates/            Per-artifact templates (spec, grill, ADR, etc.)
   knowledge-graph/      node contract, graph-lint.py, spec-lint.py, grill-lint.py, router, node template
   prompts/              parameterized delegation/investigation/validation briefs
@@ -1283,7 +1301,7 @@ carries a ratcheted budget (`ADVERSARIAL_CONFIDENT_WRONG_BUDGET` in
 budget may fall freely, and raising it is an owner decision recorded in
 `tests/ratchets.json`.
 
-Routable body sizes, computed by `tests/seed-lint.py` from the method files on every run: the largest routable body is 1 481 lines (`protocols/graft.md`) and the median is 162 lines, against a ceiling of 1 000 lines for any routable node and 2 500 lines for the three cross-project protocols, `graft`, `grow` and `harvest`. Those three are the only protocols that write into a repository the seed does not own, and a session loads one only while it performs that operation ([ADR-0007](docs/decisions/adr-0007-lifecycle-protocol-ceiling.md)). Both ceilings are ratchets: they may fall freely, and raising either is an owner decision recorded in `tests/ratchets.json`. The always-loaded budget has the same shape, and `EAGER_EXEMPTIONS` in `tests/seed-lint.py` is consequently **empty**: every harness sits under `EAGER_BUDGET`, and the per-harness figures are in the [host capability matrix](documentation/host-capability-matrix.md).
+Routable body sizes, computed by `tests/seed-lint.py` from the method files on every run: the largest routable body is 1 481 lines (`protocols/graft.md`) and the median is 160 lines, against a ceiling of 1 000 lines for any routable node and 2 500 lines for the three cross-project protocols, `graft`, `grow` and `harvest`. Those three are the only protocols that write into a repository the seed does not own, and a session loads one only while it performs that operation ([ADR-0007](docs/decisions/adr-0007-lifecycle-protocol-ceiling.md)). Both ceilings are ratchets: they may fall freely, and raising either is an owner decision recorded in `tests/ratchets.json`. The always-loaded budget has the same shape, and `EAGER_EXEMPTIONS` in `tests/seed-lint.py` is consequently **empty**: every harness sits under `EAGER_BUDGET`, and the per-harness figures are in the [host capability matrix](documentation/host-capability-matrix.md).
 
 ## 15. Glossary
 <a id="glossary"></a>

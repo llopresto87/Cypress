@@ -22,7 +22,8 @@ An install for Claude Code writes the files below into your project. If one of t
 - the harness directory `.claude/`, holding the agent definitions, the [skills](DOCUMENTATION.md#term-skill), slash commands, hook scripts and settings;
 - `docs/graph/`, where the knowledge graph lives: the method's own notes, and a skeleton that the first session fills in from your code, including `docs/graph/models.md`, where you name the model each host runs for each kind of work;
 - the install stamp `.cypress/seed.json`, which records the version and options of the install and keeps any key the installer does not own, and beside it `.cypress/recreated-nodes.txt`, which lists the method's notes this install had to put back because they were missing;
-- `EXPERT_SEED_INSTALL_PROMPT.md`, a local copy of the entry prompt for later sessions.
+- `EXPERT_SEED_INSTALL_PROMPT.md`, a local copy of the entry prompt for later sessions;
+- the [source index](documentation/source-index.md) cache under `.cypress/source-index/`, which the install's last step builds from your code. Git ignores it through a `.gitignore` inside it. The install then prints a short report of what the index found and what you still need to set up, with the fix for each item.
 
 Other harnesses get their own directory in place of `.claude/`, such as `.opencode/` or `.prime/agent/`, and the [install guide](INSTALL.md) lists each one.
 
@@ -34,7 +35,7 @@ The install does not touch your application source, `.gitignore`, git history or
 
 | Figure | What it covers, and how it was obtained |
 |---|---|
-| 25 515 bytes | per session on Claude Code: the kernel plus the one-line description of every agent and skill, computed from the [seed](DOCUMENTATION.md#term-seed)'s files by this repository's test run; a lower bound, not a live reading |
+| 25 800 bytes | per session on Claude Code: the kernel plus the one-line description of every agent and skill, computed from the [seed](DOCUMENTATION.md#term-seed)'s files by this repository's test run; a lower bound, not a live reading |
 | 11% more tokens | per task, against a session with no method, on one small, well-specified task; measured once ([evidence record](docs/plans/grill-7.29.0-front-door/method-overhead-evidence.md)) |
 
 The always-loaded figure leaves out the notes a session opens on demand, each worker it starts, the text the hooks add to each prompt, and the one-time pass that builds the graph. The [host capability matrix](documentation/host-capability-matrix.md) gives the figure for each other harness. No money figure exists.

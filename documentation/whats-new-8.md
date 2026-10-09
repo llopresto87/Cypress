@@ -1,11 +1,39 @@
 # CYPRESS: what's new in 8.0 and 8.1
 
-This page lists the features of 8.0.0 and 8.1.0 that a user or an agent
+This page lists the features of 8.0 and 8.1 that a user or an agent
 works with, and links each one to the guide or reference section that
 explains it. The full record of each release, with every fix, is
 [CHANGELOG.md](../CHANGELOG.md).
 
 ---
+
+## 8.1.2: ready after the install
+
+**The install builds the index.** Every install that places files, and so
+every graft, ends by running `docs/graph/source-index.py build` and
+printing its report. `growth-audit.py` prints the same report after its
+verdicts at every grow and graft. The report is advice and never fails
+either. It gives the counts and the build time, then each setup gap with a
+`fix:` line: `TEST_GLOBS` unset or matching nothing, a `repo:` value that
+names nothing, a Git repository inside the plant that no node names
+(`repository-unnamed`), and hints about the test class and about patterns
+in `docs/graph/source-index.json` that match no file. Guide:
+[source-index.md, The build report](source-index.md#the-build-report).
+
+**A seed skill for the tool.** `skill.source-index` routes the four code
+questions to the tool and says how to act on the report. The kernel's
+"Where to look next" names it in one line. Reference:
+[skills-and-templates-reference.md, A.12](skills-and-templates-reference.md#a12-source-index).
+
+**The router reads questions about files.** A file path or a code name
+inside a trigger phrase no longer breaks it, and stands in for the
+phrase's word `file` or `name`. A path route loads up to two seed skills
+whose phrase the task holds beside the node that owns the file. Reference:
+[DOCUMENTATION.md §5.7](../DOCUMENTATION.md#57-expertise-reaches-the-worker-that-needs-it).
+
+**Upgrading to 8.1.2.** A graft brings the skill, the kernel line and the
+router, and prints the report at its end. Act on each `fix:` line; the
+cache bound is now 196 MiB.
 
 ## 8.1.0: the source index
 
@@ -35,8 +63,8 @@ router's side is in
 **New placed tools.** Every install places `docs/graph/source-index.py`,
 `docs/graph/source_paths.py` (the path rules shared by `code-anchor.py`,
 `source-index.py` and the router) and `docs/graph/plant_walk.py`. The
-installer writes no index; the first query builds it in
-`.cypress/source-index/`. Reference:
+index lives in `.cypress/source-index/`; in 8.1.0 the first query built it,
+and since 8.1.2 the install does. Reference:
 [skills-and-templates-reference.md, the placed seed tools](skills-and-templates-reference.md#summary-table--seed-tools-placed-beside-the-contract-files).
 
 **Upgrading to 8.1.0.** A graft brings the new tools and protocol steps.

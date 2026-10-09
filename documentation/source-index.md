@@ -5,11 +5,15 @@ model: which code depends on a set of files, which tests a change reaches,
 which graph pages cite a file, and where a name is defined. It is one
 tool, `docs/graph/source-index.py`, placed in every plant since 8.1.0. It
 recommends. Verify, tiering and canonize still decide what runs and how
-much process a change gets.
+much process a change gets. Since 8.1.2 the install builds the index and
+prints a report of what is still to set up, so a plant can use the tool as
+soon as the install, graft or grow finishes, and the seed skill
+`skill.source-index` tells a session when to ask it.
 
 Every command and output below comes from `python3 tools/source-index.py
 --help` and from runs on a temporary plant installed over a clone of the
-seed at `efd75fe`. The contracts are
+seed at `efd75fe`; the build report examples come from an install over a
+clone at `25653b8`. The contracts are
 [SPEC-0007](../docs/specs/SPEC-0007-source-index.md); the decision that
 the index is scratch is
 [ADR-0029](../docs/decisions/adr-0029-source-index-is-derived-scratch.md).
@@ -78,8 +82,13 @@ so `build` is rarely needed by hand.
 ```
 $ python3 docs/graph/source-index.py build
 Cache: rebuilt (build forced)
-Index: 916 file(s), 184 test(s), 118 certain and 9463 maybe link(s), 170 opaque and 33 unresolved record(s), 2510 definition(s)
+Index: 922 file(s), 184 test(s), 118 certain and 9559 maybe link(s), 170 opaque and 33 unresolved record(s), 2546 definition(s)
+Built in 0.79 s.
+Hint: 147 file(s) in the test class are not named like tests, e.g. tests/fixtures/agnosticism/clean/doc.md, tests/fixtures/agnosticism/clean/nested/notes.md, tests/fixtures/agnosticism/home/allowed.md, tests/fixtures/agnosticism/home/build.sh, tests/fixtures/agnosticism/home/plan.md. List the ones that are not tests under "exclude" in docs/graph/source-index.json; an "exclude" key, even [], ends this hint.
 ```
+
+After the counts and the time, `build` prints its report: each setup gap
+with its fix, then the hints ([The build report](#the-build-report)).
 
 `build --json` prints the index itself, with the keys `inventory`, `links`,
 `opaque`, `unresolved` and `symbols`. Each `inventory` row holds a file's
@@ -291,6 +300,8 @@ Common reasons, all printed by the tool:
 | `repo-unresolved` | a node's `repo:` names nothing on disk |
 | `config-refused` | `docs/graph/source-index.json` was refused; the defaults apply |
 | `git-unavailable`, `no-repository` | there is no `git`, or no governed Git repository |
+| `repository-unnamed` | `build` only: a Git repository inside a governed one that no node's `repo:` names; its files are in no answer |
+| `no-test-declaration`, `no-test-files` | `TEST_GLOBS` is unset, or matches no file |
 
 For example:
 
@@ -306,6 +317,72 @@ Incomplete: check by hand (global-input: pyproject.toml, input-not-found: pyproj
 `affected-tests` never presents its list as the only tests to run, even
 when the answer is complete.
 
+## The build report
+
+The install runs `build` as its last step and prints its output; see
+[INSTALL.md, What the installer does](../INSTALL.md#what-the-installer-does).
+A graft applies the seed with the installer, so it prints the report too,
+and `growth-audit.py` prints it again after its verdicts at every grow and
+graft. In all three places the report is advice: an install never fails on
+it, and it is never a growth-audit verdict or exit code. The install runs
+the placed copy in isolated mode (`-I -B`) with a 120-second bound; when the
+build does not finish, the install prints one line instead:
+
+```
+source index: the build did not finish (<why>); the install is complete. Run from the plant root: python3 docs/graph/source-index.py build
+```
+
+On a fresh plant the install ends with:
+
+```
+[seed] source index build (advice, never a failure of the install; SPEC-0007 "Build report"):
+[seed]   Cache: rebuilt (build forced)
+[seed]   Index: 922 file(s), 184 test(s), 118 certain and 9559 maybe link(s), 170 opaque and 33 unresolved record(s), 2546 definition(s)
+[seed]   Built in 0.80 s.
+[seed]   Hint: 147 file(s) in the test class are not named like tests, e.g. ...
+```
+
+The report names every setup gap the build can detect, each as an
+`incomplete` record followed by a `fix:` line:
+
+| Record | Fix the line gives |
+|---|---|
+| `no-test-declaration` | set `TEST_GLOBS` in `docs/graph/spec-lint.py` to the plant's test-file patterns; the owner confirms them, and grow asks for them with the plant facts |
+| `no-test-files` | point `TEST_GLOBS` at the folders that hold the tests; nothing to do while the plant has none |
+| `repo-unresolved` | set the node's `repo:` to one plant-relative path that exists, or remove the line |
+| `repository-unnamed` | write, or let grow write, a node whose `repo:` names the repository, or list it in the `.gitignore` of the repository that holds it |
+| `no-repository` | let grow write nodes whose `repo:` names each repository, or `git init` the plant root when it is the code |
+| `config-refused` | fix `docs/graph/source-index.json`, or delete it to use the defaults |
+| `git-unavailable`, `repository-unreadable` | install Git, or repair the repository |
+
+Run in a Git tree with no `.cypress/` directory and no
+`docs/graph/spec-lint.py`, such as the seed's own checkout
+(`python3 tools/source-index.py build` there), it prints:
+
+```
+$ python3 tools/source-index.py build
+Cache: not-written (no .cypress/ directory; this tool never creates it)
+Index: 920 file(s), 0 test(s), 118 certain and 9522 maybe link(s), 170 opaque and 33 unresolved record(s), 2546 definition(s)
+Built in 0.73 s.
+- incomplete: no-test-declaration: docs/graph/spec-lint.py
+  fix: set TEST_GLOBS in docs/graph/spec-lint.py to a list of the plant's test-file patterns (the owner confirms it; grow asks it with the plant facts)
+Incomplete: 1 setup item(s) above, each with its fix (no-test-declaration: docs/graph/spec-lint.py).
+```
+
+Three hints follow the records. Each names up to five paths and its fix:
+
+- `tests-outside-class`: files named like tests (`test_*.py`, `*.spec.*`,
+  `*Test.java` and similar) that `TEST_GLOBS` does not match;
+- `class-holds-non-tests`: files in the test class not named like tests,
+  while the plant config sets no `exclude` key (an `exclude` key, even
+  `[]`, ends the hint);
+- `config-pattern-unmatched`: patterns in `docs/graph/source-index.json`
+  that match no file, with a `fix:` line to correct or remove each.
+
+Act on each line through the protocol that owns the fix, then run `build`
+again. The build does not judge whether `TEST_GLOBS` is right, only whether
+it matches.
+
 ## The cache
 
 The index is derived scratch in `.cypress/source-index/index.json`, beside
@@ -320,9 +397,12 @@ what happened: `built`, `reused`, `rebuilt (key changed)` or
 - the plant config and the plant's `TEST_GLOBS`;
 - each repository's HEAD and its uncommitted code.
 
-Deleting the directory is safe. The installer never writes it, and a graft
-rebuilds it instead of carrying it over
-([ADR-0029](../docs/decisions/adr-0029-source-index-is-derived-scratch.md)).
+Deleting the directory is safe. The installer writes it only through the
+build its last step runs, and a graft rebuilds it instead of carrying it
+over ([ADR-0029](../docs/decisions/adr-0029-source-index-is-derived-scratch.md)).
+The cache is bounded by `CACHE_MAX_BYTES`, 196 MiB: an index larger than
+that is not written, and a cache file larger than that is not read, so
+each query builds the index again.
 
 ## Plant configuration
 
@@ -385,7 +465,9 @@ plant governs.
 ## When the protocols call it
 
 Each step runs the tool once, on demand. No hook runs it, and nothing runs
-it per prompt or per file access.
+it per prompt or per file access. Apart from these steps, the install's
+last step and `growth-audit.py` run `build` for its report
+([The build report](#the-build-report)).
 
 | Protocol | Step | Query |
 |---|---|---|
@@ -430,4 +512,6 @@ from segments.
 
 - [skills-and-templates-reference.md](skills-and-templates-reference.md#summary-table--seed-tools-placed-beside-the-contract-files):
   the placed seed tools, `source_paths.py` and `plant_walk.py` among them.
+- [skills-and-templates-reference.md, A.12 source-index](skills-and-templates-reference.md#a12-source-index):
+  the seed skill that tells a session when to ask the tool.
 - [What's new in 8.0 and 8.1](whats-new-8.md).
