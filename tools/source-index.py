@@ -2170,7 +2170,8 @@ def answer(query: str, args, root: Path) -> dict:
     usable = not any(p["reason"] in ("git-unavailable", "no-repository") for p in problems)
     if query == "build":
         doc.update(body)
-        problems += test_records(plant, body["inventory"])
+        if usable:
+            problems += test_records(plant, body["inventory"])
         problems += [repo_unresolved(rel, name) for rel, _, kind, name in graph_pages(root) if kind == "unresolved"]
         problems += [incomplete("repository-unnamed", p) for p in sorted(set(plant.unnamed))]
         doc["hints"] = hints(plant, body["inventory"]) if usable else []   # no inventory to match against
@@ -2278,7 +2279,8 @@ def text_view(doc: dict, every: bool = False, moved: bool = False) -> list:
         out += capped([row_text(r) for r in doc["floor"]], every)
     # each record, and for `build` its fix line under it (§6 "Build report"); the cap counts records
     records = capped([[f"- incomplete: {r['reason']}: {r['subject']}" + (f" ({r['detail']})" if r["detail"] else "")]
-                      + ([FIX_PREFIX + BUILD_FIX[r["reason"]]] if doc["query"] == "build" else [])
+                      + ([FIX_PREFIX + BUILD_FIX.get(r["reason"], ACTION_LINE["build"].format(n=1, reasons=r["reason"]))]
+                         if doc["query"] == "build" else [])
                       for r in doc["incomplete"]], every)
     out += [l for group in records for l in ([group] if isinstance(group, str) else group)]
     for h in doc.get("hints", []):

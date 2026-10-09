@@ -1,6 +1,6 @@
 ---
 name: source-index
-description: How a session uses the placed source index, docs/graph/source-index.py, to answer four questions about a plant's code without a model - what depends on a file (impact), which tests a change reaches (affected-tests), which graph pages cite a file (anchors), where a name is defined (symbols) - and how to read and act on the build report that install, graft and growth-audit print. Use before changing a file, when choosing tests to run, when a code move may have left graph facts stale, and when looking for a definition.
+description: Answers impact, affected-tests, anchors and symbols queries on a plant's code via docs/graph/source-index.py, without a model.
 id: skill.source-index
 tier: 2
 kind: skill
