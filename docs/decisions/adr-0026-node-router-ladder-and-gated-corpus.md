@@ -188,7 +188,7 @@ irrelevant share at most 0.58, 0.51 and 0.43 for contract, paraphrase and
 adversarial. A pasted brief now gets the one `long_task` notice line instead
 of 28 nodes.
 
-## Amendment, 8.1.2 (2026-10-07), ratification pending
+## Amendment, 8.1.2 (2026-10-07), ratified 2026-10-07
 
 Made by `architect-8.1.2e` on the owner's ruling of 2026-10-07 on question
 12 of `docs/plans/grill-8.1.2-tool-surfacing.md` §12, option (a), "change
@@ -235,8 +235,9 @@ section records the decision and the evidence.
 - **Reversibility.** `reversible`: one block in `resolve()` and one
   constant; plants drop it at their next graft.
 
-Ratification: pending the owner. The owner ruled option (a) on 2026-10-07;
-this text waits for the owner's word.
+Ratification: ratified by the owner, 2026-10-07: "1 ratify" (plan
+`grill-8.1.2-tool-surfacing.md` §12 question 15); questions 16 to 18 kept, not
+vetoed.
 
 ## Reversibility
 
