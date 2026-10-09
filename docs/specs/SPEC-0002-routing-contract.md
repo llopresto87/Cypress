@@ -19,6 +19,13 @@ status_evidence: tests/test_agent_lint.py (CorpusHonestyTests, CompoundFragmentT
   the correction is not silently absorbed. `active` was then used with a long
   argument for why it was honest, which was an argument for `back-written` by
   another name while the right value sat in the schema.
+  The one pass held since covers only the 8.1.2 rows: product [x]
+  (2026-10-09, `product-8.1.2c`: §3 states the seed skill a path route adds,
+  that only seed skills are added, the fixed order and the cap; AC-11 maps
+  PATH_ROUTE_ADDS_SEED_SKILL_PHRASES, PATH_ROUTE_SKILL_ADDITION_IS_CAPPED and
+  the failure PATH_ROUTE_SKILLS_OVER_CAP; read against the ADR-0026
+  "Amendment, 8.1.2" the owner ratified). The rest of the spec stays
+  unsigned, as above.
 
 - **Owner:** data-ml
 - **Date:** 2026-09-13
@@ -83,7 +90,15 @@ The node router answers a task with the nodes to read. When the task names a
 node id or a path, that wins over any word match. When the task names a
 path a node owns and also holds a trigger phrase of a seed skill, the skill
 loads beside the owning node, so a question about a file reaches the seed
-skill that says how to answer it (8.1.2). When nothing matches
+skill that says how to answer it (8.1.2). Only a skill the seed ships is
+added this way: a plant's own skill, or a seed page of another kind, whose
+phrase the task holds does not load beside the path. The owning node is
+listed first and the added skills after it, always in the same order, so
+the same task loads the same nodes every time. At most
+`PATH_TIER_SKILL_CAP` skills are added; when the task holds the phrases of
+more, none is added and the owning node loads alone, so naming a file never
+floods the session. A task that names a node id gets that node and no added
+skill. When nothing matches
 confidently, it loads nothing and its notice names the protocol entry nodes
 and asks for a sharper task line, instead of forcing root. A pasted brief is
 not routed: the notice asks for the task line.
@@ -753,11 +768,22 @@ ROUTE (ranked, confidence: HIGH)     # the compound itself still routes
       LONG_TASK_ABSTAINS_WITH_NOTICE, GRAPH_EVAL_GATES_PER_CLASS,
       EVERY_NUMBER_NAMES_ITS_CORPUS, HELD_OUT_STAYS_HELD_OUT,
       VACUOUS_CORPUS_IS_REFUSED, ABSTENTION_IS_A_CORRECT_OUTCOME
-- [ ] AC-11 (8.1.2): a task that names a path a node owns also loads each
-      seed skill whose trigger phrase it holds, at most `PATH_TIER_SKILL_CAP`
-      of them, after the owning node in a fixed order, and no plant node
-      beside it — maps to PATH_ROUTE_ADDS_SEED_SKILL_PHRASES,
-      PATH_ROUTE_SKILL_ADDITION_IS_CAPPED
+- [ ] AC-11 (8.1.2): a task that names a path a node owns (by its `repo:`
+      claim or an expertise file pattern) and holds, contiguous, the trigger
+      phrase of a `kind: skill`, `origin: seed` node loads the owning node
+      (`how.kind` `named_path`, or `inferred`) and then that skill
+      (`how.kind` `phrase`, `how.detail` its phrase) with its `requires:`
+      closure; a skill of another `origin` and a seed node of another kind
+      whose phrases the same task holds do not load; a seed skill tier 2
+      already loaded is listed once, with its tier-2 kind. A task naming a
+      node id adds no skill, the same task without the path routes by tier 3
+      as before 8.1.2, and a tier-2 hit on more than `STRONG_TIER_CAP` nodes
+      still falls through. With the phrases of exactly `PATH_TIER_SKILL_CAP`
+      seed skills, each loads after the tier-2 entries, in node-id order;
+      with one more, none is added and the tier-2 entries load alone with
+      their closure. Two runs of each task print the same `load`, byte for
+      byte — maps to PATH_ROUTE_ADDS_SEED_SKILL_PHRASES,
+      PATH_ROUTE_SKILL_ADDITION_IS_CAPPED (failure PATH_ROUTE_SKILLS_OVER_CAP)
 
 ## 10. Test mapping
 
