@@ -1,3 +1,24 @@
+---
+name: operator-compressed-fix-path
+description: Run a small fix of a known root cause on the reduced-ceremony path the owner opened in words, with four gates held, the surrounding unit read whole, identical-shape siblings swept and disclosed, causality proven when it is not self-evident, and the skipped ceremony named in the delivery. Invoke only when the owner has opened the path for this change.
+id: skill.operator-compressed-fix-path
+tier: 2
+kind: skill
+title: operator-compressed-fix-path, the owner-opened fix path with less ceremony and the same proof
+owns:
+  - operator-compressed-fix-path.owner-opened-authorization
+  - operator-compressed-fix-path.sibling-sweep
+  - operator-compressed-fix-path.causality-test-debt
+requires:
+load_when:
+  - "the owner opened the compressed fix path"
+  - "compressed ceremony fix for a known root cause"
+  - "small fix without the full review cycle, owner approved"
+  - "fix this one-line defect without the full process"
+prevents: A small fix skips process nobody authorized, quietly widens into undisclosed sibling edits, and drops its causality test without recording the coverage debt.
+est_tokens: 2432
+---
+
 # Suggested skill: operator-compressed-fix-path
 
 > Optional procedure — the disciplined form of a **compressed-ceremony** fix:

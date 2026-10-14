@@ -1,3 +1,25 @@
+---
+name: deploy-gated-red-green
+description: Run the RED to GREEN discipline when only a deployed system can observe the contract and every deploy costs something, with an explicit choice between a deploy per increment and one deploy, a single behavioural RED against the pre-fix build, and named rules for synthetic data. Invoke when no in-process or local oracle exists.
+id: skill.deploy-gated-red-green
+tier: 2
+kind: skill
+title: deploy-gated-red-green, test-first when the only oracle is a deployed build
+owns:
+  - deploy-gated-red-green.mode-choice
+  - deploy-gated-red-green.single-deploy-cycle
+  - deploy-gated-red-green.post-deploy-red-exception
+  - deploy-gated-red-green.synthetic-data
+requires:
+load_when:
+  - "red green when the only oracle is the deployed system"
+  - "no in-process test framework, test against the deployment"
+  - "one deploy per increment or a single deploy"
+  - "black-box checks against staging before and after the fix"
+prevents: Work whose contracts only a deployed build can observe either skips the red altogether or burns an unplanned deploy per increment, and leaves undeletable synthetic records on a shared target.
+est_tokens: 4604
+---
+
 # Suggested skill: deploy-gated-red-green
 
 > Optional procedure: run the RED → GREEN discipline when the only oracle that

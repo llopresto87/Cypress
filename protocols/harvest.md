@@ -255,7 +255,10 @@ authoring class for every generalization and authoring call.
 **Running a large harvest.** Four habits carried a multi-plant round and are
 the default:
 - one read-only worker per plant (and per library in the cross-plant wave),
-  each writing one scratch ledger and handing back a short summary;
+  each writing one scratch ledger as it finds its rows, never only at the
+  end, so a worker stopped mid-survey leaves a ledger the next run resumes
+  from (`delegation.durable-output`, `core/method/delegation-wave-integrity.md`),
+  and handing back a short summary;
 - authoring lanes with disjoint write sets and one written ownership list
   that names each lane's files and its subjects: a shared file (an index, a
   README listing, a documentation mirror, the CHANGELOG) has exactly one
@@ -275,23 +278,100 @@ as the round runs: it is the input to the next amendment of this node.
 ### Phase 1: Survey the mature plant (investigation-class scouts, read-only)
 
 Inventory how the plant diverged from the seed it grew from, and what it
-accumulated. A prior `graft`'s customization-audit ledger and its KEEP-PLANT
-list (`tools/graft-audit.py` output, the graft record's "kept as the plant's"
-section) is a ready-made divergence inventory: a machinery file the plant
-customized that the graft preserved is already a flagged harvest candidate, so
-start from it rather than rediscovering the divergence. Read the plant's
-**harvest-candidate record** first of all, beside that ledger:
+accumulated. Every step reads the plant and none writes it, and G5 proves that
+at the end against a baseline taken before the first read.
+
+**Take G5's baseline before reading anything.** Plants are often dirty when a
+harvest starts, and the gate compares against what was there, not against a
+clean tree. A listing of which files are dirty cannot show a write to a file
+that was already dirty, so the baseline records content as well as state. Per
+plant, in the round's records, never in the plant:
+
+- **its root** on line 1 (the resolved absolute path), so a later reader knows
+  which tree the rest describes;
+- **its repository shape**: `git rev-parse --show-toplevel` from the plant
+  root, and HEAD as `git rev-parse --verify -q HEAD`, written as `HEAD none`
+  when it prints nothing. A plant whose top level is another directory has no
+  repository of its own, and one with no commit has nothing to compare
+  against: both are the manifest case below, said so in the baseline;
+- **its porcelain**: `git status --porcelain -uall`. The plain form folds an
+  untracked directory into one line, so a file written inside it would not
+  show;
+- **a SHA-256 manifest** of every dirty or untracked file, and of every
+  surface the survey will read outside the tracked tree (an ignored graph, an
+  ignored `.cypress/`, a harness directory the plant ignores). These are named
+  by path, because `git status` without `--ignored` lists none of them. In the
+  manifest case the manifest covers every file the survey will read.
+
+For a plant with a repository of its own and a commit, the manifest is:
+
+```bash
+cd <plant> &&
+{ git diff -z --name-only --diff-filter=d HEAD; git ls-files -z -o --exclude-standard; } |
+  xargs -0 -r shasum -a 256 > <round>/baselines/<plant>.sha256
+shasum -a 256 <ignored surface the survey reads> … >> <round>/baselines/<plant>.sha256
+```
+
+`-r` keeps `xargs` from running `shasum` on nothing, which would hash its
+standard input instead of a file. The second line runs only where the survey
+reads an ignored surface, so a clean plant whose survey reads none leaves an
+empty manifest, and G5 skips its hash check, saying why.
+
+**Separate what the seed owns from what the plant authored**, before
+inventorying either. A plant carries seed text, and a survey that reads it as
+the plant's own reports the seed back to itself. Seed-owned are: every node
+marked `origin: seed`; every file that is a link into a seed checkout (a plant
+installed with `--symlink`), whose prose is the seed's whatever directory it
+sits in; and a nested seed checkout or seed copy inside the plant (a directory
+holding the seed's `manifest.json`), which is foreign to the plant like another
+plant. The plant-owned rest is what the survey mines. List by path the plant's
+ignored or untracked surfaces that hold graph or machinery content (a
+`docs/graph/` the plant ignores, a harness directory under an ignore rule): a
+read of the tracked tree sees none of them, and each is hashed into the
+baseline's manifest before the survey opens it.
+
+A survey worker routes the plant's graph as every graph session does, with the
+plant's own router, from the plant root:
+`python3 -B docs/graph/graph-lint.py --plan "<question>"`. The seed's engine
+writes no file when it runs: it turns off bytecode writing for the module it
+loads beside itself, and a script run as `__main__` is never byte-compiled;
+`-B` keeps that true for anything else it imports. That is a property of the
+seed's engine, not of whatever the plant runs under its name. Diff the plant's
+`docs/graph/graph-lint.py` against the seed's
+`templates/knowledge-graph/graph-lint.py` (the `graft-ledger.py` row for it says
+which class it is), and read a plant-modified engine through before running it.
+The plant's `docs/graph/source-index.py` is not run in a donor: a query
+rebuilds its cache under `.cypress/source-index/`, a write the baseline cannot
+see, because that directory ignores itself (`skill.source-index`).
+
+**Start from what is already known.** A prior `graft`'s customization-audit
+ledger and its KEEP-PLANT list (`tools/graft-audit.py` output, the graft
+record's "kept as the plant's" section) is a ready-made divergence inventory:
+a machinery file the plant customized that the graft preserved is already a
+flagged harvest candidate, so start from it rather than rediscovering the
+divergence. Read the plant's **harvest-candidate record** beside that ledger:
 `docs/graph/plans/harvest-candidates.md`, the append-only rows the close-out
 librarian added each time a lesson was flagged (`canonize.harvest-candidates`,
 form `templates/docs/plans/_harvest-candidates.template.md`). Each row points
 at the lesson's home in the plant; open the home, because the row never
 restates the rule. A struck row stays struck unless new evidence is dated on it.
+A plant grafted before that record existed carries its candidates in the graft
+entries of `docs/graph/changelog.md`, under "kept as the plant's" and in any
+paragraph naming harvest candidates; read those too.
 
-Before reading anything else, take **G5's baseline**: each plant's
-`git rev-parse HEAD` and its `git status --porcelain` output, or, for a plant
-with no repository of its own, a SHA-256 manifest of the files the survey will
-read (G5 says why). Plants are often dirty when a harvest starts, and the gate
-compares against what was there, not against a clean tree.
+**A plant surveyed in an earlier round starts from that round's ledger.** Its
+rows are already triaged, and each one that landed carries the seed path it
+landed at (Phase 5, the provenance ledger's `landed:`), so "landed or still
+queued" is read from the ledger, not re-derived by grep. The survey then reads
+only the delta: the commits since the prior baseline's HEAD
+(`git -C <plant> log <prior HEAD>..HEAD`), and the content of the files the
+prior manifest listed, checked against it (`shasum -a 256 -c <prior>.sha256`
+from the plant root names each one that changed or went), and the files dirty
+now that were clean then (this round's porcelain against the prior one's). A
+row the delta
+contradicts is re-opened; one it leaves alone keeps its triage. A plant with no
+prior baseline, or one whose history has since lost the prior HEAD (a
+rewrite), is surveyed whole.
 
 Harvest takes only the generalized, project-agnostic lesson from the plant's
 `docs/graph/` and from the surfaces below that sit outside it. The plant's facts
@@ -351,9 +431,12 @@ not a reject (§Phase 2). Candidate donor surfaces, each mined that way:
   mined for their **version-durable surface** only (see the corpora below): what
   the library is and how it is idiomatically used, its battle-tested pitfalls,
   and the version facts its release notes or docs state, never the plant's own
-  version. The aim is a page a new plant adopts instead of running a scout (the
-  withdraw-ready bar, §the corpora), so the depth the plant earned is harvested,
-  not only its surface;
+  version. Which sections of a plant's page are the plant's alone (its pin,
+  its role, its advisories, its own changelog and the closing project notes)
+  and which are durable surface with the plant's facts to strip is stated in
+  the header comment of `templates/library-page.template.md`. The aim is a page a new plant adopts
+  instead of running a scout (the withdraw-ready bar, §the corpora), so the
+  depth the plant earned is harvested, not only its surface;
 - the plant's reusable-tool catalog (`docs/graph/tools/`) built during
   `toolcraft`, mined for **project-agnostic, durable tools**: the capability
   and interface, and the portable implementation when it is stack-neutral;
@@ -423,8 +506,13 @@ two waves and a consolidation:
    This wave is where wrong plant facts surface, because two plants disagree.
 3. **Consolidate.** Merge the ledgers into one, one row per candidate, with
    each row's supporting lineages (not plants; §the third gate) and its
-   provenance class. The merged `--forbid` vocabulary for G1 is collected
-   here, from every plant.
+   provenance class. The merged forbid vocabulary for G1 is collected here,
+   from every plant, as one file of one term per line in the round's records
+   (G1 reads it with `--forbid-file`). Merge it into the steward's standing
+   list, the seed's gitignored `.cypress/forbid.txt`, too: the seed's own gate
+   lints the shipped tree against that file whenever it is present, so a plant
+   token reaching the seed by any later edit, inside a harvest or not, fails
+   there (§G1 in detail).
 
 ### Phase 2: Triage against all three gates (authoring-class authors)
 
@@ -522,11 +610,11 @@ command cell.
 
 | # | Gate | What it asserts | Command, or the judge | On failure | Class |
 |---|---|---|---|---|---|
-| G1 | `harvest.gate.agnosticism-floor` | No host-IP literal, CVE id, operator home path, or supplied plant token survives in any changed file, and every changed file was actually opened | `python3 tools/agnosticism-lint.py --forbid <plant token> …` with one `--file` per changed file, the set enumerated from `git diff --name-only --diff-filter=d <pre-harvest rev>` (the literal invocation, and why the list is driven from git and never from an extension list: §G1 in detail). Exits 0, with no `unreadable` finding | BLOCK | soft |
-| G2 | `harvest.gate.agnosticism-judgment` | The classes no regex sees: every class in §What counts as a project reference that G1's `--forbid` list did not cover | No command exists. Read `git diff` whole against that section, class by class, the version rule (§the second gate) included. Judge: the Phase-2 generalizer, then an authoring-class reviewer who did **not** author the diff and reads all of it, then the steward at ratification | BLOCK | judgment |
+| G1 | `harvest.gate.agnosticism-floor` | No host-IP literal, CVE id, operator home path, or supplied plant token survives in any changed file, and every changed file was actually opened | `python3 tools/agnosticism-lint.py --forbid-file <round forbid list>` with one `--file` per changed file, the set enumerated from `git diff --name-only --diff-filter=d <pre-harvest rev>` (the literal invocation, and why the list is driven from git and never from an extension list: §G1 in detail). Exits 0, with no `unreadable` finding | BLOCK | soft |
+| G2 | `harvest.gate.agnosticism-judgment` | The classes no regex sees: every class in §What counts as a project reference that G1's forbid list did not cover | No command exists. Read `git diff` whole against that section, class by class, the version rule (§the second gate) included. Judge: the Phase-2 generalizer, then an authoring-class reviewer who did **not** author the diff and reads all of it, then the steward at ratification | BLOCK | judgment |
 | G3 | `harvest.gate.faithful-import` | Each imported artifact carries the whole of its donor's generalizable discipline, with only plant-specifics stripped and never substance | No command exists. Section-by-section donor→import comparison, one per artifact; for a corpus page, also the withdraw-ready bar's sections marked present, absent or gap-stated, and spot-checks that re-open the cited sources and the provenance class of each sampled fact. Judge: an authoring-class reviewer who did **not** author the import | BLOCK | judgment |
 | G4 | `harvest.gate.availability` | Every import is reachable by the flow that delivers it, proven against `install.sh` and the consuming node | The five-step resolution below; record the resolved path per artifact. A changed delivery mechanism also reports its read-only live probe over the real donors (§Phase 3) | BLOCK as INERT | detective |
-| G5 | `harvest.gate.plant-untouched` | Every donor plant is byte-unchanged against the baseline taken before the survey read it (§Phase 1), because harvest is inbound-only | For each plant, `git -C <plant> rev-parse HEAD` matches the baseline HEAD and `git -C <plant> status --porcelain` matches the baseline porcelain line for line: empty when the plant was clean, the same dirt when the owner had work in progress. A plant with no repository of its own (`git rev-parse --show-toplevel` from its root names another directory) is compared by re-hashing the baseline's SHA-256 manifest: every listed file present with the same hash. A plant that is no longer reachable from the machine running the gate (the round moved hosts) is recorded as not checked, with the baseline kept as evidence, never as a pass. The plain form reads the tracked tree only, on purpose; stray files are what grow's `--ignored -uall` form finds. Both exit 0 either way, so the output is evidence a person reads, not a refusal | BLOCK | detective |
+| G5 | `harvest.gate.plant-untouched` | Every donor plant is byte-unchanged against the baseline taken before the survey read it (§Phase 1), because harvest is inbound-only | For each plant, against the baseline whose line 1 names that plant's root: `git -C <plant> rev-parse --verify -q HEAD` matches the baseline HEAD; `git -C <plant> status --porcelain -uall` matches the baseline porcelain line for line, empty when the plant was clean and the same dirt when the owner had work in progress; and `shasum -a 256 -c <baseline>.sha256`, run from the plant root, reports every listed file `OK` (an empty manifest, a clean plant whose survey read no ignored surface, has nothing to hash: the row says so instead of running it, since `shasum -c` refuses an empty list). The hash check is the one that sees a write to a file that was already dirty, which leaves the porcelain unchanged, and a write to an ignored surface the survey read, which the porcelain never lists. A plant with no repository of its own, or a repository with no commit, has only the hash check, over the manifest of every file the survey read. A plant that is no longer reachable from the machine running the gate (the round moved hosts) is recorded as not checked, with the baseline kept as evidence, never as a pass. What none of the three sees is a new file under an ignored path the survey never read; running the plant's scripts only as §Phase 1 says is what keeps that case empty. The two git commands exit 0 either way, so their output is evidence a person reads; the hash check exits non-zero on a changed or missing file | BLOCK | detective |
 | G6 | `harvest.gate.self-consistency` | The seed's own full gate is green and every registry is in sync | `bash tests/run.sh`, every lint and suite: the whole run | BLOCK | soft |
 | G7 | `harvest.gate.clean-install` | A by-hand install of the working tree into a fresh directory succeeds, and its owner-facing output says what this harvest expects | `bash install.sh claude-code --project-dir "$(mktemp -d)"` (the harness is positional; there is no `--harness` flag and the parser dies on one). Read the warnings, the re-created-node notices and the NEXT STEP lines. The install suites are G6's and are not re-run here | BLOCK | soft |
 | G8 | `harvest.gate.prose` | Imported prose reads as the seed's own writing and lost no fact in the rewrite | `python3 tools/prose-lint.py --file <changed .md>` and `--against <pre-harvest rev>`, the floor on every changed file; above it, `skill.humanizer` judges human-facing documentation only, and a graph node gets no humanizer pass | BLOCK, or record the genre exception in the proposal | soft |
@@ -563,14 +651,20 @@ run reads like a verdict and is not one.
 - It detects **host-IP literals** (loopback, unspecified, broadcast and the RFC
   5737 documentation ranges excepted), **CVE identifiers**, **absolute operator
   home paths** (generic placeholders excepted), and any term passed as
-  `--forbid`. That is all four of its rules. It has no rule for a version
+  `--forbid` or listed, one per line, in a `--forbid-file`. That is all four
+  of its rules. It has no rule for a version
   number or a calendar date, so the version rule of §the second gate is G2's
   alone.
 - It detects **none** of the six classes in §What counts as a project reference
-  unless the run supplies them as `--forbid`. Supplying them is the harvester's
-  job: the seed cannot hardcode a plant's vocabulary without leaking it, which
-  is why the tool takes it as an argument. Whatever is not supplied is G2, and
-  G2 has no tool.
+  unless the run supplies them. Supplying them is the harvester's job: the
+  seed cannot hardcode a plant's vocabulary without leaking it, which is why
+  the tool takes it as input, and a round's list (Phase 1, "Several plants")
+  is passed as a file, because it runs to hundreds of terms, some with spaces,
+  and an argument list built from it by hand breaks on exactly those. A term
+  on the list that a corpus page carries as a fact about the library it
+  documents (class 2: a vendor's name, a product's documented default port)
+  is held out of that one file's run, and the proposal names the term and the
+  file. Whatever is not supplied is G2, and G2 has no tool.
 - **Its default glob is `*.md` alone, and a glob list is a coverage boundary.**
   A directory contributes only its glob matches, so a changed `.py`, `.sh`,
   `.json`, `.tsv`, `.yml`, `.toml` or extensionless script under a changed
@@ -589,7 +683,7 @@ run reads like a verdict and is not one.
       echo "no changed files: G1 has nothing to scan"   # a PASS here is a lie
   else
       python3 tools/agnosticism-lint.py "${args[@]}" \
-          --forbid <plant token> --forbid <plant domain>
+          --forbid-file <round>/forbid.txt
   fi
   ```
 
@@ -622,7 +716,11 @@ run reads like a verdict and is not one.
   roots entirely, and inside the roots a `*.py`, `*.sh` or `*.tsv` file is
   never opened. A harvest that writes into any of them gets a green seed-lint
   that scanned none of it, and scans them itself with
-  `--root`/`--file`/`--glob`.
+  `--root`/`--file`/`--glob`. The one gate step that reads a plant
+  vocabulary is the run of the lint over the shipped tree with the steward's
+  gitignored `.cypress/forbid.txt` (Phase 1, "Several plants"), and it prints
+  `SKIPPED` on a checkout that has no such file: a clean gate on a machine
+  without the list has checked no plant token at all.
 
 #### G3 in detail: who judges a faithful import, and why it is not the author
 
@@ -669,12 +767,18 @@ So for every artifact a harvest adds, resolve its delivery path:
      `docs/graph/tools/<name>.md`, a skill page as the node
      `docs/graph/skills/<name>.md`), records them in `.cypress/seed.json`
      (`expertise`), and refreshes on every later install the recorded pages
-     nobody edited (SPEC-0001 §6). A harvested page reaches this arm only if
+     nobody edited (SPEC-0001 §6). A harvested page reaches this arm when
      the matcher can name it: its `<key>/<name>` is a package a manifest
      declares, its `## What it is` own-package list names one (or, on a maven
      page, its coordinates), a page with no package carries a trigger
      SPEC-0001 §6 names, or its `stack:` field names a library page that
-     matches.
+     matches. A generic skill page (`skill-corpus/<name>.md`, no stack) is
+     one no manifest can name, so it reaches this arm by need instead: a
+     `graft` or `grow` session that finds the plant performing the procedure
+     the page holds proposes its id with that evidence, and the owner's list
+     places it as the node `docs/graph/skills/<name>.md`. Its reach is
+     therefore as good as the need-reading step in those two protocols, and
+     G4 records it as such.
    - **Read seed-side**: the corpus stays in the seed and the consuming node
      names its path formula. `agent-corpus/` is only of this kind, and a
      library, tool or skill page the owner did not place is read this way too:
@@ -761,7 +865,10 @@ has not been harvested, only stored.
 
 Harvest **proposes**; the human steward **ratifies**. Emit the fold-back as a
 reviewable patch/proposal against the seed with the harvest summary below. The
-seed is deliberate, and its evolution is too.
+seed is deliberate, and its evolution is too. Keep the round's records (the
+ledgers, the baselines, the forbid list, the proposal with its provenance
+ledger) where they are once the round closes: the next round over the same
+plants starts from them (Phase 1).
 
 ## The corpora (`harvest.corpus-contracts`): five withdraw contracts
 
@@ -1039,8 +1146,10 @@ is harvested as a stack-keyed page; it is generalized, not rejected.
   upgrades across, a minimum version a step needs), as the library documents
   them, are admissible; a plant's version is not.
 - **The withdraw contract (consumed by `grow`; pointed at by `toolcraft` /
-  `canonize` / commission).** A stack-keyed page is also placed on the
-  owner's list (G4 step 1); otherwise read seed-side. `protocols/grow.md` is
+  `canonize` / commission).** Placed on the owner's list (G4 step 1): a
+  stack-keyed page when the matcher names it, a generic page when a session
+  has identified the plant's need for its procedure; otherwise read
+  seed-side. `protocols/grow.md` is
   the node that states the formula, seeding `docs/graph/skills/<name>.md` from
   `skill-corpus/<name>.md` or `skill-corpus/<key>/<name>.md` where a
   repeatable procedure the source actually performs matches an entry, a keyed
@@ -1087,7 +1196,10 @@ content**:
 ## Provenance ledger
 - <one row per fold-back: plant lineage(s), source surface, provenance class
   of its facts (plant-proven / upstream-fetched; model-supplied only once
-  fetched), seed target, the check that proves it (a test only for code)>
+  fetched), seed target, the check that proves it (a test only for code),
+  and `landed: <seed path>`, written when the row lands and `queued` until
+  then. The next round that surveys the same plant reads this column instead
+  of re-deriving by grep what already landed (Phase 1)>
 
 ## Seed integrity gate (the result column; the plant may be named here)
 - <one line per row of the Phase 4 gate table, in its order, no row omitted.
@@ -1130,8 +1242,9 @@ Rejected:    <generic categories only, e.g. "internal/proprietary pages;
 
 **Why the committed record carries no evidence.** It is bound by the
 agnosticism gate, and a gate's own result string is made of plant identity:
-G1's command is the plant's forbidden-token list spelled out, G5's result is
-`git -C <plant> status` output, G4's is resolved paths. Printing
+G1's input is the plants' forbidden-token list (and any term it held out names
+one), G5's result is `git -C <plant> status` output and a plant's file hashes,
+G4's is resolved paths. Printing
 `<command> → <result>` into the seed would route every class in §What counts as
 a project reference through this protocol's own output template, so the
 contamination the gate stops would arrive by the door built to stop it. The

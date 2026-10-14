@@ -338,7 +338,7 @@ eval_row() { set -e; eval "$ROW"; }
 
 case_waves_levels_scheduled_plan() {
   # X361 GRILL_WAVES_LEVELS_FROM_DEPENDS_ON, holds STALE_SCHEDULE; rows X362-X364
-  row X361 'the header says static; five wave lines in wave-then-document order' \
+  row X361 'GRILL_WAVES_LEVELS_FROM_DEPENDS_ON: the header says static; five wave lines in wave-then-document order' \
     'sched; wrun --waves; has "$HEADER_3"; waves_are "$WAVES_5"; rc 0'
   row X362 'a RED with no dependency rises to wave 1' \
     'sched D4=none; wrun --waves; has "  wave 1: increment 4 (RED) Persist submissions"'
@@ -351,7 +351,7 @@ case_waves_levels_scheduled_plan() {
 case_waves_overlap_brace_pair() {
   # X366 GRILL_WAVES_OVERLAP_IS_A_WARNING; rows X367-X370 (X368 holds FALSE_OVERLAP,
   # X369 MISSED_OVERLAP)
-  row X366 'one brace group expands; 1 and 3 warn, sequenced 3 and 4 do not' \
+  row X366 'GRILL_WAVES_OVERLAP_IS_A_WARNING: one brace group expands; 1 and 3 warn, sequenced 3 and 4 do not' \
     'sched "F3=\`tests/test_{forms,store}.py\`"; wrun --waves
      has_re "$OVERLAP_1_3"; count 1 "may run together"; lacks "increments 3 and 4 may run together"; rc 0'
   row X367 'a glob warns with the path it matches (R0.6)' \
@@ -368,7 +368,7 @@ case_waves_overlap_brace_pair() {
 case_waves_not_computed_forward_dependency() {
   # X373 GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT; rows X374-X376, X380, and
   # X371-X372 (GRILL_WAVES_UNSCHEDULED_WITHOUT_PHASE)
-  row X373 'a forward dependency stops the report; the plain defect line prints' \
+  row X373 'GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT: a forward dependency stops the report; the plain defect line prints' \
     'sched "D1=increment 2"; wrun --waves; has_re "$NOT_COMPUTED"; waves_are ""
      has_re "increment 1: depends on increment 2, listed after it"; rc 1'
   row X374 'the same for a dependency on a missing increment' \
@@ -382,7 +382,7 @@ case_waves_not_computed_forward_dependency() {
   row X380 'duplicate increment numbers: no wave map, the plain exit (R0.13)' \
     'sched N3=1 D4=none; wrun; prc=$WRC; wrun --waves
      has "waves: not computed — §9 has duplicate increment numbers"; waves_are ""; rc "$prc"'
-  row X371 'no Phase: field anywhere: unscheduled, nothing more' \
+  row X371 'GRILL_WAVES_UNSCHEDULED_WITHOUT_PHASE: no Phase: field anywhere: unscheduled, nothing more' \
     'write_plan; wrun --waves; has "waves: unscheduled — no §9 increment carries a Phase: field"
      waves_are ""; lacks WARN; rc 0'
   row X372 'a partial phase prints (no phase) and warns once for increment 2' \
@@ -417,7 +417,22 @@ sys.exit(0 if all(any(w == h for h in have) for w in want) else 1)' "$pout" "$WO
 case_waves_levels_scheduled_plan
 case_waves_overlap_brace_pair
 case_waves_not_computed_forward_dependency
-collect_case X377 case_waves_existing_plans_same_exit 'every recorded plan: same exit and plain lines with --waves; no report line without'
+# The fixture writer rewrites the file it is given. Handed a path that is not a
+# plan (its own source, which holds both heading strings inside quotes), it
+# once spliced plan text into its own string literal; it now refuses, exit 2,
+# and leaves the file's bytes as they were. Run on a copy, never the seed's.
+case_sched_refuses_a_non_plan() {
+  local c="$TMP/sched-copy.py" before
+  cp "$SCHED" "$c"; before="$(cksum <"$c")"
+  python3 "$c" "$c" >/dev/null 2>&1 && { echo "the writer exited 0 on its own source"; return 1; }
+  [ "$(cksum <"$c")" = "$before" ] || { echo "the writer rewrote its own source"; return 1; }
+  printf '# notes\n\nsee "## 9. Implementation Plan" and "## 10." in the template\n' > "$TMP/notes.md"
+  before="$(cksum <"$TMP/notes.md")"
+  python3 "$SCHED" "$TMP/notes.md" >/dev/null 2>&1 && { echo "the writer exited 0 on a file with no §9 heading"; return 1; }
+  [ "$(cksum <"$TMP/notes.md")" = "$before" ] || { echo "the writer rewrote a file with no §9 heading"; return 1; }
+}
+collect_case G4a case_sched_refuses_a_non_plan 'the scheduled-plan writer refuses a file that is not a plan and leaves it unchanged'
+collect_case X377 case_waves_existing_plans_same_exit 'GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED: every recorded plan: same exit and plain lines with --waves; no report line without'
 
 # ---------------------------------------------------------------------------
 # The seed layout (ADR-0020): docs/plans/<stem>.md, its ledger in

@@ -257,3 +257,10 @@ second slice or the next-most-valuable item from the roadmap in
 - The first useful slice's tests are green; the suite is green.
 - The README explains what the project is and how to run it.
 - The close-out ran: the delivery cites the librarian's handback.
+- `docs/graph/index.md` still reads `grown: false`, and that is correct: this
+  protocol bootstraps a graph, it does not grow one. The marker belongs to the
+  growth pass that follows the build once the project holds source a scout can
+  read (`protocol.grow`, entered through `protocol.initialize`), and that
+  pass's Phase 6 sets it when its validation passes, never anyone before it.
+  The delivery's next step names that pass when the slice has made the
+  project scoutable.

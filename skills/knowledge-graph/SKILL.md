@@ -26,6 +26,8 @@ load_when:
   - "which node owns this best-practices page, expertise node or domain node"
   - "where does a new leaf attach, who gets the artifacts edge"
   - "branch node shape, a menu of leaves"
+  - "requires or peers edge, why does this route load so much"
+  - "a count or total in a node disagrees with its table"
 artifacts:
   - templates/knowledge-graph/_schema.md
   - templates/knowledge-graph/graph-lint.py
@@ -71,6 +73,17 @@ semantics: `id`, `owns`, `requires`, `peers`, `composes`, `artifacts`,
 copy an existing node rather than authoring frontmatter from scratch.
 The key that carries the whole design: `owns`. Each fact-key appears in
 exactly one node's list, project-wide.
+
+The edges decide what every later task pays; what `requires:` and
+`peers:` mean is `_schema.md`. Two consequences follow. A neighbour a
+reader should know about and will usually skip is a `peers:` edge,
+never a prose pointer in the body, because the router prints a peer as
+"not loaded", a visible choice a body sentence is not; and a
+`requires:` edge to a node that owns nothing the task uses drags that
+node into every route through this one. The root carries no
+`requires:` edge at all: it is the cold start of every session, so
+whatever it requires, every session loads; it reaches the rest of the
+graph through lazy edges and `index.md`.
 
 An `expertise` node ONLY routes. It owns exactly two facts,
 `<slug>.applicability` (when this stack element is in play, and what
@@ -151,6 +164,16 @@ commands were run here; unbuilt work is written in the future tense with
 its owning increment named, because a present-tense sentence asserts
 that the thing exists.
 
+**A number is a fact with a derivation.** Where a count, a total or a
+ratio appears, the arithmetic that produced it appears with it (what was
+counted, over which rows, by which command), and each denominator is its
+own fact rather than a figure recomputed in passing. An aggregate is
+derived from the rows it summarizes, never restated beside them, since a
+summary line written separately from its table contradicts that table as
+soon as one row changes (the rendered-views corollary of rule 1). A
+validation pass (`skill.validate-knowledge`) recounts every stated
+number against its source; this rule is that recount's one home.
+
 ### 4. Bodies stay small
 
 A node body aims at ~150 lines, and the linter rejects a project node
@@ -194,7 +217,10 @@ instead. On a composed child the wording decides whether it is ever
 reached at all, because descent tests the child's own vocabulary minus
 its parent's: a trigger the family already carries sits on the parent,
 adds nothing, and descends nobody. Give a child the words only it
-answers to.
+answers to. Among siblings, no node's triggers may cover every task
+its siblings' triggers cover: that node then loads on all of their
+tasks as well as its own, and a node stuffed with every keyword of its
+neighbourhood is that superset by accretion.
 
 Compounding extends to being *wrong*: a recorded fact found false is
 struck through and gets a dated **Correction** beside it, under the one

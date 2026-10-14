@@ -10,17 +10,29 @@
 .NET Generic Host and the ASP.NET Core host. It registers an `IHostedService`
 that starts the `TracerProvider`, `MeterProvider` and logger provider with the
 host and disposes them when the host stops. It also gives one builder,
-`OpenTelemetryBuilder`, for all three signals. The NuGet package id is
-`OpenTelemetry.Extensions.Hosting`; it depends on the `OpenTelemetry` SDK
-package. The source is the `open-telemetry/opentelemetry-dotnet` repository.
-Licence: Apache-2.0. It targets .NET Framework 4.6.2, .NET Standard 2.0 and
-current .NET.
+`OpenTelemetryBuilder`, for all three signals. It depends on the
+`OpenTelemetry` SDK package. The source is the
+`open-telemetry/opentelemetry-dotnet` repository (the instrumentation
+packages live in `opentelemetry-dotnet-contrib`). Licence: Apache-2.0. It
+targets .NET Framework 4.6.2, .NET Standard 2.0 and current .NET. The
+packages this page covers:
+
+- `OpenTelemetry.Extensions.Hosting`: the hosting integration and the
+  `AddOpenTelemetry()` builder. Needed in every host that exports telemetry.
+- `OpenTelemetry.Exporter.OpenTelemetryProtocol`: the OTLP exporter
+  (`AddOtlpExporter`, `UseOtlpExporter`). Needed when telemetry goes to a
+  collector or backend over OTLP.
+- `OpenTelemetry.Instrumentation.AspNetCore`: server spans and HTTP server
+  metrics (`AddAspNetCoreInstrumentation`). Needed in an ASP.NET Core app.
+- `OpenTelemetry.Instrumentation.Http`: `HttpClient` client spans and metrics
+  (`AddHttpClientInstrumentation`). Needed when outbound HTTP calls should be
+  traced.
+- `OpenTelemetry.Exporter.InMemory`: an exporter that collects telemetry into
+  a list. Needed only in tests.
 
 ## Install, setup and configuration
 - `dotnet add package OpenTelemetry.Extensions.Hosting`, plus one package per
-  instrumentation (for example `OpenTelemetry.Instrumentation.AspNetCore`,
-  `OpenTelemetry.Instrumentation.Http`) and per exporter (for example
-  `OpenTelemetry.Exporter.OpenTelemetryProtocol` for OTLP).
+  instrumentation and per exporter (the list in What it is).
 - Call `AddOpenTelemetry()` once in the host's startup code. Recent 1.x
   releases also offer `builder.AddOpenTelemetry()` on `IHostApplicationBuilder`.
   It seeds `service.name` from `IHostEnvironment.ApplicationName` and

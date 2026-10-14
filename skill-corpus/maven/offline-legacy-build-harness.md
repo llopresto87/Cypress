@@ -15,7 +15,8 @@ load_when:
   - "build a characterization suite for an old java service before a migration"
 stack:
   - library-corpus/cli/maven
-est_tokens: 2300
+prevents: A legacy Maven service is declared untestable, or its frozen POMs are edited to make it build, because a bare mvn test fails on the JDK, a dead repository and a private artifact, each rediscovered per service.
+est_tokens: 2989
 ---
 
 # Suggested skill: offline-legacy-build-harness

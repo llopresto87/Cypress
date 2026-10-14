@@ -1,3 +1,27 @@
+---
+name: characterize-undocumented-device-protocol
+description: Reconstruct a device protocol the vendor does not document from public implementations and the device itself, in an order that touches the device as little and as late as possible (fingerprint, corroborated framing, offline tests, a read cross-checked on a second channel, a write behind a flag). Invoke when a needed capability exists only on an undocumented channel.
+id: skill.characterize-undocumented-device-protocol
+tier: 2
+kind: skill
+title: characterize-undocumented-device-protocol, the order in which an unknown wire format becomes trusted
+owns:
+  - characterize-undocumented-device-protocol.discovery
+  - characterize-undocumented-device-protocol.framing-corroboration
+  - characterize-undocumented-device-protocol.first-live-read
+  - characterize-undocumented-device-protocol.first-write
+  - characterize-undocumented-device-protocol.pitfalls
+requires:
+load_when:
+  - "reverse engineer the device protocol"
+  - "the vendor does not document this protocol"
+  - "binary tcp command set from community sdks"
+  - "checksum byte order disagrees between sources"
+  - "first live call to the device"
+prevents: A guessed frame layout or checksum is sent straight to a live device, a write runs before any read was cross-checked on a second channel, and a codec tested only against its own fixtures fails on the real wire.
+est_tokens: 3344
+---
+
 # Suggested skill: characterize-undocumented-device-protocol
 
 > Optional procedure: a project has to drive a device or service through a

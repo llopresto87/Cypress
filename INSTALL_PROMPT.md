@@ -128,8 +128,9 @@ Every worker brief embeds the graph-session bootstrap blocks
 Hard boundaries bind every worker from the first spawn (`grow`'s § Boundaries is
 the full statement): workers leave the application as they find it. They
 change none of its code, run none of its builds or test suites, and leave its
-Git state alone (no fetch, pull, switch, commit or push), recording that state
-only as provenance. Every spec, ADR, rationale, command, source and status they
+Git state alone (no fetch, pull, switch, commit or push; the session's own
+baseline and checkpoint commits are `grow`'s, `grow.write-boundaries`),
+recording that state only as provenance. Every spec, ADR, rationale, command, source and status they
 report is evidenced, never fabricated, and existing docs never outrank current
 executable source.
 

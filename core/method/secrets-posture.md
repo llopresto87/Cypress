@@ -18,14 +18,15 @@ peers:
   - protocol.recover
 load_when:
   - "where do credentials live, dotenv values or a secret store, how a password reaches a subprocess"
-  - "can I print, log, mask, or document a secret value"
+  - "can I print, log, mask, or document a secret value, redact a process environment listing"
+  - "rebuild after committed credentials, revoke a third-party key or generate fresh ones"
   - "a credential leaked into source history, rotate it or scrub the history"
   - "token TTL versus revocation list, credential lifetime and rotation"
   - "generate a fresh password or key during deploy without overwriting the live one"
   - "is the leaked secret still live, verify a rotation at the consumer, when to suppress a scanner finding"
   - "a throwaway or smoke run disables host key checking or reads a key file from the repository"
 prevents: Secrets that arrive by several channels and leave by all of them — values in logs and errors, and compromise treated as a scare rather than a rotation.
-est_tokens: 2268
+est_tokens: 2409
 ---
 
 # Secrets posture
@@ -71,10 +72,14 @@ holding real credential material (a mail sink with reset tokens) is a
 sensitive store even in staging: internal-only, absent from production.
 Whole-system configuration dumps are secret-bearing by default —
 restricted paths, suppressed from task logs — rather than judged field
-by field. `plant.environment_class` (`docs/graph/index.md`) decides what
-"disposable" means here: a generated throwaway credential is correct
-under `ephemeral-test` and a defect under `real-production`; the rule is
-the same, the class supplies the verdict.
+by field. A running process's environment is listed by variable name
+only, or redacted by matching credential keywords anywhere in the whole
+name: a pattern written as `KEYWORD=` passes `PREFIX_KEYWORD_SUFFIX=`
+through with its value. `plant.environment_class`
+(`docs/graph/index.md`) decides what "disposable" means here: a
+generated throwaway credential is correct under `ephemeral-test` and a
+defect under `real-production`; the rule is the same, the class supplies
+the verdict.
 
 ## 2. Record a secret by name and location only
 
@@ -115,21 +120,26 @@ blast-radius order — signing keys, then datastore credentials, then
 third-party integration keys — under the explicit confirmation kernel §4
 requires, with a secret-scan re-run (with its positive control,
 `protocol.verify`) as each rotation's exit gate. Two operations share
-only the word: a credential a third party still honours is a live
-exposure revocable today; one guarding only systems you control is a
-never-reuse constraint on future generation. Triage asks whether the
-leaked value is still live as well as whether it is real, and settles
-liveness by comparing digests of the leaked and the deployed value,
-which reveals neither. A rotation is verified at the consumer: changing
-the stored value does not re-key state the consumer imported once at
-bootstrap, and an idempotent re-run of the provisioning step is not a
-rotation. A scanner finding on the credential is suppressed only after
-the rotation, or after an owner ruling that the value was never real;
-suppressing it first hides a possibly live credential to unblock a
-release. Code carrying a credential is deleted from source, not disabled
-or profile-gated. A plant that knowingly carries a committed credential
-for a bounded time records that as a `deviation` node whose `ends_when`
-is the rotation, never as an accepted state.
+only the word, and a remediation plan lists them apart: a credential an
+outside counterparty still honours is a live exposure, revoked at the
+provider now, without waiting for its place in that order, by whoever
+holds that account, since nothing in the repository can perform or
+observe the revocation; one guarding only systems you control, or
+systems that no longer exist, has nothing to revoke and is a never-reuse
+constraint on future generation, met by fresh values before the rebuilt
+system listens (§4). Triage asks whether the leaked value is still live
+as well as whether it is real, and settles liveness by comparing digests
+of the leaked and the deployed value, which reveals neither. A rotation
+is verified at the consumer: changing the stored value does not re-key
+state the consumer imported once at bootstrap, and an idempotent re-run
+of the provisioning step is not a rotation. A scanner finding on the
+credential is suppressed only after the rotation, or after an owner
+ruling that the value was never real; suppressing it first hides a
+possibly live credential to unblock a release. Code carrying a
+credential is deleted from source, not disabled or profile-gated. A
+plant that knowingly carries a committed credential for a bounded time
+records that as a `deviation` node whose `ends_when` is the rotation,
+never as an accepted state.
 
 ## 4. Bound exposure by lifetime, freshness, and non-reuse
 

@@ -22,6 +22,7 @@ load_when:
   - "refresh the knowledge graph after material code changes"
   - "onboard a multi-repo or monorepo project"
   - "build docs/graph for existing source"
+  - "identifiers in another language, glossary of domain terms"
 artifacts:
   - templates/prompts/graph-session-bootstrap.md
   - templates/prompts/handback-payload.md
@@ -47,8 +48,11 @@ existing-project discovery and authoring discipline.
   unrelated existing files. Leave competing AI configurations in place;
   deleting or relocating one is the owner's call.
 - Adoption ONLY records build and test commands: extract each exact
-  command and label it `discovered, not executed`. An inherited suite
-  stays untrusted until proven RED by mutation
+  command and label it `discovered, not executed`, with where it was
+  found (`path:line`) and, when they hold, `target absent` or
+  `declared, non-functional` (the states are `verify.gate-states`; the
+  growth gate is `grow.gate.executed`). An inherited suite stays
+  untrusted until proven RED by mutation
   (`docs/graph/protocols/test-first.md`), so record it as discovered.
 - Git stays read-only: record the repository revision as provenance;
   fetch, pull, switch, commit, and push each need a separate explicit
@@ -65,7 +69,11 @@ worktree state, role, manifests, stack, and the natural language of its
 identifiers and domain vocabulary. A non-English (or otherwise
 non-default) language is an explicit graph fact, because downstream agents
 grep and reason in it and an unrecorded mismatch silently defeats every
-later search. Boundaries follow capabilities, not repository count.
+later search. A glossary entry for a term in that language is checked
+against the fields and code that use the term: the obvious translation,
+or a plausible cognate, is a hypothesis until the code agrees, and a
+wrong gloss sends every later search to code that does not exist.
+Boundaries follow capabilities, not repository count.
 
 Inventory cheaply, excluding generated/vendor/cache/build output; the
 `inventory` of `source-index.py build --json`, run once, is the scouts'
@@ -109,7 +117,7 @@ Then enrich the leaf collections under `docs/graph/`:
 | `architecture/` | context, components, runtime flows, integrations, sharp edges |
 | `api/` | observed HTTP/RPC/event/job contracts with code locations |
 | `data/` | ownership, schemas, persistence, migrations, lineage |
-| `libraries/` | all direct deps indexed; critical deps richly wikified |
+| `libraries/` | all direct deps indexed; critical deps richly wikified (which ones, and from what: `skill.library-wiki`, "Depth when adopting an existing project") |
 | `sources/` | provenance for external information actually used |
 | `prompts/` | discovered prompt contracts, versions, and call sites |
 | `evaluations/` | discovered datasets, rubrics, gates, and failure modes |
@@ -135,20 +143,6 @@ later agent as no decision, and the artifact gets re-trusted. The
 Handoff's excluded-docs report then points at this node rather than
 standing in for it. An agent-operations system is not such a source:
 `protocol.grow` Phase 4 says what each of its parts yields.
-
-## Dependency wiki depth
-
-Index every direct dependency from manifests. Create a detailed library
-page during initialization when the dependency is architecturally
-significant, security/operations critical, unusual, or used across
-several subsystems. Each page answers how this project uses it, where
-configuration lives, relevant constraints, sharp edges, and verification
-status.
-
-Installed versions come from manifests/locks. Upstream lifecycle,
-compatibility, or current guidance requires a primary upstream source;
-otherwise mark it pending rather than guessing. Record consulted sources
-in `docs/graph/sources/`.
 
 ## Refreshing an existing graph
 
@@ -179,8 +173,10 @@ Verify all graph links resolve; every Tier-3 leaf is reachable from an
 owning node; no duplicate fact homes exist; representative task routes
 are small and relevant; commands say whether they were executed; the
 verification runbook carries the absent-gate rows where no
-infrastructure was found (Librarian pass); and no template placeholders,
-fabricated success, inferred specs, or invented rationale remain.
+infrastructure was found (Librarian pass); each recorded command carries
+its found-at, not-executed and target labels (Invariants); and no
+template placeholders, fabricated success, inferred specs, or invented
+rationale remain.
 
 Use known-answer navigation questions from several capabilities plus an
 adversarial false-premise question. A wrong or bulk-read answer is a

@@ -24,17 +24,20 @@ peers:
 load_when:
   - "missing env var or required config, add a default or fail loudly at startup"
   - "invalid or malformed input, clamp coerce repair or reject it"
+  - "validate before or after trimming or normalizing, the stored value differs from the checked one"
+  - "the preflight passed but the tool failed, the preflight checked less than the tool reads"
   - "message format between two services with no schema registry, who owns the contract"
   - "field order, list ordering, or decimal rounding precision in a serialized payload"
   - "what should the error response say, status code, leaking a stack trace"
   - "authorization check, derive the acting user from the token not the request body"
   - "soft delete, visibility predicate on every read surface, cache key leak"
-  - "what to log, correlation id, never payloads or tokens"
+  - "what to log, correlation id, never payloads or tokens, an audit interceptor breaks a response"
+  - "access scope from an ownership join or a reference, one spec differs from its siblings"
   - "a failed build left no log, discard stderr or keep the step's output"
   - "print external text into a CI log, log command injection, sanitize before printing"
   - "a producer field changed, update every consumer that reads it, one provisioning step depends on another"
 prevents: Interfaces that accept anything and fail late — missing input read as empty, out-of-domain values coerced, and errors that tell the caller less than it needs to act.
-est_tokens: 2797
+est_tokens: 3717
 ---
 
 # Contract posture
@@ -50,24 +53,35 @@ Required configuration, credentials, and fields are validated once at
 the earliest common layer, one schema-checked module every reader goes
 through, and a missing one fails the run with a non-zero exit naming
 every offender. A default added to silence the failure converts a loud
-deploy failure into a silent wrong value in production; an
-interpolation that substitutes blank is the same defect. A service whose
-security depends on a supplied secret refuses to start without it and
-says which one; a known sample or placeholder value is a boot failure; a
+deploy failure into a silent wrong value in production; an interpolation
+that substitutes blank is the same defect. A service whose security
+depends on a supplied secret refuses to start without it and says which
+one; a known sample or placeholder value is a boot failure; a
 configuration that can disable a security control fails closed at
 startup rather than trusting every deployment path to override it.
 Optionality is declared ("optional" means the artifact works without
 it), because a loader that tolerates a missing value says nothing about
 whether the artifact still works; a field whose absence would bind a
 silent zero in a non-nullable type is mandatory. The guard against a
-fallback that substitutes a *value* is `protocol.verify`'s.
+fallback that substitutes a *value* is `protocol.verify`'s. A preflight
+that predicts a tool's failure evaluates the scope the tool evaluates,
+not the narrower scope the run means to act on: a tool that resolves its
+whole configuration fails on a value missing for a component the run
+never starts, and a preflight scoped to the deployed components passes
+over it, a false green.
 
 ## 2. Reject out-of-domain input rather than repairing it
 
 A component that receives a value outside its domain refuses it and
 persists nothing — never rounds, clamps, truncates, coerces, merges, or
 substitutes — because downstream the repair is indistinguishable from
-the measurement; refusal is non-destructive and retryable. Schema-validate
+the measurement; refusal is non-destructive and retryable. Validate the
+value that will be persisted, not the value received: where a boundary
+checks its input and then stores a transform of it (trimmed, normalized,
+case-folded), the check holds only if what the validator accepts and
+what the transform leaves unchanged agree on every input, and an input
+in that gap passes the check and stores a value the check never saw;
+validate after the transform, or prove the two agree. Schema-validate
 every input at the boundary so nothing past it is untrusted; decide an
 upload's type from its own bytes with a cheap pre-decode gate, because a
 client-supplied label is attacker-controlled; a parser building
@@ -89,21 +103,27 @@ one producer's behaviour and the contract covers every producer.
 Producer and consumer each assert exact literal values at the boundary
 (the producer defines validity, the consumer keeps a backstop against
 any producer version it may meet), and each assertion names the defect
-it would have caught. A change lands only after the real producers and
-consumers are enumerated by name, the unknown ones that could still be
-affected stated, the change classified against them with its
-reversibility, and the ADR question argued either way. A consumer that
-reads a changed producer field (the provisioned login user, read back by
-the connection settings) changes in the same change set, and a preflight
-compares the two before anything acts on them, because a consumer left
-reading the old value fails only when it next uses it. A breaking change
-to a published contract ships once, as one coordinated release with
-written notice, never as a defective old version kept alive behind a
-version segment. Cross-service references are opaque identifiers whose
-integrity lives in code and tests, not the store; a format hardens once
-clients you do not deploy in lockstep persist it, so keep it opaque. A
-rename crossing a serialization, wire, or process boundary is a contract
-change (`skill.holistic-editing`).
+it would have caught. A check that derives a value from a source and
+compares it with that same source is an echo and catches nothing: gate a
+join between two independently maintained records instead. Where a
+guarantee holds over a class of contracts and one member legitimately
+differs, the exception is stated on that member and every other member
+asserts the negative, the stronger claim, because an exception written
+on the class makes every other member's contract false. A change lands
+only after the real producers and consumers are enumerated by name, the
+unknown ones that could still be affected stated, the change classified
+against them with its reversibility, and the ADR question argued either
+way. A consumer that reads a changed producer field (the provisioned
+login user, read back by the connection settings) changes in the same
+change set, and a preflight compares the two before anything acts on
+them, because a consumer left reading the old value fails only when it
+next uses it. A breaking change to a published contract ships once, as
+one coordinated release with written notice, never as a defective old
+version kept alive behind a version segment. Cross-service references
+are opaque identifiers whose integrity lives in code and tests, not the
+store; a format hardens once clients you do not deploy in lockstep
+persist it, so keep it opaque. A rename crossing a serialization, wire,
+or process boundary is a contract change (`skill.holistic-editing`).
 
 ## 4. Where order or precision carries meaning, it is an asserted contract
 
@@ -164,14 +184,18 @@ authentication and visibility denials share one response shape and
 timing class. A service-to-service caller is a narrowly scoped,
 short-lived machine identity admitted by the same rules, never a widened
 guard or trusted network position. An access rule fails closed on input
-it cannot classify: scope access by a property every record carries,
-such as a declared class mapped totally to its rule (a test keeps the
-map total over the class's values, and an unclassified record answers
-not-found like a missing one), never by a join that is empty for some
-records and ambiguous for shared ones, because such a join denies shared
-material and lets the empty case through in the same change. A guard in
-front of authentication refuses a shape it cannot parse; one that
-answers "not mine" hands every shape its grammar lacks to the layer
+it cannot classify: scope access by a declared property every record
+itself carries, such as a class mapped totally to its rule (a test keeps
+the map total over the class's values, and an unclassified record
+answers not-found like a missing one), never by the references that
+point at it (a record cited by a subject is not owned by it) and never
+by a join that is empty for some records and ambiguous for shared ones,
+because such a join denies shared material and lets the empty case
+through in the same change. A proposed ownership join is checked in both
+failure directions, records with no single owner and records with no
+owner at all, and states what the gate does when it cannot decide. A
+guard in front of authentication refuses a shape it cannot parse; one
+that answers "not mine" hands every shape its grammar lacks to the layer
 behind it, and a parse stricter than that layer's reads as defensive in
 review while it works as a bypass. Scope a pre-authentication admission
 cap to a class that excludes the legitimate caller and key it on a value
@@ -203,25 +227,31 @@ listable.
 Emit structured logs to a single stream with a correlation identifier on
 every request, job, and delegation (the `spawn_id` of
 `delegation.tracing` in `method.delegation-bounds`), carrying outcome
-and reason (actor handle, result, rejection reason, size) and never
-the payload, credential, token, or private field that caused it.
-Application code logs only through that structured stream, so every
-line carries the correlation id and passes redaction; tracing uses a
-vendor-neutral API so the backend stays swappable; redaction applies to
-traces and operational inspection exactly as to logging, because a trace
-is a data sink like any other. Any mechanism that displaces a
-human-supplied value announces the name and the displacing mechanism
-before the value is lost (one value-free line per overridden name,
-silent when nothing changed), with a provenance view separating
-supplied from effective values. A diagnostic capture window is anchored
-to the event under investigation: a window that can hold more than one
-occurrence yields a sample, not a trace. A log level is not a redaction
-control: where the call sites that write a sensitive value already emit
-at or above the shipped default, no verbosity setting at or below that
-default silences them, and a level high enough to drop them also drops
-the trail operators need. Count the
-offending call sites by level before proposing a level as the control;
-the fix is redaction at the call site or in the one structured stream.
+and reason (actor handle, result, rejection reason, size) and never the
+payload, credential, token, or private field that caused it. Application
+code logs only through that structured stream, so every line carries the
+correlation id and passes redaction; tracing uses a vendor-neutral API
+so the backend stays swappable; redaction applies to traces and
+operational inspection exactly as to logging, because a trace is a data
+sink like any other. A cross-cutting interceptor that serializes request
+or response payloads anyway (an audit trail, a metric) is a second
+serialization contract on every endpoint it wraps: it can fail on a
+payload the primary serializer accepts, and one that rethrows turns an
+observability fault into a user-facing failure. It contains its own
+failure, redacts before the payload leaves the process, and is exercised
+against every payload-returning endpoint when it lands. Any mechanism
+that displaces a human-supplied value announces the name and the
+displacing mechanism before the value is lost (one value-free line per
+overridden name, silent when nothing changed), with a provenance view
+separating supplied from effective values. A diagnostic capture window
+is anchored to the event under investigation: a window that can hold
+more than one occurrence yields a sample, not a trace. A log level is
+not a redaction control: where the call sites that write a sensitive
+value already emit at or above the shipped default, no verbosity setting
+at or below that default silences them, and a level high enough to drop
+them also drops the trail operators need. Count the offending call sites
+by level before proposing a level as the control; the fix is redaction
+at the call site or in the one structured stream.
 
 Where a log is also a command channel, printing is an input to it. Some
 CI runners interpret specially marked output lines as instructions (set

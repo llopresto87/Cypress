@@ -1,3 +1,24 @@
+---
+name: evolve-agent-charter
+description: Fix one observed deficiency of an agent charter by mapping the symptom to the one section to edit, making the smallest coherent edit, and running the check the table names plus the roster-wide gates. Invoke when an agent was misrouted, used a tool it should not need, gave wrong advice, failed to hand off, or drew the same owner correction twice.
+id: skill.evolve-agent-charter
+tier: 2
+kind: skill
+title: evolve-agent-charter, symptom to section to edit to check, one deficiency at a time
+owns:
+  - evolve-agent-charter.symptom-to-section
+  - evolve-agent-charter.one-deficiency-edit
+  - evolve-agent-charter.validation
+requires:
+load_when:
+  - "the agent keeps getting selected for the wrong tasks"
+  - "fix this agent's routing triggers"
+  - "the agent misrouted, edit its charter"
+  - "the owner corrected this agent again"
+prevents: A misbehaving agent's charter is widened on speculation, its triggers steal neighbours' work, and lessons land in a charter-local log that the next graft erases.
+est_tokens: 2322
+---
+
 # Suggested skill: evolve-agent-charter
 
 > Optional procedure: an agent charter (a roster agent, a plant's own

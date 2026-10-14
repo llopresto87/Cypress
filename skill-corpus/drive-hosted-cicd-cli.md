@@ -1,3 +1,25 @@
+---
+name: drive-hosted-cicd-cli
+description: Drive a hosted CI/CD platform from its command-line client, with one session login, the target pinned on every call, both branch inputs named explicitly, a preview before a consequential queue, the run addressed by its returned id, and the built ref proven from the checkout log. Invoke to queue, inspect or register a pipeline, or to test an unmerged branch in CI.
+id: skill.drive-hosted-cicd-cli
+tier: 2
+kind: skill
+title: drive-hosted-cicd-cli, queue, prove and register hosted pipeline runs from a terminal
+owns:
+  - drive-hosted-cicd-cli.two-branch-trap
+  - drive-hosted-cicd-cli.run-identity
+  - drive-hosted-cicd-cli.built-ref-proof
+  - drive-hosted-cicd-cli.registration
+requires:
+load_when:
+  - "queue a pipeline run from the cli"
+  - "test an unmerged branch in ci without merging"
+  - "which ref did the ci run actually build"
+  - "register a committed workflow definition as a pipeline"
+prevents: A CI run compiles its definition from one branch and builds another, a summary field is taken as proof of the built ref, and a re-queue on a misread run list deploys twice.
+est_tokens: 2994
+---
+
 # Suggested skill: drive-hosted-cicd-cli
 
 > Optional procedure, **a template, vendor-neutral**. Driving a hosted CI/CD

@@ -21,8 +21,9 @@ satisfied with the growth.
 Harvest generalizable improvements from the mature plant, or every plant, at
 `{{plant path or umbrella; default: current working directory}}` back into
 CYPRESS at `{{seed path; locate the seed repository if not in scope}}`. Leave
-the plant as it is; changes reach the seed as proposals I ratify, never as a
-silent change.
+the plant as it is, and prove it: the protocol's baseline, taken before the
+first read, is what its plant-untouched gate compares against. Changes reach
+the seed as proposals I ratify, never as a silent change.
 
 This chat is the orchestration and planning plane: it routes, plans and talks
 with me, and every investigation, generalization and authoring task goes to a

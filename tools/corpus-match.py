@@ -24,7 +24,7 @@ by the declaration that says the project is written in it (a Java level, a Dart
 SDK constraint) where a manifest serves several languages, and a page with no
 package (a platform, a CLI tool) by the triggers SPEC-0001 §6 names for it: a
 file it reads, an official image, a GitHub Action, a pre-commit hook id, or a
-package whose only use is to drive it. The walk reads the project's own
+package, or a Maven group, whose only use is to drive it. The walk reads the project's own
 manifests only: it skips scratch and copy directories, the agent hosts' own
 directories, a nested plant and a symlinked directory. A stack-keyed `skill-corpus/<key>/<name>` page, and a
 `tool-corpus/<category>/<name>` page, match when their `stack:` frontmatter
@@ -54,11 +54,7 @@ _pw_spec = importlib.util.spec_from_file_location(
     "cypress_plant_walk", Path(__file__).resolve().parent / "plant_walk.py")
 plant_walk = importlib.util.module_from_spec(_pw_spec)
 _pw_spec.loader.exec_module(plant_walk)
-
-try:
-    import tomllib
-except ImportError:  # Python before 3.11: the pyproject reader falls back
-    tomllib = None
+import tomllib
 
 # Directories no manifest the plant declares lives in: dependency stores,
 # build output, virtual environments, version control, the plant's graph, and
@@ -92,8 +88,13 @@ ACTIONS = {"aquasecurity/trivy-action": ("cli", "trivy"),
 HOOKS = {"gitleaks": ("cli", "gitleaks"), "gitleaks-docker": ("cli", "gitleaks"),
          "gitleaks-system": ("cli", "gitleaks")}
 # An entry whose only use is to drive a platform names the platform's page too.
+# A Maven group whose every artifact drives one platform is keyed by
+# `maven-group`, the candidate the POM reader yields for a groupId.
 DRIVES = {("galaxy", "community.proxmox"): ("platform", "proxmox-ve"),
-          ("pypi", "proxmoxer"): ("platform", "proxmox-ve")}
+          ("pypi", "proxmoxer"): ("platform", "proxmox-ve"),
+          ("maven-group", "com.microsoft.graph"): ("platform", "microsoft-graph"),
+          ("nuget", "microsoft.graph"): ("platform", "microsoft-graph"),
+          ("npm", "microsoft-microsoft-graph-client"): ("platform", "microsoft-graph")}
 # The Java language level in a POM: a property, or the compiler plugin's setting.
 JAVA_LEVEL_PROPERTIES = ("java.version", "maven.compiler.release",
                          "maven.compiler.source", "maven.compiler.target")
@@ -145,6 +146,8 @@ def maven(path: Path):
             yield "maven", n, entry
         for n in reduced_artifacts(art):
             yield "maven-coordinate", f"{group}:{n}", entry
+        if group:
+            yield "maven-group", group, entry
 
 
 def java_level(root) -> str:
@@ -259,13 +262,10 @@ def requirements_txt(path: Path):
 
 def pyproject(path: Path):
     text = read_text(path)
-    if tomllib is not None:
-        try:
-            data = tomllib.loads(text)
-        except tomllib.TOMLDecodeError as exc:
-            raise Unreadable(f"not valid TOML ({exc})") from None
-    else:
-        data = {"project": {"dependencies": re.findall(r'^\s*"([^"]+)",?\s*$', text, re.M)}}
+    try:
+        data = tomllib.loads(text)
+    except tomllib.TOMLDecodeError as exc:
+        raise Unreadable(f"not valid TOML ({exc})") from None
     yield "language", "python", "(present)"
     project = data.get("project") or {}
     specs = list(project.get("dependencies") or [])

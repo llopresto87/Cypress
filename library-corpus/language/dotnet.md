@@ -74,6 +74,18 @@ open source under the MIT licence, developed in the `dotnet/runtime`,
   dependency injection and hosted services into one object that owns startup
   and graceful shutdown. Inject `IHostApplicationLifetime` to hook started,
   stopping and stopped.
+- **Configuration and options.** `services.Configure<T>(section)` (or
+  `AddOptions<T>().Bind(section)`) binds a configuration section onto an
+  instance of `T`. `IOptions<T>` is a singleton read once; `IOptionsSnapshot<T>`
+  is scoped and recomputed per scope (per request), so it cannot be injected
+  into a singleton; `IOptionsMonitor<T>` is a singleton that sees reloads and
+  raises change notifications. Validation (`Validate`, data annotations,
+  `IValidateOptions<T>`) runs when the options are first resolved, unless
+  `ValidateOnStart()` moves it to host startup. The binder ignores properties
+  with private setters and properties no key sets; a configuration key with no
+  matching property is ignored too, unless `BinderOptions.
+  ErrorOnUnknownConfiguration` makes the bind throw (a cheap guard against a
+  misspelled key).
 - **Log redaction.** `Microsoft.Extensions.Compliance.Redaction`
   (`services.AddRedaction(...)`) maps data classifications to redactors, and
   `builder.Logging.EnableRedaction()` (from `Microsoft.Extensions.Telemetry`)
@@ -204,6 +216,24 @@ open source under the MIT licence, developed in the `dotnet/runtime`,
   - The middleware has long handled only the `X-Forwarded-*` headers, with no
     parser for the standard `Forwarded` header (RFC 7239). Confirm current
     support before designing on `Forwarded`.
+- **Configuration can add to a list-valued option but never remove from it.**
+  The binder works on the existing instance. For a collection property
+  (`List<T>`, any `ICollection<T>`) it calls `Add` for each configured item;
+  for an array it builds a new array of the existing elements followed by the
+  configured ones (both in the binder's source). Items the code put there
+  first, in a property initializer or a constructor, therefore stay: an
+  `appsettings` file or a `Section__Key__0` environment variable that lists
+  fewer entries widens the list instead of narrowing it, and an override meant
+  to remove an entry silently does nothing. Dictionaries merge by key, and a
+  dictionary whose values are collections extends those collections (a .NET 7
+  change). Observed in practice and measured: a default list of N entries
+  bound against a configuration array of the same N entries came out with 2N,
+  every entry twice, and deleting an entry from the configuration removed
+  nothing that the code default also held. The docs describe the dictionary
+  case and not the list one. For an allowlist or any security-relevant list,
+  start the property empty and require the configuration section, or bind into
+  a fresh instance and replace the property, and test the effective value by
+  binding the shipped configuration, not a hand-built options object.
 - **Message text is not where a byte search looks in a compiled assembly.** In
   the .NET metadata format, string literals live in the `#US` (user strings)
   heap as UTF-16LE, while type and member names live in the `#Strings` heap,
@@ -321,6 +351,12 @@ open source under the MIT licence, developed in the `dotnet/runtime`,
   Central Package Management
 - https://learn.microsoft.com/en-us/dotnet/core/runtime-config/garbage-collector:
   GC settings, including DATAS
+- https://learn.microsoft.com/en-us/dotnet/core/extensions/configuration:
+  configuration and the binder
+- https://learn.microsoft.com/en-us/dotnet/core/extensions/options: the
+  options pattern
+- https://github.com/dotnet/runtime/blob/main/src/libraries/Microsoft.Extensions.Configuration.Binder/src/ConfigurationBinder.cs:
+  the binder's collection and array handling
 - https://learn.microsoft.com/en-us/dotnet/core/extensions/data-redaction:
   log redaction
 - https://learn.microsoft.com/en-us/aspnet/core/fundamentals/best-practices:

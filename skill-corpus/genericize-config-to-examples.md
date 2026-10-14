@@ -1,3 +1,24 @@
+---
+name: genericize-config-to-examples
+description: Replace a tree of real per-instance configuration with one synthetic example per contract shape, each derived from the code that consumes it, then account for the three places the real instances survive the deletion (history, registries, validators) and gate what is left. Invoke when the owner asks to genericize config or a repository is about to be shared.
+id: skill.genericize-config-to-examples
+tier: 2
+kind: skill
+title: genericize-config-to-examples, real per-instance config replaced by consumer-derived examples
+owns:
+  - genericize-config-to-examples.example-per-shape
+  - genericize-config-to-examples.surviving-instances
+  - genericize-config-to-examples.gate
+requires:
+load_when:
+  - "genericize the config into examples"
+  - "replace the real host variable files with examples"
+  - "remove the real config before publishing the repository"
+  - "turn per-host configuration into templates"
+prevents: Real hosts and secrets are deleted from the tree yet survive in history, registries and validators, and the replacement examples are copied from stale files their own consumers reject.
+est_tokens: 2123
+---
+
 # Suggested skill: genericize-config-to-examples
 
 > Optional procedure: a repository holds real per-instance configuration

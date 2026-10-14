@@ -1,3 +1,25 @@
+---
+name: live-patch-stopgap
+description: Deploy an already-committed, already-verified fix straight into one running instance by replacing one artifact and reloading in place, behind a per-invocation owner authorization given after the drift debt was disclosed, and verified by a live functional signal. Invoke only when the harm is active and the pipeline cannot deliver the fix in time.
+id: skill.live-patch-stopgap
+tier: 2
+kind: skill
+title: live-patch-stopgap, the authorized and honestly accounted hot patch of one running instance
+owns:
+  - live-patch-stopgap.authorization
+  - live-patch-stopgap.preconditions
+  - live-patch-stopgap.live-verification
+  - live-patch-stopgap.drift-debt
+requires:
+load_when:
+  - "hot patch the running container"
+  - "the pipeline is down, deploy the fix directly"
+  - "replace the artifact in the running instance and reload"
+  - "stop the active harm before the pipeline can deploy"
+prevents: A fix is copied into a live instance without a per-invocation authorization or a disclosed drift debt, is verified by a string search that lies, and silently vanishes on the next ordinary deploy.
+est_tokens: 2098
+---
+
 # Suggested skill: live-patch-stopgap
 
 > Optional procedure — **a template**. Deploying an already-committed,

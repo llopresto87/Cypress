@@ -102,7 +102,7 @@ unread_fails agnosticism-lint bad.md nz -- \
 # Asserts SPEC-0006 METRICS_UNREADABLE_CHANGELOG_FAILS_LOUD.
 mkdir -p "$T/metrics"
 make_unreadable "$T/metrics/changelog.md"
-unread_fails session-metrics changelog.md 2 -- python3 "$ROOT/tools/session-metrics.py" \
+unread_fails "session-metrics (METRICS_UNREADABLE_CHANGELOG_FAILS_LOUD)" changelog.md 2 -- python3 "$ROOT/tools/session-metrics.py" \
   --root "$T/metrics" --deliver "$ROOT/protocols/deliver.md" --since 2026-10-05
 
 # roster-justification (a gate step): an unreadable node must also leave the

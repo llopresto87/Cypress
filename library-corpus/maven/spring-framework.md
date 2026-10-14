@@ -68,7 +68,13 @@ docs list versions and do not prescribe this).
   base URL, default headers, interceptors, request factories, API versioning)
   and is thread-safe once built; `WebClient` is the reactive client; HTTP
   interface clients are annotated Java interfaces backed by generated proxies;
-  `RestTemplate` is the older template-method client.
+  `RestTemplate` is the older template-method client. The HTTP library under a
+  client is a pluggable request factory (`JdkClientHttpRequestFactory`,
+  `HttpComponentsClientHttpRequestFactory`, `JettyClientHttpRequestFactory`,
+  `ReactorNettyClientRequestFactory`, `SimpleClientHttpRequestFactory`), and
+  `WebClient` takes a connector the same way. A `RestClient` built with no
+  request factory uses Apache HttpClient or Jetty's client when either is on
+  the class path, and otherwise the JDK `HttpClient`.
 - **Filters, interceptors, advice.** A servlet `Filter` runs in the container
   before the `DispatcherServlet`. A `HandlerInterceptor` (`preHandle`,
   `postHandle`, `afterCompletion`) applies to handler-mapped requests; for
@@ -120,10 +126,46 @@ docs list versions and do not prescribe this).
   slashes.
 - **Parameter names without `-parameters`** fail name-based binding from the
   later 6 releases on, where discovery from debug information was removed.
+- **The class path picks the HTTP transport.** Because a `RestClient` without
+  an explicit request factory takes Apache HttpClient or Jetty when present, a
+  test-scoped dependency that brings either (an HTTP stub server, say) moves
+  every default client in the tests onto a library production does not use.
+  Observed in practice with Spring Security's OAuth2 token client: the same
+  code called the token endpoint through Apache HttpClient in tests and the
+  JDK `HttpClient` in production. Where transport behaviour is under test
+  (timeouts, redirects, TLS, compression, size limits), set the request factory
+  explicitly.
+- **Compressed responses on the JDK connector.** The reactive
+  `JdkClientHttpConnector` (`WebClient` on the JDK `HttpClient`) hands a
+  `Content-Encoding: gzip` body through as compressed bytes; the source reads
+  the body as a raw publisher with no decoding step. `JdkClientHttpRequestFactory`
+  decodes `gzip` and `deflate` from 7.0 (see Major lines) and does not on 6.
+  Where nothing decodes, either send no `Accept-Encoding`, or send it on
+  purpose, decompress by hand, and apply any response-size limit to the
+  decompressed bytes rather than the wire bytes (observed in practice).
 
 ## Testing
 - The TestContext framework is annotation-driven and independent of the test
   framework: JUnit Jupiter through `SpringExtension`, JUnit 4, and TestNG.
+- **The context cache.** A loaded `ApplicationContext` is cached and reused by
+  every later test class with the same context configuration. The cache key is
+  built from the `@ContextConfiguration` locations, classes and initializers,
+  the context loader, the parent, active profiles, `@TestPropertySource`
+  sources and properties, the web resource base path, and the context
+  customizers, which include each `@DynamicPropertySource` method, bean
+  overrides such as `@MockitoBean`, and Spring Boot's test features. A
+  customizer compares the `@DynamicPropertySource` methods themselves, so two
+  classes that each declare their own method, even with identical bodies,
+  load two contexts. Declare the method once in a shared base class, together
+  with the rest of the shared context configuration, and let subclasses add
+  none; observed in practice, that cut repeated context starts sharply. A
+  subclass that needs its own beans or properties pays its own start. If the
+  dynamic values must differ per subclass, the reference suggests
+  `@DirtiesContext` on the base class.
+- The cache is a static field, so it lives per JVM: a build tool that forks a
+  JVM per test class (Surefire with `reuseForks=false`, or the older `forkMode`
+  values `always` and `pertest`) disables it. It holds 32 contexts by default
+  with least-recently-used eviction (`spring.test.context.cache.maxSize`).
 - `MockMvc` runs full Spring MVC request handling against mock requests and
   responses with no server; `MockMvcTester` adds an AssertJ API; `WebTestClient`
   can run against MockMvc.
@@ -206,7 +248,11 @@ and the path-mapping options `suffixPatternMatch`, `trailingSlashMatch` and
 versioning, and resilience support: `RetryTemplate` and `RetryPolicy` in
 `spring-core` (`org.springframework.core.retry`), with `@Retryable` and
 `@ConcurrencyLimit` in `spring-context`, both enabled by
-`@EnableResilientMethods` on a `@Configuration` class. Jackson 3 first. `UriComponentsBuilder.fromHttpUrl` is absent
+`@EnableResilientMethods` on a `@Configuration` class. Jackson 3 first.
+`JdkClientHttpRequestFactory` decompresses `gzip` and `deflate` responses by
+default and sends `Accept-Encoding: gzip, deflate` unless the request sets its
+own header; `enableCompression(false)` restores the 6 behaviour (the reactive
+connector is unchanged; see General pitfalls). `UriComponentsBuilder.fromHttpUrl` is absent
 from the 7 javadoc; the removal was met in practice while migrating (the release notes
 do not mention it).
 
@@ -219,3 +265,5 @@ do not mention it).
 - https://docs.spring.io/spring-framework/reference/integration/rest-clients.html
 - https://docs.spring.io/spring-framework/reference/web/webmvc/filters.html
 - https://docs.spring.io/spring-framework/reference/testing/testcontext-framework.html
+- https://docs.spring.io/spring-framework/reference/testing/testcontext-framework/ctx-management/caching.html
+- https://github.com/spring-projects/spring-framework/tree/main/spring-web/src/main/java/org/springframework/http/client (request factories and connectors)

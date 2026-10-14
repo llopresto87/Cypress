@@ -79,13 +79,15 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "docs/specs/ are swept by the spec-lint.py step below"),
     "spec-lint.py": (
         "the seed's own two specs carry no fabricated sign-off, no invented "
-        "status, and no live spec without contracts; uncovered contracts stay "
-        "within a ratcheted budget", REAL, "coverage",
-        "the coverage half is enumerated debt, not a pass: the budget only stops "
-        "that number RISING. It matches a slug ANYWHERE under tests/ — including "
-        "in a COMMENT, verified: three contracts became 'covered' when a "
-        "docstring in tests/seed-lint.py happened to name them, and the count "
-        "fell 23 -> 20 with no test written. A contract whose §10 row cites a "
+        "status, and no live spec without contracts; uncovered and "
+        "comment-only contracts each stay at a ratcheted budget", REAL, "coverage",
+        "the coverage half is enumerated debt, not a pass: the budgets only stop "
+        "those numbers RISING. A slug only a comment carries is a WARN and not "
+        "coverage; SPEC_COMMENT_ONLY_BUDGET holds their count so it can only "
+        "fall, but the ones already counted stay green on that weaker link; and a slug in a docstring or string still counts "
+        "whatever the string says, verified: three contracts once became "
+        "'covered' when a docstring in tests/seed-lint.py happened to name "
+        "them, and the count fell 23 -> 20 with no test written. A contract whose §10 row cites a "
         "test that asserts something adjacent also still reads as covered. "
         "seed-lint's check_spec_rows_name_their_contract is the stricter "
         "companion: it requires the slug in the test the ROW cites"),
@@ -213,6 +215,17 @@ GATES: dict[str, tuple[str, str, str, str]] = {
     "test-agnosticism-lint.sh": (
         "the agnosticism floor finds leaked host IPs and pinned CVEs",
         FIXTURES, "scope", "seed-lint.py runs the same scanner over the real corpora"),
+    "agnosticism-lint.py": (
+        "no file the seed tracks names a term on the steward's local forbid "
+        "list (.cypress/forbid.txt, gitignored), past the list's own !allow "
+        "exemptions", REAL, "coverage",
+        "it reads the list only where the list is: a clone, a worktree and CI "
+        "hold none, and there the step prints SKIPPED and exits 0, so its green "
+        "there checked no term. The list is as complete as the steward keeps "
+        "it, and a project name nobody wrote into it is not seen; the "
+        "objective classes (host IPs, advisories, home paths) are left to "
+        "seed-lint.py, which runs them over the corpora, because the seed's "
+        "fixtures plant them on purpose"),
     "test-prose-lint.sh": (
         "the prose linter finds its nine violation classes", FIXTURES, "scope", ""),
     "test-lint-audibility.sh": (

@@ -12,7 +12,9 @@
          judged Tier 2 or Tier 3 entry has no block, a missing line, an
          empty line, a `not recorded` with no reason, or a Tier value that
          names no tier.
-  query  --all [--json]   one record per entry, with its raw line values
+  query  --all [--json]   one record per entry, with its raw line values;
+                          no entry read from a file holding dated headings
+                          is said on stderr, with the forms it reads
          --labels         the labels of the deliver node's template block
 
 The labels are read at run time from the deliver node's fenced template
@@ -377,6 +379,15 @@ def run_all(args, path, labels, sections):
     lines, mask, entries = parse_changelog(read_text(path), sections)
     for e in entries:
         judge(e, lines, mask, labels)
+    if not entries:
+        # `[]` reads the same for a changelog with no delivery and for one whose
+        # deliveries are written in a form the reader does not know; the second
+        # is named on stderr, so stdout stays the answer a caller parses.
+        dated = sum(1 for _, _, t in headings(lines, mask) if DATE_RE.search(t))
+        if dated:
+            print(f"session-metrics: 0 entries read from {path}, which holds {dated} "
+                  f"dated heading(s) in no form the query reads; {FORMS}, or a "
+                  f"`Session metrics` heading under any heading", file=sys.stderr)
     if args.json:
         print(json.dumps([record(e) for e in entries], ensure_ascii=False, indent=2))
     else:

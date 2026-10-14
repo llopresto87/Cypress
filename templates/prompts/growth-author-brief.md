@@ -33,6 +33,10 @@ Read the growth evidence ledger(s) the scouts wrote:
 .cypress/growth/{{boundary-slug}}.ledger.md   {{+ any reconciled ledgers this deliverable spans}}
 ```
 
+Read `.cypress/growth/corrections.md` beside them: it outranks the
+ledgers and the orchestration plan wherever they conflict
+(`protocol.grow`, the corrections record).
+
 The ledger schema is `docs/graph/templates/prompts/growth-evidence-ledger.md`;
 each section is keyed to the deliverable it feeds. Also load
 `docs/graph/_schema.md` and {{an existing exemplar}} for style.
@@ -116,8 +120,16 @@ GRAPH DISCIPLINE — execute before reading any source:
    Everything else a loaded node lists (leaves, children, links,
    neighbours) is a menu: open an item only when its one-line
    "load when" serves your task, and list the rest as skipped.
-3. Declare what you loaded, what you deliberately skipped, and any
-   later widening (with the reason it became necessary).
+3. Check the route against the files you will touch, before you
+   read them: the stack elements they use (extensions, paths,
+   manifests, lockfiles) and the area they sit in each have their
+   `expertise.*` node, owning node or `libraries/` page in it. For
+   one that is missing, run `--plan "<that element>"` and load what
+   it reports: the router composes expertise from the task's words,
+   so a stack the task line never names is not in the route.
+   Declare what you loaded, what you deliberately skipped, and every
+   widening, at the start or later (with the reason it became
+   necessary).
 4. One home per fact: link to the node that owns a fact instead of
    restating it. The graph outranks your memory of APIs/versions.
    A fact the graph states is settled: use it as stated; re-deriving
@@ -133,7 +145,11 @@ GRAPH DISCIPLINE — execute before reading any source:
    Return findings, and only what your parent needs. Depth:
    `method.minimum-sufficient-work`, `method.decision-economy`,
    `method.engineering-posture` §8.
-6. If the graph has no nodes yet (bootstrap pass), report the failed
+6. Leave shared git state alone: no `git stash`, `checkout`,
+   `restore`, `reset` or `clean`, because they move other writers'
+   uncommitted files. Take a baseline by copying the file or reading
+   `git show HEAD:<path>` (`delegation.wave-baseline`).
+7. If the graph has no nodes yet (bootstrap pass), report the failed
    probe and stay inside the exact paths named in this brief.
 ```
 
@@ -165,6 +181,10 @@ COMPANION (echo each item back in your handback):
 - **Write only your exclusive scope.** Write exactly: {{list the exact
   file paths}}. Knowledge writes stay under `docs/graph/`; a
   project-specific agent goes where the plant's roster lives.
+  Outside that scope you may only append to `.cypress/growth/corrections.md`:
+  a ledger claim the source contradicts, a fact two ledgers home
+  differently, a boundary drawn in the wrong place, or an edge or
+  ownership question, never an edit to a ledger.
   Application code, manifests, CI and Git state stay as they are.
 - **Mark every unknown.** Write `not recorded`, `not audited` or
   `discovered, not executed` wherever a version, URL, CVE, status, date

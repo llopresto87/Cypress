@@ -634,8 +634,19 @@ Global posture is the plan's §4; only what binds these checks is listed.
   against `git show`, and not a suite test: a standing test would freeze doctrine
   that later increments must edit.
 - **Compatibility:** stdlib Python 3 only (`re`, `fnmatch`, `pathlib`);
-  bash 3.2-compatible shell cases; no new dependency. The seed's minimum Python
-  version is not recorded.
+  bash 3.2-compatible shell cases; no new dependency.
+  The seed's minimum Python is 3.14, and this line is the floor's one home:
+  every script the installer places and every hook it wires runs on it. The
+  owner decided on 2026-10-14 to keep the floor at 3.14 rather than lower it
+  to the 3.9 some systems ship as `python3`.
+  The installer runs on, and writes into each hook command, the first
+  interpreter at the floor it finds on PATH, and refuses before writing when
+  there is none (SPEC-0001 HOOKS_RUN_ON_THE_FLOOR_INTERPRETER,
+  NO_INTERPRETER_AT_THE_FLOOR); `install.sh`'s `PYTHON_FLOOR` is the copy it
+  resolves by, held equal to this line by `tests/test-tool-help.sh`, which
+  starts every shipped script on the floor; the gate's job runs on it
+  (`.github/workflows/gate.yml`). Other specs point here rather than state a
+  version.
 - **Determinism:** `--plan` output order stays sorted by id; promotion and
   inference pick the first hitting piece in `load_when` order and the first path
   in task order, so the suffix is stable.
@@ -1590,7 +1601,7 @@ means a named agent decides and no tool can check.
   root name whose extension no slashed path in the plan carries (`manifest.json`
   in a plan that names no `x/y.json`), or not named at all
 - **Response:** no warning; the two lanes may run together and race on the
-  file (`detective`: the two race signs of `delegation.lanes`, and the
+  file (`detective`: the two race signs of `delegation.wave-baseline`, and the
   orchestrator's pathspec commit, which shows one path in two lanes' sets)
 - **Side effects:** a lane race, the failure `delegation.lanes` exists to
   prevent
@@ -2562,3 +2573,13 @@ kept outside the seed.
   amendments. The status stays `active`: the §10 rows still `pending` are
   failure modes held by review, process records or the owner, with no test by
   design, so not every row can read `green`. No contract changed.
+- 2026-10-14: the Python floor. §5 "Compatibility" now records the seed's
+  minimum Python, 3.14, and is its one home; it had said the minimum was not
+  recorded while SPEC-0007 named 3.12, two homes that disagreed. The owner
+  decided on 2026-10-14 to keep 3.14. The installer's resolution of an
+  interpreter at the floor and the hook commands that name it are SPEC-0001's
+  contracts; this spec states only the value. No contract changed.
+- 2026-10-14: review fixes. MISSED_OVERLAP's Response cites the two race
+  signs at their new home, `delegation.wave-baseline`, where the
+  baseline rule moved; §5 "Compatibility" rewrapped, no word changed. No
+  contract changed.

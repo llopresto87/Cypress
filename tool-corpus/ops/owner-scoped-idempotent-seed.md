@@ -46,7 +46,8 @@ and audited.
 mysql --default-character-set=utf8mb4 -u "$DB_USER" -p "$DB_NAME" < seed.sql
 psql -v ON_ERROR_STOP=1 --single-transaction -f seed.sql "$DATABASE_URL"
 # 2. prove the world through the API
-DEMO_PASSWORD=... seeded-world-verifier.py --plan verify-plan.json --base-url <url>
+DEMO_PASSWORD="$(cat "$DEMO_PASSWORD_FILE")" \
+  seeded-world-verifier.py --plan verify-plan.json --base-url <url>
 ```
 
 - **Seed inputs:** the seed file; the database credentials from the
@@ -56,7 +57,9 @@ DEMO_PASSWORD=... seeded-world-verifier.py --plan verify-plan.json --base-url <u
   with the counts the seed expects (§3.1, step 6). A non-zero client exit
   means the transaction rolled back and the database is unchanged.
 - **Verifier inputs:** a JSON plan (§3.3) and a base URL; any secret the plan
-  needs is written `${NAME}` and read from the environment.
+  needs is written `${NAME}` and read from the environment, which the command
+  fills from the on-disk file that holds the value (§5, "The demo password is
+  a credential"), so the command line names the file and never the value.
 - **Verifier outputs and exit codes:** one `PASS` or `FAIL` line per login and
   check, a summary; exit 0 all passed, 1 any failed, 2 a usage error, an
   unreadable plan, a missing environment variable or a plan with no check.
@@ -576,9 +579,19 @@ if __name__ == "__main__":
 - **psql keeps going after an error by default.** Without `ON_ERROR_STOP` a
   failing statement is reported and the rest of the file still runs, so a
   half-applied world commits. Always pass it.
-- **The demo password is a credential.** Keep it out of the seed file's
-  comments and out of the plan (use `${NAME}`); store only its hash in the
-  seed. The verifier never prints a value it read from the environment.
+- **The demo password is a credential.** Its value lives on disk only, in
+  one file outside the repository that only the operator can read and that
+  no model ever reads: not quoted in a doc, a handover guide, the plan, a
+  test or a test fallback, a commit, or the seed. The seed stores only its
+  hash, computed from that file; the plan writes `${NAME}`; a command loads
+  the variable from the file inside the shell, so the value never crosses a
+  model's context; a test that needs it reads the variable and fails, naming
+  the file it expected, when it is unset. A shared synthetic password is
+  still a working login on a deployed world, and a value a model has read can
+  reappear in anything it writes later. The verifier never prints a value it
+  read from the environment. The self-test's fixed string (§6) is a password
+  of a loopback fake that exists only for the length of the test, not of any
+  world.
 - **Take the dump before the first apply.** The reset block only touches
   marked rows, but the first apply is when a wrong marker or a wrong join
   shows itself.
@@ -633,3 +646,7 @@ verifier.
   skeleton sets foreign-key checks on and counts the join table. Error 1093
   and its derived-table exception are named. An earlier note dropped them as
   unconfirmed; the MySQL manual documents both. The calling skill is linked.
+- 2026-10-14: the owner decided on 2026-10-14 that a demo password lives on
+  disk only, in a file no model ever reads, and never in docs, plans, tests a
+  model reads, or the seed; the hash-only rule stands. §2 and §5 say how the
+  value reaches the verifier without passing through a model.

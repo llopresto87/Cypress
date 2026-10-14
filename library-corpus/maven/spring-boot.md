@@ -14,7 +14,11 @@ and Actuator for production operations. Canonical coordinates:
 `org.springframework.boot:spring-boot-starter-parent` as the parent POM (or the
 `spring-boot-dependencies` BOM imported in `dependencyManagement`), plus
 `spring-boot-starter-*` modules (e.g. `spring-boot-starter-web`,
-`spring-boot-starter-actuator`) for each capability. It sits on
+`spring-boot-starter-actuator`) for each capability. Two development-time
+modules are covered here too: `org.springframework.boot:spring-boot-devtools`
+(restart and live reload while developing) and
+`org.springframework.boot:spring-boot-properties-migrator` (reports renamed and
+removed configuration keys during an upgrade). It sits on
 [`spring-framework`](./spring-framework.md), whose version its BOM supplies.
 
 Support policy (open-source): a major line is supported for up to three years
@@ -57,6 +61,14 @@ https://spring.io/projects/spring-boot#support, not here.
   classes in bulk. Constructor binding needs classes compiled with
   `-parameters`; the starter parent and Boot's Gradle plugin set it, a build that
   imports the BOM must set it itself.
+- **Datasource.** Set `spring.datasource.url`; without it Boot auto-configures
+  an embedded database (H2, HSQL, or the deprecated Derby) whenever one is on
+  the class path, with no URL needed. So a profile that misses its URL does not
+  fail at start-up when an embedded driver sits on the runtime class path beside
+  the production one: it comes up healthy on an empty in-memory database.
+  `spring.datasource.embedded-database-connection=none` turns the embedded
+  fallback off, and keeping the embedded driver in `test` scope keeps it out of
+  the packaged application.
 - **Database initialization.** `spring.sql.init.mode` decides whether
   `schema.sql` and `data.sql` run: by default only for an embedded in-memory
   database (H2, HSQLDB, Derby), never for MySQL or Postgres unless set to
@@ -135,7 +147,12 @@ https://spring.io/projects/spring-boot#support, not here.
   practice). A renamed key stays "configured", the service starts healthy, and
   it falls back to defaults, such as `localhost` for a datastore. A key whose
   deprecation level is `error` in `spring-configuration-metadata.json` binds
-  nothing either. Audit renamed keys at every upgrade.
+  nothing either. Audit renamed keys at every upgrade. The costliest case is a
+  raised limit: `server.max-http-header-size` stopped binding within the Boot 3
+  line (see Major lines), so a service that raised it is back on the 8KB
+  default of `server.max-http-request-header-size`, and only requests with
+  large headers (a big bearer token, many cookies) fail, rarely and in front
+  of users.
 - **A profile with no backing document** (observed in practice). An active
   profile name that matches no `application-<profile>.yml` contributes nothing
   and reports nothing.
@@ -203,7 +220,13 @@ https://spring.io/projects/spring-boot#support, not here.
   same holds for reporting tracing components; the annotation for each Boot line
   is on [`micrometer-tracing`](./micrometer-tracing.md).
 - Wire a properties-migrator run and a renamed-key audit into upgrade work; a
-  green test suite says nothing about keys that silently stopped binding.
+  green test suite says nothing about keys that silently stopped binding. For a
+  value that matters at run time, such as a raised header limit, assert the
+  bound value in a context test (inject `ServerProperties` or read the key from
+  the `Environment`), and probe the running service with a request just under
+  the intended limit. Observed in practice: across a Boot major upgrade a
+  header-size key left under its old name silently drops a raised limit back
+  to the default, and neither the test suite nor a health check notices.
 
 ## Security defaults
 - HTTP exposure defaults to `health` only (JMX likewise).
@@ -218,6 +241,22 @@ https://spring.io/projects/spring-boot#support, not here.
 - With Spring Security on the class path and no chain of your own, every
   actuator except `/health` is secured.
 - No built-in property encryption.
+- **Forwarded headers.** `server.forward-headers-strategy` defaults to `NONE`,
+  or to `NATIVE` when Boot detects a supported cloud platform. `NATIVE` hands
+  the `X-Forwarded-*` headers to the web server; `FRAMEWORK` uses Spring's
+  `ForwardedHeaderFilter` instead. On Tomcat, `NATIVE` installs the remote-IP
+  valve, which honours forwarded headers only when the immediate peer matches
+  `server.tomcat.remoteip.internal-proxies`. Its default covers the private,
+  link-local, carrier-grade NAT and loopback ranges, so a reverse proxy on a
+  private network is trusted, and every forwarded header it passes through
+  (client IP, protocol, host, port) reaches the application and the redirects
+  it builds. The Spring reference puts the duty on the edge: a proxy at the
+  edge of trust must remove both the standard `Forwarded` and the
+  `X-Forwarded-*` headers from incoming requests. Have the edge overwrite or
+  strip every forwarded header the application reads, and prove it with a
+  request carrying a spoofed `X-Forwarded-Host` that must not show up in a
+  redirect `Location`. An empty `internal-proxies` trusts every peer, which the
+  reference says not to do in production.
 
 ## Operational behaviour
 - **Graceful shutdown** is on by default on current lines for Jetty, Reactor
@@ -266,6 +305,14 @@ auto-configuration in `spring.factories` replaced by the `.imports` file;
 trailing-slash matching off; Spring Security 6; Hibernate 6 (dialect and
 id-generation changes, observed in practice); Actuator `env` / `configprops`
 values masked by default; Spring Cloud Sleuth replaced by Micrometer Tracing.
+`server.max-http-header-size` is deprecated in 3.0 in favour of
+`server.max-http-request-header-size`, and both now limit only the request
+headers (on Tomcat the old key had limited response headers too; a
+`WebServerFactoryCustomizer` sets a response limit on Tomcat or Jetty). In 3.0
+and 3.1 the old key still forwards to the new one; from 3.2 it is gone from
+`ServerProperties` and its metadata deprecation level is `error`, so it binds
+nothing (the pitfall above). Rename it when moving to Boot 3, not when it
+stops working.
 
 ### Boot 3 to Boot 4
 Spring Framework 7 and still Java 17 or later. Auto-configuration is split into
@@ -289,6 +336,10 @@ is off by default.
 - https://docs.spring.io/spring-boot/reference/features/external-config.html
 - https://docs.spring.io/spring-boot/reference/actuator/endpoints.html
 - https://docs.spring.io/spring-boot/reference/testing/spring-boot-applications.html
+- https://docs.spring.io/spring-boot/reference/data/sql.html (embedded database support)
+- https://docs.spring.io/spring-boot/how-to/webserver.html (running behind a front-end proxy)
+- https://docs.spring.io/spring-boot/appendix/application-properties/index.html
+- https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-3.0-Migration-Guide
 - https://github.com/spring-projects/spring-boot/wiki (migration guides per major)
 - https://spring.io/support-policy
 - https://mvnrepository.com/artifact/org.springframework.boot

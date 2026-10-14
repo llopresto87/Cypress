@@ -138,13 +138,18 @@ NON_HUMAN_MARKERS = ("<task-notification>", "Another Claude session sent a messa
                      "<local-command-", "[agent-message from ", "[bash-done ",
                      "[harness-digest]")
 
-# --- injected text (SPEC-0003 §6; compared byte for byte by the tests) ---
+# The texts below are compared byte for byte by the tests, and their bytes are
+# held under a ceiling (seed-lint HOOK_TEXT_MAX_BYTES). SKIP_HEADER is also a
+# literal in graph-lint.py. CRASHED carries the router's exit status, then ": "
+# and its last stderr line, or nothing when that line names the prompt.
+# --- injected text (SPEC-0003 §6, byte for byte) ---
 POINTER = "Route first: the kernel's FIRST MOVE and \u00a70 apply to this prompt."
 SUGGESTION_HEADER = "Router suggestion (a keyword heuristic \u2014 reason over it):"
 REMINDER_HEADER = "LOAD {} ~{}t (reminder)"
 SEEN_LINE = "seen: {} (surfaced earlier this session; open if not in view)"
-SKIP_HEADER = "skip (cross only if the task needs it):"     # also a literal in graph-lint.py
+SKIP_HEADER = "skip (cross only if the task needs it):"
 ENGINE_OLDER = "No route: graph-lint.py lacks --plan-json; graft the engine."
+CRASHED = "No route: graph-lint.py exit {}{}"
 NO_GRAPH = ("No knowledge graph found (docs/graph/). Use the canonical "
             "INSTALL_PROMPT.md; /initialize is the entry fork behind it \u2014 "
             "grow when there is source to scout, from-scratch when the "
@@ -155,6 +160,7 @@ NO_GRAPH = ("No knowledge graph found (docs/graph/). Use the canonical "
 LEDGER_VERSION = 1
 REFRESH_EVERY = 10          # routed prompts per full injection; plan §4.7 may retune it
 ROUTER_TIMEOUT = 15         # seconds
+CRASH_LINE_MAX = 200        # characters of a crashed router's last stderr line
 LEDGER_TTL = 12 * 3600
 GC_MAX_AGE = 7 * 86400
 GC_MAX_FILES = 32
@@ -258,11 +264,14 @@ class RouterFailed(Exception):
 
 def run_router(prompt: str) -> dict:
     """The router's `cypress.plan/1` document for `prompt`, validated and
-    bound to it by its SHA-256. Raises RouterFailed, silently for a router that
-    failed (a non-zero exit, a timeout, no output, or a prompt the OS cannot
-    pass as an argument: a NUL byte, over the argument limit), with one stderr
-    line for output that is not such a document, and with the ENGINE_OLDER
-    notice for an engine whose argparse rejects the option: exit 2 and
+    bound to it by its SHA-256. Raises RouterFailed: silently for a router that
+    failed without a word (a non-zero exit with nothing on stderr, a timeout,
+    no output, or a prompt the OS cannot pass as an argument: a NUL byte, over
+    the argument limit); with the CRASHED notice for a router that exited
+    non-zero and wrote on stderr, its traceback's last line named so a dead
+    router is seen (SPEC-0003 ROUTER_CRASH_IS_NAMED); with one stderr line for
+    output that is not such a document; and with the ENGINE_OLDER notice for an
+    engine whose argparse rejects the option: exit 2 and
     `unrecognized arguments: --plan-json` on stderr (SPEC-0003
     ENGINE_OLDER_THAN_HOOK_IS_NAMED)."""
     try:
@@ -274,6 +283,8 @@ def run_router(prompt: str) -> dict:
         raise RouterFailed() from None
     if out.returncode == 2 and b"unrecognized arguments: --plan-json" in out.stderr:
         raise RouterFailed(notice=ENGINE_OLDER)
+    if out.returncode != 0 and out.stderr.strip():
+        raise RouterFailed(notice=crash_notice(out.returncode, out.stderr, prompt))
     if out.returncode != 0 or not out.stdout.strip():
         raise RouterFailed()
     try:
@@ -286,6 +297,21 @@ def run_router(prompt: str) -> dict:
         raise RouterFailed(f"router output is not a valid {PLAN_SCHEMA} document "
                            f"({problem}); pointer line only")
     return doc
+
+
+def crash_notice(code: int, stderr: bytes, prompt: str) -> str:
+    """CRASHED for a router that exited `code` and wrote `stderr`: its last
+    non-blank line, printable characters only and at most CRASH_LINE_MAX of
+    them, so a traceback reads as the error that ended it. A line that shares
+    text with the prompt (a line of the prompt in it, or it inside the prompt)
+    is left out, because the prompt appears in no injection; the exit status is
+    still named."""
+    lines = [l for l in stderr.decode("utf-8", "replace").splitlines() if l.strip()]
+    line = "".join(c for c in lines[-1].strip() if c.isprintable())[:CRASH_LINE_MAX] if lines else ""
+    if any(len(p) >= 4 and p in line for p in (s.strip() for s in prompt.splitlines())) \
+            or (len(line) >= 8 and line in prompt):
+        line = ""
+    return CRASHED.format(code, ": " + line if line else "")
 
 
 def _is(value, pattern) -> bool:

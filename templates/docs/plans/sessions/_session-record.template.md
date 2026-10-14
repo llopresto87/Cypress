@@ -37,6 +37,7 @@ How it applies: <one short paragraph>
 ## Corrected assumptions
 
 - <what was believed, and where it was written> → <what is true>; evidence: <path, command or commit>
+- <a node body the work found incomplete: its path and lines> → <what is missing>; evidence: <path, command or commit>; priority: <high | medium | low>
 
 ## Open threads
 

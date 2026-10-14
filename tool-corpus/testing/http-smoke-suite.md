@@ -35,15 +35,15 @@ smoke.sh [SECTION] [--json]
 #   exit 0 if every assertion passed; non-zero if any failed
 ```
 
-- **Inputs:** the target base URL/host; an optional **section selector** —
+- **Inputs:** the target base URL/host; an optional **section selector**:
   checks are grouped into independently-selectable named sections, which is what
   keeps the suite from being one monolithic all-or-nothing script and lets an
   operator debugging one surface run just that section; optional per-assertion
   config via env (`SMOKE_UNROUTED_PREFIX` places the unrouted-path probe, §3).
 - **Outputs:** by default one colored `PASS`/`FAIL` line per assertion plus a
   summary count; under `--json`, one `{section, check, pass, detail}` record per
-  check, which is what lets CI attribute a failure to an area. Either mode — and
-  a selective run as much as a full one — ends in a **single non-zero exit** on
+  check, which is what lets CI attribute a failure to an area. Either mode, and
+  a selective run as much as a full one, ends in a **single non-zero exit** on
   any failure, so narrowing the run never weakens the gate.
 - **Base path:** an optional path prefix (`SMOKE_BASE_PATH`, empty by
   default) that is put in front of every probed path. Write it with a leading
@@ -78,7 +78,7 @@ rather than page contents, e.g.:
   a silently-dropped route fail the suite instead of passing it.
 - A realtime/upgrade handshake (e.g. a WebSocket upgrade) reaches its backend and
   gets the expected switching-protocols response.
-- A surface that must be **closed** serves nothing at all — the negative
+- A surface that must be **closed** serves nothing at all: the negative
   assertion, whose only passing signal is a **connection reset or EOF at the
   transport level**. Assert the transport outcome (a connection-failure exit
   from `curl`, a failed `openssl s_client` connect), never a status code and
@@ -207,19 +207,29 @@ assert edge "an unrouted path is 404"           unrouted_404  # the route table 
   with the route having disappeared from the edge configuration, and only a
   rejection tells the two apart.
 - **Accepting an error status as proof that a surface is closed.** A 500 or 403
-  from a supposedly-removed route is a *failing* assertion, not a passing one —
+  from a supposedly-removed route is a *failing* assertion, not a passing one;
   see the negative assertion in §3.
-- **A probe that changes state on a shared account.** A smoke suite runs
-  after every deploy, so each check must be safe to repeat on the target.
-  Never call a state-destroying flow (a password reset, an account lockout,
-  a delete, a payment) against an account other people use. A verification
-  probe made while building a smoke suite triggered a real password reset;
-  it overwrote a shared test administrator's password and marked its
+- **A probe that changes state.** A smoke suite runs after every deploy, so
+  each check must be safe to repeat on the target. Never call a
+  state-destroying flow (a password reset, an account lockout, a delete, a
+  payment) against an account other people use. A verification probe made
+  while building a smoke suite triggered a real password reset; it
+  overwrote a shared test administrator's password and marked its
   credentials expired, and nobody could log in with it until the row was
-  restored by hand. The finished suite left that flow out for this reason. Prove such a flow
-  with a disposable identity
+  restored by hand. The finished suite left that flow out for this reason.
+  Prove such a flow with a disposable identity
   (`tool-corpus/ops/disposable-test-identity-provisioner.md`), or prove only
   that its route exists (the rejection assertion in §3).
+  **The verb does not tell you which flows those are.** A `GET` can
+  allocate: a handler that hands the caller the first free item of a
+  finite, single-use pool (a code, a slot, a seat) and has no release path
+  is drained by probes, by repeated suite runs and by any unauthenticated
+  caller, and a flow that stops after the allocation leaves items
+  allocated and owned by nobody. Classify every endpoint the suite calls as
+  read-only or allocating by reading its handler, never its method; record
+  each allocating `GET` beside the endpoint in the API's own documentation;
+  never use one as a liveness or health probe; and give a pool with no
+  release path a documented reset before a suite touches it.
 - **An artifact-identity expectation list goes stale in a migration.** A
   check that asserts which artifact version each unit runs fails a correct
   rollback, and it also fails a correct migration deploy when the change that
@@ -240,7 +250,7 @@ assert edge "an unrouted path is 404"           unrouted_404  # the route table 
   pair on every routed prefix is `skill-corpus/same-origin-web-edge.md`,
   step 7.
 - **The self-evidencing instrument.** When the harness itself *is* the
-  acceptance record — no independent CI gate sitting above it — a bug in the
+  acceptance record, with no independent CI gate sitting above it, a bug in the
   harness is a **green lie** with nothing else to catch it. A harness that has
   never been proven to fail is not proven to catch anything, which is why §6's
   meta-test is not optional here.
@@ -248,7 +258,7 @@ assert edge "an unrouted path is 404"           unrouted_404  # the route table 
 ## 6. Tests that cover it
 
 Self-testing, against a stub that returns known responses. **First prove the
-harness can go RED** — run it once against a deliberately-broken target (a
+harness can go RED**: run it once against a deliberately-broken target (a
 stopped service, a wrong port, a stub returning the wrong status) and assert that
 it *fails*. That is the check that makes the self-evidencing-instrument pitfall
 in §5 falsifiable, so it comes before the suite is trusted as a gate, not after.
@@ -280,22 +290,22 @@ stub that answers every path with 200.
 
 ## 8. Changelog
 
-- 2026-07-16 — created by docs-librarian.
-- 2026-08-06 — folded in three additions, each integrated into the
+- 2026-07-16: created by docs-librarian.
+- 2026-08-06: folded in three additions, each integrated into the
   section that owns it: the closed-surface negative assertion (§3, with its
   error-status pitfall in §5 and the `port_closed` example in §4's skeleton),
   the section-selectable + JSON-emitting harness (§2's interface and the
   skeleton's `assert` wrapper), and the self-evidencing-instrument pitfall with
   its prove-it-can-go-RED meta-test (§5–§6), by docs-librarian.
-- 2026-09-22 — folded in the auth-sweep's second reading: the same rejection
+- 2026-09-22: folded in the auth-sweep's second reading: the same rejection
   assertion is also a route-existence proof (§3), with the read-a-not-found-as-
   protected pitfall it closes (§5), by docs-librarian.
-- 2026-09-30 — replaced the assert-today's-broken-behavior idiom with the
+- 2026-09-30: replaced the assert-today's-broken-behavior idiom with the
   owner's known-bug rule:
   the assertion that uncovered a bug stays unchanged as the fix's acceptance
   check, the bug is recorded and the user told, and the same assertion re-runs
   after the fix (§3, §4 skeleton, §5, §6), by implementer.
-- 2026-10-05 — folded in idioms from practice, each in the
+- 2026-10-05: folded in idioms from practice, each in the
   section that owns it: the base-path parameter for a service behind a
   shared edge (§2, and the skeleton's `BASE`); the unrouted-path 404 control,
   the discovery-registry assertion and in-network probing with busybox `wget`
@@ -309,3 +319,7 @@ stub that answers every path with 200.
   now live on the in-network harness page with a pointer here; by tool-smith.
 - 2026-10-05: the origin-only pitfall now covers a suite that skips the edge
   without a prefix, and the `Origin` probe pair (§5); by docs-librarian.
+- 2026-10-14: the state-changing-probe pitfall (§5) now classifies an
+  endpoint by its handler rather than its verb: a `GET` that allocates from
+  a finite single-use pool is drained by probes and is never a liveness
+  check; by harvest.

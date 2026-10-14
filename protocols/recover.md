@@ -50,6 +50,17 @@ read-only reachability probe, or fetching the dependency ahead of the
 step that needs it. Start the probes beside the fix work and record what
 each one showed.
 
+A failure on a live target (an apply, a migration, a configuration push
+against a running system) changes what any retry means, because the failed
+attempt may have changed the target. Before the next attempt of any class,
+prove the target is in the state it was in before the failed one, or record
+exactly what that attempt left changed; take a fresh restore point, since one
+is good for one attempt and the earlier one describes a target the failure may
+have moved; then retry once, with the offending change removed or approved by
+the owner. A retry against a target in an unknown state is blind whichever
+class it was filed under, and it counts against the three attempts below like
+any other.
+
 An error signature is not a class. One code or message can be deterministic for
 one input and transient for another, so classify by varying the input and
 seeing whether the failure follows it, never by the code alone; when the

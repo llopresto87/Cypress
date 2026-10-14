@@ -20,7 +20,8 @@ stack:
   - library-corpus/nuget/Testcontainers.PostgreSql
   - library-corpus/nuget/Respawn
   - library-corpus/nuget/xunit
-est_tokens: 1887
+prevents: Integration tests boot a host and containers per test class or share dirty data, so the suite is slow, flaky, or passes only in one order.
+est_tokens: 2597
 ---
 
 # Suggested skill: dotnet-integration-test-harness

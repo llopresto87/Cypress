@@ -93,7 +93,8 @@ and **the table is the spawn order** (`delegation.sequencing`,
 `docs/graph/method/delegation-sequencing.md`): the next increment's RED
 waits for this increment's COMMIT unless §9's `Depends on:` rows say the
 two are independent. How independent REDs run ahead
-in a RED wave, and which GREENs follow them, is `delegation.waves` there.
+in a RED wave, and which GREENs follow them, is `delegation.waves` there;
+a spec's REDs are planned to share one wave (`test-first.proportionate-checks`).
 One spawn may carry a batch of increments, sized by their effort labels
 (`delegation.step-scope` and `delegation.effort-scale` in
 `docs/graph/method/delegation-cycle-economy.md`).
@@ -247,8 +248,11 @@ missing spec). The cycle:
    that expects its failure, and no second test is written to assert the
    buggy behavior.
    The session dispatches `implementer` to fix the bug, then re-runs that
-   same test. Until the fix lands, the red is declared in the delivery as
-   WIP with its failure record (`protocol.deliver`), never hidden.
+   same test. An operations or verification pass is the exception: it
+   root-causes and lists the bug and waits for the owner's go-ahead
+   before any fix (`tester.bug-fix-loop`). Until the fix lands, the red
+   is declared in the delivery as WIP with its failure record
+   (`protocol.deliver`), never hidden.
 3. The regression test stays in the suite after the fix, because a
    deleted regression test is how regressions return. Consolidation may
    merge it ONLY into a named survivor that still fails if the bug returns

@@ -191,5 +191,11 @@ behavior. It says what the system does, not how: "User records persist
 across restarts and are retrievable by ID" is a contract; "Stores the user
 record in a Postgres table" is a design. Every contract carries its failure
 modes (§7) and three real examples (§8), because a happy path alone is half
-a spec and examples are the bridge from contract to test. A spec written
-after the code carries status `back-written`, so the team knows.
+a spec and examples are the bridge from contract to test.
+
+A record written after the work it governs says so. A spec written after the
+code carries status `back-written`, so the team knows. A plan-of-record entry
+written after its work says so in its first line, lists the steps the work
+skipped (no spec, no RED first), and names what stood in for the missing
+input (the commit, the issue). Neither is dated to look prior: the next
+reader believes the order a date implies.

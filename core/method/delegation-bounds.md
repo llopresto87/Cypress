@@ -13,13 +13,14 @@ requires:
 peers:
   - method.delegation
   - method.delegation-briefs
+  - method.delegation-continuation
 load_when:
   - "delegation depth, allowlist, can this agent spawn"
   - "a spawn went silent, several spawns stalled at once, missing spawn_id"
   - "unknown agent type, specialist not registered, no such subagent"
   - "the roster was just installed, can I spawn it yet"
 prevents: Uncapped spawn chains, dispatches to unregistered specialist types, completed workers re-tasked as correspondents, and untraceable spawns.
-est_tokens: 2149
+est_tokens: 2004
 ---
 
 ## Delegation is bounded
@@ -139,12 +140,14 @@ turn can end: it finished (`complete`), it hit work outside its domain
 in all three; a leaf that stops at a domain boundary still returns it.
 
 Because the turn ends at that return, a worker whose run has **completed** is
-not a correspondent: sending it more work does not resume it. Continuing that
-line of work means spawning a fresh worker with a full brief, and the new one
-inherits none of the old one's context, so carry whatever the finished worker
-established forward in the new brief. A caller who treats a completed worker
-as re-taskable loses the follow-up silently: the work is neither done nor
-refused, it was never spawned.
+not a correspondent by default. Where the host cannot continue a finished
+worker, sending it more work does not resume it, and a caller who treats it as
+re-taskable loses the follow-up silently: the work is neither done nor refused,
+it was never spawned.
+
+Whether to continue a worker or brief a fresh one, including a worker a
+usage limit stopped mid-turn, is `delegation.continuation`
+(`method.delegation-continuation`).
 
 Wait for a worker still inside its turn: where the host delivers a completion
 as an event, wait for that event and do other ready work meanwhile. One tell
@@ -152,15 +155,6 @@ is worth knowing: when several independent spawns go silent at the same time,
 suspect the host (it slept, lost its connection, or hit a usage limit) before
 the agents. Independent workers do not stall together by chance, so the fix
 is on the host side, not in the briefs.
-
-A worker stopped by a usage or rate limit is still inside its turn: it has
-not handed back. **Resume it once the limit lifts; never spawn a replacement.**
-A resumed worker keeps its context and its write set. A replacement starts
-cold, and while the original may still be alive the two are two writers on one
-write set. The retry discipline is `protocol.recover`'s transient class. Judge
-whether a worker is alive by its newest log or record entry and that entry's
-timestamp, not by a status badge: a host can show a worker as failed while it
-is still writing.
 
 Where a document means something else, it says so in words rather than reusing
 this term: "per exchange with the user" for a conversational round, "each time

@@ -42,8 +42,9 @@ version-pinned page in `docs/graph/libraries/<name>.md`, registered in
 ## Entry conditions
 
 One of:
-- `architect` or `implementer` wants to use a dependency that has no
-  page in `docs/graph/libraries/`.
+- A dependency has no page in `docs/graph/libraries/`: `architect` or `implementer`
+  wants it, or a deadline already forced it in unreviewed; that skip is a grill.md
+  §12 item naming each unreviewed subject, its pin read `observed working, not chosen`.
 - The version pin on an existing page no longer matches what the
   project uses.
 - A behavior was encountered that the page does not cover (and that
@@ -52,12 +53,11 @@ One of:
 
 ## The pass (`ingest-library.flow`)
 
-The pass is a sequence of phases with a named owner each. **The table is
-the spawn order** (`delegation.sequencing`,
-`docs/graph/method/delegation-sequencing.md`). Two callers hold it: the
-orchestrator inside grill phase 3 (one scout spawn per dependency
-without a page), and the `docs-librarian` during a close-out or a docs
-audit (its one `delegates_to` entry). In both, the scout drafts and the
+The pass is a sequence of phases with a named owner each. **The table is the
+spawn order** (`delegation.sequencing`, `docs/graph/method/delegation-sequencing.md`).
+Two callers hold it: the orchestrator inside grill phase 3 (one scout spawn per
+dependency without a page), and the `docs-librarian` during a close-out or a
+docs audit (its one `delegates_to` entry). In both, the scout drafts and the
 librarian finalizes: an investigation-class worker's writes are mechanical
 normalization, and the authoring-class librarian owns the page
 (`delegation.model-classes`).

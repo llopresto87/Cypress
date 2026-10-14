@@ -16,8 +16,11 @@ artifacts:
 load_when:
   - "spawn a worker, write a delegation brief"
   - "shared rules file for several spawns, pass a handback by path, the brief is too big"
-prevents: Briefs that drop the embedded graph discipline, paraphrase owner words, harden preferences into bans, or paste long handbacks through context.
-est_tokens: 1266
+  - "worker has no shell, who runs --plan for it, can the product or designer agent route itself"
+  - "a worker's context compacted mid-task, re-brief after compaction"
+  - "the worker says the brief is wrong, an environment claim in a brief"
+prevents: Briefs that drop the embedded graph discipline, carry stale environment claims, paraphrase owner words, harden preferences into bans, or paste long handbacks through context, and workers that continue past their own compaction without the graph they loaded.
+est_tokens: 1748
 ---
 
 ## Every brief carries the graph discipline
@@ -44,6 +47,27 @@ names are what compose the worker's expertise closure, and a task line
 vaguer than the work loads a graph vaguer than the work. Parameterized
 briefs live in `docs/graph/templates/prompts/`; use them.
 
+**Every worker routes itself.** The owner decided on 2026-10-14 that every
+agent, the product and design roles and a plant's own agents included, can use
+the plant's read-only routing and lookup tools (`graph-lint.py --plan`, the
+`source-index` queries and `agent-lint.py --route`) to load the nodes and
+expertise its work needs; that superseded the arrangement in which the caller
+ran `--plan` for a worker whose grant had no shell. How a worker runs its
+route, and why the caller never routes on its behalf, is the caller-owed item
+"Every worker runs its own route" in
+`docs/graph/templates/prompts/graph-session-bootstrap.md`. The grant is for
+looking up and measuring: a role that does not build runs no build, test or
+write through it. A new agent is born with the grant (the agent template),
+and a plant's agent written without it is brought to it at graft
+(`graft.migration`, step (c)), never routed for.
+
+**A worker's own compaction drops its graph.** A worker whose context compacts
+mid-task loses the nodes and expertise it loaded, and nothing tells it so.
+Before it continues it reloads them: it runs `--plan` again with the brief's
+task line and reopens the nodes the brief named. A caller that learns a worker
+compacted, or that continues one (`delegation.continuation`), re-briefs it on
+those nodes and that expertise in the continuation message.
+
 **A fact the brief supplies is a lead, not evidence.** A path, a line number,
 an identifier or a prior finding handed down in a brief is what the caller
 believed when it wrote the brief; the worker confirms it against the artifact or
@@ -52,14 +76,22 @@ hold. The duty runs both ways: a correction to a supplied fact carries the same
 burden of proof as the claim it corrects, so "the brief is wrong" is itself a
 claim that cites the artifact.
 
-The caller's half of that duty: **write a brief's status lines from the live
-record** (the spec row, the commit log, the run record). A plan is a working
-record and goes stale, and a worker copies what it is given.
+The caller's half of that duty: **write a brief's status lines and its claims
+about the environment from the live record** (the spec row, the commit log, the
+run record, a check run for the purpose). A plan is a working record and goes
+stale, and a worker copies what it is given. A claim such as "you are the only
+writer" or "every page passes the lint" is true only at the moment it was
+checked: check it before writing it, and re-state it in the next brief once a
+later wave has changed it. When a worker's finding contradicts the caller's
+claim, the caller checks the finding against the artifact before dismissing it,
+because the caller's belief carries no more weight than the worker's evidence.
 
 **Name every concurrent writer.** A brief issued while other lanes are live
-(`delegation.lanes`) names each concurrent writer and the files it holds. The
-worker can then tell its own failures and edits from another lane's, and it
-edits only the files it owns.
+(`delegation.lanes`) carries the worker's row of the wave's lane table
+(`delegation.lane-table`): the paths it writes and the paths it treats
+read-only. It names each concurrent writer and the files it holds, so the
+worker can tell its own failures and edits from another lane's and edits
+only the files it owns.
 
 **Carry each constraint at its stated strength.** "Avoid X where you
 can" is a preference the worker weighs against the goal; "no X" is a
@@ -92,10 +124,11 @@ guard that refuses the forbidden command.
 **Handbacks travel by path, not by paste.** When a worker needs an earlier
 worker's handback, the brief gives it the path of that handback on disk and the
 worker reads it there, so the handback's bulk stays out of the caller's
-context. For a worker with no shell, the caller writes each needed handback
-to a file without reading it into its own context, and the brief points at
-those files. The handback template (`templates/prompts/handback-payload.md`)
-owns what a handback carries and where its bulk goes.
+context. A handback that reached the caller only as a returned message is
+written to a file before the next brief needs it, without the caller reading
+it again, and the brief points at that file. The handback template
+(`templates/prompts/handback-payload.md`) owns what a handback carries and
+where its bulk goes.
 
 **Shared rules go in one file.** When several workers run under the same
 rules (the owner's words, the gates, the mechanics, the lanes, forbidden

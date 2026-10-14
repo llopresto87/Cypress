@@ -11,8 +11,10 @@ regrown from scratch.
 Run it when the plant is **grown and steady** (its graph routes, its
 plan-of-record is closed or calm) and the seed has **moved on since the plant
 grew from it** — a harvest folded in new fruit, a protocol sharpened, the corpus
-gained pages for libraries this plant already uses. A clean working tree makes
-the additive upgrade and its automatic backups easy to review and to unwind.
+gained pages for libraries this plant already uses. The graft commits the
+plant before it writes anything, initializing a repository where there is
+none, so the upgrade is a diff you can review and unwind beside its automatic
+backups.
 
 Graft is **user-decided**: it starts only when you paste this prompt, and
 unprompted the system may only *propose* a graft — most naturally right after
@@ -75,7 +77,8 @@ the four to the owner as one numbered ask, proposing each value from evidence wi
 you used, and write the confirmed values before running the installer (or pass them as its
 flags). Take each value from this plant's evidence and the owner's answer, never from a
 guess or another plant: the environment class alone decides what the release posture
-tolerates on this plant.
+tolerates on this plant. Record the owner's answer verbatim, in the language they used, as
+an owner rule in the graft's session record, beside the value it became.
 
 ## Run the graft
 

@@ -1,6 +1,6 @@
 ---
 status: implemented
-status_date: 2026-10-04
+status_date: 2026-10-14
 owner: architect
 status_evidence: tests/test-prompt-hooks.sh, tests/test-code-anchor.sh, tests/test-seed-lint.sh, tests/seed-lint.py, tests/test-nested-checkout.sh, tests/test_graph_lint.py (every §10 row green at the 8.0.0 tip, plan increment 15; all wired into tests/run.sh)
 ---
@@ -175,7 +175,9 @@ The core is the same on both first-class hosts, so the text is the same.
   person did not type (a task notification, a peer or agent message), nor any
   prompt of a child session. A plant with no graph gets the existing no-graph
   message. If the router fails, or its document fails validation, the model
-  sees the pointer line alone.
+  sees the pointer line alone; if it crashed, writing an error as it died, the
+  model also sees one line naming its exit status and that error, so a dead
+  router is seen in the session rather than only in a later check.
 - The status register and the code anchor arrive once per session start,
   never in a child (on Prime Agent this replaces the once-per-process flag).
 - The session never blocks, because every path exits 0. When the hook falls
@@ -1290,6 +1292,12 @@ from the document in the grammar above. The skip header is also a literal in
   Ids on the `seen:` line are joined with `, ` in the router's order. No
   `plant:` line: it is resident from the full injection.
 - **Router failed:** the pointer line alone.
+- **Router crashed (`CRASHED`):** the pointer line, then one line
+  `No route: graph-lint.py exit <n>: <line>`, with `<n>` the router's exit
+  status and `<line>` the last non-blank line it wrote on stderr, printable
+  characters only, at most `CRASH_LINE_MAX` (200) of them; when that line
+  shares text with the prompt (a line of the prompt in it, or it inside the
+  prompt) the `: <line>` part is left out (ROUTER_CRASH_IS_NAMED).
 - **Not routed** (a trivial prompt, a child, a non-human turn): nothing.
 - **Missing script (8.0.0):** not a literal of `route-hook.py`, which is the
   file that is absent: the wired command itself prints it, one line, with
@@ -1307,6 +1315,8 @@ not routed when any of:          # emit nothing; no router run, no ledger access
   - the prompt's first non-whitespace text begins with a NON_HUMAN_MARKERS entry
 router failed when any of:       # no ledger access at all
   - graph-lint.py exits non-zero, exceeds ROUTER_TIMEOUT, or prints nothing
+    (a non-zero exit with output on stderr is the CRASHED text, and exit 2
+    with argparse's rejection of --plan-json the ENGINE_OLDER text)
   - the prompt cannot be passed (NUL byte, over the OS argument limit)
   - the output is not a document that passes the cypress.plan/1 validation,
     task_sha256 included
@@ -1462,12 +1472,33 @@ exception's text, which names the file, and a ledger's file name is the id.
   prints nothing; the prompt holds a NUL byte or exceeds the OS argument
   limit; the output is not a `cypress.plan/1` document that passes §6
   validation, its `task_sha256` included (`ROUTE_HOOK_READS_PLAN_JSON`);
-  an engine that rejects `--plan-json` is `ENGINE_OLDER_THAN_HOOK_IS_NAMED`
+  an engine that rejects `--plan-json` is `ENGINE_OLDER_THAN_HOOK_IS_NAMED`,
+  and a non-zero exit with output on stderr is `ROUTER_CRASH_IS_NAMED`
 - **Response:** the pointer line alone, exit 0, on both hosts, with one stderr
   line when the document failed validation
 - **Side effects:** the ledger is byte-identical with an unchanged mtime, and
   the prompt appears in no injection, ledger file or stderr line
 - **Recovery:** the next prompt tries again
+
+### Failure: ROUTER_CRASH_IS_NAMED
+- **Trigger:** `graph-lint.py` exits non-zero and writes on stderr, other than
+  ENGINE_OLDER_THAN_HOOK_IS_NAMED's exit 2 with `unrecognized arguments:
+  --plan-json`: a traceback, a syntax error the interpreter reports before
+  the engine runs (an engine newer than the interpreter, below the Python
+  floor), or any other error the engine prints as it fails
+- **Response:** the pointer line and exactly one notice line after it, the §6
+  `CRASHED` text, exit 0, on both hosts, no stderr line. The notice names
+  `graph-lint.py`, the exit status and the last non-blank stderr line, or the
+  exit status alone when that line shares text with the prompt. The owner
+  decided on 2026-10-14 that a crashed router is named in one line; until
+  then it was silent, and a router dead on every prompt went unseen
+- **Side effects:** as `ROUTER_FAILED`: the ledger is byte-identical with an
+  unchanged mtime, none is created, and the prompt appears in no injection,
+  ledger file or stderr line
+- **Recovery:** read the named error. One the interpreter reports before the
+  engine runs (a `SyntaxError`) means the hook's interpreter is below the floor
+  (SPEC-0005 §5): re-run `install.sh` on a PATH that carries one. Any other
+  means a broken engine: repair or re-graft it
 
 ### Failure: ENGINE_OLDER_THAN_HOOK_IS_NAMED
 - **Trigger:** `graph-lint.py` exits 2 with argparse's rejection of
@@ -1877,6 +1908,7 @@ Techniques the cases rely on:
 | PRIME_EAGER_SURFACE_WITHIN_BUDGET | check_eager_surface | tests/seed-lint.py | unit; an existing check, run with check_published_eager_figures; green on arrival, and red on the section's arrival until the matrix figures are updated. RED shown by mutation (the overlay grown in a scratch copy fails the published-figures check). Held at `pending` until the top-level-def scope defect in `check_spec_rows_name_their_contract` was fixed (§12); green since, and binding (the slug found inside the function); rewritten 2026-10-01; the 7.37.0 RED kept the existing check as its case (no new test), and the published half is green once the release doc pass re-derived the matrix figures | green |
 | ROUTER_FAILED | X142; non-zero exit, empty output, and timeout with `ROUTER_TIMEOUT` rewritten to 1 | tests/test-prompt-hooks.sh | integration | green |
 | ENGINE_OLDER_THAN_HOOK_IS_NAMED | X177; mixed version: the real `v7.36.0` graph-lint.py, which rejects `--plan-json` (argparse exit 2), under the new route-hook, first prompt and a ledgered prompt: the pointer line and one notice line naming `graph-lint.py`, `--plan-json` and `graft`, the prompt absent, exit 0, no stderr, ledger untouched or absent | tests/test-prompt-hooks.sh | integration; red on arrival (the pointer line alone) | green |
+| ROUTER_CRASH_IS_NAMED | X471: a stub router that exits 1 with a traceback on stderr, and one whose last stderr line carries the prompt, each under a ledgered prompt: the pointer line and one notice line naming `graph-lint.py` and `exit 1`, ending with the last stderr line in the first case and without it in the second, the prompt in no injection, stderr or session file, the ledger byte-identical | tests/test-prompt-hooks.sh | integration | green |
 | SESSION_ID_REFUSED | X119, the case of LEDGER_INVALID_SESSION_ID_FULL | tests/test-prompt-hooks.sh | integration; its cases pass at GREEN (2026-09-23), and each names this failure slug after its contract slug, on its OK and FAIL lines (`X1NN <SLUG>; failure …`); red again with X119's `abc\n` rows (F2), green at their GREEN | green |
 | LEDGER_UNUSABLE | X120 (with its X121 and X122 rows), X130 (file symlink and FIFO) and X131, the cases of the contracts named there | tests/test-prompt-hooks.sh | integration; its cases pass at GREEN (2026-09-23), and each names this failure slug after its contract slug, on its OK and FAIL lines (`X1NN <SLUG>; failure …`) | green |
 | LEDGER_DIR_UNUSABLE | X130, X131 and X132, the cases of the contracts named there | tests/test-prompt-hooks.sh | integration; its cases pass at GREEN (2026-09-23), and each names this failure slug after its contract slug, on its OK and FAIL lines (`X1NN <SLUG>; failure …`) | green |
@@ -2423,3 +2455,16 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
   §10 gains X181, which reaches both hooks' `RecursionError` guard. Every
   §10 row is `green`, so the status returns from `active` to `implemented`
   (`verify.status-evidence`). No contract was added or retired.
+- 2026-10-14: ROUTER_CRASH_IS_NAMED (§7), the `CRASHED` text and
+  `CRASH_LINE_MAX` (§6), the mode decision's router-failed note and §3's
+  sentence. The owner decided on 2026-10-14 that a crashed router is named in
+  one line: a plant whose `python3` was below the engine's floor ran a router
+  that died with a syntax error on every prompt, and the hook, silent by
+  contract, showed nothing. ROUTER_FAILED's other triggers keep the pointer
+  line alone. The `CRASHED` literal fits under seed-lint's
+  `HOOK_TEXT_MAX_BYTES` (802) with no loosening: the block's measured bytes fell
+  to 788 when two comments inside it moved above its marker. §10 gains X471.
+- 2026-10-14: review fix. ROUTER_CRASH_IS_NAMED's Recovery no longer says the
+  error names the fix: a `SyntaxError` means the hook's interpreter is below
+  the floor and a re-install on a PATH that carries one, any other error a
+  broken engine to repair or re-graft. No contract changed.

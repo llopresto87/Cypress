@@ -74,12 +74,13 @@ authentication method, and a target database.
   tagged, make the running minor answerable from somewhere you control (a
   recorded digest, a startup log line, a `SELECT version()` probe in a
   deployment check); "are we current?" should never be unanswerable.
-- **Application roles are not superusers.** Use the bootstrap superuser only to
-  create databases and roles. Give each consuming service its own login role
-  that owns, or is granted on, only its own database. A superuser connection
-  gives no blast-radius boundary: one injection or compromised container reaches
-  every database in the cluster, including neighbours that were deliberately
-  scoped.
+- **Application roles are not superusers, from the first init script on.** Use
+  the bootstrap superuser only to create databases and roles. Give each
+  consuming service (identity servers included) its own login role that owns,
+  or is granted on, only its own database, with grants on `public` inside it.
+  A superuser connection gives no blast-radius boundary: one injection or
+  compromised container reaches every database in the cluster, including
+  neighbours that were deliberately scoped.
 - **Keep test and deployment on the same version line.** A test container
   pinned to an exact minor while deployment floats (or the other way round)
   means the suite witnesses a version that is not the one deployed, and any
@@ -101,10 +102,6 @@ authentication method, and a target database.
   only the one that failed, and refuse an oversized value instead of
   truncating it. A down-migration back to `varchar(n)` stops being clean once
   one longer row exists.
-
-- **Least privilege starts in the init scripts**: one login role per
-  consumer (identity servers included), owning its own database, with grants
-  on `public` inside it.
 - **Probe readiness over TCP or with a real query.** `pg_isready` proves only
   that connections are accepted.
 
@@ -169,6 +166,25 @@ authentication method, and a target database.
   "ready to accept connections", never on the socket.
 - Seed through `/docker-entrypoint-initdb.d` with a fresh volume per run, and
   keep schema evolution in migrations the tests also run.
+- **A throwaway test database can give up durability for speed.** Upstream's
+  "non-durable settings" are a memory-backed data directory and `fsync`,
+  `synchronous_commit` and `full_page_writes` off. Upstream says these keep
+  durability across a crash of the database software and risk loss or
+  corruption only on an abrupt operating-system crash, except
+  `synchronous_commit` off, which risks losing recent transactions (not
+  corruption) on a database crash too; a memory-backed directory loses
+  everything when it goes. A disposable database loses nothing it needed. For
+  a container that means a tmpfs mount on the image's declared volume path (the
+  parent `/var/lib/postgresql` from the 18 line, `/var/lib/postgresql/data` on
+  17 and older; a tmpfs anywhere else leaves the declared path on an anonymous
+  disk volume, per the data path rule above) and the three settings as `-c`
+  server arguments. Observed in practice: with many test containers starting
+  in parallel on a host whose disk I/O was the bottleneck, average container
+  start fell by more than half. Testcontainers' PostgreSQL modules already
+  start the server with `fsync=off` (the .NET module also with the other two);
+  a custom command replaces the module's, so repeat `fsync=off` in it. Keep
+  these settings out of every non-test configuration, and do not use such a
+  database to test crash recovery.
 
 ## Security defaults
 - Host connections need a password (`scram-sha-256` on current lines);
@@ -189,7 +205,22 @@ authentication method, and a target database.
 ## Interop
 - Compose health gating, secrets and `*_FILE`:
   [`docker-compose.md`](docker-compose.md).
-- The .NET driver: [`nuget/Npgsql.md`](../nuget/Npgsql.md).
+- Drivers: the .NET driver, [`nuget/Npgsql.md`](../nuget/Npgsql.md); the
+  Node.js driver, [`npm/pg.md`](../npm/pg.md). An in-process engine for
+  JavaScript tests, [`npm/electric-sql-pglite.md`](../npm/electric-sql-pglite.md),
+  runs the PostgreSQL engine without a server and is not a substitute for
+  testing on this image.
+- **Array parameters through the JDBC driver (pgJDBC).** Its documentation
+  binds a `String[]` passed to `setObject` as `varchar[]` by default and lists
+  no mapping for a `UUID[]`; `Connection.createArrayOf(typeName, elements)`
+  with `setArray` is its general way to build an array of a named type. A
+  `uuid[]` parameter therefore binds when the UUIDs are passed as text and the
+  SQL casts them (`CAST(? AS uuid[])`, or `?::uuid[]`); a `text[]` column
+  binds a `String[]` directly, and `java.sql.Array.getArray()` reads either
+  back. The cast form is observed in practice through a JDBC template layer;
+  the driver docs do not show it.
+- Test containers: [`maven/testcontainers.md`](../maven/testcontainers.md),
+  [`nuget/Testcontainers.PostgreSql.md`](../nuget/Testcontainers.PostgreSql.md).
 
 ## Major lines
 - **14 line**: the default host auth method became `scram-sha-256`; older
@@ -203,8 +234,11 @@ authentication method, and a target database.
 - https://www.postgresql.org/support/versioning/
 - https://www.postgresql.org/docs/current/role-attributes.html
 - https://www.postgresql.org/docs/current/datatype-character.html
+- https://www.postgresql.org/docs/current/non-durability.html
 - https://www.postgresql.org/docs/current/sql-alterdatabase.html (`REFRESH
   COLLATION VERSION`); https://wiki.postgresql.org/wiki/Locale_data_changes
 - https://hub.docker.com/_/postgres
 - https://github.com/docker-library/docs/tree/master/postgres
 - https://github.com/docker-library/postgres
+- https://jdbc.postgresql.org/documentation/server-prepare/ (pgJDBC, section
+  "Arrays")

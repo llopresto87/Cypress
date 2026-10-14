@@ -41,6 +41,15 @@ Collections used with ansible-core have their own pages under
   no `version:` the newest release is installed, so a name-only list drifts at
   every fresh install. Pin with a range such as `">=1.0.0,<2.0.0"`; quote
   operators on the command line.
+- Output format: from ansible-core 2.13 the default stdout callback takes
+  `result_format = yaml` (`[defaults] callback_result_format`, or
+  `ANSIBLE_CALLBACK_RESULT_FORMAT`); `json` is the default. That option
+  replaces the `community.general.yaml` callback, which community.general
+  removed in its 12.0.0 release, so a configuration that still names that
+  callback breaks once the collection is upgraded. With `yaml`,
+  `pretty_results` defaults to true and reshapes module results for reading at
+  the expense of correctness: never copy a value or a conditional from that
+  output; set `result_format = json` when exactness matters.
 
 ## Core API / usage shape
 - Project layout: an inventory (static INI or YAML, or an inventory plugin);
@@ -69,6 +78,12 @@ Collections used with ansible-core have their own pages under
   task. `include_*` is dynamic, processed at run time once per loop item, and
   its keywords apply to the include statement only; pass keywords to the
   included tasks with `apply:`. The docs advise one approach per playbook.
+- Extra vars: `-e` / `--extra-vars` takes `key=value` pairs, a JSON or YAML
+  string (`-e '{"version":"1.2","count":3}'`), or a file as `@vars.yml`, and
+  may be repeated. Values given as `key=value` are always strings; use JSON
+  for Booleans, numbers and lists. Several pairs go in one argument separated
+  by whitespace, so a value that contains a space must be quoted inside the
+  argument (`-e 'path="ip dns"'`) or passed as JSON (General pitfalls).
 
 ## Idioms & best practices
 - Variable precedence, lowest to highest: role `defaults/`; inventory
@@ -89,10 +104,15 @@ Collections used with ansible-core have their own pages under
 - Dispatch per OS family with
   `include_tasks: "{{ ansible_facts['os_family'] | lower }}.yml"`.
 - Confirm the target set before an apply: `ansible-playbook site.yml
-  --list-hosts --list-tasks`, and `--syntax-check`. `--limit` / `-l` matches
-  inventory names and patterns. Observed in practice: it does not match DNS
-  names, so target by `inventory_hostname` and keep DNS or display names in
-  explicit variables.
+  --list-hosts --list-tasks`, and `--syntax-check`. For inventory membership
+  alone, `ansible-inventory --graph` prints the group tree without any
+  variables (Security defaults says why the other modes are not a safe way to
+  look). `--limit` / `-l` matches inventory names and patterns. Observed in
+  practice: it does not match DNS names, so target by `inventory_hostname` and
+  keep DNS or display names in explicit variables.
+- Review the whole `--check --diff` of a scoped run, not only the part you
+  meant to change, and commit or set aside unrelated edits in the variable
+  files first (the tags-and-limit pitfall below).
 - `meta: reset_connection` drops the persistent connection (SSH
   ControlPersist). Observed in practice: after adding the connecting user to a
   group (for example `docker`), later tasks see the new membership only after
@@ -136,6 +156,36 @@ Collections used with ansible-core have their own pages under
   Use `assert`, role argument specs or the `mandatory` filter for required
   inputs, and keep `is defined` / `default` for optional ones. A non-boolean
   string in `when` needs `| bool`.
+- The same guards hide a missing variable in a template. By default a
+  template that references an undefined variable fails the task
+  (`DEFAULT_UNDEFINED_VAR_BEHAVIOR`, `error_on_undefined_vars`, is true), but
+  `{{ x | default('') }}` or an `{% if x is defined %}` block renders empty
+  instead. A variable rename that misses a template therefore ships an empty
+  value rather than an error. Observed in practice: a bulk rename driven by a
+  lint rule rewrote the task and vars files but not the `.j2` templates, and
+  the hosts received empty renders (the causal link was inferred, not proven).
+  A rename sweeps every consumer (templates, handlers, scripts, docs), and a
+  test renders each template against a representative set of variables.
+- An unquoted space in a `key=value` extra var splits the value: `-e
+  'path=ip dns'` sets `path` to `ip` and leaves `dns` as a stray free-form
+  word, with no error. The parser splits on whitespace with shell-style
+  quoting (`parse_kv` in the source); quote the value inside the argument or
+  pass JSON.
+- `--tags` and `--limit` select tasks and hosts, never inputs. Every variable
+  file a selected task reads (`group_vars`, `host_vars`, `vars_files`) is
+  loaded in full, so an uncommitted edit anywhere in a data file ships with a
+  run that was meant to touch one entry of it. Observed in practice: a
+  tag-scoped check diff showed changes to tables the operator had not edited,
+  which a dirty working tree had put there; the docs describe tags only as
+  selecting tasks.
+- A cross-host check is only as wide as the play after `--limit`.
+  `ansible_play_hosts_all` is "all the hosts that were targeted by the play",
+  and `--limit` narrows that target, so an assertion built on it (a fleet-wide
+  uniqueness check, say) passes on a limited run that leaves a colliding host
+  out. `groups['all']` still lists every inventory host under a limit
+  (reproduced); build fleet invariants on the inventory groups and
+  `hostvars`, or run them in a play with no limit. `ansible_limit` holds the
+  `--limit` value, so such a check can refuse to run under one.
 - A `group_vars` file whose name matches no inventory group (and is not
   `all`) is never loaded; `group_vars/vault.yml` with no `vault` group is
   silently ignored unless a play names it in `vars_files`.
@@ -176,18 +226,24 @@ Collections used with ansible-core have their own pages under
 - Observed in practice: a green `--check` does not predict a green apply.
   Follow it with a scoped real run (`--limit` to one host) and read the
   resulting state back instead of trusting the recap counts.
-- Linting with ansible-lint and yamllint, and role testing with Molecule, are
-  separate tools; this page does not cover their rule sets. Install the
-  declared collections before judging an ansible-lint run: a module it cannot
-  resolve is reported as `syntax-check[unknown-module]` (observed in practice,
-  an older run reported the same cause as `load-failure`), which hides every
-  other finding in that file. ansible-lint installs what `requirements.yml`
-  lists when a listed collection is missing, so declare every collection
-  there.
+- Linting is ansible-lint's job (`library-corpus/pypi/ansible-lint.md`): it
+  runs this syntax check itself, adds yamllint and its own rules, and owns
+  the pitfalls of judging a run. Role testing with Molecule is a separate tool
+  this page does not cover.
 
 ## Security defaults
 - Secrets belong in vault-encrypted files or values, and the tasks that handle
   them carry `no_log: true`.
+- `ansible-inventory` given a vault password prints secrets. `--host <h>`
+  and `--list` print each host's merged variables, and every value that came
+  from a vault-encrypted *file* appears there in plaintext; a value encrypted
+  inline with `encrypt_string` stays ciphertext in that JSON or YAML output,
+  but `--graph --vars` prints it decrypted too. `--graph` without `--vars`
+  prints only the group tree and needs no vault password. All of this was
+  reproduced in a scratch inventory; the CLI reference describes `--host`
+  as "output specific host info" and says nothing about vault. Use `--graph`
+  to inspect membership, and never paste `--host` or `--list` output into a
+  log, a ticket or a chat.
 - Host-key checking is on by default. Turning it off
   (`host_key_checking = False`, `ANSIBLE_HOST_KEY_CHECKING`, or
   `StrictHostKeyChecking=no` in the SSH arguments) removes
@@ -228,6 +284,10 @@ Collections used with ansible-core have their own pages under
 - A collection module's `requirements:` (shown by `ansible-doc`) apply to the
   host where the module executes, which is the control node for
   `delegate_to: localhost` tasks.
+- **ansible-lint** (`library-corpus/pypi/ansible-lint.md`) lints playbooks,
+  roles and collections and runs `--syntax-check` as one of its rules. A lint
+  rule that drives a bulk variable rename (`var-naming[no-role-prefix]`) is
+  where the template pitfall above usually starts.
 
 ## Major lines
 ansible-core numbers its release lines 2.N; each line is maintained for a
@@ -249,4 +309,14 @@ control-node Python minimum.
 
 ## Upstream docs
 - Docs: https://docs.ansible.com/ansible/latest/
-- Repo: https://github.com/ansible/ansible
+- Variables, including extra vars at runtime:
+  https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html
+- Special variables (`ansible_play_hosts_all`, `ansible_limit`):
+  https://docs.ansible.com/ansible/latest/reference_appendices/special_variables.html
+- `ansible-inventory`: https://docs.ansible.com/ansible/latest/cli/ansible-inventory.html
+- The default callback (`result_format`):
+  https://docs.ansible.com/ansible/latest/collections/ansible/builtin/default_callback.html
+- Configuration settings (`DEFAULT_UNDEFINED_VAR_BEHAVIOR`):
+  https://docs.ansible.com/ansible/latest/reference_appendices/config.html
+- Repo: https://github.com/ansible/ansible (the `key=value` parser:
+  `lib/ansible/parsing/splitter.py`)

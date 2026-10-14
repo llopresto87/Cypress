@@ -313,8 +313,9 @@ the leaf rule it pairs with, is `knowledge-graph.branch-shape`
 5. Every id in `requires` and `peers` resolves to a real node
    (`composes` has its own rule, 15).
 6. `requires` is acyclic.
-7. Every node is reachable from the root by edges, or is listed in
-   `index.md`.
+7. Every node is reachable from the root by edges, is listed in
+   `index.md`, or carries `origin: corpus@<version>` (a page the installer
+   placed from a seed corpus).
 8. Every id in `libraries` has a page in `docs/graph/libraries/`.
 9. Every path in `artifacts` resolves beneath `docs/graph/`.
 10. Version pins do not appear in a node body unless it owns a

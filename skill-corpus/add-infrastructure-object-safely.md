@@ -1,3 +1,25 @@
+---
+name: add-infrastructure-object-safely
+description: Add or change one infrastructure object (a guest, a host entry, a composed app, a DNS or proxy entry) in an infrastructure-as-code repository through an intake contract, collision checks over every declaration, an owner-approved additive plan and a GO/HOLD matrix. Invoke only when the owner names it.
+id: skill.add-infrastructure-object-safely
+tier: 2
+kind: skill
+title: add-infrastructure-object-safely, a five-state gated change to one object in an infrastructure-as-code repository
+owns:
+  - add-infrastructure-object-safely.states
+  - add-infrastructure-object-safely.intake-contract
+  - add-infrastructure-object-safely.collision-checks
+  - add-infrastructure-object-safely.go-hold-matrix
+requires:
+load_when:
+  - "add-infrastructure-object-safely"
+  - "run add-infrastructure-object-safely for this object"
+  - "add-infrastructure-object-safely intake and collision report"
+prevents: An agent edits shared inventories on a passing request, reuses an id or address another object already holds because a substring search missed it, and hands over an apply with no written rollback, breaking objects that already run.
+disable-model-invocation: true
+est_tokens: 3152
+---
+
 # Suggested skill: add-infrastructure-object-safely
 
 > Optional procedure: a person asks to add or change one infrastructure
@@ -35,11 +57,12 @@ in play, which own each platform's preflight facts).
   port space with objects already running.
 
 It runs only when the owner names it. An automatic router that selects it
-would start a gated, multi-step change from a passing phrase. So when you
-place the page, write its description as "invoke only when the owner names
-it", give it no `load_when:` phrase that a passing request would match, and
-set the harness's manual-only flag on each projection that has one (Claude
-Code reads `disable-model-invocation: true` in a skill's frontmatter).
+would start a gated, multi-step change from a passing phrase. So the page's
+frontmatter says so in its description, every `load_when:` phrase holds the
+procedure's own name, which no passing request contains, and it sets
+`disable-model-invocation: true`, the manual-only flag Claude Code reads in a
+skill's frontmatter. An instantiated copy keeps all three, and sets the
+equivalent flag on any other harness projection that has one.
 
 ## The states
 

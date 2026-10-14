@@ -1,3 +1,25 @@
+---
+name: release
+description: Run a numbered, resumable acceptance round across a multi-component delivery, from preflight and secured release branches through one measured baseline, measure-then-generate package regeneration and an independent adversarial re-check, to a three-state gate and a three-state verdict, leaving signing to the receiving authority. Invoke when a formal acceptance package must be issued or re-issued.
+id: skill.release
+tier: 2
+kind: skill
+title: release, the numbered and resumable acceptance round for a multi-component delivery
+owns:
+  - release.round-phases
+  - release.measure-then-generate
+  - release.three-state-gate
+  - release.three-state-verdict
+requires:
+load_when:
+  - "run the acceptance round for the delivery"
+  - "regenerate the acceptance package after the baseline moved"
+  - "resume the blocked release round"
+  - "formal acceptance package for the receiving party"
+prevents: An acceptance package carries figures measured on a version that no longer ships, a generator vouches for its own output, an unreadable baseline is reported as merely incomplete, and the producing side signs the release.
+est_tokens: 2824
+---
+
 # Suggested skill: release
 
 > Optional procedure — **a template**. A numbered, resumable acceptance round

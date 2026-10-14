@@ -74,7 +74,7 @@ test-first → verify → canonize → deliver.
 | Where the work stands | Entry node |
 |---|---|
 | Which tier is this task? Execution paths | `method.tiers` |
-| Who does this? Routing, model classes, briefs, delegation bounds | `method.delegation` · `method.delegation-model-classes` · `method.delegation-cycle-economy` · `method.delegation-briefs` · `method.delegation-sequencing` · `method.delegation-bounds` |
+| Who does this? Routing, model classes, briefs, delegation bounds | `method.delegation` · `method.delegation-model-classes` · `method.delegation-cycle-economy` · `method.delegation-briefs` · `method.delegation-sequencing` · `method.delegation-wave-integrity` · `method.delegation-bounds` · `method.delegation-continuation` |
 | Goal vague or contested | `protocol.brainstorm` |
 | Goal clear, no executable spec covers it | `protocol.specify` |
 | Spec exists; need the plan-of-record | `protocol.grill` |
@@ -111,6 +111,10 @@ existing codebase), `skill.adr-writer` (recording a decision),
 `skill.holistic-editing`, `skill.library-wiki`,
 `skill.research-and-ingest`, `skill.validate-knowledge`,
 `skill.test-first`, `skill.source-index` (questions about the code).
+A corpus skill the owner placed with `install.sh --expertise` needs no
+row here: its `origin: corpus@<version>` line is its entry point, and it
+routes by its own `load_when:`. Drop that line to make the page the
+plant's own, and list it here like any other node.
 
 ## The node table
 

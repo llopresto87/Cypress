@@ -21,6 +21,10 @@ What the pre-release record must hold is set by `method.release-posture`
 §2; these are its fields, filled per release before deploying.
 
 - Previous build identifiers: `<artifact@digest per component>`
+- Defect in the previous artifact: `<per component: whether its previous
+  artifact still carries the defect this release fixes: yes, no or
+  unknown>`. A component whose answer is yes has no good anchor to
+  return to, and reverting it brings the defect back.
 - Migration compatibility: `<reversible | irreversible, and whether
   deployment auto-applies it>`
 - Message-schema compatibility: `<can the previous artifact read what the
@@ -32,13 +36,19 @@ What the pre-release record must hold is set by `method.release-posture`
 
 ## Path A — config / artifact rollback (reversible, no data migration)
 
-1. Repoint to the previous immutable artifact reference: `<cmd>`
+1. Repoint each unit whose previous artifact is good to that immutable
+   artifact reference, one unit at a time rather than the release as a
+   whole: `<cmd>`. A unit left on the new artifact, because its previous
+   one carries the defect or because it was not part of the fault, is
+   named in the record with the reason.
 2. Re-run the smoke gate: `<cmd>` — a gate asserting the current artifact
    identity is *expected* to go red here, because the reversal deliberately
    restored an earlier one, and that red is the gate working. Update the
    expectation to the restored artifact's identity in the same change as the
    reversal (`protocol.verify` owns why), keeping it pinned to one exact
    version, because catching a stale artifact is this gate's job.
+3. Keep every previous artifact reference until that gate passes: an
+   anchor deleted early leaves the next reversal nothing to return to.
 - How fast: `<target>`
 - Data preserved: all; this path touches no data.
 
@@ -75,6 +85,7 @@ decision with an owner rather than an oversight.
 
 ### Rollback <date> — Path <A|B>
 - Trigger: `<what failed>` — reversal chosen over fix-forward because `<why>`
+- Units reverted: `<unit → artifact reference>`; units left: `<unit → reason>`
 - Approved by: `<human>` (Path B only)
 - Outcome: `<result>`
 

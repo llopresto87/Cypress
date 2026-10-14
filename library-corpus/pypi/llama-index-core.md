@@ -52,14 +52,20 @@ It is complemented by many companion packages (their own independent versions):
   (its default just calls the synchronous `_retrieve`).
 
 ## General pitfalls
-- Auto-merging retrieval looks up parent nodes in the docstore by ID; if a parent
-  referenced by a retrieved leaf is absent (e.g. after a document is deleted or
-  re-ingested leaving stale parent references), the lookup can raise instead of
-  degrading gracefully. Guard the parent lookup and fall back to leaf nodes.
+- A missing parent fails the whole retrieval. `AutoMergingRetriever` fetches
+  each retrieved leaf's parent with `docstore.get_document(parent_id)` and no
+  guard, and the docstore's `get_document` raises `ValueError("doc_id ... not
+  found.")` by default (`raise_error=True`). One leaf whose parent is not in
+  the docstore (never persisted, deleted, or left stale by a re-ingest) aborts
+  the query instead of falling back to the leaves. Persist every parent with
+  its leaves in the same ingest, delete them together, and where stale
+  references are possible, subclass the retriever to catch the error and keep
+  the leaf.
 - Auto-merging needs the parent nodes in a persistent docstore, not only in the
   vector store. A key-value docstore over an external store (a
   `llama-index-storage-kvstore-*` package) provides one; an in-memory docstore
-  loses the parents on restart.
+  loses the parents on restart, which turns every later merge into the failure
+  above.
 - An unset `Settings.llm` or `Settings.embed_model` resolves to OpenAI's
   models through the separate OpenAI integration packages, so a pipeline that
   forgot to set them calls OpenAI (or fails without a key).
@@ -70,6 +76,9 @@ It is complemented by many companion packages (their own independent versions):
   these mocks instead of OpenAI.
 - Test retrieval against a real (local) vector store when the result depends on
   the store's filtering or hybrid scoring; mocks exercise only the pipeline.
+- For auto-merging, test the missing-parent case: remove one parent from the
+  docstore and assert what the query does (it raises with the stock
+  retriever).
 
 ## Security defaults
 - `SentenceTransformerRerank` defaults to `trust_remote_code=True`, which lets
@@ -98,4 +107,5 @@ It is complemented by many companion packages (their own independent versions):
 
 ## Upstream docs
 - Docs: https://docs.llamaindex.ai/en/stable/
-- Repo: https://github.com/run-llama/llama_index
+- Repo: https://github.com/run-llama/llama_index (the merge step:
+  `llama-index-core/llama_index/core/retrievers/auto_merging_retriever.py`)

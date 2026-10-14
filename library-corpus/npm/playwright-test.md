@@ -8,7 +8,7 @@
 ## What it is
 Playwright test runner + browser automation library. Provides `defineConfig`, `devices`, the `test` API (`test.extend`/`describe`/`skip`), `expect`, and types (`Page`, `Browser`, `BrowserContext`, `Locator`, `APIRequestContext`, `TestInfo`). Includes an API-testing `request` context for REST calls without a browser.
 
-The page covers the npm package `@playwright/test`. It drives Chromium, Firefox and WebKit, plus branded Chrome and Edge and emulated mobile devices, from one API. Upstream home: playwright.dev and the `microsoft/playwright` repository. The .NET binding has its own page, [`../nuget/Microsoft.Playwright.md`](../nuget/Microsoft.Playwright.md).
+The page covers the npm package `@playwright/test`. It drives Chromium, Firefox and WebKit, plus branded Chrome and Edge and emulated mobile devices, from one API. Upstream home: playwright.dev and the `microsoft/playwright` repository. The Java and .NET bindings have their own pages, [`../maven/playwright.md`](../maven/playwright.md) and [`../nuget/Microsoft.Playwright.md`](../nuget/Microsoft.Playwright.md).
 
 ## Install, setup and configuration
 `npm init playwright@latest` creates a project or adds Playwright to an existing one. It asks for TypeScript or JavaScript, the tests folder, an optional GitHub Actions workflow, and whether to install browsers, and it does not overwrite existing tests. To add it by hand: `npm install -D @playwright/test`, then `npx playwright install --with-deps`.
@@ -102,7 +102,7 @@ Each Playwright release needs specific browser builds, so run `npx playwright in
 - An empty run fails by default. `--pass-with-no-tests` makes a run with no tests found succeed.
 
 ## Interop
-- [`../nuget/Microsoft.Playwright.md`](../nuget/Microsoft.Playwright.md): the .NET binding of the same engine.
+- [`../maven/playwright.md`](../maven/playwright.md) and [`../nuget/Microsoft.Playwright.md`](../nuget/Microsoft.Playwright.md): the Java and .NET bindings of the same engine.
 - [`../language/nodejs.md`](../language/nodejs.md): the runtime the runner needs.
 - [`../language/typescript.md`](../language/typescript.md): the default language for tests and the `tsc --noEmit` gate.
 - [`keycloak-js.md`](keycloak-js.md) and [`../container/keycloak.md`](../container/keycloak.md): the login flow and admin API that identity fixtures drive.

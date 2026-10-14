@@ -16,3 +16,13 @@ and need no row here; a plant can still write its own card for one.
 |---|---|---|---|---|---|---|
 
 <!-- Add a row each time the close-out catalogs a new tool card in this directory. -->
+
+## Examined and declined
+
+A candidate the close-out examined and did not build, because it has not
+met `skill.toolcraft`'s recurrence threshold. The row keeps the next
+session from re-judging it from nothing, and names what would change the
+answer.
+
+| Candidate | Where it ran once | Threshold not met | Event that would clear it | Decided |
+|---|---|---|---|---|

@@ -431,11 +431,52 @@ level, so it needs a compiling module; `dependency:analyze-only` is the form
 for a lifecycle binding. Use it next to this gate, not instead of it: it says
 what the code needs, this gate says what resolved.
 
+### 3.4 A sibling check: one version matrix against every manifest
+
+This gate asserts a few rules over what resolved. A project that wants to
+answer "which version of everything do we build, and why" keeps **one
+version matrix**: a human-readable table and, in the same file, a
+machine-readable block that a test parses and compares with **every file
+that states a version**. The block is the single place a version changes;
+the table, the block and the manifests change in the same commit. Its
+sections, and the check each one gets:
+
+| block section | the gate fails when |
+|---|---|
+| platform line (language release, framework parent or version set) | the build manifest or the running toolchain names another |
+| managed artifacts (versions the version set supplies) | one of them carries an explicit version in the build manifest |
+| explicit dependencies (coordinate, version, scope) | an explicit version in the manifest is not listed with that version, or a listed entry is missing from the manifest |
+| override register (property, value, reason, decision) | the manifest overrides a version-set property with no register entry |
+| imported version sets | an import is unlisted, or its version is a literal instead of the version set's own property |
+| build-tool wrapper (distribution URL and checksums) | the wrapper's properties differ, or a checksum the wrapper verifies is missing |
+| images (role, reference, digest, file kind) | a container build file or a compose file names an image that is not exactly `reference@digest` of an entry (the digest rule itself is `tool-corpus/ops/image-reference-pin-lint.md`) |
+| vendored assets (path, size, hash, subresource-integrity value) | the file's size or hash differs, or the page that loads it carries another integrity value |
+| verification state per entry (`pending`, `verified`, `failed`) | any entry is `failed` |
+| the human table | a version or digest in the block does not appear in it |
+
+Two cross-checks pay for the matrix on their own. **One number, two
+places:** where a library and the container image of the runtime it drives
+are released under one version number (a browser-automation client and its
+vendor's runner image), the gate compares the library version with the
+image tag. **Scope from resolution:** a library
+the project allows only in tests is checked against the resolved list
+(this gate's capture, §3.1), not the declaration, because a transitive path
+can pull it into the runtime.
+
+The gate says only that what is built is what the matrix declares. Whether
+a declared version works is a smoke test's verdict, recorded in the
+entry's verification state; `verified` on an image says the version was
+probed, not that its exact digest was. Write the comparator in the
+project's build language, so it runs where the build runs with no extra
+tool; the shape above, not any one implementation, is the portable part.
+
 ## 4. Portable vs blueprint
 
 - **Portable (adopt verbatim):** the checker with its parsers, rules, version
   order, exit codes and self-test; the per-consumer capture rule; the
   stub-with-real-POM rule.
+- **Portable as a shape:** the version matrix of §3.4, its block sections
+  and their checks; the comparator is written per build language.
 - **Write per project:** the consumer list, the rules (they are the contract a
   migration or an advisory decision sets), and the capture wrapper with its
   pinned build image. Keep the rules next to the decision that motivated them,
@@ -510,6 +551,11 @@ checker over the captured console output. It parsed all 10 resolved nodes,
 including the classifier node, and the require, forbid and floor rules passed
 (exit 0).
 
+A version-matrix comparator (§3.4) is the project's code; pin it with one
+planted violation per block section (each must fail its own row and no
+other), plus a library version that differs from its runner image tag and a
+test-only library resolved into a runtime scope.
+
 - **How to run the tests:** `python3 resolved-dependency-gate.py --self-test`;
   then the capture plus the checker as the CI step.
 
@@ -551,3 +597,6 @@ including the classifier node, and the require, forbid and floor rules passed
   name's own. `final`, `ga` and `release` equal the release in the version
   order. Fixture versions made neutral. Plugin pin, reactor-root `-pl`
   capture, the enforcer alternative and the `stack:` field added.
+- 2026-10-14: §3.4, the version matrix checked against every manifest that
+  states a version, with its override register, the library-equals-image-tag
+  check and test scope read from resolution. By harvest.

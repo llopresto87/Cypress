@@ -131,6 +131,10 @@ and every procedure it repeated is crystallized into a project skill, or
 the close-out has explicitly recorded "no durable tool / no skill,
 because …" (for Tier 0/1 tasks, the session's one-line self-record in
 the delivery covers this; see `docs/graph/protocols/canonize.md`). A
+candidate examined and not built because it has not met the recurrence
+criteria goes in the "Examined and declined" table of
+`docs/graph/tools/index.md`, with the event that would clear it, so the
+next session reads the judgment instead of repeating it. A
 task that built a reusable capability (a tool, or a procedure worn in by
 repetition) and left it uncaptured is a silent capability leak: the next
 session cannot find what exists, so it rewrites it.

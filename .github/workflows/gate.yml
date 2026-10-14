@@ -37,9 +37,14 @@ jobs:
           # git history and tags, e.g. `git show v7.36.0:...`.
           fetch-depth: 0
 
+      # The seed's Python floor (its one home is SPEC-0005 §5 "Compatibility";
+      # install.sh's PYTHON_FLOOR is the copy tests/test-tool-help.sh holds to
+      # it). The gate runs on the floor itself, so a construct newer than the
+      # floor fails here, and tests/test-tool-help.sh starts every shipped
+      # script on it.
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.14"
 
       # No `pip install` step, and that is the contract rather than an
       # omission: every shipped script and every default-gate test is

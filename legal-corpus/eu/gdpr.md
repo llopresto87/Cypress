@@ -14,7 +14,8 @@ Protection Regulation).
 **Official URL:** https://eur-lex.europa.eu/legal-content/IT/TXT/?uri=CELEX:32016R0679
 · official Italian OJ PDF: https://eur-lex.europa.eu/eli/reg/2016/679/oj/ita/pdf
 **Legal status (whole instrument):** `in force` · **verified 2026-07-31**, with
-a further set of entries verified **2026-08-05** (see each entry).
+further entries verified **2026-08-05**, **2026-09-22** and **2026-10-14** (see
+each entry).
 
 ---
 
@@ -33,7 +34,7 @@ single banner would be the exact falsification `../_schema.md` rule 4 forbids:
 | **Group A** — Arts. 5, 6, 9, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24, 25, 28, 30, 32, 33, 34, 35, 36, 44, 45, 46, 47, 77, 82 | `proxy-sourced` from EUR-Lex | **Only where the entry's own `text_form` says `verbatim`** and its `text` carries the quoted wording. Group A is a *provenance* group, not a promise of quotability: some Group A entries record a `normalized summary` instead, and those may never be quoted. **Read the entry's `text_form`. Never quote from this row.** |
 | **Group B** — Arts. 4, 7, 49 | `mirror-corroborated` from a site republishing the OJ text, `text_form: normalized summary` | **No** — cite substance and id only |
 | **Group C** — Art. 42 | `secondary-corroborated` from an unofficial consolidation | **No**, and weakest on the page |
-| **Group D** — Art. 87 | `primary-fetched` direct from the Publications Office of the European Union, both editions read and compared | **Yes**, as a quotation |
+| **Group D** — Arts. 11, 12, 87, 88 and Recital 26 | `primary-fetched` direct from the Publications Office of the European Union; for the articles both editions were read and compared, for the recital the act as adopted and the corrigendum (a consolidated text carries no recitals) | **Yes**, as a quotation |
 
 Consequences, which are not negotiable:
 
@@ -54,7 +55,10 @@ Consequences, which are not negotiable:
   served both editions of this Regulation in that pass — the route Group D was
   fetched through. That is an opportunity, not an upgrade: every Group A grade
   stands until the entry is re-read from this route and re-recorded with its own
-  date.
+  date. On **2026-10-14** the `eur-lex.europa.eu` front end itself served the
+  full HTML render of `32016R0679` to a plain `curl` (HTTP 200, no challenge
+  header), and its Arts. 11, 12, 87 and 88 matched the CELLAR text; a block
+  recorded on one date is re-probed, never inherited.
 
 **A retrieval lesson worth more than any single entry.** A summarizing
 `WebFetch`-style fetch of the *same* proxied URL truncated this ~360 KB document
@@ -73,6 +77,7 @@ secondary-corroborated.
 | `gdpr-art-4-7` | Art. 4(7) | definition — controller | M |
 | `gdpr-art-4-8` | Art. 4(8) | definition — processor | M |
 | `gdpr-art-4-11` | Art. 4(11) | definition — consent | M |
+| `gdpr-recital-26` | Recital 26 | **identifiability, pseudonymised and anonymous data** | D |
 | `gdpr-art-5-1-a` | Art. 5(1)(a) | lawfulness, fairness, transparency | P |
 | `gdpr-art-5-1-b` | Art. 5(1)(b) | purpose limitation | P |
 | `gdpr-art-5-1-c` | Art. 5(1)(c) | data minimisation | P |
@@ -85,6 +90,8 @@ secondary-corroborated.
 | `gdpr-art-6-1-f` | Art. 6(1)(f) | lawfulness — legitimate interests | P |
 | `gdpr-art-7-1` | Art. 7(1) | demonstrable consent | M |
 | `gdpr-art-9` | Art. 9(1)–(2) | **special categories — prohibition + derogations** | P |
+| `gdpr-art-11` | Art. 11 | processing which does not require identification | D |
+| `gdpr-art-12` | Art. 12 | **modalities of the rights — the one-month response limit** | D |
 | `gdpr-art-13` | Art. 13 | **information duty — data collected from the data subject** | P |
 | `gdpr-art-14` | Art. 14 | information duty — data not obtained from the data subject | P |
 | `gdpr-art-15` | Art. 15 | **right of access** | P |
@@ -128,6 +135,7 @@ secondary-corroborated.
 | `gdpr-art-77` | Art. 77 | right to lodge a complaint | P |
 | `gdpr-art-82` | Art. 82 | right to compensation and liability | P |
 | `gdpr-art-87` | Art. 87 | **national identification number — a Member State enabling clause** | D |
+| `gdpr-art-88` | Art. 88 | **employment context — a Member State enabling clause** | D |
 
 Standing fields, identical on every **Group A** entry below unless the entry
 says otherwise:
@@ -141,11 +149,17 @@ says otherwise:
   `proxy-sourced`.
 - **language_version:** English (Italian additionally captured for Arts. 13, 14,
   15, 20), **original OJ text as published**. The consolidated edition is CELEX
-  `02016R0679-20160504`; the only consolidation to date is a corrigendum, so the
-  original and consolidated wording of the articles recorded here do not differ
-  — but an entry relied on for a consequential determination should be
-  re-checked against the consolidated id (`../_schema.md`, "The amendment
-  trap"). · **verified:** 2026-07-31 · **legal_status:** `in force`.
+  `02016R0679-20160504`, and the Publications Office index, queried on
+  2026-10-14, lists no later consolidation and no amending act. The one
+  correction the consolidated header records is the Corrigendum at OJ L 127, 23.5.2018, p. 2 (CELEX
+  `32016R0679R(02)`), **read in full from CELLAR on 2026-10-14**: it corrects
+  recital 71 and Arts. 37(1)(c), 41(3) and (5), 42(7), 43(3) and (6), 57(1)(p),
+  64(1)(c) and (6)–(8), 65(1)(a), 69(2) and 70(1)(l), (o) and (p), and nothing
+  else. No Group A article is among them, so original and consolidated wording
+  coincide for every Group A entry; the grade stays `proxy-sourced` all the same
+  (`../_schema.md`, "The amendment trap"). This list is the page's single home
+  for the corrigendum's reach; entries point here. · **verified:** 2026-07-31 ·
+  **legal_status:** `in force`.
 
 Standing fields for **Group B**: **verification_grade:**
 `mirror-corroborated` from a site republishing the OJ text;
@@ -217,6 +231,56 @@ Where an entry states any of these fields inline, **the entry's own value wins.*
 - **legal_status:** `in force`
 - **notes:** Reach for consent only after checking that it is the *correct*
   basis — see `gdpr-art-6-1-b`.
+
+### `gdpr-recital-26`
+
+- **instrument:** Regulation (EU) 2016/679 (GDPR) — *regulation*
+- **provision:** Recital 26 — identifiability; pseudonymised and anonymous
+  information
+- **text_form:** **verbatim**
+- **text (EN):** "The principles of data protection should apply to any
+  information concerning an identified or identifiable natural person. Personal
+  data which have undergone pseudonymisation, which could be attributed to a
+  natural person by the use of additional information should be considered to be
+  information on an identifiable natural person. To determine whether a natural
+  person is identifiable, account should be taken of all the means reasonably
+  likely to be used, such as singling out, either by the controller or by another
+  person to identify the natural person directly or indirectly. To ascertain
+  whether means are reasonably likely to be used to identify the natural person,
+  account should be taken of all objective factors, such as the costs of and the
+  amount of time required for identification, taking into consideration the
+  available technology at the time of the processing and technological
+  developments. The principles of data protection should therefore not apply to
+  anonymous information, namely information which does not relate to an
+  identified or identifiable natural person or to personal data rendered
+  anonymous in such a manner that the data subject is not or no longer
+  identifiable. This Regulation does not therefore concern the processing of such
+  anonymous information, including for statistical or research purposes."
+- **official_url:** act as adopted, OJ L 119, 4.5.2016, p. 1 —
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679
+- **consulted:** the act as adopted, retrieved on 2026-10-14 from the
+  Publications Office's CELLAR resource endpoint
+  (`https://publications.europa.eu/resource/celex/32016R0679`, the route recorded
+  on `gdpr-art-87`), written to a file and read from it; the
+  `eur-lex.europa.eu` render fetched the same day carries the same text —
+  **verification_grade:** `primary-fetched`
+- **language_version:** English, **original as adopted**. A consolidated text
+  carries no recitals (the consolidated `02016R0679-20160504` has none), so the
+  edition check runs through the corrigendum instead: it corrects recital 71 and
+  no other recital (its full reach is listed in the Group A standing fields
+  above). Recital 26 therefore reads as adopted.
+- **verified:** 2026-10-14
+- **legal_status:** `in force` (the recital of an act in force)
+- **notes:** a recital gives the reasons for the act's provisions; cite it as
+  the reading of the identifiability test, beside the defining articles, and
+  never as an operative obligation on its own. The definitions it explains —
+  Art. 4(1) (personal data) and Art. 4(5) (pseudonymisation) — are **not
+  recorded** in this corpus. Two things the wording settles: pseudonymised data
+  remain personal data, and the reasonableness test counts means used "by the
+  controller or by another person". Whether a given dataset is anonymous is a
+  question of fact for the controller, and nothing here decides it. The
+  predecessor Directive's recital and the supervisory opinion that glosses it
+  are in `a29wp-opinion-05-2014-anonymisation.md`.
 
 ## Principles
 
@@ -550,6 +614,133 @@ Where an entry states any of these fields inline, **the entry's own value wins.*
 
 ## Information duties and data-subject rights
 
+Arts. 11 and 12 come first because they govern how every right below is
+answered: Art. 11 settles what happens when the controller cannot identify the
+person asking, and Art. 12 sets the form, the fee rule and the clock for every
+answer under Arts. 13 to 22 and 34.
+
+### `gdpr-art-11`
+
+- **instrument:** Regulation (EU) 2016/679 (GDPR) — *regulation*
+- **provision:** Article 11, "Processing which does not require
+  identification", paras. 1 and 2 (the whole article)
+- **text_form:** **verbatim**
+- **text (EN):** "1. If the purposes for which a controller processes personal
+  data do not or do no longer require the identification of a data subject by
+  the controller, the controller shall not be obliged to maintain, acquire or
+  process additional information in order to identify the data subject for the
+  sole purpose of complying with this Regulation. 2. Where, in cases referred to
+  in paragraph 1 of this Article, the controller is able to demonstrate that it
+  is not in a position to identify the data subject, the controller shall inform
+  the data subject accordingly, if possible. In such cases, Articles 15 to 20
+  shall not apply except where the data subject, for the purpose of exercising
+  his or her rights under those articles, provides additional information
+  enabling his or her identification."
+- **official_url:** act as adopted —
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679 ·
+  consolidated text —
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02016R0679-20160504
+- **consulted:** both editions retrieved on 2026-10-14 from the Publications
+  Office's CELLAR resource endpoint (the route recorded on `gdpr-art-87`), each
+  written to a file and read from it; the `eur-lex.europa.eu` render fetched the
+  same day carries the same text — **verification_grade:** `primary-fetched`
+- **language_version:** English. **Both editions read and compared** — the act
+  as adopted, CELEX `32016R0679`, and the **consolidated** text, CELEX
+  `02016R0679-20160504`, as at 4 May 2016. The article reads the same in the
+  two, and the corrigendum does not reach it (Group A standing fields above).
+- **verified:** 2026-10-14
+- **legal_status:** `in force`
+- **notes:** the exemption in para. 2 runs from Arts. 15 to 20 only, so
+  Art. 21 (objection) and Art. 22 are outside it; para. 1 relieves only the duty
+  to keep or obtain identifying information "for the sole purpose of complying
+  with this Regulation". The burden
+  sits with the controller, which must be "able to demonstrate" that it cannot
+  identify the person, and the data subject can lift the exemption by supplying
+  identifying information. `gdpr-art-12` para. 2 is the other half: in an
+  Art. 11(2) case the controller still may not refuse to act unless it makes
+  that demonstration. Whether a given controller can identify a given person is
+  a fact about a system, not about this article.
+
+### `gdpr-art-12`
+
+- **instrument:** Regulation (EU) 2016/679 (GDPR) — *regulation*
+- **provision:** Article 12, "Transparent information, communication and
+  modalities for the exercise of the rights of the data subject", paras. 1–8
+  (the whole article)
+- **text_form:** **verbatim**
+- **text (EN, paras. 1–4):** "1. The controller shall take appropriate measures
+  to provide any information referred to in Articles 13 and 14 and any
+  communication under Articles 15 to 22 and 34 relating to processing to the
+  data subject in a concise, transparent, intelligible and easily accessible
+  form, using clear and plain language, in particular for any information
+  addressed specifically to a child. The information shall be provided in
+  writing, or by other means, including, where appropriate, by electronic
+  means. When requested by the data subject, the information may be provided
+  orally, provided that the identity of the data subject is proven by other
+  means. 2. The controller shall facilitate the exercise of data subject rights
+  under Articles 15 to 22. In the cases referred to in Article 11(2), the
+  controller shall not refuse to act on the request of the data subject for
+  exercising his or her rights under Articles 15 to 22, unless the controller
+  demonstrates that it is not in a position to identify the data subject. 3. The
+  controller shall provide information on action taken on a request under
+  Articles 15 to 22 to the data subject without undue delay and in any event
+  within one month of receipt of the request. That period may be extended by two
+  further months where necessary, taking into account the complexity and number
+  of the requests. The controller shall inform the data subject of any such
+  extension within one month of receipt of the request, together with the
+  reasons for the delay. Where the data subject makes the request by electronic
+  form means, the information shall be provided by electronic means where
+  possible, unless otherwise requested by the data subject. 4. If the controller
+  does not take action on the request of the data subject, the controller shall
+  inform the data subject without delay and at the latest within one month of
+  receipt of the request of the reasons for not taking action and on the
+  possibility of lodging a complaint with a supervisory authority and seeking a
+  judicial remedy."
+- **text (EN, paras. 5–8):** "5. Information provided under Articles 13 and 14
+  and any communication and any actions taken under Articles 15 to 22 and 34
+  shall be provided free of charge. Where requests from a data subject are
+  manifestly unfounded or excessive, in particular because of their repetitive
+  character, the controller may either: (a) charge a reasonable fee taking into
+  account the administrative costs of providing the information or
+  communication or taking the action requested; or (b) refuse to act on the
+  request. The controller shall bear the burden of demonstrating the manifestly
+  unfounded or excessive character of the request. 6. Without prejudice to
+  Article 11, where the controller has reasonable doubts concerning the identity
+  of the natural person making the request referred to in Articles 15 to 21, the
+  controller may request the provision of additional information necessary to
+  confirm the identity of the data subject. 7. The information to be provided to
+  data subjects pursuant to Articles 13 and 14 may be provided in combination
+  with standardised icons in order to give in an easily visible, intelligible
+  and clearly legible manner a meaningful overview of the intended processing.
+  Where the icons are presented electronically they shall be machine-readable.
+  8. The Commission shall be empowered to adopt delegated acts in accordance
+  with Article 92 for the purpose of determining the information to be
+  presented by the icons and the procedures for providing standardised icons."
+- **official_url:** act as adopted —
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679 ·
+  consolidated text —
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02016R0679-20160504
+- **consulted:** both editions retrieved on 2026-10-14 from the Publications
+  Office's CELLAR resource endpoint (the route recorded on `gdpr-art-87`), each
+  written to a file and read from it; the `eur-lex.europa.eu` render fetched the
+  same day carries the same text — **verification_grade:** `primary-fetched`
+- **language_version:** English. **Both editions read and compared** — CELEX
+  `32016R0679` as adopted and the **consolidated** CELEX `02016R0679-20160504`,
+  as at 4 May 2016. The article reads the same in the two, and the corrigendum
+  does not reach it (Group A standing fields above).
+- **verified:** 2026-10-14
+- **legal_status:** `in force`
+- **notes:** **The periods in para. 3 are the numbers on this page most often
+  cited, and they are formulas, not dates:** one month from receipt of the
+  request, extendable "by two further months" where necessary for complexity and
+  number, with notice of the extension and its reasons due inside the first
+  month. Both figures are `primary-fetched` here. Para. 4's one month for
+  explaining a refusal runs from the same receipt. The phrase "by electronic
+  form means" in para. 3 is the published wording, transcribed as fetched. Para. 5's fee and
+  refusal options are exceptions whose burden sits on the controller. Para. 6
+  lets the controller ask for identifying information only on reasonable doubt,
+  and only for requests under Arts. 15 to 21; read it with `gdpr-art-11`.
+
 ### `gdpr-art-13`
 
 - **instrument:** Regulation (EU) 2016/679 (General Data Protection Regulation)
@@ -654,9 +845,8 @@ Where an entry states any of these fields inline, **the entry's own value wins.*
 - **notes:** **A manual procedure can satisfy Art. 15 in principle** — the GDPR
   mandates no self-service portal and no automation — **provided** it reliably
   produces all eight content elements and, for an electronic request, delivers a
-  copy in a "commonly used electronic form" within the Art. 12(3) time limit.
-  **Art. 12's one-month limit and its two-month extension are `not recorded`
-  here** — present in the retained snapshot, not transcribed in this pass.
+  copy in a "commonly used electronic form" within the Art. 12(3) time limit
+  (`gdpr-art-12`).
 
 ### `gdpr-art-20`
 
@@ -698,7 +888,8 @@ Where an entry states any of these fields inline, **the entry's own value wins.*
    **"One manual procedure satisfies both rights identically" is wrong on the
    statute.** It may satisfy Art. 15 while failing Art. 20's format requirement,
    and it may be unnecessary for Art. 20 entirely if no consent/contract basis
-   applies.
+   applies. What the two rights share is the clock: a request under either is
+   answered within the Art. 12(3) period (`gdpr-art-12`).
 
 ### `gdpr-art-16`
 
@@ -1375,6 +1566,12 @@ own entries below.
   `iso-gdpr-art-42-relationship` in `../international/iso-27001.md`. **No EDPB decision equates
   ISO/IEC 27001 with an Art. 42 certification**; the EDPB approves separately
   designed GDPR criteria sets instead. Still do not assert equivalence.
+  **Edition hazard on this article:** the 2018 corrigendum rewrites Art. 42(7),
+  replacing "requirements" with "criteria" in the renewal and withdrawal
+  conditions (its full reach is listed in the Group A standing fields above).
+  This entry summarizes paras. 1 and 4 only, which the corrigendum does not
+  touch, but its source edition was never traced, so a pass that needs
+  para. 7 reads it from the consolidated text.
 
 ## International transfers
 
@@ -1650,9 +1847,8 @@ this section must carry with it.
   `02016R0679 — EN — 04.05.2016 — 000.002`, whose header records the one
   correction to date, the Corrigendum at OJ L 127, 23.5.2018, p. 2. **Article 87
   reads character-for-character the same in the two**, so this entry is citable
-  on either. The corrigendum's three `►C1` markers in the consolidated text sit
-  at Arts. 43(3) and 65(1)(a), not here — which settles for this provision the
-  question the page header leaves open for the rest.
+  on either, and the corrigendum, whose full reach is listed in the Group A
+  standing fields above, does not touch it.
 - **verified:** 2026-09-22
 - **legal_status:** `in force`. Taken from the publisher rather than assumed: the
   CELLAR metadata notice for CELEX `32016R0679`, retrieved in the same pass,
@@ -1676,6 +1872,55 @@ this section must carry with it.
   content of those safeguards to the national measure and to the Regulation's own
   Arts. 5, 25 and 32 rather than supplying it.
 
+### `gdpr-art-88`
+
+- **instrument:** Regulation (EU) 2016/679 (GDPR) — *regulation*
+- **provision:** Article 88, "Processing in the context of employment", in
+  Chapter IX, paras. 1–3 (the whole article)
+- **text_form:** **verbatim**
+- **text (EN):** "1. Member States may, by law or by collective agreements,
+  provide for more specific rules to ensure the protection of the rights and
+  freedoms in respect of the processing of employees' personal data in the
+  employment context, in particular for the purposes of the recruitment, the
+  performance of the contract of employment, including discharge of obligations
+  laid down by law or by collective agreements, management, planning and
+  organisation of work, equality and diversity in the workplace, health and
+  safety at work, protection of employer's or customer's property and for the
+  purposes of the exercise and enjoyment, on an individual or collective basis,
+  of rights and benefits related to employment, and for the purpose of the
+  termination of the employment relationship. 2. Those rules shall include
+  suitable and specific measures to safeguard the data subject's human dignity,
+  legitimate interests and fundamental rights, with particular regard to the
+  transparency of processing, the transfer of personal data within a group of
+  undertakings, or a group of enterprises engaged in a joint economic activity
+  and monitoring systems at the work place. 3. Each Member State shall notify to
+  the Commission those provisions of its law which it adopts pursuant to
+  paragraph 1, by 25 May 2018 and, without delay, any subsequent amendment
+  affecting them."
+- **official_url:** act as adopted —
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679 ·
+  consolidated text —
+  https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02016R0679-20160504
+- **consulted:** both editions retrieved on 2026-10-14 from the Publications
+  Office's CELLAR resource endpoint (the route recorded on `gdpr-art-87`), each
+  written to a file and read from it; the `eur-lex.europa.eu` render fetched the
+  same day carries the same text — **verification_grade:** `primary-fetched`
+- **language_version:** English. **Both editions read and compared** — CELEX
+  `32016R0679` as adopted and the **consolidated** CELEX `02016R0679-20160504`,
+  as at 4 May 2016. The article reads the same in the two, and the corrigendum
+  does not reach it (Group A standing fields above).
+- **verified:** 2026-10-14
+- **legal_status:** `in force`
+- **notes:** like `gdpr-art-87`, an **enabling clause addressed to Member
+  States**: it grounds no obligation on an employer by itself. What binds is the
+  national rule adopted under it, by law or by collective agreement, and that
+  rule is citable only from this corpus's `../national/` scope. The 25 May 2018
+  date in para. 3 is the Member States' notification deadline to the
+  Commission, not a compliance date for anyone processing employee data; do not
+  reuse it as one. Whether a particular national provision was notified under
+  para. 3 was not searched in this pass, so no national page here is asserted to
+  be an Art. 88 measure.
+
 ---
 
 ## Not transcribed — known coverage gaps
@@ -1684,9 +1929,9 @@ this section must carry with it.
   (`mirror-corroborated` / `secondary-corroborated`), not a text taken from the
   publisher's own rendering. Lifting them requires a **new fetch, recorded** — a
   verification grade is never raised without one.
-- **Art. 12** — the one-month response limit and its two-month extension.
-  Referenced by `gdpr-art-15` and `gdpr-art-20`; `not recorded` here, and
-  therefore not citable from this corpus.
+- **Art. 4(1) and Art. 4(5)**, the definitions of personal data and of
+  pseudonymisation that `gdpr-recital-26` explains. Present in the fetched text,
+  not transcribed.
 - **No Art. 28(3)(i) exists.** A verified absence, checked against the full
   fetched text: the subparagraph runs (a)-(h) only. Recorded so the next reader
   does not go looking for one.
@@ -1699,14 +1944,14 @@ this section must carry with it.
   with the challenge header, but the Publications Office's CELLAR resource
   endpoint at `publications.europa.eu` serves both editions to a plain
   content-negotiated request (the route recorded on `gdpr-art-87`). Group A can
-  now be re-derived, article by article, from the publisher itself. Until an
-  entry is actually re-read that way and re-recorded with its own date, its
-  grade stands where it is.
-- **The rest of Chapter IX.** Arts. 85, 86, 88, 89, 90 and 91 sit beside
-  `gdpr-art-87` in the fetched text and are `not recorded` here. Art. 88
-  (employment) is the one most likely to be wanted next. Whether any national
-  page in this corpus was adopted under a Chapter IX enabling clause was not
-  established in this pass, so no such linkage is asserted.
+  now be re-derived, article by article, from the publisher itself, and on
+  2026-10-14 the `eur-lex.europa.eu` front end served the document directly as
+  well. Until an entry is actually re-read that way and re-recorded with its own
+  date, its grade stands where it is.
+- **The rest of Chapter IX.** Arts. 85, 86, 89, 90 and 91 sit beside
+  `gdpr-art-87` and `gdpr-art-88` in the fetched text and are `not recorded`
+  here. Whether any national page in this corpus was adopted under a Chapter IX
+  enabling clause was not established, so no such linkage is asserted.
 
 ## Neighbours
 
@@ -1723,3 +1968,7 @@ this section must carry with it.
 - `eu-us-dpf-adequacy.md` — an adequacy decision under Chapter V, and its
   pending appeal.
 - `../case-law/index.md` — Breyer (IP addresses as personal data) and the rest.
+- `a29wp-opinion-05-2014-anonymisation.md` — the supervisory opinion on
+  anonymisation that reads the identifiability test `gdpr-recital-26` states.
+- `mdr.md` — the medical-devices Regulation; `gdpr-art-9` Art. 9(2)(i) uses the
+  term without defining it.

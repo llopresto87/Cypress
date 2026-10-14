@@ -15,7 +15,8 @@ load_when:
   - "build the android app in a container without a host toolchain"
 stack:
   - library-corpus/language/flutter
-est_tokens: 2100
+prevents: A demo APK is built on whatever toolchain the workstation holds, with secrets or release signing improvised, and is handed out unverified as if it were a release.
+est_tokens: 2351
 ---
 
 # Suggested skill: local-android-demo-build

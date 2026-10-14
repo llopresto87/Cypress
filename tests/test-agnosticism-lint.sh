@@ -112,4 +112,56 @@ caseAGNOSTICISM_LINT_FLAGS_ABSOLUTE_HOME_PATH() {
 }
 caseAGNOSTICISM_LINT_FLAGS_ABSOLUTE_HOME_PATH
 
+# 9. --forbid-file reads the terms from a file, one per line: a steward's local
+#    list of every project the component was harvested from is hundreds of
+#    terms, and a line that starts with `#` (a colour, a channel) is a term,
+#    not a comment. Blank lines are skipped. The findings equal case 6's.
+printf 'widgetco\n\nj.doe\n#abc123\n' > "$TMP/forbid.txt"
+run 1 --root "$FIX/named" --forbid-file "$TMP/forbid.txt"
+grep -q "FAIL (4 finding(s))" "$TMP/out" || fail "--forbid-file did not yield case 6's four findings"
+printf 'colour #abc123\n' > "$TMP/hex.md"
+run 1 --file "$TMP/hex.md" --forbid-file "$TMP/forbid.txt"
+grep -q "hex.md:1: project-identifying term '#abc123'" "$TMP/out" || fail "a '#' line was not read as a term"
+echo "  --forbid-file: one term per line, a '#' line is a term — OK"
+
+# 10. The exemption is the list's, never the tool's: `!allow <text>` exempts a
+#     term inside that text anywhere (the owner's own name, the component's
+#     repository URL), `!allow-in <glob> <text>` only in the files the glob
+#     names (a vendor a library page documents). Nothing else is exempt.
+printf 'widgetco\nj.doe\n!allow /srv/widgetco/bin\n!allow-in other/*.md WidgetCo-Gateway\n' > "$TMP/forbid.txt"
+run 1 --root "$FIX/named" --forbid-file "$TMP/forbid.txt"
+grep -q "FAIL (3 finding(s))" "$TMP/out" || fail "expected 3 findings: only the /srv path is exempt"
+grep -q "doc.md:5: project-identifying term 'widgetco'" "$TMP/out" && fail "!allow text did not exempt the term inside it"
+grep -q "doc.md:5: project-identifying term 'j.doe'" "$TMP/out" || fail "!allow exempted a term outside its text"
+grep -q "doc.md:7: project-identifying term 'WidgetCo'" "$TMP/out" || fail "!allow-in exempted a file its glob does not name"
+mkdir -p "$TMP/other"; cp "$FIX/named/doc.md" "$TMP/other/doc.md"
+run 1 --root "$TMP/other" --forbid-file "$TMP/forbid.txt"
+grep -q "doc.md:7:" "$TMP/out" && fail "!allow-in did not exempt the file its glob names"
+echo "  !allow and !allow-in exempt only the listed text, where listed — OK"
+
+# 11. --tracked scans what the repository ships: every tracked file whatever
+#     its suffix, and no untracked or ignored file.
+R="$TMP/repo"; mkdir -p "$R"
+git -C "$R" init -q
+printf 'built for widgetco\n' > "$R/tool.py"; printf 'widgetco notes\n' > "$R/scratch.md"
+git -C "$R" add tool.py
+run 1 --root "$R" --tracked --forbid widgetco
+grep -q "tool.py:1: project-identifying term 'widgetco'" "$TMP/out" || fail "--tracked did not scan a tracked .py"
+grep -q "scratch.md" "$TMP/out" && fail "--tracked scanned an untracked file"
+printf 'host 198.18.7.44\n' > "$R/fixture.md"; git -C "$R" add fixture.md
+run 1 --root "$R" --tracked --forbid widgetco --terms-only
+grep -q "198.18.7.44" "$TMP/out" && fail "--terms-only reported a host address"
+grep -q "FAIL (1 finding(s))" "$TMP/out" || fail "--terms-only did not keep the term finding alone"
+echo "  --tracked scans every tracked file and nothing untracked — OK"
+
+# 12. The gate step reads the steward's local, gitignored list when it is
+#     there: --optional-forbid-file with no file prints SKIPPED and exits 0,
+#     so a clone without the list says what it did not check.
+run 0 --root "$R" --tracked --optional-forbid-file "$TMP/absent.txt"
+grep -q "agnosticism lint: SKIPPED — no local forbid list at .*absent.txt" "$TMP/out" \
+  || fail "an absent optional list did not print SKIPPED naming the path"
+printf 'widgetco\n' > "$TMP/present.txt"
+run 1 --root "$R" --tracked --optional-forbid-file "$TMP/present.txt"
+echo "  --optional-forbid-file: SKIPPED when absent, applied when present — OK"
+
 echo "test-agnosticism-lint: PASS"

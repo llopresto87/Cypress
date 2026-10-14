@@ -21,6 +21,10 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
+// The interpreter the core runs on. install.sh writes here the Python it found
+// at the seed's floor (SPEC-0001 HOOKS_RUN_ON_THE_FLOOR_INTERPRETER).
+const PYTHON = "python3";
+
 type Session = {
   cwd: string;
   sessionManager: { getSessionId(): string; getHeader(): { rlmDepth?: unknown } | null };
@@ -76,7 +80,7 @@ async function runCore(pi: ExtensionAPI, ctx: Session, source: string): Promise<
   try {
     const script = corePath(ctx);
     if (!script) return undefined;
-    const r = await pi.exec("python3", [script, source, ...sessionOptions(ctx)],
+    const r = await pi.exec(PYTHON, [script, source, ...sessionOptions(ctx)],
       { timeout: 25_000, cwd: ctx.cwd });
     return additionalContext(r.stdout);
   } catch {

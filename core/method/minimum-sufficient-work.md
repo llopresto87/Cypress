@@ -45,7 +45,9 @@ path still completes.
 
 The execution shape: define the smallest deliverable that fully
 satisfies the request; identify the decisions it needs and the minimum
-evidence for them; reuse what is already established; acquire only the
+evidence for them; reuse what is already established (a recorded "already
+covered" verdict that is itself the subject of a gate or an audit is
+re-derived, not reused: `protocol.verify`); acquire only the
 missing decision-relevant evidence with the cheapest reliable
 operation; act once uncertainty is below the risk threshold; validate
 the assumptions capable of invalidating the result; stop. Effort
@@ -83,7 +85,8 @@ that, because mixing in improvements makes every failure ambiguous
 between "did not restore" and "the change broke it"; on a codebase with
 no regression net, the absence of tests is itself the argument against
 touching code while still learning it. Fixes discovered on such a pass
-go to the owner as proposals.
+go to the owner as proposals; a tester on such a pass lists the bugs it
+finds (`tester.bug-fix-loop`).
 
 ## Neighbours
 

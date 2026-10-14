@@ -14,7 +14,7 @@ NODE="$ROOT/protocols/deliver.md"
 SINCE="2026-10-05"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
-CASE=""     # the contract slug the current case carries, named in every failure
+CASE=""     # the contract slugs the current case carries, named in every failure
 fail() { echo "FAIL: ${CASE:+[$CASE] }$*" >&2; [ -f "$TMP/out" ] && cat "$TMP/out" >&2; exit 1; }
 
 # run <expected-rc> <args...> -> output (stdout and stderr) in $TMP/out
@@ -54,10 +54,8 @@ metrics() {
 }
 
 # X399 (and failures BLOCK_BORROWED_FROM_NEXT_ENTRY, NESTED_DELIVERY_HEADING)
-# Asserts SPEC-0006 METRICS_BLOCK_MISSING_FAILS.
-# Asserts SPEC-0006 METRICS_DATED_HEADING_ENDS_ENTRY.
 case_entry_span() {
-  CASE=METRICS_BLOCK_MISSING_FAILS
+  CASE="METRICS_BLOCK_MISSING_FAILS METRICS_DATED_HEADING_ENDS_ENTRY"
   local r f a c d; r="$(groot span)"; f="$r/changelog.md"
   # a: blockless, a nested T3 delivery with its own block below it.
   # c: blockless, a same-level graft entry with a block after it.
@@ -77,12 +75,8 @@ case_entry_span() {
 }
 
 # X400
-# Asserts SPEC-0006 METRICS_LINE_MISSING_FAILS.
-# Asserts SPEC-0006 METRICS_LINE_EMPTY_FAILS.
-# Asserts SPEC-0006 METRICS_NOT_RECORDED_WITHOUT_REASON_FAILS.
-# Asserts SPEC-0006 METRICS_NOT_RECORDED_WITH_REASON_IS_FILLED.
 case_block_defects() {
-  CASE=METRICS_LINE_MISSING_FAILS
+  CASE="METRICS_LINE_MISSING_FAILS METRICS_LINE_EMPTY_FAILS METRICS_NOT_RECORDED_WITHOUT_REASON_FAILS METRICS_NOT_RECORDED_WITH_REASON_IS_FILLED"
   local r f b; r="$(groot defects)"; f="$r/changelog.md"
   { printf '# Delivery — t — 2026-10-05\n\n## Session metrics\n'
     metrics "Serial waits=DROP" "Retries=" "Gates=<run/failed-then-fixed counts>" \
@@ -98,10 +92,8 @@ case_block_defects() {
 }
 
 # X404
-# Asserts SPEC-0006 METRICS_LOW_TIER_EXEMPT.
-# Asserts SPEC-0006 METRICS_COMPACT_ENTRY_EXEMPT.
 case_exemptions() {
-  CASE=METRICS_LOW_TIER_EXEMPT
+  CASE="METRICS_LOW_TIER_EXEMPT METRICS_COMPACT_ENTRY_EXEMPT"
   local r; r="$(groot exempt)"
   printf '## T0 delivery — q — 2026-10-05\n\n# Delivery — r — 2026-10-05\n\n## Session metrics\n- Tier: T1 (reclassified: none)\n\n# Delivery (compact) — s — 2026-10-05\n' >"$r/changelog.md"
   run 0 --root "$r" --since "$SINCE"
@@ -110,7 +102,6 @@ case_exemptions() {
 }
 
 # X406 (and failure PRE_RULE_ENTRY)
-# Asserts SPEC-0006 METRICS_ENTRIES_BEFORE_SINCE_NOT_JUDGED.
 case_before_since_not_judged() {
   CASE=METRICS_ENTRIES_BEFORE_SINCE_NOT_JUDGED
   local r; r="$(groot since)"
@@ -121,7 +112,6 @@ case_before_since_not_judged() {
 }
 
 # X407 (and failures HEADING_NOT_RECOGNIZED, UNDATED_DELIVERY_HEADING)
-# Asserts SPEC-0006 METRICS_NO_ENTRY_SINCE_FAILS.
 case_no_entry_since() {
   CASE=METRICS_NO_ENTRY_SINCE_FAILS
   local r u; r="$(groot noentry)"
@@ -138,7 +128,6 @@ case_no_entry_since() {
 }
 
 # X408
-# Asserts SPEC-0006 METRICS_MISSING_CHANGELOG_FAILS.
 case_missing_changelog() {
   CASE=METRICS_MISSING_CHANGELOG_FAILS
   local r; r="$(groot nochangelog)"
@@ -149,7 +138,6 @@ case_missing_changelog() {
 }
 
 # X409
-# Asserts SPEC-0006 METRICS_SINCE_REQUIRED.
 case_since_required() {
   CASE=METRICS_SINCE_REQUIRED
   local r; r="$(groot sincereq)"
@@ -162,10 +150,8 @@ case_since_required() {
 }
 
 # X410
-# Asserts SPEC-0006 METRICS_ENTRY_HEADINGS_RECOGNIZED.
-# Asserts SPEC-0006 METRICS_SECTION_HEADINGS_STAY_IN_ENTRY.
 case_entry_headings() {
-  CASE=METRICS_ENTRY_HEADINGS_RECOGNIZED
+  CASE="METRICS_ENTRY_HEADINGS_RECOGNIZED METRICS_SECTION_HEADINGS_STAY_IN_ENTRY"
   local r; r="$(groot headings)"
   # b: the T3 form; a: the template form written flat (its sections at ## too);
   # c (fenced), Standalone, Delivery-pipeline and Delivery: are not entries.
@@ -179,7 +165,6 @@ case_entry_headings() {
 }
 
 # X412 (and failure PLANT_CUSTOMIZED_BLOCK)
-# Asserts SPEC-0006 METRICS_LABELS_FROM_DELIVER_NODE.
 case_labels_from_node() {
   CASE=METRICS_LABELS_FROM_DELIVER_NODE
   local r; r="$(groot tokens)"
@@ -192,7 +177,6 @@ case_labels_from_node() {
 }
 
 # X413 (and failure DELIVER_NODE_REWORDED). Reads the shipped node.
-# Asserts SPEC-0006 METRICS_SHIPPED_DELIVER_NODE_PARSES.
 case_shipped_deliver_node() {
   CASE=METRICS_SHIPPED_DELIVER_NODE_PARSES
   local l n=0
@@ -209,7 +193,6 @@ case_shipped_deliver_node() {
 }
 
 # X414
-# Asserts SPEC-0006 METRICS_DELIVER_NODE_UNPARSEABLE_FAILS_LOUD.
 case_deliver_node_unparseable() {
   CASE=METRICS_DELIVER_NODE_UNPARSEABLE_FAILS_LOUD
   local r; r="$(groot nofence)"
@@ -223,7 +206,6 @@ case_deliver_node_unparseable() {
 }
 
 # X416
-# Asserts SPEC-0006 METRICS_ALL_REPORTS_EVERY_ENTRY.
 case_all_json() {
   CASE=METRICS_ALL_REPORTS_EVERY_ENTRY
   local r; r="$(groot all)"
@@ -245,11 +227,8 @@ PY
 }
 
 # X417 (and failures SAME_DAY_EARLIER_ENTRY, ENTRY_LINE_NOT_A_DELIVERY_HEADING, HEADING_NOT_RECOGNIZED; AC-9)
-# Asserts SPEC-0006 METRICS_OTHER_ENTRY_DEFECT_IS_A_NOTE.
-# Asserts SPEC-0006 METRICS_FILLED_ENTRY_PASSES.
-# Asserts SPEC-0006 METRICS_LEADING_BOM_IGNORED.
 case_other_entry_is_a_note() {
-  CASE=METRICS_OTHER_ENTRY_DEFECT_IS_A_NOTE
+  CASE="METRICS_OTHER_ENTRY_DEFECT_IS_A_NOTE METRICS_FILLED_ENTRY_PASSES METRICS_LEADING_BOM_IGNORED"
   local r f e m; r="$(groot other)"; f="$r/changelog.md"
   # (a) the session's own filled entry below another session's blockless one.
   { printf '# Delivery — earlier — 2026-10-05\n\n- a.py:another session\n\n# Delivery — mine — 2026-10-05\n\n## Session metrics\n'; metrics; } >"$f"
@@ -280,7 +259,6 @@ case_other_entry_is_a_note() {
 }
 
 # X423
-# Asserts SPEC-0006 METRICS_LINES_COUNTED_AS_GREP_DOES.
 case_lines_as_grep() {
   CASE=METRICS_LINES_COUNTED_AS_GREP_DOES
   local r f n; r="$(groot asgrep)"; f="$r/changelog.md"
@@ -294,10 +272,26 @@ case_lines_as_grep() {
   echo "  X423 lines are counted as grep -n counts them — OK"
 }
 
+# X484
+case_all_zero_entries_named() {
+  CASE=METRICS_ZERO_ENTRIES_ARE_NAMED
+  local r; r="$(groot zero)"
+  printf '# Changelog\n\n## 2026-10-05 — moved the client\n\n- a.py\n\n## Grow report (2026-10-04)\n\n## 2026-10-03 hotfix\n' >"$r/changelog.md"
+  python3 "$SM" --root "$r" --all --json >"$TMP/out" 2>"$TMP/err" || fail "the query role exited non-zero on content"
+  [ "$(tr -d ' \n' <"$TMP/out")" = "[]" ] || fail "stdout is not the empty JSON array"
+  grep -q "0 entries" "$TMP/err" && grep -q "3 dated heading" "$TMP/err" \
+    || fail "stderr does not say 0 entries were read from 3 dated headings: $(cat "$TMP/err")"
+  grep -qF 'Delivery — <title> — YYYY-MM-DD' "$TMP/err" || fail "stderr does not name the forms the query reads"
+  printf '# Changelog\n\nnothing dated yet\n' >"$r/changelog.md"
+  python3 "$SM" --root "$r" --all --json >"$TMP/out" 2>"$TMP/err" || fail "the query role exited non-zero on an empty changelog"
+  [ ! -s "$TMP/err" ] || fail "a changelog with no dated heading printed a hint: $(cat "$TMP/err")"
+  echo "  X484 --all over dated headings in no recognized form names the count and the forms — OK"
+}
+
 ALL="case_entry_span case_block_defects case_exemptions case_before_since_not_judged
 case_no_entry_since case_missing_changelog case_since_required case_entry_headings
 case_labels_from_node case_shipped_deliver_node case_deliver_node_unparseable
-case_all_json case_other_entry_is_a_note case_lines_as_grep"
+case_all_json case_other_entry_is_a_note case_lines_as_grep case_all_zero_entries_named"
 
 if [ "$#" -gt 0 ]; then
   for c in "$@"; do "$c"; done

@@ -54,6 +54,7 @@ git diff-tree -r [-z] <tree-ish> <tree-ish> # compare two trees, nothing else
 git log -1 --format=%cd <rev>               # committer date of a commit
 git log -1 --format=%ct <rev>               # committer date as epoch seconds (UTC)
 git merge-base --is-ancestor <a> <b>        # exit 0 if a is an ancestor of b, 1 if not
+git rev-list --left-right --count <a>...<b> # commits only on a, commits only on b
 
 # Fetch while writing as little as possible
 git fetch --no-tags --no-recurse-submodules [--depth=1] [--refmap=] <remote> <ref>
@@ -170,6 +171,17 @@ GIT_SSH_COMMAND='ssh -i <key> ...'          # ssh command for fetch/push; shell-
   turns true the moment any ref was ever fetched shallow, including one that
   shares nothing with the branch in question. It cannot tell whether a given
   branch's history is complete; use the per-ref ancestry check above.
+- **A newer commit date is not newer code.** A commit's author and committer
+  dates are whatever the tool that made it stamped (the clock, or
+  `GIT_AUTHOR_DATE`, `GIT_COMMITTER_DATE`, `--date`); they say when the commit
+  was made, not where it sits in history. A branch cut from an old point and
+  edited today, through a forge's web editor say, carries today's dates on
+  top of old code (observed in practice: such a branch looked newest by date
+  and was behind the mainline). Decide "is this branch ahead, behind or
+  diverged" by ancestry: `merge-base --is-ancestor`, or `rev-list
+  --left-right --count main...branch` for the counts on each side, never by
+  sorting branches on `%cd`. `--date-order` and `--author-date-order` only
+  reorder within the parent-before-child constraint.
 - **`--date=format:` is not UTC.** It renders the commit's own recorded offset.
   For a UTC date, set `TZ=UTC` in the environment and use
   `--date=format-local:...`; `format-local` renders in the local zone, which is
@@ -295,6 +307,10 @@ GIT_SSH_COMMAND='ssh -i <key> ...'          # ssh command for fetch/push; shell-
   `GIT_INDEX_FILE`, `GIT_ASKPASS`, `GIT_SSH_COMMAND`):
   https://git-scm.com/docs/git
 - `git log` (date formats): https://git-scm.com/docs/git-log
+- `git commit` (author and committer dates): https://git-scm.com/docs/git-commit
+- `git merge-base` (`--is-ancestor`): https://git-scm.com/docs/git-merge-base
+- `git rev-list` (`--left-right`, `--count`, date ordering):
+  https://git-scm.com/docs/git-rev-list
 - `git cat-file`, `git rev-parse` (existence checks, `^{commit}`):
   https://git-scm.com/docs/git-cat-file, https://git-scm.com/docs/git-rev-parse
 - `git update-index`, `git write-tree`, `git commit-tree` (building a commit):

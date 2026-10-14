@@ -1,3 +1,25 @@
+---
+name: deploy-fleet-on-remote-docker-host
+description: Take a set of repositories online on a remote Docker host over SSH from nothing, with every image built on the host, one deploy folder of a base compose file plus mode overlays, an idempotent deploy script, and an estate gate before the smoke run. Invoke for a first bring-up, a redeploy, a mode change or a rollback of such a fleet.
+id: skill.deploy-fleet-on-remote-docker-host
+tier: 2
+kind: skill
+title: deploy-fleet-on-remote-docker-host, the idempotent bring-up of a compose fleet built on its remote host
+owns:
+  - deploy-fleet-on-remote-docker-host.build-on-host
+  - deploy-fleet-on-remote-docker-host.deploy-folder
+  - deploy-fleet-on-remote-docker-host.pipeline
+  - deploy-fleet-on-remote-docker-host.estate-gate
+requires:
+load_when:
+  - "deploy the fleet to a remote docker host over ssh"
+  - "bring the stack up on the server from nothing"
+  - "build the images on the remote host, no local docker daemon"
+  - "redeploy or roll back a compose fleet on the host"
+prevents: A fleet deploy builds against a drifting local toolchain, lands on an unverified host or on another tenant's stack, and passes on a zero exit from compose while services are missing or the edge proxies to stale addresses.
+est_tokens: 4868
+---
+
 # Suggested skill: deploy-fleet-on-remote-docker-host
 
 > Optional procedure — the single universal method for taking a fresh set of
@@ -188,6 +210,20 @@ written and kept out of argv and logs.
      missing file and exits 23. Filter the `git ls-files -d` paths out of the
      list (`grep -vxFf <(git ls-files -d)`), and delete those same paths on
      the host as a separate step.
+
+   A third transport skips the copy step entirely: push committed history
+   straight into the host's working tree. Set `git config
+   receive.denyCurrentBranch updateInstead` on a non-bare clone (one with a checked-out working tree) on
+   the host, add a **dedicated** remote on the workstation that points only at
+   that host (never a name the shared origin answers to), and `git push <that
+   remote> <branch>`, naming the branch the host has checked out, which updates the host's tree. Its
+   one precondition is a **clean host worktree**: `updateInstead` refuses the
+   push rather than overwrite local changes, so the host must carry no
+   uncommitted edits (generated files, a hand-patched config) when the deploy
+   runs. This moves only committed bits, so the uncommitted working-tree overlay
+   above still applies when a deploy needs files git does not track. It is a
+   source-transport choice, not a build step: the host builds from what it
+   receives exactly as it does after rsync.
 6. **Build, tag and start on the host** — build each service's image and tag it
    with an immutable ref (a content digest / git-SHA tag), then `$SSH 'cd
    <remote-dir>/deploy && DOCKER_BUILDKIT=1 docker compose -f

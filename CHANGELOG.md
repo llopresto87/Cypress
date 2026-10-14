@@ -68,7 +68,7 @@ file.
   `protocols/` or `method/` that the seed no longer ships, such as
   `protocols/toolcraft.md`) as RETIRED, and ties the graph-lint errors it
   causes to that page. It deletes nothing: the steward removes the page by
-  name (migration (d)). A test graft on a copy of wrt-migration found the
+  name (migration (d)). A test graft on a copy of a grown plant found the
   case.
 - The build report's `Incomplete:` line stops at the row limit and ends
   with `and N more`; `--all` and `--json` show every row.

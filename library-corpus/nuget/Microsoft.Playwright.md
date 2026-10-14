@@ -10,7 +10,7 @@ The **.NET binding** for Playwright's cross-browser automation: it launches real
 browser engines (Chromium, Firefox, WebKit) and drives them through locators,
 network interception, and JavaScript evaluation. Same underlying tool as the
 JS/TS ecosystem's Playwright; `../npm/playwright-test.md` covers that binding
-and its test runner.
+and its test runner, and `../maven/playwright.md` the Java binding.
 
 ## Core API / usage shape
 - Entry sequence: `Playwright.CreateAsync()` → `Chromium.LaunchAsync()` (or

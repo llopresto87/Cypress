@@ -28,8 +28,9 @@ load_when:
   - "new defect found during a fix, new finding id or widen the old one"
   - "a request widens the increment in flight, defer it or do it now"
   - "a user reports a failure in their client, but the server looks healthy"
+  - "diagnose a failure, competing hypotheses and the test that tells them apart"
 prevents: Containment that destroys the evidence, remediation sequenced by what is easy rather than by exposure, and residual risk nobody owns.
-est_tokens: 2361
+est_tokens: 2424
 ---
 
 # Incident posture
@@ -88,13 +89,15 @@ rather than implied. Recovery is declared against the automated gate that
 owns the property (the smoke or contract gate re-run), because a dashboard
 glance is not a recovery claim.
 
-Locate a client-reported failure before changing the server. Read the
-access log of each edge the client should reach, filtered to that client
-(its address, its user agent), first: no API request from it puts the fault on
-the client side (an untrusted
-certificate, mixed content, a cached old bundle), where no server change can
-reach it. A cause named without reproducing the failure in that client is a
-hypothesis, and it is recorded as one.
+Diagnose with at least two hypotheses, each with its supporting and
+counter-evidence and the cheapest test that would change its rank; a test that
+contradicts the leader lowers its confidence, a second failed theory changes the
+method (`protocol.recover`), and a cause named without reproducing the failure
+where it was observed is a hypothesis, recorded as one. Locate a client-reported
+failure before changing the server: first read the access log of each edge the
+client should reach, filtered to that client (its address, its user agent); no
+API request from it puts the fault on the client side (an untrusted certificate,
+mixed content, a cached old bundle), where no server change can reach it.
 
 ## 4. Sequence remediation by live exposure and by what it unblocks
 

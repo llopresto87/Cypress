@@ -11,13 +11,13 @@
 - **Name:** ci-runner-local-simulator
 - **Language / runtime:** any (the pattern is language-agnostic; typically a
   bash/script driver plus a query against the CI/infra API)
-- **Stability:** **blueprint only** — no portable implementation; the value is
+- **Stability:** **blueprint only**: no portable implementation; the value is
   the two-tier reconstruction pattern and its hard rules
 
 ## 1. What it does
 
 Reconstructs the CI agent's environment **locally** so a developer can run any
-repo command exactly as the real runner would — without pushing a commit and
+repo command exactly as the real runner would, without pushing a commit and
 waiting for the pipeline. It exists to collapse the edit → push → wait → read-log
 loop into a local run, and to stop each project from re-inventing a fragile,
 hand-maintained "fake CI env" that drifts from the real one.
@@ -40,7 +40,7 @@ ci-local.sh [--project <id>] -- <command to run as the runner would>
 
 ## 3. Approach / algorithm
 
-**Two-tier environment reconstruction** — the core durable idea:
+**Two-tier environment reconstruction**, the core durable idea:
 
 1. **Portable / project-level tier:** values that are the same for any agent
    running this project (variable groups, non-secret config, service coordinates)
@@ -55,13 +55,13 @@ ci-local.sh [--project <id>] -- <command to run as the runner would>
    command runs as if the real runner had populated it.
 
 **Config is fully declarative.** All target/infra coordinates come from a
-**project-manifest block**, not baked-in literals — so the same simulator serves
+**project-manifest block**, not baked-in literals, so the same simulator serves
 **many projects unchanged**; adding a project is a manifest entry, not a code
 edit.
 
-**Hard rule — fail loud on ambiguity.** If the target is ambiguous (multiple
+**Hard rule: fail loud on ambiguity.** If the target is ambiguous (multiple
 candidate projects, pipelines, or hosts match), the tool **must FAIL and
-enumerate every candidate by name** — it must **never silently guess** one.
+enumerate every candidate by name**; it must **never silently guess** one.
 Silently picking a candidate reconstructs the wrong environment and produces
 confidently-wrong local results, which is worse than not running.
 
@@ -70,13 +70,13 @@ confidently-wrong local results, which is worse than not running.
 - **Blueprint (the whole page):** there is no stack-neutral implementation to
   copy. The adopting project builds the driver against its own CI system's API,
   its own secret store, and its own manifest format.
-- **Durable across every implementation:** (a) the two-tier split — live-queried
+- **Durable across every implementation:** (a) the two-tier split: live-queried
   project values vs a local host-only file; (b) declarative manifest config with
   no baked-in target literals; (c) fail-loud-and-enumerate on ambiguity.
 
 ## 5. Pitfalls and sharp edges
 
-- **Silently guessing the target** is the cardinal sin — it yields a plausible
+- **Silently guessing the target** is the cardinal sin: it yields a plausible
   but wrong environment. Enumerate and stop.
 - **Baking target/host literals into the script** couples it to one project and
   defeats reuse; keep everything in the manifest.
@@ -102,9 +102,11 @@ manifest-only change.
   whose runner environment this simulates); `tool-corpus/ops/env-secret-rotation.md`
   (the secret file the host-only tier may read from);
   `tool-corpus/testing/failure-signature-triage.md` (consumes the result files
-  the runs reconstructed here produce, so N baseline runs are cheap).
+  the runs reconstructed here produce, so N baseline runs are cheap);
+  `tool-corpus/testing/remote-stub-fixture.md` (the opposite direction: fakes
+  the remote tools so a script that drives a remote host can be unit-tested).
 - **Sources:** distilled from practice; no external URL.
 
 ## 8. Changelog
 
-- 2026-07-16 — created by docs-librarian.
+- 2026-07-16: created by docs-librarian.

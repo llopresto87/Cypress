@@ -18,7 +18,8 @@ load_when:
   - "converge users on a device that has no ssh"
 stack:
   - library-corpus/pypi/ansible-core
-est_tokens: 3387
+prevents: Records on an appliance managed only over HTTP are written by ad hoc calls with no login gate, no read-back and an Ansible changed flag taken as proof, so drift and wrong writes go unseen.
+est_tokens: 4304
 ---
 
 # Suggested skill: converge-records-over-http-api

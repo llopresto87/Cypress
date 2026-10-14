@@ -15,7 +15,9 @@ that a gate instead of an aspiration:
   - an `implemented` spec has no §10 row still `red` or `pending`.
 
   COVERAGE — live specs only (status active / implemented / back-written):
-  - every contract must appear in >=1 test file;
+  - every contract must appear in >=1 test file, in its code: a test name,
+    a case label, a string or a docstring. A slug only a comment carries is
+    a WARN naming the file and never coverage (see comment_spans);
   - a slug appearing in tests but in no live spec is drift (renamed or
     retired contract still asserted somewhere) -> WARN;
   - live contracts + ZERO matching test files is a green lie
@@ -126,6 +128,76 @@ def test_files() -> list[Path]:
             if p.is_file() and not (set(p.parts) & SKIP_DIRS) and SPECS not in p.parents:
                 seen.add(p)
     return sorted(seen)
+
+
+# Where a slug counts. A slug counts as coverage where the test's code carries
+# it: a test name, a decorator or case label, a string, a docstring. A slug
+# only a comment carries is not coverage, because a comment asserts nothing:
+# it is a WARN naming the file, and the contract stays uncovered. Comments are
+# recognised by the test file's suffix; a file of a suffix not listed here is
+# read whole as code rather than guessed at.
+HASH_COMMENT = {".py", ".sh", ".bash", ".zsh", ".rb", ".pl", ".r", ".ps1",
+                ".yml", ".yaml", ".toml", ".cfg", ".tf", ""}
+SLASH_COMMENT = {".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx", ".java", ".kt",
+                 ".kts", ".scala", ".groovy", ".cs", ".go", ".rs", ".swift",
+                 ".c", ".h", ".cc", ".cpp", ".hpp", ".dart", ".php"}
+DASH_COMMENT = {".sql", ".lua", ".hs"}
+
+
+def comment_spans(text: str, suffix: str) -> list[tuple[int, int]]:
+    """[(start, end)] character spans of `text` that are comments in a test
+    file of `suffix`. Quotes are tracked, so a comment marker inside a string
+    is text; Python's triple-quoted strings span lines, every other string
+    ends with its line. A `#` opens a comment at the start of a line or after
+    whitespace, as the shell reads it."""
+    suffix = suffix.lower()
+    if suffix in HASH_COMMENT:
+        line_mark, block = "#", None
+    elif suffix in SLASH_COMMENT:
+        line_mark, block = "//", ("/*", "*/")
+    elif suffix in DASH_COMMENT:
+        line_mark, block = "--", ("/*", "*/")
+    else:
+        return []
+    quotes = "'\"`" if suffix in SLASH_COMMENT else "'\""
+    spans: list[tuple[int, int]] = []
+    i, n, quote, triple = 0, len(text), None, None
+    while i < n:
+        c = text[i]
+        if triple:
+            if text.startswith(triple, i):
+                i, triple = i + 3, None
+            else:
+                i += 2 if c == "\\" else 1
+            continue
+        if quote:
+            if c == "\\":
+                i += 2
+                continue
+            if c == quote or c == "\n":
+                quote = None
+            i += 1
+            continue
+        if suffix == ".py" and text.startswith(('"""', "'''"), i):
+            triple, i = text[i:i + 3], i + 3
+            continue
+        if block and text.startswith(block[0], i):
+            end = text.find(block[1], i + 2)
+            end = n if end < 0 else end + 2
+            spans.append((i, end))
+            i = end
+            continue
+        if text.startswith(line_mark, i) and (
+                line_mark != "#" or i == 0 or text[i - 1].isspace()):
+            end = text.find("\n", i)
+            end = n if end < 0 else end
+            spans.append((i, end))
+            i = end
+            continue
+        if c in quotes:
+            quote = c
+        i += 1
+    return spans
 
 
 def spec_paths() -> tuple[list[Path], list[Path]]:
@@ -495,7 +567,7 @@ def main() -> int:
     globals()["SPECS"], globals()["ROOT"] = specs, root
 
     if "--slice" in sys.argv:
-        valued = {"--specs", "--root", "--uncovered-budget"}
+        valued = {"--specs", "--root", "--uncovered-budget", "--comment-only-budget"}
         slugs = [a for i, a in enumerate(sys.argv[1:], 1)
                  if not a.startswith("--") and sys.argv[i - 1] not in valued]
         if not slugs:
@@ -555,6 +627,7 @@ def main() -> int:
     # Draft slugs are scanned too, never counted: a test already carrying one
     # means the RED landed and the promotion did not.
     hits: dict[str, list[str]] = {slug: [] for slug in draft_slugs | set(contracts)}
+    comment_hits: dict[str, set[str]] = {}
     # Boundary-guarded and longest-first: a bare substring scan let a
     # prefix slug steal the match from PARSE_JSON_STRICT and let an
     # UNREGISTERED extension (PARSE_JSON_V2 in a test) credit PARSE_JSON.
@@ -577,8 +650,13 @@ def main() -> int:
             fails.append(f"{f.relative_to(ROOT)}: unreadable test file ({e})"
                          f" — coverage cannot vouch for a file it never read")
             continue
+        spans = comment_spans(body, f.suffix)
+        rel = str(f.relative_to(ROOT))
         for m in slug_union.finditer(body):
-            hits[m.group(0)].append(str(f.relative_to(ROOT)))
+            if any(s <= m.start() < e for s, e in spans):
+                comment_hits.setdefault(m.group(0), set()).add(rel)
+            else:
+                hits[m.group(0)].append(rel)
     # A draft slug a live spec also declares is skipped: the test carrying it
     # proves the live contract, and says nothing about the draft's promotion.
     for name, slugs in drafts.items():
@@ -592,12 +670,57 @@ def main() -> int:
                       f"({live_specs} live spec(s)){unchecked}", 0)
 
     proved = {s for s in run_proved(set(contracts)) if not hits[s]}
-    uncovered = sorted(s for s in contracts if not hits[s] and s not in proved)
+    # Three states, not two. Code carries the slug: covered. Only a comment
+    # carries it: a WARN, never counted as covered, and not failed as
+    # uncovered either, because a suite that names its contracts in a comment
+    # above the case that asserts them is a weak link, not a missing test.
+    # Neither: uncovered.
+    comment_only = sorted(s for s in contracts
+                          if not hits[s] and s not in proved and s in comment_hits)
+    for slug in comment_only:
+        warns.append(f"{slug} ({contracts[slug]}): only a comment carries it, in "
+                     f"{', '.join(sorted(comment_hits[slug])[:3])} — a comment asserts "
+                     f"nothing, so it is not counted as coverage; name the contract in "
+                     f"the test's code (its name, a case label, a string)")
+    uncovered = sorted(s for s in contracts
+                       if not hits[s] and s not in proved and s not in comment_hits)
+    covered = len(contracts) - len(uncovered) - len(comment_only)
+    # `--comment-only-budget N` ratchets the comment-only count the way
+    # `--uncovered-budget` ratchets the uncovered one: a WARN alone let the
+    # count grow with nothing failing. Above N fails; below N fails until the
+    # record is lowered, so the count can only fall.
+    comment_budget, comment_verdict = None, ""
+    if "--comment-only-budget" in sys.argv:
+        i = sys.argv.index("--comment-only-budget")
+        try:
+            comment_budget = int(sys.argv[i + 1])
+        except (IndexError, ValueError):
+            print("spec lint: FAIL — --comment-only-budget needs a number", file=sys.stderr)
+            return 1
+        if len(comment_only) > comment_budget:
+            comment_verdict = (
+                f"spec lint: FAIL — {len(comment_only)} live contract(s) carried only by "
+                f"a comment, above the recorded budget of {comment_budget}: name each "
+                f"new one in its test's code (its name, a case label, a string)")
+        elif len(comment_only) < comment_budget:
+            comment_verdict = (
+                f"spec lint: FAIL — {len(comment_only)} live contract(s) carried only by "
+                f"a comment against a recorded budget of {comment_budget}. The count "
+                f"SHRANK and the record did not: lower the budget, or the next "
+                f"comment-only contract is absorbed silently.")
+
+    def comment_gate(rc: int) -> int:
+        if not comment_verdict:
+            return rc
+        print(comment_verdict)
+        return 0 if warn_mode else 1
 
     if list_mode:
         for slug in sorted(contracts):
             where = (", ".join(sorted(set(hits[slug]))[:3])
-                     or ("proved by a run (plan)" if slug in proved else "UNCOVERED"))
+                     or ("proved by a run (plan)" if slug in proved else "")
+                     or (f"COMMENT ONLY, not coverage: {', '.join(sorted(comment_hits[slug])[:3])}"
+                         if slug in comment_hits else "UNCOVERED"))
             print(f"  {slug}  ({contracts[slug]})  ->  {where}")
 
     if uncovered:
@@ -635,12 +758,18 @@ def main() -> int:
             return 0 if warn_mode else 1
         finish("", 0)
         if not over:
-            return 1 if fails else 0
+            return comment_gate(1 if fails else 0)
         return 0 if warn_mode else 1
 
     by_run = f"; proved by a run per the plan: {', '.join(sorted(proved))}" if proved else ""
-    return finish(f"spec lint: PASS — {len(contracts)} live contract(s) covered "
-                  f"across {len(files)} test file(s){by_run}{unchecked}", 0)
+    recorded = f"; recorded budget {comment_budget}" if comment_budget is not None else ""
+    by_comment = (f"; {len(comment_only)} more of {len(contracts)} carried only by a "
+                  f"comment (WARN, not coverage{recorded})" if comment_only else "")
+    if comment_verdict:
+        finish("", 0)
+        return comment_gate(0)
+    return finish(f"spec lint: PASS — {covered} live contract(s) covered "
+                  f"across {len(files)} test file(s){by_comment}{by_run}{unchecked}", 0)
 
 
 if __name__ == "__main__":

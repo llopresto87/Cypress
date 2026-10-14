@@ -119,17 +119,20 @@ no prose of its own, because CI has no access to the judgment
   integrated in place (`skills/holistic-editing`).
   - The one exception ([ADR-0011](docs/decisions/adr-0011-donor-token-redaction.md)):
     a token that identifies a project the seed was harvested from may be
-    replaced in an append-only record, by owner decision only, never in an
-    ADR body, and always disclosed. The records it has reached are a plan of
-    record, append-only by the grill rule, and a spec's changelog,
-    append-only by the spec rule. Four limits: (a) each token span becomes
-    the one fixed placeholder `[redacted]`, and no sentence is reworded or
-    deleted; (b) the release's CHANGELOG entry names each edited record and
-    the class of token removed, never the token, and says the original text
-    remains at the prior tag and in history, that history was not rewritten,
-    and that published tags and Releases keep it; (c) the same statement is
-    a dated line in each edited plan's or spec's changelog; (d) no
-    force-push and no tag move.
+    replaced in an append-only record, an ADR body included
+    ([ADR-0031](docs/decisions/adr-0031-donor-tokens-recast-generically.md)),
+    by owner decision only, and always disclosed. The records it has reached
+    are plans of record, append-only by the grill rule, a spec's changelog,
+    append-only by the spec rule, ADR bodies and CHANGELOG entries. Four
+    limits: (a) each token span is recast as one generic reference to the
+    project by its stack or role, introduced once and used consistently in
+    the record, so every fact stays and no sentence is deleted; (b) the
+    release's CHANGELOG entry names each edited record and the class of
+    token removed, never the token, and says the original text remains at
+    the prior tag and in history, that history was not rewritten, and that
+    published tags and Releases keep it; (c) the same statement is a dated
+    line in each edited plan's or spec's changelog, and for an ADR a dated
+    section appended to it; (d) no force-push and no tag move.
 - `harvest`/`graft` are user-sovereign: they start only from the owner, and
   seed machinery may propose one and stop there.
 - Seed text (specs, plans, ADRs, doctrine) states an owner decision in words

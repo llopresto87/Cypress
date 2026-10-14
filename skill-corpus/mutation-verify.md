@@ -1,3 +1,24 @@
+---
+name: mutation-verify
+description: Establish that an assertion bites by naming the smallest plausible change that leaves the subject broken, cutting it at the seam the caller experiences, asserting at the boundary the claim names, mutating a kept artifact by copy, and reading a survivor as a finding about the instrument first. Invoke before citing a green assertion nobody has watched fail.
+id: skill.mutation-verify
+tier: 2
+kind: skill
+title: mutation-verify, the operational procedure for proving an assertion bites
+owns:
+  - mutation-verify.procedure
+  - mutation-verify.mutate-by-copy
+  - mutation-verify.survivor-diagnosis
+requires:
+load_when:
+  - "prove this test actually bites"
+  - "mutation test the assertion"
+  - "does the gate catch a planted violation"
+  - "the mutant survived, why"
+prevents: A green assertion is cited as evidence though it compares a description of the subject, sits upstream of the boundary, or never ran the mutant, so the suite guards nothing.
+est_tokens: 2491
+---
+
 # Suggested skill: mutation-verify
 
 > Optional procedure — establish that an assertion actually bites, by naming

@@ -21,6 +21,7 @@ peers:
 load_when:
   - "rebuild at release or promote the verified artifact, immutable digest not a floating tag"
   - "is this release ready, rehearsed rollback and a verified restore point"
+  - "roll back which services, the previous build still carries the bug, the backup exited zero"
   - "lockfile checked in, pin transitive dependencies, base image, and the toolchain"
   - "suppress a vulnerability advisory, upgrade now or hold the version"
   - "fix deployed by a per-run branch override, not merged, reverted by the next rebuild"
@@ -29,7 +30,7 @@ load_when:
   - "which increment lands first, the irreversible step and the landing order"
   - "ship the release order across services, canary the lowest-risk one then fan out"
 prevents: Promoting a rebuilt artifact instead of the attested one, with an unrehearsed rollback and the irreversible steps taken first.
-est_tokens: 2883
+est_tokens: 3048
 ---
 
 # Release posture
@@ -82,24 +83,33 @@ build-on-host is a defect, not a preference.
 "Deployed" and "production-ready" are different claims. A release is
 releasable only with green verification on the exact artifact, a
 rehearsed reversal path, and a restore point captured *before* the
-change and verified after capture (it exists, carries its completion
-marker, its reference rows are intact). An assumed backup is not a
-rollback point; an untested rollback is not a rollback; a teardown
+change and verified after capture by opening the artifact (it exists
+above a size floor, carries its completion marker, parses, its reference
+rows are intact). The backup command's zero exit proves nothing: a
+backup nobody opens can stay empty through months of successful runs,
+because the exit status is mistaken for the proof. An assumed backup is
+not a rollback point; an untested rollback is not a rollback; a teardown
 script is not a reversal; write a recovery procedure only after running
 it, because an invented rollback is believed exactly when it matters
 most.
 
-Before each release record the previous build identifiers, the
-migration and message-schema compatibility, and whether derived state
-(caches, search or vector indexes, materialized views) built by the new
-version is still readable by the previous artifact: reverting code over
-a derived store the newer version rebuilt is a mixed-version state too.
-Refuse a generic rollback across an irreversible migration; where
-deployments auto-apply migrations, record that reverting the artifact
-does not revert the schema; removing a migration's reverse path is a
-recorded decision in the rollback runbook. A release checklist covers
-both sides of every contract change, migration and rollback
-compatibility, the absence of secrets or real data in fixtures
+Before each release record the previous build identifiers, the migration
+and message-schema compatibility, and whether derived state (caches,
+search or vector indexes, materialized views) built by the new version
+is still readable by the previous artifact: reverting code over a
+derived store the newer version rebuilt is a mixed-version state too. A
+previous artifact is a rollback anchor only if it is good, and it may
+carry the very defect the release was fixing. Roll back per unit, not
+per release: before reverting a unit, state whether its previous
+artifact still contains that defect, revert only the units whose
+previous artifact is good, record which were deliberately not reverted
+and why, and keep the old anchors until the gate passes. Refuse a
+generic rollback across an irreversible migration; where deployments
+auto-apply migrations, record that reverting the artifact does not
+revert the schema; removing a migration's reverse path is a recorded
+decision in the rollback runbook. A release checklist covers both sides
+of every contract change, migration and rollback compatibility, the
+absence of secrets or real data in fixtures
 (`method.stewardship-posture`), and what the release deliberately does
 not include. A missing or unrehearsed path is recorded `absent` with a
 date (`protocol.verify` gate states), never implied. Under

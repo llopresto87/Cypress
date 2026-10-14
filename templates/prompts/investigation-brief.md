@@ -28,8 +28,16 @@ GRAPH DISCIPLINE — execute before reading any source:
    Everything else a loaded node lists (leaves, children, links,
    neighbours) is a menu: open an item only when its one-line
    "load when" serves your task, and list the rest as skipped.
-3. Declare what you loaded, what you deliberately skipped, and any
-   later widening (with the reason it became necessary).
+3. Check the route against the files you will touch, before you
+   read them: the stack elements they use (extensions, paths,
+   manifests, lockfiles) and the area they sit in each have their
+   `expertise.*` node, owning node or `libraries/` page in it. For
+   one that is missing, run `--plan "<that element>"` and load what
+   it reports: the router composes expertise from the task's words,
+   so a stack the task line never names is not in the route.
+   Declare what you loaded, what you deliberately skipped, and every
+   widening, at the start or later (with the reason it became
+   necessary).
 4. One home per fact: link to the node that owns a fact instead of
    restating it. The graph outranks your memory of APIs/versions.
    A fact the graph states is settled: use it as stated; re-deriving
@@ -45,7 +53,11 @@ GRAPH DISCIPLINE — execute before reading any source:
    Return findings, and only what your parent needs. Depth:
    `method.minimum-sufficient-work`, `method.decision-economy`,
    `method.engineering-posture` §8.
-6. If the graph has no nodes yet (bootstrap pass), report the failed
+6. Leave shared git state alone: no `git stash`, `checkout`,
+   `restore`, `reset` or `clean`, because they move other writers'
+   uncommitted files. Take a baseline by copying the file or reading
+   `git show HEAD:<path>` (`delegation.wave-baseline`).
+7. If the graph has no nodes yet (bootstrap pass), report the failed
    probe and stay inside the exact paths named in this brief.
 ```
 

@@ -126,9 +126,10 @@ marker in the text.
   data which have undergone pseudonymisation and could be attributed to a person
   by the use of additional information "should be considered to be information on
   an identifiable natural person", and it names "singling out" inside the
-  reasonableness test itself. Both recitals were read in the pass that wrote this
-  entry and **neither is recorded in this corpus**, so neither is citable from
-  here. Whether a given dataset satisfies the three criteria is a question of
+  reasonableness test itself. The Regulation's recital is recorded, verbatim and
+  primary-fetched, as `gdpr-recital-26` in `gdpr.md`, and is cited from there;
+  the Directive's recital is **not recorded in this corpus** and is not citable
+  from here. Whether a given dataset satisfies the three criteria is a question of
   fact for the controller, and nothing here decides it.
 
 ### `a29wp-wp216-pseudonymisation` — pseudonymisation is not anonymisation (§4)
@@ -246,6 +247,7 @@ marker in the text.
   corpus, and guidance of the **successor** body, so the status caveat above does
   not apply to it.
 - `gdpr.md` — Art. 94, which repealed the Directive this opinion was adopted
-  under and redirected references to the adopting body; and `gdpr-art-5-1-c`,
+  under and redirected references to the adopting body; `gdpr-recital-26`, the
+  Regulation's own statement of the identifiability test; and `gdpr-art-5-1-c`,
   `gdpr-art-25-1`, `gdpr-art-25-2` and `gdpr-art-32-1-b`, the provisions a
   de-identification question most often lands on.

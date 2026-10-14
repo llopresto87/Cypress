@@ -78,11 +78,11 @@ case_block_readonly() {  # D1: a read-only target, or a read-only directory deep
 
 case_unrelated_trees() {  # D6 PREFLIGHT_SCOPED_TO_WRITTEN_TREES: Docker-owned trees must not block a graft
   tmpw; P="$W/unrelated"; mkdir -p "$P"
-  for d in node_modules/pkg/lib .next/server/app .vivid-data/pglite/base test-results vivid/.cypress; do
+  for d in node_modules/pkg/lib .next/server/app .webapp-data/pglite/base test-results webapp/.cypress; do
       mkdir -p "$P/$d"; printf 'x\n' >"$P/$d/keep"
   done
   ln -s "$W" "$P/node_modules/pkg/outside"          # a directory link leaving the target
-  trees="node_modules .next .vivid-data test-results vivid"
+  trees="node_modules .next .webapp-data test-results webapp"
   before="$(cd "$P" && find $trees | LC_ALL=C sort)"
   for d in $trees; do chmod -R a-w "$P/$d"; done
   out="$("$ROOT/install.sh" claude-code --project-dir "$P" 2>&1)" && rc=0 || rc=$?

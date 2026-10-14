@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Full-install contract: every adapter delivers its runtime surfaces, and the
 # plant's own router, linters and hooks run in the installed tree.
-# E family (SPEC-0001, ADR-0009 host tiers): E1-E3 and E5-E15 here; E4 is in test-seed-lint.sh.
+# E family (SPEC-0001, ADR-0009 host tiers): E1-E3 and E5-E18 here; E4 is in test-seed-lint.sh.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -264,7 +264,21 @@ case_copilot_projection_tools() {
   local D; D="$(mktemp -d)"; fresh_copy "$D" github-copilot --copy
   local A="$D/.github/agents"
   ! grep -q "editFiles" "$A/reviewer.agent.md" || die "copilot: reviewer (no Write/Edit) was granted editFiles"
-  ! grep -q "runTasks" "$A/devils-advocate.agent.md" || die "copilot: devils-advocate (no Bash) was granted runTasks"
+  # runTasks follows Bash in each agent's own allowlist, both ways.
+  python3 - "$D/docs/graph/agents" "$A" <<'PY' || die "copilot: runTasks does not follow each agent's Bash grant (see above)"
+import re, sys
+from pathlib import Path
+home, views, bad = Path(sys.argv[1]), Path(sys.argv[2]), []
+for f in sorted(home.glob("[0-9]*.md")):
+    fm = re.match(r"^---\n(.*?)\n---\n", f.read_text(encoding="utf-8"), re.S).group(1)
+    m = re.search(r"^tools:\s*\[([^\]]*)\]", fm, re.M)
+    bash = "Bash" in {t.strip() for t in (m.group(1).split(",") if m else [])}
+    view = views / (re.sub(r"^[0-9]+-", "", f.stem) + ".agent.md")
+    if bash != ("runTasks" in view.read_text(encoding="utf-8")):
+        bad.append(f"{view.name}: Bash={bash}")
+if bad:
+    sys.exit("; ".join(bad))
+PY
   ! grep -q "githubRepo" "$A/implementer.agent.md" || die "copilot: implementer (no web tools) was granted githubRepo"
   grep -q "editFiles" "$A/implementer.agent.md" || die "copilot: implementer lost editFiles"
   grep -q "runCommands" "$A/ui-ux-designer.agent.md" || die "copilot: ui-ux-designer lost runCommands"
@@ -321,7 +335,7 @@ lines = open(sys.argv[1], encoding="utf-8").read().splitlines()
 opens = [i for i, l in enumerate(lines) if l == "<!-- pre-growth: grow removes this block -->"]
 closes = [i for i, l in enumerate(lines) if l == "<!-- /pre-growth -->"]
 if len(opens) != 1 or len(closes) != 1 or closes[0] < opens[0]:
-    sys.exit(f"E5: index.md holds {len(opens)} pre-growth opening and {len(closes)} closing line(s)")
+    sys.exit(f"E5 PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX: index.md holds {len(opens)} pre-growth opening and {len(closes)} closing line(s)")
 block = "\n".join(lines[opens[0] + 1:closes[0]])
 for name in ("EXPERT_SEED_INSTALL_PROMPT.md", "protocol.initialize"):
     if name not in block:
@@ -347,7 +361,7 @@ PY
 case_code_anchor_tool() {
   local D; D="$(mktemp -d)"; fresh_copy "$D" all --copy
   cmp -s "$ROOT/tools/code-anchor.py" "$D/docs/graph/code-anchor.py" \
-    || die "E6: docs/graph/code-anchor.py is missing or differs from tools/code-anchor.py"
+    || die "E6 CODE_ANCHOR_TOOL_IS_PLACED: docs/graph/code-anchor.py is missing or differs from tools/code-anchor.py"
   [[ ! -e "$D/.cypress/anchor.json" ]] || die "E6: install.sh wrote .cypress/anchor.json; only canonize records one"
   rm -rf "$D"
 }
@@ -361,7 +375,7 @@ case_session_metrics_in_plant() {
   [[ -f "$D/docs/graph/protocols/deliver.md" ]] \
     || die "E14: harness: the fresh plant has no docs/graph/protocols/deliver.md"
   out="$(cd "$D" && python3 docs/graph/session-metrics.py --labels 2>&1)" || rc=$?
-  [[ "$rc" -eq 0 ]] || die "E14: python3 docs/graph/session-metrics.py --labels exited $rc in a fresh plant: ${out:0:300}"
+  [[ "$rc" -eq 0 ]] || die "E14 METRICS_READER_RUNS_IN_A_FRESH_PLANT: python3 docs/graph/session-metrics.py --labels exited $rc in a fresh plant: ${out:0:300}"
   grep -qx 'Tier' <<<"$out" || die "E14: the placed reader printed no 'Tier' label: ${out:0:300}"
   rm -rf "$D"
 }
@@ -374,7 +388,7 @@ case_source_index_placed() {
   local D f out rc=0; D="$(mktemp -d)"; fresh_copy "$D" all --copy
   for f in source-index.py source_paths.py plant_walk.py; do
     cmp -s "$ROOT/tools/$f" "$D/docs/graph/$f" \
-      || die "E15: docs/graph/$f is missing or differs from tools/$f"
+      || die "E15 SOURCE_INDEX_IS_PLACED: docs/graph/$f is missing or differs from tools/$f"
   done
   [[ ! -e "$D/docs/graph/source-index.json" ]] || die "E15: install.sh wrote docs/graph/source-index.json; only the plant writes its config"
   out="$(cd "$D" && python3 docs/graph/source-index.py build 2>&1)" || rc=$?
@@ -504,7 +518,7 @@ tree_digest() {
 case_model_map_placed() {
   local D; D="$(mktemp -d)"; fresh_copy "$D" claude-code --copy
   cmp -s "$ROOT/templates/docs/models.md" "$D/docs/graph/models.md" \
-    || die "E7: docs/graph/models.md is missing or differs from templates/docs/models.md"
+    || die "E7 MODEL_MAP_TEMPLATE_IS_PLACED: docs/graph/models.md is missing or differs from templates/docs/models.md"
   printf '\nA plant row note.\n' >> "$D/docs/graph/models.md"
   cp "$D/docs/graph/models.md" "$D/models.edited"
   "$ROOT/install.sh" all --project-dir "$D" --copy >/dev/null 2>&1 || die "E7: install.sh all over the plant failed"
@@ -743,6 +757,130 @@ PY
   rm -rf "$T" "$before"
 }
 
+# E16 HOOKS_RUN_ON_THE_FLOOR_INTERPRETER and failure NO_INTERPRETER_AT_THE_FLOOR
+# (SPEC-0001; the floor's one home is SPEC-0005 §5): on a PATH whose python3 is
+# below the floor, the installer runs on the python3.<n> it finds at or above
+# it and writes that name into every hook command it wires, and `--check` runs
+# each hook with it; a hook naming an interpreter this machine lacks fails the
+# check by name. With no interpreter at the floor on PATH, the install refuses
+# before the first write with one ERROR line naming the fix.
+case_interpreter_floor() {
+  local T bin nob floor real out rc base="/usr/bin:/bin:/usr/sbin:/sbin" f n
+  floor="$(sed -n 's/^PYTHON_FLOOR="\([0-9.]*\)"$/\1/p' "$ROOT/install.sh")"
+  [[ -n "$floor" ]] || die "E16: install.sh declares no PYTHON_FLOOR"
+  real="$(python3 -c 'import sys; print(sys.executable)')"
+  "$real" -c "import sys; sys.exit(0 if sys.version_info >= tuple(map(int, '$floor'.split('.'))) else 1)" \
+    || { echo "  E16 HOOKS_RUN_ON_THE_FLOOR_INTERPRETER: SKIPPED — the suite's python3 is below the floor $floor"; return 0; }
+  T="$(mktemp -d)"; bin="$T/bin"; nob="$T/nobin"; mkdir -p "$bin" "$nob" "$T/a" "$T/b" "$T/c"
+  # A python3 below the floor: it fails every probe, as an older one would.
+  printf '#!/bin/sh\nexit 1\n' > "$bin/python3"; chmod +x "$bin/python3"; cp "$bin/python3" "$nob/python3"
+  ln -s "$real" "$bin/python$floor"
+
+  # (a) found: claude-code and prime-agent wired on python<floor>.
+  rc=0; out="$(PATH="$bin:$base" bash "$ROOT/install.sh" claude-code prime-agent --project-dir "$T/a" 2>&1)" || rc=$?
+  [[ $rc -eq 0 ]] || { arm_fail "(a) the install on python$floor exited $rc: $(tail -3 <<<"$out")"; arms_done "E16 HOOKS_RUN_ON_THE_FLOOR_INTERPRETER"; return; }
+  python3 - "$T/a/.claude/settings.json" "python$floor" <<'PY' || arm_fail "(a) .claude/settings.json: see the line above"
+import json, re, sys
+want, cmds = sys.argv[2], []
+for entries in json.load(open(sys.argv[1], encoding="utf-8"))["hooks"].values():
+    for e in entries:
+        cmds += [h["command"] for h in e["hooks"]]
+bad = [c for c in cmds if want not in c or re.search(r"(^|[\s;])python3\s", c)]
+if len(cmds) != 3 or bad:
+    sys.exit(f"{len(cmds)} hook command(s); not calling {want} alone: {bad}")
+PY
+  for f in route-extension.ts status-extension.ts; do
+    grep -qxF "const PYTHON = \"python$floor\";" "$T/a/.prime/agent/extensions/$f" \
+      || arm_fail "(a) .prime/agent/extensions/$f does not run its hook with python$floor"
+  done
+  grep -qF "python3 on this PATH" <<<"$out" \
+    || arm_fail "(a) no NEXT STEP says the bare python3 the graph tools are run with is below the floor"
+  rc=0; out="$(PATH="$bin:$base" bash "$ROOT/install.sh" claude-code prime-agent --check --project-dir "$T/a" 2>&1)" || rc=$?
+  n="$(grep -c 'ran and printed its context' <<<"$out" || true)"
+  [[ $rc -eq 0 && "$n" == "4" ]] || arm_fail "(a) --check on python$floor: exit $rc, $n hook(s) ran: $(tail -4 <<<"$out")"
+  sed -i.orig "s/python$floor \\\\\"\\\$f/python3.99 \\\\\"\\\$f/" "$T/a/.claude/settings.json"; rm -f "$T/a/.claude/settings.json.orig"
+  grep -qF 'python3.99' "$T/a/.claude/settings.json" || die "E16: harness: the interpreter edit did not land"
+  rc=0; out="$(PATH="$bin:$base" bash "$ROOT/install.sh" claude-code --check --project-dir "$T/a" 2>&1)" || rc=$?
+  [[ $rc -ne 0 ]] && grep -q 'python3\.99' <<<"$out" \
+    || arm_fail "(a) --check over a hook naming an interpreter this machine lacks: exit $rc, not named: $(tail -4 <<<"$out")"
+
+  # (c) the Copilot hook configs, a frozen host's, name it too.
+  rc=0; out="$(PATH="$bin:$base" bash "$ROOT/install.sh" github-copilot --project-dir "$T/c" 2>&1)" || rc=$?
+  for f in route.json status.json; do
+    [[ $rc -eq 0 ]] && grep -qF "then python$floor \\\"\$f\\\"" "$T/c/.github/hooks/$f" \
+      || arm_fail "(c) .github/hooks/$f does not run its hook with python$floor (install exit $rc)"
+  done
+
+  # (b) none at the floor: refused before the first write, one ERROR line.
+  if PATH="$base" bash -c 'for n in 0 1 2 3 4 5 6 7 8 9; do command -v "python'"${floor%.*}"'.$(( '"${floor#*.}"' + n ))" && exit 0; done; exit 1' >/dev/null 2>&1; then
+    echo "  E16 (b): SKIPPED — $base itself carries an interpreter at the floor"
+  else
+    rc=0; out="$(PATH="$nob:$base" bash "$ROOT/install.sh" claude-code --project-dir "$T/b" 2>&1)" || rc=$?
+    [[ $rc -ne 0 ]] || arm_fail "(b) with no Python $floor on PATH the install exited 0"
+    [[ "$(grep -c '^ERROR:' <<<"$out" || true)" == "1" && "$(grep -c . <<<"$out")" == "1" ]] \
+      && grep -qF "$floor" <<<"$out" \
+      || arm_fail "(b) the refusal is not one ERROR line naming $floor: $out"
+    [[ -z "$(ls -A "$T/b")" ]] || arm_fail "(b) the refused install wrote into the target: $(ls -A "$T/b" | tr '\n' ' ')"
+  fi
+
+  # (d) guard: on a python3 at the floor the hook configs are the seed's bytes.
+  fresh_copy "$T/d" claude-code --copy
+  cmp -s "$ROOT/integrations/claude-code/settings.json" "$T/d/.claude/settings.json" \
+    || arm_fail "(d) with python3 at the floor, .claude/settings.json differs from the seed's"
+  arms_done "E16 HOOKS_RUN_ON_THE_FLOOR_INTERPRETER"
+  rm -rf "$T"
+}
+
+# E17 STAMP_TRACKING_LINES_PRINTED (SPEC-0001): a plant that is its own Git work
+# tree and ignores .cypress/seed.json is told the .gitignore lines that keep
+# the record tracked and the rest of .cypress/ ignored; .gitignore is never
+# edited, the lines do what they say, and a plant that tracks the record, or
+# has no repository of its own, is told nothing.
+case_stamp_tracking_lines() {
+  local T out
+  T="$(mktemp -d)"
+  git -C "$T" init -q
+  printf 'node_modules/\n.cypress/\n' > "$T/.gitignore"; cp "$T/.gitignore" "$T/gitignore.before"
+  out="$(bash "$ROOT/install.sh" claude-code --project-dir "$T" 2>&1)" || die "E17: the install failed"
+  for l in '.cypress/*' '!.cypress/seed.json' '!.cypress/coverage.json'; do
+    grep -qxF "[seed]     $l" <<<"$out" || arm_fail "(a) the ignored record is not answered with the line '$l'"
+  done
+  cmp -s "$T/.gitignore" "$T/gitignore.before" || arm_fail "(a) the installer edited .gitignore"
+  printf 'node_modules/\n.cypress/*\n!.cypress/seed.json\n!.cypress/coverage.json\n' > "$T/.gitignore"
+  git -C "$T" check-ignore -q .cypress/seed.json && arm_fail "(b) with the printed lines .cypress/seed.json is still ignored"
+  git -C "$T" check-ignore -q .cypress/session/x.json || arm_fail "(b) with the printed lines the rest of .cypress/ is no longer ignored"
+  out="$(bash "$ROOT/install.sh" claude-code --project-dir "$T" 2>&1)" || die "E17: the re-install failed"
+  ! grep -qF '!.cypress/seed.json' <<<"$out" || arm_fail "(c) a plant whose record is not ignored was told the lines again"
+  rm -rf "$T"; T="$(mktemp -d)"
+  printf '.cypress/\n' > "$T/.gitignore"
+  out="$(bash "$ROOT/install.sh" claude-code --project-dir "$T" 2>&1)" || die "E17: the install into a plant with no repository failed"
+  ! grep -qF '!.cypress/seed.json' <<<"$out" || arm_fail "(d) a plant with no repository of its own was told Git lines"
+  arms_done "E17 STAMP_TRACKING_LINES_PRINTED"
+  rm -rf "$T"
+}
+
+# E18 BACKUPS_LISTED_BY_DATE (SPEC-0001): a run that backs up a replaced file
+# lists every installer backup in the plant by date, says how many this run
+# made, and says to stage by explicit path; a run that backs up nothing prints
+# no such list.
+case_backups_listed() {
+  local D out today
+  D="$(mktemp -d)"; fresh_copy "$D" claude-code --copy
+  today="$(date +%Y-%m-%d)"
+  printf '\nA plant edit.\n' >> "$D/docs/graph/protocols/grill.md"
+  printf '\nA plant edit.\n' >> "$D/docs/graph/method/tiers.md"
+  : > "$D/CLAUDE.md.bak-20200101-000000"
+  out="$(bash "$ROOT/install.sh" claude-code --project-dir "$D" 2>&1)" || die "E18: the re-install failed"
+  grep -qE '^\[seed\] BACKUPS .*this run made 2 ' <<<"$out" || arm_fail "(a) the run does not say it made 2 backups: $(grep -i backup <<<"$out" | head -3)"
+  grep -qxF "[seed]     $today  2" <<<"$out" || arm_fail "(a) no line lists today's 2 backups"
+  grep -qxF "[seed]     2020-01-01  1" <<<"$out" || arm_fail "(a) the earlier backup's date is not listed"
+  grep -qF 'stage by explicit path' <<<"$out" || arm_fail "(a) the list does not say to stage by explicit path"
+  out="$(bash "$ROOT/install.sh" claude-code --project-dir "$D" 2>&1)" || die "E18: the identical re-run failed"
+  ! grep -q '^\[seed\] BACKUPS' <<<"$out" || arm_fail "(b) a run that backed up nothing printed the backup list"
+  arms_done "E18 BACKUPS_LISTED_BY_DATE"
+  rm -rf "$D"
+}
+
 SELF="$ROOT/tests/test-full-install.sh"
 
 # Re-invoke self to run ONE scenario (a child bash spawned by gate_pool).
@@ -769,7 +907,8 @@ main() {
     case_plant_facts_index_no_fm case_plant_facts_declared case_plant_facts_partial \
     case_model_map_placed case_opencode_model_from_map case_opencode_no_map_row \
     case_opencode_map_unreadable case_opencode_check_drift case_prime_hook_scripts_placed \
-    case_reinstall_engine_serves_hooks; do
+    case_reinstall_engine_serves_hooks case_interpreter_floor case_stamp_tracking_lines \
+    case_backups_listed; do
     printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
   done
   python3 "$ROOT/tests/gate_pool.py" run "$SCN" || rc=$?

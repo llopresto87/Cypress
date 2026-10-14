@@ -171,6 +171,19 @@ one you claim is dead is dead. Where the claim is about a specific
 artifact, identifier, or credential, the run that proves it presents
 that one.
 
+A recorded verdict is a claim of the same kind. A note that a path is
+"already scoped", "bounded" or "covered" is a claim about one specific
+guarding condition, and a claim correct about *a* condition but wrong
+about *the* one that gates the risk reads exactly like a correct one, so
+it ends the scrutiny that would have found the gap. Where a gate or an
+audit has such a claim as its subject, verifying it means re-deriving that
+condition against the source, never re-reading the conclusion; a
+security-relevant coverage claim earns that independent re-derivation
+whenever the stakes rise (a release gate, an audit), not inheritance. This
+leaves a fact the graph states settled (`rule.knowledge`): there the fact
+is a premise a task builds on, and here the claim is the subject under
+test.
+
 A checker you own goes further: it counts what it examined and **fails
 when that count is zero inside its perimeter**: a glob that matched
 nothing, a suite that collected no tests. An empty subject set genuinely
@@ -209,6 +222,15 @@ handed to a tool is not yet an input it applied:
   that passes on a dev machine proves that machine: a minimal automated
   environment often lacks a browser binary or another runtime the test
   needs, so verify that environment has it.
+- **Structure, or the render?** A page test that parses markup proves the
+  markup, never what a person sees. A user-interface change is verified by
+  looking at its real render against the design baseline, and an empty
+  container on it (a table region with no rows, a titled section with
+  nothing under it) is a defect; a structural defect found there earns a
+  RED in the page tests. The render-review procedure (which pages, which
+  colour schemes and widths) is the suggested skill
+  `skill-corpus/review-rendered-ui.md`, placed into a plant that has an
+  interface.
 
 State the coverage the control establishes, not more. "No secrets
 found by <tool> across <paths>, control fixture detected" is a
@@ -360,6 +382,15 @@ rule; this section is about what a recorded assertion can have proved.
      ```
      - End-to-end tests: DISCOVERED, not run (2025-06-01) — suite exists (e2e/), out of scope for this increment
      ```
+
+     A discovered row says where it was found (`path:line`) and two more
+     things when they hold. A command whose target no longer exists (an
+     environment retired, a host gone, often known only from the owner's
+     word) stays `discovered` with `target absent` and the evidence of the
+     absence. A tool configured against inputs that do not exist is
+     `discovered` and `declared, non-functional`: the declaration is real
+     and the check cannot run, which is neither a pass nor `absent`, the
+     state for a gate nobody configured at all.
 
    - **absent**: does not exist yet. Record it with a date, a reason,
      and the owner who will add it:

@@ -501,6 +501,32 @@ MD
 }
 collect_case GT22 case_audit_kernel_currency "kernel currency: STALE blocks, EXTENDED blocks, standing kernel.body deviation clears"
 
+# ---- kernel currency in compose mode (the stamp's kernel_mode: compose) -------
+# AGENTS.md is the plant's own hub and is not compared; CLAUDE.md is compared
+# after its import line and the blank line, so a stale kernel there still blocks.
+case_audit_kernel_currency_compose() {
+  local why="HUB_KEPT_CANONICAL_IN_COMPOSE_MODE"
+  rm -rf "$TMP/kseed" "$TMP/kplant"
+  mkdir -p "$TMP/kseed/core" "$TMP/kseed/templates/docs" "$TMP/kplant/.cypress" "$TMP/kplant/docs/graph/nodes"
+  printf '# kernel\nline one\nline two\nline three\n' > "$TMP/kseed/core/AGENTS.md"
+  printf '# Team rules\n\n- Every change ships with its migration script.\n' > "$TMP/kplant/AGENTS.md"
+  { printf '@AGENTS.md\n\n'; cat "$TMP/kseed/core/AGENTS.md"; } > "$TMP/kplant/CLAUDE.md"
+  printf '{\n  "kernel_mode": "compose"\n}\n' > "$TMP/kplant/.cypress/seed.json"
+  kaudit; [ "$krc" -eq 0 ] && grep -q "kernel: current" "$TMP/kout" && ! grep -q "!! KERNEL" "$TMP/kout" \
+    || { cat "$TMP/kout"; fail "$why: a current compose plant must pass the kernel check, exit 0 (got $krc)"; }
+  # a stale kernel under the import line still blocks
+  printf '@AGENTS.md\n\n# kernel\nline one\nline three\n' > "$TMP/kplant/CLAUDE.md"
+  kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL STALE: CLAUDE.md" "$TMP/kout" \
+    || { cat "$TMP/kout"; fail "$why: a stale kernel under CLAUDE.md's import line must be STALE, exit 1 (got $krc)"; }
+  # with no compose stamp the same tree is a replace-mode plant: both files compared
+  { printf '@AGENTS.md\n\n'; cat "$TMP/kseed/core/AGENTS.md"; } > "$TMP/kplant/CLAUDE.md"
+  rm -f "$TMP/kplant/.cypress/seed.json"
+  kaudit; [ "$krc" -eq 1 ] && grep -q "KERNEL STALE: AGENTS.md" "$TMP/kout" \
+    || { cat "$TMP/kout"; fail "$why: without kernel_mode: compose the hub is compared as a kernel (got $krc)"; }
+  return 0
+}
+collect_case X485 case_audit_kernel_currency_compose "HUB_KEPT_CANONICAL_IN_COMPOSE_MODE: GA-K5: kernel currency in compose mode: the hub is not compared, CLAUDE.md is compared after its import line"
+
 # ---- engine currency: a multi-line config assignment is not a stale line ----
 # config assignments are plant-specific and excluded, continuation lines too.
 case_audit_engine_currency_multiline_config() {
@@ -757,7 +783,6 @@ configured_graph_lint() {
 
 case_engine_reconcile_stale_grill_lint() {
   # X383 ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE
-  # Asserts SPEC-0001 ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE.
   local d="$EW/x383" rc
   mkdir -p "$d"
   grep -v waves "$KG/grill-lint.py" > "$EW/x383.stale"
@@ -772,7 +797,6 @@ case_engine_reconcile_stale_grill_lint() {
 
 case_engine_reconcile_spec_lint_keeps_test_globs() {
   # X384 ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE
-  # Asserts SPEC-0001 ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE.
   local d="$EW/x384" rc
   mkdir -p "$d"
   # the plant's own TEST_GLOBS, and a body older than the seed's (every line
@@ -793,7 +817,6 @@ PY
 
 case_engine_reconcile_explicit_preserve_wins() {
   # X385 ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE (guard: passes on the unmodified tool)
-  # Asserts SPEC-0001 ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE.
   local d="$EW/x385" rc
   mkdir -p "$d"
   configured_graph_lint "$d/graph-lint.py" || return 1
@@ -806,7 +829,6 @@ case_engine_reconcile_explicit_preserve_wins() {
 
 case_engine_reconcile_other_name_takes_graph_lint_set() {
   # X386 ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE (guard: passes on the unmodified tool)
-  # Asserts SPEC-0001 ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE.
   local d="$EW/x386" rc
   mkdir -p "$d"
   configured_graph_lint "$d/project-lint.py" || return 1
@@ -826,7 +848,6 @@ PAIR_MALFORMED="$AP/plant/docs/graph/grill-lint.py"
 
 case_engine_audit_one_line_per_pair() {
   # X387 ENGINE_AUDIT_CHECKS_EVERY_PAIR, ENGINE_LEFT_STALE_BY_GRAFT
-  # Asserts SPEC-0001 ENGINE_AUDIT_CHECKS_EVERY_PAIR.
   local out n
   out="$(python3 "$AUDIT" "$AP/plant" "$AP/seed" --engine="$PAIR_CURRENT" --engine="$PAIR_STALE" 2>&1)" || true
   n="$(grep -c "graph engine" <<<"$out")" || true
@@ -839,7 +860,6 @@ case_engine_audit_one_line_per_pair() {
 
 case_engine_audit_malformed_first_pair_fails() {
   # X389 ENGINE_AUDIT_CHECKS_EVERY_PAIR; X388 is its malformed-second row
-  # Asserts SPEC-0001 ENGINE_AUDIT_CHECKS_EVERY_PAIR.
   local out rc order
   python3 "$AUDIT" "$AP/plant" "$AP/seed" --engine="$PAIR_CURRENT" >"$EW/x389.ctl" 2>&1 \
     || { echo "control: the current pair alone did not exit 0: $(tr '\n' ' ' <"$EW/x389.ctl")"; return 1; }
@@ -852,12 +872,12 @@ case_engine_audit_malformed_first_pair_fails() {
   done
 }
 
-collect_case X383 case_engine_reconcile_stale_grill_lint "a stale grill-lint.py adopts the seed's body with no --preserve, one backup"
-collect_case X384 case_engine_reconcile_spec_lint_keeps_test_globs "spec-lint.py keeps the plant's TEST_GLOBS with no --preserve"
-collect_case X385 case_engine_reconcile_explicit_preserve_wins "an explicit --preserve wins over the per-engine set"
-collect_case X386 case_engine_reconcile_other_name_takes_graph_lint_set "an engine under another name takes the graph-lint.py set"
-collect_case X387 case_engine_audit_one_line_per_pair "two --engine pairs print two lines, each naming its plant file"
-collect_case X389 case_engine_audit_malformed_first_pair_fails "a malformed first or second (X388) --engine pair exits non-zero"
+collect_case X383 case_engine_reconcile_stale_grill_lint "ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE: a stale grill-lint.py adopts the seed's body with no --preserve, one backup"
+collect_case X384 case_engine_reconcile_spec_lint_keeps_test_globs "ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE: spec-lint.py keeps the plant's TEST_GLOBS with no --preserve"
+collect_case X385 case_engine_reconcile_explicit_preserve_wins "ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE: an explicit --preserve wins over the per-engine set"
+collect_case X386 case_engine_reconcile_other_name_takes_graph_lint_set "ENGINE_RECONCILE_PICKS_CONFIG_BY_ENGINE: an engine under another name takes the graph-lint.py set"
+collect_case X387 case_engine_audit_one_line_per_pair "ENGINE_AUDIT_CHECKS_EVERY_PAIR: two --engine pairs print two lines, each naming its plant file"
+collect_case X389 case_engine_audit_malformed_first_pair_fails "ENGINE_AUDIT_CHECKS_EVERY_PAIR: a malformed first or second (X388) --engine pair exits non-zero"
 
 # ---- round 7.32.0: graft-audit false alarms, graft ledger, graft run -------
 # Labels: GA-C1..GA-C4 are graft-audit's four false alarms
@@ -946,7 +966,6 @@ PY
 # -- X390 (GA-C3): the projection of a plant-owned node is classified ----------
 # Rows: X390 .claude/agents, X391 .claude/skills, X392 the Copilot .github/agents.
 case_audit_plant_agent_projection() {
-  # Asserts SPEC-0001 EVERY_BACKUP_IS_CLASSIFIABLE.
   local row label kind node proj ghost name s p rc
   for row in \
       "X390 agent agents/billing-auditor.md .claude/agents/billing-auditor.md .claude/agents/ghost.md" \
@@ -999,6 +1018,29 @@ case_audit_skips_nested_plant_copy() {
   python3 "$AUDIT" "$p" "$s" >"$RW/c4.dflt" 2>&1 && rc=0 || rc=$?
   grep -q "backups audited: 1 " "$RW/c4.dflt" && [ "$rc" -eq 0 ] \
     || { echo "with --date omitted, a nested copy's newer stamp chose the day audited (exit $rc): $(flat "$RW/c4.dflt")"; return 1; }
+}
+
+# GA-C5: a seed checkout vendored under the plant (its manifest, installer and
+# kernel, no stamp of its own) is foreign to the walk, like a nested plant: its
+# backups and its graph-shaped files are not this plant's.
+case_audit_skips_nested_seed_checkout() {
+  local s="$RW/c5seed" p="$RW/c5plant" n rc
+  mkdir -p "$s/agents" "$p/docs/graph/agents" "$p/.cypress"
+  printf '{"seed": "cypress", "version": "1.0.0"}\n' > "$p/.cypress/seed.json"
+  printf 'seed agent body\n' > "$s/agents/reviewer.md"
+  cp "$s/agents/reviewer.md" "$p/docs/graph/agents/reviewer.md"
+  cp "$s/agents/reviewer.md" "$p/docs/graph/agents/reviewer.md.bak-20260306-000000"
+  n="$p/vendor/seed-checkout"
+  mkdir -p "$n/core" "$n/agents" "$n/docs/graph/nodes"
+  printf '{"name": "seed", "version": "1.1.0"}\n' > "$n/manifest.json"
+  printf '#!/usr/bin/env bash\n' > "$n/install.sh"
+  printf '# kernel\n' > "$n/core/AGENTS.md"
+  printf 'a seed agent\n' > "$n/agents/x.md.bak-20260306-000000"
+  printf 'a checkout fact\n' > "$n/docs/graph/nodes/api.md.bak-20260306-000000"
+  python3 "$AUDIT" "$p" "$s" --date=20260306 >"$RW/c5.out" 2>&1 && rc=0 || rc=$?
+  grep -q "backups audited: 1 " "$RW/c5.out" \
+    || { echo "backups inside a vendored seed checkout were counted: $(flat "$RW/c5.out")"; return 1; }
+  [ "$rc" -eq 0 ] || { echo "the plant's own clean backup must audit exit 0 (got $rc): $(flat "$RW/c5.out")"; return 1; }
 }
 
 # -- GL: the graft ledger ------------------------------------------------------
@@ -1477,10 +1519,92 @@ MD
   [ "$rc" -eq 0 ] || { echo "with every delta present the re-check exited $rc, want 0: $(flat "$RW/k1b.out")"; return 1; }
 }
 
+# GA-K2..K4 share one seed and plant: protocols/old.md still carries its delta,
+# protocols/merged.md was overwritten with the seed's bytes after the graft.
+k_fixture() {
+  local s="$RW/kseed" p="$RW/kplant"
+  rm -rf "$s" "$p"; mkdir -p "$s/protocols" "$p/docs/graph/protocols"
+  printf 'seed m\n' > "$s/protocols/merged.md"; printf 'seed o\n' > "$s/protocols/old.md"
+  cp "$s/protocols/merged.md" "$p/docs/graph/protocols/merged.md"
+  printf 'seed o\nan old plant rule\n' > "$p/docs/graph/protocols/old.md"
+}
+
+# GA-K2: an older graft wrote the template's heading; the newest graft wrote
+# its heading date-first and in lower case. The newest entry is the later
+# date's, whatever the heading's case or the word's position in it.
+case_audit_record_date_first_heading() {
+  local p="$RW/kplant" rc
+  k_fixture
+  cat > "$p/docs/graph/changelog.md" <<'MD'
+# Graft — synthetic — seed 1.0.0 → 1.1.0 — 2026-01-02
+
+## Merged (holistic re-integration; steward-ratified)
+- `protocols/old.md` — kept: an old section — gained: nothing
+
+# 2026-03-04 — graft: seed 1.1.0 → 1.2.0
+
+## Merged (holistic re-integration; steward-ratified)
+- `protocols/merged.md` — kept: the plant's section — gained: the seed's step
+MD
+  python3 "$AUDIT" "$p" "$RW/kseed" --record "$p/docs/graph/changelog.md" >"$RW/k2.out" 2>&1 && rc=0 || rc=$?
+  [ "$rc" -eq 1 ] || { echo "a date-first lower-case graft heading was not read as the newest entry (exit $rc, want 1): $(flat "$RW/k2.out")"; return 1; }
+  grep -E "LOST.*docs/graph/protocols/merged\.md" "$RW/k2.out" >/dev/null \
+    || { echo "the newest entry's lost file is not named LOST: $(flat "$RW/k2.out")"; return 1; }
+}
+
+# GA-K3: the newest entry lists its files as bold-label bullets, the label and
+# the paths on one line, not under a `## Merged` heading.
+case_audit_record_bold_label_bullets() {
+  local p="$RW/kplant" rc
+  k_fixture
+  cat > "$p/docs/graph/changelog.md" <<'MD'
+## Grafted from seed 1.1.0 to 1.2.0 (2026-03-04)
+
+- **Merged (holistic re-integration):** `docs/graph/protocols/merged.md`, `docs/graph/protocols/old.md`
+- **Fast-forwarded:** `protocols/other.md`
+MD
+  python3 "$AUDIT" "$p" "$RW/kseed" --record "$p/docs/graph/changelog.md" >"$RW/k3.out" 2>&1 && rc=0 || rc=$?
+  [ "$rc" -eq 1 ] || { echo "bold-label bullets were not read as the entry's merged files (exit $rc, want 1): $(flat "$RW/k3.out")"; return 1; }
+  grep -E "LOST.*docs/graph/protocols/merged\.md" "$RW/k3.out" >/dev/null \
+    && grep -E "KEPT.*docs/graph/protocols/old\.md" "$RW/k3.out" >/dev/null \
+    || { echo "both paths on the label line are not each checked (merged LOST, old KEPT): $(flat "$RW/k3.out")"; return 1; }
+  ! grep -q "other\.md" "$RW/k3.out" \
+    || { echo "a fast-forwarded file was checked for a plant delta: $(flat "$RW/k3.out")"; return 1; }
+}
+
+# GA-K4: the newest entry carries a Merged label the audit cannot read a file
+# from: zero listed files is nothing re-checked, and fails closed. An entry that
+# declares its sections empty (`- none`) is a stated fact and passes.
+case_audit_record_zero_files_fails_closed() {
+  local p="$RW/kplant" rc
+  k_fixture
+  cat > "$p/docs/graph/changelog.md" <<'MD'
+# Graft — synthetic — seed 1.1.0 → 1.2.0 — 2026-03-04
+
+Merged: the two protocol files, by hand, keeping the plant's sections.
+MD
+  python3 "$AUDIT" "$p" "$RW/kseed" --record "$p/docs/graph/changelog.md" >"$RW/k4.out" 2>&1 && rc=0 || rc=$?
+  [ "$rc" -eq 1 ] || { echo "an entry whose merged files parse to zero exited $rc, want 1: $(flat "$RW/k4.out")"; return 1; }
+  grep -q "NO-PATH" "$RW/k4.out" \
+    || { echo "the zero-file entry is not named NO-PATH: $(flat "$RW/k4.out")"; return 1; }
+  cat > "$p/docs/graph/changelog.md" <<'MD'
+# Graft — synthetic — seed 1.1.0 → 1.2.0 — 2026-03-04
+
+## Merged (holistic re-integration; steward-ratified)
+- none
+
+## Kept as the plant's (divergence preserved) → harvest candidates
+- none
+MD
+  python3 "$AUDIT" "$p" "$RW/kseed" --record "$p/docs/graph/changelog.md" >"$RW/k4b.out" 2>&1 && rc=0 || rc=$?
+  [ "$rc" -eq 0 ] || { echo "an entry declaring no merged or kept file exited $rc, want 0: $(flat "$RW/k4b.out")"; return 1; }
+}
+
 collect_case GA-C1 case_audit_base_identical_is_delta "a backup byte-identical to the seed at --base is DELTA; without --base it stays CUSTOMIZED"
 collect_case GA-C2 case_audit_engine_signal_survives "an engine backup whose signal lines survive in the current engine is not CUSTOMIZED"
-collect_case X390 case_audit_plant_agent_projection "GA-C3: a plant-owned node's agent, skill (X391) and Copilot (X392) projection backups are classified, exit 0"
+collect_case X390 case_audit_plant_agent_projection "EVERY_BACKUP_IS_CLASSIFIABLE: GA-C3: a plant-owned node's agent, skill (X391) and Copilot (X392) projection backups are classified, exit 0"
 collect_case GA-C4 case_audit_skips_nested_plant_copy "backups under a nested .cypress/seed.json directory are not counted"
+collect_case GA-C5 case_audit_skips_nested_seed_checkout "backups under a vendored seed checkout (manifest, installer, kernel) are not counted"
 collect_case GL-a case_ledger_classifies_three_ways "the ledger prints one class per seed-owned machinery file (HARVESTED, a plant deletion MERGE)"
 collect_case GL-c case_ledger_base_from_tag "--base prints the stamped version's tag, from the tag"
 collect_case GL-d case_ledger_base_inferred_by_lineage "--base with no tag prints the lineage commit, its match count, inferred"
@@ -1492,11 +1616,14 @@ collect_case GR-e case_run_derives_tokens_from_plant "the --tokens list is deriv
 collect_case GR-f case_run_prints_gate_table "stdout ends with the Phase 7 gate table"
 collect_case GR-g case_run_exits_1_when_a_gate_blocks "a run whose gate table holds a BLOCK exits 1"
 collect_case GR-j case_run_routes_runs_hook_check "graft.gate.routes runs install.sh <host> --check, the hook check, once per recorded host"
-collect_case X469 case_run_ties_lint_errors_to_retired_nodes "GR-k: a retired seed protocol that repeats a seed fact-key: routes BLOCK, named RETIRED, its lint error tied to it"
+collect_case X469 case_run_ties_lint_errors_to_retired_nodes "GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES: GR-k: a retired seed protocol that repeats a seed fact-key: routes BLOCK, named RETIRED, its lint error tied to it"
 collect_case GR-h case_run_passes_inferred_base_to_audit "an inferred base is passed to graft-audit as --base"
 collect_case GL-e case_ledger_base_predates_history "a stamp older than the retained history: the inferred base is a lower bound, --base-dir gives the real one"
 collect_case GR-i case_run_infers_adapters_for_old_stamp "a stamp with no tools: adapters inferred from the projections, confirmed with --tools"
 collect_case GA-K1 case_audit_record_kept_delta_lost "--record: a merged or kept file that lost its plant delta fails the graft"
+collect_case GA-K2 case_audit_record_date_first_heading "--record: the newest entry is the latest-dated heading naming graft, in any case or position"
+collect_case GA-K3 case_audit_record_bold_label_bullets "--record: bold-label bullets list the merged files, every path on the line checked"
+collect_case GA-K4 case_audit_record_zero_files_fails_closed "--record: an entry that parses to zero files fails closed; a declared none passes"
 [ "$CASE_FAILED" -eq 0 ] \
   || { echo "test-graft-tools: FAIL — failing cases (above)" >&2; exit 1; }
 

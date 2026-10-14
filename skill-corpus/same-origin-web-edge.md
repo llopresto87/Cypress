@@ -1,3 +1,27 @@
+---
+name: same-origin-web-edge
+description: Move a browser client and every API call it makes onto the one origin its reverse-proxy edge already serves, by counting origins from evidence, inventorying every prefix the bundle emits, forwarding the original URI, ending API misses in a loud 404, relative client bases and boot assets on the page origin, then proving it with differential and real-browser gates. Invoke for a browser-only failure, a cross-origin API, or a shared-edge path prefix.
+id: skill.same-origin-web-edge
+tier: 2
+kind: skill
+title: same-origin-web-edge, one origin for page and API, proven from the browser's side
+owns:
+  - same-origin-web-edge.origin-diagnosis
+  - same-origin-web-edge.prefix-inventory
+  - same-origin-web-edge.proxy-forwarding
+  - same-origin-web-edge.gate-set
+  - same-origin-web-edge.shared-edge-prefix
+requires:
+load_when:
+  - "cors error after the host changed"
+  - "move the api behind the same origin as the page"
+  - "works in chrome but fails in firefox with a self-signed certificate"
+  - "blank page on a network without internet"
+  - "publish the app under a path prefix on a shared reverse proxy"
+prevents: A browser-only failure is patched by widening CORS or the certificate, proxy locations drop sub-paths, a shell fallback answers API misses with HTML and a 200, and server-side checks call the deploy green.
+est_tokens: 6872
+---
+
 # Suggested skill: same-origin-web-edge
 
 > Optional procedure. It moves a browser client and every API call it makes

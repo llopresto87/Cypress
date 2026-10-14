@@ -90,7 +90,8 @@ orchestrates: scouts investigate and authors write.
    synthesis. Use purpose-made agents/skills and the growth-dedicated
    `docs/graph/templates/prompts/growth-author-brief.md`, which consumes the
    ledger and maps each section to its deliverable; authors build ONLY on the
-   collected, cited evidence. (It embeds
+   collected, cited evidence and on the run's corrections record, which
+   outranks it (Phase 3). (It embeds
    `docs/graph/templates/prompts/node-authoring-brief.md`'s HARD
    RULES for the node-authoring case.)
 5. Spawn separate **authoring-class** reviewers/validators for graph
@@ -153,20 +154,36 @@ fallback, from `docs/graph/method/delegation-bounds.md`
   code, manifests, CI, infrastructure and tests are target-owned and stay as
   growth found them.
   Anything else growth leaves outside `docs/graph/` is a stray, and
-  `grow.gate.write-scope` looks for one by re-reading the working tree Phase
-  1 recorded as the baseline.
+  `grow.gate.write-scope` looks for one by re-reading the working tree
+  against the commit that opened the phase that wrote it.
 - Growth runs ONLY knowledge checks: lint, link, route, and generated-view
   drift. Application builds and application test suites stay with the
   target.
-- Record the current branch and commit as provenance ONLY. Never fetch,
-  pull, switch, commit, push, or publish Git state: it is the owner's, and a
-  publish cannot be undone.
+- Record each repository's branch and commit as provenance. The orchestrating
+  session, never a worker, commits the plant's own repository, and only there:
+  the baseline before its first write, and a checkpoint at the close of every
+  phase that wrote
+  (*The growth flow*), with the mechanics graft's Reversibility (d) owns
+  (`protocol.graft`, `graft.reversibility`). It never fetches, pulls,
+  switches, pushes or publishes: a local commit is the resting state of the
+  work, and publishing it is the owner's, and cannot be undone.
 - Every claim growth writes has evidence behind it; never invent behavior,
-  requirements, rationale, ADRs, commands, URLs, project skills, or passing
-  status. Mark an uncertain claim `unknown` and name the evidence it needs. A
-  surface with no real recurring use behind it yet (a project skill, an ADR,
-  a runbook's commands) sprouts later from that use, at close-out
-  (`canonize` → `docs-librarian`).
+  requirements, rationale, ADRs, commands, URLs, citations, project skills,
+  or passing status. Mark an uncertain claim `unknown` and name the evidence
+  it needs. Where nothing establishes a procedure (no rollback path, no
+  release step), the finding is that none exists, stated with the paths that
+  were searched: an invented procedure is believed exactly when it is
+  needed, and an unfilled template reads as an unfinished one, so neither
+  stands in for the finding. A surface with no real recurring use behind it
+  yet (a project skill, an ADR, a runbook's commands) sprouts later from that
+  use, at close-out (`canonize` → `docs-librarian`).
+- The owner's word is evidence for a fact no file can witness: an
+  environment that no longer exists, a service retired, a host the tree still
+  names. Record it once, in the node that owns that subject, labelled
+  `owner-stated (<date>)` with who said it and their verbatim words, and list
+  what it does not establish; every command or node whose target it concerns
+  links that one home instead of restating it. The plant-facts ask
+  (`grow.plant-facts`) is where such facts are usually given.
 - Observed implementation is descriptive architecture, not a normative spec.
 
 ## Unified knowledge shape (`grow.knowledge-shape`)
@@ -328,7 +345,7 @@ from the plant root.
 
 | id | What it asserts | Command | On failure | Class |
 |---|---|---|---|---|
-| `grow.gate.write-scope` | growth wrote only under `docs/graph/`, `.cypress/coverage.json` and the gitignored `.cypress/growth/`, plus the installer's stamp and the harness projection of each corpus skill page the Phase 1 placement run placed, which that run's log names; no application code, manifest, CI, infrastructure or test file changed; branch and HEAD are still what Phase 1 recorded as provenance | `git -C <plant> status --porcelain --ignored -uall` and `git -C <plant> rev-parse --abbrev-ref HEAD HEAD`, each diffed against the listing Phase 1 recorded. Both flags are load-bearing and `-uall` is the one that makes this a file-level diff. Plain `--porcelain` is silent about every ignored path, the half of the tree a stray write is most likely to land in; `--ignored` on its own then names the shallowest ignored parent and nothing inside it (`!! .cypress/`), which is not an operand a stray file can be found in. With `-uall` the same command prints `!! .cypress/growth/boundaries.md`, and it un-collapses new untracked directories too, which the default reports as a bare `src/` | revert the stray write; knowledge found outside the graph is re-homed into it, never deleted and never left | detective |
+| `grow.gate.write-scope` | growth wrote only under `docs/graph/`, `.cypress/coverage.json` and the gitignored `.cypress/growth/`, plus the installer's stamp and the harness projection of each corpus skill page the Phase 1 placement run placed, which that run's log names; no application code, manifest, CI, infrastructure or test file changed; the branch is still the one Phase 1 recorded, and every commit since the baseline is a growth checkpoint | per phase, before its checkpoint: `git -C <plant> status --porcelain --ignored -uall` and `git -C <plant> rev-parse --abbrev-ref HEAD HEAD`, diffed against the listing and HEAD recorded at the commit that opened that phase, so the diff is exactly that phase's writes, never the run's accumulated ones. At close, `git -C <plant> log --name-status <baseline>..HEAD` lists every path the checkpoints committed, each of which is in scope. Both flags are load-bearing and `-uall` is the one that makes this a file-level diff. Plain `--porcelain` is silent about every ignored path, the half of the tree a stray write is most likely to land in; `--ignored` on its own then names the shallowest ignored parent and nothing inside it (`!! .cypress/`), which is not an operand a stray file can be found in. With `-uall` the same command prints `!! .cypress/growth/boundaries.md`, and it un-collapses new untracked directories too, which the default reports as a bare `src/` | revert the stray write; knowledge found outside the graph is re-homed into it, never deleted and never left | detective |
 | `grow.gate.graph-integrity` | every node carries its required keys, `owns` is unique, `requires` resolves and stays acyclic, every `artifacts:`/`libraries:` edge resolves, `est_tokens` is honest, and a grown plant declares its `plant:` block | `python3 docs/graph/graph-lint.py` | route to the node's owning author; never weaken the linter to make a defective graph pass | soft |
 | `grow.gate.routing` | a representative task loads a small, relevant closure, and descent is as narrow as the graph claims: a task specific to one library loads the parent expertise node and that library's child and none of its siblings, and the run accounts for every child left out | `python3 docs/graph/graph-lint.py --plan "<representative task>"` prints the closure and the reason each node was left out, then a Phase 6 validator reads the two lists. `--plan` runs no check and exits 0 whatever it printed, so the command supplies the evidence and never the verdict. Judge: a Phase 6 validator, reading the closure the command prints | sharpen the child's own triggers, or lift the family word to the parent; Phase 5 owns the move | judgment |
 | `grow.gate.roster-routable` | every agent this growth authored is reachable and consistent: `routing_triggers` present, delegation matching its actual tool grant | `python3 docs/graph/agent-lint.py --lint` | give the expert its own triggers, or delete it; an unroutable agent is a file, not a specialist | soft |
@@ -337,7 +354,7 @@ from the plant root.
 | `grow.gate.no-scaffold` | no leaf under `docs/graph/` is still byte-identical to the seed template it was placed from | `python3 <seed>/tools/graft-audit.py <plant> <seed> --unfilled` | author the leaf, or record the honest blank — the remedy, the `runbooks/verification.md` exemption and the standing ban on `--prune` are in *No unfilled scaffold survives growth* above | soft |
 | `grow.gate.coverage` | every required row of `.cypress/coverage.json` is answered and every planned artifact exists and is substantive | `python3 <seed>/tools/growth-audit.py <plant> <seed>` — exit 0 | every verdict names a row still owed: route it to a bounded author, then re-run the gate. There is no budget at which a red gate becomes acceptable | soft |
 | `grow.gate.grounding` | every inventory item the plan marked `grounding.required` cites a retrieved source that resolves under `docs/graph/sources/`, and every normalized snapshot names its raw file or the recorded reason there is none | the same command; verdicts `UNGROUNDED`, `DANGLING`, `UNJUSTIFIED` | dispatch the `research-scout` that was never dispatched; a page written from model memory is what this gate exists to catch | soft |
-| `grow.gate.circular-absence` | an absent `sources/` or thin `libraries/` is a fact about the project and not about the orchestrator | none — the Phase 6 validator reads the reconciled ledgers' §5 under `.cypress/growth/` and decides whether the absence is the project's or the run's. No tool reads that scratch, which is why this cannot be mechanical. Judge: a Phase 6 validator | an absence that exists because nobody was dispatched is a completeness finding, routed back exactly as a gap is | judgment |
+| `grow.gate.circular-absence` | an absent `sources/` or thin `libraries/` is a fact about the project and not about the orchestrator | none — the Phase 6 validator reads the reconciled ledgers' §5 under `.cypress/growth/`, with the corrections record that outranks them, and decides whether the absence is the project's or the run's. No tool reads that scratch, which is why this cannot be mechanical. Judge: a Phase 6 validator | an absence that exists because nobody was dispatched is a completeness finding, routed back exactly as a gap is | judgment |
 | `grow.gate.disclosure` | every `UNKNOWN` row is named where the owner actually reads — the delivery and the plant's `changelog.md` — and a blocker that is the owner's to resolve was put to them as a numbered decision | `python3 <seed>/tools/growth-audit.py <plant> <seed>` — verdict `SILENT` | write the row, its blocker and its owner into the changelog entry and the delivery; see *Delivery and maturity* | soft |
 | `grow.gate.prose` | the prose this growth authored clears the mechanical floor under the prose skills: the detectable tells, and on a refresh, that a rewrite kept its facts | `python3 docs/graph/prose-lint.py --file <artifact>` per artifact this growth authored, or `--root` over one authored collection, plus `--against <rev>` on a refresh. Scope it that way and not with `--root docs/graph`, which recurses with no exclusions into the protocols, skills, agents, method files, templates and legal corpus the installer places there — thousands of tells in machinery growth may not edit, on a plant that has grown nothing yet | fix the tell or justify it; weak tells are printed and forgiven until others share the paragraph, so the reviewer adjudicates those | soft |
 | `grow.gate.agnosticism` | everything this growth authored that is *meant to travel* names no plant identifier, host address or pinned advisory | `python3 docs/graph/agnosticism-lint.py --file <artifact> --forbid <plant name> --forbid <plant path>`, over those artifacts and no others | re-author the artifact, or drop the claim that it is portable. The plant's own knowledge is out of scope and should name the project | soft |
@@ -349,7 +366,7 @@ from the plant root.
 | `grow.gate.false-premise` | known-answer questions are answered from routed graph context with source citations, and an adversarial false premise is rejected rather than elaborated | none — a clean-context validator asks both kinds of question and reads what comes back. Judge: a clean-context validator | route the failing question to the node that should have owned the answer | judgment |
 | `grow.gate.not-rationale` | observed implementation has not been mislabeled as a spec or as ADR rationale | none — an authoring-class reviewer reads each record against the evidence it cites. Judge: an authoring-class reviewer | move it to an architecture leaf or node; a record is formalized from evidence, never from a gap | judgment |
 | `grow.gate.normative-practices` | every `best-practices/` leaf states the external standard AND where this project stands against it | none — an authoring-class reviewer reads each leaf against the source it cites. Judge: an authoring-class reviewer | author the stance, or move the description to `architecture/` where a description belongs | judgment |
-| `grow.gate.executed` | every command the graph records says whether it was executed or only discovered | none — a Phase 6 validator reads the commands the graph now carries. Judge: a Phase 6 validator | label it; growth executes no application command, so `discovered, not executed` is the honest default | judgment |
+| `grow.gate.executed` | every command the graph records says where it was found, whether it was executed, and whether its target still exists, in the vocabulary of `verify.gate-states` | none — a Phase 6 validator reads the commands the graph now carries. Judge: a Phase 6 validator | label it in `verify.gate-states`' vocabulary (`target absent` and `declared, non-functional` included, each with the evidence that state asks for); growth executes no application command, so the discovered state with its `path:line` is the honest default | judgment |
 | `grow.gate.harness-homes` | every agent and skill a harness directory carries has a home in the graph: no `RETIRED` entry (an `origin: seed` node, or a projection of one, the running seed does not ship) and no `ORPHAN` entry (one the plant authored straight into a harness directory, which the router and every other harness cannot see) | `<seed>/install.sh <host> --check --project-dir <plant>` once for each host in the stamp's `tools`, which writes nothing and prints one `RETIRED` or `ORPHAN` line per entry (SPEC-0001 CHECK_FLAGS_RETIRED_HARNESS_ENTRY, CHECK_FLAGS_ORPHAN_HARNESS_ENTRY), or says every harness entry has a graph home | name each entry in the delivery and the plant's `changelog.md`. An `ORPHAN` is relocated into `docs/graph/{agents,skills}/` as a node the plant owns, inside growth's write scope, and its harness copy is left for the owner; a `RETIRED` entry is put to the owner as a numbered decision. Growth deletes neither: the deletion is the owner's act | detective |
 | `grow.gate.view-drift` | generated tool views still match what generates them | the read-only regenerate-and-diff command the plant's own `docs/graph/tools/` page records for that view | regenerate, or record the drift as a finding. Where the plant generates no view the row reads `none available`, never blank | soft |
 
@@ -399,10 +416,10 @@ proves, and so the reviewer knows where to spend judgment.
   the four (*The coverage record and the loop it serves*). It drives every
   planned artifact, so a project item that never reaches it is an item no gate
   can miss the absence of.
-- **Nothing proves a scout read anything.** The evidence ledgers are the
-  evidentiary basis of Phases 3–4, they are gitignored by mandate, and no tool
-  reads them. `grow.gate.scouts-ran` proves a file was written, not that a
-  bounded worker wrote it from source; a run that authored everything from
+- **Nothing proves a scout read anything.** The evidence ledgers, and the
+  corrections record that outranks them, are the evidentiary basis of Phases
+  3–4; they are gitignored by mandate, and no tool reads them.
+  `grow.gate.scouts-ran` proves a file was written, not that a bounded worker wrote it from source; a run that authored everything from
   model memory earns the same green.
 - **`UNGROUNDED` proves a file exists** under `sources/`, not that anything was
   retrieved, and a stated reason is accepted in place of a raw snapshot.
@@ -443,21 +460,46 @@ growth, and each phase heading below is the sole home of what that phase
 spawns. `initialize`, and a regrow after drift, enter at Phase 1 like any
 other growth.
 
+Each phase is also a wave in version control. It opens on a commit, the
+baseline for the first and the previous phase's checkpoint for every later
+one, and that commit is the phase's own baseline: before the phase closes,
+`grow.gate.write-scope` reads what the phase wrote against it, and only then
+is the phase's checkpoint committed, staged by path as graft's Reversibility
+(d) states, with the gitignored run scratch never staged. A phase that wrote
+nothing tracked (Phase 2's ledgers live in ignored scratch) commits nothing,
+and the next phase opens on the same commit. Record every checkpoint, with the
+phase it closed, in the delivery.
+
 ## Phase 1 — Detect and plan
 
 Determine whether the target is empty/new, one repository, a workspace or
 monorepo, or an umbrella containing sibling repositories. Stay inside the
 user-placed scope. Record each repository's path, current branch, HEAD, role,
-manifests, and stack without mutating Git, and record the worktree state as
-kept `git status --porcelain --ignored -uall` output: that listing is the
-baseline `grow.gate.write-scope` diffs against at close, it is taken with the
-flags that row states and no others, and a gate with one operand proves
-nothing.
+manifests, and stack.
 
-Ensure the plant gitignores `.cypress/growth/` before scouting. Ignore that
-directory, not `.cypress/`: the two files beside it stay tracked, the
-`.cypress/seed.json` stamp and the coverage record `.cypress/coverage.json`,
-for the reason *The coverage record and the loop it serves* gives above.
+**Read the plant's version-control shape, then take the baseline, before the
+first growth write.** The shape is four facts: whether the plant root has a
+repository of its own (`git rev-parse --show-toplevel` run from the root names
+the root, not a parent directory), whether that repository has a commit,
+whether `docs/graph/` would be tracked or ignored, and which nested
+repositories sit inside the plant. Nested repositories are read-only for the
+whole run, as graft's Reversibility (d) states. The plant also gitignores `.cypress/growth/` before
+scouting: that directory, not `.cypress/`, because the two files beside it stay
+tracked, the `.cypress/seed.json` stamp and the coverage record
+`.cypress/coverage.json`, for the reason *The coverage record and the loop it
+serves* gives above. Those ignore rules are written before the baseline and
+committed in it, so they are part of the tree growth starts from rather than a
+growth write.
+
+Then make the baseline commit the shape calls for, the tree as the owner left
+it, before anything else is written. The procedure per shape is graft's
+Reversibility (d) (`graft.reversibility`), which grow follows as written, with
+the owner in the steward's place. Then
+record HEAD, and record the worktree state as kept
+`git status --porcelain --ignored -uall` output: that listing is Phase 1's
+operand for `grow.gate.write-scope`, it is taken with the flags that row states
+and no others, and a gate with one operand proves nothing. Each later phase
+takes the same listing at the checkpoint that opens it (*The growth flow*).
 
 **Ask the owner for the plant facts, once (`grow.plant-facts`).**
 `docs/graph/index.md` carries a `plant:` block (`docs/graph/_schema.md`
@@ -577,6 +619,11 @@ the owner sees it, and says why beside each id it advises leaving out:
   CLI, a host-hardening page) is never proposed; when the session sees the
   plant use one, it adds that id to the list with the path that shows the use.
 
+This proposal reads what the project declares. What it needs (a procedure it
+performs, a surface it exposes, a recurring operation) is visible only once the
+scouts have reported, so the second, needs-driven pass over the corpus runs in
+Phase 4.
+
 Put the list to the owner as one more numbered decision in the same ask as the
 plant facts and the legal corpus (`deliver.numbered-decisions`): each id with
 its evidence line, the ids advised out with their reason, and the instruction
@@ -652,7 +699,8 @@ tests/CI/operations, dependencies, prompts/evaluations, the interface and
 design surface, the project's regulatory exposure, the external
 standards its stack and domain are held to, and any agent-operations
 system the project already runs (agent charters, harness hooks,
-instruction files, lesson or memory logs). That last boundary is evidence,
+instruction files, the procedures its agents run, lesson or memory logs).
+That last boundary is evidence,
 not stale prose to wave off as a bulk read: Phase 4 says what each of its
 parts yields.
 
@@ -697,7 +745,9 @@ ungathered. Each reports terse factual claims with exact paths and symbols for:
   already in the tree;
 - an agent-operations system already in the tree: each charter, each hook
   with the event it fires on and what it blocks, each instruction file,
-  and each lesson or memory log entry with its date and the paths it names;
+  each procedure its agents run with the file that is canonical for it and
+  any registry that routes it, and each lesson or memory log entry with its
+  date and the paths it names;
 - discrepancies between executable source and existing prose.
 
 The persisted per-boundary ledgers are the evidence set: claim area, strong
@@ -705,7 +755,9 @@ source, corroborating source, confidence, and gaps, each keyed to the
 deliverable it feeds. Reconcile across them, resolve contradictions by scoped
 follow-up scouting, and record which ledger owns each contested fact. A
 claim's weight comes from its strongest source; repetition across a
-centralized docs repository adds none.
+centralized docs repository adds none. Once the reconciled set is handed to
+authors the ledgers are frozen: no one edits them again, and Phase 3 says
+where what the authors find afterwards goes.
 
 **Then reconcile the ledgers into the stack inventory (`grow.stack-inventory`).**
 Every item the project is made of gets one row: each language and its version,
@@ -787,6 +839,23 @@ evidence ledgers it reads (`.cypress/growth/*.ledger.md`), the exact output
 paths, schema, relevant existing nodes, and exclusive write scopes. Authors
 build from the ledger's cited claims: a fact the ledger marks `not recorded`
 stays unrecorded, a section marked `none found` is omitted, never invented.
+
+**What authors find after the freeze goes to one corrections record.** An
+author who meets a ledger claim the source contradicts, a fact two ledgers
+placed in different homes, or a boundary drawn in the wrong place neither
+edits the ledger nor deviates silently in its node. The finding goes to
+`.cypress/growth/corrections.md`, the one record the orchestration chat owns
+for this run, and that record outranks the ledgers and the orchestration plan
+wherever they conflict, so every author reads it beside the ledgers it was
+pointed at. An edge or ownership question (which node owns a fact, whether a
+fact crosses into another author's scope) is an entry there too, in the shape
+and append discipline of `delegation.question-file`: the author goes on with
+the work the question does not touch, and the orchestration chat grants the
+move or keeps the line, in the record, before that author's scope closes. A
+correction that changes what another author already wrote is routed to that
+author (topology step 6). The record lives in the run's scratch, inside
+`grow.gate.write-scope`, and the author brief grants each author its append.
+
 Author:
 
 - one root node for the governed project/program;
@@ -854,8 +923,10 @@ Through bounded authoring-class authors, populate every collection supported by 
   never subsetted (`legal-corpus/_schema.md` §"Whole corpus, or none").
   What this phase authors is `legal/index.md`, the **scope instruction**:
   which instruments bear on this project today, which do not and why, and what
-  the corpus does not carry at all. That is a determination, it is revised as
-  the project evolves, and it is the only legitimate way to narrow what
+  the corpus does not carry at all, named as not carried and never cited from
+  memory: a citation nobody read at its publisher is a remembered guess
+  wearing authority, so it is not written. That is a determination, it is
+  revised as the project evolves, and it is the only legitimate way to narrow what
   `agent.legal` considers; deleting a page is not. Each in-scope instrument's
   `verified` and `legal_status` are **re-confirmed against the publisher**
   before anything is relied on; a citation that shipped once is not thereby
@@ -881,15 +952,18 @@ Through bounded authoring-class authors, populate every collection supported by 
   operational evidence (`toolcraft` owns the doctrine; this is its catalog);
 - `prompts/` and `evaluations/`: AI contracts, call sites, datasets, rubrics,
   gates, and failure modes;
-- `runbooks/verification.md`: exact commands and prerequisites, explicitly
-  labeled `discovered, not executed` during growth;
+- `runbooks/verification.md`: exact commands and prerequisites, each
+  labelled as `grow.gate.executed` states (where it was found, not executed,
+  and whether its target exists);
 - `runbooks/release.md` and `runbooks/rollback.md`: filled from the deploy
   or release procedure the source already carries (a deploy script, a
   pipeline's release stage, a project skill), each command cited and
-  labeled `discovered, not executed`. A procedure the plant already runs is
-  evidence, so these do not wait for use the way an unrun runbook does;
-  with no such procedure in the source, they are renamed under
-  `grow.gate.no-scaffold` like any other unfilled leaf;
+  labelled the same way. A procedure the plant already runs is evidence, so
+  these do not wait for use the way an unrun runbook does. With no such
+  procedure in the source, the leaf is renamed under `grow.gate.no-scaffold`
+  like any other unfilled leaf, and the runbooks descriptor states that no
+  release or rollback procedure exists and which paths were searched: that
+  absence is the finding (Boundaries);
 - `plans/grill.md`: inspected evidence, gaps, drift/backfill work, and the
   smallest useful next increment;
 - `best-practices/`: the **standard home** of the trio above, and
@@ -927,9 +1001,69 @@ unprojected it is on disk and unspawnable
 (`delegation.harness-registration`), and on most harnesses spawnable only in
 the next session; say so in the delivery.
 
-Apply the same withdraw-on-evidence discipline to the reusable-tool and
-suggested-skill corpora, so harvested tooling and procedures reach a new plant
-at growth time and not only via a later graft. Anything the plant authors that
+**Place the corpus knowledge this project needs, where it needs it.** The
+reusable-tool and suggested-skill corpora reach a new plant at growth time and
+not only through a later graft, and they reach it by need. Phase 1's proposal
+read what the manifests declare; this pass reads what the project does, now
+that the reconciled ledgers show it. Read the corpus catalogs (`tool-corpus/`
+by category, and `skill-corpus/README.md`, "Layout", which lists every page by
+the kind of work it serves) against the stack inventory and the ledgers, and
+for each page ask what in this project needs it: a procedure the source performs (a deploy script, a pipeline's release stage, a migration
+routine), a surface the project exposes (a user interface, a public web edge,
+credentials in configuration, a fleet of hosts), or an operation its lesson
+logs show recurring. A need is a ledger claim with a path; a page that is only
+relevant to the stack answers none.
+
+The page kinds then narrow what a need can withdraw:
+
+- **A tool page** (`tool-corpus/<category>/<name>.md`) answers a
+  self-contained capability the source genuinely needs, and lands at
+  `docs/graph/tools/<name>.md` as the orientation layer: the plant adopts the
+  portable implementation when its stack matches and re-authors it test-first
+  when it does not. A page placed before the plant has built the tool says
+  `blueprint only, not built here` where its run and test commands would
+  stand, never the corpus's unfilled `<…>` slot, which reads to a later agent
+  as a command nobody wrote down. The close-out that later catalogs the
+  plant's build re-points the page (`protocol.canonize`).
+- **A generic skill page** (`skill-corpus/<name>.md`) answers a repeatable
+  procedure the project performs or a surface it exposes, and needs no
+  manifest match, because its subject is a practice rather than a library.
+- **A stack-keyed skill page** (`skill-corpus/<key>/<name>.md`,
+  `skill-corpus/README.md`, "Stack-keyed pages") is withdrawn only on a stack
+  match besides the need: the plant's build files, or the stack inventory
+  reconciled in Phase 2 (`grow.stack-inventory`), declare a library the page's
+  `stack:` field names. A key directory alone is not a match, and neither is a
+  library the source mentions without declaring it. The key directory is the
+  corpus's filing and never part of the placed name: either kind of skill page
+  lands as the routable node `docs/graph/skills/<name>.md`.
+- **An upgrade page**, one that carries its subject across a major line
+  (`library-corpus/README.md`, "A major line is not a pin"), is withdrawn only
+  while the plant's declared line is older than the line the page upgrades to:
+  a plant already on the target line, or past it, has no upgrade to run, and
+  placing the page would hand its sessions a procedure that does not apply.
+
+A page the owner confirmed in Phase 1 is already on disk, placed by the
+installer: these rules are the ones its proposal was filtered by, and the need
+it answers is recorded for it all the same. A page this pass finds that Phase 1
+did not place goes back to the owner as a numbered decision
+(`deliver.numbered-decisions`), the page with the claim and path that show its
+need, and is placed through the installer with the `--expertise` command Phase
+1 gives, never copied by hand, so the stamp records it and later installs
+refresh it. **Where it is needed** means the session that has the need reaches
+the page: run `graph-lint.py --plan` on the task phrase of the need it answers
+and confirm the page is in the closure; where it is not, the node that owns the
+need gains the edge, the same move `grow.gate.routing` makes; a trigger
+written into the placed page instead makes it the plant's, merged by every
+later graft rather than refreshed (graft Phase 4, step 3), so prefer the edge.
+Record beside each placed page which need it answers
+and the path that proves it, and for a stack-keyed page the inventory row
+that matched, as for any other claim. Both corpora are
+candidates, never quotas: a tool or skill whose need has not arisen in the
+source is left for `toolcraft`/`canonize` to sprout from real recurring use,
+and the absence is recorded ("no corpus tool/skill warranted") instead of
+padded.
+
+Anything the plant authors that
 is *meant to travel* (a tool or skill it may later offer back, a component it
 declares project-agnostic) runs `docs/graph/agnosticism-lint.py` over it
 before it is called done, under `grow.gate.agnosticism`. That is the same
@@ -941,44 +1075,8 @@ installer places `prose-lint.py` in every plant. Run it per collection as each
 author finishes rather than as one sweep at Phase 6 over a graph nobody has
 re-read.
 
-Where the plant's real stack matches a portable tool the corpus carries
-(`tool-corpus/<category>/<name>.md`), a self-contained capability the source
-genuinely needs, seed `docs/graph/tools/<name>.md` from it as the orientation
-layer (adopt the
-portable implementation when the stack matches; re-author test-first when it
-does not). A page placed before the plant has built the tool says
-`blueprint only, not built here` where its run and test commands would
-stand, never the corpus's unfilled `<…>` slot, which reads to a later agent
-as a command nobody wrote down. The close-out that later catalogs the plant's build
-re-points the page (`protocol.canonize`). Where a repeatable procedure the
-source actually performs matches a
-generic `skill-corpus/<name>.md` entry or a stack-keyed
-`skill-corpus/<key>/<name>.md` entry (`skill-corpus/README.md`, "Stack-keyed
-pages"), seed `docs/graph/skills/<name>.md` from it (projected into the harness
-by the plant itself). The key directory is the corpus's filing and never part
-of the placed name. A stack-keyed page is withdrawn only on a stack match: the
-plant's build files, or the stack inventory reconciled in Phase 2
-(`grow.stack-inventory`), declare a library the page's `stack:` field names.
-A key directory alone is not a match, and neither is a library the source
-mentions without declaring it. An upgrade page, one that carries its subject
-across a major line (`library-corpus/README.md`, "A major line is not a pin"),
-is withdrawn only while the plant's declared line is older than the line the
-page upgrades to: a plant already on the target line, or past it, has no
-upgrade to run, and placing the page would hand its sessions a procedure that
-does not apply. Record beside the withdrawn page which inventory row matched
-and the path that proves it, as for any other claim. A tool or skill page the
-owner confirmed in Phase 1 is already on disk, placed by the installer: this
-rule is the one its proposal was filtered by, and the matching row and its
-path are recorded for it all the same. A page withdrawn here that Phase 1 did
-not place goes back to the owner as a numbered decision and is placed through
-the installer, never copied by hand, so the record holds it and later
-installs refresh it. Both are candidates: a tool
-or skill whose need has not arisen in the source is left for `toolcraft`/`canonize` to sprout from real recurring
-use, and the absence is recorded ("no corpus tool/skill warranted") instead of
-padded.
-
 **An agent-operations system the project already runs** is not a legacy
-documentation source to exclude wholesale, because its parts are three
+documentation source to exclude wholesale, because its parts are four
 kinds of evidence. A **lesson or memory log** is dated incident evidence:
 each entry is mined for a sharp edge (into the node that owns its topic)
 or a spec candidate (into `plans/grill.md`), and an owner rule found there
@@ -989,10 +1087,23 @@ project has since left. A **hook** is
 enforcement the project already relies on: the graph records what it fires
 on and what it blocks, and it stays wired; re-homing or retiring it is the
 owner's call, and dropping it silently removes a guard nobody will notice
-is gone. A **table of facts copied into a charter** is drift by
+is gone. A **procedure the project's agents already run** (a skill, a
+playbook, a runbook script, kept in the repository or a harness directory) is
+canonical where it lives: the graph gives it one thin node, the plant's own,
+that names the canonical file and adds only routing (its triggers, what it
+touches, who runs it), never a copy of its steps, because a copy drifts from
+the procedure it describes and the router then serves the stale one. A thin
+adapter the project authored straight into a harness directory is the
+`ORPHAN` case of `grow.gate.harness-homes`, and relocated it stays thin. Where
+the project registers its agent-tooling surfaces with one route each and keeps
+a test that fails when a new surface arrives without one, the registry and the
+test are enforcement like a hook and stay wired, and each node cites its
+registry row. Where it has neither, growth writes no test, since tests are
+target-owned: `plans/grill.md` names the unrouted surfaces as a candidate
+increment. A **table of facts copied into a charter** is drift by
 construction: each fact is homed in its owning node, and the plan names the
-copy stale, pointing at that node. The charters and logs themselves stay as
-growth found them.
+copy stale, pointing at that node. The charters, procedures and logs
+themselves stay as growth found them.
 
 For an existing graph, refresh current fact owners rather than duplicating
 them, preserve valid hand-authored knowledge, cite contrary evidence for

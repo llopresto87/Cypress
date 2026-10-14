@@ -15,12 +15,14 @@ peers:
   - method.delegation-briefs
   - method.delegation-sequencing
   - method.delegation-bounds
+  - method.delegation-continuation
+  - method.delegation-wave-integrity
   - method.tiers
 load_when:
   - "who should do this, which specialist, which agent"
   - "route the task, agent routing, roster"
 prevents: Specialists picked by whoever is asking, with no ranked route, no named knowledge-or-judgment gap, and no shared sign-off on a spec.
-est_tokens: 1135
+est_tokens: 1233
 ---
 
 # Delegation — the team and routing
@@ -118,5 +120,9 @@ all three signed off on the same document.
   delegation brief.
 - `method.delegation-sequencing`: load when spawn order, parallel or
   sequential, which spawn waits for which.
+- `method.delegation-wave-integrity`: load when lane table for a parallel
+  wave, hash baseline, a worker needs a write outside its lane.
 - `method.delegation-bounds`: load when delegation depth, allowlist, can
   this agent spawn.
+- `method.delegation-continuation`: load when resume or continue a finished
+  agent, or brief a fresh one.

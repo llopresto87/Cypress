@@ -1,3 +1,26 @@
+---
+name: fleet-security-review
+description: Review the security of a whole multi-service system from a fan-out by real boundary into one findings ledger, through a real scanner as ground truth and an adversarial trace of every exploit chain, to a corrected report and a remediation plan ranked by the owner's framing. Invoke for a first assessment, a periodic re-audit, or before exposing a changed system.
+id: skill.fleet-security-review
+tier: 2
+kind: skill
+title: fleet-security-review, boundary audits into one ledger, scanner truth, traced exploit chains, a ranked plan
+owns:
+  - fleet-security-review.boundary-fan-out
+  - fleet-security-review.findings-ledger
+  - fleet-security-review.scanner-ground-truth
+  - fleet-security-review.adversarial-verification
+  - fleet-security-review.remediation-ranking
+requires:
+load_when:
+  - "security review of the whole system"
+  - "audit all the services and images for vulnerabilities"
+  - "first security assessment of the fleet"
+  - "rank the security remediation plan"
+prevents: A checklist sweep misses the findings that sit at a boundary, remembered advisory ids override the scanner, and an untraced exploit-chain claim drives a plan that fixes the wrong thing.
+est_tokens: 2896
+---
+
 # Suggested skill: fleet-security-review
 
 > Optional procedure: review the security of a whole multi-service system

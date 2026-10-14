@@ -1540,6 +1540,44 @@ class ListedNodeEdgesTests(_TmpCase):
                 self.assertRegex(out, re.escape(nid) + r"[^\n]*unreachable", out)
 
 
+class CorpusPlacedEntryTests(_TmpCase):
+    """A skill page `install.sh --expertise` placed carries `origin:
+    corpus@<version>` in its own frontmatter, and that line is its entry point:
+    nothing lists it in index.md, a plant-owned page the arm never writes."""
+
+    def _graph(self, origin: str, *, rooted: bool) -> Path:
+        nodes = {"root": node_md("root", "root")} if rooted else {}
+        graph = build_graph(self.tmp, nodes)
+        (graph / "skills").mkdir()
+        (graph / "skills" / "placed.md").write_text(
+            node_md("skill.placed", "skill").replace(
+                "est_tokens:", f"origin: {origin}\nest_tokens:"), encoding="utf-8")
+        if not rooted:
+            (graph / "index.md").write_text("# index\n", encoding="utf-8")
+        return graph
+
+    def test_corpus_placed_skill_is_an_entry_point(self):
+        """Asserts SPEC-0001 PLACED_CORPUS_PAGE_IS_REACHABLE, both before and
+        after growth: unlisted, unreached by any edge, and still reachable."""
+        for rooted in (False, True):
+            with self.subTest(rooted=rooted):
+                r = run_lint(self._graph("corpus@8.1.2", rooted=rooted))
+                out = r.stdout + r.stderr
+                self.assertNotIn("unreachable", out, out)
+                self.assertEqual(r.returncode, 0, out)
+
+    def test_other_origins_still_need_a_listing(self):
+        """Guard. The entry is the corpus provenance only: an unlisted seed
+        node, or one whose origin merely mentions the corpus, stays an orphan
+        (the shipped index lists every seed node by id)."""
+        for origin in ("seed", "corpus", "plant-corpus@1"):
+            with self.subTest(origin=origin):
+                r = run_lint(self._graph(origin, rooted=True))
+                out = r.stdout + r.stderr
+                self.assertNotEqual(r.returncode, 0, out)
+                self.assertRegex(out, r"skill\.placed[^\n]*unreachable", out)
+
+
 # SPEC-0005 §6 "Delegation leaves", first and last columns.
 DELEGATION_SIBLINGS = (
     ("method.delegation", "who should do this, which specialist, which agent"),

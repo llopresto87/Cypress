@@ -190,6 +190,18 @@ implements them passes its gates.
 Status values: `red` (test exists, fails), `green` (test exists,
 passes), `pending` (test not yet written), `skipped` (with reason).
 
+Setup sharing, one line per level the table uses: how the tests at
+that level share their expensive setup (one application context with
+identical cache keys, one container per run, a template database,
+shared fixtures), so a new test joins it instead of starting its own.
+
+- integration: <the shared context, container or fixture, and what keeps it shared>
+- e2e: <...>
+
+A test class or file started for a review finding, instead of
+extending the one that owns its contract (`test-first`, "A test joins
+the class that owns its contract"), records its reason here.
+
 ## 11. Open questions
 
 | Question | Why it matters | Current assumption | Owner | Resolves by |

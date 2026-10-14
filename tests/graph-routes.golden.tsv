@@ -33,7 +33,7 @@ a markdown-only change with nothing to get wrong should be proved by running it,
 go implement kind_plan, you are explicitly authorized to spawn subagents as you see fit, but orchestrate so that they do not create file writing/accessing race conditions	method.delegation	-	paraphrase
 let's verify the seed ability to upgrade/graft from every version since 6.0.0 to the current one	protocol.graft	-	paraphrase
 upgrading means improving what alredy exist and bring it up to speed with the base of the seedm not blind overwrite	protocol.graft	-	paraphrase
-go harvest the candidates at $HOME/vivid-deepseek plant. compare the work we did for the test creation procedure with the one in the plant and see if there is anything of interest	protocol.harvest	-	paraphrase
+go harvest the candidates at $HOME/webapp-copy plant. compare the work we did for the test creation procedure with the one in the plant and see if there is anything of interest	protocol.harvest	-	paraphrase
 didn't i say that grill.md from now on needs to be a ledger/node with leaf under it?	protocol.grill	-	paraphrase
 the creation of a stale files mechanical tool would mean more context duplicated for a tool called at each file access. instead we should keep track of each branch repo/commit at canonize and compare	protocol.canonize	-	paraphrase
 docs pass should use humanizer skill	skill.humanizer	-	paraphrase

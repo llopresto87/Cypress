@@ -47,10 +47,15 @@ client (`redis.asyncio`).
   matters to your code.
 
 ## General pitfalls
-- Careful response/connection handling matters: connection reuse under async
-  cancellation has historically been a source of response data leaking across
-  requests in pipeline operations. Do not share a single connection across
-  concurrent async tasks carelessly.
+- Share the client, not its pipelines. A `Redis` client instance is safe to
+  share between threads: it takes a connection from its pool only while a
+  command runs and returns it right after. `Pipeline` and `PubSub` objects are
+  not: upstream says never to pass one between threads, so each worker builds
+  its own from the shared client.
+- `SELECT` is not implemented on client instances, because a pooled
+  connection left on another database would be handed to the next caller.
+  An application that uses several databases creates one client (and, if
+  needed, one pool) per database.
 
 ## Testing
 - Upstream documents no fake server on the pages read for this page. Tests
@@ -82,14 +87,19 @@ client (`redis.asyncio`).
 - RESP2 only.
 
 ### 5.x to 7.x lines
-- RESP3 is available with `protocol=3`; RESP2 stays the default on the wire.
+- RESP3 is supported from 5.0 and chosen with `protocol=3`; RESP2 stays the
+  default on the wire.
 
 ### 8.x line
-- Clients speak RESP3 on the wire by default while keeping RESP2-compatible
-  Python response shapes. `protocol=2` forces RESP2, and
+- From 8.0, clients speak RESP3 on the wire by default while keeping
+  RESP2-compatible Python response shapes. `protocol=2` forces RESP2, and
   `legacy_responses=False` opts into protocol-independent response shapes,
   which upstream recommends for new projects.
 
 ## Upstream docs
 - Docs: https://redis.readthedocs.io/en/latest/
+- Advanced features (threading, pipelines, pub/sub):
+  https://redis.readthedocs.io/en/latest/advanced_features.html
+- RESP3 features and the wire-protocol default:
+  https://redis.readthedocs.io/en/latest/resp3_features.html
 - Repo: https://github.com/redis/redis-py

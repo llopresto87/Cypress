@@ -9,6 +9,7 @@
 #                     [--comment-language <bcp47>] [--legal-corpus yes|no]
 #                     [--legal-jurisdiction <iso-3166-1-alpha-2>]
 #                     [--expertise propose|<corpus-id>[,<corpus-id>...]]
+#                     [--kernel-mode replace|compose]
 #
 # <tool> is one of:
 #   claude-code        — Drop CLAUDE.md + .claude/ into the project.
@@ -73,12 +74,22 @@
 #                        library-corpus/npm/rxjs): library pages at
 #                        docs/graph/libraries/<name>.md and tool pages at
 #                        docs/graph/tools/<name>.md under a provenance line, a
-#                        stack-keyed skill page as the node
+#                        skill page, stack-keyed (skill-corpus/<key>/<name>)
+#                        or generic (skill-corpus/<name>), as the node
 #                        docs/graph/skills/<name>.md with `origin:
 #                        corpus@<seed version>`. The list is recorded in
 #                        .cypress/seed.json (`expertise`); every later install
 #                        refreshes the recorded pages nobody edited and names
 #                        each page it leaves alone for graft Phase 4.
+#   --kernel-mode compose  Keep the plant's own AGENTS.md as its instruction
+#                        hub: it is never written, CLAUDE.md imports it on its
+#                        first line and then carries the seed kernel. The cost:
+#                        a host that reads only AGENTS.md (opencode, Prime
+#                        Agent, Codex, Copilot) never sees the seed kernel.
+#                        Recorded in .cypress/seed.json (`kernel_mode`) and kept
+#                        by every later install; `--kernel-mode replace`, the
+#                        default, returns to one shared kernel body, filing the
+#                        hub's rules for migration.
 #   --print-config       For `codex`: print the config.toml lines with
 #                         resolved paths instead of editing anything.
 #   --check              Verify the generated views are in sync; write
@@ -86,7 +97,8 @@
 #                         checks the `github-copilot` .github/ views, and the
 #                         `opencode` agent projections of a plant whose record
 #                         carries opencode, model: lines included. It runs
-#                         each wired context hook once, and names each agent
+#                         each wired context hook once, on the interpreter
+#                         the hook names, and names each agent
 #                         or skill in a harness directory with no graph home
 #                         (RETIRED, ORPHAN), and each origin: seed protocol or
 #                         method node whose seed file is gone (RETIRED),
@@ -95,6 +107,11 @@
 #   -h, --help           Show this help.
 #
 # The last step runs the placed docs/graph/source-index.py build and prints its report (advice).
+#
+# Python: every placed script and every wired hook runs on the seed's Python floor
+# (PYTHON_FLOOR below). The installer runs on `python3` when it is at the floor,
+# else on the first python3.<n> at or above it on PATH, and writes that name
+# into each hook command; with none on PATH it refuses before writing anything.
 #
 # The seed system's source files are not modified. The installer
 # copies them by default so project edits never write back into the
@@ -121,6 +138,10 @@ TOOLS=()
 TRACK_RECREATION=0
 PRIOR_INSTALL=0
 RECREATED_NODES=()
+# Every backup this run made (place_file, place_kernel's sibling, the retired
+# Copilot hooks), for the closing list report_backups prints (SPEC-0001
+# BACKUPS_LISTED_BY_DATE).
+BACKUPS_MADE=()
 
 # --- helpers ---------------------------------------------------------
 
@@ -131,6 +152,39 @@ warn() { printf "[seed] WARNING: %s\n" "$*" >&2; }
 # like warn, so `codex --print-config` keeps a stdout a user can paste.
 deprecated() {
     printf "[seed] DEPRECATED: %s is a frozen host (docs/decisions/adr-0009-host-support-tiers.md). It still installs and gets no new features.\n" "$1" >&2
+}
+
+# --- the Python floor --------------------------------------------------------
+# Every script this installer places and every hook it wires runs on one
+# declared minimum Python. The value's one home is SPEC-0005 §5 "Compatibility";
+# this is the copy the installer resolves interpreters by, and
+# tests/test-tool-help.sh holds the two equal and runs every shipped script on
+# an interpreter at the floor.
+#
+# The floor is above what some systems ship as `python3` (stock macOS has 3.9),
+# so the name `python3` alone proves nothing. resolve_python takes `python3`
+# when it is at the floor, else the first `python3.<n>` on PATH at or above it,
+# and the installer runs its own embedded Python on that interpreter
+# (run_python) and writes its NAME into every hook command it wires
+# (place_hook), so a session's hooks run where the install ran. A bare command
+# name, never an absolute path: the hook configs are shared with the team, and
+# a path from one machine is wrong on the next. With none on PATH the install
+# refuses before the first write (SPEC-0001 NO_INTERPRETER_AT_THE_FLOOR).
+PYTHON_FLOOR="3.14"
+PYTHON=""
+run_python() { "$PYTHON" "$@"; }
+resolve_python() {
+    local major="${PYTHON_FLOOR%%.*}" minor="${PYTHON_FLOOR#*.}" n=0 cand
+    local cands="python3"
+    while [[ $n -lt 10 ]]; do cands+=" python$major.$((minor + n))"; n=$((n + 1)); done
+    for cand in $cands; do
+        command -v "$cand" >/dev/null 2>&1 || continue
+        "$cand" -c "import sys; sys.exit(0 if sys.version_info >= ($major, $minor) else 1)" \
+            >/dev/null 2>&1 || continue
+        PYTHON="$cand"
+        return 0
+    done
+    die "no Python $PYTHON_FLOOR or newer on PATH (as python3 or python$PYTHON_FLOOR); install one, put it on PATH and re-run. Nothing has been written."
 }
 
 # One scratch directory for the whole run, reclaimed on every exit path.
@@ -187,7 +241,7 @@ stamp_field() {
     # OBJECT by rename, so the referent is never written — but reading it would
     # let an outside file decide what this plant's record says.
     [[ -f "$1" && ! -L "$1" ]] || return 0
-    STAMP_PATH="$1" STAMP_KEY="$2" python3 - <<'PYEOF' 2>/dev/null || true
+    STAMP_PATH="$1" STAMP_KEY="$2" run_python - <<'PYEOF' 2>/dev/null || true
 import json, os, sys
 try:
     with open(os.environ["STAMP_PATH"], encoding="utf-8") as fh:
@@ -219,7 +273,7 @@ preflight_state_record() {
     # would refuse an install because of a file the plant does not own.
     [[ -f "$stamp" && ! -L "$stamp" ]] || return 0
     local problem
-    problem="$(STAMP_PATH="$stamp" python3 - <<'PYEOF'
+    problem="$(STAMP_PATH="$stamp" run_python - <<'PYEOF'
 import json, os
 path = os.environ["STAMP_PATH"]
 try:
@@ -247,7 +301,7 @@ if not isinstance(data, dict):
     # owned keys have the wrong type, is refused.
     raise SystemExit(0)
 for key in ("seed", "version", "tools", "legal_corpus", "legal_jurisdiction",
-            "installed_at", "installed_from"):
+            "installed_at", "installed_from", "kernel_mode"):
     if key in data and not isinstance(data[key], str):
         print(f"records {key!r} as a JSON {type(data[key]).__name__}, "
               f"not a string")
@@ -417,6 +471,7 @@ place_file() {
         # implemented that way in place_kernel's sibling branch.)
         local bak; bak="$(bak_path "$dest")"
         mv "$dest" "$bak"
+        BACKUPS_MADE+=("$bak")
         [[ $FORCE -eq 1 ]] || warn "backed up existing $dest -> $bak"
     fi
     case "$LINK_MODE" in
@@ -449,11 +504,20 @@ place_file() {
 # safely: the content is staged, copied to a sibling of the destination, and
 # renamed onto it. rename(2) replaces the destination NAME, so a destination
 # symlinked outside the target is replaced rather than written through.
+#
+# SOURCE is opened on descriptor 3 before anything else runs, and copied from
+# there. Callers hand it a process substitution (`<(...)`), and bash 3.2, the
+# system bash on macOS, closes that descriptor once the function runs its
+# first external command: when ensure_dir had to `mkdir` the destination's
+# directory, `cp /dev/fd/63` failed with "Bad file descriptor" and the install
+# died (reproduced under 3.2.57; bash 5 keeps it open).
 place_state() {
     local src="$1" dest="$2" tmp
+    exec 3<"$src"
     ensure_dir "$(dirname "$dest")"
     tmp="$(mktemp "$(dirname "$dest")/.$(basename "$dest").XXXXXX")"
-    cp "$src" "$tmp"
+    cp /dev/stdin "$tmp" <&3
+    exec 3<&-
     mv -f "$tmp" "$dest"
 }
 
@@ -484,6 +548,49 @@ place_generated() {
     LINK_MODE="copy"
     place_file "$src" "$dest"
     LINK_MODE="$saved"
+}
+
+# place_hook SOURCE DEST
+# A file that wires a hook: the Claude Code settings, the Copilot hook configs,
+# the Prime Agent extensions. The seed spells their interpreter `python3`; when
+# this run resolved another name (resolve_python), the file is rendered with
+# that name in each hook command (render_hook_python) and placed as generated
+# content, a real file in both link modes, because its bytes are this run's and
+# not the seed's. When the name is `python3` the seed file is placed as it is.
+place_hook() {
+    local src="$1" dest="$2" staged
+    if [[ "$PYTHON" == python3 ]]; then
+        place_file "$src" "$dest"
+        return
+    fi
+    staged="$STAGE/hooks/${dest#"$PROJECT_DIR"/}"
+    place_state <(render_hook_python "$src") "$staged"
+    place_generated "$staged" "$dest"
+}
+
+# render_hook_python SOURCE: print SOURCE with this run's interpreter in place
+# of `python3` where a hook is run: in a JSON hook config, the interpreter word
+# of each "command" line; in a Prime Agent extension, its PYTHON constant. It
+# refuses a source with no such place, so a renamed seed file fails here rather
+# than wiring a hook on the wrong interpreter.
+render_hook_python() {
+    HOOK_PYTHON="$PYTHON" run_python - "$1" <<'PYEOF'
+import os, re, sys
+src, want = sys.argv[1], os.environ["HOOK_PYTHON"]
+text = open(src, encoding="utf-8").read()
+if src.endswith(".ts"):
+    new, n = re.subn(r'^const PYTHON = "python3";$', f'const PYTHON = "{want}";', text, flags=re.M)
+else:
+    lines, n = text.split("\n"), 0
+    for i, line in enumerate(lines):
+        if '"command":' in line:
+            lines[i], k = re.subn(r"(?<![\w.-])python3(?= )", want, line)
+            n += k
+    new = "\n".join(lines)
+if not n:
+    sys.exit(f"ERROR: {src} names no hook interpreter to set")
+sys.stdout.write(new)
+PYEOF
 }
 
 # record_instruction_migration KERNEL_PATH BACKUP_PATH
@@ -618,6 +725,21 @@ earlier_seed_kernel() {
     grep -qxF -- "$blob" <<<"$SEED_KERNEL_BLOBS"
 }
 
+# seed_kernel_body FILE
+# Succeeds when FILE carries nothing the plant wrote: the current seed kernel,
+# an earlier one, or either of them under compose mode's one import line
+# (COMPOSE_IMPORT and a blank line, place_composed_kernel). Replacing such a body
+# is a fast-forward; filing it for docs-librarian would put a body the seed
+# wrote in front of the librarian as if a person had.
+COMPOSE_IMPORT="@AGENTS.md"
+seed_kernel_body() {
+    local f="$1" k="$SEED_ROOT/core/AGENTS.md"
+    cmp -s "$k" "$f" && return 0
+    earlier_seed_kernel "$f" && return 0
+    [[ "$(head -n 1 "$f" 2>/dev/null)" == "$COMPOSE_IMPORT" ]] || return 1
+    cmp -s "$k" <(tail -n +3 "$f") || earlier_seed_kernel <(tail -n +3 "$f")
+}
+
 # sweep_orphaned_instruction_backups
 # A kernel backup with no ledger entry is a project's own instructions, on
 # disk, with nothing anywhere saying they exist. It happened once for a real
@@ -638,13 +760,57 @@ sweep_orphaned_instruction_backups() {
         # replaced kernel body — a false claim put in front of the librarian as
         # if it were real work.
         [[ "$f" =~ \.bak-[0-9]{8}-[0-9]{6}$ ]] || continue
-        # A backup of the seed kernel itself carries nothing the plant wrote.
-        cmp -s "$SEED_ROOT/core/AGENTS.md" "$f" && continue
-        # Nor does a backup of an earlier seed kernel.
-        earlier_seed_kernel "$f" && continue
+        # A backup of a body the seed wrote (its kernel, an earlier one, or
+        # compose mode's import of the hub before either) carries nothing the
+        # plant wrote.
+        seed_kernel_body "$f" && continue
         local kernel="${f%%.bak-*}"
         record_instruction_migration "$kernel" "$f"
     done
+}
+
+# --- the two kernel modes ----------------------------------------------------
+# replace (the default): the seed kernel OWNS the repo-root instruction files.
+#   place_kernel below keeps ONE kernel body; a body the plant wrote there is
+#   backed up and filed for migration (record_instruction_migration).
+# compose (`--kernel-mode compose`, the owner's opt-in, recorded in the stamp's
+#   `kernel_mode`): the plant's own AGENTS.md is an instruction hub that stays
+#   canonical. The installer never writes it; CLAUDE.md is generated as Claude
+#   Code's import of the hub (COMPOSE_IMPORT) and then the seed kernel, so a
+#   Claude Code session reads the team's rules first and the seed's process
+#   layer after them, with nothing copied. The cost, stated on every run: a
+#   host that reads only AGENTS.md (opencode, Prime Agent, Codex, Copilot)
+#   never sees the seed kernel, because AGENTS.md has no import syntax.
+#   preflight_kernel_mode refuses a hub that cannot be composed before the
+#   first write (SPEC-0001 HUB_NOT_COMPOSABLE).
+KERNEL_MODE=""
+HUB_COST_TOLD=0
+place_composed_kernel() {
+    local dest="$1" staged filed=0
+    case "$(basename "$dest")" in
+        CLAUDE.md)
+            staged="$(stage kernel/CLAUDE.md)"
+            place_state <(printf '%s\n\n' "$COMPOSE_IMPORT"; cat "$SEED_ROOT/core/AGENTS.md") "$staged"
+            # A CLAUDE.md the plant wrote is migration work, as in replace mode;
+            # a body the seed wrote (either mode's, any version) is not.
+            if [[ -f "$dest" && ! -L "$dest" ]] && ! cmp -s "$staged" "$dest" \
+               && ! seed_kernel_body "$dest"; then
+                filed=1
+            fi
+            place_generated "$staged" "$dest"
+            [[ $filed -eq 1 ]] && record_instruction_migration "$dest" \
+                "$(ls -1dt "$dest".bak-* 2>/dev/null | head -1)"
+            log "kernel: CLAUDE.md imports the instruction hub AGENTS.md, then carries the seed kernel (compose mode)"
+            ;;
+        *)
+            log "kernel: AGENTS.md is the plant's instruction hub and is left as it is (compose mode)"
+            ;;
+    esac
+    if [[ $HUB_COST_TOLD -eq 0 ]]; then
+        HUB_COST_TOLD=1
+        log "  compose mode's cost: a host that reads only AGENTS.md (opencode, Prime Agent,"
+        log "  Codex, Copilot) never sees the seed kernel; only Claude Code reads both."
+    fi
 }
 
 # place_kernel DEST
@@ -661,6 +827,10 @@ sweep_orphaned_instruction_backups() {
 # file degrades to an independent copy (identical at install; may drift on edit).
 place_kernel() {
     local dest="$1" name sibling seed_kernel
+    if [[ "$KERNEL_MODE" == compose ]]; then
+        place_composed_kernel "$dest"
+        return
+    fi
     name="$(basename "$dest")"
     seed_kernel="$SEED_ROOT/core/AGENTS.md"
     case "$name" in
@@ -728,10 +898,11 @@ place_kernel() {
             cmp -s "$seed_kernel" "$realfile" 2>/dev/null || deviated=1
         fi
     fi
-    # A body that differs only by being an EARLIER seed kernel carries nothing
-    # the plant wrote: it is fast-forwarded with its backup, and not filed.
+    # A body that differs only by being an EARLIER seed kernel, or compose
+    # mode's body (a plant leaving compose mode), carries nothing the plant
+    # wrote: it is fast-forwarded with its backup, and not filed.
     local earlier=0
-    if [[ $deviated -eq 1 ]] && earlier_seed_kernel "$realfile"; then
+    if [[ $deviated -eq 1 ]] && seed_kernel_body "$realfile"; then
         deviated=0; earlier=1
     fi
     place_file "$seed_kernel" "$realfile"
@@ -751,7 +922,7 @@ place_kernel() {
         warn "  any recorded deviation on the kernel body is NOT in the new body."
         record_instruction_migration "$realfile" "$_bak"
     elif [[ $earlier -eq 1 ]]; then
-        log "kernel: $(basename "$realfile") held an earlier seed kernel; fast-forwarded, previous body in $(ls -1dt "$realfile".bak-* 2>/dev/null | head -1)"
+        log "kernel: $(basename "$realfile") held a body the seed wrote (an earlier seed kernel, or compose mode's); fast-forwarded, previous body in $(ls -1dt "$realfile".bak-* 2>/dev/null | head -1)"
     fi
     log "kernel: $(basename "$realfile") is current with the seed kernel"
 
@@ -772,14 +943,15 @@ place_kernel() {
     if [[ -e "$other" || -L "$other" ]] && ! cmp -s "$seed_kernel" "$other"; then
         local bak2; bak2="$(bak_path "$other")"
         mv "$other" "$bak2"
+        BACKUPS_MADE+=("$bak2")
         [[ $FORCE -eq 1 ]] || warn "backed up existing $other -> $bak2"
         # The SIBLING kernel file carries a body too, and when a project had
         # both CLAUDE.md and AGENTS.md with different content, only the first
         # was recorded as migration work. The second survived as a .bak and
         # vanished from the ledger — the precise failure this feature exists to
         # prevent, for exactly one of the two files.
-        if earlier_seed_kernel "$bak2"; then
-            log "kernel: $(basename "$other") held an earlier seed kernel; fast-forwarded, previous body in $bak2"
+        if seed_kernel_body "$bak2"; then
+            log "kernel: $(basename "$other") held a body the seed wrote (an earlier seed kernel, or compose mode's); fast-forwarded, previous body in $bak2"
         else
             record_instruction_migration "$other" "$bak2"
         fi
@@ -886,7 +1058,7 @@ project_skills() {
 # "<agents with no model: line> <agents>". Values are read with the one
 # frontmatter reader's scalar rule; -B keeps its bytecode out of the seed.
 render_opencode_agents() {
-    python3 -B - "$PROJECT_DIR/docs/graph" "$1" "$SEED_ROOT/templates/knowledge-graph" <<'PYEOF'
+    run_python -B - "$PROJECT_DIR/docs/graph" "$1" "$SEED_ROOT/templates/knowledge-graph" <<'PYEOF'
 import os, re, sys
 graph, dest, reader = sys.argv[1:4]
 sys.path.insert(0, reader)
@@ -1111,10 +1283,11 @@ corpus_pages() {
 # place_legal_corpus: the seed's legal-corpus/, placed WHOLE under the plant's
 # docs/graph/legal/corpus/ on the owner's explicit `--legal-corpus yes`.
 #
-# Whole, and the word is load-bearing. `agent.legal` runs without WebSearch,
-# WebFetch or Bash: this corpus plus the plant's own legal leaf is the ONLY law
-# it can reach, and its charter turns a corpus gap into a refusal rather than a
-# reconstructed citation. That design is what makes a PARTIAL corpus worse than
+# Whole, and the word is load-bearing. `agent.legal` runs without WebSearch or
+# WebFetch, and its shell runs only the routing and lookup tools: this corpus
+# plus the plant's own legal leaf is the ONLY law it can reach, and its charter
+# turns a corpus gap into a refusal rather than a reconstructed citation. That
+# design is what makes a PARTIAL corpus worse than
 # none — a missing page reads to the analyst exactly like an instrument that
 # does not exist, so a well-meaning import filter silently converts "nobody
 # copied this" into "this does not apply", which is the one answer the refusal
@@ -1153,8 +1326,9 @@ place_legal_corpus() {
  missing page indistinguishable from an instrument that does not apply"
     fi
     if [[ "$have" -gt "$want" ]]; then
-        # NAME them. `agent.legal` runs without WebSearch or Bash and reads this
-        # directory as the only law it can reach, so a stray note dropped here is
+        # NAME them. `agent.legal` runs without WebSearch or WebFetch, its shell
+        # runs only the routing and lookup tools, and it reads this directory as
+        # the only law it can reach, so a stray note dropped here is
         # announced as "a plant ingest" and then read as an INSTRUMENT. Saying
         # how many is not enough; the owner has to be able to see which.
         log "  docs/graph/legal/corpus/ carries $((have - want)) page(s) beyond the"
@@ -1179,7 +1353,8 @@ place_legal_corpus() {
     # legal-corpus/_schema.md — the contract a corpus page must satisfy — and no
     # instrument to check anything against it, while seven other linters did
     # travel. agent.legal reads this directory as the only law it can reach and
-    # runs without WebSearch or Bash, so a plant that ingests its own national
+    # runs without WebSearch or WebFetch, its shell running only the routing and
+    # lookup tools, so a plant that ingests its own national
     # statute had the contract, the reader, and no way to tell a malformed entry
     # from a good one. An entry missing `verified` still LOOKS like an entry, so
     # the refusal that discipline depends on never fires.
@@ -1239,7 +1414,7 @@ EXPERTISE_PLAN=()
 EXPERTISE_DONE=0
 expertise_py() {
     SEED_ROOT="$SEED_ROOT" PROJECT_DIR="$PROJECT_DIR" SEED_VERSION="${SEED_VERSION:-}" \
-    EXPERTISE_LIST="${EXPERTISE:-}" python3 -B - "$@" <<'PYEOF'
+    EXPERTISE_LIST="${EXPERTISE:-}" run_python -B - "$@" <<'PYEOF'
 import hashlib, json, os, re, sys
 from pathlib import Path
 
@@ -1248,6 +1423,15 @@ version = os.environ["SEED_VERSION"]
 mode = sys.argv[1]
 HOMES = {"library-corpus": "libraries", "tool-corpus": "tools", "skill-corpus": "skills"}
 ID = re.compile(r"^(library-corpus|skill-corpus|tool-corpus)/([A-Za-z0-9][A-Za-z0-9._-]*)/([A-Za-z0-9][A-Za-z0-9._-]*)$")
+# A generic procedure has no stack key: skill-corpus/<name>, the same groups
+# with an empty key, so every reader below takes either form alike.
+FLAT_SKILL = re.compile(r"^(skill-corpus)/()([A-Za-z0-9][A-Za-z0-9._-]*)$")
+
+
+def parse_id(cid):
+    return ID.match(cid) or FLAT_SKILL.match(cid)
+
+
 HEX = re.compile(r"^[0-9a-f]{64}$")
 FRONTMATTER = re.compile(r"^---\n(.*?\n)---(?:\n|$)", re.S)
 
@@ -1257,7 +1441,7 @@ class Refused(Exception):
 
 
 def dest(cid):
-    m = ID.match(cid)
+    m = parse_id(cid)
     return f"docs/graph/{HOMES[m.group(1)]}/{m.group(3)}.md"
 
 
@@ -1303,12 +1487,13 @@ def why_not(cid):
     """Why a listed id cannot be placed, or None."""
     if cid.startswith("/") or ".." in cid.split("/"):
         return f"{cid}: holds '..' or starts with '/'; an id is a seed path such as library-corpus/<key>/<name>"
-    if not ID.match(cid):
+    if not parse_id(cid):
         return (f"{cid}: names no page under library-corpus/, skill-corpus/ or tool-corpus/ "
-                f"(an id is <corpus>/<key>/<name>, without .md; the legal and agent corpora are not placed this way)")
+                f"(an id is <corpus>/<key>/<name>, or skill-corpus/<name> for a generic procedure, "
+                f"without .md; the legal and agent corpora are not placed this way)")
     if not source(cid).is_file():
         return f"{cid}: the seed carries no {cid}.md"
-    name = ID.match(cid).group(3)
+    name = parse_id(cid).group(3)
     if cid.startswith("skill-corpus/"):
         if not FRONTMATTER.match(source(cid).read_text(encoding="utf-8", errors="replace")):
             return f"{cid}: the page carries no node frontmatter, so it cannot be placed as a skill node"
@@ -1336,7 +1521,7 @@ def recorded_entries():
     out, seen = [], set()
     for e in record:
         ok = (isinstance(e, dict) and all(isinstance(e.get(k), str) for k in ("id", "path", "sha256"))
-              and ID.match(e["id"]) and ".." not in e["id"].split("/")
+              and parse_id(e["id"]) and ".." not in e["id"].split("/")
               and e["path"] == dest(e["id"]) and HEX.match(e["sha256"]) and e["id"] not in seen)
         if not ok:
             raise Refused(f".cypress/seed.json holds an expertise entry that is not "
@@ -1615,7 +1800,7 @@ fill_plant_facts() {
     PLANT_ENV="${PLANT_ENV:-}" PLANT_ATTR="${PLANT_ATTR:-}" \
         PLANT_DLANG="${PLANT_DLANG:-}" PLANT_CLANG="${PLANT_CLANG:-}" \
         PROJECT_DIR="$PROJECT_DIR" \
-        python3 - "$idx" "$SEED_ROOT/templates/knowledge-graph/index.md" \
+        run_python - "$idx" "$SEED_ROOT/templates/knowledge-graph/index.md" \
         > "$out_log" <<'PYEOF' || die "could not write the plant: block into $idx"
 import os, re, sys
 from pathlib import Path
@@ -1777,6 +1962,7 @@ retire_copilot_hook_duplicates() {
         [[ -e "$dest" || -L "$dest" ]] || continue
         bak="$(bak_path "$dest")"
         mv "$dest" "$bak" || die "could not retire $dest"
+        BACKUPS_MADE+=("$bak")
         retired=$((retired + 1))
         log "  retired .github/hooks/$f -> $(basename "$bak")"
     done
@@ -1837,7 +2023,7 @@ install_claude_code() {
     generate_slash_commands "$PROJECT_DIR/.claude/commands"
     # Settings file is placed (so the project can edit it); an edited copy is
     # backed up before replacement — a graft never destroys a plant's hook config.
-    place_file "$SEED_ROOT/integrations/claude-code/settings.json" "$PROJECT_DIR/.claude/settings.json"
+    place_hook "$SEED_ROOT/integrations/claude-code/settings.json" "$PROJECT_DIR/.claude/settings.json"
     retire_copilot_hook_duplicates
     # Progressive-discovery enforcement hook (referenced by settings.json).
     place_file "$SEED_ROOT/integrations/claude-code/route-hook.py" \
@@ -1928,7 +2114,7 @@ install_codex() {
     # TOML basic strings also need `\` and `"` escaped, which sed never did.
     local snippet="$PROJECT_DIR/.codex/codex-config-snippet.toml" tmp
     tmp="$(stage "codex-config-snippet.toml")"
-    PROJECT_DIR="$PROJECT_DIR" python3 - \
+    PROJECT_DIR="$PROJECT_DIR" run_python - \
         "$SEED_ROOT/integrations/codex/config.toml.example" "$tmp" <<'PYEOF'
 import os, sys
 src, dst = sys.argv[1], sys.argv[2]
@@ -2008,7 +2194,7 @@ install_github_copilot() {
         # the run's scratch dir and then PLACED, so a plant edit is backed up
         # and a destination symlink is replaced rather than written through.
         tmp="$(stage "copilot-agent-$name.md")"
-        python3 - "$f" "$tmp" <<'PYEOF'
+        run_python - "$f" "$tmp" <<'PYEOF'
 import re, sys
 src, dst = sys.argv[1], sys.argv[2]
 text = open(src).read()
@@ -2061,7 +2247,7 @@ PYEOF
     while IFS= read -r name; do
         f="$SEED_ROOT/protocols/$name.md"
         tmp="$(stage "copilot-prompt-$name.md")"
-        python3 - "$f" "$tmp" <<'PYEOF'
+        run_python - "$f" "$tmp" <<'PYEOF'
 import re, sys
 src, dst = sys.argv[1], sys.argv[2]
 text = open(src).read()
@@ -2110,7 +2296,7 @@ PYEOF
         case "$(basename "$f")" in _*|index.md|README.md) continue ;; esac
         local name tmp; name="$(basename "$f" .md)"
         tmp="$(stage "copilot-skill-$name.md")"
-        python3 - "$f" "$tmp" <<'PYEOF'
+        run_python - "$f" "$tmp" <<'PYEOF'
 import re, sys
 src, dst = sys.argv[1], sys.argv[2]
 text = open(src).read()
@@ -2154,11 +2340,11 @@ PYEOF
         ensure_dir "$PROJECT_DIR/.github/hooks"
         place_file "$SEED_ROOT/integrations/claude-code/route-hook.py" \
                    "$PROJECT_DIR/.github/hooks/route-hook.py"
-        place_file "$SEED_ROOT/integrations/github-copilot/hooks/route.json" \
+        place_hook "$SEED_ROOT/integrations/github-copilot/hooks/route.json" \
                    "$PROJECT_DIR/.github/hooks/route.json"
         place_file "$SEED_ROOT/integrations/claude-code/status-hook.py" \
                    "$PROJECT_DIR/.github/hooks/status-hook.py"
-        place_file "$SEED_ROOT/integrations/github-copilot/hooks/status.json" \
+        place_hook "$SEED_ROOT/integrations/github-copilot/hooks/status.json" \
                    "$PROJECT_DIR/.github/hooks/status.json"
         log "  .github/hooks/route.json + route-hook.py (enforce progressive discovery)"
         log "  .github/hooks/status.json + status-hook.py (status register at session start)"
@@ -2210,11 +2396,11 @@ install_prime_agent() {
     # Progressive-discovery enforcement (before_agent_start): runs route-hook.py
     # on every prompt. Copied so it is editable.
     ensure_dir "$PROJECT_DIR/.prime/agent/extensions"
-    place_file "$SEED_ROOT/integrations/prime-agent/route-extension.ts" \
+    place_hook "$SEED_ROOT/integrations/prime-agent/route-extension.ts" \
                "$PROJECT_DIR/.prime/agent/extensions/route-extension.ts"
     # Status register and code anchor once per session start, never in a child:
     # runs status-hook.py on the session events.
-    place_file "$SEED_ROOT/integrations/prime-agent/status-extension.ts" \
+    place_hook "$SEED_ROOT/integrations/prime-agent/status-extension.ts" \
                "$PROJECT_DIR/.prime/agent/extensions/status-extension.ts"
     # Settings — placed (so the project can edit it); an edited copy is backed up.
     place_file "$SEED_ROOT/integrations/prime-agent/settings.json" "$PROJECT_DIR/.prime/agent/settings.json"
@@ -2292,12 +2478,20 @@ while [[ $# -gt 0 ]]; do
         --legal-corpus)        LEGAL_CORPUS="$2"; shift 2 ;;
         --legal-jurisdiction)  LEGAL_JURISDICTION="$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')"; shift 2 ;;
         --expertise)           EXPERTISE="${2:-}"; EXPERTISE_GIVEN=1; shift $(( $# > 1 ? 2 : 1 )) ;;
+        --kernel-mode)         KERNEL_MODE_FLAG="${2:-}"; shift $(( $# > 1 ? 2 : 1 )) ;;
         -h|--help) usage 0 ;;
         *) die "unknown argument: $1 (try --help)" ;;
     esac
 done
 
 [[ ${#TOOLS[@]} -gt 0 ]] || die "no tool specified (try --help)"
+case "${KERNEL_MODE_FLAG-unset}" in
+    unset|replace|compose) ;;
+    *) die "--kernel-mode must be replace or compose (got: ${KERNEL_MODE_FLAG:-nothing})" ;;
+esac
+# Every later step runs its Python on the floor interpreter, so it is found
+# before the first of them and before the first write.
+resolve_python
 case "${PLANT_ENV:-}" in
     ""|ephemeral-test|staging|real-production|mixed) ;;
     *) die "--environment-class must be one of ephemeral-test | staging | real-production | mixed (got: $PLANT_ENV)" ;;
@@ -2357,9 +2551,9 @@ corpus_jurisdictions() {
 # tools/corpus-match.py's, run from the seed and never placed. A list is
 # validated by preflight_expertise below, before the first write.
 if [[ ${EXPERTISE_GIVEN:-0} -eq 1 ]]; then
-    [[ -n "${EXPERTISE:-}" ]] || die "--expertise wants 'propose' or a comma-separated list of corpus ids (library-corpus/<key>/<name>, skill-corpus/<key>/<name>, tool-corpus/<category>/<name>)"
+    [[ -n "${EXPERTISE:-}" ]] || die "--expertise wants 'propose' or a comma-separated list of corpus ids (library-corpus/<key>/<name>, skill-corpus/<key>/<name>, skill-corpus/<name>, tool-corpus/<category>/<name>)"
     if [[ "$EXPERTISE" == "propose" ]]; then
-        python3 -B "$SEED_ROOT/tools/corpus-match.py" "$PROJECT_DIR" --seed "$SEED_ROOT"
+        run_python -B "$SEED_ROOT/tools/corpus-match.py" "$PROJECT_DIR" --seed "$SEED_ROOT"
         exit $?
     fi
     [[ ${CHECK:-0} -eq 0 ]] || die "--expertise <ids> places pages and --check writes nothing; run them separately. (Nothing has been written.)"
@@ -2430,8 +2624,9 @@ elif [[ -d "$PROJECT_DIR/docs/graph/protocols" ]] \
      && [[ -n "$(find "$PROJECT_DIR/docs/graph/protocols" -name '*.md' -print -quit 2>/dev/null)" ]]; then
     PRIOR_INSTALL=1
     warn "this target carries docs/graph/protocols/ but no .cypress/seed.json."
-    warn "  Treating it as an existing plant whose record is missing (the seed's"
-    warn "  own .gitignore carries .cypress/, so a fresh clone arrives this way)."
+    warn "  Treating it as an existing plant whose record is missing (a .gitignore"
+    warn "  that ignores .cypress/ whole drops it from a fresh clone; the end of this"
+    warn "  run prints the lines that keep it tracked when this repository ignores it)."
     warn "  Owner decisions it recorded — the legal corpus and its jurisdiction —"
     warn "  cannot be recovered from disk; re-state them with their flags if they"
     warn "  applied."
@@ -2712,6 +2907,34 @@ preflight_destinations() {
 SEED_VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
                "$SEED_ROOT/manifest.json" | head -1)"
 [[ ${CHECK:-0} -eq 1 ]] || preflight_state_record
+
+# The kernel mode: this run's flag, else the mode the stamp records (the
+# owner's decision survives silence, DECISIONS_SURVIVE_SILENCE), else replace.
+case "${KERNEL_MODE_FLAG:-}" in
+    compose) KERNEL_MODE=compose ;;
+    replace) KERNEL_MODE="" ;;
+    *) [[ "$(stamp_field "$PROJECT_DIR/.cypress/seed.json" kernel_mode)" == compose ]] \
+           && KERNEL_MODE=compose ;;
+esac
+# preflight_kernel_mode — HUB_NOT_COMPOSABLE: compose keeps the plant's own
+# AGENTS.md canonical, so a hub that is absent, a link, or a body the seed wrote
+# is refused before the first write; composing over it would import nothing of
+# the plant's, or the kernel twice.
+preflight_kernel_mode() {
+    [[ "$KERNEL_MODE" == compose ]] || return 0
+    local hub="$PROJECT_DIR/AGENTS.md" why=""
+    if [[ -L "$hub" ]]; then
+        why="is a symbolic link; the hub is the plant's own file, kept as it is"
+    elif [[ ! -f "$hub" ]]; then
+        why="does not exist; compose mode keeps the plant's own AGENTS.md as its instruction hub (rules kept in CLAUDE.md move to AGENTS.md first)"
+    elif seed_kernel_body "$hub"; then
+        why="holds a body the seed wrote, not the plant's rules; restore the team's hub into it (an AGENTS.md.bak-* backup may hold it) or keep --kernel-mode replace"
+    fi
+    local from="--kernel-mode compose"
+    [[ -n "${KERNEL_MODE_FLAG:-}" ]] || from="compose mode (recorded as kernel_mode in .cypress/seed.json; --kernel-mode replace leaves it)"
+    [[ -z "$why" ]] || die "refusing $from: AGENTS.md $why. Nothing has been written."
+}
+[[ ${CHECK:-0} -eq 1 ]] || preflight_kernel_mode
 [[ ${CHECK:-0} -eq 1 ]] || preflight_expertise
 [[ ${CHECK:-0} -eq 1 ]] || preflight_destinations
 
@@ -2775,19 +2998,47 @@ report_recreated_nodes() {
 # code-anchor line or its not-checked line even when the status register is
 # absent or silent (SPEC-0003 STATUS_HOOK_RESETS_WITHOUT_REGISTER), so "printed
 # nothing" names a broken script, never a quiet plant. bound-hook.py, wired under
-# PreToolUse, is a guard and is not run. Returns 1 when any hook failed.
+# PreToolUse, is a guard and is not run. Each hook runs on the interpreter its
+# command or extension names (place_hook wrote it), so an interpreter this
+# machine lacks, or one below the Python floor, fails the check by name instead
+# of failing every session silently behind `|| true`. Returns 1 when any hook
+# failed.
 check_wired_hooks() {
-    python3 - "$PROJECT_DIR" <<'PY'
-import json, os, re, subprocess, sys
+    FLOOR="$PYTHON_FLOOR" run_python - "$PROJECT_DIR" <<'PY'
+import json, os, re, shutil, subprocess, sys
 from pathlib import Path
 
 root = Path(sys.argv[1])
+FLOOR = tuple(int(x) for x in os.environ["FLOOR"].split("."))
 PROMPT = "cypress install check: route this task"
 ENVELOPE = {"UserPromptSubmit": {"hook_event_name": "UserPromptSubmit", "prompt": PROMPT},
             "SessionStart": {"hook_event_name": "SessionStart", "source": "startup"}}
 ARGV = {"UserPromptSubmit": ["--prompt=" + PROMPT], "SessionStart": ["--source=startup"]}
 SCRIPT = re.compile(r"\$\{CLAUDE_PROJECT_DIR:-\$PWD\}/([^\"'\s;|&]+\.py)")
+RUNNER = re.compile(r"\bthen\s+([^\s\"';|&]+)\s+\"\$f\"")
+TS_RUNNER = re.compile(r'^const PYTHON = "([^"\s]+)";$', re.M)
 hooks, failed = [], 0
+usable = {}
+
+
+def interpreter_problem(name):
+    """Why the interpreter a hook names cannot run it here, or None."""
+    if name not in usable:
+        where = shutil.which(name)
+        if where is None:
+            usable[name] = f"names the interpreter {name}, which is not on this PATH"
+        else:
+            probe = subprocess.run([where, "-c", "import sys; print('%d.%d' % sys.version_info[:2])"],
+                                   capture_output=True, text=True, timeout=30)
+            got = probe.stdout.strip()
+            ok = probe.returncode == 0 and tuple(int(x) for x in got.split(".")) >= FLOOR \
+                if re.fullmatch(r"\d+\.\d+", got) else False
+            usable[name] = None if ok else (
+                f"names the interpreter {name}, which is below the Python floor "
+                f"{'.'.join(map(str, FLOOR))} ({got or 'no version'})")
+    return usable[name]
+
+
 for rel in (".claude/settings.json", ".github/hooks/route.json", ".github/hooks/status.json"):
     path = root / rel
     if not path.is_file():
@@ -2808,21 +3059,31 @@ for rel in (".claude/settings.json", ".github/hooks/route.json", ".github/hooks/
                 if m is None:
                     print(f"[seed] --check: {rel} {event} runs a command that names no plant script; not run")
                     continue
-                hooks.append((event, m.group(1), "stdin"))
+                runner = RUNNER.search(str(h.get("command", "")))
+                hooks.append((event, m.group(1), "stdin", runner.group(1) if runner else "python3"))
 for ext, event, script in (("route-extension.ts", "UserPromptSubmit", "route-hook.py"),
                            ("status-extension.ts", "SessionStart", "status-hook.py")):
-    if (root / ".prime/agent/extensions" / ext).is_file():
-        hooks.append((event, ".prime/agent/hooks/" + script, "argv"))
+    path = root / ".prime/agent/extensions" / ext
+    if path.is_file():
+        runner = TS_RUNNER.search(path.read_text(encoding="utf-8", errors="replace"))
+        hooks.append((event, ".prime/agent/hooks/" + script, "argv",
+                      runner.group(1) if runner else "python3"))
 
 env = dict(os.environ, CLAUDE_PROJECT_DIR=str(root), PYTHONDONTWRITEBYTECODE="1")
-for event, script, mode in hooks:
+for event, script, mode, interpreter in hooks:
     name = f"hook {event} {script}"
     if not (root / script).is_file():
         print(f"[seed] WARNING: --check: {name} is wired but the script is missing; "
               f"re-run install.sh to restore it", file=sys.stderr)
         failed = 1
         continue
-    argv = [sys.executable, str(root / script)] + (ARGV[event] if mode == "argv" else [])
+    problem = interpreter_problem(interpreter)
+    if problem:
+        print(f"[seed] WARNING: --check: {name} {problem}; re-run install.sh on a PATH "
+              f"that carries a Python at the floor", file=sys.stderr)
+        failed = 1
+        continue
+    argv = [shutil.which(interpreter), str(root / script)] + (ARGV[event] if mode == "argv" else [])
     stdin = "" if mode == "argv" else json.dumps(ENVELOPE[event])
     try:
         r = subprocess.run(argv, input=stdin, capture_output=True, text=True,
@@ -2858,7 +3119,7 @@ PY
 check_harness_homes() {
     [[ -d "$PROJECT_DIR/docs/graph" ]] || return 0
     local out rc=0
-    out="$(python3 -B "$SEED_ROOT/tools/graft-audit.py" "$PROJECT_DIR" "$SEED_ROOT" --harness 2>&1)" || rc=$?
+    out="$(run_python -B "$SEED_ROOT/tools/graft-audit.py" "$PROJECT_DIR" "$SEED_ROOT" --harness 2>&1)" || rc=$?
     if [[ $rc -ne 0 ]]; then
         warn "--check could not classify the harness entries (exit $rc):"
         printf '%s\n' "$out" | sed 's/^/    /' >&2
@@ -3009,6 +3270,10 @@ agent_projection_for() {
 }
 
 
+# The stamp keys an earlier seed's graft wrote by hand and no seed reads now:
+# the date of a graft, the version it grafted from, the step that wrote them,
+# and the seed's own name. `installed_from` and `version` carry what they meant.
+RETIRED_STAMP_KEYS="grafted base by name"
 write_seed_stamp() {
     local stamp="$PROJECT_DIR/.cypress/seed.json" version tmp
     version="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
@@ -3034,7 +3299,7 @@ write_seed_stamp() {
     local not_an_object=0
     if [[ -f "$stamp" && ! -L "$stamp" ]]; then
         local shape_rc=0
-        python3 -c 'import json, sys
+        run_python -c 'import json, sys
 sys.exit(0 if isinstance(json.load(open(sys.argv[1], encoding="utf-8")), dict) else 3)' \
             "$stamp" >/dev/null 2>&1 || shape_rc=$?
         [[ $shape_rc -eq 3 ]] && not_an_object=1
@@ -3049,10 +3314,11 @@ sys.exit(0 if isinstance(json.load(open(sys.argv[1], encoding="utf-8")), dict) e
     # the block below writes; anything else is carried, never interpreted.
     local carried=""
     if [[ -f "$stamp" && ! -L "$stamp" ]]; then
-        carried="$(STAMP_PATH="$stamp" python3 - <<'PYEOF' 2>/dev/null || true
+        carried="$(STAMP_PATH="$stamp" run_python - <<'PYEOF' 2>/dev/null || true
 import json, os, sys
 OWNED = {"seed", "version", "installed_at", "installed_from", "tools",
-         "legal_corpus", "legal_jurisdiction", "agent_projections", "expertise"}
+         "legal_corpus", "legal_jurisdiction", "agent_projections", "expertise",
+         "kernel_mode"}
 with open(os.environ["STAMP_PATH"], encoding="utf-8") as fh:
     data = json.load(fh)
 if isinstance(data, dict):
@@ -3114,7 +3380,7 @@ PYEOF
     # plant. Ask the parser instead of guessing from field emptiness.
     local stamp_ok=1
     if [[ -f "$stamp" ]]; then
-        python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$stamp" \
+        run_python -c 'import json,sys; json.load(open(sys.argv[1]))' "$stamp" \
             >/dev/null 2>&1 || stamp_ok=0
     fi
     # A warning was not enough, and the comment above claims this case is
@@ -3166,6 +3432,8 @@ PYEOF
         printf '  "tools": "%s",\n' "${tools[*]}"
         printf '  "legal_corpus": "%s",\n' "$corpus"
         printf '  "legal_jurisdiction": "%s",\n' "$juris"
+        # The owner's opt-in to compose mode; absent in replace mode, the default.
+        [[ "$KERNEL_MODE" == compose ]] && printf '  "kernel_mode": "compose",\n'
         printf '  "agent_projections": [\n'
         local proj sep=""
         for t in "${tools[@]}"; do
@@ -3213,6 +3481,20 @@ PYEOF
         place_state "$tmp" "$stamp"
     fi
     log "  .cypress/seed.json     (seed stamp: cypress $version — commit it)"
+    # Keys an earlier seed's graft wrote into the stamp by hand, which no seed
+    # reads now (RETIRED_STAMP_KEYS_NAMED_AND_KEPT). They are carried like every
+    # key the installer does not own, because a plant may read one of them; the
+    # run names them, so two records of a plant's base cannot sit side by side
+    # unseen, and deleting them stays the owner's act.
+    local retired
+    retired="$(STAMP_PATH="$stamp" RETIRED="$RETIRED_STAMP_KEYS" run_python -c 'import json, os
+d = json.load(open(os.environ["STAMP_PATH"], encoding="utf-8"))
+print(", ".join(k for k in sorted(os.environ["RETIRED"].split()) if isinstance(d, dict) and k in d))' \
+        2>/dev/null)" || retired=""
+    if [[ -n "$retired" ]]; then
+        log "  .cypress/seed.json carries key(s) an earlier seed wrote and no seed reads now: $retired."
+        log "    Kept as they are; deleting them is the owner's call, once nothing of the plant's reads them."
+    fi
     # The whole list of this run's re-created nodes, written by every run that
     # writes the stamp, so it always describes that run: a run that re-created
     # nothing leaves the header alone. The console notice stops at ten paths;
@@ -3230,7 +3512,7 @@ write_seed_stamp
 # notices, so a build cannot leave a file unplaced and its report is read where
 # the install ends. A re-install or a graft's apply runs it too, because the
 # tool, a repository's HEAD or the plant's config may have moved the cache key.
-# The placed copy runs from the plant root by this run's python3 in isolated
+# The placed copy runs from the plant root on this run's floor interpreter in isolated
 # mode (-I keeps every docs/graph/ file off the module path, -B writes no
 # bytecode), stdin closed, bounded by Python's subprocess timeout (macOS has no
 # `timeout`). The build alone decides what it writes; the installer writes and
@@ -3242,7 +3524,7 @@ INSTALL_BUILD_HEAD='source index build (advice, never a failure of the install; 
 INSTALL_BUILD_FAILED='source index: the build did not finish (%s); the install is complete. Run from the plant root: python3 docs/graph/source-index.py build'
 build_source_index() {
     local report rc=0 status body why line
-    report="$(BUILD_DIR="$PROJECT_DIR" BUILD_TIMEOUT="$INSTALL_BUILD_TIMEOUT" python3 -I -B - 2>/dev/null <<'PYEOF'
+    report="$(BUILD_DIR="$PROJECT_DIR" BUILD_TIMEOUT="$INSTALL_BUILD_TIMEOUT" run_python -I -B - 2>/dev/null <<'PYEOF'
 import os, subprocess, sys
 why = None
 try:
@@ -3278,6 +3560,74 @@ PYEOF
     log "$(printf "$INSTALL_BUILD_FAILED" "$why")"
 }
 build_source_index
+
+# report_backups — BACKUPS_LISTED_BY_DATE. A backup sits beside the file it
+# replaced, as an untracked file in the plant's working tree, so a broad
+# `git add` commits it with the change and every later count of the tree
+# carries it. A run that made one lists every installer backup in the plant by
+# date, for the owner's retention call, and says to stage by explicit path.
+# Nothing is moved or deleted: graft-audit reads the backups where they are.
+report_backups() {
+    [[ ${#BACKUPS_MADE[@]} -gt 0 ]] || return 0
+    local d line roots=()
+    for d in docs/graph .claude .opencode .codex .prime .github .cypress; do
+        [[ -d "$PROJECT_DIR/$d" ]] && roots+=("$PROJECT_DIR/$d")
+    done
+    log ""
+    log "BACKUPS — this run made ${#BACKUPS_MADE[@]} backup(s): each file it replaced keeps its"
+    log "  previous body beside it as <path>.bak-<YYYYMMDD-HHMMSS>. Every installer"
+    log "  backup in this plant, by date:"
+    while IFS= read -r line; do
+        log "    $line"
+    done < <({ find "$PROJECT_DIR" -maxdepth 1 -name '*.bak-*'
+               [[ ${#roots[@]} -eq 0 ]] || find "${roots[@]}" -name '*.bak-*' -not -path '*/.git/*'; } \
+             | sed -nE 's/.*\.bak-([0-9]{4})([0-9]{2})([0-9]{2})-[0-9]{6}([0-9]{2})?$/\1-\2-\3/p' \
+             | sort -r | uniq -c | awk '{print $2 "  " $1}')
+    log "  They sit in the working tree, untracked unless ignored: stage by explicit path"
+    log "  (git add <path>), never with git add -A or git add ., or the backups are"
+    log "  committed with the change. Keeping or deleting them is the owner's call"
+    log "  once graft-audit has read them (protocols/graft.md)."
+}
+report_backups
+
+# report_stamp_tracking — STAMP_TRACKING_LINES_PRINTED. The stamp is the plant's
+# record of which seed it carries and is tracked; the rest of .cypress/ is
+# scratch. A plant that is its own Git work tree and ignores the record (a
+# `.cypress/` rule, often copied from the seed's own .gitignore) loses its seed
+# version on every fresh clone. The installer never edits .gitignore; it prints
+# the lines that keep the record and the coverage record tracked. A plant with
+# no repository of its own is told nothing here: graft makes its baseline.
+report_stamp_tracking() {
+    command -v git >/dev/null 2>&1 || return 0
+    local top
+    top="$(git -C "$PROJECT_DIR" rev-parse --show-toplevel 2>/dev/null)" || return 0
+    [[ "$(cd "$top" && pwd -P)" == "$(cd "$PROJECT_DIR" && pwd -P)" ]] || return 0
+    git -C "$PROJECT_DIR" check-ignore -q .cypress/seed.json 2>/dev/null || return 0
+    log ""
+    log "NEXT STEP — this repository ignores .cypress/seed.json, the plant's record of"
+    log "  the seed it carries, so a fresh clone arrives without it. Keep the records"
+    log "  tracked and the rest of .cypress/ ignored with these lines in .gitignore, in"
+    log "  place of a rule that ignores .cypress/ itself (Git cannot re-include a file"
+    log "  inside an ignored directory):"
+    log "    .cypress/*"
+    log "    !.cypress/seed.json"
+    log "    !.cypress/coverage.json"
+    log "  The installer does not edit .gitignore."
+}
+report_stamp_tracking
+
+# The hooks run on the interpreter this run found; an agent session runs the
+# graph tools as `python3 docs/graph/<tool>.py`, as the kernel and the protocols
+# write them. When `python3` here is below the floor, say so while the
+# installer still has the owner's attention.
+if [[ "$PYTHON" != python3 ]]; then
+    log ""
+    log "NEXT STEP — python3 on this PATH is missing or below Python $PYTHON_FLOOR. The"
+    log "  hooks this run wired call $PYTHON, but the kernel, the agents and the"
+    log "  protocols run the graph tools as \`python3 docs/graph/<tool>.py\`, which"
+    log "  needs $PYTHON_FLOOR or newer: put a python3 at the floor first on PATH for agent"
+    log "  sessions (for example a directory holding a python3 link to $PYTHON)."
+fi
 
 # The corpus decision is the owner's and it is asked BEFORE a run, not settled
 # during one: an analyst with no corpus can only refuse, and a run that meets

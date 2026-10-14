@@ -1,3 +1,25 @@
+---
+name: provision-records-from-unstructured-input
+description: Turn photos of cards or badges, a pasted list or a forwarded chat log into records on a system managed as desired state, by transcribing verbatim, asking every ambiguity in one numbered message, confirming the identity-to-key table, writing secrets straight into the store, validating offline, applying through the one durable surface and proving it by read-back. Invoke when someone asks to enrol the people or items in such input.
+id: skill.provision-records-from-unstructured-input
+tier: 2
+kind: skill
+title: provision-records-from-unstructured-input, from a photo or a pasted list to verified desired-state records
+owns:
+  - provision-records-from-unstructured-input.transcribe-and-confirm
+  - provision-records-from-unstructured-input.secret-channel
+  - provision-records-from-unstructured-input.offline-validation
+  - provision-records-from-unstructured-input.read-back-proof
+requires:
+load_when:
+  - "add these people from the photos of their badges"
+  - "enrol the users from this pasted list"
+  - "create records from these card photos"
+  - "put these people on the system"
+prevents: A misread digit from a photo provisions the wrong physical credential, a secret lands in the contract or carries a trailing newline, and an exit code is taken as proof that nothing else changed.
+est_tokens: 3021
+---
+
 # Suggested skill: provision-records-from-unstructured-input
 
 > Optional procedure: a person hands over unstructured input (photos of ID

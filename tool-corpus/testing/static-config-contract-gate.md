@@ -19,8 +19,8 @@
 
 ## 1. What it does
 
-A daemon-free gate that asserts named contracts — each one traceable to a
-specification clause — over a **declarative configuration artifact**: a
+A daemon-free gate that asserts named contracts, each one traceable to a
+specification clause, over a **declarative configuration artifact**: a
 server configuration, an infrastructure manifest, a service definition tree,
 anything a system loads and resolves before it runs.
 
@@ -47,7 +47,7 @@ static-config-contract-gate \
 - **Outputs:** the enumerated **scope-unit census** (§3) printed before any
   case runs; one pass/fail line per case naming its contract; a count.
 - **Exit codes:** non-zero on any case failure, **and** non-zero when the
-  scope-unit census is empty (the false-green guard — an empty census
+  scope-unit census is empty (the false-green guard: an empty census
   satisfies every case vacuously and must never read as a pass).
 - **Preconditions:** the reader can parse the artifact's format for text mode;
   for resolved mode, the native resolver binary runs locally with no daemon
@@ -64,8 +64,8 @@ can pass, and it is cheaper to learn that before the implementer starts.
 
 ### Enumerate, never assume
 
-The gate reads its **scope units** — the servers, locations, services, or
-blocks the contracts are about — from the artifact itself, through a reader
+The gate reads its **scope units** (the servers, locations, services, or
+blocks the contracts are about) from the artifact itself, through a reader
 that returns the whole list and **throws when it finds none**. It never works
 from a hardcoded list or a count, so a unit added later is automatically in
 scope and a wrong path fails loudly instead of passing on zero units checked.
@@ -74,13 +74,13 @@ Keep more than one enumerator when contracts genuinely differ in scope: a
 narrower enumerator (only the units matching one selection rule) can be
 exactly right for a contract that really is about that narrower set, and
 **structurally blind** to a contract about *every* unit. The failure mode is
-not choosing the wrong enumerator once — it is a case phrased in terms of the
+not choosing the wrong enumerator once; it is a case phrased in terms of the
 narrow one when the contract it enforces is about the whole set. Name, in
 each case, which enumerator it needs and why.
 
 ### Two operating modes, two different questions
 
-**Text mode** compares the artifact's own format strings — after stripping
+**Text mode** compares the artifact's own format strings, after stripping
 comments, and after resolving any include or inheritance chain the format
 supports. This is what to use when the contract is about what the artifact
 *declares*.
@@ -90,18 +90,31 @@ supports. This is what to use when the contract is about what the artifact
   finds the directive inside the comment and reports a pass.
 - The reader is a line-scanner, not a full parser, when the format allows it
   (avoiding a parser dependency this way is a deliberate trade, not an
-  oversight) — and a line-scanner can break on a legal reshaping of the same
+  oversight), and a line-scanner can break on a legal reshaping of the same
   document (different quoting, different block-vs-flow style, reordered
   keys). State this instead of discovering it later.
+- A line-scanner can still check a rule that spans keys of one unit. Split
+  each file into its units textually, at the line pattern that opens a unit
+  (a list item at the unit's indentation, a block header), and assert within
+  each chunk. A semantic anti-pattern is usually such a rule: an option that
+  makes a step reconcile the target to *exactly* the set it is given,
+  combined in one step with a loop that hands it one item at a time, leaves
+  only the last item; a chunked check fails any unit holding both. Needing
+  no parser, it runs in the dependency-free tier of a validation ladder
+  (`tool-corpus/testing/tiered-validation-ladder.md`), so it guards before
+  any install. Print its census (files and units scanned) like any other
+  enumeration, and pair it with a positive case on the unit
+  that was fixed, so the guard is shown to read real units and not only to
+  find none.
 - Text mode compares **format strings**, not runtime bytes. It cannot see a
-  difference that only appears once the artifact is resolved and rendered —
+  difference that only appears once the artifact is resolved and rendered:
   for example, a value that is always *set but empty* versus one that is
   *unset*, when both render identically at the format-string level. Never
   cite a text-mode pass for a claim about what the running system emits;
   that claim belongs to a dynamic measurement instead (see §7).
 
 **Resolved mode** asks the artifact's own **native resolver** for the merged,
-effective value — never a reimplementation of the merge — and asserts on
+effective value (never a reimplementation of the merge) and asserts on
 that. This is the native-oracle idiom: the resolver is the authority on its
 own merge semantics, and a hand-rolled reimplementation is a second,
 unvalidated implementation of the thing under test.
@@ -114,7 +127,7 @@ unvalidated implementation of the thing under test.
   mode instead.
 - The minimal environment resolved mode runs the resolver against supplies a
   placeholder **only** for the fail-closed names it reads out of the artifact
-  itself — never a list maintained inside the gate — and then asserts that no
+  itself, never a list maintained inside the gate, and then asserts that no
   contract name is among the names needing a placeholder. A dead list inside
   the gate drifts from the artifact the moment either one changes alone.
 - Check that every required input exists before any case runs, so a wrong
@@ -132,7 +145,7 @@ the self-check distinguishes them.
 
 A version-pin case asserts `>= <version>`, never `== <version>`. An equality
 assertion turns every legitimate upgrade into a gate edit, and editing a gate
-to keep it green is the worst habit a gate can teach — the fix belongs in the
+to keep it green is the worst habit a gate can teach; the fix belongs in the
 pin, not in the contract.
 
 ### Encoding independence
@@ -146,20 +159,20 @@ declared or assumed encoding explicitly rather than trusting the environment.
 
 The alternate-input handle in §2 is public API precisely so a mutant can be
 built **outside** the working tree, on a scratch copy, and pointed at through
-that handle — the general procedure is `skill-corpus/mutation-verify.md` §4,
+that handle; the general procedure is `skill-corpus/mutation-verify.md` §4,
 composed by reference here, not restated.
 
 Two results from that procedure are specific to this tool's shape and worth
 stating directly:
 
 - **A formatting-only control mutant must survive.** Folding a block form into
-  a flow form, reordering keys, changing quote style — none of these should
+  a flow form, reordering keys, changing quote style: none of these should
   ever turn a case red, because none of them changes what the artifact
   declares or resolves to. A gate that dies on these is brittle to any legal
   reshaping, not sensitive to a real regression.
 - **A mutant that makes the artifact unparseable is evidence about the
   parser, not about the gate.** When every case dies because the document no
-  longer parses, that is not a demonstration of coverage — rule the parse
+  longer parses, that is not a demonstration of coverage; rule the parse
   failure out (the rebuild corollary in `skill-corpus/mutation-verify.md`
   step 5) before reading anything into the result, and prefer a mutation that
   stays syntactically legal. The one good property it does confirm: an
@@ -308,7 +321,10 @@ the rendered target text passes every new case before implementation begins;
 a floor case lets an additive mutant survive; pointing the gate at a
 missing or empty root exits non-zero with the empty-census message, never a
 vacuous pass; resolved mode's minimal environment supplies a placeholder only
-for names the artifact itself declares fail-closed.
+for names the artifact itself declares fail-closed; a unit-chunked check
+fails a unit that holds both halves of the anti-pattern, passes the fixed
+unit, and counts every unit of a file whose units are written in each legal
+indentation the format allows.
 
 - **How to run the tests:** `<the plant's test command for its implementation>`
 
@@ -318,7 +334,7 @@ for names the artifact itself declares fail-closed.
   (the variable-guard-only analogue: resolves a layered artifact through its
   native resolver and checks guard strength, a narrower question than the
   general named-contract gate here); `tool-corpus/ops/config-driven-server-response-harness.md`
-  (the dynamic counterpart — measures what a config-driven binary emits over
+  (the dynamic counterpart: it measures what a config-driven binary emits over
   the wire, which is exactly what text mode here cannot see).
 - **Procedure:** `skill-corpus/mutation-verify.md` §4 "Mutating an artifact
   the tree must keep: mutate by copy" (composed by reference, not restated).
@@ -326,16 +342,19 @@ for names the artifact itself declares fail-closed.
 
 ## 8. Changelog
 
-- 2026-09-26 — created by
+- 2026-09-26: created by
   docs-librarian.
-- 2026-09-26 — added the mutation register rules (re-derive against landed
+- 2026-09-26: added the mutation register rules (re-derive against landed
   code, per-group status), the satisfiable-RED render, and the recorded
   limits (stricter-than-contract, open coverage gaps, orphaned gates); the
   runner-environment pass now escalates as a spec gap.
-- 2026-10-05 — folded in two pitfalls (§5): a "no committed secret"
+- 2026-10-05: folded in two pitfalls (§5): a "no committed secret"
   case asks version control, not the disk; a YAML reader resolves merge keys
   and asserts on resolved values (with the override and sequence-replacement
   rules), by tool-smith.
 - 2026-10-05: an orphaned-gate verdict now needs the whole invocation
   chain traced, lifecycle hooks included (§3); §5 gained the
   declared-but-unread value pitfall; by docs-librarian.
+- 2026-10-14: text mode checks a rule spanning keys of one unit by chunking
+  files into units textually, with no parser, printing its census and
+  paired with a positive case on the fixed unit (§3, §6). By harvest.

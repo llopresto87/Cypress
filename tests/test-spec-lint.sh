@@ -58,7 +58,7 @@ spec() {
 # ---- COVERAGE -----------------------------------------------------------------
 spec SPEC-0001-forms active y "SUBMIT_VALID_FORM:green REJECT_BAD_SCHEMA:red"
 spec SPEC-0002-old superseded y "OLD_RETIRED_THING:green"
-printf 'def test_submit():  # SUBMIT_VALID_FORM\n    pass\n' > "$TMP/tests/test_forms.py"
+printf 'def test_submit():\n    """SUBMIT_VALID_FORM"""\n' > "$TMP/tests/test_forms.py"
 
 # 1. uncovered live contract -> exit 1, names the slug, not the retired one
 CASE=1; run_rc 1 lint
@@ -69,7 +69,7 @@ hasnt OLD_RETIRED_THING
 CASE=2; run_rc 0 lint --warn
 
 # 3. covered -> PASS
-printf 'def test_reject():  # REJECT_BAD_SCHEMA\n    pass\n' >> "$TMP/tests/test_forms.py"
+printf 'def test_reject():\n    """REJECT_BAD_SCHEMA"""\n' >> "$TMP/tests/test_forms.py"
 CASE=3; run_rc 0 lint
 
 # 4. zero test files with live contracts -> green-lie FAIL
@@ -80,12 +80,12 @@ has -i 'green lie'
 # 5. prefix slugs: the covered PARSE_JSON_STRICT must not credit PARSE_JSON.
 spec SPEC-0003-parse active y "PARSE_JSON:pending PARSE_JSON_STRICT:green"
 rm "$SPECS/SPEC-0001-forms.md"
-printf 'def test_strict():  # PARSE_JSON_STRICT\n    pass\n' > "$TMP/tests/test_parse.py"
+printf 'def test_strict():\n    """PARSE_JSON_STRICT"""\n' > "$TMP/tests/test_parse.py"
 CASE=5; run_rc 1 lint
 has -- '- PARSE_JSON '
 hasnt -- '- PARSE_JSON_STRICT'
 # 5b. an unregistered extension slug (PARSE_JSON_V2) must not credit its prefix.
-printf 'def test_v2():  # PARSE_JSON_V2\n    pass\n' > "$TMP/tests/test_parse.py"
+printf 'def test_v2():\n    """PARSE_JSON_V2"""\n' > "$TMP/tests/test_parse.py"
 CASE=5b; run_rc 1 lint
 has -- '- PARSE_JSON '
 rm "$SPECS/SPEC-0003-parse.md" "$TMP/tests/test_parse.py"
@@ -93,13 +93,13 @@ rm "$SPECS/SPEC-0003-parse.md" "$TMP/tests/test_parse.py"
 # 6. frontmatter status decides liveness; the body "see frontmatter" is not a
 #    status.
 spec SPEC-0004-front active y "FRONT_ONLY:pending"
-printf 'def test_other():  # NOTHING_HERE\n    pass\n' > "$TMP/tests/test_other.py"
+printf 'def test_other():\n    """NOTHING_HERE"""\n' > "$TMP/tests/test_other.py"
 CASE=6; run_rc 1 lint
 has -- '- FRONT_ONLY '
 rm "$SPECS/SPEC-0004-front.md" "$TMP/tests/test_other.py"
 
 # ---- SHAPE ----------------------------------------------------------------
-printf 'def test_a():  # SHAPE_A\n    pass\ndef test_b():  # SHAPE_B\n    pass\n' > "$TMP/tests/test_shape.py"
+printf 'def test_a():\n    """SHAPE_A"""\ndef test_b():\n    """SHAPE_B"""\n' > "$TMP/tests/test_shape.py"
 DRAFT="$SPECS/SPEC-0005-draft.md"
 
 # 7. a draft nobody signed is shape-checked but owes no §10 rows and no coverage
@@ -159,7 +159,7 @@ has SPEC-0006-onlydraft
 
 # 14b. mixed tree: a covered live spec's PASS headline still names the draft
 spec SPEC-0007-live active y "LIVE_COVERED:green"
-printf 'def test_live():  # LIVE_COVERED\n    pass\n' > "$TMP/tests/test_live.py"
+printf 'def test_live():\n    """LIVE_COVERED"""\n' > "$TMP/tests/test_live.py"
 CASE=14b; run_rc 0 lint
 out="$(grep '^spec lint: PASS' <<<"$out" || true)"
 has 'not coverage-checked'
@@ -167,7 +167,7 @@ has SPEC-0006-onlydraft
 rm "$SPECS/SPEC-0007-live.md" "$TMP/tests/test_live.py"
 
 # 15. draft_with_tested_slugs_warns: WARN naming the draft, exit 0, not a defect
-printf 'def test_draft():  # DRAFT_ONLY_THING\n    pass\n' > "$TMP/tests/test_draft.py"
+printf 'def test_draft():\n    """DRAFT_ONLY_THING"""\n' > "$TMP/tests/test_draft.py"
 CASE=15; run_rc 0 lint
 has 'WARN.*SPEC-0006-onlydraft.*draft'
 has -i promot
@@ -335,7 +335,7 @@ CASE=""
 CL="$TMP/cells"
 mkdir -p "$CL/docs/graph/specs" "$CL/tests"
 cp "$ROOT/templates/knowledge-graph/spec-lint.py" "$CL/docs/graph/"
-printf 'def test_cells():  # CELL_ALPHA CELL_BETA\n    pass\n' > "$CL/tests/test_cells.py"
+printf 'def test_cells():\n    """CELL_ALPHA CELL_BETA"""\n' > "$CL/tests/test_cells.py"
 cells_lint() { python3 "$CL/docs/graph/spec-lint.py"; }
 # cells_spec NAME ROW_ALPHA ROW_BETA: a signed draft (it owes a §10 row per
 # contract) with a five-cell header and the two rows given verbatim.
@@ -398,7 +398,7 @@ collect_case G2c+G2d case_row_escaped_pipe_is_one_cell "escaped pipes and option
 PR="$TMP/proved"
 mkdir -p "$PR/docs/graph/specs" "$PR/docs/graph/plans" "$PR/tests"
 cp "$ROOT/templates/knowledge-graph/spec-lint.py" "$PR/docs/graph/"
-printf 'def test_sel():  # SELECT_TESTED\n    pass\n' > "$PR/tests/test_sel.py"
+printf 'def test_sel():\n    """SELECT_TESTED"""\n' > "$PR/tests/test_sel.py"
 SPECS="$PR/docs/graph/specs"
 spec SPEC-0201-select active y "SELECT_TESTED:green SELECT_BY_LABEL:green"
 pr_plan() { printf '## 9. Increments\n\n### Increment 1 — Add the selector\n- Spec contracts: SPEC-0201/SELECT_BY_LABEL\n- Tests to write (RED): %s\n' "$1" > "$PR/docs/graph/plans/grill.md"; }
@@ -426,6 +426,52 @@ hasnt 'misnamed spec, not checked: README.md'
 hasnt 'PASS'
 run_rc 1 python3 "$MS/docs/graph/spec-lint.py" --slice PLACE_EVERY_FILE
 has 'misnamed spec, not checked: install-placement.md'
+CASE=""
+
+# C1: a slug only a comment carries is a WARN and never coverage: a comment
+# asserts nothing. The headline does not count it as covered, and it is not
+# failed as uncovered either; a slug in a string, a docstring or a test name
+# counts, and a `#` inside a string opens no comment. Comments are read by
+# suffix (`#` for Python and shell, `//` and `/* */` for the C family).
+CC="$TMP/comment"
+mkdir -p "$CC/docs/graph/specs" "$CC/tests"
+cp "$ROOT/templates/knowledge-graph/spec-lint.py" "$CC/docs/graph/"
+SPECS="$CC/docs/graph/specs"
+spec SPEC-0301-comment active y "COMMENT_ONLY_THING:green CODE_CARRIED_THING:green"
+printf 'def test_code():\n    assert run("CODE_CARRIED_THING")\n\ndef test_comment():  # COMMENT_ONLY_THING\n    pass\n' > "$CC/tests/test_c.py"
+printf 'it("works", () => {}); // COMMENT_ONLY_THING\n/* COMMENT_ONLY_THING */\n' > "$CC/tests/c.test.ts"
+CASE=C1; run_rc 0 python3 "$CC/docs/graph/spec-lint.py"
+has 'WARN COMMENT_ONLY_THING (SPEC-0301-comment.md): only a comment carries it'
+has '^spec lint: PASS — 1 live contract(s) covered.*1 more of 2 carried only by a comment'
+run_rc 0 python3 "$CC/docs/graph/spec-lint.py" --list
+has 'COMMENT_ONLY_THING .*COMMENT ONLY, not coverage'
+printf 'echo "case # COMMENT_ONLY_THING"  # a trailing comment\n' > "$CC/tests/check.sh"
+run_rc 0 python3 "$CC/docs/graph/spec-lint.py"
+hasnt 'only a comment carries it'
+has '^spec lint: PASS — 2 live contract(s) covered'
+CASE=""
+
+# C2: --comment-only-budget N ratchets the comment-only count, so it can only
+# fall: above N fails, below N fails until the record is lowered, at N passes;
+# it holds beside an uncovered backlog inside its own budget too.
+CB="$TMP/comment-budget"
+mkdir -p "$CB/docs/graph/specs" "$CB/tests"
+cp "$ROOT/templates/knowledge-graph/spec-lint.py" "$CB/docs/graph/"
+SPECS="$CB/docs/graph/specs"
+spec SPEC-0302-budget active y "COMMENT_ONLY_THING:green CODE_CARRIED_THING:green"
+printf 'def test_code():\n    assert run("CODE_CARRIED_THING")\n\ndef test_comment():  # COMMENT_ONLY_THING\n    pass\n' > "$CB/tests/test_c.py"
+CASE=C2; run_rc 0 python3 "$CB/docs/graph/spec-lint.py" --comment-only-budget 1
+has '^spec lint: PASS — 1 live contract(s) covered.*1 more of 2 carried only by a comment (WARN, not coverage; recorded budget 1)'
+run_rc 1 python3 "$CB/docs/graph/spec-lint.py" --comment-only-budget 0
+has '^spec lint: FAIL — 1 live contract(s) carried only by a comment, above the recorded budget of 0'
+run_rc 1 python3 "$CB/docs/graph/spec-lint.py" --comment-only-budget 2
+has '^spec lint: FAIL — 1 live contract(s) carried only by a comment against a recorded budget of 2'
+run_rc 1 python3 "$CB/docs/graph/spec-lint.py" --comment-only-budget
+has 'comment-only-budget needs a number'
+spec SPEC-0303-backlog active y "UNCOVERED_THING:green"
+run_rc 0 python3 "$CB/docs/graph/spec-lint.py" --uncovered-budget 1 --comment-only-budget 1
+run_rc 1 python3 "$CB/docs/graph/spec-lint.py" --uncovered-budget 1 --comment-only-budget 0
+has 'carried only by a comment, above the recorded budget of 0'
 CASE=""
 
 printf 'spec lint contract: PASS\n'

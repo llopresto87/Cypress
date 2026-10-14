@@ -78,7 +78,7 @@ Upstream documents no testing guidance for the adapter. Observed in practice: en
 
 ## Security defaults
 - The client is public by design. The adapter takes no client secret, so a secret placed in a browser bundle is published, not protected.
-- Redirect URIs and web origins that are broader than needed are a security hole. Upstream asks for them to be as specific as possible.
+- Redirect URIs and web origins that are broader than needed are a security hole. Upstream asks for them to be as specific as possible. A URI the app sends must still match a registered one: the server's admin email actions reject a mismatch, a trailing slash included, with a 400 ([`../container/keycloak.md`](../container/keycloak.md), admin email actions).
 - The defaults are the authorization code flow, PKCE with `S256`, a nonce check and the fragment response mode. Turning off PKCE or the nonce, or switching to `'query'`, removes a protection.
 - The implicit and hybrid flows send the access token in the URL fragment, where it can leak through server logs and browser history.
 - Tokens live in memory. Copying them into local storage or cookies undoes that protection.

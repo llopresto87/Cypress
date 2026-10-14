@@ -10,6 +10,7 @@
 #   M10 no write escapes PROJECT_DIR
 #   M13 a retired seed entry or graph node is flagged RETIRED; M14 a plant-only harness entry ORPHAN
 #   M15-M20 selective placement: propose, place, refuse, refresh, leave, check
+#   M21 keys an earlier seed wrote into the stamp are named and kept
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -628,13 +629,14 @@ case_expertise_propose() {
 }
 
 # M16, SPEC-0001 EXPERTISE_PLACES_ONLY_THE_CONFIRMED_LIST, PLACED_PAGE_CARRIES_ITS_PROVENANCE,
-# PLACED_SKILL_IS_A_ROUTABLE_NODE and EXPERTISE_IS_RECORDED_IN_THE_STAMP
+# PLACED_SKILL_IS_A_ROUTABLE_NODE (a stack-keyed page and a flat one),
+# PLACED_CORPUS_PAGE_IS_REACHABLE and EXPERTISE_IS_RECORDED_IN_THE_STAMP
 case_expertise_place() {
-    local P="$WORK/xp-place" out rc V rel got want
+    local P="$WORK/xp-place" out rc V rel got want name
     fresh_plant "$P"
     V="$(seed_version "$ESEED")"
     rc=0; out="$("$ESEED/install.sh" claude-code --project-dir "$P" --expertise \
-        library-corpus/maven/lumen-core,skill-corpus/maven/lumen-upgrade,tool-corpus/ops/orbit-form-linter,library-corpus/platform/cloud-cli 2>&1)" || rc=$?
+        library-corpus/maven/lumen-core,skill-corpus/maven/lumen-upgrade,skill-corpus/generic-routable,tool-corpus/ops/orbit-form-linter,library-corpus/platform/cloud-cli 2>&1)" || rc=$?
     [[ $rc -eq 0 ]] || fail "EXPERTISE_PLACES_ONLY_THE_CONFIRMED_LIST: the install exited $rc: $out"
     got="$(cd "$P/docs/graph" && ls libraries tools | grep -v -e '^index.md$' -e ':$' -e '^$' | sort | tr '\n' ' ')"
     [[ "$got" == "cloud-cli.md lumen-core.md orbit-form-linter.md " ]] \
@@ -649,17 +651,34 @@ case_expertise_place() {
         cmp -s <(tail -n +2 "$P/docs/graph/${rel%%:*}") "$ESEED/${rel#*:}.md" \
             || fail "PLACED_PAGE_CARRIES_ITS_PROVENANCE: ${rel%%:*} differs from its corpus page after the provenance line"
     done
-    grep -qx "origin: corpus@$V" "$P/docs/graph/skills/lumen-upgrade.md" \
-        || fail "PLACED_SKILL_IS_A_ROUTABLE_NODE: the placed skill carries no 'origin: corpus@$V' line"
-    cmp -s <(grep -vx "origin: corpus@$V" "$P/docs/graph/skills/lumen-upgrade.md") "$ESEED/skill-corpus/maven/lumen-upgrade.md" \
-        || fail "PLACED_SKILL_IS_A_ROUTABLE_NODE: the placed skill differs from its corpus page beyond the origin line"
-    rc=0; out="$(cd "$P" && python3 -B docs/graph/graph-lint.py --show skill.lumen-upgrade 2>&1)" || rc=$?
-    [[ $rc -eq 0 ]] && grep -q "lumen-upgrade" <<<"$out" \
-        || fail "PLACED_SKILL_IS_A_ROUTABLE_NODE: graph-lint --show skill.lumen-upgrade exited $rc: $out"
-    [[ -f "$P/.claude/skills/lumen-upgrade/SKILL.md" ]] \
-        || fail "PLACED_SKILL_IS_A_ROUTABLE_NODE: no .claude/skills/lumen-upgrade/SKILL.md projection"
+    local skill
+    for skill in maven/lumen-upgrade generic-routable; do
+        name="${skill##*/}"
+        grep -qx "origin: corpus@$V" "$P/docs/graph/skills/$name.md" \
+            || fail "PLACED_SKILL_IS_A_ROUTABLE_NODE: the placed skill $name carries no 'origin: corpus@$V' line"
+        cmp -s <(grep -vx "origin: corpus@$V" "$P/docs/graph/skills/$name.md") "$ESEED/skill-corpus/$skill.md" \
+            || fail "PLACED_SKILL_IS_A_ROUTABLE_NODE: the placed skill $name differs from its corpus page beyond the origin line"
+        rc=0; out="$(cd "$P" && python3 -B docs/graph/graph-lint.py --show "skill.$name" 2>&1)" || rc=$?
+        [[ $rc -eq 0 ]] && grep -q "$name" <<<"$out" \
+            || fail "PLACED_SKILL_IS_A_ROUTABLE_NODE: graph-lint --show skill.$name exited $rc: $out"
+        [[ -f "$P/.claude/skills/$name/SKILL.md" ]] \
+            || fail "PLACED_SKILL_IS_A_ROUTABLE_NODE: no .claude/skills/$name/SKILL.md projection"
+    done
+    # PLACED_CORPUS_PAGE_IS_REACHABLE: the four placed kinds leave the plant's
+    # own graph-lint green, a load_when phrase routes to each placed skill, and
+    # the arm reaches that without writing the plant-owned index.md.
+    rc=0; out="$(cd "$P" && python3 -B docs/graph/graph-lint.py 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] || fail "PLACED_CORPUS_PAGE_IS_REACHABLE: the plant's graph-lint exited $rc with corpus pages placed: $(grep '✗' <<<"$out")"
+    for skill in "lumen-upgrade:upgrade the lumen-core library" "generic-routable:run the generic routable procedure"; do
+        rc=0; out="$(cd "$P" && python3 -B docs/graph/graph-lint.py --plan "${skill#*:}" 2>&1)" || rc=$?
+        grep -q "skill\.${skill%%:*}" <<<"$out" \
+            || fail "PLACED_CORPUS_PAGE_IS_REACHABLE: --plan '${skill#*:}' does not reach skill.${skill%%:*}: $out"
+    done
+    cmp -s "$P/docs/graph/index.md" "$ESEED/templates/knowledge-graph/index.md" \
+        || fail "PLACED_CORPUS_PAGE_IS_REACHABLE: the --expertise arm changed the plant-owned docs/graph/index.md"
     want="library-corpus/maven/lumen-core docs/graph/libraries/lumen-core.md $(sha_of "$P/docs/graph/libraries/lumen-core.md")
 library-corpus/platform/cloud-cli docs/graph/libraries/cloud-cli.md $(sha_of "$P/docs/graph/libraries/cloud-cli.md")
+skill-corpus/generic-routable docs/graph/skills/generic-routable.md $(sha_of "$P/docs/graph/skills/generic-routable.md")
 skill-corpus/maven/lumen-upgrade docs/graph/skills/lumen-upgrade.md $(sha_of "$P/docs/graph/skills/lumen-upgrade.md")
 tool-corpus/ops/orbit-form-linter docs/graph/tools/orbit-form-linter.md $(sha_of "$P/docs/graph/tools/orbit-form-linter.md")"
     got="$(expertise_record "$P" 2>&1)" || fail "EXPERTISE_IS_RECORDED_IN_THE_STAMP: the stamp has no readable expertise key: $got"
@@ -669,7 +688,7 @@ and should read
 $want"
     [[ "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$P/.cypress/seed.json")" == "$V" ]] \
         || fail "PLACED_PAGE_CARRIES_ITS_PROVENANCE: the stamp's version is not the provenance version $V"
-    echo "  M16 EXPERTISE_PLACES_ONLY_THE_CONFIRMED_LIST: four confirmed pages placed with provenance, the skill routable and projected, the record exact — OK"
+    echo "  M16 EXPERTISE_PLACES_ONLY_THE_CONFIRMED_LIST: five confirmed pages placed with provenance, the keyed and the flat skill routable and projected, the plant's graph-lint green with index.md untouched, the record exact — OK"
 }
 
 # M17, SPEC-0001 UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING, with the architect's
@@ -822,6 +841,31 @@ case_expertise_check() {
     echo "  M20 EXPERTISE_CHECK_NAMES_MISSING_OR_STALE: --check names a stale, a missing and an edited page, writing nothing — OK"
 }
 
+# M21, SPEC-0001 RETIRED_STAMP_KEYS_NAMED_AND_KEPT: the keys an earlier seed
+# wrote into the stamp by hand (`base`, `by`, `grafted`, `name`) are named on
+# every install and kept, like every key the installer does not own; a key the
+# plant added is carried and not named.
+case_retired_stamp_keys() {
+    local P="$WORK/stamp-retired" out rc
+    mkdir -p "$P"
+    "$ROOT/install.sh" claude-code --project-dir "$P" >/dev/null 2>&1 || fail "RETIRED_STAMP_KEYS_NAMED_AND_KEPT: the first install failed"
+    python3 - "$P/.cypress/seed.json" <<'PY'
+import json, sys
+p = sys.argv[1]; d = json.load(open(p, encoding="utf-8"))
+d.update({"grafted": "2026-01-02", "base": "6.0.0", "by": "seed", "name": "cypress", "team_note": "ours"})
+open(p, "w", encoding="utf-8").write(json.dumps(d, indent=2) + "\n")
+PY
+    rc=0; out="$("$ROOT/install.sh" claude-code --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] || fail "RETIRED_STAMP_KEYS_NAMED_AND_KEPT: the re-install exited $rc: $out"
+    grep -q "earlier seed.*base, by, grafted, name" <<<"$out" \
+        || fail "RETIRED_STAMP_KEYS_NAMED_AND_KEPT: the retired keys are not named, sorted, in one line: $(grep -i stamp <<<"$out")"
+    grep "earlier seed" <<<"$out" | grep -q team_note \
+        && fail "RETIRED_STAMP_KEYS_NAMED_AND_KEPT: the plant's own key was named as retired"
+    python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); sys.exit(not all(k in d for k in ("grafted","base","by","name","team_note")))' \
+        "$P/.cypress/seed.json" || fail "RETIRED_STAMP_KEYS_NAMED_AND_KEPT: a key was dropped from the stamp"
+    echo "  M21 RETIRED_STAMP_KEYS_NAMED_AND_KEPT: four keys an earlier seed wrote are named and kept, the plant's key carried unnamed — OK"
+}
+
 # --- one-case subcommand, run by the parallel dispatcher ---------------------
 if [ "${1:-}" = "__case" ]; then
     "$2"
@@ -962,7 +1006,7 @@ export BASE BASECOPILOT ESEED
 SCN="$(mktemp)"
 for c in case_recover case_symchurn case_m2 case_m4 case_m8 case_m10 case_cond case_hook_check case_retired_flag case_orphan_flag \
          case_expertise_propose case_expertise_place case_expertise_refused case_expertise_silence \
-         case_expertise_plant_edits case_expertise_check; do
+         case_expertise_plant_edits case_expertise_check case_retired_stamp_keys; do
     printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0

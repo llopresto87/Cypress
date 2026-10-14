@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPEC-0007 source index: tools/source-index.py (X425-X467, X470).
+# SPEC-0007 source index: tools/source-index.py (X425-X467, X470, X481, X482, X483).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -22,7 +22,7 @@ trap 'rm -rf "$FO"' EXIT
 SI_RC=0
 mkdir -p "$FO/si"
 python3 - "$ROOT" "$FO/si" <<'PY' || SI_RC=1
-import hashlib, json, os, shutil, stat, subprocess, sys, tempfile, traceback
+import errno, hashlib, json, os, shutil, stat, subprocess, sys, tempfile, traceback
 from pathlib import Path
 
 SEED = Path(sys.argv[1])
@@ -1405,16 +1405,25 @@ def x447(base):
 def x448(base):
     p = Plant(base, files={"a.py": "A = 1\n"}, commit=False)
     names = {b"esc\x1b.py": "esc\x1b.py", "rlo\u202e.py".encode(): "rlo\u202e.py", b"ff\xff.py": "ff\udcff.py"}
-    for raw in names:
-        with open(os.path.join(bytes(p.dir), raw), "wb") as fh:
-            fh.write(b"import a\n")
+    skipped = ""
+    for raw in list(names):
+        try:
+            with open(os.path.join(bytes(p.dir), raw), "wb") as fh:
+                fh.write(b"import a\n")
+        except OSError as e:
+            # A filesystem that admits UTF-8 names only (APFS: EILSEQ) refuses
+            # the 0xFF name: that arm cannot be built here, and says so.
+            if raw != b"ff\xff.py" or e.errno != errno.EILSEQ:
+                raise
+            del names[raw]
+            skipped = f"; SKIPPED the 0xFF name: the filesystem refuses a non-UTF-8 name ({e.strerror})"
     p.commit(".")
     problems = []
     t = tool(p, "impact", "a.py")
     bad = sorted({c for c in t.raw if not (32 <= c < 127 or c == 10)})
     if t.rc != 0 or bad:
         problems.append(f"the text view exits {t.rc} or carries bytes outside printable ASCII: {bad!r} — {t.ctx()}")
-    for shown in ("esc?.py", "rlo?.py", "ff?.py"):
+    for shown in ("esc?.py", "rlo?.py", "ff?.py")[:len(names)]:
         if shown not in t.out:
             problems.append(f"the text view does not show {shown!r} — {t.ctx()}")
     j = tool(p, "impact", "a.py", "--json")
@@ -1428,7 +1437,8 @@ def x448(base):
         except CaseFail as e:
             problems.append(str(e))
     check(not problems, " || ".join(problems))
-    return "ESC, U+202E and 0xFF names: the text view shows ?, --json escapes them to the names Git reports"
+    return ("ESC, U+202E and 0xFF names: the text view shows ?, --json escapes them to the names Git reports"
+            + skipped)
 
 
 # --- slice 2: definitions, history, the moved list --------------------------------
@@ -2749,6 +2759,90 @@ def x470(base):
     check(not problems, " || ".join(problems))
     return (f"{len(gone)} missing inputs: the action line names {TEXT_MAX_ROWS} then ACTION_MORE 1, --all all, "
             f"--json all; build keeps n whole")
+
+
+@case("X481", "INPUT_IN_AN_UNREAD_LANGUAGE_IS_INCOMPLETE")
+def x481(base):
+    """A file in a language the tool has no reader for (Go here) is inventoried,
+    but its own language's imports are not read: the files that import it are
+    not found, so an answer over it is incomplete, never an empty `[]`."""
+    p = Plant(base, "golang", files={"svc/store.go": "package svc\nfunc Store() {}\n",
+                                     "svc/handler.go": "package svc\nimport \"example.invalid/svc\"\n",
+                                     "tests/store_test.go": "package svc\nfunc TestStore() {}\n",
+                                     "tools/a.py": "A = 1\n", "tools/b.py": "import a\n"})
+    problems = []
+    expect_incomplete(problems, "(a)", p, ["svc/store.go"], "language-not-read", "svc/store.go",
+                      queries=("impact", "affected-tests"))
+    for q in ("impact", "affected-tests"):
+        d = query(p, q, "svc/store.go")
+        rec = [r for r in d.get("incomplete", []) if r.get("reason") == "language-not-read"]
+        if rec and "go" not in str(rec[0].get("detail")):
+            problems.append(f"(a) {q}: the record's detail does not name the language: {rec[0]!r}")
+    d = query(p, "impact", "tools/a.py")
+    if "language-not-read" in reasons(d):
+        problems.append(f"(b) a Python input is answered as unread: {d.get('incomplete')!r}")
+    check(not problems, " || ".join(problems))
+    return "a Go input: impact and affected-tests incomplete (language-not-read: svc/store.go, go); a Python input not"
+
+
+@case("X482", "TEST_REACHING_CODE_OVER_HTTP_IS_INCOMPLETE")
+def x482(base):
+    """A test that reaches the application only over HTTP (it drives a started
+    server through a loopback URL) holds no link to the code that serves it:
+    an answer for code in its repository names it as incomplete, and the test
+    is an opaque holder the floor lists."""
+    files = {"src/routes/posts.ts": "export function list() { return []; }\n",
+             "src/server.ts": "import { list } from './routes/posts';\nexport const app = { list };\n",
+             "tests/e2e/posts.test.ts": ("import { expect, test } from './helpers';\n"
+                                         "test('lists', async () => {\n"
+                                         "  const r = await fetch('http://localhost:3000/api/posts');\n"
+                                         "  expect(r.status).toBe(200);\n});\n"),
+             "tests/e2e/helpers.ts": "export const expect = (x: unknown) => x; export const test = 1;\n",
+             "tests/unit/server.test.ts": "import { app } from '../../src/server';\nexport const t = app;\n"}
+    p = Plant(base, "web", files=files)
+    problems = []
+    d = query(p, "affected-tests", "src/routes/posts.ts")
+    recs = [r for r in d.get("incomplete", []) if r.get("reason") == "reached-over-http"]
+    if [r.get("subject") for r in recs] != ["tests/e2e/posts.test.ts"]:
+        problems.append(f"affected-tests: incomplete {d.get('incomplete')!r} holds no single reached-over-http "
+                        f"record naming tests/e2e/posts.test.ts")
+    elif recs[0].get("detail") != "http://localhost:3000/api/posts":
+        problems.append(f"the record's detail is not the URL as written: {recs[0]!r}")
+    if "tests/unit/server.test.ts" not in row_paths(d, "tests"):
+        problems.append(f"the linked unit test is not listed among the tests: {d.get('tests')!r}")
+    if "tests/e2e/posts.test.ts" not in row_paths(d, "floor"):
+        problems.append(f"the over-HTTP test is not a floor row: {d.get('floor')!r}")
+    if "tests/e2e/posts.test.ts" in row_paths(d, "always_run"):
+        problems.append(f"the over-HTTP test is still an always_run row: {d.get('always_run')!r}")
+    t = tool(p, "affected-tests", "src/routes/posts.ts")
+    if t.rc != 0 or not (t.last().startswith(ACTION["affected-tests"]) and "reached-over-http" in t.last()):
+        problems.append(f"the text view does not end with the run-the-full-suite action naming it — {t.ctx()}")
+    b = query(p, "build")
+    if not [o for o in b.get("opaque", []) if o.get("holder") == "tests/e2e/posts.test.ts"
+            and o.get("reason") == "reached-over-http"]:
+        problems.append(f"build: no opaque reached-over-http record for the test: {b.get('opaque')!r}")
+    check(not problems, " || ".join(problems))
+    return "a loopback-URL test: affected-tests incomplete (reached-over-http), the test a floor row, opaque at build"
+
+
+@case("X483", "ANCHORS_MOVED_SKIPS_A_NESTED_WORK_TREE")
+def x483(base):
+    """A Git work tree added inside the plant after the anchor (a `git worktree
+    add` under it) is listed by Git as one untracked directory; the moved list
+    names it, and `anchors --moved` answers the rest of the list and names that
+    directory as a nested work tree, instead of refusing the whole list."""
+    p = moved_plant(base)
+    git(p.dir, "worktree", "add", "-q", "-b", "side", "wt/side")
+    write(p.dir, "run.sh", "echo moved\n")
+    problems = []
+    d = slice2(p, "the `--moved` input", "anchors", "--moved")
+    if sorted(i.get("path") for i in d.get("inputs", [])) != ["run.sh"]:
+        problems.append(f"--moved inputs {d.get('inputs')!r}, not run.sh alone")
+    recs = [(r.get("reason"), r.get("subject")) for r in d.get("incomplete", [])]
+    if recs != [("repository-unnamed", "wt/side")]:
+        problems.append(f"incomplete {d.get('incomplete')!r} is not one repository-unnamed record naming wt/side")
+    check(not problems, " || ".join(problems))
+    return "a worktree added under the plant: the rest of the moved list answered, the work tree named"
 
 
 failed = []

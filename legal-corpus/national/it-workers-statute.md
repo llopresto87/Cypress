@@ -86,7 +86,9 @@ Italian employment-relations statute).
   `gdpr-art-6-1-b`/`6-1-f`; the GDPR does **not** displace Art. 4 L. 300/1970 —
   the two regimes run together, and this article's consent-free,
   collective-negotiation model is the Italian answer the GDPR's Art. 88
-  (employment context) contemplates.
+  (`gdpr-art-88`, employment context) contemplates. That is a reading of fit,
+  not a recorded fact: whether this article was notified to the Commission
+  under Art. 88(3) was not searched.
 
 ---
 
@@ -102,7 +104,8 @@ Italian employment-relations statute).
 
 - `../eu/gdpr.md` — `gdpr-art-9` (special-category prohibition and its
   employment-law derogation), `gdpr-art-13` (the parallel information duty),
-  `gdpr-art-6-1-f`/`6-1-b` (lawful basis).
+  `gdpr-art-6-1-f`/`6-1-b` (lawful basis), `gdpr-art-88` (the employment-context
+  enabling clause).
 - `it-codice-privacy.md` — the D.Lgs. 196/2003 compliance channel comma 3
   points at.
 - `../case-law/index.md` — Garante enforcement on workplace monitoring, when ingested.

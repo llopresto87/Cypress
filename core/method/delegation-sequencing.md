@@ -12,12 +12,13 @@ requires:
 peers:
   - method.delegation
   - method.delegation-cycle-economy
+  - method.delegation-wave-integrity
 load_when:
   - "spawn order, parallel or sequential, which spawn waits for which"
   - "one writer per file set, parallel lanes, concurrent writers, who writes the shared file"
   - "RED wave ahead of GREEN wave, is this increment ready, held increment, expected-red at the tip"
 prevents: Dependent units dispatched together and merged by hand, ready units held back by invented caps, a whole batch paused for one increment's problem, or two lanes racing on one file.
-est_tokens: 2398
+est_tokens: 2506
 ---
 
 ## Spawns are sequenced by dependency
@@ -88,15 +89,10 @@ files the finding touches; otherwise it waits for the next dispatch. A shared
 write ledger, where each worker claims its files before writing, works only
 when every brief tells the worker to claim there.
 
-**Take baselines without moving the shared tree.** When several lanes write
-one working tree, a worker gets a baseline by copying the file or reading
-`git show HEAD:<path>`, and runs no `git stash`, `checkout`, `restore` or
-`reset`, because those move other writers' uncommitted files. The
-orchestrator commits each lane by pathspec.
-
-Two cheap signs show that a race between lanes did damage: an orphaned leaf
-that no node references, and a heading duplicated inside a node two lanes
-touched. Check for both after lanes that shared a neighbourhood return.
+**A parallel wave is set up and checked as a whole.** The written lane
+table, the hash baseline diffed after the wave, the stop-and-hand-back rule
+for a write outside a worker's row, and output that survives an interrupted
+worker are `method.delegation-wave-integrity`.
 
 ## Waves: RED ahead of GREEN (`delegation.waves`)
 

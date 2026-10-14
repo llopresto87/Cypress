@@ -125,6 +125,9 @@ add_step bash "$ROOT/tests/test-tier-lanes.sh"
 add_step bash "$ROOT/tests/test-seed-lint.sh"
 add_step python3 "$ROOT/tests/seed-lint.py"
 add_step python3 "$ROOT/tests/legal-lint.py"
+# The steward's local forbid list (gitignored): every tracked file, terms only.
+# Absent (a clone, a worktree, CI), the step prints SKIPPED and exits 0.
+add_step python3 "$ROOT/tools/agnosticism-lint.py" --root "$ROOT" --tracked --terms-only --optional-forbid-file "$ROOT/.cypress/forbid.txt"
 add_step python3 "$ROOT/tools/roster-justification.py" --gaps
 add_step python3 "$ROOT/integrations/claude-code/agent-lint.py" --lint --dir "$ROOT/agents"
 add_step python3 "$ROOT/integrations/claude-code/agent-lint.py" --eval --dir "$ROOT/agents"
@@ -133,9 +136,10 @@ add_step bash "$ROOT/tests/graph-route-eval.sh"
 # The budget is read on its own line: a step inside a heredoc is invisible to
 # tools/gate-registry.py.
 SPEC_BUDGET="$(python3 -c 'import pathlib,re,sys; print((re.search(r"^SPEC_UNCOVERED_BUDGET = (\d+)", pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"), re.M) or [0,"0"])[1])' "$ROOT/tests/seed-lint.py")"
-add_step python3 "$ROOT/templates/knowledge-graph/spec-lint.py" --specs "$ROOT/docs/specs" --root "$ROOT" --uncovered-budget "$SPEC_BUDGET"
+SPEC_COMMENT_BUDGET="$(python3 -c 'import pathlib,re,sys; print((re.search(r"^SPEC_COMMENT_ONLY_BUDGET = (\d+)", pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"), re.M) or [0,"0"])[1])' "$ROOT/tests/seed-lint.py")"
+add_step python3 "$ROOT/templates/knowledge-graph/spec-lint.py" --specs "$ROOT/docs/specs" --root "$ROOT" --uncovered-budget "$SPEC_BUDGET" --comment-only-budget "$SPEC_COMMENT_BUDGET"
 # Only the active plan is linted; point ACTIVE_PLAN at the next round's plan.
-ACTIVE_PLAN="$ROOT/docs/plans/grill-8.1.2-tool-surfacing.md"
+ACTIVE_PLAN="$ROOT/docs/plans/grill-8.2.0-harvest.md"
 add_step python3 "$ROOT/templates/knowledge-graph/grill-lint.py" --plan "$ACTIVE_PLAN" --specs "$ROOT/docs/specs" --decisions "$ROOT/docs/decisions"
 # One step per file (SPEC-0004 PROSE_FLOOR_HELD_PER_FILE): the dash allowance is
 # a rate. documentation/*-reference.md stay out by a recorded genre decision.

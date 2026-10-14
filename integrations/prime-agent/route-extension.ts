@@ -27,6 +27,10 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
+// The interpreter the core runs on. install.sh writes here the Python it found
+// at the seed's floor (SPEC-0001 HOOKS_RUN_ON_THE_FLOOR_INTERPRETER).
+const PYTHON = "python3";
+
 type Session = {
   cwd: string;
   sessionManager: { getSessionId(): string; getHeader(): { rlmDepth?: unknown } | null };
@@ -84,7 +88,7 @@ export default function routeExtension(pi: ExtensionAPI): void {
       // leading marker, and a child session by its depth.
       const origin = (event as { origin?: unknown }).origin;
       if (typeof origin === "string") options.push(`--origin=${origin}`);
-      const r = await pi.exec("python3", [script, ...options], { timeout: 20_000, cwd: ctx.cwd });
+      const r = await pi.exec(PYTHON, [script, ...options], { timeout: 20_000, cwd: ctx.cwd });
       const content = additionalContext(r.stdout);
       if (!content) return;
       return { message: { customType: "cypress-route", content, display: true } };

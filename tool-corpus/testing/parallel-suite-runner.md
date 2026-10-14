@@ -15,7 +15,8 @@
 - **Stability:** **portable** across POSIX hosts, drop-in. The timeout kill
   uses process groups (`os.killpg`, `start_new_session`), which Windows does
   not have. An adopting project copies the script, points `-s` at its test
-  directory, and records its known-failing ids as a baseline file.
+  directory, and builds its known-failing baseline per machine and
+  interpreter (§5, "A baseline is valid only where it was built").
 
 ## 1. What it does
 
@@ -443,6 +444,20 @@ if __name__ == "__main__":
 - **Compare ids, never counts.** A run with the same number of failures as the
   baseline can still hold a new failure under a different id. Counts across two
   different trees say even less. Compare failing ids, on one tree.
+- **A baseline is valid only where it was built.** Its ids belong to one id
+  format, one interpreter and one tree. A baseline written in an older id
+  format (another runner's, or one from before the suite's layout changed)
+  matches nothing, so every standing failure reads as new: a false RED, the
+  mirror of the false green the id comparison exists to prevent. An
+  interpreter of another version fails ids of its own, so a baseline
+  carried from another machine is wrong in both directions. Build it on the
+  machine and interpreter that will compare against it: run this runner
+  over a clean export of the default branch (no local edits, no untracked
+  files) and keep its `failing-ids.txt`. Rebuild it when the interpreter,
+  the id format or the default branch's standing failures change. The
+  summary's `baseline ...: N ids, K failed as known` line is the check: a
+  non-empty baseline with `0 failed as known` beside a long `new failing
+  ids:` list is a stale baseline until a rebuild says otherwise.
 - **Process isolation is stricter than serial `discover`.** Every module gets a
   fresh interpreter. A test that passes only because another module ran first
   in the same process fails here, and that failure is a real finding about the
@@ -534,3 +549,7 @@ whole process group.
   shard whose parsed ids do not match its failures plus errors is unreadable,
   a process group that finished before the kill is tolerated, and the page
   names POSIX as the portability boundary.
+- 2026-10-14: a baseline is valid only for the id format, interpreter and
+  tree it was built on, and is rebuilt from a clean export of the default
+  branch per machine; a stale one reads every failure as new (§0, §5). By
+  harvest.

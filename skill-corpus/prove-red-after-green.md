@@ -1,3 +1,24 @@
+---
+name: prove-red-after-green
+description: Recover the missing RED for a fix that landed before its test was seen failing, by parking only the production paths, running the named contract rows against the unfixed code, treating an unexpected pass as a blocking finding, restoring a clean tree and reporting the red and green pair. Invoke when a green is about to be spent with no observed red.
+id: skill.prove-red-after-green
+tier: 2
+kind: skill
+title: prove-red-after-green, park the fix and watch the named rows fail
+owns:
+  - prove-red-after-green.park-production-paths
+  - prove-red-after-green.row-reading
+  - prove-red-after-green.red-green-pair
+requires:
+load_when:
+  - "the test was never seen failing"
+  - "recover the red after the fix landed"
+  - "tests passed on the first run, prove they can fail"
+  - "park the fix and rerun the contract tests"
+prevents: An increment whose test was never seen failing is reported as verified, and a test that would pass against the defect stays in the suite as false coverage.
+est_tokens: 2607
+---
+
 # Suggested skill: prove-red-after-green
 
 > Optional procedure: recover the missing RED for a fix that landed before its
@@ -103,6 +124,19 @@ state, so the record quotes only the filter's rows: the question is
 whether *these named rows* fail for *this named reason*, and the surrounding
 noise is irrelevant to it. Record the environment failures separately as
 `discovered` or `absent`, per `protocols/verify.md`.
+
+**A red counts only when the row's own assertion produced it.**
+(`protocols/test-first.md` RED step 3 is the rule; here it meets a parked fix.)
+A named contract row can go red without ever asking its question: it was
+never collected (an import or syntax error), or the scaffold around it broke
+before the assertion ran (an async wait the runtime refused, a navigation or
+focus step that failed first, a harness that errored on setup). That red is a
+wiring fault wearing the colour, not the RED, and it would have been red with
+the fix in place too, so it says nothing about the fix. Read each failing row against its
+predicted failure text from step 1: a row that failed for any other reason is
+not yet the RED. Repair the harness and re-run until the prediction's own
+assertion is what fails; until then the row is recorded as unproven, not as
+recovered.
 
 ### 4. An unexpected pass is a finding, and it blocks
 

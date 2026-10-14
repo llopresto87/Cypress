@@ -19,6 +19,9 @@ load_when:
   - "bump a pinned version"
   - "record a library pitfall or idiom"
   - "wiki page is stale or missing"
+  - "file a staged library draft the research-scout wrote"
+  - "promote a draft library page to final at close-out"
+  - "which dependencies get a full wiki page when adopting a project"
 artifacts:
   - templates/library-page.template.md
 prevents: A dependency page nobody can tell is stale — no recorded version it was true of, so an upgrade silently turns every idiom and pitfall on it into folklore and a reader has no way to notice.
@@ -39,6 +42,8 @@ a library and realizes the page is missing or stale.
 ## When to apply this skill
 
 - A new dependency is being added → create a page.
+- A `research-scout` draft is staged → file and finalize it (Workflow
+  below), at the close-out of the pass that drafted it.
 - A pinned version is bumped → refresh the page.
 - A new idiom for using a library was just adopted → record it.
 - An agent ran into a behavior the page doesn't cover → add a pitfall
@@ -128,6 +133,20 @@ page precedes the code, the names from the brief marked "planned"; §10
 (References) from the sources `research-scout` staged in
 `docs/graph/sources/`. The smoke test that makes the page authoritative
 is the tester's phase of the same pass.
+
+## Depth when adopting an existing project
+
+Index every direct dependency from manifests. Create a detailed library
+page during initialization when the dependency is architecturally
+significant, security/operations critical, unusual, or used across
+several subsystems. Each page answers how this project uses it, where
+configuration lives, relevant constraints, sharp edges, and verification
+status.
+
+Installed versions come from manifests/locks. Upstream lifecycle,
+compatibility, or current guidance requires a primary upstream source;
+otherwise mark it pending rather than guessing. Record consulted sources
+in `docs/graph/sources/`.
 
 ## When to also create a `best-practices/` page
 

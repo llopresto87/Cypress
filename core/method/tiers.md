@@ -3,12 +3,13 @@ id: method.tiers
 tier: 2
 kind: method
 origin: seed
-title: tiers — task classification T0–T3 and each tier's execution path
+title: tiers — task classification T0–T3, each tier's execution path, and a project's own authorization levels as a second axis
 owns:
   - tiers.definitions
   - tiers.hard-edges
   - tiers.execution-paths
   - tiers.contained-lane
+  - tiers.authorization-axes
 requires:
 peers:
   - method.delegation
@@ -19,15 +20,17 @@ load_when:
   - "can I just edit this directly, trivial edit"
   - "small fix but no spec covers it, does it really need the full funnel"
   - "two-line bug fix in code no spec covers"
-prevents: Every task handled at the same depth, so a typo fix is routed through the full pass and a migration is treated as a one-liner.
-est_tokens: 1476
+  - "the project has its own authorization levels or permission lanes, how do they relate to tiers"
+prevents: Every task handled at the same depth, so a typo fix is routed through the full pass and a migration is treated as a one-liner, or a project's own authorization level read as a tier and its stricter boundary lost.
+est_tokens: 1960
 ---
 
 # Task tiers — classification and execution paths
 
 Process is proportional to risk, and the tier is the unit of
 proportionality. Classify every task before acting, say the tier out
-loud, and reclassify upward the moment the work crosses a tier
+loud (beside the project's own authorization level, where it keeps one:
+`tiers.authorization-axes`), and reclassify upward the moment the work crosses a tier
 boundary. Misclassifying down is a violation; escalating up mid-task is
 normal and cheap.
 
@@ -97,6 +100,32 @@ Three edges keep the tiers honest:
   you are unsure of, is T3. The moment the work turns out to need an
   interface change, a dependency, a migration, or a spec to explain
   itself, stop, say so, and reclassify upward.
+
+## A project's own authorization levels are a second axis (`tiers.authorization-axes`)
+
+Some projects already classify what an agent may do, with levels such as
+read-only, propose, change and apply, each naming what is permitted on
+which target. Those levels and the tiers are two independent axes: the
+project's level says what is permitted, and the tier says how much
+process the permitted work gets. Classify the task on both and apply
+both. Where they disagree, the stricter boundary wins: a T1 edit on a
+target the project opens only to reading is not made, and a change the
+project permits at its lowest level is still T3 when it touches a
+contract.
+
+Never infer one axis from the other, and never translate between the
+vocabularies: a project level is not a tier, and no table maps one onto
+the other, because a mapping turns one axis into a copy of the other and
+drops whichever boundary was stricter. When the two cannot both be
+satisfied, or it is unclear which is stricter, stop before any mutation
+and put the conflict to the owner (`deliver.numbered-decisions`).
+
+The project keeps its own vocabulary on its own axis, even where it
+reuses a word this node uses. A project that calls its levels "lanes"
+means its own levels; the covered and contained lanes here are T2's two
+entry paths, and a write set is a third meaning (`delegation.lanes`).
+Where a word could carry more than one of these in a brief or a record,
+qualify it: "the project's change lane", "T2's contained lane".
 
 ## What every session produces
 

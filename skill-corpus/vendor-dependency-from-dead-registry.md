@@ -1,3 +1,25 @@
+---
+name: vendor-dependency-from-dead-registry
+description: Make a build work again after its private package registry stopped answering, by proving which packages were in-house, rebuilding each from the commit that built its pinned version, pointing the consumer at the local artifact, clearing every reference to the dead host and pinning transitives that floated to a new major. Invoke when installs fail on a retired private registry host.
+id: skill.vendor-dependency-from-dead-registry
+tier: 2
+kind: skill
+title: vendor-dependency-from-dead-registry, rebuild in-house packages from source when their registry is gone
+owns:
+  - vendor-dependency-from-dead-registry.in-house-proof
+  - vendor-dependency-from-dead-registry.pinned-commit-rebuild
+  - vendor-dependency-from-dead-registry.floating-major-audit
+  - vendor-dependency-from-dead-registry.failure-table
+requires:
+load_when:
+  - "npm install fails, the private registry is gone"
+  - "the private maven repository no longer answers"
+  - "rebuild an in-house package from source"
+  - "dependency install fails on a dead registry host"
+prevents: A build against a retired private registry is revived by vendoring the wrong tip, leaves the dead host in the lockfile, and lets regenerated transitives float to an unusable major.
+est_tokens: 4154
+---
+
 # Suggested skill: vendor-dependency-from-dead-registry
 
 > Optional procedure: a project's dependencies were resolved through a private

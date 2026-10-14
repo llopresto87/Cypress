@@ -14,6 +14,11 @@ packages come from `@types/*` packages (`@types/node` for Node.js), and
 `tslib` holds the emit helpers that `importHelpers` imports instead of
 inlining them in each file.
 
+The compiler itself changed implementation across major lines: through the 6
+line it is written in TypeScript and runs on a JavaScript engine; from the 7
+line it is a native port written in Go, shipped under the same package name
+and the same `tsc` command (see Major lines).
+
 Upstream home: the documentation at https://www.typescriptlang.org/docs/, the
 `tsconfig.json` reference at https://www.typescriptlang.org/tsconfig/, and the
 source at https://github.com/microsoft/TypeScript.
@@ -24,6 +29,9 @@ source at https://github.com/microsoft/TypeScript.
   `npm install -g typescript` suits trying it out. Frameworks that compile
   TypeScript themselves (Angular's compiler-cli) bound the accepted version:
   see [angular](angular.md).
+- Nightly builds install as `typescript@next`. On the 7 line, a project that
+  also needs the 6 line (for a tool that imports the compiler as a library)
+  installs both through npm aliases; see the 7 line below.
 - `tsconfig.json` holds `compilerOptions` plus the file set (`files`,
   `include`, `exclude`). `extends` lets several configs (the app build, the
   spec build) share a base and differ only where they must.
@@ -70,6 +78,10 @@ source at https://github.com/microsoft/TypeScript.
   does not rewrite the emitted import, so the bundler or runtime needs the same
   mapping. A `paths` alias is a workspace-wide convention: adding one for a
   single file changes the convention, not one file.
+- `rootDir` sets the root of the input tree mirrored into the output
+  directory. Its default changed in the 6 line (see Major lines), and upstream
+  names it, with `types`, as the default change most likely to surprise;
+  setting it explicitly (`"rootDir": "./src"`) keeps the output layout stable.
 - `skipLibCheck: true` skips type-checking of every declaration file. It
   speeds up builds and is common in generated configs.
 - `noEmit` type-checks without writing output. By default `tsc` still emits
@@ -78,12 +90,22 @@ source at https://github.com/microsoft/TypeScript.
   decorators, and `useDefineForClassFields` switches class fields to the
   standard ECMAScript semantics. Frameworks built on legacy decorators depend
   on both settings; the Angular-side facts are on [angular](angular.md).
+- `ignoreDeprecations` silences the deprecation errors of one release line
+  (`"6.0"` for the 6 line's); it is a bridge for the duration of a migration,
+  and the next major line does not honor it (see Major lines).
 
 ## Core API / usage shape
 - `tsc` with no file arguments compiles the project the nearest
   `tsconfig.json` describes (searching up from the current directory);
   `tsc -p <config>` picks another config, and
-  `tsc --noEmit` is the type-check-only run.
+  `tsc --noEmit` is the type-check-only run. `tsc --build` builds a graph of
+  project references in dependency order, and `tsc --watch` rebuilds on
+  change.
+- **The compiler API.** Through the 6 line, the `typescript` package is also a
+  library: linters, editor plugins and embedded-language tools (template
+  checkers, single-file-component tooling) import it to parse and type-check.
+  The 7 line's first release ships no programmatic API, so those tools stay on
+  the 6 line (see the 7 line).
 - **`import type`** (type-only imports) is the correct pattern under
   `isolatedModules: true`, which requires unambiguous type-only imports so each
   file can be transpiled independently.
@@ -124,6 +146,10 @@ source at https://github.com/microsoft/TypeScript.
 - A statement about a `tsconfig.json` is a configuration reading, not a
   type-check result. Only running `tsc --noEmit` (as a gate, in CI) says whether
   the code checks.
+- Cross a major line in two steps: first reach a clean build on the outgoing
+  line with its deprecation warnings cleared (no `ignoreDeprecations`), then
+  move. Upstream's promise of identical results across the 6 and 7 lines is
+  stated for exactly that starting point.
 
 ## General pitfalls
 - **A compiler bump is a source-breaking event by design.** Both the `lib.d.ts`
@@ -146,6 +172,12 @@ source at https://github.com/microsoft/TypeScript.
   and the symptom is a wave of "cannot find name" errors for globals.
 - A `paths` alias that the bundler or runtime does not also know compiles
   cleanly and fails at runtime with an unresolved import.
+- **The command-line compiler and the compiler library are not the same
+  dependency.** Moving the `typescript` package to the 7 line upgrades `tsc`,
+  and also removes the library every API-consuming tool (a type-aware linter,
+  an embedded-language checker, an editor plugin) imports from it. Upgrade the
+  command and keep those tools on the 6 line's compatibility package, rather
+  than treating the bump as one step.
 
 ## Testing
 - The type check is a test of its own: run `tsc --noEmit -p <config>` for each
@@ -156,6 +188,11 @@ source at https://github.com/microsoft/TypeScript.
   once the line starts compiling.
 - Give the spec config its runner's `types` so test globals resolve there
   and nowhere else.
+- To compare the 6 and 7 lines on one codebase, run the 6 line with
+  `--stableTypeOrdering`, which makes its type ordering match the 7 line's;
+  the remaining differences in diagnostics are the real ones. Upstream warns
+  the flag can slow type-checking by up to a quarter and is for diagnosis
+  only, not a permanent setting.
 
 ## Security defaults
 - TypeScript has no runtime security surface of its own: types are erased, so
@@ -172,17 +209,26 @@ source at https://github.com/microsoft/TypeScript.
   setting `types` to the packages actually needed cut build times by 20 to 50
   percent in projects it examined, and `skipLibCheck` trades declaration
   checking for speed.
+- Through the 6 line the compiler runs single-threaded on a JavaScript engine.
+  The 7 line parallelizes parsing, type-checking and emit, and trades memory
+  for speed through its worker settings (see the 7 line).
 - A failed type check exits non-zero, which is what makes `tsc --noEmit` usable
   as a gate.
 
 ## Interop
 - [angular](angular.md): the Angular compiler accepts a bounded TypeScript
   range per major, and Angular's decorators need `experimentalDecorators`.
+  Angular's template checking embeds the compiler library, so upstream's
+  advice for the 7 line's first release is to use the 7 line's `tsc` for
+  project-wide checks and keep the 6 line for editor support.
 - [nodejs](nodejs.md): `@types/node` should follow the Node line the code runs
   on, and the `node<NN>`/`nodenext` module modes model Node's resolution.
 - [rxjs](../npm/rxjs.md): RxJS majors declare a minimum TypeScript version.
 - Bundlers and single-file transpilers (esbuild, Babel, Vite) strip types
   without checking them, which is why `isolatedModules` exists.
+- Type-aware linters (typescript-eslint) and embedded-language tooling (Vue,
+  Svelte, Astro, MDX through Volar) consume the compiler library, not `tsc`;
+  for the 7 line's first release upstream says they stay on the 6 line.
 
 ## Major lines
 
@@ -195,35 +241,88 @@ source at https://github.com/microsoft/TypeScript.
   `unknown` behind `useUnknownInCatchVariables` arrived during the 4 line.
 
 ### The 6 line
+- Upstream states it is the last line built on the JavaScript codebase, and
+  that most of its changes prepare projects for the 7 line.
 - Several defaults changed. `strict` is `true` (a config that relied on the
   old default must now say `strict: false`), `module` defaults to `esnext`,
   `target` floats to the newest supported ECMAScript year,
-  `noUncheckedSideEffectImports` is on, `rootDir` defaults to `.`, and
-  `types` defaults to `[]`.
+  `noUncheckedSideEffectImports` is on, `libReplacement` is off, `rootDir`
+  defaults to `.` (the directory holding the `tsconfig.json`), and `types`
+  defaults to `[]`.
 - The `types` change hits many projects: missing globals (`process`, `fs`, a
   test runner's `describe`) appear as a flood of "cannot find name" errors.
   Upstream's fix is an explicit list, typically `"types": ["node"]`;
   `["*"]` restores the old behavior.
 - Deprecated, still working with `"ignoreDeprecations": "6.0"`:
-  `target: es5`, `downlevelIteration`, `moduleResolution: node`/`node10`,
-  `baseUrl` (no longer a lookup root; prefix each `paths` entry instead), and
-  setting `esModuleInterop`, `allowSyntheticDefaultImports` or `alwaysStrict`
-  to `false`. Passing files on the command line while a `tsconfig.json` exists
-  is an error.
+  `target: es5` (the lowest target becomes ES2015), `downlevelIteration`,
+  `moduleResolution: node`/`node10`, `baseUrl` (no longer a lookup root;
+  prefix each `paths` entry instead), setting `esModuleInterop`,
+  `allowSyntheticDefaultImports` or `alwaysStrict` to `false`, the `module`
+  keyword for namespace declarations (write `namespace`; an ambient
+  `declare module "..."` is unaffected), the `asserts` keyword on imports
+  (write `with`), and `/// <reference no-default-lib="true"/>` (use `noLib`
+  or `libReplacement`). Passing files on the command line while a
+  `tsconfig.json` exists is an error; `--ignoreConfig` compiles the named
+  files without the config.
 - Upstream's release notes read two ways on three more options. Each sits
   under a "Deprecated" heading, and the general note says every deprecated
   option keeps working under `"ignoreDeprecations": "6.0"`. The per-option
   text says otherwise: `outFile` "has been removed", `moduleResolution:
   classic` "has been removed", and the `module` values `amd`, `umd`,
-  `systemjs` and `none` are listed as unsupported. The safe course under
-  either reading is to migrate off them (a bundler for `outFile` and the
-  module formats, `nodenext` or `bundler` for `classic`) and not to rely on
-  the flag.
+  `systemjs` and `none` are listed as "no longer supported". The 7 line's
+  announcement lists all three among the 6 line's deprecations that became
+  hard errors. The safe course under either reading is to migrate off them (a
+  bundler for `outFile` and the module formats, `nodenext` or `bundler` for
+  `classic`) and not to rely on the flag.
+- Adds `--stableTypeOrdering`, an opt-in that makes the 6 line order types
+  the way the 7 line does, for diagnosing differences between the two (see
+  Testing).
 
 ### The 7 line
-- The 7 line is the native (non-JavaScript) port of the compiler. Options
-  deprecated in the 6 line are removed there, so clear the 6-line deprecation
-  warnings before moving.
+- The 7 line is the native port of the compiler, written in Go. Upstream
+  ported it keeping the structure and logic of the JavaScript codebase so
+  that both compilers give the same results, and reports full builds
+  typically 8 to 12 times faster than the 6 line, from native code,
+  shared-memory multithreading and new optimizations.
+- It installs as the same `typescript` package and runs as the same `tsc`
+  command. During the preview the port shipped separately, as the
+  `@typescript/native-preview` package with a `tsgo` command; from the 7.0
+  release candidate onward the command is `tsc`, and nightlies move back to
+  `typescript@next`.
+- Compatibility target: code that compiles cleanly on the 6 line with
+  `stableTypeOrdering` on and no `ignoreDeprecations` should compile
+  identically. Every 6-line deprecation listed above is a hard error,
+  `ignoreDeprecations` no longer rescues it, and `stableTypeOrdering` is
+  always on. The 6 line's default changes carry over; upstream words the
+  `target` default as the stable ECMAScript version before `esnext`.
+- Behavior differences beyond those: inference from template literal types
+  keeps Unicode surrogate pairs whole, which breaks type utilities that
+  modeled UTF-16 code units (some string-length types); and checking of
+  JavaScript files is reworked to match `.ts` analysis, so several JSDoc
+  conveniences stop working (a value used as a type needs `typeof`, `@enum`
+  and `@class` are no longer special, a standalone `?` is not a type,
+  Closure-style function types and postfix `!` are unsupported, a type name
+  must come from a `@typedef`). The `CHANGES.md` file in the
+  microsoft/typescript-go repository lists the intentional differences from
+  the 6 line.
+- **No programmatic API in its first release.** Tools that import the
+  compiler as a library stay on the 6 line through the compatibility package
+  `@typescript/typescript6`, which re-exports the 6 line's API and provides a
+  `tsc6` command. Upstream's recommended layout uses npm aliases: alias
+  `typescript` to `@typescript/typescript6` for the API consumers, and add the
+  7 line under a second alias for the command.
+- Parallelism, with experimental controls: `--checkers` sets the number of
+  type-checker workers (default 4; a fixed count keeps results
+  deterministic, more workers use more memory, and upstream notes that
+  changing the count can rarely surface order-dependent results);
+  `--builders` sets how many referenced projects build at once under
+  `--build` and multiplies with `--checkers`; `--singleThreaded` runs
+  everything on one thread, for debugging, comparison or constrained
+  machines.
+- `--watch` is rebuilt on a native file watcher rather than polling.
+- Editor support is a language server (LSP). Its first release covers the
+  common editor features; embedded-language tooling that needs the compiler
+  library does not run on it yet (see Interop).
 
 ## Upstream docs
 - https://www.typescriptlang.org/docs/: official TypeScript documentation
@@ -231,4 +330,10 @@ source at https://github.com/microsoft/TypeScript.
   (every flag named above)
 - https://www.typescriptlang.org/docs/handbook/release-notes/overview.html:
   release notes, including the 6 line's default changes and deprecations
+- https://devblogs.microsoft.com/typescript/: the TypeScript team's blog,
+  where each release is announced (the 7 line's announcement holds the
+  side-by-side, parallelism and compatibility facts above)
 - https://github.com/microsoft/TypeScript: TypeScript source repository
+- https://github.com/microsoft/typescript-go: the native port's staging
+  repository, closed once the port shipped (development continues in
+  microsoft/TypeScript); its `CHANGES.md` lists the 6-to-7 differences

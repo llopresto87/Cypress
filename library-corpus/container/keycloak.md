@@ -65,6 +65,16 @@ server-side app or service account that can).
   `get` / `create` / `update` / `delete` against admin resource paths; `-s
   field=value` applies partial updates, `-f <file>` submits a whole
   representation. The admin REST API exposes the same resources for scripting.
+- **Admin email actions.** `PUT /admin/realms/<realm>/users/<id>/execute-actions-email`
+  (body: a list of required actions) and `.../send-verify-email` mail the user
+  a link carrying an action token. Both take optional query parameters
+  `client_id`, `redirect_uri` and `lifespan` (seconds; the default is the
+  realm's admin-generated action-token lifespan). A `redirect_uri` needs a
+  `client_id`, and it is checked against that client's valid redirect URIs
+  before the token is made or any mail is attempted. Both answer 204 when the
+  mail went out, 400 with an error message for a bad request (user has no
+  email, user disabled, client missing or disabled, "Invalid redirect uri."),
+  and 500 when sending fails.
 - **Configuration.** Options are supplied interchangeably as CLI flags, `KC_*`
   environment variables, or a configuration file: hostname, proxy and TLS
   behavior, database, health and metrics endpoints, logging.
@@ -203,6 +213,20 @@ server-side app or service account that can).
   build/runtime split differently.** Recipes found in the wild are frequently
   written against a different line than the one you are running. Confirm against
   the pin in use.
+- **"Email not sent" is often a 400, not a mail fault.** A `redirect_uri`
+  handed to an admin email action must match one of the client's valid
+  redirect URIs; an entry without a wildcard is compared exactly (path, query
+  and fragment), so an origin without its trailing slash fails against an
+  entry registered with one. The call returns 400 "Invalid redirect uri."
+  before any mail is attempted, which from the outside looks like a relay
+  problem (observed in practice, and the check is in the admin user resource's
+  source). A send made without `redirect_uri` skips the check, so a test send
+  from the admin console or CLI (which may omit it; observed in practice, not
+  measured) proves nothing about the application's call. Read the HTTP status
+  of the admin call first, at the proxy's access log or in the client, and only
+  then the mail relay's log; the event log is no witness, because successful
+  events log at `debug` by default (Install, setup and configuration), so an
+  absent event proves nothing.
 - **Readiness is not "accepting connections".** Observed in practice: on the
   26 line the server accepted connections before it was ready (an asynchronous
   bootstrap); gate dependents on `/health/ready` on the management port, not on
@@ -232,6 +256,8 @@ server-side app or service account that can).
 - Run realm migrations twice in a test to prove idempotence.
 - Assert a token from one client is rejected by a resource server that
   expects another audience.
+- Exercise admin email actions with the exact `client_id` and `redirect_uri`
+  the application sends, against a mail catcher, and assert the 204.
 
 ## Security defaults
 - The production start mode requires a hostname and TLS (or an explicit proxy
@@ -252,6 +278,14 @@ server-side app or service account that can).
 ## Interop
 - The edge proxy and its header rules: [`nginx.md`](nginx.md).
 - A development mail catcher for realm email: [`smtp4dev.md`](smtp4dev.md).
+- The browser adapter and its redirect-URI rules:
+  [`keycloak-js.md`](../npm/keycloak-js.md).
+- Run as a resource of a .NET Aspire application model, with ASP.NET Core
+  authentication pointed at it by service name:
+  [`Aspire.Hosting.Keycloak.md`](../nuget/Aspire.Hosting.Keycloak.md). That
+  integration starts the server with `start-dev` locally and `start` when
+  published, so the hostname and proxy settings on this page apply to the
+  published resource.
 - Its database: [`postgres.md`](postgres.md).
 
 ## Major lines
@@ -277,3 +311,7 @@ server-side app or service account that can).
 - Server administration (rotating keys, client secret rotation):
   https://www.keycloak.org/docs/latest/server_admin/
 - Release notes: https://www.keycloak.org/docs/latest/release_notes/index.html
+- Admin REST API reference: https://www.keycloak.org/docs-api/latest/rest-api/index.html
+  (the email actions and their checks are in the source,
+  `services/src/main/java/org/keycloak/services/resources/admin/UserResource.java`;
+  redirect matching in `protocol/oidc/utils/RedirectUtils.java`)

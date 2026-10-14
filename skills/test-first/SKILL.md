@@ -22,6 +22,8 @@ load_when:
   - "unit vs integration vs e2e choice"
   - "one outcome per test"
   - "consolidate or shrink a test suite, duplicate or expensive tests"
+  - "plan the tests for a whole spec, which existing tests already cover it"
+  - "review finding needs a test, which test class owns the contract"
   - "does this test, gate or runtime check earn its place, how much rigor"
   - "project-specific test, generic or synthetic fixture"
   - "coverage lint wants a test for a contract"
@@ -78,6 +80,14 @@ Pick the lowest level that exercises the behavior.
   consumer's literals ties the shared code to one customer and breaks
   when that customer changes. The same holds for a property of a
   factory, a table, or a loop: one case over the whole collection.
+- **A test joins the class that owns its contract.** A RED born from a
+  review finding extends the test class (file, fixture group, suite)
+  that already asserts the contract the finding is about, so the
+  contract's tests stay in one place and share their setup. Starting a
+  new class is a choice with a stated reason, such as a
+  setup the owning class cannot give, written in the handback and in
+  the spec's §10 beside the setup-sharing lines; without one, the contract's
+  coverage splits across classes that drift apart.
 
 ## Answer a coverage lint with a real test (`test-first.no-lint-only-tests`)
 
@@ -97,6 +107,22 @@ fail-closed path). Other nodes link here; they do not restate it.
   breaks, and for whom, if the check is absent. No name, no check. Spec
   size does not set test count: one test may cover several failure
   modes, and a failure mode with no real blast radius gets none.
+- **A spec's tests are designed as one set, before any test code.**
+  First survey what exists: the tests already in the suite, the
+  contracts they already cover, and the setup they share. Then plan the
+  tests across the whole spec, not increment by increment, and merge
+  the overlaps the plan shows: two increments whose contracts one test
+  can assert get that one test. The §10 mapping is therefore not
+  one-to-one with increments: a row may cite a test another increment
+  wrote, by its path and name. Planned whole, the set is written whole:
+  the owner decided on 2026-10-14 that a spec's failing tests are
+  written in one RED wave and its mutation pass runs once, batched at
+  the end. The plan gives a spec's RED increments no `Depends on:` among
+  one another, so `grill-lint.py --waves` puts them in one wave
+  (`delegation.waves`) and the tester writes them together, not one
+  increment at a time; a RED that cannot fail for the right reason until
+  another increment's behaviour exists is the exception, named with its
+  reason in the plan. Mutation follows `delegation.mutation-at-end`.
 - **A change with nothing to get wrong earns no new test.** Before RED,
   name what the test could catch that the edit being present does not
   already guarantee. A declarative edit (a selector, a pipeline stage, a

@@ -111,10 +111,15 @@ each page current at close-out.
 
 ## The close-out spawn (`canonize` + `toolcraft`, §3.7 + §3.8)
 
-You are the single end-of-task close-out: one spawn, one brief
-(`docs/graph/protocols/canonize.md`), three parts: knowledge, tools, and
-skills. A part that found nothing records so with a one-line reason;
-§3.7 and §3.8 are satisfied either way.
+You are the single end-of-task close-out: one spawn, one brief. What the
+brief carries and the order you work it in are `canonize.close-out-flow`
+in `docs/graph/protocols/canonize.md`, the one home of the close-out's
+parts; run each part as that file states it, the session record, the
+status review, the deviation capture, the why-record and the harvest
+candidates included. This section adds your craft for the three parts
+that build graph artifacts: knowledge, tools, and skills. A part that
+found nothing records so with a one-line reason; §3.7 and §3.8 are
+satisfied either way.
 
 **Knowledge.** Each fact of interest lands in exactly one node's
 `owns:` (dedupe against what the graph already holds and update the
@@ -156,9 +161,13 @@ skills already in `docs/graph/skills/` and refresh a match in place.
 All three parts end under one `graph-lint` pass; the skill part also
 leaves its harness projections.
 
-Project-agnostic tools are candidates for the seed's `tool-corpus/` via
-`harvest`, which only the owner triggers: name the candidate in your
-handback.
+A tool, skill or lesson that may belong in the seed beyond this project
+(a project-agnostic tool for `tool-corpus/`, a procedure for
+`skill-corpus/`) is a harvest candidate. Place it in its plant home
+first, then append its row to `docs/graph/plans/harvest-candidates.md`
+as `canonize.harvest-candidates` states; the record is what a later
+harvest starts from, so a candidate named only in a handback is lost
+when the session ends. `harvest` itself stays the owner's to start.
 
 ## Sources discipline
 

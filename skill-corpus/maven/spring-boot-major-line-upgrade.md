@@ -18,7 +18,8 @@ load_when:
   - "gate a spring boot port before deploy"
 stack:
   - library-corpus/maven/spring-boot
-est_tokens: 5200
+prevents: A Spring Boot service crosses a major line green on build and unit tests while a silent break (a lost security rule, a renamed property, a dropped namespace) ships with it.
+est_tokens: 6499
 ---
 
 # Suggested skill: spring-boot-major-line-upgrade

@@ -8,6 +8,17 @@ creation; §4–§12 grow on demand: give a section a body only when a real
 fact exists, and leave it empty until then (a bare page with an honest
 pin is a valid start). Keep every heading and its number: agents and
 tooling index into them.
+What travels: §0 (the pin), §1 (the role here), §7's CVE list and §12
+(dated history) are this project's own and stay in the plant at harvest.
+Every other section is durable surface: a harvest carries it to the
+library corpus with this project's paths, versions and dates stripped
+(protocols/harvest.md, harvest.corpus-contracts). So write a durable fact
+as the library's behaviour and keep the project's paths beside it, not
+inside it.
+A page placed from the library corpus keeps the corpus page's shape;
+this project's pin, role and sharp edges go in one closing section,
+"## Project notes", each note dated and citing its source path, so a
+graft's merge of a newer corpus layer leaves that section whole.
 -->
 
 # Library: <name>

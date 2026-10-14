@@ -20,7 +20,8 @@ stack:
   - library-corpus/platform/azure-pipelines-yaml
   - library-corpus/platform/azure-devops-rest
   - library-corpus/platform/azure-cli
-est_tokens: 2506
+prevents: An Azure Pipelines run is queued against the wrong definition ref or scope, its compiled YAML and built commit are never proven, and a whole-group round trip of a variable group writes back the null its secrets read as.
+est_tokens: 3441
 ---
 
 # Suggested skill: drive-azure-pipelines-cli

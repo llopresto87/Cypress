@@ -5,8 +5,9 @@
 > no package to install. The REST API is versioned by an `api-version` query
 > parameter on every request, and this page is pinned by **retrieval date**
 > instead: the surface below was confirmed against the upstream reference (the
-> 7.1 pages) on **2026-10-05**. The items marked observed in practice come from
-> a plant's earlier live read-only calls. Which `api-version` a project sends is
+> 7.1 pages) on **2026-10-05**, and the audit-log surface on **2026-10-14**.
+> The items marked observed in practice were seen in live read-only calls,
+> not stated by the docs. Which `api-version` a project sends is
 > the project's pin, recorded by `ingest-library` in its own wiki page.
 > Re-confirm anything load-bearing against current upstream docs.
 
@@ -15,10 +16,10 @@ The **Azure DevOps Services REST API** is the HTTP surface behind every Azure
 DevOps client: the web UI, the `az devops` extension (see
 [azure-cli](azure-cli.md): its "Raw REST" bullet and its "A client version is
 not a platform version" pitfall are the reasons to come here) and the pipeline
-tasks. Every resource
-the platform has (projects, Git repositories, refs, pull requests, pipelines and
-their runs, builds, timelines and logs, variable groups) is reachable as JSON
-under an organization URL, with the same credential the CLI uses. The reference
+tasks. Every resource the platform has (projects, Git repositories, refs, pull
+requests, pipelines and their runs, builds, timelines and logs, variable
+groups, the organization audit log) is reachable as JSON under an organization
+URL, with the same credential the CLI uses. The reference
 lives on Microsoft Learn, with a version selector on each page.
 
 A caller that talks to it directly, from a script or a pipeline step with a
@@ -74,6 +75,13 @@ POST .../_apis/pipelines/{pipelineId}/preview              # compile only -> { f
 GET  .../_apis/pipelines/{pipelineId}/runs/{runId}          # poll that run by its id
 GET  .../_apis/build/builds/{buildId}/timeline              # records, each with a log id
 GET  .../_apis/build/builds/{buildId}/logs/{logId}[?startLine=&endLine=]
+
+# The audit log lives on its own host and is organization-scoped (no project)
+GET  https://auditservice.dev.azure.com/{organization}/_apis/audit/auditlog
+        ?api-version=<pinned>-preview.1[&startTime=&endTime=][&batchSize=<n>]
+        [&continuationToken=<t>][&skipAggregation=true]
+     -> { decoratedAuditLogEntries: [...], continuationToken, hasMore }
+GET  https://auditservice.dev.azure.com/{organization}/_apis/audit/actions  # every actionId the org can emit
 ```
 - List responses share one envelope, `{count, value}`. `count` is the length of
   `value` in this response (one page), not a total.
@@ -94,6 +102,19 @@ GET  .../_apis/build/builds/{buildId}/logs/{logId}[?startLine=&endLine=]
   `InvalidArgumentValueException` or silently ignored.
 - **Reviewer vote scale:** 10 approved, 5 approved with suggestions, 0 no vote,
   -5 waiting for author, -10 rejected.
+- **Audit log entries.** Each entry carries `actionId` (for example
+  `Library.VariableGroupModified`, `Library.VariableGroupCreated`,
+  `Library.VariableGroupDeleted`), `timestamp`, the actor (`actorDisplayName`,
+  `actorUPN`, `actorUserId`, or `actorClientId` for a service principal),
+  `ipAddress`, `authenticationMechanism`, `userAgent`, `correlationId`,
+  `area`, `category`, `details` and a `data` object with the item's ids and
+  names. Page with `continuationToken` while `hasMore` is true. Access-log
+  events (`AuditLog.AccessLog`) are aggregated unless `skipAggregation=true`.
+  The audit area is documented only with a preview `api-version` (the 7.1
+  reference gives `7.1-preview.1`), so a caller whose pinned constant is a
+  release version needs its preview form for these two calls. Observed in
+  practice: `userAgent` and `authenticationMechanism` tell an edit made in the
+  web UI from one made through an SDK or the CLI.
 - **Run vs preview.** The run body sets the `self` repository's ref and commit,
   `templateParameters` for the YAML `parameters:` block and `variables` for
   runtime variables. The preview operation takes the same body with
@@ -152,6 +173,13 @@ GET  .../_apis/build/builds/{buildId}/logs/{logId}[?startLine=&endLine=]
   appears absent.
 
 ## General pitfalls
+- **A variable group keeps no value history.** The group resource carries
+  only `createdBy`/`createdOn` and `modifiedBy`/`modifiedOn`, and the
+  reference documents no history or revision operation for it; observed in
+  practice, an overwritten value was not recoverable from the platform. The
+  audit log says who changed a group, when and from which client, never what
+  the value was. A value survives only where a build log printed it. Read and
+  keep the current values before editing a group that matters.
 - **A bad Bearer token gets a redirect to a sign-in page, not a 401.** Observed
   in practice on one organization, on read calls: an invalid `Basic` personal
   token got `401` with an empty body, but an invalid `Bearer` token, or no
@@ -212,6 +240,10 @@ GET  .../_apis/build/builds/{buildId}/logs/{logId}[?startLine=&endLine=]
   governance section).
 - A token belongs in a header, never in a URL, a log or a command argument.
 - Follow no redirects with a credential attached (General pitfalls).
+- **Auditing is off by default** and exists only for organizations backed by
+  Microsoft Entra ID (not on Azure DevOps Server). Reading the log needs the
+  "View audit log" permission (Project Collection Administrators have it) and,
+  for OAuth callers, the `vso.auditlog` scope.
 
 ## Operational behaviour
 - **Rate limits.** The budget unit is the throughput unit (TSTU). The global
@@ -225,7 +257,9 @@ GET  .../_apis/build/builds/{buildId}/logs/{logId}[?startLine=&endLine=]
 - Queue and create calls return when the object is accepted; a run's `state`
   and `result` are later states of that object.
 - Responses are paged per resource: refs by continuation token, pull requests
-  by `$top`/`$skip`.
+  by `$top`/`$skip`, the audit log by continuation token and `hasMore`.
+- Audit events are kept for 90 days and then deleted; keep them longer through
+  an audit stream or a periodic export.
 
 ## Interop
 - **azure-cli** (`library-corpus/platform/azure-cli`): the DevOps extension
@@ -259,6 +293,11 @@ GET  .../_apis/build/builds/{buildId}/logs/{logId}[?startLine=&endLine=]
 - Pipelines runs and preview: https://learn.microsoft.com/rest/api/azure/devops/pipelines
 - Authentication guidance for integrations:
   https://learn.microsoft.com/azure/devops/integrate/get-started/authentication/authentication-guidance
+- Audit log query: https://learn.microsoft.com/rest/api/azure/devops/audit/audit-log/query
+- Auditing (enablement, permissions, retention):
+  https://learn.microsoft.com/azure/devops/organizations/audit/azure-devops-auditing
+- Auditing events list: https://learn.microsoft.com/azure/devops/organizations/audit/auditing-events
+- Variable groups: https://learn.microsoft.com/rest/api/azure/devops/distributedtask/variablegroups
 - Rate and usage limits:
   https://learn.microsoft.com/azure/devops/integrate/concepts/rate-limits
 - Using the pipeline job token from a script:

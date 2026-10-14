@@ -149,6 +149,35 @@ plugin or toolchains.
   JUnit 4 through the Vintage engine, TestNG).
 - Run integration tests with `mvn verify`, never `mvn integration-test`, so the
   teardown phases run.
+- **Forks.** `forkCount` sets how many test JVMs run at once and `reuseForks`
+  whether each runs several classes; `forkCount=1` with `reuseForks=false`
+  gives every class its own JVM, which also defeats any in-JVM cache (Spring's
+  test-context cache is one: [`spring-framework`](../maven/spring-framework.md),
+  Testing). `${surefire.forkNumber}` is
+  replaced with the number of the executing fork (from 1 to `forkCount` times
+  the `-T` thread count) in `argLine`, in system properties, and from 3.2.0 in
+  `environmentVariables`: the documented way to give each fork its own
+  database schema, port or working directory.
+- **Forks share the temporary directory.** Forked JVMs on one host start with
+  the same default `java.io.tmpdir`, so every fork writes temporary files to
+  one place. A test that asserts it left no temporary file,
+  or lists the directory, then sees a sibling fork's files: JVM attach files,
+  an agent jar a mocking library self-attaches, another test's output
+  (observed in practice). Give each fork its own directory with
+  `-Djava.io.tmpdir=${project.build.directory}/tmp-${surefire.forkNumber}` in
+  the POM's `argLine`, and create the directories before the forks start
+  (observed in practice: nothing creates them). Observed in practice too, the
+  same `argLine` passed as `-DargLine` on the command line got the placeholder
+  as `null`, although the fork-options page says command-line system
+  properties are replaced too; keep it in the POM.
+- **`runOrder=balanced` needs in-JVM parallelism.** The parameter reference
+  says balanced ordering "is only relevant with `parallel=classes`". Its statistics live in `.surefire-<SHA1>` beside
+  `pom.xml`, the checksum covering the entire Surefire configuration, so any
+  configuration value that changes on every build (a system property that
+  carries the build timestamp, say) starts a new, empty statistics file each
+  run and the ordering never takes effect. From 3.5.5,
+  `runOrderStatisticsFileChecksum` overrides the checksum in the file name. Keep the file out of
+  version control.
 
 ## Security defaults
 - **Plain-HTTP repositories are blocked.** Current Maven releases ship a
@@ -218,6 +247,8 @@ page said was not for production use.
 - https://maven.apache.org/ref/current/maven-embedder/cli.html
 - https://maven.apache.org/plugins/maven-compiler-plugin/compile-mojo.html
 - https://maven.apache.org/surefire/maven-failsafe-plugin/usage.html
+- https://maven.apache.org/surefire/maven-surefire-plugin/test-mojo.html
+- https://maven.apache.org/surefire/maven-surefire-plugin/examples/fork-options-and-parallel-execution.html
 - https://maven.apache.org/wrapper/
 - https://maven.apache.org/guides/mini/guide-reproducible-builds.html
 - https://maven.apache.org/docs/history.html and https://maven.apache.org/whatsnewinmaven4.html

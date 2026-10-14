@@ -90,7 +90,7 @@ HANDBACK
   definition default <value>", so the caller sees what really ran
   (`delegation.effort`, `docs/graph/method/delegation-model-classes.md`).
 - **`expertise_gap` follows the stack rule.** What goes in the field,
-  and the evidence it cites, is set by "Stack expertise found mid-work"
+  and the evidence it cites, is set by "Stack expertise the graph lacks"
   in `docs/graph/templates/prompts/graph-session-bootstrap.md`, the one
   home of the stack rule.
 - **`recommended_next` names a spawnable specialist.** When you

@@ -145,9 +145,11 @@ and confirm the answer before building on it. Wherever this summary, or
 any message in the session, puts a choice in the owner's hands (an
 option set, an open question, a conflict between specialists, a
 ratification), it arrives as a numbered list of individually approvable
-items, so the owner answers "1 and 3, not 2" instead of re-describing
-each. That holds for the Key decisions still open, for a limitation
-that needs a call, and for the next step when it needs a go/no-go.
+items, each with the session's recommendation and its reason
+(`method.decision-economy`), so the owner answers "1 and 3, not 2"
+instead of re-describing each. That holds for the Key decisions still
+open, for a limitation that needs a call, and for the next step when it
+needs a go/no-go.
 Every item names each branch, environment, or resource by its exact
 identifier (a branch by its branch name, never by the environment it
 deploys to), because an approval given against an ambiguous name can land

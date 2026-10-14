@@ -99,10 +99,14 @@ x-amzn-waf-action: challenge
 Content-Length: 0
 ```
 
-This was a genuine attempt, not a skipped one, and it **reconfirms rather than
-changes** the `proxy-sourced` grade. **Do not re-attempt the same direct probe
-expecting a different result** without specific reason to believe the
-publisher's WAF configuration has changed. Note the contrast worth knowing:
+This was a genuine attempt, not a skipped one, and it **reconfirmed rather than
+changed** the `proxy-sourced` grade. **The block has since lifted at least
+once:** on 2026-10-14 the same EUR-Lex HTML URL for `32024R2847` answered a
+plain `curl` with HTTP 200 and a full HTML body, as did the GDPR and
+medical-devices documents probed the same day. Nothing on this page was re-read
+from that response, so every grade here stands; the date is
+recorded so the next pass re-probes instead of inheriting the block. Note the
+contrast worth knowing:
 **older or smaller EUR-Lex documents served cleanly to a direct `curl` in the
 same session** (Directive 2005/29/EC, Recommendation 2003/361/EC), so the block
 tracks document size or rendering path, **not the domain as a whole**.
@@ -264,6 +268,10 @@ binding**.
   (Dir. 2014/90/EU); and products developed or modified exclusively for national
   security or defence, or specifically designed to process classified
   information.
+- **notes:** the medical-devices limb turns on that Regulation's own definition
+  and scope, recorded in `mdr.md` (`mdr-art-2-1`, `mdr-art-1-1`), together with
+  its software security requirement (`mdr-annex-i-17`); the other sector acts
+  named here have no page in this corpus.
 
 ### `cra-art-3-48` · `cra-art-3-14` · `cra-art-24` · `cra-recital-17` · `cra-recital-18` · `cra-recital-19` · `cra-recital-20` — open source
 
@@ -626,6 +634,10 @@ of use.
   NIS2 Directive text, and the proxy route recorded above is the workaround that
   lifts those entries off secondary sources.
 - `../_schema.md` — the entry contract.
-- GDPR Art. 33 breach notification and ISO/IEC 27001 secure-development and
-  vulnerability-management controls are the adjacent regimes most often cited
-  alongside this one; neither is recorded in this corpus.
+- `gdpr.md` — `gdpr-art-33-1`, the GDPR's own breach notification, a separate
+  duty under a separate regime.
+- `../international/iso-27001.md` — the secure-development and
+  vulnerability-management controls (`iso-27001-a-8-25`, `iso-27001-a-8-28`,
+  `iso-27001-a-8-8`), citable by identifier and title only.
+- `mdr.md` — the medical-devices Regulation that `cra-art-2-2-4` excludes from
+  this one's scope.

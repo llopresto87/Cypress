@@ -1,3 +1,24 @@
+---
+name: third-party-handover
+description: Hand a multi-repository system to an outside party as a runnable one-command bundle that needs only a container runtime, plus a hand-off sweep that finds, strips, archives and verifies every internal trace, with each miss caught by a gate. Invoke when a system is delivered or re-delivered to a client, contractor or new maintainer.
+id: skill.third-party-handover
+tier: 2
+kind: skill
+title: third-party-handover, a runnable bundle and a gated sweep for an outside recipient
+owns:
+  - third-party-handover.runnable-bundle
+  - third-party-handover.handoff-sweep
+  - third-party-handover.strip-and-archive
+requires:
+load_when:
+  - "hand over the system to the client"
+  - "package the repositories for an external contractor"
+  - "make sure nothing internal leaves with the delivery"
+  - "one-command bundle for the recipient"
+prevents: A delivery leaks internal paths, ids and history to an outside party, ships a driver nobody ran, and arrives in an archive the recipient's own system cannot open.
+est_tokens: 3166
+---
+
 # Suggested skill: third-party-handover
 
 > Optional procedure: hand a multi-repository system to an outside party in

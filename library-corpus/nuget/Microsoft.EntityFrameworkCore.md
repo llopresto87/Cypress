@@ -12,13 +12,22 @@ queries into SQL through a database provider, and persists tracked changes on
 `SaveChanges`. Model shape is declared through a fluent configuration surface
 (with attribute-based configuration as an alternative), and schema evolution is
 expressed as migrations generated from that model. An application normally
-installs a provider package, which brings the core package with it:
+installs a provider package, which brings the core package with it, and adds
+the design-time packages where migrations are authored:
 
 - `Microsoft.EntityFrameworkCore`: the core package.
 - `Microsoft.EntityFrameworkCore.SqlServer`: the SQL Server provider.
 - `Microsoft.EntityFrameworkCore.Sqlite`: the SQLite provider.
 - `Npgsql.EntityFrameworkCore.PostgreSQL`: a third-party provider, for
   PostgreSQL.
+- `Microsoft.EntityFrameworkCore.Design`: the design-time services the
+  migration and scaffolding tools load. Needed in the project the `dotnet ef`
+  tool builds as its startup project.
+- `Microsoft.EntityFrameworkCore.Tools`: the EF commands for Visual Studio's
+  Package Manager Console. Needed only where migrations are run from that
+  console; the CLI uses the `dotnet-ef` tool instead.
+- `Microsoft.EntityFrameworkCore.InMemory`: the in-memory provider. Needed
+  only by tests that use it, which the EF team discourages (Testing).
 
 Licence: MIT. EF Core releases follow the .NET
 release and support schedule; each major line has a stated end of support.
@@ -26,11 +35,10 @@ release and support schedule; each major line has a stated end of support.
 ## Install, setup and configuration
 - Install the provider package: `dotnet add package
   Microsoft.EntityFrameworkCore.SqlServer` (or the provider you use).
-- Design-time tooling needs `Microsoft.EntityFrameworkCore.Design` in the
-  project the tools build, plus the `dotnet-ef` tool, installed globally
-  (`dotnet tool install --global dotnet-ef`) or as a local tool in a tool
-  manifest beside the solution. Visual Studio's Package Manager Console uses
-  `Microsoft.EntityFrameworkCore.Tools` instead.
+- Design-time tooling needs `.Design` in the project the tools build, plus
+  the `dotnet-ef` tool, installed globally (`dotnet tool install --global
+  dotnet-ef`) or as a local tool in a tool manifest beside the solution; the
+  Package Manager Console uses `.Tools` instead.
 - Keep the tools package, `.Design`, the core package and the provider on the
   same major. The docs require the tools to match the runtime packages' major,
   and providers do not work across majors: a provider built for one major
@@ -100,6 +108,16 @@ release and support schedule; each major line has a stated end of support.
   counterpart of `--project`: it tells EF which assembly holds the migrations.
   An application that applies or discovers migrations at run time also needs a
   normal project reference to that assembly.
+- How the tools get a context: if an `IDesignTimeDbContextFactory<TContext>`
+  exists in the context's project or the startup project, they use it and
+  bypass everything else; otherwise they build the startup project's host and
+  take the context from its services; failing that, they use a parameterless
+  constructor. The docs recommend the factory for a separate migrations
+  project. A factory must configure the same provider, model options and
+  migrations assembly as the application, or the tools scaffold migrations for
+  a model the application does not use. Observed in practice: a factory that
+  repeated the runtime options by hand (a naming convention, the migrations
+  history table's schema) was one more place for them to drift.
 - A migration is emitted as a timestamp-prefixed file whose class name carries
   no timestamp. Name it verb-first in PascalCase (`AddOrderStatus`); the tool
   adds the timestamp to the file name only.
@@ -262,6 +280,18 @@ release and support schedule; each major line has a stated end of support.
   model. Options that change the Identity schema must be visible to the design
   time tools, so run them with the application as startup project or provide an
   `IDesignTimeDbContextFactory`.
+- Naming-convention plugins: `EFCore.NamingConventions`
+  (`UseSnakeCaseNamingConvention()`, `UseLowerCaseNamingConvention()`,
+  `UseCamelCaseNamingConvention()`, `UseUpperCaseNamingConvention()`,
+  `UseUpperSnakeCaseNamingConvention()` on the options builder) rewrites table,
+  column, key and index names, which spares PostgreSQL the quoting that
+  PascalCase identifiers need. It is community-maintained, not part of EF Core,
+  and works with any relational provider. The convention is baked into every
+  migration generated after it is turned on: adding it to an existing database
+  produces a migration that renames everything (dropping and re-creating
+  primary keys), and removing it later does the same in reverse, so choose it
+  before the first migration. The design-time factory must call the same
+  convention method (above).
 - Test infrastructure: `Testcontainers.PostgreSql.md`, `Respawn.md`, and
   `Microsoft.AspNetCore.Mvc.Testing.md` for swapping the context registration
   in a test host.
@@ -311,8 +341,10 @@ release and support schedule; each major line has a stated end of support.
 - https://learn.microsoft.com/en-us/ef/core/dbcontext-configuration/
 - https://learn.microsoft.com/en-us/ef/core/testing/choosing-a-testing-strategy
 - https://learn.microsoft.com/en-us/ef/core/cli/dotnet
+- https://learn.microsoft.com/en-us/ef/core/cli/dbcontext-creation
 - https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying
 - https://learn.microsoft.com/en-us/ef/core/what-is-new/ (releases, support and
   the breaking-changes page of each major line)
 - https://github.com/dotnet/efcore
+- https://github.com/efcore/EFCore.NamingConventions
 - https://www.nuget.org/packages/Microsoft.EntityFrameworkCore

@@ -1,3 +1,24 @@
+---
+name: triage-unresolved-required-variable
+description: Sort each required configuration variable a deploy left unresolved into the one bucket that decides its fix (dead config, blank-safe, real secret), apply the one sanctioned optional exception only with its three artifacts, bridge a name mismatch with a default-free alias, and diagnose in a fixed order without printing a value. Invoke when a deploy fails closed on an unresolved variable or a set value arrives empty.
+id: skill.triage-unresolved-required-variable
+tier: 2
+kind: skill
+title: triage-unresolved-required-variable, three buckets, one exception and a fixed diagnostic order
+owns:
+  - triage-unresolved-required-variable.three-buckets
+  - triage-unresolved-required-variable.optional-exception
+  - triage-unresolved-required-variable.diagnostic-order
+requires:
+load_when:
+  - "deploy fails with a required variable unresolved"
+  - "the variable is set but arrives empty in the container"
+  - "still failing after I saved the missing value"
+  - "add a default to get the deploy through"
+prevents: A required secret is given a default that disarms its fail-closed check, a name mismatch is papered over with a value, or a run queued before the fix is misread as a wiring bug.
+est_tokens: 2550
+---
+
 # Suggested skill: triage-unresolved-required-variable
 
 > Optional procedure: a deployment stops because one or more required

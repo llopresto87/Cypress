@@ -1,3 +1,24 @@
+---
+name: framework-version-migration
+description: Move a codebase across a major generation of a framework, runtime or load-bearing dependency with behaviour preserved, by a characterization baseline first, staged increments in build-graph order, proven codemod completeness, enumerated consumers, an intended-delta allowlist and an ADR with its fallback trigger. Invoke when a major jump is forced by end of life or an advisory fixed only on a newer line.
+id: skill.framework-version-migration
+tier: 2
+kind: skill
+title: framework-version-migration, the behaviour-preserving sequence across a major generation
+owns:
+  - framework-version-migration.procedure
+  - framework-version-migration.characterize-first
+  - framework-version-migration.intended-delta-allowlist
+requires:
+load_when:
+  - "migrate to the next major version of the framework"
+  - "major version upgrade with behavior preserved"
+  - "the framework line reached end of life"
+  - "upgrade the language runtime across a major generation"
+prevents: A major-generation jump lands as one combined diff with no baseline, a codemod silently drops a critical token, consumers of a shared contract break unseen, and tests are edited until they pass.
+est_tokens: 2175
+---
+
 # Suggested skill: framework-version-migration
 
 > Optional procedure — the behavior-preserving sequence for moving a codebase

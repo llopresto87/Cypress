@@ -1,3 +1,24 @@
+---
+name: unit-of-work-retrospective
+description: Write a measured retrospective of a large unit of work, with every number taken from records, cost and quality lines side by side, root causes stated as decisions, a faster order at comparable quality, a table of which corners are safe to cut, and each lesson fed to its owning node. Invoke when a long unit closed over plan or the owner asks why it was slow.
+id: skill.unit-of-work-retrospective
+tier: 2
+kind: skill
+title: unit-of-work-retrospective, a measured account of what a large unit of work cost and why
+owns:
+  - unit-of-work-retrospective.measured-method
+  - unit-of-work-retrospective.cost-tables
+  - unit-of-work-retrospective.corner-table
+requires:
+load_when:
+  - "why was this so slow"
+  - "retrospective on the migration"
+  - "what would you do differently next time"
+  - "where did the tokens and time go"
+prevents: A long unit of work is reviewed from memory, double-counted token totals and back-filled metrics become data, and an unlisted corner reads as permission to cut it next time.
+est_tokens: 2973
+---
+
 # Suggested skill: unit-of-work-retrospective
 
 > Optional procedure: a large unit of work (a spec implemented over many

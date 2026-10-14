@@ -9,6 +9,7 @@ tests/run.sh; this suite tests fixtures and the router's scoring rules.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -662,6 +663,80 @@ class AdversarialBudgetTests(RealRosterCase):
         r = self._eval()
         self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertRegex(r.stdout + r.stderr, r"adversarial.*budget|budget.*adversarial")
+
+
+class PlantAdversarialBaselineTests(RealRosterCase):
+    """Asserts SPEC-0002 A_PLANT_ROSTER_IS_GATED_ON_ITS_OWN_ADVERSARIAL_BASELINE.
+
+    The seed's adversarial budget was measured over the seed's roster. A
+    plant's roster adds its own agents, and a bait row its graft brings may
+    land on one of them: gating that roster on the seed's number failed a
+    graft for a measurement taken somewhere else. The plant's number is
+    recorded with --record-baseline at the graft that brings the corpus and
+    again at one that changes the roster, and gated from then on; a
+    re-record names the number it replaces and says when it is a raise."""
+
+    BAITS = [("audit this diff against the spec once more", "tester"),
+             ("write the failing test that encodes the contract, first", "reviewer"),
+             ("make the failing test pass today", "architect"),
+             ("design the data model for the orders service now", "implementer")]
+
+    def _plant_roster(self, extra_baits):
+        (self.roster / "ledger-expert.md").write_text(agent_md(
+            "ledger-expert", origin="project", description="owns the mimsy borogove ledger",
+            triggers=["reconcile the mimsy borogove ledger"]), encoding="utf-8")
+        self._write("".join(self._rows()) + "".join(
+            f"{t}\t{w}\tadversarial\n" for t, w in self.BAITS[:extra_baits]))
+
+    def _record(self):
+        return run(LINT, ["--eval", "--record-baseline", "--dir", str(self.roster)], cwd=self.tmp_path)
+
+    def test_a_plant_roster_without_a_baseline_is_reported_not_gated(self):
+        budget = lint_constant("ADVERSARIAL_CONFIDENT_WRONG_BUDGET")
+        self._plant_roster(2)
+        r = self._eval()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("--record-baseline", r.stdout + r.stderr)
+        self.assertRegex(r.stdout, rf"adversarial.*{budget + 2}")
+
+    def test_the_recorded_baseline_gates_the_plant_roster(self):
+        self._plant_roster(2)
+        rec = self._record()
+        self.assertEqual(rec.returncode, 0, rec.stdout + rec.stderr)
+        baseline = self.roster / "_eval.baseline.json"
+        self.assertTrue(baseline.is_file(), rec.stdout + rec.stderr)
+        self.assertEqual(self._eval().returncode, 0)
+        self._plant_roster(3)
+        r = self._eval()
+        self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertRegex(r.stderr, r"above the plant baseline \(_eval\.baseline\.json\) \d+")
+
+    def test_re_recording_names_the_number_it_replaces_and_a_raise(self):
+        self._plant_roster(2)
+        first = self._record()
+        self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+        self.assertNotIn("replacing", first.stdout)
+        prior = json.loads((self.roster / "_eval.baseline.json").read_text())["adversarial_confident_wrong"]
+        self._plant_roster(3)
+        raised = self._record()
+        self.assertEqual(raised.returncode, 0, raised.stdout + raised.stderr)
+        self.assertRegex(raised.stdout, rf"replacing the recorded plant baseline {prior} with {prior + 1}.*RAISE")
+        same = self._record()
+        self.assertRegex(same.stdout, rf"replacing the recorded plant baseline {prior + 1} with {prior + 1}")
+        self.assertNotIn("RAISE", same.stdout)
+
+    def test_the_seed_roster_ignores_a_baseline_file(self):
+        self._write("".join(self._rows()) + "".join(
+            f"{t}\t{w}\tadversarial\n" for t, w in self.BAITS[:2]))
+        (self.roster / "_eval.baseline.json").write_text('{"adversarial_confident_wrong": 9}\n')
+        r = self._eval()
+        self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
+        rec = self._record()
+        self.assertNotEqual(rec.returncode, 0, "the seed's own roster recorded a baseline")
+        self.assertIn("seed's own roster", rec.stderr)
+        self.assertEqual((self.roster / "_eval.baseline.json").read_text(),
+                         '{"adversarial_confident_wrong": 9}\n')
+        self.assertRegex(r.stderr, r"above the recorded \d+")
 
 
 class CorpusHonestyTests(RealRosterCase):

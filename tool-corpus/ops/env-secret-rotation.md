@@ -52,9 +52,15 @@ rotate.sh --check                      # report which keys still hold placeholde
   file.
 - **Permission floor:** after writing, ensure the file mode is **≥ restrictive**,
   with a floor at `600` (owner-only). Never widen it.
-- **Refuse tracked files:** if `git ls-files --error-unmatch <file>` succeeds the
-  file is tracked: **refuse and exit non-zero**. Rotating a tracked secret file
-  commits the secret; the fix is to untrack it first, not to proceed.
+- **Refuse tracked files:** ask git from **the file's own directory**
+  (`git -C <dir of file> ls-files --error-unmatch -- <name>`), never from the
+  caller's working directory, which may sit in another repository or in none.
+  If it succeeds the file is tracked: **refuse and exit non-zero**. Rotating
+  a tracked secret file commits the secret; the fix is to untrack it first,
+  not to proceed. The rail states its failure direction: a directory inside
+  no work tree is one no repository tracks, so the rotation proceeds; with no
+  `git` available the rail cannot prove anything, so it **refuses** rather
+  than reading "could not ask" as "untracked".
 - **`--check` mode:** scan for values still equal to known placeholder/template
   sentinels (e.g. `changeme`, `REPLACE_ME`, empty) and report the **key names**
   that still hold them; exit non-zero if any remain, so CI can gate on it.
@@ -96,8 +102,14 @@ warn_if_init_once() {
   esac
 }
 
-refuse_if_tracked() {
-  if git ls-files --error-unmatch "$ENV_FILE" >/dev/null 2>&1; then
+refuse_if_tracked() {                  # asked from the file's own directory
+  local dir name
+  dir="$(cd "$(dirname "$ENV_FILE")" && pwd)"; name="$(basename "$ENV_FILE")"
+  if ! command -v git >/dev/null 2>&1; then
+    echo "refusing: git is not available, so $ENV_FILE cannot be proven untracked" >&2; exit 2
+  fi
+  git -C "$dir" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0  # in no work tree
+  if git -C "$dir" ls-files --error-unmatch -- "$name" >/dev/null 2>&1; then
     echo "refusing: $ENV_FILE is git-tracked; untrack it first" >&2; exit 2
   fi
 }
@@ -139,6 +151,13 @@ esac
   mid-write; the temp+trap+`mv` pattern is not optional.
 - **Rotating a git-tracked file commits the secret**: refuse rather than
   proceed.
+- **A tracked-ness check run from the wrong directory answers the wrong
+  question.** `git ls-files` run from the caller's working directory asks
+  the repository *that directory* belongs to; a secret file in another
+  repository, or a caller outside any, gets "not tracked" for a file that is
+  tracked. And a check written as "any git failure means untracked" passes
+  silently when `git` is missing. Ask from the file's own directory, and
+  decide each failure direction on purpose (§3).
 - **Rotating a datastore credential in the file does nothing to an
   initialized datastore.** The official database images read their credential
   variables only when they initialize an empty data directory; once it holds a
@@ -170,7 +189,9 @@ byte-for-byte; `generate` on a key listed in `INIT_ONCE_KEYS` refuses and
 leaves the file unchanged, `set` on such a key prints the re-initialization
 warning, and rotating any other key does neither; `--check` skips comment and
 blank lines; `set` reads stdin and never appears on argv; a tracked file is
-refused; `--check` exits non-zero iff a placeholder remains and prints only key
+refused when the tool is run from a directory outside its repository; a file
+in a directory inside no work tree is rotated; with `git` absent from `PATH`
+the tool refuses; `--check` exits non-zero iff a placeholder remains and prints only key
 names; an interrupted rewrite leaves the original intact.
 
 - **How to run the tests:** `<the plant's test command for shell tooling>`
@@ -198,3 +219,7 @@ names; an interrupted rewrite leaves the original intact.
   because it wrote a value the database did not know yet, against the page's
   own order; `set` keeps the warning. `--check` skips comment and blank lines,
   which it used to report as placeholders.
+- 2026-10-14: the tracked-file rail asks git from the secret file's own
+  directory instead of the caller's, and states its failure direction:
+  outside every work tree it proceeds, without `git` it refuses (§3, §4
+  skeleton, §5, §6). By harvest.

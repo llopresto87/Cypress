@@ -42,9 +42,13 @@ description: {{One paragraph. Who this expert is (a senior <role>), what
   it owns, and a pushy "Use whenever ..." clause naming the concrete
   triggers that should route work here. This is what the orchestrator
   reads to route — make the triggers unambiguous.}}
-tools: [{{inline, comma-separated list — grant only what the role needs.
-  Read-only investigators: Read, Glob, Grep, Bash. Authors also take:
-  Write, Edit. Add WebSearch, WebFetch only if the role goes to the web.}}]
+tools: [{{inline, comma-separated list — grant only what the role needs,
+  and always Bash: every agent runs the plant's routing and lookup tools
+  itself (`delegation.briefs`); a role that does not build says in its
+  body that its shell looks things up and measures only, and never
+  builds, installs or writes a file through it. Read-only
+  investigators: Read, Glob, Grep, Bash. Authors also take: Write, Edit.
+  Add WebSearch, WebFetch only if the role goes to the web.}}]
 model: {{the class token: `sonnet` (the investigation class) if this expert
   only investigates (read-only scouting, fact-gathering); `opus` (the
   authoring class) if it authors anything — code, specs, tests, docs,

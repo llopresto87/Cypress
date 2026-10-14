@@ -561,6 +561,19 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
 - **And:** the depth-cap record names the file at depth 3 whose dependent the
   input part did not reach, and the same chain with `--depth 5` is complete
 
+### Contract: INPUT_IN_AN_UNREAD_LANGUAGE_IS_INCOMPLETE
+- **Given:** a plant holding `svc/store.go`, `svc/handler.go` that imports its
+  package, a Go test beside them, and two Python files, `tools/b.py`
+  importing `tools/a.py`
+- **When:** `impact svc/store.go --json` and `affected-tests svc/store.go
+  --json` run, then `impact tools/a.py --json`
+- **Then:** each Go answer holds one `language-not-read` record naming
+  `svc/store.go`, whose detail names the language (`go`), and its text view
+  ends with the query's action line: the tool inventories a file of a
+  language in `UNREAD_LANGUAGES` and reads none of its links, so an empty list
+  of dependents is not an answer
+- **And:** the Python answer holds no `language-not-read` record
+
 ### Contract: ACTION_LINE_NAMES_AT_MOST_TEXT_MAX_ROWS_RECORDS
 - **Given:** a plant whose one governed repository holds `a.py`, and 41
   inputs that no repository holds and no stored reference names,
@@ -604,6 +617,22 @@ Every query exits 0 (`USAGE_REFUSED` is the one exit 2).
   `maybe` row with reason `dynamic-nonliteral`, and neither fixture is in any
   list, because `no-code-edge` takes only files of a link-bearing language
 - **And:** a test that is both reached and declared is in `tests` only
+
+### Contract: TEST_REACHING_CODE_OVER_HTTP_IS_INCOMPLETE
+- **Given:** a TypeScript plant whose `src/server.ts` imports
+  `src/routes/posts.ts`, a unit test importing `src/server.ts`, and an
+  end-to-end test that imports only a test helper and fetches
+  `http://localhost:3000/api/posts`
+- **When:** `affected-tests src/routes/posts.ts --json` runs, and `build
+  --json`
+- **Then:** `tests` lists the unit test; `incomplete` holds one
+  `reached-over-http` record naming the end-to-end test, its detail the URL
+  as written; the end-to-end test is a `floor` row, never an `always_run`
+  `no-code-edge` row; and the text view ends with "run the full suite"
+- **And:** the build lists the end-to-end test as `opaque` with reason
+  `reached-over-http`: what a started application serves is not named in the
+  test's text, so no list of the answer may read as the tests that reach the
+  input
 
 ### Anchors
 
@@ -815,6 +844,17 @@ anchor with the placed `docs/graph/code-anchor.py`.
   input per character); `moved-unavailable` naming `.cypress/anchor.json`
   (the subject read inside the guard, with that fallback), never a traceback
 - **And:** each text view ends with `Incomplete: review by hand (...)`
+
+### Contract: ANCHORS_MOVED_SKIPS_A_NESTED_WORK_TREE
+- **Given:** the plant of `ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS`, its anchor
+  recorded; then `git worktree add wt/side` run in the plant root, which Git
+  then lists as the one untracked directory `wt/side/`, and an uncommitted
+  edit to `run.sh`
+- **When:** `anchors --moved --json` runs
+- **Then:** `inputs` is `run.sh` alone, answered, and `incomplete` holds one
+  `repository-unnamed` record naming `wt/side`: a work tree nested in a
+  governed repository is not code that moved, and one such entry never
+  refuses the rest of the moved list
 
 ### One claim rule
 
@@ -1068,11 +1108,11 @@ install.
 - **Performance:** a full build over a repository of 5,000 inventoried files
   finishes within 5 s and 64 MB peak RSS on the owner's development machine.
   Evidence (the gap scouts' throwaway builds, 2026-10-07): 0.15 s and 15 MB
-  RSS on Vivid; 3.8 s on a 4,865-file llama.cpp tree, with import extraction
+  RSS on a TypeScript web plant; 3.8 s on a 4,865-file llama.cpp tree, with import extraction
   only. A query that reuses the cache answers within 1 s on the seed-sized
   plant. Measured once at verify, not gated (grill §10); the 2026-10-07
   measurement, every rule on: 0.67 s and 47 MB on a plant governing a seed
-  clone (914 files), 0.66 s and 31 MB on Vivid (397), 3.19 s and 52 MB on a
+  clone (914 files), 0.66 s and 31 MB on the TypeScript plant (397), 3.19 s and 52 MB on a
   4,320-file llama.cpp clone; a cached query 0.10 s on the seed plant. The
   5,000-file figure, about 3.7 s and 55 MB, is inferred by linear scale.
   Slice 2, each measured once at verify (grill §10, increment 22): the build,
@@ -1229,10 +1269,8 @@ install.
   per list and counts the rest on a more-line, and its closing `ACTION_LINE`
   names at most `TEXT_MAX_ROWS` records; `--all` lifts both caps; `--json`
   lists every row.
-- **Compatibility:** stdlib Python 3.12 or newer, the version the seed's
-  gate pins (`.github/workflows/gate.yml` line 38) and the one the placed
-  `graph-lint.py` already needs (a backslash inside an f-string expression,
-  line 341, parses from 3.12), and Git; no third-party package, no `sqlite3`, no
+- **Compatibility:** stdlib Python at the seed's floor (SPEC-0005 §5, its
+  one home), and Git; no third-party package, no `sqlite3`, no
   tree-sitter. A platform without descriptor-relative file calls gets
   answers and no cache, never a path-string fallback.
 
@@ -1419,7 +1457,7 @@ slice 1 read `repo: src/` as a prefix claim and normalized the value with
 claim as `maybe` facts, `./src/lib` over a folder claims as `src/lib`, and a
 value that names nothing is reported. In graph-lint: a folder or file value
 without `/` (`src/` and `CMakeLists.txt` in the llama.cpp plant, `suricata`
-in the wrt-migration plant) now claims, and a nested repository named with a
+in another plant) now claims, and a nested repository named with a
 `/` stops claiming (no plant holds one); every other verdict is unchanged.
 The seed's suites hold no value that moves: their `repo:` values name
 nothing on disk (`billsvc` is never written), so they read as before.
@@ -1471,7 +1509,7 @@ opaque:                        # a holder whose reference may name any file
   line:      { type: int, or null for unreadable }
   reference: { type: string, as written, cut to LITERAL_MAX }
   reason:    { enum: [dynamic-nonliteral, walks-tree, unreadable, alias-config-unavailable,
-                          unmapped-specifier] }
+                          unmapped-specifier, reached-over-http] }
 unresolved:                    # an import or invoke reference that names a path no inventory file holds
   holder:    { type: string, inventory path }
   line:      { type: int }
@@ -1605,7 +1643,12 @@ unresolved:                    # an import or invoke reference that names a path
   package resolves (`~/x` with no `~` alias, `#internal`): the config that maps it (a
   bundler alias, a package `imports` map) is one the tool does not read, so it
   may name any file. It has no base to probe, so an `unresolved` record could
-  never reach an answer through a `named` step.
+  never reach an answer through a `named` step; `reached-over-http`, a file of
+  the test class whose text holds a loopback URL (`http://localhost`,
+  `127.0.0.1`, `0.0.0.0`, `[::1]`), a page navigation (`.goto(`) or a
+  `baseURL` (`OVER_HTTP_RE`), its first such line the record: the test drives
+  a started application, and what that application serves is named nowhere
+  in the test's text.
 - Unresolved records come only from `import` and `invoke` references.
   Reasons: `relative-no-file`, a relative specifier, a load by file path or an
   `invoke` path that resolves to no file; `alias-no-file`, a specifier an alias matched
@@ -1741,7 +1784,7 @@ symbol:                        # one definition, read at build with the links (s
   `interface`, `type`, `enum` or `const enum` (`type`), or `const`, `let` or
   `var` (`variable`), then a name. An indented declaration without `export`
   defines nothing: it is a function's local (72 percent of the line-read
-  declarations in Vivid were indented `const`, `let` or `var`), or a member
+  declarations in the TypeScript plant were indented `const`, `let` or `var`), or a member
   of a block the reader cannot see, and Python's reader leaves locals out
   alike. The first declarator alone is read (`const a = 1, b = 2` defines
   `a`); a destructuring pattern, an anonymous default export,
@@ -1959,6 +2002,8 @@ incomplete_record:
 | `outside-plant` | an input outside the plant root | the input | all |
 | `ambiguous-input` | a repository-relative input several repositories hold | the input | all |
 | `input-not-found` | an input no rule of "Inputs" takes | the input | impact, affected-tests |
+| `language-not-read` | a walked input of a language in `UNREAD_LANGUAGES` (inventoried as `other`; Go, Java, C#, Ruby, Rust and the like), whose own imports the tool does not read | the input (the language is the detail) | impact, affected-tests |
+| `reached-over-http` | a test holding an `opaque` `reached-over-http` record, in a repository that holds a walked `code` input | that test (its reference is the detail) | affected-tests |
 | `depth-cap` | a file the input part reaches at `--depth` has a dependent neither part lists | that file at the cut depth (`f4.py` for `f1.py`, `--depth 3` over `f1` to `f5`), one record each | impact, affected-tests |
 | `no-test-declaration` | `TEST_GLOBS` absent, unparsable or not a list of strings | `docs/graph/spec-lint.py` | affected-tests, build |
 | `no-test-files` | `TEST_GLOBS` matches no inventory file | `docs/graph/spec-lint.py` | affected-tests, build |
@@ -1969,7 +2014,7 @@ incomplete_record:
 | `moved-unavailable` | code-anchor has no usable anchor, or `code-anchor.py` is absent or fails to load | `.cypress/anchor.json`, or `docs/graph/code-anchor.py` (the reason is the detail) | anchors `--moved` |
 | `moved-unverified` | code-anchor labels a recorded repository `unverified` | the repository's plant-relative path (the label is the detail) | anchors `--moved` |
 | `repo-unresolved` | a node's `repo:` value names nothing on disk (`repo_kind` `unresolved`, §6 "Helper") | the node's plant-relative page (`REPO_UNRESOLVED_DETAIL` naming the value is the detail) | anchors, every answer, `--moved` included; build |
-| `repository-unnamed` | a Git work tree nested inside a governed repository that is not itself governed: an untracked one Git lists as `<path>/`, or a submodule's gitlink whose folder holds `.git`; an ignored one is not listed (§6 "Build report") | the nested work tree's plant-relative path | build |
+| `repository-unnamed` | a Git work tree nested inside a governed repository that is not itself governed: an untracked one Git lists as `<path>/`, or a submodule's gitlink whose folder holds `.git`; an ignored one is not listed (§6 "Build report"); in `anchors --moved`, an entry of code-anchor's moved list that Git gives as a directory (`wt/side/`), a work tree nested in a recorded repository | the nested work tree's plant-relative path | build; anchors `--moved` |
 
 "The input" is the input as `plant_relative` normalizes it (§6 "Inputs"), so
 it equals the input given in its normal form; an input it cannot make
@@ -2060,7 +2105,7 @@ row:
   found: { enum: [exact, resolved, path-literal, directory, ambiguous, workspace-package,   # a link's found
                    named, history,                                                        # a walk step; a history row
                    dynamic-nonliteral, walks-tree, unreadable, alias-config-unavailable,  # an opaque reason
-                   unmapped-specifier],
+                   unmapped-specifier, reached-over-http],
            null at depth 0 }
   line:  int|null
   maybe: { reason, holder, line } | null      # the maybe link nearest the start of the chain
@@ -2737,11 +2782,11 @@ incomplete, its `{reasons}` capped like the lists (`ACTION_MORE`), else, for `af
 
 ## 8. Examples
 
-Real figures from the seed, this plant and Vivid as measured on 2026-10-07
+Real figures from the seed, this plant and a TypeScript web plant as measured on 2026-10-07
 (the gap reports, consolidated in the session record); outputs abbreviated.
 
 ```yaml
-# Happy: Vivid, an alias import (tsconfig.json "paths": {"@/*": ["./src/*"]})
+# Happy: the TypeScript plant, an alias import (tsconfig.json "paths": {"@/*": ["./src/*"]})
 input:  impact src/lib/db/index.ts --json
 output:
   cache: { status: built }
@@ -2798,7 +2843,7 @@ output:
 ```
 
 ```yaml
-# Edge: Vivid, a deleted file a reference still names (the gap scout found
+# Edge: the TypeScript plant, a deleted file a reference still names (the gap scout found
 # the specifier @/lib/posts/validate unresolved at HEAD; its holder is not recorded)
 input:  affected-tests src/lib/posts/validate.ts --json
 output:
@@ -2811,7 +2856,7 @@ output:
 ```
 
 ```yaml
-# Failure, global input: Vivid, a tsconfig edit changes every alias resolution
+# Failure, global input: the TypeScript plant, a tsconfig edit changes every alias resolution
 input:  impact tsconfig.json; affected-tests tsconfig.json; anchors tsconfig.json
 output:
   incomplete: [ { reason: global-input, subject: tsconfig.json } ]
@@ -2921,7 +2966,7 @@ output: |
 ```
 
 ```yaml
-# Edge: a turboquant-like plant after its graft (8.1.2), six nodes whose repo:
+# Edge: a plant after its graft to 8.1.2, six nodes whose repo:
 # is a comma list, TEST_GLOBS ["tests/**/*.*"], a test file kept beside its code
 input:  build
 output: |
@@ -3114,11 +3159,11 @@ without further clarification.
   the router reads that value as before the ruling and prints no notice.
   Case is matched as written by `anchors` and folded by the router, so a
   task naming `SRC/b.py` loads the `repo: src` node. Routing changes only
-  in plants that hold a folder or file value without `/`: llama-xtx
-  (7 nodes) and wrt-migration (3 nodes) load those nodes by path from their
-  next graft on, and not before; the seed's own suites do not change. With
-  no usable `source_paths.py` beside `graph-lint.py`, the route still
-  answers, tier 2 claims nothing, and `--plan` prints
+  in plants that hold a folder or file value without `/`: the
+  llama.cpp plant (7 nodes) and another (3 nodes) load those nodes by
+  path from their next graft on, and not before; the seed's own suites do
+  not change. With no usable `source_paths.py` beside `graph-lint.py`, the
+  route still answers, tier 2 claims nothing, and `--plan` prints
   `inference skipped: HelperUnavailable` — maps to
   REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS
 
@@ -3335,8 +3380,10 @@ and §6 now state each:
 | WALK_DELETED_INPUT_REACHES_ITS_NAMERS | X440 case_walk_deleted_input | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | INPUT_FORMS_RESOLVED | X441 case_input_forms | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | WALK_INCOMPLETE_NAMES_REASON_AND_ACTION | X442 case_walk_incomplete: arms (a) to (h), one per reason the contract lists | tests/test-source-index.sh | integration (synthetic Git plant) | green |
+| INPUT_IN_AN_UNREAD_LANGUAGE_IS_INCOMPLETE | X481 case_unread_language: a Go input, `impact` and `affected-tests`; a Python input not | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | AFFECTED_TESTS_ARE_THE_WALK_FILTERED | X443 case_affected_tests_filtered: certain rows first, then a maybe row | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | AFFECTED_ALWAYS_RUN_LISTED_APART | X444 case_affected_always_run: the opaque test in `floor`, the JSON and Markdown fixtures in no list | tests/test-source-index.sh | integration (synthetic Git plant) | green |
+| TEST_REACHING_CODE_OVER_HTTP_IS_INCOMPLETE | X482 case_over_http: a loopback-URL end-to-end test, `affected-tests` and `build` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | ANCHORS_NAME_CITING_PAGES_OR_UNCITED | X445 case_anchors_citing_pages: the `repo:` arm under option D, `repo: src/` (r2) and `repo: src` (r3) each a `maybe` `repo` fact found `repo-prefix` for `src/a.py`, `src` a plain folder; `lib/b.py` uncited | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | ANCHORS_BASENAME_IS_MAYBE_AMBIGUOUS_IS_INCOMPLETE | X446 case_anchors_basename | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | OUTPUT_CARRIES_NO_RAW_CONTROL | X448 case_output_no_raw_control: names holding ESC, U+202E and the byte 0xFF, text and `--json` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
@@ -3350,6 +3397,7 @@ and §6 now state each:
 | HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE | X456 case_history_incomplete: arm (a), `git clone --depth 2 file://<origin>`, the origin's last three commits `a.py` with `tests/t_old.sh`, `a.py` alone, `a.py` with `tests/t_new.sh`: one `history-shallow` record naming `.`, `history` holds `tests/t_new.sh` with `together` `{count: 1, of: 1}` and no `tests/t_old.sh` (the parentless boundary commit is not read); arm (b), no commit and an untracked `a.py`: one `history-unavailable` record naming `.`; each text view ends with the `affected-tests` `ACTION_LINE`; without `--history` neither record | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | green |
 | ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS | X457 case_anchors_moved: anchor recorded by the placed `docs/graph/code-anchor.py`, then a commit in nested `Cypress/` and an uncommitted `run.sh` edit; `anchors --moved` equals `anchors Cypress/tools/x.py run.sh` in every key but `cache`; after a second `--record`, no input, no file, `incomplete` empty, `MOVED_NONE_LINE` | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | green |
 | ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE | X458 case_anchors_moved_incomplete: arms (a) no `.cypress/anchor.json`, (b) the recorded `Cypress` commit replaced by one the clone lacks, `run.sh` edited, (c) no `docs/graph/code-anchor.py`, (d) a placed `code-anchor.py` with no `moved_list` (placed before slice 2), (e) a placed `code-anchor.py` whose `moved_list` returns a `paths` string, (f) a placed `code-anchor.py` whose `moved_list` raises `Unrecorded` with no `ANCHOR_NAME`; each text view ends with the `anchors` `ACTION_LINE` and prints no traceback | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | green |
+| ANCHORS_MOVED_SKIPS_A_NESTED_WORK_TREE | X483 case_moved_nested_work_tree: `git worktree add wt/side` under the plant, `run.sh` edited | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS | X459 case_repo_claim, the §4 fixture, `anchors` and the seed's `graph-lint.py --plan-json` run in one plant: arm path, `anchors` lists `repo: src/lib/a.py` `certain` `exact` and `repo: src/lib/` and `repo: src` `maybe` `repo-prefix` for `src/lib/a.py`, both folders for `src/lib/c.py`, `repo: src` for `src/b.py`, `repo: CMakeLists.txt` `certain` for `CMakeLists.txt`, and the router loads the `repo: src/lib/a.py`, `repo: src/lib/`, `repo: src` and `repo: CMakeLists.txt` node by `named_path` for those four tasks; arm root+outside, `vendor/x/y.py` (a nested repository) `uncited` and its task loads no node by `named_path`, and `repo: .`, `repo: ../elsewhere` and `repo: vendor/x` add no `incomplete` record; arm unresolved (REPO_VALUE_UNRESOLVED); arm case, `repo: Src` claims nothing in `anchors` and the `SRC/b.py` task loads the `repo: src` node; arm helper-absent (HELPER_ABSENT_BESIDE_GRAPH_LINT); security arms (`security-D`): D4, a node `repo: /proc/self` claims nothing in either tool (`proc/self/x.py` uncited, the `proc/self/status` task loads no node by `named_path`) and adds no `incomplete` record; D5, `link-out`, a symlink in the plant to a directory outside it that holds `.git` and `z.py`, claims nothing in either tool, is not in the cache key's `repositories`, and `build` inventories no file under it; D6, `pipe`, a FIFO in the plant (`mkfifo`), adds one `repo-unresolved` record, and `graph-lint.py --plan-json` returns within 20 s (it does not block); D1's no-stat for an outside value is a code-review check, not an arm; Platform probe (`devils-advocate-8.1.2` 7): the arm case and the `repo: Src` record of arm unresolved run only on a case-sensitive file system, as §6 "Helper" states; the case first writes `probe` in its temp plant and stats `PROBE`, and when that stat finds the file it skips those two checks with a printed reason (the CI's macOS leg, APFS by default), every other arm running | tests/test-source-index.sh | integration (synthetic plant, the seed's graph-lint.py placed) | green |
 | GIT_UNAVAILABLE | X442 case_walk_incomplete: arm (f), PATH holds python3 and no git; an existing cache left byte-identical | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | NO_GOVERNED_REPOSITORY | X442 case_walk_incomplete: arm (i), a plant root that is no Git work tree | tests/test-source-index.sh | integration (synthetic plant) | green |
@@ -3370,7 +3418,7 @@ and §6 now state each:
 | DIRECTORY_LITERAL_TOO_WIDE | X433 case_link_path_literal: `"/"`, `"./"` and `"$ROOT/"` link nothing; a directory over `DIR_LINK_MAX` makes its holder opaque `walks-tree` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | TSCONFIG_EXTENDS_CYCLE | X434 case_link_ts_specifier: an `extends` cycle keeps the relative import and makes the alias holder opaque `alias-config-unavailable` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | GIT_PATH_ARGUMENT | X435 case_unpinned_reference: `./--exec=x`, `./:(top)q`, `./*` stay `relative-no-file` records and a path past the root `outside-repository`, the `generated` record still found beside bases under a symlinked directory and an ungoverned nested work tree (arm m2), and the build complete | tests/test-source-index.sh | integration (synthetic Git plant) | green |
-| NON_UTF8_PATH | X448 case_output_no_raw_control: the 0xFF arm, decoded as U+DCFF in `--json` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
+| NON_UTF8_PATH | X448 case_output_no_raw_control: the 0xFF arm, decoded as U+DCFF in `--json`; on a filesystem that refuses a non-UTF-8 name (APFS, EILSEQ) the arm cannot be built, and the case says SKIPPED for it in its OK line | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | DEFINITIONS_UNREADABLE | X453 case_symbols_unreadable: the `bad.py` (syntax error) and `big.js` (over `FILE_MAX_BYTES`) arms; the FIFO and non-UTF-8 forms reach `symbols` through the same `opaque` `unreadable` record X435 proves | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | LINE_READ_DECLARATION_IN_TEXT | X451 case_symbols_line_read: arm text, a here-document line `function hx() {` in `install.sh` and a template-literal line `function tx() {` at column 0 in `src/m.ts` each list one `maybe` definition; `const a1 = 1, b1 = 2` at column 0 defines `a1` and leaves `b1` `undefined` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | HISTORY_SHALLOW | X456 case_history_incomplete: arm (a) | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | green |
@@ -3436,8 +3484,8 @@ flagged assumption in grill.md §12. Sign-off keeps the status `draft`;
 - 2026-10-07 — slice 2 reopens the spec: status `active` (from `implemented`); slice 1's evidence stands as recorded: `tests/test-source-index.sh` (25 cases, X425 to X449) and `tests/test-full-install.sh` (E15), wired into `tests/run.sh`, every slice-1 §10 row green but `CACHE_WRITE_FAILED` (skipped: the helper's atomic write is proved by the code-anchor fault case), the full seed gate run-parallel OK, 51 of 51 steps, 38.6 s, at `b70b0d9`; the measurement in grill §10. `implemented` returns when every slice-2 row is green after G8.
 - 2026-10-07 — slice-2 review findings applied by `architect-slice2-fix`, inside the slice-2 contracts, no contract added and none removed. Tester: `HISTORY_SHALLOW_OR_MISSING_IS_INCOMPLETE` clones `--depth 2` through `file://` (a plain local path clone is not shallow) and pins the held commits; §6 "History links" leaves out a commit with no parent (a root commit, or a shallow clone's boundary commit, which Git lists as changing every file); `HISTORY_ONLY_ADDS` and `ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS` compare every key but `cache`. Security: the definition reader is iterative over statement bodies (S1); `--moved` guards the load and the call of `moved_list` and catches code-anchor's own classes, with the root a parameter (S2); `git log` takes `--no-renames --no-show-signature --no-color` and a `/`-led marker (S3); only `false` from the shallow probe reads as complete (S4); `NAME_RE` is matched whole (S5); the cache block is `/2` and the shape check covers `symbols` (S6); `graph-lint.py` sets `sys.dont_write_bytecode` before its loads (S7); §5 states the buffered `git log` and every `detail` through the `?` replacement. Devils-advocate: (b) a TS/JS declaration counts at column 0 or after `export`, so function locals define nothing (an arm of `SYMBOLS_LINE_READ_DECLARATIONS_ARE_MAYBE`); (d) `graph-lint.py` loads the helper lazily in tier 2 and a missing or skewed helper costs tier 2 alone, named by the existing `inference_skipped` notice, instead of failing every route (§7 `HELPER_ABSENT_BESIDE_GRAPH_LINT`); (a) and (c) are plan changes (grill §9, §10, §11); §2 cites ADR-0018's reason, a tool called at each file access. §6 and §8: the sibling-load line numbers corrected (`code-anchor.py` 53-54, `graft-audit.py` 169-170). `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` is unchanged, pending the owner's `repo:` ruling (grill §12 question 6).
 - 2026-10-07 — slice-2 code review (`reviewer-slice2`, fixes 5 and 6) and measurement 2 (`measure-slice2`, defects M2-1, M2-3, M2-6) applied by `architect-slice2-m2`; the `repo:` claim (§12 question 6) untouched, pending the owner. §3: a nested Python function is a definition (qualified), a nested TS/JS function is not, as §4 and §6 already said; an `undefined` answer names what the tool does not read. §6 "Definitions": the define-nothing list names `for`/`async for` targets, `with`/`except ... as` names, `:=` targets and augmented assignments (reviewer ruling 1, upheld: the code is right, the spec was silent), shell variables and dotted shell function names; the code-path rule bounds definitions, stated in the new `symbols` answer key `not_read` (the helper's `NOT_CODE`) and in `UNDEFINED_LINE` (M2-3: a name defined only in a placed seed tool under `docs/graph/` is `undefined` and says why, with no `incomplete` record). §4 `SYMBOLS_PYTHON_DEFINITIONS_CERTAIN` gains the `GRAPH_ONLY` arm; `ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE` gains two arms (a `paths` string; `Unrecorded` without `ANCHOR_NAME`), and §6 "Moved list" states the malformed shape and the subject read inside the guard. §5: the slice-2 figures and M2-1 decided as a reduction, not a restated budget: the cache is written compact and `build` holds no parsed cache while it derives; 64 MB stands. §6 "Cache document": compact layout (derived scratch, ADR-0029; the tool digest in the key rebuilds an indented cache; schema `/2` unchanged, the shape is the same). Reviewer ruling 2: the X447 newline arms stand as written.
-- 2026-10-07 — the owner's `repo:` ruling applied by `architect-D` (owner: "yes all" to decisions 1 to 4 of the internal brainstorm `architect-brainstorm`, option D; closes grill §12 question 6): what a `repo:` value names on disk decides whether it claims paths. §4 `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` rewritten with one arm per kind (path: a regular file or a non-empty folder claims, slash or not; root and outside: a directory holding `.git`, the plant root and a value outside the plant claim nothing; unresolved: the reading from before the ruling plus the `repo-unresolved` record; case: the kind is decided on the value as written, the router folds case when it matches and `anchors` does not); `ANCHORS_NAME_CITING_PAGES_OR_UNCITED` revised a second time: `repo: src/` and `repo: src` over a folder are `maybe` `repo-prefix` facts, and its uncited file is `lib/b.py`, as its case already holds. §2 states the ruling. §5 and §6 "Helper": `repo_kind(plant, value) -> (kind, name)` (stats, reads one entry of a directory without `.git`, opens no file, runs no Git), `repo_claim(name, path, kind)`, `governed_repositories` built on `repo_kind` (the same set), `REPO_UNRESOLVED_DETAIL`; §6 "Incomplete" gains `repo-unresolved`; §7 gains `REPO_VALUE_UNRESOLVED` and `HELPER_ABSENT_BESIDE_GRAPH_LINT` names `repo_kind` (its response unchanged: tier 2 claims nothing, `inference_skipped`); §8 adds the llama.cpp example. Intended routing change, accepted by the owner (decision 2): graph-lint's tier 2 changes in plants that hold a folder or file value without `/` (llama-xtx: 7 nodes; wrt-migration: 3 nodes) at their next graft, and a nested repository named with a `/` would stop claiming (no plant holds one); the seed's suites do not change. `anchors` reports every value naming nothing on disk in each answer (decision 3; turboquant_setup: 6 comma lists). Not changed: SPEC-0002 `GRAPH_ROUTE_NAMED_PATH_LOADS_ITS_OWNER` already says "a `repo:` value that names a repository root claims no path". §9 and §10 are product's and tester's to follow.
-- 2026-10-07 — §9 follows the owner's `repo:` ruling (`product-D`): AC-22 maps REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS in owner terms, one outcome per kind (a file or a non-empty folder claims; the root, a nested repository or an outside value claims nothing; a value naming nothing is `incomplete` with a `repo-unresolved` record and the action "correct the node's repo:"), the case fold, the routing change in llama-xtx (7 nodes) and wrt-migration (3 nodes) at their next graft only, and the missing helper (HELPER_ABSENT_BESIDE_GRAPH_LINT); the placeholder note is gone. §3 gains one sentence on the claim. §7 `REPO_VALUE_UNRESOLVED`: "a value the resolution or the stat refuses" reworded as a value the tool cannot look up on disk, meaning unchanged.
+- 2026-10-07 — the owner's `repo:` ruling applied by `architect-D` (owner: "yes all" to decisions 1 to 4 of the internal brainstorm `architect-brainstorm`, option D; closes grill §12 question 6): what a `repo:` value names on disk decides whether it claims paths. §4 `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS` rewritten with one arm per kind (path: a regular file or a non-empty folder claims, slash or not; root and outside: a directory holding `.git`, the plant root and a value outside the plant claim nothing; unresolved: the reading from before the ruling plus the `repo-unresolved` record; case: the kind is decided on the value as written, the router folds case when it matches and `anchors` does not); `ANCHORS_NAME_CITING_PAGES_OR_UNCITED` revised a second time: `repo: src/` and `repo: src` over a folder are `maybe` `repo-prefix` facts, and its uncited file is `lib/b.py`, as its case already holds. §2 states the ruling. §5 and §6 "Helper": `repo_kind(plant, value) -> (kind, name)` (stats, reads one entry of a directory without `.git`, opens no file, runs no Git), `repo_claim(name, path, kind)`, `governed_repositories` built on `repo_kind` (the same set), `REPO_UNRESOLVED_DETAIL`; §6 "Incomplete" gains `repo-unresolved`; §7 gains `REPO_VALUE_UNRESOLVED` and `HELPER_ABSENT_BESIDE_GRAPH_LINT` names `repo_kind` (its response unchanged: tier 2 claims nothing, `inference_skipped`); §8 adds the llama.cpp example. Intended routing change, accepted by the owner (decision 2): graph-lint's tier 2 changes in plants that hold a folder or file value without `/` (7 nodes in the llama.cpp plant, 3 in another) at their next graft, and a nested repository named with a `/` would stop claiming (no plant holds one); the seed's suites do not change. `anchors` reports every value naming nothing on disk in each answer (decision 3; the plant of §8's 8.1.2-graft example held 6 comma lists). Not changed: SPEC-0002 `GRAPH_ROUTE_NAMED_PATH_LOADS_ITS_OWNER` already says "a `repo:` value that names a repository root claims no path". §9 and §10 are product's and tester's to follow.
+- 2026-10-07 — §9 follows the owner's `repo:` ruling (`product-D`): AC-22 maps REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS in owner terms, one outcome per kind (a file or a non-empty folder claims; the root, a nested repository or an outside value claims nothing; a value naming nothing is `incomplete` with a `repo-unresolved` record and the action "correct the node's repo:"), the case fold, the routing change in two plants (7 nodes in the llama.cpp plant, 3 in the other) at their next graft only, and the missing helper (HELPER_ABSENT_BESIDE_GRAPH_LINT); the placeholder note is gone. §3 gains one sentence on the claim. §7 `REPO_VALUE_UNRESOLVED`: "a value the resolution or the stat refuses" reworded as a value the tool cannot look up on disk, meaning unchanged.
 - 2026-10-07 — security review of option D's stat path (`security-D`, no finding, no block) applied by `architect-D2`, inside `REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS`, no contract added and none changed: §6 "Helper" `repo_kind` normalizes the joined value lexically before any system call, and a value then outside the plant root is `outside` with no stat, so `../x`, `/proc/self` or `/net/host/x` touches no file system outside the plant (D1); it reads a directory's one entry with `os.scandir` and `next`, never a whole-directory listing, and an error of that read is `unresolved` (D2); §5 Security states the exact guarantee: a directory opened read-only for its one entry, no Git, no write, no `~`, `$VAR` or glob expansion, and a value's only effect beyond a claim is slice 1's `governed_repositories` (D3); §7 `REPO_VALUE_UNRESOLVED` names the one-entry read in its trigger. §10 X459 gains the security arms D4 (`repo: /proc/self`), D5 (a symlink out of the plant) and D6 (a FIFO); D1's no-stat is a review check. Security signed in §0.
 - 2026-10-07 — §6 "Helper" `governed_repositories` wording corrected per review-code-4 Minor 1 (`architect-fix-D`): the same set for every `root` value inside the plant as written; a value lexically outside the plant that resolves inside it through a symlinked ancestor is now outside and excluded, D1; a value holding a NUL byte is `unresolved` instead of crashing. No contract changed.
 - 2026-10-07 — implemented (`tester-final`): every §10 row green at `68c970e` for slice 1 and slice 2 with option D, wired into tests/run.sh (51 of 51); status moves from `active` to `implemented`; ADR-0029 moves from proposed to accepted.
@@ -3493,9 +3541,36 @@ flagged assumption in grill.md §12. Sign-off keeps the status `draft`;
   new §6 constant `ACTION_MORE`; `--all` lifts it, `--json` is unchanged,
   and the `build` line's `{n}` stays the whole count. §5 "Cost", §6
   `ACTION_LINE` (which now states `{reasons}`, until now read only from the
-  code) and §6 "CLI" follow; §8's turboquant-like example shows the
+  code) and §6 "CLI" follow; §8's example of a plant after its 8.1.2 graft shows the
   `<reason>: <subject>` form the code prints. §10 row `pending` until the
   RED of plan increment 11. F3: §5 "Cache bound" records the measurement
   owed by plan increment 10 and corrects the inferred fill count from
   about 200,000 files to about 100,000 at the measured link density. §9 is
   product's to follow for the new contract.
+- 2026-10-14 — tokens that identified projects the seed was harvested from
+  (plant names) were recast in place, under the exception of `CLAUDE.md`
+  Conventions as [ADR-0031](../decisions/adr-0031-donor-tokens-recast-generically.md)
+  amends it: each passage of §5, §6, §8 and this changelog that named a
+  plant now names it generically (a TypeScript web plant, the TypeScript
+  plant, one plant and another, a plant after its 8.1.2 graft), and no
+  figure, rule or decision changed. The original text remains at the prior
+  tags and in history; history was not rewritten, and published tags and
+  Releases keep it.
+- 2026-10-14 — three contracts added, by `architect`, each with its RED
+  observed first on a synthetic plant and its GREEN in one increment, from
+  defects plants reported: `INPUT_IN_AN_UNREAD_LANGUAGE_IS_INCOMPLETE` (a Go
+  input answered an empty list of dependents, now `language-not-read`, with
+  `UNREAD_LANGUAGES` its one home; a reader per language stays a stack-keyed
+  module added on its own), `TEST_REACHING_CODE_OVER_HTTP_IS_INCOMPLETE` (an
+  end-to-end test that drives a started application held no link to the code
+  it reaches, and read as `always_run` `no-code-edge`; it is now `opaque`
+  `reached-over-http` at build and a `reached-over-http` record in
+  `affected-tests`), and `ANCHORS_MOVED_SKIPS_A_NESTED_WORK_TREE` (a work tree
+  added under the plant made the moved list's directory entry refuse the whole
+  list as `moved-unavailable`; it is now one `repository-unnamed` record and
+  the rest is answered). §6 "Links", "Walk" and "Incomplete" follow. The
+  `NON_UTF8_PATH` arm of X448 reports SKIPPED where the filesystem refuses the
+  name, instead of a harness error.
+- 2026-10-14 — §5 "Compatibility" points at the seed's Python floor in
+  SPEC-0005 §5, its one home since the owner decided on 2026-10-14 that the
+  floor is 3.14, in place of the 3.12 figure and its two reasons it restated.

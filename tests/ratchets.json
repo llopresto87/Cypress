@@ -110,6 +110,7 @@
     "PARAPHRASE_MAX_OVERLAP": 0.5,
     "PARAPHRASE_MIN_ROWS": 15,
     "SESSION_INJECTION_MAX_BYTES": 4960,
+    "SPEC_COMMENT_ONLY_BUDGET": 20,
     "SPEC_ROW_UNBOUND_BUDGET": 0,
     "SPEC_UNCOVERED_BUDGET": 1
   },
@@ -143,6 +144,7 @@
     "PARAPHRASE_MAX_OVERLAP": "max integrations/claude-code/agent-lint.py",
     "PARAPHRASE_MIN_ROWS": "min integrations/claude-code/agent-lint.py",
     "SESSION_INJECTION_MAX_BYTES": "max integrations/claude-code/route-hook.py",
+    "SPEC_COMMENT_ONLY_BUDGET": "max tests/seed-lint.py",
     "SPEC_ROW_UNBOUND_BUDGET": "max tests/seed-lint.py",
     "SPEC_UNCOVERED_BUDGET": "max tests/seed-lint.py"
   }

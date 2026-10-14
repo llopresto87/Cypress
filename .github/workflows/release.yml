@@ -4,12 +4,13 @@
 # .github/RELEASE_NOTES.md ahead of time, at commit time, from the
 # CHANGELOG.md entry that already passed canonize's humanizer pass — one
 # prose home, reused, never re-derived from a diff here. CI has no access to
-# the judgment skills/humanizer and skill-corpus/discardme.md both require,
-# so this job only checks the staged file exists and hands it to `gh
+# the judgment skills/humanizer and skill-corpus/change-review-report.md
+# both require, so this job only checks the staged file exists and hands it
+# to `gh
 # release create` unedited.
 #
-# .github/RELEASE_NOTES.md is discardme-shaped staging, not a permanent
-# artifact: produced by the authoring session, consumed here, and
+# .github/RELEASE_NOTES.md is change-review-report-shaped staging, not a
+# permanent artifact: produced by the authoring session, consumed here, and
 # superseded (not explicitly deleted) the next time prepare-release.py
 # runs for the following version. See CLAUDE.md's Release section.
 name: release

@@ -16,8 +16,9 @@ load_when:
   - "am I done yet, when to stop investigating or validating"
   - "the question has two readings, what does investigate or check authorize"
   - "which value is correct, work a URL or port out from its consumer"
+  - "put options to the owner, which option do I recommend"
 prevents: Reads, searches and spawns that serve no decision, investigation that never stops, and questions asked that the repository already answers.
-est_tokens: 1449
+est_tokens: 1564
 ---
 
 ## Every operation serves a decision
@@ -47,7 +48,8 @@ predicted behavior, a measurement over an estimate, compilation over
 imagined correctness. When one instance works and a sibling does not,
 diff the two before forming any theory: the difference between them is
 the investigation. Batch operations that are independently required;
-sequence them when an early result can eliminate later work. Retry a
+sequence them when an early result can eliminate later work, and split
+a batched call when it stalls (`toolcraft.bounded-execution`). Retry a
 failed operation only with a changed theory of failure or a changed
 condition, because an unchanged retry reproduces the failure
 (`protocol.recover` classifies it).
@@ -98,6 +100,12 @@ reversible, and state the assumption. Ask only when interpretations
 diverge materially, the operation is irreversible, authorization is
 unclear, or no safe default exists. Take ordinary decisions yourself,
 and label a material assumption as an assumption.
+
+An ask carries its analysis. Every decision point put to the owner marks
+the option you recommend, with the reason, because an ask without a
+recommendation hands the analysis back to the person who delegated it; a
+recommendation informs the answer and never takes its place. How the
+options are explained and numbered is `deliver.numbered-decisions`.
 
 Answer from the repository, the graph, the logs, or the target whatever
 they can answer; ask only what they cannot. A load-bearing value such as

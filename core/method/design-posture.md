@@ -32,8 +32,9 @@ load_when:
   - "enforce an invariant with a database constraint, not an application check"
   - "idempotent converge, read compare write only on drift"
   - "adopt a system that already holds records, which records convergence may write"
+  - "remove an item from an upsert declaration, retire it or delete it on the target"
 prevents: Separation chosen by habit — layers with no responsibility, dependencies pointing whichever way was convenient, and abstractions with one implementation.
-est_tokens: 2511
+est_tokens: 2744
 ---
 
 # Design posture
@@ -226,6 +227,16 @@ validation to the managed set, and each record is promoted to managed by
 an owner decision, so day-one convergence never rewrites state nobody
 has reviewed. The identity the unit authenticates with stays outside the
 managed set by default (`method.host-parity`).
+
+Retirement follows the unit's reconcile semantics. In an additive
+(upsert) unit, where absence from the desired state deletes nothing on
+the target, removing an item from the declaration does not retire it:
+the object stays live and drops out of management. Retire it by keeping
+it declared and disabled, roll back by re-enabling it, and make the
+physical deletion its own owner-approved step
+(`method.restrictive-policy` classifies destructive against additive per
+resource class); the change report says when cleanup on the target is
+still owed.
 
 ## Neighbours
 

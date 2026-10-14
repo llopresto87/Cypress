@@ -184,6 +184,21 @@ LANGUAGES = {".py": "python", ".sh": "shell", ".bash": "shell",
              ".js": "javascript", ".jsx": "javascript", ".mjs": "javascript", ".cjs": "javascript",
              ".json": "json"}
 LINK_BEARING = ("python", "shell", "typescript", "javascript")
+# Programming languages the tool inventories (language `other`) and reads no
+# link of: an input in one of them makes impact and affected-tests incomplete
+# (`language-not-read`), because the files that import it in its own language
+# are not found. A reader for one is a stack-keyed module added on its own.
+UNREAD_LANGUAGES = {".go": "go", ".java": "java", ".kt": "kotlin", ".kts": "kotlin", ".scala": "scala",
+                    ".groovy": "groovy", ".cs": "csharp", ".fs": "fsharp", ".vb": "visual-basic",
+                    ".rb": "ruby", ".rs": "rust", ".php": "php", ".swift": "swift", ".m": "objective-c",
+                    ".c": "c", ".h": "c", ".cc": "c++", ".cpp": "c++", ".cxx": "c++", ".hpp": "c++",
+                    ".dart": "dart", ".lua": "lua", ".pl": "perl", ".pm": "perl", ".r": "r", ".R": "r",
+                    ".ex": "elixir", ".exs": "elixir", ".erl": "erlang", ".clj": "clojure",
+                    ".vue": "vue", ".svelte": "svelte", ".ps1": "powershell", ".sql": "sql"}
+# A test that reaches the application over HTTP, by a loopback URL or a page
+# navigation, holds no link to the code that serves it (`reached-over-http`).
+OVER_HTTP_RE = re.compile(r"""https?://(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])\b[^\s'"`]*"""
+                          r"""|\.goto\(|\bbaseURL\b""")
 TS_PROBE = (".ts", ".tsx", ".d.ts", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts", ".json")
 JS_WRITTEN = (".js", ".jsx", ".mjs", ".cjs")
 JS_TO_TS = (".ts", ".tsx", ".mts", ".cts")
@@ -200,7 +215,7 @@ ENUMS = {
     "link": {"certain", "maybe"},
     "found": {"exact", "resolved", "path-literal", "directory", "ambiguous", "workspace-package"},
     "opaque": {"dynamic-nonliteral", "walks-tree", "unreadable", "alias-config-unavailable",
-               "unmapped-specifier"},
+               "unmapped-specifier", "reached-over-http"},
     "unresolved": {"relative-no-file", "alias-no-file", "outside-repository", "generated", "asset"},
     "symbol": {"function", "class", "variable", "type"},
     "read": {"ast": "certain", "line-reading": "maybe"},      # how a definition was found -> its link
@@ -746,6 +761,8 @@ class Extract:
                     raise Unreadable("unreadable")
                 text = data.decode("utf-8")
                 {"python": self.python, "shell": self.shell}.get(rec["language"], self.script)(rec, text)
+                if rec["test"] == "test":
+                    self.over_http(path, text)
             except (Unreadable, UnicodeDecodeError, SyntaxError, ValueError, RecursionError, MemoryError):
                 self.opaque = [o for o in self.opaque if o["holder"] != path]
                 self.unresolved = [u for u in self.unresolved if u["holder"] != path]
@@ -753,6 +770,16 @@ class Extract:
                 self.symbols = [s for s in self.symbols if s["path"] != path]
                 self.opaque_at(path, None, "", "unreadable")
         self.mark_generated()
+
+    def over_http(self, holder, text):
+        """A test that drives the application over HTTP is opaque: what it
+        reaches is served by a running process, not named in its text. The
+        first loopback URL or page navigation is its record."""
+        for lineno, line in enumerate(text.split("\n"), 1):
+            m = OVER_HTTP_RE.search(line)
+            if m:
+                self.opaque_at(holder, lineno, m.group(0), "reached-over-http")
+                return
 
     # -- resolution
     def resolve_text(self, holder: str, text: str, directories: bool):
@@ -1824,6 +1851,14 @@ def moved_inputs(root: Path):
                 continue
             for _, moved in pairs:
                 for p in moved:
+                    if p.endswith("/") and source_paths.relative(p.rstrip("/")):
+                        # Git lists a work tree nested in the repository (a
+                        # `git worktree add` under it, a clone) as one untracked
+                        # directory: not code that moved, and not a reason to
+                        # refuse the rest of the list.
+                        problems.append(incomplete("repository-unnamed",
+                                                   source_paths.plant_path(repo, p.rstrip("/"))))
+                        continue
                     joined = source_paths.plant_path(repo, p)
                     if not source_paths.relative(joined):
                         raise ValueError(f"moved_list named {joined!r}, not a clean plant path")
@@ -1935,9 +1970,24 @@ class Index:
                 if self.usable:
                     problems.append(incomplete("input-not-found", path))
                 continue
+            if status == "walked" and query in ("impact", "affected-tests"):
+                lang = UNREAD_LANGUAGES.get(posixpath.splitext(path)[1])
+                if lang and (self.records.get(path) or {}).get("language") == "other":
+                    problems.append(incomplete("language-not-read", path, detail=(
+                        f"{lang}: no reader, so the files that import it in {lang} are not found")))
             found[path] = status or "not-found"
         unique = {(r["reason"], r["subject"]): r for r in problems}
         return [{"path": p, "status": found[p]} for p in sorted(found)], list(unique.values())
+
+    def over_http(self, inputs):
+        """One `reached-over-http` record per test, in a repository holding a
+        walked code input, that drives the application over HTTP: the tool
+        cannot say which code such a test reaches."""
+        repos = {self.plant.repo_of(i["path"]) for i in inputs
+                 if i["status"] == "walked" and self.test(i["path"]) == "code"}
+        return [incomplete("reached-over-http", h, detail=o["reference"])
+                for h, o in sorted(self.opaque.items())
+                if o["reason"] == "reached-over-http" and self.plant.repo_of(h) in repos]
 
     def test(self, path):
         rec = self.records.get(path)
@@ -2214,6 +2264,7 @@ def query_answer(doc: dict, args, root: Path, plant: Plant, body: dict, usable: 
                 doc["dependents"] = sorted((r for r in rows if r["depth"]), key=by_link)
             else:
                 problems += test_records(plant, body["inventory"])
+                problems += index.over_http(doc["inputs"])
                 doc["tests"] = sorted((r for r in rows if index.test(r["path"]) == "test"), key=by_link)
                 doc["always_run"] = index.always_run({r["path"] for r in doc["tests"]})
                 taken = {r["path"] for r in doc["tests"]} | {r["path"] for r in doc["always_run"]}

@@ -2,7 +2,7 @@
 status: implemented
 status_date: 2026-10-05
 owner: architect
-status_evidence: tests/test-session-metrics.sh (the consolidated suite, 14 cases: X399, X400, X404, X406 to X410, X412 to X414, X416, X417, X423), tests/test-lint-audibility.sh (X415) and tests/test-full-install.sh (E14), all wired into tests/run.sh, every §10 row green over the 24 contracts; one sanity check after the cut (an empty value never reported, caught by X400); a read-only `--all --json` query over eight plant changelogs that finds their one delivery entry, filled
+status_evidence: tests/test-session-metrics.sh (15 cases: X399, X400, X404, X406 to X410, X412 to X414, X416, X417, X423, X484), tests/test-lint-audibility.sh (X415) and tests/test-full-install.sh (E14), all wired into tests/run.sh, every §10 row green over the 25 contracts; one sanity check after the cut (an empty value never reported, caught by X400); a read-only `--all --json` query over eight plant changelogs that finds their one delivery entry, filled
 ---
 
 # SPEC-0006: the session-metrics reader
@@ -330,6 +330,17 @@ Retired 2026-10-05 (consolidation, `test-first.proportionate-checks`): no named 
   `delivery`, `delivery`, `compact` and `unmarked`
 - **And:** the first record's `lines` maps each label to its value exactly as
   written after the colon, trimmed
+
+### Contract: METRICS_ZERO_ENTRIES_ARE_NAMED
+- **Given:** a changelog whose dated headings are written in no form the
+  query reads (`## 2026-10-05 — moved the client`, `## Grow report
+  (2026-10-04)`), and no `Session metrics` heading
+- **When:** the tool runs `--all --json`
+- **Then:** it exits 0 and stdout is the empty array `[]`, as for a changelog
+  with no delivery
+- **And:** stderr says that 0 entries were read from a file holding that many
+  dated headings, and names the forms the query reads; a changelog with no
+  dated heading prints nothing on stderr
 
 ### In a plant
 
@@ -855,7 +866,9 @@ have no line.
   METRICS_UNREADABLE_CHANGELOG_FAILS_LOUD
 - [ ] AC-7: harvest can read every entry's raw values, and the query role
   exits 0 whatever the content, an entry with no block reported `incomplete`
-  with `lines: {}`; maps to METRICS_ALL_REPORTS_EVERY_ENTRY
+  with `lines: {}`; maps to METRICS_ALL_REPORTS_EVERY_ENTRY. An empty answer
+  over dated headings the query cannot read is told apart from an empty
+  changelog; maps to METRICS_ZERO_ENTRIES_ARE_NAMED
 - [ ] AC-8: the reader runs in a fresh plant; maps to
   METRICS_READER_RUNS_IN_A_FRESH_PLANT
 - [ ] AC-9: a defect in an earlier same-day entry does not fail the run of a
@@ -880,10 +893,12 @@ is a recorded coverage loss (§10).
 ## 10. Test mapping
 
 (Owned by `tester`; drafted by `architect`.) Each row names the case that
-holds it, and one case may hold several rows; each case carries its label and
-the slugs it asserts as comments. Since the consolidation of 2026-10-05 the
-cases are X399, X400, X404, X406 to X410, X412 to X414, X416, X417 and X423 in
-`tests/test-session-metrics.sh`, X415 in `tests/test-lint-audibility.sh`, and
+holds it, and one case may hold several rows; each case carries its label as
+a comment and the slugs it asserts in its `CASE` value, which every failure
+line prints, because spec-lint counts a slug only a comment carries as no
+coverage. Since the consolidation of 2026-10-05 the
+cases are X399, X400, X404, X406 to X410, X412 to X414, X416, X417, X423 and,
+from 2026-10-14, X484 in `tests/test-session-metrics.sh`, X415 in `tests/test-lint-audibility.sh`, and
 E14 in `tests/test-full-install.sh`. The other labels of `X397` to `X424` are
 retired, and the dated paragraphs below them are history.
 
@@ -969,6 +984,7 @@ its survivor, or records a coverage loss:
 | METRICS_DELIVER_NODE_UNPARSEABLE_FAILS_LOUD | X414 case_deliver_node_unparseable: the no-fence node built in the case | tests/test-session-metrics.sh | unit (fixture) | green |
 | METRICS_UNREADABLE_CHANGELOG_FAILS_LOUD | X415, one row of the unreadable-input sweep | tests/test-lint-audibility.sh | unit (fixture) | green |
 | METRICS_ALL_REPORTS_EVERY_ENTRY | X416 case_all_json | tests/test-session-metrics.sh | unit (fixture) | green |
+| METRICS_ZERO_ENTRIES_ARE_NAMED | X484 case_all_zero_entries_named | tests/test-session-metrics.sh | unit (fixture) | green |
 | METRICS_READER_RUNS_IN_A_FRESH_PLANT | E14 case_session_metrics_in_plant | tests/test-full-install.sh | integration (temp install) | green |
 | PRE_RULE_ENTRY | X406 case_before_since_not_judged | tests/test-session-metrics.sh | unit (fixture) | green |
 | HEADING_NOT_RECOGNIZED | X407 case_no_entry_since: the message names the accepted forms | tests/test-session-metrics.sh | unit (fixture) | green |
@@ -1137,3 +1153,13 @@ its survivor, or records a coverage loss:
   second GREEN stands, since the reader did not change. §4's preamble and
   `METRICS_LABELS_FROM_DELIVER_NODE` now name the shipped node in place of the
   deleted fixtures, and §10's preamble names the surviving cases.
+- 2026-10-14 — `METRICS_ZERO_ENTRIES_ARE_NAMED` added, by `architect`, with its
+  RED and GREEN in one increment (X484). Two plants' harvest queries printed
+  `[]` over changelogs whose deliveries were written in heading forms the
+  reader does not know, and `[]` read as "no delivery". The query role now
+  says on stderr how many dated headings it saw and the forms it reads, when
+  it read no entry from a file that holds any; stdout and the exit code are
+  unchanged, so a caller parsing the array is unaffected. The `CASE` value of
+  each case now carries every slug the case asserts, which the `# Asserts`
+  comments carried before, because spec-lint now counts a slug only a
+  comment carries as a WARN, never as coverage. Contracts 24 → 25.

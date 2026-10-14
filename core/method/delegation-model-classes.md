@@ -58,7 +58,7 @@ A filled row whose model does not resolve stops the spawn, which reports it.
 Where the row is filled, the spawn passes that row's model and effort; letting
 the caller's model stand in is right only for an unfilled row, and the routing
 evidence says so. **A spawn never switches to another model or provider to get
-past a rate or usage limit.** It waits and resumes (`delegation.turn`), or
+past a rate or usage limit.** It waits and resumes (`delegation.continuation`), or
 reports the limit as the blocker. A delegating worker passes the same rule and
 its own model class into every brief it writes.
 How each host reads the map is in that host's integration README.

@@ -65,6 +65,10 @@ OVERSIZED_LEAVES = frozenset({
 # How many live contracts in the seed's specs carry no test naming their slug.
 # Derived by `spec-lint.py --specs docs/specs --uncovered-budget`, never by hand.
 SPEC_UNCOVERED_BUDGET = 1
+# How many live contracts only a comment in a test carries (spec-lint's WARN,
+# neither covered nor uncovered). Derived by `spec-lint.py --specs docs/specs
+# --comment-only-budget`, never by hand; it may only fall.
+SPEC_COMMENT_ONLY_BUDGET = 20
 # How many `green` §10 rows cite a test that does not NAME their contract.
 SPEC_ROW_UNBOUND_BUDGET = 0
 
@@ -1173,10 +1177,10 @@ def check_seed_only_stays_home() -> None:
 
 
 def check_eager_surface() -> None:
-    """Bound what each harness loads on EVERY session, before any routing."""
+    """Bound what each harness loads on EVERY session, before any routing
+    (SPEC-0003 PRIME_EAGER_SURFACE_WITHIN_BUDGET for the prime-agent surface)."""
     surfaces = eager_surfaces(KERNEL.stat().st_size)
-    # SPEC-0003 PRIME_EAGER_SURFACE_WITHIN_BUDGET: the prime-agent surface counts
-    # the whole overlay, so every section of it is paid here on every Prime
+    # The prime-agent surface counts the whole overlay, so every section of it is paid here on every Prime
     # Agent session and held to EAGER_BUDGET like every other harness.
     for harness, measured in sorted(surfaces.items()):
         if harness in EAGER_EXEMPTIONS:

@@ -245,7 +245,11 @@ FROM registry.example.test/base/runtime-base:17-jre-alpine@sha256:0000
         - dart: a pubspec `environment:` `sdk:` constraint, also beside Flutter;
         - own-package lists: npm/stomp-sockjs, pub/flutter_bloc (both sections);
         - platform pages: proxmox-ve by an Ansible collection and a Python
-          requirement, bitbucket-pipelines by its file;
+          requirement, bitbucket-pipelines by its file, microsoft-graph by a
+          Graph SDK package in each of its three ecosystems (any artifact of the
+          `com.microsoft.graph` Maven group, the `Microsoft.Graph` NuGet package,
+          the `@microsoft/microsoft-graph-client` npm package), and not by
+          another Microsoft Maven group;
         - scanners: trivy and gitleaks by an official image (compose, CI step), a
           GitHub Action, a config file and a pre-commit hook id."""
         pom = "<project><modelVersion>4.0.0</modelVersion>%s</project>"
@@ -258,6 +262,7 @@ FROM registry.example.test/base/runtime-base:17-jre-alpine@sha256:0000
         action = "on: push\njobs:\n  scan:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: %s\n"
         java, dart = "library-corpus/language/java", "library-corpus/language/dart"
         trivy, gitleaks = "library-corpus/cli/trivy", "library-corpus/cli/gitleaks"
+        graph = "library-corpus/platform/microsoft-graph"
         rows = [  # (page, manifest, text, what the evidence names)
             (java, "pom.xml", props % "<java.version>21</java.version>", "java.version"),
             (java, "pom.xml", props % "<maven.compiler.release>17</maven.compiler.release>",
@@ -281,6 +286,16 @@ FROM registry.example.test/base/runtime-base:17-jre-alpine@sha256:0000
             ("library-corpus/platform/proxmox-ve", "ansible/requirements.yml",
              "collections:\n  - name: community.proxmox\n", "community.proxmox"),
             ("library-corpus/platform/proxmox-ve", "requirements.txt", "proxmoxer>=2.0\n", "proxmoxer"),
+            (graph, "pom.xml", pom % ("<dependencies><dependency><groupId>com.microsoft.graph</groupId>"
+                                      "<artifactId>microsoft-graph</artifactId></dependency></dependencies>"),
+             "com.microsoft.graph:microsoft-graph"),
+            (graph, "pom.xml", pom % ("<dependencies><dependency><groupId>com.microsoft.graph</groupId>"
+                                      "<artifactId>microsoft-graph-core</artifactId></dependency></dependencies>"),
+             "com.microsoft.graph:microsoft-graph-core"),
+            (graph, "app/App.csproj", '<Project><ItemGroup><PackageReference Include="Microsoft.Graph" '
+             'Version="5.0.0" /></ItemGroup></Project>', "Microsoft.Graph"),
+            (graph, "package.json", '{"dependencies": {"@microsoft/microsoft-graph-client": "3"}}',
+             "@microsoft/microsoft-graph-client"),
             ("library-corpus/platform/bitbucket-pipelines", "bitbucket-pipelines.yml",
              "pipelines:\n  default:\n    - step:\n        script:\n          - make test\n", "(present)"),
             (trivy, "compose.yaml", compose % "aquasec/trivy:0.50.0", "aquasec/trivy:0.50.0"),
@@ -308,6 +323,11 @@ FROM registry.example.test/base/runtime-base:17-jre-alpine@sha256:0000
         with self.subTest("dart beside flutter"):
             self.assertIn("library-corpus/language/flutter",
                           self.proposed_from_seed({"m/pubspec.yaml": rows[9][2]}))
+        with self.subTest("another Microsoft Maven group proposes no microsoft-graph"):
+            got = self.proposed_from_seed({"pom.xml": pom % (
+                "<dependencies><dependency><groupId>com.microsoft.azure</groupId>"
+                "<artifactId>msal4j</artifactId></dependency></dependencies>")})
+            self.assertNotIn(graph, got, got)
         with self.subTest("pom.xml with no language level"):
             got = self.proposed_from_seed({"pom.xml": pom % (
                 "<groupId>org.example</groupId><artifactId>parent</artifactId>"

@@ -221,6 +221,30 @@ not routed: the notice asks for the task line.
 - **And:** lowering it is only legitimate when the ROUTER improved; tuning a
   trigger to a row, or rewriting the row, is the dishonesty the class exists
   to expose
+- **And:** the budget is the seed's measurement over the seed's roster, so it
+  gates that roster alone; a plant's roster is gated on its own number,
+  `A_PLANT_ROSTER_IS_GATED_ON_ITS_OWN_ADVERSARIAL_BASELINE` below
+
+### Contract: A_PLANT_ROSTER_IS_GATED_ON_ITS_OWN_ADVERSARIAL_BASELINE
+- **Given:** a roster that is not entirely `origin: seed` (a plant's, which
+  adds its own agents), and the adversarial rows its corpus holds
+- **When:** `agent-lint.py --eval` runs over it
+- **Then:** with no `_eval.baseline.json` beside the corpus, the
+  adversarial confident-wrong count is reported, not gated, and the report
+  names `--eval --record-baseline`; `--eval --record-baseline` writes the
+  count into that file at the graft that brings the routing corpus and again
+  at any graft that changes the plant's roster (`graft.gate.routes`), and every
+  later `--eval` fails above the recorded number, naming the plant baseline
+- **And:** a `--record-baseline` that replaces a recorded number prints the
+  number it replaces, and, when the new one is higher, that it is a raise
+  whose roster change the graft record names: the number may only fall
+  between the grafts that record it
+- **And:** on the seed's own roster the file is ignored and
+  `--record-baseline` is refused, so the seed stays gated on
+  `ADVERSARIAL_CONFIDENT_WRONG_BUDGET`. The owner decided on 2026-10-14 that
+  the seed's budget gates the seed roster and a plant's eval is measured
+  against a baseline its graft records: a bait row landing on a plant's
+  own agent had failed a graft on a number measured over another roster
 
 ### Contract: ABSTENTION_IS_A_CORRECT_OUTCOME
 - **Given:** a paraphrase row the router has no signal for
@@ -908,6 +932,7 @@ ROUTE (ranked, confidence: HIGH)     # the compound itself still routes
 | HELD_OUT_SET_MAY_NOT_BE_EMPTIED | test_a_padded_trigger_copy_cannot_pass_as_held_out | tests/test_agent_lint.py | integration | green |
 | CONFIDENT_WRONG_IS_THE_GATE | test_a_confident_wrong_route_fails_even_when_the_average_is_fine | tests/test_agent_lint.py | integration | green |
 | THE_ADVERSARIAL_BUDGET_IS_RATCHETED_NOT_ZERO | test_exceeding_the_budget_fails_the_gate | tests/test_agent_lint.py | integration; the shrink-only clause is held by the ratchet-lint step (`tools/ratchet-lint.py`) | green |
+| A_PLANT_ROSTER_IS_GATED_ON_ITS_OWN_ADVERSARIAL_BASELINE | test_a_plant_roster_without_a_baseline_is_reported_not_gated, test_the_recorded_baseline_gates_the_plant_roster, test_re_recording_names_the_number_it_replaces_and_a_raise, test_the_seed_roster_ignores_a_baseline_file | tests/test_agent_lint.py | integration (the seed roster plus one `origin: project` agent); the re-record case red on arrival (no replacing line) | green |
 | NEITHER_HELD_OUT_SET_MAY_BE_THINNED | test_emptying_a_whole_class_is_refused | tests/test_agent_lint.py | integration | green |
 | CONFIDENT_MISROUTE | test_a_confident_wrong_route_fails_even_when_the_average_is_fine | tests/test_agent_lint.py | integration | green |
 | ABSTENTION_IS_A_CORRECT_OUTCOME | test_abstention_on_a_held_out_row_is_not_a_failure | tests/test_agent_lint.py | integration | green |
@@ -1157,3 +1182,22 @@ moves with each entry here.
   `docs/plans/grill-8.1.2-tool-surfacing.md` §12 question 19 records the
   rule for the owner's veto. §3 and §9 are product's to follow. The status
   stays `back-written`.
+- 2026-10-14 — `A_PLANT_ROSTER_IS_GATED_ON_ITS_OWN_ADVERSARIAL_BASELINE`
+  added, by `data-ml`, on the owner's decision of the same day, with its RED
+  observed first: the seed roster plus one plant agent, under bait rows that
+  take the adversarial count to 4, failed `--eval` on the seed's budget of 2,
+  as a plant had reported at its graft. `agent-lint.py` gains
+  `--record-baseline` and reads `_eval.baseline.json` beside a plant's corpus;
+  the seed's own roster keeps the constant and refuses the flag.
+  `THE_ADVERSARIAL_BUDGET_IS_RATCHETED_NOT_ZERO` gains an And clause pointing
+  here. The graft step that records the baseline is graft.md's. The status
+  stays `back-written`.
+- 2026-10-14 — review fixes to
+  `A_PLANT_ROSTER_IS_GATED_ON_ITS_OWN_ADVERSARIAL_BASELINE`. The contract had
+  the baseline recorded once while `graft.gate.routes` records it at the graft
+  that brings the routing corpus and again at one that changes the plant's
+  roster; the number depends on the roster, so graft's reading stands and the
+  contract now says the same. A re-record now prints the number it replaces
+  and names a raise, seen red first. The cases assert the named plant
+  baseline, the seed roster's refusal text, the unchanged baseline file and
+  the recorded budget, so none passes on an argparse rejection.

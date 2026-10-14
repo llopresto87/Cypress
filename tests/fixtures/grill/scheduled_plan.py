@@ -11,6 +11,7 @@ A KEY is a field letter and an increment number: `F3` is increment 3's
 drops the field), `C2` its `Spec contracts:`, and `N3` the number its heading
 carries (two headings may then carry one number).
 """
+import re
 import sys
 from pathlib import Path
 
@@ -32,7 +33,15 @@ INCREMENTS = [
 plan = Path(sys.argv[1])
 edits = dict(a.split("=", 1) for a in sys.argv[2:])
 text = plan.read_text()
-start, end = text.index("## 9. Implementation Plan"), text.index("## 10.")
+# The two headings are found as headings, at the start of a line, in a
+# Markdown file. A search for the bare strings once matched them inside this
+# script's own quotes when it was handed its own path, and spliced a plan into
+# its source; a file that is not a plan is refused and left as it was.
+heads = [re.search(rf"^{re.escape(h)}", text, re.M) for h in ("## 9. Implementation Plan", "## 10.")]
+if plan.suffix != ".md" or not all(heads) or heads[0].start() > heads[1].start():
+    sys.exit(f"scheduled_plan.py: {plan} is not a plan holding a `## 9. Implementation Plan` "
+             f"heading before a `## 10.` heading; nothing written")
+start, end = heads[0].start(), heads[1].start()
 
 blocks = []
 for n, title, phase, contracts, files, deps in INCREMENTS:

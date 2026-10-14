@@ -79,7 +79,12 @@ strive to write a correct test on the information they have".
 The detail of steps 1 to 4:
 
 1. Read the spec in `docs/graph/specs/SPEC-NNNN-*.md`. Locate the
-   contracts in §4 that the current increment satisfies.
+   contracts in §4 that the current increment satisfies, and survey the
+   tests that already cover them before writing any: the spec's tests
+   are designed as one set (`test-first.proportionate-checks`), so a
+   contract an existing test asserts gets that test's §10 row, not a
+   second test, and a review-born RED extends the class that owns its
+   contract.
 2. For each contract, write a test that asserts the Given/When/Then.
    - **Test name** = contract slug. The reviewer reading the test
      list reconstructs the spec.
@@ -172,6 +177,23 @@ A bug is a failed contract or a missing one.
 3. Name in the handback the bug, the regression test, and the spec
    contract it now covers; the session records them in grill.md §15
    (`rule.grill`).
+
+**In an operations or verification pass, a bug is listed, not fixed.**
+When the brief says the work is an operations or verification pass
+(running gates, auditing a deployment, checking that a system does what
+its records say), the owner commissioned a reading of the system, not a
+change to it, and a fix is a behaviour change nobody asked for. A bug
+the pass finds is root-caused and listed: its failing test or
+reproduction, the cause traced to a file and line, the spec contract it
+breaks, and the fix you would make. You hand back with that list and
+`recommended_next` naming `implementer` for each fix, marked as waiting
+for the owner's go-ahead. The session records each bug in grill.md §12,
+declares its red in the delivery as `test-first.known-bug` requires, and
+dispatches a fix only after the owner says which ones to fix. Outside such
+a pass, the default stands: `test-first.known-bug` marks a bug for a fix
+and the session dispatches it. The owner decided on 2026-10-14 to keep
+that default and to add this mode for operations and verification
+passes.
 
 ## Testability pushback
 

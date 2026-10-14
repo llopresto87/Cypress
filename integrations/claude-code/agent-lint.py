@@ -20,6 +20,7 @@ Usage:
     python3 agent-lint.py --route "TASK"   # rank specialists + confidence band
     python3 agent-lint.py --lint           # validate roster frontmatter (default)
     python3 agent-lint.py --eval           # score the golden corpus; fail-closed
+    python3 agent-lint.py --eval --record-baseline   # a plant roster: record its adversarial baseline
 
 No third-party dependencies: it must run on a bare python3.
 """
@@ -28,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import itertools
+import json
 import re
 import sys
 from dataclasses import dataclass
@@ -50,6 +52,8 @@ _fm_spec.loader.exec_module(_frontmatter)
 # docs/graph/graph-lint.py.
 AGENTS_REL = Path(".claude") / "agents"
 GOLDEN_NAME = "_routes.golden.tsv"
+# A plant roster's own adversarial baseline, beside its corpus (cmd_eval).
+BASELINE_NAME = "_eval.baseline.json"
 
 # Delegation-depth bounds (plan ADR-B): 1 <= max_spawn_depth <= 3.
 MIN_DEPTH, MAX_DEPTH = 1, 3
@@ -1135,7 +1139,7 @@ def _overlap(task: str, agent) -> float:
     return max(task_side, trigger_side)
 
 
-def cmd_eval(agents: list, adir: Path) -> int:
+def cmd_eval(agents: list, adir: Path, record_baseline: bool = False) -> int:
     """Score the golden corpus, per class, and gate on the failure that hurts.
 
     The old report was one line — "top-1 accuracy 100.0% (55/55)" — over a
@@ -1272,10 +1276,58 @@ def cmd_eval(agents: list, adir: Path) -> int:
             f"{total_wrong} confident-and-wrong route(s) outside the adversarial "
             f"class, budget {CONFIDENT_WRONG_BUDGET} — a confident wrong answer is "
             f"cited in the delegation brief as evidence for the wrong specialist")
-    if adversarial_wrong > ADVERSARIAL_CONFIDENT_WRONG_BUDGET:
+    # The budget is the seed's measurement over the seed's roster. A plant's
+    # roster is gated on its own number instead, recorded (--record-baseline)
+    # in BASELINE_NAME beside the corpus at the graft that brings the corpus
+    # and again at one that changes the roster; until it is
+    # recorded the count is reported, as the paraphrase floor is.
+    adv_budget, adv_source = ADVERSARIAL_CONFIDENT_WRONG_BUDGET, "recorded"
+    baseline_path = adir / BASELINE_NAME
+    if record_baseline:
+        if measured_roster:
+            print(f"agent-lint --eval: FAIL — --record-baseline is for a plant's roster; "
+                  f"the seed's own roster is gated on ADVERSARIAL_CONFIDENT_WRONG_BUDGET, "
+                  f"and nothing was recorded", file=sys.stderr)
+            return 2
+        # The plant's number may only fall. Re-recording is legitimate when the
+        # roster changes, so a raise is shown rather than refused, and the
+        # graft record carries its reason.
+        try:
+            prior = int(json.loads(baseline_path.read_text(encoding="utf-8"))
+                        ["adversarial_confident_wrong"])
+        except (OSError, ValueError, KeyError, TypeError):
+            prior = None
+        if prior is not None:
+            print(f"  · replacing the recorded plant baseline {prior} with {adversarial_wrong}"
+                  + (" — a RAISE: name the roster change that justifies it in the graft record"
+                     if adversarial_wrong > prior else ""))
+        baseline_path.write_text(json.dumps(
+            {"adversarial_confident_wrong": adversarial_wrong,
+             "adversarial_rows": classes.get("adversarial", {}).get("n", 0),
+             "agents": len(agents)}, indent=2) + "\n", encoding="utf-8")
+        print(f"  · recorded this roster's adversarial baseline: {adversarial_wrong} "
+              f"confident-and-wrong, in {baseline_path}")
+    if not measured_roster:
+        try:
+            adv_budget = int(json.loads(baseline_path.read_text(encoding="utf-8"))
+                             ["adversarial_confident_wrong"])
+            adv_source = f"plant baseline ({baseline_path.name})"
+        except FileNotFoundError:
+            adv_budget = None
+            print(f"  · adversarial confident-and-wrong {adversarial_wrong}. Reported, not "
+                  f"gated: this roster is not the one the seed's budget "
+                  f"{ADVERSARIAL_CONFIDENT_WRONG_BUDGET} was measured over, and no plant "
+                  f"baseline is recorded. Record it at the graft that brings this "
+                  f"corpus, and again at one that changes this roster: "
+                  f"agent-lint.py --eval --record-baseline")
+        except (OSError, ValueError, KeyError, TypeError) as e:
+            failures.append(f"the plant baseline {baseline_path} is unreadable ({e}); "
+                            f"re-record it with --eval --record-baseline")
+            adv_budget = None
+    if adv_budget is not None and adversarial_wrong > adv_budget:
         failures.append(
             f"adversarial class: {adversarial_wrong} confident-and-wrong, above the "
-            f"recorded {ADVERSARIAL_CONFIDENT_WRONG_BUDGET}. This budget measures how "
+            f"{adv_source} {adv_budget}. This budget measures how "
             f"far deliberate baiting moves the router; it may only fall. Lower it by "
             f"sharpening the router: widening a trigger to clear it trades a bait row "
             f"for worse routing everywhere else")
@@ -1322,8 +1374,11 @@ def cmd_eval(agents: list, adir: Path) -> int:
           f"({contract['hit']}/{scored}); paraphrase confident-correct "
           f"{para.get('hit', 0)}/{para.get('n', 0)} with "
           f"{para.get('abstain', 0)} abstentions; zero confident-wrong outside "
-          f"the adversarial class, {adversarial_wrong} within it (budget "
-          f"{ADVERSARIAL_CONFIDENT_WRONG_BUDGET}); {len(rows)} rows")
+          f"the adversarial class, {adversarial_wrong} within it ("
+          + (f"budget {adv_budget}" if adv_source == "recorded"
+             else f"{adv_source} {adv_budget}" if adv_budget is not None
+             else "not gated: no plant baseline")
+          + f"); {len(rows)} rows")
     return 0
 
 
@@ -1333,6 +1388,11 @@ def main() -> int:
     ap.add_argument("--route", metavar="TASK", help="rank specialists for TASK")
     ap.add_argument("--lint", action="store_true", help="validate roster frontmatter")
     ap.add_argument("--eval", action="store_true", help="score the golden corpus (fail-closed)")
+    ap.add_argument("--record-baseline", action="store_true",
+                    help="with --eval, on a plant's roster: record its adversarial "
+                         f"confident-wrong count in {BASELINE_NAME}, the number later "
+                         "--eval runs are gated on (at the graft that brings the corpus, and "
+                         "again at one that changes the roster)")
     ap.add_argument("--dir", metavar="PATH",
                     help="explicit agents directory (e.g. the seed repo's bare "
                          "agents/); default: walk up for .claude/agents/")
@@ -1364,7 +1424,7 @@ def main() -> int:
         return cmd_route(agents, args.route)
     if args.eval:
         try:
-            return cmd_eval(agents, adir)
+            return cmd_eval(agents, adir, args.record_baseline)
         except LintError as e:
             print(f"FATAL: {e}", file=sys.stderr)
             return 2

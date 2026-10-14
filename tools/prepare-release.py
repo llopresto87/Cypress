@@ -12,8 +12,9 @@ already passed the seed-release doc pass, and drafting a second version of
 the same release for the same reader would be a second home for one fact.
 `.github/workflows/release.yml` reads the staged file when the matching
 `vX.Y.Z` tag is pushed and hands it to `gh release create` unedited — CI has
-no access to the judgment `skills/humanizer` and `skill-corpus/discardme.md`
-both require, so nothing there may author or rewrite it.
+no access to the judgment `skills/humanizer` and
+`skill-corpus/change-review-report.md` both require, so nothing there may
+author or rewrite it.
 
 Usage:
     python3 tools/prepare-release.py [--root PATH]

@@ -107,8 +107,14 @@ For every secret:
   check: a shipped example config carrying syntactically-valid
   placeholders would otherwise boot successfully on them with no error.
 - A documented exposure response. A secret committed to version-control
-  history is permanently compromised: remediate by rotating it everywhere
-  it is consumed, in dependency order, never by scrubbing history.
+  history is permanently compromised. The remediation (an environment
+  override, never scrubbing history or editing the committed config; the
+  triage that revokes a credential with a live outside counterparty now
+  and replaces one guarding a system that no longer exists with a fresh,
+  never-reused value; new secrets before a rebuilt environment listens) is
+  `secrets-posture.compromise` (`docs/graph/method/secrets-posture.md`
+  §3, §4); the response this review signs off names each committed
+  credential's class under it.
 
 For every external service:
 - Auth method named; permission scope minimal.
@@ -165,7 +171,12 @@ The posture a component ships with is the posture most deployments run.
   anonymous path allow-list entry is verified against the actual computed
   request mapping (the framework's class-level prefix concatenated with the
   method-level path), not the pattern string alone; a prefix mismatch
-  silently defeats the rule for exactly the path it was meant to open. Where
+  silently defeats the rule for exactly the path it was meant to open. The
+  check runs both ways: an allow-list or permit-all entry with no live
+  route behind it is a finding in its own right, because the next route
+  added under that pattern is born unauthenticated, so the review walks
+  the allow-list against the mappings that exist as well as the mappings
+  against the list. Where
   N near-identical services share a copied archetype, diff the
   security-relevant code (auth filters, key validation, permission checks)
   across all N rather than assuming uniformity: duplicated security code

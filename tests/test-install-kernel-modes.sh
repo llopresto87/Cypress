@@ -220,4 +220,98 @@ else
 fi
 [[ $CASE_FAILED -eq 0 ]] || fail "K7: one or more cases above failed"
 
-echo "install-kernel-modes: OK — copy isolates, symlink is live, order is commutative, placement is byte-identical"
+# --- K8: compose mode keeps a plant's instruction hub canonical --------------
+# Asserts SPEC-0001 HUB_KEPT_CANONICAL_IN_COMPOSE_MODE and failure
+# HUB_NOT_COMPOSABLE. A plant whose own AGENTS.md predates the seed, installed
+# with --kernel-mode compose, keeps that file byte-identical; CLAUDE.md is a
+# real file that imports it on its first line and then carries the seed kernel;
+# nothing is filed for migration; the stamp records the mode, so a silent
+# re-install keeps it and changes nothing; `--kernel-mode replace` returns the
+# plant to the one shared kernel. A hub that is absent, a link, or a seed
+# kernel is refused before the first write.
+HUB_BODY='# Team rules
+
+- Every change ships with its migration script.
+'
+case_k8_compose_keeps_the_hub() {
+    local t="$WORK/k8" out rc n
+    mkdir -p "$t"
+    printf '%s' "$HUB_BODY" > "$t/AGENTS.md"
+    cp "$t/AGENTS.md" "$WORK/k8-hub.before"
+    out="$("$ROOT/install.sh" claude-code prime-agent --kernel-mode compose --project-dir "$t" 2>&1)"; rc=$?
+    [[ $rc -eq 0 ]] || { echo "the compose install exited $rc: $(tail -3 <<<"$out")"; return 1; }
+    [[ -f "$t/AGENTS.md" && ! -L "$t/AGENTS.md" ]] && cmp -s "$t/AGENTS.md" "$WORK/k8-hub.before" \
+        || { echo "AGENTS.md, the hub, was changed or replaced"; return 1; }
+    [[ -f "$t/CLAUDE.md" && ! -L "$t/CLAUDE.md" ]] || { echo "CLAUDE.md is not a real file"; return 1; }
+    cmp -s "$t/CLAUDE.md" <(printf '@AGENTS.md\n\n'; cat "$ROOT/core/AGENTS.md") \
+        || { echo "CLAUDE.md is not '@AGENTS.md', a blank line, then the seed kernel: $(head -3 "$t/CLAUDE.md")"; return 1; }
+    n="$(find "$t" -maxdepth 1 -name '*.bak-*' | wc -l | tr -d ' ')"
+    [[ "$n" -eq 0 ]] || { echo "$n backup(s) at the root of a first compose install"; return 1; }
+    [[ ! -e "$t/docs/graph/plans/adopted-instructions.md" ]] \
+        || { echo "the hub was filed for migration: $(tail -2 "$t/docs/graph/plans/adopted-instructions.md")"; return 1; }
+    grep -qF "never sees the seed kernel" <<<"$out" || { echo "the run does not state compose mode's cost"; return 1; }
+    python3 -c 'import json,sys; sys.exit(json.load(open(sys.argv[1])).get("kernel_mode") != "compose")' \
+        "$t/.cypress/seed.json" || { echo "the stamp does not record kernel_mode: compose"; return 1; }
+    cp "$t/CLAUDE.md" "$WORK/k8-claude.before"
+    out="$("$ROOT/install.sh" claude-code --project-dir "$t" 2>&1)"; rc=$?
+    [[ $rc -eq 0 ]] || { echo "the silent re-install exited $rc: $(tail -3 <<<"$out")"; return 1; }
+    cmp -s "$t/AGENTS.md" "$WORK/k8-hub.before" && cmp -s "$t/CLAUDE.md" "$WORK/k8-claude.before" \
+        || { echo "a silent re-install did not keep compose mode"; return 1; }
+    n="$(find "$t" -maxdepth 1 -name '*.bak-*' | wc -l | tr -d ' ')"
+    [[ "$n" -eq 0 ]] || { echo "the silent re-install made $n backup(s) at the root"; return 1; }
+    # graft-audit reads the stamp's kernel_mode: the hub is the plant's, and
+    # CLAUDE.md is current after its import line, so the audit passes.
+    out="$(python3 "$ROOT/tools/graft-audit.py" "$t" "$ROOT" 2>&1)"; rc=$?
+    [[ $rc -eq 0 ]] && ! grep -q '!! KERNEL' <<<"$out" \
+        || { echo "graft-audit on a current compose plant exited $rc: $(grep KERNEL <<<"$out")"; return 1; }
+    out="$("$ROOT/install.sh" claude-code --kernel-mode replace --project-dir "$t" 2>&1)"; rc=$?
+    [[ $rc -eq 0 ]] || { echo "the replace install exited $rc: $(tail -3 <<<"$out")"; return 1; }
+    assert_shared_kernel "$t" "K8 (replace)"
+    grep -qF "AGENTS.md.bak-" "$t/docs/graph/plans/adopted-instructions.md" 2>/dev/null \
+        || { echo "returning to replace mode did not file the hub's body for migration"; return 1; }
+    python3 -c 'import json,sys; sys.exit("kernel_mode" in json.load(open(sys.argv[1])))' \
+        "$t/.cypress/seed.json" || { echo "the stamp still records a kernel_mode after replace"; return 1; }
+    return 0
+}
+
+case_k8_hub_not_composable() {
+    local t out rc shape
+    for shape in absent link kernel claude-only; do
+        t="$WORK/k8-refuse-$shape"; mkdir -p "$t"
+        case "$shape" in
+            link)        printf '%s' "$HUB_BODY" > "$t/rules.md"; ln -s rules.md "$t/AGENTS.md" ;;
+            kernel)      cp "$ROOT/core/AGENTS.md" "$t/AGENTS.md" ;;
+            claude-only) printf '%s' "$HUB_BODY" > "$t/CLAUDE.md" ;;
+        esac
+        local before; before="$(cd "$t" && find . | LC_ALL=C sort | tr '\n' ' ')"
+        out="$("$ROOT/install.sh" claude-code --kernel-mode compose --project-dir "$t" 2>&1)"; rc=$?
+        [[ $rc -ne 0 ]] || { echo "$shape: compose over this AGENTS.md was not refused"; return 1; }
+        grep -q '^ERROR:.*AGENTS.md' <<<"$out" || { echo "$shape: the refusal does not name AGENTS.md: $out"; return 1; }
+        grep -q Traceback <<<"$out" && { echo "$shape: a Python error: $out"; return 1; }
+        [[ "$(cd "$t" && find . | LC_ALL=C sort | tr '\n' ' ')" == "$before" ]] \
+            || { echo "$shape: the refused install wrote into the target"; return 1; }
+    done
+    # A mode the stamp recorded, with no flag on this run: the refusal says
+    # where the mode came from and how to leave it.
+    t="$WORK/k8-refuse-stamped"; mkdir -p "$t"
+    printf '%s' "$HUB_BODY" > "$t/AGENTS.md"
+    out="$("$ROOT/install.sh" claude-code --kernel-mode compose --project-dir "$t" 2>&1)"; rc=$?
+    [[ $rc -eq 0 ]] || { echo "stamped: the compose install exited $rc: $(tail -3 <<<"$out")"; return 1; }
+    rm "$t/AGENTS.md"
+    out="$("$ROOT/install.sh" claude-code --project-dir "$t" 2>&1)"; rc=$?
+    [[ $rc -ne 0 ]] || { echo "stamped: a recorded compose mode over an absent hub was not refused"; return 1; }
+    grep -q '^ERROR:.*kernel_mode in \.cypress/seed\.json.*--kernel-mode replace' <<<"$out" \
+        || { echo "stamped: the refusal does not name the stamp's kernel_mode and the way out: $out"; return 1; }
+    grep -q 'refusing --kernel-mode compose' <<<"$out" \
+        && { echo "stamped: the refusal names a flag the owner did not pass: $out"; return 1; }
+    return 0
+}
+
+CASE_FAILED=0
+collect_case "K8 HUB_KEPT_CANONICAL_IN_COMPOSE_MODE" case_k8_compose_keeps_the_hub \
+    "the hub stays byte-identical, CLAUDE.md imports it then carries the kernel, the mode survives silence and replace undoes it"
+collect_case "K8 HUB_NOT_COMPOSABLE" case_k8_hub_not_composable \
+    "an absent hub, a linked hub, a hub that is the seed kernel and a hub kept in CLAUDE.md are refused before the first write"
+[[ $CASE_FAILED -eq 0 ]] || fail "K8: one or more cases above failed"
+
+echo "install-kernel-modes: OK — copy isolates, symlink is live, order is commutative, placement is byte-identical, compose keeps the hub"

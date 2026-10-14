@@ -29,8 +29,8 @@ decides four things:
   sits in `docs/graph/`, or is committed beside it, reads as a fact some
   author vouched for. `graph-lint.py` walks `docs/graph/`, and `code-anchor.py`
   treats it as the graph, not code.
-- The plants disagree about `.cypress/`. The seed's and Vivid's `.gitignore`
-  ignore all of it; this plant tracks `anchor.json`, `coverage.json`,
+- The plants disagree about `.cypress/`. The seed's `.gitignore` and that of a
+  TypeScript web plant ignore all of it; this plant tracks `anchor.json`, `coverage.json`,
   `recreated-nodes.txt` and `seed.json` and ignores only `growth/` and
   `session/`. The installer writes no `.gitignore` entry for `.cypress/`, and
   a plant's `.gitignore` is the plant's file.
@@ -137,7 +137,7 @@ say.
   route-hook's `.cypress/session/` already uses.
 - **A `sqlite3` database:** stdlib, but the owner ruled SQLite out on
   2026-10-07, and a sorted JSON document at these sizes (53 KB of edges on
-  Vivid) needs no query engine — rejected.
+  the TypeScript web plant) needs no query engine — rejected.
 - **Install deletes the cache on every run:** would make "graft rebuilds"
   literal, but it is a deletion the installer has no other reason to make,
   and the tool-digest key already forces the rebuild — rejected.
@@ -200,3 +200,13 @@ figures are stated more exactly.
 Revised 2026-10-07 by `architect-8.1.2e` on the owner's ruling that
 `CACHE_MAX_BYTES` is 196 MiB: the bound and its fallback are stated as a
 consequence. The decision and the ratified amendment are unchanged.
+
+## Recast, 2026-10-14
+
+The owner decided on 2026-10-14 that a token identifying a project the seed
+was harvested from (a plant name) is recast generically in every record, an
+ADR body included ([ADR-0031](adr-0031-donor-tokens-recast-generically.md)).
+The two passages of this record that named the plant now name it as a
+TypeScript web plant; the decision, its figures and its alternatives are
+unchanged. The original text remains at tags v8.1.0 to v8.1.2 and in history;
+history was not rewritten, and published tags and Releases keep it.

@@ -1,3 +1,23 @@
+---
+name: harden-docker-host
+description: Bring a Linux host that runs Docker to a security floor idempotently, applying each control in order and proving it active (key-only SSH, an operator-gated firewall, the daemon as a root surface, loopback binding past the iptables trap, updates, least exposure, confinement and log rotation). Invoke before a first bring-up or to audit an existing host.
+id: skill.harden-docker-host
+tier: 2
+kind: skill
+title: harden-docker-host, the ordered and verified security floor for a Docker host
+owns:
+  - harden-docker-host.ordered-floor
+  - harden-docker-host.verify-each-control
+requires:
+load_when:
+  - "harden the docker host"
+  - "security baseline for an ubuntu docker server"
+  - "audit an existing docker host's hardening"
+  - "docker inside an lxc container fails"
+prevents: A host is called hardened because commands ran, while published ports bypass the firewall, password login stays on, and a firewall change applied in-session locks the operator out.
+est_tokens: 1768
+---
+
 # Suggested skill: harden-docker-host
 
 > Optional procedure: bring a Linux host (recent Ubuntu LTS, e.g. 24.04 /

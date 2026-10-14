@@ -73,7 +73,10 @@ core/AGENTS.md and gates the exit code: an OLD body (a seed line missing) is
 `KERNEL STALE`; a seed-current body plus plant-authored lines is
 `KERNEL EXTENDED` unless a standing `deviation.*` node with
 `departs_from: kernel.body` records that boundary, in which case the audit
-reports the deviation and its `ends_when` and passes.
+reports the deviation and its `ends_when` and passes. In compose mode (the
+stamp's `kernel_mode: compose`, SPEC-0001 HUB_KEPT_CANONICAL_IN_COMPOSE_MODE)
+AGENTS.md is the plant's own instruction hub and is not compared, and
+CLAUDE.md is compared after its `@AGENTS.md` import line and the blank line.
 
 install.sh copies every leaf of the seed's templates/docs/<rel> to the plant's
 docs/graph/<rel> when missing. A leaf still BYTE-IDENTICAL to its template at
@@ -97,11 +100,16 @@ A graft record lists the files the graft merged keeping plant intent and the
 files it kept as the plant's. A later installer run (a remedy, or a second
 plain run) overwrites them again with a backup and no question, and the
 record goes on claiming them kept. This mode reads the newest graft entry of
-the record (a `# Graft` heading at any level; the latest date it carries, the
-last one in the file on a tie) and its `Merged` and `Kept as the plant's`
-sections. Each bullet's first backticked path, or its first word, names a
-file, relative to docs/graph/ or to the plant root, with one `{a,b}` group
-expanded. Each file is then checked for its plant delta:
+the record: a heading at any level that names a graft in any case and at any
+position (`# Graft — ...`, `## YYYY-MM-DD — graft: ...`, `## Grafted from
+...`), the latest date it carries, the last one in the file on a tie, a graft
+heading nested in another giving way to the one holding it. From that entry it
+reads the `Merged` and `Kept as the plant's` files in either shape an earlier
+graft wrote them: a section of bullets under such a heading, each bullet's
+first backticked path or first word naming one file, or a bold-label bullet
+(`- **Merged (...):** `a`, `b``) whose line names every backticked path it
+holds. Paths are relative to docs/graph/ or to the plant root, with one
+`{a,b}` group expanded. Each file is then checked for its plant delta:
 
   KEPT        the plant's file differs from the seed source it installs from
   LOST        the plant's file is byte-equal to the seed source: the delta the
@@ -109,9 +117,11 @@ expanded. Each file is then checked for its plant delta:
   MISSING     the record names a file the plant no longer carries
   UNMAPPED    no seed source backs the path, so there is no delta to measure
 
-LOST and MISSING fail the run (exit 1), and so does an entry that names no
-file at all, or a record with no graft entry: a re-check of nothing is not a
-pass. UNMAPPED is reported and does not gate. Run it last in Phase 7, after
+LOST and MISSING fail the run (exit 1), and so does an entry from which no
+file can be read (NO-PATH), or a record with no graft entry: a re-check of
+nothing is not a pass. An entry whose sections say `none` declares that the
+graft merged and kept nothing, and passes. UNMAPPED is reported and does not
+gate. Run it last in Phase 7, after
 every remedy that re-ran the installer.
 
 MODE 4 — harness homes (--harness)
@@ -162,6 +172,7 @@ after they were renamed/removed. Exit 2 on a malformed command line.
 Dependency-free.
 """
 import difflib
+import json
 import re
 import subprocess
 import sys
@@ -657,17 +668,26 @@ def main() -> int:
     return audit_backups(plant, seed, opt)
 
 
-GRAFT_ENTRY = re.compile(r"^(#{1,6})\s+Graft\b(.*)$")
+GRAFT_ENTRY = re.compile(r"^(#{1,6})\s+(.*\bgraft.*)$", re.I)
 RECORD_HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*$")
 RECORD_DATE = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
 KEPT_SECTIONS = ("merged", "kept as the plant")
 BRACES = re.compile(r"\{([^{}]*,[^{}]*)\}")
+BULLET = re.compile(r"^(\s*)[-*+]\s+")
+BOLD_LABEL = re.compile(r"^\*\*([^*]+?)\*\*\s*:?\s*(.*)$")
+DECLARED_NONE = re.compile(r"^(none|n/?a)\b", re.I)
 
 
 def newest_graft_entry(text: str):
-    """(heading, body lines) of the record's newest graft entry, or None. The
-    newest is the one with the latest date in its heading; on a tie, or with no
-    date, the last in the file."""
+    """(heading, body lines) of the record's newest graft entry, or None. An
+    entry is a heading that names a graft in any case and at any position
+    (`# Graft — ...`, `## YYYY-MM-DD — graft: ...`, `## Grafted from ...`),
+    and runs to the next heading at its level or above. The newest is the one
+    with the latest date in its heading; among those, a graft heading inside
+    another one (a `### Graft gates` section of an entry) gives way to the
+    entry holding it, and on a remaining tie, or with no date, the last in the
+    file wins. An undated title over dated entries (`# Graft log`) loses to
+    them by its missing date."""
     lines = text.splitlines()
     entries = []
     for i, line in enumerate(lines):
@@ -681,38 +701,80 @@ def newest_graft_entry(text: str):
                 end = j
                 break
         d = RECORD_DATE.findall(line)
-        entries.append((d[-1] if d else "", i, line.strip(), lines[i + 1:end]))
+        entries.append((d[-1] if d else "", i, end, line.strip(), lines[i + 1:end]))
     if not entries:
         return None
-    best = max(entries, key=lambda e: (e[0], e[1]))
-    return best[2], best[3]
+    newest = max(e[0] for e in entries)
+    tied = [e for e in entries if e[0] == newest]
+    outer = [e for e in tied
+             if not any(o is not e and o[1] < e[1] < o[2] for o in tied)]
+    best = outer[-1]
+    return best[3], best[4]
 
 
-def kept_artifacts(body) -> list:
-    """[(section, raw bullet, [paths])] for the bullets of the entry's Merged
-    and Kept-as-the-plant's sections."""
-    out, section = [], None
+def _section_of(label: str):
+    name = label.strip().lower()
+    return next((s for s in KEPT_SECTIONS if name.startswith(s)), None)
+
+
+def _bullet_paths(text: str) -> list:
+    """Each bullet names its file by its first backticked path, or its first
+    word, with one `{a,b}` group expanded."""
+    head = re.split(r"\s+[—–]\s+|\s+-\s+", text, maxsplit=1)[0]
+    tick = re.search(r"`([^`]+)`", head)
+    word = tick.group(1) if tick else (head.split() or [""])[0]
+    return _expand(word)
+
+
+def _expand(word: str) -> list:
+    paths = [word]
+    m = BRACES.search(word)
+    if m:
+        paths = [word[:m.start()] + alt.strip() + word[m.end():]
+                 for alt in m.group(1).split(",")]
+    return [p.strip().lstrip("./") for p in paths if p.strip()]
+
+
+def kept_artifacts(body):
+    """([(section, raw bullet, [paths])], declared_none) for the entry's Merged
+    and Kept-as-the-plant's files. Two shapes carry them: a `## Merged` /
+    `## Kept as the plant's` section whose bullets name one file each, and a
+    bold-label bullet (`- **Merged (...):** `a`, `b``) whose own line names
+    every backticked path it holds, its nested bullets one file each.
+    declared_none is True when such a section or label says `none`."""
+    out, section, label_indent, declared_none = [], None, None, False
     for line in body:
         h = RECORD_HEADING.match(line)
         if h:
-            name = h.group(2).lower()
-            section = next((s for s in KEPT_SECTIONS if name.startswith(s)), None)
+            section, label_indent = _section_of(h.group(2)), None
             continue
-        if section is None or not re.match(r"^\s*[-*+]\s+", line):
+        b = BULLET.match(line)
+        if not b:
             continue
-        item = re.sub(r"^\s*[-*+]\s+", "", line).strip()
-        if re.match(r"^(none|n/?a)\b", item, re.I):
+        indent = len(b.group(1))
+        item = line[b.end():].strip()
+        lab = BOLD_LABEL.match(item)
+        if lab and (label_indent is None or indent <= label_indent):
+            section, label_indent = _section_of(lab.group(1).rstrip(":")), indent
+            rest = lab.group(2).strip()
+            if section is None:
+                continue
+            if DECLARED_NONE.match(rest):
+                declared_none = True
+                continue
+            ticks = [p for t in re.findall(r"`([^`]+)`", rest) for p in _expand(t)]
+            if ticks:
+                out.append((section, item, ticks))
             continue
-        head = re.split(r"\s+[—–]\s+|\s+-\s+", item, maxsplit=1)[0]
-        tick = re.search(r"`([^`]+)`", head)
-        word = tick.group(1) if tick else (head.split() or [""])[0]
-        paths = [word]
-        m = BRACES.search(word)
-        if m:
-            paths = [word[:m.start()] + alt.strip() + word[m.end():]
-                     for alt in m.group(1).split(",")]
-        out.append((section, item, [p.strip().lstrip("./") for p in paths if p.strip()]))
-    return out
+        if label_indent is not None and indent <= label_indent:
+            section, label_indent = None, None
+        if section is None:
+            continue
+        if DECLARED_NONE.match(item):
+            declared_none = True
+            continue
+        out.append((section, item, _bullet_paths(item)))
+    return out, declared_none
 
 
 def audit_record(plant: Path, seed: Path, record: Path) -> int:
@@ -725,13 +787,22 @@ def audit_record(plant: Path, seed: Path, record: Path) -> int:
         return 1
     entry = newest_graft_entry(text)
     if entry is None:
-        print(f"  !! {record} holds no graft entry (a `# Graft` heading); "
+        print(f"  !! {record} holds no graft entry (a heading naming a graft); "
               f"nothing to re-check is not a pass")
         return 1
     heading, body = entry
-    items = kept_artifacts(body)
+    items, declared_none = kept_artifacts(body)
     print(f"  record: {heading}")
     print(f"  merged or kept files listed: {sum(len(p) for _, _, p in items)}")
+    if not items:
+        if declared_none:
+            print("  the entry declares no merged or kept file (`none`); nothing to re-check")
+            return 0
+        print("  NO-PATH     the entry lists no merged or kept file the audit can read "
+              "(a `## Merged` or `## Kept as the plant's` section of bullets, or a "
+              "`- **Merged:** `path`` bullet); nothing re-checked is not a pass. Write "
+              "the files in one of those shapes, or `- none` when the graft kept none")
+        return 1
     bad = 0
     for section, raw, paths in items:
         if not paths:
@@ -1081,6 +1152,20 @@ def _standing_kernel_deviation(plant: Path):
     return None
 
 
+COMPOSE_IMPORT = "@AGENTS.md\n\n"  # install.sh COMPOSE_IMPORT and its blank line
+
+
+def _stamp_kernel_mode(plant: Path) -> str:
+    """The stamp's kernel_mode ("compose" or ""), SPEC-0001
+    HUB_KEPT_CANONICAL_IN_COMPOSE_MODE. An unreadable stamp reads as replace
+    mode, the stricter check: both files are then compared."""
+    try:
+        d = json.loads((plant / ".cypress/seed.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ""
+    return d.get("kernel_mode", "") if isinstance(d, dict) else ""
+
+
 def _kernel_currency(plant: Path, seed: Path) -> bool:
     """The kernel body is seed-owned machinery loaded on every session. A graft
     that only re-points the CLAUDE.md<->AGENTS.md symlink and leaves a STALE
@@ -1092,18 +1177,24 @@ def _kernel_currency(plant: Path, seed: Path) -> bool:
     or hand-edited body; blocks); EXTENDED (seed body + plant-authored lines —
     blocks unless a standing deviation.* node with departs_from: kernel.body
     records the boundary, in which case the deviation is reported and the
-    check passes). Returns True when the check passes."""
+    check passes). In compose mode (the stamp's kernel_mode) AGENTS.md is the
+    plant's own instruction hub and is not compared, and CLAUDE.md is compared
+    after its import line and the blank line. Returns True when the check
+    passes."""
     sk = seed / "core/AGENTS.md"
     if not sk.exists():
         return True
     seed_txt = sk.read_text(errors="replace")
     seed_lines = seed_txt.splitlines()
     stale, extended = [], {}
+    compose = _stamp_kernel_mode(plant) == "compose"
     for name in ("AGENTS.md", "CLAUDE.md"):
         f = plant / name
-        if not f.exists():
-            continue
+        if not f.exists() or (compose and name == "AGENTS.md"):
+            continue  # in compose mode AGENTS.md is the plant's own instruction hub
         txt = f.read_text(errors="replace")
+        if compose and txt.startswith(COMPOSE_IMPORT):
+            txt = txt[len(COMPOSE_IMPORT):]
         if txt == seed_txt:
             continue
         added = _plant_added_lines(seed_lines, txt.splitlines())
@@ -1132,7 +1223,10 @@ def _kernel_currency(plant: Path, seed: Path) -> bool:
                   f"(kind: deviation, status: standing, departs_from: "
                   f"{KERNEL_DEVIATION_KEY}) or move the lines into a graph node "
                   f"the kernel routes to")
-    if not stale and not extended:
+    if not stale and not extended and compose:
+        print("  kernel: current (compose mode: CLAUDE.md after its import line == "
+              "seed core/AGENTS.md; AGENTS.md is the plant's hub, not compared)")
+    elif not stale and not extended:
         print("  kernel: current (plant AGENTS.md/CLAUDE.md == seed core/AGENTS.md)")
     return ok
 

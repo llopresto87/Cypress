@@ -77,4 +77,10 @@ Use the protocols. All destinations below are relative to this graph:
 - Security → `decisions/` (threat models), `runbooks/incident-response.md`
 
 After adding a leaf, connect it from the owning node with an
-`artifacts:` edge (or `libraries:` for a dependency wiki page).
+`artifacts:` edge (or `libraries:` for a dependency wiki page), and
+put the words a task would use to reach it in that node's `load_when:`.
+The router reads the frontmatter of nodes only (`nodes/` and the
+machinery directories), so a leaf is reached through its owning
+node's edge and triggers; frontmatter written on a leaf is never read
+and routes nothing. This holds for every leaf directory above; their
+READMEs need not repeat it.

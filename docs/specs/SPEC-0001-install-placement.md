@@ -1,8 +1,8 @@
 ---
 status: implemented
-status_date: 2026-10-09
+status_date: 2026-10-14
 owner: seed-installer
-status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tests/test-install-kernel-modes.sh, tests/test-install-adoption.sh, tests/test-full-install.sh, tests/test-seed-lint.sh, tests/test-graft-tools.sh, tests/test_corpus_match.py (every §10 row green at seed main b628cf4, including the 8.1.2 graft-finding rows CHECK_FLAGS_RETIRED_GRAPH_NODE and GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES, and HARVEST_CANDIDATE_FORM_IS_PLACED; all wired into tests/run.sh, 51/51)
+status_evidence: tests/test-install-placement.sh, tests/test-plant-state.sh, tests/test-install-kernel-modes.sh, tests/test-install-adoption.sh, tests/test-full-install.sh, tests/test-seed-lint.sh, tests/test-graft-tools.sh, tests/test_corpus_match.py (the 2026-10-14 harvest rows, E16 to E18, K8, M21 and the Graph SDK trigger, green on the lane branch; every earlier §10 row green at seed main b628cf4, including the 8.1.2 graft-finding rows CHECK_FLAGS_RETIRED_GRAPH_NODE and GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES, and HARVEST_CANDIDATE_FORM_IS_PLACED; all wired into tests/run.sh, 51/51)
 ---
 
 # SPEC-0001: install placement
@@ -176,6 +176,13 @@ install without replacing a page the plant edited or owns.
     the `--check` that compares those projections with the map (adr-0022)
   - the seed-only files the installer never places, and the tools it does
     place, held against `manifest.json` (adr-0021)
+  - the Python interpreter the installer runs on and writes into each hook
+    command it wires, at the floor SPEC-0005 §5 states (its one home)
+  - the kernel mode: replace, the default, and compose, the owner's opt-in
+    that keeps the plant's own AGENTS.md canonical
+  - what a run prints for the owner after it writes: the backups it made, the
+    `.gitignore` lines that keep the stamp tracked, and the keys an earlier
+    seed wrote into the stamp
   - the selective placement of corpus pages (`--expertise`): the proposal
     `tools/corpus-match.py` prints from the plant's manifests, the placement
     of a confirmed list of `library-corpus/`, `skill-corpus/` and
@@ -269,6 +276,18 @@ owns, the row also says how many of the errors that page causes, names it, and
 says that each error clears when the steward deletes the page by name. The
 graft still blocks on those errors and deletes nothing; removing the page is
 the steward's act, after the owner confirms that page by name.
+The installer runs on Python at the seed's floor and wires every hook to
+run on that interpreter; where `python3` is older, it finds `python3.<n>` and
+writes that name into the hooks, and with none it refuses before writing
+anything. A run that replaced files lists every installer backup in the plant
+by date and says to stage by explicit path, so a broad `git add` does not
+commit them; a repository that ignores the stamp is shown the `.gitignore`
+lines that keep it tracked; keys an earlier seed wrote into the stamp are
+named and kept. An owner whose team already keeps its rules in AGENTS.md can
+choose compose mode: AGENTS.md stays theirs, CLAUDE.md imports it and then
+carries the seed kernel, and hosts that read only AGENTS.md never see the
+kernel, a cost every such run states. A generic skill-corpus page is placed
+by its flat id, `skill-corpus/<name>`, like a stack-keyed one.
 A plant whose record names its national jurisdiction keeps it on a re-install
 that passes no flag, and the run names that code instead of calling the
 jurisdiction undecided.
@@ -391,7 +410,10 @@ jurisdiction undecided.
 - **Given:** `--symlink`
 - **When:** the install completes
 - **Then:** every placed file is a symlink, except generated content and
-  add-if-missing plant-owned files, which have no seed original to point at
+  add-if-missing plant-owned files, which have no seed original to point at;
+  a hook config rendered with an interpreter other than `python3`
+  (HOOKS_RUN_ON_THE_FLOOR_INTERPRETER) and compose mode's CLAUDE.md are
+  generated content
 - **And:** the root kernel is a link, so a seed kernel change reaches the plant
   without reinstalling
 
@@ -406,6 +428,8 @@ jurisdiction undecided.
 - **Then:** exactly one of `CLAUDE.md` / `AGENTS.md` is a real file and the other
   is a project-local relative symlink to it
 - **And:** both resolve to byte-identical content
+- **Except:** a plant in compose mode (HUB_KEPT_CANONICAL_IN_COMPOSE_MODE),
+  where AGENTS.md is the plant's hub and CLAUDE.md imports it
 
 ### Contract: DECISIONS_SURVIVE_SILENCE
 - **Given:** a recorded owner decision in `.cypress/seed.json`
@@ -665,6 +689,88 @@ its own record, and that slug stays as written in §12's history.
 - **And:** the installer's own keys follow their existing rules
   (`DECISIONS_SURVIVE_SILENCE`, `ADAPTERS_ACCUMULATE`)
 
+### Contract: RETIRED_STAMP_KEYS_NAMED_AND_KEPT
+- **Given:** a `.cypress/seed.json` holding keys an earlier seed's graft wrote
+  by hand and no seed reads now (`grafted`, `base`, `by`, `name`, the list
+  `install.sh` keeps as `RETIRED_STAMP_KEYS`), and a key the plant added
+- **When:** an install runs
+- **Then:** one log line names the retired keys present, sorted, says they are
+  kept, and says deleting them is the owner's act
+- **And:** every one of them, and the plant's key, is in the new stamp with
+  its value (UNKNOWN_STAMP_KEYS_SURVIVE); the plant's key is not named. The
+  owner decided on 2026-10-14 that these keys are reported and kept, not
+  dropped
+
+### Contract: HOOKS_RUN_ON_THE_FLOOR_INTERPRETER
+- **Given:** a PATH holding a Python at the seed's floor (SPEC-0005 §5, the
+  floor's one home): `python3` itself, or a `python3.<n>` at or above it
+  while `python3` is older or absent
+- **When:** an install runs
+- **Then:** the installer runs every embedded Python step, the source-index
+  build included, on the first of `python3`, `python3.<floor minor>`,
+  `python3.<floor minor + 1>` and so on that is at the floor
+- **And:** each hook command of `.claude/settings.json` and the Copilot
+  `.github/hooks/route.json` and `status.json`, and the `PYTHON` constant of
+  each Prime Agent extension, names that interpreter by its command name, never
+  an absolute path, because the files are shared across machines; when it is
+  `python3` the seed's files are placed byte-identical
+- **And:** when that interpreter is not `python3`, a NEXT STEP line says the
+  bare `python3` on PATH is below the floor while the kernel and the
+  protocols run the graph tools as `python3 docs/graph/<tool>.py`
+- **And:** `--check` runs each hook on the interpreter it names
+  (CHECK_EXECUTES_EACH_WIRED_HOOK)
+
+### Contract: STAMP_TRACKING_LINES_PRINTED
+- **Given:** a target that is the top level of its own Git work tree and whose
+  ignore rules ignore `.cypress/seed.json`
+- **When:** an install runs
+- **Then:** a NEXT STEP block prints the `.gitignore` lines `.cypress/*`,
+  `!.cypress/seed.json` and `!.cypress/coverage.json`, to stand in place of
+  a rule that ignores `.cypress/` itself, and says the installer does not edit
+  `.gitignore`
+- **And:** `.gitignore` is byte-identical afterwards, and with those lines the
+  stamp is not ignored while the rest of `.cypress/` is
+- **And:** a target whose stamp is not ignored, or that is not the top level
+  of a work tree of its own, gets no such block. The owner decided on
+  2026-10-14 that the installer prints the lines and graft makes the baseline
+  commit
+
+### Contract: BACKUPS_LISTED_BY_DATE
+- **Given:** a plant where an install replaces files, each backed up beside
+  itself (BACKUP_BEFORE_REPLACE), and backups earlier runs left
+- **When:** the run ends
+- **Then:** a BACKUPS block says how many backups this run made, lists every
+  installer backup in the plant (the root, `docs/graph/`, `.cypress/` and the
+  host directories) with one line per date, newest first, `<YYYY-MM-DD>  <n>`,
+  and says to stage by explicit path, never with `git add -A` or `git add .`
+- **And:** nothing is moved or deleted; keeping the backups is the owner's
+  call once graft-audit has read them. The owner decided on 2026-10-14 that
+  backups are listed by date for that call
+- **And:** a run that makes no backup prints no block
+
+### Contract: HUB_KEPT_CANONICAL_IN_COMPOSE_MODE
+- **Given:** a target whose own `AGENTS.md` is a regular file holding the
+  plant's rules, not a body the seed wrote
+- **When:** `install.sh <hosts> --kernel-mode compose --project-dir <target>`
+  runs
+- **Then:** `AGENTS.md` is byte-identical afterwards and no backup is made of
+  it; `CLAUDE.md` is a real file holding `@AGENTS.md`, a blank line, then the
+  seed kernel; nothing is filed in `docs/graph/plans/adopted-instructions.md`
+  for the hub
+- **And:** every such run states the cost in the log: a host that reads only
+  AGENTS.md (opencode, Prime Agent, Codex, Copilot) never sees the seed kernel
+- **And:** the stamp records `"kernel_mode": "compose"`; a later install with
+  no flag keeps the mode (DECISIONS_SURVIVE_SILENCE) and changes nothing
+  (IDENTICAL_RERUN_IS_INERT)
+- **And:** graft-audit's kernel check passes a current compose-mode plant:
+  AGENTS.md is not compared and CLAUDE.md is compared after its import line,
+  so a stale kernel there is still reported STALE
+- **And:** `--kernel-mode replace`, the default, returns the plant to
+  ONE_KERNEL_BODY: compose mode's CLAUDE.md is fast-forwarded as a body the
+  seed wrote, the hub's body is backed up and filed for migration, and the
+  stamp drops `kernel_mode`. The owner decided on 2026-10-14 that compose is
+  an opt-in and replace stays the default
+
 ### Contract: PRE_GROWTH_POINTER_LIVES_IN_THE_PLACEHOLDER_INDEX
 - **Given:** a fresh target directory
 - **When:** `install.sh claude-code --project-dir <target>` runs
@@ -917,8 +1023,10 @@ its own record, and that slug stays as written in §12's history.
   plant-authored, and never `UNMAPPED` (EVERY_BACKUP_IS_CLASSIFIABLE)
 
 ### Contract: PLACED_SKILL_IS_A_ROUTABLE_NODE
-- **Given:** a `skill-corpus/<key>/<name>.md` page, which carries node
-  frontmatter, placed by `--expertise` into a plant installed for claude-code
+- **Given:** a skill-corpus page that carries node frontmatter, stack-keyed
+  (`skill-corpus/<key>/<name>.md`, id `skill-corpus/<key>/<name>`) or generic
+  (`skill-corpus/<name>.md`, id `skill-corpus/<name>`), placed by
+  `--expertise` into a plant installed for claude-code
 - **When:** the install completes
 - **Then:** `docs/graph/skills/<name>.md` equals the corpus page with its
   `origin:` value set to `corpus@<seed version>` (the key added when the page
@@ -927,6 +1035,32 @@ its own record, and that slug stays as written in §12's history.
   `python3 docs/graph/graph-lint.py --show <its id>` exits 0 and prints it
 - **And:** `.claude/skills/<name>/SKILL.md` exists, written by the existing
   skill projection with no new projection code
+- **And:** a generic page without node frontmatter is refused by name before
+  the first write (UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING); the owner
+  decided on 2026-10-14 that a generic page reaches a plant as a routable
+  node, placed where the plant's work needs it, not copied outside the graph
+
+### Contract: PLACED_CORPUS_PAGE_IS_REACHABLE
+- **Given:** a plant installed for claude-code with a stack-keyed skill page,
+  a generic skill page, a library page and a tool page placed by
+  `--expertise`, before growth (no root node yet)
+- **When:** the plant runs its own `python3 docs/graph/graph-lint.py`
+- **Then:** it exits 0 and names no placed page unreachable: a node whose
+  `origin:` is `corpus@<seed version>` is an entry point of graph-lint's
+  reachability rule, as a node `index.md` lists is, so the provenance the
+  installer already writes is what makes the page reachable
+- **And:** `graph-lint.py --plan "<a phrase of the skill's load_when>"`
+  loads each placed skill
+- **And:** the arm writes nothing into `docs/graph/index.md`, which stays the
+  bytes a plain install placed: the index is plant-owned prose, and a page
+  unplaced by deleting it leaves no row behind to take out
+- **And:** a node whose `origin:` is anything else, `seed` included, is still
+  reported unreachable when no listed node reaches it; a plant that takes a
+  placed skill over by dropping its `origin: corpus@` line lists it in
+  `index.md` like a node of its own
+- **And:** a library or tool page carries no node frontmatter: it is a Tier-3
+  leaf, outside the reachability rule, and owes `libraries/index.md` no row
+  while it has no `## 0. Pin` section, which no corpus page carries
 
 ### Contract: EXPERTISE_IS_RECORDED_IN_THE_STAMP
 - **Given:** a run that places one or more pages through `--expertise`
@@ -1044,6 +1178,10 @@ its own record, and that slug stays as written in §12's history.
   one line and not run
 - **And:** `bound-hook.py`, wired under `PreToolUse` without `|| true`, is a
   guard and not a context hook, and is not run
+- **And:** each hook runs on the interpreter its command or extension names;
+  a name this machine cannot find on PATH, or an interpreter below the Python
+  floor, fails the check naming the hook and the interpreter, and the hook is
+  not run
 - **And:** with every hook passing, CHECK_WITHOUT_COPILOT_SAYS_SO's line and
   exit code are unchanged
 
@@ -1121,7 +1259,10 @@ its own record, and that slug stays as written in §12's history.
 
 ## 5. Non-functional requirements
 
-- **Compatibility:** bash and `python3` only; no third-party imports. The
+- **Compatibility:** bash and Python at the seed's floor only (SPEC-0005 §5
+  states the floor; HOOKS_RUN_ON_THE_FLOOR_INTERPRETER and
+  NO_INTERPRETER_AT_THE_FLOOR say how the installer finds it); no third-party
+  imports. The
   binding shell floor is bash, not the POSIX subset: `install.sh:1` declares
   `#!/usr/bin/env bash`, `:69` uses `set -euo pipefail` whose `pipefail` POSIX's
   `set` does not define, and every shell file in this tree declares a bash
@@ -1150,6 +1291,7 @@ installed_from:       { type: string, optional: true }
 tools:                { type: string }            # space-joined adapter list, accumulating
 legal_corpus:         { enum: [yes, no, undecided] }
 legal_jurisdiction:   { type: string }            # two-letter code, or "undecided"
+kernel_mode:          { const: "compose", optional: true }  # absent in replace mode
 agent_projections:    { type: array, derived_from: tools }
 ```
 
@@ -1223,7 +1365,8 @@ the run says that no generated views are in scope and exits 0.
 ### Selective placement (8.0.0)
 
 A corpus id is the page's path in the seed, relative to the seed root, without
-`.md`: `library-corpus/<key>/<name>`, `skill-corpus/<key>/<name>` or
+`.md`: `library-corpus/<key>/<name>`, `skill-corpus/<key>/<name>`,
+`skill-corpus/<name>` (a generic procedure) or
 `tool-corpus/<category>/<name>`. `--expertise` takes `propose`, or a
 comma-separated list of ids with no spaces.
 
@@ -1243,6 +1386,7 @@ expertise:
 | `library-corpus/<key>/<name>` | `docs/graph/libraries/<name>.md` | the provenance line, prepended |
 | `tool-corpus/<category>/<name>` | `docs/graph/tools/<name>.md` | the provenance line, prepended |
 | `skill-corpus/<key>/<name>` | `docs/graph/skills/<name>.md`, a top-level node | frontmatter `origin: corpus@<seed version>` |
+| `skill-corpus/<name>` | `docs/graph/skills/<name>.md`, a top-level node | frontmatter `origin: corpus@<seed version>` |
 
 Two ids with one destination (for example `library-corpus/pypi/redis` and
 `library-corpus/container/redis`) are refused before writing
@@ -1299,6 +1443,7 @@ in the evidence or propose what the plant has since dropped.
 | `bitbucket-pipelines.yml`, present | `platform` | `bitbucket-pipelines` |
 | Ansible `requirements.yml` (`collections:`) | `galaxy` | the collection name, dotted as written |
 | Ansible `requirements.yml`, the collection `community.proxmox`; `requirements*.txt` or `pyproject.toml`, the requirement `proxmoxer` | `platform` | `proxmox-ve` |
+| `pom.xml`, any artifact of the group `com.microsoft.graph`; `*.csproj`, the package `Microsoft.Graph`; `package.json`, the package `@microsoft/microsoft-graph-client` | `platform` | `microsoft-graph` |
 | `.github/workflows/*.yml` and `*.yaml`, a step's `uses:` naming `aquasecurity/trivy-action` or `gitleaks/gitleaks-action` at any ref | `cli` | `trivy`, `gitleaks` |
 | `trivy.yaml`, `.trivyignore`, present | `cli` | `trivy` |
 | `.gitleaks.toml`, present; `.pre-commit-config.yaml`, a hook `id:` of `gitleaks`, `gitleaks-docker` or `gitleaks-system` | `cli` | `gitleaks` |
@@ -1389,7 +1534,9 @@ subject: the file a platform reads (`azure-pipelines*.yml`,
 `bitbucket-pipelines.yml`), an entry whose only use is to call the platform
 (the `community.proxmox` collection and the `proxmoxer` client both drive the
 Proxmox VE API, as the platform page's Interop and the collection's page
-say), the official image of a tool that arrives as an image (`maven`,
+say; the Graph SDK packages drive Microsoft Graph, by the owner's decision of
+2026-10-14, while a project that calls the Graph REST endpoint with only a
+token library declares no trigger, and the owner lists the page), the official image of a tool that arrives as an image (`maven`,
 `trivy`, `gitleaks`), the GitHub Action the tool's page names as its own
 channel, the config file the tool reads by default, and the pre-commit hook
 ids the tool's page names. A `bitbucket-pipelines.yml` is read for its step
@@ -1537,6 +1684,28 @@ and counts no error.
 - **Side effects:** a pristine older kernel body is filed for migration: work
   for `docs-librarian` that turns out to be empty, never a lost instruction
 - **Recovery:** none needed; the librarian strikes the row
+
+### Failure: NO_INTERPRETER_AT_THE_FLOOR
+- **Trigger:** no `python3` at the seed's floor on PATH, and no
+  `python3.<n>` at or above it
+- **Response:** exit non-zero with one `ERROR:` line naming the floor, the two
+  names looked for and the fix (install one, put it on PATH, re-run)
+- **Side effects:** none: the check runs before the first write, so the
+  target is byte-identical
+- **Recovery:** install a Python at the floor and re-run
+- **Contracts:** HOOKS_RUN_ON_THE_FLOOR_INTERPRETER
+
+### Failure: HUB_NOT_COMPOSABLE
+- **Trigger:** compose mode, by flag or by the stamp's record, over a target
+  whose `AGENTS.md` is absent, a symbolic link, or a body the seed wrote (the
+  current or an earlier seed kernel, or compose mode's own form)
+- **Response:** exit non-zero with one `ERROR:` line naming AGENTS.md and why,
+  and where the mode came from: the flag, or the stamp's `kernel_mode` with
+  `--kernel-mode replace` as the way out of it; no Python error
+- **Side effects:** none: the check is a preflight, before the first write
+- **Recovery:** put the team's rules in AGENTS.md (from CLAUDE.md, or from an
+  `AGENTS.md.bak-*` backup) and re-run, or keep replace mode
+- **Contracts:** HUB_KEPT_CANONICAL_IN_COMPOSE_MODE
 
 ### Failure: STAMP_NOT_AN_OBJECT
 - **Contracts:** UNKNOWN_STAMP_KEYS_SURVIVE
@@ -1708,7 +1877,9 @@ $ head -1 /p/docs/graph/libraries/rxjs.md
       skill page as a routable node, and a bad list writes nothing; maps to
       EXPERTISE_PLACES_ONLY_THE_CONFIRMED_LIST,
       UNKNOWN_EXPERTISE_ID_REFUSED_BEFORE_WRITING,
-      PLACED_PAGE_CARRIES_ITS_PROVENANCE, PLACED_SKILL_IS_A_ROUTABLE_NODE
+      PLACED_PAGE_CARRIES_ITS_PROVENANCE, PLACED_SKILL_IS_A_ROUTABLE_NODE,
+      and the plant's own graph-lint stays green with them placed;
+      PLACED_CORPUS_PAGE_IS_REACHABLE
 - [ ] AC-22: the placed list is recorded and refreshed by every later install
       without losing a plant edit or replacing a plant page; maps to
       EXPERTISE_IS_RECORDED_IN_THE_STAMP, EXPERTISE_SURVIVES_SILENCE,
@@ -1864,6 +2035,19 @@ $ head -1 /p/docs/graph/libraries/rxjs.md
 | CHECK_FLAGS_ORPHAN_HARNESS_ENTRY | M14 case_orphan_flag: over a copy of the every-host install, `claude-code --check` says every harness entry has a graph home (inside M13); with a skill in `.claude/skills/deploy-notes/` and an agent in `.prime/agent/agents/` and no graph node, it exits 0, names each `ORPHAN` with the graph home it lacks and leaves the tree byte-identical; `graft-audit.py` names the skill `ORPHAN` with its clean-copy exit code (asserted since the tip) | tests/test-install-placement.sh | integration; red on arrival (`--check` did not name the orphan skill) | green |
 | CHECK_FLAGS_RETIRED_GRAPH_NODE | M13 case_retired_flag, graph-node arm (8.1.2, graft finding F1): the every-host install copy also carries an `origin: seed` `docs/graph/protocols/<name>.md` the seed does not ship and an `origin: project` protocol of another name: `claude-code --check` exits 0, names the seed one `RETIRED` and not the project one, and leaves the tree byte-identical; `graft-audit.py` names it `RETIRED` with its clean-copy exit code; the node is still on disk | tests/test-install-placement.sh | integration | green |
 | GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES | X469 case_run_ties_lint_errors_to_retired_nodes, a GR case of `tools/graft-run.py` (8.1.2, graft finding F1): a synthetic plant carrying an `origin: seed` `docs/graph/protocols/<name>.md` the seed does not ship, whose `owns:` repeats a fact-key of a seed skill node: the `graft.gate.routes` row is BLOCK, names the path among the `RETIRED` entries and carries `RETIRED_LINT_CLAUSE` with the node's id and a count of 1; arm: the same node with that fact-key dropped from its `owns:` carries no clause; the node is on disk after the run | tests/test-graft-tools.sh | integration (synthetic plant) | green |
+| HOOKS_RUN_ON_THE_FLOOR_INTERPRETER | E16 case_interpreter_floor (a), (c), (d): on a PATH whose `python3` fails the floor probe and that holds `python<floor>`, claude-code and prime-agent install, every `.claude/settings.json` hook command and both extensions' `PYTHON` name `python<floor>`, a NEXT STEP names the bare `python3`, and `--check` runs the four hooks; with one command edited to name `python3.99`, `--check` exits non-zero naming it; the Copilot `route.json` and `status.json` name it; on a `python3` at the floor `.claude/settings.json` is the seed's bytes | tests/test-full-install.sh | integration | green |
+| HOOKS_RUN_ON_THE_FLOOR_INTERPRETER | E19 the floor sweep: `install.sh`'s `PYTHON_FLOOR` equals SPEC-0005 §5's, every shipped script compiles on an interpreter at the floor and every tool answers `--help` on it | tests/test-tool-help.sh | unit; red on arrival (no `PYTHON_FLOOR`) | green |
+| NO_INTERPRETER_AT_THE_FLOOR | E16 case_interpreter_floor (b): with only a `python3` below the floor on PATH, the install exits non-zero with exactly one line, an `ERROR:` naming the floor, and the target stays empty | tests/test-full-install.sh | integration | green |
+| STAMP_TRACKING_LINES_PRINTED | E17 case_stamp_tracking_lines: a Git target ignoring `.cypress/` is shown the three lines and its `.gitignore` is unchanged; with the lines `.cypress/seed.json` is not ignored and `.cypress/session/x.json` is; a re-install then prints no lines, nor does a target with no repository | tests/test-full-install.sh | integration | green |
+| BACKUPS_LISTED_BY_DATE | E18 case_backups_listed: a re-install over two edited seed nodes says it made 2 backups, lists today's 2 and an earlier backup's date, and says to stage by explicit path; the identical re-run after it prints no list | tests/test-full-install.sh | integration | green |
+| HUB_KEPT_CANONICAL_IN_COMPOSE_MODE | K8 case_k8_compose_keeps_the_hub: compose over a team AGENTS.md keeps it byte-identical, CLAUDE.md is the import line, a blank line and the kernel, no root backup and no migration row, the cost is stated, the stamp records the mode; a silent re-install changes nothing; `tools/graft-audit.py` over the compose plant exits 0 with no `!! KERNEL` line; `--kernel-mode replace` restores ONE_KERNEL_BODY, files the hub and drops the key | tests/test-install-kernel-modes.sh | integration; the graft-audit arm red on arrival (`KERNEL STALE: AGENTS.md`, `KERNEL EXTENDED: CLAUDE.md`) | green |
+| HUB_KEPT_CANONICAL_IN_COMPOSE_MODE | X485 case_audit_kernel_currency_compose (GA-K5): a synthetic plant stamped `kernel_mode: compose` whose AGENTS.md is a team hub and whose CLAUDE.md is the import line, a blank line and the seed kernel reads `kernel: current`, exit 0; with a seed line missing under the import line it is `KERNEL STALE: CLAUDE.md`, exit 1; guard: the same tree with no stamp is `KERNEL STALE: AGENTS.md` | tests/test-graft-tools.sh | unit; red on arrival (exit 1, the hub reported STALE) | green |
+| HUB_NOT_COMPOSABLE | K8 case_k8_hub_not_composable: an absent AGENTS.md (rules in CLAUDE.md, or nothing), a linked one and one holding the seed kernel are refused with an `ERROR:` naming AGENTS.md, no Python error, the target unchanged; a compose mode the stamp recorded, re-run with no flag over a removed hub, is refused naming `kernel_mode in .cypress/seed.json` and `--kernel-mode replace`, not the flag | tests/test-install-kernel-modes.sh | integration; the stamped arm red on arrival (the refusal named `--kernel-mode compose`) | green |
+| RETIRED_STAMP_KEYS_NAMED_AND_KEPT | M21 case_retired_stamp_keys: a stamp carrying `grafted`, `base`, `by`, `name` and a plant key: the re-install names the four, sorted, on one line, not the plant key, and keeps all five | tests/test-install-placement.sh | integration | green |
+| PLACED_SKILL_IS_A_ROUTABLE_NODE | M16 case_expertise_place, the flat arm: `skill-corpus/generic-routable` is placed at `docs/graph/skills/generic-routable.md` with its `origin:` line, routes through `graph-lint.py --show`, is projected to `.claude/skills/` and recorded; M17 still refuses the flat page with no frontmatter | tests/test-install-placement.sh | integration | green |
+| PLACED_CORPUS_PAGE_IS_REACHABLE | M16 case_expertise_place: with a stack-keyed and a generic skill, two library pages and a tool page placed into a plant before growth, the plant's `graph-lint.py` exits 0, `--plan` on each skill's `load_when` phrase loads it, and `docs/graph/index.md` equals the template | tests/test-install-placement.sh | integration; red on arrival (`skill.generic-routable` and `skill.lumen-upgrade` unreachable) | green |
+| PLACED_CORPUS_PAGE_IS_REACHABLE | CorpusPlacedEntryTests: an unlisted skill with `origin: corpus@8.1.2` lints clean with and without a root; guard: the same node with `origin: seed`, `corpus` or `plant-corpus@1` is still reported unreachable | tests/test_graph_lint.py | unit; red on arrival (the rootless and the rooted arm) | green |
+| PACKAGELESS_PAGE_PROPOSED_BY_ITS_TRIGGER | test_seed_pages_are_proposed_by_their_triggers, the Graph SDK rows: two `com.microsoft.graph` artifacts, the `Microsoft.Graph` NuGet package and `@microsoft/microsoft-graph-client` each propose `platform/microsoft-graph`, and a `com.microsoft.azure` artifact does not; a read-only probe of four donor plants proposed no new page | tests/test_corpus_match.py | unit; red on arrival (no Graph SDK trigger) | green |
 
 Coverage note, so the table is not read as more than it is.
 
@@ -2479,3 +2663,50 @@ only version surface it has, and it moves with each entry here.
   no §7 failure. Status `active` from `implemented`, with two `pending` §10
   rows until plan increment 11's RED; `implemented` returns when they are
   green. §3 and AC-26 name agents and skills only: product's to follow.
+- 2026-10-14 — the owner's decisions of 2026-10-14
+  land as contracts: the Python floor stays at 3.14 (its home is SPEC-0005
+  §5), so HOOKS_RUN_ON_THE_FLOOR_INTERPRETER has the installer find an
+  interpreter at the floor, run on it and write its name into every hook
+  command, with NO_INTERPRETER_AT_THE_FLOOR its refusal, and
+  CHECK_EXECUTES_EACH_WIRED_HOOK runs each hook on the interpreter it names;
+  STAMP_TRACKING_LINES_PRINTED prints the `.gitignore` lines that keep the
+  stamp tracked; BACKUPS_LISTED_BY_DATE lists the backups by date with the
+  stage-by-path line; HUB_KEPT_CANONICAL_IN_COMPOSE_MODE and
+  HUB_NOT_COMPOSABLE add compose mode as an opt-in, with ONE_KERNEL_BODY
+  gaining its Except; RETIRED_STAMP_KEYS_NAMED_AND_KEPT names the keys an
+  earlier seed wrote and keeps them; PLACED_SKILL_IS_A_ROUTABLE_NODE takes a
+  generic page by the flat id `skill-corpus/<name>`; §6 gains the Graph SDK
+  trigger row for `platform/microsoft-graph`, the `kernel_mode` key and the
+  flat skill row. Every write the new arms make goes through the four
+  placers, so SINGLE_WRITER's count is unchanged. Each case was written before
+  the installer or the matcher changed; E19 and the matcher rows were run and
+  seen red first, and the other cases were first run after the change, so
+  their RED is by construction, not observed. E16 found a defect in the
+  existing placer: under bash 3.2, `place_state` lost a `<(...)` source once
+  `ensure_dir` had to create the destination's directory, so it now opens the
+  source on a descriptor before anything else runs. Product, architect and
+  tester owe their review of these contracts.
+- 2026-10-14 — a placement check in a scratch install
+  found every skill page `--expertise` placed reported unreachable by the
+  plant's own `graph-lint.py`: the installer placed the node and nothing
+  made it reachable, because the seed's own skills are reachable only by the
+  ids the index template lists. §4 gains PLACED_CORPUS_PAGE_IS_REACHABLE: the
+  `origin: corpus@<seed version>` line the installer already writes is an
+  entry point of graph-lint's reachability rule, so the arm still writes
+  nothing into the plant-owned `index.md` and a deleted page leaves nothing
+  behind; library and tool pages are Tier-3 leaves the rule does not cover.
+  AC-21 maps to it, and §10 binds it to M16 and a graph-lint unit case, both
+  seen red before graph-lint changed. Product, architect and tester owe their
+  review of this contract.
+- 2026-10-14 — review fixes. Review found compose mode
+  unusable under graft: graft-audit compared the plant's own hub with the
+  seed kernel and read CLAUDE.md's import line as plant-authored, so a
+  current compose plant failed every graft with `KERNEL STALE: AGENTS.md`.
+  HUB_KEPT_CANONICAL_IN_COMPOSE_MODE gains the arm that graft-audit reads the
+  stamp's `kernel_mode`, leaves the hub out and compares CLAUDE.md after its
+  import line; K8 gains a graft-audit run over the installed compose plant
+  and X485 the unit case, both seen red first. HUB_NOT_COMPOSABLE's response
+  now names where the mode came from, the flag or the stamp with the way out,
+  and its stamped arm was seen red first. The retired-key log says deleting
+  the keys is the owner's call, and the BACKUPS block no longer calls every
+  backup untracked; neither changes a contract.

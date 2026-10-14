@@ -56,7 +56,8 @@ a script calls. Strike the ids you do not want and add the ones it missed.
 ```
 
 A corpus id is the page's seed path without `.md`:
-`library-corpus/<key>/<name>`, `skill-corpus/<key>/<name>` or
+`library-corpus/<key>/<name>`, `skill-corpus/<key>/<name>`,
+`skill-corpus/<name>` for a generic procedure, or
 `tool-corpus/<category>/<name>`. The installer places exactly the pages
 named, whether or not a manifest matched them:
 
@@ -64,7 +65,7 @@ named, whether or not a manifest matched them:
 |---|---|---|
 | library | `docs/graph/libraries/<name>.md` | first line `<!-- origin: corpus@<seed version> id: <corpus id> -->` |
 | tool | `docs/graph/tools/<name>.md` | the same first line |
-| skill (stack-keyed pages only) | `docs/graph/skills/<name>.md`, a routable skill node | frontmatter `origin: corpus@<seed version>` |
+| skill (generic or stack-keyed) | `docs/graph/skills/<name>.md`, a routable skill node | frontmatter `origin: corpus@<seed version>` |
 
 ```
 $ ./install.sh claude-code --expertise library-corpus/pypi/fastapi,tool-corpus/ops/resolved-dependency-gate --project-dir /tmp/ep
@@ -86,7 +87,8 @@ Before the first write, the installer refuses, by name:
 - two ids that share a destination, such as `pypi/redis` beside
   `container/redis`;
 - an id whose destination another recorded id owns;
-- an id that would land on a node or leaf the seed places itself.
+- an id that would land on a node or leaf the seed places itself;
+- a skill page that carries no node frontmatter.
 
 ```
   pypi/nope: names no page under library-corpus/, skill-corpus/ or tool-corpus/ (an id is <corpus>/<key>/<name>, without .md; the legal and agent corpora are not placed this way)
@@ -148,10 +150,11 @@ A skill or tool page links to the library it serves through a `stack:`
 field that names library corpus ids. A stack-keyed skill page lives at
 `skill-corpus/<key>/<name>.md` under a key the library corpus defines,
 carries node frontmatter plus `stack:`, and gets its `origin:` line only
-when it is placed. A flat skill page carries no `stack:` and is not placed
-by this flag. A tool page may carry `stack:`, and only a tool page with the
-field can be proposed. `tests/seed-lint.py` checks the field on every
-corpus page.
+when it is placed. A flat skill page carries the same node frontmatter
+without `stack:`, so no manifest proposes it: grow and graft place it by its
+id when the plant's work needs the procedure. A tool page may carry
+`stack:`, and only a tool page with the field can be proposed.
+`tests/seed-lint.py` checks the field on every corpus page.
 
 ## See also
 

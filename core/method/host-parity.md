@@ -18,9 +18,10 @@ load_when:
   - "did this run touch production"
   - "inspect a shared host or workspace read-only, a fix lets a loop continue past a failure"
   - "mutating run against live infrastructure, the dry run passed, which hosts the target selector resolves to"
+  - "a tagged or limited run applied an uncommitted edit nobody meant to ship"
   - "automation converges the account it authenticates with, its own access path"
 prevents: A green result on the authoring host reported as working on the target, an inspection that writes to a shared host, and a loop fix that carries on past what a failure protected.
-est_tokens: 1296
+est_tokens: 1428
 ---
 
 ## The machine you build on is not the machine it runs on
@@ -66,16 +67,23 @@ scoped real apply before claiming the change works. Before any mutating
 run, resolve the target selector to the concrete list of hosts it
 matches and confirm that list, because a shorthand that resolves
 differently from what its author meant aims the run somewhere else, or
-nowhere. Validate the whole declared change set for self-lockout before
-executing any part of it (the guard sits before the first mutation, not
-between mutations); confirm the target is the project's own, by an
-ownership marker, before acting on it; and exclude the automation's own
-access path and identity from the set it manages while still asserting
-it keeps the privileges it needs. That exclusion is the default, and
-overriding it takes an explicit, named flag set by a decision, never on
-the agent's own initiative, because converging the identity the
-automation authenticates with can lock it out of everything it manages.
-Whether the target is a real production system at all is a plant fact:
+nowhere. A scoped run (a tag, a host limit, one selected task) scopes
+which tasks execute, not which input they read: every uncommitted edit
+in the data a selected task reads applies too. Review the whole diff of
+that data before the run, not only the part you meant to change, and
+checkpoint pending edits before reworking it (`method.vcs-posture` §1);
+an entry the owner requires that an edit could plausibly drop carries
+its reason beside it, where the next editor of that data sees it.
+Validate the whole declared change set for self-lockout before executing
+any part of it (the guard sits before the first mutation, not between
+mutations); confirm the target is the project's own, by an ownership
+marker, before acting on it; and exclude the automation's own access
+path and identity from the set it manages while still asserting it keeps
+the privileges it needs. That exclusion is the default, and overriding
+it takes an explicit, named flag set by a decision, never on the agent's
+own initiative, because converging the identity the automation
+authenticates with can lock it out of everything it manages. Whether the
+target is a real production system at all is a plant fact:
 `plant.environment_class` in the router's frontmatter answers it once,
 and every run reads it there. Which environment a given run actually
 touched is a different question, and it is answered from first-hand

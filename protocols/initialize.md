@@ -71,7 +71,9 @@ The adapter adds ONLY these edges of its own:
    installed it: preflight and remedy per `delegation.harness-registration`
    (`docs/graph/method/delegation-bounds.md`) before any by-name dispatch.
 2. The fork runs no application build and no application test suite.
-3. The fork never pushes, fetches, pulls, switches, or commits Git.
+3. The fork never pushes, fetches, pulls, switches, or commits Git; the `grow`
+   arm's only commits are its baseline and per-phase checkpoints in the plant's
+   own repository (`grow.write-boundaries`).
 4. The fork leaves application code as it found it and fabricates no
    normative record.
 

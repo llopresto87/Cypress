@@ -94,24 +94,31 @@ tool-corpus/<category>/<name>.md
       DevOps arm), large-artifact staging, registry digest resolution, image
       pin linting;
     - secrets and certificates: secret rotation, cert generation,
-      structured-secret field detection, source-default credential gating;
+      structured-secret field detection, source-default credential gating,
+      outgoing-tree secret gating at publication and staging;
     - configuration: layered-config merge verification, declared-variable
       existence auditing, renamed-config-key auditing, orphaned scoped-config
       auditing, live-state probing into declared config, declared-consumer
-      link generation, config-driven server response harnessing;
+      link generation, config-driven server response harnessing,
+      structure-only reduction of a secret-bearing configuration export;
     - dependencies and vulnerabilities: hashed-lock closure checking, resolved
-      dependency gating, container vulnerability scan aggregation,
-      not-affected statement generation;
+      dependency gating with its version matrix, container vulnerability scan
+      aggregation, not-affected statement generation;
     - test identities and data: disposable test-identity provisioning,
       owner-scoped data seeding;
     - device and API adapters: lenient response parsing;
-    - agent sessions: destructive-command guarding, session cost profiling.
+    - scheduled work: the two guards a sweep needs across replicas;
+    - agent sessions and graphs: destructive-command guarding, session cost
+      profiling, bounded source-packet routing for small-context models,
+      citation-anchor resolution.
   - `testing`: smoke suites, behavior-baseline capture, in-network end-to-end
     driving, fire-and-forget command observation, live contract checking,
-    CI-runner simulation, failure-signature triage, working-tree snapshots,
-    authentication-parity oracles, parallel suite running, static
-    config-contract gating, cross-implementation parity verification,
-    test-hygiene linting, touched-file lint hooks.
+    CI-runner simulation, remote-host stub fixtures, failure-signature
+    triage, working-tree snapshots, authentication-parity oracles, parallel
+    suite running, tiered validation ladders, staged-index commit gating,
+    long-stage progress running, batched mutant running, sandboxed browser
+    test running, static config-contract gating, cross-implementation parity
+    verification, test-hygiene linting, touched-file lint hooks.
 
   Further categories such as `scaffolding`, `codegen`, `data`, and `analysis`
   are added as they are harvested.

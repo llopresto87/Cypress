@@ -15,8 +15,9 @@ peers:
 load_when:
   - "command hung, session stuck, wrap in a timeout, run detached"
   - "is the run stuck, check it by id"
+  - "one command at a time, which batched command stalled"
 prevents: A hung command that wedges the session, a stall retried unchanged, and a run called finished because its output stopped.
-est_tokens: 711
+est_tokens: 797
 ---
 
 ## A command that may outlive its session is bounded (`toolcraft.bounded-execution`)
@@ -38,7 +39,10 @@ clauses 2-6 tell "finished" from "stuck" when the work is long.
 3. Waiting is bounded polling of that log for new bytes or the marker. A
    poll that sees no new evidence for a fixed number of intervals stops and
    reports "no progress since T", so the next step is a diagnosis; an
-   unchanged re-run only repeats the stall.
+   unchanged re-run only repeats the stall. When the stalled call batched
+   several commands, the diagnosis starts by splitting it into one call per
+   command, which localizes the stall to one of them; outside a stall,
+   batching stays the default (`method.decision-economy`).
 4. Claim "running" from an observed liveness signal (the pid alive and the
    log growing, or device utilisation); a returned launch proves only that
    the command started. Identify a run by the id the tool returned at

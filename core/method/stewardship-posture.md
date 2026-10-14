@@ -137,8 +137,9 @@ Three things count as a learning. The first is an owner rule, stated for
 good or as a correction of how the work was done, written with the
 owner's verbatim words and the date. The second is a corrected
 assumption: something a graph node, plan row, handback or harness memory
-said that the work proved false, written with its evidence. The third
-is resume state: where paused work stands, what comes next, and what
+said that the work proved false, or a node body the work showed to be
+incomplete, written with its evidence. The third is resume state: where
+paused work stands, what comes next, and what
 waits on whom. A fact a worker handback already carries is not written
 here, because canonize reads handbacks directly. Neither is a secret, a
 credential, production or personal data, speculation, or an instruction

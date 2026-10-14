@@ -18,7 +18,8 @@ load_when:
   - "angular upgrade builds locally but the image does not"
 stack:
   - library-corpus/language/angular
-est_tokens: 2713
+prevents: An Angular upgrade jumps several majors at once or leaves a mixed package family, and a green unit run hides a shippable bundle or image build that is broken.
+est_tokens: 3393
 ---
 
 # Suggested skill: angular-major-upgrade

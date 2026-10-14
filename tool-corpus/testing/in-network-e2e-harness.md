@@ -145,6 +145,21 @@ server, change `mail_ids` and `mail_html` only. `extract_single` returns the
 one distinct match of a pattern anchored on the mail template and fails on
 zero or several, so a footer year is never mistaken for a code.
 
+**Integration fixtures live in their own labelled overlay.** The capture
+server, and any fake that stands in for an external integration (a file
+transfer endpoint, a mail relay), belongs in a separate compose file that
+says at its head that it is a test fixture and never runs in production,
+and that no release pipeline builds, pushes or deploys. Bring it up with the
+same project name as the stack (`-p`, or `COMPOSE_PROJECT_NAME`;
+`library-corpus/container/docker-compose.md`, "Project name" and
+"Networking"), so its
+services join the stack's default network and the probes reach them by
+service name with no network declared by hand. Give it fixed, public,
+throwaway credentials, never a real one, so a stack whose integrations fail
+closed on missing credentials can come up on a first bring-up. Those
+throwaway values are fixture data, not a credential guarding anything; the
+credential the cases log in with stays on the credential path above.
+
 **Infrastructure errors fail loudly.** A missing container, an unreadable
 variable, a body that could not be staged, a mail that never came: each
 raises `HarnessError`, and `run` reports it as `ERROR`, which fails the run.
@@ -673,6 +688,18 @@ refused connection and raised the oracle's `ProbeError`, not `HarnessError`.
   assert that the flow that sends mail reports an error. If that case cannot
   be written yet, record it as absent; a delivery assertion alone does not
   cover it.
+- **A gate a fixture satisfied is not the real-integration gate.** A case
+  green against the fixture overlay proves the stack's side of the
+  integration, not the integration: the real counterparty's credentials,
+  network path and behaviour were never exercised. Record such a result as
+  fixture-satisfied, and keep the gate that needs the real counterparty
+  (its credential rotation, its first real exchange) open until it has run
+  against it.
+- **The fixture overlay shares the project, so it shares its orphan
+  removal.** A deploy run with `--remove-orphans` over the stack's files
+  alone deletes the fixture containers started under the same project name
+  (`library-corpus/container/docker-compose.md`); start the overlay after
+  such a deploy, or give the flag only to a run whose files include it.
 - **Never run a state-destroying flow on a shared account.** The rule and
   the case behind it live in `tool-corpus/testing/http-smoke-suite.md` §5.
   Log the cases in with a synthetic account per run
@@ -757,3 +784,7 @@ fails if that copy still passes.
 - 2026-10-05: §5 gained the swallowed-send-error case beside the
   missing-mail rule and the re-run rule for a case that writes; by
   docs-librarian.
+- 2026-10-14: integration fixtures in their own labelled overlay under the
+  stack's project name with public throwaway credentials (§3); a
+  fixture-satisfied gate does not close the real-integration gate, and the
+  overlay shares the project's orphan removal (§5). By harvest.

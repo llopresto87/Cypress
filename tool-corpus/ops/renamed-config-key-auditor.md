@@ -149,6 +149,29 @@ audit and does not replace it.
 4. Intersect the served key set with the catalogue's retired set.
 5. Report the intersection, each row carrying its file and the vendor's verdict.
 
+### Through a mixed-estate transition: the closing channel and the delete-when
+
+Units rarely migrate together. While some run the old generation and some the
+new, the rename is closed additively: both keys are served at the source,
+a unit that migrates early is covered by an override it owns, and the old key
+is deleted last (the procedure is `skill-corpus/maven/spring-boot-major-line-upgrade.md`,
+Step 5, "Served configuration in a mixed estate"). Through that window "no
+finding" and "safe to pair this unit with this configuration" are different
+statements, and the audit has to make both checkable. So for each renamed key
+and each unit it reports:
+
+- **the channel that closes it** for that unit: the served configuration
+  (the new key served beside the old), a deployment-layer override the unit
+  owns, or the module default (no channel sets it, and the default is the
+  value wanted, which the row says);
+- **the delete-when condition** for each interim channel: the old key may be
+  deleted once no unit still on the old generation reads it, and an override
+  may be deleted once the served configuration carries the new key.
+
+A key that a unit still on the old generation reads is never reported as
+deletable, whatever the other units do. The deletion retires, in the same
+change, the test that pinned the old key.
+
 ### Enduring idioms
 
 - **Run it against the destination generation before the migration lands**, not
@@ -239,7 +262,10 @@ with `level: warning` is not; a served key that no metadata on the classpath
 declares is reported as unaudited; a camelCase, snake_case or indexed
 spelling and a key under a map-typed property match their metadata entry; a
 self-mapping catalogue row is dropped and a removed key is kept; a catalogue
-that parses to zero entries refuses the run.
+that parses to zero entries refuses the run; in a mixed estate, a renamed key
+closed by an override is reported with that channel and its delete-when, a
+key closed only by the module default says so, and the old key is never
+reported deletable while one unit on the old generation reads it.
 
 - **How to run the tests:** `<the plant's test command for its implementation>`
 
@@ -277,3 +303,6 @@ that parses to zero entries refuses the run.
   metadata declares. How to obtain the destination classpath, the catalogue
   parser's treatment of self-mapping and removed rows, and the `stack:`
   field are added.
+- 2026-10-14: in a mixed estate the audit reports, per renamed key and
+  unit, the channel that closes it and when each interim channel may be
+  deleted (§3, §6). By harvest.

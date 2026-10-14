@@ -78,6 +78,9 @@ KIND_PREFIX = {}
 MACHINERY_DIRS = {"protocols": "protocol", "skills": "skill",
                   "agents": "agent", "method": "method"}
 MACHINERY_KINDS = set(MACHINERY_DIRS.values())
+# The `origin:` value `install.sh --expertise` stamps on a corpus skill page it
+# places (`corpus@<seed version>`); reachability counts such a node as listed.
+CORPUS_ORIGIN_PREFIX = "corpus@"
 # --------------------------------------------------------------------------
 
 HERE = Path(__file__).resolve().parent          # docs/graph/
@@ -629,6 +632,13 @@ def check_reachability(nodes: list, errs: list) -> None:
     # (`x.orphan.`) still counts.
     listed = {n.id for n in nodes if re.search(
         rf"(?<![\w.-]){re.escape(n.id)}(?![\w-])(?!\.[\w-])", index_text)}
+    # A corpus page `install.sh --expertise` placed is an entry point by its
+    # own provenance line: the owner's confirmed list put it there, the router
+    # finds it by its `load_when`, and the index is plant-owned prose the arm
+    # never writes. A plant that takes the page over by dropping the line
+    # lists it like any node of its own.
+    listed |= {n.id for n in nodes
+               if str(n.meta.get("origin", "")).startswith(CORPUS_ORIGIN_PREFIX)}
     # ONE real traversal, seeded by the root and every index-listed node: a
     # listed node is an entry point, so what its edges reach is reachable too
     # (a plant-owned index that lists a node but not the siblings it points

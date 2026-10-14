@@ -240,7 +240,9 @@ scout/author pair).
 - Code to write → `test-first`, one cycle per §9 row in §9 order
   (`test-first.cycle`): tester RED → implementer GREEN → reviewer →
   you commit and record §15.
-- Failing test / unclear bug → `tester`: reproduce, regress, fix.
+- Failing test / unclear bug → `tester`: reproduce, regress, fix; in an
+  operations or verification pass, reproduce and list, and the fix waits
+  for the owner's go-ahead (`tester.bug-fix-loop`).
 - Sensitive surface (auth, payments, uploads, AI tool use) →
   `security` → threat model + controls + spec failure modes.
 - Production readiness → `reliability`. Dataset/pipeline/eval → `data-ml`.

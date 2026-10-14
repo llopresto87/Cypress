@@ -22,13 +22,13 @@ load_when:
   - "standing grant for repeated test-side pushes and pipeline runs"
   - "git worktree, parallel checkout, second clone for the same task"
   - "a worktree just to measure a baseline across two commits"
-  - "two workstreams in one uncommitted tree, split a working tree into two commits"
+  - "two workstreams in one uncommitted tree, split a working tree into two commits, rework a dirty tree"
   - "abandon the old branch, re-derive the work on a new branch, unmerged commits left behind"
   - "test an unmerged branch in CI without merging, per-run source ref override"
   - "commit trailer, co-authored-by line, who signs the commit"
   - "which language for code comments or the deliverable"
 prevents: Work published without the owner's authorization, several working trees drifting apart, and commit identity decided per session.
-est_tokens: 2208
+est_tokens: 2257
 ---
 
 # VCS posture
@@ -55,14 +55,16 @@ byte-identical to the pin afterwards, and say where the work went.
 Splitting one uncommitted tree into two commits is the same rule under
 load. An uncommitted tree is a shared mutable surface: two unrelated
 workstreams left in it couple silently, and every day they stay there
-widens the entanglement. The split is a method, not a guess. Back up the
-shared files first. Strip the other workstream's blocks by exact
-content match, never by line number, because in interleaved work the
-first removed block moves every line number after it. Commit the first
-half, restore the shared files from the backup, and commit the second
-half. Then **prove every shared file byte-identical to its backup**
-before anything is published. Without that proof the two commits are a
-claim; with it they are a measurement.
+widens the entanglement. So a large rework never starts in a tree that
+already holds pending edits: checkpoint them first, as their own commit
+or parked patch, so the rework's diff shows only the rework. The split
+is a method, not a guess. Back up the shared files first. Strip the
+other workstream's blocks by exact content match, never by line number,
+because in interleaved work the first removed block moves every line
+number after it. Commit the first half, restore the shared files from
+the backup, and commit the second half. Then **prove every shared file
+byte-identical to its backup** before anything is published. Without
+that proof the two commits are a claim; with it they are a measurement.
 
 ## 2. Publishing is a separate authorization
 

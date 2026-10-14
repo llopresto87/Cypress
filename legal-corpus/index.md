@@ -19,8 +19,9 @@ before citing it — a page-level claim about any of those is always wrong.
 
 | Instrument | Kind | Page | Coverage |
 |---|---|---|---|
-| Regulation (EU) 2016/679 (**GDPR**) | regulation | [eu/gdpr.md](eu/gdpr.md) | core definitions, the Art. 5 principles, lawful bases and special categories, the data-subject rights block, controller/processor obligations, records, security, breach notification, DPIA, certification, the Chapter V transfer regime, and the Art. 87 national-identification-number enabling clause |
+| Regulation (EU) 2016/679 (**GDPR**) | regulation | [eu/gdpr.md](eu/gdpr.md) | core definitions and the Recital 26 identifiability test, the Art. 5 principles, lawful bases and special categories, processing without identification and the Art. 12 modalities and response periods, the data-subject rights block, controller/processor obligations, records, security, breach notification, DPIA, certification, the Chapter V transfer regime, and the Art. 87 (national identification number) and Art. 88 (employment) enabling clauses |
 | Regulation (EU) 2024/2847 (**CRA**) | regulation, **staggered application** | [eu/cra.md](eu/cra.md) | scope and product classes, open-source treatment, essential cybersecurity requirements, SBOM, vulnerability-handling and reporting duties, conformity assessment and CE marking, penalties — with per-obligation application dates |
+| Regulation (EU) 2017/745 (**MDR**, medical devices) | regulation, **staggered application**, repeatedly amended | [eu/mdr.md](eu/mdr.md) | scope, the medical-device, accessory and intended-purpose definitions, the general application date (**the original and consolidated texts give different dates**), and the Annex I software and IT-security requirements; the classification rules and the transitional regime are recorded gaps |
 | Directive (EU) 2022/2555 (**NIS2**) | directive (+ transposing acts) | [eu/nis2.md](eu/nis2.md) | entity scope and sectors, risk-management measures, incident-reporting duties and their clock, governance and management liability, supervision and sanctions, plus national transposition linkage |
 | Directive 2002/58/EC (**ePrivacy**) | directive | [eu/eprivacy-directive.md](eu/eprivacy-directive.md) | terminal-equipment storage and access (cookies and equivalents), confidentiality of communications — **original vs as-amended text is load-bearing here** |
 | **EU scope definitions** (consumer / marketplace / SME thresholds) | directive + recommendation | [eu/eu-scope-definitions.md](eu/eu-scope-definitions.md) | the cross-cutting definitional anchors other instruments' scope tests point at, including the enterprise-size categories and their thresholds |
@@ -43,6 +44,9 @@ before citing it — a page-level claim about any of those is always wrong.
 |---|---|
 | lawful basis, minimisation, storage limitation, accountability | `eu/gdpr.md` |
 | transparency duties, access, portability, erasure | `eu/gdpr.md` |
+| how fast a data-subject request must be answered; a requester the controller cannot identify | `eu/gdpr.md` (`gdpr-art-12`, `gdpr-art-11`) |
+| is pseudonymised or "anonymised" data still personal data? | `eu/gdpr.md` (`gdpr-recital-26`) + `eu/a29wp-opinion-05-2014-anonymisation.md` |
+| is a product (software included) a medical device, and does the CRA's sector exclusion reach it? | `eu/mdr.md` + `eu/cra.md` |
 | controller vs processor, joint controllership, processor-contract content | `eu/edpb-guidelines-07-2020.md` + `eu/gdpr.md` |
 | transferring personal data outside the Union | `eu/eu-us-dpf-adequacy.md` + `eu/scc-2021-914.md` + `eu/gdpr.md` Chapter V |
 | cookies, third-party assets, terminal-equipment storage | `eu/eprivacy-directive.md` + `eu/edpb-guidelines-02-2023.md` + `national/it-codice-privacy.md` |
@@ -53,7 +57,7 @@ before citing it — a page-level claim about any of those is always wrong.
 | product-side security obligations for software placed on the market | `eu/cra.md` |
 | ISMS scope, Annex A controls, Statement of Applicability | `international/iso-27001.md` |
 | how long must records be kept, and what blocks erasure | `national/it-accounting-retention.md` |
-| employee monitoring and remote-control equipment | `national/it-workers-statute.md` |
+| employee monitoring and remote-control equipment | `national/it-workers-statute.md` + `eu/gdpr.md` (`gdpr-art-88`) |
 | whether a court or authority has already decided a point | `case-law/index.md` |
 
 ## Standing hazards

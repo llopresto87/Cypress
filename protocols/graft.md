@@ -102,9 +102,14 @@ decides when a plant is upgraded and ratifies the result before it is applied.
   new fruit, a protocol sharpened, a skill gained a rule, the corpus grew pages
   for libraries this plant already uses. The wider the gap, the more the plant
   has to gain.
-- The plant's working tree is **clean**, or the steward has named its dirty
-  paths and accepted a file-by-file unwind from backups, which cover only the
-  files `place_file` replaced (*Reversibility*, (b) and (d)).
+- The plant can be **committed before the graft writes anything**: Phase 1
+  reads its version-control shape (its own repository or none, commits or
+  none, a graph tracked or ignored, nested repositories) and makes the
+  baseline commit that shape calls for, initializing a repository where there
+  is none (*Reversibility*, (d)). A dirty tree is no bar, because the baseline
+  records it; a plant whose steward refuses the baseline is grafted only on
+  the steward's acceptance of a file-by-file unwind from backups, which cover
+  only the files `place_file` replaced ((b)).
 
 ## The rootstock line: the heart of this protocol
 
@@ -329,11 +334,12 @@ for doing so.
   `plant:` values and adds a missing key in the template's own words, and every
   value the plant declared stays. It is *bounded in frequency*: it writes only
   when the rendered frontmatter differs from what is on disk, so a run that
-  changes nothing touches nothing. Neither bound makes it recoverable.
-  `graft.gate.rootstock` has no `.bak` to read, so
-  `git -C <plant> diff docs/graph/index.md` is the only thing that sees the
-  write. Read that diff before ratifying; *Reversibility* (b) 5 covers a plant
-  with no committed version to diff against.
+  changes nothing touches nothing. Neither bound makes it recoverable from a
+  backup. `graft.gate.rootstock` has no `.bak` to read, so
+  `git -C <plant> diff <baseline> -- docs/graph/index.md` against the baseline
+  commit (*Reversibility*, (d)) is the only thing that sees the write. Read
+  that diff before ratifying; *Reversibility* (b) 5 covers a plant whose
+  `index.md` the baseline could not commit.
 - `record_instruction_migration` creates and appends to
   `docs/graph/plans/adopted-instructions.md` with shell redirection. It guards
   the create on `! -e`, which is **false for a dangling symlink**, so it treats
@@ -359,6 +365,12 @@ write failed after the kernel was already swapped is not filed by the next run
 either (*Reversibility*, (b) 3). The preflight refuses a blocked
 `docs/graph/plans`, and `sweep_orphaned_instruction_backups` catches the
 general case by re-filing any repo-root kernel backup with no ledger entry.
+A plant whose team already keeps its rules in its own `AGENTS.md` is offered
+compose mode before the apply, as a numbered option with replace recommended
+unless the owner keeps that hub canonical (`--kernel-mode compose`, SPEC-0001
+HUB_KEPT_CANONICAL_IN_COMPOSE_MODE): the hub is never written and `CLAUDE.md`
+imports it, at the cost that hosts reading only `AGENTS.md` never see the
+kernel.
 
 **The installer's two prior-install safety nets.** The orphaned-backup sweep
 and the re-created-node notice (below) are both gated on `PRIOR_INSTALL`. The
@@ -389,14 +401,23 @@ and files nothing, and the notice prints nothing.
   **write**: every link is replaced by a file, each one through `place_file`,
   so it produces a full set of fresh backups and a `graft.gate.customization`
   run of its own. Do it as a ratified step of its own, before the
-  reconciliation, because a flag flip in the upgrade run shares its `.bak` date
-  with the version advance and the two become indistinguishable.
+  reconciliation, with a checkpoint commit of its own after it
+  (*Reversibility*, (d)), because a flag flip in the upgrade run shares its
+  `.bak` date and its diff with the version advance and the two become
+  indistinguishable.
 - The four plant facts (`--environment-class`, `--commit-attribution`,
   `--deliverable-language`, `--comment-language`), `--legal-corpus` and
   `--legal-jurisdiction` are the **owner's** recorded decisions. A run that
   passes no flag inherits what the stamp already holds; only `undecided` is
   overwritten by silence. A graft carries each decision from the stamp or asks
-  the owner; it never infers one from the plant's contents.
+  the owner; it never infers one from the plant's contents. An answer the
+  owner gives is recorded twice, as different things: the value goes into the
+  flag and the `plant:` block, and the owner's own words go verbatim, in the
+  language they used, into the graft's session record as an owner rule
+  (`stewardship-posture.session-record`). The value is what the machinery
+  reads; the words are what a later session reads when an answer did not map
+  cleanly onto the vocabulary (an environment the owner described in terms
+  none of the classes uses), and a paraphrase loses exactly that.
 - `--expertise <id>,...` is the owner's decision too, and an additive one: it
   places the listed corpus pages and adds them to the record, and a run with no
   flag re-applies the record. `--expertise propose` writes nothing and is safe
@@ -499,8 +520,10 @@ model; the workers' work does not collapse into the main chat.
 
 Identify the plant or the set of sibling plants in scope, and for each record
 its path, host integration (`.claude/` / `.prime/agent/` / `.opencode/` /
-`.codex/` / `.github/`), current branch, HEAD, and worktree cleanliness, as
-read-only provenance (*Reversibility*, (d)). Read the plant's **seed stamp** to
+`.codex/` / `.github/`), current branch, HEAD, worktree state, and
+version-control shape, then make the baseline commit that shape calls for:
+the procedure, per shape, is *Reversibility* (d), and nothing in the graft
+writes before it except the ignore rules (d) commits inside it. Read the plant's **seed stamp** to
 learn the base version it carries;
 `python3 <seed>/tools/graft-ledger.py <plant> <seed> --base` prints the base:
 the stamped version's tag, or else the seed commit the plant's machinery
@@ -512,8 +535,10 @@ stamp and no `docs/graph/protocols/` node is also where the installer's two
 prior-install safety nets are silent (`graft.gate.recreated-nodes` is N-A, and
 no orphaned kernel backup is swept), so that graft owes the closest reading of
 the install output. Confirm the seed's own version and what has changed between
-base and now (its CHANGELOG and harvest log are the map of available fruit). A
-clean working tree here makes the whole upgrade easy to review and to unwind.
+base and now (its CHANGELOG and harvest log are the map of available fruit).
+The baseline commit is what makes the whole upgrade easy to review and to
+unwind: every tracked byte the graft changes, the writers with no backup
+included, is a diff against it.
 
 ### Phase 2: Survey the drift (investigation-class scouts, read-only)
 
@@ -585,7 +610,13 @@ threads through the phases that follow:
   agent's `routing_triggers` as its `load_when`, and, for an expert,
   `plant_knowledge:` naming the collections or expertise nodes it must be able
   to read, without which the relocated expert lands as a node the coverage gate
-  cannot answer for). Then read its content against the rest of the graph,
+  cannot answer for). An agent whose `tools:` grants no shell gains Bash,
+  with the clause a role that does not build carries in its body (its shell
+  looks things up and measures; it builds, installs and writes nothing): the
+  owner decided on 2026-10-14 that every agent, a plant-authored one
+  included, runs the plant's read-only routing and lookup tools itself
+  (`delegation.briefs`), so an agent without the grant cannot route at all,
+  and nobody routes for it. Then read its content against the rest of the graph,
   because a plant-authored expert that predates the graph was written with no
   graph to defer to and will almost certainly restate facts the graph's
   crosscut/platform/subsystem nodes already own (an auth mechanism, a secrets
@@ -608,7 +639,10 @@ threads through the phases that follow:
   `install.sh <host> --check` and `tools/graft-audit.py` name each such entry
   `ORPHAN` (SPEC-0001 CHECK_FLAGS_ORPHAN_HARNESS_ENTRY), and the graft proposes
   its relocation into `docs/graph/{agents,skills}/` by this step. The flag
-  writes nothing and deletes nothing; the harness copy stays until (d).
+  writes nothing and deletes nothing; the harness copy stays until (d). The
+  shell grant is read on every graft too: a plant agent already in
+  `docs/graph/agents/` whose `tools:` grants no shell is brought to it by
+  this step, in the same ratifiable proposal.
 - **(d) List the now-redundant old machinery for the steward's deletion.** Once
   the graph homes and projections exist, the old tool-dir copies are redundant.
   Graft lists every such file by name and deletes only what the steward
@@ -958,6 +992,28 @@ apply.
      entry, because no run removes either; name it to the steward, who decides
      whether the page goes and the entry with it.
 
+   The matcher reads manifests, so it proposes only what a manifest names. The
+   plant's needs reach further, and the graft reads them as well: the
+   procedures the plant performs again and again (its runbooks, the open
+   threads of its session records, its harvest candidates, its CI jobs, its
+   project skills), the rows `growth-audit.py --plan` names (Phase 5), and
+   the tools and services it drives that no manifest declares (a command-line
+   tool its scripts call, a platform API its code reaches). For each need,
+   look in the corpora for the page that serves it: a generic skill page
+   (`skill-corpus/<name>.md`, keyed by procedure, which no manifest can name)
+   whose procedure the plant performs, a tool page for a capability the plant
+   still carries out by hand, a library or platform page for a dependency the
+   matcher could not see. Propose each id in the same numbered decision as
+   the matcher's list, with the evidence of the need, the path where the plant
+   performs or uses it. A confirmed id joins `--expertise` like any other; a
+   generic skill page is placed as the routable node
+   `docs/graph/skills/<name>.md` and projected into every harness the stamp
+   records, and Phase 5 grounds it. A page the plant shows no need for is not
+   proposed because it exists: the corpus is drawn on, not installed whole. A
+   need no page serves is named in the record, and the procedure, where it
+   recurs, sprouts through the close-out lifecycle (Phase 5, "Grow only from
+   evidence").
+
 2. **Read what the installer will do with each recorded page.**
    `<seed>/install.sh <host> --check --project-dir <plant>` writes nothing and
    names each recorded page that is missing, stale (untouched by the plant,
@@ -984,8 +1040,9 @@ apply.
    page at the destination of a listed id gets the same line. Each such page is
    merged here by the rule above, one home per dependency: an author folds in
    whatever the corpus page at the new seed version holds that the plant's page
-   lacks, keeps every pin and sharp edge the plant wrote, and re-pins nothing
-   from the corpus, which carries no pin. A placed page keeps its provenance
+   lacks, keeps every pin and sharp edge the plant wrote (its closing
+   "## Project notes" section stays whole, as `templates/library-page.template.md`
+   promises), and re-pins nothing from the corpus, which carries no pin. A placed page keeps its provenance
    line as its first line, with the version updated to the seed whose layer was
    merged, so the line says which corpus layer the page carries. The page stays
    edited in the installer's eyes, so every later graft finds it here again,
@@ -1058,11 +1115,13 @@ plant's base, whose material the plant already authored under another home, is
 Phase 6 drift (the "filled elsewhere" class), and it moves.
 
 - **Grow what the plant evidently needs, grounded in its own facts.**
-  Instantiate a suggested skill or expert the plant's real stack calls for (the
-  `skill-corpus` / `agent-corpus` withdraw contract, into `docs/graph/skills/`
-  / `docs/graph/agents/`, placed where the projection reads
-  (`delegation.harness-registration`); the coverage gate reports a node one
-  directory down as unspawnable), withdraw a corpus
+  Ground each skill page Phase 4 placed on the plant's need in the plant's
+  real gates, tools and commands, which makes it the plant's page from then
+  on, refreshed by merge (Phase 4, step 3). Instantiate a suggested expert the
+  plant's real work calls for (the `agent-corpus` withdraw contract, into
+  `docs/graph/agents/`, placed where the projection reads,
+  `delegation.harness-registration`; the coverage gate reports a node one
+  directory down as unspawnable). Withdraw a corpus
   library/tool page the plant uses today, place the **whole** `legal-corpus`
   where the plant's stamp records `"legal_corpus": "yes"` and re-ask the owner
   where it records `undecided` (`grow.legal-corpus` owns the whole-or-nothing
@@ -1161,8 +1220,8 @@ parallelism is exactly what `graft.gate.cross-author` exists to reconcile.
 
 ### Phase 7: Apply, verify, and stamp (`graft.integrity-gates`; authoring-class authors, session gates)
 
-Apply the ratified upgrade **additively**, to a clean tree or to one whose
-dirty paths the steward has accepted (*Reversibility*, (d)).
+Apply the ratified upgrade **additively**, on top of the baseline commit, and
+commit each checkpoint the apply and its remedies reach (*Reversibility*, (d)).
 
 `python3 <seed>/tools/graft-run.py <plant> <seed> --stage <dir>` rehearses the
 mechanical half on a copy outside the plant: the ledger, the install with its
@@ -1201,14 +1260,14 @@ record, after every remedy has run.
 | Gate | Asserts | Command | On failure | Class |
 |---|---|---|---|---|
 | `graft.gate.backups` | every file `place_file` replaced is recoverable from a timestamped sibling. It does **not** assert that the backup set accounts for every byte the run destroyed: *The installer is the hand that applies it* names the writers that replace with no backup | `tools/graft-audit.py <plant> <seed> --date=<this run's stamp>` classifies every fresh `.bak` and refuses a vacuous audit (zero for the named date while others exist); the totality property (M7) is proven seed-side by `tests/test-install-placement.sh` over a *discovered* destination set, whose sole exception is `is_installer_state()` and whose scope is stated with it | BLOCK: ratify only an upgrade whose replaced files are all found; file a no-backup replacement by any writer outside those named there as an installer defect | soft |
-| `graft.gate.rootstock` | the rootstock line held: every plant-authored fact survived, and each write into plant-authored material was value-preserving and ratified | the same audit's *knowledge overwrite* count over `docs/graph/`, plus `git -C <plant> status --porcelain` scoped to non-machinery paths (tracked files only, on purpose; stray files are what grow's `--ignored -uall` form finds), plus `git -C <plant> diff docs/graph/index.md` by name, for the reason *The installer is the hand that applies it* gives. New blank forms under `plans/` are expected and are no breach: `docs/graph/plans/sessions/_session-record.template.md` (the memory migration) and `docs/graph/plans/_harvest-candidates.template.md`, each placed by the scaffold walk | BLOCK: restore from the backup and re-reconcile | soft |
+| `graft.gate.rootstock` | the rootstock line held: every plant-authored fact survived, and each write into plant-authored material was value-preserving and ratified | the same audit's *knowledge overwrite* count over `docs/graph/`, plus `git -C <plant> diff --name-status <baseline>` scoped to non-machinery paths, which reads the same whether or not the checkpoints since were committed (tracked files only, on purpose; stray files are what grow's `--ignored -uall` form finds), plus `git -C <plant> diff <baseline> -- docs/graph/index.md` by name, for the reason *The installer is the hand that applies it* gives (a path the baseline could not commit, such as an ignored graph, is *Reversibility* (b) 5). New blank forms under `plans/` are expected and are no breach: `docs/graph/plans/sessions/_session-record.template.md` (the memory migration) and `docs/graph/plans/_harvest-candidates.template.md`, each placed by the scaffold walk | BLOCK: restore from the backup or the baseline commit and re-reconcile | soft |
 | `graft.gate.customization` | no plant divergence was buried by a blind fast-forward | `tools/graft-audit.py <plant> <seed> --date=<this run's stamp> --base=<the base Phase 1 printed, tagged or inferred> --tokens=<plant tokens> --engine=<plant>/docs/graph/graph-lint.py:<seed>/templates/knowledge-graph/graph-lint.py --engine=<plant>/docs/graph/spec-lint.py:<seed>/templates/knowledge-graph/spec-lint.py --engine=<plant>/docs/graph/grill-lint.py:<seed>/templates/knowledge-graph/grill-lint.py`, one pair per engine | BLOCK: re-integrate each hit into the FF'd file as a holistic MERGE, or ratify it explicitly | soft |
-| `graft.gate.kernel` | every kernel destination this plant carries holds the seed's `core/AGENTS.md` body | the same audit's kernel-currency check gates the exit code, but it reads exactly two files, `<plant>/AGENTS.md` and `<plant>/CLAUDE.md`. A plant whose stamp lists `github-copilot` has a third, and the audit is silent on it: add `cmp <plant>/.github/copilot-instructions.md <seed>/core/AGENTS.md` | BLOCK: see *When a gate blocks* | soft |
+| `graft.gate.kernel` | every kernel destination this plant carries holds the seed's `core/AGENTS.md` body | the same audit's kernel-currency check gates the exit code, but it reads exactly two files, `<plant>/AGENTS.md` and `<plant>/CLAUDE.md`. In compose mode (the stamp's `kernel_mode: compose`) AGENTS.md is the plant's hub and is not compared, and CLAUDE.md is compared after its `@AGENTS.md` line and the blank line. A plant whose stamp lists `github-copilot` has a third, and the audit is silent on it: add `cmp <plant>/.github/copilot-instructions.md <seed>/core/AGENTS.md` | BLOCK: see *When a gate blocks* | soft |
 | `graft.gate.schema` | the plant's `_schema.md` still describes the machinery this graft installed | the same audit's node-schema line | report: it does **not** gate the exit code, so read the line; the remedy is a ratified MERGE (Phase 3) | detective |
 | `graft.gate.engine` | the plant runs the seed's current graph engines, each with its own config preserved | the same audit's engine-currency check, via the three `--engine=<plant>:<seed>` pairs `graft.gate.customization` passes, each reported on its own line naming its plant file. Each value is a **pair**; a single path is malformed and the audit refuses it rather than skipping the check | report: the audit prints `graph engine STALE` without gating the exit code, as `graft.gate.schema` does, so read the line: ratify only when every engine is current, or is a superset recorded as KEEP-PLANT. Reconcile a stale engine with `tools/graft-graph-engine.py`. The one thing here that gates is a malformed or unreadable `--engine` pair, and it gates because the check did not run | detective |
 | `graft.gate.scaffolds` | no `docs/graph/` leaf is still byte-identical to its `templates/docs/**` template; an unfilled model map, `docs/graph/models.md`, is a `DISCLOSED` line and passes (every agent inherits its caller's model) | `tools/graft-audit.py <plant> <seed> --unfilled` | BLOCK: see *When a gate blocks* | soft |
 | `graft.gate.coverage` | every capability this graft carried was grown, or is answered | `python3 <seed>/tools/growth-audit.py <plant> <seed>`; non-zero blocks | BLOCK: see *When a gate blocks* | soft |
-| `graft.gate.routes` | the upgraded graph routes, the agent router is clean, and every context hook the plant wires runs and prints its context | `python3 docs/graph/graph-lint.py`, a representative `--plan`, `python3 docs/graph/agent-lint.py --lint` and `--eval` where installed; then `install.sh <host> --check --project-dir <plant>` once for each host in the stamp's `tools`. That check runs each wired `UserPromptSubmit` and `SessionStart` hook once, on an envelope with no session id, writes nothing in the plant, and fails naming any hook whose script is missing, exits non-zero or prints nothing (SPEC-0001 CHECK_EXECUTES_EACH_WIRED_HOOK). The hooks are fail-open in a session, so this is the step that finds a dead one before a session runs without its route. The same check names each agent or skill in a harness directory with no graph home: `RETIRED` for an `origin: seed` one the running seed does not ship, `ORPHAN` for one the plant authored there (SPEC-0001 CHECK_FLAGS_RETIRED_HARNESS_ENTRY, CHECK_FLAGS_ORPHAN_HARNESS_ENTRY), and each `origin: seed` protocol or method node the seed no longer ships `RETIRED` (CHECK_FLAGS_RETIRED_GRAPH_NODE). Those lines do not gate this row; they feed migration steps (c) and (d). `tools/graft-run.py`'s rehearsal runs this second half once per host on the stage copy and reports, in this row, the hooks that ran, the hooks that failed and the flagged entries, then `RETIRED_LINT_CLAUSE`: how many graph-lint errors name a RETIRED node's `id`, which ids, and that each clears with that node's deletion by name, migration (d); the row still takes graph-lint's verdict (SPEC-0001 GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES) | BLOCK: fix the node, not the linter. A failed hook is restored by re-running the installer for its host, which is an apply with its own backup date, as under `graft.gate.projection-drift` | soft |
+| `graft.gate.routes` | the upgraded graph routes, the agent router is clean, and every context hook the plant wires runs and prints its context | `python3 docs/graph/graph-lint.py`, a representative `--plan`, `python3 docs/graph/agent-lint.py --lint` and `--eval` where installed, the eval gated on the plant's own adversarial baseline: a graft that brings the routing corpus, or changes the plant's roster, records it first with `--eval --record-baseline`, because the seed's budget was measured over the seed's roster and a plant's extra specialists change the number (SPEC-0002); then `install.sh <host> --check --project-dir <plant>` once for each host in the stamp's `tools`. That check runs each wired `UserPromptSubmit` and `SessionStart` hook once, on an envelope with no session id, writes nothing in the plant, and fails naming any hook whose script is missing, exits non-zero or prints nothing (SPEC-0001 CHECK_EXECUTES_EACH_WIRED_HOOK). The hooks are fail-open in a session, so this is the step that finds a dead one before a session runs without its route. The same check names each agent or skill in a harness directory with no graph home: `RETIRED` for an `origin: seed` one the running seed does not ship, `ORPHAN` for one the plant authored there (SPEC-0001 CHECK_FLAGS_RETIRED_HARNESS_ENTRY, CHECK_FLAGS_ORPHAN_HARNESS_ENTRY), and each `origin: seed` protocol or method node the seed no longer ships `RETIRED` (CHECK_FLAGS_RETIRED_GRAPH_NODE). Those lines do not gate this row; they feed migration steps (c) and (d). `tools/graft-run.py`'s rehearsal runs this second half once per host on the stage copy and reports, in this row, the hooks that ran, the hooks that failed and the flagged entries, then `RETIRED_LINT_CLAUSE`: how many graph-lint errors name a RETIRED node's `id`, which ids, and that each clears with that node's deletion by name, migration (d); the row still takes graph-lint's verdict (SPEC-0001 GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES) | BLOCK: fix the node, not the linter. A failed hook is restored by re-running the installer for its host, which is an apply with its own backup date, as under `graft.gate.projection-drift` | soft |
 | `graft.gate.status-register` | a migrated plant's lifecycle status is queryable and agrees with its index rows | `python3 docs/graph/status-register.py --root docs/graph` | BLOCK, or N-A where no status migration was ratified | soft |
 | `graft.gate.prose` | the prose this graft authored into the plant meets the plant's own prose floor | `python3 docs/graph/prose-lint.py --file <node>` for each node Phases 4–6 wrote or re-wove (`--against <rev>` where the plant's Git state names one) | BLOCK the item: re-author; never lower the linter | soft |
 | `graft.gate.adopted-instructions` | every instruction file the kernel replaced has a ledger row, and every ledger row has an owner | list this graft's kernel backups (`ls <plant>/CLAUDE.md.bak-<date>-* <plant>/AGENTS.md.bak-<date>-* <plant>/.github/copilot-instructions.md.bak-<date>-*`) and match each against `docs/graph/plans/adopted-instructions.md`. Three outcomes, and the command separates them: no backups and no ledger file is **nothing to report**; backups all matched by rows is the healthy replacement; a backup with no row is *Reversibility* (b) 3, the case that is permanent | report every unstruck row and hand it to `docs-librarian`: open librarian work, not a defect of this graft. BLOCK on an unmatched backup and file it by hand | detective |
@@ -1219,7 +1278,7 @@ record, after every remedy has run.
 | `graft.gate.projection-drift` | every tool-dir projection still matches the node it is a projection of | read-only, and in two halves, because the projections are of two kinds. Where the stamp's `agent_projections` entry says `"verbatim": true`, the projection is a placed copy, so `diff <plant>/docs/graph/agents/<n>.md <plant>/<adapter path>` is the whole check. Where it says `false` (`github-copilot`, whose views are transformed), `install.sh github-copilot --check` regenerates to a temp dir and diffs, writing nothing to the plant | BLOCK: regenerate by re-running the installer for the affected adapter, never hand-patch the copy. That re-run is an apply: it writes, it creates a new backup date, and a tree regenerated that way matches by construction, so it is a remedy and never the detector | soft |
 | `graft.gate.pure-graph` | the Phase 6 rebalance ledger closed | none: **the graft reviewer (authoring class), the same judge as `graft.gate.minimum-sufficient`**, reads the ledger row by row against the pure-graph spec: no seed-class machinery or superfluous always-loaded instruction outside a node, no fact with two homes, no unlisted obsolete residue. Judge: the graft reviewer (authoring class) | BLOCK: or surface the residual drift with a remediation and a reason | judgment |
 | `graft.gate.cross-author` | a parallel absorption reconciled across author boundaries | none: **`docs-librarian` judges**, in one final spawn seeing the whole graph at once, followed by a structural audit, pass/fail per node. Judge: `docs-librarian`, in one final whole-graph spawn | BLOCK: see *When a gate blocks*; N-A where no phase used parallel authors | judgment |
-| `graft.gate.kept-deltas` | every file the graft record lists as merged or kept still carries its plant delta at the end of the graft, after every remedy that re-ran the installer | `tools/graft-audit.py <plant> <seed> --record <plant>/docs/graph/changelog.md`, run last, once the record's entry is written: it reads the newest graft entry's `Merged` and `Kept as the plant's` bullets and prints `LOST` for a file byte-equal to its seed source and `MISSING` for one the plant no longer carries | BLOCK: re-apply the delta from the newest backup that holds it, then re-run the row; never edit the record to match the loss | soft |
+| `graft.gate.kept-deltas` | every file the graft record lists as merged or kept still carries its plant delta at the end of the graft, after every remedy that re-ran the installer | `tools/graft-audit.py <plant> <seed> --record <plant>/docs/graph/changelog.md`, run last, once the record's entry is written. The entry it reads is the newest by date among the headings that name a graft, in any case and at any position (the form in *Output format*, and the forms earlier grafts wrote, `## <date> — graft: …` among them). From that entry it reads the `Merged` and `Kept as the plant's` files and prints `LOST` for a file byte-equal to its seed source and `MISSING` for one the plant no longer carries. An entry whose lists yield no file fails, as a record with no entry does, because nothing re-checked is not a pass; a graft that truly merged and kept nothing writes `- none` under those headings, and the audit then passes saying there is nothing to re-check | BLOCK: re-apply the delta from the newest backup or checkpoint commit that holds it, then re-run the row; never edit the record to match the loss | soft |
 
 Every row names its command, or the judgment and who owns it (`rule.verify`): a
 row whose Command cell reads `none` names its judge.
@@ -1327,13 +1386,43 @@ the other way: each one that passes the admission test gets a row in the
 plant's harvest-candidate record (`canonize.harvest-candidates`), so the
 hand-back outlives this entry. End with the single highest-leverage next step.
 
+**Hand the backups to the owner, by date, once the audits have read them.**
+Every installer run leaves its backups beside the files they replaced, and
+they stay until someone removes them: they swell every count a later audit
+takes, and a broad `git add` stages them into the plant's history. A run that
+made one ends with its BACKUPS block (SPEC-0001 BACKUPS_LISTED_BY_DATE), one
+line per date with its count over the installer's own directories; when the
+last run made none, list them the same way:
+
+```sh
+{ find <plant> -maxdepth 1 -name '*.bak-*'; find <plant>/{docs/graph,.claude,.opencode,.codex,.prime,.github,.cypress} -name '*.bak-*' 2>/dev/null; } | grep -oE '\.bak-[0-9]{8}' | sort | uniq -c
+```
+
+Put the dates to the owner as a numbered decision (`deliver.numbered-decisions`):
+which runs' backups to keep, and for how long. Advise keeping this graft's
+date until the graft is accepted, because an unwind of an untracked or linked
+destination has nothing else ((a), (d)); an older date whose graft the owner
+has accepted is recovery evidence nobody will use. A deletion is by name, on
+the owner's word (rootstock condition 2). Say in the same delivery that the
+plant's sessions stage by explicit path, never with `git add -A` or
+`git add .`: backups and nested repositories sit in the tree, and only an explicit path
+keeps them out of a commit; where the owner agrees, the plant's ignore rules
+carry `*.bak-*` as well.
+
 ## Reversibility (`graft.reversibility`): what an unwind actually restores
 
-A ratified graft is unwound from the backups the canonical writer left. This is
-the procedure behind the claim; without it "reversible" is a promise nobody
-priced.
+A ratified graft is unwound from two records: the backups the canonical writer
+left beside every file it replaced, and the baseline commit made before the
+graft's first write ((d)), which holds every tracked file as the graft found
+it, including those the writers with no backup changed. This is the procedure
+behind the claim; without it "reversible" is a promise nobody priced.
 
-**(a) Restore.** Every replaced file has a sibling named
+**(a) Restore.** Restore from the backups first, then from the baseline
+commit what no backup holds: each tracked path the graft wrote that
+`git -C <plant> diff --name-only <baseline>` still names after the backups are
+back is restored with `git -C <plant> checkout <baseline> -- <path>`, and the
+same diff, empty for every path the graft touched, is the check that nothing
+tracked was missed. Every replaced file has a sibling named
 `<path>.bak-YYYYMMDD-HHMMSS`, stamped at the moment it was written, so one
 graft's backups share a date and span the run's duration rather than one exact
 second. Group by date, never by second:
@@ -1362,18 +1451,22 @@ files, explicitly.
 of these. The list is complete for the installer's writers as they stand, and a
 writer added later can extend it. It lists what an unwind cannot reach, which
 is wider than what has no backup: items 2 and 3 have a `.bak` and are still out
-of reach, and item 5 has none. Read the two questions separately, because the
-backup scan answers only one of them:
+of reach, and items 1, 4 and 5 have none, so they are within reach only through
+the baseline commit, where their path is tracked. Read the two questions
+separately, because the backup scan answers only one of them:
 
 1. **`.cypress/seed.json` and `.cypress/recreated-nodes.txt`.** Written by
    `place_state` with no backup, on purpose: each carries a fresh timestamp
    every run, so it is never byte-identical and a backup policy would leave one
    sibling per install for ever; and each is *derived* (the stamp from the last
    one plus the run's flags, the list from the run) rather than authored, so a
-   backup would carry no recovery value anyway. Recover the stamp by
-   re-deriving: re-run the base installer with the plant's recorded flags, or
-   hand-write it from `installed_from` and the adapter list. An earlier run's
-   list is not recoverable, which is why the gate reads it first.
+   backup would carry no recovery value anyway. The stamp is tracked, so the
+   baseline commit holds the one the graft found
+   (`git -C <plant> show <baseline>:.cypress/seed.json`). Where the plant's
+   ignore rules swallowed it, recover it by re-deriving: re-run the base
+   installer with the plant's recorded flags, or hand-write it from
+   `installed_from` and the adapter list. An earlier run's list is scratch,
+   not recoverable, which is why the gate reads it first.
 2. **A project's own root instruction file.** The `.bak` exists, but a backup
    is recovery evidence, not operational preservation: the content is out of
    force the moment the kernel lands. Its restoration is a *migration*, tracked
@@ -1389,22 +1482,24 @@ backup scan answers only one of them:
 4. **A sibling kernel file that happened to match the seed.** `place_kernel`
    takes the sibling's backup only `if ! cmp -s "$seed_kernel" "$other"`, then
    `rm -f`s it unconditionally. No plant *content* is lost when the two
-   matched. What is lost has no backup and no record: that the plant carried
-   two independent files rather than a symlink pair, and, where `other` was a
-   symlink pointing outside the target that merely resolved to matching bytes,
-   the link itself, its target unrecorded.
-5. **The `plant:` block of `docs/graph/index.md` as it stood before the run.**
-   `fill_plant_facts` rewrites that frontmatter in place and takes no backup,
-   so there is no sibling for step (a) to `mv` back and nothing for the backup
-   scan in (c) to report. On a plant whose `index.md` is committed and clean
-   the loss is nominal, because `git diff` shows the change and `git checkout`
-   would undo it. On a plant where `index.md` is uncommitted or already dirty
-   there is no committed version to diff against, and by (d) the graft has not
-   put one there: it records Git state and leaves it as it is. The pre-run
-   block is then both **unrecoverable and invisible**, which is the worse half.
-   The defence is procedural and belongs before the run: capture
-   `git -C <plant> show HEAD:docs/graph/index.md` alongside the install log, or
-   commit the file first.
+   matched. What is lost has no backup: that the plant carried two independent
+   files rather than a symlink pair, and, where `other` was a symlink pointing
+   outside the target that merely resolved to matching bytes, the link itself.
+   Git records a symlink as a link with its target, so where the sibling was
+   tracked the baseline commit holds both facts, and
+   `git checkout <baseline> -- <sibling>` restores the object; an untracked
+   sibling leaves no record.
+5. **The `plant:` block of `docs/graph/index.md` as it stood before the run,
+   where the baseline could not commit it.** `fill_plant_facts` rewrites that
+   frontmatter in place and takes no backup, so there is no sibling for step
+   (a) to `mv` back and nothing for the backup scan in (c) to report. The
+   baseline commit carries the file whenever it is tracked, dirty or not, and
+   then the loss is nominal: `git diff <baseline>` shows the change and
+   `git checkout <baseline>` undoes it. On a plant whose graph its ignore rules
+   cover, or whose steward refused the baseline, there is no committed version
+   to diff against, and the pre-run block is both **unrecoverable and
+   invisible**, which is the worse half. The defence is procedural and belongs
+   before the run: copy `docs/graph/index.md` beside the install log first.
 
 **(c) Verify the restore.** The same standard every other gate meets: a restore
 is done when the graph routes and the audit agrees, not when `mv` exits 0.
@@ -1436,16 +1531,73 @@ prints a line per engine and returns success whatever it finds, so a green exit
 code is not evidence the engines came back. Read each line with your own eyes,
 and drop the pair for an engine the base seed did not ship. Then confirm the
 stamp reads the base version, and record the unwind in the plant's
-`docs/graph/changelog.md` the way the graft itself was recorded.
+`docs/graph/changelog.md` the way the graft itself was recorded, under a
+heading that names it an unwind and not a graft:
+`# Unwind — seed <new> → <base> — YYYY-MM-DD`. `graft.gate.kept-deltas` takes
+the newest heading that names a graft as the graft's own entry, and an unwind
+entry read that way lists no kept file and fails the next graft's run.
 
-**(d) Git is provenance here, not a mechanism.** Graft records the plant's Git
-state and leaves it as it is: it runs no fetch, switch, commit or push. An
-unwind therefore has no `git checkout` to fall back on, only the backups, and
-on a dirty tree the backups cannot tell the graft's writes from the steward's
-own uncommitted work. So the rule the apply step obeys is: **a dirty tree is
-applied to only when the steward has named the dirty paths and accepted that
-the unwind will be file-by-file from backups.** The one moment that distinction
-is needed is the moment it would be gone.
+**(d) Git: the baseline commit comes before the first write.** The backups
+alone cannot unwind a dirty tree, because they cannot tell the graft's writes
+from the steward's own uncommitted work, and they hold nothing for the writers
+with no backup ((b)). A commit taken before the graft writes anything holds
+both. The owner decided on 2026-10-04 that a graft or a grow commits the plant
+before it writes anything, and on 2026-10-14 that the graft makes that commit
+itself. So Phase 1 reads the plant's version-control shape and, per shape,
+makes the baseline:
+
+- **Its own repository, with commits** (`git rev-parse --show-toplevel` from
+  the plant root prints the plant root; `git rev-parse --verify -q HEAD`
+  prints a commit). Commit the tree as the graft found it, the steward's
+  uncommitted work included, in one commit whose message says it is the
+  pre-graft (for a grow, pre-growth) baseline; a clean tree needs no commit,
+  and its HEAD is the baseline. Stage by explicit path: the tracked files
+  `git status --porcelain` shows modified or deleted, and never `git add -A`
+  or `git add .`, which sweep in installer backups, nested repositories and
+  whatever else the ignore rules miss. Name each untracked path to the
+  steward, who says which join the baseline; the graft stages none unread,
+  because an untracked file outside the ignore rules can hold a credential
+  (kernel §4).
+- **Its own repository, no commit yet.** The baseline is its first commit,
+  made the same way.
+- **No repository of its own**: `git rev-parse --show-toplevel` fails, or
+  names a directory above the plant, an unrelated repository the plant merely
+  sits inside, in which the graft never commits. Write the plant's
+  `.gitignore` first, from what the tree holds: every nested
+  repository by an anchored `/<name>/` rule, build and hand-off output, the
+  `.cypress/` scratch as `.cypress/*` with `!.cypress/seed.json` and
+  `!.cypress/coverage.json` (the lines the installer prints; a `.cypress/`
+  directory rule cannot be negated for the files inside it), and `*.bak-*`. Then `git init -b main` at the plant root, read
+  `git status --porcelain -uall` through for anything that must not be
+  committed (a credential file, a large build artifact) and put each such path
+  to the steward, and make the baseline commit, staging the plant's top-level
+  entries by name.
+- **A graph or stamp the ignore rules cover** (`git check-ignore` names
+  `docs/graph/` or `.cypress/seed.json`). State the cost to the steward before
+  going on: no graph write the graft makes has history, the rootstock gate has
+  no committed `index.md` to diff against, and the unwind of those paths is
+  backups alone ((b) 1 and 5). The steward decides whether the paths are
+  tracked from the baseline on; the graft never un-ignores a path on its own.
+
+In every shape, git runs against the plant's own repository only. A nested
+repository inside the plant is read-only to the graft: its files are read,
+and nothing stages, commits, checks out or otherwise touches its state (the
+owner decided this on 2026-10-04). One the plant's ignore rules do not yet
+cover gets an anchored `/<name>/` rule, written before the baseline and
+committed in it. Commit again at each checkpoint: after a
+ratified flag flip, after the apply install, after each remedy that
+re-runs the installer, and once the authored writes and the record entry
+are in, staging by path what that step changed (the paths
+`git status --porcelain -uall` lists after it that the step itself wrote,
+its new files included; its backups, and any untracked path it did not
+write that the steward has not admitted, left out). Each
+commit honours the plant's `commit_attribution` and `comment_language`
+(`method.vcs-posture`). Nothing is fetched, pulled, switched or pushed: a
+local commit is the resting state of work, and publishing it is the owner's
+separate authorization. Record the baseline commit and every checkpoint in the
+graft record. A steward who refuses the baseline is grafted only on the
+steward's acceptance that the unwind is file-by-file from backups, with the
+dirty paths named, and the record says so.
 
 ## Output format
 
@@ -1487,9 +1639,15 @@ State the summary in the chat, and record a provenance entry in the plant's own
 ## Unfilled scaffolds (listed; renamed by default, pruned only on say-so)
 - <docs/graph/<rel>> — renamed `<name>.unfilled.md` / pruned (steward: <who, when>) / filled by <author>
 
+## Version control (Reversibility (d))
+- Shape: <own repository with commits / own repository, no commit / initialized by this graft (the .gitignore written) / graph or stamp ignored, cost stated, steward's decision>
+- Baseline commit: <sha> — dirty paths it carries; untracked paths the steward added or left out; or "refused by the steward: unwind by backups only, dirty paths <named>"
+- Checkpoint commits: <sha — what each follows (flag flip / apply install / remedy)>
+
 ## Installer side-effects this graft produced (each needs an owner, not just a mention)
 - Adopted instructions: <n> unstruck row(s) in docs/graph/plans/adopted-instructions.md → docs-librarian; kernel backups with no row: <paths, or none>
-- Unbacked write to docs/graph/index.md: <git diff of the `plant:` block, or "unchanged">; pre-run copy captured: <yes / no — and if no, say so plainly>
+- Unbacked write to docs/graph/index.md: <git diff against the baseline of the `plant:` block, or "unchanged">; where the baseline could not commit it, pre-run copy captured: <yes / no — and if no, say so plainly>
+- Backups by date: <date — count, one line per run>; owner's retention call: <dates kept, until when / dates removed by name / not yet asked>
 - Destination symlinks the installer moved aside: <path → .bak-, or none>
 - Re-created nodes: <path> — deliberate deletion re-applied / ratified (N-A where the installer did not treat the target as a prior install: it prints no notice)
 - Roster delta (not assumed spawnable until the preflight confirms it): <specialists added or renamed>
@@ -1532,7 +1690,8 @@ A graft that passes:
   re-integrating true conflicts holistically into one coherent file for the
   steward, including a relocated plant expert/skill trimmed to genuine
   cross-references.
-- Withdraws the corpus fruit the plant is due, re-pinning the plant's own
+- Withdraws the corpus fruit the plant is due, read from what the plant does
+  as well as from what its manifests declare, re-pinning the plant's own
   version-specific facts fresh so nothing pinned is lost, and sweeps a
   pre-graph plant's own knowledge into the graph as part of the same migration.
 - **Grows** the newly-delivered capabilities onto the plant where evidenced and
@@ -1556,8 +1715,10 @@ A graft that passes:
   goes to `harvest`.
 - Graft runs knowledge-and-machinery checks only: the plant's application
   source stays untouched, and its application builds and test suites stay the
-  plant's to run. Its Git state is read-only provenance (*Reversibility*, (d)),
-  which is why the unwind is by backup file.
+  plant's to run. Its Git writes are local commits to the plant's own
+  repository, the baseline and the checkpoints, staged by explicit path; it
+  never fetches, switches or pushes, and never touches a nested repository
+  (*Reversibility*, (d)).
 - Conflicts, reconciliations, and every write into plant-authored material go
   to the steward for ratification (the three-way reconciliation, the rootstock
   line, Phase 8).

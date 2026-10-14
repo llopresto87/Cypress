@@ -1,3 +1,24 @@
+---
+name: seed-demo-world-for-manual-ui-review
+description: Seed one coherent synthetic demo world into a deployed instance so a person can log in and click through every screen of every client, broken paths included, from a recon of the live schema through an owner-scoped idempotent seed to verification through the real API. Invoke when an instance must be reviewed by hand and holds no showable data.
+id: skill.seed-demo-world-for-manual-ui-review
+tier: 2
+kind: skill
+title: seed-demo-world-for-manual-ui-review, an owner-scoped idempotent demo world verified through the API
+owns:
+  - seed-demo-world-for-manual-ui-review.live-recon
+  - seed-demo-world-for-manual-ui-review.coherent-world
+  - seed-demo-world-for-manual-ui-review.api-verification
+requires:
+load_when:
+  - "seed demo data so someone can click through the ui"
+  - "populate the deployed instance for a manual review"
+  - "refresh the demo data after a schema change"
+  - "demo world with broken and empty cases"
+prevents: Rows injected by hand break foreign keys, vanish to purge jobs, crash screens on missing relations, touch real records, and are verified by counts no screen ever reads.
+est_tokens: 3097
+---
+
 # Suggested skill: seed-demo-world-for-manual-ui-review
 
 > Optional procedure: seed one coherent synthetic "demo world" into a running,
@@ -11,8 +32,8 @@
 > Parameterized by `<TARGET>` (the deployed instance and how its datastore and
 > API are reached), `<DEMO_MARKER>` (the owner value or id prefix that marks
 > every seeded row), `<DEMO_PASSWORD>` (one synthetic password every demo user
-> shares, supplied by the owner) and `<SURFACES>` (every client the product
-> exposes: web front end, operator or device app, kiosk, mobile, admin).
+> shares; see the no-secrets rule below) and `<SURFACES>` (every client the
+> product exposes: web front end, operator or device app, kiosk, mobile, admin).
 
 ## When to apply
 
@@ -39,10 +60,12 @@ to the suite and its own setup. A demo world serves a human reviewer.
   the instance, get the owner's go-ahead for it, and stop if the target
   cannot be identified as the one the owner named.
 - **Never touch a non-demo row** except to unlink and re-link it (step 2).
-- **No secrets in the artifacts.** `<DEMO_PASSWORD>` is a synthetic
-  credential for a demo world and may be recorded. Datastore credentials are
-  read from where the deployment keeps them, at run time, and never written
-  into the seed or the verify script.
+- **No secrets in the artifacts.** `<DEMO_PASSWORD>` is a credential: its value
+  lives on disk only, in a file no model reads, and the seed stores only its
+  hash (`tool-corpus/ops/owner-scoped-idempotent-seed.md` §5). The plaintext
+  never lands in the seed, a plan, a test, or any artifact a model reads.
+  Datastore credentials are read from where the deployment keeps them, at run
+  time, and never written into the seed or the verify script.
 
 ## The procedure
 
@@ -120,7 +143,10 @@ variable (§3.2); the pitfalls (§5). This procedure adds three decisions:
    choice into the recon note.
 2. **One shared demo password.** Store every demo user with
    `<DEMO_PASSWORD>`, hashed with the product's own algorithm and cost
-   (step 0.4), so the reviewer logs in as anyone with one value.
+   (step 0.4), so the reviewer logs in as anyone with one value. Only the hash
+   goes into the script, computed inside the shell from the owner's on-disk
+   file (`tool-corpus/ops/owner-scoped-idempotent-seed.md` §5), so the
+   plaintext never crosses a model's context.
 3. **Inline content where the product expects content in the row.** When an
    attachment or reference is stored as content (a data URI with a small
    valid PNG or PDF, say), keep each statement on one physical line, and keep

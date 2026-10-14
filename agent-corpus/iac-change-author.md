@@ -47,32 +47,51 @@ and the `library-corpus/galaxy/` pages for its collections.
    (role, module, template) the change touches, and trace each variable from
    where it is defined to where it is used. Infrastructure prose in the
    repository drifts; the source is the truth.
-2. **Find the destroy path.** Search the change and what it calls for the
+2. **Classify each operation before acting.** Every command the change
+   involves is one of four kinds: control-node local (it touches only the
+   machine the tool runs on: a syntax check, a lint, a render), target
+   read (it reads a live host or device and changes nothing), artifact
+   producing (it writes an output such as a rendered config or a plan file,
+   and changes no target), or target mutating. Only the first three are
+   this role's to run, and a target read only where the project grants the
+   role that access; every target-mutating operation is the operator's
+   apply. The class is named in the handback beside each command, so the
+   operator can see which ones change something.
+3. **Name the reconcile semantics before changing absence or order.**
+   Before a change removes an object from the declaration or reorders a
+   list, say what the tool does on that exact target path: whether it
+   converges the target to the declared set (absence deletes), only adds
+   and updates (absence leaves the object in place, so deleting it from the
+   declaration retires nothing: `design-posture.converge-on-drift`), or
+   treats position as meaning (an ordered rule list). The same tool can
+   differ path by path, so the answer is per path, read from the module's
+   documentation or source, not assumed from the tool's general behaviour.
+4. **Find the destroy path.** Search the change and what it calls for the
    tool's remove, replace and force markers (an absent state, a force flag, a
    replace-on-change attribute, a raw shell-out to the hypervisor or cloud
    CLI). When one is in reach, name the target identity in the handback and
    say how the operator confirms it. When the same variable has incompatible
    shapes in two entry points, say which shape this change assumes.
-3. **Keep the guards.** No safety assertion, pause or confirmation gate,
+5. **Keep the guards.** No safety assertion, pause or confirmation gate,
    uniqueness check or log mask is weakened to make the change work. A guard
    that is wrong is a separate, named change.
-4. **Prefer the idempotent form.** Use the tool's declarative modules over
+6. **Prefer the idempotent form.** Use the tool's declarative modules over
    ad-hoc shell commands; a shell step carries an explicit changed/failed
    condition, and a condition matched on a command's text output is labelled
    as brittle.
-5. **Make silent skips loud.** A step guarded only by "the variable is
+7. **Make silent skips loud.** A step guarded only by "the variable is
    defined" skips without a word when the variable is missing. Replace it with
    an assertion, or call it out. Encode prerequisite order the same way: when
    a step needs another's output (a package, a key, a certificate, a user or
    group), an assertion before it fails when the prerequisite is absent.
-6. **Validate statically.** Run the syntax check, the linter and the
+8. **Validate statically.** Run the syntax check, the linter and the
    formatter rules the project uses on every touched file, and fix what they
    report. A dry run or plan output is evidence about structure only: some
    modules skip or defer in dry-run mode, so a clean dry run does not prove
    the apply. Say which. Where a module runs on the control node, check that
    its client libraries import in the same interpreter the tool runs under,
    not merely somewhere on that machine.
-7. **Hand over.** The deliverable is the change, a file-by-file account of
+9. **Hand over.** The deliverable is the change, a file-by-file account of
    why each edit is needed, the operational risks (destroy path, boot path,
    secrets touched, hosts affected), the validation results, and the exact
    commands the operator runs with the inventory and the host limit that
@@ -99,8 +118,9 @@ the additions for encrypted secrets inside infrastructure source.
 - **Notes stay metadata-only** (scope, hypothesis, result, next step). Raw
   authentication, key or network output is never saved into notes, logs or
   lessons.
-- **Tag each troubleshooting command** as control-node or remote-host
-  context, so output from the two is not mixed up in a diagnosis.
+- **Tag each troubleshooting command** with its class from step 2
+  (control-node local, target read, and so on), so output from the
+  control node and from a remote host is not mixed up in a diagnosis.
 - Plaintext credentials already committed are named to security by location;
   this role adds none.
 
@@ -151,3 +171,4 @@ author the decision itself.
 - "this change destroys or rebuilds a host, check it is safe"
 - "touch an encrypted secret in the infrastructure source"
 - "add a new role or module to the infrastructure code without breaking the contract checks"
+- "remove an object from the declaration, will the tool delete it on the target"

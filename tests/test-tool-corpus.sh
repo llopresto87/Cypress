@@ -287,16 +287,23 @@ rc, out, _ = run(r, "--baseline", str(WORK / "base-all.txt"))
 check(rc == 1, "an equal failure COUNT with a new id passed: ids were not compared", out)
 
 # Unreadable shards fail closed, even with every failing id baselined.
+# The attempts are counted where the runner launches them, through --python: a
+# marker the test itself wrote counted only the attempts whose interpreter got
+# as far as the test before the kill, which a loaded machine does not promise.
 hang = """
     import time, unittest
     class H(unittest.TestCase):
-        def test_hang(self):
-            with open("attempts-hang.txt", "a") as f: f.write("x")
-            time.sleep(60)
+        def test_hang(self): time.sleep(60)
 """
 r = repo({"test_hang.py": hang})
-rc, out, ids = run(r, "--timeout", "3", "--baseline", str(WORK / "base-all.txt"))
-attempts = len((r / "attempts-hang.txt").read_text())
+launches = r.parent / (r.name + "-hang-launches.txt")
+shim = r.parent / (r.name + "-python.sh")
+shim.write_text('#!/bin/sh\ncase " $* " in *" test_hang "*) printf x >> "%s" ;; esac\n'
+                'exec "%s" "$@"\n' % (launches, sys.executable))
+shim.chmod(0o755)
+rc, out, ids = run(r, "--timeout", "3", "--baseline", str(WORK / "base-all.txt"),
+                   "--python", str(shim))
+attempts = len(launches.read_text()) if launches.exists() else 0
 check(attempts == 2, f"a persistently hung shard ran {attempts} time(s); expected exactly 2", out)
 check(rc == 1, f"a shard that timed out twice did not fail the run (exit {rc})", out)
 check("test_hang: timed out" in out, "the hung shard was not named as timed out", out)

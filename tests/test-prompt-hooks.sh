@@ -12,7 +12,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 FO="$(mktemp -d)"
 trap 'rm -rf "$FO"' EXIT
 
-# --- route-hook.py and status-hook.py (X101-X134, X142-X149, X151, X161-X162, X167-X172, X177-X178)
+# --- route-hook.py and status-hook.py (X101-X134, X142-X149, X151, X161-X162, X167-X172, X177-X178, X471)
 # One case per SPEC-0003 §4 contract and §7 failure, bound by the §10 labels.
 # Each case prints `X1NN <SLUG>: … — OK`. The shipped hooks are copied into
 # `.claude/` of a temp plant (`.git/`, `.cypress/`, a stub
@@ -146,6 +146,13 @@ task = [a[len("--plan-json="):] for a in sys.argv[1:] if a.startswith("--plan-js
 if len(task) != 1:                       # the core calls `--plan-json=<task>` alone
     sys.exit(f"graph-lint stub: expected one `--plan-json=` element, argv was {sys.argv[1:]!r}")
 task = task[0]
+if MODE == "crash":                      # X471: a router that dies with a traceback
+    sys.stderr.write('Traceback (most recent call last):\n  File "graph-lint.py", line 341\n'
+                     "SyntaxError: f-string expression part cannot include a backslash\n\n")
+    sys.exit(1)
+if MODE == "crashecho":                  # X471: its last stderr line carries the prompt
+    sys.stderr.write("Traceback (most recent call last):\nValueError: cannot route " + task + "\n")
+    sys.exit(1)
 digest = hashlib.sha256(task.encode("utf-8", "surrogateescape")).hexdigest()
 doc = {"schema": "cypress.plan/1", "task_sha256": digest}
 doc.update(DOC)
@@ -1283,6 +1290,39 @@ def x177(base):
     check(not problems, " || ".join(problems))
     return (f"the {OLD_ENGINE_TAG} graph-lint rejects --plan-json (exit 2): pointer line and one "
             f"notice line naming the graft, exit 0, no stderr, ledger untouched or absent")
+
+
+@case("X471", "ROUTER_CRASH_IS_NAMED; a router that exits non-zero with output on stderr")
+def x471(base):
+    # The pointer line, then one notice line naming graph-lint.py, its exit
+    # status and the last non-blank line it wrote on stderr, so a dead router
+    # is seen; a last line that carries the prompt is left out of the notice.
+    # As ROUTER_FAILED: no ledger access, exit 0, the prompt in no injection.
+    problems = []
+    task = "zq-sentinel-0471 widget ledger work"
+    want = {"crash": "SyntaxError: f-string expression part cannot include a backslash",
+            "crashecho": None}
+    for i, mode in enumerate(("crash", "crashecho")):
+        def one():
+            p = Plant(base, name=f"plant{i}", mode=mode)
+            led = write_ledger(p)
+            before = sig(led)
+            r = route(p, task)
+            lines = r.inj.rstrip("\n").split("\n") if r.inj is not None else []
+            check(r.envelope_ok and len(lines) == 2 and lines[0] == POINTER,
+                  f"{mode}: expected the pointer line and one notice line — {r.ctx()}")
+            notice = lines[1]
+            check("graph-lint.py" in notice and "exit 1" in notice,
+                  f"{mode}: the notice does not name graph-lint.py and its exit status: {notice!r}")
+            if want[mode]:
+                check(notice.endswith(want[mode]), f"{mode}: the notice does not end with the last stderr line: {notice!r}")
+            check("zq-sentinel-0471" not in (r.inj or "") + r.err
+                  and b"zq-sentinel-0471" not in session_bytes(p), f"{mode}: the prompt leaked — {r.ctx()}")
+            check(sig(led) == before, f"{mode}: the ledger changed (bytes or mtime)")
+        collect(problems, one)
+    check(not problems, " || ".join(problems))
+    return ("a crashed router: the pointer line and one notice naming graph-lint.py, exit 1 and its "
+            "last stderr line, dropped when it carries the prompt; ledger untouched")
 
 
 def session_files(plant):
