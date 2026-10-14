@@ -135,9 +135,9 @@ discovery and authoring discipline for `docs/graph/protocols/initialize.md`.
   conflicts with the evidence graph, give the exclusion a real routable node
   (excluded as evidence; what supersedes it; a trust decision, not
   permission to delete).
-- **Dependency wiki depth.** Index every direct dependency from manifests.
-  Write a rich library page when a dependency is architecturally
-  significant, security/ops critical, unusual, or cross-cutting.
+- **Dependency wiki depth.** Every direct dependency is indexed and the
+  critical ones richly wikified; which ones, and from what, is
+  `skill.library-wiki`, "Depth when adopting an existing project".
 - **Refreshing.** Treat graph prose as a read model: compare revisions,
   scout changed areas and blast radius (`source-index.py impact` over the
   moved paths, run once), update the existing fact owner in
@@ -721,8 +721,18 @@ tester's phase of the same pass.
 **Also create a `best-practices/` page** when a *concern* spans multiple
 libraries.
 
+**Depth when adopting an existing project.** Every direct dependency in the
+manifests is indexed; a dependency gets a detailed page at initialization when
+it is architecturally significant, security or operations critical, unusual,
+or used across several subsystems. Installed versions come from the manifests
+and locks; upstream lifecycle and compatibility need a primary upstream
+source, or the fact is marked pending. This section of the skill is the one
+home of that rule; `adopt-existing` points to it.
+
 **When to use.** Adding, upgrading, or documenting an idiom/pitfall for a
-dependency, or when a page is missing for code that already uses a library.
+dependency, when a page is missing for code that already uses a library, or
+when a `research-scout` draft is staged and waits to be filed and finalized at
+the close-out of the pass that drafted it.
 
 ---
 
@@ -1669,15 +1679,18 @@ Source: `templates/prompts/graph-session-bootstrap.md`
 **The canonical home of the graph-session discipline.** Every delegation brief
 embeds its two blocks verbatim, and `tests/seed-lint.py` holds every copy
 byte-identical; every other seed file references this file. The first block
-(`GRAPH DISCIPLINE — execute before reading any source`) has six numbered
+(`GRAPH DISCIPLINE — execute before reading any source`) has seven numbered
 steps:
 
 1. Run `python3 docs/graph/graph-lint.py --plan "{{exact delegated task}}"`
    and include the command and output as graph-route evidence (context
    routing, not the `route_evidence` field).
 2. Load only the reported nodes plus their `requires:` closure.
-3. Declare what you loaded, what you skipped, and any later widening (with the
-   reason).
+3. Check the route against the files you will touch, before reading them:
+   each stack element they use and the area they sit in has its node in the
+   route, or the worker runs `--plan "<that element>"` and loads what it
+   reports. Declare what you loaded, what you skipped, and every widening (with
+   the reason).
 4. One home per fact: link to the node that owns a fact instead of restating
    it; the graph outranks memory. A fact the graph states is settled: use it
    as stated. Facts about code are current only where the brief carries a
@@ -1685,21 +1698,25 @@ steps:
    unknown fact.
 5. Minimum sufficient work: smallest sufficient evidence, cheapest reliable
    method; return findings, and only what the parent needs.
-6. If the graph has no nodes yet (bootstrap pass), report the failed probe and
+6. Leave shared git state alone: no `git stash`, `checkout`, `restore`,
+   `reset` or `clean`; take a baseline by copying the file or reading
+   `git show HEAD:<path>` (`delegation.wave-baseline`).
+7. If the graph has no nodes yet (bootstrap pass), report the failed probe and
    stay inside the brief's exact paths.
 
 The second block (`COMPANION (echo each item back in your handback)`) carries
 three items: trace the spawn (echo the caller-minted `spawn_id`), cite the
 router (the `agent-lint --route` ranked line and band, echoed as
 `route_evidence`; at a LOW/NONE band, name the gap), and end with the
-handback payload. The caller also owes, around the blocks: running `--plan`
-itself for a worker without a shell; **Stack expertise**, for work that
+handback payload. The caller does nothing for routing: every worker runs its
+own route (`delegation.briefs`), because a closure belongs to the task line
+that composed it. The caller does owe, around the blocks: **Stack expertise**, for work that
 touches code, configuration or a pipeline, naming the stack elements the
 worker's files use and the `expertise.*` nodes that cover them (or saying none
 apply), so the worker loads them with its route instead of falling back on
 memory of an API that step 4 ranks below the graph; and the rule for stack
-expertise a worker meets mid-work (widen, or name the gap in
-`expertise_gap:`). This file is the one home of the stack rule.
+expertise the graph lacks, found at step 3 at the start or mid-work (name the
+gap in `expertise_gap:` with the path that shows it). This file is the one home of the stack rule.
 
 **Why embedding, not referencing, at the boundary.** Subagents start with a
 clean context, and no hook the seed installs carries this discipline into a

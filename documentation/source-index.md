@@ -300,7 +300,9 @@ Common reasons, all printed by the tool:
 | `repo-unresolved` | a node's `repo:` names nothing on disk |
 | `config-refused` | `docs/graph/source-index.json` was refused; the defaults apply |
 | `git-unavailable`, `no-repository` | there is no `git`, or no governed Git repository |
-| `repository-unnamed` | `build` only: a Git repository inside a governed one that no node's `repo:` names; its files are in no answer |
+| `repository-unnamed` | a Git repository or work tree inside a governed one that no node's `repo:` names; its files are in no answer. `build` reports it, and `anchors --moved` names one in the moved list and answers the rest |
+| `language-not-read` | the input is in a language the index inventories but reads no links of (Go, for example), so an empty list of dependents is not an answer |
+| `reached-over-http` | a test reaches the code only through a URL, with no import the walk can follow; it is listed as a floor row |
 | `no-test-declaration`, `no-test-files` | `TEST_GLOBS` is unset, or matches no file |
 
 For example:
@@ -504,7 +506,9 @@ from segments.
   gives no history rows, so every `--history` answer there is `incomplete`.
 - Hook commands in host settings files are not read, so a hook script has
   no dependent in any answer.
-- Only Python, shell, TypeScript and JavaScript files carry links.
+- Only Python, shell, TypeScript and JavaScript files carry links. An input
+  in another language the index inventories gets a `language-not-read`
+  record instead of an empty answer.
 - The tool recommends. It never decides which gates run or how a change is
   tiered.
 
@@ -514,4 +518,4 @@ from segments.
   the placed seed tools, `source_paths.py` and `plant_walk.py` among them.
 - [skills-and-templates-reference.md, A.12 source-index](skills-and-templates-reference.md#a12-source-index):
   the seed skill that tells a session when to ask the tool.
-- [What's new in 8.0 and 8.1](whats-new-8.md).
+- [What's new in 8.0, 8.1 and 8.2](whats-new-8.md).

@@ -637,7 +637,9 @@ uncovered it stays exactly as written and is the bug's only test: no
 marker that expects its failure, and no second test that asserts the
 buggy behavior. The session dispatches `implementer` to fix it and
 re-runs that same test; until then the red is declared in the delivery
-as WIP with its failure record. Pure refactors (existing tests green before and after; a
+as WIP with its failure record. In an operations or verification pass the
+bug is listed with its root cause instead, and the fix waits for the
+owner's go-ahead (`tester.bug-fix-loop`). Pure refactors (existing tests green before and after; a
 break means a behavior change or a test of implementation). Migration
 safety gate (an unguarded schema is a blocking finding first). Recorded
 exceptions (throwaway prototypes, declarative edits with nothing to get
@@ -1568,9 +1570,13 @@ ordinary state of the session that just installed the roster), that is
   found them.
 - Growth runs only knowledge checks: lint, link, route and generated-view
   drift. Application builds and test suites stay with the target.
-- Branch and commit are recorded as provenance only. Never fetch, pull,
-  switch, commit, push, or publish Git state: it is the owner's, and a
-  publish cannot be undone.
+- Branch and commit are recorded as provenance. The orchestrating
+  session, never a worker, commits the plant's own repository, and only
+  there: the baseline before the first growth write and a checkpoint at
+  the close of every phase that wrote, with the mechanics graft's
+  Reversibility (d) owns. It never fetches, pulls, switches, pushes or
+  publishes: a local commit is the resting state of the work, and
+  publishing it is the owner's, and cannot be undone.
 - Every claim growth writes has evidence behind it; never invent
   behavior, requirements, rationale, ADRs, commands, URLs, project
   skills, or passing status. Mark an uncertain claim `unknown` and name
@@ -1662,9 +1668,13 @@ collection stays uncovered, and it is reported, never silent.
 **Phase 1: Detect and plan.** Determine whether the target is
 empty/new, one repository, a workspace/monorepo, or an umbrella of
 sibling repos. Stay inside user-placed scope. Record each repo's path,
-branch, HEAD, worktree state, role, manifests, and stack without
-mutating Git. Ensure the plant gitignores `.cypress/growth/` before
-scouting, then write the boundary division to
+branch, HEAD, worktree state, role, manifests, and stack. Read the
+plant's version-control shape, write the ignore rules (`.cypress/growth/`
+among them), and make the baseline commit that shape calls for before
+the first growth write; nested repositories stay read-only. Each later
+phase opens on the previous phase's checkpoint, and
+`grow.gate.write-scope` reads what a phase wrote against the commit that
+opened it before that phase's checkpoint is committed. Then write the boundary division to
 `.cypress/growth/boundaries.md` — one line per boundary with its ledger
 slug — which is the operand `grow.gate.scouts-ran` compares the ledgers
 against. Settle spawnability here, not in Phase 2. Before the scouts are briefed, the session runs
@@ -2181,7 +2191,12 @@ corpus refresh, and validation. Every worker runs the plant's router
 
 **Phase 1: Locate the plant and establish the base (session + investigation class).**
 Identify the plant or sibling set; record path, host integration,
-branch, HEAD, worktree cleanliness (provenance, no Git mutation). Read
+branch, HEAD, worktree state and version-control shape, then make the
+baseline commit that shape calls for, before the graft writes anything:
+the plant's own repository gets one commit of the tree as found, staged
+by explicit path; a plant with no repository of its own gets a
+`.gitignore` and `git init` first. Nested repositories stay read-only
+(`graft.reversibility`, (d)). Read
 the plant's **seed stamp**; `python3 <seed>/tools/graft-ledger.py
 <plant> <seed> --base` prints the base: the stamped version's tag, or
 else the seed commit the plant's machinery matches best, with the match
@@ -2303,8 +2318,15 @@ remediation.
 
 **Phase 7: Apply, verify, and stamp (`graft.integrity-gates`;
 authoring-class authors, session gates).**
-Apply the ratified upgrade **additively**, backing up every replaced
-file first. `python3 <seed>/tools/graft-run.py <plant> <seed> --stage
+Apply the ratified upgrade **additively**, on top of the baseline
+commit, backing up every replaced file first and committing each
+checkpoint: after a ratified flag flip, after the apply install, after
+each remedy that re-runs the installer, and once the authored writes and
+the record entry are in. A plant whose team keeps its rules in its own
+`AGENTS.md` is offered compose mode before the apply
+(`--kernel-mode compose`): the hub is never written and `CLAUDE.md`
+imports it, at the cost that hosts reading only `AGENTS.md` never see the
+kernel. `python3 <seed>/tools/graft-run.py <plant> <seed> --stage
 <dir>` rehearses the mechanical half on a copy outside the plant (the
 ledger, the install with its log, the engines, the audits and the
 lints) and prints the gate table's result column, with each judgment
@@ -2356,7 +2378,12 @@ prove the plant is left more capable and no less itself:
   not that a parallel absorption reconciled correctly.
 - Stamp + provenance: record the seed version the plant now carries
   in its seed stamp, and add a provenance entry to the plant's own
-  `docs/graph/changelog.md`; each check names its command and result.
+  `docs/graph/changelog.md`, naming the baseline and every checkpoint
+  commit; each check names its command and result.
+- Backups: once the audits have read them, list every installer backup
+  by date and put the dates to the owner as a numbered decision (which
+  runs' backups to keep, and for how long). The plant's sessions stage by
+  explicit path, never with `git add -A` or `git add .`.
 
 **Phase 8: Deliver (propose, then ratify).** Graft **proposes**; the
 plant's steward **ratifies**. Emit the reconciled upgrade as a reviewable
@@ -2388,8 +2415,9 @@ upgrade.
 
 Graft writes only the plant's seed-owned machinery and the refreshed
 surfaces above. The plant's application source, builds and test suites
-stay the plant's; Git state is recorded as provenance only, and graft
-never fetches, switches, commits or pushes. A divergence worth flowing
+stay the plant's. Its Git writes are local commits to the plant's own
+repository, the baseline and the checkpoints, staged by explicit path; it
+never fetches, switches or pushes, and never touches a nested repository. A divergence worth flowing
 back to the seed is handed to `harvest`, and a three-way conflict goes to
 the steward as a decision.
 

@@ -238,6 +238,10 @@ Creates (copies by default; `--symlink` opts into live seed links):
   run within 5 s)
 - `.prime/agent/extensions/route-extension.ts` → copied (the route on each
   prompt)
+
+  Both extensions run the hook core on the Python the installer found at the
+  seed's floor, 3.14 (SPEC-0005 §5),
+  and the installer writes that interpreter's name into each one.
 - `.prime/agent/settings.json` → copied (so the project can edit it)
 - `.prime/agent/APPEND_SYSTEM.md` → copied (RLM-native execution overlay,
   appended to the system prompt every session)

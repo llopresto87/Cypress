@@ -132,17 +132,17 @@ per version. `<library>` is the canonical id, lowercased, scope slash removed
 | Ecosystem (subfolder) | Examples |
 |---|---|
 | `cli` | `curl.md`, `git.md`, `trivy.md`, `gitleaks.md` |
-| `container` | `docker.md`, `docker-compose.md`, `nginx.md`, `docker-host-hardening.md`, `postgres.md` |
+| `container` | `docker.md`, `docker-compose.md`, `nginx.md`, `docker-host-hardening.md`, `postgres.md`, `caddy.md`, `minio.md` |
 | `galaxy` | `ansible.posix.md`, `community.docker.md` |
 | `language` | `python.md`, `typescript.md`, `dotnet.md`, `nodejs.md`, `angular.md`, `flutter.md` |
-| `maven` | `spring-boot.md`, `hibernate-orm.md`, `resilience4j.md`, `stripe-java.md` |
-| `npm` | `rxjs.md`, `playwright-test.md`, `primeng.md`, `keycloak-js.md` |
+| `maven` | `spring-boot.md`, `hibernate-orm.md`, `resilience4j.md`, `stripe-java.md`, `thymeleaf.md` |
+| `npm` | `rxjs.md`, `playwright-test.md`, `primeng.md`, `keycloak-js.md`, `next.md`, `zod.md`, `drizzle-orm.md` |
 | `nuget` | `Microsoft.EntityFrameworkCore.md`, `Dapper.md`, `xunit.md`, `Npgsql.md` |
-| `platform` | `azure-cli.md`, `azure-devops-rest.md`, `azure-pipelines-yaml.md` |
+| `platform` | `azure-cli.md`, `azure-devops-rest.md`, `azure-pipelines-yaml.md`, `microsoft-graph.md` |
 | `pub` | `dio.md`, `flutter_bloc.md`, `flutter_secure_storage.md` |
 | `pypi` | `fastapi.md`, `pydantic.md`, `numpy.md`, `openai.md`, `qdrant-client.md` |
 
-`maven` and `nuget` hold the largest share of the pages; see §A.4.1a for
+`maven` holds the largest share of the pages, then `nuget` and `npm`; see §A.4.1a for
 what that means for an adopter on a different stack.
 
 - **Belongs here and stays out:** one home, `library-corpus/README.md` ("The
@@ -161,8 +161,8 @@ Example entry shape (`library-corpus/pypi/fastapi.md`): a title
 The seed's machinery — protocols, skills, agents, `ingest-library`,
 `research-and-ingest`, `library-wiki` — makes no assumption about ecosystem;
 it ingests any dependency, in any language, the same way. The **shipped
-library-corpus content** is a different claim: `maven` and `nuget` hold the
-largest share of its pages (the §A.4.1 table). The lean is in the
+library-corpus content** is a different claim: `maven`, `nuget` and `npm`
+hold the largest share of its pages (the §A.4.1 table). The lean is in the
 composition, not the mechanism.
 
 A library page reaches a plant only by selective placement, on the owner's
@@ -179,7 +179,7 @@ only the version delta (`ingest-library.corpus-first`, which owns the rule).
   agnostic machinery: the same `ingest-library` phases, the same
   smoke-test-then-finalize pass, over whatever dependency the project
   actually uses.
-- A .NET or Java plant finds a page to place for much of its dependency
+- A .NET, Java or Node.js plant finds a page to place for much of its dependency
   surface (EF Core, Dapper, xUnit, Npgsql, Spring Boot, Hibernate,
   Resilience4j, and the rest); the plant still pins and validates the page
   against its own lockfile.
@@ -204,7 +204,7 @@ Keyed by `legal-corpus/<scope>/<instrument-slug>.md`, one page per instrument
 
 | Scope (subfolder) | Examples |
 |---|---|
-| `eu` | `gdpr.md`, `nis2.md`, `cra.md`, `eprivacy-directive.md`, `psd2.md`, `sca-rts-2018-389.md`, `edpb-guidelines-02-2023.md` |
+| `eu` | `gdpr.md`, `nis2.md`, `cra.md`, `mdr.md`, `eprivacy-directive.md`, `psd2.md`, `sca-rts-2018-389.md`, `edpb-guidelines-02-2023.md` |
 | `international` | `iso-27001.md` |
 | `national` | `it-codice-privacy.md`, `it-workers-statute.md`, `it-accounting-retention.md` |
 | `case-law` | `index.md`, a multi-entry router page (see below) |
@@ -265,7 +265,8 @@ requires licensed copy` (citable by identifier and title only), `topic only`.
 
 **Roles (`legal-corpus/index.md`):** written by `docs-librarian`, ingested by
 `research-scout`, and read by the base-roster legal agent, `agents/14-legal.md`,
-which runs without `WebSearch`, `WebFetch`, or `Bash`, so this
+which runs without `WebSearch` or `WebFetch`, and whose `Bash` runs the
+plant's routing and lookup tools and nothing else, never the network, so this
 corpus plus the project's own legal leaf is its only source of law. A corpus
 gap produces an explicit refusal (`not recorded — needs ingest`), never a
 reconstructed citation. That refusal-on-gap behaviour is only safe because
@@ -287,8 +288,8 @@ Keyed by `tool-corpus/<category>/<name>.md`, one page per tool. Source:
 
 | Category (subfolder) | Examples |
 |---|---|
-| `ops` | `container-deploy-pipeline.md`, `env-secret-rotation.md`, `registry-digest-resolver.md`, `resolved-dependency-gate.md`, `destructive-command-guard-hook.md` |
-| `testing` | `http-smoke-suite.md`, `behavior-baseline-oracle.md`, `failure-signature-triage.md`, `live-contract-check-harness.md`, `test-hygiene-lint.md` |
+| `ops` | `container-deploy-pipeline.md`, `env-secret-rotation.md`, `registry-digest-resolver.md`, `resolved-dependency-gate.md`, `destructive-command-guard-hook.md`, `outgoing-tree-secret-gate.md` |
+| `testing` | `http-smoke-suite.md`, `behavior-baseline-oracle.md`, `failure-signature-triage.md`, `live-contract-check-harness.md`, `test-hygiene-lint.md`, `batched-mutant-runner.md`, `tiered-validation-ladder.md` |
 
 `tool-corpus/README.md` (`## Layout`) names every kind of tool each category
 holds.
@@ -356,13 +357,21 @@ holds the keyed-page rules).
   widely-portable substrate (a container runtime, an SSH transport) is fine when
   that substrate *is* the procedure's subject.
 - **Stays out:** one home, `skill-corpus/README.md` ("What stays OUT").
-- Each page opens with an optional-procedure blockquote naming what it composes
-  and its parameters, then `## When to apply`, the procedure, and
-  `Reference files`.
-- **Withdraw:** a matching page is instantiated into the project's
-  `docs/graph/skills/<name>.md` (projected into `.claude/skills/<name>/SKILL.md`
-  and kin by the harness) from `docs/graph/templates/skill.template.md`,
-  grounding its steps in the project's real gates and tools.
+- Each page, generic or stack-keyed, opens with node frontmatter (`id`,
+  `owns`, `load_when`, `prevents`, a measured `est_tokens`; `stack:` on a
+  keyed page only), then an optional-procedure blockquote naming what it
+  composes and its parameters, `## When to apply`, the procedure, and
+  `Reference files`. Examples: `change-review-report.md` (the report a
+  reviewer accepts or rejects a substantial change from without reading the
+  diff), `dead-hostname-audit.md`, `review-rendered-ui.md`.
+- **Withdraw:** no manifest proposes a generic page. Grow and graft place one
+  when the plant's work needs the procedure, by its id
+  (`install.sh <host> --expertise skill-corpus/<name>`; a keyed page is
+  `skill-corpus/<key>/<name>`). It lands as the routable node
+  `docs/graph/skills/<name>.md` with `origin: corpus@<seed version>`, is
+  projected into `.claude/skills/<name>/SKILL.md` and kin, and is reachable
+  without an index row. Grow or graft then grounds its steps in the project's
+  real gates and tools ([corpus placement](corpus-placement.md)).
 
 ---
 

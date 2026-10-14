@@ -55,7 +55,7 @@ Six coordinators hold a depth-capped `Task` tool and may spawn only within their
 
 The deepest legal chain is depth 3 (through the `orchestrator`).
 
-Every other agent is a spawn-less leaf: its `tools:` line is present and grants no spawn tool (`Agent`, or its alias `Task`), so it cannot spawn. That missing grant is one of the harness's own recursion caps whenever the specialist was registered as a type; the host's nesting limit is the other ([delegation bounds](../core/method/delegation-bounds.md#delegation-is-bounded)). At an out-of-domain boundary a leaf stops, hands back and names the next specialist; the out-of-domain work goes to that specialist. `agent-lint --lint` enforces these frontmatter invariants.
+Every other agent is a spawn-less leaf: its `tools:` line is present and grants no spawn tool (`Agent`, or its alias `Task`), so it cannot spawn. That missing grant is one of the harness's own recursion caps whenever the specialist was registered as a type; the host's nesting limit is the other ([delegation bounds](../core/method/delegation-bounds.md#delegation-is-bounded)). At an out-of-domain boundary a leaf stops, hands back and names the next specialist; the out-of-domain work goes to that specialist. Every agent, leaf or coordinator, runs its own route: each one's `tools:` grants Bash, and a role that does not build uses that shell for lookup and measurement only, by its charter ([delegation briefs](../core/method/delegation-briefs.md)). `agent-lint --lint` enforces these frontmatter invariants.
 
 Attribution runs through `produced_by`. Every worker ends with the handback payload (`docs/graph/templates/prompts/handback-payload.md`). `produced_by` and `route_evidence` feed the deliver-time attribution assertion (`protocol.deliver`); a missing `produced_by` is a BLOCK. A worker hands back exactly once per spawn, on `complete`, `blocked-out-of-domain`, or `failed` (never per tool call).
 
@@ -143,7 +143,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **model class:** `opus`
 - **effort (default):** `high`
 - **Delegation:** coordinator with `can_delegate: true`, `max_spawn_depth: 1`, `delegates_to:` `tester`, `research-scout`
-- **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `WebSearch`, `WebFetch`, `Task`
+- **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`, `WebSearch`, `WebFetch`, `Task`
 - **tier (graph load-tier):** 2
 - **owns (facts):** `architect.charter`, `architect.spec-sections`, `architect.reversibility-tags`, `architect.legal-checkpoint`
 - **requires:** —
@@ -160,7 +160,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "two services both write to the same table and we keep getting conflicts" — `paraphrase`
   - "the data migration needs an architecture decision record" — `adversarial`
 
-**Charter.** The architect names the system's boundaries, designs the interfaces between them, and turns product intent into testable functional contracts. It records every non-obvious decision as an ADR and favors reversible choices, tagging each decision with a reversibility class. It is the central author of the technical part of every spec (§4 contracts, §6 data shapes, §7 failure modes). It may spawn `tester` or `research-scout` at bounded depth 1, and leaves production code to `implementer`.
+**Charter.** The architect names the system's boundaries, designs the interfaces between them, and turns product intent into testable functional contracts. It records every non-obvious decision as an ADR and favors reversible choices, tagging each decision with a reversibility class. It is the central author of the technical part of every spec (§4 contracts, §6 data shapes, §7 failure modes). It may spawn `tester` or `research-scout` at bounded depth 1, and leaves production code to `implementer`. Its shell is for lookup and measurement only: it runs the plant's routing and lookup tools itself, the `source-index.py` queries among them, and never builds, installs or writes a file.
 
 ### 7.3 `implementer`
 
@@ -244,7 +244,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "there is no way to prove this bug is fixed; write something that fails today" — `paraphrase`
   - "the test for the authorization rule is flaky and times out" — `adversarial`
 
-**Charter.** The tester translates spec contracts into executable tests and runs the RED-GREEN-REFACTOR cycle. Every increment begins with the tester writing a failing test that encodes a contract, with the test name as the contract slug so a reviewer can reconstruct the spec from the test list. It owns the verification gates, the AI-behavior evaluation suites, and the regression corpus. In a RED spawn it only writes the test, confirms it fails for the right reason and hands back; any implementation, even a throwaway one, is the implementer's GREEN (`tester.spawn-scope`). It is a Task-less leaf.
+**Charter.** The tester translates spec contracts into executable tests and runs the RED-GREEN-REFACTOR cycle. Every increment begins with the tester writing a failing test that encodes a contract, with the test name as the contract slug so a reviewer can reconstruct the spec from the test list. It owns the verification gates, the AI-behavior evaluation suites, and the regression corpus. In a RED spawn it only writes the test, confirms it fails for the right reason and hands back; any implementation, even a throwaway one, is the implementer's GREEN (`tester.spawn-scope`). In an operations or verification pass it lists each bug it finds, root-caused, with the fix it would make, and the fix waits for the owner's go-ahead (`tester.bug-fix-loop`). It is a Task-less leaf.
 
 ### 7.6 `security`
 
@@ -343,7 +343,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **model class:** `opus`
 - **effort (default):** `medium`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
-- **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `WebSearch`, `WebFetch`
+- **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`, `WebSearch`, `WebFetch`
 - **tier (graph load-tier):** 2
 - **owns (facts):** `product.charter`, `product.first-useful-slice`, `product.accessibility-floor`
 - **requires:** —
@@ -359,7 +359,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "write down what done means for the invoice feature so we can argue about it now" — `paraphrase`
   - "decide what done means for the gdpr data-export screen" — `adversarial`
 
-**Charter.** The product-minded technical lead clarifies what the user is trying to do and designs the smallest coherent solution. It works goal → outcome → flow → states → acceptance, in that order. It authors the user-facing sections of every spec (§3 user-facing behavior and §9 acceptance criteria) and owns user flows, the first useful slice, and the accessibility floor. It is a Task-less leaf.
+**Charter.** The product-minded technical lead clarifies what the user is trying to do and designs the smallest coherent solution. It works goal → outcome → flow → states → acceptance, in that order. It authors the user-facing sections of every spec (§3 user-facing behavior and §9 acceptance criteria) and owns user flows, the first useful slice, and the accessibility floor. Its shell is for lookup and measurement only: it runs the plant's routing and lookup tools itself and measures what a claim about the user rests on, and never builds, installs or writes a file. It is a Task-less leaf.
 
 ### 7.10 `docs-librarian`
 
@@ -457,7 +457,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **model class:** `opus`
 - **effort (default):** `high`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
-- **tools:** `Read`, `Glob`, `Grep`, `WebSearch`, `WebFetch`
+- **tools:** `Read`, `Glob`, `Grep`, `Bash`, `WebSearch`, `WebFetch`
 - **tier (graph load-tier):** 2
 - **owns (facts):** `devils-advocate.charter`, `devils-advocate.verdict-vocabulary`, `devils-advocate.primary-source-rule`
 - **requires:** —
@@ -476,7 +476,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "our penetration test report needs its citations checked" — `adversarial`
   - "refute the claim that this endpoint is rate limited" — `adversarial`
 
-**Charter.** The devil's advocate tries to break a finished deliverable. It is read-only and advisory: it gates nothing by fiat, writes no files, and returns verdicts in its report body, keeping attack and repair structurally separate. It works only from primary sources and never reads the drafts, notes, or reasoning chain that produced a claim, because reading those is inherited-error confirmation. It is a Task-less leaf.
+**Charter.** The devil's advocate tries to break a finished deliverable. It is read-only and advisory: it gates nothing by fiat, writes no files, and returns verdicts in its report body, keeping attack and repair structurally separate. It works only from primary sources and never reads the drafts, notes, or reasoning chain that produced a claim, because reading those is inherited-error confirmation. Its shell serves the same reading: it runs the plant's routing and lookup tools itself and reaches primary sources read-only, mutating nothing. It is a Task-less leaf.
 
 ### 7.14 `growth-orchestrator`
 
@@ -598,7 +598,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **model class:** `opus`
 - **effort (default):** `medium`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary
-- **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `WebSearch`, `WebFetch`
+- **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`, `WebSearch`, `WebFetch`
 - **tier (graph load-tier):** 2
 - **owns (facts):** `ui-ux-designer.charter`, `ui-ux-designer.design-spec`, `ui-ux-designer.heuristics`
 - **requires:** —
@@ -615,7 +615,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "run a usability heuristics audit of the checkout ui" — `contract`
   - "users cannot find the export button and keep calling support" — `paraphrase`
 
-**Charter.** Authors implementable design specs under `docs/graph/design/` that map to spec §3 and §9. Distinct from `product`, which owns the user outcome and the accessibility floor itself, and from `implementer`, which writes the code. Frontmatter fields above are taken verbatim from `agents/13-ui-ux-designer.md`; that file is the single source of truth for the charter.
+**Charter.** Authors implementable design specs under `docs/graph/design/` that map to spec §3 and §9. Distinct from `product`, which owns the user outcome and the accessibility floor itself, and from `implementer`, which writes the code. Its shell is for lookup and measurement only: it runs the plant's routing and lookup tools itself and measures what a design claim rests on (a contrast ratio, a token's value), and never builds, installs or writes a file. Frontmatter fields above are taken verbatim from `agents/13-ui-ux-designer.md`; that file is the single source of truth for the charter.
 
 ### 7.19 `legal`
 
@@ -626,7 +626,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **model class:** `opus`
 - **effort (default):** `high`
 - **Delegation:** Task-less leaf with `can_delegate: false` and no `Task` tool; stops and hands back at any out-of-domain boundary. No coordinator's default `delegates_to` names it — see §6 — so it is only reached via `architect.legal-checkpoint`'s conditional extension, or by a session dispatching it directly if the host projection registered it.
-- **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`
+- **tools:** `Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`
 - **tier (graph load-tier):** 2
 - **owns (facts):** `legal.charter`, `legal.corpus-rule`, `legal.four-part-finding`, `legal.qualification-boundary`, `legal.citation-ledger`
 - **requires:** —
@@ -652,7 +652,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "prepare an impact assessment and map the compliance obligations" — `contract`
   - "can we keep European customer records on a server in Virginia" — `paraphrase`
 
-**Charter.** Ships in every install; it works only when the plant has installed the legal corpus (`install.sh --legal-corpus yes`), and until then it declines the work. Every legal claim in its output traces to a corpus entry (instrument, article, verbatim text, official URL, language/version, verification date, legal status) or is written as one of three explicit non-claim forms (`not recorded`, `unverified`, `stale`). Separates every finding into four parts — verified technical fact, cited obligation, assessment, qualification boundary — and appends a citation ledger that fail-closed-blocks the deliverable if any claim lacks a row. Distinct from `security`, which owns the technical posture; `legal` owns only the regulatory obligation and compliance posture that attaches to it. It is a Task-less leaf.
+**Charter.** Ships in every install; it works only when the plant has installed the legal corpus (`install.sh --legal-corpus yes`), and until then it declines the work. Every legal claim in its output traces to a corpus entry (instrument, article, verbatim text, official URL, language/version, verification date, legal status) or is written as one of three explicit non-claim forms (`not recorded`, `unverified`, `stale`). Separates every finding into four parts — verified technical fact, cited obligation, assessment, qualification boundary — and appends a citation ledger that fail-closed-blocks the deliverable if any claim lacks a row. Distinct from `security`, which owns the technical posture; `legal` owns only the regulatory obligation and compliance posture that attaches to it. Its shell runs the plant's routing and lookup tools and nothing else: it never reaches the network and never reads law from anywhere but the corpus. It is a Task-less leaf.
 
 ### 7.20 `tool-smith`
 

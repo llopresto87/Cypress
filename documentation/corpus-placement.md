@@ -75,6 +75,13 @@ $ ./install.sh claude-code --expertise library-corpus/pypi/fastapi,tool-corpus/o
 [seed]   docs/graph/tools/resolved-dependency-gate.md  (tool-corpus/ops/resolved-dependency-gate, corpus@8.1.0)
 ```
 
+A placed page needs no row in the plant's `docs/graph/index.md`: the
+plant's `graph-lint.py` reads a node carrying `origin: corpus@<version>` as
+an entry point of the graph, so the page is reachable and `--plan` can
+route to it (SPEC-0001 PLACED_CORPUS_PAGE_IS_REACHABLE). Removing the page
+leaves nothing behind. A plant that drops the `origin:` line takes the page
+over and lists it in its index itself.
+
 The legal and agent corpora are not placed this way. The legal corpus keeps
 its whole-or-none choice, `--legal-corpus`.
 
@@ -137,9 +144,18 @@ exit code:
 ## Where the protocols use it
 
 - [grow](protocols-reference.md#grow) runs both steps before it pays for any
-  retrieval: it proposes the list, and the owner confirms it.
+  retrieval: it proposes the list, and the owner confirms it. Once the
+  scouts have reported, grow makes a second pass over the corpora driven by
+  what the plant needs rather than what its manifests name: a procedure it
+  performs again and again, a tool or service it drives that no manifest
+  declares. Each such id goes to the owner with the path that shows the
+  need.
 - [graft](protocols-reference.md#graft) treats the recorded list as an owner
-  decision that silence keeps, and refreshes it.
+  decision that silence keeps, and refreshes it. It reads the plant's needs
+  the same way (its runbooks, session records, harvest candidates, CI jobs
+  and project skills) and proposes the generic skill, tool or library page
+  that serves each one in the same numbered decision as the matcher's
+  list. A page the plant shows no need for is not proposed.
 - [ingest-library](protocols-reference.md#corpus-first-ingest-librarycorpus-first)
   checks for a placed page first. When one exists, it skips the scout and
   pins only the version delta against the plant's lockfile.
@@ -159,4 +175,4 @@ id when the plant's work needs the procedure. A tool page may carry
 ## See also
 
 - [INSTALL.md](../INSTALL.md): the installer's flags.
-- [What's new in 8.0 and 8.1](whats-new-8.md).
+- [What's new in 8.0, 8.1 and 8.2](whats-new-8.md).

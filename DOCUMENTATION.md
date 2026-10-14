@@ -7,7 +7,7 @@
 > `README.md` / `INSTALL.md` / `CHANGELOG.md`. Where this document and those
 > homes disagree, the homes win.
 
-- Version documented: 8.1.2
+- Version documented: 8.2.0
 - Repository role: this repo is the seed, the product shipped into other
   projects; it holds no `docs/graph/` of its own.
 - License: MIT. See [`LICENSE`](LICENSE). Copyright (c) 2026 Luigi Lopresto.
@@ -21,7 +21,7 @@
 > Feature guides: [`source-index.md`](documentation/source-index.md) (the
 > source index) and [`corpus-placement.md`](documentation/corpus-placement.md)
 > (placing corpus pages); [`whats-new-8.md`](documentation/whats-new-8.md)
-> lists what 8.0 and 8.1 added, with a link to each guide.
+> lists what 8.0, 8.1 and 8.2 added, with a link to each guide.
 
 ## Table of contents
 
@@ -533,16 +533,18 @@ on all three ways a turn can end: `complete`, `blocked-out-of-domain`, or
 
 ### 6.8 The delegation leaves
 
-The delegation doctrine is six files: the branch node `delegation.md` and five
-sibling leaves. Open the one that answers the question in hand.
+The delegation doctrine is eight files: the branch node `delegation.md` and
+seven sibling leaves. Open the one that answers the question in hand.
 
 | File | What it owns |
 |---|---|
-| [`delegation.md`](core/method/delegation.md) | the roster, mechanical routing, the knowledge-or-judgment question on a LOW band, and shared spec authoring; its Neighbours list is the menu of the other five |
+| [`delegation.md`](core/method/delegation.md) | the roster, mechanical routing, the knowledge-or-judgment question on a LOW band, and shared spec authoring; its Neighbours list is the menu of the other seven |
 | [`delegation-model-classes.md`](core/method/delegation-model-classes.md) | the model class and reasoning effort each step kind runs on, the model map (`delegation.model-map`), light variants, and the `effort:` key |
 | [`delegation-cycle-economy.md`](core/method/delegation-cycle-economy.md) | one step per spawn, effort labels and batch sizes, GREEN running its own tests, the tip cadence, mutation at the end, the question file and the ruling pass |
-| [`delegation-briefs.md`](core/method/delegation-briefs.md) | what every brief carries across the spawn boundary |
+| [`delegation-briefs.md`](core/method/delegation-briefs.md) | what every brief carries across the spawn boundary, and that every worker runs its own route |
 | [`delegation-sequencing.md`](core/method/delegation-sequencing.md) | spawn order by dependency, RED waves ahead of GREEN, and one writer per file set |
+| [`delegation-wave-integrity.md`](core/method/delegation-wave-integrity.md) | a parallel wave run as one passage: the table of each worker's write set, the wave baseline, and output that survives an interrupted spawn |
+| [`delegation-continuation.md`](core/method/delegation-continuation.md) | when to resume an agent that already handed back and when to brief a fresh one, a usage limit included |
 | [`delegation-bounds.md`](core/method/delegation-bounds.md) | spawn allowlists and depth, host registration, what a turn is, and the spawn trace |
 
 ### 6.9 The cycle economy
@@ -1299,7 +1301,12 @@ confident-and-wrong: it is zero in every class except `adversarial`, which
 carries a ratcheted budget (`ADVERSARIAL_CONFIDENT_WRONG_BUDGET` in
 `tests/ratchets.json`), because a bait that never succeeds is not a bait. The
 budget may fall freely, and raising it is an owner decision recorded in
-`tests/ratchets.json`.
+`tests/ratchets.json`. That budget was measured over the seed's roster. A
+plant whose roster differs records its own with
+`agent-lint.py --eval --record-baseline`, which writes `_eval.baseline.json`
+beside the plant's routing corpus, and `--eval` then gates the plant on it;
+graft records it at the graft that brings the routing corpus or changes the
+roster (SPEC-0002).
 
 Routable body sizes, computed by `tests/seed-lint.py` from the method files on every run: the largest routable body is 1 684 lines (`protocols/graft.md`) and the median is 161 lines, against a ceiling of 1 000 lines for any routable node and 2 500 lines for the three cross-project protocols, `graft`, `grow` and `harvest`. Those three are the only protocols that write into a repository the seed does not own, and a session loads one only while it performs that operation ([ADR-0007](docs/decisions/adr-0007-lifecycle-protocol-ceiling.md)). Both ceilings are ratchets: they may fall freely, and raising either is an owner decision recorded in `tests/ratchets.json`. The always-loaded budget has the same shape, and `EAGER_EXEMPTIONS` in `tests/seed-lint.py` is consequently **empty**: every harness sits under `EAGER_BUDGET`, and the per-harness figures are in the [host capability matrix](documentation/host-capability-matrix.md).
 
@@ -1815,7 +1822,7 @@ This section answers which rules a tool holds and which the method only asks the
 | <a id="enf-grill-lint"></a>The plan-of-record's shape | `templates/knowledge-graph/grill-lint.py` | **soft** | With no plan present it prints SKIP and exits 0. Whether an edit appended to the plan or rewrote it is not checked; a reviewer judges that. `--waves` is a report: its wave lines and overlap warnings never change the exit status | [grill protocol](protocols/grill.md) |
 | <a id="enf-agent-lint"></a>The roster's frontmatter, and the routing corpus's scores | `integrations/claude-code/agent-lint.py`, `agents/_routes.golden.tsv` | **soft** for `--lint` and `--eval`; **not a control** for `--route`, which prints and exits 0 | It reads the agent files on disk, not what a host registered | [§14 Tests and gates](#14-tests-and-gates) |
 | <a id="enf-prose-lint"></a>The prose floor under the humanizer skill | `tools/prose-lint.py` | **soft** | It catches only the tells a pattern can decide. Its rate thresholds are computed over all the files passed in one run, so one file's excess can hide in another's slack; the seed's own gate runs it once per file for that reason | [§14 Tests and gates](#14-tests-and-gates) |
-| <a id="enf-agnosticism-lint"></a>No leaked identity, address or vulnerability id in shipped text | `tools/agnosticism-lint.py` | **soft** | It finds IP addresses, CVE ids and the terms passed with `--forbid`; a name nobody listed passes. Its default glob reads Markdown only | [harvest protocol](protocols/harvest.md) |
+| <a id="enf-agnosticism-lint"></a>No leaked identity, address or vulnerability id in shipped text | `tools/agnosticism-lint.py` | **soft** | It finds IP addresses, CVE ids and the terms passed with `--forbid` or listed in a `--forbid-file`; a name nobody listed passes. Its default glob reads Markdown only. The seed's gate runs it over every tracked file against the steward's local, gitignored `.cypress/forbid.txt`, and prints SKIPPED where that list is absent (a clone, a worktree, CI), so a release waits for a PASS in the checkout that holds it | [harvest protocol](protocols/harvest.md) |
 | <a id="enf-status-register"></a>One lifecycle status vocabulary in frontmatter | `tools/status-register.py` | **soft** in lint mode; **not a control** for the query flags, which print only | It checks the vocabulary and the agreement between frontmatter and body, not whether a status is true | [§14 Tests and gates](#14-tests-and-gates) |
 | <a id="enf-growth-audit"></a>A growth's planned artifacts are present and substantive | `tools/growth-audit.py` | **soft**: exit 1 on a finding | It checks record shape, grounding paths and a byte floor for authored leaves, not whether the prose is true | [grow protocol](protocols/grow.md) |
 | <a id="enf-graft-audit"></a>A graft's backups are classified before anything is discarded | `tools/graft-audit.py` | **soft**: exit 1 on a customization | Its default tokens miss a plant's own vocabulary unless `--tokens` supplies it | [graft protocol](protocols/graft.md) |

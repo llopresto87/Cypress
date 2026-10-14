@@ -1,11 +1,46 @@
-# CYPRESS: what's new in 8.0 and 8.1
+# CYPRESS: what's new in 8.0, 8.1 and 8.2
 
-This page lists the features of 8.0 and 8.1 that a user or an agent
+This page lists the features of 8.0, 8.1 and 8.2 that a user or an agent
 works with, and links each one to the guide or reference section that
 explains it. The full record of each release, with every fix, is
 [CHANGELOG.md](../CHANGELOG.md).
 
 ---
+
+## 8.2.0: a harvest folded back
+
+**Python 3.14 is required.** The installer runs on the first Python at
+3.14 or newer it finds on `PATH` and writes that interpreter into every hook
+command. With none, it stops before writing anything. Guide:
+[INSTALL.md, Prerequisites](../INSTALL.md#prerequisites).
+
+**Keep your team's own `AGENTS.md`.** `--kernel-mode compose` leaves that
+file as it is; `CLAUDE.md` imports it and carries the kernel after it. The
+default stays one shared kernel body. Guide:
+[INSTALL.md](../INSTALL.md#an-instruction-hub-your-team-already-keeps).
+
+**The install says more.** It lists every installer backup by date, prints
+the `.gitignore` lines that keep `.cypress/seed.json` tracked when the
+repository ignores it, and names stamp keys an earlier seed wrote. A
+crashed router is one line in the session instead of silence.
+
+**Graft and grow commit.** Each one makes a baseline commit of the plant's
+own repository before its first write, and a checkpoint commit as it goes,
+staged by explicit path; nested repositories stay read-only. Reference:
+[protocols-reference.md, graft](protocols-reference.md#graft).
+
+**Generic skill pages are placed by need.** Every skill-corpus page now
+carries node frontmatter. Grow and graft propose a page when the plant's
+work needs its procedure, and `--expertise skill-corpus/<name>` places it as
+a routable skill node, reachable without an index row. Guide:
+[corpus-placement.md](corpus-placement.md).
+
+**Every agent runs its own route.** Architect, product, devil's advocate,
+UI/UX designer and legal now have a shell, for lookup and measurement only.
+Reference: [agents-reference.md](agents-reference.md).
+
+**Upgrading to 8.2.0.** Install Python 3.14 first. A graft brings the rest,
+starting with its baseline commit.
 
 ## 8.1.2: ready after the install
 

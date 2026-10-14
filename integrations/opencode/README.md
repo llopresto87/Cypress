@@ -146,6 +146,13 @@ Creates copies by default (`--symlink` opts into live seed links) from the seed 
   not symlinked, so the project can edit it)
 - `docs/graph/` scaffolded; missing leaves populated from `templates/docs/`
 
+The installer and every script it places need Python 3.14 or newer
+(SPEC-0005 §5); with none on
+`PATH` it refuses before writing anything. opencode reads only `AGENTS.md`,
+so in compose mode (`--kernel-mode compose`, where a team's own `AGENTS.md`
+stays canonical and only `CLAUDE.md` carries the kernel) an opencode session
+never sees the seed kernel.
+
 ## Bounded execution has no hook here
 
 The seed wires no pre-tool hook for opencode, so the bounded-execution clauses of

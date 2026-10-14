@@ -2,7 +2,7 @@
 
 ## What CYPRESS is
 
-CYPRESS is an installer that gives the AI coding [tool](DOCUMENTATION.md#term-tool) you already use a written way of working on your repository. It copies three kinds of file into the repository: instruction files, the method itself in Markdown, and a few small Python scripts that need only the standard library. It is not a library your code imports, not a service and not a model. Installing only places those files; the work starts when you paste one prompt into a session of your tool, and that session reads your repository and builds its [knowledge graph](DOCUMENTATION.md#term-knowledge-graph): short linked notes about your project that later sessions open a few at a time instead of rereading the code.
+CYPRESS is an installer that gives the AI coding [tool](DOCUMENTATION.md#term-tool) you already use a written way of working on your repository. It copies three kinds of file into the repository: instruction files, the method itself in Markdown, and a few small Python scripts that need only the standard library of Python 3.14 or newer. It is not a library your code imports, not a service and not a model. Installing only places those files; the work starts when you paste one prompt into a session of your tool, and that session reads your repository and builds its [knowledge graph](DOCUMENTATION.md#term-knowledge-graph): short linked notes about your project that later sessions open a few at a time instead of rereading the code.
 
 From then on, the method in those files asks each session to size its process to the task's risk, to write a [specification](DOCUMENTATION.md#term-specification) and a failing test before the code, and to hand steps that need a clean context to separate [agents](DOCUMENTATION.md#term-agent); the glossary's [skill](DOCUMENTATION.md#term-skill) entry says how an agent differs from a skill. Most of this is asked of the model, and only part of it is checked by a tool: [What it does not do](#what-it-does-not-do) says which part is which.
 
@@ -10,7 +10,7 @@ From then on, the method in those files asks each session to size its process to
 
 It is for developers who work in a code repository through a coding [harness](DOCUMENTATION.md#term-harness) the installer supports: Claude Code, Prime Agent, opencode, Codex or GitHub Copilot. Support is not the same on each: Claude Code and Prime Agent are first-class, opencode is supported, and Codex and GitHub Copilot are deprecated, installed only when you name them and given no new features. The [host capability matrix's support table](documentation/host-capability-matrix.md#support-tiers-adr-0009) and the [host support decision record](docs/decisions/adr-0009-host-support-tiers.md) say what each level means.
 
-The method assumes no language, framework or stack. The reference [corpora](DOCUMENTATION.md#term-corpus) that ship with it are narrower: the library notes lean toward .NET and Java, and the legal citations cover one national jurisdiction. Both are placed in your project only when you ask: the library notes page by page, from a list the installer proposes, and the legal citations whole. The [corpora reference](documentation/corpora-and-integrations-reference.md) has the breakdown.
+The method assumes no language, framework or stack. The reference [corpora](DOCUMENTATION.md#term-corpus) that ship with it are narrower: the library notes lean toward .NET, Java and Node.js, and the legal citations cover one national jurisdiction. Both are placed in your project only when you ask: the library notes page by page, from a list the installer proposes, and the legal citations whole. The [corpora reference](documentation/corpora-and-integrations-reference.md) has the breakdown.
 
 It is not for someone who does not use an AI coding [tool](DOCUMENTATION.md#term-tool), because nothing in the install acts until a session in that tool reads it.
 
@@ -18,7 +18,7 @@ It is not for someone who does not use an AI coding [tool](DOCUMENTATION.md#term
 
 An install for Claude Code writes the files below into your project. If one of them is already there and differs, your version is kept beside it as a timestamped copy before the new one replaces it, and nothing is merged.
 
-- the [kernel](DOCUMENTATION.md#term-kernel), a short instruction file the harness reads at the start of every session: `CLAUDE.md` at the project root, with `AGENTS.md` beside it as a symlink to it (a copy where symlinks are unavailable); on the other harnesses, or where your project already has a plain `AGENTS.md` and no `CLAUDE.md`, `AGENTS.md` holds the kernel and `CLAUDE.md` is the symlink;
+- the [kernel](DOCUMENTATION.md#term-kernel), a short instruction file the harness reads at the start of every session: `CLAUDE.md` at the project root, with `AGENTS.md` beside it as a symlink to it (a copy where symlinks are unavailable); on the other harnesses, or where your project already has a plain `AGENTS.md` and no `CLAUDE.md`, `AGENTS.md` holds the kernel and `CLAUDE.md` is the symlink; with `--kernel-mode compose`, a team's own `AGENTS.md` stays as it is and `CLAUDE.md` imports it ahead of the kernel ([install guide](INSTALL.md#an-instruction-hub-your-team-already-keeps));
 - the harness directory `.claude/`, holding the agent definitions, the [skills](DOCUMENTATION.md#term-skill), slash commands, hook scripts and settings;
 - `docs/graph/`, where the knowledge graph lives: the method's own notes, and a skeleton that the first session fills in from your code, including `docs/graph/models.md`, where you name the model each host runs for each kind of work;
 - the install stamp `.cypress/seed.json`, which records the version and options of the install and keeps any key the installer does not own, and beside it `.cypress/recreated-nodes.txt`, which lists the method's notes this install had to put back because they were missing;
@@ -47,7 +47,7 @@ git clone https://github.com/llopresto87/Cypress
 ./Cypress/install.sh claude-code --project-dir /path/to/your/project
 ```
 
-The clone takes whatever the default branch holds when you run it, not a tagged release. In the second command, put your repository's path in place of the placeholder. That command only places files; its last line says the files are placed and the project's graph is not built yet. Then open a session rooted at your project and paste [`INSTALL_PROMPT.md`](INSTALL_PROMPT.md) into it. That starts the one-time [growth](DOCUMENTATION.md#term-growth) pass, which reads your repository and builds its graph. None of these steps asks you to learn the project's vocabulary first.
+You need bash and Python 3.14 or newer; with no Python at that version on `PATH`, the installer stops before it writes anything. The clone takes whatever the default branch holds when you run it, not a tagged release. In the second command, put your repository's path in place of the placeholder. That command only places files; its last line says the files are placed and the project's graph is not built yet. Then open a session rooted at your project and paste [`INSTALL_PROMPT.md`](INSTALL_PROMPT.md) into it. That starts the one-time [growth](DOCUMENTATION.md#term-growth) pass, which reads your repository and builds its graph. None of these steps asks you to learn the project's vocabulary first.
 
 On a first install, a harness may need a fresh session before it can start the agents that were just placed; the [delegation notes](core/method/delegation-bounds.md) record when, under `delegation.harness-registration`.
 
@@ -100,7 +100,7 @@ The method is written for the model to follow, and most of it is a request. For 
 - [Protocols reference](documentation/protocols-reference.md)
 - [Skills and templates reference](documentation/skills-and-templates-reference.md)
 - [Host capability matrix](documentation/host-capability-matrix.md)
-- [What's new in 8.0 and 8.1](documentation/whats-new-8.md), with guides to the [source index](documentation/source-index.md) and to [placing corpus pages](documentation/corpus-placement.md)
+- [What's new in 8.0, 8.1 and 8.2](documentation/whats-new-8.md), with guides to the [source index](documentation/source-index.md) and to [placing corpus pages](documentation/corpus-placement.md)
 - [Decision index](docs/decisions/index.md)
 - [Install guide](INSTALL.md), including upgrade and removal
 - Per-harness notes: [Claude Code](integrations/claude-code/README.md), [Prime Agent](integrations/prime-agent/README.md), [opencode](integrations/opencode/README.md), [Codex](integrations/codex/README.md), [GitHub Copilot](integrations/github-copilot/README.md)

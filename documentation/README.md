@@ -1,6 +1,6 @@
 # CYPRESS Documentation
 
-Human-readable documentation for the CYPRESS seed system (version 8.1.2).
+Human-readable documentation for the CYPRESS seed system (version 8.2.0).
 
 ## Start here
 
@@ -13,7 +13,7 @@ Human-readable documentation for the CYPRESS seed system (version 8.1.2).
 
 | File | Covers |
 |------|--------|
-| [whats-new-8.md](whats-new-8.md) | What 8.0 and 8.1 added, feature by feature, each linked to its guide or reference section. |
+| [whats-new-8.md](whats-new-8.md) | What 8.0, 8.1 and 8.2 added, feature by feature, each linked to its guide or reference section. |
 | [source-index.md](source-index.md) | Guide to the source index (`docs/graph/source-index.py`, 8.1.0): the queries `build`, `impact`, `affected-tests`, `anchors` and `symbols`, `--history` and `anchors --moved`, how to read an answer, the build report that install, graft and grow print (8.1.2), the cache, the plant config, the `repo:` rule, and when the protocols call it. |
 | [corpus-placement.md](corpus-placement.md) | Guide to placing corpus pages (`install.sh --expertise`, 8.0.0): proposing, placing, the record in `.cypress/seed.json`, refresh on later installs, and `--check`. |
 

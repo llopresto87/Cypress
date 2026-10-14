@@ -22,9 +22,17 @@ housekeeping around that one flow: upgrade, uninstall and troubleshooting.
   `dash` and other strict `/bin/sh` implementations fail. The 3.2 floor is
   what the script holds itself to: its comments name the bash 4+ constructs
   it avoids for macOS.
-- `python3`. The installer runs short Python snippets to read an existing
-  install stamp, fill the `plant:` entries of `docs/graph/index.md`, and write
-  the Codex and GitHub Copilot files.
+- **Python 3.14** or newer. The installer runs short Python snippets to read
+  an existing install stamp, fill the `plant:` entries of
+  `docs/graph/index.md`, and write the Codex and GitHub Copilot files, and
+  every script it places and every hook it wires runs on Python too; the seed's spec SPEC-0005 §5 is the one home of that
+  floor. The installer uses `python3` when it is at the floor, else the first
+  `python3.<n>` at or above it on `PATH`, and writes that interpreter's name
+  into every hook command.
+  With none on `PATH` it refuses before writing anything. When it ran on a
+  `python3.<n>` because `python3` is older, it says so as a NEXT STEP: agent
+  sessions run the graph tools as `python3 docs/graph/<tool>.py`, so put a
+  `python3` at the floor first on `PATH` for them.
 - The seed system unzipped or cloned somewhere stable. In the default
   copy mode the seed path is only read at install time; in `--symlink`
   mode the placed files reference the seed, so keep it at the path you
@@ -58,6 +66,7 @@ From the seed system directory:
              [--deliverable-language BCP47] [--comment-language BCP47]
              [--legal-corpus yes|no] [--legal-jurisdiction CC] [--print-config]
              [--expertise propose|<corpus-id>[,<corpus-id>...]]
+             [--kernel-mode replace|compose]
 ```
 
 `<tool>` is one of the list below. Every tool gets the kernel under both
@@ -162,13 +171,31 @@ Corpus pages are placed only when you name them. `--expertise propose`
 prints the library, tool and stack-keyed skill pages your manifests match
 and writes nothing. `--expertise <id>[,<id>...]` places exactly those pages
 and records them in `.cypress/seed.json`, so a later install refreshes the
-ones nobody edited ([corpora reference, A.4.1a](documentation/corpora-and-integrations-reference.md#a41a-agnosticism-the-machinery-is-the-shipped-corpus-is-not)).
+ones nobody edited. An id is the page's seed path without `.md`: a generic
+skill page is `skill-corpus/<name>`, placed as the routable node
+`docs/graph/skills/<name>.md` ([corpus placement](documentation/corpus-placement.md)) ([corpora reference, A.4.1a](documentation/corpora-and-integrations-reference.md#a41a-agnosticism-the-machinery-is-the-shipped-corpus-is-not)).
 
 The model map, `docs/graph/models.md`, is the third owner decision: which
 model each host runs for each class and effort. An unfilled row is not an
 error: the agent runs on its caller's model, and graft reports the unfilled
 map as a disclosed line
 ([ADR-0022](docs/decisions/adr-0022-the-plant-model-map.md)).
+
+## An instruction hub your team already keeps
+
+By default the seed kernel owns the root instruction files: `CLAUDE.md` and
+`AGENTS.md` hold one shared kernel body, and a body your team wrote there is
+backed up and filed for migration. When your team keeps its own rules in
+`AGENTS.md` and wants that file to stay canonical, pass
+`--kernel-mode compose`. The installer then never writes `AGENTS.md`;
+`CLAUDE.md` imports it on its first line and carries the seed kernel after
+it, so a Claude Code session reads your rules first and the seed's after
+them. The cost: a tool that reads only `AGENTS.md` (opencode, Prime Agent,
+Codex, Copilot) never sees the seed kernel. The choice is recorded in
+`.cypress/seed.json` (`kernel_mode`) and kept by every later install;
+`--kernel-mode replace` returns to one shared kernel body. The installer
+refuses compose before writing when `AGENTS.md` is missing, is a symbolic
+link, or holds a body the seed wrote rather than your team's rules.
 
 ## Copy mode vs symlink mode
 
@@ -199,6 +226,12 @@ which keeps every key the installer does not own, and
 `.cypress/recreated-nodes.txt`, the whole list of seed nodes the last run
 re-created. Both are derived, never authored, so a copy would carry no
 recovery value.
+
+A run that made backups ends with a BACKUPS block: every installer backup in
+the plant, one line per date with its count, so the owner can decide which
+runs' backups to keep. The backups sit in the working tree, so stage by
+explicit path (`git add <path>`), never with `git add -A` or `git add .`,
+or they are committed with the change.
 
 If the destination is a symlink, the link is moved aside, not followed, so an
 install does not modify a file outside the target directory
@@ -250,6 +283,14 @@ installer prints this as its NEXT STEP
 ([registration notice](DOCUMENTATION.md#enf-registration-notice)); the full rule, including the
 role-emulation fallback for when a restart is impossible, lives in
 `docs/graph/method/delegation-bounds.md` (`delegation.harness-registration`).
+
+When the project is its own Git repository and its ignore rules cover
+`.cypress/seed.json`, the installer prints the `.gitignore` lines that keep
+the stamp and the coverage record tracked while the rest of `.cypress/`
+stays ignored (`.cypress/*`, `!.cypress/seed.json`,
+`!.cypress/coverage.json`). It does not edit `.gitignore` itself. A key in
+the stamp that an earlier seed wrote and this one no longer reads is named
+and kept.
 
 ## Codex post-install
 
@@ -344,6 +385,10 @@ github-copilot` adds the two frozen ones.
 **`refusing to install the seed system into itself`**
 You ran the installer from inside the seed directory with no
 `--project-dir`. Pass `--project-dir` to a target project.
+
+**`no Python 3.14 or newer on PATH`**
+Install Python 3.14 or newer, put it on `PATH` as `python3` or
+`python3.14`, and re-run. Nothing has been written.
 
 **Symlinks don't work on my system**
 Use `--copy`. Common on Windows without developer mode or admin
