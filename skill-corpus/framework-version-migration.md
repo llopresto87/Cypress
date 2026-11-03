@@ -130,7 +130,7 @@ preserve a behavior nobody has observed. The role that runs that pass is
 - `protocols/verify.md` (RED by mutation, the three gate states)
 - `protocols/verify-disagreement.md` (behavior-preservation gate,
   intended-delta allowlist, instrument first)
-- `protocols/grill.md` / `skills/grill-planner/SKILL.md` (staged increments, rollback)
+- `protocols/grill.md` (staged increments, rollback)
 - `skills/adr-writer/SKILL.md` (the migration decision + fallback trigger)
 - `agents/05-security.md` (advisory/currency + algorithm gates)
 - `skill-corpus/maven/spring-boot-major-line-upgrade.md` and

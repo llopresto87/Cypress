@@ -207,8 +207,8 @@ installs reaches it. Every brief names:
    `docs/graph/templates/prompts/handback-payload.md`; the template owns
    the field list.
 8. **The authoring discipline for the artifact.** A brief that produces
-   or updates the plan-of-record points the worker at the
-   `grill-planner` skill; a brief that records a decision points it at
+   or updates the plan-of-record points the worker at
+   `protocol.grill`; a brief that records a decision points it at
    `adr-writer`. Those skills own the discipline: cite them by name, as
    you embed the graph block, because a brief that omits the authoring
    skill gets an undisciplined plan or decision back.

@@ -23,6 +23,10 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   starts there. `skill.spec-author` and `skill.adr-writer` drop their
   humanizer step and peer edge; `humanizer.scope` and
   `method.prose-posture` state the rule by consumer.
+  The close-out librarian's prose-lint step is scoped the same way: in a
+  live A/B run on the Prime Agent plant, 8.3.0 still ran prose-lint 21 times
+  on graph text because `canonize` and the librarian charter said "every
+  prose file" (76 runs on 8.2.0).
 - **New work goes to a fresh worker.** Both owners had to correct a
   session that sent new tasks to old, uncached workers. The rule already
   lived in `delegation.continuation`, a node nothing routes at the moment a
@@ -132,6 +136,15 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   verdict, the blockers and the findings to act on, and repeats a gate only
   when it failed. `next_route_evidence` is gone: 99% of its values were
   "not run", and the caller routes the next hop itself.
+- **`grill-planner` folds into `protocol.grill`.** Every rule the skill
+  stated already had a home: append-only (kernel §3.3), stable section
+  numbers and `[verify]` (grill-lint), increment shape and the press
+  (`grill.increment-shape`, `grill.press`), the row discipline (the
+  template). Only its consistency audit was its own, and that is now
+  `grill.audit` in the protocol. Planning loads one node where it loaded two,
+  and every session's always-loaded skill list is 454 bytes shorter. On the
+  next graft, `install.sh --check` names a plant's copy RETIRED and graft
+  migration (d) deletes it.
 - **The release sweep for donor tokens fails closed.** A devil's-advocate
   press of the 8.2.0 plan's top risk, a project-identifying token reaching a
   seed file, returned `refuted`. Without the steward's local forbid list the

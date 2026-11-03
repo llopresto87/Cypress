@@ -186,7 +186,7 @@ The wiki page synthesizes both into the project-local view.
 Write an unknown fact as `not recorded` (the marker
 `docs/graph/skills/knowledge-graph.md` owns) and report it in your handback
 for grill.md section 12, which the session writes (`rule.grill`).
-`[verify]` is the grill-planner's separate tag for a claim that was made but
+`[verify]` is the plan's separate tag for a claim that was made but
 not yet confirmed.
 
 When two sources conflict, `research-scout`'s conflict-resolution
@@ -208,8 +208,9 @@ Once per session (and at the end of every protocol), check:
   its steps cite still exist?
 - Does the README match the current entry points?
 - Has the changelog been updated since the last delivery?
-- Does the prose you wrote this session pass `docs/graph/prose-lint.py`
-  (no strong tell; `--against HEAD` reports no dropped fact)?
+- Does the human-facing prose you wrote this session (README, runbooks,
+  documentation; never graph text) pass `docs/graph/prose-lint.py` (no strong
+  tell; `--against HEAD` reports no dropped fact)?
 
 Flag misses in the delivery summary so the orchestrator can dispatch
 fixes.

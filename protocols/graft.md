@@ -1137,8 +1137,8 @@ Phase 6 drift (the "filled elsewhere" class), and it moves.
   recurred here, an ADR for a decision this plant took, a runbook's real
   commands) waits for that use and sprouts through the close-out lifecycle
   (`canonize` → `docs-librarian`). The seed's anti-fabrication discipline (the
-  `adr-writer` "don't invent a decision" and `grill-planner` "mark what you
-  haven't verified" rules) applies to every surface: thin evidence is a reason
+  `adr-writer` "don't invent a decision" and the plan's "mark what you
+  haven't verified" rule, `[verify]`) applies to every surface: thin evidence is a reason
   to defer.
 - **Surface what was grafted but not grown.** Report every capability now
   present as machinery yet still inert (no project skill sprouted, runbook

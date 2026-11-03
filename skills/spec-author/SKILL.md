@@ -13,7 +13,7 @@ requires:
   - protocol.specify
 peers:
   - skill.test-first
-  - skill.grill-planner
+  - protocol.grill
 load_when:
   - "write a spec"
   - "define functional contracts"

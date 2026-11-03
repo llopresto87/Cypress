@@ -148,7 +148,7 @@ Some artifacts are *deliberately* append-only, and holistic rewriting
 would destroy their reason to exist. These follow supersede-don't-delete
 instead of this skill:
 
-- the plan-of-record's history/changelog (see `grill-planner`: stale
+- the plan-of-record's history/changelog (see `protocol.grill`: stale
   claims are struck through, not deleted),
 - Architecture Decision Records (see `adr-writer`: superseded, or
   corrected by an appended dated note, never edited in place),
