@@ -100,7 +100,12 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   while its prompt cache is still warm (5 minutes on both hosts). Replayed
   over the recorded follow-ups, with a fresh worker's measured start-up cost
   in their place, this saves an estimated 17% of the Claude Code plant's
-  cache writes and 22% of the Prime Agent plant's cost.
+  cache writes and 22% of the Prime Agent plant's cost. One recorded ruling
+  pass was replayed live on a clone of the Prime Agent plant at the commit
+  before it: a fresh architect briefed by path gave the same verdict on all
+  six parts and wrote 70K tokens to the cache where the idle author had
+  rewritten 930K, $0.71 against $4.89 at the same token prices (one run, on
+  a different host).
 - **The plan linter prints the batches.** `grill-lint.py --batches` groups
   each wave's increments into spawns by the batch table, so batch size is
   read, not judged; on the 8.1.1 plant 54 of 85 RED spawns carried a single
