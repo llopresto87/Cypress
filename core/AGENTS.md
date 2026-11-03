@@ -14,18 +14,8 @@
 > fails, the plan stays empty or wrong, or the task explores the graph.
 
 This file is the **bootstrap kernel**, read on every session of every
-host. It is
-deliberately small and holds only what must bind *before* any routing
-happens: identity, tier classification, the rule anchors, and the
-boundaries. Everything else — every protocol, skill, agent charter,
-template, and posture principle — lives in `docs/graph/` and activates
-progressively through the router, which is your orientation. A
-"subsystem" may be a package or a repo: one repository or a program of
-several works the same.
-
-Your job: behave like a senior staff engineer who pairs research, spec
-authoring, planning, and verification with implementation — and who
-loads, at every moment, only the knowledge the moment needs.
+host: tier classification, the rule anchors and the boundaries.
+Everything else lives in `docs/graph/` and loads through the router.
 
 ## 0. Classify the tier, out loud, before acting
 
@@ -58,13 +48,12 @@ specialist from the roster — `architect`,
 `research-scout`, `devils-advocate`, `legal`, `multi-agent-architect`,
 `growth-orchestrator`, `growth-scout`, `seed-installer`, `tool-smith`,
 each an `agent.*` node routed by its own triggers. New work goes to a
-fresh worker, not an old one (`delegation.continuation`). Every brief embeds
-the canonical blocks from
-`docs/graph/templates/prompts/graph-session-bootstrap.md` verbatim plus
-the handback contract, because the brief is the only enforcement that
-crosses the spawn boundary. Roster table, mechanical routing
-(`python3 docs/graph/agent-lint.py --route`), model classes, and the
-depth-capped delegation bounds: `method.delegation`.
+fresh worker, not an old one (`delegation.continuation`). Compose every
+brief with `python3 docs/graph/brief.py`: it embeds the blocks of
+`docs/graph/templates/prompts/graph-session-bootstrap.md` and the handback
+contract, the only enforcement that crosses the spawn boundary. Roster,
+routing (`python3 docs/graph/agent-lint.py --route`), model classes and
+delegation bounds: `method.delegation`.
 
 ## 2. Enter work through a protocol node
 
@@ -79,9 +68,8 @@ you may only propose one.
 
 ## 3. The eight rules — anchors
 
-Non-negotiable, in dependency order; each rule's artifact is the
-upstream of the next. The anchor binds always; the full statement lives
-only in the owning node.
+Non-negotiable; the anchor binds always, the full statement lives in the
+owning node.
 
 ### 3.1 The spec rule
 Every non-trivial behavior has an executable spec in
@@ -150,13 +138,6 @@ tool is built by `agent.tool-smith`.
 
 ## 5. Where to look next
 
-- `docs/graph/index.md` — the hand-written map: the Method table
-  (§2) and the node table; the fallback the FIRST MOVE names.
-- `docs/graph/method/` — tiers, delegation, posture (the why).
-- `docs/graph/protocols/` · `docs/graph/skills/` ·
-  `docs/graph/agents/` — the method surface, one node each.
-- `docs/graph/plans/grill.md`, `docs/graph/specs/index.md`,
-  `docs/graph/libraries/index.md` — the plan, specs, wiki.
-- Code questions (what breaks, which tests, who cites a file, where a
-  name is defined): `python3 docs/graph/source-index.py --help`,
-  `skill.source-index`.
+The fallback map is `docs/graph/index.md`. Code questions (what breaks,
+which tests, who cites a file): `python3 docs/graph/source-index.py --help`,
+`skill.source-index`.

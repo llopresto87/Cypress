@@ -625,8 +625,7 @@ another.
 ### Plan linter: the batch plan (added for 8.3.0)
 
 `grill-lint.py --batches` prints the spawns `delegation.effort-scale` gives each
-wave, so batch sizing is read, not judged. In one plant on 8.1.1, 54 of 85 RED
-spawns carried a single increment against a table of 5 to 7. Like `--waves`, the
+wave, so batch sizing is read, not judged. Like `--waves`, the
 report reads §9 alone and never changes an exit status.
 
 ### Contract: GRILL_BATCHES_FOLLOW_THE_EFFORT_TABLE
