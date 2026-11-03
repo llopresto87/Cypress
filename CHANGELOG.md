@@ -166,6 +166,15 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   session now reads first when it resumes. Owner rules, corrected assumptions,
   harness migration and canonize status stay in the record, which every T2/T3
   unit still opens.
+- **A graft catches the plan defects it introduces (`graft.gate.plans`).**
+  `tools/graft-run.py` now runs the plant's `grill-lint.py` and
+  `spec-lint.py` before the upgrade and again after it, and blocks on each
+  defect that only the upgrade raised. In a live implementation run, this
+  release's own press rule failed the grafted plant's existing plan: three
+  unpressed `expensive` decisions and the top risk. The first work session met
+  that failure at its gate and ran a planning press partway through
+  implementation. On the same plant the graft now names those four items, so
+  they go to the owner as numbered decisions before work starts.
 - **Every session loads less.** An audit of each recurring instruction
   surface against both plants' trajectories cut what no agent acted on or what
   a tool now enforces. The kernel is 7,049 bytes (was 8,062): the role

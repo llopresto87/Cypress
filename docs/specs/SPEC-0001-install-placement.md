@@ -1239,6 +1239,18 @@ its own record, and that slug stays as written in §12's history.
 - **And:** a node in those folders whose seed source the seed ships, or
   whose frontmatter does not say `origin: seed`, is not named
 
+### Contract: GRAFT_RUN_NAMES_PLAN_DEFECTS_THE_UPGRADE_RAISES
+- **Given:** a plant whose plan passes a rule under its own `grill-lint.py`
+  and fails it under the seed's (an `expensive` §6 row with no press verdict,
+  from before the rule existed)
+- **When:** `tools/graft-run.py <plant> <seed> --stage <dir>` runs
+- **Then:** its `graft.gate.plans` row is BLOCK, names each defect line the
+  seed's `grill-lint.py` or `spec-lint.py` prints on the stage copy that the
+  plant's own engines did not print before the installer ran, and counts the
+  defects present both times without gating them
+- **And:** with no defect raised by the upgrade the row is PASS, and with
+  neither linter in the copy it is N-A
+
 ### Contract: GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES
 - **Given:** a plant carrying a node CHECK_FLAGS_RETIRED_GRAPH_NODE names,
   whose `owns:` repeats a fact-key that a node the seed ships owns, so the
@@ -2035,6 +2047,7 @@ $ head -1 /p/docs/graph/libraries/rxjs.md
 | CHECK_FLAGS_ORPHAN_HARNESS_ENTRY | M14 case_orphan_flag: over a copy of the every-host install, `claude-code --check` says every harness entry has a graph home (inside M13); with a skill in `.claude/skills/deploy-notes/` and an agent in `.prime/agent/agents/` and no graph node, it exits 0, names each `ORPHAN` with the graph home it lacks and leaves the tree byte-identical; `graft-audit.py` names the skill `ORPHAN` with its clean-copy exit code (asserted since the tip) | tests/test-install-placement.sh | integration; red on arrival (`--check` did not name the orphan skill) | green |
 | CHECK_FLAGS_RETIRED_GRAPH_NODE | M13 case_retired_flag, graph-node arm (8.1.2, graft finding F1): the every-host install copy also carries an `origin: seed` `docs/graph/protocols/<name>.md` the seed does not ship and an `origin: project` protocol of another name: `claude-code --check` exits 0, names the seed one `RETIRED` and not the project one, and leaves the tree byte-identical; `graft-audit.py` names it `RETIRED` with its clean-copy exit code; the node is still on disk | tests/test-install-placement.sh | integration | green |
 | GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES | X469 case_run_ties_lint_errors_to_retired_nodes, a GR case of `tools/graft-run.py` (8.1.2, graft finding F1): a synthetic plant carrying an `origin: seed` `docs/graph/protocols/<name>.md` the seed does not ship, whose `owns:` repeats a fact-key of a seed skill node: the `graft.gate.routes` row is BLOCK, names the path among the `RETIRED` entries and carries `RETIRED_LINT_CLAUSE` with the node's id and a count of 1; arm: the same node with that fact-key dropped from its `owns:` carries no clause; the node is on disk after the run | tests/test-graft-tools.sh | integration (synthetic plant) | green |
+| GRAFT_RUN_NAMES_PLAN_DEFECTS_THE_UPGRADE_RAISES | X493 case_run_names_plan_defects_the_upgrade_raises: a plant whose engine lacks the press check and whose plan has an unpressed `expensive` row: the plans row is BLOCK with one raised defect naming the row and counts the plan's other defects; control: the seed's own engine before the graft, the row is PASS | tests/test-graft-tools.sh | integration | green |
 | HOOKS_RUN_ON_THE_FLOOR_INTERPRETER | E16 case_interpreter_floor (a), (c), (d): on a PATH whose `python3` fails the floor probe and that holds `python<floor>`, claude-code and prime-agent install, every `.claude/settings.json` hook command and both extensions' `PYTHON` name `python<floor>`, a NEXT STEP names the bare `python3`, and `--check` runs the four hooks; with one command edited to name `python3.99`, `--check` exits non-zero naming it; the Copilot `route.json` and `status.json` name it; on a `python3` at the floor `.claude/settings.json` is the seed's bytes | tests/test-full-install.sh | integration | green |
 | HOOKS_RUN_ON_THE_FLOOR_INTERPRETER | E19 the floor sweep: `install.sh`'s `PYTHON_FLOOR` equals SPEC-0005 §5's, every shipped script compiles on an interpreter at the floor and every tool answers `--help` on it | tests/test-tool-help.sh | unit; red on arrival (no `PYTHON_FLOOR`) | green |
 | NO_INTERPRETER_AT_THE_FLOOR | E16 case_interpreter_floor (b): with only a `python3` below the floor on PATH, the install exits non-zero with exactly one line, an `ERROR:` naming the floor, and the target stays empty | tests/test-full-install.sh | integration | green |
@@ -2710,3 +2723,10 @@ only version surface it has, and it moves with each entry here.
   and its stamped arm was seen red first. The retired-key log says deleting
   the keys is the owner's call, and the BACKUPS block no longer calls every
   backup untracked; neither changes a contract.
+- 2026-11-03 — plan defects a graft raises. A seed rule added to
+  `grill-lint.py` failed a grafted plant's existing plan, and the first work
+  session after the graft met it at its gate and ran the planning work
+  itself. `graft.gate.plans` runs the plan linters on the stage copy before
+  and after the upgrade and blocks on each defect only the upgrade raised, so
+  the graft puts it to the owner. GRAFT_RUN_NAMES_PLAN_DEFECTS_THE_UPGRADE_RAISES
+  is new, held by X493.

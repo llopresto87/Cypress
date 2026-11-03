@@ -27,7 +27,10 @@ WHAT IT DOES, IN ORDER
   6. growth-audit.py --plan on the copy, then its lint, whose output
      (coverage.txt) holds the source index build report after the verdicts,
      advice and never a gate row
-  7. the copy's own graph-lint.py (and a representative --plan), agent-lint.py
+  7. the copy's own grill-lint.py and spec-lint.py, before step 3 with the
+     plant's engines and here with the seed's, so the plans row names each
+     defect the upgrade raised over plans the plant already had; then
+     the copy's own graph-lint.py (and a representative --plan), agent-lint.py
      --lint and --eval, and status-register.py, where each is installed; then
      install.sh <host> --check once per adapter, which runs each wired context
      hook and names each harness entry with no graph home (RETIRED, ORPHAN)
@@ -443,6 +446,8 @@ def main() -> int:
     prior_install = (copy / STAMP_REL).is_file()
     tokens = derive_tokens(copy, seed, stamp)
 
+    plans_before = plan_defects(run, "before")    # the plant's own engines
+
     # 2. the ledger, before the installer writes
     rc, out = run.tool("ledger.txt", "graft-ledger.py", copy, seed)
     base_line = line_of(out, r"^base: ")
@@ -527,8 +532,10 @@ def main() -> int:
     if (g / "status-register.py").is_file():
         reg = run.sh("status-register.txt", [sys.executable, g / "status-register.py", "--root", "docs/graph"])
 
+    plans_after = plan_defects(run, "after")      # the seed's engines, after step 4
     after = porcelain(run)
     evidence = {
+        "plans_before": plans_before, "plans_after": plans_after,
         "stamp": read_stamp(copy), "prior_install": prior_install, "date": date, "new": new,
         "shared": shared, "tokens": tokens, "base_line": base_line, "base_rev": base_rev,
         "audit": (audit_rc, audit), "unfilled": (unf_rc, unfilled),
@@ -723,6 +730,44 @@ def check_routes(run, ev):
     return ("PASS" if ok else "BLOCK"), "; ".join(parts) + f" ({run.logs / 'hook-check.txt'})"
 
 
+PLAN_LINTS = ("grill-lint.py", "spec-lint.py")
+DEFECT = re.compile(r"^\s*- (.+)$")
+
+
+def plan_defects(run, tag: str):
+    """{lint: set of defect lines} of the copy's own plan linters, run from the
+    copy's root; None where the plant carries no such linter. Run once before
+    the installer (the plant's engines) and once after (the seed's), so the
+    plans row gates only what the upgrade raised over plans that already
+    existed (graft.gate.plans)."""
+    out = {}
+    for lint in PLAN_LINTS:
+        f = run.copy / GRAPH_HOME / lint
+        if f.is_file():
+            _, text = run.sh(f"plans-{tag}.txt", [sys.executable, f])
+            out[lint] = {m.group(1).strip() for m in map(DEFECT.match, text.splitlines()) if m}
+    return out
+
+
+def check_plans(run, ev):
+    before, after = ev.get("plans_before") or {}, ev.get("plans_after") or {}
+    if not after:
+        return "N-A", "no docs/graph/grill-lint.py or spec-lint.py in the stage copy"
+    raised, kept = [], 0
+    for lint, defects in after.items():
+        old = before.get(lint, set())
+        raised += [f"{lint}: {d}" for d in sorted(defects - old)]
+        kept += len(defects & old)
+    note = f"{kept} defect(s) the plant's plans already had, not gated"
+    if not raised:
+        return "PASS", f"the upgraded engines raise no new plan defect; {note}"
+    shown = "; ".join(raised[:3]) + (" ..." if len(raised) > 3 else "")
+    return "BLOCK", (f"{len(raised)} plan defect(s) the upgraded engines raise over the plant's "
+                     f"existing plans: {shown}. Put each to the owner as a numbered decision "
+                     f"(Phase 8) before the next work session; {note} "
+                     f"({run.logs / 'plans-after.txt'})")
+
+
 def check_status_register(run, ev):
     if ev["register"] is None:
         return "N-A", "no docs/graph/status-register.py in the stage copy"
@@ -857,6 +902,7 @@ CHECKS = {
     "graft.gate.coverage": check_coverage,
     "graft.gate.routes": check_routes,
     "graft.gate.status-register": check_status_register,
+    "graft.gate.plans": check_plans,
     "graft.gate.prose": check_prose,
     "graft.gate.adopted-instructions": check_adopted,
     "graft.gate.recreated-nodes": check_recreated,
