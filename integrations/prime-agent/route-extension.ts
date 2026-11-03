@@ -88,7 +88,7 @@ export default function routeExtension(pi: ExtensionAPI): void {
       // leading marker, and a child session by its depth.
       const origin = (event as { origin?: unknown }).origin;
       if (typeof origin === "string") options.push(`--origin=${origin}`);
-      const r = await pi.exec(PYTHON, [script, ...options], { timeout: 20_000, cwd: ctx.cwd });
+      const r = await pi.exec(PYTHON, ["-S", script, ...options], { timeout: 20_000, cwd: ctx.cwd });
       const content = additionalContext(r.stdout);
       if (!content) return;
       return { message: { customType: "cypress-route", content, display: true } };

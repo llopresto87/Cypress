@@ -8,7 +8,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=\"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/route-hook.py\"; if [ -f \"$f\" ]; then python3 \"$f\" || true; else echo \"cypress: hook script missing: $f; continuing without it. Re-run install.sh to restore it.\"; fi"
+            "command": "f=\"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/route-hook.py\"; if [ -f \"$f\" ]; then python3 -S \"$f\" || true; else echo \"cypress: hook script missing: $f; continuing without it. Re-run install.sh to restore it.\"; fi"
           }
         ]
       }
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=\"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/status-hook.py\"; if [ -f \"$f\" ]; then python3 \"$f\" || true; else echo \"cypress: hook script missing: $f; continuing without it. Re-run install.sh to restore it.\"; fi"
+            "command": "f=\"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/status-hook.py\"; if [ -f \"$f\" ]; then python3 -S \"$f\" || true; else echo \"cypress: hook script missing: $f; continuing without it. Re-run install.sh to restore it.\"; fi"
           }
         ]
       }
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/bound-hook.py\""
+            "command": "python3 -S \"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/bound-hook.py\""
           }
         ]
       },
@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/resume-hook.py\""
+            "command": "python3 -S \"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/resume-hook.py\""
           }
         ]
       }

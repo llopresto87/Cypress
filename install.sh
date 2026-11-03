@@ -514,8 +514,8 @@ place_file() {
 place_state() {
     local src="$1" dest="$2" tmp
     exec 3<"$src"
-    ensure_dir "$(dirname "$dest")"
-    tmp="$(mktemp "$(dirname "$dest")/.$(basename "$dest").XXXXXX")"
+    ensure_dir "${dest%/*}"
+    tmp="$(mktemp "${dest%/*}/.${dest##*/}.XXXXXX")"
     cp /dev/stdin "$tmp" <&3
     exec 3<&-
     mv -f "$tmp" "$dest"
@@ -532,7 +532,7 @@ place_state() {
 place_if_missing() {
     local src="$1" dest="$2"
     [[ -e "$dest" || -L "$dest" ]] && return 0
-    ensure_dir "$(dirname "$dest")"
+    ensure_dir "${dest%/*}"
     cp "$src" "$dest"
 }
 
@@ -787,7 +787,7 @@ KERNEL_MODE=""
 HUB_COST_TOLD=0
 place_composed_kernel() {
     local dest="$1" staged filed=0
-    case "$(basename "$dest")" in
+    case "${dest##*/}" in
         CLAUDE.md)
             staged="$(stage kernel/CLAUDE.md)"
             place_state <(printf '%s\n\n' "$COMPOSE_IMPORT"; cat "$SEED_ROOT/core/AGENTS.md") "$staged"
@@ -831,7 +831,7 @@ place_kernel() {
         place_composed_kernel "$dest"
         return
     fi
-    name="$(basename "$dest")"
+    name="${dest##*/}"
     seed_kernel="$SEED_ROOT/core/AGENTS.md"
     case "$name" in
         CLAUDE.md) sibling="$PROJECT_DIR/AGENTS.md" ;;
@@ -1019,7 +1019,7 @@ project_agents() {
     local dest="$1" rendered="${2:-}" home="$PROJECT_DIR/docs/graph/agents" f name
     for f in "$home"/*.md; do
         [[ -f "$f" ]] || continue           # -f follows a symlinked home
-        name="$(basename "$f")"
+        name="${f##*/}"
         case "$name" in _*|index.md|README.md) continue ;; esac
         if [[ -n "$rendered" ]]; then
             place_generated "$rendered/$name" "$dest/$name"
@@ -1036,7 +1036,7 @@ project_skills() {
     local dest="$1" home="$PROJECT_DIR/docs/graph/skills" f name
     for f in "$home"/*.md; do
         [[ -f "$f" ]] || continue
-        name="$(basename "$f" .md)"
+        name="${f##*/}"; name="${name%.md}"
         case "$name" in _*|index|README) continue ;; esac
         place_file "$f" "$dest/$name/SKILL.md"
     done
@@ -1187,12 +1187,12 @@ check_opencode_projections() {
     render_opencode_agents "$rendered" >/dev/null || exit 1
     for f in "$rendered"/*.md "$home/_routes.golden.tsv"; do
         [[ -f "$f" ]] || continue
-        name="$(basename "$f")"
+        name="${f##*/}"
         cmp -s "$f" "$dest/$name" || stale+=("$name")
     done
     for f in "$dest"/*; do
         [[ -e "$f" || -L "$f" ]] || continue
-        name="$(basename "$f")"
+        name="${f##*/}"
         case "$name" in *.bak-*) continue ;; esac
         [[ -f "$rendered/$name" ]] && continue
         [[ "$name" == _routes.golden.tsv && -f "$home/$name" ]] && continue
@@ -1255,7 +1255,7 @@ place_graph_machinery() {
     place_file "$SEED_ROOT/agents/_routes.golden.tsv" "$g/agents/_routes.golden.tsv"
     local d name
     for d in "$SEED_ROOT/skills"/*/; do
-        name="$(basename "$d")"
+        name="${d%/}"; name="${name##*/}"
         place_file "${d%/}/SKILL.md" "$g/skills/$name.md"
     done
     place_tree "$SEED_ROOT/templates" "$g/templates"
@@ -1936,7 +1936,7 @@ PYEOF
 command_protocols() {
     local f name
     for f in "$SEED_ROOT/protocols"/*.md; do
-        name="$(basename "$f" .md)"
+        name="${f##*/}"; name="${name%.md}"
         if awk '/^---$/{c++; next} c==1 && /^command:[[:space:]]*true[[:space:]]*$/{found=1} c>=2{exit} END{exit !found}' "$f"; then
             printf '%s\n' "$name"
         fi
@@ -2194,8 +2194,8 @@ install_github_copilot() {
     ensure_dir "$PROJECT_DIR/.github/agents"
     for f in "$PROJECT_DIR/docs/graph/agents"/*.md; do
         [[ -f "$f" ]] || continue
-        case "$(basename "$f")" in _*|index.md|README.md) continue ;; esac
-        local name tmp; name="$(basename "$f" .md | sed -E 's/^[0-9]+-//')"
+        case "${f##*/}" in _*|index.md|README.md) continue ;; esac
+        local name tmp; name="${f##*/}"; name="${name%.md}"; [[ "$name" =~ ^[0-9]+-(.*)$ ]] && name="${BASH_REMATCH[1]}"
         # Strip the universal frontmatter; rewrite for Copilot. Generated into
         # the run's scratch dir and then PLACED, so a plant edit is backed up
         # and a destination symlink is replaced rather than written through.
@@ -2299,8 +2299,8 @@ PYEOF
     # front of the harness.
     for f in "$PROJECT_DIR/docs/graph/skills"/*.md; do
         [[ -f "$f" ]] || continue
-        case "$(basename "$f")" in _*|index.md|README.md) continue ;; esac
-        local name tmp; name="$(basename "$f" .md)"
+        case "${f##*/}" in _*|index.md|README.md) continue ;; esac
+        local name tmp; name="${f##*/}"; name="${name%.md}"
         tmp="$(stage "copilot-skill-$name.md")"
         run_python - "$f" "$tmp" <<'PYEOF'
 import re, sys
@@ -3021,7 +3021,7 @@ ENVELOPE = {"UserPromptSubmit": {"hook_event_name": "UserPromptSubmit", "prompt"
             "SessionStart": {"hook_event_name": "SessionStart", "source": "startup"}}
 ARGV = {"UserPromptSubmit": ["--prompt=" + PROMPT], "SessionStart": ["--source=startup"]}
 SCRIPT = re.compile(r"\$\{CLAUDE_PROJECT_DIR:-\$PWD\}/([^\"'\s;|&]+\.py)")
-RUNNER = re.compile(r"\bthen\s+([^\s\"';|&]+)\s+\"\$f\"")
+RUNNER = re.compile(r"\bthen\s+([^\s\"';|&]+)(?:\s+-[A-Za-z]+)*\s+\"\$f\"")
 TS_RUNNER = re.compile(r'^const PYTHON = "([^"\s]+)";$', re.M)
 hooks, failed = [], 0
 usable = {}
