@@ -12,7 +12,7 @@ owns:
   - adr-writer.numbering
 requires:
 peers:
-  - skill.grill-planner
+  - protocol.grill
   - agent.architect
 load_when:
   - "write an ADR"

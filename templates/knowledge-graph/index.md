@@ -106,7 +106,7 @@ as a reachable entry point. Agents: `agent.orchestrator`,
 `agent.growth-scout`, `agent.seed-installer`, `agent.tool-smith`.
 Situational skills not routed above: `skill.adopt-existing` (adopting an
 existing codebase), `skill.adr-writer` (recording a decision),
-`skill.spec-author`, `skill.grill-planner`, `skill.brainstorm-socratic`
+`skill.spec-author`, `skill.brainstorm-socratic`
 (user-facing) and `skill.brainstorm-internal` (no user in the loop),
 `skill.holistic-editing`, `skill.library-wiki`,
 `skill.research-and-ingest`, `skill.validate-knowledge`,

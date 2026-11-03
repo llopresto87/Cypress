@@ -13,7 +13,7 @@ peers:
   - protocol.brainstorm
   - skill.brainstorm-socratic
   - skill.adr-writer
-  - skill.grill-planner
+  - protocol.grill
 load_when:
   - "generate options for a decision that is mine to make"
   - "what are the alternatives, nobody to ask"

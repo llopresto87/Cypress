@@ -14,6 +14,7 @@ owns:
   - grill.press
   - grill.plan-approval
   - grill.legal-checkpoint
+  - grill.audit
 requires:
 peers:
   - protocol.specify
@@ -29,6 +30,7 @@ load_when:
   - "scope an increment, slice the work"
   - "an increment shipped, revise the plan, record what happened"
   - "plan is stale, assumption broke, architecture change"
+  - "grill.md drifted from the specs, audit the plan"
 prevents: Increments chosen one at a time with no plan-of-record, so nothing says which contract an increment satisfies and a broken assumption is discovered rather than recorded.
 est_tokens: 4396
 command: true
@@ -152,7 +154,7 @@ What the table cannot hold:
   Each risk row names its probability and its impact.
 - **§12** turns every "we'll figure that out later" into a row with a
   named owner, a current assumption, and a resolution path
-  (`grill-planner` owns the row discipline). **§13** aligns with the
+  (the row discipline is the template's §12 note). **§13** aligns with the
   spec's §9 acceptance criteria. **§14** is one action, the one that
   unblocks the most (usually "enter `test-first` for increment 1").
   **§15** records the pass.
@@ -178,6 +180,23 @@ assumption re-enters the creation phase that owns what moved: phase 3 for
 a dependency (the scout is spawned in revision exactly as in creation),
 phase 4 for a decision. It then presses and exits as below. A red gate twice on one increment reopens this pass
 (`protocol.recover`). Every revision ends green under `grill-lint.py`.
+
+## Audit the plan (`grill.audit`)
+
+When the plan feels out of sync, `grill-lint.py` runs the mechanical half.
+The judgment it cannot make:
+
+- every active spec in `docs/graph/specs/` is referenced from §3 or §9;
+- every ADR in `docs/graph/decisions/` matches a §6 row, and no §6 row that
+  moved a boundary lacks its ADR (the lint checks the reverse);
+- every gate in §10 is a real divergence from
+  `docs/graph/runbooks/verification.md`, not a copy of it;
+- every §11 row has a verification that would detect the risk and an owner
+  who can mitigate it; every §12 row has an owner who can resolve it;
+- a `no external dependency` line in §5 is true (the lint sees only §9).
+
+Each inconsistency becomes a §12 row with an owner, fixed through the
+revision pass.
 
 ## Increment shape (`grill.increment-shape`)
 

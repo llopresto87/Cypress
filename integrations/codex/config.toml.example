@@ -35,10 +35,6 @@ path = "/abs/path/to/project/.codex/skills/research-and-ingest/SKILL.md"
 enabled = true
 
 [[skills.config]]
-path = "/abs/path/to/project/.codex/skills/grill-planner/SKILL.md"
-enabled = true
-
-[[skills.config]]
 path = "/abs/path/to/project/.codex/skills/humanizer/SKILL.md"
 enabled = true
 

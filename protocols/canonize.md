@@ -216,7 +216,8 @@ written for models, so the librarian writes them in compact instruction
 language and gives them no humanizer pass. A runbook or README paragraph it
 writes or refreshes this spawn is prose a person reads, so the brief
 instructs the librarian to apply `docs/graph/skills/humanizer.md` in file
-mode to it. On every prose file the spawn changes, the librarian runs
+mode to it. On every such human-facing file the spawn changes, and on no
+graph node, spec, plan or session record, the librarian runs
 `python3 docs/graph/prose-lint.py --file <path> --against HEAD` before the
 graph-lint pass, so no file gains a strong tell or drops a number, heading,
 code span, or link target.

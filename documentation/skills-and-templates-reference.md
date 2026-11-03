@@ -9,7 +9,7 @@ under `docs/graph/`. The files documented here are the shippable source.
 
 The reference has three parts:
 
-- Part A: the 16 skills in `skills/*/SKILL.md`.
+- Part A: the 15 skills in `skills/*/SKILL.md`.
 - Part B: the artifact templates in `templates/*.template.md`, the
   knowledge-graph contract in `templates/knowledge-graph/`, and the seed
   tools placed beside it.
@@ -48,23 +48,22 @@ skill frontmatter carries:
 - `artifacts`: template files the skill fills or points at.
 - `est_tokens`: the honest body-size estimate the router sums.
 
-## Summary table — all 16 skills
+## Summary table — all 15 skills
 
 | Skill | id | owns | requires | peers | est_tokens |
 |---|---|---|---|---|---|
 | adopt-existing | `skill.adopt-existing` | `adopt-existing.method`, `adopt-existing.refresh`, `adopt-existing.validation` | `protocol.grow` | `protocol.initialize`, `skill.knowledge-graph`, `protocol.from-scratch` | 1780 |
-| adr-writer | `skill.adr-writer` | `adr-writer.method`, `adr-writer.reversibility`, `adr-writer.numbering` | (none) | `skill.grill-planner`, `agent.architect` | 2760 |
-| brainstorm-internal | `skill.brainstorm-internal` | `brainstorm-internal.method` | (none) | `protocol.brainstorm`, `skill.brainstorm-socratic`, `skill.adr-writer`, `skill.grill-planner` | 1110 |
+| adr-writer | `skill.adr-writer` | `adr-writer.method`, `adr-writer.reversibility`, `adr-writer.numbering` | (none) | `protocol.grill`, `agent.architect` | 2760 |
+| brainstorm-internal | `skill.brainstorm-internal` | `brainstorm-internal.method` | (none) | `protocol.brainstorm`, `skill.brainstorm-socratic`, `skill.adr-writer`, `protocol.grill` | 1110 |
 | brainstorm-socratic | `skill.brainstorm-socratic` | `brainstorm-socratic.method` | (none) | `protocol.brainstorm`, `skill.brainstorm-internal`, `skill.humanizer`, `skill.spec-author` | 1100 |
 | context-router | `skill.context-router` | `rule.knowledge`, `context-router.method`, `context-router.declaration`, `context-router.residency`, `context-router.menu`, `context-router.graph-over-harness` | `skill.knowledge-graph` | `skill.validate-knowledge` | 4048 |
-| grill-planner | `skill.grill-planner` | `grill-planner.method`, `grill-planner.audit` | `protocol.grill` | `skill.spec-author` | 1430 |
 | holistic-editing | `skill.holistic-editing` | `holistic-editing.method`, `holistic-editing.forbidden-moves`, `holistic-editing.class-sweep` | (none) | `skill.context-router`, `protocol.test-first` | 2720 |
 | humanizer | `skill.humanizer` | `humanizer.method`, `humanizer.document-contract`, `humanizer.progressive-execution`, `humanizer.fact-preservation`, `humanizer.modes`, `humanizer.scope` | `method.prose-posture` | `skill.holistic-editing`, `skill.adr-writer`, `skill.spec-author`, `agent.docs-librarian`, `protocol.deliver` | 8355 |
 | knowledge-graph | `skill.knowledge-graph` | `knowledge-graph.method`, `knowledge-graph.node-contract`, `knowledge-graph.linter`, `knowledge-graph.branch-shape` | (none) | `skill.context-router`, `skill.library-wiki`, `skill.validate-knowledge` | 2925 |
 | library-wiki | `skill.library-wiki` | `library-wiki.method`, `library-wiki.version-pinning` | (none) | `skill.research-and-ingest`, `protocol.ingest-library` | 1310 |
 | research-and-ingest | `skill.research-and-ingest` | `research-and-ingest.method`, `research-and-ingest.source-ranking` | (none) | `skill.library-wiki`, `agent.research-scout` | 1540 |
 | source-index | `skill.source-index` | `source-index.usage`, `source-index.limit`, `source-index.report` | (none) | `protocol.verify`, `protocol.canonize`, `protocol.grow`, `protocol.graft`, `skill.adopt-existing` | 1900 |
-| spec-author | `skill.spec-author` | `spec-author.method`, `spec-author.sign-off` | `protocol.specify` | `skill.test-first`, `skill.grill-planner` | 1640 |
+| spec-author | `skill.spec-author` | `spec-author.method`, `spec-author.sign-off` | `protocol.specify` | `skill.test-first`, `protocol.grill` | 1640 |
 | test-first | `skill.test-first` | `test-first.shaping`, `test-first.level-selection`, `test-first.proportionate-checks`, `test-first.no-lint-only-tests` | (none) | `protocol.test-first`, `skill.spec-author` | 1719 |
 | toolcraft | `skill.toolcraft` | `rule.toolcraft`, `toolcraft.durability-criteria` | (none) | `agent.tool-smith`, `protocol.canonize`, `protocol.grill`, `protocol.harvest`, `method.bounded-execution` | 1490 |
 | validate-knowledge | `skill.validate-knowledge` | `validate-knowledge.method`, `validate-knowledge.adversarial-questions` | (none) | `skill.knowledge-graph`, `skill.context-router` | 1290 |
@@ -78,7 +77,7 @@ Roles at a glance:
 | Growing a project | adopt-existing (greenfield entry is `protocol.from-scratch`) |
 | Deciding without a user | brainstorm-internal |
 | Keeping a repeated operation | toolcraft (the rule; `agent.tool-smith` builds) |
-| Planning and specs | brainstorm-socratic, grill-planner, spec-author |
+| Planning and specs | brainstorm-socratic, spec-author |
 | Writing and testing code | holistic-editing, test-first |
 | Prose people read | humanizer |
 | Recording decisions | adr-writer |
@@ -167,7 +166,7 @@ Source: `skills/adr-writer/SKILL.md`
 
 **id:** `skill.adr-writer` · **owns:** `adr-writer.method`,
 `adr-writer.reversibility`, `adr-writer.numbering` · **requires:** (none) ·
-**peers:** `skill.grill-planner`, `agent.architect`
+**peers:** `protocol.grill`, `agent.architect`
 
 **load_when:** write an ADR · record an architecture decision · why did we
 choose this dependency or design · supersede an existing decision record ·
@@ -222,7 +221,7 @@ Source: `skills/brainstorm-internal/SKILL.md`
 **id:** `skill.brainstorm-internal` · **owns:**
 `brainstorm-internal.method` · **requires:** (none) · **peers:**
 `protocol.brainstorm`, `skill.brainstorm-socratic`, `skill.adr-writer`,
-`skill.grill-planner`
+`protocol.grill`
 
 **load_when:** generate options for a decision that is mine to make · what are
 the alternatives, nobody to ask · fill the rejected alternatives of an adr ·
@@ -371,62 +370,7 @@ a graph.
 
 ---
 
-## A.6 grill-planner
-Source: `skills/grill-planner/SKILL.md`
-
-**id:** `skill.grill-planner` · **owns:** `grill-planner.method`,
-`grill-planner.audit` · **requires:** `protocol.grill` · **peers:**
-`skill.spec-author`
-
-**load_when:** author or revise a section of grill.md · write the
-plan-of-record well, plan authoring discipline · grill.md drifted from the
-specs, audit the plan.
-
-**What it does.** The authoring discipline for `docs/graph/plans/grill.md`:
-what a worker filling any section carries, and the audit that says whether
-the plan is still consistent. The pass itself — which section, which owner,
-in what spawn order — is the protocol's (`grill.flow`, `grill.revise`); this
-skill does not restate it, because a worker sequencing from a copy is how
-spawns come out of order.
-
-**Principles.**
-
-- **Append, don't rewrite.** Sections 1–14 evolve; obsolete claims are
-  struck through (or moved to history) with the new claim dated; a
-  retraction follows the one rule in `holistic-editing`. §15 is the
-  session-by-session changelog.
-- **Section numbers are stable**: they stay as the template sets them,
-  because tooling indexes by number.
-- **Specs upstream, plan downstream.** Behavior in the plan but in no spec is
-  a spec-shaped hole: a §12 row and a back-written spec. The protocol presses
-  the alignment (`grill.press`); `grill-lint.py` runs the mechanical half.
-- **Increments are small and verifiable**: one RED-GREEN-REFACTOR cycle.
-- **Structure earns its place at plan time**: an increment that adds a
-  module/layer/interface names the single responsibility and the present
-  variation that justifies any abstraction.
-- **Cite, and mark what you haven't verified** with `[verify]` or
-  "not recorded"; mark human-input values do-not-guess in §12.
-
-**Workflow — the audit.** `python3 docs/graph/grill-lint.py` first (shape,
-§1 citations, §9 completeness and dependency order, §5 derived from §9, §14
-one action, the plan→spec alignment), then the judgment the lint cannot
-make: every active spec referenced from §3/§9; every ADR matches a §6 row;
-every §10 gate is a genuine divergence from the runbook; every §11 row has a
-verification that would detect the risk; a §5 "no external dependency" line
-is true. Inconsistencies become §12 rows; the fix runs through the
-protocol's revision pass.
-
-**Section shapes.** §14 holds one next step; §6 rows carry an evidence
-column; §9 rows each name an increment with files, tests and a gate; §11
-rows give probability and impact ("medium / high" is acceptable,
-"manageable" is not).
-
-**When to use.** Whenever a brief hands you a section of grill.md, or the
-plan needs a consistency pass.
-
----
-
-## A.7 holistic-editing
+## A.6 holistic-editing
 Source: `skills/holistic-editing/SKILL.md`
 
 **id:** `skill.holistic-editing` · **owns:** `holistic-editing.method`,
@@ -494,7 +438,7 @@ implementer, reviewer, and every specialist touch existing files.
 
 ---
 
-## A.8 humanizer
+## A.7 humanizer
 Source: `skills/humanizer/SKILL.md`
 
 **id:** `skill.humanizer` · **owns:** `humanizer.method`,
@@ -598,7 +542,7 @@ is Luigi Lopresto); upstream notices are kept at
 
 ---
 
-## A.9 knowledge-graph
+## A.8 knowledge-graph
 Source: `skills/knowledge-graph/SKILL.md`
 
 **id:** `skill.knowledge-graph` · **owns:** `knowledge-graph.method`,
@@ -678,7 +622,7 @@ too large, or when a task should have matched a node's triggers and didn't.
 
 ---
 
-## A.10 library-wiki
+## A.9 library-wiki
 Source: `skills/library-wiki/SKILL.md`
 
 **id:** `skill.library-wiki` · **owns:** `library-wiki.method`,
@@ -735,7 +679,7 @@ the close-out of the pass that drafted it.
 
 ---
 
-## A.11 research-and-ingest
+## A.10 research-and-ingest
 Source: `skills/research-and-ingest/SKILL.md`
 
 **id:** `skill.research-and-ingest` · **owns:** `research-and-ingest.method`,
@@ -785,7 +729,7 @@ gathering current evidence for an ADR or spec.
 
 ---
 
-## A.12 source-index
+## A.11 source-index
 Source: `skills/source-index/SKILL.md`
 
 **id:** `skill.source-index` · **owns:** `source-index.usage`,
@@ -835,12 +779,12 @@ Guide: [source-index.md](source-index.md).
 
 ---
 
-## A.13 spec-author
+## A.12 spec-author
 Source: `skills/spec-author/SKILL.md`
 
 **id:** `skill.spec-author` · **owns:** `spec-author.method`,
 `spec-author.sign-off` · **requires:** `protocol.specify` · **peers:**
-`skill.test-first`, `skill.grill-planner`
+`skill.test-first`, `protocol.grill`
 
 **load_when:** write a spec · define functional contracts · given when then
 contract slugs · spec sign-off before code · code and spec disagree.
@@ -880,7 +824,7 @@ satisfy.
 
 ---
 
-## A.14 test-first
+## A.13 test-first
 Source: `skills/test-first/SKILL.md`
 
 **id:** `skill.test-first` · **owns:** `test-first.shaping`,
@@ -935,7 +879,7 @@ suite has grown enough to warrant a consolidation pass.
 
 ---
 
-## A.15 toolcraft
+## A.14 toolcraft
 Source: `skills/toolcraft/SKILL.md`
 
 **id:** `skill.toolcraft` · **owns:** `rule.toolcraft`,
@@ -969,7 +913,7 @@ runs anything, not only one producing a tool.
 
 ---
 
-## A.16 validate-knowledge
+## A.15 validate-knowledge
 Source: `skills/validate-knowledge/SKILL.md`
 
 **id:** `skill.validate-knowledge` · **owns:** `validate-knowledge.method`,
@@ -1032,7 +976,7 @@ Templates are Tier-3 artifacts; a machinery node points at them via
 | `adr.template.md` | `docs/graph/decisions/adr-NNNN-<slug>.md` | architect, orchestrator | every non-obvious technical decision (one ADR per decision) |
 | `agent.template.md` | `agents/<name>.md` (host tool's agent dir) | orchestrator | roster has a gap; author a new specialist before delegating |
 | `data-contract.template.md` | `docs/graph/data/data-contracts.md` (one section per dataset) | data-ml | adding/changing a dataset other code depends on |
-| `grill.template.md` | `docs/graph/plans/grill.md` | orchestrator, grill-planner | once per project; updated continuously |
+| `grill.template.md` | `docs/graph/plans/grill.md` | orchestrator (protocol.grill) | once per project; updated continuously |
 | `library-page.template.md` | `docs/graph/libraries/<name>.md` | docs-librarian, research-scout | every new dependency or version refresh |
 | `prompt-contract.template.md` | `docs/graph/prompts/prompt-contracts/PROMPT-NNNN-<slug>.md` | data-ml, security | every active LLM/VLM prompt |
 | `skill.template.md` | `docs/graph/skills/<name>.md` (projected to `.claude/skills/<name>/SKILL.md` and kin) | orchestrator (commission) or harvest | a repeatable project-specific procedure recurs |

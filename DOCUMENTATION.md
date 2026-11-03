@@ -765,7 +765,7 @@ the latitude goes to the question file, and only the owner can widen it.
 
 ## 8. Skills, templates, and briefs
 
-### 8.1 The 16 skills
+### 8.1 The 15 skills
 
 Skills are composable procedures, one node each in `skills/`:
 
@@ -773,7 +773,7 @@ Skills are composable procedures, one node each in `skills/`:
 - Editing and prose: `holistic-editing`, `humanizer`
 - Wiki/research: `library-wiki`, `research-and-ingest`
 - Authoring: `spec-author`, `test-first`, `adr-writer`
-- Planning/convergence: `grill-planner`, `brainstorm-socratic` (user-facing),
+- Planning/convergence: `brainstorm-socratic` (user-facing),
   `brainstorm-internal` (no user in the loop)
 - Tooling doctrine: `toolcraft` (the rule; `agent.tool-smith` builds)
 - Bootstrap/adoption: `adopt-existing` (greenfield entry is `protocol.from-scratch`)

@@ -1,6 +1,6 @@
 <!--
 Template: grill.template.md
-Authored by: orchestrator, grill-planner
+Authored by: orchestrator (protocol.grill)
 Lives at: docs/graph/plans/grill.md
 Used: once per project; updated continuously
 Filled by copying this template into the target path and replacing
@@ -182,7 +182,7 @@ this table is the open engineering backlog, its only home. Cite the
 pinning test in "Pinned by"; mark rows needing human input
 **do-not-guess** and leave them for sign-off; resolve a row in place
 (strike-through, dated, with evidence), never by deleting it. Depth:
-the grill-planner skill.
+`protocol.grill`.
 
 ## 13. Done Criteria
 Objective conditions that prove the work is complete. These align
