@@ -32,16 +32,14 @@ established. Continue the earlier worker only when:
 1. it has finished, the follow-up is a small change that needs the context it
    built (the files it read, the reasoning behind its edits), so that a fresh
    brief would have to rebuild most of that context, and its last call is
-   within the host's prompt-cache lifetime (5 minutes on both hosts measured);
+   within the host's prompt-cache lifetime (commonly 5 minutes);
    or
 2. a usage or rate limit stopped it mid-turn (below).
 
 New work is never case 1, however close to the old: a next step in the same
 lane, a fix-up after a review finding, a RED amendment after a ruling, and a
 ruling pass each go to a fresh worker whose brief names the paths (the finding,
-the diff, the spec, the question file). In both plants measured, follow-ups to
-workers that had already handed back carried over 90% of follow-up cost, and
-every one of those messages was already a full brief.
+the diff, the spec, the question file).
 
 The cost is the reason. A continued worker replays its whole accumulated
 context on every call, and once any prompt cache the host keeps for it has

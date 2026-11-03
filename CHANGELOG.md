@@ -136,6 +136,17 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   verdict, the blockers and the findings to act on, and repeats a gate only
   when it failed. `next_route_evidence` is gone: 99% of its values were
   "not run", and the caller routes the next hop itself.
+- **Every session loads less.** An audit of each recurring instruction
+  surface against both plants' trajectories cut what no agent acted on or what
+  a tool now enforces. The kernel is 7,017 bytes (was 8,062): the role
+  paragraph, the manual block-embedding instruction `brief.py` replaced and a
+  map the FIRST MOVE already gives are gone; §4, the fresh-worker and
+  no-orchestrator clauses and every lint-pinned anchor stay. The Prime Agent
+  overlay is 3,270 bytes (was 5,182): its restatement of the kernel, a
+  close-out section `skill.toolcraft` and `method.stewardship-posture` own,
+  and the unused `goal`/heartbeat lines are gone. Every-session load is now
+  24,175 bytes on Claude Code (8.2.0: 25,791) and 18,372 on Prime Agent
+  (21,799).
 - **`grill-planner` folds into `protocol.grill`.** Every rule the skill
   stated already had a home: append-only (kernel §3.3), stable section
   numbers and `[verify]` (grill-lint), increment shape and the press

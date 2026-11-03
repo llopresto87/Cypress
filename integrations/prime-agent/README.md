@@ -221,10 +221,8 @@ orchestrator spawns — the runtime limit is only the outer ceiling
 
 An orchestrator waits on its children, and a child waits on builds, for more
 than five minutes at a time. With the provider's default five-minute cache,
-the first call after such a wait rewrites the agent's whole context. In one
-plant's trajectories, calls after a gap of more than five minutes were 3.5% of
-all calls and about 40% of the plant's spend (cache writes were 49% of it). The
-runtime reads `PI_CACHE_RETENTION` from the environment of the daemon; set to
+the first call after such a wait rewrites the agent's whole context, which can
+dominate a long run's cost. The runtime reads `PI_CACHE_RETENTION` from the environment of the daemon; set to
 `long` it should request the provider's one-hour cache, whose writes cost more
 each but stop the rewrites. The value is taken from the upstream library this
 runtime is ported from and is not verified on this build: confirm it by checking

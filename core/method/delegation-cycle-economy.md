@@ -34,10 +34,7 @@ diff), so the worker spends its tokens on the work, not on rediscovering
 context. From a spec the brief names only the slugs the step touches and
 copies no spec text: the worker reads them with `python3
 docs/graph/spec-lint.py --slice --refs SLUG...` (bootstrap step 2), which
-prints the block, its §10 rows and the §6/§7 headings it cites. Workers
-that grep and page through the whole spec instead spent about 3,200 turns
-on it in one plant and dumped whole specs in another (trajectory audit,
-2026-11-02). The orchestrator re-slices an
+prints the block, its §10 rows and the §6/§7 headings it cites. The orchestrator re-slices an
 oversized step *before* spawning, per `docs/graph/plans/grill.md` §9
 (increment shape).
 

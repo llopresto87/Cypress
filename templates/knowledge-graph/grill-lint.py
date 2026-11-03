@@ -40,8 +40,7 @@ gated. This makes the shape a gate:
     plan never ran is otherwise invisible (`grill.press`); a struck-through
     Reversibility cell is superseded;
   - a §11 risk table carries at least one press verdict, in a row or a
-    press note in §11: the top risk goes to the press, and one plant's
-    seven T3 passes never pressed it;
+    press note in §11: the top risk goes to the press;
   - §14 is one action.
 
 A fenced code block (``` or ~~~) is an example, not the plan: a heading inside

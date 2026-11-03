@@ -46,9 +46,7 @@ and `route_evidence` feed the deliver-time attribution assertion,
 `protocol.deliver`). Where the spawn prompt stays in the caller's context,
 compose with `--out docs/graph/plans/<unit of work>/briefs/<spawn_id>.md` and
 send the three-line pointer it prints as the prompt, so the brief is never
-in the caller's context at all and stays on disk as the spawn's record. Hand-copied blocks drifted: in one plant 65% of briefs
-carried the graph block and 16% the companion block, and workers opened the
-handback template 71 times. Write that brief's task line in the domain's own
+in the caller's context at all and stays on disk as the spawn's record. Write that brief's task line in the domain's own
 words: it is the string the worker hands to `--plan`, so the terms it
 names are what compose the worker's expertise closure, and a task line
 vaguer than the work loads a graph vaguer than the work. Parameterized

@@ -1,16 +1,7 @@
-<!-- CYPRESS seed — Prime Agent native-execution overlay.
-     Installed to .prime/agent/APPEND_SYSTEM.md by `install.sh prime-agent`.
-     Prime Agent appends this file to every system prompt. -->
+# CYPRESS on Prime Agent
 
-# Running CYPRESS natively on Prime Agent
-
-You are executing the CYPRESS seed on Prime Agent. Obey the kernel
-(`AGENTS.md`): route first through its FIRST MOVE, classify the tier, then
-follow the protocol. The tier table, the eight rules, the specs and the
-roster, skills and commands all come from the shared `docs/graph/` nodes; this
-overlay overrides no kernel rule, spec or gate. It only maps the kernel's
-discipline onto your native RLM primitives: spawned children, the IPython
-kernel and agent messaging.
+The kernel (`AGENTS.md`) and `docs/graph/` govern; this overlay only maps them
+onto RLM children, the IPython kernel and agent messaging.
 
 ## Delegation — recursive subagents, not a Task tool
 
@@ -52,36 +43,16 @@ The verify discipline assumes you can run the gate. Run it directly in the
 IPython kernel (`bash tests/run.sh`, the linters, the test suite) and keep the
 evidence in variables. That is your native tool.
 
-## Close-out — three destinations, routed by what the artifact is
+## Close-out
 
-Persist every reusable win before the session ends, in the one home below that
-fits it; the three do not overlap.
-
-- **Project knowledge** (structure, decisions, specs) → `docs/graph/`, via
-  canonize.
-- **A durable tool or a project skill** — the §3.8 toolcraft artifact,
-  including any Agent-Skills `SKILL.md` you author for this plant → it belongs
-  **in the plant**. Per `skill.toolcraft`, a project skill's home is the
-  graph node `docs/graph/skills/<name>.md`, and you project it into the harness
-  dir this plant actually uses: `.prime/agent/skills/<name>/SKILL.md` (the dir
-  this plant's `settings.json` already discovers), committed to the plant's git
-  so the team and CI share it. When skill-creator offers its global default
-  `~/.prime/agent/skills/`, redirect it to this path: the global directory and
-  the continual harness are private to you, uncommitted and invisible to the
-  team.
-- **A cross-session operating lesson** (an owner rule, a corrected assumption,
-  where paused work stands) → the plant's **session record** in
-  `docs/graph/plans/sessions/` (`method.stewardship-posture`), written when you
-  learn it; canonize files it into the graph. The continual harness
-  (`rlm.harness`) is private to you and keeps at most a one-line pointer to
-  that directory; the lesson lives in the record.
+Project knowledge goes to `docs/graph/` through canonize. A project skill's home
+is `docs/graph/skills/<name>.md`, projected to `.prime/agent/skills/<name>/SKILL.md`
+and committed (`skill.toolcraft`); redirect skill-creator's global default there.
+A cross-session lesson goes to the session record (`method.stewardship-posture`);
+`rlm.harness` keeps at most a pointer to it.
 
 ## Long-running work
 
-For multi-phase or slow work, drive a nonblocking control loop: start children
-or gates, record their handles/output locations, end the turn, and read results
-when replies arrive. Use `goal` to hold the objective across turns and
-`rlm_heartbeat` when the user asks for scheduled progress; a `goal` or
-heartbeat exits when every open step is the user's: list those steps once,
-numbered, then stop (`docs/graph/protocols/deliver.md`, "When every open step
-is the owner's"). Give the user concise progress updates at milestones.
+Start children or gates, record their handles, end the turn, read the replies.
+When every open step is the owner's, list them once, numbered, and stop
+(`protocol.deliver`).
