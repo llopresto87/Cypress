@@ -1121,7 +1121,15 @@ git -C "$p" init -q
 git -C "$p" add -A
 git -C "$p" -c user.name=t -c user.email=t@example.invalid commit -qm plant
 mkdir -p "$c"
-tar -C "$ROOT" --exclude=./.git --exclude=__pycache__ --exclude=./.seed-worktrees -cf - . | tar -C "$c" -xf -
+# In a Git checkout the seed copy is the files Git lists (tracked, or untracked
+# and not ignored), so a working copy's ignored clutter is not copied.
+if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  (cd "$ROOT" && git ls-files -co --exclude-standard -z \
+    | while IFS= read -r -d '' f; do if [[ -e "$f" || -L "$f" ]]; then printf '%s\0' "$f"; fi; done \
+    | tar --null -T - -cf -) | tar -C "$c" -xf -
+else
+  tar -C "$ROOT" --exclude=./.git --exclude=__pycache__ --exclude=./.seed-worktrees -cf - . | tar -C "$c" -xf -
+fi
 python3 - "$p" "$ROOT" "$c" <<'PY' || fail "GROWTH_AUDIT_PRINTS_THE_BUILD_REPORT: the case named above failed"
 import json, shutil, subprocess, sys
 from pathlib import Path

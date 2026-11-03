@@ -52,13 +52,17 @@ pages() {
         -not -name '*.bak-*' | wc -l | tr -d ' '
 }
 seed_pages() { find "$ROOT/legal-corpus" -type f -not -name '*.bak-*' | wc -l | tr -d ' '; }
+# Shared first installs: the dispatcher builds each base once (BASES below);
+# a case copies one. base <dst> <hosts> [flags] copies; base_log names the
+# base's own first-install output.
+source "$ROOT/tests/helpers/plant.sh"
+base() { local d="$1"; shift; plant_base "$@" || fail "base install $* failed"; plant_copy "$d"; }
+base_log() { plant_base "$@" || fail "base install $* failed"; printf '%s.log' "$PLANT_BASE"; }
 
 
 case_s1_s2_s5() {
 local WORK; WORK="$(mktemp -d)"
-T="$WORK/seq"; mkdir -p "$T"
-"$ROOT/install.sh" claude-code --legal-corpus yes --legal-jurisdiction it \
-    --project-dir "$T" >/dev/null 2>&1 || fail "first install failed"
+T="$WORK/seq"; base "$T" claude-code --legal-corpus yes --legal-jurisdiction it
 S="$T/.cypress/seed.json"
 [[ "$(field "$S" legal_corpus)" == "yes" ]] || fail "first install did not record the corpus decision"
 
@@ -75,8 +79,7 @@ grep -q '"tool": "claude-code"' "$S" || fail "S5: claude-code projection missing
 grep -q '"tool": "prime-agent"' "$S" || fail "S5: prime-agent projection missing"
 
 # Order independence: the reverse sequence must reach the same adapter set.
-R="$WORK/rev"; mkdir -p "$R"
-"$ROOT/install.sh" prime-agent --project-dir "$R" >/dev/null 2>&1
+R="$WORK/rev"; base "$R" prime-agent
 "$ROOT/install.sh" claude-code --project-dir "$R" >/dev/null 2>&1
 for a in claude-code prime-agent; do
     grep -q "\"tool\": \"$a\"" "$R/.cypress/seed.json" \
@@ -88,8 +91,7 @@ rm -rf "$WORK"
 caseALL_NAMES_SKIPPED_FROZEN_HOSTS() {
 local WORK; WORK="$(mktemp -d)"
 # S8 (SPEC-0001, ADR-0009); the WARNING is FROZEN_PROJECTION_LEFT_STALE.
-P="$WORK/frozen"; mkdir -p "$P"
-"$ROOT/install.sh" codex --project-dir "$P" >/dev/null 2>&1 || fail "codex install failed"
+P="$WORK/frozen"; base "$P" codex
 [[ "$(field "$P/.cypress/seed.json" tools)" == *codex* ]] \
     || fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: setup — the stamp does not record codex"
 [[ -d "$P/.codex" ]] || fail "ALL_NAMES_SKIPPED_FROZEN_HOSTS: setup — no .codex/ to compare"
@@ -117,9 +119,7 @@ rm -rf "$WORK"
 case_s6() {
 local WORK; WORK="$(mktemp -d)"
 # S6: the record never contradicts the disk.
-L="$WORK/legal"; mkdir -p "$L"
-"$ROOT/install.sh" claude-code --legal-corpus no --project-dir "$L" >/dev/null 2>&1 \
-    || fail "S6: recording 'no' on a plant with no corpus must be allowed"
+L="$WORK/legal"; base "$L" claude-code --legal-corpus no
 [[ ! -d "$L/docs/graph/legal/corpus" ]] || fail "S6: 'no' was recorded but a corpus was placed"
 [[ "$(field "$L/.cypress/seed.json" legal_corpus)" == "no" ]] || fail "S6: the stamp did not record 'no'"
 
@@ -168,9 +168,7 @@ local REC="docs/graph/plans/sessions/2026-01-01-example.md"
 local HFORM="docs/graph/plans/_harvest-candidates.template.md"
 local SEED_HFORM="$ROOT/templates/docs/plans/_harvest-candidates.template.md"
 local HREC="docs/graph/plans/harvest-candidates.md"
-P="$WORK/plan-records"; mkdir -p "$P"
-"$ROOT/install.sh" claude-code --project-dir "$P" >/dev/null 2>&1 \
-    || fail "baseline install failed"
+P="$WORK/plan-records"; base "$P" claude-code
 [[ -f "$P/$FORM" ]] || fail "S9: a fresh install holds no $FORM"
 cmp -s "$SEED_FORM" "$P/$FORM" \
     || fail "S9: the placed $FORM is not byte-identical to the seed's form"
@@ -235,9 +233,7 @@ rm -rf "$WORK"
 case_corpus_surplus() {
 local WORK; WORK="$(mktemp -d)"
 # A plant ingest beside the whole corpus is named, kept, and not refused.
-SUR="$WORK/surplus"; mkdir -p "$SUR"
-"$ROOT/install.sh" claude-code --project-dir "$SUR" --copy --legal-corpus yes >/dev/null 2>&1 \
-    || fail "S6 surplus: the baseline install with --legal-corpus yes failed"
+SUR="$WORK/surplus"; base "$SUR" claude-code --legal-corpus yes   # copy mode is the default
 printf -- '---\ntitle: a locally ingested statute\n---\nbody\n' \
     > "$SUR/docs/graph/legal/corpus/national/zz-plant-ingest.md"
 "$ROOT/install.sh" codex --project-dir "$SUR" --copy >"$WORK/surplus.log" 2>&1 \
@@ -276,13 +272,12 @@ grep -q "records" <<<"$out" \
     || fail "S6/drift: restoring pages a plant may have deleted on purpose must be ANNOUNCED"
 
 # ...and the other two decisions are untouched by that inheritance.
-N="$WORK/drift-no"; mkdir -p "$N"
-"$ROOT/install.sh" claude-code --legal-corpus no --project-dir "$N" >/dev/null 2>&1
+N="$WORK/drift-no"; base "$N" claude-code --legal-corpus no
 "$ROOT/install.sh" opencode --project-dir "$N" >/dev/null 2>&1
 [[ "$(pages "$N")" -eq 0 ]] || fail "S6/drift: a plant recorded 'no' must not acquire a corpus"
 # S4: silence on a fresh plant is undecided, for the corpus and the jurisdiction.
-U="$WORK/drift-undecided"; mkdir -p "$U"
-out="$("$ROOT/install.sh" claude-code --project-dir "$U" 2>&1)"
+U="$WORK/drift-undecided"; base "$U" claude-code
+out="$(cat "$(base_log claude-code)")"   # the base's own first-install output
 [[ "$(field "$U/.cypress/seed.json" legal_corpus)" == "undecided" ]] \
     || fail "S4: an unasked corpus decision must read 'undecided', never 'no'"
 grep -q "NEXT STEP — legal corpus undecided" <<<"$out" \
@@ -305,9 +300,7 @@ local WORK; WORK="$(mktemp -d)"
 # byte-identical and the file listing unchanged (so no seed.json.bak-*).
 # truncated and not-utf8 are S12: they take this refusal, not the
 # STAMP_NOT_AN_OBJECT backup.
-S="$WORK/unreadable"; mkdir -p "$S"
-"$ROOT/install.sh" claude-code --legal-corpus yes --legal-jurisdiction it \
-    --project-dir "$S" >/dev/null 2>&1 || fail "S7 setup install failed"
+S="$WORK/unreadable"; base "$S" claude-code --legal-corpus yes --legal-jurisdiction it
 
 corrupt_zero()      { : > "$1"; }
 corrupt_garbage()   { printf 'this is not json at all\n' > "$1"; }
@@ -356,9 +349,7 @@ case_engine_upgrade() {
 local WORK; WORK="$(mktemp -d)"
 # S10: a re-install never overwrites a placed engine (plant-owned, ADR-0014).
 local KG="$ROOT/templates/knowledge-graph" G="docs/graph" OLD="$WORK/grill-lint.older.py"
-P="$WORK/engines"; mkdir -p "$P"
-"$ROOT/install.sh" claude-code --project-dir "$P" >/dev/null 2>&1 \
-    || fail "S10: the fresh claude-code install failed"
+P="$WORK/engines"; base "$P" claude-code
 grep -v waves "$KG/grill-lint.py" >"$OLD" || true
 cmp -s "$OLD" "$KG/grill-lint.py" && fail "S10: setup — the older body equals the seed's grill-lint.py"
 cp "$OLD" "$P/$G/grill-lint.py"
@@ -378,9 +369,8 @@ local WORK; WORK="$(mktemp -d)"
 # original order, after the installer's own keys. `zz_note` sits before the
 # installer's keys and `aa_annotation` after, so neither sorting nor the
 # fixture's own position passes by accident.
-local T="$WORK/stamp-keys"; mkdir -p "$T"
-"$ROOT/install.sh" claude-code --legal-corpus no --project-dir "$T" >/dev/null 2>&1 \
-    || fail "S11 setup install failed"
+# codex is outside `all`, so the tools list only keeps it if adapters accumulate.
+local T="$WORK/stamp-keys"; base "$T" claude-code codex --legal-corpus no
 python3 - "$T/.cypress/seed.json" <<'PY' || fail "S11: could not write the stamp fixture"
 import json, sys
 p = sys.argv[1]
@@ -410,14 +400,13 @@ if d["aa_annotation"] != {"reviewed_by": "owner", "rounds": [1, 2], "ok": True}:
     sys.exit(f"S11: aa_annotation changed: {d['aa_annotation']!r}")
 if d.get("legal_corpus") != "no":
     sys.exit(f"S11: the owner's legal_corpus decision did not survive: {d.get('legal_corpus')!r}")
-if d.get("tools", "").split()[:1] != ["claude-code"]:
-    sys.exit(f"S11: the installed adapters did not accumulate: {d.get('tools')!r}")
+if d.get("tools", "").split() != ["claude-code", "codex", "opencode", "prime-agent"]:
+    sys.exit(f"S11: the installed adapters did not accumulate: {d.get('tools')!r}, "
+             "expected 'claude-code codex opencode prime-agent'")
 PY
 # STAMP_NOT_AN_OBJECT: a JSON array stamp is moved to a .bak-<ts> sibling, a
 # stamp is written from the installer's own keys, one warning names the backup.
-local N="$WORK/stamp-array"; mkdir -p "$N"
-"$ROOT/install.sh" claude-code --project-dir "$N" >/dev/null 2>&1 \
-    || fail "S11 STAMP_NOT_AN_OBJECT setup install failed"
+local N="$WORK/stamp-array"; base "$N" claude-code
 printf '["cypress", {"zz_note": "kept by the plant owner"}]\n' > "$N/.cypress/seed.json"
 local out rc=0
 out="$("$ROOT/install.sh" all --project-dir "$N" 2>&1)" || rc=$?
@@ -439,9 +428,7 @@ local WORK; WORK="$(mktemp -d)"
 # recorded code, and the national-layer report, the stamp writer and the
 # closing NEXT STEP banner all read that one value.
 local J="$WORK/juris" out
-mkdir -p "$J"
-"$ROOT/install.sh" claude-code --legal-corpus yes --legal-jurisdiction it \
-    --project-dir "$J" >/dev/null 2>&1 || fail "JURISDICTION_RESOLVED_ONCE: setup install failed"
+base "$J" claude-code --legal-corpus yes --legal-jurisdiction it
 [[ "$(field "$J/.cypress/seed.json" legal_jurisdiction)" == "it" ]] \
     || fail "JURISDICTION_RESOLVED_ONCE: setup — the stamp does not record 'it'"
 # Silence: the recorded code is the resolved one.
@@ -467,9 +454,7 @@ grep -qF "'fr'" <<<"$out" \
 [[ "$(field "$J/.cypress/seed.json" legal_jurisdiction)" == "fr" ]] \
     || fail "JURISDICTION_RESOLVED_ONCE: the stamp did not record the flag's code 'fr'"
 # No recorded code and no flag: the undecided banner still prints.
-local U="$WORK/undecided"; mkdir -p "$U"
-"$ROOT/install.sh" claude-code --legal-corpus yes --project-dir "$U" >/dev/null 2>&1 \
-    || fail "JURISDICTION_RESOLVED_ONCE: the undecided setup install failed"
+local U="$WORK/undecided"; base "$U" claude-code --legal-corpus yes
 out="$("$ROOT/install.sh" claude-code --project-dir "$U" 2>&1)" \
     || fail "JURISDICTION_RESOLVED_ONCE: the undecided re-install failed: $(tail -3 <<<"$out")"
 grep -qF 'NEXT STEP — national jurisdiction undecided' <<<"$out" \
@@ -481,20 +466,34 @@ rm -rf "$WORK"
 }
 
 # --- one-case subcommand, run by the parallel dispatcher ---------------------
+# Run alone (no dispatcher), a case gets a cache of its own, removed after it.
+if [ "${1:-}" = "__case" ] && [ -z "${PLANT_CACHE:-}" ]; then
+  PLANT_CACHE="$(mktemp -d)"; export PLANT_CACHE
+  rc=0; bash "$SELF" __case "$2" || rc=$?; rm -rf "$PLANT_CACHE"; exit "$rc"
+fi
 if [ "${1:-}" = "__case" ]; then
   "$2"
   exit $?
 fi
 
 # Each case owns its mktemp target, so cases run concurrently under the gate's
-# shared budget (tests/gate_pool.py).
+# shared budget (tests/gate_pool.py). The bases are built first, once each, in
+# one shared cache the cases only copy from.
+PLANT_CACHE="$(mktemp -d)"; export PLANT_CACHE
 SCN="$(mktemp)"
+trap 'rm -rf "$PLANT_CACHE" "$SCN"' EXIT
+for b in "claude-code" "claude-code --legal-corpus yes --legal-jurisdiction it" \
+    "claude-code --legal-corpus no" "claude-code codex --legal-corpus no" \
+    "claude-code --legal-corpus yes" prime-agent codex; do
+  printf 'plant-state base %s\t%s\n' "$b" "source \"$ROOT/tests/helpers/plant.sh\" && plant_base $b" >> "$SCN"
+done
+python3 "$ROOT/tests/gate_pool.py" run "$SCN" || { echo "plant-state: FAIL — a base install failed" >&2; exit 1; }
+: > "$SCN"
 for c in case_s1_s2_s5 caseALL_NAMES_SKIPPED_FROZEN_HOSTS case_s6 case_plan_records case_corpus_linkmodes case_corpus_surplus case_drift case_s7 case_engine_upgrade case_stamp_keys case_jurisdiction_resolved_once; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0
 python3 "$ROOT/tests/gate_pool.py" run "$SCN" || rc=$?
-rm -f "$SCN"
 
 [ "$rc" -eq 0 ] || { echo "plant-state: FAIL — a scenario failed" >&2; exit "$rc"; }
 echo "plant-state: OK — decisions preserved, adapters accumulate, projections derived, record agrees with disk, an unreadable record is refused before any write"

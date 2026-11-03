@@ -61,6 +61,8 @@ placed_files() {
 }
 
 SELF="$ROOT/tests/test-install-placement.sh"
+# shellcheck source=helpers/plant.sh
+. "$ROOT/tests/helpers/plant.sh"
 
 load_files() {  # FILES <- placed files of DIR
     FILES=(); while IFS= read -r _l; do FILES+=("$_l"); done < <(placed_files "$1")
@@ -72,57 +74,82 @@ load_cond() {  # COND_FILES <- files of a github-copilot DIR not in FILES
     done < <(placed_files "$1")
 }
 
-# M7 + M3 + M1-unmaintained over the COMPLETE destination set.
+# M7 + M1-unmaintained + M8 over the COMPLETE destination set. M3 runs in the
+# dispatcher, on BASE itself, before the pool (an identical re-run needs the
+# target's own path: the codex snippet names it, so a copy cannot carry it).
 # Asserts SPEC-0001 SINGLE_WRITER (the recoverability half), SPEC-0001
-# BACKUP_BEFORE_REPLACE, SPEC-0001 IDENTICAL_RERUN_IS_INERT.
+# BACKUP_BEFORE_REPLACE and, on the customized tree the M7 re-run leaves,
+# SPEC-0001 EVERY_BACKUP_IS_CLASSIFIABLE.
 case_recover() {
     local T="$WORK/recover"
-    mkdir -p "$T"   # fresh, not a BASE copy: the codex snippet names the target path
-    "$ROOT/install.sh" $EVERY_HOST --project-dir "$T" --copy --legal-corpus yes >/dev/null 2>&1 \
-        || fail "baseline install \$EVERY_HOST --copy did not succeed"
+    # A BASE copy: the M7 re-run rewrites every marked file, the codex snippet's
+    # path among them, so the copy's other path changes nothing it checks.
+    mkdir -p "$T" && cp -a "$BASE/." "$T/" || fail "M7: copying BASE failed"
     load_files "$T"
     [[ ${#FILES[@]} -gt 100 ]] || fail "discovered only ${#FILES[@]} placed files — discovery is broken"
-    # M3: an identical re-run churns no backup; name the churned files.
-    "$ROOT/install.sh" $EVERY_HOST --project-dir "$T" --copy --legal-corpus yes >/dev/null 2>&1 \
-        || fail "idempotent re-run did not succeed"
-    CHURN=(); while IFS= read -r _l; do CHURN+=("$_l"); done \
-        < <(find "$T" -name '*.bak-*' | sed "s|^$T/||" | sort)
-    if [[ ${#CHURN[@]} -gt 0 ]]; then
-        echo "M3 VIOLATED — an identical re-run backed up ${#CHURN[@]} file(s):" >&2
-        printf '  %s\n' "${CHURN[@]}" >&2
-        fail "backup churn buries the graft-audit signal under no-op .bak entries"
-    fi
     # M7: mark every placed file at head AND tail (a truncated backup keeps
     # one end), then re-run once. Symlinks and installer state are skipped.
+    # One interpreter does the per-file I/O; the classification stays here.
     SENTINEL='CYPRESS-PLANT-SENTINEL-DO-NOT-LOSE'
-    local marked=0 rel
-    for rel in "${FILES[@]}"; do
-        [[ -L "$T/$rel" ]] && continue
-        is_installer_state "$rel" && continue
-        printf '# %s\n%s' "$SENTINEL" "$(cat "$T/$rel")" > "$T/$rel.marked" \
-            && mv "$T/$rel.marked" "$T/$rel"
-        printf '\n# %s\n' "$SENTINEL" >> "$T/$rel" && marked=$((marked + 1))
-    done
+    local marked rel tag
+    marked="$(for rel in "${FILES[@]}"; do
+                  [[ -L "$T/$rel" ]] && continue
+                  is_installer_state "$rel" && continue
+                  printf '%s\n' "$rel"
+              done | python3 -c '
+import os, sys
+root, s = sys.argv[1], sys.argv[2].encode()
+n = 0
+for rel in sys.stdin.read().splitlines():
+    path = os.path.join(root, rel)
+    with open(path, "rb") as f:
+        body = f.read().rstrip(b"\n")
+    with open(path + ".marked", "wb") as f:
+        f.write(b"# " + s + b"\n" + body + b"\n# " + s + b"\n")
+    os.replace(path + ".marked", path)
+    n += 1
+print(n)' "$T" "$SENTINEL")" || fail "M7: marking the placed files failed"
     [[ "$marked" -gt 100 ]] || fail "marked only $marked files — the sweep is not covering the install"
 
     "$ROOT/install.sh" $EVERY_HOST --project-dir "$T" --copy --legal-corpus yes >"$WORK/m7-rerun.log" 2>&1 \
         || { tail -25 "$WORK/m7-rerun.log" >&2; fail "re-run over a customized plant did not succeed"; }
 
-    local lost=() unmaintained=() unrecoverable=()
-    for rel in "${FILES[@]}"; do
-        [[ -L "$T/$rel" ]] && continue
-        if grep -q "$SENTINEL" "$T/$rel" 2>/dev/null; then
+    # Per non-link file: INTACT (the edit survived), NOBAK (no .bak-*), or WEAK
+    # (the backups do not carry both sentinels between them).
+    local lost=() unmaintained=() unrecoverable=() verdicts
+    verdicts="$(for rel in "${FILES[@]}"; do
+                    [[ -L "$T/$rel" ]] || printf '%s\n' "$rel"
+                done | python3 -c '
+import glob, os, sys
+root, s = sys.argv[1], sys.argv[2].encode()
+def lines_with(path):
+    try:
+        with open(path, "rb") as f:
+            return sum(1 for line in f.read().split(b"\n") if s in line)
+    except OSError:
+        return 0
+for rel in sys.stdin.read().splitlines():
+    path = os.path.join(root, rel)
+    if lines_with(path):
+        print("INTACT\t" + rel)
+        continue
+    baks = glob.glob(glob.escape(path) + ".bak-*")
+    if not baks:
+        print("NOBAK\t" + rel)
+    elif sum(lines_with(b) for b in baks) < 2:
+        print("WEAK\t" + rel)' "$T" "$SENTINEL")" || fail "M7: reading the re-run's result failed"
+    while IFS=$'\t' read -r tag rel; do
+        if [[ "$tag" == INTACT ]]; then
             # Edit intact: correct only for add-if-missing files.
             is_plant_owned "$rel" || unmaintained+=("$rel")
             continue
         fi
         is_installer_state "$rel" && continue
-        if ! compgen -G "$T/$rel.bak-*" >/dev/null; then
-            lost+=("$rel")
-        elif [[ "$(grep -cs "$SENTINEL" "$T/$rel".bak-* | awk -F: '{s+=$NF} END {print s+0}')" -lt 2 ]]; then
-            unrecoverable+=("$rel")   # a backup must keep BOTH sentinels
-        fi
-    done
+        case "$tag" in
+            NOBAK) lost+=("$rel") ;;
+            WEAK)  unrecoverable+=("$rel") ;;   # a backup must keep BOTH sentinels
+        esac
+    done <<<"$verdicts"
     if [[ ${#unrecoverable[@]} -gt 0 ]]; then
         echo "M7 VIOLATED — ${#unrecoverable[@]} destination(s) have a .bak-* that does NOT carry the body it replaced:" >&2
         printf '  %s\n' "${unrecoverable[@]}" >&2
@@ -138,6 +165,22 @@ case_recover() {
         printf '  %s\n' "${lost[@]}" >&2
         fail "every installer destination must be recoverable (one canonical writer)"
     fi
+
+    # M8 on the same tree: every seed-owned destination now carries a plant
+    # edit and was backed up by the re-run, so every backup the writer
+    # produces is on disk. Asserts SPEC-0001 EVERY_BACKUP_IS_CLASSIFIABLE; the
+    # UNMAPPED exit is held by X390 in tests/test-graft-tools.sh.
+    local report audit_rc
+    if report="$(python3 "$ROOT/tools/graft-audit.py" "$T" "$ROOT" 2>&1)"; then audit_rc=0; else audit_rc=$?; fi
+    if grep -q "UNMAPPED backup" <<<"$report"; then
+        echo "M8 VIOLATED — graft-audit.py cannot classify backups the writer produced:" >&2
+        grep -A 20 "UNMAPPED backup" <<<"$report" >&2
+        fail "every installer destination must map to a seed source or a named class"
+    fi
+    grep -q "backups audited: [1-9]" <<<"$report" \
+        || fail "M8: the audit saw no backups at all — it cannot be certifying anything"
+    [[ $audit_rc -eq 0 ]] \
+        || fail "M8: graft-audit.py exited $audit_rc on a plant whose backups it classified without complaint"
 }
 
 # M3 under --symlink (place_kernel once ping-ponged there), then M9 on the same
@@ -179,12 +222,17 @@ case_m2() {
     load_files "$BASE"
     local A="$WORK/attack" OUT="$WORK/outside" rel victim
     mkdir -p "$A" "$OUT"
-    for rel in "${FILES[@]}"; do
-        victim="$OUT/$(printf '%s' "$rel" | tr '/' '_')"
-        printf 'PRECIOUS-REFERENT %s\n' "$rel" > "$victim"
-        mkdir -p "$A/$(dirname "$rel")"
-        ln -s "$victim" "$A/$rel"
-    done
+    # One referent outside the target per destination, named by its path with
+    # '/' as '_', and a link to it at the destination.
+    printf '%s\n' "${FILES[@]}" | python3 -c '
+import os, sys
+a, out = sys.argv[1], sys.argv[2]
+for rel in sys.stdin.read().splitlines():
+    victim = os.path.join(out, rel.replace("/", "_"))
+    with open(victim, "w", encoding="utf-8") as f:
+        f.write("PRECIOUS-REFERENT %s\n" % rel)
+    os.makedirs(os.path.dirname(os.path.join(a, rel)), exist_ok=True)
+    os.symlink(victim, os.path.join(a, rel))' "$A" "$OUT" || fail "M2: building the hostile target failed"
     ( cd "$OUT" && find . -type f | sort | xargs cksum ) > "$WORK/victims.before"
     # Refusing a link that leaves the target is also safe: record it, replace
     # the link with a real file, and re-run until the install completes. Any
@@ -214,9 +262,11 @@ case_m2() {
     done
 
     local clobbered=()
+    local line
     for rel in "${FILES[@]}"; do
-        victim="$OUT/$(printf '%s' "$rel" | tr '/' '_')"
-        grep -q "PRECIOUS-REFERENT $rel" "$victim" 2>/dev/null || clobbered+=("$rel")
+        victim="$OUT/${rel//\//_}"
+        line=""; { IFS= read -r line < "$victim"; } 2>/dev/null || true
+        [[ "$line" == "PRECIOUS-REFERENT $rel" ]] || clobbered+=("$rel")
     done
     ( cd "$OUT" && find . -type f | sort | xargs cksum ) > "$WORK/victims.after"
     if ! diff -q "$WORK/victims.before" "$WORK/victims.after" >/dev/null; then
@@ -257,9 +307,9 @@ case_m2() {
 # Asserts SPEC-0001 FORCE_SUPPRESSES_WARNING_NOT_BACKUP.
 case_m4() {
     local F="$WORK/forced" G="$WORK/unforced" victim out
-    mkdir -p "$F" "$G"
-    "$ROOT/install.sh" claude-code --project-dir "$F" --copy >/dev/null 2>&1 \
-        || fail "M4 baseline install failed"
+    # Both start from the shared claude-code install: only the re-run is under test.
+    plant_base claude-code --copy || fail "M4 baseline install failed"
+    plant_copy "$F" && plant_copy "$G"
     printf '\n# PLANT EDIT UNDER FORCE\n' >> "$F/.claude/settings.json"
     printf '# a deliberate kernel deviation\n' >> "$F/CLAUDE.md"
     rm -f "$F/AGENTS.md"; printf '# our own AGENTS body\n' > "$F/AGENTS.md"
@@ -272,37 +322,10 @@ case_m4() {
     ! grep -q "backed up existing" <<<"$out" \
         || fail "M4: --force still announced a backup: $(grep 'backed up existing' <<<"$out" | head -3)"
     # ...and without --force the backup is announced.
-    "$ROOT/install.sh" claude-code --project-dir "$G" --copy >/dev/null 2>&1
     printf '\n# edit\n' >> "$G/.claude/settings.json"
     out="$("$ROOT/install.sh" claude-code --project-dir "$G" --copy 2>&1 >/dev/null || true)"
     grep -q "backed up existing" <<<"$out" \
         || fail "M4: without --force the backup must be announced, and was not"
-}
-
-# M8: every backup the writer produces is classifiable by graft-audit.py.
-# Asserts SPEC-0001 EVERY_BACKUP_IS_CLASSIFIABLE; the UNMAPPED exit is held by
-# X390 in tests/test-graft-tools.sh.
-case_m8() {
-    local AUD="$WORK/audit" rel report audit_rc
-    mkdir -p "$AUD" && cp -a "$BASE/." "$AUD/"
-    while IFS= read -r rel; do
-        [[ -L "$AUD/$rel" ]] && continue
-        is_installer_state "$rel" && continue
-        is_plant_owned "$rel" && continue
-        printf '\n# edited by the plant\n' >> "$AUD/$rel"
-    done < <(placed_files "$AUD")
-    "$ROOT/install.sh" $EVERY_HOST --project-dir "$AUD" --copy --legal-corpus yes >/dev/null 2>&1 \
-        || fail "audit-totality re-run did not succeed"
-    if report="$(python3 "$ROOT/tools/graft-audit.py" "$AUD" "$ROOT" 2>&1)"; then audit_rc=0; else audit_rc=$?; fi
-    if grep -q "UNMAPPED backup" <<<"$report"; then
-        echo "M8 VIOLATED — graft-audit.py cannot classify backups the writer produced:" >&2
-        grep -A 20 "UNMAPPED backup" <<<"$report" >&2
-        fail "every installer destination must map to a seed source or a named class"
-    fi
-    grep -q "backups audited: [1-9]" <<<"$report" \
-        || fail "M8: the audit saw no backups at all — it cannot be certifying anything"
-    [[ $audit_rc -eq 0 ]] \
-        || fail "M8: graft-audit.py exited $audit_rc on a plant whose backups it classified without complaint"
 }
 
 # M10: no write escapes PROJECT_DIR. Asserts SPEC-0001 §5's Security NFR and
@@ -350,10 +373,10 @@ case_m10() {
     echo "  M10 (3): a destination symlink that stays inside the target still works — OK"
 
     # (4) fill_plant_facts rewrites index.md in place: not through a link leaving the target
+    # (4) and (5) start from the shared claude-code install (--copy is the default).
     local P4="$ESC/plant4"
-    mkdir -p "$P4"
-    "$ROOT/install.sh" claude-code --project-dir "$P4" >/dev/null 2>&1 \
-        || fail "M10(4): baseline install failed"
+    plant_base claude-code --copy || fail "M10(4): baseline install failed"
+    plant_copy "$P4"
     cp "$P4/docs/graph/index.md" "$OUTSIDE/stolen-index.md"
     rm "$P4/docs/graph/index.md"
     ln -s "$OUTSIDE/stolen-index.md" "$P4/docs/graph/index.md"
@@ -368,9 +391,7 @@ case_m10() {
 
     # (5) an index.md symlinked inside the target still receives its facts
     local P5="$ESC/plant5"
-    mkdir -p "$P5"
-    "$ROOT/install.sh" claude-code --project-dir "$P5" >/dev/null 2>&1 \
-        || fail "M10(5): baseline install failed"
+    plant_copy "$P5"
     mv "$P5/docs/graph/index.md" "$P5/docs/graph/real-index.md"
     ln -s "real-index.md" "$P5/docs/graph/index.md"
     "$ROOT/install.sh" claude-code --project-dir "$P5" --environment-class staging >/dev/null 2>&1 \
@@ -416,9 +437,7 @@ case_cond() {
     load_files "$BASE"
     load_cond "$BASECOPILOT"
     local COND_SENTINEL="CYPRESS-COND-SENTINEL" TB="$WORK/cond-recover" rel bak found
-    mkdir -p "$TB"
-    "$ROOT/install.sh" github-copilot --project-dir "$TB" --copy >/dev/null 2>&1 \
-        || fail "M7b setup install failed"
+    mkdir -p "$TB" && cp -a "$BASECOPILOT/." "$TB/" || fail "M7b setup copy failed"
     for rel in "${COND_FILES[@]}"; do
         printf '\n# %s\n' "$COND_SENTINEL" >> "$TB/$rel"
     done
@@ -454,7 +473,9 @@ case_cond() {
 # hook once on the check envelope, writes nothing, and fails naming a hook
 # whose script is gone. BASE wires Claude Code's two and Prime Agent's two;
 # BASECOPILOT wires the Copilot pair.
-tree_sig() { ( cd "$1" && find . -print0 | LC_ALL=C sort -z | xargs -0 shasum 2>/dev/null; find . | LC_ALL=C sort ) | shasum; }
+# sha256 on any host: sha256sum (GNU coreutils) where present, else shasum -a 256 (macOS)
+if command -v sha256sum >/dev/null 2>&1; then SHA256=(sha256sum); else SHA256=(shasum -a 256); fi
+tree_sig() { ( cd "$1" && find . -print0 | LC_ALL=C sort -z | xargs -0 "${SHA256[@]}" 2>/dev/null; find . | LC_ALL=C sort ) | "${SHA256[@]}"; }
 case_hook_check() {
     local HC="$WORK/hookcheck" HP="$WORK/hookcheck-copilot" out rc before ev_script
     mkdir -p "$HC" "$HP" && cp -a "$BASE/." "$HC/" && cp -a "$BASECOPILOT/." "$HP/"
@@ -581,16 +602,27 @@ case_orphan_flag() {
 # of the synthetic manifests under tests/fixtures/corpus-placement/plant. ESEED
 # is shared and read-only; a case that changes the corpus copies it first.
 FIX="$ROOT/tests/fixtures/corpus-placement"
+# make_seed copies the files Git sees in the working tree (tracked or not yet
+# added; ignored ones are no part of the seed), else the whole tree.
 make_seed() {
-    local S="$1"
+    local S="$1" f
     mkdir -p "$S"
-    ( cd "$ROOT" && tar cf - --exclude .git --exclude __pycache__ . ) | ( cd "$S" && tar xf - )
+    if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        ( cd "$ROOT" && git ls-files -co --exclude-standard \
+            | grep -v -e '^library-corpus/' -e '^skill-corpus/' -e '^tool-corpus/' -e '/__pycache__/' \
+            | while IFS= read -r f; do [[ -e "$f" || -L "$f" ]] && printf '%s\n' "$f"; done \
+            | tar cf - -T - ) | ( cd "$S" && tar xf - )
+    else
+        ( cd "$ROOT" && tar cf - --exclude .git --exclude __pycache__ . ) | ( cd "$S" && tar xf - )
+    fi
     rm -rf "$S/library-corpus" "$S/skill-corpus" "$S/tool-corpus"
     cp -R "$FIX/seed/." "$S/"
 }
+# A case that edits its seed's corpus works on its own copy of ESEED.
+copy_seed() { mkdir -p "$1" && cp -a "$ESEED/." "$1/"; }
 seed_version() { sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$1/manifest.json" | head -1; }
 fresh_plant() { mkdir -p "$1" && cp -R "$FIX/plant/." "$1/"; }
-sha_of() { shasum -a 256 "$1" | awk '{print $1}'; }
+sha_of() { "${SHA256[@]}" "$1" | awk '{print $1}'; }
 # expertise_record PLANT -> "id path sha256" per recorded entry, in stamp order
 expertise_record() {
     python3 - "$1/.cypress/seed.json" <<'PY'
@@ -724,7 +756,7 @@ case_expertise_refused() {
 # of PLACED_PAGE_CARRIES_ITS_PROVENANCE over the refreshed page's backup.
 case_expertise_silence() {
     local S="$WORK/xp-silence-seed" P="$WORK/xp-silence" out rc rec baks
-    make_seed "$S"; fresh_plant "$P"
+    copy_seed "$S"; fresh_plant "$P"
     "$S/install.sh" claude-code --project-dir "$P" \
         --expertise library-corpus/maven/lumen-core,library-corpus/npm/orbit-forms,skill-corpus/maven/lumen-upgrade >/dev/null 2>&1 \
         || fail "EXPERTISE_SURVIVES_SILENCE: the placing install failed"
@@ -814,7 +846,7 @@ case_expertise_plant_edits() {
 # M20, SPEC-0001 EXPERTISE_CHECK_NAMES_MISSING_OR_STALE
 case_expertise_check() {
     local S="$WORK/xp-check-seed" P="$WORK/xp-check" N="$WORK/xp-check-none" out rc before
-    make_seed "$S"; fresh_plant "$P"; fresh_plant "$N"
+    copy_seed "$S"; fresh_plant "$P"; fresh_plant "$N"
     "$S/install.sh" claude-code --project-dir "$N" >/dev/null 2>&1 || fail "EXPERTISE_CHECK_NAMES_MISSING_OR_STALE: the plain install failed"
     rc=0; out="$("$S/install.sh" claude-code --check --project-dir "$N" 2>&1)" || rc=$?
     grep -qi "expertise" <<<"$out" && fail "EXPERTISE_CHECK_NAMES_MISSING_OR_STALE: a plant with no expertise key got an expertise line: $out"
@@ -847,8 +879,8 @@ case_expertise_check() {
 # plant added is carried and not named.
 case_retired_stamp_keys() {
     local P="$WORK/stamp-retired" out rc
-    mkdir -p "$P"
-    "$ROOT/install.sh" claude-code --project-dir "$P" >/dev/null 2>&1 || fail "RETIRED_STAMP_KEYS_NAMED_AND_KEPT: the first install failed"
+    plant_base claude-code --copy || fail "RETIRED_STAMP_KEYS_NAMED_AND_KEPT: the first install failed"
+    plant_copy "$P"
     python3 - "$P/.cypress/seed.json" <<'PY'
 import json, sys
 p = sys.argv[1]; d = json.load(open(p, encoding="utf-8"))
@@ -875,16 +907,36 @@ fi
 # --- main: two shared read-only installs, the read-only asserts, then every
 #     case concurrently under the gate's shared budget. ------------------------
 export ROOT
+# The shared install cache (tests/helpers/plant.sh): bases are built here,
+# before the pool, so concurrent cases only copy them.
+PLANT_CACHE="$WORK/plant-cache"; export PLANT_CACHE
+BASECOPILOT="$WORK/base-copilot"; mkdir -p "$BASECOPILOT"
+# The selective-placement seed: a copy of this seed carrying the synthetic corpus.
+ESEED="$WORK/expertise-seed"
+# The independent setup runs beside the every-host BASE install and its M3 re-run.
+plant_base claude-code --copy & _pid_cc=$!
+"$ROOT/install.sh" github-copilot --project-dir "$BASECOPILOT" --copy >/dev/null 2>&1 & _pid_cop=$!
+make_seed "$ESEED" & _pid_seed=$!
 BASE="$WORK/base"; mkdir -p "$BASE"
 "$ROOT/install.sh" $EVERY_HOST --project-dir "$BASE" --copy --legal-corpus yes >/dev/null 2>&1 \
     || fail "baseline install \$EVERY_HOST --copy did not succeed"
 T="$BASE"
 load_files "$T"
 [[ ${#FILES[@]} -gt 100 ]] || fail "discovered only ${#FILES[@]} placed files — discovery is broken"
-
-BASECOPILOT="$WORK/base-copilot"; mkdir -p "$BASECOPILOT"
-"$ROOT/install.sh" github-copilot --project-dir "$BASECOPILOT" --copy >/dev/null 2>&1 \
-    || fail "baseline install github-copilot --copy did not succeed"
+# M3 (SPEC-0001 IDENTICAL_RERUN_IS_INERT): an identical re-run churns no
+# backup; name the churned files. BASE stays the every-host install it was.
+"$ROOT/install.sh" $EVERY_HOST --project-dir "$BASE" --copy --legal-corpus yes >/dev/null 2>&1 \
+    || fail "idempotent re-run did not succeed"
+CHURN=(); while IFS= read -r _l; do CHURN+=("$_l"); done \
+    < <(find "$BASE" -name '*.bak-*' | sed "s|^$BASE/||" | sort)
+if [[ ${#CHURN[@]} -gt 0 ]]; then
+    echo "M3 VIOLATED — an identical re-run backed up ${#CHURN[@]} file(s):" >&2
+    printf '  %s\n' "${CHURN[@]}" >&2
+    fail "backup churn buries the graft-audit signal under no-op .bak entries"
+fi
+wait "$_pid_cc" || fail "baseline install claude-code --copy did not succeed"
+wait "$_pid_cop" || fail "baseline install github-copilot --copy did not succeed"
+wait "$_pid_seed" || fail "copying the seed for the selective-placement cases failed"
 load_cond "$BASECOPILOT"
 for _h in .github/hooks/route-hook.py .github/hooks/route.json \
           .github/hooks/status-hook.py .github/hooks/status.json; do
@@ -998,13 +1050,9 @@ if [[ ${#stray_candidates[@]} -gt 0 ]]; then
 fi
 echo "  M11 EVERY_RESOLVER_PATH_IS_INSTALLED: every route-resolver path ($(grep -c . <<< "$m11_paths")) is a path the installer writes — OK"
 
-# The selective-placement seed: a copy of this seed carrying the synthetic corpus.
-ESEED="$WORK/expertise-seed"
-make_seed "$ESEED"
-
 export BASE BASECOPILOT ESEED
 SCN="$(mktemp)"
-for c in case_recover case_symchurn case_m2 case_m4 case_m8 case_m10 case_cond case_hook_check case_retired_flag case_orphan_flag \
+for c in case_recover case_symchurn case_m2 case_m4 case_m10 case_cond case_hook_check case_retired_flag case_orphan_flag \
          case_expertise_propose case_expertise_place case_expertise_refused case_expertise_silence \
          case_expertise_plant_edits case_expertise_check case_retired_stamp_keys; do
     printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"

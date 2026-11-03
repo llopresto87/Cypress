@@ -1339,26 +1339,50 @@ case_run_routes_runs_hook_check() {
     || { echo "the routes row does not report the hook check for claude-code: $row"; return 1; }
 }
 
-# X469, SPEC-0001 GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES: a plant keeps an
-# origin: seed protocol the seed folded into skills/toolcraft. When its owns:
-# repeats rule.toolcraft, the stage copy's graph-lint fails on the duplicate
-# fact-key; the routes row stays BLOCK, names the node RETIRED and ties the one
-# error to it. With a fact-key of its own the row carries no clause.
-x469_run() {  # x469_run <arm> <owns> -> $GR/x469-<arm>/{zephyrplant,stage,run.out,lint.out}
-  local d="$GR/x469-$1" p c
-  p="$d/zephyrplant"
+# X469 and X493 share two graft-run arms, each run once: every arm's plant
+# carries both the retired seed protocol (X469) and the plan with an unpressed
+# `expensive` §6 row (X493), so one run answers both cases. The two fixtures
+# touch different gates (graft.gate.routes reads graph-lint, graft.gate.plans
+# reads grill-lint), and each case asserts only its own row.
+#   dup: the protocol repeats rule.toolcraft; the plant's grill-lint predates
+#        the press rule (X469's duplicate arm, X493's raised arm)
+#   own: a fact-key of its own; the seed's grill-lint (both cases' control)
+xr_run() {  # xr_run <dup|own> -> $GR/xr-<arm>/{zephyrplant,stage,run.out,run.err,lint.out,copy}
+  local d="$GR/xr-$1" p c owns
+  [ -f "$d/done" ] && return 0
+  case "$1" in dup) owns=rule.toolcraft ;; own) owns=toolcraft.retired-procedure ;; esac
+  rm -rf "$d"; p="$d/zephyrplant"
   mkdir -p "$d" && cp -a "$GR_PLANT" "$p"
   rm -f "$p/.cypress/recreated-nodes.txt"
   printf -- '---\nid: protocol.toolcraft\ntier: 2\nkind: protocol\norigin: seed\ntitle: toolcraft, a protocol the seed folded into skill.toolcraft\nowns:\n  - %s\nrequires:\nload_when:\n  - "retired toolcraft protocol"\nest_tokens: 60\n---\n# toolcraft\n\nA seed protocol whose rules moved into skill.toolcraft.\n' \
-    "$2" > "$p/docs/graph/protocols/toolcraft.md"
-  sgit -C "$p" add -A && sgit -C "$p" commit -q -m "a retired seed protocol" \
+    "$owns" > "$p/docs/graph/protocols/toolcraft.md"
+  printf '# grill\n\n## 6. Decisions Made\n| Decision | Evidence | Reversibility |\n|---|---|---|\n| Ship one signed bundle | build.gradle | expensive after go-live |\n' \
+    > "$p/docs/graph/plans/grill.md"
+  if [ "$1" = dup ]; then
+    python3 - "$KG/grill-lint.py" "$p/docs/graph/grill-lint.py" <<'PY'
+import sys
+s = open(sys.argv[1]).read(); a = "    if 6 in secs:\n        pressed"
+assert s.count(a) == 1, "the seed's grill-lint press block moved"
+open(sys.argv[2], "w").write(s.replace(a, "    if False:\n        pressed"))
+PY
+  else
+    cp "$KG/grill-lint.py" "$p/docs/graph/grill-lint.py"
+  fi
+  sgit -C "$p" add -A && sgit -C "$p" commit -q -m "a retired seed protocol and a plan with an expensive decision" \
     || { echo "fixture: the $1 plant could not be committed"; return 1; }
   python3 "$RUN" "$p" "$ROOT" --stage "$d/stage" >"$d/run.out" 2>"$d/run.err" || true
   c="$(find "$d/stage" -path '*/docs/graph/nodes/subsystem.quokka-ledger.md' 2>/dev/null | head -1 | sed 's#/docs/graph/nodes/subsystem.quokka-ledger.md$##')"
   [ -n "$c" ] || { echo "fixture: no plant copy in the $1 stage: $(flat "$d/run.err")"; return 1; }
   echo "$c" > "$d/copy"
   ( cd "$c" && python3 docs/graph/graph-lint.py ) >"$d/lint.out" 2>&1 || true
+  touch "$d/done"
 }
+
+# X469, SPEC-0001 GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES: a plant keeps an
+# origin: seed protocol the seed folded into skills/toolcraft. When its owns:
+# repeats rule.toolcraft, the stage copy's graph-lint fails on the duplicate
+# fact-key; the routes row stays BLOCK, names the node RETIRED and ties the one
+# error to it. With a fact-key of its own the row carries no clause.
 case_run_ties_lint_errors_to_retired_nodes() {
   local node=docs/graph/protocols/toolcraft.md d row n c
   gr_need || return 1; gr_fixture || return 1
@@ -1366,8 +1390,8 @@ case_run_ties_lint_errors_to_retired_nodes() {
     && grep -q '^  - rule.toolcraft$' "$ROOT/skills/toolcraft/SKILL.md" \
     || { echo "fixture: the seed ships protocols/toolcraft.md, or skills/toolcraft no longer owns rule.toolcraft"; return 1; }
   # the duplicate arm
-  x469_run dup rule.toolcraft || return 1
-  d="$GR/x469-dup"; c="$(cat "$d/copy")"
+  xr_run dup || return 1
+  d="$GR/xr-dup"; c="$(cat "$d/copy")"
   n="$(grep -E '^[[:space:]]*✗' "$d/lint.out" | grep -cE '(^|[^A-Za-z0-9._-])protocol\.toolcraft([^A-Za-z0-9._-]|$)' || true)"
   [ "$n" -eq 1 ] || { echo "fixture: the stage copy's graph-lint has $n error line(s) naming protocol.toolcraft, want 1: $(flat "$d/lint.out")"; return 1; }
   row="$(grep -E '^graft\.gate\.routes:' "$d/run.out" || true)"
@@ -1381,8 +1405,8 @@ case_run_ties_lint_errors_to_retired_nodes() {
   [ -f "$d/zephyrplant/$node" ] && [ -f "$c/$node" ] \
     || { echo "the run deleted $node from the plant or the stage copy"; return 1; }
   # the arm without the duplicate
-  x469_run own toolcraft.retired-procedure || return 1
-  d="$GR/x469-own"
+  xr_run own || return 1
+  d="$GR/xr-own"
   grep -E '^[[:space:]]*✗' "$d/lint.out" | grep -q 'protocol\.toolcraft' \
     && { echo "fixture: graph-lint still names protocol.toolcraft without the duplicate: $(flat "$d/lint.out")"; return 1; }
   row="$(grep -E '^graft\.gate\.routes:' "$d/run.out" || true)"
@@ -1396,33 +1420,12 @@ case_run_ties_lint_errors_to_retired_nodes() {
 # row. graft.gate.plans is BLOCK and names that row; the defects the plan
 # already had under the plant's engine are counted, not named. Control: with
 # the seed's own engine before the graft nothing is raised and the row passes.
-x493_run() {  # x493_run <arm> <old-engine: pressless|seed>
-  local d="$GR/x493-$1" p
-  p="$d/zephyrplant"
-  mkdir -p "$d" && cp -a "$GR_PLANT" "$p"
-  rm -f "$p/.cypress/recreated-nodes.txt"
-  printf '# grill\n\n## 6. Decisions Made\n| Decision | Evidence | Reversibility |\n|---|---|---|\n| Ship one signed bundle | build.gradle | expensive after go-live |\n' \
-    > "$p/docs/graph/plans/grill.md"
-  if [ "$2" = pressless ]; then
-    python3 - "$KG/grill-lint.py" "$p/docs/graph/grill-lint.py" <<'PY'
-import sys
-s = open(sys.argv[1]).read(); a = "    if 6 in secs:\n        pressed"
-assert s.count(a) == 1, "the seed's grill-lint press block moved"
-open(sys.argv[2], "w").write(s.replace(a, "    if False:\n        pressed"))
-PY
-  else
-    cp "$KG/grill-lint.py" "$p/docs/graph/grill-lint.py"
-  fi
-  sgit -C "$p" add -A && sgit -C "$p" commit -q -m "a plan with an expensive decision" \
-    || { echo "fixture: the $1 plant could not be committed"; return 1; }
-  python3 "$RUN" "$p" "$ROOT" --stage "$d/stage" >"$d/run.out" 2>"$d/run.err" || true
-}
 case_run_names_plan_defects_the_upgrade_raises() {
   local row
   gr_need || return 1; gr_fixture || return 1
-  x493_run raised pressless || return 1
-  row="$(grep -E '^graft\.gate\.plans:' "$GR/x493-raised/run.out" || true)"
-  [ -n "$row" ] || { echo "no graft.gate.plans row in the gate table: $(tail -5 "$GR/x493-raised/run.out" | tr '\n' ' ')"; return 1; }
+  xr_run dup || return 1
+  row="$(grep -E '^graft\.gate\.plans:' "$GR/xr-dup/run.out" || true)"
+  [ -n "$row" ] || { echo "no graft.gate.plans row in the gate table: $(tail -5 "$GR/xr-dup/run.out" | tr '\n' ' ')"; return 1; }
   echo "$row" | grep -Eq '^graft\.gate\.plans:[[:space:]]*BLOCK — 1 plan defect\(s\)' \
     || { echo "the plans row is not BLOCK with one raised defect: $row"; return 1; }
   echo "$row" | grep -qF 'grill-lint.py: §6: `Ship one signed bundle` (expensive after go-live) has no press verdict' \
@@ -1430,8 +1433,8 @@ case_run_names_plan_defects_the_upgrade_raises() {
   echo "$row" | grep -Eq '[1-9][0-9]* defect\(s\) the plant.s plans already had, not gated' \
     || { echo "the plans row does not count the defects the plan already had: $row"; return 1; }
   # control: the same plan under the seed's own engine before the graft
-  x493_run kept seed || return 1
-  row="$(grep -E '^graft\.gate\.plans:' "$GR/x493-kept/run.out" || true)"
+  xr_run own || return 1
+  row="$(grep -E '^graft\.gate\.plans:' "$GR/xr-own/run.out" || true)"
   echo "$row" | grep -Eq '^graft\.gate\.plans:[[:space:]]*PASS' \
     || { echo "with no defect raised by the upgrade the plans row must PASS: $row"; return 1; }
 }

@@ -166,6 +166,19 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   session now reads first when it resumes. Owner rules, corrected assumptions,
   harness migration and canonize status stay in the record, which every T2/T3
   unit still opens.
+- **The seed's gate costs a third less CPU.** A profile of every step
+  found the gate CPU-bound throughout: 5,748 Python runs and hundreds of
+  installs, with shell tools costing next to nothing. The runner now gives
+  CPU-bound work one token per core. It measures each step's CPU against its
+  wall time into a cache outside the seed, and it starts the longest steps
+  first. The install-heavy suites build each base install once and copy it.
+  Cases that share a setup are folded together, and three suites stopped
+  copying git-ignored files into their seed copies. Every changed case was
+  first seen failing against a planted bug. `install.sh` starts its Python
+  with `-S` and places files without a `dirname` subshell. All of a run's
+  temporary files sit under one `*.noindex` directory, which Spotlight skips.
+  On an M2 the full gate went from about 230 s of wall time and 1,280 CPU-s
+  to 157 s and 855 CPU-s.
 - **A graft catches the plan defects it introduces (`graft.gate.plans`).**
   `tools/graft-run.py` now runs the plant's `grill-lint.py` and
   `spec-lint.py` before the upgrade and again after it, and blocks on each

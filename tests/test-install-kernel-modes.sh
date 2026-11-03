@@ -12,6 +12,19 @@ trap 'rm -rf "$WORK"' EXIT
 fail() { echo "FAIL: $*" >&2; exit 1; }
 . "$ROOT/tests/helpers/lintcase.sh"
 
+# seed_tree <dst>: the seed's own files laid into <dst>, without .git. In a Git
+# checkout these are the files Git lists (tracked, or untracked and not
+# ignored), so a working copy's ignored clutter is not copied; elsewhere, all.
+seed_tree() {
+    if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        (cd "$ROOT" && git ls-files -co --exclude-standard -z \
+            | while IFS= read -r -d '' f; do if [[ -e "$f" || -L "$f" ]]; then printf '%s\0' "$f"; fi; done \
+            | tar --null -T - -cf -) | (cd "$1" && tar xf -)
+    else
+        (cd "$ROOT" && tar cf - --exclude=./.git .) | (cd "$1" && tar xf -)
+    fi
+}
+
 # assert_shared_kernel DIR LABEL: exactly one of CLAUDE.md/AGENTS.md is a
 # symlink, its target a bare sibling basename, and both resolve to equal bytes.
 assert_shared_kernel() {
@@ -46,7 +59,7 @@ echo "K1/K4/K6: one real kernel body + one project-local symlink, byte-identical
 # --copy isolates the plant: install from a seed copy, edit the copy's kernel,
 # and the plant must not see it. The real seed is never edited.
 SEEDCOPY="$WORK/seedcopy-k2"; mkdir -p "$SEEDCOPY"
-(cd "$ROOT" && tar cf - --exclude=./.git .) | (cd "$SEEDCOPY" && tar xf -) \
+seed_tree "$SEEDCOPY" \
     || fail "K2: copying the seed without .git failed"
 T="$WORK/k2-plant"; mkdir -p "$T"
 "$SEEDCOPY/install.sh" claude-code --project-dir "$T" --copy >/dev/null 2>&1 \
@@ -105,7 +118,7 @@ K7_PRIOR="$WORK/k7-prior-kernel.md"
 k7_fixture() {
     git clone --local --no-hardlinks --quiet "$ROOT" "$K7_SEED" >/dev/null 2>&1 \
         || { echo "fixture: git clone --local of the seed failed"; return 1; }
-    (cd "$ROOT" && tar cf - --exclude=./.git .) | (cd "$K7_SEED" && tar xf -) \
+    seed_tree "$K7_SEED" \
         || { echo "fixture: laying the seed's working tree over the clone failed"; return 1; }
     local rev
     for rev in $(git -C "$K7_SEED" log --format=%H -- core/AGENTS.md); do

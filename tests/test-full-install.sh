@@ -108,7 +108,7 @@ case_claude_code() {
 }
 
 case_plant_facts_flags() {
-  local P Q OUT; P="$(mktemp -d)"; Q="$(mktemp -d)"
+  local P; P="$(mktemp -d)"
   "$ROOT/install.sh" claude-code --project-dir "$P" --copy --force \
     --environment-class staging --commit-attribution none \
     --deliverable-language en --comment-language en >/dev/null
@@ -119,11 +119,13 @@ case_plant_facts_flags() {
   "$ROOT/install.sh" claude-code --project-dir "$P" --copy --force --environment-class production >/dev/null 2>&1 \
     && die "plant facts: invalid environment_class accepted"
   grep -q '^  environment_class: staging$' "$P/docs/graph/index.md" || die "plant facts: a filled value was overwritten"
-  OUT="$("$ROOT/install.sh" claude-code --project-dir "$Q" --copy --force 2>&1)"
-  grep -q '^  environment_class: <' "$Q/docs/graph/index.md" || die "plant facts: placeholder should remain without flags"
-  grep -q "plant facts still unset in docs/graph/index.md: environment_class commit_attribution deliverable_language comment_language" <<<"$OUT" \
-    || { printf '%s\n' "$OUT" >&2; die "NEXT STEP did not name every unset plant fact"; }
-  rm -rf "$P" "$Q"
+  # Without flags: the suite's claude-code base is a fresh install with none,
+  # and its log is that run's output.
+  plant_base claude-code --copy
+  grep -q '^  environment_class: <' "$PLANT_BASE/docs/graph/index.md" || die "plant facts: placeholder should remain without flags"
+  grep -q "plant facts still unset in docs/graph/index.md: environment_class commit_attribution deliverable_language comment_language" "$PLANT_BASE.log" \
+    || { cat "$PLANT_BASE.log" >&2; die "NEXT STEP did not name every unset plant fact"; }
+  rm -rf "$P"
 }
 
 case_opencode() {
@@ -593,34 +595,16 @@ case_opencode_no_map_row() {
   rm -rf "$D" "$OUT"
 }
 
-# E10 OPENCODE_MAP_UNREADABLE_FAILS_CLOSED and MODEL_MAP_UNREADABLE: a map that
-# breaks the grammar stops the run before any projection is touched.
-# Asserts SPEC-0001 OPENCODE_MAP_UNREADABLE_FAILS_CLOSED.
-case_opencode_map_unreadable() {
-  local D SNAP ERR rc; D="$(mktemp -d)"; SNAP="$(mktemp -d)"; ERR="$(mktemp)"
-  fresh_copy "$D" opencode --copy
-  # Start from a filled cell, so a run that projects before it refuses would
-  # rewrite 01-architect.md and leave a backup: the two last arms can fail.
-  map_edit "$D/docs/graph/models.md" cell authoring high '`provider-a/model-x`'
-  "$ROOT/install.sh" opencode --project-dir "$D" --copy >/dev/null 2>&1 || die "E10: setup re-install over the filled map failed"
-  cp -a "$D/.opencode/agents/." "$SNAP/"
-  map_edit "$D/docs/graph/models.md" cell authoring high '`provider-a/model-w`'
-  map_edit "$D/docs/graph/models.md" class investigation low premium
-  "$ROOT/install.sh" opencode --project-dir "$D" --copy >/dev/null 2>"$ERR" && rc=0 || rc=$?
-  [[ $rc -ne 0 ]] || arm_fail "install.sh opencode exited 0 over a map row whose class is premium"
-  grep -qF 'docs/graph/models.md' "$ERR" || arm_fail "stderr does not name docs/graph/models.md"
-  diff -rq "$SNAP" "$D/.opencode/agents" >/dev/null 2>&1 || arm_fail "the .opencode/agents projections changed"
-  [[ "$(find "$D/.opencode/agents" -name '*.bak-*' | wc -l)" -eq "$(find "$SNAP" -name '*.bak-*' | wc -l)" ]] \
-    || arm_fail "a backup was made under .opencode/agents/"
-  arms_done "E10 OPENCODE_MAP_UNREADABLE_FAILS_CLOSED"
-  rm -rf "$D" "$SNAP" "$ERR"
-}
-
-# E11 OPENCODE_CHECK_DETECTS_DRIFT and MODEL_MAP_UNREADABLE (its last arm):
+# E11 OPENCODE_CHECK_DETECTS_DRIFT and MODEL_MAP_UNREADABLE (its arm (f)):
 # --check renders the projections from the graph and the map, compares them,
 # and writes nothing. Asserts SPEC-0001 OPENCODE_CHECK_DETECTS_DRIFT.
+# E10 OPENCODE_MAP_UNREADABLE_FAILS_CLOSED and MODEL_MAP_UNREADABLE, the closing
+# arms on the same plant: after (f) its authoring-high cell is filled and
+# projected, then changed, and a map row has class premium. A map that breaks
+# the grammar stops `install.sh opencode` before any projection is touched.
+# Asserts SPEC-0001 OPENCODE_MAP_UNREADABLE_FAILS_CLOSED.
 case_opencode_check_drift() {
-  local P ERR out rc before; P="$(mktemp -d)"; ERR="$(mktemp)"
+  local P ERR SNAP out rc before; P="$(mktemp -d)"; ERR="$(mktemp)"; SNAP="$(mktemp -d)"
   fresh_copy "$P" opencode --copy
   map_edit "$P/docs/graph/models.md" cell authoring high '`provider-a/model-x`'
   "$ROOT/install.sh" opencode --project-dir "$P" --copy >/dev/null 2>&1 || die "E11: setup re-install over the filled map failed"
@@ -654,8 +638,19 @@ case_opencode_check_drift() {
   check_run opencode "(f) unreadable map"
   [[ $rc -ne 0 ]] || arm_fail "(f) unreadable map: --check exited 0"
   grep -qF 'docs/graph/models.md' "$ERR" || arm_fail "(f) unreadable map: stderr does not name docs/graph/models.md"
-  arms_done "E11 OPENCODE_CHECK_DETECTS_DRIFT"
-  rm -rf "$P" "$ERR"
+  # E10: the projections still hold the filled cell (projected at (c)), so a run
+  # that projects before it refuses rewrites 01-architect.md and leaves a backup.
+  grep -qx 'model: provider-a/model-x' "$P/.opencode/agents/01-architect.md" \
+    || die "E10: harness: 01-architect.md does not carry the projected filled cell"
+  cp -a "$P/.opencode/agents/." "$SNAP/"
+  "$ROOT/install.sh" opencode --project-dir "$P" --copy >/dev/null 2>"$ERR" && rc=0 || rc=$?
+  [[ $rc -ne 0 ]] || arm_fail "E10: install.sh opencode exited 0 over a map row whose class is premium"
+  grep -qF 'docs/graph/models.md' "$ERR" || arm_fail "E10: stderr does not name docs/graph/models.md"
+  diff -rq "$SNAP" "$P/.opencode/agents" >/dev/null 2>&1 || arm_fail "E10: the .opencode/agents projections changed"
+  [[ "$(find "$P/.opencode/agents" -name '*.bak-*' | wc -l)" -eq "$(find "$SNAP" -name '*.bak-*' | wc -l)" ]] \
+    || arm_fail "E10: a backup was made under .opencode/agents/"
+  arms_done "E11 OPENCODE_CHECK_DETECTS_DRIFT, E10 OPENCODE_MAP_UNREADABLE_FAILS_CLOSED"
+  rm -rf "$P" "$ERR" "$SNAP"
 }
 
 # E12 PRIME_HOOK_SCRIPTS_ARE_PLACED (SPEC-0001, ADR-0024): the Python core the
@@ -663,7 +658,7 @@ case_opencode_check_drift() {
 # place_file; the preflight covers its directory; no `.claude/` appears.
 case_prime_hook_scripts_placed() {
   local T h hooks; T="$(mktemp -d)"; ARM_FAILS=()
-  bash "$ROOT/install.sh" prime-agent --project-dir "$T" --copy >/dev/null 2>&1 \
+  fresh_copy "$T" prime-agent --copy \
     || die "E12 PRIME_HOOK_SCRIPTS_ARE_PLACED: install.sh prime-agent exited non-zero"
   hooks="$T/.prime/agent/hooks"
   for h in route-hook.py status-hook.py; do
@@ -906,7 +901,7 @@ main() {
     case_session_metrics_in_plant case_source_index_placed \
     case_plant_facts_index_no_fm case_plant_facts_declared case_plant_facts_partial \
     case_model_map_placed case_opencode_model_from_map case_opencode_no_map_row \
-    case_opencode_map_unreadable case_opencode_check_drift case_prime_hook_scripts_placed \
+    case_opencode_check_drift case_prime_hook_scripts_placed \
     case_reinstall_engine_serves_hooks case_interpreter_floor case_stamp_tracking_lines \
     case_backups_listed; do
     printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"

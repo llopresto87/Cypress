@@ -163,7 +163,7 @@ GATES: dict[str, tuple[str, str, str, str]] = {
     "test-graft-tools.sh": (
         "the graft audit classifies backups and finds buried customization",
         FIXTURES, "scope", "fixture plants only; totality against a real install "
-        "is asserted by test-install-placement.sh's M8 case"),
+        "is asserted by test-install-placement.sh's M8 arm of case_recover"),
     "test-nested-checkout.sh": (
         "the three upward walkers stop at the plant root: an ancestor "
         "checkout's linter, register and roster are all unreachable, and the "

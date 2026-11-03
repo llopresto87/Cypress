@@ -3,8 +3,9 @@
 
 run.sh keeps the seed-integrity snapshot and its EXIT trap; this script only
 runs the steps between. Budget, grouped output and exit-code aggregation live
-in tests/gate_pool.py. The steps are coordinators (suites that draw pool tokens
-for their own leaves), so they run token-free (pooled=False).
+in tests/gate_pool.py. A step that runs its own scenarios through the pool is a
+coordinator and runs token-free; every other step takes a CPU-bound or
+I/O-bound token by its measured class (pooled=False selects that rule).
 
 Usage: python3 tests/run-parallel.py STEPS_FILE
     One shell command per line; blank and #-comment lines are ignored.
@@ -32,7 +33,8 @@ def main() -> int:
         print("run-parallel: FAIL — zero steps to run", file=sys.stderr)
         return 1
     workers = min(gate_pool.resolve_workers(), len(steps))
-    header = "run-parallel: %d gate steps, %d workers" % (len(steps), workers)
+    header = ("run-parallel: %d gate steps, %d workers (%d CPU-bound tokens, %d I/O-bound)"
+              % (len(steps), workers, gate_pool.cpu_slots(), gate_pool.io_slots()))
     return gate_pool.dispatch(steps, pooled=False, prefix="run-parallel",
                               noun="step", header=header)
 
