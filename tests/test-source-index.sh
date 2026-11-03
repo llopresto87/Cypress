@@ -2575,8 +2575,23 @@ def seed_copy(base, fake_tool):
     """A copy of the seed whose tools/source-index.py is `fake_tool` (Python source)."""
     dst = base / "seed-copy"
     if not dst.exists():
-        shutil.copytree(SEED, dst, symlinks=True,
-                        ignore=shutil.ignore_patterns(".git", "__pycache__", ".seed-worktrees"))
+        # In a Git checkout the seed is the files Git lists (tracked, or
+        # untracked and not ignored): a working copy's ignored clutter is not
+        # the seed. Elsewhere, the whole tree.
+        r = subprocess.run(["git", "-C", str(SEED), "ls-files", "-co", "--exclude-standard", "-z"],
+                           capture_output=True, timeout=60)
+        if r.returncode != 0:
+            shutil.copytree(SEED, dst, symlinks=True,
+                            ignore=shutil.ignore_patterns(".git", "__pycache__", ".seed-worktrees"))
+        for rel in (r.stdout.decode("utf-8", "surrogateescape").split("\0") if r.returncode == 0 else []):
+            src, out = SEED / rel, dst / rel
+            if not rel or {"__pycache__", ".seed-worktrees"} & set(Path(rel).parts) or not (src.is_symlink() or src.is_file()):
+                continue
+            out.parent.mkdir(parents=True, exist_ok=True)
+            if src.is_symlink():
+                out.symlink_to(os.readlink(src))
+            else:
+                shutil.copy2(src, out)
     (dst / "tools" / "source-index.py").write_text(fake_tool)
     return dst
 

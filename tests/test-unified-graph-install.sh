@@ -15,8 +15,14 @@ _CLEAN=()
 _cleanup() { [ ${#_CLEAN[@]} -eq 0 ] || rm -rf "${_CLEAN[@]}"; }
 trap _cleanup EXIT
 
-# The machinery-only graph lays down every required artifact, keeps a
-# target-owned README, and lints clean out of the box.
+# One codex install, then four arms over the same target. (1) The
+# machinery-only graph lays down every required artifact, keeps a
+# target-owned README, and lints clean out of the box. (2) A
+# `<name>.unfilled.md` marker stops the add-if-missing pass re-creating the
+# blank leaf. (3) A plant-authored agent or skill reaches every harness, or it
+# is unspawnable. (4) Only nodes are placed in a roster home: a note or an
+# index page is not a roster entry. Arms (2) to (4) are read after one install
+# per host, so each host's pass had its chance to break them.
 case_required() {
   local TARGET; TARGET="$(mktemp -d)"; _CLEAN+=("$TARGET")
   mkdir -p "$TARGET/docs/graph"
@@ -40,31 +46,25 @@ case_required() {
   done
   [[ ! -e "$TARGET/.codex/protocols" ]]   # protocols are graph-only, no tool-dir copy
   python3 "$TARGET/docs/graph/graph-lint.py" >/dev/null
-}
 
-# A `<name>.unfilled.md` marker stops the add-if-missing pass re-creating the blank leaf.
-case_unfilled() {
-  local TARGET; TARGET="$(mktemp -d)"; _CLEAN+=("$TARGET")
-  "$ROOT/install.sh" codex --project-dir "$TARGET" --copy --force >/dev/null
+  # (2) the marker, (3) a plant-authored agent and skill, (4) a note under the
+  # agent home and an index page beside the skills.
   mv "$TARGET/docs/graph/runbooks/rollback.md" "$TARGET/docs/graph/runbooks/rollback.unfilled.md"
-  "$ROOT/install.sh" claude-code --project-dir "$TARGET" --copy --force >/dev/null
-  if [[ -e "$TARGET/docs/graph/runbooks/rollback.md" ]]; then
-    echo "install re-created runbooks/rollback.md despite the .unfilled.md marker" >&2; exit 1
-  fi
-  echo "  .unfilled.md marker suppresses scaffold re-creation — OK"
-}
-
-# A plant-authored agent or skill reaches every harness, or it is unspawnable.
-case_plant_authored() {
-  local TARGET; TARGET="$(mktemp -d)"; _CLEAN+=("$TARGET")
-  "$ROOT/install.sh" codex --project-dir "$TARGET" --copy --force >/dev/null
   printf -- '---\nname: plant-authored\ndescription: an agent this plant commissioned for itself\n---\n# plant-authored\n' \
     > "$TARGET/docs/graph/agents/90-plant-authored.md"
   printf -- '---\nname: plant-authored-skill\ndescription: a procedure this plant authored for itself\n---\n# plant-authored-skill\n' \
     > "$TARGET/docs/graph/skills/plant-authored-skill.md"
+  mkdir -p "$TARGET/docs/graph/agents/notes"
+  printf 'working notes\n'  > "$TARGET/docs/graph/agents/notes/todo.md"
+  printf '# skills index\n' > "$TARGET/docs/graph/skills/index.md"
   for tool in $EVERY_HOST; do
     "$ROOT/install.sh" "$tool" --project-dir "$TARGET" --copy --force >/dev/null 2>&1
   done
+
+  if [[ -e "$TARGET/docs/graph/runbooks/rollback.md" ]]; then
+    echo "install re-created runbooks/rollback.md despite the .unfilled.md marker" >&2; exit 1
+  fi
+  echo "  .unfilled.md marker suppresses scaffold re-creation — OK"
   for projected in \
     .claude/agents/90-plant-authored.md \
     .opencode/agents/90-plant-authored.md \
@@ -80,6 +80,13 @@ case_plant_authored() {
     [[ -e "$TARGET/$projected" ]] || { echo "node not projected: $projected" >&2; exit 1; }
   done
   echo "  plant-authored agents and skills reach every harness projection — OK"
+  [[ -z "$(find "$TARGET/.claude" "$TARGET/.codex" "$TARGET/.github" -name 'todo*' 2>/dev/null)" ]] || {
+    echo "a note under the agent home was projected as a spawnable agent" >&2; exit 1; }
+  [[ ! -e "$TARGET/.claude/skills/index/SKILL.md" ]] || {
+    echo "an index page beside the skills was projected as a skill" >&2; exit 1; }
+  [[ ! -e "$TARGET/.github/instructions/index-skill.instructions.md" ]] || {
+    echo "an index page was projected as a copilot skill instruction" >&2; exit 1; }
+  echo "  only nodes are projected — notes and index pages are not roster entries — OK"
 }
 
 # A customized kernel body is fast-forwarded, never silently.
@@ -114,8 +121,8 @@ case_symlink() {
   echo "  --symlink projects the roster, plant-authored nodes included — OK"
 }
 
-# --check regenerates from the plant's graph, not the seed's; and only nodes
-# are placed in a roster home (a note or index page is not a roster entry).
+# --check regenerates from the plant's graph, not the seed's. (That only nodes
+# are placed in a roster home is case_required's arm (4).)
 case_check() {
   local CHK; CHK="$(mktemp -d)"; _CLEAN+=("$CHK")
   "$ROOT/install.sh" github-copilot --project-dir "$CHK" --copy --force >/dev/null 2>&1
@@ -129,24 +136,12 @@ case_check() {
   "$ROOT/install.sh" github-copilot --project-dir "$CHK" --check >/dev/null 2>&1 || {
     echo "--check reports STALE for ever once the plant authors an agent" >&2; exit 1; }
   echo "  --check stays clean when the plant has agents of its own — OK"
-
-  mkdir -p "$CHK/docs/graph/agents/notes"
-  printf 'working notes\n'  > "$CHK/docs/graph/agents/notes/todo.md"
-  printf '# skills index\n' > "$CHK/docs/graph/skills/index.md"
-  "$ROOT/install.sh" $EVERY_HOST --project-dir "$CHK" --copy --force >/dev/null 2>&1
-  [[ -z "$(find "$CHK/.claude" "$CHK/.codex" "$CHK/.github" -name 'todo*' 2>/dev/null)" ]] || {
-    echo "a note under the agent home was projected as a spawnable agent" >&2; exit 1; }
-  [[ ! -e "$CHK/.claude/skills/index/SKILL.md" ]] || {
-    echo "an index page beside the skills was projected as a skill" >&2; exit 1; }
-  [[ ! -e "$CHK/.github/instructions/index-skill.instructions.md" ]] || {
-    echo "an index page was projected as a copilot skill instruction" >&2; exit 1; }
-  echo "  only nodes are projected — notes and index pages are not roster entries — OK"
 }
 
 if [ "${1:-}" = "__case" ]; then "$2"; exit $?; fi
 
 SCN="$(mktemp)"
-for c in case_required case_unfilled case_plant_authored case_kernel case_symlink case_check; do
+for c in case_required case_kernel case_symlink case_check; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0

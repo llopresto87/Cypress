@@ -17,7 +17,7 @@ mini_tree "$TMP" agent-corpus agents core docs documentation integrations \
   GRAFT_PROMPT.md INSTALL.md INSTALL_PROMPT.md README.md install.sh manifest.json
 
 python3 - "$TMP" <<'PY'
-import importlib.util, json, re, shutil, sys
+import hashlib, importlib.util, json, re, shutil, sys
 from pathlib import Path
 
 T = Path(sys.argv[1])
@@ -77,11 +77,40 @@ def restore():
     touched.clear()
 
 
+AGN_SCANS: dict = {}                   # (tool, file, bytes, args) -> its findings
+
+
+def memo_scan(tool):
+    """The agnosticism scan is per file: findings for a file follow from its
+    path and bytes alone. So the real scan runs once per (tool source, file
+    bytes) and every row reuses the files its plant did not touch; a planted
+    file has new bytes and is scanned afresh. Order and dedup stay the real
+    iter_files'."""
+    real, src = tool.scan, hashlib.sha1(Path(tool.__file__).read_bytes()).hexdigest()
+
+    def scan(paths, forbid=(), globs=tool.DEFAULT_GLOBS, relative_to=None, allows=()):
+        out = []
+        for f in tool.iter_files(paths, globs):
+            try:
+                raw = hashlib.sha1(f.read_bytes()).hexdigest()
+            except OSError:
+                raw = None
+            key = (src, str(f), raw, tuple(forbid), tuple(globs), str(relative_to), tuple(allows))
+            if raw is None or key not in AGN_SCANS:
+                AGN_SCANS[key] = real([f], forbid, globs, relative_to, allows)
+            out += AGN_SCANS[key]
+        return out
+    tool.scan = scan
+    return tool
+
+
 def module():
     spec = importlib.util.spec_from_file_location("seedlint_case", T / "tests/seed-lint.py")
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
     spec.loader.exec_module(mod)
+    load = mod.load_tool
+    mod.load_tool = lambda name: memo_scan(load(name)) if name == "agnosticism-lint.py" else load(name)
     return mod
 
 

@@ -7,6 +7,12 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # GATE_JOBS is clamped to [4, 64]; unset, the default is clamp(cpu*2, 8, 64).
 # The token pool under GATE_POOL_DIR caps the leaf subprocesses of every
 # parallel suite together. It lives in $TMPDIR, outside the seed digest.
+# Every temp file of the run lives under one root named *.noindex: Spotlight
+# skips such a directory, so the hundreds of thousands of files the suites
+# create and delete are not queued for indexing on macOS. Removed at exit.
+GATE_TMP="$(mktemp -d "${TMPDIR:-/tmp}/cypress-gate.XXXXXX")"
+mv "$GATE_TMP" "$GATE_TMP.noindex" && GATE_TMP="$GATE_TMP.noindex"
+export TMPDIR="$GATE_TMP"
 GATE_POOL_DIR="$(mktemp -d)"
 export GATE_POOL_DIR
 export GATE_JOBS="${GATE_JOBS:-}"
@@ -65,6 +71,7 @@ PYEOF
 SEED_DIGEST_BEFORE="$(_seed_digest)"
 _seed_integrity() {
     local rc=$?
+    rm -rf "$GATE_TMP"
     if [[ "$(_seed_digest)" != "$SEED_DIGEST_BEFORE" ]]; then
         echo "FAIL: the gate modified the seed it was testing — a suite wrote" >&2
         echo "      back into $ROOT instead of its temp target. Re-run with" >&2

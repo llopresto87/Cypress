@@ -172,14 +172,16 @@ deprecated() {
 # refuses before the first write (SPEC-0001 NO_INTERPRETER_AT_THE_FLOOR).
 PYTHON_FLOOR="3.14"
 PYTHON=""
-run_python() { "$PYTHON" "$@"; }
+# -S skips the site import (~40% of interpreter start-up): the seed's Python is
+# standard-library only, and an install starts it a few dozen times.
+run_python() { "$PYTHON" -S "$@"; }
 resolve_python() {
     local major="${PYTHON_FLOOR%%.*}" minor="${PYTHON_FLOOR#*.}" n=0 cand
     local cands="python3"
     while [[ $n -lt 10 ]]; do cands+=" python$major.$((minor + n))"; n=$((n + 1)); done
     for cand in $cands; do
         command -v "$cand" >/dev/null 2>&1 || continue
-        "$cand" -c "import sys; sys.exit(0 if sys.version_info >= ($major, $minor) else 1)" \
+        "$cand" -S -c "import sys; sys.exit(0 if sys.version_info >= ($major, $minor) else 1)" \
             >/dev/null 2>&1 || continue
         PYTHON="$cand"
         return 0
@@ -447,7 +449,8 @@ bak_path() {
 place_file() {
     local src="$1" dest="$2"
     [[ -e "$src" ]] || die "missing source: $src"
-    ensure_dir "$(dirname "$dest")"
+    # ${dest%/*} is dirname without a subshell: this runs once per placed file
+    if [[ "$dest" == */* ]]; then ensure_dir "${dest%/*}"; else ensure_dir .; fi
     # Captured BEFORE the backup branch below can move dest out of the way —
     # this is the one bit place_graph_machinery needs afterward to tell a
     # RE-creation (dest was absent) from an in-place fast-forward (dest was

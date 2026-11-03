@@ -8,10 +8,27 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SELF="$ROOT/tests/test-install-adoption.sh"
+export ROOT
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 ok()   { echo "  $1 — OK"; }
 tmpw() { W="$(mktemp -d)"; trap 'chmod -R u+w "$W" 2>/dev/null; rm -rf "$W"' EXIT; }
+# Shared first installs: the dispatcher builds each base once into $PLANT_CACHE
+# (BASES below); a case copies one. A case that asserts what a FIRST install
+# prints reads the base's own log, which is that first install's output.
+source "$ROOT/tests/helpers/plant.sh"
+base() { local d="$1"; shift; plant_base "$@" || fail "base install $* failed"; plant_copy "$d"; }
+# The adopted base: claude-code over a project carrying its own AGENTS.md.
+ADOPTED_RULES='# Our team rules\n\nAlways rebase, never merge.\n'
+adopted_base() {
+  local b="${PLANT_CACHE:?}/adopted"
+  [ -f "$b.ok" ] && return 0
+  rm -rf "$b"; mkdir -p "$b"; printf "$ADOPTED_RULES" >"$b/AGENTS.md"
+  TZ=UTC "$ROOT/install.sh" claude-code --project-dir "$b" >"$b.log" 2>&1 \
+    || { echo "adopted_base: install failed: $(tail -3 "$b.log")" >&2; return 1; }
+  touch "$b.ok"
+}
+adopted_copy() { adopted_base || fail "the adopted base install failed"; mkdir -p "$1"; cp -a "$PLANT_CACHE/adopted/." "$1/"; }
 
 assert_clean_refusal() {   # $1=label $2=target $3=blocked relpath $4=adapter $5=expect-empty
     local label="$1" tgt="$2" rel="$3" tool="$4" empty="$5" out rc
@@ -95,10 +112,8 @@ case_unrelated_trees() {  # D6 PREFLIGHT_SCOPED_TO_WRITTEN_TREES: Docker-owned t
 }
 
 case_adopted() {
-  tmpw; MIG="$W/adopted"; mkdir -p "$MIG"
-  printf '# Our team rules\n\nAlways rebase, never merge.\n' >"$MIG/AGENTS.md"
-  out="$("$ROOT/install.sh" claude-code --project-dir "$MIG" 2>&1)" \
-      || fail "install over a project with its own AGENTS.md failed"
+  tmpw; MIG="$W/adopted"; adopted_copy "$MIG"
+  out="$(cat "$PLANT_CACHE/adopted.log")"   # the first install's own output
   NOTE="$MIG/docs/graph/plans/adopted-instructions.md"
   [[ -f "$NOTE" ]] || fail "a replaced instruction file must be recorded as migration work"
   grep -q "docs-librarian" "$NOTE" || fail "the migration note must name its owner"
@@ -111,9 +126,8 @@ case_adopted() {
   "$ROOT/install.sh" opencode --project-dir "$MIG" >/dev/null 2>&1
   entry="$(grep -c '^- \[ \]' "$NOTE" | tr -d ' ')"
   [[ "$entry" -eq 1 ]] || fail "a re-install duplicated the migration entry ($entry)"
-  FRESH="$W/adopted-fresh"; mkdir -p "$FRESH"
-  "$ROOT/install.sh" claude-code --project-dir "$FRESH" >/dev/null 2>&1
-  [[ ! -f "$FRESH/docs/graph/plans/adopted-instructions.md" ]] \
+  plant_base claude-code || fail "the claude-code base install failed"
+  [[ ! -f "$PLANT_BASE/docs/graph/plans/adopted-instructions.md" ]] \
       || fail "a fresh plant must not get a migration note"
   ok "a replaced instruction file becomes recorded work for docs-librarian"
 }
@@ -121,9 +135,8 @@ case_adopted() {
 case_adapter_dirs() {
   tmpw
   for tool in claude-code opencode codex github-copilot prime-agent; do
-      D="$W/dirs-$tool"; mkdir -p "$D"
-      "$ROOT/install.sh" "$tool" --project-dir "$D" >/dev/null 2>&1 \
-          || fail "adapter_dirs: baseline install of $tool failed"
+      plant_base "$tool" || fail "adapter_dirs: baseline install of $tool failed"
+      D="$PLANT_BASE"   # read only: no copy needed
       while IFS= read -r dec; do
           [[ -z "$dec" ]] && continue
           case "$dec" in docs|docs/graph|.cypress) continue ;; esac
@@ -171,8 +184,7 @@ check_backups() {  # the installer's own backups are not drift
   grep -q "up to date" <<<"$out" || fail "--check reported drift over backups it wrote itself: $out"
 }
 case_check() {
-  tmpw; export PLANT_CACHE="$W/cache"
-  source "$ROOT/tests/helpers/plant.sh"; source "$ROOT/tests/helpers/lintcase.sh"
+  tmpw; source "$ROOT/tests/helpers/lintcase.sh"
   plant_base github-copilot || fail "--check setup install failed"
   collect_case case_check_broken  check_broken  "--check names a broken generator and its cause"
   collect_case case_check_stale   check_stale   "--check reports a drifted view as STALE"
@@ -182,10 +194,7 @@ case_check() {
 
 case_migration_date() {  # a re-filed orphan row carries the backup's date, not the sweep's
   tmpw; export TZ=UTC   # install.sh stamps in local time; pin it to this case's clock
-  D="$W/migdate"; mkdir -p "$D"
-  printf '# Our team rules\n\nAlways rebase, never merge.\n' >"$D/AGENTS.md"
-  "$ROOT/install.sh" claude-code --project-dir "$D" >/dev/null 2>&1 \
-      || fail "migration-date setup install failed"
+  D="$W/migdate"; adopted_copy "$D"
   NOTE="$D/docs/graph/plans/adopted-instructions.md"
   [[ -f "$NOTE" ]] || fail "migration-date: setup produced no migration note"
   OLD="AGENTS.md.bak-20240102-030405"     # an orphaned backup: on disk, no ledger row
@@ -208,8 +217,7 @@ caseCHECK_WITHOUT_COPILOT_SAYS_SO() {  # D3: silence would read as "in sync" in 
   out="$("$ROOT/install.sh" all --check --project-dir "$E" 2>&1)" && rc=0 || rc=$?
   [[ $rc -eq 0 ]] || fail "D3: all --check with no generated views in scope must exit 0; got $rc: $out"
   grep -qi 'no generated views' <<<"$out" || fail "D3: all --check did not say no generated views are in scope: $out"
-  F="$W/check-codex-only"; mkdir -p "$F"             # (2) a record with neither github-copilot nor opencode
-  "$ROOT/install.sh" claude-code codex --project-dir "$F" >/dev/null 2>&1 || fail "D3: setup install.sh claude-code codex failed"
+  F="$W/check-codex-only"; base "$F" claude-code codex   # (2) a record with neither github-copilot nor opencode
   grep -q 'github-copilot' "$F/.cypress/seed.json" \
       && fail "D3: setup record carries github-copilot, so this arm asserts nothing"
   python3 -c 'import json,sys; sys.exit("opencode" in json.load(open(sys.argv[1]))["tools"].split())' "$F/.cypress/seed.json" \
@@ -222,9 +230,7 @@ caseCHECK_WITHOUT_COPILOT_SAYS_SO() {  # D3: silence would read as "in sync" in 
 }
 
 caseALL_CHECK_INCLUDES_RECORDED_COPILOT() {  # D4: a recorded Copilot host is checked by `all --check`
-  tmpw; P="$W/copilot-plant"; mkdir -p "$P"
-  "$ROOT/install.sh" all github-copilot --project-dir "$P" >/dev/null 2>&1 \
-      || fail "D4: setup install.sh all github-copilot failed"
+  tmpw; P="$W/copilot-plant"; base "$P" all github-copilot
   grep -q 'github-copilot' "$P/.cypress/seed.json" || fail "D4: setup record does not carry github-copilot"
   out="$("$ROOT/install.sh" all --check --project-dir "$P" 2>&1)" && rc=0 || rc=$?      # (1) in sync
   [[ $rc -eq 0 ]] || fail "D4: all --check on an in-sync Copilot plant must exit 0; got $rc: $out"
@@ -262,10 +268,9 @@ case_stray_prompt() {  # a leftover prompt is named, never deleted by inference
 case_hook_order() {  # VS Code reads both .github/hooks and .claude/settings.json
   tmpw
   for order in "github-copilot claude-code" "claude-code github-copilot"; do
-      H="$W/hookorder-$(echo "$order" | tr ' ' '-')"; mkdir -p "$H"
-      for tool in $order; do
-          "$ROOT/install.sh" "$tool" --project-dir "$H" >/dev/null 2>&1 || fail "hook-order setup: install $tool failed"
-      done
+      H="$W/hookorder-$(echo "$order" | tr ' ' '-')"; base "$H" "${order%% *}"
+      "$ROOT/install.sh" "${order##* }" --project-dir "$H" >/dev/null 2>&1 \
+          || fail "hook-order setup: install ${order##* } failed"
       live=0
       for f in route-hook.py route.json status-hook.py status.json; do
           [[ -e "$H/.github/hooks/$f" ]] && live=$((live + 1))
@@ -278,8 +283,7 @@ case_hook_order() {  # VS Code reads both .github/hooks and .claude/settings.jso
 }
 
 case_hook_retire() {
-  tmpw; HR="$W/hookorder-retire"; mkdir -p "$HR"
-  "$ROOT/install.sh" github-copilot --project-dir "$HR" >/dev/null 2>&1 || fail "retire setup failed"
+  tmpw; HR="$W/hookorder-retire"; base "$HR" github-copilot
   printf '\n# PLANT-EDIT\n' >> "$HR/.github/hooks/route-hook.py"
   log="$("$ROOT/install.sh" claude-code --project-dir "$HR" 2>&1)" || fail "retire install failed"
   grep -q "retired .github/hooks/route-hook.py" <<<"$log" || fail "the hook retirement was not announced"
@@ -289,8 +293,7 @@ case_hook_retire() {
 }
 
 case_nostamp() {  # absence of the record is not absence of the plant
-  tmpw; NS="$W/nostamp"; mkdir -p "$NS"
-  "$ROOT/install.sh" claude-code --project-dir "$NS" >/dev/null 2>&1 || fail "no-stamp setup install failed"
+  tmpw; NS="$W/nostamp"; base "$NS" claude-code
   rm -f "$NS/.cypress/seed.json" "$NS/docs/graph/protocols/grill.md"
   log="$("$ROOT/install.sh" claude-code --project-dir "$NS" 2>&1)" || fail "install over a stamp-less plant failed"
   grep -qi "RE-CREATED" <<<"$log" || fail "a node was restored into a stamp-less plant with no notice"
@@ -300,8 +303,8 @@ case_nostamp() {  # absence of the record is not absence of the plant
 }
 
 case_freshquiet() {
-  tmpw; FRESH="$W/freshquiet"; mkdir -p "$FRESH"
-  log="$("$ROOT/install.sh" claude-code --project-dir "$FRESH" 2>&1)" || fail "fresh install failed"
+  plant_base claude-code || fail "fresh install failed"
+  log="$(cat "$PLANT_BASE.log")"   # the base is a first install into an empty target
   grep -qi "RE-CREATED" <<<"$log" && fail "a FIRST install announced re-created nodes: $log"
   grep -q "no .cypress/seed.json" <<<"$log" && fail "a first install warned about a missing record it was about to write"
   ok "a first install announces no re-creation and no missing record"
@@ -316,8 +319,7 @@ d5_assert_header() {  # $1=label $2=first line of the list file; checked by pref
 }
 
 case_d5_recreated_list() {  # one plant, three checks, each in a subshell so one red hides no other
-  tmpw; T="$W/d5-twelve"; mkdir -p "$T"
-  "$ROOT/install.sh" claude-code --project-dir "$T" --copy >/dev/null 2>&1 || fail "D5: baseline install failed"
+  tmpw; T="$W/d5-twelve"; base "$T" claude-code   # copy mode is the default
   list="$T/.cypress/recreated-nodes.txt"
   local bad=0
   (   # D5 case_d5_fresh_list: a first install lists the header alone
@@ -357,15 +359,27 @@ case_d5_recreated_list() {  # one plant, three checks, each in a subshell so one
   return "$bad"
 }
 
+# Run alone (no dispatcher), a case gets a cache of its own, removed after it.
+if [ "${1:-}" = "__case" ] && [ -z "${PLANT_CACHE:-}" ]; then
+  PLANT_CACHE="$(mktemp -d)"; export PLANT_CACHE
+  rc=0; bash "$SELF" __case "$2" || rc=$?; rm -rf "$PLANT_CACHE"; exit "$rc"
+fi
 if [ "${1:-}" = "__case" ]; then "$2"; exit $?; fi
 
-export ROOT
+PLANT_CACHE="$(mktemp -d)"; export PLANT_CACHE
 SCN="$(mktemp)"
+trap 'rm -rf "$PLANT_CACHE" "$SCN"' EXIT
+# The bases, built once each before the cases, which only copy them.
+for b in claude-code github-copilot opencode codex prime-agent "claude-code codex" "all github-copilot"; do
+  printf 'install-adoption base %s\t%s\n' "$b" "source \"$ROOT/tests/helpers/plant.sh\" && plant_base $b" >> "$SCN"
+done
+printf 'install-adoption base adopted\t%s\n' "bash \"$SELF\" __case adopted_base" >> "$SCN"
+python3 "$ROOT/tests/gate_pool.py" run "$SCN" || { echo "install-adoption: FAIL — a base install failed" >&2; exit 1; }
+: > "$SCN"
 for c in case_both case_block_declared case_block_deep case_block_readonly case_unrelated_trees case_adopted case_adapter_dirs case_check case_migration_date caseCHECK_WITHOUT_COPILOT_SAYS_SO caseALL_CHECK_INCLUDES_RECORDED_COPILOT case_stray_prompt case_hook_order case_hook_retire case_nostamp case_freshquiet case_d5_recreated_list; do
   printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0
 python3 "$ROOT/tests/gate_pool.py" run "$SCN" || rc=$?
-rm -f "$SCN"
 [ "$rc" -eq 0 ] || { echo "install-adoption: FAIL — a scenario failed" >&2; exit "$rc"; }
 echo "install-adoption: OK"
