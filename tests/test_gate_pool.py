@@ -33,6 +33,22 @@ class ClampTests(unittest.TestCase):
         self.assertGreaterEqual(AUTO, 8)  # a small box still oversubscribes
 
 
+class SkipTests(unittest.TestCase):
+    def test_skip_is_not_reported_as_pass(self):
+        """A step that exits 0 because its input was absent checked nothing:
+        its header and the summary say SKIP, never PASS."""
+        f = Path(tempfile.mkdtemp()) / "s.scn"
+        self.addCleanup(shutil.rmtree, f.parent, True)
+        f.write_text("absent\techo 'agnosticism lint: SKIPPED — no local forbid list'\n"
+                     "real\techo 'grill lint: PASS'\n")
+        out = subprocess.run([sys.executable, str(HERE / "gate_pool.py"), "run", str(f)],
+                             capture_output=True, text=True).stdout
+        self.assertIn("[SKIP] absent", out)
+        self.assertIn("[PASS] real", out)
+        self.assertIn("1 skipped (checked nothing)", out)
+        self.assertNotIn("all 2", out)
+
+
 class TokenPoolTests(unittest.TestCase):
     def test_pool_is_shared_across_processes(self):
         """Two gate_pool runs sharing one pool dir never exceed the budget

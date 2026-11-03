@@ -36,12 +36,19 @@ Bash calls; it guards commands and carries no routing context. The route
 hook is prompt-scoped (`UserPromptSubmit`), and the hooks reference does
 not record that event firing for a subagent's turn. No hook the seed
 installs reads a worker's result, so the handback block is the one
-carrier back. Embed the canonical block from
-`docs/graph/templates/prompts/graph-session-bootstrap.md` verbatim,
-plus the routing evidence and the handback requirement
-(`docs/graph/templates/prompts/handback-payload.md`: `produced_by` and
-`route_evidence` feed the deliver-time attribution assertion,
-`protocol.deliver`). Write that brief's task line in the domain's own
+carrier back. Compose the brief with `python3 docs/graph/brief.py`: it
+copies the canonical blocks of
+`docs/graph/templates/prompts/graph-session-bootstrap.md` and the HANDBACK
+block of `docs/graph/templates/prompts/handback-payload.md` byte for byte,
+fills their slots (task line, spawn id, routing evidence), and adds your
+task part, so neither you nor the worker reads the templates (`produced_by`
+and `route_evidence` feed the deliver-time attribution assertion,
+`protocol.deliver`). Where the spawn prompt stays in the caller's context,
+compose with `--out docs/graph/plans/<unit of work>/briefs/<spawn_id>.md` and
+send the three-line pointer it prints as the prompt, so the brief is never
+in the caller's context at all and stays on disk as the spawn's record. Hand-copied blocks drifted: in one plant 65% of briefs
+carried the graph block and 16% the companion block, and workers opened the
+handback template 71 times. Write that brief's task line in the domain's own
 words: it is the string the worker hands to `--plan`, so the terms it
 names are what compose the worker's expertise closure, and a task line
 vaguer than the work loads a graph vaguer than the work. Parameterized

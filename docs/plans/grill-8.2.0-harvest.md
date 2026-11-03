@@ -345,6 +345,7 @@ The standard gate holds (`CLAUDE.md` Gates: `bash tests/run.sh`), on an interpre
 | A plant host has no interpreter at the floor | medium | medium | the installer refuses before writing, with the fix line | implementer | `NO_INTERPRETER_AT_THE_FLOOR` |
 | Compose mode leaves two kernel homes | low | medium | opt-in; `--kernel-mode replace` restores one body; the stamp records the mode | architect | K8 |
 | A plant's recorded adversarial baseline hides a routing regression | low | medium | the baseline is recorded only at the graft that brings the corpus or changes the roster; the seed roster keeps its budget | tester | `tests/test_agent_lint.py` |
+| Press of the top risk, a project-identifying token reaching a seed file (devils-advocate, 2026-11-03, after the round): refuted. Without the local forbid list the gate step skipped and read PASS; path names were not scanned; the release's empty-status step invited committing local archives | — | — | in 8.3.0: `prepare-release.py` sweeps fail closed, path names and untracked files included; the runner reports a skip as SKIP | the steward | `tests/test_prepare_release.py`, `tests/test-agnosticism-lint.sh`, `tests/test_gate_pool.py` |
 
 ## 12. Open Questions
 | # | Question | Why it matters | Current assumption | How to resolve | Owner | Pinned by |
@@ -366,3 +367,4 @@ Run the release pass, `docs/skills/seed-release.md`; the tag push waits for the 
 
 ## 15. Changelog
 - 2026-10-14: plan written as the record of round 8.2.0, a harvest: the owner's decisions of 2026-10-14 listed in §2, and the increments of §9 grouped by subject. `tests/run.sh` `ACTIVE_PLAN` moves here from the 8.1.2 plan, so the gate holds the eleven contracts this round added. The tip closed with the full gate green, the review's fixes applied and the product, architect and tester sign-offs given.
+- 2026-11-03: the press this round's plan never ran (`grill.press`, its top risk in §11) ran after the round, when grill-lint began checking §11 for a verdict. It returned `refuted`; the row appended to §11 records the verdict and the 8.3.0 fixes.

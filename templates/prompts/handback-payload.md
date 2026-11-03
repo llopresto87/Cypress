@@ -30,6 +30,9 @@ HANDBACK
 - route_evidence: {{the agent-lint --route line that selected this agent,
                     or the caller's recorded override rationale — echoed
                     from the brief}}
+- graph_route: {{one line: `--plan` task line; LOAD <ids>; skipped <ids>;
+                 widened <id> (<reason>) — ids only, never the router's
+                 output}}
 - effort: {{echoed from the brief: <low|medium|high> (row <n>: <reason>),
             plus "host applies: definition default <value>" where it differs}}
 - expertise_gap: {{each stack element met mid-work with no expertise.* node,
@@ -41,8 +44,6 @@ HANDBACK
                       delegation.harness-registration}}
 - recommended_next: {{agent name}} + {{protocol/step}}, or "none — session
                     ends here"
-- next_route_evidence: {{only when recommending: the agent-lint --route line
-                         that supports recommended_next, or "not run"}}
 - gates: {{commands run + results, or "none"; when this spawn added
           tests, also the test cases and the runtime it added, as a
           delta, not the suite's total}}
@@ -55,21 +56,21 @@ HANDBACK
 
 ## Rules (why this block exists)
 
-- **`route_evidence` is about you, `next_route_evidence` about the next
-  hop.** `route_evidence` echoes the routing line from your brief that
-  selected you — the deliver-time attribution assertion reads it beside
-  `produced_by` to confirm the right specialist did the work. This field
-  holds only your own routing line: the next hop's goes in
-  `next_route_evidence`, and graph-lint `--plan` output (graph-route
-  evidence) goes in your report body.
+- **`route_evidence` is about you.** It echoes the routing line from your
+  brief that selected you — the deliver-time attribution assertion reads it
+  beside `produced_by` to confirm the right specialist did the work. Your own
+  graph route goes in `graph_route:` as ids, so the report body never
+  retells it. The next hop needs only `recommended_next`: its caller routes it.
 - **`produced_by` is load-bearing.** A unit of work with no `produced_by`
   is a deliver-time BLOCK, not a pass (fail-closed).
 - **Every field is its shortest sufficient form.** Paths and identifiers,
   not narration — the payload is a routing header the caller re-reads
   each time a worker returns, not a report; findings go in the report body.
 - **The report body carries decisions, in a fixed order, and has an
-  overflow note.** The order is: the verdict; the paths delivered; the
-  gates, with their numbers; the blockers; then this payload. Point at
+  overflow note.** The order is: the verdict; the blockers and caveats;
+  the findings the caller must act on; then this payload. The paths and
+  the gate numbers live in `in_domain_work_done` and `gates:` and are not
+  repeated in the body unless a gate failed or misbehaved. Point at
   the brief, the diffs and the paths instead of restating them or
   telling the story of how you got there, because the caller holds the
   brief and can open the paths. Aim at a few thousand characters.

@@ -17,7 +17,14 @@ no access to the judgment `skills/humanizer` and
 author or rewrite it.
 
 Usage:
-    python3 tools/prepare-release.py [--root PATH]
+    python3 tools/prepare-release.py [--root PATH] [--forbid-file PATH]
+
+Before staging it sweeps for donor tokens and fails closed: it refuses when
+the steward's forbid list (default `<root>/.cypress/forbid.txt`) is absent,
+and runs `agnosticism-lint.py --tracked --untracked --terms-only` over the
+root, path names included, refusing on any finding. The gate step reads the
+list only when present (a clone or CI has none), so the release is the one
+run that may not skip it.
 
 Exit 0 on success (the file is staged and the next commands are printed),
 1 when the version has no matching CHANGELOG entry, is already tagged, or
@@ -92,7 +99,28 @@ def tag_exists(root: Path, tag: str) -> bool:
     return bool(result.stdout.strip())
 
 
-def prepare(root: Path) -> str:
+LINT = Path(__file__).resolve().parent / "agnosticism-lint.py"
+
+
+def donor_sweep(root: Path, forbid: Path) -> None:
+    """Fail closed: no list, or any finding in what the next commit could
+    carry (tracked and untracked-not-ignored files and their names)."""
+    if not forbid.is_file():
+        raise ReleasePrepError(
+            f"no forbid list at {forbid} — the donor-token sweep would check "
+            f"nothing, and a release may not skip it; place the steward's list "
+            f"there or pass --forbid-file")
+    res = subprocess.run(
+        [sys.executable, str(LINT), "--root", str(root), "--tracked", "--untracked",
+         "--terms-only", "--forbid-file", str(forbid)],
+        capture_output=True, text=True)
+    if res.returncode != 0:
+        raise ReleasePrepError(
+            "donor-token sweep failed — nothing staged:\n"
+            + (res.stdout + res.stderr).strip())
+
+
+def prepare(root: Path, forbid: Path | None = None) -> str:
     """Stage the release notes; return the tag name. Raises ReleasePrepError."""
     version = read_version(root / "manifest.json")
     tag = f"v{version}"
@@ -104,6 +132,7 @@ def prepare(root: Path) -> str:
     section = extract_changelog_section(
         (root / "CHANGELOG.md").read_text(encoding="utf-8"), version
     )
+    donor_sweep(root, forbid or root / ".cypress" / "forbid.txt")
     stage = root / ".github" / "RELEASE_NOTES.md"
     stage.parent.mkdir(parents=True, exist_ok=True)
     stage.write_text(section, encoding="utf-8")
@@ -121,11 +150,17 @@ def main(argv: list[str] | None = None) -> int:
         default=Path(__file__).resolve().parent.parent,
         help="seed root (default: the repository this script lives in)",
     )
+    parser.add_argument(
+        "--forbid-file",
+        type=Path,
+        default=None,
+        help="the steward's forbid list (default: <root>/.cypress/forbid.txt)",
+    )
     args = parser.parse_args(argv)
     root = args.root.resolve()
 
     try:
-        tag = prepare(root)
+        tag = prepare(root, args.forbid_file)
     except ReleasePrepError as exc:
         print(f"prepare-release: {exc}", file=sys.stderr)
         return 1

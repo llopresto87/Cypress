@@ -14,7 +14,6 @@ requires:
 peers:
   - skill.test-first
   - skill.grill-planner
-  - skill.humanizer
 load_when:
   - "write a spec"
   - "define functional contracts"
@@ -180,10 +179,11 @@ slice at a time. The slice's contracts, their §10 rows (status
 they land in the same commit as that RED, so a live spec never holds a
 contract with no test.
 
-Before a spec is signed, its prose passes
-`docs/graph/skills/humanizer.md` in file mode and
-`python3 docs/graph/prose-lint.py --file <spec> --against HEAD` reports
-no strong tell and no dropped contract slug, number, or code span.
+A spec's readers are the agents that implement, test and review it, so it
+is graph text: compact instruction language (`method.engineering-posture`
+§8), no humanizer pass (`humanizer.scope`). Owner quotes stay verbatim. What
+the owner reads to decide is put to them separately, through
+`skill.brainstorm-socratic` or the `deliver` summary.
 
 The sign-offs are judgment; the shape and the coverage are mechanical.
 `python3 docs/graph/spec-lint.py` (the kernel §3.1 gate in the gate

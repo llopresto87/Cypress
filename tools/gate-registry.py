@@ -149,6 +149,14 @@ GATES: dict[str, tuple[str, str, str, str]] = {
         "runs against Git plants built from synthetic files (and one temp "
         "install for the graft rebuild), not a real governed repository; the "
         "timings of SPEC-0007 §5 are measured once at verify, not here"),
+    "test-brief.sh": (
+        "the brief composer carries both bootstrap blocks verbatim with slots filled, and the handback block",
+        TEMP, "representation",
+        "a brief is checked against the templates it was built from, not against what a worker then does"),
+    "test-resume-hook.sh": (
+        "the cold-resume guard refuses new work to an idle worker and fails open",
+        FIXTURES, "representation",
+        "the fixture is a synthetic transcript tree with set mtimes, not a real session's"),
     "test-bound-hook.sh": (
         "the bounded-execution guard blocks what it claims to", FIXTURES, "representation",
         "the fixture is a synthetic command line, not a real session's"),

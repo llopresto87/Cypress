@@ -9,7 +9,8 @@ builds (`write_plan`), with §9 replaced by five increments that carry a
 A KEY is a field letter and an increment number: `F3` is increment 3's
 `Files touched:`, `D4` its `Depends on:`, `P1` its `Phase:` (an empty value
 drops the field), `C2` its `Spec contracts:`, and `N3` the number its heading
-carries (two headings may then carry one number).
+carries (two headings may then carry one number), and `E2` its `Effort:` (an
+empty value drops the field).
 """
 import re
 import sys
@@ -54,8 +55,10 @@ for n, title, phase, contracts, files, deps in INCREMENTS:
         f"- Behavior added: {title.lower()}",
         "- Gate: unit tests",
         "- Rollback path: revert",
-        "- Effort: low",
     ]
+    effort = edits.get(f"E{n}", "low")
+    if effort:
+        lines.append(f"- Effort: {effort}")
     if phase:
         lines.append(f"- Phase: {phase}")
     lines.append(f"- Depends on: {edits.get(f'D{n}', deps)}")

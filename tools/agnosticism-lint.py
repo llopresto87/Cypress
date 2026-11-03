@@ -209,13 +209,17 @@ def _exempt(line, start, end, path, allows):
     return False
 
 
-def tracked_files(roots):
+def tracked_files(roots, untracked=False):
     """The files each root's Git repository tracks under it: what the
-    component ships, whatever the suffix, and nothing untracked or ignored."""
+    component ships, whatever the suffix, and nothing ignored. `untracked`
+    adds the files Git would let `git add` take (untracked, not ignored): a
+    release sweep must see what the next commit could carry."""
     out = []
     for r in roots:
-        res = subprocess.run(["git", "-C", str(r), "ls-files", "-z", "--", "."],
-                             capture_output=True, text=True)
+        cmd = ["git", "-C", str(r), "ls-files", "-z"]
+        if untracked:
+            cmd += ["--cached", "--others", "--exclude-standard"]
+        res = subprocess.run(cmd + ["--", "."], capture_output=True, text=True)
         if res.returncode != 0:
             raise OSError(f"{r}: not a Git working tree ({res.stderr.strip()})")
         out += [Path(r) / p for p in res.stdout.split("\0") if p]
@@ -247,6 +251,16 @@ def scan(paths, forbid=(), globs=DEFAULT_GLOBS, relative_to=None, allows=()):
             continue
         rel = (f.relative_to(relative_to).as_posix()
                if relative_to else f.as_posix())
+        # The name ships too: a path is published with the file it names.
+        for low, rx in terms:
+            if low in rel.casefold():
+                for m in rx.finditer(rel):
+                    if allows and _exempt(rel, m.start(), m.end(), rel, allows):
+                        continue
+                    findings.append(Finding(
+                        rel, 0, "forbidden-term", m.group(0),
+                        f"project-identifying term '{m.group(0)}' in the path "
+                        f"name — agnosticism gate (a name ships with its file)"))
         # A list of hundreds of terms is narrowed per file first: only the
         # terms the file holds at all are searched for line by line.
         folded = text.casefold()
@@ -306,6 +320,9 @@ def main() -> int:
     ap.add_argument("--tracked", action="store_true",
                     help="scan every file Git tracks under each --root, "
                          "whatever its suffix, instead of --glob matches")
+    ap.add_argument("--untracked", action="store_true",
+                    help="with --tracked, also scan untracked files Git does not "
+                         "ignore: what the next commit could carry")
     ap.add_argument("--terms-only", action="store_true",
                     help="report only forbidden terms (and unreadable files): "
                          "for a tree whose test fixtures plant the other "
@@ -348,7 +365,7 @@ def main() -> int:
     relative_to = None
     if args.tracked:
         try:
-            files = iter_files(tracked_files(roots) + [Path(p) for p in args.file])
+            files = iter_files(tracked_files(roots, args.untracked) + [Path(p) for p in args.file])
         except OSError as exc:
             print(f"  !! {exc}")
             return 2

@@ -27,9 +27,9 @@ graph and a context router, and you run both yourself.
 ```
 GRAPH DISCIPLINE — execute before reading any source:
 1. Run: python3 docs/graph/graph-lint.py --plan "{{exact delegated task}}"
-   Include the command and its output in your report as graph-route
-   evidence (this is context routing; the `route_evidence` field
-   carries the agent-routing line from your brief).
+   Report it in your handback's `graph_route:` field as ids, not
+   the router's output (the `route_evidence` field carries the
+   agent-routing line from your brief).
 2. Load ONLY the reported nodes plus their `requires:` closure.
    Everything else a loaded node lists (leaves, children, links,
    neighbours) is a menu: open an item only when its one-line
@@ -41,9 +41,8 @@ GRAPH DISCIPLINE — execute before reading any source:
    one that is missing, run `--plan "<that element>"` and load what
    it reports: the router composes expertise from the task's words,
    so a stack the task line never names is not in the route.
-   Declare what you loaded, what you deliberately skipped, and every
-   widening, at the start or later (with the reason it became
-   necessary).
+   Declare in `graph_route:` what you loaded, what you deliberately
+   skipped, and every widening (with the reason it became necessary).
 4. One home per fact: link to the node that owns a fact instead of
    restating it. The graph outranks your memory of APIs/versions.
    A fact the graph states is settled: use it as stated; re-deriving
@@ -56,6 +55,10 @@ GRAPH DISCIPLINE — execute before reading any source:
 5. Minimum sufficient work: every read, search, and tool call serves
    your delegated deliverable — smallest sufficient evidence, cheapest
    reliable method; stop when the deliverable is complete and trusted.
+   Read a spec by contract, not by file:
+   `python3 docs/graph/spec-lint.py --slice --refs SLUG...` prints
+   each block, its §10 rows and the §6/§7 headings it cites; open
+   only those headings.
    Return findings, and only what your parent needs. Depth:
    `method.minimum-sufficient-work`, `method.decision-economy`,
    `method.engineering-posture` §8.
@@ -72,15 +75,15 @@ COMPANION (echo each item back in your handback):
 - Trace this spawn. Your `spawn_id` is {{caller-minted dot-chain id,
   e.g. orchestrator.3.architect.1; see delegation.tracing}}. Echo it
   verbatim in your handback's `spawn_id` field.
-- Cite the router. The `agent-lint --route` ranked line and confidence
-  band that selected you, or the caller's override rationale:
+- Cite the router. The protocol phase that names your role, the
+  `agent-lint --route` ranked line and band, or the override rationale:
   {{paste the line + band, or the rationale}}. Echo it back in
   `route_evidence`. At a LOW/NONE band, say so there and name the gap:
   a different specialist, or expertise no node in this graph carries.
 - End with a handback. Close your turn with the payload from
   `docs/graph/templates/prompts/handback-payload.md`: `produced_by:
   {{you}}`, `in_domain_work_done` with paths, `route_evidence`,
-  `effort`, `expertise_gap`, `gates`, `tools_built`, and, at any
+  `graph_route`, `effort`, `expertise_gap`, `gates`, `tools_built`, and, at any
   out-of-domain boundary, `recommended_next` naming the specialist.
   When your report outgrows the soft target, write the overflow note
   as you work and name it (that file's Rules).

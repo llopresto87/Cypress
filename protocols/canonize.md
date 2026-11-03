@@ -72,7 +72,7 @@ the gates (`protocol.verify`).
 
 ## When to invoke
 
-- At the completion of every **Tier 2/3** task or increment (kernel §0),
+- At the completion of every **Tier 2/3** task (kernel §0), once,
   before `deliver`.
 - Whenever the work surfaced a fact the graph does not own, contradicted
   one it does, or produced a tool a future session will run again.

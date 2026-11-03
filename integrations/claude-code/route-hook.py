@@ -130,11 +130,12 @@ LINT, ROOT = find_lint()
 
 TRIVIAL = {"", "yes", "no", "ok", "thanks", "thank you", "go", "continue", "y", "n"}
 # A prompt whose first non-whitespace text begins with one of these was not
-# typed by a person: a host notification, another session's message, a local
-# command's output, or a Prime Agent agent-message delivery, background-command
+# typed by a person: a host notification, another session's message (Claude
+# Code renders it with the "Another Claude session" header but hands the hook
+# the bare `<agent-message ...>` frame), a local command's output, or a Prime Agent agent-message delivery, background-command
 # completion or harness digest. It is not routed and does not count toward
 # REFRESH_EVERY (SPEC-0003 §6).
-NON_HUMAN_MARKERS = ("<task-notification>", "Another Claude session sent a message:",
+NON_HUMAN_MARKERS = ("<task-notification>", "Another Claude session sent a message:", "<agent-message ",
                      "<local-command-", "[agent-message from ", "[bash-done ",
                      "[harness-digest]")
 

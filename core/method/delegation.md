@@ -43,7 +43,7 @@ only the project's roster. The words are otherwise interchangeable.
 
 | Specialist            | When to call                                                      |
 |-----------------------|-------------------------------------------------------------------|
-| `orchestrator`        | First contact; any request spanning more than one specialist.     |
+| `orchestrator`        | Never spawned: the session's own charter, read at first contact.  |
 | `architect`           | System boundaries, ADR-worthy decisions, contracts between modules. |
 | `implementer`         | GREEN-phase code once a spec and failing tests exist.             |
 | `reviewer`            | Auditing a diff against spec, plan, tests, graph.                 |
@@ -66,8 +66,13 @@ only the project's roster. The words are otherwise interchangeable.
 
 ## Route mechanically first
 
-Before spawning, run `python3 docs/graph/agent-lint.py --route "<task>"`
-and cite the ranked line + confidence band in the brief. It is a
+When the protocol you entered names the step's actor (its phase table:
+`grill.flow`, `specify.flow`, `test-first.cycle`, `protocol.verify`'s
+actor), that phase is the routing evidence: cite `<protocol>: <phase> →
+<role>` and run no router; in one plant the router's pick for such steps
+was overridden three times in four. For work no phase assigns, run
+`python3 docs/graph/agent-lint.py --route "<task>"` before spawning and
+cite the ranked line + confidence band in the brief. It is a
 keyword heuristic, not an oracle: reason over it, and record why if
 you override a HIGH-band pick. Work split by area across several
 workers (one review divided by surface, say) is routed area by area,

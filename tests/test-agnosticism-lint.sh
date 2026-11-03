@@ -164,4 +164,22 @@ printf 'widgetco\n' > "$TMP/present.txt"
 run 1 --root "$R" --tracked --optional-forbid-file "$TMP/present.txt"
 echo "  --optional-forbid-file: SKIPPED when absent, applied when present — OK"
 
+# 13. A name ships with its file: a forbidden term in a tracked path name
+#     fails though the content is clean; --untracked adds the untracked files
+#     Git does not ignore (what `git add` could take), never an ignored one.
+R2="$TMP/repo2"; mkdir -p "$R2/widgetco-notes"
+git -C "$R2" init -q
+printf 'clean text\n' > "$R2/widgetco-notes/a.md"; git -C "$R2" add widgetco-notes/a.md
+run 1 --root "$R2" --tracked --forbid widgetco
+grep -q "widgetco-notes/a.md:0: project-identifying term 'widgetco' in the path name" "$TMP/out" \
+  || fail "a forbidden term in a tracked path name was not reported"
+R3="$TMP/repo3"; mkdir -p "$R3"; git -C "$R3" init -q
+printf 'clean\n' > "$R3/kept.md"; git -C "$R3" add kept.md
+printf 'widgetco\n' > "$R3/new.md"; printf 'widgetco\n' > "$R3/ign.md"; printf 'ign.md\n' > "$R3/.git/info/exclude"
+run 0 --root "$R3" --tracked --forbid widgetco
+run 1 --root "$R3" --tracked --untracked --forbid widgetco
+grep -q "new.md:1" "$TMP/out" || fail "--untracked did not scan an untracked, unignored file"
+grep -q "ign.md" "$TMP/out" && fail "--untracked scanned an ignored file"
+echo "  path names are scanned; --untracked adds what git add could take — OK"
+
 echo "test-agnosticism-lint: PASS"

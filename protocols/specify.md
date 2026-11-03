@@ -112,28 +112,22 @@ What the table cannot hold:
   failure modes, and three real examples; only then can `product` map
   each acceptance criterion to the slugs it accepts. A §9 written
   beside §3 maps to nothing.
-- **§10 is the executable view.** `tester` writes one row per contract
-  and per failure mode (status `pending`) and runs the testability
-  review of §4: observable from outside, measurable in §9, fixtures
+- **§10 is the test design**, made once before any increment by `tester`
+  (`test-first.proportionate-checks`): one `pending` row per contract and
+  failure mode names its covering case. It checks §4 is testable: observable from outside, measurable in §9, fixtures
   writable from §6, failure modes triggerable in a test environment. A
-  contract that fails the review goes back to `architect` (phase 2
-  again for that contract), and that return is an attempt under
+  contract that fails the review goes to a fresh `architect` (phase 2
+  again for that contract, briefed with the review), an attempt under
   `protocol.recover`'s three-attempt boundary.
 - **Sensitive surface** (auth, secrets, payments, file uploads,
   external integrations, LLM/VLM behavior that acts on data) adds a
   `security` review: abuse cases become failure modes in §7 or
   requirements in §5.
-- **Sign-off is not promotion.** `product` ✓ confirms §3 and §9 reflect
-  the outcome, `architect` ✓ that §4 §6 §7 cohere, `tester` ✓ that every
-  contract is testable, `security` ✓ where it reviewed, each ticked in
-  §0 while the spec is still `draft`. The status moves to `active` in
-  the change that lands its RED tests (`test-first`'s COMMIT; the moment
-  is owned by `verify.status-evidence`), and to `implemented` when every
-  contract is green. A live status over an empty assertion set is a
-  false green (and an `active` spec with no test a red gate for the
-  whole test-first phase), and `spec-lint.py` counts only live specs, so
-  a signed draft is planned against and encoded, never reported
-  uncovered.
+- **Sign-off is not promotion.** Who signs §0, and when a signed `draft`
+  moves to `active` and `implemented`, is `spec-author.sign-off` (the
+  `active` moment is `verify.status-evidence`). `spec-lint.py` counts only
+  live specs, so a signed draft is planned against and encoded, never
+  reported uncovered.
 - **A spec may grow by slice.** When the plan builds a walking
   skeleton first (`grill.increment-shape`), or when its §9 splits the
   work into increment groups that each get a real run before the next

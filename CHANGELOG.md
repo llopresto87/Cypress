@@ -1,5 +1,144 @@
 # Changelog
 
+## 8.3.0 — fixes from a trajectory audit of two grown plants (2026-11-02)
+
+The trajectories of two plants grown from scratch were audited: one on
+Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
+8.2.0, 59 child sessions). This release fixes what both showed.
+
+- **Route hook: subagent hand-backs are no longer routed.** Claude Code
+  hands the `UserPromptSubmit` hook a hand-back as the bare
+  `<agent-message …>` frame, not under the "Another Claude session sent a
+  message:" header the transcript shows. 966 of the Claude Code plant's
+  1,210 route injections fell on hand-backs, 940 of them the "task too
+  long to route" notice. `NON_HUMAN_MARKERS` gains `<agent-message `
+  (SPEC-0003 §6, X171).
+- **Specs, ADRs and plans are graph text.** Their readers are agents, so
+  they are written in compact instruction language and get no humanizer
+  pass and no prose-lint gate. The humanizer keeps the text people read:
+  README and documentation, runbooks, delivery summaries, pull-request
+  text, commit messages and what the owner is asked to decide. Owner text
+  stays verbatim. The owner of the Claude Code plant ruled this on
+  2026-10-31 and paid for a rewrite of about 450 files; the seed now
+  starts there. `skill.spec-author` and `skill.adr-writer` drop their
+  humanizer step and peer edge; `humanizer.scope` and
+  `method.prose-posture` state the rule by consumer.
+- **New work goes to a fresh worker.** Both owners had to correct a
+  session that sent new tasks to old, uncached workers. The rule already
+  lived in `delegation.continuation`, a node nothing routes at the moment a
+  follow-up is sent, and the Prime Agent plant on 8.2.0 still broke it (307
+  messages to children against 43 spawns). The kernel §1 now points at it in
+  one line, and the Prime Agent overlay states it beside "collect handbacks
+  by message". The overlay no longer tells the session to delete finished
+  children: their sessions are the trajectory record an audit like this one
+  is built from (the owner, 2026-11-02), and no orchestrator followed it (no
+  deletion in 43 spawns on the Prime Agent plant).
+- **A worker the host cut off is resumed; a finished one is not woken.** On
+  Claude Code a new guard, `.claude/resume-hook.py` (PreToolUse on
+  `SendMessage`), reads the target worker's transcript when it has been idle
+  longer than a subagent's prompt cache lives (five minutes). A last record
+  that is the host's API error (usage or rate limit, network or server
+  error) means the worker was cut off mid-turn: the resume passes. Any other
+  idle worker, one that handed back above all, is refused, because the
+  message rewrites its whole context uncached: new work for an old context,
+  or a nudge with nothing to resume. A caller with a real small follow-up,
+  or a worker stopped with no error record, starts the message
+  `continuation: <reason>`. Cache writes were the largest cost line in both
+  plants (49% of the Prime Agent plant's spend), and calls after more than
+  five idle minutes were most of them: in the Claude Code plant 531 worker
+  calls after such a gap rewrote 135M tokens (44% of its cache writes), 94%
+  of them on a worker that had finished its turn and was then messaged.
+  Replayed over that plant's 405 messages to workers: 194 warm and 10
+  host-cut sends pass, 201 are refused, and the refused sends' first calls
+  alone rewrote 63M cache tokens.
+- **The Prime Agent README names the cache-lifetime setting.** In the Prime
+  Agent plant, the 213 calls that followed an idle gap of more than five
+  minutes rewrote the whole context each (290K to 400K tokens) and cost about
+  $359 of a $900 run. The README now describes `PI_CACHE_RETENTION=long`,
+  which should request the one-hour cache, and how to confirm it on a given
+  build, since its value is taken from the upstream library and not verified
+  here.
+- **Workers read a spec by contract.** `spec-lint.py --slice --refs SLUG`
+  has existed since 7.30.0, yet the two plants used it 32 and 2 times. Workers
+  instead paged through specs of 84K to 961K characters: about 3,200
+  grep/sed/offset-read turns by testers, implementers, reviewers and security
+  in one plant, whole-spec dumps in the other. The bootstrap block (step 5)
+  now names the slicer, and `delegation.step-scope` has briefs name contract
+  slugs instead of copying spec text. Over every contract of both plants (524
+  on the Prime Agent plant, 427 in the Claude Code plant's three largest
+  specs) the slice is a median of 950 to 1,920 characters, against specs of
+  84K to 961K characters. In a controlled pair of workers given the same
+  two-contract task on a copy of the Prime Agent plant, the 8.3.0 worker
+  read 44% fewer cache tokens (84,576 against 149,804) with the same
+  answer; one run per arm.
+- **Handbacks carry the route as ids.** The graph-session bootstrap asked
+  each worker to paste the router's command and output into its report,
+  about 1,100 of a hand-back's 9,000 characters, re-read by the caller on
+  every later turn. The route now goes in one `graph_route:` handback
+  field: task line, loaded ids, skipped ids, widenings with their reason.
+  The five brief templates carry the change byte-identical.
+- **A hard-to-undo decision cannot skip its devil's advocate.** On a T3
+  plan, grill sent every one-way door to `devils-advocate`, but nothing
+  checked that it happened, and the Claude Code plant graded most
+  hard-to-undo decisions `expensive`, which the press did not cover: four of
+  its seven T3 passes ran none. On the Prime Agent plant the press never
+  ran, though a decision there is one-way once real data exists. The owner
+  decided on 2026-11-03 that `expensive` decisions are pressed too.
+  `grill-lint.py` now fails a §6 row graded `one-way` or `expensive` (now or
+  after a milestone) that carries no
+  verdict: `could-not-refute`, `refuted`, or `waived by owner <date>`, in
+  the row or on a plan line naming an ADR the row cites. The grill
+  template's §6 gains a `Refutation` column for it. Of the seven plans on
+  hand, the check flags the one missed press and passes the six that ran it.
+- **Rulings, fix-ups and next steps go to a fresh worker.** On both plants,
+  over 90% of what follow-up messages cost went to workers that had already
+  handed back, and each such message replayed the worker's whole context to
+  carry what was already a full brief. The two paths were a ruling pass sent
+  to the spec's author and a fix-up sent to the worker that wrote the code.
+  The ruling pass is now a fresh `architect` briefed by path (spec, question
+  files, plan §6). A finished worker is continued only for a small change
+  while its prompt cache is still warm (5 minutes on both hosts). Replayed
+  over the recorded follow-ups, with a fresh worker's measured start-up cost
+  in their place, this saves an estimated 17% of the Claude Code plant's
+  cache writes and 22% of the Prime Agent plant's cost.
+- **The plan linter prints the batches.** `grill-lint.py --batches` groups
+  each wave's increments into spawns by the batch table, so batch size is
+  read, not judged; on the 8.1.1 plant 54 of 85 RED spawns carried a single
+  increment. Increments that write one file run one batch after another,
+  each a fresh spawn. The test-first protocol no longer pulls the cycle
+  rules into every tester's route; the session still loads them, and a
+  tester's route is 15% smaller.
+- **The orchestrator stops carrying the review and the brief.** A review
+  finding goes to a fresh implementer and a fresh light reviewer of the fix
+  diff; a testability return goes to a fresh architect. The kernel no longer
+  lists `orchestrator` among the workers, and its description says the
+  session plays it and never spawns it. `brief.py --out PATH` writes the
+  brief to disk and prints a three-line pointer to send as the prompt: on
+  Claude Code the composer's output otherwise reached the orchestrator twice
+  per spawn, once as output and once as the prompt. The grill-lint press
+  check also fails a §11 risk table with no verdict: the Claude Code
+  plant pressed the top risk in none of its seven T3 passes. The
+  mutation cadence, the gate-failure count and the close-out count each now
+  have one home.
+- **Handbacks state paths and gate numbers once.** Callers acted on three
+  handback parts: `recommended_next`, `gates` and the paths of the work
+  done. On the Claude Code plant the report body repeated the gate numbers
+  (about 1,000 characters a handback) and the paths. The body now holds the
+  verdict, the blockers and the findings to act on, and repeats a gate only
+  when it failed. `next_route_evidence` is gone: 99% of its values were
+  "not run", and the caller routes the next hop itself.
+- **The release sweep for donor tokens fails closed.** A devil's-advocate
+  press of the 8.2.0 plan's top risk, a project-identifying token reaching a
+  seed file, returned `refuted`. Without the steward's local forbid list the
+  gate step printed SKIPPED, exited 0 and was reported as PASS, so a
+  checkout without the list checked nothing; file names were never scanned;
+  and the release's "git status is empty" step invited committing local
+  archives. `prepare-release.py` now refuses without the list and sweeps
+  tracked and untracked-not-ignored files and their path names before it
+  stages anything. The gate runner reports a skipped step as SKIP and counts
+  it apart. The release procedure stages paths by name and keeps local
+  evidence in `.git/info/exclude`.
+
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 
 This release comes from a harvest: what grown plants learned, made generic

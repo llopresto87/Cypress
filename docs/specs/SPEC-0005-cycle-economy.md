@@ -10,7 +10,7 @@ status_evidence: tests/test_graph_lint.py, tests/test_agent_lint.py, tests/test-
 ## 0. Metadata
 
 - **Identifier:** SPEC-0005-cycle-economy
-- **Version:** 0.15 (the model class token: AGENT_DECLARES_MODEL_CLASS, 2026-09-30; every amendment is dated in §12)
+- **Version:** 0.16 (the batch plan: GRILL_BATCHES_FOLLOW_THE_EFFORT_TABLE, 2026-11-03; every amendment is dated in §12)
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-09-28
@@ -621,6 +621,32 @@ another.
   crash inside the report cannot pass as a defect exit
 - **And:** without `--waves`, no output line begins `waves:` or `  wave `, and
   no line is an overlap warning or a phase warning
+
+### Plan linter: the batch plan (added for 8.3.0)
+
+`grill-lint.py --batches` prints the spawns `delegation.effort-scale` gives each
+wave, so batch sizing is read, not judged. In one plant on 8.1.1, 54 of 85 RED
+spawns carried a single increment against a table of 5 to 7. Like `--waves`, the
+report reads §9 alone and never changes an exit status.
+
+### Contract: GRILL_BATCHES_FOLLOW_THE_EFFORT_TABLE
+- **Test file:** `tests/test-grill-lint.sh`
+- **Given:** the scheduled fixture plan, whose increments carry `Effort: low`
+- **When:** `grill-lint.py --batches` runs
+- **Then:** it prints `batches: 5 spawn(s) for 5 increment(s) — 2 tester, 2
+  implementer, 1 prose` and exits 0
+- **And:** when increment 4's `Depends on:` is `none`, increments 1 and 4 print
+  as one line, `wave 1 RED tester: increments 1, 4 (hardest low, size 7)`
+- **And:** a GREEN batch is no larger than §6 "Effort labels and batch sizes"
+  gives its hardest member: a `hard` GREEN prints alone at `size 1`, and two `low`
+  GREENs of one wave print on one line at `size 5`
+- **And:** increments of one wave and phase that name a common file never print
+  as one batch larger than that size; past it they print as consecutive batches,
+  each after the first ending `— after the batch above: they share files`
+- **And:** an increment with no `Effort:` label prints alone with the warning
+  `§9 increment <n>: no Effort: label`
+- **And:** on a dependency defect it prints `batches: not computed`, and the exit
+  status equals the plain lint's
 
 ## 5. Non-functional requirements
 
@@ -2296,6 +2322,12 @@ gives.
 | GRILL_WAVES_NOT_COMPUTED_ON_DEPENDENCY_DEFECT | X380, a row of X373: two inline increments carrying one number print `waves: not computed — §9 has duplicate increment numbers`, no wave line, and the plain lint's exit status (R0.13; in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope) | green |
 | GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED | X377 case_waves_existing_plans_same_exit: the `lint` helper records each plan and flag set cases 1 to 32 lint; the block lints each again with and without `--waves` and asserts the same exit status, every plain line present in the `--waves` output in the same relative order, and no line beginning `Traceback` (R0.7; in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope); guard | green |
 | GRILL_WAVES_LEAVES_THE_GATE_UNCHANGED | X378, a row of X377: no plain run of a recorded plan prints a `waves:` line, a `  wave ` line, an overlap warning or a phase warning (in the collecting block, R0.3) | tests/test-grill-lint.sh | fixture (scope); guard | green |
+| GRILL_BATCHES_FOLLOW_THE_EFFORT_TABLE | X486 case_batches_from_effort_table: the scheduled fixture plan prints `batches: 5 spawn(s) for 5 increment(s) — 2 tester, 2 implementer, 1 prose`, exit 0 | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_BATCHES_FOLLOW_THE_EFFORT_TABLE | X487, a row of X486: increment 4 with no dependency joins increment 1 in one RED tester line at size 7 | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_BATCHES_FOLLOW_THE_EFFORT_TABLE | X488, a row of X486: a `hard` GREEN prints alone at size 1; two `low` GREENs share one line at size 5 | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_BATCHES_FOLLOW_THE_EFFORT_TABLE | X489, a row of X486: two GREENs naming one file, one of them `hard`, print as consecutive batches, the second marked `after the batch above` | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_BATCHES_FOLLOW_THE_EFFORT_TABLE | X490, a row of X486: increment 1 with no `Effort:` warns and prints alone | tests/test-grill-lint.sh | fixture (scope) | green |
+| GRILL_BATCHES_FOLLOW_THE_EFFORT_TABLE | X491, a row of X486: a forward dependency prints `batches: not computed`, exit equal to the plain lint (1) | tests/test-grill-lint.sh | fixture (scope); guard | green |
 | ADOPTED_RULE_HOMES | (none) the `delegation.waves` entry in `ADOPTED_RULE_HOMES` (increment 2); red id: the finding line `delegation.waves: not owned by core/method/delegation-sequencing.md, its one home under SPEC-0005 (owned by no node)`; the check itself is held by X347 and X348. While the entry is carried, `tests/test-seed-lint.sh` stops at its clean-copy baseline, so each tip lists that baseline line as expected-red and the rest of the script as `not run` (R0.4) | tests/seed-lint.py | real-tree, `check_adopted_rule_homes` | green |
 | UNDECLARED_DEPENDENCY | (none) the orchestrator's check at RED observation that the test fails for the right reason, and the reviewer | — | review | pending |
 | FALSE_OVERLAP | X368, a row of X366: a bare name warns whatever directory it really sits in, and the exit status does not change | tests/test-grill-lint.sh | fixture (scope) | green |
@@ -2582,4 +2614,9 @@ kept outside the seed.
 - 2026-10-14: review fixes. MISSED_OVERLAP's Response cites the two race
   signs at their new home, `delegation.wave-baseline`, where the
   baseline rule moved; §5 "Compatibility" rewrapped, no word changed. No
+  contract changed.
+- 2026-11-03 — version 0.16, by the session in the 8.3.0 trajectory audit.
+  Added GRILL_BATCHES_FOLLOW_THE_EFFORT_TABLE: `grill-lint.py --batches`
+  prints the spawns the §6 batch table gives each wave, so the orchestrator
+  reads batch sizes instead of judging them. §10 rows X486 to X491. No other
   contract changed.

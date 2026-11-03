@@ -1155,7 +1155,7 @@ Also in `route-hook.py` (7.37.0):
 
 | Name | Value |
 |---|---|
-| `NON_HUMAN_MARKERS` | `<task-notification>`, `Another Claude session sent a message:`, `<local-command-`, `[agent-message from `, `[bash-done `, `[harness-digest]`. A prompt whose first non-whitespace text begins with one is not routed. The last three are Prime Agent host turns: the delivery header of an agent message (observed 2026-10-01), a background command's completion notice (fires `before_agent_start` at depth 0, live probe of 7.37.0 increment 1) and the host-generated harness digest; the list may shrink when a probe shows the host envelope carries an origin |
+| `NON_HUMAN_MARKERS` | `<task-notification>`, `Another Claude session sent a message:`, `<agent-message `, `<local-command-`, `[agent-message from `, `[bash-done `, `[harness-digest]`. A prompt whose first non-whitespace text begins with one is not routed. `<agent-message ` is the frame Claude Code hands the hook for a subagent hand-back: the transcript shows it under the `Another Claude session sent a message:` header, but the router's term counts on 44 such turns of a plant's trajectories equal the frame's, not the header's (2026-11-02 trajectory audit). The last three are Prime Agent host turns: the delivery header of an agent message (observed 2026-10-01), a background command's completion notice (fires `before_agent_start` at depth 0, live probe of 7.37.0 increment 1) and the host-generated harness digest; the list may shrink when a probe shows the host envelope carries an origin |
 
 Also in `route-hook.py`, its one home, registered `max` in
 `tests/ratchets.json` (7.37.0):
@@ -1997,7 +1997,7 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
 | A ledger or session directory owned by another user | The owner test of §6 has no gate case, since it needs a second account | the mode cases run in the gate (`LEDGER_FOREIGN_OR_WRITABLE_REFUSED`); the owner half is shown by reading the code at review | security | residual |
 | How `pi.exec` decodes the child's line endings | The 7.28.0 extension matched an exact echo, which a decoded CR would break | **Moot 2026-10-01:** the core hashes the prompt it passes and the router hashes what it receives, so both see the same bytes; no echo is matched | architect | resolved |
 | `getSessionId()` in `before_agent_start`; `rlmDepth` or `parentSession` on the session header; the extension's own directory under jiti | Prime Agent residency (first), child suppression (second) and finding the hooks (third) rest on them | not recorded; each failure falls toward inclusion (§7 `PRIME_SESSION_UNKNOWN`) | orchestrator | a live probe on Prime Agent before the GREEN of plan increment 1, recorded as evidence |
-| Whether Claude Code's `UserPromptSubmit` envelope carries the turn's origin | The transcript records `origin.kind`; the hook would read it instead of `NON_HUMAN_MARKERS` | not recorded; the markers hold until a probe shows it | architect | a probe at the RED of plan increment 1 |
+| Whether Claude Code's `UserPromptSubmit` envelope carries the turn's origin | The transcript records `origin.kind`; the hook would read it instead of `NON_HUMAN_MARKERS` | not recorded; the markers hold until a probe shows it. The prompt text the hook receives for a hand-back is the bare `<agent-message ` frame (2026-11-02 audit: 940 hand-backs of 8.1.1 routed as "too long" because the header marker never matched) | architect | a probe at the RED of plan increment 1 |
 | The Claude Code default hook timeout | If the host kills the hook first, nothing is injected, not even the pointer line | not recorded. The seed sets none; `ROUTER_TIMEOUT` is 15 s and GC is bounded by `GC_SCAN_MAX` (plan §4.8, §11) | reliability | Unknown |
 | The reminder header, renamed in the first draft from the plan's `Not loaded, not listed before:` to `Peers not listed before:` | The plan's header contained "loaded", which contradicts I-6; the first rename lost the router's "not suggested" meaning | **Resolved, product 2026-09-23:** renamed to `Not suggested, not listed before (cross only if needed):` so the header keeps the router's "not suggested" meaning | product | resolved |
 | The reminder tail on Claude Code | On Claude Code "surfaced" means suggested, not opened, so "re-open" assumed a read | **Resolved, product 2026-09-23 (optional C6, taken):** `— open if not in view.` on Claude Code; the Prime Agent section keeps "re-open", where membership does mean the model opened the node | product | resolved |
@@ -2468,3 +2468,9 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
   error names the fix: a `SyntaxError` means the hook's interpreter is below
   the floor and a re-install on a PATH that carries one, any other error a
   broken engine to repair or re-graft. No contract changed.
+- 2026-11-02: `NON_HUMAN_MARKERS` gains `<agent-message `. A trajectory audit of a
+  Claude Code plant on 8.1.1 found 966 of its 1,210 route injections on subagent
+  hand-backs (940 of them the "task too long to route" notice): the hook receives
+  the hand-back as the bare `<agent-message from="…">` frame, so the transcript
+  header the list held never matched. X171 gains one row for the new entry. No
+  contract was added or retired.

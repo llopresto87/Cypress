@@ -192,30 +192,20 @@ findings in)
 
 ## Review output format
 
+The orchestrator reads the review to decide; it is not a document for a
+person, so it carries findings and nothing else:
+
 ```
-# Review of increment <title>
-
-## Critical (blocks the increment)
-- <finding>
-
-## Major (must fix before merge)
-- <finding>
-
-## Minor (should fix soon)
-- <finding>
-
-## Nit (style, optional)
-- <finding>
-
-## Praise
-- <what is good in this diff>
-
-## Suggested next step
-- <what should happen next>
+VERDICT: commit | fix-then-commit | reopen
+FINDINGS (omit a severity with none):
+- critical|major|minor|nit — path:line — the finding; why it matters
+CHECKED: <the areas above you reviewed and found nothing in, one line>
+NEXT: <one line>
 ```
 
 Findings cite specific files and line numbers (`path:line`). Every
-finding gets a one-sentence rationale.
+finding gets a one-sentence rationale. What is good in the diff, and a
+proof of a correct line, stay out: neither changes the caller's next step.
 
 ## Handback (end every turn with this)
 

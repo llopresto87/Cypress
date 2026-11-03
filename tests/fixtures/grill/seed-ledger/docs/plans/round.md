@@ -51,7 +51,7 @@ Both contracts' tests run under the round's gate.
 ## 11. Risks and Mitigations
 | Risk | Probability | Impact | Mitigation | Verification |
 |---|---:|---:|---|---|
-| Session leak | low | high | context manager | test_store_closes_session |
+| Session leak | low | high | context manager | test_store_closes_session; devils-advocate orchestrator.3: could-not-refute |
 
 ## 12. Open Questions
 | # | Question | Why it matters | Current assumption | How to resolve | Owner | Pinned by |

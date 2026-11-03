@@ -75,9 +75,9 @@ and every library, spec, or API a §6 decision rests on — or one line,
 - Conflicts or uncertainty:
 
 ## 6. Decisions Made
-| Decision | Rationale | Evidence | Reversibility | ADR | Date |
-|---|---|---|---|---|---|
-| Design latitude: <creative / balanced / simple> | <what the answer allows this change> | <the owner's quote, or the session's recorded reason> | reversible | — | <date> |
+| Decision | Rationale | Evidence | Reversibility | Refutation | ADR | Date |
+|---|---|---|---|---|---|---|
+| Design latitude: <creative / balanced / simple> | <what the answer allows this change> | <the owner's quote, or the session's recorded reason> | reversible | — | — | <date> |
 
 The session classifies the `Design latitude:` row before the spec's §3,
 asking the owner only in doubt, and every later step is held to it.
@@ -86,6 +86,11 @@ Depth: `specify.design-latitude` in
 
 Reversibility takes the same graduated value here as it does in an ADR,
 under the same rule. Depth: `docs/graph/templates/adr.template.md`.
+
+Refutation: a row graded `one-way` or `expensive`, now or after a milestone, holds the
+`devils-advocate` verdict (`could-not-refute <spawn_id>`, `refuted → <phase
+reopened>`) or `waived by owner <date>`; any other row holds `—`.
+`grill-lint.py` fails such a row without one (`grill.press`).
 
 ## 7. Options Considered
 | Option | Benefits | Costs | Risks | Outcome |
@@ -125,7 +130,7 @@ Why and how: `grill.increment-shape` in protocols/grill.md.
 ### Increment 1 — <title>
 - Spec contracts: <SPEC-NNNN/contract-slug, ...>
 - Files touched:
-- Tests to write (RED): <N cases over SPEC-NNNN/contract-slug, ...; the tester names them — or `none — <why>; proved by <run>` when nothing here can be wrong while present>
+- Tests to write (RED): <the §10 tests this increment turns red, by name, as the spec's test design states them — or `none — <why>; proved by <run>` when nothing here can be wrong while present>
 - Behavior added:
 - Gate:
 - Rollback path:
@@ -136,23 +141,6 @@ Why and how: `grill.increment-shape` in protocols/grill.md.
 ### Increment 2 — <title>
 - ...
 
-### Increment N — Consolidate the tests this spec added
-- Spec contracts: <every contract whose tests this pass touches>
-- Files touched: <the test files the spec added, and the older ones they overlap>
-- Tests to write (RED): none — consolidation
-- Behavior added: none; survey the spec's tests and their overlaps, rule on each, then merge or delete under `skill.test-first`
-- Gate: the suite stays green and no contract loses its test
-- Rollback path: revert the consolidation commit
-- Effort:
-- Phase:
-- Depends on: <the last feature increment>
-
-<!--
-The consolidation increment is a default: keep it last when this spec
-added many tests; when it added few, replace the row with
-`no consolidation: <reason>`. Depth: `grill.increment-shape` in
-protocols/grill.md.
--->
 
 <!--
 The ledger form of §9: an index, each row pointing at one increment file
@@ -178,8 +166,12 @@ standard gate deliberately skipped and why); grill.md is read every
 session, so the runbook stays the gates' one home.
 
 ## 11. Risks and Mitigations
-| Risk | Probability | Impact | Mitigation | Owner | Verification |
-|---|---:|---:|---|---|---|
+| Risk | Probability | Impact | Mitigation | Owner | Verification | Refutation |
+|---|---:|---:|---|---|---|---|
+
+Refutation: the top risk by probability × impact holds the `devils-advocate`
+verdict or `waived by owner <date>`; other rows hold `—`. `grill-lint.py`
+fails a §11 that carries no verdict (`grill.press`).
 
 ## 12. Open Questions
 | # | Question | Why it matters | Current assumption | How to resolve | Owner | Pinned by |

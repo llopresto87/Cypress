@@ -113,7 +113,7 @@ def render(doc):
 BODY, NOTICE_BODY, OVERLAP_BODY = render(BODY_DOC), render(NOTICE_DOC), render(OVERLAP_DOC)
 NOTICES = ["! " + n["text"] for n in NOTICE_DOC["notices"]]
 # §6 NON_HUMAN_MARKERS, by value: a prompt opening with one is not routed.
-NON_HUMAN_MARKERS = ("<task-notification>", "Another Claude session sent a message:",
+NON_HUMAN_MARKERS = ("<task-notification>", "Another Claude session sent a message:", "<agent-message ",
                      "<local-command-", "[agent-message from ", "[bash-done ", "[harness-digest]")
 
 
@@ -1422,6 +1422,7 @@ def x170(base):
 def x171(base):
     tails = {"<task-notification>": "<task-notification>zq 0171 widget job finished</task-notification>",
              "Another Claude session sent a message:": "Another Claude session sent a message: zq 0171 review the widget ledger",
+             "<agent-message ": '<agent-message from="a0171">\n[Subagent hand-back] zq 0171 review the widget ledger',
              "<local-command-": "<local-command-stdout>zq 0171 widget ledger output</local-command-stdout>",
              "[agent-message from ": "[agent-message from parent:zq-0171]\nreview the widget ledger work",
              "[bash-done ": "[bash-done pid:1 exit:0]",

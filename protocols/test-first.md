@@ -12,10 +12,11 @@ owns:
   - test-first.characterize-first
   - test-first.known-bug
 requires:
+  - skill.test-first
 peers:
+  - method.delegation-cycle-economy
   - protocol.verify
   - protocol.specify
-  - skill.test-first
   - skill.holistic-editing
 load_when:
   - "about to write or change production code"
@@ -95,15 +96,16 @@ waits for this increment's COMMIT unless §9's `Depends on:` rows say the
 two are independent. How independent REDs run ahead
 in a RED wave, and which GREENs follow them, is `delegation.waves` there;
 a spec's REDs are planned to share one wave (`test-first.proportionate-checks`).
-One spawn may carry a batch of increments, sized by their effort labels
-(`delegation.step-scope` and `delegation.effort-scale` in
-`docs/graph/method/delegation-cycle-economy.md`).
+One spawn carries a batch of increments: the session spawns the batches
+`python3 docs/graph/grill-lint.py --batches` prints (`delegation.effort-scale`);
+the rest of the cycle's economy, the question file, the ruling pass, the tip and
+the mutation pass, is `docs/graph/method/delegation-cycle-economy.md`.
 
 | Phase | Owner | Needs | Hands back |
 |---|---|---|---|
 | RED | `tester` | the §9 row, the contract text, the target test paths | failing tests that fail for the right reason; spec §10 rows `red` |
 | GREEN → REFACTOR | `implementer` | the RED handback (test paths, contract slugs, files) | a green, integrated diff; the RED tests run by the implementer itself, with no separate tester spawn and no test or fixture file edited, and a test that looks wrong written up as a question (`delegation.green-self-test`); affected gates run locally; spec §10 rows `green` |
-| REVIEW | `reviewer` | the diff, the §9 row | severity-tagged findings; Critical/Major return to `implementer`, one more spawn, an attempt under `protocol.recover` |
+| REVIEW | `reviewer` | the diff, the §9 row | severity-tagged findings; a Critical/Major goes to a fresh `implementer` briefed with the finding and the diff, then a fresh light `reviewer` checks only the fix diff; each round is an attempt under `protocol.recover` |
 | COMMIT | the session | a clean review | grill.md §15 entry with the `spawn_id`s in issue order; the commit; the spec's status advanced |
 
 An increment whose §9 row reads `Tests to write (RED): none — …` was
@@ -122,11 +124,14 @@ handback (`rule.grill`).
 
 ### RED — write the failing test
 
-1. Identify the spec contract(s) this increment satisfies. Each
-   contract is one Given/When/Then in the spec §4.
-2. Write a test (or several tests) that exercise each contract.
-   Names: `test_<spec_id>_<contract_slug>` or the equivalent in the
-   target language. The test name names the contract.
+1. Read the §10 tests this increment cites and the contracts they assert
+   (`spec-lint.py --slice --refs SLUG`). Each contract is one
+   Given/When/Then in the spec §4.
+2. Write exactly those tests, as the §10 design states them. A case
+   that looks missing, redundant or untestable goes back to the design
+   as a question (`delegation.question-file`); it is not added or
+   dropped here (`test-first.proportionate-checks`). The test name
+   names the contract(s) it asserts.
 3. Run the test. **Confirm it fails for the right reason.**
    - A test that fails because the import is missing has not yet
      achieved RED.
@@ -149,8 +154,9 @@ green, authored without test-first, is untrusted: you have never
 watched it fail. Before you rely on a test over high blast-radius code,
 reintroduce in the production code the historical defect it claims to
 guard against, confirm it fails for *that specific reason*, then
-revert. Which code earns this, and when it runs (once per batch), is
-`test-first.proportionate-checks`.
+revert. Which code earns this is `test-first.proportionate-checks`; the
+mutation pass runs once per spec, after its last increment
+(`delegation.mutation-at-end`).
 
 Two corollaries decide whether a mutation result can be read at all.
 First, confirm the mutant actually rebuilt before believing it survived:
@@ -192,9 +198,11 @@ attacker would make.
 ### COMMIT — record the increment
 
 1. **Review first.** Hand the diff and the §9 row to `reviewer`. A
-   Critical or Major finding goes back to `implementer` as one more
-   spawn; a third red on the same increment is the gate-failure rule:
-   reopen `grill` and re-slice (`protocol.recover`).
+   Critical or Major finding goes to a fresh `implementer` spawn briefed
+   with the finding and the diff, and a fresh light `reviewer` checks the
+   fix diff alone (`delegation.continuation`). The gate-failure count is
+   `protocol.recover`'s: a gate red twice on the same increment reopens
+   `grill` and re-slices.
 2. Run the increment's named gate from grill.md §9:
    `docs/graph/protocols/verify.md` owns that per-increment cadence, and
    the full verify pass still runs before close-out and deliver.

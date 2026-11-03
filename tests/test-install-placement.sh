@@ -915,7 +915,7 @@ for d in "$ROOT"/skills/*/; do
     [[ -e "$want" || -L "$want" ]] || missing_nodes+=("${want#"$T/"}")
 done
 # Adapter machinery of every host.
-for rel in .claude/route-hook.py .claude/status-hook.py .claude/bound-hook.py \
+for rel in .claude/route-hook.py .claude/status-hook.py .claude/bound-hook.py .claude/resume-hook.py \
            .claude/agent-lint.py .claude/settings.json \
            opencode.json \
            .github/copilot-instructions.md \

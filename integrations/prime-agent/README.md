@@ -143,8 +143,8 @@ every session**, and Claude Code does not read it (it is not `CLAUDE.md`/`AGENTS
 and lives under `.prime/agent/`). It does not replace or contradict the shared
 kernel; it maps the kernel's discipline onto Prime Agent's primitives:
 
-- **Delegation** → read a `.prime/agent/agents/<role>.md` brief and spawn
-  `await rlm.spawn(brief + task, name=role, model=..., thinking=...)`; fan out
+- **Delegation** → compose the brief with `docs/graph/brief.py --role <role>
+  --charter …` and spawn `await rlm.spawn(brief, name=role, model=..., thinking=...)`; fan out
   several single-scoped children in parallel, one facet each; collect
   handbacks via `agent_message`; supervise with `agent_observe`.
 - **Model policy** → each roster brief's `model:` field names the class, and
@@ -216,6 +216,19 @@ The seed's per-role depth bounds themselves stay carried by the brief
 (`agents/*.md` `max_spawn_depth`), read straight from the roster brief the
 orchestrator spawns — the runtime limit is only the outer ceiling
 ([delegation fields](../../DOCUMENTATION.md#enf-delegation-frontmatter)).
+
+## Prompt-cache lifetime
+
+An orchestrator waits on its children, and a child waits on builds, for more
+than five minutes at a time. With the provider's default five-minute cache,
+the first call after such a wait rewrites the agent's whole context. In one
+plant's trajectories, calls after a gap of more than five minutes were 3.5% of
+all calls and about 40% of the plant's spend (cache writes were 49% of it). The
+runtime reads `PI_CACHE_RETENTION` from the environment of the daemon; set to
+`long` it should request the provider's one-hour cache, whose writes cost more
+each but stop the rewrites. The value is taken from the upstream library this
+runtime is ported from and is not verified on this build: confirm it by checking
+that a call after a 10-minute idle reports a small `cacheWrite`, then keep it.
 
 ## Install
 

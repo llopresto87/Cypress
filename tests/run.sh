@@ -109,6 +109,8 @@ add_step python3 "$ROOT/tests/test_graph_lint.py"
 
 # --- hooks and tools ---------------------------------------------------------
 add_step bash "$ROOT/tests/test-bound-hook.sh"
+add_step bash "$ROOT/tests/test-resume-hook.sh"
+add_step bash "$ROOT/tests/test-brief.sh"
 add_step bash "$ROOT/tests/test-prompt-hooks.sh"
 add_step bash "$ROOT/tests/test-code-anchor.sh"
 add_step bash "$ROOT/tests/test-source-index.sh"

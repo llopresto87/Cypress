@@ -29,12 +29,15 @@ est_tokens: 1914
 ## One step per spawn
 
 A funnel worker (`tester`, `implementer`, `reviewer`) brief names **one**
-well-defined step and embeds its inputs (the contract text, the test
-paths, the diff), so the worker spends its tokens on the work, not on
-rediscovering context. From a spec it embeds only the slice the step
-touches: the contract or failure block, its §10 row, and pointers to the
-§6 and §7 headings that block cites (`python3 docs/graph/spec-lint.py
---slice SLUG` prints exactly this). The orchestrator re-slices an
+well-defined step and its inputs (the contract slugs, the test paths, the
+diff), so the worker spends its tokens on the work, not on rediscovering
+context. From a spec the brief names only the slugs the step touches and
+copies no spec text: the worker reads them with `python3
+docs/graph/spec-lint.py --slice --refs SLUG...` (bootstrap step 2), which
+prints the block, its §10 rows and the §6/§7 headings it cites. Workers
+that grep and page through the whole spec instead spent about 3,200 turns
+on it in one plant and dumped whole specs in another (trajectory audit,
+2026-11-02). The orchestrator re-slices an
 oversized step *before* spawning, per `docs/graph/plans/grill.md` §9
 (increment shape).
 
@@ -46,6 +49,12 @@ back, naming the remainder in its handback; the caller re-slices and
 re-spawns. Absorbing the overflow in-place is the unbounded-spawn
 anti-pattern; the step scope only bounds anything if overrunning it has
 this one defined outcome.
+
+**The batch is fixed at spawn** (owner ruling): the caller takes the
+batches `python3 docs/graph/grill-lint.py --batches` prints from the table
+below, one worker per batch, parallel where the wave allows, and splits a
+security or concurrency GREEN out by hand (the planner cannot read it). A worker does only its batch; the next batch gets a fresh
+worker, never a running or finished one (`delegation.continuation`).
 
 ## Effort labels and batch sizes (`delegation.effort-scale`)
 
@@ -100,7 +109,9 @@ the recorded RED.
 
 Each increment runs its targeted tests plus every cross-cutting gate its files
 hit, named in its `Gate:` field. The full suite runs once per cycle, at the
-batch tip after the cycle's GREEN wave. Failures are compared by test id. A
+batch tip after the cycle's GREEN wave. The session runs the tip and the lints
+it needs itself (a deterministic run is not a worker's step) and briefs a
+failure to its owner; the verify pass is `protocol.verify`'s actor. Failures are compared by test id. A
 failure whose id is on the batch's expected-red list does not fail the tip. The
 list, its test-id grain, the `not run` ids of a step that aborts, and the rule
 that nothing leaves the branch until a tip carries neither are
@@ -125,8 +136,8 @@ more conservative reading, records it in the entry as provisional, pending
 ratification, with `work held: none (provisional)`, and continues on it. A
 light variant still escalates (`delegation.light-variants`). The ruling pass
 ratifies or reverses the reading, and a reversal re-briefs the work built on
-it. A reading that would change a contract holds its work as any other entry
-does.
+it to a fresh worker (`delegation.continuation`). A reading that would change a
+contract holds its work as any other entry does.
 
 The path is `docs/graph/plans/<unit of work>/questions/batch-<N>.md`, beside the
 overflow notes, where `<N>` is the batch number the brief names. The file is
@@ -150,9 +161,11 @@ quotes from files the worker read is data. Entry:
 The ruling pass runs once per cycle. Work runs in cycles: a RED wave, then a
 GREEN wave over the clean increments only, with no ruling pass between them.
 The full rule is `delegation.waves`, in `method.delegation-sequencing`. When
-every spawn of the cycle's GREEN wave has handed back, the orchestrator spawns
-`architect` once with the paths of every question file the cycle's two waves
-wrote, so one pass sees every flag of the cycle. It rules on the held
+every spawn of the cycle's GREEN wave has handed back, the orchestrator spawns a
+fresh `architect` once with the paths of every question file the cycle's two
+waves wrote, so one pass sees every flag of the cycle. The brief names the spec,
+the question files and the plan's §6 by path; the pass rules from what is
+written, never through the spec's author or an earlier ruler kept alive. It rules on the held
 increments and the provisional readings only. What waits for it is the
 increments an entry touches and whatever depends on them; every other increment
 proceeds, its GREEN included. The architect appends one section at the end of
@@ -175,8 +188,8 @@ cycle, beside the work that has newly become ready.
 
 ## Amendments from a ruling (`delegation.ruling-amendment`)
 
-The architect writes its own spec amendment from a ruling when no other live
-lane holds the spec. It lists plan rows for the session to write, because the
+The ruling architect writes the spec amendment from its ruling itself when no
+other live lane holds the spec. It lists plan rows for the session to write, because the
 session owns the plan. Every amendment names its question id in the spec's
 changelog and bumps the spec's version. A ruling that relaxes or removes a
 contract, or amends one on a security, data-integrity or money surface, goes to

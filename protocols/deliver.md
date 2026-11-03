@@ -93,7 +93,7 @@ your run; name it under Known limitations if it matters.
 - ...
 
 ## Routing attribution
-- <unit of work> — produced_by: <specialist> — route: <agent-lint --route band + line, or override rationale>
+- <unit of work> — produced_by: <specialist> — route: <protocol phase that names the role, agent-lint --route band + line, or override rationale>
 - ...
 
 ## Documentation created or updated
@@ -122,7 +122,7 @@ your run; name it under Known limitations if it matters.
 ## Session metrics
 - Tier: <T0-T3; for T2 name the lane: covered | contained> (reclassified: <none, or T1→T2 + why>)
 - Spawns: <N> (<agent×count with model class/reasoning effort, ...>)
-- Route bands: <HIGH×n MEDIUM×n LOW×n> — overrides: <none, or count + why>
+- Route bands: <phase×n HIGH×n MEDIUM×n LOW×n> — overrides: <none, or count + why>
 - Retries: <none, or class×count per docs/graph/protocols/recover.md>
 - Gates: <run/failed-then-fixed counts>
 - Full-suite runs: <N> (<how many were red>)

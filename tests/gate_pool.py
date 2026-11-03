@@ -37,6 +37,15 @@ IO_OVERSUBSCRIBE = 2     # auto default: workers per core (I/O-bound work)
 DEFAULT_MIN_WORKERS = 8  # auto-default floor for a 1-4 core box
 
 
+
+# A step that exits 0 because its input was absent checked nothing: it is
+# reported as SKIP, never as PASS (a skipped donor-token scan once read PASS).
+_SKIP_RE = __import__("re").compile(r"^[A-Za-z][\w .-]*: SKIP(PED)?\b", __import__("re").M)
+
+
+def skipped(r) -> bool:
+    return r["rc"] == 0 and bool(_SKIP_RE.search(r.get("output") or ""))
+
 def resolve_workers() -> int:
     """GATE_JOBS clamped to [4, 64]; unset or garbage: clamp(cpu*2, 8, 64)."""
     raw = os.environ.get("GATE_JOBS")
@@ -169,14 +178,15 @@ def dispatch(scenarios: list[tuple[str, str]], pooled: bool,
             r = fut.result()
             results[r["idx"]] = r
             done += 1
-            mark = "ok  " if r["rc"] == 0 else "FAIL"
+            mark = ("skip" if skipped(r) else "ok  ") if r["rc"] == 0 else "FAIL"
             print("  [%2d/%d] %s %s (%.1fs)"
                   % (done, len(scenarios), mark, r["label"], r["secs"]),
                   flush=True)
 
     failed = [r for r in results if r["rc"] != 0]
     for r in results:
-        head = "PASS" if r["rc"] == 0 else ("FAIL rc=%d" % r["rc"])
+        head = (("SKIP" if skipped(r) else "PASS") if r["rc"] == 0
+                else ("FAIL rc=%d" % r["rc"]))
         print("\n" + "=" * 72)
         print("[%s] %s  (%.1fs)" % (head, r["label"], r["secs"]))
         print("  $ %s" % r["cmd"])
@@ -193,6 +203,13 @@ def dispatch(scenarios: list[tuple[str, str]], pooled: bool,
         for r in failed:
             print("    x %s  (rc=%d)" % (r["label"], r["rc"]))
         return 1
+    skips = [r for r in results if skipped(r)]
+    if skips:
+        print("%s: OK — %d of %d %ss passed, %d skipped (checked nothing) in %.1fs:"
+              % (prefix, len(scenarios) - len(skips), len(scenarios), noun, len(skips), total))
+        for r in skips:
+            print("    - %s" % r["label"])
+        return 0
     print("%s: OK — all %d %ss passed in %.1fs"
           % (prefix, len(scenarios), noun, total))
     return 0

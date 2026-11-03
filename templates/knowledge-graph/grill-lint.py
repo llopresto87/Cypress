@@ -33,11 +33,27 @@ gated. This makes the shape a gate:
   - no `[verify]` survives in §9 or §13 (an assumption with no home);
   - no `### Increment N` heading sits outside §9, where none of the checks
     above would read it;
+  - every §6 row graded `one-way` or `expensive` (now, or after a named
+    milestone) carries
+    its press verdict (`could-not-refute`, `refuted`, or `waived by owner`),
+    in the row or on a plan line naming an ADR the row cites: a press the
+    plan never ran is otherwise invisible (`grill.press`); a struck-through
+    Reversibility cell is superseded;
+  - a §11 risk table carries at least one press verdict, in a row or a
+    press note in §11: the top risk goes to the press, and one plant's
+    seven T3 passes never pressed it;
   - §14 is one action.
 
 A fenced code block (``` or ~~~) is an example, not the plan: a heading inside
 one opens no section and no increment, and its `- Label:` lines are no fields.
 A fence indented under a field is that field's value, not a blank.
+
+`--batches` is a second report beside the gate: within each wave it groups
+the increments into spawns by the owner's batch table
+(`delegation.effort-scale`): a batch is no larger than its hardest `Effort:`
+allows, increments naming a common file run as consecutive batches past
+that size, each a fresh spawn after the one before, and prose takes one writer per disjoint
+file set (SPEC-0005 GRILL_BATCHES_FOLLOW_THE_EFFORT_TABLE).
 
 `--waves` is a report beside the gate, never part of it: every check above
 runs unchanged and decides the exit status. It levels the §9 increments into
@@ -116,6 +132,9 @@ CONTRACT_DECL_RE = re.compile(r"^###\s+Contract:\s*([A-Z][A-Z0-9_]{2,})\s*$", re
 STATUS_RE = re.compile(r"\*\*Status:\*\*\s*([\w-]+)")
 FRONT_STATUS_RE = re.compile(r"^status:\s*([\w-]+)", re.M)
 NA_RE = re.compile(r"^\s*(not applicable|n/?a|none)\b", re.I)
+PRESSED_GRADE_RE = re.compile(r"\b(one-way|expensive)\b", re.I)
+VERDICT_RE = re.compile(r"could-not-refute|\brefuted\b|waived by owner", re.I)
+ADR_ID_RE = re.compile(r"\bADR-\d{4}\b")
 REQUIRED_FIELDS = ("Spec contracts", "Tests to write (RED)", "Rollback path", "Depends on")
 PHASES = ("RED", "GREEN", "prose")
 # Path tokens of a `Files touched:` value. One brace group, not nested, per
@@ -187,6 +206,38 @@ def content_lines(body: str, template_lines: set[str]) -> list[str]:
         if i + 1 < len(raw) and TABLE_SEP_RE.match(raw[i + 1].strip()):
             continue                                # a table header row
         out.append(s)
+    return out
+
+
+def unpressed_decisions(body: str, pressed: set[str]) -> list[tuple[str, str]]:
+    """(decision, reversibility) of each §6 table row graded one-way or
+    expensive with no
+    press verdict: none in the row, and no ADR the row cites in `pressed` (the
+    ADRs a verdict line of the plan names). The Reversibility column is found
+    by its header, per table; a fenced table is an example and is not read."""
+    out: list[tuple[str, str]] = []
+    lines = body.splitlines()
+    col = None                                  # None: not inside a table
+    for raw, inside in zip(lines, fenced(lines)):
+        s = raw.strip()
+        if inside or not s.startswith("|"):
+            col = None
+            continue
+        if TABLE_SEP_RE.match(s):
+            continue
+        cells = [c.strip() for c in s.strip("|").split("|")]
+        if col is None:                         # the table's header row
+            col = next((i for i, c in enumerate(cells)
+                        if c.lower().startswith("reversib")), -1)
+            continue
+        if not 0 <= col < len(cells):
+            continue
+        rev = cells[col]
+        if rev.startswith("~~") or not PRESSED_GRADE_RE.search(rev) or VERDICT_RE.search(s):
+            continue
+        if pressed & set(ADR_ID_RE.findall(s)):
+            continue
+        out.append((cells[0].replace("~~", "")[:70], rev[:70]))
     return out
 
 
@@ -443,6 +494,138 @@ def shared_file(x: str, y: str) -> str | None:
     return x
 
 
+def levels(graph: list[tuple]) -> tuple[dict[int, int], dict[int, set[int]]]:
+    """(wave per increment, every increment each transitively depends on).
+
+    The checks refused every forward, missing and self dependency before this
+    runs, so what is left is acyclic in document order and one pass levels it."""
+    wave: dict[int, int] = {}
+    after: dict[int, set[int]] = {}
+    for n, _title, deps, *_ in graph:
+        wave[n] = 1 + max((wave[d] for d in deps), default=0)
+        after[n] = set(deps).union(*(after[d] for d in deps))
+    return wave, after
+
+
+def file_tokens(graph: list[tuple]) -> dict[int, list[str]]:
+    """The paths each increment's `Files touched:` names.
+
+    A bare name is a path only when its extension ends a slashed path of this
+    plan: a dotted fact key (`delegation.waves`) has a file name's shape, and a
+    warning that fires on keys trains its reader to ignore it."""
+    pieces = {n: path_pieces(files) for n, *_, files in graph}
+    slashed = [p.lower() for ps in pieces.values() for p in ps if "/" in p]
+    return {n: [p for p in ps if "/" in p or (
+                BARE_NAME_RE.match(p) and any(s.endswith("." + p.rsplit(".", 1)[1].lower()) for s in slashed))]
+            for n, ps in pieces.items()}
+
+
+# The owner's batch table (`delegation.effort-scale`): increments per spawn by
+# the hardest effort in the batch. RED `low` is "7 or more"; the planner uses 7.
+BATCH_SIZE = {
+    "RED":   {"low": 7, "medium-low": 7, "medium": 6, "medium-hard": 5, "hard": 5},
+    "GREEN": {"low": 5, "medium-low": 3, "medium": 3, "medium-hard": 2, "hard": 1},
+}
+EFFORT_RE = re.compile(r"^\s*(medium-low|medium-hard|low|medium|hard)\b", re.I)
+WORKER = {"RED": "tester", "GREEN": "implementer", "prose": "writer"}
+
+
+def batch_report(graph: list[tuple], efforts: dict[int, str],
+                 dependency_defect: bool) -> tuple[list[str], list[str]]:
+    """The `--batches` report: the spawns the effort table gives each wave.
+
+    Within one wave and phase, increments that name a common file form one
+    unit (one writer per file set, `delegation.lanes`); units are packed in §9
+    order while the batch stays within the size its hardest member allows.
+    Prose takes one writer per disjoint file set. An increment with no effort
+    label is a batch of one. Like `--waves`, it reads §9 alone and changes no
+    verdict."""
+    if dependency_defect or len({n for n, *_ in graph}) < len(graph):
+        return ["batches: not computed — §9 has dependency defects or duplicate numbers"], []
+    if not any(phase for *_, phase, _files in graph):
+        return ["batches: unscheduled — no §9 increment carries a Phase: field"], []
+    wave, _after = levels(graph)
+    tokens = file_tokens(graph)
+    order = {n: i for i, (n, *_) in enumerate(graph)}
+    warns: list[str] = []
+    label: dict[int, str | None] = {}
+    for n, *_ in graph:
+        m = EFFORT_RE.match(efforts.get(n, ""))
+        label[n] = m.group(1).lower() if m else None
+    cells: dict[tuple[int, str], list[int]] = {}
+    for n, *_, phase, _files in graph:
+        ph = phase.split()[0] if phase else ""
+        if ph in PHASES:
+            cells.setdefault((wave[n], ph), []).append(n)
+    lines: list[str] = []
+    counts = {"RED": 0, "GREEN": 0, "prose": 0}
+    for (w, ph), members in sorted(cells.items(), key=lambda kv: (kv[0][0], PHASES.index(kv[0][1]))):
+        # units: increments joined by a shared file, in §9 order
+        parent = {n: n for n in members}
+        def root(x: int) -> int:
+            while parent[x] != x:
+                x = parent[x]
+            return x
+        for i, a in enumerate(members):
+            for b in members[i + 1:]:
+                if any(shared_file(x, y) for x in tokens[a] for y in tokens[b]):
+                    parent[root(b)] = root(a)
+        units: dict[int, list[int]] = {}
+        for n in members:
+            units.setdefault(root(n), []).append(n)
+        ordered = sorted(units.values(), key=lambda u: order[u[0]])
+
+        def cap(unit: list[int]) -> int:
+            if ph == "prose":
+                return len(unit)
+            sizes = [BATCH_SIZE[ph][label[n]] if label[n] else 1 for n in unit]
+            return min(sizes)
+
+        # A unit larger than its size runs as consecutive batches, each a fresh
+        # spawn: a shared file means one writer at a time, never a bigger spawn.
+        batches: list[list[int]] = []
+        after_prev: set[int] = set()            # batch index that waits for the one before
+        if ph == "prose":
+            batches = ordered
+        else:
+            for unit in ordered:
+                for n in unit:
+                    if label[n] is None:
+                        warns.append(f"§9 increment {n}: no Effort: label "
+                                     f"({', '.join(BATCH_SIZE['RED'])}) — batched alone")
+                if len(unit) > cap(unit):
+                    chunks, cur = [], []
+                    for n in unit:
+                        if cur and len(cur) + 1 > cap(cur + [n]):
+                            chunks.append(cur)
+                            cur = []
+                        cur.append(n)
+                    chunks.append(cur)
+                    for i, c in enumerate(chunks):
+                        if i:
+                            after_prev.add(len(batches))
+                        batches.append(c)
+                elif batches and len(batches) - 1 not in after_prev \
+                        and len(batches[-1]) + len(unit) <= min(cap(batches[-1]), cap(unit)):
+                    batches[-1].extend(unit)
+                else:
+                    batches.append(list(unit))
+        for bi, b in enumerate(batches):
+            counts[ph] += 1
+            hard = [label[n] for n in b if label[n]]
+            rank = list(BATCH_SIZE["RED"])
+            hardest = max(hard, key=rank.index) if hard else "unlabelled"
+            size = "" if ph == "prose" else f", size {cap(b)}"
+            over = " — after the batch above: they share files" if bi in after_prev else ""
+            lines.append(f"  wave {w} {ph} {WORKER[ph]}: increment{'s' if len(b) > 1 else ''} "
+                         f"{', '.join(map(str, sorted(b, key=order.get)))} (hardest {hardest}{size}){over}")
+    total = sum(counts.values())
+    header = (f"batches: {total} spawn(s) for {sum(len(v) for v in cells.values())} increment(s) — "
+              f"{counts['RED']} tester, {counts['GREEN']} implementer, {counts['prose']} prose "
+              f"(delegation.effort-scale; security or concurrency GREEN stays a batch of one)")
+    return [header] + lines, warns
+
+
 def wave_report(graph: list[tuple], dependency_defect: bool) -> tuple[list[str], list[str]]:
     """The `--waves` report of §9: (lines to print, WARN lines to add).
 
@@ -466,13 +649,7 @@ def wave_report(graph: list[tuple], dependency_defect: bool) -> tuple[list[str],
     if dependency_defect:
         return ["waves: not computed — §9 has dependency defects (see below)"], warns
 
-    # The checks above refused every forward, missing and self dependency, so
-    # what is left is acyclic in document order and one pass levels it.
-    wave: dict[int, int] = {}
-    after: dict[int, set[int]] = {}             # every increment n transitively depends on
-    for n, _title, deps, *_ in graph:
-        wave[n] = 1 + max((wave[d] for d in deps), default=0)
-        after[n] = set(deps).union(*(after[d] for d in deps))
+    wave, after = levels(graph)
     lines = [f"waves: {max(wave.values())} wave(s), {len(graph)} increment(s) — "
              f"a static schedule from §9; what is committed is not read"]
     for _, (n, title, deps, _libs, _refs, phase, _files) in sorted(
@@ -481,14 +658,7 @@ def wave_report(graph: list[tuple], dependency_defect: bool) -> tuple[list[str],
         lines.append(f"  wave {wave[n]}: increment {n} "
                      f"({phase.split()[0] if phase else 'no phase'}) {title or '(untitled)'}{arrows}")
 
-    # A bare name is a path only when its extension ends a slashed path of this
-    # plan: a dotted fact key (`delegation.waves`) has a file name's shape, and a
-    # warning that fires on keys trains its reader to ignore it.
-    pieces = {n: path_pieces(files) for n, *_, files in graph}
-    slashed = [p.lower() for ps in pieces.values() for p in ps if "/" in p]
-    tokens = {n: [p for p in ps if "/" in p or (
-                  BARE_NAME_RE.match(p) and any(s.endswith("." + p.rsplit(".", 1)[1].lower()) for s in slashed))]
-              for n, ps in pieces.items()}
+    tokens = file_tokens(graph)
     # Two increments no dependency path orders can be live at once, in one wave
     # or not; only a path from the earlier to the later can exist here.
     for i, a in enumerate(numbers):
@@ -508,6 +678,7 @@ def main() -> int:
     argv = sys.argv[1:]
     list_mode = "--list" in argv
     waves_mode = "--waves" in argv
+    batches_mode = "--batches" in argv
     warn_mode = "--warn" in argv
     plan = PLAN
     if "--plan" in argv:
@@ -551,6 +722,25 @@ def main() -> int:
             if LABEL_ONLY_RE.match(ln.strip()):
                 fails.append(f"§1: `{ln.strip()}` has no path and no `none — <reason>` (read it; do not guess)")
 
+    # --- §6: every one-way or expensive decision was pressed (grill.press) ----
+    if 6 in secs:
+        pressed = {a for ln in mask_fences(text).splitlines() if VERDICT_RE.search(ln)
+                   for a in ADR_ID_RE.findall(ln)}
+        for decision, rev in unpressed_decisions(secs[6], pressed):
+            fails.append(f"§6: `{decision}` ({rev}) has no press verdict — spawn "
+                         f"devils-advocate (grill.press) and record `could-not-refute`, `refuted`, "
+                         f"or `waived by owner <date>` in the row's Refutation cell")
+
+    # --- §11: the top risk was pressed (grill.press) -------------------------
+    if 11 in secs:
+        body11 = mask_fences(secs[11])
+        risk_rows = [ln for ln in body11.splitlines()
+                     if ln.strip().startswith("|") and not TABLE_SEP_RE.match(ln.strip())]
+        if len(risk_rows) > 1 and not VERDICT_RE.search(body11):
+            fails.append("§11: no risk carries a press verdict — the top risk by probability × "
+                         "impact goes to devils-advocate (grill.press); record `could-not-refute`, "
+                         "`refuted`, or `waived by owner <date>` in its Refutation cell")
+
     # --- §9: increment shape and dependency order ---------------------------
     # A heading outside §9 is well formed and read by nothing: its fields,
     # dependencies and contracts all go unchecked while the plan passes.
@@ -571,6 +761,7 @@ def main() -> int:
     contract_refs: dict[str, dict[str, list[int]]] = {}
     # (number, title, increment deps, library deps, contracts, Phase:, Files touched:)
     graph: list[tuple[int, str, list[int], list[str], list[str], str, str]] = []
+    efforts: dict[int, str] = {}
     dependency_defect = False
     for n, title, block in incs:
         f = fields(block)
@@ -596,6 +787,7 @@ def main() -> int:
         refs = CONTRACT_REF_RE.findall(f.get("Spec contracts", ""))
         for spec, slug in refs:
             contract_refs.setdefault(spec, {}).setdefault(slug, []).append(n)
+        efforts[n] = f.get("Effort", "")
         graph.append((n, title, inc_deps, libs, [f"{s}/{c}" for s, c in refs],
                       f.get("Phase", "").strip(), f.get("Files touched", "")))
         if "[verify]" in mask_fences(block):
@@ -666,6 +858,10 @@ def main() -> int:
                   f"{'  contracts: ' + ', '.join(refs) if refs else ''}")
     if waves_mode:
         report, report_warns = wave_report(graph, dependency_defect)
+        print("\n".join(report))
+        warns.extend(report_warns)
+    if batches_mode:
+        report, report_warns = batch_report(graph, efforts, dependency_defect)
         print("\n".join(report))
         warns.extend(report_warns)
 

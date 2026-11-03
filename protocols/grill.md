@@ -104,7 +104,7 @@ when only the plan is being written.
 | 4 | §6 §7 §8 Decisions, Options, Architecture | `architect` → ADRs; `legal` inside its checkpoint | §5 | — |
 | 5 | §9 §10 Implementation and Verification Plan | `architect` slices; `tester` confirms each row's RED tests are writable and owns §10 | §8, spec §4 | phase 6 |
 | 6 | §11 Risks | `security` ∥ `reliability`; `legal` for externally-authored rules | §8 | phase 5 |
-| 7 | press (`grill.press`) | orchestrator; `devils-advocate` for one-way doors | §9, §11 | — |
+| 7 | press (`grill.press`) | orchestrator; `devils-advocate` for `one-way` and `expensive` decisions | §9, §11 | — |
 | 8 | §12 §13 §14 §15 | orchestrator, in-session | phase 7 | — |
 
 What the table cannot hold:
@@ -205,8 +205,8 @@ or a later phase adds §9 rows or ledger files.
 - Spec contracts: SPEC-0001/SUBMIT_VALID_FORM_RETURNS_2XX,
   SPEC-0001/SUBMIT_FORM_SCHEMA_INVALID
 - Files touched: src/submissions/store.{ext}, tests/submissions/store_test.{ext}
-- Tests to write (RED): 2 cases over SPEC-0001/SUBMIT_VALID_FORM_RETURNS_2XX,
-  SPEC-0001/SUBMIT_FORM_SCHEMA_INVALID; the tester names them
+- Tests to write (RED): §10 `test_submission_store_round_trip` (both
+  contracts), `test_submission_store_rejects_bad_schema`
 - Behavior added: a persistence adapter that stores submissions and
   returns them by ID
 - Gate: integration test against the test database; the suite stays
@@ -254,29 +254,27 @@ logic (a pattern, a condition, an order that changes the output) does
 need one. When the planner cannot tell, the row keeps its test and the
 tester makes the call at RED, handing back unwritten if the answer is no.
 
-`Tests to write (RED):` names contracts, not cases: the slug(s) and a case
-cap no larger than the contract count. One case may cover several slugs, and
-a failure mode with no real blast radius gets none
-(`test-first.proportionate-checks`). The tester names the cases; a plan that
-lists test names writes the suite twice, once in prose nobody runs.
+`Tests to write (RED):` cites tests, it does not define them: the names
+of the spec's §10 tests this increment turns red, as the test design states
+them (`test-first.proportionate-checks`). A test the design shares between
+contracts is cited once, by the first increment whose behaviour it needs;
+later increments that rely on it cite it as already written. The planner
+adds, merges or drops no case: a case the plan seems to need and §10 lacks
+goes back to the tester as a design question before the increment is
+written.
 
-An increment is ready when it names its spec contracts, its case cap
-(or its `none` and the run that proves it), its rollback, and its dependencies, and the tester can write the failing
-test from the row as written. An increment missing any of them is
-re-sliced, and so is one that touches many files to add several
-behaviors.
+An increment is ready when it names its spec contracts, its cited §10 tests
+(or its `none` and the run that proves it), its rollback, and its
+dependencies, and the tester can write the failing test from §10 as
+designed. An increment missing any of them is re-sliced, and so is one
+that touches many files to add several behaviors.
 
-**The consolidation increment.** A spec whose increments added many
-tests ends its §9 with one more increment, planned from the start:
-survey the tests the spec added and the older tests they overlap, rule
-on each overlap, then merge or delete under the proportionate-checks rules in
-`skill.test-first`. Its `Spec contracts:` are the contracts whose tests
-it touches, and its `Tests to write (RED):` reads `none — consolidation`.
-Its gate is the suite staying green with no contract losing its test.
-The template carries this row by default. The planner may drop it for a
-spec that added few tests, and records the reason in the row's place.
-It runs last, because only after the last feature increment has landed
-can it see the whole set of tests.
+No plan schedules a pass to shrink the tests its own design produced: the
+design already merged the overlaps. A shrink increment is planned only for
+tests no design produced (an inherited suite, or one written before the
+spec's §10 design existed); its `Tests to write (RED):` reads
+`none — shrink of <the inherited tests>`, and its gate is the suite staying
+green with no contract losing its test.
 
 ## Press the plan (`grill.press`)
 
@@ -313,14 +311,19 @@ someone happens to ask. A production pin that can be read only on the
 running system, not in source, is touching a live workload and waits
 for the owner (`vcs-posture.publish-authorization`).
 
-**Refutation.** On a T3 plan, any one-way door (`architect`
-reversibility class) and the top risk by probability × impact go to
+**Refutation.** On a T3 plan, every decision graded `one-way` or
+`expensive`, now or after a milestone (`architect` reversibility class), and
+the top risk by probability × impact go to
 `devils-advocate` as a finished, claim-bearing deliverable for its
 bounded refutation pass. A `refuted` verdict reopens the phase that
-owns the claim; `could-not-refute` is recorded beside the §6 or §11
-row. It is one spawn per pass on T3 plans ONLY; T2 work (a covered-lane
+owns the claim. The verdict goes in the §6 row's `Refutation` cell (the
+top risk's beside its §11 row); a pass the owner declines is recorded
+there as `waived by owner <date>`. A revision that adds or regrades such a
+decision runs the press for it too: `grill-lint.py` fails a `one-way` or
+`expensive` row with no verdict. The owner decided on 2026-11-03 that
+`expensive` is pressed as well: the plants recorded most hard-to-undo
+decisions as `expensive`, so a press keyed to `one-way` alone skipped them. It is one spawn per pass on T3 plans ONLY; T2 work (a covered-lane
 revision or a contained-lane change) adds its grill.md line and moves on.
-
 ## Plan approval (`grill.plan-approval`)
 
 This step runs when the pressed plan goes to the owner for approval
@@ -366,8 +369,9 @@ nothing after it is neither.
 - Every §1 line cites a path or reads `none — <reason>`.
 - §5 covers every library page §9 depends on and every page it names
   exists; an empty §5 states why.
-- Every non-obvious decision has an ADR or a row in §6; every one-way
-  door has been pressed.
+- Every non-obvious decision has an ADR or a row in §6; every `one-way`
+  or `expensive` decision has been pressed, and so has the top risk
+  (grill-lint reads the Refutation cells of §6 and §11).
 - Every §9 increment fits the shape (contracts, RED tests, rollback,
   dependencies), and the rows are in dependency order.
 - Spec ↔ plan alignment holds; no `[verify]` survives in §9 or §13.
