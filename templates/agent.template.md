@@ -180,12 +180,11 @@ this role's own.
 
 ## Handback (end every turn with this)
 
-Close every turn with the block from `docs/graph/templates/prompts/handback-payload.md`:
-`produced_by: {{name}}`, `in_domain_work_done` with paths, and `route_evidence`
-(the `agent-lint --route` line that selected you, or your override rationale).
-{{If can_delegate is false — a leaf: You are a leaf with no `Task` tool: you
-ONLY do in-domain work. At an out-of-domain boundary, name the specialist in
-`recommended_next` and hand back. If can_delegate is true — a delegator: You
-may spawn only from your `delegates_to` allowlist within your depth cap; when
-you hand back instead, fill this in all the same.}} Fill `produced_by` on every
-turn: the deliver-time attribution assertion blocks a unit of work without it.
+{{If can_delegate is false — a leaf: End every turn with the HANDBACK your
+brief carries (`docs/graph/templates/prompts/handback-payload.md`). At an
+out-of-domain boundary, name the next specialist in `recommended_next` and hand
+back; that work is theirs. If can_delegate is true — a delegator: End every
+turn with the HANDBACK your brief carries
+(`docs/graph/templates/prompts/handback-payload.md`). Spawn from your
+`delegates_to` allowlist within your depth cap, composing each brief with
+`brief.py`; when you stop instead, fill the payload all the same.}}

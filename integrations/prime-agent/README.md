@@ -48,7 +48,7 @@ opencode, and the difference is in the seed's favour.
 Prime Agent has **no static agent-roster directory that a session
 enumerates at start**. Delegation is a runtime primitive: the
 orchestrator spawns a clean-context child with an inline brief via
-`await rlm.spawn("<brief>", name="<role>")`, and reusable delegation specs are persisted in
+`await rlm.spawn("<brief>", name="<spawn-id>")`, and reusable delegation specs are persisted in
 the **continual harness** (`rlm.harness`), not as spawnable-by-name
 registry files.
 
@@ -144,7 +144,8 @@ and lives under `.prime/agent/`). It does not replace or contradict the shared
 kernel; it maps the kernel's discipline onto Prime Agent's primitives:
 
 - **Delegation** → compose the brief with `docs/graph/brief.py --role <role>
-  --charter …` and spawn `await rlm.spawn(brief, name=role, model=..., thinking=...)`; fan out
+  --charter …` and spawn `await rlm.spawn(brief, name=<spawn-id>, model=..., thinking=...)`, so
+  each reply pairs with its spawn in the spawn log; fan out
   several single-scoped children in parallel, one facet each; collect
   handbacks via `agent_message`; supervise with `agent_observe`.
 - **Model policy** → each roster brief's `model:` field names the class, and
@@ -154,14 +155,11 @@ kernel; it maps the kernel's discipline onto Prime Agent's primitives:
   passes the effort as `thinking=`.
 - **Checks** → run `bash tests/run.sh` and the linters directly in the kernel;
   keep evidence in variables.
-- **Close-out** → three destinations: project knowledge into `docs/graph/`
-  via canonize; any reusable tool or project skill **in the plant**, committed
-  (home `docs/graph/skills/<name>.md`, projected to
-  `.prime/agent/skills/<name>/SKILL.md`, per `skill.toolcraft`); and
-  *operating* lessons to the plant's session record in
-  `docs/graph/plans/sessions/` (`method.stewardship-posture`). The overlay's
-  Close-out section holds the routing, including what the continual harness
-  (`rlm.harness`) may keep.
+- **Close-out** → project knowledge goes to `docs/graph/` through canonize. A
+  project skill's home is `docs/graph/skills/<name>.md`, projected to
+  `.prime/agent/skills/<name>/SKILL.md` and committed (`skill.toolcraft`). A
+  cross-session lesson goes to the session record
+  (`method.stewardship-posture`); `rlm.harness` keeps at most a pointer to it.
 - **Long-running work** → a nonblocking control loop with `goal` and
   `rlm_heartbeat`; end the turn and fan-in on replies instead of polling.
 

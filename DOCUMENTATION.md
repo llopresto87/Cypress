@@ -158,7 +158,7 @@ full statement of each rule lives in (and only in) its owning node.
 | 3.3 | **grill**      | `docs/graph/plans/grill.md` is the living plan-of-record, append-only: a change lands as a new entry. | `protocol.grill` (`rule.grill`) |
 | 3.4 | **test-first** | Production code starts from a failing test that authorizes it: RED → GREEN → REFACTOR → COMMIT; characterize untested code first. A declarative edit with nothing to get wrong is proved by a run instead. | `protocol.test-first` (`rule.test-first`) |
 | 3.5 | **verify**     | Gates proportional to blast radius run, and assert something, before "done"; a gate that did not run is recorded as absent. | `protocol.verify` (`rule.verify`) |
-| 3.6 | **deliver**    | Every session ends in a cold-pickup delivery with a `produced_by` attribution assertion (detective — §6.4). | `protocol.deliver` (`rule.deliver`) |
+| 3.6 | **deliver**    | Every session ends in a cold-pickup delivery with an attribution assertion over the spawn log (detective — §6.4). | `protocol.deliver` (`rule.deliver`) |
 | 3.7 | **canonize**   | Every T2/T3 task ends with one docs-librarian close-out spawn that persists what the work taught — or records "nothing of interest, because …". | `protocol.canonize` (`rule.canonize`) |
 | 3.8 | **toolcraft**  | Recurring operations become durable, tested, cataloged tools; one-offs stay disposable. | `skill.toolcraft` (`rule.toolcraft`) |
 
@@ -471,12 +471,13 @@ write one (it joins only the project's roster).
   ([delegation bounds](core/method/delegation-bounds.md#delegation-is-bounded)). At an out-of-domain boundary a leaf stops, hands
   back and names the next specialist; the out-of-domain work goes to that
   specialist.
-- Attribution is detective, not preventive: a deliver-time `produced_by`
-  assertion attributes every unit of work back to the specialist that produced
-  it, and is specified to block when the attribution is missing — but the top
-  session performs it at `deliver`, and the `Stop` hook that would mechanize it
-  is deliberately unwired until real deliveries carry `produced_by`
-  (`protocols/deliver.md`). A tier-down misclassification is therefore caught by
+- Attribution is detective, not preventive: `brief.py` logs every brief it
+  composes to `docs/graph/plans/spawns.jsonl`, and a deliver-time assertion
+  reads that log (`brief.py --log`) to attribute every unit of work to the
+  spawn that produced it. A unit of work with no spawn record is a BLOCK — but
+  the top session performs it at `deliver`, and the `Stop` hook that would
+  mechanize it stays unwired until a plant's deliveries carry the attribution
+  lines (`protocols/deliver.md`). A tier-down misclassification is therefore caught by
   a reader, not refused by a gate.
 
 ADR-0003 is the vocabulary for all of this: **hard** (the harness refuses),
@@ -505,9 +506,10 @@ spawnable at once. The rule, and what each host is recorded to do, lives in
 
 When a restart is impossible, a documented role-emulation fallback spawns the
 host's generic worker and rebuilds the specialist inside the brief (pin the
-model, embed the agent file verbatim, restate every bound in prose, stamp
-`harness_override: role-emulated`). It is a recorded degradation, stamped so
-every reader sees it.
+model, embed the agent file verbatim, restate every bound in prose, compose
+the brief with `brief.py --emulated "<reason>"`). It is a recorded degradation:
+the spawn log carries the emulation, so the deliver-time assertion shows it to
+every reader.
 
 ### 6.6 Every brief carries the graph discipline
 
@@ -625,8 +627,8 @@ doors, threat models, a `devils-advocate` pass, a harvest's faithful-import revi
 and diagnosing a red gate are `high`. A light variant is `low`. A spawn that
 carries increments takes the hardest label in its batch. Failing those, the
 step kind's default applies, and last the definition's own. The brief records
-one line, `effort: <value> (row <n>: <reason>)`, and the handback echoes it in
-its `effort:` field.
+one line, `effort: <value> (row <n>: <reason>)`, and `brief.py` writes the
+same value to the spawn log.
 
 Claude Code reads `effort` from agent frontmatter. Whether it offers a
 per-spawn override is not recorded, and neither is whether opencode, Codex or
@@ -805,8 +807,8 @@ linters (`graph-lint.py`, `spec-lint.py`, `grill-lint.py`), the router
 
 `templates/prompts/` holds parameterized delegation, investigation, and
 validation briefs, including the two canonical graph-session blocks, GRAPH
-DISCIPLINE and COMPANION (embedded verbatim in every brief), the handback payload (the attribution
-carrier read by the deliver-time `produced_by` assertion), the growth scout/
+DISCIPLINE and COMPANION (embedded verbatim in every brief), the handback payload (a worker's reply, which
+the host pairs with the spawn `brief.py` logged), the growth scout/
 author briefs, the evidence-ledger and coverage-record schemas, and the
 clean-context validation brief.
 
@@ -1627,10 +1629,10 @@ Each entry covers one word that the front door (the README, the install guide, t
 <a id="term-handback"></a>
 
 - **Forms:** handback, handbacks
-- **Here:** The one payload a worker returns per spawn, at the end of its [turn](#term-turn), whether it finished, met work outside its domain or failed. It names who produced it (`produced_by`), its status, the work done, the checks it ran and what it needs from outside its domain; the [handback template](templates/prompts/handback-payload.md) is its only home.
+- **Here:** The one payload a worker returns per spawn, at the end of its [turn](#term-turn), whether it finished, met work outside its domain or failed. It starts at its status and names the work done, the checks it ran and what it needs from outside its domain; the [handback template](templates/prompts/handback-payload.md) is its only home.
 - **Field:** no standard meaning
 - **Implemented at:** `templates/prompts/handback-payload.md`, `protocols/deliver.md`
-- **Enforcement:** The word itself is not a control. The `produced_by` assertion is **detective**, in the [attribution row](#enf-attribution)
+- **Enforcement:** The word itself is not a control. The attribution assertion over the spawn log is **detective**, in the [attribution row](#enf-attribution)
 - **Divergence:** **no standard meaning**
 - **Why:** kernel §3.6
 
@@ -1833,7 +1835,7 @@ This section answers which rules a tool holds and which the method only asks the
 | <a id="enf-test-before-code"></a>A failing test is written before the code it authorizes | `protocols/test-first.md` | **judgment**: the session, then the reviewer | No tool sees the order in which a test and its code were written | [test-first protocol](protocols/test-first.md) |
 | <a id="enf-verify-gates"></a>Gates sized to the change run before work is called done | `protocols/verify.md` | **soft** for each gate that is run; **judgment** for which gates run (the session, which takes `source-index.py affected-tests`, run once after GREEN, as the recommended floor of the focused tests) | A gate that was not run shows no red | [verify protocol](protocols/verify.md) |
 | <a id="enf-canonize"></a>Each T2 or T3 task ends with one close-out spawn | `protocols/canonize.md`, `agents/09-docs-librarian.md` | **judgment**: the session reports the close-out line, and whoever reads the delivery weighs it | Nothing checks that the close-out spawn ran, or what it recorded | [canonize protocol](protocols/canonize.md) |
-| <a id="enf-attribution"></a>Each unit of delivered work names the specialist that produced it | `protocols/deliver.md`, `templates/prompts/handback-payload.md` | **detective**: the assertion runs at delivery, after the work | The top session runs the assertion on its own work. The `Stop` hook that could hold it is not wired, on purpose (ADR-0003) | [deliver protocol](protocols/deliver.md) |
+| <a id="enf-attribution"></a>Each unit of delivered work names the specialist that produced it | `protocols/deliver.md`, `tools/brief.py` (the spawn log) | **detective**: the assertion runs at delivery, after the work | The top session runs the assertion on its own work. The `Stop` hook that could hold it is not wired, on purpose (ADR-0003) | [deliver protocol](protocols/deliver.md) |
 | <a id="enf-brief-block"></a>Each brief embeds the canonical graph-discipline text verbatim | `templates/prompts/graph-session-bootstrap.md`, `tests/seed-lint.py` | **soft** for byte identity in the seed's templates; **judgment** for a brief a session writes (the session) | Seed-lint compares the templates in the seed, never the briefs a session writes from them | [delegation node](core/method/delegation-briefs.md) |
 | <a id="enf-charter-duties"></a>An agent keeps the duties its charter states, such as the legal agent reasoning only from its corpus | `agents/*.md` | **soft**: a contract in the agent's prose | The model can depart from its charter, and nothing reads its output against it | [agents reference](documentation/agents-reference.md) |
 | <a id="enf-lifecycle-gate-rows"></a>Each gate row of the grow, graft and harvest tables declares its class | `protocols/grow.md`, `protocols/graft.md`, `protocols/harvest.md`, `tests/seed-lint.py` | **soft**, **detective** or **judgment**, as each row states | Seed-lint checks each row's class against the vocabulary, not whether the class is true | [graft protocol](protocols/graft.md) |
@@ -1842,7 +1844,7 @@ This section answers which rules a tool holds and which the method only asks the
 | <a id="enf-ratchets"></a>Recorded ceilings and floors move only in their tightening direction | `tools/ratchet-lint.py`, `tests/ratchets.json` | **soft** | A value loosened in `tests/ratchets.json` in the same change passes. `--bless` rewrites the lock from the current values, and `--show` exits 0 | [§14 Tests and gates](#14-tests-and-gates) |
 | <a id="enf-agent-effort"></a>Each agent definition declares a default `effort:` of `low`, `medium` or `high` | `agents/*.md`, `integrations/claude-code/agent-lint.py` | **soft**: `agent-lint.py --lint` exits 1 on a missing or unknown value | It checks that a value is present and in the set, not that it fits the agent's work. Claude Code reads the key from agent frontmatter; whether other hosts read it is not recorded. A plant runs the lint only when a session or the plant's own CI runs it | [delegation model classes](core/method/delegation-model-classes.md) |
 | <a id="enf-agent-model"></a>Each agent definition declares a `model:` of `opus`, `sonnet`, `haiku` or `inherit` | `agents/*.md`, `integrations/claude-code/agent-lint.py` | **soft**: `agent-lint.py --lint` exits 1 on a missing value or one outside the set | It checks that a value is present and in the set, not that the alias fits the agent's work. The model each class runs on a host lives in the plant's model map, `docs/graph/models.md`, which this rule does not read. A plant runs the lint only when a session or the plant's own CI runs it | [delegation model classes](core/method/delegation-model-classes.md) |
-| <a id="enf-spawn-effort"></a>Each spawn's effort is derived from its step and recorded in the brief | `core/method/delegation-model-classes.md`, `templates/prompts/handback-payload.md` | **soft** where the brief carries the value, a contract the worker echoes rather than a setting it applies; **judgment** for which row of the derivation applies (the session) | No tool derives the value or reads the brief line. On a host with no recorded per-spawn setting the worker runs at whatever effort the host applies, and the `host applies:` note records the departure without changing it. The handback's `effort:` echo is a record for whoever reads the delivery; nothing compares it | [delegation model classes](core/method/delegation-model-classes.md) |
+| <a id="enf-spawn-effort"></a>Each spawn's effort is derived from its step and recorded in the brief | `core/method/delegation-model-classes.md`, `tools/brief.py` | **soft** where the brief carries the value, a contract the worker reads rather than a setting it applies; **judgment** for which row of the derivation applies (the session) | No tool derives the value or reads the brief line. On a host with no recorded per-spawn setting the worker runs at whatever effort the host applies, and the `host applies:` note records the departure without changing it. The spawn log's `effort` is a record for whoever reads the delivery; nothing compares it | [delegation model classes](core/method/delegation-model-classes.md) |
 | <a id="enf-leaf-ceiling"></a>A method, protocol or skill body stays within the leaf ceiling | `tests/seed-lint.py` (`LEAF_BODY_CEILING`, `OVERSIZED_LEAVES`), `tools/ratchet-lint.py`, `tests/ratchets.json` | **soft**, and only in the seed's own gate | A file already in `OVERSIZED_LEAVES` passes until it shrinks. A name added to the ledger and to `tests/ratchets.json` in the same change passes, as the [ratchet row](#enf-ratchets) records. Agent files are outside its scope, and a plant's own nodes are held by `graph-lint.py`'s project-node limit instead | [knowledge-graph skill](skills/knowledge-graph/SKILL.md) |
 | <a id="enf-rule-homes"></a>Each rule SPEC-0005 adopted has one home, and the delegation split holds | `tests/seed-lint.py` (`DELEGATION_SPLIT`, `ADOPTED_RULE_HOMES`) | **soft**, and only in the seed's own gate | A stale pointer that names a moved heading or a section number, with no fact key beside the branch's path, passes; review holds those. Only the keys `ADOPTED_RULE_HOMES` lists are checked here, and any other key is held by the general one-home check alone | [§14 Tests and gates](#14-tests-and-gates) |
 | <a id="enf-template-lines"></a>The handback template carries `effort:` and `expertise_gap:`, and the brief block's step 2 is the menu step | `templates/prompts/handback-payload.md`, `templates/prompts/graph-session-bootstrap.md`, `tests/seed-lint.py` | **soft** for the seed's templates; **judgment** for a brief or handback a session writes (the session) | Seed-lint compares the templates in the seed, never the briefs a session writes from them or the handbacks workers return. Step 2 is compared with whitespace collapsed, so a re-wrap passes | [delegation briefs](core/method/delegation-briefs.md) |

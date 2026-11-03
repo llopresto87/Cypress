@@ -12,7 +12,8 @@ test, code, or a doc), spawn a clean-context child instead of doing it inline:
   composer carries the role's charter, both bootstrap blocks and the handback
   block, so you read none of them:
   `brief = (await bash('python3 docs/graph/brief.py --role architect --charter --spawn-id <id> --task "<task line>" --route "<routing evidence>" --part task.md')).output`;
-  `await rlm.spawn(brief, name="architect", model=..., thinking=...)`.
+  `await rlm.spawn(brief, name="<spawn-id>", model=..., thinking=...)`; the
+  name pairs each reply with its spawn in the spawn log.
 - **Fan out narrow, in parallel.** Give each child one facet and its own
   report file, and spawn them in one turn (several `rlm.spawn()` calls): a
   narrow brief keeps each context clean and each report checkable. Then end

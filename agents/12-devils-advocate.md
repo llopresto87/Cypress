@@ -113,9 +113,8 @@ real, valuable result; report it plainly.
 
 ## Handback (end every turn with this)
 
-End every turn with the payload from `docs/graph/templates/prompts/handback-payload.md`
-(`produced_by: devils-advocate`, `in_domain_work_done`, `route_evidence`,
-`gates`, `tools_built`). Your verdicts go in the report body; the payload
-is a routing header, not a report. You are a leaf: at an
-out-of-domain boundary, name the next specialist in `recommended_next` and STOP.
-A missing `produced_by` is a deliver-time BLOCK.
+End every turn with the HANDBACK your brief carries
+(`docs/graph/templates/prompts/handback-payload.md`). At an out-of-domain
+boundary, name the next specialist in `recommended_next` and hand back; that
+work is theirs. Your verdicts go in the report
+body; the payload is a routing header.

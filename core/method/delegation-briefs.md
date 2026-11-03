@@ -41,9 +41,9 @@ copies the canonical blocks of
 `docs/graph/templates/prompts/graph-session-bootstrap.md` and the HANDBACK
 block of `docs/graph/templates/prompts/handback-payload.md` byte for byte,
 fills their slots (task line, spawn id, routing evidence), and adds your
-task part, so neither you nor the worker reads the templates (`produced_by`
-and `route_evidence` feed the deliver-time attribution assertion,
-`protocol.deliver`). Where the spawn prompt stays in the caller's context,
+task part, so neither you nor the worker reads the templates. It also logs
+the spawn (`delegation.tracing`), the record the deliver-time attribution
+assertion reads (`protocol.deliver`). Where the spawn prompt stays in the caller's context,
 compose with `--out docs/graph/plans/<unit of work>/briefs/<spawn_id>.md` and
 send the three-line pointer it prints as the prompt, so the brief is never
 in the caller's context at all and stays on disk as the spawn's record. Write that brief's task line in the domain's own

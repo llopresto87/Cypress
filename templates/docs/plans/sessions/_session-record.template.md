@@ -13,9 +13,10 @@ newest record at session start): method.stewardship-posture
 protocol.canonize (canonize.session-record).
 A record has no frontmatter and no status: key. It is working state, like
 grill.md, and is not routed. Append only: correct an item with a new item
-that names the one it corrects, and add a dated block to "Open threads"
-instead of editing the last one. Record only evidenced items; an unverified
-idea goes to "Open threads" as a question. A secret, a credential, or
+that names the one it corrects, and add a dated block to "Paused state"
+instead of editing the last one. Record only evidenced items. Where the work
+stands and what comes next lives in grill.md §14/§15, and the delivery in the
+plant changelog.md: this record holds only what neither holds. A secret, a credential, or
 production or personal data never enters a record (kernel §4): records are
 committed and read by every later session.
 The leading underscore keeps this blank form out of the linters and audits;
@@ -39,12 +40,13 @@ How it applies: <one short paragraph>
 - <what was believed, and where it was written> → <what is true>; evidence: <path, command or commit>
 - <a node body the work found incomplete: its path and lines> → <what is missing>; evidence: <path, command or commit>; priority: <high | medium | low>
 
-## Open threads
+## Paused state
+
+(Only for a live operation stopped mid-flight; routine progress is grill.md §14/§15.)
 
 ### As of <YYYY-MM-DD>
 
-- <where paused work stands; what comes next; what waits on whom>
-- <when a live operation on a real target paused mid-flight, its exact state: what is applied where; the rollback anchors (previous image tags, backup copies and how long each survives); the blocker's next diagnostics, in order; the gates still to run. When it resolves, a later dated block says so first and names the block it closes, which stays as written>
+- <what is applied where; the rollback anchors (previous image tags, backup copies and how long each survives); the blocker's next diagnostics, in order; the gates still to run. When it resolves, a later dated block says so first and names the block it closes, which stays as written>
 
 ## Harness memories to migrate
 

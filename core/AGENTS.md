@@ -86,9 +86,9 @@ code are current unless the session-start code-anchor line names their
 paths; there the code wins, and the node is fixed in the same change.
 Owner: `skill.context-router` (`rule.knowledge`); authoring:
 `skill.knowledge-graph`. Harness memory
-is not a home: a session starts from the newest record in
-`docs/graph/plans/sessions/` and writes what it learns there for
-canonize (`method.stewardship-posture`).
+is not a home: a session resumes from `grill.md` §14/§15 and the newest
+record in `docs/graph/plans/sessions/`, and writes what it learns there
+for canonize (`method.stewardship-posture`).
 
 ### 3.3 The grill rule
 `docs/graph/plans/grill.md` is the living plan-of-record, append-only:
@@ -107,7 +107,7 @@ Gates proportional to blast radius run, and assert something, before
 
 ### 3.6 The deliver rule
 Every session ends in a cold-pickup delivery with a detective
-`produced_by` attribution assertion. Owner: `protocol.deliver`
+attribution assertion over the spawn log. Owner: `protocol.deliver`
 (`rule.deliver`).
 
 ### 3.7 The canonize rule

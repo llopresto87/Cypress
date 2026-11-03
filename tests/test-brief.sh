@@ -28,7 +28,13 @@ for name in ("GRAPH DISCIPLINE", "COMPANION"):
 if "{{" in out.split("## Handback", 1)[0]:
     sys.exit("  an unfilled slot reached the brief (the handback fields are the worker's)")
 for want in ("orchestrator.3.tester.1", "write the RED tests for SPEC-0001 increment 2",
-             "protocol.test-first RED names tester", "Write the RED tests §10 names", "produced_by:", "graph_route:"):
+             "protocol.test-first RED names tester", "Write the RED tests §10 names", "graph_route:", "gates:"):
+    if want not in out:
+        sys.exit(f"  missing: {want}")
+for gone in ("produced_by:", "route_evidence:", "- effort:", "- spawn_id:"):
+    if gone in out:
+        sys.exit(f"  echo field still asked for: {gone}")
+for want in ():
     if want not in out:
         sys.exit(f"  missing: {want}")
 PY
@@ -43,6 +49,20 @@ ptr="$(cd "$T" && "$PY" docs/graph/brief.py --role tester --spawn-id orchestrato
   && ! grep -q 'GRAPH DISCIPLINE' <<<"$ptr" \
   && grep -q 'GRAPH DISCIPLINE' "$T/docs/graph/plans/u/briefs/orchestrator.3.tester.1.md" \
   && ok "--out writes the brief to the file and prints only a pointer" || bad "--out" "pointer or file wrong"
+L="$T/docs/graph/plans/spawns.jsonl"
+"$PY" - "$L" <<'PY' && ok "X492 SPAWN_LOG_RECORDS_THE_ATTRIBUTION: each composed brief is logged: spawn_id, role, route, effort" || fail=1
+import json, sys
+rows = [json.loads(l) for l in open(sys.argv[1])]
+r = next(r for r in rows if r["spawn_id"] == "orchestrator.3.tester.1")
+assert r["role"] == "tester" and r["route"] == "protocol.test-first RED names tester" and r["effort"] == "medium (row 3)", r
+PY
+(cd "$T" && "$PY" docs/graph/brief.py --log) | grep -q '^- orchestrator.3.tester.1 — produced_by: tester — route: protocol.test-first RED names tester' \
+  && ok "X492 SPAWN_LOG_RECORDS_THE_ATTRIBUTION: --log prints the delivery's attribution lines" || bad "--log" "line missing"
+(cd "$T" && "$PY" docs/graph/brief.py --role security --spawn-id o.9.security.1 --task t --route r --emulated "no registered type" --part part.txt >/dev/null && "$PY" docs/graph/brief.py --log) \
+  | grep -q '^- o.9.security.1 — produced_by: security — route: r — role-emulated (no registered type)$' \
+  && ok "X492 SPAWN_LOG_RECORDS_THE_ATTRIBUTION: an emulated spawn is logged and printed as such" || bad "--emulated" "not in the log"
+rc=0; msg="$(cd "$T" && "$PY" docs/graph/brief.py --role architect --spawn-id orchestrator.3.tester.1 --task t --route r --part part.txt 2>&1 >/dev/null)" || rc=$?
+[[ $rc -eq 2 ]] && grep -q "already logged for role 'tester'" <<<"$msg" && ok "X492 SPAWN_LOG_RECORDS_THE_ATTRIBUTION: a spawn_id reused for another role is refused" || bad "re-mint" "rc $rc: $msg"
 rc=0; (cd "$T" && "$PY" docs/graph/brief.py --role nobody --spawn-id s --task t --route r --part part.txt) >/dev/null 2>&1 || rc=$?
 [[ $rc -ne 0 ]] && ok "unknown role refused" || bad "unknown role" "exit 0"
 [[ "$fail" == 0 ]] && echo "test-brief: PASS" || { echo "test-brief: FAIL"; exit 1; }

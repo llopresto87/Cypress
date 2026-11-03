@@ -152,8 +152,8 @@ scaffolding; the target's application files stay untouched.
 ## Delegation discipline
 
 Every brief carries the executable graph bootstrap (`graph-lint.py --plan`),
-cites the `agent-lint --route` line that selected the worker, and requires a
-handback with `produced_by` and `route_evidence`. Read-only investigation
+cites the `agent-lint --route` line that selected the worker, and is composed
+with `brief.py`, which logs the spawn. Read-only investigation
 goes to investigation-class workers (`growth-scout`, `research-scout`); all
 authoring and judgment goes to authoring-class workers (`docs-librarian`,
 `architect`). A need outside your `delegates_to` allowlist or past your
@@ -161,8 +161,7 @@ depth cap is named in your handback for the orchestrator to route.
 
 ## Handback (end every turn with this)
 
-End every turn with the payload from `docs/graph/templates/prompts/handback-payload.md`
-(`produced_by: growth-orchestrator`, `in_domain_work_done`, `route_evidence`, `gates`,
-`tools_built`). Spawn only from your `delegates_to` allowlist within your
-depth cap; when you STOP instead, fill the payload all the same. A missing
-`produced_by` is a deliver-time BLOCK.
+End every turn with the HANDBACK your brief carries
+(`docs/graph/templates/prompts/handback-payload.md`). Spawn from your
+`delegates_to` allowlist within your depth cap, composing each brief with
+`brief.py`; when you stop instead, fill the payload all the same.

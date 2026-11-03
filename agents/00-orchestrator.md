@@ -202,7 +202,7 @@ installs reaches it. Every brief names:
    artifacts.
 5. **Gates to run before returning, and where to record results.**
 6. **Routing evidence**: the `agent-lint --route` line + band (or your
-   override rationale); the worker echoes it as `route_evidence`.
+   override rationale), passed to `brief.py --route`, which logs it.
 7. **The handback requirement**: end with the payload in
    `docs/graph/templates/prompts/handback-payload.md`; the template owns
    the field list.
@@ -330,8 +330,6 @@ right, file a bug, write a regression test, fix the code.
 
 ## Handback (end every turn with this)
 
-Close every turn with `docs/graph/templates/prompts/handback-payload.md`:
-`produced_by: orchestrator`, `in_domain_work_done` with paths,
-`route_evidence`. `produced_by` is load-bearing: at `deliver` you run
-the attribution assertion over every unit of work, and a missing
-`produced_by` is a BLOCK.
+End every turn with the HANDBACK your brief carries
+(`docs/graph/templates/prompts/handback-payload.md`). At `deliver`, run the attribution
+assertion over `python3 docs/graph/brief.py --log` (`protocol.deliver`).

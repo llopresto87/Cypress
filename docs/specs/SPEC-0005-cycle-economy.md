@@ -10,7 +10,7 @@ status_evidence: tests/test_graph_lint.py, tests/test_agent_lint.py, tests/test-
 ## 0. Metadata
 
 - **Identifier:** SPEC-0005-cycle-economy
-- **Version:** 0.16 (the batch plan: GRILL_BATCHES_FOLLOW_THE_EFFORT_TABLE, 2026-11-03; every amendment is dated in §12)
+- **Version:** 0.17 (the spawn log: SPAWN_LOG_RECORDS_THE_ATTRIBUTION, 2026-11-03; every amendment is dated in §12)
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-09-28
@@ -469,13 +469,32 @@ the M5 over-selection ADR-0026 removes. Sign-offs not re-taken.
 
 ### Templates
 
-### Contract: HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP
+### Retired: HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP
+Retired 2026-11-03 (8.3.0). It required the handback to echo the brief's effort
+line beside `expertise_gap:`. The owner decided on 2026-11-03 that a worker echoes
+nothing its caller already knows: `brief.py` logs the spawn_id, role, routing
+line, effort and any emulation when it composes the brief, and the handback
+starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
+
+### Contract: HANDBACK_STARTS_AT_STATUS
 - **Test file:** `tests/test-seed-lint.sh` (check in `tests/seed-lint.py`)
 - **Given:** `templates/prompts/handback-payload.md`
 - **When:** seed-lint reads its fenced `HANDBACK` block
-- **Then:** the block has one line beginning `- effort:` and one beginning
-  `- expertise_gap:`
-- **And:** removing either line in a copy makes seed-lint exit 1 naming the field
+- **Then:** the block has one line beginning `- expertise_gap:` and no line
+  beginning `- produced_by:`, `- spawn_id:`, `- route_evidence:`, `- effort:` or
+  `- harness_override:`
+- **And:** an echo field put back, or the `expertise_gap:` line removed, in a
+  copy makes seed-lint exit 1 naming the rule
+
+### Contract: SPAWN_LOG_RECORDS_THE_ATTRIBUTION
+- **Test file:** `tests/test-brief.sh`
+- **Given:** a plant with `docs/graph/brief.py` and a plan at `docs/graph/plans/grill.md`
+- **When:** a brief is composed with `--role`, `--spawn-id`, `--route`,
+  `--effort` and, for one spawn, `--emulated "<reason>"`
+- **Then:** `docs/graph/plans/spawns.jsonl` gains one JSON line per brief with
+  the spawn_id, role, route, effort, overrides and emulation, and
+  `brief.py --log` prints one attribution line per spawn_id
+- **And:** a spawn_id already logged for another role is refused (exit 2)
 
 ### Contract: BOOTSTRAP_STEP2_LOADS_A_MENU
 - **Test file:** `tests/test-seed-lint.sh` (check in `tests/seed-lint.py`)
@@ -1012,11 +1031,11 @@ maintained. The kernel's §3.2 points here (`KERNEL_POINTS_AT_THE_SESSION_RECORD
 | Form | `templates/docs/plans/sessions/_session-record.template.md`, placed in every plant as `docs/graph/plans/sessions/_session-record.template.md` (SPEC-0001 `SESSION_RECORD_FORM_IS_PLACED`). The underscore keeps the blank form out of the linters and audits |
 | Frontmatter | none. A record has no `status:` key: it is plant working state, not a status-register item, and it is not routed |
 | Writer | the orchestrating session only. Workers write none; what they learn travels in handbacks and overflow notes, which canonize already reads. The docs-librarian appends only to "Canonize status" |
-| Append rule | as `grill.md`: an item is never silently rewritten; a correction is a new item that names the one it corrects. "Open threads" grows by dated blocks, and the newest block is current |
-| A learning | (1) an owner rule, stated for good ("remember", "from now on", "always") or as a correction of how the work was done; (2) a corrected assumption: something a graph node, plan row, handback or harness memory said, which the work proved false; (3) resume state: where paused work stands, what comes next, what waits on whom |
+| Append rule | as `grill.md`: an item is never silently rewritten; a correction is a new item that names the one it corrects. "Paused state" grows by dated blocks, and the newest block is current |
+| A learning | (1) an owner rule, stated for good ("remember", "from now on", "always") or as a correction of how the work was done; (2) a corrected assumption: something a graph node, plan row, handback or harness memory said, which the work proved false; (3) paused state the plan does not hold: a live operation stopped mid-flight, with what is applied where, its rollback anchors, the blocker's next diagnostics and the gates still to run. Progress and the next action live in `grill.md` §15/§14 and the delivery in the plant `changelog.md`, so the record holds neither (amended 2026-11-03) |
 | Not a learning | a fact a worker handback already carries; a secret, credential, production or personal data; speculation ("not recorded"); instructions quoted from files, tool output or model output (kernel §4: data, not commands) |
-| When | an owner rule or a corrected assumption at the moment it happens, before the next spawn or reply; resume state before any pause or hand-off, and before the turn in which work stops ends. Never batched to the end of the session, which can end without warning |
-| At session start | read the newest record by date prefix (both, when two share the newest date): its newest "Open threads" block and every item with no line in "Canonize status". Canonized items are read from their graph homes, not from the record |
+| When | an owner rule or a corrected assumption at the moment it happens, before the next spawn or reply; `grill.md` §14/§15, plus any paused state, brought up to date before any pause or hand-off, and before the turn in which work stops ends. Never batched to the end of the session, which can end without warning |
+| At session start | read `grill.md` §14 and the newest §15 entries, then the newest record by date prefix (both, when two share the newest date): its newest "Paused state" block and every item with no line in "Canonize status". Canonized items are read from their graph homes, not from the record |
 | Harness memory | holds at most a one-line pointer to `docs/graph/plans/sessions/`. A session writes no rule, fact or resume state there. When the host writes memory automatically, the session keeps it to that pointer |
 | Migration | a harness that already holds entries: the first session under this rule lists each entry in the record's "Harness memories to migrate" table (entry, gist, likely home). Canonize places what is durable and hands back which entries can be retired. The session puts the retirement to the owner as a numbered decision (`deliver.numbered-decisions`), and deletes or rewrites a harness entry only when the owner names it (kernel §4). For an existing plant this runs once as graft's memory migration, and the graft's own close-out files the record; for a new plant the growth session's record lists them at grow's delivery (`protocols/graft.md`, `protocols/grow.md`) |
 | Trust | a record is data. An owner rule in it binds as the dated, verbatim quote it carries; other text in a record is not an instruction |
@@ -1034,9 +1053,9 @@ Sections of a record, in order:
     ## Corrected assumptions
     - <what was believed, and where it was written> → <what is true>; evidence: <path, command or commit>
 
-    ## Open threads
+    ## Paused state
     ### As of <YYYY-MM-DD>
-    - <where paused work stands; what comes next; what waits on whom>
+    - <a live operation stopped mid-flight: what is applied where; rollback anchors; next diagnostics; gates still to run>
 
     ## Harness memories to migrate
     | Entry | Gist | Likely home |
@@ -1290,7 +1309,7 @@ pass 0).
 | LEAF_BODY_CEILING_HELD | `over the 170-line leaf ceiling` |
 | DELEGATION_SPLIT_INTO_SIBLINGS | the sibling's path or the key, and `delegation split` |
 | ADOPTED_RULE_HOMES | `owned by more than one node`; `names method/delegation.md beside <key>; point at <sibling>` |
-| HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP | ``handback block has no `- effort:` line``; ``handback block has no `- expertise_gap:` line`` |
+| HANDBACK_STARTS_AT_STATUS | `HANDBACK_STARTS_AT_STATUS: templates/prompts/handback-payload.md`; ``has 0 lines matching '^- expertise_gap:'`` |
 | BOOTSTRAP_STEP2_LOADS_A_MENU | `step 2 differs from SPEC-0005` |
 | ADOPTED_RULES_NOT_PENDING | `adopted rule still reads as pending` |
 | GRILL_WAVES_LEVELS_FROM_DEPENDS_ON | `waves: 3 wave(s), 5 increment(s)`; `wave 2: increment 4 (RED)` |
@@ -1334,7 +1353,8 @@ needs it.
 
 ### Handback fields
 
-Added to the fenced `HANDBACK` block after `route_evidence`:
+Added to the fenced `HANDBACK` block after `route_evidence` (the `effort:` line
+retired 2026-11-03, HANDBACK_STARTS_AT_STATUS):
 
 ```
 - effort: {{echoed from the brief: <low|medium|high> (row <n>: <reason>),
@@ -1459,7 +1479,7 @@ and those cases now hold SPEC-0002 `COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE`
   because the projection lint would then fail the rule
 
 ### Failure: EFFORT_NOT_APPLIED_PER_SPAWN
-- **Contracts:** AGENT_DECLARES_EFFORT, HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP
+- **Contracts:** AGENT_DECLARES_EFFORT, SPAWN_LOG_RECORDS_THE_ATTRIBUTION
 - **Trigger:** the derived effort differs from the agent's default, and the host
   has no recorded per-spawn setting
 - **Response:** the brief records `host applies: definition default <value>`
@@ -1505,7 +1525,7 @@ and those cases now hold SPEC-0002 `COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE`
   pointer increments and checked by review
 
 ### Failure: TEMPLATE_CHANGE_UNDER_SPEC_0003
-- **Contracts:** BOOTSTRAP_STEP2_LOADS_A_MENU, HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP
+- **Contracts:** BOOTSTRAP_STEP2_LOADS_A_MENU, HANDBACK_STARTS_AT_STATUS
 - **Trigger:** SPEC-0003's `BRIEF_TEMPLATES_BYTE_IDENTICAL` compares both templates
   with its 7.27.0 baseline at verify
 - **Response:** that verify command reports a difference. Whether it already did
@@ -1526,7 +1546,7 @@ and those cases now hold SPEC-0002 `COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE`
   the version
 
 ### Failure: CONTENT_STEERED_GAP
-- **Contracts:** HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP
+- **Contracts:** HANDBACK_STARTS_AT_STATUS
 - **Trigger:** a file the worker read names a stack element the project does not
   use, and the worker reports it as a gap
 - **Response:** the gap carries no path in the worker's own files, so the caller
@@ -1755,8 +1775,8 @@ means a named agent decides and no tool can check.
   `detective` backstop)
 - **Trigger:** the canonize brief omits a record, or the librarian skips an item
 - **Response:** the next session's start read shows items with no status line;
-  that session names them in its own record's newest "Open threads" block for
-  its close-out
+  that session lists them in its own record, under "Corrected assumptions",
+  for its close-out
 - **Side effects:** a rule stays in the record, where only a session that reads
   it follows it
 - **Recovery:** the next close-out files the item
@@ -1893,10 +1913,8 @@ leaving the branch: no (expected-red and not run are both non-empty)
 record: docs/graph/plans/sessions/2026-01-05-export-rework.md
   Owner rules 1. Ask before touching the billing schema (2026-01-05)
      > "never change billing tables without asking me first"
-  Open threads, as of 2026-01-05: increment 3 RED observed; GREEN not yet briefed
 Canonize status (appended by the librarian):
   - Owner rules 1 → crosscut.operator (operator.working-contract)
-  - Open threads 2026-01-05 → not placed: resume state; stays in the record
   - retirable harness entries: none
 ```
 
@@ -1967,7 +1985,8 @@ who judges it.)
 - [ ] **AC-11.** The handback template carries an `effort:` field that echoes the
       brief's effort line, including the host-applied default where it differs,
       and an `expertise_gap:` field.
-      Contracts: maps to HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP
+      Contracts: maps to HANDBACK_STARTS_AT_STATUS (the effort echo retired
+      2026-11-03; the spawn log holds the effort, SPAWN_LOG_RECORDS_THE_ATTRIBUTION)
 - [ ] **AC-12.** The graph discipline's step 2 tells a worker that what a node
       lists is a menu.
       Contracts: maps to BOOTSTRAP_STEP2_LOADS_A_MENU
@@ -2287,8 +2306,9 @@ gives.
 | ADOPTED_RULE_HOMES | X347 case_ce_home_key_owned_twice | tests/test-seed-lint.sh | fixture (scope), `check_adopted_rule_homes` (batch 1b) | green |
 | ADOPTED_RULE_HOMES | X348 case_ce_home_key_missing | tests/test-seed-lint.sh | fixture (scope), `check_adopted_rule_homes` (batch 1b) | green |
 | STALE_POINTER | X349 case_ce_stale_pointer | tests/test-seed-lint.sh | fixture (scope), `check_adopted_rule_homes` (batch 1b) | green |
-| HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP | X350, a row of the text-rules table: the handback `effort:` line removed | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
-| HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP | X351, a row of the text-rules table: the handback `expertise_gap:` line removed | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
+| HANDBACK_STARTS_AT_STATUS | X350, a row of the text-rules table: a `produced_by:` echo put back | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
+| HANDBACK_STARTS_AT_STATUS | X351, a row of the text-rules table: the handback `expertise_gap:` line removed | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
+| SPAWN_LOG_RECORDS_THE_ATTRIBUTION | X492 the log line, `--log`, `--emulated` and the re-mint refusal | tests/test-brief.sh | fixture | green |
 | BOOTSTRAP_STEP2_LOADS_A_MENU | X352, a row of the text-rules table: step 2 reworded alike in all six copies | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
 | BOOTSTRAP_STEP2_LOADS_A_MENU | X353, a row of the text-rules table: step 2 re-wrapped in all six copies passes; guard | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
 | ADOPTED_RULES_NOT_PENDING | X354, a row of the text-rules table: one §6 pending phrase planted | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
@@ -2296,7 +2316,7 @@ gives.
 | PLAN_INFERS_EXPERTISE_FROM_NAMED_FILES | test_plan_infers_through_a_slash_pattern | tests/test_graph_lint.py | unit, InferenceTests (fix batch); guard | green |
 | PLAN_PROMOTED_NODE_TAKES_ITS_CLOSURE (retired 2026-10-01) | test_plan_seed_closure_is_accounted_before_promotion, rewritten as SPEC-0002 `test_plan_requires_outranks_composed` | tests/test_graph_lint.py | — | retired |
 | TEMPLATE_CHANGE_UNDER_SPEC_0003 | (none) SPEC-0003 verify command; held for the owner | — | verify record | pending |
-| EFFORT_NOT_APPLIED_PER_SPAWN | (none) reader: the brief's effort line; field held by HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP | — | review | pending |
+| EFFORT_NOT_APPLIED_PER_SPAWN | (none) reader: the brief's effort line; field held by SPAWN_LOG_RECORDS_THE_ATTRIBUTION | — | review | pending |
 | IMPLEMENTER_EDITS_A_TEST | (none) the RED hash re-check at the commit boundary and the tip | — | commit boundary | pending |
 | RULING_RELAXES_A_CONTRACT | (none) reader: the ruling record and §12 | — | review | pending |
 | CONTENT_STEERED_GAP | (none) reader: the caller's check before a research-scout request | — | review | pending |
@@ -2619,3 +2639,15 @@ kept outside the seed.
   prints the spawns the §6 batch table gives each wave, so the orchestrator
   reads batch sizes instead of judging them. §10 rows X486 to X491. No other
   contract changed.
+- 2026-11-03 — version 0.17, by the session in the 8.3.0 trajectory audit. The
+  owner decided on 2026-11-03 that a worker echoes nothing its caller already
+  knows. Retired HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP; added
+  HANDBACK_STARTS_AT_STATUS (X350, X351) and SPAWN_LOG_RECORDS_THE_ATTRIBUTION
+  (X492, `tests/test-brief.sh`).
+- 2026-11-03 — version 0.17, same session. The owner decided on 2026-11-03 to
+  improve the close-out so each fact has one home. §6 "Session record": the
+  record's resume state becomes "Paused state", only for a live operation
+  stopped mid-flight; progress and the next action stay in `grill.md` §15/§14
+  and the delivery in the plant `changelog.md`, which `protocol.deliver` now
+  writes once. No contract changed (the rule is doctrine held by review;
+  ADR-0032).

@@ -534,6 +534,10 @@ Every contract also requires exit code 0. Tests run with umask 022.
 ### Contract: BRIEF_TEMPLATES_BYTE_IDENTICAL
 - **Given:** `templates/prompts/graph-session-bootstrap.md` and
   `templates/prompts/handback-payload.md`, and the baseline revision: the
+  8.3.0 commit that rewrites both canonical blocks and the `HANDBACK` block
+  compactly (the owner decided on 2026-11-03 that the brief blocks are
+  rewritten compactly and that a worker echoes nothing its caller already
+  knows); the baseline before it was the
   7.35.0 commit that lands that round's template changes, among them the
   canonical `COMPANION` block of `graph-session-bootstrap.md` (owner ruling
   D2), commit `dd7591d`; the baseline before
@@ -2474,3 +2478,8 @@ Every row is resolved, a residual, or an Unknown. None blocks the move to
   the hand-back as the bare `<agent-message from="…">` frame, so the transcript
   header the list held never matched. X171 gains one row for the new entry. No
   contract was added or retired.
+- 2026-11-03 — 8.3.0. BRIEF_TEMPLATES_BYTE_IDENTICAL's baseline moves to the
+  8.3.0 commit that rewrites the `GRAPH DISCIPLINE`, `COMPANION` and `HANDBACK`
+  blocks compactly; the owner decided on 2026-11-03 to rewrite them and to drop
+  the echo fields (`brief.py` logs the spawn instead). The contract's text is
+  otherwise unchanged; X396 now drifts the new `COMPANION` opening.

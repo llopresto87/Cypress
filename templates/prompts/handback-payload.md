@@ -15,54 +15,26 @@ Discipline: docs/graph/agents/00-orchestrator.md (delegation), kernel §3.6.
 
 ```
 HANDBACK
-- produced_by: {{this agent name}}
-- spawn_id: {{echoed verbatim from the brief — the caller-minted
-             dot-chain, e.g. orchestrator.3.architect.1; see
-             docs/graph/method/delegation-bounds.md, delegation.tracing}}
 - status: complete | blocked-out-of-domain | failed
-- failure_class: {{only when failed: transient | deterministic | capability |
-                   ambiguity | systemic | unregistered — see
-                   docs/graph/protocols/recover.md; what survives goes in
-                   in_domain_work_done}}
-- in_domain_work_done: {{what this agent legitimately did, with paths}}
-- out_of_domain_needed: {{work outside this agent's domain, for the caller
-                          to route, or "none"}}
-- route_evidence: {{the agent-lint --route line that selected this agent,
-                    or the caller's recorded override rationale — echoed
-                    from the brief}}
-- graph_route: {{one line: `--plan` task line; LOAD <ids>; skipped <ids>;
-                 widened <id> (<reason>) — ids only, never the router's
-                 output}}
-- effort: {{echoed from the brief: <low|medium|high> (row <n>: <reason>),
-            plus "host applies: definition default <value>" where it differs}}
-- expertise_gap: {{each stack element met mid-work with no expertise.* node,
-                   with the path that shows it, one per line, or "none"}}
-- harness_override: {{only when this worker is a role emulation of a
-                      specialist the host had no registered type for:
-                      "role-emulated (<reason>)" — see
-                      docs/graph/method/delegation-bounds.md,
-                      delegation.harness-registration}}
-- recommended_next: {{agent name}} + {{protocol/step}}, or "none — session
-                    ends here"
-- gates: {{commands run + results, or "none"; when this spawn added
-          tests, also the test cases and the runtime it added, as a
-          delta, not the suite's total}}
-- tools_built: {{durable reusable tools this task produced — name + path +
-                 invocation, one per line — or "none"}}
-- skills_built: {{repeatable multi-step procedures this task followed that a
-                  future session will likely walk again — name + step gist, one
-                  per line — or "none"}}
+- failure_class: {{only if failed: transient | deterministic | capability |
+  ambiguity | systemic | unregistered (protocol.recover)}}
+- in_domain_work_done: {{what you did, with paths}}
+- out_of_domain_needed: {{work for the caller to route, or "none"}}
+- graph_route: {{`--plan` task line; LOAD <ids>; skipped <ids>; widened <id> (<reason>)}}
+- expertise_gap: {{each stack element with no expertise.* node + the path showing it, or "none"}}
+- recommended_next: {{agent + protocol/step, or "none — session ends here"}}
+- gates: {{commands + results, or "none"; tests added: cases + runtime delta}}
+- tools_built: {{durable tool: name, path, invocation, one per line, or "none"}}
+- skills_built: {{repeatable procedure: name + step gist, one per line, or "none"}}
 ```
 
 ## Rules (why this block exists)
 
-- **`route_evidence` is about you.** It echoes the routing line from your
-  brief that selected you — the deliver-time attribution assertion reads it
-  beside `produced_by` to confirm the right specialist did the work. Your own
-  graph route goes in `graph_route:` as ids, so the report body never
-  retells it. The next hop needs only `recommended_next`: its caller routes it.
-- **`produced_by` is load-bearing.** A unit of work with no `produced_by`
-  is a deliver-time BLOCK, not a pass (fail-closed).
+- **The payload starts at `status:`.** `brief.py` logged your spawn_id,
+  role, routing line and effort when it composed your brief
+  (`delegation.tracing`); the host pairs this reply with that spawn, and the
+  deliver-time attribution assertion reads that log. Your own graph route
+  goes in `graph_route:` as ids.
 - **Every field is its shortest sufficient form.** Paths and identifiers,
   not narration — the payload is a routing header the caller re-reads
   each time a worker returns, not a report; findings go in the report body.
@@ -85,11 +57,6 @@ HANDBACK
   that adds tests states the cases and the runtime it added, as a delta.
   It lets the caller weigh the suite's growth against the contracts it
   covers before the cost compounds across increments.
-- **`effort` is echoed, not chosen.** Copy the effort label, row and
-  reason from your brief. When the host cannot apply a per-spawn setting
-  and runs your definition's default instead, add "host applies:
-  definition default <value>", so the caller sees what really ran
-  (`delegation.effort`, `docs/graph/method/delegation-model-classes.md`).
 - **`expertise_gap` follows the stack rule.** What goes in the field,
   and the evidence it cites, is set by "Stack expertise the graph lacks"
   in `docs/graph/templates/prompts/graph-session-bootstrap.md`, the one
@@ -99,15 +66,14 @@ HANDBACK
   the protocol/step, because a protocol name alone is not a routable
   target. On a final turn with nothing left, "none — session ends here"
   is the defined value.
-- **A leaf worker ONLY recommends.** At an out-of-domain boundary it
-  names the specialist in `recommended_next` and returns this payload;
-  the work is the specialist's. Leaf agents carry no spawn tool by
-  design: for a registered specialist that is one of the harness's two
-  recursion caps, the host's nesting limit being the other. Under role
-  emulation the same cap holds by brief instead of by frontmatter, and
-  `harness_override` is what makes that visible at `deliver`.
+- **A leaf worker recommends.** At an out-of-domain boundary it names the
+  specialist in `recommended_next` and returns this payload; the work is the
+  specialist's. Leaf agents carry no spawn tool by design: for a registered
+  specialist that is one of the harness's two recursion caps, the host's
+  nesting limit being the other. Under role emulation the same cap holds by
+  brief, and the spawn log's emulation record makes it visible at `deliver`
+  (`delegation.harness-registration`).
 - **A delegator that stops instead of spawning still fills this in.**
-  The caller needs the same attribution either way.
 - **`failure_class` feeds `protocol.recover`.** Classify before handing
   back; preserve what survived in `in_domain_work_done` so the next
   attempt starts from the frontier, not zero.

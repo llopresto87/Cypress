@@ -39,6 +39,7 @@ which is the installed *application* knowledge graph. ADR bodies use
 | [0029](adr-0029-source-index-is-derived-scratch.md) | The source index is derived scratch: self-ignored under `.cypress/source-index/`, rebuilt on any key change, never committed, never canonical | accepted (amended 2026-10-07, ratified: the install runs the build; a donor token recast 2026-10-14 under ADR-0031) | 2026-10-07 | grill-8.1.0-source-index.md; amendment: grill-8.1.2-tool-surfacing.md | 8.1.0 |
 | [0030](adr-0030-a-seed-tool-is-surfaced-by-a-seed-skill.md) | A placed seed tool is surfaced by a seed skill node; a plant's `docs/graph/tools/` stays the plant's catalog | accepted | 2026-10-07 | grill-8.1.2-tool-surfacing.md | 8.1.2 |
 | [0031](adr-0031-donor-tokens-recast-generically.md) | A donor-identifying token is recast as a generic reference that keeps every fact, in every record, an ADR body included (amends ADR-0011 limit (a) and its ADR-body bar) | accepted | 2026-10-14 | the owner's decision of 2026-10-14 | unreleased |
+| [0032](adr-0032-one-home-per-close-out-fact.md) | Each close-out fact has one home: the delivery in the plant changelog, progress in grill §15/§14, and the session record keeps only what no other file holds (amends ADR-0013's resume state) | accepted | 2026-11-03 | the owner's decision of 2026-11-03 | unreleased |
 
 ADRs **0001–0003** were decided inline in the plan-of-record
 [`../plans/agent-routing-and-delegation.md`](../plans/agent-routing-and-delegation.md)
