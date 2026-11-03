@@ -95,7 +95,7 @@ opencode under that rule, and targets no frozen host.
 | Per-session injection dedup | mechanically enforced | unsupported | unsupported | degraded³ | mechanically enforced⁵ |
 | Pre-tool guard | mechanically enforced | unsupported | unsupported | unsupported | unsupported |
 | Slash commands | mechanically enforced | mechanically enforced | unsupported | mechanically enforced | mechanically enforced |
-| Always-applied instructions | mechanically enforced (25 800 B) | mechanically enforced (25 800 B) | mechanically enforced (≤ 25 800 B)⁴ | mechanically enforced (31 444 B) | mechanically enforced (21 521 B) |
+| Always-applied instructions | mechanically enforced (25 674 B) | mechanically enforced (25 674 B) | mechanically enforced (≤ 25 674 B)⁴ | mechanically enforced (31 318 B) | mechanically enforced (21 783 B) |
 
 ¹ The leaf/coordinator split (who holds the spawn tool at all: `Agent` on Claude Code, `Task` accepted) is read by the
 harness from each agent's `tools:` line, and ADR-0003 classes that read
@@ -210,8 +210,9 @@ parity here; the differences are budget mechanics, not enforcement.
   and host-native; what survives the transform is a subset.
 - **Prime Agent: observed.** No static roster is enumerated at session
   start at all, by design. `agents/*.md` land as on-disk **brief
-  sources**; the orchestrator reads one and spawns a child with
-  `rlm.spawn(brief + task, name=...)` at the moment it is needed
+  sources**; the orchestrator composes a brief from one with
+  `docs/graph/brief.py --charter` and spawns a child with
+  `rlm.spawn(brief, name=...)` at the moment it is needed
   (`integrations/prime-agent/APPEND_SYSTEM.md`, "Delegation — recursive
   subagents, not a Task tool"). This is not a weaker version of
   registration: there is no "installed but not yet spawnable" lag the way
@@ -414,9 +415,11 @@ Only the session-start hook runs it, never the per-prompt one.
 
 ### Pre-tool guard
 
-Only Claude Code ships one: `PreToolUse` on `Bash` → `bound-hook.py`
-(`.claude/settings.json`). It is the one hook the seed wires without the
-`|| true` the other hooks carry, so that its exit 2 can turn away a matched
+Only Claude Code ships them: `PreToolUse` on `Bash` → `bound-hook.py` and
+`PreToolUse` on `SendMessage` → `resume-hook.py` (`.claude/settings.json`,
+the cold-resume guard: [row](../DOCUMENTATION.md#enf-cold-resume-guard)).
+`bound-hook.py` is wired, like `resume-hook.py`, without the
+`|| true` the context hooks carry, so that its exit 2 can turn away a matched
 command that may hang the session. Every failure path inside the script exits 0,
 so a fault in it lets the command through. It is a reliability guard, not a
 control on what a session may do: it matches command words against a fixed
@@ -495,11 +498,11 @@ function's own computation against current sources:
 
 | Harness | Formula | Measured |
 |---|---|---|
-| Claude Code | kernel + agent descriptions + skill descriptions | 25 800 B |
-| opencode | kernel + agent descriptions + skill descriptions | 25 800 B |
-| Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 25 800 B |
-| Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 21 521 B |
-| GitHub Copilot | kernel + agent descriptions + skill descriptions + pointer boilerplate | 31 444 B |
+| Claude Code | kernel + agent descriptions + skill descriptions | 25 674 B |
+| opencode | kernel + agent descriptions + skill descriptions | 25 674 B |
+| Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 25 674 B |
+| Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 21 783 B |
+| GitHub Copilot | kernel + agent descriptions + skill descriptions + pointer boilerplate | 31 318 B |
 
 The component figures live in `check_eager_surface()` in `tests/seed-lint.py`,
 their one home, and `check_published_figures()` beside it holds this table to

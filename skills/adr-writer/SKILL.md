@@ -14,7 +14,6 @@ requires:
 peers:
   - skill.grill-planner
   - agent.architect
-  - skill.humanizer
 load_when:
   - "write an ADR"
   - "record an architecture decision"
@@ -262,12 +261,10 @@ Four decisions people forget to record, because they feel like inaction:
     difference between as-written and as-shipped next to it (its index
     row) and owe the amendment to the ADR's author. The close-out leaves
     the body as written.
-12. Before the status flips to `accepted`: the body is prose a person
-    reads in a year. Apply `docs/graph/skills/humanizer.md` in file mode
-    and run
-    `python3 docs/graph/prose-lint.py --file <adr> --against HEAD`; a
-    strong tell or a dropped number, heading, or code span blocks the
-    flip.
+12. The body is graph text: compact instruction language
+    (`method.engineering-posture` §8), no humanizer pass
+    (`humanizer.scope`); context, decision, alternatives and consequences
+    stay distinct, and owner quotes stay verbatim.
 
 ## Reference files
 

@@ -12,8 +12,8 @@ owns:
   - test-first.proportionate-checks
   - test-first.no-lint-only-tests
 requires:
-  - protocol.test-first
 peers:
+  - protocol.test-first
   - skill.spec-author
 load_when:
   - "shape a new test"
@@ -107,14 +107,26 @@ fail-closed path). Other nodes link here; they do not restate it.
   breaks, and for whom, if the check is absent. No name, no check. Spec
   size does not set test count: one test may cover several failure
   modes, and a failure mode with no real blast radius gets none.
-- **A spec's tests are designed as one set, before any test code.**
-  First survey what exists: the tests already in the suite, the
-  contracts they already cover, and the setup they share. Then plan the
-  tests across the whole spec, not increment by increment, and merge
-  the overlaps the plan shows: two increments whose contracts one test
-  can assert get that one test. The §10 mapping is therefore not
-  one-to-one with increments: a row may cite a test another increment
-  wrote, by its path and name. Planned whole, the set is written whole:
+- **Tests are defined once, in the spec's test design, and never by an
+  increment.** The tester designs a spec's whole test set in §10 while
+  the spec is specified (`protocol.specify` phase 4), before any test
+  code and before any increment exists. First survey what exists: the
+  tests already in the suite, the contracts they cover, the setup they
+  share. Then design each case for one mechanism that can fail
+  differently, with its blast radius named, give one case every
+  contract it can assert, extend the class that owns a behaviour
+  instead of starting one, and merge every overlap on paper. The design
+  is the only place a case is added, merged or dropped. Increments are
+  cut from it: an increment cites, by name, the §10 tests it turns red,
+  so a test may serve several increments and an increment several
+  contracts. A RED writer writes the tests its increment cites, exactly
+  as designed; a case that looks missing, redundant or untestable is a
+  question back to the design (`delegation.question-file`), never a new
+  or dropped test on the spot. A test written to be merged or deleted
+  later is a design failure, and no plan schedules a pass to shrink the
+  tests the design produced: the owner decided on 2026-11-02 that tests
+  are planned with intelligence before they are written, not deduped
+  after. Planned whole, the set is written whole:
   the owner decided on 2026-10-14 that a spec's failing tests are
   written in one RED wave and its mutation pass runs once, batched at
   the end. The plan gives a spec's RED increments no `Depends on:` among
@@ -162,12 +174,12 @@ fail-closed path). Other nodes link here; they do not restate it.
   joins the project's automated runs, or the running product, only by a
   recorded owner decision. An escaped bug earns a regression test; a new
   gate is `protocol.verify-new-gates`'s call.
-- **Shrink on purpose.** A suite only grows unless someone cuts it.
-  Every deleted test names its survivor, the test that still fails when
-  it would have; with no survivor the deletion is a recorded coverage
-  loss. A regression test merges only into a named survivor (the
-  regression rule in `protocol.test-first`). Consolidation is its own
-  planned increment (`protocol.grill`). The tool corpus catalogs a lint
+- **Shrink on purpose, and only what no design produced.** An inherited
+  suite, or one written before this design existed, is cut by its own
+  increment (`protocol.grill`). Every deleted test names its survivor,
+  the test that still fails when it would have; with no survivor the
+  deletion is a recorded coverage loss. A regression test merges only
+  into a named survivor (the regression rule in `protocol.test-first`). The tool corpus catalogs a lint
   for suite smells, `tool-corpus/testing/test-hygiene-lint.md`.
 
 ## Reference files

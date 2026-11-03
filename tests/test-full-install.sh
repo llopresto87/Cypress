@@ -786,7 +786,7 @@ for entries in json.load(open(sys.argv[1], encoding="utf-8"))["hooks"].values():
     for e in entries:
         cmds += [h["command"] for h in e["hooks"]]
 bad = [c for c in cmds if want not in c or re.search(r"(^|[\s;])python3\s", c)]
-if len(cmds) != 3 or bad:
+if len(cmds) != 4 or bad:
     sys.exit(f"{len(cmds)} hook command(s); not calling {want} alone: {bad}")
 PY
   for f in route-extension.ts status-extension.ts; do

@@ -88,6 +88,19 @@ hasnt -- '- PARSE_JSON_STRICT'
 printf 'def test_v2():\n    """PARSE_JSON_V2"""\n' > "$TMP/tests/test_parse.py"
 CASE=5b; run_rc 1 lint
 has -- '- PARSE_JSON '
+# 5c. the test-first naming rule's snake-case form names the contract: a test
+#     called test_parse_json_strict covers PARSE_JSON_STRICT, under the same
+#     prefix and extension guards (it credits neither PARSE_JSON nor, as
+#     test_parse_json_v2, anything).
+printf 'def test_parse_json_strict():\n    pass\n' > "$TMP/tests/test_parse.py"
+CASE=5c; run_rc 1 lint
+has -- '- PARSE_JSON '
+hasnt -- '- PARSE_JSON_STRICT'
+printf 'def test_parse_json_v2():\n    pass\ndef test_parse_json_strict():\n    pass\n' > "$TMP/tests/test_parse.py"
+CASE=5d; run_rc 1 lint
+has -- '- PARSE_JSON '
+printf 'def test_parse_json():\n    pass\ndef test_parse_json_strict():\n    pass\n' > "$TMP/tests/test_parse.py"
+CASE=5e; run_rc 0 lint
 rm "$SPECS/SPEC-0003-parse.md" "$TMP/tests/test_parse.py"
 
 # 6. frontmatter status decides liveness; the body "see frontmatter" is not a
@@ -408,6 +421,14 @@ has 'proved by a run.*SELECT_BY_LABEL'
 pr_plan 'none — consolidation'
 run_rc 1 python3 "$PR/docs/graph/spec-lint.py"
 has -- '- SELECT_BY_LABEL '
+# P2: a `none — proved by` row cannot vouch for a contract another increment
+# plans a test for (a stub that names every contract it surfaces): the later
+# RED row owns that contract's coverage, and until a test carries it, it is
+# uncovered.
+printf '## 9. Increments\n\n### Increment 1 — Stub\n- Spec contracts: SPEC-0201/SELECT_BY_LABEL\n- Tests to write (RED): none — names only; proved by the RED wave\n\n### Increment 2 — RED\n- Spec contracts: SPEC-0201/SELECT_BY_LABEL\n- Tests to write (RED): §10 `test_select_by_label`\n' > "$PR/docs/graph/plans/grill.md"
+CASE=P2; run_rc 1 python3 "$PR/docs/graph/spec-lint.py"
+has -- '- SELECT_BY_LABEL '
+hasnt 'proved by a run.*SELECT_BY_LABEL'
 CASE=""
 
 # M1: a Markdown file in the specs directory that is not `SPEC-*.md` is a

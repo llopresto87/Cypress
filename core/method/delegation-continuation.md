@@ -29,10 +29,19 @@ host can continue a worker with its context intact, the default is still a
 fresh worker with a full brief, carrying forward whatever the earlier worker
 established. Continue the earlier worker only when:
 
-1. it has finished, and the follow-up is a small change that needs the context
-   it built (the files it read, the reasoning behind its edits), so that a
-   fresh brief would have to rebuild most of that context; or
+1. it has finished, the follow-up is a small change that needs the context it
+   built (the files it read, the reasoning behind its edits), so that a fresh
+   brief would have to rebuild most of that context, and its last call is
+   within the host's prompt-cache lifetime (5 minutes on both hosts measured);
+   or
 2. a usage or rate limit stopped it mid-turn (below).
+
+New work is never case 1, however close to the old: a next step in the same
+lane, a fix-up after a review finding, a RED amendment after a ruling, and a
+ruling pass each go to a fresh worker whose brief names the paths (the finding,
+the diff, the spec, the question file). In both plants measured, follow-ups to
+workers that had already handed back carried over 90% of follow-up cost, and
+every one of those messages was already a full brief.
 
 The cost is the reason. A continued worker replays its whole accumulated
 context on every call, and once any prompt cache the host keeps for it has
@@ -42,6 +51,16 @@ have since changed, instructions a ruling superseded). A fresh brief carries
 only what the follow-up needs. The owner decided on 2026-10-14 that an agent is
 resumed only for a small change that needs its whole context or after a usage
 limit, and briefed fresh otherwise.
+
+On Claude Code, `.claude/resume-hook.py` holds the cold case mechanically,
+reading the worker's transcript so the caller does not have to guess. A worker
+idle past the prompt cache's lifetime whose last record is the host's API
+error (usage or rate limit, network or server error) was cut off and is
+resumed without question. One that handed back is finished: a message to it is
+refused, because it is new work for an old context or a nudge with nothing to
+resume. The caller passes a real case 1, or a worker stopped with no error
+record (its parent session died), by starting the message
+`continuation: <reason>`. On a host with no tool hook the rule is doctrine.
 
 The continuation message carries what changed since the worker's handback or
 its stop (files other lanes wrote, rulings, its write set re-stated), the

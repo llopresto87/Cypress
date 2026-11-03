@@ -156,7 +156,12 @@ They are declared once, in the `plant:` block of `docs/graph/index.md`:
 |---|---|
 | `commit_attribution` | trailers and AI-authorship lines on every commit: `none`, or the exact trailer text |
 | `comment_language` | code comments, docstrings, commit messages |
-| `deliverable_language` | deliveries, reports, ADRs, anything handed to a human |
+| `deliverable_language` | deliveries, reports, anything handed to a human |
+
+Graph text (nodes, specs, ADRs, plans) is not a deliverable: its readers
+are agents, so it is written in the language of the seed's machinery nodes
+beside it, English, unless the owner declares otherwise; owner quotes and
+user-visible strings it cites stay verbatim in their own language.
 
 Doctrine reads these from the block, because a node that says "commits
 carry trailer X" is a second home for a plant fact and lies the day the

@@ -53,7 +53,7 @@ skill frontmatter carries:
 | Skill | id | owns | requires | peers | est_tokens |
 |---|---|---|---|---|---|
 | adopt-existing | `skill.adopt-existing` | `adopt-existing.method`, `adopt-existing.refresh`, `adopt-existing.validation` | `protocol.grow` | `protocol.initialize`, `skill.knowledge-graph`, `protocol.from-scratch` | 1780 |
-| adr-writer | `skill.adr-writer` | `adr-writer.method`, `adr-writer.reversibility`, `adr-writer.numbering` | (none) | `skill.grill-planner`, `agent.architect`, `skill.humanizer` | 2760 |
+| adr-writer | `skill.adr-writer` | `adr-writer.method`, `adr-writer.reversibility`, `adr-writer.numbering` | (none) | `skill.grill-planner`, `agent.architect` | 2760 |
 | brainstorm-internal | `skill.brainstorm-internal` | `brainstorm-internal.method` | (none) | `protocol.brainstorm`, `skill.brainstorm-socratic`, `skill.adr-writer`, `skill.grill-planner` | 1110 |
 | brainstorm-socratic | `skill.brainstorm-socratic` | `brainstorm-socratic.method` | (none) | `protocol.brainstorm`, `skill.brainstorm-internal`, `skill.humanizer`, `skill.spec-author` | 1100 |
 | context-router | `skill.context-router` | `rule.knowledge`, `context-router.method`, `context-router.declaration`, `context-router.residency`, `context-router.menu`, `context-router.graph-over-harness` | `skill.knowledge-graph` | `skill.validate-knowledge` | 4048 |
@@ -64,8 +64,8 @@ skill frontmatter carries:
 | library-wiki | `skill.library-wiki` | `library-wiki.method`, `library-wiki.version-pinning` | (none) | `skill.research-and-ingest`, `protocol.ingest-library` | 1310 |
 | research-and-ingest | `skill.research-and-ingest` | `research-and-ingest.method`, `research-and-ingest.source-ranking` | (none) | `skill.library-wiki`, `agent.research-scout` | 1540 |
 | source-index | `skill.source-index` | `source-index.usage`, `source-index.limit`, `source-index.report` | (none) | `protocol.verify`, `protocol.canonize`, `protocol.grow`, `protocol.graft`, `skill.adopt-existing` | 1900 |
-| spec-author | `skill.spec-author` | `spec-author.method`, `spec-author.sign-off` | `protocol.specify` | `skill.test-first`, `skill.grill-planner`, `skill.humanizer` | 1640 |
-| test-first | `skill.test-first` | `test-first.shaping`, `test-first.level-selection`, `test-first.proportionate-checks`, `test-first.no-lint-only-tests` | `protocol.test-first` | `skill.spec-author` | 1719 |
+| spec-author | `skill.spec-author` | `spec-author.method`, `spec-author.sign-off` | `protocol.specify` | `skill.test-first`, `skill.grill-planner` | 1640 |
+| test-first | `skill.test-first` | `test-first.shaping`, `test-first.level-selection`, `test-first.proportionate-checks`, `test-first.no-lint-only-tests` | (none) | `protocol.test-first`, `skill.spec-author` | 1719 |
 | toolcraft | `skill.toolcraft` | `rule.toolcraft`, `toolcraft.durability-criteria` | (none) | `agent.tool-smith`, `protocol.canonize`, `protocol.grill`, `protocol.harvest`, `method.bounded-execution` | 1490 |
 | validate-knowledge | `skill.validate-knowledge` | `validate-knowledge.method`, `validate-knowledge.adversarial-questions` | (none) | `skill.knowledge-graph`, `skill.context-router` | 1290 |
 
@@ -167,7 +167,7 @@ Source: `skills/adr-writer/SKILL.md`
 
 **id:** `skill.adr-writer` · **owns:** `adr-writer.method`,
 `adr-writer.reversibility`, `adr-writer.numbering` · **requires:** (none) ·
-**peers:** `skill.grill-planner`, `agent.architect`, `skill.humanizer`
+**peers:** `skill.grill-planner`, `agent.architect`
 
 **load_when:** write an ADR · record an architecture decision · why did we
 choose this dependency or design · supersede an existing decision record ·
@@ -209,8 +209,7 @@ non-obvious technical choice: "why did we pick this?"
   template, fill Context first, then Decision, Consequences, Alternatives,
   Reversibility; cross-link spec/grill/wiki/sources; add a row to the index
   and to grill.md §6. A superseded ADR gets a frontmatter flip and nothing
-  else in it. Before the status flips to `accepted`, the body gets the
-  `humanizer` pass and `prose-lint.py --against HEAD`.
+  else in it. The body is graph text: compact, no `humanizer` pass.
 
 **When to use.** Any time a non-obvious technical choice needs its rationale
 recorded on disk.
@@ -525,14 +524,14 @@ dropped nothing.
 
 **When to apply it** (`humanizer.scope`). A document, README, or runbook is
 written or refreshed for people; extensive code comments are written for
-the people who maintain the code; an ADR or spec body is about to flip to
-`accepted` or `active`; a full-form delivery summary, a handoff or brief
+the people who maintain the code; a full-form delivery summary, a handoff or brief
 written for a person, a pull-request description, or a commit message is
 being prepared; the owner says the text "sounds like an AI", or asks for the
 pass in the orchestration session; imported text lands in human-facing
-documentation. Out of scope: graph nodes and session records, because the
-graph is written for models in compact instruction language; worker briefs,
-for the same reason; code, commands, frontmatter, `owns:` and `load_when:`
+documentation. Out of scope: everything under `docs/graph/` (nodes, specs,
+ADRs, plans, session records), because its readers are models and it is
+written in compact instruction language; worker briefs and handbacks, for
+the same reason; verbatim owner text; code, commands, frontmatter, `owns:` and `load_when:`
 lists, generated tables, the kernel, and the seed's own machinery prompts,
 which change only through `grill` and `holistic-editing`.
 
@@ -841,7 +840,7 @@ Source: `skills/spec-author/SKILL.md`
 
 **id:** `skill.spec-author` · **owns:** `spec-author.method`,
 `spec-author.sign-off` · **requires:** `protocol.specify` · **peers:**
-`skill.test-first`, `skill.grill-planner`, `skill.humanizer`
+`skill.test-first`, `skill.grill-planner`
 
 **load_when:** write a spec · define functional contracts · given when then
 contract slugs · spec sign-off before code · code and spec disagree.
@@ -886,8 +885,8 @@ Source: `skills/test-first/SKILL.md`
 
 **id:** `skill.test-first` · **owns:** `test-first.shaping`,
 `test-first.level-selection`, `test-first.proportionate-checks`,
-`test-first.no-lint-only-tests` · **requires:**
-`protocol.test-first` · **peers:** `skill.spec-author`
+`test-first.no-lint-only-tests` · **requires:** (none) · **peers:**
+`protocol.test-first`, `skill.spec-author`
 
 **load_when:** shape a new test · pick a test level · name a test after a spec
 contract · unit vs integration vs e2e choice · one outcome per test ·
@@ -1568,7 +1567,7 @@ boundary-guarded and longest-first:
 - A contract named by a plan increment whose `Tests to write (RED):` reads
   `none — <why>; proved by <run>` counts as covered by that run
   (`grill.increment-shape`); the PASS line and `--list` say so.
-  `none — consolidation` covers nothing. The plans read are
+  A shrink increment's `none — shrink of …` covers nothing. The plans read are
   `docs/graph/plans/grill.md` and `docs/graph/plans/grill/**/*.md`.
 
 **Drafts are shape-checked, not coverage-checked.** A draft turns `active` in
@@ -1683,8 +1682,8 @@ byte-identical; every other seed file references this file. The first block
 steps:
 
 1. Run `python3 docs/graph/graph-lint.py --plan "{{exact delegated task}}"`
-   and include the command and output as graph-route evidence (context
-   routing, not the `route_evidence` field).
+   and report the route as ids in the handback's `graph_route:` field
+   (context routing, not the `route_evidence` field).
 2. Load only the reported nodes plus their `requires:` closure.
 3. Check the route against the files you will touch, before reading them:
    each stack element they use and the area they sit in has its node in the
@@ -1747,7 +1746,6 @@ boundary. The payload fields:
 - `harness_override`: only for a role-emulated specialist.
 - `recommended_next`: an addressable agent + protocol/step, or "none —
   session ends here"; always an agent, not only a protocol name.
-- `next_route_evidence`: the routing line supporting `recommended_next`.
 - `gates`: commands run + results, or "none".
 - `tools_built`: durable reusable tools (name + path + invocation), feeding
   the §3.8 close-out; leaving one out is a silent capability leak.

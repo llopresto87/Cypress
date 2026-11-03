@@ -13,9 +13,8 @@
 > Open `docs/graph/index.md`, the fallback map, only when the router
 > fails, the plan stays empty or wrong, or the task explores the graph.
 
-This file is the **bootstrap kernel**, read on every session by Claude
-Code (as `CLAUDE.md`), Prime Agent and opencode and OpenAI Codex (as
-`AGENTS.md`), and GitHub Copilot (as `.github/copilot-instructions.md`). It is
+This file is the **bootstrap kernel**, read on every session of every
+host. It is
 deliberately small and holds only what must bind *before* any routing
 happens: identity, tier classification, the rule anchors, and the
 boundaries. Everything else — every protocol, skill, agent charter,
@@ -52,13 +51,14 @@ Any doubt in any of them is T3.
 ## 1. Sessions route; workers do
 
 The session is the orchestrator: it routes, plans, briefs, verifies,
-and accepts. For T2/T3 every piece of *doing* goes to a clean-context
-specialist from the roster — `orchestrator`, `architect`,
+and accepts, and never spawns `orchestrator` to do that for it. For T2/T3 every piece of *doing* goes to a clean-context
+specialist from the roster — `architect`,
 `implementer`, `reviewer`, `tester`, `security`, `pentest`,
 `reliability`, `data-ml`, `product`, `ui-ux-designer`, `docs-librarian`,
 `research-scout`, `devils-advocate`, `legal`, `multi-agent-architect`,
 `growth-orchestrator`, `growth-scout`, `seed-installer`, `tool-smith`,
-each an `agent.*` node routed by its own triggers. Every brief embeds
+each an `agent.*` node routed by its own triggers. New work goes to a
+fresh worker, not an old one (`delegation.continuation`). Every brief embeds
 the canonical blocks from
 `docs/graph/templates/prompts/graph-session-bootstrap.md` verbatim plus
 the handback contract, because the brief is the only enforcement that

@@ -67,9 +67,6 @@ listed below run it as a gate.
   and the draft came out of a model or from notes.
 - Extensive comments are being written in code for the people who maintain
   it.
-- An ADR or spec body is about to flip to `accepted` or `active`
-  (`docs/graph/skills/adr-writer.md`, `docs/graph/skills/spec-author.md`).
-  The record is prose someone reads in a year.
 - The `deliver` protocol's full-form summary, a handoff or brief written for
   a person, a pull-request description, or a commit message is being
   prepared. Other people read these most and edit them least.
@@ -80,9 +77,10 @@ listed below run it as a gate.
   project's own voice. Imported prose that lands in a graph node is graph
   text (below).
 
-Out of scope: graph nodes and session records, because the graph is written
-for models in compact instruction language; worker briefs, for the same
-reason; code, commands, frontmatter, `owns:` and `load_when:` lists,
+Out of scope: everything under `docs/graph/` (nodes, specs, ADRs, plans,
+grill entries, question logs, session records), because its readers are
+models and it is written in compact instruction language; worker briefs and
+handbacks, for the same reason; verbatim owner text, which stays as given; code, commands, frontmatter, `owns:` and `load_when:` lists,
 generated tables, the kernel, and the seed's own machinery prompts. The
 machinery changes ONLY through `grill` and `holistic-editing`. Fiction is
 out of scope; invented detail is its task.
@@ -386,8 +384,6 @@ short paragraph.
 - `canonize`: the docs-librarian applies file edit to the runbook and
   README prose it writes or refreshes; node bodies and session records get
   no pass. The tool runs with `--against` before the graph-lint pass.
-- `adr-writer` and `spec-author`: the body of a record is prose a person
-  reads; file edit applies before the status flips.
 - `harvest`: imported prose that lands in human-facing documentation passes
   file edit; imported prose that lands in a graph node gets no pass. The tool
   runs beside `agnosticism-lint.py` on every changed file, the floor for both.

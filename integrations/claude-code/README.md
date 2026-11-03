@@ -156,6 +156,19 @@ the guard is `core/method/bounded-execution.md` (`toolcraft.bounded-execution`);
 `tests/test-bound-hook.sh`. What the pattern match can miss is listed in the
 [pre-Bash check row](../../DOCUMENTATION.md#enf-pre-bash-guard).
 
+`resume-hook.py` (PreToolUse, matcher `SendMessage`) is the second guard, wired
+the same way. It acts only on a worker whose transcript has been idle longer
+than a subagent's prompt cache lives (`COLD_AFTER`, five minutes), because a message to it
+re-reads its whole context uncached. A worker whose last record is the host's
+API error (usage or rate limit, network or server error) was cut off and its
+resume is allowed. Any other cold worker, one that handed back above all, is
+refused (exit 2): the message is new work for an old context, or a nudge to a
+worker with nothing left to do. A message whose first line starts
+`continuation:` passes: the caller declares a small follow-up that needs that
+context, or a worker stopped with no error record (`delegation.continuation`).
+Every failure path allows. The test is
+`tests/test-resume-hook.sh`.
+
 A hook or loop you add yourself exits when every open step is the owner's;
 `docs/graph/protocols/deliver.md` ("When every open step is the owner's") owns
 that rule.

@@ -522,15 +522,23 @@ def run_proved(slugs: set[str]) -> set[str]:
     plans/grill.md and its ledger, plans/grill/**/*.md."""
     plans = SPECS.parent / "plans"
     proved: set[str] = set()
+    tested: set[str] = set()     # contracts some increment plans a real test for
     for f in [plans / "grill.md", *sorted((plans / "grill").glob("**/*.md"))]:
         if not f.is_file():
             continue
         for block in re.split(r"^#+ Increment\b", f.read_text(encoding="utf-8", errors="replace"), flags=re.M):
             fields = dict(PLAN_FIELD_RE.findall(block))
             tests = fields.get("Tests to write (RED)", "").strip()
-            if re.match(r"none\b", tests, re.I) and re.search(r"proved by\s+\S", tests, re.I):
-                proved |= set(re.findall(r"[A-Z][A-Z0-9_]*", fields.get("Spec contracts", ""))) & slugs
-    return proved
+            named = set(re.findall(r"[A-Z][A-Z0-9_]*", fields.get("Spec contracts", ""))) & slugs
+            if re.match(r"none\b", tests, re.I):
+                if re.search(r"proved by\s+\S", tests, re.I):
+                    proved |= named
+            elif tests:
+                tested |= named
+    # A `none — proved by` row cannot vouch for a contract another increment
+    # plans a test for: a stub naming every contract it surfaces passed them
+    # all before any test existed.
+    return proved - tested
 
 def main() -> int:
     list_mode = "--list" in sys.argv
@@ -635,6 +643,14 @@ def main() -> int:
         "(?<![A-Z0-9_])(?:"
         + "|".join(re.escape(s) for s in sorted(hits, key=len, reverse=True))
         + ")(?![A-Z0-9_])")
+    # The test-first naming rule's snake-case form (`test_<slug>` in a language
+    # whose names are lower case) names the contract too, under the same
+    # guards: preceded by `_` or a non-word, never followed by a word part.
+    lower_union = re.compile(
+        "(?<![a-z0-9])(?:"
+        + "|".join(re.escape(s.lower()) for s in sorted(hits, key=len, reverse=True))
+        + ")(?![a-z0-9_])")
+    by_lower = {s.lower(): s for s in hits}
     for f in files:
         try:
             body = f.read_text(encoding="utf-8", errors="replace")
@@ -652,11 +668,13 @@ def main() -> int:
             continue
         spans = comment_spans(body, f.suffix)
         rel = str(f.relative_to(ROOT))
-        for m in slug_union.finditer(body):
-            if any(s <= m.start() < e for s, e in spans):
-                comment_hits.setdefault(m.group(0), set()).add(rel)
+        found = [(m.start(), m.group(0)) for m in slug_union.finditer(body)]
+        found += [(m.start(), by_lower[m.group(0)]) for m in lower_union.finditer(body)]
+        for at, slug in found:
+            if any(s <= at < e for s, e in spans):
+                comment_hits.setdefault(slug, set()).add(rel)
             else:
-                hits[m.group(0)].append(rel)
+                hits[slug].append(rel)
     # A draft slug a live spec also declares is skipped: the test carrying it
     # proves the live contract, and says nothing about the draft's promotion.
     for name, slugs in drafts.items():

@@ -100,6 +100,10 @@ class CliTests(unittest.TestCase):
         subprocess.run(
             ["git", "config", "user.name", "test"], cwd=root, check=True
         )
+        # The steward's list is local and ignored, as in the seed.
+        (root / ".cypress").mkdir()
+        (root / ".cypress" / "forbid.txt").write_text("widgetco\n", encoding="utf-8")
+        (root / ".gitignore").write_text(".cypress/forbid.txt\n", encoding="utf-8")
         return root
 
     def _run(self, root: Path):
@@ -120,6 +124,25 @@ class CliTests(unittest.TestCase):
             self.assertIn("first entry", staged.read_text(encoding="utf-8"))
             self.assertIn("v1.0.0", result.stdout)
             self.assertIn("git push && git push origin v1.0.0", result.stdout)
+
+    def test_release_refuses_without_the_forbid_list(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._repo(tmp, "1.0.0", SAMPLE_CHANGELOG)
+            (root / ".cypress" / "forbid.txt").unlink()
+            result = self._run(root)
+            self.assertEqual(result.returncode, 1, result.stdout)
+            self.assertIn("no forbid list", result.stderr)
+            self.assertFalse((root / ".github" / "RELEASE_NOTES.md").exists())
+
+    def test_release_refuses_a_donor_token_in_an_untracked_file_or_a_name(self):
+        for name, body in (("notes.md", "built for widgetco\n"), ("widgetco.zip", "x\n")):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = self._repo(tmp, "1.0.0", SAMPLE_CHANGELOG)
+                (root / name).write_text(body, encoding="utf-8")
+                result = self._run(root)
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertIn("donor-token sweep failed", result.stderr)
+                self.assertFalse((root / ".github" / "RELEASE_NOTES.md").exists())
 
     def test_missing_changelog_entry_fails_loudly(self):
         with tempfile.TemporaryDirectory() as tmp:

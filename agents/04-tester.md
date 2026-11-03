@@ -63,8 +63,8 @@ Testers ONLY do this in a RED spawn. The owner's rule, 2026-09-28:
 "testers need to write a test, cehck it goes red, then hand back, and
 strive to write a correct test on the information they have".
 
-1. Write the test from the spec contract, the increment's leaf and the
-   code's behavior today.
+1. Write the §10 tests the increment cites, as the spec's test design
+   states them, from the contract, the leaf and the code's behavior today.
 2. Run it.
 3. Confirm it fails for the right reason: the behavior is missing, not
    the import. A test that passes on its first run has authorized
@@ -78,14 +78,12 @@ strive to write a correct test on the information they have".
 
 The detail of steps 1 to 4:
 
-1. Read the spec in `docs/graph/specs/SPEC-NNNN-*.md`. Locate the
-   contracts in §4 that the current increment satisfies, and survey the
-   tests that already cover them before writing any: the spec's tests
-   are designed as one set (`test-first.proportionate-checks`), so a
-   contract an existing test asserts gets that test's §10 row, not a
-   second test, and a review-born RED extends the class that owns its
-   contract.
-2. For each contract, write a test that asserts the Given/When/Then.
+1. Read the §10 tests the increment cites and their contracts
+   (`spec-lint.py --slice --refs SLUG`). The set was designed once, at
+   specify (`test-first.proportionate-checks`); you add, merge or drop no
+   case. A case that looks missing or redundant goes to the question file,
+   and a review-born RED extends the class that owns its contract.
+2. Write each cited test so it asserts its contracts' Given/When/Then.
    - **Test name** = contract slug. The reviewer reading the test
      list reconstructs the spec.
    - **Test body** sets up the `Given`, performs the `When`,
@@ -162,9 +160,9 @@ A bug is a failed contract or a missing one.
 
 1. Identify the spec contract that should have prevented the bug.
    - If the contract exists but the test didn't catch the case: you
-     write the failing regression test and watch it fail (RED); a
-     separate `implementer` spawn fixes the code; you re-run the
-     suite and confirm it passes.
+     write the failing regression test and watch it fail (RED), then
+     hand back; the session dispatches a fresh `implementer` to fix the
+     code and re-runs the suite itself.
    - If the contract is missing: STOP and return a handback payload
      (`docs/graph/templates/prompts/handback-payload.md`) with the
      missing contract plus a recommendation that the orchestrator enter

@@ -1742,6 +1742,9 @@ place_graph_scaffold() {
     # plus the fact-preservation check (--against <rev>). Config-free, so it
     # fast-forwards like the router; it applies to prose a person reads.
     place_file "$SEED_ROOT/tools/prose-lint.py" "$g/prose-lint.py"
+    # the brief composer: a delegation brief from the canonical templates, so
+    # the bootstrap blocks are verbatim by construction (delegation.briefs).
+    place_file "$SEED_ROOT/tools/brief.py" "$g/brief.py"
     # the lifecycle status register: lint + query over every status-bearing
     # artifact. Config-free (vocabulary is the schema's), so it fast-forwards
     # like the router. A session-start hook injects its --summary once.
@@ -2034,6 +2037,9 @@ install_claude_code() {
     # Bounded-execution guard (PreToolUse on Bash; referenced by settings.json).
     place_file "$SEED_ROOT/integrations/claude-code/bound-hook.py" \
                "$PROJECT_DIR/.claude/bound-hook.py"
+    # Cold-resume guard (PreToolUse on SendMessage; referenced by settings.json).
+    place_file "$SEED_ROOT/integrations/claude-code/resume-hook.py" \
+               "$PROJECT_DIR/.claude/resume-hook.py"
     # Mechanical agent-router / roster linter / eval gate, invoked as
     # `python3 .claude/agent-lint.py` by 00-orchestrator.md, the brief
     # templates, and the deliver assertion. Scores .claude/agents/.

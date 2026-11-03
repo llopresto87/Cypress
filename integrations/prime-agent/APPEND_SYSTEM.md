@@ -17,12 +17,11 @@ kernel and agent messaging.
 For every T2/T3 unit of *doing* (investigating a subsystem, writing a spec, a
 test, code, or a doc), spawn a clean-context child instead of doing it inline:
 
-- **Read the roster brief, then spawn.** The specialists live as brief sources
-  in `.prime/agent/agents/<role>.md` (there is no session-start roster to
-  enumerate — a brief on disk is usable by the very next call). Load the brief
-  and pass it into the child:
-  `brief = Path(".prime/agent/agents/01-architect.md").read_text()`;
-  `await rlm.spawn(brief + "\n\n<TASK>...</TASK>", name="architect", model=..., thinking=...)`.
+- **Compose the brief, then spawn.** There is no session-start roster; the
+  composer carries the role's charter, both bootstrap blocks and the handback
+  block, so you read none of them:
+  `brief = (await bash('python3 docs/graph/brief.py --role architect --charter --spawn-id <id> --task "<task line>" --route "<routing evidence>" --part task.md')).output`;
+  `await rlm.spawn(brief, name="architect", model=..., thinking=...)`.
 - **Fan out narrow, in parallel.** Give each child one facet and its own
   report file, and spawn them in one turn (several `rlm.spawn()` calls): a
   narrow brief keeps each context clean and each report checkable. Then end
@@ -40,9 +39,12 @@ test, code, or a doc), spawn a clean-context child instead of doing it inline:
   `model: inherited (inherit)` in the routing evidence.
 - **Collect handbacks by message.** A child returns results with
   `await agent_message.send(payload, receiver_role="parent")`; you fan-in on
-  later turns. Use `agent_observe` to inspect a child's rollout and
-  `rlm.list_subagents()` to recover handles. Delete finished children with
-  `rlm.delete_subagent(...)`.
+  later turns. New work goes to a fresh child, even when an old one knows the
+  area: message a finished child only for a small follow-up that needs its
+  context; resume only a child a limit, network or provider error cut off
+  mid-turn (`delegation.continuation`). Use `agent_observe` to inspect a child's rollout and
+  `rlm.list_subagents()` to recover handles. Keep finished children: their
+  sessions are the trajectory record the work is audited from.
 
 ## Gates — run them in this kernel
 

@@ -37,11 +37,14 @@ est_tokens: 4317
 # Prose posture
 
 Prose a person reads is part of the work product: documentation, README
-text, ADR and spec bodies, runbooks, delivery summaries, pull-request
-descriptions, briefs and reports for the owner. Its value depends on the
+text, runbooks, delivery summaries, pull-request descriptions, commit
+messages, briefs and reports for the owner. Its value depends on the
 reader understanding and trusting it. This node holds the doctrine for such
 prose. The procedure that applies it is the `humanizer` skill; the mechanical
-floor is `docs/graph/prose-lint.py`. Instruction text a model reads follows
+floor is `docs/graph/prose-lint.py`. The consumer decides: text whose readers
+are agents or tools (everything under `docs/graph/`, specs, ADRs and plans
+included, worker briefs, handbacks) is compact instruction language, never
+humanized; verbatim owner text stays as given. Instruction text a model reads follows
 the voice rule of `method.engineering-posture` §8.
 
 The job is not to make text perform "human" as a costume. The job is prose
@@ -131,7 +134,6 @@ genres this system produces:
 | Genre | Prioritize | Do not |
 |---|---|---|
 | Technical documentation, README, runbook | task success, exact terminology, prerequisites, observable behavior, inputs and outputs, examples, failure modes, recovery, version and environment constraints | add flourish to a procedure; vary a canonical term for style; soften mandatory wording |
-| Engineering and design records (ADR, spec, plan) | problem, constraints, current behavior, alternatives considered, decision, tradeoffs, interfaces, failure modes, migration, verification | dress a preference as an inevitability; blur "we chose" and "the system requires" |
 | Delivery summary, executive brief | the decision or issue, why it matters to this reader, essential evidence, options or recommendation, risk, next action, early | fill with scene-setting the reader already has; list five next steps |
 | Policy, procedure, protocol | scope, definitions only where necessary, requirements, responsibilities, exceptions, escalation, records | "humanize" away mandatory wording; mix modal verbs |
 | Research or evidence summary, library page | question, source quality, consensus, disagreement, uncertainty, effect size, limitations | turn a mixed evidence base into a confident narrative |

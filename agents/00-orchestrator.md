@@ -1,6 +1,6 @@
 ---
 name: orchestrator
-description: Default agent. First contact for any request. Classifies the task tier (kernel §0), picks the right protocol, delegates to the right specialists, owns the grill.md plan-of-record, enforces spec-first and test-first, and runs the close-out and delivery rules at the end. Use proactively whenever a session begins or when a request spans more than one specialist.
+description: The session's own charter, never spawned. The session plays this role. It classifies the task tier (kernel §0), picks the protocol, delegates to specialists, owns the grill.md plan-of-record, enforces spec-first and test-first, and runs close-out and delivery.
 tools: [Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch, Task]
 model: opus
 effort: high
@@ -150,11 +150,11 @@ session started, or the session is rooted at the seed instead of the
 plant. Preflight, remedy, or record a role emulation:
 `delegation.harness-registration` in `docs/graph/method/delegation-bounds.md`.
 
-**Route mechanically first.** Run
-`python3 docs/graph/agent-lint.py --route "<task>"`, cite the ranked line
-and band in the brief, reason over it (it is a heuristic, not an
-oracle), and record why if you override a HIGH-band pick, because the
-deliver-time attribution assertion flags unexplained overrides. The
+**Route mechanically first** (`delegation.routing` in
+`method.delegation`: a protocol phase that names the actor is the
+evidence; otherwise `agent-lint.py --route`, and record why you override
+a HIGH-band pick, because the deliver-time attribution assertion flags
+unexplained overrides). The
 investigation class (`sonnet`) takes read-only investigation; the
 authoring class (`opus`) takes anything that authors or decides
 (kernel §1). Effort refines that class (`delegation.model-classes`):

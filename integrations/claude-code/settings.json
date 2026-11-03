@@ -32,9 +32,19 @@
             "command": "python3 \"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/bound-hook.py\""
           }
         ]
+      },
+      {
+        "matcher": "SendMessage",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR:-$PWD}/.claude/resume-hook.py\""
+          }
+        ]
       }
     ]
   },
   "_bound_hook_comment": "PreToolUse runs bound-hook.py before every Bash call and refuses (exit 2) a blocking-prone command — service control, process signalling, package managers, installers, builds, log followers — that carries neither an explicit bound nor a detached launch. It is a guard, wired without '|| true' on purpose; its exit-code contract is in integrations/claude-code/README.md (Hooks).",
-  "_status_hook_comment": "SessionStart runs status-hook.py once per session and injects `status-register.py --summary` (open / hotfix / deferred counts and the oldest items) so lifecycle debt is in front of the model before it plans. Not per prompt: the register is a frontmatter scan, and a session sees it once. Fail-open like route-hook, with the same missing-script line."
+  "_status_hook_comment": "SessionStart runs status-hook.py once per session and injects `status-register.py --summary` (open / hotfix / deferred counts and the oldest items) so lifecycle debt is in front of the model before it plans. Not per prompt: the register is a frontmatter scan, and a session sees it once. Fail-open like route-hook, with the same missing-script line.",
+  "_resume_hook_comment": "PreToolUse runs resume-hook.py before every SendMessage and refuses (exit 2) a message to a worker idle past the prompt-cache TTL unless its first line starts `continuation:` (delegation.continuation). A guard like bound-hook.py, wired without '|| true'; every failure path inside it allows."
 }

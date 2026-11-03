@@ -91,7 +91,7 @@ not applicable — the standard gates cover this plan.
 ## 11. Risks and Mitigations
 | Risk | Probability | Impact | Mitigation | Verification |
 |---|---:|---:|---|---|
-| Session leak | low | high | context manager | test_store_closes_session |
+| Session leak | low | high | context manager | test_store_closes_session; devils-advocate orchestrator.3: could-not-refute |
 
 ## 12. Open Questions
 | # | Question | Why it matters | Current assumption | How to resolve | Owner | Pinned by |
@@ -194,6 +194,33 @@ write_plan "sub:not applicable — the standard gates cover this plan.=Covered b
 fails '§10: not populated'
 # 12. --warn reports but exits 0
 write_plan DEP1="increment 2"; expect_rc 0 '' -- lint --warn
+# 13a. a §11 with no press verdict fails; an owner waiver passes
+write_plan "sub:; devils-advocate orchestrator.3: could-not-refute |= |"
+fails '§11: no risk carries a press verdict'
+write_plan "sub:; devils-advocate orchestrator.3: could-not-refute |=; waived by owner 2026-09-09 |"
+expect_rc 0 '' -- lint
+# 13. a one-way or expensive decision with no press verdict fails (grill.press); a verdict,
+#     an owner waiver, a superseded row, or a fenced example passes
+ROW6='| Use the existing session factory | src/db.py | two-way |'
+write_plan "sub:$ROW6=| Use the existing session factory | src/db.py | reversible now → one-way after the first release |"
+fails '§6: `Use the existing session factory` (reversible now → one-way after the first release) has no press verdict'
+write_plan "sub:$ROW6=| Use the existing session factory | src/db.py | reversible now → expensive after go-live |"
+fails '§6: `Use the existing session factory` (reversible now → expensive after go-live) has no press verdict'
+write_plan "sub:$ROW6=| Use the existing session factory | src/db.py; devils-advocate orchestrator.4: could-not-refute | one-way |"
+expect_rc 0 '' -- lint
+write_plan "sub:$ROW6=| Use the existing session factory | src/db.py; waived by owner 2026-09-09 | one-way |"
+expect_rc 0 '' -- lint
+mkdir -p "$G/decisions"; printf -- '- **Status:** accepted\n' > "$G/decisions/adr-0007-session-factory.md"
+printf -- '- **Status:** accepted\n' > "$G/decisions/adr-0008-other.md"
+write_plan "sub:$ROW6=| Use the existing session factory (ADR-0007) | src/db.py | one-way |"$'\n'"| Press result: ADR-0007 could-not-refute | devils-advocate orchestrator.4 | — |"
+expect_rc 0 '' -- lint
+write_plan "sub:$ROW6=| Use the existing session factory (ADR-0007) | src/db.py | one-way |"$'\n'"| Press result: ADR-0008 could-not-refute | devils-advocate orchestrator.4 | — |"
+fails '§6: `Use the existing session factory (ADR-0007)` (one-way) has no press verdict'
+rm -f "$G/decisions/adr-0007-session-factory.md" "$G/decisions/adr-0008-other.md"
+write_plan "sub:$ROW6=| ~~Use the existing session factory~~ | src/db.py | ~~one-way~~ |"
+expect_rc 0 '' -- lint
+write_plan "sub:$ROW6=$ROW6"$'\n\n```\n| Decision | Evidence | Reversibility |\n|---|---|---|\n| Example | — | one-way |\n```'
+expect_rc 0 '' -- lint
 
 # 14. the ledger form lints clean, and --list resolves increments through the index
 write_plan; write_ledger
@@ -348,6 +375,26 @@ case_waves_levels_scheduled_plan() {
     'sched D3=docs/graph/libraries/sqlalchemy.md; wrun --waves
      has "  wave 1: increment 3 (prose) Document the form"; has "  wave 2: increment 4 (RED) Persist submissions <- 3"'
 }
+case_batches_from_effort_table() {
+  # --batches: the spawns delegation.effort-scale gives each wave, read from §9
+  row X486 'GRILL_BATCHES_FOLLOW_THE_EFFORT_TABLE: the scheduled plan: one spawn per increment, counted by worker' \
+    'sched; wrun --batches; has "batches: 5 spawn(s) for 5 increment(s) — 2 tester, 2 implementer, 1 prose (delegation.effort-scale; security or concurrency GREEN stays a batch of one)"; rc 0'
+  row X487 'two REDs in one wave share one tester spawn' \
+    'sched D4=none; wrun --batches; has "  wave 1 RED tester: increments 1, 4 (hardest low, size 7)"'
+  row X488 'a hard GREEN is a batch of one; low GREENs share a spawn' \
+    'sched D4=none D5="increment 4" E2=hard; wrun --batches
+     has "  wave 2 GREEN implementer: increment 2 (hardest hard, size 1)"
+     sched D4=none D5="increment 4"; wrun --batches
+     has "  wave 2 GREEN implementer: increments 2, 5 (hardest low, size 5)"'
+  row X489 'a shared file past the size runs as consecutive batches, never one bigger spawn' \
+    'sched D4=none D5="increment 4" E2=hard F5="\`src/forms/validate.py\`"; wrun --batches
+     has "  wave 2 GREEN implementer: increment 5 (hardest low, size 5) — after the batch above: they share files"'
+  row X490 'an increment with no effort label is batched alone and warned' \
+    'sched E1=; wrun --batches; has_re "WARN §9 increment 1: no Effort: label"'
+  row X491 'a dependency defect: no batch plan, and the verdict is the plain one' \
+    'sched D1="increment 2"; wrun; plain=$WRC; wrun --batches
+     has "batches: not computed — §9 has dependency defects or duplicate numbers"; rc "$plain"; rc 1'
+}
 case_waves_overlap_brace_pair() {
   # X366 GRILL_WAVES_OVERLAP_IS_A_WARNING; rows X367-X370 (X368 holds FALSE_OVERLAP,
   # X369 MISSED_OVERLAP)
@@ -415,6 +462,7 @@ sys.exit(0 if all(any(w == h for h in have) for w in want) else 1)' "$pout" "$WO
 }
 
 case_waves_levels_scheduled_plan
+case_batches_from_effort_table
 case_waves_overlap_brace_pair
 case_waves_not_computed_forward_dependency
 # The fixture writer rewrites the file it is given. Handed a path that is not a

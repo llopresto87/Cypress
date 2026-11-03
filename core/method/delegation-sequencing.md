@@ -48,7 +48,7 @@ run needs is dispatched first, ahead of the order above under a recorded limit,
 with the lightest review the step's rules allow (a light reviewer,
 `delegation.light-variants`, where the surface allows one); every other unit
 runs beside it, never ahead. An increment that gates the run is split: the part
-the run needs lands first, and the rest follows in the same lane.
+the run needs lands first, and the rest follows in a later batch, a fresh spawn.
 
 **A read-only review starts as soon as there is committed work to read.** It
 consumes only committed work, so it is independent of the writers still

@@ -66,12 +66,12 @@ The table is the spawn order (`delegation.sequencing`), as in
 | 1 | `product` | spec §3 | 0 | the scouts |
 | 2 | `architect` | spec §4 to §8; plan §5 synthesis, §6 to §9 with effort labels, phases and the batch plan | 1, the scouts | — |
 | 3 | `product` (spec §9) ∥ `tester` (spec §10 rows, testability; plan §10) ∥ `security` where the surface is sensitive (spec §5, §7; plan §11) ∥ `reliability` (plan §11) | as named | 2 | each other |
-| 4 | `devils-advocate` for one-way doors and the top risk | beside the plan's §6 and §11 | 3 | — |
+| 4 | `devils-advocate` for `one-way` and `expensive` decisions and the top risk | beside the plan's §6 and §11 | 3 | — |
 | 5 | session | spec §11, §12 and sign-offs; plan §12 to §15 | 4 | — |
 
 Section ownership does not change: each section has the owner
 `specify.flow` or `grill.flow` gives it. A testability failure in step 3
-returns to the architect as a `protocol.recover` attempt, as it does in
+goes to a fresh architect spawn as a `protocol.recover` attempt, as it does in
 `specify`. When only one document is being written, the separate phase
 tables in `specify.flow` and `grill.flow` still apply. The effort labels
 and phases step 2 writes are `delegation.effort-scale`
