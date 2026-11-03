@@ -1391,6 +1391,51 @@ case_run_ties_lint_errors_to_retired_nodes() {
   [ -f "$d/zephyrplant/$node" ] || { echo "the run deleted $node from the plant"; return 1; }
 }
 
+# X493, SPEC-0001 GRAFT_RUN_NAMES_PLAN_DEFECTS_THE_UPGRADE_RAISES: the plant's
+# engine predates the press rule and its plan has an unpressed `expensive` §6
+# row. graft.gate.plans is BLOCK and names that row; the defects the plan
+# already had under the plant's engine are counted, not named. Control: with
+# the seed's own engine before the graft nothing is raised and the row passes.
+x493_run() {  # x493_run <arm> <old-engine: pressless|seed>
+  local d="$GR/x493-$1" p
+  p="$d/zephyrplant"
+  mkdir -p "$d" && cp -a "$GR_PLANT" "$p"
+  rm -f "$p/.cypress/recreated-nodes.txt"
+  printf '# grill\n\n## 6. Decisions Made\n| Decision | Evidence | Reversibility |\n|---|---|---|\n| Ship one signed bundle | build.gradle | expensive after go-live |\n' \
+    > "$p/docs/graph/plans/grill.md"
+  if [ "$2" = pressless ]; then
+    python3 - "$KG/grill-lint.py" "$p/docs/graph/grill-lint.py" <<'PY'
+import sys
+s = open(sys.argv[1]).read(); a = "    if 6 in secs:\n        pressed"
+assert s.count(a) == 1, "the seed's grill-lint press block moved"
+open(sys.argv[2], "w").write(s.replace(a, "    if False:\n        pressed"))
+PY
+  else
+    cp "$KG/grill-lint.py" "$p/docs/graph/grill-lint.py"
+  fi
+  sgit -C "$p" add -A && sgit -C "$p" commit -q -m "a plan with an expensive decision" \
+    || { echo "fixture: the $1 plant could not be committed"; return 1; }
+  python3 "$RUN" "$p" "$ROOT" --stage "$d/stage" >"$d/run.out" 2>"$d/run.err" || true
+}
+case_run_names_plan_defects_the_upgrade_raises() {
+  local row
+  gr_need || return 1; gr_fixture || return 1
+  x493_run raised pressless || return 1
+  row="$(grep -E '^graft\.gate\.plans:' "$GR/x493-raised/run.out" || true)"
+  [ -n "$row" ] || { echo "no graft.gate.plans row in the gate table: $(tail -5 "$GR/x493-raised/run.out" | tr '\n' ' ')"; return 1; }
+  echo "$row" | grep -Eq '^graft\.gate\.plans:[[:space:]]*BLOCK — 1 plan defect\(s\)' \
+    || { echo "the plans row is not BLOCK with one raised defect: $row"; return 1; }
+  echo "$row" | grep -qF 'grill-lint.py: §6: `Ship one signed bundle` (expensive after go-live) has no press verdict' \
+    || { echo "the plans row does not name the unpressed expensive row: $row"; return 1; }
+  echo "$row" | grep -Eq '[1-9][0-9]* defect\(s\) the plant.s plans already had, not gated' \
+    || { echo "the plans row does not count the defects the plan already had: $row"; return 1; }
+  # control: the same plan under the seed's own engine before the graft
+  x493_run kept seed || return 1
+  row="$(grep -E '^graft\.gate\.plans:' "$GR/x493-kept/run.out" || true)"
+  echo "$row" | grep -Eq '^graft\.gate\.plans:[[:space:]]*PASS' \
+    || { echo "with no defect raised by the upgrade the plans row must PASS: $row"; return 1; }
+}
+
 case_run_exits_1_when_a_gate_blocks() {
   # the fixture deletes a seed node the install re-creates, so the gate table holds a BLOCK.
   gr_need || return 1; gr_fixture || return 1; gr_run_once
@@ -1617,6 +1662,7 @@ collect_case GR-f case_run_prints_gate_table "stdout ends with the Phase 7 gate 
 collect_case GR-g case_run_exits_1_when_a_gate_blocks "a run whose gate table holds a BLOCK exits 1"
 collect_case GR-j case_run_routes_runs_hook_check "graft.gate.routes runs install.sh <host> --check, the hook check, once per recorded host"
 collect_case X469 case_run_ties_lint_errors_to_retired_nodes "GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES: GR-k: a retired seed protocol that repeats a seed fact-key: routes BLOCK, named RETIRED, its lint error tied to it"
+collect_case X493 case_run_names_plan_defects_the_upgrade_raises "GRAFT_RUN_NAMES_PLAN_DEFECTS_THE_UPGRADE_RAISES: graft.gate.plans BLOCKs on a defect only the upgraded engine raises, names it, counts the rest; PASS when nothing is raised"
 collect_case GR-h case_run_passes_inferred_base_to_audit "an inferred base is passed to graft-audit as --base"
 collect_case GL-e case_ledger_base_predates_history "a stamp older than the retained history: the inferred base is a lower bound, --base-dir gives the real one"
 collect_case GR-i case_run_infers_adapters_for_old_stamp "a stamp with no tools: adapters inferred from the projections, confirmed with --tools"
