@@ -149,7 +149,7 @@ def status_summary() -> str:
         return ""
     try:
         out = subprocess.run(
-            [sys.executable, str(register), "--summary", "--root", str(root / "docs" / "graph")],
+            [sys.executable, "-S", str(register), "--summary", "--root", str(root / "docs" / "graph")],
             capture_output=True, text=True, timeout=15, cwd=str(root),
         )
     except Exception:                             # noqa: BLE001 — a broken register is silence,
@@ -171,7 +171,7 @@ def code_anchor() -> str:
         return ANCHOR_NOT_CHECKED
     try:
         out = subprocess.run(
-            [sys.executable, str(tool), "--compare"],
+            [sys.executable, "-S", str(tool), "--compare"],
             capture_output=True, text=True, timeout=ANCHOR_TIMEOUT, cwd=str(root),
         )
     except Exception:                             # noqa: BLE001: every failure is the not-checked line

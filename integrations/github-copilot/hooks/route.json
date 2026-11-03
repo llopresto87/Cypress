@@ -4,7 +4,7 @@
     "UserPromptSubmit": [
       {
         "type": "command",
-        "command": "f=\"${CLAUDE_PROJECT_DIR:-$PWD}/.github/hooks/route-hook.py\"; if [ -f \"$f\" ]; then python3 \"$f\" || true; else echo \"cypress: hook script missing: $f; continuing without it. Re-run install.sh to restore it.\"; fi",
+        "command": "f=\"${CLAUDE_PROJECT_DIR:-$PWD}/.github/hooks/route-hook.py\"; if [ -f \"$f\" ]; then python3 -S \"$f\" || true; else echo \"cypress: hook script missing: $f; continuing without it. Re-run install.sh to restore it.\"; fi",
         "timeout": 20
       }
     ]

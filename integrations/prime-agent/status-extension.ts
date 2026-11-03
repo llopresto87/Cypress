@@ -80,7 +80,7 @@ async function runCore(pi: ExtensionAPI, ctx: Session, source: string): Promise<
   try {
     const script = corePath(ctx);
     if (!script) return undefined;
-    const r = await pi.exec(PYTHON, [script, source, ...sessionOptions(ctx)],
+    const r = await pi.exec(PYTHON, ["-S", script, source, ...sessionOptions(ctx)],
       { timeout: 25_000, cwd: ctx.cwd });
     return additionalContext(r.stdout);
   } catch {

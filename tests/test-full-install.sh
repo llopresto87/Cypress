@@ -798,7 +798,7 @@ PY
   rc=0; out="$(PATH="$bin:$base" bash "$ROOT/install.sh" claude-code prime-agent --check --project-dir "$T/a" 2>&1)" || rc=$?
   n="$(grep -c 'ran and printed its context' <<<"$out" || true)"
   [[ $rc -eq 0 && "$n" == "4" ]] || arm_fail "(a) --check on python$floor: exit $rc, $n hook(s) ran: $(tail -4 <<<"$out")"
-  sed -i.orig "s/python$floor \\\\\"\\\$f/python3.99 \\\\\"\\\$f/" "$T/a/.claude/settings.json"; rm -f "$T/a/.claude/settings.json.orig"
+  sed -i.orig "s/python$floor -S \\\\\"\\\$f/python3.99 -S \\\\\"\\\$f/" "$T/a/.claude/settings.json"; rm -f "$T/a/.claude/settings.json.orig"
   grep -qF 'python3.99' "$T/a/.claude/settings.json" || die "E16: harness: the interpreter edit did not land"
   rc=0; out="$(PATH="$bin:$base" bash "$ROOT/install.sh" claude-code --check --project-dir "$T/a" 2>&1)" || rc=$?
   [[ $rc -ne 0 ]] && grep -q 'python3\.99' <<<"$out" \
@@ -807,7 +807,7 @@ PY
   # (c) the Copilot hook configs, a frozen host's, name it too.
   rc=0; out="$(PATH="$bin:$base" bash "$ROOT/install.sh" github-copilot --project-dir "$T/c" 2>&1)" || rc=$?
   for f in route.json status.json; do
-    [[ $rc -eq 0 ]] && grep -qF "then python$floor \\\"\$f\\\"" "$T/c/.github/hooks/$f" \
+    [[ $rc -eq 0 ]] && grep -qF "then python$floor -S \\\"\$f\\\"" "$T/c/.github/hooks/$f" \
       || arm_fail "(c) .github/hooks/$f does not run its hook with python$floor (install exit $rc)"
   done
 

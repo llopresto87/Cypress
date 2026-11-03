@@ -277,7 +277,7 @@ def run_router(prompt: str) -> dict:
     ENGINE_OLDER_THAN_HOOK_IS_NAMED)."""
     try:
         out = subprocess.run(
-            [sys.executable, str(LINT), "--plan-json=" + prompt],
+            [sys.executable, "-S", str(LINT), "--plan-json=" + prompt],
             capture_output=True, timeout=ROUTER_TIMEOUT, cwd=str(ROOT),
         )
     except (OSError, ValueError, subprocess.SubprocessError):
