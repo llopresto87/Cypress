@@ -21,7 +21,7 @@ load_when:
   - "session is ending, wrap up, hand off"
   - "delivery summary, cold pickup"
   - "what did we change, session report"
-  - "attribution, produced_by, routing evidence"
+  - "attribution, produced_by, routing evidence, spawn log"
   - "decisions for the owner, options to approve, answer by number"
   - "every remaining step is the owner's, goal loop or stop hook keeps firing"
   - "session metrics after each increment, cost and quality so far"
@@ -41,7 +41,7 @@ delivery, compact for T0/T1, full for T2/T3: files changed, routing
 attribution, docs updated, decisions, gates with outcomes,
 limitations, and **one** recommended next step. The deliver-time
 attribution assertion is **detective** (ADR-0003): a unit of work with
-no `produced_by` is a BLOCK (§Routing-attribution assertion). The
+no spawn record is a BLOCK (§Routing-attribution assertion). The
 standard for done is §The cold-pickup test.
 
 ## When to invoke
@@ -72,9 +72,10 @@ file.
 ## Full form (Tier 2/3)
 
 Runs after the `canonize` close-out spawn has confirmed (or
-record-emptied) knowledge and tools. State the summary in the chat AND
-append the same content to `docs/graph/changelog.md` and to grill.md
-section 15. Title the changelog entry `Delivery — <title> — YYYY-MM-DD`,
+record-emptied) knowledge and tools. Write the delivery once, as the
+`docs/graph/changelog.md` entry; give grill.md §15 one line that points at
+that entry's heading, and give the chat the summary with the same pointer.
+Title the changelog entry `Delivery — <title> — YYYY-MM-DD`,
 at whatever heading level the changelog uses; the tier may lead it, as in
 `T3 delivery — <title> — YYYY-MM-DD`. That heading carries the entry's only
 date: its sections are the template's, and a dated sub-heading inside the
@@ -93,7 +94,7 @@ your run; name it under Known limitations if it matters.
 - ...
 
 ## Routing attribution
-- <unit of work> — produced_by: <specialist> — route: <protocol phase that names the role, agent-lint --route band + line, or override rationale>
+- <unit of work> — <spawn_id> — produced_by: <specialist> — route: <protocol phase that names the role, agent-lint --route band + line, or override rationale> (the lines `python3 docs/graph/brief.py --log` prints)
 - ...
 
 ## Documentation created or updated
@@ -210,38 +211,33 @@ A delivery summary that passes:
 
 ## Routing-attribution assertion (detective)
 
-Before you sign off, attribute every unit of work to the specialist that
-produced it, reading the `produced_by` and `route_evidence` fields from the
-handback payloads (`docs/graph/templates/prompts/handback-payload.md`) the workers
-returned. Then run these checks:
+Before you sign off, attribute every unit of work to the spawn that produced
+it. `python3 docs/graph/brief.py --log` prints one line per spawn from the
+spawn log `brief.py` wrote at compose time (`delegation.tracing`): spawn_id,
+role, routing line, effort, and any emulation. Then run these checks:
 
-- **Missing `produced_by` on any unit of work → BLOCK**, the same
+- **A unit of work with no spawn record → BLOCK**, the same
   missing-proof-is-a-BLOCK rule the release gates use. You call that block
-  yourself.
-- **Out-of-domain authoring → FLAG.** A `produced_by` specialist whose
-  `routing_triggers` do not cover the work it authored is flagged for the
-  operator to confirm or re-route.
+  yourself; a brief composed by hand leaves no record, which is why every
+  brief goes through `brief.py`.
+- **Out-of-domain authoring → FLAG.** A role whose `routing_triggers` do
+  not cover the work it authored is flagged for the operator to confirm or
+  re-route.
 - **Unexplained generic-role override → FLAG.** When `agent-lint --route`
   returned a HIGH band for specialist X but the work was produced by a
-  generic role (`general-purpose` / `claude`) or a different specialist with
-  no recorded rationale in `route_evidence`, flag it.
-- **Role emulation → FLAG unless declared.** A worker that ran as a generic
-  type wearing a specialist's role must carry `harness_override:
-  role-emulated (<reason>)` in its handback. Without it, a recorded emulation
-  and a silent substitution stamp the identical `produced_by`, so the
-  declaration is the only thing separating them, and every emulated unit
-  carries weaker bounds than its frontmatter claims
+  generic role (`general-purpose` / `claude`) or a different specialist and
+  the logged route carries no rationale, flag it.
+- **Role emulation → FLAG unless logged.** A worker that ran as a generic
+  type wearing a specialist's role is composed with `--emulated "<reason>"`,
+  so its record says so; an unlogged emulation looks like the real role, and
+  every emulated unit carries weaker bounds than its frontmatter claims
   (`delegation.harness-registration`). Report the count in the delivery.
 
 This assertion runs in the top session at `deliver`, where the whole
-delivery is in view; no hook the seed installs reads a worker's result
-(`delegation.briefs`), and no harness refuses a delivery that skips the
-check. A top-session `Stop` hook that greps the delivery / grill.md §15
-for attributions stays deliberately unwired until this plant's real
-deliveries carry `produced_by`, because a gate landed before the thing it
-checks either checks nothing or blocks everything (kernel §3.5, the
-green-lie rule). Once deliveries carry the field, wire it warn-first, then
-block.
+delivery is in view, and reads a record the tool writes, so it holds on every
+host. A top-session `Stop` hook could run `brief.py --log` against the
+delivery's attribution lines; wire it warn-first, then block, once a plant's
+deliveries carry those lines (kernel §3.5, the green-lie rule).
 
 ## When every open step is the owner's
 

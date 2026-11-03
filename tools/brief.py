@@ -13,15 +13,26 @@ whose spawn has no agent type to carry it (Prime Agent).
   python3 docs/graph/brief.py --role tester --spawn-id orchestrator.3.tester.1 \
       --task "<exact task line>" --route "<agent-lint line or rationale>" \
       [--effort "<label (row n: reason)>"] [--charter] --part FILE|- [--out PATH]
+      [--emulated "<reason>"] [--plan PATH]
+  python3 docs/graph/brief.py --log
 
 Exit 0 and the brief on stdout; exit 2 with one stderr line on an unknown role,
 a missing template, or a slot left unfilled. With `--out PATH` the brief is
 written to PATH and stdout carries only a three-line spawn prompt that points
 at it: where the spawn prompt stays in the caller's context, the brief then
 never enters it, and the file is the brief's record beside the handbacks.
+
+Every composed brief appends one JSON line to `spawns.jsonl` beside the plan
+(spawn_id, role, task, route, effort, emulated, brief path, time):
+the spawn's attribution record, so the worker echoes none of it and the
+deliver-time attribution assertion reads the log. A spawn_id already logged
+for another role is refused (mint once, `delegation.tracing`).
+`--log` prints the log as the delivery's attribution lines and exits.
 """
 
 import argparse
+import datetime
+import json
 import re
 import sys
 from pathlib import Path
@@ -47,7 +58,38 @@ def charter(role: str) -> str:
     raise SystemExit(f"brief: no agent charter named {role!r} in {AGENTS}")
 
 
+def spawn_log(plan: Path) -> Path:
+    return plan.parent / "spawns.jsonl"
+
+
+def read_log(plan: Path) -> list[dict]:
+    path = spawn_log(plan)
+    if not path.is_file():
+        return []
+    rows = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        try:
+            rows.append(json.loads(line))
+        except ValueError:
+            continue
+    return rows
+
+
 def main() -> int:
+    if "--log" in sys.argv[1:]:
+        lp = argparse.ArgumentParser()
+        lp.add_argument("--log", action="store_true")
+        lp.add_argument("--plan", default=str(GRAPH / "plans" / "grill.md"))
+        rows = read_log(Path(lp.parse_args().plan))
+        last = {r["spawn_id"]: r for r in rows if r.get("spawn_id")}
+        for r in last.values():
+            print(f"- {r['spawn_id']} — produced_by: {r['role']} — route: {r['route']}"
+                  + (f" — effort: {r['effort']}" if r.get("effort") else "")
+                  + (f" — role-emulated ({r['emulated']})" if r.get("emulated") else ""))
+        if not last:
+            print(f"brief: no spawns logged at {spawn_log(Path(lp.parse_args().plan))}", file=sys.stderr)
+            return 1
+        return 0
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--role", required=True)
     ap.add_argument("--spawn-id", required=True)
@@ -57,20 +99,28 @@ def main() -> int:
     ap.add_argument("--charter", action="store_true", help="prepend the role's charter body")
     ap.add_argument("--part", required=True, help="file holding the task part, or - for stdin")
     ap.add_argument("--out", default="", help="write the brief here and print only a pointer prompt")
+    ap.add_argument("--plan", default=str(GRAPH / "plans" / "grill.md"))
+    ap.add_argument("--emulated", default="",
+                    help="this spawn runs a generic host type wearing --role; the reason")
     a = ap.parse_args()
     try:
         body = charter(a.role)
         part = sys.stdin.read() if a.part == "-" else Path(a.part).read_text(encoding="utf-8")
         graph = fenced(BOOTSTRAP, "GRAPH DISCIPLINE").replace("{{exact delegated task}}", a.task)
         comp = fenced(BOOTSTRAP, "COMPANION")
-        comp = re.sub(r"\{\{caller-minted.*?\}\}", a.spawn_id, comp, flags=re.S)
-        comp = re.sub(r"\{\{paste the line.*?\}\}", a.route, comp, flags=re.S).replace("{{you}}", a.role)
+        comp = re.sub(r"\{\{the protocol phase.*?\}\}", a.route, comp, flags=re.S)
         payload = fenced(HANDBACK, "HANDBACK")
     except SystemExit as e:
         print(e, file=sys.stderr)
         return 2
     if "{{" in graph + comp:
         print("brief: a bootstrap slot this tool does not fill is left in the template", file=sys.stderr)
+        return 2
+    clash = [r for r in read_log(Path(a.plan))
+             if r.get("spawn_id") == a.spawn_id and r.get("role") != a.role]
+    if clash:
+        print(f"brief: spawn_id {a.spawn_id} is already logged for role {clash[-1]['role']!r}; "
+              f"mint a new one (delegation.tracing)", file=sys.stderr)
         return 2
     out = [f"You are `{a.role}`, a CYPRESS specialist. spawn_id: {a.spawn_id}",
            f"Task line (route exactly this): {a.task}"]
@@ -82,6 +132,13 @@ def main() -> int:
             "", "## Task", "", part.rstrip("\n"), "",
             "## Handback (fill these fields; the rules are in docs/graph/templates/prompts/handback-payload.md)",
             "", "```", payload.rstrip("\n"), "```"]
+    log = spawn_log(Path(a.plan))
+    log.parent.mkdir(parents=True, exist_ok=True)
+    rec = {"spawn_id": a.spawn_id, "role": a.role, "task": a.task, "route": a.route,
+           "effort": a.effort, "emulated": a.emulated,
+           "brief": a.out, "at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
+    with open(log, "a", encoding="utf-8") as fh:
+        fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
     if a.out:
         dest = Path(a.out)
         dest.parent.mkdir(parents=True, exist_ok=True)

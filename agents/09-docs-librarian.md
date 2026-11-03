@@ -223,8 +223,7 @@ them. Runbooks link to the wiki pages of the tools they use.
 
 ## Handback (end every turn with this)
 
-End every turn with the payload from `docs/graph/templates/prompts/handback-payload.md`
-(`produced_by: docs-librarian`, `in_domain_work_done`, `route_evidence`, `gates`,
-`tools_built`). Spawn only from your `delegates_to` allowlist within your
-depth cap; when you STOP instead, fill the payload all the same. A missing
-`produced_by` is a deliver-time BLOCK.
+End every turn with the HANDBACK your brief carries
+(`docs/graph/templates/prompts/handback-payload.md`). Spawn from your
+`delegates_to` allowlist within your depth cap, composing each brief with
+`brief.py`; when you stop instead, fill the payload all the same.

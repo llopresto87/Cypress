@@ -27,66 +27,47 @@ graph and a context router, and you run both yourself.
 ```
 GRAPH DISCIPLINE — execute before reading any source:
 1. Run: python3 docs/graph/graph-lint.py --plan "{{exact delegated task}}"
-   Report it in your handback's `graph_route:` field as ids, not
-   the router's output (the `route_evidence` field carries the
-   agent-routing line from your brief).
+   Report it in `graph_route:` as ids, never the router's output.
 2. Load ONLY the reported nodes plus their `requires:` closure.
    Everything else a loaded node lists (leaves, children, links,
    neighbours) is a menu: open an item only when its one-line
    "load when" serves your task, and list the rest as skipped.
-3. Check the route against the files you will touch, before you
-   read them: the stack elements they use (extensions, paths,
-   manifests, lockfiles) and the area they sit in each have their
-   `expertise.*` node, owning node or `libraries/` page in it. For
-   one that is missing, run `--plan "<that element>"` and load what
-   it reports: the router composes expertise from the task's words,
-   so a stack the task line never names is not in the route.
-   Declare in `graph_route:` what you loaded, what you deliberately
-   skipped, and every widening (with the reason it became necessary).
-4. One home per fact: link to the node that owns a fact instead of
-   restating it. The graph outranks your memory of APIs/versions.
-   A fact the graph states is settled: use it as stated; re-deriving
-   or re-checking it spends what the graph saves. Facts about code are
-   current only where your brief carries a code-anchor line saying no
-   code changed; otherwise check the code facts you rely on against
-   the code.
-   When a fact is unknown, write "not recorded" — never fabricate a
-   version, URL, or identifier.
-5. Minimum sufficient work: every read, search, and tool call serves
-   your delegated deliverable — smallest sufficient evidence, cheapest
-   reliable method; stop when the deliverable is complete and trusted.
-   Read a spec by contract, not by file:
-   `python3 docs/graph/spec-lint.py --slice --refs SLUG...` prints
-   each block, its §10 rows and the §6/§7 headings it cites; open
-   only those headings.
-   Return findings, and only what your parent needs. Depth:
-   `method.minimum-sufficient-work`, `method.decision-economy`,
-   `method.engineering-posture` §8.
-6. Leave shared git state alone: no `git stash`, `checkout`,
-   `restore`, `reset` or `clean`, because they move other writers'
-   uncommitted files. Take a baseline by copying the file or reading
-   `git show HEAD:<path>` (`delegation.wave-baseline`).
-7. If the graph has no nodes yet (bootstrap pass), report the failed
-   probe and stay inside the exact paths named in this brief.
+3. Before reading the files you will touch, check that each stack
+   element they use (extension, path, manifest, lockfile) and their
+   area has an `expertise.*` node, owning node or `libraries/` page in
+   the route; for each one missing, run `--plan "<that element>"` and
+   load what it reports. Declare in `graph_route:` what you loaded,
+   skipped, and widened (with the reason).
+4. Link to the node that owns a fact; do not restate it. The graph
+   outranks your memory of APIs and versions. A fact the graph states
+   is settled: use it as stated; re-deriving or re-checking it spends
+   what the graph saves. Facts about code are current only where your
+   brief carries a code-anchor line saying no code changed; otherwise
+   check the code facts you rely on against the code. An unknown fact
+   is "not recorded": never invent a version, URL or identifier.
+5. Every read, search and tool call serves the deliverable; stop when
+   it is complete and trusted. Read a spec by contract:
+   `python3 docs/graph/spec-lint.py --slice --refs SLUG...`, then open
+   only the §6/§7 headings it cites. Return only what your parent
+   needs (`method.minimum-sufficient-work`).
+6. Leave shared git state alone: `git stash`, `checkout`, `restore`,
+   `reset` and `clean` move other writers' uncommitted files. Take a
+   baseline by copying the file or `git show HEAD:<path>`
+   (`delegation.wave-baseline`).
+7. No graph nodes yet (bootstrap pass): report the failed probe and
+   stay inside the paths this brief names.
 ```
 
 ```
-COMPANION (echo each item back in your handback):
-- Trace this spawn. Your `spawn_id` is {{caller-minted dot-chain id,
-  e.g. orchestrator.3.architect.1; see delegation.tracing}}. Echo it
-  verbatim in your handback's `spawn_id` field.
-- Cite the router. The protocol phase that names your role, the
-  `agent-lint --route` ranked line and band, or the override rationale:
-  {{paste the line + band, or the rationale}}. Echo it back in
-  `route_evidence`. At a LOW/NONE band, say so there and name the gap:
-  a different specialist, or expertise no node in this graph carries.
-- End with a handback. Close your turn with the payload from
-  `docs/graph/templates/prompts/handback-payload.md`: `produced_by:
-  {{you}}`, `in_domain_work_done` with paths, `route_evidence`,
-  `graph_route`, `effort`, `expertise_gap`, `gates`, `tools_built`, and, at any
-  out-of-domain boundary, `recommended_next` naming the specialist.
-  When your report outgrows the soft target, write the overflow note
-  as you work and name it (that file's Rules).
+COMPANION:
+- Routed by: {{the protocol phase, the agent-lint --route line and band,
+  or the override rationale}}. brief.py logged it with your spawn_id, role
+  and effort, so your handback starts at `status:`. At a LOW/NONE band,
+  name the gap in `out_of_domain_needed`: the fitting specialist, or the
+  expertise the graph still needs.
+- End your turn with the HANDBACK payload; at an out-of-domain boundary
+  name the specialist in `recommended_next`. Past the soft target, write
+  the overflow note as you work and name it (handback-payload.md, Rules).
 ```
 
 - **Read-only.** Use commands that only inspect (`ls`, `grep`, `wc`,

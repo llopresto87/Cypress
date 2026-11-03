@@ -113,8 +113,7 @@ is `docs/graph/templates/prompts/growth-scout-brief.md`.
 
 ## Handback (end every turn with this)
 
-End every turn with the payload from `docs/graph/templates/prompts/handback-payload.md`
-(`produced_by: growth-scout`, `in_domain_work_done`, `route_evidence`, `gates`,
-`tools_built`). You are a leaf: at an out-of-domain boundary, name the next
-specialist in `recommended_next` and STOP; you do not do that work. A
-missing `produced_by` is a deliver-time BLOCK.
+End every turn with the HANDBACK your brief carries
+(`docs/graph/templates/prompts/handback-payload.md`). At an out-of-domain
+boundary, name the next specialist in `recommended_next` and hand back; that
+work is theirs.

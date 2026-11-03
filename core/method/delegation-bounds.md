@@ -116,10 +116,9 @@ the host's generic worker and rebuild the specialist inside the brief:
   by-name dispatches inside a subagent that cannot restart the session,
   so its brief hands it both the preflight and this fallback for its
   children;
-- stamp `produced_by: <role>` (the role, never the generic type) plus
-  `harness_override: role-emulated (<reason>)`, so `protocol.deliver`
-  can tell a recorded emulation from a silent substitution. Stamping the
-  role alone makes the two identical.
+- compose the brief with `brief.py --role <role> --emulated "<reason>"`
+  (the role, never the generic type), so the spawn log records the
+  emulation and `protocol.deliver` can tell it from a silent substitution.
 
 Role emulation is a degradation: a generic worker carries the spawn tool
 and write tools, so the leaf recursion cap and the read-only bound drop
@@ -166,17 +165,18 @@ Every delegation carries a **`spawn_id`**, a dot-chained correlation id
 the caller mints by extending its own: the session's first spawns are
 `orchestrator.1`, `orchestrator.2`, …; a coordinator spawned as
 `orchestrator.3` mints `orchestrator.3.architect.1` for its own first
-child, and so on. The brief states it; the handback echoes it verbatim
-(`spawn_id:` field, `templates/prompts/handback-payload.md`); the
-delivery record and grill.md §15 cite it wherever a spawn's work is
-referenced. The chain is the trace: any handback's id reconstructs the
+child, and so on. The brief states it and `brief.py` logs it with the role,
+routing line and effort in `docs/graph/plans/spawns.jsonl`, refusing an id
+already logged for another role; the host pairs each handback with its spawn,
+and the delivery record and grill.md §15 cite the id wherever a spawn's work
+is referenced. The chain is the trace: any spawn's id reconstructs the
 full delegation path without any infrastructure, and an id deeper than
 the caller's `max_spawn_depth` allows is a bound violation on its face.
 Only a caller mints one; a leaf has no children to trace.
 
 Before a session resumed after a compaction or a restart mints its next
 `spawn_id`, it cites the highest ordinal already on record (the
-plan-of-record, §15, or the handbacks on disk) and continues the chain from
+spawn log, `brief.py --log`) and continues the chain from
 there, because an id minted without that evidence may reuse one already
 issued. **Mint a `spawn_id` at spawn time and at no other time.** A spawn
 that ran without one is recorded as missing and cited by its artifact path

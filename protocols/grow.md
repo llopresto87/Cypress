@@ -117,8 +117,8 @@ the deepest legal chain is orchestrator → multi-agent-architect → architect
 → leaf (depth 3). Leaf workers carry no `Task` tool and cannot recurse: at an
 out-of-domain boundary they stop and return the handback payload
 (`docs/graph/templates/prompts/handback-payload.md`) naming the next specialist. Every
-worker, delegating or leaf, ends its turn with that payload carrying
-`produced_by` and `route_evidence`.
+worker, delegating or leaf, ends its turn with that payload; `brief.py`
+logs who was spawned and why (`delegation.tracing`).
 
 Two host conditions look alike here and only one is fatal. If the host cannot
 spawn clean-context workers with selectable model classes, stop and report that

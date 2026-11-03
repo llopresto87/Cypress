@@ -106,8 +106,8 @@ work with this owner goes to `crosscut.operator`
 (`docs/graph/nodes/_operator.template.md`); an owner rule about the
 project goes to the node that owns its topic, and a procedure to a project
 skill. A corrected assumption is fixed in place, in the node or leaf that
-asserted the wrong thing. Resume state is not placed
-("resume state; stays in the record"). Anything else is placed where it belongs, or not placed
+asserted the wrong thing. Paused state is not placed
+("paused state; stays in the record"). Anything else is placed where it belongs, or not placed
 with the reason. Per item the librarian appends one line to "Canonize
 status",
 `- <section> <item> → <node id and fact key, or file>` or

@@ -187,7 +187,7 @@ ROWS = [
         PLACE_ANCHOR + '    place_file "$SEED_ROOT/tools/graft-audit.py" "$g/graft-audit.py"\n'), ("manifest.json", "tools/graft-audit.py")),
     # SPEC-0003 BRIEF_TEMPLATES_BYTE_IDENTICAL, the COMPANION block. exercises: check
     ("X396 BRIEF_TEMPLATES_BYTE_IDENTICAL COMPANION block drift", "check", lambda: sub("templates/prompts/investigation-brief.md",
-        r"(COMPANION \(echo each item back in your handback\):\n- Trace )this( spawn\.)", r"\1that\2", True), ("investigation-brief.md", "COMPANION")),
+        r"(COMPANION:\n- Routed by: )", r"\1the ", True), ("investigation-brief.md", "COMPANION")),
     # the reference's quoted load_when strings follow the frontmatter (D2, seed-release.dedupe-rule). exercises: check_reference_tables
     ("reference-load-when-drift", "check_reference_tables", lambda: sub("documentation/protocols-reference.md",
         r'"record a\s+missing or skipped gate"', '"record a skipped gate"', True), ("load_when", "protocol.verify")),
@@ -214,8 +214,8 @@ ROWS = [
     ("frontmatter-ceiling", "check_body_ceiling", lambda: sub("protocols/canonize.md", r"\A(---\n)", "\\1" + "".join(f"pad_{n}: x\n" for n in range(200)), True), "frontmatter is"),
     ("registration-referrer", "check_text_rules", lambda: put("protocols/grow.md", read("protocols/grow.md").replace("delegation.harness-registration", "x")), "REGISTRATION_POINTER: protocols/grow.md"),
     ("X349 STALE_POINTER", "check_text_rules", lambda: append("protocols/grow.md", "Brief rules: `docs/graph/method/delegation.md` (`delegation.briefs`)."), "delegation.briefs; point at core/method/delegation-briefs.md"),
-    ("X350 HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP effort", "check_text_rules", lambda: sub("templates/prompts/handback-payload.md", r"^- effort:[^\n]*\n", "", True), "has 0 lines matching '^- effort:'"),
-    ("X351 HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP expertise_gap", "check_text_rules", lambda: sub("templates/prompts/handback-payload.md", r"^- expertise_gap:[^\n]*\n", "", True), "has 0 lines matching '^- expertise_gap:'"),
+    ("X350 HANDBACK_STARTS_AT_STATUS an echo field back", "check_text_rules", lambda: sub("templates/prompts/handback-payload.md", r"^(- status:)", "- produced_by: {{you}}\n\\1", True), "HANDBACK_STARTS_AT_STATUS: templates/prompts/handback-payload.md"),
+    ("X351 HANDBACK_STARTS_AT_STATUS expertise_gap", "check_text_rules", lambda: sub("templates/prompts/handback-payload.md", r"^- expertise_gap:[^\n]*\n", "", True), "has 0 lines matching '^- expertise_gap:'"),
     ("X352 BOOTSTRAP_STEP2_LOADS_A_MENU reworded", "check_text_rules", lambda: sub("templates/prompts/graph-session-bootstrap.md", "2. Load ONLY the reported nodes", "2. Load every reported node"), "BOOTSTRAP_STEP2_LOADS_A_MENU"),
     ("X352 BOOTSTRAP_STEP2_LOADS_A_MENU case changed", "check_text_rules", lambda: sub("templates/prompts/graph-session-bootstrap.md", "2. Load ONLY the reported nodes", "2. Load only the reported nodes"), "BOOTSTRAP_STEP2_LOADS_A_MENU"),
     ("X353 BOOTSTRAP_STEP2_LOADS_A_MENU re-wrapped passes", "check_text_rules", lambda: sub("templates/prompts/graph-session-bootstrap.md", r"(2\. Load ONLY the reported nodes plus their `requires:` closure\.)\n\s+", r"\1 ", True), "BOOTSTRAP_STEP2_LOADS_A_MENU", True),

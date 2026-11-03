@@ -136,16 +136,46 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   verdict, the blockers and the findings to act on, and repeats a gate only
   when it failed. `next_route_evidence` is gone: 99% of its values were
   "not run", and the caller routes the next hop itself.
+- **Workers stop echoing what their caller knows; `brief.py` logs the spawn.**
+  The owner decided on 2026-11-03 that a handback carries nothing its caller
+  already holds. Every composed brief appends one line to
+  `docs/graph/plans/spawns.jsonl` (spawn_id, role, task, route, effort,
+  emulation), and `brief.py --log` prints the delivery's
+  attribution lines. A spawn_id already logged for another role is refused,
+  and `--emulated "<reason>"` records a role emulation. The HANDBACK payload now
+  starts at `status:`: `produced_by`, `spawn_id`, `route_evidence`, `effort` and
+  `harness_override` are gone, and the deliver-time attribution assertion reads
+  the log, so a hand-composed brief now shows up as a missing record. Prime
+  Agent spawns each child with `name=<spawn_id>` so a reply pairs with its
+  spawn the same way a Task result does on Claude Code. SPEC-0005 retires
+  HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP and adds HANDBACK_STARTS_AT_STATUS
+  and SPAWN_LOG_RECORDS_THE_ATTRIBUTION.
+- **Smaller brief blocks.** The owner decided on 2026-11-03 to rewrite the
+  blocks every brief carries compactly. The GRAPH DISCIPLINE, COMPANION and
+  HANDBACK blocks went from 6,014 to 3,354 bytes per brief with the same seven
+  steps and the same fields minus the echoes; SPEC-0003 moves its
+  byte-identity baseline to this commit. Each charter's handback section is now
+  a two-line pointer in the instruction voice (7,476 to 4,820 bytes across the
+  roster).
+- **Each close-out fact has one home (ADR-0032).** The owner decided on
+  2026-11-03 to keep the session record and stop writing the same account in
+  several places. The delivery is written once, as the plant `changelog.md`
+  entry, with a pointer line in `grill.md` §15 and in the chat. The record's
+  "Open threads" becomes "Paused state", for a live operation stopped
+  mid-flight; progress and the next action stay in `grill.md` §15/§14, which a
+  session now reads first when it resumes. Owner rules, corrected assumptions,
+  harness migration and canonize status stay in the record, which every T2/T3
+  unit still opens.
 - **Every session loads less.** An audit of each recurring instruction
   surface against both plants' trajectories cut what no agent acted on or what
-  a tool now enforces. The kernel is 7,017 bytes (was 8,062): the role
+  a tool now enforces. The kernel is 7,049 bytes (was 8,062): the role
   paragraph, the manual block-embedding instruction `brief.py` replaced and a
   map the FIRST MOVE already gives are gone; §4, the fresh-worker and
   no-orchestrator clauses and every lint-pinned anchor stay. The Prime Agent
-  overlay is 3,270 bytes (was 5,182): its restatement of the kernel, a
+  overlay is 3,332 bytes (was 5,182): its restatement of the kernel, a
   close-out section `skill.toolcraft` and `method.stewardship-posture` own,
   and the unused `goal`/heartbeat lines are gone. Every-session load is now
-  24,175 bytes on Claude Code (8.2.0: 25,791) and 18,372 on Prime Agent
+  24,207 bytes on Claude Code (8.2.0: 25,791) and 18,466 on Prime Agent
   (21,799).
 - **`grill-planner` folds into `protocol.grill`.** Every rule the skill
   stated already had a home: append-only (kernel §3.3), stable section

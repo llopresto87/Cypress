@@ -1500,10 +1500,11 @@ _KNOWLEDGE = "libraries|sources|{}runbooks|product|architecture|api|data|evaluat
 TEXT_RULES = (
     ("REGISTRATION_POINTER", "require", lambda: _files(files=REGISTRATION_REFERRERS),
      re.escape(REGISTRATION_FACT), {}),
-    ("HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP", "once",
-     lambda: ["templates/prompts/handback-payload.md"], r"^- effort:",
+    ("HANDBACK_STARTS_AT_STATUS", "forbid",
+     lambda: ["templates/prompts/handback-payload.md"],
+     r"^- (?:produced_by|spawn_id|route_evidence|effort|harness_override):",
      {"section": r"(?ms)^```[^\n]*\nHANDBACK\n.*?^```"}),
-    ("HANDBACK_CARRIES_EFFORT_AND_EXPERTISE_GAP", "once",
+    ("HANDBACK_STARTS_AT_STATUS", "once",
      lambda: ["templates/prompts/handback-payload.md"], r"^- expertise_gap:",
      {"section": r"(?ms)^```[^\n]*\nHANDBACK\n.*?^```"}),
     ("BOOTSTRAP_STEP2_LOADS_A_MENU", "require",
@@ -1701,8 +1702,8 @@ def check() -> None:
             if m.group(1) not in text:
                 fail(f"{rel}: embedded {block} block has drifted from "
                      f"the canonical copy in {canonical.name} — sync it verbatim")
-    # -- spawn tracing: every brief and the handback carry spawn_id -------
-    for rel in ("templates/prompts/handback-payload.md",) + BRIEF_TEMPLATES:
+    # -- spawn tracing: every brief and the spawn log carry spawn_id ------
+    for rel in ("tools/brief.py",) + BRIEF_TEMPLATES:
         p = ROOT / rel
         if p.exists() and "spawn_id" not in p.read_text(encoding="utf-8"):
             fail(f"{rel}: no spawn_id field — the delegation trace chain "

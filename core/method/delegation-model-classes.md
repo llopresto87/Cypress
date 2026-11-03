@@ -172,8 +172,8 @@ A spawn's effort is derived from the first row that matches:
 The brief's routing evidence records one line,
 `effort: <value> (row <n>: <reason>)`. When the value differs from the agent
 definition's default on a host with no recorded per-spawn setting, the line adds
-`host applies: definition default <value>`, so the departure is visible. The
-handback echoes the line in its `effort:` field.
+`host applies: definition default <value>`, so the departure is visible;
+`brief.py --effort` logs the line in the spawn log.
 
 Departures fail closed. For rows 3 to 5, route to a definition that carries the
 needed effort, or accept the recorded departure. For row 1 the step goes to a

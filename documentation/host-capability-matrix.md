@@ -45,7 +45,7 @@ class is.
 
 No cell is `detective` or `judgment`, because this table asks one question only:
 does the harness hold the bound at runtime. The seed's `detective` and
-`judgment` controls (the `produced_by` assertion, the gate tables in `graft`,
+`judgment` controls (the deliver-time attribution assertion, the gate tables in `graft`,
 `grow` and `harvest`) are host-independent, and each is classed in its own
 node.
 
@@ -95,7 +95,7 @@ opencode under that rule, and targets no frozen host.
 | Per-session injection dedup | mechanically enforced | unsupported | unsupported | degraded³ | mechanically enforced⁵ |
 | Pre-tool guard | mechanically enforced | unsupported | unsupported | unsupported | unsupported |
 | Slash commands | mechanically enforced | mechanically enforced | unsupported | mechanically enforced | mechanically enforced |
-| Always-applied instructions | mechanically enforced (24 175 B) | mechanically enforced (24 175 B) | mechanically enforced (≤ 24 175 B)⁴ | mechanically enforced (29 819 B) | mechanically enforced (18 372 B) |
+| Always-applied instructions | mechanically enforced (24 207 B) | mechanically enforced (24 207 B) | mechanically enforced (≤ 24 207 B)⁴ | mechanically enforced (29 851 B) | mechanically enforced (18 466 B) |
 
 ¹ The leaf/coordinator split (who holds the spawn tool at all: `Agent` on Claude Code, `Task` accepted) is read by the
 harness from each agent's `tools:` line, and ADR-0003 classes that read
@@ -498,11 +498,11 @@ function's own computation against current sources:
 
 | Harness | Formula | Measured |
 |---|---|---|
-| Claude Code | kernel + agent descriptions + skill descriptions | 24 175 B |
-| opencode | kernel + agent descriptions + skill descriptions | 24 175 B |
-| Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 24 175 B |
-| Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 18 372 B |
-| GitHub Copilot | kernel + agent descriptions + skill descriptions + pointer boilerplate | 29 819 B |
+| Claude Code | kernel + agent descriptions + skill descriptions | 24 207 B |
+| opencode | kernel + agent descriptions + skill descriptions | 24 207 B |
+| Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 24 207 B |
+| Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 18 466 B |
+| GitHub Copilot | kernel + agent descriptions + skill descriptions + pointer boilerplate | 29 851 B |
 
 The component figures live in `check_eager_surface()` in `tests/seed-lint.py`,
 their one home, and `check_published_figures()` beside it holds this table to

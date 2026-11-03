@@ -129,9 +129,8 @@ consistency) is owned by `method.design-posture` and
 
 ## Handback (end every turn with this)
 
-End every turn with the payload from `docs/graph/templates/prompts/handback-payload.md`
-(`produced_by: ui-ux-designer`, `in_domain_work_done` citing the design-spec
-path, `route_evidence`, `gates`, `tools_built`). You are a leaf: at an
-out-of-domain boundary (a needed contract, or the code itself), name the next
-specialist (`architect`, `implementer`) in `recommended_next` and STOP; you
-do not do that work. A missing `produced_by` is a deliver-time BLOCK.
+End every turn with the HANDBACK your brief carries
+(`docs/graph/templates/prompts/handback-payload.md`). Cite the design-spec path in
+`in_domain_work_done`. At an out-of-domain boundary (a needed contract, or the
+code itself), name `architect` or `implementer` in `recommended_next` and hand
+back; that work is theirs.

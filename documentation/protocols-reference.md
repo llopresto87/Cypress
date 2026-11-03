@@ -1192,7 +1192,7 @@ T0/T1 self-record line is present).
 - **peers:** `protocol.canonize`, `protocol.recover`
 - **load_when:** "session is ending, wrap up, hand off"; "delivery summary,
   cold pickup"; "what did we change, session report"; "attribution,
-  produced_by, routing evidence"; "decisions for the owner, options to
+  produced_by, routing evidence, spawn log"; "decisions for the owner, options to
   approve, answer by number"; "every remaining step is the owner's, goal
   loop or stop hook keeps firing"; "session metrics after each increment,
   cost and quality so far"
@@ -1206,7 +1206,7 @@ session ends with a delivery, compact for T0/T1, full for T2/T3: files
 changed, routing attribution, docs updated, decisions, gates with
 outcomes, limitations, and **one** recommended next step. The
 deliver-time attribution assertion is **detective** (ADR-0003): a unit of
-work with no `produced_by` is a BLOCK, and the session running the
+work with no spawn record is a BLOCK, and the session running the
 assertion is what calls it. A session without a delivery summary is
 paused, not finished, so every session runs this protocol.
 
@@ -1229,10 +1229,12 @@ not T1; reclassify and take the full path. The compact form appends to
 grill.md §15 only when it changed a file.
 
 **Full form (Tier 2/3).** Runs after the `canonize` close-out spawn has
-confirmed (or record-emptied) knowledge and tools. State the summary in
-the chat AND append the same content to `docs/graph/changelog.md` and to
-grill.md §15. The full form has sections: Files changed; Routing
-attribution (per unit of work: `produced_by` + route band/line);
+confirmed (or record-emptied) knowledge and tools. Write the delivery
+once, as the `docs/graph/changelog.md` entry; grill.md §15 gets one line
+pointing at that entry, and the chat gets the summary with the same
+pointer. The full form has sections: Files changed; Routing
+attribution (per unit of work: spawn_id, `produced_by` and route, the
+lines `brief.py --log` prints);
 Documentation created or updated; Key decisions; Gates run (each as
 executed, discovered or absent; a failing gate is fixed, or its increment
 goes out marked WIP under Known limitations with the failure record
@@ -1271,29 +1273,29 @@ a cost this summary imposes on every later turn.
 
 ### Routing-attribution assertion (detective) (`deliver.attribution-assertion`)
 
-Before sign-off, attribute every unit of work to the specialist that
-produced it, reading `produced_by` and `route_evidence` from the
-handback payloads. Then:
+Before sign-off, attribute every unit of work to the spawn that
+produced it. `python3 docs/graph/brief.py --log` prints one line per
+spawn from the spawn log `brief.py` wrote when it composed each brief
+(`docs/graph/plans/spawns.jsonl`): spawn_id, role, route, effort and any
+emulation. Then:
 
-- Missing `produced_by` on any unit of work → BLOCK.
-- Out-of-domain authoring → FLAG: a `produced_by` specialist whose
-  `routing_triggers` do not cover the work it authored.
+- A unit of work with no spawn record → BLOCK. A brief composed by hand
+  leaves no record, so every brief goes through `brief.py`.
+- Out-of-domain authoring → FLAG: a role whose `routing_triggers` do not
+  cover the work it authored.
 - Unexplained generic-role override → FLAG: a HIGH band for
   specialist X but the work was produced by a generic role or a
-  different specialist with no recorded rationale.
-- Role emulation → FLAG unless declared: a worker running as a
-  generic type wearing a specialist's role must carry
-  `harness_override: role-emulated (<reason>)` in its handback. Report
-  the count in the delivery.
+  different specialist, and the logged route carries no rationale.
+- Role emulation → FLAG unless logged: a worker running as a generic
+  type wearing a specialist's role is composed with
+  `brief.py --emulated "<reason>"`, so its record says so. Report the
+  count in the delivery.
 
 This assertion runs in the top session at `deliver`, where the whole
-delivery is in view; no hook the seed installs reads a worker's result
-(`delegation.briefs`). A top-session Stop hook that greps the delivery for
-attributions stays deliberately unwired until this plant's real deliveries
-carry `produced_by` (a
-gate landed before the thing it checks either checks nothing or blocks
-everything; kernel §3.5, the green-lie rule). Once deliveries carry the
-field, wire it warn-first, then block.
+delivery is in view, and reads a record the tool writes, so it holds on
+every host. A top-session Stop hook could run `brief.py --log` against the
+delivery's attribution lines; wire it warn-first, then block, once a
+plant's deliveries carry those lines (kernel §3.5, the green-lie rule).
 
 ### The cold-pickup test
 
@@ -1544,7 +1546,8 @@ only from their `delegates_to` allowlist and under their
 multi-agent-architect → architect → leaf (depth 3). Leaf workers carry
 no `Task` tool: at an out-of-domain boundary they stop and return the
 handback payload naming the next specialist. Every worker ends its turn
-with a payload carrying `produced_by` and `route_evidence`.
+with that payload; `brief.py` logs who was spawned and why
+(`delegation.tracing`).
 
 Two host conditions look alike and only one is fatal. If the host
 cannot spawn clean-context workers with selectable model classes, stop

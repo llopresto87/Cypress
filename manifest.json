@@ -225,7 +225,7 @@
     {
       "file": "protocols/deliver.md",
       "name": "deliver",
-      "role": "Session summary: compact form for T0/T1, full cold-pickup form for T2/T3 after the close-out; carries the fail-closed produced_by attribution assertion."
+      "role": "Session summary: compact form for T0/T1, full cold-pickup form for T2/T3 after the close-out; carries the detective attribution assertion over the brief.py spawn log."
     },
     {
       "file": "protocols/harvest.md",
@@ -417,7 +417,7 @@
     },
     {
       "file": "templates/prompts/handback-payload.md",
-      "produces": "the standard cross-agent HANDBACK block every specialist ends its turn with; the routing-attribution carrier the deliver-time produced_by assertion reads"
+      "produces": "the standard cross-agent HANDBACK block every specialist ends its turn with; starts at status:, and the host pairs it with the spawn brief.py logged"
     }
   ],
   "tools": {
