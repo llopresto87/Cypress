@@ -100,7 +100,7 @@ Coordinators as an edge list of `delegates_to` allowlists (every row is a shippe
 |---|---|---|
 | `orchestrator` | 3 | `architect`, `implementer`, `reviewer`, `tester`, `security`, `reliability`, `data-ml`, `product`, `docs-librarian`, `research-scout`, `devils-advocate`, `pentest`, `multi-agent-architect`, `growth-orchestrator`, `growth-scout`, `seed-installer`, `ui-ux-designer`, `tool-smith` |
 | `architect` | 1 | `tester`, `research-scout` |
-| `reviewer` | 1 | `security`, `reliability` |
+| `reviewer` | 1 | `reliability` |
 | `docs-librarian` | 1 | `research-scout` |
 | `growth-orchestrator` | 2 | `growth-scout`, `seed-installer`, `docs-librarian`, `architect`, `research-scout`, `tester`, `ui-ux-designer` |
 | `multi-agent-architect` | 2 | `architect`, `tester`, `implementer`, `reviewer`, `data-ml`, `security`, `reliability` |
@@ -201,7 +201,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **Role:** Senior code reviewer. Audits diffs against the plan, the architecture, the wiki idioms, the project's conventions, and integration coherence (a change must be integrated, not bolted on).
 - **model class:** `opus`
 - **effort (default):** `medium`
-- **Delegation:** coordinator with `can_delegate: true`, `max_spawn_depth: 1`, `delegates_to:` `security`, `reliability`
+- **Delegation:** coordinator with `can_delegate: true`, `max_spawn_depth: 1`, `delegates_to:` `reliability`
 - **tools:** `Read`, `Glob`, `Grep`, `Bash`, `Task`
 - **tier (graph load-tier):** 2
 - **owns (facts):** `reviewer.charter`, `reviewer.spawn-scope`, `reviewer.checklist`, `reviewer.severity-scale`
@@ -220,7 +220,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
   - "checking the change is integrated and not bolted on" — `contract`
   - "go over yesterday's merge and tell me what will break" — `paraphrase`
 
-**Charter.** The reviewer only reads: it writes no files, and its structured review goes in the report body. It compares a diff against the plan, the architecture, the library wiki, and project conventions, and returns findings tagged by severity: critical blocks the increment, major gates the merge, minor and nit are suggestions. For a hard security or operations finding it may spawn `security` or `reliability` via bounded Task (depth 1) and fold their findings in.
+**Charter.** The reviewer only reads: it writes no files, and its structured review goes in the report body. It compares a diff against the plan, the architecture, the library wiki, and project conventions, and returns findings tagged by severity: critical blocks the increment, major gates the merge, minor and nit are suggestions. For a hard operations finding it may spawn `reliability` via bounded Task (depth 1) and fold its findings in; the security pass follows the review as its own spawn (`test-first.security-path`).
 
 ### 7.5 `tester`
 
