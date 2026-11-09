@@ -123,7 +123,9 @@ Failure: SUBMIT_FORM_SCHEMA_INVALID
 ```
 
 Security adds adversarial cases here: prompt injection, tool hijacking,
-data exfiltration when AI is involved.
+data exfiltration when AI is involved. Label a contract that guards a trust
+surface `security`, and name every path to a gated action's effect, so its
+RED carries the controls `method.security-controls` lists.
 
 ### §8 Examples
 

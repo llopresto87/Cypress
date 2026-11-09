@@ -10,7 +10,7 @@ status_evidence: tests/test_graph_lint.py, tests/test_agent_lint.py, tests/test-
 ## 0. Metadata
 
 - **Identifier:** SPEC-0005-cycle-economy
-- **Version:** 0.18 (the security path: TRUST_PATH_TAKES_THE_SECURITY_PASS, TRUST_MARKER_IS_SETTLED, 2026-11-09; every amendment is dated in §12)
+- **Version:** 0.18 (the security path: TRUST_PATH_TAKES_THE_SECURITY_PASS, TRUST_MARKER_IS_SETTLED, SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS, 2026-11-09; every amendment is dated in §12)
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-09-28
@@ -505,10 +505,22 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   security` composes the pass's brief
 - **Then:** `--trust-claims` prints `{"claims": {path: [ids]}}` naming, for
   each path, only the `trust: true` crosscut nodes that claim it; the security
-  brief carries the SECURITY PATH block of `protocols/test-first.md` byte for
+  brief carries the SECURITY PATH block of `method/security-controls.md` byte for
   byte, and no other role's brief carries it
 - **And:** a `trust:` key on a node of another kind, or with a value other
   than `true` or `false`, is a lint error
+
+### Contract: SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS
+- **Test file:** `tests/test-brief.sh`
+- **Given:** a plant with `docs/graph/brief.py` and `method/security-controls.md`
+- **When:** `brief.py --role tester --security-path` composes a RED brief
+- **Then:** the brief carries the SECURITY PATH block byte for byte, and the
+  block asks one negative control per evasion class (import or alias, helper
+  or factory, string-built or reflective name, the allowed shape only in a
+  comment or string, line terminators other than `\n`, an unpinned value)
+  with "n/a: <why>" for a class that cannot apply, one test per path to a
+  gated action's effect found from the effect's callers, and has the
+  security pass confirm them
 
 ### Contract: TRUST_MARKER_IS_SETTLED
 - **Test file:** `tests/test_graph_lint.py`, `tests/test-graft-tools.sh`
@@ -2341,6 +2353,7 @@ gives.
 | SPAWN_LOG_RECORDS_THE_ATTRIBUTION | X492 the log line, `--log`, `--emulated` and the re-mint refusal | tests/test-brief.sh | fixture | green |
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | X494 TrustClaimTests: a path claimed by `repo:` and one by a file pattern name the trust crosscut; `trust: false` and subsystem paths name none; `trust:` on a subsystem is an error | tests/test_graph_lint.py | fixture | green |
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | X495 the security brief carries the SECURITY PATH block byte for byte; a tester brief does not | tests/test-brief.sh | fixture | green |
+| SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS | X498 a tester brief with `--security-path` carries the block, which names every class, the path tests and the confirmation | tests/test-brief.sh | fixture | green |
 | TRUST_MARKER_IS_SETTLED | X496 TrustMarkerTests: `--trust-unsettled` names the unset and the pathless crosscut only; the lint warns on the pathless one and exits 0 | tests/test_graph_lint.py | fixture | green |
 | TRUST_MARKER_IS_SETTLED | X497 case_run_lists_unsettled_trust_markers: graft-run's judgment items, before the gate table | tests/test-graft-tools.sh | integration (synthetic plant) | green |
 | BOOTSTRAP_STEP2_LOADS_A_MENU | X352, a row of the text-rules table: step 2 reworded alike in all six copies | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
@@ -2697,3 +2710,11 @@ kept outside the seed.
   marker: added TRUST_MARKER_IS_SETTLED (X496, X497). graft-run lists each
   crosscut with no `trust:` field and each pathless `trust: true` crosscut as
   a judgment item for the owner, and graph-lint warns on the pathless one.
+- 2026-11-09 — version 0.18, same session. The owner decided on 2026-11-09
+  that a security contract's RED carries adversarial controls: an A/B of four
+  implementers on a static-rule contract passed every planted control while
+  each rule stayed evadable. Added SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS
+  (X498): the SECURITY PATH block, now its own node `method.security-controls`
+  (moved out of `protocols/test-first.md`), asks RED for one negative control per
+  evasion class and one test per path to a gated effect, and the security
+  pass confirms them.

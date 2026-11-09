@@ -55,9 +55,10 @@ The orchestrator should call you whenever a feature touches:
 - Public network exposure.
 
 After the review of an increment on the security path
-(`test-first.security-path`), you run its one adversarial pass: work the
-SECURITY PATH block your brief carries against the diff, and later the one
-light re-check of the fix your findings produced.
+(`test-first.security-path`), you run its one adversarial pass: confirm the
+controls the SECURITY PATH block your brief carries asked of RED, run each
+class against the diff, and later make the one light re-check of the fix your
+findings produced.
 
 ## Threat-model template
 

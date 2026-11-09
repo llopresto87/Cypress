@@ -16,6 +16,7 @@ requires:
   - skill.test-first
 peers:
   - method.delegation-cycle-economy
+  - method.security-controls
   - protocol.verify
   - protocol.specify
   - skill.holistic-editing
@@ -128,26 +129,20 @@ handback (`rule.grill`).
 **A change to a trust surface takes the security path
 (`test-first.security-path`).** A trust surface grants, gates or checks: auth,
 a disabled or confirmed action, a secret, a permission, a static rule that
-enforces one. The trigger is mechanical, never the reviewer's rating: the
+enforces one. The path is set mechanically, never by the reviewer's rating: the
 increment writes a file `python3 docs/graph/graph-lint.py --trust-claims
 <files>` names (a path a `crosscut` node marked `trust: true` claims by its
-`repo:` or a file pattern), or §9 labels one of its contracts `security`. After
-REVIEW the session spawns `security` once (`brief.py --role security`, which
-embeds the block below) with why the pass is required and every reviewer
-finding on the covered files whatever its rating. Its findings go to one fresh
-`implementer`, and one light `security` re-check of that fix closes the pass:
-one round, then COMMIT, or `protocol.recover` for what the re-check still
-breaks.
+`repo:` or a file pattern), or §9 labels one of its contracts `security`.
 
-```
-SECURITY PATH
-Break the change; a bypass counts once you have run it.
-1. A second path to a disabled or gated action: retry, back or resume, deep link, second window, callback, a race.
-2. Evasion of a static rule: alias import, wrapper or helper, factory, a name built from strings, a comment or string that hides or fakes the pattern.
-3. An unpinned value where one value is allowed: prefix and suffix extensions, case variants, extra fields or parameters.
-4. Line terminators other than \n: CR, CRLF, U+2028, U+2029, NEL in comments, strings and scanned code.
-Report each attempt, blocked or bypass, and the test that pins it.
-```
+At RED the tester writes the controls of `method.security-controls` for each
+such contract (`brief.py --role tester --security-path` embeds its block):
+green then means the threat model holds, beyond the controls the spec plants.
+After REVIEW the session spawns `security` once (`brief.py --role security`,
+which embeds the same block) with why the pass is required and every reviewer
+finding on the covered files whatever its rating; it confirms the controls and
+runs each class against the diff. Its findings go to one fresh `implementer`,
+and one light `security` re-check of that fix closes the pass: one round, then
+COMMIT, or `protocol.recover` for what the re-check still breaks.
 
 ### RED — write the failing test
 

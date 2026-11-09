@@ -39,6 +39,7 @@
     "core/method/bounded-execution.md": "method.bounded-execution node — a command that may outlive its session is detached, logged and ended by a marker. Installed to docs/graph/method/.",
     "core/method/design-posture.md": "method.design-posture node — SOLID/responsibility design cluster. Installed to docs/graph/method/.",
     "core/method/restrictive-policy.md": "method.restrictive-policy node — a restrictive rule keeps the default path working; decided fallbacks, report-only destructive operations. Installed to docs/graph/method/.",
+    "core/method/security-controls.md": "method.security-controls node — the adversarial negative controls a security contract's RED writes and the security pass confirms. Installed to docs/graph/method/.",
     "core/method/maintenance-contracts.md": "method.maintenance-contracts node — one maintenance contract per artifact, what a generated artifact owes, doc-versus-code precedence. Installed to docs/graph/method/.",
     "core/method/design-governance.md": "method.design-governance node — the project's contract outranks the brief and the industry default; maintained primitives for security-critical machinery. Installed to docs/graph/method/.",
     "core/method/stewardship-posture.md": "method.stewardship-posture node — records, verification, knowledge, the session record (harness memory is not a home), session closure, tools. Installed to docs/graph/method/.",

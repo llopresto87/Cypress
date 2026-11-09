@@ -265,6 +265,9 @@ part it needs. The first four leaves below sit beside
 - [Maintenance contracts](core/method/maintenance-contracts.md): who
   maintains each artifact, what a generated one owes, and which copy wins
   when two drift.
+- [Security controls](core/method/security-controls.md): the negative
+  control per evasion class, and the test per path to a gated effect, that a
+  security contract's RED writes and the security pass confirms.
 - [Design governance](core/method/design-governance.md): the project's own
   contract outranks the brief and the industry default, and security-critical
   machinery uses maintained primitives.
