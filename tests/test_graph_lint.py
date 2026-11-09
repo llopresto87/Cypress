@@ -3178,5 +3178,30 @@ class TrustClaimTests(_TmpCase):
                       r.stdout + r.stderr)
 
 
+
+class TrustMarkerTests(_TmpCase):
+    """SPEC-0005 TRUST_MARKER_IS_SETTLED: `--trust-unsettled` names each
+    crosscut with no `trust:` field and each `trust: true` crosscut that
+    claims no path; the plain lint warns on the pathless one only."""
+
+    def test_x496_unset_and_pathless_are_named(self):
+        extra = {
+            "crosscut.privacy": node_md("crosscut.privacy", "crosscut", load_when=["personal data"]),
+            "crosscut.gate": with_trust(node_md("crosscut.gate", "crosscut",
+                                                load_when=["disabled action"]), "true"),
+        }
+        plant = trust_plant(self.tmp, extra)
+        with (plant / "docs" / "graph" / "index.md").open("a", encoding="utf-8") as f:
+            f.write("- crosscut.privacy\n- crosscut.gate\n")
+        r = run_plant_tool(plant, "--trust-unsettled")
+        self.assertEqual(r.returncode, 0, f"{r.stdout}\n{r.stderr}")
+        got = {i["id"]: i["problem"] for i in json.loads(r.stdout)["unsettled"]}
+        self.assertEqual(got, {"crosscut.privacy": "unset", "crosscut.gate": "pathless"})
+        lint = run_plant_tool(plant)
+        self.assertEqual(lint.returncode, 0, f"{lint.stdout}\n{lint.stderr}")
+        self.assertIn("crosscut.gate is `trust: true` and claims no path", lint.stdout + lint.stderr)
+        self.assertNotIn("crosscut.privacy", lint.stdout + lint.stderr)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

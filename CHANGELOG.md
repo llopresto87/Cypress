@@ -233,6 +233,13 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   files goes with it. Its findings go to one fixer and one light re-check by
   `security`: one round, no loop. SPEC-0005 adds
   TRUST_PATH_TAKES_THE_SECURITY_PASS.
+- **Graft and grow settle the trust marker.** `graph-lint.py
+  --trust-unsettled` lists each crosscut node with no `trust:` field and each
+  `trust: true` crosscut that claims no path, and the plain lint warns on the
+  second. `tools/graft-run.py` prints them as judgment items before the gate
+  table; the graft's Phase 8 entry and grow's delivery name each one left open
+  and put it to the owner as a numbered decision. SPEC-0005 adds
+  TRUST_MARKER_IS_SETTLED.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 

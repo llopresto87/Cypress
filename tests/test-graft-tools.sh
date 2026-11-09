@@ -1358,6 +1358,9 @@ xr_run() {  # xr_run <dup|own> -> $GR/xr-<arm>/{zephyrplant,stage,run.out,run.er
     "$owns" > "$p/docs/graph/protocols/toolcraft.md"
   printf '# grill\n\n## 6. Decisions Made\n| Decision | Evidence | Reversibility |\n|---|---|---|\n| Ship one signed bundle | build.gradle | expensive after go-live |\n' \
     > "$p/docs/graph/plans/grill.md"
+  # X497: a crosscut with no trust: field and a trust: true one that claims no path
+  printf -- '---\nid: crosscut.privacy\nkind: crosscut\n---\n# Privacy\n' > "$p/docs/graph/nodes/crosscut.privacy.md"
+  printf -- '---\nid: crosscut.gate\nkind: crosscut\ntrust: true\n---\n# Gate\n' > "$p/docs/graph/nodes/crosscut.gate.md"
   if [ "$1" = dup ]; then
     python3 - "$KG/grill-lint.py" "$p/docs/graph/grill-lint.py" <<'PY'
 import sys
@@ -1437,6 +1440,25 @@ case_run_names_plan_defects_the_upgrade_raises() {
   row="$(grep -E '^graft\.gate\.plans:' "$GR/xr-own/run.out" || true)"
   echo "$row" | grep -Eq '^graft\.gate\.plans:[[:space:]]*PASS' \
     || { echo "with no defect raised by the upgrade the plans row must PASS: $row"; return 1; }
+}
+
+# X497, SPEC-0005 TRUST_MARKER_IS_SETTLED: graft-run prints the trust markers
+# the copy leaves unsettled as judgment items before the gate table: the
+# crosscut with no trust: field and the trust: true one that claims no path,
+# each to go to the owner as a numbered decision.
+case_run_lists_unsettled_trust_markers() {
+  local out
+  gr_need || return 1; gr_fixture || return 1
+  xr_run own || return 1
+  out="$GR/xr-own/run.out"
+  grep -q '^Judgment items (2;.*numbered decision' "$out" \
+    || { echo "no judgment items header naming two items as numbered decisions: $(flat "$out")"; return 1; }
+  grep -q '^  trust: crosscut.privacy has no `trust:` field' "$out" \
+    || { echo "the unset crosscut is not listed: $(flat "$out")"; return 1; }
+  grep -q '^  trust: crosscut.gate is `trust: true` and claims no path' "$out" \
+    || { echo "the pathless trust crosscut is not listed: $(flat "$out")"; return 1; }
+  [ "$(grep -n '^Judgment items' "$out" | cut -d: -f1)" -lt "$(grep -n '^Integrity gate' "$out" | cut -d: -f1)" ] \
+    || { echo "the judgment items do not come before the gate table"; return 1; }
 }
 
 case_run_exits_1_when_a_gate_blocks() {
@@ -1666,6 +1688,7 @@ collect_case GR-g case_run_exits_1_when_a_gate_blocks "a run whose gate table ho
 collect_case GR-j case_run_routes_runs_hook_check "graft.gate.routes runs install.sh <host> --check, the hook check, once per recorded host"
 collect_case X469 case_run_ties_lint_errors_to_retired_nodes "GRAFT_RUN_TIES_LINT_ERRORS_TO_RETIRED_NODES: GR-k: a retired seed protocol that repeats a seed fact-key: routes BLOCK, named RETIRED, its lint error tied to it"
 collect_case X493 case_run_names_plan_defects_the_upgrade_raises "GRAFT_RUN_NAMES_PLAN_DEFECTS_THE_UPGRADE_RAISES: graft.gate.plans BLOCKs on a defect only the upgraded engine raises, names it, counts the rest; PASS when nothing is raised"
+collect_case X497 case_run_lists_unsettled_trust_markers "TRUST_MARKER_IS_SETTLED: graft-run lists a crosscut with no trust: field and a pathless trust: true crosscut as judgment items, before the gate table"
 collect_case GR-h case_run_passes_inferred_base_to_audit "an inferred base is passed to graft-audit as --base"
 collect_case GL-e case_ledger_base_predates_history "a stamp older than the retained history: the inferred base is a lower bound, --base-dir gives the real one"
 collect_case GR-i case_run_infers_adapters_for_old_stamp "a stamp with no tools: adapters inferred from the projections, confirmed with --tools"

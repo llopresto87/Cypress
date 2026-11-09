@@ -840,6 +840,13 @@ paths, schema, relevant existing nodes, and exclusive write scopes. Authors
 build from the ledger's cited claims: a fact the ledger marks `not recorded`
 stays unrecorded, a section marked `none found` is omitted, never invented.
 
+An author writing a `crosscut` node sets its `trust:`: `true` with its paths
+named (its `repo:`, or a file pattern in `load_when`) where it grants, gates or
+checks (auth, a disabled action, a secret, a permission), `false` otherwise
+(`docs/graph/_schema.md`). The delivery names each node
+`graph-lint.py --trust-unsettled` still lists and puts it to the owner as a
+numbered decision.
+
 **What authors find after the freeze goes to one corrections record.** An
 author who meets a ledger claim the source contradicts, a fact two ledgers
 placed in different homes, or a boundary drawn in the wrong place neither
