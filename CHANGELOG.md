@@ -366,6 +366,13 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   task line routes no `expertise.*` or `subsystem.*` node. SPEC-0005 adds
   PLAN_ROLE_LEAVES_OUT_THE_ROLES_OWN_PROMPT and
   BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE.
+- **The reviewer runs no build.** In the same run the reviewer built a
+  simulation project and ran the build on the build host; a ten-minute build
+  let its prompt cache expire, and the rewrite cost $0.91 of the review's
+  $4.13. The reviewer charter now reviews the diff and the gate evidence the
+  builder reports, names a doubted gate as a finding with the run to make, and
+  probes a bypass by its callers or in a scratch script. SPEC-0005 adds
+  REVIEWER_RUNS_NO_BUILD.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 

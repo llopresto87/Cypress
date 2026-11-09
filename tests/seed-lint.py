@@ -1551,6 +1551,9 @@ TEXT_RULES = (
     ("TRUST_MARKER_IS_SETTLED", "require", lambda: ["protocols/grow.md"],
      re.escape("graph-lint.py --trust-unsettled"),
      {"section": r"(?m)^\| `grow\.gate\.disclosure` .*$", "where": " grow.gate.disclosure"}),
+    # the reviewer reads the builder's gate evidence and leaves the builds to it
+    ("REVIEWER_RUNS_NO_BUILD", "require", lambda: ["agents/03-reviewer.md"],
+     re.escape("the builder runs the builds and test suites"), {"collapse": True}),
     # a reviewer finding on a trust path is fixed inside the security pass
     ("TRUST_PATH_TAKES_THE_SECURITY_PASS", "require", lambda: ["protocols/test-first.md"],
      re.escape("the security pass is their one fix round"), {"collapse": True}),
