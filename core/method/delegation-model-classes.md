@@ -165,14 +165,14 @@ match, and the caller passes that value on the spawn: (1) `security`,
 `high`; (2) the row below (`by label`: the hardest increment label of
 `delegation.effort-scale`, low or medium-low → low, medium → medium,
 medium-hard or hard → high; a `first` review of trust-claimed files reads
-`first-trust`); (3) the definition's default.
+`first-trust`; `at most` caps it); (3) the definition's default. The implementer caps at medium (owner, 2026-11-09): replays measured new-screen GREEN 3/5 low, 4/5 medium, 5/5 high at +50% cost, and fix sets 4/5 at low and medium, low at half the cost.
 
 | Role | Kind | Effort |
 |---|---|---|
-| implementer | `increment`: an increment batch | by label |
-| implementer | `flow`: a new screen, flow or stateful contract, unlabelled | high |
-| implementer | `trust`: a change on a trust surface | high |
-| implementer | `fix`: a contained change or a review-fix set | medium |
+| implementer | `increment`: an increment batch | by label, at most medium |
+| implementer | `flow`: a new screen, flow or stateful contract, unlabelled | medium |
+| implementer | `trust`: a change on a trust surface | medium |
+| implementer | `fix`: a contained change or a review-fix set | low |
 | implementer | `mechanical`: an edit, rename or one-line fix | low |
 | tester | `red`: RED for an increment's contracts | by label |
 | tester | `red-trust`: RED for a security or stateful contract | high |

@@ -519,8 +519,10 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
 - **When:** `brief.py` composes a brief with `--kind` (and `--label` for a
   `by label` row), with `--security-path`, or with neither
 - **Then:** stderr carries `effort: <value> (<reason>)`: a reviewer `recheck`
-  is low, an implementer `increment` labelled hard is high and medium-low is
-  low, an architect `ruling` is medium, a `--security-path` brief is high, a
+  is low, an implementer `increment` labelled hard is medium (the
+  implementer's `at most medium` cap) and medium-low is low, a tester `red`
+  labelled hard is high, an implementer `flow` is medium and a `fix` low, an
+  architect `ruling` is medium, a `--security-path` brief is high, a
   `first` review of trust-path files is high, and no kind gives the
   definition's default; the spawn log records the same value
 - **And:** a kind the role has no row for is refused (exit 2) naming the
@@ -2968,3 +2970,8 @@ kept outside the seed.
   at the security controls and the pass that follows the review instead of
   spawning `security`. Added REVIEWER_CHECKS_STATE_AND_PLATFORM, held by
   seed-lint (seen red first).
+- 2026-11-09 — effort replays. The owner allowed capping the implementer at
+  medium if medium proved good enough; replays measured it so. The implementer
+  rows become: increment by label at most medium, flow and trust medium, fix
+  and mechanical low. BRIEF_DERIVES_THE_SPAWN_EFFORT now reads the cap (seen
+  red first).
