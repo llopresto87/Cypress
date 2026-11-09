@@ -8,8 +8,9 @@ HANDBACK block of templates/prompts/handback-payload.md are copied byte for
 byte, with their slots filled, so a brief carries them verbatim by
 construction and neither the caller nor the worker reads the templates.
 `--charter` prepends the role's charter body (frontmatter dropped) for a host
-whose spawn has no agent type to carry it (Prime Agent). A `security` brief also
-carries the SECURITY PATH block of protocols/test-first.md byte for byte
+whose spawn has no agent type to carry it (Prime Agent). A `security` brief, and
+any brief composed with `--security-path` (a RED for a security contract), also
+carries the SECURITY PATH block of method/security-controls.md byte for byte
 (`test-first.security-path`).
 
   python3 docs/graph/brief.py --role tester --spawn-id orchestrator.3.tester.1 \
@@ -42,7 +43,7 @@ from pathlib import Path
 GRAPH = Path(__file__).resolve().parent
 BOOTSTRAP = GRAPH / "templates" / "prompts" / "graph-session-bootstrap.md"
 HANDBACK = GRAPH / "templates" / "prompts" / "handback-payload.md"
-TEST_FIRST = GRAPH / "protocols" / "test-first.md"
+CONTROLS = GRAPH / "method" / "security-controls.md"
 AGENTS = GRAPH / "agents"
 
 
@@ -103,6 +104,8 @@ def main() -> int:
     ap.add_argument("--part", required=True, help="file holding the task part, or - for stdin")
     ap.add_argument("--out", default="", help="write the brief here and print only a pointer prompt")
     ap.add_argument("--plan", default=str(GRAPH / "plans" / "grill.md"))
+    ap.add_argument("--security-path", action="store_true",
+                    help="embed the SECURITY PATH block (a RED for a security contract)")
     ap.add_argument("--emulated", default="",
                     help="this spawn runs a generic host type wearing --role; the reason")
     a = ap.parse_args()
@@ -113,7 +116,8 @@ def main() -> int:
         comp = fenced(BOOTSTRAP, "COMPANION")
         comp = re.sub(r"\{\{the protocol phase.*?\}\}", a.route, comp, flags=re.S)
         payload = fenced(HANDBACK, "HANDBACK")
-        security = fenced(TEST_FIRST, "SECURITY PATH") if a.role == "security" else ""
+        security = (fenced(CONTROLS, "SECURITY PATH")
+                    if a.role == "security" or a.security_path else "")
     except SystemExit as e:
         print(e, file=sys.stderr)
         return 2

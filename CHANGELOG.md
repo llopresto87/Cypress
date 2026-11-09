@@ -259,6 +259,18 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   warm for the whole increment: a fresh worker taking over mid-increment re-reads
   the same code and writes it to the cache again, and a cache write costs about
   40 cache reads.
+- **Security contracts carry adversarial RED controls.** In an A/B of four
+  implementer runs on a static-rule contract, all four passed the spec's four
+  planted controls, and all four rules were evadable by an import alias, a
+  helper or factory call, a string-built class name, and the allowed shape
+  inside a comment. In earlier runs a disabled action stayed reachable by
+  paths no test covered. The SECURITY PATH block is now its own node,
+  `method.security-controls`, the one checklist: for each security contract,
+  RED writes one negative control per evasion class (or "n/a: <why>") and one
+  test per path to a gated action's effect, found from the effect's callers. `brief.py --role tester
+  --security-path` carries it to RED, and the security pass confirms the
+  controls. The tester charter and `skill.spec-author` point to it. SPEC-0005
+  adds SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 

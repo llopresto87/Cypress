@@ -91,7 +91,7 @@ test-first → verify → canonize → deliver.
 | Project does not exist yet | `protocol.initialize` — the same fork, selecting `protocol.from-scratch` because the repository is empty |
 | Loading context minimally | `skill.context-router` |
 | Authoring or linting graph nodes | `skill.knowledge-graph` |
-| Engineering and design posture — the why | `method.engineering-posture` · `method.minimum-sufficient-work` · `method.decision-economy` · `method.host-parity` · `method.bounded-execution` · `method.design-posture` · `method.restrictive-policy` · `method.maintenance-contracts` · `method.design-governance` · `method.stewardship-posture` · `method.secrets-posture` · `method.release-posture` · `method.incident-posture` · `method.contract-posture` · `method.vcs-posture` · `method.prose-posture` |
+| Engineering and design posture — the why | `method.engineering-posture` · `method.minimum-sufficient-work` · `method.decision-economy` · `method.host-parity` · `method.bounded-execution` · `method.design-posture` · `method.restrictive-policy` · `method.maintenance-contracts` · `method.design-governance` · `method.stewardship-posture` · `method.secrets-posture` · `method.release-posture` · `method.incident-posture` · `method.contract-posture` · `method.security-controls` · `method.vcs-posture` · `method.prose-posture` |
 | Prose a person will read: documentation, README, runbook, PR text, delivery summary, or a draft that reads like a model wrote it | `skill.humanizer` (procedure) · `method.prose-posture` (doctrine) |
 | Fold lessons into the seed / carry the seed onto a plant | `protocol.harvest` / `protocol.graft` — user-sovereign: enter them only when the owner starts them; unprompted, only propose one |
 

@@ -74,6 +74,9 @@ strive to write a correct test on the information they have".
    Any implementation, even a throwaway one that proves the test can
    pass, is the implementer's GREEN.
 
+For a security contract, write the negative controls and the path tests of
+the SECURITY PATH block your brief carries (`method.security-controls`).
+
 ## Spec → test flow
 
 The detail of steps 1 to 4:
