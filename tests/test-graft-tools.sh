@@ -1177,6 +1177,31 @@ PY
     || { echo "a base inferred where the stamped version is in the history is called a lower bound: $(flat "$RW/gld.out")"; return 1; }
 }
 
+# GL-f: an adapter file the seed added since the base, which the plant lacks,
+# gets a SEED-NEW row when the plant carries the directory it is placed in;
+# an adapter whose directory the plant lacks gets no row.
+case_ledger_new_adapter_file_is_seed_new() {
+  local s="$RW/adseed" p="$RW/adplant" rc
+  gl_need || return 1
+  rm -rf "$s" "$p"; mkdir -p "$s/protocols" "$s/integrations/claude-code" "$p/.cypress" "$p/docs/graph/protocols" "$p/.claude"
+  printf 'x1\n' > "$s/protocols/x.md"; printf 'route\n' > "$s/integrations/claude-code/route-hook.py"
+  printf '{"name": "cypress", "version": "1.0.0"}\n' > "$s/manifest.json"
+  sgit -C "$s" init -q && sgit -C "$s" add -A && sgit -C "$s" commit -q -m base && sgit -C "$s" tag v1.0.0 \
+    || { echo "fixture: the adapter seed could not be committed"; return 1; }
+  printf 'resume\n' > "$s/integrations/claude-code/resume-hook.py"
+  printf '{"name": "cypress", "version": "1.1.0"}\n' > "$s/manifest.json"
+  sgit -C "$s" add -A && sgit -C "$s" commit -q -m next || { echo "fixture: second commit failed"; return 1; }
+  printf '{"seed": "cypress", "version": "1.0.0", "tools": "claude-code"}\n' > "$p/.cypress/seed.json"
+  cp "$s/protocols/x.md" "$p/docs/graph/protocols/x.md"
+  printf 'route\n' > "$p/.claude/route-hook.py"
+  python3 "$LEDGER" "$p" "$s" >"$RW/ad.out" 2>&1 && rc=0 || rc=$?
+  [ "$rc" -eq 0 ] || { echo "graft-ledger.py exited $rc: $(flat "$RW/ad.out")"; return 1; }
+  grep -Eq '^  SEED-NEW +\.claude/resume-hook\.py  <- integrations/claude-code/resume-hook\.py$' "$RW/ad.out" \
+    || { echo "the new adapter file .claude/resume-hook.py has no SEED-NEW row: $(flat "$RW/ad.out")"; return 1; }
+  ! grep -q '\.github/hooks/\|\.prime/' "$RW/ad.out" \
+    || { echo "an adapter whose directory the plant lacks got a row: $(flat "$RW/ad.out")"; return 1; }
+}
+
 # -- GR: the graft run driver ---------------------------------------------------
 # A plant installed from this seed, then edited so a graft has mechanical work:
 # a stale grill-lint.py, a graph-lint.py whose KIND_PREFIX the plant set, a
@@ -1776,6 +1801,7 @@ collect_case GA-K3 case_audit_record_bold_label_bullets "--record: bold-label bu
 collect_case GA-K4 case_audit_record_zero_files_fails_closed "--record: an entry that parses to zero files fails closed; a declared none passes"
 collect_case X499 case_run_recreated_excludes_seed_new "GRAFT_RUN_RECREATED_LEAVES_OUT_SEED_NEW: graft.gate.recreated-nodes leaves out the ledger's SEED-NEW nodes, which no plant ever carried"
 collect_case X500 case_run_keeps_diverged_machinery "INSTALL_KEEPS_DIVERGED_MACHINERY: a graft rehearsal leaves each KEEP-PLANT and MERGE file the plant's, composes from the kept node, and blocks on a MERGE that lacks the seed's lines"
+collect_case GL-f case_ledger_new_adapter_file_is_seed_new "an adapter file the seed added, in a directory the plant carries, is SEED-NEW; an adapter directory the plant lacks gets no row"
 [ "$CASE_FAILED" -eq 0 ] \
   || { echo "test-graft-tools: FAIL — failing cases (above)" >&2; exit 1; }
 

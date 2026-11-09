@@ -307,6 +307,11 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   rewrites `.claude/agents/` from the nodes on disk and nothing else; the
   STALE line and graft Phase 7 name it. SPEC-0005 adds
   AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK.
+- **The graft ledger rows a new hook file.** `.claude/resume-hook.py`, new in
+  this release, got no ledger row in a plant that runs Claude Code, so the
+  steward's table missed it. `tools/graft-ledger.py` now rows an adapter file
+  the plant lacks as SEED-NEW when the plant carries the directory it goes
+  into.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 
