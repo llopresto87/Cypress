@@ -924,13 +924,13 @@ comp = (p / ".claude/agents/02-implementer.md").read_text()
 if not comp.startswith(charter.rstrip("\n")):
     sys.exit("  the composed implementer does not begin with its charter")
 for i in want:
-    body = home[i].split("\n---\n", 1)[1].strip("\n")
-    if comp.count(f"## Always loaded: {i}\n") != 1:
+    if len(re.findall(rf"^## Always loaded: {re.escape(i)}( \(sections [0-9, ]+\))?$", comp, re.M)) != 1:
         sys.exit(f"  {i}: heading not present exactly once")
-    if comp.count(body) != 1:
-        sys.exit(f"  {i}: body not present exactly once")
     if f"\nid: {i}\n" in comp:
         sys.exit(f"  {i}: its frontmatter reached the agent file")
+whole = home["method.minimum-sufficient-work"].split("\n---\n", 1)[1].split("\n## Neighbours", 1)[0].strip("\n")
+if comp.count(whole) != 1:
+    sys.exit("  method.minimum-sufficient-work: body (without Neighbours) not present exactly once")
 if (p / ".claude/agents/11-pentest.md").read_bytes() != (g / "agents/11-pentest.md").read_bytes():
     sys.exit("  a charter with no always_loads was not placed byte for byte")
 PY
@@ -949,7 +949,11 @@ case_agents_recompose() {
     local P="$WORK/agents-recompose" out rc before after
     plant_base claude-code --copy || fail "AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK: the install failed"
     plant_copy "$P"
-    printf 'A plant posture rule the graft kept.\n' >> "$P/docs/graph/method/engineering-posture.md"
+    python3 - "$P/docs/graph/method/engineering-posture.md" <<'PY'
+import sys
+f = sys.argv[1]; t = open(f).read()
+open(f, "w").write(t.replace("\n## Neighbours\n", "\nA plant posture rule the graft kept.\n\n## Neighbours\n", 1))
+PY
     rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$P" 2>&1)" || rc=$?
     [[ $rc -ne 0 ]] && grep -q "claude-code agents are STALE: .*02-implementer.md.*install.sh claude-code --recompose-agents" <<<"$out" \
         || fail "AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK: the STALE line does not name --recompose-agents (rc $rc): $out"
@@ -1007,6 +1011,45 @@ PY
         && ! grep -q '^hand edit$' "$P/.claude/output-styles/orchestrator.md" \
         || fail "MAIN_SESSION_PLAYS_THE_ORCHESTRATOR: --recompose-agents did not rewrite the output style"
     echo "  M24 MAIN_SESSION_PLAYS_THE_ORCHESTRATOR: settings select the orchestrator output style, which carries the charter and its always-loaded bodies; drift is stale to --check and recomposed — OK"
+}
+
+# M25, SPEC-0005 ALWAYS_LOADS_COMPOSES_ONLY_WHAT_THE_ROLE_NEEDS: an
+# `always_loads:` entry `<id>#<n>,<n>` composes only those numbered sections;
+# every composed node drops its Neighbours section and each section marked
+# reference-only; a section number the node lacks stops the install.
+case_agents_sections() {
+    local P="$WORK/agents-sections" out rc
+    plant_base claude-code --copy || fail "ALWAYS_LOADS_COMPOSES_ONLY_WHAT_THE_ROLE_NEEDS: the install failed"
+    plant_copy "$P"
+    python3 - "$P/docs/graph/agents/04-tester.md" <<'PY'
+import re, sys
+f = sys.argv[1]; t = open(f).read()
+t = re.sub(r"(?m)^  - method\.engineering-posture.*$", "  - method.engineering-posture#1,4", t, count=1)
+open(f, "w").write(t)
+PY
+    rc=0; out="$("$ROOT/install.sh" claude-code --recompose-agents --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] || fail "ALWAYS_LOADS_COMPOSES_ONLY_WHAT_THE_ROLE_NEEDS: recompose failed (rc $rc): $out"
+    python3 - "$P" <<'PY' || fail "ALWAYS_LOADS_COMPOSES_ONLY_WHAT_THE_ROLE_NEEDS: composition wrong (above)"
+import sys
+from pathlib import Path
+comp = (Path(sys.argv[1]) / ".claude/agents/04-tester.md").read_text()
+if "## Always loaded: method.engineering-posture (sections 1, 4)\n" not in comp:
+    sys.exit("  the selected heading is missing")
+for want in ("## 1. Specs are the contract", "## 4. Load the minimum context"):
+    if comp.count(want) != 1:
+        sys.exit(f"  {want!r} not composed once")
+if "## 2. Tests authorize code" in comp or "## 12. Make side effects visible" in comp:
+    sys.exit("  an unselected section was composed")
+if "\n## Neighbours\n" in comp:
+    sys.exit("  a Neighbours section was composed")
+if "\n## Reference files\n" in comp:
+    sys.exit("  a reference-only section was composed")
+PY
+    sed -i.orig 's/^  - method\.engineering-posture#1,4$/  - method.engineering-posture#1,99/' "$P/docs/graph/agents/04-tester.md"
+    rc=0; out="$("$ROOT/install.sh" claude-code --recompose-agents --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -ne 0 ]] && grep -q "method.engineering-posture has no section 99" <<<"$out" \
+        || fail "ALWAYS_LOADS_COMPOSES_ONLY_WHAT_THE_ROLE_NEEDS: an unknown section did not stop the install (rc $rc): $out"
+    echo "  M25 ALWAYS_LOADS_COMPOSES_ONLY_WHAT_THE_ROLE_NEEDS: a selector composes only its sections, Neighbours and reference-only sections drop, an unknown section stops the install — OK"
 }
 
 # --- one-case subcommand, run by the parallel dispatcher ---------------------
@@ -1165,7 +1208,7 @@ export BASE BASECOPILOT ESEED
 SCN="$(mktemp)"
 for c in case_recover case_symchurn case_m2 case_m4 case_m10 case_cond case_hook_check case_retired_flag case_orphan_flag \
          case_expertise_propose case_expertise_place case_expertise_refused case_expertise_silence \
-         case_expertise_plant_edits case_expertise_check case_retired_stamp_keys case_agents_compose case_agents_recompose case_orchestrator_style; do
+         case_expertise_plant_edits case_expertise_check case_retired_stamp_keys case_agents_compose case_agents_recompose case_orchestrator_style case_agents_sections; do
     printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0

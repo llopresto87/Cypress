@@ -177,7 +177,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **tier (graph load-tier):** 2
 - **owns (facts):** `implementer.charter`, `implementer.spawn-scope`, `implementer.preconditions`, `implementer.integration-discipline`
 - **requires:** `skill.holistic-editing`
-- **always loads (composed into the Claude Code agent file):** `method.engineering-posture`, `method.design-posture`, `method.contract-posture`, `method.minimum-sufficient-work`, `skill.holistic-editing`, `method.security-controls`
+- **always loads (composed into the Claude Code agent file):** `method.engineering-posture` sections 1, 2, 4, 9, 12, `method.design-posture` sections 2, 5, 6, 7, 10, 11, `method.contract-posture`, `method.minimum-sufficient-work`, `skill.holistic-editing`, `method.security-controls`
 - **peers:** `agent.tester`, `agent.reviewer`
 - **routing_triggers:**
   - "make the failing test pass"
@@ -235,7 +235,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **tier (graph load-tier):** 2
 - **owns (facts):** `tester.charter`, `tester.spawn-scope`, `tester.bug-fix-loop`
 - **requires:** `protocol.test-first`, `skill.test-first`
-- **always loads (composed into the Claude Code agent file):** `method.engineering-posture`, `method.contract-posture`, `skill.holistic-editing`
+- **always loads (composed into the Claude Code agent file):** `method.engineering-posture` sections 1, 2, 4, 9, 12, `method.contract-posture`, `skill.holistic-editing`
 - **peers:** `agent.implementer`, `agent.reviewer`
 - **routing_triggers:**
   - "write the failing test that encodes the spec contract"

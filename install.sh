@@ -1220,7 +1220,7 @@ PYEOF
 # placed, naming the charter and the id.
 render_claude_agents() {
     run_python -B - "$PROJECT_DIR/docs/graph" "$1" "$SEED_ROOT/templates/knowledge-graph" <<'PYEOF'
-import os, sys
+import os, re, sys
 graph, dest, reader = sys.argv[1:4]
 sys.path.insert(0, reader)
 from frontmatter import parse, FrontmatterError
@@ -1239,6 +1239,35 @@ for sub in ("method", "skills", "protocols"):
         if isinstance(meta.get("id"), str):
             home.setdefault(meta["id"], body)
 
+def composed(body, wanted):
+    """A node body as a role composes it: the text before its first `## `
+    section, then each section except `## Neighbours` and one whose next line
+    is `<!-- reference-only -->`; with `wanted`, only the `## <n>.` sections
+    it names. Returns (text, the wanted numbers no section carries)."""
+    chunks = re.split(r"(?m)^(?=## )", body.strip("\n"))
+    pre = [] if chunks[0].startswith("## ") else [chunks.pop(0)]
+    keep, seen = [], set()
+    for c in chunks:
+        num = re.match(r"## (\d+)\.", c)
+        seen.add(num.group(1) if num else None)
+        lines = c.split("\n")
+        if lines[0].strip() == "## Neighbours" or (len(lines) > 1 and lines[1].strip() == "<!-- reference-only -->"):
+            # the heading and its list go; text after the list (a plant's own line) stays
+            n = 1
+            while n < len(lines) and (not lines[n].strip() or lines[n].startswith(("- ", "  "))
+                                      or lines[n].strip() == "<!-- reference-only -->"):
+                n += 1
+            rest = "\n".join(lines[n:])
+            if rest.strip():
+                keep.append("\n" + rest)
+            continue
+        if wanted and not (num and num.group(1) in wanted):
+            continue
+        keep.append(c)
+    text = "".join(pre + keep).strip("\n")
+    return text, [n for n in wanted if n not in seen]
+
+
 agents = os.path.join(graph, "agents")
 STYLE = "_output-style-orchestrator.md"   # placed as .claude/output-styles/orchestrator.md
 out = {}
@@ -1256,13 +1285,21 @@ for name in sorted(os.listdir(agents)) if os.path.isdir(agents) else []:
     if not isinstance(ids, list) or not ids:
         continue
     parts = [text.rstrip("\n")]
-    for i in ids:
+    for entry in ids:
+        i, _, sel = str(entry).partition("#")
         if i not in home:
             sys.stderr.write(f"ERROR: docs/graph/agents/{name}: always_loads names {i!r}, "
                              f"which no node in docs/graph/{{method,skills,protocols}}/ carries. "
                              f"Fix the charter and re-run; the Claude Code agents are unchanged.\n")
             sys.exit(1)
-        parts.append(f"## Always loaded: {i}\n\n" + home[i].strip("\n"))
+        part, missing = composed(home[i], [n.strip() for n in sel.split(",") if n.strip()])
+        if missing:
+            sys.stderr.write(f"ERROR: docs/graph/agents/{name}: always_loads entry {entry!r}: "
+                             f"{i} has no section {', '.join(missing)}. Fix the charter and "
+                             f"re-run; the Claude Code agents are unchanged.\n")
+            sys.exit(1)
+        head = f"## Always loaded: {i}" + (f" (sections {', '.join(sel.split(','))})" if sel else "")
+        parts.append(head + "\n\n" + part)
     out[name] = "\n\n".join(parts) + "\n"
     if meta.get("name") == "orchestrator":
         # The main session is no subagent: it plays the orchestrator through

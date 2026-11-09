@@ -384,6 +384,24 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   each heredoc body before it looks for commands, and still checks the
   command line that opens the heredoc and every command after it
   (`tests/test-bound-hook.sh`, three cases, seen red first).
+- **Each role composes only what it needs.** A composed agent carried
+  whole nodes, so the implementer's system prompt cost about 16K tokens on
+  each of about 180 calls an increment (about $1.60 an increment across the
+  roles). The composition now drops each node's Neighbours section and any
+  section marked `<!-- reference-only -->` (holistic editing's reference
+  list), and an `always_loads:` entry `<id>#<n>,<n>` composes only those
+  numbered sections. The implementer keeps engineering posture §1, 2, 4, 9
+  and 12 (specs, tests, minimum context, integration, side effects) and design
+  posture §2, 5, 6, 7, 10 and 11, and drops engineering §3, 8, 10 and 11
+  (choosing late, structure's rent, the next maintainer, boring production
+  path) and design §1, 3, 4 and 9 (smallest structure, cohesion, stable
+  contracts, seams). The tester keeps the same engineering sections. Contract
+  posture, minimum-sufficient work, holistic editing and the security
+  controls stay whole, and every other role keeps whole nodes without their
+  Neighbours. The implementer goes from 65,798 to 54,891 bytes (about 16.4K to
+  13.7K tokens), the tester from 47,378 to 41,299, and the others shrink by
+  2 to 5%. The Claude Code every-session load is 67,148 bytes. SPEC-0005 adds
+  ALWAYS_LOADS_COMPOSES_ONLY_WHAT_THE_ROLE_NEEDS.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 
