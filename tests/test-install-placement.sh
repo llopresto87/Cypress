@@ -941,6 +941,32 @@ PY
     echo "  M22 ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES: the implementer carries each always-loaded body once, no frontmatter; pentest placed as is; drift is stale to --check — OK"
 }
 
+# M23, SPEC-0005 AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK: a node an
+# `always_loads:` names, edited in the plant (a graft kept or merged it), makes
+# the composed agent stale; the STALE line names `--recompose-agents`, which
+# rewrites .claude/agents/ from the nodes on disk and nothing else.
+case_agents_recompose() {
+    local P="$WORK/agents-recompose" out rc before after
+    plant_base claude-code --copy || fail "AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK: the install failed"
+    plant_copy "$P"
+    printf 'A plant posture rule the graft kept.\n' >> "$P/docs/graph/method/engineering-posture.md"
+    rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -ne 0 ]] && grep -q "claude-code agents are STALE: .*02-implementer.md.*install.sh claude-code --recompose-agents" <<<"$out" \
+        || fail "AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK: the STALE line does not name --recompose-agents (rc $rc): $out"
+    before="$(cd "$P" && find . -path ./.claude/agents -prune -o -type f -print | sort | xargs shasum | shasum)"
+    rc=0; out="$("$ROOT/install.sh" claude-code --recompose-agents --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] || fail "AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK: --recompose-agents exited $rc: $out"
+    after="$(cd "$P" && find . -path ./.claude/agents -prune -o -type f -print | sort | xargs shasum | shasum)"
+    [[ "$before" == "$after" ]] \
+        || fail "AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK: --recompose-agents wrote outside .claude/agents/"
+    grep -q '^A plant posture rule the graft kept\.$' "$P/.claude/agents/02-implementer.md" \
+        || fail "AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK: the implementer was not recomposed from the edited node"
+    out="$("$ROOT/install.sh" claude-code --check --project-dir "$P" 2>&1)" || true
+    grep -q "claude-code agents up to date." <<<"$out" \
+        || fail "AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK: the recomposed agents are still stale: $out"
+    echo "  M23 AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK: an edited always-loaded node is stale, the STALE line names --recompose-agents, which recomposes .claude/agents/ alone — OK"
+}
+
 # --- one-case subcommand, run by the parallel dispatcher ---------------------
 if [ "${1:-}" = "__case" ]; then
     "$2"
@@ -1097,7 +1123,7 @@ export BASE BASECOPILOT ESEED
 SCN="$(mktemp)"
 for c in case_recover case_symchurn case_m2 case_m4 case_m10 case_cond case_hook_check case_retired_flag case_orphan_flag \
          case_expertise_propose case_expertise_place case_expertise_refused case_expertise_silence \
-         case_expertise_plant_edits case_expertise_check case_retired_stamp_keys case_agents_compose; do
+         case_expertise_plant_edits case_expertise_check case_retired_stamp_keys case_agents_compose case_agents_recompose; do
     printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0

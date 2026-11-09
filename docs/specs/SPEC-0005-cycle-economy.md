@@ -10,7 +10,7 @@ status_evidence: tests/test_graph_lint.py, tests/test_agent_lint.py, tests/test-
 ## 0. Metadata
 
 - **Identifier:** SPEC-0005-cycle-economy
-- **Version:** 0.18 (the security path: TRUST_PATH_TAKES_THE_SECURITY_PASS, TRUST_MARKER_IS_SETTLED, SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS, ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES, 2026-11-09; every amendment is dated in §12)
+- **Version:** 0.19 (the security path: TRUST_PATH_TAKES_THE_SECURITY_PASS, TRUST_MARKER_IS_SETTLED, SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS, ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES, AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK, 2026-11-09; every amendment is dated in §12)
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-09-28
@@ -536,6 +536,18 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
 - **And:** a composed file that differs from a fresh composition (edited by
   hand, or a node changed since) makes `--check` exit non-zero naming it; an
   id no node carries stops the install before the first agent is placed
+
+### Contract: AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK
+- **Test file:** `tests/test-install-placement.sh`
+- **Given:** a plant whose node named in a charter's `always_loads:` was
+  edited after the install (a graft kept or merged it)
+- **When:** `install.sh claude-code --check` runs, then
+  `install.sh claude-code --recompose-agents`
+- **Then:** `--check` names the composed agent STALE and the line names
+  `install.sh claude-code --recompose-agents` as the remedy; that run
+  rewrites `.claude/agents/` from the charters and nodes on disk, writes no
+  file outside it, and `--check` then reports the agents up to date
+- **And:** the edited node is left as it is
 
 ### Contract: TRUST_MARKER_IS_SETTLED
 - **Test file:** `tests/test_graph_lint.py`, `tests/test-graft-tools.sh`
@@ -2369,6 +2381,7 @@ gives.
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | X494 TrustClaimTests: a path claimed by `repo:` and one by a file pattern name the trust crosscut; `trust: false` and subsystem paths name none; `trust:` on a subsystem is an error | tests/test_graph_lint.py | fixture | green |
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | X495 the security brief carries the SECURITY PATH block byte for byte; a tester brief does not | tests/test-brief.sh | fixture | green |
 | SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS | X498 a tester brief with `--security-path` carries the block, which names every class, the path tests and the confirmation | tests/test-brief.sh | fixture | green |
+| AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK | M23 case_agents_recompose: a plant appends a line to `method/engineering-posture.md`; `--check` names `02-implementer.md` STALE with `--recompose-agents`; that run leaves every file outside `.claude/agents/` byte-identical, the implementer carries the line, `--check` is up to date; seen red first (the STALE line said re-run the install) | tests/test-install-placement.sh | integration | green |
 | ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | M22 case_agents_compose: the implementer's six always-loaded bodies once each with no frontmatter; `11-pentest.md` byte for byte; a hand edit is STALE to `--check` | tests/test-install-placement.sh | integration | green |
 | TRUST_MARKER_IS_SETTLED | X496 TrustMarkerTests: `--trust-unsettled` names the unset and the pathless crosscut only; the lint warns on the pathless one and exits 0 | tests/test_graph_lint.py | fixture | green |
 | TRUST_MARKER_IS_SETTLED | X497 case_run_lists_unsettled_trust_markers: graft-run's judgment items, before the gate table | tests/test-graft-tools.sh | integration (synthetic plant) | green |
@@ -2741,3 +2754,8 @@ kept outside the seed.
   composes them into the role's agent file, so they sit in the role's cached
   system prompt; the nodes stay the only home. Added
   ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES (M22, seen red first).
+- 2026-11-09 — version 0.19, graft verification. The install fast-forwards a
+  node before composing, so a steward who restored a kept or merged
+  always-loaded node met a STALE agent whose remedy, re-running the install,
+  overwrote the node again. Added AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK
+  (M23, seen red first): `--recompose-agents` writes `.claude/agents/` only.
