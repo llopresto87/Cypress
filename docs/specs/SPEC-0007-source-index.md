@@ -100,8 +100,8 @@ governed repository, or the user prefixes the repository path; one that
 two repositories hold makes the answer incomplete. A citation by bare
 name, and a `repo:` prefix claim, are `maybe` facts; an ambiguous bare
 name makes the answer incomplete. A `repo:` value claims by what it names
-on disk: a file or a folder claims the paths under it, the plant root and
-a nested repository claim nothing, and a value that names nothing makes
+on disk: a file, a folder or a nested repository claims the paths under
+it, the plant root claims nothing, and a value that names nothing makes
 every answer incomplete, telling the user to correct the node's `repo:`. Plans, specs and decisions are counted
 as history and named with `--all`. The `--moved` input is in Slice 2 below.
 
@@ -880,10 +880,11 @@ anchor with the placed `docs/graph/code-anchor.py`.
   `repo: CMakeLists.txt` node, `certain`; `graph-lint.py` loads by
   `named_path` the `repo: src/lib/a.py`, `repo: src/lib/`, `repo: src` and
   `repo: CMakeLists.txt` node for those four tasks, one each
-- **And** (root and outside: a directory holding `.git`, the plant root and
-  a value outside the plant claim nothing): `vendor/x/y.py` is `uncited`, and
-  its task loads no node through a `repo:` claim; none of the three values
-  adds an `incomplete` record
+- **And** (root and outside: a directory holding `.git` claims its directory
+  as a folder does; the plant root and a value outside the plant claim
+  nothing): `anchors` lists for `vendor/x/y.py` the `repo: vendor/x` node,
+  `maybe`, found `repo-prefix`, and its task loads that node by `named_path`;
+  none of the three values adds an `incomplete` record
 - **And** (unresolved: a value that names nothing on disk is read as before
   the ruling, a value holding a `/` once its leading and trailing `/` are cut
   is a string prefix, one holding none claims nothing): the `old/lib/z.py`
@@ -1399,7 +1400,9 @@ and one on strings; `path_matches` moves from `graph-lint.py` unchanged:
   it; a case-insensitive one finds it, and it reads as `path` under the
   value's own case.
 - `repo_claim(name, path, kind) -> "exact" | "prefix" | None`: a string
-  function that opens nothing. `root` and `outside` claim nothing. `path`
+  function that opens nothing. The plant root (`root` named `.`) and
+  `outside` claim nothing; a `root` nested in the plant claims its directory
+  as a `path` does. `path`
   is `exact` when `path` equals `name`, `prefix` when `path` begins with
   `name` and `/`, else None. `unresolved` keeps graph-lint's reading from
   before the ruling: the value cut of its leading and trailing `/`
@@ -3148,9 +3151,10 @@ without further clarification.
   `named_path`, and `anchors` lists the node for that path, `certain` when
   the value is the file itself, `maybe` found `repo-prefix` when it is a
   folder holding the path;
-  (b) the plant root (`.`), a nested repository (a folder holding `.git`)
-  or a value outside the plant claims no path: a file under it that no
-  other page cites is `uncited`, and no `incomplete` record is added;
+  (b) a nested repository (a folder holding `.git`) claims the paths under
+  it as a folder does; the plant root (`.`) or a value outside the plant
+  claims no path: a file under it that no other page cites is `uncited`,
+  and no `incomplete` record is added;
   (c) a value that names nothing on disk (a renamed or deleted folder, a
   comma list, a case that differs from disk, an empty folder) makes every
   `anchors` answer `incomplete`, with one `repo-unresolved` record naming
@@ -3398,7 +3402,7 @@ and §6 now state each:
 | ANCHORS_MOVED_EQUALS_THE_NAMED_PATHS | X457 case_anchors_moved: anchor recorded by the placed `docs/graph/code-anchor.py`, then a commit in nested `Cypress/` and an uncommitted `run.sh` edit; `anchors --moved` equals `anchors Cypress/tools/x.py run.sh` in every key but `cache`; after a second `--record`, no input, no file, `incomplete` empty, `MOVED_NONE_LINE` | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | green |
 | ANCHORS_MOVED_WITHOUT_A_LIST_IS_INCOMPLETE | X458 case_anchors_moved_incomplete: arms (a) no `.cypress/anchor.json`, (b) the recorded `Cypress` commit replaced by one the clone lacks, `run.sh` edited, (c) no `docs/graph/code-anchor.py`, (d) a placed `code-anchor.py` with no `moved_list` (placed before slice 2), (e) a placed `code-anchor.py` whose `moved_list` returns a `paths` string, (f) a placed `code-anchor.py` whose `moved_list` raises `Unrecorded` with no `ANCHOR_NAME`; each text view ends with the `anchors` `ACTION_LINE` and prints no traceback | tests/test-source-index.sh | integration (synthetic Git plant, scripted commits) | green |
 | ANCHORS_MOVED_SKIPS_A_NESTED_WORK_TREE | X483 case_moved_nested_work_tree: `git worktree add wt/side` under the plant, `run.sh` edited | tests/test-source-index.sh | integration (synthetic Git plant) | green |
-| REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS | X459 case_repo_claim, the §4 fixture, `anchors` and the seed's `graph-lint.py --plan-json` run in one plant: arm path, `anchors` lists `repo: src/lib/a.py` `certain` `exact` and `repo: src/lib/` and `repo: src` `maybe` `repo-prefix` for `src/lib/a.py`, both folders for `src/lib/c.py`, `repo: src` for `src/b.py`, `repo: CMakeLists.txt` `certain` for `CMakeLists.txt`, and the router loads the `repo: src/lib/a.py`, `repo: src/lib/`, `repo: src` and `repo: CMakeLists.txt` node by `named_path` for those four tasks; arm root+outside, `vendor/x/y.py` (a nested repository) `uncited` and its task loads no node by `named_path`, and `repo: .`, `repo: ../elsewhere` and `repo: vendor/x` add no `incomplete` record; arm unresolved (REPO_VALUE_UNRESOLVED); arm case, `repo: Src` claims nothing in `anchors` and the `SRC/b.py` task loads the `repo: src` node; arm helper-absent (HELPER_ABSENT_BESIDE_GRAPH_LINT); security arms (`security-D`): D4, a node `repo: /proc/self` claims nothing in either tool (`proc/self/x.py` uncited, the `proc/self/status` task loads no node by `named_path`) and adds no `incomplete` record; D5, `link-out`, a symlink in the plant to a directory outside it that holds `.git` and `z.py`, claims nothing in either tool, is not in the cache key's `repositories`, and `build` inventories no file under it; D6, `pipe`, a FIFO in the plant (`mkfifo`), adds one `repo-unresolved` record, and `graph-lint.py --plan-json` returns within 20 s (it does not block); D1's no-stat for an outside value is a code-review check, not an arm; Platform probe (`devils-advocate-8.1.2` 7): the arm case and the `repo: Src` record of arm unresolved run only on a case-sensitive file system, as §6 "Helper" states; the case first writes `probe` in its temp plant and stats `PROBE`, and when that stat finds the file it skips those two checks with a printed reason (the CI's macOS leg, APFS by default), every other arm running | tests/test-source-index.sh | integration (synthetic plant, the seed's graph-lint.py placed) | green |
+| REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS | X459 case_repo_claim, the §4 fixture, `anchors` and the seed's `graph-lint.py --plan-json` run in one plant: arm path, `anchors` lists `repo: src/lib/a.py` `certain` `exact` and `repo: src/lib/` and `repo: src` `maybe` `repo-prefix` for `src/lib/a.py`, both folders for `src/lib/c.py`, `repo: src` for `src/b.py`, `repo: CMakeLists.txt` `certain` for `CMakeLists.txt`, and the router loads the `repo: src/lib/a.py`, `repo: src/lib/`, `repo: src` and `repo: CMakeLists.txt` node by `named_path` for those four tasks; arm root+outside, `vendor/x/y.py` (a nested repository) anchored `maybe` `repo-prefix` by the `repo: vendor/x` node and its task loads that node by `named_path`, and `repo: .`, `repo: ../elsewhere` and `repo: vendor/x` add no `incomplete` record; arm unresolved (REPO_VALUE_UNRESOLVED); arm case, `repo: Src` claims nothing in `anchors` and the `SRC/b.py` task loads the `repo: src` node; arm helper-absent (HELPER_ABSENT_BESIDE_GRAPH_LINT); security arms (`security-D`): D4, a node `repo: /proc/self` claims nothing in either tool (`proc/self/x.py` uncited, the `proc/self/status` task loads no node by `named_path`) and adds no `incomplete` record; D5, `link-out`, a symlink in the plant to a directory outside it that holds `.git` and `z.py`, claims nothing in either tool, is not in the cache key's `repositories`, and `build` inventories no file under it; D6, `pipe`, a FIFO in the plant (`mkfifo`), adds one `repo-unresolved` record, and `graph-lint.py --plan-json` returns within 20 s (it does not block); D1's no-stat for an outside value is a code-review check, not an arm; Platform probe (`devils-advocate-8.1.2` 7): the arm case and the `repo: Src` record of arm unresolved run only on a case-sensitive file system, as §6 "Helper" states; the case first writes `probe` in its temp plant and stats `PROBE`, and when that stat finds the file it skips those two checks with a printed reason (the CI's macOS leg, APFS by default), every other arm running | tests/test-source-index.sh | integration (synthetic plant, the seed's graph-lint.py placed) | green |
 | GIT_UNAVAILABLE | X442 case_walk_incomplete: arm (f), PATH holds python3 and no git; an existing cache left byte-identical | tests/test-source-index.sh | integration (synthetic Git plant) | green |
 | NO_GOVERNED_REPOSITORY | X442 case_walk_incomplete: arm (i), a plant root that is no Git work tree | tests/test-source-index.sh | integration (synthetic plant) | green |
 | REPOSITORY_UNREADABLE | X442 case_walk_incomplete: arm (j), a nested governed repository with a corrupt index; the root repository still answers; arm (m3), a git that fails only `ls-files` in `vendor/lib` names `vendor/lib`, not `.` | tests/test-source-index.sh | integration (synthetic Git plant) | green |
@@ -3574,3 +3578,12 @@ flagged assumption in grill.md §12. Sign-off keeps the status `draft`;
 - 2026-10-14 — §5 "Compatibility" points at the seed's Python floor in
   SPEC-0005 §5, its one home since the owner decided on 2026-10-14 that the
   floor is 3.14, in place of the 3.12 figure and its two reasons it restated.
+- 2026-11-09 — a repository nested in the plant claims its directory. The
+  owner decided on 2026-11-05 that a subsystem whose `repo:` names a git
+  directory inside the plant routes the paths under it, in the router and in
+  `anchors` alike: a live run's app subsystem, the one node owning the app's
+  change flow, was never entered by a path. The plant root itself still
+  claims nothing. §2, §4 REPO_CLAIM_READ_ALIKE_BY_ROUTER_AND_ANCHORS's root
+  arm, §6 "Helper" `repo_claim`, §9 and X459's root+outside arm (seen red
+  first) follow; SPEC-0002 GRAPH_ROUTE_NAMED_PATH_LOADS_ITS_OWNER says the
+  same. The rest of option D stands.

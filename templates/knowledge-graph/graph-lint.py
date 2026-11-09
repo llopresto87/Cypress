@@ -1346,8 +1346,9 @@ SKIP_KINDS = ("peer", "composed")
 def _named_paths(nodes: list, paths: list) -> dict:
     """Tier 2: {id: How} for each path the task names, by the first rule that
     claims it: a node's own file; the longest `repo:` claim, decided by what
-    the value names on disk (a repository, the plant root or a value outside
-    the plant claims nothing); an expertise file pattern (`inferred`); a
+    the value names on disk (a folder, a file or a nested repository claims
+    the paths under it; the plant root or a value outside the plant claims
+    nothing); an expertise file pattern (`inferred`); a
     basename exactly one node file carries."""
     if not paths:
         return {}
