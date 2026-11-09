@@ -23,6 +23,8 @@ Usage:
                                           # resolved in a header, then the body
     python3 graph-lint.py --trust-claims PATH...  # which `trust: true`
                                           # crosscut claims each path (JSON)
+    python3 graph-lint.py --trust-unsettled  # crosscuts with no `trust:`,
+                                          # and pathless trust ones (JSON)
     python3 graph-lint.py --eval TSV      # route a node-route corpus; per class,
                                           # gated on the GRAPH_* ratchets
 
@@ -1405,6 +1407,53 @@ def trust_claims(nodes: list, paths: list) -> dict:
             out[path] = sorted(hit)
     return out
 
+
+def _claims_a_path(n) -> bool:
+    """A node claims a path when its `load_when` holds a file pattern or its
+    `repo:` value claims a directory or a file by `_repo_claim`'s rules.
+    Without the path helper a `repo:` value is taken to claim, so a missing
+    helper raises no warning."""
+    if _load_when_pieces(n)[1]:
+        return True
+    value = n.meta.get("repo")
+    if not (isinstance(value, str) and value):
+        return False
+    try:
+        helper = _helper()
+        if value not in _REPO_KINDS:
+            _REPO_KINDS[value] = helper.repo_kind(PLANT, value)
+    except HelperUnavailable:
+        return True
+    kind, name = _REPO_KINDS[value]
+    name = name.lower()
+    return helper.repo_claim(name, name.strip("/"), kind) is not None
+
+
+TRUST_UNSET = ("has no `trust:` field: set `trust: true` where it grants, gates or checks "
+               "(auth, a disabled action, a secret, a permission), and `trust: false` otherwise")
+TRUST_PATHLESS = ("is `trust: true` and claims no path, so no change takes the security pass "
+                  "for it: name its paths (its `repo:`, or a file pattern in `load_when`)")
+
+
+def trust_unsettled(nodes: list) -> list:
+    """The trust markers a graft or a grow leaves for the owner to settle
+    (SPEC-0005 TRUST_MARKER_IS_SETTLED): each crosscut with no `trust:` field
+    (`unset`) and each `trust: true` crosscut that claims no path
+    (`pathless`), as `{"id", "problem", "settle"}`."""
+    out = []
+    for n in sorted((n for n in nodes if n.meta.get("kind") == "crosscut"), key=lambda n: n.id):
+        if "trust" not in n.meta:
+            out.append({"id": n.id, "problem": "unset", "settle": f"{n.id} {TRUST_UNSET}"})
+        elif str(n.meta["trust"]).strip().lower() == "true" and not _claims_a_path(n):
+            out.append({"id": n.id, "problem": "pathless", "settle": f"{n.id} {TRUST_PATHLESS}"})
+    return out
+
+
+def check_trust_paths(nodes: list, warns: list) -> None:
+    """A `trust: true` crosscut that claims no path is a warning: the marker
+    is the plant's judgment, and the owner settles it."""
+    warns.extend(i["settle"] for i in trust_unsettled(nodes) if i["problem"] == "pathless")
+
 def _lexical(nodes: list, words: list) -> list:
     """Tier 4's scored entries: IDF-weighted, a term in many nodes (generic)
     worth little, one in one or two (distinctive) dominating — with the guards
@@ -2033,6 +2082,9 @@ def main() -> int:
                          "the task as one --plan-json=TASK element")
     ap.add_argument("--trust-claims", nargs="+", metavar="PATH",
                     help="print {\"claims\": {path: [ids]}} for each PATH a `trust: true` crosscut claims")
+    ap.add_argument("--trust-unsettled", action="store_true",
+                    help="print {\"unsettled\": [...]}: each crosscut with no `trust:` field, "
+                         "and each `trust: true` crosscut that claims no path")
     ap.add_argument("--show", nargs="+", metavar="ID",
                     help="print each node: a header with every pointer resolved, then its body")
     ap.add_argument("--eval", metavar="TSV", type=Path,
@@ -2049,6 +2101,9 @@ def main() -> int:
         return show(nodes, args.show)
     if args.trust_claims:
         print(json.dumps({"claims": trust_claims(nodes, args.trust_claims)}))
+        return 0
+    if args.trust_unsettled:
+        print(json.dumps({"unsettled": trust_unsettled(nodes)}))
         return 0
     if args.eval:
         return evaluate(nodes, args.eval)
@@ -2082,6 +2137,7 @@ def main() -> int:
     check_acyclic(nodes, errs)
     check_acyclic(nodes, errs, "composes", " ~> ")
     check_composition_triggers(nodes, warns)
+    check_trust_paths(nodes, warns)
     check_reachability(nodes, errs)
     check_libraries(nodes, errs)
     check_artifacts(nodes, errs)

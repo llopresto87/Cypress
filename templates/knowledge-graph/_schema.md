@@ -169,7 +169,9 @@ joints. A common starting set:
   `repo:`, a file pattern in `load_when`): an increment that writes under one
   takes the security pass whatever its reviewer rates
   (`test-first.security-path`; `graph-lint.py --trust-claims PATH...`). Any
-  other crosscut carries `trust: false`.
+  other crosscut carries `trust: false`. Lint warns on a `trust: true` node
+  that claims no path; `--trust-unsettled` lists those and every crosscut with
+  no `trust:` field, for a graft or a grow to settle.
 - `domain`: the problem-domain vocabulary and workflows.
 - `deviation`: a **deliberate, standing departure from a known standard**,
   with the reason, its scope, and the condition that ends it. Lives in

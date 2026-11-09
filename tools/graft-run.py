@@ -36,7 +36,11 @@ WHAT IT DOES, IN ORDER
      hook and names each harness entry with no graph home (RETIRED, ORPHAN)
      and each retired seed graph node; the routes row ties the graph-lint
      errors a RETIRED node causes to it, and still blocks on them
-  8. prints the gate table: one line per row of the Phase 7 table in
+  8. prints the judgment items before the table, each for the steward to settle
+     and put to the owner as a numbered decision in Phase 8: the copy's own
+     graph-lint.py --trust-unsettled names each crosscut node with no `trust:`
+     field and each `trust: true` crosscut that claims no path
+  9. prints the gate table: one line per row of the Phase 7 table in
      protocols/graft.md, in its order, as the graft record's integrity-gate
      block gives it: `<gate id>: PASS / BLOCK / N-A — <evidence>`. A judgment
      row says `not run` and names its judge. A row this tool has no check for
@@ -533,6 +537,7 @@ def main() -> int:
         reg = run.sh("status-register.txt", [sys.executable, g / "status-register.py", "--root", "docs/graph"])
 
     plans_after = plan_defects(run, "after")      # the seed's engines, after step 4
+    judgment = trust_items(run, g)
     after = porcelain(run)
     evidence = {
         "plans_before": plans_before, "plans_after": plans_after,
@@ -558,11 +563,35 @@ def main() -> int:
             "BLOCK", "graft-run has no check for this gate; run its Command by hand")
         table.append((gid, verdict, why))
     blocked = any(v == "BLOCK" for _, v, _ in table)
+    if judgment:
+        print("")
+        print(f"Judgment items ({len(judgment)}; the steward settles each, and each left open is "
+              f"named in the Phase 8 entry and put to the owner as a numbered decision):")
+        for line in judgment:
+            print(f"  {line}")
     print("")
     print("Integrity gate (Phase 7; mechanical rows run on the stage copy, judgment rows not run):")
     for gid, verdict, why in table:
         print(f"{gid}: {verdict} — {why}")
     return 1 if blocked else 0
+
+
+def trust_items(run, g: Path) -> list:
+    """The trust markers the copy leaves unsettled, one line each, from the
+    copy's own graph-lint.py --trust-unsettled (SPEC-0005
+    TRUST_MARKER_IS_SETTLED). An engine that does not answer is named, so a
+    silent engine never reads as nothing to settle."""
+    if not (g / "graph-lint.py").is_file():
+        return []
+    rc, out = run.sh("trust.txt", [sys.executable, g / "graph-lint.py", "--trust-unsettled"])
+    try:
+        items = json.loads(out.strip().splitlines()[-1])["unsettled"] if rc == 0 else None
+    except (ValueError, KeyError, IndexError, TypeError):
+        items = None
+    if items is None:
+        return [f"trust: graph-lint.py --trust-unsettled did not answer (exit {rc}, "
+                f"{run.logs / 'trust.txt'}): read each crosscut node's `trust:` by hand"]
+    return [f"trust: {i['settle']}" for i in items]
 
 
 # -- one check per mechanical row: (verdict, evidence) -------------------------

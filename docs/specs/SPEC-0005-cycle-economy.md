@@ -10,7 +10,7 @@ status_evidence: tests/test_graph_lint.py, tests/test_agent_lint.py, tests/test-
 ## 0. Metadata
 
 - **Identifier:** SPEC-0005-cycle-economy
-- **Version:** 0.18 (the security path: TRUST_PATH_TAKES_THE_SECURITY_PASS, 2026-11-09; every amendment is dated in §12)
+- **Version:** 0.18 (the security path: TRUST_PATH_TAKES_THE_SECURITY_PASS, TRUST_MARKER_IS_SETTLED, 2026-11-09; every amendment is dated in §12)
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-09-28
@@ -509,6 +509,22 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   byte, and no other role's brief carries it
 - **And:** a `trust:` key on a node of another kind, or with a value other
   than `true` or `false`, is a lint error
+
+### Contract: TRUST_MARKER_IS_SETTLED
+- **Test file:** `tests/test_graph_lint.py`, `tests/test-graft-tools.sh`
+- **Given:** a plant graph holding `kind: crosscut` nodes: one with no
+  `trust:` field, one `trust: true` that claims no path (no file pattern in
+  its `load_when`; no `repo:`, or one that claims nothing), one `trust: true`
+  that claims a path, and one `trust: false`
+- **When:** `graph-lint.py --trust-unsettled` and the plain lint run, and
+  `tools/graft-run.py` rehearses a graft of the plant
+- **Then:** `--trust-unsettled` names the first as `unset` and the second as
+  `pathless`, each with the proposal to put to the owner; the lint prints a
+  warning for the pathless node and no error; graft-run prints both as
+  judgment items before the gate table, saying each goes to the owner as a
+  numbered decision
+- **And:** the node that claims a path and the `trust: false` node are never
+  named
 
 ### Contract: BOOTSTRAP_STEP2_LOADS_A_MENU
 - **Test file:** `tests/test-seed-lint.sh` (check in `tests/seed-lint.py`)
@@ -2325,6 +2341,8 @@ gives.
 | SPAWN_LOG_RECORDS_THE_ATTRIBUTION | X492 the log line, `--log`, `--emulated` and the re-mint refusal | tests/test-brief.sh | fixture | green |
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | X494 TrustClaimTests: a path claimed by `repo:` and one by a file pattern name the trust crosscut; `trust: false` and subsystem paths name none; `trust:` on a subsystem is an error | tests/test_graph_lint.py | fixture | green |
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | X495 the security brief carries the SECURITY PATH block byte for byte; a tester brief does not | tests/test-brief.sh | fixture | green |
+| TRUST_MARKER_IS_SETTLED | X496 TrustMarkerTests: `--trust-unsettled` names the unset and the pathless crosscut only; the lint warns on the pathless one and exits 0 | tests/test_graph_lint.py | fixture | green |
+| TRUST_MARKER_IS_SETTLED | X497 case_run_lists_unsettled_trust_markers: graft-run's judgment items, before the gate table | tests/test-graft-tools.sh | integration (synthetic plant) | green |
 | BOOTSTRAP_STEP2_LOADS_A_MENU | X352, a row of the text-rules table: step 2 reworded alike in all six copies | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
 | BOOTSTRAP_STEP2_LOADS_A_MENU | X353, a row of the text-rules table: step 2 re-wrapped in all six copies passes; guard | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
 | ADOPTED_RULES_NOT_PENDING | X354, a row of the text-rules table: one §6 pending phrase planted | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
@@ -2675,3 +2693,7 @@ kept outside the seed.
   Added TRUST_PATH_TAKES_THE_SECURITY_PASS (X494, X495).
   SPAWN_LOG_RECORDS_THE_ATTRIBUTION's Then drops "overrides": this branch's
   spawn log records no batch or held override.
+- 2026-11-09 — version 0.18, same session. A graft or a grow settles the trust
+  marker: added TRUST_MARKER_IS_SETTLED (X496, X497). graft-run lists each
+  crosscut with no `trust:` field and each pathless `trust: true` crosscut as
+  a judgment item for the owner, and graph-lint warns on the pathless one.

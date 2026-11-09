@@ -1387,6 +1387,13 @@ the other way: each one that passes the admission test gets a row in the
 plant's harvest-candidate record (`canonize.harvest-candidates`), so the
 hand-back outlives this entry. End with the single highest-leverage next step.
 
+**Settle each trust marker `tools/graft-run.py` lists under Judgment items**
+(`graph-lint.py --trust-unsettled`): a crosscut that grants, gates or checks
+(auth, a disabled action, a secret, a permission) takes `trust: true` with its
+paths named, any other takes `trust: false`. Name each one left open in this
+entry and put it to the owner as a numbered decision with the proposal
+(`deliver.numbered-decisions`).
+
 **Hand the backups to the owner, by date, once the audits have read them.**
 Every installer run leaves its backups beside the files they replaced, and
 they stay until someone removes them: they swell every count a later audit
