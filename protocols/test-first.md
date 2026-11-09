@@ -11,6 +11,7 @@ owns:
   - test-first.cycle
   - test-first.characterize-first
   - test-first.known-bug
+  - test-first.security-path
 requires:
   - skill.test-first
 peers:
@@ -24,8 +25,9 @@ load_when:
   - "bug fix, regression test"
   - "legacy code with no tests, characterization test"
   - "pure refactor, migration safety"
+  - "change to a trust surface, security pass, bypass the rule"
 prevents: Production changes with no failing test to authorize them, and after-the-fact tests that pass on first run and therefore prove nothing.
-est_tokens: 3391
+est_tokens: 3779
 command: true
 ---
 
@@ -106,6 +108,7 @@ the mutation pass, is `docs/graph/method/delegation-cycle-economy.md`.
 | RED | `tester` | the §9 row, the contract text, the target test paths | failing tests that fail for the right reason; spec §10 rows `red` |
 | GREEN → REFACTOR | `implementer` | the RED handback (test paths, contract slugs, files) | a green, integrated diff; the RED tests run by the implementer itself, with no separate tester spawn and no test or fixture file edited, and a test that looks wrong written up as a question (`delegation.green-self-test`); affected gates run locally; spec §10 rows `green` |
 | REVIEW | `reviewer` | the diff, the §9 row | severity-tagged findings; a Critical/Major goes to a fresh `implementer` briefed with the finding and the diff, then a fresh light `reviewer` checks only the fix diff; each round is an attempt under `protocol.recover` |
+| SECURITY | `security`, once, after REVIEW, when the increment takes the security path (`test-first.security-path`) | why the pass is required, the diff and files, every reviewer finding on the covered files whatever its rating | each attempt, blocked or bypass, with the test that pins it; its findings go to one fresh `implementer`, then one light `security` re-check of that fix |
 | COMMIT | the session | a clean review | grill.md §15 entry with the `spawn_id`s in issue order; the commit; the spec's status advanced |
 
 An increment whose §9 row reads `Tests to write (RED): none — …` was
@@ -121,6 +124,30 @@ REVIEW spawn stays independent either way.
 
 Only the session writes grill.md; workers report what they did in the
 handback (`rule.grill`).
+
+**A change to a trust surface takes the security path
+(`test-first.security-path`).** A trust surface grants, gates or checks: auth,
+a disabled or confirmed action, a secret, a permission, a static rule that
+enforces one. The trigger is mechanical, never the reviewer's rating: the
+increment writes a file `python3 docs/graph/graph-lint.py --trust-claims
+<files>` names (a path a `crosscut` node marked `trust: true` claims by its
+`repo:` or a file pattern), or §9 labels one of its contracts `security`. After
+REVIEW the session spawns `security` once (`brief.py --role security`, which
+embeds the block below) with why the pass is required and every reviewer
+finding on the covered files whatever its rating. Its findings go to one fresh
+`implementer`, and one light `security` re-check of that fix closes the pass:
+one round, then COMMIT, or `protocol.recover` for what the re-check still
+breaks.
+
+```
+SECURITY PATH
+Break the change; a bypass counts once you have run it.
+1. A second path to a disabled or gated action: retry, back or resume, deep link, second window, callback, a race.
+2. Evasion of a static rule: alias import, wrapper or helper, factory, a name built from strings, a comment or string that hides or fakes the pattern.
+3. An unpinned value where one value is allowed: prefix and suffix extensions, case variants, extra fields or parameters.
+4. Line terminators other than \n: CR, CRLF, U+2028, U+2029, NEL in comments, strings and scanned code.
+Report each attempt, blocked or bypass, and the test that pins it.
+```
 
 ### RED — write the failing test
 

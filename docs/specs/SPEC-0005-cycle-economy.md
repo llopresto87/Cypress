@@ -10,7 +10,7 @@ status_evidence: tests/test_graph_lint.py, tests/test_agent_lint.py, tests/test-
 ## 0. Metadata
 
 - **Identifier:** SPEC-0005-cycle-economy
-- **Version:** 0.17 (the spawn log: SPAWN_LOG_RECORDS_THE_ATTRIBUTION, 2026-11-03; every amendment is dated in §12)
+- **Version:** 0.18 (the security path: TRUST_PATH_TAKES_THE_SECURITY_PASS, 2026-11-09; every amendment is dated in §12)
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-09-28
@@ -492,9 +492,23 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
 - **When:** a brief is composed with `--role`, `--spawn-id`, `--route`,
   `--effort` and, for one spawn, `--emulated "<reason>"`
 - **Then:** `docs/graph/plans/spawns.jsonl` gains one JSON line per brief with
-  the spawn_id, role, route, effort, overrides and emulation, and
+  the spawn_id, role, route, effort and emulation, and
   `brief.py --log` prints one attribution line per spawn_id
 - **And:** a spawn_id already logged for another role is refused (exit 2)
+
+### Contract: TRUST_PATH_TAKES_THE_SECURITY_PASS
+- **Test file:** `tests/test_graph_lint.py`, `tests/test-brief.sh`
+- **Given:** a plant graph with a `crosscut` node marked `trust: true` whose
+  `repo:` or a file pattern in its `load_when` claims a path, a `trust: false`
+  crosscut and a subsystem claiming other paths
+- **When:** `graph-lint.py --trust-claims PATH...` runs, and `brief.py --role
+  security` composes the pass's brief
+- **Then:** `--trust-claims` prints `{"claims": {path: [ids]}}` naming, for
+  each path, only the `trust: true` crosscut nodes that claim it; the security
+  brief carries the SECURITY PATH block of `protocols/test-first.md` byte for
+  byte, and no other role's brief carries it
+- **And:** a `trust:` key on a node of another kind, or with a value other
+  than `true` or `false`, is a lint error
 
 ### Contract: BOOTSTRAP_STEP2_LOADS_A_MENU
 - **Test file:** `tests/test-seed-lint.sh` (check in `tests/seed-lint.py`)
@@ -2309,6 +2323,8 @@ gives.
 | HANDBACK_STARTS_AT_STATUS | X350, a row of the text-rules table: a `produced_by:` echo put back | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
 | HANDBACK_STARTS_AT_STATUS | X351, a row of the text-rules table: the handback `expertise_gap:` line removed | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
 | SPAWN_LOG_RECORDS_THE_ATTRIBUTION | X492 the log line, `--log`, `--emulated` and the re-mint refusal | tests/test-brief.sh | fixture | green |
+| TRUST_PATH_TAKES_THE_SECURITY_PASS | X494 TrustClaimTests: a path claimed by `repo:` and one by a file pattern name the trust crosscut; `trust: false` and subsystem paths name none; `trust:` on a subsystem is an error | tests/test_graph_lint.py | fixture | green |
+| TRUST_PATH_TAKES_THE_SECURITY_PASS | X495 the security brief carries the SECURITY PATH block byte for byte; a tester brief does not | tests/test-brief.sh | fixture | green |
 | BOOTSTRAP_STEP2_LOADS_A_MENU | X352, a row of the text-rules table: step 2 reworded alike in all six copies | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
 | BOOTSTRAP_STEP2_LOADS_A_MENU | X353, a row of the text-rules table: step 2 re-wrapped in all six copies passes; guard | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
 | ADOPTED_RULES_NOT_PENDING | X354, a row of the text-rules table: one §6 pending phrase planted | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
@@ -2651,3 +2667,11 @@ kept outside the seed.
   and the delivery in the plant `changelog.md`, which `protocol.deliver` now
   writes once. No contract changed (the rule is doctrine held by review;
   ADR-0032).
+- 2026-11-09 — version 0.18, by the session porting the 8.3.0 security pass.
+  The owner decided on 2026-11-09 that a change to a trust surface takes one
+  adversarial security pass after review, set off by the paths a `trust: true`
+  crosscut claims or a contract labelled `security`, never by the reviewer's
+  rating: one pass, one fixer, one light re-check (`test-first.security-path`).
+  Added TRUST_PATH_TAKES_THE_SECURITY_PASS (X494, X495).
+  SPAWN_LOG_RECORDS_THE_ATTRIBUTION's Then drops "overrides": this branch's
+  spawn log records no batch or held override.

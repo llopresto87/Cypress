@@ -21,6 +21,8 @@ Usage:
                                           # programs (the route hooks)
     python3 graph-lint.py --show ID...    # read routed nodes: each pointer
                                           # resolved in a header, then the body
+    python3 graph-lint.py --trust-claims PATH...  # which `trust: true`
+                                          # crosscut claims each path (JSON)
     python3 graph-lint.py --eval TSV      # route a node-route corpus; per class,
                                           # gated on the GRAPH_* ratchets
 
@@ -320,6 +322,9 @@ def check_schema(n: Node, errs: list) -> None:
     if n.meta.get("tier") != 2:
         errs.append(f"{n.path.name}: tier must be 2 (got {n.meta.get('tier')!r})")
     kind = n.meta.get("kind")
+    if "trust" in n.meta and (kind != "crosscut" or str(n.meta["trust"]).strip().lower() not in ("true", "false")):
+        errs.append(f"{n.path.name}: `trust:` is `true` or `false`, on a crosscut node only "
+                    f"(a trust surface, test-first.security-path)")
     if kind not in KINDS:
         errs.append(f"{n.path.name}: kind {kind!r} not in {sorted(KINDS)}")
     elif n.id and n.id != ROOT_ID:
@@ -1372,6 +1377,34 @@ def _named_paths(nodes: list, paths: list) -> dict:
     return found
 
 
+def trust_nodes(nodes: list) -> list:
+    """The trust surfaces: each `kind: crosscut` node marked `trust: true`."""
+    return [n for n in nodes if n.meta.get("kind") == "crosscut"
+            and str(n.meta.get("trust", "")).strip().lower() == "true"]
+
+
+def trust_claims(nodes: list, paths: list) -> dict:
+    """{path: [ids]} for each of PATHS a trust crosscut claims by the path
+    tier's own rules: its `repo:` (`_repo_claim`) or a file pattern in its
+    `load_when`. A change under such a path takes the security pass
+    (`test-first.security-path`, SPEC-0005 TRUST_PATH_TAKES_THE_SECURITY_PASS)."""
+    trust = trust_nodes(nodes)
+    out: dict = {}
+    if not trust:
+        return out
+    helper = _helper()
+    for path in paths:
+        p = path.strip().lower()
+        hit = []
+        for n in trust:
+            r = n.meta.get("repo")
+            by_repo = isinstance(r, str) and r and _repo_claim(r, p)[0]
+            if by_repo or any(helper.path_matches(p, pat.lower()) for pat in _load_when_pieces(n)[1]):
+                hit.append(n.id)
+        if hit:
+            out[path] = sorted(hit)
+    return out
+
 def _lexical(nodes: list, words: list) -> list:
     """Tier 4's scored entries: IDF-weighted, a term in many nodes (generic)
     worth little, one in one or two (distinctive) dominating — with the guards
@@ -1998,6 +2031,8 @@ def main() -> int:
     ap.add_argument("--plan-json", metavar="TASK",
                     help="the same route as one cypress.plan/1 JSON document; pass "
                          "the task as one --plan-json=TASK element")
+    ap.add_argument("--trust-claims", nargs="+", metavar="PATH",
+                    help="print {\"claims\": {path: [ids]}} for each PATH a `trust: true` crosscut claims")
     ap.add_argument("--show", nargs="+", metavar="ID",
                     help="print each node: a header with every pointer resolved, then its body")
     ap.add_argument("--eval", metavar="TSV", type=Path,
@@ -2012,6 +2047,9 @@ def main() -> int:
 
     if args.show:
         return show(nodes, args.show)
+    if args.trust_claims:
+        print(json.dumps({"claims": trust_claims(nodes, args.trust_claims)}))
+        return 0
     if args.eval:
         return evaluate(nodes, args.eval)
     if args.plan:

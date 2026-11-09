@@ -3123,5 +3123,60 @@ class NodeRouteEvalTests(unittest.TestCase):
         self.assertEqual(r.returncode, 0, f"{r.stdout}\n{r.stderr}")
 
 
+
+def with_trust(text: str, value: str) -> str:
+    """`node_md` text with a `trust:` key (one word: the token band holds)."""
+    return text.replace("\ntier: 2\n", f"\ntier: 2\ntrust: {value}\n", 1)
+
+
+def trust_plant(tmp: Path, extra: dict | None = None) -> Path:
+    """A plant whose graph holds crosscut.auth (`trust: true`, `repo:
+    src/auth`, file pattern `config/policy/*.json`), crosscut.logging
+    (`trust: false`, `repo: src/log`) and subsystem.app (`repo: src`)."""
+    nodes = {
+        "root": node_md("root", "root", owns=["root.map"], load_when=["what this project is"]),
+        "crosscut.auth": with_trust(with_repo(node_md(
+            "crosscut.auth", "crosscut",
+            load_when=["sign-in gate, session token", "config/policy/*.json"]), "src/auth"), "true"),
+        "crosscut.logging": with_trust(with_repo(node_md(
+            "crosscut.logging", "crosscut", load_when=["log lines"]), "src/log"), "false"),
+        "subsystem.app": with_repo(node_md("subsystem.app", "subsystem",
+                                           load_when=["app shell"]), "src"),
+        **(extra or {}),
+    }
+    built = build_graph(tmp, nodes)
+    plant = tmp / "plant-trust"
+    for d in ("src/auth", "src/log", "config/policy", "docs"):
+        (plant / d).mkdir(parents=True, exist_ok=True)
+    for f in ("src/auth/login.py", "src/log/out.py", "src/app.py", "config/policy/a.json"):
+        (plant / f).write_text("x\n", encoding="utf-8")
+    shutil.move(str(built), str(plant / "docs" / "graph"))
+    return plant
+
+
+class TrustClaimTests(_TmpCase):
+    """SPEC-0005 TRUST_PATH_TAKES_THE_SECURITY_PASS: `--trust-claims` names,
+    for each path, the `trust: true` crosscut nodes that claim it by the path
+    tier's rules (`repo:`, a file pattern in `load_when`)."""
+
+    def test_x494_trust_claims_by_repo_and_pattern(self):
+        plant = trust_plant(self.tmp)
+        r = run_plant_tool(plant, "--trust-claims", "src/auth/login.py", "config/policy/a.json",
+                           "src/log/out.py", "src/app.py")
+        self.assertEqual(r.returncode, 0, f"{r.stdout}\n{r.stderr}")
+        self.assertEqual(json.loads(r.stdout), {"claims": {
+            "src/auth/login.py": ["crosscut.auth"], "config/policy/a.json": ["crosscut.auth"]}})
+
+    def test_x494_trust_is_a_crosscut_boolean(self):
+        plant = trust_plant(self.tmp, {"subsystem.pay": with_trust(node_md(
+            "subsystem.pay", "subsystem", load_when=["pay run"]), "true")})
+        with (plant / "docs" / "graph" / "index.md").open("a", encoding="utf-8") as f:
+            f.write("- subsystem.pay\n")
+        r = run_plant_tool(plant)
+        self.assertEqual(r.returncode, 1, f"{r.stdout}\n{r.stderr}")
+        self.assertIn("subsystem.pay.md: `trust:` is `true` or `false`, on a crosscut node only",
+                      r.stdout + r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

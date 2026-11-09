@@ -8,7 +8,9 @@ HANDBACK block of templates/prompts/handback-payload.md are copied byte for
 byte, with their slots filled, so a brief carries them verbatim by
 construction and neither the caller nor the worker reads the templates.
 `--charter` prepends the role's charter body (frontmatter dropped) for a host
-whose spawn has no agent type to carry it (Prime Agent).
+whose spawn has no agent type to carry it (Prime Agent). A `security` brief also
+carries the SECURITY PATH block of protocols/test-first.md byte for byte
+(`test-first.security-path`).
 
   python3 docs/graph/brief.py --role tester --spawn-id orchestrator.3.tester.1 \
       --task "<exact task line>" --route "<agent-lint line or rationale>" \
@@ -40,6 +42,7 @@ from pathlib import Path
 GRAPH = Path(__file__).resolve().parent
 BOOTSTRAP = GRAPH / "templates" / "prompts" / "graph-session-bootstrap.md"
 HANDBACK = GRAPH / "templates" / "prompts" / "handback-payload.md"
+TEST_FIRST = GRAPH / "protocols" / "test-first.md"
 AGENTS = GRAPH / "agents"
 
 
@@ -110,6 +113,7 @@ def main() -> int:
         comp = fenced(BOOTSTRAP, "COMPANION")
         comp = re.sub(r"\{\{the protocol phase.*?\}\}", a.route, comp, flags=re.S)
         payload = fenced(HANDBACK, "HANDBACK")
+        security = fenced(TEST_FIRST, "SECURITY PATH") if a.role == "security" else ""
     except SystemExit as e:
         print(e, file=sys.stderr)
         return 2
@@ -128,8 +132,10 @@ def main() -> int:
         out.append(f"Effort: {a.effort}")
     if a.charter:
         out += ["", "## Your charter", "", body]
-    out += ["", "```", graph.rstrip("\n"), "```", "", "```", comp.rstrip("\n"), "```",
-            "", "## Task", "", part.rstrip("\n"), "",
+    out += ["", "```", graph.rstrip("\n"), "```", "", "```", comp.rstrip("\n"), "```"]
+    if security:
+        out += ["", "```", security.rstrip("\n"), "```"]
+    out += ["", "## Task", "", part.rstrip("\n"), "",
             "## Handback (fill these fields; the rules are in docs/graph/templates/prompts/handback-payload.md)",
             "", "```", payload.rstrip("\n"), "```"]
     log = spawn_log(Path(a.plan))

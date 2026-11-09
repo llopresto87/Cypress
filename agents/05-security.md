@@ -54,6 +54,11 @@ The orchestrator should call you whenever a feature touches:
   untrusted content, generated commands or queries).
 - Public network exposure.
 
+After the review of an increment on the security path
+(`test-first.security-path`), you run its one adversarial pass: work the
+SECURITY PATH block your brief carries against the diff, and later the one
+light re-check of the fix your findings produced.
+
 ## Threat-model template
 
 Produce a short threat model in `docs/graph/decisions/` for every

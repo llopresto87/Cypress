@@ -219,6 +219,20 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   stages anything. The gate runner reports a skipped step as SKIP and counts
   it apart. The release procedure stages paths by name and keeps local
   evidence in `.git/info/exclude`.
+- **A change to a trust surface takes one security pass
+  (`test-first.security-path`).** A `crosscut` node may carry `trust: true`
+  and claim paths, by its `repo:` or a file pattern in `load_when`, as the
+  router's path tier reads them; `graph-lint.py --trust-claims PATH...` names
+  the claims. When an increment writes under such a path, or §9 labels one of
+  its contracts `security`, the session spawns `security` once after the
+  reviewer, whatever the reviewer rated. The brief `brief.py --role security`
+  composes carries the SECURITY PATH block byte for byte: a second path around
+  a disabled action, a static rule evaded by alias, helper, factory,
+  string-built name or comment, an unpinned value where one value is allowed,
+  and line terminators other than `\n`. Every reviewer finding on the covered
+  files goes with it. Its findings go to one fixer and one light re-check by
+  `security`: one round, no loop. SPEC-0005 adds
+  TRUST_PATH_TAKES_THE_SECURITY_PASS.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 
