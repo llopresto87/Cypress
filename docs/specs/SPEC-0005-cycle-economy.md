@@ -536,6 +536,9 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
 - **And:** a composed file that differs from a fresh composition (edited by
   hand, or a node changed since) makes `--check` exit non-zero naming it; an
   id no node carries stops the install before the first agent is placed
+- **And:** graft's `graft.gate.projection-drift` row checks the Claude Code
+  agents with `install.sh claude-code --check`, not a `diff` against the
+  charter, which reads every composed agent as drift
 
 ### Contract: AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK
 - **Test file:** `tests/test-install-placement.sh`
@@ -2386,6 +2389,7 @@ gives.
 | SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS | X498 a tester brief with `--security-path` carries the block, which names every class, the path tests and the confirmation | tests/test-brief.sh | fixture | green |
 | AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK | M23 case_agents_recompose: a plant appends a line to `method/engineering-posture.md`; `--check` names `02-implementer.md` STALE with `--recompose-agents`; that run leaves every file outside `.claude/agents/` byte-identical, the implementer carries the line, `--check` is up to date; seen red first (the STALE line said re-run the install) | tests/test-install-placement.sh | integration | green |
 | ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | M22 case_agents_compose: the implementer's six always-loaded bodies once each with no frontmatter; `11-pentest.md` byte for byte; a hand edit is STALE to `--check` | tests/test-install-placement.sh | integration | green |
+| ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | (none) the `ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES` row of seed-lint's `TEXT_RULES`: the `graft.gate.projection-drift` row holds `install.sh claude-code --check`; red id: `ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES: protocols/graft.md graft.gate.projection-drift does not hold 'install.sh claude-code --check'` | tests/seed-lint.py | real-tree | green |
 | TRUST_MARKER_IS_SETTLED | X496 TrustMarkerTests: `--trust-unsettled` names the unset and the pathless crosscut only; the lint warns on the pathless one and exits 0 | tests/test_graph_lint.py | fixture | green |
 | TRUST_MARKER_IS_SETTLED | X497 case_run_lists_unsettled_trust_markers: graft-run's judgment items, before the gate table | tests/test-graft-tools.sh | integration (synthetic plant) | green |
 | TRUST_MARKER_IS_SETTLED | (none) the `TRUST_MARKER_IS_SETTLED` row of seed-lint's `TEXT_RULES`: the `grow.gate.disclosure` row holds `graph-lint.py --trust-unsettled`; red id: `TRUST_MARKER_IS_SETTLED: protocols/grow.md grow.gate.disclosure does not hold 'graph-lint.py --trust-unsettled'` | tests/seed-lint.py | real-tree | green |
@@ -2767,3 +2771,9 @@ kept outside the seed.
   crosscut it authored without `trust:` stayed silent to plain graph-lint and
   growth-audit. TRUST_MARKER_IS_SETTLED gains the arm that
   `grow.gate.disclosure` runs it, held by seed-lint (seen red first).
+- 2026-11-09 — graft verification. graft.md's projection-drift row said to
+  `diff` each agent against its charter, which reports all 13 composed agents
+  as drift. ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES gains the arm that the
+  row runs `install.sh claude-code --check`, held by seed-lint (seen red
+  first); graft, grow, INSTALL.md and the Claude Code README now point at the
+  composition, the spawn log and the resume hook.

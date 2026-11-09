@@ -316,6 +316,13 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   grower authored with no `trust:` stayed silent: plain graph-lint and
   growth-audit do not name it. `grow.gate.disclosure` now runs
   `graph-lint.py --trust-unsettled` as graft-run already does.
+- **Graft and grow point at the new Claude Code machinery.** graft.md's
+  projection-drift check said to `diff` each agent against its charter, which
+  reports all 13 composed agents as drift; it now runs
+  `install.sh claude-code --check`. graft.md, grow.md, INSTALL.md and the
+  Claude Code README each point, in a line, at the `always_loads:`
+  composition, the spawn log (`docs/graph/plans/spawns.jsonl`) and the resume
+  hook where a steward or grower acts on them; seed-lint holds the pointers.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 

@@ -118,7 +118,11 @@ the deepest legal chain is orchestrator → multi-agent-architect → architect
 out-of-domain boundary they stop and return the handback payload
 (`docs/graph/templates/prompts/handback-payload.md`) naming the next specialist. Every
 worker, delegating or leaf, ends its turn with that payload; `brief.py`
-logs who was spawned and why (`delegation.tracing`).
+logs who was spawned and why to `docs/graph/plans/spawns.jsonl`
+(`delegation.tracing`), the log the delivery's attribution reads. On Claude
+Code, `.claude/resume-hook.py` refuses a message to a worker idle past its
+prompt cache unless it starts `continuation: <reason>`
+(`delegation.continuation`): brief new work fresh.
 
 Two host conditions look alike here and only one is fatal. If the host cannot
 spawn clean-context workers with selectable model classes, stop and report that
@@ -1003,7 +1007,9 @@ nobody opened. Where an agent is warranted, check the seed's
 `agent-corpus/<name>.md` first, author from `docs/graph/templates/agent.template.md` and the cited
 evidence, mark it `origin: project`, declare its `plant_knowledge:`
 (collections or the expertise nodes it draws on), cite what motivated it, and
-project it to every path this plant's `.cypress/seed.json` records;
+project it to every path this plant's `.cypress/seed.json` records (on
+Claude Code a charter that names `always_loads:` is composed with those nodes;
+`install.sh claude-code --recompose-agents` rewrites `.claude/agents/` alone);
 unprojected it is on disk and unspawnable
 (`delegation.harness-registration`), and on most harnesses spawnable only in
 the next session; say so in the delivery.
