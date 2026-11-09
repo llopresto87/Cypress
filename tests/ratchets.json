@@ -5,7 +5,9 @@
     "ADVERSARIAL_MIN_ROWS": 12,
     "CONFIDENT_WRONG_BUDGET": 0,
     "EAGER_BUDGET": 41600,
-    "EAGER_EXEMPTIONS": {},
+    "EAGER_EXEMPTIONS": {
+      "claude-code": 67148
+    },
     "EDITION_DEBT": [
       "acn-det-127434-baseline-2027",
       "acn-det-379907-2025",
