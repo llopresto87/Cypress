@@ -20,6 +20,11 @@ owns:
   - tool-smith.authoring-bar
   - tool-smith.plant-scope
 requires:
+always_loads:
+  - method.engineering-posture
+  - method.bounded-execution
+  - method.host-parity
+  - skill.holistic-editing
 peers:
   - skill.toolcraft
   - protocol.canonize

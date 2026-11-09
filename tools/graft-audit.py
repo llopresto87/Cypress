@@ -353,6 +353,24 @@ GENERATED_FILES = (".codex/codex-config-snippet.toml",)
 # backup by design (place_state), so it never reaches this audit.
 
 
+def _always_loaded_texts(charter: str, seed: Path) -> list:
+    """The seed bodies of the nodes a charter's `always_loads:` names, read
+    from core/method/ and skills/<name>/SKILL.md, for the Claude Code
+    composition of that charter."""
+    head = charter.split("\n---\n", 1)[0]
+    m = re.search(r"^always_loads:\n((?:  - .*\n?)*)", head + "\n", re.M)
+    if not m:
+        return []
+    out = []
+    for nid in re.findall(r"  - (\S+)", m.group(1)):
+        kind, _, name = nid.partition(".")
+        f = (seed / "core" / "method" / f"{name}.md" if kind == "method"
+             else seed / "skills" / name / "SKILL.md")
+        if f.is_file():
+            out.append(f.read_text(errors="replace"))
+    return out
+
+
 def generator_for(rel: str, seed: Path):
     """The seed node a generated harness view was projected FROM, or None."""
     if rel in GENERATED_FILES:
@@ -995,6 +1013,11 @@ def audit_backups(plant: Path, seed: Path, opt: dict) -> int:
         # engine keeps its config and comments through graft-graph-engine.py,
         # so a line still in the plant's current engine was preserved.
         seed_texts = [st] + ([_seed_text_at(seed, base, src)] if base else [])
+        if rel.startswith(".claude/agents/"):
+            # a composed agent carries its always-loaded nodes' bodies after the
+            # charter (SPEC-0005 ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES):
+            # those lines are the seed's too
+            seed_texts += _always_loaded_texts(st, seed)
         kept = list(seed_texts)
         if rel in ENGINE_PATHS and (plant / rel).is_file():
             kept.append((plant / rel).read_text(errors="replace"))

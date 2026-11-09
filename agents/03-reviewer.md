@@ -26,6 +26,10 @@ owns:
   - reviewer.severity-scale
 requires:
   - skill.holistic-editing
+always_loads:
+  - method.engineering-posture
+  - method.design-posture
+  - method.contract-posture
 peers:
   - agent.implementer
   - agent.security

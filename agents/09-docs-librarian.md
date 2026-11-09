@@ -30,6 +30,10 @@ owns:
   - docs-librarian.sources-discipline
 requires:
   - skill.knowledge-graph
+always_loads:
+  - method.stewardship-posture
+  - method.maintenance-contracts
+  - skill.holistic-editing
 peers:
   - agent.research-scout
   - skill.humanizer

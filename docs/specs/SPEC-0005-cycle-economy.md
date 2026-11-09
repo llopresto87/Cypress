@@ -10,7 +10,7 @@ status_evidence: tests/test_graph_lint.py, tests/test_agent_lint.py, tests/test-
 ## 0. Metadata
 
 - **Identifier:** SPEC-0005-cycle-economy
-- **Version:** 0.18 (the security path: TRUST_PATH_TAKES_THE_SECURITY_PASS, TRUST_MARKER_IS_SETTLED, SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS, 2026-11-09; every amendment is dated in §12)
+- **Version:** 0.18 (the security path: TRUST_PATH_TAKES_THE_SECURITY_PASS, TRUST_MARKER_IS_SETTLED, SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS, ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES, 2026-11-09; every amendment is dated in §12)
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-09-28
@@ -521,6 +521,21 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   with "n/a: <why>" for a class that cannot apply, one test per path to a
   gated action's effect found from the effect's callers, and has the
   security pass confirm them
+
+### Contract: ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES
+- **Test file:** `tests/test-install-placement.sh`
+- **Given:** a charter in `docs/graph/agents/` whose frontmatter names
+  `always_loads:` (node ids), and one that names none
+- **When:** `install.sh claude-code` places `.claude/agents/`, and
+  `install.sh claude-code --check` runs
+- **Then:** the composed agent file is the charter followed, in
+  `always_loads:` order, by each node's body under `## Always loaded: <id>`,
+  each body exactly once and no node's frontmatter; the charter that names
+  none is placed byte for byte; growth-audit and graft-run read a composed
+  file that begins with its charter as the charter's projection
+- **And:** a composed file that differs from a fresh composition (edited by
+  hand, or a node changed since) makes `--check` exit non-zero naming it; an
+  id no node carries stops the install before the first agent is placed
 
 ### Contract: TRUST_MARKER_IS_SETTLED
 - **Test file:** `tests/test_graph_lint.py`, `tests/test-graft-tools.sh`
@@ -2354,6 +2369,7 @@ gives.
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | X494 TrustClaimTests: a path claimed by `repo:` and one by a file pattern name the trust crosscut; `trust: false` and subsystem paths name none; `trust:` on a subsystem is an error | tests/test_graph_lint.py | fixture | green |
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | X495 the security brief carries the SECURITY PATH block byte for byte; a tester brief does not | tests/test-brief.sh | fixture | green |
 | SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS | X498 a tester brief with `--security-path` carries the block, which names every class, the path tests and the confirmation | tests/test-brief.sh | fixture | green |
+| ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | M22 case_agents_compose: the implementer's six always-loaded bodies once each with no frontmatter; `11-pentest.md` byte for byte; a hand edit is STALE to `--check` | tests/test-install-placement.sh | integration | green |
 | TRUST_MARKER_IS_SETTLED | X496 TrustMarkerTests: `--trust-unsettled` names the unset and the pathless crosscut only; the lint warns on the pathless one and exits 0 | tests/test_graph_lint.py | fixture | green |
 | TRUST_MARKER_IS_SETTLED | X497 case_run_lists_unsettled_trust_markers: graft-run's judgment items, before the gate table | tests/test-graft-tools.sh | integration (synthetic plant) | green |
 | BOOTSTRAP_STEP2_LOADS_A_MENU | X352, a row of the text-rules table: step 2 reworded alike in all six copies | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
@@ -2718,3 +2734,10 @@ kept outside the seed.
   (moved out of `protocols/test-first.md`), asks RED for one negative control per
   evasion class and one test per path to a gated effect, and the security
   pass confirms them.
+- 2026-11-09 — version 0.18, same session. The owner decided on 2026-11-09
+  that each role always loads its core method nodes: in the cheapest measured
+  run no worker loaded a single method node. Each charter names them in
+  `always_loads:`, apart from `requires:` so no route changes, and on Claude Code the installer
+  composes them into the role's agent file, so they sit in the role's cached
+  system prompt; the nodes stay the only home. Added
+  ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES (M22, seen red first).

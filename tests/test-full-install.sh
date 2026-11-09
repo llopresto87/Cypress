@@ -55,6 +55,13 @@ projection_parity() {
   [[ -n "$home_set" ]] || { echo "projection_parity: no agent file in $home or $proj" >&2; return 1; }
   while IFS= read -r f; do shared+=("$f"); done <<< "$home_set"
   for f in "${shared[@]}"; do
+    # a charter naming always_loads: is composed on Claude Code
+    # (ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES): its charter comes first
+    if [[ "$proj" == */.claude/agents ]] && grep -q '^always_loads:' "$home/$f"; then
+      python3 -c 'import sys; h,p=(open(a).read() for a in sys.argv[1:3]); sys.exit(not (p.startswith(h.rstrip("\n")) and "\n## Always loaded: " in p))' \
+        "$home/$f" "$proj/$f" || { echo "projection_parity: composed $f does not begin with its charter" >&2; return 1; }
+      continue
+    fi
     cmp -s "$home/$f" "$proj/$f" || { echo "projection_parity: $f differs between $home and $proj" >&2; return 1; }
   done
 }

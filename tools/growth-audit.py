@@ -1505,12 +1505,23 @@ def lint_experts(plant, seed, rec, templates, findings):
                                         f"{tool} session can spawn it: the "
                                         f"host reads its roster from there, "
                                         f"not from the graph"))
-            elif verbatim and proj.read_bytes() != info["path"].read_bytes():
+            elif verbatim and not projects_verbatim(proj.read_bytes(), info["path"].read_bytes()):
                 findings.append(Finding("CONTRADICTED", label,
                                         f"{projected} has drifted from its "
                                         f"home in {GRAPH_HOME}/agents/ — a "
                                         f"projection is a copy, not a second "
                                         f"home; re-project it"))
+
+
+def projects_verbatim(projected: bytes, home: bytes) -> bool:
+    """A verbatim projection is its home's bytes, or, for a charter that names
+    `always_loads:`, the Claude Code composition that begins with them
+    (SPEC-0005 ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES); `install.sh
+    claude-code --check` compares the whole composition."""
+    if projected == home:
+        return True
+    return (b"\nalways_loads:" in home.split(b"\n---\n", 1)[0]
+            and projected.startswith(home.rstrip(b"\n") + b"\n\n## Always loaded: "))
 
 
 def lint_inventory(plant, rec, templates, findings):

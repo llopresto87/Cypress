@@ -42,6 +42,12 @@ owns:
   - orchestrator.delegation-brief
 requires:
   - method.tiers
+always_loads:
+  - method.tiers
+  - method.delegation
+  - method.delegation-continuation
+  - method.decision-economy
+  - method.minimum-sufficient-work
 peers:
   - agent.architect
   - agent.tester

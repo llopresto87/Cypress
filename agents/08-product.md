@@ -20,6 +20,8 @@ owns:
   - product.first-useful-slice
   - product.accessibility-floor
 requires:
+always_loads:
+  - method.design-governance
 peers:
   - agent.architect
   - agent.tester

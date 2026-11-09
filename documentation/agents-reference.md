@@ -124,6 +124,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **tier (graph load-tier):** 2
 - **owns (facts):** `orchestrator.charter`, `orchestrator.tier-paths`, `orchestrator.delegation-brief`
 - **requires:** `method.tiers`
+- **always loads (composed into the Claude Code agent file):** `method.tiers`, `method.delegation`, `method.delegation-continuation`, `method.decision-economy`, `method.minimum-sufficient-work`
 - **peers:** `agent.architect`, `agent.tester`, `agent.implementer`, `agent.reviewer`, `agent.docs-librarian`
 - **routing_triggers:**
   - "route this task to the right specialist"
@@ -147,6 +148,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **tier (graph load-tier):** 2
 - **owns (facts):** `architect.charter`, `architect.spec-sections`, `architect.reversibility-tags`, `architect.legal-checkpoint`
 - **requires:** —
+- **always loads (composed into the Claude Code agent file):** `method.design-posture`, `method.design-governance`, `method.engineering-posture`, `method.decision-economy`
 - **peers:** `agent.tester`, `agent.implementer`, `agent.product`, `agent.research-scout`
 - **routing_triggers:**
   - "design the data model for the orders service"
@@ -175,6 +177,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **tier (graph load-tier):** 2
 - **owns (facts):** `implementer.charter`, `implementer.spawn-scope`, `implementer.preconditions`, `implementer.integration-discipline`
 - **requires:** `skill.holistic-editing`
+- **always loads (composed into the Claude Code agent file):** `method.engineering-posture`, `method.design-posture`, `method.contract-posture`, `method.minimum-sufficient-work`, `skill.holistic-editing`, `method.security-controls`
 - **peers:** `agent.tester`, `agent.reviewer`
 - **routing_triggers:**
   - "make the failing test pass"
@@ -203,6 +206,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **tier (graph load-tier):** 2
 - **owns (facts):** `reviewer.charter`, `reviewer.spawn-scope`, `reviewer.checklist`, `reviewer.severity-scale`
 - **requires:** `skill.holistic-editing`
+- **always loads (composed into the Claude Code agent file):** `method.engineering-posture`, `method.design-posture`, `method.contract-posture`
 - **peers:** `agent.implementer`, `agent.security`, `agent.reliability`, `agent.devils-advocate`
 - **routing_triggers:**
   - "audit this diff against the spec"
@@ -231,6 +235,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **tier (graph load-tier):** 2
 - **owns (facts):** `tester.charter`, `tester.spawn-scope`, `tester.bug-fix-loop`
 - **requires:** `protocol.test-first`, `skill.test-first`
+- **always loads (composed into the Claude Code agent file):** `method.engineering-posture`, `method.contract-posture`, `skill.holistic-editing`
 - **peers:** `agent.implementer`, `agent.reviewer`
 - **routing_triggers:**
   - "write the failing test that encodes the spec contract"
@@ -259,6 +264,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **tier (graph load-tier):** 2
 - **owns (facts):** `security.charter`, `security.secure-defaults`, `security.gate-bar`
 - **requires:** —
+- **always loads (composed into the Claude Code agent file):** `method.secrets-posture`, `method.contract-posture`, `method.restrictive-policy`
 - **peers:** `agent.pentest`, `agent.reviewer`, `agent.reliability`, `agent.tester`
 - **routing_triggers:**
   - "add a threat model for the upload endpoint"
@@ -290,6 +296,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **tier (graph load-tier):** 2
 - **owns (facts):** `reliability.charter`, `reliability.runbook-set`, `reliability.delivery-pipeline`
 - **requires:** —
+- **always loads (composed into the Claude Code agent file):** `method.incident-posture`, `method.release-posture`, `method.bounded-execution`, `skill.holistic-editing`
 - **peers:** `agent.security`, `agent.tester`
 - **routing_triggers:**
   - "the deploy is flaking under load, add observability"
@@ -347,6 +354,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **tier (graph load-tier):** 2
 - **owns (facts):** `product.charter`, `product.first-useful-slice`, `product.accessibility-floor`
 - **requires:** —
+- **always loads (composed into the Claude Code agent file):** `method.design-governance`
 - **peers:** `agent.architect`, `agent.tester`, `agent.ui-ux-designer`
 - **routing_triggers:**
   - "write the acceptance criteria and the user flow"
@@ -374,6 +382,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **tier (graph load-tier):** 2
 - **owns (facts):** `docs-librarian.charter`, `docs-librarian.close-out-flow`, `docs-librarian.sources-discipline`
 - **requires:** `skill.knowledge-graph`
+- **always loads (composed into the Claude Code agent file):** `method.stewardship-posture`, `method.maintenance-contracts`, `skill.holistic-editing`
 - **peers:** `agent.research-scout`, `skill.humanizer`
 - **routing_triggers:**
   - "author a graph node for the subsystem"
@@ -461,6 +470,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **tier (graph load-tier):** 2
 - **owns (facts):** `devils-advocate.charter`, `devils-advocate.verdict-vocabulary`, `devils-advocate.primary-source-rule`
 - **requires:** —
+- **always loads (composed into the Claude Code agent file):** `method.decision-economy`, `method.minimum-sufficient-work`
 - **peers:** `agent.reviewer`, `agent.pentest`
 - **routing_triggers:**
   - "try to refute every load-bearing claim in this finished document"
@@ -602,6 +612,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **tier (graph load-tier):** 2
 - **owns (facts):** `ui-ux-designer.charter`, `ui-ux-designer.design-spec`, `ui-ux-designer.heuristics`
 - **requires:** —
+- **always loads (composed into the Claude Code agent file):** `method.design-governance`
 - **peers:** `agent.product`, `agent.architect`, `agent.implementer`
 - **routing_triggers:**
   - "design the interface layout and interaction states"
@@ -667,6 +678,7 @@ Each subsection below documents one agent. All frontmatter fields are taken verb
 - **tier (graph load-tier):** 2
 - **owns (facts):** `tool-smith.charter`, `tool-smith.authoring-bar`, `tool-smith.plant-scope`
 - **requires:** —
+- **always loads (composed into the Claude Code agent file):** `method.engineering-posture`, `method.bounded-execution`, `method.host-parity`, `skill.holistic-editing`
 - **peers:** `skill.toolcraft`, `protocol.canonize`, `agent.implementer`, `agent.tester`, `agent.reliability`
 - **routing_triggers:**
   - "make this throwaway script a durable tested tool"

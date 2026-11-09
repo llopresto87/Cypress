@@ -21,6 +21,11 @@ owns:
   - reliability.runbook-set
   - reliability.delivery-pipeline
 requires:
+always_loads:
+  - method.incident-posture
+  - method.release-posture
+  - method.bounded-execution
+  - skill.holistic-editing
 peers:
   - agent.security
   - agent.tester

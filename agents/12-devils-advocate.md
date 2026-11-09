@@ -20,6 +20,9 @@ owns:
   - devils-advocate.verdict-vocabulary
   - devils-advocate.primary-source-rule
 requires:
+always_loads:
+  - method.decision-economy
+  - method.minimum-sufficient-work
 peers:
   - agent.reviewer
   - agent.pentest

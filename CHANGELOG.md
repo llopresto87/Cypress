@@ -271,6 +271,22 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   --security-path` carries it to RED, and the security pass confirms the
   controls. The tester charter and `skill.spec-author` point to it. SPEC-0005
   adds SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS.
+- **Each role always loads its core method nodes.** In the cheapest measured
+  run no worker loaded a single `method.*` node: the router's path tier
+  returned only the code's owner, and no charter required one. Each charter
+  now names its core nodes in `always_loads:`, a key apart from `requires:`
+  so no route changes (the implementer: engineering,
+  design and contract posture, minimum-sufficient work, holistic editing and
+  the security controls; every role's list is in the agents reference). On
+  Claude Code `install.sh` composes `.claude/agents/<role>.md` as the charter
+  followed by each node's body under `## Always loaded: <id>`, frontmatter
+  stripped, in a fixed order, so the role's system prompt is the same on every
+  spawn and its cache holds. The nodes stay the only home: the composed file is
+  generated: growth-audit and graft-run accept a composed file that begins
+  with its charter, and `install.sh claude-code --check` names one whose
+  composition drifted. Other
+  hosts place the charter as before. SPEC-0005 adds
+  ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 

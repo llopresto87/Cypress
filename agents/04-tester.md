@@ -22,6 +22,10 @@ owns:
 requires:
   - protocol.test-first
   - skill.test-first
+always_loads:
+  - method.engineering-posture
+  - method.contract-posture
+  - skill.holistic-editing
 peers:
   - agent.implementer
   - agent.reviewer
