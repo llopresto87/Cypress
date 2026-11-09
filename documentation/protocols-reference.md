@@ -31,7 +31,7 @@ All 17 protocols are tier 2 nodes with `origin: seed`, `kind: protocol`.
 | specify | `protocol.specify` | `rule.spec`, `specify.flow`, `specify.revision-discipline` | — | brainstorm, grill, specify-joint-pass | 2127 |
 | specify-joint-pass | `protocol.specify-joint-pass` | `specify.joint-pass`, `specify.design-latitude` | — | specify, grill | 1101 |
 | grill | `protocol.grill` | `rule.grill`, `grill.flow`, `grill.revise`, `grill.increment-shape`, `grill.press`, `grill.plan-approval`, `grill.legal-checkpoint`, `grill.audit` | — | specify, specify-joint-pass, test-first, agent.devils-advocate | 4396 |
-| test-first | `protocol.test-first` | `rule.test-first`, `test-first.cycle`, `test-first.characterize-first`, `test-first.known-bug` | — | verify, specify, skill.test-first, skill.holistic-editing | 3391 |
+| test-first | `protocol.test-first` | `rule.test-first`, `test-first.cycle`, `test-first.characterize-first`, `test-first.known-bug`, `test-first.security-path` | — | verify, specify, skill.test-first, skill.holistic-editing | 3779 |
 | verify | `protocol.verify` | `rule.verify`, `verify.gate-states`, `verify.gate-classes`, `verify.risk-depth`, `verify.null-result`, `verify.composition`, `verify.silent-substitutes`, `verify.test-first` | — | test-first, recover, canonize, deliver, skill.validate-knowledge, verify-new-gates, verify-disagreement | 5706 |
 | verify-new-gates | `protocol.verify-new-gates` | `verify.status-evidence`, `verify.tool-faults` | — | verify, verify-disagreement | 920 |
 | verify-disagreement | `protocol.verify-disagreement` | `verify.characterize`, `verify.measure-integrity` | — | verify, verify-new-gates | 1800 |
@@ -527,14 +527,15 @@ touches ten files and adds three behaviors is re-sliced.
 
 - **id:** `protocol.test-first`, tier 2
 - **owns:** `rule.test-first`, `test-first.cycle`,
-  `test-first.characterize-first`, `test-first.known-bug`
+  `test-first.characterize-first`, `test-first.known-bug`,
+  `test-first.security-path`
 - **requires:** —
 - **peers:** `protocol.verify`, `protocol.specify`, `skill.test-first`,
   `skill.holistic-editing`
 - **load_when:** "about to write or change production code"; "RED GREEN
   REFACTOR, failing test first, TDD"; "bug fix, regression test"; "legacy
   code with no tests, characterization test"; "pure refactor, migration
-  safety"
+  safety"; "change to a trust surface, security pass, bypass the rule"
 
 ### What it does
 

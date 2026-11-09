@@ -100,6 +100,7 @@ load_when:                     # natural-language triggers for the router
   - "editing {{repo-or-path}}/**"
   - "{{concept}}, {{synonym}}, {{the phrase a dev would type}}"
 est_tokens: {{honest-estimate}}
+trust: true                    # crosscut only: a trust surface; a change under its paths takes the security pass
 status: open                   # lifecycle status (optional on most kinds; see below)
 status_date: YYYY-MM-DD
 owner: {{agent-or-person}}     # required while open | hotfix | deferred
@@ -163,7 +164,12 @@ joints. A common starting set:
   observability.
 - `data`: the data model and where it lives.
 - `crosscut`: concerns spanning subsystems: auth, secrets, privacy,
-  testing.
+  testing. A crosscut that grants, gates or checks (auth, a disabled action, a
+  secret, a permission) carries `trust: true` and claims its paths (its
+  `repo:`, a file pattern in `load_when`): an increment that writes under one
+  takes the security pass whatever its reviewer rates
+  (`test-first.security-path`; `graph-lint.py --trust-claims PATH...`). Any
+  other crosscut carries `trust: false`.
 - `domain`: the problem-domain vocabulary and workflows.
 - `deviation`: a **deliberate, standing departure from a known standard**,
   with the reason, its scope, and the condition that ends it. Lives in
