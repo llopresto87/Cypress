@@ -23,7 +23,9 @@ HANDBACK
 - graph_route: {{`--plan` task line; LOAD <ids>; skipped <ids>; widened <id> (<reason>)}}
 - expertise_gap: {{each stack element with no expertise.* node + the path showing it, or "none"}}
 - recommended_next: {{agent + protocol/step, or "none — session ends here"}}
-- gates: {{commands + results, or "none"; tests added: cases + runtime delta}}
+- gates: {{evidence by kind, "none" where empty: compiled; executed (command,
+  pass/fail counts: a green gate is what it ran); statically inspected;
+  device-tested; deferred (not run, and why); tests added: cases + runtime delta}}
 - tools_built: {{durable tool: name, path, invocation, one per line, or "none"}}
 - skills_built: {{repeatable procedure: name + step gist, one per line, or "none"}}
 ```
@@ -53,6 +55,10 @@ HANDBACK
   that stalls or runs out of context still leaves its findings on disk. The close-out librarian reads every overflow note
   the task produced (`protocol.canonize`), so nothing that lives only
   there is lost to the graph.
+- **`gates:` files each claim under the evidence that backs it.** A
+  claim no executed check reached sits under statically inspected or
+  deferred, so the caller reads a green gate as the commands it ran, not
+  as "done".
 - **`gates:` also reports what the spawn added to the suite.** A spawn
   that adds tests states the cases and the runtime it added, as a delta.
   It lets the caller weigh the suite's growth against the contracts it
