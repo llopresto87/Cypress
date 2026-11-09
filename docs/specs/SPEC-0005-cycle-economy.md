@@ -512,6 +512,20 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
 - **And:** `protocol.test-first` holds reviewer findings on the covered files
   for the security pass, which is their one fix round
 
+### Contract: BRIEF_DERIVES_THE_SPAWN_EFFORT
+- **Test file:** `tests/test-brief.sh`
+- **Given:** a plant with `docs/graph/brief.py` and the role and task kind
+  table of `method/delegation-model-classes.md` (`delegation.effort`)
+- **When:** `brief.py` composes a brief with `--kind` (and `--label` for a
+  `by label` row), with `--security-path`, or with neither
+- **Then:** stderr carries `effort: <value> (<reason>)`: a reviewer `recheck`
+  is low, an implementer `increment` labelled hard is high and medium-low is
+  low, an architect `ruling` is medium, a `--security-path` brief is high, a
+  `first` review of trust-path files is high, and no kind gives the
+  definition's default; the spawn log records the same value
+- **And:** a kind the role has no row for is refused (exit 2) naming the
+  role's kinds
+
 ### Contract: REVIEW_BRIEF_NAMES_THE_SECURITY_PASS
 - **Test file:** `tests/test-brief.sh`
 - **Given:** a plant graph with a `trust: true` crosscut claiming `app/trusted/**`,
@@ -1643,8 +1657,8 @@ and those cases now hold SPEC-0002 `COMPOSED_CHILD_NEEDS_ITS_OWN_PHRASE`
   has no recorded per-spawn setting
 - **Response:** the brief records `host applies: definition default <value>`
 - **Side effects:** the spawn runs at the definition's effort
-- **Recovery:** rows 3 to 5: route to a definition carrying the needed effort (a
-  light variant for low), or accept the recorded departure. Row 1 fails closed:
+- **Recovery:** rules 2 and 3: route to a definition carrying the needed effort (a
+  light variant for low), or accept the recorded departure. Rule 1 fails closed:
   a `high` definition, or a `high` review spawn before the output lands, else a
   block
 
@@ -2471,6 +2485,7 @@ gives.
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | X494 TrustClaimTests: a path claimed by `repo:` and one by a file pattern name the trust crosscut; `trust: false` and subsystem paths name none; `trust:` on a subsystem is an error | tests/test_graph_lint.py | fixture | green |
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | X495 the security brief carries the SECURITY PATH block byte for byte; a tester brief does not | tests/test-brief.sh | fixture | green |
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | (none) the `TRUST_PATH_TAKES_THE_SECURITY_PASS` row of seed-lint's `TEXT_RULES`: `protocols/test-first.md` holds that the security pass is the one fix round of reviewer findings on the covered files; red id: `TRUST_PATH_TAKES_THE_SECURITY_PASS: protocols/test-first.md does not hold 'the security pass is their one fix round'` | tests/seed-lint.py | real-tree | green |
+| BRIEF_DERIVES_THE_SPAWN_EFFORT | X502 six role, kind and label fixtures print their effort; the log records it; an unknown kind is refused; X503 a first review of trust paths reads `first-trust`; seen red first | tests/test-brief.sh | fixture | green |
 | REVIEW_BRIEF_NAMES_THE_SECURITY_PASS | X503 a review naming `app/trusted/Launcher.kt` with `app/trusted/Gate.kt` uncommitted prints both; a review of `app/ui/Screen.kt` prints nothing; `--log` blocks until a security spawn follows; seen red first | tests/test-brief.sh | fixture | green |
 | SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS | X498 a tester brief with `--security-path` carries the block, which names every class, the path tests and the confirmation | tests/test-brief.sh | fixture | green |
 | AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK | M23 case_agents_recompose: a plant appends a line to `method/engineering-posture.md`; `--check` names `02-implementer.md` STALE with `--recompose-agents`; that run leaves every file outside `.claude/agents/` byte-identical, the implementer carries the line, `--check` is up to date; seen red first (the STALE line said re-run the install) | tests/test-install-placement.sh | integration | green |
@@ -2908,3 +2923,8 @@ kept outside the seed.
   mechanical told it the pass was owed. Added REVIEW_BRIEF_NAMES_THE_SECURITY_PASS
   (X503, seen red first): the reviewer's brief names the pass, and the
   attribution assertion blocks until a `security` spawn follows the review.
+- 2026-11-09 — the owner decided on 2026-11-09 that effort follows each
+  spawn's role and task kind rather than one level a role, pending
+  measurement in the next A/B arm. Added BRIEF_DERIVES_THE_SPAWN_EFFORT (X502,
+  seen red first): `brief.py --kind` derives the effort from the table in
+  `delegation.effort` and prints it for the caller to pass on the spawn.

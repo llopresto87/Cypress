@@ -18,11 +18,14 @@ carries the SECURITY PATH block of method/security-controls.md byte for byte
 (uncommitted, in the plant and in each repository directly under it) and the
 files its task part names with `graph-lint.py --trust-claims`; a claimed file
 prints `SECURITY PASS REQUIRED after this review: <files>` to the caller and is
-logged with the spawn.
+logged with the spawn. `--kind KIND [--label LABEL]` derives the spawn's effort
+from the role and task kind table of `method/delegation-model-classes.md`
+(`delegation.effort`) and prints `effort: <value> (<reason>)` for the caller to
+pass as the spawn's effort; `--effort` given verbatim is logged as it is.
 
   python3 docs/graph/brief.py --role tester --spawn-id orchestrator.3.tester.1 \
       --task "<exact task line>" --route "<agent-lint line or rationale>" \
-      [--effort "<label (row n: reason)>"] [--charter] --part FILE|- [--out PATH]
+      [--kind KIND [--label LABEL] | --effort "<value (reason)>"] [--charter] --part FILE|- [--out PATH]
       [--emulated "<reason>"] [--plan PATH]
   python3 docs/graph/brief.py --log
 
@@ -55,6 +58,8 @@ BOOTSTRAP = GRAPH / "templates" / "prompts" / "graph-session-bootstrap.md"
 HANDBACK = GRAPH / "templates" / "prompts" / "handback-payload.md"
 CONTROLS = GRAPH / "method" / "security-controls.md"
 AGENTS = GRAPH / "agents"
+MODEL_CLASSES = GRAPH / "method" / "delegation-model-classes.md"
+LABELS = {"low": "low", "medium-low": "low", "medium": "medium", "medium-hard": "high", "hard": "high"}
 
 
 def fenced(path: Path, head: str) -> str:
@@ -64,12 +69,50 @@ def fenced(path: Path, head: str) -> str:
     return m.group(1)
 
 
-def charter(role: str) -> str:
+def charter_parts(role: str) -> tuple[str, str]:
     for p in sorted(AGENTS.glob("*.md")):
         text = p.read_text(encoding="utf-8")
         if text.startswith("---") and re.search(rf"^name:\s*{re.escape(role)}\s*$", text.split("---", 2)[1], re.M):
-            return text.split("---", 2)[2].strip()
+            _, head, body = text.split("---", 2)
+            return head, body.strip()
     raise SystemExit(f"brief: no agent charter named {role!r} in {AGENTS}")
+
+
+def charter(role: str) -> str:
+    return charter_parts(role)[1]
+
+
+def charter_head(role: str) -> str:
+    return charter_parts(role)[0]
+
+
+def effort_rows() -> dict:
+    """{(role, kind): effort} from the role and task kind table."""
+    text = MODEL_CLASSES.read_text(encoding="utf-8") if MODEL_CLASSES.is_file() else ""
+    return {(r, k): e.strip() for r, k, e in
+            re.findall(r"^\| ([\w-]+) \| `([\w-]+)`:[^|]*\| ([^|]+)\|$", text, re.M)}
+
+
+def derive_effort(role: str, kind: str, label: str, security_path: bool, trust: list) -> str:
+    """`<value> (<reason>)` by `delegation.effort`'s three rules; exit 2 on an unknown kind or label."""
+    if role == "security" or security_path:
+        return "high (security path)"
+    rows = effort_rows()
+    if kind == "first" and trust and (role, "first-trust") in rows:
+        kind = "first-trust"
+    if kind:
+        if (role, kind) not in rows:
+            kinds = ", ".join(k for r, k in rows if r == role) or "none"
+            raise SystemExit(f"brief: no effort row for {role} --kind {kind}; its kinds: {kinds} "
+                             f"(delegation.effort)")
+        value = rows[(role, kind)]
+        if value == "by label":
+            if label not in LABELS:
+                raise SystemExit(f"brief: {role} --kind {kind} reads --label, one of {', '.join(LABELS)}")
+            return f"{LABELS[label]} ({role} {kind}, label {label})"
+        return f"{value} ({role} {kind})"
+    head = re.search(r"^effort:\s*(\w+)", charter_head(role), re.M)
+    return f"{head.group(1)} ({role} definition default)" if head else ""
 
 
 def routes_expertise(task: str, role: str) -> bool:
@@ -160,7 +203,9 @@ def main() -> int:
     ap.add_argument("--spawn-id", required=True)
     ap.add_argument("--task", required=True, help="the exact task line the worker routes")
     ap.add_argument("--route", required=True, help="the agent-lint --route line, or the override rationale")
-    ap.add_argument("--effort", default="")
+    ap.add_argument("--effort", default="", help="the effort verbatim, instead of --kind")
+    ap.add_argument("--kind", default="", help="the task kind of the role's effort row (delegation.effort)")
+    ap.add_argument("--label", default="", help="the hardest increment effort label, for a `by label` row")
     ap.add_argument("--charter", action="store_true",
                     help="prepend the role's charter body; Prime Agent only, whose spawn has no agent type")
     ap.add_argument("--part", required=True, help="file holding the task part, or - for stdin")
@@ -199,6 +244,17 @@ def main() -> int:
         print(f"brief: spawn_id {a.spawn_id} is already logged for role {clash[-1]['role']!r}; "
               f"mint a new one (delegation.tracing)", file=sys.stderr)
         return 2
+    trust = trust_claims(changed_paths(plant, part)) if a.role == "reviewer" else []
+    if trust:
+        print(f"brief: SECURITY PASS REQUIRED after this review: {', '.join(trust)}", file=sys.stderr)
+    if not a.effort:
+        try:
+            a.effort = derive_effort(a.role, a.kind, a.label, a.security_path, trust)
+        except SystemExit as e:
+            print(e, file=sys.stderr)
+            return 2
+    if a.effort:
+        print(f"effort: {a.effort} — pass it as this spawn's effort", file=sys.stderr)
     out = [f"You are `{a.role}`, a CYPRESS specialist. spawn_id: {a.spawn_id}",
            f"Task line (route exactly this): {a.task}"]
     if a.effort:
@@ -215,9 +271,6 @@ def main() -> int:
         print("brief: the task line routes no expertise.* or subsystem.* node; name the files it "
               "touches or their stack in --task, so the worker loads that expertise "
               "(graph-session-bootstrap.md, Stack expertise)", file=sys.stderr)
-    trust = trust_claims(changed_paths(plant, part)) if a.role == "reviewer" else []
-    if trust:
-        print(f"brief: SECURITY PASS REQUIRED after this review: {', '.join(trust)}", file=sys.stderr)
     log = spawn_log(Path(a.plan))
     log.parent.mkdir(parents=True, exist_ok=True)
     rec = {"spawn_id": a.spawn_id, "role": a.role, "task": a.task, "route": a.route,

@@ -164,8 +164,8 @@ unexplained overrides). The
 investigation class (`sonnet`) takes read-only investigation; the
 authoring class (`opus`) takes anything that authors or decides
 (kernel §1). Effort refines that class (`delegation.model-classes`):
-derive each spawn's effort and record it in the brief's routing
-evidence (`delegation.effort`). Small mechanical work off a security
+pass the effort `brief.py --kind` prints on every spawn
+(`delegation.effort`). Small mechanical work off a security
 surface may go to a plant's light variant of a specialist, with the
 narrower brief `delegation.light-variants` describes; security work and
 work you cannot bound that tightly go to the base agent. All three keys
