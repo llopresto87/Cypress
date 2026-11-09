@@ -142,9 +142,22 @@ def unwrap(cmd, depth=0):
     return unwrap(new, depth + 1) if changed else new
 
 
+HEREDOC = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1[^\n]*\n")
+
+
 def masked(cmd):
-    """The command with every quoted string blanked to spaces, same length, so
-    separators and patterns are read only outside quotes."""
+    """The command with every quoted string and every heredoc body blanked to
+    spaces, same length, so separators and patterns are read only in the
+    command text; a heredoc body is data the command reads."""
+    out, pos = [], 0
+    for m in HEREDOC.finditer(cmd):
+        if m.start() < pos:
+            continue
+        end = re.compile(rf"^[ \t]*{re.escape(m.group(2))}[ \t]*$", re.M).search(cmd, m.end())
+        stop = end.start() if end else len(cmd)
+        out += [cmd[pos:m.end()], re.sub(r"[^\n]", " ", cmd[m.end():stop])]
+        pos = stop
+    cmd = "".join(out) + cmd[pos:]
     return QUOTED.sub(lambda m: " " * len(m.group(0)), cmd)
 
 

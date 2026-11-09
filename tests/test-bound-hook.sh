@@ -127,6 +127,10 @@ expect Bash 'service nginx status'                      0 "service status passes
 # --- separators inside quotes are text, not separators --------------------
 expect Bash 'git commit -m "fix; make it work"'         0 "quoted semicolon is not a separator"
 expect Bash 'echo "systemctl restart x"'                0 "a quoted string is not a command"
+# --- a heredoc body is data, not commands -------------------------------------
+expect Bash "$(printf "cat > brief.md <<'EOF'\nmake the tests pass\nnpm install stays prose\nEOF")" 0 "a heredoc body is not a command"
+expect Bash "$(printf 'python3 - <<EOF\nmake = 1\nEOF\necho done')" 0 "an unquoted heredoc delimiter masks its body too"
+expect Bash "$(printf "cat > f <<'EOF'\nprose\nEOF\nmake test")" 2 "a command after the heredoc still blocks"
 
 # --- a block explains itself with BOTH accepted forms filled in -------------
 run "$(mkjson Bash 'systemctl --user daemon-reload')"
