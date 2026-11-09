@@ -60,6 +60,7 @@ CONTROLS = GRAPH / "method" / "security-controls.md"
 AGENTS = GRAPH / "agents"
 MODEL_CLASSES = GRAPH / "method" / "delegation-model-classes.md"
 LABELS = {"low": "low", "medium-low": "low", "medium": "medium", "medium-hard": "high", "hard": "high"}
+EFFORTS = ["low", "medium", "high"]
 
 
 def fenced(path: Path, head: str) -> str:
@@ -106,10 +107,14 @@ def derive_effort(role: str, kind: str, label: str, security_path: bool, trust: 
             raise SystemExit(f"brief: no effort row for {role} --kind {kind}; its kinds: {kinds} "
                              f"(delegation.effort)")
         value = rows[(role, kind)]
-        if value == "by label":
+        by_label = re.fullmatch(r"by label(?:, at most (\w+))?", value)
+        if by_label:
             if label not in LABELS:
                 raise SystemExit(f"brief: {role} --kind {kind} reads --label, one of {', '.join(LABELS)}")
-            return f"{LABELS[label]} ({role} {kind}, label {label})"
+            cap, got = by_label.group(1), LABELS[label]
+            if cap and EFFORTS.index(got) > EFFORTS.index(cap):
+                return f"{cap} ({role} {kind}, label {label}, capped at {cap})"
+            return f"{got} ({role} {kind}, label {label})"
         return f"{value} ({role} {kind})"
     head = re.search(r"^effort:\s*(\w+)", charter_head(role), re.M)
     return f"{head.group(1)} ({role} definition default)" if head else ""

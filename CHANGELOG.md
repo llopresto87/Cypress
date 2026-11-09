@@ -426,6 +426,15 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   brief. Agent frontmatter keeps its `effort:` as the role's default. The
   Claude Code every-session load is 67,131 bytes. SPEC-0005 adds
   BRIEF_DERIVES_THE_SPAWN_EFFORT (X502).
+- **The implementer's effort is capped at medium, and a review-fix set runs
+  at low.** The owner allowed the cap on 2026-11-09 if medium proved good
+  enough. Replays measured new-screen GREEN at 3/5 on low, 4/5 on medium and
+  5/5 on high for 50% more cost, and a review-fix set at 4/5 on low ($1.19),
+  4/5 on medium ($2.14) and 5/5 on high ($2.99). The implementer rows of
+  `delegation.effort` become: an increment by its label but at most medium, a
+  new flow and a trust-surface change medium, a fix set and a mechanical edit
+  low. `brief.py` prints `capped at medium` when the cap applies; the other
+  roles are unchanged.
 - **The implementer composes design posture whole again.** With design
   §1, 3, 4 and 9 (smallest structure, cohesion and coupling, stable contracts,
   variation at a seam) left out, the next run's implementer put every draft
