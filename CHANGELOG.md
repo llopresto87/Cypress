@@ -428,7 +428,7 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   BRIEF_DERIVES_THE_SPAWN_EFFORT (X502).
 - **The implementer's effort is capped at medium, and a review-fix set runs
   at low.** The owner allowed the cap on 2026-11-09 if medium proved good
-  enough. Replays measured new-screen GREEN at 3/5 on low, 4/5 on medium and
+  enough. Replays measured a new flow's GREEN at 3/5 on low, 4/5 on medium and
   5/5 on high for 50% more cost, and a review-fix set at 4/5 on low ($1.19),
   4/5 on medium ($2.14) and 5/5 on high ($2.99). The implementer rows of
   `delegation.effort` become: an increment by its label but at most medium, a
