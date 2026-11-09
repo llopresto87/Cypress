@@ -330,6 +330,10 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   payload splits into compiled, executed (command and pass/fail counts),
   statically inspected, device-tested and deferred, so a green gate reads
   as what it ran. `brief.py` carries the block; test-brief holds the kinds.
+- **A gated action's paths include every channel and state change.** The
+  SECURITY PATH block counts every input channel (pointer, keyboard,
+  assistive technology) and every state change between enabling and effect
+  (resize, recreation) as a path that needs its own test.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 

@@ -82,7 +82,8 @@ if block not in sys.argv[2]:
     sys.exit("  a tester brief with --security-path lacks the SECURITY PATH block")
 for want in ("one negative control per class", "n/a: <why>", "import or alias", "helper", "factory",
              "string-built", "comment", "U+2028", "unpinned value", "path to the action's effect",
-             "the effect's callers", "confirm"):
+             "the effect's callers", "confirm", "every input channel", "assistive technology",
+             "every state change", "recreation"):
     if want not in block:
         sys.exit(f"  the SECURITY PATH block lacks: {want}")
 PY
