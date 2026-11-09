@@ -312,6 +312,10 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   steward's table missed it. `tools/graft-ledger.py` now rows an adapter file
   the plant lacks as SEED-NEW when the plant carries the directory it goes
   into.
+- **Growth puts an unsettled trust marker to the owner.** A crosscut a
+  grower authored with no `trust:` stayed silent: plain graph-lint and
+  growth-audit do not name it. `grow.gate.disclosure` now runs
+  `graph-lint.py --trust-unsettled` as graft-run already does.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 

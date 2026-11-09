@@ -564,6 +564,9 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   numbered decision
 - **And:** the node that claims a path and the `trust: false` node are never
   named
+- **And:** grow's `grow.gate.disclosure` row runs `graph-lint.py
+  --trust-unsettled`, so a crosscut growth authored with no `trust:` reaches
+  the owner too
 
 ### Contract: BOOTSTRAP_STEP2_LOADS_A_MENU
 - **Test file:** `tests/test-seed-lint.sh` (check in `tests/seed-lint.py`)
@@ -2385,6 +2388,7 @@ gives.
 | ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | M22 case_agents_compose: the implementer's six always-loaded bodies once each with no frontmatter; `11-pentest.md` byte for byte; a hand edit is STALE to `--check` | tests/test-install-placement.sh | integration | green |
 | TRUST_MARKER_IS_SETTLED | X496 TrustMarkerTests: `--trust-unsettled` names the unset and the pathless crosscut only; the lint warns on the pathless one and exits 0 | tests/test_graph_lint.py | fixture | green |
 | TRUST_MARKER_IS_SETTLED | X497 case_run_lists_unsettled_trust_markers: graft-run's judgment items, before the gate table | tests/test-graft-tools.sh | integration (synthetic plant) | green |
+| TRUST_MARKER_IS_SETTLED | (none) the `TRUST_MARKER_IS_SETTLED` row of seed-lint's `TEXT_RULES`: the `grow.gate.disclosure` row holds `graph-lint.py --trust-unsettled`; red id: `TRUST_MARKER_IS_SETTLED: protocols/grow.md grow.gate.disclosure does not hold 'graph-lint.py --trust-unsettled'` | tests/seed-lint.py | real-tree | green |
 | BOOTSTRAP_STEP2_LOADS_A_MENU | X352, a row of the text-rules table: step 2 reworded alike in all six copies | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
 | BOOTSTRAP_STEP2_LOADS_A_MENU | X353, a row of the text-rules table: step 2 re-wrapped in all six copies passes; guard | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
 | ADOPTED_RULES_NOT_PENDING | X354, a row of the text-rules table: one §6 pending phrase planted | tests/test-seed-lint.sh | fixture (scope), `check_text_rules` | green |
@@ -2759,3 +2763,7 @@ kept outside the seed.
   always-loaded node met a STALE agent whose remedy, re-running the install,
   overwrote the node again. Added AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK
   (M23, seen red first): `--recompose-agents` writes `.claude/agents/` only.
+- 2026-11-09 — graft verification. Growth ran no `--trust-unsettled`, so a
+  crosscut it authored without `trust:` stayed silent to plain graph-lint and
+  growth-audit. TRUST_MARKER_IS_SETTLED gains the arm that
+  `grow.gate.disclosure` runs it, held by seed-lint (seen red first).
