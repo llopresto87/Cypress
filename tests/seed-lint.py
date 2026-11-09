@@ -85,7 +85,7 @@ EAGER_BUDGET = 41_600
 COPILOT_POINTER_OVERHEAD = 5_644
 # Harness -> (recorded bytes, reason). A debt that may only shrink.
 EAGER_EXEMPTIONS: dict[str, tuple[int, str]] = {
-    "claude-code": (67_148, "the main session plays the orchestrator: its charter and always_loads "
+    "claude-code": (67_131, "the main session plays the orchestrator: its charter and always_loads "
                             "ride in the output style (owner decision, 2026-11-09)"),
 }
 
