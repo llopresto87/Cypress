@@ -326,6 +326,10 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
 - **The reviewer names an overclaim.** A comment, label, doc string or test
   name that claims more than the code enforces is a finding on the
   reviewer's checklist (`reviewer.checklist`, Maintainability).
+- **A handback files its evidence by kind.** `gates:` in the handback
+  payload splits into compiled, executed (command and pass/fail counts),
+  statically inspected, device-tested and deferred, so a green gate reads
+  as what it ran. `brief.py` carries the block; test-brief holds the kinds.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 

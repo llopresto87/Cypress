@@ -34,7 +34,7 @@ for want in ("orchestrator.3.tester.1", "write the RED tests for SPEC-0001 incre
 for gone in ("produced_by:", "route_evidence:", "- effort:", "- spawn_id:"):
     if gone in out:
         sys.exit(f"  echo field still asked for: {gone}")
-for want in ():
+for want in ("compiled", "executed (", "statically inspected", "device-tested", "deferred (", "what it ran"):
     if want not in out:
         sys.exit(f"  missing: {want}")
 PY
