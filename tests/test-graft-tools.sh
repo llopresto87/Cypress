@@ -1670,6 +1670,65 @@ MD
   [ "$rc" -eq 0 ] || { echo "an entry declaring no merged or kept file exited $rc, want 0: $(flat "$RW/k4b.out")"; return 1; }
 }
 
+# -- GK: a graft over a plant that edited seed machinery -----------------------
+# A copy of this seed, tagged at its own version, is the base; a plant installed
+# from it edits four method nodes; the seed copy then advances. The ledger reads:
+#   method/vcs-posture.md          plant line                  KEEP-PLANT
+#   method/engineering-posture.md  plant line (an always_loads node) KEEP-PLANT
+#   method/tiers.md                plant line; seed line       MERGE, not merged
+#   method/delegation.md           seed + plant line; seed line  MERGE, merged
+#   method/zz-fixture.md           the seed's new node         SEED-NEW
+GK="$RW/gk"; GK_SEED="$GK/seed"; GK_PLANT="$GK/plant"
+gk_fixture() {
+  [ -f "$GK/ready" ] && return 0
+  local v m
+  rm -rf "$GK"; mkdir -p "$GK_SEED" "$GK_PLANT"
+  python3 - "$ROOT" "$GK_SEED" <<'PY2' || { echo "fixture: the seed copy failed"; return 1; }
+import os, shutil, subprocess, sys
+src, dst = sys.argv[1:3]
+out = subprocess.run(["git", "-C", src, "ls-files", "-co", "--exclude-standard", "-z"],
+                     capture_output=True, check=True).stdout
+for rel in filter(None, out.decode().split("\0")):
+    s = os.path.join(src, rel)
+    if os.path.isfile(s) and not os.path.islink(s):
+        d = os.path.join(dst, rel)
+        os.makedirs(os.path.dirname(d), exist_ok=True)
+        shutil.copy2(s, d)
+PY2
+  v="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$GK_SEED/manifest.json")"
+  sgit -C "$GK_SEED" init -q && sgit -C "$GK_SEED" add -A && sgit -C "$GK_SEED" commit -q -m base \
+    && sgit -C "$GK_SEED" tag "v$v" || { echo "fixture: the seed copy could not be committed"; return 1; }
+  bash "$GK_SEED/install.sh" claude-code --project-dir "$GK_PLANT" >"$GK/install.log" 2>&1 \
+    || { echo "fixture: install.sh into the GK plant failed: $(tail -3 "$GK/install.log" | tr '\n' ' ')"; return 1; }
+  m="$GK_PLANT/docs/graph/method"
+  printf 'A plant rule kept here.\n' >> "$m/vcs-posture.md"
+  printf 'A plant posture rule.\n' >> "$m/engineering-posture.md"
+  printf 'A plant tier rule.\n' >> "$m/tiers.md"
+  printf 'A seed delegation line.\nA plant delegation line.\n' >> "$m/delegation.md"
+  sgit -C "$GK_PLANT" init -q && sgit -C "$GK_PLANT" add -A && sgit -C "$GK_PLANT" commit -q -m plant \
+    || { echo "fixture: the GK plant could not be committed"; return 1; }
+  printf 'A seed tier line.\n' >> "$GK_SEED/core/method/tiers.md"
+  printf 'A seed delegation line.\n' >> "$GK_SEED/core/method/delegation.md"
+  printf -- '---\nid: method.zz-fixture\nkind: method\norigin: seed\nowns:\n  - zz-fixture.rule\nload_when:\n  - "zz fixture"\nest_tokens: 20\nprevents: a test fixture only\n---\n# zz fixture\n' \
+    > "$GK_SEED/core/method/zz-fixture.md"
+  sgit -C "$GK_SEED" add -A && sgit -C "$GK_SEED" commit -q -m advance \
+    || { echo "fixture: the seed copy's advance could not be committed"; return 1; }
+  python3 "$RUN" "$GK_PLANT" "$GK_SEED" --stage "$GK/stage" >"$GK/run.out" 2>"$GK/run.err" || true
+  touch "$GK/ready"
+}
+
+# X499: a node new in the seed is placed for the first time, not re-created.
+case_run_recreated_excludes_seed_new() {
+  local row
+  gr_need || return 1; gk_fixture || return 1
+  grep -Eq '^  SEED-NEW +docs/graph/method/zz-fixture\.md ' "$GK/stage/graft-run-logs/ledger.txt" \
+    || { echo "fixture: the ledger has no SEED-NEW row for method/zz-fixture.md: $(flat "$GK/stage/graft-run-logs/ledger.txt")"; return 1; }
+  row="$(grep -E '^graft\.gate\.recreated-nodes:' "$GK/run.out" || true)"
+  [ -n "$row" ] || { echo "no recreated-nodes row: $(tail -5 "$GK/run.out" | tr '\n' ' ')"; return 1; }
+  echo "$row" | grep -Eq '^graft\.gate\.recreated-nodes: PASS' && ! echo "$row" | grep -q 'zz-fixture' \
+    || { echo "a SEED-NEW node is reported re-created: $row"; return 1; }
+}
+
 collect_case GA-C1 case_audit_base_identical_is_delta "a backup byte-identical to the seed at --base is DELTA; without --base it stays CUSTOMIZED"
 collect_case GA-C2 case_audit_engine_signal_survives "an engine backup whose signal lines survive in the current engine is not CUSTOMIZED"
 collect_case X390 case_audit_plant_agent_projection "EVERY_BACKUP_IS_CLASSIFIABLE: GA-C3: a plant-owned node's agent, skill (X391) and Copilot (X392) projection backups are classified, exit 0"
@@ -1696,6 +1755,7 @@ collect_case GA-K1 case_audit_record_kept_delta_lost "--record: a merged or kept
 collect_case GA-K2 case_audit_record_date_first_heading "--record: the newest entry is the latest-dated heading naming graft, in any case or position"
 collect_case GA-K3 case_audit_record_bold_label_bullets "--record: bold-label bullets list the merged files, every path on the line checked"
 collect_case GA-K4 case_audit_record_zero_files_fails_closed "--record: an entry that parses to zero files fails closed; a declared none passes"
+collect_case X499 case_run_recreated_excludes_seed_new "GRAFT_RUN_RECREATED_LEAVES_OUT_SEED_NEW: graft.gate.recreated-nodes leaves out the ledger's SEED-NEW nodes, which no plant ever carried"
 [ "$CASE_FAILED" -eq 0 ] \
   || { echo "test-graft-tools: FAIL — failing cases (above)" >&2; exit 1; }
 
