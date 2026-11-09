@@ -1210,7 +1210,12 @@ PYEOF
 # the same bytes on every spawn (a cache-friendly prefix). The nodes stay the
 # only home: the composed file is generated, and --check compares it with a
 # fresh composition (check_claude_projections). A charter that names none is
-# not rendered, and project_agents places it as it is. An id with no node in
+# not rendered, and project_agents places it as it is. The orchestrator's
+# composition is also rendered as _output-style-orchestrator.md, which
+# place_orchestrator_style places as the project output style: the main
+# session is no subagent, and an output style with keep-coding-instructions
+# adds to Claude Code's own prompt where an `agent` setting would replace it
+# (MAIN_SESSION_PLAYS_THE_ORCHESTRATOR). An id with no node in
 # docs/graph/{method,skills,protocols}/ stops the run before the first agent is
 # placed, naming the charter and the id.
 render_claude_agents() {
@@ -1235,6 +1240,7 @@ for sub in ("method", "skills", "protocols"):
             home.setdefault(meta["id"], body)
 
 agents = os.path.join(graph, "agents")
+STYLE = "_output-style-orchestrator.md"   # placed as .claude/output-styles/orchestrator.md
 out = {}
 for name in sorted(os.listdir(agents)) if os.path.isdir(agents) else []:
     f = os.path.join(agents, name)
@@ -1243,7 +1249,7 @@ for name in sorted(os.listdir(agents)) if os.path.isdir(agents) else []:
         continue
     text = open(f, encoding="utf-8").read()
     try:
-        meta, _ = parse(text, f)
+        meta, body = parse(text, f)
     except FrontmatterError:
         continue
     ids = meta.get("always_loads") or []
@@ -1258,11 +1264,26 @@ for name in sorted(os.listdir(agents)) if os.path.isdir(agents) else []:
             sys.exit(1)
         parts.append(f"## Always loaded: {i}\n\n" + home[i].strip("\n"))
     out[name] = "\n\n".join(parts) + "\n"
+    if meta.get("name") == "orchestrator":
+        # The main session is no subagent: it plays the orchestrator through
+        # the project output style, which keeps Claude Code's own prompt.
+        parts[0] = ("---\nname: orchestrator\ndescription: The session plays the CYPRESS "
+                    "orchestrator (generated from docs/graph/agents/" + name + ").\n"
+                    "keep-coding-instructions: true\n---\n\n" + body.strip("\n"))
+        out[STYLE] = "\n\n".join(parts) + "\n"
 os.makedirs(dest, exist_ok=True)
 for name, text in out.items():
     with open(os.path.join(dest, name), "w", encoding="utf-8") as fh:
         fh.write(text)
 PYEOF
+}
+
+# place_orchestrator_style RENDERED_DIR: the orchestrator's composition as
+# .claude/output-styles/orchestrator.md, which settings.json selects.
+place_orchestrator_style() {
+    [[ -f "$1/_output-style-orchestrator.md" ]] && \
+        place_generated "$1/_output-style-orchestrator.md" "$PROJECT_DIR/.claude/output-styles/orchestrator.md"
+    return 0
 }
 
 # check_claude_projections: --check for the Claude Code agents
@@ -1283,11 +1304,14 @@ check_claude_projections() {
         want="$f"; [[ -f "$rendered/$name" ]] && want="$rendered/$name"
         cmp -s "$want" "$dest/$name" || stale+=("$name")
     done
+    [[ -f "$rendered/_output-style-orchestrator.md" ]] \
+        && ! cmp -s "$rendered/_output-style-orchestrator.md" "$PROJECT_DIR/.claude/output-styles/orchestrator.md" \
+        && stale+=(".claude/output-styles/orchestrator.md")
     if [[ ${#stale[@]} -eq 0 ]]; then
         log "claude-code agents up to date."
         return 0
     fi
-    warn "claude-code agents are STALE: ${stale[*]}. Recompose them from the nodes on disk: install.sh claude-code --recompose-agents (it writes .claude/agents/ only)"
+    warn "claude-code agents are STALE: ${stale[*]}. Recompose them from the nodes on disk: install.sh claude-code --recompose-agents (it writes .claude/agents/ and .claude/output-styles/orchestrator.md only)"
     return 1
 }
 
@@ -2142,6 +2166,7 @@ install_claude_code() {
     claude_rendered="$(stage claude/agents)"
     render_claude_agents "$claude_rendered" || exit 1
     project_agents "$PROJECT_DIR/.claude/agents" "$claude_rendered"
+    place_orchestrator_style "$claude_rendered"
     project_skills "$PROJECT_DIR/.claude/skills"
     # Slash commands — generated projections of the command-protocol nodes
     # (those declaring `command: true`). No authored command tree; the node
@@ -3270,7 +3295,8 @@ if [[ ${RECOMPOSE_AGENTS:-0} -eq 1 ]]; then
     _rendered="$(stage claude/agents)"
     render_claude_agents "$_rendered" || exit 1
     project_agents "$PROJECT_DIR/.claude/agents" "$_rendered"
-    log "recomposed .claude/agents/ from docs/graph/; nothing else was written."
+    place_orchestrator_style "$_rendered"
+    log "recomposed .claude/agents/ and .claude/output-styles/orchestrator.md from docs/graph/; nothing else was written."
     exit 0
 fi
 

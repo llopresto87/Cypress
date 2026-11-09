@@ -10,7 +10,7 @@ status_evidence: tests/test_graph_lint.py, tests/test_agent_lint.py, tests/test-
 ## 0. Metadata
 
 - **Identifier:** SPEC-0005-cycle-economy
-- **Version:** 0.19 (the security path: TRUST_PATH_TAKES_THE_SECURITY_PASS, TRUST_MARKER_IS_SETTLED, SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS, ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES, AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK, 2026-11-09; every amendment is dated in §12)
+- **Version:** 0.20 (the security path: TRUST_PATH_TAKES_THE_SECURITY_PASS, TRUST_MARKER_IS_SETTLED, SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS, ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES, AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK, MAIN_SESSION_PLAYS_THE_ORCHESTRATOR, 2026-11-09; every amendment is dated in §12)
 - **Status:** see frontmatter (single home)
 - **Owner:** architect
 - **Date:** 2026-09-28
@@ -548,9 +548,25 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   `install.sh claude-code --recompose-agents`
 - **Then:** `--check` names the composed agent STALE and the line names
   `install.sh claude-code --recompose-agents` as the remedy; that run
-  rewrites `.claude/agents/` from the charters and nodes on disk, writes no
-  file outside it, and `--check` then reports the agents up to date
+  rewrites `.claude/agents/` and the orchestrator output style from the
+  charters and nodes on disk, writes no other file, and `--check` then
+  reports the agents up to date
 - **And:** the edited node is left as it is
+
+### Contract: MAIN_SESSION_PLAYS_THE_ORCHESTRATOR
+- **Test file:** `tests/test-install-placement.sh`
+- **Given:** the orchestrator charter names `always_loads:`, and the Claude
+  Code main session is no subagent, so `.claude/agents/00-orchestrator.md`
+  never reaches it
+- **When:** `install.sh claude-code` installs, and `--check` runs
+- **Then:** `.claude/settings.json` selects `"outputStyle": "orchestrator"` and
+  `.claude/output-styles/orchestrator.md` holds the charter body followed by
+  each `always_loads:` body under `## Always loaded: <id>`, with a header of
+  `name: orchestrator` and `keep-coding-instructions: true`, so Claude Code's
+  own prompt stays and CLAUDE.md still loads (an `agent` setting would replace
+  the default prompt)
+- **And:** a style that differs from a fresh composition is STALE to
+  `--check`, and `--recompose-agents` rewrites it
 
 ### Contract: TRUST_MARKER_IS_SETTLED
 - **Test file:** `tests/test_graph_lint.py`, `tests/test-graft-tools.sh`
@@ -2388,6 +2404,7 @@ gives.
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | X495 the security brief carries the SECURITY PATH block byte for byte; a tester brief does not | tests/test-brief.sh | fixture | green |
 | SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS | X498 a tester brief with `--security-path` carries the block, which names every class, the path tests and the confirmation | tests/test-brief.sh | fixture | green |
 | AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK | M23 case_agents_recompose: a plant appends a line to `method/engineering-posture.md`; `--check` names `02-implementer.md` STALE with `--recompose-agents`; that run leaves every file outside `.claude/agents/` byte-identical, the implementer carries the line, `--check` is up to date; seen red first (the STALE line said re-run the install) | tests/test-install-placement.sh | integration | green |
+| MAIN_SESSION_PLAYS_THE_ORCHESTRATOR | M24 case_orchestrator_style: settings select the style; the style carries the charter body and each always-loaded body once, no charter frontmatter, `keep-coding-instructions: true`; a hand edit is STALE and recomposed; seen red first. A `claude -p` probe in a fresh plant quoted the charter's second sentence and an always-loaded heading, and quoted neither with the setting removed | tests/test-install-placement.sh | integration | green |
 | ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | M22 case_agents_compose: the implementer's six always-loaded bodies once each with no frontmatter; `11-pentest.md` byte for byte; a hand edit is STALE to `--check` | tests/test-install-placement.sh | integration | green |
 | ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | (none) the `ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES` row of seed-lint's `TEXT_RULES`: the `graft.gate.projection-drift` row holds `install.sh claude-code --check`; red id: `ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES: protocols/graft.md graft.gate.projection-drift does not hold 'install.sh claude-code --check'` | tests/seed-lint.py | real-tree | green |
 | TRUST_MARKER_IS_SETTLED | X496 TrustMarkerTests: `--trust-unsettled` names the unset and the pathless crosscut only; the lint warns on the pathless one and exits 0 | tests/test_graph_lint.py | fixture | green |
@@ -2777,3 +2794,11 @@ kept outside the seed.
   row runs `install.sh claude-code --check`, held by seed-lint (seen red
   first); graft, grow, INSTALL.md and the Claude Code README now point at the
   composition, the spawn log and the resume hook.
+- 2026-11-09 — version 0.20, audit of a live run. The orchestrator charter
+  and its `always_loads:` never reached the Claude Code main session, which is
+  no subagent, so its one-ruling-pass rule never loaded and the run spawned
+  five ruling passes. The owner decided on 2026-11-09 that the main session
+  runs with them. Added MAIN_SESSION_PLAYS_THE_ORCHESTRATOR (M24, seen red
+  first): the composition is placed as the project output style, which keeps
+  Claude Code's prompt and CLAUDE.md; an `agent` setting replaces the default
+  prompt. AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK now rewrites the style too.

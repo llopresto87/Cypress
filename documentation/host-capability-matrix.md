@@ -498,7 +498,7 @@ function's own computation against current sources:
 
 | Harness | Formula | Measured |
 |---|---|---|
-| Claude Code | kernel + agent descriptions + skill descriptions | 24 207 B |
+| Claude Code | kernel + agent descriptions + skill descriptions + orchestrator output style | 69 117 B (recorded exemption) |
 | opencode | kernel + agent descriptions + skill descriptions | 24 207 B |
 | Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 24 207 B |
 | Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 18 466 B |
@@ -513,8 +513,10 @@ Four harnesses enumerate only `name` + `description` for each of the 15
 skills at session start and load a skill's full body only when the model
 invokes it: genuine progressive disclosure. Copilot's projections (written by
 `install_github_copilot()`, not by `generate_slash_commands()`) are pointers of
-the same shape, so no harness is exempt: `EAGER_EXEMPTIONS` is consequently
-empty, and GitHub Copilot is modelled like every other harness. Its extra bytes
+the same shape, so GitHub Copilot is modelled like every other harness. `EAGER_EXEMPTIONS`
+holds one recorded debt: on Claude Code the main session plays the
+orchestrator, so its charter and always-loaded nodes ride in the
+`orchestrator` output style on every session. Its extra bytes
 are the pointer boilerplate each projected file carries.
 
 ## Measurements

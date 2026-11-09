@@ -85,6 +85,8 @@ EAGER_BUDGET = 41_600
 COPILOT_POINTER_OVERHEAD = 5_644
 # Harness -> (recorded bytes, reason). A debt that may only shrink.
 EAGER_EXEMPTIONS: dict[str, tuple[int, str]] = {
+    "claude-code": (69_117, "the main session plays the orchestrator: its charter and always_loads "
+                            "ride in the output style (owner decision, 2026-11-09)"),
 }
 
 # SPEC-0003 HOOK_TEXT_RESTATES_NO_KERNEL_RULE: bytes of the fixed text
@@ -1214,13 +1216,24 @@ def eager_surfaces(kernel_bytes: int) -> dict:
     overlay_bytes = overlay.stat().st_size if overlay.exists() else 0
 
     surfaces = {
-        "claude-code": kernel_bytes + agent_desc + skill_desc,
+        "claude-code": kernel_bytes + agent_desc + skill_desc + orchestrator_style_bytes(),
         "opencode": kernel_bytes + agent_desc + skill_desc,
         "codex": kernel_bytes + agent_desc + skill_desc,
         "prime-agent": kernel_bytes + skill_desc + overlay_bytes,
         "github-copilot": kernel_bytes + agent_desc + skill_desc + COPILOT_POINTER_OVERHEAD,
     }
     return surfaces
+
+
+def orchestrator_style_bytes() -> int:
+    """The Claude Code main session plays the orchestrator through the output
+    style install.sh composes (MAIN_SESSION_PLAYS_THE_ORCHESTRATOR): the
+    charter body and the body of each node its `always_loads:` names."""
+    nodes = {fm.get("id"): (fm, body) for _l, fm, body in machinery_nodes()}
+    fm, body = nodes["agent.orchestrator"]
+    parts = [body.strip("\n")] + [f"## Always loaded: {i}\n\n" + nodes[i][1].strip("\n")
+                                  for i in fm.get("always_loads") or []]
+    return len("\n\n".join(parts).encode("utf-8"))
 
 
 # The two phrases that claim EAGER_EXEMPTIONS holds nothing.

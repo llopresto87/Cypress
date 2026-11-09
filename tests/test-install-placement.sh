@@ -47,7 +47,7 @@ is_generated() {
         .claude/commands/*|.opencode/commands/*|.prime/agent/prompts/*) return 0 ;;
         .github/agents/*|.github/prompts/*|.github/instructions/*)      return 0 ;;
         .codex/codex-config-snippet.toml)                               return 0 ;;
-        .opencode/agents/*)                                             return 0 ;;  # ADR-0022: projected through the model map
+        .claude/output-styles/*|.opencode/agents/*)                                             return 0 ;;  # ADR-0022: projected through the model map
         .claude/agents/*.md) grep -q '^always_loads:' "$ROOT/agents/${1##*/}" 2>/dev/null && return 0 ;;  # composed (ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES)
     esac
     return 1
@@ -967,6 +967,48 @@ case_agents_recompose() {
     echo "  M23 AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK: an edited always-loaded node is stale, the STALE line names --recompose-agents, which recomposes .claude/agents/ alone — OK"
 }
 
+# M24, SPEC-0005 MAIN_SESSION_PLAYS_THE_ORCHESTRATOR: the Claude Code main
+# session is no subagent, so .claude/agents/00-orchestrator.md never reaches it.
+# The install places the orchestrator's composition as the project output style
+# (keep-coding-instructions: true keeps Claude Code's own prompt; CLAUDE.md
+# still loads) and settings.json selects it; a hand edit is stale to --check.
+case_orchestrator_style() {
+    local P="$WORK/orchestrator-style" out rc
+    plant_base claude-code --copy || fail "MAIN_SESSION_PLAYS_THE_ORCHESTRATOR: the install failed"
+    plant_copy "$P"
+    python3 - "$P" <<'PY' || fail "MAIN_SESSION_PLAYS_THE_ORCHESTRATOR: output style wrong (above)"
+import json, re, sys
+from pathlib import Path
+p = Path(sys.argv[1])
+st = p / ".claude/output-styles/orchestrator.md"
+if json.loads((p / ".claude/settings.json").read_text()).get("outputStyle") != "orchestrator":
+    sys.exit("  settings.json does not select the orchestrator output style")
+if not st.is_file():
+    sys.exit("  no .claude/output-styles/orchestrator.md")
+text = st.read_text()
+head, body = text.split("\n---\n", 1)
+if "\nkeep-coding-instructions: true" not in head or "\nname: orchestrator" not in head:
+    sys.exit("  the style header lacks name: orchestrator or keep-coding-instructions: true")
+charter = (p / "docs/graph/agents/00-orchestrator.md").read_text().split("\n---\n", 1)[1].strip("\n")
+if not body.lstrip("\n").startswith(charter):
+    sys.exit("  the style body does not begin with the charter body")
+ids = re.search(r"^always_loads:\n((?:  - .*\n)+)", (p / "docs/graph/agents/00-orchestrator.md").read_text(), re.M).group(1)
+for i in re.findall(r"- (\S+)", ids):
+    if body.count(f"## Always loaded: {i}\n") != 1:
+        sys.exit(f"  {i}: not composed exactly once")
+if "routing_triggers:" in body:
+    sys.exit("  the charter frontmatter reached the style")
+PY
+    printf '\nhand edit\n' >> "$P/.claude/output-styles/orchestrator.md"
+    rc=0; out="$("$ROOT/install.sh" claude-code --check --project-dir "$P" 2>&1)" || rc=$?
+    [[ $rc -ne 0 ]] && grep -q "STALE: .*output-styles/orchestrator.md" <<<"$out" \
+        || fail "MAIN_SESSION_PLAYS_THE_ORCHESTRATOR: a hand-edited output style is not stale to --check (rc $rc): $out"
+    "$ROOT/install.sh" claude-code --recompose-agents --project-dir "$P" >/dev/null 2>&1 \
+        && ! grep -q '^hand edit$' "$P/.claude/output-styles/orchestrator.md" \
+        || fail "MAIN_SESSION_PLAYS_THE_ORCHESTRATOR: --recompose-agents did not rewrite the output style"
+    echo "  M24 MAIN_SESSION_PLAYS_THE_ORCHESTRATOR: settings select the orchestrator output style, which carries the charter and its always-loaded bodies; drift is stale to --check and recomposed — OK"
+}
+
 # --- one-case subcommand, run by the parallel dispatcher ---------------------
 if [ "${1:-}" = "__case" ]; then
     "$2"
@@ -1123,7 +1165,7 @@ export BASE BASECOPILOT ESEED
 SCN="$(mktemp)"
 for c in case_recover case_symchurn case_m2 case_m4 case_m10 case_cond case_hook_check case_retired_flag case_orphan_flag \
          case_expertise_propose case_expertise_place case_expertise_refused case_expertise_silence \
-         case_expertise_plant_edits case_expertise_check case_retired_stamp_keys case_agents_compose case_agents_recompose; do
+         case_expertise_plant_edits case_expertise_check case_retired_stamp_keys case_agents_compose case_agents_recompose case_orchestrator_style; do
     printf '%s\t%s\n' "$c" "bash \"$SELF\" __case $c" >> "$SCN"
 done
 rc=0
