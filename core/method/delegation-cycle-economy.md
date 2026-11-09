@@ -89,9 +89,11 @@ The implementer runs the RED tests itself, so GREEN needs no separate tester
 spawn. It writes only production files, because a test its implementer can
 edit no longer authorizes the code. A test that looks wrong is an entry in the
 question file (`delegation.question-file`), and the implementer moves on to
-work the question does not touch. The rule covers REFACTOR too: test cleanup
-the implementer finds is an entry in the question file for the next tester
-spawn, which does it with the suite green. The merged T2 path
+work the question does not touch. A failing test judged wrong goes straight
+to a fresh `tester` with the failure and the reason, ahead of any implementer
+fix round: only a fix to the test makes a wrong test right. The rule covers
+REFACTOR too: test cleanup the implementer finds is an entry in the question
+file for the next tester spawn, which does it with the suite green. The merged T2 path
 (`tiers.execution-paths`), where one implementer writes both the test and the
 code, is the one exception.
 

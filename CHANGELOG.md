@@ -249,6 +249,10 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   GRAPH_ROUTE_NAMED_PATH_LOADS_ITS_OWNER follow. The other two routing defects
   that run found, a long-task notice a composed brief dropped and a library
   pin read as a path, live in brief machinery this release does not carry.
+- **A test judged wrong goes straight to the tester.** A failing test judged
+  wrong now goes to a fresh `tester` with the failure and the reason, ahead of
+  any implementer fix round, because only a fix to the test makes it right
+  (`delegation.green-self-test`).
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 
