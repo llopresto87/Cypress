@@ -25,7 +25,8 @@ A row is one line: the class, the plant path, and the seed path it installs
 from. Rows cover the files the seed carries now: the method surface under
 docs/graph/ (protocols, method, agents, skills, templates, the delivered tools
 and the engines; the legal corpus only when the stamp says it was placed),
-plus the kernel and the harness adapter files the plant carries. A plant's own
+plus the kernel and the harness adapter files the plant carries or whose
+directory it carries. A plant's own
 node gets no row, and neither does a file the seed no longer ships. The plant
 is walked through tools/plant_walk.py, so a nested plant copy and a symlinked
 directory are not read as this plant's; the plant-to-seed path map is
@@ -228,9 +229,13 @@ def machinery(plant: Path, seed: Path, stamp: dict) -> dict:
         if src is not None and src.is_file():
             pairs[rel] = src.relative_to(seed).as_posix()
     # the kernel and the adapter files: placed per harness, so only the ones
-    # the plant carries (a harness it did not choose is not SEED-NEW)
+    # the plant carries, or whose directory it carries (a file the seed added
+    # to a harness the plant runs is SEED-NEW; a harness it did not choose is not)
     for rel in KERNEL_FILES + tuple(graft_audit.ADAPTER_MACHINERY):
-        if (plant / rel).is_file() and inside_plant(plant, rel):
+        home = Path(rel).parent
+        placed = (plant / rel).is_file() or (
+            home != Path(".") and (plant / home).is_dir() and not (plant / home).is_symlink())
+        if placed and inside_plant(plant, rel):
             src = graft_audit.seed_source_for(rel, seed)
             if src is not None and src.is_file():
                 pairs[rel] = src.relative_to(seed).as_posix()
