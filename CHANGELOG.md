@@ -373,6 +373,11 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   builder reports, names a doubted gate as a finding with the run to make, and
   probes a bypass by its callers or in a scratch script. SPEC-0005 adds
   REVIEWER_RUNS_NO_BUILD.
+- **`brief.py --charter` is for Prime Agent.** In the same run every brief
+  repeated the charter the Claude Code agent type already loads, about 2,300
+  tokens a worker. `brief.py` now refuses `--charter` in a plant whose
+  `.claude/agents/` carries the roles and that has no `.prime/agent/`.
+  SPEC-0005 adds CHARTER_FLAG_ONLY_FOR_PRIME_AGENT.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 
