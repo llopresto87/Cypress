@@ -287,6 +287,11 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   composition drifted. Other
   hosts place the charter as before. SPEC-0005 adds
   ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES.
+- **A graft no longer calls a new seed node re-created.** Grafting a plant on
+  8.2.0 onto this release, `graft.gate.recreated-nodes` named three nodes the
+  seed added since the base as re-created deletions and blocked the gate.
+  `tools/graft-run.py` now leaves out each node the ledger classes SEED-NEW.
+  SPEC-0001 adds GRAFT_RUN_RECREATED_LEAVES_OUT_SEED_NEW.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 

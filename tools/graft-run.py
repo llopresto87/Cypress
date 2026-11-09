@@ -103,6 +103,8 @@ JUDGE = re.compile(r"Judge: ([^|]+?)\s*\|")
 KERNEL_BACKUPS = ("CLAUDE.md", "AGENTS.md", ".github/copilot-instructions.md")
 ADOPTED = f"{GRAPH_HOME}/plans/adopted-instructions.md"
 PLAN_TASK = "graft the new seed onto this plant and run its integrity gates"
+# graft-ledger.py's row: `  <CLASS>  <plant path>  <- <seed path>`
+LEDGER_ROW = re.compile(r"^  ([A-Z-]+) +(\S+)  <- ", re.M)
 
 
 def parse_args(argv):
@@ -454,6 +456,7 @@ def main() -> int:
 
     # 2. the ledger, before the installer writes
     rc, out = run.tool("ledger.txt", "graft-ledger.py", copy, seed)
+    ledger = {m.group(2): m.group(1) for m in LEDGER_ROW.finditer(out)}
     base_line = line_of(out, r"^base: ")
     base_rev = base_line.split()[1] if base_line and "!!" not in base_line else ""
     print(f"ledger: {line_of(out, r'^totals: ') or f'not printed (exit {rc})'}; "
@@ -547,7 +550,7 @@ def main() -> int:
         "coverage": (plan_rc, cov_rc, coverage), "routes": routes, "register": reg,
         "hook_checks": hook_checks,
         "before": before, "after": after, "agents_before": agents_before,
-        "install": (install_rc, install_out), "engines": engines,
+        "install": (install_rc, install_out), "engines": engines, "ledger": ledger,
     }
     table = []
     for gid, cls, judge in gates:
@@ -834,6 +837,11 @@ def check_recreated(run, ev):
     else:
         nodes = re.findall(r"^\[seed\]\s+(docs/graph/\S+)\s*$", ev["install"][1], re.M)
         src = "install.log"
+    # a node the ledger calls SEED-NEW was in neither the base nor the plant:
+    # placed for the first time, no deletion to re-apply
+    new = [n for n in nodes if ev["ledger"].get(n) == "SEED-NEW"]
+    nodes = [n for n in nodes if n not in new]
+    src += f"; {len(new)} SEED-NEW node(s) placed for the first time, not counted" if new else ""
     if not nodes:
         return "PASS", f"no node re-created ({src}; install.log kept)"
     return "BLOCK", (f"{len(nodes)} node(s) re-created ({', '.join(nodes[:5])}"
