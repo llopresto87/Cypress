@@ -64,7 +64,7 @@ PY
 (cd "$T" && "$PY" docs/graph/brief.py --log) | grep -q '^- orchestrator.3.tester.1 — produced_by: tester — route: protocol.test-first RED names tester' \
   && ok "X492 SPAWN_LOG_RECORDS_THE_ATTRIBUTION: --log prints the delivery's attribution lines" || bad "--log" "line missing"
 (cd "$T" && "$PY" docs/graph/brief.py --role security --spawn-id o.9.security.1 --task t --route r --emulated "no registered type" --part part.txt >/dev/null && "$PY" docs/graph/brief.py --log) \
-  | grep -q '^- o.9.security.1 — produced_by: security — route: r — role-emulated (no registered type)$' \
+  | grep -q '^- o.9.security.1 — produced_by: security — route: r — effort: high (security path) — role-emulated (no registered type)$' \
   && ok "X492 SPAWN_LOG_RECORDS_THE_ATTRIBUTION: an emulated spawn is logged and printed as such" || bad "--emulated" "not in the log"
 rc=0; msg="$(cd "$T" && "$PY" docs/graph/brief.py --role architect --spawn-id orchestrator.3.tester.1 --task t --route r --part part.txt 2>&1 >/dev/null)" || rc=$?
 [[ $rc -eq 2 ]] && grep -q "already logged for role 'tester'" <<<"$msg" && ok "X492 SPAWN_LOG_RECORDS_THE_ATTRIBUTION: a spawn_id reused for another role is refused" || bad "re-mint" "rc $rc: $msg"
@@ -109,6 +109,29 @@ grep -q "routes no expertise" <<<"$err" \
   && bad "X500 BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE" "warned on a task line that routes expertise.kotlin: $err" \
   || ok "X500 BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE: a task line that routes expertise composes quietly"
 rm -f "$T/docs/graph/nodes/expertise.kotlin.md"
+# X502 BRIEF_DERIVES_THE_SPAWN_EFFORT: the role and task kind (and the
+# increment's label) give the spawn's effort, printed to the caller and logged
+eff() { (cd "$T" && "$PY" docs/graph/brief.py --spawn-id "o.9.eff.$1" --task t --route r --part part.txt "${@:2}" 2>&1 >/dev/null) || return $?; }
+x502=0
+for row in "1|effort: low (reviewer recheck)|--role reviewer --kind recheck" \
+           "2|effort: high (implementer increment, label hard)|--role implementer --kind increment --label hard" \
+           "3|effort: low (implementer increment, label medium-low)|--role implementer --kind increment --label medium-low" \
+           "4|effort: medium (architect ruling)|--role architect --kind ruling" \
+           "5|effort: high (security path)|--role tester --kind red --security-path" \
+           "6|effort: medium (tester definition default)|--role tester"; do
+  IFS='|' read -r n want args <<<"$row"
+  # shellcheck disable=SC2086
+  got="$(eff "$n" $args)" || true
+  grep -qF "$want" <<<"$got" || { bad "X502 BRIEF_DERIVES_THE_SPAWN_EFFORT" "fixture $n: want '$want', got: $got"; x502=1; }
+done
+"$PY" - "$T/docs/graph/plans/spawns.jsonl" <<'PY' || { bad "X502 BRIEF_DERIVES_THE_SPAWN_EFFORT" "derived effort not logged"; x502=1; }
+import json, sys
+rows = {r["spawn_id"]: r for r in map(json.loads, open(sys.argv[1]))}
+assert rows["o.9.eff.1"]["effort"] == "low (reviewer recheck)", rows.get("o.9.eff.1")
+PY
+rc=0; msg="$(eff 7 --role reviewer --kind sweep)" || rc=$?
+[[ $rc -eq 2 ]] && grep -q "recheck" <<<"$msg" || { bad "X502 BRIEF_DERIVES_THE_SPAWN_EFFORT" "unknown kind: rc $rc: $msg"; x502=1; }
+[[ $x502 == 0 ]] && ok "X502 BRIEF_DERIVES_THE_SPAWN_EFFORT: role, kind and label give the effort, printed and logged; an unknown kind is refused"
 # X503 REVIEW_BRIEF_NAMES_THE_SECURITY_PASS: a reviewer brief over a trust
 # path tells the caller the security pass is owed, and --log blocks until a
 # security spawn follows that review
@@ -121,11 +144,12 @@ printf 'class Gate\n' > "$T/app/trusted/Gate.kt"
 printf 'Review the diff; the launcher is app/trusted/Launcher.kt.\n' > "$T/rev.txt"
 printf 'Review app/ui/Screen.kt.\n' > "$T/rev-ui.txt"
 x503=0
-err="$(cd "$T" && "$PY" docs/graph/brief.py --role reviewer --spawn-id o.9.reviewer.1 --task t --route r --part rev.txt 2>&1 >/dev/null)" || true
+err="$(cd "$T" && "$PY" docs/graph/brief.py --role reviewer --kind first --spawn-id o.9.reviewer.1 --task t --route r --part rev.txt 2>&1 >/dev/null)" || true
 grep -q "SECURITY PASS REQUIRED after this review: app/trusted/Gate.kt, app/trusted/Launcher.kt" <<<"$err" \
-   || { bad "X503 REVIEW_BRIEF_NAMES_THE_SECURITY_PASS" "no or wrong line: $err"; x503=1; }
+  && grep -qF "effort: high (reviewer first-trust)" <<<"$err" \
+  || { bad "X503 REVIEW_BRIEF_NAMES_THE_SECURITY_PASS" "no or wrong line: $err"; x503=1; }
 rm "$T/app/trusted/Gate.kt"
-err="$(cd "$T" && "$PY" docs/graph/brief.py --role reviewer --spawn-id o.9.reviewer.2 --task t --route r --part rev-ui.txt 2>&1 >/dev/null)" || true
+err="$(cd "$T" && "$PY" docs/graph/brief.py --role reviewer --kind first --spawn-id o.9.reviewer.2 --task t --route r --part rev-ui.txt 2>&1 >/dev/null)" || true
 grep -q "SECURITY PASS" <<<"$err" && { bad "X503 REVIEW_BRIEF_NAMES_THE_SECURITY_PASS" "named for a non-trust diff: $err"; x503=1; }
 rc=0; msg="$(cd "$T" && "$PY" docs/graph/brief.py --log 2>&1 >/dev/null)" || rc=$?
 [[ $rc -eq 1 ]] && grep -q "BLOCK: o.9.reviewer.1 reviewed trust-path files" <<<"$msg" \

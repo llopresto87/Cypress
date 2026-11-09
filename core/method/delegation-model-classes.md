@@ -82,7 +82,7 @@ The class and effort each step kind runs on by default:
 | Library research (`research-scout`) | investigation | medium | none: its draft is finalized by an authoring-class librarian |
 | A mechanical gate run: a suite, the lints, writing the runbook record | investigation | low | the result is red: diagnosis goes to the authoring class (`protocol.recover`) |
 | Spec contracts, architecture, rulings on a contract's reading, one-way doors, threat models, `devils-advocate` | authoring | high | already at the ceiling |
-| The canonize librarian | authoring | medium | the close-out ends a grow or a graft: high |
+| The canonize librarian | authoring | low | the close-out ends a grow or a graft: high |
 | A harvest's faithful-import review (`protocol.harvest`) | authoring | high | already at the ceiling |
 | Any step on a security surface (the list under `delegation.light-variants`) | authoring | high | already at the ceiling |
 
@@ -139,44 +139,57 @@ re-route belongs to the brief.
 
 ### Effort (`delegation.effort`)
 
-An agent definition's `effort:` key takes one value from the closed set `low`,
-`medium`, `high`. Claude Code reads `effort` from subagent frontmatter with the
-values `low`, `medium`, `high`, `xhigh` and `max`; the key overrides the
-session's effort level for every spawn of that definition, and a subagent
-without one inherits the session's
-(Claude Code sub-agents page, https://code.claude.com/docs/en/sub-agents,
-retrieved 2026-09-26; the levels on offer depend on the model). The seed ships
-the three lower values only. Whether that host offers a per-spawn override: not
-recorded. Whether opencode, Codex or GitHub Copilot read the key: not recorded.
-No install transform drops the key.
+An agent definition's `effort:` key (`low`, `medium` or `high`) is the role's
+default. Claude Code reads it from subagent frontmatter; the Agent tool's
+per-spawn `effort` (v2.1.292+) overrides it, `CLAUDE_CODE_EFFORT_LEVEL`
+overrides both, and a subagent with neither runs at the session's level,
+`medium` by default on Opus 5.5 (code.claude.com/docs/en/sub-agents and
+/model-config, retrieved 2026-11-09). Prime Agent takes the spawn's effort as
+`thinking=`. opencode, Codex, GitHub Copilot: not recorded. No install
+transform drops the key.
 
 Each agent definition defaults to the effort of the step kind it mostly runs,
-from the table above, and to `medium` where the table has no row:
+from the table above, and to `medium` where the table has no row
+(`ui-ux-designer`, `data-ml`, `reliability`, `tool-smith`, `seed-installer`):
 
 | `effort:` | Agent (the step kind it mostly runs) |
 |---|---|
 | high | `orchestrator` (routing and rulings on a contract's reading), `architect` (spec contracts, architecture, rulings, one-way doors), `multi-agent-architect` (architecture), `security` (any step on a security surface; threat models), `pentest` (any step on a security surface), `devils-advocate` (adversarial validation), `legal` (rulings against a rule corpus), `growth-orchestrator` (the close-out that ends a grow) |
 | medium | `implementer` (routine GREEN), `tester` (RED for a new contract), `reviewer` (standard batch review), `product` (spec §3 and §9), `docs-librarian` (the canonize librarian), `research-scout` (library research), `growth-scout` (artifact discovery, low to medium) |
-| medium | no table row: `ui-ux-designer`, `data-ml`, `reliability`, `tool-smith`, `seed-installer` |
 
-A spawn's effort is derived from the first row that matches:
+**Each spawn's effort follows its role and task kind** (the owner's decision of
+2026-11-09, pending measurement in the next A/B arm). `brief.py --kind KIND
+[--label LABEL]` prints and logs `effort: <value> (<reason>)` from the first
+match, and the caller passes that value on the spawn: (1) `security`,
+`--security-path`, a harvest's faithful-import review, diagnosing a red gate:
+`high`; (2) the row below (`by label`: the hardest increment label of
+`delegation.effort-scale`, low or medium-low → low, medium → medium,
+medium-hard or hard → high; a `first` review of trust-claimed files reads
+`first-trust`); (3) the definition's default.
 
-| # | Condition | Spawn effort |
+| Role | Kind | Effort |
 |---|---|---|
-| 1 | a security surface (any trigger in `agent.security`'s "When to invoke" list; the brief names which); spec contracts, architecture, rulings, one-way doors, threat models, `devils-advocate`; a harvest's faithful-import review; diagnosing a red gate | high |
-| 2 | a light variant | low |
-| 3 | the spawn carries increments: the hardest label in the batch (`delegation.effort-scale`) | low or medium-low → low; medium → medium; medium-hard or hard → high |
-| 4 | no increment label: the step kind's row in the class and effort table above | that row's effort |
-| 5 | otherwise | the agent definition's default |
+| implementer | `increment`: an increment batch | by label |
+| implementer | `flow`: a new screen, flow or stateful contract, unlabelled | high |
+| implementer | `trust`: a change on a trust surface | high |
+| implementer | `fix`: a contained change or a review-fix set | medium |
+| implementer | `mechanical`: an edit, rename or one-line fix | low |
+| tester | `red`: RED for an increment's contracts | by label |
+| tester | `red-trust`: RED for a security or stateful contract | high |
+| tester | `amend`: amend one wrong test, or rule on one test question | low |
+| reviewer | `first-trust`: the first review of a trust-surface increment | high |
+| reviewer | `first`: an ordinary first review | medium |
+| reviewer | `recheck`: a re-check of fixes | low |
+| architect | `contract`: a new contract or boundary | high |
+| architect | `ruling`: a ruling on one question | medium |
+| architect | `wording`: a wording amendment | low |
+| docs-librarian | `close-out`: the canonize close-out of an increment | low |
+| docs-librarian | `grow-close-out`: the close-out that ends a grow or a graft | high |
+| product | `ruling`: one product ruling | low |
+| product | `spec`: spec §3 and §9 | medium |
 
-The brief's routing evidence records one line,
-`effort: <value> (row <n>: <reason>)`. When the value differs from the agent
-definition's default on a host with no recorded per-spawn setting, the line adds
-`host applies: definition default <value>`, so the departure is visible;
-`brief.py --effort` logs the line in the spawn log.
-
-Departures fail closed. For rows 3 to 5, route to a definition that carries the
-needed effort, or accept the recorded departure. For row 1 the step goes to a
-definition whose default is `high`, or its output takes a review spawn at
-`high` before it lands (`security` for a security surface, `architect` for a
-contract or ruling); a row-1 step with neither is a block.
+On a host with no per-spawn setting, a derived value unlike the definition's
+default adds `host applies: definition default <value>` to the logged line.
+Departures fail closed: a rule-1 step goes to a `high` definition, or its
+output takes a `high` review spawn (`security`, or `architect` for a contract
+or ruling) before it lands; with neither it is a block.

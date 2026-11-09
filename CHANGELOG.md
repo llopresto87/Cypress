@@ -411,6 +411,21 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   review: <files>`, and logs them; `brief.py --log` exits 1 with a BLOCK line
   until a `security` spawn follows that review. SPEC-0005 adds
   REVIEW_BRIEF_NAMES_THE_SECURITY_PASS (X503).
+- **Each spawn's effort follows its role and task kind.** The owner decided
+  on 2026-11-09 that effort varies within a role by the kind and size of the
+  task, pending measurement in the next A/B arm. `delegation.effort` holds a
+  role and task kind table (an implementer's increment by its label, a fix
+  set medium, a mechanical edit low; a tester's RED by label, a security or
+  stateful RED high, one amended test low; a reviewer's first review medium,
+  high on a trust surface, a re-check low; an architect's contract high, a
+  ruling medium, wording low; the close-out librarian low; a product ruling
+  low). `brief.py --kind KIND [--label LABEL]` derives the spawn's effort from
+  it, prints `effort: <value> (<reason>)` and logs it, and the orchestrator
+  passes it on every spawn: Claude Code takes it as the Agent tool's `effort`
+  (v2.1.292+), Prime Agent as `thinking=`, which it already read from the
+  brief. Agent frontmatter keeps its `effort:` as the role's default. The
+  Claude Code every-session load is 67,131 bytes. SPEC-0005 adds
+  BRIEF_DERIVES_THE_SPAWN_EFFORT (X502).
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 
