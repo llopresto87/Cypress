@@ -498,7 +498,7 @@ function's own computation against current sources:
 
 | Harness | Formula | Measured |
 |---|---|---|
-| Claude Code | kernel + agent descriptions + skill descriptions + orchestrator output style | 69 117 B (recorded exemption) |
+| Claude Code | kernel + agent descriptions + skill descriptions + orchestrator output style | 67 148 B (recorded exemption) |
 | opencode | kernel + agent descriptions + skill descriptions | 24 207 B |
 | Codex CLI | kernel + agent descriptions + skill descriptions⁴ | ≤ 24 207 B |
 | Prime Agent | kernel + skill descriptions + `APPEND_SYSTEM.md` overlay | 18 466 B |

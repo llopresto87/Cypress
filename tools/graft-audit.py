@@ -364,7 +364,7 @@ def _always_loaded_texts(charter: str, seed: Path) -> list:
         return []
     out = []
     for nid in re.findall(r"  - (\S+)", m.group(1)):
-        kind, _, name = nid.partition(".")
+        kind, _, name = nid.split("#", 1)[0].partition(".")
         f = (seed / "core" / "method" / f"{name}.md" if kind == "method"
              else seed / "skills" / name / "SKILL.md")
         if f.is_file():

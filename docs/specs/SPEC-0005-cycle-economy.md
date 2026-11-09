@@ -532,7 +532,8 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   `install.sh claude-code --check` runs
 - **Then:** the composed agent file is the charter followed, in
   `always_loads:` order, by each node's body under `## Always loaded: <id>`,
-  each body exactly once and no node's frontmatter; the charter that names
+  each body exactly once (as ALWAYS_LOADS_COMPOSES_ONLY_WHAT_THE_ROLE_NEEDS
+  trims it) and no node's frontmatter; the charter that names
   none is placed byte for byte; growth-audit and graft-run read a composed
   file that begins with its charter as the charter's projection
 - **And:** a composed file that differs from a fresh composition (edited by
@@ -592,6 +593,20 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
 - **Then:** the Claude Code plant refuses it with exit 2 and a line naming
   Prime Agent, logging no spawn; the plant with `.prime/agent/` composes the
   brief with the charter body
+
+### Contract: ALWAYS_LOADS_COMPOSES_ONLY_WHAT_THE_ROLE_NEEDS
+- **Test file:** `tests/test-install-placement.sh`
+- **Given:** a charter whose `always_loads:` names `<id>#<n>,<n>` and nodes
+  with a `## Neighbours` section or a section whose next line is
+  `<!-- reference-only -->`
+- **When:** `install.sh claude-code` composes `.claude/agents/`
+- **Then:** the selected node contributes its text before the first `## `
+  section and only the `## <n>.` sections named, under `## Always loaded:
+  <id> (sections <n>, <n>)`; no composed node carries its Neighbours section
+  or a reference-only section, and text after that section's list (a line a
+  plant appended) stays
+- **And:** a section number the node lacks stops the install before the
+  first agent is placed, naming the charter, the entry and the number
 
 ### Contract: MAIN_SESSION_PLAYS_THE_ORCHESTRATOR
 - **Test file:** `tests/test-install-placement.sh`
@@ -2450,6 +2465,7 @@ gives.
 | BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE | X500 a generic GREEN task line warns; a task line routing `expertise.kotlin` does not; seen red first | tests/test-brief.sh | fixture | green |
 | REVIEWER_RUNS_NO_BUILD | (none) the `REVIEWER_RUNS_NO_BUILD` row of seed-lint's `TEXT_RULES`; red id: `REVIEWER_RUNS_NO_BUILD: agents/03-reviewer.md does not hold 'the builder runs the builds and test suites'`; seen red first | tests/seed-lint.py | real-tree | green |
 | CHARTER_FLAG_ONLY_FOR_PRIME_AGENT | X501 refused on a Claude Code plant; composed once `.prime/agent/` exists; seen red first | tests/test-brief.sh | fixture | green |
+| ALWAYS_LOADS_COMPOSES_ONLY_WHAT_THE_ROLE_NEEDS | M25 case_agents_sections: `engineering-posture#1,4` composes sections 1 and 4 only, no Neighbours or reference-only section; `#1,99` stops the recompose naming section 99; seen red first | tests/test-install-placement.sh | integration | green |
 | MAIN_SESSION_PLAYS_THE_ORCHESTRATOR | M24 case_orchestrator_style: settings select the style; the style carries the charter body and each always-loaded body once, no charter frontmatter, `keep-coding-instructions: true`; a hand edit is STALE and recomposed; seen red first. A `claude -p` probe in a fresh plant quoted the charter's second sentence and an always-loaded heading, and quoted neither with the setting removed | tests/test-install-placement.sh | integration | green |
 | ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | M22 case_agents_compose: the implementer's six always-loaded bodies once each with no frontmatter; `11-pentest.md` byte for byte; a hand edit is STALE to `--check` | tests/test-install-placement.sh | integration | green |
 | ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | (none) the `ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES` row of seed-lint's `TEXT_RULES`: the `graft.gate.projection-drift` row holds `install.sh claude-code --check`; red id: `ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES: protocols/graft.md graft.gate.projection-drift does not hold 'install.sh claude-code --check'` | tests/seed-lint.py | real-tree | green |
@@ -2866,3 +2882,10 @@ kept outside the seed.
   with `brief.py --charter` on Claude Code, repeating the charter its agent
   type already carries. Added CHARTER_FLAG_ONLY_FOR_PRIME_AGENT (X501, seen
   red first).
+- 2026-11-09 — the owner's cost goal. The composed agents carried whole
+  nodes, Neighbours menus and reference lists included: the implementer's
+  system prompt was about 16K tokens over about 180 calls an increment. Added
+  ALWAYS_LOADS_COMPOSES_ONLY_WHAT_THE_ROLE_NEEDS (M25, seen red first); the
+  implementer and tester compose only the build-relevant sections of
+  engineering posture, and the implementer only the build-relevant sections
+  of design posture.

@@ -85,7 +85,7 @@ EAGER_BUDGET = 41_600
 COPILOT_POINTER_OVERHEAD = 5_644
 # Harness -> (recorded bytes, reason). A debt that may only shrink.
 EAGER_EXEMPTIONS: dict[str, tuple[int, str]] = {
-    "claude-code": (69_117, "the main session plays the orchestrator: its charter and always_loads "
+    "claude-code": (67_148, "the main session plays the orchestrator: its charter and always_loads "
                             "ride in the output style (owner decision, 2026-11-09)"),
 }
 
@@ -1231,7 +1231,14 @@ def orchestrator_style_bytes() -> int:
     charter body and the body of each node its `always_loads:` names."""
     nodes = {fm.get("id"): (fm, body) for _l, fm, body in machinery_nodes()}
     fm, body = nodes["agent.orchestrator"]
-    parts = [body.strip("\n")] + [f"## Always loaded: {i}\n\n" + nodes[i][1].strip("\n")
+
+    def composed(text: str) -> str:   # no selector, Neighbours and reference-only dropped
+        chunks = re.split(r"(?m)^(?=## )", text.strip("\n"))
+        return "".join(re.sub(r"^## [^\n]*\n(?:(?:\s*|- .*|  .*|<!-- reference-only -->)\n)*", "\n", c + "\n")
+                       .rstrip("\n") if c.startswith("## Neighbours\n")
+                       or c.split("\n")[1:2] == ["<!-- reference-only -->"] else c
+                       for c in chunks).strip("\n")
+    parts = [body.strip("\n")] + [f"## Always loaded: {i}\n\n" + composed(nodes[i][1])
                                   for i in fm.get("always_loads") or []]
     return len("\n\n".join(parts).encode("utf-8"))
 

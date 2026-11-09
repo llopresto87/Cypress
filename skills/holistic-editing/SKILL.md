@@ -244,6 +244,7 @@ systems. Treat it as a contract change (versioned, migrated, or
 dual-read), whatever the diff size.
 
 ## Reference files
+<!-- reference-only -->
 
 - the kernel (`AGENTS.md`): the boundary that makes this binding.
 - `docs/graph/agents/02-implementer.md`: writes code under this rule.

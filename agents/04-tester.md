@@ -23,7 +23,7 @@ requires:
   - protocol.test-first
   - skill.test-first
 always_loads:
-  - method.engineering-posture
+  - method.engineering-posture#1,2,4,9,12
   - method.contract-posture
   - skill.holistic-editing
 peers:
