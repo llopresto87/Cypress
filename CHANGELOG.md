@@ -431,7 +431,16 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   variation at a seam) left out, the next run's implementer put every draft
   and send call into one shell-wide state holder and was graded down on
   architecture. The owner approved restoring them on 2026-11-09; the other
-  section trims stand. The composed implementer is 58,769 bytes.
+  section trims stand. The composed implementer is 58,769 bytes, and 59,273
+  with the design note below.
+- **The implementer writes a design note before coding a new flow.** For a
+  new flow or a stateful contract it first names which component owns each
+  piece of state (domain or authority, coordination or flow, presentation)
+  and every transition (inputs and external events, rejection or failure,
+  restart of the state holder, environment change) with its observable
+  result, then codes to it; the reviewer checks the code against the note.
+  Owner-approved on 2026-11-09 after a live run's architecture was graded
+  down. SPEC-0005 adds IMPLEMENTER_WRITES_A_DESIGN_NOTE.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 
