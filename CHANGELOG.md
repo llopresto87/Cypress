@@ -323,6 +323,9 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   Claude Code README each point, in a line, at the `always_loads:`
   composition, the spawn log (`docs/graph/plans/spawns.jsonl`) and the resume
   hook where a steward or grower acts on them; seed-lint holds the pointers.
+- **The reviewer names an overclaim.** A comment, label, doc string or test
+  name that claims more than the code enforces is a finding on the
+  reviewer's checklist (`reviewer.checklist`, Maintainability).
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 
