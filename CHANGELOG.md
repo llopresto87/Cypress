@@ -426,6 +426,12 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   brief. Agent frontmatter keeps its `effort:` as the role's default. The
   Claude Code every-session load is 67,131 bytes. SPEC-0005 adds
   BRIEF_DERIVES_THE_SPAWN_EFFORT (X502).
+- **The implementer composes design posture whole again.** With design
+  §1, 3, 4 and 9 (smallest structure, cohesion and coupling, stable contracts,
+  variation at a seam) left out, the next run's implementer put every draft
+  and send call into one shell-wide state holder and was graded down on
+  architecture. The owner approved restoring them on 2026-11-09; the other
+  section trims stand. The composed implementer is 58,769 bytes.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 
