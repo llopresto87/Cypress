@@ -80,6 +80,11 @@ Pick the lowest level that exercises the behavior.
   consumer's literals ties the shared code to one customer and breaks
   when that customer changes. The same holds for a property of a
   factory, a table, or a loop: one case over the whole collection.
+- **A test holds its evidence.** Each path to an effect is tested, not
+  one entry point; an assertion fails when its evidence is missing;
+  assertions target the component under test, not a neighbour; stateful
+  behaviour is tested again after rebuilding the component that holds
+  the state.
 - **A test joins the class that owns its contract.** A RED born from a
   review finding extends the test class (file, fixture group, suite)
   that already asserts the contract the finding is about, so the

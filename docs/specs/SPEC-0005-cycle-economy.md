@@ -549,6 +549,15 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   the component that holds state, environment change) with its observable
   result, codes to it, and that the reviewer checks the code against it
 
+### Contract: RED_TEST_HOLDS_ITS_EVIDENCE
+- **Test file:** `tests/seed-lint.py`
+- **Given:** `skills/test-first/SKILL.md`
+- **When:** seed-lint reads its Test shape section
+- **Then:** it holds that each path to an effect is tested, an assertion fails
+  when its evidence is missing, assertions target the component under test,
+  and stateful behaviour is tested again after rebuilding the component that
+  holds the state
+
 ### Contract: SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS
 - **Test file:** `tests/test-brief.sh`
 - **Given:** a plant with `docs/graph/brief.py` and `method/security-controls.md`
@@ -2498,6 +2507,7 @@ gives.
 | BRIEF_DERIVES_THE_SPAWN_EFFORT | X502 six role, kind and label fixtures print their effort; the log records it; an unknown kind is refused; X503 a first review of trust paths reads `first-trust`; seen red first | tests/test-brief.sh | fixture | green |
 | REVIEW_BRIEF_NAMES_THE_SECURITY_PASS | X503 a review naming `app/trusted/Launcher.kt` with `app/trusted/Gate.kt` uncommitted prints both; a review of `app/ui/Screen.kt` prints nothing; `--log` blocks until a security spawn follows; seen red first | tests/test-brief.sh | fixture | green |
 | IMPLEMENTER_WRITES_A_DESIGN_NOTE | (none) the `IMPLEMENTER_WRITES_A_DESIGN_NOTE` row of seed-lint's `TEXT_RULES`; red id: `IMPLEMENTER_WRITES_A_DESIGN_NOTE: agents/02-implementer.md does not hold 'restart of the component that holds state'`; seen red first | tests/seed-lint.py | real-tree | green |
+| RED_TEST_HOLDS_ITS_EVIDENCE | (none) the `RED_TEST_HOLDS_ITS_EVIDENCE` row of seed-lint's `TEXT_RULES`; red id: `RED_TEST_HOLDS_ITS_EVIDENCE: skills/test-first/SKILL.md does not hold 'again after rebuilding the component that holds the state'`; seen red first | tests/seed-lint.py | real-tree | green |
 | SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS | X498 a tester brief with `--security-path` carries the block, which names every class, the path tests and the confirmation | tests/test-brief.sh | fixture | green |
 | AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK | M23 case_agents_recompose: a plant appends a line to `method/engineering-posture.md`; `--check` names `02-implementer.md` STALE with `--recompose-agents`; that run leaves every file outside `.claude/agents/` byte-identical, the implementer carries the line, `--check` is up to date; seen red first (the STALE line said re-run the install) | tests/test-install-placement.sh | integration | green |
 | PLAN_ROLE_LEAVES_OUT_THE_ROLES_OWN_PROMPT | X499 PlanRoleTests.test_x499_role_leaves_out_its_own_prompt: the GREEN task line with `--role implementer` drops `agent.implementer` and `skill.holistic-editing`, keeps `protocol.verify`; seen red first | tests/test_graph_lint.py | integration (installed plant) | green |
@@ -2941,3 +2951,5 @@ kept outside the seed.
   `delegation.effort` and prints it for the caller to pass on the spawn.
 - 2026-11-09 — the owner's review of a live run's architecture. Added
   IMPLEMENTER_WRITES_A_DESIGN_NOTE, held by seed-lint (seen red first).
+- 2026-11-09 — the owner's review of a live run's tests. Added
+  RED_TEST_HOLDS_ITS_EVIDENCE, held by seed-lint (seen red first).

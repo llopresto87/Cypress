@@ -1564,6 +1564,9 @@ TEXT_RULES = (
     # the implementer codes a new flow to a written ownership and transition note
     ("IMPLEMENTER_WRITES_A_DESIGN_NOTE", "require", lambda: ["agents/02-implementer.md"],
      re.escape("restart of the component that holds state"), {"collapse": True}),
+    # a RED test holds its evidence: every path, a failing absent assertion, a rebuilt holder
+    ("RED_TEST_HOLDS_ITS_EVIDENCE", "require", lambda: ["skills/test-first/SKILL.md"],
+     re.escape("again after rebuilding the component that holds the state"), {"collapse": True}),
     # a reviewer finding on a trust path is fixed inside the security pass
     ("TRUST_PATH_TAKES_THE_SECURITY_PASS", "require", lambda: ["protocols/test-first.md"],
      re.escape("the security pass is their one fix round"), {"collapse": True}),
