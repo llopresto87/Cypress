@@ -140,9 +140,13 @@ green then means the threat model holds, beyond the controls the spec plants.
 After REVIEW the session spawns `security` once (`brief.py --role security`,
 which embeds the same block) with why the pass is required and every reviewer
 finding on the covered files whatever its rating; it confirms the controls and
-runs each class against the diff. Its findings go to one fresh `implementer`,
-and one light `security` re-check of that fix closes the pass: one round, then
-COMMIT, or `protocol.recover` for what the re-check still breaks.
+runs each class against the diff. Its findings and those reviewer findings go
+to one fresh `implementer`, and one light `security` re-check of that fix
+closes the pass: one round, then COMMIT, or `protocol.recover` for what the
+re-check still breaks. The session holds reviewer findings on the covered files
+for this pass: the security pass is their one fix round. When the increment's
+RED predates the security path, the security spawn writes the missing controls
+and that one implementer greens them.
 
 ### RED — write the failing test
 

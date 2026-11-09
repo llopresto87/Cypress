@@ -497,7 +497,7 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
 - **And:** a spawn_id already logged for another role is refused (exit 2)
 
 ### Contract: TRUST_PATH_TAKES_THE_SECURITY_PASS
-- **Test file:** `tests/test_graph_lint.py`, `tests/test-brief.sh`
+- **Test file:** `tests/test_graph_lint.py`, `tests/test-brief.sh`, `tests/seed-lint.py`
 - **Given:** a plant graph with a `crosscut` node marked `trust: true` whose
   `repo:` or a file pattern in its `load_when` claims a path, a `trust: false`
   crosscut and a subsystem claiming other paths
@@ -509,6 +509,8 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   byte, and no other role's brief carries it
 - **And:** a `trust:` key on a node of another kind, or with a value other
   than `true` or `false`, is a lint error
+- **And:** `protocol.test-first` holds reviewer findings on the covered files
+  for the security pass, which is their one fix round
 
 ### Contract: SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS
 - **Test file:** `tests/test-brief.sh`
@@ -2402,6 +2404,7 @@ gives.
 | SPAWN_LOG_RECORDS_THE_ATTRIBUTION | X492 the log line, `--log`, `--emulated` and the re-mint refusal | tests/test-brief.sh | fixture | green |
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | X494 TrustClaimTests: a path claimed by `repo:` and one by a file pattern name the trust crosscut; `trust: false` and subsystem paths name none; `trust:` on a subsystem is an error | tests/test_graph_lint.py | fixture | green |
 | TRUST_PATH_TAKES_THE_SECURITY_PASS | X495 the security brief carries the SECURITY PATH block byte for byte; a tester brief does not | tests/test-brief.sh | fixture | green |
+| TRUST_PATH_TAKES_THE_SECURITY_PASS | (none) the `TRUST_PATH_TAKES_THE_SECURITY_PASS` row of seed-lint's `TEXT_RULES`: `protocols/test-first.md` holds that the security pass is the one fix round of reviewer findings on the covered files; red id: `TRUST_PATH_TAKES_THE_SECURITY_PASS: protocols/test-first.md does not hold 'the security pass is their one fix round'` | tests/seed-lint.py | real-tree | green |
 | SECURITY_CONTRACTS_CARRY_ADVERSARIAL_RED_CONTROLS | X498 a tester brief with `--security-path` carries the block, which names every class, the path tests and the confirmation | tests/test-brief.sh | fixture | green |
 | AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK | M23 case_agents_recompose: a plant appends a line to `method/engineering-posture.md`; `--check` names `02-implementer.md` STALE with `--recompose-agents`; that run leaves every file outside `.claude/agents/` byte-identical, the implementer carries the line, `--check` is up to date; seen red first (the STALE line said re-run the install) | tests/test-install-placement.sh | integration | green |
 | MAIN_SESSION_PLAYS_THE_ORCHESTRATOR | M24 case_orchestrator_style: settings select the style; the style carries the charter body and each always-loaded body once, no charter frontmatter, `keep-coding-instructions: true`; a hand edit is STALE and recomposed; seen red first. A `claude -p` probe in a fresh plant quoted the charter's second sentence and an always-loaded heading, and quoted neither with the setting removed | tests/test-install-placement.sh | integration | green |
@@ -2802,3 +2805,8 @@ kept outside the seed.
   first): the composition is placed as the project output style, which keeps
   Claude Code's prompt and CLAUDE.md; an `agent` setting replaces the default
   prompt. AGENTS_RECOMPOSE_FROM_THE_NODES_ON_DISK now rewrites the style too.
+- 2026-11-09 — audit of a live run. A reviewer's trust-path findings went to
+  a separate RED/GREEN fix round while the security pass over the same files
+  was still owed, so the surface would get two rounds. TRUST_PATH_TAKES_THE_SECURITY_PASS
+  gains the arm that those findings are fixed inside the security pass, held
+  by seed-lint (seen red first).

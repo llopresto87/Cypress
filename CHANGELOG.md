@@ -348,6 +348,13 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   always-loaded heading, and quoted neither with the setting removed. Every
   Claude Code session now loads 69,117 bytes, recorded in `EAGER_EXEMPTIONS`.
   SPEC-0005 adds MAIN_SESSION_PLAYS_THE_ORCHESTRATOR.
+- **Review findings on a trust path are fixed in the security pass.** In
+  the same run a reviewer's trust-path findings went to their own RED and
+  GREEN round while the security pass over those files was still owed:
+  about $4.40, of which an estimated $2.50 bought a second round on the same
+  surface. `protocol.test-first` now holds those findings for the security
+  pass, whose one implementer fixes them with its own; when the RED predates
+  the security path, the security spawn writes the missing controls.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 
