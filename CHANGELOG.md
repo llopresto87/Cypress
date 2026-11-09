@@ -378,6 +378,12 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   tokens a worker. `brief.py` now refuses `--charter` in a plant whose
   `.claude/agents/` carries the roles and that has no `.prime/agent/`.
   SPEC-0005 adds CHARTER_FLAG_ONLY_FOR_PRIME_AGENT.
+- **The bound hook reads a heredoc body as data.** In the same run
+  `.claude/bound-hook.py` refused a command that wrote a brief through a
+  heredoc, because a line of the brief began with "make". The hook now blanks
+  each heredoc body before it looks for commands, and still checks the
+  command line that opens the heredoc and every command after it
+  (`tests/test-bound-hook.sh`, three cases, seen red first).
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 
