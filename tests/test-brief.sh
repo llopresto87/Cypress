@@ -109,6 +109,32 @@ grep -q "routes no expertise" <<<"$err" \
   && bad "X500 BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE" "warned on a task line that routes expertise.kotlin: $err" \
   || ok "X500 BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE: a task line that routes expertise composes quietly"
 rm -f "$T/docs/graph/nodes/expertise.kotlin.md"
+# X503 REVIEW_BRIEF_NAMES_THE_SECURITY_PASS: a reviewer brief over a trust
+# path tells the caller the security pass is owed, and --log blocks until a
+# security spawn follows that review
+printf -- '---\nid: crosscut.gate\ntier: 2\ntrust: true\nkind: crosscut\norigin: project\ntitle: gate\nowns:\n  - gate.menu\nload_when:\n  - "app/trusted/**"\nest_tokens: 100\n---\n\nGate.\n' \
+  > "$T/docs/graph/nodes/crosscut.gate.md"
+mkdir -p "$T/app/trusted" "$T/app/ui"
+printf 'class Launcher\n' > "$T/app/trusted/Launcher.kt"; printf 'class Screen\n' > "$T/app/ui/Screen.kt"
+git -C "$T/app" init -q && git -C "$T/app" add -A && git -C "$T/app" -c user.email=t@t -c user.name=t commit -qm base
+printf 'class Gate\n' > "$T/app/trusted/Gate.kt"
+printf 'Review the diff; the launcher is app/trusted/Launcher.kt.\n' > "$T/rev.txt"
+printf 'Review app/ui/Screen.kt.\n' > "$T/rev-ui.txt"
+x503=0
+err="$(cd "$T" && "$PY" docs/graph/brief.py --role reviewer --spawn-id o.9.reviewer.1 --task t --route r --part rev.txt 2>&1 >/dev/null)" || true
+grep -q "SECURITY PASS REQUIRED after this review: app/trusted/Gate.kt, app/trusted/Launcher.kt" <<<"$err" \
+   || { bad "X503 REVIEW_BRIEF_NAMES_THE_SECURITY_PASS" "no or wrong line: $err"; x503=1; }
+rm "$T/app/trusted/Gate.kt"
+err="$(cd "$T" && "$PY" docs/graph/brief.py --role reviewer --spawn-id o.9.reviewer.2 --task t --route r --part rev-ui.txt 2>&1 >/dev/null)" || true
+grep -q "SECURITY PASS" <<<"$err" && { bad "X503 REVIEW_BRIEF_NAMES_THE_SECURITY_PASS" "named for a non-trust diff: $err"; x503=1; }
+rc=0; msg="$(cd "$T" && "$PY" docs/graph/brief.py --log 2>&1 >/dev/null)" || rc=$?
+[[ $rc -eq 1 ]] && grep -q "BLOCK: o.9.reviewer.1 reviewed trust-path files" <<<"$msg" \
+  || { bad "X503 REVIEW_BRIEF_NAMES_THE_SECURITY_PASS" "--log without the security spawn: rc $rc: $msg"; x503=1; }
+(cd "$T" && "$PY" docs/graph/brief.py --role security --spawn-id o.9.security.3 --task t --route r --part rev.txt >/dev/null 2>&1) || true
+rc=0; (cd "$T" && "$PY" docs/graph/brief.py --log >/dev/null 2>&1) || rc=$?
+[[ $rc -eq 0 ]] || { bad "X503 REVIEW_BRIEF_NAMES_THE_SECURITY_PASS" "--log still blocks after the security spawn: rc $rc"; x503=1; }
+[[ $x503 == 0 ]] && ok "X503 REVIEW_BRIEF_NAMES_THE_SECURITY_PASS: a trust-path review names the pass; --log blocks until a security spawn follows"
+rm -rf "$T/app" "$T/docs/graph/nodes/crosscut.gate.md"
 rc=0; (cd "$T" && "$PY" docs/graph/brief.py --role nobody --spawn-id s --task t --route r --part part.txt) >/dev/null 2>&1 || rc=$?
 [[ $rc -ne 0 ]] && ok "unknown role refused" || bad "unknown role" "exit 0"
 [[ "$fail" == 0 ]] && echo "test-brief: PASS" || { echo "test-brief: FAIL"; exit 1; }

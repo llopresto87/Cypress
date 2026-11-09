@@ -14,7 +14,11 @@ a task line whose route loads no expertise.* or subsystem.* node is named on
 stderr. A `security` brief, and
 any brief composed with `--security-path` (a RED for a security contract), also
 carries the SECURITY PATH block of method/security-controls.md byte for byte
-(`test-first.security-path`).
+(`test-first.security-path`). A `reviewer` brief checks the files changed
+(uncommitted, in the plant and in each repository directly under it) and the
+files its task part names with `graph-lint.py --trust-claims`; a claimed file
+prints `SECURITY PASS REQUIRED after this review: <files>` to the caller and is
+logged with the spawn.
 
   python3 docs/graph/brief.py --role tester --spawn-id orchestrator.3.tester.1 \
       --task "<exact task line>" --route "<agent-lint line or rationale>" \
@@ -33,7 +37,9 @@ Every composed brief appends one JSON line to `spawns.jsonl` beside the plan
 the spawn's attribution record, so the worker echoes none of it and the
 deliver-time attribution assertion reads the log. A spawn_id already logged
 for another role is refused (mint once, `delegation.tracing`).
-`--log` prints the log as the delivery's attribution lines and exits.
+`--log` prints the log as the delivery's attribution lines and exits; it exits
+1 with a BLOCK line for each logged review of trust-path files that no later
+`security` spawn follows (`test-first.security-path`).
 """
 
 import argparse
@@ -78,6 +84,40 @@ def routes_expertise(task: str, role: str) -> bool:
     return any(e["id"].startswith(("expertise.", "subsystem.")) for e in load)
 
 
+def changed_paths(plant: Path, part: str) -> list[str]:
+    """Plant-relative paths a review covers: the uncommitted changes in the
+    plant and in each repository directly under it, and the existing files
+    the task part names."""
+    paths = set()
+    repos = [plant] + sorted(d for d in plant.iterdir() if (d / ".git").exists())
+    for repo in repos:
+        try:
+            r = subprocess.run(["git", "-C", str(repo), "status", "--porcelain", "--untracked-files=all"],
+                               capture_output=True, text=True, timeout=60)
+        except (OSError, subprocess.SubprocessError):
+            continue
+        prefix = "" if repo == plant else repo.name + "/"
+        for line in r.stdout.splitlines() if r.returncode == 0 else []:
+            paths.add(prefix + line[3:].split(" -> ")[-1].strip('"'))
+    for tok in re.findall(r"[\w.-]+(?:/[\w.-]+)+", part):
+        tok = tok.rstrip(".")
+        if (plant / tok).is_file():
+            paths.add(tok)
+    return sorted(paths)
+
+
+def trust_claims(paths: list[str]) -> list[str]:
+    """The paths a `trust: true` crosscut claims (`graph-lint.py --trust-claims`)."""
+    if not paths:
+        return []
+    try:
+        r = subprocess.run([sys.executable, str(GRAPH / "graph-lint.py"), "--trust-claims", *paths],
+                           capture_output=True, text=True, timeout=60)
+        return sorted(json.loads(r.stdout)["claims"])
+    except (OSError, ValueError, KeyError, subprocess.SubprocessError):
+        return []
+
+
 def spawn_log(plan: Path) -> Path:
     return plan.parent / "spawns.jsonl"
 
@@ -109,7 +149,12 @@ def main() -> int:
         if not last:
             print(f"brief: no spawns logged at {spawn_log(Path(lp.parse_args().plan))}", file=sys.stderr)
             return 1
-        return 0
+        owed = [r for i, r in enumerate(rows) if r.get("role") == "reviewer" and r.get("trust")
+                and not any(x.get("role") == "security" for x in rows[i + 1:])]
+        for r in owed:
+            print(f"BLOCK: {r['spawn_id']} reviewed trust-path files ({', '.join(r['trust'])}) and no "
+                  f"security spawn follows it in the spawn log (test-first.security-path)", file=sys.stderr)
+        return 1 if owed else 0
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--role", required=True)
     ap.add_argument("--spawn-id", required=True)
@@ -170,10 +215,13 @@ def main() -> int:
         print("brief: the task line routes no expertise.* or subsystem.* node; name the files it "
               "touches or their stack in --task, so the worker loads that expertise "
               "(graph-session-bootstrap.md, Stack expertise)", file=sys.stderr)
+    trust = trust_claims(changed_paths(plant, part)) if a.role == "reviewer" else []
+    if trust:
+        print(f"brief: SECURITY PASS REQUIRED after this review: {', '.join(trust)}", file=sys.stderr)
     log = spawn_log(Path(a.plan))
     log.parent.mkdir(parents=True, exist_ok=True)
     rec = {"spawn_id": a.spawn_id, "role": a.role, "task": a.task, "route": a.route,
-           "effort": a.effort, "emulated": a.emulated,
+           "effort": a.effort, "emulated": a.emulated, "trust": trust,
            "brief": a.out, "at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
     with open(log, "a", encoding="utf-8") as fh:
         fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
