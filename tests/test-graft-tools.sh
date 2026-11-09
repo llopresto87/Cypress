@@ -1717,6 +1717,25 @@ PY2
   touch "$GK/ready"
 }
 
+# X500: the install leaves each file the plant diverged on as the plant's, and
+# the kept-deltas row blocks on a MERGE that does not yet carry the seed's lines.
+case_run_keeps_diverged_machinery() {
+  local c="$GK/stage/plant" f row
+  gr_need || return 1; gk_fixture || return 1
+  [ -d "$c/docs/graph" ] || { echo "no stage copy at $c: $(flat "$GK/run.err")"; return 1; }
+  for f in vcs-posture engineering-posture tiers delegation; do
+    cmp -s "$GK_PLANT/docs/graph/method/$f.md" "$c/docs/graph/method/$f.md" \
+      || { echo "the install replaced the plant's diverged method/$f.md"; return 1; }
+  done
+  grep -q '^A plant posture rule\.$' "$c/.claude/agents/02-implementer.md" \
+    || { echo "the composed implementer does not carry the plant's kept engineering-posture"; return 1; }
+  row="$(grep -E '^graft\.gate\.kept-deltas:' "$GK/run.out" || true)"
+  echo "$row" | grep -Eq '^graft\.gate\.kept-deltas: BLOCK' && echo "$row" | grep -q 'docs/graph/method/tiers\.md' \
+    || { echo "the kept-deltas row does not BLOCK on the unmerged MERGE method/tiers.md: $row"; return 1; }
+  ! echo "$row" | grep -Eq 'method/(delegation|vcs-posture|engineering-posture)\.md' \
+    || { echo "the kept-deltas row names a merged or kept file: $row"; return 1; }
+}
+
 # X499: a node new in the seed is placed for the first time, not re-created.
 case_run_recreated_excludes_seed_new() {
   local row
@@ -1756,6 +1775,7 @@ collect_case GA-K2 case_audit_record_date_first_heading "--record: the newest en
 collect_case GA-K3 case_audit_record_bold_label_bullets "--record: bold-label bullets list the merged files, every path on the line checked"
 collect_case GA-K4 case_audit_record_zero_files_fails_closed "--record: an entry that parses to zero files fails closed; a declared none passes"
 collect_case X499 case_run_recreated_excludes_seed_new "GRAFT_RUN_RECREATED_LEAVES_OUT_SEED_NEW: graft.gate.recreated-nodes leaves out the ledger's SEED-NEW nodes, which no plant ever carried"
+collect_case X500 case_run_keeps_diverged_machinery "INSTALL_KEEPS_DIVERGED_MACHINERY: a graft rehearsal leaves each KEEP-PLANT and MERGE file the plant's, composes from the kept node, and blocks on a MERGE that lacks the seed's lines"
 [ "$CASE_FAILED" -eq 0 ] \
   || { echo "test-graft-tools: FAIL — failing cases (above)" >&2; exit 1; }
 

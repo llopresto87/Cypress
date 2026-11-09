@@ -90,6 +90,12 @@
 #                        by every later install; `--kernel-mode replace`, the
 #                        default, returns to one shared kernel body, filing the
 #                        hub's rules for migration.
+#   --keep-diverged      For a graft's apply: leave as the plant's each
+#                        seed-owned file the plant edited that
+#                        tools/graft-ledger.py classes KEEP-PLANT or MERGE
+#                        (a file the plant deleted is placed again). Needs
+#                        the ledger's base; without one the run stops before
+#                        writing anything.
 #   --print-config       For `codex`: print the config.toml lines with
 #                         resolved paths instead of editing anything.
 #   --check              Verify the generated views are in sync; write
@@ -138,6 +144,11 @@ TOOLS=()
 TRACK_RECREATION=0
 PRIOR_INSTALL=0
 RECREATED_NODES=()
+# --keep-diverged: KEPT_PATHS holds "<CLASS> <path>" lines, one per file the
+# plant edited that graft-ledger classes KEEP-PLANT or MERGE; place_file leaves
+# each as it is (keep_diverged_paths).
+KEEP_DIVERGED=0
+KEPT_PATHS=""
 # Every backup this run made (place_file, place_kernel's sibling, the retired
 # Copilot hooks), for the closing list report_backups prints (SPEC-0001
 # BACKUPS_LISTED_BY_DATE).
@@ -449,6 +460,15 @@ bak_path() {
 place_file() {
     local src="$1" dest="$2"
     [[ -e "$src" ]] || die "missing source: $src"
+    if [[ -n "$KEPT_PATHS" ]]; then
+        local line rel="${dest#"$PROJECT_DIR"/}"
+        while IFS= read -r line; do
+            if [[ "${line#* }" == "$rel" ]]; then
+                log "  kept the plant's $rel (${line%% *}, --keep-diverged)"
+                return 0
+            fi
+        done <<<"$KEPT_PATHS"
+    fi
     # ${dest%/*} is dirname without a subshell: this runs once per placed file
     if [[ "$dest" == */* ]]; then ensure_dir "${dest%/*}"; else ensure_dir .; fi
     # Captured BEFORE the backup branch below can move dest out of the way —
@@ -2574,6 +2594,7 @@ while [[ $# -gt 0 ]]; do
         --symlink) LINK_MODE="symlink"; shift ;;
         --copy)    LINK_MODE="copy";    shift ;;
         --force)   FORCE=1; shift ;;
+        --keep-diverged) KEEP_DIVERGED=1; shift ;;
         --print-config) PRINT_CONFIG=1; shift ;;
         --check)   CHECK=1; shift ;;
         --environment-class)   PLANT_ENV="$2";  shift 2 ;;
@@ -3327,6 +3348,23 @@ if [[ ${CHECK:-0} -eq 1 ]]; then
         rm -rf "$tmp"
     done
     exit $stale
+fi
+
+# keep_diverged_paths: --keep-diverged's list, read before the first write
+# from tools/graft-ledger.py's three-way table: each KEEP-PLANT or MERGE row
+# whose file the plant still carries (a deletion is not an edit to keep).
+keep_diverged_paths() {
+    local out rc=0
+    out="$(run_python -B "$SEED_ROOT/tools/graft-ledger.py" "$PROJECT_DIR" "$SEED_ROOT" 2>&1)" || rc=$?
+    [[ $rc -eq 0 ]] || die "--keep-diverged: tools/graft-ledger.py could not build the three-way table (exit $rc), so the files the plant diverged on are unknown. Nothing has been written.
+$out"
+    KEPT_PATHS="$(printf '%s\n' "$out" | while read -r cls rel arrow _; do
+        [[ "$arrow" == "<-" && ( "$cls" == KEEP-PLANT || "$cls" == MERGE ) ]] || continue
+        [[ -f "$PROJECT_DIR/$rel" ]] && printf '%s %s\n' "$cls" "$rel"
+    done)"
+}
+if [[ $KEEP_DIVERGED -eq 1 && $PRIOR_INSTALL -eq 1 ]]; then
+    keep_diverged_paths
 fi
 
 for tool in "${expanded[@]}"; do

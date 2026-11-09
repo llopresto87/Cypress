@@ -104,7 +104,8 @@ KERNEL_BACKUPS = ("CLAUDE.md", "AGENTS.md", ".github/copilot-instructions.md")
 ADOPTED = f"{GRAPH_HOME}/plans/adopted-instructions.md"
 PLAN_TASK = "graft the new seed onto this plant and run its integrity gates"
 # graft-ledger.py's row: `  <CLASS>  <plant path>  <- <seed path>`
-LEDGER_ROW = re.compile(r"^  ([A-Z-]+) +(\S+)  <- ", re.M)
+LEDGER_ROW = re.compile(r"^  ([A-Z-]+) +(\S+)  <- (\S+)$", re.M)
+DIVERGED = ("KEEP-PLANT", "MERGE")
 
 
 def parse_args(argv):
@@ -456,7 +457,10 @@ def main() -> int:
 
     # 2. the ledger, before the installer writes
     rc, out = run.tool("ledger.txt", "graft-ledger.py", copy, seed)
-    ledger = {m.group(2): m.group(1) for m in LEDGER_ROW.finditer(out)}
+    ledger = {m.group(2): (m.group(1), m.group(3)) for m in LEDGER_ROW.finditer(out)}
+    # the bytes of each file the plant diverged on, before the installer runs
+    diverged = {p: (copy / p).read_bytes() for p, (c, _) in ledger.items()
+                if c in DIVERGED and (copy / p).is_file() and not (copy / p).is_symlink()}
     base_line = line_of(out, r"^base: ")
     base_rev = base_line.split()[1] if base_line and "!!" not in base_line else ""
     print(f"ledger: {line_of(out, r'^totals: ') or f'not printed (exit {rc})'}; "
@@ -469,10 +473,10 @@ def main() -> int:
     protocols = copy / GRAPH_HOME / "protocols"
     symlinked = protocols.is_dir() and any(p.is_symlink() for p in protocols.iterdir())
     cmd = ["bash", seed / "install.sh", *adapters] + (["--symlink"] if symlinked else []) \
-        + ["--project-dir", copy]
+        + ["--keep-diverged", "--project-dir", copy]
     install_rc, install_out = run.sh("install.log", cmd)
     print(f"install: install.sh {' '.join(adapters)}{' --symlink' if symlinked else ''} "
-          f"exited {install_rc}")
+          f"--keep-diverged exited {install_rc}")
 
     # 4. the three engines, each keeping its config
     engines = {}
@@ -550,7 +554,7 @@ def main() -> int:
         "coverage": (plan_rc, cov_rc, coverage), "routes": routes, "register": reg,
         "hook_checks": hook_checks,
         "before": before, "after": after, "agents_before": agents_before,
-        "install": (install_rc, install_out), "engines": engines, "ledger": ledger,
+        "install": (install_rc, install_out), "engines": engines, "ledger": ledger, "diverged": diverged,
     }
     table = []
     for gid, cls, judge in gates:
@@ -839,7 +843,7 @@ def check_recreated(run, ev):
         src = "install.log"
     # a node the ledger calls SEED-NEW was in neither the base nor the plant:
     # placed for the first time, no deletion to re-apply
-    new = [n for n in nodes if ev["ledger"].get(n) == "SEED-NEW"]
+    new = [n for n in nodes if ev["ledger"].get(n, ("",))[0] == "SEED-NEW"]
     nodes = [n for n in nodes if n not in new]
     src += f"; {len(new)} SEED-NEW node(s) placed for the first time, not counted" if new else ""
     if not nodes:
@@ -919,24 +923,84 @@ def check_projection(run, ev):
     return ("BLOCK" if drift else "PASS"), why
 
 
+def seed_lines_missing(run, ev, src: str, plant: bytes) -> list:
+    """The lines the seed added to `src` since the base that `plant` does not
+    carry: what a MERGE still owes. None when the base text cannot be read."""
+    if not ev["base_rev"]:
+        return None
+    r = subprocess.run(["git", "-C", str(run.seed), "show", f"{ev['base_rev']}:{src}"],
+                       capture_output=True, env=run.env)
+    if r.returncode != 0:
+        return None
+    base = set(r.stdout.decode(errors="replace").splitlines())
+    have = set(plant.decode(errors="replace").splitlines())
+    seed = (run.seed / src).read_text(errors="replace").splitlines()
+    return [l for l in seed if l.strip() and l not in base and l not in have]
+
+
+def ledger_kept(run, ev) -> tuple:
+    """(problems, kept, merged) over the ledger's KEEP-PLANT and MERGE rows the
+    plant carried: each must still be the plant's after the install, and a
+    MERGE must carry every line the seed added since the base. The engines are
+    graft.gate.engine's."""
+    problems, kept, merged = [], 0, 0
+    for path, before in sorted(ev["diverged"].items()):
+        cls, src = ev["ledger"][path]
+        if path.rsplit("/", 1)[-1] in ENGINE_FILES:
+            continue
+        f = run.copy / path
+        now = f.read_bytes() if f.is_file() else None
+        if now != before:
+            baks = sorted(b for b in ev["new"] if b.split(".bak-")[0] == path)
+            problems.append(f"{cls} {path} was replaced by the install"
+                            + (f" (the plant's version is {baks[-1]})" if baks else ""))
+            continue
+        if cls == "KEEP-PLANT":
+            kept += 1
+            continue
+        missing = seed_lines_missing(run, ev, src, now)
+        if missing is None:
+            problems.append(f"MERGE {path}: the base's {src} could not be read, so the merge was not checked")
+        elif missing:
+            problems.append(f"MERGE {path} is not merged: {len(missing)} line(s) the seed added to "
+                            f"{src} are not in it (Phase 3: author the holistic re-integration, "
+                            f"or ratify each line's absence)")
+        else:
+            merged += 1
+    return problems, kept, merged
+
+
 def check_kept(run, ev):
-    # On the stage the newest entry is the previous graft's: the install just
-    # rehearsed is what would overwrite the files it kept. This graft's own
-    # entry is re-checked in the plant once it is written.
+    # The ledger half: the install just rehearsed ran with --keep-diverged, so
+    # each file the plant diverged on must still be the plant's, and a MERGE
+    # must carry the seed's new lines.
+    problems, kept, merged = ledger_kept(run, ev)
+    half = (f"{kept} KEEP-PLANT and {merged} merged MERGE file(s) still the plant's"
+            + (f"; {len(problems)} not: {'; '.join(problems[:3])}{' ...' if len(problems) > 3 else ''}"
+               if problems else ""))
+    # The record half: on the stage the newest entry is the previous graft's:
+    # the install just rehearsed is what would overwrite the files it kept.
+    # This graft's own entry is re-checked in the plant once it is written.
     record = run.copy / GRAPH_HOME / "changelog.md"
     text = record.read_text(errors="replace") if record.is_file() else ""
     entry = graft_audit.newest_graft_entry(text)
     if entry is None:
-        return "N-A", (f"the copy's {GRAPH_HOME}/changelog.md holds no graft entry yet; once this "
-                       f"graft's entry is written, run graft-audit.py <plant> <seed> --record "
-                       f"{GRAPH_HOME}/changelog.md last")
+        tail = (f"the copy's {GRAPH_HOME}/changelog.md holds no graft entry yet; once this "
+                f"graft's entry is written, run graft-audit.py <plant> <seed> --record "
+                f"{GRAPH_HOME}/changelog.md last")
+        if problems:
+            return "BLOCK", f"{half}; {tail}"
+        return ("PASS" if ev["diverged"] else "N-A"), f"{half}; {tail}"
     rc, out = run.tool("kept.txt", "graft-audit.py", run.copy, run.seed, f"--record={record}")
     lost = [" ".join(l.split()) for l in out.splitlines() if re.match(r"\s*(LOST|MISSING|NO-PATH)\b", l)]
-    if rc == 0:
-        return "PASS", f"every file the newest entry ({entry[0]}) merged or kept still carries its delta"
-    return "BLOCK", (f"{len(lost)} file(s) the newest entry ({entry[0]}) merged or kept lost their "
-                     f"delta after this install: {'; '.join(lost[:3])}"
-                     f"{' ...' if len(lost) > 3 else ''} ({run.logs / 'kept.txt'})")
+    if rc == 0 and not problems:
+        return "PASS", f"{half}; every file the newest entry ({entry[0]}) merged or kept still carries its delta"
+    why = half
+    if rc != 0:
+        why += (f"; {len(lost)} file(s) the newest entry ({entry[0]}) merged or kept lost their "
+                f"delta after this install: {'; '.join(lost[:3])}"
+                f"{' ...' if len(lost) > 3 else ''} ({run.logs / 'kept.txt'})")
+    return "BLOCK", why
 
 
 CHECKS = {
