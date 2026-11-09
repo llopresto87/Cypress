@@ -199,6 +199,11 @@ attacker would make.
 
 ### GREEN — minimum behavior, integrated
 
+One `implementer` builds the increment and keeps its context warm for the
+whole increment, in one session: a fresh worker taking over mid-increment
+re-reads the same code and writes it to the cache again, and a cache write
+costs about 40 cache reads, so the handoff costs more than it saves.
+
 1. Add the minimum *new behavior* that turns RED into GREEN, minimum in
    behavior rather than diff size, integrated into the file's existing
    design per `skill.holistic-editing`. Unrelated fixes are filed as their

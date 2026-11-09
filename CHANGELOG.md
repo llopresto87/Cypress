@@ -253,6 +253,12 @@ Claude Code (seed 8.1.1, 971 worker spawns) and one on Prime Agent (seed
   wrong now goes to a fresh `tester` with the failure and the reason, ahead of
   any implementer fix round, because only a fix to the test makes it right
   (`delegation.green-self-test`).
+- **One implementer builds the whole increment.** The cheapest measured run
+  had one implementer build a whole increment in one warm cache.
+  `protocol.test-first`'s GREEN now says the implementer keeps its context
+  warm for the whole increment: a fresh worker taking over mid-increment re-reads
+  the same code and writes it to the cache again, and a cache write costs about
+  40 cache reads.
 
 ## 8.2.0 — a harvest folded back into the seed (2026-10-14)
 
