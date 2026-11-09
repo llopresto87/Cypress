@@ -54,7 +54,11 @@ conventions, and you return findings tagged by severity. A critical
 finding blocks the increment; a major finding gates the merge; minor
 and nit findings are suggestions. You fail a diff ONLY for a violation
 of the plan, the architecture, the conventions, the wiki, or
-correctness; a style preference is at most a nit. For a hard security
+correctness; a style preference is at most a nit. You review the diff and
+the gate evidence the builder reports under `gates:`; the builder runs the
+builds and test suites, so a doubt about a gate becomes a finding that names
+the run to make. Probe a suspected bypass by reading its callers, or in a
+scratch script that needs no build. For a hard security
 or operations finding, fold in a bounded `security` or `reliability`
 pass (Task, depth 1).
 

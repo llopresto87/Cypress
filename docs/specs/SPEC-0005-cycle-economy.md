@@ -576,6 +576,14 @@ starts at `status:`. `expertise_gap:` stays, held by HANDBACK_STARTS_AT_STATUS.
   expertise and names the remedy (the files or stack in `--task`); the second
   prints no such line; the brief is composed either way
 
+### Contract: REVIEWER_RUNS_NO_BUILD
+- **Test file:** `tests/seed-lint.py`
+- **Given:** the reviewer charter `agents/03-reviewer.md`
+- **When:** seed-lint reads it
+- **Then:** it holds that the reviewer reviews the diff and the builder's
+  reported gate evidence, and that the builder runs the builds and test
+  suites
+
 ### Contract: MAIN_SESSION_PLAYS_THE_ORCHESTRATOR
 - **Test file:** `tests/test-install-placement.sh`
 - **Given:** the orchestrator charter names `always_loads:`, and the Claude
@@ -2431,6 +2439,7 @@ gives.
 | PLAN_ROLE_LEAVES_OUT_THE_ROLES_OWN_PROMPT | X499 PlanRoleTests.test_x499_role_leaves_out_its_own_prompt: the GREEN task line with `--role implementer` drops `agent.implementer` and `skill.holistic-editing`, keeps `protocol.verify`; seen red first | tests/test_graph_lint.py | integration (installed plant) | green |
 | PLAN_ROLE_LEAVES_OUT_THE_ROLES_OWN_PROMPT | X500 the tester brief's step 1 carries `--role tester`; seen red first | tests/test-brief.sh | fixture | green |
 | BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE | X500 a generic GREEN task line warns; a task line routing `expertise.kotlin` does not; seen red first | tests/test-brief.sh | fixture | green |
+| REVIEWER_RUNS_NO_BUILD | (none) the `REVIEWER_RUNS_NO_BUILD` row of seed-lint's `TEXT_RULES`; red id: `REVIEWER_RUNS_NO_BUILD: agents/03-reviewer.md does not hold 'the builder runs the builds and test suites'`; seen red first | tests/seed-lint.py | real-tree | green |
 | MAIN_SESSION_PLAYS_THE_ORCHESTRATOR | M24 case_orchestrator_style: settings select the style; the style carries the charter body and each always-loaded body once, no charter frontmatter, `keep-coding-instructions: true`; a hand edit is STALE and recomposed; seen red first. A `claude -p` probe in a fresh plant quoted the charter's second sentence and an always-loaded heading, and quoted neither with the setting removed | tests/test-install-placement.sh | integration | green |
 | ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | M22 case_agents_compose: the implementer's six always-loaded bodies once each with no frontmatter; `11-pentest.md` byte for byte; a hand edit is STALE to `--check` | tests/test-install-placement.sh | integration | green |
 | ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES | (none) the `ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES` row of seed-lint's `TEXT_RULES`: the `graft.gate.projection-drift` row holds `install.sh claude-code --check`; red id: `ROLE_AGENT_COMPOSES_ITS_ALWAYS_LOADED_NODES: protocols/graft.md graft.gate.projection-drift does not hold 'install.sh claude-code --check'` | tests/seed-lint.py | real-tree | green |
@@ -2840,3 +2849,6 @@ kept outside the seed.
   code. Added PLAN_ROLE_LEAVES_OUT_THE_ROLES_OWN_PROMPT (X499, X500) and
   BRIEF_WARNS_ON_A_ROUTE_WITHOUT_EXPERTISE (X500), each seen red first; the
   bootstrap block's step 1 now passes `--role`.
+- 2026-11-09 — audit of a live run. A reviewer ran the project's build to
+  simulate bypasses, and a ten-minute build outlived its prompt cache. Added
+  REVIEWER_RUNS_NO_BUILD, held by seed-lint (seen red first).
